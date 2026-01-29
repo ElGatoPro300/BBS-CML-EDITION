@@ -46,6 +46,9 @@ import mchorse.bbs_mod.entity.ActorEntity;
 import mchorse.bbs_mod.entity.GunProjectileEntity;
 import mchorse.bbs_mod.events.BBSAddonMod;
 import mchorse.bbs_mod.events.EventBus;
+import mchorse.bbs_mod.events.register.RegisterActionClipsEvent;
+import mchorse.bbs_mod.events.register.RegisterCameraClipsEvent;
+import mchorse.bbs_mod.events.register.RegisterFormsEvent;
 import mchorse.bbs_mod.events.register.RegisterSettingsEvent;
 import mchorse.bbs_mod.events.register.RegisterSourcePacksEvent;
 import mchorse.bbs_mod.film.FilmManager;
@@ -456,6 +459,8 @@ public class BBSMod implements ModInitializer
             .register(Link.bbs("attack"), AttackActionClip.class, new ClipFactoryData(Icons.DROP, Colors.RED))
             .register(Link.bbs("damage"), DamageActionClip.class, new ClipFactoryData(Icons.SKULL, Colors.CURSOR))
             .register(Link.bbs("swipe"), SwipeActionClip.class, new ClipFactoryData(Icons.LIMB, Colors.ORANGE));
+
+        events.post(new RegisterActionClipsEvent(factoryActionClips));
 
         setupConfig(Icons.PROCESSOR, "bbs", new File(settingsFolder, "bbs.json"), BBSSettings::register);
 
