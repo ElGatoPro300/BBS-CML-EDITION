@@ -64,6 +64,11 @@ public class FormCategories implements IWatchDogListener
         return this.userForms;
     }
 
+    public ExtraFormSection getExtraForms()
+    {
+        return this.extraForms;
+    }
+
     public List<FormCategory> getAllCategories()
     {
         List<FormCategory> formCategories = new ArrayList<>();
