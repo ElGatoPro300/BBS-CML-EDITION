@@ -15,6 +15,8 @@ import mchorse.bbs_mod.events.register.RegisterL10nEvent;
 import mchorse.bbs_mod.events.register.RegisterParticleComponentsEvent;
 import mchorse.bbs_mod.events.register.RegisterShadersEvent;
 import mchorse.bbs_mod.events.register.RegisterSourcePacksEvent;
+import mchorse.bbs_mod.events.register.RegisterKeyframeShapesEvent;
+import mchorse.bbs_mod.events.register.RegisterUIValueFactoriesEvent;
 
 /**
  * Base class for BBS client addons.
@@ -121,5 +123,23 @@ public abstract class BBSClientAddon implements BBSAddonMod
     }
 
     protected void registerFormEditors(RegisterFormEditorsEvent event)
+    {}
+
+    @Subscribe
+    public void onRegisterKeyframeShapes(RegisterKeyframeShapesEvent event)
+    {
+        this.registerKeyframeShapes(event);
+    }
+
+    protected void registerKeyframeShapes(RegisterKeyframeShapesEvent event)
+    {}
+
+    @Subscribe
+    public void onRegisterUIValueFactories(RegisterUIValueFactoriesEvent event)
+    {
+        this.registerUIValueFactories(event);
+    }
+
+    protected void registerUIValueFactories(RegisterUIValueFactoriesEvent event)
     {}
 }
