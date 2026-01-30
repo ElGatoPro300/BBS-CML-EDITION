@@ -9,6 +9,7 @@ import mchorse.bbs_mod.math.molang.expressions.MolangAssignment;
 import mchorse.bbs_mod.math.molang.expressions.MolangExpression;
 import mchorse.bbs_mod.math.molang.expressions.MolangMultiStatement;
 import mchorse.bbs_mod.math.molang.expressions.MolangValue;
+import mchorse.bbs_mod.math.functions.Function;
 import mchorse.bbs_mod.math.molang.functions.AcosDegrees;
 import mchorse.bbs_mod.math.molang.functions.AsinDegrees;
 import mchorse.bbs_mod.math.molang.functions.Atan2Degrees;
@@ -17,7 +18,9 @@ import mchorse.bbs_mod.math.molang.functions.CosDegrees;
 import mchorse.bbs_mod.math.molang.functions.SinDegrees;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * MoLang parser
@@ -31,6 +34,8 @@ public class MolangParser extends MathBuilder
     public static final MolangExpression ZERO = new MolangValue(null, new Constant(0));
     public static final MolangExpression ONE = new MolangValue(null, new Constant(1));
     public static final String RETURN = "return ";
+    
+    public static final Map<String, Class<? extends Function>> CUSTOM_FUNCTIONS = new HashMap<>();
 
     private MolangMultiStatement currentStatement;
     private boolean registerAsGlobals;
@@ -79,6 +84,8 @@ public class MolangParser extends MathBuilder
 
         /* Remap variables as well */
         this.remapVar("PI", "math.pi");
+        
+        this.functions.putAll(CUSTOM_FUNCTIONS);
     }
 
     /**

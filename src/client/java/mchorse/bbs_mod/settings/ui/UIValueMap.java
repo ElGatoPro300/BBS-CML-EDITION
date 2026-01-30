@@ -44,7 +44,7 @@ import java.util.Optional;
 
 public class UIValueMap
 {
-    private static Map<Class<? extends BaseValue>, IUIValueFactory<? extends BaseValue>> factories = new HashMap<>();
+    public static Map<Class<? extends BaseValue>, IUIValueFactory<? extends BaseValue>> factories = new HashMap<>();
 
     static
     {

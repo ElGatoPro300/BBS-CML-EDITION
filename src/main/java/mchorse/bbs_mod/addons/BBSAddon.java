@@ -4,9 +4,11 @@ import mchorse.bbs_mod.events.BBSAddonMod;
 import mchorse.bbs_mod.events.Subscribe;
 import mchorse.bbs_mod.events.register.RegisterActionClipsEvent;
 import mchorse.bbs_mod.events.register.RegisterCameraClipsEvent;
+import mchorse.bbs_mod.events.register.RegisterEntityCaptureHandlersEvent;
 import mchorse.bbs_mod.events.register.RegisterFormsEvent;
 import mchorse.bbs_mod.events.register.RegisterSettingsEvent;
 import mchorse.bbs_mod.events.register.RegisterSourcePacksEvent;
+import mchorse.bbs_mod.events.register.RegisterKeyframeFactoriesEvent;
 
 /**
  * Base class for BBS addons.
@@ -55,9 +57,27 @@ public abstract class BBSAddon implements BBSAddonMod
     protected void registerActionClips(RegisterActionClipsEvent event)
     {}
 
+    @Subscribe
+    public void onRegisterEntityCaptureHandlers(RegisterEntityCaptureHandlersEvent event)
+    {
+        this.registerEntityCaptureHandlers(event);
+    }
+
+    protected void registerEntityCaptureHandlers(RegisterEntityCaptureHandlersEvent event)
+    {}
+
     protected void registerSettings(RegisterSettingsEvent event)
     {}
 
     protected void registerSourcePacks(RegisterSourcePacksEvent event)
+    {}
+
+    @Subscribe
+    public void onRegisterKeyframeFactories(RegisterKeyframeFactoriesEvent event)
+    {
+        this.registerKeyframeFactories(event);
+    }
+
+    protected void registerKeyframeFactories(RegisterKeyframeFactoriesEvent event)
     {}
 }

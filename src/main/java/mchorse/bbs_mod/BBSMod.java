@@ -47,7 +47,10 @@ import mchorse.bbs_mod.entity.GunProjectileEntity;
 import mchorse.bbs_mod.events.BBSAddonMod;
 import mchorse.bbs_mod.events.EventBus;
 import mchorse.bbs_mod.events.register.RegisterActionClipsEvent;
+import mchorse.bbs_mod.events.register.RegisterMolangFunctionsEvent;
+import mchorse.bbs_mod.events.register.RegisterKeyframeFactoriesEvent;
 import mchorse.bbs_mod.events.register.RegisterCameraClipsEvent;
+import mchorse.bbs_mod.events.register.RegisterEntityCaptureHandlersEvent;
 import mchorse.bbs_mod.events.register.RegisterFormsEvent;
 import mchorse.bbs_mod.events.register.RegisterSettingsEvent;
 import mchorse.bbs_mod.events.register.RegisterSourcePacksEvent;
@@ -66,6 +69,7 @@ import mchorse.bbs_mod.forms.forms.ParticleForm;
 import mchorse.bbs_mod.forms.forms.TrailForm;
 import mchorse.bbs_mod.forms.forms.VanillaParticleForm;
 import mchorse.bbs_mod.items.GunItem;
+import mchorse.bbs_mod.math.molang.MolangParser;
 import mchorse.bbs_mod.morphing.Morph;
 import mchorse.bbs_mod.network.ServerNetwork;
 import mchorse.bbs_mod.resources.AssetProvider;
@@ -82,6 +86,7 @@ import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.clips.Clip;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.factory.MapFactory;
+import mchorse.bbs_mod.utils.keyframes.factories.KeyframeFactories;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
@@ -389,6 +394,8 @@ public class BBSMod implements ModInitializer
                 events.register(container.getEntrypoint());
             });
 
+        events.post(new RegisterMolangFunctionsEvent(MolangParser.CUSTOM_FUNCTIONS));
+
         actions = new ActionManager();
 
         originalSourcePack = new ExternalAssetsSourcePack(Link.ASSETS, assetsFolder).providesFiles();
@@ -415,9 +422,14 @@ public class BBSMod implements ModInitializer
             .register(Link.bbs("trail"), TrailForm.class, null)
             .register(Link.bbs("framebuffer"), FramebufferForm.class, null);
 
+        events.post(new RegisterFormsEvent(forms));
+
         films = new FilmManager(() -> new File(worldFolder, "bbs/films"));
 
         /* Register camera clips */
+        events.post(new RegisterKeyframeFactoriesEvent(KeyframeFactories.FACTORIES));
+        events.post(new RegisterEntityCaptureHandlersEvent(Morph.HANDLERS));
+
         factoryCameraClips = new MapFactory<Clip, ClipFactoryData>()
             .register(Link.bbs("idle"), IdleClip.class, new ClipFactoryData(Icons.FRUSTUM, 0x159e64)
                 .withConverter(Link.bbs("dolly"), new IdleToDollyConverter())
@@ -446,6 +458,8 @@ public class BBSMod implements ModInitializer
             .register(Link.bbs("curve"), CurveClip.class, new ClipFactoryData(Icons.ARC, 0xff1493))
             .register(Link.bbs("tracker"), TrackerClip.class, new ClipFactoryData(Icons.USER, 0xffffff))
             .register(Link.bbs("dolly_zoom"), DollyZoomClip.class, new ClipFactoryData(Icons.FILTER, 0x7d56c9));
+
+        events.post(new RegisterCameraClipsEvent(factoryCameraClips));
 
         factoryActionClips = new MapFactory<Clip, ClipFactoryData>()
             .register(Link.bbs("chat"), ChatActionClip.class, new ClipFactoryData(Icons.BUBBLE, Colors.YELLOW))

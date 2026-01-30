@@ -44,6 +44,11 @@ public class Importers
         importers.add(new WAVImporter());
     }
 
+    public static void register(IImporter importer)
+    {
+        importers.add(importer);
+    }
+
     public static List<IImporter> getImporters()
     {
         return Collections.unmodifiableList(importers);

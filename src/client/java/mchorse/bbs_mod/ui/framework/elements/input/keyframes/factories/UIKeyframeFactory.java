@@ -30,7 +30,7 @@ import java.util.Map;
 
 public abstract class UIKeyframeFactory <T> extends UIElement
 {
-    private static final Map<IKeyframeFactory, IUIKeyframeFactoryFactory> FACTORIES = new HashMap<>();
+    public static final Map<IKeyframeFactory, IUIKeyframeFactoryFactory> FACTORIES = new HashMap<>();
     private static final Map<IKeyframeFactory, Integer> SCROLLS = new HashMap<>();
 
     public UIScrollView scroll;
