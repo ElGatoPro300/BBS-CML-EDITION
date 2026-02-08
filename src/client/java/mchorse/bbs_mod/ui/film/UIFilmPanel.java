@@ -1,9 +1,11 @@
 package mchorse.bbs_mod.ui.film;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import mchorse.bbs_mod.BBS;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
+import mchorse.bbs_mod.events.register.RegisterFilmEditorFactoriesEvent;
 import mchorse.bbs_mod.actions.ActionState;
 import mchorse.bbs_mod.camera.Camera;
 import mchorse.bbs_mod.camera.clips.modifiers.TranslateClip;
@@ -110,7 +112,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     public boolean playerToCamera;
 
     /* Entity control */
-    private UIFilmController controller = new UIFilmController(this);
+    private UIFilmController controller;
     private UIFilmUndoHandler undoHandler;
 
     public final Matrix4f lastView = new Matrix4f();
@@ -130,17 +132,22 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     {
         super(dashboard);
 
+        RegisterFilmEditorFactoriesEvent event = new RegisterFilmEditorFactoriesEvent();
+        BBS.getEvents().post(event);
+
+        this.controller = event.createController(this);
+
         this.runner = new RunnerCameraController(this, (playing) ->
         {
             this.notifyServer(playing ? ActionState.PLAY : ActionState.PAUSE);
         });
         this.runner.getContext().captureSnapshots();
 
-        this.recorder = new UIFilmRecorder(this);
+        this.recorder = event.createRecorder(this);
 
         this.main = new UIElement();
         this.editArea = new UIElement();
-        this.preview = new UIFilmPreview(this);
+        this.preview = event.createPreview(this);
 
         this.draggableMain = new UIDraggable((context) ->
         {
@@ -209,7 +216,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             UIAudioRecorder.addOption(this, menu);
         });
 
-        this.replayEditor = new UIReplaysEditor(this);
+        this.replayEditor = event.createReplayEditor(this);
         this.replayEditor.full(this.main).setVisible(false);
         this.actionEditor = new UIClipsPanel(this, BBSMod.getFactoryActionClips()).target(this.editArea);
         this.actionEditor.full(this.main).setVisible(false);

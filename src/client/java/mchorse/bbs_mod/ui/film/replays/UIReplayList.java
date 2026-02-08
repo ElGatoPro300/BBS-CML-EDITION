@@ -40,6 +40,7 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIConfirmOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UINumberOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
+import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
 import mchorse.bbs_mod.utils.CollectionUtils;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.RayTracing;
@@ -63,14 +64,16 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 /**
  * This GUI is responsible for drawing replays available in the 
  * director thing
  */
-public class UIReplayList extends UIList<Replay>
-{
+public class UIReplayList extends UIList<Replay> {
+    public static final List<BiConsumer<UIReplayList, ContextMenuManager>> extensions = new ArrayList<>();
+
     private static String LAST_PROCESS = "v";
     private static String LAST_OFFSET = "0";
     private static List<String> LAST_PROCESS_PROPERTIES = Arrays.asList("x");
@@ -147,6 +150,10 @@ public class UIReplayList extends UIList<Replay>
                     }
                 });
                 menu.action(Icons.REMOVE, UIKeys.SCENE_REPLAYS_CONTEXT_REMOVE, this::removeReplay);
+            }
+
+            for (BiConsumer<UIReplayList, ContextMenuManager> consumer : extensions) {
+                consumer.accept(this, menu);
             }
         });
     }

@@ -18,11 +18,14 @@ import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.UIDataUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
 public class UIReplaysOverlayPanel extends UIOverlayPanel
 {
+    public static final List<Consumer<UIReplaysOverlayPanel>> extensions = new ArrayList<>();
+
     public UIReplayList replays;
 
     public UIElement properties;

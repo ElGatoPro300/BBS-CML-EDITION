@@ -4,7 +4,9 @@ import mchorse.bbs_mod.events.BBSAddonMod;
 import mchorse.bbs_mod.events.Subscribe;
 import mchorse.bbs_mod.events.register.RegisterClientSettingsEvent;
 import mchorse.bbs_mod.events.register.RegisterDashboardPanelsEvent;
+import mchorse.bbs_mod.events.register.RegisterFilmEditorFactoriesEvent;
 import mchorse.bbs_mod.events.register.RegisterFormCategoriesEvent;
+import mchorse.bbs_mod.events.register.RegisterGizmoEvent;
 import mchorse.bbs_mod.events.register.RegisterImportersEvent;
 import mchorse.bbs_mod.events.register.RegisterInterpolationsEvent;
 import mchorse.bbs_mod.events.register.RegisterIconsEvent;
@@ -13,6 +15,12 @@ import mchorse.bbs_mod.events.register.RegisterFormsRenderersEvent;
 import mchorse.bbs_mod.events.register.RegisterFormEditorsEvent;
 import mchorse.bbs_mod.events.register.RegisterL10nEvent;
 import mchorse.bbs_mod.events.register.RegisterParticleComponentsEvent;
+import mchorse.bbs_mod.events.register.RegisterPropTransformEvent;
+import mchorse.bbs_mod.events.register.RegisterStencilMapEvent;
+import mchorse.bbs_mod.events.register.RegisterRayTracingEvent;
+import mchorse.bbs_mod.events.register.RegisterFilmPreviewEvent;
+import mchorse.bbs_mod.events.register.RegisterReplayListContextMenuEvent;
+import mchorse.bbs_mod.events.register.RegisterReplayPanelEvent;
 import mchorse.bbs_mod.events.register.RegisterShadersEvent;
 import mchorse.bbs_mod.events.register.RegisterSourcePacksEvent;
 import mchorse.bbs_mod.events.register.RegisterKeyframeShapesEvent;
@@ -87,10 +95,28 @@ public abstract class BBSClientAddon implements BBSAddonMod
     }
 
     @Subscribe
+    public void onRegisterFilmEditorFactories(RegisterFilmEditorFactoriesEvent event)
+    {
+        this.registerFilmEditorFactories(event);
+    }
+
+    protected void registerFilmEditorFactories(RegisterFilmEditorFactoriesEvent event)
+    {}
+
+    @Subscribe
     public void onRegisterFormsRenderers(RegisterFormsRenderersEvent event)
     {
         this.registerFormsRenderers(event);
     }
+
+    @Subscribe
+    public void onRegisterGizmos(RegisterGizmoEvent event)
+    {
+        this.registerGizmos(event);
+    }
+
+    protected void registerGizmos(RegisterGizmoEvent event)
+    {}
 
     @Subscribe
     public void onRegisterIcons(RegisterIconsEvent event)
@@ -141,5 +167,59 @@ public abstract class BBSClientAddon implements BBSAddonMod
     }
 
     protected void registerUIValueFactories(RegisterUIValueFactoriesEvent event)
+    {}
+
+    @Subscribe
+    public void onRegisterPropTransforms(RegisterPropTransformEvent event)
+    {
+        this.registerPropTransforms(event);
+    }
+
+    protected void registerPropTransforms(RegisterPropTransformEvent event)
+    {}
+
+    @Subscribe
+    public void onRegisterStencilMap(RegisterStencilMapEvent event)
+    {
+        this.registerStencilMap(event);
+    }
+
+    protected void registerStencilMap(RegisterStencilMapEvent event)
+    {}
+
+    @Subscribe
+    public void onRegisterRayTracing(RegisterRayTracingEvent event)
+    {
+        this.registerRayTracing(event);
+    }
+
+    protected void registerRayTracing(RegisterRayTracingEvent event)
+    {}
+
+    @Subscribe
+    public void onRegisterFilmPreview(RegisterFilmPreviewEvent event)
+    {
+        this.registerFilmPreview(event);
+    }
+
+    protected void registerFilmPreview(RegisterFilmPreviewEvent event)
+    {}
+
+    @Subscribe
+    public void onRegisterReplayListContextMenu(RegisterReplayListContextMenuEvent event)
+    {
+        this.registerReplayListContextMenu(event);
+    }
+
+    protected void registerReplayListContextMenu(RegisterReplayListContextMenuEvent event)
+    {}
+
+    @Subscribe
+    public void onRegisterReplayPanel(RegisterReplayPanelEvent event)
+    {
+        this.registerReplayPanel(event);
+    }
+
+    protected void registerReplayPanel(RegisterReplayPanelEvent event)
     {}
 }

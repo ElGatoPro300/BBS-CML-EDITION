@@ -70,11 +70,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 public class UIFormEditor extends UIElement implements IUIFormList, ICursor
 {
     public static Map<Class, Supplier<UIForm>> panels = new HashMap<>();
+    public static Function<UIFormEditor, UIPickableFormRenderer> rendererFactory = UIPickableFormRenderer::new;
 
     private static float treeWidth = 0F;
     private static boolean TOGGLED = true;
@@ -212,7 +214,7 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
         this.shiftDuration.tooltip(UIKeys.CAMERA_TIMELINE_CONTEXT_SHIFT_DURATION, Direction.RIGHT);
         this.shiftDuration.keys().register(Keys.CLIP_SHIFT, () -> this.shiftDuration.clickItself());
 
-        this.renderer = new UIPickableFormRenderer(this);
+        this.renderer = rendererFactory.apply(this);
         this.renderer.full(this);
 
         this.finish = new UIIcon(Icons.IN, (b) -> this.palette.exit());

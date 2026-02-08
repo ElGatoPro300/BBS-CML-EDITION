@@ -16,8 +16,13 @@ import net.minecraft.world.World;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class RayTracing
 {
+    public static final List<IRayTracingHandler> handlers = new ArrayList<>();
+
     public static Vec3d fromVector3d(Vector3d vector)
     {
         return new Vec3d(vector.x, vector.y, vector.z);
@@ -35,6 +40,16 @@ public class RayTracing
 
     public static BlockHitResult rayTrace(World world, Vec3d pos, Vec3d direction, double d)
     {
+        for (IRayTracingHandler handler : handlers)
+        {
+            BlockHitResult result = handler.rayTrace(world, pos, direction, d);
+
+            if (result != null)
+            {
+                return result;
+            }
+        }
+
         return world.raycast(new RaycastContext(
             pos,
             pos.add(direction.normalize().multiply(d)),
@@ -64,6 +79,16 @@ public class RayTracing
 
     public static HitResult rayTraceEntity(Entity entity, World world, Vec3d pos, Vec3d direction, double d)
     {
+        for (IRayTracingHandler handler : handlers)
+        {
+            HitResult result = handler.rayTraceEntity(entity, world, pos, direction, d);
+
+            if (result != null)
+            {
+                return result;
+            }
+        }
+
         BlockHitResult blockHit = rayTrace(world, pos, direction, d);
 
         double dist1 = blockHit != null ? blockHit.getPos().squaredDistanceTo(pos) : d * d;
