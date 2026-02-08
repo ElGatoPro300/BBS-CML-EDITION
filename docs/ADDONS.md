@@ -232,6 +232,30 @@ event.getL10n().register((lang) -> Link.create("my_addon", "strings/" + lang + "
 ### `registerIcons(RegisterIconsEvent event)`
 Registers custom icons for use in UI.
 
+### `registerGizmos(RegisterGizmoEvent event)`
+Registers custom 3D gizmos for the scene editor.
+
+### `registerPropTransforms(RegisterPropTransformEvent event)`
+Registers custom property transformations.
+
+### `registerFilmEditorFactories(RegisterFilmEditorFactoriesEvent event)`
+Registers factories for custom film editor components.
+
+### `registerReplayPanel(RegisterReplayPanelEvent event)`
+Allows customization or extension of the Replay Panel.
+
+### `registerReplayListContextMenu(RegisterReplayListContextMenuEvent event)`
+Add custom actions to the Replay List context menu.
+
+### `registerFilmPreview(RegisterFilmPreviewEvent event)`
+Registers custom preview rendering logic for films.
+
+### `registerRayTracing(RegisterRayTracingEvent event)`
+Registers ray tracing extensions.
+
+### `registerStencilMap(RegisterStencilMapEvent event)`
+Registers stencil effects.
+
 ## Advanced Topics
 
 ### Custom UI Components
@@ -290,6 +314,59 @@ protected void registerL10n(RegisterL10nEvent event) {
     // Force reload to apply immediately
     event.getL10n().reload(); 
 }
+```
+
+### Cross-Platform Compatibility (Sinytra Connector)
+
+When running BBS Mod in hybrid environments (like using **Sinytra Connector** on NeoForge), the standard Fabric entrypoint detection for addons (`bbs-addon` and `bbs-addon-client`) might fail to populate the Addons Panel in the dashboard.
+
+To ensure your addon is correctly displayed in the Addons Panel across all platforms, you can manually register your addon metadata using the `AddonInfo` class.
+
+#### Manual Registration
+
+In your client-side initialization (e.g., `onInitializeClient` or `BBSClientAddon` constructor), you can register your addon info directly:
+
+```java
+import mchorse.bbs_mod.BBSModClient;
+import mchorse.bbs_mod.addons.AddonInfo;
+import mchorse.bbs_mod.resources.Link;
+
+// ...
+
+Link iconLink = new Link("my_addon_id", "icon.png"); // Path to icon in assets
+
+AddonInfo info = new AddonInfo(
+    "my_addon_id",
+    "My Addon Name",
+    "1.0.0",
+    "Description of my addon.",
+    java.util.List.of("Author1", "Author2"),
+    iconLink,
+    "https://website.com",
+    "https://issues.com",
+    "https://source.com"
+);
+
+BBSModClient.registerAddon(info);
+```
+
+This ensures that even if the mod loader fails to scrape the metadata from `fabric.mod.json`, the addon will still appear in the in-game UI.
+
+#### Registering Assets for Icons
+
+If your addon is running in a hybrid environment (Sinytra Connector), standard asset loading from the mod JAR might not work for the icon. You need to manually register an asset source pack to ensure the icon (and other assets) can be found.
+
+```java
+import mchorse.bbs_mod.resources.packs.InternalAssetsSourcePack;
+import mchorse.bbs_mod.BBSMod;
+
+// ...
+
+// Register a source pack for your mod's namespace
+BBSMod.getProvider().register(new InternalAssetsSourcePack("my_addon_id", "assets/my_addon_id", MyAddonClient.class));
+
+// Register a root source pack for icons if they are in the root 'assets' folder (optional, if your icon is not in the namespace folder)
+BBSMod.getProvider().register(new InternalAssetsSourcePack("my_addon_icons", "assets", MyAddonClient.class));
 ```
 
 ### Undo/Redo System
