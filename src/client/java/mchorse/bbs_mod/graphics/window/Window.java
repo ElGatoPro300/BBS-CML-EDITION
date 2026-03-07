@@ -15,8 +15,17 @@ import java.nio.charset.StandardCharsets;
 
 public class Window
 {
+    public static final int MOD_NONE = 0;
+    public static final int MOD_SHIFT = 1;
+    public static final int MOD_CTRL = 2;
+    public static final int MOD_ALT = 3;
+
     private static int verticalScroll;
     private static long lastScroll;
+
+    private static long lastShiftPress;
+    private static long lastCtrlPress;
+    private static long lastAltPress;
 
     public static long getWindow()
     {
@@ -57,6 +66,49 @@ public class Window
     public static boolean isAltPressed()
     {
         return Screen.hasAltDown();
+    }
+
+    public static void noteModifierKeyEvent(int key, int action)
+    {
+        if (action != GLFW.GLFW_PRESS)
+        {
+            return;
+        }
+
+        long now = System.nanoTime();
+
+        if (key == GLFW.GLFW_KEY_LEFT_SHIFT || key == GLFW.GLFW_KEY_RIGHT_SHIFT)
+        {
+            lastShiftPress = now;
+        }
+        else if (key == GLFW.GLFW_KEY_LEFT_CONTROL || key == GLFW.GLFW_KEY_RIGHT_CONTROL)
+        {
+            lastCtrlPress = now;
+        }
+        else if (key == GLFW.GLFW_KEY_LEFT_ALT || key == GLFW.GLFW_KEY_RIGHT_ALT)
+        {
+            lastAltPress = now;
+        }
+    }
+
+    public static int getLastModifier()
+    {
+        boolean shift = Screen.hasShiftDown();
+        boolean ctrl = Screen.hasControlDown();
+        boolean alt = Screen.hasAltDown();
+
+        long shiftTime = shift ? lastShiftPress : Long.MIN_VALUE;
+        long ctrlTime = ctrl ? lastCtrlPress : Long.MIN_VALUE;
+        long altTime = alt ? lastAltPress : Long.MIN_VALUE;
+
+        if (shiftTime == Long.MIN_VALUE && ctrlTime == Long.MIN_VALUE && altTime == Long.MIN_VALUE)
+        {
+            return MOD_NONE;
+        }
+
+        if (shiftTime >= ctrlTime && shiftTime >= altTime) return MOD_SHIFT;
+        if (ctrlTime >= altTime) return MOD_CTRL;
+        return MOD_ALT;
     }
 
     public static boolean isKeyPressed(int key)

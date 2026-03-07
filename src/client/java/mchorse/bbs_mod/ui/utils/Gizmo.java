@@ -5,6 +5,7 @@ import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.graphics.Draw;
 import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
+import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.utils.Axis;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.BufferRenderer;
@@ -14,12 +15,24 @@ import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
 import org.lwjgl.opengl.GL11;
+import org.joml.Matrix4f;
 
 import java.util.HashMap;
 import java.util.Map;
 
 public class Gizmo
 {
+    public static class DragContext
+    {
+        public final Matrix4f modelView = new Matrix4f();
+        public final Matrix4f projection = new Matrix4f();
+        public int viewportX;
+        public int viewportY;
+        public int viewportW;
+        public int viewportH;
+        public boolean ready;
+    }
+
     public interface IGizmoHandler
     {
         public void start(Gizmo gizmo, int index, int mouseX, int mouseY, UIPropTransform transform);
@@ -46,6 +59,7 @@ public class Gizmo
 
     private UIPropTransform currentTransform;
     private Map<Integer, IGizmoHandler> handlers = new HashMap<>();
+    private final DragContext dragContext = new DragContext();
 
     private Gizmo()
     {}
@@ -58,6 +72,27 @@ public class Gizmo
     public Mode getMode()
     {
         return this.mode;
+    }
+
+    public void setViewport(Area area)
+    {
+        if (area == null)
+        {
+            this.dragContext.viewportW = 0;
+            this.dragContext.viewportH = 0;
+            this.dragContext.ready = false;
+            return;
+        }
+
+        this.dragContext.viewportX = area.x;
+        this.dragContext.viewportY = area.y;
+        this.dragContext.viewportW = area.w;
+        this.dragContext.viewportH = area.h;
+    }
+
+    public DragContext getDragContext()
+    {
+        return this.dragContext;
     }
 
     public boolean setMode(Mode mode)
@@ -127,6 +162,8 @@ public class Gizmo
                 {
                     transform.enableFreeRotation(this.mode.ordinal(), Axis.X);
                 }
+
+                transform.beginGizmoDrag(this.dragContext);
             }
 
             return true;
@@ -151,6 +188,7 @@ public class Gizmo
     {
         if (BBSSettings.gizmos.get())
         {
+            this.captureDragContext(stack);
             this.drawAxes(stack, 0.25F, 0.015F, 0.26F, 0.025F);
         }
         else
@@ -254,6 +292,7 @@ public class Gizmo
     {
         if (BBSSettings.gizmos.get())
         {
+            this.captureDragContext(stack);
             this.drawAxes(stack, map, 0.25F, 0.015F);
         }
     }
@@ -318,5 +357,18 @@ public class Gizmo
     public static enum Mode
     {
         TRANSLATE, SCALE, ROTATE;
+    }
+
+    private void captureDragContext(MatrixStack stack)
+    {
+        if (this.dragContext.viewportW <= 0 || this.dragContext.viewportH <= 0)
+        {
+            this.dragContext.ready = false;
+            return;
+        }
+
+        this.dragContext.modelView.set(stack.peek().getPositionMatrix());
+        this.dragContext.projection.set(RenderSystem.getProjectionMatrix());
+        this.dragContext.ready = true;
     }
 }
