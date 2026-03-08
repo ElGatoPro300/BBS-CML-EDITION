@@ -40,13 +40,13 @@ import mchorse.bbs_mod.utils.pose.PoseTransform;
 import mchorse.bbs_mod.utils.resources.LinkUtils;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.ShaderProgram;
-// import net.minecraft.client.gl.ShaderProgramKeys;
-// import net.minecraft.client.gl.ShaderProgramKeys;
+import net.minecraft.client.gl.ShaderProgramKeys;
+import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
-// import net.minecraft.client.render.model.json.ModelTransformationMode;
+import net.minecraft.item.ModelTransformationMode;
 import net.minecraft.client.render.DiffuseLighting;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.EquipmentSlot;
@@ -297,7 +297,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
         if (this.animator != null && model != null)
         {
-            MatrixStack stack = new MatrixStack();
+            MatrixStack stack = context.batcher.getContext().getMatrices();
 
             stack.push();
 
@@ -319,17 +319,17 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             stack.scale(scale, scale, scale);
 
             BBSModClient.getTextures().bindTexture(texture);
-            // RenderSystem.depthFunc(GL11.GL_LEQUAL);
+            RenderSystem.depthFunc(GL11.GL_LEQUAL);
 
             Vector3f light0 = new Vector3f(0.85F, 0.85F, -1F).normalize();
             Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1F).normalize();
-            // RenderSystem.setupLevelDiffuseLighting(light0, light1);
+            RenderSystem.setupLevelDiffuseLighting(light0, light1);
 
             Supplier<ShaderProgram> mainShader = (BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld()) || !model.isVAORendered()
                 ? () ->
                 {
-                    // RenderSystem.setShader(ShaderProgramKeys.RENDERTYPE_ENTITY_TRANSLUCENT);
-                    return null; // RenderSystem.getShader();
+                    RenderSystem.setShader(ShaderProgramKeys.RENDERTYPE_ENTITY_TRANSLUCENT);
+                    return RenderSystem.getShader();
                 }
                 : BBSShaders::getModel;
 
@@ -347,8 +347,8 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             stack.pop();
             stack.pop();
 
-            // DiffuseLighting.disableGuiDepthLighting();
-            // RenderSystem.depthFunc(GL11.GL_ALWAYS);
+            DiffuseLighting.disableGuiDepthLighting();
+            RenderSystem.depthFunc(GL11.GL_ALWAYS);
         }
     }
 
@@ -356,19 +356,20 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
     {
         if (!model.culling)
         {
-            // RenderSystem.disableCull();
+            RenderSystem.disableCull();
         }
 
-        com.mojang.blaze3d.opengl.GlStateManager._enableBlend();
-        // RenderSystem.defaultBlendFunc();
-        // RenderSystem.enableDepthTest();
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.enableDepthTest();
         GameRenderer gameRenderer = MinecraftClient.getInstance().gameRenderer;
 
-        // Lightmap/overlay state handling updated in 1.21.11
+        gameRenderer.getLightmapTextureManager().enable();
+        gameRenderer.getOverlayTexture().setupOverlayColor();
 
         MatrixStack newStack = new MatrixStack();
 
-        MatrixStackUtils.multiply(newStack, new Matrix4f());
+        MatrixStackUtils.multiply(newStack, stack.peek().getPositionMatrix());
         newStack.peek().getNormalMatrix().set(stack.peek().getNormalMatrix());
 
         if (ui)
@@ -382,12 +383,13 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         Link defaultTexture = link == null ? model.texture : link;
         model.render(newStack, program, color, light, overlay, stencilMap, this.form.shapeKeys.get(), defaultTexture);
 
-        // Lightmap/overlay state handling updated in 1.21.11
-        // RenderSystem.disableBlend();
+        gameRenderer.getLightmapTextureManager().disable();
+        gameRenderer.getOverlayTexture().teardownOverlayColor();
+        RenderSystem.disableBlend();
 
         if (!model.culling)
         {
-            // RenderSystem.enableCull();
+            RenderSystem.enableCull();
         }
 
         /* Render items */
@@ -395,8 +397,8 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
         if (stencilMap == null)
         {
-            // this.renderItems(target, model, stack, EquipmentSlot.MAINHAND, ModelTransformationMode.THIRD_PERSON_RIGHT_HAND, model.itemsMain, color, overlay, light);
-            // this.renderItems(target, model, stack, EquipmentSlot.OFFHAND, ModelTransformationMode.THIRD_PERSON_LEFT_HAND, model.itemsOff, color, overlay, light);
+            this.renderItems(target, model, stack, EquipmentSlot.MAINHAND, ModelTransformationMode.THIRD_PERSON_RIGHT_HAND, model.itemsMain, color, overlay, light);
+            this.renderItems(target, model, stack, EquipmentSlot.OFFHAND, ModelTransformationMode.THIRD_PERSON_LEFT_HAND, model.itemsOff, color, overlay, light);
 
             for (Map.Entry<ArmorType, ArmorSlot> entry : model.armorSlots.entrySet())
             {
@@ -418,9 +420,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             MatrixStackUtils.applyTransform(stack, armorSlot.transform);
             stack.multiply(RotationAxis.POSITIVE_X.rotationDegrees(180F));
 
-            CustomVertexConsumerProvider.hijackVertexFormat((l) -> {
-                // RenderSystem.enableBlend()
-            });
+            CustomVertexConsumerProvider.hijackVertexFormat((l) -> RenderSystem.enableBlend());
 
             ActorEntityRenderer.armorRenderer.renderArmorSlot(stack, consumers, target, type.slot, type, light);
             consumers.draw();
@@ -429,22 +429,21 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
             stack.pop();
 
-            // RenderSystem.enableBlend();
-            // RenderSystem.enableDepthTest();
+            RenderSystem.enableBlend();
+            RenderSystem.enableDepthTest();
         }
     }
 
-    private void renderItems(IEntity target, ModelInstance model, MatrixStack stack, EquipmentSlot slot, Object mode, List<ArmorSlot> items, Color color, int overlay, int light)
+    private void renderItems(IEntity target, ModelInstance model, MatrixStack stack, EquipmentSlot slot, ModelTransformationMode mode, List<ArmorSlot> items, Color color, int overlay, int light)
     {
-        /*
-        if (items.isEmpty())
+        ItemStack itemStack = target.getEquipmentStack(slot);
+
+        if (itemStack != null && itemStack.isEmpty())
         {
             return;
         }
 
-        ItemStack itemStack = target.getEquippedStack(slot);
-
-        if (itemStack.isEmpty())
+        for (ArmorSlot armorSlot : items)
         {
             Matrix4f matrix = this.bones.get(armorSlot.group.get()).matrix();
 
@@ -454,33 +453,44 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
                 stack.push();
                 MatrixStackUtils.multiply(stack, matrix);
-                MatrixStackUtils.applyTransform(stack, item.transform);
+                stack.multiply(RotationAxis.POSITIVE_X.rotationDegrees(90F));
+                stack.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(180F));
+                stack.translate(0F, 0.125F, 0F);
+                MatrixStackUtils.applyTransform(stack, armorSlot.transform);
 
-                CustomVertexConsumerProvider.hijackVertexFormat((l) -> {
-                    // RenderSystem.enableBlend()
-                });
+                CustomVertexConsumerProvider.hijackVertexFormat((l) -> RenderSystem.enableBlend());
 
                 consumers.setSubstitute(BBSRendering.getColorConsumer(color));
 
-                MinecraftClient.getInstance().getItemRenderer().renderItem(null, itemStack, (ModelTransformationMode) mode, (ModelTransformationMode) mode == ModelTransformationMode.THIRD_PERSON_LEFT_HAND, stack, consumers, target.getWorld(), light, overlay, 0);
+                /* For some reason, due to Sodium and my color consumer, in some cases items like Trident,
+                 * shield, etc. not get rendered, but if in another arm there is another item, it does render...
+                 * So, I render a 0 size oak button to circumvent that bug! */
+                if (model.model instanceof BOBJModel)
+                {
+                    stack.push();
+                    stack.scale(0F, 0F, 0F);
+                    MinecraftClient.getInstance().getItemRenderer().renderItem(null, new ItemStack(Items.OAK_BUTTON), mode, mode == ModelTransformationMode.THIRD_PERSON_LEFT_HAND, stack, consumers, target.getWorld(), light, overlay, 0);
+                    consumers.draw();
+                    stack.pop();
+                }
 
-                consumers.setSubstitute(null);
+                MinecraftClient.getInstance().getItemRenderer().renderItem(null, itemStack, mode, mode == ModelTransformationMode.THIRD_PERSON_LEFT_HAND, stack, consumers, target.getWorld(), light, overlay, 0);
                 consumers.draw();
+                consumers.setSubstitute(null);
 
                 CustomVertexConsumerProvider.clearRunnables();
 
                 stack.pop();
 
-                // RenderSystem.enableDepthTest();
+                RenderSystem.enableDepthTest();
             }
         }
-        */
     }
 
     @Override
     public boolean renderArm(MatrixStack matrices, int light, AbstractClientPlayerEntity player, Hand hand)
     {
-        this.ensureAnimator(1F);
+        this.ensureAnimator(MinecraftClient.getInstance().getRenderTickCounter().getTickDelta(true));
         ModelInstance model = this.getModel();
 
         if (this.animator != null && model != null)
@@ -527,13 +537,13 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             Supplier<ShaderProgram> mainShader = (BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld()) || !model.isVAORendered()
                 ? () ->
                 {
-                    // RenderSystem.setShader(ShaderProgramKeys.RENDERTYPE_ENTITY_TRANSLUCENT);
-                    return null; // RenderSystem.getShader();
+                    RenderSystem.setShader(ShaderProgramKeys.RENDERTYPE_ENTITY_TRANSLUCENT);
+                    return RenderSystem.getShader();
                 }
                 : BBSShaders::getModel;
 
-            // RenderSystem.enableDepthTest();
-            // RenderSystem.enableBlend();
+            RenderSystem.enableDepthTest();
+            RenderSystem.enableBlend();
 
             this.renderModel(this.entity, mainShader, matrices, model, light, OverlayTexture.DEFAULT_UV, color, false, null, 0F);
 
@@ -579,8 +589,8 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             Supplier<ShaderProgram> mainShader = (BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld()) || !model.isVAORendered()
                 ? () ->
                 {
-                    // RenderSystem.setShader(ShaderProgramKeys.RENDERTYPE_ENTITY_TRANSLUCENT);
-                    return null; // RenderSystem.getShader();
+                    RenderSystem.setShader(ShaderProgramKeys.RENDERTYPE_ENTITY_TRANSLUCENT);
+                    return RenderSystem.getShader();
                 }
                 : BBSShaders::getModel;
             Supplier<ShaderProgram> shader = this.getShader(context, mainShader, BBSShaders::getPickerModelsProgram);
@@ -646,12 +656,12 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
         stack.push();
         this.applyTransforms(stack, true, transition);
-        oo.set(new Matrix4f());
+        oo.set(stack.peek().getPositionMatrix());
         stack.pop();
 
         stack.push();
         this.applyTransforms(stack, false, transition);
-        mm.set(new Matrix4f());
+        mm.set(stack.peek().getPositionMatrix());
 
         matrices.put(prefix, mm, oo);
 
@@ -674,12 +684,12 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
             stack.push();
             MatrixStackUtils.multiply(stack, entry.getValue().matrix());
-            matrix.set(new Matrix4f());
+            matrix.set(stack.peek().getPositionMatrix());
             stack.pop();
 
             stack.push();
             MatrixStackUtils.multiply(stack, entry.getValue().origin());
-            o.set(new Matrix4f());
+            o.set(stack.peek().getPositionMatrix());
             stack.pop();
 
             matrices.put(StringUtils.combinePaths(prefix, entry.getKey()), matrix, o);
@@ -733,5 +743,3 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         }
     }
 }
-
-

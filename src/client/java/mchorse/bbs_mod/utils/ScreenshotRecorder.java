@@ -1,6 +1,6 @@
 package mchorse.bbs_mod.utils;
 
-import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.platform.GlStateManager;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.utils.resources.Pixels;
@@ -55,7 +55,7 @@ public class ScreenshotRecorder
     {
         FloatBuffer pixelData = BufferUtils.createFloatBuffer(width * height * 4);
 
-        // GlStateManager._bindTexture(texture);
+        GlStateManager._bindTexture(texture);
         GL11.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, GL11.GL_FLOAT, pixelData);
         pixelData.rewind();
 

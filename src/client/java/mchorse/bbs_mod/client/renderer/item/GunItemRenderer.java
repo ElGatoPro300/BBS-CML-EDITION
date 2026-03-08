@@ -1,7 +1,6 @@
 package mchorse.bbs_mod.client.renderer.item;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.forms.FormUtilsClient;
@@ -10,26 +9,21 @@ import mchorse.bbs_mod.forms.entities.StubEntity;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.renderers.FormRenderType;
 import mchorse.bbs_mod.forms.renderers.FormRenderingContext;
-import mchorse.bbs_mod.forms.renderers.FormRenderer;
-import mchorse.bbs_mod.items.GunItem;
 import mchorse.bbs_mod.items.GunProperties;
 import mchorse.bbs_mod.ui.framework.UIScreen;
 import mchorse.bbs_mod.ui.model_blocks.UIModelBlockEditorMenu;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.pose.Transform;
-import mchorse.bbs_mod.items.ItemDisplayMode;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.client.render.entity.model.LoadedEntityModels;
 import net.minecraft.client.render.item.model.special.SpecialModelRenderer;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.render.command.OrderedRenderCommandQueue;
+import net.minecraft.client.render.VertexConsumerProvider;
+import net.minecraft.item.ModelTransformationMode;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.DiffuseLighting;
 import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraft.item.ItemDisplayContext;
-import net.minecraft.util.Identifier;
 import org.joml.Vector3f;
 
 import java.util.HashMap;
@@ -65,21 +59,25 @@ public class GunItemRenderer implements SpecialModelRenderer<ItemStack>
         return stack;
     }
 
-    /*
-    // Legacy render method retained for reference
-    public void render(ItemStack data, ItemDisplayContext mode, MatrixStack matrices, OrderedRenderCommandQueue commandQueue, int light, int overlay, boolean hasGlint, int glintAlpha)
+    @Override
+    public void render(ItemStack data, ModelTransformationMode mode, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, int overlay, boolean hasGlint)
     {
         Item item = this.get(data);
 
         if (item != null)
         {
-            ItemDisplayMode displayMode = ItemDisplayMode.NONE;
-
             GunProperties properties = item.properties;
-            Form form = properties.getForm(displayMode);
-            Transform transform = properties.getTransform(displayMode);
-            boolean zoom = false;
+            Form form = properties.getForm(mode);
+            Transform transform = properties.getTransform(mode);
+            boolean zoom = mode.isFirstPerson() && BBSModClient.getGunZoom() != null && properties.getZoomForm() != null;
 
+            if (zoom)
+            {
+                form = properties.getZoomForm();
+                transform = properties.zoomTransform;
+            }
+
+            /* Preview zoom form */
             if (UIScreen.getCurrentMenu() instanceof UIModelBlockEditorMenu editorMenu && editorMenu.currentSection == editorMenu.sectionZoom)
             {
                 form = editorMenu.getGunProperties().getZoomForm();
@@ -94,7 +92,7 @@ public class GunItemRenderer implements SpecialModelRenderer<ItemStack>
                 matrices.translate(0.5F, 0F, 0.5F);
                 MatrixStackUtils.applyTransform(matrices, transform);
 
-                GlStateManager._enableDepthTest();
+                RenderSystem.enableDepthTest();
 
                 if (mode == ModelTransformationMode.GUI)
                 {
@@ -105,7 +103,7 @@ public class GunItemRenderer implements SpecialModelRenderer<ItemStack>
 
                 int maxLight = LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE;
                 FormUtilsClient.render(form, new FormRenderingContext()
-                    .set(FormRenderType.fromModelMode(mode), item.formEntity, matrices, maxLight, overlay, ((mchorse.bbs_mod.mixin.client.RenderTickCounterAccessor) MinecraftClient.getInstance().getRenderTickCounter()).getTickDeltaField())
+                    .set(FormRenderType.fromModelMode(mode), item.formEntity, matrices, maxLight, overlay, MinecraftClient.getInstance().getRenderTickCounter().getTickDelta(false))
                     .camera(MinecraftClient.getInstance().gameRenderer.getCamera()));
 
                 if (mode == ModelTransformationMode.GUI)
@@ -119,83 +117,6 @@ public class GunItemRenderer implements SpecialModelRenderer<ItemStack>
             }
         }
     }
-    */
-
-    @Override
-    public void render(ItemStack data, ItemDisplayContext mode, MatrixStack matrices, OrderedRenderCommandQueue commandQueue, int light, int overlay, boolean hasGlint, int glintAlpha)
-    {
-        Item item = this.get(data);
-
-        if (item != null && item.formEntity.getForm().getRenderer() instanceof FormRenderer)
-        {
-            FormRenderingContext context = new FormRenderingContext();
-            context.set(FormRenderType.ITEM, item.formEntity, matrices, light, overlay, 1F)
-                .consumers(FormUtilsClient.getProvider());
-            ((FormRenderer) item.formEntity.getForm().getRenderer()).render(context);
-        }
-    }
-
-    public void collectVertices(java.util.Set<org.joml.Vector3f> vertices)
-    {
-    }
-
-    @Override
-    public void collectVertices(java.util.function.Consumer<org.joml.Vector3fc> consumer)
-    {
-    }
-
-    /*
-    public void render(ItemStack data, ItemDisplayContext mode, MatrixStack matrices, OrderedRenderCommandQueue commandQueue, int light, int overlay, boolean hasGlint, int glintAlpha)
-    {
-        Item item = this.get(data);
-
-        if (item != null)
-        {
-            ItemDisplayMode displayMode = ItemDisplayMode.NONE;
-
-            GunProperties properties = item.properties;
-            Form form = properties.getForm(displayMode);
-            Transform transform = properties.getTransform(displayMode);
-            boolean zoom = false; // (mode == ItemDisplayContext.FIRST_PERSON_LEFT_HAND || mode == ItemDisplayContext.FIRST_PERSON_RIGHT_HAND) && BBSModClient.getGunZoom() != null && properties.getZoomForm() != null;
-
-            if (zoom)
-            {
-                form = properties.getZoomForm();
-                transform = properties.zoomTransform;
-            }
-
-            // Preview zoom form
-            if (UIScreen.getCurrentMenu() instanceof UIModelBlockEditorMenu editorMenu && editorMenu.currentSection == editorMenu.sectionZoom)
-            {
-                form = editorMenu.getGunProperties().getZoomForm();
-                transform = editorMenu.getGunProperties().zoomTransform;
-            }
-
-            if (form != null)
-            {
-                item.expiration = 20;
-
-                matrices.push();
-                matrices.translate(0.5F, 0F, 0.5F);
-                MatrixStackUtils.applyTransform(matrices, transform);
-
-                GlStateManager._enableDepthTest();
-
-                Vector3f a = new Vector3f(0.85F, 0.85F, -1F).normalize();
-                Vector3f b = new Vector3f(-0.85F, 0.85F, 1F).normalize();
-                // RenderSystem.setupLevelDiffuseLighting(a, b);
-                int maxLight = LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE;
-                FormUtilsClient.render(form, new FormRenderingContext()
-                    .set(FormRenderType.fromModelMode(mode), item.formEntity, matrices, maxLight, overlay, ((mchorse.bbs_mod.mixin.client.RenderTickCounterAccessor) MinecraftClient.getInstance().getRenderTickCounter()).getTickDeltaField())
-                    .camera(MinecraftClient.getInstance().gameRenderer.getCamera()));
-                // DiffuseLighting.disableGuiDepthLighting();
-                GlStateManager._disableDepthTest();
-
-                matrices.pop();
-            }
-        }
-    }
-    */
 
     public Item get(ItemStack stack)
     {
@@ -227,7 +148,7 @@ public class GunItemRenderer implements SpecialModelRenderer<ItemStack>
         }
 
         @Override
-        public SpecialModelRenderer<?> bake(BakeContext context)
+        public SpecialModelRenderer<?> bake(net.minecraft.client.render.entity.model.LoadedEntityModels config)
         {
             return BBSModClient.getGunItemRenderer();
         }

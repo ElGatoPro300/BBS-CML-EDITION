@@ -190,33 +190,23 @@ public class ModelBlockEntity extends BlockEntity
     @Override
     public NbtCompound toInitialChunkDataNbt(WrapperLookup registryLookup)
     {
-        return this.createNbt(registryLookup);
+        return this.createNbtWithId(registryLookup);
     }
 
-    // @Override
-    protected void writeNbt(NbtCompound nbt)
+    @Override
+    protected void writeNbt(NbtCompound nbt, WrapperLookup registryLookup)
     {
-        // super.writeNbt(nbt);
-
-        if (!Float.isNaN(this.currentYaw))
-        {
-            nbt.putFloat("Yaw", this.currentYaw);
-        }
+        super.writeNbt(nbt, registryLookup);
 
         MapType data = this.properties.toData();
 
         DataStorageUtils.writeToNbtCompound(nbt, "Properties", data);
     }
 
-    // @Override
-    public void readNbt(NbtCompound nbt)
+    @Override
+    public void readNbt(NbtCompound nbt, WrapperLookup registryLookup)
     {
-        // super.readNbt(nbt);
-
-        if (nbt.contains("Yaw"))
-        {
-            this.currentYaw = nbt.getFloat("Yaw").orElse(0.0F);
-        }
+        super.readNbt(nbt, registryLookup);
 
         BaseType baseType = DataStorageUtils.readFromNbtCompound(nbt, "Properties");
 
@@ -238,14 +228,9 @@ public class ModelBlockEntity extends BlockEntity
                     this.world.setBlockState(pos, state.with(mchorse.bbs_mod.blocks.ModelBlock.LIGHT_LEVEL, level), Block.NOTIFY_LISTENERS);
                 }
             }
-            catch (Exception e)
-            {
-                e.printStackTrace();
-            }
+            catch (Exception e) {}
         }
     }
-
-
 
     public void updateForm(MapType data, World world)
     {

@@ -60,8 +60,8 @@ public class GunProjectileEntityRenderer extends EntityRenderer<GunProjectileEnt
         GunProperties properties = projectile.getProperties();
         int out = properties.lifeSpan - 2;
 
-        float bodyYaw = MathHelper.lerpAngleDegrees(tickDelta, 0, projectile.getYaw()); // projectile.prevYaw
-        float pitch = MathHelper.lerpAngleDegrees(tickDelta, 0, projectile.getPitch()); // projectile.prevPitch
+        float bodyYaw = MathHelper.lerpAngleDegrees(tickDelta, projectile.prevYaw, projectile.getYaw());
+        float pitch = MathHelper.lerpAngleDegrees(tickDelta, projectile.prevPitch, projectile.getPitch());
         float scale = Lerps.envelope(projectile.age + tickDelta, 0, properties.fadeIn, out - properties.fadeOut, out);
 
         if (properties.yaw) matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(bodyYaw));
@@ -69,14 +69,14 @@ public class GunProjectileEntityRenderer extends EntityRenderer<GunProjectileEnt
         matrices.scale(scale, scale, scale);
         MatrixStackUtils.applyTransform(matrices, properties.projectileTransform);
 
-        // RenderSystem.enableDepthTest();
+        RenderSystem.enableDepthTest();
         FormUtilsClient.render(projectile.getForm(), new FormRenderingContext()
-            .set(FormRenderType.ENTITY, projectile.getBbsEntity(), matrices, light, OverlayTexture.DEFAULT_UV, tickDelta)
+            .set(FormRenderType.ENTITY, projectile.getEntity(), matrices, light, OverlayTexture.DEFAULT_UV, tickDelta)
             .camera(MinecraftClient.getInstance().gameRenderer.getCamera()));
-        // RenderSystem.disableDepthTest();
+        RenderSystem.disableDepthTest();
 
         matrices.pop();
 
-        // super.render(state, matrices, vertexConsumers, light);
+        super.render(state, matrices, vertexConsumers, light);
     }
 }

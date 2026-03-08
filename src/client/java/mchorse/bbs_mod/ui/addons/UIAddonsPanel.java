@@ -165,11 +165,11 @@ public class UIAddonsPanel extends UISidebarDashboardPanel
             int textX = this.icon != null ? 80 : 10;
             String name = this.mod.name;
             
-            // context.batcher.getContext().getMatrices().pushMatrix();
-            // context.batcher.getContext().getMatrices().translate(this.area.x + textX, this.area.y + 10, 0);
-            // context.batcher.getContext().getMatrices().scale(1.5F, 1.5F, 1.5F);
-            context.batcher.text(name, this.area.x + textX, this.area.y + 10, Colors.WHITE);
-            // context.batcher.getContext().getMatrices().popMatrix();
+            context.batcher.getContext().getMatrices().push();
+            context.batcher.getContext().getMatrices().translate(this.area.x + textX, this.area.y + 10, 0);
+            context.batcher.getContext().getMatrices().scale(1.5F, 1.5F, 1.5F);
+            context.batcher.text(name, 0, 0, Colors.WHITE);
+            context.batcher.getContext().getMatrices().pop();
 
             super.render(context);
         }

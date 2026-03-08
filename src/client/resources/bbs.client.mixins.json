@@ -38,10 +38,11 @@
         "iris.SliderElementWidgetMixin",
         "iris.StringElementWidgetInvoker",
         "SimpleOptionMixin",
+        "BlockEntityRenderDispatcherMixin",
         "WorldMixin",
         "LivingEntityRendererInvoker",
-        "iris.ShadowRendererMixin",
-        "RenderTickCounterAccessor"
+        "EntityRenderDispatcherMixin",
+        "iris.ShadowRendererMixin"
     ],
     "injectors": {
         "defaultRequire": 1

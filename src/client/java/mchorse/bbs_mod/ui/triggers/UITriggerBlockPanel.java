@@ -22,6 +22,7 @@ import mchorse.bbs_mod.utils.AABB;
 import mchorse.bbs_mod.utils.PlayerUtils;
 import mchorse.bbs_mod.utils.RayTracing;
 import mchorse.bbs_mod.utils.colors.Colors;
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
 import net.minecraft.util.hit.BlockHitResult;
@@ -193,7 +194,66 @@ public class UITriggerBlockPanel extends UIDashboardPanel implements IFlightSupp
         super.render(context);
     }
 
-    /* World overlay disabled on 1.21.11 mappings */
+    @Override
+    public void renderInWorld(WorldRenderContext context)
+    {
+        super.renderInWorld(context);
+
+        this.hovered = null;
+
+        MinecraftClient mc = MinecraftClient.getInstance();
+        Camera camera = mc.gameRenderer.getCamera();
+        Vec3d pos = camera.getPos();
+
+        Vector3f mouseDirection = CameraUtils.getMouseDirection(
+            RenderSystem.getProjectionMatrix(),
+            context.matrixStack().peek().getPositionMatrix(),
+            (int) mc.mouse.getX(), (int) mc.mouse.getY(), 0, 0, mc.getWindow().getWidth(), mc.getWindow().getHeight()
+        );
+
+        this.hovered = this.getClosestObject(new Vector3d(pos.x, pos.y, pos.z), mouseDirection);
+
+        RenderSystem.enableDepthTest();
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+
+        context.matrixStack().push();
+        context.matrixStack().translate(-pos.x, -pos.y, -pos.z);
+
+        if (this.entity != null)
+        {
+            this.renderBox(context.matrixStack(), this.entity, 0F, 1F, 0F);
+
+            if (this.entity.region.get())
+            {
+                RenderSystem.disableDepthTest();
+                this.renderRegionBox(context.matrixStack(), this.entity, 1F, 1F, 1F);
+                RenderSystem.enableDepthTest();
+            }
+        }
+
+        for (TriggerBlockEntity entity : TriggerBlockEntityRenderer.capturedTriggerBlocks)
+        {
+            if (this.entity == entity)
+            {
+                continue;
+            }
+
+            if (this.hovered == entity)
+            {
+                this.renderBox(context.matrixStack(), entity, 0F, 1F, 0F);
+            }
+            else
+            {
+                this.renderBox(context.matrixStack(), entity, -1F, -1F, -1F);
+            }
+        }
+
+        context.matrixStack().pop();
+
+        RenderSystem.disableDepthTest();
+        RenderSystem.disableBlend();
+    }
 
     private void renderBox(net.minecraft.client.util.math.MatrixStack stack, TriggerBlockEntity entity, float r, float g, float b)
     {

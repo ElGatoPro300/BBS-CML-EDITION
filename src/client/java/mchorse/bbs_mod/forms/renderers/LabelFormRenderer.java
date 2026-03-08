@@ -16,12 +16,12 @@ import mchorse.bbs_mod.utils.TextureFont;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.render.BufferBuilder;
-// import net.minecraft.client.render.BufferRenderer;
+import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.util.BufferAllocator;
-// import net.minecraft.client.gl.ShaderProgramKeys;
-import com.mojang.blaze3d.vertex.VertexFormat;
+import net.minecraft.client.gl.ShaderProgramKeys;
+import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
 import org.joml.Matrix4f;
@@ -34,7 +34,7 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
     private float nametagAlpha = 1F;
     public static void fillQuad(BufferBuilder builder, MatrixStack stack, float x1, float y1, float z1, float x2, float y2, float z2, float x3, float y3, float z3, float x4, float y4, float z4, float r, float g, float b, float a)
     {
-        Matrix4f matrix4f = new Matrix4f();
+        Matrix4f matrix4f = stack.peek().getPositionMatrix();
 
         /* 1 - BR, 2 - BL, 3 - TL, 4 - TR */
         builder.vertex(matrix4f, x1, y1, z1).color(r, g, b, a);
@@ -113,14 +113,14 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
 
         MatrixStackUtils.scaleStack(context.stack, scale, -scale, scale);
 
-        // RenderSystem.disableCull();
+        RenderSystem.disableCull();
 
         if (context.isPicking())
         {
             CustomVertexConsumerProvider.hijackVertexFormat((layer) ->
             {
                 this.setupTarget(context, BBSShaders.getPickerModelsProgram());
-                // RenderSystem.setShader(BBSShaders.getPickerModelsProgram());
+                RenderSystem.setShader(BBSShaders.getPickerModelsProgram());
             });
 
             light = 0;
@@ -137,8 +137,8 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
 
         CustomVertexConsumerProvider.clearRunnables();
 
-        // RenderSystem.enableDepthTest();
-        // RenderSystem.enableCull();
+        RenderSystem.enableDepthTest();
+        RenderSystem.enableCull();
 
         context.stack.pop();
     }
@@ -193,7 +193,7 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
     {
         if (customFont != null)
         {
-            customFont.draw(content, x, y, color, color, letterSpacing, 0F, new Matrix4f(), consumers, light);
+            customFont.draw(content, x, y, color, color, letterSpacing, 0F, context.stack.peek().getPositionMatrix(), consumers, light);
         }
         else
         {
@@ -202,7 +202,7 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
                 x,
                 y,
                 color, false,
-                new Matrix4f(),
+                context.stack.peek().getPositionMatrix(),
                 consumers,
                 TextRenderer.TextLayerType.NORMAL,
                 0,
@@ -260,17 +260,17 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
             
             if (customFont != null)
             {
-                customFont.draw(content, x - ow, y, oc, oc, letterSpacing, 0F, new Matrix4f(), consumers, light);
-                customFont.draw(content, x + ow, y, oc, oc, letterSpacing, 0F, new Matrix4f(), consumers, light);
-                customFont.draw(content, x, y - ow, oc, oc, letterSpacing, 0F, new Matrix4f(), consumers, light);
-                customFont.draw(content, x, y + ow, oc, oc, letterSpacing, 0F, new Matrix4f(), consumers, light);
+                customFont.draw(content, x - ow, y, oc, oc, letterSpacing, 0F, context.stack.peek().getPositionMatrix(), consumers, light);
+                customFont.draw(content, x + ow, y, oc, oc, letterSpacing, 0F, context.stack.peek().getPositionMatrix(), consumers, light);
+                customFont.draw(content, x, y - ow, oc, oc, letterSpacing, 0F, context.stack.peek().getPositionMatrix(), consumers, light);
+                customFont.draw(content, x, y + ow, oc, oc, letterSpacing, 0F, context.stack.peek().getPositionMatrix(), consumers, light);
             }
             else
             {
-                renderer.draw(content, x - ow, y, oc, false, new Matrix4f(), consumers, TextRenderer.TextLayerType.NORMAL, 0, light);
-                renderer.draw(content, x + ow, y, oc, false, new Matrix4f(), consumers, TextRenderer.TextLayerType.NORMAL, 0, light);
-                renderer.draw(content, x, y - ow, oc, false, new Matrix4f(), consumers, TextRenderer.TextLayerType.NORMAL, 0, light);
-                renderer.draw(content, x, y + ow, oc, false, new Matrix4f(), consumers, TextRenderer.TextLayerType.NORMAL, 0, light);
+                renderer.draw(content, x - ow, y, oc, false, context.stack.peek().getPositionMatrix(), consumers, TextRenderer.TextLayerType.NORMAL, 0, light);
+                renderer.draw(content, x + ow, y, oc, false, context.stack.peek().getPositionMatrix(), consumers, TextRenderer.TextLayerType.NORMAL, 0, light);
+                renderer.draw(content, x, y - ow, oc, false, context.stack.peek().getPositionMatrix(), consumers, TextRenderer.TextLayerType.NORMAL, 0, light);
+                renderer.draw(content, x, y + ow, oc, false, context.stack.peek().getPositionMatrix(), consumers, TextRenderer.TextLayerType.NORMAL, 0, light);
             }
             
             context.stack.pop();
@@ -290,7 +290,7 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
                 c2 = gradientColor.getARGBColor();
             }
 
-            customFont.draw(content, x, y, c1, c2, letterSpacing, 0F, new Matrix4f(), consumers, light, this.form.gradientOffset.get());
+            customFont.draw(content, x, y, c1, c2, letterSpacing, 0F, context.stack.peek().getPositionMatrix(), consumers, light, this.form.gradientOffset.get());
         }
         else
         {
@@ -299,7 +299,7 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
                 x,
                 y,
                 color.getARGBColor(), false,
-                new Matrix4f(),
+                context.stack.peek().getPositionMatrix(),
                 consumers,
                 TextRenderer.TextLayerType.NORMAL,
                 0,
@@ -307,7 +307,7 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
             );
         }
 
-        // RenderSystem.enableDepthTest();
+        RenderSystem.enableDepthTest();
 
         consumers.draw();
 
@@ -404,17 +404,17 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
                 
                 if (customFont != null)
                 {
-                    customFont.draw(line, lx - ow, y, oc, oc, letterSpacing, 0F, new Matrix4f(), consumers, light);
-                    customFont.draw(line, lx + ow, y, oc, oc, letterSpacing, 0F, new Matrix4f(), consumers, light);
-                    customFont.draw(line, lx, y - ow, oc, oc, letterSpacing, 0F, new Matrix4f(), consumers, light);
-                    customFont.draw(line, lx, y + ow, oc, oc, letterSpacing, 0F, new Matrix4f(), consumers, light);
+                    customFont.draw(line, lx - ow, y, oc, oc, letterSpacing, 0F, context.stack.peek().getPositionMatrix(), consumers, light);
+                    customFont.draw(line, lx + ow, y, oc, oc, letterSpacing, 0F, context.stack.peek().getPositionMatrix(), consumers, light);
+                    customFont.draw(line, lx, y - ow, oc, oc, letterSpacing, 0F, context.stack.peek().getPositionMatrix(), consumers, light);
+                    customFont.draw(line, lx, y + ow, oc, oc, letterSpacing, 0F, context.stack.peek().getPositionMatrix(), consumers, light);
                 }
                 else
                 {
-                    renderer.draw(line, lx - ow, y, oc, false, new Matrix4f(), consumers, TextRenderer.TextLayerType.NORMAL, 0, light);
-                    renderer.draw(line, lx + ow, y, oc, false, new Matrix4f(), consumers, TextRenderer.TextLayerType.NORMAL, 0, light);
-                    renderer.draw(line, lx, y - ow, oc, false, new Matrix4f(), consumers, TextRenderer.TextLayerType.NORMAL, 0, light);
-                    renderer.draw(line, lx, y + ow, oc, false, new Matrix4f(), consumers, TextRenderer.TextLayerType.NORMAL, 0, light);
+                    renderer.draw(line, lx - ow, y, oc, false, context.stack.peek().getPositionMatrix(), consumers, TextRenderer.TextLayerType.NORMAL, 0, light);
+                    renderer.draw(line, lx + ow, y, oc, false, context.stack.peek().getPositionMatrix(), consumers, TextRenderer.TextLayerType.NORMAL, 0, light);
+                    renderer.draw(line, lx, y - ow, oc, false, context.stack.peek().getPositionMatrix(), consumers, TextRenderer.TextLayerType.NORMAL, 0, light);
+                    renderer.draw(line, lx, y + ow, oc, false, context.stack.peek().getPositionMatrix(), consumers, TextRenderer.TextLayerType.NORMAL, 0, light);
                 }
                 context.stack.pop();
             }
@@ -433,7 +433,7 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
                     c2 = gradientColor.getARGBColor();
                 }
 
-                customFont.draw(line, lx, y, c1, c2, letterSpacing, 0F, new Matrix4f(), consumers, light);
+                customFont.draw(line, lx, y, c1, c2, letterSpacing, 0F, context.stack.peek().getPositionMatrix(), consumers, light);
             }
             else
             {
@@ -442,7 +442,7 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
                     lx,
                     y,
                     color.getARGBColor(), false,
-                    new Matrix4f(),
+                    context.stack.peek().getPositionMatrix(),
                     consumers,
                     TextRenderer.TextLayerType.NORMAL,
                     0,
@@ -453,9 +453,7 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
             y += lineHeight;
         }
 
-        consumers.draw();
-
-        // RenderSystem.enableDepthTest();
+        RenderSystem.enableDepthTest();
 
         consumers.draw();
 
@@ -465,11 +463,11 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
     private void renderShadow(FormRenderingContext context, int x, int y, int w, int h)
     {
         float offset = this.form.offset.get();
-        Color shadowColor = this.form.background.get().copy();
+        Color color = this.form.background.get().copy();
 
-        shadowColor.mul(context.color);
+        color.mul(context.color);
 
-        if (shadowColor.a <= 0)
+        if (color.a <= 0)
         {
             return;
         }
@@ -485,14 +483,13 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
             x - offset, y - offset, 0,
             x - offset, y + h + offset, 0,
             x + w + offset, y + h + offset, 0,
-            shadowColor.r, shadowColor.g, shadowColor.b, shadowColor.a
+            color.r, color.g, color.b, color.a
         );
 
-        // com.mojang.blaze3d.opengl.GlStateManager._enableBlend();
-        // RenderSystem.enableDepthTest();
-        // RenderSystem.setShader(net.minecraft.client.render.GameRenderer::getPositionColorProgram);
-        // BufferRenderer.drawWithGlobalProgram(builder.end());
+        RenderSystem.enableBlend();
+        RenderSystem.enableDepthTest();
+        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
+        BufferRenderer.drawWithGlobalProgram(builder.end());
         context.stack.pop();
     }
 }
-
