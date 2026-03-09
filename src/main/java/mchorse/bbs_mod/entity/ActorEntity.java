@@ -5,7 +5,6 @@ import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.forms.entities.MCEntity;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.network.ServerNetwork;
-import mchorse.bbs_mod.mixin.EntityAccessor;
 import net.minecraft.entity.Entity;
 
 import net.minecraft.entity.EntityDimensions;
@@ -351,27 +350,6 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
 
             this.calculateDimensions();
         }
-    }
-
-    @Override
-    public void calculateDimensions()
-    {
-        EntityDimensions dimensions = this.getDimensions(this.getPose());
-        Form currentForm = this.form;
-
-        if (currentForm != null && currentForm.hitbox.get())
-        {
-            float height = currentForm.hitboxHeight.get() * (this.isSneaking() ? currentForm.hitboxSneakMultiplier.get() : 1F);
-            float width = currentForm.hitboxWidth.get();
-            boolean fixed = dimensions.fixed();
-
-            dimensions = fixed ? EntityDimensions.fixed(width, height) : EntityDimensions.changing(width, height);
-            
-            float eyeHeight = currentForm.hitboxEyeHeight.get() * height;
-            dimensions = dimensions.withEyeHeight(eyeHeight);
-        }
-
-        return dimensions;
     }
 
         @Override
