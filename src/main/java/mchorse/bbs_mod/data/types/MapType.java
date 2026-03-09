@@ -1,6 +1,8 @@
 package mchorse.bbs_mod.data.types;
 
 import mchorse.bbs_mod.data.DataStorageContext;
+import mchorse.bbs_mod.data.DataStorageUtils;
+import net.minecraft.nbt.NbtCompound;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -15,6 +17,11 @@ public class MapType extends BaseType implements Iterable<Map.Entry<String, Base
     public final Map<String, BaseType> elements;
 
     /* Accessors */
+
+    public NbtCompound toNbt()
+    {
+        return (NbtCompound) DataStorageUtils.toNbt(this);
+    }
 
     public MapType()
     {
