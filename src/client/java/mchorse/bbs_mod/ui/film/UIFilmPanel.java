@@ -1360,7 +1360,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         if (this.entered)
         {
             ClientPlayerEntity player = MinecraftClient.getInstance().player;
-            Vec3d pos = player.getPos();
+            Vec3d pos = new Vec3d(player.getX(), player.getY(), player.getZ());
             Vector3d cameraPos = this.camera.position;
             double distance = cameraPos.distance(pos.x, pos.y, pos.z);
             int value = MinecraftClient.getInstance().options.getViewDistance().getValue();

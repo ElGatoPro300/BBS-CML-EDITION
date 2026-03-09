@@ -1,6 +1,8 @@
 package mchorse.bbs_mod.client.renderer.item;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.serialization.MapCodec;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.blocks.entities.ModelBlockEntity;
@@ -11,15 +13,19 @@ import mchorse.bbs_mod.forms.entities.StubEntity;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.renderers.FormRenderType;
 import mchorse.bbs_mod.forms.renderers.FormRenderingContext;
+import mchorse.bbs_mod.forms.renderers.FormRenderer;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.pose.Transform;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.component.type.NbtComponent;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.render.VertexConsumerProvider;
+import net.minecraft.client.render.command.OrderedRenderCommandQueue;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.entity.model.LoadedEntityModels;
+import net.minecraft.client.render.command.OrderedRenderCommandQueue;
 import net.minecraft.client.render.item.model.special.SpecialModelRenderer;
+import net.minecraft.client.render.item.model.special.SpecialModelRenderer;
+import net.minecraft.client.render.model.UnbakedModel;
 import net.minecraft.client.render.DiffuseLighting;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.item.ItemStack;
@@ -64,7 +70,7 @@ public class ModelBlockItemRenderer implements SpecialModelRenderer<ItemStack>
     @Override
     public void render(ItemStack stack, ModelTransformationMode mode, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, int overlay, boolean hasGlint)
     {
-        Item item = this.get(stack);
+        Item item = this.get(data);
 
         if (item != null)
         {
@@ -75,31 +81,27 @@ public class ModelBlockItemRenderer implements SpecialModelRenderer<ItemStack>
             {
                 item.expiration = 20;
 
-                Transform transform = properties.getTransform(mode);
-
                 matrices.push();
                 matrices.translate(0.5F, 0F, 0.5F);
                 MatrixStackUtils.applyTransform(matrices, transform);
 
-                RenderSystem.enableDepthTest();
+                GlStateManager._enableDepthTest();
 
                 if (mode == ModelTransformationMode.GUI)
                 {
                     Vector3f a = new Vector3f(0.85F, 0.85F, -1F).normalize();
                     Vector3f b = new Vector3f(-0.85F, 0.85F, 1F).normalize();
-                    RenderSystem.setupLevelDiffuseLighting(a, b);
                 }
 
                 FormUtilsClient.render(form, new FormRenderingContext()
-                    .set(FormRenderType.fromModelMode(mode), item.formEntity, matrices, light, overlay, MinecraftClient.getInstance().getRenderTickCounter().getTickDelta(false))
+                    .set(FormRenderType.fromModelMode(mode), item.formEntity, matrices, light, overlay, 1F)
                     .camera(MinecraftClient.getInstance().gameRenderer.getCamera()));
 
                 if (mode == ModelTransformationMode.GUI)
                 {
-                    DiffuseLighting.disableGuiDepthLighting();
                 }
 
-                RenderSystem.disableDepthTest();
+                GlStateManager._disableDepthTest();
 
                 matrices.pop();
             }
@@ -123,17 +125,17 @@ public class ModelBlockItemRenderer implements SpecialModelRenderer<ItemStack>
 
         this.map.put(stack, item);
 
-        NbtComponent nbtComponent = stack.get(DataComponentTypes.BLOCK_ENTITY_DATA);
+        NbtComponent nbtComponent = stack.get(DataComponentTypes.CUSTOM_DATA);
         if (nbtComponent == null)
         {
             return item;
         }
 
-        NbtCompound nbt = nbtComponent.getNbt();
+        NbtCompound nbt = nbtComponent.copyNbt();
         var world = MinecraftClient.getInstance().world;
         if (world != null)
         {
-            entity.readNbt(nbt, world.getRegistryManager());
+            entity.readNbt(nbt);
         }
 
         return item;
@@ -144,15 +146,15 @@ public class ModelBlockItemRenderer implements SpecialModelRenderer<ItemStack>
         public static final com.mojang.serialization.MapCodec<Unbaked> CODEC = com.mojang.serialization.MapCodec.unit(new Unbaked());
 
         @Override
-        public com.mojang.serialization.MapCodec<Unbaked> getCodec()
+        public MapCodec<Unbaked> getCodec()
         {
             return CODEC;
         }
 
         @Override
-        public SpecialModelRenderer<?> bake(net.minecraft.client.render.entity.model.LoadedEntityModels config)
+        public SpecialModelRenderer<?> bake(BakeContext context)
         {
-            return BBSModClient.getModelBlockItemRenderer();
+            return new ModelBlockItemRenderer();
         }
     }
 

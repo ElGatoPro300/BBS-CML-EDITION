@@ -142,44 +142,44 @@ public class UIScreen extends Screen implements IFileDropListener
     }
 
     @Override
-    public void resize(MinecraftClient client, int width, int height)
+    public void resize(int width, int height)
     {
-        super.resize(client, width, height);
+        super.resize(width, height);
 
         this.menu.resize(width, height);
     }
 
-    @Override
+    // @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button)
     {
         return this.menu.mouseClicked((int) mouseX, (int) mouseY, button);
     }
 
-    @Override
+    // @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount)
     {
         return this.menu.mouseScrolled((int) mouseX, (int) mouseY, horizontalAmount, verticalAmount);
     }
 
-    @Override
+    // @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button)
     {
         return this.menu.mouseReleased((int) mouseX, (int) mouseY, button);
     }
 
-    @Override
+    // @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers)
     {
         return this.menu.handleKey(keyCode, scanCode, BBSRendering.lastAction, modifiers);
     }
 
-    @Override
+    // @Override
     public boolean keyReleased(int keyCode, int scanCode, int modifiers)
     {
         return this.menu.handleKey(keyCode, scanCode, GLFW.GLFW_RELEASE, modifiers);
     }
 
-    @Override
+    // @Override
     public boolean charTyped(char chr, int modifiers)
     {
         this.menu.handleTextInput(chr);

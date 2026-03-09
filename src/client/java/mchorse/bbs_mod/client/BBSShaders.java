@@ -1,14 +1,13 @@
 package mchorse.bbs_mod.client;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-
+import com.mojang.blaze3d.vertex.VertexFormat;
+import com.mojang.blaze3d.shaders.ShaderType;
 import mchorse.bbs_mod.BBSMod;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.Defines;
 import net.minecraft.client.gl.ShaderLoader;
 import net.minecraft.client.gl.ShaderProgram;
-import net.minecraft.client.gl.ShaderProgramKey;
-import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.util.Identifier;
 

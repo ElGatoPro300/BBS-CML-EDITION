@@ -1,6 +1,7 @@
 package mchorse.bbs_mod;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import com.mojang.serialization.MapCodec;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.audio.SoundManager;
@@ -105,14 +106,12 @@ import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
 import net.fabricmc.fabric.api.resource.SimpleSynchronousResourceReloadListener;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.render.BufferBuilder;
-import net.minecraft.client.render.BufferRenderer;
+import net.minecraft.client.util.InputUtil;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.render.VertexFormat;
 import net.fabricmc.fabric.api.client.rendering.v1.BlockEntityRendererRegistry;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.render.block.entity.BlockEntityRendererFactories;
@@ -398,6 +397,10 @@ public class BBSModClient implements ClientModInitializer
             }
         }
     }
+
+    private static final String CATEGORY_KEY = "category." + BBSMod.MOD_ID + ".main";
+    private static final InputUtil.Type KEYSYM = InputUtil.Type.KEYSYM;
+    private static final InputUtil.Type MOUSE = InputUtil.Type.MOUSE;
 
     @Override
     public void onInitializeClient()
@@ -874,13 +877,15 @@ public class BBSModClient implements ClientModInitializer
         }
     }
 
+    private static final KeyBinding.Category CATEGORY = KeyBinding.Category.create(Identifier.of(BBSMod.MOD_ID, "main"));
+
     private KeyBinding createKey(String id, int key)
     {
         return KeyBindingHelper.registerKeyBinding(new KeyBinding(
             "key." + BBSMod.MOD_ID + "." + id,
             InputUtil.Type.KEYSYM,
             key,
-            "category." + BBSMod.MOD_ID + ".main"
+            CATEGORY
         ));
     }
 
@@ -890,7 +895,7 @@ public class BBSModClient implements ClientModInitializer
             "key." + BBSMod.MOD_ID + "." + id,
             InputUtil.Type.MOUSE,
             button,
-            "category." + BBSMod.MOD_ID + ".main"
+            CATEGORY
         ));
     }
 

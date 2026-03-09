@@ -267,12 +267,12 @@ public abstract class FormRenderer <T extends Form>
 
         stack.push();
         this.applyTransforms(stack, true, transition);
-        oo.set(stack.peek().getPositionMatrix());
+        oo.set(new Matrix4f());
         stack.pop();
 
         stack.push();
         this.applyTransforms(stack, false, transition);
-        mm.set(stack.peek().getPositionMatrix());
+        mm.set(new Matrix4f());
 
         matrices.put(prefix, mm, oo);
 

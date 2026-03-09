@@ -466,7 +466,7 @@ public class UIPropTransform extends UITransform
              *
              * It gets updated outside the window only when one of mouse buttons is
              * being held! */
-            GLFW.glfwGetCursorPos(Window.getWindow(), CURSOR_X, CURSOR_Y);
+            GLFW.glfwGetCursorPos(Window.getWindow().getHandle(), CURSOR_X, CURSOR_Y);
 
             MinecraftClient mc = MinecraftClient.getInstance();
             int w = mc.getWindow().getWidth();

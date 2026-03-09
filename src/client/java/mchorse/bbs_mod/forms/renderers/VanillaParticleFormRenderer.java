@@ -61,7 +61,7 @@ public class VanillaParticleFormRenderer extends FormRenderer<VanillaParticleFor
     {
         super.render3D(context);
 
-        Matrix4f positionMatrix = new Matrix4f(context.stack.peek().getPositionMatrix());
+        Matrix4f positionMatrix = new Matrix4f(new Matrix4f());
         Vector3f translation = positionMatrix.getTranslation(new Vector3f());
 
         this.pos.set(

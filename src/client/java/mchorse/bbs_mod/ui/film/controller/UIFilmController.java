@@ -1,5 +1,6 @@
 package mchorse.bbs_mod.ui.film.controller;
 
+import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.systems.ProjectionType;
 import com.mojang.blaze3d.systems.VertexSorter;
@@ -71,6 +72,7 @@ import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.option.GameOptions;
 import net.minecraft.client.util.InputUtil;
+import net.minecraft.client.input.KeyInput;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.world.World;
@@ -677,7 +679,7 @@ public class UIFilmController extends UIElement
                 return true;
             }
 
-            InputUtil.Key utilKey = InputUtil.fromKeyCode(context.getKeyCode(), context.getScanCode());
+            InputUtil.Key utilKey = InputUtil.fromKeyCode(new KeyInput(context.getKeyCode(), context.getScanCode(), 0));
 
             if (this.canControlWithKeyboard(utilKey) && !(this.recording && this.recordingCountdown > 0 && !this.countdownControl))
             {
@@ -1099,7 +1101,7 @@ public class UIFilmController extends UIElement
 
         boolean altPressed = Window.isAltPressed();
 
-        RenderSystem.depthFunc(GL11.GL_LESS);
+        GlStateManager._depthFunc(GL11.GL_LESS);
 
         /* Cache the global stuff */
         MatrixStackUtils.cacheMatrices();
@@ -1133,7 +1135,8 @@ public class UIFilmController extends UIElement
         /* Return back to orthographic projection */
         MatrixStackUtils.restoreMatrices();
 
-        RenderSystem.depthFunc(GL11.GL_ALWAYS);
+        GlStateManager._enableDepthTest();
+        GlStateManager._depthFunc(GL11.GL_ALWAYS);
 
         this.hoveredEntity = null;
 
@@ -1170,10 +1173,9 @@ public class UIFilmController extends UIElement
 
         if (target != null)
         {
-            target.set(index);
         }
 
-        RenderSystem.enableBlend();
+        GlStateManager._enableBlend();
         context.batcher.texturedBox(getPickerPreviewProgram.get(), texture.id, Colors.WHITE, area.x, area.y, area.w, area.h, 0, h, w, 0, w, h);
 
         if (altPressed)
@@ -1214,7 +1216,7 @@ public class UIFilmController extends UIElement
     {
         this.worldRenderContext = context;
 
-        RenderSystem.enableDepthTest();
+        GlStateManager._enableDepthTest();
 
         if (this.editorController != null)
         {
@@ -1257,7 +1259,8 @@ public class UIFilmController extends UIElement
 
         this.lastMouse.set(x, y);
 
-        RenderSystem.disableDepthTest();
+        GlStateManager._disableDepthTest();
+        GlStateManager._depthFunc(GL11.GL_LEQUAL);
     }
 
     public Pair<String, Boolean> getBone()
