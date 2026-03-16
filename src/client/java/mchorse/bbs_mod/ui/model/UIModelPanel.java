@@ -43,6 +43,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
     public List<UIElement> panels = new ArrayList<>();
     
     public UIElement modelSettingsPanel;
+    public UIModelIKPanel ikPanel;
     public UIScrollView sectionsView;
     public UIScrollView rightView;
     public List<UIModelSection> sections = new ArrayList<>();
@@ -99,8 +100,10 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         spacer.relative(this.iconBar).w(1F).h(10);
         this.iconBar.add(spacer);
 
+        this.ikPanel = new UIModelIKPanel(this);
+
         this.registerPanel(this.modelSettingsPanel, UIKeys.MODELS_SETTINGS, Icons.MODELS_SETTINGS);
-        this.registerPanel(new UIModelIKPanel(this), UIKeys.MODELS_IK_EDITOR, Icons.IK);
+        this.registerPanel(this.ikPanel, UIKeys.MODELS_IK_EDITOR, Icons.IK);
         this.registerPanel(this.createUnavailablePanel(), UIKeys.MODELS_DYNAMIC_BONES, Icons.DYNAMIC_BONES);
 
         this.setPanel(this.modelSettingsPanel);
@@ -212,6 +215,11 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
             section.setConfig(this.data);
         }
 
+        if (this.ikPanel != null)
+        {
+            this.ikPanel.setConfig(this.data);
+        }
+
         this.sectionsView.resize();
         this.rightView.resize();
 
@@ -294,6 +302,11 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
             for (UIModelSection section : this.sections)
             {
                 section.setConfig(data);
+            }
+
+            if (this.ikPanel != null)
+            {
+                this.ikPanel.setConfig(data);
             }
             
             this.sectionsView.resize();

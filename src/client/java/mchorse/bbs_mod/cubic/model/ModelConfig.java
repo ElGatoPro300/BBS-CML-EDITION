@@ -32,6 +32,14 @@ public class ModelConfig extends ValueGroup
     public final ArmorConfig armorSlots = new ArmorConfig("armor_slots");
     public final ArmorSlot fpMain = new ArmorSlot("fp_main");
     public final ArmorSlot fpOffhand = new ArmorSlot("fp_offhand");
+    public final ValueList<IKChainConfig> ikChains = new ValueList<IKChainConfig>("ik_chains")
+    {
+        @Override
+        protected IKChainConfig create(String id)
+        {
+            return new IKChainConfig(id);
+        }
+    };
 
     public final ValueList<ValueString> itemsMain = new ValueList<ValueString>("items_main")
     {
@@ -96,6 +104,7 @@ public class ModelConfig extends ValueGroup
         this.add(this.armorSlots);
         this.add(this.fpMain);
         this.add(this.fpOffhand);
+        this.add(this.ikChains);
         this.add(this.itemsMain);
         this.add(this.itemsOff);
     }

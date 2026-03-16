@@ -14,6 +14,7 @@ import mchorse.bbs_mod.cubic.animation.ProceduralAnimator;
 import mchorse.bbs_mod.cubic.data.model.ModelGroup;
 import mchorse.bbs_mod.cubic.model.ArmorSlot;
 import mchorse.bbs_mod.cubic.model.ArmorType;
+import mchorse.bbs_mod.cubic.model.ModelIKSolver;
 import mchorse.bbs_mod.cubic.model.bobj.BOBJModel;
 import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
 import mchorse.bbs_mod.forms.FormUtilsClient;
@@ -312,6 +313,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
             this.animator.applyActions(null, model, context.getTransition());
             model.model.applyPose(this.getPose());
+            ModelIKSolver.apply(model);
 
             MatrixStackUtils.multiply(stack, uiMatrix);
             stack.scale(scale, scale, scale);
@@ -562,6 +564,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
             this.animator.applyActions(context.entity, model, context.getTransition());
             model.model.applyPose(this.getPose());
+            ModelIKSolver.apply(model);
 
             context.stack.multiply(RotationAxis.POSITIVE_Y.rotation(MathUtils.PI));
 
@@ -652,6 +655,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
             this.animator.applyActions(entity, model, transition);
             model.model.applyPose(this.getPose());
+            ModelIKSolver.apply(model);
 
             stack.multiply(RotationAxis.POSITIVE_Y.rotation(MathUtils.PI));
             this.captureMatrices(model);

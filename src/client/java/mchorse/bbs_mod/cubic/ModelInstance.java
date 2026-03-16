@@ -8,6 +8,7 @@ import mchorse.bbs_mod.cubic.data.model.Model;
 import mchorse.bbs_mod.cubic.data.model.ModelGroup;
 import mchorse.bbs_mod.cubic.model.ArmorSlot;
 import mchorse.bbs_mod.cubic.model.ArmorType;
+import mchorse.bbs_mod.cubic.model.IKChainConfig;
 import mchorse.bbs_mod.cubic.model.View;
 import mchorse.bbs_mod.cubic.model.bobj.BOBJModel;
 import mchorse.bbs_mod.cubic.render.CubicCubeRenderer;
@@ -75,6 +76,7 @@ public class ModelInstance implements IModelInstance
     public List<ArmorSlot> itemsOff = new ArrayList<>();
     public Map<String, String> flippedParts = new HashMap<>();
     public Map<ArmorType, ArmorSlot> armorSlots = new HashMap<>();
+    public List<IKChainConfig> ikChains = new ArrayList<>();
 
     public ArmorSlot fpMain;
     public ArmorSlot fpOffhand;
@@ -226,6 +228,20 @@ public class ModelInstance implements IModelInstance
             this.fpOffhand = new ArmorSlot("fp_offhand");
             this.fpOffhand.fromData(config.get("fp_offhand"));
         }
+        if (config.has("ik_chains", BaseType.TYPE_LIST))
+        {
+            this.ikChains.clear();
+
+            ListType list = config.getList("ik_chains");
+
+            for (int i = 0; i < list.size(); i++)
+            {
+                IKChainConfig chain = new IKChainConfig(String.valueOf(i));
+
+                chain.fromData(list.get(i));
+                this.ikChains.add(chain);
+            }
+        }
 
         /* Optional look-at configuration */
         if (config.has("look_at", BaseType.TYPE_MAP))
@@ -315,6 +331,17 @@ public class ModelInstance implements IModelInstance
 
         if (this.fpMain != null) config.put("fp_main", this.fpMain.toData());
         if (this.fpOffhand != null) config.put("fp_offhand", this.fpOffhand.toData());
+        if (!this.ikChains.isEmpty())
+        {
+            ListType list = new ListType();
+
+            for (IKChainConfig chain : this.ikChains)
+            {
+                list.add(chain.toData());
+            }
+
+            config.put("ik_chains", list);
+        }
 
         return config;
     }
@@ -345,6 +372,14 @@ public class ModelInstance implements IModelInstance
         for (Map.Entry<ArmorType, ArmorSlot> entry : this.armorSlots.entrySet())
         {
             copy.armorSlots.put(entry.getKey(), entry.getValue().copy());
+        }
+
+        for (IKChainConfig chain : this.ikChains)
+        {
+            IKChainConfig chainCopy = new IKChainConfig(chain.getId());
+
+            chainCopy.fromData(chain.toData());
+            copy.ikChains.add(chainCopy);
         }
 
         return copy;

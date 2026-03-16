@@ -5,6 +5,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.cubic.ModelInstance;
+import mchorse.bbs_mod.cubic.model.IKChainConfig;
 import mchorse.bbs_mod.cubic.model.ModelConfig;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.forms.FormUtilsClient;
@@ -26,10 +27,17 @@ import mchorse.bbs_mod.utils.colors.Colors;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.GlUniform;
 import net.minecraft.client.gl.ShaderProgram;
+import net.minecraft.client.render.BufferBuilder;
+import net.minecraft.client.render.BufferRenderer;
+import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
+import net.minecraft.client.render.Tessellator;
+import net.minecraft.client.render.VertexFormat;
+import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
 import org.joml.Matrix4f;
+import org.joml.Vector3f;
 
 import java.util.function.Consumer;
 
@@ -162,6 +170,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
             .modelRenderer();
 
         this.renderer.render(formContext);
+        this.renderIKVisualizer(context);
 
         /* Render Axes */
         Matrix4f gizmoMatrix = null;
@@ -237,6 +246,122 @@ public class UIModelEditorRenderer extends UIModelRenderer
         {
             this.stencil.clearPicking();
         }
+    }
+
+    private void renderIKVisualizer(UIContext context)
+    {
+        if (this.config == null || this.config.ikChains.getAllTyped().isEmpty())
+        {
+            return;
+        }
+
+        MatrixCache cache = this.renderer.collectMatrices(this.entity, context.getTransition());
+        Matrix4f uiMatrix = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
+        BufferBuilder builder = Tessellator.getInstance().getBuffer();
+
+        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
+        RenderSystem.enableBlend();
+        builder.begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
+
+        for (IKChainConfig chain : this.config.ikChains.getAllTyped())
+        {
+            if (!chain.visualizer.get())
+            {
+                continue;
+            }
+
+            Vector3f previous = null;
+
+            for (String bone : chain.getBones())
+            {
+                Vector3f point = this.getBonePoint(cache, bone);
+
+                if (point == null)
+                {
+                    continue;
+                }
+
+                if (previous != null)
+                {
+                    this.line(builder, uiMatrix, previous, point, 0F, 1F, 1F, 1F);
+                }
+
+                previous = point;
+            }
+
+            if (previous == null)
+            {
+                continue;
+            }
+
+            Vector3f target = this.getTargetPoint(chain, cache);
+
+            if (target == null)
+            {
+                continue;
+            }
+
+            this.line(builder, uiMatrix, previous, target, 1F, 1F, 0F, 1F);
+            this.cross(builder, uiMatrix, target, 0.04F, 1F, 0.9F, 0.2F, 1F);
+        }
+
+        BufferRenderer.drawWithGlobalProgram(builder.end());
+    }
+
+    private Vector3f getBonePoint(MatrixCache cache, String bone)
+    {
+        MatrixCacheEntry entry = cache.get(bone);
+
+        if (entry == null)
+        {
+            return null;
+        }
+
+        Matrix4f matrix = entry.origin() == null ? entry.matrix() : entry.origin();
+
+        if (matrix == null)
+        {
+            return null;
+        }
+
+        return this.translation(matrix);
+    }
+
+    private Vector3f getTargetPoint(IKChainConfig chain, MatrixCache cache)
+    {
+        if (chain.useTargetBone.get() && !chain.targetBone.get().isEmpty())
+        {
+            Vector3f target = this.getBonePoint(cache, chain.targetBone.get());
+
+            if (target != null)
+            {
+                return target;
+            }
+        }
+
+        return new Vector3f(chain.target.translate).mul(1F / 16F);
+    }
+
+    private Vector3f translation(Matrix4f matrix)
+    {
+        Vector3f vector = new Vector3f();
+
+        matrix.getTranslation(vector);
+
+        return vector;
+    }
+
+    private void line(BufferBuilder builder, Matrix4f matrix, Vector3f a, Vector3f b, float r, float g, float bl, float alpha)
+    {
+        builder.vertex(matrix, a.x, a.y, a.z).color(r, g, bl, alpha).next();
+        builder.vertex(matrix, b.x, b.y, b.z).color(r, g, bl, alpha).next();
+    }
+
+    private void cross(BufferBuilder builder, Matrix4f matrix, Vector3f p, float size, float r, float g, float b, float a)
+    {
+        this.line(builder, matrix, new Vector3f(p).add(-size, 0, 0), new Vector3f(p).add(size, 0, 0), r, g, b, a);
+        this.line(builder, matrix, new Vector3f(p).add(0, -size, 0), new Vector3f(p).add(0, size, 0), r, g, b, a);
+        this.line(builder, matrix, new Vector3f(p).add(0, 0, -size), new Vector3f(p).add(0, 0, size), r, g, b, a);
     }
 
     @Override
