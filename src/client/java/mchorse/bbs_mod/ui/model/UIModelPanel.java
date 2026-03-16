@@ -105,6 +105,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         this.registerPanel(this.modelSettingsPanel, UIKeys.MODELS_SETTINGS, Icons.MODELS_SETTINGS);
         this.registerPanel(this.ikPanel, UIKeys.MODELS_IK_EDITOR, Icons.IK);
         this.registerPanel(this.createUnavailablePanel(), UIKeys.MODELS_DYNAMIC_BONES, Icons.DYNAMIC_BONES);
+        this.registerPanel(this.createUnavailablePanel(), UIKeys.MODELS_GEOMETRY_EDITOR, Icons.GEOMETRY_EDITOR);
 
         this.setPanel(this.modelSettingsPanel);
         
@@ -256,6 +257,15 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
 
     private void pickBone(String bone)
     {
+        if (this.ikPanel != null && this.ikPanel.isIKVirtualBone(bone))
+        {
+            this.ikPanel.selectVirtualBone(bone);
+            this.renderer.setSelectedBone(bone);
+            this.renderer.transform = this.ikPanel.getTargetTransformEditor();
+
+            return;
+        }
+
         for (UIModelSection section : this.sections)
         {
             section.deselect();
@@ -264,8 +274,14 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
             {
                 ((UIModelPartsSection) section).selectBone(bone);
                 this.setRight(((UIModelPartsSection) section).poseEditor);
+                this.renderer.transform = ((UIModelPartsSection) section).poseEditor.transform;
             }
         }
+    }
+
+    public void selectBoneFromEditor(String bone)
+    {
+        this.pickBone(bone);
     }
     
     public void dirty()

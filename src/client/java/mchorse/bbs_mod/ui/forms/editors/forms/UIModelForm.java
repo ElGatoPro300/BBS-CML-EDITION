@@ -7,6 +7,7 @@ import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.forms.editors.panels.UIActionsFormPanel;
 import mchorse.bbs_mod.ui.forms.editors.panels.UIModelFormPanel;
 import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
+import mchorse.bbs_mod.ui.model.UIModelIKPanel;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.pose.UIPoseEditor;
 import mchorse.bbs_mod.utils.StringUtils;
@@ -44,7 +45,7 @@ public class UIModelForm extends UIForm<ModelForm>
             this.setPanel(this.modelPanel);
         }
 
-        return this.modelPanel.poseEditor.transform;
+        return this.modelPanel.getEditableTransform();
     }
 
     @Override
@@ -52,7 +53,13 @@ public class UIModelForm extends UIForm<ModelForm>
     {
         String path = FormUtils.getPath(this.form);
         UIPoseEditor poseEditor = this.modelPanel.poseEditor;
+        String bone = poseEditor.groups.list.getCurrentFirst();
 
-        return this.getOrigin(transition, StringUtils.combinePaths(path, poseEditor.groups.list.getCurrentFirst()), poseEditor.transform.isLocal());
+        if (UIModelIKPanel.isIKVirtualBoneName(bone))
+        {
+            return this.modelPanel.getIKTargetOriginMatrix(transition);
+        }
+
+        return this.getOrigin(transition, StringUtils.combinePaths(path, bone), poseEditor.transform.isLocal());
     }
 }

@@ -21,6 +21,7 @@ public class IKChainConfig extends ValueGroup
     public final ValueBoolean visualizer = new ValueBoolean("visualizer");
     public final ValueBoolean useTargetBone = new ValueBoolean("use_target_bone");
     public final ValueString targetBone = new ValueString("target_bone", "");
+    public final ValueString targetParentBone = new ValueString("target_parent_bone", "");
     public final ValueInt iterations = new ValueInt("iterations", 8);
     public final ValueFloat tolerance = new ValueFloat("tolerance", 0.2F);
     public final ValueFloat minX = new ValueFloat("min_x", -180F);
@@ -29,6 +30,14 @@ public class IKChainConfig extends ValueGroup
     public final ValueFloat maxY = new ValueFloat("max_y", 180F);
     public final ValueFloat minZ = new ValueFloat("min_z", -180F);
     public final ValueFloat maxZ = new ValueFloat("max_z", 180F);
+    public final ValueList<IKJointConstraint> jointConstraints = new ValueList<IKJointConstraint>("joint_constraints")
+    {
+        @Override
+        protected IKJointConstraint create(String id)
+        {
+            return new IKJointConstraint(id);
+        }
+    };
     public final Transform target = new Transform();
     public final ValueList<ValueString> bones = new ValueList<ValueString>("bones")
     {
@@ -48,6 +57,7 @@ public class IKChainConfig extends ValueGroup
         this.add(this.visualizer);
         this.add(this.useTargetBone);
         this.add(this.targetBone);
+        this.add(this.targetParentBone);
         this.add(this.iterations);
         this.add(this.tolerance);
         this.add(this.minX);
@@ -56,6 +66,7 @@ public class IKChainConfig extends ValueGroup
         this.add(this.maxY);
         this.add(this.minZ);
         this.add(this.maxZ);
+        this.add(this.jointConstraints);
         this.add(this.bones);
     }
 
@@ -105,5 +116,53 @@ public class IKChainConfig extends ValueGroup
         }
 
         return list;
+    }
+
+    public IKJointConstraint getJointConstraint(String bone)
+    {
+        if (bone == null || bone.isEmpty())
+        {
+            return null;
+        }
+
+        for (IKJointConstraint constraint : this.jointConstraints.getAllTyped())
+        {
+            if (bone.equals(constraint.bone.get()))
+            {
+                return constraint;
+            }
+        }
+
+        return null;
+    }
+
+    public IKJointConstraint getOrCreateJointConstraint(String bone)
+    {
+        IKJointConstraint constraint = this.getJointConstraint(bone);
+
+        if (constraint != null)
+        {
+            return constraint;
+        }
+
+        constraint = new IKJointConstraint(String.valueOf(this.jointConstraints.getAllTyped().size()));
+        constraint.bone.set(bone);
+        this.jointConstraints.add(constraint);
+        this.jointConstraints.sync();
+
+        return constraint;
+    }
+
+    public void removeJointConstraint(String bone)
+    {
+        IKJointConstraint constraint = this.getJointConstraint(bone);
+
+        if (constraint == null)
+        {
+            return;
+        }
+
+        this.jointConstraints.remove(constraint);
+        this.jointConstraints.sync();
     }
 }
