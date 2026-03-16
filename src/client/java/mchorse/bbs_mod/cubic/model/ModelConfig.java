@@ -2,7 +2,6 @@ package mchorse.bbs_mod.cubic.model;
 
 import mchorse.bbs_mod.cubic.model.ArmorConfig;
 import mchorse.bbs_mod.data.types.BaseType;
-import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.settings.values.core.ValueGroup;
 import mchorse.bbs_mod.settings.values.core.ValueLink;
 import mchorse.bbs_mod.settings.values.core.ValueList;
@@ -79,6 +78,15 @@ public class ModelConfig extends ValueGroup
         }
     };
 
+    public final ValueList<PhysBoneSlot> physBones = new ValueList<PhysBoneSlot>("phys_bones")
+    {
+        @Override
+        protected PhysBoneSlot create(String id)
+        {
+            return new PhysBoneSlot(id);
+        }
+    };
+
     public ModelConfig(String id)
     {
         super(id);
@@ -98,5 +106,6 @@ public class ModelConfig extends ValueGroup
         this.add(this.fpOffhand);
         this.add(this.itemsMain);
         this.add(this.itemsOff);
+        this.add(this.physBones);
     }
 }
