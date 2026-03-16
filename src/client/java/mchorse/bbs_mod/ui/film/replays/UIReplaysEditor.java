@@ -169,16 +169,6 @@ public class UIReplaysEditor extends UIElement
         COLORS.put("count", Colors.GREEN);
 
         COLORS.put("settings", Colors.MAGENTA);
-        COLORS.put("block_state", Colors.ACTIVE);
-        COLORS.put("item_stack", Colors.ORANGE);
-        COLORS.put("modelTransform", Colors.YELLOW);
-        COLORS.put("enabled", Colors.WHITE & Colors.RGB);
-        COLORS.put("level", Colors.YELLOW);
-        COLORS.put("emit_light", Colors.YELLOW);
-        COLORS.put("light_intensity", Colors.YELLOW);
-        COLORS.put("structure_light", Colors.YELLOW);
-        COLORS.put("biome_id", Colors.GREEN);
-        COLORS.put("effect", Colors.MAGENTA);
         COLORS.put("offset_x", Colors.RED);
         COLORS.put("offset_y", Colors.GREEN);
         COLORS.put("offset_z", Colors.BLUE);
@@ -218,16 +208,6 @@ public class UIReplaysEditor extends UIElement
         ICONS.put("count", Icons.BUCKET);
 
         ICONS.put("settings", Icons.GEAR);
-        ICONS.put("block_state", Icons.BLOCK);
-        ICONS.put("item_stack", Icons.LIMB);
-        ICONS.put("modelTransform", Icons.ALL_DIRECTIONS);
-        ICONS.put("enabled", Icons.VISIBLE);
-        ICONS.put("level", Icons.LIGHT);
-        ICONS.put("emit_light", Icons.LIGHT);
-        ICONS.put("light_intensity", Icons.LIGHT);
-        ICONS.put("structure_light", Icons.LIGHT);
-        ICONS.put("biome_id", Icons.MATERIAL);
-        ICONS.put("effect", Icons.PARTICLE);
 
         /* Structure selection icon for structure_file property */
         ICONS.put("structure_file", Icons.FILE);
@@ -522,7 +502,7 @@ public class UIReplaysEditor extends UIElement
     }
 
     private static final List<String> WORLD_CHANNELS = Arrays.asList("x", "y", "z", "vX", "vY", "vZ", "yaw", "pitch", "headYaw", "bodyYaw", "grounded", "damage", "fall", "sneaking", "sprinting", "item_main_hand", "item_off_hand", "item_head", "item_chest", "item_legs", "item_feet", "selected_slot", "stick_lx", "stick_ly", "stick_rx", "stick_ry", "trigger_l", "trigger_r", "extra1_x", "extra1_y", "extra2_x", "extra2_y", "shadow_size", "shadow_opacity");
-    private static final List<String> MODEL_PROPERTIES = Arrays.asList("visible", "lighting", "transform", "transform_overlay", "pose", "pose_overlay", "anchor", "color", "texture", "model", "actions", "shape_keys", "block_state", "item_stack", "modelTransform", "settings", "paused", "structure_file", "biome_id", "emit_light", "light_intensity", "structure_light", "enabled", "level", "effect");
+    private static final List<String> MODEL_PROPERTIES = Arrays.asList("visible", "lighting", "transform", "transform_overlay", "pose", "pose_overlay", "anchor", "color", "texture", "model", "actions", "shape_keys");
 
     public void updateChannelsList()
     {
