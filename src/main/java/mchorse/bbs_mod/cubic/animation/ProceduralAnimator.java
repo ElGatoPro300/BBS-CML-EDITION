@@ -7,6 +7,8 @@ import mchorse.bbs_mod.cubic.data.animation.Animation;
 import mchorse.bbs_mod.cubic.data.animation.Animations;
 import mchorse.bbs_mod.cubic.data.model.Model;
 import mchorse.bbs_mod.cubic.data.model.ModelGroup;
+import mchorse.bbs_mod.cubic.physics.PhysBoneRuntime;
+import mchorse.bbs_mod.cubic.physics.PhysBoneState;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.interps.Lerps;
@@ -17,7 +19,9 @@ import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class ProceduralAnimator implements IAnimator
 {
@@ -25,6 +29,7 @@ public class ProceduralAnimator implements IAnimator
     public ActionPlayback basePost;
 
     private IModelInstance model;
+    private final Map<String, PhysBoneState> physStates = new HashMap<>();
 
     @Override
     public List<String> getActions()
@@ -36,6 +41,7 @@ public class ProceduralAnimator implements IAnimator
     public void setup(IModelInstance model, ActionsConfig actions, boolean fade)
     {
         this.model = model;
+        this.physStates.clear();
 
         this.basePre = this.createAction(this.basePre, actions.getConfig("base_pre"), true);
         this.basePost = this.createAction(this.basePost, actions.getConfig("base_post"), true);
@@ -97,6 +103,8 @@ public class ProceduralAnimator implements IAnimator
         {
             this.basePost.update();
         }
+
+        this.updatePhysBones(entity);
     }
 
     @Override
@@ -129,6 +137,7 @@ public class ProceduralAnimator implements IAnimator
         float limbSpeed = target.getLimbSpeed(transition);
         float limbPhase = target.getLimbPos(transition);
         float leaningPitch = target.getLeaningPitch(transition);
+        String headBone = armature.getHeadBone();
 
         float coefficient = 1F;
 
@@ -198,7 +207,7 @@ public class ProceduralAnimator implements IAnimator
                         }
                     }
                 }
-                else if (group.id.equals("head"))
+                else if (group.id.equals(headBone))
                 {
                     group.current.rotate.y = -yaw;
 
@@ -339,7 +348,7 @@ public class ProceduralAnimator implements IAnimator
                         }
                     }
                 }
-                else if (bone.name.equals("head"))
+                else if (bone.name.equals(headBone))
                 {
                     bone.transform.rotate.y = MathUtils.toRad(-yaw);
 
@@ -424,10 +433,22 @@ public class ProceduralAnimator implements IAnimator
             }
         }
 
+        this.applyPhysBones(model);
+
         if (this.basePost != null)
         {
             this.basePost.postApply(target, armature.getModel(), transition);
         }
+    }
+
+    private void updatePhysBones(IEntity entity)
+    {
+        PhysBoneRuntime.update(entity, this.model, this.physStates);
+    }
+
+    private void applyPhysBones(IModel model)
+    {
+        PhysBoneRuntime.apply(model, this.physStates);
     }
 
     @Override
@@ -443,4 +464,5 @@ public class ProceduralAnimator implements IAnimator
 
         return b + a * factor;
     }
+
 }

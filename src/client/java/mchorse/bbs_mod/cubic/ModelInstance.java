@@ -10,6 +10,7 @@ import mchorse.bbs_mod.cubic.model.ArmorSlot;
 import mchorse.bbs_mod.cubic.model.ArmorType;
 import mchorse.bbs_mod.cubic.model.IKChainConfig;
 import mchorse.bbs_mod.cubic.model.View;
+import mchorse.bbs_mod.cubic.physics.PhysBoneDefinition;
 import mchorse.bbs_mod.cubic.model.bobj.BOBJModel;
 import mchorse.bbs_mod.cubic.render.CubicCubeRenderer;
 import mchorse.bbs_mod.cubic.render.CubicMatrixRenderer;
@@ -74,6 +75,7 @@ public class ModelInstance implements IModelInstance
 
     public List<ArmorSlot> itemsMain = new ArrayList<>();
     public List<ArmorSlot> itemsOff = new ArrayList<>();
+    public List<PhysBoneDefinition> physBones = new ArrayList<>();
     public Map<String, String> flippedParts = new HashMap<>();
     public Map<ArmorType, ArmorSlot> armorSlots = new HashMap<>();
     public List<IKChainConfig> ikChains = new ArrayList<>();
@@ -109,6 +111,18 @@ public class ModelInstance implements IModelInstance
     public Animations getAnimations()
     {
         return this.animations;
+    }
+
+    @Override
+    public String getHeadBone()
+    {
+        return this.view == null ? "head" : this.view.headBone;
+    }
+
+    @Override
+    public List<PhysBoneDefinition> getPhysBones()
+    {
+        return this.physBones;
     }
 
     public Map<ModelGroup, ModelVAO> getVaos()
@@ -159,6 +173,23 @@ public class ModelInstance implements IModelInstance
 
                 slot.fromData(type);
                 this.itemsMain.add(slot);
+            }
+        }
+        if (config.has("phys_bones", BaseType.TYPE_LIST))
+        {
+            ListType list = config.get("phys_bones").asList();
+
+            for (BaseType type : list)
+            {
+                if (!type.isMap())
+                {
+                    continue;
+                }
+
+                PhysBoneDefinition definition = new PhysBoneDefinition();
+
+                definition.fromData(type.asMap());
+                this.physBones.add(definition);
             }
         }
         if (config.has("items_off"))
@@ -343,6 +374,29 @@ public class ModelInstance implements IModelInstance
             config.put("ik_chains", list);
         }
 
+        if (this.view != null)
+        {
+            MapType lookAt = new MapType();
+
+            this.view.toData(lookAt);
+            config.put("look_at", lookAt);
+        }
+
+        if (!this.physBones.isEmpty())
+        {
+            ListType list = new ListType();
+
+            for (PhysBoneDefinition definition : this.physBones)
+            {
+                MapType map = new MapType();
+
+                definition.toData(map);
+                list.add(map);
+            }
+
+            config.put("phys_bones", list);
+        }
+
         return config;
     }
     public ModelInstance copy()
@@ -354,7 +408,14 @@ public class ModelInstance implements IModelInstance
         copy.culling = this.culling;
         copy.onCpu = this.onCpu;
         copy.anchorGroup = this.anchorGroup;
-        copy.view = this.view;
+        if (this.view != null)
+        {
+            MapType lookAt = new MapType();
+
+            this.view.toData(lookAt);
+            copy.view = new View();
+            copy.view.fromData(lookAt);
+        }
 
         copy.scale.set(this.scale);
         copy.uiScale = this.uiScale;
@@ -364,6 +425,7 @@ public class ModelInstance implements IModelInstance
 
         for (ArmorSlot slot : this.itemsMain) copy.itemsMain.add(slot.copy());
         for (ArmorSlot slot : this.itemsOff) copy.itemsOff.add(slot.copy());
+        for (PhysBoneDefinition definition : this.physBones) copy.physBones.add(definition.copy());
         copy.flippedParts.putAll(this.flippedParts);
 
         if (this.fpMain != null) copy.fpMain = this.fpMain.copy();

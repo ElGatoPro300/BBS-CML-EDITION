@@ -25,7 +25,6 @@ import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.ScrollDirection;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
-import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.pose.UIPoseEditor;
 import mchorse.bbs_mod.utils.Direction;
@@ -44,9 +43,12 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
     
     public UIElement modelSettingsPanel;
     public UIModelIKPanel ikPanel;
+    public UIElement dynamicBonesPanel;
     public UIModelGeometryPanel geometryPanel;
     public UIScrollView sectionsView;
     public UIScrollView rightView;
+    public UIScrollView dynamicBonesView;
+    public UIScrollView dynamicBonesRightView;
     public List<UIModelSection> sections = new ArrayList<>();
 
     public UIModelPanel(UIDashboard dashboard)
@@ -81,6 +83,19 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         
         this.modelSettingsPanel.add(this.sectionsView, this.rightView);
 
+        this.dynamicBonesPanel = new UIElement();
+        this.dynamicBonesPanel.relative(this.mainView).w(1F).h(1F);
+
+        this.dynamicBonesView = UI.scrollView(20, 10);
+        this.dynamicBonesView.scroll.cancelScrolling().opposite().scrollSpeed *= 3;
+        this.dynamicBonesView.relative(this.dynamicBonesPanel).w(200).h(1F);
+
+        this.dynamicBonesRightView = UI.scrollView(20, 10);
+        this.dynamicBonesRightView.scroll.cancelScrolling().opposite().scrollSpeed *= 3;
+        this.dynamicBonesRightView.relative(this.dynamicBonesPanel).x(1F, -200).w(200).h(1F);
+
+        this.dynamicBonesPanel.add(this.dynamicBonesView, this.dynamicBonesRightView);
+
         /* Sections setup */
         this.overlay.namesList.setFileIcon(Icons.MORPH);
 
@@ -95,6 +110,10 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         this.addSection(new UIModelItemsSection(this));
         this.addSection(new UIModelHandsSection(this));
         this.addSection(new UIModelSneakingSection(this));
+
+        UIModelDynamicBonesSection dynamicBonesSection = new UIModelDynamicBonesSection(this);
+        this.sections.add(dynamicBonesSection);
+        this.dynamicBonesView.add(dynamicBonesSection);
         
         /* Register Panels */
         UIElement spacer = new UIElement();
@@ -106,7 +125,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
 
         this.registerPanel(this.modelSettingsPanel, UIKeys.MODELS_SETTINGS, Icons.MODELS_SETTINGS);
         this.registerPanel(this.ikPanel, UIKeys.MODELS_IK_EDITOR, Icons.IK);
-        this.registerPanel(this.createUnavailablePanel(), UIKeys.MODELS_DYNAMIC_BONES, Icons.DYNAMIC_BONES);
+        this.registerPanel(this.dynamicBonesPanel, UIKeys.MODELS_DYNAMIC_BONES, Icons.DYNAMIC_BONES);
         this.registerPanel(this.geometryPanel, UIKeys.MODELS_GEOMETRY_EDITOR, Icons.GEOMETRY_EDITOR);
 
         this.setPanel(this.modelSettingsPanel);
@@ -193,6 +212,16 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
     {
         this.mainView.removeAll();
         this.mainView.add(panel);
+
+        if (panel == this.dynamicBonesPanel)
+        {
+            this.setDynamicRight(this.getPoseEditor());
+        }
+        else if (panel == this.modelSettingsPanel)
+        {
+            this.setRight(this.getPoseEditor());
+        }
+
         this.mainView.resize();
     }
     
@@ -201,6 +230,13 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         this.rightView.removeAll();
         this.rightView.add(element);
         this.rightView.resize();
+    }
+
+    public void setDynamicRight(UIElement element)
+    {
+        this.dynamicBonesRightView.removeAll();
+        this.dynamicBonesRightView.add(element);
+        this.dynamicBonesRightView.resize();
     }
     
     @Override
@@ -229,6 +265,8 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
 
         this.sectionsView.resize();
         this.rightView.resize();
+        this.dynamicBonesView.resize();
+        this.dynamicBonesRightView.resize();
 
         Morph morph = Morph.getMorph(MinecraftClient.getInstance().player);
 
@@ -275,12 +313,22 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         for (UIModelSection section : this.sections)
         {
             section.deselect();
+            section.onBoneSelected(bone);
 
             if (section instanceof UIModelPartsSection)
             {
                 ((UIModelPartsSection) section).selectBone(bone);
                 this.setRight(((UIModelPartsSection) section).poseEditor);
                 this.renderer.transform = ((UIModelPartsSection) section).poseEditor.transform;
+
+                if (this.mainView.getChildren().contains(this.dynamicBonesPanel))
+                {
+                    this.setDynamicRight(((UIModelPartsSection) section).poseEditor);
+                }
+                else
+                {
+                    this.setRight(((UIModelPartsSection) section).poseEditor);
+                }
             }
         }
 
@@ -342,6 +390,8 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
             
             this.sectionsView.resize();
             this.rightView.resize();
+            this.dynamicBonesView.resize();
+            this.dynamicBonesRightView.resize();
         }
     }
 
