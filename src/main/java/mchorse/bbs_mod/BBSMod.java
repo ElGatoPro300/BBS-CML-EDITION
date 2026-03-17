@@ -327,6 +327,11 @@ public class BBSMod implements ModInitializer
         return new File(settingsFolder, path);
     }
 
+    public static File getWorldFolder()
+    {
+        return worldFolder;
+    }
+
     public static File getExportFolder()
     {
         return getGamePath("export");

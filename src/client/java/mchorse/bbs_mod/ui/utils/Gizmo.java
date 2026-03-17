@@ -88,7 +88,7 @@ public class Gizmo
             return true;
         }
 
-        if (index >= STENCIL_X && index <= STENCIL_FREE)
+        if (index >= STENCIL_X && index <= STENCIL_ZY)
         {
             this.index = index;
             this.mouseX = mouseX;
