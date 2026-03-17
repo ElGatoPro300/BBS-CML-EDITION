@@ -13,28 +13,33 @@ import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.UIKeys;
+import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
+import mchorse.bbs_mod.ui.framework.elements.input.list.UIList;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UISearchList;
-import mchorse.bbs_mod.ui.framework.elements.input.list.UIStringList;
 import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
 import mchorse.bbs_mod.ui.utils.UI;
+import mchorse.bbs_mod.ui.utils.icons.Icon;
+import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.IOUtils;
+import mchorse.bbs_mod.utils.colors.Colors;
 import org.joml.Vector2f;
 import org.joml.Vector3f;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class UIModelGeometryPanel extends UIElement
 {
     private final UIModelPanel parent;
-    private final UIStringList hierarchyList;
-    private final UISearchList<String> hierarchySearch;
-    private final List<String> hierarchyBoneIds = new ArrayList<>();
+    private final UIList<GeometryEntry> hierarchyList;
+    private final UISearchList<GeometryEntry> hierarchySearch;
     private final UILabel selectedBoneLabel;
     private final UITrackpad originX;
     private final UITrackpad originY;
@@ -68,9 +73,7 @@ public class UIModelGeometryPanel extends UIElement
     private final UIButton addCubeButton;
     private final UIButton removeCubeButton;
     private final UIToggle autoSaveToggle;
-
-    private final UIStringList cubeList;
-    private final UISearchList<String> cubeSearch;
+    private final Set<String> collapsedGroupIds = new HashSet<>();
 
     private ModelConfig config;
     private ModelInstance instance;
@@ -91,18 +94,69 @@ public class UIModelGeometryPanel extends UIElement
         UILabel hierarchyTitle = UI.label(UIKeys.MODELS_IK_HIERARCHY).background();
         hierarchyTitle.relative(this).x(sideMargin).y(10).w(leftWidth).h(12);
 
-        this.hierarchyList = new UIStringList((l) -> this.selectCurrentListBone())
+        this.hierarchyList = new UIList<>((l) -> this.selectCurrentHierarchyEntry())
         {
             @Override
             protected boolean sortElements()
             {
                 return false;
             }
+
+            @Override
+            protected void renderElementPart(UIContext context, GeometryEntry element, int i, int x, int y, boolean hover, boolean selected)
+            {
+                int textY = y + (this.scroll.scrollItemSize - context.batcher.getFont().getHeight()) / 2;
+                int offset = element.depth * 10;
+                Icon icon = element.type == GeometryEntryType.BONE ? Icons.FOLDER : Icons.BLOCK;
+
+                context.batcher.icon(icon, x + 4 + offset, y + 1);
+                context.batcher.textShadow(element.label, x + 20 + offset, textY, hover ? Colors.HIGHLIGHT : Colors.WHITE);
+            }
+
+            @Override
+            protected String elementToString(UIContext context, int i, GeometryEntry element)
+            {
+                return element.label + " " + element.groupId;
+            }
+
+            @Override
+            protected void handleSwap(int from, int to)
+            {
+                UIModelGeometryPanel.this.handleHierarchySwap(from, to);
+            }
+
+            @Override
+            public boolean subMouseClicked(UIContext context)
+            {
+                if (!this.isFiltering() && this.area.isInside(context) && context.mouseButton == 0)
+                {
+                    int visibleIndex = this.scroll.getIndex(context.mouseX, context.mouseY);
+
+                    if (this.exists(visibleIndex))
+                    {
+                        GeometryEntry entry = this.getList().get(visibleIndex);
+                        int y = this.area.y + visibleIndex * this.scroll.scrollItemSize - (int) this.scroll.getScroll();
+                        int offset = entry.depth * 10;
+                        int iconX = this.area.x + 4 + offset;
+
+                        if (entry.type == GeometryEntryType.BONE && context.mouseX >= iconX && context.mouseX < iconX + 16 && context.mouseY >= y + 1 && context.mouseY < y + 17)
+                        {
+                            UIModelGeometryPanel.this.toggleGroupCollapsed(entry.groupId);
+
+                            return true;
+                        }
+                    }
+                }
+
+                return super.subMouseClicked(context);
+            }
         };
         this.hierarchyList.background();
+        this.hierarchyList.sorting();
+        this.hierarchyList.scroll.scrollItemSize = 18;
         this.hierarchySearch = new UISearchList<>(this.hierarchyList);
         this.hierarchySearch.label(UIKeys.GENERAL_SEARCH);
-        this.hierarchySearch.relative(this).x(sideMargin).y(26).w(leftWidth).h(1F, -36);
+        this.hierarchySearch.relative(this).x(sideMargin).y(26).w(leftWidth).h(1F, -94);
 
         UILabel editorTitle = UI.label(UIKeys.MODELS_GEOMETRY_EDITOR).background();
         editorTitle.relative(this).x(1F, -rightWidth - sideMargin).y(10).w(rightWidth).h(12);
@@ -201,28 +255,17 @@ public class UIModelGeometryPanel extends UIElement
         editor.relative(this).x(1F, -rightWidth - sideMargin).y(26).w(rightWidth).h(1F, -36);
         editor.add(editorTitle, this.selectedBoneLabel, originLabel, originRow, rotateLabel, rotateRow, pivotLabel, pivotRow, scaleLabel, scaleRow, buttons, this.selectedCubeLabel, cubeOriginLabel, cubeOriginRow, cubeSizeLabel, cubeSizeRow, cubePivotLabel, cubePivotRow, cubeInflateLabel, cubeInflateRow, cubeUvLabel, cubeUvRow, this.autoSaveToggle);
 
-        this.add(hierarchyTitle, this.hierarchySearch, editor);
-
-        UILabel cubesTitle = UI.label(IKey.raw("Cubes")).background();
-        cubesTitle.relative(this).x(sideMargin).y(1F, -180).w(leftWidth).h(12);
-
-        this.cubeList = new UIStringList((l) -> this.selectCurrentCube());
-        this.cubeList.background();
-        this.cubeSearch = new UISearchList<>(this.cubeList);
-        this.cubeSearch.label(UIKeys.GENERAL_SEARCH);
-        this.cubeSearch.relative(this).x(sideMargin).y(1F, -164).w(leftWidth).h(128);
-
         this.addCubeButton = new UIButton(UIKeys.GENERAL_ADD, (b) -> this.addCube());
         this.removeCubeButton = new UIButton(UIKeys.GENERAL_REMOVE, (b) -> this.removeCube());
         this.addCubeButton.w(0.5F, -4).h(20);
         this.removeCubeButton.w(0.5F, -4).h(20);
         UIElement cubeButtons = UI.row(8, this.addCubeButton, this.removeCubeButton);
-        cubeButtons.relative(this.cubeSearch).y(1F, 6).w(1F).h(20);
+        cubeButtons.relative(this.hierarchySearch).y(1F, 6).w(leftWidth).h(20);
 
-        this.add(cubesTitle, this.cubeSearch, cubeButtons);
+        this.add(hierarchyTitle, this.hierarchySearch, cubeButtons, editor);
 
         this.fillControls();
-        this.fillCubeList();
+        this.fillCubeControls();
     }
 
     private void fillCubeControls()
@@ -240,7 +283,7 @@ public class UIModelGeometryPanel extends UIElement
             int index = this.selectedGroup.cubes.indexOf(this.selectedCube);
             Vector2f uv = this.getBoxUV(this.selectedCube);
 
-            this.selectedCubeLabel.label = IKey.raw("Cube " + (index + 1));
+            this.selectedCubeLabel.label = IKey.raw(index < 0 ? "-" : this.getCubeLabel(this.selectedCube));
             this.cubeMirrorValue = this.isCubeMirrored(this.selectedCube);
             this.setCubePads(this.selectedCube.origin, this.selectedCube.size, this.selectedCube.pivot, this.selectedCube.inflate, uv, this.cubeMirrorValue);
         }
@@ -270,11 +313,15 @@ public class UIModelGeometryPanel extends UIElement
             return;
         }
 
-        int index = this.hierarchyBoneIds.indexOf(bone);
-
-        if (index >= 0 && index < this.hierarchyList.getList().size())
+        for (GeometryEntry entry : this.hierarchyList.getList())
         {
-            this.hierarchyList.setCurrent(this.hierarchyList.getList().get(index));
+            if (entry.type == GeometryEntryType.BONE && entry.groupId.equals(bone))
+            {
+                this.hierarchyList.setCurrentDirect(entry);
+                this.selectCurrentHierarchyEntry();
+
+                break;
+            }
         }
     }
 
@@ -282,13 +329,14 @@ public class UIModelGeometryPanel extends UIElement
     {
         this.instance = null;
         this.selectedGroup = null;
+        this.selectedCube = null;
         this.hierarchyList.clear();
-        this.hierarchyBoneIds.clear();
+        this.parent.renderer.setSelectedCube(null);
 
         if (this.config == null)
         {
             this.fillControls();
-            this.fillCubeList();
+            this.fillCubeControls();
             return;
         }
 
@@ -304,7 +352,7 @@ public class UIModelGeometryPanel extends UIElement
         if (this.instance == null || !(this.instance.model instanceof Model model))
         {
             this.fillControls();
-            this.fillCubeList();
+            this.fillCubeControls();
             return;
         }
 
@@ -316,25 +364,28 @@ public class UIModelGeometryPanel extends UIElement
         if (!this.hierarchyList.getList().isEmpty())
         {
             this.hierarchyList.setCurrent(this.hierarchyList.getList().get(0));
+            this.selectCurrentHierarchyEntry();
         }
         else
         {
             this.fillControls();
-            this.fillCubeList();
+            this.fillCubeControls();
         }
     }
 
     private void collectHierarchy(ModelGroup group, int depth)
     {
-        StringBuilder prefix = new StringBuilder();
+        this.hierarchyList.add(new GeometryEntry(GeometryEntryType.BONE, group.id, -1, depth, group.id));
 
-        for (int i = 0; i < depth; i++)
+        if (this.collapsedGroupIds.contains(group.id))
         {
-            prefix.append("  ");
+            return;
         }
 
-        this.hierarchyList.add(prefix + "└ " + group.id);
-        this.hierarchyBoneIds.add(group.id);
+        for (int i = 0; i < group.cubes.size(); i++)
+        {
+            this.hierarchyList.add(new GeometryEntry(GeometryEntryType.CUBE, group.id, i, depth + 1, this.getCubeLabel(group.cubes.get(i))));
+        }
 
         for (ModelGroup child : group.children)
         {
@@ -342,25 +393,34 @@ public class UIModelGeometryPanel extends UIElement
         }
     }
 
-    private void selectCurrentListBone()
+    private void selectCurrentHierarchyEntry()
     {
         this.selectedGroup = null;
+        this.selectedCube = null;
 
         if (this.instance != null && this.instance.model instanceof Model model)
         {
-            int index = this.hierarchyList.getIndex();
+            GeometryEntry entry = this.hierarchyList.getCurrentFirst();
 
-            if (index >= 0 && index < this.hierarchyBoneIds.size())
+            if (entry != null)
             {
-                String bone = this.hierarchyBoneIds.get(index);
+                this.selectedGroup = model.getGroup(entry.groupId);
 
-                this.selectedGroup = model.getGroup(bone);
-                this.parent.renderer.setSelectedBone(bone);
+                if (this.selectedGroup != null)
+                {
+                    this.parent.renderer.setSelectedBone(this.selectedGroup.id);
+
+                    if (entry.type == GeometryEntryType.CUBE && entry.cubeIndex >= 0 && entry.cubeIndex < this.selectedGroup.cubes.size())
+                    {
+                        this.selectedCube = this.selectedGroup.cubes.get(entry.cubeIndex);
+                    }
+                }
             }
         }
 
+        this.parent.renderer.setSelectedCube(this.selectedCube);
         this.fillControls();
-        this.fillCubeList();
+        this.fillCubeControls();
     }
 
     private void fillControls()
@@ -521,34 +581,6 @@ public class UIModelGeometryPanel extends UIElement
         this.refreshCubeRenderAndSave();
     }
 
-    private void fillCubeList()
-    {
-        this.fillCubeList(-1);
-    }
-
-    private void fillCubeList(int preferredIndex)
-    {
-        this.cubeList.clear();
-        this.selectedCube = null;
-        this.parent.renderer.setSelectedCube(null);
-
-        if (this.selectedGroup != null)
-        {
-            for (int i = 0; i < this.selectedGroup.cubes.size(); i++)
-            {
-                this.cubeList.add("Cube " + (i + 1));
-            }
-
-            if (!this.selectedGroup.cubes.isEmpty())
-            {
-                int clamped = preferredIndex < 0 ? 0 : Math.min(preferredIndex, this.selectedGroup.cubes.size() - 1);
-                this.cubeList.setCurrent(this.cubeList.getList().get(clamped));
-            }
-        }
-
-        this.fillCubeControls();
-    }
-
     private void addCube()
     {
         if (this.selectedGroup == null)
@@ -566,7 +598,20 @@ public class UIModelGeometryPanel extends UIElement
         }
 
         this.selectedGroup.cubes.add(cube);
-        this.fillCubeList(this.selectedGroup.cubes.size() - 1);
+        this.selectedCube = cube;
+        this.reloadModelData();
+
+        for (GeometryEntry entry : this.hierarchyList.getList())
+        {
+            if (entry.type == GeometryEntryType.CUBE && entry.groupId.equals(this.selectedGroup.id) && entry.cubeIndex == this.selectedGroup.cubes.indexOf(cube))
+            {
+                this.hierarchyList.setCurrentDirect(entry);
+                this.selectCurrentHierarchyEntry();
+
+                break;
+            }
+        }
+
         this.refreshCubeRenderAndSave();
     }
 
@@ -585,7 +630,8 @@ public class UIModelGeometryPanel extends UIElement
         }
 
         this.selectedGroup.cubes.remove(index);
-        this.fillCubeList(index);
+        this.selectedCube = null;
+        this.reloadModelData();
         this.refreshCubeRenderAndSave();
     }
 
@@ -607,6 +653,248 @@ public class UIModelGeometryPanel extends UIElement
 
         this.parent.dirty();
         this.autoSaveIfEnabled();
+    }
+
+    private void toggleGroupCollapsed(String groupId)
+    {
+        if (this.collapsedGroupIds.contains(groupId))
+        {
+            this.collapsedGroupIds.remove(groupId);
+        }
+        else
+        {
+            this.collapsedGroupIds.add(groupId);
+        }
+
+        GeometryEntry current = this.hierarchyList.getCurrentFirst();
+        GeometryEntry preferred = current;
+
+        if (current != null && current.type == GeometryEntryType.CUBE && current.groupId.equals(groupId))
+        {
+            preferred = new GeometryEntry(GeometryEntryType.BONE, groupId, -1, 0, groupId);
+        }
+
+        this.reloadHierarchyPreserveSelection(preferred);
+    }
+
+    private void reloadHierarchyPreserveSelection(GeometryEntry preferred)
+    {
+        if (this.instance == null || !(this.instance.model instanceof Model model))
+        {
+            return;
+        }
+
+        this.hierarchyList.clear();
+
+        for (ModelGroup top : model.topGroups)
+        {
+            this.collectHierarchy(top, 0);
+        }
+
+        GeometryEntry selected = null;
+
+        if (preferred != null)
+        {
+            for (GeometryEntry entry : this.hierarchyList.getList())
+            {
+                if (entry.type == preferred.type && entry.groupId.equals(preferred.groupId) && entry.cubeIndex == preferred.cubeIndex)
+                {
+                    selected = entry;
+                    break;
+                }
+            }
+        }
+
+        if (selected == null && !this.hierarchyList.getList().isEmpty())
+        {
+            selected = this.hierarchyList.getList().get(0);
+        }
+
+        if (selected != null)
+        {
+            this.hierarchyList.setCurrentDirect(selected);
+            this.selectCurrentHierarchyEntry();
+        }
+        else
+        {
+            this.selectedGroup = null;
+            this.selectedCube = null;
+            this.parent.renderer.setSelectedCube(null);
+            this.fillControls();
+            this.fillCubeControls();
+        }
+    }
+
+    private void handleHierarchySwap(int from, int to)
+    {
+        if (this.instance == null || !(this.instance.model instanceof Model model))
+        {
+            return;
+        }
+
+        List<GeometryEntry> entries = this.hierarchyList.getList();
+
+        if (from < 0 || from >= entries.size() || to < 0 || to >= entries.size() || from == to)
+        {
+            return;
+        }
+
+        GeometryEntry source = entries.get(from);
+        GeometryEntry destination = entries.get(to);
+        GeometryEntry preferred = null;
+
+        if (source.type == GeometryEntryType.BONE)
+        {
+            preferred = this.reorderBoneByDrag(model, source, destination, to > from);
+        }
+        else if (source.type == GeometryEntryType.CUBE)
+        {
+            preferred = this.reorderCubeByDrag(model, source, destination, to > from);
+        }
+
+        if (preferred == null)
+        {
+            this.reloadHierarchyPreserveSelection(source);
+            return;
+        }
+
+        model.initialize();
+        this.reloadHierarchyPreserveSelection(preferred);
+        this.refreshCubeRenderAndSave();
+    }
+
+    private GeometryEntry reorderBoneByDrag(Model model, GeometryEntry source, GeometryEntry destination, boolean moveAfter)
+    {
+        ModelGroup sourceGroup = model.getGroup(source.groupId);
+
+        if (sourceGroup == null)
+        {
+            return null;
+        }
+
+        ModelGroup destinationGroup = model.getGroup(destination.groupId);
+
+        if (destinationGroup == null || sourceGroup == destinationGroup || this.isDescendantGroup(sourceGroup, destinationGroup))
+        {
+            return null;
+        }
+
+        this.removeGroupFromParent(model, sourceGroup);
+
+        if (destination.type == GeometryEntryType.BONE)
+        {
+            sourceGroup.parent = destinationGroup;
+
+            if (moveAfter)
+            {
+                destinationGroup.children.add(sourceGroup);
+            }
+            else
+            {
+                destinationGroup.children.add(0, sourceGroup);
+            }
+        }
+        else
+        {
+            sourceGroup.parent = destinationGroup;
+
+            if (moveAfter)
+            {
+                destinationGroup.children.add(sourceGroup);
+            }
+            else
+            {
+                destinationGroup.children.add(0, sourceGroup);
+            }
+        }
+
+        return new GeometryEntry(GeometryEntryType.BONE, sourceGroup.id, -1, 0, sourceGroup.id);
+    }
+
+    private GeometryEntry reorderCubeByDrag(Model model, GeometryEntry source, GeometryEntry destination, boolean moveAfter)
+    {
+        ModelGroup sourceGroup = model.getGroup(source.groupId);
+        ModelGroup destinationGroup = model.getGroup(destination.groupId);
+
+        if (sourceGroup == null || destinationGroup == null || source.cubeIndex < 0 || source.cubeIndex >= sourceGroup.cubes.size())
+        {
+            return null;
+        }
+
+        ModelCube cube = sourceGroup.cubes.remove(source.cubeIndex);
+        int insertIndex;
+
+        if (destination.type == GeometryEntryType.BONE)
+        {
+            insertIndex = moveAfter ? destinationGroup.cubes.size() : 0;
+        }
+        else
+        {
+            int destinationIndex = destination.cubeIndex;
+
+            if (destinationIndex < 0 || destinationIndex >= destinationGroup.cubes.size())
+            {
+                sourceGroup.cubes.add(Math.min(source.cubeIndex, sourceGroup.cubes.size()), cube);
+
+                return null;
+            }
+
+            insertIndex = destinationIndex + (moveAfter ? 1 : 0);
+
+            if (sourceGroup == destinationGroup && source.cubeIndex < destinationIndex)
+            {
+                insertIndex -= 1;
+            }
+        }
+
+        if (insertIndex < 0)
+        {
+            insertIndex = 0;
+        }
+
+        if (insertIndex > destinationGroup.cubes.size())
+        {
+            insertIndex = destinationGroup.cubes.size();
+        }
+
+        destinationGroup.cubes.add(insertIndex, cube);
+
+        return new GeometryEntry(GeometryEntryType.CUBE, destinationGroup.id, insertIndex, 0, this.getCubeLabel(cube));
+    }
+
+    private void removeGroupFromParent(Model model, ModelGroup group)
+    {
+        if (group.parent == null)
+        {
+            model.topGroups.remove(group);
+        }
+        else
+        {
+            group.parent.children.remove(group);
+        }
+    }
+
+    private boolean isDescendantGroup(ModelGroup source, ModelGroup candidateParent)
+    {
+        for (ModelGroup cursor = candidateParent; cursor != null; cursor = cursor.parent)
+        {
+            if (cursor == source)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private String getCubeLabel(ModelCube cube)
+    {
+        if (cube == null || cube.name == null || cube.name.isBlank())
+        {
+            return "Cube";
+        }
+
+        return cube.name;
     }
 
     private void autoSaveIfEnabled()
@@ -636,24 +924,6 @@ public class UIModelGeometryPanel extends UIElement
         }
 
         return uv;
-    }
-
-    private void selectCurrentCube()
-    {
-        this.selectedCube = null;
-
-        if (this.selectedGroup != null)
-        {
-            int index = this.cubeList.getIndex();
-
-            if (index >= 0 && index < this.selectedGroup.cubes.size())
-            {
-                this.selectedCube = this.selectedGroup.cubes.get(index);
-            }
-        }
-
-        this.parent.renderer.setSelectedCube(this.selectedCube);
-        this.fillCubeControls();
     }
 
     private void saveModelFile()
@@ -738,5 +1008,29 @@ public class UIModelGeometryPanel extends UIElement
         }
 
         return null;
+    }
+
+    private enum GeometryEntryType
+    {
+        BONE,
+        CUBE
+    }
+
+    private static class GeometryEntry
+    {
+        private final GeometryEntryType type;
+        private final String groupId;
+        private final int cubeIndex;
+        private final int depth;
+        private final String label;
+
+        private GeometryEntry(GeometryEntryType type, String groupId, int cubeIndex, int depth, String label)
+        {
+            this.type = type;
+            this.groupId = groupId;
+            this.cubeIndex = cubeIndex;
+            this.depth = depth;
+            this.label = label;
+        }
     }
 }
