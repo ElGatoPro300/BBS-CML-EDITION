@@ -240,6 +240,7 @@ public class UIDashboard extends UIBaseMenu
         BBSModClient.getCameraController().add(this.camera);
 
         this.showAnnoyingPopups();
+        UINewsPanel.onDashboardOpened(this);
     }
 
     @Override
@@ -323,6 +324,7 @@ public class UIDashboard extends UIBaseMenu
         if (this.main.isVisible())
         {
             UINewsPanel.tickAuto(this);
+            UINewsPanel.tickPriorityAnnouncement(this);
         }
     }
 

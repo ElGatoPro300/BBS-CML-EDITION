@@ -3,12 +3,14 @@ package mchorse.bbs_mod.ui.news;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.mojang.blaze3d.systems.RenderSystem;
-import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.news.NewsReadManager;
+import mchorse.bbs_mod.news.PriorityAnnouncementStateManager;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.resources.packs.URLSourcePack;
 import mchorse.bbs_mod.l10n.keys.IKey;
+import mchorse.bbs_mod.graphics.texture.Texture;
+import mchorse.bbs_mod.graphics.texture.TextureManager;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.UIDashboard;
 import mchorse.bbs_mod.ui.dashboard.panels.UISidebarDashboardPanel;
@@ -17,6 +19,7 @@ import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIScrollView;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UISearchList;
+import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIText;
 import mchorse.bbs_mod.ui.utils.UI;
@@ -25,6 +28,9 @@ import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.NaturalOrderComparator;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.resources.Pixels;
+import mchorse.bbs_mod.utils.Timer;
+import net.minecraft.client.MinecraftClient;
+import org.lwjgl.opengl.GL11;
 
 import java.io.InputStream;
 import java.lang.reflect.Type;
@@ -41,14 +47,11 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
-import net.minecraft.client.MinecraftClient;
-import mchorse.bbs_mod.graphics.texture.Texture;
-import mchorse.bbs_mod.graphics.texture.TextureManager;
-import mchorse.bbs_mod.utils.Timer;
-import org.lwjgl.opengl.GL11;
-
 public class UINewsPanel extends UISidebarDashboardPanel
 {
+    private static final String NEWS_URL = "https://raw.githubusercontent.com/BBSCommunity/CML-NEWS/refs/heads/main/News/news.json";
+    private static final String PRIORITY_ANNOUNCEMENT_URL = "https://raw.githubusercontent.com/BBSCommunity/CML-NEWS/refs/heads/main/News/priority_announcement.json";
+
     private final UIUnreadNewsList list = new UIUnreadNewsList((items) -> this.showSelected());
     private final UISearchList<String> search = new UISearchList<>(this.list);
     private final UIScrollView content = UI.scrollView(6, 6);
@@ -56,14 +59,20 @@ public class UINewsPanel extends UISidebarDashboardPanel
 
     private final Gson gson = new Gson();
     private final Type type = new TypeToken<List<NewsEntry>>(){}.getType();
+    private final Type priorityType = new TypeToken<PriorityAnnouncement>(){}.getType();
     private List<NewsEntry> entries = new ArrayList<>();
 
     private static final NewsReadManager readManager = new NewsReadManager();
+    private static final PriorityAnnouncementStateManager priorityAnnouncementStateManager = new PriorityAnnouncementStateManager();
     private static boolean hasUnread;
     private static UIIcon newsIcon;
 
     private static final Timer autoTimer = new Timer(60L * 60L * 1000L);
     private static boolean autoInitialized;
+    private static boolean sessionInitialReloadDone;
+    private static boolean sessionPriorityFetchStarted;
+    private static boolean sessionPriorityFetchDone;
+    private static PriorityAnnouncement pendingPriorityAnnouncement;
     private static final Set<Link> prefetchingImages = Collections.synchronizedSet(new HashSet<>());
 
     public UINewsPanel(UIDashboard dashboard)
@@ -127,6 +136,47 @@ public class UINewsPanel extends UISidebarDashboardPanel
         }
     }
 
+    public static void onDashboardOpened(UIDashboard dashboard)
+    {
+        UINewsPanel panel = dashboard.getPanel(UINewsPanel.class);
+
+        if (panel == null)
+        {
+            return;
+        }
+
+        if (!sessionInitialReloadDone)
+        {
+            sessionInitialReloadDone = true;
+            panel.reload(false);
+        }
+
+        if (!sessionPriorityFetchStarted)
+        {
+            sessionPriorityFetchStarted = true;
+            panel.fetchPriorityAnnouncement();
+        }
+    }
+
+    public static void tickPriorityAnnouncement(UIDashboard dashboard)
+    {
+        if (pendingPriorityAnnouncement == null)
+        {
+            return;
+        }
+
+        UIContext context = dashboard.context;
+
+        if (context == null || UIOverlay.has(context))
+        {
+            return;
+        }
+
+        priorityAnnouncementStateManager.markShown(pendingPriorityAnnouncement.id);
+        UIOverlay.addOverlay(context, new UIPriorityAnnouncementOverlayPanel(dashboard, pendingPriorityAnnouncement), 0.6F, 0.7F);
+        pendingPriorityAnnouncement = null;
+    }
+
     @Override
     public void requestNames()
     {
@@ -151,7 +201,7 @@ public class UINewsPanel extends UISidebarDashboardPanel
                 try
                 {
                     HttpClient client = HttpClient.newBuilder().build();
-                    HttpRequest req = HttpRequest.newBuilder(URI.create("https://raw.githubusercontent.com/BBSCommunity/CML-NEWS/refs/heads/main/News/news.json"))
+                    HttpRequest req = HttpRequest.newBuilder(URI.create(NEWS_URL))
                         .GET()
                         .build();
                     HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
@@ -221,6 +271,51 @@ public class UINewsPanel extends UISidebarDashboardPanel
                 e.printStackTrace();
                 MinecraftClient.getInstance().execute(this::populate);
             }
+        });
+    }
+
+    private void fetchPriorityAnnouncement()
+    {
+        CompletableFuture.runAsync(() ->
+        {
+            PriorityAnnouncement announcement = null;
+
+            try
+            {
+                HttpClient client = HttpClient.newBuilder().build();
+                HttpRequest req = HttpRequest.newBuilder(URI.create(PRIORITY_ANNOUNCEMENT_URL))
+                    .GET()
+                    .build();
+                HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
+
+                if (resp.statusCode() == 200 && resp.body() != null && !resp.body().isEmpty())
+                {
+                    announcement = this.gson.fromJson(resp.body(), this.priorityType);
+                }
+            }
+            catch (Exception e)
+            {
+                e.printStackTrace();
+            }
+
+            PriorityAnnouncement finalAnnouncement = announcement;
+
+            MinecraftClient.getInstance().execute(() ->
+            {
+                sessionPriorityFetchDone = true;
+
+                if (finalAnnouncement == null || !finalAnnouncement.isValid() || !finalAnnouncement.enabled)
+                {
+                    return;
+                }
+
+                if (!priorityAnnouncementStateManager.shouldShow(finalAnnouncement.id))
+                {
+                    return;
+                }
+
+                pendingPriorityAnnouncement = finalAnnouncement;
+            });
         });
     }
 
@@ -414,6 +509,41 @@ public class UINewsPanel extends UISidebarDashboardPanel
         public List<String> images;
     }
 
+    public static class PriorityAnnouncement
+    {
+        public String id;
+        public String title;
+        public String body;
+        public String image;
+        public boolean enabled = true;
+        public boolean showOpenNewsButton = true;
+        public boolean showActionButton = true;
+        public boolean hideOpenNewsButton;
+        public boolean hideActionButton;
+        public String actionLabel;
+        public String actionUrl;
+
+        public boolean isValid()
+        {
+            return this.id != null && !this.id.isEmpty() && this.title != null && !this.title.isEmpty();
+        }
+
+        public String getActionLabel()
+        {
+            return this.actionLabel == null || this.actionLabel.isEmpty() ? UIKeys.PRIORITY_ANNOUNCEMENT_OPEN_LINK.get() : this.actionLabel;
+        }
+
+        public boolean shouldShowOpenNewsButton()
+        {
+            return this.showOpenNewsButton && !this.hideOpenNewsButton;
+        }
+
+        public boolean shouldShowActionButton()
+        {
+            return this.showActionButton && !this.hideActionButton;
+        }
+    }
+
     private List<String> collectIdsLocal()
     {
         List<String> ids = new ArrayList<>();
@@ -444,11 +574,18 @@ public class UINewsPanel extends UISidebarDashboardPanel
     public static class UINewsImage extends UIElement
     {
         private final Link link;
+        private final int placeholderHeight;
 
         public UINewsImage(Link link)
         {
+            this(link, 512);
+        }
+
+        public UINewsImage(Link link, int placeholderHeight)
+        {
             this.link = link;
-            this.h(512);
+            this.placeholderHeight = placeholderHeight;
+            this.h(placeholderHeight);
         }
 
         @Override
@@ -517,6 +654,20 @@ public class UINewsPanel extends UISidebarDashboardPanel
                 return;
             }
 
+            int targetHeight = Math.max(96, Math.round(this.area.w / (texture.width / (float) texture.height)));
+            targetHeight = Math.max(96, Math.min(targetHeight, this.placeholderHeight));
+
+            if (Math.abs(targetHeight - this.area.h) > 1)
+            {
+                this.h(targetHeight);
+                UIElement parent = this.getParentContainer();
+
+                if (parent != null)
+                {
+                    parent.resize();
+                }
+            }
+
             float w = this.area.w;
             float h = this.area.h;
             float ar = texture.width / (float) texture.height;
@@ -530,8 +681,8 @@ public class UINewsPanel extends UISidebarDashboardPanel
                 h = w / ar;
             }
 
-            float x = this.area.x + (this.area.w - w) / 8F;
-            float y = this.area.y + (this.area.h - h) / 8F;
+            float x = this.area.x + (this.area.w - w) / 2F;
+            float y = this.area.y + (this.area.h - h) / 2F;
 
             context.batcher.fullTexturedBox(texture, x, y, w, h);
         }
