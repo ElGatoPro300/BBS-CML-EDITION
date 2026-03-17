@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.ui.film.replays;
 
 import mchorse.bbs_mod.BBSMod;
+import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.blocks.entities.ModelBlockEntity;
 import mchorse.bbs_mod.blocks.entities.ModelProperties;
 import mchorse.bbs_mod.camera.Camera;
@@ -58,6 +59,7 @@ import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
+import mchorse.bbs_mod.ui.utils.context.ContextSeparatorAction;
 import mchorse.bbs_mod.utils.CollectionUtils;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.RayTracing;
@@ -148,6 +150,14 @@ public class UIReplayList extends UIList<Replay> {
                 boolean isGroup = this.getCurrentFirst().isGroup.get();
 
                 if (isGroup) {
+                    int duration = this.panel.getData().camera.calculateDuration();
+                    menu.action(Icons.ADD, UIKeys.SCENE_REPLAYS_CONTEXT_ADD, this::addReplay);
+
+                    if (duration > 0) {
+                        menu.action(Icons.PLAY, UIKeys.SCENE_REPLAYS_CONTEXT_FROM_CAMERA, () -> this.fromCamera(duration));
+                    }
+
+                    menu.action(Icons.BLOCK, UIKeys.SCENE_REPLAYS_CONTEXT_FROM_MODEL_BLOCK, this::fromModelBlock);
                     menu.action(Icons.COPY, UIKeys.SCENE_REPLAYS_CONTEXT_COPY_GROUP, this::copyGroup);
 
                     MapType copyGroup = Window.getClipboardMap(GROUP_CLIPBOARD_KEY);
@@ -159,58 +169,25 @@ public class UIReplayList extends UIList<Replay> {
                     menu.action(Icons.DUPE, UIKeys.SCENE_REPLAYS_CONTEXT_DUPE_GROUP, this::duplicateGroup);
                     menu.action(Icons.REMOVE, UIKeys.SCENE_REPLAYS_CONTEXT_DELETE_GROUP, this::deleteGroup);
                     menu.action(Icons.FOLDER, UIKeys.SCENE_REPLAYS_CONTEXT_UNGROUP, this::ungroupReplay);
-                    menu.action(Icons.ADD, UIKeys.SCENE_REPLAYS_CONTEXT_ADD, this::addReplay);
                 } else {
+                    int duration = this.panel.getData().camera.calculateDuration();
+                    MapType copyReplay = Window.getClipboardMap("_CopyReplay");
+                    boolean shift = Window.isShiftPressed();
+                    int compactedOptions = BBSSettings.replayContextOptions == null ? 0 : BBSSettings.replayContextOptions.get();
+                    boolean separatedMode = compactedOptions == 1;
+                    boolean compactedMode = compactedOptions == 2;
+
+                    if (duration > 0) {
+                        menu.action(Icons.PLAY, UIKeys.SCENE_REPLAYS_CONTEXT_FROM_CAMERA, () -> this.fromCamera(duration));
+                    }
+
+                    menu.action(Icons.BLOCK, UIKeys.SCENE_REPLAYS_CONTEXT_FROM_MODEL_BLOCK, this::fromModelBlock);
                     menu.action(Icons.COPY, UIKeys.SCENE_REPLAYS_CONTEXT_COPY, this::copyReplay);
-                }
-            }
 
-            MapType copyReplay = Window.getClipboardMap("_CopyReplay");
-
-            if (copyReplay != null && (!this.isSelected() || !this.getCurrentFirst().isGroup.get())) {
-                menu.action(Icons.PASTE, UIKeys.SCENE_REPLAYS_CONTEXT_PASTE, () -> this.pasteReplay(copyReplay));
-            }
-
-            int duration = this.panel.getData().camera.calculateDuration();
-
-            if (duration > 0) {
-                menu.action(Icons.PLAY, UIKeys.SCENE_REPLAYS_CONTEXT_FROM_CAMERA, () -> this.fromCamera(duration));
-            }
-
-            menu.action(Icons.BLOCK, UIKeys.SCENE_REPLAYS_CONTEXT_FROM_MODEL_BLOCK, this::fromModelBlock);
-
-            if (this.isSelected()) {
-                boolean isGroup = this.getCurrentFirst().isGroup.get();
-                boolean shift = Window.isShiftPressed();
-                MapType data = Window.getClipboardMap("_CopyKeyframes");
-
-                if (!isGroup) {
-                    menu.action(Icons.COPY, IKey.constant("Copy keyframes..."), () -> {
-                        this.getContext().replaceContextMenu((sub) -> {
-                            sub.autoKeys();
-                            sub.action(Icons.POSE, IKey.constant("Copy Poses"), () -> this.copyKeyframesFiltered(KeyframeFactories.POSE));
-                            sub.action(Icons.ALL_DIRECTIONS, IKey.constant("Copy Transforms"), () -> this.copyKeyframesFiltered(KeyframeFactories.TRANSFORM));
-                            sub.action(Icons.IMAGE, IKey.constant("Copy texture"), () -> this.copyKeyframesByPropertySuffixes("texture"));
-                            sub.action(Icons.STRUCTURE, IKey.constant("Copy model"), () -> this.copyKeyframesByPropertySuffixes("model"));
-                        });
-                    });
-                    if (data != null) {
-                        menu.action(Icons.PASTE, UIKeys.SCENE_REPLAYS_CONTEXT_PASTE_KEYFRAMES,
-                                () -> this.pasteToReplays(data));
+                    if (copyReplay != null) {
+                        menu.action(Icons.PASTE, UIKeys.SCENE_REPLAYS_CONTEXT_PASTE, () -> this.pasteReplay(copyReplay));
                     }
-                }
 
-                if (!isGroup) {
-                    menu.action(Icons.ALL_DIRECTIONS, UIKeys.SCENE_REPLAYS_CONTEXT_PROCESS, this::processReplays);
-                    menu.action(Icons.TIME, UIKeys.SCENE_REPLAYS_CONTEXT_OFFSET_TIME, this::offsetTimeReplays);
-                    menu.action(Icons.BLOCK, UIKeys.SCENE_REPLAYS_CONTEXT_RANDOM_SKINS, this::applyRandomSkins);
-                }
-
-                if (!isGroup) {
-                    menu.action(Icons.FOLDER, UIKeys.SCENE_REPLAYS_CONTEXT_ADD_GROUP, this::addGroup);
-                    if (!this.getCurrentFirst().group.get().isEmpty()) {
-                        menu.action(Icons.FOLDER, UIKeys.SCENE_REPLAYS_CONTEXT_LEAVE_GROUP, this::leaveGroup);
-                    }
                     menu.action(Icons.DUPE, UIKeys.SCENE_REPLAYS_CONTEXT_DUPE, () -> {
                         if (Window.isShiftPressed() || shift) {
                             this.dupeReplay();
@@ -230,7 +207,52 @@ public class UIReplayList extends UIList<Replay> {
                         }
                     });
                     menu.action(Icons.REMOVE, UIKeys.SCENE_REPLAYS_CONTEXT_REMOVE, this::removeReplay);
+
+                    if (separatedMode) {
+                        this.addContextSeparator(menu);
+                    }
+
+                    if (!compactedMode) {
+                        menu.action(Icons.COPY, UIKeys.SCENE_REPLAYS_CONTEXT_COPY_KEYFRAMES, this::openCopyKeyframesMenu);
+                        menu.action(Icons.PASTE, UIKeys.SCENE_REPLAYS_CONTEXT_PASTE_KEYFRAMES,
+                                () -> this.pasteToReplays(Window.getClipboardMap("_CopyKeyframes")));
+
+                        if (separatedMode) {
+                            this.addContextSeparator(menu);
+                        }
+
+                        menu.action(Icons.BLOCK, UIKeys.SCENE_REPLAYS_CONTEXT_RANDOM_SKINS, this::applyRandomSkins);
+                        menu.action(Icons.ALL_DIRECTIONS, UIKeys.SCENE_REPLAYS_CONTEXT_PROCESS, this::processReplays);
+                        menu.action(Icons.TIME, UIKeys.SCENE_REPLAYS_CONTEXT_OFFSET_TIME, this::offsetTimeReplays);
+
+                        if (separatedMode) {
+                            this.addContextSeparator(menu);
+                        }
+                    }
+
+                    menu.action(Icons.FOLDER, UIKeys.SCENE_REPLAYS_CONTEXT_ADD_GROUP, this::addGroup);
+
+                    if (!this.getCurrentFirst().group.get().isEmpty()) {
+                        menu.action(Icons.FOLDER, UIKeys.SCENE_REPLAYS_CONTEXT_LEAVE_GROUP, this::leaveGroup);
+                    }
+
+                    if (compactedMode) {
+                        menu.action(Icons.MORE, UIKeys.SCENE_REPLAYS_CONTEXT_MORE_OPTIONS, this::openReplayMoreOptionsMenu);
+                    }
                 }
+            } else {
+                MapType copyReplay = Window.getClipboardMap("_CopyReplay");
+                int duration = this.panel.getData().camera.calculateDuration();
+
+                if (copyReplay != null) {
+                    menu.action(Icons.PASTE, UIKeys.SCENE_REPLAYS_CONTEXT_PASTE, () -> this.pasteReplay(copyReplay));
+                }
+
+                if (duration > 0) {
+                    menu.action(Icons.PLAY, UIKeys.SCENE_REPLAYS_CONTEXT_FROM_CAMERA, () -> this.fromCamera(duration));
+                }
+
+                menu.action(Icons.BLOCK, UIKeys.SCENE_REPLAYS_CONTEXT_FROM_MODEL_BLOCK, this::fromModelBlock);
             }
 
             for (BiConsumer<UIReplayList, ContextMenuManager> consumer : extensions) {
@@ -247,6 +269,31 @@ public class UIReplayList extends UIList<Replay> {
         }
 
         return replayEditor.keyframeEditor.view.getGraph().getSelected() != null;
+    }
+
+    private void openCopyKeyframesMenu() {
+        this.getContext().replaceContextMenu((sub) -> {
+            sub.autoKeys();
+            sub.action(Icons.POSE, IKey.constant("Copy Poses"), () -> this.copyKeyframesFiltered(KeyframeFactories.POSE));
+            sub.action(Icons.ALL_DIRECTIONS, IKey.constant("Copy Transforms"), () -> this.copyKeyframesFiltered(KeyframeFactories.TRANSFORM));
+            sub.action(Icons.IMAGE, IKey.constant("Copy texture"), () -> this.copyKeyframesByPropertySuffixes("texture"));
+            sub.action(Icons.STRUCTURE, IKey.constant("Copy model"), () -> this.copyKeyframesByPropertySuffixes("model"));
+        });
+    }
+
+    private void openReplayMoreOptionsMenu() {
+        this.getContext().replaceContextMenu((sub) -> {
+            sub.autoKeys();
+            sub.action(Icons.COPY, UIKeys.SCENE_REPLAYS_CONTEXT_COPY_KEYFRAMES, this::openCopyKeyframesMenu);
+            sub.action(Icons.PASTE, UIKeys.SCENE_REPLAYS_CONTEXT_PASTE_KEYFRAMES, () -> this.pasteToReplays(Window.getClipboardMap("_CopyKeyframes")));
+            sub.action(Icons.BLOCK, UIKeys.SCENE_REPLAYS_CONTEXT_RANDOM_SKINS, this::applyRandomSkins);
+            sub.action(Icons.ALL_DIRECTIONS, UIKeys.SCENE_REPLAYS_CONTEXT_PROCESS, this::processReplays);
+            sub.action(Icons.TIME, UIKeys.SCENE_REPLAYS_CONTEXT_OFFSET_TIME, this::offsetTimeReplays);
+        });
+    }
+
+    private void addContextSeparator(ContextMenuManager menu) {
+        menu.action(new ContextSeparatorAction());
     }
 
     private void copyKeyframesFiltered(IKeyframeFactory... factories) {

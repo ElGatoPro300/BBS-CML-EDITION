@@ -450,6 +450,9 @@ public class UIKeys
     public static final IKey CONFIG_EDITOR_TICKS_MODE = L10n.lang("cml.config.editor.ticks");
     public static final IKey CONFIG_EDITOR_SECONDS_MODE = L10n.lang("cml.config.editor.seconds");
     public static final IKey CONFIG_EDITOR_FRAMES_MODE = L10n.lang("cml.config.editor.frames");
+    public static final IKey CONFIG_GENERAL_COMPACTED_OPTIONS_DEFAULT = L10n.lang("cml.config.general.compacted_options.default");
+    public static final IKey CONFIG_GENERAL_COMPACTED_OPTIONS_SEPARATED = L10n.lang("cml.config.general.compacted_options.separated");
+    public static final IKey CONFIG_GENERAL_COMPACTED_OPTIONS_COMPACTED = L10n.lang("cml.config.general.compacted_options.compacted");
     public static final IKey CONFIG_EDITOR_TICKS = L10n.lang("bbs.config.editor.ticks");
     public static final IKey CONFIG_EDITOR_SECONDS = L10n.lang("bbs.config.editor.seconds");
     public static final IKey CONFIG_EDITOR_FRAMES = L10n.lang("bbs.config.editor.frames");
@@ -898,6 +901,7 @@ public class UIKeys
     public static final IKey SCENE_REPLAYS_CONTEXT_ADD = L10n.lang("bbs.ui.scene.replays.context.add");
     public static final IKey SCENE_REPLAYS_CONTEXT_ADD_GROUP = L10n.lang("bbs.ui.scene.replays.context.add_group");
     public static final IKey SCENE_REPLAYS_CONTEXT_COPY = L10n.lang("bbs.ui.scene.replays.context.copy");
+    public static final IKey SCENE_REPLAYS_CONTEXT_COPY_KEYFRAMES = L10n.lang("bbs.ui.scene.replays.context.copy_keyframes");
     public static final IKey SCENE_REPLAYS_CONTEXT_COPY_GROUP = L10n.lang("bbs.ui.scene.replays.context.copy_group");
     public static final IKey SCENE_REPLAYS_CONTEXT_DELETE_GROUP = L10n.lang("bbs.ui.scene.replays.context.delete_group");
     public static final IKey SCENE_REPLAYS_CONTEXT_DUPE = L10n.lang("bbs.ui.scene.replays.context.dupe");
@@ -954,6 +958,7 @@ public class UIKeys
     public static final IKey SCENE_REPLAYS_CONTEXT_PROCESS_SECTION_SCATTER = L10n.lang("bbs.ui.scene.replays.context.process.section.scatter");
     public static final IKey SCENE_REPLAYS_CONTEXT_PROCESS_TITLE = L10n.lang("bbs.ui.scene.replays.context.process-title");
     public static final IKey SCENE_REPLAYS_CONTEXT_REMOVE = L10n.lang("bbs.ui.scene.replays.context.remove");
+    public static final IKey SCENE_REPLAYS_CONTEXT_MORE_OPTIONS = L10n.lang("bbs.ui.scene.replays.context.more_options");
     public static final IKey SCENE_REPLAYS_CONTEXT_LEAVE_GROUP = L10n.lang("bbs.ui.scene.replays.context.leave_group");
     public static final IKey SCENE_REPLAYS_CONTEXT_UNGROUP = L10n.lang("bbs.ui.scene.replays.context.ungroup");
     public static final IKey SELECTORS_CONTEXT_ADD = L10n.lang("bbs.ui.selectors.context.add");
