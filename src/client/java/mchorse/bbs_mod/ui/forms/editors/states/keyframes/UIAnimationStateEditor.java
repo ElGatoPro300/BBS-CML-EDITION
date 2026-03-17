@@ -5,6 +5,7 @@ import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.entities.IEntity;
+import mchorse.bbs_mod.forms.forms.BodyPart;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.forms.ModelForm;
 import mchorse.bbs_mod.forms.renderers.ModelFormRenderer;
@@ -12,6 +13,7 @@ import mchorse.bbs_mod.forms.renderers.utils.MatrixCache;
 import mchorse.bbs_mod.forms.renderers.utils.MatrixCacheEntry;
 import mchorse.bbs_mod.forms.states.AnimationState;
 import mchorse.bbs_mod.graphics.window.Window;
+import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.settings.values.base.BaseValueBasic;
@@ -61,6 +63,7 @@ public class UIAnimationStateEditor extends UIElement
 
     private AnimationState state;
     private Set<String> keys = new LinkedHashSet<>();
+    private final Map<String, Boolean> collapsedModelTracks = new java.util.HashMap<>();
 
     public UIAnimationStateEditor(UIFormEditor editor)
     {
@@ -132,9 +135,13 @@ public class UIAnimationStateEditor extends UIElement
         }
 
         List<UIKeyframeSheet> sheets = new ArrayList<>();
+        Set<String> propertyPaths = new LinkedHashSet<>(FormUtils.collectPropertyPaths(this.editor.form));
+        this.collectLimbTracks(this.editor.form, propertyPaths);
+
+        List<UIKeyframeSheet> rawSheets = new ArrayList<>();
 
         /* Form properties */
-        for (String key : FormUtils.collectPropertyPaths(this.editor.form))
+        for (String key : propertyPaths)
         {
             KeyframeChannel property = this.state.properties.getOrCreate(this.editor.form, key);
 
@@ -143,13 +150,57 @@ public class UIAnimationStateEditor extends UIElement
                 BaseValueBasic formProperty = FormUtils.getProperty(this.editor.form, key);
                 UIKeyframeSheet sheet = new UIKeyframeSheet(UIReplaysEditor.getColor(key), false, property, formProperty);
 
-                sheets.add(sheet.icon(UIReplaysEditor.getIcon(key)));
+                rawSheets.add(sheet.icon(UIReplaysEditor.getIcon(key)));
             }
         }
 
+        /* Group limb tracks under pose tracks */
+        List<UIKeyframeSheet> grouped = new ArrayList<>();
+        for (UIKeyframeSheet sheet : rawSheets)
+        {
+            if (sheet.id.indexOf(':') != -1)
+            {
+                continue;
+            }
+
+            grouped.add(sheet);
+
+            String trackName = StringUtils.fileName(sheet.id);
+
+            /* Only "pose" track gets the dropdown/expansion logic */
+            if (trackName.equals("pose"))
+            {
+                String parentKey = "animation_state:" + sheet.id;
+                boolean expanded = !this.collapsedModelTracks.getOrDefault(parentKey, true);
+
+                sheet.expanded = expanded;
+                sheet.toggleExpanded = () ->
+                {
+                    this.collapsedModelTracks.put(parentKey, !this.collapsedModelTracks.getOrDefault(parentKey, true));
+                    this.setState(this.state);
+                };
+
+                if (expanded)
+                {
+                    for (UIKeyframeSheet limb : rawSheets)
+                    {
+                        int colon = limb.id.indexOf(':');
+
+                        if (colon != -1 && limb.id.substring(0, colon).equals(sheet.id))
+                        {
+                            limb.level = 1;
+                            limb.title = IKey.constant(limb.id.substring(colon + 1));
+                            grouped.add(limb);
+                        }
+                    }
+                }
+            }
+        }
+        sheets = grouped;
+
         this.keys.clear();
 
-        for (UIKeyframeSheet sheet : sheets)
+        for (UIKeyframeSheet sheet : rawSheets)
         {
             this.keys.add(StringUtils.fileName(sheet.id));
         }
@@ -231,6 +282,14 @@ public class UIAnimationStateEditor extends UIElement
                             });
                         }
                         menu.action(Icons.CONVERT, UIKeys.FILM_REPLAY_CONTEXT_POSE_TO_LIMBS, () -> this.convertToLimbs(sheet));
+                    }
+                    else if (sheet.id.indexOf(':') != -1)
+                    {
+                        menu.action(Icons.REMOVE, UIKeys.KEYFRAMES_CONTEXT_REMOVE, () ->
+                        {
+                            this.keyframeEditor.view.getGraph().removeKeyframe(this.keyframeEditor.view.getGraph().getSelected());
+                            this.setState(this.state);
+                        });
                     }
                 }
 
@@ -410,6 +469,39 @@ public class UIAnimationStateEditor extends UIElement
         });
 
         this.setState(this.state);
+    }
+
+    private void collectLimbTracks(Form form, Set<String> propertyPaths)
+    {
+        if (form == null || !form.animatable.get())
+        {
+            return;
+        }
+
+        if (form instanceof ModelForm modelForm)
+        {
+            ModelInstance model = ModelFormRenderer.getModel(modelForm);
+
+            if (model != null)
+            {
+                String path = FormUtils.getPath(modelForm);
+
+                for (String bone : model.model.getAllGroupKeys())
+                {
+                    if (bone.startsWith("armor_") || bone.endsWith("_item"))
+                    {
+                        continue;
+                    }
+
+                    propertyPaths.add(StringUtils.combinePaths(path, "pose") + ":" + bone);
+                }
+            }
+        }
+
+        for (BodyPart part : form.parts.getAllTyped())
+        {
+            this.collectLimbTracks(part.getForm(), propertyPaths);
+        }
     }
 
     @Override
