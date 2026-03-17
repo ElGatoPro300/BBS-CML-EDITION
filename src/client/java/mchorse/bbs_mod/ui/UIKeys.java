@@ -898,8 +898,11 @@ public class UIKeys
     public static final IKey SCENE_REPLAYS_CONTEXT_ADD = L10n.lang("bbs.ui.scene.replays.context.add");
     public static final IKey SCENE_REPLAYS_CONTEXT_ADD_GROUP = L10n.lang("bbs.ui.scene.replays.context.add_group");
     public static final IKey SCENE_REPLAYS_CONTEXT_COPY = L10n.lang("bbs.ui.scene.replays.context.copy");
+    public static final IKey SCENE_REPLAYS_CONTEXT_COPY_GROUP = L10n.lang("bbs.ui.scene.replays.context.copy_group");
+    public static final IKey SCENE_REPLAYS_CONTEXT_DELETE_GROUP = L10n.lang("bbs.ui.scene.replays.context.delete_group");
     public static final IKey SCENE_REPLAYS_CONTEXT_DUPE = L10n.lang("bbs.ui.scene.replays.context.dupe");
     public static final IKey SCENE_REPLAYS_CONTEXT_DUPE_DESCRIPTION = L10n.lang("bbs.ui.scene.replays.context.dupe-description");
+    public static final IKey SCENE_REPLAYS_CONTEXT_DUPE_GROUP = L10n.lang("bbs.ui.scene.replays.context.dupe_group");
     public static final IKey SCENE_REPLAYS_CONTEXT_EDIT_FORM = L10n.lang("bbs.ui.scene.replays.context.edit_form");
     public static final IKey SCENE_REPLAYS_CONTEXT_FROM_CAMERA = L10n.lang("bbs.ui.scene.replays.context.from_camera");
     public static final IKey SCENE_REPLAYS_CONTEXT_FROM_MODEL_BLOCK = L10n.lang("bbs.ui.scene.replays.context.from_model_block");
@@ -922,6 +925,7 @@ public class UIKeys
     public static final IKey SCENE_REPLAYS_CONTEXT_OFFSET_TIME_RANDOM_MIN = L10n.lang("bbs.ui.scene.replays.context.offset_time.random_min");
     public static final IKey SCENE_REPLAYS_CONTEXT_OFFSET_TIME_RANDOM_MAX = L10n.lang("bbs.ui.scene.replays.context.offset_time.random_max");
     public static final IKey SCENE_REPLAYS_CONTEXT_PASTE = L10n.lang("bbs.ui.scene.replays.context.paste");
+    public static final IKey SCENE_REPLAYS_CONTEXT_PASTE_GROUP = L10n.lang("bbs.ui.scene.replays.context.paste_group");
     public static final IKey SCENE_REPLAYS_CONTEXT_PASTE_KEYFRAMES = L10n.lang("bbs.ui.scene.replays.context.paste_keyframes");
     public static final IKey SCENE_REPLAYS_CONTEXT_PASTE_KEYFRAMES_DESCRIPTION = L10n.lang("bbs.ui.scene.replays.context.paste_keyframes-description");
     public static final IKey SCENE_REPLAYS_CONTEXT_PASTE_KEYFRAMES_TITLE = L10n.lang("bbs.ui.scene.replays.context.paste_keyframes-title");
@@ -950,6 +954,8 @@ public class UIKeys
     public static final IKey SCENE_REPLAYS_CONTEXT_PROCESS_SECTION_SCATTER = L10n.lang("bbs.ui.scene.replays.context.process.section.scatter");
     public static final IKey SCENE_REPLAYS_CONTEXT_PROCESS_TITLE = L10n.lang("bbs.ui.scene.replays.context.process-title");
     public static final IKey SCENE_REPLAYS_CONTEXT_REMOVE = L10n.lang("bbs.ui.scene.replays.context.remove");
+    public static final IKey SCENE_REPLAYS_CONTEXT_LEAVE_GROUP = L10n.lang("bbs.ui.scene.replays.context.leave_group");
+    public static final IKey SCENE_REPLAYS_CONTEXT_UNGROUP = L10n.lang("bbs.ui.scene.replays.context.ungroup");
     public static final IKey SELECTORS_CONTEXT_ADD = L10n.lang("bbs.ui.selectors.context.add");
     public static final IKey SELECTORS_CONTEXT_REMOVE = L10n.lang("bbs.ui.selectors.context.remove");
     public static final IKey SELECTORS_ENTITY_ID = L10n.lang("bbs.ui.selectors.entity_id");
