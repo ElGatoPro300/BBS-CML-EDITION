@@ -44,6 +44,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
     
     public UIElement modelSettingsPanel;
     public UIModelIKPanel ikPanel;
+    public UIModelGeometryPanel geometryPanel;
     public UIScrollView sectionsView;
     public UIScrollView rightView;
     public List<UIModelSection> sections = new ArrayList<>();
@@ -101,11 +102,12 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         this.iconBar.add(spacer);
 
         this.ikPanel = new UIModelIKPanel(this);
+        this.geometryPanel = new UIModelGeometryPanel(this);
 
         this.registerPanel(this.modelSettingsPanel, UIKeys.MODELS_SETTINGS, Icons.MODELS_SETTINGS);
         this.registerPanel(this.ikPanel, UIKeys.MODELS_IK_EDITOR, Icons.IK);
         this.registerPanel(this.createUnavailablePanel(), UIKeys.MODELS_DYNAMIC_BONES, Icons.DYNAMIC_BONES);
-        this.registerPanel(this.createUnavailablePanel(), UIKeys.MODELS_GEOMETRY_EDITOR, Icons.GEOMETRY_EDITOR);
+        this.registerPanel(this.geometryPanel, UIKeys.MODELS_GEOMETRY_EDITOR, Icons.GEOMETRY_EDITOR);
 
         this.setPanel(this.modelSettingsPanel);
         
@@ -220,6 +222,10 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         {
             this.ikPanel.setConfig(this.data);
         }
+        if (this.geometryPanel != null)
+        {
+            this.geometryPanel.setConfig(this.data);
+        }
 
         this.sectionsView.resize();
         this.rightView.resize();
@@ -277,6 +283,11 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
                 this.renderer.transform = ((UIModelPartsSection) section).poseEditor.transform;
             }
         }
+
+        if (this.geometryPanel != null)
+        {
+            this.geometryPanel.selectBone(bone);
+        }
     }
 
     public void selectBoneFromEditor(String bone)
@@ -323,6 +334,10 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
             if (this.ikPanel != null)
             {
                 this.ikPanel.setConfig(data);
+            }
+            if (this.geometryPanel != null)
+            {
+                this.geometryPanel.setConfig(data);
             }
             
             this.sectionsView.resize();

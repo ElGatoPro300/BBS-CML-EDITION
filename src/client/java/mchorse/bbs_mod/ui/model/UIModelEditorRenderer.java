@@ -5,7 +5,14 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.cubic.ModelInstance;
+import mchorse.bbs_mod.cubic.data.model.Model;
+import mchorse.bbs_mod.cubic.data.model.ModelCube;
+import mchorse.bbs_mod.cubic.data.model.ModelGroup;
+import mchorse.bbs_mod.cubic.data.model.ModelQuad;
+import mchorse.bbs_mod.cubic.data.model.ModelVertex;
 import mchorse.bbs_mod.cubic.model.IKChainConfig;
+import mchorse.bbs_mod.cubic.render.CubicCubeRenderer;
+import mchorse.bbs_mod.cubic.render.ICubicRenderer;
 import mchorse.bbs_mod.cubic.model.ModelConfig;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.forms.FormUtilsClient;
@@ -36,9 +43,12 @@ import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.util.math.RotationAxis;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Consumer;
 
 import mchorse.bbs_mod.ui.utils.Gizmo;
@@ -46,6 +56,7 @@ import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.forms.renderers.utils.MatrixCache;
 import mchorse.bbs_mod.forms.renderers.utils.MatrixCacheEntry;
+import mchorse.bbs_mod.utils.MathUtils;
 
 public class UIModelEditorRenderer extends UIModelRenderer
 {
@@ -56,6 +67,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
     private ModelConfig config;
     private Consumer<String> callback;
     private String selectedBone;
+    private ModelCube selectedCube;
     private boolean dirty = true;
 
     private StencilFormFramebuffer stencil = new StencilFormFramebuffer();
@@ -95,6 +107,17 @@ public class UIModelEditorRenderer extends UIModelRenderer
     public void dirty()
     {
         this.dirty = true;
+    }
+
+    public ModelInstance getPreviewModelInstance()
+    {
+        return this.getModel();
+    }
+
+    public void invalidatePreviewModel()
+    {
+        this.deletePreview();
+        this.dirty();
     }
 
     private void ensureFramebuffer()
@@ -159,6 +182,11 @@ public class UIModelEditorRenderer extends UIModelRenderer
         return this.selectedBone;
     }
 
+    public void setSelectedCube(ModelCube cube)
+    {
+        this.selectedCube = cube;
+    }
+
     @Override
     protected void renderUserModel(UIContext context)
     {
@@ -171,39 +199,47 @@ public class UIModelEditorRenderer extends UIModelRenderer
 
         this.renderer.render(formContext);
         this.renderIKVisualizer(context);
+        MatrixCache matrixCache = this.renderer.collectMatrices(this.entity, context.getTransition());
+        this.renderSelectedCubeVisualizer(context, matrixCache);
 
         /* Render Axes */
         Matrix4f gizmoMatrix = null;
 
         if (UIBaseMenu.renderAxes && this.selectedBone != null && !this.selectedBone.isEmpty())
         {
-            MatrixCache map = this.renderer.collectMatrices(this.entity, context.getTransition());
-            MatrixCacheEntry entry = map.get(this.selectedBone);
-            
-            if (entry != null)
+            if (this.selectedCube != null)
             {
-                Matrix4f matrix = entry.origin();
-                
-                if (matrix == null)
-                {
-                    matrix = entry.matrix();
-                }
-                
-                if (matrix != null)
-                {
-                    gizmoMatrix = matrix;
+                gizmoMatrix = this.getCubePivotMatrix(matrixCache);
+            }
+            else
+            {
+                MatrixCacheEntry entry = matrixCache.get(this.selectedBone);
 
-                    MatrixStack stack = context.batcher.getContext().getMatrices();
-                    
-                    stack.push();
-                    MatrixStackUtils.multiply(stack, matrix);
-                    
-                    RenderSystem.disableDepthTest();
-                    Gizmo.INSTANCE.render(stack);
-                    RenderSystem.enableDepthTest();
-                    
-                    stack.pop();
+                if (entry != null)
+                {
+                    Matrix4f matrix = entry.origin();
+
+                    if (matrix == null)
+                    {
+                        matrix = entry.matrix();
+                    }
+
+                    gizmoMatrix = matrix;
                 }
+            }
+
+            if (gizmoMatrix != null)
+            {
+                MatrixStack stack = context.batcher.getContext().getMatrices();
+
+                stack.push();
+                MatrixStackUtils.multiply(stack, gizmoMatrix);
+
+                RenderSystem.disableDepthTest();
+                Gizmo.INSTANCE.render(stack);
+                RenderSystem.enableDepthTest();
+
+                stack.pop();
             }
         }
 
@@ -306,6 +342,117 @@ public class UIModelEditorRenderer extends UIModelRenderer
         }
 
         BufferRenderer.drawWithGlobalProgram(builder.end());
+    }
+
+    private void renderSelectedCubeVisualizer(UIContext context, MatrixCache cache)
+    {
+        if (this.selectedCube == null || this.selectedBone == null || this.selectedBone.isEmpty())
+        {
+            return;
+        }
+
+        Matrix4f cubeMatrix = this.getCubePivotMatrix(cache);
+        Matrix4f uiMatrix = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
+
+        if (cubeMatrix == null)
+        {
+            return;
+        }
+
+        MatrixStack cubeStack = new MatrixStack();
+
+        MatrixStackUtils.multiply(cubeStack, cubeMatrix);
+        CubicCubeRenderer.rotate(cubeStack, this.selectedCube.rotate);
+        CubicCubeRenderer.moveBackFromPivot(cubeStack, this.selectedCube.pivot);
+
+        cubeMatrix = new Matrix4f(cubeStack.peek().getPositionMatrix());
+
+        if (this.selectedCube.quads.isEmpty())
+        {
+            return;
+        }
+
+        BufferBuilder builder = Tessellator.getInstance().getBuffer();
+
+        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
+        RenderSystem.enableBlend();
+        builder.begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
+
+        for (ModelQuad quad : this.selectedCube.quads)
+        {
+            if (quad.vertices.size() != 4)
+            {
+                continue;
+            }
+
+            for (int i = 0; i < 4; i++)
+            {
+                ModelVertex va = quad.vertices.get(i);
+                ModelVertex vb = quad.vertices.get((i + 1) % 4);
+                Vector3f a = new Vector3f(va.vertex);
+                Vector3f b = new Vector3f(vb.vertex);
+
+                cubeMatrix.transformPosition(a);
+                cubeMatrix.transformPosition(b);
+
+                this.line(builder, uiMatrix, a, b, 1F, 0.6F, 0F, 1F);
+            }
+        }
+
+        BufferRenderer.drawWithGlobalProgram(builder.end());
+    }
+
+    private Matrix4f getCubePivotMatrix(MatrixCache cache)
+    {
+        if (this.selectedCube == null || this.selectedBone == null || this.selectedBone.isEmpty())
+        {
+            return null;
+        }
+
+        ModelInstance instance = this.getPreviewModelInstance();
+
+        if (instance == null || !(instance.model instanceof Model model))
+        {
+            return null;
+        }
+
+        ModelGroup group = model.getGroup(this.selectedBone);
+
+        if (group == null)
+        {
+            return null;
+        }
+
+        MatrixStack cubeStack = new MatrixStack();
+        MatrixCacheEntry rootEntry = cache.get("");
+        Matrix4f rootMatrix = rootEntry == null ? null : rootEntry.matrix();
+
+        if (rootMatrix != null)
+        {
+            MatrixStackUtils.multiply(cubeStack, rootMatrix);
+        }
+
+        cubeStack.multiply(RotationAxis.POSITIVE_Y.rotation(MathUtils.PI));
+
+        List<ModelGroup> chain = new ArrayList<>();
+
+        for (ModelGroup cursor = group; cursor != null; cursor = cursor.parent)
+        {
+            chain.add(0, cursor);
+        }
+
+        for (ModelGroup element : chain)
+        {
+            ICubicRenderer.translateGroup(cubeStack, element);
+            ICubicRenderer.moveToGroupPivot(cubeStack, element);
+            ICubicRenderer.rotateGroup(cubeStack, element);
+            ICubicRenderer.scaleGroup(cubeStack, element);
+            ICubicRenderer.moveBackFromGroupPivot(cubeStack, element);
+        }
+
+        CubicCubeRenderer.moveToPivot(cubeStack, this.selectedCube.pivot);
+
+        return new Matrix4f(cubeStack.peek().getPositionMatrix());
     }
 
     private Vector3f getBonePoint(MatrixCache cache, String bone)
