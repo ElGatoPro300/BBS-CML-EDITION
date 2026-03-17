@@ -148,17 +148,17 @@ public class UIReplayList extends UIList<Replay> {
                 boolean isGroup = this.getCurrentFirst().isGroup.get();
 
                 if (isGroup) {
-                    menu.action(Icons.COPY, IKey.constant("Copy group"), this::copyGroup);
+                    menu.action(Icons.COPY, UIKeys.SCENE_REPLAYS_CONTEXT_COPY_GROUP, this::copyGroup);
 
                     MapType copyGroup = Window.getClipboardMap(GROUP_CLIPBOARD_KEY);
 
                     if (copyGroup != null) {
-                        menu.action(Icons.PASTE, IKey.constant("Paste group"), () -> this.pasteGroup(copyGroup));
+                        menu.action(Icons.PASTE, UIKeys.SCENE_REPLAYS_CONTEXT_PASTE_GROUP, () -> this.pasteGroup(copyGroup));
                     }
 
-                    menu.action(Icons.DUPE, IKey.constant("Duplicate group"), this::duplicateGroup);
-                    menu.action(Icons.REMOVE, IKey.constant("Delete group"), this::deleteGroup);
-                    menu.action(Icons.FOLDER, IKey.constant("Ungroup"), this::ungroupReplay);
+                    menu.action(Icons.DUPE, UIKeys.SCENE_REPLAYS_CONTEXT_DUPE_GROUP, this::duplicateGroup);
+                    menu.action(Icons.REMOVE, UIKeys.SCENE_REPLAYS_CONTEXT_DELETE_GROUP, this::deleteGroup);
+                    menu.action(Icons.FOLDER, UIKeys.SCENE_REPLAYS_CONTEXT_UNGROUP, this::ungroupReplay);
                     menu.action(Icons.ADD, UIKeys.SCENE_REPLAYS_CONTEXT_ADD, this::addReplay);
                 } else {
                     menu.action(Icons.COPY, UIKeys.SCENE_REPLAYS_CONTEXT_COPY, this::copyReplay);
@@ -209,7 +209,7 @@ public class UIReplayList extends UIList<Replay> {
                 if (!isGroup) {
                     menu.action(Icons.FOLDER, UIKeys.SCENE_REPLAYS_CONTEXT_ADD_GROUP, this::addGroup);
                     if (!this.getCurrentFirst().group.get().isEmpty()) {
-                        menu.action(Icons.FOLDER, IKey.constant("Leave group"), this::leaveGroup);
+                        menu.action(Icons.FOLDER, UIKeys.SCENE_REPLAYS_CONTEXT_LEAVE_GROUP, this::leaveGroup);
                     }
                     menu.action(Icons.DUPE, UIKeys.SCENE_REPLAYS_CONTEXT_DUPE, () -> {
                         if (Window.isShiftPressed() || shift) {
