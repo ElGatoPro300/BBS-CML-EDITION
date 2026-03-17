@@ -8,13 +8,21 @@ import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
+import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
+import mchorse.bbs_mod.ui.framework.elements.context.UISimpleContextMenu;
+import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.utils.UI;
+import mchorse.bbs_mod.ui.utils.context.ContextAction;
+import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.Axis;
 import mchorse.bbs_mod.utils.colors.Colors;
 import org.joml.Vector3d;
 import org.lwjgl.glfw.GLFW;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Transformation editor GUI
@@ -153,55 +161,7 @@ public abstract class UITransform extends UIElement
 
         this.context((menu) ->
         {
-            ListType transforms = Window.getClipboardList();
-
-            if (transforms != null && transforms.size() < 12)
-            {
-                transforms = null;
-            }
-
-            menu.autoKeys().action(Icons.COPY, UIKeys.TRANSFORMS_CONTEXT_COPY, this::copyTransformations);
-
-            if (transforms != null)
-            {
-                final ListType innerList = transforms;
-
-                menu.action(Icons.MORE, UIKeys.TRANSFORMS_CONTEXT_PASTES, () ->
-                {
-                    UIContext context = this.getContext();
-
-                    if (context != null)
-                    {
-                        context.replaceContextMenu((pastes) ->
-                        {
-                            pastes.action(Icons.PASTE, UIKeys.TRANSFORMS_CONTEXT_PASTE, () -> this.pasteAll(innerList));
-                            pastes.action(Icons.ALL_DIRECTIONS, UIKeys.TRANSFORMS_CONTEXT_PASTE_TRANSLATION, () -> this.pasteTranslation(this.getVector(innerList, 0)));
-                            pastes.action(Icons.MAXIMIZE, UIKeys.TRANSFORMS_CONTEXT_PASTE_SCALE, () -> this.pasteScale(this.getVector(innerList, 3)));
-                            pastes.action(Icons.REFRESH, UIKeys.TRANSFORMS_CONTEXT_PASTE_ROTATION, () -> this.pasteRotation(this.getVector(innerList, 6)));
-                            pastes.action(Icons.REFRESH, UIKeys.TRANSFORMS_CONTEXT_PASTE_ROTATION2, () -> this.pasteRotation2(this.getVector(innerList, 9)));
-                            pastes.autoKeys();
-                        });
-                    }
-                });
-            }
-
-            menu.action(Icons.MORE, UIKeys.TRANSFORMS_CONTEXT_RESETS, () ->
-            {
-                UIContext context = this.getContext();
-
-                if (context != null)
-                {
-                    context.replaceContextMenu((resets) ->
-                    {
-                        resets.action(Icons.ALL_DIRECTIONS, UIKeys.TRANSFORMS_CONTEXT_RESET_TRANSLATION, this::resetTranslation);
-                        resets.action(Icons.MAXIMIZE, UIKeys.TRANSFORMS_CONTEXT_RESET_SCALE, this::resetScale);
-                        resets.action(Icons.REFRESH, UIKeys.TRANSFORMS_CONTEXT_RESET_ROTATION, this::resetRotation);
-                        resets.action(Icons.REFRESH, UIKeys.TRANSFORMS_CONTEXT_RESET_ROTATION2, this::resetRotation2);
-                        resets.action(Icons.CLOSE, UIKeys.TRANSFORMS_CONTEXT_RESET, this::reset);
-                        resets.autoKeys();
-                    });
-                }
-            });
+            menu.custom(new UITransformContextMenu(this, this.getClipboardTransforms()));
         });
 
         this.wh(190, 90);
@@ -414,6 +374,84 @@ public abstract class UITransform extends UIElement
         }
     }
 
+    protected void addGeneralTabActions(ContextMenuManager menu, ListType transforms)
+    {}
+
+    private ListType getClipboardTransforms()
+    {
+        ListType transforms = Window.getClipboardList();
+
+        if (transforms != null && transforms.size() < 12)
+        {
+            transforms = null;
+        }
+
+        return transforms;
+    }
+
+    private void fillGeneralTabActions(ContextMenuManager menu, ListType transforms)
+    {
+        this.addGeneralTabActions(menu, transforms);
+        menu.action(Icons.COPY, UIKeys.TRANSFORMS_CONTEXT_COPY, this::copyTransformations);
+
+        if (transforms != null)
+        {
+            menu.action(Icons.PASTE, UIKeys.TRANSFORMS_CONTEXT_PASTE, () -> this.pasteAll(transforms));
+        }
+
+        menu.action(Icons.CLOSE, UIKeys.TRANSFORMS_CONTEXT_RESET, this::reset);
+    }
+
+    private void fillPastesTabActions(ContextMenuManager menu, ListType transforms)
+    {
+        if (transforms == null)
+        {
+            return;
+        }
+
+        menu.action(Icons.PASTE, UIKeys.TRANSFORMS_CONTEXT_PASTE, () -> this.pasteAll(transforms));
+        menu.action(Icons.ALL_DIRECTIONS, UIKeys.TRANSFORMS_CONTEXT_PASTE_TRANSLATION, () -> this.pasteTranslation(this.getVector(transforms, 0)));
+        menu.action(Icons.MAXIMIZE, UIKeys.TRANSFORMS_CONTEXT_PASTE_SCALE, () -> this.pasteScale(this.getVector(transforms, 3)));
+        menu.action(Icons.REFRESH, UIKeys.TRANSFORMS_CONTEXT_PASTE_ROTATION, () -> this.pasteRotation(this.getVector(transforms, 6)));
+        menu.action(Icons.REFRESH, UIKeys.TRANSFORMS_CONTEXT_PASTE_ROTATION2, () -> this.pasteRotation2(this.getVector(transforms, 9)));
+    }
+
+    private void fillResetsTabActions(ContextMenuManager menu)
+    {
+        menu.action(Icons.CLOSE, UIKeys.TRANSFORMS_CONTEXT_RESET, this::reset);
+        menu.action(Icons.ALL_DIRECTIONS, UIKeys.TRANSFORMS_CONTEXT_RESET_TRANSLATION, this::resetTranslation);
+        menu.action(Icons.MAXIMIZE, UIKeys.TRANSFORMS_CONTEXT_RESET_SCALE, this::resetScale);
+        menu.action(Icons.REFRESH, UIKeys.TRANSFORMS_CONTEXT_RESET_ROTATION, this::resetRotation);
+        menu.action(Icons.REFRESH, UIKeys.TRANSFORMS_CONTEXT_RESET_ROTATION2, this::resetRotation2);
+    }
+
+    private List<ContextAction> buildGeneralTabActions(ListType transforms)
+    {
+        ContextMenuManager menu = new ContextMenuManager();
+
+        this.fillGeneralTabActions(menu, transforms);
+
+        return new ArrayList<>(menu.actions);
+    }
+
+    private List<ContextAction> buildPastesTabActions(ListType transforms)
+    {
+        ContextMenuManager menu = new ContextMenuManager();
+
+        this.fillPastesTabActions(menu, transforms);
+
+        return new ArrayList<>(menu.actions);
+    }
+
+    private List<ContextAction> buildResetsTabActions()
+    {
+        ContextMenuManager menu = new ContextMenuManager();
+
+        this.fillResetsTabActions(menu);
+
+        return new ArrayList<>(menu.actions);
+    }
+
     public abstract void setT(Axis axis, double x, double y, double z);
 
     public abstract void setS(Axis axis, double x, double y, double z);
@@ -579,5 +617,167 @@ public abstract class UITransform extends UIElement
         }
 
         return super.subKeyPressed(context);
+    }
+
+    private enum TransformContextTab
+    {
+        GENERAL,
+        PASTES,
+        RESETS
+    }
+
+    private static class UITransformContextMenu extends UISimpleContextMenu
+    {
+        private final UIElement tabs;
+        private final UIElement separator;
+        private final UIButton general;
+        private final UIButton pastes;
+        private final UIButton resets;
+        private final List<ContextAction> generalActions;
+        private final List<ContextAction> pastesActions;
+        private final List<ContextAction> resetsActions;
+        private TransformContextTab tab = TransformContextTab.GENERAL;
+
+        public UITransformContextMenu(UITransform transform, ListType transforms)
+        {
+            this.generalActions = transform.buildGeneralTabActions(transforms);
+            this.pastesActions = transform.buildPastesTabActions(transforms);
+            this.resetsActions = transform.buildResetsTabActions();
+            this.general = new UITabButton(UIKeys.MODELS_GENERAL, (b) -> this.setTab(TransformContextTab.GENERAL));
+            this.pastes = new UITabButton(UIKeys.TRANSFORMS_CONTEXT_PASTES, (b) -> this.setTab(TransformContextTab.PASTES));
+            this.resets = new UITabButton(UIKeys.TRANSFORMS_CONTEXT_RESETS, (b) -> this.setTab(TransformContextTab.RESETS));
+            this.tabs = UI.row(2, this.general, this.pastes, this.resets);
+            this.separator = new UIElement()
+            {
+                @Override
+                public void render(UIContext context)
+                {
+                    context.batcher.box(this.area.x + 3, this.area.y, this.area.ex() - 3, this.area.ey(), 0x22ffffff);
+                }
+            };
+
+            this.tabs.relative(this).xy(5, 5).w(1F, -10).h(20);
+            this.separator.relative(this).xy(0, 29).w(1F).h(1);
+            this.actions.relative(this).xy(0, 34).w(1F).h(1F, -34);
+            this.add(this.tabs, this.separator);
+            this.pastes.setEnabled(!this.pastesActions.isEmpty());
+            this.setTab(TransformContextTab.GENERAL);
+        }
+
+        private void setTab(TransformContextTab tab)
+        {
+            this.tab = tab;
+            ((UITabButton) this.general).setActive(tab == TransformContextTab.GENERAL);
+            ((UITabButton) this.pastes).setActive(tab == TransformContextTab.PASTES);
+            ((UITabButton) this.resets).setActive(tab == TransformContextTab.RESETS);
+
+            if (tab == TransformContextTab.GENERAL)
+            {
+                this.actions.setList(new ArrayList<>(this.generalActions));
+            }
+            else if (tab == TransformContextTab.PASTES)
+            {
+                this.actions.setList(new ArrayList<>(this.pastesActions));
+            }
+            else
+            {
+                this.actions.setList(new ArrayList<>(this.resetsActions));
+            }
+
+            UIContext context = this.getContext();
+
+            if (context != null)
+            {
+                this.h(this.calculateHeight());
+                this.bounds(context.menu.overlay, 5);
+                this.resize();
+            }
+        }
+
+        @Override
+        public void setMouse(UIContext context)
+        {
+            int w = 190;
+
+            for (ContextAction action : this.generalActions)
+            {
+                w = Math.max(w, action.getWidth(context.batcher.getFont()));
+            }
+
+            for (ContextAction action : this.pastesActions)
+            {
+                w = Math.max(w, action.getWidth(context.batcher.getFont()));
+            }
+
+            for (ContextAction action : this.resetsActions)
+            {
+                w = Math.max(w, action.getWidth(context.batcher.getFont()));
+            }
+
+            int h = this.calculateHeight();
+
+            this.xy(context.mouseX(), context.mouseY()).w(w).h(h).bounds(context.menu.overlay, 5);
+            this.resize();
+        }
+
+        private int calculateHeight()
+        {
+            int actions = 1;
+
+            if (this.tab == TransformContextTab.GENERAL)
+            {
+                actions = this.generalActions.size();
+            }
+            else if (this.tab == TransformContextTab.PASTES)
+            {
+                actions = this.pastesActions.size();
+            }
+            else if (this.tab == TransformContextTab.RESETS)
+            {
+                actions = this.resetsActions.size();
+            }
+
+            actions = Math.max(actions, 1);
+
+            return 39 + actions * this.actions.scroll.scrollItemSize;
+        }
+
+        private static class UITabButton extends UIButton
+        {
+            private boolean active;
+
+            public UITabButton(IKey label, java.util.function.Consumer<UIButton> callback)
+            {
+                super(label, callback);
+            }
+
+            public void setActive(boolean active)
+            {
+                this.active = active;
+            }
+
+            @Override
+            protected void renderSkin(UIContext context)
+            {
+                int alpha = this.active ? Colors.A100 : Colors.a(0.25F);
+                int color = BBSSettings.primaryColor(alpha);
+
+                if (this.hover)
+                {
+                    color = Colors.mulRGB(color, 0.85F);
+                }
+
+                this.area.render(context.batcher, color);
+
+                FontRenderer font = context.batcher.getFont();
+                String label = font.limitToWidth(this.label.get(), this.area.w - 4);
+                int x = this.area.mx(font.getWidth(label));
+                int y = this.area.my(font.getHeight());
+
+                context.batcher.text(label, x, y, Colors.WHITE, true);
+
+                this.renderLockedArea(context);
+            }
+        }
     }
 }

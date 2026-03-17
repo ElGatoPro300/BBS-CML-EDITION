@@ -1488,7 +1488,7 @@
     "bbs.ui.transforms.context.reset_scale": "Reset scale",
     "bbs.ui.transforms.context.reset_rotation": "Reset rotation",
     "bbs.ui.transforms.context.reset_rotation2": "Reset rotation (2nd)",
-    "bbs.ui.transforms.context.reset": "Reset transformation",
+    "bbs.ui.transforms.context.reset": "Reset transformations",
     "bbs.ui.transforms.context.switch_global": "Switch to global",
     "bbs.ui.transforms.context.switch_local": "Switch to local",
     "bbs.ui.transforms.editing": "Editing...",
