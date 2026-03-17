@@ -92,8 +92,25 @@ public class UIPropTransform extends UITransform
 
     public UIPropTransform callbacks(Runnable pre, Runnable post)
     {
-        this.preCallback = pre;
-        this.postCallback = post;
+        if (pre != null)
+        {
+            Runnable existing = this.preCallback;
+            this.preCallback = existing == null ? pre : () ->
+            {
+                existing.run();
+                pre.run();
+            };
+        }
+
+        if (post != null)
+        {
+            Runnable existing = this.postCallback;
+            this.postCallback = existing == null ? post : () ->
+            {
+                existing.run();
+                post.run();
+            };
+        }
 
         return this;
     }
