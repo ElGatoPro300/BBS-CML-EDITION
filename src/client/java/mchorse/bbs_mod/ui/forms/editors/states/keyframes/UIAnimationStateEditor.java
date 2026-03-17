@@ -293,7 +293,7 @@ public class UIAnimationStateEditor extends UIElement
                     }
                 }
 
-                if (this.keyframeEditor.view.getGraph() instanceof UIKeyframeDopeSheet)
+                if (this.keyframeEditor.view.getGraph() instanceof UIKeyframeDopeSheet && (sheet == null || !sheet.groupHeader))
                 {
                     menu.action(Icons.FILTER, UIKeys.FILM_REPLAY_FILTER_SHEETS, () ->
                     {
