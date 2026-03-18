@@ -16,7 +16,10 @@ import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
+import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
+import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
+import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UIList;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UISearchList;
@@ -24,6 +27,7 @@ import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
+import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
 import mchorse.bbs_mod.utils.IOUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
 import org.joml.Vector2f;
@@ -70,10 +74,12 @@ public class UIModelGeometryPanel extends UIElement
     private final UITrackpad cubeUvX;
     private final UITrackpad cubeUvY;
     private final UIToggle cubeMirror;
-    private final UIButton addCubeButton;
-    private final UIButton removeCubeButton;
+    private final UIIcon addCubeIcon;
+    private final UIIcon addFolderIcon;
     private final UIToggle autoSaveToggle;
     private final Set<String> collapsedGroupIds = new HashSet<>();
+    private ModelGroup copiedGroup;
+    private ModelCube copiedCube;
 
     private ModelConfig config;
     private ModelInstance instance;
@@ -148,6 +154,22 @@ public class UIModelGeometryPanel extends UIElement
                     }
                 }
 
+                if (this.area.isInside(context) && context.mouseButton == 1)
+                {
+                    int visibleIndex = this.scroll.getIndex(context.mouseX, context.mouseY);
+
+                    if (this.exists(visibleIndex))
+                    {
+                        GeometryEntry entry = this.getList().get(visibleIndex);
+
+                        this.setCurrentDirect(entry);
+                        UIModelGeometryPanel.this.selectCurrentHierarchyEntry();
+                        UIModelGeometryPanel.this.openHierarchyContextMenu(context, entry);
+
+                        return true;
+                    }
+                }
+
                 return super.subMouseClicked(context);
             }
         };
@@ -156,7 +178,7 @@ public class UIModelGeometryPanel extends UIElement
         this.hierarchyList.scroll.scrollItemSize = 18;
         this.hierarchySearch = new UISearchList<>(this.hierarchyList);
         this.hierarchySearch.label(UIKeys.GENERAL_SEARCH);
-        this.hierarchySearch.relative(this).x(sideMargin).y(26).w(leftWidth).h(1F, -94);
+        this.hierarchySearch.relative(this).x(sideMargin).y(52).w(leftWidth).h(1F, -94);
 
         UILabel editorTitle = UI.label(UIKeys.MODELS_GEOMETRY_EDITOR).background();
         editorTitle.relative(this).x(1F, -rightWidth - sideMargin).y(10).w(rightWidth).h(12);
@@ -255,14 +277,14 @@ public class UIModelGeometryPanel extends UIElement
         editor.relative(this).x(1F, -rightWidth - sideMargin).y(26).w(rightWidth).h(1F, -36);
         editor.add(editorTitle, this.selectedBoneLabel, originLabel, originRow, rotateLabel, rotateRow, pivotLabel, pivotRow, scaleLabel, scaleRow, buttons, this.selectedCubeLabel, cubeOriginLabel, cubeOriginRow, cubeSizeLabel, cubeSizeRow, cubePivotLabel, cubePivotRow, cubeInflateLabel, cubeInflateRow, cubeUvLabel, cubeUvRow, this.autoSaveToggle);
 
-        this.addCubeButton = new UIButton(UIKeys.GENERAL_ADD, (b) -> this.addCube());
-        this.removeCubeButton = new UIButton(UIKeys.GENERAL_REMOVE, (b) -> this.removeCube());
-        this.addCubeButton.w(0.5F, -4).h(20);
-        this.removeCubeButton.w(0.5F, -4).h(20);
-        UIElement cubeButtons = UI.row(8, this.addCubeButton, this.removeCubeButton);
-        cubeButtons.relative(this.hierarchySearch).y(1F, 6).w(leftWidth).h(20);
+        this.addCubeIcon = new UIIcon(Icons.BLOCK, (b) -> this.addCube());
+        this.addFolderIcon = new UIIcon(Icons.FOLDER, (b) -> this.addFolder());
+        this.addCubeIcon.tooltip(IKey.raw("Agregar cubo"));
+        this.addFolderIcon.tooltip(IKey.raw("Agregar carpeta"));
+        this.addCubeIcon.relative(this).x(sideMargin).y(26).w(20).h(20);
+        this.addFolderIcon.relative(this.addCubeIcon).x(1F, 2).y(0).w(20).h(20);
 
-        this.add(hierarchyTitle, this.hierarchySearch, cubeButtons, editor);
+        this.add(hierarchyTitle, this.addCubeIcon, this.addFolderIcon, this.hierarchySearch, editor);
 
         this.fillControls();
         this.fillCubeControls();
@@ -581,6 +603,216 @@ public class UIModelGeometryPanel extends UIElement
         this.refreshCubeRenderAndSave();
     }
 
+    private void openHierarchyContextMenu(UIContext context, GeometryEntry entry)
+    {
+        context.replaceContextMenu((menu) ->
+        {
+            menu.action(Icons.COPY, UIKeys.GENERAL_COPY, () -> this.copyEntry(entry));
+            menu.action(Icons.PASTE, UIKeys.GENERAL_PASTE, () -> this.pasteEntry(entry));
+            menu.action(Icons.DUPE, UIKeys.GENERAL_DUPE, () -> this.duplicateEntry(entry));
+            menu.action(Icons.EDIT, UIKeys.GENERAL_RENAME, () -> this.renameEntry(entry));
+            menu.action(Icons.REMOVE, UIKeys.GENERAL_REMOVE, () -> this.deleteEntry(entry));
+        });
+    }
+
+    private void copyEntry(GeometryEntry entry)
+    {
+        if (entry.type == GeometryEntryType.BONE)
+        {
+            ModelGroup group = this.selectedGroup;
+
+            if (group != null)
+            {
+                this.copiedGroup = this.cloneGroupTree(group, null, group.id, false, null);
+                this.copiedCube = null;
+            }
+        }
+        else if (this.selectedCube != null)
+        {
+            this.copiedCube = this.selectedCube.copy();
+            this.copiedGroup = null;
+        }
+    }
+
+    private void pasteEntry(GeometryEntry entry)
+    {
+        if (this.instance == null || !(this.instance.model instanceof Model model) || this.selectedGroup == null)
+        {
+            return;
+        }
+
+        GeometryEntry preferred = null;
+
+        if (this.copiedCube != null)
+        {
+            ModelCube cube = this.copiedCube.copy();
+            ModelGroup destination = this.selectedGroup;
+            int insertIndex = destination.cubes.size();
+
+            if (entry.type == GeometryEntryType.CUBE)
+            {
+                insertIndex = Math.min(entry.cubeIndex + 1, destination.cubes.size());
+            }
+
+            destination.cubes.add(insertIndex, cube);
+            preferred = new GeometryEntry(GeometryEntryType.CUBE, destination.id, insertIndex, 0, this.getCubeLabel(cube));
+        }
+        else if (this.copiedGroup != null)
+        {
+            Set<String> used = new HashSet<>(model.getAllGroupKeys());
+            ModelGroup destination = this.selectedGroup;
+            ModelGroup clone = this.cloneGroupTree(this.copiedGroup, destination, this.copiedGroup.id, true, used);
+
+            if (clone != null)
+            {
+                if (entry.type == GeometryEntryType.BONE)
+                {
+                    destination.children.add(clone);
+                }
+                else
+                {
+                    destination.children.add(clone);
+                }
+
+                preferred = new GeometryEntry(GeometryEntryType.BONE, clone.id, -1, 0, clone.id);
+            }
+        }
+
+        if (preferred != null)
+        {
+            model.initialize();
+            this.reloadHierarchyPreserveSelection(preferred);
+            this.refreshCubeRenderAndSave();
+        }
+    }
+
+    private void duplicateEntry(GeometryEntry entry)
+    {
+        this.copyEntry(entry);
+        this.pasteEntry(entry);
+    }
+
+    private void renameEntry(GeometryEntry entry)
+    {
+        if (entry.type == GeometryEntryType.BONE)
+        {
+            this.renameBone(entry);
+        }
+        else
+        {
+            this.renameCube(entry);
+        }
+    }
+
+    private void renameBone(GeometryEntry entry)
+    {
+        if (this.instance == null || !(this.instance.model instanceof Model model) || this.selectedGroup == null)
+        {
+            return;
+        }
+
+        UIPromptOverlayPanel panel = new UIPromptOverlayPanel(UIKeys.GENERAL_RENAME, UIKeys.GENERAL_RENAME, (newName) ->
+        {
+            String sanitized = this.sanitizeName(newName);
+
+            if (sanitized.isEmpty())
+            {
+                return;
+            }
+
+            Set<String> used = new HashSet<>(model.getAllGroupKeys());
+            used.remove(this.selectedGroup.id);
+            String unique = this.makeUniqueGroupId(sanitized, used);
+            ModelGroup replacement = this.cloneGroupTree(this.selectedGroup, this.selectedGroup.parent, unique, false, null);
+
+            if (replacement == null)
+            {
+                return;
+            }
+
+            this.replaceGroup(model, this.selectedGroup, replacement);
+            model.initialize();
+            this.reloadHierarchyPreserveSelection(new GeometryEntry(GeometryEntryType.BONE, replacement.id, -1, 0, replacement.id));
+            this.refreshCubeRenderAndSave();
+        });
+
+        panel.text.setText(entry.groupId);
+        panel.text.filename();
+        UIOverlay.addOverlay(this.getContext(), panel);
+    }
+
+    private void renameCube(GeometryEntry entry)
+    {
+        if (this.selectedCube == null || this.selectedGroup == null)
+        {
+            return;
+        }
+
+        UIPromptOverlayPanel panel = new UIPromptOverlayPanel(UIKeys.GENERAL_RENAME, UIKeys.GENERAL_RENAME, (newName) ->
+        {
+            this.selectedCube.name = this.sanitizeCubeName(newName);
+            this.reloadHierarchyPreserveSelection(new GeometryEntry(GeometryEntryType.CUBE, this.selectedGroup.id, entry.cubeIndex, 0, this.getCubeLabel(this.selectedCube)));
+            this.refreshCubeRenderAndSave();
+        });
+
+        panel.text.setText(this.getCubeLabel(this.selectedCube));
+        panel.text.filename();
+        UIOverlay.addOverlay(this.getContext(), panel);
+    }
+
+    private void deleteEntry(GeometryEntry entry)
+    {
+        if (this.instance == null || !(this.instance.model instanceof Model model))
+        {
+            return;
+        }
+
+        if (entry.type == GeometryEntryType.CUBE)
+        {
+            this.removeCube();
+            return;
+        }
+
+        ModelGroup group = model.getGroup(entry.groupId);
+
+        if (group == null)
+        {
+            return;
+        }
+
+        this.removeGroupFromParent(model, group);
+        model.initialize();
+        this.reloadHierarchyPreserveSelection(null);
+        this.refreshCubeRenderAndSave();
+    }
+
+    private void addFolder()
+    {
+        if (this.instance == null || !(this.instance.model instanceof Model model))
+        {
+            return;
+        }
+
+        Set<String> used = new HashSet<>(model.getAllGroupKeys());
+        String id = this.makeUniqueGroupId("folder", used);
+        ModelGroup group = new ModelGroup(id);
+        ModelGroup parent = this.selectedGroup;
+
+        if (parent == null)
+        {
+            model.topGroups.add(group);
+        }
+        else
+        {
+            group.parent = parent;
+            parent.children.add(group);
+        }
+
+        model.initialize();
+        this.reloadHierarchyPreserveSelection(new GeometryEntry(GeometryEntryType.BONE, id, -1, 0, id));
+        this.refreshCubeRenderAndSave();
+    }
+
     private void addCube()
     {
         if (this.selectedGroup == null)
@@ -860,6 +1092,127 @@ public class UIModelGeometryPanel extends UIElement
         destinationGroup.cubes.add(insertIndex, cube);
 
         return new GeometryEntry(GeometryEntryType.CUBE, destinationGroup.id, insertIndex, 0, this.getCubeLabel(cube));
+    }
+
+    private ModelGroup cloneGroupTree(ModelGroup source, ModelGroup parent, String requestedId, boolean uniquify, Set<String> usedIds)
+    {
+        if (source == null)
+        {
+            return null;
+        }
+
+        String id = requestedId == null ? source.id : requestedId;
+
+        if (uniquify)
+        {
+            id = this.makeUniqueGroupId(id, usedIds);
+        }
+
+        if (usedIds != null)
+        {
+            usedIds.add(id);
+        }
+
+        ModelGroup group = new ModelGroup(id);
+
+        group.parent = parent;
+        group.visible = source.visible;
+        group.lighting = source.lighting;
+        group.color.copy(source.color);
+        group.textureOverride = source.textureOverride;
+        group.initial.copy(source.initial);
+        group.current.copy(source.current);
+
+        for (ModelCube cube : source.cubes)
+        {
+            group.cubes.add(cube.copy());
+        }
+
+        group.meshes.addAll(source.meshes.stream().map((m) -> m.copy()).toList());
+
+        for (ModelGroup child : source.children)
+        {
+            ModelGroup childCopy = this.cloneGroupTree(child, group, child.id, uniquify, usedIds);
+
+            if (childCopy != null)
+            {
+                group.children.add(childCopy);
+            }
+        }
+
+        return group;
+    }
+
+    private void replaceGroup(Model model, ModelGroup oldGroup, ModelGroup replacement)
+    {
+        if (oldGroup.parent == null)
+        {
+            int index = model.topGroups.indexOf(oldGroup);
+
+            if (index >= 0)
+            {
+                model.topGroups.set(index, replacement);
+            }
+            else
+            {
+                model.topGroups.add(replacement);
+            }
+        }
+        else
+        {
+            List<ModelGroup> siblings = oldGroup.parent.children;
+            int index = siblings.indexOf(oldGroup);
+
+            if (index >= 0)
+            {
+                siblings.set(index, replacement);
+            }
+            else
+            {
+                siblings.add(replacement);
+            }
+        }
+    }
+
+    private String sanitizeName(String name)
+    {
+        if (name == null)
+        {
+            return "";
+        }
+
+        return name.trim().replace(" ", "_");
+    }
+
+    private String sanitizeCubeName(String name)
+    {
+        if (name == null)
+        {
+            return "";
+        }
+
+        return name.trim();
+    }
+
+    private String makeUniqueGroupId(String base, Set<String> used)
+    {
+        String source = this.sanitizeName(base);
+
+        if (source.isEmpty())
+        {
+            source = "group";
+        }
+
+        String candidate = source;
+        int i = 1;
+
+        while (used != null && used.contains(candidate))
+        {
+            candidate = source + "_" + i;
+            i++;
+        }
+
+        return candidate;
     }
 
     private void removeGroupFromParent(Model model, ModelGroup group)
