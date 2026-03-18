@@ -36,7 +36,7 @@ public class UIItemStack extends UIElement
     {
         this.stack = ItemStack.EMPTY;
         this.callback = callback;
-        this.optionsButton = new UIIcon(Icons.MORE, (b) ->
+        this.optionsButton = new UIIcon(Icons.CHEST, (b) ->
         {
             if (this.getContext() != null)
             {
