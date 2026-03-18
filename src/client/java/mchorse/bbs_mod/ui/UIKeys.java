@@ -826,6 +826,7 @@ public class UIKeys
     public static final IKey MODELS_SETTINGS = L10n.lang("bbs.ui.models.settings");
     public static final IKey MODELS_IK_EDITOR = L10n.lang("bbs.ui.models.ik_editor");
     public static final IKey MODELS_DYNAMIC_BONES = L10n.lang("bbs.ui.models.dynamic_bones");
+    public static final IKey MODELS_GEOMETRY_EDITOR = L10n.lang("bbs.ui.models.geometry_editor");
     public static final IKey MODELS_UI_SCALE = L10n.lang("bbs.ui.models.ui_scale");
     public static final IKey MORPHING_DEMORPH = L10n.lang("bbs.ui.morphing.demorph");
     public static final IKey MORPHING_FROM_MOB = L10n.lang("bbs.ui.morphing.from_mob");
