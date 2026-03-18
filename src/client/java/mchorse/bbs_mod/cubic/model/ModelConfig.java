@@ -31,6 +31,10 @@ public class ModelConfig extends ValueGroup
     public final ArmorConfig armorSlots = new ArmorConfig("armor_slots");
     public final ArmorSlot fpMain = new ArmorSlot("fp_main");
     public final ArmorSlot fpOffhand = new ArmorSlot("fp_offhand");
+
+    public final ArmorSlot itemsMainTransform = new ArmorSlot("items_main_transform");
+    public final ArmorSlot itemsOffTransform = new ArmorSlot("items_off_transform");
+
     public final ValueList<IKChainConfig> ikChains = new ValueList<IKChainConfig>("ik_chains")
     {
         @Override
@@ -40,49 +44,21 @@ public class ModelConfig extends ValueGroup
         }
     };
 
-    public final ValueList<ValueString> itemsMain = new ValueList<ValueString>("items_main")
+    public final ValueList<ArmorSlot> itemsMain = new ValueList<ArmorSlot>("items_main")
     {
         @Override
-        protected ValueString create(String id)
+        protected ArmorSlot create(String id)
         {
-            return new ValueString(id, "")
-            {
-                @Override
-                public void fromData(BaseType data)
-                {
-                    if (data.isMap())
-                    {
-                        this.value = data.asMap().getString("group");
-                    }
-                    else
-                    {
-                        super.fromData(data);
-                    }
-                }
-            };
+            return new ArmorSlot(id);
         }
     };
-    
-    public final ValueList<ValueString> itemsOff = new ValueList<ValueString>("items_off")
+
+    public final ValueList<ArmorSlot> itemsOff = new ValueList<ArmorSlot>("items_off")
     {
         @Override
-        protected ValueString create(String id)
+        protected ArmorSlot create(String id)
         {
-            return new ValueString(id, "")
-            {
-                @Override
-                public void fromData(BaseType data)
-                {
-                    if (data.isMap())
-                    {
-                        this.value = data.asMap().getString("group");
-                    }
-                    else
-                    {
-                        super.fromData(data);
-                    }
-                }
-            };
+            return new ArmorSlot(id);
         }
     };
 
@@ -112,6 +88,8 @@ public class ModelConfig extends ValueGroup
         this.add(this.armorSlots);
         this.add(this.fpMain);
         this.add(this.fpOffhand);
+        this.add(this.itemsMainTransform);
+        this.add(this.itemsOffTransform);
         this.add(this.ikChains);
         this.add(this.itemsMain);
         this.add(this.itemsOff);

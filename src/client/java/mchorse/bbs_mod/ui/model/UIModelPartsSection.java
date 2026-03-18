@@ -38,7 +38,14 @@ public class UIModelPartsSection extends UIModelSection
         {
             if (this.config != null)
             {
-                UITexturePicker.open(b.getContext(), this.config.texture.get(), (l) ->
+                Link current = this.config.texture.get();
+
+                if (current == null)
+                {
+                    current = BBSSettings.textureDefaultPath.get();
+                }
+
+                UITexturePicker.open(b.getContext(), current, (l) ->
                 {
                     this.config.texture.set(l);
                     this.editor.dirty();

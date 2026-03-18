@@ -387,8 +387,8 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
         if (stencilMap == null)
         {
-            this.renderItems(target, model, stack, EquipmentSlot.MAINHAND, ModelTransformationMode.THIRD_PERSON_RIGHT_HAND, model.itemsMain, color, overlay, light);
-            this.renderItems(target, model, stack, EquipmentSlot.OFFHAND, ModelTransformationMode.THIRD_PERSON_LEFT_HAND, model.itemsOff, color, overlay, light);
+            this.renderItems(target, model, stack, EquipmentSlot.MAINHAND, ModelTransformationMode.THIRD_PERSON_RIGHT_HAND, model.itemsMain, model.itemsMainTransform, color, overlay, light);
+            this.renderItems(target, model, stack, EquipmentSlot.OFFHAND, ModelTransformationMode.THIRD_PERSON_LEFT_HAND, model.itemsOff, model.itemsOffTransform, color, overlay, light);
 
             for (Map.Entry<ArmorType, ArmorSlot> entry : model.armorSlots.entrySet())
             {
@@ -424,7 +424,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         }
     }
 
-    private void renderItems(IEntity target, ModelInstance model, MatrixStack stack, EquipmentSlot slot, ModelTransformationMode mode, List<ArmorSlot> items, Color color, int overlay, int light)
+    private void renderItems(IEntity target, ModelInstance model, MatrixStack stack, EquipmentSlot slot, ModelTransformationMode mode, List<ArmorSlot> items, ArmorSlot globalTransform, Color color, int overlay, int light)
     {
         ItemStack itemStack = target.getEquipmentStack(slot);
 
@@ -446,6 +446,12 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                 stack.multiply(RotationAxis.POSITIVE_X.rotationDegrees(90F));
                 stack.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(180F));
                 stack.translate(0F, 0.125F, 0F);
+
+                if (globalTransform != null)
+                {
+                    MatrixStackUtils.applyTransform(stack, globalTransform.transform);
+                }
+
                 MatrixStackUtils.applyTransform(stack, armorSlot.transform);
 
                 CustomVertexConsumerProvider.hijackVertexFormat((l) -> RenderSystem.enableBlend());

@@ -135,6 +135,8 @@ public class BBSSettings
     public static ValueBoolean originalKeyframeUI;
     public static ValueBoolean simplifiedKeyframeUI;
 
+    public static ValueLink textureDefaultPath;
+
     public static ValueString cdnUrl;
     public static ValueString cdnToken;
     public static ValueBoolean shownFnafPopup;
@@ -201,6 +203,7 @@ public class BBSSettings
         disabledSheets.set(defaultFilters);
         builder.register(favoriteColors);
         builder.register(disabledSheets);
+        textureDefaultPath = builder.getRL("texture_default_path", null);
 
         builder.category("easter_eggs");
         builder.getCategory().invisible();

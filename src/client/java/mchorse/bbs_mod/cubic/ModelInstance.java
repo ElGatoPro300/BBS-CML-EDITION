@@ -83,6 +83,9 @@ public class ModelInstance implements IModelInstance
     public ArmorSlot fpMain;
     public ArmorSlot fpOffhand;
 
+    public ArmorSlot itemsMainTransform = new ArmorSlot("items_main_transform");
+    public ArmorSlot itemsOffTransform = new ArmorSlot("items_off_transform");
+
     private Map<ModelGroup, ModelVAO> vaos = new HashMap<>();
 
     public ModelInstance(String id, IModel model, Animations animations, Link texture)
@@ -165,6 +168,8 @@ public class ModelInstance implements IModelInstance
         if (config.has("color")) this.color = config.getInt("color");
         if (config.has("items_main"))
         {
+            this.itemsMain.clear();
+
             ListType list = config.get("items_main").asList();
 
             for (BaseType type : list)
@@ -177,6 +182,8 @@ public class ModelInstance implements IModelInstance
         }
         if (config.has("phys_bones", BaseType.TYPE_LIST))
         {
+            this.physBones.clear();
+
             ListType list = config.get("phys_bones").asList();
 
             for (BaseType type : list)
@@ -194,6 +201,8 @@ public class ModelInstance implements IModelInstance
         }
         if (config.has("items_off"))
         {
+            this.itemsOff.clear();
+
             ListType list = config.get("items_off").asList();
 
             for (BaseType type : list)
@@ -259,6 +268,16 @@ public class ModelInstance implements IModelInstance
             this.fpOffhand = new ArmorSlot("fp_offhand");
             this.fpOffhand.fromData(config.get("fp_offhand"));
         }
+        if (config.has("items_main_transform"))
+        {
+            this.itemsMainTransform = new ArmorSlot("items_main_transform");
+            this.itemsMainTransform.fromData(config.get("items_main_transform"));
+        }
+        if (config.has("items_off_transform"))
+        {
+            this.itemsOffTransform = new ArmorSlot("items_off_transform");
+            this.itemsOffTransform.fromData(config.get("items_off_transform"));
+        }
         if (config.has("ik_chains", BaseType.TYPE_LIST))
         {
             this.ikChains.clear();
@@ -302,10 +321,18 @@ public class ModelInstance implements IModelInstance
 
             for (ArmorSlot slot : this.itemsMain)
             {
-                list.add(slot.toData());
+                BaseType data = slot.toData();
+
+                if (data != null)
+                {
+                    list.add(data);
+                }
             }
 
-            config.put("items_main", list);
+            if (!list.isEmpty())
+            {
+                config.put("items_main", list);
+            }
         }
 
         if (!this.itemsOff.isEmpty())
@@ -314,10 +341,18 @@ public class ModelInstance implements IModelInstance
 
             for (ArmorSlot slot : this.itemsOff)
             {
-                list.add(slot.toData());
+                BaseType data = slot.toData();
+
+                if (data != null)
+                {
+                    list.add(data);
+                }
             }
 
-            config.put("items_off", list);
+            if (!list.isEmpty())
+            {
+                config.put("items_off", list);
+            }
         }
 
         if (this.uiScale != 1F) config.putFloat("ui_scale", this.uiScale);
@@ -362,6 +397,8 @@ public class ModelInstance implements IModelInstance
 
         if (this.fpMain != null) config.put("fp_main", this.fpMain.toData());
         if (this.fpOffhand != null) config.put("fp_offhand", this.fpOffhand.toData());
+        if (this.itemsMainTransform != null) config.put("items_main_transform", this.itemsMainTransform.toData());
+        if (this.itemsOffTransform != null) config.put("items_off_transform", this.itemsOffTransform.toData());
         if (!this.ikChains.isEmpty())
         {
             ListType list = new ListType();
@@ -430,6 +467,8 @@ public class ModelInstance implements IModelInstance
 
         if (this.fpMain != null) copy.fpMain = this.fpMain.copy();
         if (this.fpOffhand != null) copy.fpOffhand = this.fpOffhand.copy();
+        if (this.itemsMainTransform != null) copy.itemsMainTransform = this.itemsMainTransform.copy();
+        if (this.itemsOffTransform != null) copy.itemsOffTransform = this.itemsOffTransform.copy();
 
         for (Map.Entry<ArmorType, ArmorSlot> entry : this.armorSlots.entrySet())
         {
