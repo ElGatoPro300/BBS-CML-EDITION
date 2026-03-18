@@ -115,8 +115,14 @@ public class UIKeyframes extends UIElement
             int mouseY = context.mouseY;
             boolean hasSelected = this.currentGraph.getSelected() != null;
 
-            menu.custom(new UIPresetContextMenu(this.copyPasteController, mouseX, mouseY)
-                .labels(UIKeys.KEYFRAMES_CONTEXT_COPY, UIKeys.KEYFRAMES_CONTEXT_PASTE));
+            UIKeyframeSheet currentSheet = this.dopeSheet.getSheet(this.getContext().mouseY);
+            boolean isGroup = currentSheet != null && currentSheet.groupHeader;
+
+            if (!isGroup)
+            {
+                menu.custom(new UIPresetContextMenu(this.copyPasteController, mouseX, mouseY)
+                    .labels(UIKeys.KEYFRAMES_CONTEXT_COPY, UIKeys.KEYFRAMES_CONTEXT_PASTE));
+            }
 
             if (!this.single)
             {
@@ -128,19 +134,26 @@ public class UIKeyframes extends UIElement
                 {
                     UIKeyframeSheet sheet = this.dopeSheet.getSheet(this.getContext().mouseY);
 
-                    if (sheet != null && KeyframeFactories.isNumeric(sheet.channel.getFactory()))
+                    if (sheet != null && KeyframeFactories.isNumeric(sheet.channel.getFactory()) && !sheet.groupHeader)
                     {
                         menu.action(Icons.EDIT, UIKeys.KEYFRAMES_CONTEXT_EDIT_TRACK.format(sheet.id), () -> this.editSheet(sheet));
                     }
                 }
             }
 
-            menu.action(Icons.SEARCH, UIKeys.KEYFRAMES_CONTEXT_ADJUST_VALUES, () -> this.adjustValues());
-            menu.action(Icons.ARROW_LEFT, UIKeys.KEYFRAMES_KEYS_SELECT_LEFT, () -> this.selectAfter(mouseX, mouseY, -1));
-            menu.action(Icons.ARROW_RIGHT, UIKeys.KEYFRAMES_KEYS_SELECT_RIGHT, () -> this.selectAfter(mouseX, mouseY, 1));
+            if (!isGroup)
+            {
+                menu.action(Icons.SEARCH, UIKeys.KEYFRAMES_CONTEXT_ADJUST_VALUES, () -> this.adjustValues());
+                menu.action(Icons.ARROW_LEFT, UIKeys.KEYFRAMES_KEYS_SELECT_LEFT, () -> this.selectAfter(mouseX, mouseY, -1));
+                menu.action(Icons.ARROW_RIGHT, UIKeys.KEYFRAMES_KEYS_SELECT_RIGHT, () -> this.selectAfter(mouseX, mouseY, 1));
+            }
 
             menu.action(Icons.MAXIMIZE, UIKeys.KEYFRAMES_CONTEXT_MAXIMIZE, this::resetView);
-            menu.action(Icons.FULLSCREEN, UIKeys.KEYFRAMES_CONTEXT_SELECT_ALL, () -> this.currentGraph.selectAll());
+
+            if (!isGroup)
+            {
+                menu.action(Icons.FULLSCREEN, UIKeys.KEYFRAMES_CONTEXT_SELECT_ALL, () -> this.currentGraph.selectAll());
+            }
 
             if (hasSelected)
             {

@@ -202,7 +202,7 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
             UI.row(5, 0, this.dropVelocityMinY, this.dropVelocityMaxY),
             UI.row(5, 0, this.dropVelocityMinZ, this.dropVelocityMaxZ)
         );
-        this.groupProperties = UI.scrollView(0, 0, this.groupLabel);
+        this.groupProperties = UI.scrollView(5, 6, this.groupLabel);
 
         this.replayProperties.relative(this.replays).x(1F).wTo(this.icons.area).h(1F);
         this.groupProperties.relative(this.replays).x(1F).wTo(this.icons.area).h(1F);
