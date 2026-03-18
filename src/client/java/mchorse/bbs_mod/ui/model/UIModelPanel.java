@@ -216,10 +216,16 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         if (panel == this.dynamicBonesPanel)
         {
             this.setDynamicRight(this.getPoseEditor());
+            this.renderer.transform = this.getPoseEditor().transform;
         }
         else if (panel == this.modelSettingsPanel)
         {
             this.setRight(this.getPoseEditor());
+            this.renderer.transform = this.getPoseEditor().transform;
+        }
+        else if (panel == this.geometryPanel)
+        {
+            this.renderer.transform = this.geometryPanel.getGizmoTransformEditor();
         }
 
         this.mainView.resize();
@@ -310,6 +316,8 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
             return;
         }
 
+        boolean geometryActive = this.geometryPanel != null && this.mainView.getChildren().contains(this.geometryPanel);
+
         for (UIModelSection section : this.sections)
         {
             section.deselect();
@@ -319,7 +327,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
             {
                 ((UIModelPartsSection) section).selectBone(bone);
                 this.setRight(((UIModelPartsSection) section).poseEditor);
-                this.renderer.transform = ((UIModelPartsSection) section).poseEditor.transform;
+                this.renderer.transform = geometryActive ? this.geometryPanel.getGizmoTransformEditor() : ((UIModelPartsSection) section).poseEditor.transform;
 
                 if (this.mainView.getChildren().contains(this.dynamicBonesPanel))
                 {
@@ -335,6 +343,11 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         if (this.geometryPanel != null)
         {
             this.geometryPanel.selectBone(bone);
+
+            if (geometryActive)
+            {
+                this.renderer.transform = this.geometryPanel.getGizmoTransformEditor();
+            }
         }
     }
 

@@ -20,6 +20,7 @@ import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
+import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
 import mchorse.bbs_mod.ui.framework.elements.input.UITransform;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UIList;
@@ -31,7 +32,9 @@ import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
 import mchorse.bbs_mod.utils.Axis;
 import mchorse.bbs_mod.utils.IOUtils;
+import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
+import mchorse.bbs_mod.utils.pose.Transform;
 import org.joml.Vector2f;
 import org.joml.Vector3f;
 
@@ -48,6 +51,8 @@ public class UIModelGeometryPanel extends UIElement
     private final UISearchList<GeometryEntry> hierarchySearch;
     private final UILabel selectedBoneLabel;
     private final UITransform unifiedTransform;
+    private final UIPropTransform gizmoTransform;
+    private final Transform gizmoTransformData = new Transform();
     private final UITrackpad transformX;
     private final UITrackpad transformY;
     private final UITrackpad transformZ;
@@ -221,6 +226,39 @@ public class UIModelGeometryPanel extends UIElement
             }
         };
         this.unifiedTransform.relative(this.selectedBoneLabel).y(1F, 6).w(1F).h(104);
+        this.gizmoTransform = new UIPropTransform()
+        {
+            @Override
+            public void setT(Axis axis, double x, double y, double z)
+            {
+                UIModelGeometryPanel.this.applyGizmoChange(0, axis, x, y, z);
+            }
+
+            @Override
+            public void setS(Axis axis, double x, double y, double z)
+            {
+                UIModelGeometryPanel.this.applyGizmoChange(3, axis, x, y, z);
+            }
+
+            @Override
+            public void setR(Axis axis, double x, double y, double z)
+            {
+                UIModelGeometryPanel.this.applyGizmoChange(1, axis, x, y, z);
+            }
+
+            @Override
+            public void setR2(Axis axis, double x, double y, double z)
+            {}
+
+            @Override
+            public void setP(Axis axis, double x, double y, double z)
+            {
+                UIModelGeometryPanel.this.applyGizmoChange(2, axis, x, y, z);
+            }
+        };
+        this.gizmoTransform.setTransform(this.gizmoTransformData);
+        this.gizmoTransform.noCulling();
+        this.gizmoTransform.relative(this).xy(-1000, -1000).wh(1, 1);
 
         this.transformX = this.unifiedTransform.tx;
         this.transformY = this.unifiedTransform.ty;
@@ -260,7 +298,7 @@ public class UIModelGeometryPanel extends UIElement
 
         UIElement editor = new UIElement();
         editor.relative(this).x(1F, -rightWidth - sideMargin).y(26).w(rightWidth).h(1F, -36);
-        editor.add(editorTitle, this.selectedBoneLabel, this.unifiedTransform, buttons, cubeInflateRow, cubeUvRow);
+        editor.add(editorTitle, this.selectedBoneLabel, this.unifiedTransform, buttons, cubeInflateRow, cubeUvRow, this.gizmoTransform);
 
         this.addCubeIcon = new UIIcon(Icons.BLOCK, (b) -> this.addCube());
         this.addFolderIcon = new UIIcon(Icons.FOLDER, (b) -> this.addFolder());
@@ -321,6 +359,7 @@ public class UIModelGeometryPanel extends UIElement
         }
 
         this.filling = false;
+        this.syncGizmoTransformFromSelection();
     }
 
     private UITrackpad trackpad(java.util.function.Consumer<Double> callback)
@@ -451,6 +490,12 @@ public class UIModelGeometryPanel extends UIElement
         }
 
         this.parent.renderer.setSelectedCube(this.selectedCube);
+
+        if (this.parent.mainView.getChildren().contains(this))
+        {
+            this.parent.renderer.transform = this.gizmoTransform;
+        }
+
         this.fillControls();
         this.fillCubeControls();
     }
@@ -492,6 +537,69 @@ public class UIModelGeometryPanel extends UIElement
         this.scaleX.setValue(scale.x);
         this.scaleY.setValue(scale.y);
         this.scaleZ.setValue(scale.z);
+    }
+
+    private void syncGizmoTransformFromSelection()
+    {
+        if (this.selectedCube != null)
+        {
+            this.gizmoTransformData.translate.set(this.selectedCube.origin);
+            this.gizmoTransformData.scale.set(this.selectedCube.size);
+            this.gizmoTransformData.rotate.set(
+                MathUtils.toRad(this.selectedCube.rotate.x),
+                MathUtils.toRad(this.selectedCube.rotate.y),
+                MathUtils.toRad(this.selectedCube.rotate.z)
+            );
+            this.gizmoTransformData.pivot.set(this.selectedCube.pivot);
+        }
+        else if (this.selectedGroup != null)
+        {
+            this.gizmoTransformData.translate.set(this.selectedGroup.initial.translate);
+            this.gizmoTransformData.scale.set(this.selectedGroup.initial.scale);
+            this.gizmoTransformData.rotate.set(
+                MathUtils.toRad(this.selectedGroup.initial.rotate.x),
+                MathUtils.toRad(this.selectedGroup.initial.rotate.y),
+                MathUtils.toRad(this.selectedGroup.initial.rotate.z)
+            );
+            this.gizmoTransformData.pivot.set(this.selectedGroup.initial.pivot);
+        }
+        else
+        {
+            this.gizmoTransformData.translate.zero();
+            this.gizmoTransformData.scale.set(1F, 1F, 1F);
+            this.gizmoTransformData.rotate.zero();
+            this.gizmoTransformData.pivot.zero();
+        }
+
+        this.gizmoTransform.setTransform(this.gizmoTransformData);
+    }
+
+    private void applyGizmoChange(int type, Axis axis, double x, double y, double z)
+    {
+        if (axis == null)
+        {
+            this.updateTransformVector(type, 0, (float) x);
+            this.updateTransformVector(type, 1, (float) y);
+            this.updateTransformVector(type, 2, (float) z);
+        }
+        else
+        {
+            this.updateTransformVector(type, this.axisIndex(axis), (float) (axis == Axis.X ? x : axis == Axis.Y ? y : z));
+        }
+
+        this.filling = true;
+
+        if (this.selectedCube != null)
+        {
+            this.setTransformPads(this.selectedCube.origin, this.selectedCube.rotate, this.selectedCube.pivot, this.selectedCube.size);
+        }
+        else if (this.selectedGroup != null)
+        {
+            this.setTransformPads(this.selectedGroup.initial.translate, this.selectedGroup.initial.rotate, this.selectedGroup.initial.pivot, this.selectedGroup.initial.scale);
+        }
+
+        this.filling = false;
+        this.syncGizmoTransformFromSelection();
     }
 
     private int axisIndex(Axis axis)
@@ -1373,5 +1481,10 @@ public class UIModelGeometryPanel extends UIElement
             this.depth = depth;
             this.label = label;
         }
+    }
+
+    public UIPropTransform getGizmoTransformEditor()
+    {
+        return this.gizmoTransform;
     }
 }
