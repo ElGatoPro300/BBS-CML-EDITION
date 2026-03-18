@@ -197,6 +197,8 @@ public class Icons
     public static final Icon LOADING_BBS_1 = register(new Icon(ATLAS, "loading_bbs_1", 128, 160));
     public static final Icon LOADING_BBS_2 = register(new Icon(ATLAS, "loading_bbs_2", 144, 160));
     public static final Icon LOADING_BBS_3 = register(new Icon(ATLAS, "loading_bbs_3", 160, 160));
+    public static final Icon GEOMETRY_EDITOR = register(new Icon(ATLAS, "geometry_editor", 176, 160));
+    public static final Icon CHEST = register(new Icon(ATLAS, "chest", 192, 160));
 
     public static final Icon INTERP_LINEAR = register(new Icon(ATLAS, "interp_linear", 0, 192));
     public static final Icon INTERP_CONST = register(new Icon(ATLAS, "interp_const", 16, 192));

@@ -1103,6 +1103,7 @@
     "bbs.ui.models.hands.edit": "Editar transformaciones",
     "bbs.ui.models.hands.title": "Manos en primera persona",
     "bbs.ui.models.ik_editor": "Editor de IK",
+    "bbs.ui.models.geometry_editor": "Editor de Geometría",
     "bbs.ui.models.items": "Ítems",
     "bbs.ui.models.items.add": "Añadir grupo de ítems",
     "bbs.ui.models.items.add_desc": "Añade un nuevo grupo de ítems a la lista.",
