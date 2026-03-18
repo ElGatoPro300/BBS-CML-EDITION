@@ -479,6 +479,12 @@ public class BBSModClient implements ClientModInitializer
         {
             builder.category("general");
             BBSSettings.modelFormsHierarchy = builder.getBoolean("model_forms_hierarchy", false);
+            BBSSettings.replayContextOptions = builder.getInt("compacted_options", 0, 0, 2);
+            BBSSettings.replayContextOptions.modes(
+                UIKeys.CONFIG_GENERAL_COMPACTED_OPTIONS_DEFAULT,
+                UIKeys.CONFIG_GENERAL_COMPACTED_OPTIONS_SEPARATED,
+                UIKeys.CONFIG_GENERAL_COMPACTED_OPTIONS_COMPACTED
+            );
             builder.category("appearance");
             BBSSettings.disablePivotTransform = builder.getBoolean("disable_pivot_transform", false);
             BBSSettings.gizmoYAxisHorizontal = builder.getBoolean("gizmo_y_axis_horizontal", true);

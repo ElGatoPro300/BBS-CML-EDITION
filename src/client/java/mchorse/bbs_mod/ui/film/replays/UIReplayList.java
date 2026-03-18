@@ -2,6 +2,7 @@ package mchorse.bbs_mod.ui.film.replays;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import mchorse.bbs_mod.BBSMod;
+import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.blocks.entities.ModelBlockEntity;
 import mchorse.bbs_mod.blocks.entities.ModelProperties;
 import mchorse.bbs_mod.camera.Camera;
@@ -59,6 +60,7 @@ import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
+import mchorse.bbs_mod.ui.utils.context.ContextSeparatorAction;
 import mchorse.bbs_mod.utils.CollectionUtils;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.RayTracing;
@@ -126,6 +128,7 @@ public class UIReplayList extends UIList<Replay> {
     private static double LAST_OFFSET_RANDOM_MAX = 1D;
     private static String LAST_RANDOM_SKINS_STEVE_MODEL = "";
     private static String LAST_RANDOM_SKINS_ALEX_MODEL = "";
+    private static final String GROUP_CLIPBOARD_KEY = "_CopyReplayGroup";
 
     public UIFilmPanel panel;
     public UIReplaysOverlayPanel overlay;
@@ -141,58 +144,54 @@ public class UIReplayList extends UIList<Replay> {
 
         this.multi().sorting();
         this.context((menu) -> {
-            menu.action(Icons.ADD, UIKeys.SCENE_REPLAYS_CONTEXT_ADD, this::addReplay);
+            boolean selectedGroup = this.isSelected() && this.getCurrentFirst().isGroup.get();
 
-            if (this.isSelected()) {
-                menu.action(Icons.COPY, UIKeys.SCENE_REPLAYS_CONTEXT_COPY, this::copyReplay);
+            if (!selectedGroup) {
+                menu.action(Icons.ADD, UIKeys.SCENE_REPLAYS_CONTEXT_ADD, this::addReplay);
             }
-
-            MapType copyReplay = Window.getClipboardMap("_CopyReplay");
-
-            if (copyReplay != null) {
-                menu.action(Icons.PASTE, UIKeys.SCENE_REPLAYS_CONTEXT_PASTE, () -> this.pasteReplay(copyReplay));
-            }
-
-            int duration = this.panel.getData().camera.calculateDuration();
-
-            if (duration > 0) {
-                menu.action(Icons.PLAY, UIKeys.SCENE_REPLAYS_CONTEXT_FROM_CAMERA, () -> this.fromCamera(duration));
-            }
-
-            menu.action(Icons.BLOCK, UIKeys.SCENE_REPLAYS_CONTEXT_FROM_MODEL_BLOCK, this::fromModelBlock);
 
             if (this.isSelected()) {
                 boolean isGroup = this.getCurrentFirst().isGroup.get();
-                boolean shift = Window.isShiftPressed();
-                MapType data = Window.getClipboardMap("_CopyKeyframes");
 
-                if (!isGroup) {
-                    menu.action(Icons.COPY, IKey.constant("Copy keyframes..."), () -> {
-                        this.getContext().replaceContextMenu((sub) -> {
-                            sub.autoKeys();
-                            sub.action(Icons.POSE, IKey.constant("Copy Poses"), () -> this.copyKeyframesFiltered(KeyframeFactories.POSE));
-                            sub.action(Icons.ALL_DIRECTIONS, IKey.constant("Copy Transforms"), () -> this.copyKeyframesFiltered(KeyframeFactories.TRANSFORM));
-                            sub.action(Icons.IMAGE, IKey.constant("Copy texture"), () -> this.copyKeyframesByPropertySuffixes("texture"));
-                            sub.action(Icons.STRUCTURE, IKey.constant("Copy model"), () -> this.copyKeyframesByPropertySuffixes("model"));
-                        });
-                    });
-                    if (data != null) {
-                        menu.action(Icons.PASTE, UIKeys.SCENE_REPLAYS_CONTEXT_PASTE_KEYFRAMES,
-                                () -> this.pasteToReplays(data));
+                if (isGroup) {
+                    int duration = this.panel.getData().camera.calculateDuration();
+                    menu.action(Icons.ADD, UIKeys.SCENE_REPLAYS_CONTEXT_ADD, this::addReplay);
+
+                    if (duration > 0) {
+                        menu.action(Icons.PLAY, UIKeys.SCENE_REPLAYS_CONTEXT_FROM_CAMERA, () -> this.fromCamera(duration));
                     }
-                }
 
-                if (!isGroup) {
-                    menu.action(Icons.ALL_DIRECTIONS, UIKeys.SCENE_REPLAYS_CONTEXT_PROCESS, this::processReplays);
-                    menu.action(Icons.TIME, UIKeys.SCENE_REPLAYS_CONTEXT_OFFSET_TIME, this::offsetTimeReplays);
-                    menu.action(Icons.BLOCK, UIKeys.SCENE_REPLAYS_CONTEXT_RANDOM_SKINS, this::applyRandomSkins);
-                }
+                    menu.action(Icons.BLOCK, UIKeys.SCENE_REPLAYS_CONTEXT_FROM_MODEL_BLOCK, this::fromModelBlock);
+                    menu.action(Icons.COPY, UIKeys.SCENE_REPLAYS_CONTEXT_COPY_GROUP, this::copyGroup);
 
-                menu.action(Icons.FOLDER, UIKeys.SCENE_REPLAYS_CONTEXT_ADD_GROUP, this::addGroup);
+                    MapType copyGroup = Window.getClipboardMap(GROUP_CLIPBOARD_KEY);
 
-                
+                    if (copyGroup != null) {
+                        menu.action(Icons.PASTE, UIKeys.SCENE_REPLAYS_CONTEXT_PASTE_GROUP, () -> this.pasteGroup(copyGroup));
+                    }
 
-                if (!isGroup) {
+                    menu.action(Icons.DUPE, UIKeys.SCENE_REPLAYS_CONTEXT_DUPE_GROUP, this::duplicateGroup);
+                    menu.action(Icons.REMOVE, UIKeys.SCENE_REPLAYS_CONTEXT_DELETE_GROUP, this::deleteGroup);
+                    menu.action(Icons.FOLDER, UIKeys.SCENE_REPLAYS_CONTEXT_UNGROUP, this::ungroupReplay);
+                } else {
+                    int duration = this.panel.getData().camera.calculateDuration();
+                    MapType copyReplay = Window.getClipboardMap("_CopyReplay");
+                    boolean shift = Window.isShiftPressed();
+                    int compactedOptions = BBSSettings.replayContextOptions == null ? 0 : BBSSettings.replayContextOptions.get();
+                    boolean separatedMode = compactedOptions == 1;
+                    boolean compactedMode = compactedOptions == 2;
+
+                    if (duration > 0) {
+                        menu.action(Icons.PLAY, UIKeys.SCENE_REPLAYS_CONTEXT_FROM_CAMERA, () -> this.fromCamera(duration));
+                    }
+
+                    menu.action(Icons.BLOCK, UIKeys.SCENE_REPLAYS_CONTEXT_FROM_MODEL_BLOCK, this::fromModelBlock);
+                    menu.action(Icons.COPY, UIKeys.SCENE_REPLAYS_CONTEXT_COPY, this::copyReplay);
+
+                    if (copyReplay != null) {
+                        menu.action(Icons.PASTE, UIKeys.SCENE_REPLAYS_CONTEXT_PASTE, () -> this.pasteReplay(copyReplay));
+                    }
+
                     menu.action(Icons.DUPE, UIKeys.SCENE_REPLAYS_CONTEXT_DUPE, () -> {
                         if (Window.isShiftPressed() || shift) {
                             this.dupeReplay();
@@ -211,9 +210,53 @@ public class UIReplayList extends UIList<Replay> {
                             UIOverlay.addOverlay(this.getContext(), numberPanel);
                         }
                     });
+                    menu.action(Icons.REMOVE, UIKeys.SCENE_REPLAYS_CONTEXT_REMOVE, this::removeReplay);
+
+                    if (separatedMode) {
+                        this.addContextSeparator(menu);
+                    }
+
+                    if (!compactedMode) {
+                        menu.action(Icons.COPY, UIKeys.SCENE_REPLAYS_CONTEXT_COPY_KEYFRAMES, this::openCopyKeyframesMenu);
+                        menu.action(Icons.PASTE, UIKeys.SCENE_REPLAYS_CONTEXT_PASTE_KEYFRAMES,
+                                () -> this.pasteToReplays(Window.getClipboardMap("_CopyKeyframes")));
+
+                        if (separatedMode) {
+                            this.addContextSeparator(menu);
+                        }
+
+                        menu.action(Icons.BLOCK, UIKeys.SCENE_REPLAYS_CONTEXT_RANDOM_SKINS, this::applyRandomSkins);
+                        menu.action(Icons.ALL_DIRECTIONS, UIKeys.SCENE_REPLAYS_CONTEXT_PROCESS, this::processReplays);
+                        menu.action(Icons.TIME, UIKeys.SCENE_REPLAYS_CONTEXT_OFFSET_TIME, this::offsetTimeReplays);
+
+                        if (separatedMode) {
+                            this.addContextSeparator(menu);
+                        }
+                    }
+
+                    menu.action(Icons.FOLDER, UIKeys.SCENE_REPLAYS_CONTEXT_ADD_GROUP, this::addGroup);
+
+                    if (!this.getCurrentFirst().group.get().isEmpty()) {
+                        menu.action(Icons.FOLDER, UIKeys.SCENE_REPLAYS_CONTEXT_LEAVE_GROUP, this::leaveGroup);
+                    }
+
+                    if (compactedMode) {
+                        menu.action(Icons.MORE, UIKeys.SCENE_REPLAYS_CONTEXT_MORE_OPTIONS, this::openReplayMoreOptionsMenu);
+                    }
+                }
+            } else {
+                MapType copyReplay = Window.getClipboardMap("_CopyReplay");
+                int duration = this.panel.getData().camera.calculateDuration();
+
+                if (copyReplay != null) {
+                    menu.action(Icons.PASTE, UIKeys.SCENE_REPLAYS_CONTEXT_PASTE, () -> this.pasteReplay(copyReplay));
                 }
 
-                menu.action(Icons.REMOVE, UIKeys.SCENE_REPLAYS_CONTEXT_REMOVE, this::removeReplay);
+                if (duration > 0) {
+                    menu.action(Icons.PLAY, UIKeys.SCENE_REPLAYS_CONTEXT_FROM_CAMERA, () -> this.fromCamera(duration));
+                }
+
+                menu.action(Icons.BLOCK, UIKeys.SCENE_REPLAYS_CONTEXT_FROM_MODEL_BLOCK, this::fromModelBlock);
             }
 
             for (BiConsumer<UIReplayList, ContextMenuManager> consumer : extensions) {
@@ -230,6 +273,31 @@ public class UIReplayList extends UIList<Replay> {
         }
 
         return replayEditor.keyframeEditor.view.getGraph().getSelected() != null;
+    }
+
+    private void openCopyKeyframesMenu() {
+        this.getContext().replaceContextMenu((sub) -> {
+            sub.autoKeys();
+            sub.action(Icons.POSE, IKey.constant("Copy Poses"), () -> this.copyKeyframesFiltered(KeyframeFactories.POSE));
+            sub.action(Icons.ALL_DIRECTIONS, IKey.constant("Copy Transforms"), () -> this.copyKeyframesFiltered(KeyframeFactories.TRANSFORM));
+            sub.action(Icons.IMAGE, IKey.constant("Copy texture"), () -> this.copyKeyframesByPropertySuffixes("texture"));
+            sub.action(Icons.STRUCTURE, IKey.constant("Copy model"), () -> this.copyKeyframesByPropertySuffixes("model"));
+        });
+    }
+
+    private void openReplayMoreOptionsMenu() {
+        this.getContext().replaceContextMenu((sub) -> {
+            sub.autoKeys();
+            sub.action(Icons.COPY, UIKeys.SCENE_REPLAYS_CONTEXT_COPY_KEYFRAMES, this::openCopyKeyframesMenu);
+            sub.action(Icons.PASTE, UIKeys.SCENE_REPLAYS_CONTEXT_PASTE_KEYFRAMES, () -> this.pasteToReplays(Window.getClipboardMap("_CopyKeyframes")));
+            sub.action(Icons.BLOCK, UIKeys.SCENE_REPLAYS_CONTEXT_RANDOM_SKINS, this::applyRandomSkins);
+            sub.action(Icons.ALL_DIRECTIONS, UIKeys.SCENE_REPLAYS_CONTEXT_PROCESS, this::processReplays);
+            sub.action(Icons.TIME, UIKeys.SCENE_REPLAYS_CONTEXT_OFFSET_TIME, this::offsetTimeReplays);
+        });
+    }
+
+    private void addContextSeparator(ContextMenuManager menu) {
+        menu.action(new ContextSeparatorAction());
     }
 
     private void copyKeyframesFiltered(IKeyframeFactory... factories) {
@@ -1341,6 +1409,265 @@ public class UIReplayList extends UIList<Replay> {
         Window.setClipboard(replays, "_CopyReplay");
     }
 
+    private void copyGroup() {
+        Replay group = this.getCurrentGroup();
+
+        if (group == null) {
+            return;
+        }
+
+        MapType data = this.createGroupClipboardData(group);
+
+        if (data != null) {
+            Window.setClipboard(data, GROUP_CLIPBOARD_KEY);
+        }
+    }
+
+    private void pasteGroup(MapType data) {
+        Replay targetGroup = this.getCurrentGroup();
+
+        if (targetGroup == null || data == null) {
+            return;
+        }
+
+        this.pasteGroupData(data, targetGroup);
+    }
+
+    private void duplicateGroup() {
+        Replay group = this.getCurrentGroup();
+
+        if (group == null) {
+            return;
+        }
+
+        MapType data = this.createGroupClipboardData(group);
+
+        if (data != null) {
+            this.pasteGroupData(data, group);
+        }
+    }
+
+    private void deleteGroup() {
+        Replay group = this.getCurrentGroup();
+
+        if (group == null) {
+            return;
+        }
+
+        Film film = this.panel.getData();
+        List<Replay> all = film.replays.getAllTyped();
+        String groupPath = this.getFullGroupPath(group);
+        List<Replay> toRemove = new ArrayList<>();
+
+        for (Replay replay : all) {
+            if (replay == group) {
+                toRemove.add(replay);
+                continue;
+            }
+
+            String parentPath = replay.group.get();
+
+            if (parentPath.equals(groupPath) || parentPath.startsWith(groupPath + "/")) {
+                toRemove.add(replay);
+            }
+        }
+
+        int index = this.getIndex();
+
+        for (Replay replay : toRemove) {
+            film.replays.remove(replay);
+        }
+
+        this.clearExpandedGroupState(groupPath);
+
+        int size = this.list.size();
+        index = MathUtils.clamp(index, 0, size - 1);
+
+        this.buildVisualList();
+        size = this.list.size();
+        this.panel.replayEditor.setReplay(size == 0 ? null : CollectionUtils.getSafe(this.list, index));
+        this.updateFilmEditor();
+    }
+
+    private MapType createGroupClipboardData(Replay group) {
+        String fullPath = this.getFullGroupPath(group);
+        List<Replay> all = this.panel.getData().replays.getAllTyped();
+        ListType replayList = new ListType();
+
+        for (Replay replay : all) {
+            if (replay == group) {
+                replayList.add(replay.toData());
+                continue;
+            }
+
+            String parentPath = replay.group.get();
+
+            if (parentPath.equals(fullPath) || parentPath.startsWith(fullPath + "/")) {
+                replayList.add(replay.toData());
+            }
+        }
+
+        if (replayList.isEmpty()) {
+            return null;
+        }
+
+        MapType data = new MapType();
+        data.putString("root_uuid", group.uuid.get());
+        data.putString("root_full_path", fullPath);
+        data.put("replays", replayList);
+
+        return data;
+    }
+
+    private void pasteGroupData(MapType data, Replay targetGroup) {
+        Film film = this.panel.getData();
+        ListType copied = data.getList("replays");
+
+        if (copied.isEmpty()) {
+            return;
+        }
+
+        String rootUuid = data.getString("root_uuid", "");
+        String rootFullPath = data.getString("root_full_path", "");
+        String destinationParentPath = targetGroup.group.get();
+        Replay insertionAnchor = this.findLastGroupElement(targetGroup);
+        List<Replay> created = new ArrayList<>();
+        List<String> oldParentPaths = new ArrayList<>();
+        List<String> oldUuids = new ArrayList<>();
+        Map<String, String> remappedGroupUuids = new HashMap<>();
+        Replay newRoot = null;
+
+        for (BaseType replayType : copied) {
+            Replay replay = film.replays.addReplay();
+
+            BaseValue.edit(replay, (r) -> r.fromData(replayType));
+
+            String oldUuid = replay.uuid.get();
+            String oldParentPath = replay.group.get();
+
+            replay.uuid.set(java.util.UUID.randomUUID().toString());
+
+            if (replay.isGroup.get()) {
+                remappedGroupUuids.put(oldUuid, replay.uuid.get());
+            }
+
+            if (oldUuid.equals(rootUuid)) {
+                newRoot = replay;
+            }
+
+            created.add(replay);
+            oldParentPaths.add(oldParentPath);
+            oldUuids.add(oldUuid);
+        }
+
+        if (newRoot == null) {
+            return;
+        }
+
+        String newRootFullPath = destinationParentPath.isEmpty() ? newRoot.uuid.get() : destinationParentPath + "/" + newRoot.uuid.get();
+
+        for (int i = 0; i < created.size(); i++) {
+            Replay replay = created.get(i);
+            String oldUuid = oldUuids.get(i);
+            String oldParentPath = oldParentPaths.get(i);
+
+            if (oldUuid.equals(rootUuid)) {
+                replay.group.set(destinationParentPath);
+            } else {
+                replay.group.set(this.remapGroupParentPath(oldParentPath, rootFullPath, newRootFullPath, remappedGroupUuids));
+            }
+        }
+
+        List<Replay> list = film.replays.getAllTyped();
+
+        list.removeAll(created);
+
+        int index = insertionAnchor == null ? list.size() - 1 : list.indexOf(insertionAnchor);
+
+        if (index < -1) {
+            index = list.size() - 1;
+        }
+
+        list.addAll(index + 1, created);
+        film.replays.sync();
+
+        this.expandedGroups.put(newRootFullPath, true);
+        this.buildVisualList();
+        this.setCurrentDirect(newRoot);
+        this.panel.replayEditor.setReplay(newRoot);
+        this.updateFilmEditor();
+    }
+
+    private String remapGroupParentPath(String oldPath, String oldRootFullPath, String newRootFullPath, Map<String, String> remappedGroupUuids) {
+        if (oldPath.equals(oldRootFullPath)) {
+            return newRootFullPath;
+        }
+
+        if (oldPath.startsWith(oldRootFullPath + "/")) {
+            String suffix = oldPath.substring(oldRootFullPath.length() + 1);
+
+            if (suffix.isEmpty()) {
+                return newRootFullPath;
+            }
+
+            String[] parts = suffix.split("/");
+            StringBuilder builder = new StringBuilder(newRootFullPath);
+
+            for (String part : parts) {
+                builder.append("/").append(remappedGroupUuids.getOrDefault(part, part));
+            }
+
+            return builder.toString();
+        }
+
+        return oldPath;
+    }
+
+    private Replay findLastGroupElement(Replay group) {
+        String fullPath = this.getFullGroupPath(group);
+        Replay anchor = group;
+
+        for (Replay replay : this.panel.getData().replays.getAllTyped()) {
+            String parentPath = replay.group.get();
+
+            if (replay == group || parentPath.equals(fullPath) || parentPath.startsWith(fullPath + "/")) {
+                anchor = replay;
+            }
+        }
+
+        return anchor;
+    }
+
+    private Replay getCurrentGroup() {
+        if (this.isDeselected()) {
+            return null;
+        }
+
+        Replay replay = this.getCurrentFirst();
+
+        if (replay == null || !replay.isGroup.get()) {
+            return null;
+        }
+
+        return replay;
+    }
+
+    private String getFullGroupPath(Replay group) {
+        String path = group.group.get();
+
+        return path.isEmpty() ? group.uuid.get() : path + "/" + group.uuid.get();
+    }
+
+    private void clearExpandedGroupState(String removedGroupPath) {
+        List<String> keys = new ArrayList<>(this.expandedGroups.keySet());
+
+        for (String key : keys) {
+            if (key.equals(removedGroupPath) || key.startsWith(removedGroupPath + "/")) {
+                this.expandedGroups.remove(key);
+            }
+        }
+    }
+
     private void pasteReplay(MapType data) {
         Film film = this.panel.getData();
         ListType replays = data.getList("replays");
@@ -2005,14 +2332,21 @@ public class UIReplayList extends UIList<Replay> {
 
         Film film = this.panel.getData();
         int index = this.getIndex();
+        List<Replay> selected = new ArrayList<>(this.getCurrent());
 
-        for (Replay replay : this.getCurrent()) {
-            if (replay.isGroup.get()) {
-                this.reparentChildren(replay);
+        BaseValue.edit(film.replays, (replays) -> {
+            List<Replay> allReplays = film.replays.getAllTyped();
+
+            for (Replay replay : selected) {
+                if (replay.isGroup.get()) {
+                    this.reparentChildren(replay, allReplays);
+                }
+
+                allReplays.remove(replay);
             }
 
-            film.replays.remove(replay);
-        }
+            film.replays.sync();
+        });
 
         int size = this.list.size();
         index = MathUtils.clamp(index, 0, size - 1);
@@ -2023,10 +2357,86 @@ public class UIReplayList extends UIList<Replay> {
         this.updateFilmEditor();
     }
 
-    private void reparentChildren(Replay groupToDelete) {
-        Film data = this.panel.getData();
-        List<Replay> allReplays = data.replays.getAllTyped();
+    private void ungroupReplay() {
+        if (this.isDeselected()) {
+            return;
+        }
 
+        Film film = this.panel.getData();
+        int index = this.getIndex();
+        List<Replay> selected = new ArrayList<>(this.getCurrent());
+
+        BaseValue.edit(film.replays, (replays) -> {
+            List<Replay> allReplays = film.replays.getAllTyped();
+
+            for (Replay replay : selected) {
+                if (!replay.isGroup.get()) {
+                    continue;
+                }
+
+                this.reparentChildren(replay, allReplays);
+                allReplays.remove(replay);
+            }
+
+            film.replays.sync();
+        });
+
+        int size = this.list.size();
+        index = MathUtils.clamp(index, 0, size - 1);
+
+        this.buildVisualList();
+        size = this.list.size();
+        this.panel.replayEditor.setReplay(size == 0 ? null : CollectionUtils.getSafe(this.list, index));
+        this.updateFilmEditor();
+    }
+
+    private void leaveGroup() {
+        if (this.isDeselected()) {
+            return;
+        }
+
+        Film film = this.panel.getData();
+        int index = this.getIndex();
+        List<Replay> selected = new ArrayList<>(this.getCurrent());
+
+        BaseValue.edit(film.replays, (replays) -> {
+            for (Replay replay : selected) {
+                if (replay.isGroup.get()) {
+                    continue;
+                }
+
+                String currentPath = replay.group.get();
+
+                if (currentPath.isEmpty()) {
+                    continue;
+                }
+
+                replay.group.set(this.getParentGroupPath(currentPath));
+            }
+
+            film.replays.sync();
+        });
+
+        int size = this.list.size();
+        index = MathUtils.clamp(index, 0, size - 1);
+
+        this.buildVisualList();
+        size = this.list.size();
+        this.panel.replayEditor.setReplay(size == 0 ? null : CollectionUtils.getSafe(this.list, index));
+        this.updateFilmEditor();
+    }
+
+    private String getParentGroupPath(String path) {
+        int index = path.lastIndexOf("/");
+
+        if (index < 0) {
+            return "";
+        }
+
+        return path.substring(0, index);
+    }
+
+    private void reparentChildren(Replay groupToDelete, List<Replay> allReplays) {
         String targetPath = getReplayPath(groupToDelete);
         String targetID = groupToDelete.uuid.get();
         String childPrefix = targetPath.isEmpty() ? targetID : targetPath + "/" + targetID;
@@ -2082,6 +2492,10 @@ public class UIReplayList extends UIList<Replay> {
             }
         }
 
+        if (element.isGroup.get() && name.length() > 20) {
+            name = name.substring(0, 20) + "...";
+        }
+
         return context.batcher.getFont().limitToWidth(name, this.area.w - 20);
     }
 
@@ -2097,9 +2511,12 @@ public class UIReplayList extends UIList<Replay> {
             String myPath = path.isEmpty() ? element.uuid.get() : path + "/" + element.uuid.get();
             boolean expanded = this.expandedGroups.getOrDefault(myPath, true);
             Icon icon = expanded ? Icons.ARROW_DOWN : Icons.ARROW_RIGHT;
+            int folderX = textX + 8;
+            int toggleX = x + this.area.w - 20;
 
-            context.batcher.icon(icon, textX, y + 2);
-            textX += 12;
+            context.batcher.icon(Icons.FOLDER, folderX, y + 2);
+            context.batcher.icon(icon, toggleX, y + 2);
+            textX = folderX + 16;
         }
 
         if (element.enabled.get()) {
@@ -2307,9 +2724,12 @@ public class UIReplayList extends UIList<Replay> {
                 Replay r = this.list.get(index);
                 int depth = getReplayDepth(r);
                 int indent = depth * 10;
-                int x = this.area.x + indent;
+                int folderX = this.area.x + indent + 8;
+                int toggleX = this.area.x + this.area.w - 24;
+                boolean clickedFolderIcon = context.mouseX >= folderX && context.mouseX < folderX + 12;
+                boolean clickedToggleIcon = context.mouseX >= toggleX && context.mouseX < toggleX + 16;
 
-                if (r.isGroup.get() && context.mouseX >= x && context.mouseX < x + 16) {
+                if (r.isGroup.get() && (clickedFolderIcon || clickedToggleIcon)) {
                     String path = getReplayPath(r);
                     String myPath = path.isEmpty() ? r.uuid.get() : path + "/" + r.uuid.get();
 
