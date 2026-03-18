@@ -357,6 +357,16 @@ public class UIKeys
     public static final IKey FILM_CRUD_DUPE = L10n.lang("bbs.ui.film.crud.dupe");
     public static final IKey FILM_CRUD_RENAME = L10n.lang("bbs.ui.film.crud.rename");
     public static final IKey FILM_CRUD_REMOVE = L10n.lang("bbs.ui.film.crud.remove");
+
+    public static final IKey MODELS_CRUD_ADD = L10n.lang("bbs.ui.models.crud.add");
+    public static final IKey MODELS_CRUD_DUPE = L10n.lang("bbs.ui.models.crud.dupe");
+    public static final IKey MODELS_CRUD_RENAME = L10n.lang("bbs.ui.models.crud.rename");
+    public static final IKey MODELS_CRUD_REMOVE = L10n.lang("bbs.ui.models.crud.remove");
+
+    public static final IKey PARTICLES_CRUD_ADD = L10n.lang("bbs.ui.particles.crud.add");
+    public static final IKey PARTICLES_CRUD_DUPE = L10n.lang("bbs.ui.particles.crud.dupe");
+    public static final IKey PARTICLES_CRUD_RENAME = L10n.lang("bbs.ui.particles.crud.rename");
+    public static final IKey PARTICLES_CRUD_REMOVE = L10n.lang("bbs.ui.particles.crud.remove");
     public static final IKey FILM_SAVE = L10n.lang("bbs.ui.film.save");
     public static final IKey FILM_OPEN_MANAGER = L10n.lang("bbs.ui.film.manager.open");
     public static final IKey FILM_LAYOUT_TITLE = L10n.lang("bbs.ui.film.layout.title");

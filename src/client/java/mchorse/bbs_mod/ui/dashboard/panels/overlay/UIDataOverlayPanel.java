@@ -4,6 +4,7 @@ import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.settings.values.core.ValueGroup;
+import mchorse.bbs_mod.ui.ContentType;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDataDashboardPanel;
 import mchorse.bbs_mod.ui.utils.UIUtils;
@@ -23,6 +24,15 @@ public class UIDataOverlayPanel <T extends ValueGroup> extends UICRUDOverlayPane
         super(title, callback);
 
         this.panel = panel;
+
+        if (this.panel.getType() == ContentType.MODELS)
+        {
+            this.setTooltips(UIKeys.MODELS_CRUD_ADD, UIKeys.MODELS_CRUD_DUPE, UIKeys.MODELS_CRUD_RENAME, UIKeys.MODELS_CRUD_REMOVE);
+        }
+        else if (this.panel.getType() == ContentType.PARTICLES)
+        {
+            this.setTooltips(UIKeys.PARTICLES_CRUD_ADD, UIKeys.PARTICLES_CRUD_DUPE, UIKeys.PARTICLES_CRUD_RENAME, UIKeys.PARTICLES_CRUD_REMOVE);
+        }
 
         this.namesList.context((menu) ->
         {
