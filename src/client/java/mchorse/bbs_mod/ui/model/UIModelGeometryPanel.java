@@ -21,6 +21,7 @@ import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
+import mchorse.bbs_mod.ui.framework.elements.input.UITransform;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UIList;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UISearchList;
 import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
@@ -28,6 +29,7 @@ import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
+import mchorse.bbs_mod.utils.Axis;
 import mchorse.bbs_mod.utils.IOUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
 import org.joml.Vector2f;
@@ -45,9 +47,10 @@ public class UIModelGeometryPanel extends UIElement
     private final UIList<GeometryEntry> hierarchyList;
     private final UISearchList<GeometryEntry> hierarchySearch;
     private final UILabel selectedBoneLabel;
-    private final UITrackpad originX;
-    private final UITrackpad originY;
-    private final UITrackpad originZ;
+    private final UITransform unifiedTransform;
+    private final UITrackpad transformX;
+    private final UITrackpad transformY;
+    private final UITrackpad transformZ;
     private final UITrackpad rotateX;
     private final UITrackpad rotateY;
     private final UITrackpad rotateZ;
@@ -58,25 +61,14 @@ public class UIModelGeometryPanel extends UIElement
     private final UITrackpad scaleY;
     private final UITrackpad scaleZ;
     private final UIButton saveButton;
-    private final UIButton reloadButton;
 
     private final UILabel selectedCubeLabel;
-    private final UITrackpad cubeOriginX;
-    private final UITrackpad cubeOriginY;
-    private final UITrackpad cubeOriginZ;
-    private final UITrackpad cubeSizeX;
-    private final UITrackpad cubeSizeY;
-    private final UITrackpad cubeSizeZ;
-    private final UITrackpad cubePivotX;
-    private final UITrackpad cubePivotY;
-    private final UITrackpad cubePivotZ;
     private final UITrackpad cubeInflate;
     private final UITrackpad cubeUvX;
     private final UITrackpad cubeUvY;
     private final UIToggle cubeMirror;
     private final UIIcon addCubeIcon;
     private final UIIcon addFolderIcon;
-    private final UIToggle autoSaveToggle;
     private final Set<String> collapsedGroupIds = new HashSet<>();
     private ModelGroup copiedGroup;
     private ModelCube copiedCube;
@@ -186,96 +178,94 @@ public class UIModelGeometryPanel extends UIElement
         this.selectedBoneLabel = UI.label(IKey.raw("-"));
         this.selectedBoneLabel.relative(editorTitle).y(1F, 4).w(1F).h(12);
 
-        UILabel originLabel = UI.label(IKey.raw("Origin"));
-        originLabel.relative(this.selectedBoneLabel).y(1F, 8).w(1F).h(12);
-        this.originX = this.trackpad((v) -> this.updateVector(0, 0, v.floatValue()));
-        this.originY = this.trackpad((v) -> this.updateVector(0, 1, v.floatValue()));
-        this.originZ = this.trackpad((v) -> this.updateVector(0, 2, v.floatValue()));
-        UIElement originRow = UI.row(6, this.originX, this.originY, this.originZ);
-        originRow.relative(originLabel).y(1F, 2).w(1F).h(20);
+        this.unifiedTransform = new UITransform()
+        {
+            {
+                UIElement row = this.r2x.getParentContainer();
 
-        UILabel rotateLabel = UI.label(IKey.raw("Rotate"));
-        rotateLabel.relative(originRow).y(1F, 8).w(1F).h(12);
-        this.rotateX = this.trackpad((v) -> this.updateVector(1, 0, v.floatValue()));
-        this.rotateY = this.trackpad((v) -> this.updateVector(1, 1, v.floatValue()));
-        this.rotateZ = this.trackpad((v) -> this.updateVector(1, 2, v.floatValue()));
-        UIElement rotateRow = UI.row(6, this.rotateX, this.rotateY, this.rotateZ);
-        rotateRow.relative(rotateLabel).y(1F, 2).w(1F).h(20);
+                if (row != null)
+                {
+                    row.removeFromParent();
+                }
 
-        UILabel pivotLabel = UI.label(IKey.raw("Pivot"));
-        pivotLabel.relative(rotateRow).y(1F, 8).w(1F).h(12);
-        this.pivotX = this.trackpad((v) -> this.updateVector(2, 0, v.floatValue()));
-        this.pivotY = this.trackpad((v) -> this.updateVector(2, 1, v.floatValue()));
-        this.pivotZ = this.trackpad((v) -> this.updateVector(2, 2, v.floatValue()));
-        UIElement pivotRow = UI.row(6, this.pivotX, this.pivotY, this.pivotZ);
-        pivotRow.relative(pivotLabel).y(1F, 2).w(1F).h(20);
+                this.iconR2.setEnabled(false);
+                this.r2x.setEnabled(false);
+                this.r2y.setEnabled(false);
+                this.r2z.setEnabled(false);
+            }
 
-        UILabel scaleLabel = UI.label(IKey.raw("Scale"));
-        scaleLabel.relative(pivotRow).y(1F, 8).w(1F).h(12);
-        this.scaleX = this.trackpad((v) -> this.updateVector(3, 0, v.floatValue()));
-        this.scaleY = this.trackpad((v) -> this.updateVector(3, 1, v.floatValue()));
-        this.scaleZ = this.trackpad((v) -> this.updateVector(3, 2, v.floatValue()));
-        UIElement scaleRow = UI.row(6, this.scaleX, this.scaleY, this.scaleZ);
-        scaleRow.relative(scaleLabel).y(1F, 2).w(1F).h(20);
+            @Override
+            public void setT(Axis axis, double x, double y, double z)
+            {
+                UIModelGeometryPanel.this.updateTransformVector(0, UIModelGeometryPanel.this.axisIndex(axis), (float) (axis == Axis.X ? x : axis == Axis.Y ? y : z));
+            }
+
+            @Override
+            public void setS(Axis axis, double x, double y, double z)
+            {
+                UIModelGeometryPanel.this.updateTransformVector(3, UIModelGeometryPanel.this.axisIndex(axis), (float) (axis == Axis.X ? x : axis == Axis.Y ? y : z));
+            }
+
+            @Override
+            public void setR(Axis axis, double x, double y, double z)
+            {
+                UIModelGeometryPanel.this.updateTransformVector(1, UIModelGeometryPanel.this.axisIndex(axis), (float) (axis == Axis.X ? x : axis == Axis.Y ? y : z));
+            }
+
+            @Override
+            public void setR2(Axis axis, double x, double y, double z)
+            {}
+
+            @Override
+            public void setP(Axis axis, double x, double y, double z)
+            {
+                UIModelGeometryPanel.this.updateTransformVector(2, UIModelGeometryPanel.this.axisIndex(axis), (float) (axis == Axis.X ? x : axis == Axis.Y ? y : z));
+            }
+        };
+        this.unifiedTransform.relative(this.selectedBoneLabel).y(1F, 6).w(1F).h(104);
+
+        this.transformX = this.unifiedTransform.tx;
+        this.transformY = this.unifiedTransform.ty;
+        this.transformZ = this.unifiedTransform.tz;
+        this.rotateX = this.unifiedTransform.rx;
+        this.rotateY = this.unifiedTransform.ry;
+        this.rotateZ = this.unifiedTransform.rz;
+        this.pivotX = this.unifiedTransform.px;
+        this.pivotY = this.unifiedTransform.py;
+        this.pivotZ = this.unifiedTransform.pz;
+        this.scaleX = this.unifiedTransform.sx;
+        this.scaleY = this.unifiedTransform.sy;
+        this.scaleZ = this.unifiedTransform.sz;
 
         this.saveButton = new UIButton(UIKeys.GENERAL_SAVE, (b) -> this.saveModelFile());
-        this.reloadButton = new UIButton(UIKeys.GENERAL_EDIT, (b) -> this.reloadModelData());
-        this.saveButton.w(0.5F, -4).h(20);
-        this.reloadButton.w(0.5F, -4).h(20);
-        UIElement buttons = UI.row(8, this.saveButton, this.reloadButton);
-        buttons.relative(scaleRow).y(1F, 10).w(1F).h(20);
+        this.saveButton.w(1F).h(20);
+        UIElement buttons = UI.row(this.saveButton);
+        buttons.relative(this.unifiedTransform).y(1F, 10).w(1F).h(20);
 
-        this.selectedCubeLabel = UI.label(IKey.raw("-"));
+        this.selectedCubeLabel = UI.label(IKey.raw("Transform"));
         this.selectedCubeLabel.relative(buttons).y(1F, 8).w(1F).h(12);
 
-        UILabel cubeOriginLabel = UI.label(IKey.raw("Cube Origin"));
-        cubeOriginLabel.relative(this.selectedCubeLabel).y(1F, 8).w(1F).h(12);
-        this.cubeOriginX = this.trackpad((v) -> this.updateCubeVector(0, 0, v.floatValue()));
-        this.cubeOriginY = this.trackpad((v) -> this.updateCubeVector(0, 1, v.floatValue()));
-        this.cubeOriginZ = this.trackpad((v) -> this.updateCubeVector(0, 2, v.floatValue()));
-        UIElement cubeOriginRow = UI.row(6, this.cubeOriginX, this.cubeOriginY, this.cubeOriginZ);
-        cubeOriginRow.relative(cubeOriginLabel).y(1F, 2).w(1F).h(20);
-
-        UILabel cubeSizeLabel = UI.label(IKey.raw("Cube Size"));
-        cubeSizeLabel.relative(cubeOriginRow).y(1F, 8).w(1F).h(12);
-        this.cubeSizeX = this.trackpad((v) -> this.updateCubeVector(1, 0, v.floatValue()));
-        this.cubeSizeY = this.trackpad((v) -> this.updateCubeVector(1, 1, v.floatValue()));
-        this.cubeSizeZ = this.trackpad((v) -> this.updateCubeVector(1, 2, v.floatValue()));
-        UIElement cubeSizeRow = UI.row(6, this.cubeSizeX, this.cubeSizeY, this.cubeSizeZ);
-        cubeSizeRow.relative(cubeSizeLabel).y(1F, 2).w(1F).h(20);
-
-        UILabel cubePivotLabel = UI.label(IKey.raw("Cube Pivot"));
-        cubePivotLabel.relative(cubeSizeRow).y(1F, 8).w(1F).h(12);
-        this.cubePivotX = this.trackpad((v) -> this.updateCubeVector(2, 0, v.floatValue()));
-        this.cubePivotY = this.trackpad((v) -> this.updateCubeVector(2, 1, v.floatValue()));
-        this.cubePivotZ = this.trackpad((v) -> this.updateCubeVector(2, 2, v.floatValue()));
-        UIElement cubePivotRow = UI.row(6, this.cubePivotX, this.cubePivotY, this.cubePivotZ);
-        cubePivotRow.relative(cubePivotLabel).y(1F, 2).w(1F).h(20);
-
         UILabel cubeInflateLabel = UI.label(IKey.raw("Cube Inflate"));
-        cubeInflateLabel.relative(cubePivotRow).y(1F, 8).w(60).h(12);
+        cubeInflateLabel.w(0.4F, -4).h(20);
         this.cubeInflate = this.trackpad((v) -> this.updateCubeInflate(v.floatValue()));
-        this.cubeInflate.w(0.333F, -6);
-        UIElement cubeInflateRow = UI.row(this.cubeInflate);
-        cubeInflateRow.relative(cubeInflateLabel).y(1F, 2).w(1F).h(20);
+        this.cubeInflate.w(0.6F, -2);
+        UIElement cubeInflateRow = UI.row(6, cubeInflateLabel, this.cubeInflate);
+        cubeInflateRow.relative(this.selectedCubeLabel).y(1F, 4).w(1F).h(20);
 
         UILabel cubeUvLabel = UI.label(IKey.raw("Cube UV"));
-        cubeUvLabel.relative(cubeInflateRow).y(1F, 8).w(1F).h(12);
+        cubeUvLabel.w(0.25F, -4).h(20);
         this.cubeUvX = this.trackpad((v) -> this.updateCubeUV(0, v.floatValue()));
         this.cubeUvY = this.trackpad((v) -> this.updateCubeUV(1, v.floatValue()));
         this.cubeMirror = new UIToggle(IKey.raw("Mirror"), (b) -> this.updateCubeMirror(b.getValue()));
-        this.cubeUvX.w(0.333F, -6);
-        this.cubeUvY.w(0.333F, -6);
-        this.cubeMirror.w(0.333F, -6).h(20);
-        UIElement cubeUvRow = UI.row(6, this.cubeUvX, this.cubeUvY, this.cubeMirror);
-        cubeUvRow.relative(cubeUvLabel).y(1F, 2).w(1F).h(20);
-
-        this.autoSaveToggle = new UIToggle(IKey.raw("Auto Save"), false, (b) -> {});
-        this.autoSaveToggle.relative(cubeUvRow).y(1F, 8).w(1F).h(14);
+        this.cubeUvX.w(0.25F, -3);
+        this.cubeUvY.w(0.25F, -3);
+        this.cubeMirror.w(0.25F, -3).h(20);
+        UIElement cubeUvRow = UI.row(4, cubeUvLabel, this.cubeUvX, this.cubeUvY, this.cubeMirror);
+        cubeUvRow.relative(cubeInflateRow).y(1F, 6).w(1F).h(20);
 
         UIElement editor = new UIElement();
         editor.relative(this).x(1F, -rightWidth - sideMargin).y(26).w(rightWidth).h(1F, -36);
-        editor.add(editorTitle, this.selectedBoneLabel, originLabel, originRow, rotateLabel, rotateRow, pivotLabel, pivotRow, scaleLabel, scaleRow, buttons, this.selectedCubeLabel, cubeOriginLabel, cubeOriginRow, cubeSizeLabel, cubeSizeRow, cubePivotLabel, cubePivotRow, cubeInflateLabel, cubeInflateRow, cubeUvLabel, cubeUvRow, this.autoSaveToggle);
+        editor.add(editorTitle, this.selectedBoneLabel, this.unifiedTransform, buttons, this.selectedCubeLabel, cubeInflateRow, cubeUvRow);
 
         this.addCubeIcon = new UIIcon(Icons.BLOCK, (b) -> this.addCube());
         this.addFolderIcon = new UIIcon(Icons.FOLDER, (b) -> this.addFolder());
@@ -294,20 +284,49 @@ public class UIModelGeometryPanel extends UIElement
     {
         this.filling = true;
 
-        if (this.selectedCube == null)
+        if (this.selectedCube == null && this.selectedGroup == null)
         {
-            this.selectedCubeLabel.label = IKey.raw("-");
+            this.selectedCubeLabel.label = IKey.raw("Transform");
             this.cubeMirrorValue = false;
-            this.setCubePads(new Vector3f(), new Vector3f(), new Vector3f(), 0, new Vector2f(), false);
+            this.setTransformPads(new Vector3f(), new Vector3f(), new Vector3f(), new Vector3f(1F, 1F, 1F));
+            this.cubeInflate.setValue(0);
+            this.cubeUvX.setValue(0);
+            this.cubeUvY.setValue(0);
+            this.cubeMirror.setValue(false);
+            this.cubeInflate.setEnabled(false);
+            this.cubeUvX.setEnabled(false);
+            this.cubeUvY.setEnabled(false);
+            this.cubeMirror.setEnabled(false);
+        }
+        else if (this.selectedCube != null)
+        {
+            int index = this.selectedGroup == null ? -1 : this.selectedGroup.cubes.indexOf(this.selectedCube);
+            Vector2f uv = this.getBoxUV(this.selectedCube);
+
+            this.selectedCubeLabel.label = IKey.raw(index < 0 ? this.getCubeLabel(this.selectedCube) : this.getCubeLabel(this.selectedCube));
+            this.cubeMirrorValue = this.isCubeMirrored(this.selectedCube);
+            this.setTransformPads(this.selectedCube.origin, this.selectedCube.rotate, this.selectedCube.pivot, this.selectedCube.size);
+            this.cubeInflate.setValue(this.selectedCube.inflate);
+            this.cubeUvX.setValue(uv.x);
+            this.cubeUvY.setValue(uv.y);
+            this.cubeMirror.setValue(this.cubeMirrorValue);
+            this.cubeInflate.setEnabled(true);
+            this.cubeUvX.setEnabled(true);
+            this.cubeUvY.setEnabled(true);
+            this.cubeMirror.setEnabled(true);
         }
         else
         {
-            int index = this.selectedGroup.cubes.indexOf(this.selectedCube);
-            Vector2f uv = this.getBoxUV(this.selectedCube);
-
-            this.selectedCubeLabel.label = IKey.raw(index < 0 ? "-" : this.getCubeLabel(this.selectedCube));
-            this.cubeMirrorValue = this.isCubeMirrored(this.selectedCube);
-            this.setCubePads(this.selectedCube.origin, this.selectedCube.size, this.selectedCube.pivot, this.selectedCube.inflate, uv, this.cubeMirrorValue);
+            this.selectedCubeLabel.label = IKey.raw("Transform");
+            this.setTransformPads(this.selectedGroup.initial.translate, this.selectedGroup.initial.rotate, this.selectedGroup.initial.pivot, this.selectedGroup.initial.scale);
+            this.cubeInflate.setValue(0);
+            this.cubeUvX.setValue(0);
+            this.cubeUvY.setValue(0);
+            this.cubeMirror.setValue(false);
+            this.cubeInflate.setEnabled(false);
+            this.cubeUvX.setEnabled(false);
+            this.cubeUvY.setEnabled(false);
+            this.cubeMirror.setEnabled(false);
         }
 
         this.filling = false;
@@ -465,9 +484,14 @@ public class UIModelGeometryPanel extends UIElement
 
     private void setPads(Vector3f origin, Vector3f rotate, Vector3f pivot, Vector3f scale)
     {
-        this.originX.setValue(origin.x);
-        this.originY.setValue(origin.y);
-        this.originZ.setValue(origin.z);
+        this.setTransformPads(origin, rotate, pivot, scale);
+    }
+
+    private void setTransformPads(Vector3f origin, Vector3f rotate, Vector3f pivot, Vector3f scale)
+    {
+        this.transformX.setValue(origin.x);
+        this.transformY.setValue(origin.y);
+        this.transformZ.setValue(origin.z);
         this.rotateX.setValue(rotate.x);
         this.rotateY.setValue(rotate.y);
         this.rotateZ.setValue(rotate.z);
@@ -479,37 +503,45 @@ public class UIModelGeometryPanel extends UIElement
         this.scaleZ.setValue(scale.z);
     }
 
-    private void setCubePads(Vector3f origin, Vector3f size, Vector3f pivot, float inflate, Vector2f uv, boolean mirror)
+    private int axisIndex(Axis axis)
     {
-        this.cubeOriginX.setValue(origin.x);
-        this.cubeOriginY.setValue(origin.y);
-        this.cubeOriginZ.setValue(origin.z);
-        this.cubeSizeX.setValue(size.x);
-        this.cubeSizeY.setValue(size.y);
-        this.cubeSizeZ.setValue(size.z);
-        this.cubePivotX.setValue(pivot.x);
-        this.cubePivotY.setValue(pivot.y);
-        this.cubePivotZ.setValue(pivot.z);
-        this.cubeInflate.setValue(inflate);
-        this.cubeUvX.setValue(uv.x);
-        this.cubeUvY.setValue(uv.y);
-        this.cubeMirror.setValue(mirror);
+        return switch (axis)
+        {
+            case X -> 0;
+            case Y -> 1;
+            case Z -> 2;
+        };
     }
 
-    private void updateVector(int type, int axis, float value)
+    private void updateTransformVector(int type, int axis, float value)
     {
-        if (this.filling || this.selectedGroup == null)
+        if (this.filling || (this.selectedGroup == null && this.selectedCube == null))
         {
             return;
         }
 
-        Vector3f vector = switch (type)
+        Vector3f vector;
+
+        if (this.selectedCube != null)
         {
-            case 0 -> this.selectedGroup.initial.translate;
-            case 1 -> this.selectedGroup.initial.rotate;
-            case 2 -> this.selectedGroup.initial.pivot;
-            default -> this.selectedGroup.initial.scale;
-        };
+            vector = switch (type)
+            {
+                case 0 -> this.selectedCube.origin;
+                case 1 -> this.selectedCube.rotate;
+                case 2 -> this.selectedCube.pivot;
+                default -> this.selectedCube.size;
+            };
+        }
+        else
+        {
+            vector = switch (type)
+            {
+                case 0 -> this.selectedGroup.initial.translate;
+                case 1 -> this.selectedGroup.initial.rotate;
+                case 2 -> this.selectedGroup.initial.pivot;
+                default -> this.selectedGroup.initial.scale;
+            };
+        }
 
         if (axis == 0)
         {
@@ -524,35 +556,9 @@ public class UIModelGeometryPanel extends UIElement
             vector.z = value;
         }
 
-        this.selectedGroup.current.copy(this.selectedGroup.initial);
-        this.refreshCubeRenderAndSave();
-    }
-
-    private void updateCubeVector(int type, int axis, float value)
-    {
-        if (this.filling || this.selectedCube == null)
+        if (this.selectedCube == null && this.selectedGroup != null)
         {
-            return;
-        }
-
-        Vector3f vector = switch (type)
-        {
-            case 0 -> this.selectedCube.origin;
-            case 1 -> this.selectedCube.size;
-            default -> this.selectedCube.pivot;
-        };
-
-        if (axis == 0)
-        {
-            vector.x = value;
-        }
-        else if (axis == 1)
-        {
-            vector.y = value;
-        }
-        else
-        {
-            vector.z = value;
+            this.selectedGroup.current.copy(this.selectedGroup.initial);
         }
 
         this.refreshCubeRenderAndSave();
@@ -884,7 +890,6 @@ public class UIModelGeometryPanel extends UIElement
         }
 
         this.parent.dirty();
-        this.autoSaveIfEnabled();
     }
 
     private void toggleGroupCollapsed(String groupId)
@@ -1248,14 +1253,6 @@ public class UIModelGeometryPanel extends UIElement
         }
 
         return cube.name;
-    }
-
-    private void autoSaveIfEnabled()
-    {
-        if (this.autoSaveToggle.getValue())
-        {
-            this.saveModelFile();
-        }
     }
 
     private boolean isCubeMirrored(ModelCube cube)
