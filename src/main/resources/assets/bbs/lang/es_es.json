@@ -26,5 +26,8 @@
     "bbs.ui.transforms.context.reset_translation": "Restablecer traslación",
     "bbs.ui.transforms.context.reset_scale": "Restablecer escala",
     "bbs.ui.transforms.context.reset_rotation": "Restablecer rotación",
-    "bbs.ui.transforms.context.reset": "Restablecer transformación"
+    "bbs.ui.transforms.context.reset": "Restablecer transformación",
+    "bbs.ui.cut": "Cortar",
+    "bbs.ui.cut.empty": "Nada para cortar",
+    "bbs.ui.cut.not_allowed": "No se puede cortar aquí"
 }
