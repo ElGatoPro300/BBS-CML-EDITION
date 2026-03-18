@@ -116,10 +116,17 @@ public class UIModelGeometryPanel extends UIElement
             {
                 int textY = y + (this.scroll.scrollItemSize - context.batcher.getFont().getHeight()) / 2;
                 int offset = element.depth * 10;
+                int arrowX = x + 2 + offset;
+                int iconX = x + 18 + offset;
                 Icon icon = element.type == GeometryEntryType.BONE ? Icons.FOLDER : Icons.BLOCK;
 
-                context.batcher.icon(icon, x + 4 + offset, y + 1);
-                context.batcher.textShadow(element.label, x + 20 + offset, textY, hover ? Colors.HIGHLIGHT : Colors.WHITE);
+                if (element.expandable)
+                {
+                    context.batcher.icon(UIModelGeometryPanel.this.collapsedGroupIds.contains(element.groupId) ? Icons.COLLAPSED : Icons.UNCOLLAPSED, arrowX, y + 1);
+                }
+
+                context.batcher.icon(icon, iconX, y + 1);
+                context.batcher.textShadow(element.label, x + 36 + offset, textY, hover ? Colors.HIGHLIGHT : Colors.WHITE);
             }
 
             @Override
@@ -146,9 +153,9 @@ public class UIModelGeometryPanel extends UIElement
                         GeometryEntry entry = this.getList().get(visibleIndex);
                         int y = this.area.y + visibleIndex * this.scroll.scrollItemSize - (int) this.scroll.getScroll();
                         int offset = entry.depth * 10;
-                        int iconX = this.area.x + 4 + offset;
+                        int arrowX = this.area.x + 2 + offset;
 
-                        if (entry.type == GeometryEntryType.BONE && context.mouseX >= iconX && context.mouseX < iconX + 16 && context.mouseY >= y + 1 && context.mouseY < y + 17)
+                        if (entry.expandable && context.mouseX >= arrowX && context.mouseX < arrowX + 16 && context.mouseY >= y + 1 && context.mouseY < y + 17)
                         {
                             UIModelGeometryPanel.this.toggleGroupCollapsed(entry.groupId);
 
@@ -501,7 +508,9 @@ public class UIModelGeometryPanel extends UIElement
 
     private void collectHierarchy(ModelGroup group, int depth)
     {
-        this.hierarchyList.add(new GeometryEntry(GeometryEntryType.BONE, group.id, -1, depth, group.id));
+        boolean expandable = !group.children.isEmpty() || !group.cubes.isEmpty();
+
+        this.hierarchyList.add(new GeometryEntry(GeometryEntryType.BONE, group.id, -1, depth, group.id, expandable));
 
         if (this.collapsedGroupIds.contains(group.id))
         {
@@ -510,7 +519,7 @@ public class UIModelGeometryPanel extends UIElement
 
         for (int i = 0; i < group.cubes.size(); i++)
         {
-            this.hierarchyList.add(new GeometryEntry(GeometryEntryType.CUBE, group.id, i, depth + 1, this.getCubeLabel(group.cubes.get(i))));
+            this.hierarchyList.add(new GeometryEntry(GeometryEntryType.CUBE, group.id, i, depth + 1, this.getCubeLabel(group.cubes.get(i)), false));
         }
 
         for (ModelGroup child : group.children)
@@ -820,7 +829,7 @@ public class UIModelGeometryPanel extends UIElement
             }
 
             destination.cubes.add(insertIndex, cube);
-            preferred = new GeometryEntry(GeometryEntryType.CUBE, destination.id, insertIndex, 0, this.getCubeLabel(cube));
+            preferred = new GeometryEntry(GeometryEntryType.CUBE, destination.id, insertIndex, 0, this.getCubeLabel(cube), false);
         }
         else if (this.copiedGroup != null)
         {
@@ -839,7 +848,7 @@ public class UIModelGeometryPanel extends UIElement
                     destination.children.add(clone);
                 }
 
-                preferred = new GeometryEntry(GeometryEntryType.BONE, clone.id, -1, 0, clone.id);
+                preferred = new GeometryEntry(GeometryEntryType.BONE, clone.id, -1, 0, clone.id, true);
             }
         }
 
@@ -897,7 +906,7 @@ public class UIModelGeometryPanel extends UIElement
 
             this.replaceGroup(model, this.selectedGroup, replacement);
             model.initialize();
-            this.reloadHierarchyPreserveSelection(new GeometryEntry(GeometryEntryType.BONE, replacement.id, -1, 0, replacement.id));
+            this.reloadHierarchyPreserveSelection(new GeometryEntry(GeometryEntryType.BONE, replacement.id, -1, 0, replacement.id, true));
             this.refreshCubeRenderAndSave();
         });
 
@@ -916,7 +925,7 @@ public class UIModelGeometryPanel extends UIElement
         UIPromptOverlayPanel panel = new UIPromptOverlayPanel(UIKeys.GENERAL_RENAME, UIKeys.GENERAL_RENAME, (newName) ->
         {
             this.selectedCube.name = this.sanitizeCubeName(newName);
-            this.reloadHierarchyPreserveSelection(new GeometryEntry(GeometryEntryType.CUBE, this.selectedGroup.id, entry.cubeIndex, 0, this.getCubeLabel(this.selectedCube)));
+            this.reloadHierarchyPreserveSelection(new GeometryEntry(GeometryEntryType.CUBE, this.selectedGroup.id, entry.cubeIndex, 0, this.getCubeLabel(this.selectedCube), false));
             this.refreshCubeRenderAndSave();
         });
 
@@ -974,7 +983,7 @@ public class UIModelGeometryPanel extends UIElement
         }
 
         model.initialize();
-        this.reloadHierarchyPreserveSelection(new GeometryEntry(GeometryEntryType.BONE, id, -1, 0, id));
+        this.reloadHierarchyPreserveSelection(new GeometryEntry(GeometryEntryType.BONE, id, -1, 0, id, true));
         this.refreshCubeRenderAndSave();
     }
 
@@ -1068,7 +1077,7 @@ public class UIModelGeometryPanel extends UIElement
 
         if (current != null && current.type == GeometryEntryType.CUBE && current.groupId.equals(groupId))
         {
-            preferred = new GeometryEntry(GeometryEntryType.BONE, groupId, -1, 0, groupId);
+            preferred = new GeometryEntry(GeometryEntryType.BONE, groupId, -1, 0, groupId, true);
         }
 
         this.reloadHierarchyPreserveSelection(preferred);
@@ -1205,7 +1214,7 @@ public class UIModelGeometryPanel extends UIElement
             }
         }
 
-        return new GeometryEntry(GeometryEntryType.BONE, sourceGroup.id, -1, 0, sourceGroup.id);
+        return new GeometryEntry(GeometryEntryType.BONE, sourceGroup.id, -1, 0, sourceGroup.id, true);
     }
 
     private GeometryEntry reorderCubeByDrag(Model model, GeometryEntry source, GeometryEntry destination, boolean moveAfter)
@@ -1256,7 +1265,7 @@ public class UIModelGeometryPanel extends UIElement
 
         destinationGroup.cubes.add(insertIndex, cube);
 
-        return new GeometryEntry(GeometryEntryType.CUBE, destinationGroup.id, insertIndex, 0, this.getCubeLabel(cube));
+        return new GeometryEntry(GeometryEntryType.CUBE, destinationGroup.id, insertIndex, 0, this.getCubeLabel(cube), false);
     }
 
     private ModelGroup cloneGroupTree(ModelGroup source, ModelGroup parent, String requestedId, boolean uniquify, Set<String> usedIds)
@@ -1483,7 +1492,7 @@ public class UIModelGeometryPanel extends UIElement
 
             if (state.selectedGroupId != null)
             {
-                preferred = new GeometryEntry(state.selectedCube ? GeometryEntryType.CUBE : GeometryEntryType.BONE, state.selectedGroupId, state.selectedCubeIndex, 0, "");
+                preferred = new GeometryEntry(state.selectedCube ? GeometryEntryType.CUBE : GeometryEntryType.BONE, state.selectedGroupId, state.selectedCubeIndex, 0, "", state.selectedCube ? false : true);
             }
 
             this.reloadHierarchyPreserveSelection(preferred);
@@ -1690,14 +1699,16 @@ public class UIModelGeometryPanel extends UIElement
         private final int cubeIndex;
         private final int depth;
         private final String label;
+        private final boolean expandable;
 
-        private GeometryEntry(GeometryEntryType type, String groupId, int cubeIndex, int depth, String label)
+        private GeometryEntry(GeometryEntryType type, String groupId, int cubeIndex, int depth, String label, boolean expandable)
         {
             this.type = type;
             this.groupId = groupId;
             this.cubeIndex = cubeIndex;
             this.depth = depth;
             this.label = label;
+            this.expandable = expandable;
         }
     }
 
