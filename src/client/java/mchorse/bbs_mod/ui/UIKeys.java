@@ -715,6 +715,7 @@ public class UIKeys
     public static final IKey ITEM_STACK_CONTEXT_PASTE = L10n.lang("bbs.ui.item_stack.context.paste");
     public static final IKey ITEM_STACK_CONTEXT_RESET = L10n.lang("bbs.ui.item_stack.context.reset");
     public static final IKey ITEM_STACK_CONTEXT_INVENTORY = L10n.lang("bbs.ui.item_stack.context.inventory");
+    public static final IKey ITEM_STACK_CONTEXT_OPTIONS = L10n.lang("bbs.ui.item_stack.context.options");
     public static final IKey KEYFRAMES_CHANGE_COLOR = L10n.lang("bbs.ui.keyframes.change_color");
     public static final IKey KEYFRAMES_CHANGE_SHAPE = L10n.lang("bbs.ui.keyframes.change_shape");
     public static final IKey KEYFRAMES_CONTEXT_ADJUST_VALUES = L10n.lang("bbs.ui.keyframes.context.adjust_values");
