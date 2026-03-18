@@ -61,8 +61,6 @@ public class UIModelGeometryPanel extends UIElement
     private final UITrackpad scaleY;
     private final UITrackpad scaleZ;
     private final UIButton saveButton;
-
-    private final UILabel selectedCubeLabel;
     private final UITrackpad cubeInflate;
     private final UITrackpad cubeUvX;
     private final UITrackpad cubeUvY;
@@ -89,7 +87,7 @@ public class UIModelGeometryPanel extends UIElement
         int leftWidth = 260;
         int rightWidth = 280;
 
-        UILabel hierarchyTitle = UI.label(UIKeys.MODELS_IK_HIERARCHY).background();
+        UILabel hierarchyTitle = UI.label(UIKeys.MODELS_GEOMETRY_BONE_HIERARCHY).background();
         hierarchyTitle.relative(this).x(sideMargin).y(10).w(leftWidth).h(12);
 
         this.hierarchyList = new UIList<>((l) -> this.selectCurrentHierarchyEntry())
@@ -242,21 +240,18 @@ public class UIModelGeometryPanel extends UIElement
         UIElement buttons = UI.row(this.saveButton);
         buttons.relative(this.unifiedTransform).y(1F, 10).w(1F).h(20);
 
-        this.selectedCubeLabel = UI.label(IKey.raw("Transform"));
-        this.selectedCubeLabel.relative(buttons).y(1F, 8).w(1F).h(12);
-
-        UILabel cubeInflateLabel = UI.label(IKey.raw("Cube Inflate"));
+        UILabel cubeInflateLabel = UI.label(UIKeys.MODELS_GEOMETRY_CUBE_INFLATE);
         cubeInflateLabel.w(0.4F, -4).h(20);
         this.cubeInflate = this.trackpad((v) -> this.updateCubeInflate(v.floatValue()));
         this.cubeInflate.w(0.6F, -2);
         UIElement cubeInflateRow = UI.row(6, cubeInflateLabel, this.cubeInflate);
-        cubeInflateRow.relative(this.selectedCubeLabel).y(1F, 4).w(1F).h(20);
+        cubeInflateRow.relative(buttons).y(1F, 8).w(1F).h(20);
 
-        UILabel cubeUvLabel = UI.label(IKey.raw("Cube UV"));
+        UILabel cubeUvLabel = UI.label(UIKeys.MODELS_GEOMETRY_CUBE_UV);
         cubeUvLabel.w(0.25F, -4).h(20);
         this.cubeUvX = this.trackpad((v) -> this.updateCubeUV(0, v.floatValue()));
         this.cubeUvY = this.trackpad((v) -> this.updateCubeUV(1, v.floatValue()));
-        this.cubeMirror = new UIToggle(IKey.raw("Mirror"), (b) -> this.updateCubeMirror(b.getValue()));
+        this.cubeMirror = new UIToggle(UIKeys.MODELS_GEOMETRY_CUBE_MIRROR, (b) -> this.updateCubeMirror(b.getValue()));
         this.cubeUvX.w(0.25F, -3);
         this.cubeUvY.w(0.25F, -3);
         this.cubeMirror.w(0.25F, -3).h(20);
@@ -265,12 +260,12 @@ public class UIModelGeometryPanel extends UIElement
 
         UIElement editor = new UIElement();
         editor.relative(this).x(1F, -rightWidth - sideMargin).y(26).w(rightWidth).h(1F, -36);
-        editor.add(editorTitle, this.selectedBoneLabel, this.unifiedTransform, buttons, this.selectedCubeLabel, cubeInflateRow, cubeUvRow);
+        editor.add(editorTitle, this.selectedBoneLabel, this.unifiedTransform, buttons, cubeInflateRow, cubeUvRow);
 
         this.addCubeIcon = new UIIcon(Icons.BLOCK, (b) -> this.addCube());
         this.addFolderIcon = new UIIcon(Icons.FOLDER, (b) -> this.addFolder());
-        this.addCubeIcon.tooltip(IKey.raw("Agregar cubo"));
-        this.addFolderIcon.tooltip(IKey.raw("Agregar carpeta"));
+        this.addCubeIcon.tooltip(UIKeys.MODELS_GEOMETRY_ADD_CUBE);
+        this.addFolderIcon.tooltip(UIKeys.MODELS_GEOMETRY_ADD_FOLDER);
         this.addCubeIcon.relative(this).x(sideMargin).y(26).w(20).h(20);
         this.addFolderIcon.relative(this.addCubeIcon).x(1F, 2).y(0).w(20).h(20);
 
@@ -286,7 +281,6 @@ public class UIModelGeometryPanel extends UIElement
 
         if (this.selectedCube == null && this.selectedGroup == null)
         {
-            this.selectedCubeLabel.label = IKey.raw("Transform");
             this.cubeMirrorValue = false;
             this.setTransformPads(new Vector3f(), new Vector3f(), new Vector3f(), new Vector3f(1F, 1F, 1F));
             this.cubeInflate.setValue(0);
@@ -300,10 +294,8 @@ public class UIModelGeometryPanel extends UIElement
         }
         else if (this.selectedCube != null)
         {
-            int index = this.selectedGroup == null ? -1 : this.selectedGroup.cubes.indexOf(this.selectedCube);
             Vector2f uv = this.getBoxUV(this.selectedCube);
 
-            this.selectedCubeLabel.label = IKey.raw(index < 0 ? this.getCubeLabel(this.selectedCube) : this.getCubeLabel(this.selectedCube));
             this.cubeMirrorValue = this.isCubeMirrored(this.selectedCube);
             this.setTransformPads(this.selectedCube.origin, this.selectedCube.rotate, this.selectedCube.pivot, this.selectedCube.size);
             this.cubeInflate.setValue(this.selectedCube.inflate);
@@ -317,7 +309,6 @@ public class UIModelGeometryPanel extends UIElement
         }
         else
         {
-            this.selectedCubeLabel.label = IKey.raw("Transform");
             this.setTransformPads(this.selectedGroup.initial.translate, this.selectedGroup.initial.rotate, this.selectedGroup.initial.pivot, this.selectedGroup.initial.scale);
             this.cubeInflate.setValue(0);
             this.cubeUvX.setValue(0);
@@ -1249,7 +1240,7 @@ public class UIModelGeometryPanel extends UIElement
     {
         if (cube == null || cube.name == null || cube.name.isBlank())
         {
-            return "Cube";
+            return UIKeys.MODELS_GEOMETRY_CUBE.get();
         }
 
         return cube.name;

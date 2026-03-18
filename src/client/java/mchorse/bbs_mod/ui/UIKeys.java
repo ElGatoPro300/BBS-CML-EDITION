@@ -868,6 +868,13 @@ public class UIKeys
     public static final IKey MODELS_DYNAMIC_BONES_MAX_ANGLE = L10n.lang("bbs.ui.models.dynamic_bones.max_angle");
     public static final IKey MODELS_DYNAMIC_BONES_MAX_ANGLE_TOOLTIP = L10n.lang("bbs.ui.models.dynamic_bones.max_angle_tooltip");
     public static final IKey MODELS_GEOMETRY_EDITOR = L10n.lang("bbs.ui.models.geometry_editor");
+    public static final IKey MODELS_GEOMETRY_BONE_HIERARCHY = L10n.lang("bbs.ui.models.geometry_bone_hierarchy");
+    public static final IKey MODELS_GEOMETRY_ADD_CUBE = L10n.lang("bbs.ui.models.geometry_add_cube");
+    public static final IKey MODELS_GEOMETRY_ADD_FOLDER = L10n.lang("bbs.ui.models.geometry_add_folder");
+    public static final IKey MODELS_GEOMETRY_CUBE = L10n.lang("bbs.ui.models.geometry_cube");
+    public static final IKey MODELS_GEOMETRY_CUBE_INFLATE = L10n.lang("bbs.ui.models.geometry_cube_inflate");
+    public static final IKey MODELS_GEOMETRY_CUBE_UV = L10n.lang("bbs.ui.models.geometry_cube_uv");
+    public static final IKey MODELS_GEOMETRY_CUBE_MIRROR = L10n.lang("bbs.ui.models.geometry_cube_mirror");
     public static final IKey MODELS_UI_SCALE = L10n.lang("bbs.ui.models.ui_scale");
     public static final IKey MORPHING_DEMORPH = L10n.lang("bbs.ui.morphing.demorph");
     public static final IKey MORPHING_FROM_MOB = L10n.lang("bbs.ui.morphing.from_mob");
