@@ -1028,6 +1028,7 @@
     "bbs.ui.inventory.title": "Seleccionar item de tu inventario",
     "bbs.ui.item_stack.context.hotbar": "Pegar desde la hotbar...",
     "bbs.ui.item_stack.context.inventory": "Abrir panel de inventario...",
+    "bbs.ui.item_stack.context.all_items": "Buscar en todos los items del juego...",
     "bbs.ui.item_stack.context.options": "Más opciones del item...",
     "bbs.ui.item_stack.context.paste": "Pegar el item principal del jugador",
     "bbs.ui.item_stack.context.reset": "Restablecer stack de item",

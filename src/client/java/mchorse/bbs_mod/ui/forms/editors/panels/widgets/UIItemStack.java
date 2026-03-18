@@ -54,28 +54,7 @@ public class UIItemStack extends UIElement
     private void fillContextMenu(ContextMenuManager menu)
     {
         menu.action(Icons.SPHERE, UIKeys.ITEM_STACK_CONTEXT_INVENTORY, this::openInventoryPanel);
-
-        menu.action(Icons.PASTE, UIKeys.ITEM_STACK_CONTEXT_PASTE, () ->
-        {
-            ItemStack stack = MinecraftClient.getInstance().player.getMainHandStack().copy();
-
-            if (this.callback != null)
-            {
-                this.callback.accept(stack);
-            }
-
-            this.setStack(stack);
-        });
-
-        menu.action(Icons.CLOSE, UIKeys.ITEM_STACK_CONTEXT_RESET, () ->
-        {
-            if (this.callback != null)
-            {
-                this.callback.accept(ItemStack.EMPTY);
-            }
-
-            this.setStack(ItemStack.EMPTY);
-        });
+        menu.action(Icons.SEARCH, UIKeys.ITEM_STACK_CONTEXT_ALL_ITEMS, this::openCreativeItemSelectorPanel);
 
         menu.action(Icons.POSE, UIKeys.ITEM_STACK_CONTEXT_HOTBAR, () ->
         {
@@ -98,6 +77,28 @@ public class UIItemStack extends UIElement
                     }));
                 }
             });
+        });
+
+        menu.action(Icons.PASTE, UIKeys.ITEM_STACK_CONTEXT_PASTE, () ->
+        {
+            ItemStack stack = MinecraftClient.getInstance().player.getMainHandStack().copy();
+
+            if (this.callback != null)
+            {
+                this.callback.accept(stack);
+            }
+
+            this.setStack(stack);
+        });
+
+        menu.action(Icons.CLOSE, UIKeys.ITEM_STACK_CONTEXT_RESET, () ->
+        {
+            if (this.callback != null)
+            {
+                this.callback.accept(ItemStack.EMPTY);
+            }
+
+            this.setStack(ItemStack.EMPTY);
         });
     }
 
@@ -122,6 +123,25 @@ public class UIItemStack extends UIElement
 
         panel.onClose((a) -> this.opened = false);
         UIOverlay.addOverlay(this.getContext(), panel, UIPlayerInventoryPanel.PANEL_WIDTH, UIPlayerInventoryPanel.PANEL_HEIGHT);
+        UIUtils.playClick();
+    }
+
+    public void openCreativeItemSelectorPanel()
+    {
+        this.opened = true;
+
+        UICreativeItemSelectorPanel panel = new UICreativeItemSelectorPanel((i) ->
+        {
+            if (this.callback != null)
+            {
+                this.callback.accept(i);
+            }
+
+            this.setStack(i);
+        });
+
+        panel.onClose((a) -> this.opened = false);
+        UIOverlay.addOverlay(this.getContext(), panel, UICreativeItemSelectorPanel.PANEL_WIDTH, UICreativeItemSelectorPanel.PANEL_HEIGHT);
         UIUtils.playClick();
     }
 
