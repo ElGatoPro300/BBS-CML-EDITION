@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.ui.framework.elements.input;
 
 import mchorse.bbs_mod.BBSSettings;
+import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.settings.values.IValueNotifier;
@@ -58,28 +59,27 @@ public class UIPropTransform extends UITransform
     {
         this.handler = new UITransformHandler(this);
 
-        this.context((menu) ->
-        {
-            menu.action(
-                this.local ? Icons.FULLSCREEN : Icons.MINIMIZE,
-                this.local ? UIKeys.TRANSFORMS_CONTEXT_SWITCH_GLOBAL : UIKeys.TRANSFORMS_CONTEXT_SWITCH_LOCAL,
-                this::toggleLocal
-            );
-
-            menu.actions.add(0, menu.actions.remove(menu.actions.size() - 1));
-
-            for (BiConsumer<UIPropTransform, ContextMenuManager> consumer : contextMenuExtensions)
-            {
-                consumer.accept(this, menu);
-            }
-        });
-
         this.iconT.callback = (b) -> this.toggleLocal();
         this.iconT.hoverColor = Colors.LIGHTEST_GRAY;
         this.iconT.setEnabled(true);
         this.iconT.tooltip(this.local ? UIKeys.TRANSFORMS_CONTEXT_SWITCH_GLOBAL : UIKeys.TRANSFORMS_CONTEXT_SWITCH_LOCAL);
 
         this.noCulling();
+    }
+
+    @Override
+    protected void addGeneralTabActions(ContextMenuManager menu, ListType transforms)
+    {
+        menu.action(
+            this.local ? Icons.FULLSCREEN : Icons.MINIMIZE,
+            this.local ? UIKeys.TRANSFORMS_CONTEXT_SWITCH_GLOBAL : UIKeys.TRANSFORMS_CONTEXT_SWITCH_LOCAL,
+            this::toggleLocal
+        );
+
+        for (BiConsumer<UIPropTransform, ContextMenuManager> consumer : contextMenuExtensions)
+        {
+            consumer.accept(this, menu);
+        }
     }
 
     public UIPropTransform callbacks(Supplier<IValueNotifier> notifier)
@@ -92,8 +92,25 @@ public class UIPropTransform extends UITransform
 
     public UIPropTransform callbacks(Runnable pre, Runnable post)
     {
-        this.preCallback = pre;
-        this.postCallback = post;
+        if (pre != null)
+        {
+            Runnable existing = this.preCallback;
+            this.preCallback = existing == null ? pre : () ->
+            {
+                existing.run();
+                pre.run();
+            };
+        }
+
+        if (post != null)
+        {
+            Runnable existing = this.postCallback;
+            this.postCallback = existing == null ? post : () ->
+            {
+                existing.run();
+                post.run();
+            };
+        }
 
         return this;
     }

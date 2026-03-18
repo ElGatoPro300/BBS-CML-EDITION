@@ -1138,7 +1138,7 @@ public class UIReplaysEditor extends UIElement
 
                 int mouseY2 = this.getContext().mouseY;
                 UIKeyframeSheet clickedSheet = this.keyframeEditor.view.getGraph().getSheet(mouseY2);
-                if (clickedSheet != null)
+                if (clickedSheet != null && !clickedSheet.groupHeader)
                 {
                     menu.action(Icons.FONT, UIKeys.FILM_REPLAY_RENAME_SHEET, () ->
                     {
@@ -1160,7 +1160,7 @@ public class UIReplaysEditor extends UIElement
                     });
                 }
 
-                if (this.keyframeEditor.view.getGraph() instanceof UIKeyframeDopeSheet)
+                if (this.keyframeEditor.view.getGraph() instanceof UIKeyframeDopeSheet && (clickedSheet == null || !clickedSheet.groupHeader))
                 {
                     menu.action(Icons.FILTER, UIKeys.FILM_REPLAY_FILTER_SHEETS, () ->
                     {
