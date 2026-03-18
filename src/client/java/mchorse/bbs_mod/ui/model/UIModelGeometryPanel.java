@@ -27,6 +27,7 @@ import mchorse.bbs_mod.ui.framework.elements.input.list.UIList;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UISearchList;
 import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
 import mchorse.bbs_mod.ui.utils.UI;
+import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
@@ -35,8 +36,12 @@ import mchorse.bbs_mod.utils.IOUtils;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.pose.Transform;
+import mchorse.bbs_mod.utils.undo.IUndo;
+import mchorse.bbs_mod.utils.undo.UndoManager;
+import mchorse.bbs_mod.graphics.window.Window;
 import org.joml.Vector2f;
 import org.joml.Vector3f;
+import org.lwjgl.glfw.GLFW;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -80,6 +85,9 @@ public class UIModelGeometryPanel extends UIElement
     private ModelInstance instance;
     private ModelGroup selectedGroup;
     private ModelCube selectedCube;
+    private UndoManager<UIModelGeometryPanel> undoManager = new UndoManager<>(200);
+    private GeometryState lastUndoState;
+    private boolean applyingUndo;
     private boolean cubeMirrorValue;
     private boolean filling;
 
@@ -200,19 +208,19 @@ public class UIModelGeometryPanel extends UIElement
             @Override
             public void setT(Axis axis, double x, double y, double z)
             {
-                UIModelGeometryPanel.this.updateTransformVector(0, UIModelGeometryPanel.this.axisIndex(axis), (float) (axis == Axis.X ? x : axis == Axis.Y ? y : z));
+                UIModelGeometryPanel.this.applyGizmoChange(0, axis, x, y, z);
             }
 
             @Override
             public void setS(Axis axis, double x, double y, double z)
             {
-                UIModelGeometryPanel.this.updateTransformVector(3, UIModelGeometryPanel.this.axisIndex(axis), (float) (axis == Axis.X ? x : axis == Axis.Y ? y : z));
+                UIModelGeometryPanel.this.applyGizmoChange(3, axis, x, y, z);
             }
 
             @Override
             public void setR(Axis axis, double x, double y, double z)
             {
-                UIModelGeometryPanel.this.updateTransformVector(1, UIModelGeometryPanel.this.axisIndex(axis), (float) (axis == Axis.X ? x : axis == Axis.Y ? y : z));
+                UIModelGeometryPanel.this.applyGizmoChange(1, axis, x, y, z);
             }
 
             @Override
@@ -222,7 +230,7 @@ public class UIModelGeometryPanel extends UIElement
             @Override
             public void setP(Axis axis, double x, double y, double z)
             {
-                UIModelGeometryPanel.this.updateTransformVector(2, UIModelGeometryPanel.this.axisIndex(axis), (float) (axis == Axis.X ? x : axis == Axis.Y ? y : z));
+                UIModelGeometryPanel.this.applyGizmoChange(2, axis, x, y, z);
             }
         };
         this.unifiedTransform.relative(this.selectedBoneLabel).y(1F, 6).w(1F).h(104);
@@ -374,7 +382,50 @@ public class UIModelGeometryPanel extends UIElement
     public void setConfig(ModelConfig config)
     {
         this.config = config;
+        this.undoManager = new UndoManager<>(200);
+        this.lastUndoState = null;
         this.reloadModelData();
+    }
+
+    @Override
+    protected boolean subKeyPressed(UIContext context)
+    {
+        if (!context.isFocused() && Window.isCtrlPressed() && context.isPressed(GLFW.GLFW_KEY_Z))
+        {
+            boolean ok = Window.isShiftPressed() ? this.undoManager.redo(this) : this.undoManager.undo(this);
+
+            if (ok)
+            {
+                UIUtils.playClick();
+            }
+
+            return ok;
+        }
+
+        if (!context.isFocused() && Window.isCtrlPressed() && context.isPressed(GLFW.GLFW_KEY_Y))
+        {
+            boolean ok = this.undoManager.redo(this);
+
+            if (ok)
+            {
+                UIUtils.playClick();
+            }
+
+            return ok;
+        }
+
+        return super.subKeyPressed(context);
+    }
+
+    @Override
+    protected boolean subMouseReleased(UIContext context)
+    {
+        if (!this.applyingUndo)
+        {
+            this.undoManager.markLastUndoNoMerging();
+        }
+
+        return super.subMouseReleased(context);
     }
 
     public void selectBone(String bone)
@@ -408,6 +459,7 @@ public class UIModelGeometryPanel extends UIElement
         {
             this.fillControls();
             this.fillCubeControls();
+            this.lastUndoState = null;
             return;
         }
 
@@ -424,6 +476,7 @@ public class UIModelGeometryPanel extends UIElement
         {
             this.fillControls();
             this.fillCubeControls();
+            this.lastUndoState = null;
             return;
         }
 
@@ -442,6 +495,8 @@ public class UIModelGeometryPanel extends UIElement
             this.fillControls();
             this.fillCubeControls();
         }
+
+        this.lastUndoState = this.captureState();
     }
 
     private void collectHierarchy(ModelGroup group, int depth)
@@ -604,6 +659,11 @@ public class UIModelGeometryPanel extends UIElement
 
     private int axisIndex(Axis axis)
     {
+        if (axis == null)
+        {
+            return 0;
+        }
+
         return switch (axis)
         {
             case X -> 0;
@@ -989,6 +1049,7 @@ public class UIModelGeometryPanel extends UIElement
         }
 
         this.parent.dirty();
+        this.recordUndoState();
     }
 
     private void toggleGroupCollapsed(String groupId)
@@ -1354,6 +1415,87 @@ public class UIModelGeometryPanel extends UIElement
         return cube.name;
     }
 
+    private GeometryState captureState()
+    {
+        if (this.instance == null || !(this.instance.model instanceof Model model))
+        {
+            return null;
+        }
+
+        MapType data = model.toData();
+        GeometryEntry selected = this.hierarchyList.getCurrentFirst();
+        String selectedGroupId = selected == null ? null : selected.groupId;
+        int selectedCubeIndex = selected == null ? -1 : selected.cubeIndex;
+        boolean selectedCubeEntry = selected != null && selected.type == GeometryEntryType.CUBE;
+
+        return new GeometryState(data, selectedGroupId, selectedCubeIndex, selectedCubeEntry, new HashSet<>(this.collapsedGroupIds));
+    }
+
+    private void recordUndoState()
+    {
+        if (this.applyingUndo)
+        {
+            return;
+        }
+
+        GeometryState current = this.captureState();
+
+        if (current == null)
+        {
+            this.lastUndoState = null;
+            return;
+        }
+
+        if (this.lastUndoState == null)
+        {
+            this.lastUndoState = current;
+            return;
+        }
+
+        if (this.lastUndoState.same(current))
+        {
+            return;
+        }
+
+        this.undoManager.pushUndo(new GeometryStateUndo(this.lastUndoState, current));
+        this.lastUndoState = current;
+    }
+
+    private void applyState(GeometryState state)
+    {
+        if (state == null || this.instance == null || !(this.instance.model instanceof Model model))
+        {
+            return;
+        }
+
+        this.applyingUndo = true;
+
+        try
+        {
+            model.topGroups.clear();
+            model.fromData((MapType) state.model.copy());
+            model.initialize();
+
+            this.collapsedGroupIds.clear();
+            this.collapsedGroupIds.addAll(state.collapsedGroupIds);
+
+            GeometryEntry preferred = null;
+
+            if (state.selectedGroupId != null)
+            {
+                preferred = new GeometryEntry(state.selectedCube ? GeometryEntryType.CUBE : GeometryEntryType.BONE, state.selectedGroupId, state.selectedCubeIndex, 0, "");
+            }
+
+            this.reloadHierarchyPreserveSelection(preferred);
+            this.refreshCubeRenderAndSave();
+            this.lastUndoState = this.captureState();
+        }
+        finally
+        {
+            this.applyingUndo = false;
+        }
+    }
+
     private boolean isCubeMirrored(ModelCube cube)
     {
         return cube.front != null && cube.front.size.x < 0;
@@ -1457,6 +1599,82 @@ public class UIModelGeometryPanel extends UIElement
         }
 
         return null;
+    }
+
+    private static class GeometryState
+    {
+        private final MapType model;
+        private final String selectedGroupId;
+        private final int selectedCubeIndex;
+        private final boolean selectedCube;
+        private final Set<String> collapsedGroupIds;
+
+        private GeometryState(MapType model, String selectedGroupId, int selectedCubeIndex, boolean selectedCube, Set<String> collapsedGroupIds)
+        {
+            this.model = model;
+            this.selectedGroupId = selectedGroupId;
+            this.selectedCubeIndex = selectedCubeIndex;
+            this.selectedCube = selectedCube;
+            this.collapsedGroupIds = collapsedGroupIds;
+        }
+
+        private boolean same(GeometryState state)
+        {
+            return state != null
+                && this.selectedCube == state.selectedCube
+                && this.selectedCubeIndex == state.selectedCubeIndex
+                && ((this.selectedGroupId == null && state.selectedGroupId == null) || (this.selectedGroupId != null && this.selectedGroupId.equals(state.selectedGroupId)))
+                && this.collapsedGroupIds.equals(state.collapsedGroupIds)
+                && this.model.equals(state.model);
+        }
+    }
+
+    private static class GeometryStateUndo implements IUndo<UIModelGeometryPanel>
+    {
+        private final GeometryState before;
+        private GeometryState after;
+        private boolean mergeable = true;
+
+        private GeometryStateUndo(GeometryState before, GeometryState after)
+        {
+            this.before = before;
+            this.after = after;
+        }
+
+        @Override
+        public IUndo<UIModelGeometryPanel> noMerging()
+        {
+            this.mergeable = false;
+
+            return this;
+        }
+
+        @Override
+        public boolean isMergeable(IUndo<UIModelGeometryPanel> undo)
+        {
+            return this.mergeable && undo instanceof GeometryStateUndo;
+        }
+
+        @Override
+        public void merge(IUndo<UIModelGeometryPanel> undo)
+        {
+            if (undo instanceof GeometryStateUndo stateUndo)
+            {
+                this.after = stateUndo.after;
+            }
+        }
+
+        @Override
+        public void undo(UIModelGeometryPanel context)
+        {
+            context.applyState(this.before);
+        }
+
+        @Override
+        public void redo(UIModelGeometryPanel context)
+        {
+            context.applyState(this.after);
+        }
     }
 
     private enum GeometryEntryType
