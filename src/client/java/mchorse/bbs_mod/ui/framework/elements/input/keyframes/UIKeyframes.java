@@ -26,16 +26,13 @@ import mchorse.bbs_mod.utils.CollectionUtils;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.Pair;
 import mchorse.bbs_mod.utils.colors.Colors;
+import mchorse.bbs_mod.utils.interps.IInterp;
+import mchorse.bbs_mod.utils.interps.Interpolations;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 import mchorse.bbs_mod.utils.keyframes.KeyframeSegment;
 import mchorse.bbs_mod.utils.keyframes.factories.IKeyframeFactory;
 import mchorse.bbs_mod.utils.keyframes.factories.KeyframeFactories;
-import mchorse.bbs_mod.utils.keyframes.factories.PoseKeyframeFactory;
-import mchorse.bbs_mod.utils.keyframes.factories.TransformKeyframeFactory;
-import mchorse.bbs_mod.utils.pose.Pose;
-import mchorse.bbs_mod.utils.pose.PoseTransform;
-import mchorse.bbs_mod.utils.pose.Transform;
 import mchorse.bbs_mod.utils.presets.PresetManager;
 import org.lwjgl.glfw.GLFW;
 
@@ -113,8 +110,14 @@ public class UIKeyframes extends UIElement
             int mouseY = context.mouseY;
             boolean hasSelected = this.currentGraph.getSelected() != null;
 
-            menu.custom(new UIPresetContextMenu(this.copyPasteController, mouseX, mouseY)
-                .labels(UIKeys.KEYFRAMES_CONTEXT_COPY, UIKeys.KEYFRAMES_CONTEXT_PASTE));
+            UIKeyframeSheet currentSheet = this.dopeSheet.getSheet(this.getContext().mouseY);
+            boolean isGroup = currentSheet != null && currentSheet.groupHeader;
+
+            if (!isGroup)
+            {
+                menu.custom(new UIPresetContextMenu(this.copyPasteController, mouseX, mouseY)
+                    .labels(UIKeys.KEYFRAMES_CONTEXT_COPY, UIKeys.KEYFRAMES_CONTEXT_PASTE));
+            }
 
             if (!this.single)
             {
@@ -126,23 +129,30 @@ public class UIKeyframes extends UIElement
                 {
                     UIKeyframeSheet sheet = this.dopeSheet.getSheet(this.getContext().mouseY);
 
-                    if (sheet != null && KeyframeFactories.isNumeric(sheet.channel.getFactory()))
+                    if (sheet != null && KeyframeFactories.isNumeric(sheet.channel.getFactory()) && !sheet.groupHeader)
                     {
                         menu.action(Icons.EDIT, UIKeys.KEYFRAMES_CONTEXT_EDIT_TRACK.format(sheet.id), () -> this.editSheet(sheet));
                     }
                 }
             }
 
-            menu.action(Icons.SEARCH, UIKeys.KEYFRAMES_CONTEXT_ADJUST_VALUES, () -> this.adjustValues());
-            menu.action(Icons.ARROW_LEFT, UIKeys.KEYFRAMES_KEYS_SELECT_LEFT, () -> this.selectAfter(mouseX, mouseY, -1));
-            menu.action(Icons.ARROW_RIGHT, UIKeys.KEYFRAMES_KEYS_SELECT_RIGHT, () -> this.selectAfter(mouseX, mouseY, 1));
+            if (!isGroup)
+            {
+                menu.action(Icons.SEARCH, UIKeys.KEYFRAMES_CONTEXT_ADJUST_VALUES, () -> this.adjustValues());
+                menu.action(Icons.ARROW_LEFT, UIKeys.KEYFRAMES_KEYS_SELECT_LEFT, () -> this.selectAfter(mouseX, mouseY, -1));
+                menu.action(Icons.ARROW_RIGHT, UIKeys.KEYFRAMES_KEYS_SELECT_RIGHT, () -> this.selectAfter(mouseX, mouseY, 1));
+            }
 
             menu.action(Icons.MAXIMIZE, UIKeys.KEYFRAMES_CONTEXT_MAXIMIZE, this::resetView);
-            menu.action(Icons.FULLSCREEN, UIKeys.KEYFRAMES_CONTEXT_SELECT_ALL, () -> this.currentGraph.selectAll());
+
+            if (!isGroup)
+            {
+                menu.action(Icons.FULLSCREEN, UIKeys.KEYFRAMES_CONTEXT_SELECT_ALL, () -> this.currentGraph.selectAll());
+            }
 
             if (hasSelected)
             {
-                menu.action(Icons.EXCHANGE, UIKeys.KEYFRAMES_CONTEXT_INVERT, this::invertKeyframesMenu);
+                menu.action(Icons.CURVES, UIKeys.KEYFRAMES_CONTEXT_INTERPOLATION, this::interpolationMenu);
                 menu.action(Icons.CONVERT, UIKeys.KEYFRAMES_CONTEXT_SPREAD, this::spreadKeyframes);
                 menu.action(Icons.OUTLINE_SPHERE, UIKeys.KEYFRAMES_CONTEXT_ROUND, () ->
                 {
@@ -234,16 +244,38 @@ public class UIKeyframes extends UIElement
         });
     }
 
-    private void invertKeyframesMenu()
+    private void interpolationMenu()
     {
         this.getContext().replaceContextMenu((menu2) ->
         {
             menu2.autoKeys();
-            menu2.action(Icons.ALL_DIRECTIONS, UIKeys.KEYFRAMES_CONTEXT_INVERT_TRANSLATION, () -> this.invertKeyframes(InvertMode.TRANSLATION));
-            menu2.action(Icons.MAXIMIZE, UIKeys.KEYFRAMES_CONTEXT_INVERT_SCALE, () -> this.invertKeyframes(InvertMode.SCALE));
-            menu2.action(Icons.REFRESH, UIKeys.KEYFRAMES_CONTEXT_INVERT_ROTATION, () -> this.invertKeyframes(InvertMode.ROTATION));
-            menu2.action(Icons.REFRESH, UIKeys.KEYFRAMES_CONTEXT_INVERT_ROTATION2, () -> this.invertKeyframes(InvertMode.ROTATION2));
+            menu2.action(Icons.INTERP_LINEAR, UIKeys.KEYFRAMES_CONTEXT_INTERPOLATION_LINEAR, () -> this.setInterpolation(Interpolations.LINEAR));
+            menu2.action(Icons.ARC, UIKeys.KEYFRAMES_CONTEXT_INTERPOLATION_BEZIER, () -> this.setInterpolation(Interpolations.BEZIER));
+            menu2.action(Icons.CURVES, UIKeys.KEYFRAMES_CONTEXT_INTERPOLATION_HERMITE, () -> this.setInterpolation(Interpolations.HERMITE));
+            menu2.action(Icons.INTERP_STEP, UIKeys.KEYFRAMES_CONTEXT_INTERPOLATION_STEP, () -> this.setInterpolation(Interpolations.STEP));
         });
+    }
+
+    private void setInterpolation(IInterp interp)
+    {
+        for (UIKeyframeSheet sheet : this.getGraph().getSheets())
+        {
+            List<Keyframe> selected = sheet.selection.getSelected();
+
+            if (selected.isEmpty())
+            {
+                continue;
+            }
+
+            sheet.channel.preNotify();
+
+            for (Keyframe keyframe : selected)
+            {
+                keyframe.getInterpolation().setInterp(interp);
+            }
+
+            sheet.channel.postNotify();
+        }
     }
 
     private void adjustValues(boolean last)
@@ -277,87 +309,6 @@ public class UIKeyframes extends UIElement
 
             sheet.channel.postNotify();
         }
-    }
-
-    private void invertKeyframes(InvertMode mode)
-    {
-        for (UIKeyframeSheet sheet : this.getGraph().getSheets())
-        {
-            List<Keyframe> selected = sheet.selection.getSelected();
-            IKeyframeFactory factory = sheet.channel.getFactory();
-
-            if (selected.isEmpty())
-            {
-                continue;
-            }
-
-            if (factory instanceof TransformKeyframeFactory)
-            {
-                sheet.channel.preNotify();
-
-                for (Keyframe keyframe : selected)
-                {
-                    Transform transform = (Transform) keyframe.getValue();
-                    Transform copy = transform == null ? new Transform() : transform.copy();
-
-                    this.invertTransform(copy, mode);
-
-                    keyframe.setValue(copy);
-                }
-
-                sheet.channel.postNotify();
-            }
-            else if (factory instanceof PoseKeyframeFactory)
-            {
-                sheet.channel.preNotify();
-
-                for (Keyframe keyframe : selected)
-                {
-                    Pose pose = (Pose) keyframe.getValue();
-                    Pose copy = pose == null ? new Pose() : pose.copy();
-
-                    for (PoseTransform transform : copy.transforms.values())
-                    {
-                        this.invertTransform(transform, mode);
-                    }
-
-                    keyframe.setValue(copy);
-                }
-
-                sheet.channel.postNotify();
-            }
-        }
-    }
-
-    private void invertTransform(Transform transform, InvertMode mode)
-    {
-        if (mode == InvertMode.TRANSLATION)
-        {
-            transform.translate.mul(-1F);
-        }
-
-        if (mode == InvertMode.SCALE)
-        {
-            transform.scale.mul(-1F);
-        }
-
-        if (mode == InvertMode.ROTATION)
-        {
-            transform.rotate.mul(-1F);
-        }
-
-        if (mode == InvertMode.ROTATION2)
-        {
-            transform.rotate2.mul(-1F);
-        }
-    }
-
-    private enum InvertMode
-    {
-        TRANSLATION,
-        SCALE,
-        ROTATION,
-        ROTATION2
     }
 
     public UIKeyframes changed(Runnable runnable)

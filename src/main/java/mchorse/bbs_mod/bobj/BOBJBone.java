@@ -119,8 +119,5 @@ public class BOBJBone
     public void reset()
     {
         this.transform.identity();
-        this.color.set(1F, 1F, 1F, 1F);
-        this.lighting = 0F;
-        this.texture = null;
     }
 }

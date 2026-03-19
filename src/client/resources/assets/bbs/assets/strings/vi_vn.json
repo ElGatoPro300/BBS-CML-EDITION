@@ -676,6 +676,7 @@
     "bbs.ui.film.replay.animation_to_pose.title": "Animation to Pose",
     "bbs.ui.film.replay.context.add": "Thêm Replay tại đây",
     "bbs.ui.film.replay.context.animation_to_keyframes": "Animation -> Pose Keyframes...",
+    "bbs.ui.film.replay.context.pose_to_limbs": "Chuyển thành Limb Tracks",
     "bbs.ui.film.replay.context.move_here": "Di chuyển Replay lại đây",
     "bbs.ui.film.replay.orbit.camera": "Camera",
     "bbs.ui.film.replay.orbit.first_person": "Góc nhìn thứ nhất",

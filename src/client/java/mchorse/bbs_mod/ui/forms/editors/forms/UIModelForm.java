@@ -39,6 +39,11 @@ public class UIModelForm extends UIForm<ModelForm>
     @Override
     public UIPropTransform getEditableTransform()
     {
+        if (this.view != this.modelPanel)
+        {
+            this.setPanel(this.modelPanel);
+        }
+
         return this.modelPanel.poseEditor.transform;
     }
 

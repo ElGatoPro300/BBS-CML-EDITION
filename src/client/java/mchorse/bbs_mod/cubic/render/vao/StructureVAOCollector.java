@@ -20,9 +20,8 @@ public class StructureVAOCollector implements VertexConsumer
 
     private final Vtx[] quad = new Vtx[4];
     private int quadIndex = 0;
-    private boolean hasCurrent = false;
 
-    /* working per-vertex state until next() */
+    /* working per-vertex state until normal() */
     private float vx, vy, vz;
     private float vnx, vny, vnz;
     private float vu, vv;
@@ -44,23 +43,19 @@ public class StructureVAOCollector implements VertexConsumer
 
     public VertexConsumer vertex(float x, float y, float z)
     {
-        if (hasCurrent) finalizeCurrent();
         this.vx = x;
         this.vy = y;
         this.vz = z;
-        this.hasCurrent = true;
         return this;
     }
 
     public VertexConsumer vertex(Matrix4f matrix, float x, float y, float z)
     {
-        if (hasCurrent) finalizeCurrent();
         Vector4f v = new Vector4f(x, y, z, 1F);
         v.mul(matrix);
         this.vx = v.x;
         this.vy = v.y;
         this.vz = v.z;
-        this.hasCurrent = true;
         return this;
     }
 
@@ -100,6 +95,7 @@ public class StructureVAOCollector implements VertexConsumer
         this.vnx = x;
         this.vny = y;
         this.vnz = z;
+        this.finalizeCurrent();
         return this;
     }
 

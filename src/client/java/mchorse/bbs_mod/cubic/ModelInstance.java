@@ -44,7 +44,6 @@ import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.RotationAxis;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
-import org.joml.Vector4f;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -92,17 +91,6 @@ public class ModelInstance implements IModelInstance
         this.texture = texture;
 
         this.poseGroup = id;
-    }
-
-    private boolean hasTranslucentInSubtree(ModelGroup group, float finalA, float eps)
-    {
-        float ga = MathUtils.clamp(group.color.a * finalA, 0F, 1F);
-        if (ga < eps) return true;
-        for (ModelGroup child : group.children)
-        {
-            if (hasTranslucentInSubtree(child, finalA, eps)) return true;
-        }
-        return false;
     }
 
     @Override
@@ -475,60 +463,29 @@ public class ModelInstance implements IModelInstance
             CubicCubeRenderer renderProcessor = isVao
                 ? new CubicVAORenderer(program.get(), this, light, overlay, stencilMap, keys, defaultTexture)
                 : new CubicCubeRenderer(light, overlay, stencilMap, keys);
-            /*fuck you diobede hihi*/
+
             Color c = new Color().set(this.color);
-            float finalR = color.r * c.r;
-            float finalG = color.g * c.g;
-            float finalB = color.b * c.b;
-            float finalA = color.a * c.a;
 
-            renderProcessor.setColor(finalR, finalG, finalB, finalA);
+            renderProcessor.setColor(color.r * c.r, color.g * c.g, color.b * c.b, color.a * c.a);
 
-            List<ModelGroup> translucent = new ArrayList<>();
-            final float TRANSP_EPS = 0.999f;
-            for (ModelGroup g : model.topGroups)
-            {
-                if (hasTranslucentInSubtree(g, finalA, TRANSP_EPS))
-                {
-                    translucent.add(g);
-                }
-            }
-
-            renderProcessor.setTransparentPass(false);
             if (isVao)
             {
-                org.lwjgl.opengl.GL11.glCullFace(org.lwjgl.opengl.GL11.GL_BACK);
                 CubicRenderer.processRenderModel(renderProcessor, null, stack, model);
             }
             else
             {
                 BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL);
-                org.lwjgl.opengl.GL11.glCullFace(org.lwjgl.opengl.GL11.GL_BACK);
+
                 CubicRenderer.processRenderModel(renderProcessor, builder, stack, model);
-            }
 
-            if (!translucent.isEmpty())
-            {
-                GlStateManager._depthMask(false);
-                GlStateManager._enableCull();
-
-                List<ModelGroup> sorted = new ArrayList<>(translucent);
-                org.joml.Matrix4f modelView = stack.peek().getPositionMatrix();
-                sorted.sort((g1, g2) -> {
-                    org.joml.Vector4f p1 = new org.joml.Vector4f(g1.initial.pivot.x / 16f, g1.initial.pivot.y / 16f, g1.initial.pivot.z / 16f, 1.0f).mul(modelView);
-                    org.joml.Vector4f p2 = new org.joml.Vector4f(g2.initial.pivot.x / 16f, g2.initial.pivot.y / 16f, g2.initial.pivot.z / 16f, 1.0f).mul(modelView);
-                    return Float.compare(p1.z, p2.z);
-                });
-
-                renderProcessor.setTransparentPass(true);
-
-                org.lwjgl.opengl.GL11.glCullFace(org.lwjgl.opengl.GL11.GL_FRONT);
-                this.renderSortedGroups(renderProcessor, isVao, stack, model, sorted, program);
-
-                org.lwjgl.opengl.GL11.glCullFace(org.lwjgl.opengl.GL11.GL_BACK);
-                this.renderSortedGroups(renderProcessor, isVao, stack, model, sorted, program);
-
-                GlStateManager._depthMask(true);
+                try
+                {
+                    BufferRenderer.drawWithGlobalProgram(builder.end());
+                }
+                catch (IllegalStateException e)
+                {
+                    
+                }
             }
         }
         else if (this.model instanceof BOBJModel model)
@@ -542,35 +499,9 @@ public class ModelInstance implements IModelInstance
 
                 vao.armature.setupMatrices();
                 vao.updateMesh(stencilMap);
-
-                Color c = new Color().set(this.color);
-                float finalR = color.r * c.r;
-                float finalG = color.g * c.g;
-                float finalB = color.b * c.b;
-                float finalA = color.a * c.a;
-
-                vao.render(program.get(), stack, finalR, finalG, finalB, finalA, stencilMap, light, overlay);
+                vao.render(program.get(), stack, color.r, color.g, color.b, color.a, stencilMap, light, overlay);
 
                 stack.pop();
-            }
-        }
-    }
-
-    private void renderSortedGroups(CubicCubeRenderer renderProcessor, boolean isVao, MatrixStack stack, Model model, List<ModelGroup> sortedGroups, Supplier<ShaderProgram> program)
-    {
-        if (isVao)
-        {
-            for (ModelGroup group : sortedGroups)
-            {
-                CubicRenderer.processRenderRecursively(renderProcessor, null, stack, model, group);
-            }
-        }
-        else
-        {
-            BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL);
-            for (ModelGroup group : sortedGroups)
-            {
-                CubicRenderer.processRenderRecursively(renderProcessor, builder, stack, model, group);
             }
         }
     }

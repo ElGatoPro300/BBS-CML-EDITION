@@ -37,6 +37,7 @@ import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.l10n.keys.IKey;
+import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.AABB;
 import mchorse.bbs_mod.utils.PlayerUtils;
@@ -45,6 +46,8 @@ import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.pose.Transform;
 import mchorse.bbs_mod.utils.MathUtils;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
+import mchorse.bbs_mod.utils.undo.IUndo;
+import mchorse.bbs_mod.utils.undo.UndoManager;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.util.math.MatrixStack;
@@ -98,6 +101,9 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
     private ImmersiveModelBlockCameraController cameraController;
     private UIElement keyDude;
 
+    private UndoManager<UIModelBlockPanel> undoManager = new UndoManager<>(100);
+    private MapType pendingUndoBefore;
+
     public UIModelBlockPanel(UIDashboard dashboard)
     {
         super(dashboard);
@@ -131,8 +137,10 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         {
             UIFormPalette palette = UIFormPalette.open(this, editing, this.modelBlock.getProperties().getForm(), (f) ->
             {
+                this.beginUndoCapture();
                 this.pickEdit.setForm(f);
                 this.modelBlock.getProperties().setForm(f);
+                this.endUndoCapture();
             });
 
             palette.immersive();
@@ -167,26 +175,50 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         });
         this.pickEdit.keybinds();
 
-        this.enabled = new UIToggle(UIKeys.CAMERA_PANELS_ENABLED, (b) -> this.modelBlock.getProperties().setEnabled(b.getValue()));
-        this.shadow = new UIToggle(UIKeys.MODEL_BLOCKS_SHADOW, (b) -> this.modelBlock.getProperties().setShadow(b.getValue()));
+        this.enabled = new UIToggle(UIKeys.CAMERA_PANELS_ENABLED, (b) ->
+        {
+            if (this.modelBlock == null) return;
+            this.beginUndoCapture();
+            this.modelBlock.getProperties().setEnabled(b.getValue());
+            this.endUndoCapture();
+        });
+        this.shadow = new UIToggle(UIKeys.MODEL_BLOCKS_SHADOW, (b) ->
+        {
+            if (this.modelBlock == null) return;
+            this.beginUndoCapture();
+            this.modelBlock.getProperties().setShadow(b.getValue());
+            this.endUndoCapture();
+        });
         this.hitbox = new UIToggle(UIKeys.MODEL_BLOCKS_HITBOX, (b) ->
         {
             if (this.modelBlock == null) return;
 
+            this.beginUndoCapture();
             this.modelBlock.getProperties().setHitbox(b.getValue());
             this.updateHitboxControls();
+            this.endUndoCapture();
         });
         this.global = new UIToggle(UIKeys.MODEL_BLOCKS_GLOBAL, (b) ->
         {
+            if (this.modelBlock == null) return;
+            this.beginUndoCapture();
             this.modelBlock.getProperties().setGlobal(b.getValue());
             MinecraftClient.getInstance().worldRenderer.reload();
+            this.endUndoCapture();
         });
-        this.lookAt = new UIToggle(UIKeys.CAMERA_PANELS_LOOK_AT, (b) -> this.modelBlock.getProperties().setLookAt(b.getValue()));
+        this.lookAt = new UIToggle(UIKeys.CAMERA_PANELS_LOOK_AT, (b) ->
+        {
+            if (this.modelBlock == null) return;
+            this.beginUndoCapture();
+            this.modelBlock.getProperties().setLookAt(b.getValue());
+            this.endUndoCapture();
+        });
 
         this.lightLevel = new UITrackpad((v) ->
         {
             if (this.modelBlock == null) return;
 
+            this.beginUndoCapture();
             int lvl = v.intValue();
 
             this.modelBlock.getProperties().setLightLevel(lvl);
@@ -207,6 +239,8 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
             {
 
             }
+
+            this.endUndoCapture();
         }).integer().limit(0, 15);
 
         /* Make the trackpad visually distinct: wider and yellow numbers */
@@ -217,7 +251,9 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         {
             if (this.modelBlock == null) return;
 
+            this.beginUndoCapture();
             this.modelBlock.getProperties().setHardness(v.floatValue());
+            this.endUndoCapture();
         }).limit(0, 50);
         this.hardness.w(1F);
         this.hardness.textbox.setColor(Colors.PINK);
@@ -228,8 +264,10 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         {
             if (this.modelBlock == null) return;
 
+            this.beginUndoCapture();
             Vector3f p1 = this.modelBlock.getProperties().getHitboxPos1();
             this.modelBlock.getProperties().setHitboxPos1(v.floatValue(), p1.y, p1.z);
+            this.endUndoCapture();
         }).limit(0, 1);
         this.hitboxPos1X.tooltip(hitboxTooltip.format(UIKeys.MODEL_BLOCKS_HITBOX_POS1, UIKeys.GENERAL_X));
         this.hitboxPos1X.textbox.setColor(Colors.RED);
@@ -238,8 +276,10 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         {
             if (this.modelBlock == null) return;
 
+            this.beginUndoCapture();
             Vector3f p1 = this.modelBlock.getProperties().getHitboxPos1();
             this.modelBlock.getProperties().setHitboxPos1(p1.x, v.floatValue(), p1.z);
+            this.endUndoCapture();
         }).limit(0, 1);
         this.hitboxPos1Y.tooltip(hitboxTooltip.format(UIKeys.MODEL_BLOCKS_HITBOX_POS1, UIKeys.GENERAL_Y));
         this.hitboxPos1Y.textbox.setColor(Colors.GREEN);
@@ -248,8 +288,10 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         {
             if (this.modelBlock == null) return;
 
+            this.beginUndoCapture();
             Vector3f p1 = this.modelBlock.getProperties().getHitboxPos1();
             this.modelBlock.getProperties().setHitboxPos1(p1.x, p1.y, v.floatValue());
+            this.endUndoCapture();
         }).limit(0, 1);
         this.hitboxPos1Z.tooltip(hitboxTooltip.format(UIKeys.MODEL_BLOCKS_HITBOX_POS1, UIKeys.GENERAL_Z));
         this.hitboxPos1Z.textbox.setColor(Colors.BLUE);
@@ -258,8 +300,10 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         {
             if (this.modelBlock == null) return;
 
+            this.beginUndoCapture();
             Vector3f p2 = this.modelBlock.getProperties().getHitboxPos2();
             this.modelBlock.getProperties().setHitboxPos2(v.floatValue(), p2.y, p2.z);
+            this.endUndoCapture();
         }).limit(0, 1);
         this.hitboxPos2X.tooltip(hitboxTooltip.format(UIKeys.MODEL_BLOCKS_HITBOX_POS2, UIKeys.GENERAL_X));
         this.hitboxPos2X.textbox.setColor(Colors.RED);
@@ -268,8 +312,10 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         {
             if (this.modelBlock == null) return;
 
+            this.beginUndoCapture();
             Vector3f p2 = this.modelBlock.getProperties().getHitboxPos2();
             this.modelBlock.getProperties().setHitboxPos2(p2.x, v.floatValue(), p2.z);
+            this.endUndoCapture();
         }).limit(0, 1);
         this.hitboxPos2Y.tooltip(hitboxTooltip.format(UIKeys.MODEL_BLOCKS_HITBOX_POS2, UIKeys.GENERAL_Y));
         this.hitboxPos2Y.textbox.setColor(Colors.GREEN);
@@ -278,13 +324,16 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         {
             if (this.modelBlock == null) return;
 
+            this.beginUndoCapture();
             Vector3f p2 = this.modelBlock.getProperties().getHitboxPos2();
             this.modelBlock.getProperties().setHitboxPos2(p2.x, p2.y, v.floatValue());
+            this.endUndoCapture();
         }).limit(0, 1);
         this.hitboxPos2Z.tooltip(hitboxTooltip.format(UIKeys.MODEL_BLOCKS_HITBOX_POS2, UIKeys.GENERAL_Z));
         this.hitboxPos2Z.textbox.setColor(Colors.BLUE);
 
         this.transform = new UIPropTransform();
+        this.transform.callbacks(this::beginUndoCapture, this::endUndoCapture);
         this.transform.enableHotkeys().marginBottom(4);
 
         UIIcon hitboxIcon1 = new UIIcon(Icons.BLOCK, null);
@@ -359,8 +408,139 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         this.fill(null, false);
 
         this.keys().register(Keys.MODEL_BLOCKS_TELEPORT, this::teleport);
+        this.keys().register(Keys.UNDO, this::undoModelBlock).active(() -> this.modelBlock != null);
+        this.keys().register(Keys.REDO, this::redoModelBlock).active(() -> this.modelBlock != null);
 
         this.add(this.scrollView);
+    }
+
+    private void beginUndoCapture()
+    {
+        if (this.modelBlock == null)
+        {
+            return;
+        }
+
+        if (this.pendingUndoBefore == null)
+        {
+            this.pendingUndoBefore = this.modelBlock.getProperties().toData();
+        }
+    }
+
+    private void endUndoCapture()
+    {
+        if (this.modelBlock == null || this.pendingUndoBefore == null)
+        {
+            return;
+        }
+
+        MapType before = this.pendingUndoBefore;
+        this.pendingUndoBefore = null;
+
+        MapType after = this.modelBlock.getProperties().toData();
+
+        if (before.toString().equals(after.toString()))
+        {
+            return;
+        }
+
+        this.undoManager.pushUndo(new ModelBlockPropertiesUndo(this.modelBlock.getPos(), before, after));
+        this.toSave.add(this.modelBlock);
+    }
+
+    private void applyPropertiesSnapshot(BlockPos pos, MapType data)
+    {
+        if (this.modelBlock == null || !this.modelBlock.getPos().equals(pos))
+        {
+            for (ModelBlockEntity candidate : this.modelBlocks.getList())
+            {
+                if (candidate != null && candidate.getPos().equals(pos))
+                {
+                    this.modelBlock = candidate;
+                    break;
+                }
+            }
+        }
+
+        if (this.modelBlock == null || !this.modelBlock.getPos().equals(pos))
+        {
+            return;
+        }
+
+        this.modelBlock.getProperties().fromData(data);
+        this.toSave.add(this.modelBlock);
+        this.fillData();
+    }
+
+    private void undoModelBlock()
+    {
+        UIContext context = this.getContext();
+        if (context != null && context.isFocused())
+        {
+            return;
+        }
+
+        boolean ok = this.undoManager.undo(this);
+        if (ok) UIUtils.playClick();
+    }
+
+    private void redoModelBlock()
+    {
+        UIContext context = this.getContext();
+        if (context != null && context.isFocused())
+        {
+            return;
+        }
+
+        boolean ok = this.undoManager.redo(this);
+        if (ok) UIUtils.playClick();
+    }
+
+    private static class ModelBlockPropertiesUndo implements IUndo<UIModelBlockPanel>
+    {
+        private final BlockPos pos;
+        private final MapType before;
+        private MapType after;
+        private boolean mergable = true;
+
+        private ModelBlockPropertiesUndo(BlockPos pos, MapType before, MapType after)
+        {
+            this.pos = pos;
+            this.before = before;
+            this.after = after;
+        }
+
+        @Override
+        public IUndo<UIModelBlockPanel> noMerging()
+        {
+            this.mergable = false;
+            return this;
+        }
+
+        @Override
+        public boolean isMergeable(IUndo<UIModelBlockPanel> undo)
+        {
+            return this.mergable && undo instanceof ModelBlockPropertiesUndo other && this.pos.equals(other.pos);
+        }
+
+        @Override
+        public void merge(IUndo<UIModelBlockPanel> undo)
+        {
+            ModelBlockPropertiesUndo other = (ModelBlockPropertiesUndo) undo;
+            this.after = other.after;
+        }
+
+        @Override
+        public void undo(UIModelBlockPanel context)
+        {
+            context.applyPropertiesSnapshot(this.pos, this.before);
+        }
+
+        @Override
+        public void redo(UIModelBlockPanel context)
+        {
+            context.applyPropertiesSnapshot(this.pos, this.after);
+        }
     }
 
     private void teleport()
@@ -517,6 +697,12 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         if (modelBlock != null)
         {
             this.toSave.add(modelBlock);
+        }
+
+        if (this.modelBlock != modelBlock)
+        {
+            this.undoManager = new UndoManager<>(100);
+            this.pendingUndoBefore = null;
         }
 
         this.modelBlock = modelBlock;

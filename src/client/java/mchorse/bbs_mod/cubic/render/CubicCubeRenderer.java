@@ -11,7 +11,6 @@ import mchorse.bbs_mod.obj.shapes.ShapeKeys;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.interps.Lerps;
-import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.util.math.MatrixStack;
@@ -25,7 +24,6 @@ import java.util.Map;
 
 public class CubicCubeRenderer implements ICubicRenderer
 {
-    private static final float TRANSP_EPS = 0.999f;
     private final static Vector3f v1 = new Vector3f();
     private final static Vector3f v2 = new Vector3f();
     private final static Vector3f v3 = new Vector3f();
@@ -52,8 +50,6 @@ public class CubicCubeRenderer implements ICubicRenderer
     /* Temporary variables to avoid allocating and GC vectors */
     protected Vector3f normal = new Vector3f();
     protected Vector4f vertex = new Vector4f();
-
-    protected boolean transparentPass = false;
 
     private ModelVertex modelVertex = new ModelVertex();
     private ShapeKeys shapeKeys;
@@ -118,39 +114,14 @@ public class CubicCubeRenderer implements ICubicRenderer
         this.a = a;
     }
 
-    public void setTransparentPass(boolean transparent)
-    {
-        this.transparentPass = transparent;
-    }
-
     @Override
     public boolean renderGroup(BufferBuilder builder, MatrixStack stack, ModelGroup group, Model model)
     {
-        if (this.stencilMap != null && !this.stencilMap.isBoneAllowed(group.id))
-        {
-            return false;
-        }
-
-        float a = this.a * group.color.a;
-
-        if (a <= 0F)
-        {
-            return false;
-        }
-
-        if (this.transparentPass)
-        {
-            if (a >= TRANSP_EPS) return false;
-        }
-        else
-        {
-            if (a < TRANSP_EPS) return false;
-        }
-
         for (ModelCube cube : group.cubes)
         {
             this.renderCube(builder, stack, group, cube);
         }
+
         for (ModelMesh mesh : group.meshes)
         {
             this.renderMesh(builder, stack, model, group, mesh);
@@ -166,63 +137,19 @@ public class CubicCubeRenderer implements ICubicRenderer
         rotate(stack, cube.rotate);
         moveBackFromPivot(stack, cube.pivot);
 
-        if (!this.transparentPass)
+        for (ModelQuad quad : cube.quads)
         {
-            for (ModelQuad quad : cube.quads)
+            this.normal.set(quad.normal.x, quad.normal.y, quad.normal.z);
+            stack.peek().getNormalMatrix().transform(this.normal);
+
+            if (quad.vertices.size() == 4)
             {
-                this.normal.set(quad.normal.x, quad.normal.y, quad.normal.z);
-                stack.peek().getNormalMatrix().transform(this.normal);
-
-                if (quad.vertices.size() == 4)
-                {
-                    this.writeVertex(builder, stack, group, quad.vertices.get(0), this.normal);
-                    this.writeVertex(builder, stack, group, quad.vertices.get(1), this.normal);
-                    this.writeVertex(builder, stack, group, quad.vertices.get(2), this.normal);
-                    this.writeVertex(builder, stack, group, quad.vertices.get(0), this.normal);
-                    this.writeVertex(builder, stack, group, quad.vertices.get(2), this.normal);
-                    this.writeVertex(builder, stack, group, quad.vertices.get(3), this.normal);
-                }
-            }
-        }
-        else
-        {
-            int qCount = cube.quads.size();
-            Integer[] order = new Integer[qCount];
-            float[] zvals = new float[qCount];
-            Matrix4f mv = new Matrix4f(stack.peek().getPositionMatrix());
-            Vector4f tmp = new Vector4f();
-
-            for (int i = 0; i < qCount; i++)
-            {
-                ModelQuad quad = cube.quads.get(i);
-                float z = 0f;
-                for (int v = 0; v < 4; v++)
-                {
-                    ModelVertex vert = quad.vertices.get(v);
-                    tmp.set(vert.vertex.x, vert.vertex.y, vert.vertex.z, 1f).mul(mv);
-                    z += tmp.z;
-                }
-                zvals[i] = z / 4f;
-                order[i] = i;
-            }
-
-            java.util.Arrays.sort(order, (aIdx, bIdx) -> Float.compare(zvals[aIdx], zvals[bIdx]));
-
-            for (int k = 0; k < qCount; k++)
-            {
-                ModelQuad quad = cube.quads.get(order[k]);
-                this.normal.set(quad.normal.x, quad.normal.y, quad.normal.z);
-                stack.peek().getNormalMatrix().transform(this.normal);
-
-                if (quad.vertices.size() == 4)
-                {
-                    this.writeVertex(builder, stack, group, quad.vertices.get(0), this.normal);
-                    this.writeVertex(builder, stack, group, quad.vertices.get(1), this.normal);
-                    this.writeVertex(builder, stack, group, quad.vertices.get(2), this.normal);
-                    this.writeVertex(builder, stack, group, quad.vertices.get(0), this.normal);
-                    this.writeVertex(builder, stack, group, quad.vertices.get(2), this.normal);
-                    this.writeVertex(builder, stack, group, quad.vertices.get(3), this.normal);
-                }
+                this.writeVertex(builder, stack, group, quad.vertices.get(0), this.normal);
+                this.writeVertex(builder, stack, group, quad.vertices.get(1), this.normal);
+                this.writeVertex(builder, stack, group, quad.vertices.get(2), this.normal);
+                this.writeVertex(builder, stack, group, quad.vertices.get(0), this.normal);
+                this.writeVertex(builder, stack, group, quad.vertices.get(2), this.normal);
+                this.writeVertex(builder, stack, group, quad.vertices.get(3), this.normal);
             }
         }
 
@@ -238,146 +165,58 @@ public class CubicCubeRenderer implements ICubicRenderer
 
         ModelData baseData = mesh.baseData;
 
-        int triCount = baseData.vertices.size() / 3;
-
-        if (!this.transparentPass)
+        for (int i = 0, c = baseData.vertices.size() / 3; i < c; i++)
         {
-            for (int i = 0; i < triCount; i++)
+            v1.set(baseData.vertices.get(i * 3));
+            v2.set(baseData.vertices.get(i * 3 + 1));
+            v3.set(baseData.vertices.get(i * 3 + 2));
+
+            n1.set(baseData.normals.get(i * 3));
+            n2.set(baseData.normals.get(i * 3 + 1));
+            n3.set(baseData.normals.get(i * 3 + 2));
+
+            u1.set(baseData.uvs.get(i * 3));
+            u2.set(baseData.uvs.get(i * 3 + 1));
+            u3.set(baseData.uvs.get(i * 3 + 2));
+
+            /* Apply shape keys */
+            for (Map.Entry<String, Float> entry : this.shapeKeys.shapeKeys.entrySet())
             {
-                v1.set(baseData.vertices.get(i * 3));
-                v2.set(baseData.vertices.get(i * 3 + 1));
-                v3.set(baseData.vertices.get(i * 3 + 2));
+                ModelData data = mesh.data.get(entry.getKey());
+                float value = entry.getValue();
 
-                n1.set(baseData.normals.get(i * 3));
-                n2.set(baseData.normals.get(i * 3 + 1));
-                n3.set(baseData.normals.get(i * 3 + 2));
-
-                u1.set(baseData.uvs.get(i * 3));
-                u2.set(baseData.uvs.get(i * 3 + 1));
-                u3.set(baseData.uvs.get(i * 3 + 2));
-
-                for (Map.Entry<String, Float> entry : this.shapeKeys.shapeKeys.entrySet())
+                if (data != null)
                 {
-                    ModelData data = mesh.data.get(entry.getKey());
-                    float value = entry.getValue();
-                    if (data != null)
-                    {
-                        this.relativeShift(v1, baseData.vertices.get(i * 3), data.vertices.get(i * 3), value);
-                        this.relativeShift(v2, baseData.vertices.get(i * 3 + 1), data.vertices.get(i * 3 + 1), value);
-                        this.relativeShift(v3, baseData.vertices.get(i * 3 + 2), data.vertices.get(i * 3 + 2), value);
+                    /* final = temporary + lerp(initial, current, x) - initial */
+                    this.relativeShift(v1, baseData.vertices.get(i * 3), data.vertices.get(i * 3), value);
+                    this.relativeShift(v2, baseData.vertices.get(i * 3 + 1), data.vertices.get(i * 3 + 1), value);
+                    this.relativeShift(v3, baseData.vertices.get(i * 3 + 2), data.vertices.get(i * 3 + 2), value);
 
-                        this.relativeShift(n1, baseData.normals.get(i * 3), data.normals.get(i * 3), value);
-                        this.relativeShift(n2, baseData.normals.get(i * 3 + 1), data.normals.get(i * 3 + 1), value);
-                        this.relativeShift(n3, baseData.normals.get(i * 3 + 2), data.normals.get(i * 3 + 2), value);
+                    this.relativeShift(n1, baseData.normals.get(i * 3), data.normals.get(i * 3), value);
+                    this.relativeShift(n2, baseData.normals.get(i * 3 + 1), data.normals.get(i * 3 + 1), value);
+                    this.relativeShift(n3, baseData.normals.get(i * 3 + 2), data.normals.get(i * 3 + 2), value);
 
-                        this.relativeShift(u1, baseData.uvs.get(i * 3), data.uvs.get(i * 3), value);
-                        this.relativeShift(u2, baseData.uvs.get(i * 3 + 1), data.uvs.get(i * 3 + 1), value);
-                        this.relativeShift(u3, baseData.uvs.get(i * 3 + 2), data.uvs.get(i * 3 + 2), value);
-                    }
+                    this.relativeShift(u1, baseData.uvs.get(i * 3), data.uvs.get(i * 3), value);
+                    this.relativeShift(u2, baseData.uvs.get(i * 3 + 1), data.uvs.get(i * 3 + 1), value);
+                    this.relativeShift(u3, baseData.uvs.get(i * 3 + 2), data.uvs.get(i * 3 + 2), value);
                 }
-
-                this.normal.set(n1.x, n1.y, n1.z);
-                stack.peek().getNormalMatrix().transform(this.normal);
-                this.modelVertex.set(v1, u1, model);
-                this.writeVertex(builder, stack, group, this.modelVertex, this.normal);
-
-                this.normal.set(n2.x, n2.y, n2.z);
-                stack.peek().getNormalMatrix().transform(this.normal);
-                this.modelVertex.set(v2, u2, model);
-                this.writeVertex(builder, stack, group, this.modelVertex, this.normal);
-
-                this.normal.set(n3.x, n3.y, n3.z);
-                stack.peek().getNormalMatrix().transform(this.normal);
-                this.modelVertex.set(v3, u3, model);
-                this.writeVertex(builder, stack, group, this.modelVertex, this.normal);
-            }
-        }
-        else
-        {
-            Integer[] order = new Integer[triCount];
-            float[] zvals = new float[triCount];
-            Matrix4f mv = new Matrix4f(stack.peek().getPositionMatrix());
-            Vector4f tmp = new Vector4f();
-
-            for (int i = 0; i < triCount; i++)
-            {
-                v1.set(baseData.vertices.get(i * 3));
-                v2.set(baseData.vertices.get(i * 3 + 1));
-                v3.set(baseData.vertices.get(i * 3 + 2));
-
-                for (Map.Entry<String, Float> entry : this.shapeKeys.shapeKeys.entrySet())
-                {
-                    ModelData data = mesh.data.get(entry.getKey());
-                    float value = entry.getValue();
-                    if (data != null)
-                    {
-                        this.relativeShift(v1, baseData.vertices.get(i * 3), data.vertices.get(i * 3), value);
-                        this.relativeShift(v2, baseData.vertices.get(i * 3 + 1), data.vertices.get(i * 3 + 1), value);
-                        this.relativeShift(v3, baseData.vertices.get(i * 3 + 2), data.vertices.get(i * 3 + 2), value);
-                    }
-                }
-
-                float z = 0f;
-                tmp.set(v1.x, v1.y, v1.z, 1f).mul(mv); z += tmp.z;
-                tmp.set(v2.x, v2.y, v2.z, 1f).mul(mv); z += tmp.z;
-                tmp.set(v3.x, v3.y, v3.z, 1f).mul(mv); z += tmp.z;
-                zvals[i] = z / 3f;
-                order[i] = i;
             }
 
-            java.util.Arrays.sort(order, (aIdx, bIdx) -> Float.compare(zvals[aIdx], zvals[bIdx]));
+            /* Write vertices */
+            this.normal.set(n1.x, n1.y, n1.z);
+            stack.peek().getNormalMatrix().transform(this.normal);
+            this.modelVertex.set(v1, u1, model);
+            this.writeVertex(builder, stack, group, this.modelVertex, this.normal);
 
-            for (int k = 0; k < triCount; k++)
-            {
-                int i = order[k];
+            this.normal.set(n2.x, n2.y, n2.z);
+            stack.peek().getNormalMatrix().transform(this.normal);
+            this.modelVertex.set(v2, u2, model);
+            this.writeVertex(builder, stack, group, this.modelVertex, this.normal);
 
-                v1.set(baseData.vertices.get(i * 3));
-                v2.set(baseData.vertices.get(i * 3 + 1));
-                v3.set(baseData.vertices.get(i * 3 + 2));
-
-                n1.set(baseData.normals.get(i * 3));
-                n2.set(baseData.normals.get(i * 3 + 1));
-                n3.set(baseData.normals.get(i * 3 + 2));
-
-                u1.set(baseData.uvs.get(i * 3));
-                u2.set(baseData.uvs.get(i * 3 + 1));
-                u3.set(baseData.uvs.get(i * 3 + 2));
-
-                for (Map.Entry<String, Float> entry : this.shapeKeys.shapeKeys.entrySet())
-                {
-                    ModelData data = mesh.data.get(entry.getKey());
-                    float value = entry.getValue();
-                    if (data != null)
-                    {
-                        this.relativeShift(v1, baseData.vertices.get(i * 3), data.vertices.get(i * 3), value);
-                        this.relativeShift(v2, baseData.vertices.get(i * 3 + 1), data.vertices.get(i * 3 + 1), value);
-                        this.relativeShift(v3, baseData.vertices.get(i * 3 + 2), data.vertices.get(i * 3 + 2), value);
-
-                        this.relativeShift(n1, baseData.normals.get(i * 3), data.normals.get(i * 3), value);
-                        this.relativeShift(n2, baseData.normals.get(i * 3 + 1), data.normals.get(i * 3 + 1), value);
-                        this.relativeShift(n3, baseData.normals.get(i * 3 + 2), data.normals.get(i * 3 + 2), value);
-
-                        this.relativeShift(u1, baseData.uvs.get(i * 3), data.uvs.get(i * 3), value);
-                        this.relativeShift(u2, baseData.uvs.get(i * 3 + 1), data.uvs.get(i * 3 + 1), value);
-                        this.relativeShift(u3, baseData.uvs.get(i * 3 + 2), data.uvs.get(i * 3 + 2), value);
-                    }
-                }
-
-                this.normal.set(n1.x, n1.y, n1.z);
-                stack.peek().getNormalMatrix().transform(this.normal);
-                this.modelVertex.set(v1, u1, model);
-                this.writeVertex(builder, stack, group, this.modelVertex, this.normal);
-
-                this.normal.set(n2.x, n2.y, n2.z);
-                stack.peek().getNormalMatrix().transform(this.normal);
-                this.modelVertex.set(v2, u2, model);
-                this.writeVertex(builder, stack, group, this.modelVertex, this.normal);
-
-                this.normal.set(n3.x, n3.y, n3.z);
-                stack.peek().getNormalMatrix().transform(this.normal);
-                this.modelVertex.set(v3, u3, model);
-                this.writeVertex(builder, stack, group, this.modelVertex, this.normal);
-            }
+            this.normal.set(n3.x, n3.y, n3.z);
+            stack.peek().getNormalMatrix().transform(this.normal);
+            this.modelVertex.set(v3, u3, model);
+            this.writeVertex(builder, stack, group, this.modelVertex, this.normal);
         }
 
         stack.pop();

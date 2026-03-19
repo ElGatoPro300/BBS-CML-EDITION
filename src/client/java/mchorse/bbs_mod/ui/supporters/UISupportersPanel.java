@@ -19,9 +19,6 @@ import java.util.function.Supplier;
 
 public class UISupportersPanel extends UIDashboardPanel
 {
-    public UIElement ccSupporters;
-    public UIElement superSupporters;
-    public UIElement bbsEarlyAccessSupporters;
     public UIElement cmlSupporters;
     public UIElement cmlDevelopers;
     public UIElement specialThanksSupporters;
@@ -34,12 +31,6 @@ public class UISupportersPanel extends UIDashboardPanel
 
         this.supporters.setup();
 
-        this.ccSupporters = new UIElement();
-        this.ccSupporters.grid(5).items(3);
-        this.superSupporters = new UIElement();
-        this.superSupporters.grid(5).items(3);
-        this.bbsEarlyAccessSupporters = new UIElement();
-        this.bbsEarlyAccessSupporters.grid(5).items(3);
         this.cmlSupporters = new UIElement();
         this.cmlSupporters.grid(5).items(3);
         this.cmlDevelopers = new UIElement();
@@ -66,12 +57,6 @@ public class UISupportersPanel extends UIDashboardPanel
         column.add(this.cmlSupporters);
         column.add(UI.label(UIKeys.SUPPORTERS_SPECIAL_THANKS).background(blueColor).marginTop(12).marginBottom(6));
         column.add(this.specialThanksSupporters);
-        column.add(UI.label(UIKeys.SUPPORTERS_CC).background(color).marginTop(12).marginBottom(6));
-        column.add(this.ccSupporters);
-        column.add(UI.label(UIKeys.SUPPORTERS_SUPER_SUPPORTERS).background(color).marginTop(12).marginBottom(6));
-        column.add(this.superSupporters);
-        column.add(UI.label(UIKeys.SUPPORTERS_EARLY_ACCESS).background(color).marginTop(12).marginBottom(6));
-        column.add(this.bbsEarlyAccessSupporters.marginBottom(12));
         column.w(500);
 
         UIElement row = UI.row(0, 0, new UIElement(), column, new UIElement());
@@ -91,21 +76,6 @@ public class UISupportersPanel extends UIDashboardPanel
         for (Supporter supporter : this.supporters.getSpecialThanksSupporters())
         {
             this.specialThanksSupporters.add(this.createSupporter(supporter));
-        }
-
-        for (Supporter supporter : this.supporters.getCCSupporters())
-        {
-            this.ccSupporters.add(this.createSupporter(supporter));
-        }
-
-        for (Supporter supporter : this.supporters.getSuperSupporters())
-        {
-            this.superSupporters.add(this.createSupporter(supporter));
-        }
-
-        for (Supporter supporter : this.supporters.getBBSEarlyAccessSupporters())
-        {
-            this.bbsEarlyAccessSupporters.add(this.createSupporter(supporter));
         }
 
         scrollView.add(row);

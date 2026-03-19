@@ -583,10 +583,10 @@ public abstract class BaseFilmController
 
             if (replay != null)
             {
-                ticks = replay.getTick(ticks);
+                int replayTick = replay.getTick(ticks);
 
-                this.updateEntityAndForm(entity, ticks);
-                this.applyReplay(replay, ticks, entity);
+                this.updateEntityAndForm(entity, replayTick);
+                this.applyReplay(replay, replayTick, entity);
 
                 boolean spawned = false;
 
@@ -603,26 +603,26 @@ public abstract class BaseFilmController
                         if (anEntity instanceof ActorEntity actor)
                         {
                             /* Force synchronize entity angles */
-                            actor.setYaw(replay.keyframes.yaw.interpolate(ticks).floatValue());
-                            actor.setHeadYaw(replay.keyframes.headYaw.interpolate(ticks).floatValue());
-                            actor.setBodyYaw(replay.keyframes.bodyYaw.interpolate(ticks).floatValue());
-                            actor.setPitch(replay.keyframes.pitch.interpolate(ticks).floatValue());
-                            replay.applyClientActions(ticks, new MCEntity(anEntity), this.film);
+                            actor.setYaw(replay.keyframes.yaw.interpolate(replayTick).floatValue());
+                            actor.setHeadYaw(replay.keyframes.headYaw.interpolate(replayTick).floatValue());
+                            actor.setBodyYaw(replay.keyframes.bodyYaw.interpolate(replayTick).floatValue());
+                            actor.setPitch(replay.keyframes.pitch.interpolate(replayTick).floatValue());
+                            replay.applyClientActions(replayTick, new MCEntity(anEntity), this.film);
 
                             spawned = true;
                         }
                         else if (anEntity instanceof PlayerEntity player)
                         {
-                            double x = replay.keyframes.x.interpolate(ticks);
-                            double y = replay.keyframes.y.interpolate(ticks);
-                            double z = replay.keyframes.z.interpolate(ticks);
-                            double prevX = replay.keyframes.x.interpolate(ticks - 1);
-                            double prevY = replay.keyframes.y.interpolate(ticks - 1);
-                            double prevZ = replay.keyframes.z.interpolate(ticks - 1);
+                            double x = replay.keyframes.x.interpolate(replayTick);
+                            double y = replay.keyframes.y.interpolate(replayTick);
+                            double z = replay.keyframes.z.interpolate(replayTick);
+                            double prevX = replay.keyframes.x.interpolate(replayTick - 1);
+                            double prevY = replay.keyframes.y.interpolate(replayTick - 1);
+                            double prevZ = replay.keyframes.z.interpolate(replayTick - 1);
 
                             player.setVelocity(x - prevX, y - prevY, z - prevZ);
 
-                            this.spawnSprintParticles(replay, ticks, player);
+                            this.spawnSprintParticles(replay, replayTick, player);
                             spawned = true;
                         }
                     }
@@ -634,7 +634,7 @@ public abstract class BaseFilmController
                     Form form = replay.form.get();
                     double width = form != null ? form.hitboxWidth.get() : 0.6D;
 
-                    this.spawnSprintParticles(replay, ticks, world, width);
+                    this.spawnSprintParticles(replay, replayTick, world, width);
                 }
             }
         }
@@ -658,7 +658,7 @@ public abstract class BaseFilmController
 
             if (replay != null)
             {
-                ticks = replay.getTick(ticks);
+                int replayTick = replay.getTick(ticks);
 
                 Map<String, Integer> actors = this.getActors();
 
@@ -672,10 +672,10 @@ public abstract class BaseFilmController
 
                         if (anEntity instanceof PlayerEntity player)
                         {
-                            double x = replay.keyframes.x.interpolate(ticks);
-                            double y = replay.keyframes.y.interpolate(ticks);
-                            double z = replay.keyframes.z.interpolate(ticks);
-                            boolean sneaking = replay.keyframes.sneaking.interpolate(ticks) > 0;
+                            double x = replay.keyframes.x.interpolate(replayTick);
+                            double y = replay.keyframes.y.interpolate(replayTick);
+                            double z = replay.keyframes.z.interpolate(replayTick);
+                            boolean sneaking = replay.keyframes.sneaking.interpolate(replayTick) > 0;
 
                             Vec3d pos = new Vec3d(player.getX(), player.getY(), player.getZ());
 
@@ -683,7 +683,7 @@ public abstract class BaseFilmController
                             player.setPosition(x, y, z);
 
                             player.setSneaking(sneaking);
-                            player.setOnGround(replay.keyframes.grounded.interpolate(ticks) > 0);
+                            player.setOnGround(replay.keyframes.grounded.interpolate(replayTick) > 0);
 
                             if (player instanceof ClientPlayerEntityAccessor accessor)
                             {
@@ -695,7 +695,7 @@ public abstract class BaseFilmController
                                 /* playerEntity.input.sneaking = sneaking; */
                             }
 
-                            player.fallDistance = replay.keyframes.fall.interpolate(ticks).floatValue();
+                            player.fallDistance = replay.keyframes.fall.interpolate(replayTick).floatValue();
                         }
                     }
                 }
@@ -705,6 +705,7 @@ public abstract class BaseFilmController
 
     protected void updateEntityAndForm(IEntity entity, int tick)
     {
+        entity.setAge(tick);
         entity.update();
 
         if (entity.getForm() != null)

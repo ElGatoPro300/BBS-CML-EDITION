@@ -6,6 +6,7 @@ import mchorse.bbs_mod.audio.SoundBuffer;
 import mchorse.bbs_mod.audio.Waveform;
 import mchorse.bbs_mod.camera.Camera;
 import mchorse.bbs_mod.camera.CameraUtils;
+import mchorse.bbs_mod.camera.clips.ClipFactoryData;
 import mchorse.bbs_mod.camera.clips.misc.AudioClip;
 import mchorse.bbs_mod.camera.utils.TimeUtils;
 import mchorse.bbs_mod.cubic.ModelInstance;
@@ -48,6 +49,7 @@ import mchorse.bbs_mod.ui.film.replays.overlays.UIReplaysOverlayPanel;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIKeyframeSheetFilterOverlayPanel;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIRenameSheetOverlayPanel;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIAnimationToPoseOverlayPanel;
+import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.ui.utils.Scale;
@@ -69,6 +71,8 @@ import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 import mchorse.bbs_mod.utils.keyframes.KeyframeSegment;
 import mchorse.bbs_mod.utils.keyframes.factories.KeyframeFactories;
+import mchorse.bbs_mod.utils.pose.Pose;
+import mchorse.bbs_mod.utils.pose.PoseTransform;
 import mchorse.bbs_mod.utils.pose.Transform;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
@@ -165,6 +169,16 @@ public class UIReplaysEditor extends UIElement
         COLORS.put("count", Colors.GREEN);
 
         COLORS.put("settings", Colors.MAGENTA);
+        COLORS.put("block_state", Colors.ACTIVE);
+        COLORS.put("item_stack", Colors.ORANGE);
+        COLORS.put("modelTransform", Colors.YELLOW);
+        COLORS.put("enabled", Colors.WHITE & Colors.RGB);
+        COLORS.put("level", Colors.YELLOW);
+        COLORS.put("emit_light", Colors.YELLOW);
+        COLORS.put("light_intensity", Colors.YELLOW);
+        COLORS.put("structure_light", Colors.YELLOW);
+        COLORS.put("biome_id", Colors.GREEN);
+        COLORS.put("effect", Colors.MAGENTA);
         COLORS.put("offset_x", Colors.RED);
         COLORS.put("offset_y", Colors.GREEN);
         COLORS.put("offset_z", Colors.BLUE);
@@ -204,6 +218,16 @@ public class UIReplaysEditor extends UIElement
         ICONS.put("count", Icons.BUCKET);
 
         ICONS.put("settings", Icons.GEAR);
+        ICONS.put("block_state", Icons.BLOCK);
+        ICONS.put("item_stack", Icons.LIMB);
+        ICONS.put("modelTransform", Icons.ALL_DIRECTIONS);
+        ICONS.put("enabled", Icons.VISIBLE);
+        ICONS.put("level", Icons.LIGHT);
+        ICONS.put("emit_light", Icons.LIGHT);
+        ICONS.put("light_intensity", Icons.LIGHT);
+        ICONS.put("structure_light", Icons.LIGHT);
+        ICONS.put("biome_id", Icons.MATERIAL);
+        ICONS.put("effect", Icons.PARTICLE);
 
         /* Structure selection icon for structure_file property */
         ICONS.put("structure_file", Icons.FILE);
@@ -329,20 +353,63 @@ public class UIReplaysEditor extends UIElement
 
     public static final Form DUMMY_FORM = new StructureForm();
 
-    public static boolean renderBackground(UIContext context, UIKeyframes keyframes, Clips camera, int clipOffset)
+    public static boolean renderBackground(UIContext context, UIKeyframes keyframes, Clips camera, int clipOffset, Clip selectedClip)
     {
-        if (!BBSSettings.audioWaveformVisible.get())
-        {
-            return false;
-        }
-
         Scale scale = keyframes.getXAxis();
         boolean renderedOnce = false;
+        boolean simplified = BBSSettings.simplifiedKeyframeUI.get();
 
+        if (simplified)
+        {
+            Area area = new Area();
+            area.copy(keyframes.area);
+            area.x += IUIKeyframeGraph.SIDEBAR_WIDTH;
+            area.w -= IUIKeyframeGraph.SIDEBAR_WIDTH;
+
+            context.batcher.clip(area, context);
+        }
+
+        /* First pass: Render selected clip background */
+        for (Clip clip : camera.get())
+        {
+            if (clip == selectedClip && !(clip instanceof AudioClip))
+            {
+                float offset = clip.tick.get() - clipOffset;
+                int x1 = (int) scale.to(offset);
+                int x2 = (int) scale.to(offset + clip.duration.get());
+                int y = keyframes.area.y + 15;
+                int h = 20;
+
+                if (x2 > keyframes.area.x && x1 < keyframes.area.ex())
+                {
+                    ClipFactoryData data = camera.getFactory().getData(clip);
+                    int color = data.color;
+                    int primary = BBSSettings.primaryColor.get();
+
+                    context.batcher.dropShadow(x1 + 2, y + 2, x2 - 2, y + h - 2, 8, Colors.A75 + primary, primary);
+                    context.batcher.box(x1, y, x2, y + h, color | Colors.A100);
+                    context.batcher.outline(x1, y, x2, y + h, Colors.WHITE);
+
+                    if (x2 - x1 > 20)
+                    {
+                        context.batcher.icon(data.icon, Colors.mulA(Colors.mulRGB(Colors.WHITE, 0.75F), 0.5F), x2 - 2, y + h / 2, 1F, 0.5F);
+                    }
+
+                    renderedOnce = true;
+                }
+            }
+        }
+
+        /* Second pass: Render audio waveforms on top */
         for (Clip clip : camera.get())
         {
             if (clip instanceof AudioClip audioClip)
             {
+                if (!BBSSettings.audioWaveformVisible.get())
+                {
+                    continue;
+                }
+
                 Link link = audioClip.audio.get();
 
                 if (link == null)
@@ -373,6 +440,11 @@ public class UIReplaysEditor extends UIElement
                     renderedOnce = true;
                 }
             }
+        }
+
+        if (simplified)
+        {
+            context.batcher.unclip(context);
         }
 
         return renderedOnce;
@@ -450,7 +522,7 @@ public class UIReplaysEditor extends UIElement
     }
 
     private static final List<String> WORLD_CHANNELS = Arrays.asList("x", "y", "z", "vX", "vY", "vZ", "yaw", "pitch", "headYaw", "bodyYaw", "grounded", "damage", "fall", "sneaking", "sprinting", "item_main_hand", "item_off_hand", "item_head", "item_chest", "item_legs", "item_feet", "selected_slot", "stick_lx", "stick_ly", "stick_rx", "stick_ry", "trigger_l", "trigger_r", "extra1_x", "extra1_y", "extra2_x", "extra2_y", "shadow_size", "shadow_opacity");
-    private static final List<String> MODEL_PROPERTIES = Arrays.asList("visible", "lighting", "transform", "transform_overlay", "pose", "pose_overlay", "anchor", "color", "texture", "model", "actions", "shape_keys");
+    private static final List<String> MODEL_PROPERTIES = Arrays.asList("visible", "lighting", "transform", "transform_overlay", "pose", "pose_overlay", "anchor", "color", "texture", "model", "actions", "shape_keys", "block_state", "item_stack", "modelTransform", "settings", "paused", "structure_file", "biome_id", "emit_light", "light_intensity", "structure_light", "enabled", "level", "effect");
 
     public void updateChannelsList()
     {
@@ -1040,25 +1112,33 @@ public class UIReplaysEditor extends UIElement
                 UIKeyframes view = this.keyframeEditor.view;
 
                 context.batcher.flush();
-                renderBackground(context, view, this.film.camera, 0);
+                renderBackground(context, view, this.film.camera, 0, this.filmPanel.cameraEditor.getClip());
             });
             this.keyframeEditor.view.duration(() -> this.film.camera.calculateDuration());
             this.keyframeEditor.view.context((menu) ->
             {
-                if (this.replay.form.get() instanceof ModelForm modelForm)
-                {
-                    int mouseY = this.getContext().mouseY;
-                    UIKeyframeSheet sheet = this.keyframeEditor.view.getGraph().getSheet(mouseY);
+                int mouseY = this.getContext().mouseY;
+                UIKeyframeSheet sheet = this.keyframeEditor.view.getGraph().getSheet(mouseY);
 
-                    if (sheet != null && sheet.channel.getFactory() == KeyframeFactories.POSE && (sheet.id.equals("pose") || sheet.id.startsWith("pose_overlay")))
+                if (sheet != null && sheet.channel.getFactory() == KeyframeFactories.POSE)
+                {
+                    String trackName = StringUtils.fileName(sheet.id);
+
+                    if (trackName.equals("pose") || trackName.startsWith("pose_overlay"))
                     {
-                        menu.action(Icons.POSE, UIKeys.FILM_REPLAY_CONTEXT_ANIMATION_TO_KEYFRAMES, () -> this.animationToPoses(modelForm, sheet));
+                        Form form = sheet.property != null ? FormUtils.getForm(sheet.property) : this.replay.form.get();
+
+                        if (form instanceof ModelForm modelForm)
+                        {
+                            menu.action(Icons.POSE, UIKeys.FILM_REPLAY_CONTEXT_ANIMATION_TO_KEYFRAMES, () -> this.animationToPoses(modelForm, sheet));
+                        }
+                        menu.action(Icons.CONVERT, UIKeys.FILM_REPLAY_CONTEXT_POSE_TO_LIMBS, () -> this.convertToLimbs(sheet));
                     }
                 }
 
                 int mouseY2 = this.getContext().mouseY;
                 UIKeyframeSheet clickedSheet = this.keyframeEditor.view.getGraph().getSheet(mouseY2);
-                if (clickedSheet != null)
+                if (clickedSheet != null && !clickedSheet.groupHeader)
                 {
                     menu.action(Icons.FONT, UIKeys.FILM_REPLAY_RENAME_SHEET, () ->
                     {
@@ -1080,7 +1160,7 @@ public class UIReplaysEditor extends UIElement
                     });
                 }
 
-                if (this.keyframeEditor.view.getGraph() instanceof UIKeyframeDopeSheet)
+                if (this.keyframeEditor.view.getGraph() instanceof UIKeyframeDopeSheet && (clickedSheet == null || !clickedSheet.groupHeader))
                 {
                     menu.action(Icons.FILTER, UIKeys.FILM_REPLAY_FILTER_SHEETS, () ->
                     {
@@ -1283,6 +1363,57 @@ public class UIReplaysEditor extends UIElement
         return ticks;
     }
 
+    private void convertToLimbs(UIKeyframeSheet sheet)
+    {
+        List<Keyframe> selected = sheet.selection.getSelected();
+
+        if (selected.isEmpty())
+        {
+            return;
+        }
+
+        Form form = sheet.property != null ? FormUtils.getForm(sheet.property) : this.replay.form.get();
+
+        if (form == null)
+        {
+            return;
+        }
+
+        BaseValue.edit(this.replay, (r) ->
+        {
+            for (Keyframe kf : selected)
+            {
+                Pose pose = (Pose) kf.getValue();
+
+                if (pose == null)
+                {
+                    continue;
+                }
+
+                for (Map.Entry<String, PoseTransform> entry : pose.transforms.entrySet())
+                {
+                    String boneName = entry.getKey();
+                    PoseTransform transform = entry.getValue();
+                    String key = sheet.id + ":" + boneName;
+
+                    KeyframeChannel<Transform> channel = this.replay.properties.getOrCreate(this.replay.form.get(), key);
+
+                    if (channel != null)
+                    {
+                        int index = channel.insert(kf.getTick(), transform.copy());
+                        Keyframe<Transform> newKf = channel.get(index);
+
+                        newKf.copyOverExtra(kf);
+                    }
+                }
+
+                sheet.channel.remove(kf);
+            }
+        });
+
+        this.updateChannelsList();
+    }
+
     private void fillAnimationPose(UIKeyframeSheet sheet, float i, ModelInstance model, IEntity entity, Animation animation, int current)
     {
         model.model.resetPose();
@@ -1316,7 +1447,7 @@ public class UIReplaysEditor extends UIElement
                 String pathWithProperty = colon != -1 ? sheetId.substring(0, colon) : sheetId;
                 String propertyId = StringUtils.fileName(pathWithProperty);
 
-                if (pathWithProperty.startsWith(formPath) && (propertyId.equals("pose") || propertyId.startsWith("pose_overlay")))
+                if (StringUtils.parentPath(pathWithProperty).equals(formPath) && (propertyId.equals("pose") || propertyId.startsWith("pose_overlay")))
                 {
                     propertyPath = pathWithProperty;
                 }
@@ -1334,7 +1465,7 @@ public class UIReplaysEditor extends UIElement
                 String pathWithProperty = colon != -1 ? sheetId.substring(0, colon) : sheetId;
                 String propertyId = StringUtils.fileName(pathWithProperty);
 
-                if (pathWithProperty.startsWith(formPath) && (propertyId.equals("pose") || propertyId.startsWith("pose_overlay")))
+                if (StringUtils.parentPath(pathWithProperty).equals(formPath) && (propertyId.equals("pose") || propertyId.startsWith("pose_overlay")))
                 {
                     propertyPath = pathWithProperty;
                 }
@@ -1355,7 +1486,7 @@ public class UIReplaysEditor extends UIElement
                 int colon = sheetId.indexOf(':');
                 String pathWithProperty = colon != -1 ? sheetId.substring(0, colon) : sheetId;
 
-                if (pathWithProperty.startsWith(formPath))
+                if (StringUtils.parentPath(pathWithProperty).equals(formPath))
                 {
                     String propertyId = StringUtils.fileName(pathWithProperty);
 
