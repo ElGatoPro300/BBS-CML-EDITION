@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.ui.model;
 
 import mchorse.bbs_mod.BBSSettings;
+import mchorse.bbs_mod.BBSClient;
 import mchorse.bbs_mod.cubic.model.ModelConfig;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.forms.FormUtilsClient;
@@ -37,6 +38,7 @@ import java.util.List;
 public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
 {
     public UIModelEditorRenderer renderer;
+    public UIIcon reloadIcon;
     
     public UIElement mainView;
     public List<UIElement> panels = new ArrayList<>();
@@ -56,6 +58,19 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         super(dashboard);
 
         this.overlay.add.setEnabled(false);
+
+        this.reloadIcon = new UIIcon(Icons.REFRESH, (b) ->
+        {
+            if (this.data != null)
+            {
+                String modelId = this.data.getId();
+                BBSClient.getModels().loadModel(modelId);
+                this.renderer.invalidatePreviewModel();
+                this.fillData(this.data);
+            }
+        });
+        this.reloadIcon.tooltip(UIKeys.MODELS_RELOAD, Direction.LEFT);
+        this.iconBar.add(this.reloadIcon);
 
         this.renderer = new UIModelEditorRenderer();
         this.renderer.relative(this).wTo(this.iconBar.getFlex()).h(1F);
@@ -153,7 +168,13 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
             }
         }
 
-        if (this.saveIcon != null)
+        if (this.reloadIcon != null)
+        {
+            Area a = this.reloadIcon.area;
+
+            context.batcher.box(a.x + 3, a.ey() + 4, a.ex() - 3, a.ey() + 5, 0x22ffffff);
+        }
+        else if (this.saveIcon != null)
         {
             Area a = this.saveIcon.area;
 

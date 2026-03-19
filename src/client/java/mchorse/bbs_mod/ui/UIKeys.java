@@ -832,6 +832,7 @@ public class UIKeys
     public static final IKey MODELS_SNEAKING_CONTEXT = L10n.lang("bbs.ui.models.sneaking_pose.context");
     public static final IKey MODELS_SNEAKING_DESC = L10n.lang("bbs.ui.models.sneaking_pose.desc");
     public static final IKey MODELS_SNEAKING_TITLE = L10n.lang("bbs.ui.models.sneaking_pose");
+    public static final IKey MODELS_RELOAD = L10n.lang("bbs.ui.models.reload");
     public static final IKey MODELS_TITLE = L10n.lang("bbs.ui.models.title");
     public static final IKey MODELS_SETTINGS = L10n.lang("bbs.ui.models.settings");
     public static final IKey MODELS_IK_EDITOR = L10n.lang("bbs.ui.models.ik_editor");

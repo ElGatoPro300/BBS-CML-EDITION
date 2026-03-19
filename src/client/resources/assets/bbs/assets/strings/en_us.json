@@ -1179,6 +1179,7 @@
     "bbs.ui.models.pose_group_tooltip": "Allows you to specify pose group for the model. If you have multiple models that share the same group structure, you can reuse saved poses by specifying the pose group for a single model.",
     "bbs.ui.models.procedural": "Procedural",
     "bbs.ui.models.procedural_tooltip": "Enables procedural animation mode for the model.",
+    "bbs.ui.models.reload": "Reload model",
     "bbs.ui.models.settings": "Model Settings",
     "bbs.ui.models.sneaking_pose": "Sneaking pose",
     "bbs.ui.models.sneaking_pose.context": "Copy/Paste Sneaking Pose",
