@@ -1,10 +1,12 @@
 accessWidener v2 named
 
-accessible field com/mojang/blaze3d/systems/RenderSystem shaderLightDirections [Lorg/joml/Vector3f;
+# accessible field com/mojang/blaze3d/systems/RenderSystem shaderLightDirections [Lorg/joml/Vector3f;
 
-accessible field com/mojang/blaze3d/platform/GlStateManager TEXTURES [Lcom/mojang/blaze3d/platform/GlStateManager$Texture2DState;
-accessible field com/mojang/blaze3d/platform/GlStateManager activeTexture I
-accessible class com/mojang/blaze3d/platform/GlStateManager$Texture2DState
 
 accessible field net/minecraft/client/MinecraftClient framebuffer Lnet/minecraft/client/gl/Framebuffer;
 mutable field net/minecraft/client/MinecraftClient framebuffer Lnet/minecraft/client/gl/Framebuffer;
+
+accessible field net/minecraft/entity/Entity world Lnet/minecraft/world/World;
+accessible field net/minecraft/entity/Entity pos Lnet/minecraft/util/math/Vec3d;
+accessible field net/minecraft/world/World isClient Z
+accessible field net/minecraft/server/network/ServerPlayerEntity server Lnet/minecraft/server/MinecraftServer;

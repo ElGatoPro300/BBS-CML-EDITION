@@ -6,6 +6,8 @@ import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.utils.MathUtils;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.client.render.VertexConsumerProvider;
+import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix4f;
 
 public class FormRenderingContext
@@ -24,6 +26,8 @@ public class FormRenderingContext
     public boolean relative;
     public boolean isShadowPass;
     public Matrix4f viewMatrix;
+    public Matrix4f projectionMatrix = new Matrix4f();
+    public VertexConsumerProvider vertexConsumers;
 
     public FormRenderingContext()
     {}
@@ -46,6 +50,16 @@ public class FormRenderingContext
         return this;
     }
 
+    public FormRenderingContext projection(Matrix4f projectionMatrix)
+    {
+        if (projectionMatrix != null)
+        {
+            this.projectionMatrix.set(projectionMatrix);
+        }
+        
+        return this;
+    }
+
     public FormRenderingContext camera(Camera camera)
     {
         this.camera.copy(camera);
@@ -56,7 +70,8 @@ public class FormRenderingContext
 
     public FormRenderingContext camera(net.minecraft.client.render.Camera camera)
     {
-        this.camera.position.set(camera.getPos().x, camera.getPos().y, camera.getPos().z);
+        Vec3d pos = camera.getFocusedEntity() != null ? camera.getFocusedEntity().getCameraPosVec(0.0F) : Vec3d.ofCenter(camera.getBlockPos());
+        this.camera.position.set(pos.x, pos.y, pos.z);
         this.camera.rotation.set(MathUtils.toRad(-camera.getPitch()), MathUtils.toRad(camera.getYaw()), 0F);
         this.camera.fov = MathUtils.toRad(MinecraftClient.getInstance().options.getFov().getValue());
         this.camera.view.identity().rotate(camera.getRotation());
@@ -88,6 +103,13 @@ public class FormRenderingContext
     public FormRenderingContext modelRenderer()
     {
         this.modelRenderer = true;
+
+        return this;
+    }
+
+    public FormRenderingContext consumers(VertexConsumerProvider consumers)
+    {
+        this.vertexConsumers = consumers;
 
         return this;
     }

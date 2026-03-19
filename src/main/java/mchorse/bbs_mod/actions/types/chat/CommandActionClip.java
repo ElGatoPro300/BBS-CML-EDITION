@@ -1,5 +1,6 @@
 package mchorse.bbs_mod.actions.types.chat;
 
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import mchorse.bbs_mod.actions.SuperFakePlayer;
 import mchorse.bbs_mod.actions.types.ActionClip;
 import mchorse.bbs_mod.film.Film;
@@ -25,12 +26,16 @@ public class CommandActionClip extends ActionClip
         this.applyPositionRotation(player, replay, tick);
 
         String command = this.command.get();
-        ServerWorld world = player.getServerWorld();
+        ServerWorld world = (ServerWorld) player.world;
         ServerCommandSource source = actor == null
             ? player.getCommandSource()
             : actor.getCommandSource(world);
 
-        player.getServer().getCommandManager().executeWithPrefix(source, command);
+        try {
+            player.world.getServer().getCommandManager().getDispatcher().execute(command, source);
+        } catch (CommandSyntaxException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override

@@ -1,5 +1,6 @@
 package mchorse.bbs_mod.ui.film.controller;
 
+import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.systems.ProjectionType;
 import com.mojang.blaze3d.systems.VertexSorter;
@@ -63,7 +64,7 @@ import mchorse.bbs_mod.utils.RayTracing;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.joml.Matrices;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.Mouse;
 import net.minecraft.client.gl.GlUniform;
@@ -71,6 +72,7 @@ import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.option.GameOptions;
 import net.minecraft.client.util.InputUtil;
+import net.minecraft.client.input.KeyInput;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.world.World;
@@ -677,7 +679,7 @@ public class UIFilmController extends UIElement
                 return true;
             }
 
-            InputUtil.Key utilKey = InputUtil.fromKeyCode(context.getKeyCode(), context.getScanCode());
+            InputUtil.Key utilKey = InputUtil.fromKeyCode(new KeyInput(context.getKeyCode(), context.getScanCode(), 0));
 
             if (this.canControlWithKeyboard(utilKey) && !(this.recording && this.recordingCountdown > 0 && !this.countdownControl))
             {
@@ -1099,15 +1101,13 @@ public class UIFilmController extends UIElement
 
         boolean altPressed = Window.isAltPressed();
 
-        RenderSystem.depthFunc(GL11.GL_LESS);
+        GlStateManager._depthFunc(GL11.GL_LESS);
 
         /* Cache the global stuff */
         MatrixStackUtils.cacheMatrices();
 
-        RenderSystem.setProjectionMatrix(this.panel.lastProjection, ProjectionType.ORTHOGRAPHIC);
-
         /* Render the stencil */
-        MatrixStack worldStack = this.worldRenderContext.matrixStack();
+        MatrixStack worldStack = this.worldRenderContext.matrices();
         if (worldStack != null)
         {
             worldStack.push();
@@ -1133,7 +1133,8 @@ public class UIFilmController extends UIElement
         /* Return back to orthographic projection */
         MatrixStackUtils.restoreMatrices();
 
-        RenderSystem.depthFunc(GL11.GL_ALWAYS);
+        GlStateManager._enableDepthTest();
+        GlStateManager._depthFunc(GL11.GL_ALWAYS);
 
         this.hoveredEntity = null;
 
@@ -1170,10 +1171,9 @@ public class UIFilmController extends UIElement
 
         if (target != null)
         {
-            target.set(index);
         }
 
-        RenderSystem.enableBlend();
+        GlStateManager._enableBlend();
         context.batcher.texturedBox(getPickerPreviewProgram.get(), texture.id, Colors.WHITE, area.x, area.y, area.w, area.h, 0, h, w, 0, w, h);
 
         if (altPressed)
@@ -1214,7 +1214,7 @@ public class UIFilmController extends UIElement
     {
         this.worldRenderContext = context;
 
-        RenderSystem.enableDepthTest();
+        GlStateManager._enableDepthTest();
 
         if (this.editorController != null)
         {
@@ -1224,7 +1224,7 @@ public class UIFilmController extends UIElement
 
             if (povMode != UIFilmController.CAMERA_MODE_CAMERA && BBSSettings.recordingCameraPreview.get())
             {
-                Recorder.renderCameraPreview(this.panel.getRunner().getPosition(), context.camera(), context.matrixStack());
+                Recorder.renderCameraPreview(this.panel.getRunner().getPosition(), MinecraftClient.getInstance().gameRenderer.getCamera(), context.matrices());
             }
         }
 
@@ -1257,7 +1257,8 @@ public class UIFilmController extends UIElement
 
         this.lastMouse.set(x, y);
 
-        RenderSystem.disableDepthTest();
+        GlStateManager._disableDepthTest();
+        GlStateManager._depthFunc(GL11.GL_LEQUAL);
     }
 
     public Pair<String, Boolean> getBone()
@@ -1305,7 +1306,7 @@ public class UIFilmController extends UIElement
 
                 BaseFilmController.renderEntity(FilmControllerContext.instance
                     .setup(this.getEntities(), entry.getValue(), replay, renderContext)
-                    .transition(isPlaying ? renderContext.tickCounter().getTickDelta(false) : 0)
+                    .transition(isPlaying ? MinecraftClient.getInstance().getRenderTickCounter().getTickProgress(false) : 0)
                     .stencil(this.stencilMap)
                     .relative(replay.relative.get()));
             }
@@ -1340,7 +1341,7 @@ public class UIFilmController extends UIElement
 
                 BaseFilmController.renderEntity(FilmControllerContext.instance
                     .setup(this.getEntities(), entity, replay, renderContext)
-                    .transition(isPlaying ? renderContext.tickCounter().getTickDelta(false) : 0)
+                    .transition(isPlaying ? MinecraftClient.getInstance().getRenderTickCounter().getTickProgress(false) : 0)
                     .stencil(this.stencilMap)
                     .relative(replay.relative.get())
                     .bone(bone == null ? null : bone.a, bone != null && bone.b));
@@ -1353,7 +1354,6 @@ public class UIFilmController extends UIElement
         this.stencil.pick(x, y);
         this.stencil.unbind(this.stencilMap);
 
-        MinecraftClient.getInstance().getFramebuffer().beginWrite(true);
     }
 
     private void ensureStencilFramebuffer()

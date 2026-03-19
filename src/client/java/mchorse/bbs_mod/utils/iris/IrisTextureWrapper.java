@@ -31,14 +31,14 @@ public class IrisTextureWrapper extends AbstractTexture
     public void load(ResourceManager manager) throws IOException
     {}
 
-    @Override
+    // @Override
     public int getGlId()
     {
         Texture texture = BBSModClient.getTextures().getTexture(this.texture, GL11.GL_NEAREST, true);
 
         if (texture == null || texture == BBSModClient.getTextures().getError())
         {
-            return this.fallback == null ? -1 : this.fallback.getGlId();
+            return this.fallback == null ? -1 : -1; // this.fallback.getGlId();
         }
 
         if (this.index >= 0 && texture.getParent() != null)

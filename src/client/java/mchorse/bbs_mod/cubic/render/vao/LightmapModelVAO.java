@@ -1,8 +1,9 @@
 package mchorse.bbs_mod.cubic.render.vao;
 
 import mchorse.bbs_mod.client.BBSRendering;
-import net.minecraft.client.render.VertexFormat;
-import net.minecraft.client.render.VertexFormats;
+import com.mojang.blaze3d.vertex.VertexFormat;
+import net.minecraft.client.util.math.MatrixStack;
+import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL30;
 
 public class LightmapModelVAO implements IModelVAO
@@ -78,7 +79,7 @@ public class LightmapModelVAO implements IModelVAO
     }
 
     @Override
-    public void render(VertexFormat format, float r, float g, float b, float a, int light, int overlay)
+    public void render(VertexFormat format, MatrixStack stack, Matrix4f matrix, float r, float g, float b, float a, int light, int overlay)
     {
         boolean hasShaders = BBSRendering.isIrisShadersEnabled();
 

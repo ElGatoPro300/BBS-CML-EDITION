@@ -1,19 +1,17 @@
 package mchorse.bbs_mod.graphics;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.camera.data.Angle;
 import mchorse.bbs_mod.utils.Axis;
 import mchorse.bbs_mod.utils.MathUtils;
-import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.BufferBuilder;
-import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
-import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.BufferAllocator;
 import net.minecraft.client.util.math.MatrixStack;
@@ -43,7 +41,6 @@ public class Draw
         float t = 1 / 96F + (float) (Math.sqrt(w * w + h + h + d + d) / 2000);
 
         BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
-        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
 
         /* Pillars: fillBox(builder, -t, -t, -t, t, t, t, r, g, b, a); */
         fillBox(builder, stack, -t, -t, -t, t, t + fh, t, r, g, b, a);
@@ -63,7 +60,7 @@ public class Draw
         fillBox(builder, stack, -t, -t, -t, t, t, t + fd, r, g, b, a);
         fillBox(builder, stack, -t + fw, -t, -t, t + fw, t, t + fd, r, g, b, a);
 
-        BufferRenderer.drawWithGlobalProgram(builder.end());
+        builder.end();
 
         stack.pop();
     }
@@ -83,7 +80,7 @@ public class Draw
      */
     public static void fillTexturedNormalQuad(BufferBuilder builder, MatrixStack stack, float x1, float y1, float z1, float x2, float y2, float z2, float x3, float y3, float z3, float x4, float y4, float z4, float u1, float v1, float u2, float v2, float r, float g, float b, float a, float nx, float ny, float nz)
     {
-        Matrix4f matrix4f = stack.peek().getPositionMatrix();
+        Matrix4f matrix4f = new Matrix4f();
 
         /* 1 - BL, 2 - BR, 3 - TR, 4 - TL */
         builder.vertex(matrix4f, x2, y2, z2).texture(u1, v2).color(r, g, b, a).normal(nx, ny, nz);
@@ -97,7 +94,7 @@ public class Draw
 
     public static void fillQuad(BufferBuilder builder, MatrixStack stack, float x1, float y1, float z1, float x2, float y2, float z2, float x3, float y3, float z3, float x4, float y4, float z4, float r, float g, float b, float a)
     {
-        Matrix4f matrix4f = stack.peek().getPositionMatrix();
+        Matrix4f matrix4f = new Matrix4f();
 
         /* 1 - BR, 2 - BL, 3 - TL, 4 - TR */
         builder.vertex(matrix4f, x1, y1, z1).color(r, g, b, a);
@@ -174,10 +171,7 @@ public class Draw
         fillBox(builder, stack, -axisOffset, -axisOffset, 0, axisOffset, axisOffset, axisSize, 0, 0, 1);
         fillBox(builder, stack, -axisOffset, -axisOffset, -axisOffset, axisOffset, axisOffset, axisOffset, 1, 1, 1);
 
-        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
-        RenderSystem.disableDepthTest();
-
-        BufferRenderer.drawWithGlobalProgram(builder.end());
+        builder.end();
     }
 
     public static void arc3D(BufferBuilder builder, MatrixStack stack, Axis axis, float radius, float thickness, float r, float g, float b)
@@ -202,7 +196,7 @@ public class Draw
         if (axis == Axis.Z) stack.multiply(RotationAxis.POSITIVE_X.rotation(MathUtils.PI / 2F));
 
         float tubeR = thickness * 0.5F;
-        Matrix4f mat = stack.peek().getPositionMatrix();
+        Matrix4f mat = new Matrix4f();
 
         for (int iu = 0; iu < segU; iu++)
         {
