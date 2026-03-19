@@ -240,7 +240,6 @@ public class Gizmo
             Draw.fillBox(builder, stack, -o, l, l, o, rr, rr, 0F, 1F, 1F); */
         }
 
-        RenderSystem.setShader(net.minecraft.client.render.GameRenderer.getPositionColorProgram());
         GlStateManager._depthFunc(GL11.GL_ALWAYS);
 
 
@@ -305,10 +304,9 @@ public class Gizmo
             }
         }
 
-        RenderSystem.setShader(net.minecraft.client.render.GameRenderer.getPositionColorProgram());
         GlStateManager._disableDepthTest();
 
-        BufferRenderer.drawWithGlobalProgram(builder.end());
+        builder.end();
     }
 
     public static enum Mode

@@ -51,17 +51,6 @@ public class MatrixStackUtils
 
     public static void applyModelViewMatrix()
     {
-        ShaderProgram program = RenderSystem.getShader();
-
-        if (program != null)
-        {
-            GlUniform uniform = program.getUniform("ModelViewMat");
-
-            if (uniform != null)
-            {
-                uniform.set(RenderSystem.getModelViewStack());
-            }
-        }
     }
 
     public static void applyTransform(MatrixStack stack, Transform transform)

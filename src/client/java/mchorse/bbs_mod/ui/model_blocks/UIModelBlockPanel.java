@@ -44,7 +44,7 @@ import mchorse.bbs_mod.utils.RayTracing;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.pose.Transform;
 import mchorse.bbs_mod.utils.MathUtils;
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.util.math.MatrixStack;
@@ -610,16 +610,14 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
     {
         super.renderInWorld(context);
 
-        Camera camera = context.camera();
-        Vec3d pos = camera.getPos();
+        Camera camera = MinecraftClient.getInstance().gameRenderer.getCamera();
+        Vec3d pos = camera.getCameraPos();
 
         MinecraftClient mc = MinecraftClient.getInstance();
         double x = mc.mouse.getX();
         double y = mc.mouse.getY();
 
-        MatrixStack matrixStack = context.matrixStack();
-        Matrix4f positionMatrix = matrixStack != null ? matrixStack.peek().getPositionMatrix() : RenderSystem.getModelViewMatrix();
-        Matrix4f projectionMatrix = RenderSystem.getProjectionMatrix();
+        Matrix4f projectionMatrix = new Matrix4f().perspective((float) Math.toRadians(MinecraftClient.getInstance().options.getFov().getValue()), (float) mc.getWindow().getWidth() / (float) mc.getWindow().getHeight(), 0.05F, 1000F);
 
         float m11 = projectionMatrix.m11();
         float tanHalfFov = 1.0f / m11;
@@ -647,7 +645,7 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         this.mouseDirection.set(direction);
         this.hovered = this.getClosestObject(new Vector3d(pos.x, pos.y, pos.z), this.mouseDirection);
 
-        RenderSystem.enableDepthTest();
+        GlStateManager._enableDepthTest();
 
         for (ModelBlockEntity entity : this.modelBlocks.getList())
         {
@@ -655,23 +653,23 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
             {
                 AABB aabb = this.getHitbox(entity);
 
-                context.matrixStack().push();
-                context.matrixStack().translate(aabb.x - pos.x, aabb.y - pos.y, aabb.z - pos.z);
+                context.matrices().push();
+                context.matrices().translate(aabb.x - pos.x, aabb.y - pos.y, aabb.z - pos.z);
 
                 if (this.hovered == entity || entity == this.modelBlock)
                 {
-                    Draw.renderBox(context.matrixStack(), 0D, 0D, 0D, aabb.w, aabb.h, aabb.d, 0, 0.5F, 1F);
+                    Draw.renderBox(context.matrices(), 0D, 0D, 0D, aabb.w, aabb.h, aabb.d, 0, 0.5F, 1F);
                 }
                 else
                 {
-                    Draw.renderBox(context.matrixStack(), 0D, 0D, 0D, aabb.w, aabb.h, aabb.d);
+                    Draw.renderBox(context.matrices(), 0D, 0D, 0D, aabb.w, aabb.h, aabb.d);
                 }
 
-                context.matrixStack().pop();
+                context.matrices().pop();
             }
         }
 
-        RenderSystem.disableDepthTest();
+        GlStateManager._disableDepthTest();
     }
 
     private ModelBlockEntity getClosestObject(Vector3d finalPosition, Vector3f mouseDirection)

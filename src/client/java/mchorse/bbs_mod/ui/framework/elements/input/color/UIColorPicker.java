@@ -59,7 +59,6 @@ public class UIColorPicker extends UIElement
         Matrix4f matrix4f = new Matrix4f();
         BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
 
-        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
         GlStateManager._enableBlend();
 
         builder.vertex(matrix4f, x1, y1, 0F).color(color.r, color.g, color.b, 1);
@@ -69,7 +68,7 @@ public class UIColorPicker extends UIElement
         builder.vertex(matrix4f, x1, y2, 0F).color(color.r, color.g, color.b, color.a);
         builder.vertex(matrix4f, x2, y2, 0F).color(color.r, color.g, color.b, color.a);
 
-        BufferRenderer.drawWithGlobalProgram(builder.end());
+        builder.end();
     }
 
     public UIColorPicker(Consumer<Integer> callback)

@@ -76,9 +76,9 @@ public abstract class LivingEntityRendererMixin
                     {
                         Transform transform = new Transform();
 
-                        transform.translate.x = value.pivotX;
-                        transform.translate.y = value.pivotY;
-                        transform.translate.z = value.pivotZ;
+                        transform.translate.x = value.originX;
+                        transform.translate.y = value.originY;
+                        transform.translate.z = value.originZ;
                         transform.rotate.x = value.pitch;
                         transform.rotate.y = value.yaw;
                         transform.rotate.z = value.roll;
@@ -86,9 +86,9 @@ public abstract class LivingEntityRendererMixin
                         transform.scale.y = value.yScale;
                         transform.scale.z = value.zScale;
 
-                        value.pivotX += poseTransform.translate.x;
-                        value.pivotY += poseTransform.translate.y;
-                        value.pivotZ += poseTransform.translate.z;
+                        value.originX += poseTransform.translate.x;
+                        value.originY += poseTransform.translate.y;
+                        value.originZ += poseTransform.translate.z;
                         value.pitch += poseTransform.rotate.x;
                         value.yaw += poseTransform.rotate.y;
                         value.roll += poseTransform.rotate.z;
@@ -111,9 +111,9 @@ public abstract class LivingEntityRendererMixin
             Transform transform = entry.getValue();
             ModelPart value = entry.getKey();
 
-            value.pivotX = transform.translate.x;
-            value.pivotY = transform.translate.y;
-            value.pivotZ = transform.translate.z;
+            value.originX = transform.translate.x;
+            value.originY = transform.translate.y;
+            value.originZ = transform.translate.z;
             value.pitch = transform.rotate.x;
             value.yaw = transform.rotate.y;
             value.roll = transform.rotate.z;

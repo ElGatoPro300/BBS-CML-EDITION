@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.ui.model;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.cubic.ModelInstance;
@@ -229,8 +230,6 @@ public class UIModelEditorRenderer extends UIModelRenderer
             this.stencil.pickGUI(context, this.area);
             this.stencil.unbind(this.stencilMap);
 
-            MinecraftClient.getInstance().getFramebuffer().beginWrite(true);
-
             GlStateManager._enableScissorTest();
         }
         else
@@ -268,7 +267,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
 
         if (target != null)
         {
-            target.set(index);
+            index = this.stencil.getIndex();
         }
 
         GL11.glEnable(GL11.GL_BLEND);

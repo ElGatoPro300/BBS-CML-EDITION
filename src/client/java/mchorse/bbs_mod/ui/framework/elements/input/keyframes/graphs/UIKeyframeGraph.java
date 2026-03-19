@@ -717,7 +717,7 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
             return;
         }
 
-        BufferRenderer.drawWithGlobalProgram(builder.end());
+        builder.end();
     }
 
     @Override

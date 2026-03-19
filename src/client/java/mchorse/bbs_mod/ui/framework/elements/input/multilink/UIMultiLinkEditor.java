@@ -224,8 +224,6 @@ public class UIMultiLinkEditor extends UICanvasEditor
                     context.batcher.box(area.x, area.y, area.ex(), area.ey(), Colors.setA(Colors.RED, 0.25F));
                 }
 
-                RenderSystem.setShaderTexture(3, context.render.getTextures().getTexture(Icons.ATLAS).id);
-
                 if (needsMultLinkShader)
                 {
                     ShaderProgram shader = BBSShaders.getMultilinkProgram();

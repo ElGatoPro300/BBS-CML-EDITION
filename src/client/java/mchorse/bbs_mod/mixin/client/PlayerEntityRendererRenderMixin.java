@@ -25,20 +25,5 @@ public class PlayerEntityRendererRenderMixin
     @Inject(method = "render", at = @At("HEAD"), cancellable = true)
     public void onRender(LivingEntityRenderState state, MatrixStack matrixStack, OrderedRenderCommandQueue queue, CameraRenderState cameraState, CallbackInfo info)
     {
-        if ((Object) this instanceof PlayerEntityRenderer)
-        {
-            if (state instanceof PlayerEntityRenderState playerState)
-            {
-                Entity entity = ((IEntityRenderState) state).bbs$getEntity();
-
-                if (entity instanceof AbstractClientPlayerEntity abstractClientPlayerEntity)
-                {
-                    if (MorphRenderer.renderPlayer(abstractClientPlayerEntity, playerState.yawDegrees, MinecraftClient.getInstance().getRenderTickCounter().getTickDelta(true), matrixStack, vertexConsumerProvider, i))
-                    {
-                        info.cancel();
-                    }
-                }
-            }
-        }
     }
 }

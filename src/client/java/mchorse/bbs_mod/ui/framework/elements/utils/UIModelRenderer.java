@@ -220,8 +220,6 @@ public abstract class UIModelRenderer extends UIElement
         /* Cache the global stuff */
         MatrixStackUtils.cacheMatrices();
 
-        RenderSystem.setProjectionMatrix(this.camera.projection, ProjectionType.ORTHOGRAPHIC);
-
         /* Rendering begins... */
         stack.push();
         MatrixStackUtils.multiply(stack, this.camera.view);

@@ -86,15 +86,12 @@ public class LineBuilder <T>
         {
             BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLE_STRIP, VertexFormats.POSITION_COLOR);
 
-            RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
-            RenderSystem.enableBlend();
-
             for (LinePoint<T> point : points)
             {
                 renderer.render(builder, matrix, point);
             }
 
-            BufferRenderer.drawWithGlobalProgram(builder.end());
+            builder.end();
         }
     }
 }

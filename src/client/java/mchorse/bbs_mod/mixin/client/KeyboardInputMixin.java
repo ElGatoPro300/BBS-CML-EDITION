@@ -32,15 +32,10 @@ public class KeyboardInputMixin
             dashboard.getPanels().panel instanceof UIFilmPanel filmPanel &&
             filmPanel.getController().isControlling()
         ) {
-            KeyboardInput input = (KeyboardInput) (Object) this;
-
             boolean forward = Window.isKeyPressed(GLFW.GLFW_KEY_W);
             boolean back = Window.isKeyPressed(GLFW.GLFW_KEY_S);
             boolean left = Window.isKeyPressed(GLFW.GLFW_KEY_A);
             boolean right = Window.isKeyPressed(GLFW.GLFW_KEY_D);
-
-            input.movementForward = getMovementMultiplier(forward, back);
-            input.movementSideways = getMovementMultiplier(left, right);
 
             boolean jump = Window.isKeyPressed(GLFW.GLFW_KEY_SPACE);
             boolean sneak = Window.isKeyPressed(GLFW.GLFW_KEY_LEFT_SHIFT);

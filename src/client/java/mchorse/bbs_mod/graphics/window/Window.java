@@ -7,7 +7,6 @@ import mchorse.bbs_mod.data.types.MapType;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.util.InputUtil;
-import net.minecraft.client.util.Window;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.system.MemoryUtil;
 
@@ -19,7 +18,7 @@ public class Window
     private static int verticalScroll;
     private static long lastScroll;
 
-    public static Window getWindow()
+    public static net.minecraft.client.util.Window getWindow()
     {
         return MinecraftClient.getInstance().getWindow();
     }

@@ -209,9 +209,7 @@ public abstract class FormRenderer <T extends Form>
 
         if (target != null)
         {
-            int pickingIndex = context.getPickingIndex();
-
-            target.set(pickingIndex);
+            context.getPickingIndex();
         }
     }
 

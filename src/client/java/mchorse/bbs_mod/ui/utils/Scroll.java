@@ -412,11 +412,7 @@ public class Scroll
 
         if (isInside)
         {
-            if (MinecraftClient.IS_SYSTEM_MAC)
-            {
-                this.scrollBy(scroll * BBSSettings.scrollingSensitivity.get());
-            }
-            else if (scroll != 0D)
+            if (scroll != 0D)
             {
                 this.scrollBy((int) (Math.copySign(this.scrollSpeed, scroll) * BBSSettings.scrollingSensitivity.get()));
             }
