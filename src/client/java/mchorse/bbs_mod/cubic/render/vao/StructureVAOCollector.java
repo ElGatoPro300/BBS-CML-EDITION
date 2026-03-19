@@ -107,11 +107,6 @@ public class StructureVAOCollector implements VertexConsumer
 
     public void next()
     {
-        if (this.hasCurrent)
-        {
-            finalizeCurrent();
-            this.hasCurrent = false;
-        }
     }
 
 

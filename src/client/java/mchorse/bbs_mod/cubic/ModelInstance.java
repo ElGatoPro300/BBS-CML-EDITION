@@ -480,7 +480,7 @@ public class ModelInstance implements IModelInstance
 
                 try
                 {
-                    BufferRenderer.drawWithGlobalProgram(builder.end());
+                    builder.end();
                 }
                 catch (IllegalStateException e)
                 {

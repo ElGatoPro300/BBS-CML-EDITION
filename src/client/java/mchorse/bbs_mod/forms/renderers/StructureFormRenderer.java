@@ -256,17 +256,16 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
 
                 if (needBlendUI)
                 {
-                    RenderSystem.enableBlend();
-                    RenderSystem.defaultBlendFunc();
+                    GlStateManager._enableBlend();
                 }
                 else
                 {
-                    RenderSystem.disableBlend();
+                    GlStateManager._disableBlend();
                 }
 
-                RenderSystem.enableCull();
+                GlStateManager._enableCull();
 
-                ModelVAORenderer.render(shader, vao, matrices, tint.r, tint.g, tint.b, tint.a, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, OverlayTexture.DEFAULT_UV);
+                ModelVAORenderer.render(shader, vao, matrices, new Matrix4f(), tint.r, tint.g, tint.b, tint.a, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, OverlayTexture.DEFAULT_UV);
 
                 if (this.hasBlockEntityLayer)
                 {
@@ -386,7 +385,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
                 this.setupTarget(context, BBSShaders.getPickerModelsProgram());
                 GlStateManager._enableBlend();
 
-                ModelVAORenderer.render(BBSShaders.getPickerModelsProgram(), pickingVao, context.stack, tint3D.r, tint3D.g, tint3D.b, tint3D.a, light, context.overlay);
+                ModelVAORenderer.render(BBSShaders.getPickerModelsProgram(), pickingVao, context.stack, new Matrix4f(), tint3D.r, tint3D.g, tint3D.b, tint3D.a, light, context.overlay);
 
                 GlStateManager._disableBlend();
                 GlStateManager._enableDepthTest();
@@ -439,7 +438,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
                 this.setupTarget(context, BBSShaders.getPickerModelsProgram());
                 GlStateManager._enableBlend();
 
-                ModelVAORenderer.render(BBSShaders.getPickerModelsProgram(), pickingVao, context.stack, tint3D.r, tint3D.g, tint3D.b, tint3D.a, light, context.overlay);
+                ModelVAORenderer.render(BBSShaders.getPickerModelsProgram(), pickingVao, context.stack, new Matrix4f(), tint3D.r, tint3D.g, tint3D.b, tint3D.a, light, context.overlay);
             }
             else
             {
@@ -453,7 +452,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
 
                 GlStateManager._enableBlend();
 
-                ModelVAORenderer.render(shader, vao, context.stack, tint3D.r, tint3D.g, tint3D.b, tint3D.a, light, context.overlay);
+                ModelVAORenderer.render(shader, vao, context.stack, new Matrix4f(), tint3D.r, tint3D.g, tint3D.b, tint3D.a, light, context.overlay);
 
                 if (this.hasBlockEntityLayer)
                 {
@@ -1308,6 +1307,13 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
         }
 
         @Override
+        public VertexConsumer color(int argb)
+        {
+            this.delegate.color(argb);
+            return this;
+        }
+
+        @Override
         public VertexConsumer texture(float u, float v)
         {
             this.delegate.texture(u, v);
@@ -1349,6 +1355,12 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
                 this.quadIndex = 0;
             }
 
+            return this;
+        }
+
+        @Override
+        public VertexConsumer lineWidth(float width)
+        {
             return this;
         }
 
@@ -1432,13 +1444,13 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
 
                     this.blocks.add(blockEntry);
 
-                    RenderLayer baseLayer = RenderLayers.getBlockLayer(state);
+                    RenderLayer baseLayer = RenderLayers.solid();
 
-                    if (baseLayer == RenderLayer.getTranslucent() || baseLayer == RenderLayer.getTranslucentMovingBlock())
+                    if (baseLayer == RenderLayers.translucentMovingBlock())
                     {
                         this.hasTranslucentLayer = true;
                     }
-                    else if (baseLayer == RenderLayer.getCutout() || baseLayer == RenderLayer.getCutoutMipped())
+                    else if (baseLayer == RenderLayers.cutout())
                     {
                         this.hasCutoutLayer = true;
                     }
