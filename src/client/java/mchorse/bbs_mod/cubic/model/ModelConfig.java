@@ -21,6 +21,8 @@ public class ModelConfig extends ValueGroup
     public final ValueBoolean culling = new ValueBoolean("culling", true);
     public final ValueString poseGroup = new ValueString("pose_group", "");
     public final ValueString anchorGroup = new ValueString("anchor", "");
+    public final ValueGroup lookAt = new ValueGroup("look_at");
+    public final ValueString lookAtHead = new ValueString("head", "");
     public final ValueFloat uiScale = new ValueFloat("ui_scale", 1F);
     public final ValueVector3f scale = new ValueVector3f("scale", new Vector3f(1, 1, 1));
 
@@ -79,6 +81,8 @@ public class ModelConfig extends ValueGroup
         this.add(this.culling);
         this.add(this.poseGroup);
         this.add(this.anchorGroup);
+        this.lookAt.add(this.lookAtHead);
+        this.add(this.lookAt);
         this.add(this.uiScale);
         this.add(this.scale);
         this.add(this.sneakingPose);

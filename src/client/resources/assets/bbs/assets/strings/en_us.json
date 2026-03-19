@@ -1174,6 +1174,8 @@
     "bbs.ui.models.items.main_transform": "Main hand transform",
     "bbs.ui.models.items.off": "Off hand",
     "bbs.ui.models.items.off_transform": "Off hand transform",
+    "bbs.ui.models.look_at_limb": "Look at",
+    "bbs.ui.models.pick_look_at_limb": "Pick a Look at limb...",
     "bbs.ui.models.parts": "Limbs",
     "bbs.ui.models.pose_group": "Pose group",
     "bbs.ui.models.pose_group_tooltip": "Allows you to specify pose group for the model. If you have multiple models that share the same group structure, you can reuse saved poses by specifying the pose group for a single model.",

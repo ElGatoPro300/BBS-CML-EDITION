@@ -269,16 +269,16 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
     @Override
     public void forceSave()
     {
+        for (UIModelSection section : this.sections)
+        {
+            section.setConfig(this.data);
+        }
+
         super.forceSave();
 
         if (this.data == null)
         {
             return;
-        }
-
-        for (UIModelSection section : this.sections)
-        {
-            section.setConfig(this.data);
         }
 
         if (this.ikPanel != null)

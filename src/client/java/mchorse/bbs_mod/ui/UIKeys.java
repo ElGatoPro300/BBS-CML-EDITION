@@ -824,6 +824,8 @@ public class UIKeys
     public static final IKey MODELS_HANDS = L10n.lang("bbs.ui.models.hands");
     public static final IKey MODELS_HANDS_EDIT = L10n.lang("bbs.ui.models.hands.edit");
     public static final IKey MODELS_HANDS_TITLE = L10n.lang("bbs.ui.models.hands.title");
+    public static final IKey MODELS_LOOK_AT_LIMB = L10n.lang("bbs.ui.models.look_at_limb");
+    public static final IKey MODELS_PICK_LOOK_AT_LIMB = L10n.lang("bbs.ui.models.pick_look_at_limb");
     public static final IKey MODELS_POSE_GROUP = L10n.lang("bbs.ui.models.pose_group");
     public static final IKey MODELS_POSE_GROUP_TOOLTIP = L10n.lang("bbs.ui.models.pose_group_tooltip");
     public static final IKey MODELS_PICK_SNEAKING_POSE = L10n.lang("bbs.ui.models.pick_sneaking_pose");
