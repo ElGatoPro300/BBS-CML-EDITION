@@ -192,15 +192,15 @@ public class UIItemStack extends UIElement
 
         if (this.stack != null && !this.stack.isEmpty())
         {
-            var matrices = context.batcher.getContext().getMatrices();
+            MatrixStack matrices = context.batcher.getContext().getMatrices();
             CustomVertexConsumerProvider consumers = FormUtilsClient.getProvider();
 
-            // matrices.push();
+            matrices.push();
             consumers.setUI(true);
             context.batcher.getContext().drawItem(this.stack, stackCenterX - 8, this.area.my() - 8);
             context.batcher.getContext().drawStackOverlay(context.batcher.getFont().getRenderer(), this.stack, stackCenterX - 8, this.area.my() - 8);
             consumers.setUI(false);
-            // matrices.pop();
+            matrices.pop();
         }
 
         super.render(context);

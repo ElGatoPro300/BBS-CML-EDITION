@@ -209,7 +209,9 @@ public abstract class FormRenderer <T extends Form>
 
         if (target != null)
         {
-            context.getPickingIndex();
+            int pickingIndex = context.getPickingIndex();
+
+            target.set(pickingIndex);
         }
     }
 
@@ -265,12 +267,12 @@ public abstract class FormRenderer <T extends Form>
 
         stack.push();
         this.applyTransforms(stack, true, transition);
-        oo.set(new Matrix4f());
+        oo.set(stack.peek().getPositionMatrix());
         stack.pop();
 
         stack.push();
         this.applyTransforms(stack, false, transition);
-        mm.set(new Matrix4f());
+        mm.set(stack.peek().getPositionMatrix());
 
         matrices.put(prefix, mm, oo);
 

@@ -1,6 +1,5 @@
 package mchorse.bbs_mod.ui.film.clips.renderer;
 
-import com.mojang.blaze3d.vertex.VertexFormat;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.camera.clips.ClipFactoryData;
 import mchorse.bbs_mod.ui.film.UIClips;
@@ -17,7 +16,9 @@ import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 import net.minecraft.client.render.BufferBuilder;
+import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.Tessellator;
+import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.BufferAllocator;
 import org.joml.Matrix4f;
@@ -107,7 +108,7 @@ public class UIClipRenderer <T extends Clip> implements IUIClipRenderer<T>
     private void renderEnvelope(UIContext context, Envelope envelope, int duration, int x1, int y1, int x2, int y2)
     {
         BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
-        Matrix4f matrix = new Matrix4f();
+        Matrix4f matrix = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
 
         if (envelope.keyframes.get())
         {
@@ -121,7 +122,7 @@ public class UIClipRenderer <T extends Clip> implements IUIClipRenderer<T>
             this.renderSimpleEnvelope(builder, matrix, envelope, duration, x1, y1, x2, y2);
         }
 
-        builder.end();
+        BufferRenderer.drawWithGlobalProgram(builder.end());
     }
 
     /**

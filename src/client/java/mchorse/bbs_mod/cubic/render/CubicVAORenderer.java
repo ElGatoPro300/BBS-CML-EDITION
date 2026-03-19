@@ -12,11 +12,11 @@ import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.interps.Lerps;
 import net.minecraft.client.gl.ShaderProgram;
+import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
-import org.joml.Matrix4f;
 
 public class CubicVAORenderer extends CubicCubeRenderer
 {
@@ -76,7 +76,7 @@ public class CubicVAORenderer extends CubicCubeRenderer
                 light = u | v << 16;
             }
 
-            ModelVAORenderer.render(this.program, modelVAO, stack, new Matrix4f(), r, g, b, a, light, this.overlay);
+            ModelVAORenderer.render(this.program, modelVAO, stack, r, g, b, a, light, this.overlay);
         }
 
         return false;

@@ -1,7 +1,6 @@
 package mchorse.bbs_mod.ui.framework.elements.input.color;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.settings.values.ui.ValueColors;
 import mchorse.bbs_mod.ui.UIKeys;
@@ -15,11 +14,13 @@ import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.MathUtils;
+import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.BufferBuilder;
+import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.util.BufferAllocator;
-import com.mojang.blaze3d.vertex.VertexFormat;
+import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import org.joml.Matrix4f;
 import org.lwjgl.glfw.GLFW;
@@ -56,10 +57,11 @@ public class UIColorPicker extends UIElement
 
     public static void renderAlphaPreviewQuad(Batcher2D batcher, int x1, int y1, int x2, int y2, Color color)
     {
-        Matrix4f matrix4f = new Matrix4f();
+        Matrix4f matrix4f = batcher.getContext().getMatrices().peek().getPositionMatrix();
         BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
 
-        GlStateManager._enableBlend();
+        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
+        RenderSystem.enableBlend();
 
         builder.vertex(matrix4f, x1, y1, 0F).color(color.r, color.g, color.b, 1);
         builder.vertex(matrix4f, x1, y2, 0F).color(color.r, color.g, color.b, 1);
@@ -68,7 +70,7 @@ public class UIColorPicker extends UIElement
         builder.vertex(matrix4f, x1, y2, 0F).color(color.r, color.g, color.b, color.a);
         builder.vertex(matrix4f, x2, y2, 0F).color(color.r, color.g, color.b, color.a);
 
-        builder.end();
+        BufferRenderer.drawWithGlobalProgram(builder.end());
     }
 
     public UIColorPicker(Consumer<Integer> callback)

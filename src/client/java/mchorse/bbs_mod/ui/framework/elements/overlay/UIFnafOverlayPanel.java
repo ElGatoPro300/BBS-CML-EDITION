@@ -18,9 +18,9 @@ public class UIFnafOverlayPanel extends UIOverlayPanel
             @Override
             public void render(UIContext context)
             {
-                context.batcher.getContext().getMatrices().pushMatrix();
-                context.batcher.getContext().getMatrices().translate(this.area.mx(), this.area.my() - 10);
-                context.batcher.getContext().getMatrices().scale(3.0F, 3.0F);
+                context.batcher.getContext().getMatrices().push();
+                context.batcher.getContext().getMatrices().translate(this.area.mx(), this.area.my() - 10, 0);
+                context.batcher.getContext().getMatrices().scale(3.0F, 3.0F, 1.0F);
                 
                 String label = message.get();
                 int w = context.batcher.getFont().getWidth(label);
@@ -28,11 +28,11 @@ public class UIFnafOverlayPanel extends UIOverlayPanel
                 
                 context.batcher.text(label, -w / 2, -h / 2, Colors.WHITE, true);
                 
-                context.batcher.getContext().getMatrices().popMatrix();
+                context.batcher.getContext().getMatrices().pop();
 
-                context.batcher.getContext().getMatrices().pushMatrix();
-                context.batcher.getContext().getMatrices().translate(this.area.mx(), this.area.my() + 30);
-                context.batcher.getContext().getMatrices().scale(1.2F, 1.2F);
+                context.batcher.getContext().getMatrices().push();
+                context.batcher.getContext().getMatrices().translate(this.area.mx(), this.area.my() + 30, 0);
+                context.batcher.getContext().getMatrices().scale(1.2F, 1.2F, 1.0F);
 
                 String labelSmall = messageSmall.get();
                 int wSmall = context.batcher.getFont().getWidth(labelSmall);
@@ -40,7 +40,7 @@ public class UIFnafOverlayPanel extends UIOverlayPanel
 
                 context.batcher.text(labelSmall, -wSmall / 2, -hSmall / 2, Colors.WHITE, true);
 
-                context.batcher.getContext().getMatrices().popMatrix();
+                context.batcher.getContext().getMatrices().pop();
                 
                 super.render(context);
             }

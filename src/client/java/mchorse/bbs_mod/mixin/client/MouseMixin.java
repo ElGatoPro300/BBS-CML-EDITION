@@ -13,7 +13,7 @@ public class MouseMixin
     @Inject(method = "onMouseScroll", at = @At("HEAD"))
     public void mouseScroll(long window, double horizontal, double vertical, CallbackInfo ci)
     {
-        if (window == Window.getWindow().getHandle())
+        if (window == Window.getWindow())
         {
             Window.setVerticalScroll((int) vertical);
         }

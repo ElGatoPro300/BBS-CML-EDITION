@@ -61,7 +61,7 @@ public class VanillaParticleFormRenderer extends FormRenderer<VanillaParticleFor
     {
         super.render3D(context);
 
-        Matrix4f positionMatrix = new Matrix4f(new Matrix4f());
+        Matrix4f positionMatrix = new Matrix4f(context.stack.peek().getPositionMatrix());
         Vector3f translation = positionMatrix.getTranslation(new Vector3f());
 
         this.pos.set(
@@ -130,7 +130,7 @@ public class VanillaParticleFormRenderer extends FormRenderer<VanillaParticleFor
                     double y = this.pos.y + temp3f.y;
                     double z = this.pos.z + temp3f.z;
 
-                    world.addParticleClient(effect, x, y, z, v.x, v.y, v.z);
+                    world.addParticle(effect, x, y, z, v.x, v.y, v.z);
                 }
 
                 this.tick = frequency;
