@@ -798,7 +798,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
             }
 
             GlStateManager._enableBlend();
-            builder.end();
+            net.minecraft.client.render.RenderLayers.debugFilledBox().draw(builder.end());
 
             FontRenderer font = context.batcher.getFont();
             String baseTitle = sheet.title.get();

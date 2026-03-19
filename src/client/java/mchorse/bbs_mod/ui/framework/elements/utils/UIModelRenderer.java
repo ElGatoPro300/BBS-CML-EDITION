@@ -378,6 +378,6 @@ public abstract class UIModelRenderer extends UIElement
             }
         }
 
-        builder.end();
+        net.minecraft.client.render.RenderLayers.lines().draw(builder.end());
     }
 }

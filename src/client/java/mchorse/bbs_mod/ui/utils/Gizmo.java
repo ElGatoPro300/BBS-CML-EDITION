@@ -10,6 +10,7 @@ import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.utils.Axis;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.GameRenderer;
+import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
@@ -306,7 +307,7 @@ public class Gizmo
 
         GlStateManager._disableDepthTest();
 
-        builder.end();
+        RenderLayers.debugFilledBox().draw(builder.end());
     }
 
     public static enum Mode

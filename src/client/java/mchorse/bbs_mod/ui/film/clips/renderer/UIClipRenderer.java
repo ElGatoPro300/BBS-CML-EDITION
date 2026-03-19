@@ -121,7 +121,7 @@ public class UIClipRenderer <T extends Clip> implements IUIClipRenderer<T>
             this.renderSimpleEnvelope(builder, matrix, envelope, duration, x1, y1, x2, y2);
         }
 
-        builder.end();
+        net.minecraft.client.render.RenderLayers.debugFilledBox().draw(builder.end());
     }
 
     /**

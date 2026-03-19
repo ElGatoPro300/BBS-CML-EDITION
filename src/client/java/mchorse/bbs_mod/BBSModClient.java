@@ -651,7 +651,7 @@ public class BBSModClient implements ClientModInitializer
                         color.r, color.g, color.b, 1F
                     );
 
-                    builder.end();
+                    net.minecraft.client.render.RenderLayers.debugFilledBox().draw(builder.end());
 
                     stack.pop();
                 }

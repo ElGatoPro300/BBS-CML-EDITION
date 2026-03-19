@@ -717,7 +717,7 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
             return;
         }
 
-        builder.end();
+        net.minecraft.client.render.RenderLayers.debugFilledBox().draw(builder.end());
     }
 
     @Override

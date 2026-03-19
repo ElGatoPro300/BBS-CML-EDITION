@@ -484,7 +484,7 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
             color.r, color.g, color.b, color.a
         );
 
-        builder.end();
+        net.minecraft.client.render.RenderLayers.debugFilledBox().draw(builder.end());
         context.stack.pop();
     }
 }

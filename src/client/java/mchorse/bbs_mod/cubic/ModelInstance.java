@@ -480,7 +480,7 @@ public class ModelInstance implements IModelInstance
 
                 try
                 {
-                    builder.end();
+                    net.minecraft.client.render.RenderLayers.solid().draw(builder.end());
                 }
                 catch (IllegalStateException e)
                 {

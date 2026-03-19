@@ -68,7 +68,7 @@ public class UIColorPicker extends UIElement
         builder.vertex(matrix4f, x1, y2, 0F).color(color.r, color.g, color.b, color.a);
         builder.vertex(matrix4f, x2, y2, 0F).color(color.r, color.g, color.b, color.a);
 
-        builder.end();
+        net.minecraft.client.render.RenderLayers.debugFilledBox().draw(builder.end());
     }
 
     public UIColorPicker(Consumer<Integer> callback)
