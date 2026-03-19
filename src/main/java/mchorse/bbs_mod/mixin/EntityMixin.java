@@ -5,12 +5,9 @@ import mchorse.bbs_mod.morphing.IMorphProvider;
 import mchorse.bbs_mod.morphing.Morph;
 import mchorse.bbs_mod.entity.IEntityFormProvider;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.EntityDimensions;
 import net.minecraft.entity.EntityPose;
 import net.minecraft.entity.player.PlayerEntity;
-import mchorse.bbs_mod.entity.IEntityFormProvider;
-import mchorse.bbs_mod.forms.forms.Form;
-import mchorse.bbs_mod.morphing.IMorphProvider;
-import net.minecraft.entity.Entity;
 import net.minecraft.storage.ReadView;
 import net.minecraft.storage.WriteView;
 import net.minecraft.nbt.NbtCompound;
@@ -76,6 +73,39 @@ public class EntityMixin
                 float height = form.hitboxHeight.get() * (entity.isSneaking() ? form.hitboxSneakMultiplier.get() : 1F);
 
                 info.setReturnValue(form.hitboxEyeHeight.get() * height);
+            }
+        }
+    }
+
+    @Inject(method = "getDimensions", at = @At("RETURN"), cancellable = true)
+    public void onGetDimensions(EntityPose pose, CallbackInfoReturnable<EntityDimensions> info)
+    {
+        Form form = null;
+
+        if ((Object) this instanceof IMorphProvider provider)
+        {
+            Morph morph = provider.getMorph();
+            form = morph != null ? morph.getForm() : null;
+        }
+        else if ((Object) this instanceof IEntityFormProvider provider)
+        {
+            form = provider.getForm();
+        }
+
+        if (form != null && form.hitbox.get())
+        {
+            Entity entity = (Entity) (Object) this;
+            EntityDimensions dimensions = info.getReturnValue();
+            float height = form.hitboxHeight.get() * (entity.isSneaking() ? form.hitboxSneakMultiplier.get() : 1F);
+            float width = form.hitboxWidth.get();
+
+            if (dimensions.fixed())
+            {
+                info.setReturnValue(EntityDimensions.fixed(width, height));
+            }
+            else
+            {
+                info.setReturnValue(EntityDimensions.changing(width, height));
             }
         }
     }
