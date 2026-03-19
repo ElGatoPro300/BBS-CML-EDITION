@@ -28,10 +28,15 @@ import mchorse.bbs_mod.utils.colors.Colors;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.option.Perspective;
+import net.minecraft.entity.EquipmentSlot;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
 import org.lwjgl.glfw.GLFW;
 
 public class UIModelItemsTransformEditor extends UIDashboardPanel
 {
+    private static final ItemStack SWORD = new ItemStack(Items.DIAMOND_SWORD);
+
     public UIModelPanel parent;
     public ModelConfig config;
 
@@ -69,7 +74,7 @@ public class UIModelItemsTransformEditor extends UIDashboardPanel
         this.orbitCameraController.camera.position.set(player.getPos().x, player.getPos().y + 1D, player.getPos().z);
         this.orbitCameraController.camera.rotation.set(0, MathUtils.toRad(player.bodyYaw), 0);
 
-        this.title = UI.label(UIKeys.MODELS_ITEMS_TRANSFORM).background(() -> Colors.A50 | BBSSettings.primaryColor.get());
+        this.title = UI.label(UIKeys.MODELS_ITEMS).background(() -> Colors.A50 | BBSSettings.primaryColor.get());
         this.handList = new UIStringList((l) ->
         {
             int index = this.handList.getCurrentIndices().isEmpty() ? 0 : this.handList.getCurrentIndices().get(0);
@@ -218,6 +223,9 @@ public class UIModelItemsTransformEditor extends UIDashboardPanel
 
             form.model.set(this.config.getId());
             morph.setForm(form);
+
+            morph.entity.setEquipmentStack(EquipmentSlot.MAINHAND, SWORD);
+            morph.entity.setEquipmentStack(EquipmentSlot.OFFHAND, SWORD);
         }
 
         this.acquireModel();
@@ -227,6 +235,14 @@ public class UIModelItemsTransformEditor extends UIDashboardPanel
     public void disappear()
     {
         super.disappear();
+
+        Morph morph = Morph.getMorph(MinecraftClient.getInstance().player);
+
+        if (morph != null)
+        {
+            morph.entity.setEquipmentStack(EquipmentSlot.MAINHAND, ItemStack.EMPTY);
+            morph.entity.setEquipmentStack(EquipmentSlot.OFFHAND, ItemStack.EMPTY);
+        }
 
         this.parent.forceSave();
         this.restore();
