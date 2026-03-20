@@ -775,15 +775,17 @@ public class UITrackpad extends UIBaseTextbox
     {
         double value = this.normal;
 
-        if (Window.isShiftPressed())
+        int modifier = Window.getLastModifier();
+
+        if (modifier == Window.MOD_SHIFT)
         {
             value = this.strong;
         }
-        else if (Window.isCtrlPressed())
+        else if (modifier == Window.MOD_CTRL)
         {
             value = this.increment;
         }
-        else if (Window.isAltPressed())
+        else if (modifier == Window.MOD_ALT)
         {
             value = this.weak;
         }

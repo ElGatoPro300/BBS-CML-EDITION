@@ -118,6 +118,7 @@ public class UIContext implements IViewportStack
         this.keyCode = keyCode;
         this.scanCode = scanCode;
         this.keyAction = KeyAction.get(action);
+        Window.noteModifierKeyEvent(keyCode, action);
     }
 
     public void setKeyTyped(char character)

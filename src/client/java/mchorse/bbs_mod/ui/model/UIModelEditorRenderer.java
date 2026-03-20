@@ -190,6 +190,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
                     MatrixStackUtils.multiply(stack, matrix);
                     
                     RenderSystem.disableDepthTest();
+                    Gizmo.INSTANCE.setViewport(this.area);
                     Gizmo.INSTANCE.render(stack);
                     RenderSystem.enableDepthTest();
                     
@@ -220,6 +221,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
                 MatrixStackUtils.multiply(stack, gizmoMatrix);
 
                 RenderSystem.disableDepthTest();
+                Gizmo.INSTANCE.setViewport(this.area);
                 Gizmo.INSTANCE.renderStencil(stack, this.stencilMap);
                 RenderSystem.enableDepthTest();
 
