@@ -125,6 +125,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         this.addSection(new UIModelItemsSection(this));
         this.addSection(new UIModelHandsSection(this));
         this.addSection(new UIModelSneakingSection(this));
+        this.addSection(new UIModelLookAtSection(this));
 
         UIModelDynamicBonesSection dynamicBonesSection = new UIModelDynamicBonesSection(this);
         this.sections.add(dynamicBonesSection);

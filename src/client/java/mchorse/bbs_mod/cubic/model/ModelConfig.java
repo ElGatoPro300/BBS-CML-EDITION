@@ -22,7 +22,7 @@ public class ModelConfig extends ValueGroup
     public final ValueString poseGroup = new ValueString("pose_group", "");
     public final ValueString anchorGroup = new ValueString("anchor", "");
     public final ValueGroup lookAt = new ValueGroup("look_at");
-    public final ValueString lookAtHead = new ValueString("head", "");
+    public final ValueString lookAtHead = new ValueString("head_bone", "");
     public final ValueFloat uiScale = new ValueFloat("ui_scale", 1F);
     public final ValueVector3f scale = new ValueVector3f("scale", new Vector3f(1, 1, 1));
 
