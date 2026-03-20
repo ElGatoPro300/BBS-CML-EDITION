@@ -149,6 +149,8 @@
     "cml.config.display.tooltip": "Opciones relacionadas con la visualizacion del HUD",
     "cml.config.general.model_forms_hierarchy": "Jerarquía de lista de modelos",
     "cml.config.general.model_forms_hierarchy-comment": "Agrupa modelos por carpetas en la lista de modelos",
+    "cml.config.general.media_folders_enhancements": "Mejoras de carpetas multimedia",
+    "cml.config.general.media_folders_enhancements-comment": "Habilita navegación por carpetas y descargas de audio por categoría",
     "cml.config.general.compacted_options": "Opciones compactadas",
     "cml.config.general.compacted_options-comment": "Controla cómo se agrupan las opciones del menú contextual de replays",
     "cml.config.general.compacted_options.default": "Por defecto",
