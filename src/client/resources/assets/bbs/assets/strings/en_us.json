@@ -157,6 +157,8 @@
     "cml.config.display.tooltip": "Options related to HUD display",
     "cml.config.general.model_forms_hierarchy": "Model list hierarchy",
     "cml.config.general.model_forms_hierarchy-comment": "Group models by folders in the model list",
+    "cml.config.general.media_folders_enhancements": "Media folder enhancements",
+    "cml.config.general.media_folders_enhancements-comment": "Enable folder navigation and category-based audio downloads",
     "cml.config.general.compacted_options": "Compacted options",
     "cml.config.general.compacted_options-comment": "Controls how replay context options are grouped",
     "cml.config.general.compacted_options.default": "Default",
