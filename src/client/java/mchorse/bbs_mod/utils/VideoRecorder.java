@@ -4,6 +4,7 @@ import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.ui.utils.UIUtils;
+import net.minecraft.client.MinecraftClient;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.system.MemoryUtil;
 import sun.misc.Unsafe;
@@ -16,11 +17,14 @@ import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
 public class VideoRecorder
@@ -55,11 +59,18 @@ public class VideoRecorder
 
     private int[] pbos;
     private int pboIndex;
+    private File filmAudioFile;
+    private File ambientAudioFile;
+    private Path exportFolder;
+    private String movieName;
+    private long exportStartTime;
+    private boolean recordAmbientAudio;
+    private AmbientAudioCapture ambientCapture;
 
     /**
      * Start recording the video using ffmpeg
      */
-    public void startRecording(File audioFile, int textureId, int width, int height)
+    public void startRecording(File audioFile, boolean ambientAudio, int textureId, int width, int height)
     {
         if (this.recording)
         {
@@ -67,6 +78,11 @@ public class VideoRecorder
         }
 
         this.counter = 0;
+        this.filmAudioFile = audioFile;
+        this.ambientAudioFile = null;
+        this.movieName = StringUtils.createTimestampFilename();
+        this.recordAmbientAudio = ambientAudio;
+        this.exportStartTime = System.currentTimeMillis();
         this.textureId = textureId;
         this.textureWidth = width;
         this.textureHeight = height;
@@ -85,12 +101,17 @@ public class VideoRecorder
             movies.mkdirs();
 
             Path path = Paths.get(movies.toString());
-            String movieName = StringUtils.createTimestampFilename();
-            String params = audioFile == null
-                ? BBSSettings.videoSettings.arguments.get()
-                : BBSSettings.videoSettings.argumentsAudio.get();
+            this.exportFolder = path;
+            String params = this.filmAudioFile != null && !this.recordAmbientAudio
+                ? BBSSettings.videoSettings.argumentsAudio.get()
+                : BBSSettings.videoSettings.arguments.get();
             StringBuilder filters = new StringBuilder("vflip");
             float frameRate = (float) BBSRendering.getVideoFrameRate();
+
+            if (this.recordAmbientAudio)
+            {
+                this.enableAmbientCapture((int) Math.max(1, frameRate));
+            }
 
             int motionBlur = BBSRendering.getMotionBlur();
 
@@ -102,12 +123,12 @@ public class VideoRecorder
             params = params.replace("%WIDTH%", String.valueOf(width));
             params = params.replace("%HEIGHT%", String.valueOf(height));
             params = params.replace("%FPS%", String.valueOf(frameRate));
-            params = params.replace("%NAME%", movieName);
+            params = params.replace("%NAME%", this.movieName);
             params = params.replace("%FILTERS%", filters.toString());
 
-            if (audioFile != null)
+            if (this.filmAudioFile != null)
             {
-                params = params.replace("%AUDIO_TRACK%", "\"" + audioFile.getAbsolutePath() + "\"");
+                params = params.replace("%AUDIO_TRACK%", "\"" + this.filmAudioFile.getAbsolutePath() + "\"");
             }
 
             List<String> args = new ArrayList<>();
@@ -132,7 +153,7 @@ public class VideoRecorder
             GL30.glBindBuffer(GL30.GL_PIXEL_PACK_BUFFER, 0);
 
             ProcessBuilder builder = new ProcessBuilder(args);
-            File log = path.resolve(movieName.concat(".log")).toFile();
+            File log = path.resolve(this.movieName.concat(".log")).toFile();
 
             if (!BBSSettings.videoEncoderLog.get())
             {
@@ -176,10 +197,204 @@ public class VideoRecorder
         }
         catch (Exception e)
         {
+            this.disableAmbientCapture();
             e.printStackTrace();
         }
 
         this.serverTicks = this.lastServerTicks = 0;
+    }
+
+    private void enableAmbientCapture(int frameRate) throws IOException
+    {
+        LoopbackAudioController.requestCapture(true);
+        MinecraftClient.getInstance().getSoundManager().reloadSounds();
+        this.ambientCapture = AmbientAudioCapture.open(this.exportFolder, this.movieName, frameRate);
+    }
+
+    private void disableAmbientCapture()
+    {
+        boolean hadCapture = this.recordAmbientAudio || this.ambientCapture != null || LoopbackAudioController.isCaptureRequested();
+
+        try
+        {
+            if (this.ambientCapture != null)
+            {
+                this.ambientCapture.close();
+                this.ambientAudioFile = this.ambientCapture.getFile();
+            }
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+        finally
+        {
+            this.ambientCapture = null;
+            LoopbackAudioController.requestCapture(false);
+            LoopbackAudioController.setLoopbackDevice(0L);
+
+            if (hadCapture)
+            {
+                MinecraftClient.getInstance().getSoundManager().reloadSounds();
+            }
+        }
+    }
+
+    private File findOutputVideo()
+    {
+        if (this.exportFolder == null)
+        {
+            return null;
+        }
+
+        String[] extensions = new String[] {"mp4", "mkv", "mov", "webm", "avi"};
+
+        for (String extension : extensions)
+        {
+            File candidate = this.exportFolder.resolve(this.movieName + "." + extension).toFile();
+
+            if (candidate.isFile())
+            {
+                return candidate;
+            }
+        }
+
+        try
+        {
+            return Files.list(this.exportFolder)
+                .map(Path::toFile)
+                .filter(File::isFile)
+                .filter((f) -> f.lastModified() >= this.exportStartTime)
+                .filter((f) ->
+                {
+                    String name = f.getName().toLowerCase(Locale.ROOT);
+
+                    return name.endsWith(".mp4") || name.endsWith(".mkv") || name.endsWith(".mov") || name.endsWith(".webm") || name.endsWith(".avi");
+                })
+                .max(Comparator.comparingLong(File::lastModified))
+                .orElse(null);
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+
+    private void mergeAudioTrack(File inputVideo, File inputAudio)
+    {
+        if (inputVideo == null || inputAudio == null || !inputVideo.isFile() || !inputAudio.isFile())
+        {
+            return;
+        }
+
+        String name = inputVideo.getName();
+        int dot = name.lastIndexOf('.');
+        String extension = dot == -1 ? "mp4" : name.substring(dot + 1);
+        String base = dot == -1 ? name : name.substring(0, dot);
+        File tempOutput = new File(inputVideo.getParentFile(), base + "_ambient." + extension);
+        List<String> args = new ArrayList<>();
+
+        args.add(FFMpegUtils.getFFMPEG());
+        args.add("-y");
+        args.add("-i");
+        args.add(inputVideo.getAbsolutePath());
+        args.add("-i");
+        args.add(inputAudio.getAbsolutePath());
+        args.add("-c:v");
+        args.add("copy");
+        args.add("-c:a");
+        args.add("aac");
+        args.add("-b:a");
+        args.add("192k");
+        args.add("-shortest");
+        args.add(tempOutput.getAbsolutePath());
+
+        ProcessBuilder builder = new ProcessBuilder(args);
+        builder.directory(inputVideo.getParentFile());
+        builder.redirectErrorStream(true);
+        builder.redirectOutput(BBSMod.getSettingsPath("video_audio_merge.log"));
+
+        try
+        {
+            Process process = builder.start();
+
+            if (process.waitFor(5, TimeUnit.MINUTES) && process.exitValue() == 0 && tempOutput.isFile())
+            {
+                File backup = new File(inputVideo.getParentFile(), base + "_noaudio." + extension);
+
+                if (backup.exists())
+                {
+                    backup.delete();
+                }
+
+                if (inputVideo.renameTo(backup))
+                {
+                    if (!tempOutput.renameTo(inputVideo))
+                    {
+                        backup.renameTo(inputVideo);
+                    }
+                    else
+                    {
+                        backup.delete();
+                    }
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+    }
+
+    private File mixAudioTracks(File first, File second)
+    {
+        if (first == null || !first.isFile())
+        {
+            return second;
+        }
+
+        if (second == null || !second.isFile())
+        {
+            return first;
+        }
+
+        File mixed = this.exportFolder.resolve(this.movieName + "_mix.wav").toFile();
+        List<String> args = new ArrayList<>();
+
+        args.add(FFMpegUtils.getFFMPEG());
+        args.add("-y");
+        args.add("-i");
+        args.add(first.getAbsolutePath());
+        args.add("-i");
+        args.add(second.getAbsolutePath());
+        args.add("-filter_complex");
+        args.add("amix=inputs=2:duration=longest");
+        args.add("-c:a");
+        args.add("pcm_s16le");
+        args.add(mixed.getAbsolutePath());
+
+        ProcessBuilder builder = new ProcessBuilder(args);
+        builder.directory(this.exportFolder.toFile());
+        builder.redirectErrorStream(true);
+        builder.redirectOutput(BBSMod.getSettingsPath("video_audio_mix.log"));
+
+        try
+        {
+            Process process = builder.start();
+
+            if (process.waitFor(2, TimeUnit.MINUTES) && process.exitValue() == 0 && mixed.isFile())
+            {
+                return mixed;
+            }
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+
+        return second;
     }
 
     /**
@@ -239,7 +454,19 @@ public class VideoRecorder
             ex.printStackTrace();
         }
 
+        if (this.recordAmbientAudio)
+        {
+            this.disableAmbientCapture();
+            File mixed = this.mixAudioTracks(this.filmAudioFile, this.ambientAudioFile);
+
+            this.mergeAudioTrack(this.findOutputVideo(), mixed);
+        }
+
         this.recording = false;
+        this.filmAudioFile = null;
+        this.movieName = null;
+        this.exportFolder = null;
+        this.recordAmbientAudio = false;
 
         UIUtils.playClick(0.5F);
 
@@ -285,6 +512,11 @@ public class VideoRecorder
             e.printStackTrace();
         }
 
+        if (this.recordAmbientAudio && this.ambientCapture != null)
+        {
+            this.ambientCapture.captureFrame();
+        }
+
         this.counter += 1;
     }
 
@@ -299,7 +531,7 @@ public class VideoRecorder
         }
         else
         {
-            this.startRecording(null, textureId, textureWidth, textureHeight);
+            this.startRecording(null, false, textureId, textureWidth, textureHeight);
         }
 
         UIUtils.playClick();
