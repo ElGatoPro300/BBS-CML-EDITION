@@ -19,6 +19,7 @@ public class UIVideoSettingsOverlayPanel extends UIOverlayPanel
     private UITextbox arguments;
     private UITextbox argumentsAudio;
     private UIToggle audio;
+    private UIToggle audioEnvironment;
     private UIIcon flip;
     private UITrackpad width;
     private UITrackpad height;
@@ -37,6 +38,8 @@ public class UIVideoSettingsOverlayPanel extends UIOverlayPanel
         this.argumentsAudio = new UITextbox(1024, (s) -> this.value.argumentsAudio.set(s));
         this.audio = new UIToggle(UIKeys.VIDEO_SETTINGS_AUDIO, (b) -> this.value.audio.set(b.getValue()));
         this.audio.tooltip(UIKeys.VIDEO_SETTINGS_AUDIO_TOOLTIP);
+        this.audioEnvironment = new UIToggle(UIKeys.VIDEO_SETTINGS_AUDIO_ENVIRONMENT, (b) -> this.value.audioEnvironment.set(b.getValue()));
+        this.audioEnvironment.tooltip(UIKeys.VIDEO_SETTINGS_AUDIO_ENVIRONMENT_TOOLTIP);
         this.flip = new UIIcon(Icons.REFRESH, (b) ->
         {
             int w = this.value.width.get();
@@ -67,7 +70,7 @@ public class UIVideoSettingsOverlayPanel extends UIOverlayPanel
             UI.label(UIKeys.VIDEO_SETTINGS_ARGS),
             this.arguments,
             UI.label(UIKeys.VIDEO_SETTINGS_AUDIO_ARGS),
-            this.argumentsAudio, this.audio,
+            this.argumentsAudio, this.audio, this.audioEnvironment,
             UI.label(UIKeys.VIDEO_SETTINGS_RESOLUTION).marginTop(6),
             UI.row(this.width, this.flip, this.height),
             UI.label(UIKeys.VIDEO_SETTINGS_FRAME_RATE).marginTop(6),
@@ -113,6 +116,7 @@ public class UIVideoSettingsOverlayPanel extends UIOverlayPanel
         this.arguments.setText(this.value.arguments.get());
         this.argumentsAudio.setText(this.value.argumentsAudio.get());
         this.audio.setValue(this.value.audio.get());
+        this.audioEnvironment.setValue(this.value.audioEnvironment.get());
         this.width.setValue(this.value.width.get());
         this.height.setValue(this.value.height.get());
         this.frameRate.setValue(this.value.frameRate.get());
