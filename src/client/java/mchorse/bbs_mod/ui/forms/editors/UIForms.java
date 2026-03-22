@@ -87,9 +87,9 @@ public class UIForms extends UIList<UIForms.FormEntry>
 
             org.joml.Vector3f a = new org.joml.Vector3f(0.85F, 0.85F, -1F).normalize();
             org.joml.Vector3f b = new org.joml.Vector3f(-0.85F, 0.85F, 1F).normalize();
-            RenderSystem.setupLevelDiffuseLighting(a, b);
+            // RenderSystem.setupLevelDiffuseLighting(a, b);
             FormUtilsClient.renderUI(form, context, x, y, x + 40, y + 40);
-            DiffuseLighting.disableGuiDepthLighting();
+            // DiffuseLighting.disableGuiDepthLighting();
 
             context.batcher.unclip(context);
         }

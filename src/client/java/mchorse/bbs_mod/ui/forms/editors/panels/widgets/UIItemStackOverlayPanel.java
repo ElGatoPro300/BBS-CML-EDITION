@@ -15,6 +15,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.StringNbtReader;
+import net.minecraft.command.argument.NbtCompoundArgumentType;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.component.DataComponentTypes;
@@ -71,7 +72,7 @@ public class UIItemStackOverlayPanel extends UIOverlayPanel
         {
             try
             {
-                NbtCompound nbtCompound = new StringNbtReader(new StringReader(v)).parseCompound();
+                NbtCompound nbtCompound = NbtCompoundArgumentType.nbtCompound().parse(new StringReader(v));
                 ItemStack itemStack = ItemStack.CODEC.parse(NbtOps.INSTANCE, nbtCompound).result().orElse(ItemStack.EMPTY);
 
                 this.pickItemStack(itemStack);
@@ -102,7 +103,7 @@ public class UIItemStackOverlayPanel extends UIOverlayPanel
 
     private void updateNbt()
     {
-        this.nbt.setText(ItemStack.CODEC.encodeStart(NbtOps.INSTANCE, this.stack).result().map(net.minecraft.nbt.NbtElement::asString).orElse("{}"));
+        this.nbt.setText(ItemStack.CODEC.encodeStart(NbtOps.INSTANCE, this.stack).result().map(Object::toString).orElse("{}"));
     }
 
     private void pickItemStack(ItemStack itemStack)

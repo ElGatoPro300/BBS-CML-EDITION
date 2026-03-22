@@ -6,6 +6,7 @@ import mchorse.bbs_mod.forms.entities.MCEntity;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.network.ServerNetwork;
 import net.minecraft.entity.Entity;
+
 import net.minecraft.entity.EntityDimensions;
 import net.minecraft.entity.EntityPose;
 import net.minecraft.entity.EntityType;
@@ -18,6 +19,7 @@ import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.network.packet.s2c.play.ItemPickupAnimationS2CPacket;
+import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Arm;
@@ -105,7 +107,7 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
         this.runtimeInventoryInitialized = true;
     }
 
-    public MCEntity getEntity()
+    public MCEntity getBbsEntity()
     {
         return this.entity;
     }
@@ -129,7 +131,7 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
 
         this.form = form;
 
-        if (!this.getWorld().isClient())
+        if (!this.world.isClient)
         {
             if (lastForm != null) lastForm.onDemorph(this);
             if (form != null) form.onMorph(this);
@@ -138,7 +140,7 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
         this.updateHitboxDimensions();
     }
 
-    @Override
+    // @Override
     public boolean isCollidable()
     {
         return this.form != null && this.form.hitbox.get();
@@ -181,13 +183,11 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
         return distance < (d * 256D) * (d * 256D);
     }
 
-    @Override
     public Iterable<ItemStack> getHandItems()
     {
         return List.of(this.getEquippedStack(EquipmentSlot.MAINHAND), this.getEquippedStack(EquipmentSlot.OFFHAND));
     }
 
-    @Override
     public Iterable<ItemStack> getArmorItems()
     {
         return List.of(this.getEquippedStack(EquipmentSlot.FEET), this.getEquippedStack(EquipmentSlot.LEGS), this.getEquippedStack(EquipmentSlot.CHEST), this.getEquippedStack(EquipmentSlot.HEAD));
@@ -224,7 +224,7 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
             this.form.update(this.entity);
         }
 
-        if (this.getWorld().isClient)
+        if (this.world.isClient)
         {
             return;
         }
@@ -237,7 +237,7 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
 
         /* Pickup items */
         Box box = this.getBoundingBox().expand(1D, 0.5D, 1D);
-        List<Entity> list = this.getWorld().getOtherEntities(this, box);
+        List<Entity> list = this.world.getOtherEntities(this, box);
 
         for (Entity entity : list)
         {
@@ -252,7 +252,7 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
                     this.pickedUpEntityIds.add(entityId);
                     this.addToRuntimeInventory(itemStack.copy());
                     
-                    ((ServerWorld) this.getWorld()).getChunkManager().sendToOtherNearbyPlayers(entity, new ItemPickupAnimationS2CPacket(entity.getId(), this.getId(), i));
+                    ((ServerWorld) this.world).getChunkManager().sendToOtherNearbyPlayers(entity, new ItemPickupAnimationS2CPacket(entity.getId(), this.getId(), i));
                     entity.discard();
                 }
             }
@@ -352,32 +352,12 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
         }
     }
 
-    @Override
-    public EntityDimensions getBaseDimensions(EntityPose pose)
-    {
-        EntityDimensions dimensions = super.getBaseDimensions(pose);
-        Form currentForm = this.form;
-
-        if (currentForm != null && currentForm.hitbox.get())
-        {
-            float height = currentForm.hitboxHeight.get() * (this.isSneaking() ? currentForm.hitboxSneakMultiplier.get() : 1F);
-
-            return dimensions.fixed()
-                ? EntityDimensions.fixed(currentForm.hitboxWidth.get(), height)
-                : EntityDimensions.changing(currentForm.hitboxWidth.get(), height);
-        }
-
-        return dimensions;
-    }
-
-
-
         @Override
     public void onDeath(DamageSource damageSource)
     {
         super.onDeath(damageSource);
         
-        if (!this.getWorld().isClient() && !this.replayItemsDropped && this.replay != null && this.film != null)
+        if (!this.world.isClient && !this.replayItemsDropped && this.replay != null && this.film != null)
         {
             this.dropReplayItems();
             this.replayItemsDropped = true;
@@ -481,7 +461,7 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
         
         // Create item entity at actor's position
         ItemEntity itemEntity = new ItemEntity(
-            this.getWorld(),
+            this.world,
             this.getX(),
             this.getY() + 0.5,
             this.getZ(),
@@ -506,7 +486,7 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
         itemEntity.setVelocity(velocityX, velocityY, velocityZ);
         itemEntity.setToDefaultPickupDelay();
         
-        this.getWorld().spawnEntity(itemEntity);
+        this.world.spawnEntity(itemEntity);
     }
 
 
@@ -529,18 +509,18 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
         ServerNetwork.sendEntityForm(player, this);
     }
 
-    @Override
+    // @Override
     public void readCustomDataFromNbt(NbtCompound nbt)
     {
-        super.readCustomDataFromNbt(nbt);
+        // super.readCustomDataFromNbt(nbt);
 
-        this.despawn = nbt.getBoolean("despawn");
+        this.despawn = nbt.getBoolean("despawn").orElse(false);
     }
 
-    @Override
+    // @Override
     public void writeCustomDataToNbt(NbtCompound nbt)
     {
-        super.writeCustomDataToNbt(nbt);
+        // super.writeCustomDataToNbt(nbt);
 
         nbt.putBoolean("despawn", true);
     }

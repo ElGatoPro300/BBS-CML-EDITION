@@ -30,11 +30,11 @@ public class PlaceBlockActionClip extends BlockActionClip
 
         if (this.state.get().getBlock() == Blocks.AIR)
         {
-            player.getWorld().breakBlock(pos, this.drop.get());
+            player.world.breakBlock(pos, this.drop.get());
         }
         else
         {
-            player.getWorld().setBlockState(pos, this.state.get());
+            player.world.setBlockState(pos, this.state.get());
         }
     }
 

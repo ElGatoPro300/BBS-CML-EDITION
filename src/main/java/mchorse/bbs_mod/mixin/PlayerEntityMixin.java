@@ -21,27 +21,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(PlayerEntity.class)
 public class PlayerEntityMixin
 {
-    @Inject(method = "writeCustomDataToNbt", at = @At("TAIL"))
-    public void onWriteCustomDataToNbt(NbtCompound nbt, CallbackInfo info)
-    {
-        if (this instanceof IMorphProvider provider)
-        {
-            nbt.put("BBSMorph", provider.getMorph().toNbt());
-        }
-    }
-
-    @Inject(method = "readCustomDataFromNbt", at = @At("TAIL"))
-    public void onReadCustomDataFromNbt(NbtCompound nbt, CallbackInfo info)
-    {
-        if (this instanceof IMorphProvider provider)
-        {
-            if (nbt.contains("BBSMorph"))
-            {
-                provider.getMorph().fromNbt(nbt.getCompound("BBSMorph"));
-            }
-        }
-    }
-
     @Inject(method = "getBaseDimensions", at = @At("RETURN"), cancellable = true)
     public void onGetDimensions(EntityPose pose, CallbackInfoReturnable<EntityDimensions> info)
     {

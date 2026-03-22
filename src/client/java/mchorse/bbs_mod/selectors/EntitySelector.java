@@ -7,6 +7,7 @@ import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.utils.StringUtils;
+import net.minecraft.command.argument.NbtCompoundArgumentType;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
@@ -43,7 +44,7 @@ public class EntitySelector implements IMapSerializable
 
         if (this.nbt != null)
         {
-            NbtCompound entityCompound = mcEntity.writeNbt(new NbtCompound());
+            NbtCompound entityCompound = new NbtCompound();
 
             if (!this.compare(this.nbt, entityCompound))
             {
@@ -94,7 +95,7 @@ public class EntitySelector implements IMapSerializable
         {
             try
             {
-                this.nbt = (new StringNbtReader(new StringReader(data.getString("nbt")))).parseCompound();
+                this.nbt = NbtCompoundArgumentType.nbtCompound().parse(new StringReader(data.getString("nbt")));
             }
             catch (CommandSyntaxException e)
             {
