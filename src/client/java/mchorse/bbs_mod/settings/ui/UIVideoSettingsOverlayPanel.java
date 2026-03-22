@@ -14,6 +14,7 @@ import mchorse.bbs_mod.ui.utils.icons.Icons;
 public class UIVideoSettingsOverlayPanel extends UIOverlayPanel
 {
     private ValueVideoSettings value;
+    private boolean filling;
 
     private UIScrollView editor;
     private UITextbox arguments;
@@ -36,9 +37,45 @@ public class UIVideoSettingsOverlayPanel extends UIOverlayPanel
 
         this.arguments = new UITextbox(1024, (s) -> this.value.arguments.set(s));
         this.argumentsAudio = new UITextbox(1024, (s) -> this.value.argumentsAudio.set(s));
-        this.audio = new UIToggle(UIKeys.VIDEO_SETTINGS_AUDIO, (b) -> this.value.audio.set(b.getValue()));
+        this.audio = new UIToggle(UIKeys.VIDEO_SETTINGS_AUDIO, (b) ->
+        {
+            if (this.filling)
+            {
+                return;
+            }
+
+            boolean checked = b.getValue();
+
+            this.value.audio.set(checked);
+
+            if (checked && this.value.audioEnvironment.get())
+            {
+                this.value.audioEnvironment.set(false);
+                this.filling = true;
+                this.audioEnvironment.setValue(false);
+                this.filling = false;
+            }
+        });
         this.audio.tooltip(UIKeys.VIDEO_SETTINGS_AUDIO_TOOLTIP);
-        this.audioEnvironment = new UIToggle(UIKeys.VIDEO_SETTINGS_AUDIO_ENVIRONMENT, (b) -> this.value.audioEnvironment.set(b.getValue()));
+        this.audioEnvironment = new UIToggle(UIKeys.VIDEO_SETTINGS_AUDIO_ENVIRONMENT, (b) ->
+        {
+            if (this.filling)
+            {
+                return;
+            }
+
+            boolean checked = b.getValue();
+
+            this.value.audioEnvironment.set(checked);
+
+            if (checked && this.value.audio.get())
+            {
+                this.value.audio.set(false);
+                this.filling = true;
+                this.audio.setValue(false);
+                this.filling = false;
+            }
+        });
         this.audioEnvironment.tooltip(UIKeys.VIDEO_SETTINGS_AUDIO_ENVIRONMENT_TOOLTIP);
         this.flip = new UIIcon(Icons.REFRESH, (b) ->
         {
@@ -113,6 +150,12 @@ public class UIVideoSettingsOverlayPanel extends UIOverlayPanel
 
     private void fill()
     {
+        if (this.value.audio.get() && this.value.audioEnvironment.get())
+        {
+            this.value.audio.set(false);
+        }
+
+        this.filling = true;
         this.arguments.setText(this.value.arguments.get());
         this.argumentsAudio.setText(this.value.argumentsAudio.get());
         this.audio.setValue(this.value.audio.get());
@@ -123,5 +166,6 @@ public class UIVideoSettingsOverlayPanel extends UIOverlayPanel
         this.motionBlur.setValue(this.value.motionBlur.get());
         this.heldFrames.setValue(this.value.heldFrames.get());
         this.path.setText(this.value.path.get());
+        this.filling = false;
     }
 }

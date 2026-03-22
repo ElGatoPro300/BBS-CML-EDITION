@@ -2,6 +2,7 @@ package mchorse.bbs_mod.utils;
 
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSSettings;
+import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import net.minecraft.client.MinecraftClient;
@@ -206,8 +207,12 @@ public class VideoRecorder
 
     private void enableAmbientCapture(int frameRate) throws IOException
     {
+        MinecraftClient.getInstance().getSoundManager().stopAll();
+        BBSModClient.getSounds().deleteSounds();
+        LoopbackAudioController.suppressFilmClipPlayback(this.filmAudioFile != null);
         LoopbackAudioController.requestCapture(true);
         MinecraftClient.getInstance().getSoundManager().reloadSounds();
+        MinecraftClient.getInstance().getSoundManager().stopAll();
         this.ambientCapture = AmbientAudioCapture.open(this.exportFolder, this.movieName, frameRate);
     }
 
@@ -230,12 +235,16 @@ public class VideoRecorder
         finally
         {
             this.ambientCapture = null;
+            LoopbackAudioController.suppressFilmClipPlayback(false);
             LoopbackAudioController.requestCapture(false);
             LoopbackAudioController.setLoopbackDevice(0L);
 
             if (hadCapture)
             {
+                MinecraftClient.getInstance().getSoundManager().stopAll();
                 MinecraftClient.getInstance().getSoundManager().reloadSounds();
+                MinecraftClient.getInstance().getSoundManager().stopAll();
+                BBSModClient.getSounds().deleteSounds();
             }
         }
     }
