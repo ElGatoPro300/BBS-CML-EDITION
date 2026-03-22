@@ -39,6 +39,8 @@ public class UIVideoOverlayPanel extends UIStringOverlayPanel
     private static final String LEGACY_FOLDER = "video";
     private static final String EXTERNAL_PREFIX = "external:";
     private static final String ADD_EXTERNAL_ENTRY = "<add_external_video>";
+    private static final String PARENT_FOLDER_ENTRY = "<parent_folder>";
+    private static final long DOUBLE_CLICK_INTERVAL = 300L;
 
     private final UIContext context;
     private final Consumer<String> originalCallback;
@@ -50,6 +52,9 @@ public class UIVideoOverlayPanel extends UIStringOverlayPanel
 
     private ViewMode currentMode;
     private String selectedVideo;
+    private String currentClientFolder = "";
+    private String lastClickedFolder = "";
+    private long lastFolderClickTime;
 
     public UIVideoOverlayPanel(Consumer<String> callback, UIContext context)
     {
@@ -144,39 +149,14 @@ public class UIVideoOverlayPanel extends UIStringOverlayPanel
     private static Collection<String> getInternalVideos()
     {
         Set<String> videos = new HashSet<>();
-        File internalFolder = new File(BBSMod.getAssetsFolder(), INTERNAL_FOLDER);
-        File legacyFolder = new File(BBSMod.getAssetsFolder(), LEGACY_FOLDER);
-        File folder = internalFolder.exists() ? internalFolder : legacyFolder;
+        File root = getInternalRootFolder();
 
-        if (!folder.exists() || !folder.isDirectory())
+        if (!root.exists() || !root.isDirectory())
         {
             return videos;
         }
 
-        File[] files = folder.listFiles();
-
-        if (files == null)
-        {
-            return videos;
-        }
-
-        for (File file : files)
-        {
-            if (!file.isFile())
-            {
-                continue;
-            }
-
-            String name = file.getName();
-            String lower = name.toLowerCase();
-            boolean supported = lower.endsWith(".mp4") || lower.endsWith(".mov") || lower.endsWith(".mkv") || lower.endsWith(".avi") || lower.endsWith(".webm");
-
-            if (supported)
-            {
-                String prefix = folder.equals(legacyFolder) ? LEGACY_PREFIX : INTERNAL_PREFIX;
-                videos.add(prefix + name);
-            }
-        }
+        collectInternalVideosRecursive(root, root, getInternalPrefix(root), videos);
 
         return videos;
     }
@@ -233,6 +213,12 @@ public class UIVideoOverlayPanel extends UIStringOverlayPanel
         }
 
         this.currentMode = mode;
+        if (mode == ViewMode.CLIENT)
+        {
+            this.currentClientFolder = "";
+            this.lastClickedFolder = "";
+            this.lastFolderClickTime = 0;
+        }
         this.updateButtonStates();
         this.refreshVideoList();
         this.updateListSelection();
@@ -247,9 +233,6 @@ public class UIVideoOverlayPanel extends UIStringOverlayPanel
 
     private void refreshVideoList()
     {
-        List<String> internal = new ArrayList<>(getInternalVideos());
-        internal.sort(null);
-
         List<String> external = this.externalManager.getVideos();
         external.sort(null);
 
@@ -265,7 +248,17 @@ public class UIVideoOverlayPanel extends UIStringOverlayPanel
 
         if (this.currentMode == ViewMode.CLIENT)
         {
-            list.addAll(internal);
+            if (this.isMediaFoldersEnhancementsEnabled())
+            {
+                list.addAll(this.getCurrentClientFolderEntries());
+            }
+            else
+            {
+                List<String> internal = new ArrayList<>(getInternalVideos());
+
+                internal.sort(null);
+                list.addAll(internal);
+            }
         }
         else if (this.currentMode == ViewMode.EXTERNAL)
         {
@@ -274,6 +267,8 @@ public class UIVideoOverlayPanel extends UIStringOverlayPanel
         }
         else if (this.currentMode == ViewMode.FAVORITE)
         {
+            List<String> internal = new ArrayList<>(getInternalVideos());
+            internal.sort(null);
             list.addAll(internal);
             list.addAll(external);
             listWidget.setShowOnlyLiked(true);
@@ -281,7 +276,6 @@ public class UIVideoOverlayPanel extends UIStringOverlayPanel
         }
 
         listWidget.update();
-        listWidget.sort();
 
         String filter = this.strings.search.getText();
 
@@ -309,6 +303,11 @@ public class UIVideoOverlayPanel extends UIStringOverlayPanel
 
     private void pickVideo(String value)
     {
+        if (this.isMediaFoldersEnhancementsEnabled() && this.currentMode == ViewMode.CLIENT && this.handleClientFolderClick(value))
+        {
+            return;
+        }
+
         this.selectedVideo = value;
 
         if (value == null || value.isEmpty())
@@ -360,6 +359,230 @@ public class UIVideoOverlayPanel extends UIStringOverlayPanel
         {
             this.originalCallback.accept(value);
         }
+    }
+
+    private boolean isMediaFoldersEnhancementsEnabled()
+    {
+        return BBSSettings.mediaFoldersEnhancements != null && BBSSettings.mediaFoldersEnhancements.get();
+    }
+
+    private List<String> getCurrentClientFolderEntries()
+    {
+        List<String> entries = new ArrayList<>();
+        File root = getInternalRootFolder();
+
+        if (!root.exists() || !root.isDirectory())
+        {
+            return entries;
+        }
+
+        File folder = this.getCurrentClientFolderFile(root);
+
+        if (!folder.exists() || !folder.isDirectory())
+        {
+            return entries;
+        }
+
+        if (!this.currentClientFolder.isEmpty())
+        {
+            entries.add(PARENT_FOLDER_ENTRY);
+        }
+
+        File[] files = folder.listFiles();
+
+        if (files == null)
+        {
+            return entries;
+        }
+
+        List<String> folders = new ArrayList<>();
+        List<String> videos = new ArrayList<>();
+        String prefix = getInternalPrefix(root);
+
+        for (File file : files)
+        {
+            String relative = getRelativePath(root, file);
+
+            if (relative.isEmpty())
+            {
+                continue;
+            }
+
+            if (file.isDirectory())
+            {
+                folders.add(prefix + relative + "/");
+                continue;
+            }
+
+            if (file.isFile() && isSupportedVideoFile(file.getName()))
+            {
+                videos.add(prefix + relative);
+            }
+        }
+
+        folders.sort(null);
+        videos.sort(null);
+        entries.addAll(folders);
+        entries.addAll(videos);
+
+        return entries;
+    }
+
+    private File getCurrentClientFolderFile(File root)
+    {
+        if (this.currentClientFolder.isEmpty())
+        {
+            return root;
+        }
+
+        return new File(root, this.currentClientFolder.replace("/", File.separator));
+    }
+
+    private boolean handleClientFolderClick(String value)
+    {
+        if (value == null)
+        {
+            return false;
+        }
+
+        if (value.equals(PARENT_FOLDER_ENTRY))
+        {
+            this.navigateToClientParentFolder();
+
+            return true;
+        }
+
+        if (!isClientFolderEntry(value))
+        {
+            return false;
+        }
+
+        this.selectedVideo = value;
+        this.updateListSelection();
+
+        long now = System.currentTimeMillis();
+        boolean isDoubleClick = value.equals(this.lastClickedFolder) && now - this.lastFolderClickTime <= DOUBLE_CLICK_INTERVAL;
+
+        this.lastClickedFolder = value;
+        this.lastFolderClickTime = now;
+
+        if (isDoubleClick)
+        {
+            this.openClientFolderEntry(value);
+        }
+
+        return true;
+    }
+
+    private void navigateToClientParentFolder()
+    {
+        if (this.currentClientFolder.isEmpty())
+        {
+            return;
+        }
+
+        int index = this.currentClientFolder.lastIndexOf('/');
+        this.currentClientFolder = index >= 0 ? this.currentClientFolder.substring(0, index) : "";
+        this.selectedVideo = null;
+        this.lastClickedFolder = "";
+        this.lastFolderClickTime = 0;
+        this.refreshVideoList();
+    }
+
+    private void openClientFolderEntry(String value)
+    {
+        String prefix = value.startsWith(INTERNAL_PREFIX) ? INTERNAL_PREFIX : LEGACY_PREFIX;
+        this.currentClientFolder = value.substring(prefix.length(), value.length() - 1);
+        this.selectedVideo = null;
+        this.lastClickedFolder = "";
+        this.lastFolderClickTime = 0;
+        this.refreshVideoList();
+    }
+
+    private static boolean isClientFolderEntry(String value)
+    {
+        return (value.startsWith(INTERNAL_PREFIX) || value.startsWith(LEGACY_PREFIX)) && value.endsWith("/");
+    }
+
+    private static File getInternalRootFolder()
+    {
+        File internalFolder = new File(BBSMod.getAssetsFolder(), INTERNAL_FOLDER);
+        File legacyFolder = new File(BBSMod.getAssetsFolder(), LEGACY_FOLDER);
+
+        if (internalFolder.exists())
+        {
+            return internalFolder;
+        }
+
+        if (legacyFolder.exists())
+        {
+            return legacyFolder;
+        }
+
+        return internalFolder;
+    }
+
+    private static String getInternalPrefix(File root)
+    {
+        return root.getName().equals(LEGACY_FOLDER) ? LEGACY_PREFIX : INTERNAL_PREFIX;
+    }
+
+    private static void collectInternalVideosRecursive(File root, File folder, String prefix, Set<String> videos)
+    {
+        File[] files = folder.listFiles();
+
+        if (files == null)
+        {
+            return;
+        }
+
+        for (File file : files)
+        {
+            if (file.isDirectory())
+            {
+                collectInternalVideosRecursive(root, file, prefix, videos);
+                continue;
+            }
+
+            if (!file.isFile() || !isSupportedVideoFile(file.getName()))
+            {
+                continue;
+            }
+
+            String relative = getRelativePath(root, file);
+
+            if (!relative.isEmpty())
+            {
+                videos.add(prefix + relative);
+            }
+        }
+    }
+
+    private static String getRelativePath(File root, File file)
+    {
+        String rootPath = root.getAbsolutePath();
+        String filePath = file.getAbsolutePath();
+
+        if (!filePath.startsWith(rootPath))
+        {
+            return "";
+        }
+
+        String relative = filePath.substring(rootPath.length()).replace('\\', '/');
+
+        if (relative.startsWith("/"))
+        {
+            relative = relative.substring(1);
+        }
+
+        return relative;
+    }
+
+    private static boolean isSupportedVideoFile(String name)
+    {
+        String lower = name.toLowerCase();
+
+        return lower.endsWith(".mp4") || lower.endsWith(".mov") || lower.endsWith(".mkv") || lower.endsWith(".avi") || lower.endsWith(".webm");
     }
 
     @Override
