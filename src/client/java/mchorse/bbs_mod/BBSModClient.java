@@ -42,6 +42,8 @@ import mchorse.bbs_mod.events.register.RegisterReplayListContextMenuEvent;
 import mchorse.bbs_mod.events.register.RegisterReplayPanelEvent;
 import mchorse.bbs_mod.events.register.RegisterShadersEvent;
 import mchorse.bbs_mod.events.register.RegisterSourcePacksEvent;
+import mchorse.bbs_mod.film.BaseFilmController;
+import mchorse.bbs_mod.film.Film;
 import mchorse.bbs_mod.film.Films;
 import mchorse.bbs_mod.film.Recorder;
 import mchorse.bbs_mod.film.replays.Replay;
@@ -70,6 +72,7 @@ import mchorse.bbs_mod.selectors.EntitySelectors;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.UIDashboard;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
+import mchorse.bbs_mod.ui.film.replays.overlays.UIQuickReplayOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UIKeyframeFactory;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.shapes.KeyframeShapeRenderers;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
@@ -156,6 +159,7 @@ public class BBSModClient implements ClientModInitializer
     private static KeyBinding keyRecordReplay;
     private static KeyBinding keyRecordVideo;
     private static KeyBinding keyOpenReplays;
+    private static KeyBinding keyOpenQuickReplays;
     private static KeyBinding keyOpenMorphing;
     private static KeyBinding keyDemorph;
     private static KeyBinding keyTeleport;
@@ -258,6 +262,11 @@ public class BBSModClient implements ClientModInitializer
     public static KeyBinding getKeyRecordVideo()
     {
         return keyRecordVideo;
+    }
+
+    public static KeyBinding getKeyOpenQuickReplays()
+    {
+        return keyOpenQuickReplays;
     }
 
     public static UIDashboard getDashboard()
@@ -586,6 +595,7 @@ public class BBSModClient implements ClientModInitializer
         keyRecordReplay = this.createKey("record_replay", GLFW.GLFW_KEY_RIGHT_ALT);
         keyRecordVideo = this.createKey("record_video", GLFW.GLFW_KEY_F4);
         keyOpenReplays = this.createKey("open_replays", GLFW.GLFW_KEY_RIGHT_SHIFT);
+        keyOpenQuickReplays = this.createKey("open_quick_replays", GLFW.GLFW_KEY_RIGHT_BRACKET);
         keyOpenMorphing = this.createKey("open_morphing", GLFW.GLFW_KEY_B);
         keyDemorph = this.createKey("demorph", GLFW.GLFW_KEY_PERIOD);
         keyTeleport = this.createKey("teleport", GLFW.GLFW_KEY_Y);
@@ -716,6 +726,13 @@ public class BBSModClient implements ClientModInitializer
                 BBSRendering.setCustomSize(videoRecorder.isRecording(), width, height);
             }
             while (keyOpenReplays.wasPressed()) this.keyOpenReplays();
+            while (keyOpenQuickReplays.wasPressed())
+            {
+                if (!UIQuickReplayOverlayPanel.isOpened())
+                {
+                    this.keyOpenQuickReplays();
+                }
+            }
             while (keyOpenMorphing.wasPressed())
             {
                 UIDashboard dashboard = getDashboard();
@@ -953,6 +970,78 @@ public class BBSModClient implements ClientModInitializer
         {
             dashboard.setPanel(dashboard.getPanel(UIFilmPanel.class));
         }
+    }
+
+    private void keyOpenQuickReplays()
+    {
+        UIDashboard dashboard = getDashboard();
+
+        Film quickReplayFilm = this.getQuickReplayFilm(dashboard);
+
+        if (quickReplayFilm != null && !quickReplayFilm.replays.getList().isEmpty())
+        {
+            UIQuickReplayOverlayPanel.open(
+                new UIQuickReplayOverlayPanel(
+                    quickReplayFilm.replays.getList(),
+                    getSelectedReplay(),
+                    this::setQuickReplaySelection
+                )
+            );
+
+            return;
+        }
+    }
+
+    private void setQuickReplaySelection(Replay replay)
+    {
+        setSelectedReplay(replay);
+
+        UIDashboard dashboard = getDashboard();
+        UIFilmPanel panel = dashboard.getPanel(UIFilmPanel.class);
+
+        if (panel != null && panel.getData() != null && panel.getData().replays.getList().contains(replay))
+        {
+            panel.replayEditor.setReplay(replay);
+        }
+    }
+
+    private Film getQuickReplayFilm(UIDashboard dashboard)
+    {
+        Replay selected = getSelectedReplay();
+        UIFilmPanel panel = dashboard.getPanel(UIFilmPanel.class);
+        Film film = panel == null ? null : panel.getData();
+
+        if (this.isFilmUsableForQuickSelection(film, selected))
+        {
+            return film;
+        }
+
+        Recorder recorder = getFilms().getRecorder();
+
+        if (recorder != null && this.isFilmUsableForQuickSelection(recorder.film, selected))
+        {
+            return recorder.film;
+        }
+
+        for (BaseFilmController controller : getFilms().getControllers())
+        {
+            if (this.isFilmUsableForQuickSelection(controller.film, selected))
+            {
+                return controller.film;
+            }
+        }
+
+        return null;
+    }
+
+    private boolean isFilmUsableForQuickSelection(Film film, Replay selected)
+    {
+        if (film == null || film.replays.getList().isEmpty())
+        {
+            return false;
+        }
+
+        return selected == null || film.replays.getList().contains(selected);
     }
 
     private void keyTeleport()
