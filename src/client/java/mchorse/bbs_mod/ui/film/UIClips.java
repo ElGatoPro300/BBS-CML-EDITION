@@ -202,21 +202,6 @@ public class UIClips extends UIElement
         {
             if (this.copyPasteController.copy()) UIUtils.playClick();
         }).category(KEYS_CATEGORY).active(canUseKeybindsSelected);
-        this.keys().register(Keys.CUT, () ->
-        {
-            if (this.delegate.getClip() == null)
-            {
-                this.getContext().notifyError(UIKeys.GENERAL_CUT_EMPTY);
-                return;
-            }
-
-            if (this.copyPasteController.copy())
-            {
-                this.removeSelected();
-                UIUtils.playClick();
-                this.getContext().notifyInfo(UIKeys.GENERAL_CUT);
-            }
-        }).category(KEYS_CATEGORY).active(canUseKeybindsSelected);
         this.keys().register(Keys.PASTE, () ->
         {
             UIContext context = this.getContext();

@@ -156,7 +156,6 @@ public class UIShapeFormPanel extends UIFormPanel<ShapeForm>
 
         this.nodeEditor.setVisible(true);
         this.nodeEditor.setGraph(form.graph.get());
-        this.nodeEditor.setValue(form.graph);
 
         this.type.setValue(form.type.get().ordinal());
         this.sizeX.setValue(form.sizeX.get());
