@@ -40,7 +40,8 @@
         "WorldMixin",
         "LivingEntityRendererInvoker",
         "EntityRenderDispatcherMixin",
-        "iris.ShadowRendererMixin"
+        "iris.ShadowRendererMixin",
+        "audio.SoundEngineMixin"
     ],
     "injectors": {
         "defaultRequire": 1
