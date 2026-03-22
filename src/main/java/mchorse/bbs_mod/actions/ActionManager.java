@@ -128,7 +128,7 @@ public class ActionManager
 
     public void startRecording(Film film, ServerPlayerEntity entity, int tick, int countdown, int replayId)
     {
-        ActionPlayer play = this.play(entity, (ServerWorld) entity.world, film, tick, countdown, replayId, PlayerType.RECORDING);
+        ActionPlayer play = this.play(entity, entity.getServerWorld(), film, tick, countdown, replayId, PlayerType.RECORDING);
 
         if (play == null)
         {
@@ -165,7 +165,7 @@ public class ActionManager
         ActionRecorder remove = this.recorders.remove(entity);
 
         this.stop(remove.getFilm().getId());
-        this.stopDamage((ServerWorld) entity.world);
+        this.stopDamage(entity.getServerWorld());
 
         return remove;
     }
@@ -226,7 +226,7 @@ public class ActionManager
 
     public void spawnedEntity(Entity entity)
     {
-        if (entity.getEntityWorld() instanceof ServerWorld world)
+        if (entity.getWorld() instanceof ServerWorld world)
         {
             DamageControl control = this.dc.get(world);
 
