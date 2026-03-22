@@ -226,7 +226,7 @@ public class ActionManager
 
     public void spawnedEntity(Entity entity)
     {
-        if (entity.getWorld() instanceof ServerWorld world)
+        if (entity.getEntityWorld() instanceof ServerWorld world)
         {
             DamageControl control = this.dc.get(world);
 
