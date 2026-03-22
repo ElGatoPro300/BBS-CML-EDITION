@@ -16,6 +16,7 @@
     "key.bbs.dashboard": "Dashboard",
     "key.bbs.demorph": "Demorph",
     "key.bbs.open_replays": "Open current replays",
+    "key.bbs.open_quick_replays": "Open quick replays",
     "key.bbs.open_morphing": "Open morphing menu",
     "key.bbs.play_film": "Play film",
     "key.bbs.pause_film": "Pause film",
@@ -37,5 +38,8 @@
     "bbs.ui.transforms.context.reset_translation": "Reset translation",
     "bbs.ui.transforms.context.reset_scale": "Reset scale",
     "bbs.ui.transforms.context.reset_rotation": "Reset rotation",
-    "bbs.ui.transforms.context.reset": "Reset transformation"
+    "bbs.ui.transforms.context.reset": "Reset transformation",
+    "bbs.ui.cut": "Cut",
+    "bbs.ui.cut.empty": "Nothing to cut",
+    "bbs.ui.cut.not_allowed": "Cut is not allowed here"
 }
