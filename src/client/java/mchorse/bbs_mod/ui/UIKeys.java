@@ -607,6 +607,9 @@ public class UIKeys
     public static final IKey GENERAL_CLOSE = L10n.lang("bbs.ui.close");
     public static final IKey GENERAL_CONFIRM = L10n.lang("bbs.ui.confirm");
     public static final IKey GENERAL_COPY = L10n.lang("bbs.ui.copy");
+    public static final IKey GENERAL_CUT = L10n.lang("bbs.ui.cut");
+    public static final IKey GENERAL_CUT_EMPTY = L10n.lang("bbs.ui.cut.empty");
+    public static final IKey GENERAL_CUT_NOT_ALLOWED = L10n.lang("bbs.ui.cut.not_allowed");
     public static final IKey GENERAL_DOWNLOAD = L10n.lang("bbs.ui.download");
     public static final IKey GENERAL_DUPE = L10n.lang("bbs.ui.dupe");
     public static final IKey GENERAL_EDIT = L10n.lang("bbs.ui.edit");
