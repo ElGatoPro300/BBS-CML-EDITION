@@ -161,7 +161,7 @@ public class UIDashboard extends UIBaseMenu
 
             if (mc.player != null && mc.player.getUuidAsString().equals("62151594-754f-4f81-a583-dc9459164d01"))
             {
-                UIOverlay.addOverlay(this.context, new UIFnafOverlayPanel(UIKeys.DASHBOARD_FNAF_POPUP, UIKeys.DASHBOARD_FNAF_POPUP_SMALL), 320, 160);
+                UIOverlay.addOverlay(this.context, new UIFnafOverlayPanel(UIKeys.DASHBOARD_FNAF_POPUP, UIKeys.DASHBOARD_FNAF_POPUP_SMALL), 320, 240);
 
                 BBSSettings.shownFnafPopup.set(true);
 

@@ -693,27 +693,24 @@ public abstract class UITransform extends UIElement
             this.pastesActions = transform.buildPastesTabActions(transforms);
             this.resetsActions = transform.buildResetsTabActions();
             this.invertsActions = transform.buildInvertsTabActions();
-            this.general = new UITabButton(UIKeys.MODELS_GENERAL, UIKeys.MODELS_GENERAL, Icons.SETTINGS, (b) -> this.setTab(TransformContextTab.GENERAL));
-            this.pastes = new UITabButton(UIKeys.TRANSFORMS_CONTEXT_PASTES, UIKeys.TRANSFORMS_CONTEXT_PASTES_OPTIONS, Icons.PASTE, (b) -> this.setTab(TransformContextTab.PASTES));
-            this.resets = new UITabButton(UIKeys.TRANSFORMS_CONTEXT_RESETS, UIKeys.TRANSFORMS_CONTEXT_RESETS_OPTIONS, Icons.CLOSE, (b) -> this.setTab(TransformContextTab.RESETS));
-            this.inverts = new UITabButton(UIKeys.TRANSFORMS_CONTEXT_INVERTS, UIKeys.TRANSFORMS_CONTEXT_INVERTS_OPTIONS, Icons.REFRESH, (b) -> this.setTab(TransformContextTab.INVERTS));
-            this.general.wh(28, 20);
-            this.pastes.wh(28, 20);
-            this.resets.wh(28, 20);
-            this.inverts.wh(28, 20);
+            this.general = new UITabButton(IKey.EMPTY, UIKeys.MODELS_GENERAL, Icons.SETTINGS, (b) -> this.setTab(TransformContextTab.GENERAL));
+            this.pastes = new UITabButton(IKey.EMPTY, UIKeys.TRANSFORMS_CONTEXT_PASTES_OPTIONS, Icons.PASTE, (b) -> this.setTab(TransformContextTab.PASTES));
+            this.resets = new UITabButton(IKey.EMPTY, UIKeys.TRANSFORMS_CONTEXT_RESETS_OPTIONS, Icons.CLOSE, (b) -> this.setTab(TransformContextTab.RESETS));
+            this.inverts = new UITabButton(IKey.EMPTY, UIKeys.TRANSFORMS_CONTEXT_INVERTS_OPTIONS, Icons.CONVERT, (b) -> this.setTab(TransformContextTab.INVERTS));
+            ((UITabButton) this.inverts).noSeparator();
             this.tabs = UI.row(0, this.general, this.pastes, this.resets, this.inverts);
             this.separator = new UIElement()
             {
                 @Override
                 public void render(UIContext context)
                 {
-                    context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0x33ffffff);
+                    context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0x44ffffff);
                 }
             };
 
-            this.tabs.relative(this).xy(2, 2).row(1).resize();
-            this.separator.relative(this).xy(0, 23).w(1F).h(1);
-            this.actions.relative(this).xy(0, 24).w(1F).h(1F, -24);
+            this.tabs.relative(this).w(1F).h(20).row(0).resize();
+            this.separator.relative(this).xy(0, 20).w(1F).h(1);
+            this.actions.relative(this).xy(0, 21).w(1F).h(1F, -21);
             this.add(this.tabs, this.separator);
             this.pastes.setEnabled(!this.pastesActions.isEmpty());
             this.setTab(TransformContextTab.GENERAL);
@@ -748,7 +745,7 @@ public abstract class UITransform extends UIElement
 
             if (context != null)
             {
-                this.w(this.calculateWidth(context, tab));
+                this.w(this.calculateWidth(context));
                 this.h(this.calculateHeight());
                 this.bounds(context.menu.overlay, 5);
                 this.resize();
@@ -758,27 +755,23 @@ public abstract class UITransform extends UIElement
         @Override
         public void setMouse(UIContext context)
         {
-            int w = this.calculateWidth(context, this.tab);
+            int w = this.calculateWidth(context);
             int h = this.calculateHeight();
 
             this.xy(context.mouseX(), context.mouseY()).w(w).h(h).bounds(context.menu.overlay, 5);
             this.resize();
         }
 
-        private int calculateWidth(UIContext context, TransformContextTab tab)
+        private int calculateWidth(UIContext context)
         {
-            int buttons = 4;
-            int buttonWidth = 28;
-            int spacing = 1;
-            int menuPadding = 4;
-            int w = buttons * buttonWidth + (buttons - 1) * spacing + menuPadding;
+            int w = 120;
 
-            for (ContextAction action : this.getActions(tab))
-            {
-                w = Math.max(w, action.getWidth(context.batcher.getFont()));
-            }
+            for (ContextAction action : this.generalActions) w = Math.max(w, action.getWidth(context.batcher.getFont()));
+            for (ContextAction action : this.pastesActions) w = Math.max(w, action.getWidth(context.batcher.getFont()));
+            for (ContextAction action : this.resetsActions) w = Math.max(w, action.getWidth(context.batcher.getFont()));
+            for (ContextAction action : this.invertsActions) w = Math.max(w, action.getWidth(context.batcher.getFont()));
 
-            return w;
+            return w % 4 == 0 ? w : w + (4 - w % 4);
         }
 
         private List<ContextAction> getActions(TransformContextTab tab)
@@ -822,7 +815,7 @@ public abstract class UITransform extends UIElement
 
             actions = Math.max(actions, 1);
 
-            return 29 + actions * this.actions.scroll.scrollItemSize;
+            return 21 + actions * this.actions.scroll.scrollItemSize;
         }
 
         private static class UITabButton extends UIButton
@@ -830,6 +823,7 @@ public abstract class UITransform extends UIElement
             private final Icon icon;
             private final IKey tooltip;
             private boolean active;
+            private boolean noSeparator;
 
             public UITabButton(IKey label, IKey tooltip, Icon icon, java.util.function.Consumer<UIButton> callback)
             {
@@ -837,6 +831,11 @@ public abstract class UITransform extends UIElement
                 this.tooltip = tooltip;
                 this.icon = icon;
                 this.tooltip(this.tooltip);
+            }
+
+            public void noSeparator()
+            {
+                this.noSeparator = true;
             }
 
             public void setActive(boolean active)
@@ -848,7 +847,8 @@ public abstract class UITransform extends UIElement
             protected void renderSkin(UIContext context)
             {
                 boolean enabled = this.isEnabled();
-                int color = this.active ? BBSSettings.primaryColor(Colors.A100) : 0;
+                int primary = BBSSettings.primaryColor.get();
+                int color = this.active ? primary : 0;
                 int iconColor = this.active ? Colors.WHITE : 0xddffffff;
 
                 if (!enabled)
@@ -857,16 +857,20 @@ public abstract class UITransform extends UIElement
                 }
                 else if (this.hover)
                 {
-                    color = this.active ? Colors.mulRGB(color, 0.9F) : Colors.A25;
+                    color = this.active ? Colors.mulRGB(primary, 0.9F) : Colors.A25;
                     iconColor = Colors.WHITE;
                 }
 
                 if (color != 0)
                 {
-                    this.area.render(context.batcher, color);
+                    this.area.render(context.batcher, this.active ? (color | Colors.A100) : color);
                 }
 
-                context.batcher.box(this.area.ex() - 1, this.area.y + 2, this.area.ex(), this.area.ey() - 2, 0x22ffffff);
+                if (!this.noSeparator)
+                {
+                    context.batcher.box(this.area.ex() - 1, this.area.y + 2, this.area.ex(), this.area.ey() - 2, 0x22ffffff);
+                }
+
                 context.batcher.icon(this.icon, iconColor, this.area.mx(), this.area.my(), 0.5F, 0.5F);
             }
         }

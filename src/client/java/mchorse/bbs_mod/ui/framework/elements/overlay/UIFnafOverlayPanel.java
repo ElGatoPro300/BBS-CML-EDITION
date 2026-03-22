@@ -1,51 +1,43 @@
 package mchorse.bbs_mod.ui.framework.elements.overlay;
 
 import mchorse.bbs_mod.l10n.keys.IKey;
-import mchorse.bbs_mod.ui.framework.UIContext;
+import mchorse.bbs_mod.resources.Link;
+import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
+import mchorse.bbs_mod.ui.framework.elements.UIScrollView;
+import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
+import mchorse.bbs_mod.ui.framework.elements.utils.UIText;
+import mchorse.bbs_mod.ui.news.UINewsPanel;
+import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.utils.colors.Colors;
 
 public class UIFnafOverlayPanel extends UIOverlayPanel
 {
     public UIFnafOverlayPanel(IKey message, IKey messageSmall)
     {
-        super(IKey.EMPTY);
+        super(UIKeys.PRIORITY_ANNOUNCEMENT_TITLE);
 
-        this.content.column().stretch();
-        
-        UIElement bigText = new UIElement()
-        {
-            @Override
-            public void render(UIContext context)
-            {
-                context.batcher.getContext().getMatrices().pushMatrix();
-                context.batcher.getContext().getMatrices().translate(this.area.mx(), this.area.my() - 10);
-                context.batcher.getContext().getMatrices().scale(3.0F, 3.0F);
-                
-                String label = message.get();
-                int w = context.batcher.getFont().getWidth(label);
-                int h = context.batcher.getFont().getHeight();
-                
-                context.batcher.text(label, -w / 2, -h / 2, Colors.WHITE, true);
-                
-                context.batcher.getContext().getMatrices().popMatrix();
+        this.content.removeAll();
 
-                context.batcher.getContext().getMatrices().pushMatrix();
-                context.batcher.getContext().getMatrices().translate(this.area.mx(), this.area.my() + 30);
-                context.batcher.getContext().getMatrices().scale(1.2F, 1.2F);
+        UIScrollView scroll = UI.scrollView(6, 8);
+        scroll.relative(this.content).full(this.content);
 
-                String labelSmall = messageSmall.get();
-                int wSmall = context.batcher.getFont().getWidth(labelSmall);
-                int hSmall = context.batcher.getFont().getHeight();
+        UILabel title = new UILabel(message);
+        title.color(Colors.WHITE);
+        title.h(16);
 
-                context.batcher.text(labelSmall, -wSmall / 2, -hSmall / 2, Colors.WHITE, true);
+        UIText body = new UIText(messageSmall);
+        body.color(Colors.LIGHTER_GRAY, true).padding(0, 2).lineHeight(12);
 
-                context.batcher.getContext().getMatrices().popMatrix();
-                
-                super.render(context);
-            }
-        };
-        
-        this.content.add(bigText.full(this.content));
+        UIText subText = new UIText(IKey.raw("(OBS: O update lançou tarde.)"));
+        subText.color(Colors.GRAY, true).padding(0, 2).lineHeight(10);
+
+        Link jokeImage = Link.assets("textures/banners/JokeFnaF.png");
+        UINewsPanel.UINewsImage image = new UINewsPanel.UINewsImage(jokeImage, 180);
+
+        UIElement column = UI.column(6, title, body, subText, image).marginTop(6);
+        scroll.add(column);
+
+        this.content.add(scroll);
     }
 }
