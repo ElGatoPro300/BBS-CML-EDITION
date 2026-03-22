@@ -1604,6 +1604,8 @@
     "bbs.ui.video_settings.audio": "Exportar audio",
     "bbs.ui.video_settings.audio-tooltip": "Esta opción exporta clips de audio como audio y luego los junta con el video grabado (sin sonidos de Minecraft)",
     "bbs.ui.video_settings.audio_args": "Argumentos del codificador (audio)",
+    "bbs.ui.video_settings.audio_environment": "Exportar ambiente de juego",
+    "bbs.ui.video_settings.audio_environment-tooltip": "Graba los sonidos del mundo de Minecraft durante la exportación y los mezcla en el video final",
     "bbs.ui.video_settings.edit": "Editar ajustes...",
     "bbs.ui.video_settings.frame_rate": "Velocidad de fotogramas",
     "bbs.ui.video_settings.height": "Altura",
