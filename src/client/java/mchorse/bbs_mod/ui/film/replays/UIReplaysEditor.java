@@ -275,7 +275,17 @@ public class UIReplaysEditor extends UIElement
 
         String topLevel = StringUtils.fileName(key);
 
-        return ICONS.getOrDefault(topLevel, null);
+        if (topLevel.startsWith("pose_overlay"))
+        {
+            return Icons.POSE;
+        }
+
+        if (topLevel.startsWith("transform_overlay"))
+        {
+            return Icons.ALL_DIRECTIONS;
+        }
+
+        return ICONS.getOrDefault(topLevel, Icons.NONE);
     }
 
     public static int getColor(String key)
