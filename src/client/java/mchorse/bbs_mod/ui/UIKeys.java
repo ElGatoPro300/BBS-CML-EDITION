@@ -216,7 +216,6 @@ public class UIKeys
     public static final IKey CAMERA_TOOLTIPS_RECORD = L10n.lang("bbs.ui.camera.tooltips.record");
     public static final IKey CDN_DOWNLOADING_TITLE = L10n.lang("bbs.ui.cdn.downloading-title");
     public static final IKey CDN_STATUS_DELETED = L10n.lang("bbs.ui.cdn.status.deleted");
-
     public static final IKey CDN_STATUS_DOWNLOADED = L10n.lang("bbs.ui.cdn.status.downloaded");
     public static final IKey CDN_STATUS_FAILED_DOWNLOADING = L10n.lang("bbs.ui.cdn.status.failed_downloading");
     public static final IKey CDN_STATUS_FAILED_FETCH = L10n.lang("bbs.ui.cdn.status.failed_fetch");
@@ -229,9 +228,6 @@ public class UIKeys
     public static final IKey COLOR_FAVORITE = L10n.lang("bbs.ui.color.favorite");
     public static final IKey COLOR_RECENT = L10n.lang("bbs.ui.color.recent");
     public static final IKey CONFIG_TITLE = L10n.lang("bbs.ui.config.title");
-    public static final IKey CONFIG_GENERAL_COMPACTED_OPTIONS_DEFAULT = L10n.lang("cml.config.general.compacted_options.default");
-    public static final IKey CONFIG_GENERAL_COMPACTED_OPTIONS_SEPARATED = L10n.lang("cml.config.general.compacted_options.separated");
-    public static final IKey CONFIG_GENERAL_COMPACTED_OPTIONS_COMPACTED = L10n.lang("cml.config.general.compacted_options.compacted");
     public static final IKey CONTEXT_MENU_KEY = L10n.lang("bbs.ui.context.key");
     public static final IKey CONTEXT_MENU_KEY_CATEGORY = L10n.lang("bbs.ui.context.key_category");
     public static final IKey COMING_SOON = L10n.lang("bbs.ui.coming_soon");
@@ -720,8 +716,6 @@ public class UIKeys
     public static final IKey ITEM_STACK_CONTEXT_PASTE = L10n.lang("bbs.ui.item_stack.context.paste");
     public static final IKey ITEM_STACK_CONTEXT_RESET = L10n.lang("bbs.ui.item_stack.context.reset");
     public static final IKey ITEM_STACK_CONTEXT_INVENTORY = L10n.lang("bbs.ui.item_stack.context.inventory");
-    public static final IKey ITEM_STACK_CONTEXT_ALL_ITEMS = L10n.lang("bbs.ui.item_stack.context.all_items");
-    public static final IKey ITEM_STACK_CONTEXT_OPTIONS = L10n.lang("bbs.ui.item_stack.context.options");
     public static final IKey KEYFRAMES_CHANGE_COLOR = L10n.lang("bbs.ui.keyframes.change_color");
     public static final IKey KEYFRAMES_CHANGE_SHAPE = L10n.lang("bbs.ui.keyframes.change_shape");
     public static final IKey KEYFRAMES_CONTEXT_ADJUST_VALUES = L10n.lang("bbs.ui.keyframes.context.adjust_values");
@@ -964,9 +958,6 @@ public class UIKeys
     public static final IKey SCENE_REPLAYS_CONTEXT_PROCESS_SECTION_SCATTER = L10n.lang("bbs.ui.scene.replays.context.process.section.scatter");
     public static final IKey SCENE_REPLAYS_CONTEXT_PROCESS_TITLE = L10n.lang("bbs.ui.scene.replays.context.process-title");
     public static final IKey SCENE_REPLAYS_CONTEXT_REMOVE = L10n.lang("bbs.ui.scene.replays.context.remove");
-    public static final IKey SCENE_REPLAYS_CONTEXT_MORE_OPTIONS = L10n.lang("bbs.ui.scene.replays.context.more_options");
-    public static final IKey SCENE_REPLAYS_CONTEXT_LEAVE_GROUP = L10n.lang("bbs.ui.scene.replays.context.leave_group");
-    public static final IKey SCENE_REPLAYS_CONTEXT_UNGROUP = L10n.lang("bbs.ui.scene.replays.context.ungroup");
     public static final IKey SELECTORS_CONTEXT_ADD = L10n.lang("bbs.ui.selectors.context.add");
     public static final IKey SELECTORS_CONTEXT_REMOVE = L10n.lang("bbs.ui.selectors.context.remove");
     public static final IKey SELECTORS_ENTITY_ID = L10n.lang("bbs.ui.selectors.entity_id");
