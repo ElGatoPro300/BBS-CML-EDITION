@@ -4,6 +4,7 @@ public class LoopbackAudioController
 {
     private static boolean captureRequested;
     private static long loopbackDevice;
+    private static boolean suppressFilmClipPlayback;
 
     public static synchronized void requestCapture(boolean value)
     {
@@ -23,5 +24,15 @@ public class LoopbackAudioController
     public static synchronized long getLoopbackDevice()
     {
         return loopbackDevice;
+    }
+
+    public static synchronized void suppressFilmClipPlayback(boolean value)
+    {
+        suppressFilmClipPlayback = value;
+    }
+
+    public static synchronized boolean isFilmClipPlaybackSuppressed()
+    {
+        return suppressFilmClipPlayback;
     }
 }
