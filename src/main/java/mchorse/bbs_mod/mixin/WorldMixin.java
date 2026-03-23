@@ -13,8 +13,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(World.class)
 public class WorldMixin
 {
-    @Inject(method = "setBlockState(Lnet/minecraft/util/math/BlockPos;Lnet/minecraft/block/BlockState;II)Z", at = @At("HEAD"))
-    public void onSetBlockState(BlockPos pos, BlockState state, int flags, int maxUpdateDepth, CallbackInfoReturnable<Boolean> info)
+    @Inject(method = "setBlockState(Lnet/minecraft/util/math/BlockPos;Lnet/minecraft/block/BlockState;I)Z", at = @At("HEAD"))
+    public void onSetBlockState(BlockPos pos, BlockState state, int flags, CallbackInfoReturnable<Boolean> info)
     {
         if ((Object) this instanceof ServerWorld world)
         {

@@ -290,7 +290,7 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
                     return;
                 }
             }
-            else if (ItemStack.canCombine(existing, stack) && existing.getCount() < existing.getMaxCount())
+            else if (ItemStack.areItemsAndComponentsEqual(existing, stack) && existing.getCount() < existing.getMaxCount())
             {
                 int space = existing.getMaxCount() - existing.getCount();
                 int move = Math.min(space, remaining);
@@ -353,16 +353,16 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
     }
 
     @Override
-    public EntityDimensions getDimensions(EntityPose pose)
+    public EntityDimensions getBaseDimensions(EntityPose pose)
     {
-        EntityDimensions dimensions = super.getDimensions(pose);
+        EntityDimensions dimensions = super.getBaseDimensions(pose);
         Form currentForm = this.form;
 
         if (currentForm != null && currentForm.hitbox.get())
         {
             float height = currentForm.hitboxHeight.get() * (this.isSneaking() ? currentForm.hitboxSneakMultiplier.get() : 1F);
 
-            return dimensions.fixed
+            return dimensions.fixed()
                 ? EntityDimensions.fixed(currentForm.hitboxWidth.get(), height)
                 : EntityDimensions.changing(currentForm.hitboxWidth.get(), height);
         }
@@ -370,20 +370,7 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
         return dimensions;
     }
 
-    @Override
-    protected float getActiveEyeHeight(EntityPose pose, EntityDimensions dimensions)
-    {
-        Form currentForm = this.form;
 
-        if (currentForm != null && currentForm.hitbox.get())
-        {
-            float height = currentForm.hitboxHeight.get() * (this.isSneaking() ? currentForm.hitboxSneakMultiplier.get() : 1F);
-
-            return currentForm.hitboxEyeHeight.get() * height;
-        }
-
-        return super.getActiveEyeHeight(pose, dimensions);
-    }
 
         @Override
     public void onDeath(DamageSource damageSource)
