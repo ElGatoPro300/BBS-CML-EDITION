@@ -49,8 +49,8 @@ import java.util.Set;
 
 public class UINewsPanel extends UISidebarDashboardPanel
 {
-    private static final String NEWS_URL = "https://raw.githubusercontent.com/BBSCommunity/CML-NEWS/refs/heads/main/News/news.json";
-    private static final String PRIORITY_ANNOUNCEMENT_URL = "https://raw.githubusercontent.com/BBSCommunity/CML-NEWS/refs/heads/main/News/priority_announcement.json";
+    private static final String NEWS_URL_BASE = "https://raw.githubusercontent.com/BBSCommunity/CML-NEWS/refs/heads/main/News_Panel/news";
+    private static final String PRIORITY_ANNOUNCEMENT_URL_BASE = "https://raw.githubusercontent.com/BBSCommunity/CML-NEWS/refs/heads/main/Priority_Panel/priority_announcement";
 
     private final UIUnreadNewsList list = new UIUnreadNewsList((items) -> this.showSelected());
     private final UISearchList<String> search = new UISearchList<>(this.list);
@@ -198,19 +198,7 @@ public class UINewsPanel extends UISidebarDashboardPanel
 
                 String json = null;
 
-                try
-                {
-                    HttpClient client = HttpClient.newBuilder().build();
-                    HttpRequest req = HttpRequest.newBuilder(URI.create(NEWS_URL))
-                        .GET()
-                        .build();
-                    HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
-                    if (resp.statusCode() == 200)
-                    {
-                        json = resp.body();
-                    }
-                }
-                catch (Exception ignored) {}
+                json = fetchLocalizedJson(NEWS_URL_BASE);
 
                 if (json == null || json.isEmpty())
                 {
@@ -282,15 +270,11 @@ public class UINewsPanel extends UISidebarDashboardPanel
 
             try
             {
-                HttpClient client = HttpClient.newBuilder().build();
-                HttpRequest req = HttpRequest.newBuilder(URI.create(PRIORITY_ANNOUNCEMENT_URL))
-                    .GET()
-                    .build();
-                HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
+                String json = fetchLocalizedJson(PRIORITY_ANNOUNCEMENT_URL_BASE);
 
-                if (resp.statusCode() == 200 && resp.body() != null && !resp.body().isEmpty())
+                if (json != null && !json.isEmpty())
                 {
-                    announcement = this.gson.fromJson(resp.body(), this.priorityType);
+                    announcement = this.gson.fromJson(json, this.priorityType);
                 }
             }
             catch (Exception e)
@@ -322,6 +306,74 @@ public class UINewsPanel extends UISidebarDashboardPanel
                 pendingPriorityAnnouncement = finalAnnouncement;
             });
         });
+    }
+
+    private static String fetchLocalizedJson(String baseUrl)
+    {
+        for (String suffix : getLocaleSuffixCandidates())
+        {
+            String url = baseUrl + suffix + ".json";
+            String body = fetchJson(url);
+
+            if (body != null && !body.isEmpty())
+            {
+                return body;
+            }
+        }
+
+        return null;
+    }
+
+    private static List<String> getLocaleSuffixCandidates()
+    {
+        String language = BBSModClient.getLanguageKey();
+        LinkedHashSet<String> locales = new LinkedHashSet<>();
+
+        if (language != null)
+        {
+            language = language.toLowerCase();
+
+            if (!language.isEmpty())
+            {
+                locales.add("." + language);
+
+                int split = language.indexOf('_');
+
+                if (split > 0)
+                {
+                    String base = language.substring(0, split);
+
+                    locales.add("." + base + "_" + base);
+                    locales.add("." + base + "_us");
+                }
+            }
+        }
+
+        locales.add(".en_us");
+        locales.add("");
+
+        return new ArrayList<>(locales);
+    }
+
+    private static String fetchJson(String url)
+    {
+        try
+        {
+            HttpClient client = HttpClient.newBuilder().build();
+            HttpRequest req = HttpRequest.newBuilder(URI.create(url))
+                .GET()
+                .build();
+            HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
+
+            if (resp.statusCode() == 200)
+            {
+                return resp.body();
+            }
+        }
+        catch (Exception ignored)
+        {}
+
+        return null;
     }
 
     private static void prefetchImages(List<NewsEntry> entries)
