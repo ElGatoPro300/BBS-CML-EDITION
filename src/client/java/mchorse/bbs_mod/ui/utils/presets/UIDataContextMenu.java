@@ -129,5 +129,6 @@ public class UIDataContextMenu extends UIContextMenu
         int i = size * 20 + (size - 1) * 5;
 
         this.xy(context.mouseX(), context.mouseY()).w(10 + i).h(10 + 40 + UIStringList.DEFAULT_HEIGHT * 12).bounds(context.menu.overlay, 5);
+        this.resize();
     }
 }

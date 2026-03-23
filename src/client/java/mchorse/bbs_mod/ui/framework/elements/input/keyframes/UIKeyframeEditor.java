@@ -129,38 +129,74 @@ public class UIKeyframeEditor extends UIElement
         String bone = null;
         boolean local = false;
 
-        if (editor instanceof UIPoseKeyframeFactory pose)
+        if (editor instanceof UIPoseKeyframeFactory || editor instanceof UITransformKeyframeFactory)
         {
             UIKeyframeSheet sheet = this.getSheet(editor.getKeyframe());
-            String currentFirst = pose.poseEditor.groups.getCurrentFirst();
 
             if (sheet != null)
             {
                 String id = StringUtils.fileName(sheet.id);
+                int colon = id.indexOf(':');
+                String propertyId = colon != -1 ? id.substring(0, colon) : id;
+                String boneName = colon != -1 ? id.substring(colon + 1) : null;
 
-                if (id.startsWith("pose"))
+                boolean isPose = propertyId.equals("pose") || propertyId.startsWith("pose_overlay");
+
+                if (isPose)
                 {
-                    int i = sheet.id.lastIndexOf('/');
+                    String targetBone = boneName;
 
-                    bone = i >= 0 ? sheet.id.substring(0, i + 1) + currentFirst : currentFirst;
-                    local = pose.poseEditor.transform.isLocal();
+                    if (targetBone == null)
+                    {
+                        if (editor instanceof UIPoseKeyframeFactory pose)
+                        {
+                            targetBone = pose.poseEditor.getCurrentBone();
+
+                            if (targetBone == null || targetBone.isEmpty())
+                            {
+                                targetBone = pose.poseEditor.groups.list.getCurrentFirst();
+                            }
+                        }
+
+                        if (sheet.anchoredBone != null && !sheet.anchoredBone.isEmpty())
+                        {
+                            targetBone = sheet.anchoredBone;
+                        }
+                    }
+
+                    /* If the ID includes a property path (e.g., formPath/pose or formPath/pose_overlayX),
+                     * retain the form prefix to correctly position the bone in the renderer.*/
+                    if (sheet.id.contains("/pose") || sheet.id.contains("/pose_overlay"))
+                    {
+                        int lastSlash = sheet.id.lastIndexOf('/');
+                        String prefix = sheet.id.substring(0, lastSlash);
+
+                        bone = targetBone == null || targetBone.isEmpty() ? prefix : prefix + "/" + targetBone;
+                    }
+                    else
+                    {
+                        bone = targetBone;
+                    }
+
+                    if (editor instanceof UIPoseKeyframeFactory pose)
+                    {
+                        local = pose.poseEditor.transform.isLocal();
+                    }
+                    else if (editor instanceof UITransformKeyframeFactory transform)
+                    {
+                        local = transform.transform.isLocal();
+                    }
                 }
-            }
-        }
-        else if (editor instanceof UITransformKeyframeFactory transform)
-        {
-            UIKeyframeSheet sheet = this.getSheet(editor.getKeyframe());
-
-            if (sheet != null)
-            {
-                String id = StringUtils.fileName(sheet.id);
-
-                if (id.startsWith("transform"))
+                else if (propertyId.equals("transform") || propertyId.startsWith("transform_overlay"))
                 {
-                    int i = sheet.id.lastIndexOf('/');
+                    int lastSlash = sheet.id.lastIndexOf('/');
 
-                    bone = i >= 0 ? sheet.id.substring(0, i) : "";
-                    local = transform.transform.isLocal();
+                    bone = lastSlash >= 0 ? sheet.id.substring(0, lastSlash) : "";
+
+                    if (editor instanceof UITransformKeyframeFactory transform)
+                    {
+                        local = transform.transform.isLocal();
+                    }
                 }
             }
         }
