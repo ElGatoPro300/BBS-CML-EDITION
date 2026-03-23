@@ -48,7 +48,7 @@ public class EntityMixin
             }
         }
     }
-    
+
     @Inject(method = "isCollidable", at = @At("HEAD"), cancellable = true)
     public void onIsCollidable(CallbackInfoReturnable<Boolean> info)
     {

@@ -5,6 +5,7 @@ import mchorse.bbs_mod.ui.dashboard.UIDashboard;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.UIScreen;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.input.KeyboardInput;
 import org.lwjgl.glfw.GLFW;
 import org.spongepowered.asm.mixin.Mixin;
@@ -22,7 +23,7 @@ public class KeyboardInputMixin
     }
 
     @Inject(method = "tick", at = @At("RETURN"))
-    public void onTick(boolean slowDown, float slowDownFactor, CallbackInfo info)
+    public void onTick(CallbackInfo info)
     {
         UIBaseMenu menu = UIScreen.getCurrentMenu();
 
@@ -33,20 +34,19 @@ public class KeyboardInputMixin
         ) {
             KeyboardInput input = (KeyboardInput) (Object) this;
 
-            input.pressingForward = Window.isKeyPressed(GLFW.GLFW_KEY_W);
-            input.pressingBack = Window.isKeyPressed(GLFW.GLFW_KEY_S);
-            input.pressingLeft = Window.isKeyPressed(GLFW.GLFW_KEY_A);
-            input.pressingRight = Window.isKeyPressed(GLFW.GLFW_KEY_D);
-            input.movementForward = getMovementMultiplier(input.pressingForward, input.pressingBack);
-            input.movementSideways = getMovementMultiplier(input.pressingLeft, input.pressingRight);
-            input.jumping = Window.isKeyPressed(GLFW.GLFW_KEY_SPACE);
-            input.sneaking = Window.isKeyPressed(GLFW.GLFW_KEY_LEFT_SHIFT);
+            boolean forward = Window.isKeyPressed(GLFW.GLFW_KEY_W);
+            boolean back = Window.isKeyPressed(GLFW.GLFW_KEY_S);
+            boolean left = Window.isKeyPressed(GLFW.GLFW_KEY_A);
+            boolean right = Window.isKeyPressed(GLFW.GLFW_KEY_D);
 
-            if (slowDown)
-            {
-                input.movementSideways *= slowDownFactor;
-                input.movementForward *= slowDownFactor;
-            }
+            input.movementForward = getMovementMultiplier(forward, back);
+            input.movementSideways = getMovementMultiplier(left, right);
+
+            boolean jump = Window.isKeyPressed(GLFW.GLFW_KEY_SPACE);
+            boolean sneak = Window.isKeyPressed(GLFW.GLFW_KEY_LEFT_SHIFT);
+
+            MinecraftClient.getInstance().options.jumpKey.setPressed(jump);
+            MinecraftClient.getInstance().options.sneakKey.setPressed(sneak);
         }
     }
 }

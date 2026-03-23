@@ -5,6 +5,7 @@ import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.camera.data.Angle;
 import mchorse.bbs_mod.utils.Axis;
 import mchorse.bbs_mod.utils.MathUtils;
+import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.render.Tessellator;
@@ -42,7 +43,7 @@ public class Draw
         float t = 1 / 96F + (float) (Math.sqrt(w * w + h + h + d + d) / 2000);
 
         BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
-        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
+        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
 
         /* Pillars: fillBox(builder, -t, -t, -t, t, t, t, r, g, b, a); */
         fillBox(builder, stack, -t, -t, -t, t, t + fh, t, r, g, b, a);
@@ -173,7 +174,7 @@ public class Draw
         fillBox(builder, stack, -axisOffset, -axisOffset, 0, axisOffset, axisOffset, axisSize, 0, 0, 1);
         fillBox(builder, stack, -axisOffset, -axisOffset, -axisOffset, axisOffset, axisOffset, axisOffset, 1, 1, 1);
 
-        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
+        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
         RenderSystem.disableDepthTest();
 
         BufferRenderer.drawWithGlobalProgram(builder.end());
