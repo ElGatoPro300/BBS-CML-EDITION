@@ -4,6 +4,7 @@ import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.forms.forms.shape.ShapeConnection;
+import mchorse.bbs_mod.forms.forms.shape.ValueShapeGraph;
 import mchorse.bbs_mod.forms.forms.shape.ShapeFormGraph;
 import mchorse.bbs_mod.forms.forms.shape.nodes.BumpNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.ColorNode;
@@ -24,6 +25,7 @@ import mchorse.bbs_mod.forms.forms.shape.nodes.VectorMathNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.VoronoiNode;
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.l10n.keys.IKey;
+import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
@@ -34,6 +36,7 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UITextareaOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.utils.UI;
+import mchorse.bbs_mod.ui.utils.UIUtils;
 
 import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
@@ -63,6 +66,7 @@ import java.util.Set;
 public class UIShapeNodeEditor extends UIElement
 {
     private ShapeFormGraph graph;
+    private ValueShapeGraph value;
     
     private float scale = 1F;
     private float translateX = 0;
@@ -269,6 +273,28 @@ public class UIShapeNodeEditor extends UIElement
     public void setGraph(ShapeFormGraph graph)
     {
         this.graph = graph;
+    }
+
+    public void setValue(ValueShapeGraph value)
+    {
+        this.value = value;
+    }
+
+    private void editGraph(Runnable callback)
+    {
+        if (callback == null)
+        {
+            return;
+        }
+
+        if (this.value != null)
+        {
+            BaseValue.edit(this.value, (__) -> callback.run());
+        }
+        else
+        {
+            callback.run();
+        }
     }
 
     @Override
@@ -519,13 +545,21 @@ public class UIShapeNodeEditor extends UIElement
     
     private void removeSelection()
     {
-        for (ShapeNode node : this.selection)
+        if (this.graph == null)
         {
-            this.graph.removeNode(node);
+            return;
         }
-        
-        this.graph.connections.removeAll(this.selectedConnections);
-        
+
+        this.editGraph(() ->
+        {
+            for (ShapeNode node : this.selection)
+            {
+                this.graph.removeNode(node);
+            }
+
+            this.graph.connections.removeAll(this.selectedConnections);
+        });
+
         this.selection.clear();
         this.selectedConnections.clear();
     }
@@ -753,6 +787,27 @@ public class UIShapeNodeEditor extends UIElement
                 if (context.getKeyCode() == GLFW.GLFW_KEY_C)
                 {
                     this.copyNodes();
+                    return true;
+                }
+                else if (context.getKeyCode() == GLFW.GLFW_KEY_X)
+                {
+                    if (this.selection.isEmpty() && this.selectedConnections.isEmpty())
+                    {
+                        context.notifyError(UIKeys.GENERAL_CUT_EMPTY);
+                        return true;
+                    }
+
+                    this.copyNodes();
+
+                    if (clipboard == null)
+                    {
+                        context.notifyError(UIKeys.GENERAL_CUT_NOT_ALLOWED);
+                        return true;
+                    }
+
+                    this.removeSelection();
+                    UIUtils.playClick();
+                    context.notifyInfo(UIKeys.GENERAL_CUT);
                     return true;
                 }
                 else if (context.getKeyCode() == GLFW.GLFW_KEY_V)

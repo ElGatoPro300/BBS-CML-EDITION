@@ -12,6 +12,7 @@ import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.context.UISimpleContextMenu;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.utils.UI;
+import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.context.ContextAction;
 import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
@@ -167,6 +168,14 @@ public abstract class UITransform extends UIElement
         this.wh(190, 90);
 
         this.keys().register(Keys.COPY, this::copyTransformations).inside().label(UIKeys.TRANSFORMS_CONTEXT_COPY);
+        this.keys().register(Keys.CUT, () ->
+        {
+            this.copyTransformations();
+            this.reset();
+            UIContext context = this.getContext();
+            if (context != null) context.notifyInfo(UIKeys.GENERAL_CUT);
+            UIUtils.playClick();
+        }).inside().label(UIKeys.GENERAL_CUT);
         this.keys().register(Keys.PASTE, () ->
         {
             ListType transforms = Window.getClipboardList();

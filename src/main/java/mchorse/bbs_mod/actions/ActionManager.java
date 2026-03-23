@@ -130,16 +130,6 @@ public class ActionManager
     {
         ActionPlayer play = this.play(entity, entity.getServerWorld(), film, tick, countdown, replayId, PlayerType.RECORDING);
 
-        if (play == null)
-        {
-            return;
-        }
-
-        if (tick > 0)
-        {
-            play.goTo(0, tick);
-        }
-
         play.stopDamage = false;
 
         this.recorders.put(entity, new ActionRecorder(film, entity, tick, countdown));
@@ -214,11 +204,9 @@ public class ActionManager
         }
     }
 
-    public void changedBlock(ServerWorld world, BlockPos pos, BlockState state, BlockEntity blockEntity)
+    public void changedBlock(BlockPos pos, BlockState state, BlockEntity blockEntity)
     {
-        DamageControl control = this.dc.get(world);
-
-        if (control != null)
+        for (DamageControl control : this.dc.values())
         {
             control.addBlock(pos, state, blockEntity);
         }
@@ -226,14 +214,9 @@ public class ActionManager
 
     public void spawnedEntity(Entity entity)
     {
-        if (entity.getWorld() instanceof ServerWorld world)
+        for (DamageControl control : this.dc.values())
         {
-            DamageControl control = this.dc.get(world);
-
-            if (control != null)
-            {
-                control.addEntity(entity);
-            }
+            control.addEntity(entity);
         }
     }
 }
