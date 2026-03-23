@@ -154,7 +154,7 @@ public class UIItemStack extends UIElement
             matrices.push();
             consumers.setUI(true);
             context.batcher.getContext().drawItem(this.stack, this.area.mx() - 8, this.area.my() - 8);
-            context.batcher.getContext().drawStackOverlay(context.batcher.getFont().getRenderer(), this.stack, this.area.mx() - 8, this.area.my() - 8);
+            context.batcher.getContext().drawItemInSlot(context.batcher.getFont().getRenderer(), this.stack, this.area.mx() - 8, this.area.my() - 8);
             consumers.setUI(false);
             matrices.pop();
         }
