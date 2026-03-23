@@ -314,6 +314,11 @@ public class UINewsPanel extends UISidebarDashboardPanel
                     return;
                 }
 
+                if (finalAnnouncement.image != null && !finalAnnouncement.image.isEmpty())
+                {
+                    prefetchImage(Link.create(finalAnnouncement.image));
+                }
+
                 pendingPriorityAnnouncement = finalAnnouncement;
             });
         });
@@ -341,68 +346,72 @@ public class UINewsPanel extends UISidebarDashboardPanel
                 }
 
                 Link link = Link.create(url);
-
-                if (link.source == null || !link.source.startsWith("http"))
-                {
-                    continue;
-                }
-
-                TextureManager textures = BBSModClient.getTextures();
-
-                if (textures.textures.get(link) != null)
-                {
-                    continue;
-                }
-
-                if (!prefetchingImages.add(link))
-                {
-                    continue;
-                }
-
-                CompletableFuture.runAsync(() ->
-                {
-                    try
-                    {
-                        try (InputStream stream = URLSourcePack.downloadImage(link))
-                        {
-                            if (stream == null)
-                            {
-                                return;
-                            }
-
-                            Pixels pixels = Pixels.fromPNGStream(stream);
-
-                            if (pixels == null)
-                            {
-                                return;
-                            }
-
-                            RenderSystem.recordRenderCall(() ->
-                            {
-                                try
-                                {
-                                    Texture texture = Texture.textureFromPixels(pixels, GL11.GL_NEAREST);
-
-                                    BBSModClient.getTextures().textures.put(link, texture);
-                                }
-                                catch (Exception exception)
-                                {
-                                    exception.printStackTrace();
-                                }
-                            });
-                        }
-                    }
-                    catch (Exception exception)
-                    {
-                        exception.printStackTrace();
-                    }
-                    finally
-                    {
-                        prefetchingImages.remove(link);
-                    }
-                });
+                prefetchImage(link);
             }
         }
+    }
+
+    private static void prefetchImage(Link link)
+    {
+        if (link == null || link.source == null || !link.source.startsWith("http"))
+        {
+            return;
+        }
+
+        TextureManager textures = BBSModClient.getTextures();
+
+        if (textures.textures.get(link) != null)
+        {
+            return;
+        }
+
+        if (!prefetchingImages.add(link))
+        {
+            return;
+        }
+
+        CompletableFuture.runAsync(() ->
+        {
+            try
+            {
+                try (InputStream stream = URLSourcePack.downloadImage(link))
+                {
+                    if (stream == null)
+                    {
+                        return;
+                    }
+
+                    Pixels pixels = Pixels.fromPNGStream(stream);
+
+                    if (pixels == null)
+                    {
+                        return;
+                    }
+
+                    RenderSystem.recordRenderCall(() ->
+                    {
+                        try
+                        {
+                            Texture texture = Texture.textureFromPixels(pixels, GL11.GL_NEAREST);
+
+                            BBSModClient.getTextures().textures.put(link, texture);
+                        }
+                        catch (Exception exception)
+                        {
+                            exception.printStackTrace();
+                        }
+                    });
+                }
+            }
+            catch (Exception exception)
+            {
+                exception.printStackTrace();
+            }
+            finally
+            {
+                prefetchingImages.remove(link);
+            }
+        });
     }
 
     private void populate()
