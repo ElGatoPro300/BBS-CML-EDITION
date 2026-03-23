@@ -72,10 +72,7 @@ public class TriggerBlockEntity extends BlockEntity
                 {
                     try
                     {
-                        if (player.world.getServer() != null && this.world instanceof net.minecraft.server.world.ServerWorld serverWorld)
-                        {
-                            player.world.getServer().getCommandManager().getDispatcher().execute(cmd, player.getCommandSource(serverWorld));
-                        }
+                        player.getServer().getCommandManager().executeWithPrefix(player.getCommandSource().withLevel(2), cmd);
                     }
                     catch (Exception e)
                     {
@@ -119,22 +116,22 @@ public class TriggerBlockEntity extends BlockEntity
         TriggerBlockEntityUpdateCallback.EVENT.invoker().update(blockEntity);
     }
 
-    // @Override
+    @Override
     public void readNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registryLookup)
     {
-        // super.readNbt(nbt, registryLookup);
+        super.readNbt(nbt, registryLookup);
         
         if (nbt.contains("Left")) this.left.fromData(DataStorageUtils.fromNbt(nbt.get("Left")));
         if (nbt.contains("Right")) this.right.fromData(DataStorageUtils.fromNbt(nbt.get("Right")));
-        if (nbt.contains("Collidable")) this.collidable.set(nbt.getBoolean("Collidable").orElse(false));
+        if (nbt.contains("Collidable")) this.collidable.set(nbt.getBoolean("Collidable"));
         if (nbt.contains("Pos1")) this.pos1.fromData(DataStorageUtils.fromNbt(nbt.get("Pos1")));
         if (nbt.contains("Pos2")) this.pos2.fromData(DataStorageUtils.fromNbt(nbt.get("Pos2")));
     }
 
-    // @Override
+    @Override
     public void writeNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registryLookup)
     {
-        // super.writeNbt(nbt, registryLookup);
+        super.writeNbt(nbt, registryLookup);
         
         nbt.put("Left", DataStorageUtils.toNbt(this.left.toData()));
         nbt.put("Right", DataStorageUtils.toNbt(this.right.toData()));

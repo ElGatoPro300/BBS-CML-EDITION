@@ -14,10 +14,10 @@ import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.joml.Vectors;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.ShaderProgram;
-// import net.minecraft.client.gl.ShaderProgramKeys;
-// import net.minecraft.client.gl.ShaderProgramKeys;
+import net.minecraft.client.gl.ShaderProgramKeys;
+import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.GameRenderer;
-import com.mojang.blaze3d.vertex.VertexFormat;
+import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.world.World;
@@ -90,7 +90,7 @@ public class ParticleFormRenderer extends FormRenderer<ParticleForm> implements 
 
         if (emitter != null)
         {
-            MatrixStack stack = new MatrixStack();
+            MatrixStack stack = context.batcher.getContext().getMatrices();
             int scale = (y2 - y1) / 2;
 
             stack.push();
@@ -159,7 +159,7 @@ public class ParticleFormRenderer extends FormRenderer<ParticleForm> implements 
                 }
             }
 
-            Matrix4f modelMatrix = new Matrix4f(new Matrix4f());
+            Matrix4f modelMatrix = new Matrix4f(context.stack.peek().getPositionMatrix());
 
             Vector3d translation = new Vector3d(modelMatrix.getTranslation(Vectors.TEMP_3F));
             
@@ -170,7 +170,8 @@ public class ParticleFormRenderer extends FormRenderer<ParticleForm> implements 
 
             GameRenderer gameRenderer = MinecraftClient.getInstance().gameRenderer;
 
-            // Lightmap/overlay state handling updated in 1.21.11
+            gameRenderer.getLightmapTextureManager().enable();
+            gameRenderer.getOverlayTexture().setupOverlayColor();
 
             context.stack.push();
             context.stack.loadIdentity();
@@ -187,12 +188,20 @@ public class ParticleFormRenderer extends FormRenderer<ParticleForm> implements 
                 Supplier<ShaderProgram> shader = billboard
                     ? this.getShader(
                         context,
-                        () -> null, // net.minecraft.client.render.GameRenderer::getRenderTypeEntityTranslucentProgram,
+                        () ->
+                        {
+                            RenderSystem.setShader(ShaderProgramKeys.RENDERTYPE_ENTITY_TRANSLUCENT);
+                            return RenderSystem.getShader();
+                        },
                         BBSShaders::getPickerBillboardProgram
                     )
                     : this.getShader(
                         context,
-                        () -> null, // net.minecraft.client.render.GameRenderer::getParticleProgram,
+                        () ->
+                        {
+                            RenderSystem.setShader(ShaderProgramKeys.PARTICLE);
+                            return RenderSystem.getShader();
+                        },
                         BBSShaders::getPickerParticlesProgram
                     );
 
@@ -201,7 +210,8 @@ public class ParticleFormRenderer extends FormRenderer<ParticleForm> implements 
 
             context.stack.pop();
 
-            // Lightmap/overlay state handling updated in 1.21.11
+            gameRenderer.getLightmapTextureManager().disable();
+            gameRenderer.getOverlayTexture().teardownOverlayColor();
         }
     }
 
@@ -234,6 +244,3 @@ public class ParticleFormRenderer extends FormRenderer<ParticleForm> implements 
         }
     }
 }
-
-
-

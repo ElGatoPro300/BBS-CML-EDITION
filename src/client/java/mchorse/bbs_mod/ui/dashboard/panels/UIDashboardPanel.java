@@ -3,7 +3,7 @@ package mchorse.bbs_mod.ui.dashboard.panels;
 import mchorse.bbs_mod.ui.dashboard.UIDashboard;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
-// import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 
 public class UIDashboardPanel extends UIElement
 {
@@ -60,10 +60,8 @@ public class UIDashboardPanel extends UIElement
     public void startRenderFrame(float tickDelta)
     {}
 
-    /*
     public void renderInWorld(WorldRenderContext context)
     {}
-    */
 
     public void renderPanelBackground(UIContext context)
     {}

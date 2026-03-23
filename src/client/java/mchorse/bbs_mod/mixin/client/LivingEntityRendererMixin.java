@@ -7,10 +7,9 @@ import mchorse.bbs_mod.utils.pose.PoseTransform;
 import mchorse.bbs_mod.utils.pose.Transform;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.model.ModelPart;
-import net.minecraft.client.render.command.OrderedRenderCommandQueue;
+import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.entity.LivingEntityRenderer;
 import net.minecraft.client.render.entity.state.LivingEntityRenderState;
-import net.minecraft.client.render.state.CameraRenderState;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
@@ -25,8 +24,8 @@ import java.util.Map;
 @Mixin(LivingEntityRenderer.class)
 public abstract class LivingEntityRendererMixin
 {
-    @Inject(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/render/entity/model/EntityModel;setAngles(Lnet/minecraft/client/render/entity/state/EntityRenderState;)V", ordinal = 0, shift = At.Shift.AFTER), require = 0)
-    public void onSetAngles(LivingEntityRenderState state, MatrixStack matrixStack, OrderedRenderCommandQueue queue, CameraRenderState cameraState, CallbackInfo info)
+    @Inject(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/render/entity/model/EntityModel;setAngles(Lnet/minecraft/client/render/entity/state/EntityRenderState;)V", ordinal = 0, shift = At.Shift.AFTER))
+    public void onSetAngles(LivingEntityRenderState state, MatrixStack matrixStack, VertexConsumerProvider vertexConsumerProvider, int i, CallbackInfo info)
     {
         Entity entity = ((IEntityRenderState) state).bbs$getEntity();
 
@@ -42,27 +41,24 @@ public abstract class LivingEntityRendererMixin
         {
             pose = pose.copy();
 
-            if (poseOverlay != null)
+            for (Map.Entry<String, PoseTransform> transformEntry : poseOverlay.transforms.entrySet())
             {
-                for (Map.Entry<String, PoseTransform> transformEntry : poseOverlay.transforms.entrySet())
-                {
-                    PoseTransform poseTransform = pose.get(transformEntry.getKey());
-                    PoseTransform value = transformEntry.getValue();
+                PoseTransform poseTransform = pose.get(transformEntry.getKey());
+                PoseTransform value = transformEntry.getValue();
 
-                    if (value.fix != 0)
-                    {
-                        poseTransform.translate.lerp(value.translate, value.fix);
-                        poseTransform.scale.lerp(value.scale, value.fix);
-                        poseTransform.rotate.lerp(value.rotate, value.fix);
-                        poseTransform.rotate2.lerp(value.rotate2, value.fix);
-                    }
-                    else
-                    {
-                        poseTransform.translate.add(value.translate);
-                        poseTransform.scale.add(value.scale).sub(1, 1, 1);
-                        poseTransform.rotate.add(value.rotate);
-                        poseTransform.rotate2.add(value.rotate2);
-                    }
+                if (value.fix != 0)
+                {
+                    poseTransform.translate.lerp(value.translate, value.fix);
+                    poseTransform.scale.lerp(value.scale, value.fix);
+                    poseTransform.rotate.lerp(value.rotate, value.fix);
+                    poseTransform.rotate2.lerp(value.rotate2, value.fix);
+                }
+                else
+                {
+                    poseTransform.translate.add(value.translate);
+                    poseTransform.scale.add(value.scale).sub(1, 1, 1);
+                    poseTransform.rotate.add(value.rotate);
+                    poseTransform.rotate2.add(value.rotate2);
                 }
             }
 
@@ -80,7 +76,6 @@ public abstract class LivingEntityRendererMixin
                     {
                         Transform transform = new Transform();
 
-                        /*
                         transform.translate.x = value.pivotX;
                         transform.translate.y = value.pivotY;
                         transform.translate.z = value.pivotZ;
@@ -100,7 +95,6 @@ public abstract class LivingEntityRendererMixin
                         value.xScale += poseTransform.scale.x - 1F;
                         value.yScale += poseTransform.scale.y - 1F;
                         value.zScale += poseTransform.scale.z - 1F;
-                        */
 
                         MobFormRenderer.getCache().put(value, transform);
                     }
@@ -110,14 +104,13 @@ public abstract class LivingEntityRendererMixin
     }
 
     @Inject(method = "render", at = @At("TAIL"))
-    public void onRenderEnd(LivingEntityRenderState state, MatrixStack matrixStack, OrderedRenderCommandQueue queue, CameraRenderState cameraState, CallbackInfo info)
+    public void onRenderEnd(LivingEntityRenderState state, MatrixStack matrixStack, VertexConsumerProvider vertexConsumerProvider, int i, CallbackInfo info)
     {
         for (Map.Entry<ModelPart, Transform> entry : MobFormRenderer.getCache().entrySet())
         {
             Transform transform = entry.getValue();
             ModelPart value = entry.getKey();
 
-            /*
             value.pivotX = transform.translate.x;
             value.pivotY = transform.translate.y;
             value.pivotZ = transform.translate.z;
@@ -127,7 +120,6 @@ public abstract class LivingEntityRendererMixin
             value.xScale = transform.scale.x;
             value.yScale = transform.scale.y;
             value.zScale = transform.scale.z;
-            */
         }
 
         MobFormRenderer.getCache().clear();

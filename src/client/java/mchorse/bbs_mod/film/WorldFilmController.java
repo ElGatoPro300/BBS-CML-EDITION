@@ -5,7 +5,7 @@ import mchorse.bbs_mod.camera.clips.CameraClipContext;
 import mchorse.bbs_mod.camera.clips.misc.AudioClientClip;
 import mchorse.bbs_mod.camera.data.Position;
 import mchorse.bbs_mod.utils.clips.Clip;
-// import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 
 import java.util.List;
 import java.util.Map;
@@ -58,7 +58,6 @@ public class WorldFilmController extends BaseFilmController
         super.update();
     }
 
-    /*
     @Override
     public void render(WorldRenderContext context)
     {
@@ -73,7 +72,7 @@ public class WorldFilmController extends BaseFilmController
         }
 
         this.context.clipData.clear();
-        this.context.setup(tick, ((mchorse.bbs_mod.mixin.client.RenderTickCounterAccessor) context.tickCounter()).getTickDeltaField());
+        this.context.setup(tick, context.tickCounter().getTickDelta(false));
 
         for (Clip clip : clips)
         {
@@ -84,7 +83,6 @@ public class WorldFilmController extends BaseFilmController
 
         AudioClientClip.manageSounds(this.context);
     }
-    */
 
     @Override
     public void shutdown()

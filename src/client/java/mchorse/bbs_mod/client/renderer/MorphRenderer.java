@@ -45,13 +45,13 @@ public class MorphRenderer
         {
             if (canRender())
             {
-                // RenderSystem.enableDepthTest();
+                RenderSystem.enableDepthTest();
 
                 Vector3f a = new Vector3f(0.85F, 0.85F, -1F).normalize();
                 Vector3f b = new Vector3f(-0.85F, 0.85F, 1F).normalize();
-                // RenderSystem.setupLevelDiffuseLighting(a, b);
+                RenderSystem.setupLevelDiffuseLighting(a, b);
 
-                float bodyYaw = Lerps.lerp(player.bodyYaw, player.bodyYaw, g); // player.prevBodyYaw
+                float bodyYaw = Lerps.lerp(player.prevBodyYaw, player.bodyYaw, g);
                 int overlay = OverlayTexture.DEFAULT_UV;
 
                 matrixStack.push();
@@ -63,7 +63,7 @@ public class MorphRenderer
 
                 matrixStack.pop();
 
-                // RenderSystem.disableDepthTest();
+                RenderSystem.disableDepthTest();
             }
 
             return true;
@@ -104,9 +104,9 @@ public class MorphRenderer
 
         if (form != null)
         {
-            // RenderSystem.enableDepthTest();
+            RenderSystem.enableDepthTest();
 
-            float bodyYaw = Lerps.lerp(livingEntity.bodyYaw, livingEntity.bodyYaw, g);
+            float bodyYaw = Lerps.lerp(livingEntity.prevBodyYaw, livingEntity.bodyYaw, g);
 
             matrixStack.push();
             matrixStack.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-bodyYaw));
@@ -117,7 +117,7 @@ public class MorphRenderer
 
             matrixStack.pop();
 
-            // RenderSystem.disableDepthTest();
+            RenderSystem.disableDepthTest();
 
             return true;
         }

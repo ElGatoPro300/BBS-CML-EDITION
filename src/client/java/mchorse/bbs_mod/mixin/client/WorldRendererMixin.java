@@ -9,7 +9,6 @@ import net.minecraft.client.option.CloudRenderMode;
 import net.minecraft.client.render.FrameGraphBuilder;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.WorldRenderer;
-import net.minecraft.client.render.Camera;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix4f;
@@ -29,9 +28,8 @@ public class WorldRendererMixin
     public Framebuffer entityOutlinesFramebuffer;
 */
 
-    /*
-    @Inject(method = "renderSky(Lnet/minecraft/client/render/FrameGraphBuilder;Lnet/minecraft/client/render/Camera;FLnet/minecraft/client/render/Fog;)V", at = @At("HEAD"), cancellable = true, require = 0)
-    public void onRenderSky(FrameGraphBuilder builder, Camera camera, float tickDelta, Fog fog, CallbackInfo info)
+    @Inject(method = "renderSky(Lnet/minecraft/client/util/math/MatrixStack;Lorg/joml/Matrix4f;FLnet/minecraft/client/render/Camera;ZLjava/lang/Runnable;)V", at = @At("HEAD"), cancellable = true, require = 0)
+    public void onRenderSky(CallbackInfo info)
     {
         if (BBSSettings.chromaSkyEnabled.get())
         {
@@ -39,45 +37,44 @@ public class WorldRendererMixin
 
             GL11.glClearColor(color.r, color.g, color.b, 1F);
             GL11.glClear(GL11.GL_COLOR_BUFFER_BIT);
-            RenderSystem.setShaderFogColor(color.r, color.g, color.b, 1F);
+            /* RenderSystem.setShaderFogColor(color.r, color.g, color.b, 1F); */
 
             info.cancel();
         }
     }
-    */
 
-    // @Inject(method = "renderClouds", at = @At("HEAD"), cancellable = true)
-    // public void onRenderClouds(FrameGraphBuilder frameGraphBuilder, CloudRenderMode mode, Vec3d cameraPos, long tick, float tickDelta, int color, float cloudHeight, CallbackInfo info)
-    // {
-    //     if (BBSSettings.chromaSkyEnabled.get() && !BBSSettings.chromaSkyClouds.get())
-    //     {
-    //         info.cancel();
-    //     }
-    // }
-
-    // @Inject(method = "renderLayer", at = @At("HEAD"), cancellable = true)
-    // public void onRenderLayer(RenderLayer renderLayer, double cameraX, double cameraY, double cameraZ, Matrix4f positionMatrix, Matrix4f projectionMatrix, CallbackInfo info)
-    // {
-    //     if (BBSSettings.chromaSkyEnabled.get() && !BBSSettings.chromaSkyTerrain.get())
-    //     {
-    //
-    //         info.cancel();
-    //     }
-    // }
-
-    @Inject(method = "setupFrustum", at = @At("HEAD"), require = 0)
-    public void onSetupFrustum(Matrix4f projectionMatrix, Matrix4f modelViewMatrix, Vec3d cameraPos, CallbackInfoReturnable<?> cir)
+    @Inject(method = "renderClouds", at = @At("HEAD"), cancellable = true)
+    public void onRenderClouds(FrameGraphBuilder frameGraphBuilder, Matrix4f positionMatrix, Matrix4f projectionMatrix, CloudRenderMode mode, Vec3d cameraPos, float tickDelta, int color, float cloudHeight, CallbackInfo info)
     {
-        BBSRendering.camera.set(modelViewMatrix);
+        if (BBSSettings.chromaSkyEnabled.get() && !BBSSettings.chromaSkyClouds.get())
+        {
+            info.cancel();
+        }
     }
 
-    @Inject(at = @At("RETURN"), method = "loadEntityOutlinePostProcessor", require = 0)
+    @Inject(method = "renderLayer", at = @At("HEAD"), cancellable = true)
+    public void onRenderLayer(RenderLayer renderLayer, double cameraX, double cameraY, double cameraZ, Matrix4f positionMatrix, Matrix4f projectionMatrix, CallbackInfo info)
+    {
+        if (BBSSettings.chromaSkyEnabled.get() && !BBSSettings.chromaSkyTerrain.get())
+        {
+
+            info.cancel();
+        }
+    }
+
+    @Inject(method = "setupFrustum", at = @At("HEAD"))
+    public void onSetupFrustum(Vec3d vec3d, Matrix4f matrix4f, Matrix4f positionMatrix, CallbackInfo info)
+    {
+        BBSRendering.camera.set(matrix4f);
+    }
+
+    @Inject(at = @At("RETURN"), method = "loadEntityOutlinePostProcessor")
     private void onLoadEntityOutlineShader(CallbackInfo info)
     {
         BBSRendering.resizeExtraFramebuffers();
     }
 
-    @Inject(at = @At("RETURN"), method = "onResized", require = 0)
+    @Inject(at = @At("RETURN"), method = "onResized")
     private void onResized(CallbackInfo info)
     {
         /*

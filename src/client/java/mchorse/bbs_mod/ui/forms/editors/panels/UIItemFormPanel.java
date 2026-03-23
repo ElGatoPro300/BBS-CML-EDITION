@@ -10,7 +10,7 @@ import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Color;
-// import net.minecraft.client.render.model.json.ModelTransformationMode;
+import net.minecraft.item.ModelTransformationMode;
 
 public class UIItemFormPanel extends UIFormPanel<ItemForm>
 {
@@ -27,7 +27,6 @@ public class UIItemFormPanel extends UIFormPanel<ItemForm>
         {
             this.getContext().replaceContextMenu((menu) ->
             {
-                /*
                 for (ModelTransformationMode value : ModelTransformationMode.values())
                 {
                     if (this.form.modelTransform.get() == value)
@@ -39,7 +38,6 @@ public class UIItemFormPanel extends UIFormPanel<ItemForm>
                         menu.action(Icons.LINE, IKey.constant(value.asString()), () -> this.setModelTransform(value));
                     }
                 }
-                */
             });
         });
 
@@ -48,14 +46,12 @@ public class UIItemFormPanel extends UIFormPanel<ItemForm>
         this.options.add(this.color, UI.label(UIKeys.FORMS_EDITORS_ITEM_TRANSFORMS), this.modelTransform, this.itemStackEditor);
     }
 
-    /*
     private void setModelTransform(ModelTransformationMode value)
     {
         this.form.modelTransform.set(value);
 
         this.modelTransform.label = IKey.constant(value.asString());
     }
-    */
 
     @Override
     public void startEdit(ItemForm form)
@@ -63,7 +59,7 @@ public class UIItemFormPanel extends UIFormPanel<ItemForm>
         super.startEdit(form);
 
         this.color.setColor(form.color.get().getARGBColor());
-        // this.modelTransform.label = IKey.constant(form.modelTransform.get().asString());
+        this.modelTransform.label = IKey.constant(form.modelTransform.get().asString());
         this.itemStackEditor.setStack(form.stack.get());
     }
 }

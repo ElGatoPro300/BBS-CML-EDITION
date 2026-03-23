@@ -27,7 +27,6 @@ import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.entity.LivingEntityRenderer;
 import net.minecraft.client.render.entity.model.EntityModel;
 import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.command.argument.NbtCompoundArgumentType;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityPose;
 import net.minecraft.entity.EquipmentSlot;
@@ -187,7 +186,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
         try
         {
-            compound = NbtCompoundArgumentType.nbtCompound().parse(new StringReader(nbt));
+            compound = (new StringNbtReader(new StringReader(nbt))).parseCompound();
         }
         catch (Exception e)
         {}
@@ -203,9 +202,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
         if (this.entity != null)
         {
             compound.putString("id", id);
-            try {
-                // this.entity.readNbt(compound);
-            } catch (Exception e) {}
+            this.entity.readNbt(compound);
             this.entity.noClip = true;
         }
     }
@@ -217,7 +214,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
         if (this.entity != null)
         {
-            MatrixStack stack = new MatrixStack();
+            MatrixStack stack = context.batcher.getContext().getMatrices();
 
             stack.push();
 
@@ -254,6 +251,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
             });
 
             consumers.setUI(true);
+            MinecraftClient.getInstance().getEntityRenderDispatcher().render(this.entity, 0D, 0D, 0D, context.getTransition(), stack, consumers, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE);
             consumers.draw();
             consumers.setUI(false);
 
@@ -261,7 +259,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
             stack.pop();
 
-            // RenderSystem.depthFunc(GL11.GL_ALWAYS);
+            RenderSystem.depthFunc(GL11.GL_ALWAYS);
         }
     }
 
@@ -284,7 +282,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
                     {
                         this.bindTexture();
                         this.setupTarget(context, BBSShaders.getPickerModelsProgram());
-                        // RenderSystem.setShader(BBSShaders.getPickerModelsProgram());
+                        RenderSystem.setShader(BBSShaders.getPickerModelsProgram());
 
                         first.bool = true;
                     }
@@ -323,7 +321,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
             currentPose = this.form.pose.get();
             currentPoseOverlay = this.form.poseOverlay.get();
 
-            consumers.draw();
+            MinecraftClient.getInstance().getEntityRenderDispatcher().render(this.entity, 0D, 0D, 0D, context.getTransition(), context.stack, consumers, light);
 
             currentPose = currentPoseOverlay = null;
 
@@ -332,7 +330,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
             context.stack.pop();
 
-            // RenderSystem.enableDepthTest();
+            RenderSystem.enableDepthTest();
         }
     }
 
@@ -345,20 +343,20 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
         {
             this.entity.tick();
 
-            // this.entity.prevPitch = this.prevPitch;
-            // this.entity.prevYaw = 0F;
+            this.entity.prevPitch = this.prevPitch;
+            this.entity.prevYaw = 0F;
 
             if (this.entity instanceof LivingEntity livingEntity)
             {
-                // livingEntity.prevHeadYaw = this.prevYawHead;
-                // livingEntity.prevBodyYaw = 0F;
+                livingEntity.prevHeadYaw = this.prevYawHead;
+                livingEntity.prevBodyYaw = 0F;
 
                 /* Limb swing is so ugly */
                 if (livingEntity.limbAnimator instanceof LimbAnimatorAccessor a && entity.getLimbAnimator() instanceof LimbAnimatorAccessor b)
                 {
-                    a.setLastSpeed(b.getLastSpeed());
-                    livingEntity.limbAnimator.setSpeed(entity.getLimbAnimator().getSpeed());
-                    a.setAnimationProgress(entity.getLimbAnimator().getAnimationProgress());
+                    a.setPrevSpeed(b.getPrevSpeed());
+                    a.setSpeed(b.getSpeed());
+                    a.setPos(b.getPos());
                 }
 
                 /* Arm swing */
@@ -409,4 +407,3 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
         public boolean bool;
     }
 }
-
