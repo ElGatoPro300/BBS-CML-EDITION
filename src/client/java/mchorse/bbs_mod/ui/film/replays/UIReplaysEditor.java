@@ -699,7 +699,7 @@ public class UIReplaysEditor extends UIElement
                 {
                     String suffix = name.substring("transform_overlay".length());
                     if (suffix.isEmpty()) return 11;
-                    try { return 11 + Integer.parseInt(suffix); } catch (Exception e) { return 100; }
+                    try { return 12 + Integer.parseInt(suffix); } catch (Exception e) { return 19; }
                 }
 
                 if (name.equals("pose")) return 20;
@@ -708,7 +708,7 @@ public class UIReplaysEditor extends UIElement
                     if (name.indexOf(':') != -1) return 29;
                     String suffix = name.substring("pose_overlay".length());
                     if (suffix.isEmpty()) return 21;
-                    try { return 21 + Integer.parseInt(suffix); } catch (Exception e) { return 28; }
+                    try { return 22 + Integer.parseInt(suffix); } catch (Exception e) { return 28; }
                 }
 
                 if (name.indexOf(':') != -1) return 29;
@@ -1265,6 +1265,10 @@ public class UIReplaysEditor extends UIElement
         else if (trackName.startsWith("pose_overlay"))
         {
             overlays.add(sheet);
+        }
+        else if (trackName.startsWith("transform_overlay") || trackName.equals("transform"))
+        {
+            before.add(sheet);
         }
         else
         {
