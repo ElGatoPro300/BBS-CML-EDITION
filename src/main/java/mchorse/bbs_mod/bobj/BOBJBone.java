@@ -1,7 +1,5 @@
 package mchorse.bbs_mod.bobj;
 
-import mchorse.bbs_mod.resources.Link;
-import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.pose.Transform;
 import org.joml.Matrix4f;
 
@@ -15,10 +13,6 @@ public class BOBJBone
 
     /* Transformations */
     public final Transform transform = new Transform();
-
-    public float lighting;
-    public final Color color = new Color(1, 1, 1, 1);
-    public Link texture;
 
     /**
      * Computed bone matrix which is used for transformations. This 
@@ -100,27 +94,8 @@ public class BOBJBone
         this.mat.scale(this.transform.scale);
     }
 
-    public BOBJBone copy()
-    {
-        BOBJBone bone = new BOBJBone(this.index, this.name, this.parent, new Matrix4f(this.boneMat));
-
-        bone.transform.copy(this.transform);
-        bone.lighting = this.lighting;
-        bone.color.copy(this.color);
-        bone.texture = this.texture;
-        bone.mat.set(this.mat);
-        bone.originMat.set(this.originMat);
-        bone.invBoneMat.set(this.invBoneMat);
-        bone.relBoneMat.set(this.relBoneMat);
-
-        return bone;
-    }
-
     public void reset()
     {
         this.transform.identity();
-        this.color.set(1F, 1F, 1F, 1F);
-        this.lighting = 0F;
-        this.texture = null;
     }
 }

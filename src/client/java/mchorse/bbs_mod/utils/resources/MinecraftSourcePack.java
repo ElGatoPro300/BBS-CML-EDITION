@@ -29,17 +29,6 @@ public class MinecraftSourcePack implements ISourcePack
 
         this.setupPaths();
     }
-    
-    private ResourceManager getEffectiveManager(Link link)
-    {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        if (mc.getServer() != null && (link.path.startsWith("structures/") || link.path.endsWith(".nbt")))
-        {
-            return mc.getServer().getResourceManager();
-        }
-        
-        return this.manager;
-    }
 
     public void setupPaths()
     {
@@ -87,39 +76,13 @@ public class MinecraftSourcePack implements ISourcePack
     @Override
     public boolean hasAsset(Link link)
     {
-        Identifier id = new Identifier(link.toString());
-        ResourceManager effectiveManager = this.getEffectiveManager(link);
-        
-        if (effectiveManager.getResource(id).isPresent())
-        {
-            return true;
-        }
-        
-        if (!link.path.startsWith("structures/") && link.path.endsWith(".nbt"))
-        {
-             Identifier structureId = new Identifier(link.source, "structures/" + link.path);
-             if (effectiveManager.getResource(structureId).isPresent())
-             {
-                 return true;
-             }
-        }
-        
-        return false;
+        return this.manager.getResource(new Identifier(link.toString())).isPresent();
     }
 
     @Override
     public InputStream getAsset(Link link) throws IOException
     {
-        Identifier id = new Identifier(link.toString());
-        ResourceManager effectiveManager = this.getEffectiveManager(link);
-        
-        Optional<Resource> resource = effectiveManager.getResource(id);
-
-        if (resource.isEmpty() && !link.path.startsWith("structures/") && link.path.endsWith(".nbt"))
-        {
-             Identifier structureId = new Identifier(link.source, "structures/" + link.path);
-             resource = effectiveManager.getResource(structureId);
-        }
+        Optional<Resource> resource = this.manager.getResource(new Identifier(link.toString()));
 
         if (resource.isPresent())
         {

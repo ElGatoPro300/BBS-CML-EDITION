@@ -115,12 +115,9 @@ public class UIOverlayPanel extends UIElement
         {
             if (context.isPressed(Keys.CLOSE))
             {
-                if (this.getParent() instanceof UIOverlay)
-                {
-                    this.close();
+                this.close();
 
-                    return true;
-                }
+                return true;
             }
             else if (context.isPressed(Keys.CONFIRM))
             {

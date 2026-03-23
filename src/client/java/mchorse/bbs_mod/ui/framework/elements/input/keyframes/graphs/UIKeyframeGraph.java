@@ -36,11 +36,11 @@ import java.util.List;
 
 public class UIKeyframeGraph implements IUIKeyframeGraph
 {
-    protected UIKeyframes keyframes;
+    private UIKeyframes keyframes;
 
-    protected UIKeyframeSheet sheet;
+    private UIKeyframeSheet sheet;
 
-    protected final Scale yAxis;
+    private final Scale yAxis;
 
     public UIKeyframeGraph(UIKeyframes keyframes, UIKeyframeSheet sheet)
     {
@@ -507,7 +507,7 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
         }
     }
 
-    protected void renderPreviewKeyframe(UIContext context, UIKeyframeSheet sheet, double tick, int y, int color)
+    private void renderPreviewKeyframe(UIContext context, UIKeyframeSheet sheet, double tick, int y, int color)
     {
         int x = this.keyframes.toGraphX(tick);
         float a = (float) Math.sin(context.getTickTransition() / 2D) * 0.1F + 0.5F;
@@ -712,14 +712,7 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
         }
 
         RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
-
-        if (keyframes.isEmpty())
-        {
-            return;
-        }
-
         BufferRenderer.drawWithGlobalProgram(builder.end());
     }
 

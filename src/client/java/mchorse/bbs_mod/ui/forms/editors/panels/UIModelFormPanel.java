@@ -61,17 +61,6 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
         this.color = new UIColor((c) -> this.form.color.set(new Color().set(c))).withAlpha();
         this.color.direction(Direction.LEFT);
         this.poseEditor = new UIModelPoseEditor();
-        this.poseEditor.setDefaultTextureSupplier(() ->
-        {
-            Link base = this.form.texture.get();
-            if (base != null)
-            {
-                return base;
-            }
-
-            ModelInstance model = ModelFormRenderer.getModel(this.form);
-            return model != null ? model.texture : null;
-        });
         this.shapeKeys = new UIShapeKeys();
         this.pick = new UIButton(UIKeys.FORMS_EDITOR_MODEL_PICK_TEXTURE, (b) ->
         {
@@ -100,14 +89,9 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
         super.startEdit(form);
 
         ModelInstance model = ModelFormRenderer.getModel(this.form);
-        String poseGroup = model == null ? this.form.model.get() : model.poseGroup;
-        if (poseGroup == null || poseGroup.isEmpty())
-        {
-            poseGroup = model == null ? this.form.model.get() : model.id;
-        }
 
         this.poseEditor.setValuePose(form.pose);
-        this.poseEditor.setPose(form.pose.get(), poseGroup);
+        this.poseEditor.setPose(form.pose.get(), model == null ? this.form.model.get() : model.poseGroup);
         this.poseEditor.fillGroups(model == null ? null : model.model, model == null ? null : model.flippedParts, true);
         this.color.setColor(form.color.get().getARGBColor());
 
@@ -120,7 +104,7 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
             if (!modelShapeKeys.isEmpty())
             {
                 this.options.add(this.shapeKeys);
-                this.shapeKeys.setShapeKeys(poseGroup, modelShapeKeys, this.form.shapeKeys.get());
+                this.shapeKeys.setShapeKeys(model.poseGroup, modelShapeKeys, this.form.shapeKeys.get());
             }
         }
 

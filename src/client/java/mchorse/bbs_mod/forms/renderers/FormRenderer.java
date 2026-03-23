@@ -30,13 +30,6 @@ import java.util.function.Supplier;
 
 public abstract class FormRenderer <T extends Form>
 {
-    private static boolean suppressFormDisplayName;
-
-    public static void setSuppressFormDisplayName(boolean suppress)
-    {
-        suppressFormDisplayName = suppress;
-    }
-
     protected T form;
 
     public FormRenderer(T form)
@@ -61,7 +54,7 @@ public abstract class FormRenderer <T extends Form>
         FontRenderer font = context.batcher.getFont();
         String name = this.form.name.get();
 
-        if (!suppressFormDisplayName && !name.isEmpty())
+        if (!name.isEmpty())
         {
             name = font.limitToWidth(name, x2 - x1 - 3);
 
@@ -175,7 +168,6 @@ public abstract class FormRenderer <T extends Form>
         transform.scale.add(overlay.scale).sub(1, 1, 1);
         transform.rotate.add(overlay.rotate);
         transform.rotate2.add(overlay.rotate2);
-        transform.pivot.add(overlay.pivot);
     }
 
     protected Supplier<ShaderProgram> getShader(FormRenderingContext context, Supplier<ShaderProgram> normal, Supplier<ShaderProgram> picking)

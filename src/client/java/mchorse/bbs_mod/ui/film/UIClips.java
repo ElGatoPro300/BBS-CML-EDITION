@@ -1206,13 +1206,7 @@ public class UIClips extends UIElement
         }
 
         this.vertical.mouseReleased(context);
-        this.resetStates();
 
-        return super.subMouseReleased(context);
-    }
-
-    private void resetStates()
-    {
         if (this.selecting)
         {
             this.pickLastSelectedClip();
@@ -1229,8 +1223,8 @@ public class UIClips extends UIElement
         this.otherClips = Collections.emptyList();
         this.snappingPoints.clear();
         this.grabbedData.clear();
-        
-        this.vertical.dragging = false;
+
+        return super.subMouseReleased(context);
     }
 
     @Override
@@ -1265,20 +1259,6 @@ public class UIClips extends UIElement
 
     private void handleInput(int mouseX, int mouseY)
     {
-        if ((this.scrubbing || this.selecting || this.grabbing || this.selectingLoop == 0) && !Window.isMouseButtonPressed(GLFW.GLFW_MOUSE_BUTTON_1))
-        {
-            this.resetStates();
-
-            return;
-        }
-
-        if (this.selectingLoop == 1 && !Window.isMouseButtonPressed(GLFW.GLFW_MOUSE_BUTTON_2))
-        {
-            this.resetStates();
-
-            return;
-        }
-
         if (this.scrubbing)
         {
             this.delegate.setCursor(this.fromGraphX(mouseX));
@@ -1530,13 +1510,6 @@ public class UIClips extends UIElement
     {
         if (this.scrolling)
         {
-            if (!Window.isMouseButtonPressed(GLFW.GLFW_MOUSE_BUTTON_3))
-            {
-                this.resetStates();
-
-                return;
-            }
-
             this.scale.setShift(this.scale.getShift() - (mouseX - this.lastX) / this.scale.getZoom());
             this.vertical.scrollBy(this.lastY - mouseY);
             this.vertical.clamp();

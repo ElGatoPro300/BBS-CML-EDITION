@@ -1,14 +1,11 @@
 package mchorse.bbs_mod.cubic.render;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.cubic.data.model.Model;
 import mchorse.bbs_mod.cubic.data.model.ModelGroup;
 import mchorse.bbs_mod.cubic.render.vao.ModelVAO;
 import mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer;
 import mchorse.bbs_mod.obj.shapes.ShapeKeys;
-import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.interps.Lerps;
@@ -22,62 +19,26 @@ public class CubicVAORenderer extends CubicCubeRenderer
 {
     private ShaderProgram program;
     private ModelInstance model;
-    private Link defaultTexture;
 
-    public CubicVAORenderer(ShaderProgram program, ModelInstance model, int light, int overlay, StencilMap stencilMap, ShapeKeys shapeKeys, Link defaultTexture)
+    public CubicVAORenderer(ShaderProgram program, ModelInstance model, int light, int overlay, StencilMap stencilMap, ShapeKeys shapeKeys)
     {
         super(light, overlay, stencilMap, shapeKeys);
 
         this.program = program;
         this.model = model;
-        this.defaultTexture = defaultTexture;
     }
 
     @Override
     public boolean renderGroup(BufferBuilder builder, MatrixStack stack, ModelGroup group, Model model)
     {
-        if (this.stencilMap != null && !this.stencilMap.isBoneAllowed(group.id))
-        {
-            return false;
-        }
-
         ModelVAO modelVAO = this.model.getVaos().get(group);
 
         if (modelVAO != null && group.visible)
         {
-            float a = this.a * group.color.a;
-
-            if (a <= 0F)
-            {
-                return false;
-            }
-
-            final float TRANSP_EPS = 0.999f;
-            if (this.transparentPass)
-            {
-                if (a >= TRANSP_EPS) return false;
-            }
-            else
-            {
-                if (a < TRANSP_EPS) return false;
-            }
-
-            if (group.textureOverride != null)
-            {
-                BBSModClient.getTextures().bindTexture(group.textureOverride);
-            }
-            else if (this.defaultTexture != null)
-            {
-                BBSModClient.getTextures().bindTexture(this.defaultTexture);
-            }
-            else
-            {
-                BBSModClient.getTextures().bindTexture(this.model.texture);
-            }
-
             float r = this.r * group.color.r;
             float g = this.g * group.color.g;
             float b = this.b * group.color.b;
+            float a = this.a * group.color.a;
             int light = this.light;
 
             if (this.stencilMap != null)

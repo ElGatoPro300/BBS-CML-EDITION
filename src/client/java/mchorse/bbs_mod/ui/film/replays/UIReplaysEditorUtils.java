@@ -36,7 +36,7 @@ import java.util.function.Consumer;
 
 public class UIReplaysEditorUtils
 {
-        public static UIPropTransform getEditableTransform(UIKeyframeEditor editor)
+    public static UIPropTransform getEditableTransform(UIKeyframeEditor editor)
     {
         if (editor == null || editor.editor == null)
         {
@@ -109,11 +109,18 @@ public class UIReplaysEditorUtils
 
             if (lastSheet != null && lastSheet.property != null)
             {
-                if (FormUtils.getPath((Form) lastSheet.property.getParent()).equals(FormUtils.getPath(form)) && lastSheet.property.getId().startsWith("pose"))
+                if (FormUtils.getPath((Form) lastSheet.property.getParent()).equals(FormUtils.getPath(form)) && lastSheet.property.getId().startsWith("pose") && !lastSheet.channel.isEmpty())
                 {
-                    type = lastSheet.property.getId();
+                    type = lastSheet.id;
                 }
             }
+        }
+
+        UIKeyframeSheet sheet = keyframeEditor.view.getGraph().getSheet(StringUtils.combinePaths(path, type));
+
+        if (sheet != null && sheet.channel.isEmpty())
+        {
+            type = "pose";
         }
 
         pickProperty(keyframeEditor, cursor, bone, StringUtils.combinePaths(path, type), false);

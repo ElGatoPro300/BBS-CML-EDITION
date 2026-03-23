@@ -11,8 +11,6 @@ import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.StringUtils;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.joml.Vectors;
-import mchorse.bbs_mod.utils.FontUtils;
-import mchorse.bbs_mod.utils.TextureFont;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.render.BufferBuilder;
@@ -29,7 +27,6 @@ import java.util.List;
 
 public class LabelFormRenderer extends FormRenderer<LabelForm>
 {
-    private float nametagAlpha = 1F;
     public static void fillQuad(BufferBuilder builder, MatrixStack stack, float x1, float y1, float z1, float x2, float y2, float z2, float x3, float y3, float z3, float x4, float y4, float z4, float r, float g, float b, float a)
     {
         Matrix4f matrix4f = stack.peek().getPositionMatrix();
@@ -91,17 +88,8 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
 
         TextRenderer renderer = MinecraftClient.getInstance().textRenderer;
         CustomVertexConsumerProvider consumers = FormUtilsClient.getProvider();
-        float fontSize = this.form.fontSize.get();
-        float scale = (1F / 16F) * (fontSize <= 0 ? 1F : fontSize);
+        float scale = 1F / 16F;
         int light = context.light;
-
-        this.nametagAlpha = 1F;
-
-        if (this.form.nametag.get() && context.entity != null && context.entity.isSneaking())
-        {
-            context.stack.translate(0F, -0.5F, 0F);
-            this.nametagAlpha = 0.125F;
-        }
 
         MatrixStackUtils.scaleStack(context.stack, scale, -scale, scale);
 
@@ -135,169 +123,50 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
         context.stack.pop();
     }
 
-    private String applyStyles(String content)
-    {
-        StringBuilder prefix = new StringBuilder();
-        if (this.form.fontWeight.get() >= 700) prefix.append("\u00A7l");
-        if (this.form.fontStyle.get() >= 1) prefix.append("\u00A7o");
-        if (this.form.underline.get()) prefix.append("\u00A7n");
-        if (this.form.strikethrough.get()) prefix.append("\u00A7m");
-        
-        return prefix.toString() + content;
-    }
-
-    private void renderTextShadow(FormRenderingContext context, CustomVertexConsumerProvider consumers, TextRenderer renderer, TextureFont customFont, String content, float x, float y, float letterSpacing, int light, Color shadowColor)
-    {
-        if (shadowColor.a <= 0)
-        {
-            return;
-        }
-
-        context.stack.push();
-        context.stack.translate(0F, 0F, -0.05F);
-
-        float sx = this.form.shadowX.get();
-        float sy = this.form.shadowY.get();
-        float blur = this.form.shadowBlur.get();
-
-        if (blur > 0)
-        {
-            int originalColor = shadowColor.getARGBColor();
-            int alpha = (originalColor >> 24) & 0xFF;
-            int rgb = originalColor & 0x00FFFFFF;
-            int blurAlpha = Math.max(1, alpha / 4);
-            int blurColor = (blurAlpha << 24) | rgb;
-
-            this.drawSimpleText(context, consumers, renderer, customFont, content, x + sx - blur, y + sy, letterSpacing, light, blurColor);
-            this.drawSimpleText(context, consumers, renderer, customFont, content, x + sx + blur, y + sy, letterSpacing, light, blurColor);
-            this.drawSimpleText(context, consumers, renderer, customFont, content, x + sx, y + sy - blur, letterSpacing, light, blurColor);
-            this.drawSimpleText(context, consumers, renderer, customFont, content, x + sx, y + sy + blur, letterSpacing, light, blurColor);
-        }
-        else
-        {
-            this.drawSimpleText(context, consumers, renderer, customFont, content, x + sx, y + sy, letterSpacing, light, shadowColor.getARGBColor());
-        }
-
-        context.stack.pop();
-    }
-
-    private void drawSimpleText(FormRenderingContext context, CustomVertexConsumerProvider consumers, TextRenderer renderer, TextureFont customFont, String content, float x, float y, float letterSpacing, int light, int color)
-    {
-        if (customFont != null)
-        {
-            customFont.draw(content, x, y, color, color, letterSpacing, 0F, context.stack.peek().getPositionMatrix(), consumers, light);
-        }
-        else
-        {
-            renderer.draw(
-                content,
-                x,
-                y,
-                color, false,
-                context.stack.peek().getPositionMatrix(),
-                consumers,
-                TextRenderer.TextLayerType.NORMAL,
-                0,
-                light
-            );
-        }
-    }
-
     private void renderString(FormRenderingContext context, CustomVertexConsumerProvider consumers, TextRenderer renderer, int light)
     {
-        String content = applyStyles(StringUtils.processColoredText(this.form.text.get()));
-        String fontName = this.form.font.get();
-        TextureFont customFont = null;
-        
-        if (!fontName.isEmpty())
-        {
-            int style = java.awt.Font.PLAIN;
-            if (this.form.fontWeight.get() >= 700) style |= java.awt.Font.BOLD;
-            if (this.form.fontStyle.get() >= 1) style |= java.awt.Font.ITALIC;
-            
-            customFont = FontUtils.getFont(fontName, style);
-        }
-
+        String content = StringUtils.processColoredText(this.form.text.get());
         float transition = context.getTransition();
-        float letterSpacing = this.form.letterSpacing.get();
-        int w = customFont != null ? customFont.getWidth(content, letterSpacing) : renderer.getWidth(content) - 1;
-        int h = customFont != null ? customFont.getHeight() : renderer.fontHeight - 2;
+        int w = renderer.getWidth(content) - 1;
+        int h = renderer.fontHeight - 2;
         int x = (int) (-w * this.form.anchorX.get());
         int y = (int) (-h * this.form.anchorY.get());
 
         Color shadowColor = this.form.shadowColor.get().copy();
         Color color = this.form.color.get().copy();
 
-        shadowColor.a *= this.nametagAlpha;
-        color.a *= this.nametagAlpha;
-        
-        float opacity = this.form.opacity.get();
-        color.a *= opacity;
-        shadowColor.a *= opacity;
-
         color.mul(context.color);
         shadowColor.mul(context.color);
 
-        this.renderTextShadow(context, consumers, renderer, customFont, content, x, y, letterSpacing, light, shadowColor);
-
-        if (this.form.outline.get())
+        if (shadowColor.a > 0)
         {
-            Color outlineColor = this.form.outlineColor.get().copy();
-            outlineColor.a *= opacity;
-            int oc = outlineColor.getARGBColor();
-            float ow = this.form.outlineWidth.get();
-            
             context.stack.push();
-            context.stack.translate(0, 0, -0.025F);
-            
-            if (customFont != null)
-            {
-                customFont.draw(content, x - ow, y, oc, oc, letterSpacing, 0F, context.stack.peek().getPositionMatrix(), consumers, light);
-                customFont.draw(content, x + ow, y, oc, oc, letterSpacing, 0F, context.stack.peek().getPositionMatrix(), consumers, light);
-                customFont.draw(content, x, y - ow, oc, oc, letterSpacing, 0F, context.stack.peek().getPositionMatrix(), consumers, light);
-                customFont.draw(content, x, y + ow, oc, oc, letterSpacing, 0F, context.stack.peek().getPositionMatrix(), consumers, light);
-            }
-            else
-            {
-                renderer.draw(content, x - ow, y, oc, false, context.stack.peek().getPositionMatrix(), consumers, TextRenderer.TextLayerType.NORMAL, 0, light);
-                renderer.draw(content, x + ow, y, oc, false, context.stack.peek().getPositionMatrix(), consumers, TextRenderer.TextLayerType.NORMAL, 0, light);
-                renderer.draw(content, x, y - ow, oc, false, context.stack.peek().getPositionMatrix(), consumers, TextRenderer.TextLayerType.NORMAL, 0, light);
-                renderer.draw(content, x, y + ow, oc, false, context.stack.peek().getPositionMatrix(), consumers, TextRenderer.TextLayerType.NORMAL, 0, light);
-            }
-            
-            context.stack.pop();
-        }
-
-        if (customFont != null)
-        {
-            int c1 = color.getARGBColor();
-            int c2 = c1;
-
-            if (this.form.gradient.get())
-            {
-                Color gradientColor = this.form.gradientEndColor.get().copy();
-                
-                gradientColor.a *= opacity;
-                gradientColor.mul(context.color);
-                c2 = gradientColor.getARGBColor();
-            }
-
-            customFont.draw(content, x, y, c1, c2, letterSpacing, 0F, context.stack.peek().getPositionMatrix(), consumers, light, this.form.gradientOffset.get());
-        }
-        else
-        {
+            context.stack.translate(0F, 0F, -0.1F);
             renderer.draw(
                 content,
-                x,
-                y,
-                color.getARGBColor(), false,
+                x + this.form.shadowX.get(),
+                y + this.form.shadowY.get(),
+                shadowColor.getARGBColor(), false,
                 context.stack.peek().getPositionMatrix(),
                 consumers,
                 TextRenderer.TextLayerType.NORMAL,
                 0,
                 light
             );
+            context.stack.pop();
         }
+
+        renderer.draw(
+            content,
+            x,
+            y,
+            color.getARGBColor(), false,
+            context.stack.peek().getPositionMatrix(),
+            consumers,
+            TextRenderer.TextLayerType.NORMAL,
+            0,
+            light
+        );
 
         RenderSystem.enableDepthTest();
 
@@ -311,35 +180,13 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
         float transition = context.getTransition();
         int w = 0;
         int h = renderer.fontHeight - 2;
-        String content = applyStyles(StringUtils.processColoredText(this.form.text.get()));
-        
-        String fontName = this.form.font.get();
-        TextureFont customFont = null;
-        
-        if (!fontName.isEmpty())
-        {
-            int style = java.awt.Font.PLAIN;
-            if (this.form.fontWeight.get() >= 700) style |= java.awt.Font.BOLD;
-            if (this.form.fontStyle.get() >= 1) style |= java.awt.Font.ITALIC;
-            
-            customFont = FontUtils.getFont(fontName, style);
-        }
-
-        float letterSpacing = this.form.letterSpacing.get();
-        List<String> lines;
-        
-        if (customFont != null)
-        {
-            lines = customFont.wrap(content, this.form.max.get(), letterSpacing);
-        }
-        else
-        {
-            lines = FontRenderer.wrap(renderer, content, this.form.max.get());
-        }
+        String content = StringUtils.processColoredText(this.form.text.get());
+        List<String> lines = FontRenderer.wrap(renderer, content, this.form.max.get());
 
         if (lines.size() <= 1)
         {
             this.renderString(context, consumers, renderer, light);
+
             return;
         }
 
@@ -350,106 +197,79 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
 
         for (String line : lines)
         {
-            int lw = customFont != null ? customFont.getWidth(line, letterSpacing) : renderer.getWidth(line) - 1;
-            w = Math.max(lw, w);
+            w = Math.max(renderer.getWidth(line) - 1, w);
+            h += 12;
         }
 
-        int fh = customFont != null ? customFont.getHeight() : renderer.fontHeight;
-        int lineHeight = (int) (fh + this.form.lineHeight.get());
-        int totalHeight = (lines.size() - 1) * lineHeight + fh - 2;
+        h -= 12;
 
         int x = (int) (-w * this.form.anchorX.get());
-        int y = (int) (-totalHeight * this.form.anchorY.get());
+        int y = (int) (-h * this.form.anchorY.get());
+        int y2 = y;
 
         Color shadowColor = this.form.shadowColor.get().copy();
-        Color color = this.form.color.get().copy();
-        
-        float opacity = this.form.opacity.get();
-        color.a *= opacity;
-        shadowColor.a *= opacity;
 
-        color.mul(context.color);
         shadowColor.mul(context.color);
-        shadowColor.a *= this.nametagAlpha;
-        
-        int align = this.form.textAlign.get(); // 0: Left, 1: Center, 2: Right
 
-        for (String line : lines)
+        if (shadowColor.a > 0)
         {
-            int lw = customFont != null ? customFont.getWidth(line, letterSpacing) : renderer.getWidth(line) - 1;
-            int lx = x;
-            
-            if (align == 1) lx = x + (w - lw) / 2;
-            else if (align == 2) lx = x + (w - lw);
+            context.stack.push();
+            context.stack.translate(0F, 0F, -0.1F);
 
-            this.renderTextShadow(context, consumers, renderer, customFont, line, lx, y, letterSpacing, light, shadowColor);
-            
-            if (this.form.outline.get())
+            for (String line : lines)
             {
-                Color outlineColor = this.form.outlineColor.get().copy();
-                outlineColor.a *= opacity;
-                int oc = outlineColor.getARGBColor();
-                float ow = this.form.outlineWidth.get();
-                
-                context.stack.push();
-                context.stack.translate(0, 0, -0.025F);
-                
-                if (customFont != null)
-                {
-                    customFont.draw(line, lx - ow, y, oc, oc, letterSpacing, 0F, context.stack.peek().getPositionMatrix(), consumers, light);
-                    customFont.draw(line, lx + ow, y, oc, oc, letterSpacing, 0F, context.stack.peek().getPositionMatrix(), consumers, light);
-                    customFont.draw(line, lx, y - ow, oc, oc, letterSpacing, 0F, context.stack.peek().getPositionMatrix(), consumers, light);
-                    customFont.draw(line, lx, y + ow, oc, oc, letterSpacing, 0F, context.stack.peek().getPositionMatrix(), consumers, light);
-                }
-                else
-                {
-                    renderer.draw(line, lx - ow, y, oc, false, context.stack.peek().getPositionMatrix(), consumers, TextRenderer.TextLayerType.NORMAL, 0, light);
-                    renderer.draw(line, lx + ow, y, oc, false, context.stack.peek().getPositionMatrix(), consumers, TextRenderer.TextLayerType.NORMAL, 0, light);
-                    renderer.draw(line, lx, y - ow, oc, false, context.stack.peek().getPositionMatrix(), consumers, TextRenderer.TextLayerType.NORMAL, 0, light);
-                    renderer.draw(line, lx, y + ow, oc, false, context.stack.peek().getPositionMatrix(), consumers, TextRenderer.TextLayerType.NORMAL, 0, light);
-                }
-                context.stack.pop();
-            }
+                int x2 = x + (this.form.anchorLines.get() ? (int) ((w - renderer.getWidth(line)) * this.form.anchorX.get()) : 0);
 
-            if (customFont != null)
-            {
-                int c1 = color.getARGBColor();
-                int c2 = c1;
-
-                if (this.form.gradient.get())
-                {
-                    Color gradientColor = this.form.gradientEndColor.get().copy();
-                    
-                    gradientColor.a *= opacity;
-                    gradientColor.mul(context.color);
-                    c2 = gradientColor.getARGBColor();
-                }
-
-                customFont.draw(line, lx, y, c1, c2, letterSpacing, 0F, context.stack.peek().getPositionMatrix(), consumers, light);
-            }
-            else
-            {
                 renderer.draw(
                     line,
-                    lx,
-                    y,
-                    color.getARGBColor(), false,
+                    x2 + this.form.shadowX.get(),
+                    y2 + this.form.shadowY.get(),
+                    shadowColor.getARGBColor(), false,
                     context.stack.peek().getPositionMatrix(),
                     consumers,
                     TextRenderer.TextLayerType.NORMAL,
                     0,
                     light
                 );
+
+                y2 += 12;
             }
 
-            y += lineHeight;
+            context.stack.pop();
+
+            y2 = y;
         }
 
-        RenderSystem.enableDepthTest();
+        Color cColor = this.form.color.get();
+
+        cColor.mul(context.color);
+
+        int color = cColor.getARGBColor();
+
+        for (String line : lines)
+        {
+            int x2 = x + (this.form.anchorLines.get() ? (int) ((w - renderer.getWidth(line)) * this.form.anchorX.get()) : 0);
+
+            renderer.draw(
+                line,
+                x2,
+                y2,
+                color, false,
+                context.stack.peek().getPositionMatrix(),
+                consumers,
+                TextRenderer.TextLayerType.NORMAL,
+                0,
+                light
+            );
+
+            y2 += 12;
+        }
 
         consumers.draw();
 
-        this.renderShadow(context, x, y, w, totalHeight);
+        RenderSystem.enableDepthTest();
+
+        this.renderShadow(context, x, y, w, h);
     }
 
     private void renderShadow(FormRenderingContext context, int x, int y, int w, int h)

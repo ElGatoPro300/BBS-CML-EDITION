@@ -1,6 +1,5 @@
 {
     "block.bbs.model": "Model block",
-    "block.bbs.trigger": "Trigger block",
     "block.bbs.chroma_red": "Red chroma",
     "block.bbs.chroma_green": "Green chroma",
     "block.bbs.chroma_blue": "Blue chroma",
@@ -23,19 +22,7 @@
     "key.bbs.record_video": "Record video",
     "key.bbs.teleport": "Teleport to current replay",
     "key.bbs.zoom": "Zoom (BBS gun)",
-    "key.bbs.toggle_replay_hud": "Toggle replay HUD",
     "category.bbs.main": "BBS mod",
-    "bbs.config.editor.clip_type_labels": "Show clip type labels",
-    "bbs.config.editor.clip_type_labels-comment": "Display the clip type in the timeline for Camera and Action editors",
 
-
-    "gamerule.bbsEditing": "BBS mod's editing permission",
-    "command.getskin.success": "Skin applied to all players",
-    "command.getskin.error": "Error: %s",
-    "command.getskin.downloading": "Downloading skin...",
-    "bbs.ui.transforms.context.resets": "Resets",
-    "bbs.ui.transforms.context.reset_translation": "Reset translation",
-    "bbs.ui.transforms.context.reset_scale": "Reset scale",
-    "bbs.ui.transforms.context.reset_rotation": "Reset rotation",
-    "bbs.ui.transforms.context.reset": "Reset transformation"
+    "gamerule.bbsEditing": "BBS mod's editing permission"
 }
