@@ -189,6 +189,21 @@ public class UIKeyframes extends UIElement
         {
             if (this.copyPasteController.copy()) UIUtils.playClick();
         }).inside().category(category);
+        this.keys().register(Keys.CUT, () ->
+        {
+            if (this.currentGraph.getSelected() == null)
+            {
+                this.getContext().notifyError(UIKeys.GENERAL_CUT_EMPTY);
+                return;
+            }
+
+            if (this.copyPasteController.copy())
+            {
+                this.currentGraph.removeSelected();
+                UIUtils.playClick();
+                this.getContext().notifyInfo(UIKeys.GENERAL_CUT);
+            }
+        }).inside().category(category).active(canModify);
         this.keys().register(Keys.PASTE, () ->
         {
             UIContext context = this.getContext();

@@ -38,5 +38,8 @@
     "bbs.ui.transforms.context.reset_translation": "Reset translation",
     "bbs.ui.transforms.context.reset_scale": "Reset scale",
     "bbs.ui.transforms.context.reset_rotation": "Reset rotation",
-    "bbs.ui.transforms.context.reset": "Reset transformation"
+    "bbs.ui.transforms.context.reset": "Reset transformation",
+    "bbs.ui.cut": "Cut",
+    "bbs.ui.cut.empty": "Nothing to cut",
+    "bbs.ui.cut.not_allowed": "Cut is not allowed here"
 }
