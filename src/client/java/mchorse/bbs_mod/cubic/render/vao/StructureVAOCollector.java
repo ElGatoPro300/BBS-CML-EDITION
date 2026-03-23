@@ -1,8 +1,6 @@
 package mchorse.bbs_mod.cubic.render.vao;
 
 import net.minecraft.client.render.VertexConsumer;
-import org.joml.Matrix4f;
-import org.joml.Vector4f;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,7 +18,6 @@ public class StructureVAOCollector implements VertexConsumer
 
     private final Vtx[] quad = new Vtx[4];
     private int quadIndex = 0;
-    private boolean hasCurrent = false;
 
     /* working per-vertex state until next() */
     private float vx, vy, vz;
@@ -43,26 +40,11 @@ public class StructureVAOCollector implements VertexConsumer
     }
 
     @Override
-    public VertexConsumer vertex(float x, float y, float z)
+    public VertexConsumer vertex(double x, double y, double z)
     {
-        if (hasCurrent) finalizeCurrent();
-        this.vx = x;
-        this.vy = y;
-        this.vz = z;
-        this.hasCurrent = true;
-        return this;
-    }
-
-    @Override
-    public VertexConsumer vertex(Matrix4f matrix, float x, float y, float z)
-    {
-        if (hasCurrent) finalizeCurrent();
-        Vector4f v = new Vector4f(x, y, z, 1F);
-        v.mul(matrix);
-        this.vx = v.x;
-        this.vy = v.y;
-        this.vz = v.z;
-        this.hasCurrent = true;
+        this.vx = (float) x;
+        this.vy = (float) y;
+        this.vz = (float) z;
         return this;
     }
 
@@ -104,7 +86,8 @@ public class StructureVAOCollector implements VertexConsumer
         return this;
     }
 
-    private void finalizeCurrent()
+    @Override
+    public void next()
     {
         Vtx v = this.quad[this.quadIndex];
         v.x = this.vx; v.y = this.vy; v.z = this.vz;
@@ -194,11 +177,13 @@ public class StructureVAOCollector implements VertexConsumer
         return this.tangentTmp;
     }
 
+    @Override
     public void fixedColor(int red, int green, int blue, int alpha)
     {
         /* no-op */
     }
 
+    @Override
     public void unfixColor()
     {
         /* no-op */

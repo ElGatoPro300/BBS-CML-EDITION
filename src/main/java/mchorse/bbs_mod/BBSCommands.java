@@ -521,7 +521,7 @@ public class BBSCommands
 
         try
         {
-            structureTemplate = structureTemplateManager.getTemplateOrBlank(Identifier.of(name));
+            structureTemplate = structureTemplateManager.getTemplateOrBlank(new Identifier(name));
         }
         catch (InvalidIdentifierException e)
         {
@@ -536,7 +536,7 @@ public class BBSCommands
 
         try
         {
-            if (structureTemplateManager.saveTemplate(Identifier.of(name)))
+            if (structureTemplateManager.saveTemplate(new Identifier(name)))
             {
                 return 1;
             }

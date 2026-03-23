@@ -1100,38 +1100,32 @@ public class UIShapeNodeEditor extends UIElement
         int segments = 32;
 
         Matrix4f matrix4f = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
-        Tessellator tessellator = Tessellator.getInstance();
+        BufferBuilder builder = Tessellator.getInstance().getBuffer();
 
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
 
         // Border
-        BufferBuilder builder = tessellator.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
+        builder.begin(VertexFormat.DrawMode.TRIANGLE_FAN, VertexFormats.POSITION_COLOR);
+        builder.vertex(matrix4f, x, y, 0F).color(0xFF000000).next();
 
-        for (int i = 0; i < segments; i++)
+        for (int i = 0; i <= segments; i++)
         {
-            double a1 = i / (double) segments * Math.PI * 2;
-            double a2 = (i + 1) / (double) segments * Math.PI * 2;
-
-            builder.vertex(matrix4f, x, y, 0F).color(0xFF000000);
-            builder.vertex(matrix4f, (float) (x + Math.cos(a1) * (radius + 1.5F)), (float) (y + Math.sin(a1) * (radius + 1.5F)), 0F).color(0xFF000000);
-            builder.vertex(matrix4f, (float) (x + Math.cos(a2) * (radius + 1.5F)), (float) (y + Math.sin(a2) * (radius + 1.5F)), 0F).color(0xFF000000);
+            double a = i / (double) segments * Math.PI * 2;
+            builder.vertex(matrix4f, (float) (x + Math.cos(a) * (radius + 1.5F)), (float) (y + Math.sin(a) * (radius + 1.5F)), 0F).color(0xFF000000).next();
         }
 
         BufferRenderer.drawWithGlobalProgram(builder.end());
 
         // Fill
-        builder = tessellator.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
+        builder.begin(VertexFormat.DrawMode.TRIANGLE_FAN, VertexFormats.POSITION_COLOR);
+        builder.vertex(matrix4f, x, y, 0F).color(color).next();
 
-        for (int i = 0; i < segments; i++)
+        for (int i = 0; i <= segments; i++)
         {
-            double a1 = i / (double) segments * Math.PI * 2;
-            double a2 = (i + 1) / (double) segments * Math.PI * 2;
-
-            builder.vertex(matrix4f, x, y, 0F).color(color);
-            builder.vertex(matrix4f, (float) (x + Math.cos(a1) * radius), (float) (y + Math.sin(a1) * radius), 0F).color(color);
-            builder.vertex(matrix4f, (float) (x + Math.cos(a2) * radius), (float) (y + Math.sin(a2) * radius), 0F).color(color);
+            double a = i / (double) segments * Math.PI * 2;
+            builder.vertex(matrix4f, (float) (x + Math.cos(a) * radius), (float) (y + Math.sin(a) * radius), 0F).color(color).next();
         }
 
         BufferRenderer.drawWithGlobalProgram(builder.end());
