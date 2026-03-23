@@ -41,10 +41,12 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Set;
 
 public class UINewsPanel extends UISidebarDashboardPanel
@@ -196,19 +198,7 @@ public class UINewsPanel extends UISidebarDashboardPanel
                     oldIds.add(e.id);
                 }
 
-                String json = null;
-
-                json = fetchLocalizedJson(NEWS_URL_BASE);
-
-                if (json == null || json.isEmpty())
-                {
-                    this.entries = new ArrayList<>();
-                }
-                else
-                {
-                    List<NewsEntry> loaded = this.gson.fromJson(json, this.type);
-                    this.entries = loaded != null ? loaded : new ArrayList<>();
-                }
+                this.entries = this.fetchLocalizedNewsEntries();
 
                 hasUnread = !this.getUnreadIdsLocal().isEmpty();
 
@@ -326,7 +316,7 @@ public class UINewsPanel extends UISidebarDashboardPanel
 
     private static List<String> getLocaleSuffixCandidates()
     {
-        String language = BBSModClient.getLanguageKey();
+        String language = getCurrentLanguageKey();
         LinkedHashSet<String> locales = new LinkedHashSet<>();
 
         if (language != null)
@@ -353,6 +343,118 @@ public class UINewsPanel extends UISidebarDashboardPanel
         locales.add("");
 
         return new ArrayList<>(locales);
+    }
+
+    private static String getCurrentLanguageKey()
+    {
+        String language = BBSModClient.getLanguageKey();
+
+        if (language == null)
+        {
+            return "";
+        }
+
+        return language.toLowerCase();
+    }
+
+    private List<NewsEntry> fetchLocalizedNewsEntries()
+    {
+        List<NewsEntry> globalEntries = this.fetchNewsEntriesBySuffix(".en_us");
+
+        if (globalEntries.isEmpty())
+        {
+            globalEntries = this.fetchNewsEntriesBySuffix("");
+        }
+
+        String language = getCurrentLanguageKey();
+
+        if ("en_us".equals(language))
+        {
+            return globalEntries;
+        }
+
+        List<NewsEntry> localizedEntries = new ArrayList<>();
+
+        for (String suffix : getLocaleSuffixCandidates())
+        {
+            if (suffix.isEmpty() || ".en_us".equals(suffix))
+            {
+                continue;
+            }
+
+            localizedEntries = this.fetchNewsEntriesBySuffix(suffix);
+
+            if (!localizedEntries.isEmpty())
+            {
+                break;
+            }
+        }
+
+        if (localizedEntries.isEmpty())
+        {
+            return globalEntries;
+        }
+
+        return mergeNewsEntries(globalEntries, localizedEntries);
+    }
+
+    private List<NewsEntry> fetchNewsEntriesBySuffix(String suffix)
+    {
+        String json = fetchJson(NEWS_URL_BASE + suffix + ".json");
+
+        if (json == null || json.isEmpty())
+        {
+            return new ArrayList<>();
+        }
+
+        List<NewsEntry> loaded = this.gson.fromJson(json, this.type);
+
+        return loaded == null ? new ArrayList<>() : loaded;
+    }
+
+    private static List<NewsEntry> mergeNewsEntries(List<NewsEntry> globalEntries, List<NewsEntry> localizedEntries)
+    {
+        Map<String, NewsEntry> byId = new LinkedHashMap<>();
+        List<NewsEntry> withoutId = new ArrayList<>();
+
+        for (NewsEntry entry : globalEntries)
+        {
+            if (entry == null)
+            {
+                continue;
+            }
+
+            if (entry.id == null || entry.id.isEmpty())
+            {
+                withoutId.add(entry);
+            }
+            else
+            {
+                byId.put(entry.id, entry);
+            }
+        }
+
+        for (NewsEntry entry : localizedEntries)
+        {
+            if (entry == null)
+            {
+                continue;
+            }
+
+            if (entry.id == null || entry.id.isEmpty())
+            {
+                withoutId.add(entry);
+            }
+            else
+            {
+                byId.put(entry.id, entry);
+            }
+        }
+
+        List<NewsEntry> merged = new ArrayList<>(byId.values());
+        merged.addAll(withoutId);
+
+        return merged;
     }
 
     private static String fetchJson(String url)
