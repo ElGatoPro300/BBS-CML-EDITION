@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.forms.renderers;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.entities.StubEntity;
 import mchorse.bbs_mod.forms.forms.AnchorForm;
@@ -43,10 +44,10 @@ public class AnchorFormRenderer extends FormRenderer<AnchorForm>
         }
         else
         {
-            MatrixStack stack = context.batcher.getContext().getMatrices();
+            MatrixStack stack = new MatrixStack();
             Matrix4f uiMatrix = ModelFormRenderer.getUIMatrix(context, x1, y1, x2, y2);
 
-            RenderSystem.depthFunc(GL11.GL_LEQUAL);
+            GlStateManager._depthFunc(GL11.GL_LEQUAL);
             stack.push();
 
             this.applyTransforms(uiMatrix, context.getTransition());
@@ -61,7 +62,7 @@ public class AnchorFormRenderer extends FormRenderer<AnchorForm>
                 .inUI());
 
             stack.pop();
-            RenderSystem.depthFunc(GL11.GL_ALWAYS);
+            GlStateManager._depthFunc(GL11.GL_ALWAYS);
         }
     }
 }

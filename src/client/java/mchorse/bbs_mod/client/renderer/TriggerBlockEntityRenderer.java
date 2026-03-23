@@ -13,14 +13,13 @@ import org.joml.Vector3f;
 import java.util.HashSet;
 import java.util.Set;
 
-public class TriggerBlockEntityRenderer implements BlockEntityRenderer<TriggerBlockEntity>
+public class TriggerBlockEntityRenderer
 {
     public static final Set<TriggerBlockEntity> capturedTriggerBlocks = new HashSet<>();
 
     public TriggerBlockEntityRenderer(BlockEntityRendererFactory.Context ctx)
     {}
 
-    @Override
     public void render(TriggerBlockEntity entity, float tickDelta, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, int overlay)
     {
         capturedTriggerBlocks.add(entity);
@@ -40,9 +39,7 @@ public class TriggerBlockEntityRenderer implements BlockEntityRenderer<TriggerBl
                 Box box = entity.getRegionBoxRelative();
 
                 /* Render white debug box for region triggers */
-                com.mojang.blaze3d.systems.RenderSystem.disableDepthTest();
                 Draw.renderBox(matrices, box.minX, box.minY, box.minZ, box.maxX - box.minX, box.maxY - box.minY, box.maxZ - box.minZ, 1F, 1F, 1F, 0.5F);
-                com.mojang.blaze3d.systems.RenderSystem.enableDepthTest();
             }
         }
     }

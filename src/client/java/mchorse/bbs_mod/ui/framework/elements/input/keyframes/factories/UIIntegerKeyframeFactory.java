@@ -107,17 +107,17 @@ public class UIIntegerKeyframeFactory extends UIKeyframeFactory<Integer>
 
                         if (stack != null && !stack.isEmpty())
                         {
-                            MatrixStack matrices = context.batcher.getContext().getMatrices();
+                            var matrices = context.batcher.getContext().getMatrices();
                             CustomVertexConsumerProvider consumers = FormUtilsClient.getProvider();
                             int itemX = x + Math.max(0, (slotW - 16) / 2);
                             int itemY = y + Math.max(0, (slotH - 16) / 2);
 
-                            matrices.push();
+                            // matrices.push();
                             consumers.setUI(true);
                             context.batcher.getContext().drawItem(stack, itemX, itemY);
                             context.batcher.getContext().drawStackOverlay(context.batcher.getFont().getRenderer(), stack, itemX, itemY);
                             consumers.setUI(false);
-                            matrices.pop();
+                            // matrices.pop();
                         }
                     }
                 }

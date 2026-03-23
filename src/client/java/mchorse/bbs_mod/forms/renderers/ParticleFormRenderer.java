@@ -13,11 +13,10 @@ import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.joml.Vectors;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.gl.ShaderProgram;
-import net.minecraft.client.gl.ShaderProgramKeys;
-import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.GameRenderer;
-import net.minecraft.client.render.VertexFormat;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.world.World;
@@ -90,7 +89,7 @@ public class ParticleFormRenderer extends FormRenderer<ParticleForm> implements 
 
         if (emitter != null)
         {
-            MatrixStack stack = context.batcher.getContext().getMatrices();
+            MatrixStack stack = new MatrixStack();
             int scale = (y2 - y1) / 2;
 
             stack.push();
@@ -168,11 +167,6 @@ public class ParticleFormRenderer extends FormRenderer<ParticleForm> implements 
                 translation.add(context.camera.position.x, context.camera.position.y, context.camera.position.z);
             }
 
-            GameRenderer gameRenderer = MinecraftClient.getInstance().gameRenderer;
-
-            gameRenderer.getLightmapTextureManager().enable();
-            gameRenderer.getOverlayTexture().setupOverlayColor();
-
             context.stack.push();
             context.stack.loadIdentity();
 
@@ -188,20 +182,12 @@ public class ParticleFormRenderer extends FormRenderer<ParticleForm> implements 
                 Supplier<ShaderProgram> shader = billboard
                     ? this.getShader(
                         context,
-                        () ->
-                        {
-                            RenderSystem.setShader(ShaderProgramKeys.RENDERTYPE_ENTITY_TRANSLUCENT);
-                            return RenderSystem.getShader();
-                        },
+                        BBSShaders::getModel,
                         BBSShaders::getPickerBillboardProgram
                     )
                     : this.getShader(
                         context,
-                        () ->
-                        {
-                            RenderSystem.setShader(ShaderProgramKeys.PARTICLE);
-                            return RenderSystem.getShader();
-                        },
+                        BBSShaders::getModel,
                         BBSShaders::getPickerParticlesProgram
                     );
 
@@ -209,9 +195,6 @@ public class ParticleFormRenderer extends FormRenderer<ParticleForm> implements 
             }
 
             context.stack.pop();
-
-            gameRenderer.getLightmapTextureManager().disable();
-            gameRenderer.getOverlayTexture().teardownOverlayColor();
         }
     }
 

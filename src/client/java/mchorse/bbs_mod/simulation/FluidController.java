@@ -89,7 +89,7 @@ public class FluidController
 
             for (Entity e : entities)
             {
-                samples.add(new FluidSample(e.getPos(), 0.1));
+                samples.add(new FluidSample(e.pos, 0.1));
             }
         }
 

@@ -1,6 +1,9 @@
 package mchorse.bbs_mod.particles.emitter;
 
+import com.mojang.blaze3d.vertex.VertexFormat;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.opengl.GlStateManager;
+import org.lwjgl.opengl.GL11;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.camera.Camera;
 import mchorse.bbs_mod.graphics.texture.Texture;
@@ -17,11 +20,8 @@ import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.interps.Lerps;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.render.BufferBuilder;
-import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.gl.ShaderProgramKeys;
-import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.util.math.MatrixStack;
@@ -124,7 +124,7 @@ public class ParticleEmitter
     public void setTarget(LivingEntity target)
     {
         this.target = target;
-        this.world = target == null ? null : target.getWorld();
+        this.world = target == null ? null : target.getEntityWorld();
     }
 
     public void setWorld(World world)
@@ -458,10 +458,7 @@ public class ParticleEmitter
                 render.renderUI(this.uiParticle, builder, matrix, transition);
             }
 
-            RenderSystem.setShader(ShaderProgramKeys.POSITION_TEX_COLOR);
-            RenderSystem.disableCull();
-            BufferRenderer.drawWithGlobalProgram(builder.end());
-            RenderSystem.enableCull();
+            builder.end();
         }
     }
 
@@ -500,13 +497,7 @@ public class ParticleEmitter
                 }
             }
             
-            RenderSystem.setShader(program.get());
-            RenderSystem.enableBlend();
-            RenderSystem.defaultBlendFunc();
-            RenderSystem.disableCull();
-            BufferRenderer.drawWithGlobalProgram(builder.end());
-            RenderSystem.enableCull();
-            RenderSystem.disableBlend();
+            builder.end();
         }
 
         for (IComponentParticleRender component : renders)
@@ -535,8 +526,8 @@ public class ParticleEmitter
     {
         this.cYaw = 180 - camera.getYaw();
         this.cPitch = -camera.getPitch();
-        this.cX = camera.getPos().x;
-        this.cY = camera.getPos().y;
-        this.cZ = camera.getPos().z;
+        this.cX = camera.getCameraPos().x;
+        this.cY = camera.getCameraPos().y;
+        this.cZ = camera.getCameraPos().z;
     }
 }

@@ -1,6 +1,6 @@
 package mchorse.bbs_mod.graphics;
 
-import com.mojang.blaze3d.platform.GlStateManager;
+import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
@@ -8,7 +8,7 @@ import org.lwjgl.opengl.GL30;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Framebuffer
+public class Framebuffer extends net.minecraft.client.gl.Framebuffer
 {
     private static final float[] CLEAR_COLOR = {0F, 0F, 0F, 0F};
     private static final float[] CLEAR_DEPTH = {1F};
@@ -22,6 +22,7 @@ public class Framebuffer
 
     public Framebuffer()
     {
+        super("BBSMod Framebuffer", true);
         this.id = GL30.glGenFramebuffers();
     }
 
