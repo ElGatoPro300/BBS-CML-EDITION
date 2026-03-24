@@ -1206,9 +1206,10 @@ public class UIReplaysEditor extends UIElement
     private void processTrack(UIKeyframeSheet sheet, String groupKey, int level, List<UIKeyframeSheet> before, List<UIKeyframeSheet> pose, List<UIKeyframeSheet> limbs, List<UIKeyframeSheet> overlays, List<UIKeyframeSheet> after)
     {
         sheet.level = level;
+        String customTitle = this.replay.getCustomSheetTitle(sheet.id);
 
         /* Reset title in case it was changed by originalKeyframeUI mode */
-        if (sheet.property != null)
+        if ((customTitle == null || customTitle.isEmpty()) && sheet.property != null)
         {
             Form trackForm = FormUtils.getForm(sheet.property);
 
@@ -1291,6 +1292,11 @@ public class UIReplaysEditor extends UIElement
             {
                 after.add(sheet);
             }
+        }
+
+        if (customTitle != null && !customTitle.isEmpty())
+        {
+            sheet.title = IKey.constant(customTitle);
         }
     }
 
