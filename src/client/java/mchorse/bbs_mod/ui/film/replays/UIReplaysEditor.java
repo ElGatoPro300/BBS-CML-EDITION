@@ -672,7 +672,7 @@ public class UIReplaysEditor extends UIElement
             String pathA = formA == null ? "" : FormUtils.getPath(formA);
             String pathB = formB == null ? "" : FormUtils.getPath(formB);
 
-            int pathComp = pathA.compareTo(pathB);
+            int pathComp = comparePathsNaturally(pathA, pathB);
 
             if (pathComp != 0)
             {
@@ -736,7 +736,7 @@ public class UIReplaysEditor extends UIElement
                 String boneA = a.id.substring(a.id.indexOf(':') + 1);
                 String boneB = b.id.substring(b.id.indexOf(':') + 1);
 
-                return boneA.compareTo(boneB);
+                return compareNaturally(boneA, boneB);
             }
 
             return 0;
@@ -1313,6 +1313,114 @@ public class UIReplaysEditor extends UIElement
         {
             this.form = form;
         }
+    }
+
+    private static int comparePathsNaturally(String a, String b)
+    {
+        if (a.equals(b))
+        {
+            return 0;
+        }
+
+        String[] left = a.split("/");
+        String[] right = b.split("/");
+        int min = Math.min(left.length, right.length);
+
+        for (int i = 0; i < min; i++)
+        {
+            int cmp = compareNaturally(left[i], right[i]);
+
+            if (cmp != 0)
+            {
+                return cmp;
+            }
+        }
+
+        return Integer.compare(left.length, right.length);
+    }
+
+    private static int compareNaturally(String a, String b)
+    {
+        int i = 0;
+        int j = 0;
+
+        while (i < a.length() && j < b.length())
+        {
+            char ca = a.charAt(i);
+            char cb = b.charAt(j);
+
+            if (Character.isDigit(ca) && Character.isDigit(cb))
+            {
+                int startI = i;
+                int startJ = j;
+
+                while (i < a.length() && Character.isDigit(a.charAt(i)))
+                {
+                    i++;
+                }
+
+                while (j < b.length() && Character.isDigit(b.charAt(j)))
+                {
+                    j++;
+                }
+
+                String numberA = a.substring(startI, i);
+                String numberB = b.substring(startJ, j);
+                int numericCmp = compareNumericStrings(numberA, numberB);
+
+                if (numericCmp != 0)
+                {
+                    return numericCmp;
+                }
+
+                continue;
+            }
+
+            int charCmp = Character.compare(Character.toLowerCase(ca), Character.toLowerCase(cb));
+
+            if (charCmp != 0)
+            {
+                return charCmp;
+            }
+
+            i++;
+            j++;
+        }
+
+        return Integer.compare(a.length(), b.length());
+    }
+
+    private static int compareNumericStrings(String a, String b)
+    {
+        int ai = 0;
+        int bi = 0;
+
+        while (ai < a.length() && a.charAt(ai) == '0')
+        {
+            ai++;
+        }
+
+        while (bi < b.length() && b.charAt(bi) == '0')
+        {
+            bi++;
+        }
+
+        String trimmedA = a.substring(ai);
+        String trimmedB = b.substring(bi);
+
+        if (trimmedA.length() != trimmedB.length())
+        {
+            return Integer.compare(trimmedA.length(), trimmedB.length());
+        }
+
+        int cmp = trimmedA.compareTo(trimmedB);
+
+        if (cmp != 0)
+        {
+            return cmp;
+        }
+
+        return Integer.compare(a.length(), b.length());
     }
 
     private void animationToPoses(ModelForm modelForm, UIKeyframeSheet sheet)
