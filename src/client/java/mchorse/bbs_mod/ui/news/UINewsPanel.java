@@ -41,16 +41,18 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Set;
 
 public class UINewsPanel extends UISidebarDashboardPanel
 {
-    private static final String NEWS_URL = "https://raw.githubusercontent.com/BBSCommunity/CML-NEWS/refs/heads/main/News/news.json";
-    private static final String PRIORITY_ANNOUNCEMENT_URL = "https://raw.githubusercontent.com/BBSCommunity/CML-NEWS/refs/heads/main/News/priority_announcement.json";
+    private static final String NEWS_URL_BASE = "https://raw.githubusercontent.com/BBSCommunity/CML-NEWS/refs/heads/main/News_Panel/news";
+    private static final String PRIORITY_ANNOUNCEMENT_URL_BASE = "https://raw.githubusercontent.com/BBSCommunity/CML-NEWS/refs/heads/main/Priority_Panel/priority_announcement";
 
     private final UIUnreadNewsList list = new UIUnreadNewsList((items) -> this.showSelected());
     private final UISearchList<String> search = new UISearchList<>(this.list);
@@ -196,31 +198,7 @@ public class UINewsPanel extends UISidebarDashboardPanel
                     oldIds.add(e.id);
                 }
 
-                String json = null;
-
-                try
-                {
-                    HttpClient client = HttpClient.newBuilder().build();
-                    HttpRequest req = HttpRequest.newBuilder(URI.create(NEWS_URL))
-                        .GET()
-                        .build();
-                    HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
-                    if (resp.statusCode() == 200)
-                    {
-                        json = resp.body();
-                    }
-                }
-                catch (Exception ignored) {}
-
-                if (json == null || json.isEmpty())
-                {
-                    this.entries = new ArrayList<>();
-                }
-                else
-                {
-                    List<NewsEntry> loaded = this.gson.fromJson(json, this.type);
-                    this.entries = loaded != null ? loaded : new ArrayList<>();
-                }
+                this.entries = this.fetchLocalizedNewsEntries();
 
                 hasUnread = !this.getUnreadIdsLocal().isEmpty();
 
@@ -282,15 +260,11 @@ public class UINewsPanel extends UISidebarDashboardPanel
 
             try
             {
-                HttpClient client = HttpClient.newBuilder().build();
-                HttpRequest req = HttpRequest.newBuilder(URI.create(PRIORITY_ANNOUNCEMENT_URL))
-                    .GET()
-                    .build();
-                HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
+                String json = fetchLocalizedJson(PRIORITY_ANNOUNCEMENT_URL_BASE);
 
-                if (resp.statusCode() == 200 && resp.body() != null && !resp.body().isEmpty())
+                if (json != null && !json.isEmpty())
                 {
-                    announcement = this.gson.fromJson(resp.body(), this.priorityType);
+                    announcement = this.gson.fromJson(json, this.priorityType);
                 }
             }
             catch (Exception e)
@@ -314,9 +288,194 @@ public class UINewsPanel extends UISidebarDashboardPanel
                     return;
                 }
 
+                if (finalAnnouncement.image != null && !finalAnnouncement.image.isEmpty())
+                {
+                    prefetchImage(Link.create(finalAnnouncement.image));
+                }
+
                 pendingPriorityAnnouncement = finalAnnouncement;
             });
         });
+    }
+
+    private static String fetchLocalizedJson(String baseUrl)
+    {
+        for (String suffix : getLocaleSuffixCandidates())
+        {
+            String url = baseUrl + suffix + ".json";
+            String body = fetchJson(url);
+
+            if (body != null && !body.isEmpty())
+            {
+                return body;
+            }
+        }
+
+        return null;
+    }
+
+    private static List<String> getLocaleSuffixCandidates()
+    {
+        String language = getCurrentLanguageKey();
+        LinkedHashSet<String> locales = new LinkedHashSet<>();
+
+        if (language != null)
+        {
+            language = language.toLowerCase();
+
+            if (!language.isEmpty())
+            {
+                locales.add("." + language);
+
+                int split = language.indexOf('_');
+
+                if (split > 0)
+                {
+                    String base = language.substring(0, split);
+
+                    locales.add("." + base + "_" + base);
+                    locales.add("." + base + "_us");
+                }
+            }
+        }
+
+        locales.add(".en_us");
+        locales.add("");
+
+        return new ArrayList<>(locales);
+    }
+
+    private static String getCurrentLanguageKey()
+    {
+        String language = BBSModClient.getLanguageKey();
+
+        if (language == null)
+        {
+            return "";
+        }
+
+        return language.toLowerCase();
+    }
+
+    private List<NewsEntry> fetchLocalizedNewsEntries()
+    {
+        List<NewsEntry> globalEntries = this.fetchNewsEntriesBySuffix(".en_us");
+
+        if (globalEntries.isEmpty())
+        {
+            globalEntries = this.fetchNewsEntriesBySuffix("");
+        }
+
+        String language = getCurrentLanguageKey();
+
+        if ("en_us".equals(language))
+        {
+            return globalEntries;
+        }
+
+        List<NewsEntry> localizedEntries = new ArrayList<>();
+
+        for (String suffix : getLocaleSuffixCandidates())
+        {
+            if (suffix.isEmpty() || ".en_us".equals(suffix))
+            {
+                continue;
+            }
+
+            localizedEntries = this.fetchNewsEntriesBySuffix(suffix);
+
+            if (!localizedEntries.isEmpty())
+            {
+                break;
+            }
+        }
+
+        if (localizedEntries.isEmpty())
+        {
+            return globalEntries;
+        }
+
+        return mergeNewsEntries(globalEntries, localizedEntries);
+    }
+
+    private List<NewsEntry> fetchNewsEntriesBySuffix(String suffix)
+    {
+        String json = fetchJson(NEWS_URL_BASE + suffix + ".json");
+
+        if (json == null || json.isEmpty())
+        {
+            return new ArrayList<>();
+        }
+
+        List<NewsEntry> loaded = this.gson.fromJson(json, this.type);
+
+        return loaded == null ? new ArrayList<>() : loaded;
+    }
+
+    private static List<NewsEntry> mergeNewsEntries(List<NewsEntry> globalEntries, List<NewsEntry> localizedEntries)
+    {
+        Map<String, NewsEntry> byId = new LinkedHashMap<>();
+        List<NewsEntry> withoutId = new ArrayList<>();
+
+        for (NewsEntry entry : globalEntries)
+        {
+            if (entry == null)
+            {
+                continue;
+            }
+
+            if (entry.id == null || entry.id.isEmpty())
+            {
+                withoutId.add(entry);
+            }
+            else
+            {
+                byId.put(entry.id, entry);
+            }
+        }
+
+        for (NewsEntry entry : localizedEntries)
+        {
+            if (entry == null)
+            {
+                continue;
+            }
+
+            if (entry.id == null || entry.id.isEmpty())
+            {
+                withoutId.add(entry);
+            }
+            else
+            {
+                byId.put(entry.id, entry);
+            }
+        }
+
+        List<NewsEntry> merged = new ArrayList<>(byId.values());
+        merged.addAll(withoutId);
+
+        return merged;
+    }
+
+    private static String fetchJson(String url)
+    {
+        try
+        {
+            HttpClient client = HttpClient.newBuilder().build();
+            HttpRequest req = HttpRequest.newBuilder(URI.create(url))
+                .GET()
+                .build();
+            HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
+
+            if (resp.statusCode() == 200)
+            {
+                return resp.body();
+            }
+        }
+        catch (Exception ignored)
+        {}
+
+        return null;
     }
 
     private static void prefetchImages(List<NewsEntry> entries)
@@ -341,68 +500,72 @@ public class UINewsPanel extends UISidebarDashboardPanel
                 }
 
                 Link link = Link.create(url);
-
-                if (link.source == null || !link.source.startsWith("http"))
-                {
-                    continue;
-                }
-
-                TextureManager textures = BBSModClient.getTextures();
-
-                if (textures.textures.get(link) != null)
-                {
-                    continue;
-                }
-
-                if (!prefetchingImages.add(link))
-                {
-                    continue;
-                }
-
-                CompletableFuture.runAsync(() ->
-                {
-                    try
-                    {
-                        try (InputStream stream = URLSourcePack.downloadImage(link))
-                        {
-                            if (stream == null)
-                            {
-                                return;
-                            }
-
-                            Pixels pixels = Pixels.fromPNGStream(stream);
-
-                            if (pixels == null)
-                            {
-                                return;
-                            }
-
-                            RenderSystem.recordRenderCall(() ->
-                            {
-                                try
-                                {
-                                    Texture texture = Texture.textureFromPixels(pixels, GL11.GL_NEAREST);
-
-                                    BBSModClient.getTextures().textures.put(link, texture);
-                                }
-                                catch (Exception exception)
-                                {
-                                    exception.printStackTrace();
-                                }
-                            });
-                        }
-                    }
-                    catch (Exception exception)
-                    {
-                        exception.printStackTrace();
-                    }
-                    finally
-                    {
-                        prefetchingImages.remove(link);
-                    }
-                });
+                prefetchImage(link);
             }
         }
+    }
+
+    private static void prefetchImage(Link link)
+    {
+        if (link == null || link.source == null || !link.source.startsWith("http"))
+        {
+            return;
+        }
+
+        TextureManager textures = BBSModClient.getTextures();
+
+        if (textures.textures.get(link) != null)
+        {
+            return;
+        }
+
+        if (!prefetchingImages.add(link))
+        {
+            return;
+        }
+
+        CompletableFuture.runAsync(() ->
+        {
+            try
+            {
+                try (InputStream stream = URLSourcePack.downloadImage(link))
+                {
+                    if (stream == null)
+                    {
+                        return;
+                    }
+
+                    Pixels pixels = Pixels.fromPNGStream(stream);
+
+                    if (pixels == null)
+                    {
+                        return;
+                    }
+
+                    RenderSystem.recordRenderCall(() ->
+                    {
+                        try
+                        {
+                            Texture texture = Texture.textureFromPixels(pixels, GL11.GL_NEAREST);
+
+                            BBSModClient.getTextures().textures.put(link, texture);
+                        }
+                        catch (Exception exception)
+                        {
+                            exception.printStackTrace();
+                        }
+                    });
+                }
+            }
+            catch (Exception exception)
+            {
+                exception.printStackTrace();
+            }
+            finally
+            {
+                prefetchingImages.remove(link);
+            }
+        });
     }
 
     private void populate()

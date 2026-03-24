@@ -275,7 +275,17 @@ public class UIReplaysEditor extends UIElement
 
         String topLevel = StringUtils.fileName(key);
 
-        return ICONS.getOrDefault(topLevel, null);
+        if (topLevel.startsWith("pose_overlay"))
+        {
+            return Icons.POSE;
+        }
+
+        if (topLevel.startsWith("transform_overlay"))
+        {
+            return Icons.ALL_DIRECTIONS;
+        }
+
+        return ICONS.getOrDefault(topLevel, Icons.NONE);
     }
 
     public static int getColor(String key)
@@ -662,7 +672,7 @@ public class UIReplaysEditor extends UIElement
             String pathA = formA == null ? "" : FormUtils.getPath(formA);
             String pathB = formB == null ? "" : FormUtils.getPath(formB);
 
-            int pathComp = pathA.compareTo(pathB);
+            int pathComp = comparePathsNaturally(pathA, pathB);
 
             if (pathComp != 0)
             {
@@ -689,7 +699,7 @@ public class UIReplaysEditor extends UIElement
                 {
                     String suffix = name.substring("transform_overlay".length());
                     if (suffix.isEmpty()) return 11;
-                    try { return 11 + Integer.parseInt(suffix); } catch (Exception e) { return 100; }
+                    try { return 12 + Integer.parseInt(suffix); } catch (Exception e) { return 19; }
                 }
 
                 if (name.equals("pose")) return 20;
@@ -698,7 +708,7 @@ public class UIReplaysEditor extends UIElement
                     if (name.indexOf(':') != -1) return 29;
                     String suffix = name.substring("pose_overlay".length());
                     if (suffix.isEmpty()) return 21;
-                    try { return 21 + Integer.parseInt(suffix); } catch (Exception e) { return 28; }
+                    try { return 22 + Integer.parseInt(suffix); } catch (Exception e) { return 28; }
                 }
 
                 if (name.indexOf(':') != -1) return 29;
@@ -726,7 +736,7 @@ public class UIReplaysEditor extends UIElement
                 String boneA = a.id.substring(a.id.indexOf(':') + 1);
                 String boneB = b.id.substring(b.id.indexOf(':') + 1);
 
-                return boneA.compareTo(boneB);
+                return compareNaturally(boneA, boneB);
             }
 
             return 0;
@@ -1196,9 +1206,10 @@ public class UIReplaysEditor extends UIElement
     private void processTrack(UIKeyframeSheet sheet, String groupKey, int level, List<UIKeyframeSheet> before, List<UIKeyframeSheet> pose, List<UIKeyframeSheet> limbs, List<UIKeyframeSheet> overlays, List<UIKeyframeSheet> after)
     {
         sheet.level = level;
+        String customTitle = this.replay.getCustomSheetTitle(sheet.id);
 
         /* Reset title in case it was changed by originalKeyframeUI mode */
-        if (sheet.property != null)
+        if ((customTitle == null || customTitle.isEmpty()) && sheet.property != null)
         {
             Form trackForm = FormUtils.getForm(sheet.property);
 
@@ -1256,6 +1267,10 @@ public class UIReplaysEditor extends UIElement
         {
             overlays.add(sheet);
         }
+        else if (trackName.startsWith("transform_overlay") || trackName.equals("transform"))
+        {
+            before.add(sheet);
+        }
         else
         {
             /* Decide whether it's before or after pose based on MODEL_PROPERTIES index */
@@ -1278,6 +1293,11 @@ public class UIReplaysEditor extends UIElement
                 after.add(sheet);
             }
         }
+
+        if (customTitle != null && !customTitle.isEmpty())
+        {
+            sheet.title = IKey.constant(customTitle);
+        }
     }
 
     private static class FormTracks
@@ -1293,6 +1313,114 @@ public class UIReplaysEditor extends UIElement
         {
             this.form = form;
         }
+    }
+
+    private static int comparePathsNaturally(String a, String b)
+    {
+        if (a.equals(b))
+        {
+            return 0;
+        }
+
+        String[] left = a.split("/");
+        String[] right = b.split("/");
+        int min = Math.min(left.length, right.length);
+
+        for (int i = 0; i < min; i++)
+        {
+            int cmp = compareNaturally(left[i], right[i]);
+
+            if (cmp != 0)
+            {
+                return cmp;
+            }
+        }
+
+        return Integer.compare(left.length, right.length);
+    }
+
+    private static int compareNaturally(String a, String b)
+    {
+        int i = 0;
+        int j = 0;
+
+        while (i < a.length() && j < b.length())
+        {
+            char ca = a.charAt(i);
+            char cb = b.charAt(j);
+
+            if (Character.isDigit(ca) && Character.isDigit(cb))
+            {
+                int startI = i;
+                int startJ = j;
+
+                while (i < a.length() && Character.isDigit(a.charAt(i)))
+                {
+                    i++;
+                }
+
+                while (j < b.length() && Character.isDigit(b.charAt(j)))
+                {
+                    j++;
+                }
+
+                String numberA = a.substring(startI, i);
+                String numberB = b.substring(startJ, j);
+                int numericCmp = compareNumericStrings(numberA, numberB);
+
+                if (numericCmp != 0)
+                {
+                    return numericCmp;
+                }
+
+                continue;
+            }
+
+            int charCmp = Character.compare(Character.toLowerCase(ca), Character.toLowerCase(cb));
+
+            if (charCmp != 0)
+            {
+                return charCmp;
+            }
+
+            i++;
+            j++;
+        }
+
+        return Integer.compare(a.length(), b.length());
+    }
+
+    private static int compareNumericStrings(String a, String b)
+    {
+        int ai = 0;
+        int bi = 0;
+
+        while (ai < a.length() && a.charAt(ai) == '0')
+        {
+            ai++;
+        }
+
+        while (bi < b.length() && b.charAt(bi) == '0')
+        {
+            bi++;
+        }
+
+        String trimmedA = a.substring(ai);
+        String trimmedB = b.substring(bi);
+
+        if (trimmedA.length() != trimmedB.length())
+        {
+            return Integer.compare(trimmedA.length(), trimmedB.length());
+        }
+
+        int cmp = trimmedA.compareTo(trimmedB);
+
+        if (cmp != 0)
+        {
+            return cmp;
+        }
+
+        return Integer.compare(a.length(), b.length());
     }
 
     private void animationToPoses(ModelForm modelForm, UIKeyframeSheet sheet)
