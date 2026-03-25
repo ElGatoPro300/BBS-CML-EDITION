@@ -15,23 +15,14 @@ import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
 import org.lwjgl.opengl.GL11;
 
-import java.util.HashMap;
-import java.util.Map;
-
 public class Gizmo
 {
-    public interface IGizmoHandler
-    {
-        public void start(Gizmo gizmo, int index, int mouseX, int mouseY, UIPropTransform transform);
-    }
-
     public final static int STENCIL_X = 1;
     public final static int STENCIL_Y = 2;
     public final static int STENCIL_Z = 3;
     public final static int STENCIL_XZ = 4;
     public final static int STENCIL_XY = 5;
     public final static int STENCIL_ZY = 6;
-    public final static int STENCIL_FREE = 7;
 
     public final static Gizmo INSTANCE = new Gizmo();
 
@@ -45,15 +36,9 @@ public class Gizmo
     private int mouseY;
 
     private UIPropTransform currentTransform;
-    private Map<Integer, IGizmoHandler> handlers = new HashMap<>();
 
     private Gizmo()
     {}
-
-    public void register(int index, IGizmoHandler handler)
-    {
-        this.handlers.put(index, handler);
-    }
 
     public Mode getMode()
     {
@@ -81,15 +66,7 @@ public class Gizmo
             return false;
         }
 
-        if (this.handlers.containsKey(index))
-        {
-            this.handlers.get(index).start(this, index, mouseX, mouseY, transform);
-            this.index = index;
-
-            return true;
-        }
-
-        if (index >= STENCIL_X && index <= STENCIL_FREE)
+        if (index >= STENCIL_X && index <= STENCIL_ZY)
         {
             this.index = index;
             this.mouseX = mouseX;
@@ -99,34 +76,9 @@ public class Gizmo
 
             if (transform != null)
             {
-                if (this.index == STENCIL_X)
-                {
-                    transform.enableMode(this.mode.ordinal(), Axis.X);
-                }
-                else if (this.index == STENCIL_Y)
-                {
-                    transform.enableMode(this.mode.ordinal(), Axis.Y);
-                }
-                else if (this.index == STENCIL_Z)
-                {
-                    transform.enableMode(this.mode.ordinal(), Axis.Z);
-                }
-                else if (this.index == STENCIL_XY)
-                {
-                    transform.enablePlaneMode(this.mode.ordinal(), Axis.X, Axis.Y);
-                }
-                else if (this.index == STENCIL_XZ)
-                {
-                    transform.enablePlaneMode(this.mode.ordinal(), Axis.X, Axis.Z);
-                }
-                else if (this.index == STENCIL_ZY)
-                {
-                    transform.enablePlaneMode(this.mode.ordinal(), Axis.Z, Axis.Y);
-                }
-                else if (this.index == STENCIL_FREE && this.mode == Mode.ROTATE)
-                {
-                    transform.enableFreeRotation(this.mode.ordinal(), Axis.X);
-                }
+                if (this.index == STENCIL_X) transform.enableMode(this.mode.ordinal(), Axis.X);
+                else if (this.index == STENCIL_Y) transform.enableMode(this.mode.ordinal(), Axis.Y);
+                else if (this.index == STENCIL_Z) transform.enableMode(this.mode.ordinal(), Axis.Z);
             }
 
             return true;
@@ -213,17 +165,6 @@ public class Gizmo
             Draw.fillBox(builder, stack, -axisOffset, -axisOffset, 0, axisOffset, axisOffset, axisSize, 0F, 0F, 1F);
             Draw.fillBox(builder, stack, -axisOffset, -axisOffset, -axisOffset, axisOffset, axisOffset, axisOffset, 1F, 1F, 1F);
 
-            if (this.mode == Mode.TRANSLATE)
-            {
-                float planeInner = axisSize * 0.25F;
-                float planeOuter = axisSize * 0.65F;
-                float offset = 0.001F;
-
-                Draw.fillBox(builder, stack, planeInner, -offset, planeInner, planeOuter, offset, planeOuter, 0F, 1F, 0F);
-                Draw.fillBox(builder, stack, planeInner, planeInner, -offset, planeOuter, planeOuter, offset, 0F, 0F, 1F);
-                Draw.fillBox(builder, stack, -offset, planeInner, planeInner, offset, planeOuter, planeOuter, 1F, 0F, 0F);
-            }
-
             if (this.mode == Mode.SCALE)
             {
                 float scaleEnd = axisSize + axisOffset;
@@ -278,8 +219,6 @@ public class Gizmo
             Draw.arc3D(builder, stack, Axis.Z, radius, thicknessRing + outlinePad, STENCIL_Z / 255F, 0F, 0F);
             Draw.arc3D(builder, stack, Axis.X, radius, thicknessRing + outlinePad, STENCIL_X / 255F, 0F, 0F);
             Draw.arc3D(builder, stack, Axis.Y, radius, thicknessRing + outlinePad, STENCIL_Y / 255F, 0F, 0F);
-
-            Draw.fillBox(builder, stack, -axisOffset, -axisOffset, -axisOffset, axisOffset, axisOffset, axisOffset, STENCIL_FREE / 255F, 0F, 0F);
         }
         else
         {
@@ -297,16 +236,13 @@ public class Gizmo
                 Draw.fillBox(builder, stack, -axisOffset * 2F, -axisOffset * 2F, axisSize, axisOffset * 2F, axisOffset * 2F, scaleEnd, STENCIL_Z / 255F, 0F, 0F);
             }
 
-            if (this.mode == Mode.TRANSLATE)
-            {
-                float planeInner = axisSize * 0.25F;
-                float offset = 0.001F;
-                float planeOuter = axisSize * 0.65F;
+            /* float l = axisSize * 0.25F;
+            float o = 0.001F;
+            float rr = axisSize * 0.65F;
 
-                Draw.fillBox(builder, stack, planeInner, -offset, planeInner, planeOuter, offset, planeOuter, STENCIL_XZ / 255F, 0F, 0F);
-                Draw.fillBox(builder, stack, planeInner, planeInner, -offset, planeOuter, planeOuter, offset, STENCIL_XY / 255F, 0F, 0F);
-                Draw.fillBox(builder, stack, -offset, planeInner, planeInner, offset, planeOuter, planeOuter, STENCIL_ZY / 255F, 0F, 0F);
-            }
+            Draw.fillBox(builder, stack, l, -o, l, rr, o, rr, STENCIL_XZ / 255F, 0F, 0F);
+            Draw.fillBox(builder, stack, l, l, -o, rr, rr, o, STENCIL_XY / 255F, 0F, 0F);
+            Draw.fillBox(builder, stack, -o, l, l, o, rr, rr, STENCIL_ZY / 255F, 0F, 0F); */
         }
 
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);

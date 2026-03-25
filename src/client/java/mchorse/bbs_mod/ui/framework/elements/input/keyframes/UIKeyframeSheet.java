@@ -7,7 +7,6 @@ import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.utils.interps.Interpolation;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
-import mchorse.bbs_mod.utils.keyframes.factories.KeyframeFactories;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -16,7 +15,7 @@ public class UIKeyframeSheet
 {
     /* Meta data */
     public final String id;
-    public IKey title;
+    public final IKey title;
     public final int color;
     public boolean separator;
 
@@ -25,15 +24,6 @@ public class UIKeyframeSheet
     public final KeyframeChannel channel;
     public final KeyframeSelection selection;
     public final BaseValueBasic property;
-    public String anchoredBone;
-
-    public boolean groupHeader;
-    public boolean groupExpanded = true;
-    public boolean expanded = false;
-    public int level = 0;
-    public String groupKey;
-    public Runnable toggleGroup;
-    public Runnable toggleExpanded;
 
     public UIKeyframeSheet(int color, boolean separator, KeyframeChannel channel, BaseValueBasic property)
     {
@@ -50,24 +40,6 @@ public class UIKeyframeSheet
         this.channel = channel;
         this.selection = new KeyframeSelection(channel);
         this.property = property;
-        this.anchoredBone = null;
-
-        this.groupHeader = false;
-        this.groupExpanded = true;
-        this.groupKey = null;
-        this.toggleGroup = null;
-    }
-
-    public static UIKeyframeSheet groupHeader(String id, IKey title, int color, String groupKey, boolean expanded, Runnable toggleGroup)
-    {
-        UIKeyframeSheet sheet = new UIKeyframeSheet(id, title, color, false, new KeyframeChannel<>(id, KeyframeFactories.DOUBLE), null);
-
-        sheet.groupHeader = true;
-        sheet.groupExpanded = expanded;
-        sheet.groupKey = groupKey;
-        sheet.toggleGroup = toggleGroup;
-
-        return sheet;
     }
 
     public UIKeyframeSheet icon(Icon icon)

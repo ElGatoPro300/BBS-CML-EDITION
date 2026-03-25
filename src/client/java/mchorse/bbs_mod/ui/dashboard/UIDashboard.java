@@ -12,12 +12,9 @@ import mchorse.bbs_mod.events.register.RegisterDashboardPanelsEvent;
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.resources.Link;
-import mchorse.bbs_mod.settings.Settings;
 import mchorse.bbs_mod.settings.ui.UISettingsOverlayPanel;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
-import mchorse.bbs_mod.ui.addons.UIAddonsPanel;
-import mchorse.bbs_mod.ui.news.UINewsPanel;
 import mchorse.bbs_mod.ui.dashboard.panels.IFlightSupported;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanels;
@@ -29,13 +26,9 @@ import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.UIRenderingContext;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
-import mchorse.bbs_mod.ui.framework.elements.overlay.UIFnafOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIMessageOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
-import mchorse.bbs_mod.ui.model.UIModelPanel;
 import mchorse.bbs_mod.ui.model_blocks.UIModelBlockPanel;
-import mchorse.bbs_mod.ui.triggers.UITriggerBlockPanel;
-import mchorse.bbs_mod.ui.triggers.TriggerKeys;
 import mchorse.bbs_mod.ui.morphing.UIMorphingPanel;
 import mchorse.bbs_mod.ui.particles.UIParticleSchemePanel;
 import mchorse.bbs_mod.ui.selectors.UISelectorsOverlayPanel;
@@ -139,8 +132,10 @@ public class UIDashboard extends UIBaseMenu
                 return;
             }
 
-            UIOverlay.addOverlay(this.context, new UIUtilityOverlayPanel(UIKeys.UTILITY_TITLE, null), 240, 230);
+            UIOverlay.addOverlay(this.context, new UIUtilityOverlayPanel(UIKeys.UTILITY_TITLE, null), 240, 160);
         });
+
+        this.showAnnoyingPopups();
     }
 
     private void showAnnoyingPopups()
@@ -152,36 +147,11 @@ public class UIDashboard extends UIBaseMenu
                 UIKeys.DASHBOARD_OPTIFINE_EW_DESCRIPTION
             ));
         }
-
-        if (!BBSSettings.shownFnafPopup.get())
-        {
-            MinecraftClient mc = MinecraftClient.getInstance();
-
-            if (mc.player != null && mc.player.getUuidAsString().equals("62151594-754f-4f81-a583-dc9459164d01"))
-            {
-                UIOverlay.addOverlay(this.context, new UIFnafOverlayPanel(UIKeys.DASHBOARD_FNAF_POPUP, UIKeys.DASHBOARD_FNAF_POPUP_SMALL), 320, 240);
-
-                BBSSettings.shownFnafPopup.set(true);
-
-                Settings settings = BBSMod.getSettings().modules.get("bbs");
-
-                if (settings != null)
-                {
-                    settings.saveLater();
-                }
-            }
-        }
     }
 
     public void copyCurrentEntityCamera()
     {
         Entity cameraEntity = MinecraftClient.getInstance().getCameraEntity();
-
-        if (cameraEntity == null)
-        {
-            return;
-        }
-
         Vec3d eyePos = cameraEntity.getEyePos();
         Camera camera = new Camera();
 
@@ -238,9 +208,6 @@ public class UIDashboard extends UIBaseMenu
         }
 
         BBSModClient.getCameraController().add(this.camera);
-
-        this.showAnnoyingPopups();
-        UINewsPanel.onDashboardOpened(this);
     }
 
     @Override
@@ -276,16 +243,10 @@ public class UIDashboard extends UIBaseMenu
         this.panels.registerPanel(new UIMorphingPanel(this), UIKeys.MORPHING_TITLE, Icons.MORPH);
         this.panels.registerPanel(new UIFilmPanel(this), UIKeys.FILM_TITLE, Icons.FILM);
         this.panels.registerPanel(new UIModelBlockPanel(this), UIKeys.MODEL_BLOCKS_TITLE, Icons.BLOCK);
-        this.panels.registerPanel(new UITriggerBlockPanel(this), TriggerKeys.TITLE, Icons.TRIGGER);
         this.panels.registerPanel(new UIParticleSchemePanel(this), UIKeys.PANELS_PARTICLES, Icons.PARTICLE).marginLeft(10);
-        this.panels.registerPanel(new UIModelPanel(this), UIKeys.MODELS_TITLE, Icons.PLAYER);
         this.panels.registerPanel(new UITextureManagerPanel(this), UIKeys.TEXTURES_TOOLTIP, Icons.MATERIAL);
         this.panels.registerPanel(new UIAudioEditorPanel(this), UIKeys.AUDIO_TITLE, Icons.SOUND);
         this.panels.registerPanel(new UIGraphPanel(this), UIKeys.GRAPH_TOOLTIP, Icons.GRAPH);
-        this.panels.registerPanel(new UIAddonsPanel(this), UIKeys.ADDONS_TITLE, Icons.PROCESSOR).marginLeft(10);
-        UINewsPanel newsPanel = new UINewsPanel(this);
-        UIIcon newsButton = this.panels.registerPanel(newsPanel, UIKeys.NEWS_TITLE, Icons.NEWS);
-        UINewsPanel.attachIcon(newsButton);
 
         if (FabricLoader.getInstance().isDevelopmentEnvironment())
         {
@@ -293,12 +254,6 @@ public class UIDashboard extends UIBaseMenu
         }
 
         this.setPanel(this.getPanel(UISupportersPanel.class));
-    }
-
-    @Override
-    public boolean canHideHUD()
-    {
-        return this.panels.panel == null || this.panels.panel.canHideHUD();
     }
 
     public <T> T getPanel(Class<T> clazz)
@@ -319,12 +274,6 @@ public class UIDashboard extends UIBaseMenu
         if (this.panels.panel != null)
         {
             this.panels.panel.update();
-        }
-
-        if (this.main.isVisible())
-        {
-            UINewsPanel.tickAuto(this);
-            UINewsPanel.tickPriorityAnnouncement(this);
         }
     }
 

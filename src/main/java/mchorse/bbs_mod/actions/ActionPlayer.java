@@ -73,7 +73,7 @@ public class ActionPlayer
             for (int i = 0; i < this.serverPlayer.getInventory().size(); i++)
             {
                 this.cachedInventory.add(serverPlayer.getInventory().getStack(i).copy());
-                this.serverPlayer.getInventory().setStack(i, CollectionUtils.getSafe(fpReplay.inventory.getStacks(), i, ItemStack.EMPTY));
+                this.serverPlayer.getInventory().setStack(i, CollectionUtils.getSafe(this.film.inventory.getStacks(), i, ItemStack.EMPTY));
             }
 
             Morph morph = Morph.getMorph(this.serverPlayer);
@@ -133,7 +133,6 @@ public class ActionPlayer
                 ActorEntity actor = new ActorEntity(BBSMod.ACTOR_ENTITY, this.world);
 
                 actor.setForm(FormUtils.copy(replay.form.get()));
-                actor.setReplayData(this.film, replay, this.tick);
 
                 this.apply(actor, replay, this.tick, false);
                 this.actors.put(replay.getId(), actor);
@@ -227,16 +226,7 @@ public class ActionPlayer
 
             if (replay != null)
             {
-                LivingEntity actor = entry.getValue();
-                
-                // Update tick in ActorEntity for accurate item drops on death
-                if (actor instanceof ActorEntity actorEntity)
-                {
-                    actorEntity.updateTick(this.tick);
-                }
-                
-                this.apply(actor, replay, this.tick, true);
-
+                this.apply(entry.getValue(), replay, this.tick, true);
             }
         }
 

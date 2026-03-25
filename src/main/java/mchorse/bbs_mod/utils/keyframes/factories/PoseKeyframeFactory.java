@@ -2,9 +2,6 @@ package mchorse.bbs_mod.utils.keyframes.factories;
 
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.utils.interps.IInterp;
-import mchorse.bbs_mod.utils.interps.Interpolations;
-import mchorse.bbs_mod.utils.interps.easings.EasingArgs;
-import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import mchorse.bbs_mod.utils.pose.Pose;
 import mchorse.bbs_mod.utils.pose.PoseTransform;
 import mchorse.bbs_mod.utils.pose.Transform;
@@ -47,59 +44,6 @@ public class PoseKeyframeFactory implements IKeyframeFactory<Pose>
     public Pose copy(Pose value)
     {
         return value.copy();
-    }
-
-    @Override
-    public Pose interpolate(Keyframe<Pose> preA, Keyframe<Pose> a, Keyframe<Pose> b, Keyframe<Pose> postB, IInterp interpolation, float x)
-    {
-        keys.clear();
-
-        Pose pA = preA.getValue();
-        Pose A = a.getValue();
-        Pose B = b.getValue();
-        Pose pB = postB.getValue();
-
-        if (pA != A && pA != null) keys.addAll(pA.transforms.keySet());
-        if (A != null) keys.addAll(A.transforms.keySet());
-        if (B != null) keys.addAll(B.transforms.keySet());
-        if (pB != B && pB != null) keys.addAll(pB.transforms.keySet());
-
-        for (PoseTransform value : this.i.transforms.values())
-        {
-            value.identity();
-        }
-
-        double w0 = 1.0, w1 = 1.0, w2 = 1.0, w3 = 1.0;
-        
-        if (interpolation == Interpolations.NURBS)
-        {
-            EasingArgs args = a.getInterpolation().getArgs();
-            
-            w0 = args.v3 != 0 ? args.v3 : getWeight(preA);
-            w1 = args.v1 != 0 ? args.v1 : 1.0;
-            w2 = args.v2 != 0 ? args.v2 : getWeight(b);
-            w3 = args.v4 != 0 ? args.v4 : getWeight(postB);
-        }
-
-        for (String key : keys)
-        {
-            Transform transform = this.i.get(key);
-            Transform preATransform = pA.get(key);
-            Transform aTransform = A.get(key);
-            Transform bTransform = B.get(key);
-            Transform postBTransform = pB.get(key);
-
-            transform.lerp(preATransform, aTransform, bTransform, postBTransform, interpolation, x, w0, w1, w2, w3);
-        }
-
-        return this.i;
-    }
-
-    private double getWeight(Keyframe<?> kf)
-    {
-        if (kf == null) return 1.0;
-        double w = kf.getInterpolation().getArgs().v1;
-        return w == 0 ? 1.0 : w;
     }
 
     @Override

@@ -1,7 +1,6 @@
 package mchorse.bbs_mod.blocks.entities;
 
 import mchorse.bbs_mod.BBSMod;
-import mchorse.bbs_mod.blocks.ModelBlock;
 import mchorse.bbs_mod.data.DataStorageUtils;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.MapType;
@@ -9,7 +8,6 @@ import mchorse.bbs_mod.events.ModelBlockEntityUpdateCallback;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.entities.StubEntity;
 import mchorse.bbs_mod.forms.forms.Form;
-import mchorse.bbs_mod.forms.forms.LightForm;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntity;
@@ -28,7 +26,6 @@ public class ModelBlockEntity extends BlockEntity
 
     private float lastYaw = Float.NaN;
     private float currentYaw = Float.NaN;
-    private int lastLightLevel = -1;
 
     public ModelBlockEntity(BlockPos pos, BlockState state)
     {
@@ -96,85 +93,13 @@ public class ModelBlockEntity extends BlockEntity
         this.currentYaw = currentYaw;
     }
 
-    public static void tick(World world, BlockPos pos, BlockState state, ModelBlockEntity blockEntity)
+    public void tick(World world, BlockPos pos, BlockState state)
     {
-        ModelBlockEntityUpdateCallback.EVENT.invoker().update(blockEntity);
-        /* Asegura que el StubEntity tenga posición y mundo correctos para cálculos de luz/bioma.
-         * Sin esto, el entity se queda en (0,0,0) y los renders toman luz de esa zona,
-         * provocando oscurecimiento en editor, miniatura y bloque de modelo. */
-        blockEntity.entity.setWorld(world);
+        ModelBlockEntityUpdateCallback.EVENT.invoker().update(this);
 
-        double x = pos.getX() + 0.5D;
-        double y = pos.getY();
-        double z = pos.getZ() + 0.5D;
-
-        blockEntity.entity.setPosition(x, y, z);
-
-        /* Initialize previous position/yaw on the very first tick to avoid
-         * a huge movement delta (spike) when the block is placed. */
-        try
-        {
-            if (blockEntity.entity.getAge() == 0)
-            {
-                blockEntity.entity.setPrevX(x);
-                blockEntity.entity.setPrevY(y);
-                blockEntity.entity.setPrevZ(z);
-
-                blockEntity.entity.setPrevYaw(blockEntity.entity.getYaw());
-                blockEntity.entity.setPrevHeadYaw(blockEntity.entity.getHeadYaw());
-                blockEntity.entity.setPrevPitch(blockEntity.entity.getPitch());
-                blockEntity.entity.setPrevBodyYaw(blockEntity.entity.getBodyYaw());
-                blockEntity.entity.setPrevPrevBodyYaw(blockEntity.entity.getPrevBodyYaw());
-
-                float[] extra = blockEntity.entity.getExtraVariables();
-                float[] prevExtra = blockEntity.entity.getPrevExtraVariables();
-
-                if (extra != null && prevExtra != null)
-                {
-                    for (int i = 0; i < Math.min(extra.length, prevExtra.length); i++)
-                    {
-                        prevExtra[i] = extra[i];
-                    }
-                }
-            }
-        }
-        catch (Exception e) {}
-
-        blockEntity.entity.update();
-        blockEntity.properties.update(blockEntity.entity);
-        if (!world.isClient)
-        {
-            int target = blockEntity.properties.getLightLevel();
-            Form form = blockEntity.properties.getForm();
-
-            if (form instanceof LightForm lightForm && lightForm.enabled.get())
-            {
-                int level = lightForm.level.get();
-
-                if (level < 0)
-                {
-                    level = 0;
-                }
-                else if (level > 15)
-                {
-                    level = 15;
-                }
-
-                target = level;
-            }
-
-            if (target != blockEntity.lastLightLevel)
-            {
-                blockEntity.lastLightLevel = target;
-                blockEntity.properties.setLightLevel(target);
-
-                try
-                {
-                    world.setBlockState(pos, state.with(ModelBlock.LIGHT_LEVEL, target), Block.NOTIFY_LISTENERS);
-                }
-                catch (Exception e) {}
-            }
-        }
+        this.entity.update();
+        this.entity.setWorld(world);
+        this.properties.update(this.entity);
     }
 
     @Nullable
@@ -211,22 +136,6 @@ public class ModelBlockEntity extends BlockEntity
         {
             this.properties.fromData(mapType);
         }
-        /* Ensure block state reflects stored light level when chunk/block is loaded */
-        if (this.world != null && !this.world.isClient)
-        {
-            try
-            {
-                int level = this.properties.getLightLevel();
-                BlockPos pos = this.getPos();
-                BlockState state = this.world.getBlockState(pos);
-
-                if (state.getBlock() instanceof net.minecraft.block.Block)
-                {
-                    this.world.setBlockState(pos, state.with(mchorse.bbs_mod.blocks.ModelBlock.LIGHT_LEVEL, level), Block.NOTIFY_LISTENERS);
-                }
-            }
-            catch (Exception e) {}
-        }
     }
 
     public void updateForm(MapType data, World world)
@@ -236,17 +145,7 @@ public class ModelBlockEntity extends BlockEntity
         BlockPos pos = this.getPos();
         BlockState blockState = world.getBlockState(pos);
 
-        try
-        {
-            int level = this.properties.getLightLevel();
-
-            world.setBlockState(pos, blockState.with(mchorse.bbs_mod.blocks.ModelBlock.LIGHT_LEVEL, level), Block.NOTIFY_LISTENERS);
-        }
-        catch (Exception e)
-        {
-            world.updateListeners(pos, blockState, blockState, Block.NOTIFY_LISTENERS);
-        }
-
+        world.updateListeners(pos, blockState, blockState, Block.NOTIFY_LISTENERS);
         world.markDirty(pos);
     }
 }

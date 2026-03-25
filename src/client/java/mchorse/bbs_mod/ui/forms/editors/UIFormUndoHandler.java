@@ -104,11 +104,8 @@ public class UIFormUndoHandler
         if (anotherUndo instanceof ValueChangeUndo)
         {
             ValueChangeUndo change = (ValueChangeUndo) anotherUndo;
-            UIElement root = this.uiElement.getRoot();
-            if (root != null)
-            {
-                root.applyAllUndoData(change.getUIData(redo));
-            }
+
+            this.uiElement.getRoot().applyAllUndoData(change.getUIData(redo));
         }
     }
 
@@ -116,11 +113,7 @@ public class UIFormUndoHandler
     {
         if (this.uiData == null && this.uiElement.getRoot() != null)
         {
-            UIElement root = this.uiElement.getRoot();
-            if (root != null)
-            {
-                this.uiData = root.collectAllUndoData();
-            }
+            this.uiData = this.uiElement.getRoot().collectAllUndoData();
         }
 
         if (!this.cachedValues.containsKey(baseValue))

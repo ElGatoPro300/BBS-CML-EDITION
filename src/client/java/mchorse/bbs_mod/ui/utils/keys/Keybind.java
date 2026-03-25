@@ -86,17 +86,6 @@ public class Keybind
             return false;
         }
 
-        if (!isModifierKey(keyCode))
-        {
-            boolean requiresShift = containsModifier(this.combo, GLFW.GLFW_KEY_LEFT_SHIFT, GLFW.GLFW_KEY_RIGHT_SHIFT);
-            boolean requiresCtrl = containsModifier(this.combo, GLFW.GLFW_KEY_LEFT_CONTROL, GLFW.GLFW_KEY_RIGHT_CONTROL);
-            boolean requiresAlt = containsModifier(this.combo, GLFW.GLFW_KEY_LEFT_ALT, GLFW.GLFW_KEY_RIGHT_ALT);
-
-            if (Window.isShiftPressed() && !requiresShift) return false;
-            if (Window.isCtrlPressed() && !requiresCtrl) return false;
-            if (Window.isAltPressed() && !requiresAlt) return false;
-        }
-
         for (int i = 1; i < this.combo.keys.size(); i++)
         {
             if (!this.isKeyDown(this.combo.keys.get(i)))
@@ -117,17 +106,6 @@ public class Keybind
             return false;
         }
 
-        if (!isModifierKey(mouseButton))
-        {
-            boolean requiresShift = containsModifier(this.combo, GLFW.GLFW_KEY_LEFT_SHIFT, GLFW.GLFW_KEY_RIGHT_SHIFT);
-            boolean requiresCtrl = containsModifier(this.combo, GLFW.GLFW_KEY_LEFT_CONTROL, GLFW.GLFW_KEY_RIGHT_CONTROL);
-            boolean requiresAlt = containsModifier(this.combo, GLFW.GLFW_KEY_LEFT_ALT, GLFW.GLFW_KEY_RIGHT_ALT);
-
-            if (Window.isShiftPressed() && !requiresShift) return false;
-            if (Window.isCtrlPressed() && !requiresCtrl) return false;
-            if (Window.isAltPressed() && !requiresAlt) return false;
-        }
-
         for (int i = 1; i < this.combo.keys.size(); i++)
         {
             if (!this.isKeyDown(this.combo.keys.get(i)))
@@ -137,27 +115,6 @@ public class Keybind
         }
 
         return this.inside ? inside : true;
-    }
-
-    private static boolean containsModifier(KeyCombo combo, int left, int right)
-    {
-        for (int i = 0; i < combo.keys.size(); i++)
-        {
-            int k = combo.keys.get(i);
-            if (k == left || k == right) return true;
-        }
-
-        return false;
-    }
-
-    private static boolean isModifierKey(int key)
-    {
-        return key == GLFW.GLFW_KEY_LEFT_SHIFT
-            || key == GLFW.GLFW_KEY_RIGHT_SHIFT
-            || key == GLFW.GLFW_KEY_LEFT_CONTROL
-            || key == GLFW.GLFW_KEY_RIGHT_CONTROL
-            || key == GLFW.GLFW_KEY_LEFT_ALT
-            || key == GLFW.GLFW_KEY_RIGHT_ALT;
     }
 
     protected boolean isKeyDown(int key)
