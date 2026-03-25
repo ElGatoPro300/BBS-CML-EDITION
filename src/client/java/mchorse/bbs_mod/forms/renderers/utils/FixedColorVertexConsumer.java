@@ -2,6 +2,7 @@ package mchorse.bbs_mod.forms.renderers.utils;
 
 import mchorse.bbs_mod.utils.colors.Color;
 import net.minecraft.client.render.VertexConsumer;
+import org.joml.Matrix4f;
 
 /**
  * VertexConsumer que fija un color constante (incluido alpha) en el
@@ -15,30 +16,33 @@ public class FixedColorVertexConsumer implements VertexConsumer
 {
     private final VertexConsumer delegate;
     private final Color color;
+    private final int r, g, b, a;
 
     public FixedColorVertexConsumer(VertexConsumer delegate, Color color)
     {
         this.delegate = delegate;
         this.color = color;
-
-        // Fijar color/alpha global al iniciar
-        int r = (int)(color.r * 255f);
-        int g = (int)(color.g * 255f);
-        int b = (int)(color.b * 255f);
-        int a = (int)(color.a * 255f);
-        this.delegate.fixedColor(r, g, b, a);
+        this.r = (int)(color.r * 255f);
+        this.g = (int)(color.g * 255f);
+        this.b = (int)(color.b * 255f);
+        this.a = (int)(color.a * 255f);
     }
 
     @Override
-    public VertexConsumer vertex(double x, double y, double z)
+    public VertexConsumer vertex(float x, float y, float z)
     {
-        return this.delegate.vertex(x, y, z);
+        return this.delegate.vertex(x, y, z).color(r, g, b, a);
+    }
+
+    @Override
+    public VertexConsumer vertex(Matrix4f matrix, float x, float y, float z)
+    {
+        return this.delegate.vertex(matrix, x, y, z).color(r, g, b, a);
     }
 
     @Override
     public VertexConsumer color(int red, int green, int blue, int alpha)
     {
-        // Con fixedColor activo, este valor no se usará; delegar por seguridad
         return this.delegate.color(red, green, blue, alpha);
     }
 
@@ -66,21 +70,4 @@ public class FixedColorVertexConsumer implements VertexConsumer
         return this.delegate.normal(x, y, z);
     }
 
-    @Override
-    public void next()
-    {
-        this.delegate.next();
-    }
-
-    @Override
-    public void fixedColor(int red, int green, int blue, int alpha)
-    {
-        this.delegate.fixedColor(red, green, blue, alpha);
-    }
-
-    @Override
-    public void unfixColor()
-    {
-        this.delegate.unfixColor();
-    }
 }

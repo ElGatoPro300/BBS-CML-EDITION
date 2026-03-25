@@ -19,6 +19,8 @@ import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NbtOps;
+import net.minecraft.nbt.NbtElement;
 import net.minecraft.registry.Registries;
 
 import java.util.ArrayList;
@@ -183,7 +185,10 @@ public class UICreativeItemSelectorPanel extends UIOverlayPanel
             return;
         }
 
-        String key = Registries.ITEM.getId(stack.getItem()) + "|" + stack.getNbt();
+        ItemStack normalized = stack.copy();
+        normalized.setCount(1);
+        String encoded = ItemStack.CODEC.encodeStart(NbtOps.INSTANCE, normalized).result().map(NbtElement::asString).orElse("{}");
+        String key = Registries.ITEM.getId(stack.getItem()) + "|" + encoded;
 
         if (visited.add(key))
         {
