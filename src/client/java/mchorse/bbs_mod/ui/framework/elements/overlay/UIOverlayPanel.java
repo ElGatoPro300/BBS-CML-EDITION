@@ -4,6 +4,7 @@ import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.ui.Keys;
+import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
@@ -12,6 +13,7 @@ import mchorse.bbs_mod.ui.framework.elements.utils.EventPropagation;
 import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
+import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.colors.Colors;
 import org.lwjgl.glfw.GLFW;
 
@@ -37,6 +39,7 @@ public class UIOverlayPanel extends UIElement
 
         this.title = UI.label(title);
         this.close = new UIIcon(Icons.CLOSE, (b) -> this.close());
+        this.close.tooltip(UIKeys.GENERAL_CLOSE, Direction.LEFT);
         this.content = new UIElement();
         this.icons = new UIElement();
 
@@ -115,9 +118,12 @@ public class UIOverlayPanel extends UIElement
         {
             if (context.isPressed(Keys.CLOSE))
             {
-                this.close();
+                if (this.getParent() instanceof UIOverlay)
+                {
+                    this.close();
 
-                return true;
+                    return true;
+                }
             }
             else if (context.isPressed(Keys.CONFIRM))
             {

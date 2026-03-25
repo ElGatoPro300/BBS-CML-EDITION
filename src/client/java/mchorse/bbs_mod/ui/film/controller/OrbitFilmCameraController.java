@@ -5,6 +5,7 @@ import mchorse.bbs_mod.camera.Camera;
 import mchorse.bbs_mod.camera.controller.ICameraController;
 import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.film.BaseFilmController;
+import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.forms.Form;
@@ -204,6 +205,33 @@ public class OrbitFilmCameraController implements ICameraController
     public void setup(Camera camera, float transition)
     {
         IEntity entity = this.controller.getCurrentEntity();
+        Replay replay = this.controller.panel.replayEditor.getReplay();
+
+        if (replay != null && replay.isGroup.get())
+        {
+            Replay pivot = null;
+            String uuid = replay.uuid.get();
+
+            for (Replay r : this.controller.panel.getData().replays.getList())
+            {
+                if (r.group.get().contains(uuid))
+                {
+                    pivot = r;
+                    break;
+                }
+            }
+
+            if (pivot != null)
+            {
+                int index = this.controller.panel.getData().replays.getList().indexOf(pivot);
+                IEntity pivotEntity = this.controller.getEntities().get(index);
+
+                if (pivotEntity != null)
+                {
+                    entity = pivotEntity;
+                }
+            }
+        }
 
         if (entity != null)
         {

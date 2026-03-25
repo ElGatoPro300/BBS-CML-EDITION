@@ -16,6 +16,8 @@ import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
 
 import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.List;
 
 public class BBSSettings
 {
@@ -34,7 +36,10 @@ public class BBSSettings
     public static ValueFloat axesScale;
     public static ValueBoolean uniformScale;
     public static ValueBoolean clickSound;
+    public static ValueBoolean disablePivotTransform;
     public static ValueBoolean gizmos;
+    public static ValueBoolean gizmoYAxisHorizontal;
+    public static ValueInt defaultInterpolation;
 
     public static ValueBoolean enableCursorRendering;
     public static ValueBoolean enableMouseButtonRendering;
@@ -48,6 +53,7 @@ public class BBSSettings
     public static ValueBoolean chromaSkyEnabled;
     public static ValueInt chromaSkyColor;
     public static ValueBoolean chromaSkyTerrain;
+    public static ValueBoolean chromaSkyClouds;
     public static ValueFloat chromaSkyBillboard;
 
     public static ValueInt scrollbarShadow;
@@ -68,16 +74,30 @@ public class BBSSettings
     public static ValueBoolean editorLoop;
     public static ValueInt editorJump;
     public static ValueInt editorGuidesColor;
+    public static ValueInt editorSafeMarginsColor;
     public static ValueBoolean editorRuleOfThirds;
+    public static ValueBoolean editorSafeMargins;
     public static ValueBoolean editorCenterLines;
     public static ValueBoolean editorCrosshair;
     public static ValueBoolean editorSeconds;
+    public static ValueBoolean editorFrames;
     public static ValueInt editorPeriodicSave;
     public static ValueBoolean editorHorizontalFlight;
+    public static ValueBoolean editorFlightFreeLook;
     public static ValueEditorLayout editorLayoutSettings;
     public static ValueOnionSkin editorOnionSkin;
     public static ValueBoolean editorSnapToMarkers;
     public static ValueBoolean editorClipPreview;
+    public static ValueBoolean editorClipTypeLabels;
+    public static ValueBoolean editorReplaySprintParticles;
+    public static ValueInt editorTimeMode;
+    public static ValueInt editorReplayEditorTitleLimit;
+    public static ValueBoolean editorReplayHud;
+    public static ValueInt editorReplayHudPosition;
+    public static ValueBoolean editorReplayHudDisplayName;
+    public static ValueBoolean modelFormsHierarchy;
+    public static ValueBoolean mediaFoldersEnhancements;
+    public static ValueInt replayContextOptions;
     public static ValueBoolean editorRewind;
     public static ValueBoolean editorHorizontalClipEditor;
     public static ValueBoolean editorMinutesBackup;
@@ -90,6 +110,7 @@ public class BBSSettings
 
     public static ValueBoolean renderAllModelBlocks;
     public static ValueBoolean clickModelBlocks;
+    public static ValueBoolean modelBlockCategoriesPanelEnabled;
 
     public static ValueString entitySelectorsPropertyWhitelist;
 
@@ -103,9 +124,21 @@ public class BBSSettings
     public static ValueInt audioWaveformHeight;
     public static ValueBoolean audioWaveformFilename;
     public static ValueBoolean audioWaveformTime;
+    /* Pose track bone anchoring */
+    public static ValueBoolean boneAnchoringEnabled;
+    public static ValueBoolean anchorOverrideEnabled;
+    public static ValueBoolean autoKeyframe;
+    public static ValueBoolean poseBonesFilterMarked;
+    public static ValueBoolean replayMarkedBonesOnly;
+    public static ValueBoolean pickLimbTexture;
+    public static ValueBoolean fluidRealisticModelInteraction;
+    public static ValueBoolean limbTracks;
+    public static ValueBoolean originalKeyframeUI;
+    public static ValueBoolean simplifiedKeyframeUI;
 
     public static ValueString cdnUrl;
     public static ValueString cdnToken;
+    public static ValueBoolean shownFnafPopup;
 
     public static int primaryColor()
     {
@@ -170,6 +203,10 @@ public class BBSSettings
         builder.register(favoriteColors);
         builder.register(disabledSheets);
 
+        builder.category("easter_eggs");
+        builder.getCategory().invisible();
+        shownFnafPopup = builder.getBoolean("shown_fnaf_popup", false);
+
         builder.category("tutorials");
         enableCursorRendering = builder.getBoolean("cursor", false);
         enableMouseButtonRendering = builder.getBoolean("mouse_buttons", false);
@@ -185,6 +222,7 @@ public class BBSSettings
         chromaSkyEnabled = builder.getBoolean("enabled", false);
         chromaSkyColor = builder.getInt("color", Colors.A75).color();
         chromaSkyTerrain = builder.getBoolean("terrain", true);
+        chromaSkyClouds = builder.getBoolean("clouds", true);
         chromaSkyBillboard = builder.getFloat("billboard", 0F, 0F, 256F);
 
         builder.category("scrollbars");
@@ -213,7 +251,9 @@ public class BBSSettings
         editorRuleOfThirds = builder.getBoolean("rule_of_thirds", false);
         editorCenterLines = builder.getBoolean("center_lines", false);
         editorCrosshair = builder.getBoolean("crosshair", false);
+
         editorSeconds = builder.getBoolean("seconds", false);
+        editorFrames = builder.getBoolean("frames", false);
         editorPeriodicSave = builder.getInt("periodic_save", 60, 0, 3600);
         editorHorizontalFlight = builder.getBoolean("horizontal_flight", false);
         builder.register(editorLayoutSettings = new ValueEditorLayout("layout"));
@@ -244,6 +284,8 @@ public class BBSSettings
         builder.category("shader_curves");
         shaderCurvesEnabled = builder.getBoolean("enabled", true);
 
+        builder.category("fluid_simulation");
+
         builder.category("audio");
         audioWaveformVisible = builder.getBoolean("waveform_visible", true);
         audioWaveformDensity = builder.getInt("waveform_density", 20, 10, 100);
@@ -251,6 +293,7 @@ public class BBSSettings
         audioWaveformHeight = builder.getInt("waveform_height", 24, 10, 40);
         audioWaveformFilename = builder.getBoolean("waveform_filename", false);
         audioWaveformTime = builder.getBoolean("waveform_time", false);
+
 
         builder.category("cdn");
         cdnUrl = builder.getString("url", "");

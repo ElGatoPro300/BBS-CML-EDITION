@@ -10,9 +10,11 @@ import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.math.molang.MolangParser;
+import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.pose.Pose;
 import mchorse.bbs_mod.utils.pose.PoseTransform;
+import mchorse.bbs_mod.utils.resources.LinkUtils;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -103,6 +105,7 @@ public class Model implements IMapSerializable, IModel
 
             poseTransform.copy(group.current);
             poseTransform.translate.sub(group.initial.translate);
+            poseTransform.pivot.sub(group.initial.pivot);
             poseTransform.rotate.sub(group.initial.rotate);
 
             poseTransform.rotate.x = MathUtils.toRad(poseTransform.rotate.x);
@@ -147,8 +150,12 @@ public class Model implements IMapSerializable, IModel
 
             group.lighting = transform.lighting;
             group.color.copy(transform.color);
+            Link texture = transform.texture;
+            group.textureOverride = texture != null ? LinkUtils.copy(texture) : null;
             group.current.translate.add(transform.translate);
             group.current.scale.add(transform.scale).sub(1, 1, 1);
+            group.current.translate.add(transform.pivot);
+            group.current.pivot.add(transform.pivot);
             group.current.rotate.add(
                 (float) Math.toDegrees(transform.rotate.x),
                 (float) Math.toDegrees(transform.rotate.y),
@@ -249,6 +256,22 @@ public class Model implements IMapSerializable, IModel
     {
         MolangHelper.setMolangVariables(this.parser, target, tick, transition);
         CubicModelAnimator.postAnimate(this, action, tick);
+    }
+
+    public Model copy()
+    {
+        Model model = new Model(this.parser);
+        model.textureWidth = this.textureWidth;
+        model.textureHeight = this.textureHeight;
+
+        for (ModelGroup group : this.topGroups)
+        {
+            model.topGroups.add(group.copy(model, null));
+        }
+
+        model.initialize();
+
+        return model;
     }
 
     /* Deserialization / Serialization */

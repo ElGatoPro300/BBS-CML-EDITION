@@ -25,6 +25,8 @@ import mchorse.bbs_mod.ui.model_blocks.UIModelBlockPanel;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.pose.Transform;
+import mchorse.bbs_mod.utils.pose.Pose;
+import mchorse.bbs_mod.utils.pose.PoseTransform;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.VertexConsumerProvider;
@@ -109,6 +111,7 @@ public class ModelBlockEntityRenderer implements BlockEntityRenderer<ModelBlockE
         ModelProperties properties = entity.getProperties();
         Transform transform = properties.getTransform();
         BlockPos pos = entity.getPos();
+        boolean appliedRuntimeOverlay = false;
 
         matrices.push();
         matrices.translate(0.5F, 0F, 0.5F);
@@ -175,6 +178,11 @@ public class ModelBlockEntityRenderer implements BlockEntityRenderer<ModelBlockE
             double z = pos.getZ() + tz;
 
             renderShadow(vertexConsumers, matrices, tickDelta, x, y, z, tx, ty, tz);
+        }
+
+        if (appliedRuntimeOverlay && properties.getForm() instanceof ModelForm modelForm)
+        {
+            modelForm.poseOverlay.setRuntimeValue(null);
         }
     }
 
