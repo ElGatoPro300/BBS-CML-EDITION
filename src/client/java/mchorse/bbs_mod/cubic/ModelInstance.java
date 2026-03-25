@@ -500,7 +500,7 @@ public class ModelInstance implements IModelInstance
 
                 vao.armature.setupMatrices();
                 vao.updateMesh(stencilMap);
-                vao.render(program.get(), stack, color.r, color.g, color.b, color.a, stencilMap, light, overlay);
+                vao.render(program.get(), stack, color.r, color.g, color.b, color.a, stencilMap, light, overlay, this.texture);
 
                 stack.pop();
             }
