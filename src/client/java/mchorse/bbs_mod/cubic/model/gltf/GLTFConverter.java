@@ -258,7 +258,7 @@ public class GLTFConverter
                             // UV
                             if (uvs != null)
                             {
-                                textures.add(new Vector2d(uvs[v*2], uvs[v*2+1]));
+                                textures.add(new Vector2d(uvs[v*2], 1F - uvs[v*2+1]));
                             }
                             else
                             {
