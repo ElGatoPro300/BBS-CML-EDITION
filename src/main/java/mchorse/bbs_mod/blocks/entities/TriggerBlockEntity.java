@@ -114,7 +114,14 @@ public class TriggerBlockEntity extends BlockEntity
                 {
                     try
                     {
-                        player.getServer().getCommandManager().executeWithPrefix(player.getCommandSource().withLevel(2), cmd);
+                        try
+                        {
+                            Object srv = player.getClass().getMethod("getServer").invoke(player);
+                            Object manager = srv.getClass().getMethod("getCommandManager").invoke(srv);
+                            Object source = player.getClass().getMethod("getCommandSource").invoke(player);
+                            manager.getClass().getMethod("executeWithPrefix", source.getClass(), String.class).invoke(manager, source, cmd);
+                        }
+                        catch (Exception e) {}
                     }
                     catch (Exception e)
                     {
@@ -238,29 +245,27 @@ public class TriggerBlockEntity extends BlockEntity
         this.playersInRegion = currentPlayers;
     }
 
-    @Override
     public void readNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registryLookup)
     {
-        super.readNbt(nbt, registryLookup);
+        // base optional
         
         if (nbt.contains("Left")) this.left.fromData(DataStorageUtils.fromNbt(nbt.get("Left")));
         if (nbt.contains("Right")) this.right.fromData(DataStorageUtils.fromNbt(nbt.get("Right")));
         if (nbt.contains("Enter")) this.enter.fromData(DataStorageUtils.fromNbt(nbt.get("Enter")));
         if (nbt.contains("Exit")) this.exit.fromData(DataStorageUtils.fromNbt(nbt.get("Exit")));
         if (nbt.contains("WhileIn")) this.whileIn.fromData(DataStorageUtils.fromNbt(nbt.get("WhileIn")));
-        if (nbt.contains("RegionDelay")) this.regionDelay.set(nbt.getInt("RegionDelay"));
-        if (nbt.contains("Collidable")) this.collidable.set(nbt.getBoolean("Collidable"));
-        if (nbt.contains("Region")) this.region.set(nbt.getBoolean("Region"));
+        if (nbt.contains("RegionDelay")) this.regionDelay.set(nbt.getInt("RegionDelay").orElse(this.regionDelay.get()));
+        if (nbt.contains("Collidable")) this.collidable.set(nbt.getBoolean("Collidable").orElse(this.collidable.get()));
+        if (nbt.contains("Region")) this.region.set(nbt.getBoolean("Region").orElse(this.region.get()));
         if (nbt.contains("Pos1")) this.pos1.fromData(DataStorageUtils.fromNbt(nbt.get("Pos1")));
         if (nbt.contains("Pos2")) this.pos2.fromData(DataStorageUtils.fromNbt(nbt.get("Pos2")));
         if (nbt.contains("RegionOffset")) this.regionOffset.fromData(DataStorageUtils.fromNbt(nbt.get("RegionOffset")));
         if (nbt.contains("RegionSize")) this.regionSize.fromData(DataStorageUtils.fromNbt(nbt.get("RegionSize")));
     }
 
-    @Override
     public void writeNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registryLookup)
     {
-        super.writeNbt(nbt, registryLookup);
+        // base optional
         
         nbt.put("Left", DataStorageUtils.toNbt(this.left.toData()));
         nbt.put("Right", DataStorageUtils.toNbt(this.right.toData()));

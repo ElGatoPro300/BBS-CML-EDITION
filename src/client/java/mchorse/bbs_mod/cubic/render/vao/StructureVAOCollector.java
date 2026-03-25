@@ -41,7 +41,6 @@ public class StructureVAOCollector implements VertexConsumer
         this.computeTangents = computeTangents;
     }
 
-    @Override
     public VertexConsumer vertex(float x, float y, float z)
     {
         this.vx = x;
@@ -50,7 +49,6 @@ public class StructureVAOCollector implements VertexConsumer
         return this;
     }
 
-    @Override
     public VertexConsumer vertex(Matrix4f matrix, float x, float y, float z)
     {
         Vector4f v = new Vector4f(x, y, z, 1F);
@@ -61,14 +59,18 @@ public class StructureVAOCollector implements VertexConsumer
         return this;
     }
 
-    @Override
     public VertexConsumer color(int red, int green, int blue, int alpha)
     {
         /* Per-vertex color is not used; global color is provided via shader attribute. */
         return this;
     }
 
-    @Override
+    public VertexConsumer color(int argb)
+    {
+        /* Not used; handled via shader attribute */
+        return this;
+    }
+
     public VertexConsumer texture(float u, float v)
     {
         this.vu = u;
@@ -76,21 +78,18 @@ public class StructureVAOCollector implements VertexConsumer
         return this;
     }
 
-    @Override
     public VertexConsumer overlay(int u, int v)
     {
         /* Overlay provided via shader attribute; ignore per-vertex overlay. */
         return this;
     }
 
-    @Override
     public VertexConsumer light(int u, int v)
     {
         /* Lightmap provided via shader attribute; ignore per-vertex light. */
         return this;
     }
 
-    @Override
     public VertexConsumer normal(float x, float y, float z)
     {
         this.vnx = x;
@@ -99,6 +98,17 @@ public class StructureVAOCollector implements VertexConsumer
         this.finalizeCurrent();
         return this;
     }
+
+    public VertexConsumer lineWidth(float width)
+    {
+        /* Not applicable to VAO collection; ignore. */
+        return this;
+    }
+
+    public void next()
+    {
+    }
+
 
     private void finalizeCurrent()
     {

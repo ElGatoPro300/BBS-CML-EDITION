@@ -33,12 +33,12 @@ public class UseItemActionClip extends ItemActionClip
         int used = this.useTicks.get();
 
         player.setStackInHand(hand, copy);
-        copy.use(player.getWorld(), player, hand);
+        copy.use(player.world, player, hand);
 
         if (used > 0 && maxUseTime > 0)
         {
             int remaining = Math.max(0, maxUseTime - used);
-            copy.onStoppedUsing(player.getWorld(), player, remaining);
+            copy.onStoppedUsing(player.world, player, remaining);
             player.stopUsingItem();
         }
 

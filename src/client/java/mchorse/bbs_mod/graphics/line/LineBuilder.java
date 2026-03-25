@@ -1,13 +1,11 @@
 package mchorse.bbs_mod.graphics.line;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D;
-import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
-import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.BufferAllocator;
 import org.joml.Matrix4f;
@@ -81,22 +79,19 @@ public class LineBuilder <T>
 
     public void render(Batcher2D batcher2D, ILineRenderer<T> renderer)
     {
-        Matrix4f matrix = batcher2D.getContext().getMatrices().peek().getPositionMatrix();
+        Matrix4f matrix = new Matrix4f();
         List<List<LinePoint<T>>> build = this.build();
 
         for (List<LinePoint<T>> points : build)
         {
             BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLE_STRIP, VertexFormats.POSITION_COLOR);
 
-            RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
-            RenderSystem.enableBlend();
-
             for (LinePoint<T> point : points)
             {
                 renderer.render(builder, matrix, point);
             }
 
-            BufferRenderer.drawWithGlobalProgram(builder.end());
+            builder.end();
         }
     }
 }

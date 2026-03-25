@@ -453,13 +453,13 @@ public class StubEntity implements IEntity
     @Override
     public float getLimbPos(float tickDelta)
     {
-        return this.limbAnimator.getPos(tickDelta);
+        return 0F;
     }
 
     @Override
     public float getLimbSpeed(float tickDelta)
     {
-        return this.limbAnimator.getSpeed(tickDelta);
+        return 0F;
     }
 
     @Override

@@ -201,7 +201,7 @@ public class UIUtilityOverlayPanel extends UIOverlayPanel
 
         for (String command : commands)
         {
-            MinecraftClient.getInstance().player.networkHandler.sendCommand(command);
+            MinecraftClient.getInstance().player.networkHandler.sendChatCommand(command);
         }
     }
 

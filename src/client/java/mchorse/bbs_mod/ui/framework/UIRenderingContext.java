@@ -19,6 +19,11 @@ public class UIRenderingContext
         this.batcher = new Batcher2D(context);
     }
 
+    public void setDrawContext(DrawContext context)
+    {
+        this.batcher.setContext(context);
+    }
+
     /* Rendering context implementations */
 
     public TextureManager getTextures()

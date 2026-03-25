@@ -1,4 +1,5 @@
 package mchorse.bbs_mod.cubic.render;
+import org.joml.Matrix4f;
 
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.cubic.render.vao.ModelVAO;
@@ -153,7 +154,7 @@ public class CubicVAOBuilderRenderer implements ICubicRenderer
     private void writeVertex(List<Float> vertices, List<Float> normals, List<Float> uvs, MatrixStack stack, ModelGroup group, ModelVertex vertex, Vector3f normal)
     {
         this.vertex.set(vertex.vertex.x, vertex.vertex.y, vertex.vertex.z, 1);
-        stack.peek().getPositionMatrix().transform(this.vertex);
+        new Matrix4f().transform(this.vertex);
 
         vertices.add(this.vertex.x);
         vertices.add(this.vertex.y);
