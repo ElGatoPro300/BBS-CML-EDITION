@@ -4,6 +4,7 @@ import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.client.BBSRendering;
 import net.minecraft.client.util.Window;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
@@ -11,6 +12,27 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(Window.class)
 public class WindowMixin
 {
+    @Shadow
+    private int width;
+
+    @Shadow
+    private int height;
+
+    @Shadow
+    private int framebufferWidth;
+
+    @Shadow
+    private int framebufferHeight;
+
+    @Shadow
+    private int scaledWidth;
+
+    @Shadow
+    private int scaledHeight;
+
+    @Shadow
+    private double scaleFactor;
+
     @Inject(method = "getWidth", at = @At("HEAD"), cancellable = true)
     public void onGetWidth(CallbackInfoReturnable<Integer> info)
     {
@@ -52,9 +74,7 @@ public class WindowMixin
     {
         if (BBSRendering.canReplaceFramebuffer())
         {
-            double scaleFactor = ((Window) (Object) this).getScaleFactor();
-
-            info.setReturnValue((int) (BBSRendering.getVideoWidth() / scaleFactor * BBSModClient.getOriginalFramebufferScale()));
+            info.setReturnValue((int) (BBSRendering.getVideoWidth() / this.scaleFactor * BBSModClient.getOriginalFramebufferScale()));
         }
     }
 
@@ -63,9 +83,7 @@ public class WindowMixin
     {
         if (BBSRendering.canReplaceFramebuffer())
         {
-            double scaleFactor = ((Window) (Object) this).getScaleFactor();
-
-            info.setReturnValue((int) (BBSRendering.getVideoHeight() / scaleFactor * BBSModClient.getOriginalFramebufferScale()));
+            info.setReturnValue((int) (BBSRendering.getVideoHeight() / this.scaleFactor * BBSModClient.getOriginalFramebufferScale()));
         }
     }
 }

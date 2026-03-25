@@ -23,13 +23,15 @@ import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 import mchorse.bbs_mod.utils.keyframes.KeyframeSegment;
 import mchorse.bbs_mod.utils.keyframes.factories.IKeyframeFactory;
-import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.Tessellator;
-import com.mojang.blaze3d.vertex.VertexFormat;
+import net.minecraft.client.render.BufferRenderer;
+import net.minecraft.client.render.GameRenderer;
+import net.minecraft.client.util.BufferAllocator;
+import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import org.joml.Matrix4f;
- 
 
 import java.util.Collections;
 import java.util.List;
@@ -521,7 +523,7 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
     @SuppressWarnings({"rawtypes", "IntegerDivisionInFloatingPointContext"})
     protected void renderGraph(UIContext context)
     {
-        Matrix4f matrix = new Matrix4f();
+        Matrix4f matrix = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
 
         UIKeyframeSheet sheet = this.sheet;
         List keyframes = sheet.channel.getKeyframes();
@@ -710,14 +712,16 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
             }
         }
 
-        // blending and shader setup handled by BufferRenderer global program
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
 
         if (keyframes.isEmpty())
         {
             return;
         }
 
-        net.minecraft.client.render.RenderLayers.debugFilledBox().draw(builder.end());
+        BufferRenderer.drawWithGlobalProgram(builder.end());
     }
 
     @Override

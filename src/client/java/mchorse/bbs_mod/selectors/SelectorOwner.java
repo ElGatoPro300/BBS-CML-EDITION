@@ -64,7 +64,7 @@ public class SelectorOwner
             this.nbtCheck = 10;
 
             Set<String> keys = createWhitelist();
-            NbtCompound compound = new NbtCompound();
+            NbtCompound compound = this.mcEntity.writeNbt(new NbtCompound());
             NbtCompound newCompound = new NbtCompound();
 
             for (String key : keys)

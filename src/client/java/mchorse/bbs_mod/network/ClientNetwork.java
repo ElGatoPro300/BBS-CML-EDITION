@@ -310,10 +310,7 @@ public class ClientNetwork
 
         client.execute(() ->
         {
-            if (client.player != null && !cheats)
-            {
-                client.player.getAbilities().allowModifyWorld = false;
-            }
+            client.player.setClientPermissionLevel(cheats ? 4 : 0);
         });
     }
 
@@ -446,7 +443,7 @@ public class ClientNetwork
 
         client.execute(() ->
         {
-            client.player.getInventory().setSelectedSlot(slot);
+            client.player.getInventory().selectedSlot = slot;
         });
     }
 

@@ -18,7 +18,6 @@ import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.resources.FilteredLink;
-import net.minecraft.util.Identifier;
 import net.minecraft.client.gl.GlUniform;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.render.GameRenderer;
@@ -224,6 +223,8 @@ public class UIMultiLinkEditor extends UICanvasEditor
                     context.batcher.box(area.x, area.y, area.ex(), area.ey(), Colors.setA(Colors.RED, 0.25F));
                 }
 
+                RenderSystem.setShaderTexture(3, context.render.getTextures().getTexture(Icons.ATLAS).id);
+
                 if (needsMultLinkShader)
                 {
                     ShaderProgram shader = BBSShaders.getMultilinkProgram();
@@ -233,7 +234,8 @@ public class UIMultiLinkEditor extends UICanvasEditor
                         GlUniform size = shader.getUniform("Size");
                         GlUniform filters = shader.getUniform("Filters");
 
-                        if (filters != null) {} // filters.set((int) child.pixelate, child.erase ? 1 : 0, 0, 0);
+                        if (size != null) size.set((float) ow, (float) oh);
+                        if (filters != null) filters.set((float) child.pixelate, child.erase ? 1F : 0F, 0F, 0F);
 
                         context.batcher.texturedBox(shader, texture.id, child.color, area.x, area.y, area.w, area.h, 0, 0, texture.width, texture.height, texture.width, texture.height);
                     }
