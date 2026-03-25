@@ -20,7 +20,6 @@ import mchorse.bbs_mod.utils.joml.Vectors;
 import mchorse.bbs_mod.utils.pose.Pose;
 import mchorse.bbs_mod.utils.pose.Transform;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.model.ModelPart;
 import net.minecraft.client.network.OtherClientPlayerEntity;
 import net.minecraft.client.render.LightmapTextureManager;
@@ -34,7 +33,6 @@ import net.minecraft.entity.LivingEntity;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.StringNbtReader;
 import net.minecraft.registry.Registries;
-import net.minecraft.entity.SpawnReason;
 import net.minecraft.util.Hand;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.RotationAxis;
@@ -191,7 +189,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
         catch (Exception e)
         {}
 
-        this.entity = Registries.ENTITY_TYPE.get(Identifier.of(id)).create(MinecraftClient.getInstance().world, SpawnReason.COMMAND);
+        this.entity = Registries.ENTITY_TYPE.get(Identifier.of(id)).create(MinecraftClient.getInstance().world);
 
         if (this.entity == null && this.form.isPlayer())
         {
@@ -251,7 +249,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
             });
 
             consumers.setUI(true);
-            MinecraftClient.getInstance().getEntityRenderDispatcher().render(this.entity, 0D, 0D, 0D, context.getTransition(), stack, consumers, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE);
+            MinecraftClient.getInstance().getEntityRenderDispatcher().render(this.entity, 0D, 0D, 0D, 0F, context.getTransition(), stack, consumers, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE);
             consumers.draw();
             consumers.setUI(false);
 
@@ -282,7 +280,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
                     {
                         this.bindTexture();
                         this.setupTarget(context, BBSShaders.getPickerModelsProgram());
-                        RenderSystem.setShader(BBSShaders.getPickerModelsProgram());
+                        RenderSystem.setShader(BBSShaders::getPickerModelsProgram);
 
                         first.bool = true;
                     }
@@ -321,7 +319,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
             currentPose = this.form.pose.get();
             currentPoseOverlay = this.form.poseOverlay.get();
 
-            MinecraftClient.getInstance().getEntityRenderDispatcher().render(this.entity, 0D, 0D, 0D, context.getTransition(), context.stack, consumers, light);
+            MinecraftClient.getInstance().getEntityRenderDispatcher().render(this.entity, 0D, 0D, 0D, 0F, context.getTransition(), context.stack, consumers, light);
 
             currentPose = currentPoseOverlay = null;
 

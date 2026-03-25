@@ -473,7 +473,7 @@ public class ModelInstance implements IModelInstance
             }
             else
             {
-                RenderSystem.setShader(program.get());
+                RenderSystem.setShader(program);
 
                 BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL);
 

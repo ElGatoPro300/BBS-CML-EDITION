@@ -2,7 +2,6 @@ package mchorse.bbs_mod.ui.film;
 
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.systems.ProjectionType;
 import com.mojang.blaze3d.systems.VertexSorter;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.camera.clips.misc.Subtitle;
@@ -105,7 +104,7 @@ public class UISubtitleRenderer
             int fw = (int) ((w + 10) * scale);
             int fh = (int) ((h + 10) * scale);
 
-            RenderSystem.setProjectionMatrix(new Matrix4f().ortho(0, w + 10, 0, h + 10, -100, 100), ProjectionType.ORTHOGRAPHIC);
+            RenderSystem.setProjectionMatrix(new Matrix4f().ortho(0, w + 10, 0, h + 10, -100, 100), VertexSorter.BY_Z);
 
             framebuffer.resize(fw, fh);
             framebuffer.applyClear();
@@ -133,7 +132,7 @@ public class UISubtitleRenderer
             /* Render the texture */
             fb.beginWrite(true);
 
-            RenderSystem.setProjectionMatrix(ortho, ProjectionType.ORTHOGRAPHIC);
+            RenderSystem.setProjectionMatrix(ortho, VertexSorter.BY_Z);
 
             Transform transform = new Transform();
 
@@ -156,12 +155,12 @@ public class UISubtitleRenderer
             RenderSystem.enableBlend();
             RenderSystem.blendFuncSeparate(GlStateManager.SrcFactor.SRC_ALPHA, GlStateManager.DstFactor.ONE_MINUS_SRC_ALPHA, GlStateManager.SrcFactor.ONE, GlStateManager.DstFactor.ONE_MINUS_SRC_ALPHA);
 
-            batcher.texturedBox(program, texture.id, Colors.setA(Colors.WHITE, alpha), -fw * subtitle.anchorX, -fh * subtitle.anchorY, texture.width, texture.height, 0, 0, texture.width, texture.height, texture.width, texture.height);
+            batcher.texturedBox(supplier, texture.id, Colors.setA(Colors.WHITE, alpha), -fw * subtitle.anchorX, -fh * subtitle.anchorY, texture.width, texture.height, 0, 0, texture.width, texture.height, texture.width, texture.height);
 
             stack.pop();
         }
 
-        RenderSystem.setProjectionMatrix(cache, ProjectionType.ORTHOGRAPHIC);
+        RenderSystem.setProjectionMatrix(cache, VertexSorter.BY_Z);
         RenderSystem.enableCull();
     }
 }
