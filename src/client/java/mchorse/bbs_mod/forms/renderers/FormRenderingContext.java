@@ -6,7 +6,6 @@ import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.utils.MathUtils;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.util.math.MatrixStack;
-import org.joml.Matrix4f;
 
 public class FormRenderingContext
 {
@@ -21,9 +20,6 @@ public class FormRenderingContext
     public boolean ui;
     public int color;
     public boolean modelRenderer;
-    public boolean relative;
-    public boolean isShadowPass;
-    public Matrix4f viewMatrix;
 
     public FormRenderingContext()
     {}
@@ -39,9 +35,6 @@ public class FormRenderingContext
         this.stencilMap = null;
         this.ui = false;
         this.color = 0xffffffff;
-        this.relative = false;
-        this.isShadowPass = false;
-        this.viewMatrix = null;
 
         return this;
     }
