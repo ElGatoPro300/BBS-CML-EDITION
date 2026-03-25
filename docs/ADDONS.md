@@ -1,6 +1,6 @@
-# Creating Addons for BBS Mod
+# Creating Addons for BBS CML EDITION
 
-This comprehensive guide explains how to create addons for the BBS Mod. The addon system allows you to extend the mod's functionality by adding new forms, clips, dashboard panels, custom Molang functions, and more, without needing to modify the core mod code or use complex Mixins.
+This comprehensive guide explains how to create addons for the BBS CML EDITION. The addon system allows you to extend the mod's functionality by adding new forms, clips, dashboard panels, custom Molang functions, model loaders, and more, without needing to modify the core mod code or use complex Mixins.
 
 ## Table of Contents
 
@@ -221,6 +221,23 @@ Links a Form to its Renderer and Editor UI.
 event.registerRenderer(MyForm.class, MyFormRenderer::new);
 event.registerPanel(MyForm.class, UIMyFormPanel::new);
 ```
+
+### `registerModelLoaders(RegisterModelLoadersEvent event)`
+Registers custom model formats for `models/<id>/...` loading.
+
+```java
+@Override
+protected void registerModelLoaders(RegisterModelLoadersEvent event)
+{
+    event.registerLoader(new MyFormatModelLoader());
+    event.registerRelodableSuffix(".myformat");
+}
+```
+
+Notes:
+- `registerLoader(...)` appends your `IModelLoader` to the model loader chain.
+- `registerRelodableSuffix(...)` enables hot-reload invalidation for matching files.
+- If your loader reads additional companion files, register all relevant suffixes.
 
 ### `registerL10n(RegisterL10nEvent event)`
 Registers translation files.

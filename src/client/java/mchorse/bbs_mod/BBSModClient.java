@@ -36,6 +36,7 @@ import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.settings.ui.UIValueMap;
 import mchorse.bbs_mod.ui.forms.editors.UIFormEditor;
 import mchorse.bbs_mod.events.register.RegisterL10nEvent;
+import mchorse.bbs_mod.events.register.RegisterModelLoadersEvent;
 import mchorse.bbs_mod.events.register.RegisterParticleComponentsEvent;
 import mchorse.bbs_mod.events.register.RegisterPropTransformEvent;
 import mchorse.bbs_mod.events.register.RegisterStencilMapEvent;
@@ -451,6 +452,7 @@ public class BBSModClient implements ClientModInitializer
         particles = new ParticleManager(() -> new File(BBSMod.getAssetsFolder(), "particles"));
 
         models = new ModelManager(provider);
+        BBSMod.events.post(new RegisterModelLoadersEvent(models));
         formCategories = new FormCategories();
         BBSMod.events.post(new RegisterFormCategoriesEvent(formCategories));
         BBSMod.events.post(new RegisterImportersEvent());
