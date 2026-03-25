@@ -42,6 +42,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
     
     public UIElement mainView;
     public List<UIElement> panels = new ArrayList<>();
+    public List<UIIcon> panelButtons = new ArrayList<>();
     
     public UIElement modelSettingsPanel;
     public UIModelIKPanel ikPanel;
@@ -225,6 +226,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         }
 
         this.panels.add(panel);
+        this.panelButtons.add(button);
         this.iconBar.add(button);
 
         return button;
@@ -404,6 +406,11 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
     @Override
     protected void fillData(ModelConfig data)
     {
+        for (UIIcon button : this.panelButtons)
+        {
+            button.setEnabled(data != null);
+        }
+
         if (data != null)
         {
             this.renderer.setModel(data.getId());
