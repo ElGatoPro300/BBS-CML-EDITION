@@ -11,6 +11,7 @@ import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.l10n.keys.LangKey;
 import mchorse.bbs_mod.resources.AssetProvider;
 import mchorse.bbs_mod.resources.Link;
+import mchorse.bbs_mod.ui.aprilfools.UIAprilFoolsOverlay;
 import mchorse.bbs_mod.ui.utility.UILanguageEditorOverlayPanel;
 import mchorse.bbs_mod.ui.utils.Label;
 import mchorse.bbs_mod.utils.IOUtils;
@@ -203,6 +204,12 @@ public class L10n
             if (entry.getValue().isString())
             {
                 String string = entry.getValue().asString();
+
+                if (UIAprilFoolsOverlay.isAprilFoolsEnabled() && this.shouldAppend55(origin))
+                {
+                    string = this.append55(string);
+                }
+
                 LangKey langKey = this.strings.get(entry.getKey());
 
                 if (langKey == null)
@@ -218,6 +225,28 @@ public class L10n
                 this.strings.put(entry.getKey(), langKey);
             }
         }
+    }
+
+    private boolean shouldAppend55(Link origin)
+    {
+        if (origin == null || origin.path == null)
+        {
+            return false;
+        }
+
+        String path = origin.path.toLowerCase();
+
+        return path.endsWith("/en_us.json") || path.endsWith("/es_es.json");
+    }
+
+    private String append55(String value)
+    {
+        if (value == null || value.isEmpty())
+        {
+            return "55";
+        }
+
+        return value.endsWith("55") ? value : value + " 55";
     }
 
     public void overwrite(MapType strings)

@@ -45,6 +45,8 @@ import mchorse.bbs_mod.ui.utility.audio.UIAudioEditorPanel;
 import mchorse.bbs_mod.ui.utils.UIChalkboard;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
+import mchorse.bbs_mod.ui.aprilfools.UIAprilFoolsOverlay;
+import mchorse.bbs_mod.ui.aprilfools.UIAprilFoolsPanel;
 import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
@@ -74,6 +76,7 @@ public class UIDashboard extends UIBaseMenu
     private Perspective lastPerspective = Perspective.FIRST_PERSON;
 
     private UIChalkboard chalkboard;
+    private UIAprilFoolsOverlay aprilFoolsOverlay;
 
     public UIDashboard()
     {
@@ -115,11 +118,14 @@ public class UIDashboard extends UIBaseMenu
         this.selectors.tooltip(UIKeys.SELECTORS_TITLE, Direction.TOP);
         this.chalkboard = new UIChalkboard();
         this.chalkboard.full(this.getRoot());
+        this.aprilFoolsOverlay = new UIAprilFoolsOverlay();
+        this.aprilFoolsOverlay.full(this.getRoot());
 
         this.panels.pinned.add(this.settings, this.selectors);
         this.getRoot().prepend(this.orbitUI);
         this.getRoot().add(this.orbitKeysUI);
         this.getRoot().add(this.chalkboard);
+        this.getRoot().add(this.aprilFoolsOverlay);
 
         /* Register keys */
         IKey category = UIKeys.DASHBOARD_CATEGORY;
@@ -285,6 +291,7 @@ public class UIDashboard extends UIBaseMenu
         this.panels.registerPanel(new UIAddonsPanel(this), UIKeys.ADDONS_TITLE, Icons.PROCESSOR).marginLeft(10);
         UINewsPanel newsPanel = new UINewsPanel(this);
         UIIcon newsButton = this.panels.registerPanel(newsPanel, UIKeys.NEWS_TITLE, Icons.NEWS);
+        this.panels.registerPanel(new UIAprilFoolsPanel(this), IKey.raw("Panel 55"), Icons.HEART_ALT);
         UINewsPanel.attachIcon(newsButton);
 
         if (FabricLoader.getInstance().isDevelopmentEnvironment())
