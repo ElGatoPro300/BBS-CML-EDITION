@@ -236,7 +236,7 @@ public class L10n
 
         String path = origin.path.toLowerCase();
 
-        return path.endsWith("/en_us.json") || path.endsWith("/es_es.json");
+        return path.endsWith("/es_es.json");
     }
 
     private String append55(String value)
