@@ -1,5 +1,6 @@
-package mchorse.bbs_mod;
+package mchorse.bbs_mod.ui.utils.cml;
 
+import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.settings.SettingsBuilder;
 import mchorse.bbs_mod.ui.UIKeys;
 
