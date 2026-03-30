@@ -101,11 +101,20 @@ public class Recorder extends WorldFilmController
         ux /= uLen;
         uy /= uLen;
         uz /= uLen;
+        float roll = MathUtils.toRad(position.angle.roll);
+        float cosRoll = (float) Math.cos(roll);
+        float sinRoll = (float) Math.sin(roll);
+        float rrx = rx * cosRoll + ux * sinRoll;
+        float rry = ry * cosRoll + uy * sinRoll;
+        float rrz = rz * cosRoll + uz * sinRoll;
+        float uux = ux * cosRoll - rx * sinRoll;
+        float uuy = uy * cosRoll - ry * sinRoll;
+        float uuz = uz * cosRoll - rz * sinRoll;
 
-        Vector4f topRight = frustumCorner(fx, fy, fz, rx, ry, rz, ux, uy, uz, distance, halfWidth, halfHeight);
-        Vector4f topLeft = frustumCorner(fx, fy, fz, rx, ry, rz, ux, uy, uz, distance, -halfWidth, halfHeight);
-        Vector4f bottomRight = frustumCorner(fx, fy, fz, rx, ry, rz, ux, uy, uz, distance, halfWidth, -halfHeight);
-        Vector4f bottomLeft = frustumCorner(fx, fy, fz, rx, ry, rz, ux, uy, uz, distance, -halfWidth, -halfHeight);
+        Vector4f topRight = frustumCorner(fx, fy, fz, rrx, rry, rrz, uux, uuy, uuz, distance, halfWidth, halfHeight);
+        Vector4f topLeft = frustumCorner(fx, fy, fz, rrx, rry, rrz, uux, uuy, uuz, distance, -halfWidth, halfHeight);
+        Vector4f bottomRight = frustumCorner(fx, fy, fz, rrx, rry, rrz, uux, uuy, uuz, distance, halfWidth, -halfHeight);
+        Vector4f bottomLeft = frustumCorner(fx, fy, fz, rrx, rry, rrz, uux, uuy, uuz, distance, -halfWidth, -halfHeight);
         Vector4f forward = new Vector4f(fx * (distance + 100F), fy * (distance + 100F), fz * (distance + 100F), 1F);
 
         BufferBuilder builder = Tessellator.getInstance().getBuffer();
