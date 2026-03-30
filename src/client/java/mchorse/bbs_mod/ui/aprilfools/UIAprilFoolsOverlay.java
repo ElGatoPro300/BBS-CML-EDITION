@@ -2,6 +2,7 @@ package mchorse.bbs_mod.ui.aprilfools;
 
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.graphics.texture.Texture;
+import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.dashboard.UIDashboard;
 import mchorse.bbs_mod.ui.framework.UIContext;
@@ -186,7 +187,7 @@ public class UIAprilFoolsOverlay extends UIElement
 
             for (MemeText meme : this.memeTexts)
             {
-                String label = meme.corrupted ? "error 404" : (meme.big ? "Hombre De 55" : "55");
+                String label = meme.corrupted ? "error 404" : (meme.big ? L10n.lang("bbs.ui.aprilfools.overlay.big").get() : L10n.lang("bbs.ui.aprilfools.overlay.small").get());
                 int color = meme.corrupted ? (meme.big ? 0xFFFF4444 : 0xFFFF6666) : (meme.big ? 0xFFFFFF55 : 0xFFFFEE55);
                 float tx = meme.x;
                 float ty = meme.y;

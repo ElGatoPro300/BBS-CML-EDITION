@@ -3,6 +3,7 @@ package mchorse.bbs_mod.ui.aprilfools;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.audio.SoundPlayer;
 import mchorse.bbs_mod.graphics.texture.Texture;
+import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.dashboard.UIDashboard;
@@ -17,6 +18,7 @@ import org.lwjgl.glfw.GLFW;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Random;
 
@@ -91,14 +93,14 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
         Link.assets("audio/Flash.ogg")
     };
     private static final String[] BOSS_DIALOGUES = new String[] {
-        "ready?",
-        "heh... 55 time.",
-        "you gonna dodge this?",
-        "OHHHHHHHH",
-        "stay determined... 55",
-        "too easy?",
-        "don't blink.",
-        "bad time 55."
+        "bbs.ui.aprilfools.dialogue.0",
+        "bbs.ui.aprilfools.dialogue.1",
+        "bbs.ui.aprilfools.dialogue.2",
+        "bbs.ui.aprilfools.dialogue.3",
+        "bbs.ui.aprilfools.dialogue.4",
+        "bbs.ui.aprilfools.dialogue.5",
+        "bbs.ui.aprilfools.dialogue.6",
+        "bbs.ui.aprilfools.dialogue.7"
     };
 
     private static final int PHASE_MENU = 0;
@@ -111,7 +113,12 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
     private static final int BULLET_WARN = 3;
     private static final int BULLET_BEAM = 4;
     private static final int BULLET_BOSS = 5;
-    private static final int MODE_COUNT = 50;
+    private static final int MODE_COUNT = 26;
+    private static final int[] SANS_TIMELINE = new int[] {
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
+        10, 11, 12, 13, 14, 16, 17, 18,
+        19, 20, 21, 22, 23, 24, 25
+    };
 
     private final Random random = new Random();
     private final List<Bullet> bullets = new ArrayList<>();
@@ -127,6 +134,8 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
     private int inputCooldown;
     private int invulTicks;
     private int waveIndex;
+    private int attackStep;
+    private int attackPhaseIndex = -1;
     private int chainRemaining;
     private int chainMinTicks;
     private int chainMaxTicks;
@@ -139,6 +148,9 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
     private int bossDashTicks;
     private boolean bossDashReturning;
     private boolean bossRoundActive;
+    private int playerAttackAnimTicks;
+    private int playerAttackDamage;
+    private boolean bossDodgedHit;
     private int endAnimTicks;
     private boolean matchStarted;
     private boolean gameOver;
@@ -146,7 +158,7 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
     private boolean movedThisTick;
     private float attackCursor;
     private boolean attackForward = true;
-    private String dialogue = "El Hombre de 55 apareció...";
+    private String dialogue = "";
 
     private float arenaX;
     private float arenaY;
@@ -159,6 +171,7 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
     private float heartX;
     private float heartY;
     private float heartSize = 16;
+    private float safeLaneY;
     private float bossX;
     private float bossY;
     private float bossSize = 88;
@@ -170,6 +183,8 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
     private float heartDeathY;
     private float bossDeathX;
     private float bossDeathY;
+    private float playerAttackX;
+    private float playerAttackY;
     private long lastAnySfxMs;
     private SoundPlayer battleMusic;
 
@@ -177,7 +192,7 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
     {
         super(dashboard);
 
-        this.resetButton = new UIButton(IKey.raw("Reset"), (b) -> this.resetGame());
+        this.resetButton = new UIButton(L10n.lang("bbs.ui.aprilfools.reset"), (b) -> this.resetGame());
         this.resetButton.relative(this).x(1F, -82).y(12).w(72).h(18);
 
         this.add(this.resetButton);
@@ -197,6 +212,8 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
         this.inputCooldown = 0;
         this.invulTicks = 0;
         this.waveIndex = 0;
+        this.attackStep = 0;
+        this.attackPhaseIndex = -1;
         this.chainRemaining = 0;
         this.comboCounter = 0;
         this.chainMinTicks = 0;
@@ -209,6 +226,9 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
         this.bossDashTicks = 0;
         this.bossDashReturning = false;
         this.bossRoundActive = false;
+        this.playerAttackAnimTicks = 0;
+        this.playerAttackDamage = 0;
+        this.bossDodgedHit = false;
         this.endAnimTicks = 0;
         this.bossVx = 0;
         this.bossVy = 0;
@@ -218,12 +238,14 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
         this.heartDeathY = 0;
         this.bossDeathX = 0;
         this.bossDeathY = 0;
+        this.playerAttackX = 0;
+        this.playerAttackY = 0;
         this.lastAnySfxMs = 0;
         this.sfxLastPlayed.clear();
         this.matchStarted = false;
         this.gameOver = false;
         this.victory = false;
-        this.dialogue = "El Hombre de 55 apareció... ready?";
+        this.dialogue = this.tr("bbs.ui.aprilfools.dialogue.intro");
         this.updateArena();
         this.arenaX = this.targetArenaX;
         this.arenaY = this.targetArenaY;
@@ -231,6 +253,7 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
         this.arenaH = this.targetArenaH;
         this.heartX = this.arenaX + this.arenaW * 0.5F - this.heartSize * 0.5F;
         this.heartY = this.arenaY + this.arenaH - this.heartSize - 8;
+        this.safeLaneY = this.arenaY + this.arenaH * 0.5F;
         this.bossX = this.area.mx() - this.bossSize * 0.5F;
         this.bossY = this.area.y + 62;
         this.stopBattleMusic();
@@ -309,6 +332,10 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
         if (this.battleBarkCooldown > 0)
         {
             this.battleBarkCooldown--;
+        }
+        if (this.playerAttackAnimTicks > 0)
+        {
+            this.playerAttackAnimTicks--;
         }
         if (this.bossDashCooldown > 0)
         {
@@ -425,13 +452,15 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
             }
         }
 
-        if (this.phaseTicks % 8 == 0)
+        int spawnInterval = this.enemyHp > this.maxEnemyHp * 0.66F ? 12 : this.enemyHp > this.maxEnemyHp * 0.33F ? 10 : 9;
+
+        if (this.phaseTicks % spawnInterval == 0)
         {
             this.spawnPattern();
         }
         if (this.battleBarkCooldown <= 0 && this.phaseTicks % 48 == 0)
         {
-            this.dialogue = "55: " + this.getBossDialogue();
+            this.dialogue = this.tf("bbs.ui.aprilfools.dialogue.speak", this.getBossDialogue());
             this.battleBarkCooldown = 48;
             this.playSfx(SFX_SANS_SPEAK, 1F, true);
         }
@@ -517,12 +546,12 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
                 this.chainRemaining--;
                 this.comboCounter++;
                 this.phaseTicks = 0;
-                this.waveIndex = this.pickNextWaveIndex();
+                this.waveIndex = this.nextOrderedMode();
                 this.bossRoundActive = this.isBossRoundMode(this.waveIndex);
                 this.bullets.clear();
                 this.bossDashTicks = 0;
                 this.bossDashReturning = false;
-                this.dialogue = "55: " + this.getBossDialogue() + " · combo x" + this.comboCounter;
+                this.dialogue = this.tf("bbs.ui.aprilfools.dialogue.combo_x", this.getBossDialogue(), this.comboCounter);
                 this.playSfx(SFX_DING, 0.95F + this.random.nextFloat() * 0.2F);
             }
             else
@@ -530,7 +559,7 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
                 this.phase = PHASE_MENU;
                 this.phaseTicks = 0;
                 this.bullets.clear();
-                this.dialogue = "Tu turno.";
+                this.dialogue = this.tr("bbs.ui.aprilfools.dialogue.your_turn");
                 this.heartX = this.arenaX + this.arenaW * 0.5F - this.heartSize * 0.5F;
                 this.heartY = this.arenaY + this.arenaH - this.heartSize - 8;
             }
@@ -583,7 +612,7 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
         }
         else if (this.actionIndex == 1)
         {
-            this.dialogue = "ACT: " + this.getBossDialogue();
+            this.dialogue = this.tf("bbs.ui.aprilfools.dialogue.act", this.getBossDialogue());
             this.playSfx(SFX_SANS_SPEAK, 1.05F);
             this.startEnemyTurn();
         }
@@ -594,24 +623,24 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
             {
                 heal = this.maxHp - this.hp;
                 this.hp = this.maxHp;
-                this.dialogue = "ITEM: curación crítica FULL +" + heal + " HP.";
+                this.dialogue = this.tf("bbs.ui.aprilfools.dialogue.item_full", heal);
             }
             else
             {
                 this.hp = Math.min(this.maxHp, this.hp + heal);
-                this.dialogue = "ITEM: comiste un hotdog pixelado +" + heal + " HP.";
+                this.dialogue = this.tf("bbs.ui.aprilfools.dialogue.item_heal", heal);
             }
             this.startEnemyTurn();
         }
         else
         {
-            if (this.enemyHp <= 20)
+            if (this.enemyHp <= 55)
             {
-                this.triggerVictory("MERCY: perdonaste al Hombre de 55.");
+                this.triggerVictory(this.tr("bbs.ui.aprilfools.dialogue.mercy_win"));
             }
             else
             {
-                this.dialogue = "MERCY no está disponible.";
+                this.dialogue = this.tr("bbs.ui.aprilfools.dialogue.mercy_no");
                 this.startEnemyTurn();
             }
         }
@@ -622,24 +651,42 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
         float dist = Math.abs(this.attackCursor - 0.5F);
         float factor = Math.max(0F, 1F - dist * 2F);
         int damage = 5 + (int) (45 * factor) + this.random.nextInt(4);
+        boolean dodge = this.random.nextFloat() < 0.12F;
 
         if (this.random.nextFloat() < 0.05F)
         {
             damage = 65 + this.random.nextInt(36);
-            this.dialogue = "CRÍTICO 55: ¡" + damage + " de daño!";
+            if (!dodge)
+            {
+                this.dialogue = this.tf("bbs.ui.aprilfools.dialogue.crit", damage);
+            }
+        }
+        else if (!dodge)
+        {
+            this.dialogue = this.tf("bbs.ui.aprilfools.dialogue.hit", damage);
+        }
+
+        this.playerAttackAnimTicks = 18;
+        this.playerAttackDamage = dodge ? 0 : damage;
+        this.bossDodgedHit = dodge;
+        this.playerAttackX = this.bossX + this.bossSize * 0.5F;
+        this.playerAttackY = this.bossY + this.bossSize * 0.45F;
+
+        if (dodge)
+        {
+            this.dialogue = this.tr("bbs.ui.aprilfools.dialogue.dodge");
+            this.playSfx(SFX_DING, 1.08F, true);
         }
         else
         {
-            this.dialogue = "Le hiciste " + damage + " de daño.";
+            this.enemyHp -= damage;
+            this.playSfx(SFX_BONE_STAB, 0.95F + this.random.nextFloat() * 0.12F);
         }
-
-        this.enemyHp -= damage;
-        this.playSfx(SFX_BONE_STAB, 0.95F + this.random.nextFloat() * 0.12F);
 
         if (this.enemyHp <= 0)
         {
             this.enemyHp = 0;
-            this.triggerVictory("Hombre de 55 fue derrotado.");
+            this.triggerVictory(this.tr("bbs.ui.aprilfools.dialogue.boss_defeated"));
             return;
         }
 
@@ -651,11 +698,11 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
         float hpRatio = this.enemyHp / (float) this.maxEnemyHp;
         this.phase = PHASE_ENEMY;
         this.phaseTicks = 0;
-        this.waveIndex = this.pickNextWaveIndex();
-        this.chainRemaining = hpRatio > 0.66F ? 2 + this.random.nextInt(2) : hpRatio > 0.33F ? 3 + this.random.nextInt(2) : 4 + this.random.nextInt(2);
+        this.waveIndex = this.nextOrderedMode();
+        this.chainRemaining = hpRatio > 0.66F ? 2 : hpRatio > 0.33F ? 3 : 4;
         this.comboCounter = 1;
-        this.chainMinTicks = hpRatio > 0.66F ? 115 : hpRatio > 0.33F ? 95 : 78;
-        this.chainMaxTicks = hpRatio > 0.66F ? 190 : hpRatio > 0.33F ? 165 : 140;
+        this.chainMinTicks = hpRatio > 0.66F ? 118 : hpRatio > 0.33F ? 96 : 74;
+        this.chainMaxTicks = hpRatio > 0.66F ? 188 : hpRatio > 0.33F ? 158 : 132;
         this.bullets.clear();
         this.bossDashTicks = 0;
         this.bossDashReturning = false;
@@ -663,63 +710,58 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
         this.bossRoundActive = this.isBossRoundMode(this.waveIndex);
         this.heartX = this.arenaX + this.arenaW * 0.5F - this.heartSize * 0.5F;
         this.heartY = this.arenaY + this.arenaH - this.heartSize - 8;
-        this.dialogue = "55: " + this.getBossDialogue() + " · combo de " + this.chainRemaining + " ataques.";
+        this.safeLaneY = this.arenaY + 20 + this.random.nextFloat() * (this.arenaH - 40);
+        this.dialogue = this.tf("bbs.ui.aprilfools.dialogue.combo_count", this.getBossDialogue(), this.chainRemaining);
         this.battleBarkCooldown = 55;
         this.playSfx(SFX_SANS_SPEAK, 1F);
     }
 
-    private int pickNextWaveIndex()
+    private int nextOrderedMode()
     {
         float hpRatio = this.enemyHp / (float) this.maxEnemyHp;
-        int min;
-        int max;
+        int phaseIndex = hpRatio > 0.66F ? 0 : hpRatio > 0.33F ? 1 : 2;
 
-        if (hpRatio > 0.66F)
+        if (this.attackPhaseIndex != phaseIndex)
         {
-            min = 0;
-            max = 12;
-        }
-        else if (hpRatio > 0.33F)
-        {
-            min = 8;
-            max = 28;
-        }
-        else
-        {
-            min = 14;
-            max = MODE_COUNT - 1;
+            this.attackPhaseIndex = phaseIndex;
+            this.attackStep = 0;
         }
 
-        int[] gasterModes = new int[] {10, 13, 14, 18, 24, 31, 37, 43, 49};
-        float gasterChance = hpRatio > 0.66F ? 0.08F : hpRatio > 0.33F ? 0.2F : 0.36F;
+        int maxIndex = phaseIndex == 0 ? 9 : phaseIndex == 1 ? 17 : SANS_TIMELINE.length - 1;
+        int localStep = Math.min(this.attackStep, maxIndex);
+        int mode = SANS_TIMELINE[localStep];
 
-        if (this.random.nextFloat() < gasterChance)
+        if (this.attackStep < maxIndex)
         {
-            return gasterModes[this.random.nextInt(gasterModes.length)];
+            this.attackStep++;
+        }
+        else if (phaseIndex == 2)
+        {
+            int[] endLoop = new int[] {19, 20, 21, 22, 23, 24, 25};
+            mode = endLoop[(this.attackStep - maxIndex) % endLoop.length];
+            this.attackStep++;
         }
 
-        return min + this.random.nextInt(max - min + 1);
+        return mode;
     }
 
     private boolean isBossRoundMode(int mode)
     {
-        if (mode == 10 || mode == 13 || mode == 14 || mode == 15)
-        {
-            return true;
-        }
-
-        if (mode < 16)
-        {
-            return false;
-        }
-
-        int family = Math.floorMod(mode - 16, 7);
-
-        return family == 0 || family == 4 || family == 6;
+        return mode == 10 || mode == 13 || mode == 14 || mode == 15 || mode == 18 || mode == 20 || mode == 24 || mode == 25;
     }
 
     private void spawnPattern()
     {
+        if (this.bullets.size() > 72)
+        {
+            return;
+        }
+
+        if (this.bullets.size() > 48 && this.phaseTicks % 2 == 0)
+        {
+            return;
+        }
+
         int mode = this.waveIndex;
         int before = this.bullets.size();
 
@@ -796,33 +838,25 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
         }
         else if (mode == 4)
         {
-            float gapY = this.arenaY + 20 + this.random.nextFloat() * (this.arenaH - 40);
+            float gapY = Math.max(this.arenaY + 20, Math.min(this.safeLaneY + (this.random.nextFloat() - 0.5F) * 10F, this.arenaY + this.arenaH - 20));
             float size = 14;
+            boolean fromLeft = (this.attackStep + this.comboCounter) % 2 == 0;
 
             for (float y = this.arenaY; y <= this.arenaY + this.arenaH - size; y += 16)
             {
-                if (Math.abs(y - gapY) < 28)
+                if (Math.abs(y - gapY) < 36)
                 {
                     continue;
                 }
 
-                Bullet left = new Bullet();
-                left.type = BULLET_WHITE;
-                left.size = size;
-                left.x = this.arenaX - size;
-                left.y = y;
-                left.vx = 3.6F;
-                left.vy = 0;
-                this.bullets.add(left);
-
-                Bullet right = new Bullet();
-                right.type = BULLET_WHITE;
-                right.size = size;
-                right.x = this.arenaX + this.arenaW;
-                right.y = y;
-                right.vx = -3.6F;
-                right.vy = 0;
-                this.bullets.add(right);
+                Bullet bullet = new Bullet();
+                bullet.type = BULLET_WHITE;
+                bullet.size = size;
+                bullet.x = fromLeft ? this.arenaX - size : this.arenaX + this.arenaW;
+                bullet.y = y;
+                bullet.vx = fromLeft ? 3.2F : -3.2F;
+                bullet.vy = 0;
+                this.bullets.add(bullet);
             }
         }
         else if (mode == 5)
@@ -1097,9 +1131,221 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
                 this.bullets.add(bullet);
             }
         }
+        else if (mode == 16)
+        {
+            this.playSfx(SFX_BONE_STAB, 1.02F, true);
+            float gapY = this.arenaY + 18 + this.random.nextFloat() * (this.arenaH - 36);
+
+            for (float y = this.arenaY; y <= this.arenaY + this.arenaH - 12; y += 14)
+            {
+                if (Math.abs(y - gapY) < 22)
+                {
+                    continue;
+                }
+
+                Bullet left = new Bullet();
+                left.type = BULLET_WHITE;
+                left.size = 12;
+                left.x = this.arenaX - 12;
+                left.y = y;
+                left.vx = 4.3F;
+                left.vy = 0;
+                this.bullets.add(left);
+            }
+        }
+        else if (mode == 17)
+        {
+            this.playSfx(SFX_DING, 1.02F, true);
+
+            for (int i = 0; i < 8; i++)
+            {
+                Bullet bullet = new Bullet();
+                bullet.type = i % 2 == 0 ? BULLET_BLUE : BULLET_ORANGE;
+                bullet.size = 12;
+                bullet.x = this.arenaX + this.random.nextFloat() * this.arenaW;
+                bullet.y = this.arenaY - 14;
+                bullet.vx = (this.random.nextFloat() - 0.5F) * 1.3F;
+                bullet.vy = 4.2F + i * 0.12F;
+                this.bullets.add(bullet);
+            }
+        }
+        else if (mode == 18)
+        {
+            this.playSfxCritical(SFX_GASTER_BLAST_2, 1.08F, 80L);
+            float bx = this.bossX + this.bossSize * 0.5F;
+            float by = this.bossY + this.bossSize * 0.5F;
+
+            for (int i = 0; i < 6; i++)
+            {
+                float angle = (float) (i * 1.04719F);
+                Bullet bullet = new Bullet();
+                bullet.type = BULLET_BOSS;
+                bullet.size = 16;
+                bullet.x = bx - 8;
+                bullet.y = by - 8;
+                bullet.vx = (float) Math.cos(angle) * 3.2F;
+                bullet.vy = (float) Math.sin(angle) * 3.2F;
+                this.bullets.add(bullet);
+            }
+        }
+        else if (mode == 19)
+        {
+            this.playSfx(SFX_SLAM, 1.02F, true);
+            float centerX = this.arenaX + this.arenaW * 0.5F;
+            float safeHalfGap = 26F;
+
+            for (int i = 0; i < 8; i++)
+            {
+                Bullet bullet = new Bullet();
+                bullet.type = BULLET_WHITE;
+                bullet.size = 10;
+                float side = i % 2 == 0 ? -1F : 1F;
+                bullet.x = centerX + side * (safeHalfGap + this.random.nextFloat() * 26F);
+                bullet.y = this.arenaY - 10 - i * 12F;
+                bullet.vx = (this.random.nextFloat() - 0.5F) * 0.8F;
+                bullet.vy = 3.3F;
+                this.bullets.add(bullet);
+            }
+        }
+        else if (mode == 20)
+        {
+            this.playSfxCritical(SFX_GASTER_BLAST, 1F, 85L);
+            float bx = this.bossX + this.bossSize * 0.5F;
+            float by = this.bossY + this.bossSize * 0.5F;
+
+            for (int i = 0; i < 4; i++)
+            {
+                float tx = this.arenaX + this.random.nextFloat() * this.arenaW;
+                float ty = this.arenaY + this.random.nextFloat() * this.arenaH;
+                float dx = tx - bx;
+                float dy = ty - by;
+                float len = (float) Math.sqrt(dx * dx + dy * dy);
+
+                Bullet bullet = new Bullet();
+                bullet.type = BULLET_BOSS;
+                bullet.size = 18;
+                bullet.x = bx - 9;
+                bullet.y = by - 9;
+                bullet.vx = dx / Math.max(0.001F, len) * 4.1F;
+                bullet.vy = dy / Math.max(0.001F, len) * 4.1F;
+                this.bullets.add(bullet);
+            }
+        }
+        else if (mode == 21)
+        {
+            this.playSfxCritical(SFX_WARNING, 1.06F, 70L);
+            float y = this.arenaY + 20 + this.random.nextFloat() * (this.arenaH - 40);
+
+            for (int i = -1; i <= 1; i++)
+            {
+                Bullet warn = new Bullet();
+                warn.type = BULLET_WARN;
+                warn.beamVertical = false;
+                warn.x = this.arenaX;
+                warn.y = y + i * 16F;
+                warn.size = this.arenaW;
+                warn.life = 14;
+                this.bullets.add(warn);
+            }
+        }
+        else if (mode == 22)
+        {
+            this.playSfxCritical(SFX_WARNING, 1.1F, 70L);
+            float x = this.arenaX + 18 + this.random.nextFloat() * (this.arenaW - 36);
+
+            for (int i = -1; i <= 1; i++)
+            {
+                Bullet warn = new Bullet();
+                warn.type = BULLET_WARN;
+                warn.beamVertical = true;
+                warn.x = x + i * 14F;
+                warn.y = this.arenaY;
+                warn.size = this.arenaH;
+                warn.life = 13;
+                this.bullets.add(warn);
+            }
+        }
+        else if (mode == 23)
+        {
+            this.playSfx(SFX_BONE_STAB, 1.1F, true);
+            int gapIndex = this.random.nextInt(9);
+            boolean fromLeft = (this.attackStep + this.comboCounter) % 2 == 0;
+
+            for (int i = 0; i < 9; i++)
+            {
+                if (Math.abs(i - gapIndex) <= 1)
+                {
+                    continue;
+                }
+
+                Bullet bullet = new Bullet();
+                bullet.type = i % 2 == 0 ? BULLET_ORANGE : BULLET_WHITE;
+                bullet.size = 12;
+                bullet.x = fromLeft ? this.arenaX - 12 : this.arenaX + this.arenaW + 12;
+                bullet.y = this.arenaY + 8 + i * ((this.arenaH - 16) / 9F);
+                bullet.vx = fromLeft ? 3.5F : -3.5F;
+                bullet.vy = (this.random.nextFloat() - 0.5F) * 0.5F;
+                this.bullets.add(bullet);
+            }
+        }
+        else if (mode == 24)
+        {
+            this.playSfxCritical(SFX_GASTER_BLAST_2, 1.14F, 80L);
+            float bx = this.bossX + this.bossSize * 0.5F;
+            float by = this.bossY + this.bossSize * 0.5F;
+
+            for (int i = 0; i < 6; i++)
+            {
+                float angle = (float) (i * (Math.PI * 2D / 6D) + this.phaseTicks * 0.06F);
+                Bullet bullet = new Bullet();
+                bullet.type = BULLET_BOSS;
+                bullet.size = 15;
+                bullet.x = bx - 7.5F;
+                bullet.y = by - 7.5F;
+                bullet.vx = (float) Math.cos(angle) * 3.2F;
+                bullet.vy = (float) Math.sin(angle) * 3.2F;
+                this.bullets.add(bullet);
+            }
+        }
+        else if (mode == 25)
+        {
+            this.playSfxCritical(SFX_GASTER_BLAST, 1.15F, 80L);
+            this.playSfxCritical(SFX_WARNING, 1.15F, 70L);
+
+            Bullet warnV = new Bullet();
+            warnV.type = BULLET_WARN;
+            warnV.beamVertical = true;
+            warnV.x = this.arenaX + this.arenaW * 0.5F;
+            warnV.y = this.arenaY;
+            warnV.size = this.arenaH;
+            warnV.life = 18;
+            this.bullets.add(warnV);
+
+            Bullet warnH = new Bullet();
+            warnH.type = BULLET_WARN;
+            warnH.beamVertical = false;
+            warnH.x = this.arenaX;
+            warnH.y = this.arenaY + this.arenaH * 0.5F;
+            warnH.size = this.arenaW;
+            warnH.life = 18;
+            this.bullets.add(warnH);
+
+            for (int i = 0; i < 4; i++)
+            {
+                Bullet bullet = new Bullet();
+                bullet.type = BULLET_BOSS;
+                bullet.size = 14;
+                bullet.x = this.bossX + this.bossSize * 0.5F - 7;
+                bullet.y = this.bossY + this.bossSize * 0.5F - 7;
+                float t = i / 3F;
+                bullet.vx = (t - 0.5F) * 3.9F;
+                bullet.vy = 3.8F;
+                this.bullets.add(bullet);
+            }
+        }
         else
         {
-            this.spawnExtendedPattern(mode);
+            this.playSfx(SFX_DING, 1F, true);
         }
 
         if (this.bullets.size() == before)
@@ -1113,186 +1359,6 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
             bullet.vy = 3.2F;
             this.bullets.add(bullet);
             this.playSfx(SFX_DING, 1F, true);
-        }
-    }
-
-    private void spawnExtendedPattern(int mode)
-    {
-        int variant = mode - 16;
-        int family = Math.floorMod(variant, 7);
-        int tier = Math.floorDiv(variant, 7);
-        float speedMul = 1F + tier * 0.14F;
-        float sizeMul = 1F - Math.min(0.35F, tier * 0.05F);
-
-        if (family == 0)
-        {
-            this.playSfxCritical(SFX_GASTER_BLAST_2, 1F + tier * 0.03F, 80L);
-            float bx = this.bossX + this.bossSize * 0.5F;
-            float by = this.bossY + this.bossSize * 0.5F;
-
-            for (int i = 0; i < 6 + tier; i++)
-            {
-                float angle = (float) (i * (Math.PI * 2D / (6F + tier)));
-                Bullet bullet = new Bullet();
-                bullet.type = BULLET_BOSS;
-                bullet.size = 16 * sizeMul;
-                bullet.x = bx - bullet.size * 0.5F;
-                bullet.y = by - bullet.size * 0.5F;
-                bullet.vx = (float) Math.cos(angle) * (2.2F * speedMul);
-                bullet.vy = (float) Math.sin(angle) * (2.2F * speedMul);
-                this.bullets.add(bullet);
-            }
-
-            if (tier >= 2)
-            {
-                Bullet warn = new Bullet();
-                warn.type = BULLET_WARN;
-                warn.beamVertical = this.random.nextBoolean();
-                warn.life = 12;
-                warn.x = warn.beamVertical ? this.arenaX + 18 + this.random.nextFloat() * (this.arenaW - 36) : this.arenaX;
-                warn.y = warn.beamVertical ? this.arenaY : this.arenaY + 18 + this.random.nextFloat() * (this.arenaH - 36);
-                warn.size = warn.beamVertical ? this.arenaH : this.arenaW;
-                this.bullets.add(warn);
-            }
-        }
-        else if (family == 1)
-        {
-            this.playSfxCritical(SFX_WARNING, 1F + tier * 0.02F, 70L);
-            int lanes = 2 + (tier % 4);
-
-            for (int i = 0; i < lanes; i++)
-            {
-                Bullet warn = new Bullet();
-                warn.type = BULLET_WARN;
-                warn.beamVertical = this.random.nextBoolean();
-                warn.life = 10 + tier * 2 + i * 2;
-
-                if (warn.beamVertical)
-                {
-                    warn.x = this.arenaX + 12 + this.random.nextFloat() * (this.arenaW - 24);
-                    warn.y = this.arenaY;
-                    warn.size = this.arenaH;
-                }
-                else
-                {
-                    warn.x = this.arenaX;
-                    warn.y = this.arenaY + 12 + this.random.nextFloat() * (this.arenaH - 24);
-                    warn.size = this.arenaW;
-                }
-
-                this.bullets.add(warn);
-            }
-        }
-        else if (family == 2)
-        {
-            this.playSfx(SFX_DING, 1F + tier * 0.02F, true);
-            float cx = this.arenaX + this.arenaW * 0.5F;
-
-            for (int i = 0; i < 8 + tier; i++)
-            {
-                Bullet bullet = new Bullet();
-                bullet.type = i % 2 == 0 ? BULLET_BLUE : BULLET_ORANGE;
-                bullet.size = 12 * sizeMul;
-                bullet.x = cx + (this.random.nextFloat() - 0.5F) * 36F;
-                bullet.y = this.arenaY - 16;
-                bullet.vx = (this.random.nextFloat() - 0.5F) * 1.8F;
-                bullet.vy = (2.8F + i * 0.16F) * speedMul;
-                this.bullets.add(bullet);
-            }
-        }
-        else if (family == 3)
-        {
-            this.playSfx(SFX_SLAM, 1F + tier * 0.03F, true);
-            float side = this.random.nextBoolean() ? -1F : 1F;
-            float startX = side < 0 ? this.arenaX - 20 : this.arenaX + this.arenaW + 20;
-            float startY = this.arenaY + this.random.nextFloat() * this.arenaH;
-
-            for (int i = 0; i < 5 + tier; i++)
-            {
-                float t = i / (float) Math.max(1, 4 + tier);
-                Bullet bullet = new Bullet();
-                bullet.type = BULLET_WHITE;
-                bullet.size = 10 * sizeMul;
-                bullet.x = startX;
-                bullet.y = startY + (t - 0.5F) * 70F;
-                bullet.vx = -side * (2.4F + t * 2.8F) * speedMul;
-                bullet.vy = (t - 0.5F) * 1.6F;
-                this.bullets.add(bullet);
-            }
-        }
-        else if (family == 4)
-        {
-            this.playSfxCritical(SFX_GASTER_BLAST, 1.04F + tier * 0.02F, 80L);
-            float bx = this.bossX + this.bossSize * 0.5F;
-            float by = this.bossY + this.bossSize * 0.5F;
-            int spokes = 4 + tier;
-
-            for (int i = 0; i < spokes; i++)
-            {
-                float a = (float) (Math.PI * 2D * i / spokes + this.phaseTicks * 0.03F);
-                Bullet bullet = new Bullet();
-                bullet.type = BULLET_BOSS;
-                bullet.size = 18 * sizeMul;
-                bullet.x = bx - bullet.size * 0.5F;
-                bullet.y = by - bullet.size * 0.5F;
-                bullet.vx = (float) Math.cos(a) * (2.6F * speedMul);
-                bullet.vy = (float) Math.sin(a) * (2.6F * speedMul);
-                this.bullets.add(bullet);
-            }
-        }
-        else if (family == 5)
-        {
-            this.playSfxCritical(SFX_FLASH, 1F + tier * 0.03F, 70L);
-            float gap = this.arenaY + 18 + this.random.nextFloat() * (this.arenaH - 36);
-
-            for (float y = this.arenaY; y <= this.arenaY + this.arenaH - 12; y += 14)
-            {
-                if (Math.abs(y - gap) < 24 + tier * 2)
-                {
-                    continue;
-                }
-
-                Bullet left = new Bullet();
-                left.type = BULLET_BOSS;
-                left.size = 11 * sizeMul;
-                left.x = this.arenaX - left.size;
-                left.y = y;
-                left.vx = 3.2F * speedMul;
-                left.vy = 0;
-                this.bullets.add(left);
-
-                Bullet right = new Bullet();
-                right.type = BULLET_BOSS;
-                right.size = 11 * sizeMul;
-                right.x = this.arenaX + this.arenaW;
-                right.y = y;
-                right.vx = -3.2F * speedMul;
-                right.vy = 0;
-                this.bullets.add(right);
-            }
-        }
-        else
-        {
-            this.playSfx(SFX_SANS_SPEAK, 0.96F + tier * 0.02F, true);
-            float bx = this.bossX + this.bossSize * 0.5F;
-            float by = this.bossY + this.bossSize * 0.5F;
-
-            for (int i = 0; i < 3 + tier; i++)
-            {
-                Bullet bullet = new Bullet();
-                bullet.type = BULLET_BOSS;
-                bullet.size = 20 * sizeMul;
-                bullet.x = bx - bullet.size * 0.5F;
-                bullet.y = by - bullet.size * 0.5F;
-                float tx = this.arenaX + this.random.nextFloat() * this.arenaW;
-                float ty = this.arenaY + this.random.nextFloat() * this.arenaH;
-                float dx = tx - bx;
-                float dy = ty - by;
-                float len = (float) Math.sqrt(dx * dx + dy * dy);
-                bullet.vx = dx / Math.max(0.001F, len) * (3.5F * speedMul);
-                bullet.vy = dy / Math.max(0.001F, len) * (3.5F * speedMul);
-                this.bullets.add(bullet);
-            }
         }
     }
 
@@ -1332,7 +1398,7 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
         this.bossVx = dx / Math.max(0.001F, len) * 6.1F;
         this.bossVy = dy / Math.max(0.001F, len) * 6.1F;
         this.bossDashTicks = 10 + this.random.nextInt(8);
-        this.dialogue = "55: directo a ti.";
+        this.dialogue = this.tr("bbs.ui.aprilfools.dialogue.direct");
         this.playSfx(SFX_SLAM, 1.12F, true);
         this.playSfxCritical(SFX_FLASH, 1F, 65L);
 
@@ -1355,7 +1421,7 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
         this.gameOver = true;
         this.victory = false;
         this.phase = PHASE_END;
-        this.dialogue = "El Hombre De 55 Años Gano.";
+        this.dialogue = this.tr("bbs.ui.aprilfools.end.defeat_title");
         this.endAnimTicks = 0;
         this.heartDeathX = this.heartX;
         this.heartDeathY = this.heartY;
@@ -1387,7 +1453,7 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
     {
         if (!UIAprilFoolsOverlay.isAprilFoolsEnabled())
         {
-            context.batcher.text("El evento 55 está dormido... vuelve el 1 de abril 😴", this.area.x + 12, this.area.y + 12, Colors.WHITE);
+            context.batcher.text(this.tr("bbs.ui.aprilfools.sleeping"), this.area.x + 12, this.area.y + 12, Colors.WHITE);
             super.render(context);
 
             return;
@@ -1398,12 +1464,12 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
         int pulse = (int) (Math.abs(Math.sin((System.currentTimeMillis() % 1200L) / 1200F * Math.PI * 2F)) * 35F);
 
         context.batcher.box(this.area.x + 8, this.area.y + 8, this.area.ex() - 8, this.area.y + 48, Colors.A50 | 0x000000);
-        context.batcher.text("BATTLE 55", this.area.x + 12, this.area.y + 12, 0xFFFFCC55 + (pulse << 8));
-        context.batcher.text("HP " + this.hp + "/" + this.maxHp, this.area.x + 12, this.area.y + 24, Colors.WHITE);
-        context.batcher.text("ENEMY HP " + this.enemyHp + "/" + this.maxEnemyHp, this.area.x + 110, this.area.y + 24, 0xFFFF8888);
+        context.batcher.text(this.tr("bbs.ui.aprilfools.battle_title"), this.area.x + 12, this.area.y + 12, 0xFFFFCC55 + (pulse << 8));
+        context.batcher.text(this.tf("bbs.ui.aprilfools.hp", this.hp, this.maxHp), this.area.x + 12, this.area.y + 24, Colors.WHITE);
+        context.batcher.text(this.tf("bbs.ui.aprilfools.enemy_hp", this.enemyHp, this.maxEnemyHp), this.area.x + 110, this.area.y + 24, 0xFFFF8888);
         if (this.phase == PHASE_ENEMY)
         {
-            context.batcher.text("Combo: " + this.comboCounter + " / " + (this.comboCounter + this.chainRemaining - 1), this.area.x + 280, this.area.y + 24, 0xFF99CCFF);
+            context.batcher.text(this.tf("bbs.ui.aprilfools.combo_label", this.comboCounter, this.comboCounter + this.chainRemaining - 1), this.area.x + 280, this.area.y + 24, 0xFF99CCFF);
         }
 
         float enemyBarX = this.area.x + 12;
@@ -1483,9 +1549,31 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
             bubbleY = Math.max(this.area.y + 54, Math.min(bubbleY, maxY));
 
             context.batcher.texturedBox(texture55, Colors.WHITE, ix, iy, introSize, introSize, 0, 0, texture55.width, texture55.height, texture55.width, texture55.height);
+
+            if (this.playerAttackAnimTicks > 0)
+            {
+                float t = this.playerAttackAnimTicks / 18F;
+                float swing = 26F * (1F - t);
+                int slashAlpha = Math.max(40, (int) (220 * t));
+                int slashColor = (slashAlpha << 24) | (this.bossDodgedHit ? 0x66CCFF : 0xFF5555);
+                float sx = this.playerAttackX - 8 + swing;
+                float sy = this.playerAttackY - 10;
+                context.batcher.box(sx - 2, sy, sx + 18, sy + 3, slashColor);
+                context.batcher.box(sx + 2, sy + 4, sx + 20, sy + 7, slashColor);
+
+                if (this.bossDodgedHit)
+                {
+                    context.batcher.text(this.tr("bbs.ui.aprilfools.miss"), this.playerAttackX + 12, this.playerAttackY - 16, 0xFF99DDFF);
+                }
+                else
+                {
+                    context.batcher.text("-" + this.playerAttackDamage, this.playerAttackX + 12, this.playerAttackY - 16, 0xFFFF7777);
+                }
+            }
+
             context.batcher.box(bubbleX, bubbleY, bubbleX + bubbleW, bubbleY + bubbleH, 0xFFFFFFFF);
             context.batcher.box(bubbleX + 2, bubbleY + 2, bubbleX + bubbleW - 2, bubbleY + bubbleH - 2, 0xFF0A0A0A);
-            context.batcher.text(this.fitBubbleText("Hombre de 55: " + this.dialogue), bubbleX + 8, bubbleY + 10, this.matchStarted ? 0xFFFFFFFF : 0xFFFFEE88);
+            context.batcher.text(this.fitBubbleText(this.tf("bbs.ui.aprilfools.bubble", this.dialogue)), bubbleX + 8, bubbleY + 10, this.matchStarted ? 0xFFFFFFFF : 0xFFFFEE88);
         }
 
         float boxX = this.area.x + 8;
@@ -1499,7 +1587,12 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
 
         if (this.phase == PHASE_MENU)
         {
-            String[] actions = {"FIGHT", "ACT", "ITEM", "MERCY"};
+            String[] actions = {
+                this.tr("bbs.ui.aprilfools.action.fight"),
+                this.tr("bbs.ui.aprilfools.action.act"),
+                this.tr("bbs.ui.aprilfools.action.item"),
+                this.tr("bbs.ui.aprilfools.action.mercy")
+            };
             float buttonY = boxY + 25;
             float buttonW = (boxW - 24) / 4F;
             float x = boxX + 6;
@@ -1576,13 +1669,17 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
 
             if (this.gameOver)
             {
-                context.batcher.text("El Hombre De 55 Años Gano", this.area.mx() - 92, this.area.my() - 6, 0xFFFF7777);
-                context.batcher.text("Reintentar (ENTER)", this.area.mx() - 54, this.area.my() + 8, 0xFFFFFFFF);
+                String t1 = this.tr("bbs.ui.aprilfools.end.defeat_title");
+                String t2 = this.tr("bbs.ui.aprilfools.end.retry");
+                context.batcher.text(t1, this.centeredTextX(t1), this.area.my() - 6, 0xFFFF7777);
+                context.batcher.text(t2, this.centeredTextX(t2), this.area.my() + 8, 0xFFFFFFFF);
             }
             else if (this.victory)
             {
-                context.batcher.text("¡GANASTE! El hombre de 55 explotó", this.area.mx() - 108, this.area.my() - 6, 0xFF66FF66);
-                context.batcher.text("Continuar (ENTER)", this.area.mx() - 50, this.area.my() + 8, 0xFFFFFFFF);
+                String t1 = this.tr("bbs.ui.aprilfools.end.victory_title");
+                String t2 = this.tr("bbs.ui.aprilfools.end.continue");
+                context.batcher.text(t1, this.centeredTextX(t1), this.area.my() - 6, 0xFF66FF66);
+                context.batcher.text(t2, this.centeredTextX(t2), this.area.my() + 8, 0xFFFFFFFF);
             }
         }
 
@@ -1780,6 +1877,21 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
         return this.fitText(text, 74);
     }
 
+    private float centeredTextX(String text)
+    {
+        return this.area.mx() - (text == null ? 0 : text.length() * 3F);
+    }
+
+    private String tr(String key)
+    {
+        return L10n.lang(key).get();
+    }
+
+    private String tf(String key, Object... args)
+    {
+        return String.format(Locale.ROOT, this.tr(key), args);
+    }
+
     private String fitText(String text, int maxChars)
     {
         if (text == null || text.isEmpty() || text.length() <= maxChars)
@@ -1792,7 +1904,7 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
 
     private String getBossDialogue()
     {
-        return BOSS_DIALOGUES[this.random.nextInt(BOSS_DIALOGUES.length)];
+        return this.tr(BOSS_DIALOGUES[this.random.nextInt(BOSS_DIALOGUES.length)]);
     }
 
     private Link resolveAudioLink(Link[] candidates)
