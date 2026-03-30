@@ -2,6 +2,11 @@ package mchorse.bbs_mod.film;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import mchorse.bbs_mod.BBSSettings;
+import mchorse.bbs_mod.camera.clips.CameraClipContext;
+import mchorse.bbs_mod.camera.clips.overwrite.DollyClip;
+import mchorse.bbs_mod.camera.clips.overwrite.IdleClip;
+import mchorse.bbs_mod.camera.clips.overwrite.KeyframeClip;
+import mchorse.bbs_mod.camera.clips.overwrite.PathClip;
 import mchorse.bbs_mod.camera.data.Position;
 import mchorse.bbs_mod.camera.utils.TimeUtils;
 import mchorse.bbs_mod.client.BBSRendering;
@@ -15,6 +20,9 @@ import mchorse.bbs_mod.morphing.Morph;
 import mchorse.bbs_mod.network.ClientNetwork;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.PlayerUtils;
+import mchorse.bbs_mod.utils.clips.Clip;
+import mchorse.bbs_mod.utils.clips.Clips;
+import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
@@ -48,6 +56,11 @@ public class Recorder extends WorldFilmController
     public final int initialTick;
 
     public static void renderCameraPreview(Position position, Camera camera, MatrixStack stack)
+    {
+        renderCameraPreview(position, camera, stack, 1F, 1F, 1F, 0.85F, true);
+    }
+
+    public static void renderCameraPreview(Position position, Camera camera, MatrixStack stack, float r, float g, float b, float a, boolean drawForward)
     {
         if (!BBSSettings.recordingOverlays.get())
         {
@@ -122,20 +135,171 @@ public class Recorder extends WorldFilmController
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
         builder.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
 
-        fillPreviewSegment(builder, stack, x, y, z, x + topRight.x, y + topRight.y, z + topRight.z, thickness, 1F, 1F, 1F, 0.85F);
-        fillPreviewSegment(builder, stack, x, y, z, x + topLeft.x, y + topLeft.y, z + topLeft.z, thickness, 1F, 1F, 1F, 0.85F);
-        fillPreviewSegment(builder, stack, x, y, z, x + bottomRight.x, y + bottomRight.y, z + bottomRight.z, thickness, 1F, 1F, 1F, 0.85F);
-        fillPreviewSegment(builder, stack, x, y, z, x + bottomLeft.x, y + bottomLeft.y, z + bottomLeft.z, thickness, 1F, 1F, 1F, 0.85F);
+        fillPreviewSegment(builder, stack, x, y, z, x + topRight.x, y + topRight.y, z + topRight.z, thickness, r, g, b, a);
+        fillPreviewSegment(builder, stack, x, y, z, x + topLeft.x, y + topLeft.y, z + topLeft.z, thickness, r, g, b, a);
+        fillPreviewSegment(builder, stack, x, y, z, x + bottomRight.x, y + bottomRight.y, z + bottomRight.z, thickness, r, g, b, a);
+        fillPreviewSegment(builder, stack, x, y, z, x + bottomLeft.x, y + bottomLeft.y, z + bottomLeft.z, thickness, r, g, b, a);
 
-        fillPreviewSegment(builder, stack, x + topRight.x, y + topRight.y, z + topRight.z, x + topLeft.x, y + topLeft.y, z + topLeft.z, thickness, 1F, 1F, 1F, 0.65F);
-        fillPreviewSegment(builder, stack, x + topLeft.x, y + topLeft.y, z + topLeft.z, x + bottomLeft.x, y + bottomLeft.y, z + bottomLeft.z, thickness, 1F, 1F, 1F, 0.65F);
-        fillPreviewSegment(builder, stack, x + bottomLeft.x, y + bottomLeft.y, z + bottomLeft.z, x + bottomRight.x, y + bottomRight.y, z + bottomRight.z, thickness, 1F, 1F, 1F, 0.65F);
-        fillPreviewSegment(builder, stack, x + bottomRight.x, y + bottomRight.y, z + bottomRight.z, x + topRight.x, y + topRight.y, z + topRight.z, thickness, 1F, 1F, 1F, 0.65F);
+        fillPreviewSegment(builder, stack, x + topRight.x, y + topRight.y, z + topRight.z, x + topLeft.x, y + topLeft.y, z + topLeft.z, thickness, r, g, b, a * 0.8F);
+        fillPreviewSegment(builder, stack, x + topLeft.x, y + topLeft.y, z + topLeft.z, x + bottomLeft.x, y + bottomLeft.y, z + bottomLeft.z, thickness, r, g, b, a * 0.8F);
+        fillPreviewSegment(builder, stack, x + bottomLeft.x, y + bottomLeft.y, z + bottomLeft.z, x + bottomRight.x, y + bottomRight.y, z + bottomRight.z, thickness, r, g, b, a * 0.8F);
+        fillPreviewSegment(builder, stack, x + bottomRight.x, y + bottomRight.y, z + bottomRight.z, x + topRight.x, y + topRight.y, z + topRight.z, thickness, r, g, b, a * 0.8F);
 
-        fillPreviewSegment(builder, stack, x, y, z, x + forward.x, y + forward.y, z + forward.z, thickness * 1.35F, 0F, 0.5F, 1F, 1F);
+        if (drawForward)
+        {
+            fillPreviewSegment(builder, stack, x, y, z, x + forward.x, y + forward.y, z + forward.z, thickness * 1.35F, 0F, 0.5F, 1F, 1F);
+        }
 
         BufferRenderer.drawWithGlobalProgram(builder.end());
         RenderSystem.enableDepthTest();
+    }
+
+    public static boolean sampleCameraPosition(Clips clips, int tick, float transition, Position output)
+    {
+        if (clips == null)
+        {
+            return false;
+        }
+
+        CameraClipContext context = new CameraClipContext();
+        context.clips = clips;
+        context.clipData.clear();
+        context.setup(tick, transition);
+        output.point.set(0, 0, 0);
+        output.angle.set(0, 0, 0, 70);
+        boolean hasClip = false;
+
+        for (Clip clip : clips.getClips(tick))
+        {
+            context.apply(clip, output);
+            hasClip = true;
+        }
+
+        context.currentLayer = 0;
+
+        return hasClip;
+    }
+
+    public static void renderCameraPreviewTimeline(Clips clips, int tick, float transition, int duration, Position current, Camera camera, MatrixStack stack)
+    {
+        Clip active = findActiveCameraClip(clips, tick);
+        Position nextPosition = new Position();
+        boolean hasNext = false;
+        int nextTick = findNextPreviewTick(clips, active, tick, duration);
+
+        if (nextTick >= 0 && nextTick != tick)
+        {
+            hasNext = sampleCameraPosition(clips, nextTick, 0F, nextPosition);
+        }
+
+        renderCameraPreview(current, camera, stack, 1F, 1F, 1F, 0.9F, true);
+
+        if (hasNext)
+        {
+            renderCameraPreview(nextPosition, camera, stack, 0.2F, 1F, 0.2F, 0.7F, false);
+        }
+    }
+
+    private static int findNextPreviewTick(Clips clips, Clip active, int tick, int duration)
+    {
+        if (active == null)
+        {
+            return Math.min(Math.max(0, duration - 1), tick + 1);
+        }
+
+        if (active instanceof KeyframeClip keyframeClip)
+        {
+            int relative = Math.max(0, tick - active.tick.get());
+            int nextRelative = Integer.MAX_VALUE;
+
+            for (var channel : keyframeClip.channels)
+            {
+                for (Keyframe<Double> keyframe : channel.getKeyframes())
+                {
+                    int kfTick = Math.round(keyframe.getTick());
+
+                    if (kfTick > relative && kfTick < nextRelative)
+                    {
+                        nextRelative = kfTick;
+                    }
+                }
+            }
+
+            if (nextRelative != Integer.MAX_VALUE)
+            {
+                return active.tick.get() + nextRelative;
+            }
+        }
+        else if (active instanceof PathClip pathClip)
+        {
+            int points = pathClip.size();
+
+            if (points > 1)
+            {
+                int localTick = Math.max(0, tick - active.tick.get());
+                int durationTick = Math.max(1, active.duration.get());
+                float progress = MathUtils.clamp(localTick / (float) durationTick, 0F, 1F);
+                int currentPoint = Math.min(points - 1, (int) Math.floor(progress * (points - 1)));
+                int nextPoint = currentPoint + 1;
+
+                if (nextPoint < points)
+                {
+                    return active.tick.get() + pathClip.getTickForPoint(nextPoint);
+                }
+            }
+        }
+
+        Clip nextClip = findNextCameraClip(clips, active);
+
+        return nextClip != null ? nextClip.tick.get() : -1;
+    }
+
+    private static Clip findActiveCameraClip(Clips clips, int tick)
+    {
+        Clip active = null;
+
+        for (Clip clip : clips.getClips(tick))
+        {
+            if (!isCameraClip(clip))
+            {
+                continue;
+            }
+
+            if (active == null || clip.layer.get() >= active.layer.get())
+            {
+                active = clip;
+            }
+        }
+
+        return active;
+    }
+
+    private static Clip findNextCameraClip(Clips clips, Clip active)
+    {
+        Clip next = null;
+        int activeEnd = active.tick.get() + active.duration.get();
+
+        for (Clip clip : clips.get())
+        {
+            if (!isCameraClip(clip) || clip == active)
+            {
+                continue;
+            }
+
+            int clipStart = clip.tick.get();
+
+            if (clipStart >= activeEnd && (next == null || clipStart < next.tick.get()))
+            {
+                next = clip;
+            }
+        }
+
+        return next;
+    }
+
+    private static boolean isCameraClip(Clip clip)
+    {
+        return clip instanceof IdleClip || clip instanceof DollyClip || clip instanceof PathClip || clip instanceof KeyframeClip;
     }
 
     private static Vector4f frustumCorner(float fx, float fy, float fz, float rx, float ry, float rz, float ux, float uy, float uz, float distance, float side, float up)

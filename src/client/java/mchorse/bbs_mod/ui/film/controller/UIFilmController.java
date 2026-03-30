@@ -1208,7 +1208,11 @@ public class UIFilmController extends UIElement
 
             if (povMode != UIFilmController.CAMERA_MODE_CAMERA && BBSSettings.recordingCameraPreview.get())
             {
-                Recorder.renderCameraPreview(this.panel.getRunner().getPosition(), context.camera(), context.matrixStack());
+                RunnerCameraController runner = this.panel.getRunner();
+                int tick = runner.ticks;
+                int duration = runner.getContext().clips == null ? 0 : runner.getContext().clips.calculateDuration();
+
+                Recorder.renderCameraPreviewTimeline(runner.getContext().clips, tick, context.tickDelta(), duration, runner.getPosition(), context.camera(), context.matrixStack());
             }
         }
 
