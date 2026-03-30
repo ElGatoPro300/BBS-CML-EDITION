@@ -53,6 +53,8 @@
     "cml.config.editor.clip_type_labels-comment": "Display the clip type in the timeline for Camera and Action editors",
     "cml.config.editor.replay_sprint_particles": "Replay sprint particles",
     "cml.config.editor.replay_sprint_particles-comment": "Emit sprint particles for replays when sprinting (non-actor mode)",
+    "cml.config.editor.camera_preview_future_count": "Future camera previews",
+    "cml.config.editor.camera_preview_future_count-comment": "How many upcoming camera previews are shown (first is green, the rest are orange)",
     "cml.config.editor.title": "Camera editor",
     "cml.config.editor.tooltip": "Config options used in the camera editor",
     "cml.config.replay_editor.replay_editor_title_limit": "Replay editor title limit",

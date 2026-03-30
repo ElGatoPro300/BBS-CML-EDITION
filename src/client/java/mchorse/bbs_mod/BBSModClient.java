@@ -485,6 +485,7 @@ public class BBSModClient implements ClientModInitializer
             BBSSettings.editorFlightFreeLook = builder.getBoolean("flight_free_look", false);
             BBSSettings.editorClipTypeLabels = builder.getBoolean("clip_type_labels", false);
             BBSSettings.editorReplaySprintParticles = builder.getBoolean("replay_sprint_particles", false);
+            BBSSettings.recordingCameraPreviewFutureCount = builder.getInt("camera_preview_future_count", 3, 1, 8);
             BBSSettings.editorTimeMode = builder.getInt("time_mode", 0, 0, 2);
             BBSSettings.editorTimeMode.modes(
                 UIKeys.CONFIG_EDITOR_TICKS_MODE,

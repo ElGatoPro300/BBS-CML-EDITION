@@ -183,34 +183,63 @@ public class Recorder extends WorldFilmController
     public static void renderCameraPreviewTimeline(Clips clips, int tick, float transition, int duration, Position current, Camera camera, MatrixStack stack)
     {
         Clip active = findActiveCameraClip(clips, tick);
-        Position nextPosition = new Position();
-        boolean hasNext = false;
-        int nextTick = findNextPreviewTick(clips, active, tick, duration);
-
-        if (nextTick >= 0 && nextTick != tick)
-        {
-            hasNext = sampleCameraPosition(clips, nextTick, 0F, nextPosition);
-        }
+        int futureCount = Math.max(1, BBSSettings.recordingCameraPreviewFutureCount == null ? 3 : BBSSettings.recordingCameraPreviewFutureCount.get());
+        int[] nextTicks = findNextPreviewTicks(clips, active, tick, duration, futureCount);
 
         renderCameraPreview(current, camera, stack, 1F, 1F, 1F, 0.9F, true);
 
-        if (hasNext)
+        for (int i = 0; i < nextTicks.length; i++)
         {
-            renderCameraPreview(nextPosition, camera, stack, 0.2F, 1F, 0.2F, 0.7F, false);
+            Position nextPosition = new Position();
+
+            if (!sampleCameraPosition(clips, nextTicks[i], 0F, nextPosition))
+            {
+                continue;
+            }
+
+            float alpha = Math.max(0.28F, 0.78F - i * 0.2F);
+            float r = i == 0 ? 0.2F : 1F;
+            float g = i == 0 ? 1F : 0.6F;
+            float b = i == 0 ? 0.2F : 0.08F;
+            renderCameraPreview(nextPosition, camera, stack, r, g, b, alpha, false);
         }
     }
 
-    private static int findNextPreviewTick(Clips clips, Clip active, int tick, int duration)
+    private static int[] findNextPreviewTicks(Clips clips, Clip active, int tick, int duration, int maxCount)
     {
+        int[] output = new int[maxCount];
+        int count = 0;
+
         if (active == null)
         {
-            return Math.min(Math.max(0, duration - 1), tick + 1);
+            int durationCap = Math.max(0, duration - 1);
+            int searchStart = Math.max(0, tick + 1);
+
+            while (count < maxCount)
+            {
+                Clip next = findNextCameraClipAfter(clips, searchStart);
+
+                if (next == null)
+                {
+                    break;
+                }
+
+                int nextTick = Math.max(0, Math.min(next.tick.get(), durationCap));
+
+                if (nextTick != tick)
+                {
+                    output[count++] = nextTick;
+                }
+
+                searchStart = next.tick.get() + 1;
+            }
+
+            return trimTicks(output, count);
         }
 
         if (active instanceof KeyframeClip keyframeClip)
         {
             int relative = Math.max(0, tick - active.tick.get());
-            int nextRelative = Integer.MAX_VALUE;
 
             for (var channel : keyframeClip.channels)
             {
@@ -218,16 +247,16 @@ public class Recorder extends WorldFilmController
                 {
                     int kfTick = Math.round(keyframe.getTick());
 
-                    if (kfTick > relative && kfTick < nextRelative)
+                    if (kfTick > relative)
                     {
-                        nextRelative = kfTick;
+                        count = insertTick(output, count, active.tick.get() + kfTick, tick);
+
+                        if (count >= maxCount)
+                        {
+                            return trimTicks(output, count);
+                        }
                     }
                 }
-            }
-
-            if (nextRelative != Integer.MAX_VALUE)
-            {
-                return active.tick.get() + nextRelative;
             }
         }
         else if (active instanceof PathClip pathClip)
@@ -240,18 +269,87 @@ public class Recorder extends WorldFilmController
                 int durationTick = Math.max(1, active.duration.get());
                 float progress = MathUtils.clamp(localTick / (float) durationTick, 0F, 1F);
                 int currentPoint = Math.min(points - 1, (int) Math.floor(progress * (points - 1)));
-                int nextPoint = currentPoint + 1;
+                int maxPoint = Math.min(points - 1, currentPoint + maxCount);
 
-                if (nextPoint < points)
+                for (int nextPoint = currentPoint + 1; nextPoint <= maxPoint; nextPoint++)
                 {
-                    return active.tick.get() + pathClip.getTickForPoint(nextPoint);
+                    count = insertTick(output, count, active.tick.get() + pathClip.getTickForPoint(nextPoint), tick);
                 }
             }
         }
+        else
+        {
+            int durationCap = Math.max(0, duration - 1);
+            int searchStart = active.tick.get() + active.duration.get();
 
-        Clip nextClip = findNextCameraClip(clips, active);
+            while (count < maxCount)
+            {
+                Clip next = findNextCameraClipAfter(clips, searchStart);
 
-        return nextClip != null ? nextClip.tick.get() : -1;
+                if (next == null)
+                {
+                    break;
+                }
+
+                int nextTick = Math.max(0, Math.min(next.tick.get(), durationCap));
+
+                if (nextTick != tick)
+                {
+                    output[count++] = nextTick;
+                }
+
+                searchStart = next.tick.get() + 1;
+            }
+        }
+
+        return trimTicks(output, count);
+    }
+
+    private static int insertTick(int[] output, int count, int tickToInsert, int currentTick)
+    {
+        if (tickToInsert == currentTick)
+        {
+            return count;
+        }
+
+        for (int i = 0; i < count; i++)
+        {
+            if (output[i] == tickToInsert)
+            {
+                return count;
+            }
+        }
+
+        if (count < output.length)
+        {
+            output[count] = tickToInsert;
+
+            for (int i = count; i > 0; i--)
+            {
+                if (output[i] < output[i - 1])
+                {
+                    int temp = output[i - 1];
+                    output[i - 1] = output[i];
+                    output[i] = temp;
+                }
+            }
+
+            return count + 1;
+        }
+
+        return count;
+    }
+
+    private static int[] trimTicks(int[] output, int count)
+    {
+        int[] result = new int[count];
+
+        for (int i = 0; i < count; i++)
+        {
+            result[i] = output[i];
+        }
+
+        return result;
     }
 
     private static Clip findActiveCameraClip(Clips clips, int tick)
@@ -274,21 +372,20 @@ public class Recorder extends WorldFilmController
         return active;
     }
 
-    private static Clip findNextCameraClip(Clips clips, Clip active)
+    private static Clip findNextCameraClipAfter(Clips clips, int tick)
     {
         Clip next = null;
-        int activeEnd = active.tick.get() + active.duration.get();
 
         for (Clip clip : clips.get())
         {
-            if (!isCameraClip(clip) || clip == active)
+            if (!isCameraClip(clip))
             {
                 continue;
             }
 
             int clipStart = clip.tick.get();
 
-            if (clipStart >= activeEnd && (next == null || clipStart < next.tick.get()))
+            if (clipStart >= tick && (next == null || clipStart < next.tick.get()))
             {
                 next = clip;
             }

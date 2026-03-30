@@ -107,6 +107,7 @@ public class BBSSettings
     public static ValueBoolean recordingOverlays;
     public static ValueInt recordingPoseTransformOverlays;
     public static ValueBoolean recordingCameraPreview;
+    public static ValueInt recordingCameraPreviewFutureCount;
 
     public static ValueBoolean renderAllModelBlocks;
     public static ValueBoolean clickModelBlocks;

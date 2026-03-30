@@ -45,6 +45,8 @@
     "cml.config.editor.clip_type_labels-comment": "Muestra el tipo de clip en la línea de tiempo del Editor de Cámara y Acciones",
     "cml.config.editor.replay_sprint_particles": "Partículas de sprint en replays",
     "cml.config.editor.replay_sprint_particles-comment": "Emite partículas de sprint en replays al correr (modo no actor)",
+    "cml.config.editor.camera_preview_future_count": "Previsualizaciones futuras de cámara",
+    "cml.config.editor.camera_preview_future_count-comment": "Cuántas cámaras próximas mostrar (la primera en verde, las demás en naranja)",
     "cml.config.editor.title": "Editor de cámara",
     "cml.config.editor.tooltip": "Opciones de configuración que se utilizan dentro del editor de cámara",
     "cml.config.replay_editor.replay_editor_title_limit": "Límite de título del editor de replays",
