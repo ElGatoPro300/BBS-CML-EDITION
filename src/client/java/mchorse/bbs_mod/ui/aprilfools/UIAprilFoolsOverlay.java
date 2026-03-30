@@ -28,6 +28,50 @@ public class UIAprilFoolsOverlay extends UIElement
         Link.assets("textures/rocket.png"),
         Link.assets("assets/textures/rocket.png")
     };
+    private static final Link[] TEXTURE_ICON = new Link[] {
+        Link.bbs("assets/textures/icon.png"),
+        Link.bbs("textures/icon.png"),
+        Link.assets("textures/icon.png"),
+        Link.assets("assets/textures/icon.png")
+    };
+    private static final Link[] TEXTURE_BANNER = new Link[] {
+        Link.bbs("assets/textures/banners/CML.png"),
+        Link.bbs("textures/banners/CML.png"),
+        Link.assets("textures/banners/CML.png"),
+        Link.assets("assets/textures/banners/CML.png")
+    };
+
+    private static final Link[][] FLOWEY_RISE2 = new Link[9][];
+    private static final Link[][] FLOWEY_IDLE = new Link[2][];
+
+    static
+    {
+        for (int i = 0; i < 9; i++)
+        {
+            FLOWEY_RISE2[i] = floweyLink("rise2_" + i);
+        }
+
+        FLOWEY_IDLE[0] = floweyLink("idle_0");
+        FLOWEY_IDLE[1] = floweyLink("idle_1");
+    }
+
+    private static Link[] floweyLink(String name)
+    {
+        return new Link[] {
+            Link.bbs("assets/textures/flowey/" + name + ".png"),
+            Link.bbs("textures/flowey/" + name + ".png"),
+            Link.assets("textures/flowey/" + name + ".png"),
+            Link.assets("assets/textures/flowey/" + name + ".png")
+        };
+    }
+
+    public static boolean devUnlocked = false;
+
+    /* 0 = hidden, 1 = rising, 2 = idle */
+    private int floweyState = 0;
+    private long floweyLastFrame = 0L;
+    private int floweyFrame = 0;
+    private int floweyAnchorBottom = 0;
 
     private final Random random = new Random();
     private final List<Sprite> sprites = new ArrayList<>();
@@ -50,6 +94,7 @@ public class UIAprilFoolsOverlay extends UIElement
         sprite.vy = (this.random.nextFloat() * 2F - 1F) * 1.4F;
         sprite.size = size;
         sprite.rocket = this.random.nextBoolean();
+        sprite.corrupted = isEnglish();
 
         if (Math.abs(sprite.vx) < 0.2F)
         {
@@ -77,6 +122,7 @@ public class UIAprilFoolsOverlay extends UIElement
         meme.vx = (this.random.nextFloat() * 2F - 1F) * 0.9F;
         meme.vy = (this.random.nextFloat() * 2F - 1F) * 0.9F;
         meme.big = this.random.nextBoolean();
+        meme.corrupted = isEnglish();
         this.memeTexts.add(meme);
     }
 
@@ -91,6 +137,13 @@ public class UIAprilFoolsOverlay extends UIElement
 
         if (isAprilFoolsEnabled())
         {
+            if (context.menu instanceof UIDashboard dashboard)
+            {
+                Texture banner = this.resolveTexture(TEXTURE_BANNER);
+                Texture icon = this.resolveTexture(TEXTURE_ICON);
+
+                this.renderGlitchTaskbar(context, dashboard.getPanels().panelButtons, banner, icon);
+            }
             long now = System.currentTimeMillis();
             float dt = this.lastFrameTime == 0 ? 0.016F : Math.min(0.05F, (now - this.lastFrameTime) / 1000F);
             this.lastFrameTime = now;
@@ -99,21 +152,42 @@ public class UIAprilFoolsOverlay extends UIElement
 
             Texture texture55 = this.resolveTexture(TEXTURE_55);
             Texture rocket = this.resolveTexture(TEXTURE_ROCKET);
+            Texture icon = this.resolveTexture(TEXTURE_ICON);
+            Texture banner = this.resolveTexture(TEXTURE_BANNER);
+            long seed = System.currentTimeMillis() / 100L;
 
             for (Sprite sprite : this.sprites)
             {
-                Texture texture = sprite.rocket ? rocket : texture55;
-
-                if (texture != null)
+                if (sprite.corrupted)
                 {
-                    context.batcher.texturedBox(texture, Colors.A75 | Colors.WHITE, sprite.x, sprite.y, sprite.size, sprite.size, 0, 0, texture.width, texture.height, texture.width, texture.height);
-                }
+                    Texture texture = sprite.rocket ? icon : banner;
 
+                    if (texture != null)
+                    {
+                        Random rng = new Random(seed ^ (long) (sprite.x * 1000));
+                        float u1 = rng.nextFloat() * texture.width;
+                        float v1 = rng.nextFloat() * texture.height;
+                        float u2 = u1 + (rng.nextBoolean() ? texture.width : -texture.width);
+                        float v2 = v1 + (rng.nextBoolean() ? texture.height : -texture.height);
+
+                        context.batcher.texturedBox(texture, Colors.A75 | Colors.WHITE, sprite.x, sprite.y, sprite.size, sprite.size, u1, v1, u2, v2, texture.width, texture.height);
+                    }
+                }
+                else
+                {
+                    Texture texture = sprite.rocket ? rocket : texture55;
+
+                    if (texture != null)
+                    {
+                        context.batcher.texturedBox(texture, Colors.A75 | Colors.WHITE, sprite.x, sprite.y, sprite.size, sprite.size, 0, 0, texture.width, texture.height, texture.width, texture.height);
+                    }
+                }
             }
 
             for (MemeText meme : this.memeTexts)
             {
-                String label = meme.big ? "Hombre De 55" : "55";
+                String label = meme.corrupted ? "error 404" : (meme.big ? "Hombre De 55" : "55");
+                int color = meme.corrupted ? (meme.big ? 0xFFFF4444 : 0xFFFF6666) : (meme.big ? 0xFFFFFF55 : 0xFFFFEE55);
                 float tx = meme.x;
                 float ty = meme.y;
 
@@ -121,11 +195,121 @@ public class UIAprilFoolsOverlay extends UIElement
                 context.batcher.text(label, tx, ty + 1, 0xAA000000);
                 context.batcher.text(label, tx - 1, ty, 0xAA000000);
                 context.batcher.text(label, tx + 1, ty, 0xAA000000);
-                context.batcher.text(label, tx, ty, meme.big ? 0xFFFFFF55 : 0xFFFFEE55);
+                context.batcher.text(label, tx, ty, color);
+            }
+
+            if (this.floweyState > 0)
+            {
+                this.renderFlowey(context);
             }
         }
 
         super.render(context);
+    }
+
+    public void startFlowey()
+    {
+        this.floweyState = 1;
+        this.floweyLastFrame = System.currentTimeMillis();
+        this.floweyFrame = 0;
+    }
+
+    private void renderFlowey(UIContext context)
+    {
+        long now = System.currentTimeMillis();
+        int scale = 2;
+
+        if (this.floweyState == 1)
+        {
+            /* ~100ms per frame for 9 rise frames */
+            if (now - this.floweyLastFrame >= 100L)
+            {
+                this.floweyFrame++;
+                this.floweyLastFrame = now;
+
+                if (this.floweyFrame >= 9)
+                {
+                    this.floweyFrame = 0;
+                    this.floweyState = 2;
+                }
+            }
+
+            int riseFrame = Math.min(this.floweyFrame, FLOWEY_RISE2.length - 1);
+            Texture tex = this.resolveTexture(FLOWEY_RISE2[riseFrame]);
+
+            if (tex != null)
+            {
+                int w = tex.width * scale;
+                int h = tex.height * scale;
+                int cx = this.area.mx() - w / 2;
+                int cy = this.area.my() - h / 2;
+
+                /* Record bottom anchor so idle aligns to the same position */
+                this.floweyAnchorBottom = cy + h;
+
+                context.batcher.texturedBox(tex, Colors.WHITE, cx, cy, w, h, 0, 0, tex.width, tex.height, tex.width, tex.height);
+            }
+        }
+        else if (this.floweyState == 2)
+        {
+            /* ~500ms per frame for 2 idle frames */
+            if (now - this.floweyLastFrame >= 500L)
+            {
+                this.floweyFrame = (this.floweyFrame + 1) % 2;
+                this.floweyLastFrame = now;
+            }
+
+            Texture tex = this.resolveTexture(FLOWEY_IDLE[this.floweyFrame]);
+
+            if (tex != null)
+            {
+                int w = tex.width * scale;
+                int h = tex.height * scale;
+                int cx = this.area.mx() - w / 2;
+                int cy = this.floweyAnchorBottom - h;
+
+                context.batcher.texturedBox(tex, Colors.WHITE, cx, cy, w, h, 0, 0, tex.width, tex.height, tex.width, tex.height);
+            }
+        }
+    }
+
+    private void renderGlitchTaskbar(UIContext context, UIElement taskbar, Texture banner, Texture icon)
+    {
+        if (taskbar == null || (banner == null && icon == null))
+        {
+            return;
+        }
+
+        int x = taskbar.area.x;
+        int y = taskbar.area.y;
+        int w = taskbar.area.w;
+        int h = taskbar.area.h;
+        int slices = 10;
+        int sliceH = Math.max(1, h / slices);
+        long seed = System.currentTimeMillis() / 100L;
+
+        for (int i = 0; i < slices; i++)
+        {
+            Random rng = new Random(seed ^ (i * 0x9e3779b9L));
+            Texture tex = rng.nextBoolean() ? banner : icon;
+
+            if (tex == null)
+            {
+                continue;
+            }
+
+            int sy = y + i * sliceH;
+            int sh = (i == slices - 1) ? (h - i * sliceH) : sliceH;
+            int dx = (int) ((rng.nextFloat() * 2F - 1F) * 8F);
+            int sw = (int) (w * (0.7F + rng.nextFloat() * 0.4F));
+
+            float u1 = rng.nextFloat() * tex.width;
+            float v1 = rng.nextFloat() * tex.height;
+            float u2 = u1 + (rng.nextBoolean() ? tex.width : -tex.width);
+            float v2 = v1 + (rng.nextBoolean() ? tex.height : -tex.height);
+
+            context.batcher.texturedBox(tex, Colors.A75 | Colors.WHITE, x + dx, sy, sw, sh, u1, v1, u2, v2, tex.width, tex.height);
+        }
     }
 
     private void animate(float dt)
@@ -221,6 +405,11 @@ public class UIAprilFoolsOverlay extends UIElement
             || (now.getMonthValue() == 4 && now.getDayOfMonth() == 1);
     }
 
+    public static boolean isEnglish()
+    {
+        return !BBSModClient.getLanguageKey().startsWith("es");
+    }
+
     private Texture resolveTexture(Link[] candidates)
     {
         Texture error = BBSModClient.getTextures().getError();
@@ -246,6 +435,7 @@ public class UIAprilFoolsOverlay extends UIElement
         private float vy;
         private float size;
         private boolean rocket;
+        private boolean corrupted;
     }
 
     private static class MemeText
@@ -255,5 +445,6 @@ public class UIAprilFoolsOverlay extends UIElement
         private float vx;
         private float vy;
         private boolean big;
+        private boolean corrupted;
     }
 }
