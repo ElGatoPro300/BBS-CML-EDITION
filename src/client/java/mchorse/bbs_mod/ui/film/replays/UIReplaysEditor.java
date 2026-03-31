@@ -1045,9 +1045,12 @@ public class UIReplaysEditor extends UIElement
                 grouped.addAll(overlayTracks);
                 grouped.addAll(modelTracksAfterPose);
 
-                for (FormTracks subForm : subForms.values())
+                List<String> subFormPaths = new ArrayList<>(subForms.keySet());
+                subFormPaths.sort(UIReplaysEditor::comparePathsNaturally);
+
+                for (String path : subFormPaths)
                 {
-                    String path = FormUtils.getPath(subForm.form);
+                    FormTracks subForm = subForms.get(path);
                     String groupKey = this.replay.uuid.get() + ":" + path;
                     int level = path.split("/").length;
 
