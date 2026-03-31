@@ -2491,8 +2491,14 @@ public class UIReplayList extends UIList<Replay> {
             }
         }
 
-        if (element.isGroup.get() && name.length() > 20) {
-            name = name.substring(0, 20) + "...";
+        if (element.isGroup.get())
+        {
+            int limit = BBSSettings.editorReplayEditorTitleLimit == null ? 0 : BBSSettings.editorReplayEditorTitleLimit.get();
+
+            if (limit > 0 && name.length() > limit)
+            {
+                name = name.substring(0, limit) + "...";
+            }
         }
 
         return context.batcher.getFont().limitToWidth(name, this.area.w - 20);
