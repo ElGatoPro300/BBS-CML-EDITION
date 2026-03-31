@@ -396,6 +396,7 @@ public class UIDashboard extends UIBaseMenu
                 this.floweyScheduled = false;
                 this.aprilFoolsOverlay.startFlowey();
             }
+
         }
     }
 

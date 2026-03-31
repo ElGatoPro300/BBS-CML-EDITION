@@ -30,6 +30,16 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
         Link.assets("textures/55.png"),
         Link.assets("assets/textures/55.png")
     };
+    private static final Link[][] FLOWEY_IDLE = new Link[][] {
+        {
+            Link.bbs("assets/textures/flowey/idle_0.png"),
+            Link.assets("textures/flowey/idle_0.png")
+        },
+        {
+            Link.bbs("assets/textures/flowey/idle_1.png"),
+            Link.assets("textures/flowey/idle_1.png")
+        }
+    };
     private static final Link[] TEXTURE_ROCKET = new Link[] {
         Link.bbs("assets/textures/rocket.png"),
         Link.bbs("textures/rocket.png"),
@@ -122,6 +132,8 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
 
     private final Random random = new Random();
     private final List<Bullet> bullets = new ArrayList<>();
+    private int floweyIdleFrame = 0;
+    private long floweyIdleLastFrame = 0L;
     private final Map<Link, Long> sfxLastPlayed = new HashMap<>();
     private final UIButton resetButton;
     private int hp = 165;
@@ -1532,6 +1544,17 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
             float iy = this.bossY;
             float ix = this.bossX;
             float introSize = this.bossSize;
+
+            long idleNow = System.currentTimeMillis();
+
+            if (idleNow - this.floweyIdleLastFrame >= 500L)
+            {
+                this.floweyIdleFrame = (this.floweyIdleFrame + 1) % 2;
+                this.floweyIdleLastFrame = idleNow;
+            }
+
+            Texture floweyTex = this.resolveTexture(FLOWEY_IDLE[this.floweyIdleFrame]);
+
             float bubbleX = ix + introSize + 14;
             float bubbleY = iy + 8;
             float bubbleW = 190;
@@ -1548,7 +1571,19 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
             bubbleX = Math.max(minX, Math.min(bubbleX, maxX));
             bubbleY = Math.max(this.area.y + 54, Math.min(bubbleY, maxY));
 
-            context.batcher.texturedBox(texture55, Colors.WHITE, ix, iy, introSize, introSize, 0, 0, texture55.width, texture55.height, texture55.width, texture55.height);
+            if (floweyTex != null)
+            {
+                int fw = floweyTex.width * 2;
+                int fh = floweyTex.height * 2;
+                float fcx = ix + introSize * 0.5F - fw * 0.5F;
+                float fcy = iy + introSize * 0.5F - fh * 0.5F;
+
+                context.batcher.texturedBox(floweyTex, Colors.WHITE, fcx, fcy, fw, fh, 0, 0, floweyTex.width, floweyTex.height, floweyTex.width, floweyTex.height);
+            }
+            else
+            {
+                context.batcher.texturedBox(texture55, Colors.WHITE, ix, iy, introSize, introSize, 0, 0, texture55.width, texture55.height, texture55.width, texture55.height);
+            }
 
             if (this.playerAttackAnimTicks > 0)
             {
