@@ -555,7 +555,8 @@ public class ServerNetwork
 
                 if (actionPlayer == null)
                 {
-                    Film film = BBSMod.getFilms().load(filmId);
+                    FilmManager films = BBSMod.getFilms();
+                    Film film = (filmId != null && !filmId.isBlank() && films.exists(filmId)) ? films.load(filmId) : null;
 
                     if (film != null)
                     {
