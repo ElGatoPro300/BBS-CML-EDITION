@@ -2,13 +2,15 @@ package mchorse.bbs_mod.ui.aprilfools;
 
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.graphics.texture.Texture;
-import mchorse.bbs_mod.l10n.L10n;
+import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.dashboard.UIDashboard;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
+import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.utils.colors.Colors;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.client.util.math.MatrixStack;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -68,13 +70,59 @@ public class UIAprilFoolsOverlay extends UIElement
 
     public static boolean devUnlocked = false;
 
+    private static final String[] DIALOG_LINES = {
+        "Howdy! I'm Flowey. Flowey the Flower!",
+        "I'll help you fix all BUG in your BBS!"
+    };
+    private static final String CALL_DIALOG_LINE = "I DON'T WANT TO FIX THESE FOR YOU";
+    private static final long CHAR_DELAY_MS = 45L;
+    private static final long LINE_PAUSE_MS = 1800L;
+
+    public static boolean aprilFoolsChaos = false;
+
     /* 0 = hidden, 1 = rising, 2 = idle */
     private int floweyState = 0;
     private long floweyLastFrame = 0L;
     private int floweyFrame = 0;
     private int floweyAnchorBottom = 0;
+    private long floweyIdleStart = 0L;
+    private int dialogLine = -1;
+    private int dialogCharIndex = 0;
+    private long dialogLastChar = 0L;
+    private boolean dialogLineComplete = false;
+    private long dialogLineDoneAt = 0L;
+    private boolean callDialogActive = false;
+    private int callDialogCharIndex = 0;
+    private long callDialogLastChar = 0L;
+    private long callDialogDoneAt = 0L;
+
+    /* 0=none, 1=loading, 2=error, 3=fade-out, 4=fade-in */
+    private int fixingPhase = 0;
+    private long fixingPhaseStart = 0L;
+    private boolean panelSwitched = false;
+
+    private UIButton callFloweyButton;
 
     private final Random random = new Random();
+
+    public UIAprilFoolsOverlay()
+    {
+        this.markContainer();
+
+        this.callFloweyButton = new UIButton(IKey.raw("? Call Flowey"), (b) -> this.onCallFlowey());
+        this.callFloweyButton.relative(this).x(1F, -112).y(1F, -30).w(102).h(20);
+        this.callFloweyButton.setVisible(false);
+        this.add(this.callFloweyButton);
+    }
+
+    private void onCallFlowey()
+    {
+        this.callFloweyButton.setVisible(false);
+        this.callDialogActive = true;
+        this.callDialogCharIndex = 0;
+        this.callDialogDoneAt = 0L;
+        this.callDialogLastChar = System.currentTimeMillis();
+    }
     private final List<Sprite> sprites = new ArrayList<>();
     private final List<MemeText> memeTexts = new ArrayList<>();
     private int warmupTicks;
@@ -130,6 +178,16 @@ public class UIAprilFoolsOverlay extends UIElement
     @Override
     public void render(UIContext context)
     {
+        long now = System.currentTimeMillis();
+
+        /* During fade-out/fade-in keep rendering on top even if combat panel is active */
+        if (this.fixingPhase >= 3)
+        {
+            this.renderFixingScreen(context, now);
+            super.render(context);
+            return;
+        }
+
         if (context.menu instanceof UIDashboard dashboard && dashboard.getPanels().panel instanceof UIAprilFoolsPanel)
         {
             super.render(context);
@@ -145,7 +203,6 @@ public class UIAprilFoolsOverlay extends UIElement
 
                 this.renderGlitchTaskbar(context, dashboard.getPanels().panelButtons, banner, icon);
             }
-            long now = System.currentTimeMillis();
             float dt = this.lastFrameTime == 0 ? 0.016F : Math.min(0.05F, (now - this.lastFrameTime) / 1000F);
             this.lastFrameTime = now;
 
@@ -155,10 +212,21 @@ public class UIAprilFoolsOverlay extends UIElement
             Texture rocket = this.resolveTexture(TEXTURE_ROCKET);
             Texture icon = this.resolveTexture(TEXTURE_ICON);
             Texture banner = this.resolveTexture(TEXTURE_BANNER);
-            long seed = System.currentTimeMillis() / 100L;
+            long seed = now / 100L;
+            long chaosSeed = now / 80L;
 
             for (Sprite sprite : this.sprites)
             {
+                float drawX = sprite.x;
+                float drawY = sprite.y;
+
+                if (aprilFoolsChaos)
+                {
+                    Random cr = new Random(chaosSeed ^ (long) (sprite.x * 73856093L));
+                    drawX = this.area.x + cr.nextFloat() * Math.max(1F, this.area.w - sprite.size);
+                    drawY = this.area.y + cr.nextFloat() * Math.max(1F, this.area.h - sprite.size);
+                }
+
                 if (sprite.corrupted)
                 {
                     Texture texture = sprite.rocket ? icon : banner;
@@ -171,7 +239,7 @@ public class UIAprilFoolsOverlay extends UIElement
                         float u2 = u1 + (rng.nextBoolean() ? texture.width : -texture.width);
                         float v2 = v1 + (rng.nextBoolean() ? texture.height : -texture.height);
 
-                        context.batcher.texturedBox(texture, Colors.A75 | Colors.WHITE, sprite.x, sprite.y, sprite.size, sprite.size, u1, v1, u2, v2, texture.width, texture.height);
+                        context.batcher.texturedBox(texture, Colors.A75 | Colors.WHITE, drawX, drawY, sprite.size, sprite.size, u1, v1, u2, v2, texture.width, texture.height);
                     }
                 }
                 else
@@ -180,17 +248,24 @@ public class UIAprilFoolsOverlay extends UIElement
 
                     if (texture != null)
                     {
-                        context.batcher.texturedBox(texture, Colors.A75 | Colors.WHITE, sprite.x, sprite.y, sprite.size, sprite.size, 0, 0, texture.width, texture.height, texture.width, texture.height);
+                        context.batcher.texturedBox(texture, Colors.A75 | Colors.WHITE, drawX, drawY, sprite.size, sprite.size, 0, 0, texture.width, texture.height, texture.width, texture.height);
                     }
                 }
             }
 
             for (MemeText meme : this.memeTexts)
             {
-                String label = meme.corrupted ? "error 404" : (meme.big ? L10n.lang("bbs.ui.aprilfools.overlay.big").get() : L10n.lang("bbs.ui.aprilfools.overlay.small").get());
+                String label = meme.corrupted ? "error 404" : (meme.big ? "Hombre De 55" : "55");
                 int color = meme.corrupted ? (meme.big ? 0xFFFF4444 : 0xFFFF6666) : (meme.big ? 0xFFFFFF55 : 0xFFFFEE55);
                 float tx = meme.x;
                 float ty = meme.y;
+
+                if (aprilFoolsChaos)
+                {
+                    Random cr = new Random(chaosSeed ^ (long) (meme.x * 19349663L));
+                    tx = this.area.x + cr.nextFloat() * Math.max(1F, this.area.w - 130F);
+                    ty = this.area.y + cr.nextFloat() * Math.max(1F, this.area.h - 12F);
+                }
 
                 context.batcher.text(label, tx, ty - 1, 0xAA000000);
                 context.batcher.text(label, tx, ty + 1, 0xAA000000);
@@ -213,6 +288,23 @@ public class UIAprilFoolsOverlay extends UIElement
         this.floweyState = 1;
         this.floweyLastFrame = System.currentTimeMillis();
         this.floweyFrame = 0;
+        this.floweyAnchorBottom = 0;
+        this.floweyIdleStart = 0L;
+        this.dialogLine = -1;
+        this.dialogCharIndex = 0;
+        this.dialogLineComplete = false;
+        this.callDialogActive = false;
+        this.callDialogCharIndex = 0;
+        this.callDialogDoneAt = 0L;
+        aprilFoolsChaos = false;
+        this.fixingPhase = 0;
+        this.fixingPhaseStart = 0L;
+        this.panelSwitched = false;
+
+        if (this.callFloweyButton != null)
+        {
+            this.callFloweyButton.setVisible(false);
+        }
     }
 
     private void renderFlowey(UIContext context)
@@ -270,6 +362,255 @@ public class UIAprilFoolsOverlay extends UIElement
                 int cy = this.floweyAnchorBottom - h;
 
                 context.batcher.texturedBox(tex, Colors.WHITE, cx, cy, w, h, 0, 0, tex.width, tex.height, tex.width, tex.height);
+            }
+
+            this.renderDialog(context, now);
+        }
+    }
+
+    private void renderDialog(UIContext context, long now)
+    {
+        /* Wait 0.8s after idle starts before showing dialog */
+        if (this.floweyIdleStart == 0L)
+        {
+            this.floweyIdleStart = now;
+        }
+
+        if (this.dialogLine == -1)
+        {
+            if (now - this.floweyIdleStart >= 800L)
+            {
+                this.dialogLine = 0;
+                this.dialogCharIndex = 0;
+                this.dialogLastChar = now;
+                this.dialogLineComplete = false;
+            }
+
+            return;
+        }
+
+        if (this.dialogLine >= DIALOG_LINES.length)
+        {
+            /* All lines done — start fixing loading screen after a brief pause */
+            if (this.fixingPhase == 0 && now - this.dialogLineDoneAt >= LINE_PAUSE_MS)
+            {
+                this.fixingPhase = 1;
+                this.fixingPhaseStart = now;
+            }
+
+            if (this.fixingPhase > 0)
+            {
+                this.renderFixingScreen(context, now);
+            }
+
+            return;
+        }
+
+        /* Advance typewriter */
+        String line = DIALOG_LINES[this.dialogLine];
+
+        if (!this.dialogLineComplete)
+        {
+            if (this.dialogCharIndex < line.length() && now - this.dialogLastChar >= CHAR_DELAY_MS)
+            {
+                this.dialogCharIndex++;
+                this.dialogLastChar = now;
+            }
+
+            if (this.dialogCharIndex >= line.length())
+            {
+                this.dialogLineComplete = true;
+                this.dialogLineDoneAt = now;
+            }
+        }
+        else if (now - this.dialogLineDoneAt >= LINE_PAUSE_MS)
+        {
+            this.dialogLine++;
+            this.dialogCharIndex = 0;
+            this.dialogLineComplete = false;
+            this.dialogLastChar = now;
+            return;
+        }
+
+        /* Render Undertale-style dialog box */
+        int bh = 90;
+        int bw = this.area.w - 20;
+        int bx = this.area.x + 10;
+        int by = this.area.ey() - bh - 10;
+
+        /* Outer white border */
+        context.batcher.box(bx, by, bx + bw, by + bh, 0xFFFFFFFF);
+        /* Inner black background */
+        context.batcher.box(bx + 3, by + 3, bx + bw - 3, by + bh - 3, 0xFF000000);
+
+        /* Flowey portrait */
+        Texture portrait = this.resolveTexture(FLOWEY_IDLE[0]);
+
+        if (portrait != null)
+        {
+            int pw = portrait.width;
+            int ph = portrait.height;
+            int py = by + (bh - ph) / 2;
+
+            context.batcher.texturedBox(portrait, Colors.WHITE, bx + 8, py, pw, ph, 0, 0, pw, ph, pw, ph);
+        }
+
+        /* Dialog text at 2x scale with black outline */
+        String display = line.substring(0, this.dialogCharIndex);
+        float tx = bx + 8 + (portrait != null ? portrait.width + 10 : 0);
+        float ty = by + (bh / 2) - 8;
+
+        this.drawBigText(context, display, tx, ty, 0xFFFFFFFF);
+
+        /* Continue indicator — blink every 500ms when line is done */
+        if (this.dialogLineComplete && this.dialogLine < DIALOG_LINES.length - 1)
+        {
+            if ((now / 500L) % 2L == 0L)
+            {
+                this.drawBigText(context, "v", bx + bw - 18, by + bh - 20, 0xFFFFFFFF);
+            }
+        }
+    }
+
+    private void drawBigText(UIContext context, String text, float x, float y, int color)
+    {
+        MatrixStack matrices = context.batcher.getContext().getMatrices();
+
+        matrices.push();
+        matrices.translate(x, y, 0F);
+        matrices.scale(2F, 2F, 1F);
+        context.batcher.text(text, 0F, 0F, color);
+        matrices.pop();
+    }
+
+    private void renderCallDialog(UIContext context, long now)
+    {
+        if (this.callDialogCharIndex < CALL_DIALOG_LINE.length() && now - this.callDialogLastChar >= CHAR_DELAY_MS)
+        {
+            this.callDialogCharIndex++;
+            this.callDialogLastChar = now;
+        }
+
+        if (this.callDialogCharIndex >= CALL_DIALOG_LINE.length())
+        {
+            if (this.callDialogDoneAt == 0L)
+            {
+                this.callDialogDoneAt = now;
+            }
+            else if (this.callDialogDoneAt > 0L && now - this.callDialogDoneAt >= 2000L
+                    && context.menu instanceof UIDashboard dashboard)
+            {
+                this.callDialogDoneAt = -1L;
+                dashboard.setPanel(dashboard.getPanel(UIAprilFoolsPanel.class));
+            }
+        }
+
+        int bh = 90;
+        int bw = this.area.w - 20;
+        int bx = this.area.x + 10;
+        int by = this.area.ey() - bh - 10;
+
+        context.batcher.box(bx, by, bx + bw, by + bh, 0xFFFFFFFF);
+        context.batcher.box(bx + 3, by + 3, bx + bw - 3, by + bh - 3, 0xFF000000);
+
+        Texture portrait = this.resolveTexture(FLOWEY_IDLE[0]);
+
+        if (portrait != null)
+        {
+            int pw = portrait.width;
+            int ph = portrait.height;
+            int py = by + (bh - ph) / 2;
+
+            context.batcher.texturedBox(portrait, Colors.WHITE, bx + 8, py, pw, ph, 0, 0, pw, ph, pw, ph);
+        }
+
+        String display = CALL_DIALOG_LINE.substring(0, this.callDialogCharIndex);
+        float tx = bx + 8 + (portrait != null ? portrait.width + 10 : 0);
+        float ty = by + (bh / 2) - 8;
+
+        this.drawBigText(context, display, tx, ty, 0xFFFF4444);
+    }
+
+    private void renderFixingScreen(UIContext context, long now)
+    {
+        long elapsed = now - this.fixingPhaseStart;
+
+        if (this.fixingPhase == 1)
+        {
+            /* Loading screen — 3 seconds */
+            float progress = Math.min(1F, elapsed / 3000F);
+            int dots = (int) (now / 350L) % 4;
+            String loadText = "Fixing your BBS" + "...".substring(0, dots < 3 ? dots : 3);
+            int percentage = (int) (progress * 100);
+
+            this.area.render(context.batcher, 0xFF000000);
+
+            int cx = this.area.mx();
+            int cy = this.area.my();
+
+            this.drawBigText(context, loadText, cx - 108, cy - 28, 0xFFFFFFFF);
+            context.batcher.text(percentage + "%", cx - 8, cy + 2, 0xFFAAAAAA);
+
+            int barW = Math.min(400, this.area.w - 100);
+            int barX = cx - barW / 2;
+            int barY = cy + 16;
+
+            context.batcher.box(barX - 1, barY - 1, barX + barW + 1, barY + 11, 0xFF444444);
+            context.batcher.box(barX, barY, barX + (int) (barW * progress), barY + 10, 0xFF44DD44);
+
+            if (progress >= 1F)
+            {
+                this.fixingPhase = 2;
+                this.fixingPhaseStart = now;
+            }
+        }
+        else if (this.fixingPhase == 2)
+        {
+            /* ERROR! — 2 seconds */
+            this.area.render(context.batcher, 0xFF000000);
+
+            int cx = this.area.mx();
+            int cy = this.area.my();
+
+            this.drawBigText(context, "ERROR!", cx - 42, cy - 16, 0xFFFF3333);
+            context.batcher.text("Could not fix BBS.", cx - 44, cy + 10, 0xFFAAAAAA);
+
+            if (elapsed >= 2000L)
+            {
+                this.fixingPhase = 3;
+                this.fixingPhaseStart = now;
+            }
+        }
+        else if (this.fixingPhase == 3)
+        {
+            /* Fade to black — 600ms */
+            float alpha = Math.min(1F, elapsed / 600F);
+            int a = (int) (alpha * 255) & 0xFF;
+
+            this.area.render(context.batcher, (a << 24));
+
+            if (alpha >= 1F && !this.panelSwitched)
+            {
+                this.panelSwitched = true;
+                this.fixingPhase = 4;
+                this.fixingPhaseStart = now;
+
+                if (context.menu instanceof UIDashboard dashboard)
+                {
+                    dashboard.setPanel(dashboard.getPanel(UIAprilFoolsPanel.class));
+                }
+            }
+        }
+        else if (this.fixingPhase == 4)
+        {
+            /* Fade from black — 600ms */
+            float alpha = Math.max(0F, 1F - elapsed / 600F);
+
+            if (alpha > 0F)
+            {
+                int a = (int) (alpha * 255) & 0xFF;
+
+                this.area.render(context.batcher, (a << 24));
             }
         }
     }
