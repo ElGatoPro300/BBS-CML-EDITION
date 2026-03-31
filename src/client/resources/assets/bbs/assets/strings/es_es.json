@@ -1238,6 +1238,8 @@
     "bbs.ui.pose.context.reset": "Restablecer pose",
     "bbs.ui.pose.context.save": "Guardar pose",
     "bbs.ui.pose.bones.filter_marked_tooltip": "Mostrar solo huesos marcados",
+    "bbs.ui.pose.bones.live_mirror_tooltip": "Live mirror: Shift+click en huesos para editarlos juntos",
+    "bbs.ui.pose.bones.live_mirror_invert_z_tooltip": "Live mirror: invertir rotación X/Y/Z en huesos espejados",
     "bbs.ui.pose.bones.empty_line1": "No hay huesos marcados.",
     "bbs.ui.pose.bones.empty_line2": "Pulsá este botón",
     "bbs.ui.presets": "Ver ajustes preestablecidos...",

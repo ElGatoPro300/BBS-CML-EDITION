@@ -954,6 +954,8 @@ public class UIKeys
     public static final IKey POSE_CONTEXT_RESET = L10n.lang("bbs.ui.pose.context.reset");
     public static final IKey POSE_CONTEXT_SAVE = L10n.lang("bbs.ui.pose.context.save");
     public static final IKey POSE_BONES_FILTER_MARKED_TOOLTIP = L10n.lang("bbs.ui.pose.bones.filter_marked_tooltip");
+    public static final IKey POSE_BONES_LIVE_MIRROR_INVERT_Z_TOOLTIP = L10n.lang("bbs.ui.pose.bones.live_mirror_invert_z_tooltip");
+    public static final IKey POSE_BONES_LIVE_MIRROR_TOOLTIP = L10n.lang("bbs.ui.pose.bones.live_mirror_tooltip");
     public static final IKey POSE_TRACKS_ANCHOR_SELECT_BONE = L10n.lang("bbs.ui.replays.bone_anchoring.select_bone");
     public static final IKey POSE_TRACKS_ANCHOR_UNANCHOR = L10n.lang("bbs.ui.replays.bone_anchoring.unanchor_bone");
     public static final IKey POSE_TRACKS_ANCHOR_SELECT_BONE_TITLE = L10n.lang("bbs.ui.replays.bone_anchoring.select_bone_title");

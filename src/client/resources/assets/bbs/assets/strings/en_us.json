@@ -1253,6 +1253,8 @@
     "bbs.ui.pose.context.reset": "Reset pose",
     "bbs.ui.pose.context.save": "Save pose",
     "bbs.ui.pose.bones.filter_marked_tooltip": "Show only marked bones",
+    "bbs.ui.pose.bones.live_mirror_tooltip": "Live mirror: Shift+click bones to edit them together",
+    "bbs.ui.pose.bones.live_mirror_invert_z_tooltip": "Live mirror: invert X/Y/Z rotation on mirrored bones",
     "bbs.ui.pose.bones.empty_line1": "No marked bones.",
     "bbs.ui.pose.bones.empty_line2": "Press this button",
     "bbs.ui.presets": "View presets...",
