@@ -73,6 +73,7 @@ import mchorse.bbs_mod.utils.keyframes.factories.IKeyframeFactory;
 import mchorse.bbs_mod.utils.pose.Transform;
 import mchorse.bbs_mod.utils.resources.Pixels;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.item.ItemStack;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
@@ -1828,6 +1829,12 @@ public class UIReplayList extends UIList<Replay> {
         replay.keyframes.x.insert(0, x);
         replay.keyframes.y.insert(0, y);
         replay.keyframes.z.insert(0, z);
+        replay.keyframes.mainHand.insert(0, this.copyItem(properties.getItemMainHand()));
+        replay.keyframes.offHand.insert(0, this.copyItem(properties.getItemOffHand()));
+        replay.keyframes.armorHead.insert(0, this.copyItem(properties.getArmorHead()));
+        replay.keyframes.armorChest.insert(0, this.copyItem(properties.getArmorChest()));
+        replay.keyframes.armorLegs.insert(0, this.copyItem(properties.getArmorLegs()));
+        replay.keyframes.armorFeet.insert(0, this.copyItem(properties.getArmorFeet()));
 
         if (!transform.isDefault()) {
             if (transform.rotate.x == 0 && transform.rotate.z == 0 &&
@@ -1854,6 +1861,10 @@ public class UIReplayList extends UIList<Replay> {
         this.setCurrentDirect(replay);
         this.panel.replayEditor.setReplay(replay);
         this.updateFilmEditor();
+    }
+
+    private ItemStack copyItem(ItemStack stack) {
+        return stack == null ? ItemStack.EMPTY : stack.copy();
     }
 
     public void addReplay(Vector3d position, float pitch, float yaw) {

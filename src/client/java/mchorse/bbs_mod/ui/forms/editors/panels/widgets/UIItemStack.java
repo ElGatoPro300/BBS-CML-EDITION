@@ -1,5 +1,6 @@
 package mchorse.bbs_mod.ui.forms.editors.panels.widgets;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
 import mchorse.bbs_mod.forms.FormUtilsClient;
@@ -19,6 +20,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemStack;
+import org.lwjgl.opengl.GL11;
 
 import java.util.function.Consumer;
 
@@ -196,10 +198,13 @@ public class UIItemStack extends UIElement
             CustomVertexConsumerProvider consumers = FormUtilsClient.getProvider();
 
             matrices.push();
+            RenderSystem.disableDepthTest();
             consumers.setUI(true);
             context.batcher.getContext().drawItem(this.stack, stackCenterX - 8, this.area.my() - 8);
             context.batcher.getContext().drawItemInSlot(context.batcher.getFont().getRenderer(), this.stack, stackCenterX - 8, this.area.my() - 8);
             consumers.setUI(false);
+            RenderSystem.enableDepthTest();
+            RenderSystem.depthFunc(GL11.GL_ALWAYS);
             matrices.pop();
         }
 

@@ -40,6 +40,7 @@ import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
+import org.lwjgl.opengl.GL11;
 
 import java.util.function.Supplier;
 
@@ -123,7 +124,8 @@ public class UIPickableFormRenderer extends UIFormRenderer
         FormRenderingContext formContext = new FormRenderingContext()
             .set(FormRenderType.PREVIEW, this.target == null ? this.entity : this.target, context.batcher.getContext().getMatrices(), LightmapTextureManager.pack(15, 15), OverlayTexture.DEFAULT_UV, context.getTransition())
             .camera(this.camera)
-            .modelRenderer();
+            .modelRenderer()
+            .equipment(false);
 
         if (this.renderForm == null || this.renderForm.get())
         {
@@ -136,8 +138,6 @@ public class UIPickableFormRenderer extends UIFormRenderer
             }
         }
 
-        this.renderAxes(context);
-
         if (this.area.isInside(context))
         {
             GlStateManager._disableScissorTest();
@@ -149,7 +149,7 @@ public class UIPickableFormRenderer extends UIFormRenderer
             this.renderIKTargets(context, true, this.stencilMap);
 
             Matrix4f matrix = this.formEditor.getOrigin(context.getTransition());
-            MatrixStack stack = context.render.batcher.getContext().getMatrices();
+            MatrixStack stack = context.batcher.getContext().getMatrices();
 
             stack.push();
 
@@ -158,7 +158,9 @@ public class UIPickableFormRenderer extends UIFormRenderer
                 MatrixStackUtils.multiply(stack, matrix);
             }
 
-            Gizmo.INSTANCE.renderStencil(context.batcher.getContext().getMatrices(), this.stencilMap);
+            RenderSystem.disableCull();
+            Gizmo.INSTANCE.renderStencil(stack, this.stencilMap);
+            RenderSystem.enableCull();
 
             stack.pop();
 
@@ -173,12 +175,26 @@ public class UIPickableFormRenderer extends UIFormRenderer
         {
             this.stencil.clearPicking();
         }
+
+        this.prepareGizmoRenderState();
+        this.renderAxes(context);
+    }
+
+    private void prepareGizmoRenderState()
+    {
+        RenderSystem.depthMask(true);
+        RenderSystem.colorMask(true, true, true, true);
+        RenderSystem.enableDepthTest();
+        RenderSystem.depthFunc(GL11.GL_LEQUAL);
+        RenderSystem.disableBlend();
+        RenderSystem.disableCull();
+        RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
     }
 
     private void renderAxes(UIContext context)
     {
         Matrix4f matrix = this.formEditor.getOrigin(context.getTransition());
-        MatrixStack stack = context.render.batcher.getContext().getMatrices();
+        MatrixStack stack = context.batcher.getContext().getMatrices();
 
         stack.push();
 
@@ -190,9 +206,11 @@ public class UIPickableFormRenderer extends UIFormRenderer
         /* Draw axes */
         if (UIBaseMenu.renderAxes)
         {
+            RenderSystem.disableCull();
             RenderSystem.disableDepthTest();
             Gizmo.INSTANCE.render(stack);
             RenderSystem.enableDepthTest();
+            RenderSystem.enableCull();
         }
 
         stack.pop();
