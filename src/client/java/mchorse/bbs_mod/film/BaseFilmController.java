@@ -795,6 +795,7 @@ public abstract class BaseFilmController
 
             /* Apply property */
             Form form1 = entity.getForm();
+            replay.properties.resetProperties(form1);
             replay.properties.applyProperties(form1, tick + delta);
 
             Map<String, Integer> actors = this.getActors();
@@ -810,6 +811,7 @@ public abstract class BaseFilmController
                     if (anEntity instanceof ActorEntity actor)
                     {
                         Form form = actor.getForm();
+                        replay.properties.resetProperties(form);
                         replay.properties.applyProperties(form, tick + delta);
                     }
                     else if (anEntity instanceof PlayerEntity player)
@@ -819,6 +821,7 @@ public abstract class BaseFilmController
                         if (morph != null)
                         {
                             Form form = morph.getForm();
+                            replay.properties.resetProperties(form);
                             replay.properties.applyProperties(form, tick + delta);
                         }
 

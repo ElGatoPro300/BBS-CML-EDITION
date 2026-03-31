@@ -603,8 +603,13 @@ public class UIReplaysEditor extends UIElement
 
             /* Form properties */
             java.util.Set<String> propertyPaths = new java.util.LinkedHashSet<>(FormUtils.collectPropertyPaths(this.replay.form.get()));
-
-            propertyPaths.addAll(this.replay.properties.properties.keySet());
+            for (String key : this.replay.properties.properties.keySet())
+            {
+                if (this.isCompatiblePropertyPath(this.replay.form.get(), key))
+                {
+                    propertyPaths.add(key);
+                }
+            }
 
             if (BBSSettings.limbTracks.get())
             {
@@ -1006,13 +1011,17 @@ public class UIReplaysEditor extends UIElement
                             form = FormUtils.getForm(this.replay.form.get(), path);
                         }
 
-                        if (form != null && (form.getParent() != null || form instanceof ModelForm))
+                        if (form != null)
                         {
                             String path = FormUtils.getPath(form);
 
-                            /* Skip root form sheets since they are now handled by World/Model groups */
                             if (path.equals(rootPath))
                             {
+                                if (!this.collapsedModelTracks.getOrDefault(modelPropsKey, false))
+                                {
+                                    this.processTrack(sheet, modelPropsKey, 2, modelTracksBeforePose, poseTrack, poseLimbTracks, overlayTracks, modelTracksAfterPose);
+                                }
+
                                 continue;
                             }
 
@@ -1036,9 +1045,12 @@ public class UIReplaysEditor extends UIElement
                 grouped.addAll(overlayTracks);
                 grouped.addAll(modelTracksAfterPose);
 
-                for (FormTracks subForm : subForms.values())
+                List<String> subFormPaths = new ArrayList<>(subForms.keySet());
+                subFormPaths.sort(UIReplaysEditor::comparePathsNaturally);
+
+                for (String path : subFormPaths)
                 {
-                    String path = FormUtils.getPath(subForm.form);
+                    FormTracks subForm = subForms.get(path);
                     String groupKey = this.replay.uuid.get() + ":" + path;
                     int level = path.split("/").length;
 
@@ -1201,6 +1213,19 @@ public class UIReplaysEditor extends UIElement
         {
             this.keyframeEditor.view.resetView();
         }
+    }
+
+    private boolean isCompatiblePropertyPath(Form rootForm, String key)
+    {
+        if (rootForm == null || key == null || key.isEmpty())
+        {
+            return false;
+        }
+
+        int colon = key.indexOf(':');
+        String path = colon == -1 ? key : key.substring(0, colon);
+
+        return FormUtils.getProperty(rootForm, path) != null;
     }
 
     private void processTrack(UIKeyframeSheet sheet, String groupKey, int level, List<UIKeyframeSheet> before, List<UIKeyframeSheet> pose, List<UIKeyframeSheet> limbs, List<UIKeyframeSheet> overlays, List<UIKeyframeSheet> after)
