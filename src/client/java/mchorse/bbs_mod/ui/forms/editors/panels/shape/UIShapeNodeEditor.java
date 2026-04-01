@@ -51,6 +51,7 @@ import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
+import net.minecraft.client.gl.ShaderProgramKeys;
 import org.joml.Matrix4f;
 import org.joml.Vector2f;
 import org.lwjgl.glfw.GLFW;
@@ -1159,7 +1160,7 @@ public class UIShapeNodeEditor extends UIElement
 
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
-        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
+        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
 
         // Border
         BufferBuilder builder = tessellator.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);

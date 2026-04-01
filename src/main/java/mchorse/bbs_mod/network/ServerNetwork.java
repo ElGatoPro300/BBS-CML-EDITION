@@ -213,8 +213,6 @@ public class ServerNetwork
         ServerPlayNetworking.registerGlobalReceiver(idFor(SERVER_SHARED_FORM), (payload, context) -> handleSharedFormPacket(context.server(), context.player(), payload.asPacketByteBuf()));
         ServerPlayNetworking.registerGlobalReceiver(idFor(SERVER_ZOOM), (payload, context) -> handleZoomPacket(context.server(), context.player(), payload.asPacketByteBuf()));
         ServerPlayNetworking.registerGlobalReceiver(idFor(SERVER_PAUSE_FILM), (payload, context) -> handlePauseFilmPacket(context.server(), context.player(), payload.asPacketByteBuf()));
-        ServerPlayNetworking.registerGlobalReceiver(idFor(SERVER_TRIGGER_BLOCK_UPDATE), (payload, context) -> handleTriggerBlockUpdatePacket(context.server(), context.player(), payload.asPacketByteBuf()));
-        ServerPlayNetworking.registerGlobalReceiver(idFor(SERVER_TRIGGER_BLOCK_CLICK), (payload, context) -> handleTriggerBlockClickPacket(context.server(), context.player(), payload.asPacketByteBuf()));
     }
 
     /* Handlers */
