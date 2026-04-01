@@ -86,20 +86,4 @@ public class ModelMesh implements IMapSerializable
         data.put("vertices", vertices);
         data.put("uvs", uvs);
     }
-
-    public ModelMesh copy()
-    {
-        ModelMesh mesh = new ModelMesh();
-
-        mesh.origin.set(this.origin);
-        mesh.rotate.set(this.rotate);
-        mesh.baseData = this.baseData.copy();
-
-        for (Map.Entry<String, ModelData> entry : this.data.entrySet())
-        {
-            mesh.data.put(entry.getKey(), entry.getValue().copy());
-        }
-
-        return mesh;
-    }
 }

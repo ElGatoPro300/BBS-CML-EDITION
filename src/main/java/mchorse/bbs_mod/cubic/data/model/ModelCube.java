@@ -314,29 +314,4 @@ public class ModelCube implements IMapSerializable
 
         return uv;
     }
-
-    public ModelCube copy()
-    {
-        ModelCube cube = new ModelCube();
-
-        cube.origin.set(this.origin);
-        cube.size.set(this.size);
-        cube.pivot.set(this.pivot);
-        cube.rotate.set(this.rotate);
-        cube.inflate = this.inflate;
-
-        if (this.front != null) cube.front = this.front.copy();
-        if (this.right != null) cube.right = this.right.copy();
-        if (this.back != null) cube.back = this.back.copy();
-        if (this.left != null) cube.left = this.left.copy();
-        if (this.top != null) cube.top = this.top.copy();
-        if (this.bottom != null) cube.bottom = this.bottom.copy();
-
-        for (ModelQuad quad : this.quads)
-        {
-            cube.quads.add(quad.copy());
-        }
-
-        return cube;
-    }
 }

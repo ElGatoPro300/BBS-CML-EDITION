@@ -91,7 +91,6 @@ public class UIFilmRecorder extends UIElement
         try
         {
             File audioFile = null;
-            boolean ambientAudio = BBSSettings.videoSettings.audioEnvironment.get();
 
             if (BBSSettings.videoSettings.audio.get())
             {
@@ -108,7 +107,7 @@ public class UIFilmRecorder extends UIElement
                 }
             }
 
-            recorder.startRecording(audioFile, ambientAudio, id, w, h);
+            recorder.startRecording(audioFile, id, w, h);
         }
         catch (Exception e)
         {

@@ -125,7 +125,7 @@ public class ContextMenuManager
                     register.category(action.keyCategory);
                 }
             }
-            else if (this.autoKeys && i < 30 && action.runnable != null && !(action instanceof ContextSeparatorAction))
+            else if (this.autoKeys && i < 30)
             {
                 IKey label = UIKeys.CONTEXT_MENU_KEY.format(action.label);
                 int mod = i % 10;
