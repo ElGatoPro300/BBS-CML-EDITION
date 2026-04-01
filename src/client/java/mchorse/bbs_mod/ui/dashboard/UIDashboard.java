@@ -28,14 +28,10 @@ import mchorse.bbs_mod.ui.dashboard.utils.UIOrbitCameraKeys;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.UIRenderingContext;
-import mchorse.bbs_mod.ui.framework.elements.IUIElement;
-import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
-import mchorse.bbs_mod.ui.aprilfools.UIFixBBSOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIFnafOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIMessageOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
-import mchorse.bbs_mod.ui.framework.elements.utils.EventPropagation;
 import mchorse.bbs_mod.ui.model.UIModelPanel;
 import mchorse.bbs_mod.ui.model_blocks.UIModelBlockPanel;
 import mchorse.bbs_mod.ui.triggers.UITriggerBlockPanel;
@@ -49,15 +45,12 @@ import mchorse.bbs_mod.ui.utility.audio.UIAudioEditorPanel;
 import mchorse.bbs_mod.ui.utils.UIChalkboard;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
-import mchorse.bbs_mod.ui.aprilfools.UIAprilFoolsOverlay;
-import mchorse.bbs_mod.ui.aprilfools.UIAprilFoolsPanel;
 import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
-import org.lwjgl.glfw.GLFW;
 import net.minecraft.client.option.Perspective;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.math.Vec3d;
@@ -81,13 +74,6 @@ public class UIDashboard extends UIBaseMenu
     private Perspective lastPerspective = Perspective.FIRST_PERSON;
 
     private UIChalkboard chalkboard;
-    private UIAprilFoolsOverlay aprilFoolsOverlay;
-    private boolean panelsLocked = false;
-    private boolean f12WasPressed = false;
-    private long dashboardOpenTime = 0L;
-    private boolean fixBBSShown = false;
-    private boolean floweyScheduled = false;
-    private long floweyScheduledAt = 0L;
 
     public UIDashboard()
     {
@@ -129,14 +115,11 @@ public class UIDashboard extends UIBaseMenu
         this.selectors.tooltip(UIKeys.SELECTORS_TITLE, Direction.TOP);
         this.chalkboard = new UIChalkboard();
         this.chalkboard.full(this.getRoot());
-        this.aprilFoolsOverlay = new UIAprilFoolsOverlay();
-        this.aprilFoolsOverlay.full(this.getRoot());
 
         this.panels.pinned.add(this.settings, this.selectors);
         this.getRoot().prepend(this.orbitUI);
         this.getRoot().add(this.orbitKeysUI);
         this.getRoot().add(this.chalkboard);
-        this.getRoot().add(this.aprilFoolsOverlay);
 
         /* Register keys */
         IKey category = UIKeys.DASHBOARD_CATEGORY;
@@ -210,26 +193,8 @@ public class UIDashboard extends UIBaseMenu
         this.camera.setup(BBSModClient.getCameraController().camera, 0F);
     }
 
-    private void lockPanelButtons(boolean locked)
-    {
-        this.panelsLocked = locked;
-
-        for (IUIElement child : this.panels.panelButtons.getChildren())
-        {
-            if (child instanceof UIElement element)
-            {
-                element.setEnabled(!locked);
-            }
-        }
-    }
-
     private void cyclePanels()
     {
-        if (this.panelsLocked)
-        {
-            return;
-        }
-
         List<UIDashboardPanel> panels = this.panels.panels;
 
         int direction = Window.isShiftPressed() ? -1 : 1;
@@ -276,14 +241,6 @@ public class UIDashboard extends UIBaseMenu
 
         this.showAnnoyingPopups();
         UINewsPanel.onDashboardOpened(this);
-        this.lockPanelButtons(UIAprilFoolsOverlay.isAprilFoolsEnabled() && !UIAprilFoolsOverlay.devUnlocked);
-
-        if (UIAprilFoolsOverlay.isAprilFoolsEnabled() && oldMenu != this)
-        {
-            this.dashboardOpenTime = System.currentTimeMillis();
-            this.fixBBSShown = false;
-            this.floweyScheduled = false;
-        }
     }
 
     @Override
@@ -328,7 +285,6 @@ public class UIDashboard extends UIBaseMenu
         this.panels.registerPanel(new UIAddonsPanel(this), UIKeys.ADDONS_TITLE, Icons.PROCESSOR).marginLeft(10);
         UINewsPanel newsPanel = new UINewsPanel(this);
         UIIcon newsButton = this.panels.registerPanel(newsPanel, UIKeys.NEWS_TITLE, Icons.NEWS);
-        this.panels.registerPanel(new UIAprilFoolsPanel(this), IKey.raw("Panel 55"), Icons.HEART_ALT);
         UINewsPanel.attachIcon(newsButton);
 
         if (FabricLoader.getInstance().isDevelopmentEnvironment())
@@ -370,56 +326,6 @@ public class UIDashboard extends UIBaseMenu
             UINewsPanel.tickAuto(this);
             UINewsPanel.tickPriorityAnnouncement(this);
         }
-
-        if (UIAprilFoolsOverlay.isAprilFoolsEnabled())
-        {
-            boolean f12Now = Window.isKeyPressed(GLFW.GLFW_KEY_F12);
-
-            if (f12Now && !this.f12WasPressed)
-            {
-                UIAprilFoolsOverlay.devUnlocked = !UIAprilFoolsOverlay.devUnlocked;
-                this.lockPanelButtons(!UIAprilFoolsOverlay.devUnlocked);
-            }
-
-            this.f12WasPressed = f12Now;
-
-            long now = System.currentTimeMillis();
-
-            if (!this.fixBBSShown && this.dashboardOpenTime > 0L && now - this.dashboardOpenTime >= 6000L)
-            {
-                this.fixBBSShown = true;
-                this.showFixBBSPopup();
-            }
-
-            if (this.floweyScheduled && now - this.floweyScheduledAt >= 2000L)
-            {
-                this.floweyScheduled = false;
-                this.aprilFoolsOverlay.startFlowey();
-            }
-
-        }
-    }
-
-    private void showFixBBSPopup()
-    {
-        UIElement blocker = new UIElement();
-
-        blocker.full(this.getRoot());
-        blocker.eventPropagataion(EventPropagation.BLOCK).markContainer();
-
-        UIFixBBSOverlayPanel panel = new UIFixBBSOverlayPanel(this::scheduleFlowey);
-
-        panel.relative(blocker).xy(0.5F, 0.5F).wh(340, 160).anchor(0.5F);
-        blocker.add(panel);
-        /* Add to root last so it renders above aprilFoolsOverlay */
-        this.getRoot().add(blocker);
-        this.getRoot().resize();
-    }
-
-    private void scheduleFlowey()
-    {
-        this.floweyScheduled = true;
-        this.floweyScheduledAt = System.currentTimeMillis();
     }
 
     @Override
