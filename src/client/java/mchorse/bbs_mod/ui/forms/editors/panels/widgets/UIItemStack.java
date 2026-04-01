@@ -14,6 +14,7 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
 import mchorse.bbs_mod.ui.utils.context.ItemStackContextAction;
+import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Colors;
 import net.minecraft.client.MinecraftClient;
@@ -113,6 +114,13 @@ public class UIItemStack extends UIElement
     public UIItemStack optionsOnLeft(boolean optionsOnLeft)
     {
         this.optionsOnLeft = optionsOnLeft;
+
+        return this;
+    }
+
+    public UIItemStack optionsIcon(Icon icon)
+    {
+        this.optionsButton.both(icon);
 
         return this;
     }
