@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.ui.aprilfools;
 
 import mchorse.bbs_mod.BBSModClient;
+import mchorse.bbs_mod.audio.SoundPlayer;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.resources.Link;
@@ -70,6 +71,15 @@ public class UIAprilFoolsOverlay extends UIElement
 
     public static boolean devUnlocked = false;
 
+    private static final Link[] SFX_FLOWEY_SPEAK = new Link[] {
+        Link.bbs("assets/audio/FloweySpeak.wav"),
+        Link.assets("audio/FloweySpeak.wav")
+    };
+    private static final Link[] SFX_SANS_SPEAK = new Link[] {
+        Link.bbs("assets/audio/SansSpeak.ogg"),
+        Link.assets("audio/SansSpeak.ogg")
+    };
+
     private static final String[] DIALOG_LINES = {
         "Howdy! I'm Flowey. Flowey the Flower!",
         "I'll help you fix all BUG in your BBS!"
@@ -102,6 +112,7 @@ public class UIAprilFoolsOverlay extends UIElement
     private boolean panelSwitched = false;
 
     private UIButton callFloweyButton;
+    private long lastVoiceMs = 0L;
 
     private final Random random = new Random();
 
@@ -415,6 +426,7 @@ public class UIAprilFoolsOverlay extends UIElement
             {
                 this.dialogCharIndex++;
                 this.dialogLastChar = now;
+                this.playVoice(SFX_FLOWEY_SPEAK);
             }
 
             if (this.dialogCharIndex >= line.length())
@@ -489,6 +501,7 @@ public class UIAprilFoolsOverlay extends UIElement
         {
             this.callDialogCharIndex++;
             this.callDialogLastChar = now;
+            this.playVoice(SFX_FLOWEY_SPEAK);
         }
 
         if (this.callDialogCharIndex >= CALL_DIALOG_LINE.length())
@@ -611,6 +624,31 @@ public class UIAprilFoolsOverlay extends UIElement
                 int a = (int) (alpha * 255) & 0xFF;
 
                 this.area.render(context.batcher, (a << 24));
+            }
+        }
+    }
+
+    private void playVoice(Link[] candidates)
+    {
+        long now = System.currentTimeMillis();
+
+        if (now - this.lastVoiceMs < 40L)
+        {
+            return;
+        }
+
+        for (Link candidate : candidates)
+        {
+            SoundPlayer player = BBSModClient.getSounds().play(candidate);
+
+            if (player != null)
+            {
+                player.setRelative(true);
+                player.setVolume(0.55F);
+                player.setPitch(0.9F + this.random.nextFloat() * 0.2F);
+                this.lastVoiceMs = now;
+
+                return;
             }
         }
     }

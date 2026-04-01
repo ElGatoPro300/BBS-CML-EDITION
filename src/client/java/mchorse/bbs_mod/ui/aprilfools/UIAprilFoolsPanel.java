@@ -12,6 +12,7 @@ import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.ui.utils.UIUtils;
+import net.minecraft.client.util.math.MatrixStack;
 import mchorse.bbs_mod.utils.colors.Colors;
 import org.lwjgl.glfw.GLFW;
 
@@ -46,7 +47,48 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
         Link.assets("textures/rocket.png"),
         Link.assets("assets/textures/rocket.png")
     };
-    private static final Link[] MUSIC_BATTLE = new Link[] {
+    private static final Link[] TEXTURE_HEART = new Link[] {
+        Link.bbs("assets/textures/heart.png"),
+        Link.assets("textures/heart.png")
+    };
+    private static final Link[] TEXTURE_BULLET = new Link[] {
+        Link.bbs("assets/textures/bullet.png"),
+        Link.bbs("textures/bullet.png"),
+        Link.assets("textures/bullet.png"),
+        Link.assets("assets/textures/bullet.png")
+    };
+    private static final Link[][] SANS_IDLE = new Link[][] {
+        {
+            Link.bbs("assets/textures/sans/idle_0.png"),
+            Link.assets("textures/sans/idle_0.png")
+        },
+        {
+            Link.bbs("assets/textures/sans/idle_1.png"),
+            Link.assets("textures/sans/idle_1.png")
+        }
+    };
+    private static final Link[] MUSIC_SANS = new Link[] {
+        Link.bbs("assets/audio/SansBattle.ogg"),
+        Link.assets("audio/SansBattle.ogg")
+    };
+    private static final Link[] SFX_FLOWEY_SPEAK = new Link[] {
+        Link.bbs("assets/audio/FloweySpeak.wav"),
+        Link.assets("audio/FloweySpeak.wav"),
+        Link.bbs("assets/audio/FloweySpeak.ogg"),
+        Link.assets("audio/FloweySpeak.ogg")
+    };
+    private static final String[] SANS_JOKES = new String[] {
+        "bbs.ui.aprilfools.sans.0",
+        "bbs.ui.aprilfools.sans.1",
+        "bbs.ui.aprilfools.sans.2",
+        "bbs.ui.aprilfools.sans.3",
+        "bbs.ui.aprilfools.sans.4"
+    };
+    private static final Link[] MUSIC_BATTLE_EN = new Link[] {
+        Link.bbs("assets/audio/FloweyBattle.ogg"),
+        Link.assets("audio/FloweyBattle.ogg")
+    };
+    private static final Link[] MUSIC_BATTLE_ES = new Link[] {
         Link.bbs("assets/audio/Mad-Mew-Mew-_UNDERTALE-Soundtrack_-Toby-Fox.ogg"),
         Link.assets("audio/Mad-Mew-Mew-_UNDERTALE-Soundtrack_-Toby-Fox.ogg")
     };
@@ -75,6 +117,8 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
         Link.assets("audio/MenuSelect.ogg")
     };
     private static final Link[] SFX_SANS_SPEAK = new Link[] {
+        Link.bbs("assets/audio/SansVoice.ogg"),
+        Link.assets("audio/SansVoice.ogg"),
         Link.bbs("assets/audio/SansSpeak.ogg"),
         Link.assets("audio/SansSpeak.ogg")
     };
@@ -136,10 +180,10 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
     private long floweyIdleLastFrame = 0L;
     private final Map<Link, Long> sfxLastPlayed = new HashMap<>();
     private final UIButton resetButton;
-    private int hp = 165;
-    private int maxHp = 165;
-    private int enemyHp = 555;
-    private int maxEnemyHp = 555;
+    private int hp = 20;
+    private int maxHp = 20;
+    private int enemyHp = 200;
+    private int maxEnemyHp = 200;
     private int phase = PHASE_MENU;
     private int phaseTicks;
     private int actionIndex;
@@ -171,6 +215,19 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
     private float attackCursor;
     private boolean attackForward = true;
     private String dialogue = "";
+    private boolean sansPhase = false;
+    private long battleStartMs = 0L;
+    private long flashbangMs = 0L;
+    private int sansIdleFrame = 0;
+    private long sansIdleLastFrame = 0L;
+    private int sansIdleTicks = 0;
+    private int fightFlashTicks = 0;
+    private boolean fightWasCrit = false;
+    private int actVfxTicks = 0;
+    private int healVfxTicks = 0;
+    private int healVfxAmount = 0;
+    private int mercyVfxTicks = 0;
+    private int floweyRoundsDone = 0;
 
     private float arenaX;
     private float arenaY;
@@ -256,6 +313,19 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
         this.sfxLastPlayed.clear();
         this.matchStarted = false;
         this.gameOver = false;
+        this.sansPhase = false;
+        this.battleStartMs = 0L;
+        this.flashbangMs = 0L;
+        this.sansIdleFrame = 0;
+        this.sansIdleLastFrame = 0L;
+        this.sansIdleTicks = 0;
+        this.fightFlashTicks = 0;
+        this.fightWasCrit = false;
+        this.actVfxTicks = 0;
+        this.healVfxTicks = 0;
+        this.healVfxAmount = 0;
+        this.mercyVfxTicks = 0;
+        this.floweyRoundsDone = 0;
         this.victory = false;
         this.dialogue = this.tr("bbs.ui.aprilfools.dialogue.intro");
         this.updateArena();
@@ -304,7 +374,23 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
         }
         if (this.matchStarted)
         {
-            this.ensureBattleMusic();
+            if (this.flashbangMs > 0L && !this.sansPhase
+                    && System.currentTimeMillis() - this.flashbangMs >= 400L)
+            {
+                this.sansPhase = true;
+                this.stopBattleMusic();
+                this.dialogue = this.tr("bbs.ui.aprilfools.sans.intro");
+                this.enemyHp = this.maxEnemyHp;
+            }
+
+            if (this.sansPhase)
+            {
+                this.ensureSansMusic();
+            }
+            else
+            {
+                this.ensureBattleMusic();
+            }
         }
         else
         {
@@ -357,6 +443,22 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
         {
             this.invulTicks--;
         }
+        if (this.fightFlashTicks > 0)
+        {
+            this.fightFlashTicks--;
+        }
+        if (this.actVfxTicks > 0)
+        {
+            this.actVfxTicks--;
+        }
+        if (this.healVfxTicks > 0)
+        {
+            this.healVfxTicks--;
+        }
+        if (this.mercyVfxTicks > 0)
+        {
+            this.mercyVfxTicks--;
+        }
 
         if (this.phase == PHASE_END)
         {
@@ -376,6 +478,19 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
             this.heartY = this.arenaY + this.arenaH - this.heartSize - 8;
             this.bossX = this.area.mx() - this.bossSize * 0.5F;
             this.bossY = this.area.y + 62 + (float) Math.sin(System.currentTimeMillis() * 0.004D) * 2F;
+
+            if (this.sansPhase && this.matchStarted)
+            {
+                this.sansIdleTicks++;
+
+                if (this.sansIdleTicks >= 100)
+                {
+                    this.sansIdleTicks = 0;
+                    this.dialogue = this.getSansJoke();
+                    this.playSfx(SFX_SANS_SPEAK, 1F, true);
+                }
+            }
+
             this.handleMenuInput();
 
             return;
@@ -472,9 +587,11 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
         }
         if (this.battleBarkCooldown <= 0 && this.phaseTicks % 48 == 0)
         {
-            this.dialogue = this.tf("bbs.ui.aprilfools.dialogue.speak", this.getBossDialogue());
+            this.dialogue = this.sansPhase
+                ? this.getSansJoke()
+                : this.tf("bbs.ui.aprilfools.dialogue.speak", this.getBossDialogue());
             this.battleBarkCooldown = 48;
-            this.playSfx(SFX_SANS_SPEAK, 1F, true);
+            this.playSfx(this.sansPhase || !UIAprilFoolsOverlay.isEnglish() ? SFX_SANS_SPEAK : SFX_FLOWEY_SPEAK, 1F, true);
         }
 
         this.handleHeartInput();
@@ -574,6 +691,17 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
                 this.dialogue = this.tr("bbs.ui.aprilfools.dialogue.your_turn");
                 this.heartX = this.arenaX + this.arenaW * 0.5F - this.heartSize * 0.5F;
                 this.heartY = this.arenaY + this.arenaH - this.heartSize - 8;
+
+                /* After first Flowey round, trigger flashbang → sans */
+                if (!this.sansPhase && this.flashbangMs == 0L)
+                {
+                    this.floweyRoundsDone++;
+
+                    if (this.floweyRoundsDone >= 1)
+                    {
+                        this.flashbangMs = System.currentTimeMillis();
+                    }
+                }
             }
         }
     }
@@ -614,19 +742,24 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
 
         UIUtils.playClick(1.2F);
 
+        this.sansIdleTicks = 0;
+
         if (this.actionIndex == 0)
         {
             this.phase = PHASE_ATTACK;
             this.phaseTicks = 0;
             this.attackCursor = 0;
             this.attackForward = true;
-            this.dialogue = this.getBossDialogue();
+            this.dialogue = this.sansPhase ? this.tr("bbs.ui.aprilfools.sans.fight") : this.getBossDialogue();
         }
         else if (this.actionIndex == 1)
         {
-            this.dialogue = this.tf("bbs.ui.aprilfools.dialogue.act", this.getBossDialogue());
+            this.dialogue = this.sansPhase
+                ? this.tr("bbs.ui.aprilfools.sans.act")
+                : this.tf("bbs.ui.aprilfools.dialogue.act", this.getBossDialogue());
             this.playSfx(SFX_SANS_SPEAK, 1.05F);
             this.startEnemyTurn();
+            this.actVfxTicks = 18;
         }
         else if (this.actionIndex == 2)
         {
@@ -643,17 +776,22 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
                 this.dialogue = this.tf("bbs.ui.aprilfools.dialogue.item_heal", heal);
             }
             this.startEnemyTurn();
+            this.healVfxTicks = 20;
+            this.healVfxAmount = heal;
         }
         else
         {
-            if (this.enemyHp <= 55)
+            if (this.enemyHp <= 20)
             {
                 this.triggerVictory(this.tr("bbs.ui.aprilfools.dialogue.mercy_win"));
             }
             else
             {
-                this.dialogue = this.tr("bbs.ui.aprilfools.dialogue.mercy_no");
+                this.dialogue = this.sansPhase
+                    ? this.tr("bbs.ui.aprilfools.sans.mercy")
+                    : this.tr("bbs.ui.aprilfools.dialogue.mercy_no");
                 this.startEnemyTurn();
+                this.mercyVfxTicks = 16;
             }
         }
     }
@@ -664,8 +802,9 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
         float factor = Math.max(0F, 1F - dist * 2F);
         int damage = 5 + (int) (45 * factor) + this.random.nextInt(4);
         boolean dodge = this.random.nextFloat() < 0.12F;
+        boolean isCrit = this.random.nextFloat() < 0.05F;
 
-        if (this.random.nextFloat() < 0.05F)
+        if (isCrit)
         {
             damage = 65 + this.random.nextInt(36);
             if (!dodge)
@@ -693,6 +832,8 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
         {
             this.enemyHp -= damage;
             this.playSfx(SFX_BONE_STAB, 0.95F + this.random.nextFloat() * 0.12F);
+            this.fightFlashTicks = 14;
+            this.fightWasCrit = isCrit;
         }
 
         if (this.enemyHp <= 0)
@@ -1473,10 +1614,12 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
 
         Texture texture55 = this.resolveTexture(TEXTURE_55);
         Texture rocket = this.resolveTexture(TEXTURE_ROCKET);
+        Texture heartTex = this.resolveTexture(TEXTURE_HEART);
+        Texture bulletTex = this.resolveTexture(TEXTURE_BULLET);
         int pulse = (int) (Math.abs(Math.sin((System.currentTimeMillis() % 1200L) / 1200F * Math.PI * 2F)) * 35F);
 
         context.batcher.box(this.area.x + 8, this.area.y + 8, this.area.ex() - 8, this.area.y + 48, Colors.A50 | 0x000000);
-        context.batcher.text(this.tr("bbs.ui.aprilfools.battle_title"), this.area.x + 12, this.area.y + 12, 0xFFFFCC55 + (pulse << 8));
+        context.batcher.text(this.tr(this.sansPhase ? "bbs.ui.aprilfools.sans.battle_title" : "bbs.ui.aprilfools.battle_title"), this.area.x + 12, this.area.y + 12, 0xFFFFCC55 + (pulse << 8));
         context.batcher.text(this.tf("bbs.ui.aprilfools.hp", this.hp, this.maxHp), this.area.x + 12, this.area.y + 24, Colors.WHITE);
         context.batcher.text(this.tf("bbs.ui.aprilfools.enemy_hp", this.enemyHp, this.maxEnemyHp), this.area.x + 110, this.area.y + 24, 0xFFFF8888);
         if (this.phase == PHASE_ENEMY)
@@ -1525,18 +1668,44 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
                         context.batcher.box(this.arenaX, bullet.y - 6, this.arenaX + this.arenaW, bullet.y + 6, beamColor);
                     }
                 }
-                else if (texture55 != null)
+                else
                 {
-                    int color = bullet.type == BULLET_BLUE ? 0xFF55AAFF : bullet.type == BULLET_ORANGE ? 0xFFFFAA33 : bullet.type == BULLET_BOSS ? 0xFFFF6666 : Colors.WHITE;
-                    context.batcher.texturedBox(texture55, color, bullet.x, bullet.y, bullet.size, bullet.size, 0, 0, texture55.width, texture55.height, texture55.width, texture55.height);
+                    Texture btex = UIAprilFoolsOverlay.isEnglish()
+                        ? (bulletTex != null ? bulletTex : texture55)
+                        : texture55;
+
+                    if (btex != null)
+                    {
+                        int color = bullet.type == BULLET_BLUE ? 0xFF55AAFF : bullet.type == BULLET_ORANGE ? 0xFFFFAA33 : bullet.type == BULLET_BOSS ? 0xFFFF6666 : Colors.WHITE;
+                        int step = (int) (System.currentTimeMillis() / 150L) % 4;
+                        float angle = (float) Math.toRadians(step * 90);
+                        float cx = bullet.x + bullet.size * 0.5F;
+                        float cy = bullet.y + bullet.size * 0.5F;
+                        float half = bullet.size * 0.5F;
+                        MatrixStack matrices = context.batcher.getContext().getMatrices();
+
+                        matrices.push();
+                        matrices.translate(cx, cy, 0F);
+                        matrices.multiply(new org.joml.Quaternionf().rotateZ(angle));
+                        context.batcher.texturedBox(btex, color, -half, -half, bullet.size, bullet.size, 0, 0, btex.width, btex.height, btex.width, btex.height);
+                        matrices.pop();
+                    }
                 }
             }
         }
 
-        if (rocket != null && (this.phase == PHASE_ENEMY || this.phase == PHASE_MENU))
+        if (this.phase == PHASE_ENEMY || this.phase == PHASE_MENU)
         {
             int color = this.invulTicks > 0 && (this.invulTicks / 2) % 2 == 0 ? 0x99FFFFFF : Colors.WHITE;
-            context.batcher.texturedBox(rocket, color, this.heartX, this.heartY, this.heartSize, this.heartSize, 0, 0, rocket.width, rocket.height, rocket.width, rocket.height);
+
+            if (UIAprilFoolsOverlay.isEnglish() && heartTex != null)
+            {
+                context.batcher.texturedBox(heartTex, color, this.heartX, this.heartY, this.heartSize, this.heartSize, 0, 0, heartTex.width, heartTex.height, heartTex.width, heartTex.height);
+            }
+            else if (rocket != null)
+            {
+                context.batcher.texturedBox(rocket, color, this.heartX, this.heartY, this.heartSize, this.heartSize, 0, 0, rocket.width, rocket.height, rocket.width, rocket.height);
+            }
         }
 
         if (texture55 != null)
@@ -1553,11 +1722,21 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
                 this.floweyIdleLastFrame = idleNow;
             }
 
-            Texture floweyTex = this.resolveTexture(FLOWEY_IDLE[this.floweyIdleFrame]);
+            if (idleNow - this.sansIdleLastFrame >= 500L)
+            {
+                this.sansIdleFrame = (this.sansIdleFrame + 1) % 2;
+                this.sansIdleLastFrame = idleNow;
+            }
+
+            Texture floweyTex = UIAprilFoolsOverlay.isEnglish()
+                ? (this.sansPhase
+                    ? this.resolveTexture(SANS_IDLE[this.sansIdleFrame])
+                    : this.resolveTexture(FLOWEY_IDLE[this.floweyIdleFrame]))
+                : null;
 
             float bubbleX = ix + introSize + 14;
             float bubbleY = iy + 8;
-            float bubbleW = 190;
+            float bubbleW = 260;
             float bubbleH = 52;
             float minX = this.area.x + 8;
             float maxX = this.area.ex() - bubbleW - 8;
@@ -1608,7 +1787,75 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
 
             context.batcher.box(bubbleX, bubbleY, bubbleX + bubbleW, bubbleY + bubbleH, 0xFFFFFFFF);
             context.batcher.box(bubbleX + 2, bubbleY + 2, bubbleX + bubbleW - 2, bubbleY + bubbleH - 2, 0xFF0A0A0A);
-            context.batcher.text(this.fitBubbleText(this.tf("bbs.ui.aprilfools.bubble", this.dialogue)), bubbleX + 8, bubbleY + 10, this.matchStarted ? 0xFFFFFFFF : 0xFFFFEE88);
+            String bubbleKey = this.sansPhase ? "bbs.ui.aprilfools.sans.bubble" : "bbs.ui.aprilfools.bubble";
+            context.batcher.text(this.fitBubbleText(this.tf(bubbleKey, this.dialogue)), bubbleX + 8, bubbleY + 10, this.matchStarted ? 0xFFFFFFFF : 0xFFFFEE88);
+        }
+
+        /* VFX overlays */
+        if (this.fightFlashTicks > 0)
+        {
+            float t = this.fightFlashTicks / 14F;
+            float expand = (1F - t) * 55F;
+            int alpha = (int) (t * 180) & 0xFF;
+            int color = this.fightWasCrit ? 0xFF6600 : 0xFF2222;
+            float bcx = this.bossX + this.bossSize * 0.5F;
+            float bcy = this.bossY + this.bossSize * 0.5F;
+
+            /* expanding impact rings */
+            context.batcher.box(bcx - expand, bcy - expand * 0.5F, bcx + expand, bcy + expand * 0.5F, (alpha << 24) | color);
+            context.batcher.box(bcx - expand * 0.6F, bcy - expand * 0.3F, bcx + expand * 0.6F, bcy + expand * 0.3F, ((alpha / 2) << 24) | 0xFFFFFF);
+
+            /* cross flash lines */
+            MatrixStack vfxMat = context.batcher.getContext().getMatrices();
+            vfxMat.push();
+            vfxMat.translate(bcx, bcy, 0F);
+            vfxMat.multiply(new org.joml.Quaternionf().rotateZ((float) Math.toRadians((1F - t) * 45F)));
+            float len = expand * 1.4F;
+            context.batcher.box(-len, -2, len, 2, (alpha << 24) | 0xFFFFFF);
+            context.batcher.box(-2, -len, 2, len, (alpha << 24) | 0xFFFFFF);
+            vfxMat.pop();
+        }
+
+        if (this.actVfxTicks > 0)
+        {
+            float t = this.actVfxTicks / 18F;
+            int alpha = (int) (t * 140) & 0xFF;
+            float bcx = this.bossX + this.bossSize * 0.5F;
+            float bcy = this.bossY + this.bossSize * 0.5F;
+            float r = (1F - t) * 50F + 10F;
+
+            for (int i = 0; i < 6; i++)
+            {
+                float angle = (float) (i * Math.PI / 3 + (1F - t) * Math.PI);
+                float sx = bcx + (float) Math.cos(angle) * r;
+                float sy = bcy + (float) Math.sin(angle) * r * 0.6F;
+                int sz = (int) (4 + t * 4);
+                context.batcher.box(sx - sz, sy - sz, sx + sz, sy + sz, (alpha << 24) | 0xFFDD44);
+            }
+        }
+
+        if (this.healVfxTicks > 0)
+        {
+            float t = this.healVfxTicks / 20F;
+            float rise = (1F - t) * 28F;
+            int alpha = (int) (t * 200) & 0xFF;
+            float hcx = this.heartX + this.heartSize * 0.5F;
+            float hcy = this.heartY - rise;
+
+            context.batcher.box(hcx - 20, hcy - 2, hcx + 20, hcy + 14, ((alpha / 3) << 24) | 0x00FF44);
+            context.batcher.text("+" + this.healVfxAmount + " HP", hcx - 18, hcy + 2, (alpha << 24) | 0xFF66FF44);
+        }
+
+        if (this.mercyVfxTicks > 0)
+        {
+            float t = this.mercyVfxTicks / 16F;
+            float expand = (1F - t) * 40F;
+            int alpha = (int) (t * 160) & 0xFF;
+            float bcx = this.bossX + this.bossSize * 0.5F;
+            float bcy = this.bossY + this.bossSize * 0.5F;
+
+            context.batcher.box(bcx - expand * 1.4F, bcy - expand, bcx + expand * 1.4F, bcy + expand, (alpha << 24) | 0xFF88CC);
+            context.batcher.box(bcx - expand, bcy - expand * 0.6F, bcx + expand, bcy + expand * 0.6F, ((alpha / 2) << 24) | 0xFFAAFF);
         }
 
         float boxX = this.area.x + 8;
@@ -1702,6 +1949,28 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
             int overlayColor = this.victory ? 0x00223300 : 0x00110000;
             context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), (overlayAlpha << 24) | overlayColor);
 
+        /* Flashbang white overlay for flowey→sans transition */
+        if (this.flashbangMs > 0L)
+        {
+            long fbElapsed = System.currentTimeMillis() - this.flashbangMs;
+            float fbAlpha;
+
+            if (fbElapsed < 400L)
+            {
+                fbAlpha = 1F;
+            }
+            else
+            {
+                fbAlpha = Math.max(0F, 1F - (fbElapsed - 400L) / 500F);
+            }
+
+            if (fbAlpha > 0F)
+            {
+                int fa = (int) (fbAlpha * 255) & 0xFF;
+                context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), (fa << 24) | 0xFFFFFF);
+            }
+        }
+
             if (this.gameOver)
             {
                 String t1 = this.tr("bbs.ui.aprilfools.end.defeat_title");
@@ -1788,7 +2057,7 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
             return;
         }
 
-        Link link = this.resolveAudioLink(MUSIC_BATTLE);
+        Link link = this.resolveAudioLink(UIAprilFoolsOverlay.isEnglish() ? MUSIC_BATTLE_EN : MUSIC_BATTLE_ES);
 
         if (link == null)
         {
@@ -1808,6 +2077,40 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
                 this.battleMusic.play();
             }
         }
+    }
+
+    private void ensureSansMusic()
+    {
+        if (this.battleMusic != null && this.battleMusic.isPlaying())
+        {
+            return;
+        }
+
+        Link link = this.resolveAudioLink(MUSIC_SANS);
+
+        if (link == null)
+        {
+            return;
+        }
+
+        this.battleMusic = BBSModClient.getSounds().playUnique(link);
+
+        if (this.battleMusic != null)
+        {
+            this.battleMusic.setRelative(true);
+            this.battleMusic.setLooping(true);
+            this.battleMusic.setVolume(0.45F);
+
+            if (!this.battleMusic.isPlaying())
+            {
+                this.battleMusic.play();
+            }
+        }
+    }
+
+    private String getSansJoke()
+    {
+        return this.tr(SANS_JOKES[this.random.nextInt(SANS_JOKES.length)]);
     }
 
     private void stopBattleMusic()
@@ -1904,7 +2207,7 @@ public class UIAprilFoolsPanel extends UIDashboardPanel
 
     private String fitBubbleText(String text)
     {
-        return this.fitText(text, 24);
+        return this.fitText(text, 40);
     }
 
     private String fitBottomText(String text)
