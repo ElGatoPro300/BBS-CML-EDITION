@@ -4,6 +4,8 @@ import com.mojang.brigadier.ParseResults;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.actions.types.blocks.CloseContainerActionClip;
 import mchorse.bbs_mod.actions.types.blocks.InteractBlockActionClip;
+import net.minecraft.block.AbstractFurnaceBlock;
+import net.minecraft.block.BlockState;
 import net.minecraft.block.ChestBlock;
 import mchorse.bbs_mod.actions.types.chat.CommandActionClip;
 import net.minecraft.item.ItemStack;
@@ -69,6 +71,10 @@ public class ServerPlayNetworkHandlerMixin
         {
             OPEN_CONTAINERS.put(this.player.getUuid(), interactedPos.toImmutable());
         }
+        else if (world.getBlockState(interactedPos).getBlock() instanceof AbstractFurnaceBlock)
+        {
+            OPEN_CONTAINERS.put(this.player.getUuid(), interactedPos.toImmutable());
+        }
 
         return manager.interactBlock(player, world, stack, hand, hitResult);
     }
@@ -86,10 +92,17 @@ public class ServerPlayNetworkHandlerMixin
         BBSMod.getActions().addAction(this.player, () ->
         {
             CloseContainerActionClip clip = new CloseContainerActionClip();
+            BlockState state = this.player.getWorld().getBlockState(containerPos);
 
             clip.x.set(containerPos.getX());
             clip.y.set(containerPos.getY());
             clip.z.set(containerPos.getZ());
+
+            if (state.getBlock() instanceof AbstractFurnaceBlock)
+            {
+                clip.applyState.set(true);
+                clip.state.set(state);
+            }
 
             return clip;
         });
