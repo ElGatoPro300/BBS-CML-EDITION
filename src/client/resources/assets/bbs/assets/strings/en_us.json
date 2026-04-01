@@ -352,6 +352,7 @@
     "bbs.ui.camera.clips.bbs:orbit": "Orbit",
     "bbs.ui.camera.clips.bbs:path": "Path",
     "bbs.ui.camera.clips.bbs:place_block": "Place block",
+    "bbs.ui.camera.clips.bbs:close_container": "Close container",
     "bbs.ui.camera.clips.bbs:remapper": "Remapper",
     "bbs.ui.camera.clips.bbs:shake": "Shake",
     "bbs.ui.camera.clips.bbs:subtitle": "Subtitle",

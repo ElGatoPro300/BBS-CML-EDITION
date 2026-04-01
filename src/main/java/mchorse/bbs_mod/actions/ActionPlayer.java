@@ -327,6 +327,15 @@ public class ActionPlayer
 
     public void stop()
     {
+        SuperFakePlayer fakePlayer = SuperFakePlayer.get(this.world);
+
+        for (Replay replay : this.film.replays.getList())
+        {
+            fakePlayer.closeReplayChest(replay.getId());
+        }
+
+        fakePlayer.closeHandledScreen();
+
         for (LivingEntity value : this.actors.values())
         {
             if (!value.isPlayer())

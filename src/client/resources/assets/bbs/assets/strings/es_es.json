@@ -353,6 +353,7 @@
     "bbs.ui.camera.clips.bbs:orbit": "Órbita",
     "bbs.ui.camera.clips.bbs:path": "Ruta",
     "bbs.ui.camera.clips.bbs:place_block": "Colocar bloque",
+    "bbs.ui.camera.clips.bbs:close_container": "Cerrar contenedor",
     "bbs.ui.camera.clips.bbs:remapper": "Remapeador",
     "bbs.ui.camera.clips.bbs:shake": "Sacudida",
     "bbs.ui.camera.clips.bbs:subtitle": "Subtítulo",
