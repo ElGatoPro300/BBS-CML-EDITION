@@ -6,7 +6,9 @@ import mchorse.bbs_mod.cubic.MolangHelper;
 import mchorse.bbs_mod.cubic.model.loaders.BOBJModelLoader;
 import mchorse.bbs_mod.cubic.model.loaders.CubicModelLoader;
 import mchorse.bbs_mod.cubic.model.loaders.GeoCubicModelLoader;
+import mchorse.bbs_mod.cubic.model.loaders.GLTFModelLoader;
 import mchorse.bbs_mod.cubic.model.loaders.IModelLoader;
+import mchorse.bbs_mod.cubic.model.loaders.MiModelLoader;
 import mchorse.bbs_mod.cubic.model.loaders.VoxModelLoader;
 import mchorse.bbs_mod.data.DataToString;
 import mchorse.bbs_mod.data.types.MapType;
@@ -38,6 +40,7 @@ public class ModelManager implements IWatchDogListener
     public final List<IModelLoader> loaders = new ArrayList<>();
     public final AssetProvider provider;
     public final MolangParser parser;
+    private final Set<String> relodableSuffixes = new HashSet<>();
 
     private ModelLoader loader = new ModelLoader(this);
 
@@ -54,10 +57,44 @@ public class ModelManager implements IWatchDogListener
     private void setupLoaders()
     {
         this.loaders.clear();
+        this.relodableSuffixes.clear();
         this.loaders.add(new BOBJModelLoader());
         this.loaders.add(new CubicModelLoader());
         this.loaders.add(new GeoCubicModelLoader());
         this.loaders.add(new VoxModelLoader());
+        this.loaders.add(new GLTFModelLoader());
+        this.loaders.add(new MiModelLoader());
+
+        this.registerRelodableSuffix(".bbs.json");
+        this.registerRelodableSuffix(".geo.json");
+        this.registerRelodableSuffix(".bobj");
+        this.registerRelodableSuffix(".obj");
+        this.registerRelodableSuffix(".gltf");
+        this.registerRelodableSuffix(".glb");
+        this.registerRelodableSuffix(".mimodel");
+        this.registerRelodableSuffix(".animation.json");
+        this.registerRelodableSuffix(".vox");
+        this.registerRelodableSuffix("/config.json");
+    }
+
+    public void registerLoader(IModelLoader loader)
+    {
+        if (loader == null)
+        {
+            return;
+        }
+
+        this.loaders.add(loader);
+    }
+
+    public void registerRelodableSuffix(String suffix)
+    {
+        if (suffix == null || suffix.isEmpty())
+        {
+            return;
+        }
+
+        this.relodableSuffixes.add(suffix);
     }
 
     /**
@@ -179,13 +216,48 @@ public class ModelManager implements IWatchDogListener
             return false;
         }
 
-        return link.path.endsWith(".bbs.json")
-            || link.path.endsWith(".geo.json")
-            || link.path.endsWith(".bobj")
-            || link.path.endsWith(".obj")
-            || link.path.endsWith(".animation.json")
-            || link.path.endsWith(".vox")
-            || link.path.endsWith("/config.json");
+        for (String suffix : this.relodableSuffixes)
+        {
+            if (link.path.endsWith(suffix))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public void saveConfig(String id, MapType config)
+    {
+        Link modelLink = Link.assets(MODELS_PREFIX + id + "/config.json");
+        java.io.File file = BBSMod.getProvider().getFile(modelLink);
+
+        if (file != null)
+        {
+            try
+            {
+                IOUtils.writeText(file, DataToString.toString(config, true));
+            }
+            catch (Exception e)
+            {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public boolean renameModel(String from, String to)
+    {
+        Link fromLink = Link.assets(MODELS_PREFIX + from);
+        Link toLink = Link.assets(MODELS_PREFIX + to);
+        java.io.File fromFile = BBSMod.getProvider().getFile(fromLink);
+        java.io.File toFile = BBSMod.getProvider().getFile(toLink);
+
+        if (fromFile != null && fromFile.exists() && fromFile.isDirectory() && toFile != null && !toFile.exists())
+        {
+            return fromFile.renameTo(toFile);
+        }
+
+        return false;
     }
 
     /**

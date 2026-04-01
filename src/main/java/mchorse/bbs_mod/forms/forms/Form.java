@@ -286,6 +286,11 @@ public abstract class Form extends ValueGroup
         return this.getFormId();
     }
 
+    public final String getDefaultDisplayNameForHud()
+    {
+        return this.getDefaultDisplayName();
+    }
+
     public String getTrackName(String property)
     {
         String s = this.trackName.get();

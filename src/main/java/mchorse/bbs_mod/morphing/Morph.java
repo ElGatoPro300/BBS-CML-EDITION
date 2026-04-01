@@ -17,11 +17,15 @@ import net.minecraft.registry.RegistryKey;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.hit.HitResult;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 
 public class Morph
 {
+    public static final List<IEntityCaptureHandler> HANDLERS = new ArrayList<>();
+
     private Form form;
     public final MCEntity entity;
 
@@ -32,6 +36,17 @@ public class Morph
         if (hitResult.getType() == HitResult.Type.ENTITY)
         {
             Entity target = ((EntityHitResult) hitResult).getEntity();
+
+            for (IEntityCaptureHandler handler : HANDLERS)
+            {
+                Form form = handler.capture(player, target);
+
+                if (form != null)
+                {
+                    return form;
+                }
+            }
+
             Optional<RegistryKey<EntityType<?>>> key = Registries.ENTITY_TYPE.getKey(target.getType());
 
             if (key.isPresent())

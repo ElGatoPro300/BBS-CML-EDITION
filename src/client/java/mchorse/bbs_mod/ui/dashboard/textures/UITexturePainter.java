@@ -22,6 +22,7 @@ import java.util.function.Consumer;
 public class UITexturePainter extends UIElement
 {
     public UITrackpad brightness;
+    public UITrackpad brush;
     public UIElement savebar;
 
     public UIColor primary;
@@ -36,6 +37,21 @@ public class UITexturePainter extends UIElement
         this.brightness.limit(0, 1).setValue(0.7);
         this.brightness.tooltip(UIKeys.TEXTURES_VIEWER_BRIGHTNESS, Direction.TOP);
         this.brightness.relative(this).x(1F, -10).y(1F, -10).w(130).anchor(1F, 1F);
+
+        this.brush = new UITrackpad((v) ->
+        {
+            int brushSize = Math.max(1, v.intValue());
+
+            this.main.setBrushSize(brushSize);
+
+            if (this.reference != null)
+            {
+                this.reference.setBrushSize(brushSize);
+            }
+        });
+        this.brush.integer().limit(1, 32, true).setValue(1);
+        this.brush.tooltip(UIKeys.TEXTURES_BRUSH_SIZE, Direction.TOP);
+        this.brush.relative(this).x(1F, -10).y(1F, -40).w(130).anchor(1F, 1F);
 
         this.savebar = new UIElement();
         this.savebar.relative(this).x(1F).h(30).anchorX(1F).row(0).resize().padding(5);
@@ -55,6 +71,7 @@ public class UITexturePainter extends UIElement
                 if (this.reference != null)
                 {
                     this.reference.fillTexture(Link.create(s));
+                    this.reference.setBrushSize(this.main.getBrushSize());
                     this.reference.setEditing(true);
                     this.resize();
                 }
@@ -62,6 +79,7 @@ public class UITexturePainter extends UIElement
                 {
                     this.reference = new UITextureEditor();
                     this.reference.fillTexture(Link.create(s));
+                    this.reference.setBrushSize(this.main.getBrushSize());
                     this.reference.setEditing(true);
                     this.reference
                         .colorSupplier(() -> this.primary.picker.color)
@@ -82,12 +100,14 @@ public class UITexturePainter extends UIElement
         this.main
             .colorSupplier(() -> this.primary.picker.color)
             .backgroundSupplier(() -> (float) this.brightness.getValue());
+        this.main.setBrushSize((int) this.brush.getValue());
         this.main.full(this);
         this.main.toolbar.prepend(this.secondary.marginRight(10));
         this.main.toolbar.prepend(this.primary);
 
         this.add(this.main, this.savebar);
         this.add(this.brightness);
+        this.add(this.brush);
 
         IKey category = UIKeys.TEXTURES_KEYS_CATEGORY;
 
@@ -173,6 +193,7 @@ public class UITexturePainter extends UIElement
             String[] information = {
                 editor.getPixels().width + "x" + editor.getPixels().height + " (" + pixel.x + ", " + pixel.y + ")",
                 "\u00A7cR\u00A7aG\u00A79B\u00A7rA (" + r + ", " + g + ", " + b + ", " + a + ")",
+                "Brush " + editor.getBrushSize() + "x" + editor.getBrushSize(),
             };
 
             int x = this.area.x + 10;
