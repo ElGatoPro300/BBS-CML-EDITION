@@ -337,7 +337,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
                     left += 4;
                 }
                 int iconWidth = 2 + (arrow != null ? arrow.w + 4 : 0);
-                int clickableWidth = iconWidth + font.getWidth(displayTitle) + 6;
+                int clickableWidth = Math.min(SIDEBAR_WIDTH - sheet.level * 12, iconWidth + font.getWidth(displayTitle) + 6);
 
                 if (context.mouseX >= left && context.mouseX <= left + clickableWidth)
                 {
@@ -644,13 +644,6 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
                 int textY = my - font.getHeight() / 2;
                 int textW = font.getWidth(displayTitle);
 
-                /* Clip header text to sidebar width */
-                if (textX + textW > area.x + SIDEBAR_WIDTH)
-                {
-                    displayTitle = font.limitToWidth(displayTitle, area.x + SIDEBAR_WIDTH - textX - 10);
-                    textW = font.getWidth(displayTitle);
-                }
-
                 context.batcher.icon(arrow, iconX, iconY);
                 context.batcher.textShadow(displayTitle, textX, textY);
 
@@ -828,13 +821,6 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
             int iconWidth = 2 + sheet.level * 12 + (arrow != null ? arrow.w + 4 : 0);
             if (icon != null) iconWidth += icon.w + 4;
             int lw = font.getWidth(displayTitle);
-
-            /* Limit text width to sidebar */
-            if (iconWidth + lw + 10 > SIDEBAR_WIDTH)
-            {
-                displayTitle = font.limitToWidth(displayTitle, SIDEBAR_WIDTH - iconWidth - 15);
-                lw = font.getWidth(displayTitle);
-            }
 
             int totalWidth = iconWidth + lw + 10;
 

@@ -213,6 +213,7 @@ public class FilmEditorController extends BaseFilmController
             replay.keyframes.apply(tick1, entity);
             float tick = (int) keyframe.getTick();
             Form form = entity.getForm();
+            replay.properties.resetProperties(form);
             replay.properties.applyProperties(form, tick);
 
             BaseFilmController.renderEntity(FilmControllerContext.instance
