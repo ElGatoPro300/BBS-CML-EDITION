@@ -2,6 +2,7 @@ package mchorse.bbs_mod.integration;
 
 import dev.lambdaurora.lambdynlights.api.DynamicLightHandlers;
 import dev.lambdaurora.lambdynlights.api.DynamicLightsInitializer;
+import dev.lambdaurora.lambdynlights.api.item.ItemLightSourceManager;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.entity.ActorEntity;
 import mchorse.bbs_mod.entity.GunProjectileEntity;
@@ -14,7 +15,7 @@ import net.minecraft.entity.player.PlayerEntity;
 public class LambDynLightsIntegration implements DynamicLightsInitializer
 {
     @Override
-    public void onInitializeDynamicLights()
+    public void onInitializeDynamicLights(ItemLightSourceManager itemLightSourceManager)
     {
         DynamicLightHandlers.registerDynamicLightHandler(BBSMod.ACTOR_ENTITY, (ActorEntity entity) -> getLightLevelFromForm(entity.getForm()));
         DynamicLightHandlers.registerDynamicLightHandler(BBSMod.GUN_PROJECTILE_ENTITY, (GunProjectileEntity entity) -> getLightLevelFromForm(entity.getForm()));
@@ -31,7 +32,7 @@ public class LambDynLightsIntegration implements DynamicLightsInitializer
         });
     }
 
-    private int getLightLevelFromForm(Form form)
+    private static int getLightLevelFromForm(Form form)
     {
         if (!(form instanceof LightForm lightForm))
         {
