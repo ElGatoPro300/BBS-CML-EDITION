@@ -28,6 +28,7 @@ public class IrisTextureWrapper extends AbstractTexture
         this.index = index;
     }
 
+    @Override
     public void load(ResourceManager manager) throws IOException
     {}
 
@@ -54,6 +55,7 @@ public class IrisTextureWrapper extends AbstractTexture
         return texture.id;
     }
 
+    @Override
     public void close()
     {
         BBSModClient.getTextures().delete(this.texture);
