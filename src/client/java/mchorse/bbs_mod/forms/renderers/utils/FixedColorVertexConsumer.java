@@ -28,46 +28,53 @@ public class FixedColorVertexConsumer implements VertexConsumer
         this.a = (int)(color.a * 255f);
     }
 
-    @Override
     public VertexConsumer vertex(float x, float y, float z)
     {
         return this.delegate.vertex(x, y, z).color(r, g, b, a);
     }
 
-    @Override
     public VertexConsumer vertex(Matrix4f matrix, float x, float y, float z)
     {
         return this.delegate.vertex(matrix, x, y, z).color(r, g, b, a);
     }
 
-    @Override
     public VertexConsumer color(int red, int green, int blue, int alpha)
     {
         return this.delegate.color(red, green, blue, alpha);
     }
 
-    @Override
+    public VertexConsumer color(int argb)
+    {
+        int a = (argb >>> 24) & 0xFF;
+        int r = (argb >>> 16) & 0xFF;
+        int g = (argb >>> 8) & 0xFF;
+        int b = argb & 0xFF;
+        return this.delegate.color(r, g, b, a);
+    }
+
     public VertexConsumer texture(float u, float v)
     {
         return this.delegate.texture(u, v);
     }
 
-    @Override
     public VertexConsumer overlay(int u, int v)
     {
         return this.delegate.overlay(u, v);
     }
 
-    @Override
     public VertexConsumer light(int u, int v)
     {
         return this.delegate.light(u, v);
     }
 
-    @Override
     public VertexConsumer normal(float x, float y, float z)
     {
         return this.delegate.normal(x, y, z);
+    }
+
+    public VertexConsumer lineWidth(float width)
+    {
+        return this.delegate.lineWidth(width);
     }
 
 }

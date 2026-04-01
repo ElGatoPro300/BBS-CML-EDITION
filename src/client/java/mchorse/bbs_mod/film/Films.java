@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.film;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.audio.AudioRenderer;
@@ -20,7 +21,7 @@ import mchorse.bbs_mod.utils.CollectionUtils;
 import mchorse.bbs_mod.utils.clips.Clip;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.minecraft.client.MinecraftClient;
 
 import java.util.ArrayList;
@@ -271,7 +272,7 @@ public class Films
 
     public void render(WorldRenderContext context)
     {
-        RenderSystem.enableDepthTest();
+        GlStateManager._enableDepthTest();
 
         for (BaseFilmController controller : this.controllers)
         {
@@ -283,7 +284,7 @@ public class Films
             this.recorder.render(context);
         }
 
-        RenderSystem.disableDepthTest();
+        GlStateManager._disableDepthTest();
     }
 
     public void renderHud(Batcher2D batcher2D, float tickDelta)

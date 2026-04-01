@@ -1,7 +1,7 @@
 package mchorse.bbs_mod.ui.model;
 
-import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.cubic.ModelInstance;
@@ -30,6 +30,7 @@ import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.util.math.MatrixStack;
 import org.joml.Matrix4f;
+import org.lwjgl.opengl.GL11;
 
 import java.util.function.Consumer;
 
@@ -157,7 +158,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
         this.updateModel();
         
         FormRenderingContext formContext = new FormRenderingContext()
-            .set(FormRenderType.PREVIEW, this.entity, context.batcher.getContext().getMatrices(), LightmapTextureManager.pack(15, 15), OverlayTexture.DEFAULT_UV, context.getTransition())
+            .set(FormRenderType.PREVIEW, this.entity, new MatrixStack(), LightmapTextureManager.pack(15, 15), OverlayTexture.DEFAULT_UV, context.getTransition())
             .camera(this.camera)
             .modelRenderer();
 
@@ -184,16 +185,16 @@ public class UIModelEditorRenderer extends UIModelRenderer
                 {
                     gizmoMatrix = matrix;
 
-                    MatrixStack stack = context.batcher.getContext().getMatrices();
+                    MatrixStack stack = new MatrixStack();
                     
                     stack.push();
                     MatrixStackUtils.multiply(stack, matrix);
                     
-                    RenderSystem.disableDepthTest();
+                    GL11.glDisable(GL11.GL_DEPTH_TEST);
                     Gizmo.INSTANCE.render(stack);
-                    RenderSystem.enableDepthTest();
-                    
                     stack.pop();
+                    
+                    GL11.glEnable(GL11.GL_DEPTH_TEST);
                 }
             }
         }
@@ -214,22 +215,20 @@ public class UIModelEditorRenderer extends UIModelRenderer
 
             if (gizmoMatrix != null)
             {
-                MatrixStack stack = context.batcher.getContext().getMatrices();
+                MatrixStack stack = new MatrixStack();
 
                 stack.push();
                 MatrixStackUtils.multiply(stack, gizmoMatrix);
 
-                RenderSystem.disableDepthTest();
+                GL11.glDisable(GL11.GL_DEPTH_TEST);
                 Gizmo.INSTANCE.renderStencil(stack, this.stencilMap);
-                RenderSystem.enableDepthTest();
+                GL11.glEnable(GL11.GL_DEPTH_TEST);
 
                 stack.pop();
             }
 
             this.stencil.pickGUI(context, this.area);
             this.stencil.unbind(this.stencilMap);
-
-            MinecraftClient.getInstance().getFramebuffer().beginWrite(true);
 
             GlStateManager._enableScissorTest();
         }
@@ -243,6 +242,15 @@ public class UIModelEditorRenderer extends UIModelRenderer
     public void render(UIContext context)
     {
         super.render(context);
+
+        if (this.stencilMap.hasStencil())
+        {
+            GL11.glDisable(GL11.GL_DEPTH_TEST);
+            
+            this.stencilMap.render(context);
+
+            GL11.glEnable(GL11.GL_DEPTH_TEST);
+        }
 
         if (!this.stencil.hasPicked())
         {
@@ -259,11 +267,11 @@ public class UIModelEditorRenderer extends UIModelRenderer
 
         if (target != null)
         {
-            target.set(index);
+            index = this.stencil.getIndex();
         }
 
-        RenderSystem.enableBlend();
-        context.batcher.texturedBox(BBSShaders.getPickerPreviewProgram(), texture.id, Colors.WHITE, this.area.x, this.area.y, this.area.w, this.area.h, 0, h, w, 0, w, h);
+        GL11.glEnable(GL11.GL_BLEND);
+        context.batcher.texturedBox(BBSShaders::getPickerPreviewProgram, texture.id, Colors.WHITE, this.area.x, this.area.y, this.area.w, this.area.h, 0, h, w, 0, w, h);
 
         Pair<Form, String> pair = this.stencil.getPicked();
 

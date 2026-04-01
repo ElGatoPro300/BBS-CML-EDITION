@@ -8,6 +8,7 @@ import net.minecraft.entity.data.TrackedData;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
+import net.minecraft.world.GameMode;
 
 public class PlayerUtils
 {
@@ -22,9 +23,9 @@ public class PlayerUtils
 
         if (!ClientNetwork.isIsBBSModOnServer())
         {
-            String command = "tp " + player.getGameProfile().getName() + " " + x + " " + y + " " + z + " " + yaw + " " + pitch;
+            String command = "tp " + player.getName().getString() + " " + x + " " + y + " " + z + " " + yaw + " " + pitch;
 
-            player.networkHandler.sendCommand(command);
+            player.networkHandler.sendChatCommand(command);
         }
         else
         {
@@ -42,7 +43,7 @@ public class PlayerUtils
 
         if (!ClientNetwork.isIsBBSModOnServer())
         {
-            player.networkHandler.sendCommand("tp " + player.getGameProfile().getName() + " " + x + " " + y + " " + z);
+            player.networkHandler.sendChatCommand("tp " + player.getName().getString() + " " + x + " " + y + " " + z);
         }
         else
         {
@@ -54,12 +55,15 @@ public class PlayerUtils
     {
         public static TrackedData<Byte> getModelParts()
         {
-            return PLAYER_MODEL_PARTS;
+            // TODO: Fix PLAYER_MODEL_PARTS access
+            return null; // PLAYER_MODEL_PARTS;
         }
 
         public ProtectedAccess(World world, BlockPos pos, float yaw, GameProfile gameProfile)
         {
-            super(world, pos, yaw, gameProfile);
+            super(world, gameProfile);
+            this.setPosition(pos.getX(), pos.getY(), pos.getZ());
+            this.setYaw(yaw);
         }
 
         @Override
@@ -72,6 +76,12 @@ public class PlayerUtils
         public boolean isCreative()
         {
             return false;
+        }
+
+        @Override
+        public GameMode getGameMode()
+        {
+            return GameMode.SURVIVAL;
         }
     }
 }

@@ -44,8 +44,7 @@ public class TriggerBlock extends Block implements BlockEntityProvider
         if (entity instanceof TriggerBlockEntity triggerBlock)
         {
             ItemStack stack = new ItemStack(this);
-            stack.set(DataComponentTypes.BLOCK_ENTITY_DATA, NbtComponent.of(triggerBlock.createNbtWithId(world.getRegistryManager())));
-
+            stack.applyComponentsFrom(triggerBlock.createComponentMap());
             return stack;
         }
 

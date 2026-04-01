@@ -40,7 +40,7 @@ import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
-public class ModelBlockEntityRenderer implements BlockEntityRenderer<ModelBlockEntity>
+public class ModelBlockEntityRenderer
 {
     private static ActorEntity entity;
 
@@ -53,7 +53,7 @@ public class ModelBlockEntityRenderer implements BlockEntityRenderer<ModelBlockE
     {
         ClientWorld world = MinecraftClient.getInstance().world;
 
-        if (entity == null || entity.getWorld() != world)
+        if (entity == null || entity.getEntityWorld() != world)
         {
             entity = new ActorEntity(BBSMod.ACTOR_ENTITY, world);
         }
@@ -62,11 +62,11 @@ public class ModelBlockEntityRenderer implements BlockEntityRenderer<ModelBlockE
         entity.lastRenderX = x;
         entity.lastRenderY = y;
         entity.lastRenderZ = z;
-        entity.prevX = x;
-        entity.prevY = y;
-        entity.prevZ = z;
+        entity.lastX = x;
+        entity.lastY = y;
+        entity.lastZ = z;
 
-        double distance = MinecraftClient.getInstance().getEntityRenderDispatcher().getSquaredDistanceToCamera(x, y, z);
+        double distance = MinecraftClient.getInstance().getEntityRenderDispatcher().getSquaredDistanceToCamera(entity);
 
         opacity = (float) ((1D - distance / 256D) * opacity);
 
@@ -98,13 +98,11 @@ public class ModelBlockEntityRenderer implements BlockEntityRenderer<ModelBlockE
     public ModelBlockEntityRenderer(BlockEntityRendererFactory.Context ctx)
     {}
 
-    @Override
     public boolean rendersOutsideBoundingBox(ModelBlockEntity blockEntity)
     {
         return blockEntity.getProperties().isGlobal();
     }
 
-    @Override
     public void render(ModelBlockEntity entity, float tickDelta, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, int overlay)
     {
         MinecraftClient mc = MinecraftClient.getInstance();
@@ -142,11 +140,9 @@ public class ModelBlockEntityRenderer implements BlockEntityRenderer<ModelBlockE
             int lightAbove = WorldRenderer.getLightmapCoordinates(entity.getWorld(), pos.add((int) transform.translate.x, (int) transform.translate.y, (int) transform.translate.z));
             Camera camera = mc.gameRenderer.getCamera();
 
-            RenderSystem.enableDepthTest();
             FormUtilsClient.render(properties.getForm(), new FormRenderingContext()
                 .set(FormRenderType.MODEL_BLOCK, entity.getEntity(), matrices, lightAbove, overlay, tickDelta)
                 .camera(camera));
-            RenderSystem.disableDepthTest();
 
             if (this.canRenderAxes(entity) && UIBaseMenu.renderAxes)
             {
@@ -159,7 +155,6 @@ public class ModelBlockEntityRenderer implements BlockEntityRenderer<ModelBlockE
             matrices.pop();
         }
 
-        RenderSystem.disableDepthTest();
 
         if (mc.getDebugHud().shouldShowDebugHud())
         {
@@ -192,7 +187,7 @@ public class ModelBlockEntityRenderer implements BlockEntityRenderer<ModelBlockE
         Camera camera = mc.gameRenderer.getCamera();
         Vec3d position = !mc.options.getPerspective().isFirstPerson() && mc.player != null
             ? mc.player.getCameraPosVec(tickDelta)
-            : camera.getPos();
+            : camera.getCameraPos();
 
         BlockPos pos = entity.getPos();
         double x = pos.getX() + 0.5D + transform.translate.x;
@@ -275,7 +270,6 @@ public class ModelBlockEntityRenderer implements BlockEntityRenderer<ModelBlockE
         return finalTransform;
     }
 
-    @Override
     public int getRenderDistance()
     {
         return 512;

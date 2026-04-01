@@ -16,6 +16,7 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlayPanel;
 import mchorse.bbs_mod.ui.utils.keys.KeyAction;
 import mchorse.bbs_mod.utils.colors.Colors;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.input.KeyInput;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.option.KeyBinding;
 
@@ -249,7 +250,7 @@ public class UIQuickReplayOverlayPanel extends UIOverlayPanel
 
         KeyBinding keybind = BBSModClient.getKeyOpenQuickReplays();
 
-        if (keybind != null && context.getKeyAction() == KeyAction.PRESSED && keybind.matchesKey(context.getKeyCode(), context.getScanCode()))
+        if (keybind != null && context.getKeyAction() == KeyAction.PRESSED && keybind.matchesKey(new KeyInput(context.getKeyCode(), context.getScanCode(), 0)))
         {
             this.confirmSelection();
 
