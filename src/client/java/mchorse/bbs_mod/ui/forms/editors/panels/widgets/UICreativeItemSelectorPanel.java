@@ -187,7 +187,7 @@ public class UICreativeItemSelectorPanel extends UIOverlayPanel
 
         ItemStack normalized = stack.copy();
         normalized.setCount(1);
-        String encoded = ItemStack.CODEC.encodeStart(NbtOps.INSTANCE, normalized).result().flatMap(NbtElement::asString).orElse("{}");
+        String encoded = ItemStack.CODEC.encodeStart(NbtOps.INSTANCE, normalized).result().map(NbtElement::asString).orElse("{}");
         String key = Registries.ITEM.getId(stack.getItem()) + "|" + encoded;
 
         if (visited.add(key))

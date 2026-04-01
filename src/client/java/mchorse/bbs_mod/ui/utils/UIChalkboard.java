@@ -16,7 +16,7 @@ import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.interps.Lerps;
 import mchorse.bbs_mod.utils.resources.Pixels;
-import mchorse.bbs_mod.graphics.window.Window;
+import net.minecraft.client.gui.screen.Screen;
 import org.joml.Vector2d;
 import org.joml.Vector2i;
 import org.lwjgl.glfw.GLFW;
@@ -207,7 +207,7 @@ public class UIChalkboard extends UIElement
         int x = context.mouseX;
         int y = context.mouseY;
         
-        if (Window.isKeyPressed(GLFW.GLFW_KEY_LEFT_SHIFT) || Window.isKeyPressed(GLFW.GLFW_KEY_RIGHT_SHIFT))
+        if (Screen.hasShiftDown())
         {
             Vector2i snapped = this.snap(this.startX, this.startY, x, y);
             
@@ -347,7 +347,7 @@ public class UIChalkboard extends UIElement
                 int ex = x;
                 int ey = y;
 
-                if (Window.isKeyPressed(GLFW.GLFW_KEY_LEFT_SHIFT) || Window.isKeyPressed(GLFW.GLFW_KEY_RIGHT_SHIFT))
+                if (Screen.hasShiftDown())
                 {
                     Vector2i snapped = this.snap(this.startX, this.startY, ex, ey);
 
