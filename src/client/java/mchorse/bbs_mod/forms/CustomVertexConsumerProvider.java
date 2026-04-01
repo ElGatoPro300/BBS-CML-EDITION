@@ -2,7 +2,7 @@ package mchorse.bbs_mod.forms;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import mchorse.bbs_mod.forms.renderers.utils.RecolorVertexConsumer;
-import net.minecraft.client.util.BufferAllocator;
+import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.VertexConsumerProvider;
@@ -12,11 +12,10 @@ import java.util.Map;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-public class CustomVertexConsumerProvider implements VertexConsumerProvider
+public class CustomVertexConsumerProvider extends VertexConsumerProvider.Immediate
 {
     private static Consumer<RenderLayer> runnables;
 
-    private final VertexConsumerProvider.Immediate delegate;
     private Function<VertexConsumer, VertexConsumer> substitute;
     private boolean ui;
 
@@ -38,9 +37,9 @@ public class CustomVertexConsumerProvider implements VertexConsumerProvider
         runnables = null;
     }
 
-    public CustomVertexConsumerProvider(VertexConsumerProvider.Immediate delegate)
+    public CustomVertexConsumerProvider(BufferBuilder fallback, Map<RenderLayer, BufferBuilder> layers)
     {
-        this.delegate = delegate;
+        super(fallback, layers);
     }
 
     public void setSubstitute(Function<VertexConsumer, VertexConsumer> substitute)
@@ -61,7 +60,7 @@ public class CustomVertexConsumerProvider implements VertexConsumerProvider
     @Override
     public VertexConsumer getBuffer(RenderLayer renderLayer)
     {
-        VertexConsumer buffer = this.delegate.getBuffer(renderLayer);
+        VertexConsumer buffer = super.getBuffer(renderLayer);
 
         if (this.substitute != null)
         {
@@ -78,7 +77,7 @@ public class CustomVertexConsumerProvider implements VertexConsumerProvider
 
     public void draw()
     {
-        this.delegate.draw();
+        super.draw();
 
         if (this.ui)
         {
