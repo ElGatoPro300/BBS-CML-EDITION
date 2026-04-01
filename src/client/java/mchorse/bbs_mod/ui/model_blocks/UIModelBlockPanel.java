@@ -342,42 +342,42 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
             this.beginUndoCapture();
             this.modelBlock.getProperties().setItemMainHand(stack);
             this.endUndoCapture();
-        });
+        }).optionsOnLeft(true);
         this.offHand = new UIItemStack((stack) ->
         {
             if (this.modelBlock == null) return;
             this.beginUndoCapture();
             this.modelBlock.getProperties().setItemOffHand(stack);
             this.endUndoCapture();
-        });
+        }).optionsOnLeft(true);
         this.armorHead = new UIItemStack((stack) ->
         {
             if (this.modelBlock == null) return;
             this.beginUndoCapture();
             this.modelBlock.getProperties().setArmorHead(stack);
             this.endUndoCapture();
-        });
+        }).optionsOnLeft(true);
         this.armorChest = new UIItemStack((stack) ->
         {
             if (this.modelBlock == null) return;
             this.beginUndoCapture();
             this.modelBlock.getProperties().setArmorChest(stack);
             this.endUndoCapture();
-        });
+        }).optionsOnLeft(true);
         this.armorLegs = new UIItemStack((stack) ->
         {
             if (this.modelBlock == null) return;
             this.beginUndoCapture();
             this.modelBlock.getProperties().setArmorLegs(stack);
             this.endUndoCapture();
-        });
+        }).optionsOnLeft(true);
         this.armorFeet = new UIItemStack((stack) ->
         {
             if (this.modelBlock == null) return;
             this.beginUndoCapture();
             this.modelBlock.getProperties().setArmorFeet(stack);
             this.endUndoCapture();
-        });
+        }).optionsOnLeft(true);
 
         UIIcon hitboxIcon1 = new UIIcon(Icons.BLOCK, null);
         UIIcon hitboxIcon2 = new UIIcon(Icons.BLOCK, null);

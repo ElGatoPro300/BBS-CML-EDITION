@@ -33,6 +33,7 @@ public class UIItemStack extends UIElement
     private ItemStack stack;
     private UIIcon optionsButton;
     private boolean opened;
+    private boolean optionsOnLeft;
 
     public UIItemStack(Consumer<ItemStack> callback)
     {
@@ -109,6 +110,13 @@ public class UIItemStack extends UIElement
         this.stack = stack == null ? ItemStack.EMPTY : stack.copy();
     }
 
+    public UIItemStack optionsOnLeft(boolean optionsOnLeft)
+    {
+        this.optionsOnLeft = optionsOnLeft;
+
+        return this;
+    }
+
     public void openInventoryPanel()
     {
         this.opened = true;
@@ -179,18 +187,20 @@ public class UIItemStack extends UIElement
     {
         super.resize();
 
-        this.optionsButton.area.set(this.area.ex() - OPTIONS_BUTTON_WIDTH, this.area.y, OPTIONS_BUTTON_WIDTH, this.area.h);
+        int optionsX = this.optionsOnLeft ? this.area.x : this.area.ex() - OPTIONS_BUTTON_WIDTH;
+
+        this.optionsButton.area.set(optionsX, this.area.y, OPTIONS_BUTTON_WIDTH, this.area.h);
     }
 
     public void render(UIContext context)
     {
         int border = this.opened ? Colors.A100 | BBSSettings.primaryColor.get() : Colors.WHITE;
-        int optionsX = this.area.ex() - OPTIONS_BUTTON_WIDTH;
-        int stackAreaEx = optionsX - OPTIONS_BUTTON_GAP;
-        int stackCenterX = (this.area.x + stackAreaEx) / 2;
+        int stackAreaX = this.optionsOnLeft ? this.area.x + OPTIONS_BUTTON_WIDTH + OPTIONS_BUTTON_GAP : this.area.x;
+        int stackAreaEx = this.optionsOnLeft ? this.area.ex() : this.area.ex() - OPTIONS_BUTTON_WIDTH - OPTIONS_BUTTON_GAP;
+        int stackCenterX = (stackAreaX + stackAreaEx) / 2;
 
-        context.batcher.box((float)this.area.x, (float)this.area.y, (float)stackAreaEx, (float)this.area.ey(), border);
-        context.batcher.box((float)(this.area.x + 1), (float)(this.area.y + 1), (float)(stackAreaEx - 1), (float)(this.area.ey() - 1), -3750202);
+        context.batcher.box((float)stackAreaX, (float)this.area.y, (float)stackAreaEx, (float)this.area.ey(), border);
+        context.batcher.box((float)(stackAreaX + 1), (float)(this.area.y + 1), (float)(stackAreaEx - 1), (float)(this.area.ey() - 1), -3750202);
 
         if (this.stack != null && !this.stack.isEmpty())
         {
