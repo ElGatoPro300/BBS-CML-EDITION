@@ -165,6 +165,11 @@ public class BBSRendering
         return customSize;
     }
 
+    public static boolean isFramebufferToggled()
+    {
+        return toggleFramebuffer;
+    }
+
     public static void setCustomSize(boolean customSize)
     {
         setCustomSize(customSize, 0, 0);
@@ -314,14 +319,7 @@ public class BBSRendering
         }
         else
         {
-            if (clientFramebuffer != null)
-            {
-                reassignFramebuffer(clientFramebuffer);
-            }
-            else
-            {
-                reassignFramebuffer(mc.getFramebuffer());
-            }
+            reassignFramebuffer(clientFramebuffer);
 
             mc.getFramebuffer().beginWrite(true);
 
@@ -442,13 +440,13 @@ public class BBSRendering
 
     public static void onRenderBeforeScreen()
     {
-        int lastId = RenderSystem.getShaderTexture(0);
+        int lastTexture = RenderSystem.getShaderTexture(0);
         Texture texture = getTexture();
 
         texture.bind();
         texture.setSize(framebuffer.textureWidth, framebuffer.textureHeight);
         GL11.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0, framebuffer.textureWidth, framebuffer.textureHeight);
-        RenderSystem.bindTexture(lastId);
+        RenderSystem.bindTexture(lastTexture);
 
         toggleFramebuffer(false);
     }
@@ -461,7 +459,7 @@ public class BBSRendering
         worldRenderContext.prepare(
             mc.worldRenderer, mc.getRenderTickCounter(), false,
             mc.gameRenderer.getCamera(), mc.gameRenderer,
-            RenderSystem.getProjectionMatrix(), stack.peek().getPositionMatrix(), mc.getBufferBuilders().getEntityVertexConsumers(), false, mc.world
+            RenderSystem.getProjectionMatrix(), RenderSystem.getModelViewMatrix(), mc.getBufferBuilders().getEntityVertexConsumers(), false, mc.world
         );
 
         if (!isIrisShadersEnabled())

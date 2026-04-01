@@ -434,13 +434,13 @@ public class Batcher2D
     {
         RenderSystem.setShaderTexture(0, texture);
 
-        Matrix4f matrix4f = this.context.getMatrices().peek().getPositionMatrix();
-        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
+        Matrix4f matrix = this.context.getMatrices().peek().getPositionMatrix();
+        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_TEXTURE_COLOR);
         
         RenderSystem.setShader(shader);
 
         
-        this.fillTexturedBox(builder, matrix4f, color, x, y, w, h, u1, v1, u2, v2, textureW, textureH);
+        this.fillTexturedBox(builder, matrix, color, x, y, w, h, u1, v1, u2, v2, textureW, textureH);
 
         BufferRenderer.drawWithGlobalProgram(builder.end());
     }
@@ -530,7 +530,7 @@ public class Batcher2D
 
     public void textShadow(String label, float x, float y)
     {
-        this.textShadow(label, x, y, Colors.WHITE);
+        this.text(label, x, y, Colors.WHITE, true);
     }
 
     public void textShadow(String label, float x, float y, int color)
