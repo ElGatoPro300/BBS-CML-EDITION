@@ -290,13 +290,6 @@ public class UIKeys
     public static final IKey FILM_OPEN_CAMERA_EDITOR = L10n.lang("bbs.ui.film.open_camera_editor");
     public static final IKey FILM_OPEN_HISTORY = L10n.lang("bbs.ui.film.open_history");
     public static final IKey FILM_OPEN_REPLAY_EDITOR = L10n.lang("bbs.ui.film.open_replay_editor");
-    public static final IKey FILM_OPEN_RENDER_QUEUE = L10n.lang("bbs.ui.film.open_render_queue");
-    public static final IKey RENDER_QUEUE_TITLE = L10n.lang("bbs.ui.render_queue.title");
-    public static final IKey RENDER_QUEUE_ADD = L10n.lang("bbs.ui.render_queue.add");
-    public static final IKey RENDER_QUEUE_ADD_TITLE = L10n.lang("bbs.ui.render_queue.add.title");
-    public static final IKey RENDER_QUEUE_ADD_MESSAGE = L10n.lang("bbs.ui.render_queue.add.message");
-    public static final IKey RENDER_QUEUE_REMOVE = L10n.lang("bbs.ui.render_queue.remove");
-    public static final IKey RENDER_QUEUE_RENDER = L10n.lang("bbs.ui.render_queue.render");
     public static final IKey FILM_RECORDING = L10n.lang("bbs.ui.film.recording");
     public static final IKey FILM_RENDER_AUDIO = L10n.lang("bbs.ui.film.render_audio");
     public static final IKey FILM_RENDER_AUDIO_ERROR = L10n.lang("bbs.ui.film.render_audio.error");
