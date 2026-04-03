@@ -232,8 +232,6 @@ public class UIKeys
     public static final IKey CONTEXT_MENU_KEY_CATEGORY = L10n.lang("bbs.ui.context.key_category");
     public static final IKey COMING_SOON = L10n.lang("bbs.ui.coming_soon");
     public static final IKey DASHBOARD_CATEGORY = L10n.lang("bbs.ui.dashboard.category");
-    public static final IKey DASHBOARD_FNAF_POPUP = L10n.lang("bbs.ui.dashboard.fnaf_popup");
-    public static final IKey DASHBOARD_FNAF_POPUP_SMALL = L10n.lang("bbs.ui.dashboard.fnaf_popup_small");
     public static final IKey DASHBOARD_CONTEXT_TOGGLE_VISIBILITY = L10n.lang("bbs.ui.dashboard.context.toggle_visibility");
     public static final IKey DASHBOARD_OPTIFINE_EW_DESCRIPTION = L10n.lang("bbs.ui.dashboard.optifine_ew-description");
     public static final IKey DASHBOARD_OPTIFINE_EW_TITLE = L10n.lang("bbs.ui.dashboard.optifine_ew-title");
@@ -292,6 +290,15 @@ public class UIKeys
     public static final IKey FILM_OPEN_CAMERA_EDITOR = L10n.lang("bbs.ui.film.open_camera_editor");
     public static final IKey FILM_OPEN_HISTORY = L10n.lang("bbs.ui.film.open_history");
     public static final IKey FILM_OPEN_REPLAY_EDITOR = L10n.lang("bbs.ui.film.open_replay_editor");
+    public static final IKey FILM_OPEN_RENDER_QUEUE = L10n.lang("bbs.ui.film.open_render_queue");
+    public static final IKey RENDER_QUEUE_TITLE = L10n.lang("bbs.ui.render_queue.title");
+    public static final IKey RENDER_QUEUE_ADD = L10n.lang("bbs.ui.render_queue.add");
+    public static final IKey RENDER_QUEUE_ADD_TITLE = L10n.lang("bbs.ui.render_queue.add.title");
+    public static final IKey RENDER_QUEUE_ADD_MESSAGE = L10n.lang("bbs.ui.render_queue.add.message");
+    public static final IKey RENDER_QUEUE_REMOVE = L10n.lang("bbs.ui.render_queue.remove");
+    public static final IKey RENDER_QUEUE_RENDER = L10n.lang("bbs.ui.render_queue.render");
+    public static final IKey RENDER_QUEUE_NO_PREVIEW = L10n.lang("bbs.ui.render_queue.no_preview");
+    public static final IKey RENDER_QUEUE_PICK_TITLE = L10n.lang("bbs.ui.render_queue.pick.title");
     public static final IKey FILM_RECORDING = L10n.lang("bbs.ui.film.recording");
     public static final IKey FILM_RENDER_AUDIO = L10n.lang("bbs.ui.film.render_audio");
     public static final IKey FILM_RENDER_AUDIO_ERROR = L10n.lang("bbs.ui.film.render_audio.error");
