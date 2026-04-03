@@ -299,7 +299,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         this.openRenderQueue = new UIIcon(Icons.FILM, (b) ->
         {
-            UIOverlay.addOverlay(this.getContext(), new UIRenderQueueOverlayPanel(this), 500, 0.65F);
+            UIOverlay.addOverlay(this.getContext(), new UIRenderQueueOverlayPanel(), 500, 0.65F);
         });
         this.openRenderQueue.tooltip(UIKeys.FILM_OPEN_RENDER_QUEUE, Direction.LEFT);
 

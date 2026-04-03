@@ -1,43 +1,31 @@
 package mchorse.bbs_mod.ui.film;
 
-import mchorse.bbs_mod.client.BBSRendering;
-import mchorse.bbs_mod.film.Film;
-import mchorse.bbs_mod.graphics.texture.Texture;
-import mchorse.bbs_mod.ui.ContentType;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
-import mchorse.bbs_mod.ui.framework.elements.overlay.UIMessageOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlayPanel;
-import mchorse.bbs_mod.ui.utils.Area;
+import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.Direction;
-import mchorse.bbs_mod.utils.FFMpegUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
-import mchorse.bbs_mod.utils.joml.Vectors;
-import org.joml.Vector2i;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class UIRenderQueueOverlayPanel extends UIOverlayPanel
 {
-    private final UIFilmPanel panel;
-
     public UIRenderQueueList queueList;
     public UIIcon addEntry;
     public UIIcon removeEntry;
     public UIElement previewArea;
     public UIButton renderButton;
 
-    public UIRenderQueueOverlayPanel(UIFilmPanel panel)
+    public UIRenderQueueOverlayPanel()
     {
         super(UIKeys.RENDER_QUEUE_TITLE);
-
-        this.panel = panel;
 
         /* Queue list */
         this.queueList = new UIRenderQueueList((list) ->
@@ -46,7 +34,7 @@ public class UIRenderQueueOverlayPanel extends UIOverlayPanel
         this.queueList.relative(this.content).xy(0, 20).w(180).h(1F, -20);
 
         /* Add / remove icon buttons above the list */
-        this.addEntry = new UIIcon(Icons.ADD, (b) -> this.openFilmPicker());
+        this.addEntry = new UIIcon(Icons.ADD, (b) -> this.openAddEntry());
         this.addEntry.tooltip(UIKeys.RENDER_QUEUE_ADD, Direction.TOP);
         this.addEntry.relative(this.content).xy(0, 0).wh(20, 20);
 
@@ -65,17 +53,31 @@ public class UIRenderQueueOverlayPanel extends UIOverlayPanel
         this.content.add(this.addEntry, this.removeEntry, this.queueList, this.previewArea, this.renderButton);
     }
 
-    private void openFilmPicker()
+    private void openAddEntry()
     {
-        UIFilmPickerOverlayPanel picker = new UIFilmPickerOverlayPanel((name) ->
-        {
-            if (!this.queueList.getList().contains(name))
+        UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
+            UIKeys.RENDER_QUEUE_ADD_TITLE,
+            UIKeys.RENDER_QUEUE_ADD_MESSAGE,
+            (name) ->
             {
-                this.queueList.add(name);
+                if (name != null && !name.trim().isEmpty())
+                {
+                    this.addToQueue(name.trim());
+                }
             }
-        });
+        );
 
-        UIOverlay.addOverlay(this.getContext(), picker, 240, 0.7F);
+        UIOverlay.addOverlay(this.getContext(), panel, 240, 0.5F);
+    }
+
+    private void addToQueue(String name)
+    {
+        List<String> list = this.queueList.getList();
+
+        if (!list.contains(name))
+        {
+            this.queueList.add(name);
+        }
     }
 
     private void removeSelectedEntry()
@@ -90,65 +92,7 @@ public class UIRenderQueueOverlayPanel extends UIOverlayPanel
 
     private void startRender()
     {
-        List<String> queue = this.queueList.getList();
-
-        if (queue.isEmpty())
-        {
-            return;
-        }
-
-        if (!FFMpegUtils.checkFFMPEG())
-        {
-            UIOverlay.addOverlay(this.getContext(), new UIMessageOverlayPanel(UIKeys.GENERAL_WARNING, UIKeys.GENERAL_FFMPEG_ERROR_DESCRIPTION));
-
-            return;
-        }
-
-        List<String> remaining = new ArrayList<>(queue);
-
-        this.close();
-        this.renderNext(remaining);
-    }
-
-    private void renderNext(List<String> remaining)
-    {
-        if (remaining.isEmpty())
-        {
-            return;
-        }
-
-        String filmName = remaining.remove(0);
-
-        ContentType.FILMS.getRepository().load(filmName, (data) ->
-        {
-            Film film = (Film) data;
-
-            this.panel.fill(film);
-            this.panel.recorder.onStop = () -> this.renderNext(remaining);
-            this.panel.recorder.startRecordingAfterLoad(film.camera.calculateDuration(), BBSRendering.getTexture(), 60);
-        });
-    }
-
-    private Area calcPreviewViewport()
-    {
-        int width = BBSRendering.getVideoWidth();
-        int height = BBSRendering.getVideoHeight();
-
-        if (width <= 0 || height <= 0)
-        {
-            return this.previewArea.area;
-        }
-
-        Vector2i size = Vectors.resize(width / (float) height, this.previewArea.area.w, this.previewArea.area.h);
-        Area area = new Area();
-
-        area.setSize(size.x, size.y);
-        area.setPos(
-            this.previewArea.area.mx() - area.w / 2,
-            this.previewArea.area.my() - area.h / 2
-        );
-
-        return area;
+        /* TODO: trigger rendering of queued films in order */
     }
 
     @Override
@@ -156,41 +100,27 @@ public class UIRenderQueueOverlayPanel extends UIOverlayPanel
     {
         super.renderBackground(context);
 
-        /* Dark background for the whole preview area */
+        /* Preview area background (darker box) */
         context.batcher.box(
             this.previewArea.area.x,
             this.previewArea.area.y,
             this.previewArea.area.ex(),
             this.previewArea.area.ey(),
-            Colors.A100
+            Colors.A50
         );
 
-        /* Render the current film render texture in the preview */
-        Texture texture = BBSRendering.getTexture();
+        String selected = this.queueList.getCurrentFirst();
 
-        if (texture != null && texture.id > 0)
+        if (selected != null && !selected.isEmpty())
         {
-            Area vp = this.calcPreviewViewport();
-
-            context.batcher.flush();
-            context.batcher.texturedBox(
-                texture.id, Colors.WHITE,
-                vp.x, vp.y, vp.w, vp.h,
-                0, texture.height, texture.width, 0,
-                texture.width, texture.height
-            );
-        }
-        else
-        {
-            String label = UIKeys.RENDER_QUEUE_NO_PREVIEW.get();
-            int tw = context.batcher.getDefaultTextRenderer().getWidth(label);
+            int tw = context.batcher.getDefaultTextRenderer().getWidth(selected);
             int th = context.batcher.getDefaultTextRenderer().getHeight();
 
             context.batcher.text(
-                label,
+                selected,
                 this.previewArea.area.mx() - tw / 2,
                 this.previewArea.area.my() - th / 2,
-                Colors.GRAY
+                Colors.WHITE
             );
         }
     }

@@ -297,8 +297,6 @@ public class UIKeys
     public static final IKey RENDER_QUEUE_ADD_MESSAGE = L10n.lang("bbs.ui.render_queue.add.message");
     public static final IKey RENDER_QUEUE_REMOVE = L10n.lang("bbs.ui.render_queue.remove");
     public static final IKey RENDER_QUEUE_RENDER = L10n.lang("bbs.ui.render_queue.render");
-    public static final IKey RENDER_QUEUE_NO_PREVIEW = L10n.lang("bbs.ui.render_queue.no_preview");
-    public static final IKey RENDER_QUEUE_PICK_TITLE = L10n.lang("bbs.ui.render_queue.pick.title");
     public static final IKey FILM_RECORDING = L10n.lang("bbs.ui.film.recording");
     public static final IKey FILM_RENDER_AUDIO = L10n.lang("bbs.ui.film.render_audio");
     public static final IKey FILM_RENDER_AUDIO_ERROR = L10n.lang("bbs.ui.film.render_audio.error");

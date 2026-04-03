@@ -28,14 +28,8 @@ public class UIFilmRecorder extends UIElement
 {
     public UIFilmPanel editor;
 
-    public Runnable onStop;
-
     private UIExit exit = new UIExit(this);
     private int end;
-    private int warmupTicks;
-    private int pendingId;
-    private int pendingW;
-    private int pendingH;
 
     public boolean resetReplays = true;
 
@@ -94,65 +88,6 @@ public class UIFilmRecorder extends UIElement
 
         this.end = looping && min != max ? Math.max(min, max) : duration;
 
-        this.editor.setCursor(looping ? Math.min(min, max) : 0);
-        this.editor.notifyServer(ActionState.RESTART);
-
-        if (this.resetReplays)
-        {
-            this.editor.getController().createEntities();
-        }
-
-        if (!this.startFfmpegAndPlayback(id, w, h))
-        {
-            return;
-        }
-
-        context.menu.main.setEnabled(false);
-        context.menu.overlay.add(this);
-        context.menu.getRoot().add(this.exit);
-    }
-
-    /**
-     * Spawns replay entities and waits the given number of ticks for assets
-     * to finish loading before actually starting the video recorder.
-     */
-    public void startRecordingAfterLoad(int duration, Texture texture, int warmup)
-    {
-        if (this.isRunning() || this.getRecorder().isRecording() || duration <= 0 || this.warmupTicks > 0)
-        {
-            return;
-        }
-
-        UIContext context = this.getUIContext();
-        boolean looping = BBSSettings.editorLoop.get();
-        int min = this.editor.cameraEditor.clips.loopMin;
-        int max = this.editor.cameraEditor.clips.loopMax;
-
-        this.end = looping && min != max ? Math.max(min, max) : duration;
-        this.warmupTicks = warmup;
-        this.pendingId = texture.id;
-        this.pendingW = texture.width;
-        this.pendingH = texture.height;
-
-        this.editor.setCursor(looping ? Math.min(min, max) : 0);
-        this.editor.notifyServer(ActionState.RESTART);
-
-        if (this.resetReplays)
-        {
-            this.editor.getController().createEntities();
-        }
-
-        /* Add to overlay so render() is called and can count down the warmup */
-        context.menu.main.setEnabled(false);
-        context.menu.overlay.add(this);
-        context.menu.getRoot().add(this.exit);
-    }
-
-    private boolean startFfmpegAndPlayback(int id, int w, int h)
-    {
-        VideoRecorder recorder = this.getRecorder();
-        UIContext context = this.getUIContext();
-
         try
         {
             File audioFile = null;
@@ -179,23 +114,26 @@ public class UIFilmRecorder extends UIElement
         {
             UIOverlay.addOverlay(context, new UIMessageOverlayPanel(UIKeys.GENERAL_ERROR, IKey.constant(e.getMessage())));
 
-            context.menu.main.setEnabled(true);
-            context.render.postRunnable(this::removeFromParent);
-            context.render.postRunnable(this.exit::removeFromParent);
+            return;
+        }
 
-            return false;
+        this.editor.setCursor(looping ? Math.min(min, max) : 0);
+        this.editor.notifyServer(ActionState.RESTART);
+
+        if (this.resetReplays)
+        {
+            this.editor.getController().createEntities();
         }
 
         this.editor.togglePlayback();
-
-        return true;
+        context.menu.main.setEnabled(false);
+        context.menu.overlay.add(this);
+        context.menu.getRoot().add(this.exit);
     }
 
     public void stop()
     {
         UIContext context = this.getUIContext();
-
-        this.warmupTicks = 0;
 
         context.render.postRunnable(this.exit::removeFromParent);
 
@@ -214,20 +152,6 @@ public class UIFilmRecorder extends UIElement
 
             context.menu.main.setEnabled(true);
             context.render.postRunnable(this::removeFromParent);
-
-            if (this.onStop != null)
-            {
-                Runnable cb = this.onStop;
-
-                this.onStop = null;
-                context.render.postRunnable(cb);
-            }
-        }
-        else
-        {
-            /* Stopped during warmup — just clean up the overlay */
-            context.menu.main.setEnabled(true);
-            context.render.postRunnable(this::removeFromParent);
         }
     }
 
@@ -235,19 +159,6 @@ public class UIFilmRecorder extends UIElement
     public void render(UIContext context)
     {
         super.render(context);
-
-        if (this.warmupTicks > 0)
-        {
-            this.warmupTicks--;
-
-            if (this.warmupTicks == 0)
-            {
-                /* Warmup done — start ffmpeg and begin playback */
-                this.startFfmpegAndPlayback(this.pendingId, this.pendingW, this.pendingH);
-            }
-
-            return;
-        }
 
         int ticks = this.editor.getCursor();
 

@@ -635,8 +635,6 @@
     "bbs.ui.render_queue.add.message": "Enter the film name to add to the queue:",
     "bbs.ui.render_queue.remove": "Remove selected entry",
     "bbs.ui.render_queue.render": "Render",
-    "bbs.ui.render_queue.no_preview": "No preview available",
-    "bbs.ui.render_queue.pick.title": "Pick a film",
     "bbs.ui.film.recording": "Recording %s",
     "bbs.ui.film.render_audio": "Render audio (from audio clips)",
     "bbs.ui.film.render_audio.error": "Audio clips couldn't be rendered! See the latest.log for more information...",
