@@ -138,6 +138,7 @@ public class BBSSettings
 
     public static ValueString cdnUrl;
     public static ValueString cdnToken;
+    public static ValueBoolean shownFnafPopup;
 
     public static int primaryColor()
     {
@@ -201,6 +202,10 @@ public class BBSSettings
         disabledSheets.set(defaultFilters);
         builder.register(favoriteColors);
         builder.register(disabledSheets);
+
+        builder.category("easter_eggs");
+        builder.getCategory().invisible();
+        shownFnafPopup = builder.getBoolean("shown_fnaf_popup", false);
 
         builder.category("tutorials");
         enableCursorRendering = builder.getBoolean("cursor", false);

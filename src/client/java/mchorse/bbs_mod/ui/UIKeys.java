@@ -232,6 +232,8 @@ public class UIKeys
     public static final IKey CONTEXT_MENU_KEY_CATEGORY = L10n.lang("bbs.ui.context.key_category");
     public static final IKey COMING_SOON = L10n.lang("bbs.ui.coming_soon");
     public static final IKey DASHBOARD_CATEGORY = L10n.lang("bbs.ui.dashboard.category");
+    public static final IKey DASHBOARD_FNAF_POPUP = L10n.lang("bbs.ui.dashboard.fnaf_popup");
+    public static final IKey DASHBOARD_FNAF_POPUP_SMALL = L10n.lang("bbs.ui.dashboard.fnaf_popup_small");
     public static final IKey DASHBOARD_CONTEXT_TOGGLE_VISIBILITY = L10n.lang("bbs.ui.dashboard.context.toggle_visibility");
     public static final IKey DASHBOARD_OPTIFINE_EW_DESCRIPTION = L10n.lang("bbs.ui.dashboard.optifine_ew-description");
     public static final IKey DASHBOARD_OPTIFINE_EW_TITLE = L10n.lang("bbs.ui.dashboard.optifine_ew-title");
