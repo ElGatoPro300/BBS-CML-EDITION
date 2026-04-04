@@ -28,6 +28,7 @@ import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIModelRenderer;
 import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.ui.utils.StencilFormFramebuffer;
+import mchorse.bbs_mod.ui.model.UIModelIKPanel;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.Pair;
 import mchorse.bbs_mod.utils.colors.Colors;
@@ -282,11 +283,13 @@ public class UIModelEditorRenderer extends UIModelRenderer
         MatrixCache cache = this.renderer.collectMatrices(this.entity, context.getTransition());
         Matrix4f uiMatrix = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
         BufferBuilder builder = Tessellator.getInstance().getBuffer();
+        boolean hasSelected = this.hasSelectedIKChain();
 
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
         RenderSystem.enableBlend();
         RenderSystem.disableDepthTest();
-        builder.begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
+
+        builder.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
 
         for (IKChainConfig chain : this.config.ikChains.getAllTyped())
         {
@@ -295,6 +298,15 @@ public class UIModelEditorRenderer extends UIModelRenderer
                 continue;
             }
 
+            boolean selectedChain = this.isSelectedIKChain(chain);
+            if (hasSelected && !selectedChain)
+            {
+                continue;
+            }
+            float jointR = selectedChain ? 1F : 0.85F;
+            float jointG = selectedChain ? 0.95F : 0.9F;
+            float jointB = selectedChain ? 0.2F : 0.95F;
+            List<Vector3f> points = new ArrayList<>();
             Vector3f previous = null;
 
             for (String bone : chain.getBones())
@@ -308,15 +320,38 @@ public class UIModelEditorRenderer extends UIModelRenderer
 
                 if (previous != null)
                 {
-                    this.line(builder, uiMatrix, previous, point, 0F, 1F, 1F, 1F);
+                    this.boneSolid(builder, uiMatrix, previous, point, jointR, jointG, jointB, selectedChain ? 0.9F : 0.45F, selectedChain ? 0.026F : 0.018F);
                 }
 
+                points.add(point);
                 previous = point;
             }
 
             if (previous == null)
             {
                 continue;
+            }
+
+            if (!chain.getBones().isEmpty())
+            {
+                String firstBone = chain.getBones().get(0);
+                String parentBone = this.getParentBoneId(firstBone);
+
+                if (parentBone != null && !parentBone.isEmpty())
+                {
+                    Vector3f parentPoint = this.getBonePoint(cache, parentBone);
+                    Vector3f firstPoint = this.getBonePoint(cache, firstBone);
+
+                    if (parentPoint != null && firstPoint != null)
+                    {
+                        this.boneSolid(builder, uiMatrix, parentPoint, firstPoint, jointR, jointG, jointB, selectedChain ? 0.8F : 0.3F, selectedChain ? 0.02F : 0.014F);
+                    }
+                }
+            }
+
+            for (Vector3f point : points)
+            {
+                this.joint(builder, uiMatrix, point, selectedChain ? 0.03F : 0.022F, jointR, jointG, jointB, selectedChain ? 1F : 0.7F);
             }
 
             Vector3f target = this.getTargetPoint(chain, cache);
@@ -327,8 +362,15 @@ public class UIModelEditorRenderer extends UIModelRenderer
                 continue;
             }
 
-            this.line(builder, uiMatrix, previous, target, 1F, 1F, 0F, 1F);
-            this.cross(builder, uiMatrix, target, 0.04F, 1F, 0.9F, 0.2F, 1F);
+            if (!hasSelected || selectedChain)
+            {
+                this.markerSolid(builder, uiMatrix, target, selectedChain ? 0.06F : 0.045F, 1F, 0.92F, 0.25F, selectedChain ? 1F : 0.5F);
+            }
+
+            if (selectedChain || !hasSelected)
+            {
+                this.boneSolid(builder, uiMatrix, previous, target, 1F, 0.92F, 0.25F, 0.9F, 0.014F);
+            }
 
             if (pole != null)
             {
@@ -339,13 +381,136 @@ public class UIModelEditorRenderer extends UIModelRenderer
                     poleAnchor = previous;
                 }
 
-                this.line(builder, uiMatrix, poleAnchor, pole, 1F, 0.4F, 1F, 1F);
-                this.cross(builder, uiMatrix, pole, 0.035F, 1F, 0.4F, 1F, 1F);
+                if (!hasSelected || selectedChain)
+                {
+                    this.markerSolid(builder, uiMatrix, pole, selectedChain ? 0.052F : 0.04F, 1F, 0.42F, 1F, selectedChain ? 1F : 0.5F);
+                }
+
+                if (selectedChain || !hasSelected)
+                {
+                    this.boneSolid(builder, uiMatrix, poleAnchor, pole, 1F, 0.42F, 1F, 0.9F, 0.012F);
+                }
+            }
+        }
+
+        BufferRenderer.drawWithGlobalProgram(builder.end());
+
+        builder.begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
+
+        for (IKChainConfig chain : this.config.ikChains.getAllTyped())
+        {
+            if (!chain.visualizer.get())
+            {
+                continue;
+            }
+
+            boolean selectedChain = this.isSelectedIKChain(chain);
+            if (hasSelected && !selectedChain)
+            {
+                continue;
+            }
+            float alpha = selectedChain ? 1F : (hasSelected ? 0.2F : 0.35F);
+            Vector3f previous = null;
+
+            for (String bone : chain.getBones())
+            {
+                Vector3f point = this.getBonePoint(cache, bone);
+
+                if (point == null)
+                {
+                    continue;
+                }
+
+                if (previous != null)
+                {
+                    this.line(builder, uiMatrix, previous, point, 1F, 1F, 1F, alpha);
+                }
+
+                previous = point;
+            }
+
+            if (!chain.getBones().isEmpty())
+            {
+                String firstBone = chain.getBones().get(0);
+                String parentBone = this.getParentBoneId(firstBone);
+
+                if (parentBone != null && !parentBone.isEmpty())
+                {
+                    Vector3f parentPoint = this.getBonePoint(cache, parentBone);
+                    Vector3f firstPoint = this.getBonePoint(cache, firstBone);
+
+                    if (parentPoint != null && firstPoint != null)
+                    {
+                        this.line(builder, uiMatrix, parentPoint, firstPoint, 1F, 1F, 1F, alpha);
+                    }
+                }
             }
         }
 
         BufferRenderer.drawWithGlobalProgram(builder.end());
         RenderSystem.enableDepthTest();
+    }
+
+    private boolean isSelectedIKChain(IKChainConfig chain)
+    {
+        if (this.selectedBone == null || this.selectedBone.isEmpty() || chain == null)
+        {
+            return false;
+        }
+
+        String virtualId = UIModelIKPanel.extractIKVirtualId(this.selectedBone);
+
+        if (virtualId != null)
+        {
+            return chain.getId().equals(virtualId);
+        }
+
+        for (String bone : chain.getBones())
+        {
+            if (this.selectedBone.equals(bone))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private boolean hasSelectedIKChain()
+    {
+        if (this.config == null || this.config.ikChains.getAllTyped().isEmpty())
+        {
+            return false;
+        }
+
+        for (IKChainConfig chain : this.config.ikChains.getAllTyped())
+        {
+            if (this.isSelectedIKChain(chain))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private String getParentBoneId(String bone)
+    {
+        ModelInstance instance = this.getPreviewModelInstance();
+
+        if (instance == null || !(instance.model instanceof Model model))
+        {
+            return null;
+        }
+
+        ModelGroup group = model.getGroup(bone);
+
+        if (group == null || group.parent == null)
+        {
+            return null;
+        }
+
+        return group.parent.id;
     }
 
     private void renderSelectedCubeVisualizer(UIContext context, MatrixCache cache)
@@ -490,7 +655,14 @@ public class UIModelEditorRenderer extends UIModelRenderer
             }
         }
 
-        return this.toWorldPoint(new Vector3f(chain.target.translate).mul(1F / 16F), chain.targetParentBone.get(), cache);
+        String parent = chain.targetParentBone.get();
+
+        if (parent != null && !parent.isEmpty() && chain.getBones().contains(parent))
+        {
+            parent = "";
+        }
+
+        return this.toWorldPoint(new Vector3f(chain.target.translate).mul(1F / 16F), parent, cache);
     }
 
     private Vector3f getPolePoint(IKChainConfig chain, MatrixCache cache)
@@ -636,6 +808,85 @@ public class UIModelEditorRenderer extends UIModelRenderer
         this.line(builder, matrix, new Vector3f(p).add(-size, 0, 0), new Vector3f(p).add(size, 0, 0), r, g, b, a);
         this.line(builder, matrix, new Vector3f(p).add(0, -size, 0), new Vector3f(p).add(0, size, 0), r, g, b, a);
         this.line(builder, matrix, new Vector3f(p).add(0, 0, -size), new Vector3f(p).add(0, 0, size), r, g, b, a);
+    }
+
+    private void joint(BufferBuilder builder, Matrix4f matrix, Vector3f p, float size, float r, float g, float b, float a)
+    {
+        this.line(builder, matrix, new Vector3f(p).add(-size, 0, 0), new Vector3f(p).add(size, 0, 0), r, g, b, a);
+        this.line(builder, matrix, new Vector3f(p).add(0, -size, 0), new Vector3f(p).add(0, size, 0), r, g, b, a);
+    }
+
+    private void targetMarker(BufferBuilder builder, Matrix4f matrix, Vector3f p, float size, float r, float g, float b, float a)
+    {
+        Vector3f x1 = new Vector3f(p).add(size, 0, 0);
+        Vector3f x2 = new Vector3f(p).add(-size, 0, 0);
+        Vector3f z1 = new Vector3f(p).add(0, 0, size);
+        Vector3f z2 = new Vector3f(p).add(0, 0, -size);
+        Vector3f y1 = new Vector3f(p).add(0, size * 0.6F, 0);
+        Vector3f y2 = new Vector3f(p).add(0, -size * 0.6F, 0);
+
+        this.line(builder, matrix, x1, z1, r, g, b, a);
+        this.line(builder, matrix, z1, x2, r, g, b, a);
+        this.line(builder, matrix, x2, z2, r, g, b, a);
+        this.line(builder, matrix, z2, x1, r, g, b, a);
+        this.line(builder, matrix, y1, y2, r, g, b, a);
+        this.line(builder, matrix, x1, x2, r, g, b, a);
+    }
+
+    private void boneSolid(BufferBuilder builder, Matrix4f matrix, Vector3f from, Vector3f to, float r, float g, float b, float a, float radius)
+    {
+        Vector3f dir = new Vector3f(to).sub(from);
+
+        if (dir.lengthSquared() < 0.0000001F)
+        {
+            return;
+        }
+
+        dir.normalize();
+
+        Vector3f up = Math.abs(dir.y) > 0.9F ? new Vector3f(1F, 0F, 0F) : new Vector3f(0F, 1F, 0F);
+        Vector3f sideA = dir.cross(up, new Vector3f()).normalize().mul(radius);
+        Vector3f sideB = dir.cross(sideA, new Vector3f()).normalize().mul(radius);
+        Vector3f base = new Vector3f(from).lerp(to, 0.2F);
+
+        Vector3f p1 = new Vector3f(base).add(sideA);
+        Vector3f p2 = new Vector3f(base).add(sideB);
+        Vector3f p3 = new Vector3f(base).sub(sideA);
+        Vector3f p4 = new Vector3f(base).sub(sideB);
+        Vector3f tip = new Vector3f(to);
+
+        this.triangle(builder, matrix, p1, p2, tip, r, g, b, a);
+        this.triangle(builder, matrix, p2, p3, tip, r, g, b, a);
+        this.triangle(builder, matrix, p3, p4, tip, r, g, b, a);
+        this.triangle(builder, matrix, p4, p1, tip, r, g, b, a);
+        this.triangle(builder, matrix, p1, p2, p3, r, g, b, a * 0.7F);
+        this.triangle(builder, matrix, p3, p4, p1, r, g, b, a * 0.7F);
+    }
+
+    private void markerSolid(BufferBuilder builder, Matrix4f matrix, Vector3f center, float size, float r, float g, float b, float a)
+    {
+        Vector3f top = new Vector3f(center).add(0, size, 0);
+        Vector3f bottom = new Vector3f(center).add(0, -size, 0);
+        Vector3f right = new Vector3f(center).add(size, 0, 0);
+        Vector3f left = new Vector3f(center).add(-size, 0, 0);
+        Vector3f front = new Vector3f(center).add(0, 0, size);
+        Vector3f back = new Vector3f(center).add(0, 0, -size);
+
+        this.triangle(builder, matrix, top, right, front, r, g, b, a);
+        this.triangle(builder, matrix, top, front, left, r, g, b, a);
+        this.triangle(builder, matrix, top, left, back, r, g, b, a);
+        this.triangle(builder, matrix, top, back, right, r, g, b, a);
+        this.triangle(builder, matrix, bottom, front, right, r, g, b, a);
+        this.triangle(builder, matrix, bottom, left, front, r, g, b, a);
+        this.triangle(builder, matrix, bottom, back, left, r, g, b, a);
+        this.triangle(builder, matrix, bottom, right, back, r, g, b, a);
+    }
+
+    private void triangle(BufferBuilder builder, Matrix4f matrix, Vector3f a, Vector3f b, Vector3f c, float r, float g, float bl, float alpha)
+    {
+        builder.vertex(matrix, a.x, a.y, a.z).color(r, g, bl, alpha).next();
+        builder.vertex(matrix, b.x, b.y, b.z).color(r, g, bl, alpha).next();
+        builder.vertex(matrix, c.x, c.y, c.z).color(r, g, bl, alpha).next();
     }
 
     @Override

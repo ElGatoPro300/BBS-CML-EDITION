@@ -810,7 +810,18 @@ public class UIModelIKPanel extends UIElement
             return;
         }
 
-        this.parent.selectBoneFromEditor(this.getTargetVirtualBone(chain));
+        if (chain.useTargetBone.get() && !chain.targetBone.get().isEmpty())
+        {
+            this.parent.selectBoneFromEditor(chain.targetBone.get());
+            return;
+        }
+
+        List<String> bones = chain.getBones();
+
+        if (!bones.isEmpty())
+        {
+            this.parent.selectBoneFromEditor(bones.get(bones.size() - 1));
+        }
     }
 
     private void selectPoleVirtualBone()
@@ -822,7 +833,18 @@ public class UIModelIKPanel extends UIElement
             return;
         }
 
-        this.parent.selectBoneFromEditor(this.getPoleVirtualBone(chain));
+        if (chain.usePoleBone.get() && !chain.poleBone.get().isEmpty())
+        {
+            this.parent.selectBoneFromEditor(chain.poleBone.get());
+            return;
+        }
+
+        List<String> bones = chain.getBones();
+
+        if (bones.size() > 1)
+        {
+            this.parent.selectBoneFromEditor(bones.get(1));
+        }
     }
 
     private void clearTargetBone()
@@ -1457,6 +1479,7 @@ public class UIModelIKPanel extends UIElement
         }
 
         List<String> bones = chain.getBones();
+        String currentParent = chain.targetParentBone.get();
 
         if (bones.isEmpty())
         {
@@ -1464,15 +1487,15 @@ public class UIModelIKPanel extends UIElement
             return;
         }
 
-        String desiredParent = bones.get(0);
-        String currentParent = chain.targetParentBone.get();
-
-        if (desiredParent.equals(currentParent))
+        if (currentParent == null || currentParent.isEmpty())
         {
             return;
         }
 
-        chain.targetParentBone.set(desiredParent);
+        if (bones.contains(currentParent))
+        {
+            chain.targetParentBone.set("");
+        }
     }
 
     private Vector3f resolveTargetWorldForEditor(IKChainConfig chain)

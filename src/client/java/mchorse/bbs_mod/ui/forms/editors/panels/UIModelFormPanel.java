@@ -113,32 +113,6 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
 
     private void pickGroup(String group)
     {
-        ModelInstance model = ModelFormRenderer.getModel(this.form);
-
-        if (UIModelIKPanel.isIKVirtualBoneName(group))
-        {
-            IKChainConfig chain = this.getChainByVirtualBone(group, model);
-
-            if (chain != null)
-            {
-                boolean pole = UIModelIKPanel.isIKPoleVirtualBoneName(group);
-                String virtualBone = pole ? UIModelIKPanel.IK_POLE_PREFIX + chain.getId() : UIModelIKPanel.IK_TARGET_PREFIX + chain.getId();
-
-                this.selectedIKTarget = virtualBone;
-                if (pole)
-                {
-                    chain.usePoleBone.set(false);
-                    this.ikTargetTransform.setTransform(chain.pole);
-                }
-                else
-                {
-                    chain.useTargetBone.set(false);
-                    this.ikTargetTransform.setTransform(chain.target);
-                }
-                return;
-            }
-        }
-
         this.selectedIKTarget = null;
     }
 
@@ -159,7 +133,6 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
         this.poseEditor.setValuePose(form.pose);
         this.poseEditor.setPose(form.pose.get(), poseGroup);
         this.poseEditor.fillGroups(model == null ? null : model.model, model == null ? null : model.flippedParts, true);
-        this.injectIKVirtualBones(model);
         this.color.setColor(form.color.get().getARGBColor());
 
         this.shapeKeys.removeFromParent();
@@ -180,7 +153,7 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
 
     public UIPropTransform getEditableTransform()
     {
-        return this.selectedIKTarget == null ? this.poseEditor.transform : this.ikTargetTransform;
+        return this.poseEditor.transform;
     }
 
     public Matrix4f getIKTargetOriginMatrix(float transition)
@@ -288,6 +261,5 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
         }
 
         this.poseEditor.selectBone(bone);
-        this.pickGroup(bone);
     }
 }
