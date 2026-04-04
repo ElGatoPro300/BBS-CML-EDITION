@@ -6,6 +6,7 @@ import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.cubic.model.IKChainConfig;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.forms.FormUtilsClient;
+import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.forms.ModelForm;
@@ -25,6 +26,7 @@ import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.ui.utils.StencilFormFramebuffer;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.Pair;
+import mchorse.bbs_mod.utils.StringUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.GlUniform;
@@ -237,6 +239,7 @@ public class UIPickableFormRenderer extends UIFormRenderer
 
         if (!stencil)
         {
+            RenderSystem.disableDepthTest();
             builder.begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
 
             for (IKChainConfig chain : instance.ikChains)
@@ -269,15 +272,32 @@ public class UIPickableFormRenderer extends UIFormRenderer
                 }
 
                 Vector3f target = this.getTargetPoint(chain, cache);
+                Vector3f pole = this.getPolePoint(chain, cache);
 
                 if (previous != null && target != null)
                 {
                     this.line(builder, stack, previous, target, 1F, 1F, 0F, 1F);
                 }
+
+                if (pole != null)
+                {
+                    Vector3f poleAnchor = chain.getBones().size() > 1 ? this.getBonePoint(cache, chain.getBones().get(1)) : previous;
+
+                    if (poleAnchor == null)
+                    {
+                        poleAnchor = previous;
+                    }
+
+                    if (poleAnchor != null)
+                    {
+                        this.line(builder, stack, poleAnchor, pole, 1F, 0.4F, 1F, 1F);
+                    }
+                }
             }
 
             RenderSystem.setShader(GameRenderer::getPositionColorProgram);
             BufferRenderer.drawWithGlobalProgram(builder.end());
+            RenderSystem.enableDepthTest();
         }
 
         builder.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
@@ -328,6 +348,44 @@ public class UIPickableFormRenderer extends UIFormRenderer
                 target.x - s, y, target.z - s,
                 r, g, b, 1F
             );
+
+            Vector3f pole = this.getPolePoint(chain, cache);
+
+            if (pole != null)
+            {
+                float pr = 1F;
+                float pg = 0.4F;
+                float pb = 1F;
+                String poleVirtualBone = UIModelIKPanel.IK_POLE_PREFIX + chain.getId();
+
+                if (stencil && map != null)
+                {
+                    int poleIndex = map.objectIndex++;
+
+                    map.indexMap.put(poleIndex, new Pair<>(this.form, poleVirtualBone));
+                    pr = (poleIndex & 255) / 255F;
+                    pg = ((poleIndex >> 8) & 255) / 255F;
+                    pb = ((poleIndex >> 16) & 255) / 255F;
+                }
+
+                float ps = 0.035F;
+                float py = pole.y;
+
+                Draw.fillQuad(builder, stack,
+                    pole.x - ps, py, pole.z - ps,
+                    pole.x + ps, py, pole.z - ps,
+                    pole.x + ps, py, pole.z + ps,
+                    pole.x - ps, py, pole.z + ps,
+                    pr, pg, pb, 1F
+                );
+                Draw.fillQuad(builder, stack,
+                    pole.x - ps, py, pole.z + ps,
+                    pole.x + ps, py, pole.z + ps,
+                    pole.x + ps, py, pole.z - ps,
+                    pole.x - ps, py, pole.z - ps,
+                    pr, pg, pb, 1F
+                );
+            }
         }
 
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
@@ -374,9 +432,58 @@ public class UIPickableFormRenderer extends UIFormRenderer
         return new Vector3f(chain.target.translate).mul(1F / 16F);
     }
 
+    private Vector3f getPolePoint(IKChainConfig chain, MatrixCache cache)
+    {
+        if (chain.usePoleBone.get() && !chain.poleBone.get().isEmpty())
+        {
+            Matrix4f matrix = this.getBoneMatrix(cache, chain.poleBone.get());
+
+            if (matrix != null)
+            {
+                Vector3f vector = new Vector3f();
+                matrix.getTranslation(vector);
+
+                return vector;
+            }
+        }
+
+        Vector3f point = new Vector3f(chain.pole.translate).mul(1F / 16F);
+        Matrix4f root = this.getBoneMatrix(cache, "");
+
+        if (root != null)
+        {
+            Vector3f world = new Vector3f();
+            root.transformPosition(point, world);
+            point = world;
+        }
+
+        return point.lengthSquared() < 0.0000001F ? null : point;
+    }
+
+    private Vector3f getBonePoint(MatrixCache cache, String bone)
+    {
+        Matrix4f matrix = this.getBoneMatrix(cache, bone);
+
+        if (matrix == null)
+        {
+            return null;
+        }
+
+        Vector3f point = new Vector3f();
+        matrix.getTranslation(point);
+
+        return point;
+    }
+
     private Matrix4f getBoneMatrix(MatrixCache cache, String bone)
     {
         mchorse.bbs_mod.forms.renderers.utils.MatrixCacheEntry entry = cache.get(bone);
+
+        if (entry == null && this.form != null && bone != null && !bone.isEmpty())
+        {
+            String path = StringUtils.combinePaths(FormUtils.getPath(this.form), bone);
+            entry = cache.get(path);
+        }
 
         if (entry == null)
         {

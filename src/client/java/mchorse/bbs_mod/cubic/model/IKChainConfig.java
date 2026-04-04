@@ -22,14 +22,28 @@ public class IKChainConfig extends ValueGroup
     public final ValueBoolean useTargetBone = new ValueBoolean("use_target_bone");
     public final ValueString targetBone = new ValueString("target_bone", "");
     public final ValueString targetParentBone = new ValueString("target_parent_bone", "");
+    public final ValueBoolean usePoleBone = new ValueBoolean("use_pole_bone");
+    public final ValueString poleBone = new ValueString("pole_bone", "");
     public final ValueInt iterations = new ValueInt("iterations", 8);
+    public final ValueBoolean useCCD = new ValueBoolean("use_ccd");
+    public final ValueInt chainLength = new ValueInt("chain_length", 0);
     public final ValueFloat tolerance = new ValueFloat("tolerance", 0.2F);
+    public final ValueFloat positionWeight = new ValueFloat("position_weight", 1F);
+    public final ValueFloat rotationWeight = new ValueFloat("rotation_weight", 1F);
+    public final ValueFloat effectorRotationWeight = new ValueFloat("effector_rotation_weight", 1F);
+    public final ValueFloat blend = new ValueFloat("blend", 1F);
+    public final ValueFloat poleAngleOffset = new ValueFloat("pole_angle_offset", 0F);
+    public final ValueBoolean stretch = new ValueBoolean("stretch");
+    public final ValueFloat stretchLimit = new ValueFloat("stretch_limit", 1.25F);
     public final ValueFloat minX = new ValueFloat("min_x", -180F);
     public final ValueFloat maxX = new ValueFloat("max_x", 180F);
     public final ValueFloat minY = new ValueFloat("min_y", -180F);
     public final ValueFloat maxY = new ValueFloat("max_y", 180F);
     public final ValueFloat minZ = new ValueFloat("min_z", -180F);
     public final ValueFloat maxZ = new ValueFloat("max_z", 180F);
+    public final ValueFloat stiffnessX = new ValueFloat("stiffness_x", 0F);
+    public final ValueFloat stiffnessY = new ValueFloat("stiffness_y", 0F);
+    public final ValueFloat stiffnessZ = new ValueFloat("stiffness_z", 0F);
     public final ValueList<IKJointConstraint> jointConstraints = new ValueList<IKJointConstraint>("joint_constraints")
     {
         @Override
@@ -39,6 +53,7 @@ public class IKChainConfig extends ValueGroup
         }
     };
     public final Transform target = new Transform();
+    public final Transform pole = new Transform();
     public final ValueList<ValueString> bones = new ValueList<ValueString>("bones")
     {
         @Override
@@ -58,14 +73,28 @@ public class IKChainConfig extends ValueGroup
         this.add(this.useTargetBone);
         this.add(this.targetBone);
         this.add(this.targetParentBone);
+        this.add(this.usePoleBone);
+        this.add(this.poleBone);
         this.add(this.iterations);
+        this.add(this.useCCD);
+        this.add(this.chainLength);
         this.add(this.tolerance);
+        this.add(this.positionWeight);
+        this.add(this.rotationWeight);
+        this.add(this.effectorRotationWeight);
+        this.add(this.blend);
+        this.add(this.poleAngleOffset);
+        this.add(this.stretch);
+        this.add(this.stretchLimit);
         this.add(this.minX);
         this.add(this.maxX);
         this.add(this.minY);
         this.add(this.maxY);
         this.add(this.minZ);
         this.add(this.maxZ);
+        this.add(this.stiffnessX);
+        this.add(this.stiffnessY);
+        this.add(this.stiffnessZ);
         this.add(this.jointConstraints);
         this.add(this.bones);
     }
@@ -75,9 +104,12 @@ public class IKChainConfig extends ValueGroup
     {
         MapType data = (MapType) super.toData();
         Transform transform = this.target.copy();
+        Transform poleTransform = this.pole.copy();
 
         transform.toDeg();
+        poleTransform.toDeg();
         data.put("target_transform", transform.toData());
+        data.put("pole_transform", poleTransform.toData());
 
         return data;
     }
@@ -98,6 +130,12 @@ public class IKChainConfig extends ValueGroup
         {
             this.target.fromData(map.getMap("target_transform"));
             this.target.toRad();
+        }
+
+        if (map.has("pole_transform", BaseType.TYPE_MAP))
+        {
+            this.pole.fromData(map.getMap("pole_transform"));
+            this.pole.toRad();
         }
     }
 
