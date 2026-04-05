@@ -388,7 +388,7 @@ public class Batcher2D
 
     public void textShadow(String label, float x, float y)
     {
-        this.textShadow(label, x, y, Colors.WHITE);
+        this.text(label, x, y, Colors.WHITE, true);
     }
 
     public void textShadow(String label, float x, float y, int color)

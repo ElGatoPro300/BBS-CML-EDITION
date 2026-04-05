@@ -165,6 +165,11 @@ public class BBSRendering
         return customSize;
     }
 
+    public static boolean isFramebufferToggled()
+    {
+        return toggleFramebuffer;
+    }
+
     public static void setCustomSize(boolean customSize)
     {
         setCustomSize(customSize, 0, 0);
@@ -313,14 +318,7 @@ public class BBSRendering
         }
         else
         {
-            if (clientFramebuffer != null)
-            {
-                reassignFramebuffer(clientFramebuffer);
-            }
-            else
-            {
-                reassignFramebuffer(mc.getFramebuffer());
-            }
+            reassignFramebuffer(clientFramebuffer);
 
             if (width != 0)
             {

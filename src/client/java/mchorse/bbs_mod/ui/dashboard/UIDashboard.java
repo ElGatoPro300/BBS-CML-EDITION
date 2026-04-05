@@ -14,7 +14,6 @@ import mchorse.bbs_mod.events.register.RegisterDashboardPanelsEvent;
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.resources.Link;
-import mchorse.bbs_mod.settings.Settings;
 import mchorse.bbs_mod.settings.ui.UISettingsOverlayPanel;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
@@ -32,7 +31,6 @@ import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.UIRenderingContext;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
-import mchorse.bbs_mod.ui.framework.elements.overlay.UIFnafOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIMessageOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.model.UIModelPanel;
@@ -153,25 +151,6 @@ public class UIDashboard extends UIBaseMenu
                 UIKeys.DASHBOARD_OPTIFINE_EW_TITLE,
                 UIKeys.DASHBOARD_OPTIFINE_EW_DESCRIPTION
             ));
-        }
-
-        if (!BBSSettings.shownFnafPopup.get())
-        {
-            MinecraftClient mc = MinecraftClient.getInstance();
-
-            if (mc.player != null && mc.player.getUuidAsString().equals("62151594-754f-4f81-a583-dc9459164d01"))
-            {
-                UIOverlay.addOverlay(this.context, new UIFnafOverlayPanel(UIKeys.DASHBOARD_FNAF_POPUP, UIKeys.DASHBOARD_FNAF_POPUP_SMALL), 320, 240);
-
-                BBSSettings.shownFnafPopup.set(true);
-
-                Settings settings = BBSMod.getSettings().modules.get("bbs");
-
-                if (settings != null)
-                {
-                    settings.saveLater();
-                }
-            }
         }
     }
 

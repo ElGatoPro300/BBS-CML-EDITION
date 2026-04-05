@@ -110,6 +110,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     /* Icon bar buttons */
     public UIIcon openHistory;
+    public UIIcon openRenderQueue;
     public UIIcon toggleHorizontal;
     public UIIcon layoutLock;
     public UIIcon openCameraEditor;
@@ -297,6 +298,12 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         });
         this.openHistory.tooltip(UIKeys.FILM_OPEN_HISTORY, Direction.LEFT);
 
+        this.openRenderQueue = new UIIcon(Icons.FILM, (b) ->
+        {
+            UIOverlay.addOverlay(this.getContext(), new UIRenderQueueOverlayPanel(this), 500, 0.65F);
+        });
+        this.openRenderQueue.tooltip(UIKeys.FILM_OPEN_RENDER_QUEUE, Direction.LEFT);
+
         this.openOverlay.tooltip(UIKeys.FILM_OPEN_MANAGER, Direction.LEFT);
         this.saveIcon.tooltip(UIKeys.FILM_SAVE, Direction.LEFT);
 
@@ -326,7 +333,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.openActionEditor.tooltip(UIKeys.FILM_OPEN_ACTION_EDITOR, Direction.LEFT);
 
         /* Setup elements */
-        this.iconBar.add(this.openHistory, this.openCameraEditor.marginTop(9), this.openReplayEditor, this.openActionEditor);
+        this.iconBar.add(this.openHistory, this.openRenderQueue, this.openCameraEditor.marginTop(9), this.openReplayEditor, this.openActionEditor);
 
         UIElement bottomIcons = new UIElement();
 
