@@ -27,11 +27,20 @@ public class UIOverlayPanel extends UIElement
     public UIElement content;
 
     private boolean moving;
+    private boolean resizing;
+    private boolean resizable;
     private int lastX;
     private int lastY;
+    private int resizeMargin = 12;
+    private int minWidth = 180;
+    private int minHeight = 120;
+    private int resizeMinWidth = 180;
+    private int resizeMinHeight = 120;
 
     private int initialOffsetX;
     private int initialOffsetY;
+    private int initialWidthOffset;
+    private int initialHeightOffset;
 
     public UIOverlayPanel(IKey title)
     {
@@ -60,6 +69,39 @@ public class UIOverlayPanel extends UIElement
         this.initialOffsetY = y;
     }
 
+    public void setInitialSizeOffset(int w, int h)
+    {
+        this.initialWidthOffset = w;
+        this.initialHeightOffset = h;
+    }
+
+    public UIOverlayPanel resizable()
+    {
+        return this.resizable(true);
+    }
+
+    public UIOverlayPanel resizable(boolean value)
+    {
+        this.resizable = value;
+
+        return this;
+    }
+
+    public UIOverlayPanel minSize(int width, int height)
+    {
+        this.minWidth = Math.max(60, width);
+        this.minHeight = Math.max(60, height);
+
+        return this;
+    }
+
+    public UIOverlayPanel resizeMargin(int margin)
+    {
+        this.resizeMargin = Math.max(6, margin);
+
+        return this;
+    }
+
     public void onClose(Consumer<UIOverlayCloseEvent> callback)
     {
         this.events.register(UIOverlayCloseEvent.class, callback);
@@ -81,6 +123,30 @@ public class UIOverlayPanel extends UIElement
     @Override
     public boolean subMouseClicked(UIContext context)
     {
+        if (this.isResizeHandleInside(context))
+        {
+            if (Window.isCtrlPressed())
+            {
+                this.flex.w.offset = this.initialWidthOffset;
+                this.flex.h.offset = this.initialHeightOffset;
+
+                if (this.getParent() != null)
+                {
+                    this.getParent().resize();
+                }
+
+                return true;
+            }
+
+            this.resizing = true;
+            this.resizeMinWidth = Math.min(this.minWidth, this.area.w);
+            this.resizeMinHeight = Math.min(this.minHeight, this.area.h);
+            this.lastX = context.mouseX;
+            this.lastY = context.mouseY;
+
+            return true;
+        }
+
         if (this.title.area.isInside(context))
         {
             if (Window.isCtrlPressed())
@@ -88,7 +154,10 @@ public class UIOverlayPanel extends UIElement
                 this.flex.x.offset = this.initialOffsetX;
                 this.flex.y.offset = this.initialOffsetY;
 
-                this.getParent().resize();
+                if (this.getParent() != null)
+                {
+                    this.getParent().resize();
+                }
 
                 return true;
             }
@@ -106,6 +175,7 @@ public class UIOverlayPanel extends UIElement
     @Override
     public boolean subMouseReleased(UIContext context)
     {
+        this.resizing = false;
         this.moving = super.subMouseReleased(context);
 
         return false;
@@ -139,6 +209,36 @@ public class UIOverlayPanel extends UIElement
     @Override
     public void render(UIContext context)
     {
+        if (this.resizing && (context.mouseX != this.lastX || context.mouseY != this.lastY))
+        {
+            int dx = context.mouseX - this.lastX;
+            int dy = context.mouseY - this.lastY;
+            int maxW = Integer.MAX_VALUE;
+            int maxH = Integer.MAX_VALUE;
+
+            if (this.getParent() != null)
+            {
+                maxW = this.getParent().area.ex() - this.area.x;
+                maxH = this.getParent().area.ey() - this.area.y;
+            }
+
+            int desiredW = Math.min(maxW, Math.max(this.resizeMinWidth, this.area.w + dx));
+            int desiredH = Math.min(maxH, Math.max(this.resizeMinHeight, this.area.h + dy));
+            int deltaW = desiredW - this.area.w;
+            int deltaH = desiredH - this.area.h;
+
+            this.flex.w.offset += deltaW;
+            this.flex.h.offset += deltaH;
+
+            if (this.getParent() != null)
+            {
+                this.getParent().resize();
+            }
+
+            this.lastX = context.mouseX;
+            this.lastY = context.mouseY;
+        }
+
         if (this.moving && (context.mouseX != this.lastX || context.mouseY != this.lastY))
         {
             int dx = context.mouseX - this.lastX;
@@ -181,6 +281,22 @@ public class UIOverlayPanel extends UIElement
         {
             context.batcher.icon(Icons.ALL_DIRECTIONS, Colors.GRAY, this.area.mx(), this.title.area.my(), 0.5F, 0.5F);
         }
+
+        if (this.resizable)
+        {
+            int resizeColor = this.isResizeHandleInside(context) ? Colors.WHITE : Colors.GRAY;
+
+            context.batcher.box(this.area.ex() - 9, this.area.ey() - 1, this.area.ex() - 1, this.area.ey(), resizeColor);
+            context.batcher.box(this.area.ex() - 1, this.area.ey() - 9, this.area.ex(), this.area.ey() - 1, resizeColor);
+        }
+    }
+
+    private boolean isResizeHandleInside(UIContext context)
+    {
+        return this.resizable
+            && this.area.isInside(context)
+            && context.mouseX >= this.area.ex() - this.resizeMargin
+            && context.mouseY >= this.area.ey() - this.resizeMargin;
     }
 
     public void onClose()

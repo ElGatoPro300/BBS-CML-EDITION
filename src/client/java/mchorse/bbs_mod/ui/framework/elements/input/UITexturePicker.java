@@ -150,6 +150,7 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
         }
 
         UIListOverlayPanel panel = new UIListOverlayPanel(UIKeys.TEXTURE_FIND_TITLE, callback);
+        panel.resizable().minSize(360, 240);
 
         panel.addValues(list);
         panel.list.list.sort();
