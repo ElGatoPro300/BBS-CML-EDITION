@@ -17,9 +17,11 @@ import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.render.Tessellator;
+import net.minecraft.client.texture.AbstractTexture;
 import net.minecraft.client.texture.NativeImage;
 import net.minecraft.client.texture.NativeImageBackedTexture;
 import net.minecraft.client.render.VertexFormats;
+import net.minecraft.resource.ResourceManager;
 import net.minecraft.util.Identifier;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL30;
@@ -27,14 +29,19 @@ import org.lwjgl.opengl.GL30;
 import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Supplier;
 
 public class Batcher2D
 {
     private static final Matrix4f GUI_MATRIX = new Matrix4f();
     private static final Map<String, Identifier> ATLAS_IDS = new HashMap<>();
+    private static final Set<String> ATLAS_FAILED = new HashSet<>();
+    private static final Map<Integer, Identifier> RAW_TEXTURE_IDS = new HashMap<>();
     private static FontRenderer fontRenderer = new FontRenderer();
 
     private DrawContext context;
@@ -419,12 +426,120 @@ public class Batcher2D
             return;
         }
 
+        if (this.drawTextureRawByContext(texture, color, x, y, w, h, u1, v1, u2, v2, textureW, textureH))
+        {
+            return;
+        }
+
         GlStateManager._activeTexture(GL30.GL_TEXTURE0);
         GlStateManager._bindTexture(texture);
 
         BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_TEXTURE_COLOR);
         this.fillTexturedBox(builder, this.resolveMatrix(), color, x, y, w, h, u1, v1, u2, v2, textureW, textureH);
-        RenderLayers.solid().draw(builder.end());
+        RenderLayers.cutout().draw(builder.end());
+    }
+
+    private boolean drawTextureRawByContext(int texture, int color, float x, float y, float w, float h, float u1, float v1, float u2, float v2, int textureW, int textureH)
+    {
+        Identifier rawId = this.getOrCreateRawTextureId(texture);
+
+        if (rawId != null && this.drawTextureIdentifier(rawId, color, x, y, w, h, u1, v1, u2, v2, textureW, textureH))
+        {
+            return true;
+        }
+
+        int left = Math.round(x);
+        int top = Math.round(y);
+        int width = Math.round(w);
+        int height = Math.round(h);
+        int u = Math.round(u1);
+        int v = Math.round(v1);
+        int regionW = Math.round(u2 - u1);
+        int regionH = Math.round(v2 - v1);
+
+        if (regionW == 0) regionW = u2 >= u1 ? 1 : -1;
+        if (regionH == 0) regionH = v2 >= v1 ? 1 : -1;
+
+        try
+        {
+            this.invokeBest(this.context, "drawTexture",
+                RenderPipelines.GUI_TEXTURED, texture, left, top, (float) u, (float) v, width, height, textureW, textureH, color);
+            return true;
+        }
+        catch (Exception ignored)
+        {
+        }
+
+        try
+        {
+            this.invokeBest(this.context, "drawTexture",
+                RenderPipelines.GUI_TEXTURED, texture, left, top, u, v, width, height, textureW, textureH, color);
+            return true;
+        }
+        catch (Exception ignored)
+        {
+        }
+
+        try
+        {
+            this.invokeBest(this.context, "drawTexture",
+                RenderPipelines.GUI_TEXTURED, texture, left, top, u, v, width, height, regionW, regionH, textureW, textureH);
+            return true;
+        }
+        catch (Exception ignored)
+        {
+        }
+
+        try
+        {
+            this.invokeBest(this.context, "drawTexture",
+                RenderPipelines.GUI_TEXTURED, texture, left, top, (float) u, (float) v, width, height, regionW, regionH, textureW, textureH);
+            return true;
+        }
+        catch (Exception ignored)
+        {
+        }
+
+        try
+        {
+            this.invokeBest(this.context, "drawTexture",
+                texture, left, top, (float) u, (float) v, width, height, textureW, textureH, color);
+            return true;
+        }
+        catch (Exception ignored)
+        {
+        }
+
+        try
+        {
+            this.invokeBest(this.context, "drawTexture",
+                texture, left, top, u, v, width, height, textureW, textureH, color);
+            return true;
+        }
+        catch (Exception ignored)
+        {
+        }
+
+        try
+        {
+            this.invokeBest(this.context, "drawTexture",
+                texture, left, top, u, v, width, height, regionW, regionH, textureW, textureH);
+            return true;
+        }
+        catch (Exception ignored)
+        {
+        }
+
+        try
+        {
+            this.invokeBest(this.context, "drawTexture",
+                texture, left, top, (float) u, (float) v, width, height, regionW, regionH, textureW, textureH);
+            return true;
+        }
+        catch (Exception ignored)
+        {
+            return false;
+        }
     }
 
     /* Repeatable textured box */
@@ -469,7 +584,7 @@ public class Batcher2D
             this.fillTexturedBox(builder, matrix, color, xx, yy, xw, yh, u, v, u + xw, v + yh, tw, th);
         }
 
-        RenderLayers.solid().draw(builder.end());
+        RenderLayers.cutout().draw(builder.end());
     }
 
     /* Text with default font */
@@ -599,11 +714,17 @@ public class Batcher2D
 
     private Identifier getOrCreateAtlasId(Link link)
     {
-        Identifier cached = ATLAS_IDS.get(link.toString());
+        String key = link.toString();
+        Identifier cached = ATLAS_IDS.get(key);
 
         if (cached != null)
         {
             return cached;
+        }
+
+        if (ATLAS_FAILED.contains(key))
+        {
+            return null;
         }
 
         try (InputStream in0 = BBSMod.getProvider().getAsset(link))
@@ -622,19 +743,43 @@ public class Batcher2D
 
             NativeImage img = NativeImage.read(in);
             NativeImageBackedTexture tex = new NativeImageBackedTexture(() -> "bbs_icons", img);
-            String safe = link.path.replace('/', '_').replace('\\', '_');
+            String safe = sanitizeIdentifierPath(link.path);
             Identifier id = Identifier.of("bbs_dyn", "atlas_" + safe);
 
             MinecraftClient.getInstance().getTextureManager().registerTexture(id, tex);
-            ATLAS_IDS.put(link.toString(), id);
+            ATLAS_IDS.put(key, id);
 
             return id;
         }
         catch (Exception e)
         {
-            e.printStackTrace();
+            ATLAS_FAILED.add(key);
             return null;
         }
+    }
+
+    private String sanitizeIdentifierPath(String path)
+    {
+        StringBuilder builder = new StringBuilder(path.length() + 16);
+        String lower = path.toLowerCase(Locale.ROOT);
+
+        for (int i = 0; i < lower.length(); i++)
+        {
+            char c = lower.charAt(i);
+            boolean valid = (c >= 'a' && c <= 'z') ||
+                (c >= '0' && c <= '9') ||
+                c == '/' || c == '.' || c == '_' || c == '-';
+
+            builder.append(valid ? c : '_');
+        }
+
+        if (builder.length() == 0)
+        {
+            builder.append("texture");
+        }
+
+        builder.append('_').append(Integer.toHexString(path.hashCode()));
+        return builder.toString();
     }
 
     private boolean drawTextureIdentifier(Identifier id, int color, float x, float y, float w, float h, float u1, float v1, float u2, float v2, int textureW, int textureH)
@@ -643,10 +788,13 @@ public class Batcher2D
         int top = Math.round(y);
         int width = Math.round(w);
         int height = Math.round(h);
-        int u = Math.round(Math.min(u1, u2));
-        int v = Math.round(Math.min(v1, v2));
-        int regionW = Math.round(Math.abs(u2 - u1));
-        int regionH = Math.round(Math.abs(v2 - v1));
+        int u = Math.round(u1);
+        int v = Math.round(v1);
+        int regionW = Math.round(u2 - u1);
+        int regionH = Math.round(v2 - v1);
+
+        if (regionW == 0) regionW = u2 >= u1 ? 1 : -1;
+        if (regionH == 0) regionH = v2 >= v1 ? 1 : -1;
 
         if (width == 0 || height == 0)
         {
@@ -692,6 +840,28 @@ public class Batcher2D
         catch (Exception ignored)
         {
             return false;
+        }
+    }
+
+    private Identifier getOrCreateRawTextureId(int texture)
+    {
+        Identifier cached = RAW_TEXTURE_IDS.get(texture);
+
+        if (cached != null)
+        {
+            return cached;
+        }
+
+        try
+        {
+            Identifier id = Identifier.of("bbs_dyn", "raw_" + Integer.toHexString(texture));
+            MinecraftClient.getInstance().getTextureManager().registerTexture(id, new RawGlTexture(texture));
+            RAW_TEXTURE_IDS.put(texture, id);
+            return id;
+        }
+        catch (Exception ignored)
+        {
+            return null;
         }
     }
 
@@ -748,6 +918,25 @@ public class Batcher2D
         }
 
         throw new NoSuchMethodException(methodName);
+    }
+
+    private static class RawGlTexture extends AbstractTexture
+    {
+        private final int glId;
+
+        public RawGlTexture(int glId)
+        {
+            this.glId = glId;
+        }
+
+        public void load(ResourceManager manager)
+        {
+        }
+
+        public int getGlId()
+        {
+            return this.glId;
+        }
     }
 
     private int mixColor(int a, int b, float t)

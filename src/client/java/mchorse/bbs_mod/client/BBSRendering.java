@@ -3,6 +3,7 @@ package mchorse.bbs_mod.client;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
+import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.blocks.entities.ModelBlockEntity;
 import mchorse.bbs_mod.client.renderer.ModelBlockEntityRenderer;
 import mchorse.bbs_mod.client.renderer.TriggerBlockEntityRenderer;
@@ -54,8 +55,11 @@ import net.minecraft.client.util.math.MatrixStack;
 import org.joml.Matrix4f;
 import com.mojang.blaze3d.systems.VertexSorter;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL30;
 
 import java.io.File;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -93,6 +97,10 @@ public class BBSRendering
     private static Texture texture;
     private static CloudRenderMode cachedCloudRenderMode;
     private static boolean cloudsForced;
+    private static Field framebufferIdField;
+    private static Method framebufferIdMethod;
+    private static Field colorAttachmentField;
+    private static Method colorAttachmentMethod;
 
     public static int getMotionBlur()
     {
@@ -427,12 +435,232 @@ public class BBSRendering
 
     public static void onRenderBeforeScreen()
     {
+        if (!customSize || framebuffer == null)
+        {
+            return;
+        }
+
+        int fw = framebuffer.textureWidth;
+        int fh = framebuffer.textureHeight;
+
+        if (fw <= 0 || fh <= 0)
+        {
+            toggleFramebuffer(false);
+            return;
+        }
+
         Texture texture = getTexture();
 
         texture.bind();
-        texture.setSize(framebuffer.textureWidth, framebuffer.textureHeight);
-        GL11.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0, framebuffer.textureWidth, framebuffer.textureHeight);
+        if (texture.width != fw || texture.height != fh)
+        {
+            texture.setSize(fw, fh);
+        }
+
+        int readBuffer = GL11.glGetInteger(GL30.GL_READ_FRAMEBUFFER_BINDING);
+        int sourceFramebufferId = getFramebufferId(framebuffer);
+
+        if (sourceFramebufferId > 0)
+        {
+            GlStateManager._glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, sourceFramebufferId);
+        }
+
+        GL11.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0, fw, fh);
+
+        if (sourceFramebufferId > 0)
+        {
+            GlStateManager._glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, readBuffer);
+        }
+
         toggleFramebuffer(false);
+    }
+
+    private static int getFramebufferId(Framebuffer framebuffer)
+    {
+        try
+        {
+            if (framebufferIdMethod != null)
+            {
+                Object value = framebufferIdMethod.invoke(framebuffer);
+
+                if (value instanceof Integer integer)
+                {
+                    return integer;
+                }
+            }
+        }
+        catch (Exception ignored)
+        {
+        }
+
+        try
+        {
+            if (framebufferIdMethod == null)
+            {
+                for (String name : new String[]{"getFramebufferId", "getFbo"})
+                {
+                    try
+                    {
+                        Method method = framebuffer.getClass().getMethod(name);
+                        method.setAccessible(true);
+                        framebufferIdMethod = method;
+
+                        Object value = method.invoke(framebuffer);
+                        if (value instanceof Integer integer)
+                        {
+                            return integer;
+                        }
+                    }
+                    catch (Exception ignored)
+                    {
+                    }
+                }
+            }
+        }
+        catch (Exception ignored)
+        {
+        }
+
+        try
+        {
+            if (framebufferIdField != null)
+            {
+                Object value = framebufferIdField.get(framebuffer);
+                if (value instanceof Integer integer)
+                {
+                    return integer;
+                }
+            }
+        }
+        catch (Exception ignored)
+        {
+        }
+
+        try
+        {
+            if (framebufferIdField == null)
+            {
+                for (String name : new String[]{"fbo", "framebufferId"})
+                {
+                    try
+                    {
+                        Field field = framebuffer.getClass().getDeclaredField(name);
+                        field.setAccessible(true);
+                        framebufferIdField = field;
+
+                        Object value = field.get(framebuffer);
+                        if (value instanceof Integer integer)
+                        {
+                            return integer;
+                        }
+                    }
+                    catch (Exception ignored)
+                    {
+                    }
+                }
+            }
+        }
+        catch (Exception ignored)
+        {
+        }
+
+        return -1;
+    }
+
+    public static int getFramebufferColorAttachment()
+    {
+        if (framebuffer == null)
+        {
+            return -1;
+        }
+
+        try
+        {
+            if (colorAttachmentMethod != null)
+            {
+                Object value = colorAttachmentMethod.invoke(framebuffer);
+                if (value instanceof Integer integer)
+                {
+                    return integer;
+                }
+            }
+        }
+        catch (Exception ignored)
+        {
+        }
+
+        try
+        {
+            if (colorAttachmentMethod == null)
+            {
+                for (String name : new String[]{"getColorAttachment", "getColorAttachmentTexture"})
+                {
+                    try
+                    {
+                        Method method = framebuffer.getClass().getMethod(name);
+                        method.setAccessible(true);
+                        colorAttachmentMethod = method;
+
+                        Object value = method.invoke(framebuffer);
+                        if (value instanceof Integer integer)
+                        {
+                            return integer;
+                        }
+                    }
+                    catch (Exception ignored)
+                    {
+                    }
+                }
+            }
+        }
+        catch (Exception ignored)
+        {
+        }
+
+        try
+        {
+            if (colorAttachmentField != null)
+            {
+                Object value = colorAttachmentField.get(framebuffer);
+                if (value instanceof Integer integer)
+                {
+                    return integer;
+                }
+            }
+        }
+        catch (Exception ignored)
+        {
+        }
+
+        try
+        {
+            if (colorAttachmentField == null)
+            {
+                for (String name : new String[]{"colorAttachment", "colorAttachmentTexture"})
+                {
+                    try
+                    {
+                        Field field = framebuffer.getClass().getDeclaredField(name);
+                        field.setAccessible(true);
+                        colorAttachmentField = field;
+
+                        Object value = field.get(framebuffer);
+                        if (value instanceof Integer integer)
+                        {
+                            return integer;
+                        }
+                    }
+                    catch (Exception ignored)
+                    {
+                    }
+                }
+            }
+        }
+        catch (Exception ignored)
+        {
+        }
+
+        return -1;
     }
 
     public static void onRenderChunkLayer(MatrixStack stack)
