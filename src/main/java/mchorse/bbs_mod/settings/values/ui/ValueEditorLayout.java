@@ -29,6 +29,7 @@ public class ValueEditorLayout extends BaseValue
     private float stateEditorSizeV = 0.25F;
     private boolean middleLayoutInverted;
     private boolean verticalLayoutInverted;
+    private boolean horizontalLayoutInverted;
     private EditorLayoutNode filmLayoutRoot = EditorLayoutNode.defaultFilmLayout();
     private final List<EditorLayoutNode.SplitterNode> filmSplitters = new ArrayList<>();
     /* private float newFilmSidebarSize = 0.25F;
@@ -365,6 +366,16 @@ public class ValueEditorLayout extends BaseValue
         return this.split(false, topWidth, panelPreview, trailing);
     }
 
+    public void setHorizontalLayoutInverted(boolean horizontalLayoutInverted)
+    {
+        BaseValue.edit(this, (v) -> this.horizontalLayoutInverted = horizontalLayoutInverted);
+    }
+
+    public boolean isHorizontalLayoutInverted()
+    {
+        return this.horizontalLayoutInverted;
+    }
+
     @Override
     public BaseType toData()
     {
@@ -384,6 +395,7 @@ public class ValueEditorLayout extends BaseValue
         data.putFloat("state_editor_size_v", this.stateEditorSizeV);
         data.putBool("middle_layout_inverted", this.middleLayoutInverted);
         data.putBool("vertical_layout_inverted", this.verticalLayoutInverted);
+        data.putBool("horizontal_layout_inverted", this.horizontalLayoutInverted);
         data.put("film_layout", this.filmLayoutRoot.toData());
         /* data.putFloat("new_film_sidebar_size", this.newFilmSidebarSize);
         data.putFloat("new_film_main_size_h", this.newFilmMainSizeH);
@@ -421,6 +433,8 @@ public class ValueEditorLayout extends BaseValue
             this.stateEditorSizeV = map.getFloat("state_editor_size_v", 0.25F);
             this.middleLayoutInverted = map.getBool("middle_layout_inverted", false);
             this.verticalLayoutInverted = map.getBool("vertical_layout_inverted", false);
+            this.horizontalLayoutInverted = map.getBool("horizontal_layout_inverted", false);
+
             if (map.has("film_layout"))
             {
                 this.filmLayoutRoot = EditorLayoutNode.fromData(map.get("film_layout"));
