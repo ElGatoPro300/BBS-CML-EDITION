@@ -2,8 +2,10 @@ package mchorse.bbs_mod.ui.framework.elements.utils;
 
 import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.vertex.VertexFormat;
+import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.graphics.texture.Texture;
+import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
@@ -15,17 +17,24 @@ import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.render.Tessellator;
+import net.minecraft.client.texture.NativeImage;
+import net.minecraft.client.texture.NativeImageBackedTexture;
 import net.minecraft.client.render.VertexFormats;
+import net.minecraft.util.Identifier;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL30;
 
+import java.io.InputStream;
 import java.lang.reflect.Method;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Supplier;
 
 public class Batcher2D
 {
     private static final Matrix4f GUI_MATRIX = new Matrix4f();
+    private static final Map<String, Identifier> ATLAS_IDS = new HashMap<>();
     private static FontRenderer fontRenderer = new FontRenderer();
 
     private DrawContext context;
@@ -147,15 +156,15 @@ public class Batcher2D
         this.box(left, top, right, bottom, color);
     }
 
-    public void fillRect(BufferBuilder builder, Object matrix4f, float x, float y, float w, float h, int color1, int color2, int color3, int color4)
+    public void fillRect(BufferBuilder builder, Matrix4f matrix4f, float x, float y, float w, float h, int color1, int color2, int color3, int color4)
     {
-        Matrix4f matrix = matrix4f instanceof Matrix4f ? (Matrix4f) matrix4f : GUI_MATRIX;
-        builder.vertex(matrix, x, y + h, 0F).color(color3);
-        builder.vertex(matrix, x + w, y + h, 0F).color(color4);
-        builder.vertex(matrix, x + w, y, 0F).color(color2);
-        builder.vertex(matrix, x, y + h, 0F).color(color3);
-        builder.vertex(matrix, x + w, y, 0F).color(color2);
-        builder.vertex(matrix, x, y, 0F).color(color1);
+        /* c1 ---- c2
+         * |        |
+         * c3 ---- c4 */
+        builder.vertex(matrix4f, x, y, 0).color(color1);
+        builder.vertex(matrix4f, x, y + h, 0).color(color3);
+        builder.vertex(matrix4f, x + w, y + h, 0).color(color4);
+        builder.vertex(matrix4f, x + w, y, 0).color(color2);
     }
 
     public void dropShadow(int left, int top, int right, int bottom, int offset, int opaque, int shadow)
@@ -199,9 +208,9 @@ public class Batcher2D
 
         for (int iy = -radius; iy <= radius; iy++)
         {
-            float normalized = Math.abs(iy) / (float) radius;
-            int color = this.mixColor(opaque, shadow, normalized);
             int width = (int) Math.sqrt(radius * radius - iy * iy);
+            float t = Math.abs(iy) / (float) radius;
+            int color = this.mixColor(opaque, shadow, t);
             this.context.fill(RenderPipelines.GUI, x - width, y + iy, x + width + 1, y + iy + 1, color);
         }
     }
@@ -224,7 +233,8 @@ public class Batcher2D
         for (int iy = -radius; iy <= radius; iy++)
         {
             int outerWidth = (int) Math.sqrt(radius * radius - iy * iy);
-            int innerWidth = (int) Math.sqrt(offset * offset - Math.min(offset * offset, iy * iy));
+            int clamped = Math.min(offset * offset, iy * iy);
+            int innerWidth = (int) Math.sqrt(offset * offset - clamped);
 
             if (innerWidth > 0)
             {
@@ -359,6 +369,16 @@ public class Batcher2D
 
     public void texturedBox(Texture texture, int color, float x, float y, float w, float h, float u1, float v1, float u2, float v2, int textureW, int textureH)
     {
+        Link link = this.findLinkForTexture(texture);
+        if (link != null)
+        {
+            Identifier id = this.getOrCreateAtlasId(link);
+            if (id != null && this.drawTextureIdentifier(id, color, x, y, w, h, u1, v1, u2, v2, textureW, textureH))
+            {
+                return;
+            }
+        }
+
         this.texturedBox(texture.id, color, x, y, w, h, u1, v1, u2, v2, textureW, textureH);
     }
 
@@ -432,6 +452,7 @@ public class Batcher2D
         float fillerX = w - (countX - 1) * tileW;
         float fillerY = h - (countY - 1) * tileH;
 
+        Matrix4f matrix = this.resolveMatrix();
         BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_TEXTURE_COLOR);
         GlStateManager._activeTexture(GL30.GL_TEXTURE0);
         GlStateManager._bindTexture(texture.id);
@@ -445,7 +466,7 @@ public class Batcher2D
             float xw = ix == countX - 1 ? fillerX : tileW;
             float yh = iy == countY - 1 ? fillerY : tileH;
 
-            this.fillTexturedBox(builder, this.resolveMatrix(), color, xx, yy, xw, yh, u, v, u + xw, v + yh, tw, th);
+            this.fillTexturedBox(builder, matrix, color, xx, yy, xw, yh, u, v, u + xw, v + yh, tw, th);
         }
 
         RenderLayers.solid().draw(builder.end());
@@ -561,6 +582,172 @@ public class Batcher2D
         }
 
         return GUI_MATRIX;
+    }
+
+    private Link findLinkForTexture(Texture texture)
+    {
+        for (Map.Entry<Link, Texture> entry : BBSModClient.getTextures().textures.entrySet())
+        {
+            if (entry.getValue() == texture)
+            {
+                return entry.getKey();
+            }
+        }
+
+        return null;
+    }
+
+    private Identifier getOrCreateAtlasId(Link link)
+    {
+        Identifier cached = ATLAS_IDS.get(link.toString());
+
+        if (cached != null)
+        {
+            return cached;
+        }
+
+        try (InputStream in0 = BBSMod.getProvider().getAsset(link))
+        {
+            InputStream in = in0;
+
+            if (in == null && "assets".equals(link.source) && !link.path.startsWith("assets/"))
+            {
+                in = BBSMod.getProvider().getAsset(Link.assets("assets/" + link.path));
+            }
+
+            if (in == null)
+            {
+                return null;
+            }
+
+            NativeImage img = NativeImage.read(in);
+            NativeImageBackedTexture tex = new NativeImageBackedTexture(() -> "bbs_icons", img);
+            String safe = link.path.replace('/', '_').replace('\\', '_');
+            Identifier id = Identifier.of("bbs_dyn", "atlas_" + safe);
+
+            MinecraftClient.getInstance().getTextureManager().registerTexture(id, tex);
+            ATLAS_IDS.put(link.toString(), id);
+
+            return id;
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private boolean drawTextureIdentifier(Identifier id, int color, float x, float y, float w, float h, float u1, float v1, float u2, float v2, int textureW, int textureH)
+    {
+        int left = Math.round(x);
+        int top = Math.round(y);
+        int width = Math.round(w);
+        int height = Math.round(h);
+        int u = Math.round(Math.min(u1, u2));
+        int v = Math.round(Math.min(v1, v2));
+        int regionW = Math.round(Math.abs(u2 - u1));
+        int regionH = Math.round(Math.abs(v2 - v1));
+
+        if (width == 0 || height == 0)
+        {
+            return true;
+        }
+
+        try
+        {
+            this.invokeBest(this.context, "drawTexture",
+                RenderPipelines.GUI_TEXTURED, id, left, top, (float) u, (float) v, width, height, textureW, textureH, color);
+            return true;
+        }
+        catch (Exception ignored)
+        {
+        }
+
+        try
+        {
+            this.invokeBest(this.context, "drawTexture",
+                RenderPipelines.GUI_TEXTURED, id, left, top, u, v, width, height, textureW, textureH, color);
+            return true;
+        }
+        catch (Exception ignored)
+        {
+        }
+
+        try
+        {
+            this.invokeBest(this.context, "drawTexture",
+                RenderPipelines.GUI_TEXTURED, id, left, top, u, v, width, height, regionW, regionH, textureW, textureH);
+            return true;
+        }
+        catch (Exception ignored)
+        {
+        }
+
+        try
+        {
+            this.invokeBest(this.context, "drawTexture",
+                RenderPipelines.GUI_TEXTURED, id, left, top, (float) u, (float) v, width, height, regionW, regionH, textureW, textureH);
+            return true;
+        }
+        catch (Exception ignored)
+        {
+            return false;
+        }
+    }
+
+    private Object invokeBest(Object target, String methodName, Object... args) throws Exception
+    {
+        Method[] methods = target.getClass().getMethods();
+
+        for (Method method : methods)
+        {
+            if (!method.getName().equals(methodName))
+            {
+                continue;
+            }
+
+            Class<?>[] params = method.getParameterTypes();
+            if (params.length != args.length)
+            {
+                continue;
+            }
+
+            boolean ok = true;
+
+            for (int i = 0; i < params.length; i++)
+            {
+                if (args[i] == null)
+                {
+                    continue;
+                }
+
+                Class<?> argClass = args[i].getClass();
+                Class<?> paramClass = params[i];
+
+                if (paramClass.isPrimitive())
+                {
+                    if ((paramClass == int.class && argClass == Integer.class) ||
+                        (paramClass == float.class && argClass == Float.class) ||
+                        (paramClass == boolean.class && argClass == Boolean.class))
+                    {
+                        continue;
+                    }
+                }
+
+                if (!paramClass.isAssignableFrom(argClass))
+                {
+                    ok = false;
+                    break;
+                }
+            }
+
+            if (ok)
+            {
+                return method.invoke(target, args);
+            }
+        }
+
+        throw new NoSuchMethodException(methodName);
     }
 
     private int mixColor(int a, int b, float t)
