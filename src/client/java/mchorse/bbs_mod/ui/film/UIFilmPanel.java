@@ -318,7 +318,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         /* Icon bar buttons */
         this.openHistory = new UIIcon(Icons.LIST, (b) ->
         {
-            UIOverlay.addOverlay(this.getContext(), new UIUndoHistoryOverlay(this), 200, 0.6F);
+            UIOverlay.addOverlay(this.getContext(), new UIUndoHistoryOverlay(this), 420, 0.6F);
         });
         this.openHistory.tooltip(UIKeys.FILM_OPEN_HISTORY, Direction.LEFT);
 
