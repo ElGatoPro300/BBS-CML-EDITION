@@ -1,40 +1,35 @@
 package mchorse.bbs_mod.ui.framework.elements.utils;
 
-import mchorse.bbs_mod.BBSMod;
+import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.graphics.texture.Texture;
-import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.utils.colors.Colors;
-import mchorse.bbs_mod.utils.resources.Pixels;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.gui.DrawContext;
-import net.minecraft.util.Identifier;
 import net.minecraft.client.gl.RenderPipelines;
-import net.minecraft.client.texture.NativeImage;
-import net.minecraft.client.texture.NativeImageBackedTexture;
+import net.minecraft.client.render.BufferBuilder;
+import net.minecraft.client.render.RenderLayers;
+import net.minecraft.client.render.Tessellator;
+import net.minecraft.client.render.VertexFormats;
 import org.joml.Matrix4f;
+import org.lwjgl.opengl.GL30;
 
+import java.lang.reflect.Method;
 import java.util.List;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.function.Supplier;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.awt.image.BufferedImage;
-import javax.imageio.ImageIO;
-import java.io.InputStream;
-
 
 public class Batcher2D
 {
+    private static final Matrix4f GUI_MATRIX = new Matrix4f();
     private static FontRenderer fontRenderer = new FontRenderer();
 
     private DrawContext context;
     private FontRenderer font;
-    private static final Map<Integer, Identifier> NATIVE_IDS = new HashMap<>();
 
     public static FontRenderer getDefaultTextRenderer()
     {
@@ -49,14 +44,14 @@ public class Batcher2D
         this.font = getDefaultTextRenderer();
     }
 
-    public void setContext(DrawContext context)
-    {
-        this.context = context;
-    }
-
     public DrawContext getContext()
     {
         return this.context;
+    }
+
+    public void setContext(DrawContext context)
+    {
+        this.context = context;
     }
 
     public FontRenderer getFont()
@@ -113,14 +108,28 @@ public class Batcher2D
 
     public void box(float x1, float y1, float x2, float y2, int color)
     {
-        this.context.fill(RenderPipelines.GUI, (int) x1, (int) y1, (int) x2, (int) y2, color);
+        this.box(x1, y1, x2 - x1, y2 - y1, color, color, color, color);
     }
 
     public void box(float x, float y, float w, float h, int color1, int color2, int color3, int color4)
     {
-        int top = color1;
-        int bottom = color4;
-        this.context.fillGradient((int) x, (int) y, (int) (x + w), (int) (y + h), top, bottom);
+        int left = Math.round(Math.min(x, x + w));
+        int top = Math.round(Math.min(y, y + h));
+        int right = Math.round(Math.max(x, x + w));
+        int bottom = Math.round(Math.max(y, y + h));
+
+        if (left == right || top == bottom)
+        {
+            return;
+        }
+
+        if (color1 == color2 && color2 == color3 && color3 == color4)
+        {
+            this.context.fill(RenderPipelines.GUI, left, top, right, bottom, color1);
+            return;
+        }
+
+        this.context.fillGradient(left, top, right, bottom, color1, color3);
     }
 
     /**
@@ -129,38 +138,34 @@ public class Batcher2D
      */
     public void line(float x1, float y1, float x2, float y2, float thickness, int color)
     {
-        float dx = x2 - x1;
-        float dy = y2 - y1;
-        float len = (float) Math.sqrt(dx * dx + dy * dy);
+        float half = Math.max(1F, thickness) / 2F;
+        float left = Math.min(x1, x2) - half;
+        float top = Math.min(y1, y2) - half;
+        float right = Math.max(x1, x2) + half;
+        float bottom = Math.max(y1, y2) + half;
 
-        if (len <= 0.0001f)
-        {
-            // Fallback to a small box when points overlap
-            this.box(x1 - thickness * 0.5f, y1 - thickness * 0.5f, x1 + thickness * 0.5f, y1 + thickness * 0.5f, color);
-            return;
-        }
-
-        int steps = Math.max(1, (int) Math.ceil(len));
-        for (int i = 0; i <= steps; i++)
-        {
-            float t = i / (float) steps;
-            float px = x1 + dx * t;
-            float py = y1 + dy * t;
-            int ix = (int) (px - thickness * 0.5f);
-            int iy = (int) (py - thickness * 0.5f);
-            int ex = (int) (px + thickness * 0.5f);
-            int ey = (int) (py + thickness * 0.5f);
-            this.context.fill(RenderPipelines.GUI, ix, iy, ex, ey, color);
-        }
+        this.box(left, top, right, bottom, color);
     }
 
-    public void fillRect(Object builder, Matrix4f matrix4f, float x, float y, float w, float h, int color1, int color2, int color3, int color4)
+    public void fillRect(BufferBuilder builder, Object matrix4f, float x, float y, float w, float h, int color1, int color2, int color3, int color4)
     {
-        this.box(x, y, w, h, color1, color2, color3, color4);
+        Matrix4f matrix = matrix4f instanceof Matrix4f ? (Matrix4f) matrix4f : GUI_MATRIX;
+        builder.vertex(matrix, x, y + h, 0F).color(color3);
+        builder.vertex(matrix, x + w, y + h, 0F).color(color4);
+        builder.vertex(matrix, x + w, y, 0F).color(color2);
+        builder.vertex(matrix, x, y + h, 0F).color(color3);
+        builder.vertex(matrix, x + w, y, 0F).color(color2);
+        builder.vertex(matrix, x, y, 0F).color(color1);
     }
 
     public void dropShadow(int left, int top, int right, int bottom, int offset, int opaque, int shadow)
     {
+        if (offset <= 0)
+        {
+            this.box(left, top, right, bottom, opaque);
+            return;
+        }
+
         left -= offset;
         top -= offset;
         right += offset;
@@ -187,21 +192,62 @@ public class Batcher2D
 
     public void dropCircleShadow(int x, int y, int radius, int segments, int opaque, int shadow)
     {
-        int r = Math.max(1, radius);
-        for (int i = r; i > 0; i -= Math.max(1, r / 8))
+        if (radius <= 0 || segments <= 2)
         {
-            float t = (float) i / (float) r;
-            int col = Colors.mulA(shadow, t);
-            this.context.fill(RenderPipelines.GUI, x - i, y - i, x + i, y + i, col);
+            return;
         }
-        this.context.fill(RenderPipelines.GUI, x - 1, y - 1, x + 1, y + 1, opaque);
+
+        for (int iy = -radius; iy <= radius; iy++)
+        {
+            float normalized = Math.abs(iy) / (float) radius;
+            int color = this.mixColor(opaque, shadow, normalized);
+            int width = (int) Math.sqrt(radius * radius - iy * iy);
+            this.context.fill(RenderPipelines.GUI, x - width, y + iy, x + width + 1, y + iy + 1, color);
+        }
     }
 
     public void dropCircleShadow(int x, int y, int radius, int offset, int segments, int opaque, int shadow)
     {
-        int inner = Math.max(0, radius - offset);
-        this.dropCircleShadow(x, y, inner, segments, opaque, opaque);
-        this.dropCircleShadow(x, y, radius, segments, opaque, shadow);
+        if (offset >= radius)
+        {
+            this.dropCircleShadow(x, y, radius, segments, opaque, shadow);
+
+            return;
+        }
+
+        if (offset <= 0)
+        {
+            this.dropCircleShadow(x, y, radius, segments, opaque, shadow);
+            return;
+        }
+
+        for (int iy = -radius; iy <= radius; iy++)
+        {
+            int outerWidth = (int) Math.sqrt(radius * radius - iy * iy);
+            int innerWidth = (int) Math.sqrt(offset * offset - Math.min(offset * offset, iy * iy));
+
+            if (innerWidth > 0)
+            {
+                this.context.fill(RenderPipelines.GUI, x - innerWidth, y + iy, x + innerWidth + 1, y + iy + 1, opaque);
+            }
+
+            int leftOuter = x - outerWidth;
+            int leftInner = x - innerWidth;
+            int rightInner = x + innerWidth + 1;
+            int rightOuter = x + outerWidth + 1;
+            float t = (outerWidth - innerWidth) / (float) Math.max(1, radius - offset);
+            int blend = this.mixColor(opaque, shadow, Math.max(0F, Math.min(1F, t)));
+
+            if (leftOuter < leftInner)
+            {
+                this.context.fill(RenderPipelines.GUI, leftOuter, y + iy, leftInner, y + iy + 1, blend);
+            }
+
+            if (rightInner < rightOuter)
+            {
+                this.context.fill(RenderPipelines.GUI, rightInner, y + iy, rightOuter, y + iy + 1, blend);
+            }
+        }
     }
 
     /* Outline methods */
@@ -226,11 +272,10 @@ public class Batcher2D
      */
     public void outline(float x1, float y1, float x2, float y2, int color, int border)
     {
-        int ix1 = (int) x1, iy1 = (int) y1, ix2 = (int) x2, iy2 = (int) y2;
-        this.context.fill(RenderPipelines.GUI, ix1, iy1, ix2, iy1 + border, color); // top
-        this.context.fill(RenderPipelines.GUI, ix1, iy2 - border, ix2, iy2, color); // bottom
-        this.context.fill(RenderPipelines.GUI, ix1, iy1 + border, ix1 + border, iy2 - border, color); // left
-        this.context.fill(RenderPipelines.GUI, ix2 - border, iy1 + border, ix2, iy2 - border, color); // right
+        this.box(x1, y1, x1 + border, y2, color);
+        this.box(x2 - border, y1, x2, y2, color);
+        this.box(x1 + border, y1, x2 - border, y1 + border, color);
+        this.box(x1 + border, y2 - border, x2 - border, y2, color);
     }
 
     /* Icon */
@@ -257,14 +302,10 @@ public class Batcher2D
             return;
         }
 
-        int xx = (int) (x - icon.w * ax);
-        int yy = (int) (y - icon.h * ay);
+        x -= icon.w * ax;
+        y -= icon.h * ay;
 
-        Identifier id = getOrRegisterAtlas(icon.texture);
-        if (id != null)
-        {
-            this.context.drawTexture(RenderPipelines.GUI_TEXTURED, id, xx, yy, (float) icon.x, (float) icon.y, icon.w, icon.h, icon.textureW, icon.textureH, color);
-        }
+        this.texturedBox(BBSModClient.getTextures().getTexture(icon.texture), color, x, y, icon.w, icon.h, icon.x, icon.y, icon.x + icon.w, icon.y + icon.h, icon.textureW, icon.textureH);
     }
 
     public void iconArea(Icon icon, float x, float y, float w, float h)
@@ -274,11 +315,7 @@ public class Batcher2D
 
     public void iconArea(Icon icon, int color, float x, float y, float w, float h)
     {
-        Identifier id = getOrRegisterAtlas(icon.texture);
-        if (id != null)
-        {
-            this.context.drawTexture(RenderPipelines.GUI_TEXTURED, id, (int) x, (int) y, (float) icon.x, (float) icon.y, (int) w, (int) h, icon.textureW, icon.textureH, color);
-        }
+        this.texturedArea(BBSModClient.getTextures().getTexture(icon.texture), color, x, y, w, h, icon.x, icon.y, icon.w, icon.h, icon.textureW, icon.textureH);
     }
 
     public void outlinedIcon(Icon icon, float x, float y, float ax, float ay)
@@ -322,26 +359,53 @@ public class Batcher2D
 
     public void texturedBox(Texture texture, int color, float x, float y, float w, float h, float u1, float v1, float u2, float v2, int textureW, int textureH)
     {
-        Identifier id = getOrRegister(texture);
-        if (id == null)
-        {
-            this.box(x, y, x + w, y + h, color);
-            return;
-        }
-        this.context.drawTexture(RenderPipelines.GUI_TEXTURED, id, (int) x, (int) y, u1, v1, (int) w, (int) h, textureW, textureH, color);
+        this.texturedBox(texture.id, color, x, y, w, h, u1, v1, u2, v2, textureW, textureH);
     }
 
     public void texturedBox(int texture, int color, float x, float y, float w, float h, float u1, float v1, float u2, float v2, int textureW, int textureH)
     {
-        this.box(x, y, x + w, y + h, color);
+        this.texturedBox((Supplier<ShaderProgram>) null, texture, color, x, y, w, h, u1, v1, u2, v2, textureW, textureH);
     }
 
-    public void texturedBox(Object shader, int texture, int color, float x, float y, float w, float h, float u1, float v1, float u2, float v2, int textureW, int textureH)
+    public void texturedBox(Supplier<ShaderProgram> shader, int texture, int color, float x, float y, float w, float h, float u1, float v1, float u2, float v2, int textureW, int textureH)
     {
-        this.box(x, y, x + w, y + h, color);
+        if (shader != null)
+        {
+            shader.get();
+        }
+
+        this.drawTexturedBox(texture, color, x, y, w, h, u1, v1, u2, v2, textureW, textureH);
     }
 
-    private void fillTexturedBoxPlaceholder() {}
+    public void texturedBox(ShaderProgram shader, int texture, int color, float x, float y, float w, float h, float u1, float v1, float u2, float v2, int textureW, int textureH)
+    {
+        this.drawTexturedBox(texture, color, x, y, w, h, u1, v1, u2, v2, textureW, textureH);
+    }
+
+    private void fillTexturedBox(BufferBuilder builder, Matrix4f matrix, int color, float x, float y, float w, float h, float u1, float v1, float u2, float v2, int textureW, int textureH)
+    {
+        builder.vertex(matrix, x, y + h, 0F).texture(u1 / (float) textureW, v2 / (float) textureH).color(color);
+        builder.vertex(matrix, x + w, y + h, 0F).texture(u2 / (float) textureW, v2 / (float) textureH).color(color);
+        builder.vertex(matrix, x + w, y, 0F).texture(u2 / (float) textureW, v1 / (float) textureH).color(color);
+        builder.vertex(matrix, x, y + h, 0F).texture(u1 / (float) textureW, v2 / (float) textureH).color(color);
+        builder.vertex(matrix, x + w, y, 0F).texture(u2 / (float) textureW, v1 / (float) textureH).color(color);
+        builder.vertex(matrix, x, y, 0F).texture(u1 / (float) textureW, v1 / (float) textureH).color(color);
+    }
+
+    private void drawTexturedBox(int texture, int color, float x, float y, float w, float h, float u1, float v1, float u2, float v2, int textureW, int textureH)
+    {
+        if (w == 0 || h == 0 || textureW <= 0 || textureH <= 0)
+        {
+            return;
+        }
+
+        GlStateManager._activeTexture(GL30.GL_TEXTURE0);
+        GlStateManager._bindTexture(texture);
+
+        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_TEXTURE_COLOR);
+        this.fillTexturedBox(builder, this.resolveMatrix(), color, x, y, w, h, u1, v1, u2, v2, textureW, textureH);
+        RenderLayers.solid().draw(builder.end());
+    }
 
     /* Repeatable textured box */
 
@@ -351,27 +415,40 @@ public class Batcher2D
         {
             return;
         }
-        Identifier id = getOrRegister(texture);
-        if (id == null)
+
+        int countX = (int) Math.ceil(w / tileW);
+        int countY = (int) Math.ceil(h / tileH);
+        
+        if (countX <= 0) countX = 1;
+        if (countY <= 0) countY = 1;
+        
+        long c = (long) countX * countY;
+        
+        if (c <= 0 || c > 10000) // Safety limit to prevent freeze/crash
         {
-            this.box(x, y, x + w, y + h, color);
-            return;
+             return;
         }
-        int countX = Math.max(1, (int) Math.ceil(w / tileW));
-        int countY = Math.max(1, (int) Math.ceil(h / tileH));
+
         float fillerX = w - (countX - 1) * tileW;
         float fillerY = h - (countY - 1) * tileH;
-        for (int ix = 0; ix < countX; ix++)
+
+        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_TEXTURE_COLOR);
+        GlStateManager._activeTexture(GL30.GL_TEXTURE0);
+        GlStateManager._bindTexture(texture.id);
+
+        for (int i = 0; i < c; i ++)
         {
-            for (int iy = 0; iy < countY; iy++)
-            {
-                float xx = x + ix * tileW;
-                float yy = y + iy * tileH;
-                float xw = ix == countX - 1 ? fillerX : tileW;
-                float yh = iy == countY - 1 ? fillerY : tileH;
-                this.context.drawTexture(RenderPipelines.GUI_TEXTURED, id, (int) xx, (int) yy, u, v, (int) xw, (int) yh, tw, th, color);
-            }
+            float ix = i % countX;
+            float iy = i / countX;
+            float xx = x + ix * tileW;
+            float yy = y + iy * tileH;
+            float xw = ix == countX - 1 ? fillerX : tileW;
+            float yh = iy == countY - 1 ? fillerY : tileH;
+
+            this.fillTexturedBox(builder, this.resolveMatrix(), color, xx, yy, xw, yh, u, v, u + xw, v + yh, tw, th);
         }
+
+        RenderLayers.solid().draw(builder.end());
     }
 
     /* Text with default font */
@@ -464,93 +541,45 @@ public class Batcher2D
     {
     }
 
-    public void draw(Object builder, Object shader) {}
-
-    /* Compatibility overload to accept method references like BBSShaders::getPickerPreviewProgram */
-    public void texturedBox(Supplier<?> shader, int texture, int color, float x, float y, float w, float h, float u1, float v1, float u2, float v2, int textureW, int textureH)
+    private Matrix4f resolveMatrix()
     {
-        this.texturedBox(texture, color, x, y, w, h, u1, v1, u2, v2, textureW, textureH);
-    }
-
-    /* Texture bridge: register GL texture into TextureManager as NativeImageBackedTexture */
-    private Identifier getOrRegister(Texture texture)
-    {
-        if (texture == null || !texture.isValid())
-        {
-            return null;
-        }
-
-        Identifier id = NATIVE_IDS.get(texture.id);
-        if (id != null)
-        {
-            return id;
-        }
-
         try
         {
-            Pixels px = Texture.pixelsFromTexture(texture);
-            if (px == null) return null;
+            Object matrices = this.context.getClass().getMethod("getMatrices").invoke(this.context);
+            Method peek = matrices.getClass().getMethod("peek");
+            Object entry = peek.invoke(matrices);
+            Method getPositionMatrix = entry.getClass().getMethod("getPositionMatrix");
+            Object matrix = getPositionMatrix.invoke(entry);
 
-            int[] argb = px.getARGB();
-            BufferedImage img = new BufferedImage(texture.width, texture.height, BufferedImage.TYPE_INT_ARGB);
-            img.setRGB(0, 0, texture.width, texture.height, argb, 0, texture.width);
-
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            ImageIO.write(img, "png", baos);
-            NativeImage nativeImage = NativeImage.read(new ByteArrayInputStream(baos.toByteArray()));
-            NativeImageBackedTexture nativeTex = new NativeImageBackedTexture(() -> "bbs_dyn", nativeImage);
-
-            id = Identifier.of("bbs_dyn", "tex_" + texture.id + "_" + texture.width + "x" + texture.height);
-            MinecraftClient.getInstance().getTextureManager().registerTexture(id, nativeTex);
-            NATIVE_IDS.put(texture.id, id);
-            return id;
+            if (matrix instanceof Matrix4f matrix4f)
+            {
+                return matrix4f;
+            }
         }
-        catch (Exception e)
+        catch (Exception ignored)
         {
-            e.printStackTrace();
-            return null;
         }
+
+        return GUI_MATRIX;
     }
 
-    /* Atlas bridge: load PNG via BBS AssetProvider and register as NativeImageBackedTexture */
-    private static final Map<String, Identifier> ATLAS_IDS = new HashMap<>();
-
-    private Identifier getOrRegisterAtlas(Link link)
+    private int mixColor(int a, int b, float t)
     {
-        if (link == null)
-        {
-            return null;
-        }
+        float clamped = Math.max(0F, Math.min(1F, t));
+        int aa = (a >> 24) & 0xff;
+        int ar = (a >> 16) & 0xff;
+        int ag = (a >> 8) & 0xff;
+        int ab = a & 0xff;
+        int ba = (b >> 24) & 0xff;
+        int br = (b >> 16) & 0xff;
+        int bg = (b >> 8) & 0xff;
+        int bb = b & 0xff;
 
-        Identifier cached = ATLAS_IDS.get(link.toString());
-        if (cached != null)
-        {
-            return cached;
-        }
+        int ra = (int) (aa + (ba - aa) * clamped);
+        int rr = (int) (ar + (br - ar) * clamped);
+        int rg = (int) (ag + (bg - ag) * clamped);
+        int rb = (int) (ab + (bb - ab) * clamped);
 
-        try (InputStream in0 = BBSMod.getProvider().getAsset(link))
-        {
-            InputStream in = in0;
-            if (in == null && "assets".equals(link.source) && !link.path.startsWith("assets/"))
-            {
-                in = BBSMod.getProvider().getAsset(Link.assets("assets/" + link.path));
-            }
-            if (in == null)
-            {
-                return null;
-            }
-            NativeImage img = NativeImage.read(in);
-            NativeImageBackedTexture tex = new NativeImageBackedTexture(() -> "bbs_icons", img);
-            String safe = link.path.replace('/', '_').replace('\\', '_');
-            Identifier id = Identifier.of("bbs_dyn", "atlas_" + safe);
-            MinecraftClient.getInstance().getTextureManager().registerTexture(id, tex);
-            ATLAS_IDS.put(link.toString(), id);
-            return id;
-        }
-        catch (Exception e)
-        {
-            e.printStackTrace();
-            return null;
-        }
+        return (ra << 24) | (rr << 16) | (rg << 8) | rb;
     }
 }
