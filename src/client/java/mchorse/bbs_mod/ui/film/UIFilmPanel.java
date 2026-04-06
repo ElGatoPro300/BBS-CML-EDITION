@@ -118,7 +118,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     private Camera camera = new Camera();
     private boolean entered;
-    public boolean playerToCamera;
 
     /* Entity control */
     private UIFilmController controller;
@@ -1264,7 +1263,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     {
         this.controller.update();
 
-        if (this.playerToCamera && this.data != null)
+        if (BBSSettings.editorCameraPreviewPlayerSync.get() && this.data != null && this.controller.getPovMode() == UIFilmController.CAMERA_MODE_CAMERA)
         {
             this.teleportToCamera();
         }

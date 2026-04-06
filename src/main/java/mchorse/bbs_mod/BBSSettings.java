@@ -90,6 +90,7 @@ public class BBSSettings
     public static ValueBoolean editorClipPreview;
     public static ValueBoolean editorClipTypeLabels;
     public static ValueBoolean editorReplaySprintParticles;
+    public static ValueBoolean editorCameraPreviewPlayerSync;
     public static ValueInt editorTimeMode;
     public static ValueInt editorReplayEditorTitleLimit;
     public static ValueBoolean editorReplayHud;

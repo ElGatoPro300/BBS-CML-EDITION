@@ -1651,6 +1651,8 @@
     "cml.config.display.tooltip": "Options related to HUD display",
     "cml.config.editor.camera_preview_future_count": "Future camera previews",
     "cml.config.editor.camera_preview_future_count-comment": "How many upcoming camera previews are shown (first is green, the rest are orange)",
+    "cml.config.editor.camera_preview_player_sync": "Move player with camera preview",
+    "cml.config.editor.camera_preview_player_sync-comment": "Keep the hidden/spectator player synced to the active camera position to force chunk loading at distant cameras",
     "cml.config.editor.clip_type_labels": "Show clip type labels",
     "cml.config.editor.clip_type_labels-comment": "Display the clip type in the timeline for Camera and Action editors",
     "cml.config.editor.flight_free_look": "Flight free look",
