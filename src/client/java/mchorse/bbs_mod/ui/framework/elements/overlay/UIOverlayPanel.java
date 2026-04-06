@@ -36,6 +36,7 @@ public class UIOverlayPanel extends UIElement
     private int minHeight = 120;
     private int resizeMinWidth = 180;
     private int resizeMinHeight = 120;
+    private boolean resizeFromLeft;
 
     private int initialOffsetX;
     private int initialOffsetY;
@@ -98,6 +99,13 @@ public class UIOverlayPanel extends UIElement
     public UIOverlayPanel resizeMargin(int margin)
     {
         this.resizeMargin = Math.max(6, margin);
+
+        return this;
+    }
+
+    public UIOverlayPanel resizeFromLeft()
+    {
+        this.resizeFromLeft = true;
 
         return this;
     }
@@ -213,22 +221,39 @@ public class UIOverlayPanel extends UIElement
         {
             int dx = context.mouseX - this.lastX;
             int dy = context.mouseY - this.lastY;
-            int maxW = Integer.MAX_VALUE;
-            int maxH = Integer.MAX_VALUE;
-
-            if (this.getParent() != null)
+            if (this.resizeFromLeft)
             {
-                maxW = this.getParent().area.ex() - this.area.x;
-                maxH = this.getParent().area.ey() - this.area.y;
+                int maxW = Integer.MAX_VALUE;
+
+                if (this.getParent() != null)
+                {
+                    maxW = this.area.ex() - this.getParent().area.x;
+                }
+
+                int desiredW = Math.min(maxW, Math.max(this.resizeMinWidth, this.area.w - dx));
+                int deltaW = desiredW - this.area.w;
+
+                this.flex.w.offset += deltaW;
             }
+            else
+            {
+                int maxW = Integer.MAX_VALUE;
+                int maxH = Integer.MAX_VALUE;
 
-            int desiredW = Math.min(maxW, Math.max(this.resizeMinWidth, this.area.w + dx));
-            int desiredH = Math.min(maxH, Math.max(this.resizeMinHeight, this.area.h + dy));
-            int deltaW = desiredW - this.area.w;
-            int deltaH = desiredH - this.area.h;
+                if (this.getParent() != null)
+                {
+                    maxW = this.getParent().area.ex() - this.area.x;
+                    maxH = this.getParent().area.ey() - this.area.y;
+                }
 
-            this.flex.w.offset += deltaW;
-            this.flex.h.offset += deltaH;
+                int desiredW = Math.min(maxW, Math.max(this.resizeMinWidth, this.area.w + dx));
+                int desiredH = Math.min(maxH, Math.max(this.resizeMinHeight, this.area.h + dy));
+                int deltaW = desiredW - this.area.w;
+                int deltaH = desiredH - this.area.h;
+
+                this.flex.w.offset += deltaW;
+                this.flex.h.offset += deltaH;
+            }
 
             if (this.getParent() != null)
             {
@@ -285,17 +310,32 @@ public class UIOverlayPanel extends UIElement
         if (this.resizable)
         {
             int resizeColor = this.isResizeHandleInside(context) ? Colors.WHITE : Colors.GRAY;
+            int left = this.area.x;
+            int right = this.area.ex();
+            int bottom = this.area.ey();
 
-            context.batcher.box(this.area.ex() - 9, this.area.ey() - 1, this.area.ex() - 1, this.area.ey(), resizeColor);
-            context.batcher.box(this.area.ex() - 1, this.area.ey() - 9, this.area.ex(), this.area.ey() - 1, resizeColor);
+            if (this.resizeFromLeft)
+            {
+                context.batcher.box(left + 1, bottom - 1, left + 9, bottom, resizeColor);
+                context.batcher.box(left, bottom - 9, left + 1, bottom - 1, resizeColor);
+            }
+            else
+            {
+                context.batcher.box(right - 9, bottom - 1, right - 1, bottom, resizeColor);
+                context.batcher.box(right - 1, bottom - 9, right, bottom - 1, resizeColor);
+            }
         }
     }
 
     private boolean isResizeHandleInside(UIContext context)
     {
+        boolean side = this.resizeFromLeft
+            ? context.mouseX <= this.area.x + this.resizeMargin
+            : context.mouseX >= this.area.ex() - this.resizeMargin;
+
         return this.resizable
             && this.area.isInside(context)
-            && context.mouseX >= this.area.ex() - this.resizeMargin
+            && side
             && context.mouseY >= this.area.ey() - this.resizeMargin;
     }
 
