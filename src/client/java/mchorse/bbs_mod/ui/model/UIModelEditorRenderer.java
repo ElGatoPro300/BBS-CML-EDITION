@@ -33,17 +33,23 @@ import mchorse.bbs_mod.utils.colors.Colors;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.GlUniform;
 import net.minecraft.client.gl.ShaderProgram;
+import net.minecraft.client.render.BufferBuilder;
+import net.minecraft.client.render.BufferRenderer;
+import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
+import net.minecraft.client.render.Tessellator;
+import net.minecraft.client.render.VertexFormat;
+import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.RotationAxis;
 import org.joml.Matrix4f;
+import org.joml.Vector3f;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
-import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.forms.renderers.utils.MatrixCache;
@@ -403,21 +409,6 @@ public class UIModelEditorRenderer extends UIModelRenderer
         }
 
         return this.translation(matrix);
-    }
-
-    private Vector3f getTargetPoint(IKChainConfig chain, MatrixCache cache)
-    {
-        if (chain.useTargetBone.get() && !chain.targetBone.get().isEmpty())
-        {
-            Vector3f target = this.getBonePoint(cache, chain.targetBone.get());
-
-            if (target != null)
-            {
-                return target;
-            }
-        }
-
-        return new Vector3f(chain.target.translate).mul(1F / 16F);
     }
 
     private Vector3f translation(Matrix4f matrix)

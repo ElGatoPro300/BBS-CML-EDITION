@@ -1,5 +1,6 @@
 package mchorse.bbs_mod.ui.model;
 
+import mchorse.bbs_mod.cubic.model.ModelConfig;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
@@ -122,6 +123,10 @@ public class UIModelIKPanel extends UIElement
         this.ikList.clear();
         this.ikList.add(this.chains);
         this.ikList.sort();
+    }
+
+    public void setConfig(ModelConfig config)
+    {
     }
 }
 
