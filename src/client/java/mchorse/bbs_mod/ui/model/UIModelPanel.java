@@ -45,7 +45,6 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
     public List<UIIcon> panelButtons = new ArrayList<>();
     
     public UIElement modelSettingsPanel;
-    public UIModelIKPanel ikPanel;
     public UIElement dynamicBonesPanel;
     public UIModelGeometryPanel geometryPanel;
     public UIScrollView sectionsView;
@@ -137,11 +136,10 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         spacer.relative(this.iconBar).w(1F).h(10);
         this.iconBar.add(spacer);
 
-        this.ikPanel = new UIModelIKPanel(this);
         this.geometryPanel = new UIModelGeometryPanel(this);
 
         this.registerPanel(this.modelSettingsPanel, UIKeys.MODELS_SETTINGS, Icons.MODELS_SETTINGS);
-        this.registerPanel(this.ikPanel, UIKeys.MODELS_IK_EDITOR, Icons.IK);
+        this.registerPanel(this.createUnavailablePanel(), UIKeys.MODELS_IK_EDITOR, Icons.IK);
         this.registerPanel(this.dynamicBonesPanel, UIKeys.MODELS_DYNAMIC_BONES, Icons.DYNAMIC_BONES);
         this.registerPanel(this.geometryPanel, UIKeys.MODELS_GEOMETRY_EDITOR, Icons.GEOMETRY_EDITOR);
 
@@ -284,10 +282,6 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
             return;
         }
 
-        if (this.ikPanel != null)
-        {
-            this.ikPanel.setConfig(this.data);
-        }
         if (this.geometryPanel != null)
         {
             this.geometryPanel.setConfig(this.data);
@@ -385,10 +379,6 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
                 section.setConfig(data);
             }
 
-            if (this.ikPanel != null)
-            {
-                this.ikPanel.setConfig(data);
-            }
             if (this.geometryPanel != null)
             {
                 this.geometryPanel.setConfig(data);
