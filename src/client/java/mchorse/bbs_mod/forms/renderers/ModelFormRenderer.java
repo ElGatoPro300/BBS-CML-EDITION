@@ -11,11 +11,9 @@ import mchorse.bbs_mod.cubic.animation.ActionsConfig;
 import mchorse.bbs_mod.cubic.animation.Animator;
 import mchorse.bbs_mod.cubic.animation.IAnimator;
 import mchorse.bbs_mod.cubic.animation.ProceduralAnimator;
-import mchorse.bbs_mod.cubic.data.model.Model;
 import mchorse.bbs_mod.cubic.data.model.ModelGroup;
 import mchorse.bbs_mod.cubic.model.ArmorSlot;
 import mchorse.bbs_mod.cubic.model.ArmorType;
-import mchorse.bbs_mod.cubic.model.IKChainConfig;
 import mchorse.bbs_mod.cubic.model.ModelIKSolver;
 import mchorse.bbs_mod.cubic.model.bobj.BOBJModel;
 import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
@@ -59,7 +57,6 @@ import org.lwjgl.opengl.GL11;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -312,7 +309,11 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             Color color = this.form.color.get();
             float scale = this.form.uiScale.get() * model.uiScale;
 
-            this.applyAnimationPoseAndIK(model, null, context.getTransition());
+            model.model.resetPose();
+
+            this.animator.applyActions(null, model, context.getTransition());
+            model.model.applyPose(this.getPose());
+            ModelIKSolver.apply(model);
 
             MatrixStackUtils.multiply(stack, uiMatrix);
             stack.scale(scale, scale, scale);
@@ -579,7 +580,11 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             Color color = this.form.color.get().copy();
 
             color.mul(context.color);
-            this.applyAnimationPoseAndIK(model, context.entity, context.getTransition());
+            model.model.resetPose();
+
+            this.animator.applyActions(context.entity, model, context.getTransition());
+            model.model.applyPose(this.getPose());
+            ModelIKSolver.apply(model);
 
             context.stack.multiply(RotationAxis.POSITIVE_Y.rotation(MathUtils.PI));
 
@@ -614,123 +619,6 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
     {
         /* this.bones.clear()? */
         model.captureMatrices(this.bones);
-    }
-
-    private void applyAnimationPoseAndIK(ModelInstance model, IEntity entity, float transition)
-    {
-        Map<ModelGroup, mchorse.bbs_mod.utils.pose.Transform> ikBasePose = this.captureIKChainBasePose(model);
-
-        model.model.resetPose();
-
-        if (this.animator != null)
-        {
-            this.animator.applyActions(entity, model, transition);
-        }
-
-        model.model.applyPose(this.getPose());
-        this.restoreIKChainBasePose(model, ikBasePose);
-        ModelIKSolver.apply(model);
-    }
-
-    private Map<ModelGroup, mchorse.bbs_mod.utils.pose.Transform> captureIKChainBasePose(ModelInstance model)
-    {
-        Map<ModelGroup, mchorse.bbs_mod.utils.pose.Transform> basePose = new HashMap<>();
-
-        if (model == null || model.ikChains.isEmpty())
-        {
-            return basePose;
-        }
-
-        if (!(model.model instanceof Model cubicModel))
-        {
-            return basePose;
-        }
-
-        model.model.resetPose();
-        model.model.applyPose(this.getPose());
-
-        for (IKChainConfig chain : model.ikChains)
-        {
-            if (!chain.enabled.get())
-            {
-                continue;
-            }
-
-            for (String bone : chain.getBones())
-            {
-                ModelGroup group = cubicModel.getGroup(bone);
-
-                if (group != null)
-                {
-                    basePose.put(group, group.current.copy());
-                }
-            }
-        }
-
-        if (basePose.isEmpty())
-        {
-            return basePose;
-        }
-
-        return basePose;
-    }
-
-    private void restoreIKChainBasePose(ModelInstance model, Map<ModelGroup, mchorse.bbs_mod.utils.pose.Transform> basePose)
-    {
-        Map<ModelGroup, Float> influenceByGroup = new HashMap<>();
-
-        for (IKChainConfig chain : model.ikChains)
-        {
-            if (!chain.enabled.get())
-            {
-                continue;
-            }
-
-            float blend = Math.max(0F, Math.min(1F, chain.blend.get()));
-            float influence = 1F - blend * 0.75F;
-
-            for (String bone : chain.getBones())
-            {
-                if (bone == null || bone.isEmpty())
-                {
-                    continue;
-                }
-
-                ModelGroup group = null;
-
-                if (model.model instanceof Model cubicModel)
-                {
-                    group = cubicModel.getGroup(bone);
-                }
-
-                if (group == null)
-                {
-                    continue;
-                }
-
-                Float current = influenceByGroup.get(group);
-
-                if (current == null || influence < current)
-                {
-                    influenceByGroup.put(group, influence);
-                }
-            }
-        }
-
-        for (Map.Entry<ModelGroup, mchorse.bbs_mod.utils.pose.Transform> entry : basePose.entrySet())
-        {
-            ModelGroup group = entry.getKey();
-            mchorse.bbs_mod.utils.pose.Transform procedural = group.current.copy();
-            Float influence = influenceByGroup.get(group);
-
-            if (influence == null)
-            {
-                influence = 0.25F;
-            }
-
-            group.current.copy(entry.getValue());
-            group.current.lerp(procedural, influence);
-        }
     }
 
     @Override
@@ -783,7 +671,11 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         /* Collect bones and add them to matrix list */
         if (this.animator != null && model != null)
         {
-            this.applyAnimationPoseAndIK(model, entity, transition);
+            model.model.resetPose();
+
+            this.animator.applyActions(entity, model, transition);
+            model.model.applyPose(this.getPose());
+            ModelIKSolver.apply(model);
 
             stack.multiply(RotationAxis.POSITIVE_Y.rotation(MathUtils.PI));
             this.captureMatrices(model);

@@ -11,7 +11,6 @@ import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.settings.values.core.ValueString;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
-import mchorse.bbs_mod.ui.framework.elements.UIScrollView;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
 import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
@@ -35,14 +34,10 @@ public class UIModelIKPanel extends UIElement
 {
     public static final String IK_TARGET_PREFIX = "[IK_TARGET]::";
     public static final String IK_TARGET_PREFIX_ALT = "<IK_TARGET>:";
-    public static final String IK_POLE_PREFIX = "[IK_POLE]::";
-    public static final String IK_POLE_PREFIX_ALT = "<IK_POLE>:";
 
     private final UIModelPanel parent;
 
     private final UISearchList<String> ikSearch;
-    private final UIScrollView leftScrollView;
-    private final UIScrollView rightScrollView;
     private final UIStringList ikList;
     private final UIButton addIkButton;
     private final UIButton removeIkButton;
@@ -60,28 +55,9 @@ public class UIModelIKPanel extends UIElement
     private final UIButton clearTargetBoneButton;
     private final UIButton selectTargetButton;
     private final UILabel targetBoneLabel;
-    private final UIToggle usePoleBoneToggle;
-    private final UIButton setPoleBoneButton;
-    private final UIButton clearPoleBoneButton;
-    private final UIButton selectPoleButton;
-    private final UILabel poleBoneLabel;
     private final UIStringList bonesList;
     private final UISearchList<String> bonesSearch;
     private final UIPropTransform ikTransform;
-    private final UITrackpad iterationsField;
-    private final UITrackpad chainLengthField;
-    private final UITrackpad toleranceField;
-    private final UIToggle useCCDToggle;
-    private final UITrackpad positionWeightField;
-    private final UITrackpad rotationWeightField;
-    private final UITrackpad effectorRotationWeightField;
-    private final UITrackpad blendField;
-    private final UIToggle stretchToggle;
-    private final UITrackpad stretchLimitField;
-    private final UITrackpad poleAngleOffsetField;
-    private final UIButton presetBlenderButton;
-    private final UIButton presetMineimatorButton;
-    private final UIButton presetBlockbenchButton;
     private final UITextbox ikNameField;
     private final UILabel selectedBoneConstraintsLabel;
     private final UITrackpad minX;
@@ -90,9 +66,6 @@ public class UIModelIKPanel extends UIElement
     private final UITrackpad maxX;
     private final UITrackpad maxY;
     private final UITrackpad maxZ;
-    private final UITrackpad stiffnessX;
-    private final UITrackpad stiffnessY;
-    private final UITrackpad stiffnessZ;
 
     private ModelConfig config;
     private boolean filling;
@@ -111,23 +84,15 @@ public class UIModelIKPanel extends UIElement
         int rightWidth = 220;
         int rowGap = 6;
 
-        this.leftScrollView = new UIScrollView();
-        this.leftScrollView.relative(this).x(sideMargin).y(10).w(leftWidth).h(1F, -20);
-        this.leftScrollView.scroll.cancelScrolling().opposite().scrollSpeed *= 3;
-
-        this.rightScrollView = new UIScrollView();
-        this.rightScrollView.relative(this).x(1F, -rightWidth - sideMargin).y(10).w(rightWidth).h(1F, -20);
-        this.rightScrollView.scroll.cancelScrolling().opposite().scrollSpeed *= 3;
-
         UILabel leftTitle = UI.label(UIKeys.MODELS_IK_HIERARCHY).background();
-        leftTitle.relative(this.leftScrollView).x(0).y(0).w(leftWidth).h(12);
+        leftTitle.relative(this).x(sideMargin).y(10).w(leftWidth).h(12);
 
         this.ikList = new UIStringList((l) -> this.fillSelectedChain());
         this.ikList.background();
 
         this.ikSearch = new UISearchList<>(this.ikList);
         this.ikSearch.label(UIKeys.GENERAL_SEARCH);
-        this.ikSearch.relative(this.leftScrollView).x(0).y(16).w(leftWidth).h(200);
+        this.ikSearch.relative(this).x(sideMargin).y(26).w(leftWidth).h(1F, -320);
 
         this.addIkButton = new UIButton(UIKeys.GENERAL_ADD, (b) -> this.addChain());
         this.removeIkButton = new UIButton(UIKeys.GENERAL_REMOVE, (b) -> this.removeSelectedChain());
@@ -148,7 +113,7 @@ public class UIModelIKPanel extends UIElement
         this.ikVisualizerToggle.relative(visualizerLabel).y(1F, 4).w(120);
 
         this.addBoneButton = new UIButton(UIKeys.MODELS_IK_ADD_SELECTED, (b) -> this.addSelectedBone());
-        this.addBoneButton.relative(this.rightScrollView).x(0).y(0).w(rightWidth).h(20);
+        this.addBoneButton.relative(this).x(1F, -rightWidth - sideMargin).y(10).w(rightWidth).h(20);
 
         this.removeBoneButton = new UIButton(UIKeys.MODELS_IK_REMOVE_SELECTED, (b) -> this.removeSelectedBone());
         this.clearBonesButton = new UIButton(UIKeys.MODELS_IK_CLEAR_BONES, (b) -> this.clearBones());
@@ -175,21 +140,6 @@ public class UIModelIKPanel extends UIElement
 
         this.targetBoneLabel = UI.label(IKey.raw(""));
         this.targetBoneLabel.relative(this.selectTargetButton).y(1F, 6).w(rightWidth).h(12);
-
-        this.usePoleBoneToggle = new UIToggle(UIKeys.MODELS_IK_USE_POLE_BONE, (b) -> this.updateUsePoleBone());
-        this.usePoleBoneToggle.relative(this.targetBoneLabel).y(1F, 6).w(180);
-
-        this.setPoleBoneButton = new UIButton(UIKeys.MODELS_IK_SET_POLE_FROM_SELECTED, (b) -> this.setPoleBoneFromSelected());
-        this.setPoleBoneButton.relative(this.usePoleBoneToggle).y(1F, 6).w(rightWidth).h(20);
-
-        this.clearPoleBoneButton = new UIButton(UIKeys.MODELS_IK_CLEAR_POLE_BONE, (b) -> this.clearPoleBone());
-        this.clearPoleBoneButton.relative(this.setPoleBoneButton).y(1F, 6).w(rightWidth).h(20);
-
-        this.selectPoleButton = new UIButton(UIKeys.MODELS_IK_SELECT_POLE, (b) -> this.selectPoleVirtualBone());
-        this.selectPoleButton.relative(this.clearPoleBoneButton).y(1F, 6).w(rightWidth).h(20);
-
-        this.poleBoneLabel = UI.label(IKey.raw(""));
-        this.poleBoneLabel.relative(this.selectPoleButton).y(1F, 6).w(rightWidth).h(12);
 
         this.bonesList = new UIStringList((l) -> this.onBoneSelectionChanged())
         {
@@ -225,72 +175,8 @@ public class UIModelIKPanel extends UIElement
         this.ikTransform.relative(this.bonesSearch).y(1F, 8).w(1F).h(120);
         this.ikTransform.callbacks(this::markDirty, this::markDirty);
 
-        this.iterationsField = new UITrackpad((v) -> this.updateSolverSettings()).integer().limit(1, 64);
-        this.chainLengthField = new UITrackpad((v) -> this.updateSolverSettings()).integer().limit(0, 32);
-        this.toleranceField = new UITrackpad((v) -> this.updateSolverSettings()).limit(0.001, 10).increment(0.01);
-        this.useCCDToggle = new UIToggle(UIKeys.MODELS_IK_USE_CCD, false, (b) -> this.updateSolverSettings());
-        this.positionWeightField = new UITrackpad((v) -> this.updateSolverSettings()).limit(0, 1).increment(0.01);
-        this.rotationWeightField = new UITrackpad((v) -> this.updateSolverSettings()).limit(0, 1).increment(0.01);
-        this.effectorRotationWeightField = new UITrackpad((v) -> this.updateSolverSettings()).limit(0, 1).increment(0.01);
-        this.blendField = new UITrackpad((v) -> this.updateSolverSettings()).limit(0, 1).increment(0.01);
-        this.stretchToggle = new UIToggle(UIKeys.MODELS_IK_STRETCH, false, (b) -> this.updateSolverSettings());
-        this.stretchLimitField = new UITrackpad((v) -> this.updateSolverSettings()).limit(1, 5).increment(0.01);
-        this.poleAngleOffsetField = new UITrackpad((v) -> this.updateSolverSettings()).limit(-180, 180).increment(1);
-        this.iterationsField.tooltip(UIKeys.MODELS_IK_ITERATIONS);
-        this.chainLengthField.tooltip(UIKeys.MODELS_IK_CHAIN_LENGTH);
-        this.toleranceField.tooltip(UIKeys.MODELS_IK_TOLERANCE);
-        this.positionWeightField.tooltip(UIKeys.MODELS_IK_POSITION_WEIGHT);
-        this.rotationWeightField.tooltip(UIKeys.MODELS_IK_ROTATION_WEIGHT);
-        this.effectorRotationWeightField.tooltip(UIKeys.MODELS_IK_EFFECTOR_ROTATION_WEIGHT);
-        this.blendField.tooltip(UIKeys.MODELS_IK_BLEND);
-        this.stretchLimitField.tooltip(UIKeys.MODELS_IK_STRETCH_LIMIT);
-        this.poleAngleOffsetField.tooltip(UIKeys.MODELS_IK_POLE_ANGLE_OFFSET);
-
-        UILabel solverLabel = UI.label(UIKeys.MODELS_IK_SOLVER);
-        solverLabel.relative(this.ikTransform).y(1F, 6).w(1F).h(12);
-
-        this.iterationsField.w(0.5F, -4).h(20);
-        this.chainLengthField.w(0.5F, -4).h(20);
-        UIElement row1 = UI.row(8, this.iterationsField, this.chainLengthField);
-        row1.relative(solverLabel).y(1F, 2).w(1F).h(20);
-
-        this.toleranceField.w(0.5F, -4).h(20);
-        this.blendField.w(0.5F, -4).h(20);
-        UIElement row2 = UI.row(8, this.toleranceField, this.blendField);
-        row2.relative(row1).y(1F, 4).w(1F).h(20);
-
-        this.positionWeightField.w(0.5F, -4).h(20);
-        this.rotationWeightField.w(0.5F, -4).h(20);
-        UIElement rowWeights = UI.row(8, this.positionWeightField, this.rotationWeightField);
-        rowWeights.relative(row2).y(1F, 4).w(1F).h(20);
-
-        this.useCCDToggle.w(1F).h(20);
-        this.useCCDToggle.relative(rowWeights).y(1F, 4);
-
-        this.effectorRotationWeightField.relative(this.useCCDToggle).y(1F, 4).w(1F).h(20);
-
-        this.stretchToggle.w(0.45F, -4).h(20);
-        this.stretchLimitField.w(0.55F, -4).h(20);
-        UIElement row3 = UI.row(8, this.stretchToggle, this.stretchLimitField);
-        row3.relative(this.effectorRotationWeightField).y(1F, 4).w(1F).h(20);
-
-        UILabel poleOffsetLabel = UI.label(UIKeys.MODELS_IK_POLE_ANGLE_OFFSET);
-        poleOffsetLabel.relative(row3).y(1F, 4).w(1F).h(12);
-
-        this.poleAngleOffsetField.relative(poleOffsetLabel).y(1F, 2).w(1F).h(20);
-
-        this.presetBlenderButton = new UIButton(UIKeys.MODELS_IK_PRESET_BLENDER, (b) -> this.applyPreset(0));
-        this.presetMineimatorButton = new UIButton(UIKeys.MODELS_IK_PRESET_MINEIMATOR, (b) -> this.applyPreset(1));
-        this.presetBlockbenchButton = new UIButton(UIKeys.MODELS_IK_PRESET_BLOCKBENCH, (b) -> this.applyPreset(2));
-        this.presetBlenderButton.w(1F).h(20);
-        this.presetMineimatorButton.w(1F).h(20);
-        this.presetBlockbenchButton.w(1F).h(20);
-        this.presetBlenderButton.relative(this.poleAngleOffsetField).y(1F, 6);
-        this.presetMineimatorButton.relative(this.presetBlenderButton).y(1F, 4);
-        this.presetBlockbenchButton.relative(this.presetMineimatorButton).y(1F, 4);
-
         UILabel nameLabel = UI.label(UIKeys.MODELS_IK_NAME);
-        nameLabel.relative(this.presetBlockbenchButton).y(1F, 10).w(1F).h(12);
+        nameLabel.relative(this.ikTransform).y(1F, 10).w(1F).h(12);
 
         this.ikNameField = new UITextbox(1000, this::updateChainName);
         this.ikNameField.relative(nameLabel).y(1F, 4).w(1F).h(20);
@@ -327,30 +213,12 @@ public class UIModelIKPanel extends UIElement
         UIElement maxRow = UI.row(6, this.maxX, this.maxY, this.maxZ);
         maxRow.relative(maxLabel).y(1F, 2).w(1F).h(20);
 
-        UILabel stiffnessLabel = UI.label(UIKeys.MODELS_IK_STIFFNESS);
-        stiffnessLabel.relative(maxRow).y(1F, 4).w(1F).h(12);
-
-        this.stiffnessX = new UITrackpad((v) -> this.updateStiffness(0, v.floatValue())).limit(0, 1).increment(0.01);
-        this.stiffnessY = new UITrackpad((v) -> this.updateStiffness(1, v.floatValue())).limit(0, 1).increment(0.01);
-        this.stiffnessZ = new UITrackpad((v) -> this.updateStiffness(2, v.floatValue())).limit(0, 1).increment(0.01);
-        this.stiffnessX.w(0.333F, -6);
-        this.stiffnessY.w(0.333F, -6);
-        this.stiffnessZ.w(0.333F, -6);
-
-        UIElement stiffnessRow = UI.row(6, this.stiffnessX, this.stiffnessY, this.stiffnessZ);
-        stiffnessRow.relative(stiffnessLabel).y(1F, 2).w(1F).h(20);
-
-        this.leftScrollView.add(leftTitle, this.ikSearch, addRemoveBar,
+        this.add(leftTitle, this.ikSearch, addRemoveBar,
             this.editIkButton, visualizerLabel, this.ikVisualizerToggle,
             this.useTargetBoneToggle, this.setTargetBoneButton, this.clearTargetBoneButton, this.selectTargetButton, this.targetBoneLabel,
-            this.usePoleBoneToggle, this.setPoleBoneButton, this.clearPoleBoneButton, this.selectPoleButton, this.poleBoneLabel);
-
-        this.rightScrollView.add(this.addBoneButton, boneActions, bonesLabel, this.bonesSearch, this.hierarchySearch, this.addHierarchyBoneButton,
-            this.ikTransform, solverLabel, row1, row2, rowWeights, this.useCCDToggle, this.effectorRotationWeightField, row3, poleOffsetLabel, this.poleAngleOffsetField,
-            this.presetBlenderButton, this.presetMineimatorButton, this.presetBlockbenchButton, nameLabel, this.ikNameField,
-            constraintsLabel, this.selectedBoneConstraintsLabel, minLabel, minRow, maxLabel, maxRow, stiffnessLabel, stiffnessRow);
-
-        this.add(this.leftScrollView, this.rightScrollView);
+            this.addBoneButton, boneActions, bonesLabel, this.bonesSearch, this.hierarchySearch, this.addHierarchyBoneButton,
+            this.ikTransform, nameLabel, this.ikNameField,
+            constraintsLabel, this.selectedBoneConstraintsLabel, minLabel, minRow, maxLabel, maxRow);
 
         this.hierarchySearch.setVisible(false);
         this.addHierarchyBoneButton.setVisible(false);
@@ -463,11 +331,6 @@ public class UIModelIKPanel extends UIElement
         return chain == null ? "" : IK_TARGET_PREFIX + chain.getId();
     }
 
-    public String getPoleVirtualBone(IKChainConfig chain)
-    {
-        return chain == null ? "" : IK_POLE_PREFIX + chain.getId();
-    }
-
     public IKChainConfig getChainByVirtualBone(String virtualBone)
     {
         if (this.config == null)
@@ -475,7 +338,7 @@ public class UIModelIKPanel extends UIElement
             return null;
         }
 
-        String id = extractIKVirtualId(virtualBone);
+        String id = extractIKTargetId(virtualBone);
 
         if (id == null)
         {
@@ -495,24 +358,7 @@ public class UIModelIKPanel extends UIElement
 
     public static boolean isIKVirtualBoneName(String bone)
     {
-        return extractIKVirtualId(bone) != null;
-    }
-
-    public static boolean isIKPoleVirtualBoneName(String bone)
-    {
-        return extractIKPoleId(bone) != null;
-    }
-
-    public static String extractIKVirtualId(String bone)
-    {
-        String id = extractIKTargetId(bone);
-
-        if (id != null)
-        {
-            return id;
-        }
-
-        return extractIKPoleId(bone);
+        return extractIKTargetId(bone) != null;
     }
 
     public static String extractIKTargetId(String bone)
@@ -553,44 +399,6 @@ public class UIModelIKPanel extends UIElement
         return null;
     }
 
-    public static String extractIKPoleId(String bone)
-    {
-        if (bone == null || bone.isEmpty())
-        {
-            return null;
-        }
-
-        if (bone.startsWith(IK_POLE_PREFIX))
-        {
-            String id = bone.substring(IK_POLE_PREFIX.length());
-
-            return id.isEmpty() ? null : id;
-        }
-
-        if (bone.startsWith(IK_POLE_PREFIX_ALT))
-        {
-            String id = bone.substring(IK_POLE_PREFIX_ALT.length());
-
-            return id.isEmpty() ? null : id;
-        }
-
-        if (bone.startsWith("IK_POLE:"))
-        {
-            String id = bone.substring("IK_POLE:".length());
-
-            return id.isEmpty() ? null : id;
-        }
-
-        if (bone.startsWith("[IK_POLE]:"))
-        {
-            String id = bone.substring("[IK_POLE]:".length());
-
-            return id.isEmpty() ? null : id;
-        }
-
-        return null;
-    }
-
     public void selectVirtualBone(String virtualBone)
     {
         IKChainConfig chain = this.getChainByVirtualBone(virtualBone);
@@ -606,20 +414,8 @@ public class UIModelIKPanel extends UIElement
         {
             this.ikList.setIndex(index);
             this.fillSelectedChain();
-
-            if (isIKPoleVirtualBoneName(virtualBone))
-            {
-                chain.usePoleBone.set(false);
-                this.usePoleBoneToggle.setValue(false);
-                this.ikTransform.setTransform(chain.pole);
-            }
-            else
-            {
-                chain.useTargetBone.set(false);
-                this.useTargetBoneToggle.setValue(false);
-                this.ikTransform.setTransform(chain.target);
-            }
-
+            chain.useTargetBone.set(false);
+            this.useTargetBoneToggle.setValue(false);
             this.markDirty();
         }
     }
@@ -635,22 +431,9 @@ public class UIModelIKPanel extends UIElement
             this.ikNameField.setText("");
             this.ikVisualizerToggle.setValue(false);
             this.useTargetBoneToggle.setValue(false);
-            this.usePoleBoneToggle.setValue(false);
             this.ikTransform.setTransform(new Transform());
             this.bonesList.clear();
             this.targetBoneLabel.label = IKey.raw(UIKeys.MODELS_IK_TARGET_BONE.get() + ": -");
-            this.poleBoneLabel.label = IKey.raw(UIKeys.MODELS_IK_POLE_BONE.get() + ": -");
-            this.iterationsField.setValue(8);
-            this.useCCDToggle.setValue(false);
-            this.chainLengthField.setValue(0);
-            this.toleranceField.setValue(0.2);
-            this.positionWeightField.setValue(1);
-            this.rotationWeightField.setValue(1);
-            this.effectorRotationWeightField.setValue(1);
-            this.blendField.setValue(1);
-            this.stretchToggle.setValue(false);
-            this.stretchLimitField.setValue(1.25);
-            this.poleAngleOffsetField.setValue(0);
             this.selectedBoneConstraintsLabel.label = IKey.raw(UIKeys.MODELS_IK_SELECTED_BONE_CONSTRAINTS.get() + ": -");
             this.minX.setValue(-180);
             this.minY.setValue(-180);
@@ -658,9 +441,6 @@ public class UIModelIKPanel extends UIElement
             this.maxX.setValue(180);
             this.maxY.setValue(180);
             this.maxZ.setValue(180);
-            this.stiffnessX.setValue(0);
-            this.stiffnessY.setValue(0);
-            this.stiffnessZ.setValue(0);
         }
         else
         {
@@ -669,60 +449,13 @@ public class UIModelIKPanel extends UIElement
             this.ikNameField.setText(chain.name.get());
             this.ikVisualizerToggle.setValue(chain.visualizer.get());
             this.useTargetBoneToggle.setValue(chain.useTargetBone.get());
-            this.usePoleBoneToggle.setValue(chain.usePoleBone.get());
             this.ikTransform.setTransform(chain.target);
-            this.iterationsField.setValue(chain.iterations.get());
-            this.useCCDToggle.setValue(chain.useCCD.get());
-            this.chainLengthField.setValue(chain.chainLength.get());
-            this.toleranceField.setValue(chain.tolerance.get());
-            this.positionWeightField.setValue(chain.positionWeight.get());
-            this.rotationWeightField.setValue(chain.rotationWeight.get());
-            this.effectorRotationWeightField.setValue(chain.effectorRotationWeight.get());
-            this.blendField.setValue(chain.blend.get());
-            this.stretchToggle.setValue(chain.stretch.get());
-            this.stretchLimitField.setValue(chain.stretchLimit.get());
-            this.poleAngleOffsetField.setValue(chain.poleAngleOffset.get());
             this.refreshBonesList(chain);
             this.updateTargetBoneLabel(chain);
-            this.updatePoleBoneLabel(chain);
             this.applyConstraintFields(chain);
         }
 
         this.filling = false;
-        this.updateScrollSize(this.leftScrollView);
-        this.updateScrollSize(this.rightScrollView);
-    }
-
-    @Override
-    public void resize()
-    {
-        super.resize();
-
-        this.updateScrollSize(this.leftScrollView);
-        this.updateScrollSize(this.rightScrollView);
-    }
-
-    private void updateScrollSize(UIScrollView scrollView)
-    {
-        if (scrollView == null)
-        {
-            return;
-        }
-
-        int maxY = scrollView.area.y;
-
-        for (UIElement child : scrollView.getChildren(UIElement.class))
-        {
-            if (!child.isVisible())
-            {
-                continue;
-            }
-
-            maxY = Math.max(maxY, child.area.ey());
-        }
-
-        scrollView.scroll.scrollSize = Math.max(scrollView.area.h, maxY - scrollView.area.y + 10);
-        scrollView.scroll.clamp();
     }
 
     private void updateChainName(String value)
@@ -813,18 +546,6 @@ public class UIModelIKPanel extends UIElement
         this.parent.selectBoneFromEditor(this.getTargetVirtualBone(chain));
     }
 
-    private void selectPoleVirtualBone()
-    {
-        IKChainConfig chain = this.getSelectedChain();
-
-        if (chain == null)
-        {
-            return;
-        }
-
-        this.parent.selectBoneFromEditor(this.getPoleVirtualBone(chain));
-    }
-
     private void clearTargetBone()
     {
         IKChainConfig chain = this.getSelectedChain();
@@ -839,137 +560,6 @@ public class UIModelIKPanel extends UIElement
         this.useTargetBoneToggle.setValue(false);
         this.markDirty();
         this.updateTargetBoneLabel(chain);
-    }
-
-    private void updateUsePoleBone()
-    {
-        if (this.filling)
-        {
-            return;
-        }
-
-        IKChainConfig chain = this.getSelectedChain();
-
-        if (chain == null)
-        {
-            return;
-        }
-
-        chain.usePoleBone.set(this.usePoleBoneToggle.getValue());
-        this.markDirty();
-    }
-
-    private void setPoleBoneFromSelected()
-    {
-        IKChainConfig chain = this.getSelectedChain();
-        String selectedBone = this.parent.renderer.getSelectedBone();
-
-        if (chain == null || selectedBone == null || selectedBone.isEmpty() || this.isIKVirtualBone(selectedBone))
-        {
-            return;
-        }
-
-        chain.poleBone.set(selectedBone);
-        chain.usePoleBone.set(true);
-        this.usePoleBoneToggle.setValue(true);
-        this.markDirty();
-        this.updatePoleBoneLabel(chain);
-    }
-
-    private void clearPoleBone()
-    {
-        IKChainConfig chain = this.getSelectedChain();
-
-        if (chain == null)
-        {
-            return;
-        }
-
-        chain.poleBone.set("");
-        chain.usePoleBone.set(false);
-        this.usePoleBoneToggle.setValue(false);
-        this.markDirty();
-        this.updatePoleBoneLabel(chain);
-    }
-
-    private void updateSolverSettings()
-    {
-        if (this.filling)
-        {
-            return;
-        }
-
-        IKChainConfig chain = this.getSelectedChain();
-
-        if (chain == null)
-        {
-            return;
-        }
-
-        chain.iterations.set((int) this.iterationsField.getValue());
-        chain.useCCD.set(this.useCCDToggle.getValue());
-        chain.chainLength.set((int) this.chainLengthField.getValue());
-        chain.tolerance.set((float) this.toleranceField.getValue());
-        chain.positionWeight.set((float) this.positionWeightField.getValue());
-        chain.rotationWeight.set((float) this.rotationWeightField.getValue());
-        chain.effectorRotationWeight.set((float) this.effectorRotationWeightField.getValue());
-        chain.blend.set((float) this.blendField.getValue());
-        chain.stretch.set(this.stretchToggle.getValue());
-        chain.stretchLimit.set((float) this.stretchLimitField.getValue());
-        chain.poleAngleOffset.set((float) this.poleAngleOffsetField.getValue());
-        this.markDirty();
-    }
-
-    private void applyPreset(int preset)
-    {
-        IKChainConfig chain = this.getSelectedChain();
-
-        if (chain == null)
-        {
-            return;
-        }
-
-        this.filling = true;
-
-        if (preset == 0)
-        {
-            this.useCCDToggle.setValue(false);
-            this.iterationsField.setValue(32);
-            this.toleranceField.setValue(0.01);
-            this.positionWeightField.setValue(1);
-            this.rotationWeightField.setValue(1);
-            this.effectorRotationWeightField.setValue(1);
-            this.blendField.setValue(1);
-            this.stretchToggle.setValue(true);
-            this.stretchLimitField.setValue(1.25);
-        }
-        else if (preset == 1)
-        {
-            this.useCCDToggle.setValue(false);
-            this.iterationsField.setValue(20);
-            this.toleranceField.setValue(0.05);
-            this.positionWeightField.setValue(1);
-            this.rotationWeightField.setValue(0.9);
-            this.effectorRotationWeightField.setValue(0.9);
-            this.blendField.setValue(1);
-            this.stretchToggle.setValue(false);
-            this.stretchLimitField.setValue(1.1);
-        }
-        else
-        {
-            this.useCCDToggle.setValue(false);
-            this.iterationsField.setValue(16);
-            this.toleranceField.setValue(0.1);
-            this.positionWeightField.setValue(1);
-            this.rotationWeightField.setValue(0.8);
-            this.effectorRotationWeightField.setValue(0.8);
-            this.blendField.setValue(1);
-            this.stretchToggle.setValue(false);
-            this.stretchLimitField.setValue(1.0);
-        }
-
-        this.filling = false;
-        this.updateSolverSettings();
     }
 
     private void addSelectedBone()
@@ -1035,16 +625,9 @@ public class UIModelIKPanel extends UIElement
         chain.bones.remove(index);
         chain.bones.sync();
         chain.removeJointConstraint(bone);
-        if (bone.equals(chain.poleBone.get()))
-        {
-            chain.poleBone.set("");
-            chain.usePoleBone.set(false);
-            this.usePoleBoneToggle.setValue(false);
-        }
         this.ensureTargetParentBone(chain);
         this.markDirty();
         this.refreshBonesList(chain);
-        this.updatePoleBoneLabel(chain);
         this.onBoneSelectionChanged();
     }
 
@@ -1069,13 +652,9 @@ public class UIModelIKPanel extends UIElement
 
         chain.bones.sync();
         chain.jointConstraints.sync();
-        chain.poleBone.set("");
-        chain.usePoleBone.set(false);
-        this.usePoleBoneToggle.setValue(false);
         this.ensureTargetParentBone(chain);
         this.markDirty();
         this.refreshBonesList(chain);
-        this.updatePoleBoneLabel(chain);
         this.onBoneSelectionChanged();
     }
 
@@ -1229,54 +808,11 @@ public class UIModelIKPanel extends UIElement
         this.markDirty();
     }
 
-    private void updateStiffness(int axis, float value)
-    {
-        if (this.filling)
-        {
-            return;
-        }
-
-        IKChainConfig chain = this.getSelectedChain();
-
-        if (chain == null)
-        {
-            return;
-        }
-
-        String selectedBone = this.bonesList.getCurrentFirst();
-        IKJointConstraint constraint = selectedBone == null ? null : chain.getOrCreateJointConstraint(selectedBone);
-
-        if (axis == 0)
-        {
-            if (constraint != null) constraint.stiffnessX.set(value);
-            else chain.stiffnessX.set(value);
-        }
-        else if (axis == 1)
-        {
-            if (constraint != null) constraint.stiffnessY.set(value);
-            else chain.stiffnessY.set(value);
-        }
-        else
-        {
-            if (constraint != null) constraint.stiffnessZ.set(value);
-            else chain.stiffnessZ.set(value);
-        }
-
-        this.markDirty();
-    }
-
     private void updateTargetBoneLabel(IKChainConfig chain)
     {
         String bone = chain == null || chain.targetBone.get().isEmpty() ? "-" : chain.targetBone.get();
 
         this.targetBoneLabel.label = IKey.raw(UIKeys.MODELS_IK_TARGET_BONE.get() + ": " + bone);
-    }
-
-    private void updatePoleBoneLabel(IKChainConfig chain)
-    {
-        String bone = chain == null || chain.poleBone.get().isEmpty() ? "-" : chain.poleBone.get();
-
-        this.poleBoneLabel.label = IKey.raw(UIKeys.MODELS_IK_POLE_BONE.get() + ": " + bone);
     }
 
     private void applyConstraintFields(IKChainConfig chain)
@@ -1294,9 +830,6 @@ public class UIModelIKPanel extends UIElement
             this.maxX.setValue(constraint.maxX.get());
             this.maxY.setValue(constraint.maxY.get());
             this.maxZ.setValue(constraint.maxZ.get());
-            this.stiffnessX.setValue(constraint.stiffnessX.get());
-            this.stiffnessY.setValue(constraint.stiffnessY.get());
-            this.stiffnessZ.setValue(constraint.stiffnessZ.get());
             this.selectedBoneConstraintsLabel.label = IKey.raw(UIKeys.MODELS_IK_SELECTED_BONE_CONSTRAINTS.get() + ": " + selectedBone);
         }
         else
@@ -1307,9 +840,6 @@ public class UIModelIKPanel extends UIElement
             this.maxX.setValue(chain.maxX.get());
             this.maxY.setValue(chain.maxY.get());
             this.maxZ.setValue(chain.maxZ.get());
-            this.stiffnessX.setValue(chain.stiffnessX.get());
-            this.stiffnessY.setValue(chain.stiffnessY.get());
-            this.stiffnessZ.setValue(chain.stiffnessZ.get());
             this.selectedBoneConstraintsLabel.label = IKey.raw(UIKeys.MODELS_IK_SELECTED_BONE_CONSTRAINTS.get() + ": " + (selectedBone == null ? "-" : selectedBone));
         }
 

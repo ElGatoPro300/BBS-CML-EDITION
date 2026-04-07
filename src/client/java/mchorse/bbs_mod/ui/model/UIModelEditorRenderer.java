@@ -213,7 +213,19 @@ public class UIModelEditorRenderer extends UIModelRenderer
             }
             else
             {
-                gizmoMatrix = this.getSelectedBoneMatrix(this.selectedBone, matrixCache);
+                MatrixCacheEntry entry = matrixCache.get(this.selectedBone);
+
+                if (entry != null)
+                {
+                    Matrix4f matrix = entry.origin();
+
+                    if (matrix == null)
+                    {
+                        matrix = entry.matrix();
+                    }
+
+                    gizmoMatrix = matrix;
+                }
             }
 
             if (gizmoMatrix != null)
@@ -285,7 +297,6 @@ public class UIModelEditorRenderer extends UIModelRenderer
 
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
         RenderSystem.enableBlend();
-        RenderSystem.disableDepthTest();
         builder.begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
 
         for (IKChainConfig chain : this.config.ikChains.getAllTyped())
@@ -320,7 +331,6 @@ public class UIModelEditorRenderer extends UIModelRenderer
             }
 
             Vector3f target = this.getTargetPoint(chain, cache);
-            Vector3f pole = this.getPolePoint(chain, cache);
 
             if (target == null)
             {
@@ -329,23 +339,9 @@ public class UIModelEditorRenderer extends UIModelRenderer
 
             this.line(builder, uiMatrix, previous, target, 1F, 1F, 0F, 1F);
             this.cross(builder, uiMatrix, target, 0.04F, 1F, 0.9F, 0.2F, 1F);
-
-            if (pole != null)
-            {
-                Vector3f poleAnchor = chain.getBones().size() > 1 ? this.getBonePoint(cache, chain.getBones().get(1)) : previous;
-
-                if (poleAnchor == null)
-                {
-                    poleAnchor = previous;
-                }
-
-                this.line(builder, uiMatrix, poleAnchor, pole, 1F, 0.4F, 1F, 1F);
-                this.cross(builder, uiMatrix, pole, 0.035F, 1F, 0.4F, 1F, 1F);
-            }
         }
 
         BufferRenderer.drawWithGlobalProgram(builder.end());
-        RenderSystem.enableDepthTest();
     }
 
     private void renderSelectedCubeVisualizer(UIContext context, MatrixCache cache)
@@ -490,130 +486,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
             }
         }
 
-        return this.toWorldPoint(new Vector3f(chain.target.translate).mul(1F / 16F), chain.targetParentBone.get(), cache);
-    }
-
-    private Vector3f getPolePoint(IKChainConfig chain, MatrixCache cache)
-    {
-        if (chain.usePoleBone.get() && !chain.poleBone.get().isEmpty())
-        {
-            Vector3f pole = this.getBonePoint(cache, chain.poleBone.get());
-
-            if (pole != null)
-            {
-                return pole;
-            }
-        }
-
-        Vector3f point = this.toWorldPoint(new Vector3f(chain.pole.translate).mul(1F / 16F), "", cache);
-
-        return point.lengthSquared() < 0.0000001F ? null : point;
-    }
-
-    private Vector3f toWorldPoint(Vector3f point, String parentBone, MatrixCache cache)
-    {
-        if (cache == null)
-        {
-            return point;
-        }
-
-        Matrix4f parentMatrix = null;
-
-        if (parentBone != null && !parentBone.isEmpty())
-        {
-            MatrixCacheEntry parentEntry = cache.get(parentBone);
-
-            if (parentEntry != null)
-            {
-                parentMatrix = parentEntry.origin() == null ? parentEntry.matrix() : parentEntry.origin();
-            }
-        }
-        else
-        {
-            MatrixCacheEntry rootEntry = cache.get("");
-
-            if (rootEntry != null)
-            {
-                parentMatrix = rootEntry.origin() == null ? rootEntry.matrix() : rootEntry.origin();
-            }
-        }
-
-        if (parentMatrix == null)
-        {
-            return point;
-        }
-
-        Vector3f world = new Vector3f();
-        parentMatrix.transformPosition(point, world);
-
-        return world;
-    }
-
-    private Matrix4f getSelectedBoneMatrix(String selectedBone, MatrixCache cache)
-    {
-        if (selectedBone == null || selectedBone.isEmpty())
-        {
-            return null;
-        }
-
-        MatrixCacheEntry entry = cache.get(selectedBone);
-
-        if (entry != null)
-        {
-            Matrix4f matrix = entry.origin();
-
-            if (matrix == null)
-            {
-                matrix = entry.matrix();
-            }
-
-            return matrix;
-        }
-
-        if (this.config == null)
-        {
-            return null;
-        }
-
-        IKChainConfig chain = null;
-        String id = UIModelIKPanel.extractIKVirtualId(selectedBone);
-
-        if (id == null)
-        {
-            return null;
-        }
-
-        for (IKChainConfig candidate : this.config.ikChains.getAllTyped())
-        {
-            if (candidate.getId().equals(id))
-            {
-                chain = candidate;
-                break;
-            }
-        }
-
-        if (chain == null)
-        {
-            return null;
-        }
-
-        Vector3f position;
-
-        if (UIModelIKPanel.isIKPoleVirtualBoneName(selectedBone))
-        {
-            position = this.getPolePoint(chain, cache);
-        }
-        else
-        {
-            position = this.getTargetPoint(chain, cache);
-        }
-
-        if (position == null)
-        {
-            return null;
-        }
-
-        return new Matrix4f().translate(position);
+        return new Vector3f(chain.target.translate).mul(1F / 16F);
     }
 
     private Vector3f translation(Matrix4f matrix)

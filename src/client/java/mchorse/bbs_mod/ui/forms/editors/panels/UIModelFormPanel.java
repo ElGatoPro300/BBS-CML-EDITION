@@ -25,7 +25,6 @@ import mchorse.bbs_mod.ui.utils.shapes.UIShapeKeys;
 import mchorse.bbs_mod.utils.StringUtils;
 import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.colors.Color;
-import mchorse.bbs_mod.utils.pose.Transform;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
@@ -76,7 +75,6 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
         this.color = new UIColor((c) -> this.form.color.set(new Color().set(c))).withAlpha();
         this.color.direction(Direction.LEFT);
         this.poseEditor = new UIModelPoseEditor();
-        this.poseEditor.pickCallback = this::pickGroup;
         this.poseEditor.setDefaultTextureSupplier(() ->
         {
             Link base = this.form.texture.get();
@@ -121,33 +119,24 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
 
             if (chain != null)
             {
-                boolean pole = UIModelIKPanel.isIKPoleVirtualBoneName(group);
-                String virtualBone = pole ? UIModelIKPanel.IK_POLE_PREFIX + chain.getId() : UIModelIKPanel.IK_TARGET_PREFIX + chain.getId();
+                String virtualBone = UIModelIKPanel.IK_TARGET_PREFIX + chain.getId();
 
                 this.selectedIKTarget = virtualBone;
-                if (pole)
-                {
-                    chain.usePoleBone.set(false);
-                    this.ikTargetTransform.setTransform(chain.pole);
-                }
-                else
-                {
-                    chain.useTargetBone.set(false);
-                    this.ikTargetTransform.setTransform(chain.target);
-                }
+                chain.useTargetBone.set(false);
+                this.ikTargetTransform.setTransform(chain.target);
+                this.poseEditor.groups.list.setCurrent(virtualBone);
                 return;
             }
         }
 
         this.selectedIKTarget = null;
+        this.poseEditor.selectBone(group);
     }
 
     @Override
     public void startEdit(ModelForm form)
     {
         super.startEdit(form);
-        this.selectedIKTarget = null;
-        this.ikTargetTransform.setTransform(new Transform());
 
         ModelInstance model = ModelFormRenderer.getModel(this.form);
         String poseGroup = model == null ? this.form.model.get() : model.poseGroup;
@@ -186,18 +175,9 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
     public Matrix4f getIKTargetOriginMatrix(float transition)
     {
         IKChainConfig chain = this.getChainByVirtualBone(this.selectedIKTarget, ModelFormRenderer.getModel(this.form));
-        Transform transform = this.ikTargetTransform.getTransform();
-        boolean pole = UIModelIKPanel.isIKPoleVirtualBoneName(this.selectedIKTarget);
+        Vector3f point = new Vector3f(this.ikTargetTransform.getTransform().translate).mul(1F / 16F);
 
-        if (transform == null)
-        {
-            transform = chain != null ? (pole ? chain.pole : chain.target) : new Transform();
-            this.ikTargetTransform.setTransform(transform);
-        }
-
-        Vector3f point = new Vector3f(transform.translate).mul(1F / 16F);
-
-        if (chain != null && !pole && !chain.targetParentBone.get().isEmpty())
+        if (chain != null && !chain.targetParentBone.get().isEmpty())
         {
             String path = StringUtils.combinePaths(FormUtils.getPath(this.form), chain.targetParentBone.get());
             MatrixCache map = FormUtilsClient.getRenderer(FormUtils.getRoot(this.form)).collectMatrices(this.editor.editor.renderer.getTargetEntity(), transition);
@@ -234,16 +214,10 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
         for (IKChainConfig chain : model.ikChains)
         {
             String virtualBone = UIModelIKPanel.IK_TARGET_PREFIX + chain.getId();
-            String poleVirtualBone = UIModelIKPanel.IK_POLE_PREFIX + chain.getId();
 
             if (!existing.contains(virtualBone))
             {
                 add.add(virtualBone);
-            }
-
-            if (!existing.contains(poleVirtualBone))
-            {
-                add.add(poleVirtualBone);
             }
         }
 
@@ -261,7 +235,7 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
             return null;
         }
 
-        String id = UIModelIKPanel.extractIKVirtualId(virtualBone);
+        String id = UIModelIKPanel.extractIKTargetId(virtualBone);
 
         if (id == null)
         {
@@ -282,12 +256,8 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
     @Override
     public void pickBone(String bone)
     {
-        if (bone == null || bone.isEmpty())
-        {
-            return;
-        }
+        super.pickBone(bone);
 
-        this.poseEditor.selectBone(bone);
         this.pickGroup(bone);
     }
 }
