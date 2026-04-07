@@ -64,7 +64,7 @@ public class ModelIKSolver
             return;
         }
 
-        Vector3f target = resolveTarget(model, chain, matrices, groups);
+        Vector3f target = resolveTarget(model, chain, matrices);
 
         if (target == null)
         {
@@ -191,7 +191,7 @@ public class ModelIKSolver
         return groups;
     }
 
-    private static Vector3f resolveTarget(Model model, IKChainConfig chain, Map<ModelGroup, Matrix4f> matrices, List<ModelGroup> groups)
+    private static Vector3f resolveTarget(Model model, IKChainConfig chain, Map<ModelGroup, Matrix4f> matrices)
     {
         if (chain.useTargetBone.get() && !chain.targetBone.get().isEmpty())
         {
@@ -210,7 +210,7 @@ public class ModelIKSolver
 
         Vector3f target = new Vector3f(chain.target.translate);
 
-        if (!chain.targetParentBone.get().isEmpty() && !isDrivenBone(chain.targetParentBone.get(), groups))
+        if (!chain.targetParentBone.get().isEmpty())
         {
             ModelGroup parent = model.getGroup(chain.targetParentBone.get());
 
@@ -229,24 +229,6 @@ public class ModelIKSolver
         }
 
         return target;
-    }
-
-    private static boolean isDrivenBone(String bone, List<ModelGroup> groups)
-    {
-        if (bone == null || bone.isEmpty() || groups == null)
-        {
-            return false;
-        }
-
-        for (ModelGroup group : groups)
-        {
-            if (group != null && bone.equals(group.id))
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     private static Vector3f resolvePole(Model model, IKChainConfig chain, Map<ModelGroup, Matrix4f> matrices)

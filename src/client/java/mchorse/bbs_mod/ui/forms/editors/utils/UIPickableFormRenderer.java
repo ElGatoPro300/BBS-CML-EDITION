@@ -21,6 +21,7 @@ import mchorse.bbs_mod.ui.forms.editors.UIFormEditor;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
+import mchorse.bbs_mod.ui.model.UIModelIKPanel;
 import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.ui.utils.StencilFormFramebuffer;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
@@ -318,13 +319,13 @@ public class UIPickableFormRenderer extends UIFormRenderer
             float r = 1F;
             float g = 0.9F;
             float b = 0.2F;
-            String targetPickBone = chain.useTargetBone.get() && !chain.targetBone.get().isEmpty() ? chain.targetBone.get() : "";
+            String virtualBone = UIModelIKPanel.IK_TARGET_PREFIX + chain.getId();
 
-            if (stencil && map != null && !targetPickBone.isEmpty())
+            if (stencil && map != null)
             {
                 int index = map.objectIndex++;
 
-                map.indexMap.put(index, new Pair<>(this.form, targetPickBone));
+                map.indexMap.put(index, new Pair<>(this.form, virtualBone));
                 r = (index & 255) / 255F;
                 g = ((index >> 8) & 255) / 255F;
                 b = ((index >> 16) & 255) / 255F;
@@ -355,13 +356,13 @@ public class UIPickableFormRenderer extends UIFormRenderer
                 float pr = 1F;
                 float pg = 0.4F;
                 float pb = 1F;
-                String polePickBone = chain.usePoleBone.get() && !chain.poleBone.get().isEmpty() ? chain.poleBone.get() : "";
+                String poleVirtualBone = UIModelIKPanel.IK_POLE_PREFIX + chain.getId();
 
-                if (stencil && map != null && !polePickBone.isEmpty())
+                if (stencil && map != null)
                 {
                     int poleIndex = map.objectIndex++;
 
-                    map.indexMap.put(poleIndex, new Pair<>(this.form, polePickBone));
+                    map.indexMap.put(poleIndex, new Pair<>(this.form, poleVirtualBone));
                     pr = (poleIndex & 255) / 255F;
                     pg = ((poleIndex >> 8) & 255) / 255F;
                     pb = ((poleIndex >> 16) & 255) / 255F;
@@ -414,16 +415,9 @@ public class UIPickableFormRenderer extends UIFormRenderer
             }
         }
 
-        String parent = chain.targetParentBone.get();
-
-        if (parent != null && !parent.isEmpty() && chain.getBones().contains(parent))
+        if (!chain.targetParentBone.get().isEmpty())
         {
-            parent = "";
-        }
-
-        if (parent != null && !parent.isEmpty())
-        {
-            Matrix4f matrix = this.getBoneMatrix(cache, parent);
+            Matrix4f matrix = this.getBoneMatrix(cache, chain.targetParentBone.get());
 
             if (matrix != null)
             {
