@@ -37,15 +37,6 @@ public class ModelConfig extends ValueGroup
     public final ArmorSlot itemsMainTransform = new ArmorSlot("items_main_transform");
     public final ArmorSlot itemsOffTransform = new ArmorSlot("items_off_transform");
 
-    public final ValueList<IKChainConfig> ikChains = new ValueList<IKChainConfig>("ik_chains")
-    {
-        @Override
-        protected IKChainConfig create(String id)
-        {
-            return new IKChainConfig(id);
-        }
-    };
-
     public final ValueList<ArmorSlot> itemsMain = new ValueList<ArmorSlot>("items_main")
     {
         @Override
@@ -94,7 +85,6 @@ public class ModelConfig extends ValueGroup
         this.add(this.fpOffhand);
         this.add(this.itemsMainTransform);
         this.add(this.itemsOffTransform);
-        this.add(this.ikChains);
         this.add(this.itemsMain);
         this.add(this.itemsOff);
         this.add(this.physBones);

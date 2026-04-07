@@ -10,7 +10,6 @@ import mchorse.bbs_mod.cubic.data.model.ModelCube;
 import mchorse.bbs_mod.cubic.data.model.ModelGroup;
 import mchorse.bbs_mod.cubic.data.model.ModelQuad;
 import mchorse.bbs_mod.cubic.data.model.ModelVertex;
-import mchorse.bbs_mod.cubic.model.IKChainConfig;
 import mchorse.bbs_mod.cubic.render.CubicCubeRenderer;
 import mchorse.bbs_mod.cubic.render.ICubicRenderer;
 import mchorse.bbs_mod.cubic.model.ModelConfig;
@@ -34,18 +33,11 @@ import mchorse.bbs_mod.utils.colors.Colors;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.GlUniform;
 import net.minecraft.client.gl.ShaderProgram;
-import net.minecraft.client.render.BufferBuilder;
-import net.minecraft.client.render.BufferRenderer;
-import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
-import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.render.VertexFormat;
-import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.RotationAxis;
 import org.joml.Matrix4f;
-import org.joml.Vector3f;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -198,7 +190,6 @@ public class UIModelEditorRenderer extends UIModelRenderer
             .modelRenderer();
 
         this.renderer.render(formContext);
-        this.renderIKVisualizer(context);
         MatrixCache matrixCache = this.renderer.collectMatrices(this.entity, context.getTransition());
         this.renderSelectedCubeVisualizer(context, matrixCache);
 
@@ -282,66 +273,6 @@ public class UIModelEditorRenderer extends UIModelRenderer
         {
             this.stencil.clearPicking();
         }
-    }
-
-    private void renderIKVisualizer(UIContext context)
-    {
-        if (this.config == null || this.config.ikChains.getAllTyped().isEmpty())
-        {
-            return;
-        }
-
-        MatrixCache cache = this.renderer.collectMatrices(this.entity, context.getTransition());
-        Matrix4f uiMatrix = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
-        BufferBuilder builder = Tessellator.getInstance().getBuffer();
-
-        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
-        RenderSystem.enableBlend();
-        builder.begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
-
-        for (IKChainConfig chain : this.config.ikChains.getAllTyped())
-        {
-            if (!chain.visualizer.get())
-            {
-                continue;
-            }
-
-            Vector3f previous = null;
-
-            for (String bone : chain.getBones())
-            {
-                Vector3f point = this.getBonePoint(cache, bone);
-
-                if (point == null)
-                {
-                    continue;
-                }
-
-                if (previous != null)
-                {
-                    this.line(builder, uiMatrix, previous, point, 0F, 1F, 1F, 1F);
-                }
-
-                previous = point;
-            }
-
-            if (previous == null)
-            {
-                continue;
-            }
-
-            Vector3f target = this.getTargetPoint(chain, cache);
-
-            if (target == null)
-            {
-                continue;
-            }
-
-            this.line(builder, uiMatrix, previous, target, 1F, 1F, 0F, 1F);
-            this.cross(builder, uiMatrix, target, 0.04F, 1F, 0.9F, 0.2F, 1F);
-        }
-
-        BufferRenderer.drawWithGlobalProgram(builder.end());
     }
 
     private void renderSelectedCubeVisualizer(UIContext context, MatrixCache cache)
