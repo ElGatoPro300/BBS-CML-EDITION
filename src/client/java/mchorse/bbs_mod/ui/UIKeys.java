@@ -859,12 +859,6 @@ public class UIKeys
     public static final IKey MODELS_IK_CONSTRAINTS = L10n.lang("bbs.ui.models.ik_constraints");
     public static final IKey MODELS_IK_MIN = L10n.lang("bbs.ui.models.ik_min");
     public static final IKey MODELS_IK_MAX = L10n.lang("bbs.ui.models.ik_max");
-    public static final IKey MODELS_IK_USE_TARGET_BONE = L10n.lang("bbs.ui.models.ik_use_target_bone");
-    public static final IKey MODELS_IK_TARGET_BONE = L10n.lang("bbs.ui.models.ik_target_bone");
-    public static final IKey MODELS_IK_SET_TARGET_FROM_SELECTED = L10n.lang("bbs.ui.models.ik_set_target_from_selected");
-    public static final IKey MODELS_IK_CLEAR_TARGET_BONE = L10n.lang("bbs.ui.models.ik_clear_target_bone");
-    public static final IKey MODELS_IK_SELECTED_BONE_CONSTRAINTS = L10n.lang("bbs.ui.models.ik_selected_bone_constraints");
-    public static final IKey MODELS_IK_SELECT_TARGET = L10n.lang("bbs.ui.models.ik_select_target");
     public static final IKey MODELS_DYNAMIC_BONES = L10n.lang("bbs.ui.models.dynamic_bones");
     public static final IKey MODELS_DYNAMIC_BONES_ADD = L10n.lang("bbs.ui.models.dynamic_bones.add");
     public static final IKey MODELS_DYNAMIC_BONES_ADD_TOOLTIP = L10n.lang("bbs.ui.models.dynamic_bones.add_tooltip");

@@ -331,17 +331,6 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
 
     private void pickBone(String bone)
     {
-        if (this.ikPanel != null && this.ikPanel.isIKVirtualBone(bone))
-        {
-            this.ikPanel.selectVirtualBone(bone);
-            this.renderer.setSelectedBone(bone);
-            this.renderer.transform = this.ikPanel.getTargetTransformEditor();
-
-            return;
-        }
-
-        boolean geometryActive = this.geometryPanel != null && this.mainView.getChildren().contains(this.geometryPanel);
-
         for (UIModelSection section : this.sections)
         {
             section.deselect();
@@ -351,33 +340,8 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
             {
                 ((UIModelPartsSection) section).selectBone(bone);
                 this.setRight(((UIModelPartsSection) section).poseEditor);
-                this.renderer.transform = geometryActive ? this.geometryPanel.getGizmoTransformEditor() : ((UIModelPartsSection) section).poseEditor.transform;
-
-                if (this.mainView.getChildren().contains(this.dynamicBonesPanel))
-                {
-                    this.setDynamicRight(((UIModelPartsSection) section).poseEditor);
-                }
-                else
-                {
-                    this.setRight(((UIModelPartsSection) section).poseEditor);
-                }
             }
         }
-
-        if (this.geometryPanel != null)
-        {
-            this.geometryPanel.selectBone(bone);
-
-            if (geometryActive)
-            {
-                this.renderer.transform = this.geometryPanel.getGizmoTransformEditor();
-            }
-        }
-    }
-
-    public void selectBoneFromEditor(String bone)
-    {
-        this.pickBone(bone);
     }
     
     public void dirty()

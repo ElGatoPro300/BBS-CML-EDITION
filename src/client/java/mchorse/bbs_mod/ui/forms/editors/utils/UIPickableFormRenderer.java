@@ -2,17 +2,12 @@ package mchorse.bbs_mod.ui.forms.editors.utils;
 
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
-import mchorse.bbs_mod.cubic.ModelInstance;
-import mchorse.bbs_mod.cubic.model.IKChainConfig;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.forms.Form;
-import mchorse.bbs_mod.forms.forms.ModelForm;
 import mchorse.bbs_mod.forms.renderers.FormRenderType;
 import mchorse.bbs_mod.forms.renderers.FormRenderingContext;
-import mchorse.bbs_mod.forms.renderers.ModelFormRenderer;
-import mchorse.bbs_mod.forms.renderers.utils.MatrixCache;
 import mchorse.bbs_mod.graphics.Draw;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.resources.Link;
@@ -20,7 +15,6 @@ import mchorse.bbs_mod.ui.forms.editors.UIFormEditor;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
-import mchorse.bbs_mod.ui.model.UIModelIKPanel;
 import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.ui.utils.StencilFormFramebuffer;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
@@ -29,14 +23,8 @@ import mchorse.bbs_mod.utils.colors.Colors;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.GlUniform;
 import net.minecraft.client.gl.ShaderProgram;
-import net.minecraft.client.render.BufferBuilder;
-import net.minecraft.client.render.BufferRenderer;
-import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
-import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.render.VertexFormat;
-import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
@@ -130,7 +118,6 @@ public class UIPickableFormRenderer extends UIFormRenderer
         if (this.renderForm == null || this.renderForm.get())
         {
             FormUtilsClient.render(this.form, formContext);
-            this.renderIKTargets(context, false, null);
 
             if (this.form.hitbox.get())
             {
@@ -146,7 +133,6 @@ public class UIPickableFormRenderer extends UIFormRenderer
             this.stencil.apply();
 
             FormUtilsClient.render(this.form, formContext.stencilMap(this.stencilMap));
-            this.renderIKTargets(context, true, this.stencilMap);
 
             Matrix4f matrix = this.formEditor.getOrigin(context.getTransition());
             MatrixStack stack = context.batcher.getContext().getMatrices();
@@ -214,176 +200,6 @@ public class UIPickableFormRenderer extends UIFormRenderer
         }
 
         stack.pop();
-    }
-
-    private void renderIKTargets(UIContext context, boolean stencil, StencilMap map)
-    {
-        if (!(this.form instanceof ModelForm modelForm))
-        {
-            return;
-        }
-
-        ModelFormRenderer renderer = (ModelFormRenderer) FormUtilsClient.getRenderer(modelForm);
-        ModelInstance instance = renderer.getModel();
-
-        if (instance == null || instance.ikChains.isEmpty())
-        {
-            return;
-        }
-
-        MatrixCache cache = renderer.collectMatrices(this.getTargetEntity(), context.getTransition());
-        MatrixStack stack = context.batcher.getContext().getMatrices();
-        BufferBuilder builder = Tessellator.getInstance().getBuffer();
-
-        if (!stencil)
-        {
-            builder.begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
-
-            for (IKChainConfig chain : instance.ikChains)
-            {
-                if (!chain.visualizer.get())
-                {
-                    continue;
-                }
-
-                Vector3f previous = null;
-
-                for (String bone : chain.getBones())
-                {
-                    Matrix4f matrix = this.getBoneMatrix(cache, bone);
-
-                    if (matrix == null)
-                    {
-                        continue;
-                    }
-
-                    Vector3f point = new Vector3f();
-                    matrix.getTranslation(point);
-
-                    if (previous != null)
-                    {
-                        this.line(builder, stack, previous, point, 0F, 1F, 1F, 1F);
-                    }
-
-                    previous = point;
-                }
-
-                Vector3f target = this.getTargetPoint(chain, cache);
-
-                if (previous != null && target != null)
-                {
-                    this.line(builder, stack, previous, target, 1F, 1F, 0F, 1F);
-                }
-            }
-
-            RenderSystem.setShader(GameRenderer::getPositionColorProgram);
-            BufferRenderer.drawWithGlobalProgram(builder.end());
-        }
-
-        builder.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
-
-        for (IKChainConfig chain : instance.ikChains)
-        {
-            if (!chain.visualizer.get())
-            {
-                continue;
-            }
-
-            Vector3f target = this.getTargetPoint(chain, cache);
-
-            if (target == null)
-            {
-                continue;
-            }
-
-            float r = 1F;
-            float g = 0.9F;
-            float b = 0.2F;
-            String virtualBone = UIModelIKPanel.IK_TARGET_PREFIX + chain.getId();
-
-            if (stencil && map != null)
-            {
-                int index = map.objectIndex++;
-
-                map.indexMap.put(index, new Pair<>(this.form, virtualBone));
-                r = (index & 255) / 255F;
-                g = ((index >> 8) & 255) / 255F;
-                b = ((index >> 16) & 255) / 255F;
-            }
-
-            float s = 0.04F;
-            float y = target.y;
-
-            Draw.fillQuad(builder, stack,
-                target.x - s, y, target.z - s,
-                target.x + s, y, target.z - s,
-                target.x + s, y, target.z + s,
-                target.x - s, y, target.z + s,
-                r, g, b, 1F
-            );
-            Draw.fillQuad(builder, stack,
-                target.x - s, y, target.z + s,
-                target.x + s, y, target.z + s,
-                target.x + s, y, target.z - s,
-                target.x - s, y, target.z - s,
-                r, g, b, 1F
-            );
-        }
-
-        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
-        BufferRenderer.drawWithGlobalProgram(builder.end());
-    }
-
-    private void line(BufferBuilder builder, MatrixStack stack, Vector3f a, Vector3f b, float r, float g, float bl, float alpha)
-    {
-        Matrix4f matrix = stack.peek().getPositionMatrix();
-
-        builder.vertex(matrix, a.x, a.y, a.z).color(r, g, bl, alpha).next();
-        builder.vertex(matrix, b.x, b.y, b.z).color(r, g, bl, alpha).next();
-    }
-
-    private Vector3f getTargetPoint(IKChainConfig chain, MatrixCache cache)
-    {
-        if (chain.useTargetBone.get() && !chain.targetBone.get().isEmpty())
-        {
-            Matrix4f matrix = this.getBoneMatrix(cache, chain.targetBone.get());
-
-            if (matrix != null)
-            {
-                Vector3f vector = new Vector3f();
-                matrix.getTranslation(vector);
-
-                return vector;
-            }
-        }
-
-        if (!chain.targetParentBone.get().isEmpty())
-        {
-            Matrix4f matrix = this.getBoneMatrix(cache, chain.targetParentBone.get());
-
-            if (matrix != null)
-            {
-                Vector3f world = new Vector3f();
-
-                matrix.transformPosition(new Vector3f(chain.target.translate).mul(1F / 16F), world);
-
-                return world;
-            }
-        }
-
-        return new Vector3f(chain.target.translate).mul(1F / 16F);
-    }
-
-    private Matrix4f getBoneMatrix(MatrixCache cache, String bone)
-    {
-        mchorse.bbs_mod.forms.renderers.utils.MatrixCacheEntry entry = cache.get(bone);
-
-        if (entry == null)
-        {
-            return null;
-        }
-
-        return entry.origin() == null ? entry.matrix() : entry.origin();
     }
 
     private void renderFormHitbox(UIContext context)

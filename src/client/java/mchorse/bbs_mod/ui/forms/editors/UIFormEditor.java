@@ -308,17 +308,14 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
 
             if (pair != null)
             {
-                if (pair.a != null)
-                {
-                    this.pickFormFromRenderer(pair);
-
-                    return true;
-                }
-
                 if (Gizmo.INSTANCE.start(stencil.getIndex(), context.mouseX, context.mouseY, this.editor.getEditableTransform()))
                 {
                     return true;
                 }
+
+                this.pickFormFromRenderer(pair);
+
+                return true;
             }
         }
 
