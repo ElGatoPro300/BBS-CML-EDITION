@@ -31,6 +31,8 @@ import mchorse.bbs_mod.utils.iris.ShaderCurves;
 import net.minecraft.client.render.BufferRenderer;
 
 import net.minecraft.client.gl.ShaderProgram;
+import net.minecraft.client.gl.ShaderProgramKey;
+import net.minecraft.client.gl.ShaderProgramKeys;
 import java.util.function.Supplier;
 
 import mchorse.bbs_mod.utils.math.Noise;
@@ -66,7 +68,7 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
         stack.peek().getNormalMatrix().getScale(normalScale);
         stack.peek().getNormalMatrix().scale(1F / normalScale.x, -1F / normalScale.y, 1F / normalScale.z);
 
-        this.renderShape(stack, GameRenderer::getRenderTypeEntityTranslucentProgram, OverlayTexture.DEFAULT_UV, LightmapTextureManager.MAX_LIGHT_COORDINATE);
+        this.renderShape(stack, ShaderProgramKeys.RENDERTYPE_ENTITY_TRANSLUCENT, OverlayTexture.DEFAULT_UV, LightmapTextureManager.MAX_LIGHT_COORDINATE);
 
         stack.pop();
     }
@@ -74,14 +76,12 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
     @Override
     protected void render3D(FormRenderingContext context)
     {
-        Supplier<ShaderProgram> shader = BBSRendering.isIrisShadersEnabled()
-            ? GameRenderer::getRenderTypeEntityTranslucentCullProgram
-            : GameRenderer::getRenderTypeEntityTranslucentProgram;
+        ShaderProgramKey shader = ShaderProgramKeys.RENDERTYPE_ENTITY_TRANSLUCENT;
 
         this.renderShape(context.stack, shader, context.overlay, context.light);
     }
 
-    private void renderShape(MatrixStack stack, Supplier<ShaderProgram> shader, int overlay, int light)
+    private void renderShape(MatrixStack stack, ShaderProgramKey shader, int overlay, int light)
     {
         this.evaluator = new ShapeGraphEvaluator(this.form.graph.get());
         

@@ -43,6 +43,7 @@ import mchorse.bbs_mod.utils.StringUtils;
 import mchorse.bbs_mod.utils.clips.Clip;
 import mchorse.bbs_mod.utils.clips.Clips;
 import mchorse.bbs_mod.utils.colors.Colors;
+import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.joml.Vectors;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.util.math.MatrixStack;
@@ -455,10 +456,10 @@ public class UIFilmPreview extends UIElement
         stack.rotate(RotationAxis.NEGATIVE_X.rotationDegrees(mcCamera.getPitch()));
         stack.rotate(RotationAxis.POSITIVE_Y.rotationDegrees(mcCamera.getYaw()));
         stack.scale(-1F, -1F, -1F);
-        RenderSystem.applyModelViewMatrix();
+        MatrixStackUtils.applyModelViewMatrix();
         RenderSystem.renderCrosshair(10);
 
         stack.popMatrix();
-        RenderSystem.applyModelViewMatrix();
+        MatrixStackUtils.applyModelViewMatrix();
     }
 }
