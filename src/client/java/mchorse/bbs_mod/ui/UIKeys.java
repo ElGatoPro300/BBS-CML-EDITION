@@ -384,6 +384,7 @@ public class UIKeys
     public static final IKey FILM_LAYOUT_INVERT = L10n.lang("bbs.ui.film.layout.invert");
     public static final IKey FILM_LAYOUT_LOCK = L10n.lang("bbs.ui.film.layout.lock");
     public static final IKey FILM_LAYOUT_UNLOCK = L10n.lang("bbs.ui.film.layout.unlock");
+    public static final IKey FILM_LAYOUT_PRESETS = L10n.lang("bbs.ui.film.layout.presets");
     public static final IKey FILM_VIDEO_RECORDING = L10n.lang("bbs.ui.film.video_recording");
     public static final IKey FORMS_CATEGORIES_ADD_CATEGORY_DESCRIPTION = L10n.lang("bbs.ui.forms.categories.add_category-description");
     public static final IKey FORMS_CATEGORIES_ADD_CATEGORY_TITLE = L10n.lang("bbs.ui.forms.categories.add_category-title");

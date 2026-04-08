@@ -17,6 +17,8 @@ public class CMLSettings
             UIKeys.CONFIG_GENERAL_COMPACTED_OPTIONS_SEPARATED,
             UIKeys.CONFIG_GENERAL_COMPACTED_OPTIONS_COMPACTED
         );
+        BBSSettings.editorDockGuideColor = builder.getInt("dock_guide_color", 0x57CCFF).color();
+        BBSSettings.editorDockGuideOpacity = builder.getFloat("dock_guide_opacity", 0.5F, 0F, 1F);
         builder.category("appearance");
         BBSSettings.disablePivotTransform = builder.getBoolean("disable_pivot_transform", false);
         BBSSettings.gizmoYAxisHorizontal = builder.getBoolean("gizmo_y_axis_horizontal", true);

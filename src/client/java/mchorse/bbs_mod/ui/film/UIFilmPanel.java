@@ -31,6 +31,7 @@ import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.network.ClientNetwork;
 import mchorse.bbs_mod.settings.values.IValueListener;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
+import mchorse.bbs_mod.settings.values.ui.EditorLayoutNode;
 import mchorse.bbs_mod.settings.values.ui.ValueEditorLayout;
 import mchorse.bbs_mod.ui.ContentType;
 import mchorse.bbs_mod.ui.Keys;
@@ -58,6 +59,7 @@ import mchorse.bbs_mod.ui.framework.elements.utils.UIDraggable;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIRenderable;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
+import mchorse.bbs_mod.ui.utils.presets.UICopyPasteController;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
@@ -73,6 +75,7 @@ import mchorse.bbs_mod.utils.joml.Vectors;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 import mchorse.bbs_mod.utils.keyframes.KeyframeSegment;
+import mchorse.bbs_mod.utils.presets.PresetManager;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
@@ -82,6 +85,8 @@ import org.joml.Vector2i;
 import org.joml.Vector3d;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
@@ -99,6 +104,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     public UIDraggable draggableEditor;
     public UIFilmRecorder recorder;
     public UIFilmPreview preview;
+    private final List<UIDraggable> splitterHandles = new ArrayList<>();
+    private final List<EditorLayoutNode.SplitterHandleInfo> splitterHandleInfos = new ArrayList<>();
 
     public UIIcon duplicateFilm;
 
@@ -112,9 +119,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     public UIIcon openRenderQueue;
     public UIIcon toggleHorizontal;
     public UIIcon layoutLock;
+    public UIIcon layoutPresets;
     public UIIcon openCameraEditor;
     public UIIcon openReplayEditor;
     public UIIcon openActionEditor;
+    private UICopyPasteController layoutPresetsController;
 
     private Camera camera = new Camera();
     private boolean entered;
@@ -132,6 +141,17 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private UIElement secretPlay;
 
     private boolean newFilm;
+    private final Map<String, UIElement> panelById = new LinkedHashMap<>();
+    private final Map<String, UIDraggable> dragHandlesById = new LinkedHashMap<>();
+    private static final float DRAG_HANDLE_HEIGHT_NORM = 0.02F;
+    private static final float DRAG_HANDLE_TOP_OFFSET_NORM = 0.01F;
+    private static final int SPLITTER_HANDLE_PX = 6;
+    private static final int DROP_ZONE_CENTER = -1;
+    private static final float DROP_EDGE_MARGIN = 0.2F;
+    private static final int EDITOR_MIN_SIZE_FOR_PX_HANDLES = 10;
+    private String draggingPanelId;
+    private String dropTargetPanelId;
+    private int dropTargetZone = DROP_ZONE_CENTER;
 
     /**
      * Initialize the camera editor with a camera profile.
@@ -156,6 +176,9 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.main = new UIElement();
         this.editArea = new UIElement();
         this.preview = event.createPreview(this);
+        this.panelById.put("main", this.main);
+        this.panelById.put("preview", this.preview);
+        this.panelById.put("editArea", this.editArea);
 
         this.draggableMain = new UIDraggable((context) ->
         {
@@ -329,16 +352,31 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.openReplayEditor.tooltip(UIKeys.FILM_OPEN_REPLAY_EDITOR, Direction.LEFT);
         this.openActionEditor = new UIIcon(Icons.ACTION, (b) -> this.showPanel(this.actionEditor));
         this.openActionEditor.tooltip(UIKeys.FILM_OPEN_ACTION_EDITOR, Direction.LEFT);
+        this.layoutPresetsController = new UICopyPasteController(PresetManager.LAYOUTS, "_CopyFilmLayout")
+            .supplier(this::getFilmLayoutPresetData)
+            .consumer(this::applyFilmLayoutFromPreset);
+        this.layoutPresets = new UIIcon(Icons.SAVED, (b) ->
+        {
+            UIContext ctx = this.getContext();
+            this.layoutPresetsController.openPresets(ctx, ctx.mouseX, ctx.mouseY);
+        });
+        this.layoutPresets.tooltip(UIKeys.FILM_LAYOUT_PRESETS, Direction.LEFT);
 
         /* Setup elements */
         this.iconBar.add(this.openHistory, this.openRenderQueue, this.openCameraEditor.marginTop(9), this.openReplayEditor, this.openActionEditor);
 
         UIElement bottomIcons = new UIElement();
 
-        bottomIcons.relative(this).x(1F, -20).y(1F).wh(20, 40).anchorY(1F).column(0).stretch();
-        bottomIcons.add(this.toggleHorizontal, this.layoutLock);
+        bottomIcons.relative(this).x(1F, -20).y(1F).wh(20, 60).anchorY(1F).column(0).stretch();
+        bottomIcons.add(this.toggleHorizontal, this.layoutLock, this.layoutPresets);
 
-        this.editor.add(this.main, new UIRenderable(this::renderIcons));
+        this.editor.add(this.main, new UIRenderable(this::renderIcons), new UIRenderable(this::renderDropZoneHighlight));
+        for (String id : this.panelById.keySet())
+        {
+            UIDraggable handle = this.createPanelDragHandle(id);
+            this.dragHandlesById.put(id, handle);
+            this.editor.add(handle);
+        }
         this.main.add(this.cameraEditor, this.replayEditor, this.actionEditor, this.editArea, this.preview, this.draggableMain, this.draggableEditor);
         this.add(this.controller, new UIRenderable(this::renderDividers), bottomIcons);
         this.overlay.namesList.setFileIcon(Icons.FILM);
@@ -553,118 +591,640 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private void setupEditorFlex(boolean resize)
     {
         ValueEditorLayout layout = BBSSettings.editorLayoutSettings;
+        EditorLayoutNode root = layout.getFilmLayoutRoot();
+        List<EditorLayoutNode.SplitterNode> splitters = layout.getFilmSplitters();
 
-        layout.setMainSizeH(MathUtils.clamp(layout.getMainSizeH(), 0.05F, 0.95F));
-        layout.setEditorSizeH(MathUtils.clamp(layout.getEditorSizeH(), 0.05F, 0.95F));
-        layout.setMainSizeV(MathUtils.clamp(layout.getMainSizeV(), 0.05F, 0.95F));
-        layout.setEditorSizeV(MathUtils.clamp(layout.getEditorSizeV(), 0.05F, 0.95F));
-
-        this.main.resetFlex();
-        this.editArea.resetFlex();
-        this.preview.resetFlex();
-        this.draggableMain.resetFlex();
-        this.draggableEditor.resetFlex();
-
-        this.draggableEditor.setVisible(layout.isMiddleLayout());
-
-        if (layout.isHorizontal())
+        if (!layout.isLayoutLocked() && resize && splitters.size() == this.splitterHandles.size())
         {
-            if (layout.isMainOnTop())
-            {
-                this.main.relative(this.editor).y(0).w(1F).h(layout.getMainSizeH());
-                this.editArea.relative(this.editor).y(layout.getMainSizeH()).x(1F - layout.getEditorSizeH()).wTo(this.editor.area, 1F).hTo(this.editor.area, 1F);
-                this.preview.relative(this.editor).y(layout.getMainSizeH()).w(1F - layout.getEditorSizeH()).hTo(this.editor.area, 1F);
-            }
-            else
-            {
-                this.main.relative(this.editor).y(1F - layout.getMainSizeH()).w(1F).hTo(this.editor.area, 1F);
-                this.editArea.relative(this.editor).x(1F - layout.getEditorSizeH()).wTo(this.editor.area, 1F).hTo(this.main.area, 0F);
-                this.preview.relative(this.editor).w(1F - layout.getEditorSizeH()).hTo(this.main.area, 0F);
-            }
-
-            this.draggableMain.hoverOnly().relative(this.editArea).x(-6).y(0).w(12).h(1F);
+            this.updateEditorFlexBoundsOnly(layout, root);
+            this.resize();
+            this.resize();
+            return;
         }
-        else if (layout.isMiddleLayout())
+
+        this.resetDynamicLayoutElements();
+        Map<String, float[]> bounds = this.computePanelBounds(root);
+        this.applyPanelBoundsFromMap(bounds);
+
+        if (layout.isLayoutLocked())
         {
-            float mainSizeV = layout.getMainSizeV();
-            float editorSizeH = layout.getEditorSizeH();
-
-            if (mainSizeV + editorSizeH > 0.95F)
-            {
-                editorSizeH = 0.95F - mainSizeV;
-
-                if (editorSizeH < 0.05F)
-                {
-                    editorSizeH = 0.05F;
-                    mainSizeV = 0.95F - editorSizeH;
-                }
-
-                layout.setMainSizeV(mainSizeV);
-                layout.setEditorSizeH(editorSizeH);
-            }
-
-            if (layout.isMiddleLayoutInverted())
-            {
-                this.editArea.relative(this.editor).w(mainSizeV).h(1F);
-                this.main.relative(this.editor).x(mainSizeV).w(editorSizeH).h(1F);
-                this.preview.relative(this.editor).x(mainSizeV + editorSizeH).w(1F - mainSizeV - editorSizeH).h(1F);
-            }
-            else
-            {
-                this.preview.relative(this.editor).w(mainSizeV).h(1F);
-                this.main.relative(this.editor).x(mainSizeV).w(editorSizeH).h(1F);
-                this.editArea.relative(this.editor).x(mainSizeV + editorSizeH).w(1F - mainSizeV - editorSizeH).h(1F);
-            }
-
-            this.draggableMain.hoverOnly().relative(this.main).x(-6).w(12).h(1F);
-            this.draggableEditor.hoverOnly().relative(this.main).x(1F).w(12).h(1F);
+            this.setPanelDragHandlesVisible(false);
         }
         else
         {
-            if (layout.getLayout() == ValueEditorLayout.LAYOUT_VERTICAL_LEFT)
-            {
-                if (layout.isVerticalLayoutInverted())
-                {
-                    this.main.relative(this.editor).x(1F - layout.getMainSizeV()).w(layout.getMainSizeV()).h(1F);
-                    this.editArea.relative(this.editor).y(layout.getEditorSizeV()).w(1F - layout.getMainSizeV()).hTo(this.editor.area, 1F);
-                    this.preview.relative(this.editor).w(1F - layout.getMainSizeV()).hTo(this.editArea.area, 0F);
-
-                    this.draggableMain.hoverOnly().relative(this.editor).x(1F - layout.getMainSizeV()).w(12).h(1F);
-                }
-                else
-                {
-                    this.main.relative(this.editor).w(layout.getMainSizeV()).h(1F);
-                    this.editArea.relative(this.main).x(1F).y(layout.getEditorSizeV()).wTo(this.editor.area, 1F).hTo(this.editor.area, 1F);
-                    this.preview.relative(this.main).x(1F).wTo(this.editor.area, 1F).hTo(this.editArea.area, 0F);
-
-                    this.draggableMain.hoverOnly().relative(this.main).x(1F).w(12).h(1F);
-                }
-            }
-            else if (layout.getLayout() == ValueEditorLayout.LAYOUT_VERTICAL_RIGHT)
-            {
-                if (layout.isVerticalLayoutInverted())
-                {
-                    this.preview.relative(this.editor).x(1F - layout.getMainSizeV()).w(layout.getMainSizeV()).h(1F);
-                    this.main.relative(this.editor).w(1F - layout.getMainSizeV()).h(layout.getEditorSizeV());
-                    this.editArea.relative(this.editor).y(layout.getEditorSizeV()).w(1F - layout.getMainSizeV()).hTo(this.editor.area, 1F);
-
-                    this.draggableMain.hoverOnly().relative(this.main).x(1F).w(12).h(1F);
-                }
-                else
-                {
-                    this.preview.relative(this.editor).w(1F - layout.getMainSizeV()).h(1F);
-                    this.main.relative(this.editor).x(1F - layout.getMainSizeV()).w(layout.getMainSizeV()).h(layout.getEditorSizeV());
-                    this.editArea.relative(this.editor).x(1F - layout.getMainSizeV()).y(layout.getEditorSizeV()).w(layout.getMainSizeV()).hTo(this.editor.area, 1F);
-
-                    this.draggableMain.hoverOnly().relative(this.editor).x(1F - layout.getMainSizeV()).w(12).h(1F);
-                }
-            }
+            this.setPanelDragHandlesVisible(true);
+            this.rebuildSplitterHandles(layout, root, splitters);
+            this.applyDragHandleBoundsFromMap(bounds);
         }
 
         if (resize)
         {
             this.resize();
             this.resize();
+        }
+    }
+
+    private void resetDynamicLayoutElements()
+    {
+        this.main.resetFlex();
+        this.editArea.resetFlex();
+        this.preview.resetFlex();
+        this.draggableMain.setVisible(false);
+        this.draggableEditor.setVisible(false);
+        for (UIDraggable handle : this.splitterHandles)
+        {
+            handle.removeFromParent();
+        }
+        this.splitterHandles.clear();
+        for (UIDraggable handle : this.dragHandlesById.values())
+        {
+            handle.resetFlex();
+        }
+    }
+
+    private Map<String, float[]> computePanelBounds(EditorLayoutNode root)
+    {
+        Map<String, float[]> bounds = new HashMap<>();
+        root.computeBounds(0F, 0F, 1F, 1F, bounds);
+        return bounds;
+    }
+
+    private void setPanelDragHandlesVisible(boolean visible)
+    {
+        for (UIDraggable handle : this.dragHandlesById.values())
+        {
+            handle.setVisible(visible);
+        }
+    }
+
+    private void rebuildSplitterHandles(ValueEditorLayout layout, EditorLayoutNode root, List<EditorLayoutNode.SplitterNode> splitters)
+    {
+        this.splitterHandleInfos.clear();
+        EditorLayoutNode.computeSplitterHandles(root, 0F, 0F, 1F, 1F, this.splitterHandleInfos);
+
+        for (int i = 0; i < splitters.size(); i++)
+        {
+            final int index = i;
+            UIDraggable handle = new UIDraggable((context) ->
+            {
+                float ratio = this.getSplitterRatioFromMouse(index, context.mouseX, context.mouseY);
+                if (ratio >= 0F)
+                {
+                    layout.setFilmSplitterRatio(index, ratio);
+                    this.setupEditorFlex(true);
+                }
+            });
+
+            handle.hoverOnly();
+            handle.dragEnd(() -> this.setupEditorFlex(true));
+            handle.reference(() -> this.getSplitterHandleReferencePosition(index, splitters));
+            handle.rendering((context) -> this.renderSplitter(context, index));
+            this.applySplitterHandleBounds(handle, this.splitterHandleInfos.get(index));
+            this.splitterHandles.add(handle);
+
+            IUIElement insertAfter = index == 0 ? this.main : this.splitterHandles.get(index - 1);
+            this.editor.addAfter(insertAfter, handle);
+        }
+    }
+
+    private void applySplitterHandleBounds(UIDraggable handle, EditorLayoutNode.SplitterHandleInfo info)
+    {
+        int ew = this.editor.area.w;
+        int eh = this.editor.area.h;
+        if (ew < EDITOR_MIN_SIZE_FOR_PX_HANDLES || eh < EDITOR_MIN_SIZE_FOR_PX_HANDLES)
+        {
+            handle.relative(this.editor).x(info.hx).y(info.hy).w(info.hw).h(info.hh);
+            return;
+        }
+
+        if (info.horizontal)
+        {
+            float centerY = info.hy + info.hh * 0.5F;
+            float hyNew = centerY - (SPLITTER_HANDLE_PX / (2F * eh));
+            handle.relative(this.editor).x(info.hx).y(hyNew).w(info.hw).h(SPLITTER_HANDLE_PX);
+        }
+        else
+        {
+            float centerX = info.hx + info.hw * 0.5F;
+            float hxNew = centerX - (SPLITTER_HANDLE_PX / (2F * ew));
+            handle.relative(this.editor).x(hxNew).y(info.hy).w(SPLITTER_HANDLE_PX).h(info.hh);
+        }
+    }
+
+    private void syncSplitterHandleBounds()
+    {
+        for (int i = 0; i < this.splitterHandles.size() && i < this.splitterHandleInfos.size(); i++)
+        {
+            this.applySplitterHandleBounds(this.splitterHandles.get(i), this.splitterHandleInfos.get(i));
+        }
+    }
+
+    private float getSplitterRatioFromMouse(int index, int mouseX, int mouseY)
+    {
+        if (index < 0 || index >= this.splitterHandleInfos.size())
+        {
+            return -1F;
+        }
+
+        EditorLayoutNode.SplitterHandleInfo info = this.splitterHandleInfos.get(index);
+        int ex = this.editor.area.x;
+        int ey = this.editor.area.y;
+        int ew = Math.max(1, this.editor.area.w);
+        int eh = Math.max(1, this.editor.area.h);
+        float ratio = info.horizontal
+            ? (mouseY - (ey + info.py * eh)) / (info.ph * eh)
+            : (mouseX - (ex + info.px * ew)) / (info.pw * ew);
+
+        return MathUtils.clamp(ratio, 0.05F, 0.95F);
+    }
+
+    private Vector2i getSplitterHandleReferencePosition(int index, List<EditorLayoutNode.SplitterNode> splitters)
+    {
+        if (index < 0 || index >= this.splitterHandleInfos.size() || index >= splitters.size())
+        {
+            return new Vector2i(this.editor.area.x, this.editor.area.y);
+        }
+
+        EditorLayoutNode.SplitterHandleInfo info = this.splitterHandleInfos.get(index);
+        float r = splitters.get(index).getRatio();
+        int ex = this.editor.area.x;
+        int ey = this.editor.area.y;
+        int ew = Math.max(1, this.editor.area.w);
+        int eh = Math.max(1, this.editor.area.h);
+        int hx = ex + (int) ((info.px + (info.horizontal ? info.pw * 0.5F : r * info.pw)) * ew);
+        int hy = ey + (int) ((info.py + (info.horizontal ? r * info.ph : info.ph * 0.5F)) * eh);
+
+        return new Vector2i(hx, hy);
+    }
+
+    private void applyPanelBoundsFromMap(Map<String, float[]> bounds)
+    {
+        for (Map.Entry<String, float[]> e : bounds.entrySet())
+        {
+            UIElement el = this.panelById.get(e.getKey());
+            if (el != null)
+            {
+                float[] b = e.getValue();
+                el.relative(this.editor).x(b[0]).y(b[1]).w(b[2]).h(b[3]);
+            }
+        }
+    }
+
+    private void applyDragHandleBoundsFromMap(Map<String, float[]> bounds)
+    {
+        for (Map.Entry<String, float[]> e : bounds.entrySet())
+        {
+            UIDraggable h = this.dragHandlesById.get(e.getKey());
+            if (h != null)
+            {
+                float[] b = e.getValue();
+                h.relative(this.editor).x(b[0]).y(b[1] + DRAG_HANDLE_TOP_OFFSET_NORM).w(b[2]).h(DRAG_HANDLE_HEIGHT_NORM);
+            }
+        }
+    }
+
+    private void updateEditorFlexBoundsOnly(ValueEditorLayout layout, EditorLayoutNode root)
+    {
+        Map<String, float[]> bounds = this.computePanelBounds(root);
+        this.applyPanelBoundsFromMap(bounds);
+        this.splitterHandleInfos.clear();
+        EditorLayoutNode.computeSplitterHandles(root, 0F, 0F, 1F, 1F, this.splitterHandleInfos);
+        this.syncSplitterHandleBounds();
+        this.applyDragHandleBoundsFromMap(bounds);
+    }
+
+    private void clearPanelDragState()
+    {
+        this.draggingPanelId = null;
+        this.dropTargetPanelId = null;
+        this.dropTargetZone = DROP_ZONE_CENTER;
+    }
+
+    private void setDropIntent(DropIntent intent)
+    {
+        this.dropTargetPanelId = intent == null ? null : intent.targetId;
+        this.dropTargetZone = intent == null ? DROP_ZONE_CENTER : intent.zone;
+    }
+
+    private void applyPanelDropResult(String dragId, String targetId, int zone)
+    {
+        ValueEditorLayout layout = BBSSettings.editorLayoutSettings;
+        EditorLayoutNode root = layout.getFilmLayoutRoot();
+        EditorLayoutNode newRoot = this.buildDroppedLayout(root, dragId, targetId, zone);
+
+        if (newRoot != null)
+        {
+            layout.setFilmLayoutRoot(newRoot);
+            this.setupEditorFlex(true);
+        }
+    }
+
+    private EditorLayoutNode buildDroppedLayout(EditorLayoutNode root, String draggedId, String targetId, int zone)
+    {
+        switch (zone)
+        {
+            case DROP_ZONE_CENTER:
+                return root.copyWithSwappedIds(draggedId, targetId);
+
+            case EditorLayoutNode.EDGE_LEFT:
+            case EditorLayoutNode.EDGE_RIGHT:
+            case EditorLayoutNode.EDGE_TOP:
+            case EditorLayoutNode.EDGE_BOTTOM:
+                return EditorLayoutNode.copyWithInsertSplitAt(root, targetId, draggedId, zone);
+
+            default:
+                return root;
+        }
+    }
+
+    private UIDraggable createPanelDragHandle(String panelId)
+    {
+        UIDraggable handle = new UIDraggable((context) ->
+        {
+            this.startPanelDrag(panelId);
+            this.updateDropTargetFromMouse(context.mouseX, context.mouseY);
+        });
+
+        handle.dragEnd(() ->
+        {
+            DropIntent intent = new DropIntent(this.dropTargetPanelId, this.dropTargetZone);
+            if (!this.canApplyDropIntent(this.draggingPanelId, intent))
+            {
+                this.clearPanelDragState();
+                return;
+            }
+
+            this.applyPanelDropResult(this.draggingPanelId, intent.targetId, intent.zone);
+            this.clearPanelDragState();
+        });
+
+        handle.hoverOnly().rendering((context) -> this.renderPanelDragHandle(context, handle));
+
+        return handle;
+    }
+
+    private void startPanelDrag(String panelId)
+    {
+        if (this.draggingPanelId == null)
+        {
+            this.draggingPanelId = panelId;
+        }
+    }
+
+    private void updateDropTargetFromMouse(int mouseX, int mouseY)
+    {
+        this.setDropIntent(this.resolveDropIntent(mouseX, mouseY));
+    }
+
+    private boolean canApplyDropIntent(String draggedId, DropIntent intent)
+    {
+        return draggedId != null && intent != null && intent.targetId != null && !draggedId.equals(intent.targetId);
+    }
+
+    private DropIntent resolveDropIntent(int mouseX, int mouseY)
+    {
+        for (Map.Entry<String, UIElement> entry : this.panelById.entrySet())
+        {
+            Area area = entry.getValue().area;
+            int guideZone = this.resolveDockGuideZoneFromMouse(area, mouseX, mouseY);
+
+            if (guideZone != Integer.MIN_VALUE)
+            {
+                return new DropIntent(entry.getKey(), guideZone);
+            }
+        }
+
+        for (Map.Entry<String, UIElement> entry : this.panelById.entrySet())
+        {
+            Area area = entry.getValue().area;
+            if (area.isInside(mouseX, mouseY))
+            {
+                return new DropIntent(entry.getKey(), this.resolveDropZone(area, mouseX, mouseY));
+            }
+        }
+
+        return null;
+    }
+
+    private void renderPanelDragHandle(UIContext context, UIDraggable handle)
+    {
+        boolean active = handle.area.isInside(context) || handle.isDragging();
+        int color = active ? Colors.WHITE : Colors.setA(Colors.WHITE, 0.6F);
+        int cx = handle.area.mx();
+        int cy = handle.area.y + handle.area.h / 2 + 4;
+        context.batcher.icon(Icons.ALL_DIRECTIONS, color, cx, cy, 0.5F, 0.5F);
+    }
+
+    private int resolveDropZone(Area area, int mouseX, int mouseY)
+    {
+        int guideZone = this.resolveDockGuideZoneFromMouse(area, mouseX, mouseY);
+        if (guideZone != Integer.MIN_VALUE)
+        {
+            return guideZone;
+        }
+
+        float nx = area.w <= 0 ? 0.5F : MathUtils.clamp((mouseX - area.x) / (float) area.w, 0F, 1F);
+        float ny = area.h <= 0 ? 0.5F : MathUtils.clamp((mouseY - area.y) / (float) area.h, 0F, 1F);
+        float edge = DROP_EDGE_MARGIN;
+
+        if (nx > edge && nx < 1F - edge && ny > edge && ny < 1F - edge)
+        {
+            return DROP_ZONE_CENTER;
+        }
+
+        float left = nx;
+        float right = 1F - nx;
+        float top = ny;
+        float bottom = 1F - ny;
+
+        float nearest = left;
+        int zone = EditorLayoutNode.EDGE_LEFT;
+        if (right < nearest)
+        {
+            nearest = right;
+            zone = EditorLayoutNode.EDGE_RIGHT;
+        }
+        if (top < nearest)
+        {
+            nearest = top;
+            zone = EditorLayoutNode.EDGE_TOP;
+        }
+        if (bottom < nearest)
+        {
+            zone = EditorLayoutNode.EDGE_BOTTOM;
+        }
+
+        return zone;
+    }
+
+    private int resolveDockGuideZoneFromMouse(Area area, int mouseX, int mouseY)
+    {
+        int[] zones = new int[] {
+            DROP_ZONE_CENTER,
+            EditorLayoutNode.EDGE_LEFT,
+            EditorLayoutNode.EDGE_RIGHT,
+            EditorLayoutNode.EDGE_TOP,
+            EditorLayoutNode.EDGE_BOTTOM
+        };
+        int hitPadding = 8;
+
+        for (int zone : zones)
+        {
+            int[] rect = this.getDockGuideRect(area, zone);
+            if (rect == null)
+            {
+                continue;
+            }
+
+            if (mouseX >= rect[0] - hitPadding && mouseX <= rect[2] + hitPadding && mouseY >= rect[1] - hitPadding && mouseY <= rect[3] + hitPadding)
+            {
+                return zone;
+            }
+        }
+
+        return Integer.MIN_VALUE;
+    }
+
+    private static class DropIntent
+    {
+        private final String targetId;
+        private final int zone;
+
+        private DropIntent(String targetId, int zone)
+        {
+            this.targetId = targetId;
+            this.zone = zone;
+        }
+    }
+
+    private void renderDropZoneHighlight(UIContext context)
+    {
+        if (BBSSettings.editorLayoutSettings.isLayoutLocked() || this.draggingPanelId == null || this.dropTargetPanelId == null)
+        {
+            return;
+        }
+
+        UIElement target = this.panelById.get(this.dropTargetPanelId);
+        if (target == null)
+        {
+            return;
+        }
+
+        int[] zones = new int[] {
+            EditorLayoutNode.EDGE_LEFT,
+            EditorLayoutNode.EDGE_RIGHT,
+            EditorLayoutNode.EDGE_TOP,
+            EditorLayoutNode.EDGE_BOTTOM,
+            DROP_ZONE_CENTER
+        };
+
+        for (int zone : zones)
+        {
+            this.renderDockGuideZone(context, target.area, zone, zone == this.dropTargetZone);
+        }
+
+        this.renderDropPreviewLayout(context);
+    }
+
+    private void renderDockGuideZone(UIContext context, Area area, int zone, boolean active)
+    {
+        int[] rect = this.getDockGuideRect(area, zone);
+        if (rect == null)
+        {
+            return;
+        }
+
+        int baseColor = this.getDockGuideBaseColor();
+        float opacity = this.getDockGuideOpacity();
+        int border = this.withAlpha(Colors.mulRGB(baseColor, active ? 1.25F : 1.1F), opacity * (active ? 0.95F : 0.7F));
+        int fill = this.withAlpha(baseColor, opacity * (active ? 0.6F : 0.3F));
+        int glow = this.withAlpha(baseColor, opacity * (active ? 0.45F : 0.2F));
+
+        context.batcher.dropShadow(rect[0] - 2, rect[1] - 2, rect[2] + 2, rect[3] + 2, 4, glow, 0x00000000);
+        this.renderDropZoneRect(context, rect[0], rect[1], rect[2], rect[3], border, fill);
+
+        int width = rect[2] - rect[0];
+        int height = rect[3] - rect[1];
+        int core = Math.max(3, Math.min(width, height) / 4);
+        int cx = (rect[0] + rect[2]) / 2;
+        int cy = (rect[1] + rect[3]) / 2;
+        int coreColor = this.withAlpha(Colors.mulRGB(baseColor, 1.4F), opacity * (active ? 0.85F : 0.55F));
+
+        context.batcher.box(cx - core, cy - core, cx + core, cy + core, coreColor);
+    }
+
+    private int[] getDockGuideRect(Area area, int zone)
+    {
+        int x = area.x;
+        int y = area.y;
+        int ex = area.ex();
+        int ey = area.ey();
+        int w = Math.max(1, ex - x);
+        int h = Math.max(1, ey - y);
+        int min = Math.min(w, h);
+        int size = Math.max(14, Math.min(34, Math.round(min * 0.17F)));
+        int half = size / 2;
+        int cx = x + w / 2;
+        int cy = y + h / 2;
+        int orbitX = Math.max(size, Math.round(w * 0.24F));
+        int orbitY = Math.max(size, Math.round(h * 0.24F));
+        int rx1 = cx - half;
+        int ry1 = cy - half;
+
+        switch (zone)
+        {
+            case EditorLayoutNode.EDGE_LEFT:
+                rx1 = cx - orbitX - half;
+                ry1 = cy - half;
+                break;
+            case EditorLayoutNode.EDGE_RIGHT:
+                rx1 = cx + orbitX - half;
+                ry1 = cy - half;
+                break;
+            case EditorLayoutNode.EDGE_TOP:
+                rx1 = cx - half;
+                ry1 = cy - orbitY - half;
+                break;
+            case EditorLayoutNode.EDGE_BOTTOM:
+                rx1 = cx - half;
+                ry1 = cy + orbitY - half;
+                break;
+            case DROP_ZONE_CENTER:
+                rx1 = cx - half;
+                ry1 = cy - half;
+                break;
+            default:
+                return null;
+        }
+
+        int margin = 2;
+        int rx2 = rx1 + size;
+        int ry2 = ry1 + size;
+
+        if (rx1 < x + margin)
+        {
+            rx2 += (x + margin) - rx1;
+            rx1 = x + margin;
+        }
+
+        if (ry1 < y + margin)
+        {
+            ry2 += (y + margin) - ry1;
+            ry1 = y + margin;
+        }
+
+        if (rx2 > ex - margin)
+        {
+            rx1 -= rx2 - (ex - margin);
+            rx2 = ex - margin;
+        }
+
+        if (ry2 > ey - margin)
+        {
+            ry1 -= ry2 - (ey - margin);
+            ry2 = ey - margin;
+        }
+
+        if (rx2 - rx1 <= 2 || ry2 - ry1 <= 2)
+        {
+            return null;
+        }
+
+        return new int[] {rx1, ry1, rx2, ry2};
+    }
+
+    private void renderDropPreviewLayout(UIContext context)
+    {
+        if (this.draggingPanelId == null || this.dropTargetPanelId == null)
+        {
+            return;
+        }
+
+        ValueEditorLayout layout = BBSSettings.editorLayoutSettings;
+        EditorLayoutNode root = layout.getFilmLayoutRoot();
+        EditorLayoutNode preview = this.buildDroppedLayout(root, this.draggingPanelId, this.dropTargetPanelId, this.dropTargetZone);
+
+        if (preview == null)
+        {
+            return;
+        }
+
+        Map<String, float[]> bounds = this.computePanelBounds(preview);
+        int baseColor = this.getDockGuideBaseColor();
+        float opacity = this.getDockGuideOpacity();
+        int previewFill = this.withAlpha(baseColor, opacity * 0.18F);
+        int previewStrong = this.withAlpha(Colors.mulRGB(baseColor, 1.2F), opacity * 0.34F);
+        int previewBorder = this.withAlpha(Colors.mulRGB(baseColor, 1.35F), opacity * 0.6F);
+
+        for (Map.Entry<String, float[]> entry : bounds.entrySet())
+        {
+            float[] b = entry.getValue();
+            int x = this.editor.area.x + Math.round(this.editor.area.w * b[0]);
+            int y = this.editor.area.y + Math.round(this.editor.area.h * b[1]);
+            int w = Math.max(1, Math.round(this.editor.area.w * b[2]));
+            int h = Math.max(1, Math.round(this.editor.area.h * b[3]));
+            int fill = entry.getKey().equals(this.draggingPanelId) ? previewStrong : previewFill;
+
+            this.renderDropZoneRect(context, x, y, x + w, y + h, previewBorder, fill);
+        }
+    }
+
+    private void renderDropZoneRect(UIContext context, Area a, int border, int fill)
+    {
+        this.renderDropZoneRect(context, a.x, a.y, a.ex(), a.ey(), border, fill);
+    }
+
+    private void renderDropZoneRect(UIContext context, int x, int y, int ex, int ey, int border, int fill)
+    {
+        context.batcher.box(x, y, ex, ey, fill);
+        int t = 2;
+        context.batcher.box(x, y, ex, y + t, border);
+        context.batcher.box(x, ey - t, ex, ey, border);
+        context.batcher.box(x, y, x + t, ey, border);
+        context.batcher.box(ex - t, y, ex, ey, border);
+    }
+
+    private int getDockGuideBaseColor()
+    {
+        return BBSSettings.editorDockGuideColor == null ? 0x57CCFF : BBSSettings.editorDockGuideColor.get();
+    }
+
+    private float getDockGuideOpacity()
+    {
+        return BBSSettings.editorDockGuideOpacity == null ? 0.5F : MathUtils.clamp(BBSSettings.editorDockGuideOpacity.get(), 0F, 1F);
+    }
+
+    private int withAlpha(int color, float alpha)
+    {
+        return Colors.setA(color, MathUtils.clamp(alpha, 0F, 1F));
+    }
+
+    private void renderSplitter(UIContext context, int index)
+    {
+        if (index < 0 || index >= this.splitterHandles.size() || index >= this.splitterHandleInfos.size())
+        {
+            return;
+        }
+
+        UIDraggable splitter = this.splitterHandles.get(index);
+        EditorLayoutNode.SplitterHandleInfo info = this.splitterHandleInfos.get(index);
+        boolean active = splitter.area.isInside(context) || splitter.isDragging();
+        int lineColor = active ? BBSSettings.primaryColor(Colors.A50) : 0x22ffffff;
+
+        if (active)
+        {
+            context.batcher.box(splitter.area.x, splitter.area.y, splitter.area.ex(), splitter.area.ey(), lineColor);
+        }
+
+        if (info.horizontal)
+        {
+            int cy = splitter.area.y + splitter.area.h / 2;
+            context.batcher.box(splitter.area.x, cy - 1, splitter.area.ex(), cy + 1, lineColor);
+        }
+        else
+        {
+            int cx = splitter.area.x + splitter.area.w / 2;
+            context.batcher.box(cx - 1, splitter.area.y, cx + 1, splitter.area.ey(), lineColor);
         }
     }
 
@@ -844,24 +1404,28 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             menu.action(Icons.EXCHANGE, UIKeys.FILM_LAYOUT_HORIZONTAL_BOTTOM, layout.getLayout() == ValueEditorLayout.LAYOUT_HORIZONTAL_BOTTOM, () ->
             {
                 layout.setLayout(ValueEditorLayout.LAYOUT_HORIZONTAL_BOTTOM);
+                this.applyLegacyLayoutSelection();
                 this.setupEditorFlex(true);
             });
 
             menu.action(Icons.CONVERT, UIKeys.FILM_LAYOUT_VERTICAL_LEFT, layout.getLayout() == ValueEditorLayout.LAYOUT_VERTICAL_LEFT, () ->
             {
                 layout.setLayout(ValueEditorLayout.LAYOUT_VERTICAL_LEFT);
+                this.applyLegacyLayoutSelection();
                 this.setupEditorFlex(true);
             });
 
             menu.action(Icons.ARROW_RIGHT, UIKeys.FILM_LAYOUT_VERTICAL_RIGHT, layout.getLayout() == ValueEditorLayout.LAYOUT_VERTICAL_RIGHT, () ->
             {
                 layout.setLayout(ValueEditorLayout.LAYOUT_VERTICAL_RIGHT);
+                this.applyLegacyLayoutSelection();
                 this.setupEditorFlex(true);
             });
 
             menu.action(Icons.MAIN_HANDLE, UIKeys.FILM_LAYOUT_VERTICAL_MIDDLE, layout.getLayout() == ValueEditorLayout.LAYOUT_VERTICAL_MIDDLE, () ->
             {
                 layout.setLayout(ValueEditorLayout.LAYOUT_VERTICAL_MIDDLE);
+                this.applyLegacyLayoutSelection();
                 this.setupEditorFlex(true);
             });
 
@@ -873,7 +1437,9 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         ValueEditorLayout layout = BBSSettings.editorLayoutSettings;
 
         layout.setLayoutLocked(!layout.isLayoutLocked());
+        this.clearPanelDragState();
         this.updateLayoutLockTooltip();
+        this.setupEditorFlex(true);
     }
 
     private void updateLayoutLockTooltip()
@@ -899,7 +1465,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         if (layout.getLayout() == ValueEditorLayout.LAYOUT_HORIZONTAL_BOTTOM)
         {
-            layout.setLayout(ValueEditorLayout.LAYOUT_HORIZONTAL_TOP);
+            layout.setVerticalLayoutInverted(!layout.isVerticalLayoutInverted());
         }
         else if (layout.getLayout() == ValueEditorLayout.LAYOUT_HORIZONTAL_TOP)
         {
@@ -923,6 +1489,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             layout.setMiddleLayoutInverted(!layout.isMiddleLayoutInverted());
         }
 
+        this.applyLegacyLayoutSelection();
         this.setupEditorFlex(true);
     }
 
@@ -948,9 +1515,54 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         return Icons.EXCHANGE;
     }
 
+    private void applyLegacyLayoutSelection()
+    {
+        ValueEditorLayout layout = BBSSettings.editorLayoutSettings;
+        layout.setFilmLayoutRoot(layout.buildFilmLayoutFromLegacyState());
+    }
+
     private mchorse.bbs_mod.ui.utils.icons.Icon getLayoutLockIcon()
     {
         return BBSSettings.editorLayoutSettings.isLayoutLocked() ? Icons.LOCKED : Icons.UNLOCKED;
+    }
+
+    private MapType getFilmLayoutPresetData()
+    {
+        MapType data = new MapType();
+        data.put("film_layout", BBSSettings.editorLayoutSettings.getFilmLayoutRoot().toData());
+        return data;
+    }
+
+    private void applyFilmLayoutFromPreset(MapType data, int mouseX, int mouseY)
+    {
+        BaseType layoutData = data.get("film_layout");
+        if (layoutData == null)
+        {
+            return;
+        }
+
+        EditorLayoutNode root = EditorLayoutNode.fromData(layoutData);
+        if (root != null)
+        {
+            BBSSettings.editorLayoutSettings.setFilmLayoutRoot(root);
+            this.setupEditorFlex(true);
+        }
+    }
+
+    @Override
+    public void resize()
+    {
+        super.resize();
+
+        if (this.editor.area.w >= EDITOR_MIN_SIZE_FOR_PX_HANDLES && this.editor.area.h >= EDITOR_MIN_SIZE_FOR_PX_HANDLES)
+        {
+            if (!BBSSettings.editorLayoutSettings.isLayoutLocked() && this.splitterHandles.size() == this.splitterHandleInfos.size())
+            {
+                this.syncSplitterHandleBounds();
+            }
+
+            this.editor.resize();
+        }
     }
 
     @Override
@@ -1164,6 +1776,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.openHistory.setEnabled(data != null);
         this.toggleHorizontal.setEnabled(data != null);
         this.layoutLock.setEnabled(data != null);
+        this.layoutPresets.setEnabled(data != null);
         this.openCameraEditor.setEnabled(data != null);
         this.openReplayEditor.setEnabled(data != null);
         this.openActionEditor.setEnabled(data != null);
@@ -1361,6 +1974,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         }
 
         super.render(context);
+        this.renderDropZoneHighlight(context);
 
         if (this.entered)
         {

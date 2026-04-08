@@ -54,6 +54,7 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIListOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIMessageOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UINumberOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
+import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
@@ -1808,7 +1809,6 @@ public class UIReplayList extends UIList<Replay> {
 
         panel.confirm.w(1F, -10);
         panel.content.add(search);
-
         UIOverlay.addOverlay(this.getContext(), panel, 240, 300);
     }
 

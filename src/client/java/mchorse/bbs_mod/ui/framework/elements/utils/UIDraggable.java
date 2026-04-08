@@ -14,6 +14,7 @@ public class UIDraggable extends UIElement
     private Consumer<UIContext> callback;
     private Consumer<UIContext> render;
     private Supplier<Vector2i> reference;
+    private Runnable dragEndCallback;
     private boolean dragging;
     private boolean hover;
 
@@ -47,6 +48,18 @@ public class UIDraggable extends UIElement
         return this;
     }
 
+    public UIDraggable dragEnd(Runnable callback)
+    {
+        this.dragEndCallback = callback;
+
+        return this;
+    }
+
+    public boolean isDragging()
+    {
+        return this.dragging;
+    }
+
     @Override
     protected boolean subMouseClicked(UIContext context)
     {
@@ -70,7 +83,14 @@ public class UIDraggable extends UIElement
     @Override
     protected boolean subMouseReleased(UIContext context)
     {
+        boolean wasDragging = this.dragging;
+
         this.dragging = false;
+
+        if (wasDragging && this.dragEndCallback != null)
+        {
+            this.dragEndCallback.run();
+        }
 
         return super.subMouseReleased(context);
     }
