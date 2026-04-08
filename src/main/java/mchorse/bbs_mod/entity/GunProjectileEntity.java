@@ -24,7 +24,6 @@ import net.minecraft.nbt.NbtCompound;
 import net.minecraft.particle.ParticleTypes;
 import net.minecraft.registry.tag.EntityTypeTags;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.hit.HitResult;
@@ -85,21 +84,9 @@ public class GunProjectileEntity extends ProjectileEntity implements IEntityForm
 
     private void executeCommand(String command)
     {
-        if (command.isEmpty())
+        if (!command.isEmpty())
         {
-            return;
-        }
-
-        Entity owner = this.getOwner();
-
-        if (owner == null || owner.getServer() == null)
-        {
-            return;
-        }
-
-        if (this.getWorld() instanceof ServerWorld serverWorld)
-        {
-            owner.getServer().getCommandManager().executeWithPrefix(owner.getCommandSource(serverWorld), command);
+            this.getServer().getCommandManager().executeWithPrefix(this.getCommandSource(), command);
         }
     }
 
@@ -146,11 +133,13 @@ public class GunProjectileEntity extends ProjectileEntity implements IEntityForm
         return this.properties.useTarget ? this.target : this.stub;
     }
 
+    @Override
     protected int getPermissionLevel()
     {
         return 2;
     }
 
+    @Override
     public boolean shouldReceiveFeedback()
     {
         return false;
@@ -211,8 +200,6 @@ public class GunProjectileEntity extends ProjectileEntity implements IEntityForm
         {
             this.extinguish();
         }
-
-        /* this.checkBlockCollision(); */
 
         if (this.stuck && this.properties.collideBlocks)
         {
@@ -281,7 +268,7 @@ public class GunProjectileEntity extends ProjectileEntity implements IEntityForm
 
             this.setVelocity(v.multiply(friction).subtract(0, gravity, 0));
             this.setPosition(x, y, z);
-            /* this.checkBlockCollision(); */
+            this.checkBlockCollision();
         }
     }
 
@@ -335,7 +322,7 @@ public class GunProjectileEntity extends ProjectileEntity implements IEntityForm
         int damage = MathHelper.ceil(MathHelper.clamp(length * this.properties.damage, 0, Integer.MAX_VALUE));
 
         Entity owner = this.getOwner();
-        DamageSource source = this.getDamageSources().indirectMagic(this, owner);
+        DamageSource source = this.getDamageSources().magic();
 
         int fireTicks = entity.getFireTicks();
         boolean deflectsArrows = entity.getType().isIn(EntityTypeTags.DEFLECTS_PROJECTILES);
@@ -345,13 +332,13 @@ public class GunProjectileEntity extends ProjectileEntity implements IEntityForm
             entity.setOnFireFor(5);
         }
 
-        if (entity.damage((ServerWorld) this.getWorld(), source, (float) damage))
+        if (entity.damage(source, (float) damage))
         {
             if (entity instanceof LivingEntity livingEntity)
             {
                 if (this.properties.knockback > 0)
                 {
-                    double resistanceFactor = Math.max(0D, 1D - livingEntity.getAttributeValue(EntityAttributes.KNOCKBACK_RESISTANCE));
+                    double resistanceFactor = Math.max(0D, 1D - livingEntity.getAttributeValue(EntityAttributes.GENERIC_KNOCKBACK_RESISTANCE));
                     Vec3d punchVector = this.getVelocity().multiply(1D).normalize().multiply(this.properties.knockback * 0.6D * resistanceFactor);
 
                     if (punchVector.lengthSquared() > 0D)

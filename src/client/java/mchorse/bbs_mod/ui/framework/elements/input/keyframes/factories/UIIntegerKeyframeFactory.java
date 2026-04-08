@@ -115,7 +115,7 @@ public class UIIntegerKeyframeFactory extends UIKeyframeFactory<Integer>
                             matrices.push();
                             consumers.setUI(true);
                             context.batcher.getContext().drawItem(stack, itemX, itemY);
-                            context.batcher.getContext().drawStackOverlay(context.batcher.getFont().getRenderer(), stack, itemX, itemY);
+                            context.batcher.getContext().drawItemInSlot(context.batcher.getFont().getRenderer(), stack, itemX, itemY);
                             consumers.setUI(false);
                             matrices.pop();
                         }
