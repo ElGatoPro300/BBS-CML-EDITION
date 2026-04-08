@@ -43,7 +43,6 @@ public class UIPixelsEditor extends UICanvasEditor
     private boolean editing;
     private Color drawColor;
     private Vector2i lastPixel;
-    private int brushSize = 1;
 
     protected UndoManager<Pixels> undoManager;
     private PixelsUndo pixelsUndo;
@@ -95,16 +94,6 @@ public class UIPixelsEditor extends UICanvasEditor
     public Pixels getPixels()
     {
         return this.pixels;
-    }
-
-    public int getBrushSize()
-    {
-        return this.brushSize;
-    }
-
-    public void setBrushSize(int brushSize)
-    {
-        this.brushSize = Math.max(1, brushSize);
     }
 
     protected void wasChanged()
@@ -224,7 +213,7 @@ public class UIPixelsEditor extends UICanvasEditor
 
             Vector2i pixel = this.getHoverPixel(context.mouseX, context.mouseY);
 
-            this.applyBrush(this.pixelsUndo, pixel.x, pixel.y, this.drawColor);
+            this.pixelsUndo.setColor(this.pixels, pixel.x, pixel.y, this.drawColor);
             this.updateTexture();
 
             this.wasChanged();
@@ -251,7 +240,7 @@ public class UIPixelsEditor extends UICanvasEditor
 
                 for (Vector2i pixel : pixels)
                 {
-                    this.applyBrush(this.pixelsUndo, pixel.x, pixel.y, this.drawColor);
+                    this.pixelsUndo.setColor(this.pixels, pixel.x, pixel.y, this.drawColor);
                 }
 
                 this.updateTexture();
@@ -284,14 +273,9 @@ public class UIPixelsEditor extends UICanvasEditor
         int pixelX = (int) Math.floor(this.scaleX.from(context.mouseX));
         int pixelY = (int) Math.floor(this.scaleY.from(context.mouseY));
 
-        int brushMinX = pixelX - (this.brushSize - 1) / 2;
-        int brushMinY = pixelY - (this.brushSize - 1) / 2;
-        int brushMaxX = brushMinX + this.brushSize;
-        int brushMaxY = brushMinY + this.brushSize;
-
         context.batcher.outline(
-            (int) Math.round(this.scaleX.to(brushMinX)), (int) Math.round(this.scaleY.to(brushMinY)),
-            (int) Math.round(this.scaleX.to(brushMaxX)), (int) Math.round(this.scaleY.to(brushMaxY)),
+            (int) Math.round(this.scaleX.to(pixelX)), (int) Math.round(this.scaleY.to(pixelY)),
+            (int) Math.round(this.scaleX.to(pixelX + 1)), (int) Math.round(this.scaleY.to(pixelY + 1)),
             Colors.A50
         );
 
@@ -307,7 +291,7 @@ public class UIPixelsEditor extends UICanvasEditor
                 int xx = (int) Lerps.lerp(last.x, current.x, i / distance);
                 int yy = (int) Lerps.lerp(last.y, current.y, i / distance);
 
-                this.applyBrush(this.pixelsUndo, xx, yy, this.drawColor);
+                this.pixelsUndo.setColor(this.pixels, xx, yy, this.drawColor);
             }
 
             this.wasChanged();
@@ -321,20 +305,6 @@ public class UIPixelsEditor extends UICanvasEditor
     protected Texture getRenderTexture(UIContext context)
     {
         return this.temporary;
-    }
-
-    private void applyBrush(PixelsUndo undo, int x, int y, Color color)
-    {
-        int minX = x - (this.brushSize - 1) / 2;
-        int minY = y - (this.brushSize - 1) / 2;
-
-        for (int i = 0; i < this.brushSize; i++)
-        {
-            for (int j = 0; j < this.brushSize; j++)
-            {
-                undo.setColor(this.pixels, minX + i, minY + j, color);
-            }
-        }
     }
 
     @Override

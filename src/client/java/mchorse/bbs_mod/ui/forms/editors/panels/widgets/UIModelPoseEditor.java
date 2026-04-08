@@ -49,9 +49,9 @@ public class UIModelPoseEditor extends UIPoseEditor
     @Override
     protected void setColor(PoseTransform transform, int value)
     {
-        this.valuePose.preNotify(IValueListener.FLAG_UNMERGEABLE);
+        this.valuePose.preNotify();
         super.setColor(transform, value);
-        this.valuePose.postNotify(IValueListener.FLAG_UNMERGEABLE);
+        this.valuePose.postNotify();
     }
 
     @Override

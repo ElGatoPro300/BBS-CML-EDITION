@@ -168,35 +168,20 @@ public class UIDataPathList extends UIList<DataPath>
         return this.hierarchy.contains(path);
     }
 
-    public void addFile(String path)
-    {
-        this.addFile(path, true);
-    }
-
     /**
      * Add file path to this hierarchy.
      */
-    public void addFile(String path, boolean select)
+    public void addFile(String path)
     {
         DataPath dataPath = this.getFilename(path);
 
         if (dataPath != null)
         {
-            List<DataPath> current = this.getCurrent();
-
             this.hierarchy.add(dataPath);
 
             this.add(dataPath);
             this.sort();
-
-            if (select)
-            {
-                this.setCurrentFile(path);
-            }
-            else
-            {
-                this.setCurrent(current);
-            }
+            this.setCurrentFile(path);
         }
     }
 
