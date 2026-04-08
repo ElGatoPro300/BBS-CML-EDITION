@@ -34,11 +34,11 @@ public class CubicMatrixRenderer implements ICubicRenderer
     {
         ICubicRenderer.translateGroup(stack, group);
 
-        this.origins.get(group.index).set(new Matrix4f());
+        this.origins.get(group.index).set(stack.peek().getPositionMatrix());
 
         ICubicRenderer.moveToGroupPivot(stack, group);
 
-        this.origins.get(group.index).set(new Matrix4f());
+        this.origins.get(group.index).set(stack.peek().getPositionMatrix());
 
         if (!Objects.equals(group.id, this.target))
         {
@@ -52,7 +52,7 @@ public class CubicMatrixRenderer implements ICubicRenderer
     @Override
     public boolean renderGroup(BufferBuilder builder, MatrixStack stack, ModelGroup group, Model model)
     {
-        this.matrices.get(group.index).set(new Matrix4f());
+        this.matrices.get(group.index).set(stack.peek().getPositionMatrix());
 
         return false;
     }

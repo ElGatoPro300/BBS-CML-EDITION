@@ -190,23 +190,23 @@ public class ModelBlockEntity extends BlockEntity
     @Override
     public NbtCompound toInitialChunkDataNbt(WrapperLookup registryLookup)
     {
-        NbtCompound nbt = new NbtCompound();
-        this.writeNbt(nbt, registryLookup);
-        return nbt;
+        return this.createNbtWithId(registryLookup);
     }
 
+    @Override
     protected void writeNbt(NbtCompound nbt, WrapperLookup registryLookup)
     {
-        /* skip super for cross-mappings compatibility */
+        super.writeNbt(nbt, registryLookup);
 
         MapType data = this.properties.toData();
 
         DataStorageUtils.writeToNbtCompound(nbt, "Properties", data);
     }
 
+    @Override
     public void readNbt(NbtCompound nbt, WrapperLookup registryLookup)
     {
-        /* skip super for cross-mappings compatibility */
+        super.readNbt(nbt, registryLookup);
 
         BaseType baseType = DataStorageUtils.readFromNbtCompound(nbt, "Properties");
 
@@ -229,21 +229,6 @@ public class ModelBlockEntity extends BlockEntity
                 }
             }
             catch (Exception e) {}
-        }
-    }
-
-    protected void writeNbt(NbtCompound nbt)
-    {
-        MapType data = this.properties.toData();
-        DataStorageUtils.writeToNbtCompound(nbt, "Properties", data);
-    }
-
-    public void readNbt(NbtCompound nbt)
-    {
-        BaseType baseType = DataStorageUtils.readFromNbtCompound(nbt, "Properties");
-        if (baseType instanceof MapType mapType)
-        {
-            this.properties.fromData(mapType);
         }
     }
 

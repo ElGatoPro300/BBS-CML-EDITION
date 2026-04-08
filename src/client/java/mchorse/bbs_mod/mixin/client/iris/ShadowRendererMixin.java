@@ -32,8 +32,8 @@ import net.irisshaders.iris.shadows.ShadowRenderer;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.client.render.entity.EntityRenderManager;
 import net.minecraft.client.render.Frustum;
+import net.minecraft.client.render.entity.EntityRenderDispatcher;
 import net.minecraft.client.util.math.MatrixStack;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -48,7 +48,7 @@ public class ShadowRendererMixin
 {
     @Inject(method = "renderEntities", at = @At("TAIL"))
     private void bbs$renderFormsShadows(LevelRendererAccessor levelRenderer,
-                                        EntityRenderManager dispatcher,
+                                        EntityRenderDispatcher dispatcher,
                                         VertexConsumerProvider.Immediate consumers,
                                         MatrixStack shadowStack,
                                         float tickDelta,
@@ -65,6 +65,7 @@ public class ShadowRendererMixin
 
         UIBaseMenu menu = UIScreen.getCurrentMenu();
         Camera gameCamera = MinecraftClient.getInstance().gameRenderer.getCamera();
+        RenderSystem.enableDepthTest();
 
         /* Case 1: film panel open – keep existing onion skin and panel-specific logic */
         if (menu instanceof UIDashboard)

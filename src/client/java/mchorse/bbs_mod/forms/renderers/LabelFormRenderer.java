@@ -1,6 +1,6 @@
 package mchorse.bbs_mod.forms.renderers;
 
-import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.systems.RenderSystem;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
 import mchorse.bbs_mod.forms.FormUtilsClient;
@@ -16,11 +16,12 @@ import mchorse.bbs_mod.utils.TextureFont;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.render.BufferBuilder;
+import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.util.BufferAllocator;
-import net.minecraft.client.gl.RenderPipelines;
-import com.mojang.blaze3d.vertex.VertexFormat;
+import net.minecraft.client.gl.ShaderProgramKeys;
+import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
 import org.joml.Matrix4f;
@@ -112,13 +113,14 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
 
         MatrixStackUtils.scaleStack(context.stack, scale, -scale, scale);
 
-        GlStateManager._disableCull();
+        RenderSystem.disableCull();
 
         if (context.isPicking())
         {
             CustomVertexConsumerProvider.hijackVertexFormat((layer) ->
             {
                 this.setupTarget(context, BBSShaders.getPickerModelsProgram());
+                RenderSystem.setShader(BBSShaders.getPickerModelsProgram());
             });
 
             light = 0;
@@ -135,8 +137,8 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
 
         CustomVertexConsumerProvider.clearRunnables();
 
-        GlStateManager._enableDepthTest();
-        GlStateManager._enableCull();
+        RenderSystem.enableDepthTest();
+        RenderSystem.enableCull();
 
         context.stack.pop();
     }
@@ -305,7 +307,7 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
             );
         }
 
-        GlStateManager._enableDepthTest();
+        RenderSystem.enableDepthTest();
 
         consumers.draw();
 
@@ -464,7 +466,7 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
             y += lineHeight;
         }
 
-        GlStateManager._enableDepthTest();
+        RenderSystem.enableDepthTest();
 
         consumers.draw();
 
@@ -497,7 +499,10 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
             color.r, color.g, color.b, color.a
         );
 
-        net.minecraft.client.render.RenderLayers.debugFilledBox().draw(builder.end());
+        RenderSystem.enableBlend();
+        RenderSystem.enableDepthTest();
+        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
+        BufferRenderer.drawWithGlobalProgram(builder.end());
         context.stack.pop();
     }
 }

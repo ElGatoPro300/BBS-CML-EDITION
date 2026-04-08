@@ -1,9 +1,9 @@
 package mchorse.bbs_mod.particles.components;
 
-import com.mojang.blaze3d.vertex.VertexFormat;
 import mchorse.bbs_mod.particles.emitter.Particle;
 import mchorse.bbs_mod.particles.emitter.ParticleEmitter;
 import net.minecraft.client.render.BufferBuilder;
+import net.minecraft.client.render.VertexFormat;
 import org.joml.Matrix4f;
 
 public interface IComponentParticleRender extends IComponentBase
