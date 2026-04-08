@@ -27,6 +27,7 @@ public class ValueEditorLayout extends BaseValue
     private float stateEditorSizeV = 0.25F;
     private boolean middleLayoutInverted;
     private boolean verticalLayoutInverted;
+    private boolean horizontalLayoutInverted;
     /* private float newFilmSidebarSize = 0.25F;
     private float newFilmMainSizeH = 0.5F;
     private int filmLayoutMode; */
@@ -215,6 +216,16 @@ public class ValueEditorLayout extends BaseValue
         return this.verticalLayoutInverted;
     }
 
+    public void setHorizontalLayoutInverted(boolean horizontalLayoutInverted)
+    {
+        BaseValue.edit(this, (v) -> this.horizontalLayoutInverted = horizontalLayoutInverted);
+    }
+
+    public boolean isHorizontalLayoutInverted()
+    {
+        return this.horizontalLayoutInverted;
+    }
+
     @Override
     public BaseType toData()
     {
@@ -234,6 +245,7 @@ public class ValueEditorLayout extends BaseValue
         data.putFloat("state_editor_size_v", this.stateEditorSizeV);
         data.putBool("middle_layout_inverted", this.middleLayoutInverted);
         data.putBool("vertical_layout_inverted", this.verticalLayoutInverted);
+        data.putBool("horizontal_layout_inverted", this.horizontalLayoutInverted);
         /* data.putFloat("new_film_sidebar_size", this.newFilmSidebarSize);
         data.putFloat("new_film_main_size_h", this.newFilmMainSizeH);
         data.putInt("film_layout_mode", this.filmLayoutMode); */
@@ -270,6 +282,7 @@ public class ValueEditorLayout extends BaseValue
             this.stateEditorSizeV = map.getFloat("state_editor_size_v", 0.25F);
             this.middleLayoutInverted = map.getBool("middle_layout_inverted", false);
             this.verticalLayoutInverted = map.getBool("vertical_layout_inverted", false);
+            this.horizontalLayoutInverted = map.getBool("horizontal_layout_inverted", false);
             /* this.newFilmSidebarSize = map.getFloat("new_film_sidebar_size", 0.25F);
             this.newFilmMainSizeH = map.getFloat("new_film_main_size_h", 0.5F);
             this.filmLayoutMode = map.getInt("film_layout_mode", 0); */
