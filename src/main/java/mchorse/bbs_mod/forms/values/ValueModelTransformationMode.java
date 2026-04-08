@@ -3,11 +3,11 @@ package mchorse.bbs_mod.forms.values;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.StringType;
 import mchorse.bbs_mod.settings.values.base.BaseValueBasic;
-import mchorse.bbs_mod.forms.values.ModelTransformMode;
+import net.minecraft.item.ItemDisplayContext;
 
-public class ValueModelTransformationMode extends BaseValueBasic<ModelTransformMode>
+public class ValueModelTransformationMode extends BaseValueBasic<ItemDisplayContext>
 {
-    public ValueModelTransformationMode(String id, ModelTransformMode value)
+    public ValueModelTransformationMode(String id, ItemDisplayContext value)
     {
         super(id, value);
     }
@@ -15,7 +15,7 @@ public class ValueModelTransformationMode extends BaseValueBasic<ModelTransformM
     @Override
     public BaseType toData()
     {
-        return new StringType((this.value == null ? ModelTransformMode.NONE : this.value).asString());
+        return new StringType((this.value == null ? ItemDisplayContext.NONE : this.value).asString());
     }
 
     @Override
@@ -23,9 +23,9 @@ public class ValueModelTransformationMode extends BaseValueBasic<ModelTransformM
     {
         String string = data.isString() ? data.asString() : "";
 
-        this.set(ModelTransformMode.NONE);
+        this.set(ItemDisplayContext.NONE);
 
-        for (ModelTransformMode value : ModelTransformMode.values())
+        for (ItemDisplayContext value : ItemDisplayContext.values())
         {
             if (value.asString().equals(string))
             {

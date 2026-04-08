@@ -161,7 +161,7 @@ public class ActionPlayer
         float yawBody = replay.keyframes.bodyYaw.interpolate(tick).floatValue();
         float pitch = replay.keyframes.pitch.interpolate(tick).floatValue();
 
-        Vec3d pos = actor.pos;
+        Vec3d pos = actor.getEntityPos();
 
         if (ticking)
         {

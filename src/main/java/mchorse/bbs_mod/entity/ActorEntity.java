@@ -6,7 +6,6 @@ import mchorse.bbs_mod.forms.entities.MCEntity;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.network.ServerNetwork;
 import net.minecraft.entity.Entity;
-
 import net.minecraft.entity.EntityDimensions;
 import net.minecraft.entity.EntityPose;
 import net.minecraft.entity.EntityType;
@@ -17,11 +16,11 @@ import net.minecraft.entity.attribute.DefaultAttributeContainer;
 import net.minecraft.entity.attribute.EntityAttributes;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NbtCompound;
 import net.minecraft.network.packet.s2c.play.ItemPickupAnimationS2CPacket;
-import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.storage.ReadView;
+import net.minecraft.storage.WriteView;
 import net.minecraft.util.Arm;
 import net.minecraft.util.math.Box;
 import net.minecraft.world.World;
@@ -107,7 +106,7 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
         this.runtimeInventoryInitialized = true;
     }
 
-    public MCEntity getBbsEntity()
+    public MCEntity getFormEntity()
     {
         return this.entity;
     }
@@ -131,7 +130,7 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
 
         this.form = form;
 
-        if (!this.world.isClient)
+        if (!this.getEntityWorld().isClient())
         {
             if (lastForm != null) lastForm.onDemorph(this);
             if (form != null) form.onMorph(this);
@@ -140,8 +139,8 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
         this.updateHitboxDimensions();
     }
 
-    // @Override
-    public boolean isCollidable()
+    @Override
+    public boolean isCollidable(Entity other)
     {
         return this.form != null && this.form.hitbox.get();
     }
@@ -224,7 +223,7 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
             this.form.update(this.entity);
         }
 
-        if (this.world.isClient)
+        if (this.getEntityWorld().isClient())
         {
             return;
         }
@@ -237,7 +236,7 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
 
         /* Pickup items */
         Box box = this.getBoundingBox().expand(1D, 0.5D, 1D);
-        List<Entity> list = this.world.getOtherEntities(this, box);
+        List<Entity> list = this.getEntityWorld().getOtherEntities(this, box, (entity) -> true);
 
         for (Entity entity : list)
         {
@@ -252,7 +251,7 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
                     this.pickedUpEntityIds.add(entityId);
                     this.addToRuntimeInventory(itemStack.copy());
                     
-                    ((ServerWorld) this.world).getChunkManager().sendToOtherNearbyPlayers(entity, new ItemPickupAnimationS2CPacket(entity.getId(), this.getId(), i));
+                    ((ServerWorld) this.getEntityWorld()).getChunkManager().sendToOtherNearbyPlayers(entity, new ItemPickupAnimationS2CPacket(entity.getId(), this.getId(), i));
                     entity.discard();
                 }
             }
@@ -352,12 +351,32 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
         }
     }
 
+    @Override
+    public EntityDimensions getBaseDimensions(EntityPose pose)
+    {
+        EntityDimensions dimensions = super.getBaseDimensions(pose);
+        Form currentForm = this.form;
+
+        if (currentForm != null && currentForm.hitbox.get())
+        {
+            float height = currentForm.hitboxHeight.get() * (this.isSneaking() ? currentForm.hitboxSneakMultiplier.get() : 1F);
+
+            return dimensions.fixed()
+                ? EntityDimensions.fixed(currentForm.hitboxWidth.get(), height)
+                : EntityDimensions.changing(currentForm.hitboxWidth.get(), height);
+        }
+
+        return dimensions;
+    }
+
+
+
         @Override
     public void onDeath(DamageSource damageSource)
     {
         super.onDeath(damageSource);
         
-        if (!this.world.isClient && !this.replayItemsDropped && this.replay != null && this.film != null)
+        if (!this.getEntityWorld().isClient() && !this.replayItemsDropped && this.replay != null && this.film != null)
         {
             this.dropReplayItems();
             this.replayItemsDropped = true;
@@ -461,7 +480,7 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
         
         // Create item entity at actor's position
         ItemEntity itemEntity = new ItemEntity(
-            this.world,
+            this.getEntityWorld(),
             this.getX(),
             this.getY() + 0.5,
             this.getZ(),
@@ -486,7 +505,7 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
         itemEntity.setVelocity(velocityX, velocityY, velocityZ);
         itemEntity.setToDefaultPickupDelay();
         
-        this.world.spawnEntity(itemEntity);
+        this.getEntityWorld().spawnEntity(itemEntity);
     }
 
 
@@ -509,20 +528,16 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
         ServerNetwork.sendEntityForm(player, this);
     }
 
-    // @Override
-    public void readCustomDataFromNbt(NbtCompound nbt)
+    @Override
+    protected void readCustomData(ReadView view)
     {
-        // super.readCustomDataFromNbt(nbt);
-
-        this.despawn = nbt.getBoolean("despawn").orElse(false);
+        this.despawn = view.getBoolean("despawn", this.despawn);
     }
 
-    // @Override
-    public void writeCustomDataToNbt(NbtCompound nbt)
+    @Override
+    protected void writeCustomData(WriteView view)
     {
-        // super.writeCustomDataToNbt(nbt);
-
-        nbt.putBoolean("despawn", true);
+        view.putBoolean("despawn", true);
     }
 
     protected int getPermissionLevel()

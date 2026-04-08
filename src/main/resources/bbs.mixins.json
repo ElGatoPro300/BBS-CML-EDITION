@@ -4,6 +4,7 @@
     "compatibilityLevel": "JAVA_21",
     "mixins": [
         "EntityMixin",
+        "PlayerEntityMixin",
         "PlayerEntityMorphMixin",
         "ServerPlayNetworkHandlerMixin",
         "BlockItemMixin",
@@ -13,7 +14,8 @@
         "LivingEntityMixin",
         "ServerPlayerEntityMixin",
         "LimbAnimatorAccessor",
-        "LevelPropertiesAccessor"
+        "LevelPropertiesAccessor",
+        "EntityMixin"
     ],
     "injectors": {
         "defaultRequire": 1

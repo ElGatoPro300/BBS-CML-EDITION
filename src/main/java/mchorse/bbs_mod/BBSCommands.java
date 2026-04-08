@@ -9,8 +9,8 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
-import mchorse.bbs_mod.blocks.entities.ModelBlockEntity;
 import mchorse.bbs_mod.bay4lly.SkinCommands;
+import mchorse.bbs_mod.blocks.entities.ModelBlockEntity;
 import mchorse.bbs_mod.data.DataToString;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.forms.FormUtils;
@@ -22,7 +22,6 @@ import mchorse.bbs_mod.network.ServerNetwork;
 import mchorse.bbs_mod.settings.Settings;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.settings.values.core.ValueGroup;
-import mchorse.bbs_mod.utils.PermissionUtils;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.command.CommandRegistryAccess;
@@ -51,19 +50,14 @@ import net.minecraft.world.World;
 import net.minecraft.world.level.LevelInfo;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.function.Predicate;
 
 public class BBSCommands
 {
     public static void register(CommandDispatcher<ServerCommandSource> dispatcher, CommandRegistryAccess registryAccess, CommandManager.RegistrationEnvironment environment)
     {
-        Predicate<ServerCommandSource> hasPermissions = (source) -> {
-            ServerPlayerEntity player = source.getPlayer();
-            if (player == null) {
-                return true;
-            }
-            return PermissionUtils.arePanelsAllowed(source.getServer(), player);
-        };
+        Predicate<ServerCommandSource> hasPermissions = (source) -> true;
         LiteralArgumentBuilder<ServerCommandSource> bbs = CommandManager.literal("bbs").requires((source) -> true);
 
         registerMorphCommand(bbs, environment, hasPermissions);
@@ -539,7 +533,7 @@ public class BBSCommands
         BlockPos max = new BlockPos(Math.max(from.getX(), to.getX()), Math.max(from.getY(), to.getY()), Math.max(from.getZ(), to.getZ()));
         BlockPos size = max.subtract(min).add(1, 1, 1);
 
-        structureTemplate.saveFromWorld(world, min, size, true, java.util.List.of(Blocks.STRUCTURE_VOID));
+        structureTemplate.saveFromWorld(world, min, size, true, List.of(Blocks.STRUCTURE_VOID));
 
         try
         {

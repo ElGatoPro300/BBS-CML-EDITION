@@ -2,16 +2,14 @@ package mchorse.bbs_mod.blocks.entities;
 
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.blocks.ModelBlock;
-import mchorse.bbs_mod.data.DataStorageUtils;
+import mchorse.bbs_mod.data.DataToString;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.events.ModelBlockEntityUpdateCallback;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.entities.StubEntity;
 import mchorse.bbs_mod.forms.forms.Form;
-import mchorse.bbs_mod.forms.forms.BillboardForm;
 import mchorse.bbs_mod.forms.forms.LightForm;
-import mchorse.bbs_mod.resources.Link;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntity;
@@ -20,6 +18,8 @@ import net.minecraft.network.listener.ClientPlayPacketListener;
 import net.minecraft.network.packet.Packet;
 import net.minecraft.network.packet.s2c.play.BlockEntityUpdateS2CPacket;
 import net.minecraft.registry.RegistryWrapper.WrapperLookup;
+import net.minecraft.storage.ReadView;
+import net.minecraft.storage.WriteView;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
@@ -145,7 +145,7 @@ public class ModelBlockEntity extends BlockEntity
 
         blockEntity.entity.update();
         blockEntity.properties.update(blockEntity.entity);
-        if (!world.isClient)
+            if (!world.isClient())
         {
             int target = blockEntity.properties.getLightLevel();
             Form form = blockEntity.properties.getForm();
@@ -190,32 +190,34 @@ public class ModelBlockEntity extends BlockEntity
     @Override
     public NbtCompound toInitialChunkDataNbt(WrapperLookup registryLookup)
     {
-        NbtCompound nbt = new NbtCompound();
-        this.writeNbt(nbt, registryLookup);
-        return nbt;
+        return this.createNbt(registryLookup);
     }
 
-    protected void writeNbt(NbtCompound nbt, WrapperLookup registryLookup)
+    @Override
+    protected void writeData(WriteView view)
     {
-        /* skip super for cross-mappings compatibility */
+        super.writeData(view);
 
         MapType data = this.properties.toData();
 
-        DataStorageUtils.writeToNbtCompound(nbt, "Properties", data);
+        view.putString("Properties", DataToString.toString(data));
     }
 
-    public void readNbt(NbtCompound nbt, WrapperLookup registryLookup)
+    @Override
+    protected void readData(ReadView view)
     {
-        /* skip super for cross-mappings compatibility */
+        super.readData(view);
 
-        BaseType baseType = DataStorageUtils.readFromNbtCompound(nbt, "Properties");
+        view.getOptionalString("Properties").ifPresent((serialized) -> {
+            BaseType baseType = DataToString.fromString(serialized);
 
-        if (baseType instanceof MapType mapType)
-        {
-            this.properties.fromData(mapType);
-        }
+            if (baseType instanceof MapType mapType)
+            {
+                this.properties.fromData(mapType);
+            }
+        });
         /* Ensure block state reflects stored light level when chunk/block is loaded */
-        if (this.world != null && !this.world.isClient)
+        if (this.world != null && !this.world.isClient())
         {
             try
             {
@@ -229,21 +231,6 @@ public class ModelBlockEntity extends BlockEntity
                 }
             }
             catch (Exception e) {}
-        }
-    }
-
-    protected void writeNbt(NbtCompound nbt)
-    {
-        MapType data = this.properties.toData();
-        DataStorageUtils.writeToNbtCompound(nbt, "Properties", data);
-    }
-
-    public void readNbt(NbtCompound nbt)
-    {
-        BaseType baseType = DataStorageUtils.readFromNbtCompound(nbt, "Properties");
-        if (baseType instanceof MapType mapType)
-        {
-            this.properties.fromData(mapType);
         }
     }
 

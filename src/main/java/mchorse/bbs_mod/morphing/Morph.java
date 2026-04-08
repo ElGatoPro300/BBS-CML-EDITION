@@ -31,7 +31,7 @@ public class Morph
 
     public static Form getMobForm(PlayerEntity player)
     {
-        HitResult hitResult = RayTracing.rayTraceEntity(player, player.world, player.getEyePos(), player.getRotationVector(), 64);
+        HitResult hitResult = RayTracing.rayTraceEntity(player, player.getEntityWorld(), player.getEyePos(), player.getRotationVector(), 64);
 
         if (hitResult.getType() == HitResult.Type.ENTITY)
         {
@@ -53,7 +53,6 @@ public class Morph
             {
                 MobForm form = new MobForm();
                 NbtCompound compound = new NbtCompound();
-                // target.writeNbt(compound);
 
                 for (String s : Arrays.asList("Pos", "Motion", "Rotation", "FallDistance", "Fire", "Air", "OnGround", "Invulnerable", "PortalCooldown", "UUID"))
                 {
@@ -134,7 +133,14 @@ public class Morph
     {
         if (compound.contains("Form"))
         {
-            MapType map = (MapType) DataStorageUtils.fromNbt(compound.getCompound("Form").orElse(new NbtCompound()));
+            Optional<NbtCompound> formNbt = compound.getCompound("Form");
+
+            if (formNbt.isEmpty())
+            {
+                return;
+            }
+
+            MapType map = (MapType) DataStorageUtils.fromNbt(formNbt.get());
 
             this.form = FormUtils.fromData(map);
         }

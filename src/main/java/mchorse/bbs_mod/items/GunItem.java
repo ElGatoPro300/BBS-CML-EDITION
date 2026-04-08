@@ -1,6 +1,5 @@
 package mchorse.bbs_mod.items;
 
-import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.entity.GunProjectileEntity;
 import mchorse.bbs_mod.forms.FormUtils;
@@ -48,7 +47,7 @@ public class GunItem extends Item
             return ActionResult.SUCCESS;
         }
 
-        if (!world.isClient)
+        if (!world.isClient())
         {
             /* Shoot projectiles */
             int projectiles = Math.max(properties.projectiles, 1);
@@ -70,13 +69,9 @@ public class GunItem extends Item
 
             if (!properties.cmdFiring.isEmpty())
             {
-                if (owner.world.getServer() != null && world instanceof ServerWorld serverWorld)
+                if (world.getServer() != null && world instanceof ServerWorld serverWorld)
                 {
-                    try {
-                        owner.world.getServer().getCommandManager().getDispatcher().execute(properties.cmdFiring, owner.getCommandSource(serverWorld));
-                    } catch (CommandSyntaxException e) {
-                        e.printStackTrace();
-                    }
+                    world.getServer().getCommandManager().parseAndExecute(owner.getCommandSource(serverWorld), properties.cmdFiring);
                 }
             }
         }

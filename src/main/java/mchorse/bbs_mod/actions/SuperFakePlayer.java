@@ -87,7 +87,6 @@ public class SuperFakePlayer extends ServerPlayerEntity
     public void sleep(BlockPos pos)
     {}
 
-    // @Override
     public boolean startRiding(Entity entity, boolean force)
     {
         return false;
