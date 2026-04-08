@@ -5,15 +5,14 @@ import mchorse.bbs_mod.forms.renderers.MobFormRenderer;
 import mchorse.bbs_mod.utils.pose.Pose;
 import mchorse.bbs_mod.utils.pose.PoseTransform;
 import mchorse.bbs_mod.utils.pose.Transform;
-import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.model.ModelPart;
-import net.minecraft.client.render.VertexConsumerProvider;
+import net.minecraft.client.render.command.OrderedRenderCommandQueue;
 import net.minecraft.client.render.entity.LivingEntityRenderer;
 import net.minecraft.client.render.entity.state.LivingEntityRenderState;
+import net.minecraft.client.render.state.CameraRenderState;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
-import net.minecraft.world.World;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -24,8 +23,8 @@ import java.util.Map;
 @Mixin(LivingEntityRenderer.class)
 public abstract class LivingEntityRendererMixin
 {
-    @Inject(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/render/entity/model/EntityModel;setAngles(Lnet/minecraft/client/render/entity/state/EntityRenderState;)V", ordinal = 0, shift = At.Shift.AFTER))
-    public void onSetAngles(LivingEntityRenderState state, MatrixStack matrixStack, VertexConsumerProvider vertexConsumerProvider, int i, CallbackInfo info)
+    @Inject(method = "render", at = @At("HEAD"))
+    public void onSetAngles(LivingEntityRenderState state, MatrixStack matrixStack, OrderedRenderCommandQueue queue, CameraRenderState cameraRenderState, CallbackInfo info)
     {
         Entity entity = ((IEntityRenderState) state).bbs$getEntity();
 
@@ -76,9 +75,9 @@ public abstract class LivingEntityRendererMixin
                     {
                         Transform transform = new Transform();
 
-                        transform.translate.x = value.pivotX;
-                        transform.translate.y = value.pivotY;
-                        transform.translate.z = value.pivotZ;
+                        transform.translate.x = value.originX;
+                        transform.translate.y = value.originY;
+                        transform.translate.z = value.originZ;
                         transform.rotate.x = value.pitch;
                         transform.rotate.y = value.yaw;
                         transform.rotate.z = value.roll;
@@ -86,9 +85,9 @@ public abstract class LivingEntityRendererMixin
                         transform.scale.y = value.yScale;
                         transform.scale.z = value.zScale;
 
-                        value.pivotX += poseTransform.translate.x;
-                        value.pivotY += poseTransform.translate.y;
-                        value.pivotZ += poseTransform.translate.z;
+                        value.originX += poseTransform.translate.x;
+                        value.originY += poseTransform.translate.y;
+                        value.originZ += poseTransform.translate.z;
                         value.pitch += poseTransform.rotate.x;
                         value.yaw += poseTransform.rotate.y;
                         value.roll += poseTransform.rotate.z;
@@ -104,16 +103,16 @@ public abstract class LivingEntityRendererMixin
     }
 
     @Inject(method = "render", at = @At("TAIL"))
-    public void onRenderEnd(LivingEntityRenderState state, MatrixStack matrixStack, VertexConsumerProvider vertexConsumerProvider, int i, CallbackInfo info)
+    public void onRenderEnd(LivingEntityRenderState state, MatrixStack matrixStack, OrderedRenderCommandQueue queue, CameraRenderState cameraRenderState, CallbackInfo info)
     {
         for (Map.Entry<ModelPart, Transform> entry : MobFormRenderer.getCache().entrySet())
         {
             Transform transform = entry.getValue();
             ModelPart value = entry.getKey();
 
-            value.pivotX = transform.translate.x;
-            value.pivotY = transform.translate.y;
-            value.pivotZ = transform.translate.z;
+            value.originX = transform.translate.x;
+            value.originY = transform.translate.y;
+            value.originZ = transform.translate.z;
             value.pitch = transform.rotate.x;
             value.yaw = transform.rotate.y;
             value.roll = transform.rotate.z;

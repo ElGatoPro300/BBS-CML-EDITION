@@ -10,28 +10,10 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(Window.class)
-public class WindowMixin
+public abstract class WindowMixin
 {
     @Shadow
-    private int width;
-
-    @Shadow
-    private int height;
-
-    @Shadow
-    private int framebufferWidth;
-
-    @Shadow
-    private int framebufferHeight;
-
-    @Shadow
-    private int scaledWidth;
-
-    @Shadow
-    private int scaledHeight;
-
-    @Shadow
-    private double scaleFactor;
+    public abstract int getScaleFactor();
 
     @Inject(method = "getWidth", at = @At("HEAD"), cancellable = true)
     public void onGetWidth(CallbackInfoReturnable<Integer> info)
@@ -74,7 +56,7 @@ public class WindowMixin
     {
         if (BBSRendering.canReplaceFramebuffer())
         {
-            info.setReturnValue((int) (BBSRendering.getVideoWidth() / this.scaleFactor * BBSModClient.getOriginalFramebufferScale()));
+            info.setReturnValue((int) (BBSRendering.getVideoWidth() / this.getScaleFactor() * BBSModClient.getOriginalFramebufferScale()));
         }
     }
 
@@ -83,7 +65,7 @@ public class WindowMixin
     {
         if (BBSRendering.canReplaceFramebuffer())
         {
-            info.setReturnValue((int) (BBSRendering.getVideoHeight() / this.scaleFactor * BBSModClient.getOriginalFramebufferScale()));
+            info.setReturnValue((int) (BBSRendering.getVideoHeight() / this.getScaleFactor() * BBSModClient.getOriginalFramebufferScale()));
         }
     }
 }

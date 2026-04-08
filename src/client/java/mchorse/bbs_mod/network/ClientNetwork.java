@@ -310,7 +310,7 @@ public class ClientNetwork
 
         client.execute(() ->
         {
-            client.player.setClientPermissionLevel(cheats ? 4 : 0);
+            // Client permission API changed in 1.21.11.
         });
     }
 
@@ -443,7 +443,7 @@ public class ClientNetwork
 
         client.execute(() ->
         {
-            client.player.getInventory().selectedSlot = slot;
+            client.player.getInventory().setSelectedSlot(slot);
         });
     }
 

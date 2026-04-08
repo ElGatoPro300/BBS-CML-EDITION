@@ -290,7 +290,7 @@ public class UILanguageEditorOverlayPanel extends UIOverlayPanel
         buffer.put((byte) '\0');
         buffer.flip();
 
-        GLFW.glfwSetClipboardString(Window.getWindow(), buffer);
+        GLFW.glfwSetClipboardString(Window.getWindow().getHandle(), buffer);
 
         MemoryUtil.memFree(buffer);
     }

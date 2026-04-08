@@ -7,7 +7,7 @@ import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.utils.pose.Transform;
-import net.minecraft.item.ModelTransformationMode;
+import net.minecraft.item.ItemDisplayContext;
 import org.joml.Vector3f;
 
 public class ModelProperties implements IMapSerializable
@@ -202,19 +202,19 @@ public class ModelProperties implements IMapSerializable
         this.hitboxPos2.set(x, y, z);
     }
 
-    public Form getForm(ModelTransformationMode mode)
+    public Form getForm(ItemDisplayContext mode)
     {
         Form form = this.form;
 
-        if (mode == ModelTransformationMode.GUI && this.formInventory != null)
+        if (mode == ItemDisplayContext.GUI && this.formInventory != null)
         {
             form = this.formInventory;
         }
-        else if ((mode == ModelTransformationMode.THIRD_PERSON_LEFT_HAND || mode == ModelTransformationMode.THIRD_PERSON_RIGHT_HAND) && this.formThirdPerson != null)
+        else if ((mode == ItemDisplayContext.THIRD_PERSON_LEFT_HAND || mode == ItemDisplayContext.THIRD_PERSON_RIGHT_HAND) && this.formThirdPerson != null)
         {
             form = this.formThirdPerson;
         }
-        else if ((mode == ModelTransformationMode.FIRST_PERSON_LEFT_HAND || mode == ModelTransformationMode.FIRST_PERSON_RIGHT_HAND) && this.formFirstPerson != null)
+        else if ((mode == ItemDisplayContext.FIRST_PERSON_LEFT_HAND || mode == ItemDisplayContext.FIRST_PERSON_RIGHT_HAND) && this.formFirstPerson != null)
         {
             form = this.formFirstPerson;
         }
@@ -222,19 +222,19 @@ public class ModelProperties implements IMapSerializable
         return form;
     }
 
-    public Transform getTransform(ModelTransformationMode mode)
+    public Transform getTransform(ItemDisplayContext mode)
     {
         Transform transform = this.transformThirdPerson;
 
-        if (mode == ModelTransformationMode.GUI)
+        if (mode == ItemDisplayContext.GUI)
         {
             transform = this.transformInventory;
         }
-        else if (mode == ModelTransformationMode.FIRST_PERSON_LEFT_HAND || mode == ModelTransformationMode.FIRST_PERSON_RIGHT_HAND)
+        else if (mode == ItemDisplayContext.FIRST_PERSON_LEFT_HAND || mode == ItemDisplayContext.FIRST_PERSON_RIGHT_HAND)
         {
             transform = this.transformFirstPerson;
         }
-        else if (mode == ModelTransformationMode.GROUND)
+        else if (mode == ItemDisplayContext.GROUND)
         {
             transform = this.transform;
         }

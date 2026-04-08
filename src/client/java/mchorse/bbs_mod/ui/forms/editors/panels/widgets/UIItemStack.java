@@ -192,7 +192,7 @@ public class UIItemStack extends UIElement
 
         if (this.stack != null && !this.stack.isEmpty())
         {
-            MatrixStack matrices = context.batcher.getContext().getMatrices();
+            MatrixStack matrices = new MatrixStack();
             CustomVertexConsumerProvider consumers = FormUtilsClient.getProvider();
 
             matrices.push();

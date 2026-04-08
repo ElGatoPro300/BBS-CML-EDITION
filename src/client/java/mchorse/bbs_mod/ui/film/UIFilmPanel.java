@@ -74,7 +74,7 @@ import mchorse.bbs_mod.utils.joml.Vectors;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 import mchorse.bbs_mod.utils.keyframes.KeyframeSegment;
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.util.math.Vec3d;
@@ -1403,7 +1403,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         if (this.entered)
         {
             ClientPlayerEntity player = MinecraftClient.getInstance().player;
-            Vec3d pos = player.getPos();
+            Vec3d pos = new Vec3d(player.getX(), player.getY(), player.getZ());
             Vector3d cameraPos = this.camera.position;
             double distance = cameraPos.distance(pos.x, pos.y, pos.z);
             int value = MinecraftClient.getInstance().options.getViewDistance().getValue();
@@ -1543,8 +1543,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         if (!BBSRendering.isIrisShadowPass())
         {
-            this.lastProjection.set(RenderSystem.getProjectionMatrix());
-            MatrixStack ms = context.matrixStack();
+            this.lastProjection.set(RenderSystem.getModelViewMatrix());
+            MatrixStack ms = context.matrices();
             if (ms != null)
             {
                 this.lastView.set(ms.peek().getPositionMatrix());

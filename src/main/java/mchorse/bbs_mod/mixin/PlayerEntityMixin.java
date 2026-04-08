@@ -1,17 +1,14 @@
 package mchorse.bbs_mod.mixin;
 
-import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.morphing.IMorphProvider;
-import mchorse.bbs_mod.morphing.Morph;
-import net.minecraft.entity.EntityDimensions;
-import net.minecraft.entity.EntityPose;
+import net.minecraft.nbt.StringNbtReader;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.nbt.NbtCompound;
+import net.minecraft.storage.ReadView;
+import net.minecraft.storage.WriteView;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
  * For some unknown reason to me, if these methods are used in {@link PlayerEntityMorphMixin}
@@ -21,49 +18,28 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(PlayerEntity.class)
 public class PlayerEntityMixin
 {
-    @Inject(method = "writeCustomDataToNbt", at = @At("TAIL"))
-    public void onWriteCustomDataToNbt(NbtCompound nbt, CallbackInfo info)
+    @Inject(method = "writeCustomData", at = @At("TAIL"))
+    public void onWriteCustomData(WriteView view, CallbackInfo info)
     {
         if (this instanceof IMorphProvider provider)
         {
-            nbt.put("BBSMorph", provider.getMorph().toNbt());
+            view.putString("BBSMorph", provider.getMorph().toNbt().toString());
         }
     }
 
-    @Inject(method = "readCustomDataFromNbt", at = @At("TAIL"))
-    public void onReadCustomDataFromNbt(NbtCompound nbt, CallbackInfo info)
+    @Inject(method = "readCustomData", at = @At("TAIL"))
+    public void onReadCustomData(ReadView view, CallbackInfo info)
     {
         if (this instanceof IMorphProvider provider)
         {
-            if (nbt.contains("BBSMorph"))
-            {
-                provider.getMorph().fromNbt(nbt.getCompound("BBSMorph"));
-            }
-        }
-    }
-
-    @Inject(method = "getBaseDimensions", at = @At("RETURN"), cancellable = true)
-    public void onGetDimensions(EntityPose pose, CallbackInfoReturnable<EntityDimensions> info)
-    {
-        if (this instanceof IMorphProvider provider)
-        {
-            Form form = provider.getMorph().getForm();
-
-            if (form != null && form.hitbox.get())
-            {
-                PlayerEntity player = (PlayerEntity) (Object) this;
-                EntityDimensions dimensions = info.getReturnValue();
-                float height = form.hitboxHeight.get() * (player.isSneaking() ? form.hitboxSneakMultiplier.get() : 1F);
-
-                if (dimensions.fixed())
+            view.getOptionalString("BBSMorph").ifPresent((serialized) -> {
+                try
                 {
-                    info.setReturnValue(EntityDimensions.fixed(form.hitboxWidth.get(), height));
+                    provider.getMorph().fromNbt(StringNbtReader.readCompound(serialized));
                 }
-                else
-                {
-                    info.setReturnValue(EntityDimensions.changing(form.hitboxWidth.get(), height));
-                }
-            }
+                catch (Exception ignored)
+                {}
+            });
         }
     }
 

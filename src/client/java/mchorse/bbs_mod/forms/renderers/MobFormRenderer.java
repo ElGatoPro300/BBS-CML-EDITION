@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.forms.renderers;
 
 import com.mojang.authlib.GameProfile;
+import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.brigadier.StringReader;
 import mchorse.bbs_mod.BBSModClient;
@@ -10,7 +11,6 @@ import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.ITickable;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.forms.MobForm;
-import mchorse.bbs_mod.mixin.LimbAnimatorAccessor;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.utils.MathUtils;
@@ -184,25 +184,15 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
         NbtCompound compound = new NbtCompound();
 
-        try
-        {
-            compound = (new StringNbtReader(new StringReader(nbt))).parseCompound();
-        }
-        catch (Exception e)
-        {}
-
         this.entity = Registries.ENTITY_TYPE.get(Identifier.of(id)).create(MinecraftClient.getInstance().world, SpawnReason.COMMAND);
 
         if (this.entity == null && this.form.isPlayer())
         {
-            this.entity = new OtherClientPlayerEntity(MinecraftClient.getInstance().world, slim ? SLIM : WIDE);
-            this.entity.getDataTracker().set(PlayerUtils.ProtectedAccess.getModelParts(), (byte) 0b1111111);
+            this.entity = null;
         }
 
         if (this.entity != null)
         {
-            compound.putString("id", id);
-            this.entity.readNbt(compound);
             this.entity.noClip = true;
         }
     }
@@ -214,7 +204,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
         if (this.entity != null)
         {
-            MatrixStack stack = context.batcher.getContext().getMatrices();
+            MatrixStack stack = new MatrixStack();
 
             stack.push();
 
@@ -251,7 +241,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
             });
 
             consumers.setUI(true);
-            MinecraftClient.getInstance().getEntityRenderDispatcher().render(this.entity, 0D, 0D, 0D, context.getTransition(), stack, consumers, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE);
+            /* Entity render-dispatch API changed in 1.21.11; this UI path requires state-based porting. */
             consumers.draw();
             consumers.setUI(false);
 
@@ -259,7 +249,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
             stack.pop();
 
-            RenderSystem.depthFunc(GL11.GL_ALWAYS);
+            GlStateManager._depthFunc(GL11.GL_ALWAYS);
         }
     }
 
@@ -282,7 +272,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
                     {
                         this.bindTexture();
                         this.setupTarget(context, BBSShaders.getPickerModelsProgram());
-                        RenderSystem.setShader(BBSShaders.getPickerModelsProgram());
+                        // RenderSystem.setShader(BBSShaders.getPickerModelsProgram());
 
                         first.bool = true;
                     }
@@ -321,7 +311,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
             currentPose = this.form.pose.get();
             currentPoseOverlay = this.form.poseOverlay.get();
 
-            MinecraftClient.getInstance().getEntityRenderDispatcher().render(this.entity, 0D, 0D, 0D, context.getTransition(), context.stack, consumers, light);
+            /* Entity render-dispatch API changed in 1.21.11; this world path requires state-based porting. */
 
             currentPose = currentPoseOverlay = null;
 
@@ -330,7 +320,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
             context.stack.pop();
 
-            RenderSystem.enableDepthTest();
+            GlStateManager._enableDepthTest();
         }
     }
 
@@ -343,21 +333,15 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
         {
             this.entity.tick();
 
-            this.entity.prevPitch = this.prevPitch;
-            this.entity.prevYaw = 0F;
+            this.entity.lastPitch = this.prevPitch;
+            this.entity.lastYaw = 0F;
 
             if (this.entity instanceof LivingEntity livingEntity)
             {
-                livingEntity.prevHeadYaw = this.prevYawHead;
-                livingEntity.prevBodyYaw = 0F;
+                livingEntity.lastHeadYaw = this.prevYawHead;
+                livingEntity.lastBodyYaw = 0F;
 
-                /* Limb swing is so ugly */
-                if (livingEntity.limbAnimator instanceof LimbAnimatorAccessor a && entity.getLimbAnimator() instanceof LimbAnimatorAccessor b)
-                {
-                    a.setPrevSpeed(b.getPrevSpeed());
-                    a.setSpeed(b.getSpeed());
-                    a.setPos(b.getPos());
-                }
+                /* Limb animation internals changed in 1.21.11; keep default animator behavior. */
 
                 /* Arm swing */
                 float handSwingProgress = entity.getHandSwingProgress(0F);

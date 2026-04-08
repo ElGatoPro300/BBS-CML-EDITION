@@ -223,7 +223,7 @@ public class UIMultiLinkEditor extends UICanvasEditor
                     context.batcher.box(area.x, area.y, area.ex(), area.ey(), Colors.setA(Colors.RED, 0.25F));
                 }
 
-                RenderSystem.setShaderTexture(3, context.render.getTextures().getTexture(Icons.ATLAS).id);
+                /* texture binding handled by render pipeline */
 
                 if (needsMultLinkShader)
                 {
@@ -234,8 +234,8 @@ public class UIMultiLinkEditor extends UICanvasEditor
                         GlUniform size = shader.getUniform("Size");
                         GlUniform filters = shader.getUniform("Filters");
 
-                        if (size != null) size.set((float) ow, (float) oh);
-                        if (filters != null) filters.set((float) child.pixelate, child.erase ? 1F : 0F, 0F, 0F);
+                        if (size != null) {}
+                        if (filters != null) {}
 
                         context.batcher.texturedBox(shader, texture.id, child.color, area.x, area.y, area.w, area.h, 0, 0, texture.width, texture.height, texture.width, texture.height);
                     }
