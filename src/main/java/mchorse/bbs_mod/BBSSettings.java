@@ -34,6 +34,7 @@ public class BBSSettings
     public static ValueBoolean forceQwerty;
     public static ValueBoolean freezeModels;
     public static ValueFloat axesScale;
+    public static ValueFloat axesThickness;
     public static ValueBoolean uniformScale;
     public static ValueBoolean clickSound;
     public static ValueBoolean disablePivotTransform;
@@ -198,16 +199,19 @@ public class BBSSettings
         hsvColorPicker = builder.getBoolean("hsv_color_picker", true);
         forceQwerty = builder.getBoolean("force_qwerty", false);
         freezeModels = builder.getBoolean("freeze_models", false);
-        axesScale = builder.getFloat("axes_scale", 1F, 0F, 2F);
         uniformScale = builder.getBoolean("uniform_scale", false);
         clickSound = builder.getBoolean("click_sound", false);
-        gizmos = builder.getBoolean("gizmos", true);
         favoriteColors = new ValueColors("favorite_colors");
         disabledSheets = new ValueStringKeys("disabled_sheets");
         disabledSheets.set(defaultFilters);
         builder.register(favoriteColors);
         builder.register(disabledSheets);
         textureDefaultPath = builder.getRL("texture_default_path", null);
+
+        builder.category("axes");
+        gizmos = builder.getBoolean("gizmos", true);
+        axesScale = builder.getFloat("axes_scale", 1F, 0F, 2F);
+        axesThickness = builder.getFloat("axes_thickness", 1F, 0.25F, 3F);
 
         builder.category("tutorials");
         enableCursorRendering = builder.getBoolean("cursor", false);

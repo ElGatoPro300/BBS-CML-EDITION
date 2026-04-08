@@ -214,11 +214,11 @@ public class UIModelEditorRenderer extends UIModelRenderer
 
                 if (entry != null)
                 {
-                    Matrix4f matrix = entry.origin();
+                    Matrix4f matrix = entry.matrix();
 
                     if (matrix == null)
                     {
-                        matrix = entry.matrix();
+                        matrix = entry.origin();
                     }
 
                     gizmoMatrix = matrix;
