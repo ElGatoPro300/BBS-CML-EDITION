@@ -1,5 +1,6 @@
 package mchorse.bbs_mod.ui.forms.editors.panels;
 
+import com.mojang.logging.LogUtils;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.ui.UIKeys;
@@ -11,9 +12,12 @@ import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
 import mchorse.bbs_mod.ui.framework.elements.input.text.UITextbox;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.keys.KeyCombo;
+import org.slf4j.Logger;
 
 public class UIGeneralFormPanel extends UIFormPanel
 {
+    private static final Logger LOGGER = LogUtils.getLogger();
+
     public UIKeybind hotkey;
 
     public UIToggle visible;
@@ -55,7 +59,11 @@ public class UIGeneralFormPanel extends UIFormPanel
         this.shaderShadow = new UIToggle(UIKeys.FORMS_EDITORS_GENERAL_SHADER_SHADOW, (b) -> this.form.shaderShadow.set(b.getValue()));
         this.uiScale = new UITrackpad((v) -> this.form.uiScale.set(v.floatValue()));
         this.uiScale.limit(0.01D, 100D);
-        this.name = new UITextbox(120, (t) -> this.form.name.set(t));
+        this.name = new UITextbox(120, (t) ->
+        {
+            this.form.name.set(t);
+            LOGGER.info("Form display name changed: formId={}, name={}", this.form.getFormId(), t);
+        });
 
         this.transform = new UIPropTransform().callbacks(() -> this.form.transform);
         this.transform.enableHotkeys().relative(this).x(0.5F).y(1F, -10).anchor(0.5F, 1F);

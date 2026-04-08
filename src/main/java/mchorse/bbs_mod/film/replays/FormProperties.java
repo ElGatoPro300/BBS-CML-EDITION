@@ -4,10 +4,12 @@ import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.forms.Form;
+import mchorse.bbs_mod.forms.forms.ModelForm;
 import mchorse.bbs_mod.settings.values.base.BaseKeyframeFactoryValue;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.settings.values.base.BaseValueBasic;
 import mchorse.bbs_mod.settings.values.core.ValueGroup;
+import mchorse.bbs_mod.settings.values.core.ValuePose;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.interps.Interpolations;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
@@ -15,6 +17,9 @@ import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 import mchorse.bbs_mod.utils.keyframes.KeyframeSegment;
 import mchorse.bbs_mod.utils.keyframes.factories.IKeyframeFactory;
 import mchorse.bbs_mod.utils.keyframes.factories.KeyframeFactories;
+import mchorse.bbs_mod.utils.pose.Pose;
+import mchorse.bbs_mod.utils.pose.PoseTransform;
+import mchorse.bbs_mod.utils.pose.Transform;
 
 import java.util.HashMap;
 import java.util.Iterator;
@@ -43,12 +48,31 @@ public class FormProperties extends ValueGroup
     public KeyframeChannel getOrCreate(Form form, String key)
     {
         BaseValue value = this.get(key);
-        BaseValue property = FormUtils.getProperty(form, key);
 
         if (value instanceof KeyframeChannel channel)
         {
             return channel;
         }
+
+        int colon = key.indexOf(':');
+
+        if (colon != -1)
+        {
+            String propertyId = key.substring(0, colon);
+            BaseValue property = FormUtils.getProperty(form, propertyId);
+
+            if (property instanceof ValuePose)
+            {
+                KeyframeChannel channel = new KeyframeChannel(key, KeyframeFactories.TRANSFORM);
+
+                this.properties.put(key, channel);
+                this.add(channel);
+
+                return channel;
+            }
+        }
+
+        BaseValue property = FormUtils.getProperty(form, key);
 
         return property != null ? this.create(property) : null;
     }
@@ -81,15 +105,74 @@ public class FormProperties extends ValueGroup
             return;
         }
 
+        /* First pass: apply standard properties */
         for (KeyframeChannel value : this.properties.values())
         {
-            this.applyProperty(tick, form, value, blend);
+            if (value.getId().indexOf(':') == -1)
+            {
+                this.applyProperty(tick, form, value, blend);
+            }
+        }
+
+        /* Second pass: apply limb tracks (which override standard properties) */
+        for (KeyframeChannel value : this.properties.values())
+        {
+            if (value.getId().indexOf(':') != -1)
+            {
+                this.applyProperty(tick, form, value, blend);
+            }
         }
     }
 
     private void applyProperty(float tick, Form form, KeyframeChannel value, float blend)
     {
-        BaseValueBasic property = FormUtils.getProperty(form, value.getId());
+        String id = value.getId();
+        int colon = id.indexOf(':');
+
+        if (colon != -1)
+        {
+            String propertyId = id.substring(0, colon);
+            String boneName = id.substring(colon + 1);
+            BaseValueBasic property = FormUtils.getProperty(form, propertyId);
+
+            if (property instanceof ValuePose valuePose)
+            {
+                KeyframeSegment segment = value.find(tick);
+
+                if (segment != null)
+                {
+                    Transform transform = (Transform) segment.createInterpolated();
+                    Pose pose = valuePose.getRuntimeValue();
+
+                    if (pose == null)
+                    {
+                        pose = new Pose();
+                        valuePose.setRuntimeValue(pose);
+                    }
+
+                    PoseTransform poseTransform = pose.get(boneName);
+
+                    if (blend < 1F)
+                    {
+                        poseTransform.translate.add(transform.translate.x * blend, transform.translate.y * blend, transform.translate.z * blend);
+                        poseTransform.scale.mul(1F + (transform.scale.x - 1F) * blend, 1F + (transform.scale.y - 1F) * blend, 1F + (transform.scale.z - 1F) * blend);
+                        poseTransform.rotate.add(transform.rotate.x * blend, transform.rotate.y * blend, transform.rotate.z * blend);
+                        poseTransform.rotate2.add(transform.rotate2.x * blend, transform.rotate2.y * blend, transform.rotate2.z * blend);
+                    }
+                    else
+                    {
+                        poseTransform.translate.add(transform.translate);
+                        poseTransform.scale.mul(transform.scale);
+                        poseTransform.rotate.add(transform.rotate);
+                        poseTransform.rotate2.add(transform.rotate2);
+                    }
+                }
+
+                return;
+            }
+        }
+
+        BaseValueBasic property = FormUtils.getProperty(form, id);
 
         if (property == null)
         {
@@ -129,11 +212,25 @@ public class FormProperties extends ValueGroup
 
         for (KeyframeChannel value : this.properties.values())
         {
-            BaseValueBasic property = FormUtils.getProperty(form, value.getId());
+            String id = value.getId();
+            int colon = id.indexOf(':');
+
+            if (colon != -1)
+            {
+                String propertyId = id.substring(0, colon);
+                BaseValueBasic property = FormUtils.getProperty(form, propertyId);
+
+                if (property instanceof ValuePose valuePose)
+                {
+                    valuePose.setRuntimeValue(null);
+                }
+            }
+
+            BaseValueBasic property = FormUtils.getProperty(form, id);
 
             if (property == null)
             {
-                return;
+                continue;
             }
 
             property.setRuntimeValue(null);
@@ -205,6 +302,67 @@ public class FormProperties extends ValueGroup
                 this.add(property);
             }
         }
+
+        /* Migration: synthesize structure_light from legacy emit_light and light_intensity channels */
+        try
+        {
+            KeyframeChannel<?> emit = this.properties.get("emit_light");
+            KeyframeChannel<?> intensity = this.properties.get("light_intensity");
+
+            if (emit != null || intensity != null)
+            {
+                KeyframeChannel<?> mergedAny = this.properties.get("structure_light");
+                @SuppressWarnings("unchecked")
+                KeyframeChannel<mchorse.bbs_mod.forms.forms.utils.StructureLightSettings> merged = mergedAny != null
+                    ? (KeyframeChannel<mchorse.bbs_mod.forms.forms.utils.StructureLightSettings>) mergedAny
+                    : new KeyframeChannel<>("structure_light", KeyframeFactories.STRUCTURE_LIGHT_SETTINGS);
+
+                if (mergedAny == null)
+                {
+                    this.properties.put("structure_light", merged);
+                    this.add(merged);
+                }
+
+                java.util.TreeSet<Float> ticks = new java.util.TreeSet<>();
+                if (emit != null) for (Object kfObj : emit.getKeyframes()) { ticks.add(((Keyframe<?>) kfObj).getTick()); }
+                if (intensity != null) for (Object kfObj : intensity.getKeyframes()) { ticks.add(((Keyframe<?>) kfObj).getTick()); }
+
+                for (float t : ticks)
+                {
+                    boolean enabled = false;
+                    int value = 0;
+
+                    if (emit != null)
+                    {
+                        KeyframeSegment seg = emit.find(t);
+                        if (seg != null)
+                        {
+                            Object v = seg.createInterpolated();
+                            if (v instanceof Boolean b) enabled = b;
+                            else if (v instanceof Number n) enabled = n.floatValue() >= 0.5F;
+                        }
+                    }
+
+                    if (intensity != null)
+                    {
+                        KeyframeSegment seg = intensity.find(t);
+                        if (seg != null)
+                        {
+                            Object v = seg.createInterpolated();
+                            if (v instanceof Number n) value = Math.round(n.floatValue());
+                        }
+                    }
+
+                    mchorse.bbs_mod.forms.forms.utils.StructureLightSettings payload = new mchorse.bbs_mod.forms.forms.utils.StructureLightSettings(
+                        enabled,
+                        Math.max(0, Math.min(15, value))
+                    );
+
+                    merged.insert(t, payload);
+                }
+            }
+        }
+        catch (Throwable ignored) {}
     }
 
     @Override

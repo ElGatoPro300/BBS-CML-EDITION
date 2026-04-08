@@ -27,7 +27,7 @@ public class ReplayKeyframes extends ValueGroup
     public static final String GROUP_EXTRA1 = "extra1";
     public static final String GROUP_EXTRA2 = "extra2";
 
-    public static final List<String> CURATED_CHANNELS = Arrays.asList("x", "y", "z", "pitch", "yaw", "headYaw", "bodyYaw", "sneaking", "sprinting", "item_main_hand", "item_off_hand", "item_head", "item_chest", "item_legs", "item_feet", "selected_slot", "stick_lx", "stick_ly", "stick_rx", "stick_ry", "trigger_l", "trigger_r", "extra1_x", "extra1_y", "extra2_x", "extra2_y", "grounded", "damage", "vX", "vY", "vZ");
+    public static final List<String> CURATED_CHANNELS = Arrays.asList("x", "y", "z", "pitch", "yaw", "headYaw", "bodyYaw", "sneaking", "sprinting", "item_main_hand", "item_off_hand", "item_head", "item_chest", "item_legs", "item_feet", "selected_slot", "stick_lx", "stick_ly", "stick_rx", "stick_ry", "trigger_l", "trigger_r", "extra1_x", "extra1_y", "extra2_x", "extra2_y", "grounded", "damage", "vX", "vY", "vZ", "shadow_size", "shadow_opacity");
 
     public final KeyframeChannel<Double> x = new KeyframeChannel<>("x", KeyframeFactories.DOUBLE);
     public final KeyframeChannel<Double> y = new KeyframeChannel<>("y", KeyframeFactories.DOUBLE);
@@ -60,6 +60,8 @@ public class ReplayKeyframes extends ValueGroup
     public final KeyframeChannel<Double> extra1Y = new KeyframeChannel<>("extra1_y", KeyframeFactories.DOUBLE);
     public final KeyframeChannel<Double> extra2X = new KeyframeChannel<>("extra2_x", KeyframeFactories.DOUBLE);
     public final KeyframeChannel<Double> extra2Y = new KeyframeChannel<>("extra2_y", KeyframeFactories.DOUBLE);
+    public final KeyframeChannel<Double> shadowSize = new KeyframeChannel<>("shadow_size", KeyframeFactories.DOUBLE);
+    public final KeyframeChannel<Double> shadowOpacity = new KeyframeChannel<>("shadow_opacity", KeyframeFactories.DOUBLE);
 
     public final KeyframeChannel<ItemStack> mainHand = new KeyframeChannel<>("item_main_hand", KeyframeFactories.ITEM_STACK);
     public final KeyframeChannel<ItemStack> offHand = new KeyframeChannel<>("item_off_hand", KeyframeFactories.ITEM_STACK);
@@ -98,6 +100,8 @@ public class ReplayKeyframes extends ValueGroup
         this.add(this.extra1Y);
         this.add(this.extra2X);
         this.add(this.extra2Y);
+        this.add(this.shadowSize);
+        this.add(this.shadowOpacity);
 
         this.add(this.mainHand);
         this.add(this.offHand);

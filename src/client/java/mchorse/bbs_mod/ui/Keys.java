@@ -19,6 +19,7 @@ public class Keys
     public static final KeyCombo REDO = new KeyCombo("redo", UIKeys.CAMERA_EDITOR_KEYS_EDITOR_REDO, GLFW.GLFW_KEY_Y, GLFW.GLFW_KEY_LEFT_CONTROL);
     public static final KeyCombo UNDO = new KeyCombo("undo", UIKeys.CAMERA_EDITOR_KEYS_EDITOR_UNDO, GLFW.GLFW_KEY_Z, GLFW.GLFW_KEY_LEFT_CONTROL);
     public static final KeyCombo COPY = new KeyCombo("copy", UIKeys.GENERAL_COPY, GLFW.GLFW_KEY_C, GLFW.GLFW_KEY_LEFT_CONTROL);
+    public static final KeyCombo CUT = new KeyCombo("cut", UIKeys.GENERAL_CUT, GLFW.GLFW_KEY_X, GLFW.GLFW_KEY_LEFT_CONTROL);
     public static final KeyCombo PASTE = new KeyCombo("paste", UIKeys.GENERAL_PASTE, GLFW.GLFW_KEY_V, GLFW.GLFW_KEY_LEFT_CONTROL);
     public static final KeyCombo PRESETS = new KeyCombo("presets", UIKeys.GENERAL_PRESETS, GLFW.GLFW_KEY_V, GLFW.GLFW_KEY_LEFT_SHIFT, GLFW.GLFW_KEY_LEFT_CONTROL);
     public static final KeyCombo SAVE = new KeyCombo("save", UIKeys.GENERAL_SAVE, GLFW.GLFW_KEY_S, GLFW.GLFW_KEY_LEFT_CONTROL);
@@ -118,6 +119,9 @@ public class Keys
     public static final KeyCombo FILM_CONTROLLER_CYCLE_EDITORS = new KeyCombo("cycle_editors", UIKeys.FILM_CONTROLLER_KEYS_CYCLE_EDITORS, GLFW.GLFW_KEY_GRAVE_ACCENT).categoryKey("film_controller");
     public static final KeyCombo FILM_CONTROLLER_PREV_REPLAY = new KeyCombo("prev_replay", UIKeys.FILM_CONTROLLER_KEYS_PREV_REPLAY, GLFW.GLFW_KEY_PAGE_UP).categoryKey("film_controller");
     public static final KeyCombo FILM_CONTROLLER_NEXT_REPLAY = new KeyCombo("next_replay", UIKeys.FILM_CONTROLLER_KEYS_NEXT_REPLAY, GLFW.GLFW_KEY_PAGE_DOWN).categoryKey("film_controller");
+
+    /* Replays */
+    public static final KeyCombo REPLAYS_REMOVE = new KeyCombo("replays_remove", UIKeys.SCENE_REPLAYS_CONTEXT_REMOVE, GLFW.GLFW_KEY_DELETE).categoryKey("replays");
 
     /* Recording groups */
     public static final KeyCombo RECORDING_GROUP_ALL = new KeyCombo("all", UIKeys.FILM_GROUPS_ALL, GLFW.GLFW_KEY_1).categoryKey("recording_groups");

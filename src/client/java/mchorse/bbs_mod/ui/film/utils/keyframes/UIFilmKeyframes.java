@@ -1,10 +1,12 @@
 package mchorse.bbs_mod.ui.film.utils.keyframes;
 
+import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.camera.utils.TimeUtils;
 import mchorse.bbs_mod.ui.film.IUIClipsDelegate;
 import mchorse.bbs_mod.ui.film.UIClips;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframes;
+import mchorse.bbs_mod.ui.framework.elements.input.keyframes.graphs.IUIKeyframeGraph;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
 
 import java.util.function.Consumer;
@@ -85,6 +87,12 @@ public class UIFilmKeyframes extends UIKeyframes
         if (this.editor != null)
         {
             int cx = this.toGraphX(this.getOffset());
+
+            if (BBSSettings.simplifiedKeyframeUI.get() && cx < this.area.x + IUIKeyframeGraph.SIDEBAR_WIDTH)
+            {
+                return;
+            }
+
             String label = TimeUtils.formatTime(this.getOffset()) + "/" + TimeUtils.formatTime(this.getDuration());
 
             UIClips.renderCursor(context, label, this.area, cx - 1);
