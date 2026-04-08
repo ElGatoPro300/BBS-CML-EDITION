@@ -32,6 +32,7 @@ import mchorse.bbs_mod.camera.clips.misc.AudioClip;
 import mchorse.bbs_mod.camera.clips.misc.CurveClip;
 import mchorse.bbs_mod.camera.clips.misc.SubtitleClip;
 import mchorse.bbs_mod.camera.clips.misc.VideoClip;
+import mchorse.bbs_mod.camera.clips.screen.ColorClip;
 import mchorse.bbs_mod.camera.clips.modifiers.AngleClip;
 import mchorse.bbs_mod.camera.clips.modifiers.DollyZoomClip;
 import mchorse.bbs_mod.camera.clips.modifiers.DragClip;
@@ -168,6 +169,7 @@ public class BBSMod implements ModInitializer
 
     private static MapFactory<Clip, ClipFactoryData> factoryCameraClips;
     private static MapFactory<Clip, ClipFactoryData> factoryActionClips;
+    private static MapFactory<Clip, ClipFactoryData> factoryScreenClips;
 
     public static final EntityType<ActorEntity> ACTOR_ENTITY = Registry.register(
         Registries.ENTITY_TYPE,
@@ -413,6 +415,11 @@ public class BBSMod implements ModInitializer
         return factoryActionClips;
     }
 
+    public static MapFactory<Clip, ClipFactoryData> getFactoryScreenClips()
+    {
+        return factoryScreenClips;
+    }
+
     @Override
     public void onInitialize()
     {
@@ -519,6 +526,9 @@ public class BBSMod implements ModInitializer
             .register(Link.bbs("swipe"), SwipeActionClip.class, new ClipFactoryData(Icons.LIMB, Colors.ORANGE));
 
         events.post(new RegisterActionClipsEvent(factoryActionClips));
+
+        factoryScreenClips = new MapFactory<Clip, ClipFactoryData>()
+            .register(Link.bbs("color"), ColorClip.class, new ClipFactoryData(Icons.FILTER, 0xff6633));
 
         setupConfig(Icons.PROCESSOR, "bbs", new File(settingsFolder, "bbs.json"), BBSSettings::register);
 

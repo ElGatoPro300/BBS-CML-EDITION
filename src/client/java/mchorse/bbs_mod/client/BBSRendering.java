@@ -11,6 +11,9 @@ import mchorse.bbs_mod.camera.clips.misc.CurveClip;
 import mchorse.bbs_mod.camera.clips.misc.SubtitleClip;
 import mchorse.bbs_mod.camera.controller.CameraWorkCameraController;
 import mchorse.bbs_mod.camera.controller.PlayCameraController;
+import mchorse.bbs_mod.camera.data.Position;
+import mchorse.bbs_mod.client.screen.ScreenEffectRenderer;
+import mchorse.bbs_mod.utils.clips.Clip;
 import mchorse.bbs_mod.events.ModelBlockEntityUpdateCallback;
 import mchorse.bbs_mod.events.TriggerBlockEntityUpdateCallback;
 import mchorse.bbs_mod.film.replays.Replay;
@@ -370,6 +373,19 @@ public class BBSRendering
 
             RenderSystem.setProjectionMatrix(ortho, VertexSorter.BY_Z);
             VideoRenderer.renderClips(batcher.getContext().getMatrices(), batcher, controller.getContext().clips.getClips(controller.getContext().relativeTick), controller.getContext().relativeTick, true, area, area, null, area.w, area.h, false);
+
+            if (controller.screenClips != null)
+            {
+                Position screenDummy = new Position();
+
+                for (Clip screenClip : controller.screenClips.getClips(controller.getContext().ticks))
+                {
+                    controller.getContext().apply(screenClip, screenDummy);
+                }
+
+                ScreenEffectRenderer.render(batcher, controller.getContext(), area.w, area.h);
+            }
+
             RenderSystem.setProjectionMatrix(cache, VertexSorter.BY_Z);
         }
 
@@ -395,6 +411,16 @@ public class BBSRendering
                 RenderSystem.setProjectionMatrix(ortho, VertexSorter.BY_Z);
                 Area fullScreen = new Area(0, 0, window.getScaledWidth(), window.getScaledHeight());
                 VideoRenderer.renderClips(new MatrixStack(), currentMenu.context.batcher, panel.getData().camera.getClips(panel.getCursor()), panel.getCursor(), panel.getRunner().isRunning(), fullScreen, fullScreen, null, window.getScaledWidth(), window.getScaledHeight(), false);
+
+                Position screenDummy = new Position();
+
+                for (Clip screenClip : panel.getData().screen.getClips(panel.getCursor()))
+                {
+                    panel.getRunner().getContext().apply(screenClip, screenDummy);
+                }
+
+                ScreenEffectRenderer.render(currentMenu.context.batcher, panel.getRunner().getContext(), window.getScaledWidth(), window.getScaledHeight());
+
                 RenderSystem.setProjectionMatrix(cache, VertexSorter.BY_Z);
             }
         }

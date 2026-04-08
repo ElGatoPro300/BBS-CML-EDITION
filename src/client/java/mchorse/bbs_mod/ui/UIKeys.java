@@ -290,6 +290,11 @@ public class UIKeys
     public static final IKey FILM_OPEN_CAMERA_EDITOR = L10n.lang("bbs.ui.film.open_camera_editor");
     public static final IKey FILM_OPEN_HISTORY = L10n.lang("bbs.ui.film.open_history");
     public static final IKey FILM_OPEN_REPLAY_EDITOR = L10n.lang("bbs.ui.film.open_replay_editor");
+    public static final IKey FILM_OPEN_SCREEN_EDITOR = L10n.lang("bbs.ui.film.open_screen_editor");
+
+    public static final IKey SCREEN_PANELS_OVERLAY_COLOR = L10n.lang("bbs.ui.screen_panels.overlay_color");
+    public static final IKey SCREEN_PANELS_VIGNETTE_COLOR = L10n.lang("bbs.ui.screen_panels.vignette_color");
+    public static final IKey SCREEN_PANELS_KEYFRAMES = L10n.lang("bbs.ui.screen_panels.keyframes");
     public static final IKey FILM_OPEN_RENDER_QUEUE = L10n.lang("bbs.ui.film.open_render_queue");
     public static final IKey RENDER_QUEUE_TITLE = L10n.lang("bbs.ui.render_queue.title");
     public static final IKey RENDER_QUEUE_ADD = L10n.lang("bbs.ui.render_queue.add");

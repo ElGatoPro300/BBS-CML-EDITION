@@ -113,6 +113,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     public UIClipsPanel cameraEditor;
     public UIReplaysEditor replayEditor;
     public UIClipsPanel actionEditor;
+    public UIClipsPanel screenEditor;
 
     /* Icon bar buttons */
     public UIIcon openHistory;
@@ -123,6 +124,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     public UIIcon openCameraEditor;
     public UIIcon openReplayEditor;
     public UIIcon openActionEditor;
+    public UIIcon openScreenEditor;
     private UICopyPasteController layoutPresetsController;
 
     private Camera camera = new Camera();
@@ -314,6 +316,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.replayEditor.full(this.main).setVisible(false);
         this.actionEditor = new UIClipsPanel(this, BBSMod.getFactoryActionClips()).target(this.editArea);
         this.actionEditor.full(this.main).setVisible(false);
+        this.screenEditor = new UIClipsPanel(this, BBSMod.getFactoryScreenClips()).target(this.editArea);
+        this.screenEditor.full(this.main).setVisible(false);
 
         /* Icon bar buttons */
         this.openHistory = new UIIcon(Icons.LIST, (b) ->
@@ -355,6 +359,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.openReplayEditor.tooltip(UIKeys.FILM_OPEN_REPLAY_EDITOR, Direction.LEFT);
         this.openActionEditor = new UIIcon(Icons.ACTION, (b) -> this.showPanel(this.actionEditor));
         this.openActionEditor.tooltip(UIKeys.FILM_OPEN_ACTION_EDITOR, Direction.LEFT);
+        this.openScreenEditor = new UIIcon(Icons.FILTER, (b) -> this.showPanel(this.screenEditor));
+        this.openScreenEditor.tooltip(UIKeys.FILM_OPEN_SCREEN_EDITOR, Direction.LEFT);
         this.layoutPresetsController = new UICopyPasteController(PresetManager.LAYOUTS, "_CopyFilmLayout")
             .supplier(this::getFilmLayoutPresetData)
             .consumer(this::applyFilmLayoutFromPreset);
@@ -366,7 +372,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.layoutPresets.tooltip(UIKeys.FILM_LAYOUT_PRESETS, Direction.LEFT);
 
         /* Setup elements */
-        this.iconBar.add(this.openHistory, this.openRenderQueue, this.openCameraEditor.marginTop(9), this.openReplayEditor, this.openActionEditor);
+        this.iconBar.add(this.openHistory, this.openRenderQueue, this.openCameraEditor.marginTop(9), this.openReplayEditor, this.openActionEditor, this.openScreenEditor);
 
         UIElement bottomIcons = new UIElement();
 
@@ -380,7 +386,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             this.dragHandlesById.put(id, handle);
             this.editor.add(handle);
         }
-        this.main.add(this.cameraEditor, this.replayEditor, this.actionEditor, this.editArea, this.preview, this.draggableMain, this.draggableEditor);
+        this.main.add(this.cameraEditor, this.replayEditor, this.actionEditor, this.screenEditor, this.editArea, this.preview, this.draggableMain, this.draggableEditor);
         this.add(this.controller, new UIRenderable(this::renderDividers), bottomIcons);
         this.overlay.namesList.setFileIcon(Icons.FILM);
 
@@ -494,6 +500,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.panels.add(this.cameraEditor);
         this.panels.add(this.replayEditor);
         this.panels.add(this.actionEditor);
+        this.panels.add(this.screenEditor);
 
         this.secretPlay = new UIElement();
         this.secretPlay.keys().register(Keys.PLAUSE, () -> this.preview.plause.clickItself()).active(() -> !this.isFlying() && !this.canBeSeen() && this.data != null).category(editor);
@@ -502,6 +509,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.cameraEditor.setUndoId("camera_editor");
         this.replayEditor.setUndoId("replay_editor");
         this.actionEditor.setUndoId("action_editor");
+        this.screenEditor.setUndoId("screen_editor");
 
         UIElement element = new UIElement()
         {
@@ -1272,6 +1280,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.cameraEditor.setVisible(false);
         this.replayEditor.setVisible(false);
         this.actionEditor.setVisible(false);
+        this.screenEditor.setVisible(false);
 
         element.setVisible(true);
 
@@ -1677,6 +1686,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         CameraController cameraController = this.getCameraController();
 
         this.cameraEditor.embedView(null);
+        this.screenEditor.embedView(null);
         this.setFlight(false);
         cameraController.remove(this.runner);
 
@@ -1793,11 +1803,13 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.openCameraEditor.setEnabled(data != null);
         this.openReplayEditor.setEnabled(data != null);
         this.openActionEditor.setEnabled(data != null);
+        this.openScreenEditor.setEnabled(data != null);
         this.duplicateFilm.setEnabled(data != null);
 
         this.actionEditor.setClips(null);
         this.runner.setWork(data == null ? null : data.camera);
         this.cameraEditor.setClips(data == null ? null : data.camera);
+        this.screenEditor.setClips(data == null ? null : data.screen);
         this.replayEditor.setFilm(data);
         this.cameraEditor.pickClip(null);
 
@@ -1932,6 +1944,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         if (this.cameraEditor.isVisible()) UIDashboardPanels.renderHighlightHorizontal(context.batcher, this.openCameraEditor.area);
         if (this.replayEditor.isVisible()) UIDashboardPanels.renderHighlightHorizontal(context.batcher, this.openReplayEditor.area);
         if (this.actionEditor.isVisible()) UIDashboardPanels.renderHighlightHorizontal(context.batcher, this.openActionEditor.area);
+        if (this.screenEditor.isVisible()) UIDashboardPanels.renderHighlightHorizontal(context.batcher, this.openScreenEditor.area);
         if (BBSSettings.editorLayoutSettings.isLayoutLocked()) UIDashboardPanels.renderHighlightHorizontal(context.batcher, this.layoutLock.area);
 
     }
@@ -2218,6 +2231,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     {
         this.cameraEditor.fillData();
         this.actionEditor.fillData();
+        this.screenEditor.fillData();
 
         if (this.replayEditor.keyframeEditor != null && this.replayEditor.keyframeEditor.editor != null)
         {

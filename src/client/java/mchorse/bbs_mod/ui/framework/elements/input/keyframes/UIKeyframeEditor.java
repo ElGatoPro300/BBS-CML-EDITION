@@ -93,13 +93,16 @@ public class UIKeyframeEditor extends UIElement
 
     public void setClip(KeyframeClip clip)
     {
+        this.setChannels(clip.channels);
+    }
+
+    public void setChannels(KeyframeChannel[] channels)
+    {
         this.view.removeAllSheets();
 
-        for (int i = 0; i < clip.channels.length; i++)
+        for (int i = 0; i < channels.length; i++)
         {
-            KeyframeChannel channel = clip.channels[i];
-
-            this.view.addSheet(new UIKeyframeSheet(COLORS[i], false, channel, null));
+            this.view.addSheet(new UIKeyframeSheet(COLORS[i % COLORS.length], false, channels[i], null));
         }
 
         this.pickKeyframe(null);
