@@ -178,7 +178,9 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                     layout.setMainSizeH(1F - (context.mouseY - this.editor.area.y) / (float) this.editor.area.h);
                 }
 
-                layout.setEditorSizeH(1F - (context.mouseX - this.editor.area.x) / (float) this.editor.area.w);
+                float normalizedX = (context.mouseX - this.editor.area.x) / (float) this.editor.area.w;
+
+                layout.setEditorSizeH(this.isHorizontalEditorOnLeft(layout) ? normalizedX : 1F - normalizedX);
             }
             else if (layout.isMiddleLayout())
             {
@@ -205,13 +207,14 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
             if (layout.isHorizontal())
             {
-                int x = this.editArea.area.x + 3;
+                int dividerX = this.getHorizontalDividerX(layout);
+                int x = dividerX + 3;
                 int y = (layout.isMainOnTop() ? this.editArea.area.y : this.editArea.area.ey()) - 3;
 
                 context.batcher.box(x, y - size, x + 1, y, Colors.WHITE);
                 context.batcher.box(x, y - 1, x + size, y, Colors.WHITE);
 
-                x = this.editArea.area.x - 3;
+                x = dividerX - 3;
                 y = (layout.isMainOnTop() ? this.editArea.area.y : this.editArea.area.ey()) - 3;
 
                 context.batcher.box(x - 1, y - size, x, y, Colors.WHITE);
@@ -293,7 +296,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         /* Icon bar buttons */
         this.openHistory = new UIIcon(Icons.LIST, (b) ->
         {
-            UIOverlay.addOverlay(this.getContext(), new UIUndoHistoryOverlay(this), 200, 0.6F);
+            UIOverlay.addOverlay(this.getContext(), new UIUndoHistoryOverlay(this).resizable().minSize(300, 220), 300, 0.6F);
         });
         this.openHistory.tooltip(UIKeys.FILM_OPEN_HISTORY, Direction.LEFT);
 
@@ -491,7 +494,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         if (layout.isHorizontal())
         {
-            return new Vector2i(this.editArea.area.x, layout.isMainOnTop() ? this.editArea.area.y : this.editArea.area.ey());
+            return new Vector2i(this.getHorizontalDividerX(layout), layout.isMainOnTop() ? this.editArea.area.y : this.editArea.area.ey());
         }
 
         if (layout.isMiddleLayout())
@@ -522,6 +525,16 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         }
 
         return new Vector2i(this.editArea.area.x + 3, this.editArea.area.y - 3);
+    }
+
+    private int getHorizontalDividerX(ValueEditorLayout layout)
+    {
+        return this.isHorizontalEditorOnLeft(layout) ? this.editArea.area.ex() : this.editArea.area.x;
+    }
+
+    private boolean isHorizontalEditorOnLeft(ValueEditorLayout layout)
+    {
+        return layout.isHorizontalLayoutInverted();
     }
 
     private boolean isMainOnLeftForCurrentLayout(ValueEditorLayout layout)
@@ -573,17 +586,40 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             if (layout.isMainOnTop())
             {
                 this.main.relative(this.editor).y(0).w(1F).h(layout.getMainSizeH());
-                this.editArea.relative(this.editor).y(layout.getMainSizeH()).x(1F - layout.getEditorSizeH()).wTo(this.editor.area, 1F).hTo(this.editor.area, 1F);
-                this.preview.relative(this.editor).y(layout.getMainSizeH()).w(1F - layout.getEditorSizeH()).hTo(this.editor.area, 1F);
+                if (this.isHorizontalEditorOnLeft(layout))
+                {
+                    this.editArea.relative(this.editor).y(layout.getMainSizeH()).w(layout.getEditorSizeH()).hTo(this.editor.area, 1F);
+                    this.preview.relative(this.editor).y(layout.getMainSizeH()).x(layout.getEditorSizeH()).wTo(this.editor.area, 1F).hTo(this.editor.area, 1F);
+                }
+                else
+                {
+                    this.editArea.relative(this.editor).y(layout.getMainSizeH()).x(1F - layout.getEditorSizeH()).wTo(this.editor.area, 1F).hTo(this.editor.area, 1F);
+                    this.preview.relative(this.editor).y(layout.getMainSizeH()).w(1F - layout.getEditorSizeH()).hTo(this.editor.area, 1F);
+                }
             }
             else
             {
                 this.main.relative(this.editor).y(1F - layout.getMainSizeH()).w(1F).hTo(this.editor.area, 1F);
-                this.editArea.relative(this.editor).x(1F - layout.getEditorSizeH()).wTo(this.editor.area, 1F).hTo(this.main.area, 0F);
-                this.preview.relative(this.editor).w(1F - layout.getEditorSizeH()).hTo(this.main.area, 0F);
+                if (this.isHorizontalEditorOnLeft(layout))
+                {
+                    this.editArea.relative(this.editor).w(layout.getEditorSizeH()).hTo(this.main.area, 0F);
+                    this.preview.relative(this.editor).x(layout.getEditorSizeH()).wTo(this.editor.area, 1F).hTo(this.main.area, 0F);
+                }
+                else
+                {
+                    this.editArea.relative(this.editor).x(1F - layout.getEditorSizeH()).wTo(this.editor.area, 1F).hTo(this.main.area, 0F);
+                    this.preview.relative(this.editor).w(1F - layout.getEditorSizeH()).hTo(this.main.area, 0F);
+                }
             }
 
-            this.draggableMain.hoverOnly().relative(this.editArea).x(-6).y(0).w(12).h(1F);
+            if (this.isHorizontalEditorOnLeft(layout))
+            {
+                this.draggableMain.hoverOnly().relative(this.editArea).x(1F).y(0).w(12).h(1F);
+            }
+            else
+            {
+                this.draggableMain.hoverOnly().relative(this.editArea).x(-6).y(0).w(12).h(1F);
+            }
         }
         else if (layout.isMiddleLayout())
         {
@@ -900,11 +936,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         if (layout.getLayout() == ValueEditorLayout.LAYOUT_HORIZONTAL_BOTTOM)
         {
-            layout.setLayout(ValueEditorLayout.LAYOUT_HORIZONTAL_TOP);
+            layout.setHorizontalLayoutInverted(!layout.isHorizontalLayoutInverted());
         }
         else if (layout.getLayout() == ValueEditorLayout.LAYOUT_HORIZONTAL_TOP)
         {
-            layout.setLayout(ValueEditorLayout.LAYOUT_HORIZONTAL_BOTTOM);
+            layout.setHorizontalLayoutInverted(!layout.isHorizontalLayoutInverted());
         }
         else if (layout.getLayout() == ValueEditorLayout.LAYOUT_VERTICAL_LEFT)
         {

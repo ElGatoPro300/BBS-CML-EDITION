@@ -1796,6 +1796,8 @@ public class UIReplayList extends UIList<Replay> {
                     }
                 });
 
+        panel.resizable().minSize(300, 300);
+
         modelBlocks.sort(Comparator.comparing(ModelBlockEntity::getName));
 
         for (ModelBlockEntity modelBlock : modelBlocks) {
@@ -1808,7 +1810,7 @@ public class UIReplayList extends UIList<Replay> {
         panel.confirm.w(1F, -10);
         panel.content.add(search);
 
-        UIOverlay.addOverlay(this.getContext(), panel, 240, 300);
+        UIOverlay.addOverlay(this.getContext(), panel, 300, 300);
     }
 
     private void fromModelBlock(ModelBlockEntity modelBlock) {
