@@ -29,7 +29,7 @@ public class UseItemActionClip extends ItemActionClip
 
         this.applyPositionRotation(player, replay, tick);
         ItemStack copy = this.itemStack.get().copy();
-        int maxUseTime = copy.getMaxUseTime(player);
+        int maxUseTime = copy.getMaxUseTime();
         int used = this.useTicks.get();
 
         player.setStackInHand(hand, copy);

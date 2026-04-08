@@ -21,8 +21,6 @@ import net.minecraft.util.shape.VoxelShape;
 import net.minecraft.util.shape.VoxelShapes;
 import net.minecraft.world.BlockView;
 import net.minecraft.world.World;
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.component.type.NbtComponent;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.world.WorldView;
@@ -44,7 +42,10 @@ public class TriggerBlock extends Block implements BlockEntityProvider
         if (entity instanceof TriggerBlockEntity triggerBlock)
         {
             ItemStack stack = new ItemStack(this);
-            stack.set(DataComponentTypes.BLOCK_ENTITY_DATA, NbtComponent.of(triggerBlock.createNbtWithId(world.getRegistryManager())));
+            NbtCompound compound = new NbtCompound();
+
+            compound.put("BlockEntityTag", triggerBlock.createNbtWithId());
+            stack.setNbt(compound);
 
             return stack;
         }
@@ -94,9 +95,9 @@ public class TriggerBlock extends Block implements BlockEntityProvider
     }
 
     @Override
-    public ActionResult onUse(BlockState state, World world, BlockPos pos, PlayerEntity player, BlockHitResult hit)
+    public ActionResult onUse(BlockState state, World world, BlockPos pos, PlayerEntity player, Hand hand, BlockHitResult hit)
     {
-        if (player.getMainHandStack().isEmpty())
+        if (hand == Hand.MAIN_HAND)
         {
             if (!world.isClient && player instanceof ServerPlayerEntity serverPlayer)
             {
@@ -122,7 +123,7 @@ public class TriggerBlock extends Block implements BlockEntityProvider
             return ActionResult.SUCCESS;
         }
 
-        return super.onUse(state, world, pos, player, hit);
+        return super.onUse(state, world, pos, player, hand, hit);
     }
 
     @Override

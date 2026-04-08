@@ -2,7 +2,6 @@ package mchorse.bbs_mod.forms.renderers;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import mchorse.bbs_mod.BBSModClient;
-import mchorse.bbs_mod.camera.Camera;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.cubic.render.vao.ModelVAO;
@@ -58,10 +57,7 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
         this.renderModel(BBSShaders::getModel,
             stack,
             OverlayTexture.DEFAULT_UV, LightmapTextureManager.MAX_LIGHT_COORDINATE, Colors.WHITE,
-            context.getTransition(),
-            null,
-            true,
-            false
+            context.getTransition()
         );
         RenderSystem.depthFunc(GL11.GL_ALWAYS);
 
@@ -78,16 +74,16 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
             shading = true;
         }
 
-        VertexFormat format = shading ? VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL : VertexFormats.POSITION_TEXTURE_COLOR;
+        VertexFormat format = shading ? VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL : VertexFormats.POSITION_TEXTURE_LIGHT_COLOR;
         Supplier<ShaderProgram> shader = this.getShader(context,
-            shading ? GameRenderer::getRenderTypeEntityTranslucentProgram : GameRenderer::getPositionTexColorProgram,
+            shading ? GameRenderer::getRenderTypeEntityTranslucentProgram : GameRenderer::getPositionTexLightmapColorProgram,
             shading ? BBSShaders::getPickerBillboardProgram : BBSShaders::getPickerBillboardNoShadingProgram
         );
 
-        this.renderModel(shader, context.stack, context.overlay, context.light, context.color, context.getTransition(), context.camera, false, context.modelRenderer || context.isPicking());
+        this.renderModel(shader, context.stack, context.overlay, context.light, context.color, context.getTransition());
     }
 
-    private void renderModel(Supplier<ShaderProgram> shader, MatrixStack matrices, int overlay, int light, int overlayColor, float transition, Camera camera, boolean invertY, boolean modelRenderer)
+    private void renderModel(Supplier<ShaderProgram> shader, MatrixStack matrices, int overlay, int light, int overlayColor, float transition)
     {
         Link texture = this.form.texture.get();
         ModelVAO data = BBSModClient.getTextures().getExtruder().get(texture);
@@ -97,28 +93,17 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
             if (this.form.billboard.get())
             {
                 Matrix4f modelMatrix = matrices.peek().getPositionMatrix();
-                Vector3f scale = new Vector3f();
+                Vector3f scale = Vectors.TEMP_3F;
 
                 modelMatrix.getScale(scale);
-
-                if (invertY)
-                {
-                    scale.y = -scale.y;
-                }
 
                 modelMatrix.m00(1).m01(0).m02(0);
                 modelMatrix.m10(0).m11(1).m12(0);
                 modelMatrix.m20(0).m21(0).m22(1);
 
-                if (camera != null && !modelRenderer)
-                {
-                    modelMatrix.mul(camera.view);
-                }
-
                 modelMatrix.scale(scale);
 
                 matrices.peek().getNormalMatrix().identity();
-                matrices.peek().getNormalMatrix().scale(1F / scale.x, 1F / scale.y, 1F / scale.z);
             }
 
             Color color = Colors.COLOR.set(overlayColor, true);
