@@ -65,12 +65,13 @@ public class StructureVAOCollector implements VertexConsumer
         return this;
     }
 
+    @Override
     public VertexConsumer color(int argb)
     {
-        /* Not used; handled via shader attribute */
         return this;
     }
 
+    @Override
     public VertexConsumer texture(float u, float v)
     {
         this.vu = u;
@@ -90,6 +91,12 @@ public class StructureVAOCollector implements VertexConsumer
         return this;
     }
 
+    @Override
+    public VertexConsumer lineWidth(float width)
+    {
+        return this;
+    }
+
     public VertexConsumer normal(float x, float y, float z)
     {
         this.vnx = x;
@@ -98,17 +105,6 @@ public class StructureVAOCollector implements VertexConsumer
         this.finalizeCurrent();
         return this;
     }
-
-    public VertexConsumer lineWidth(float width)
-    {
-        /* Not applicable to VAO collection; ignore. */
-        return this;
-    }
-
-    public void next()
-    {
-    }
-
 
     private void finalizeCurrent()
     {

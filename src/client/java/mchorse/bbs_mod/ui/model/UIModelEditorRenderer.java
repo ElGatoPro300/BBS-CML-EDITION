@@ -230,6 +230,8 @@ public class UIModelEditorRenderer extends UIModelRenderer
             this.stencil.pickGUI(context, this.area);
             this.stencil.unbind(this.stencilMap);
 
+            MinecraftClient.getInstance().getFramebuffer();
+
             GlStateManager._enableScissorTest();
         }
         else
@@ -243,15 +245,6 @@ public class UIModelEditorRenderer extends UIModelRenderer
     {
         super.render(context);
 
-        if (this.stencilMap.hasStencil())
-        {
-            GL11.glDisable(GL11.GL_DEPTH_TEST);
-            
-            this.stencilMap.render(context);
-
-            GL11.glEnable(GL11.GL_DEPTH_TEST);
-        }
-
         if (!this.stencil.hasPicked())
         {
             return;
@@ -263,11 +256,6 @@ public class UIModelEditorRenderer extends UIModelRenderer
         int h = texture.height;
 
         ShaderProgram previewProgram = BBSShaders.getPickerPreviewProgram();
-        if (previewProgram == null)
-        {
-            return;
-        }
-
         GlUniform target = previewProgram.getUniform("Target");
 
         if (target != null)
@@ -275,8 +263,8 @@ public class UIModelEditorRenderer extends UIModelRenderer
             index = this.stencil.getIndex();
         }
 
-        GL11.glEnable(GL11.GL_BLEND);
-    context.batcher.texturedBox(previewProgram, texture.id, Colors.WHITE, this.area.x, this.area.y, this.area.w, this.area.h, 0, h, w, 0, w, h);
+        GlStateManager._enableBlend();
+        context.batcher.texturedBox(BBSShaders.getPickerPreviewProgram(), texture.id, Colors.WHITE, this.area.x, this.area.y, this.area.w, this.area.h, 0, h, w, 0, w, h);
 
         Pair<Form, String> pair = this.stencil.getPicked();
 

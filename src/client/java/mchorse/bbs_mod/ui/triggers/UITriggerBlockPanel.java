@@ -207,7 +207,7 @@ public class UITriggerBlockPanel extends UIDashboardPanel implements IFlightSupp
         Vec3d pos = camera.getCameraPos();
 
         Vector3f mouseDirection = CameraUtils.getMouseDirection(
-            new org.joml.Matrix4f().perspective((float) Math.toRadians(MinecraftClient.getInstance().options.getFov().getValue()), (float) mc.getWindow().getWidth() / (float) mc.getWindow().getHeight(), 0.05F, 1000F),
+            RenderSystem.getModelViewMatrix(),
             context.matrices().peek().getPositionMatrix(),
             (int) mc.mouse.getX(), (int) mc.mouse.getY(), 0, 0, mc.getWindow().getWidth(), mc.getWindow().getHeight()
         );

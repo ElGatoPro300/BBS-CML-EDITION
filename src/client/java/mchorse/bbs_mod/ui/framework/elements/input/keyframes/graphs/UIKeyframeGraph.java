@@ -1,6 +1,8 @@
 package mchorse.bbs_mod.ui.framework.elements.input.keyframes.graphs;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.opengl.GlStateManager;
+import net.minecraft.client.render.RenderLayers;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.camera.utils.TimeUtils;
 import mchorse.bbs_mod.data.types.MapType;
@@ -29,6 +31,7 @@ import net.minecraft.client.render.Tessellator;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import org.joml.Matrix4f;
+import org.lwjgl.opengl.GL11;
  
 
 import java.util.Collections;
@@ -710,14 +713,17 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
             }
         }
 
-        // blending and shader setup handled by BufferRenderer global program
+        GlStateManager._enableBlend();
+        GlStateManager._blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+        /* shader binding handled by RenderLayer in 1.21.11 */
+        // RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
 
         if (keyframes.isEmpty())
         {
             return;
         }
 
-        net.minecraft.client.render.RenderLayers.debugFilledBox().draw(builder.end());
+        RenderLayers.debugFilledBox().draw(builder.end());
     }
 
     @Override

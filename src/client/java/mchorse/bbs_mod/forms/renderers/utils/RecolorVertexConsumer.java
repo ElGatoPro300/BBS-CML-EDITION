@@ -37,13 +37,10 @@ public class RecolorVertexConsumer implements VertexConsumer
         return this.consumer.color(red, green, blue, alpha);
     }
 
+    @Override
     public VertexConsumer color(int argb)
     {
-        int a = (argb >>> 24) & 0xFF;
-        int r = (argb >>> 16) & 0xFF;
-        int g = (argb >>> 8) & 0xFF;
-        int b = argb & 0xFF;
-        return this.color(r, g, b, a);
+        return this.consumer.color(argb);
     }
 
     public VertexConsumer texture(float u, float v)
@@ -66,13 +63,10 @@ public class RecolorVertexConsumer implements VertexConsumer
         return this.consumer.normal(x, y, z);
     }
 
+    @Override
     public VertexConsumer lineWidth(float width)
     {
-        if (this.consumer != null)
-        {
-            return this.consumer.lineWidth(width);
-        }
-        return this;
+        return this.consumer.lineWidth(width);
     }
 
 }

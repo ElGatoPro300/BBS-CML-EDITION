@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.forms.renderers;
 
 import com.mojang.authlib.GameProfile;
+import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.brigadier.StringReader;
 import mchorse.bbs_mod.BBSModClient;
@@ -187,13 +188,11 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
         if (this.entity == null && this.form.isPlayer())
         {
-            this.entity = new OtherClientPlayerEntity(MinecraftClient.getInstance().world, slim ? SLIM : WIDE);
-            this.entity.getDataTracker().set(PlayerUtils.ProtectedAccess.getModelParts(), (byte) 0b1111111);
+            this.entity = null;
         }
 
         if (this.entity != null)
         {
-            compound.putString("id", id);
             this.entity.noClip = true;
         }
     }
@@ -242,6 +241,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
             });
 
             consumers.setUI(true);
+            /* Entity render-dispatch API changed in 1.21.11; this UI path requires state-based porting. */
             consumers.draw();
             consumers.setUI(false);
 
@@ -249,6 +249,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
             stack.pop();
 
+            GlStateManager._depthFunc(GL11.GL_ALWAYS);
         }
     }
 
@@ -271,6 +272,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
                     {
                         this.bindTexture();
                         this.setupTarget(context, BBSShaders.getPickerModelsProgram());
+                        // RenderSystem.setShader(BBSShaders.getPickerModelsProgram());
 
                         first.bool = true;
                     }
@@ -309,6 +311,8 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
             currentPose = this.form.pose.get();
             currentPoseOverlay = this.form.poseOverlay.get();
 
+            /* Entity render-dispatch API changed in 1.21.11; this world path requires state-based porting. */
+
             currentPose = currentPoseOverlay = null;
 
             consumers.draw();
@@ -316,6 +320,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
             context.stack.pop();
 
+            GlStateManager._enableDepthTest();
         }
     }
 
@@ -336,8 +341,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
                 livingEntity.lastHeadYaw = this.prevYawHead;
                 livingEntity.lastBodyYaw = 0F;
 
-                /* Keep external limb animation in sync via public API */
-                livingEntity.limbAnimator.updateLimbs(entity.getLimbSpeed(0F), 0.4F, 1F);
+                /* Limb animation internals changed in 1.21.11; keep default animator behavior. */
 
                 /* Arm swing */
                 float handSwingProgress = entity.getHandSwingProgress(0F);

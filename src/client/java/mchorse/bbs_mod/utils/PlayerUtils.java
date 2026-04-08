@@ -1,14 +1,8 @@
 package mchorse.bbs_mod.utils;
 
-import com.mojang.authlib.GameProfile;
 import mchorse.bbs_mod.network.ClientNetwork;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.entity.data.TrackedData;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.world.World;
-import net.minecraft.world.GameMode;
 
 public class PlayerUtils
 {
@@ -51,37 +45,4 @@ public class PlayerUtils
         }
     }
 
-    public static class ProtectedAccess extends PlayerEntity
-    {
-        public static TrackedData<Byte> getModelParts()
-        {
-            // TODO: Fix PLAYER_MODEL_PARTS access
-            return null; // PLAYER_MODEL_PARTS;
-        }
-
-        public ProtectedAccess(World world, BlockPos pos, float yaw, GameProfile gameProfile)
-        {
-            super(world, gameProfile);
-            this.setPosition(pos.getX(), pos.getY(), pos.getZ());
-            this.setYaw(yaw);
-        }
-
-        @Override
-        public boolean isSpectator()
-        {
-            return false;
-        }
-
-        @Override
-        public boolean isCreative()
-        {
-            return false;
-        }
-
-        @Override
-        public GameMode getGameMode()
-        {
-            return GameMode.SURVIVAL;
-        }
-    }
 }

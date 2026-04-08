@@ -19,6 +19,7 @@ import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexFormats;
+import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.util.BufferAllocator;
 import org.joml.Matrix4f;
 import org.joml.Vector2f;
@@ -121,7 +122,7 @@ public class UIClipRenderer <T extends Clip> implements IUIClipRenderer<T>
             this.renderSimpleEnvelope(builder, matrix, envelope, duration, x1, y1, x2, y2);
         }
 
-        net.minecraft.client.render.RenderLayers.debugFilledBox().draw(builder.end());
+        RenderLayers.debugFilledBox().draw(builder.end());
     }
 
     /**

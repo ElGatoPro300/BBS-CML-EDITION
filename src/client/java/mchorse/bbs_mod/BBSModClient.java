@@ -1,6 +1,8 @@
 package mchorse.bbs_mod;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.VertexFormat;
+import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.serialization.MapCodec;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.audio.SoundManager;
@@ -87,6 +89,7 @@ import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.keys.KeyCombo;
 import mchorse.bbs_mod.ui.utils.keys.KeybindSettings;
 import mchorse.bbs_mod.utils.MathUtils;
+import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.ScreenshotRecorder;
 import mchorse.bbs_mod.utils.VideoRecorder;
 import mchorse.bbs_mod.utils.colors.Color;
@@ -111,9 +114,9 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.render.BufferBuilder;
-import net.minecraft.client.util.InputUtil;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.Tessellator;
+import net.minecraft.client.render.RenderLayers;
 import net.fabricmc.fabric.api.client.rendering.v1.BlockEntityRendererRegistry;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.render.block.entity.BlockEntityRendererFactories;
@@ -125,6 +128,7 @@ import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.resource.ResourceManager;
 import net.minecraft.resource.ResourceType;
 import net.minecraft.registry.RegistryKeys;
+import org.joml.Matrix4fStack;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ActionResult;
@@ -162,6 +166,7 @@ public class BBSModClient implements ClientModInitializer
     private static ScreenshotRecorder screenshotRecorder;
     private static VideoRecorder videoRecorder;
     private static EntitySelectors selectors;
+    private static final KeyBinding.Category MAIN_KEY_CATEGORY = KeyBinding.Category.create(Identifier.of(BBSMod.MOD_ID, "main"));
 
     private static ParticleManager particles;
 
@@ -405,10 +410,6 @@ public class BBSModClient implements ClientModInitializer
         }
     }
 
-    private static final String CATEGORY_KEY = "category." + BBSMod.MOD_ID + ".main";
-    private static final InputUtil.Type KEYSYM = InputUtil.Type.KEYSYM;
-    private static final InputUtil.Type MOUSE = InputUtil.Type.MOUSE;
-
     @Override
     public void onInitializeClient()
     {
@@ -651,6 +652,7 @@ public class BBSModClient implements ClientModInitializer
                     peek.getNormalMatrix().identity();
                     stack.translate(0F, 0F, -d);
 
+                    GlStateManager._enableDepthTest();
                     BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
 
                     float fov = MinecraftClient.getInstance().options.getFov().getValue();
@@ -664,20 +666,26 @@ public class BBSModClient implements ClientModInitializer
                         color.r, color.g, color.b, 1F
                     );
 
-                    net.minecraft.client.render.RenderLayers.debugFilledBox().draw(builder.end());
+                    // RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
+
+                    Matrix4fStack mvStack = RenderSystem.getModelViewStack();
+                    mvStack.pushMatrix();
+                    mvStack.identity();
+                    MatrixStackUtils.applyModelViewMatrix();
+
+                    RenderLayers.debugFilledBox().draw(builder.end());
+
+                    mvStack.popMatrix();
+                    MatrixStackUtils.applyModelViewMatrix();
+
+                    GlStateManager._disableDepthTest();
 
                     stack.pop();
                 }
             }
         });
 
-        WorldRenderEvents.END_MAIN.register((context) ->
-        {
-            if (videoRecorder.isRecording() && BBSRendering.canRender)
-            {
-                videoRecorder.recordFrame();
-            }
-        });
+        // LAST was removed from newer world render events; frame capture is handled elsewhere.
 
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) ->
         {
@@ -885,15 +893,13 @@ public class BBSModClient implements ClientModInitializer
         }
     }
 
-    private static final KeyBinding.Category CATEGORY = KeyBinding.Category.create(Identifier.of(BBSMod.MOD_ID, "main"));
-
     private KeyBinding createKey(String id, int key)
     {
         return KeyBindingHelper.registerKeyBinding(new KeyBinding(
             "key." + BBSMod.MOD_ID + "." + id,
             InputUtil.Type.KEYSYM,
             key,
-            CATEGORY
+            MAIN_KEY_CATEGORY
         ));
     }
 
@@ -903,7 +909,7 @@ public class BBSModClient implements ClientModInitializer
             "key." + BBSMod.MOD_ID + "." + id,
             InputUtil.Type.MOUSE,
             button,
-            CATEGORY
+            MAIN_KEY_CATEGORY
         ));
     }
 

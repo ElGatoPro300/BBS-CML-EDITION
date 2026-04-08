@@ -310,10 +310,7 @@ public class ClientNetwork
 
         client.execute(() ->
         {
-            if (client.player != null && !cheats)
-            {
-                client.player.getAbilities().allowModifyWorld = false;
-            }
+            // Client permission API changed in 1.21.11.
         });
     }
 

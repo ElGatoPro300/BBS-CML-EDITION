@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.ui.model_blocks;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.blocks.entities.ModelBlockEntity;
@@ -45,9 +46,9 @@ import mchorse.bbs_mod.utils.RayTracing;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.pose.Transform;
 import mchorse.bbs_mod.utils.MathUtils;
-import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import mchorse.bbs_mod.utils.undo.IUndo;
 import mchorse.bbs_mod.utils.undo.UndoManager;
+import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.util.math.MatrixStack;
@@ -62,7 +63,6 @@ import org.joml.Vector2d;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
-import com.mojang.blaze3d.opengl.GlStateManager;
 
 import java.util.HashSet;
 import java.util.List;
@@ -803,7 +803,9 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         double x = mc.mouse.getX();
         double y = mc.mouse.getY();
 
-        Matrix4f projectionMatrix = new Matrix4f().perspective((float) Math.toRadians(MinecraftClient.getInstance().options.getFov().getValue()), (float) mc.getWindow().getWidth() / (float) mc.getWindow().getHeight(), 0.05F, 1000F);
+        MatrixStack matrixStack = context.matrices();
+        Matrix4f positionMatrix = matrixStack != null ? matrixStack.peek().getPositionMatrix() : RenderSystem.getModelViewMatrix();
+        Matrix4f projectionMatrix = RenderSystem.getModelViewMatrix();
 
         float m11 = projectionMatrix.m11();
         float tanHalfFov = 1.0f / m11;

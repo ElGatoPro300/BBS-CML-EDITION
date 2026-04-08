@@ -76,7 +76,7 @@ public class CubicVAORenderer extends CubicCubeRenderer
                 light = u | v << 16;
             }
 
-            ModelVAORenderer.render(this.program, modelVAO, stack, new Matrix4f(), r, g, b, a, light, this.overlay);
+            ModelVAORenderer.render(this.program, modelVAO, stack, r, g, b, a, light, this.overlay);
         }
 
         return false;

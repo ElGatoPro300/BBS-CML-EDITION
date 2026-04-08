@@ -1,5 +1,6 @@
 package mchorse.bbs_mod.ui.forms;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.forms.FormCategories;
 import mchorse.bbs_mod.forms.FormUtils;
@@ -21,6 +22,10 @@ import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.joml.Matrices;
+import net.minecraft.client.render.DiffuseLighting;
+import net.minecraft.client.MinecraftClient;
+import org.joml.Vector3f;
+import org.joml.Matrix3f;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -53,10 +58,7 @@ public class UIFormList extends UIElement
             @Override
             public void render(UIContext context)
             {
-                context.batcher.getContext().getMatrices().pushMatrix();
-                context.batcher.getContext().getMatrices().translate(0, 0);
                 super.render(context);
-                context.batcher.getContext().getMatrices().popMatrix();
             }
         };
         this.search = new UITextbox(100, this::search).placeholder(UIKeys.FORMS_LIST_SEARCH);
@@ -242,7 +244,14 @@ public class UIFormList extends UIElement
             this.setSelected(selected);
         }
 
+        Vector3f a = new Vector3f(0.85F, 0.85F, -1F).normalize();
+        Vector3f b = new Vector3f(-0.85F, 0.85F, 1F).normalize();
+
+        MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.LEVEL);
+
         super.render(context);
+
+        
 
         /* Render form's display name and ID */
         Form selected = this.getSelected();

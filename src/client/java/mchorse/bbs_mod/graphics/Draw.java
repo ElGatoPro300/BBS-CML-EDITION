@@ -2,6 +2,7 @@ package mchorse.bbs_mod.graphics;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.VertexFormat;
+import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.camera.data.Angle;
 import mchorse.bbs_mod.utils.Axis;
@@ -13,6 +14,7 @@ import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.VertexFormats;
+import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.util.BufferAllocator;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.RotationAxis;
@@ -41,6 +43,7 @@ public class Draw
         float t = 1 / 96F + (float) (Math.sqrt(w * w + h + h + d + d) / 2000);
 
         BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
+        // RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
 
         /* Pillars: fillBox(builder, -t, -t, -t, t, t, t, r, g, b, a); */
         fillBox(builder, stack, -t, -t, -t, t, t + fh, t, r, g, b, a);
@@ -170,6 +173,10 @@ public class Draw
         fillBox(builder, stack, -axisOffset, 0, -axisOffset, axisOffset, axisSize, axisOffset, 0, 1, 0);
         fillBox(builder, stack, -axisOffset, -axisOffset, 0, axisOffset, axisOffset, axisSize, 0, 0, 1);
         fillBox(builder, stack, -axisOffset, -axisOffset, -axisOffset, axisOffset, axisOffset, axisOffset, 1, 1, 1);
+
+        // RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
+        /* shader binding handled by RenderLayer in 1.21.11 */
+        GlStateManager._disableDepthTest();
 
         RenderLayers.debugFilledBox().draw(builder.end());
     }

@@ -1,5 +1,7 @@
 package mchorse.bbs_mod.client.renderer.item;
 
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.forms.FormUtilsClient;
@@ -17,17 +19,19 @@ import com.mojang.serialization.MapCodec;
 import net.minecraft.client.render.entity.model.LoadedEntityModels;
 import net.minecraft.client.render.item.model.special.SpecialModelRenderer;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.render.command.OrderedRenderCommandQueue;
-import net.minecraft.client.render.LightmapTextureManager;
-import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.item.ItemDisplayContext;
+import net.minecraft.client.render.LightmapTextureManager;
+import net.minecraft.client.render.DiffuseLighting;
+import net.minecraft.client.render.command.OrderedRenderCommandQueue;
+import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.item.ItemStack;
-import org.joml.Vector3fc;
+import org.joml.Vector3f;
 
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.function.Consumer;
+import org.joml.Vector3fc;
 
 public class GunItemRenderer implements SpecialModelRenderer<ItemStack>
 {
@@ -66,9 +70,8 @@ public class GunItemRenderer implements SpecialModelRenderer<ItemStack>
         if (item != null)
         {
             GunProperties properties = item.properties;
-            ItemDisplayContext transformMode = mode;
-            Form form = properties.getForm(transformMode);
-            Transform transform = properties.getTransform(transformMode);
+            Form form = properties.getForm(mode);
+            Transform transform = properties.getTransform(mode);
             boolean zoom = mode.isFirstPerson() && BBSModClient.getGunZoom() != null && properties.getZoomForm() != null;
 
             if (zoom)
@@ -92,10 +95,24 @@ public class GunItemRenderer implements SpecialModelRenderer<ItemStack>
                 matrices.translate(0.5F, 0F, 0.5F);
                 MatrixStackUtils.applyTransform(matrices, transform);
 
+                GlStateManager._enableDepthTest();
+
+                if (mode == ItemDisplayContext.GUI)
+                {
+                    // GUI diffuse helper moved in 1.21.11 pipeline.
+                }
+
                 int maxLight = LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE;
                 FormUtilsClient.render(form, new FormRenderingContext()
                     .set(FormRenderType.fromModelMode(mode), item.formEntity, matrices, maxLight, overlay, MinecraftClient.getInstance().getRenderTickCounter().getTickProgress(false))
                     .camera(MinecraftClient.getInstance().gameRenderer.getCamera()));
+
+                if (mode == ItemDisplayContext.GUI)
+                {
+                    // Keep compatibility with newer pipeline API where GUI depth-light toggle was removed.
+                }
+
+                GlStateManager._disableDepthTest();
 
                 matrices.pop();
             }
@@ -136,7 +153,7 @@ public class GunItemRenderer implements SpecialModelRenderer<ItemStack>
         }
 
         @Override
-        public SpecialModelRenderer<?> bake(net.minecraft.client.render.item.model.special.SpecialModelRenderer.BakeContext context)
+        public SpecialModelRenderer<?> bake(SpecialModelRenderer.BakeContext config)
         {
             return BBSModClient.getGunItemRenderer();
         }

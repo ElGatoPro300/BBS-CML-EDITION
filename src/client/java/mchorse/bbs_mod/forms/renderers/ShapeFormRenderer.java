@@ -1,7 +1,9 @@
 package mchorse.bbs_mod.forms.renderers;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.pipeline.RenderPipeline;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.forms.forms.ShapeForm;
@@ -10,11 +12,11 @@ import mchorse.bbs_mod.utils.MatrixStackUtils;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.Tessellator;
-import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.render.GameRenderer;
+import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.util.math.MatrixStack;
 
 import org.joml.Matrix3f;
@@ -30,7 +32,6 @@ import mchorse.bbs_mod.forms.forms.shape.nodes.IrisShaderNode;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.iris.ShaderCurves;
 import net.minecraft.client.gl.RenderPipelines;
-import com.mojang.blaze3d.pipeline.RenderPipeline;
 
 
 import java.util.function.Supplier;
@@ -102,13 +103,17 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
             }
         }
 
+        /* shader binding handled by RenderLayer in 1.21.11 */
+        /* shader color state handled by pipeline in 1.21.11 */
         GlStateManager._enableBlend();
         
         if (this.form.lighting.get())
         {
+            GlStateManager._blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE, GL11.GL_SRC_ALPHA, GL11.GL_ONE);
         }
         else
         {
+            GlStateManager._blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
         }
         
         GlStateManager._disableCull();
@@ -197,11 +202,13 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
             this.renderCylinder(builder, stack, true, c, overlay, light);
         }
         
-        builder.end();
+        RenderLayers.debugFilledBox().draw(builder.end());
         
         stack.pop();
         
+        
         GlStateManager._disableBlend();
+        GlStateManager._blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
     }
 
     private void renderVolumeParticles(BufferBuilder builder, MatrixStack stack, ShapeForm.ShapeType type, Color c, int overlay, int light)

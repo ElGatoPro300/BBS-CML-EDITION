@@ -76,7 +76,6 @@ import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 import mchorse.bbs_mod.utils.keyframes.KeyframeSegment;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gl.Framebuffer;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix4f;
@@ -1317,39 +1316,21 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     {
         super.renderPanelBackground(context);
 
-        if (BBSRendering.isCustomSize() && BBSRendering.isFramebufferToggled())
-        {
-            BBSRendering.onRenderBeforeScreen();
-        }
-
         Texture texture = BBSRendering.getTexture();
 
         if (texture != null)
         {
             context.batcher.box(0, 0, context.menu.width, context.menu.height, Colors.A100);
 
-            int previewTexture = texture.id;
-            int previewW = texture.width;
-            int previewH = texture.height;
-            Framebuffer source = BBSRendering.getFramebuffer();
-            int sourceTexture = BBSRendering.getFramebufferColorAttachment();
-
-            if (source != null && sourceTexture > 0)
-            {
-                previewTexture = sourceTexture;
-                previewW = source.textureWidth;
-                previewH = source.textureHeight;
-            }
-
             int w = context.menu.width;
             int h = context.menu.height;
-            Vector2i resize = Vectors.resize(previewW / (float) previewH, w, h);
+            Vector2i resize = Vectors.resize(texture.width / (float) texture.height, w, h);
             Area area = new Area();
 
             area.setSize(resize.x, resize.y);
             area.setPos((w - area.w) / 2, (h - area.h) / 2);
 
-            context.batcher.texturedBox(previewTexture, Colors.WHITE, area.x, area.y, area.w, area.h, 0, previewH, previewW, 0, previewW, previewH);
+            context.batcher.texturedBox(texture.id, Colors.WHITE, area.x, area.y, area.w, area.h, 0, texture.height, texture.width, 0, texture.width, texture.height);
         }
 
         this.updateLogic(context);
@@ -1562,6 +1543,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         if (!BBSRendering.isIrisShadowPass())
         {
+            this.lastProjection.set(RenderSystem.getModelViewMatrix());
             MatrixStack ms = context.matrices();
             if (ms != null)
             {

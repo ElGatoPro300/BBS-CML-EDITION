@@ -150,6 +150,8 @@ public class UIPickableFormRenderer extends UIFormRenderer
             this.stencil.pickGUI(context, this.area);
             this.stencil.unbind(this.stencilMap);
 
+            MinecraftClient.getInstance().getFramebuffer();
+
             GlStateManager._enableScissorTest();
         }
         else
@@ -173,9 +175,9 @@ public class UIPickableFormRenderer extends UIFormRenderer
         /* Draw axes */
         if (UIBaseMenu.renderAxes)
         {
-            // RenderSystem.disableDepthTest();
+            GlStateManager._disableDepthTest();
             Gizmo.INSTANCE.render(stack);
-            // RenderSystem.enableDepthTest();
+            GlStateManager._enableDepthTest();
         }
 
         stack.pop();
@@ -223,20 +225,15 @@ public class UIPickableFormRenderer extends UIFormRenderer
         int h = texture.height;
 
         ShaderProgram previewProgram = BBSShaders.getPickerPreviewProgram();
-        if (previewProgram == null)
-        {
-            return;
-        }
-
         GlUniform target = previewProgram.getUniform("Target");
 
         if (target != null)
         {
-            // target.set((int)index);
+            /* no-op uniform */ // target.set(index);
         }
 
         GlStateManager._enableBlend();
-    context.batcher.texturedBox(previewProgram, texture.id, Colors.WHITE, this.area.x, this.area.y, this.area.w, this.area.h, 0, h, w, 0, w, h);
+        context.batcher.texturedBox(BBSShaders.getPickerPreviewProgram(), texture.id, Colors.WHITE, this.area.x, this.area.y, this.area.w, this.area.h, 0, h, w, 0, w, h);
 
         if (pair != null && pair.a != null)
         {

@@ -27,6 +27,7 @@ import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.render.Tessellator;
+import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.client.util.BufferAllocator;
 import org.joml.Matrix4f;
@@ -61,10 +62,9 @@ public class Recorder extends WorldFilmController
 
         Vector4f vector = Vectors.TEMP_4F;
         Matrix4f matrix = Matrices.TEMP_4F;
-        net.minecraft.util.math.Vec3d camPos = camera.getFocusedEntity() != null ? camera.getFocusedEntity().getCameraPosVec(0.0F) : net.minecraft.util.math.Vec3d.ofCenter(camera.getBlockPos());
-        float x = (float) (position.point.x - camPos.x);
-        float y = (float) (position.point.y - camPos.y);
-        float z = (float) (position.point.z - camPos.z);
+        float x = (float) (position.point.x - camera.getCameraPos().x);
+        float y = (float) (position.point.y - camera.getCameraPos().y);
+        float z = (float) (position.point.z - camera.getCameraPos().z);
         float fov = MathUtils.toRad(position.angle.fov);
         float aspect = BBSRendering.getVideoWidth() / (float) BBSRendering.getVideoHeight();
         float thickness = 0.025F;
@@ -76,6 +76,8 @@ public class Recorder extends WorldFilmController
             .rotateX(MathUtils.toRad(-position.angle.pitch));
 
         BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
+
+        /* shader binding handled by RenderLayer in 1.21.11 */
 
         transformFrustum(vector, matrix, 1F, 1F);
         Draw.fillBoxTo(builder, stack, x, y, z, x + vector.x, y + vector.y, z + vector.z, thickness, 1F, 1F, 1F, 1F);
@@ -92,7 +94,7 @@ public class Recorder extends WorldFilmController
         transformFrustum(vector, matrix, 0F, 0F);
         Draw.fillBoxTo(builder, stack, x, y, z, x + vector.x, y + vector.y, z + vector.z, thickness, 0F, 0.5F, 1F, 1F);
 
-        net.minecraft.client.render.RenderLayers.debugFilledBox().draw(builder.end());
+        RenderLayers.debugFilledBox().draw(builder.end());
 
         GlStateManager._disableDepthTest();
     }

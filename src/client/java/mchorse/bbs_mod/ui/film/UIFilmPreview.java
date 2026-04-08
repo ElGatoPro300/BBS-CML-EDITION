@@ -46,7 +46,6 @@ import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.joml.Vectors;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gl.Framebuffer;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.RotationAxis;
 import org.joml.Vector2i;
@@ -302,11 +301,6 @@ public class UIFilmPreview extends UIElement
     @Override
     public void render(UIContext context)
     {
-        if (BBSRendering.isCustomSize() && BBSRendering.isFramebufferToggled())
-        {
-            BBSRendering.onRenderBeforeScreen();
-        }
-
         Texture texture = BBSRendering.getTexture();
         Area area = this.getViewport();
         Camera camera = this.panel.getCamera();
@@ -318,20 +312,7 @@ public class UIFilmPreview extends UIElement
 
         if (texture != null)
         {
-            int previewTexture = texture.id;
-            int previewW = texture.width;
-            int previewH = texture.height;
-            Framebuffer source = BBSRendering.getFramebuffer();
-            int sourceTexture = BBSRendering.getFramebufferColorAttachment();
-
-            if (source != null && sourceTexture > 0)
-            {
-                previewTexture = sourceTexture;
-                previewW = source.textureWidth;
-                previewH = source.textureHeight;
-            }
-
-            context.batcher.texturedBox(previewTexture, Colors.WHITE, area.x, area.y, area.w, area.h, 0, previewH, previewW, 0, previewW, previewH);
+            context.batcher.texturedBox(texture.id, Colors.WHITE, area.x, area.y, area.w, area.h, 0, texture.height, texture.width, 0, texture.width, texture.height);
         }
 
         if (this.panel.getData() != null)
@@ -465,5 +446,19 @@ public class UIFilmPreview extends UIElement
 
     private void renderCursor(UIContext context)
     {
+        net.minecraft.client.render.Camera mcCamera = MinecraftClient.getInstance().gameRenderer.getCamera();
+        org.joml.Matrix4fStack stack = RenderSystem.getModelViewStack();
+
+        stack.pushMatrix();
+
+        stack.translate(area.x + 16, area.ey() - 12, 0F);
+        stack.rotate(RotationAxis.NEGATIVE_X.rotationDegrees(mcCamera.getPitch()));
+        stack.rotate(RotationAxis.POSITIVE_Y.rotationDegrees(mcCamera.getYaw()));
+        stack.scale(-1F, -1F, -1F);
+        MatrixStackUtils.applyModelViewMatrix();
+        /* crosshair rendering is managed by vanilla pipeline */
+
+        stack.popMatrix();
+        MatrixStackUtils.applyModelViewMatrix();
     }
 }

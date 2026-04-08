@@ -23,6 +23,7 @@ import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.StringNbtReader;
 import net.minecraft.command.argument.NbtCompoundArgumentType;
 import net.minecraft.util.Identifier;
+
 import java.util.List;
 
 public class UISelectorsOverlayPanel extends UIOverlayPanel

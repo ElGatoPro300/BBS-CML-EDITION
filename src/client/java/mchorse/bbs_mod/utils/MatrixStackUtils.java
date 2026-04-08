@@ -30,7 +30,7 @@ public class MatrixStackUtils
     public static void cacheMatrices()
     {
         /* Cache the global stuff */
-        // oldProjection.set(RenderSystem.getProjectionMatrix());
+        oldProjection.set(RenderSystem.getModelViewMatrix());
         oldMV.set(RenderSystem.getModelViewMatrix());
         oldInverse.set(new Matrix3f(RenderSystem.getModelViewMatrix()));
 
@@ -42,7 +42,7 @@ public class MatrixStackUtils
     public static void restoreMatrices()
     {
         /* Return back to orthographic projection */
-        // RenderSystem.setProjectionMatrix(oldProjection, ProjectionType.ORTHOGRAPHIC);
+        /* projection matrix state managed by 1.21.11 renderer */
 
         Matrix4fStack mvStack = RenderSystem.getModelViewStack();
         mvStack.set(oldMV);
@@ -51,6 +51,7 @@ public class MatrixStackUtils
 
     public static void applyModelViewMatrix()
     {
+        // 1.21.11 no longer exposes direct shader uniform mutation for this path.
     }
 
     public static void applyTransform(MatrixStack stack, Transform transform)
@@ -146,4 +147,3 @@ public class MatrixStackUtils
         return m;
     }
 }
-

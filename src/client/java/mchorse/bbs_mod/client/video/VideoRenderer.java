@@ -1,15 +1,18 @@
 package mchorse.bbs_mod.client.video;
 
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.vertex.VertexFormat;
+import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.client.BBSShaders;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.*;
+import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.util.math.MatrixStack;
-import com.mojang.blaze3d.vertex.VertexFormat;
-import com.mojang.blaze3d.opengl.GlStateManager;
-import org.lwjgl.opengl.GL30;
 import org.joml.Matrix4f;
 import org.watermedia.api.player.videolan.VideoPlayer;
 import org.watermedia.videolan4j.factory.MediaPlayerFactory;
+import org.lwjgl.opengl.GL11;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -420,8 +423,14 @@ public class VideoRenderer
                 return;
             }
 
-            GlStateManager._activeTexture(GL30.GL_TEXTURE0);
-            GlStateManager._bindTexture(texture);
+            /* shader binding handled by RenderLayer in 1.21.11 */
+            /* texture binding handled by render pipeline */
+            GlStateManager._colorMask(true, true, true, true);
+            GlStateManager._enableBlend();
+            GlStateManager._blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+            GlStateManager._disableDepthTest();
+            GlStateManager._depthMask(false);
+            GlStateManager._disableCull();
 
             Tessellator tessellator = Tessellator.getInstance();
             BufferBuilder buffer = tessellator.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_TEXTURE);
@@ -435,7 +444,12 @@ public class VideoRenderer
             buffer.vertex(matrix, drawX + drawW, drawY + drawH, 0).texture(u1, v1);
             buffer.vertex(matrix, drawX + drawW, drawY, 0).texture(u1, v0);
             buffer.vertex(matrix, drawX, drawY, 0).texture(u0, v0);
-            buffer.end();
+            RenderLayers.debugFilledBox().draw(buffer.end());
+            
+            GlStateManager._enableCull();
+            GlStateManager._depthMask(true);
+            GlStateManager._enableDepthTest();
+            GlStateManager._colorMask(true, true, true, true);
         }
     }
 

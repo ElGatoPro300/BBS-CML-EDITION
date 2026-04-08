@@ -1106,6 +1106,8 @@ public class UIFilmController extends UIElement
         /* Cache the global stuff */
         MatrixStackUtils.cacheMatrices();
 
+        /* projection matrix state managed by 1.21.11 renderer */
+
         /* Render the stencil */
         MatrixStack worldStack = this.worldRenderContext.matrices();
         if (worldStack != null)
@@ -1166,19 +1168,16 @@ public class UIFilmController extends UIElement
         }
 
         ShaderProgram previewProgram = BBSShaders.getPickerPreviewProgram();
-        if (previewProgram == null)
-        {
-            return;
-        }
-
+        Supplier<ShaderProgram> getPickerPreviewProgram = BBSShaders::getPickerPreviewProgram;
         GlUniform target = previewProgram.getUniform("Target");
 
         if (target != null)
         {
+            /* no-op uniform */ // target.set(index);
         }
 
         GlStateManager._enableBlend();
-    context.batcher.texturedBox(previewProgram, texture.id, Colors.WHITE, area.x, area.y, area.w, area.h, 0, h, w, 0, w, h);
+        context.batcher.texturedBox(getPickerPreviewProgram.get(), texture.id, Colors.WHITE, area.x, area.y, area.w, area.h, 0, h, w, 0, w, h);
 
         if (altPressed)
         {
@@ -1358,6 +1357,7 @@ public class UIFilmController extends UIElement
         this.stencil.pick(x, y);
         this.stencil.unbind(this.stencilMap);
 
+        MinecraftClient.getInstance().getFramebuffer();
     }
 
     private void ensureStencilFramebuffer()

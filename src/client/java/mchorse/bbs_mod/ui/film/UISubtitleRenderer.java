@@ -1,5 +1,6 @@
 package mchorse.bbs_mod.ui.film;
 
+import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.systems.ProjectionType;
 import com.mojang.blaze3d.systems.VertexSorter;
@@ -53,6 +54,28 @@ public class UISubtitleRenderer
             return;
         }
 
+        ShaderProgram program = BBSShaders.getSubtitlesProgram();
+        GlUniform blur = program.getUniform("Blur");
+        GlUniform textureSize = program.getUniform("TextureSize");
+        Supplier<ShaderProgram> supplier = () -> program;
+
+        net.minecraft.client.gl.Framebuffer fb = MinecraftClient.getInstance().getFramebuffer();
+        int width = fb.textureWidth;
+        int height = fb.textureHeight;
+
+        Matrix4f cache = new Matrix4f(RenderSystem.getModelViewMatrix());
+
+        width /= 2;
+        height /= 2;
+
+        Framebuffer framebuffer = getTextFramebuffer();
+        Texture texture = framebuffer.getMainTexture();
+        Matrix4f ortho = new Matrix4f().ortho(0, width, height, 0, -100, 100);
+        FontRenderer font = Batcher2D.getDefaultTextRenderer();
+
+        GlStateManager._depthFunc(GL11.GL_ALWAYS);
+        GlStateManager._disableCull();
+
         for (Subtitle subtitle : subtitles)
         {
             float alpha = Colors.getA(subtitle.color);
@@ -62,11 +85,82 @@ public class UISubtitleRenderer
                 continue;
             }
 
-            String label = StringUtils.processColoredText(subtitle.label).trim();
-            int x = (int) subtitle.x;
-            int y = (int) subtitle.y;
+            String label = StringUtils.processColoredText(subtitle.label);
+            int w = 0;
+            int h = 0;
+            int x = (int) (width * subtitle.windowX + subtitle.x);
+            int y = (int) (height * subtitle.windowY + subtitle.y);
+            float scale = subtitle.size;
+            int subColor = subtitle.color;
 
-            batcher.textCard(label, x, y, Colors.mulA(subtitle.color, alpha), Colors.mulA(subtitle.backgroundColor, alpha), subtitle.backgroundOffset, subtitle.textShadow);
+            List<String> strings = subtitle.maxWidth <= 10 ? Arrays.asList(label) : font.wrap(label, subtitle.maxWidth);
+
+            for (String string : strings)
+            {
+                w = Math.max(w, font.getWidth(string.trim()));
+            }
+
+            h = (strings.size() - 1) * subtitle.lineHeight + font.getHeight();
+
+            int fw = (int) ((w + 10) * scale);
+            int fh = (int) ((h + 10) * scale);
+
+            /* projection matrix state managed by 1.21.11 renderer */
+
+            framebuffer.resize(fw, fh);
+            framebuffer.applyClear();
+
+            int yy = 5;
+
+            for (String string : strings)
+            {
+                string = string.trim();
+
+                int xx = 5 + (w - font.getWidth(string)) / 2;
+
+                if (Colors.getA(subtitle.backgroundColor) > 0)
+                {
+                    batcher.textCard(string, xx, yy, Colors.setA(subColor, 1F), Colors.mulA(subtitle.backgroundColor, alpha), subtitle.backgroundOffset, subtitle.textShadow);
+                }
+                else
+                {
+                    batcher.text(string, xx, yy, Colors.setA(subColor, 1F), subtitle.textShadow);
+                }
+
+                yy += subtitle.lineHeight;
+            }
+
+            /* Render the texture */
+
+            /* projection matrix state managed by 1.21.11 renderer */
+
+            Transform transform = new Transform();
+
+            transform.lerp(subtitle.transform, 1F - subtitle.factor);
+
+            stack.push();
+            stack.translate(x, y, 0);
+            MatrixStackUtils.applyTransform(stack, transform);
+
+            if (blur != null)
+            {
+                // Uniform setter API changed in 1.21.11.
+            }
+
+            if (textureSize != null)
+            {
+                // Uniform setter API changed in 1.21.11.
+            }
+
+            GlStateManager._enableBlend();
+            GlStateManager._blendFuncSeparate(770, 771, 1, 771);
+
+            batcher.texturedBox(program, texture.id, Colors.setA(Colors.WHITE, alpha), -fw * subtitle.anchorX, -fh * subtitle.anchorY, texture.width, texture.height, 0, 0, texture.width, texture.height, texture.width, texture.height);
+
+            stack.pop();
         }
+
+        /* projection matrix state managed by 1.21.11 renderer */
+        GlStateManager._enableCull();
     }
 }

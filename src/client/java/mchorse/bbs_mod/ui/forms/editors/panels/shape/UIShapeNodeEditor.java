@@ -1,5 +1,7 @@
 package mchorse.bbs_mod.ui.forms.editors.panels.shape;
 
+import com.mojang.blaze3d.vertex.VertexFormat;
+import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
@@ -48,12 +50,13 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.Tessellator;
-import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
+import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.gl.RenderPipelines;
 import org.joml.Matrix4f;
 import org.joml.Vector2f;
 import org.lwjgl.glfw.GLFW;
+import org.lwjgl.opengl.GL11;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -1157,6 +1160,10 @@ public class UIShapeNodeEditor extends UIElement
         Matrix4f matrix4f = new Matrix4f();
         Tessellator tessellator = Tessellator.getInstance();
 
+        GlStateManager._enableBlend();
+        GlStateManager._blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+        /* shader binding handled by RenderLayer in 1.21.11 */
+
         // Border
         BufferBuilder builder = tessellator.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
 
@@ -1170,7 +1177,7 @@ public class UIShapeNodeEditor extends UIElement
             builder.vertex(matrix4f, (float) (x + Math.cos(a2) * (radius + 1.5F)), (float) (y + Math.sin(a2) * (radius + 1.5F)), 0F).color(0xFF000000);
         }
 
-        builder.end();
+        RenderLayers.debugFilledBox().draw(builder.end());
 
         // Fill
         builder = tessellator.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
@@ -1185,7 +1192,7 @@ public class UIShapeNodeEditor extends UIElement
             builder.vertex(matrix4f, (float) (x + Math.cos(a2) * radius), (float) (y + Math.sin(a2) * radius), 0F).color(color);
         }
 
-        builder.end();
+        RenderLayers.debugFilledBox().draw(builder.end());
     }
 
     private void drawBezier(UIContext context, int x1, int y1, int x2, int y2, int color, float thickness)

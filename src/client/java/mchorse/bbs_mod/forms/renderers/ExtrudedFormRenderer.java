@@ -1,5 +1,6 @@
 package mchorse.bbs_mod.forms.renderers;
 
+import com.mojang.blaze3d.vertex.VertexFormat;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.BBSModClient;
@@ -19,7 +20,6 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
-import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
 import org.joml.Matrix4f;
@@ -81,7 +81,19 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
         VertexFormat format = shading ? VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL : VertexFormats.POSITION_TEXTURE_COLOR;
         Supplier<ShaderProgram> shader = this.getShader(
             context,
-            shading ? BBSShaders::getModel : BBSShaders::getPickerBillboardNoShadingProgram,
+            shading
+                ? () ->
+                {
+                    // RenderSystem.setShader(ShaderProgramKeys.RENDERTYPE_ENTITY_TRANSLUCENT);
+                    /* shader binding handled by RenderLayer in 1.21.11 */
+                    return null;
+                }
+                : () ->
+                {
+                    // RenderSystem.setShader(ShaderProgramKeys.POSITION_TEX_COLOR);
+                    /* shader binding handled by RenderLayer in 1.21.11 */
+                    return null;
+                },
             shading ? BBSShaders::getPickerBillboardProgram : BBSShaders::getPickerBillboardNoShadingProgram
         );
 
@@ -127,7 +139,13 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
 
             BBSModClient.getTextures().bindTexture(texture);
 
-            ModelVAORenderer.render(shader.get(), data, matrices, new org.joml.Matrix4f(), color.r * formColor.r, color.g * formColor.g, color.b * formColor.b, color.a * formColor.a, light, overlay);
+            GlStateManager._enableBlend();
+            GlStateManager._blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+
+            ModelVAORenderer.render(shader.get(), data, matrices, color.r * formColor.r, color.g * formColor.g, color.b * formColor.b, color.a * formColor.a, light, overlay);
+
+            GlStateManager._disableBlend();
+
         }
     }
 }

@@ -22,6 +22,7 @@ import mchorse.bbs_mod.utils.interps.Lerps;
 import mchorse.bbs_mod.utils.MathUtils;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.Tessellator;
+import net.minecraft.client.render.RenderLayers;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.BufferAllocator;
@@ -288,7 +289,7 @@ public class UICurve extends UIElement
             builder.vertex(matrix, (float) last.x, this.graph.ey(), 0F).color(0.25F, 0.25F, 0.25F, 0.5F);
         }
 
-        net.minecraft.client.render.RenderLayers.lines().draw(builder.end());
+        RenderLayers.lines().draw(builder.end());
 
         Color color = Colors.COLOR;
         LineBuilder line = new LineBuilder(0.75F);

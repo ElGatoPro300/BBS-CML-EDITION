@@ -241,8 +241,11 @@ public class Gizmo
             Draw.fillBox(builder, stack, -o, l, l, o, rr, rr, 0F, 1F, 1F); */
         }
 
+        // RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
+        /* shader binding handled by RenderLayer in 1.21.11 */
         GlStateManager._depthFunc(GL11.GL_ALWAYS);
 
+        RenderLayers.debugFilledBox().draw(builder.end());
 
 
         GlStateManager._depthFunc(GL11.GL_LEQUAL);
@@ -305,6 +308,8 @@ public class Gizmo
             }
         }
 
+        // RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
+        /* shader binding handled by RenderLayer in 1.21.11 */
         GlStateManager._disableDepthTest();
 
         RenderLayers.debugFilledBox().draw(builder.end());

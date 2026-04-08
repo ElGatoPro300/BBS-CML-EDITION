@@ -412,7 +412,11 @@ public class Scroll
 
         if (isInside)
         {
-            if (scroll != 0D)
+            if (System.getProperty("os.name", "").toLowerCase().contains("mac"))
+            {
+                this.scrollBy(scroll * BBSSettings.scrollingSensitivity.get());
+            }
+            else if (scroll != 0D)
             {
                 this.scrollBy((int) (Math.copySign(this.scrollSpeed, scroll) * BBSSettings.scrollingSensitivity.get()));
             }

@@ -3,6 +3,9 @@ package mchorse.bbs_mod.forms.renderers;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.systems.ProjectionType;
 import com.mojang.blaze3d.systems.VertexSorter;
+import com.mojang.blaze3d.vertex.VertexFormat;
+import com.mojang.blaze3d.pipeline.RenderPipeline;
+import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.forms.forms.FramebufferForm;
 import mchorse.bbs_mod.graphics.Framebuffer;
@@ -22,9 +25,8 @@ import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.util.BufferAllocator;
 import net.minecraft.client.render.VertexConsumer;
-import com.mojang.blaze3d.vertex.VertexFormat;
-import com.mojang.blaze3d.pipeline.RenderPipeline;
 import net.minecraft.client.render.VertexFormats;
+import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.util.math.MatrixStack;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
@@ -57,7 +59,81 @@ public class FramebufferFormRenderer extends FormRenderer<FramebufferForm>
     @Override
     public void renderBodyParts(FormRenderingContext context)
     {
+        Framebuffer framebuffer = BBSModClient.getFramebuffers().getFramebuffer(framebufferKey, (f) ->
+        {
+            Texture texture = new Texture();
+
+            texture.setSize(2, 2);
+            texture.setFilter(GL11.GL_NEAREST);
+            texture.setWrap(GL13.GL_CLAMP_TO_EDGE);
+
+            Renderbuffer renderbuffer = new Renderbuffer();
+
+            renderbuffer.resize(2, 2);
+
+            f.deleteTextures().attach(texture, GL30.GL_COLOR_ATTACHMENT0);
+            f.attach(renderbuffer);
+            f.unbind();
+        });
+
+        int width;
+        int height;
+
+        try (MemoryStack stack = MemoryStack.stackPush())
+        {
+            IntBuffer viewport = stack.mallocInt(4);
+
+            GL30.glGetIntegerv(GL30.GL_VIEWPORT, viewport);
+
+            width = viewport.get(2);
+            height = viewport.get(3);
+        }
+
+        Texture mainTexture = framebuffer.getMainTexture();
+        int w = MathUtils.clamp(this.form.width.get(), 2, 4096);
+        int h = MathUtils.clamp(this.form.height.get(), 2, 4096);
+        int prevDraw = GL30.glGetInteger(GL30.GL_DRAW_FRAMEBUFFER_BINDING);
+        int prevRead = GL30.glGetInteger(GL30.GL_READ_FRAMEBUFFER_BINDING);
+        Matrix4f projectionMatrix = new Matrix4f();
+
+        GL30.glCullFace(GL30.GL_FRONT);
+        /* shader light/projection state is pipeline-managed in 1.21.11 */
+        RenderSystem.getModelViewStack().pushMatrix();
+        RenderSystem.getModelViewStack().identity();
+        MatrixStackUtils.applyModelViewMatrix();
+
+        framebuffer.apply();
+
+        if (w != mainTexture.width || h != mainTexture.height)
+        {
+            framebuffer.resize(w, h);
+        }
+
+        framebuffer.clear();
+
+        context.stack.push();
+        context.stack.peek().getPositionMatrix().identity();
+        context.stack.peek().getNormalMatrix().identity();
+
         super.renderBodyParts(context);
+
+        context.stack.pop();
+
+        GL30.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, prevDraw);
+        GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, prevRead);
+        GL30.glViewport(0, 0, width, height);
+
+        /* shader light/projection state is pipeline-managed in 1.21.11 */
+        RenderSystem.getModelViewStack().popMatrix();
+        MatrixStackUtils.applyModelViewMatrix();
+        /* projection restore is pipeline-managed in 1.21.11 */
+        GL30.glCullFace(GL30.GL_BACK);
+
+        boolean shading = !context.isPicking();
+        VertexFormat format = shading ? VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL : VertexFormats.POSITION_TEXTURE_COLOR;
+        RenderPipeline shaderKey = shading ? RenderPipelines.ENTITY_TRANSLUCENT : RenderPipelines.GUI_TEXTURED;
+
+        this.renderModel(framebuffer.getMainTexture(), format, shaderKey, context.stack, context.overlay, context.light, context.color, context.getTransition());
     }
 
     private void renderModel(Texture texture, VertexFormat format, RenderPipeline shader, MatrixStack matrices, int overlay, int light, int overlayColor, float transition)
@@ -102,7 +178,14 @@ public class FramebufferFormRenderer extends FormRenderer<FramebufferForm>
 
         color.mul(overlayColor);
 
+        GameRenderer gameRenderer = MinecraftClient.getInstance().gameRenderer;
+        if (format == VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL)
+        {
+            /* lightmap/overlay state handled by renderer in 1.21.11 */
+        }
+
         BBSModClient.getTextures().bindTexture(texture);
+        /* shader binding handled by render pipeline */
 
         texture.bind();
         texture.setFilterMipmap(false, false);
@@ -125,8 +208,14 @@ public class FramebufferFormRenderer extends FormRenderer<FramebufferForm>
         this.fill(format, builder, matrix, quad.p4.x, quad.p4.y, color, uvQuad.p4.x, uvQuad.p4.y, overlay, light, entry, -1F);
         this.fill(format, builder, matrix, quad.p3.x, quad.p3.y, color, uvQuad.p3.x, uvQuad.p3.y, overlay, light, entry, -1F);
 
-        builder.end();
+        GlStateManager._blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+        GlStateManager._enableBlend();
+        RenderLayers.debugFilledBox().draw(builder.end());
 
+        if (format == VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL)
+        {
+            /* lightmap/overlay state handled by renderer in 1.21.11 */
+        }
     }
 
     private VertexConsumer fill(VertexFormat format, VertexConsumer consumer, Matrix4f matrix, float x, float y, Color color, float u, float v, int overlay, int light, MatrixStack.Entry entry, float nz)

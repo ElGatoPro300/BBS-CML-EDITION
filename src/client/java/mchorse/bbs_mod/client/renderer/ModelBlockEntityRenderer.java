@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.client.renderer;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.blocks.entities.ModelBlockEntity;
@@ -31,7 +32,6 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.WorldRenderer;
-import net.minecraft.client.render.block.entity.BlockEntityRenderer;
 import net.minecraft.client.render.block.entity.BlockEntityRendererFactory;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.client.world.ClientWorld;
@@ -62,9 +62,6 @@ public class ModelBlockEntityRenderer
         entity.lastRenderX = x;
         entity.lastRenderY = y;
         entity.lastRenderZ = z;
-        entity.lastX = x;
-        entity.lastY = y;
-        entity.lastZ = z;
 
         double distance = MinecraftClient.getInstance().getEntityRenderDispatcher().getSquaredDistanceToCamera(entity);
 
@@ -140,9 +137,11 @@ public class ModelBlockEntityRenderer
             int lightAbove = WorldRenderer.getLightmapCoordinates(entity.getWorld(), pos.add((int) transform.translate.x, (int) transform.translate.y, (int) transform.translate.z));
             Camera camera = mc.gameRenderer.getCamera();
 
+            GlStateManager._enableDepthTest();
             FormUtilsClient.render(properties.getForm(), new FormRenderingContext()
                 .set(FormRenderType.MODEL_BLOCK, entity.getEntity(), matrices, lightAbove, overlay, tickDelta)
                 .camera(camera));
+            GlStateManager._disableDepthTest();
 
             if (this.canRenderAxes(entity) && UIBaseMenu.renderAxes)
             {
@@ -155,6 +154,7 @@ public class ModelBlockEntityRenderer
             matrices.pop();
         }
 
+        GlStateManager._disableDepthTest();
 
         if (mc.getDebugHud().shouldShowDebugHud())
         {

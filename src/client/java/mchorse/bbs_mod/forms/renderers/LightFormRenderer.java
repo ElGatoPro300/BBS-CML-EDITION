@@ -26,6 +26,8 @@ public class LightFormRenderer extends FormRenderer<LightForm>
     @Override
     protected void renderInUI(UIContext context, int x1, int y1, int x2, int y2)
     {
+        context.batcher.flush();
+
         int level = Math.max(0, Math.min(15, this.form.level.get()));
         ItemStack stack = this.stack.copy();
 

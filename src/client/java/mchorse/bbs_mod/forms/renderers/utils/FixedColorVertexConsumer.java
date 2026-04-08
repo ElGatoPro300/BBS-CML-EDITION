@@ -43,13 +43,10 @@ public class FixedColorVertexConsumer implements VertexConsumer
         return this.delegate.color(red, green, blue, alpha);
     }
 
+    @Override
     public VertexConsumer color(int argb)
     {
-        int a = (argb >>> 24) & 0xFF;
-        int r = (argb >>> 16) & 0xFF;
-        int g = (argb >>> 8) & 0xFF;
-        int b = argb & 0xFF;
-        return this.delegate.color(r, g, b, a);
+        return this.delegate.color(argb);
     }
 
     public VertexConsumer texture(float u, float v)
@@ -72,6 +69,7 @@ public class FixedColorVertexConsumer implements VertexConsumer
         return this.delegate.normal(x, y, z);
     }
 
+    @Override
     public VertexConsumer lineWidth(float width)
     {
         return this.delegate.lineWidth(width);

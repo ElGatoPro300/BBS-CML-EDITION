@@ -100,10 +100,9 @@ public abstract class BaseFilmController
             Lerps.lerp(entity.getPrevZ(), entity.getZ(), transition)
         );
 
-        Vec3d camPos = camera.getFocusedEntity() != null ? camera.getFocusedEntity().getCameraPosVec(transition) : net.minecraft.util.math.Vec3d.ofCenter(camera.getBlockPos());
-        double cx = camPos.x;
-        double cy = camPos.y;
-        double cz = camPos.z;
+        double cx = camera.getCameraPos().x;
+        double cy = camera.getCameraPos().y;
+        double cz = camera.getCameraPos().z;
 
         boolean relative = context.replay != null && context.relative;
 
@@ -766,7 +765,7 @@ public abstract class BaseFilmController
 
         BlockPos pos = BlockPos.ofFloored(xPos, yPos - 0.2D, zPos);
 
-        if (world.getBlockState(pos).isAir())
+        if (world.isAir(pos))
         {
             return;
         }

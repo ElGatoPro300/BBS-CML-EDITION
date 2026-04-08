@@ -46,6 +46,7 @@ import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
+import net.minecraft.client.render.DiffuseLighting;
 import net.minecraft.item.ItemDisplayContext;
 import net.minecraft.client.render.DiffuseLighting;
 import net.minecraft.client.util.math.MatrixStack;
@@ -323,7 +324,18 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             BBSModClient.getTextures().bindTexture(texture);
             GlStateManager._depthFunc(GL11.GL_LEQUAL);
 
-            Supplier<ShaderProgram> mainShader = BBSShaders::getModel;
+            Vector3f light0 = new Vector3f(0.85F, 0.85F, -1F).normalize();
+            Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1F).normalize();
+            MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.LEVEL);
+
+            Supplier<ShaderProgram> mainShader = (BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld()) || !model.isVAORendered()
+                ? () ->
+                {
+                    // RenderSystem.setShader(ShaderProgramKeys.RENDERTYPE_ENTITY_TRANSLUCENT);
+                    /* shader binding handled by RenderLayer in 1.21.11 */
+                    return null;
+                }
+                : BBSShaders::getModel;
 
             this.renderModel(this.entity, mainShader, stack, model, LightmapTextureManager.pack(15, 15), OverlayTexture.DEFAULT_UV, color, true, null, context.getTransition());
 
@@ -339,6 +351,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             stack.pop();
             stack.pop();
 
+            
             GlStateManager._depthFunc(GL11.GL_ALWAYS);
         }
     }
@@ -349,6 +362,11 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         {
             GlStateManager._disableCull();
         }
+
+        GlStateManager._enableBlend();
+        GlStateManager._blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+        GlStateManager._enableDepthTest();
+        GameRenderer gameRenderer = MinecraftClient.getInstance().gameRenderer;
 
         GlStateManager._enableBlend();
 
@@ -403,7 +421,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             MatrixStackUtils.applyTransform(stack, armorSlot.transform);
             stack.multiply(RotationAxis.POSITIVE_X.rotationDegrees(180F));
 
-            CustomVertexConsumerProvider.hijackVertexFormat((l) -> {});
+            CustomVertexConsumerProvider.hijackVertexFormat((l) -> GlStateManager._enableBlend());
 
             ActorEntityRenderer.armorRenderer.renderArmorSlot(stack, consumers, target, type.slot, type, light);
             consumers.draw();
@@ -412,6 +430,8 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
             stack.pop();
 
+            GlStateManager._enableBlend();
+            GlStateManager._enableDepthTest();
         }
     }
 
@@ -439,7 +459,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                 stack.translate(0F, 0.125F, 0F);
                 MatrixStackUtils.applyTransform(stack, armorSlot.transform);
 
-                CustomVertexConsumerProvider.hijackVertexFormat((l) -> {});
+                CustomVertexConsumerProvider.hijackVertexFormat((l) -> GlStateManager._enableBlend());
 
                 consumers.setSubstitute(BBSRendering.getColorConsumer(color));
 
@@ -461,6 +481,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
                 stack.pop();
 
+                GlStateManager._enableDepthTest();
             }
         }
     }
@@ -512,7 +533,16 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
             BBSModClient.getTextures().bindTexture(texture);
 
-            Supplier<ShaderProgram> mainShader = BBSShaders::getModel;
+            Supplier<ShaderProgram> mainShader = (BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld()) || !model.isVAORendered()
+                ? () ->
+                {
+                    /* shader binding handled by RenderLayer in 1.21.11 */
+                    return null;
+                }
+                : BBSShaders::getModel;
+
+            GlStateManager._enableDepthTest();
+            GlStateManager._enableBlend();
 
             this.renderModel(this.entity, mainShader, matrices, model, light, OverlayTexture.DEFAULT_UV, color, false, null, 0F);
 
@@ -555,7 +585,14 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                 BBSModClient.getTextures().bindTexture(texture);
             }
 
-            Supplier<ShaderProgram> mainShader = BBSShaders::getModel;
+            Supplier<ShaderProgram> mainShader = (BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld()) || !model.isVAORendered()
+                ? () ->
+                {
+                    // RenderSystem.setShader(ShaderProgramKeys.RENDERTYPE_ENTITY_TRANSLUCENT);
+                    /* shader binding handled by RenderLayer in 1.21.11 */
+                    return null;
+                }
+                : BBSShaders::getModel;
             Supplier<ShaderProgram> shader = this.getShader(context, mainShader, BBSShaders::getPickerModelsProgram);
 
             this.renderModel(context.entity, shader, context.stack, model, context.light, context.overlay, color, false, context.stencilMap, context.getTransition());

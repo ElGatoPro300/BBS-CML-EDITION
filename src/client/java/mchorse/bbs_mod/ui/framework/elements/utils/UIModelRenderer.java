@@ -5,6 +5,7 @@ import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import com.mojang.blaze3d.systems.VertexSorter;
 import com.mojang.blaze3d.systems.ProjectionType;
+import net.minecraft.client.render.RenderLayers;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.camera.Camera;
 import mchorse.bbs_mod.forms.entities.IEntity;
@@ -220,6 +221,8 @@ public abstract class UIModelRenderer extends UIElement
         /* Cache the global stuff */
         MatrixStackUtils.cacheMatrices();
 
+        /* projection matrix state managed by 1.21.11 renderer */
+
         /* Rendering begins... */
         stack.push();
         MatrixStackUtils.multiply(stack, this.camera.view);
@@ -228,6 +231,8 @@ public abstract class UIModelRenderer extends UIElement
 
         Vector3f a = new Vector3f(0F, 0.85F, -1F).normalize();
         Vector3f b = new Vector3f(0F, 0.85F, 1F).normalize();
+        
+        MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.LEVEL);
 
         if (this.grid)
         {
@@ -235,6 +240,7 @@ public abstract class UIModelRenderer extends UIElement
         }
 
         this.renderUserModel(context);
+
 
         stack.pop();
 
@@ -245,9 +251,9 @@ public abstract class UIModelRenderer extends UIElement
         MatrixStackUtils.restoreMatrices();
         context.resetMatrix();
 
-        com.mojang.blaze3d.opengl.GlStateManager._depthFunc(GL11.GL_ALWAYS);
-        com.mojang.blaze3d.opengl.GlStateManager._disableDepthTest();
-        com.mojang.blaze3d.opengl.GlStateManager._disableCull();
+        GlStateManager._depthFunc(GL11.GL_ALWAYS);
+        GlStateManager._disableDepthTest();
+        GlStateManager._disableCull();
 
         this.processInputs(context);
     }
@@ -348,7 +354,7 @@ public abstract class UIModelRenderer extends UIElement
         Matrix4f matrix4f = new Matrix4f();
         BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
 
-        
+        // RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
 
         for (int x = 0; x <= 10; x ++)
         {
@@ -378,6 +384,6 @@ public abstract class UIModelRenderer extends UIElement
             }
         }
 
-        net.minecraft.client.render.RenderLayers.lines().draw(builder.end());
+        RenderLayers.lines().draw(builder.end());
     }
 }

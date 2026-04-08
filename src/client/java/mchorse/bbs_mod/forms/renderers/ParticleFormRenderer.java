@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.forms.renderers;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.client.BBSShaders;
@@ -16,7 +17,6 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.render.GameRenderer;
-import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.world.World;
@@ -167,6 +167,9 @@ public class ParticleFormRenderer extends FormRenderer<ParticleForm> implements 
                 translation.add(context.camera.position.x, context.camera.position.y, context.camera.position.z);
             }
 
+            GameRenderer gameRenderer = MinecraftClient.getInstance().gameRenderer;
+
+
             context.stack.push();
             context.stack.loadIdentity();
 
@@ -182,12 +185,22 @@ public class ParticleFormRenderer extends FormRenderer<ParticleForm> implements 
                 Supplier<ShaderProgram> shader = billboard
                     ? this.getShader(
                         context,
-                        BBSShaders::getModel,
+                        () ->
+                        {
+                            // RenderSystem.setShader(ShaderProgramKeys.RENDERTYPE_ENTITY_TRANSLUCENT);
+                            /* shader binding handled by RenderLayer in 1.21.11 */
+                            return null;
+                        },
                         BBSShaders::getPickerBillboardProgram
                     )
                     : this.getShader(
                         context,
-                        BBSShaders::getModel,
+                        () ->
+                        {
+                            // RenderSystem.setShader(ShaderProgramKeys.PARTICLE);
+                            /* shader binding handled by RenderLayer in 1.21.11 */
+                            return null;
+                        },
                         BBSShaders::getPickerParticlesProgram
                     );
 
@@ -195,6 +208,7 @@ public class ParticleFormRenderer extends FormRenderer<ParticleForm> implements 
             }
 
             context.stack.pop();
+
         }
     }
 

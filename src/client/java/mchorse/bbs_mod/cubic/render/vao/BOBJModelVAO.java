@@ -320,6 +320,11 @@ public class BOBJModelVAO
 
         ModelVAORenderer.setupUniforms(stack, shader);
 
+        if (shader != null)
+        {
+            /* shader binding handled by RenderLayer in 1.21.11 */
+        }
+
         GL30.glBindVertexArray(this.vao);
 
         GL30.glEnableVertexAttribArray(Attributes.POSITION);

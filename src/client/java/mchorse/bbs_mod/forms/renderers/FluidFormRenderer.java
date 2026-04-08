@@ -1,6 +1,9 @@
 package mchorse.bbs_mod.forms.renderers;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.VertexFormat;
+import com.mojang.blaze3d.pipeline.RenderPipeline;
+import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.film.BaseFilmController;
@@ -24,9 +27,9 @@ import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.gl.ShaderProgram;
+import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.render.*;
-import com.mojang.blaze3d.vertex.VertexFormat;
-import com.mojang.blaze3d.pipeline.RenderPipeline;
+import org.lwjgl.opengl.GL11;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
@@ -100,7 +103,11 @@ public class FluidFormRenderer extends FormRenderer<FluidForm> implements ITicka
 
     private void renderDebug(FormRenderingContext context)
     {
-        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.LINES, VertexFormats.POSITION_COLOR_NORMAL);
+        // RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
+        /* shader binding handled by RenderLayer in 1.21.11 */
+        GL11.glLineWidth(2.0F);
+        
+        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.LINES, VertexFormats.POSITION_COLOR);
         
         MatrixStack stack = context.stack;
         
@@ -156,7 +163,8 @@ public class FluidFormRenderer extends FormRenderer<FluidForm> implements ITicka
             stack.pop();
         }
         
-        builder.end();
+        RenderLayers.debugFilledBox().draw(builder.end());
+        GL11.glLineWidth(1.0F);
     }
 
     private void renderFluid(VertexFormat format, RenderPipeline shader, MatrixStack matrices, int overlay, int light, int overlayColor, float transition)
@@ -177,6 +185,15 @@ public class FluidFormRenderer extends FormRenderer<FluidForm> implements ITicka
         {
             BBSModClient.getTextures().bindTexture(WHITE_TEXTURE);
         }
+
+        /* shader binding handled by RenderLayer in 1.21.11 */
+        /* shader color state handled by pipeline in 1.21.11 */
+        GlStateManager._enableBlend();
+        GlStateManager._blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+        GlStateManager._disableCull();
+        GlStateManager._enableDepthTest();
+
+        GameRenderer gameRenderer = MinecraftClient.getInstance().gameRenderer;
 
         Tessellator tessellator = Tessellator.getInstance();
         BufferBuilder builder = tessellator.begin(VertexFormat.DrawMode.TRIANGLES, format);
@@ -203,7 +220,10 @@ public class FluidFormRenderer extends FormRenderer<FluidForm> implements ITicka
             renderDrop(builder, matrices, finalColor, overlay, light);
         }
 
-        builder.end();
+        RenderLayers.debugFilledBox().draw(builder.end());
+        
+        GlStateManager._disableBlend();
+        GlStateManager._enableCull();
     }
 
     private void renderProceduralOcean(BufferBuilder builder, MatrixStack matrices, Color color, int overlay, int light)

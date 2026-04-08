@@ -2,6 +2,7 @@ package mchorse.bbs_mod.ui.particles;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.graphics.Draw;
 import mchorse.bbs_mod.particles.ParticleScheme;
@@ -15,8 +16,8 @@ import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.render.Tessellator;
-import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
+import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.client.util.BufferAllocator;
 import org.joml.Matrix4f;
@@ -72,7 +73,7 @@ public class UIParticleSchemeRenderer extends UIModelRenderer
 
         GlStateManager._enableBlend();
         GlStateManager._enableDepthTest();
-        this.emitter.render(VertexFormats.POSITION_TEXTURE_COLOR, BBSShaders::getModel, stack, OverlayTexture.DEFAULT_UV, context.getTransition());
+        this.emitter.render(VertexFormats.POSITION_TEXTURE_COLOR, () -> null, stack, OverlayTexture.DEFAULT_UV, context.getTransition());
         GlStateManager._disableDepthTest();
         GlStateManager._disableBlend();
 
@@ -107,7 +108,10 @@ public class UIParticleSchemeRenderer extends UIModelRenderer
         this.calculate(1, 1, a, b, c, d);
         builder.vertex(matrix, this.vector.x, this.vector.y, this.vector.z).color(0, 1, 0, alpha);
 
-        
+        // RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
+        GlStateManager._disableCull();
+        RenderLayers.debugFilledBox().draw(builder.end());
+        GlStateManager._enableCull();
     }
 
     private void calculate(float i, float j, float a, float b, float c, float d)

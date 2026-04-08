@@ -38,6 +38,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.Tessellator;
+import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.util.BufferAllocator;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
@@ -480,7 +481,7 @@ public class ModelInstance implements IModelInstance
 
                 try
                 {
-                    net.minecraft.client.render.RenderLayers.solid().draw(builder.end());
+                    RenderLayers.solid().draw(builder.end());
                 }
                 catch (IllegalStateException e)
                 {

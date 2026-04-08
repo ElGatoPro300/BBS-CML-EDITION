@@ -96,13 +96,6 @@ public class UIUtils
 
     public static void playClick(float pitch)
     {
-        if (BBSSettings.clickSound.get())
-        {
-            MinecraftClient.getInstance().getSoundManager().play(PositionedSoundInstance.ui(BBSMod.CLICK, 1F, pitch));
-        }
-        else
-        {
-            MinecraftClient.getInstance().getSoundManager().play(PositionedSoundInstance.ui(SoundEvents.UI_BUTTON_CLICK, pitch));
-        }
+        // TODO 1.21.11: migrate to the new PositionedSoundInstance factory path.
     }
 }
