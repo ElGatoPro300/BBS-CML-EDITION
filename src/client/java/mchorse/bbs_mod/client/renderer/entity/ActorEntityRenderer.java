@@ -85,7 +85,7 @@ public class ActorEntityRenderer extends EntityRenderer<ActorEntity, ActorEntity
 
         GlStateManager._enableBlend();
         FormUtilsClient.render(livingEntity.getForm(), new FormRenderingContext()
-            .set(FormRenderType.ENTITY, livingEntity.getBbsEntity(), matrices, light, overlay, tickDelta)
+            .set(FormRenderType.ENTITY, livingEntity.getFormEntity(), matrices, light, overlay, tickDelta)
             .camera(MinecraftClient.getInstance().gameRenderer.getCamera()));
 
         matrices.pop();

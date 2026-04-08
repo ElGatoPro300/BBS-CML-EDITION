@@ -89,7 +89,7 @@ public class FluidController
 
             for (Entity e : entities)
             {
-                samples.add(new FluidSample(e.pos, 0.1));
+                samples.add(new FluidSample(new net.minecraft.util.math.Vec3d(e.getX(), e.getY(), e.getZ()), 0.1));
             }
         }
 

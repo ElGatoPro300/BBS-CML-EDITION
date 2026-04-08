@@ -10,7 +10,6 @@ import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.ITickable;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.forms.MobForm;
-import mchorse.bbs_mod.mixin.LimbAnimatorAccessor;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.utils.MathUtils;
@@ -337,13 +336,8 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
                 livingEntity.lastHeadYaw = this.prevYawHead;
                 livingEntity.lastBodyYaw = 0F;
 
-                /* Limb swing is so ugly */
-                if (livingEntity.limbAnimator instanceof LimbAnimatorAccessor a && entity.getLimbAnimator() instanceof LimbAnimatorAccessor b)
-                {
-                    a.setPrevSpeed(b.getPrevSpeed());
-                    a.setSpeed(b.getSpeed());
-                    a.setPos(b.getPos());
-                }
+                /* Keep external limb animation in sync via public API */
+                livingEntity.limbAnimator.updateLimbs(entity.getLimbSpeed(0F), 0.4F, 1F);
 
                 /* Arm swing */
                 float handSwingProgress = entity.getHandSwingProgress(0F);

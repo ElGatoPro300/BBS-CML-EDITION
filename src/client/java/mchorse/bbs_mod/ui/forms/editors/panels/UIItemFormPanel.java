@@ -10,7 +10,7 @@ import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Color;
-import mchorse.bbs_mod.forms.values.ModelTransformMode;
+import net.minecraft.item.ItemDisplayContext;
 
 public class UIItemFormPanel extends UIFormPanel<ItemForm>
 {
@@ -27,7 +27,7 @@ public class UIItemFormPanel extends UIFormPanel<ItemForm>
         {
             this.getContext().replaceContextMenu((menu) ->
             {
-                for (ModelTransformMode value : ModelTransformMode.values())
+                for (ItemDisplayContext value : ItemDisplayContext.values())
                 {
                     if (this.form.modelTransform.get() == value)
                     {
@@ -46,7 +46,7 @@ public class UIItemFormPanel extends UIFormPanel<ItemForm>
         this.options.add(this.color, UI.label(UIKeys.FORMS_EDITORS_ITEM_TRANSFORMS), this.modelTransform, this.itemStackEditor);
     }
 
-    private void setModelTransform(ModelTransformMode value)
+    private void setModelTransform(ItemDisplayContext value)
     {
         this.form.modelTransform.set(value);
 

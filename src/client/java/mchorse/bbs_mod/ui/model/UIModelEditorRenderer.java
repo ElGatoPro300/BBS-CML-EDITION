@@ -263,6 +263,11 @@ public class UIModelEditorRenderer extends UIModelRenderer
         int h = texture.height;
 
         ShaderProgram previewProgram = BBSShaders.getPickerPreviewProgram();
+        if (previewProgram == null)
+        {
+            return;
+        }
+
         GlUniform target = previewProgram.getUniform("Target");
 
         if (target != null)
@@ -271,7 +276,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
         }
 
         GL11.glEnable(GL11.GL_BLEND);
-        context.batcher.texturedBox(BBSShaders::getPickerPreviewProgram, texture.id, Colors.WHITE, this.area.x, this.area.y, this.area.w, this.area.h, 0, h, w, 0, w, h);
+    context.batcher.texturedBox(previewProgram, texture.id, Colors.WHITE, this.area.x, this.area.y, this.area.w, this.area.h, 0, h, w, 0, w, h);
 
         Pair<Form, String> pair = this.stencil.getPicked();
 

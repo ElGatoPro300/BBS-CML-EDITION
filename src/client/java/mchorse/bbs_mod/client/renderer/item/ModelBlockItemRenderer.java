@@ -13,18 +13,17 @@ import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.renderers.FormRenderType;
 import mchorse.bbs_mod.forms.renderers.FormRenderingContext;
 import mchorse.bbs_mod.forms.renderers.FormRenderer;
-import mchorse.bbs_mod.forms.values.ModelTransformMode;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.pose.Transform;
 import net.minecraft.component.DataComponentTypes;
-import net.minecraft.component.type.NbtComponent;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.command.OrderedRenderCommandQueue;
 import net.minecraft.client.render.item.model.special.SpecialModelRenderer;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.block.entity.BlockEntityType;
+import net.minecraft.entity.TypedEntityData;
 import net.minecraft.item.ItemDisplayContext;
 import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NbtCompound;
 import net.minecraft.util.math.BlockPos;
 import org.joml.Vector3fc;
 
@@ -70,7 +69,7 @@ public class ModelBlockItemRenderer implements SpecialModelRenderer<ItemStack>
         if (item != null)
         {
             ModelProperties properties = item.entity.getProperties();
-            ModelTransformMode transformMode = this.toModelMode(mode);
+            ItemDisplayContext transformMode = mode;
             Form form = properties.getForm(transformMode);
             Transform transform = properties.getTransform(transformMode);
 
@@ -99,17 +98,6 @@ public class ModelBlockItemRenderer implements SpecialModelRenderer<ItemStack>
     public void collectVertices(Consumer<Vector3fc> consumer)
     {}
 
-    private ModelTransformMode toModelMode(ItemDisplayContext mode)
-    {
-        if (mode == ItemDisplayContext.GUI) return ModelTransformMode.GUI;
-        if (mode == ItemDisplayContext.THIRD_PERSON_LEFT_HAND) return ModelTransformMode.THIRD_PERSON_LEFT_HAND;
-        if (mode == ItemDisplayContext.THIRD_PERSON_RIGHT_HAND) return ModelTransformMode.THIRD_PERSON_RIGHT_HAND;
-        if (mode == ItemDisplayContext.FIRST_PERSON_LEFT_HAND) return ModelTransformMode.FIRST_PERSON_LEFT_HAND;
-        if (mode == ItemDisplayContext.FIRST_PERSON_RIGHT_HAND) return ModelTransformMode.FIRST_PERSON_RIGHT_HAND;
-        if (mode == ItemDisplayContext.GROUND) return ModelTransformMode.GROUND;
-        return ModelTransformMode.NONE;
-    }
-
     public Item get(ItemStack stack)
     {
         if (stack == null || stack.getItem() != BBSMod.MODEL_BLOCK_ITEM)
@@ -127,17 +115,16 @@ public class ModelBlockItemRenderer implements SpecialModelRenderer<ItemStack>
 
         this.map.put(stack, item);
 
-        NbtComponent nbtComponent = stack.get(DataComponentTypes.CUSTOM_DATA);
-        if (nbtComponent == null)
+        TypedEntityData<BlockEntityType<?>> blockEntityData = stack.get(DataComponentTypes.BLOCK_ENTITY_DATA);
+        if (blockEntityData == null)
         {
             return item;
         }
 
-        NbtCompound nbt = nbtComponent.copyNbt();
         var world = MinecraftClient.getInstance().world;
         if (world != null)
         {
-            entity.readNbt(nbt);
+            blockEntityData.applyToBlockEntity(entity, world.getRegistryManager());
         }
 
         return item;

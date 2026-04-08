@@ -8,7 +8,6 @@ import mchorse.bbs_mod.forms.entities.StubEntity;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.renderers.FormRenderType;
 import mchorse.bbs_mod.forms.renderers.FormRenderingContext;
-import mchorse.bbs_mod.forms.values.ModelTransformMode;
 import mchorse.bbs_mod.items.GunProperties;
 import mchorse.bbs_mod.ui.framework.UIScreen;
 import mchorse.bbs_mod.ui.model_blocks.UIModelBlockEditorMenu;
@@ -67,7 +66,7 @@ public class GunItemRenderer implements SpecialModelRenderer<ItemStack>
         if (item != null)
         {
             GunProperties properties = item.properties;
-            ModelTransformMode transformMode = this.toModelMode(mode);
+            ItemDisplayContext transformMode = mode;
             Form form = properties.getForm(transformMode);
             Transform transform = properties.getTransform(transformMode);
             boolean zoom = mode.isFirstPerson() && BBSModClient.getGunZoom() != null && properties.getZoomForm() != null;
@@ -106,17 +105,6 @@ public class GunItemRenderer implements SpecialModelRenderer<ItemStack>
     @Override
     public void collectVertices(Consumer<Vector3fc> consumer)
     {}
-
-    private ModelTransformMode toModelMode(ItemDisplayContext mode)
-    {
-        if (mode == ItemDisplayContext.GUI) return ModelTransformMode.GUI;
-        if (mode == ItemDisplayContext.THIRD_PERSON_LEFT_HAND) return ModelTransformMode.THIRD_PERSON_LEFT_HAND;
-        if (mode == ItemDisplayContext.THIRD_PERSON_RIGHT_HAND) return ModelTransformMode.THIRD_PERSON_RIGHT_HAND;
-        if (mode == ItemDisplayContext.FIRST_PERSON_LEFT_HAND) return ModelTransformMode.FIRST_PERSON_LEFT_HAND;
-        if (mode == ItemDisplayContext.FIRST_PERSON_RIGHT_HAND) return ModelTransformMode.FIRST_PERSON_RIGHT_HAND;
-        if (mode == ItemDisplayContext.GROUND) return ModelTransformMode.GROUND;
-        return ModelTransformMode.NONE;
-    }
 
     public Item get(ItemStack stack)
     {

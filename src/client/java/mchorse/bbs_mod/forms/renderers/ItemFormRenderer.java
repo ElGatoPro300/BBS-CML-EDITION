@@ -5,7 +5,6 @@ import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.forms.ItemForm;
-import mchorse.bbs_mod.forms.values.ModelTransformMode;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.colors.Color;
@@ -14,7 +13,6 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.item.ItemDisplayContext;
 import org.joml.Matrix4f;
 
 public class ItemFormRenderer extends FormRenderer<ItemForm>
@@ -85,16 +83,5 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
 
         context.stack.pop();
 
-    }
-
-    private ItemDisplayContext toDisplayMode(ModelTransformMode mode)
-    {
-        if (mode == ModelTransformMode.GUI) return ItemDisplayContext.GUI;
-        if (mode == ModelTransformMode.THIRD_PERSON_LEFT_HAND) return ItemDisplayContext.THIRD_PERSON_LEFT_HAND;
-        if (mode == ModelTransformMode.THIRD_PERSON_RIGHT_HAND) return ItemDisplayContext.THIRD_PERSON_RIGHT_HAND;
-        if (mode == ModelTransformMode.FIRST_PERSON_LEFT_HAND) return ItemDisplayContext.FIRST_PERSON_LEFT_HAND;
-        if (mode == ModelTransformMode.FIRST_PERSON_RIGHT_HAND) return ItemDisplayContext.FIRST_PERSON_RIGHT_HAND;
-        if (mode == ModelTransformMode.GROUND) return ItemDisplayContext.GROUND;
-        return ItemDisplayContext.NONE;
     }
 }
