@@ -36,6 +36,7 @@ public class UISettingsOverlayPanel extends UIOverlayPanel
     public UISettingsOverlayPanel()
     {
         super(UIKeys.CONFIG_TITLE);
+        this.resizable().resizeFromLeft();
 
         this.options = new UIScrollView(ScrollDirection.VERTICAL);
         this.options.scroll.scrollSpeed = 51;

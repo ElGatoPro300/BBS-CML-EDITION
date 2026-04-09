@@ -30,6 +30,9 @@ import mchorse.bbs_mod.ui.framework.elements.events.UIRemovedEvent;
 import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UIStringList;
+import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
+import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
+import mchorse.bbs_mod.ui.framework.elements.utils.UIDraggable;
 import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
 import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
 import mchorse.bbs_mod.ui.model_blocks.camera.ImmersiveModelBlockCameraController;
@@ -65,6 +68,7 @@ import java.util.Set;
 public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSupported
 {
     public static boolean toggleRendering;
+    private static int sidebarWidth = 220;
 
     public UIScrollView scrollView;
     public UIElement editor;
@@ -91,6 +95,7 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
     public UIItemStack armorLegs;
     public UIItemStack armorFeet;
     public UIElement properties;
+    public UIDraggable sidebarResizer;
 
     private ModelBlockEntity modelBlock;
     private ModelBlockEntity hovered;
@@ -128,7 +133,11 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         this.modelBlocks = new UIModelBlockEntityList((l) -> this.fill(l.get(0), false));
         this.modelBlocks.context((menu) ->
         {
-            if (this.modelBlock != null) menu.action(UIKeys.MODEL_BLOCKS_KEYS_TELEPORT, this::teleport);
+            if (this.modelBlock != null)
+            {
+                menu.action(Icons.EDIT, UIKeys.GENERAL_RENAME, this::renameModelBlock);
+                menu.action(UIKeys.MODEL_BLOCKS_KEYS_TELEPORT, this::teleport);
+            }
         });
         this.modelBlocks.background();
         this.modelBlocks.h(UIStringList.DEFAULT_HEIGHT * 7);
@@ -162,6 +171,7 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
             palette.getEvents().register(UIRemovedEvent.class, (e) ->
             {
                 this.scrollView.setVisible(true);
+                this.sidebarResizer.setVisible(true);
             });
 
             palette.resize();
@@ -172,6 +182,7 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
             }
 
             this.scrollView.setVisible(false);
+            this.sidebarResizer.setVisible(false);
         });
         this.pickEdit.keybinds();
 
@@ -462,7 +473,19 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
 
         this.scrollView = UI.scrollView(5, 12, this.modelBlocks, this.editor);
         this.scrollView.scroll.opposite().cancelScrolling();
-        this.scrollView.relative(this).w(220).h(1F);
+        this.scrollView.relative(this).w(sidebarWidth).h(1F);
+        this.sidebarResizer = new UIDraggable((context) ->
+        {
+            int min = 180;
+            int max = Math.max(min, this.area.w / 2);
+            int width = Math.max(min, Math.min(max, context.mouseX - this.area.x));
+
+            sidebarWidth = width;
+            this.scrollView.w(width);
+            this.scrollView.resize();
+            this.sidebarResizer.resize();
+        });
+        this.sidebarResizer.relative(this.scrollView).x(1F).y(0.5F).w(6).h(40).anchor(0.5F, 0.5F);
 
         this.fill(null, false);
 
@@ -470,7 +493,21 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         this.keys().register(Keys.UNDO, this::undoModelBlock).active(() -> this.modelBlock != null);
         this.keys().register(Keys.REDO, this::redoModelBlock).active(() -> this.modelBlock != null);
 
-        this.add(this.scrollView);
+        this.add(this.scrollView, this.sidebarResizer);
+    }
+
+    @Override
+    public void resize()
+    {
+        super.resize();
+
+        int min = 180;
+        int max = Math.max(min, this.area.w / 2);
+
+        sidebarWidth = Math.max(min, Math.min(max, sidebarWidth));
+
+        this.scrollView.w(sidebarWidth);
+        this.sidebarResizer.resize();
     }
 
     private void beginUndoCapture()
@@ -611,6 +648,37 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
             PlayerUtils.teleport(pos.getX() + 0.5D, pos.getY() + 0.5D, pos.getZ() + 0.5D);
             UIUtils.playClick();
         }
+    }
+
+    private void renameModelBlock()
+    {
+        if (this.modelBlock == null || this.getContext() == null)
+        {
+            return;
+        }
+
+        UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
+            UIKeys.GENERAL_RENAME,
+            UIKeys.PANELS_MODALS_RENAME,
+            this::applyModelBlockName
+        );
+
+        panel.text.setText(this.modelBlock.getProperties().getName());
+
+        UIOverlay.addOverlay(this.getContext(), panel);
+    }
+
+    private void applyModelBlockName(String name)
+    {
+        if (this.modelBlock == null)
+        {
+            return;
+        }
+
+        this.modelBlock.getProperties().setName(name);
+        this.toSave.add(this.modelBlock);
+        this.modelBlocks.update();
+        this.save(this.modelBlock);
     }
 
     @Override

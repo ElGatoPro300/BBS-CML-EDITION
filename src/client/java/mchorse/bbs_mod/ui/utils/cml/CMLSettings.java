@@ -35,6 +35,8 @@ public class CMLSettings
         BBSSettings.editorReplaySprintParticles = builder.getBoolean("replay_sprint_particles", false);
         BBSSettings.editorCameraPreviewPlayerSync = builder.getBoolean("camera_preview_player_sync", false);
         BBSSettings.recordingCameraPreviewFutureCount = builder.getInt("camera_preview_future_count", 3, 1, 8);
+        BBSSettings.editorReplayStepSound = builder.getBoolean("replay_step_sound", true);
+        BBSSettings.editorMuteRenderAudioClips = builder.getBoolean("mute_render_audio_clips", false);
         BBSSettings.editorTimeMode = builder.getInt("time_mode", 0, 0, 2);
         BBSSettings.editorTimeMode.modes(
             UIKeys.CONFIG_EDITOR_TICKS_MODE,

@@ -94,6 +94,8 @@ public class BBSSettings
     public static ValueBoolean editorCameraPreviewPlayerSync;
     public static ValueInt editorDockGuideColor;
     public static ValueFloat editorDockGuideOpacity;
+    public static ValueBoolean editorReplayStepSound;
+    public static ValueBoolean editorMuteRenderAudioClips;
     public static ValueInt editorTimeMode;
     public static ValueInt editorReplayEditorTitleLimit;
     public static ValueBoolean editorReplayHud;

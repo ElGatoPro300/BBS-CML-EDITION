@@ -56,6 +56,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
     public UIModelPanel(UIDashboard dashboard)
     {
         super(dashboard);
+        this.overlay.resizable().minSize(260, 220);
 
         this.overlay.add.setEnabled(false);
 
