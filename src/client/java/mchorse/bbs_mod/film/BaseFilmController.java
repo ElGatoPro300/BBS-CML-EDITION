@@ -632,7 +632,11 @@ public abstract class BaseFilmController
 
                             Vec3d pos = player.getPos();
 
-                            player.move(MovementType.SELF, new Vec3d(x - pos.x, y - pos.y, z - pos.z));
+                            if (BBSSettings.editorReplayStepSound == null || BBSSettings.editorReplayStepSound.get())
+                            {
+                                player.move(MovementType.SELF, new Vec3d(x - pos.x, y - pos.y, z - pos.z));
+                            }
+
                             player.setPosition(x, y, z);
 
                             player.setSneaking(sneaking);
