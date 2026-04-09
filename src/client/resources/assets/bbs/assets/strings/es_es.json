@@ -813,6 +813,8 @@
     "bbs.ui.forms.editors.general.visible": "Visible",
     "bbs.ui.forms.editors.item.title": "Ítem",
     "bbs.ui.forms.editors.item.transforms": "Transformaciones de item",
+    "bbs.ui.forms.editors.item.same_animation_when_dropped": "Misma animación al dropear",
+    "bbs.ui.forms.editors.item.same_animation_when_dropped-tooltip": "Si está activado, fuerza de inmediato la animación de item dropeado (modo GROUND), incluso si el model block no está tirado en el suelo.",
     "bbs.ui.forms.editors.label.advanced_text": "Texto avanzado",
     "bbs.ui.forms.editors.label.anchor": "Anclaje del texto",
     "bbs.ui.forms.editors.label.anchor_lines": "Líneas de anclaje",

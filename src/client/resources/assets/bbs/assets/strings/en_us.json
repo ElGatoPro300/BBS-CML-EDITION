@@ -812,6 +812,8 @@
     "bbs.ui.forms.editors.general.visible": "Visible",
     "bbs.ui.forms.editors.item.title": "Item",
     "bbs.ui.forms.editors.item.transforms": "Item transforms",
+    "bbs.ui.forms.editors.item.same_animation_when_dropped": "Same animation when dropped",
+    "bbs.ui.forms.editors.item.same_animation_when_dropped-tooltip": "When enabled, force dropped-item animation (GROUND mode) immediately, even if the model block is not dropped on the ground.",
     "bbs.ui.forms.editors.label.advanced_text": "Advanced Text",
     "bbs.ui.forms.editors.label.anchor": "Label anchor",
     "bbs.ui.forms.editors.label.anchor_lines": "Anchor lines",
