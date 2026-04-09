@@ -95,5 +95,41 @@ public abstract class DataManager
         }
     }
 
+    public void renameData(String group, String oldKey, String newKey)
+    {
+        if (group.isEmpty() || oldKey == null || oldKey.isEmpty() || newKey == null)
+        {
+            return;
+        }
+
+        newKey = newKey.trim();
+
+        if (newKey.isEmpty() || oldKey.equals(newKey))
+        {
+            return;
+        }
+
+        MapType newPoses = data.getMap(group);
+
+        if (!newPoses.has(oldKey))
+        {
+            return;
+        }
+
+        MapType pose = newPoses.getMap(oldKey);
+
+        newPoses.remove(oldKey);
+        newPoses.put(newKey, pose);
+
+        File file = BBSMod.getProvider().getFile(getFile(group));
+
+        if (file != null)
+        {
+            file.getParentFile().mkdirs();
+
+            DataToString.writeSilently(file, newPoses, true);
+        }
+    }
+
     protected abstract Link getFile(String group);
 }
