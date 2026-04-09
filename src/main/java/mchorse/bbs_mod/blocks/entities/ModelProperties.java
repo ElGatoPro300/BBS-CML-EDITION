@@ -12,6 +12,8 @@ import org.joml.Vector3f;
 
 public class ModelProperties implements IMapSerializable
 {
+    private String name = "";
+
     private Form form;
     private Form formThirdPerson;
     private Form formInventory;
@@ -36,6 +38,16 @@ public class ModelProperties implements IMapSerializable
     public Form getForm()
     {
         return this.form;
+    }
+
+    public String getName()
+    {
+        return this.name;
+    }
+
+    public void setName(String name)
+    {
+        this.name = name == null ? "" : name.trim();
     }
 
     protected Form processForm(Form form)
@@ -245,6 +257,7 @@ public class ModelProperties implements IMapSerializable
     @Override
     public void fromData(MapType data)
     {
+        this.name = data.getString("name", "").trim();
         this.form = this.processForm(FormUtils.fromData(data.getMap("form")));
         this.formThirdPerson = this.processForm(FormUtils.fromData(data.getMap("formThirdPerson")));
         this.formInventory = this.processForm(FormUtils.fromData(data.getMap("formInventory")));
@@ -287,6 +300,7 @@ public class ModelProperties implements IMapSerializable
     @Override
     public void toData(MapType data)
     {
+        data.putString("name", this.name);
         data.put("form", FormUtils.toData(this.form));
         data.put("formThirdPerson", FormUtils.toData(this.formThirdPerson));
         data.put("formInventory", FormUtils.toData(this.formInventory));

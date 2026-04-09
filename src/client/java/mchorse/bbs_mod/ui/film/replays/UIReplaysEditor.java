@@ -2,6 +2,7 @@ package mchorse.bbs_mod.ui.film.replays;
 
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
+import mchorse.bbs_mod.bobj.BOBJBone;
 import mchorse.bbs_mod.audio.SoundBuffer;
 import mchorse.bbs_mod.audio.Waveform;
 import mchorse.bbs_mod.camera.Camera;
@@ -9,7 +10,10 @@ import mchorse.bbs_mod.camera.CameraUtils;
 import mchorse.bbs_mod.camera.clips.ClipFactoryData;
 import mchorse.bbs_mod.camera.clips.misc.AudioClip;
 import mchorse.bbs_mod.camera.utils.TimeUtils;
+import mchorse.bbs_mod.cubic.IModel;
 import mchorse.bbs_mod.cubic.ModelInstance;
+import mchorse.bbs_mod.cubic.data.model.Model;
+import mchorse.bbs_mod.cubic.data.model.ModelGroup;
 import mchorse.bbs_mod.cubic.data.animation.Animation;
 import mchorse.bbs_mod.cubic.data.animation.AnimationPart;
 import mchorse.bbs_mod.data.DataStorageUtils;
@@ -84,6 +88,7 @@ import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -247,15 +252,16 @@ public class UIReplaysEditor extends UIElement
             if (model != null)
             {
                 String path = FormUtils.getPath(modelForm);
+                List<Pair<String, Integer>> orderedBones = this.collectBoneOrder(model.model);
 
-                for (String bone : model.model.getAllGroupKeys())
+                for (Pair<String, Integer> bone : orderedBones)
                 {
-                    if (bone.startsWith("armor_") || bone.endsWith("_item"))
+                    if (bone.a.startsWith("armor_") || bone.a.endsWith("_item"))
                     {
                         continue;
                     }
 
-                    propertyPaths.add(StringUtils.combinePaths(path, "pose") + ":" + bone);
+                    propertyPaths.add(StringUtils.combinePaths(path, "pose") + ":" + bone.a);
                 }
             }
         }
@@ -263,6 +269,264 @@ public class UIReplaysEditor extends UIElement
         for (BodyPart part : form.parts.getAllTyped())
         {
             this.collectLimbTracks(part.getForm(), propertyPaths);
+        }
+    }
+
+    private void orderLimbTracks(Form form, List<UIKeyframeSheet> limbs)
+    {
+        if (form == null || limbs.isEmpty())
+        {
+            return;
+        }
+
+        if (!(form instanceof ModelForm modelForm))
+        {
+            return;
+        }
+
+        ModelInstance model = ModelFormRenderer.getModel(modelForm);
+
+        if (model == null)
+        {
+            return;
+        }
+
+        List<Pair<String, Integer>> orderedBones = this.collectBoneOrder(model.model);
+
+        if (orderedBones.isEmpty())
+        {
+            return;
+        }
+
+        Map<String, UIKeyframeSheet> limbByBone = new HashMap<>();
+
+        for (UIKeyframeSheet limb : limbs)
+        {
+            int colon = limb.id.indexOf(':');
+
+            if (colon == -1)
+            {
+                continue;
+            }
+
+            limbByBone.put(limb.id.substring(colon + 1), limb);
+        }
+
+        Map<String, String> parentByBone = this.collectBoneParents(model.model);
+        Map<String, List<String>> childrenByBone = this.collectChildren(parentByBone);
+
+        int baseLevel = limbs.get(0).level;
+        List<UIKeyframeSheet> reordered = new ArrayList<>();
+        Set<UIKeyframeSheet> used = new HashSet<>();
+
+        for (Pair<String, Integer> bone : orderedBones)
+        {
+            UIKeyframeSheet limb = limbByBone.get(bone.a);
+
+            if (limb == null)
+            {
+                continue;
+            }
+
+            if (this.isAncestorCollapsed(limb, parentByBone))
+            {
+                continue;
+            }
+
+            limb.level = baseLevel + bone.b;
+            this.applyLimbExpandState(limb, bone.a, childrenByBone, limbByBone);
+            reordered.add(limb);
+            used.add(limb);
+        }
+
+        for (UIKeyframeSheet limb : limbs)
+        {
+            if (used.contains(limb))
+            {
+                continue;
+            }
+
+            limb.level = baseLevel;
+            limb.toggleExpanded = null;
+            reordered.add(limb);
+        }
+
+        limbs.clear();
+        limbs.addAll(reordered);
+    }
+
+    private void applyLimbExpandState(UIKeyframeSheet limb, String boneName, Map<String, List<String>> childrenByBone, Map<String, UIKeyframeSheet> limbByBone)
+    {
+        if (!this.hasChildTrack(boneName, childrenByBone, limbByBone))
+        {
+            limb.toggleExpanded = null;
+            return;
+        }
+
+        String key = this.replay.uuid.get() + ":" + limb.id;
+        boolean expanded = !this.collapsedModelTracks.getOrDefault(key, false);
+
+        limb.expanded = expanded;
+        limb.toggleExpanded = () ->
+        {
+            this.collapsedModelTracks.put(key, !this.collapsedModelTracks.getOrDefault(key, false));
+            this.updateChannelsList();
+        };
+    }
+
+    private boolean hasChildTrack(String boneName, Map<String, List<String>> childrenByBone, Map<String, UIKeyframeSheet> limbByBone)
+    {
+        List<String> children = childrenByBone.get(boneName);
+
+        if (children == null || children.isEmpty())
+        {
+            return false;
+        }
+
+        for (String child : children)
+        {
+            if (limbByBone.containsKey(child))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private boolean isAncestorCollapsed(UIKeyframeSheet limb, Map<String, String> parentByBone)
+    {
+        int colon = limb.id.indexOf(':');
+
+        if (colon == -1)
+        {
+            return false;
+        }
+
+        String poseTrackId = limb.id.substring(0, colon);
+        String boneName = limb.id.substring(colon + 1);
+        String parent = parentByBone.get(boneName);
+
+        while (parent != null)
+        {
+            String key = this.replay.uuid.get() + ":" + poseTrackId + ":" + parent;
+
+            if (this.collapsedModelTracks.getOrDefault(key, false))
+            {
+                return true;
+            }
+
+            parent = parentByBone.get(parent);
+        }
+
+        return false;
+    }
+
+    private Map<String, String> collectBoneParents(IModel model)
+    {
+        Map<String, String> parentByBone = new HashMap<>();
+
+        if (model instanceof Model cubicModel)
+        {
+            this.collectBoneParentsFromGroups(cubicModel.topGroups, null, parentByBone);
+        }
+        else
+        {
+            Collection<BOBJBone> bones = model.getAllBOBJBones();
+
+            if (bones != null && !bones.isEmpty())
+            {
+                for (BOBJBone bone : bones)
+                {
+                    if (bone.parentBone != null)
+                    {
+                        parentByBone.put(bone.name, bone.parentBone.name);
+                    }
+                }
+            }
+        }
+
+        return parentByBone;
+    }
+
+    private void collectBoneParentsFromGroups(List<ModelGroup> groups, String parent, Map<String, String> parentByBone)
+    {
+        for (ModelGroup group : groups)
+        {
+            if (parent != null)
+            {
+                parentByBone.put(group.id, parent);
+            }
+
+            if (!group.children.isEmpty())
+            {
+                this.collectBoneParentsFromGroups(group.children, group.id, parentByBone);
+            }
+        }
+    }
+
+    private Map<String, List<String>> collectChildren(Map<String, String> parentByBone)
+    {
+        Map<String, List<String>> childrenByBone = new HashMap<>();
+
+        for (Map.Entry<String, String> entry : parentByBone.entrySet())
+        {
+            childrenByBone.computeIfAbsent(entry.getValue(), (key) -> new ArrayList<>()).add(entry.getKey());
+        }
+
+        return childrenByBone;
+    }
+
+    private List<Pair<String, Integer>> collectBoneOrder(IModel model)
+    {
+        List<Pair<String, Integer>> orderedBones = new ArrayList<>();
+
+        if (model instanceof Model cubicModel)
+        {
+            this.collectBonesFromGroups(cubicModel.topGroups, 0, orderedBones);
+        }
+        else
+        {
+            Collection<BOBJBone> bones = model.getAllBOBJBones();
+
+            if (bones != null && !bones.isEmpty())
+            {
+                for (BOBJBone bone : bones)
+                {
+                    int depth = 0;
+                    BOBJBone parent = bone.parentBone;
+
+                    while (parent != null)
+                    {
+                        depth += 1;
+                        parent = parent.parentBone;
+                    }
+
+                    orderedBones.add(new Pair<>(bone.name, depth));
+                }
+            }
+            else
+            {
+                for (String bone : model.getAllGroupKeys())
+                {
+                    orderedBones.add(new Pair<>(bone, 0));
+                }
+            }
+        }
+
+        return orderedBones;
+    }
+
+    private void collectBonesFromGroups(List<ModelGroup> groups, int depth, List<Pair<String, Integer>> orderedBones)
+    {
+        for (ModelGroup group : groups)
+        {
+            orderedBones.add(new Pair<>(group.id, depth));
+
+            if (!group.children.isEmpty())
+            {
+                this.collectBonesFromGroups(group.children, depth + 1, orderedBones);
+            }
         }
     }
 
@@ -859,6 +1123,8 @@ public class UIReplaysEditor extends UIElement
                     }
                 }
 
+                this.orderLimbTracks(rootTracks.form, rootTracks.limbs);
+
                 /* Add root tracks first */
                 grouped.addAll(rootTracks.before);
                 grouped.addAll(rootTracks.pose);
@@ -875,6 +1141,8 @@ public class UIReplaysEditor extends UIElement
                         poseSheet.title = IKey.constant(subForm.form.getDisplayName());
                         grouped.add(poseSheet);
                     }
+
+                    this.orderLimbTracks(subForm.form, subForm.limbs);
 
                     grouped.addAll(subForm.before);
                     grouped.addAll(subForm.overlays);
@@ -1037,6 +1305,8 @@ public class UIReplaysEditor extends UIElement
                     }
                 }
 
+                this.orderLimbTracks(rootForm, poseLimbTracks);
+
                 grouped.addAll(worldTracks);
                 grouped.add(modelPropsHeader);
                 grouped.addAll(modelTracksBeforePose);
@@ -1076,6 +1346,8 @@ public class UIReplaysEditor extends UIElement
 
                     if (!this.collapsedModelTracks.getOrDefault(groupKey, false))
                     {
+                        this.orderLimbTracks(subForm.form, subForm.limbs);
+
                         grouped.addAll(subForm.before);
                         grouped.addAll(subForm.pose);
                         grouped.addAll(subForm.limbs);
