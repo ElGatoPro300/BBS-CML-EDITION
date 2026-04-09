@@ -69,5 +69,31 @@ public abstract class DataManager
         }
     }
 
+    public void removeData(String group, String key)
+    {
+        if (group.isEmpty() || key == null || key.isEmpty())
+        {
+            return;
+        }
+
+        MapType newPoses = data.getMap(group);
+
+        if (!newPoses.has(key))
+        {
+            return;
+        }
+
+        newPoses.remove(key);
+
+        File file = BBSMod.getProvider().getFile(getFile(group));
+
+        if (file != null)
+        {
+            file.getParentFile().mkdirs();
+
+            DataToString.writeSilently(file, newPoses, true);
+        }
+    }
+
     protected abstract Link getFile(String group);
 }

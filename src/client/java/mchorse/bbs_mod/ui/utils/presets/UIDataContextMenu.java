@@ -10,6 +10,8 @@ import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.context.UIContextMenu;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UISearchList;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UIStringList;
+import mchorse.bbs_mod.ui.framework.elements.overlay.UIConfirmOverlayPanel;
+import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.presets.DataManager;
@@ -23,6 +25,7 @@ public class UIDataContextMenu extends UIContextMenu
     public UIIcon copy;
     public UIIcon paste;
     public UIIcon reset;
+    public UIIcon remove;
     public UIIcon save;
 
     public UISearchList<String> entries;
@@ -56,6 +59,8 @@ public class UIDataContextMenu extends UIContextMenu
         this.paste.tooltip(UIKeys.POSE_CONTEXT_PASTE);
         this.reset = new UIIcon(Icons.REFRESH, (b) -> this.send(new MapType()));
         this.reset.tooltip(UIKeys.POSE_CONTEXT_RESET);
+        this.remove = new UIIcon(Icons.REMOVE, (b) -> this.removeEntry());
+        this.remove.tooltip(UIKeys.GENERAL_REMOVE);
         this.save = new UIIcon(Icons.SAVED, (b) ->
         {
             String name = this.entries.search.getText();
@@ -76,7 +81,7 @@ public class UIDataContextMenu extends UIContextMenu
         this.entries.search.filename();
         this.entries.search.placeholder(UIKeys.POSE_CONTEXT_NAME);
 
-        this.row = UI.row(this.copy, this.paste, this.reset, this.save);
+        this.row = UI.row(this.copy, this.paste, this.reset, this.remove, this.save);
 
         this.row.relative(this).xy(5, 5).w(1F, -10).h(20);
         this.entries.relative(this).xy(5, 25).w(1F, -10).hTo(this.area, 1F, -5);
@@ -112,6 +117,38 @@ public class UIDataContextMenu extends UIContextMenu
         this.entries.list.clear();
         this.entries.list.add(this.data.keys());
         this.entries.list.sort();
+    }
+
+    private void removeEntry()
+    {
+        String key = this.entries.list.getCurrentFirst();
+
+        if ((key == null || key.isEmpty()) && this.data.has(this.entries.search.getText()))
+        {
+            key = this.entries.search.getText();
+        }
+
+        if (key == null || key.isEmpty())
+        {
+            return;
+        }
+
+        final String finalKey = key;
+
+        UIOverlay.addOverlay(this.getContext(), new UIConfirmOverlayPanel(
+            UIKeys.GENERAL_REMOVE,
+            UIKeys.PANELS_MODALS_REMOVE,
+            (confirm) ->
+            {
+                if (confirm)
+                {
+                    this.manager.removeData(this.group, finalKey);
+                    this.data = this.manager.getData(this.group);
+                    this.entries.search.setText("");
+                    this.fillPoses();
+                }
+            }
+        ));
     }
 
     @Override
