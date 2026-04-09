@@ -691,7 +691,6 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
 
         Area area = this.keyframes.area;
         this.updateSidebarScrollLimits(context);
-        BufferBuilder builder = Tessellator.getInstance().getBuffer();
         Matrix4f matrix = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
 
         int sidebarX = area.x - this.sidebarScroll;
