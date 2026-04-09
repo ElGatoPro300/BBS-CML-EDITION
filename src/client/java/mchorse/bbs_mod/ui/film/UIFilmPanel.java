@@ -200,9 +200,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                     layout.setMainSizeH(1F - (context.mouseY - this.editor.area.y) / (float) this.editor.area.h);
                 }
 
-                float normalizedX = (context.mouseX - this.editor.area.x) / (float) this.editor.area.w;
-
-                layout.setEditorSizeH(this.isHorizontalEditorOnLeft(layout) ? normalizedX : 1F - normalizedX);
+                layout.setEditorSizeH(1F - (context.mouseX - this.editor.area.x) / (float) this.editor.area.w);
             }
             else if (layout.isMiddleLayout())
             {
@@ -229,14 +227,13 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
             if (layout.isHorizontal())
             {
-                int dividerX = this.getHorizontalDividerX(layout);
-                int x = dividerX + 3;
+                int x = this.editArea.area.x + 3;
                 int y = (layout.isMainOnTop() ? this.editArea.area.y : this.editArea.area.ey()) - 3;
 
                 context.batcher.box(x, y - size, x + 1, y, Colors.WHITE);
                 context.batcher.box(x, y - 1, x + size, y, Colors.WHITE);
 
-                x = dividerX - 3;
+                x = this.editArea.area.x - 3;
                 y = (layout.isMainOnTop() ? this.editArea.area.y : this.editArea.area.ey()) - 3;
 
                 context.batcher.box(x - 1, y - size, x, y, Colors.WHITE);
@@ -531,7 +528,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         if (layout.isHorizontal())
         {
-            return new Vector2i(this.getHorizontalDividerX(layout), layout.isMainOnTop() ? this.editArea.area.y : this.editArea.area.ey());
+            return new Vector2i(this.editArea.area.x, layout.isMainOnTop() ? this.editArea.area.y : this.editArea.area.ey());
         }
 
         if (layout.isMiddleLayout())
@@ -562,16 +559,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         }
 
         return new Vector2i(this.editArea.area.x + 3, this.editArea.area.y - 3);
-    }
-
-    private int getHorizontalDividerX(ValueEditorLayout layout)
-    {
-        return this.isHorizontalEditorOnLeft(layout) ? this.editArea.area.ex() : this.editArea.area.x;
-    }
-
-    private boolean isHorizontalEditorOnLeft(ValueEditorLayout layout)
-    {
-        return layout.isHorizontalLayoutInverted();
     }
 
     private boolean isMainOnLeftForCurrentLayout(ValueEditorLayout layout)
@@ -1482,7 +1469,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         }
         else if (layout.getLayout() == ValueEditorLayout.LAYOUT_HORIZONTAL_TOP)
         {
-            layout.setHorizontalLayoutInverted(!layout.isHorizontalLayoutInverted());
+            layout.setLayout(ValueEditorLayout.LAYOUT_HORIZONTAL_BOTTOM);
         }
         else if (layout.getLayout() == ValueEditorLayout.LAYOUT_VERTICAL_LEFT)
         {
