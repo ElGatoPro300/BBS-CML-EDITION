@@ -7,16 +7,15 @@ import mchorse.bbs_mod.forms.entities.MCEntity;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.forms.MobForm;
 import mchorse.bbs_mod.utils.RayTracing;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtElement;
-import net.minecraft.registry.Registries;
-import net.minecraft.registry.RegistryKey;
-import net.minecraft.util.hit.EntityHitResult;
-import net.minecraft.util.hit.HitResult;
-
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.EntityHitResult;
+import net.minecraft.world.phys.HitResult;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -29,9 +28,9 @@ public class Morph
     private Form form;
     public final MCEntity entity;
 
-    public static Form getMobForm(PlayerEntity player)
+    public static Form getMobForm(Player player)
     {
-        HitResult hitResult = RayTracing.rayTraceEntity(player, player.getEntityWorld(), player.getEyePos(), player.getRotationVector(), 64);
+        HitResult hitResult = RayTracing.rayTraceEntity(player, player.level(), player.getEyePosition(), player.getLookAngle(), 64);
 
         if (hitResult.getType() == HitResult.Type.ENTITY)
         {
@@ -47,19 +46,19 @@ public class Morph
                 }
             }
 
-            Optional<RegistryKey<EntityType<?>>> key = Registries.ENTITY_TYPE.getKey(target.getType());
+            Optional<ResourceKey<EntityType<?>>> key = BuiltInRegistries.ENTITY_TYPE.getResourceKey(target.getType());
 
             if (key.isPresent())
             {
                 MobForm form = new MobForm();
-                NbtCompound compound = new NbtCompound();
+                CompoundTag compound = new CompoundTag();
 
                 for (String s : Arrays.asList("Pos", "Motion", "Rotation", "FallDistance", "Fire", "Air", "OnGround", "Invulnerable", "PortalCooldown", "UUID"))
                 {
                     compound.remove(s);
                 }
 
-                form.mobID.set(key.get().getValue().toString());
+                form.mobID.set(key.get().identifier().toString());
                 form.mobNBT.set(compound.toString());
 
                 return form;
@@ -91,20 +90,20 @@ public class Morph
 
     public void setForm(Form form)
     {
-        if (form == null && this.form != null && this.entity.getMcEntity() instanceof PlayerEntity player)
+        if (form == null && this.form != null && this.entity.getMcEntity() instanceof Player player)
         {
             this.form.onDemorph(player);
         }
 
         this.form = form;
 
-        if (this.form != null && this.entity.getMcEntity() instanceof PlayerEntity player)
+        if (this.form != null && this.entity.getMcEntity() instanceof Player player)
         {
             this.form.onMorph(player);
             this.form.playMain();
         }
 
-        this.entity.getMcEntity().calculateDimensions();
+        this.entity.getMcEntity().refreshDimensions();
     }
 
     public void update()
@@ -117,9 +116,9 @@ public class Morph
         }
     }
 
-    public NbtElement toNbt()
+    public Tag toNbt()
     {
-        NbtCompound compound = new NbtCompound();
+        CompoundTag compound = new CompoundTag();
 
         if (this.form != null)
         {
@@ -129,11 +128,11 @@ public class Morph
         return compound;
     }
 
-    public void fromNbt(NbtCompound compound)
+    public void fromNbt(CompoundTag compound)
     {
         if (compound.contains("Form"))
         {
-            Optional<NbtCompound> formNbt = compound.getCompound("Form");
+            Optional<CompoundTag> formNbt = compound.getCompound("Form");
 
             if (formNbt.isEmpty())
             {

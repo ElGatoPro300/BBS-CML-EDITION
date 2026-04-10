@@ -8,24 +8,24 @@ import mchorse.bbs_mod.settings.values.misc.ValueVector3f;
 import mchorse.bbs_mod.settings.values.numeric.ValueBoolean;
 import mchorse.bbs_mod.settings.values.numeric.ValueInt;
 import mchorse.bbs_mod.triggers.Trigger;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.phys.AABB;
 import mchorse.bbs_mod.events.TriggerBlockEntityUpdateCallback;
 import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.morphing.Morph;
 import mchorse.bbs_mod.network.ServerNetwork;
-import net.minecraft.block.BlockState;
-import net.minecraft.block.entity.BlockEntity;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.network.listener.ClientPlayPacketListener;
-import net.minecraft.network.packet.Packet;
-import net.minecraft.network.packet.s2c.play.BlockEntityUpdateS2CPacket;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.storage.ReadView;
-import net.minecraft.storage.WriteView;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Box;
-import net.minecraft.world.World;
-import net.minecraft.registry.RegistryWrapper;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 
@@ -97,12 +97,12 @@ public class TriggerBlockEntity extends BlockEntity
         super(BBSMod.TRIGGER_BLOCK_ENTITY, pos, state);
     }
 
-    public void trigger(ServerPlayerEntity player, boolean rightClick)
+    public void trigger(ServerPlayer player, boolean rightClick)
     {
         this.trigger(player, rightClick ? this.right.getList() : this.left.getList());
     }
 
-    public void trigger(ServerPlayerEntity player, List<Trigger> triggers)
+    public void trigger(ServerPlayer player, List<Trigger> triggers)
     {
         for (Trigger trigger : triggers)
         {
@@ -116,7 +116,7 @@ public class TriggerBlockEntity extends BlockEntity
                 {
                     try
                     {
-                        player.getCommandSource().getServer().getCommandManager().parseAndExecute(player.getCommandSource(), cmd);
+                        player.createCommandSourceStack().getServer().getCommands().performPrefixedCommand(player.createCommandSourceStack(), cmd);
                     }
                     catch (Exception e)
                     {
@@ -140,24 +140,24 @@ public class TriggerBlockEntity extends BlockEntity
                 
                 BlockPos pos = new BlockPos(x, y, z);
                 
-                if (this.world.isPosLoaded(pos))
+                if (this.level.isLoaded(pos))
                 {
-                    BlockEntity be = this.world.getBlockEntity(pos);
+                    BlockEntity be = this.level.getBlockEntity(pos);
                     
                     if (be instanceof ModelBlockEntity modelBlock)
                     {
                         modelBlock.getProperties().setForm(FormUtils.copy(form));
-                        modelBlock.markDirty();
-                        this.world.updateListeners(pos, this.world.getBlockState(pos), this.world.getBlockState(pos), 3);
+                        modelBlock.setChanged();
+                        this.level.sendBlockUpdated(pos, this.level.getBlockState(pos), this.level.getBlockState(pos), 3);
                     }
                 }
             }
         }
     }
     
-    public static void tick(World world, BlockPos pos, BlockState state, TriggerBlockEntity blockEntity)
+    public static void tick(Level world, BlockPos pos, BlockState state, TriggerBlockEntity blockEntity)
     {
-        if (!world.isClient() && blockEntity.region.get())
+        if (!world.isClientSide() && blockEntity.region.get())
         {
             blockEntity.tickRegion();
         }
@@ -165,17 +165,17 @@ public class TriggerBlockEntity extends BlockEntity
         TriggerBlockEntityUpdateCallback.EVENT.invoker().update(blockEntity);
     }
 
-    public Box getRegionBox()
+    public AABB getRegionBox()
     {
-        return this.getRegionBox(this.pos.getX(), this.pos.getY(), this.pos.getZ());
+        return this.getRegionBox(this.worldPosition.getX(), this.worldPosition.getY(), this.worldPosition.getZ());
     }
 
-    public Box getRegionBoxRelative()
+    public AABB getRegionBoxRelative()
     {
         return this.getRegionBox(0, 0, 0);
     }
 
-    public Box getRegionBox(double x, double y, double z)
+    public AABB getRegionBox(double x, double y, double z)
     {
         Vector3f offset = this.regionOffset.get();
         Vector3f size = this.regionSize.get();
@@ -189,7 +189,7 @@ public class TriggerBlockEntity extends BlockEntity
         double maxY = offset.y + 0.5 + size.y / 2.0 + expansion;
         double maxZ = offset.z + 0.5 + size.z / 2.0 + expansion;
 
-        return new Box(
+        return new AABB(
             x + minX, y + minY, z + minZ,
             x + maxX, y + maxY, z + maxZ
         );
@@ -197,14 +197,14 @@ public class TriggerBlockEntity extends BlockEntity
 
     private void tickRegion()
     {
-        Box box = this.getRegionBox();
-        List<ServerPlayerEntity> players = this.world.getEntitiesByClass(ServerPlayerEntity.class, box, (p) -> true);
+        AABB box = this.getRegionBox();
+        List<ServerPlayer> players = this.level.getEntitiesOfClass(ServerPlayer.class, box, (p) -> true);
         Set<UUID> currentPlayers = new HashSet<>();
-        long time = this.world.getTime();
+        long time = this.level.getGameTime();
 
-        for (ServerPlayerEntity player : players)
+        for (ServerPlayer player : players)
         {
-            UUID uuid = player.getUuid();
+            UUID uuid = player.getUUID();
             currentPlayers.add(uuid);
 
             boolean isNew = !this.playersInRegion.contains(uuid);
@@ -226,7 +226,7 @@ public class TriggerBlockEntity extends BlockEntity
         {
             if (!currentPlayers.contains(uuid))
             {
-                ServerPlayerEntity player = (ServerPlayerEntity) this.world.getPlayerByUuid(uuid);
+                ServerPlayer player = (ServerPlayer) this.level.getPlayerByUUID(uuid);
 
                 if (player != null)
                 {
@@ -241,54 +241,54 @@ public class TriggerBlockEntity extends BlockEntity
     }
 
     @Override
-    protected void readData(ReadView view)
+    protected void loadAdditional(ValueInput view)
     {
-        super.readData(view);
+        super.loadAdditional(view);
         
-        view.getOptionalString("Left").ifPresent((value) -> {
+        view.getString("Left").ifPresent((value) -> {
             BaseType type = DataToString.fromString(value);
 
             if (type != null) this.left.fromData(type);
         });
-        view.getOptionalString("Right").ifPresent((value) -> {
+        view.getString("Right").ifPresent((value) -> {
             BaseType type = DataToString.fromString(value);
 
             if (type != null) this.right.fromData(type);
         });
-        view.getOptionalString("Enter").ifPresent((value) -> {
+        view.getString("Enter").ifPresent((value) -> {
             BaseType type = DataToString.fromString(value);
 
             if (type != null) this.enter.fromData(type);
         });
-        view.getOptionalString("Exit").ifPresent((value) -> {
+        view.getString("Exit").ifPresent((value) -> {
             BaseType type = DataToString.fromString(value);
 
             if (type != null) this.exit.fromData(type);
         });
-        view.getOptionalString("WhileIn").ifPresent((value) -> {
+        view.getString("WhileIn").ifPresent((value) -> {
             BaseType type = DataToString.fromString(value);
 
             if (type != null) this.whileIn.fromData(type);
         });
-        this.regionDelay.set(view.getInt("RegionDelay", this.regionDelay.get()));
-        this.collidable.set(view.getBoolean("Collidable", this.collidable.get()));
-        this.region.set(view.getBoolean("Region", this.region.get()));
-        view.getOptionalString("Pos1").ifPresent((value) -> {
+        this.regionDelay.set(view.getIntOr("RegionDelay", this.regionDelay.get()));
+        this.collidable.set(view.getBooleanOr("Collidable", this.collidable.get()));
+        this.region.set(view.getBooleanOr("Region", this.region.get()));
+        view.getString("Pos1").ifPresent((value) -> {
             BaseType type = DataToString.fromString(value);
 
             if (type != null) this.pos1.fromData(type);
         });
-        view.getOptionalString("Pos2").ifPresent((value) -> {
+        view.getString("Pos2").ifPresent((value) -> {
             BaseType type = DataToString.fromString(value);
 
             if (type != null) this.pos2.fromData(type);
         });
-        view.getOptionalString("RegionOffset").ifPresent((value) -> {
+        view.getString("RegionOffset").ifPresent((value) -> {
             BaseType type = DataToString.fromString(value);
 
             if (type != null) this.regionOffset.fromData(type);
         });
-        view.getOptionalString("RegionSize").ifPresent((value) -> {
+        view.getString("RegionSize").ifPresent((value) -> {
             BaseType type = DataToString.fromString(value);
 
             if (type != null) this.regionSize.fromData(type);
@@ -296,9 +296,9 @@ public class TriggerBlockEntity extends BlockEntity
     }
 
     @Override
-    protected void writeData(WriteView view)
+    protected void saveAdditional(ValueOutput view)
     {
-        super.writeData(view);
+        super.saveAdditional(view);
         
         view.putString("Left", DataToString.toString(this.left.toData()));
         view.putString("Right", DataToString.toString(this.right.toData()));
@@ -316,14 +316,14 @@ public class TriggerBlockEntity extends BlockEntity
 
     @Nullable
     @Override
-    public Packet<ClientPlayPacketListener> toUpdatePacket()
+    public Packet<ClientGamePacketListener> getUpdatePacket()
     {
-        return BlockEntityUpdateS2CPacket.create(this);
+        return ClientboundBlockEntityDataPacket.create(this);
     }
 
     @Override
-    public NbtCompound toInitialChunkDataNbt(RegistryWrapper.WrapperLookup registryLookup)
+    public CompoundTag getUpdateTag(HolderLookup.Provider registryLookup)
     {
-        return this.createNbt(registryLookup);
+        return this.saveWithoutMetadata(registryLookup);
     }
 }

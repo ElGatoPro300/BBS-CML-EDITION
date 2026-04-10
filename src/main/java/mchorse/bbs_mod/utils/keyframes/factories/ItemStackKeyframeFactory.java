@@ -6,10 +6,9 @@ import mchorse.bbs_mod.data.DataStorageUtils;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.utils.interps.IInterp;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtOps;
-
+import net.minecraft.nbt.Tag;
+import net.minecraft.world.item.ItemStack;
 import java.util.Optional;
 
 public class ItemStackKeyframeFactory implements IKeyframeFactory<ItemStack>
@@ -17,8 +16,8 @@ public class ItemStackKeyframeFactory implements IKeyframeFactory<ItemStack>
     @Override
     public ItemStack fromData(BaseType data)
     {
-        DataResult<Pair<ItemStack, NbtElement>> decode = ItemStack.CODEC.decode(NbtOps.INSTANCE, DataStorageUtils.toNbt(data));
-        Optional<Pair<ItemStack, NbtElement>> result = decode.result();
+        DataResult<Pair<ItemStack, Tag>> decode = ItemStack.CODEC.decode(NbtOps.INSTANCE, DataStorageUtils.toNbt(data));
+        Optional<Pair<ItemStack, Tag>> result = decode.result();
 
         return result.map(Pair::getFirst).orElse(ItemStack.EMPTY);
     }
@@ -26,7 +25,7 @@ public class ItemStackKeyframeFactory implements IKeyframeFactory<ItemStack>
     @Override
     public BaseType toData(ItemStack value)
     {
-        Optional<NbtElement> result = ItemStack.CODEC.encodeStart(NbtOps.INSTANCE, value).result();
+        Optional<Tag> result = ItemStack.CODEC.encodeStart(NbtOps.INSTANCE, value).result();
 
         return result.map(DataStorageUtils::fromNbt).orElse(new MapType());
     }
@@ -42,7 +41,7 @@ public class ItemStackKeyframeFactory implements IKeyframeFactory<ItemStack>
     {
         if (a instanceof ItemStack itemA && b instanceof ItemStack itemB)
         {
-            return ItemStack.areEqual(itemA, itemB);
+            return ItemStack.matches(itemA, itemB);
         }
 
         return false;

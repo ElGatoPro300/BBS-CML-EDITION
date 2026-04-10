@@ -11,23 +11,23 @@ import mchorse.bbs_mod.entity.GunProjectileEntity;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.forms.LightForm;
 import mchorse.bbs_mod.morphing.Morph;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.util.Identifier;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.player.Player;
 
 public class LambDynLightsIntegration implements DynamicLightsInitializer
 {
     private static final BBSModEntityLuminance LUMINANCE_PROVIDER = new BBSModEntityLuminance();
     private static final EntityLuminance.Type TYPE = EntityLuminance.Type.register(
-        Identifier.of("bbs_mod", "form_light"),
+        Identifier.fromNamespaceAndPath("bbs_mod", "form_light"),
         MapCodec.unit(LUMINANCE_PROVIDER)
     );
 
     @Override
     public void onInitializeDynamicLights(DynamicLightsContext context)
     {
-        context.entityLightSourceManager().onRegisterEvent().register(Identifier.of("bbs_mod", "dynamic_lights"), registerContext ->
+        context.entityLightSourceManager().onRegisterEvent().register(Identifier.fromNamespaceAndPath("bbs_mod", "dynamic_lights"), registerContext ->
         {
             registerContext.register(BBSMod.ACTOR_ENTITY, LUMINANCE_PROVIDER);
             registerContext.register(BBSMod.GUN_PROJECTILE_ENTITY, LUMINANCE_PROVIDER);
@@ -54,7 +54,7 @@ public class LambDynLightsIntegration implements DynamicLightsInitializer
             {
                 return getLightLevelFromForm(projectile.getForm());
             }
-            else if (entity instanceof PlayerEntity player)
+            else if (entity instanceof Player player)
             {
                 Morph morph = Morph.getMorph(player);
 

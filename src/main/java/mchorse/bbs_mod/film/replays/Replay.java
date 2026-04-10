@@ -19,8 +19,7 @@ import mchorse.bbs_mod.settings.values.numeric.ValueInt;
 import mchorse.bbs_mod.settings.values.base.BaseValueGroup;
 import mchorse.bbs_mod.utils.clips.Clip;
 import mchorse.bbs_mod.utils.clips.Clips;
-import net.minecraft.entity.LivingEntity;
-
+import net.minecraft.world.entity.LivingEntity;
 import java.util.List;
 import java.util.HashMap;
 import java.util.Map;

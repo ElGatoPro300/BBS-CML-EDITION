@@ -4,8 +4,7 @@ import mchorse.bbs_mod.cubic.IModelInstance;
 import mchorse.bbs_mod.cubic.data.animation.Animation;
 import mchorse.bbs_mod.cubic.data.animation.Animations;
 import mchorse.bbs_mod.forms.entities.IEntity;
-import net.minecraft.util.math.Vec3d;
-
+import net.minecraft.world.phys.Vec3;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -203,7 +202,7 @@ public class Animator implements IAnimator
      */
     protected void controlActions(IEntity target)
     {
-        Vec3d velocity = target.getVelocity();
+        Vec3 velocity = target.getVelocity();
         double dx = target.getX() - this.prevX;
         double dz = target.getZ() - this.prevZ;
         final float threshold = 0.01F;

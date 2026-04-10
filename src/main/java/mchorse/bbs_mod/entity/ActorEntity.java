@@ -5,26 +5,25 @@ import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.forms.entities.MCEntity;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.network.ServerNetwork;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityDimensions;
-import net.minecraft.entity.EntityPose;
-import net.minecraft.entity.EntityType;
-import net.minecraft.entity.EquipmentSlot;
-import net.minecraft.entity.ItemEntity;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.attribute.DefaultAttributeContainer;
-import net.minecraft.entity.attribute.EntityAttributes;
-import net.minecraft.entity.damage.DamageSource;
-import net.minecraft.item.ItemStack;
-import net.minecraft.network.packet.s2c.play.ItemPickupAnimationS2CPacket;
-import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
-import net.minecraft.storage.ReadView;
-import net.minecraft.storage.WriteView;
-import net.minecraft.util.Arm;
-import net.minecraft.util.math.Box;
-import net.minecraft.world.World;
-
+import net.minecraft.network.protocol.game.ClientboundTakeItemEntityPacket;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.damagesource.DamageSource;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityDimensions;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.HumanoidArm;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Pose;
+import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.storage.ValueInput;
+import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.phys.AABB;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -34,13 +33,13 @@ import java.util.UUID;
 
 public class ActorEntity extends LivingEntity implements IEntityFormProvider
 {
-    public static DefaultAttributeContainer.Builder createActorAttributes()
+    public static AttributeSupplier.Builder createActorAttributes()
     {
         return LivingEntity.createLivingAttributes()
-            .add(EntityAttributes.ATTACK_DAMAGE, 1D)
-            .add(EntityAttributes.MOVEMENT_SPEED, 0.1D)
-            .add(EntityAttributes.ATTACK_SPEED)
-            .add(EntityAttributes.LUCK);
+            .add(Attributes.ATTACK_DAMAGE, 1D)
+            .add(Attributes.MOVEMENT_SPEED, 0.1D)
+            .add(Attributes.ATTACK_SPEED)
+            .add(Attributes.LUCK);
     }
 
     private boolean despawn;
@@ -66,7 +65,7 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
     private boolean runtimeInventoryInitialized;
     private final Set<UUID> pickedUpEntityIds = new HashSet<>();
 
-    public ActorEntity(EntityType<? extends LivingEntity> entityType, World world)
+    public ActorEntity(EntityType<? extends LivingEntity> entityType, Level world)
     {
         super(entityType, world);
     }
@@ -130,7 +129,7 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
 
         this.form = form;
 
-        if (!this.getEntityWorld().isClient())
+        if (!this.level().isClientSide())
         {
             if (lastForm != null) lastForm.onDemorph(this);
             if (form != null) form.onMorph(this);
@@ -140,7 +139,7 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
     }
 
     @Override
-    public boolean isCollidable(Entity other)
+    public boolean canBeCollidedWith(Entity other)
     {
         return this.form != null && this.form.hitbox.get();
     }
@@ -152,27 +151,27 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
     }
 
     @Override
-    public void pushAwayFrom(Entity entity)
+    public void push(Entity entity)
     {
         if (this.form == null || !this.form.hitbox.get())
         {
-            super.pushAwayFrom(entity);
+            super.push(entity);
         }
     }
 
     @Override
-    public void pushAway(Entity entity)
+    public void doPush(Entity entity)
     {
         if (this.form == null || !this.form.hitbox.get())
         {
-            super.pushAway(entity);
+            super.doPush(entity);
         }
     }
 
     @Override
-    public boolean shouldRender(double distance)
+    public boolean shouldRenderAtSqrDistance(double distance)
     {
-        double d = this.getBoundingBox().getAverageSideLength();
+        double d = this.getBoundingBox().getSize();
 
         if (Double.isNaN(d))
         {
@@ -184,30 +183,30 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
 
     public Iterable<ItemStack> getHandItems()
     {
-        return List.of(this.getEquippedStack(EquipmentSlot.MAINHAND), this.getEquippedStack(EquipmentSlot.OFFHAND));
+        return List.of(this.getItemBySlot(EquipmentSlot.MAINHAND), this.getItemBySlot(EquipmentSlot.OFFHAND));
     }
 
     public Iterable<ItemStack> getArmorItems()
     {
-        return List.of(this.getEquippedStack(EquipmentSlot.FEET), this.getEquippedStack(EquipmentSlot.LEGS), this.getEquippedStack(EquipmentSlot.CHEST), this.getEquippedStack(EquipmentSlot.HEAD));
+        return List.of(this.getItemBySlot(EquipmentSlot.FEET), this.getItemBySlot(EquipmentSlot.LEGS), this.getItemBySlot(EquipmentSlot.CHEST), this.getItemBySlot(EquipmentSlot.HEAD));
     }
 
     @Override
-    public ItemStack getEquippedStack(EquipmentSlot slot)
+    public ItemStack getItemBySlot(EquipmentSlot slot)
     {
         return this.equipment.getOrDefault(slot, ItemStack.EMPTY);
     }
 
     @Override
-    public void equipStack(EquipmentSlot slot, ItemStack stack)
+    public void setItemSlot(EquipmentSlot slot, ItemStack stack)
     {
         this.equipment.put(slot, stack == null ? ItemStack.EMPTY : stack);
     }
 
     @Override
-    public Arm getMainArm()
+    public HumanoidArm getMainArm()
     {
-        return Arm.RIGHT;
+        return HumanoidArm.RIGHT;
     }
 
     @Override
@@ -215,7 +214,7 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
     {
         super.tick();
 
-        this.tickHandSwing();
+        this.updateSwingTime();
         this.updateHitboxDimensions();
 
         if (this.form != null)
@@ -223,35 +222,35 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
             this.form.update(this.entity);
         }
 
-        if (this.getEntityWorld().isClient())
+        if (this.level().isClientSide())
         {
             return;
         }
 
         /* Don't pickup items when dead */
-        if (this.isDead())
+        if (this.isDeadOrDying())
         {
             return;
         }
 
         /* Pickup items */
-        Box box = this.getBoundingBox().expand(1D, 0.5D, 1D);
-        List<Entity> list = this.getEntityWorld().getOtherEntities(this, box, (entity) -> true);
+        AABB box = this.getBoundingBox().inflate(1D, 0.5D, 1D);
+        List<Entity> list = this.level().getEntities(this, box, (entity) -> true);
 
         for (Entity entity : list)
         {
             if (entity instanceof ItemEntity itemEntity)
             {
-                UUID entityId = itemEntity.getUuid();
-                ItemStack itemStack = itemEntity.getStack();
+                UUID entityId = itemEntity.getUUID();
+                ItemStack itemStack = itemEntity.getItem();
                 int i = itemStack.getCount();
 
-                if (!entity.isRemoved() && !itemEntity.cannotPickup() && !this.pickedUpEntityIds.contains(entityId))
+                if (!entity.isRemoved() && !itemEntity.hasPickUpDelay() && !this.pickedUpEntityIds.contains(entityId))
                 {
                     this.pickedUpEntityIds.add(entityId);
                     this.addToRuntimeInventory(itemStack.copy());
                     
-                    ((ServerWorld) this.getEntityWorld()).getChunkManager().sendToOtherNearbyPlayers(entity, new ItemPickupAnimationS2CPacket(entity.getId(), this.getId(), i));
+                    ((ServerLevel) this.level()).getChunkSource().sendToTrackingPlayers(entity, new ClientboundTakeItemEntityPacket(entity.getId(), this.getId(), i));
                     entity.discard();
                 }
             }
@@ -278,7 +277,7 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
 
             if (existing.isEmpty())
             {
-                int move = Math.min(remaining, stack.getMaxCount());
+                int move = Math.min(remaining, stack.getMaxStackSize());
                 ItemStack copy = stack.copy();
                 copy.setCount(move);
                 this.runtimeInventory.set(i, copy);
@@ -289,11 +288,11 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
                     return;
                 }
             }
-            else if (ItemStack.areItemsAndComponentsEqual(existing, stack) && existing.getCount() < existing.getMaxCount())
+            else if (ItemStack.isSameItemSameComponents(existing, stack) && existing.getCount() < existing.getMaxStackSize())
             {
-                int space = existing.getMaxCount() - existing.getCount();
+                int space = existing.getMaxStackSize() - existing.getCount();
                 int move = Math.min(space, remaining);
-                existing.increment(move);
+                existing.grow(move);
                 remaining -= move;
 
                 if (remaining <= 0)
@@ -312,9 +311,9 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
     }
 
     @Override
-    public void setSneaking(boolean sneaking)
+    public void setShiftKeyDown(boolean sneaking)
     {
-        super.setSneaking(sneaking);
+        super.setShiftKeyDown(sneaking);
 
         if (this.form != null && this.form.hitbox.get())
         {
@@ -330,7 +329,7 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
         }
 
         boolean enabled = this.form.hitbox.get();
-        boolean sneaking = this.isSneaking();
+        boolean sneaking = this.isShiftKeyDown();
         float width = this.form.hitboxWidth.get();
         float height = this.form.hitboxHeight.get();
         float sneakMultiplier = this.form.hitboxSneakMultiplier.get();
@@ -347,23 +346,23 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
             this.lastHitboxHeight = height;
             this.lastHitboxSneakMultiplier = sneakMultiplier;
 
-            this.calculateDimensions();
+            this.refreshDimensions();
         }
     }
 
     @Override
-    public EntityDimensions getBaseDimensions(EntityPose pose)
+    public EntityDimensions getDefaultDimensions(Pose pose)
     {
-        EntityDimensions dimensions = super.getBaseDimensions(pose);
+        EntityDimensions dimensions = super.getDefaultDimensions(pose);
         Form currentForm = this.form;
 
         if (currentForm != null && currentForm.hitbox.get())
         {
-            float height = currentForm.hitboxHeight.get() * (this.isSneaking() ? currentForm.hitboxSneakMultiplier.get() : 1F);
+            float height = currentForm.hitboxHeight.get() * (this.isShiftKeyDown() ? currentForm.hitboxSneakMultiplier.get() : 1F);
 
             return dimensions.fixed()
                 ? EntityDimensions.fixed(currentForm.hitboxWidth.get(), height)
-                : EntityDimensions.changing(currentForm.hitboxWidth.get(), height);
+                : EntityDimensions.scalable(currentForm.hitboxWidth.get(), height);
         }
 
         return dimensions;
@@ -372,11 +371,11 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
 
 
         @Override
-    public void onDeath(DamageSource damageSource)
+    public void die(DamageSource damageSource)
     {
-        super.onDeath(damageSource);
+        super.die(damageSource);
         
-        if (!this.getEntityWorld().isClient() && !this.replayItemsDropped && this.replay != null && this.film != null)
+        if (!this.level().isClientSide() && !this.replayItemsDropped && this.replay != null && this.film != null)
         {
             this.dropReplayItems();
             this.replayItemsDropped = true;
@@ -480,7 +479,7 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
         
         // Create item entity at actor's position
         ItemEntity itemEntity = new ItemEntity(
-            this.getEntityWorld(),
+            this.level(),
             this.getX(),
             this.getY() + 0.5,
             this.getZ(),
@@ -502,10 +501,10 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
         double velocityY = minY + this.random.nextDouble() * (maxY - minY);
         double velocityZ = minZ + this.random.nextDouble() * (maxZ - minZ);
         
-        itemEntity.setVelocity(velocityX, velocityY, velocityZ);
-        itemEntity.setToDefaultPickupDelay();
+        itemEntity.setDeltaMovement(velocityX, velocityY, velocityZ);
+        itemEntity.setDefaultPickUpDelay();
         
-        this.getEntityWorld().spawnEntity(itemEntity);
+        this.level().addFreshEntity(itemEntity);
     }
 
 
@@ -521,21 +520,21 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
     }
 
     @Override
-    public void onStartedTrackingBy(ServerPlayerEntity player)
+    public void startSeenByPlayer(ServerPlayer player)
     {
-        super.onStartedTrackingBy(player);
+        super.startSeenByPlayer(player);
 
         ServerNetwork.sendEntityForm(player, this);
     }
 
     @Override
-    protected void readCustomData(ReadView view)
+    protected void readAdditionalSaveData(ValueInput view)
     {
-        this.despawn = view.getBoolean("despawn", this.despawn);
+        this.despawn = view.getBooleanOr("despawn", this.despawn);
     }
 
     @Override
-    protected void writeCustomData(WriteView view)
+    protected void addAdditionalSaveData(ValueOutput view)
     {
         view.putBoolean("despawn", true);
     }

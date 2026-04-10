@@ -7,9 +7,9 @@ import mchorse.bbs_mod.settings.values.numeric.ValueBoolean;
 import mchorse.bbs_mod.settings.values.numeric.ValueDouble;
 import mchorse.bbs_mod.settings.values.numeric.ValueFloat;
 import mchorse.bbs_mod.utils.clips.Clip;
-import net.minecraft.entity.ItemEntity;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.server.world.ServerWorld;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.item.ItemEntity;
 
 public class ItemDropActionClip extends ItemActionClip
 {
@@ -46,17 +46,17 @@ public class ItemDropActionClip extends ItemActionClip
     {
         this.applyPositionRotation(player, replay, tick);
 
-        double x = this.relative.get() ? this.posX.get() + player.getEntityPos().x : this.posX.get();
-        double y = this.relative.get() ? this.posY.get() + player.getEntityPos().y : this.posY.get();
-        double z = this.relative.get() ? this.posZ.get() + player.getEntityPos().z : this.posZ.get();
+        double x = this.relative.get() ? this.posX.get() + player.position().x : this.posX.get();
+        double y = this.relative.get() ? this.posY.get() + player.position().y : this.posY.get();
+        double z = this.relative.get() ? this.posZ.get() + player.position().z : this.posZ.get();
         ItemEntity entity = new ItemEntity(
-            (ServerWorld) player.getEntityWorld(),
+            (ServerLevel) player.level(),
             x, y, z, this.itemStack.get().copy(),
             this.velocityX.get(), this.velocityY.get(), this.velocityZ.get()
         );
 
-        entity.setToDefaultPickupDelay();
-        player.getEntityWorld().spawnEntity(entity);
+        entity.setDefaultPickUpDelay();
+        player.level().addFreshEntity(entity);
     }
 
     @Override
