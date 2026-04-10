@@ -98,11 +98,11 @@ import mchorse.bbs_mod.utils.factory.MapFactory;
 import mchorse.bbs_mod.utils.keyframes.factories.KeyframeFactories;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.fabricmc.fabric.api.creativetab.v1.FabricCreativeModeTab;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.AttackBlockCallback;
-import net.fabricmc.fabric.api.itemgroup.v1.FabricItemGroup;
 import net.fabricmc.fabric.api.networking.v1.EntityTrackingEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.object.builder.v1.block.entity.FabricBlockEntityTypeBuilder;
@@ -238,7 +238,7 @@ public class BBSMod implements ModInitializer
         FabricBlockEntityTypeBuilder.create(TriggerBlockEntity::new, TRIGGER_BLOCK).build()
     );
 
-    public static final CreativeModeTab ITEM_GROUP = FabricItemGroup.builder()
+    public static final CreativeModeTab ITEM_GROUP = FabricCreativeModeTab.builder()
         .icon(() -> createModelBlockStack(Link.assets("textures/icon.png")))
         .title(Component.translatable("itemGroup.bbs.main"))
         .displayItems((context, entries) ->
@@ -291,7 +291,7 @@ public class BBSMod implements ModInitializer
         properties.getTransformFirstPerson().translate.set(0F, 0F, -0.25F);
 
         CompoundTag compound = new CompoundTag();
-        compound.putString("id", BlockEntityType.getKey(MODEL_BLOCK_ENTITY).toString());
+        compound.putString("id", BuiltInRegistries.BLOCK_ENTITY_TYPE.getKey(MODEL_BLOCK_ENTITY).toString());
         mchorse.bbs_mod.data.DataStorageUtils.writeToNbtCompound(compound, "Properties", properties.toData());
 
         stack.set(DataComponents.BLOCK_ENTITY_DATA, TypedEntityData.of(MODEL_BLOCK_ENTITY, compound));
