@@ -829,14 +829,14 @@ public abstract class BaseFilmController
         var soundGroup = world.getBlockState(pos).getSoundGroup();
 
         world.playSound(
+            null,
             xPos,
             yPos,
             zPos,
             soundGroup.getStepSound(),
             SoundCategory.PLAYERS,
             soundGroup.getVolume() * 0.15F,
-            soundGroup.getPitch(),
-            false
+            soundGroup.getPitch()
         );
     }
 

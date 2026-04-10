@@ -16,8 +16,6 @@ import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
-import net.minecraft.client.render.block.entity.BlockEntityRenderDispatcher;
-import net.minecraft.client.render.block.entity.BlockEntityRenderer;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.BlockPos;
 import org.joml.Matrix4f;
@@ -129,17 +127,6 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
             blockEntity.setWorld(client.world);
         }
 
-        BlockEntityRenderDispatcher dispatcher = client.getBlockEntityRenderDispatcher();
-        BlockEntityRenderer<?> renderer = dispatcher.get(blockEntity);
-
-        if (renderer == null)
-        {
-            return;
-        }
-
-        @SuppressWarnings({"rawtypes", "unchecked"})
-        BlockEntityRenderer raw = (BlockEntityRenderer) renderer;
-
-        raw.render(blockEntity, 0F, stack, consumers, light, overlay);
+        // TODO 1.21.11: migrate to BlockEntityRenderer<T, S> state/queue rendering API.
     }
 }
