@@ -4,7 +4,6 @@ import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import net.minecraft.client.Minecraft;
-import Pixels;
 import java.io.IOException;
 import java.util.Stack;
 

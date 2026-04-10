@@ -1,6 +1,5 @@
 package mchorse.bbs_mod.film;
 
-import Film;
 import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;

@@ -1,7 +1,6 @@
 package mchorse.bbs_mod.film;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import Film;
 import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;

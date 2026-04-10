@@ -1,6 +1,5 @@
 package mchorse.bbs_mod.cubic;
 
-import IModel;
 import com.mojang.blaze3d.opengl.GlProgram;
 import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
