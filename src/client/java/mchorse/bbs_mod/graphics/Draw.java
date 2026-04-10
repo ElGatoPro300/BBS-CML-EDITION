@@ -36,7 +36,7 @@ public class Draw
         float fd = (float) d;
         float t = 1 / 96F + (float) (Math.sqrt(w * w + h + h + d + d) / 2000);
 
-        BufferBuilder builder = Tesselator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, DefaultVertexFormat.POSITION_COLOR);
+        BufferBuilder builder = Tesselator.getInstance().begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION_COLOR);
         // RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
 
         /* Pillars: fillBox(builder, -t, -t, -t, t, t, t, r, g, b, a); */
@@ -156,7 +156,7 @@ public class Draw
         outlineSize *= scale;
         outlineOffset *= scale;
 
-        BufferBuilder builder = Tesselator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, DefaultVertexFormat.POSITION_COLOR);
+        BufferBuilder builder = Tesselator.getInstance().begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION_COLOR);
 
         fillBox(builder, stack, 0, -outlineOffset, -outlineOffset, outlineSize, outlineOffset, outlineOffset, 0, 0, 0);
         fillBox(builder, stack, -outlineOffset, 0, -outlineOffset, outlineOffset, outlineSize, outlineOffset, 0, 0, 0);

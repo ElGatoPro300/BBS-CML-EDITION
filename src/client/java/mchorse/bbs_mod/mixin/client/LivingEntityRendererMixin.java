@@ -9,7 +9,6 @@ import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
-import net.minecraft.client.renderer.state.CameraRenderState;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import org.spongepowered.asm.mixin.Mixin;
@@ -23,7 +22,7 @@ import java.util.Map;
 public abstract class LivingEntityRendererMixin
 {
     @Inject(method = "submit", at = @At("HEAD"))
-    public void onSetAngles(LivingEntityRenderState state, PoseStack matrixStack, SubmitNodeCollector queue, CameraRenderState cameraRenderState, CallbackInfo info)
+    public void onSetAngles(LivingEntityRenderState state, PoseStack matrixStack, SubmitNodeCollector queue, Object cameraRenderState, CallbackInfo info)
     {
         Entity entity = ((IEntityRenderState) state).bbs$getEntity();
 
@@ -102,7 +101,7 @@ public abstract class LivingEntityRendererMixin
     }
 
     @Inject(method = "submit", at = @At("TAIL"))
-    public void onRenderEnd(LivingEntityRenderState state, PoseStack matrixStack, SubmitNodeCollector queue, CameraRenderState cameraRenderState, CallbackInfo info)
+    public void onRenderEnd(LivingEntityRenderState state, PoseStack matrixStack, SubmitNodeCollector queue, Object cameraRenderState, CallbackInfo info)
     {
         for (Map.Entry<ModelPart, Transform> entry : MobFormRenderer.getCache().entrySet())
         {

@@ -217,8 +217,8 @@ public class UIPlayerInventoryPanel extends UIOverlayPanel
             {
                 int itemX = this.area.x + 1;
                 int itemY = this.area.y + 1;
-                context.batcher.getContext().renderItem(stack, itemX, itemY);
-                context.batcher.getContext().renderItemDecorations(context.batcher.getFont().getRenderer(), stack, itemX, itemY);
+                context.batcher.getContext().item(stack, itemX, itemY);
+                context.batcher.getContext().itemDecorations(context.batcher.getFont().getRenderer(), stack, itemX, itemY);
 
                 if (hovered)
                 {
@@ -291,8 +291,8 @@ public class UIPlayerInventoryPanel extends UIOverlayPanel
                 int itemX = this.area.x + 1;
                 int itemY = this.area.y + 1;
 
-                context.batcher.getContext().renderItem(stack, itemX, itemY);
-                context.batcher.getContext().renderItemDecorations(context.batcher.getFont().getRenderer(), stack, itemX, itemY);
+                context.batcher.getContext().item(stack, itemX, itemY);
+                context.batcher.getContext().itemDecorations(context.batcher.getFont().getRenderer(), stack, itemX, itemY);
 
                 if (hovered)
                 {

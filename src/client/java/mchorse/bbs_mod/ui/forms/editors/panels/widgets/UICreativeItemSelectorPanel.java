@@ -371,8 +371,8 @@ public class UICreativeItemSelectorPanel extends UIOverlayPanel
 
                     ItemStack stack = this.items.get(index);
 
-                    context.batcher.getContext().renderItem(stack, x + ITEM_RENDER_OFFSET, y + ITEM_RENDER_OFFSET);
-                    context.batcher.getContext().renderItemDecorations(context.batcher.getFont().getRenderer(), stack, x + ITEM_RENDER_OFFSET, y + ITEM_RENDER_OFFSET);
+                    context.batcher.getContext().item(stack, x + ITEM_RENDER_OFFSET, y + ITEM_RENDER_OFFSET);
+                    context.batcher.getContext().itemDecorations(context.batcher.getFont().getRenderer(), stack, x + ITEM_RENDER_OFFSET, y + ITEM_RENDER_OFFSET);
 
                     if (hover)
                     {
@@ -465,8 +465,8 @@ public class UICreativeItemSelectorPanel extends UIOverlayPanel
 
                 if (!stack.isEmpty())
                 {
-                    context.batcher.getContext().renderItem(stack, x + ITEM_RENDER_OFFSET, y + ITEM_RENDER_OFFSET);
-                    context.batcher.getContext().renderItemDecorations(context.batcher.getFont().getRenderer(), stack, x + ITEM_RENDER_OFFSET, y + ITEM_RENDER_OFFSET);
+                    context.batcher.getContext().item(stack, x + ITEM_RENDER_OFFSET, y + ITEM_RENDER_OFFSET);
+                    context.batcher.getContext().itemDecorations(context.batcher.getFont().getRenderer(), stack, x + ITEM_RENDER_OFFSET, y + ITEM_RENDER_OFFSET);
                 }
 
                 if (hover)

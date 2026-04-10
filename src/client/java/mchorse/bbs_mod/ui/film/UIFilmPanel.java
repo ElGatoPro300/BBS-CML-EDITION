@@ -74,7 +74,7 @@ import mchorse.bbs_mod.utils.joml.Vectors;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 import mchorse.bbs_mod.utils.keyframes.KeyframeSegment;
-import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.phys.Vec3;
@@ -447,7 +447,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
             menu.action(Icons.LINE, UIKeys.FILM_REPLACE_INVENTORY, () ->
             {
-                BaseValue.edit(this.getData().inventory, (inv) -> inv.fromPlayer(MinecraftClient.getInstance().player));
+                BaseValue.edit(this.getData().inventory, (inv) -> inv.fromPlayer(Minecraft.getInstance().player));
             });
         });
 
@@ -1537,14 +1537,14 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     }
 
     @Override
-    public void renderInWorld(WorldRenderContext context)
+    public void renderInWorld(LevelRenderContext context)
     {
         super.renderInWorld(context);
 
         if (!BBSRendering.isIrisShadowPass())
         {
             this.lastProjection.set(RenderSystem.getModelViewMatrix());
-            PoseStack ms = context.matrices();
+            PoseStack ms = context.poseStack();
             if (ms != null)
             {
                 this.lastView.set(ms.last().pose());

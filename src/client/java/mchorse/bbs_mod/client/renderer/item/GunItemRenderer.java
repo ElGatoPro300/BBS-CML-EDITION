@@ -17,7 +17,6 @@ import mchorse.bbs_mod.ui.model_blocks.UIModelBlockEditorMenu;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.pose.Transform;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.special.SpecialModelRenderer;
 import net.minecraft.world.item.ItemDisplayContext;
@@ -61,9 +60,10 @@ public class GunItemRenderer implements SpecialModelRenderer<ItemStack>
     }
 
     @Override
-    public void render(ItemStack data, ItemDisplayContext mode, PoseStack matrices, SubmitNodeCollector queue, int light, int overlay, boolean hasGlint, int seed)
+    public void submit(ItemStack data, PoseStack matrices, SubmitNodeCollector queue, int light, int overlay, boolean hasGlint, int seed)
     {
         Item item = this.get(data);
+        ItemDisplayContext mode = ItemDisplayContext.FIXED;
 
         if (item != null)
         {
@@ -100,7 +100,7 @@ public class GunItemRenderer implements SpecialModelRenderer<ItemStack>
                     // GUI diffuse helper moved in 1.21.11 pipeline.
                 }
 
-                int maxLight = LightTexture.FULL_BLOCK;
+                int maxLight = 240;
                 FormUtilsClient.render(form, new FormRenderingContext()
                     .set(FormRenderType.fromModelMode(mode), item.formEntity, matrices, maxLight, overlay, Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(false))
                     .camera(Minecraft.getInstance().gameRenderer.getMainCamera()));
@@ -140,18 +140,18 @@ public class GunItemRenderer implements SpecialModelRenderer<ItemStack>
         return item;
     }
 
-    public static class Unbaked implements SpecialModelRenderer.Unbaked
+    public static class Unbaked implements SpecialModelRenderer.Unbaked<ItemStack>
     {
         public static final MapCodec<mchorse.bbs_mod.client.renderer.item.GunItemRenderer.Unbaked> CODEC = MapCodec.unit(new mchorse.bbs_mod.client.renderer.item.GunItemRenderer.Unbaked());
 
         @Override
-        public MapCodec<mchorse.bbs_mod.client.renderer.item.GunItemRenderer.Unbaked> type()
+        public MapCodec<? extends SpecialModelRenderer.Unbaked<ItemStack>> type()
         {
             return CODEC;
         }
 
         @Override
-        public SpecialModelRenderer<?> bake(SpecialModelRenderer.BakingContext config)
+        public SpecialModelRenderer<ItemStack> bake(SpecialModelRenderer.BakingContext config)
         {
             return BBSModClient.getGunItemRenderer();
         }
@@ -170,3 +170,4 @@ public class GunItemRenderer implements SpecialModelRenderer<ItemStack>
         }
     }
 }
+

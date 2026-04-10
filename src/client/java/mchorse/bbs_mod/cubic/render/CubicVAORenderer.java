@@ -14,7 +14,6 @@ import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.interps.Lerps;
-import net.minecraft.client.renderer.LightTexture;
 import org.joml.Matrix4f;
 
 public class CubicVAORenderer extends CubicCubeRenderer
@@ -69,7 +68,7 @@ public class CubicVAORenderer extends CubicCubeRenderer
             }
             else
             {
-                int u = (int) Lerps.lerp(light & '\uffff', LightTexture.FULL_BLOCK, MathUtils.clamp(group.lighting, 0F, 1F));
+                int u = (int) Lerps.lerp(light & '\uffff', 240, MathUtils.clamp(group.lighting, 0F, 1F));
                 int v = light >> 16 & '\uffff';
 
                 light = u | v << 16;

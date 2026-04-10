@@ -259,7 +259,7 @@ public class UICurve extends UIElement
         Matrix4f matrix = new Matrix4f();
         int c = this.curve.nodes.size();
 
-        BufferBuilder builder = Tesselator.getInstance().begin(VertexFormat.DrawMode.DEBUG_LINES, DefaultVertexFormat.POSITION_COLOR);
+        BufferBuilder builder = Tesselator.getInstance().begin(VertexFormat.Mode.DEBUG_LINES, DefaultVertexFormat.POSITION_COLOR);
 
         /* Top and bottom */
         builder.addVertex(matrix, this.area.x, this.graph.y, 0F).setColor(0.5F, 0.5F, 0.5F, 0.5F);

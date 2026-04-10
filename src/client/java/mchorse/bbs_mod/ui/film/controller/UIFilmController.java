@@ -66,7 +66,7 @@ import mchorse.bbs_mod.utils.RayTracing;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.joml.Matrices;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
-import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.MouseHandler;
 import net.minecraft.client.Options;
@@ -133,7 +133,7 @@ public class UIFilmController extends UIElement
     private int pov;
     private boolean paused;
 
-    private WorldRenderContext worldRenderContext;
+    private LevelRenderContext worldRenderContext;
 
     public UIFilmController(UIFilmPanel panel)
     {
@@ -1107,7 +1107,7 @@ public class UIFilmController extends UIElement
         /* projection matrix state managed by 1.21.11 renderer */
 
         /* Render the stencil */
-        PoseStack worldStack = this.worldRenderContext.matrices();
+        PoseStack worldStack = this.worldRenderContext.poseStack();
         if (worldStack != null)
         {
             worldStack.pushPose();
@@ -1211,7 +1211,7 @@ public class UIFilmController extends UIElement
         }
     }
 
-    public void renderFrame(WorldRenderContext context)
+    public void renderFrame(LevelRenderContext context)
     {
         this.worldRenderContext = context;
 
@@ -1225,7 +1225,7 @@ public class UIFilmController extends UIElement
 
             if (povMode != UIFilmController.CAMERA_MODE_CAMERA && BBSSettings.recordingCameraPreview.get())
             {
-                Recorder.renderCameraPreview(this.panel.getRunner().getPosition(), Minecraft.getInstance().gameRenderer.getMainCamera(), context.matrices());
+                Recorder.renderCameraPreview(this.panel.getRunner().getPosition(), Minecraft.getInstance().gameRenderer.getMainCamera(), context.poseStack());
             }
         }
 
@@ -1269,7 +1269,7 @@ public class UIFilmController extends UIElement
         return keyframeEditor != null ? keyframeEditor.getBone() : null;
     }
 
-    private void renderStencil(WorldRenderContext renderContext, UIContext context, boolean altPressed)
+    private void renderStencil(LevelRenderContext renderContext, UIContext context, boolean altPressed)
     {
         Area viewport = this.panel.preview.getViewport();
 

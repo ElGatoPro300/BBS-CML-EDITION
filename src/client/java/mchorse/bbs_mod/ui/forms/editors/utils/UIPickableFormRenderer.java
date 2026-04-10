@@ -24,7 +24,6 @@ import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.Pair;
 import mchorse.bbs_mod.utils.colors.Colors;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import org.joml.Matrix4f;
 
@@ -108,7 +107,7 @@ public class UIPickableFormRenderer extends UIFormRenderer
         this.formEditor.preFormRender(context, this.form);
 
         FormRenderingContext formContext = new FormRenderingContext()
-            .set(FormRenderType.PREVIEW, this.target == null ? this.entity : this.target, new PoseStack(), LightTexture.pack(15, 15), OverlayTexture.NO_OVERLAY, context.getTransition())
+            .set(FormRenderType.PREVIEW, this.target == null ? this.entity : this.target, new PoseStack(), 15728880, OverlayTexture.NO_OVERLAY, context.getTransition())
             .camera(this.camera)
             .modelRenderer();
 
@@ -257,3 +256,4 @@ public class UIPickableFormRenderer extends UIFormRenderer
         }
     }
 }
+

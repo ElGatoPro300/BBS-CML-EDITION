@@ -43,13 +43,13 @@ import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.iris.IrisUtils;
 import mchorse.bbs_mod.utils.iris.ShaderCurves;
 import mchorse.bbs_mod.utils.sodium.SodiumUtils;
-import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 import net.fabricmc.loader.api.FabricLoader;
 import net.irisshaders.iris.uniforms.custom.cached.CachedUniform;
 import net.minecraft.client.CloudStatus;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.render.state.GuiRenderState;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.renderer.state.gui.GuiRenderState;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
 
@@ -212,7 +212,7 @@ public class BBSRendering
 
         ModelBlockEntityUpdateCallback.EVENT.register((entity) ->
         {
-            if (entity.getWorld().isClient())
+            if (entity.getLevel() != null && entity.getLevel().isClientSide())
             {
                 capturedModelBlocks.add(entity);
             }
@@ -220,7 +220,7 @@ public class BBSRendering
 
         TriggerBlockEntityUpdateCallback.EVENT.register((entity) ->
         {
-            if (entity.getWorld().isClient())
+            if (entity.getLevel() != null && entity.getLevel().isClientSide())
             {
                 TriggerBlockEntityRenderer.capturedTriggerBlocks.add(entity);
             }
@@ -364,7 +364,7 @@ public class BBSRendering
 
         if (BBSModClient.getCameraController().getCurrent() instanceof PlayCameraController controller)
         {
-            GuiGraphics drawContext = new GuiGraphics(mc, new GuiRenderState(), 0, 0);
+            GuiGraphicsExtractor drawContext = new GuiGraphicsExtractor(mc, new GuiRenderState(), 0, 0);
             Batcher2D batcher = new Batcher2D(drawContext);
 
             UISubtitleRenderer.renderSubtitles(new PoseStack(), batcher, SubtitleClip.getSubtitles(controller.getContext()));
@@ -457,7 +457,7 @@ public class BBSRendering
         // Left intentionally empty for 1.21.11: world render context is provided directly by events.
     }
 
-    public static void renderHud(GuiGraphics drawContext, float tickDelta)
+    public static void renderHud(GuiGraphicsExtractor drawContext, float tickDelta)
     {
         Batcher2D batcher2D = new Batcher2D(drawContext);
         VideoRecorder videoRecorder = BBSModClient.getVideoRecorder();
@@ -489,7 +489,7 @@ public class BBSRendering
         }
     }
 
-    private static void renderSelectedReplayHud(GuiGraphics drawContext, Batcher2D batcher2D, int yOffset)
+    private static void renderSelectedReplayHud(GuiGraphicsExtractor drawContext, Batcher2D batcher2D, int yOffset)
     {
         Replay replay = BBSModClient.getSelectedReplay();
 
@@ -604,7 +604,7 @@ public class BBSRendering
         return bottom ? screenH - margin - boxH : margin + extraTopLeft;
     }
 
-    public static void renderCoolStuff(WorldRenderContext worldRenderContext)
+    public static void renderCoolStuff(LevelRenderContext worldRenderContext)
     {
         if (Minecraft.getInstance().screen instanceof UIScreen screen)
         {

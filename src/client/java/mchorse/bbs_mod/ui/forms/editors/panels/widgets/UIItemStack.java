@@ -15,6 +15,7 @@ import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
 import mchorse.bbs_mod.ui.utils.context.ItemStackContextAction;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Colors;
+import net.minecraft.client.Minecraft;
 import net.minecraft.world.item.ItemStack;
 import com.mojang.blaze3d.vertex.PoseStack;
 import java.util.function.Consumer;
@@ -57,13 +58,13 @@ public class UIItemStack extends UIElement
         {
             this.getContext().replaceContextMenu((newMenu) ->
             {
-                PlayerInventory inventory = MinecraftClient.getInstance().player.getInventory();
+                var inventory = Minecraft.getInstance().player.getInventory();
 
                 for (int i = 0; i < 9; i++)
                 {
-                    ItemStack s = inventory.getStack(i);
+                    ItemStack s = inventory.getItem(i);
 
-                    newMenu.action(new ItemStackContextAction(s, IKey.constant(s.getName().getString()), () ->
+                    newMenu.action(new ItemStackContextAction(s, IKey.constant(s.getHoverName().getString()), () ->
                     {
                         if (this.callback != null)
                         {
@@ -78,7 +79,7 @@ public class UIItemStack extends UIElement
 
         menu.action(Icons.PASTE, UIKeys.ITEM_STACK_CONTEXT_PASTE, () ->
         {
-            ItemStack stack = MinecraftClient.getInstance().player.getMainHandStack().copy();
+            ItemStack stack = Minecraft.getInstance().player.getMainHandItem().copy();
 
             if (this.callback != null)
             {
@@ -194,8 +195,8 @@ public class UIItemStack extends UIElement
 
             matrices.pushPose();
             consumers.setUI(true);
-            context.batcher.getContext().renderItem(this.stack, stackCenterX - 8, this.area.my() - 8);
-            context.batcher.getContext().renderItemDecorations(context.batcher.getFont().getRenderer(), this.stack, stackCenterX - 8, this.area.my() - 8);
+            context.batcher.getContext().item(this.stack, stackCenterX - 8, this.area.my() - 8);
+            context.batcher.getContext().itemDecorations(context.batcher.getFont().getRenderer(), this.stack, stackCenterX - 8, this.area.my() - 8);
             consumers.setUI(false);
             matrices.popPose();
         }

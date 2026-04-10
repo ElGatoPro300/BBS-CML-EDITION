@@ -114,8 +114,8 @@ public class UIIntegerKeyframeFactory extends UIKeyframeFactory<Integer>
 
                             matrices.pushPose();
                             consumers.setUI(true);
-                            context.batcher.getContext().renderItem(stack, itemX, itemY);
-                            context.batcher.getContext().renderItemDecorations(context.batcher.getFont().getRenderer(), stack, itemX, itemY);
+                            context.batcher.getContext().item(stack, itemX, itemY);
+                            context.batcher.getContext().itemDecorations(context.batcher.getFont().getRenderer(), stack, itemX, itemY);
                             consumers.setUI(false);
                             matrices.popPose();
                         }

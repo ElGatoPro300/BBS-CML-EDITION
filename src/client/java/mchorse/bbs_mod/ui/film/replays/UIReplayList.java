@@ -1820,7 +1820,7 @@ public class UIReplayList extends UIList<Replay> {
     private void fromModelBlock(ModelBlockEntity modelBlock) {
         Film film = this.panel.getData();
         Replay replay = film.replays.addReplay();
-        BlockPos blockPos = modelBlock.getPos();
+        BlockPos blockPos = modelBlock.getBlockPos();
         ModelProperties properties = modelBlock.getProperties();
         Transform transform = properties.getTransform().copy();
         double x = blockPos.getX() + transform.translate.x + 0.5D;

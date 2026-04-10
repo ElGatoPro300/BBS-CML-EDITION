@@ -9,10 +9,10 @@ import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.utils.IFileDropListener;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.utils.FFMpegUtils;
-import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.render.state.GuiRenderState;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.renderer.state.gui.GuiRenderState;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
@@ -56,7 +56,7 @@ public class UIScreen extends Screen implements IFileDropListener
         Minecraft mc = Minecraft.getInstance();
 
         this.menu = menu;
-        this.context = new UIRenderingContext(new GuiGraphics(mc, new GuiRenderState(), 0, 0));
+        this.context = new UIRenderingContext(new GuiGraphicsExtractor(mc, new GuiRenderState(), 0, 0));
 
         this.menu.context.setup(this.context);
     }
@@ -71,7 +71,7 @@ public class UIScreen extends Screen implements IFileDropListener
         this.menu.update();
     }
 
-    public void renderInWorld(WorldRenderContext context)
+    public void renderInWorld(LevelRenderContext context)
     {
         this.menu.renderInWorld(context);
     }
@@ -98,7 +98,6 @@ public class UIScreen extends Screen implements IFileDropListener
     public void removed()
     {
         Minecraft.getInstance().options.guiScale().set(this.lastGuiScale);
-        Minecraft.getInstance().resizeDisplay();
 
         super.removed();
 
@@ -116,7 +115,6 @@ public class UIScreen extends Screen implements IFileDropListener
         this.lastGuiScale = Minecraft.getInstance().options.guiScale().get();
 
         Minecraft.getInstance().options.guiScale().set(BBSModClient.getGUIScale());
-        Minecraft.getInstance().resizeDisplay();
 
         super.added();
 
@@ -188,15 +186,11 @@ public class UIScreen extends Screen implements IFileDropListener
         return true;
     }
 
-    @Override
-    public void renderBackground(GuiGraphics context, int mouseX, int mouseY, float delta)
+    public void renderBackground(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta)
     {}
 
-    @Override
-    public void render(GuiGraphics context, int mouseX, int mouseY, float delta)
+    public void render(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta)
     {
-        super.render(context, mouseX, mouseY, delta);
-
         this.context = new UIRenderingContext(context);
         this.menu.context.setup(this.context);
         this.menu.context.setTransition(Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(false));

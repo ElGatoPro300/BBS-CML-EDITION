@@ -615,7 +615,7 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
         lineBuilder.render(context.batcher, SolidColorLineRenderer.get(Colors.COLOR.set(Colors.setA(sheet.color, 1F))));
 
         /* Render track bars (horizontal lines) */
-        BufferBuilder builder = Tesselator.getInstance().begin(VertexFormat.DrawMode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+        BufferBuilder builder = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
 
         /* Draw keyframe handles (outer) */
         int forcedIndex = 0;

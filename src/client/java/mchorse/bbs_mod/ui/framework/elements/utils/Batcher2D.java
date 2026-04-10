@@ -16,7 +16,7 @@ import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.utils.colors.Colors;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.texture.AbstractTexture;
@@ -44,7 +44,7 @@ public class Batcher2D
     private static final Map<Integer, Identifier> RAW_TEXTURE_IDS = new HashMap<>();
     private static FontRenderer fontRenderer = new FontRenderer();
 
-    private GuiGraphics context;
+    private GuiGraphicsExtractor context;
     private FontRenderer font;
 
     public static FontRenderer getDefaultTextRenderer()
@@ -54,18 +54,18 @@ public class Batcher2D
         return fontRenderer;
     }
 
-    public Batcher2D(GuiGraphics context)
+    public Batcher2D(GuiGraphicsExtractor context)
     {
         this.context = context;
         this.font = getDefaultTextRenderer();
     }
 
-    public GuiGraphics getContext()
+    public GuiGraphicsExtractor getContext()
     {
         return this.context;
     }
 
-    public void setContext(GuiGraphics context)
+    public void setContext(GuiGraphicsExtractor context)
     {
         this.context = context;
     }
@@ -434,7 +434,7 @@ public class Batcher2D
         GlStateManager._activeTexture(GL30.GL_TEXTURE0);
         GlStateManager._bindTexture(texture);
 
-        BufferBuilder builder = Tesselator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, DefaultVertexFormat.POSITION_TEX_COLOR);
+        BufferBuilder builder = Tesselator.getInstance().begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION_TEX_COLOR);
         this.fillTexturedBox(builder, this.resolveMatrix(), color, x, y, w, h, u1, v1, u2, v2, textureW, textureH);
         RenderTypes.cutoutMovingBlock().draw(builder.buildOrThrow());
     }
@@ -568,7 +568,7 @@ public class Batcher2D
         float fillerY = h - (countY - 1) * tileH;
 
         Matrix4f matrix = this.resolveMatrix();
-        BufferBuilder builder = Tesselator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, DefaultVertexFormat.POSITION_TEX_COLOR);
+        BufferBuilder builder = Tesselator.getInstance().begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION_TEX_COLOR);
         GlStateManager._activeTexture(GL30.GL_TEXTURE0);
         GlStateManager._bindTexture(texture.id);
 
@@ -611,10 +611,8 @@ public class Batcher2D
 
     public void text(String label, float x, float y, int color, boolean shadow)
     {
-        this.context.drawString(this.font.getRenderer(), label, (int) x, (int) y, color, shadow);
+        this.context.text(this.font.getRenderer(), label, (int) x, (int) y, color, shadow);
     }
-
-    /* Text helpers */
 
     public int wallText(String text, int x, int y, int color, int width)
     {

@@ -21,7 +21,6 @@ import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.interps.Lerps;
 import mchorse.bbs_mod.utils.pose.Transform;
 import net.minecraft.client.player.AbstractClientPlayer;
-import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.world.InteractionHand;
 import org.joml.Matrix4f;
 
@@ -118,7 +117,7 @@ public abstract class FormRenderer <T extends Form>
         int u = context.light & '\uffff';
         int v = context.light >> 16 & '\uffff';
 
-        u = (int) Lerps.lerp(u, LightTexture.FULL_BLOCK, lf);
+        u = (int) Lerps.lerp(u, 240, lf);
         context.light = u | v << 16;
 
         this.render3D(context);
@@ -322,3 +321,4 @@ public abstract class FormRenderer <T extends Form>
         stack.popPose();
     }
 }
+

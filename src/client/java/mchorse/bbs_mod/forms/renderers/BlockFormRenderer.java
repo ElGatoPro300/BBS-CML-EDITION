@@ -13,7 +13,6 @@ import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.joml.Vectors;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.EntityBlock;
@@ -51,8 +50,8 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
 
         consumers.setSubstitute(BBSRendering.getColorConsumer(set));
         consumers.setUI(true);
-        Minecraft.getInstance().getBlockRenderer().renderSingleBlock(this.form.blockState.get(), matrices, consumers, LightTexture.FULL_BLOCK, OverlayTexture.NO_OVERLAY);
-        this.renderBlockEntity(matrices, consumers, LightTexture.FULL_BLOCK, OverlayTexture.NO_OVERLAY);
+        // TODO: adapt to 26.1 block renderer entrypoint
+        this.renderBlockEntity(matrices, consumers, 240, OverlayTexture.NO_OVERLAY);
         consumers.draw();
         consumers.setUI(false);
         consumers.setSubstitute(null);
@@ -90,7 +89,7 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
         color.mul(set);
 
         consumers.setSubstitute(BBSRendering.getColorConsumer(set));
-        Minecraft.getInstance().getBlockRenderer().renderSingleBlock(this.form.blockState.get(), context.stack, consumers, light, context.overlay);
+        // TODO: adapt to 26.1 block renderer entrypoint
 
         if (!context.isPicking())
         {
@@ -130,3 +129,4 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
         // TODO 1.21.11: migrate to BlockEntityRenderer<T, S> state/queue rendering API.
     }
 }
+

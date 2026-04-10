@@ -19,7 +19,7 @@ public class ModelVAORenderer
             /* shader binding handled by RenderLayer in 1.21.11 */
         }
 
-        modelVAO.render(DefaultVertexFormat.NEW_ENTITY, r, g, b, a, light, overlay);
+        modelVAO.render(DefaultVertexFormat.ENTITY, r, g, b, a, light, overlay);
 
         GL30.glBindVertexArray(currentVAO);
         GL30.glBindBuffer(GL30.GL_ELEMENT_ARRAY_BUFFER, currentElementArrayBuffer);

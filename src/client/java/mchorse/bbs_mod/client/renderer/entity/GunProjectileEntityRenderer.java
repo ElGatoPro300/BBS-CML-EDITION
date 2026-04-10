@@ -14,6 +14,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.Identifier;
 
@@ -35,7 +36,7 @@ public class GunProjectileEntityRenderer extends EntityRenderer<GunProjectileEnt
     }
 
     @Override
-    public void updateRenderState(GunProjectileEntity entity, GunProjectileEntityState state, float tickDelta) {
+    public void extractRenderState(GunProjectileEntity entity, GunProjectileEntityState state, float tickDelta) {
         super.extractRenderState(entity, state, tickDelta);
         state.projectile = entity;
         state.tickDelta = tickDelta;
@@ -58,9 +59,9 @@ public class GunProjectileEntityRenderer extends EntityRenderer<GunProjectileEnt
         GunProperties properties = projectile.getProperties();
         int out = properties.lifeSpan - 2;
 
-        float bodyYaw = projectile.getYaw();
-        float pitch = projectile.getPitch();
-        float scale = Lerps.envelope(projectile.age + tickDelta, 0, properties.fadeIn, out - properties.fadeOut, out);
+        float bodyYaw = projectile.getYRot();
+        float pitch = projectile.getXRot();
+        float scale = Lerps.envelope(projectile.tickCount + tickDelta, 0, properties.fadeIn, out - properties.fadeOut, out);
 
         if (properties.yaw) matrices.mulPose(Axis.YP.rotationDegrees(bodyYaw));
         if (properties.pitch) matrices.mulPose(Axis.XP.rotationDegrees(-pitch));

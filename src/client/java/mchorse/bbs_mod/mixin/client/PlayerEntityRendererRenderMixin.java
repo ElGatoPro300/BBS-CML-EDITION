@@ -11,7 +11,6 @@ import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.client.renderer.entity.player.AvatarRenderer;
 import net.minecraft.client.renderer.entity.state.AvatarRenderState;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
-import net.minecraft.client.renderer.state.CameraRenderState;
 import net.minecraft.world.entity.Entity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -22,7 +21,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class PlayerEntityRendererRenderMixin
 {
     @Inject(method = "submit", at = @At("HEAD"), cancellable = true)
-    public void onRender(LivingEntityRenderState state, PoseStack matrixStack, SubmitNodeCollector queue, CameraRenderState cameraRenderState, CallbackInfo info)
+    public void onRender(LivingEntityRenderState state, PoseStack matrixStack, SubmitNodeCollector queue, Object cameraRenderState, CallbackInfo info)
     {
         if ((Object) this instanceof AvatarRenderer)
         {
@@ -48,3 +47,4 @@ public class PlayerEntityRendererRenderMixin
         }
     }
 }
+

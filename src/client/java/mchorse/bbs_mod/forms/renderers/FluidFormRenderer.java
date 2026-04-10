@@ -28,9 +28,8 @@ import mchorse.bbs_mod.utils.pose.Transform;
 import mchorse.bbs_mod.simulation.FluidController;
 import mchorse.bbs_mod.simulation.FluidSimulation;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.render.*;
+import net.minecraft.client.renderer.*;
 import net.minecraft.client.renderer.GameRenderer;
-import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.texture.OverlayTexture;
@@ -79,11 +78,11 @@ public class FluidFormRenderer extends FormRenderer<FluidForm> implements ITicka
         stack.last().normal().getScale(normalScale);
         stack.last().normal().scale(1F / normalScale.x, -1F / normalScale.y, 1F / normalScale.z);
 
-        VertexFormat format = DefaultVertexFormat.NEW_ENTITY;
+        VertexFormat format = DefaultVertexFormat.ENTITY;
         
         this.renderFluid(format, RenderPipelines.ENTITY_TRANSLUCENT,
             stack,
-            OverlayTexture.NO_OVERLAY, LightTexture.FULL_BRIGHT, Colors.WHITE,
+            OverlayTexture.NO_OVERLAY, 15728880, Colors.WHITE,
             context.getTransition()
         );
 
@@ -93,7 +92,7 @@ public class FluidFormRenderer extends FormRenderer<FluidForm> implements ITicka
     @Override
     protected void render3D(FormRenderingContext context)
     {
-        VertexFormat format = DefaultVertexFormat.NEW_ENTITY;
+        VertexFormat format = DefaultVertexFormat.ENTITY;
         RenderPipeline shader = BBSRendering.isIrisShadersEnabled()
             ? RenderPipelines.ENTITY_TRANSLUCENT
             : RenderPipelines.ENTITY_TRANSLUCENT;
@@ -112,7 +111,7 @@ public class FluidFormRenderer extends FormRenderer<FluidForm> implements ITicka
         /* shader binding handled by RenderLayer in 1.21.11 */
         GL11.glLineWidth(2.0F);
         
-        BufferBuilder builder = Tesselator.getInstance().begin(VertexFormat.DrawMode.LINES, DefaultVertexFormat.POSITION_COLOR);
+        BufferBuilder builder = Tesselator.getInstance().begin(VertexFormat.Mode.LINES, DefaultVertexFormat.POSITION_COLOR);
         
         PoseStack stack = context.stack;
         
@@ -201,7 +200,7 @@ public class FluidFormRenderer extends FormRenderer<FluidForm> implements ITicka
         GameRenderer gameRenderer = Minecraft.getInstance().gameRenderer;
 
         Tesselator tessellator = Tesselator.getInstance();
-        BufferBuilder builder = tessellator.begin(VertexFormat.DrawMode.TRIANGLES, format);
+        BufferBuilder builder = tessellator.begin(VertexFormat.Mode.TRIANGLES, format);
 
         Color color = this.form.color.get();
         float opacity = this.form.opacity.get();
@@ -796,3 +795,4 @@ public class FluidFormRenderer extends FormRenderer<FluidForm> implements ITicka
     }
 
 }
+

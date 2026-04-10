@@ -17,7 +17,7 @@ import mchorse.bbs_mod.forms.forms.TrailForm;
 import mchorse.bbs_mod.graphics.Draw;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.ui.framework.UIContext;
-import net.minecraft.client.render.*;
+import net.minecraft.client.renderer.*;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import org.lwjgl.opengl.GL11;
 import org.joml.Matrix4f;
@@ -77,7 +77,7 @@ public class TrailFormRenderer extends FormRenderer<TrailForm> implements ITicka
             float outlineOffset = 0.02F * scale;
 
             Tesselator tessellator = Tesselator.getInstance();
-            BufferBuilder builder = tessellator.begin(VertexFormat.DrawMode.TRIANGLES, DefaultVertexFormat.POSITION_COLOR);
+            BufferBuilder builder = tessellator.begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION_COLOR);
 
 
             Draw.fillBox(builder, stack, -outlineOffset, -outlineSize, -outlineOffset, outlineOffset, outlineSize, outlineOffset, 0, 0, 0);
@@ -101,7 +101,7 @@ public class TrailFormRenderer extends FormRenderer<TrailForm> implements ITicka
 
 
         PoseStack stack = context.stack;
-        net.minecraft.client.Camera camera = context.camera;
+        var camera = context.camera;
         double baseX = camera.position.x;
         double baseY = camera.position.y;
         double baseZ = camera.position.z;
@@ -163,7 +163,7 @@ public class TrailFormRenderer extends FormRenderer<TrailForm> implements ITicka
 
 
         Tesselator tessellator = Tesselator.getInstance();
-        BufferBuilder builder = tessellator.begin(VertexFormat.DrawMode.QUADS, DefaultVertexFormat.POSITION_TEX);
+        BufferBuilder builder = tessellator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX);
         Matrix4f identityMatrix = new Matrix4f();
         Trail lastTrail = null;
 

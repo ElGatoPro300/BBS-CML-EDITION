@@ -30,7 +30,6 @@ import java.util.function.Supplier;
 import mchorse.bbs_mod.utils.math.Noise;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GameRenderer;
-import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.texture.OverlayTexture;
@@ -66,7 +65,7 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
         stack.last().normal().getScale(normalScale);
         stack.last().normal().scale(1F / normalScale.x, -1F / normalScale.y, 1F / normalScale.z);
 
-        this.renderShape(stack, RenderPipelines.ENTITY_TRANSLUCENT, OverlayTexture.NO_OVERLAY, LightTexture.FULL_BRIGHT);
+        this.renderShape(stack, RenderPipelines.ENTITY_TRANSLUCENT, OverlayTexture.NO_OVERLAY, 15728880);
 
         stack.popPose();
     }
@@ -174,7 +173,7 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
 
         // Draw Geometry based on Type
         Tesselator tessellator = Tesselator.getInstance();
-        BufferBuilder builder = tessellator.begin(VertexFormat.DrawMode.QUADS, DefaultVertexFormat.NEW_ENTITY);
+        BufferBuilder builder = tessellator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.ENTITY);
         
         ShapeForm.ShapeType type = this.form.type.get();
         
@@ -760,9 +759,10 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
 
         builder.addVertex(matrix, x, y, z)
                .setColor(c.r, c.g, c.b, c.a)
-               .texture(u, v)
-               .overlay(overlay)
-               .light(light)
-               .normal(normal.x, normal.y, normal.z);
+               .setUv(u, v)
+               .setOverlay(overlay)
+               .setLight(light)
+               .setNormal(normal.x, normal.y, normal.z);
     }
 }
+

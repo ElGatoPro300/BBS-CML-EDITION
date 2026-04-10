@@ -49,17 +49,17 @@ public class BBSShaders
 
         ShaderManager loader = Minecraft.getInstance().getShaderManager();
 
-        model = loadProgram(loader, "core/model", DefaultVertexFormat.NEW_ENTITY);
+        model = loadProgram(loader, "core/model", DefaultVertexFormat.ENTITY);
         multiLink = loadProgram(loader, "core/multilink", DefaultVertexFormat.POSITION_TEX_COLOR);
         subtitles = loadProgram(loader, "core/subtitles", DefaultVertexFormat.POSITION_TEX_COLOR);
 
         pickerPreview = loadProgram(loader, "core/picker_preview", DefaultVertexFormat.POSITION_TEX_COLOR);
-        pickerBillboard = loadProgram(loader, "core/picker_billboard", DefaultVertexFormat.NEW_ENTITY);
+        pickerBillboard = loadProgram(loader, "core/picker_billboard", DefaultVertexFormat.ENTITY);
         pickerBillboardNoShading = loadProgram(loader, "core/picker_billboard_no_shading", DefaultVertexFormat.POSITION_TEX_LIGHTMAP_COLOR);
         pickerParticles = loadProgram(loader, "core/picker_particles", DefaultVertexFormat.POSITION_COLOR_TEX_LIGHTMAP);
-        pickerModels = loadProgram(loader, "core/picker_models", DefaultVertexFormat.NEW_ENTITY);
+        pickerModels = loadProgram(loader, "core/picker_models", DefaultVertexFormat.ENTITY);
         
-        MODEL_PIPELINE = registerPipeline("pipeline/model", "core/model", DefaultVertexFormat.NEW_ENTITY);
+        MODEL_PIPELINE = registerPipeline("pipeline/model", "core/model", DefaultVertexFormat.ENTITY);
         MULTILINK_PIPELINE = registerPipeline("pipeline/multilink", "core/multilink", DefaultVertexFormat.POSITION_TEX_COLOR);
         SUBTITLES_PIPELINE = registerPipeline("pipeline/subtitles", "core/subtitles", DefaultVertexFormat.POSITION_TEX_COLOR);
 

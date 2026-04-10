@@ -126,7 +126,7 @@ public class FramebufferFormRenderer extends FormRenderer<FramebufferForm>
         GL30.glCullFace(GL30.GL_BACK);
 
         boolean shading = !context.isPicking();
-        VertexFormat format = shading ? DefaultVertexFormat.NEW_ENTITY : DefaultVertexFormat.POSITION_TEX_COLOR;
+        VertexFormat format = shading ? DefaultVertexFormat.ENTITY : DefaultVertexFormat.POSITION_TEX_COLOR;
         RenderPipeline shaderKey = shading ? RenderPipelines.ENTITY_TRANSLUCENT : RenderPipelines.GUI_TEXTURED;
 
         this.renderModel(framebuffer.getMainTexture(), format, shaderKey, context.stack, context.overlay, context.light, context.color, context.getTransition());
@@ -167,7 +167,7 @@ public class FramebufferFormRenderer extends FormRenderer<FramebufferForm>
 
     private void renderQuad(VertexFormat format, Texture texture, RenderPipeline shader, PoseStack matrices, int overlay, int light, int overlayColor, float transition)
     {
-        BufferBuilder builder = Tesselator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, format);
+        BufferBuilder builder = Tesselator.getInstance().begin(VertexFormat.Mode.TRIANGLES, format);
         Color color = Color.white();
         PoseStack.Pose entry = matrices.last();
         Matrix4f matrix = entry.pose();
@@ -175,7 +175,7 @@ public class FramebufferFormRenderer extends FormRenderer<FramebufferForm>
         color.mul(overlayColor);
 
         GameRenderer gameRenderer = Minecraft.getInstance().gameRenderer;
-        if (format == DefaultVertexFormat.NEW_ENTITY)
+        if (format == DefaultVertexFormat.ENTITY)
         {
             /* lightmap/overlay state handled by renderer in 1.21.11 */
         }
@@ -208,7 +208,7 @@ public class FramebufferFormRenderer extends FormRenderer<FramebufferForm>
         GlStateManager._enableBlend();
         RenderTypes.debugFilledBox().draw(builder.buildOrThrow());
 
-        if (format == DefaultVertexFormat.NEW_ENTITY)
+        if (format == DefaultVertexFormat.ENTITY)
         {
             /* lightmap/overlay state handled by renderer in 1.21.11 */
         }
@@ -226,6 +226,6 @@ public class FramebufferFormRenderer extends FormRenderer<FramebufferForm>
             return consumer.addVertex(matrix, x, y, 0F).setUv(u, v).setColor(color.r, color.g, color.b, color.a);
         }
 
-        return consumer.addVertex(matrix, x, y, 0F).setColor(color.r, color.g, color.b, color.a).texture(u, v).overlay(overlay).light(light).normal(entry, 0F, 0F, nz);
+        return consumer.addVertex(matrix, x, y, 0F).setColor(color.r, color.g, color.b, color.a).setUv(u, v).setOverlay(overlay).setLight(light).setNormal(entry, 0F, 0F, nz);
     }
 }

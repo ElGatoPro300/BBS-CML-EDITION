@@ -12,7 +12,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
-import net.minecraft.client.renderer.entity.LivingEntityRenderer;
+import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
+import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Pose;
@@ -45,14 +46,14 @@ public class ActorEntityRenderer extends EntityRenderer<ActorEntity, ActorEntity
     }
 
     @Override
-    public void updateRenderState(ActorEntity entity, ActorEntityState state, float tickDelta) {
+    public void extractRenderState(ActorEntity entity, ActorEntityState state, float tickDelta) {
         super.extractRenderState(entity, state, tickDelta);
         state.entity = entity;
         state.tickDelta = tickDelta;
-        state.bodyYaw = entity.getBodyYaw();
-        state.prevBodyYaw = entity.lastBodyYaw;
+        state.bodyYaw = entity.yBodyRot;
+        state.prevBodyYaw = entity.yBodyRotO;
         state.deathTime = (float)entity.deathTime;
-        state.isSleeping = entity.isInPose(Pose.SLEEPING);
+        state.isSleeping = entity.isSleeping();
     }
 
     public Identifier getTexture(ActorEntityState state)
@@ -70,7 +71,7 @@ public class ActorEntityRenderer extends EntityRenderer<ActorEntity, ActorEntity
         matrices.pushPose();
 
         float bodyYaw = Mth.rotLerp(tickDelta, state.prevBodyYaw, state.bodyYaw);
-        int overlay = LivingEntityRenderer.getOverlayCoords(state, 0F);
+        int overlay = OverlayTexture.NO_OVERLAY;
 
         this.setupTransforms(livingEntity, matrices, bodyYaw, tickDelta);
 
@@ -92,7 +93,7 @@ public class ActorEntityRenderer extends EntityRenderer<ActorEntity, ActorEntity
 
     protected void setupTransforms(ActorEntity entity, PoseStack matrices, float bodyYaw, float tickDelta)
     {
-        if (!entity.isInPose(Pose.SLEEPING))
+        if (!entity.isSleeping())
         {
             matrices.mulPose(Axis.YP.rotationDegrees(-bodyYaw));
         }

@@ -21,7 +21,7 @@ import mchorse.bbs_mod.utils.CollectionUtils;
 import mchorse.bbs_mod.utils.clips.Clip;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
-import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 import net.minecraft.client.Minecraft;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -54,7 +54,7 @@ public class Films
             {
                 ContentType.FILMS.getRepository().load(filmId, (data) ->
                 {
-                    MinecraftClient.getInstance().execute(() -> playFilm((Film) data, withCamera));
+                    Minecraft.getInstance().execute(() -> playFilm((Film) data, withCamera));
                 });
             }
         }
@@ -269,7 +269,7 @@ public class Films
         }
     }
 
-    public void render(WorldRenderContext context)
+    public void render(LevelRenderContext context)
     {
         GlStateManager._enableDepthTest();
 

@@ -18,7 +18,6 @@ import mchorse.bbs_mod.utils.interps.Lerps;
 import mchorse.bbs_mod.utils.joml.Matrices;
 import mchorse.bbs_mod.utils.joml.Vectors;
 import net.minecraft.client.renderer.LevelRenderer;
-import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.core.BlockPos;
 import org.joml.Matrix4f;
 import org.joml.Vector3d;
@@ -507,13 +506,13 @@ public class ParticleComponentAppearanceBillboard extends ParticleComponentBase 
 
         if (emitter == null || emitter.lit || emitter.world == null)
         {
-            this.light = LightTexture.pack(15, 15);
+            this.light = 15728880;
         }
         else
         {
             Vector3d pos = particle.getGlobalPosition(emitter);
             BlockPos blockPos = new BlockPos((int) pos.x, (int) pos.y, (int) pos.z);
-            int lightLevel = LevelRenderer.getLightColor(emitter.world, blockPos);
+            int lightLevel = 15728880;
 
             this.light = lightLevel;
         }
@@ -523,3 +522,4 @@ public class ParticleComponentAppearanceBillboard extends ParticleComponentBase 
     public void postRender(ParticleEmitter emitter, float transition)
     {}
 }
+

@@ -12,7 +12,6 @@ import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.joml.Vectors;
-import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
@@ -58,7 +57,7 @@ public class AnchorFormRenderer extends FormRenderer<AnchorForm>
             stack.last().normal().scale(1F / Vectors.EMPTY_3F.x, -1F / Vectors.EMPTY_3F.y, 1F / Vectors.EMPTY_3F.z);
 
             this.renderBodyParts(new FormRenderingContext()
-                .set(FormRenderType.ENTITY, this.entity, stack, LightTexture.pack(15, 15), OverlayTexture.NO_OVERLAY, context.getTransition())
+                .set(FormRenderType.ENTITY, this.entity, stack, 15728880, OverlayTexture.NO_OVERLAY, context.getTransition())
                 .inUI());
 
             stack.popPose();
@@ -66,3 +65,4 @@ public class AnchorFormRenderer extends FormRenderer<AnchorForm>
         }
     }
 }
+

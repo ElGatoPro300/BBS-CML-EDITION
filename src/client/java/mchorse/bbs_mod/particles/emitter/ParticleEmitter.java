@@ -449,7 +449,7 @@ public class ParticleEmitter
             this.setParticleVariables(this.uiParticle, transition);
 
             Matrix4f matrix = stack.last().pose();
-            BufferBuilder builder = Tesselator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, DefaultVertexFormat.POSITION_TEX_COLOR);
+            BufferBuilder builder = Tesselator.getInstance().begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION_TEX_COLOR);
 
             for (IComponentParticleRender render : list)
             {
@@ -484,7 +484,7 @@ public class ParticleEmitter
         if (!this.particles.isEmpty())
         {
             Matrix4f matrix = stack.last().pose();
-            BufferBuilder builder = Tesselator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, format);
+            BufferBuilder builder = Tesselator.getInstance().begin(VertexFormat.Mode.TRIANGLES, format);
 
             this.bindTexture();
 

@@ -11,7 +11,6 @@ import mchorse.bbs_mod.obj.shapes.ShapeKeys;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.interps.Lerps;
-import net.minecraft.client.renderer.LightTexture;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Vector2f;
@@ -241,8 +240,8 @@ public class CubicCubeRenderer implements ICubicRenderer
 
         builder.addVertex(this.vertex.x, this.vertex.y, this.vertex.z)
             .setColor(this.r * group.color.r, this.g * group.color.g, this.b * group.color.b, this.a * group.color.a)
-            .texture(vertex.uv.x, vertex.uv.y)
-            .overlay(this.overlay);
+            .setUv(vertex.uv.x, vertex.uv.y)
+            .setOverlay(this.overlay);
 
         if (this.stencilMap != null)
         {
@@ -250,7 +249,7 @@ public class CubicCubeRenderer implements ICubicRenderer
         }
         else
         {
-            int u = (int) Lerps.lerp(this.light & '\uffff', LightTexture.FULL_BLOCK, MathUtils.clamp(group.lighting, 0F, 1F));
+            int u = (int) Lerps.lerp(this.light & '\uffff', 240, MathUtils.clamp(group.lighting, 0F, 1F));
             int v = this.light >> 16 & '\uffff';
 
             builder.setUv2(u, v);

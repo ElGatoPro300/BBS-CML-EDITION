@@ -739,7 +739,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
             }
 
             /* Render track bars (horizontal lines) */
-            BufferBuilder builder = Tesselator.getInstance().begin(VertexFormat.DrawMode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+            BufferBuilder builder = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
 
             int startX = area.x;
             int endX = area.ex();

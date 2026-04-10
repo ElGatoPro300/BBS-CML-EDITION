@@ -1162,7 +1162,7 @@ public class UIShapeNodeEditor extends UIElement
         /* shader binding handled by RenderLayer in 1.21.11 */
 
         // Border
-        BufferBuilder builder = tessellator.begin(VertexFormat.DrawMode.TRIANGLES, DefaultVertexFormat.POSITION_COLOR);
+        BufferBuilder builder = tessellator.begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION_COLOR);
 
         for (int i = 0; i < segments; i++)
         {
@@ -1177,7 +1177,7 @@ public class UIShapeNodeEditor extends UIElement
         RenderTypes.debugFilledBox().draw(builder.buildOrThrow());
 
         // Fill
-        builder = tessellator.begin(VertexFormat.DrawMode.TRIANGLES, DefaultVertexFormat.POSITION_COLOR);
+        builder = tessellator.begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION_COLOR);
 
         for (int i = 0; i < segments; i++)
         {

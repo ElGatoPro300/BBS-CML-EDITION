@@ -7,7 +7,6 @@ import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
 import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
-import net.minecraft.client.renderer.state.CameraRenderState;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -48,8 +47,7 @@ public class EntityRenderDispatcherMixin
         cancellable = true
     )
     private void bbs$renderMorph(
-        EntityRenderState state,
-        CameraRenderState cameraRenderState,
+        EntityRenderState state, Object cameraRenderState,
         double x,
         double y,
         double z,

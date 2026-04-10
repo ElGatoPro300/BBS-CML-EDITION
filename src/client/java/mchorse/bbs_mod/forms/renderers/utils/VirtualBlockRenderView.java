@@ -10,9 +10,10 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
-import net.minecraft.world.level.BlockAndTintGetter;
 import net.minecraft.world.level.ColorResolver;
+import net.minecraft.world.level.CardinalLighting;
 import net.minecraft.world.level.LightLayer;
+import net.minecraft.client.renderer.block.BlockAndTintGetter;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -243,12 +244,13 @@ public class VirtualBlockRenderView implements BlockAndTintGetter
 
     public float getShade(Direction direction, boolean shaded)
     {
-        if (Minecraft.getInstance().level != null)
-        {
-            return Minecraft.getInstance().level.getShade(direction, shaded);
-        }
-
         return 1.0F;
+    }
+
+    @Override
+    public CardinalLighting cardinalLighting()
+    {
+        return CardinalLighting.DEFAULT;
     }
 
     @Override

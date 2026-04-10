@@ -19,7 +19,6 @@ import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.joml.Vectors;
-import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
@@ -56,7 +55,7 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
         GlStateManager._depthFunc(GL11.GL_LEQUAL);
         this.renderModel(BBSShaders::getModel,
             stack,
-            OverlayTexture.NO_OVERLAY, LightTexture.FULL_BRIGHT, Colors.WHITE,
+            OverlayTexture.NO_OVERLAY, 15728880, Colors.WHITE,
             context.getTransition(),
             null,
             true,
@@ -77,7 +76,7 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
             shading = true;
         }
 
-        VertexFormat format = shading ? DefaultVertexFormat.NEW_ENTITY : DefaultVertexFormat.POSITION_TEX_COLOR;
+        VertexFormat format = shading ? DefaultVertexFormat.ENTITY : DefaultVertexFormat.POSITION_TEX_COLOR;
         Supplier<GlProgram> shader = this.getShader(
             context,
             shading
@@ -148,3 +147,4 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
         }
     }
 }
+

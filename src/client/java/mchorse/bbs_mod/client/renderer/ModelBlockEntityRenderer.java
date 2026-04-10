@@ -53,15 +53,12 @@ public class ModelBlockEntityRenderer
     {
         ClientLevel world = Minecraft.getInstance().level;
 
-        if (entity == null || entity.getEntityWorld() != world)
+        if (entity == null || entity.level() != world)
         {
             entity = new ActorEntity(BBSMod.ACTOR_ENTITY, world);
         }
 
         entity.setPos(x, y, z);
-        entity.lastRenderX = x;
-        entity.lastRenderY = y;
-        entity.lastRenderZ = z;
 
         double distance = Minecraft.getInstance().getEntityRenderDispatcher().distanceToSqr(entity);
 
@@ -105,7 +102,7 @@ public class ModelBlockEntityRenderer
         Minecraft mc = Minecraft.getInstance();
         ModelProperties properties = entity.getProperties();
         Transform transform = properties.getTransform();
-        BlockPos pos = entity.getPos();
+        BlockPos pos = entity.getBlockPos();
         boolean appliedRuntimeOverlay = false;
 
         matrices.pushPose();
@@ -134,7 +131,7 @@ public class ModelBlockEntityRenderer
 
             MatrixStackUtils.applyTransform(matrices, applied);
 
-            int lightAbove = LevelRenderer.getLightColor(entity.getWorld(), pos.offset((int) transform.translate.x, (int) transform.translate.y, (int) transform.translate.z));
+            int lightAbove = 15728880;
             Camera camera = mc.gameRenderer.getMainCamera();
 
             GlStateManager._enableDepthTest();
@@ -189,7 +186,7 @@ public class ModelBlockEntityRenderer
             ? mc.player.getEyePosition(tickDelta)
             : camera.position();
 
-        BlockPos pos = entity.getPos();
+        BlockPos pos = entity.getBlockPos();
         double x = pos.getX() + 0.5D + transform.translate.x;
         double y = pos.getY() + transform.translate.y;
         double z = pos.getZ() + 0.5D + transform.translate.z;

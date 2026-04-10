@@ -8,7 +8,7 @@ import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
-import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -61,7 +61,7 @@ public class FilmControllerContext
         this.viewMatrix = null;
     }
 
-    public FilmControllerContext setup(IntObjectMap<IEntity> entities, IEntity entity, Replay replay, WorldRenderContext context)
+    public FilmControllerContext setup(IntObjectMap<IEntity> entities, IEntity entity, Replay replay, LevelRenderContext context)
     {
         this.reset();
 
@@ -69,13 +69,13 @@ public class FilmControllerContext
         this.entity = entity;
         this.replay = replay;
         this.camera = Minecraft.getInstance().gameRenderer.getMainCamera();
-        this.stack = context.matrices();
+        this.stack = context.poseStack();
         if (this.stack == null)
         {
             this.stack = new PoseStack();
             MatrixStackUtils.multiply(this.stack, RenderSystem.getModelViewMatrix());
         }
-        this.consumers = context.consumers();
+        this.consumers = context.bufferSource();
         this.transition = Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(false);
 
         return this;

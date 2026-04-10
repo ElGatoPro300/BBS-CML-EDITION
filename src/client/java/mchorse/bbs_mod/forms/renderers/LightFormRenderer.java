@@ -54,8 +54,8 @@ public class LightFormRenderer extends FormRenderer<LightForm>
         matrices.scale(scale, scale, 1F);
 
         consumers.setUI(true);
-        context.batcher.getContext().renderItem(stack, -8, -8);
-        context.batcher.getContext().renderItemDecorations(context.batcher.getFont().getRenderer(), stack, -8, -8);
+        context.batcher.getContext().item(stack, -8, -8);
+        context.batcher.getContext().itemDecorations(context.batcher.getFont().getRenderer(), stack, -8, -8);
         consumers.setUI(false);
         matrices.popPose();
     }

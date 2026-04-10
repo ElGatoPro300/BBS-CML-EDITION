@@ -168,7 +168,7 @@ public class Gizmo
         outlineSize *= scale;
         outlineOffset *= scale;
 
-        BufferBuilder builder = Tesselator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, DefaultVertexFormat.POSITION_COLOR);
+        BufferBuilder builder = Tesselator.getInstance().begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION_COLOR);
 
         if (this.mode == Mode.ROTATE)
         {
@@ -265,7 +265,7 @@ public class Gizmo
         axisSize *= scale;
         axisOffset *= scale;
 
-        BufferBuilder builder = Tesselator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, DefaultVertexFormat.POSITION_COLOR);
+        BufferBuilder builder = Tesselator.getInstance().begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION_COLOR);
 
         if (this.mode == Mode.ROTATE)
         {

@@ -10,7 +10,7 @@ import com.mojang.blaze3d.vertex.VertexFormat;
 import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.client.BBSShaders;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.render.*;
+import net.minecraft.client.renderer.*;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import org.joml.Matrix4f;
 import org.watermedia.api.player.videolan.VideoPlayer;
@@ -428,7 +428,6 @@ public class VideoRenderer
 
             /* shader binding handled by RenderLayer in 1.21.11 */
             /* texture binding handled by render pipeline */
-            GlStateManager._colorMask(true, true, true, true);
             GlStateManager._enableBlend();
             GlStateManager._blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
             GlStateManager._disableDepthTest();
@@ -436,7 +435,7 @@ public class VideoRenderer
             GlStateManager._disableCull();
 
             Tesselator tessellator = Tesselator.getInstance();
-            BufferBuilder buffer = tessellator.begin(VertexFormat.DrawMode.QUADS, DefaultVertexFormat.POSITION_TEX);
+            BufferBuilder buffer = tessellator.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX);
             Matrix4f matrix = stack.last().pose();
 
             /* Desplazar por recorte de izquierda/arriba para mantener el contenido en su lugar. */
@@ -452,7 +451,6 @@ public class VideoRenderer
             GlStateManager._enableCull();
             GlStateManager._depthMask(true);
             GlStateManager._enableDepthTest();
-            GlStateManager._colorMask(true, true, true, true);
         }
     }
 

@@ -24,7 +24,6 @@ import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.joml.Vectors;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GameRenderer;
-import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import org.joml.Matrix4f;
@@ -61,7 +60,7 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
         stack.scale(1.5F, 1.5F, 1.5F);
         stack.scale(this.form.uiScale.get(), this.form.uiScale.get(), this.form.uiScale.get());
 
-        VertexFormat format = DefaultVertexFormat.NEW_ENTITY;
+        VertexFormat format = DefaultVertexFormat.ENTITY;
 
         this.renderModel(format, () ->
             {
@@ -69,7 +68,7 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
                 return null;
             },
             stack,
-            OverlayTexture.NO_OVERLAY, LightTexture.FULL_BRIGHT, Colors.WHITE,
+            OverlayTexture.NO_OVERLAY, 15728880, Colors.WHITE,
             context.getTransition(),
             null,
             true,
@@ -89,7 +88,7 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
             shading = true;
         }
 
-        VertexFormat format = shading ? DefaultVertexFormat.NEW_ENTITY : DefaultVertexFormat.POSITION_TEX_COLOR;
+        VertexFormat format = shading ? DefaultVertexFormat.ENTITY : DefaultVertexFormat.POSITION_TEX_COLOR;
         Supplier<GlProgram> shader = this.getShader(
             context,
             shading
@@ -189,7 +188,7 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
 
     private void renderQuad(VertexFormat format, Texture texture, Supplier<GlProgram> shader, PoseStack matrices, int overlay, int light, int overlayColor, float transition, Camera camera, boolean invertY, boolean modelRenderer)
     {
-        BufferBuilder builder = com.mojang.blaze3d.vertex.Tesselator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, format);
+        BufferBuilder builder = com.mojang.blaze3d.vertex.Tesselator.getInstance().begin(VertexFormat.Mode.TRIANGLES, format);
         Color color = this.form.color.get().copy();
         Matrix4f matrix = matrices.last().pose();
         PoseStack.Pose entry = matrices.last();
@@ -271,6 +270,7 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
             return consumer.addVertex(matrix, x, y, 0F).setUv(u, v).setColor(color.r, color.g, color.b, color.a);
         }
 
-        return consumer.addVertex(matrix, x, y, 0F).setColor(color.r, color.g, color.b, color.a).texture(u, v).overlay(overlay).light(light).normal(entry, 0F, 0F, nz);
+        return consumer.addVertex(matrix, x, y, 0F).setColor(color.r, color.g, color.b, color.a).setUv(u, v).setOverlay(overlay).setLight(light).setNormal(entry, 0F, 0F, nz);
     }
 }
+

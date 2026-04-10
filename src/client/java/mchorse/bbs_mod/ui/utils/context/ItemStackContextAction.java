@@ -33,8 +33,8 @@ public class ItemStackContextAction extends ContextAction
 
             matrices.pushPose();
             consumers.setUI(true);
-            context.batcher.getContext().renderItem(this.stack, x + 2, y + 2);
-            context.batcher.getContext().renderItemDecorations(context.batcher.getFont().getRenderer(), this.stack, x + 2, y + 2);
+            context.batcher.getContext().item(this.stack, x + 2, y + 2);
+            context.batcher.getContext().itemDecorations(context.batcher.getFont().getRenderer(), this.stack, x + 2, y + 2);
             consumers.setUI(false);
             matrices.popPose();
         }
@@ -42,3 +42,4 @@ public class ItemStackContextAction extends ContextAction
         context.batcher.text(this.label.get(), x + 22, y + (h - font.getHeight()) / 2 + 1, Colors.WHITE, false);
     }
 }
+

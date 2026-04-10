@@ -16,6 +16,8 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIEditorOverlayPanel;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Colors;
+import net.minecraft.client.Minecraft;
+import net.minecraft.world.entity.player.Player;
 
 public class UITriggerOverlayPanel extends UIEditorOverlayPanel<Trigger>
 {
@@ -177,7 +179,7 @@ public class UITriggerOverlayPanel extends UIEditorOverlayPanel<Trigger>
 
                     if (f == null)
                     {
-                        PlayerEntity player = MinecraftClient.getInstance().player;
+                        Player player = Minecraft.getInstance().player;
 
                         if (player != null)
                         {

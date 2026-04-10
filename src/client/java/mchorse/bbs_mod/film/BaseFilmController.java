@@ -40,12 +40,11 @@ import mchorse.bbs_mod.forms.renderers.utils.MatrixCacheEntry;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 import mchorse.bbs_mod.utils.joml.Matrices;
 import mchorse.bbs_mod.utils.joml.Vectors;
-import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.core.BlockPos;
@@ -162,9 +161,9 @@ public abstract class BaseFilmController
         }
 
         BlockPos pos = BlockPos.containing(position.x, position.y + 0.5D, position.z);
-        int sky = entity.getWorld().getLightLevel(LightLayer.SKY, pos);
-        int torch = entity.getWorld().getLightLevel(LightLayer.BLOCK, pos);
-        int light = LightTexture.pack(torch, sky);
+        int sky = entity.getWorld().getBrightness(LightLayer.SKY, pos);
+        int torch = entity.getWorld().getBrightness(LightLayer.BLOCK, pos);
+        int light = ((torch << 4) | (sky << 20));
         int overlay = OverlayTexture.pack(OverlayTexture.u(0F), OverlayTexture.v(entity.getHurtTimer() > 0));
 
         FormRenderingContext formContext = new FormRenderingContext()
@@ -255,7 +254,7 @@ public abstract class BaseFilmController
             stack.pushPose();
             stack.translate(position.x - cx, position.y - cy, position.z - cz);
 
-            renderNameTag(entity, Component.literal(StringUtils.processColoredText(context.nameTag)), stack, context.consumers, LightTexture.FULL_BRIGHT);
+            renderNameTag(entity, Component.literal(StringUtils.processColoredText(context.nameTag)), stack, context.consumers, 15728880);
 
             stack.popPose();
         }
@@ -469,7 +468,7 @@ public abstract class BaseFilmController
         int background = (int) (opacity * 255F) << 24;
         float h = (float) (-textRenderer.width(text) / 2);
 
-        int maxLight = LightTexture.FULL_BRIGHT;
+        int maxLight = 15728880;
 
             GlStateManager._enableBlend();
             GlStateManager._disableCull();
@@ -603,10 +602,10 @@ public abstract class BaseFilmController
                         if (anEntity instanceof ActorEntity actor)
                         {
                             /* Force synchronize entity angles */
-                            actor.setYaw(replay.keyframes.yaw.interpolate(replayTick).floatValue());
-                            actor.setHeadYaw(replay.keyframes.headYaw.interpolate(replayTick).floatValue());
-                            actor.setBodyYaw(replay.keyframes.bodyYaw.interpolate(replayTick).floatValue());
-                            actor.setPitch(replay.keyframes.pitch.interpolate(replayTick).floatValue());
+                            actor.setYRot(replay.keyframes.yaw.interpolate(replayTick).floatValue());
+                            actor.setYHeadRot(replay.keyframes.headYaw.interpolate(replayTick).floatValue());
+                            actor.setYBodyRot(replay.keyframes.bodyYaw.interpolate(replayTick).floatValue());
+                            actor.setXRot(replay.keyframes.pitch.interpolate(replayTick).floatValue());
                             replay.applyClientActions(replayTick, new MCEntity(anEntity), this.film);
 
                             spawned = true;
@@ -778,9 +777,9 @@ public abstract class BaseFilmController
             return;
         }
 
-        double x = xPos + (world.random.nextDouble() - 0.5D) * width;
+        double x = xPos + (world.getRandom().nextDouble() - 0.5D) * width;
         double y = yPos + 0.1D;
-        double z = zPos + (world.random.nextDouble() - 0.5D) * width;
+        double z = zPos + (world.getRandom().nextDouble() - 0.5D) * width;
 
         world.addParticle(new BlockParticleOption(ParticleTypes.BLOCK, world.getBlockState(pos)), x, y, z, 0D, 0.1D, 0D);
     }
@@ -967,7 +966,7 @@ public abstract class BaseFilmController
         return i != this.exception;
     }
 
-    public void render(WorldRenderContext context)
+    public void render(LevelRenderContext context)
     {
         GlStateManager._enableDepthTest();
 
@@ -986,7 +985,7 @@ public abstract class BaseFilmController
         }
     }
 
-    protected void renderEntity(WorldRenderContext context, Replay replay, IEntity entity)
+    protected void renderEntity(LevelRenderContext context, Replay replay, IEntity entity)
     {
         if (!replay.actor.get())
         {
@@ -1142,7 +1141,7 @@ public abstract class BaseFilmController
         return (a << 24) | (r << 16) | (g << 8) | b;
     }
 
-    protected FilmControllerContext getFilmControllerContext(WorldRenderContext context, Replay replay, IEntity entity)
+    protected FilmControllerContext getFilmControllerContext(LevelRenderContext context, Replay replay, IEntity entity)
     {
         float tick = replay.getTick(this.getTick()) + this.getTransition(entity, Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(false));
 
@@ -1177,3 +1176,4 @@ public abstract class BaseFilmController
         UPDATE, RENDER, PROPERTIES;
     }
 }
+

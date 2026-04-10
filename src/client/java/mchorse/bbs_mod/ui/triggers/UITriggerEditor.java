@@ -173,7 +173,7 @@ public class UITriggerEditor extends UIElement
     {
         if (this.entity != null)
         {
-            ClientNetwork.sendTriggerBlockUpdate(this.entity.getPos(), this.entity);
+            ClientNetwork.sendTriggerBlockUpdate(this.entity.getBlockPos(), this.entity);
         }
     }
 

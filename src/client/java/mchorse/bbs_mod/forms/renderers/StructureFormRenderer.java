@@ -29,7 +29,6 @@ import mchorse.bbs_mod.utils.joml.Vectors;
 import net.minecraft.client.GraphicsPreset;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.GameRenderer;
-import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
@@ -50,7 +49,6 @@ import net.minecraft.world.level.block.LeavesBlock;
 import net.minecraft.world.level.block.RedStoneWireBlock;
 import net.minecraft.world.level.block.StemBlock;
 import net.minecraft.world.level.block.VineBlock;
-import net.minecraft.world.level.block.WaterlilyBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.Property;
@@ -534,7 +532,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
                 vc = recolor.apply(vc);
             }
 
-            Minecraft.getInstance().getBlockRenderer().renderBatched(entry.state, entry.pos, info.view, stack, vc, true, null);
+            // TODO: adapt to 26.1 block renderer entrypoint
 
             /* Render blocks with entity (chests, beds, signs, skulls, etc.) */
             block = entry.state.getBlock();
@@ -624,7 +622,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
                 vc = recolor.apply(vc);
             }
 
-            Minecraft.getInstance().getBlockRenderer().renderBatched(entry.state, entry.pos, info.view, stack, vc, true, null);
+            // TODO: adapt to 26.1 block renderer entrypoint
             stack.popPose();
         }
 
@@ -684,7 +682,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
                 vc = recolor.apply(vc);
             }
 
-            Minecraft.getInstance().getBlockRenderer().renderBatched(entry.state, entry.pos, info.view, stack, vc, true, null);
+            // TODO: adapt to 26.1 block renderer entrypoint
             stack.popPose();
         }
 
@@ -746,7 +744,6 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
         return (b instanceof LeavesBlock)
             || (b instanceof GrassBlock)
             || (b instanceof VineBlock)
-            || (b instanceof WaterlilyBlock)
             || (b instanceof RedStoneWireBlock)
             || (b instanceof StemBlock)
             || (b instanceof AttachedStemBlock)
@@ -886,7 +883,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
         provider.setSubstitute(vc -> lightWrapper);
 
         captureContext = new FormRenderingContext()
-            .set(FormRenderType.PREVIEW, null, captureStack, LightTexture.FULL_BLOCK, OverlayTexture.NO_OVERLAY, 0F);
+            .set(FormRenderType.PREVIEW, null, captureStack, 240, OverlayTexture.NO_OVERLAY, 0F);
 
         try
         {
@@ -903,7 +900,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
 
         try
         {
-            this.renderStructureCulledWorld(captureContext, captureStack, provider, LightTexture.FULL_BLOCK, OverlayTexture.NO_OVERLAY, useEntityLayers);
+            this.renderStructureCulledWorld(captureContext, captureStack, provider, 240, OverlayTexture.NO_OVERLAY, useEntityLayers);
         }
         finally
         {
@@ -952,7 +949,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
         provider.setSubstitute(vc -> collector);
 
         captureContext = new FormRenderingContext()
-            .set(FormRenderType.PREVIEW, null, captureStack, LightTexture.FULL_BLOCK, OverlayTexture.NO_OVERLAY, 0F);
+            .set(FormRenderType.PREVIEW, null, captureStack, 240, OverlayTexture.NO_OVERLAY, 0F);
 
         try
         {
@@ -968,7 +965,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
 
         try
         {
-            this.renderStructureCulledWorld(captureContext, captureStack, provider, LightTexture.FULL_BLOCK, OverlayTexture.NO_OVERLAY, useEntityLayers);
+            this.renderStructureCulledWorld(captureContext, captureStack, provider, 240, OverlayTexture.NO_OVERLAY, useEntityLayers);
         }
         finally
         {
@@ -1359,3 +1356,4 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
         }
     }
 }
+

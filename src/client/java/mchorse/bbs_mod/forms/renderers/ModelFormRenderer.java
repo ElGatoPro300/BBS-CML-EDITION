@@ -46,7 +46,6 @@ import mchorse.bbs_mod.utils.resources.LinkUtils;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.renderer.GameRenderer;
-import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -334,7 +333,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                 }
                 : BBSShaders::getModel;
 
-            this.renderModel(this.entity, mainShader, stack, model, LightTexture.pack(15, 15), OverlayTexture.NO_OVERLAY, color, true, null, context.getTransition());
+            this.renderModel(this.entity, mainShader, stack, model, 15728880, OverlayTexture.NO_OVERLAY, color, true, null, context.getTransition());
 
             /* Render body parts */
             stack.pushPose();
@@ -342,7 +341,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             stack.last().normal().scale(1F / Vectors.EMPTY_3F.x, -1F / Vectors.EMPTY_3F.y, 1F / Vectors.EMPTY_3F.z);
 
             this.renderBodyParts(new FormRenderingContext()
-                .set(FormRenderType.ENTITY, this.entity, stack, LightTexture.pack(15, 15), OverlayTexture.NO_OVERLAY, context.getTransition())
+                .set(FormRenderType.ENTITY, this.entity, stack, 15728880, OverlayTexture.NO_OVERLAY, context.getTransition())
                 .inUI());
 
             stack.popPose();
@@ -750,3 +749,4 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         this.lastAge = age;
     }
 }
+

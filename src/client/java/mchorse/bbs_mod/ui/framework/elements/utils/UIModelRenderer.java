@@ -348,7 +348,7 @@ public abstract class UIModelRenderer extends UIElement
     protected void renderGrid(UIContext context)
     {
         Matrix4f matrix4f = new Matrix4f();
-        BufferBuilder builder = Tesselator.getInstance().begin(VertexFormat.DrawMode.DEBUG_LINES, DefaultVertexFormat.POSITION_COLOR);
+        BufferBuilder builder = Tesselator.getInstance().begin(VertexFormat.Mode.DEBUG_LINES, DefaultVertexFormat.POSITION_COLOR);
 
         // RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
 

@@ -6,7 +6,7 @@ import mchorse.bbs_mod.camera.controller.PlayCameraController;
 import mchorse.bbs_mod.client.BBSRendering;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.gui.Gui;
-import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -16,7 +16,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class InGameHudMixin
 {
     @Inject(method = "render", at = @At(value = "HEAD"), cancellable = true)
-    public void render(GuiGraphics drawContext, DeltaTracker tickCounter, CallbackInfo info)
+    public void render(GuiGraphicsExtractor drawContext, DeltaTracker tickCounter, CallbackInfo info)
     {
         ICameraController current = BBSModClient.getCameraController().getCurrent();
 
@@ -29,7 +29,7 @@ public class InGameHudMixin
     }
 
     @Inject(method = "render", at = @At("TAIL"))
-    public void onRenderEnd(GuiGraphics drawContext, DeltaTracker tickCounter, CallbackInfo info)
+    public void onRenderEnd(GuiGraphicsExtractor drawContext, DeltaTracker tickCounter, CallbackInfo info)
     {
         BBSRendering.onRenderBeforeScreen();
     }

@@ -59,9 +59,10 @@ public class ModelBlockItemRenderer implements SpecialModelRenderer<ItemStack>
     }
 
     @Override
-    public void render(ItemStack stack, ItemDisplayContext mode, PoseStack matrices, SubmitNodeCollector queue, int light, int overlay, boolean hasGlint, int seed)
+    public void submit(ItemStack stack, PoseStack matrices, SubmitNodeCollector queue, int light, int overlay, boolean hasGlint, int seed)
     {
         Item item = this.get(stack);
+        ItemDisplayContext mode = ItemDisplayContext.FIXED;
 
         if (item != null)
         {
@@ -117,7 +118,7 @@ public class ModelBlockItemRenderer implements SpecialModelRenderer<ItemStack>
             return this.map.get(stack);
         }
 
-        ModelBlockEntity entity = new ModelBlockEntity(BlockPos.ZERO, BBSMod.MODEL_BLOCK.getDefaultState());
+        ModelBlockEntity entity = new ModelBlockEntity(BlockPos.ZERO, BBSMod.MODEL_BLOCK.defaultBlockState());
         Item item = new Item(entity);
 
         this.map.put(stack, item);
@@ -125,18 +126,18 @@ public class ModelBlockItemRenderer implements SpecialModelRenderer<ItemStack>
         return item;
     }
 
-    public static class Unbaked implements SpecialModelRenderer.Unbaked
+    public static class Unbaked implements SpecialModelRenderer.Unbaked<ItemStack>
     {
         public static final com.mojang.serialization.MapCodec<mchorse.bbs_mod.client.renderer.item.ModelBlockItemRenderer.Unbaked> CODEC = com.mojang.serialization.MapCodec.unit(new mchorse.bbs_mod.client.renderer.item.ModelBlockItemRenderer.Unbaked());
 
         @Override
-        public com.mojang.serialization.MapCodec<mchorse.bbs_mod.client.renderer.item.ModelBlockItemRenderer.Unbaked> type()
+        public com.mojang.serialization.MapCodec<? extends SpecialModelRenderer.Unbaked<ItemStack>> type()
         {
             return CODEC;
         }
 
         @Override
-        public SpecialModelRenderer<?> bake(SpecialModelRenderer.BakingContext config)
+        public SpecialModelRenderer<ItemStack> bake(SpecialModelRenderer.BakingContext config)
         {
             return BBSModClient.getModelBlockItemRenderer();
         }

@@ -11,6 +11,10 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIListOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.input.text.UITextbox;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.EntityType;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -71,18 +75,7 @@ public class UIStringKeyframeFactory extends UIKeyframeFactory<String>
                 });
 
                 List<String> ids = new ArrayList<>();
-                try
-                {
-                    if (MinecraftClient.getInstance().world != null)
-                    {
-                        Registry<Biome> reg = MinecraftClient.getInstance().world.getRegistryManager().getOrThrow(RegistryKeys.BIOME);
-                        for (Identifier id : reg.getIds())
-                        {
-                            ids.add(id.toString());
-                        }
-                    }
-                }
-                catch (Throwable ignored) {}
+                // Biome registry access differs between mappings; keep manual input available.
 
                 overlay.addValues(ids);
                 overlay.setValue(this.keyframe.getValue());
@@ -120,9 +113,9 @@ public class UIStringKeyframeFactory extends UIKeyframeFactory<String>
                 });
 
                 List<String> ids = new ArrayList<>();
-                for (Identifier id : Registries.ENTITY_TYPE.getIds())
+                for (ResourceKey<EntityType<?>> key : BuiltInRegistries.ENTITY_TYPE.registryKeySet())
                 {
-                    ids.add(id.toString());
+                    ids.add(key.identifier().toString());
                 }
 
                 overlay.addValues(ids);

@@ -27,7 +27,6 @@ import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.Pair;
 import mchorse.bbs_mod.utils.colors.Colors;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
@@ -158,7 +157,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
         this.updateModel();
         
         FormRenderingContext formContext = new FormRenderingContext()
-            .set(FormRenderType.PREVIEW, this.entity, new PoseStack(), LightTexture.pack(15, 15), OverlayTexture.NO_OVERLAY, context.getTransition())
+            .set(FormRenderType.PREVIEW, this.entity, new PoseStack(), 15728880, OverlayTexture.NO_OVERLAY, context.getTransition())
             .camera(this.camera)
             .modelRenderer();
 
@@ -369,3 +368,4 @@ public class UIModelEditorRenderer extends UIModelRenderer
         this.lastModelId = null;
     }
 }
+

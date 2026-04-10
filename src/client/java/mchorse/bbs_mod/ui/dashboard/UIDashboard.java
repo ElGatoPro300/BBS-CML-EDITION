@@ -48,7 +48,7 @@ import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
-import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
@@ -361,7 +361,7 @@ public class UIDashboard extends UIBaseMenu
         }
     }
 
-    public void renderInWorld(WorldRenderContext context)
+    public void renderInWorld(LevelRenderContext context)
     {
         super.renderInWorld(context);
 

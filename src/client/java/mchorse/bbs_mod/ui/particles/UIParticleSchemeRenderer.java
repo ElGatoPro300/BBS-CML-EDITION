@@ -88,7 +88,7 @@ public class UIParticleSchemeRenderer extends UIModelRenderer
     {
         Matrix4f matrix = new Matrix4f();
 
-        BufferBuilder builder = Tesselator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, DefaultVertexFormat.POSITION_COLOR);
+        BufferBuilder builder = Tesselator.getInstance().begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION_COLOR);
         final float alpha = 0.5F;
 
         this.calculate(0, 0, a, b, c, d);
