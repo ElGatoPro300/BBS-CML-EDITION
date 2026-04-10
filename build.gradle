@@ -1,5 +1,5 @@
 plugins {
-	id 'net.fabricmc.fabric-loom' version '1.16-SNAPSHOT'
+	id 'fabric-loom' version '1.16-SNAPSHOT'
 	id 'maven-publish'
 }
 
@@ -55,25 +55,26 @@ loom {
 dependencies {
 	// To change the versions see the gradle.properties file
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
-	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
 
 	// Fabric API. This is technically optional, but you probably want it anyway.
-	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
-	implementation("dev.lambdaurora:spruceui:${project.spruceui_version}")
-	implementation "dev.lambdaurora.lambdynamiclights:lambdynamiclights-api:${project.lambdynamiclights_api_version}"
-	implementation "dev.lambdaurora.lambdynamiclights:lambdynamiclights-runtime:${project.lambdynamiclights_runtime_version}"
+	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+	modImplementation("dev.lambdaurora:spruceui:${project.spruceui_version}")
+	modImplementation "dev.lambdaurora.lambdynamiclights:lambdynamiclights-api:${project.lambdynamiclights_api_version}"
+	modImplementation "dev.lambdaurora.lambdynamiclights:lambdynamiclights-runtime:${project.lambdynamiclights_runtime_version}"
 	
 	// Uncomment the following line to enable the deprecated Fabric API modules. 
 	// These are included in the Fabric API production distribution and allow you to update your mod to the latest modules at a later more convenient time.
 
 	// modImplementation "net.fabricmc.fabric-api:fabric-api-deprecated:${project.fabric_version}"
-	implementation "maven.modrinth:sodium:mc26.1.1-0.8.9-fabric"
-	implementation "maven.modrinth:iris:1.10.9+26.1-fabric"
-	implementation "maven.modrinth:watermedia:2.1.37"
-	implementation "maven.modrinth:lambdynamiclights:4.10.1+26.1.1"
-	
-	implementation "org.anarres:jcpp:1.4.14"
-	implementation "io.github.douira:glsl-transformer:3.0.0-pre3"
+	modImplementation "maven.modrinth:sodium:mc1.21.11-0.8.4-fabric"
+	modImplementation "maven.modrinth:iris:1.10.5+1.21.11-fabric"
+	modImplementation "maven.modrinth:watermedia:2.1.37"
+	modImplementation "maven.modrinth:lambdynamiclights:4.9.0+1.21.11"
+
+	modImplementation "org.anarres:jcpp:1.4.14"
+	modImplementation "io.github.douira:glsl-transformer:3.0.0-pre3"
 }
 
 processResources {
@@ -89,7 +90,7 @@ processResources {
 }
 
 tasks.withType(JavaCompile).configureEach {
-	it.options.release = 25
+	it.options.release = 21
 }
 
 java {
@@ -98,8 +99,8 @@ java {
 	// If you remove this line, sources will not be generated.
 	withSourcesJar()
 
-	sourceCompatibility = JavaVersion.VERSION_25
-	targetCompatibility = JavaVersion.VERSION_25
+	sourceCompatibility = JavaVersion.VERSION_21
+	targetCompatibility = JavaVersion.VERSION_21
 }
 
 jar {
