@@ -53,6 +53,7 @@ import net.minecraft.entity.MovementType;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.particle.BlockStateParticleEffect;
 import net.minecraft.particle.ParticleTypes;
+import net.minecraft.sound.SoundCategory;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
@@ -633,6 +634,7 @@ public abstract class BaseFilmController
                     Form form = replay.form.get();
                     double width = form != null ? form.hitboxWidth.get() : 0.6D;
 
+                    this.spawnReplayStepSound(replay, replayTick, world);
                     this.spawnSprintParticles(replay, replayTick, world, width);
                 }
             }
@@ -675,14 +677,20 @@ public abstract class BaseFilmController
                             double y = replay.keyframes.y.interpolate(replayTick);
                             double z = replay.keyframes.z.interpolate(replayTick);
                             boolean sneaking = replay.keyframes.sneaking.interpolate(replayTick) > 0;
+                            boolean grounded = replay.keyframes.grounded.interpolate(replayTick) > 0;
 
                             Vec3d pos = new Vec3d(player.getX(), player.getY(), player.getZ());
 
-                            player.move(MovementType.SELF, new Vec3d(x - pos.x, y - pos.y, z - pos.z));
+                            if (BBSSettings.editorReplayStepSound == null || BBSSettings.editorReplayStepSound.get())
+                            {
+                                player.setOnGround(grounded);
+                                player.move(MovementType.SELF, new Vec3d(x - pos.x, y - pos.y, z - pos.z));
+                            }
+
                             player.setPosition(x, y, z);
 
                             player.setSneaking(sneaking);
-                            player.setOnGround(replay.keyframes.grounded.interpolate(replayTick) > 0);
+                            player.setOnGround(grounded);
 
                             if (player instanceof ClientPlayerEntityAccessor accessor)
                             {
@@ -775,6 +783,61 @@ public abstract class BaseFilmController
         double z = zPos + (world.random.nextDouble() - 0.5D) * width;
 
         world.addParticleClient(new BlockStateParticleEffect(ParticleTypes.BLOCK, world.getBlockState(pos)), x, y, z, 0D, 0.1D, 0D);
+    }
+
+    private void spawnReplayStepSound(Replay replay, int ticks, World world)
+    {
+        if (BBSSettings.editorReplayStepSound == null || !BBSSettings.editorReplayStepSound.get() || replay == null || world == null)
+        {
+            return;
+        }
+
+        if (!this.isReplayVisible(replay, ticks))
+        {
+            return;
+        }
+
+        if (replay.keyframes.grounded.interpolate(ticks) <= 0D)
+        {
+            return;
+        }
+
+        /* Reduce spam and approximate vanilla stepping cadence. */
+        if ((ticks & 3) != 0)
+        {
+            return;
+        }
+
+        double vX = replay.keyframes.vX.interpolate(ticks);
+        double vZ = replay.keyframes.vZ.interpolate(ticks);
+
+        if ((vX * vX + vZ * vZ) < 0.0005D)
+        {
+            return;
+        }
+
+        double xPos = replay.keyframes.x.interpolate(ticks);
+        double yPos = replay.keyframes.y.interpolate(ticks);
+        double zPos = replay.keyframes.z.interpolate(ticks);
+        BlockPos pos = BlockPos.ofFloored(xPos, yPos - 0.2D, zPos);
+
+        if (world.isAir(pos))
+        {
+            return;
+        }
+
+        var soundGroup = world.getBlockState(pos).getSoundGroup();
+
+        world.playSound(
+            xPos,
+            yPos,
+            zPos,
+            soundGroup.getStepSound(),
+            SoundCategory.PLAYERS,
+            soundGroup.getVolume() * 0.15F,
+            soundGroup.getPitch(),
+            false
+        );
     }
 
     private boolean isReplayVisible(Replay replay, int ticks)

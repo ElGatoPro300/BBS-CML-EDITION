@@ -19,6 +19,7 @@ import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.Scale;
 import mchorse.bbs_mod.ui.utils.Scroll;
+import mchorse.bbs_mod.ui.utils.ScrollDirection;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.CollectionUtils;
@@ -46,7 +47,12 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
     private UIKeyframeSheet lastSheet;
 
     private Scroll dopeSheet;
+    private Scroll sidebarScrollbar;
     private double trackHeight;
+    private int sidebarScroll;
+    private int sidebarScrollMax;
+    private boolean sidebarDragging;
+    private float sidebarDragRatio;
 
     public static IKeyframeShapeRenderer renderShape(Keyframe frame, UIContext context, BufferBuilder builder, Matrix4f matrix, int x, int y, int offset, int c)
     {
@@ -62,6 +68,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
     {
         this.keyframes = keyframes;
         this.dopeSheet = new Scroll(this.keyframes.area);
+        this.sidebarScrollbar = new Scroll(new Area(), 1, ScrollDirection.HORIZONTAL);
 
         this.setTrackHeight(16);
     }
@@ -90,6 +97,38 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
         }
 
         return title.length() > limit ? title.substring(0, limit) + "..." : title;
+    }
+
+    private String getSidebarTitle(String title)
+    {
+        return this.sidebarScrollMax > 0 ? title : this.getDisplayTitle(title);
+    }
+
+    private String getEffectiveSidebarTitle(UIKeyframeSheet sheet)
+    {
+        if (sheet == null)
+        {
+            return "";
+        }
+
+        if (sheet.groupHeader)
+        {
+            return sheet.title.get();
+        }
+
+        String baseTitle = sheet.title.get();
+
+        if (sheet.anchoredBone != null)
+        {
+            String anchored = sheet.anchoredBone;
+
+            if (baseTitle.isEmpty() || baseTitle.equals(sheet.id) || baseTitle.equals(anchored))
+            {
+                return anchored;
+            }
+        }
+
+        return baseTitle;
     }
 
     /* Graphing */
@@ -319,6 +358,11 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
     @Override
     public boolean mouseClicked(UIContext context)
     {
+        if (this.handleSidebarScrollbarClick(context))
+        {
+            return true;
+        }
+
         if (context.mouseButton == 0 && this.keyframes.area.isInside(context))
         {
             UIKeyframeSheet sheet = this.getSheet(context.mouseY);
@@ -326,19 +370,20 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
             if (sheet != null)
             {
                 FontRenderer font = context.batcher.getFont();
-                String title = sheet.title.get();
-                String displayTitle = this.getDisplayTitle(title);
+                String title = this.getEffectiveSidebarTitle(sheet);
+                String displayTitle = this.getSidebarTitle(title);
                 Icon arrow = sheet.groupHeader
                     ? (sheet.groupKey != null && (sheet.groupKey.endsWith("__world__") || sheet.groupKey.endsWith("__model__")) ? (sheet.groupExpanded ? Icons.UNCOLLAPSED : Icons.COLLAPSED) : (sheet.groupExpanded ? Icons.ARROW_DOWN : Icons.ARROW_RIGHT))
                     : (sheet.toggleExpanded != null ? (sheet.expanded ? Icons.UNCOLLAPSED : Icons.COLLAPSED) : null);
 
-                int left = this.keyframes.area.x + sheet.level * 12;
+                int left = this.keyframes.area.x + sheet.level * 12 - this.sidebarScroll;
                 if (sheet.groupHeader && (sheet.groupKey == null || (!sheet.groupKey.endsWith("__world__") && !sheet.groupKey.endsWith("__model__"))))
                 {
                     left += 4;
                 }
                 int iconWidth = 2 + (arrow != null ? arrow.w + 4 : 0);
                 int clickableWidth = Math.min(SIDEBAR_WIDTH - sheet.level * 12, iconWidth + font.getWidth(displayTitle) + 6);
+                clickableWidth = Math.max(0, clickableWidth);
 
                 if (context.mouseX >= left && context.mouseX <= left + clickableWidth)
                 {
@@ -363,11 +408,43 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
     public void mouseReleased(UIContext context)
     {
         this.dopeSheet.mouseReleased(context);
+        this.sidebarScrollbar.mouseReleased(context);
+        this.sidebarDragging = false;
     }
 
     @Override
     public void mouseScrolled(UIContext context)
     {
+        Area area = this.keyframes.area;
+        boolean inSidebar = area.isInside(context) && context.mouseX < area.x + SIDEBAR_WIDTH;
+
+        if (inSidebar)
+        {
+            this.updateSidebarScrollLimits(context);
+        }
+
+        if (inSidebar && (context.mouseWheelHorizontal != 0 || context.mouseWheel != 0D))
+        {
+            if (this.sidebarScrollMax <= 0)
+            {
+                return;
+            }
+
+            double wheel = context.mouseWheelHorizontal != 0 ? context.mouseWheelHorizontal : context.mouseWheel;
+            float sensitivity = BBSSettings.scrollingSensitivityHorizontal.get();
+            int delta = (int) Math.round(25F * sensitivity * wheel);
+
+            if (delta == 0)
+            {
+                delta = wheel > 0 ? 1 : -1;
+            }
+
+            this.sidebarScrollbar.scrollBy(-delta);
+            this.sidebarScroll = (int) Math.round(this.sidebarScrollbar.getScroll());
+
+            return;
+        }
+
         if (context.mouseWheelHorizontal != 0)
         {
             double offsetX = (25F * BBSSettings.scrollingSensitivityHorizontal.get() * context.mouseWheelHorizontal) / this.keyframes.getXAxis().getZoom();
@@ -392,6 +469,13 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
     public void handleMouse(UIContext context, int lastX, int lastY)
     {
         this.dopeSheet.drag(context);
+
+        if (this.sidebarDragging)
+        {
+            this.scrollSidebarToMouse(context.mouseX);
+        }
+
+        this.sidebarScroll = (int) Math.round(this.sidebarScrollbar.getScroll());
 
         if (this.keyframes.isNavigating())
         {
@@ -607,7 +691,10 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
         this.dopeSheet.scrollSize = (int) this.trackHeight * this.sheets.size() + TOP_MARGIN;
 
         Area area = this.keyframes.area;
+        this.updateSidebarScrollLimits(context);
         Matrix4f matrix = new Matrix4f();
+
+        int sidebarX = area.x - this.sidebarScroll;
 
         for (int i = 0; i < this.sheets.size(); i++)
         {
@@ -628,16 +715,16 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
             if (sheet.groupHeader)
             {
                 FontRenderer font = context.batcher.getFont();
-                String title = sheet.title.get();
-                String displayTitle = this.getDisplayTitle(title);
+                String title = this.getEffectiveSidebarTitle(sheet);
+                String displayTitle = this.getSidebarTitle(title);
 
                 Icon arrow = sheet.groupExpanded ? Icons.ARROW_DOWN : Icons.ARROW_RIGHT;
-                int iconX = area.x + 6 + sheet.level * 12;
+                int iconX = sidebarX + 6 + sheet.level * 12;
 
                 if (sheet.groupKey != null && (sheet.groupKey.endsWith("__world__") || sheet.groupKey.endsWith("__model__")))
                 {
                     arrow = sheet.groupExpanded ? Icons.UNCOLLAPSED : Icons.COLLAPSED;
-                    iconX = area.x + 2 + sheet.level * 12;
+                    iconX = sidebarX + 2 + sheet.level * 12;
                 }
 
                 int iconY = my - arrow.h / 2;
@@ -645,8 +732,10 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
                 int textY = my - font.getHeight() / 2;
                 int textW = font.getWidth(displayTitle);
 
+                context.batcher.clip(area.x, y, SIDEBAR_WIDTH, (int) this.trackHeight, context);
                 context.batcher.icon(arrow, iconX, iconY);
                 context.batcher.textShadow(displayTitle, textX, textY);
+                context.batcher.unclip(context);
 
                 continue;
             }
@@ -796,26 +885,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
             RenderLayers.debugFilledBox().draw(builder.end());
 
             FontRenderer font = context.batcher.getFont();
-            String baseTitle = sheet.title.get();
-            String displayTitle;
-
-            if (sheet.anchoredBone != null)
-            {
-                String anchored = sheet.anchoredBone;
-
-                if (baseTitle.isEmpty() || baseTitle.equals(sheet.id) || baseTitle.equals(anchored))
-                {
-                    displayTitle = anchored;
-                }
-                else
-                {
-                    displayTitle = baseTitle;
-                }
-            }
-            else
-            {
-                displayTitle = baseTitle;
-            }
+            String displayTitle = this.getSidebarTitle(this.getEffectiveSidebarTitle(sheet));
 
             Icon icon = sheet.getIcon();
             Icon arrow = sheet.toggleExpanded != null ? (sheet.expanded ? Icons.UNCOLLAPSED : Icons.COLLAPSED) : null;
@@ -839,12 +909,14 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
 
             context.batcher.gradientHBox(area.x, y, area.x + SIDEBAR_WIDTH, y + (int) this.trackHeight, c1, c2);
 
+            context.batcher.clip(area.x, y, SIDEBAR_WIDTH, (int) this.trackHeight, context);
+
             if (arrow != null)
             {
-                context.batcher.icon(arrow, area.x + 4 + sheet.level * 12, my - arrow.h / 2);
+                context.batcher.icon(arrow, sidebarX + 4 + sheet.level * 12, my - arrow.h / 2);
             }
 
-            int currentX = area.x + 4 + sheet.level * 12 + (arrow != null ? arrow.w + 4 : 0);
+            int currentX = sidebarX + 4 + sheet.level * 12 + (arrow != null ? arrow.w + 4 : 0);
 
             if (icon != null)
             {
@@ -860,6 +932,8 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
             {
                 context.batcher.textShadow(displayTitle, currentX, my - font.getHeight() / 2, Colors.WHITE & 0xeeffffff);
             }
+
+            context.batcher.unclip(context);
         }
     }
 
@@ -867,6 +941,79 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
     public void postRender(UIContext context)
     {
         this.dopeSheet.renderScrollbar(context.batcher);
+        this.renderSidebarScrollbar(context);
+    }
+
+    private void renderSidebarScrollbar(UIContext context)
+    {
+        Area area = this.keyframes.area;
+
+        this.updateSidebarScrollLimits(context);
+        this.updateSidebarScrollbarArea(area);
+
+        int barHeight = this.sidebarScrollbar.getScrollbarWidth();
+        int y = area.ey() - barHeight;
+        int trackX = area.x;
+        int trackW = SIDEBAR_WIDTH;
+
+        context.batcher.box(trackX, y, trackX + trackW, y + barHeight, Colors.A50);
+
+        if (this.sidebarScrollMax <= 0)
+        {
+            Scroll.bar(context.batcher, trackX, y, trackX + trackW, y + barHeight, BBSSettings.scrollbarShadow.get());
+            return;
+        }
+
+        Area knob = this.sidebarScrollbar.getScrollbarArea();
+        Scroll.bar(context.batcher, knob.x, knob.y, knob.ex(), knob.ey(), BBSSettings.scrollbarShadow.get());
+    }
+
+    private void updateSidebarScrollLimits(UIContext context)
+    {
+        FontRenderer font = context.batcher.getFont();
+        int maxWidth = SIDEBAR_WIDTH;
+
+        for (UIKeyframeSheet sheet : this.sheets)
+        {
+            String title = this.getEffectiveSidebarTitle(sheet);
+            int titleWidth = font.getWidth(title);
+
+            if (sheet.groupHeader)
+            {
+                Icon arrow = sheet.groupExpanded ? Icons.ARROW_DOWN : Icons.ARROW_RIGHT;
+                int base = 6 + sheet.level * 12;
+
+                if (sheet.groupKey != null && (sheet.groupKey.endsWith("__world__") || sheet.groupKey.endsWith("__model__")))
+                {
+                    arrow = sheet.groupExpanded ? Icons.UNCOLLAPSED : Icons.COLLAPSED;
+                    base = 2 + sheet.level * 12;
+                }
+
+                int width = base + arrow.w + 4 + titleWidth + 4;
+                maxWidth = Math.max(maxWidth, width);
+
+                continue;
+            }
+
+            Icon arrow = sheet.toggleExpanded != null ? (sheet.expanded ? Icons.UNCOLLAPSED : Icons.COLLAPSED) : null;
+            Icon icon = sheet.getIcon();
+            int iconWidth = 2 + sheet.level * 12 + (arrow != null ? arrow.w + 4 : 0) + (icon != null ? icon.w + 4 : 0);
+            int totalWidth = iconWidth + titleWidth + 10;
+
+            maxWidth = Math.max(maxWidth, totalWidth);
+        }
+
+        this.sidebarScrollMax = Math.max(0, maxWidth - SIDEBAR_WIDTH);
+        this.sidebarScroll = Math.max(0, Math.min(this.sidebarScrollMax, this.sidebarScroll));
+        this.sidebarScrollbar.scrollSize = SIDEBAR_WIDTH + this.sidebarScrollMax;
+        this.sidebarScrollbar.setScroll(this.sidebarScroll);
+    }
+
+    private void updateSidebarScrollbarArea(Area area)
+    {
+        int barHeight = this.sidebarScrollbar.getScrollbarWidth();
+
+        this.sidebarScrollbar.area.set(area.x, area.ey() - barHeight, SIDEBAR_WIDTH, barHeight);
     }
 
     /* State recovery */
@@ -883,5 +1030,59 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
     {
         this.setTrackHeight(extra.getDouble("track_height"));
         this.dopeSheet.setScroll(extra.getDouble("scroll"));
+    }
+
+    private boolean handleSidebarScrollbarClick(UIContext context)
+    {
+        if (!this.keyframes.area.isInside(context) || this.sidebarScrollMax <= 0)
+        {
+            return false;
+        }
+
+        this.updateSidebarScrollLimits(context);
+        this.updateSidebarScrollbarArea(this.keyframes.area);
+
+        if (!this.sidebarScrollbar.area.isInside(context.mouseX, context.mouseY))
+        {
+            return false;
+        }
+
+        Area knob = this.sidebarScrollbar.getScrollbarArea();
+
+        if (knob.w <= 0)
+        {
+            return false;
+        }
+
+        if (knob.isInside(context.mouseX, context.mouseY))
+        {
+            this.sidebarDragRatio = (context.mouseX - knob.x) / (float) knob.w;
+            this.sidebarDragRatio = MathUtils.clamp(this.sidebarDragRatio, 0F, 1F);
+        }
+        else
+        {
+            this.sidebarDragRatio = 0.5F;
+            this.scrollSidebarToMouse(context.mouseX);
+        }
+
+        this.sidebarDragging = true;
+
+        return true;
+    }
+
+    private void scrollSidebarToMouse(int mouseX)
+    {
+        int trackX = this.sidebarScrollbar.area.x;
+        int trackW = this.sidebarScrollbar.area.w;
+        int knobW = Math.max(1, this.sidebarScrollbar.getScrollbar());
+        int maxOffset = Math.max(1, trackW - knobW);
+        int minMouse = trackX + Math.round(knobW * this.sidebarDragRatio);
+        int maxMouse = trackX + trackW - Math.round(knobW * (1F - this.sidebarDragRatio));
+        int clampedMouse = Math.max(minMouse, Math.min(maxMouse, mouseX));
+        float progress = (clampedMouse - (trackX + knobW * this.sidebarDragRatio)) / (float) maxOffset;
+
+        progress = MathUtils.clamp(progress, 0F, 1F);
+        this.sidebarScrollbar.setScroll(progress * this.sidebarScrollMax);
+        this.sidebarScroll = (int) Math.round(this.sidebarScrollbar.getScroll());
     }
 }

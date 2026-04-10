@@ -67,6 +67,7 @@ public class VideoRecorder
     private long exportStartTime;
     private boolean recordAmbientAudio;
     private AmbientAudioCapture ambientCapture;
+    private boolean suppressFilmClipPlaybackForRender;
 
     /**
      * Start recording the video using ffmpeg
@@ -83,10 +84,13 @@ public class VideoRecorder
         this.ambientAudioFile = null;
         this.movieName = StringUtils.createTimestampFilename();
         this.recordAmbientAudio = ambientAudio;
+        this.suppressFilmClipPlaybackForRender = BBSSettings.editorMuteRenderAudioClips != null && BBSSettings.editorMuteRenderAudioClips.get();
         this.exportStartTime = System.currentTimeMillis();
         this.textureId = textureId;
         this.textureWidth = width;
         this.textureHeight = height;
+
+        LoopbackAudioController.suppressFilmClipPlayback(this.suppressFilmClipPlaybackForRender);
 
         int size = width * height * 3;
 
@@ -199,6 +203,8 @@ public class VideoRecorder
         catch (Exception e)
         {
             this.disableAmbientCapture();
+            LoopbackAudioController.suppressFilmClipPlayback(false);
+            this.suppressFilmClipPlaybackForRender = false;
             e.printStackTrace();
         }
 
@@ -209,7 +215,7 @@ public class VideoRecorder
     {
         MinecraftClient.getInstance().getSoundManager().stopAll();
         BBSModClient.getSounds().deleteSounds();
-        LoopbackAudioController.suppressFilmClipPlayback(this.filmAudioFile != null);
+        LoopbackAudioController.suppressFilmClipPlayback(this.suppressFilmClipPlaybackForRender || this.filmAudioFile != null);
         LoopbackAudioController.requestCapture(true);
         MinecraftClient.getInstance().getSoundManager().reloadSounds();
         MinecraftClient.getInstance().getSoundManager().stopAll();
@@ -235,7 +241,7 @@ public class VideoRecorder
         finally
         {
             this.ambientCapture = null;
-            LoopbackAudioController.suppressFilmClipPlayback(false);
+            LoopbackAudioController.suppressFilmClipPlayback(this.suppressFilmClipPlaybackForRender);
             LoopbackAudioController.requestCapture(false);
             LoopbackAudioController.setLoopbackDevice(0L);
 
@@ -476,6 +482,8 @@ public class VideoRecorder
         this.movieName = null;
         this.exportFolder = null;
         this.recordAmbientAudio = false;
+        this.suppressFilmClipPlaybackForRender = false;
+        LoopbackAudioController.suppressFilmClipPlayback(false);
 
         UIUtils.playClick(0.5F);
 
