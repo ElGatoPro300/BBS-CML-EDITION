@@ -3,6 +3,13 @@ package mchorse.bbs_mod.cubic.animation;
 import mchorse.bbs_mod.bobj.BOBJBone;
 import mchorse.bbs_mod.cubic.IModel;
 import mchorse.bbs_mod.cubic.IModelInstance;
+import mchorse.bbs_mod.cubic.animation.legacy.config.LegacyAnimationsConfig;
+import mchorse.bbs_mod.cubic.animation.legacy.controllers.LegacyAnimationController;
+import mchorse.bbs_mod.cubic.animation.legacy.model.LegacyAnimationContext;
+import mchorse.bbs_mod.cubic.animation.legacy.routes.LegacyAnimationRouteRegistry;
+import mchorse.bbs_mod.cubic.animation.legacy.services.LegacyAnimationService;
+import mchorse.bbs_mod.cubic.animation.legacy.services.LegacyBOBJLimbService;
+import mchorse.bbs_mod.cubic.animation.legacy.services.LegacyModelLimbService;
 import mchorse.bbs_mod.cubic.data.animation.Animation;
 import mchorse.bbs_mod.cubic.data.animation.Animations;
 import mchorse.bbs_mod.cubic.data.model.Model;
@@ -30,6 +37,14 @@ public class ProceduralAnimator implements IAnimator
 
     private IModelInstance model;
     private final Map<String, PhysBoneState> physStates = new HashMap<>();
+    private LegacyAnimationsConfig legacyAnimations = new LegacyAnimationsConfig();
+    private final LegacyAnimationController legacyController = new LegacyAnimationController(
+        new LegacyAnimationService(
+            new LegacyAnimationRouteRegistry(),
+            new LegacyModelLimbService(),
+            new LegacyBOBJLimbService()
+        )
+    );
 
     @Override
     public List<String> getActions()
@@ -42,6 +57,7 @@ public class ProceduralAnimator implements IAnimator
     {
         this.model = model;
         this.physStates.clear();
+        this.legacyAnimations = actions == null ? new LegacyAnimationsConfig() : actions.legacyAnimations;
 
         this.basePre = this.createAction(this.basePre, actions.getConfig("base_pre"), true);
         this.basePost = this.createAction(this.basePost, actions.getConfig("base_post"), true);
@@ -136,6 +152,12 @@ public class ProceduralAnimator implements IAnimator
         float pitch = Lerps.lerp(target.getPrevPitch(), target.getPitch(), transition);
         float limbSpeed = target.getLimbSpeed(transition);
         float limbPhase = target.getLimbPos(transition);
+        Vec3d entityVelocity = target.getVelocity();
+        float horizontalSpeed = (float) Math.sqrt(entityVelocity.x * entityVelocity.x + entityVelocity.z * entityVelocity.z) * 20F;
+        float bodyYawRad = MathUtils.toRad(bodyYaw);
+        float forwardX = -MathHelper.sin(bodyYawRad);
+        float forwardZ = MathHelper.cos(bodyYawRad);
+        float forwardSpeed = ((float) entityVelocity.x * forwardX + (float) entityVelocity.z * forwardZ) * 20F;
         float leaningPitch = target.getLeaningPitch(transition);
         String headBone = armature.getHeadBone();
 
@@ -432,6 +454,22 @@ public class ProceduralAnimator implements IAnimator
                 bobjRightArm.transform.rotate.z -= MathHelper.sin(handSwingProgress * MathUtils.PI) * -0.4F;
             }
         }
+
+        LegacyAnimationContext context = new LegacyAnimationContext();
+
+        context.handSwing = handSwingProgress;
+        context.age = age;
+        context.yaw = yaw;
+        context.pitch = pitch;
+        context.limbSpeed = limbSpeed;
+        context.limbPhase = limbPhase;
+        context.movementCoefficient = coefficient;
+        context.roll = target.getRoll() + transition;
+        context.forwardSpeed = forwardSpeed;
+        context.horizontalSpeed = horizontalSpeed;
+        context.hasMainHandItem = !main.isEmpty();
+        context.hasOffHandItem = !offhand.isEmpty();
+        this.legacyController.apply(target, model, this.legacyAnimations, context);
 
         this.applyPhysBones(model);
 

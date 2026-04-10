@@ -252,7 +252,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
     public void ensureAnimator(float transition)
     {
         ModelInstance model = this.getModel();
-        ActionsConfig actionsConfig = this.form.actions.get();
+        ActionsConfig actionsConfig = this.resolveActionsConfig(model);
 
         if (model == null || this.lastModel == model)
         {
@@ -274,6 +274,34 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         this.lastConfigs = new ActionsConfig();
         this.lastConfigs.copy(actionsConfig);
         this.lastModel = model;
+    }
+
+    private ActionsConfig resolveActionsConfig(ModelInstance model)
+    {
+        ActionsConfig output = new ActionsConfig();
+        ActionsConfig formActions = this.form.actions.get();
+
+        if (formActions != null)
+        {
+            output.copy(formActions);
+        }
+
+        if (model == null || model.legacyActions == null)
+        {
+            return output;
+        }
+
+        if (output.legacyAnimations.isDefault() && !model.legacyActions.legacyAnimations.isDefault())
+        {
+            output.legacyAnimations.copy(model.legacyActions.legacyAnimations);
+
+            if ((output.legacyAnimationsJavascript == null || output.legacyAnimationsJavascript.isBlank()) && model.legacyActions.legacyAnimationsJavascript != null)
+            {
+                output.legacyAnimationsJavascript = model.legacyActions.legacyAnimationsJavascript;
+            }
+        }
+
+        return output;
     }
 
     @Override

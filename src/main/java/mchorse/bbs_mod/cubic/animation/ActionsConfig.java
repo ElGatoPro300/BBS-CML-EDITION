@@ -1,5 +1,7 @@
 package mchorse.bbs_mod.cubic.animation;
 
+import mchorse.bbs_mod.cubic.animation.legacy.config.LegacyAnimationModuleConfig;
+import mchorse.bbs_mod.cubic.animation.legacy.config.LegacyAnimationsConfig;
 import mchorse.bbs_mod.data.IMapSerializable;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.MapType;
@@ -7,13 +9,17 @@ import mchorse.bbs_mod.data.types.MapType;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Objects;
 
 public class ActionsConfig implements IMapSerializable
 {
+    private static final String LEGACY_JS_DATA_KEY = "legacy_animations_js";
     private static Map<String, ActionConfig> a = new HashMap<>();
     private static Map<String, ActionConfig> b = new HashMap<>();
 
     public Map<String, ActionConfig> actions = new HashMap<>();
+    public LegacyAnimationsConfig legacyAnimations = new LegacyAnimationsConfig();
+    public String legacyAnimationsJavascript = "";
 
     public static void removeDefaultActions(Map<String, ActionConfig> map)
     {
@@ -52,7 +58,9 @@ public class ActionsConfig implements IMapSerializable
             removeDefaultActions(a);
             removeDefaultActions(b);
 
-            return a.equals(b);
+            return a.equals(b)
+                && this.legacyAnimations.equals(config.legacyAnimations)
+                && Objects.equals(this.legacyAnimationsJavascript, config.legacyAnimationsJavascript);
         }
 
         return false;
@@ -61,6 +69,8 @@ public class ActionsConfig implements IMapSerializable
     public void copy(ActionsConfig config)
     {
         this.actions.clear();
+        this.legacyAnimations.copy(config.legacyAnimations);
+        this.legacyAnimationsJavascript = config.legacyAnimationsJavascript;
 
         for (Map.Entry<String, ActionConfig> entry : config.actions.entrySet())
         {
@@ -78,6 +88,16 @@ public class ActionsConfig implements IMapSerializable
     @Override
     public void toData(MapType data)
     {
+        if (!this.legacyAnimations.isDefault())
+        {
+            data.put(LegacyAnimationModuleConfig.DATA_KEY, this.legacyAnimations.toData());
+
+            if (this.legacyAnimationsJavascript != null && !this.legacyAnimationsJavascript.isBlank())
+            {
+                data.putString(LEGACY_JS_DATA_KEY, this.legacyAnimationsJavascript);
+            }
+        }
+
         for (Map.Entry<String, ActionConfig> entry : this.actions.entrySet())
         {
             if (entry.getValue().isDefault())
@@ -98,9 +118,25 @@ public class ActionsConfig implements IMapSerializable
     public void fromData(MapType data)
     {
         this.actions.clear();
+        this.legacyAnimations = new LegacyAnimationsConfig();
+
+        if (data.has(LegacyAnimationModuleConfig.DATA_KEY, BaseType.TYPE_MAP))
+        {
+            this.legacyAnimations.fromData(data.getMap(LegacyAnimationModuleConfig.DATA_KEY));
+            this.legacyAnimationsJavascript = data.getString(LEGACY_JS_DATA_KEY);
+        }
+        else
+        {
+            this.legacyAnimationsJavascript = "";
+        }
 
         for (Map.Entry<String, BaseType> entry : data)
         {
+            if (entry.getKey().equals(LegacyAnimationModuleConfig.DATA_KEY) || entry.getKey().equals(LEGACY_JS_DATA_KEY))
+            {
+                continue;
+            }
+
             if (entry.getValue().isMap())
             {
                 ActionConfig action = new ActionConfig();

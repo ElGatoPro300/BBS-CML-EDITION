@@ -1,7 +1,11 @@
 package mchorse.bbs_mod.ui.model;
 
+import com.mojang.logging.LogUtils;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.BBSClient;
+import mchorse.bbs_mod.cubic.animation.ActionsConfig;
+import mchorse.bbs_mod.cubic.animation.legacy.config.LegacyAnimationsConfig;
+import mchorse.bbs_mod.cubic.animation.legacy.validation.LegacyAnimationValidator;
 import mchorse.bbs_mod.cubic.model.ModelConfig;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.forms.FormUtilsClient;
@@ -31,12 +35,16 @@ import mchorse.bbs_mod.ui.utils.pose.UIPoseEditor;
 import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.colors.Colors;
 import net.minecraft.client.MinecraftClient;
+import org.slf4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
 {
+    private static final Logger LOGGER = LogUtils.getLogger();
+    private static final LegacyAnimationValidator LEGACY_VALIDATOR = new LegacyAnimationValidator();
+
     public UIModelEditorRenderer renderer;
     public UIIcon reloadIcon;
     
@@ -269,14 +277,63 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
     }
     
     @Override
+    public void save()
+    {
+        boolean hasData = this.data != null;
+        boolean editorEnabled = this.editor != null && this.editor.isEnabled();
+
+        LOGGER.debug("Model Editor save requested: hasData={}, update={}, editorEnabled={}", hasData, this.update, editorEnabled);
+
+        if (!hasData)
+        {
+            LOGGER.warn("Model Editor save skipped: no model is selected");
+            return;
+        }
+
+        if (!editorEnabled)
+        {
+            LOGGER.warn("Model Editor save skipped: editor is disabled for model {}", this.data.getId());
+            return;
+        }
+
+        if (this.update)
+        {
+            LOGGER.warn("Model Editor save requested while update flag is true for model {}. Forcing save anyway", this.data.getId());
+        }
+
+        this.forceSave();
+    }
+
+    @Override
     public void forceSave()
     {
+        if (this.data == null)
+        {
+            LOGGER.warn("Model Editor forceSave skipped: no model data");
+            return;
+        }
+
+        if (!this.prepareLegacyAnimationCode())
+        {
+            return;
+        }
+
+        LOGGER.debug("Model Editor forceSave start: model={}", this.data.getId());
+
         for (UIModelSection section : this.sections)
         {
             section.setConfig(this.data);
         }
 
-        super.forceSave();
+        try
+        {
+            super.forceSave();
+        }
+        catch (Exception e)
+        {
+            LOGGER.error("Model Editor forceSave failed during repository save for model {}", this.data.getId(), e);
+            return;
+        }
 
         if (this.data == null)
         {
@@ -309,6 +366,90 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
                 }
             }
         }
+
+        LOGGER.debug("Model Editor forceSave completed: model={}", this.data.getId());
+    }
+
+    public void persistModelDataWithoutReload()
+    {
+        if (this.data == null)
+        {
+            LOGGER.warn("Model Editor persist without reload skipped: no model data");
+            return;
+        }
+
+        if (!this.prepareLegacyAnimationCode())
+        {
+            return;
+        }
+
+        LOGGER.debug("Model Editor persist without reload start: model={}", this.data.getId());
+
+        try
+        {
+            super.forceSave();
+        }
+        catch (Exception e)
+        {
+            LOGGER.error("Model Editor persist without reload failed for model {}", this.data.getId(), e);
+            return;
+        }
+
+        Morph morph = Morph.getMorph(MinecraftClient.getInstance().player);
+
+        if (morph != null)
+        {
+            Form form = morph.getForm();
+
+            if (form instanceof ModelForm && ((ModelForm) form).model.get().equals(this.data.getId()))
+            {
+                FormRenderer renderer = FormUtilsClient.getRenderer(form);
+
+                if (renderer instanceof ModelFormRenderer)
+                {
+                    ((ModelFormRenderer) renderer).invalidateCachedModel();
+                }
+            }
+        }
+
+        LOGGER.debug("Model Editor persist without reload completed: model={}", this.data.getId());
+    }
+
+    private boolean prepareLegacyAnimationCode()
+    {
+        if (this.data == null)
+        {
+            return false;
+        }
+
+        ActionsConfig actions = this.data.legacyAnimations.get();
+
+        if (actions == null)
+        {
+            return true;
+        }
+
+        LegacyAnimationsConfig sanitized = LEGACY_VALIDATOR.sanitize(actions.legacyAnimations);
+        List<String> validationErrors = LEGACY_VALIDATOR.validate(sanitized);
+
+        if (!validationErrors.isEmpty())
+        {
+            LOGGER.error("Model Editor save blocked by invalid legacy animation config for model {}: {}", this.data.getId(), String.join("; ", validationErrors));
+            return false;
+        }
+
+        String javascript = LEGACY_VALIDATOR.toJavascript(sanitized);
+
+        if (!LEGACY_VALIDATOR.isValidJavascript(javascript))
+        {
+            LOGGER.error("Model Editor save blocked: generated legacy animation JavaScript is invalid for model {}", this.data.getId());
+            return false;
+        }
+
+        actions.legacyAnimations.copy(sanitized);
+        actions.legacyAnimationsJavascript = javascript;
+
+        return true;
     }
 
     public UIPoseEditor getPoseEditor()
