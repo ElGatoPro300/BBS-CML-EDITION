@@ -73,8 +73,6 @@ dependencies {
 
 	modImplementation "org.anarres:jcpp:1.4.14"
 	modImplementation "io.github.douira:glsl-transformer:2.0.0-pre13"
-	testImplementation "org.junit.jupiter:junit-jupiter:5.11.4"
-	testRuntimeOnly "org.junit.platform:junit-platform-launcher:1.11.4"
 }
 
 processResources {
@@ -91,10 +89,6 @@ processResources {
 
 tasks.withType(JavaCompile).configureEach {
 	it.options.release = 17
-}
-
-tasks.named("test") {
-	useJUnitPlatform()
 }
 
 java {
