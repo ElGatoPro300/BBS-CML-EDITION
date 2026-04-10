@@ -1,4 +1,3 @@
-accessWidener v2 named
-
-accessible field net/minecraft/client/MinecraftClient framebuffer Lnet/minecraft/client/gl/Framebuffer;
-mutable field net/minecraft/client/MinecraftClient framebuffer Lnet/minecraft/client/gl/Framebuffer;
+accessWidener	v2	named
+accessible	field	net/minecraft/client/Minecraft	mainRenderTarget	Lcom/mojang/blaze3d/pipeline/RenderTarget;
+mutable	field	net/minecraft/client/Minecraft	mainRenderTarget	Lcom/mojang/blaze3d/pipeline/RenderTarget;
