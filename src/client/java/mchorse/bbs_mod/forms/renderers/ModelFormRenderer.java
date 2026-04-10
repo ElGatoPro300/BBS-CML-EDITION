@@ -286,18 +286,18 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             output.copy(formActions);
         }
 
-        if (model == null || model.legacyActions == null)
+        if (model == null || model.actions == null)
         {
             return output;
         }
 
-        if (output.legacyAnimations.isDefault() && !model.legacyActions.legacyAnimations.isDefault())
+        if (output.geckoAnimations.isDefault() && !model.actions.geckoAnimations.isDefault())
         {
-            output.legacyAnimations.copy(model.legacyActions.legacyAnimations);
+            output.geckoAnimations.copy(model.actions.geckoAnimations);
 
-            if ((output.legacyAnimationsJavascript == null || output.legacyAnimationsJavascript.isBlank()) && model.legacyActions.legacyAnimationsJavascript != null)
+            if ((output.geckoAnimationsJavascript == null || output.geckoAnimationsJavascript.isBlank()) && model.actions.geckoAnimationsJavascript != null)
             {
-                output.legacyAnimationsJavascript = model.legacyActions.legacyAnimationsJavascript;
+                output.geckoAnimationsJavascript = model.actions.geckoAnimationsJavascript;
             }
         }
 

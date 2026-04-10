@@ -84,7 +84,7 @@ public class ModelInstance implements IModelInstance
 
     public ArmorSlot itemsMainTransform = new ArmorSlot("items_main_transform");
     public ArmorSlot itemsOffTransform = new ArmorSlot("items_off_transform");
-    public ActionsConfig legacyActions = new ActionsConfig();
+    public ActionsConfig actions = new ActionsConfig();
 
     private Map<ModelGroup, ModelVAO> vaos = new HashMap<>();
 
@@ -279,14 +279,14 @@ public class ModelInstance implements IModelInstance
             this.itemsOffTransform.fromData(config.get("items_off_transform"));
         }
 
-        if (config.has("legacy_animations", BaseType.TYPE_MAP))
+        if (config.has("animations", BaseType.TYPE_MAP))
         {
-            this.legacyActions = new ActionsConfig();
-            this.legacyActions.fromData(config.getMap("legacy_animations"));
+            this.actions = new ActionsConfig();
+            this.actions.fromData(config.getMap("animations"));
         }
         else
         {
-            this.legacyActions = new ActionsConfig();
+            this.actions = new ActionsConfig();
         }
 
         /* Optional look-at configuration */
@@ -419,9 +419,9 @@ public class ModelInstance implements IModelInstance
             config.put("phys_bones", list);
         }
 
-        if (this.legacyActions != null && !this.legacyActions.legacyAnimations.isDefault())
+        if (this.actions != null && !this.actions.geckoAnimations.isDefault())
         {
-            config.put("legacy_animations", this.legacyActions.toData());
+            config.put("animations", this.actions.toData());
         }
 
         return config;
@@ -465,7 +465,7 @@ public class ModelInstance implements IModelInstance
             copy.armorSlots.put(entry.getKey(), entry.getValue().copy());
         }
 
-        copy.legacyActions.copy(this.legacyActions);
+        copy.actions.copy(this.actions);
 
         return copy;
     }

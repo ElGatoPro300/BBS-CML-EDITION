@@ -1,7 +1,7 @@
 package mchorse.bbs_mod.cubic.animation;
 
-import mchorse.bbs_mod.cubic.animation.legacy.config.LegacyAnimationModuleConfig;
-import mchorse.bbs_mod.cubic.animation.legacy.config.LegacyAnimationsConfig;
+import mchorse.bbs_mod.cubic.animation.gecko.config.GeckoAnimationModuleConfig;
+import mchorse.bbs_mod.cubic.animation.gecko.config.GeckoAnimationsConfig;
 import mchorse.bbs_mod.data.IMapSerializable;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.MapType;
@@ -13,13 +13,13 @@ import java.util.Objects;
 
 public class ActionsConfig implements IMapSerializable
 {
-    private static final String LEGACY_JS_DATA_KEY = "legacy_animations_js";
+    private static final String GECKO_JS_DATA_KEY = "gecko_animations_js";
     private static Map<String, ActionConfig> a = new HashMap<>();
     private static Map<String, ActionConfig> b = new HashMap<>();
 
     public Map<String, ActionConfig> actions = new HashMap<>();
-    public LegacyAnimationsConfig legacyAnimations = new LegacyAnimationsConfig();
-    public String legacyAnimationsJavascript = "";
+    public GeckoAnimationsConfig geckoAnimations = new GeckoAnimationsConfig();
+    public String geckoAnimationsJavascript = "";
 
     public static void removeDefaultActions(Map<String, ActionConfig> map)
     {
@@ -59,8 +59,8 @@ public class ActionsConfig implements IMapSerializable
             removeDefaultActions(b);
 
             return a.equals(b)
-                && this.legacyAnimations.equals(config.legacyAnimations)
-                && Objects.equals(this.legacyAnimationsJavascript, config.legacyAnimationsJavascript);
+                && this.geckoAnimations.equals(config.geckoAnimations)
+                && Objects.equals(this.geckoAnimationsJavascript, config.geckoAnimationsJavascript);
         }
 
         return false;
@@ -69,8 +69,8 @@ public class ActionsConfig implements IMapSerializable
     public void copy(ActionsConfig config)
     {
         this.actions.clear();
-        this.legacyAnimations.copy(config.legacyAnimations);
-        this.legacyAnimationsJavascript = config.legacyAnimationsJavascript;
+        this.geckoAnimations.copy(config.geckoAnimations);
+        this.geckoAnimationsJavascript = config.geckoAnimationsJavascript;
 
         for (Map.Entry<String, ActionConfig> entry : config.actions.entrySet())
         {
@@ -88,13 +88,13 @@ public class ActionsConfig implements IMapSerializable
     @Override
     public void toData(MapType data)
     {
-        if (!this.legacyAnimations.isDefault())
+        if (!this.geckoAnimations.isDefault())
         {
-            data.put(LegacyAnimationModuleConfig.DATA_KEY, this.legacyAnimations.toData());
+            data.put(GeckoAnimationModuleConfig.DATA_KEY, this.geckoAnimations.toData());
 
-            if (this.legacyAnimationsJavascript != null && !this.legacyAnimationsJavascript.isBlank())
+            if (this.geckoAnimationsJavascript != null && !this.geckoAnimationsJavascript.isBlank())
             {
-                data.putString(LEGACY_JS_DATA_KEY, this.legacyAnimationsJavascript);
+                data.putString(GECKO_JS_DATA_KEY, this.geckoAnimationsJavascript);
             }
         }
 
@@ -118,21 +118,21 @@ public class ActionsConfig implements IMapSerializable
     public void fromData(MapType data)
     {
         this.actions.clear();
-        this.legacyAnimations = new LegacyAnimationsConfig();
+        this.geckoAnimations = new GeckoAnimationsConfig();
 
-        if (data.has(LegacyAnimationModuleConfig.DATA_KEY, BaseType.TYPE_MAP))
+        if (data.has(GeckoAnimationModuleConfig.DATA_KEY, BaseType.TYPE_MAP))
         {
-            this.legacyAnimations.fromData(data.getMap(LegacyAnimationModuleConfig.DATA_KEY));
-            this.legacyAnimationsJavascript = data.getString(LEGACY_JS_DATA_KEY);
+            this.geckoAnimations.fromData(data.getMap(GeckoAnimationModuleConfig.DATA_KEY));
+            this.geckoAnimationsJavascript = data.getString(GECKO_JS_DATA_KEY);
         }
         else
         {
-            this.legacyAnimationsJavascript = "";
+            this.geckoAnimationsJavascript = "";
         }
 
         for (Map.Entry<String, BaseType> entry : data)
         {
-            if (entry.getKey().equals(LegacyAnimationModuleConfig.DATA_KEY) || entry.getKey().equals(LEGACY_JS_DATA_KEY))
+            if (entry.getKey().equals(GeckoAnimationModuleConfig.DATA_KEY) || entry.getKey().equals(GECKO_JS_DATA_KEY))
             {
                 continue;
             }

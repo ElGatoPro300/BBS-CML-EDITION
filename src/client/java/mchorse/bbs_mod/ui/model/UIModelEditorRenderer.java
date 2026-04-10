@@ -113,23 +113,23 @@ public class UIModelEditorRenderer extends UIModelRenderer
         this.dirty = true;
     }
 
-    public void syncLegacyAnimationsAndResetAnimator()
+    public void syncAnimationsAndResetAnimator()
     {
-        this.syncLegacyAnimations();
+        this.syncAnimations();
     }
 
-    public void syncLegacyAnimationsAndRefreshAnimator()
+    public void syncAnimationsAndRefreshAnimator()
     {
-        this.syncLegacyAnimations();
+        this.syncAnimations();
 
         if (this.previewModel != null)
         {
             this.renderer.ensureAnimator(0F);
-            LOGGER.debug("Model editor legacy sync: animator refreshed for model {}", this.previewModel.id);
+            LOGGER.debug("Model editor animation sync: animator refreshed for model {}", this.previewModel.id);
         }
         else
         {
-            LOGGER.debug("Model editor legacy sync: preview model is null, animator refresh skipped");
+            LOGGER.debug("Model editor animation sync: preview model is null, animator refresh skipped");
         }
 
         this.dirty();
@@ -504,7 +504,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
             return;
         }
 
-        this.syncLegacyAnimations();
+        this.syncAnimations();
         this.form.color.get().set(this.config.color.get());
 
         if (!this.dirty)
@@ -563,7 +563,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
                 {
                     try
                     {
-                        this.syncLegacyAnimations();
+                        this.syncAnimations();
                         this.previewModel.applyConfig((MapType) this.config.toData());
                         this.previewModel.texture = this.config.texture.get();
                         this.previewModel.color = this.config.color.get();
@@ -581,32 +581,32 @@ public class UIModelEditorRenderer extends UIModelRenderer
         return this.previewModel;
     }
 
-    private void syncLegacyAnimations()
+    private void syncAnimations()
     {
         if (this.config == null)
         {
-            LOGGER.debug("Model editor legacy sync skipped: config is null");
+            LOGGER.debug("Model editor animation sync skipped: config is null");
             return;
         }
 
-        ActionsConfig source = this.config.legacyAnimations.get();
+        ActionsConfig source = this.config.animations.get();
         ActionsConfig target = this.form.actions.get();
 
-        if (!Objects.equals(target.legacyAnimations, source.legacyAnimations))
+        if (!Objects.equals(target.geckoAnimations, source.geckoAnimations))
         {
-            target.legacyAnimations.copy(source.legacyAnimations);
+            target.geckoAnimations.copy(source.geckoAnimations);
             LOGGER.debug(
-                "Model editor legacy sync applied: enabled={} limbs={}",
-                target.legacyAnimations.enabled,
-                target.legacyAnimations.limbs.size()
+                "Model editor animation sync applied: enabled={} limbs={}",
+                target.geckoAnimations.enabled,
+                target.geckoAnimations.limbs.size()
             );
         }
         else
         {
             LOGGER.debug(
-                "Model editor legacy sync skipped: no changes (enabled={} limbs={})",
-                target.legacyAnimations.enabled,
-                target.legacyAnimations.limbs.size()
+                "Model editor animation sync skipped: no changes (enabled={} limbs={})",
+                target.geckoAnimations.enabled,
+                target.geckoAnimations.limbs.size()
             );
         }
     }

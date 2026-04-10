@@ -3,9 +3,10 @@ package mchorse.bbs_mod.ui.model;
 import com.mojang.logging.LogUtils;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.BBSClient;
+import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.cubic.animation.ActionsConfig;
-import mchorse.bbs_mod.cubic.animation.legacy.config.LegacyAnimationsConfig;
-import mchorse.bbs_mod.cubic.animation.legacy.validation.LegacyAnimationValidator;
+import mchorse.bbs_mod.cubic.animation.gecko.config.GeckoAnimationsConfig;
+import mchorse.bbs_mod.cubic.animation.gecko.validation.GeckoAnimationValidator;
 import mchorse.bbs_mod.cubic.model.ModelConfig;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.forms.FormUtilsClient;
@@ -38,12 +39,14 @@ import net.minecraft.client.MinecraftClient;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
 {
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static final LegacyAnimationValidator LEGACY_VALIDATOR = new LegacyAnimationValidator();
+    private static final GeckoAnimationValidator GECKO_VALIDATOR = new GeckoAnimationValidator();
 
     public UIModelEditorRenderer renderer;
     public UIIcon reloadIcon;
@@ -313,7 +316,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
             return;
         }
 
-        if (!this.prepareLegacyAnimationCode())
+        if (!this.prepareAnimationCode())
         {
             return;
         }
@@ -378,7 +381,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
             return;
         }
 
-        if (!this.prepareLegacyAnimationCode())
+        if (!this.prepareAnimationCode())
         {
             return;
         }
@@ -415,39 +418,46 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         LOGGER.debug("Model Editor persist without reload completed: model={}", this.data.getId());
     }
 
-    private boolean prepareLegacyAnimationCode()
+    private boolean prepareAnimationCode()
     {
         if (this.data == null)
         {
             return false;
         }
 
-        ActionsConfig actions = this.data.legacyAnimations.get();
+        ActionsConfig actions = this.data.animations.get();
 
         if (actions == null)
         {
             return true;
         }
 
-        LegacyAnimationsConfig sanitized = LEGACY_VALIDATOR.sanitize(actions.legacyAnimations);
-        List<String> validationErrors = LEGACY_VALIDATOR.validate(sanitized);
+        GeckoAnimationsConfig geckoSanitized = GECKO_VALIDATOR.sanitize(actions.geckoAnimations);
+        ModelInstance preview = this.renderer == null ? null : this.renderer.getPreviewModelInstance();
+        Set<String> bones = new HashSet<>();
+        Set<String> animations = new HashSet<>();
 
-        if (!validationErrors.isEmpty())
+        if (preview != null && preview.model != null)
         {
-            LOGGER.error("Model Editor save blocked by invalid legacy animation config for model {}: {}", this.data.getId(), String.join("; ", validationErrors));
+            preview.model.getAllGroups().forEach((group) -> bones.add(group.id));
+            preview.model.getAllBOBJBones().forEach((bone) -> bones.add(bone.name));
+        }
+
+        if (preview != null && preview.animations != null)
+        {
+            animations.addAll(preview.animations.animations.keySet());
+        }
+
+        List<String> geckoValidationErrors = GECKO_VALIDATOR.validate(geckoSanitized, bones, animations);
+
+        if (!geckoValidationErrors.isEmpty())
+        {
+            LOGGER.error("Model Editor save blocked by invalid gecko animation config for model {}: {}", this.data.getId(), String.join("; ", geckoValidationErrors));
             return false;
         }
 
-        String javascript = LEGACY_VALIDATOR.toJavascript(sanitized);
-
-        if (!LEGACY_VALIDATOR.isValidJavascript(javascript))
-        {
-            LOGGER.error("Model Editor save blocked: generated legacy animation JavaScript is invalid for model {}", this.data.getId());
-            return false;
-        }
-
-        actions.legacyAnimations.copy(sanitized);
-        actions.legacyAnimationsJavascript = javascript;
+        actions.geckoAnimations.copy(geckoSanitized);
+        actions.geckoAnimationsJavascript = "var geckoAnimations = { enabled: " + geckoSanitized.enabled + " };";
 
         return true;
     }
