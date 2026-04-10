@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(ClientLevel.ClientLevelData.class)
 public class ClientWorldPropertiesMixin
 {
-    @Inject(method = "getDayTime", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "getGameTime", at = @At("HEAD"), cancellable = true)
     public void onGetTimeOfDay(CallbackInfoReturnable<Long> info)
     {
         Long timeOfDay = BBSRendering.getTimeOfDay();

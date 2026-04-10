@@ -3,8 +3,11 @@ package mchorse.bbs_mod.mixin.client;
 import mchorse.bbs_mod.bridge.IEntityRenderState;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.forms.MobForm;
+import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.entity.state.EntityRenderState;
+import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.world.entity.Entity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -20,8 +23,8 @@ public class EntityRendererMixin
         ((IEntityRenderState) state).bbs$setEntity(entity);
     }
 
-    @Inject(method = "submitNameTag", at = @At("HEAD"), cancellable = true)
-    public void onRenderLabelIfPresent(CallbackInfo info)
+    @Inject(method = "submitNameDisplay(Lnet/minecraft/client/renderer/entity/state/EntityRenderState;Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;Lnet/minecraft/client/renderer/state/level/CameraRenderState;)V", at = @At("HEAD"), cancellable = true)
+    public void onRenderLabelIfPresent(EntityRenderState state, PoseStack stack, SubmitNodeCollector collector, CameraRenderState camera, CallbackInfo info)
     {
         if (FormUtilsClient.getCurrentForm() instanceof MobForm form && form.isPlayer())
         {
