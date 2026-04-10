@@ -186,10 +186,12 @@ public class UIScreen extends Screen implements IFileDropListener
         return true;
     }
 
-    public void renderBackground(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta)
+    @Override
+    public void extractBackground(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta)
     {}
 
-    public void render(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta)
+    @Override
+    public void extractRenderState(GuiGraphicsExtractor context, int mouseX, int mouseY, float delta)
     {
         this.context = new UIRenderingContext(context);
         this.menu.context.setup(this.context);
