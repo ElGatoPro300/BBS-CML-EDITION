@@ -2,9 +2,9 @@ package mchorse.bbs_mod.mixin.client;
 
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.camera.controller.CameraController;
-import net.minecraft.client.render.Camera;
-import net.minecraft.entity.Entity;
-import net.minecraft.world.World;
+import net.minecraft.client.Camera;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.Level;
 import org.joml.Vector3d;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -16,10 +16,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class CameraMixin
 {
     @Shadow protected abstract void setRotation(float yaw, float pitch);
-    @Shadow protected abstract void setPos(double x, double y, double z);
+    @Shadow protected abstract void setPosition(double x, double y, double z);
 
-    @Inject(method = "update", at = @At(value = "RETURN"))
-    public void onUpdate(World world, Entity focusedEntity, boolean thirdPerson, boolean inverseView, float tickDelta, CallbackInfo ci)
+    @Inject(method = "setup", at = @At(value = "RETURN"))
+    public void onUpdate(Level world, Entity focusedEntity, boolean thirdPerson, boolean inverseView, float tickDelta, CallbackInfo ci)
     {
         CameraController controller = BBSModClient.getCameraController();
 
@@ -31,7 +31,7 @@ public abstract class CameraMixin
             float yaw = controller.getYaw();
             float pitch = controller.getPitch();
 
-            this.setPos(position.x, position.y, position.z);
+            this.setPosition(position.x, position.y, position.z);
             this.setRotation(yaw, pitch);
         }
     }

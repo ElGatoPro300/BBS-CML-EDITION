@@ -1,6 +1,11 @@
 package mchorse.bbs_mod.ui.framework.elements.utils;
 
+import com.mojang.blaze3d.opengl.GlProgram;
 import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.platform.NativeImage;
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSModClient;
@@ -10,19 +15,14 @@ import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.utils.colors.Colors;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gl.ShaderProgram;
-import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gl.RenderPipelines;
-import net.minecraft.client.render.BufferBuilder;
-import net.minecraft.client.render.RenderLayers;
-import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.texture.AbstractTexture;
-import net.minecraft.client.texture.NativeImage;
-import net.minecraft.client.texture.NativeImageBackedTexture;
-import net.minecraft.client.render.VertexFormats;
-import net.minecraft.resource.ResourceManager;
-import net.minecraft.util.Identifier;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.texture.AbstractTexture;
+import net.minecraft.client.renderer.texture.DynamicTexture;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.packs.resources.ResourceManager;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL30;
 
@@ -44,28 +44,28 @@ public class Batcher2D
     private static final Map<Integer, Identifier> RAW_TEXTURE_IDS = new HashMap<>();
     private static FontRenderer fontRenderer = new FontRenderer();
 
-    private DrawContext context;
+    private GuiGraphics context;
     private FontRenderer font;
 
     public static FontRenderer getDefaultTextRenderer()
     {
-        fontRenderer.setRenderer(MinecraftClient.getInstance().textRenderer);
+        fontRenderer.setRenderer(Minecraft.getInstance().font);
 
         return fontRenderer;
     }
 
-    public Batcher2D(DrawContext context)
+    public Batcher2D(GuiGraphics context)
     {
         this.context = context;
         this.font = getDefaultTextRenderer();
     }
 
-    public DrawContext getContext()
+    public GuiGraphics getContext()
     {
         return this.context;
     }
 
-    public void setContext(DrawContext context)
+    public void setContext(GuiGraphics context)
     {
         this.context = context;
     }
@@ -168,10 +168,10 @@ public class Batcher2D
         /* c1 ---- c2
          * |        |
          * c3 ---- c4 */
-        builder.vertex(matrix4f, x, y, 0).color(color1);
-        builder.vertex(matrix4f, x, y + h, 0).color(color3);
-        builder.vertex(matrix4f, x + w, y + h, 0).color(color4);
-        builder.vertex(matrix4f, x + w, y, 0).color(color2);
+        builder.addVertex(matrix4f, x, y, 0).setColor(color1);
+        builder.addVertex(matrix4f, x, y + h, 0).setColor(color3);
+        builder.addVertex(matrix4f, x + w, y + h, 0).setColor(color4);
+        builder.addVertex(matrix4f, x + w, y, 0).setColor(color2);
     }
 
     public void dropShadow(int left, int top, int right, int bottom, int offset, int opaque, int shadow)
@@ -391,10 +391,10 @@ public class Batcher2D
 
     public void texturedBox(int texture, int color, float x, float y, float w, float h, float u1, float v1, float u2, float v2, int textureW, int textureH)
     {
-        this.texturedBox((Supplier<ShaderProgram>) null, texture, color, x, y, w, h, u1, v1, u2, v2, textureW, textureH);
+        this.texturedBox((Supplier<GlProgram>) null, texture, color, x, y, w, h, u1, v1, u2, v2, textureW, textureH);
     }
 
-    public void texturedBox(Supplier<ShaderProgram> shader, int texture, int color, float x, float y, float w, float h, float u1, float v1, float u2, float v2, int textureW, int textureH)
+    public void texturedBox(Supplier<GlProgram> shader, int texture, int color, float x, float y, float w, float h, float u1, float v1, float u2, float v2, int textureW, int textureH)
     {
         if (shader != null)
         {
@@ -404,19 +404,19 @@ public class Batcher2D
         this.drawTexturedBox(texture, color, x, y, w, h, u1, v1, u2, v2, textureW, textureH);
     }
 
-    public void texturedBox(ShaderProgram shader, int texture, int color, float x, float y, float w, float h, float u1, float v1, float u2, float v2, int textureW, int textureH)
+    public void texturedBox(GlProgram shader, int texture, int color, float x, float y, float w, float h, float u1, float v1, float u2, float v2, int textureW, int textureH)
     {
         this.drawTexturedBox(texture, color, x, y, w, h, u1, v1, u2, v2, textureW, textureH);
     }
 
     private void fillTexturedBox(BufferBuilder builder, Matrix4f matrix, int color, float x, float y, float w, float h, float u1, float v1, float u2, float v2, int textureW, int textureH)
     {
-        builder.vertex(matrix, x, y + h, 0F).texture(u1 / (float) textureW, v2 / (float) textureH).color(color);
-        builder.vertex(matrix, x + w, y + h, 0F).texture(u2 / (float) textureW, v2 / (float) textureH).color(color);
-        builder.vertex(matrix, x + w, y, 0F).texture(u2 / (float) textureW, v1 / (float) textureH).color(color);
-        builder.vertex(matrix, x, y + h, 0F).texture(u1 / (float) textureW, v2 / (float) textureH).color(color);
-        builder.vertex(matrix, x + w, y, 0F).texture(u2 / (float) textureW, v1 / (float) textureH).color(color);
-        builder.vertex(matrix, x, y, 0F).texture(u1 / (float) textureW, v1 / (float) textureH).color(color);
+        builder.addVertex(matrix, x, y + h, 0F).setUv(u1 / (float) textureW, v2 / (float) textureH).setColor(color);
+        builder.addVertex(matrix, x + w, y + h, 0F).setUv(u2 / (float) textureW, v2 / (float) textureH).setColor(color);
+        builder.addVertex(matrix, x + w, y, 0F).setUv(u2 / (float) textureW, v1 / (float) textureH).setColor(color);
+        builder.addVertex(matrix, x, y + h, 0F).setUv(u1 / (float) textureW, v2 / (float) textureH).setColor(color);
+        builder.addVertex(matrix, x + w, y, 0F).setUv(u2 / (float) textureW, v1 / (float) textureH).setColor(color);
+        builder.addVertex(matrix, x, y, 0F).setUv(u1 / (float) textureW, v1 / (float) textureH).setColor(color);
     }
 
     private void drawTexturedBox(int texture, int color, float x, float y, float w, float h, float u1, float v1, float u2, float v2, int textureW, int textureH)
@@ -434,9 +434,9 @@ public class Batcher2D
         GlStateManager._activeTexture(GL30.GL_TEXTURE0);
         GlStateManager._bindTexture(texture);
 
-        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_TEXTURE_COLOR);
+        BufferBuilder builder = Tesselator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, DefaultVertexFormat.POSITION_TEX_COLOR);
         this.fillTexturedBox(builder, this.resolveMatrix(), color, x, y, w, h, u1, v1, u2, v2, textureW, textureH);
-        RenderLayers.cutout().draw(builder.end());
+        RenderTypes.cutoutMovingBlock().draw(builder.buildOrThrow());
     }
 
     private boolean drawTextureRawByContext(int texture, int color, float x, float y, float w, float h, float u1, float v1, float u2, float v2, int textureW, int textureH)
@@ -568,7 +568,7 @@ public class Batcher2D
         float fillerY = h - (countY - 1) * tileH;
 
         Matrix4f matrix = this.resolveMatrix();
-        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_TEXTURE_COLOR);
+        BufferBuilder builder = Tesselator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, DefaultVertexFormat.POSITION_TEX_COLOR);
         GlStateManager._activeTexture(GL30.GL_TEXTURE0);
         GlStateManager._bindTexture(texture.id);
 
@@ -584,7 +584,7 @@ public class Batcher2D
             this.fillTexturedBox(builder, matrix, color, xx, yy, xw, yh, u, v, u + xw, v + yh, tw, th);
         }
 
-        RenderLayers.cutout().draw(builder.end());
+        RenderTypes.cutoutMovingBlock().draw(builder.buildOrThrow());
     }
 
     /* Text with default font */
@@ -611,7 +611,7 @@ public class Batcher2D
 
     public void text(String label, float x, float y, int color, boolean shadow)
     {
-        this.context.drawText(this.font.getRenderer(), label, (int) x, (int) y, color, shadow);
+        this.context.drawString(this.font.getRenderer(), label, (int) x, (int) y, color, shadow);
     }
 
     /* Text helpers */
@@ -742,11 +742,11 @@ public class Batcher2D
             }
 
             NativeImage img = NativeImage.read(in);
-            NativeImageBackedTexture tex = new NativeImageBackedTexture(() -> "bbs_icons", img);
+            DynamicTexture tex = new DynamicTexture(() -> "bbs_icons", img);
             String safe = sanitizeIdentifierPath(link.path);
-            Identifier id = Identifier.of("bbs_dyn", "atlas_" + safe);
+            Identifier id = Identifier.fromNamespaceAndPath("bbs_dyn", "atlas_" + safe);
 
-            MinecraftClient.getInstance().getTextureManager().registerTexture(id, tex);
+            Minecraft.getInstance().getTextureManager().register(id, tex);
             ATLAS_IDS.put(key, id);
 
             return id;
@@ -854,8 +854,8 @@ public class Batcher2D
 
         try
         {
-            Identifier id = Identifier.of("bbs_dyn", "raw_" + Integer.toHexString(texture));
-            MinecraftClient.getInstance().getTextureManager().registerTexture(id, new RawGlTexture(texture));
+            Identifier id = Identifier.fromNamespaceAndPath("bbs_dyn", "raw_" + Integer.toHexString(texture));
+            Minecraft.getInstance().getTextureManager().register(id, new RawGlTexture(texture));
             RAW_TEXTURE_IDS.put(texture, id);
             return id;
         }

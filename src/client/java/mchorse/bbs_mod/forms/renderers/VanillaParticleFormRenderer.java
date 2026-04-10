@@ -12,13 +12,11 @@ import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.joml.Matrices;
 import mchorse.bbs_mod.utils.joml.Vectors;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.render.Camera;
-import net.minecraft.particle.ParticleEffect;
-import net.minecraft.particle.ParticleType;
-import net.minecraft.particle.ParticleTypes;
-import net.minecraft.registry.Registries;
-import net.minecraft.world.World;
+import net.minecraft.core.particles.ParticleOptions;
+import net.minecraft.core.particles.ParticleType;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.world.level.Level;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Vector3d;
@@ -79,7 +77,7 @@ public class VanillaParticleFormRenderer extends FormRenderer<VanillaParticleFor
     @Override
     public void tick(IEntity entity)
     {
-        World world = entity.getWorld();
+        Level world = entity.getWorld();
         boolean paused = this.form.paused.get();
         Vector3f temp3f = new Vector3f();
 
@@ -94,10 +92,10 @@ public class VanillaParticleFormRenderer extends FormRenderer<VanillaParticleFor
                 Matrix3f m = Matrices.TEMP_3F;
                 Vector3f v = Vectors.TEMP_3F;
                 ParticleSettings settings = this.form.settings.get();
-                ParticleType<?> type = Registries.PARTICLE_TYPE.get(settings.particle);
-                ParticleEffect effect = ParticleTypes.FLAME;
+                ParticleType<?> type = BuiltInRegistries.PARTICLE_TYPE.getValue(settings.particle);
+                ParticleOptions effect = ParticleTypes.FLAME;
 
-                if (type instanceof net.minecraft.particle.SimpleParticleType simple)
+                if (type instanceof net.minecraft.core.particles.SimpleParticleType simple)
                 {
                     effect = simple;
                 }
@@ -130,7 +128,7 @@ public class VanillaParticleFormRenderer extends FormRenderer<VanillaParticleFor
                     double y = this.pos.y + temp3f.y;
                     double z = this.pos.z + temp3f.z;
 
-                    world.addParticleClient(effect, x, y, z, v.x, v.y, v.z);
+                    world.addParticle(effect, x, y, z, v.x, v.y, v.z);
                 }
 
                 this.tick = frequency;

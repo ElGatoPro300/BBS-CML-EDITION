@@ -4,13 +4,9 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.utils.colors.Color;
-import net.minecraft.client.gl.Framebuffer;
-import net.minecraft.client.option.CloudRenderMode;
-import net.minecraft.client.render.FrameGraphBuilder;
-import net.minecraft.client.render.RenderLayer;
-import net.minecraft.client.render.WorldRenderer;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.client.renderer.LevelRenderer;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
@@ -20,7 +16,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@Mixin(WorldRenderer.class)
+@Mixin(LevelRenderer.class)
 public class WorldRendererMixin
 {
 /*
@@ -28,7 +24,7 @@ public class WorldRendererMixin
     public Framebuffer entityOutlinesFramebuffer;
 */
 
-    @Inject(method = "renderSky(Lnet/minecraft/client/util/math/MatrixStack;Lorg/joml/Matrix4f;FLnet/minecraft/client/render/Camera;ZLjava/lang/Runnable;)V", at = @At("HEAD"), cancellable = true, require = 0)
+    @Inject(method = "renderSky(Lcom/mojang/blaze3d/vertex/PoseStack;Lorg/joml/Matrix4f;FLnet/minecraft/client/Camera;ZLjava/lang/Runnable;)V", at = @At("HEAD"), cancellable = true, require = 0)
     public void onRenderSky(CallbackInfo info)
     {
         if (BBSSettings.chromaSkyEnabled.get())
@@ -44,7 +40,7 @@ public class WorldRendererMixin
     }
 
     @Inject(method = "renderLayer", at = @At("HEAD"), cancellable = true, require = 0)
-    public void onRenderLayer(RenderLayer renderLayer, double cameraX, double cameraY, double cameraZ, Matrix4f positionMatrix, Matrix4f projectionMatrix, CallbackInfo info)
+    public void onRenderLayer(RenderType renderLayer, double cameraX, double cameraY, double cameraZ, Matrix4f positionMatrix, Matrix4f projectionMatrix, CallbackInfo info)
     {
         if (BBSSettings.chromaSkyEnabled.get() && !BBSSettings.chromaSkyTerrain.get())
         {
@@ -53,19 +49,19 @@ public class WorldRendererMixin
         }
     }
 
-    @Inject(method = "setupFrustum", at = @At("HEAD"))
-    public void onSetupFrustum(Matrix4f matrix4f, Matrix4f positionMatrix, Vec3d vec3d, CallbackInfoReturnable<?> info)
+    @Inject(method = "prepareCullFrustum", at = @At("HEAD"))
+    public void onSetupFrustum(Matrix4f matrix4f, Matrix4f positionMatrix, Vec3 vec3d, CallbackInfoReturnable<?> info)
     {
         BBSRendering.camera.set(matrix4f);
     }
 
-    @Inject(at = @At("RETURN"), method = "loadEntityOutlinePostProcessor")
+    @Inject(at = @At("RETURN"), method = "initOutline")
     private void onLoadEntityOutlineShader(CallbackInfo info)
     {
         BBSRendering.resizeExtraFramebuffers();
     }
 
-    @Inject(at = @At("RETURN"), method = "onResized")
+    @Inject(at = @At("RETURN"), method = "resize")
     private void onResized(CallbackInfo info)
     {
         /*

@@ -2,6 +2,9 @@ package mchorse.bbs_mod.ui.framework.elements.input.color;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.settings.values.ui.ValueColors;
@@ -15,13 +18,8 @@ import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.colors.Colors;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import mchorse.bbs_mod.utils.MathUtils;
-import net.minecraft.client.render.BufferBuilder;
-import net.minecraft.client.render.GameRenderer;
-import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.render.RenderLayers;
-import net.minecraft.client.util.BufferAllocator;
-import net.minecraft.client.render.VertexFormats;
 import org.joml.Matrix4f;
 import org.lwjgl.glfw.GLFW;
 
@@ -61,18 +59,18 @@ public class UIColorPicker extends UIElement
     public static void renderAlphaPreviewQuad(Batcher2D batcher, int x1, int y1, int x2, int y2, Color color)
     {
         Matrix4f matrix4f = new Matrix4f();
-        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
+        BufferBuilder builder = Tesselator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, DefaultVertexFormat.POSITION_COLOR);
 
         GlStateManager._enableBlend();
 
-        builder.vertex(matrix4f, x1, y1, 0F).color(color.r, color.g, color.b, 1);
-        builder.vertex(matrix4f, x1, y2, 0F).color(color.r, color.g, color.b, 1);
-        builder.vertex(matrix4f, x2, y1, 0F).color(color.r, color.g, color.b, 1);
-        builder.vertex(matrix4f, x2, y1, 0F).color(color.r, color.g, color.b, color.a);
-        builder.vertex(matrix4f, x1, y2, 0F).color(color.r, color.g, color.b, color.a);
-        builder.vertex(matrix4f, x2, y2, 0F).color(color.r, color.g, color.b, color.a);
+        builder.addVertex(matrix4f, x1, y1, 0F).setColor(color.r, color.g, color.b, 1);
+        builder.addVertex(matrix4f, x1, y2, 0F).setColor(color.r, color.g, color.b, 1);
+        builder.addVertex(matrix4f, x2, y1, 0F).setColor(color.r, color.g, color.b, 1);
+        builder.addVertex(matrix4f, x2, y1, 0F).setColor(color.r, color.g, color.b, color.a);
+        builder.addVertex(matrix4f, x1, y2, 0F).setColor(color.r, color.g, color.b, color.a);
+        builder.addVertex(matrix4f, x2, y2, 0F).setColor(color.r, color.g, color.b, color.a);
 
-        RenderLayers.debugFilledBox().draw(builder.end());
+        RenderTypes.debugFilledBox().draw(builder.buildOrThrow());
     }
 
     public UIColorPicker(Consumer<Integer> callback)

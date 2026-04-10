@@ -1,5 +1,7 @@
 package mchorse.bbs_mod.ui.framework.elements.input.multilink;
 
+import com.mojang.blaze3d.opengl.GlProgram;
+import com.mojang.blaze3d.opengl.Uniform;
 import com.mojang.blaze3d.systems.RenderSystem;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.client.BBSShaders;
@@ -18,9 +20,6 @@ import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.resources.FilteredLink;
-import net.minecraft.client.gl.GlUniform;
-import net.minecraft.client.gl.ShaderProgram;
-import net.minecraft.client.render.GameRenderer;
 
 public class UIMultiLinkEditor extends UICanvasEditor
 {
@@ -227,12 +226,12 @@ public class UIMultiLinkEditor extends UICanvasEditor
 
                 if (needsMultLinkShader)
                 {
-                    ShaderProgram shader = BBSShaders.getMultilinkProgram();
+                    GlProgram shader = BBSShaders.getMultilinkProgram();
 
                     if (shader != null)
                     {
-                        GlUniform size = shader.getUniform("Size");
-                        GlUniform filters = shader.getUniform("Filters");
+                        Uniform size = shader.getUniform("Size");
+                        Uniform filters = shader.getUniform("Filters");
 
                         if (size != null) {}
                         if (filters != null) {}

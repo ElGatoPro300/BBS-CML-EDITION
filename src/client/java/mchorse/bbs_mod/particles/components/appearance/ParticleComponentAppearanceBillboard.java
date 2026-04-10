@@ -1,5 +1,7 @@
 package mchorse.bbs_mod.particles.components.appearance;
 
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.ListType;
@@ -15,11 +17,9 @@ import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.interps.Lerps;
 import mchorse.bbs_mod.utils.joml.Matrices;
 import mchorse.bbs_mod.utils.joml.Vectors;
-import net.minecraft.client.render.BufferBuilder;
-import net.minecraft.client.render.LightmapTextureManager;
-import net.minecraft.client.render.VertexFormats;
-import net.minecraft.client.render.WorldRenderer;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.client.renderer.LevelRenderer;
+import net.minecraft.client.renderer.LightTexture;
+import net.minecraft.core.BlockPos;
 import org.joml.Matrix4f;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
@@ -345,7 +345,7 @@ public class ParticleComponentAppearanceBillboard extends ParticleComponentBase 
             this.transform.mul(this.rotation);
         }
 
-        if (format != VertexFormats.POSITION_TEXTURE_COLOR_LIGHT)
+        if (format != DefaultVertexFormat.PARTICLE)
         {
             this.n.set(0F, 0F, 1F);
 
@@ -385,30 +385,30 @@ public class ParticleComponentAppearanceBillboard extends ParticleComponentBase 
 
     private void writeVertex(BufferBuilder builder, VertexFormat format, Matrix4f matrix, Vector4f vertex, float u, float v, int overlay, Particle particle)
     {
-        if (format == VertexFormats.POSITION_TEXTURE_COLOR_LIGHT)
+        if (format == DefaultVertexFormat.PARTICLE)
         {
             /* VertexFormats.POSITION_TEXTURE_COLOR_LIGHT */
-            builder.vertex(matrix, vertex.x, vertex.y, vertex.z)
-                .texture(u, v)
-                .color(particle.r, particle.g, particle.b, particle.a)
-                .light(this.light);
+            builder.addVertex(matrix, vertex.x, vertex.y, vertex.z)
+                .setUv(u, v)
+                .setColor(particle.r, particle.g, particle.b, particle.a)
+                .setLight(this.light);
         }
-        else if (format == VertexFormats.POSITION_TEXTURE_COLOR)
+        else if (format == DefaultVertexFormat.POSITION_TEX_COLOR)
         {
             /* VertexFormats.POSITION_TEXTURE_COLOR */
-            builder.vertex(matrix, vertex.x, vertex.y, vertex.z)
-                .texture(u, v)
-                .color(particle.r, particle.g, particle.b, particle.a);
+            builder.addVertex(matrix, vertex.x, vertex.y, vertex.z)
+                .setUv(u, v)
+                .setColor(particle.r, particle.g, particle.b, particle.a);
         }
         else
         {
             /* VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL */
-            builder.vertex(matrix, vertex.x, vertex.y, vertex.z)
-                .color(particle.r, particle.g, particle.b, particle.a)
-                .texture(u, v)
-                .overlay(overlay)
-                .light(this.light)
-                .normal(this.n.x, this.n.y, this.n.z);
+            builder.addVertex(matrix, vertex.x, vertex.y, vertex.z)
+                .setColor(particle.r, particle.g, particle.b, particle.a)
+                .setUv(u, v)
+                .setOverlay(overlay)
+                .setLight(this.light)
+                .setNormal(this.n.x, this.n.y, this.n.z);
         }
     }
 
@@ -457,10 +457,10 @@ public class ParticleComponentAppearanceBillboard extends ParticleComponentBase 
 
     private void writeVertexUI(BufferBuilder builder, Matrix4f matrix, Vector4f vertex, float u, float v, Particle particle)
     {
-        builder.vertex(matrix, vertex.x, vertex.y, 0F)
-            .texture(u, v)
-            .color(particle.r, particle.g, particle.b, particle.a)
-            .light(this.light);
+        builder.addVertex(matrix, vertex.x, vertex.y, 0F)
+            .setUv(u, v)
+            .setColor(particle.r, particle.g, particle.b, particle.a)
+            .setLight(this.light);
     }
 
     public void calculateUVs(Particle particle, ParticleEmitter emitter, float transition)
@@ -507,13 +507,13 @@ public class ParticleComponentAppearanceBillboard extends ParticleComponentBase 
 
         if (emitter == null || emitter.lit || emitter.world == null)
         {
-            this.light = LightmapTextureManager.pack(15, 15);
+            this.light = LightTexture.pack(15, 15);
         }
         else
         {
             Vector3d pos = particle.getGlobalPosition(emitter);
             BlockPos blockPos = new BlockPos((int) pos.x, (int) pos.y, (int) pos.z);
-            int lightLevel = WorldRenderer.getLightmapCoordinates(emitter.world, blockPos);
+            int lightLevel = LevelRenderer.getLightColor(emitter.world, blockPos);
 
             this.light = lightLevel;
         }

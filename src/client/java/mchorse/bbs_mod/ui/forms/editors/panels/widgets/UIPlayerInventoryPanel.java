@@ -13,11 +13,11 @@ import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.entity.EquipmentSlot;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.item.ItemStack;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.ItemStack;
 
 public class UIPlayerInventoryPanel extends UIOverlayPanel
 {
@@ -42,8 +42,8 @@ public class UIPlayerInventoryPanel extends UIOverlayPanel
     private static final int SLOT_HOVER_TINT  = 0x33FFFFFF;
 
     private final Consumer<ItemStack> callback;
-    private final ClientPlayerEntity player;
-    private final PlayerInventory playerInventory;
+    private final LocalPlayer player;
+    private final Inventory playerInventory;
 
     public UIPlayerInventoryPanel(Consumer<ItemStack> callback)
     {
@@ -51,7 +51,7 @@ public class UIPlayerInventoryPanel extends UIOverlayPanel
 
         this.callback = callback;
 
-        MinecraftClient mc = MinecraftClient.getInstance();
+        Minecraft mc = Minecraft.getInstance();
         this.player = mc.player;
         this.playerInventory = (this.player != null) ? this.player.getInventory() : null;
 
@@ -176,11 +176,11 @@ public class UIPlayerInventoryPanel extends UIOverlayPanel
 
         private ItemStack getStack()
         {
-            if (playerInventory == null || slotIndex < 0 || slotIndex >= playerInventory.size())
+            if (playerInventory == null || slotIndex < 0 || slotIndex >= playerInventory.getContainerSize())
             {
                 return ItemStack.EMPTY;
             }
-            return playerInventory.getStack(slotIndex);
+            return playerInventory.getItem(slotIndex);
         }
 
         @Override
@@ -217,8 +217,8 @@ public class UIPlayerInventoryPanel extends UIOverlayPanel
             {
                 int itemX = this.area.x + 1;
                 int itemY = this.area.y + 1;
-                context.batcher.getContext().drawItem(stack, itemX, itemY);
-                context.batcher.getContext().drawStackOverlay(context.batcher.getFont().getRenderer(), stack, itemX, itemY);
+                context.batcher.getContext().renderItem(stack, itemX, itemY);
+                context.batcher.getContext().renderItemDecorations(context.batcher.getFont().getRenderer(), stack, itemX, itemY);
 
                 if (hovered)
                 {
@@ -246,7 +246,7 @@ public class UIPlayerInventoryPanel extends UIOverlayPanel
                 return ItemStack.EMPTY;
             }
 
-            return player.getEquippedStack(this.slot);
+            return player.getItemBySlot(this.slot);
         }
 
         @Override
@@ -291,8 +291,8 @@ public class UIPlayerInventoryPanel extends UIOverlayPanel
                 int itemX = this.area.x + 1;
                 int itemY = this.area.y + 1;
 
-                context.batcher.getContext().drawItem(stack, itemX, itemY);
-                context.batcher.getContext().drawStackOverlay(context.batcher.getFont().getRenderer(), stack, itemX, itemY);
+                context.batcher.getContext().renderItem(stack, itemX, itemY);
+                context.batcher.getContext().renderItemDecorations(context.batcher.getFont().getRenderer(), stack, itemX, itemY);
 
                 if (hovered)
                 {

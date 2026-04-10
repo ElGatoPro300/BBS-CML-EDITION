@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.ui.film;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.PoseStack;
 import mchorse.bbs_mod.BBS;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSModClient;
@@ -66,7 +67,6 @@ import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.PlayerUtils;
 import mchorse.bbs_mod.utils.Timer;
-import net.minecraft.client.util.math.MatrixStack;
 import mchorse.bbs_mod.utils.clips.Clip;
 import mchorse.bbs_mod.utils.clips.Clips;
 import mchorse.bbs_mod.utils.colors.Colors;
@@ -75,9 +75,9 @@ import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 import mchorse.bbs_mod.utils.keyframes.KeyframeSegment;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
 import org.joml.Vector2i;
 import org.joml.Vector3d;
@@ -1158,9 +1158,9 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         IdleClip clip = new IdleClip();
         Camera camera = new Camera();
-        MinecraftClient mc = MinecraftClient.getInstance();
+        Minecraft mc = Minecraft.getInstance();
 
-        camera.set(mc.player, MathUtils.toRad(mc.options.getFov().getValue()));
+        camera.set(mc.player, MathUtils.toRad(mc.options.fov().get()));
 
         clip.layer.set(8);
         clip.duration.set(BBSSettings.getDefaultDuration());
@@ -1402,11 +1402,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         if (this.entered)
         {
-            ClientPlayerEntity player = MinecraftClient.getInstance().player;
-            Vec3d pos = new Vec3d(player.getX(), player.getY(), player.getZ());
+            LocalPlayer player = Minecraft.getInstance().player;
+            Vec3 pos = new Vec3(player.getX(), player.getY(), player.getZ());
             Vector3d cameraPos = this.camera.position;
             double distance = cameraPos.distance(pos.x, pos.y, pos.z);
-            int value = MinecraftClient.getInstance().options.getViewDistance().getValue();
+            int value = Minecraft.getInstance().options.renderDistance().get();
 
             if (distance > value * 12)
             {
@@ -1544,10 +1544,10 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         if (!BBSRendering.isIrisShadowPass())
         {
             this.lastProjection.set(RenderSystem.getModelViewMatrix());
-            MatrixStack ms = context.matrices();
+            PoseStack ms = context.matrices();
             if (ms != null)
             {
-                this.lastView.set(ms.peek().getPositionMatrix());
+                this.lastView.set(ms.last().pose());
             }
             else
             {

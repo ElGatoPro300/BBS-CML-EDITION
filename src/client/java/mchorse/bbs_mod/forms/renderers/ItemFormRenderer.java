@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.forms.renderers;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.client.BBSShaders;
@@ -11,10 +12,6 @@ import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.joml.Vectors;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.render.LightmapTextureManager;
-import net.minecraft.client.render.OverlayTexture;
-import net.minecraft.client.util.math.MatrixStack;
 import org.joml.Matrix4f;
 
 public class ItemFormRenderer extends FormRenderer<ItemForm>
@@ -30,16 +27,16 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
         context.batcher.flush();
 
         CustomVertexConsumerProvider consumers = FormUtilsClient.getProvider();
-        MatrixStack matrices = new MatrixStack();
+        PoseStack matrices = new PoseStack();
 
         Matrix4f uiMatrix = ModelFormRenderer.getUIMatrix(context, x1, y1, x2, y2);
 
-        matrices.push();
+        matrices.pushPose();
         MatrixStackUtils.multiply(matrices, uiMatrix);
         matrices.scale(this.form.uiScale.get(), this.form.uiScale.get(), this.form.uiScale.get());
 
-        matrices.peek().getNormalMatrix().getScale(Vectors.EMPTY_3F);
-        matrices.peek().getNormalMatrix().scale(1F / Vectors.EMPTY_3F.x, -1F / Vectors.EMPTY_3F.y, 1F / Vectors.EMPTY_3F.z);
+        matrices.last().normal().getScale(Vectors.EMPTY_3F);
+        matrices.last().normal().scale(1F / Vectors.EMPTY_3F.x, -1F / Vectors.EMPTY_3F.y, 1F / Vectors.EMPTY_3F.z);
 
         Color set = this.form.color.get();
 
@@ -49,7 +46,7 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
         consumers.setUI(false);
         consumers.setSubstitute(null);
 
-        matrices.pop();
+        matrices.popPose();
     }
 
     @Override
@@ -58,7 +55,7 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
         CustomVertexConsumerProvider consumers = FormUtilsClient.getProvider();
         int light = context.light;
 
-        context.stack.push();
+        context.stack.pushPose();
 
         if (context.isPicking())
         {
@@ -86,7 +83,7 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
 
         CustomVertexConsumerProvider.clearRunnables();
 
-        context.stack.pop();
+        context.stack.popPose();
 
         GlStateManager._enableDepthTest();
     }

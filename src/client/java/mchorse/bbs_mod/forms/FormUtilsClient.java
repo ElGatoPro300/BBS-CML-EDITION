@@ -37,10 +37,7 @@ import mchorse.bbs_mod.forms.renderers.ShapeFormRenderer;
 import mchorse.bbs_mod.forms.renderers.StructureFormRenderer;
 import mchorse.bbs_mod.forms.renderers.LightFormRenderer;
 import mchorse.bbs_mod.ui.framework.UIContext;
-import net.minecraft.client.util.BufferAllocator;
-import net.minecraft.client.render.RenderLayer;
-import net.minecraft.client.render.TexturedRenderLayers;
-import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.Minecraft;
 import net.minecraft.util.Util;
 
 import java.util.Collections;
@@ -80,7 +77,7 @@ public class FormUtilsClient
     {
         if (customVertexConsumerProvider == null)
         {
-            customVertexConsumerProvider = new CustomVertexConsumerProvider(MinecraftClient.getInstance().getBufferBuilders().getEntityVertexConsumers());
+            customVertexConsumerProvider = new CustomVertexConsumerProvider(Minecraft.getInstance().renderBuffers().bufferSource());
         }
 
         return customVertexConsumerProvider;

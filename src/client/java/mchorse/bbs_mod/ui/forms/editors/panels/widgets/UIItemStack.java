@@ -15,11 +15,8 @@ import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
 import mchorse.bbs_mod.ui.utils.context.ItemStackContextAction;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Colors;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.entity.player.PlayerInventory;
-import net.minecraft.item.ItemStack;
-
+import net.minecraft.world.item.ItemStack;
+import com.mojang.blaze3d.vertex.PoseStack;
 import java.util.function.Consumer;
 
 public class UIItemStack extends UIElement
@@ -192,15 +189,15 @@ public class UIItemStack extends UIElement
 
         if (this.stack != null && !this.stack.isEmpty())
         {
-            MatrixStack matrices = new MatrixStack();
+            PoseStack matrices = new PoseStack();
             CustomVertexConsumerProvider consumers = FormUtilsClient.getProvider();
 
-            matrices.push();
+            matrices.pushPose();
             consumers.setUI(true);
-            context.batcher.getContext().drawItem(this.stack, stackCenterX - 8, this.area.my() - 8);
-            context.batcher.getContext().drawStackOverlay(context.batcher.getFont().getRenderer(), this.stack, stackCenterX - 8, this.area.my() - 8);
+            context.batcher.getContext().renderItem(this.stack, stackCenterX - 8, this.area.my() - 8);
+            context.batcher.getContext().renderItemDecorations(context.batcher.getFont().getRenderer(), this.stack, stackCenterX - 8, this.area.my() - 8);
             consumers.setUI(false);
-            matrices.pop();
+            matrices.popPose();
         }
 
         super.render(context);

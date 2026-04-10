@@ -5,8 +5,6 @@ import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UIList;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UIStringList;
-import net.minecraft.util.math.BlockPos;
-
 import java.util.List;
 import java.util.function.Consumer;
 

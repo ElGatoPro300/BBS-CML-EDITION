@@ -1,13 +1,13 @@
 package mchorse.bbs_mod.client.renderer;
 
 import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.vertex.PoseStack;
 import mchorse.bbs_mod.blocks.entities.TriggerBlockEntity;
 import mchorse.bbs_mod.graphics.Draw;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.client.render.block.entity.BlockEntityRendererFactory;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.util.math.Box;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.world.phys.AABB;
 import org.joml.Vector3f;
 
 import java.util.HashSet;
@@ -17,26 +17,26 @@ public class TriggerBlockEntityRenderer
 {
     public static final Set<TriggerBlockEntity> capturedTriggerBlocks = new HashSet<>();
 
-    public TriggerBlockEntityRenderer(BlockEntityRendererFactory.Context ctx)
+    public TriggerBlockEntityRenderer(BlockEntityRendererProvider.Context ctx)
     {}
 
-    public void render(TriggerBlockEntity entity, float tickDelta, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, int overlay)
+    public void render(TriggerBlockEntity entity, float tickDelta, PoseStack matrices, MultiBufferSource vertexConsumers, int light, int overlay)
     {
         capturedTriggerBlocks.add(entity);
 
-        MinecraftClient mc = MinecraftClient.getInstance();
+        Minecraft mc = Minecraft.getInstance();
         
-        if (mc.getDebugHud().shouldShowDebugHud())
+        if (mc.getDebugOverlay().showDebugScreen())
         {
-            matrices.push();
+            matrices.pushPose();
             matrices.translate(0.5D, 0, 0.5D);
             /* Render green debug box for triggers */
             Draw.renderBox(matrices, -0.5D, 0, -0.5D, 1, 1, 1, 0, 1F, 0.5F, 0.5F);
-            matrices.pop();
+            matrices.popPose();
 
             if (entity.region.get())
             {
-                Box box = entity.getRegionBoxRelative();
+                AABB box = entity.getRegionBoxRelative();
 
                 /* Render white debug box for region triggers */
                 GlStateManager._disableDepthTest();

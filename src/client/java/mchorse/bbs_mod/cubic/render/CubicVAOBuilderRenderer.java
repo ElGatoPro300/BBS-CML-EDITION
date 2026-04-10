@@ -12,12 +12,11 @@ import mchorse.bbs_mod.cubic.data.model.ModelMesh;
 import mchorse.bbs_mod.cubic.data.model.ModelQuad;
 import mchorse.bbs_mod.cubic.data.model.ModelVertex;
 import mchorse.bbs_mod.utils.CollectionUtils;
-import net.minecraft.client.render.BufferBuilder;
-import net.minecraft.client.util.math.MatrixStack;
 import org.joml.Vector2f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
-
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.PoseStack;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -49,11 +48,11 @@ public class CubicVAOBuilderRenderer implements ICubicRenderer
     }
 
     @Override
-    public void applyGroupTransformations(MatrixStack stack, ModelGroup group)
+    public void applyGroupTransformations(PoseStack stack, ModelGroup group)
     {}
 
     @Override
-    public boolean renderGroup(BufferBuilder builder, MatrixStack stack, ModelGroup group, Model model)
+    public boolean renderGroup(BufferBuilder builder, PoseStack stack, ModelGroup group, Model model)
     {
         List<Float> vertices = new ArrayList<>();
         List<Float> normals = new ArrayList<>();
@@ -82,9 +81,9 @@ public class CubicVAOBuilderRenderer implements ICubicRenderer
         return false;
     }
 
-    private void renderCube(List<Float> vertices, List<Float> normals, List<Float> uvs, MatrixStack stack, ModelGroup group, ModelCube cube)
+    private void renderCube(List<Float> vertices, List<Float> normals, List<Float> uvs, PoseStack stack, ModelGroup group, ModelCube cube)
     {
-        stack.push();
+        stack.pushPose();
         CubicCubeRenderer.moveToPivot(stack, cube.pivot);
         CubicCubeRenderer.rotate(stack, cube.rotate);
         CubicCubeRenderer.moveBackFromPivot(stack, cube.pivot);
@@ -92,7 +91,7 @@ public class CubicVAOBuilderRenderer implements ICubicRenderer
         for (ModelQuad quad : cube.quads)
         {
             this.normal.set(quad.normal.x, quad.normal.y, quad.normal.z);
-            stack.peek().getNormalMatrix().transform(this.normal);
+            stack.last().normal().transform(this.normal);
 
             if (quad.vertices.size() == 4)
             {
@@ -105,12 +104,12 @@ public class CubicVAOBuilderRenderer implements ICubicRenderer
             }
         }
 
-        stack.pop();
+        stack.popPose();
     }
 
-    private void renderMesh(List<Float> vertices, List<Float> normals, List<Float> uvs, MatrixStack stack, Model model, ModelGroup group, ModelMesh mesh)
+    private void renderMesh(List<Float> vertices, List<Float> normals, List<Float> uvs, PoseStack stack, Model model, ModelGroup group, ModelMesh mesh)
     {
-        stack.push();
+        stack.pushPose();
         CubicCubeRenderer.moveToPivot(stack, mesh.origin);
         CubicCubeRenderer.rotate(stack, mesh.rotate);
         CubicCubeRenderer.moveBackFromPivot(stack, mesh.origin);
@@ -133,25 +132,25 @@ public class CubicVAOBuilderRenderer implements ICubicRenderer
 
             /* Write vertices */
             this.normal.set(n1.x, n1.y, n1.z);
-            stack.peek().getNormalMatrix().transform(this.normal);
+            stack.last().normal().transform(this.normal);
             this.modelVertex.set(v1, u1, model);
             this.writeVertex(vertices, normals, uvs, stack, group, this.modelVertex, this.normal);
 
             this.normal.set(n2.x, n2.y, n2.z);
-            stack.peek().getNormalMatrix().transform(this.normal);
+            stack.last().normal().transform(this.normal);
             this.modelVertex.set(v2, u2, model);
             this.writeVertex(vertices, normals, uvs, stack, group, this.modelVertex, this.normal);
 
             this.normal.set(n3.x, n3.y, n3.z);
-            stack.peek().getNormalMatrix().transform(this.normal);
+            stack.last().normal().transform(this.normal);
             this.modelVertex.set(v3, u3, model);
             this.writeVertex(vertices, normals, uvs, stack, group, this.modelVertex, this.normal);
         }
 
-        stack.pop();
+        stack.popPose();
     }
 
-    private void writeVertex(List<Float> vertices, List<Float> normals, List<Float> uvs, MatrixStack stack, ModelGroup group, ModelVertex vertex, Vector3f normal)
+    private void writeVertex(List<Float> vertices, List<Float> normals, List<Float> uvs, PoseStack stack, ModelGroup group, ModelVertex vertex, Vector3f normal)
     {
         this.vertex.set(vertex.vertex.x, vertex.vertex.y, vertex.vertex.z, 1);
         new Matrix4f().transform(this.vertex);

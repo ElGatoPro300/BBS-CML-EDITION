@@ -16,8 +16,6 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIEditorOverlayPanel;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Colors;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.entity.player.PlayerEntity;
 
 public class UITriggerOverlayPanel extends UIEditorOverlayPanel<Trigger>
 {

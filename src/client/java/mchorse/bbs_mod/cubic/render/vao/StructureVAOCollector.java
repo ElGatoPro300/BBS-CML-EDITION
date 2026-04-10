@@ -1,9 +1,8 @@
 package mchorse.bbs_mod.cubic.render.vao;
 
-import net.minecraft.client.render.VertexConsumer;
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
-
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -41,7 +40,7 @@ public class StructureVAOCollector implements VertexConsumer
         this.computeTangents = computeTangents;
     }
 
-    public VertexConsumer vertex(float x, float y, float z)
+    public VertexConsumer addVertex(float x, float y, float z)
     {
         this.vx = x;
         this.vy = y;
@@ -59,45 +58,45 @@ public class StructureVAOCollector implements VertexConsumer
         return this;
     }
 
-    public VertexConsumer color(int red, int green, int blue, int alpha)
+    public VertexConsumer setColor(int red, int green, int blue, int alpha)
     {
         /* Per-vertex color is not used; global color is provided via shader attribute. */
         return this;
     }
 
     @Override
-    public VertexConsumer color(int argb)
+    public VertexConsumer setColor(int argb)
     {
         return this;
     }
 
     @Override
-    public VertexConsumer texture(float u, float v)
+    public VertexConsumer setUv(float u, float v)
     {
         this.vu = u;
         this.vv = v;
         return this;
     }
 
-    public VertexConsumer overlay(int u, int v)
+    public VertexConsumer setUv1(int u, int v)
     {
         /* Overlay provided via shader attribute; ignore per-vertex overlay. */
         return this;
     }
 
-    public VertexConsumer light(int u, int v)
+    public VertexConsumer setUv2(int u, int v)
     {
         /* Lightmap provided via shader attribute; ignore per-vertex light. */
         return this;
     }
 
     @Override
-    public VertexConsumer lineWidth(float width)
+    public VertexConsumer setLineWidth(float width)
     {
         return this;
     }
 
-    public VertexConsumer normal(float x, float y, float z)
+    public VertexConsumer setNormal(float x, float y, float z)
     {
         this.vnx = x;
         this.vny = y;

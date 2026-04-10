@@ -1,36 +1,35 @@
 package mchorse.bbs_mod.mixin.client;
 
 import mchorse.bbs_mod.client.renderer.MorphRenderer;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.render.OverlayTexture;
-import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.client.render.command.OrderedRenderCommandQueue;
-import net.minecraft.client.render.entity.EntityRenderManager;
-import net.minecraft.client.render.entity.state.EntityRenderState;
-import net.minecraft.client.render.entity.state.LivingEntityRenderState;
-import net.minecraft.client.render.state.CameraRenderState;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.LivingEntity;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.entity.EntityRenderDispatcher;
+import net.minecraft.client.renderer.entity.state.EntityRenderState;
+import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
+import net.minecraft.client.renderer.state.CameraRenderState;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-
+import com.mojang.blaze3d.vertex.PoseStack;
 import java.util.Collections;
 import java.util.Map;
 import java.util.WeakHashMap;
 
-@Mixin(EntityRenderManager.class)
+@Mixin(EntityRenderDispatcher.class)
 public class EntityRenderDispatcherMixin
 {
     @Unique
     private static final Map<EntityRenderState, Entity> bbs$stateEntityMap = Collections.synchronizedMap(new WeakHashMap<>());
 
     @Inject(
-        method = "getAndUpdateRenderState",
+        method = "extractEntity",
         at = @At("RETURN")
     )
     private void bbs$trackStateEntity(Entity entity, float tickDelta, CallbackInfoReturnable<EntityRenderState> cir)
@@ -44,7 +43,7 @@ public class EntityRenderDispatcherMixin
     }
 
     @Inject(
-        method = "render(Lnet/minecraft/client/render/entity/state/EntityRenderState;Lnet/minecraft/client/render/state/CameraRenderState;DDDLnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/render/command/OrderedRenderCommandQueue;)V",
+        method = "submit(Lnet/minecraft/client/renderer/entity/state/EntityRenderState;Lnet/minecraft/client/renderer/state/CameraRenderState;DDDLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/SubmitNodeCollector;)V",
         at = @At("HEAD"),
         cancellable = true
     )
@@ -54,8 +53,8 @@ public class EntityRenderDispatcherMixin
         double x,
         double y,
         double z,
-        MatrixStack matrices,
-        OrderedRenderCommandQueue queue,
+        PoseStack matrices,
+        SubmitNodeCollector queue,
         CallbackInfo ci
     )
     {
@@ -66,26 +65,26 @@ public class EntityRenderDispatcherMixin
             return;
         }
 
-        float yaw = livingEntity.getYaw(0F);
-        int light = state.light;
+        float yaw = livingEntity.getViewYRot(0F);
+        int light = state.lightCoords;
         boolean hurt = livingEntity.hurtTime > 0 || livingEntity.deathTime > 0;
 
         if (state instanceof LivingEntityRenderState livingState)
         {
-            yaw = livingState.bodyYaw;
-            hurt = livingState.hurt || livingState.deathTime > 0F;
+            yaw = livingState.bodyRot;
+            hurt = livingState.hasRedOverlay || livingState.deathTime > 0F;
         }
 
-        int u = OverlayTexture.getU(0F);
-        int v = OverlayTexture.getV(hurt);
+        int u = OverlayTexture.u(0F);
+        int v = OverlayTexture.v(hurt);
         int overlay = u | (v << 16);
-        VertexConsumerProvider consumers = MinecraftClient.getInstance().getBufferBuilders().getEntityVertexConsumers();
+        MultiBufferSource consumers = Minecraft.getInstance().renderBuffers().bufferSource();
 
         if (MorphRenderer.renderLivingEntity(livingEntity, yaw, 0F, matrices, consumers, light, overlay))
         {
-            if (consumers instanceof VertexConsumerProvider.Immediate immediate)
+            if (consumers instanceof MultiBufferSource.BufferSource immediate)
             {
-                immediate.draw();
+                immediate.endBatch();
             }
 
             ci.cancel();

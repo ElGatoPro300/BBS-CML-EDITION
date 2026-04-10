@@ -1,25 +1,21 @@
 package mchorse.bbs_mod.client.renderer.entity;
 
 import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
 import mchorse.bbs_mod.cubic.render.vanilla.ArmorRenderer;
 import mchorse.bbs_mod.entity.ActorEntity;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.renderers.FormRenderType;
 import mchorse.bbs_mod.forms.renderers.FormRenderingContext;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.client.render.entity.state.EntityRenderState;
-import net.minecraft.client.render.entity.state.LivingEntityRenderState;
-import net.minecraft.client.render.entity.EntityRenderer;
-import net.minecraft.client.render.entity.EntityRendererFactory;
-import net.minecraft.client.render.entity.LivingEntityRenderer;
-import net.minecraft.client.render.entity.model.BipedEntityModel;
-import net.minecraft.client.render.entity.model.EntityModelLayers;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.entity.EntityPose;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.RotationAxis;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.entity.EntityRenderer;
+import net.minecraft.client.renderer.entity.EntityRendererProvider;
+import net.minecraft.client.renderer.entity.LivingEntityRenderer;
+import net.minecraft.resources.Identifier;
+import net.minecraft.util.Mth;
+import net.minecraft.world.entity.Pose;
 
 public class ActorEntityRenderer extends EntityRenderer<ActorEntity, ActorEntityRenderer.ActorEntityState>
 {
@@ -34,7 +30,7 @@ public class ActorEntityRenderer extends EntityRenderer<ActorEntity, ActorEntity
 
     public static ArmorRenderer armorRenderer;
 
-    public ActorEntityRenderer(EntityRendererFactory.Context ctx)
+    public ActorEntityRenderer(EntityRendererProvider.Context ctx)
     {
         super(ctx);
 
@@ -50,31 +46,31 @@ public class ActorEntityRenderer extends EntityRenderer<ActorEntity, ActorEntity
 
     @Override
     public void updateRenderState(ActorEntity entity, ActorEntityState state, float tickDelta) {
-        super.updateRenderState(entity, state, tickDelta);
+        super.extractRenderState(entity, state, tickDelta);
         state.entity = entity;
         state.tickDelta = tickDelta;
         state.bodyYaw = entity.getBodyYaw();
         state.prevBodyYaw = entity.lastBodyYaw;
         state.deathTime = (float)entity.deathTime;
-        state.isSleeping = entity.isInPose(EntityPose.SLEEPING);
+        state.isSleeping = entity.isInPose(Pose.SLEEPING);
     }
 
     public Identifier getTexture(ActorEntityState state)
     {
-        return Identifier.of("minecraft", "textures/entity/player/wide/steve.png");
+        return Identifier.fromNamespaceAndPath("minecraft", "textures/entity/player/wide/steve.png");
     }
 
-    public void render(ActorEntityState state, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light)
+    public void render(ActorEntityState state, PoseStack matrices, MultiBufferSource vertexConsumers, int light)
     {
         ActorEntity livingEntity = state.entity;
         if (livingEntity == null) return;
 
         float tickDelta = state.tickDelta;
         
-        matrices.push();
+        matrices.pushPose();
 
-        float bodyYaw = MathHelper.lerpAngleDegrees(tickDelta, state.prevBodyYaw, state.bodyYaw);
-        int overlay = LivingEntityRenderer.getOverlay(state, 0F);
+        float bodyYaw = Mth.rotLerp(tickDelta, state.prevBodyYaw, state.bodyYaw);
+        int overlay = LivingEntityRenderer.getOverlayCoords(state, 0F);
 
         this.setupTransforms(livingEntity, matrices, bodyYaw, tickDelta);
 
@@ -82,11 +78,11 @@ public class ActorEntityRenderer extends EntityRenderer<ActorEntity, ActorEntity
         GlStateManager._enableDepthTest();
         FormUtilsClient.render(livingEntity.getForm(), new FormRenderingContext()
             .set(FormRenderType.ENTITY, livingEntity.getFormEntity(), matrices, light, overlay, tickDelta)
-            .camera(MinecraftClient.getInstance().gameRenderer.getCamera()));
+            .camera(Minecraft.getInstance().gameRenderer.getMainCamera()));
         GlStateManager._disableDepthTest();
         GlStateManager._disableBlend();
 
-        matrices.pop();
+        matrices.popPose();
     }
 
     protected boolean isVisible(ActorEntity entity)
@@ -94,18 +90,18 @@ public class ActorEntityRenderer extends EntityRenderer<ActorEntity, ActorEntity
         return !entity.isInvisible();
     }
 
-    protected void setupTransforms(ActorEntity entity, MatrixStack matrices, float bodyYaw, float tickDelta)
+    protected void setupTransforms(ActorEntity entity, PoseStack matrices, float bodyYaw, float tickDelta)
     {
-        if (!entity.isInPose(EntityPose.SLEEPING))
+        if (!entity.isInPose(Pose.SLEEPING))
         {
-            matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-bodyYaw));
+            matrices.mulPose(Axis.YP.rotationDegrees(-bodyYaw));
         }
 
         if (entity.deathTime > 0)
         {
             float deathAngle = (entity.deathTime + tickDelta - 1F) / 20F * 1.6F;
 
-            matrices.multiply(RotationAxis.POSITIVE_Z.rotationDegrees(Math.min(MathHelper.sqrt(deathAngle), 1F) * 90F));
+            matrices.mulPose(Axis.ZP.rotationDegrees(Math.min(Mth.sqrt(deathAngle), 1F) * 90F));
         }
     }
 }

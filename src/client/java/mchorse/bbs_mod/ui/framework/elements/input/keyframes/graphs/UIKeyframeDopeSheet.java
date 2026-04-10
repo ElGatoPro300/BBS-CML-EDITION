@@ -2,6 +2,9 @@ package mchorse.bbs_mod.ui.framework.elements.input.keyframes.graphs;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.camera.utils.TimeUtils;
@@ -28,12 +31,7 @@ import mchorse.bbs_mod.utils.Pair;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import mchorse.bbs_mod.utils.keyframes.KeyframeShape;
-import net.minecraft.client.render.BufferBuilder;
-import net.minecraft.client.render.GameRenderer;
-import net.minecraft.client.render.RenderLayers;
-import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.render.VertexFormats;
-import net.minecraft.client.util.BufferAllocator;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import org.joml.Matrix4f;
 
 import java.util.ArrayList;
@@ -741,7 +739,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
             }
 
             /* Render track bars (horizontal lines) */
-            BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
+            BufferBuilder builder = Tesselator.getInstance().begin(VertexFormat.DrawMode.QUADS, DefaultVertexFormat.POSITION_COLOR);
 
             int startX = area.x;
             int endX = area.ex();
@@ -882,7 +880,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
 
             GlStateManager._enableBlend();
             // RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
-            RenderLayers.debugFilledBox().draw(builder.end());
+            RenderTypes.debugFilledBox().draw(builder.buildOrThrow());
 
             FontRenderer font = context.batcher.getFont();
             String displayTitle = this.getSidebarTitle(this.getEffectiveSidebarTitle(sheet));

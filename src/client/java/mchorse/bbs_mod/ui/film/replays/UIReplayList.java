@@ -1,5 +1,6 @@
 package mchorse.bbs_mod.ui.film.replays;
 
+import com.mojang.blaze3d.platform.Lighting;
 import com.mojang.blaze3d.systems.RenderSystem;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSSettings;
@@ -73,14 +74,13 @@ import mchorse.bbs_mod.utils.keyframes.factories.KeyframeFactories;
 import mchorse.bbs_mod.utils.keyframes.factories.IKeyframeFactory;
 import mchorse.bbs_mod.utils.pose.Transform;
 import mchorse.bbs_mod.utils.resources.Pixels;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.render.DiffuseLighting;
-import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.hit.HitResult;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.Heightmap;
-import net.minecraft.world.World;
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 
@@ -1102,7 +1102,7 @@ public class UIReplayList extends UIList<Replay> {
     }
 
     private void snapReplayToTerrain(Replay replay) {
-        World world = MinecraftClient.getInstance().world;
+        Level world = Minecraft.getInstance().level;
 
         if (world == null || replay.keyframes.y.getKeyframes().isEmpty()) {
             return;
@@ -1145,15 +1145,15 @@ public class UIReplayList extends UIList<Replay> {
         return keyframes.get(0).getTick();
     }
 
-    private Double getTerrainY(World world, double x, double z) {
-        int top = world.getTopY(Heightmap.Type.WORLD_SURFACE, (int) x, (int) z);
-        int bottom = world.getBottomY();
+    private Double getTerrainY(Level world, double x, double z) {
+        int top = world.getHeight(Heightmap.Types.WORLD_SURFACE, (int) x, (int) z);
+        int bottom = world.getMinY();
         double distance = Math.max(0D, top - bottom + 2D);
-        Vec3d start = new Vec3d(x, top + 1D, z);
-        BlockHitResult result = RayTracing.rayTrace(world, start, new Vec3d(0D, -1D, 0D), distance);
+        Vec3 start = new Vec3(x, top + 1D, z);
+        BlockHitResult result = RayTracing.rayTrace(world, start, new Vec3(0D, -1D, 0D), distance);
 
         if (result.getType() == HitResult.Type.BLOCK) {
-            return result.getPos().y;
+            return result.getLocation().y;
         }
 
         return null;
@@ -1715,11 +1715,11 @@ public class UIReplayList extends UIList<Replay> {
     }
 
     public void addReplay() {
-        World world = MinecraftClient.getInstance().world;
+        Level world = Minecraft.getInstance().level;
         Camera camera = this.panel.getCamera();
 
         BlockHitResult blockHitResult = RayTracing.rayTrace(world, camera, 64F);
-        Vec3d p = blockHitResult.getPos();
+        Vec3 p = blockHitResult.getLocation();
         Vector3d position = new Vector3d(p.x, p.y, p.z);
 
         if (blockHitResult.getType() == HitResult.Type.MISS) {
@@ -2546,7 +2546,7 @@ public class UIReplayList extends UIList<Replay> {
 
             Vector3f a = new Vector3f(0.85F, 0.85F, -1F).normalize();
             Vector3f b = new Vector3f(-0.85F, 0.85F, 1F).normalize();
-            MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.LEVEL);
+            Minecraft.getInstance().gameRenderer.getLighting().setupFor(Lighting.Entry.LEVEL);
             FormUtilsClient.renderUI(form, context, x, y, x + 40, y + 40);
             
 

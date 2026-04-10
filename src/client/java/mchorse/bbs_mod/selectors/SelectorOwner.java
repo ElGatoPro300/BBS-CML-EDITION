@@ -6,11 +6,10 @@ import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.entities.MCEntity;
 import mchorse.bbs_mod.forms.forms.Form;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtElement;
-import net.minecraft.world.World;
-
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.level.Level;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
@@ -22,7 +21,7 @@ public class SelectorOwner
     private Form form;
     private long check;
     private int nbtCheck;
-    private NbtCompound lastNbt;
+    private CompoundTag lastNbt;
 
     private LivingEntity mcEntity;
 
@@ -39,9 +38,9 @@ public class SelectorOwner
 
     public void update()
     {
-        World world = this.entity.getWorld();
+        Level world = this.entity.getWorld();
 
-        if (!world.isClient())
+        if (!world.isClientSide())
         {
             return;
         }
@@ -64,12 +63,12 @@ public class SelectorOwner
             this.nbtCheck = 10;
 
             Set<String> keys = createWhitelist();
-            NbtCompound compound = new NbtCompound();
-            NbtCompound newCompound = new NbtCompound();
+            CompoundTag compound = new CompoundTag();
+            CompoundTag newCompound = new CompoundTag();
 
             for (String key : keys)
             {
-                NbtElement element = compound.get(key);
+                Tag element = compound.get(key);
 
                 if (element != null)
                 {

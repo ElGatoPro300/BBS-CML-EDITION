@@ -24,8 +24,7 @@ import net.irisshaders.iris.uniforms.custom.cached.IntCachedUniform;
 import net.irisshaders.iris.vertices.NormI8;
 import net.irisshaders.iris.vertices.NormalHelper;
 import net.irisshaders.iris.vertices.views.TriView;
-import net.minecraft.client.texture.AbstractTexture;
-
+import net.minecraft.client.renderer.texture.AbstractTexture;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;

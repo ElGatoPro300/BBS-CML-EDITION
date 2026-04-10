@@ -30,8 +30,7 @@ import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.pose.UIPoseEditor;
 import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.colors.Colors;
-import net.minecraft.client.MinecraftClient;
-
+import net.minecraft.client.Minecraft;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -149,18 +148,18 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
             @Override
             public void render(UIContext context)
             {
-                context.batcher.getContext().getMatrices().pushMatrix();
+                context.batcher.getContext().pose().pushMatrix();
                 
                 int cx = this.area.mx();
                 int cy = this.area.my();
                 
-                context.batcher.getContext().getMatrices().translate(cx, cy);
-                context.batcher.getContext().getMatrices().scale(2F, 2F);
-                context.batcher.getContext().getMatrices().translate(-cx, -cy);
+                context.batcher.getContext().pose().translate(cx, cy);
+                context.batcher.getContext().pose().scale(2F, 2F);
+                context.batcher.getContext().pose().translate(-cx, -cy);
                 
                 super.render(context);
                 
-                context.batcher.getContext().getMatrices().popMatrix();
+                context.batcher.getContext().pose().popMatrix();
             }
         }.background();
         
@@ -219,7 +218,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         this.sectionsView.resize();
         this.rightView.resize();
 
-        Morph morph = Morph.getMorph(MinecraftClient.getInstance().player);
+        Morph morph = Morph.getMorph(Minecraft.getInstance().player);
 
         if (morph != null)
         {

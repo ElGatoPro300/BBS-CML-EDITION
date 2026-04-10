@@ -5,26 +5,25 @@ import mchorse.bbs_mod.forms.renderers.MobFormRenderer;
 import mchorse.bbs_mod.utils.pose.Pose;
 import mchorse.bbs_mod.utils.pose.PoseTransform;
 import mchorse.bbs_mod.utils.pose.Transform;
-import net.minecraft.client.model.ModelPart;
-import net.minecraft.client.render.command.OrderedRenderCommandQueue;
-import net.minecraft.client.render.entity.LivingEntityRenderer;
-import net.minecraft.client.render.entity.state.LivingEntityRenderState;
-import net.minecraft.client.render.state.CameraRenderState;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.LivingEntity;
+import net.minecraft.client.model.geom.ModelPart;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.entity.LivingEntityRenderer;
+import net.minecraft.client.renderer.entity.state.LivingEntityRenderState;
+import net.minecraft.client.renderer.state.CameraRenderState;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-
+import com.mojang.blaze3d.vertex.PoseStack;
 import java.util.Map;
 
 @Mixin(LivingEntityRenderer.class)
 public abstract class LivingEntityRendererMixin
 {
-    @Inject(method = "render", at = @At("HEAD"))
-    public void onSetAngles(LivingEntityRenderState state, MatrixStack matrixStack, OrderedRenderCommandQueue queue, CameraRenderState cameraRenderState, CallbackInfo info)
+    @Inject(method = "submit", at = @At("HEAD"))
+    public void onSetAngles(LivingEntityRenderState state, PoseStack matrixStack, SubmitNodeCollector queue, CameraRenderState cameraRenderState, CallbackInfo info)
     {
         Entity entity = ((IEntityRenderState) state).bbs$getEntity();
 
@@ -75,22 +74,22 @@ public abstract class LivingEntityRendererMixin
                     {
                         Transform transform = new Transform();
 
-                        transform.translate.x = value.originX;
-                        transform.translate.y = value.originY;
-                        transform.translate.z = value.originZ;
-                        transform.rotate.x = value.pitch;
-                        transform.rotate.y = value.yaw;
-                        transform.rotate.z = value.roll;
+                        transform.translate.x = value.x;
+                        transform.translate.y = value.y;
+                        transform.translate.z = value.z;
+                        transform.rotate.x = value.xRot;
+                        transform.rotate.y = value.yRot;
+                        transform.rotate.z = value.zRot;
                         transform.scale.x = value.xScale;
                         transform.scale.y = value.yScale;
                         transform.scale.z = value.zScale;
 
-                        value.originX += poseTransform.translate.x;
-                        value.originY += poseTransform.translate.y;
-                        value.originZ += poseTransform.translate.z;
-                        value.pitch += poseTransform.rotate.x;
-                        value.yaw += poseTransform.rotate.y;
-                        value.roll += poseTransform.rotate.z;
+                        value.x += poseTransform.translate.x;
+                        value.y += poseTransform.translate.y;
+                        value.z += poseTransform.translate.z;
+                        value.xRot += poseTransform.rotate.x;
+                        value.yRot += poseTransform.rotate.y;
+                        value.zRot += poseTransform.rotate.z;
                         value.xScale += poseTransform.scale.x - 1F;
                         value.yScale += poseTransform.scale.y - 1F;
                         value.zScale += poseTransform.scale.z - 1F;
@@ -102,20 +101,20 @@ public abstract class LivingEntityRendererMixin
         }
     }
 
-    @Inject(method = "render", at = @At("TAIL"))
-    public void onRenderEnd(LivingEntityRenderState state, MatrixStack matrixStack, OrderedRenderCommandQueue queue, CameraRenderState cameraRenderState, CallbackInfo info)
+    @Inject(method = "submit", at = @At("TAIL"))
+    public void onRenderEnd(LivingEntityRenderState state, PoseStack matrixStack, SubmitNodeCollector queue, CameraRenderState cameraRenderState, CallbackInfo info)
     {
         for (Map.Entry<ModelPart, Transform> entry : MobFormRenderer.getCache().entrySet())
         {
             Transform transform = entry.getValue();
             ModelPart value = entry.getKey();
 
-            value.originX = transform.translate.x;
-            value.originY = transform.translate.y;
-            value.originZ = transform.translate.z;
-            value.pitch = transform.rotate.x;
-            value.yaw = transform.rotate.y;
-            value.roll = transform.rotate.z;
+            value.x = transform.translate.x;
+            value.y = transform.translate.y;
+            value.z = transform.translate.z;
+            value.xRot = transform.rotate.x;
+            value.yRot = transform.rotate.y;
+            value.zRot = transform.rotate.z;
             value.xScale = transform.scale.x;
             value.yScale = transform.scale.y;
             value.zScale = transform.scale.z;

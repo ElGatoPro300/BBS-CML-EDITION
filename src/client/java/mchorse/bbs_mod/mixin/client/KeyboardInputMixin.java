@@ -5,8 +5,8 @@ import mchorse.bbs_mod.ui.dashboard.UIDashboard;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.UIScreen;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.input.KeyboardInput;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.KeyboardInput;
 import org.lwjgl.glfw.GLFW;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -40,8 +40,8 @@ public class KeyboardInputMixin
             boolean jump = Window.isKeyPressed(GLFW.GLFW_KEY_SPACE);
             boolean sneak = Window.isKeyPressed(GLFW.GLFW_KEY_LEFT_SHIFT);
 
-            MinecraftClient.getInstance().options.jumpKey.setPressed(jump);
-            MinecraftClient.getInstance().options.sneakKey.setPressed(sneak);
+            Minecraft.getInstance().options.keyJump.setDown(jump);
+            Minecraft.getInstance().options.keyShift.setDown(sneak);
         }
     }
 }

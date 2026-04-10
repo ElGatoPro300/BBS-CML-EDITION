@@ -1,14 +1,14 @@
 package mchorse.bbs_mod.forms.renderers.utils;
 
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import mchorse.bbs_mod.utils.colors.Color;
-import net.minecraft.client.render.VertexConsumer;
 import org.joml.Matrix4f;
 
 /**
  * VertexConsumer que fija un color constante (incluido alpha) en el
  * Buffer subyacente mediante {@link VertexConsumer#fixedColor}.
  *
- * Útil para casos donde el renderer nunca llama a {@link VertexConsumer#color},
+ * Útil para casos donde el renderer nunca llama a {@link VertexConsumer#setColor},
  * como muchos Block Entity renderers; así la transparencia global se aplica
  * igualmente.
  */
@@ -28,51 +28,51 @@ public class FixedColorVertexConsumer implements VertexConsumer
         this.a = (int)(color.a * 255f);
     }
 
-    public VertexConsumer vertex(float x, float y, float z)
+    public VertexConsumer addVertex(float x, float y, float z)
     {
-        return this.delegate.vertex(x, y, z).color(r, g, b, a);
+        return this.delegate.addVertex(x, y, z).setColor(r, g, b, a);
     }
 
     public VertexConsumer vertex(Matrix4f matrix, float x, float y, float z)
     {
-        return this.delegate.vertex(matrix, x, y, z).color(r, g, b, a);
+        return this.delegate.addVertex(matrix, x, y, z).setColor(r, g, b, a);
     }
 
-    public VertexConsumer color(int red, int green, int blue, int alpha)
+    public VertexConsumer setColor(int red, int green, int blue, int alpha)
     {
-        return this.delegate.color(red, green, blue, alpha);
-    }
-
-    @Override
-    public VertexConsumer color(int argb)
-    {
-        return this.delegate.color(argb);
-    }
-
-    public VertexConsumer texture(float u, float v)
-    {
-        return this.delegate.texture(u, v);
-    }
-
-    public VertexConsumer overlay(int u, int v)
-    {
-        return this.delegate.overlay(u, v);
-    }
-
-    public VertexConsumer light(int u, int v)
-    {
-        return this.delegate.light(u, v);
-    }
-
-    public VertexConsumer normal(float x, float y, float z)
-    {
-        return this.delegate.normal(x, y, z);
+        return this.delegate.setColor(red, green, blue, alpha);
     }
 
     @Override
-    public VertexConsumer lineWidth(float width)
+    public VertexConsumer setColor(int argb)
     {
-        return this.delegate.lineWidth(width);
+        return this.delegate.setColor(argb);
+    }
+
+    public VertexConsumer setUv(float u, float v)
+    {
+        return this.delegate.setUv(u, v);
+    }
+
+    public VertexConsumer setUv1(int u, int v)
+    {
+        return this.delegate.setUv1(u, v);
+    }
+
+    public VertexConsumer setUv2(int u, int v)
+    {
+        return this.delegate.setUv2(u, v);
+    }
+
+    public VertexConsumer setNormal(float x, float y, float z)
+    {
+        return this.delegate.setNormal(x, y, z);
+    }
+
+    @Override
+    public VertexConsumer setLineWidth(float width)
+    {
+        return this.delegate.setLineWidth(width);
     }
 
 }

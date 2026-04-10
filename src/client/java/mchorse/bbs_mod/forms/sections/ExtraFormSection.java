@@ -19,10 +19,9 @@ import mchorse.bbs_mod.forms.forms.VanillaParticleForm;
 import mchorse.bbs_mod.forms.forms.LightForm;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.UIKeys;
-import net.minecraft.block.Blocks;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.Items;
-
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.block.Blocks;
 import java.util.Arrays;
 import java.util.List;
 
@@ -92,7 +91,7 @@ public class ExtraFormSection extends FormSection
 
         billboard.texture.set(Link.assets("textures/error.png"));
         extruded.texture.set(Link.assets("textures/error.png"));
-        block.blockState.set(Blocks.GRASS_BLOCK.getDefaultState());
+        block.blockState.set(Blocks.GRASS_BLOCK.defaultBlockState());
         item.stack.set(new ItemStack(Items.STICK));
 
         extra.addForm(anchor);

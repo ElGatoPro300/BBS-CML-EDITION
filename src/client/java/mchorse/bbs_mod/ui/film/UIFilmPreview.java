@@ -1,6 +1,8 @@
 package mchorse.bbs_mod.ui.film;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.BBSSettings;
@@ -45,9 +47,7 @@ import mchorse.bbs_mod.utils.clips.Clips;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.joml.Vectors;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.util.math.RotationAxis;
+import net.minecraft.client.Minecraft;
 import org.joml.Vector2i;
 
 import java.io.File;
@@ -319,7 +319,7 @@ public class UIFilmPreview extends UIElement
         {
             /* Render global video clips (overlays) */
             VideoRenderer.renderClips(
-                new MatrixStack(),
+                new PoseStack(),
                 context.batcher,
                 this.panel.getData().camera.getClips(this.panel.getCursor()),
                 this.panel.getCursor(),
@@ -446,14 +446,14 @@ public class UIFilmPreview extends UIElement
 
     private void renderCursor(UIContext context)
     {
-        net.minecraft.client.render.Camera mcCamera = MinecraftClient.getInstance().gameRenderer.getCamera();
+        net.minecraft.client.Camera mcCamera = Minecraft.getInstance().gameRenderer.getMainCamera();
         org.joml.Matrix4fStack stack = RenderSystem.getModelViewStack();
 
         stack.pushMatrix();
 
         stack.translate(area.x + 16, area.ey() - 12, 0F);
-        stack.rotate(RotationAxis.NEGATIVE_X.rotationDegrees(mcCamera.getPitch()));
-        stack.rotate(RotationAxis.POSITIVE_Y.rotationDegrees(mcCamera.getYaw()));
+        stack.rotate(Axis.XN.rotationDegrees(mcCamera.xRot()));
+        stack.rotate(Axis.YP.rotationDegrees(mcCamera.yRot()));
         stack.scale(-1F, -1F, -1F);
         MatrixStackUtils.applyModelViewMatrix();
         /* crosshair rendering is managed by vanilla pipeline */

@@ -18,12 +18,8 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlayPanel;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Colors;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtElement;
-import net.minecraft.nbt.StringNbtReader;
-import net.minecraft.command.argument.NbtCompoundArgumentType;
-import net.minecraft.util.Identifier;
-
+import net.minecraft.commands.arguments.CompoundTagArgument;
+import net.minecraft.resources.Identifier;
 import java.util.List;
 
 public class UISelectorsOverlayPanel extends UIOverlayPanel
@@ -69,7 +65,7 @@ public class UISelectorsOverlayPanel extends UIOverlayPanel
 
             try
             {
-                this.current.entity = id.isEmpty() ? null : Identifier.of(id);
+                this.current.entity = id.isEmpty() ? null : Identifier.parse(id);
             }
             catch (Exception e)
             {
@@ -94,7 +90,7 @@ public class UISelectorsOverlayPanel extends UIOverlayPanel
                 }
                 else
                 {
-                    this.current.nbt = NbtCompoundArgumentType.nbtCompound().parse(new StringReader(t));
+                    this.current.nbt = CompoundTagArgument.compoundTag().parse(new StringReader(t));
                 }
 
                 BBSModClient.getSelectors().update();

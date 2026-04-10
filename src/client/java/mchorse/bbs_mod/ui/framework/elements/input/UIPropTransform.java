@@ -19,7 +19,7 @@ import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.Timer;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.pose.Transform;
-import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.Minecraft;
 import org.joml.Matrix3f;
 import org.joml.Vector3f;
 import org.lwjgl.glfw.GLFW;
@@ -498,11 +498,11 @@ public class UIPropTransform extends UITransform
              *
              * It gets updated outside the window only when one of mouse buttons is
              * being held! */
-            GLFW.glfwGetCursorPos(Window.getWindow().getHandle(), CURSOR_X, CURSOR_Y);
+            GLFW.glfwGetCursorPos(Window.getWindow().handle(), CURSOR_X, CURSOR_Y);
 
-            MinecraftClient mc = MinecraftClient.getInstance();
-            int w = mc.getWindow().getWidth();
-            int h = mc.getWindow().getHeight();
+            Minecraft mc = Minecraft.getInstance();
+            int w = mc.getWindow().getScreenWidth();
+            int h = mc.getWindow().getScreenHeight();
 
             double rawX = CURSOR_X[0];
             double rawY = CURSOR_Y[0];
@@ -513,28 +513,28 @@ public class UIPropTransform extends UITransform
 
             if (rawX <= border)
             {
-                Window.moveCursor(w - borderPadding, (int) mc.mouse.getY());
+                Window.moveCursor(w - borderPadding, (int) mc.mouseHandler.ypos());
 
                 this.lastX = context.menu.width - (int) (borderPadding / fx);
                 this.checker.mark();
             }
             else if (rawX >= w - border)
             {
-                Window.moveCursor(borderPadding, (int) mc.mouse.getY());
+                Window.moveCursor(borderPadding, (int) mc.mouseHandler.ypos());
 
                 this.lastX = (int) (borderPadding / fx);
                 this.checker.mark();
             }
             else if (rawY <= border)
             {
-                Window.moveCursor((int) mc.mouse.getX(), h - borderPadding);
+                Window.moveCursor((int) mc.mouseHandler.xpos(), h - borderPadding);
 
                 this.lastY = context.menu.height - (int) (borderPadding / fy);
                 this.checker.mark();
             }
             else if (rawY >= h - border)
             {
-                Window.moveCursor((int) mc.mouse.getX(), borderPadding);
+                Window.moveCursor((int) mc.mouseHandler.xpos(), borderPadding);
 
                 this.lastY = (int) (borderPadding / fy);
                 this.checker.mark();

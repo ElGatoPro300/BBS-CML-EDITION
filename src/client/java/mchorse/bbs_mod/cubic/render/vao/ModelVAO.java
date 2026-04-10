@@ -1,8 +1,8 @@
 package mchorse.bbs_mod.cubic.render.vao;
 
 import mchorse.bbs_mod.client.BBSRendering;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.VertexFormat;
-import net.minecraft.client.render.VertexFormats;
 import org.lwjgl.opengl.GL30;
 
 public class ModelVAO implements IModelVAO
@@ -90,7 +90,7 @@ public class ModelVAO implements IModelVAO
     public void render(VertexFormat format, float r, float g, float b, float a, int light, int overlay)
     {
         boolean hasShaders = isShadersEnabled();
-        int vao = hasShaders || format == VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL ? this.vao : this.vao2;
+        int vao = hasShaders || format == DefaultVertexFormat.NEW_ENTITY ? this.vao : this.vao2;
 
         GL30.glBindVertexArray(vao);
 

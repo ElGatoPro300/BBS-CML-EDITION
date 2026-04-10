@@ -1,5 +1,6 @@
 package mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories;
 
+import com.mojang.blaze3d.vertex.PoseStack;
 import mchorse.bbs_mod.camera.utils.TimeUtils;
 import mchorse.bbs_mod.film.Film;
 import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
@@ -20,9 +21,8 @@ import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.item.ItemStack;
-import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.client.Minecraft;
+import net.minecraft.world.item.ItemStack;
 
 public class UIIntegerKeyframeFactory extends UIKeyframeFactory<Integer>
 {
@@ -98,26 +98,26 @@ public class UIIntegerKeyframeFactory extends UIKeyframeFactory<Integer>
 
                         if ((stack == null || stack.isEmpty()))
                         {
-                            MinecraftClient client = MinecraftClient.getInstance();
+                            Minecraft client = Minecraft.getInstance();
                             if (client.player != null)
                             {
-                                stack = client.player.getInventory().getStack(i);
+                                stack = client.player.getInventory().getItem(i);
                             }
                         }
 
                         if (stack != null && !stack.isEmpty())
                         {
-                            MatrixStack matrices = new MatrixStack();
+                            PoseStack matrices = new PoseStack();
                             CustomVertexConsumerProvider consumers = FormUtilsClient.getProvider();
                             int itemX = x + Math.max(0, (slotW - 16) / 2);
                             int itemY = y + Math.max(0, (slotH - 16) / 2);
 
-                            matrices.push();
+                            matrices.pushPose();
                             consumers.setUI(true);
-                            context.batcher.getContext().drawItem(stack, itemX, itemY);
-                            context.batcher.getContext().drawStackOverlay(context.batcher.getFont().getRenderer(), stack, itemX, itemY);
+                            context.batcher.getContext().renderItem(stack, itemX, itemY);
+                            context.batcher.getContext().renderItemDecorations(context.batcher.getFont().getRenderer(), stack, itemX, itemY);
                             consumers.setUI(false);
-                            matrices.pop();
+                            matrices.popPose();
                         }
                     }
                 }

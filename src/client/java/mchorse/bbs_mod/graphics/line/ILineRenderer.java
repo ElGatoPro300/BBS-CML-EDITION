@@ -1,6 +1,6 @@
 package mchorse.bbs_mod.graphics.line;
 
-import net.minecraft.client.render.BufferBuilder;
+import com.mojang.blaze3d.vertex.BufferBuilder;
 import org.joml.Matrix4f;
 
 public interface ILineRenderer <T>

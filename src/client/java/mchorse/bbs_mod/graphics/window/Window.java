@@ -4,12 +4,10 @@ import mchorse.bbs_mod.data.DataToString;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.util.InputUtil;
+import net.minecraft.client.Minecraft;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.system.MemoryUtil;
-
+import com.mojang.blaze3d.platform.InputConstants;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 
@@ -18,9 +16,9 @@ public class Window
     private static int verticalScroll;
     private static long lastScroll;
 
-    public static net.minecraft.client.util.Window getWindow()
+    public static com.mojang.blaze3d.platform.Window getWindow()
     {
-        return MinecraftClient.getInstance().getWindow();
+        return Minecraft.getInstance().getWindow();
     }
 
     public static void setVerticalScroll(int scroll)
@@ -41,34 +39,34 @@ public class Window
 
     public static boolean isMouseButtonPressed(int mouse)
     {
-        return GLFW.glfwGetMouseButton(getWindow().getHandle(), mouse) == GLFW.GLFW_PRESS;
+        return GLFW.glfwGetMouseButton(getWindow().handle(), mouse) == GLFW.GLFW_PRESS;
     }
 
     public static boolean isCtrlPressed()
     {
-        return InputUtil.isKeyPressed(getWindow(), GLFW.GLFW_KEY_LEFT_CONTROL) || InputUtil.isKeyPressed(getWindow(), GLFW.GLFW_KEY_RIGHT_CONTROL);
+        return InputConstants.isKeyDown(getWindow(), GLFW.GLFW_KEY_LEFT_CONTROL) || InputConstants.isKeyDown(getWindow(), GLFW.GLFW_KEY_RIGHT_CONTROL);
     }
 
     public static boolean isShiftPressed()
     {
-        return InputUtil.isKeyPressed(getWindow(), GLFW.GLFW_KEY_LEFT_SHIFT) || InputUtil.isKeyPressed(getWindow(), GLFW.GLFW_KEY_RIGHT_SHIFT);
+        return InputConstants.isKeyDown(getWindow(), GLFW.GLFW_KEY_LEFT_SHIFT) || InputConstants.isKeyDown(getWindow(), GLFW.GLFW_KEY_RIGHT_SHIFT);
     }
 
     public static boolean isAltPressed()
     {
-        return InputUtil.isKeyPressed(getWindow(), GLFW.GLFW_KEY_LEFT_ALT) || InputUtil.isKeyPressed(getWindow(), GLFW.GLFW_KEY_RIGHT_ALT);
+        return InputConstants.isKeyDown(getWindow(), GLFW.GLFW_KEY_LEFT_ALT) || InputConstants.isKeyDown(getWindow(), GLFW.GLFW_KEY_RIGHT_ALT);
     }
 
     public static boolean isKeyPressed(int key)
     {
-        return InputUtil.isKeyPressed(getWindow(), key);
+        return InputConstants.isKeyDown(getWindow(), key);
     }
 
     public static String getClipboard()
     {
         try
         {
-            String string = GLFW.glfwGetClipboardString(getWindow().getHandle());
+            String string = GLFW.glfwGetClipboardString(getWindow().handle());
 
             return string == null ? "" : string;
         }
@@ -109,13 +107,13 @@ public class Window
             buffer.put((byte) 0);
             buffer.flip();
 
-            GLFW.glfwSetClipboardString(getWindow().getHandle(), buffer);
+            GLFW.glfwSetClipboardString(getWindow().handle(), buffer);
 
             MemoryUtil.memFree(buffer);
         }
         else
         {
-            GLFW.glfwSetClipboardString(getWindow().getHandle(), string);
+            GLFW.glfwSetClipboardString(getWindow().handle(), string);
         }
     }
 
@@ -143,6 +141,6 @@ public class Window
 
     public static void moveCursor(int x, int y)
     {
-        GLFW.glfwSetCursorPos(getWindow().getHandle(), x, y);
+        GLFW.glfwSetCursorPos(getWindow().handle(), x, y);
     }
 }

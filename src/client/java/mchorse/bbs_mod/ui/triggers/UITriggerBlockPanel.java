@@ -24,13 +24,10 @@ import mchorse.bbs_mod.utils.PlayerUtils;
 import mchorse.bbs_mod.utils.RayTracing;
 import mchorse.bbs_mod.utils.colors.Colors;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.render.Camera;
-import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.hit.HitResult;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Box;
-import net.minecraft.util.math.Vec3d;
+import net.minecraft.client.Camera;
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 
@@ -202,14 +199,14 @@ public class UITriggerBlockPanel extends UIDashboardPanel implements IFlightSupp
 
         this.hovered = null;
 
-        MinecraftClient mc = MinecraftClient.getInstance();
-        Camera camera = mc.gameRenderer.getCamera();
-        Vec3d pos = camera.getCameraPos();
+        Minecraft mc = Minecraft.getInstance();
+        Camera camera = mc.gameRenderer.getMainCamera();
+        Vec3 pos = camera.position();
 
         Vector3f mouseDirection = CameraUtils.getMouseDirection(
             RenderSystem.getModelViewMatrix(),
             context.matrices().peek().getPositionMatrix(),
-            (int) mc.mouse.getX(), (int) mc.mouse.getY(), 0, 0, mc.getWindow().getWidth(), mc.getWindow().getHeight()
+            (int) mc.mouseHandler.xpos(), (int) mc.mouseHandler.ypos(), 0, 0, mc.getWindow().getScreenWidth(), mc.getWindow().getScreenHeight()
         );
 
         this.hovered = this.getClosestObject(new Vector3d(pos.x, pos.y, pos.z), mouseDirection);
@@ -255,7 +252,7 @@ public class UITriggerBlockPanel extends UIDashboardPanel implements IFlightSupp
         GlStateManager._disableBlend();
     }
 
-    private void renderBox(net.minecraft.client.util.math.MatrixStack stack, TriggerBlockEntity entity, float r, float g, float b)
+    private void renderBox(com.mojang.blaze3d.vertex.PoseStack stack, TriggerBlockEntity entity, float r, float g, float b)
     {
         BlockPos bp = entity.getPos();
         Vector3f p1 = entity.pos1.get();
@@ -281,9 +278,9 @@ public class UITriggerBlockPanel extends UIDashboardPanel implements IFlightSupp
             Draw.renderBox(stack, x, y, z, w, h, d, r, g, b);
     }
 
-    private void renderRegionBox(net.minecraft.client.util.math.MatrixStack stack, TriggerBlockEntity entity, float r, float g, float b)
+    private void renderRegionBox(com.mojang.blaze3d.vertex.PoseStack stack, TriggerBlockEntity entity, float r, float g, float b)
     {
-        Box box = entity.getRegionBox();
+        net.minecraft.world.phys.AABB box = entity.getRegionBox();
 
         Draw.renderBox(stack, box.minX, box.minY, box.minZ, box.maxX - box.minX, box.maxY - box.minY, box.maxZ - box.minZ, r, g, b);
     }

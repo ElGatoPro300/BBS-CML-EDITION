@@ -1,9 +1,9 @@
 package mchorse.bbs_mod.ui.framework.elements.input.keyframes.shapes;
 
+import com.mojang.blaze3d.vertex.BufferBuilder;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
-import net.minecraft.client.render.BufferBuilder;
 import org.joml.Matrix4f;
 
 public class StarsKeyframeShapeRenderer implements IKeyframeShapeRenderer
@@ -56,10 +56,10 @@ public class StarsKeyframeShapeRenderer implements IKeyframeShapeRenderer
             float tipRight_x = (float) x + fOffset * cos + tipWidth * sin;
             float tipRight_y = (float) y + fOffset * sin - tipWidth * cos;
 
-            builder.vertex(matrix, baseLeft_x, baseLeft_y, 0).color(c);
-            builder.vertex(matrix, tipLeft_x, tipLeft_y, 0).color(c);
-            builder.vertex(matrix, tipRight_x, tipRight_y, 0).color(c);
-            builder.vertex(matrix, baseRight_x, baseRight_y, 0).color(c);
+            builder.addVertex(matrix, baseLeft_x, baseLeft_y, 0).setColor(c);
+            builder.addVertex(matrix, tipLeft_x, tipLeft_y, 0).setColor(c);
+            builder.addVertex(matrix, tipRight_x, tipRight_y, 0).setColor(c);
+            builder.addVertex(matrix, baseRight_x, baseRight_y, 0).setColor(c);
         }
     }
 
@@ -69,9 +69,9 @@ public class StarsKeyframeShapeRenderer implements IKeyframeShapeRenderer
         float centerSize = offset * 0.2F;
         float half = centerSize * 1.25F;
 
-        builder.vertex(matrix, x - half, y - half, 0F).color(c);
-        builder.vertex(matrix, x - half, y + half, 0F).color(c);
-        builder.vertex(matrix, x + half, y + half, 0F).color(c);
-        builder.vertex(matrix, x + half, y - half, 0F).color(c);
+        builder.addVertex(matrix, x - half, y - half, 0F).setColor(c);
+        builder.addVertex(matrix, x - half, y + half, 0F).setColor(c);
+        builder.addVertex(matrix, x + half, y + half, 0F).setColor(c);
+        builder.addVertex(matrix, x + half, y - half, 0F).setColor(c);
     }
 }

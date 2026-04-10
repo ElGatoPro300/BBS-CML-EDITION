@@ -1,5 +1,8 @@
 package mchorse.bbs_mod.cubic.render;
 
+import com.mojang.blaze3d.opengl.GlProgram;
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.PoseStack;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.cubic.data.model.Model;
@@ -11,20 +14,16 @@ import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.interps.Lerps;
-import net.minecraft.client.gl.ShaderProgram;
-import net.minecraft.client.render.BufferBuilder;
-import net.minecraft.client.render.LightmapTextureManager;
-import net.minecraft.client.render.VertexFormats;
-import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.client.renderer.LightTexture;
 import org.joml.Matrix4f;
 
 public class CubicVAORenderer extends CubicCubeRenderer
 {
-    private ShaderProgram program;
+    private GlProgram program;
     private ModelInstance model;
     private Link defaultTexture;
 
-    public CubicVAORenderer(ShaderProgram program, ModelInstance model, int light, int overlay, StencilMap stencilMap, ShapeKeys shapeKeys, Link defaultTexture)
+    public CubicVAORenderer(GlProgram program, ModelInstance model, int light, int overlay, StencilMap stencilMap, ShapeKeys shapeKeys, Link defaultTexture)
     {
         super(light, overlay, stencilMap, shapeKeys);
 
@@ -34,7 +33,7 @@ public class CubicVAORenderer extends CubicCubeRenderer
     }
 
     @Override
-    public boolean renderGroup(BufferBuilder builder, MatrixStack stack, ModelGroup group, Model model)
+    public boolean renderGroup(BufferBuilder builder, PoseStack stack, ModelGroup group, Model model)
     {
         if (this.stencilMap != null && !this.stencilMap.isBoneAllowed(group.id))
         {
@@ -70,7 +69,7 @@ public class CubicVAORenderer extends CubicCubeRenderer
             }
             else
             {
-                int u = (int) Lerps.lerp(light & '\uffff', LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, MathUtils.clamp(group.lighting, 0F, 1F));
+                int u = (int) Lerps.lerp(light & '\uffff', LightTexture.FULL_BLOCK, MathUtils.clamp(group.lighting, 0F, 1F));
                 int v = light >> 16 & '\uffff';
 
                 light = u | v << 16;

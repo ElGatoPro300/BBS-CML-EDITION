@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.ui.model_blocks;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
@@ -52,15 +53,14 @@ import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.undo.IUndo;
 import mchorse.bbs_mod.utils.undo.UndoManager;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.render.Camera;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.util.hit.BlockHitResult;
-import net.minecraft.util.hit.HitResult;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
+import net.minecraft.client.Camera;
+import net.minecraft.client.Minecraft;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
+import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
 import org.joml.Vector2d;
 import org.joml.Vector3d;
@@ -116,13 +116,13 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         this.keyDude = new UIElement().noCulling();
         this.keyDude.keys().register(Keys.MODEL_BLOCKS_MOVE_TO, () ->
         {
-            MinecraftClient mc = MinecraftClient.getInstance();
-            Vec3d origin = mc.player != null ? mc.player.getEyePos() : new Vec3d(0, 0, 0);
-            BlockHitResult blockHitResult = RayTracing.rayTrace(mc.world, origin, RayTracing.fromVector3f(this.mouseDirection), 512F);
+            Minecraft mc = Minecraft.getInstance();
+            Vec3 origin = mc.player != null ? mc.player.getEyePosition() : new Vec3(0, 0, 0);
+            BlockHitResult blockHitResult = RayTracing.rayTrace(mc.level, origin, RayTracing.fromVector3f(this.mouseDirection), 512F);
 
             if (blockHitResult.getType() != HitResult.Type.MISS)
             {
-                Vec3d hit = blockHitResult.getPos();
+                Vec3 hit = blockHitResult.getLocation();
                 BlockPos pos = this.modelBlock.getPos();
 
                 this.modelBlock.getProperties().getTransform().translate.set(hit.x - pos.getX() - 0.5F, hit.y - pos.getY(), hit.z - pos.getZ() - 0.5F);
@@ -236,14 +236,14 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
 
             try
             {
-                MinecraftClient mc = MinecraftClient.getInstance();
+                Minecraft mc = Minecraft.getInstance();
 
-                if (mc.world != null)
+                if (mc.level != null)
                 {
                     BlockPos p = this.modelBlock.getPos();
-                    BlockState state = mc.world.getBlockState(p);
+                    BlockState state = mc.level.getBlockState(p);
 
-                    mc.world.setBlockState(p, state.with(ModelBlock.LIGHT_LEVEL, lvl), Block.NOTIFY_LISTENERS);
+                    mc.level.setBlock(p, state.setValue(ModelBlock.LIGHT_LEVEL, lvl), Block.UPDATE_CLIENTS);
                 }
             }
             catch (Exception e)
@@ -864,26 +864,26 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
     {
         super.renderInWorld(context);
 
-        Camera camera = MinecraftClient.getInstance().gameRenderer.getCamera();
-        Vec3d pos = camera.getCameraPos();
+        Camera camera = Minecraft.getInstance().gameRenderer.getMainCamera();
+        Vec3 pos = camera.position();
 
-        MinecraftClient mc = MinecraftClient.getInstance();
-        double x = mc.mouse.getX();
-        double y = mc.mouse.getY();
+        Minecraft mc = Minecraft.getInstance();
+        double x = mc.mouseHandler.xpos();
+        double y = mc.mouseHandler.ypos();
 
-        MatrixStack matrixStack = context.matrices();
-        Matrix4f positionMatrix = matrixStack != null ? matrixStack.peek().getPositionMatrix() : RenderSystem.getModelViewMatrix();
+        PoseStack matrixStack = context.matrices();
+        Matrix4f positionMatrix = matrixStack != null ? matrixStack.last().pose() : RenderSystem.getModelViewMatrix();
         Matrix4f projectionMatrix = RenderSystem.getModelViewMatrix();
 
         float m11 = projectionMatrix.m11();
         float tanHalfFov = 1.0f / m11;
         float aspect = m11 / projectionMatrix.m00();
 
-        float ndcX = ((float) x / mc.getWindow().getWidth()) * 2.0f - 1.0f;
-        float ndcY = -(((float) y / mc.getWindow().getHeight()) * 2.0f - 1.0f);
+        float ndcX = ((float) x / mc.getWindow().getScreenWidth()) * 2.0f - 1.0f;
+        float ndcY = -(((float) y / mc.getWindow().getScreenHeight()) * 2.0f - 1.0f);
 
-        float f = MathUtils.toRad(camera.getPitch());
-        float g = MathUtils.toRad(-camera.getYaw());
+        float f = MathUtils.toRad(camera.xRot());
+        float g = MathUtils.toRad(-camera.yRot());
         float h = (float) Math.cos(g);
         float i = (float) Math.sin(g);
         float j = (float) Math.cos(f);

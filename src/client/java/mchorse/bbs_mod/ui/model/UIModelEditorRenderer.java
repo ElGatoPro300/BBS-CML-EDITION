@@ -1,7 +1,10 @@
 package mchorse.bbs_mod.ui.model;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.opengl.GlProgram;
 import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.opengl.Uniform;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.cubic.ModelInstance;
@@ -23,12 +26,9 @@ import mchorse.bbs_mod.ui.utils.StencilFormFramebuffer;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.Pair;
 import mchorse.bbs_mod.utils.colors.Colors;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gl.GlUniform;
-import net.minecraft.client.gl.ShaderProgram;
-import net.minecraft.client.render.LightmapTextureManager;
-import net.minecraft.client.render.OverlayTexture;
-import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.LightTexture;
+import net.minecraft.client.renderer.texture.OverlayTexture;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
 
@@ -158,7 +158,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
         this.updateModel();
         
         FormRenderingContext formContext = new FormRenderingContext()
-            .set(FormRenderType.PREVIEW, this.entity, new MatrixStack(), LightmapTextureManager.pack(15, 15), OverlayTexture.DEFAULT_UV, context.getTransition())
+            .set(FormRenderType.PREVIEW, this.entity, new PoseStack(), LightTexture.pack(15, 15), OverlayTexture.NO_OVERLAY, context.getTransition())
             .camera(this.camera)
             .modelRenderer();
 
@@ -185,14 +185,14 @@ public class UIModelEditorRenderer extends UIModelRenderer
                 {
                     gizmoMatrix = matrix;
 
-                    MatrixStack stack = new MatrixStack();
+                    PoseStack stack = new PoseStack();
                     
-                    stack.push();
+                    stack.pushPose();
                     MatrixStackUtils.multiply(stack, matrix);
                     
                     GL11.glDisable(GL11.GL_DEPTH_TEST);
                     Gizmo.INSTANCE.render(stack);
-                    stack.pop();
+                    stack.popPose();
                     
                     GL11.glEnable(GL11.GL_DEPTH_TEST);
                 }
@@ -215,22 +215,22 @@ public class UIModelEditorRenderer extends UIModelRenderer
 
             if (gizmoMatrix != null)
             {
-                MatrixStack stack = new MatrixStack();
+                PoseStack stack = new PoseStack();
 
-                stack.push();
+                stack.pushPose();
                 MatrixStackUtils.multiply(stack, gizmoMatrix);
 
                 GL11.glDisable(GL11.GL_DEPTH_TEST);
                 Gizmo.INSTANCE.renderStencil(stack, this.stencilMap);
                 GL11.glEnable(GL11.GL_DEPTH_TEST);
 
-                stack.pop();
+                stack.popPose();
             }
 
             this.stencil.pickGUI(context, this.area);
             this.stencil.unbind(this.stencilMap);
 
-            MinecraftClient.getInstance().getFramebuffer();
+            Minecraft.getInstance().getMainRenderTarget();
 
             GlStateManager._enableScissorTest();
         }
@@ -255,8 +255,8 @@ public class UIModelEditorRenderer extends UIModelRenderer
         int w = texture.width;
         int h = texture.height;
 
-        ShaderProgram previewProgram = BBSShaders.getPickerPreviewProgram();
-        GlUniform target = previewProgram.getUniform("Target");
+        GlProgram previewProgram = BBSShaders.getPickerPreviewProgram();
+        Uniform target = previewProgram.getUniform("Target");
 
         if (target != null)
         {

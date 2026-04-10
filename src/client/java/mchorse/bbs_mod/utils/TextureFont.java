@@ -1,17 +1,16 @@
 package mchorse.bbs_mod.utils;
 
+import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.systems.RenderSystem;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.render.RenderLayer;
-import net.minecraft.client.render.TexturedRenderLayers;
-import net.minecraft.client.render.VertexConsumer;
-import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.client.texture.NativeImage;
-import net.minecraft.client.texture.NativeImageBackedTexture;
-import net.minecraft.util.Identifier;
+import com.mojang.blaze3d.vertex.VertexConsumer;
 import org.joml.Matrix4f;
 
 import javax.imageio.ImageIO;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.Sheets;
+import net.minecraft.client.renderer.texture.DynamicTexture;
+import net.minecraft.resources.Identifier;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontMetrics;
@@ -27,7 +26,7 @@ import java.util.Map;
 
 public class TextureFont
 {
-    private NativeImageBackedTexture texture;
+    private DynamicTexture texture;
     private Identifier textureId;
     private final Map<Character, Glyph> glyphs = new HashMap<>();
     private int height;
@@ -124,10 +123,10 @@ public class TextureFont
         ImageIO.write(image, "png", baos);
         NativeImage nativeImage = NativeImage.read(new ByteArrayInputStream(baos.toByteArray()));
         
-        this.texture = new NativeImageBackedTexture(() -> "bbs_font", nativeImage);
+        this.texture = new DynamicTexture(() -> "bbs_font", nativeImage);
         String name = "bbs_font_" + font.hashCode();
-        this.textureId = Identifier.of("bbs_mod", name.toLowerCase());
-        MinecraftClient.getInstance().getTextureManager().registerTexture(this.textureId, this.texture);
+        this.textureId = Identifier.fromNamespaceAndPath("bbs_mod", name.toLowerCase());
+        Minecraft.getInstance().getTextureManager().register(this.textureId, this.texture);
     }
 
     public int getWidth(String text)
@@ -197,21 +196,21 @@ public class TextureFont
         return (int) (this.height * 0.25f);
     }
 
-    public void draw(String text, float x, float y, int color, Matrix4f matrix, VertexConsumerProvider consumers, int light)
+    public void draw(String text, float x, float y, int color, Matrix4f matrix, MultiBufferSource consumers, int light)
     {
         this.draw(text, x, y, color, color, 0, 0, matrix, consumers, light);
     }
 
-    public void draw(String text, float x, float y, int color, int color2, float letterSpacing, float spaceWidth, Matrix4f matrix, VertexConsumerProvider consumers, int light)
+    public void draw(String text, float x, float y, int color, int color2, float letterSpacing, float spaceWidth, Matrix4f matrix, MultiBufferSource consumers, int light)
     {
         this.draw(text, x, y, color, color2, letterSpacing, spaceWidth, matrix, consumers, light, 0.5F);
     }
 
-    public void draw(String text, float x, float y, int color, int color2, float letterSpacing, float spaceWidth, Matrix4f matrix, VertexConsumerProvider consumers, int light, float gradientOffset)
+    public void draw(String text, float x, float y, int color, int color2, float letterSpacing, float spaceWidth, Matrix4f matrix, MultiBufferSource consumers, int light, float gradientOffset)
     {
         if (this.textureId == null) return;
 
-        VertexConsumer consumer = consumers.getBuffer(TexturedRenderLayers.getEntityCutout());
+        VertexConsumer consumer = consumers.getBuffer(Sheets.cutoutBlockSheet());
         float scale = 0.25f; /* Scale down because we generated at 64px */
         
         float r1 = (color >> 16 & 255) / 255.0F;
@@ -317,7 +316,7 @@ public class TextureFont
 
     private void drawVertex(VertexConsumer consumer, Matrix4f matrix, float x, float y, float z, float u, float v, float r, float g, float b, float a, int light)
     {
-        consumer.vertex(matrix, x, y, z).color(r, g, b, a).texture(u, v).light(light);
+        consumer.addVertex(matrix, x, y, z).setColor(r, g, b, a).setUv(u, v).setLight(light);
     }
 
     private static class Glyph

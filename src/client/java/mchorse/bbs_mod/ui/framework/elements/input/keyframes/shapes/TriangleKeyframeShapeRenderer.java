@@ -1,11 +1,11 @@
 package mchorse.bbs_mod.ui.framework.elements.input.keyframes.shapes;
 
+import com.mojang.blaze3d.vertex.BufferBuilder;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
-import net.minecraft.client.render.BufferBuilder;
 import org.joml.Matrix4f;
 
 public class TriangleKeyframeShapeRenderer implements IKeyframeShapeRenderer
@@ -26,9 +26,9 @@ public class TriangleKeyframeShapeRenderer implements IKeyframeShapeRenderer
     {
         float fOffset = offset * 1.75F;
 
-        builder.vertex(matrix, x, y - fOffset, 0).color(c);
-        builder.vertex(matrix, x - fOffset, y + fOffset, 0).color(c);
-        builder.vertex(matrix, x + fOffset, y + fOffset, 0).color(c);
-        builder.vertex(matrix, x + fOffset, y + fOffset, 0).color(c);
+        builder.addVertex(matrix, x, y - fOffset, 0).setColor(c);
+        builder.addVertex(matrix, x - fOffset, y + fOffset, 0).setColor(c);
+        builder.addVertex(matrix, x + fOffset, y + fOffset, 0).setColor(c);
+        builder.addVertex(matrix, x + fOffset, y + fOffset, 0).setColor(c);
     }
 }

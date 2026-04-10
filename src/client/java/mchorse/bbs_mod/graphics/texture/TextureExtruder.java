@@ -19,7 +19,7 @@ public class TextureExtruder
     private Map<Link, ModelVAO> extruded = new HashMap<>();
 
     /**
-     * Fill a quad for {@link net.minecraft.client.render.VertexFormats#POSITION_TEXTURE_COLOR_NORMAL}. Points should
+     * Fill a quad for {@link com.mojang.blaze3d.vertex.DefaultVertexFormat#POSITION_TEX_COLOR_NORMAL}. Points should
      * be supplied in this order:
      *
      *     3 -------> 4

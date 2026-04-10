@@ -2,18 +2,17 @@ package mchorse.bbs_mod.ui.utils;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.graphics.Draw;
 import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.utils.Axis;
-import net.minecraft.client.render.BufferBuilder;
-import net.minecraft.client.render.GameRenderer;
-import net.minecraft.client.render.RenderLayers;
-import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.render.VertexFormats;
-import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import org.lwjgl.opengl.GL11;
 
 import java.util.HashMap;
@@ -148,7 +147,7 @@ public class Gizmo
         this.currentTransform = null;
     }
 
-    public void render(MatrixStack stack)
+    public void render(PoseStack stack)
     {
         if (BBSSettings.gizmos.get())
         {
@@ -160,7 +159,7 @@ public class Gizmo
         }
     }
 
-    private void drawAxes(MatrixStack stack, float axisSize, float axisOffset, float outlineSize, float outlineOffset)
+    private void drawAxes(PoseStack stack, float axisSize, float axisOffset, float outlineSize, float outlineOffset)
     {
         float scale = BBSSettings.axesScale.get();
 
@@ -169,7 +168,7 @@ public class Gizmo
         outlineSize *= scale;
         outlineOffset *= scale;
 
-        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
+        BufferBuilder builder = Tesselator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, DefaultVertexFormat.POSITION_COLOR);
 
         if (this.mode == Mode.ROTATE)
         {
@@ -245,13 +244,13 @@ public class Gizmo
         /* shader binding handled by RenderLayer in 1.21.11 */
         GlStateManager._depthFunc(GL11.GL_ALWAYS);
 
-        RenderLayers.debugFilledBox().draw(builder.end());
+        RenderTypes.debugFilledBox().draw(builder.buildOrThrow());
 
 
         GlStateManager._depthFunc(GL11.GL_LEQUAL);
     }
 
-    public void renderStencil(MatrixStack stack, StencilMap map)
+    public void renderStencil(PoseStack stack, StencilMap map)
     {
         if (BBSSettings.gizmos.get())
         {
@@ -259,14 +258,14 @@ public class Gizmo
         }
     }
 
-    private void drawAxes(MatrixStack stack, StencilMap map, float axisSize, float axisOffset)
+    private void drawAxes(PoseStack stack, StencilMap map, float axisSize, float axisOffset)
     {
         float scale = BBSSettings.axesScale.get();
 
         axisSize *= scale;
         axisOffset *= scale;
 
-        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
+        BufferBuilder builder = Tesselator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, DefaultVertexFormat.POSITION_COLOR);
 
         if (this.mode == Mode.ROTATE)
         {
@@ -312,7 +311,7 @@ public class Gizmo
         /* shader binding handled by RenderLayer in 1.21.11 */
         GlStateManager._disableDepthTest();
 
-        RenderLayers.debugFilledBox().draw(builder.end());
+        RenderTypes.debugFilledBox().draw(builder.buildOrThrow());
     }
 
     public static enum Mode

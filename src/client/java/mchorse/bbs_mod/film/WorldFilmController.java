@@ -6,8 +6,7 @@ import mchorse.bbs_mod.camera.clips.misc.AudioClientClip;
 import mchorse.bbs_mod.camera.data.Position;
 import mchorse.bbs_mod.utils.clips.Clip;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
-import net.minecraft.client.MinecraftClient;
-
+import net.minecraft.client.Minecraft;
 import java.util.List;
 import java.util.Map;
 
@@ -73,7 +72,7 @@ public class WorldFilmController extends BaseFilmController
         }
 
         this.context.clipData.clear();
-        this.context.setup(tick, MinecraftClient.getInstance().getRenderTickCounter().getTickProgress(false));
+        this.context.setup(tick, Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(false));
 
         for (Clip clip : clips)
         {

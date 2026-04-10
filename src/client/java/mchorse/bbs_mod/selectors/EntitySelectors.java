@@ -6,8 +6,7 @@ import mchorse.bbs_mod.data.IMapSerializable;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
-import net.minecraft.entity.LivingEntity;
-
+import net.minecraft.world.entity.LivingEntity;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;

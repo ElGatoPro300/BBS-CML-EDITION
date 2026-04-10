@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.client.renderer.item;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSModClient;
@@ -14,16 +15,12 @@ import mchorse.bbs_mod.forms.renderers.FormRenderType;
 import mchorse.bbs_mod.forms.renderers.FormRenderingContext;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.pose.Transform;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.render.LightmapTextureManager;
-import net.minecraft.client.render.entity.model.LoadedEntityModels;
-import net.minecraft.client.render.item.model.special.SpecialModelRenderer;
-import net.minecraft.client.render.DiffuseLighting;
-import net.minecraft.client.render.command.OrderedRenderCommandQueue;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.item.ItemStack;
-import net.minecraft.item.ItemDisplayContext;
-import net.minecraft.util.math.BlockPos;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.SubmitNodeCollector;
+import net.minecraft.client.renderer.special.SpecialModelRenderer;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.item.ItemDisplayContext;
+import net.minecraft.world.item.ItemStack;
 import org.joml.Vector3f;
 
 import java.util.HashMap;
@@ -56,13 +53,13 @@ public class ModelBlockItemRenderer implements SpecialModelRenderer<ItemStack>
     }
 
     @Override
-    public ItemStack getData(ItemStack stack)
+    public ItemStack extractArgument(ItemStack stack)
     {
         return stack;
     }
 
     @Override
-    public void render(ItemStack stack, ItemDisplayContext mode, MatrixStack matrices, OrderedRenderCommandQueue queue, int light, int overlay, boolean hasGlint, int seed)
+    public void render(ItemStack stack, ItemDisplayContext mode, PoseStack matrices, SubmitNodeCollector queue, int light, int overlay, boolean hasGlint, int seed)
     {
         Item item = this.get(stack);
 
@@ -77,7 +74,7 @@ public class ModelBlockItemRenderer implements SpecialModelRenderer<ItemStack>
 
                 Transform transform = properties.getTransform(mode);
 
-                matrices.push();
+                matrices.pushPose();
                 matrices.translate(0.5F, 0F, 0.5F);
                 MatrixStackUtils.applyTransform(matrices, transform);
 
@@ -89,8 +86,8 @@ public class ModelBlockItemRenderer implements SpecialModelRenderer<ItemStack>
                 }
 
                 FormUtilsClient.render(form, new FormRenderingContext()
-                    .set(FormRenderType.fromModelMode(mode), item.formEntity, matrices, light, overlay, MinecraftClient.getInstance().getRenderTickCounter().getTickProgress(false))
-                    .camera(MinecraftClient.getInstance().gameRenderer.getCamera()));
+                    .set(FormRenderType.fromModelMode(mode), item.formEntity, matrices, light, overlay, Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(false))
+                    .camera(Minecraft.getInstance().gameRenderer.getMainCamera()));
 
                 if (mode == ItemDisplayContext.GUI)
                 {
@@ -99,13 +96,13 @@ public class ModelBlockItemRenderer implements SpecialModelRenderer<ItemStack>
 
                 GlStateManager._disableDepthTest();
 
-                matrices.pop();
+                matrices.popPose();
             }
         }
     }
 
     @Override
-    public void collectVertices(Consumer<Vector3fc> consumer)
+    public void getExtents(Consumer<Vector3fc> consumer)
     {}
 
     public Item get(ItemStack stack)
@@ -120,7 +117,7 @@ public class ModelBlockItemRenderer implements SpecialModelRenderer<ItemStack>
             return this.map.get(stack);
         }
 
-        ModelBlockEntity entity = new ModelBlockEntity(BlockPos.ORIGIN, BBSMod.MODEL_BLOCK.getDefaultState());
+        ModelBlockEntity entity = new ModelBlockEntity(BlockPos.ZERO, BBSMod.MODEL_BLOCK.getDefaultState());
         Item item = new Item(entity);
 
         this.map.put(stack, item);
@@ -130,16 +127,16 @@ public class ModelBlockItemRenderer implements SpecialModelRenderer<ItemStack>
 
     public static class Unbaked implements SpecialModelRenderer.Unbaked
     {
-        public static final com.mojang.serialization.MapCodec<Unbaked> CODEC = com.mojang.serialization.MapCodec.unit(new Unbaked());
+        public static final com.mojang.serialization.MapCodec<mchorse.bbs_mod.client.renderer.item.ModelBlockItemRenderer.Unbaked> CODEC = com.mojang.serialization.MapCodec.unit(new mchorse.bbs_mod.client.renderer.item.ModelBlockItemRenderer.Unbaked());
 
         @Override
-        public com.mojang.serialization.MapCodec<Unbaked> getCodec()
+        public com.mojang.serialization.MapCodec<mchorse.bbs_mod.client.renderer.item.ModelBlockItemRenderer.Unbaked> type()
         {
             return CODEC;
         }
 
         @Override
-        public SpecialModelRenderer<?> bake(SpecialModelRenderer.BakeContext config)
+        public SpecialModelRenderer<?> bake(SpecialModelRenderer.BakingContext config)
         {
             return BBSModClient.getModelBlockItemRenderer();
         }
@@ -154,7 +151,7 @@ public class ModelBlockItemRenderer implements SpecialModelRenderer<ItemStack>
         public Item(ModelBlockEntity entity)
         {
             this.entity = entity;
-            this.formEntity = new StubEntity(MinecraftClient.getInstance().world);
+            this.formEntity = new StubEntity(Minecraft.getInstance().level);
         }
     }
 }

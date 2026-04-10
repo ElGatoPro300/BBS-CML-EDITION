@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.client.renderer;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSSettings;
@@ -26,17 +27,16 @@ import mchorse.bbs_mod.ui.model_blocks.UIModelBlockPanel;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.pose.Transform;
+import net.minecraft.client.Camera;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.renderer.LevelRenderer;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.core.BlockPos;
+import net.minecraft.world.phys.Vec3;
 import mchorse.bbs_mod.utils.pose.Pose;
 import mchorse.bbs_mod.utils.pose.PoseTransform;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.render.Camera;
-import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.client.render.WorldRenderer;
-import net.minecraft.client.render.block.entity.BlockEntityRendererFactory;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.client.world.ClientWorld;
-import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
@@ -44,14 +44,14 @@ public class ModelBlockEntityRenderer
 {
     private static ActorEntity entity;
 
-    public static void renderShadow(VertexConsumerProvider provider, MatrixStack matrices, float tickDelta, double x, double y, double z, float tx, float ty, float tz)
+    public static void renderShadow(MultiBufferSource provider, PoseStack matrices, float tickDelta, double x, double y, double z, float tx, float ty, float tz)
     {
         renderShadow(provider, matrices, tickDelta, x, y, z, tx, ty, tz, 0.5F, 1F);
     }
 
-    public static void renderShadow(VertexConsumerProvider provider, MatrixStack matrices, float tickDelta, double x, double y, double z, float tx, float ty, float tz, float radius, float opacity)
+    public static void renderShadow(MultiBufferSource provider, PoseStack matrices, float tickDelta, double x, double y, double z, float tx, float ty, float tz, float radius, float opacity)
     {
-        ClientWorld world = MinecraftClient.getInstance().world;
+        ClientLevel world = Minecraft.getInstance().level;
 
         if (entity == null || entity.getEntityWorld() != world)
         {
@@ -63,16 +63,16 @@ public class ModelBlockEntityRenderer
         entity.lastRenderY = y;
         entity.lastRenderZ = z;
 
-        double distance = MinecraftClient.getInstance().getEntityRenderDispatcher().getSquaredDistanceToCamera(entity);
+        double distance = Minecraft.getInstance().getEntityRenderDispatcher().distanceToSqr(entity);
 
         opacity = (float) ((1D - distance / 256D) * opacity);
 
-        matrices.push();
+        matrices.pushPose();
         matrices.translate(tx, ty, tz);
 
         /* EntityRendererDispatcherInvoker.bbs$renderShadow(matrices, provider, entity, opacity, tickDelta, entity.getWorld(), radius); */
 
-        matrices.pop();
+        matrices.popPose();
     }
 
     private static float getHeadYaw(float constraint, float yawDelta, float travel)
@@ -92,7 +92,7 @@ public class ModelBlockEntityRenderer
         return headYawBase * (1F - t);
     }
 
-    public ModelBlockEntityRenderer(BlockEntityRendererFactory.Context ctx)
+    public ModelBlockEntityRenderer(BlockEntityRendererProvider.Context ctx)
     {}
 
     public boolean rendersOutsideBoundingBox(ModelBlockEntity blockEntity)
@@ -100,20 +100,20 @@ public class ModelBlockEntityRenderer
         return blockEntity.getProperties().isGlobal();
     }
 
-    public void render(ModelBlockEntity entity, float tickDelta, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, int overlay)
+    public void render(ModelBlockEntity entity, float tickDelta, PoseStack matrices, MultiBufferSource vertexConsumers, int light, int overlay)
     {
-        MinecraftClient mc = MinecraftClient.getInstance();
+        Minecraft mc = Minecraft.getInstance();
         ModelProperties properties = entity.getProperties();
         Transform transform = properties.getTransform();
         BlockPos pos = entity.getPos();
         boolean appliedRuntimeOverlay = false;
 
-        matrices.push();
+        matrices.pushPose();
         matrices.translate(0.5F, 0F, 0.5F);
 
         if (properties.getForm() != null && this.canRender(entity))
         {
-            matrices.push();
+            matrices.pushPose();
 
             Transform applied = transform;
 
@@ -134,8 +134,8 @@ public class ModelBlockEntityRenderer
 
             MatrixStackUtils.applyTransform(matrices, applied);
 
-            int lightAbove = WorldRenderer.getLightmapCoordinates(entity.getWorld(), pos.add((int) transform.translate.x, (int) transform.translate.y, (int) transform.translate.z));
-            Camera camera = mc.gameRenderer.getCamera();
+            int lightAbove = LevelRenderer.getLightColor(entity.getWorld(), pos.offset((int) transform.translate.x, (int) transform.translate.y, (int) transform.translate.z));
+            Camera camera = mc.gameRenderer.getMainCamera();
 
             GlStateManager._enableDepthTest();
             FormUtilsClient.render(properties.getForm(), new FormRenderingContext()
@@ -145,23 +145,23 @@ public class ModelBlockEntityRenderer
 
             if (this.canRenderAxes(entity) && UIBaseMenu.renderAxes)
             {
-                matrices.push();
+                matrices.pushPose();
                 MatrixStackUtils.scaleBack(matrices);
                 Draw.coolerAxes(matrices, 0.5F, 0.01F, 0.51F, 0.02F);
-                matrices.pop();
+                matrices.popPose();
             }
 
-            matrices.pop();
+            matrices.popPose();
         }
 
         GlStateManager._disableDepthTest();
 
-        if (mc.getDebugHud().shouldShowDebugHud())
+        if (mc.getDebugOverlay().showDebugScreen())
         {
             Draw.renderBox(matrices, -0.5D, 0, -0.5D, 1, 1, 1, 0, 0.5F, 1F, 0.5F);
         }
 
-        matrices.pop();
+        matrices.popPose();
 
         if (properties.isShadow())
         {
@@ -181,13 +181,13 @@ public class ModelBlockEntityRenderer
         }
     }
 
-    private Transform applyLookingAnimation(MinecraftClient mc, ModelBlockEntity entity, ModelProperties properties, float tickDelta)
+    private Transform applyLookingAnimation(Minecraft mc, ModelBlockEntity entity, ModelProperties properties, float tickDelta)
     {
         Transform transform = properties.getTransform();
-        Camera camera = mc.gameRenderer.getCamera();
-        Vec3d position = !mc.options.getPerspective().isFirstPerson() && mc.player != null
-            ? mc.player.getCameraPosVec(tickDelta)
-            : camera.getCameraPos();
+        Camera camera = mc.gameRenderer.getMainCamera();
+        Vec3 position = !mc.options.getCameraType().isFirstPerson() && mc.player != null
+            ? mc.player.getEyePosition(tickDelta)
+            : camera.position();
 
         BlockPos pos = entity.getPos();
         double x = pos.getX() + 0.5D + transform.translate.x;

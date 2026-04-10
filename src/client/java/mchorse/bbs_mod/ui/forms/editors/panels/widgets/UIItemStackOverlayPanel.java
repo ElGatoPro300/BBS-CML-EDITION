@@ -10,18 +10,16 @@ import mchorse.bbs_mod.ui.framework.elements.input.text.UITextarea;
 import mchorse.bbs_mod.ui.framework.elements.input.text.UITextbox;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlayPanel;
 import mchorse.bbs_mod.ui.utils.UI;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NbtCompound;
+import net.minecraft.commands.arguments.CompoundTagArgument;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.NbtOps;
-import net.minecraft.nbt.StringNbtReader;
-import net.minecraft.command.argument.NbtCompoundArgumentType;
-import net.minecraft.registry.Registries;
-import net.minecraft.registry.RegistryKey;
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.text.Text;
-import net.minecraft.util.Identifier;
-
+import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -40,9 +38,9 @@ public class UIItemStackOverlayPanel extends UIOverlayPanel
 
     static
     {
-        for (RegistryKey<Item> key : Registries.ITEM.getKeys())
+        for (ResourceKey<Item> key : BuiltInRegistries.ITEM.registryKeySet())
         {
-            itemIDs.add(key.getValue().toString());
+            itemIDs.add(key.identifier().toString());
         }
 
         itemIDs.sort(String::compareToIgnoreCase);
@@ -56,27 +54,27 @@ public class UIItemStackOverlayPanel extends UIOverlayPanel
         this.stack = stack.copy();
         this.name = new UITextbox(1000, (v) ->
         {
-            this.stack.set(DataComponentTypes.CUSTOM_NAME, Text.literal(v));
+            this.stack.set(DataComponents.CUSTOM_NAME, Component.literal(v));
             this.pickItemStack(this.stack);
             this.updateNbt();
         });
-        this.name.setText(stack.getName().getString());
+        this.name.setText(stack.getHoverName().getString());
         this.count = new UITrackpad((v) ->
         {
             this.stack.setCount(v.intValue());
             this.pickItemStack(this.stack);
             this.updateNbt();
         });
-        this.count.limit(1.0, stack.getMaxCount(), true).setValue(stack.getCount());
+        this.count.limit(1.0, stack.getMaxStackSize(), true).setValue(stack.getCount());
         this.nbt = new UITextarea<>((v) ->
         {
             try
             {
-                NbtCompound nbtCompound = NbtCompoundArgumentType.nbtCompound().parse(new StringReader(v));
+                CompoundTag nbtCompound = CompoundTagArgument.compoundTag().parse(new StringReader(v));
                 ItemStack itemStack = ItemStack.CODEC.parse(NbtOps.INSTANCE, nbtCompound).result().orElse(ItemStack.EMPTY);
 
                 this.pickItemStack(itemStack);
-                this.itemList.list.setCurrentScroll(Registries.ITEM.getId(this.stack.getItem()).toString());
+                this.itemList.list.setCurrentScroll(BuiltInRegistries.ITEM.getKey(this.stack.getItem()).toString());
             }
             catch (Exception e)
             {
@@ -90,7 +88,7 @@ public class UIItemStackOverlayPanel extends UIOverlayPanel
         this.itemList.label(UIKeys.GENERAL_SEARCH).list.background();
         this.itemList.list.clear();
         this.itemList.list.add(itemIDs);
-        this.itemList.list.setCurrentScroll(Registries.ITEM.getId(stack.getItem()).toString());
+        this.itemList.list.setCurrentScroll(BuiltInRegistries.ITEM.getKey(stack.getItem()).toString());
 
         UIElement element = UI.column(5, 6, this.name, this.count);
 
@@ -116,7 +114,7 @@ public class UIItemStackOverlayPanel extends UIOverlayPanel
 
     private void setItem(String s)
     {
-        this.stack = new ItemStack(Registries.ITEM.get(Identifier.of(s)));
+        this.stack = new ItemStack(BuiltInRegistries.ITEM.getValue(Identifier.parse(s)));
 
         this.pickItemStack(this.stack);
         this.updateNbt();

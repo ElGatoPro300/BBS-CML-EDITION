@@ -1,8 +1,15 @@
 package mchorse.bbs_mod.cubic;
 
+import IModel;
+import com.mojang.blaze3d.opengl.GlProgram;
 import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexFormat;
+import com.mojang.math.Axis;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.bobj.BOBJBone;
 import mchorse.bbs_mod.cubic.data.animation.Animations;
@@ -20,7 +27,6 @@ import mchorse.bbs_mod.cubic.render.CubicVAORenderer;
 import mchorse.bbs_mod.cubic.render.vao.BOBJModelVAO;
 import mchorse.bbs_mod.cubic.render.vao.ModelVAO;
 import mchorse.bbs_mod.data.DataStorageUtils;
-import net.minecraft.client.render.Tessellator;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
@@ -34,15 +40,8 @@ import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.pose.Pose;
 import mchorse.bbs_mod.utils.resources.LinkUtils;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gl.ShaderProgram;
-import net.minecraft.client.render.BufferBuilder;
-import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.render.RenderLayers;
-import net.minecraft.client.util.BufferAllocator;
-import net.minecraft.client.render.VertexFormats;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.util.math.RotationAxis;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
@@ -357,7 +356,7 @@ public class ModelInstance implements IModelInstance
     {
         if (this.model instanceof BOBJModel model)
         {
-            MinecraftClient.getInstance().execute(model::setup);
+            Minecraft.getInstance().execute(model::setup);
         }
 
         /* VAOs should be only generated if there are no shape keys */
@@ -368,9 +367,9 @@ public class ModelInstance implements IModelInstance
 
         if (this.model instanceof Model model && !this.onCpu)
         {
-            MinecraftClient.getInstance().execute(() ->
+            Minecraft.getInstance().execute(() ->
             {
-                CubicRenderer.processRenderModel(new CubicVAOBuilderRenderer(this.vaos), null, new MatrixStack(), model);
+                CubicRenderer.processRenderModel(new CubicVAOBuilderRenderer(this.vaos), null, new PoseStack(), model);
             });
         }
     }
@@ -414,7 +413,7 @@ public class ModelInstance implements IModelInstance
     {
         if (this.model instanceof Model model)
         {
-            MatrixStack stack = new MatrixStack();
+            PoseStack stack = new PoseStack();
             CubicMatrixRenderer renderer = new CubicMatrixRenderer(model);
 
             CubicRenderer.processRenderModel(renderer, null, stack, model);
@@ -456,7 +455,7 @@ public class ModelInstance implements IModelInstance
         }
     }
 
-    public void render(MatrixStack stack, Supplier<ShaderProgram> program, Color color, int light, int overlay, StencilMap stencilMap, ShapeKeys keys, Link defaultTexture)
+    public void render(PoseStack stack, Supplier<GlProgram> program, Color color, int light, int overlay, StencilMap stencilMap, ShapeKeys keys, Link defaultTexture)
     {
         if (this.model instanceof Model model)
         {
@@ -475,13 +474,13 @@ public class ModelInstance implements IModelInstance
             }
             else
             {
-                BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL);
+                BufferBuilder builder = Tesselator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, DefaultVertexFormat.NEW_ENTITY);
 
                 CubicRenderer.processRenderModel(renderProcessor, builder, stack, model);
 
                 try
                 {
-                    RenderLayers.solid().draw(builder.end());
+                    RenderTypes.solidMovingBlock().draw(builder.buildOrThrow());
                 }
                 catch (IllegalStateException e)
                 {
@@ -495,14 +494,14 @@ public class ModelInstance implements IModelInstance
 
             if (vao != null)
             {
-                stack.push();
-                stack.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(180F));
+                stack.pushPose();
+                stack.mulPose(Axis.YP.rotationDegrees(180F));
 
                 vao.armature.setupMatrices();
                 vao.updateMesh(stencilMap);
                 vao.render(program.get(), stack, color.r, color.g, color.b, color.a, stencilMap, light, overlay, this.texture);
 
-                stack.pop();
+                stack.popPose();
             }
         }
     }

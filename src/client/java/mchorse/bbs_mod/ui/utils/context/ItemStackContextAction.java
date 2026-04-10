@@ -1,5 +1,6 @@
 package mchorse.bbs_mod.ui.utils.context;
 
+import com.mojang.blaze3d.vertex.PoseStack;
 import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.l10n.keys.IKey;
@@ -7,8 +8,7 @@ import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Colors;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.item.ItemStack;
+import net.minecraft.world.item.ItemStack;
 
 public class ItemStackContextAction extends ContextAction
 {
@@ -28,15 +28,15 @@ public class ItemStackContextAction extends ContextAction
 
         if (this.stack != null && !this.stack.isEmpty())
         {
-            MatrixStack matrices = new MatrixStack();
+            PoseStack matrices = new PoseStack();
             CustomVertexConsumerProvider consumers = FormUtilsClient.getProvider();
 
-            matrices.push();
+            matrices.pushPose();
             consumers.setUI(true);
-            context.batcher.getContext().drawItem(this.stack, x + 2, y + 2);
-            context.batcher.getContext().drawStackOverlay(context.batcher.getFont().getRenderer(), this.stack, x + 2, y + 2);
+            context.batcher.getContext().renderItem(this.stack, x + 2, y + 2);
+            context.batcher.getContext().renderItemDecorations(context.batcher.getFont().getRenderer(), this.stack, x + 2, y + 2);
             consumers.setUI(false);
-            matrices.pop();
+            matrices.popPose();
         }
 
         context.batcher.text(this.label.get(), x + 22, y + (h - font.getHeight()) / 2 + 1, Colors.WHITE, false);
