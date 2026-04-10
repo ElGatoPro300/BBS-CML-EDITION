@@ -102,11 +102,11 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         
         this.sectionsView = UI.scrollView(20, 10);
         this.sectionsView.scroll.cancelScrolling().opposite().scrollSpeed *= 3;
-        this.sectionsView.relative(this.modelSettingsPanel).w(200).h(1F);
+        this.sectionsView.relative(this.modelSettingsPanel).y(0).w(200).h(1F);
         
         this.rightView = UI.scrollView(20, 10);
         this.rightView.scroll.cancelScrolling().opposite().scrollSpeed *= 3;
-        this.rightView.relative(this.modelSettingsPanel).x(1F, -200).w(200).h(1F);
+        this.rightView.relative(this.modelSettingsPanel).x(1F, -200).y(0).w(200).h(1F);
         
         this.modelSettingsPanel.add(this.sectionsView, this.rightView);
 
@@ -115,11 +115,11 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
 
         this.dynamicBonesView = UI.scrollView(20, 10);
         this.dynamicBonesView.scroll.cancelScrolling().opposite().scrollSpeed *= 3;
-        this.dynamicBonesView.relative(this.dynamicBonesPanel).w(200).h(1F);
+        this.dynamicBonesView.relative(this.dynamicBonesPanel).y(0).w(200).h(1F);
 
         this.dynamicBonesRightView = UI.scrollView(20, 10);
         this.dynamicBonesRightView.scroll.cancelScrolling().opposite().scrollSpeed *= 3;
-        this.dynamicBonesRightView.relative(this.dynamicBonesPanel).x(1F, -200).w(200).h(1F);
+        this.dynamicBonesRightView.relative(this.dynamicBonesPanel).x(1F, -200).y(0).w(200).h(1F);
 
         this.dynamicBonesPanel.add(this.dynamicBonesView, this.dynamicBonesRightView);
 
@@ -246,6 +246,9 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
     {
         this.mainView.removeAll();
         this.mainView.add(panel);
+        this.resetEditorScrolls();
+        this.rightView.removeAll();
+        this.dynamicBonesRightView.removeAll();
 
         if (panel == this.dynamicBonesPanel)
         {
@@ -268,15 +271,41 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
     public void setRight(UIElement element)
     {
         this.rightView.removeAll();
+
+        if (element != null && element.getParent() != null && element.getParent() != this.rightView)
+        {
+            element.removeFromParent();
+        }
+
         this.rightView.add(element);
+        this.rightView.scroll.setScroll(0);
         this.rightView.resize();
     }
 
     public void setDynamicRight(UIElement element)
     {
         this.dynamicBonesRightView.removeAll();
+
+        if (element != null && element.getParent() != null && element.getParent() != this.dynamicBonesRightView)
+        {
+            element.removeFromParent();
+        }
+
         this.dynamicBonesRightView.add(element);
+        this.dynamicBonesRightView.scroll.setScroll(0);
         this.dynamicBonesRightView.resize();
+    }
+
+    private void resetEditorScrolls()
+    {
+        this.sectionsView.scroll.dragging = false;
+        this.rightView.scroll.dragging = false;
+        this.dynamicBonesView.scroll.dragging = false;
+        this.dynamicBonesRightView.scroll.dragging = false;
+        this.sectionsView.scroll.setScroll(0);
+        this.rightView.scroll.setScroll(0);
+        this.dynamicBonesView.scroll.setScroll(0);
+        this.dynamicBonesRightView.scroll.setScroll(0);
     }
     
     @Override
@@ -540,6 +569,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
             this.rightView.resize();
             this.dynamicBonesView.resize();
             this.dynamicBonesRightView.resize();
+            this.resetEditorScrolls();
         }
     }
 
