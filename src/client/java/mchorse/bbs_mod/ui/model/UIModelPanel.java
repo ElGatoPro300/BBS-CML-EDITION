@@ -400,6 +400,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         }
 
         LOGGER.debug("Model Editor forceSave completed: model={}", this.data.getId());
+        this.setSaveDirty(false);
     }
 
     public void persistModelDataWithoutReload()
@@ -445,6 +446,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         }
 
         LOGGER.debug("Model Editor persist without reload completed: model={}", this.data.getId());
+        this.setSaveDirty(false);
     }
 
     private boolean prepareAnimationCode()
@@ -522,6 +524,15 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
     public void dirty()
     {
         this.renderer.dirty();
+        this.setSaveDirty(true);
+    }
+
+    private void setSaveDirty(boolean dirty)
+    {
+        if (this.saveIcon != null)
+        {
+            this.saveIcon.both(dirty ? Icons.SAVE : Icons.SAVED);
+        }
     }
 
     private void addSection(UIModelSection section)
@@ -545,6 +556,8 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
     @Override
     protected void fillData(ModelConfig data)
     {
+        this.setSaveDirty(false);
+
         for (UIIcon button : this.panelButtons)
         {
             button.setEnabled(data != null);
