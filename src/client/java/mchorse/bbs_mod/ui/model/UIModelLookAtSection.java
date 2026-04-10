@@ -45,8 +45,8 @@ public class UIModelLookAtSection extends UIModelSection
         super(editor);
 
         this.lookAtLimb = new UIButton(UIKeys.MODELS_PICK_LOOK_AT_LIMB, (b) -> this.openLookAtContextMenu());
-        this.selectedBoneButton = new UIButton(IKey.raw("Hueso: <none>"), (b) -> {});
-        this.geckoEnabled = new UIToggle(IKey.raw("Gecko Animations"), (b) ->
+        this.selectedBoneButton = new UIButton(this.getSelectedBoneLabel(), (b) -> {});
+        this.geckoEnabled = new UIToggle(UIKeys.MODELS_LOOK_AT_GECKO_ANIMATIONS, (b) ->
         {
             ActionsConfig actions = this.getActions();
 
@@ -82,13 +82,13 @@ public class UIModelLookAtSection extends UIModelSection
             actions.geckoAnimations.previewWheelSpeed = v.floatValue();
             this.editor.dirty();
         });
-        this.swinging = new UIToggle(IKey.raw("Swinging"), (b) -> this.editLimb((config) -> config.swinging = b.getValue()));
-        this.swiping = new UIToggle(IKey.raw("Swiping"), (b) -> this.editLimb((config) -> config.swiping = b.getValue()));
-        this.lookX = new UIToggle(IKey.raw("Look X"), (b) -> this.editLimb((config) -> config.lookX = b.getValue()));
-        this.lookY = new UIToggle(IKey.raw("Look Y"), (b) -> this.editLimb((config) -> config.lookY = b.getValue()));
-        this.idle = new UIToggle(IKey.raw("Idle"), (b) -> this.editLimb((config) -> config.idle = b.getValue()));
-        this.invert = new UIToggle(IKey.raw("Invert"), (b) -> this.editLimb((config) -> config.invert = b.getValue()));
-        this.wheel = new UIToggle(IKey.raw("Wheel"), (b) -> this.editLimb((config) -> config.wheel = b.getValue()));
+        this.swinging = new UIToggle(UIKeys.MODELS_LOOK_AT_SWINGING, (b) -> this.editLimb((config) -> config.swinging = b.getValue()));
+        this.swiping = new UIToggle(UIKeys.MODELS_LOOK_AT_SWIPING, (b) -> this.editLimb((config) -> config.swiping = b.getValue()));
+        this.lookX = new UIToggle(UIKeys.MODELS_LOOK_AT_LOOK_X, (b) -> this.editLimb((config) -> config.lookX = b.getValue()));
+        this.lookY = new UIToggle(UIKeys.MODELS_LOOK_AT_LOOK_Y, (b) -> this.editLimb((config) -> config.lookY = b.getValue()));
+        this.idle = new UIToggle(UIKeys.MODELS_LOOK_AT_IDLE, (b) -> this.editLimb((config) -> config.idle = b.getValue()));
+        this.invert = new UIToggle(UIKeys.MODELS_LOOK_AT_INVERT, (b) -> this.editLimb((config) -> config.invert = b.getValue()));
+        this.wheel = new UIToggle(UIKeys.MODELS_LOOK_AT_WHEEL, (b) -> this.editLimb((config) -> config.wheel = b.getValue()));
         this.wheelAxis = new UICirculate((b) ->
         {
             int index = b.getValue();
@@ -109,9 +109,9 @@ public class UIModelLookAtSection extends UIModelSection
                 }
             });
         });
-        this.wheelAxis.addLabel(IKey.raw("Axis X"));
-        this.wheelAxis.addLabel(IKey.raw("Axis Y"));
-        this.wheelAxis.addLabel(IKey.raw("Axis Z"));
+        this.wheelAxis.addLabel(UIKeys.MODELS_LOOK_AT_AXIS_X);
+        this.wheelAxis.addLabel(UIKeys.MODELS_LOOK_AT_AXIS_Y);
+        this.wheelAxis.addLabel(UIKeys.MODELS_LOOK_AT_AXIS_Z);
         this.wheelSpeed = new UITrackpad((v) -> this.editLimb((config) -> config.wheelSpeed = v.floatValue())).limit(0, 8);
         this.lookAtLimb.tooltip(UIKeys.MODELS_LOOK_AT_PICK_LIMB_TOOLTIP);
         this.selectedBoneButton.tooltip(UIKeys.MODELS_LOOK_AT_SELECTED_BONE_TOOLTIP);
@@ -134,11 +134,11 @@ public class UIModelLookAtSection extends UIModelSection
         this.fields.add(this.lookAtLimb);
         this.fields.add(this.selectedBoneButton);
         this.fields.add(this.geckoEnabled);
-        this.fields.add(UI.label(IKey.raw("Transition Speed")), this.transitionSpeed);
-        this.fields.add(UI.label(IKey.raw("Preview Wheel Speed")), this.previewWheelSpeed);
+        this.fields.add(UI.label(UIKeys.MODELS_LOOK_AT_TRANSITION_SPEED), this.transitionSpeed);
+        this.fields.add(UI.label(UIKeys.MODELS_LOOK_AT_PREVIEW_WHEEL_SPEED), this.previewWheelSpeed);
         this.fields.add(this.swinging, this.swiping, this.lookX, this.lookY, this.idle, this.invert, this.wheel);
-        this.fields.add(UI.label(IKey.raw("Wheel Axis")), this.wheelAxis);
-        this.fields.add(UI.label(IKey.raw("Wheel Speed")), this.wheelSpeed);
+        this.fields.add(UI.label(UIKeys.MODELS_LOOK_AT_WHEEL_AXIS), this.wheelAxis);
+        this.fields.add(UI.label(UIKeys.MODELS_LOOK_AT_WHEEL_SPEED), this.wheelSpeed);
         this.updateButtonLabel();
         this.refreshAnimationFields();
     }
@@ -159,11 +159,12 @@ public class UIModelLookAtSection extends UIModelSection
 
         List<String> groups = new ArrayList<>(model.getModel().getAllGroupKeys());
         Collections.sort(groups);
-        groups.add(0, "<none>");
+        String none = UIKeys.GENERAL_NONE.get();
+        groups.add(0, none);
 
         UILookAtStringListContextMenu menu = new UILookAtStringListContextMenu(groups, (group) ->
         {
-            if (group.equals("<none>"))
+            if (group.equals(none))
             {
                 this.config.lookAtHead.set("");
             }
@@ -178,7 +179,7 @@ public class UIModelLookAtSection extends UIModelSection
         });
 
         String current = this.config.lookAtHead.get();
-        menu.list.list.setCurrent(current.isEmpty() ? "<none>" : current);
+        menu.list.list.setCurrent(current.isEmpty() ? none : current);
 
         this.getContext().replaceContextMenu(menu);
         menu.xy(this.lookAtLimb.area.x, this.lookAtLimb.area.ey()).w(this.lookAtLimb.area.w).h(200).bounds(this.getContext().menu.overlay, 5);
@@ -189,13 +190,20 @@ public class UIModelLookAtSection extends UIModelSection
         if (this.config == null)
         {
             this.lookAtLimb.label = UIKeys.MODELS_PICK_LOOK_AT_LIMB;
-            this.selectedBoneButton.label = IKey.raw("Hueso: <none>");
+            this.selectedBoneButton.label = this.getSelectedBoneLabel();
             return;
         }
 
         String selected = this.config.lookAtHead.get();
         this.lookAtLimb.label = selected == null || selected.isEmpty() ? UIKeys.MODELS_PICK_LOOK_AT_LIMB : IKey.constant(selected);
-        this.selectedBoneButton.label = IKey.raw("Hueso: " + (this.selectedBone == null ? "<none>" : this.selectedBone));
+        this.selectedBoneButton.label = this.getSelectedBoneLabel();
+    }
+
+    private IKey getSelectedBoneLabel()
+    {
+        String selected = this.selectedBone == null || this.selectedBone.isEmpty() ? UIKeys.GENERAL_NONE.get() : this.selectedBone;
+
+        return IKey.raw(UIKeys.MODELS_LOOK_AT_SELECTED_BONE.get() + ": " + selected);
     }
 
     private ActionsConfig getActions()
