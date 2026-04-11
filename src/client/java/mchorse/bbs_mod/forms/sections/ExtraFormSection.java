@@ -61,7 +61,6 @@ public class ExtraFormSection extends FormSection
         FluidForm fluid = new FluidForm();
         LightForm light = new LightForm();
         ShapeForm shape = new ShapeForm();
-        FramebufferForm framebuffer = new FramebufferForm();
         try
         {
             String preferred = "structures/tree.nbt";
@@ -105,10 +104,9 @@ public class ExtraFormSection extends FormSection
         extra.addForm(vanillaParticle);
         extra.addForm(trail);
         extra.addForm(structure);
+        extra.addForm(shape);
         extra.addForm(fluid);
         extra.addForm(light);
-        extra.addForm(shape);
-        extra.addForm(framebuffer);
 
         this.mobsAnimals = new FormCategory(UIKeys.FORMS_CATEGORIES_MOBS_ANIMALS, this.parent.visibility.get("mobs_animals"));
         this.mobsNeutral = new FormCategory(UIKeys.FORMS_CATEGORIES_MOBS_NEUTRAL, this.parent.visibility.get("mobs_neutral"));

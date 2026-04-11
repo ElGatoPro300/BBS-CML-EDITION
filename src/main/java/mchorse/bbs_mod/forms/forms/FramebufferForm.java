@@ -5,9 +5,9 @@ import mchorse.bbs_mod.settings.values.numeric.ValueInt;
 
 public class FramebufferForm extends Form
 {
-    public final ValueInt width = new ValueInt("width", 512, 2, 4096);
-    public final ValueInt height = new ValueInt("height", 512, 2, 4096);
-    public final ValueFloat scale = new ValueFloat("scale", 0.5F, 0.01F, 4F);
+    public final ValueInt width = new ValueInt("width", 512);
+    public final ValueInt height = new ValueInt("height", 512);
+    public final ValueFloat scale = new ValueFloat("scale", 0.5F);
 
     public FramebufferForm()
     {
