@@ -508,6 +508,8 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
 
     private void pickBone(String bone)
     {
+        boolean dynamicPanelActive = this.mainView.getChildren().contains(this.dynamicBonesPanel);
+
         for (UIModelSection section : this.sections)
         {
             section.deselect();
@@ -516,7 +518,15 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
             if (section instanceof UIModelPartsSection)
             {
                 ((UIModelPartsSection) section).selectBone(bone);
-                this.setRight(((UIModelPartsSection) section).poseEditor);
+
+                if (dynamicPanelActive)
+                {
+                    this.setDynamicRight(((UIModelPartsSection) section).poseEditor);
+                }
+                else
+                {
+                    this.setRight(((UIModelPartsSection) section).poseEditor);
+                }
             }
         }
     }

@@ -889,6 +889,13 @@ public class UIKeys
     public static final IKey MODELS_DYNAMIC_BONES_ASSIGN_SELECTED_BONE_TOOLTIP = L10n.lang("bbs.ui.models.dynamic_bones.assign_selected_bone_tooltip");
     public static final IKey MODELS_DYNAMIC_BONES_COPY_SETTINGS = L10n.lang("bbs.ui.models.dynamic_bones.copy_settings");
     public static final IKey MODELS_DYNAMIC_BONES_PASTE_SETTINGS = L10n.lang("bbs.ui.models.dynamic_bones.paste_settings");
+    public static final IKey MODELS_DYNAMIC_BONES_PRESETS = L10n.lang("bbs.ui.models.dynamic_bones.presets");
+    public static final IKey MODELS_DYNAMIC_BONES_PRESETS_TOOLTIP = L10n.lang("bbs.ui.models.dynamic_bones.presets_tooltip");
+    public static final IKey MODELS_DYNAMIC_BONES_PRESET_CUSTOM = L10n.lang("bbs.ui.models.dynamic_bones.preset.custom");
+    public static final IKey MODELS_DYNAMIC_BONES_PRESET_HAIR = L10n.lang("bbs.ui.models.dynamic_bones.preset.hair");
+    public static final IKey MODELS_DYNAMIC_BONES_PRESET_SKIRT = L10n.lang("bbs.ui.models.dynamic_bones.preset.skirt");
+    public static final IKey MODELS_DYNAMIC_BONES_PRESET_TAIL = L10n.lang("bbs.ui.models.dynamic_bones.preset.tail");
+    public static final IKey MODELS_DYNAMIC_BONES_PRESET_CLOTH = L10n.lang("bbs.ui.models.dynamic_bones.preset.cloth");
     public static final IKey MODELS_DYNAMIC_BONES_ENABLED = L10n.lang("bbs.ui.models.dynamic_bones.enabled");
     public static final IKey MODELS_DYNAMIC_BONES_ENABLED_TOOLTIP = L10n.lang("bbs.ui.models.dynamic_bones.enabled_tooltip");
     public static final IKey MODELS_DYNAMIC_BONES_AFFECT_PITCH = L10n.lang("bbs.ui.models.dynamic_bones.affect_pitch");

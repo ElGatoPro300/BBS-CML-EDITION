@@ -7,6 +7,7 @@ import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
+import mchorse.bbs_mod.ui.framework.elements.buttons.UICirculate;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
@@ -23,6 +24,7 @@ public class UIModelDynamicBonesSection extends UIModelSection
     private final UIIcon add;
     private final UIIcon remove;
     private final UIButton assignBone;
+    private final UICirculate presets;
     private final UIToggle enabled;
     private final UIToggle pitch;
     private final UITrackpad stiffness;
@@ -75,6 +77,12 @@ public class UIModelDynamicBonesSection extends UIModelSection
         this.add = new UIIcon(Icons.ADD, (b) -> this.addSlot());
         this.remove = new UIIcon(Icons.REMOVE, (b) -> this.removeSlot());
         this.assignBone = new UIButton(UIKeys.MODELS_DYNAMIC_BONES_ASSIGN_SELECTED_BONE, (b) -> this.assignSelectedBone());
+        this.presets = new UICirculate((b) -> this.applyPreset(b.getValue()));
+        this.presets.addLabel(UIKeys.MODELS_DYNAMIC_BONES_PRESET_CUSTOM);
+        this.presets.addLabel(UIKeys.MODELS_DYNAMIC_BONES_PRESET_HAIR);
+        this.presets.addLabel(UIKeys.MODELS_DYNAMIC_BONES_PRESET_SKIRT);
+        this.presets.addLabel(UIKeys.MODELS_DYNAMIC_BONES_PRESET_TAIL);
+        this.presets.addLabel(UIKeys.MODELS_DYNAMIC_BONES_PRESET_CLOTH);
         this.enabled = new UIToggle(UIKeys.MODELS_DYNAMIC_BONES_ENABLED, (b) ->
         {
             PhysBoneSlot slot = this.getCurrentSlot();
@@ -104,6 +112,7 @@ public class UIModelDynamicBonesSection extends UIModelSection
         this.add.tooltip(UIKeys.MODELS_DYNAMIC_BONES_ADD_TOOLTIP);
         this.remove.tooltip(UIKeys.MODELS_DYNAMIC_BONES_REMOVE_TOOLTIP);
         this.assignBone.tooltip(UIKeys.MODELS_DYNAMIC_BONES_ASSIGN_SELECTED_BONE_TOOLTIP);
+        this.presets.tooltip(UIKeys.MODELS_DYNAMIC_BONES_PRESETS_TOOLTIP);
         this.enabled.tooltip(UIKeys.MODELS_DYNAMIC_BONES_ENABLED_TOOLTIP);
         this.pitch.tooltip(UIKeys.MODELS_DYNAMIC_BONES_AFFECT_PITCH_TOOLTIP);
         this.stiffness.tooltip(UIKeys.MODELS_DYNAMIC_BONES_STIFFNESS_TOOLTIP);
@@ -126,6 +135,7 @@ public class UIModelDynamicBonesSection extends UIModelSection
         this.fields.add(controls);
         this.fields.add(this.list);
         this.fields.add(this.assignBone);
+        this.fields.add(UI.label(UIKeys.MODELS_DYNAMIC_BONES_PRESETS), this.presets);
         this.fields.add(this.enabled);
         this.fields.add(this.pitch);
         this.fields.add(UI.label(UIKeys.MODELS_DYNAMIC_BONES_STIFFNESS), this.stiffness);
@@ -222,6 +232,54 @@ public class UIModelDynamicBonesSection extends UIModelSection
         slot.bone.set(this.selectedBone);
         this.markDirty();
         this.refreshList();
+    }
+
+    private void applyPreset(int presetIndex)
+    {
+        if (presetIndex == 0)
+        {
+            return;
+        }
+
+        PhysBoneSlot slot = this.getCurrentSlot();
+
+        if (slot == null)
+        {
+            this.presets.setValue(0);
+            return;
+        }
+
+        if (presetIndex == 1)
+        {
+            this.setPreset(slot, true, true, 8F, 1.1F, 0.3F, 1.25F, 1F, 40F);
+        }
+        else if (presetIndex == 2)
+        {
+            this.setPreset(slot, true, false, 14F, 1.8F, 1.4F, 0.7F, 1F, 28F);
+        }
+        else if (presetIndex == 3)
+        {
+            this.setPreset(slot, true, true, 10F, 1.5F, 0.6F, 1.1F, 1F, 55F);
+        }
+        else if (presetIndex == 4)
+        {
+            this.setPreset(slot, true, true, 4.5F, 2.2F, 0.15F, 1.5F, 1F, 75F);
+        }
+    }
+
+    private void setPreset(PhysBoneSlot slot, boolean enabled, boolean pitch, float stiffness, float damping, float gravity, float inertia, float simSpeed, float maxAngle)
+    {
+        slot.enabled.set(enabled);
+        slot.pitch.set(pitch);
+        slot.stiffness.set(stiffness);
+        slot.damping.set(damping);
+        slot.gravity.set(gravity);
+        slot.inertia.set(inertia);
+        slot.simSpeed.set(simSpeed);
+        slot.maxAngle.set(maxAngle);
+        this.config.physBones.sync();
+        this.markDirty(false);
+        this.applySlot(slot);
     }
 
     private void editFloat(float value, FloatEditor editor)
@@ -341,6 +399,7 @@ public class UIModelDynamicBonesSection extends UIModelSection
 
         this.remove.setEnabled(hasSlot);
         this.assignBone.setEnabled(hasSlot && this.selectedBone != null);
+        this.presets.setEnabled(hasSlot);
         this.enabled.setEnabled(hasSlot);
         this.pitch.setEnabled(hasSlot);
         this.stiffness.setEnabled(hasSlot);
@@ -352,6 +411,7 @@ public class UIModelDynamicBonesSection extends UIModelSection
 
         if (!hasSlot)
         {
+            this.presets.setValue(0);
             this.enabled.setValue(false);
             this.pitch.setValue(false);
             this.stiffness.setValue(0);
@@ -403,6 +463,16 @@ public class UIModelDynamicBonesSection extends UIModelSection
 
     private void markDirty()
     {
+        this.markDirty(true);
+    }
+
+    private void markDirty(boolean resetPreset)
+    {
+        if (resetPreset && this.presets.getValue() != 0)
+        {
+            this.presets.setValue(0);
+        }
+
         this.editor.dirty();
         this.editor.renderer.dirty();
     }
