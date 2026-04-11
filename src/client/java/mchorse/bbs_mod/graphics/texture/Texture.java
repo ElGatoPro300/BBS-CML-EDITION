@@ -112,7 +112,9 @@ public class Texture
 
     public void bind(int texture)
     {
-        GL13.glActiveTexture(texture);
+        int unit = texture < GL13.GL_TEXTURE0 ? GL13.GL_TEXTURE0 + texture : texture;
+
+        GL13.glActiveTexture(unit);
         GL11.glBindTexture(this.target, this.id);
     }
 
@@ -123,7 +125,9 @@ public class Texture
 
     public void unbind(int texture)
     {
-        GL13.glActiveTexture(texture);
+        int unit = texture < GL13.GL_TEXTURE0 ? GL13.GL_TEXTURE0 + texture : texture;
+
+        GL13.glActiveTexture(unit);
         GL11.glBindTexture(this.target, 0);
     }
 

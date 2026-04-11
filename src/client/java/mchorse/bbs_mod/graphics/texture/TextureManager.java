@@ -1,6 +1,6 @@
 package mchorse.bbs_mod.graphics.texture;
 
-import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.resources.AssetProvider;
@@ -99,9 +99,12 @@ public class TextureManager implements IWatchDogListener
 
     public void bindTexture(Texture texture, int unit)
     {
-        BBSRendering.trackTexture(texture);
+        Texture resolved = texture == null ? this.getError() : texture;
 
-        /* texture binding handled by render pipeline */
+        BBSRendering.trackTexture(resolved);
+
+        GlStateManager._activeTexture(org.lwjgl.opengl.GL13.GL_TEXTURE0 + unit);
+        GlStateManager._bindTexture(resolved.id);
     }
 
     public void bind(Link texture)

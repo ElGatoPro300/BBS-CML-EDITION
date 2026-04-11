@@ -42,6 +42,8 @@ public class Batcher2D
     private static final Map<String, Identifier> ATLAS_IDS = new HashMap<>();
     private static final Set<String> ATLAS_FAILED = new HashSet<>();
     private static final Map<Integer, Identifier> RAW_TEXTURE_IDS = new HashMap<>();
+    private static boolean DRAW_TEXTURE_SIGNATURES_LOGGED = false;
+    private static boolean CONTEXT_SIGNATURES_LOGGED = false;
     private static FontRenderer fontRenderer = new FontRenderer();
 
     private GuiGraphicsExtractor context;
@@ -58,6 +60,8 @@ public class Batcher2D
     {
         this.context = context;
         this.font = getDefaultTextRenderer();
+
+        this.logContextTextureMethodsOnce();
     }
 
     public GuiGraphicsExtractor getContext()
@@ -448,98 +452,7 @@ public class Batcher2D
             return true;
         }
 
-        int left = Math.round(x);
-        int top = Math.round(y);
-        int width = Math.round(w);
-        int height = Math.round(h);
-        int u = Math.round(u1);
-        int v = Math.round(v1);
-        int regionW = Math.round(u2 - u1);
-        int regionH = Math.round(v2 - v1);
-
-        if (regionW == 0) regionW = u2 >= u1 ? 1 : -1;
-        if (regionH == 0) regionH = v2 >= v1 ? 1 : -1;
-
-        try
-        {
-            this.invokeBest(this.context, "drawTexture",
-                RenderPipelines.GUI_TEXTURED, texture, left, top, (float) u, (float) v, width, height, textureW, textureH, color);
-            return true;
-        }
-        catch (Exception ignored)
-        {
-        }
-
-        try
-        {
-            this.invokeBest(this.context, "drawTexture",
-                RenderPipelines.GUI_TEXTURED, texture, left, top, u, v, width, height, textureW, textureH, color);
-            return true;
-        }
-        catch (Exception ignored)
-        {
-        }
-
-        try
-        {
-            this.invokeBest(this.context, "drawTexture",
-                RenderPipelines.GUI_TEXTURED, texture, left, top, u, v, width, height, regionW, regionH, textureW, textureH);
-            return true;
-        }
-        catch (Exception ignored)
-        {
-        }
-
-        try
-        {
-            this.invokeBest(this.context, "drawTexture",
-                RenderPipelines.GUI_TEXTURED, texture, left, top, (float) u, (float) v, width, height, regionW, regionH, textureW, textureH);
-            return true;
-        }
-        catch (Exception ignored)
-        {
-        }
-
-        try
-        {
-            this.invokeBest(this.context, "drawTexture",
-                texture, left, top, (float) u, (float) v, width, height, textureW, textureH, color);
-            return true;
-        }
-        catch (Exception ignored)
-        {
-        }
-
-        try
-        {
-            this.invokeBest(this.context, "drawTexture",
-                texture, left, top, u, v, width, height, textureW, textureH, color);
-            return true;
-        }
-        catch (Exception ignored)
-        {
-        }
-
-        try
-        {
-            this.invokeBest(this.context, "drawTexture",
-                texture, left, top, u, v, width, height, regionW, regionH, textureW, textureH);
-            return true;
-        }
-        catch (Exception ignored)
-        {
-        }
-
-        try
-        {
-            this.invokeBest(this.context, "drawTexture",
-                texture, left, top, (float) u, (float) v, width, height, regionW, regionH, textureW, textureH);
-            return true;
-        }
-        catch (Exception ignored)
-        {
-            return false;
-        }
+        return false;
     }
 
     /* Repeatable textured box */
@@ -679,6 +592,44 @@ public class Batcher2D
     {
         try
         {
+            Object poseStack = this.context.getClass().getMethod("pose").invoke(this.context);
+            Method last = poseStack.getClass().getMethod("last");
+            Object pose = last.invoke(poseStack);
+
+            try
+            {
+                Method poseMethod = pose.getClass().getMethod("pose");
+                Object matrix = poseMethod.invoke(pose);
+
+                if (matrix instanceof Matrix4f matrix4f)
+                {
+                    return matrix4f;
+                }
+            }
+            catch (Exception ignored)
+            {
+            }
+
+            try
+            {
+                Method getPositionMatrix = pose.getClass().getMethod("getPositionMatrix");
+                Object matrix = getPositionMatrix.invoke(pose);
+
+                if (matrix instanceof Matrix4f matrix4f)
+                {
+                    return matrix4f;
+                }
+            }
+            catch (Exception ignored)
+            {
+            }
+        }
+        catch (Exception ignored)
+        {
+        }
+
+        try
+        {
             Object matrices = this.context.getClass().getMethod("getMatrices").invoke(this.context);
             Method peek = matrices.getClass().getMethod("peek");
             Object entry = peek.invoke(matrices);
@@ -801,8 +752,7 @@ public class Batcher2D
 
         try
         {
-            this.invokeBest(this.context, "drawTexture",
-                RenderPipelines.GUI_TEXTURED, id, left, top, (float) u, (float) v, width, height, textureW, textureH, color);
+            this.invokeBest(this.context, "blit", RenderPipelines.GUI_TEXTURED, id, left, top, (float) u, (float) v, width, height, regionW, regionH, textureW, textureH);
             return true;
         }
         catch (Exception ignored)
@@ -811,8 +761,7 @@ public class Batcher2D
 
         try
         {
-            this.invokeBest(this.context, "drawTexture",
-                RenderPipelines.GUI_TEXTURED, id, left, top, u, v, width, height, textureW, textureH, color);
+            this.invokeBest(this.context, "blit", RenderPipelines.GUI_TEXTURED, id, left, top, (float) u, (float) v, width, height, textureW, textureH);
             return true;
         }
         catch (Exception ignored)
@@ -821,8 +770,7 @@ public class Batcher2D
 
         try
         {
-            this.invokeBest(this.context, "drawTexture",
-                RenderPipelines.GUI_TEXTURED, id, left, top, u, v, width, height, regionW, regionH, textureW, textureH);
+            this.invokeBest(this.context, "blit", RenderPipelines.GUI_TEXTURED, id, left, top, (float) u, (float) v, width, height, regionW, regionH, textureW);
             return true;
         }
         catch (Exception ignored)
@@ -831,13 +779,133 @@ public class Batcher2D
 
         try
         {
-            this.invokeBest(this.context, "drawTexture",
-                RenderPipelines.GUI_TEXTURED, id, left, top, (float) u, (float) v, width, height, regionW, regionH, textureW, textureH);
+            float nu1 = u1 / (float) textureW;
+            float nv1 = v1 / (float) textureH;
+            float nu2 = u2 / (float) textureW;
+            float nv2 = v2 / (float) textureH;
+
+            this.invokeBest(this.context, "blit", id, left, top, width, height, nu1, nv1, nu2, nv2);
             return true;
         }
         catch (Exception ignored)
         {
+        }
+
+        try
+        {
+            this.invokeBest(this.context, "blit", RenderPipelines.GUI_TEXTURED, id, left, top, (float) u, (float) v, width, height, regionW, regionH);
+            return true;
+        }
+        catch (Exception ignored)
+        {
+        }
+
+        try
+        {
+            this.invokeBest(this.context, "blit", RenderPipelines.GUI_TEXTURED, id, left, top, (float) u, (float) v, width, height, regionW, regionH, textureW, textureH, color);
+            return true;
+        }
+        catch (Exception ignored)
+        {
+        }
+
+        try
+        {
+            this.invokeBest(this.context, "blit", RenderPipelines.GUI_TEXTURED, id, left, top, (float) u, (float) v, width, height, textureW, textureH, color);
+            return true;
+        }
+        catch (Exception ignored)
+        {
+            this.logDrawTextureSignaturesOnce();
             return false;
+        }
+    }
+
+    private void logDrawTextureSignaturesOnce()
+    {
+        if (DRAW_TEXTURE_SIGNATURES_LOGGED)
+        {
+            return;
+        }
+
+        DRAW_TEXTURE_SIGNATURES_LOGGED = true;
+
+        try
+        {
+            System.out.println("[BBS][Batcher2D] drawTexture overload resolution failed for " + this.context.getClass().getName());
+
+            for (Method method : this.context.getClass().getMethods())
+            {
+                if (!method.getName().equals("drawTexture"))
+                {
+                    continue;
+                }
+
+                StringBuilder line = new StringBuilder("[BBS][Batcher2D] drawTexture(");
+                Class<?>[] params = method.getParameterTypes();
+
+                for (int i = 0; i < params.length; i++)
+                {
+                    if (i > 0)
+                    {
+                        line.append(", ");
+                    }
+
+                    line.append(params[i].getSimpleName());
+                }
+
+                line.append(")");
+                System.out.println(line);
+            }
+        }
+        catch (Exception ignored)
+        {
+        }
+    }
+
+    private void logContextTextureMethodsOnce()
+    {
+        if (CONTEXT_SIGNATURES_LOGGED)
+        {
+            return;
+        }
+
+        CONTEXT_SIGNATURES_LOGGED = true;
+
+        try
+        {
+            Class<?> clazz = this.context.getClass();
+
+            System.out.println("[BBS][Batcher2D] GUI context class: " + clazz.getName());
+
+            for (Method method : clazz.getMethods())
+            {
+                String name = method.getName();
+
+                if (!(name.contains("Texture") || name.contains("texture") || name.contains("blit") || name.contains("Blit") || name.equals("pose")))
+                {
+                    continue;
+                }
+
+                StringBuilder line = new StringBuilder("[BBS][Batcher2D] ").append(name).append('(');
+                Class<?>[] params = method.getParameterTypes();
+
+                for (int i = 0; i < params.length; i++)
+                {
+                    if (i > 0)
+                    {
+                        line.append(", ");
+                    }
+
+                    line.append(params[i].getSimpleName());
+                }
+
+                line.append(')');
+                System.out.println(line);
+            }
+        }
+        catch (Exception ignored)
+        {
         }
     }
 
@@ -866,6 +934,9 @@ public class Batcher2D
     private Object invokeBest(Object target, String methodName, Object... args) throws Exception
     {
         Method[] methods = target.getClass().getMethods();
+        Method bestMethod = null;
+        Object[] bestArgs = null;
+        int bestScore = Integer.MIN_VALUE;
 
         for (Method method : methods)
         {
@@ -881,41 +952,94 @@ public class Batcher2D
             }
 
             boolean ok = true;
+            Object[] invokeArgs = new Object[args.length];
+            int score = 0;
 
             for (int i = 0; i < params.length; i++)
             {
                 if (args[i] == null)
                 {
+                    invokeArgs[i] = null;
                     continue;
                 }
 
-                Class<?> argClass = args[i].getClass();
-                Class<?> paramClass = params[i];
+                CoerceResult coerced = this.coerceArgument(params[i], args[i]);
 
-                if (paramClass.isPrimitive())
-                {
-                    if ((paramClass == int.class && argClass == Integer.class) ||
-                        (paramClass == float.class && argClass == Float.class) ||
-                        (paramClass == boolean.class && argClass == Boolean.class))
-                    {
-                        continue;
-                    }
-                }
-
-                if (!paramClass.isAssignableFrom(argClass))
+                if (coerced == INVALID_COERCE)
                 {
                     ok = false;
                     break;
                 }
+
+                invokeArgs[i] = coerced.value;
+                score += coerced.score;
             }
 
-            if (ok)
+            if (ok && score > bestScore)
             {
-                return method.invoke(target, args);
+                bestScore = score;
+                bestMethod = method;
+                bestArgs = invokeArgs;
             }
         }
 
+        if (bestMethod != null)
+        {
+            return bestMethod.invoke(target, bestArgs);
+        }
+
         throw new NoSuchMethodException(methodName);
+    }
+
+    private static final CoerceResult INVALID_COERCE = new CoerceResult(null, Integer.MIN_VALUE);
+
+    private static class CoerceResult
+    {
+        public final Object value;
+        public final int score;
+
+        public CoerceResult(Object value, int score)
+        {
+            this.value = value;
+            this.score = score;
+        }
+    }
+
+    private CoerceResult coerceArgument(Class<?> paramClass, Object arg)
+    {
+        Class<?> argClass = arg.getClass();
+
+        if (paramClass == argClass)
+        {
+            return new CoerceResult(arg, 100);
+        }
+
+        if (paramClass.isAssignableFrom(argClass))
+        {
+            return new CoerceResult(arg, 80);
+        }
+
+        if (arg instanceof Number number)
+        {
+            if (paramClass == int.class || paramClass == Integer.class) return new CoerceResult(number.intValue(), 60);
+            if (paramClass == float.class || paramClass == Float.class) return new CoerceResult(number.floatValue(), 60);
+            if (paramClass == double.class || paramClass == Double.class) return new CoerceResult(number.doubleValue(), 60);
+            if (paramClass == long.class || paramClass == Long.class) return new CoerceResult(number.longValue(), 60);
+            if (paramClass == short.class || paramClass == Short.class) return new CoerceResult(number.shortValue(), 60);
+            if (paramClass == byte.class || paramClass == Byte.class) return new CoerceResult(number.byteValue(), 60);
+        }
+
+        if ((paramClass == boolean.class || paramClass == Boolean.class) && arg instanceof Boolean)
+        {
+            return new CoerceResult(arg, 70);
+        }
+
+        if ((paramClass == char.class || paramClass == Character.class) && arg instanceof Character)
+        {
+            return new CoerceResult(arg, 70);
+        }
+
+        return INVALID_COERCE;
     }
 
     private static class RawGlTexture extends AbstractTexture
