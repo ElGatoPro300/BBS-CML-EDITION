@@ -560,6 +560,14 @@ public class UIReplaysEditor extends UIElement
 
         if (colon != -1)
         {
+            String propertyPath = key.substring(0, colon);
+            String propertyName = StringUtils.fileName(propertyPath);
+
+            if (propertyName.equals("pose") || propertyName.startsWith("pose_overlay"))
+            {
+                return getPoseBoneColor(key.substring(colon + 1), propertyName.startsWith("pose_overlay"));
+            }
+
             return 0xff3333;
         }
 
@@ -569,6 +577,17 @@ public class UIReplaysEditor extends UIElement
         if (topLevel.startsWith("transform_overlay")) return COLORS.get("transform_overlay");
 
         return COLORS.getOrDefault(topLevel, Colors.ACTIVE);
+    }
+
+    private static int getPoseBoneColor(String boneName, boolean overlay)
+    {
+        int hash = Integer.rotateLeft(boneName.hashCode(), 13) ^ boneName.hashCode();
+        float hue = (hash & 0xffff) / 65535F;
+        float saturation = overlay ? 0.52F : 0.72F;
+        float brightness = overlay ? 0.95F : 0.9F;
+        int rgb = java.awt.Color.HSBtoRGB(hue, saturation, brightness) & 0x00ffffff;
+
+        return 0xff000000 | rgb;
     }
 
     public static void offerAdjacent(UIContext context, Form form, String bone, Consumer<String> consumer)

@@ -40,6 +40,7 @@ import java.util.List;
 public class UIKeyframeDopeSheet implements IUIKeyframeGraph
 {
     private static final int LEVEL_INDENT = 8;
+    private static final int TRACK_LINE_HALF_HEIGHT = 1;
 
     private UIKeyframes keyframes;
 
@@ -752,7 +753,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
                 startX += SIDEBAR_WIDTH;
             }
 
-            context.batcher.fillRect(builder, matrix, startX, my - 2, endX - startX, 4, cc, cc, cc, cc);
+            context.batcher.fillRect(builder, matrix, startX, my - TRACK_LINE_HALF_HEIGHT, endX - startX, TRACK_LINE_HALF_HEIGHT * 2, cc, cc, cc, cc);
 
             if (sheet.separator)
             {
@@ -787,7 +788,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
                 {
                     if (xxx > xx)
                     {
-                        context.batcher.fillRect(builder, matrix, xx, my - 2, xxx - xx, 4, c, c, c, c);
+                        context.batcher.fillRect(builder, matrix, xx, my - TRACK_LINE_HALF_HEIGHT, xxx - xx, TRACK_LINE_HALF_HEIGHT * 2, c, c, c, c);
                     }
                 }
 
@@ -897,13 +898,13 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
 
             int totalWidth = iconWidth + lw + 10;
 
-            int c1 = Colors.setA(sheet.color, hover ? 0.55F : 0.3F);
-            int c2 = sheet.color & 0x00ffffff;
+            int c1 = hover ? Colors.setA(sheet.color, 0.66F) : 0x00000000;
+            int c2 = hover ? Colors.setA(sheet.color, 0.24F) : 0x00000000;
 
             if (BBSSettings.simplifiedKeyframeUI.get())
             {
-                c1 = hover ? 0x44000000 : 0x00000000;
-                c2 = 0;
+                c1 = hover ? Colors.setA(sheet.color, 0.58F) : 0x00000000;
+                c2 = hover ? Colors.setA(sheet.color, 0.18F) : 0x00000000;
 
                 context.batcher.box(area.x, y, area.x + 2, y + (int) this.trackHeight, sheet.color | Colors.A100);
             }
