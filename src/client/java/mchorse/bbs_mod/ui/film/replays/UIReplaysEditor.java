@@ -34,6 +34,7 @@ import mchorse.bbs_mod.math.molang.expressions.MolangExpression;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.settings.values.base.BaseValueBasic;
+import mchorse.bbs_mod.settings.values.IValueListener;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.UIClipsPanel;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
@@ -1892,7 +1893,7 @@ public class UIReplaysEditor extends UIElement
 
     private void convertToLimbs(UIKeyframeSheet sheet)
     {
-        List<Keyframe> selected = sheet.selection.getSelected();
+        List<Keyframe> selected = new ArrayList<>(sheet.selection.getSelected());
 
         if (selected.isEmpty())
         {
@@ -1906,8 +1907,10 @@ public class UIReplaysEditor extends UIElement
             return;
         }
 
-        BaseValue.edit(this.replay, (r) ->
+        BaseValue.edit(this.replay, IValueListener.FLAG_UNMERGEABLE, (r) ->
         {
+            Set<Float> convertedTicks = new HashSet<>();
+
             for (Keyframe kf : selected)
             {
                 Pose pose = (Pose) kf.getValue();
@@ -1916,6 +1919,8 @@ public class UIReplaysEditor extends UIElement
                 {
                     continue;
                 }
+
+                convertedTicks.add(kf.getTick());
 
                 for (Map.Entry<String, PoseTransform> entry : pose.transforms.entrySet())
                 {
@@ -1933,10 +1938,34 @@ public class UIReplaysEditor extends UIElement
                         newKf.copyOverExtra(kf);
                     }
                 }
-
-                sheet.channel.remove(kf);
             }
+
+            if (!convertedTicks.isEmpty())
+            {
+                for (int i = sheet.channel.getList().size() - 1; i >= 0; i--)
+                {
+                    Keyframe existing = (Keyframe) sheet.channel.getList().get(i);
+
+                    for (Float tick : convertedTicks)
+                    {
+                        if (Math.abs(existing.getTick() - tick) < 0.0001F)
+                        {
+                            sheet.channel.remove(i);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            this.replay.properties.cleanUp();
         });
+
+        this.replay.properties.resetProperties(this.replay.form.get());
+
+        if (this.filmPanel.getUndoHandler() != null)
+        {
+            this.filmPanel.getUndoHandler().submitUndo();
+        }
 
         this.updateChannelsList();
     }
