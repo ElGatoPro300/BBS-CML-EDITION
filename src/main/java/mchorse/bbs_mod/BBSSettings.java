@@ -132,17 +132,11 @@ public class BBSSettings
     public static ValueInt audioWaveformHeight;
     public static ValueBoolean audioWaveformFilename;
     public static ValueBoolean audioWaveformTime;
-    /* Pose track bone anchoring */
-    public static ValueBoolean boneAnchoringEnabled;
-    public static ValueBoolean anchorOverrideEnabled;
     public static ValueBoolean autoKeyframe;
     public static ValueBoolean poseBonesFilterMarked;
     public static ValueBoolean replayMarkedBonesOnly;
     public static ValueBoolean pickLimbTexture;
     public static ValueBoolean fluidRealisticModelInteraction;
-    public static ValueBoolean limbTracks;
-    public static ValueBoolean originalKeyframeUI;
-    public static ValueBoolean simplifiedKeyframeUI;
 
     public static ValueLink textureDefaultPath;
 

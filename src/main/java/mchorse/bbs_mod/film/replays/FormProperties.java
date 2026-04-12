@@ -12,6 +12,7 @@ import mchorse.bbs_mod.settings.values.core.ValueGroup;
 import mchorse.bbs_mod.settings.values.core.ValuePose;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.interps.Interpolations;
+import mchorse.bbs_mod.utils.interps.Lerps;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 import mchorse.bbs_mod.utils.keyframes.KeyframeSegment;
@@ -20,6 +21,7 @@ import mchorse.bbs_mod.utils.keyframes.factories.KeyframeFactories;
 import mchorse.bbs_mod.utils.pose.Pose;
 import mchorse.bbs_mod.utils.pose.PoseTransform;
 import mchorse.bbs_mod.utils.pose.Transform;
+import mchorse.bbs_mod.utils.resources.LinkUtils;
 
 import java.util.HashMap;
 import java.util.Iterator;
@@ -165,6 +167,47 @@ public class FormProperties extends ValueGroup
                         poseTransform.scale.mul(transform.scale);
                         poseTransform.rotate.add(transform.rotate);
                         poseTransform.rotate2.add(transform.rotate2);
+                    }
+
+                    PoseTransform sourcePose = null;
+
+                    if (transform instanceof PoseTransform transformPose)
+                    {
+                        sourcePose = transformPose;
+                    }
+                    else
+                    {
+                        Object closestValue = segment.getClosest().getValue();
+
+                        if (closestValue instanceof PoseTransform closestPose)
+                        {
+                            sourcePose = closestPose;
+                        }
+                    }
+
+                    if (sourcePose != null)
+                    {
+                        if (blend < 1F)
+                        {
+                            poseTransform.fix = Lerps.lerp(poseTransform.fix, sourcePose.fix, blend);
+                            poseTransform.color.r = Lerps.lerp(poseTransform.color.r, sourcePose.color.r, blend);
+                            poseTransform.color.g = Lerps.lerp(poseTransform.color.g, sourcePose.color.g, blend);
+                            poseTransform.color.b = Lerps.lerp(poseTransform.color.b, sourcePose.color.b, blend);
+                            poseTransform.color.a = Lerps.lerp(poseTransform.color.a, sourcePose.color.a, blend);
+                            poseTransform.lighting = Lerps.lerp(poseTransform.lighting, sourcePose.lighting, blend);
+
+                            if (sourcePose.texture != null && blend >= 0.5F)
+                            {
+                                poseTransform.texture = LinkUtils.copy(sourcePose.texture);
+                            }
+                        }
+                        else
+                        {
+                            poseTransform.fix = sourcePose.fix;
+                            poseTransform.color.copy(sourcePose.color);
+                            poseTransform.lighting = sourcePose.lighting;
+                            poseTransform.texture = LinkUtils.copy(sourcePose.texture);
+                        }
                     }
                 }
 
