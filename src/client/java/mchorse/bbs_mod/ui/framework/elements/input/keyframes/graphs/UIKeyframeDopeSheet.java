@@ -827,8 +827,11 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
                     isPointHover = isPointHover || this.keyframes.getGrabbingArea(context).isInside(x1, my);
                 }
 
-                int kc = frame.getColor() != null ? frame.getColor().getRGBColor() | Colors.A100 : sheet.color;
-                int c = (sheet.selection.has(j) || isPointHover ? Colors.WHITE : kc) | Colors.A100;
+                boolean provisional = frame.getColor() != null && frame.getColor().a < 0.99F;
+                int kc = frame.getColor() != null ? frame.getColor().getARGBColor() : (sheet.color | Colors.A100);
+                int c = sheet.selection.has(j) || isPointHover
+                    ? (provisional ? Colors.setA(Colors.WHITE, frame.getColor().a) : Colors.WHITE)
+                    : kc;
 
                 if (toRemove)
                 {

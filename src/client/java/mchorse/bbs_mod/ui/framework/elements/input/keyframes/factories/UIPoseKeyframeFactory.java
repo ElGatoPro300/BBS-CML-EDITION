@@ -265,7 +265,7 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
 
         private void checkAutoKeyframe()
         {
-            if (BBSSettings.autoKeyframe.get())
+            if (BBSSettings.realtimeKeyframes.get())
             {
                 mchorse.bbs_mod.ui.film.UIFilmPanel filmPanel = this.editor.getParent(mchorse.bbs_mod.ui.film.UIFilmPanel.class);
 

@@ -127,7 +127,8 @@ public class BBSSettings
     public static ValueInt audioWaveformHeight;
     public static ValueBoolean audioWaveformFilename;
     public static ValueBoolean audioWaveformTime;
-    public static ValueBoolean autoKeyframe;
+    public static ValueBoolean realtimeKeyframes;
+    public static ValueBoolean autoKeyframes;
     public static ValueBoolean poseBonesFilterMarked;
     public static ValueBoolean replayMarkedBonesOnly;
     public static ValueBoolean pickLimbTexture;

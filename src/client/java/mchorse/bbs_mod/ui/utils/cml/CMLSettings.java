@@ -92,7 +92,8 @@ public class CMLSettings
         BBSSettings.modelBlockCategoriesPanelEnabled = builder.getBoolean("categories_panel_enabled", false);
         BBSSettings.modelPbrPanelControls = builder.getBoolean("model_pbr_panel_controls", false);
         builder.category("pose_track_selection");
-        BBSSettings.autoKeyframe = builder.getBoolean("auto_keyframe", false);
+        BBSSettings.realtimeKeyframes = builder.getBoolean("realtime_keyframes", false);
+        BBSSettings.autoKeyframes = builder.getBoolean("auto_keyframes", true);
         BBSSettings.poseBonesFilterMarked = builder.getBoolean("pose_bones_filter_marked", false);
         BBSSettings.poseBonesFilterMarked.invisible();
         BBSSettings.replayMarkedBonesOnly = builder.getBoolean("replay_marked_bones_only", false);
