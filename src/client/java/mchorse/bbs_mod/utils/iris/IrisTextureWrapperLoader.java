@@ -11,6 +11,27 @@ public class IrisTextureWrapperLoader
 
     public Link createPrefixedCopy(Link link, String suffix)
     {
+        if (this.defaultSpecularTexture == null)
+        {
+            this.defaultNormalTexture = new NativeImageBackedSingleColorTexture(PBRType.NORMAL.getDefaultValue());
+            this.defaultSpecularTexture = new NativeImageBackedSingleColorTexture(PBRType.SPECULAR.getDefaultValue());
+        }
+
+        if (abstractTexture instanceof IrisTextureWrapper wrapper)
+        {
+            Link key = wrapper.texture;
+            Link normalKey = this.createPrefixedCopy(key, "_n.png");
+            Link specularKey = this.createPrefixedCopy(key, "_s.png");
+
+            pbrTextureConsumer.acceptNormalTexture(new IrisTextureWrapper(normalKey, this.defaultNormalTexture, wrapper.index, wrapper.normalIntensity, wrapper.specularIntensity, IrisTextureWrapper.PBRMapType.NORMAL));
+            pbrTextureConsumer.acceptSpecularTexture(new IrisTextureWrapper(specularKey, this.defaultSpecularTexture, wrapper.index, wrapper.normalIntensity, wrapper.specularIntensity, IrisTextureWrapper.PBRMapType.SPECULAR));
+        }
+    }
+
+    private Link createPrefixedCopy(Link link, String suffix)
+    {
+        /* If given texture is a multi-link, then let's copy it and replace any of the normal
+         * textures with appropriate suffixes */
         if (link instanceof MultiLink multiLink)
         {
             MultiLink newMultiLink = (MultiLink) multiLink.copy();
@@ -26,6 +47,15 @@ public class IrisTextureWrapperLoader
             return newMultiLink;
         }
 
-        return new Link(link.source, StringUtils.removeExtension(link.path) + suffix);
+        String basePath = StringUtils.removeExtension(link.path);
+
+        /* If users pick an already suffixed texture (e.g. *_s.png), normalize it to
+         * the albedo base name first so generated companions become *_n.png and *_s.png. */
+        if (basePath.endsWith("_n") || basePath.endsWith("_s"))
+        {
+            basePath = basePath.substring(0, basePath.length() - 2);
+        }
+
+        return new Link(link.source, basePath + suffix);
     }
 }
