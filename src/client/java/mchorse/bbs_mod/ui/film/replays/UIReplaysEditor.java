@@ -658,17 +658,12 @@ public class UIReplaysEditor extends UIElement
     {
         Scale scale = keyframes.getXAxis();
         boolean renderedOnce = false;
-        boolean simplified = BBSSettings.simplifiedKeyframeUI.get();
+        Area area = new Area();
+        area.copy(keyframes.area);
+        area.x += IUIKeyframeGraph.SIDEBAR_WIDTH;
+        area.w -= IUIKeyframeGraph.SIDEBAR_WIDTH;
 
-        if (simplified)
-        {
-            Area area = new Area();
-            area.copy(keyframes.area);
-            area.x += IUIKeyframeGraph.SIDEBAR_WIDTH;
-            area.w -= IUIKeyframeGraph.SIDEBAR_WIDTH;
-
-            context.batcher.clip(area, context);
-        }
+        context.batcher.clip(area, context);
 
         /* First pass: Render selected clip background */
         for (Clip clip : camera.get())
@@ -743,10 +738,7 @@ public class UIReplaysEditor extends UIElement
             }
         }
 
-        if (simplified)
-        {
-            context.batcher.unclip(context);
-        }
+        context.batcher.unclip(context);
 
         return renderedOnce;
     }
@@ -875,7 +867,6 @@ public class UIReplaysEditor extends UIElement
                 KeyframeChannel channel = (KeyframeChannel) value;
 
                 String customTitle = this.replay.getCustomSheetTitle(key);
-                String anchoredBone = this.replay.getAnchoredBone(key);
                 Integer customColor = this.replay.getSheetColor(key);
                 int baseColor = getColor(key);
                 int sheetColor = customColor != null ? customColor : baseColor;
@@ -883,11 +874,6 @@ public class UIReplaysEditor extends UIElement
                 UIKeyframeSheet sheet = customTitle != null && !customTitle.isEmpty()
                     ? new UIKeyframeSheet(key, IKey.constant(customTitle), sheetColor, false, channel, null)
                     : new UIKeyframeSheet(sheetColor, false, channel, null);
-
-                if (anchoredBone != null && !anchoredBone.isEmpty())
-                {
-                    sheet.anchoredBone = anchoredBone;
-                }
 
                 sheets.add(sheet.icon(ICONS.get(key)));
             }
@@ -902,10 +888,7 @@ public class UIReplaysEditor extends UIElement
                 }
             }
 
-            if (BBSSettings.limbTracks.get())
-            {
-                this.collectLimbTracks(this.replay.form.get(), propertyPaths);
-            }
+            this.collectLimbTracks(this.replay.form.get(), propertyPaths);
 
             for (String key : propertyPaths)
             {
@@ -920,7 +903,6 @@ public class UIReplaysEditor extends UIElement
                 {
                     BaseValueBasic formProperty = FormUtils.getProperty(this.replay.form.get(), key);
                     String customTitle = this.replay.getCustomSheetTitle(key);
-                    String anchoredBone = this.replay.getAnchoredBone(key);
                     Integer customColor = this.replay.getSheetColor(key);
                     int baseColor = getColor(key);
                     int sheetColor = customColor != null ? customColor : baseColor;
@@ -949,11 +931,6 @@ public class UIReplaysEditor extends UIElement
                     UIKeyframeSheet sheet = customTitle != null && !customTitle.isEmpty()
                         ? new UIKeyframeSheet(key, IKey.constant(customTitle), sheetColor, false, property, formProperty)
                         : new UIKeyframeSheet(key, IKey.constant(title), sheetColor, false, property, formProperty);
-
-                    if (anchoredBone != null && !anchoredBone.isEmpty())
-                    {
-                        sheet.anchoredBone = anchoredBone;
-                    }
 
                     sheets.add(sheet.icon(getIcon(key)));
                 }
@@ -1065,7 +1042,9 @@ public class UIReplaysEditor extends UIElement
         List<UIKeyframeSheet> grouped = new ArrayList<>();
         Set<String> addedGroups = new HashSet<>();
 
-        if (BBSSettings.originalKeyframeUI.get() && !this.replay.isGroup.get())
+        final boolean legacyOriginalLayout = false;
+
+        if (legacyOriginalLayout && !this.replay.isGroup.get())
         {
             Form formObj = this.replay.form.get();
 
@@ -1582,17 +1561,12 @@ public class UIReplaysEditor extends UIElement
             String parentId = sheet.id.substring(0, colon);
             String parentKey = this.replay.uuid.get() + ":" + parentId;
 
-            if (!BBSSettings.originalKeyframeUI.get() && this.collapsedModelTracks.getOrDefault(parentKey, true))
+            if (this.collapsedModelTracks.getOrDefault(parentKey, true))
             {
                 return;
             }
 
             sheet.level += 1;
-
-            if (BBSSettings.originalKeyframeUI.get())
-            {
-                sheet.title = IKey.constant(sheet.id.substring(colon + 1));
-            }
 
             if (parentId.startsWith("pose_overlay"))
             {
@@ -2145,18 +2119,6 @@ public class UIReplaysEditor extends UIElement
         }
 
         /* Redirección al sheet anclado si el hueso seleccionado está anclado y no hay override */
-        if (bone != null && !bone.isEmpty() && BBSSettings.boneAnchoringEnabled.get() && !BBSSettings.anchorOverrideEnabled.get())
-        {
-            for (UIKeyframeSheet s : this.keyframeEditor.view.getGraph().getSheets())
-            {
-                if (s.anchoredBone != null && s.anchoredBone.equals(bone))
-                {
-                    this.pickProperty(bone, s, insert);
-                    return;
-                }
-            }
-        }
-
         /* Redirección a la pista de limb track si existe */
         if (bone != null && !bone.isEmpty())
         {
@@ -2218,15 +2180,7 @@ public class UIReplaysEditor extends UIElement
 
             if (this.keyframeEditor.editor instanceof UIPoseKeyframeFactory poseFactory)
             {
-                String targetBone = bone;
-
-                if (BBSSettings.boneAnchoringEnabled.get() && sheet.anchoredBone != null)
-                {
-                    /* Redirigir siempre al hueso anclado cuando la pista está anclada */
-                    targetBone = sheet.anchoredBone;
-                }
-
-                poseFactory.poseEditor.selectBone(targetBone);
+                poseFactory.poseEditor.selectBone(bone);
             }
 
             this.filmPanel.setCursor((int) closest.getTick());

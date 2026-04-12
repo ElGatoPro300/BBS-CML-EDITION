@@ -117,19 +117,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
             return sheet.title.get();
         }
 
-        String baseTitle = sheet.title.get();
-
-        if (sheet.anchoredBone != null)
-        {
-            String anchored = sheet.anchoredBone;
-
-            if (baseTitle.isEmpty() || baseTitle.equals(sheet.id) || baseTitle.equals(anchored))
-            {
-                return anchored;
-            }
-        }
-
-        return baseTitle;
+        return sheet.title.get();
     }
 
     /* Graphing */
@@ -533,7 +521,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
                 break;
             }
 
-            if (BBSSettings.simplifiedKeyframeUI.get() && x < area.x + SIDEBAR_WIDTH)
+            if (x < area.x + SIDEBAR_WIDTH)
             {
                 continue;
             }
@@ -748,10 +736,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
             int startX = area.x;
             int endX = area.ex();
 
-            if (BBSSettings.simplifiedKeyframeUI.get())
-            {
-                startX += SIDEBAR_WIDTH;
-            }
+            startX += SIDEBAR_WIDTH;
 
             context.batcher.fillRect(builder, matrix, startX, my - TRACK_LINE_HALF_HEIGHT, endX - startX, TRACK_LINE_HALF_HEIGHT * 2, cc, cc, cc, cc);
 
@@ -760,10 +745,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
                 int c = Colors.setA(sheet.color, 0F);
                 int sepStartX = area.x;
 
-                if (BBSSettings.simplifiedKeyframeUI.get())
-                {
-                    sepStartX += SIDEBAR_WIDTH;
-                }
+                sepStartX += SIDEBAR_WIDTH;
 
                 /* Render separator */
                 context.batcher.fillRect(builder, matrix, sepStartX, y, endX - sepStartX, (int) this.trackHeight, c | Colors.A25, c | Colors.A25, c, c);
@@ -778,11 +760,8 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
                 int xx = this.keyframes.toGraphX(previous.getTick());
                 int xxx = this.keyframes.toGraphX(frame.getTick());
 
-                if (BBSSettings.simplifiedKeyframeUI.get())
-                {
-                    xx = Math.max(xx, area.x + SIDEBAR_WIDTH);
-                    xxx = Math.max(xxx, area.x + SIDEBAR_WIDTH);
-                }
+                xx = Math.max(xx, area.x + SIDEBAR_WIDTH);
+                xxx = Math.max(xxx, area.x + SIDEBAR_WIDTH);
 
                 if (previous.getFactory().compare(previous.getValue(), frame.getValue()))
                 {
@@ -819,11 +798,8 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
                     int rx1 = x1;
                     int rx2 = x2;
 
-                    if (BBSSettings.simplifiedKeyframeUI.get())
-                    {
-                        rx1 = Math.max(x1, area.x + SIDEBAR_WIDTH);
-                        rx2 = Math.max(x2, area.x + SIDEBAR_WIDTH);
-                    }
+                    rx1 = Math.max(x1, area.x + SIDEBAR_WIDTH);
+                    rx2 = Math.max(x2, area.x + SIDEBAR_WIDTH);
 
                     if (rx2 > rx1)
                     {
@@ -838,7 +814,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
                     forcedIndex += 1;
                 }
 
-                if (BBSSettings.simplifiedKeyframeUI.get() && x1 < area.x + SIDEBAR_WIDTH)
+                if (x1 < area.x + SIDEBAR_WIDTH)
                 {
                     continue;
                 }
@@ -870,7 +846,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
                 Keyframe frame = (Keyframe) keyframes.get(j);
                 int mx = this.keyframes.toGraphX(frame.getTick());
 
-                if (BBSSettings.simplifiedKeyframeUI.get() && mx < area.x + SIDEBAR_WIDTH)
+                if (mx < area.x + SIDEBAR_WIDTH)
                 {
                     continue;
                 }
@@ -901,13 +877,10 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
             int c1 = hover ? Colors.setA(sheet.color, 0.66F) : 0x00000000;
             int c2 = hover ? Colors.setA(sheet.color, 0.24F) : 0x00000000;
 
-            if (BBSSettings.simplifiedKeyframeUI.get())
-            {
-                c1 = hover ? Colors.setA(sheet.color, 0.58F) : 0x00000000;
-                c2 = hover ? Colors.setA(sheet.color, 0.18F) : 0x00000000;
+            c1 = hover ? Colors.setA(sheet.color, 0.58F) : 0x00000000;
+            c2 = hover ? Colors.setA(sheet.color, 0.18F) : 0x00000000;
 
-                context.batcher.box(area.x, y, area.x + 2, y + (int) this.trackHeight, sheet.color | Colors.A100);
-            }
+            context.batcher.box(area.x, y, area.x + 2, y + (int) this.trackHeight, sheet.color | Colors.A100);
 
             context.batcher.gradientHBox(area.x, y, area.x + SIDEBAR_WIDTH, y + (int) this.trackHeight, c1, c2);
 
