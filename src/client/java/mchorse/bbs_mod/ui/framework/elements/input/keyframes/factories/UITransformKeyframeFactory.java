@@ -17,6 +17,8 @@ import mchorse.bbs_mod.utils.pose.PoseTransform;
 import mchorse.bbs_mod.utils.pose.Transform;
 import org.joml.Vector3d;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.function.Consumer;
 
 public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
@@ -126,29 +128,28 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
             this.editor = editor;
         }
 
-        public static void apply(UIKeyframes editor, Keyframe keyframe, Consumer<Transform> consumer)
+        private Transform getReferenceTransform()
         {
-            for (UIKeyframeSheet sheet : editor.getGraph().getSheets())
-            {
-                if (sheet.channel.getFactory() != keyframe.getFactory())
-                {
-                    continue;
-                }
+            Transform active = this.editor.keyframe.getValue();
 
-                for (Keyframe kf : sheet.selection.getSelected())
-                {
-                    if (kf.getValue() instanceof Transform transform)
-                    {
-                        kf.preNotify();
-                        consumer.accept(transform);
-                        kf.postNotify();
-                    }
-                }
+            if (active != null && active != this.getTransform())
+            {
+                this.setTransform(active);
             }
+
+            return this.getTransform();
         }
 
-        public static void applyPoseTransform(UIKeyframes editor, Keyframe keyframe, Consumer<PoseTransform> consumer)
+        private static void forEachEditableKeyframe(UIKeyframes editor, Keyframe keyframe, Consumer<Keyframe> consumer)
         {
+            Set<Keyframe> processed = new HashSet<>();
+
+            if (keyframe != null)
+            {
+                processed.add(keyframe);
+                consumer.accept(keyframe);
+            }
+
             for (UIKeyframeSheet sheet : editor.getGraph().getSheets())
             {
                 if (sheet.channel.getFactory() != keyframe.getFactory())
@@ -158,29 +159,55 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
 
                 for (Keyframe kf : sheet.selection.getSelected())
                 {
-                    Object value = kf.getValue();
-                    PoseTransform poseTransform;
-
-                    if (value instanceof PoseTransform p)
-                    {
-                        poseTransform = p;
-                    }
-                    else if (value instanceof Transform transform)
-                    {
-                        poseTransform = new PoseTransform();
-                        poseTransform.copy(transform);
-                        kf.setValue(poseTransform, false);
-                    }
-                    else
+                    if (!processed.add(kf))
                     {
                         continue;
                     }
 
-                    kf.preNotify();
-                    consumer.accept(poseTransform);
-                    kf.postNotify();
+                    consumer.accept(kf);
                 }
             }
+        }
+
+        public static void apply(UIKeyframes editor, Keyframe keyframe, Consumer<Transform> consumer)
+        {
+            forEachEditableKeyframe(editor, keyframe, (kf) ->
+            {
+                if (kf.getValue() instanceof Transform transform)
+                {
+                    kf.preNotify();
+                    consumer.accept(transform);
+                    kf.postNotify();
+                }
+            });
+        }
+
+        public static void applyPoseTransform(UIKeyframes editor, Keyframe keyframe, Consumer<PoseTransform> consumer)
+        {
+            forEachEditableKeyframe(editor, keyframe, (kf) ->
+            {
+                Object value = kf.getValue();
+                PoseTransform poseTransform;
+
+                if (value instanceof PoseTransform p)
+                {
+                    poseTransform = p;
+                }
+                else if (value instanceof Transform transform)
+                {
+                    poseTransform = new PoseTransform();
+                    poseTransform.copy(transform);
+                    kf.setValue(poseTransform, false);
+                }
+                else
+                {
+                    return;
+                }
+
+                kf.preNotify();
+                consumer.accept(poseTransform);
+                kf.postNotify();
+            });
         }
 
         @Override
@@ -221,7 +248,7 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
         @Override
         public void setT(Axis axis, double x, double y, double z)
         {
-            Transform transform = this.getTransform();
+            Transform transform = this.getReferenceTransform();
             float dx = (float) (x - transform.translate.x);
             float dy = (float) (y - transform.translate.y);
             float dz = (float) (z - transform.translate.z);
@@ -237,7 +264,7 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
         @Override
         public void setS(Axis axis, double x, double y, double z)
         {
-            Transform transform = this.getTransform();
+            Transform transform = this.getReferenceTransform();
             float dx = (float) (x - transform.scale.x);
             float dy = (float) (y - transform.scale.y);
             float dz = (float) (z - transform.scale.z);
@@ -253,7 +280,7 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
         @Override
         public void setR(Axis axis, double x, double y, double z)
         {
-            Transform transform = this.getTransform();
+            Transform transform = this.getReferenceTransform();
             float dx = MathUtils.toRad((float) x) - transform.rotate.x;
             float dy = MathUtils.toRad((float) y) - transform.rotate.y;
             float dz = MathUtils.toRad((float) z) - transform.rotate.z;
@@ -269,7 +296,7 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
         @Override
         public void setR2(Axis axis, double x, double y, double z)
         {
-            Transform transform = this.getTransform();
+            Transform transform = this.getReferenceTransform();
             float dx = MathUtils.toRad((float) x) - transform.rotate2.x;
             float dy = MathUtils.toRad((float) y) - transform.rotate2.y;
             float dz = MathUtils.toRad((float) z) - transform.rotate2.z;
@@ -285,7 +312,7 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
         @Override
         public void setP(Axis axis, double x, double y, double z)
         {
-            Transform transform = this.getTransform();
+            Transform transform = this.getReferenceTransform();
             float dx = (float) x - transform.pivot.x;
             float dy = (float) y - transform.pivot.y;
             float dz = (float) z - transform.pivot.z;
