@@ -11,25 +11,6 @@ public class IrisTextureWrapperLoader
 
     public Link createPrefixedCopy(Link link, String suffix)
     {
-        if (this.defaultSpecularTexture == null)
-        {
-            this.defaultNormalTexture = new NativeImageBackedSingleColorTexture(PBRType.NORMAL.getDefaultValue());
-            this.defaultSpecularTexture = new NativeImageBackedSingleColorTexture(PBRType.SPECULAR.getDefaultValue());
-        }
-
-        if (abstractTexture instanceof IrisTextureWrapper wrapper)
-        {
-            Link key = wrapper.texture;
-            Link normalKey = this.createPrefixedCopy(key, "_n.png");
-            Link specularKey = this.createPrefixedCopy(key, "_s.png");
-
-            pbrTextureConsumer.acceptNormalTexture(new IrisTextureWrapper(normalKey, this.defaultNormalTexture, wrapper.index, wrapper.normalIntensity, wrapper.specularIntensity, IrisTextureWrapper.PBRMapType.NORMAL));
-            pbrTextureConsumer.acceptSpecularTexture(new IrisTextureWrapper(specularKey, this.defaultSpecularTexture, wrapper.index, wrapper.normalIntensity, wrapper.specularIntensity, IrisTextureWrapper.PBRMapType.SPECULAR));
-        }
-    }
-
-    private Link createPrefixedCopy(Link link, String suffix)
-    {
         /* If given texture is a multi-link, then let's copy it and replace any of the normal
          * textures with appropriate suffixes */
         if (link instanceof MultiLink multiLink)

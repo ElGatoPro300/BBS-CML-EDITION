@@ -290,8 +290,8 @@ public class IrisUtils
                             Link normalKey = helper.createPrefixedCopy(wrapper.texture, "_n.png");
                             Link specularKey = helper.createPrefixedCopy(wrapper.texture, "_s.png");
 
-                            IrisTextureWrapper normalWrapper = new IrisTextureWrapper(normalKey, (AbstractTexture) defaults[0], wrapper.index);
-                            IrisTextureWrapper specWrapper = new IrisTextureWrapper(specularKey, (AbstractTexture) defaults[1], wrapper.index);
+                            IrisTextureWrapper normalWrapper = new IrisTextureWrapper(normalKey, (AbstractTexture) defaults[0], wrapper.index, wrapper.normalIntensity, wrapper.specularIntensity, IrisTextureWrapper.PBRMapType.NORMAL);
+                            IrisTextureWrapper specWrapper = new IrisTextureWrapper(specularKey, (AbstractTexture) defaults[1], wrapper.index, wrapper.normalIntensity, wrapper.specularIntensity, IrisTextureWrapper.PBRMapType.SPECULAR);
 
                             if (acceptNormal != null) acceptNormal.invoke(consumer, normalWrapper);
                             if (acceptSpecular != null) acceptSpecular.invoke(consumer, specWrapper);
@@ -342,6 +342,15 @@ public class IrisUtils
                     index = texture.getParent().textures.indexOf(texture);
                 }
 
+                PBRIntensity tracked = trackedPBRIntensities.get(texture.id);
+
+                if (textureSet.contains(texture) && tracked != null && tracked.sameAs(current))
+                {
+                    textureSet.add(texture);
+
+                    return;
+                }
+
                 try
                 {
                     Class<?> trackerClass;
@@ -389,21 +398,15 @@ public class IrisUtils
 
                     if (trackMethod != null)
                     {
-                        trackMethod.invoke(tracker, texture.id, new IrisTextureWrapper(key, index));
+                        trackMethod.invoke(tracker, texture.id, new IrisTextureWrapper(key, index, current.normal, current.specular));
                     }
                 }
                 catch (Throwable t)
                 {
                     System.err.println("[BBS] TextureTracker not available or changed; skipping tracking: " + t);
                 }
-                
-                PBRIntensity tracked = trackedPBRIntensities.get(texture.id);
 
-                if (!textureSet.contains(texture) || tracked == null || !tracked.sameAs(current))
-                {
-                    TextureTracker.INSTANCE.trackTexture(texture.id, new IrisTextureWrapper(key, index, current.normal, current.specular));
-                    trackedPBRIntensities.put(texture.id, current);
-                }
+                trackedPBRIntensities.put(texture.id, current);
             }
 
             textureSet.add(texture);
