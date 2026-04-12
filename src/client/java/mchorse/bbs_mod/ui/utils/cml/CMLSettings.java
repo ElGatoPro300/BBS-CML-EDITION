@@ -1,5 +1,6 @@
 package mchorse.bbs_mod.ui.utils.cml;
 
+import mchorse.bbs_mod.BBS;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.settings.SettingsBuilder;
 import mchorse.bbs_mod.ui.UIKeys;
@@ -92,6 +93,7 @@ public class CMLSettings
         BBSSettings.fluidRealisticModelInteraction = builder.getBoolean("realistic_model_interaction", false);
         builder.category("model_blocks");
         BBSSettings.modelBlockCategoriesPanelEnabled = builder.getBoolean("categories_panel_enabled", false);
+        BBSSettings.modelPbrPanelControls = builder.getBoolean("model_pbr_panel_controls", false);
         builder.category("pose_track_selection");
         BBSSettings.boneAnchoringEnabled = builder.getBoolean("bone_anchoring_enabled", true);
         BBSSettings.anchorOverrideEnabled = builder.getBoolean("anchor_override_enabled", false);

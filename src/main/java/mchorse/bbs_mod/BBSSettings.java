@@ -103,6 +103,7 @@ public class BBSSettings
     public static ValueBoolean editorRewind;
     public static ValueBoolean editorHorizontalClipEditor;
     public static ValueBoolean editorMinutesBackup;
+    public static ValueBoolean modelPbrPanelControls;
 
     public static ValueFloat recordingCountdown;
     public static ValueBoolean recordingSwipeDamage;
