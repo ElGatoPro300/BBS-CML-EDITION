@@ -1,12 +1,19 @@
 package mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories;
 
+import mchorse.bbs_mod.ui.UIKeys;
+import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
+import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
 import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
+import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeSheet;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframes;
+import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.utils.Axis;
 import mchorse.bbs_mod.utils.MathUtils;
+import mchorse.bbs_mod.utils.StringUtils;
 import mchorse.bbs_mod.utils.joml.Vectors;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
+import mchorse.bbs_mod.utils.pose.PoseTransform;
 import mchorse.bbs_mod.utils.pose.Transform;
 import org.joml.Vector3d;
 
@@ -15,6 +22,9 @@ import java.util.function.Consumer;
 public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
 {
     public UIPropTransform transform;
+    public UITrackpad fix;
+    public UIColor color;
+    public UIToggle lighting;
 
     public UITransformKeyframeFactory(Keyframe<Transform> keyframe, UIKeyframes editor)
     {
@@ -24,7 +34,82 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
         this.transform.enableHotkeys();
         this.transform.setTransform(keyframe.getValue());
 
+        UIKeyframeSheet sheet = editor.getGraph().getSheet(keyframe);
+
+        if (isPoseLimbTrack(sheet))
+        {
+            this.fix = new UITrackpad((v) ->
+            {
+                UIPoseTransforms.applyPoseTransform(this.editor, this.keyframe, (poseT) -> poseT.fix = MathUtils.clamp(v.floatValue(), 0F, 1F));
+                this.transform.setTransform(this.keyframe.getValue());
+            });
+            this.fix.limit(0D, 1D).increment(1D).values(0.1, 0.05D, 0.2D);
+            this.fix.tooltip(UIKeys.POSE_CONTEXT_FIX_TOOLTIP);
+
+            this.color = new UIColor((c) ->
+            {
+                UIPoseTransforms.applyPoseTransform(this.editor, this.keyframe, (poseT) -> poseT.color.set(c));
+            });
+            this.color.withAlpha();
+
+            this.lighting = new UIToggle(UIKeys.FORMS_EDITORS_GENERAL_LIGHTING, (b) ->
+            {
+                UIPoseTransforms.applyPoseTransform(this.editor, this.keyframe, (poseT) -> poseT.lighting = b.getValue() ? 0F : 1F);
+            });
+            this.lighting.tooltip(UIKeys.FORMS_EDITORS_GENERAL_LIGHTING_TOOLTIP);
+
+            PoseTransform poseTransform = this.getPoseTransform(keyframe);
+
+            this.fix.setValue(poseTransform.fix);
+            this.color.setColor(poseTransform.color.getARGBColor());
+            this.lighting.setValue(poseTransform.lighting <= 0F);
+
+            this.scroll.add(UI.label(UIKeys.POSE_CONTEXT_FIX));
+            this.scroll.add(UI.row(this.fix, this.color, this.lighting));
+        }
+
         this.scroll.add(this.transform);
+    }
+
+    private PoseTransform getPoseTransform(Keyframe<Transform> keyframe)
+    {
+        Transform value = keyframe.getValue();
+
+        if (value instanceof PoseTransform poseTransform)
+        {
+            return poseTransform;
+        }
+
+        PoseTransform poseTransform = new PoseTransform();
+
+        if (value != null)
+        {
+            poseTransform.copy(value);
+        }
+
+        keyframe.setValue(poseTransform, false);
+
+        return poseTransform;
+    }
+
+    private static boolean isPoseLimbTrack(UIKeyframeSheet sheet)
+    {
+        if (sheet == null)
+        {
+            return false;
+        }
+
+        int colon = sheet.id.indexOf(':');
+
+        if (colon == -1)
+        {
+            return false;
+        }
+
+        String propertyPath = sheet.id.substring(0, colon);
+        String propertyId = StringUtils.fileName(propertyPath);
+
+        return propertyId.equals("pose") || propertyId.startsWith("pose_overlay");
     }
 
     public UIPropTransform getTransform()
@@ -58,6 +143,42 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
                         consumer.accept(transform);
                         kf.postNotify();
                     }
+                }
+            }
+        }
+
+        public static void applyPoseTransform(UIKeyframes editor, Keyframe keyframe, Consumer<PoseTransform> consumer)
+        {
+            for (UIKeyframeSheet sheet : editor.getGraph().getSheets())
+            {
+                if (sheet.channel.getFactory() != keyframe.getFactory())
+                {
+                    continue;
+                }
+
+                for (Keyframe kf : sheet.selection.getSelected())
+                {
+                    Object value = kf.getValue();
+                    PoseTransform poseTransform;
+
+                    if (value instanceof PoseTransform p)
+                    {
+                        poseTransform = p;
+                    }
+                    else if (value instanceof Transform transform)
+                    {
+                        poseTransform = new PoseTransform();
+                        poseTransform.copy(transform);
+                        kf.setValue(poseTransform, false);
+                    }
+                    else
+                    {
+                        continue;
+                    }
+
+                    kf.preNotify();
+                    consumer.accept(poseTransform);
+                    kf.postNotify();
                 }
             }
         }
