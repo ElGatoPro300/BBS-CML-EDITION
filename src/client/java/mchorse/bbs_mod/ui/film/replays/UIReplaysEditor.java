@@ -262,6 +262,12 @@ public class UIReplaysEditor extends UIElement
                     }
 
                     propertyPaths.add(StringUtils.combinePaths(path, "pose") + ":" + bone.a);
+                    propertyPaths.add(StringUtils.combinePaths(path, "pose_overlay") + ":" + bone.a);
+
+                    for (int i = 0, c = modelForm.additionalOverlays.size(); i < c; i++)
+                    {
+                        propertyPaths.add(StringUtils.combinePaths(path, "pose_overlay" + i) + ":" + bone.a);
+                    }
                 }
             }
         }
@@ -932,11 +938,11 @@ public class UIReplaysEditor extends UIElement
 
                         if (propertyName.equals("pose_overlay"))
                         {
-                            title += " (Overlay)";
+                            title += "_overlay";
                         }
                         else if (propertyName.startsWith("pose_overlay"))
                         {
-                            title += " (Overlay " + propertyName.substring("pose_overlay".length()) + ")";
+                            title += "_overlay" + propertyName.substring("pose_overlay".length());
                         }
                     }
 
@@ -1130,7 +1136,7 @@ public class UIReplaysEditor extends UIElement
 
                         if (path.equals(rootPath))
                         {
-                            this.processTrack(sheet, "", 1, rootTracks.before, rootTracks.pose, rootTracks.limbs, rootTracks.overlays, rootTracks.after);
+                            this.processTrack(sheet, "", 1, rootTracks.before, rootTracks.pose, rootTracks.limbs, rootTracks.overlayRoots, rootTracks.overlayLimbs, rootTracks.after);
                         }
                         else
                         {
@@ -1139,7 +1145,7 @@ public class UIReplaysEditor extends UIElement
                                 subForms.put(path, new FormTracks(form));
                             }
 
-                            this.processTrack(sheet, "", 1, subForms.get(path).before, subForms.get(path).pose, subForms.get(path).limbs, subForms.get(path).overlays, subForms.get(path).after);
+                            this.processTrack(sheet, "", 1, subForms.get(path).before, subForms.get(path).pose, subForms.get(path).limbs, subForms.get(path).overlayRoots, subForms.get(path).overlayLimbs, subForms.get(path).after);
                         }
                     }
                     else
@@ -1149,11 +1155,12 @@ public class UIReplaysEditor extends UIElement
                 }
 
                 this.orderLimbTracks(rootTracks.form, rootTracks.limbs);
+                List<UIKeyframeSheet> orderedRootOverlays = this.orderOverlayTracks(rootTracks.form, rootTracks.overlayRoots, rootTracks.overlayLimbs);
 
                 /* Add root tracks first */
                 grouped.addAll(rootTracks.before);
                 grouped.addAll(rootTracks.pose);
-                grouped.addAll(rootTracks.overlays);
+                grouped.addAll(orderedRootOverlays);
                 grouped.addAll(rootTracks.limbs);
                 grouped.addAll(rootTracks.after);
 
@@ -1168,9 +1175,10 @@ public class UIReplaysEditor extends UIElement
                     }
 
                     this.orderLimbTracks(subForm.form, subForm.limbs);
+                    List<UIKeyframeSheet> orderedSubOverlays = this.orderOverlayTracks(subForm.form, subForm.overlayRoots, subForm.overlayLimbs);
 
                     grouped.addAll(subForm.before);
-                    grouped.addAll(subForm.overlays);
+                    grouped.addAll(orderedSubOverlays);
                     grouped.addAll(subForm.limbs);
                     grouped.addAll(subForm.after);
                 }
@@ -1256,6 +1264,7 @@ public class UIReplaysEditor extends UIElement
                 List<UIKeyframeSheet> poseTrack = new ArrayList<>();
                 List<UIKeyframeSheet> poseLimbTracks = new ArrayList<>();
                 List<UIKeyframeSheet> overlayTracks = new ArrayList<>();
+                List<UIKeyframeSheet> overlayLimbTracks = new ArrayList<>();
                 List<UIKeyframeSheet> modelTracksAfterPose = new ArrayList<>();
 
                 Map<String, FormTracks> subForms = new LinkedHashMap<>();
@@ -1274,7 +1283,7 @@ public class UIReplaysEditor extends UIElement
                     {
                         if (!this.collapsedModelTracks.getOrDefault(modelPropsKey, false))
                         {
-                            this.processTrack(sheet, modelPropsKey, 2, modelTracksBeforePose, poseTrack, poseLimbTracks, overlayTracks, modelTracksAfterPose);
+                            this.processTrack(sheet, modelPropsKey, 2, modelTracksBeforePose, poseTrack, poseLimbTracks, overlayTracks, overlayLimbTracks, modelTracksAfterPose);
                         }
                     }
                     else
@@ -1312,7 +1321,7 @@ public class UIReplaysEditor extends UIElement
                             {
                                 if (!this.collapsedModelTracks.getOrDefault(modelPropsKey, false))
                                 {
-                                    this.processTrack(sheet, modelPropsKey, 2, modelTracksBeforePose, poseTrack, poseLimbTracks, overlayTracks, modelTracksAfterPose);
+                                    this.processTrack(sheet, modelPropsKey, 2, modelTracksBeforePose, poseTrack, poseLimbTracks, overlayTracks, overlayLimbTracks, modelTracksAfterPose);
                                 }
 
                                 continue;
@@ -1325,19 +1334,20 @@ public class UIReplaysEditor extends UIElement
 
                             String groupKey = this.replay.uuid.get() + ":" + path;
 
-                            this.processTrack(sheet, groupKey, path.split("/").length, subForms.get(path).before, subForms.get(path).pose, subForms.get(path).limbs, subForms.get(path).overlays, subForms.get(path).after);
+                            this.processTrack(sheet, groupKey, path.split("/").length, subForms.get(path).before, subForms.get(path).pose, subForms.get(path).limbs, subForms.get(path).overlayRoots, subForms.get(path).overlayLimbs, subForms.get(path).after);
                         }
                     }
                 }
 
                 this.orderLimbTracks(rootForm, poseLimbTracks);
+                List<UIKeyframeSheet> orderedOverlayTracks = this.orderOverlayTracks(rootForm, overlayTracks, overlayLimbTracks);
 
                 grouped.addAll(worldTracks);
                 grouped.add(modelPropsHeader);
                 grouped.addAll(modelTracksBeforePose);
                 grouped.addAll(poseTrack);
                 grouped.addAll(poseLimbTracks);
-                grouped.addAll(overlayTracks);
+                grouped.addAll(orderedOverlayTracks);
                 grouped.addAll(modelTracksAfterPose);
 
                 List<String> subFormPaths = new ArrayList<>(subForms.keySet());
@@ -1372,11 +1382,12 @@ public class UIReplaysEditor extends UIElement
                     if (!this.collapsedModelTracks.getOrDefault(groupKey, false))
                     {
                         this.orderLimbTracks(subForm.form, subForm.limbs);
+                        List<UIKeyframeSheet> orderedSubOverlays = this.orderOverlayTracks(subForm.form, subForm.overlayRoots, subForm.overlayLimbs);
 
                         grouped.addAll(subForm.before);
                         grouped.addAll(subForm.pose);
                         grouped.addAll(subForm.limbs);
-                        grouped.addAll(subForm.overlays);
+                        grouped.addAll(orderedSubOverlays);
                         grouped.addAll(subForm.after);
                     }
                 }
@@ -1525,7 +1536,7 @@ public class UIReplaysEditor extends UIElement
         return FormUtils.getProperty(rootForm, path) != null;
     }
 
-    private void processTrack(UIKeyframeSheet sheet, String groupKey, int level, List<UIKeyframeSheet> before, List<UIKeyframeSheet> pose, List<UIKeyframeSheet> limbs, List<UIKeyframeSheet> overlays, List<UIKeyframeSheet> after)
+    private void processTrack(UIKeyframeSheet sheet, String groupKey, int level, List<UIKeyframeSheet> before, List<UIKeyframeSheet> pose, List<UIKeyframeSheet> limbs, List<UIKeyframeSheet> overlayRoots, List<UIKeyframeSheet> overlayLimbs, List<UIKeyframeSheet> after)
     {
         sheet.level = level;
         String customTitle = this.replay.getCustomSheetTitle(sheet.id);
@@ -1569,8 +1580,7 @@ public class UIReplaysEditor extends UIElement
         if (colon != -1)
         {
             String parentId = sheet.id.substring(0, colon);
-            String actualParentId = parentId.replaceAll("pose_overlay_?\\d*", "pose");
-            String parentKey = this.replay.uuid.get() + ":" + actualParentId;
+            String parentKey = this.replay.uuid.get() + ":" + parentId;
 
             if (!BBSSettings.originalKeyframeUI.get() && this.collapsedModelTracks.getOrDefault(parentKey, true))
             {
@@ -1586,7 +1596,7 @@ public class UIReplaysEditor extends UIElement
 
             if (parentId.startsWith("pose_overlay"))
             {
-                overlays.add(sheet);
+                overlayLimbs.add(sheet);
             }
             else
             {
@@ -1609,7 +1619,17 @@ public class UIReplaysEditor extends UIElement
         }
         else if (trackName.startsWith("pose_overlay"))
         {
-            overlays.add(sheet);
+            String parentKey = this.replay.uuid.get() + ":" + sheet.id;
+            boolean expanded = !this.collapsedModelTracks.getOrDefault(parentKey, true);
+
+            sheet.expanded = expanded;
+            sheet.toggleExpanded = () ->
+            {
+                this.collapsedModelTracks.put(parentKey, !this.collapsedModelTracks.getOrDefault(parentKey, true));
+                this.updateChannelsList();
+            };
+
+            overlayRoots.add(sheet);
         }
         else if (trackName.equals("texture"))
         {
@@ -1661,13 +1681,57 @@ public class UIReplaysEditor extends UIElement
         }
     }
 
+    private List<UIKeyframeSheet> orderOverlayTracks(Form form, List<UIKeyframeSheet> overlayRoots, List<UIKeyframeSheet> overlayLimbs)
+    {
+        List<UIKeyframeSheet> ordered = new ArrayList<>();
+
+        if (overlayRoots.isEmpty() && overlayLimbs.isEmpty())
+        {
+            return ordered;
+        }
+
+        Set<UIKeyframeSheet> used = new HashSet<>();
+
+        for (UIKeyframeSheet root : overlayRoots)
+        {
+            ordered.add(root);
+            used.add(root);
+
+            List<UIKeyframeSheet> limbs = new ArrayList<>();
+            String prefix = root.id + ":";
+
+            for (UIKeyframeSheet limb : overlayLimbs)
+            {
+                if (limb.id.startsWith(prefix))
+                {
+                    limbs.add(limb);
+                    used.add(limb);
+                }
+            }
+
+            this.orderLimbTracks(form, limbs);
+            ordered.addAll(limbs);
+        }
+
+        for (UIKeyframeSheet limb : overlayLimbs)
+        {
+            if (!used.contains(limb))
+            {
+                ordered.add(limb);
+            }
+        }
+
+        return ordered;
+    }
+
     private static class FormTracks
     {
         public final Form form;
         public final List<UIKeyframeSheet> before = new ArrayList<>();
         public final List<UIKeyframeSheet> pose = new ArrayList<>();
         public final List<UIKeyframeSheet> limbs = new ArrayList<>();
-        public final List<UIKeyframeSheet> overlays = new ArrayList<>();
+        public final List<UIKeyframeSheet> overlayRoots = new ArrayList<>();
+        public final List<UIKeyframeSheet> overlayLimbs = new ArrayList<>();
         public final List<UIKeyframeSheet> after = new ArrayList<>();
 
         public FormTracks(Form form)
