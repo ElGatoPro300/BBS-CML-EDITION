@@ -330,6 +330,8 @@ public class UIReplaysEditor extends UIElement
 
             if (this.isAncestorCollapsed(limb, parentByBone))
             {
+                /* Mark as handled so collapsed descendants don't get re-added by fallback pass. */
+                used.add(limb);
                 continue;
             }
 
