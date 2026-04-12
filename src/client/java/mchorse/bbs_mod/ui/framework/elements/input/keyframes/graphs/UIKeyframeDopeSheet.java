@@ -39,6 +39,8 @@ import java.util.List;
 
 public class UIKeyframeDopeSheet implements IUIKeyframeGraph
 {
+    private static final int LEVEL_INDENT = 8;
+
     private UIKeyframes keyframes;
 
     private List<UIKeyframeSheet> sheets = new ArrayList<>();
@@ -374,13 +376,13 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
                     ? (sheet.groupKey != null && (sheet.groupKey.endsWith("__world__") || sheet.groupKey.endsWith("__model__")) ? (sheet.groupExpanded ? Icons.UNCOLLAPSED : Icons.COLLAPSED) : (sheet.groupExpanded ? Icons.ARROW_DOWN : Icons.ARROW_RIGHT))
                     : (sheet.toggleExpanded != null ? (sheet.expanded ? Icons.UNCOLLAPSED : Icons.COLLAPSED) : null);
 
-                int left = this.keyframes.area.x + sheet.level * 12 - this.sidebarScroll;
+                int left = this.keyframes.area.x + sheet.level * LEVEL_INDENT - this.sidebarScroll;
                 if (sheet.groupHeader && (sheet.groupKey == null || (!sheet.groupKey.endsWith("__world__") && !sheet.groupKey.endsWith("__model__"))))
                 {
                     left += 4;
                 }
                 int iconWidth = 2 + (arrow != null ? arrow.w + 4 : 0);
-                int clickableWidth = Math.min(SIDEBAR_WIDTH - sheet.level * 12, iconWidth + font.getWidth(displayTitle) + 6);
+                int clickableWidth = Math.min(SIDEBAR_WIDTH - sheet.level * LEVEL_INDENT, iconWidth + font.getWidth(displayTitle) + 6);
                 clickableWidth = Math.max(0, clickableWidth);
 
                 if (context.mouseX >= left && context.mouseX <= left + clickableWidth)
@@ -718,12 +720,12 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
                 String displayTitle = this.getSidebarTitle(title);
 
                 Icon arrow = sheet.groupExpanded ? Icons.ARROW_DOWN : Icons.ARROW_RIGHT;
-                int iconX = sidebarX + 6 + sheet.level * 12;
+                int iconX = sidebarX + 6 + sheet.level * LEVEL_INDENT;
 
                 if (sheet.groupKey != null && (sheet.groupKey.endsWith("__world__") || sheet.groupKey.endsWith("__model__")))
                 {
                     arrow = sheet.groupExpanded ? Icons.UNCOLLAPSED : Icons.COLLAPSED;
-                    iconX = sidebarX + 2 + sheet.level * 12;
+                    iconX = sidebarX + 2 + sheet.level * LEVEL_INDENT;
                 }
 
                 int iconY = my - arrow.h / 2;
@@ -889,7 +891,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
             Icon icon = sheet.getIcon();
             Icon arrow = sheet.toggleExpanded != null ? (sheet.expanded ? Icons.UNCOLLAPSED : Icons.COLLAPSED) : null;
 
-            int iconWidth = 2 + sheet.level * 12 + (arrow != null ? arrow.w + 4 : 0);
+            int iconWidth = 2 + sheet.level * LEVEL_INDENT + (arrow != null ? arrow.w + 4 : 0);
             if (icon != null) iconWidth += icon.w + 4;
             int lw = font.getWidth(displayTitle);
 
@@ -912,10 +914,10 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
 
             if (arrow != null)
             {
-                context.batcher.icon(arrow, sidebarX + 4 + sheet.level * 12, my - arrow.h / 2);
+                context.batcher.icon(arrow, sidebarX + 4 + sheet.level * LEVEL_INDENT, my - arrow.h / 2);
             }
 
-            int currentX = sidebarX + 4 + sheet.level * 12 + (arrow != null ? arrow.w + 4 : 0);
+            int currentX = sidebarX + 4 + sheet.level * LEVEL_INDENT + (arrow != null ? arrow.w + 4 : 0);
 
             if (icon != null)
             {
@@ -980,12 +982,12 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
             if (sheet.groupHeader)
             {
                 Icon arrow = sheet.groupExpanded ? Icons.ARROW_DOWN : Icons.ARROW_RIGHT;
-                int base = 6 + sheet.level * 12;
+                int base = 6 + sheet.level * LEVEL_INDENT;
 
                 if (sheet.groupKey != null && (sheet.groupKey.endsWith("__world__") || sheet.groupKey.endsWith("__model__")))
                 {
                     arrow = sheet.groupExpanded ? Icons.UNCOLLAPSED : Icons.COLLAPSED;
-                    base = 2 + sheet.level * 12;
+                    base = 2 + sheet.level * LEVEL_INDENT;
                 }
 
                 int width = base + arrow.w + 4 + titleWidth + 4;
@@ -996,7 +998,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
 
             Icon arrow = sheet.toggleExpanded != null ? (sheet.expanded ? Icons.UNCOLLAPSED : Icons.COLLAPSED) : null;
             Icon icon = sheet.getIcon();
-            int iconWidth = 2 + sheet.level * 12 + (arrow != null ? arrow.w + 4 : 0) + (icon != null ? icon.w + 4 : 0);
+            int iconWidth = 2 + sheet.level * LEVEL_INDENT + (arrow != null ? arrow.w + 4 : 0) + (icon != null ? icon.w + 4 : 0);
             int totalWidth = iconWidth + titleWidth + 10;
 
             maxWidth = Math.max(maxWidth, totalWidth);
