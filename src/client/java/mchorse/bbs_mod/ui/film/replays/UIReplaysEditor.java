@@ -332,6 +332,8 @@ public class UIReplaysEditor extends UIElement
 
             if (this.isAncestorCollapsed(limb, parentByBone))
             {
+                /* Mark as handled so collapsed descendants don't get re-added by fallback pass. */
+                used.add(limb);
                 continue;
             }
 
@@ -798,7 +800,7 @@ public class UIReplaysEditor extends UIElement
     }
 
     private static final List<String> WORLD_CHANNELS = Arrays.asList("x", "y", "z", "vX", "vY", "vZ", "yaw", "pitch", "headYaw", "bodyYaw", "grounded", "damage", "fall", "sneaking", "sprinting", "item_main_hand", "item_off_hand", "item_head", "item_chest", "item_legs", "item_feet", "selected_slot", "stick_lx", "stick_ly", "stick_rx", "stick_ry", "trigger_l", "trigger_r", "extra1_x", "extra1_y", "extra2_x", "extra2_y", "shadow_size", "shadow_opacity");
-    private static final List<String> MODEL_PROPERTIES = Arrays.asList("visible", "lighting", "transform", "transform_overlay", "pose", "pose_overlay", "anchor", "color", "texture", "model", "actions", "shape_keys", "block_state", "item_stack", "modelTransform", "same_animation_when_dropped", "settings", "paused", "frequency", "count", "structure_file", "biome_id", "emit_light", "light_intensity", "structure_light", "enabled", "level", "effect");
+    private static final List<String> MODEL_PROPERTIES = Arrays.asList("visible", "lighting", "transform", "transform_overlay", "pose", "pose_overlay", "anchor", "color", "texture", "pbr_normal_intensity", "pbr_specular_intensity", "model", "actions", "shape_keys", "block_state", "item_stack", "modelTransform", "same_animation_when_dropped", "settings", "paused", "frequency", "count", "structure_file", "biome_id", "emit_light", "light_intensity", "structure_light", "enabled", "level", "effect");
 
     public void updateChannelsList()
     {
@@ -990,6 +992,10 @@ public class UIReplaysEditor extends UIElement
                 if (name.equals("biome_id")) return 33;
                 if (name.equals("structure_light")) return 34;
                 if (name.equals("color")) return 35;
+                if (name.equals("texture")) return 36;
+                if (name.equals("pbr_normal_intensity")) return 37;
+                if (name.equals("pbr_specular_intensity")) return 38;
+                if (name.equals("model")) return 39;
 
                 return 500;
             };
@@ -1520,6 +1526,28 @@ public class UIReplaysEditor extends UIElement
 
         int colon = sheet.id.indexOf(':');
         String trackName = StringUtils.fileName(sheet.id);
+        String scopeKey = groupKey == null || groupKey.isEmpty() ? this.replay.uuid.get() + ":__model__" : groupKey;
+        String textureParentKey = scopeKey + ":texture";
+        boolean isPbrTrack = trackName.equals("pbr_normal_intensity") || trackName.equals("pbr_specular_intensity");
+
+        if (isPbrTrack)
+        {
+            if (this.collapsedModelTracks.getOrDefault(textureParentKey, false))
+            {
+                return;
+            }
+
+            sheet.level += 1;
+
+            if ((customTitle == null || customTitle.isEmpty()) && trackName.equals("pbr_normal_intensity"))
+            {
+                sheet.title = UIKeys.FILM_REPLAY_TRACK_PBR_NORMAL_INTENSITY;
+            }
+            else if ((customTitle == null || customTitle.isEmpty()) && trackName.equals("pbr_specular_intensity"))
+            {
+                sheet.title = UIKeys.FILM_REPLAY_TRACK_PBR_SPECULAR_INTENSITY;
+            }
+        }
 
         if (colon != -1)
         {
@@ -1566,36 +1594,53 @@ public class UIReplaysEditor extends UIElement
         {
             overlays.add(sheet);
         }
+        else if (trackName.equals("texture"))
+        {
+            boolean expanded = !this.collapsedModelTracks.getOrDefault(textureParentKey, false);
+
+            sheet.expanded = expanded;
+            sheet.toggleExpanded = () ->
+            {
+                this.collapsedModelTracks.put(textureParentKey, !this.collapsedModelTracks.getOrDefault(textureParentKey, false));
+                this.updateChannelsList();
+            };
+
+            this.addTrackByPriority(trackName, before, after, sheet);
+        }
         else if (trackName.startsWith("transform_overlay") || trackName.equals("transform"))
         {
             before.add(sheet);
         }
         else
         {
-            /* Decide whether it's before or after pose based on MODEL_PROPERTIES index */
-            int poseIndex = MODEL_PROPERTIES.indexOf("pose");
-            int currentIndex = MODEL_PROPERTIES.indexOf(trackName);
-
-            if (WORLD_CHANNELS.contains(trackName))
-            {
-                before.add(sheet);
-
-                return;
-            }
-
-            if (currentIndex != -1 && currentIndex < poseIndex)
-            {
-                before.add(sheet);
-            }
-            else
-            {
-                after.add(sheet);
-            }
+            this.addTrackByPriority(trackName, before, after, sheet);
         }
 
         if (customTitle != null && !customTitle.isEmpty())
         {
             sheet.title = IKey.constant(customTitle);
+        }
+    }
+
+    private void addTrackByPriority(String trackName, List<UIKeyframeSheet> before, List<UIKeyframeSheet> after, UIKeyframeSheet sheet)
+    {
+        int poseIndex = MODEL_PROPERTIES.indexOf("pose");
+        int currentIndex = MODEL_PROPERTIES.indexOf(trackName);
+
+        if (WORLD_CHANNELS.contains(trackName))
+        {
+            before.add(sheet);
+
+            return;
+        }
+
+        if (currentIndex != -1 && currentIndex < poseIndex)
+        {
+            before.add(sheet);
+        }
+        else
+        {
+            after.add(sheet);
         }
     }
 
