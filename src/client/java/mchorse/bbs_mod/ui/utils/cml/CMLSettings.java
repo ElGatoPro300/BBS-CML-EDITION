@@ -1,5 +1,6 @@
 package mchorse.bbs_mod.ui.utils.cml;
 
+import mchorse.bbs_mod.BBS;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.settings.SettingsBuilder;
 import mchorse.bbs_mod.ui.UIKeys;
@@ -21,9 +22,6 @@ public class CMLSettings
         BBSSettings.disablePivotTransform = builder.getBoolean("disable_pivot_transform", false);
         BBSSettings.gizmoYAxisHorizontal = builder.getBoolean("gizmo_y_axis_horizontal", true);
         BBSSettings.pickLimbTexture = builder.getBoolean("pick_limb_texture", true);
-        BBSSettings.limbTracks = builder.getBoolean("limb_tracks", true);
-        BBSSettings.originalKeyframeUI = builder.getBoolean("original_keyframe_ui", false);
-        BBSSettings.simplifiedKeyframeUI = builder.getBoolean("simplified_keyframe_ui", false);
         BBSSettings.defaultInterpolation = builder.getInt("default_interpolation", 0);
         builder.category("editor");
         BBSSettings.editorSafeMarginsColor = builder.getInt("safe_margins_color", 0xcccc0000).colorAlpha();
@@ -39,51 +37,6 @@ public class CMLSettings
             UIKeys.CONFIG_EDITOR_SECONDS_MODE,
             UIKeys.CONFIG_EDITOR_FRAMES_MODE
         );
-        BBSSettings.editorTimeMode.postCallback((changed, flag) ->
-        {
-            int mode = BBSSettings.editorTimeMode.get();
-
-            if (mode == 0)
-            {
-                if (BBSSettings.editorSeconds.get()) BBSSettings.editorSeconds.set(false);
-                if (BBSSettings.editorFrames.get()) BBSSettings.editorFrames.set(false);
-            }
-            else if (mode == 1)
-            {
-                if (!BBSSettings.editorSeconds.get()) BBSSettings.editorSeconds.set(true);
-                if (BBSSettings.editorFrames.get()) BBSSettings.editorFrames.set(false);
-            }
-            else
-            {
-                if (BBSSettings.editorSeconds.get()) BBSSettings.editorSeconds.set(false);
-                if (!BBSSettings.editorFrames.get()) BBSSettings.editorFrames.set(true);
-            }
-        });
-
-        BBSSettings.editorSeconds.postCallback((changed, flag) ->
-        {
-            if (BBSSettings.editorSeconds.get())
-            {
-                if (BBSSettings.editorTimeMode.get() != 1) BBSSettings.editorTimeMode.set(1);
-                if (BBSSettings.editorFrames.get()) BBSSettings.editorFrames.set(false);
-            }
-            else if (!BBSSettings.editorFrames.get())
-            {
-                if (BBSSettings.editorTimeMode.get() != 0) BBSSettings.editorTimeMode.set(0);
-            }
-        });
-        BBSSettings.editorFrames.postCallback((changed, flag) ->
-        {
-            if (BBSSettings.editorFrames.get())
-            {
-                if (BBSSettings.editorTimeMode.get() != 2) BBSSettings.editorTimeMode.set(2);
-                if (BBSSettings.editorSeconds.get()) BBSSettings.editorSeconds.set(false);
-            }
-            else if (!BBSSettings.editorSeconds.get())
-            {
-                if (BBSSettings.editorTimeMode.get() != 0) BBSSettings.editorTimeMode.set(0);
-            }
-        });
         builder.category("display");
         BBSSettings.editorReplayHud = builder.getBoolean("replay_hud", false);
         BBSSettings.editorReplayHudPosition = builder.getInt("replay_hud_position", 0, 0, 3);
@@ -92,10 +45,10 @@ public class CMLSettings
         BBSSettings.fluidRealisticModelInteraction = builder.getBoolean("realistic_model_interaction", false);
         builder.category("model_blocks");
         BBSSettings.modelBlockCategoriesPanelEnabled = builder.getBoolean("categories_panel_enabled", false);
+        BBSSettings.modelPbrPanelControls = builder.getBoolean("model_pbr_panel_controls", false);
         builder.category("pose_track_selection");
-        BBSSettings.boneAnchoringEnabled = builder.getBoolean("bone_anchoring_enabled", true);
-        BBSSettings.anchorOverrideEnabled = builder.getBoolean("anchor_override_enabled", false);
-        BBSSettings.autoKeyframe = builder.getBoolean("auto_keyframe", false);
+        BBSSettings.realtimeKeyframes = builder.getBoolean("realtime_keyframes", false);
+        BBSSettings.autoKeyframes = builder.getBoolean("auto_keyframes", true);
         BBSSettings.poseBonesFilterMarked = builder.getBoolean("pose_bones_filter_marked", false);
         BBSSettings.poseBonesFilterMarked.invisible();
         BBSSettings.replayMarkedBonesOnly = builder.getBoolean("replay_marked_bones_only", false);
