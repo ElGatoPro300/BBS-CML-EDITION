@@ -599,28 +599,6 @@ public class UIReplaysEditor extends UIElement
         return 0xff000000 | rgb;
     }
 
-    private static String getOverlayShortSuffix(String propertyName, String prefix)
-    {
-        String suffix = propertyName.substring(prefix.length());
-
-        return suffix.isEmpty() ? "_ovl" : "_ovl" + suffix;
-    }
-
-    private static String getAbbreviatedOverlayTitle(String baseName, String propertyName)
-    {
-        if (propertyName.startsWith("pose_overlay"))
-        {
-            return baseName + getOverlayShortSuffix(propertyName, "pose_overlay");
-        }
-
-        if (propertyName.startsWith("transform_overlay"))
-        {
-            return baseName + getOverlayShortSuffix(propertyName, "transform_overlay");
-        }
-
-        return baseName;
-    }
-
     public static void offerAdjacent(UIContext context, Form form, String bone, Consumer<String> consumer)
     {
         if (!bone.isEmpty() && form instanceof ModelForm modelForm)
@@ -942,7 +920,15 @@ public class UIReplaysEditor extends UIElement
                         String propertyName = StringUtils.fileName(propertyPath);
 
                         title = boneName;
-                        title = getAbbreviatedOverlayTitle(title, propertyName);
+
+                        if (propertyName.equals("pose_overlay"))
+                        {
+                            title += "_overlay";
+                        }
+                        else if (propertyName.startsWith("pose_overlay"))
+                        {
+                            title += "_overlay" + propertyName.substring("pose_overlay".length());
+                        }
                     }
 
                     UIKeyframeSheet sheet = customTitle != null && !customTitle.isEmpty()
@@ -1616,11 +1602,6 @@ public class UIReplaysEditor extends UIElement
         }
         else if (trackName.startsWith("pose_overlay"))
         {
-            if (customTitle == null || customTitle.isEmpty())
-            {
-                sheet.title = IKey.constant(getAbbreviatedOverlayTitle("pose", trackName));
-            }
-
             String parentKey = this.replay.uuid.get() + ":" + sheet.id;
             boolean expanded = !this.collapsedModelTracks.getOrDefault(parentKey, true);
 
@@ -1648,11 +1629,6 @@ public class UIReplaysEditor extends UIElement
         }
         else if (trackName.startsWith("transform_overlay") || trackName.equals("transform"))
         {
-            if (customTitle == null || customTitle.isEmpty() && trackName.startsWith("transform_overlay"))
-            {
-                sheet.title = IKey.constant(getAbbreviatedOverlayTitle("transform", trackName));
-            }
-
             before.add(sheet);
         }
         else
