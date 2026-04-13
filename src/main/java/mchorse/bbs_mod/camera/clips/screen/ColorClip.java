@@ -17,9 +17,26 @@ public class ColorClip extends CameraClip
     public ValueInt overlayColor = new ValueInt("overlayColor", Colors.A100);
     public final KeyframeChannel<Double> overlayAlpha = new KeyframeChannel<>("overlayAlpha", KeyframeFactories.DOUBLE);
 
-    public ValueInt vignetteColor = new ValueInt("vignetteColor", Colors.A100);
-    public final KeyframeChannel<Double> vignetteStrength = new KeyframeChannel<>("vignetteStrength", KeyframeFactories.DOUBLE);
-    public final KeyframeChannel<Double> vignetteSmoothness = new KeyframeChannel<>("vignetteSmoothness", KeyframeFactories.DOUBLE);
+    /* Color grade channels — keyframe value range ~0–4, effective range 0–1 (×0.25 scale) */
+    public final KeyframeChannel<Double> saturation = new KeyframeChannel<>("saturation", KeyframeFactories.DOUBLE);
+    public final KeyframeChannel<Double> hue = new KeyframeChannel<>("hue", KeyframeFactories.DOUBLE);
+    public final KeyframeChannel<Double> brightness = new KeyframeChannel<>("brightness", KeyframeFactories.DOUBLE);
+    public final KeyframeChannel<Double> contrast = new KeyframeChannel<>("contrast", KeyframeFactories.DOUBLE);
+
+    /* Lift (shadows) */
+    public final KeyframeChannel<Double> liftR = new KeyframeChannel<>("liftR", KeyframeFactories.DOUBLE);
+    public final KeyframeChannel<Double> liftG = new KeyframeChannel<>("liftG", KeyframeFactories.DOUBLE);
+    public final KeyframeChannel<Double> liftB = new KeyframeChannel<>("liftB", KeyframeFactories.DOUBLE);
+
+    /* Gamma (midtones) */
+    public final KeyframeChannel<Double> gammaR = new KeyframeChannel<>("gammaR", KeyframeFactories.DOUBLE);
+    public final KeyframeChannel<Double> gammaG = new KeyframeChannel<>("gammaG", KeyframeFactories.DOUBLE);
+    public final KeyframeChannel<Double> gammaB = new KeyframeChannel<>("gammaB", KeyframeFactories.DOUBLE);
+
+    /* Gain (highlights) */
+    public final KeyframeChannel<Double> gainR = new KeyframeChannel<>("gainR", KeyframeFactories.DOUBLE);
+    public final KeyframeChannel<Double> gainG = new KeyframeChannel<>("gainG", KeyframeFactories.DOUBLE);
+    public final KeyframeChannel<Double> gainB = new KeyframeChannel<>("gainB", KeyframeFactories.DOUBLE);
 
     public final KeyframeChannel<Double>[] channels;
 
@@ -32,13 +49,38 @@ public class ColorClip extends CameraClip
 
     public ColorClip()
     {
-        this.channels = new KeyframeChannel[] {this.overlayAlpha, this.vignetteStrength, this.vignetteSmoothness};
+        this.channels = new KeyframeChannel[] {
+            this.overlayAlpha,
+            this.saturation,
+            this.hue,
+            this.brightness,
+            this.contrast,
+            this.liftR,
+            this.liftG,
+            this.liftB,
+            this.gammaR,
+            this.gammaG,
+            this.gammaB,
+            this.gainR,
+            this.gainG,
+            this.gainB,
+        };
 
         this.add(this.overlayColor);
         this.add(this.overlayAlpha);
-        this.add(this.vignetteColor);
-        this.add(this.vignetteStrength);
-        this.add(this.vignetteSmoothness);
+        this.add(this.saturation);
+        this.add(this.hue);
+        this.add(this.brightness);
+        this.add(this.contrast);
+        this.add(this.liftR);
+        this.add(this.liftG);
+        this.add(this.liftB);
+        this.add(this.gammaR);
+        this.add(this.gammaG);
+        this.add(this.gammaB);
+        this.add(this.gainR);
+        this.add(this.gainG);
+        this.add(this.gainB);
     }
 
     @Override
@@ -49,7 +91,8 @@ public class ColorClip extends CameraClip
 
         this.effect.reset();
 
-        float alpha = this.overlayAlpha.isEmpty() ? 0F : (float) (double) this.overlayAlpha.interpolate(t);
+        /* Overlay: keyframe values 0–4, effective alpha 0–1 */
+        float alpha = (this.overlayAlpha.isEmpty() ? 0F : (float) (double) this.overlayAlpha.interpolate(t)) * 0.25F;
 
         if (alpha > 0F)
         {
@@ -57,19 +100,45 @@ public class ColorClip extends CameraClip
             this.effect.overlayColor = Colors.setA(this.overlayColor.get(), alpha * factor);
         }
 
-        float strength = this.vignetteStrength.isEmpty() ? 0F : (float) (double) this.vignetteStrength.interpolate(t);
+        /* Color grade: keyframe values in ~±4 range, effective in ~±1 range (×0.25) */
+        float sat = (this.saturation.isEmpty() ? 0F : (float) (double) this.saturation.interpolate(t)) * 0.25F;
+        float hueRot = this.hue.isEmpty() ? 0F : (float) (double) this.hue.interpolate(t);
+        float bright = (this.brightness.isEmpty() ? 0F : (float) (double) this.brightness.interpolate(t)) * 0.25F;
+        float cont = (this.contrast.isEmpty() ? 0F : (float) (double) this.contrast.interpolate(t)) * 0.25F;
+        float lR = (this.liftR.isEmpty() ? 0F : (float) (double) this.liftR.interpolate(t)) * 0.25F;
+        float lG = (this.liftG.isEmpty() ? 0F : (float) (double) this.liftG.interpolate(t)) * 0.25F;
+        float lB = (this.liftB.isEmpty() ? 0F : (float) (double) this.liftB.interpolate(t)) * 0.25F;
+        float gR = (this.gammaR.isEmpty() ? 0F : (float) (double) this.gammaR.interpolate(t)) * 0.25F;
+        float gG = (this.gammaG.isEmpty() ? 0F : (float) (double) this.gammaG.interpolate(t)) * 0.25F;
+        float gB = (this.gammaB.isEmpty() ? 0F : (float) (double) this.gammaB.interpolate(t)) * 0.25F;
+        float gnR = (this.gainR.isEmpty() ? 0F : (float) (double) this.gainR.interpolate(t)) * 0.25F;
+        float gnG = (this.gainG.isEmpty() ? 0F : (float) (double) this.gainG.interpolate(t)) * 0.25F;
+        float gnB = (this.gainB.isEmpty() ? 0F : (float) (double) this.gainB.interpolate(t)) * 0.25F;
 
-        if (strength > 0F)
+        boolean hasGrade = sat != 0F || hueRot != 0F || bright != 0F || cont != 0F
+            || lR != 0F || lG != 0F || lB != 0F
+            || gR != 0F || gG != 0F || gB != 0F
+            || gnR != 0F || gnG != 0F || gnB != 0F;
+
+        if (hasGrade)
         {
-            float smoothness = this.vignetteSmoothness.isEmpty() ? 0.5F : (float) (double) this.vignetteSmoothness.interpolate(t);
-
-            this.effect.hasVignette = true;
-            this.effect.vignetteColor = this.vignetteColor.get();
-            this.effect.vignetteStrength = strength * factor;
-            this.effect.vignetteSmoothness = smoothness;
+            this.effect.hasGrade = true;
+            this.effect.saturation = sat * factor;
+            this.effect.hue = hueRot * factor;
+            this.effect.brightness = bright * factor;
+            this.effect.contrast = cont * factor;
+            this.effect.liftR = lR * factor;
+            this.effect.liftG = lG * factor;
+            this.effect.liftB = lB * factor;
+            this.effect.gammaR = gR * factor;
+            this.effect.gammaG = gG * factor;
+            this.effect.gammaB = gB * factor;
+            this.effect.gainR = gnR * factor;
+            this.effect.gainG = gnG * factor;
+            this.effect.gainB = gnB * factor;
         }
 
-        if (this.effect.hasOverlay || this.effect.hasVignette)
+        if (this.effect.hasOverlay || this.effect.hasGrade)
         {
             getEffects(context).add(this.effect);
         }

@@ -18,6 +18,10 @@ import mchorse.bbs_mod.camera.clips.misc.SubtitleClip;
 import mchorse.bbs_mod.camera.clips.misc.TrackerClientClip;
 import mchorse.bbs_mod.camera.clips.misc.VideoClip;
 import mchorse.bbs_mod.camera.clips.screen.ColorClip;
+import mchorse.bbs_mod.camera.clips.screen.GrainClip;
+import mchorse.bbs_mod.camera.clips.screen.LetterboxClip;
+import mchorse.bbs_mod.camera.clips.screen.ScreenNodeClip;
+import mchorse.bbs_mod.camera.clips.screen.VignetteClip;
 import mchorse.bbs_mod.camera.clips.modifiers.AngleClip;
 import mchorse.bbs_mod.camera.clips.modifiers.DollyZoomClip;
 import mchorse.bbs_mod.camera.clips.modifiers.DragClip;
@@ -106,6 +110,10 @@ public abstract class UIClip <T extends Clip> extends UIElement
         register(CurveClientClip.class, UICurveClip::new);
         register(DollyZoomClip.class, UIDollyZoomClip::new);
         register(ColorClip.class, UIColorClip::new);
+        register(VignetteClip.class, UIVignetteClip::new);
+        register(LetterboxClip.class, UILetterboxClip::new);
+        register(GrainClip.class, UIGrainClip::new);
+        register(ScreenNodeClip.class, UIScreenNodeClip::new);
 
         register(ChatActionClip.class, UIChatActionClip::new);
         register(CommandActionClip.class, UICommandActionClip::new);

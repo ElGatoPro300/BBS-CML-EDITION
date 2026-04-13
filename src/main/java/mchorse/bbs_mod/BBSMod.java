@@ -33,6 +33,10 @@ import mchorse.bbs_mod.camera.clips.misc.CurveClip;
 import mchorse.bbs_mod.camera.clips.misc.SubtitleClip;
 import mchorse.bbs_mod.camera.clips.misc.VideoClip;
 import mchorse.bbs_mod.camera.clips.screen.ColorClip;
+import mchorse.bbs_mod.camera.clips.screen.GrainClip;
+import mchorse.bbs_mod.camera.clips.screen.LetterboxClip;
+import mchorse.bbs_mod.camera.clips.screen.ScreenNodeClip;
+import mchorse.bbs_mod.camera.clips.screen.VignetteClip;
 import mchorse.bbs_mod.camera.clips.modifiers.AngleClip;
 import mchorse.bbs_mod.camera.clips.modifiers.DollyZoomClip;
 import mchorse.bbs_mod.camera.clips.modifiers.DragClip;
@@ -528,7 +532,11 @@ public class BBSMod implements ModInitializer
         events.post(new RegisterActionClipsEvent(factoryActionClips));
 
         factoryScreenClips = new MapFactory<Clip, ClipFactoryData>()
-            .register(Link.bbs("color"), ColorClip.class, new ClipFactoryData(Icons.FILTER, 0xff6633));
+            .register(Link.bbs("color"), ColorClip.class, new ClipFactoryData(Icons.FILTER, 0xff6633))
+            .register(Link.bbs("vignette"), VignetteClip.class, new ClipFactoryData(Icons.CIRCLE, 0x222244))
+            .register(Link.bbs("letterbox"), LetterboxClip.class, new ClipFactoryData(Icons.FULLSCREEN, 0x111111))
+            .register(Link.bbs("grain"), GrainClip.class, new ClipFactoryData(Icons.SIX_STAR, 0x887766))
+            .register(Link.bbs("screen_node"), ScreenNodeClip.class, new ClipFactoryData(Icons.GRAPH, 0x3355cc));
 
         setupConfig(Icons.PROCESSOR, "bbs", new File(settingsFolder, "bbs.json"), BBSSettings::register);
 

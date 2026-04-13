@@ -294,7 +294,9 @@ public class UIKeys
 
     public static final IKey SCREEN_PANELS_OVERLAY_COLOR = L10n.lang("bbs.ui.screen_panels.overlay_color");
     public static final IKey SCREEN_PANELS_VIGNETTE_COLOR = L10n.lang("bbs.ui.screen_panels.vignette_color");
+    public static final IKey SCREEN_PANELS_LETTERBOX_COLOR = L10n.lang("bbs.ui.screen_panels.letterbox_color");
     public static final IKey SCREEN_PANELS_KEYFRAMES = L10n.lang("bbs.ui.screen_panels.keyframes");
+    public static final IKey SCREEN_PANELS_NODE_GRAPH = L10n.lang("bbs.ui.screen_panels.node_graph");
     public static final IKey FILM_OPEN_RENDER_QUEUE = L10n.lang("bbs.ui.film.open_render_queue");
     public static final IKey RENDER_QUEUE_TITLE = L10n.lang("bbs.ui.render_queue.title");
     public static final IKey RENDER_QUEUE_ADD = L10n.lang("bbs.ui.render_queue.add");
