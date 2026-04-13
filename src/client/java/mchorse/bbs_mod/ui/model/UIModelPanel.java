@@ -56,12 +56,10 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
     public List<UIIcon> panelButtons = new ArrayList<>();
     
     public UIElement modelSettingsPanel;
-    public UIElement dynamicBonesPanel;
+    public UIElement placeholderPanel;
     public UIModelGeometryPanel geometryPanel;
     public UIScrollView sectionsView;
     public UIScrollView rightView;
-    public UIScrollView dynamicBonesView;
-    public UIScrollView dynamicBonesRightView;
     public List<UIModelSection> sections = new ArrayList<>();
 
     public UIModelPanel(UIDashboard dashboard)
@@ -110,18 +108,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         
         this.modelSettingsPanel.add(this.sectionsView, this.rightView);
 
-        this.dynamicBonesPanel = new UIElement();
-        this.dynamicBonesPanel.relative(this.mainView).w(1F).h(1F);
-
-        this.dynamicBonesView = UI.scrollView(20, 10);
-        this.dynamicBonesView.scroll.cancelScrolling().opposite().scrollSpeed *= 3;
-        this.dynamicBonesView.relative(this.dynamicBonesPanel).y(0).w(200).h(1F);
-
-        this.dynamicBonesRightView = UI.scrollView(20, 10);
-        this.dynamicBonesRightView.scroll.cancelScrolling().opposite().scrollSpeed *= 3;
-        this.dynamicBonesRightView.relative(this.dynamicBonesPanel).x(1F, -200).y(0).w(200).h(1F);
-
-        this.dynamicBonesPanel.add(this.dynamicBonesView, this.dynamicBonesRightView);
+        this.placeholderPanel = this.createPlaceholderPanel();
 
         /* Sections setup */
         this.overlay.namesList.setFileIcon(Icons.MORPH);
@@ -139,10 +126,6 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         this.addSection(new UIModelSneakingSection(this));
         this.addSection(new UIModelLookAtSection(this));
 
-        UIModelDynamicBonesSection dynamicBonesSection = new UIModelDynamicBonesSection(this);
-        this.sections.add(dynamicBonesSection);
-        this.dynamicBonesView.add(dynamicBonesSection);
-        
         /* Register Panels */
         UIElement spacer = new UIElement();
         spacer.relative(this.iconBar).w(1F).h(10);
@@ -152,7 +135,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
 
         this.registerPanel(this.modelSettingsPanel, UIKeys.MODELS_SETTINGS, Icons.MODELS_SETTINGS);
         this.registerPanel(this.createUnavailablePanel(), UIKeys.MODELS_IK_EDITOR, Icons.IK);
-        this.registerPanel(this.dynamicBonesPanel, UIKeys.MODELS_DYNAMIC_BONES, Icons.DYNAMIC_BONES);
+        this.registerPanel(this.placeholderPanel, UIKeys.COMING_SOON, Icons.GEAR);
         this.registerPanel(this.geometryPanel, UIKeys.MODELS_GEOMETRY_EDITOR, Icons.GEOMETRY_EDITOR);
 
         this.setPanel(this.modelSettingsPanel);
@@ -226,6 +209,19 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         return panel;
     }
 
+    private UIElement createPlaceholderPanel()
+    {
+        UIElement panel = new UIElement();
+        panel.relative(this.mainView).w(1F).h(1F);
+
+        UILabel label = new UILabel(UIKeys.COMING_SOON).background();
+        label.relative(panel).w(0.9F).h(0.78F).xy(0.5F, 0.5F).anchor(0.5F, 0.5F);
+        label.labelAnchor(0.5F, 0.5F);
+        panel.add(label);
+
+        return panel;
+    }
+
     public UIIcon registerPanel(UIElement panel, IKey tooltip, Icon icon)
     {
         UIIcon button = new UIIcon(icon, (b) -> this.setPanel(panel));
@@ -248,14 +244,8 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         this.mainView.add(panel);
         this.resetEditorScrolls();
         this.rightView.removeAll();
-        this.dynamicBonesRightView.removeAll();
 
-        if (panel == this.dynamicBonesPanel)
-        {
-            this.setDynamicRight(this.getPoseEditor());
-            this.renderer.transform = this.getPoseEditor().transform;
-        }
-        else if (panel == this.modelSettingsPanel)
+        if (panel == this.modelSettingsPanel)
         {
             this.setRight(this.getPoseEditor());
             this.renderer.transform = this.getPoseEditor().transform;
@@ -282,30 +272,12 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         this.rightView.resize();
     }
 
-    public void setDynamicRight(UIElement element)
-    {
-        this.dynamicBonesRightView.removeAll();
-
-        if (element != null && element.getParent() != null && element.getParent() != this.dynamicBonesRightView)
-        {
-            element.removeFromParent();
-        }
-
-        this.dynamicBonesRightView.add(element);
-        this.dynamicBonesRightView.scroll.setScroll(0);
-        this.dynamicBonesRightView.resize();
-    }
-
     private void resetEditorScrolls()
     {
         this.sectionsView.scroll.dragging = false;
         this.rightView.scroll.dragging = false;
-        this.dynamicBonesView.scroll.dragging = false;
-        this.dynamicBonesRightView.scroll.dragging = false;
         this.sectionsView.scroll.setScroll(0);
         this.rightView.scroll.setScroll(0);
-        this.dynamicBonesView.scroll.setScroll(0);
-        this.dynamicBonesRightView.scroll.setScroll(0);
     }
     
     @Override
@@ -379,8 +351,6 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
 
         this.sectionsView.resize();
         this.rightView.resize();
-        this.dynamicBonesView.resize();
-        this.dynamicBonesRightView.resize();
 
         Morph morph = Morph.getMorph(MinecraftClient.getInstance().player);
 
@@ -508,8 +478,6 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
 
     private void pickBone(String bone)
     {
-        boolean dynamicPanelActive = this.mainView.getChildren().contains(this.dynamicBonesPanel);
-
         for (UIModelSection section : this.sections)
         {
             section.deselect();
@@ -518,15 +486,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
             if (section instanceof UIModelPartsSection)
             {
                 ((UIModelPartsSection) section).selectBone(bone);
-
-                if (dynamicPanelActive)
-                {
-                    this.setDynamicRight(((UIModelPartsSection) section).poseEditor);
-                }
-                else
-                {
-                    this.setRight(((UIModelPartsSection) section).poseEditor);
-                }
+                this.setRight(((UIModelPartsSection) section).poseEditor);
             }
         }
     }
@@ -590,8 +550,6 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
             
             this.sectionsView.resize();
             this.rightView.resize();
-            this.dynamicBonesView.resize();
-            this.dynamicBonesRightView.resize();
             this.resetEditorScrolls();
         }
     }
