@@ -25,7 +25,6 @@ public class UIKeyframeSheet
     public final KeyframeChannel channel;
     public final KeyframeSelection selection;
     public final BaseValueBasic property;
-    public String anchoredBone;
 
     public boolean groupHeader;
     public boolean groupExpanded = true;
@@ -50,7 +49,6 @@ public class UIKeyframeSheet
         this.channel = channel;
         this.selection = new KeyframeSelection(channel);
         this.property = property;
-        this.anchoredBone = null;
 
         this.groupHeader = false;
         this.groupExpanded = true;

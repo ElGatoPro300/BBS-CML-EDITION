@@ -682,6 +682,26 @@ public class BBSRendering
         IrisUtils.trackTexture(texture);
     }
 
+    public static void setPBRTextureIntensity(float normalIntensity, float specularIntensity)
+    {
+        if (!iris)
+        {
+            return;
+        }
+
+        IrisUtils.setPBRTextureIntensity(normalIntensity, specularIntensity);
+    }
+
+    public static void clearPBRTextureIntensity()
+    {
+        if (!iris)
+        {
+            return;
+        }
+
+        IrisUtils.clearPBRTextureIntensity();
+    }
+
     public static float[] calculateTangents(float[] t, float[] v, float[] n, float[] u)
     {
         if (!iris)

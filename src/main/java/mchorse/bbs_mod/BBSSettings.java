@@ -79,8 +79,6 @@ public class BBSSettings
     public static ValueBoolean editorSafeMargins;
     public static ValueBoolean editorCenterLines;
     public static ValueBoolean editorCrosshair;
-    public static ValueBoolean editorSeconds;
-    public static ValueBoolean editorFrames;
     public static ValueInt editorPeriodicSave;
     public static ValueBoolean editorHorizontalFlight;
     public static ValueBoolean editorFlightFreeLook;
@@ -103,6 +101,7 @@ public class BBSSettings
     public static ValueBoolean editorRewind;
     public static ValueBoolean editorHorizontalClipEditor;
     public static ValueBoolean editorMinutesBackup;
+    public static ValueBoolean modelPbrPanelControls;
 
     public static ValueFloat recordingCountdown;
     public static ValueBoolean recordingSwipeDamage;
@@ -126,17 +125,12 @@ public class BBSSettings
     public static ValueInt audioWaveformHeight;
     public static ValueBoolean audioWaveformFilename;
     public static ValueBoolean audioWaveformTime;
-    /* Pose track bone anchoring */
-    public static ValueBoolean boneAnchoringEnabled;
-    public static ValueBoolean anchorOverrideEnabled;
-    public static ValueBoolean autoKeyframe;
+    public static ValueBoolean realtimeKeyframes;
+    public static ValueBoolean autoKeyframes;
     public static ValueBoolean poseBonesFilterMarked;
     public static ValueBoolean replayMarkedBonesOnly;
     public static ValueBoolean pickLimbTexture;
     public static ValueBoolean fluidRealisticModelInteraction;
-    public static ValueBoolean limbTracks;
-    public static ValueBoolean originalKeyframeUI;
-    public static ValueBoolean simplifiedKeyframeUI;
 
     public static ValueString cdnUrl;
     public static ValueString cdnToken;
@@ -249,8 +243,6 @@ public class BBSSettings
         editorCenterLines = builder.getBoolean("center_lines", false);
         editorCrosshair = builder.getBoolean("crosshair", false);
 
-        editorSeconds = builder.getBoolean("seconds", false);
-        editorFrames = builder.getBoolean("frames", false);
         editorPeriodicSave = builder.getInt("periodic_save", 60, 0, 3600);
         editorHorizontalFlight = builder.getBoolean("horizontal_flight", false);
         builder.register(editorLayoutSettings = new ValueEditorLayout("layout"));

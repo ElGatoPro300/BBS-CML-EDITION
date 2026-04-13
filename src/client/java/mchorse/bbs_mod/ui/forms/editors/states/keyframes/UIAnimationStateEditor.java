@@ -20,6 +20,7 @@ import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
+import mchorse.bbs_mod.settings.values.IValueListener;
 import mchorse.bbs_mod.settings.values.base.BaseValueBasic;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.replays.UIReplaysEditor;
@@ -428,15 +429,17 @@ public class UIAnimationStateEditor extends UIElement
 
     private void convertToLimbs(UIKeyframeSheet sheet)
     {
-        List<Keyframe> selected = sheet.selection.getSelected();
+        List<Keyframe> selected = new ArrayList<>(sheet.selection.getSelected());
 
         if (selected.isEmpty())
         {
             return;
         }
 
-        BaseValue.edit(this.state, (s) ->
+        BaseValue.edit(this.state, IValueListener.FLAG_UNMERGEABLE, (s) ->
         {
+            Set<Float> convertedTicks = new java.util.HashSet<>();
+
             for (Keyframe kf : selected)
             {
                 Pose pose = (Pose) kf.getValue();
@@ -445,6 +448,8 @@ public class UIAnimationStateEditor extends UIElement
                 {
                     continue;
                 }
+
+                convertedTicks.add(kf.getTick());
 
                 for (Map.Entry<String, PoseTransform> entry : pose.transforms.entrySet())
                 {
@@ -462,9 +467,26 @@ public class UIAnimationStateEditor extends UIElement
                         newKf.copyOverExtra(kf);
                     }
                 }
-
-                sheet.channel.remove(kf);
             }
+
+            if (!convertedTicks.isEmpty())
+            {
+                for (int i = sheet.channel.getList().size() - 1; i >= 0; i--)
+                {
+                    Keyframe existing = (Keyframe) sheet.channel.getList().get(i);
+
+                    for (Float tick : convertedTicks)
+                    {
+                        if (Math.abs(existing.getTick() - tick) < 0.0001F)
+                        {
+                            sheet.channel.remove(i);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            this.state.properties.cleanUp();
         });
 
         this.setState(this.state);
