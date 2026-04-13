@@ -34,6 +34,7 @@ import mchorse.bbs_mod.math.molang.expressions.MolangExpression;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.settings.values.base.BaseValueBasic;
+import mchorse.bbs_mod.settings.values.IValueListener;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.UIClipsPanel;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
@@ -71,6 +72,7 @@ import mchorse.bbs_mod.utils.StringUtils;
 import mchorse.bbs_mod.utils.clips.Clip;
 import mchorse.bbs_mod.utils.clips.Clips;
 import mchorse.bbs_mod.utils.colors.Colors;
+import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 import mchorse.bbs_mod.utils.keyframes.KeyframeSegment;
@@ -117,6 +119,7 @@ public class UIReplaysEditor extends UIElement
     private Film film;
     private Replay replay;
     private Set<String> keys = new LinkedHashSet<>();
+    private Keyframe lastPickedKeyframe;
     private final Map<String, Boolean> collapsedModelTracks = new HashMap<>();
 
     static
@@ -1408,7 +1411,13 @@ public class UIReplaysEditor extends UIElement
 
         if (!sheets.isEmpty())
         {
-            this.keyframeEditor = new UIKeyframeEditor((consumer) -> new UIFilmKeyframes(this.filmPanel.cameraEditor, consumer).absolute()).target(this.filmPanel.editArea);
+            this.lastPickedKeyframe = null;
+            this.keyframeEditor = new UIKeyframeEditor((consumer) -> new UIFilmKeyframes(this.filmPanel.cameraEditor, (keyframe) ->
+            {
+                this.cleanupUntouchedAutomaticKeyframe(this.lastPickedKeyframe, keyframe);
+                this.lastPickedKeyframe = keyframe;
+                consumer.accept(keyframe);
+            }).absolute()).target(this.filmPanel.editArea);
             this.keyframeEditor.full(this);
             this.keyframeEditor.setUndoId("replay_keyframe_editor");
 
@@ -1894,7 +1903,7 @@ public class UIReplaysEditor extends UIElement
 
     private void convertToLimbs(UIKeyframeSheet sheet)
     {
-        List<Keyframe> selected = sheet.selection.getSelected();
+        List<Keyframe> selected = new ArrayList<>(sheet.selection.getSelected());
 
         if (selected.isEmpty())
         {
@@ -1908,8 +1917,10 @@ public class UIReplaysEditor extends UIElement
             return;
         }
 
-        BaseValue.edit(this.replay, (r) ->
+        BaseValue.edit(this.replay, IValueListener.FLAG_UNMERGEABLE, (r) ->
         {
+            Set<Float> convertedTicks = new HashSet<>();
+
             for (Keyframe kf : selected)
             {
                 Pose pose = (Pose) kf.getValue();
@@ -1918,6 +1929,8 @@ public class UIReplaysEditor extends UIElement
                 {
                     continue;
                 }
+
+                convertedTicks.add(kf.getTick());
 
                 for (Map.Entry<String, PoseTransform> entry : pose.transforms.entrySet())
                 {
@@ -1935,10 +1948,34 @@ public class UIReplaysEditor extends UIElement
                         newKf.copyOverExtra(kf);
                     }
                 }
-
-                sheet.channel.remove(kf);
             }
+
+            if (!convertedTicks.isEmpty())
+            {
+                for (int i = sheet.channel.getList().size() - 1; i >= 0; i--)
+                {
+                    Keyframe existing = (Keyframe) sheet.channel.getList().get(i);
+
+                    for (Float tick : convertedTicks)
+                    {
+                        if (Math.abs(existing.getTick() - tick) < 0.0001F)
+                        {
+                            sheet.channel.remove(i);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            this.replay.properties.cleanUp();
         });
+
+        this.replay.properties.resetProperties(this.replay.form.get());
+
+        if (this.filmPanel.getUndoHandler() != null)
+        {
+            this.filmPanel.getUndoHandler().submitUndo();
+        }
 
         this.updateChannelsList();
     }
@@ -2161,6 +2198,8 @@ public class UIReplaysEditor extends UIElement
             return;
         }
 
+        Keyframe provisionalKeyframe = this.ensureAutomaticLimbKeyframe(sheet, bone, tick);
+
         KeyframeSegment segment = sheet.channel.find(tick);
         Keyframe closest = null;
 
@@ -2171,6 +2210,11 @@ public class UIReplaysEditor extends UIElement
         else if (!sheet.channel.isEmpty())
         {
             closest = sheet.channel.get(0);
+        }
+
+        if (closest == null)
+        {
+            closest = provisionalKeyframe;
         }
 
         if (closest != null)
@@ -2187,6 +2231,126 @@ public class UIReplaysEditor extends UIElement
 
             this.filmPanel.setCursor((int) closest.getTick());
         }
+    }
+
+    private boolean isPoseTrackId(String id)
+    {
+        String property = StringUtils.fileName(id);
+
+        return property.equals("pose") || property.startsWith("pose_overlay");
+    }
+
+    private boolean isProvisionalAutomaticKeyframe(Keyframe keyframe, UIKeyframeSheet sheet)
+    {
+        if (keyframe == null || sheet == null || keyframe.getColor() == null)
+        {
+            return false;
+        }
+
+        int colon = sheet.id.indexOf(':');
+
+        if (colon == -1)
+        {
+            return false;
+        }
+
+        String propertyId = sheet.id.substring(0, colon);
+
+        return this.isPoseTrackId(propertyId) && keyframe.getColor().a < 0.99F;
+    }
+
+    private void cleanupUntouchedAutomaticKeyframe(Keyframe previous, Keyframe current)
+    {
+        if (previous == null || previous == current || this.keyframeEditor == null)
+        {
+            return;
+        }
+
+        IUIKeyframeGraph graph = this.keyframeEditor.view.getGraph();
+        UIKeyframeSheet sheet = graph.getSheet(previous);
+
+        if (!this.isProvisionalAutomaticKeyframe(previous, sheet))
+        {
+            return;
+        }
+
+        if (sheet.channel.removeSilently(previous))
+        {
+            graph.pickSelected();
+        }
+    }
+
+    private Keyframe ensureAutomaticLimbKeyframe(UIKeyframeSheet sheet, String bone, int tick)
+    {
+        if (sheet == null || !BBSSettings.autoKeyframes.get())
+        {
+            return null;
+        }
+
+        if (bone == null || bone.isEmpty())
+        {
+            return null;
+        }
+
+        int colon = sheet.id.indexOf(':');
+
+        if (colon == -1)
+        {
+            return null;
+        }
+
+        String propertyId = sheet.id.substring(0, colon);
+        String boneId = sheet.id.substring(colon + 1);
+
+        if (!this.isPoseTrackId(propertyId) || !bone.equals(boneId))
+        {
+            return null;
+        }
+
+        for (Object o : sheet.channel.getList())
+        {
+            Keyframe keyframe = (Keyframe) o;
+
+            if (Math.abs(keyframe.getTick() - tick) < 0.0001F)
+            {
+                return keyframe;
+            }
+        }
+
+        KeyframeSegment segment = sheet.channel.find(tick);
+        Keyframe source = null;
+        Transform transform = null;
+
+        if (segment != null)
+        {
+            source = segment.a;
+            Object interpolated = segment.createInterpolated();
+
+            if (interpolated instanceof Transform value)
+            {
+                transform = (Transform) sheet.channel.getFactory().copy(value);
+            }
+        }
+
+        if (transform == null)
+        {
+            transform = (Transform) sheet.channel.getFactory().createEmpty();
+        }
+
+        int index = sheet.channel.insert(tick, transform);
+        Keyframe keyframe = (Keyframe) sheet.channel.get(index);
+
+        if (keyframe != null)
+        {
+            if (source != null)
+            {
+                keyframe.getInterpolation().copy(source.getInterpolation());
+            }
+
+            keyframe.setColor(Color.rgba(Colors.setA(sheet.color, 0.35F)));
+        }
+
+        return keyframe;
     }
 
     public boolean clickViewport(UIContext context, Area area)

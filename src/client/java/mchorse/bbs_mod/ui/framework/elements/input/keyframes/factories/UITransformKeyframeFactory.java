@@ -15,6 +15,7 @@ import mchorse.bbs_mod.utils.joml.Vectors;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import mchorse.bbs_mod.utils.pose.PoseTransform;
 import mchorse.bbs_mod.utils.pose.Transform;
+import mchorse.bbs_mod.utils.colors.Color;
 import org.joml.Vector3d;
 
 import java.util.HashSet;
@@ -175,6 +176,13 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
             {
                 if (kf.getValue() instanceof Transform transform)
                 {
+                    Color c = kf.getColor();
+
+                    if (c != null && c.a < 0.99F)
+                    {
+                        kf.setColor(Color.rgba((c.getRGBColor() | 0xFF000000)));
+                    }
+
                     kf.preNotify();
                     consumer.accept(transform);
                     kf.postNotify();
@@ -253,6 +261,11 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
             float dy = (float) (y - transform.translate.y);
             float dz = (float) (z - transform.translate.z);
 
+            if (Math.abs(dx) < 0.0001F && Math.abs(dy) < 0.0001F && Math.abs(dz) < 0.0001F)
+            {
+                return;
+            }
+
             apply(this.editor.editor, this.editor.keyframe, (poseT) ->
             {
                 poseT.translate.x += dx;
@@ -268,6 +281,11 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
             float dx = (float) (x - transform.scale.x);
             float dy = (float) (y - transform.scale.y);
             float dz = (float) (z - transform.scale.z);
+
+            if (Math.abs(dx) < 0.0001F && Math.abs(dy) < 0.0001F && Math.abs(dz) < 0.0001F)
+            {
+                return;
+            }
 
             apply(this.editor.editor, this.editor.keyframe, (poseT) ->
             {
@@ -285,6 +303,11 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
             float dy = MathUtils.toRad((float) y) - transform.rotate.y;
             float dz = MathUtils.toRad((float) z) - transform.rotate.z;
 
+            if (Math.abs(dx) < 0.0001F && Math.abs(dy) < 0.0001F && Math.abs(dz) < 0.0001F)
+            {
+                return;
+            }
+
             apply(this.editor.editor, this.editor.keyframe, (poseT) ->
             {
                 poseT.rotate.x += dx;
@@ -301,6 +324,11 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
             float dy = MathUtils.toRad((float) y) - transform.rotate2.y;
             float dz = MathUtils.toRad((float) z) - transform.rotate2.z;
 
+            if (Math.abs(dx) < 0.0001F && Math.abs(dy) < 0.0001F && Math.abs(dz) < 0.0001F)
+            {
+                return;
+            }
+
             apply(this.editor.editor, this.editor.keyframe, (poseT) ->
             {
                 poseT.rotate2.x += dx;
@@ -316,6 +344,11 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
             float dx = (float) x - transform.pivot.x;
             float dy = (float) y - transform.pivot.y;
             float dz = (float) z - transform.pivot.z;
+
+            if (Math.abs(dx) < 0.0001F && Math.abs(dy) < 0.0001F && Math.abs(dz) < 0.0001F)
+            {
+                return;
+            }
 
             apply(this.editor.editor, this.editor.keyframe, (poseT) ->
             {

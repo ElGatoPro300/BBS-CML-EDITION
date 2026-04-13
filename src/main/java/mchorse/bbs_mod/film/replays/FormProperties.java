@@ -299,9 +299,9 @@ public class FormProperties extends ValueGroup
     @Override
     public void fromData(BaseType data)
     {
-        super.fromData(data);
-
+        /* FormProperties stores dynamic channels; rebuild from serialized data to avoid stale channels. */
         this.properties.clear();
+        this.removeAll();
 
         if (!data.isMap())
         {

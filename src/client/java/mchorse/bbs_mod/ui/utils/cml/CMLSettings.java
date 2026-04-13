@@ -41,51 +41,6 @@ public class CMLSettings
             UIKeys.CONFIG_EDITOR_SECONDS_MODE,
             UIKeys.CONFIG_EDITOR_FRAMES_MODE
         );
-        BBSSettings.editorTimeMode.postCallback((changed, flag) ->
-        {
-            int mode = BBSSettings.editorTimeMode.get();
-
-            if (mode == 0)
-            {
-                if (BBSSettings.editorSeconds.get()) BBSSettings.editorSeconds.set(false);
-                if (BBSSettings.editorFrames.get()) BBSSettings.editorFrames.set(false);
-            }
-            else if (mode == 1)
-            {
-                if (!BBSSettings.editorSeconds.get()) BBSSettings.editorSeconds.set(true);
-                if (BBSSettings.editorFrames.get()) BBSSettings.editorFrames.set(false);
-            }
-            else
-            {
-                if (BBSSettings.editorSeconds.get()) BBSSettings.editorSeconds.set(false);
-                if (!BBSSettings.editorFrames.get()) BBSSettings.editorFrames.set(true);
-            }
-        });
-
-        BBSSettings.editorSeconds.postCallback((changed, flag) ->
-        {
-            if (BBSSettings.editorSeconds.get())
-            {
-                if (BBSSettings.editorTimeMode.get() != 1) BBSSettings.editorTimeMode.set(1);
-                if (BBSSettings.editorFrames.get()) BBSSettings.editorFrames.set(false);
-            }
-            else if (!BBSSettings.editorFrames.get())
-            {
-                if (BBSSettings.editorTimeMode.get() != 0) BBSSettings.editorTimeMode.set(0);
-            }
-        });
-        BBSSettings.editorFrames.postCallback((changed, flag) ->
-        {
-            if (BBSSettings.editorFrames.get())
-            {
-                if (BBSSettings.editorTimeMode.get() != 2) BBSSettings.editorTimeMode.set(2);
-                if (BBSSettings.editorSeconds.get()) BBSSettings.editorSeconds.set(false);
-            }
-            else if (!BBSSettings.editorSeconds.get())
-            {
-                if (BBSSettings.editorTimeMode.get() != 0) BBSSettings.editorTimeMode.set(0);
-            }
-        });
         builder.category("display");
         BBSSettings.editorReplayHud = builder.getBoolean("replay_hud", false);
         BBSSettings.editorReplayHudPosition = builder.getInt("replay_hud_position", 0, 0, 3);
@@ -96,7 +51,8 @@ public class CMLSettings
         BBSSettings.modelBlockCategoriesPanelEnabled = builder.getBoolean("categories_panel_enabled", false);
         BBSSettings.modelPbrPanelControls = builder.getBoolean("model_pbr_panel_controls", false);
         builder.category("pose_track_selection");
-        BBSSettings.autoKeyframe = builder.getBoolean("auto_keyframe", false);
+        BBSSettings.realtimeKeyframes = builder.getBoolean("realtime_keyframes", false);
+        BBSSettings.autoKeyframes = builder.getBoolean("auto_keyframes", true);
         BBSSettings.poseBonesFilterMarked = builder.getBoolean("pose_bones_filter_marked", false);
         BBSSettings.poseBonesFilterMarked.invisible();
         BBSSettings.replayMarkedBonesOnly = builder.getBoolean("replay_marked_bones_only", false);
