@@ -80,6 +80,17 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
         return this.trackHeight;
     }
 
+    private float getProvisionalBlinkAlpha(float baseAlpha)
+    {
+        /* Smooth pulse with a high visible peak so provisional keyframes are easy to spot. */
+        float t = (System.currentTimeMillis() % 1200L) / 1200F;
+        float wave = 0.5F + 0.5F * (float) Math.sin(t * (float) (Math.PI * 2D));
+        float minAlpha = Math.max(baseAlpha * 0.8F, 0.25F);
+        float maxAlpha = 0.95F;
+
+        return MathUtils.clamp(minAlpha + (maxAlpha - minAlpha) * wave, 0F, 1F);
+    }
+
     public void setTrackHeight(double height)
     {
         this.trackHeight = MathUtils.clamp(height, 8D, 100D);
@@ -827,8 +838,14 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
                     isPointHover = isPointHover || this.keyframes.getGrabbingArea(context).isInside(x1, my);
                 }
 
-                int kc = frame.getColor() != null ? frame.getColor().getRGBColor() | Colors.A100 : sheet.color;
-                int c = (sheet.selection.has(j) || isPointHover ? Colors.WHITE : kc) | Colors.A100;
+                boolean provisional = frame.getColor() != null && frame.getColor().a < 0.99F;
+                float blinkAlpha = provisional ? this.getProvisionalBlinkAlpha(frame.getColor().a) : 1F;
+                int kc = frame.getColor() != null
+                    ? (provisional ? Colors.setA(frame.getColor().getRGBColor(), blinkAlpha) : frame.getColor().getARGBColor())
+                    : (sheet.color | Colors.A100);
+                int c = sheet.selection.has(j) || isPointHover
+                    ? (provisional ? Colors.setA(Colors.WHITE, blinkAlpha) : Colors.WHITE)
+                    : kc;
 
                 if (toRemove)
                 {
