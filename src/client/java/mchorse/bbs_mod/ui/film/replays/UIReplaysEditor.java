@@ -2316,10 +2316,12 @@ public class UIReplaysEditor extends UIElement
         }
 
         KeyframeSegment segment = sheet.channel.find(tick);
+        Keyframe source = null;
         Transform transform = null;
 
         if (segment != null)
         {
+            source = segment.a;
             Object interpolated = segment.createInterpolated();
 
             if (interpolated instanceof Transform value)
@@ -2338,6 +2340,11 @@ public class UIReplaysEditor extends UIElement
 
         if (keyframe != null)
         {
+            if (source != null)
+            {
+                keyframe.getInterpolation().copy(source.getInterpolation());
+            }
+
             keyframe.setColor(Color.rgba(Colors.setA(sheet.color, 0.35F)));
         }
 
