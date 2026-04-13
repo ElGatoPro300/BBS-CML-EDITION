@@ -34,6 +34,7 @@ public class BBSSettings
     public static ValueBoolean forceQwerty;
     public static ValueBoolean freezeModels;
     public static ValueFloat axesScale;
+    public static ValueFloat axesThickness;
     public static ValueBoolean uniformScale;
     public static ValueBoolean clickSound;
     public static ValueBoolean disablePivotTransform;
@@ -79,8 +80,6 @@ public class BBSSettings
     public static ValueBoolean editorSafeMargins;
     public static ValueBoolean editorCenterLines;
     public static ValueBoolean editorCrosshair;
-    public static ValueBoolean editorSeconds;
-    public static ValueBoolean editorFrames;
     public static ValueInt editorPeriodicSave;
     public static ValueBoolean editorHorizontalFlight;
     public static ValueBoolean editorFlightFreeLook;
@@ -93,6 +92,8 @@ public class BBSSettings
     public static ValueBoolean editorCameraPreviewPlayerSync;
     public static ValueInt editorDockGuideColor;
     public static ValueFloat editorDockGuideOpacity;
+    public static ValueBoolean editorReplayStepSound;
+    public static ValueBoolean editorMuteRenderAudioClips;
     public static ValueInt editorTimeMode;
     public static ValueInt editorReplayEditorTitleLimit;
     public static ValueBoolean editorReplayHud;
@@ -104,6 +105,7 @@ public class BBSSettings
     public static ValueBoolean editorRewind;
     public static ValueBoolean editorHorizontalClipEditor;
     public static ValueBoolean editorMinutesBackup;
+    public static ValueBoolean modelPbrPanelControls;
 
     public static ValueFloat recordingCountdown;
     public static ValueBoolean recordingSwipeDamage;
@@ -128,17 +130,12 @@ public class BBSSettings
     public static ValueInt audioWaveformHeight;
     public static ValueBoolean audioWaveformFilename;
     public static ValueBoolean audioWaveformTime;
-    /* Pose track bone anchoring */
-    public static ValueBoolean boneAnchoringEnabled;
-    public static ValueBoolean anchorOverrideEnabled;
-    public static ValueBoolean autoKeyframe;
+    public static ValueBoolean realtimeKeyframes;
+    public static ValueBoolean autoKeyframes;
     public static ValueBoolean poseBonesFilterMarked;
     public static ValueBoolean replayMarkedBonesOnly;
     public static ValueBoolean pickLimbTexture;
     public static ValueBoolean fluidRealisticModelInteraction;
-    public static ValueBoolean limbTracks;
-    public static ValueBoolean originalKeyframeUI;
-    public static ValueBoolean simplifiedKeyframeUI;
 
     public static ValueLink textureDefaultPath;
 
@@ -198,16 +195,19 @@ public class BBSSettings
         hsvColorPicker = builder.getBoolean("hsv_color_picker", true);
         forceQwerty = builder.getBoolean("force_qwerty", false);
         freezeModels = builder.getBoolean("freeze_models", false);
-        axesScale = builder.getFloat("axes_scale", 1F, 0F, 2F);
         uniformScale = builder.getBoolean("uniform_scale", false);
         clickSound = builder.getBoolean("click_sound", false);
-        gizmos = builder.getBoolean("gizmos", true);
         favoriteColors = new ValueColors("favorite_colors");
         disabledSheets = new ValueStringKeys("disabled_sheets");
         disabledSheets.set(defaultFilters);
         builder.register(favoriteColors);
         builder.register(disabledSheets);
         textureDefaultPath = builder.getRL("texture_default_path", null);
+
+        builder.category("axes");
+        gizmos = builder.getBoolean("gizmos", true);
+        axesScale = builder.getFloat("axes_scale", 1F, 0F, 2F);
+        axesThickness = builder.getFloat("axes_thickness", 1F, 0.25F, 3F);
 
         builder.category("tutorials");
         enableCursorRendering = builder.getBoolean("cursor", false);
@@ -254,8 +254,6 @@ public class BBSSettings
         editorCenterLines = builder.getBoolean("center_lines", false);
         editorCrosshair = builder.getBoolean("crosshair", false);
 
-        editorSeconds = builder.getBoolean("seconds", false);
-        editorFrames = builder.getBoolean("frames", false);
         editorPeriodicSave = builder.getInt("periodic_save", 60, 0, 3600);
         editorHorizontalFlight = builder.getBoolean("horizontal_flight", false);
         builder.register(editorLayoutSettings = new ValueEditorLayout("layout"));

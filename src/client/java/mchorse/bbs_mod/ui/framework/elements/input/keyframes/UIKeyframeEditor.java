@@ -160,11 +160,6 @@ public class UIKeyframeEditor extends UIElement
                                 targetBone = pose.poseEditor.groups.list.getCurrentFirst();
                             }
                         }
-
-                        if (sheet.anchoredBone != null && !sheet.anchoredBone.isEmpty())
-                        {
-                            targetBone = sheet.anchoredBone;
-                        }
                     }
 
                     /* If the ID includes a property path (e.g., formPath/pose or formPath/pose_overlayX),

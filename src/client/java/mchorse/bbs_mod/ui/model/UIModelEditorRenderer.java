@@ -2,9 +2,11 @@ package mchorse.bbs_mod.ui.model;
 
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.logging.LogUtils;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.cubic.ModelInstance;
+import mchorse.bbs_mod.cubic.animation.ActionsConfig;
 import mchorse.bbs_mod.cubic.data.model.Model;
 import mchorse.bbs_mod.cubic.data.model.ModelCube;
 import mchorse.bbs_mod.cubic.data.model.ModelGroup;
@@ -45,9 +47,11 @@ import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.RotationAxis;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
+import org.slf4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Consumer;
 
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
@@ -58,6 +62,8 @@ import mchorse.bbs_mod.utils.MathUtils;
 
 public class UIModelEditorRenderer extends UIModelRenderer
 {
+    private static final Logger LOGGER = LogUtils.getLogger();
+
     public UIPropTransform transform;
 
     private ModelForm form = new ModelForm();
@@ -105,6 +111,28 @@ public class UIModelEditorRenderer extends UIModelRenderer
     public void dirty()
     {
         this.dirty = true;
+    }
+
+    public void syncAnimationsAndResetAnimator()
+    {
+        this.syncAnimations();
+    }
+
+    public void syncAnimationsAndRefreshAnimator()
+    {
+        this.syncAnimations();
+
+        if (this.previewModel != null)
+        {
+            this.renderer.ensureAnimator(0F);
+            LOGGER.debug("Model editor animation sync: animator refreshed for model {}", this.previewModel.id);
+        }
+        else
+        {
+            LOGGER.debug("Model editor animation sync: preview model is null, animator refresh skipped");
+        }
+
+        this.dirty();
     }
 
     public ModelInstance getPreviewModelInstance()
@@ -214,11 +242,11 @@ public class UIModelEditorRenderer extends UIModelRenderer
 
                 if (entry != null)
                 {
-                    Matrix4f matrix = entry.origin();
+                    Matrix4f matrix = entry.matrix();
 
                     if (matrix == null)
                     {
-                        matrix = entry.matrix();
+                        matrix = entry.origin();
                     }
 
                     gizmoMatrix = matrix;
@@ -476,6 +504,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
             return;
         }
 
+        this.syncAnimations();
         this.form.color.get().set(this.config.color.get());
 
         if (!this.dirty)
@@ -534,6 +563,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
                 {
                     try
                     {
+                        this.syncAnimations();
                         this.previewModel.applyConfig((MapType) this.config.toData());
                         this.previewModel.texture = this.config.texture.get();
                         this.previewModel.color = this.config.color.get();
@@ -549,6 +579,36 @@ public class UIModelEditorRenderer extends UIModelRenderer
         }
 
         return this.previewModel;
+    }
+
+    private void syncAnimations()
+    {
+        if (this.config == null)
+        {
+            LOGGER.debug("Model editor animation sync skipped: config is null");
+            return;
+        }
+
+        ActionsConfig source = this.config.animations.get();
+        ActionsConfig target = this.form.actions.get();
+
+        if (!Objects.equals(target.geckoAnimations, source.geckoAnimations))
+        {
+            target.geckoAnimations.copy(source.geckoAnimations);
+            LOGGER.debug(
+                "Model editor animation sync applied: enabled={} limbs={}",
+                target.geckoAnimations.enabled,
+                target.geckoAnimations.limbs.size()
+            );
+        }
+        else
+        {
+            LOGGER.debug(
+                "Model editor animation sync skipped: no changes (enabled={} limbs={})",
+                target.geckoAnimations.enabled,
+                target.geckoAnimations.limbs.size()
+            );
+        }
     }
 
     private void deletePreview()

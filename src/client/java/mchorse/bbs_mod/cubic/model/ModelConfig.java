@@ -1,7 +1,9 @@
 package mchorse.bbs_mod.cubic.model;
 
 import mchorse.bbs_mod.cubic.model.ArmorConfig;
+import mchorse.bbs_mod.cubic.animation.ActionsConfig;
 import mchorse.bbs_mod.data.types.BaseType;
+import mchorse.bbs_mod.forms.values.ValueActionsConfig;
 import mchorse.bbs_mod.settings.values.core.ValueGroup;
 import mchorse.bbs_mod.settings.values.core.ValueLink;
 import mchorse.bbs_mod.settings.values.core.ValueList;
@@ -30,6 +32,7 @@ public class ModelConfig extends ValueGroup
     public final ValuePose parts = new ValuePose("parts", new Pose());
     public final ValueInt color = new ValueInt("color", Colors.WHITE);
     public final ValueLink texture = new ValueLink("texture", null);
+    public final ValueActionsConfig animations = new ValueActionsConfig("animations", new ActionsConfig());
     public final ArmorConfig armorSlots = new ArmorConfig("armor_slots");
     public final ArmorSlot fpMain = new ArmorSlot("fp_main");
     public final ArmorSlot fpOffhand = new ArmorSlot("fp_offhand");
@@ -80,6 +83,7 @@ public class ModelConfig extends ValueGroup
         this.add(this.parts);
         this.add(this.color);
         this.add(this.texture);
+        this.add(this.animations);
         this.add(this.armorSlots);
         this.add(this.fpMain);
         this.add(this.fpOffhand);

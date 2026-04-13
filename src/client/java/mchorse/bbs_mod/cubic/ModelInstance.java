@@ -3,6 +3,7 @@ package mchorse.bbs_mod.cubic;
 import com.mojang.blaze3d.systems.RenderSystem;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.bobj.BOBJBone;
+import mchorse.bbs_mod.cubic.animation.ActionsConfig;
 import mchorse.bbs_mod.cubic.data.animation.Animations;
 import mchorse.bbs_mod.cubic.data.model.Model;
 import mchorse.bbs_mod.cubic.data.model.ModelGroup;
@@ -83,6 +84,7 @@ public class ModelInstance implements IModelInstance
 
     public ArmorSlot itemsMainTransform = new ArmorSlot("items_main_transform");
     public ArmorSlot itemsOffTransform = new ArmorSlot("items_off_transform");
+    public ActionsConfig actions = new ActionsConfig();
 
     private Map<ModelGroup, ModelVAO> vaos = new HashMap<>();
 
@@ -277,6 +279,16 @@ public class ModelInstance implements IModelInstance
             this.itemsOffTransform.fromData(config.get("items_off_transform"));
         }
 
+        if (config.has("animations", BaseType.TYPE_MAP))
+        {
+            this.actions = new ActionsConfig();
+            this.actions.fromData(config.getMap("animations"));
+        }
+        else
+        {
+            this.actions = new ActionsConfig();
+        }
+
         /* Optional look-at configuration */
         if (config.has("look_at", BaseType.TYPE_MAP))
         {
@@ -407,6 +419,11 @@ public class ModelInstance implements IModelInstance
             config.put("phys_bones", list);
         }
 
+        if (this.actions != null && !this.actions.geckoAnimations.isDefault())
+        {
+            config.put("animations", this.actions.toData());
+        }
+
         return config;
     }
     public ModelInstance copy()
@@ -447,6 +464,8 @@ public class ModelInstance implements IModelInstance
         {
             copy.armorSlots.put(entry.getKey(), entry.getValue().copy());
         }
+
+        copy.actions.copy(this.actions);
 
         return copy;
     }

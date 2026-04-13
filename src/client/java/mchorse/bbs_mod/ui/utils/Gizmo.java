@@ -149,13 +149,15 @@ public class Gizmo
 
     public void render(MatrixStack stack)
     {
+        float thickness = BBSSettings.axesThickness == null ? 1F : BBSSettings.axesThickness.get();
+
         if (BBSSettings.gizmos.get())
         {
-            this.drawAxes(stack, 0.25F, 0.015F, 0.26F, 0.025F);
+            this.drawAxes(stack, 0.25F, 0.015F * thickness, 0.26F, 0.025F * thickness);
         }
         else
         {
-            Draw.coolerAxes(stack, 0.25F, 0.015F, 0.26F, 0.025F);
+            Draw.coolerAxes(stack, 0.25F, 0.015F * thickness, 0.26F, 0.025F * thickness);
         }
     }
 
@@ -174,9 +176,9 @@ public class Gizmo
 
         if (this.mode == Mode.ROTATE)
         {
-            float outlinePad = 0.015F * scale;
+            float outlinePad = 0.015F * scale * (BBSSettings.axesThickness == null ? 1F : BBSSettings.axesThickness.get());
             float radius = 0.22F * scale;
-            float thicknessRing = 0.025F * scale;
+            float thicknessRing = 0.025F * scale * (BBSSettings.axesThickness == null ? 1F : BBSSettings.axesThickness.get());
 
             Draw.arc3D(builder, stack, Axis.Z, radius, thicknessRing + outlinePad, 0F, 0F, 0F);
             Draw.arc3D(builder, stack, Axis.Z, radius, thicknessRing, 0F, 0F, 1F);
@@ -271,9 +273,9 @@ public class Gizmo
 
         if (this.mode == Mode.ROTATE)
         {
-            float outlinePad = 0.015F * scale;
+            float outlinePad = 0.015F * scale * (BBSSettings.axesThickness == null ? 1F : BBSSettings.axesThickness.get());
             float radius = 0.22F * scale;
-            float thicknessRing = 0.025F * scale;
+            float thicknessRing = 0.025F * scale * (BBSSettings.axesThickness == null ? 1F : BBSSettings.axesThickness.get());
 
             Draw.arc3D(builder, stack, Axis.Z, radius, thicknessRing + outlinePad, STENCIL_Z / 255F, 0F, 0F);
             Draw.arc3D(builder, stack, Axis.X, radius, thicknessRing + outlinePad, STENCIL_X / 255F, 0F, 0F);
