@@ -339,7 +339,11 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
         if (this.entity != null)
         {
-            this.entity.tick();
+            // Only tick if it's safe - skip player entities when not connected
+            if (!(this.entity instanceof OtherClientPlayerEntity) || MinecraftClient.getInstance().getNetworkHandler() != null)
+            {
+                this.entity.tick();
+            }
 
             this.entity.prevPitch = this.prevPitch;
             this.entity.prevYaw = 0F;
