@@ -1954,11 +1954,25 @@ public class UIReplaysEditor extends UIElement
             return;
         }
 
-        Form form = sheet.property != null ? FormUtils.getForm(sheet.property) : this.replay.form.get();
+        Form form = this.replay.form.get();
 
         if (form == null)
         {
             return;
+        }
+
+        Form rootForm = FormUtils.getRoot(form);
+
+        Set<String> boneNames = new HashSet<>();
+
+        for (Keyframe kf : selected)
+        {
+            Pose pose = (Pose) kf.getValue();
+
+            if (pose != null)
+            {
+                boneNames.addAll(pose.transforms.keySet());
+            }
         }
 
         BaseValue.edit(this.replay, IValueListener.FLAG_UNMERGEABLE, (r) ->
@@ -1967,7 +1981,7 @@ public class UIReplaysEditor extends UIElement
 
             for (Keyframe kf : selected)
             {
-                Pose pose = (Pose) kf.getValue();
+                Pose pose = (Pose) sheet.channel.interpolate(kf.getTick());
 
                 if (pose == null)
                 {
@@ -1976,13 +1990,18 @@ public class UIReplaysEditor extends UIElement
 
                 convertedTicks.add(kf.getTick());
 
-                for (Map.Entry<String, PoseTransform> entry : pose.transforms.entrySet())
+                for (String boneName : boneNames)
                 {
-                    String boneName = entry.getKey();
-                    PoseTransform transform = entry.getValue();
+                    PoseTransform transform = pose.transforms.get(boneName);
+
+                    if (transform == null)
+                    {
+                        transform = new PoseTransform();
+                    }
+
                     String key = sheet.id + ":" + boneName;
 
-                    KeyframeChannel<Transform> channel = this.replay.properties.getOrCreate(this.replay.form.get(), key);
+                    KeyframeChannel<Transform> channel = this.replay.properties.getOrCreate(rootForm, key);
 
                     if (channel != null)
                     {
