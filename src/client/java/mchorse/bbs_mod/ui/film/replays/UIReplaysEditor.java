@@ -1509,8 +1509,63 @@ public class UIReplaysEditor extends UIElement
 
         int colon = key.indexOf(':');
         String path = colon == -1 ? key : key.substring(0, colon);
+        BaseValueBasic property = FormUtils.getProperty(rootForm, path);
 
-        return FormUtils.getProperty(rootForm, path) != null;
+        if (property == null)
+        {
+            return false;
+        }
+
+        if (colon == -1)
+        {
+            return true;
+        }
+
+        String boneName = key.substring(colon + 1);
+
+        return this.isCompatibleBoneProperty(property, boneName);
+    }
+
+    private boolean isCompatibleBoneProperty(BaseValueBasic property, String boneName)
+    {
+        if (boneName == null || boneName.isEmpty() || !(property.getParent() instanceof Form parentForm))
+        {
+            return false;
+        }
+
+        if (!(parentForm instanceof ModelForm modelForm))
+        {
+            return false;
+        }
+
+        ModelInstance model = ModelFormRenderer.getModel(modelForm);
+
+        if (model == null)
+        {
+            return false;
+        }
+
+        IModel modelDef = model.model;
+
+        if (modelDef instanceof Model cubicModel)
+        {
+            return cubicModel.getAllGroupKeys().contains(boneName);
+        }
+
+        Collection<BOBJBone> bones = modelDef.getAllBOBJBones();
+
+        if (bones != null)
+        {
+            for (BOBJBone bone : bones)
+            {
+                if (boneName.equals(bone.name))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     private void processTrack(UIKeyframeSheet sheet, String groupKey, int level, List<UIKeyframeSheet> before, List<UIKeyframeSheet> pose, List<UIKeyframeSheet> limbs, List<UIKeyframeSheet> overlayRoots, List<UIKeyframeSheet> overlayLimbs, List<UIKeyframeSheet> after)
