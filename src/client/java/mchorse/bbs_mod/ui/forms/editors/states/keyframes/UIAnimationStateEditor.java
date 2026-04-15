@@ -55,6 +55,7 @@ import org.joml.Vector2i;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -436,13 +437,27 @@ public class UIAnimationStateEditor extends UIElement
             return;
         }
 
+        Form rootForm = FormUtils.getRoot(this.editor.form);
+
+        Set<String> boneNames = new HashSet<>();
+
+        for (Keyframe kf : selected)
+        {
+            Pose pose = (Pose) kf.getValue();
+
+            if (pose != null)
+            {
+                boneNames.addAll(pose.transforms.keySet());
+            }
+        }
+
         BaseValue.edit(this.state, IValueListener.FLAG_UNMERGEABLE, (s) ->
         {
             Set<Float> convertedTicks = new java.util.HashSet<>();
 
             for (Keyframe kf : selected)
             {
-                Pose pose = (Pose) kf.getValue();
+                Pose pose = (Pose) sheet.channel.interpolate(kf.getTick());
 
                 if (pose == null)
                 {
@@ -451,13 +466,18 @@ public class UIAnimationStateEditor extends UIElement
 
                 convertedTicks.add(kf.getTick());
 
-                for (Map.Entry<String, PoseTransform> entry : pose.transforms.entrySet())
+                for (String boneName : boneNames)
                 {
-                    String boneName = entry.getKey();
-                    PoseTransform transform = entry.getValue();
+                    PoseTransform transform = pose.transforms.get(boneName);
+
+                    if (transform == null)
+                    {
+                        transform = new PoseTransform();
+                    }
+
                     String key = sheet.id + ":" + boneName;
 
-                    KeyframeChannel<Transform> channel = this.state.properties.getOrCreate(this.editor.form, key);
+                    KeyframeChannel<Transform> channel = this.state.properties.getOrCreate(rootForm, key);
 
                     if (channel != null)
                     {
