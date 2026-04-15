@@ -55,21 +55,24 @@ public class PoseTransform extends Transform
     {
         super.lerp(preA, a, b, postB, interp, x);
 
-        PoseTransform preA1 = preA instanceof PoseTransform ? (PoseTransform) preA : DEFAULT;
-        PoseTransform a1 = a instanceof PoseTransform ? (PoseTransform) a : DEFAULT;
-        PoseTransform b1 = b instanceof PoseTransform ? (PoseTransform) b : DEFAULT;
-        PoseTransform postB1 = postB instanceof PoseTransform ? (PoseTransform) postB : DEFAULT;
+        if (preA instanceof PoseTransform || a instanceof PoseTransform || b instanceof PoseTransform || postB instanceof PoseTransform)
+        {
+            PoseTransform preA1 = preA instanceof PoseTransform ? (PoseTransform) preA : DEFAULT;
+            PoseTransform a1 = a instanceof PoseTransform ? (PoseTransform) a : DEFAULT;
+            PoseTransform b1 = b instanceof PoseTransform ? (PoseTransform) b : DEFAULT;
+            PoseTransform postB1 = postB instanceof PoseTransform ? (PoseTransform) postB : DEFAULT;
 
-        this.fix = (float) interp.interpolate(IInterp.context.set(preA1.fix, a1.fix, b1.fix, postB1.fix, x));
+            this.fix = (float) interp.interpolate(IInterp.context.set(preA1.fix, a1.fix, b1.fix, postB1.fix, x));
 
-        this.color.set(
-            (float) MathUtils.clamp(interp.interpolate(IInterp.context.set(preA1.color.r, a1.color.r, b1.color.r, postB1.color.r, x)), 0F, 1F),
-            (float) MathUtils.clamp(interp.interpolate(IInterp.context.set(preA1.color.g, a1.color.g, b1.color.g, postB1.color.g, x)), 0F, 1F),
-            (float) MathUtils.clamp(interp.interpolate(IInterp.context.set(preA1.color.b, a1.color.b, b1.color.b, postB1.color.b, x)), 0F, 1F),
-            (float) MathUtils.clamp(interp.interpolate(IInterp.context.set(preA1.color.a, a1.color.a, b1.color.a, postB1.color.a, x)), 0F, 1F)
-        );
+            this.color.set(
+                (float) MathUtils.clamp(interp.interpolate(IInterp.context.set(preA1.color.r, a1.color.r, b1.color.r, postB1.color.r, x)), 0F, 1F),
+                (float) MathUtils.clamp(interp.interpolate(IInterp.context.set(preA1.color.g, a1.color.g, b1.color.g, postB1.color.g, x)), 0F, 1F),
+                (float) MathUtils.clamp(interp.interpolate(IInterp.context.set(preA1.color.b, a1.color.b, b1.color.b, postB1.color.b, x)), 0F, 1F),
+                (float) MathUtils.clamp(interp.interpolate(IInterp.context.set(preA1.color.a, a1.color.a, b1.color.a, postB1.color.a, x)), 0F, 1F)
+            );
 
-        this.lighting = (float) interp.interpolate(IInterp.context.set(preA1.lighting, a1.lighting, b1.lighting, postB1.lighting, x));
+            this.lighting = (float) interp.interpolate(IInterp.context.set(preA1.lighting, a1.lighting, b1.lighting, postB1.lighting, x));
+        }
     }
 
     @Override
@@ -77,28 +80,31 @@ public class PoseTransform extends Transform
     {
         super.lerp(preA, a, b, postB, interp, x, w0, w1, w2, w3);
 
-        PoseTransform preA1 = preA instanceof PoseTransform ? (PoseTransform) preA : DEFAULT;
-        PoseTransform a1 = a instanceof PoseTransform ? (PoseTransform) a : DEFAULT;
-        PoseTransform b1 = b instanceof PoseTransform ? (PoseTransform) b : DEFAULT;
-        PoseTransform postB1 = postB instanceof PoseTransform ? (PoseTransform) postB : DEFAULT;
-
-        EasingArgs args = null;
-
-        if (interp instanceof Interpolation)
+        if (preA instanceof PoseTransform || a instanceof PoseTransform || b instanceof PoseTransform || postB instanceof PoseTransform)
         {
-            args = ((Interpolation) interp).getArgs();
+            PoseTransform preA1 = preA instanceof PoseTransform ? (PoseTransform) preA : DEFAULT;
+            PoseTransform a1 = a instanceof PoseTransform ? (PoseTransform) a : DEFAULT;
+            PoseTransform b1 = b instanceof PoseTransform ? (PoseTransform) b : DEFAULT;
+            PoseTransform postB1 = postB instanceof PoseTransform ? (PoseTransform) postB : DEFAULT;
+
+            EasingArgs args = null;
+
+            if (interp instanceof Interpolation)
+            {
+                args = ((Interpolation) interp).getArgs();
+            }
+
+            this.fix = this.interpolate(preA1.fix, a1.fix, b1.fix, postB1.fix, x, interp, args, preA == a, postB == b, w0, w1, w2, w3);
+
+            this.color.set(
+                MathUtils.clamp(this.interpolate(preA1.color.r, a1.color.r, b1.color.r, postB1.color.r, x, interp, args, preA == a, postB == b, w0, w1, w2, w3), 0F, 1F),
+                MathUtils.clamp(this.interpolate(preA1.color.g, a1.color.g, b1.color.g, postB1.color.g, x, interp, args, preA == a, postB == b, w0, w1, w2, w3), 0F, 1F),
+                MathUtils.clamp(this.interpolate(preA1.color.b, a1.color.b, b1.color.b, postB1.color.b, x, interp, args, preA == a, postB == b, w0, w1, w2, w3), 0F, 1F),
+                MathUtils.clamp(this.interpolate(preA1.color.a, a1.color.a, b1.color.a, postB1.color.a, x, interp, args, preA == a, postB == b, w0, w1, w2, w3), 0F, 1F)
+            );
+
+            this.lighting = this.interpolate(preA1.lighting, a1.lighting, b1.lighting, postB1.lighting, x, interp, args, preA == a, postB == b, w0, w1, w2, w3);
         }
-
-        this.fix = this.interpolate(preA1.fix, a1.fix, b1.fix, postB1.fix, x, interp, args, preA == a, postB == b, w0, w1, w2, w3);
-
-        this.color.set(
-            MathUtils.clamp(this.interpolate(preA1.color.r, a1.color.r, b1.color.r, postB1.color.r, x, interp, args, preA == a, postB == b, w0, w1, w2, w3), 0F, 1F),
-            MathUtils.clamp(this.interpolate(preA1.color.g, a1.color.g, b1.color.g, postB1.color.g, x, interp, args, preA == a, postB == b, w0, w1, w2, w3), 0F, 1F),
-            MathUtils.clamp(this.interpolate(preA1.color.b, a1.color.b, b1.color.b, postB1.color.b, x, interp, args, preA == a, postB == b, w0, w1, w2, w3), 0F, 1F),
-            MathUtils.clamp(this.interpolate(preA1.color.a, a1.color.a, b1.color.a, postB1.color.a, x, interp, args, preA == a, postB == b, w0, w1, w2, w3), 0F, 1F)
-        );
-
-        this.lighting = this.interpolate(preA1.lighting, a1.lighting, b1.lighting, postB1.lighting, x, interp, args, preA == a, postB == b, w0, w1, w2, w3);
     }
 
     private float interpolate(double preA, double a, double b, double postB, float x, IInterp interp, EasingArgs args, boolean boundaryStart, boolean boundaryEnd, double w0, double w1, double w2, double w3)
