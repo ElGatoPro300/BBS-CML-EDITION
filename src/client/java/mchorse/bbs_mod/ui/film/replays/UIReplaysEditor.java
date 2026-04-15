@@ -917,20 +917,9 @@ public class UIReplaysEditor extends UIElement
 
                     if (colon != -1)
                     {
-                        String propertyPath = key.substring(0, colon);
                         String boneName = key.substring(colon + 1);
-                        String propertyName = StringUtils.fileName(propertyPath);
 
                         title = boneName;
-
-                        if (propertyName.equals("pose_overlay"))
-                        {
-                            title += "_overlay";
-                        }
-                        else if (propertyName.startsWith("pose_overlay"))
-                        {
-                            title += "_overlay" + propertyName.substring("pose_overlay".length());
-                        }
                     }
 
                     UIKeyframeSheet sheet = customTitle != null && !customTitle.isEmpty()
@@ -1522,8 +1511,63 @@ public class UIReplaysEditor extends UIElement
 
         int colon = key.indexOf(':');
         String path = colon == -1 ? key : key.substring(0, colon);
+        BaseValueBasic property = FormUtils.getProperty(rootForm, path);
 
-        return FormUtils.getProperty(rootForm, path) != null;
+        if (property == null)
+        {
+            return false;
+        }
+
+        if (colon == -1)
+        {
+            return true;
+        }
+
+        String boneName = key.substring(colon + 1);
+
+        return this.isCompatibleBoneProperty(property, boneName);
+    }
+
+    private boolean isCompatibleBoneProperty(BaseValueBasic property, String boneName)
+    {
+        if (boneName == null || boneName.isEmpty() || !(property.getParent() instanceof Form parentForm))
+        {
+            return false;
+        }
+
+        if (!(parentForm instanceof ModelForm modelForm))
+        {
+            return false;
+        }
+
+        ModelInstance model = ModelFormRenderer.getModel(modelForm);
+
+        if (model == null)
+        {
+            return false;
+        }
+
+        IModel modelDef = model.model;
+
+        if (modelDef instanceof Model cubicModel)
+        {
+            return cubicModel.getAllGroupKeys().contains(boneName);
+        }
+
+        Collection<BOBJBone> bones = modelDef.getAllBOBJBones();
+
+        if (bones != null)
+        {
+            for (BOBJBone bone : bones)
+            {
+                if (boneName.equals(bone.name))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     private void processTrack(UIKeyframeSheet sheet, String groupKey, int level, List<UIKeyframeSheet> before, List<UIKeyframeSheet> pose, List<UIKeyframeSheet> limbs, List<UIKeyframeSheet> overlayRoots, List<UIKeyframeSheet> overlayLimbs, List<UIKeyframeSheet> after)
@@ -1550,7 +1594,7 @@ public class UIReplaysEditor extends UIElement
 
         if (isPbrTrack)
         {
-            if (this.collapsedModelTracks.getOrDefault(textureParentKey, false))
+            if (this.collapsedModelTracks.getOrDefault(textureParentKey, true))
             {
                 return;
             }
@@ -1579,7 +1623,9 @@ public class UIReplaysEditor extends UIElement
 
             sheet.level += 1;
 
-            if (parentId.startsWith("pose_overlay"))
+            String parentTrackName = StringUtils.fileName(parentId);
+
+            if (parentTrackName.startsWith("pose_overlay"))
             {
                 overlayLimbs.add(sheet);
             }
@@ -1618,12 +1664,12 @@ public class UIReplaysEditor extends UIElement
         }
         else if (trackName.equals("texture"))
         {
-            boolean expanded = !this.collapsedModelTracks.getOrDefault(textureParentKey, false);
+            boolean expanded = !this.collapsedModelTracks.getOrDefault(textureParentKey, true);
 
             sheet.expanded = expanded;
             sheet.toggleExpanded = () ->
             {
-                this.collapsedModelTracks.put(textureParentKey, !this.collapsedModelTracks.getOrDefault(textureParentKey, false));
+                this.collapsedModelTracks.put(textureParentKey, !this.collapsedModelTracks.getOrDefault(textureParentKey, true));
                 this.updateChannelsList();
             };
 
@@ -1952,15 +1998,25 @@ public class UIReplaysEditor extends UIElement
 
             if (!convertedTicks.isEmpty())
             {
-                for (int i = sheet.channel.getList().size() - 1; i >= 0; i--)
+                KeyframeChannel<Pose> poseChannel = null;
+                BaseValue liveProperty = this.replay.properties.get(sheet.id);
+
+                if (liveProperty instanceof KeyframeChannel<?> channel)
                 {
-                    Keyframe existing = (Keyframe) sheet.channel.getList().get(i);
+                    poseChannel = (KeyframeChannel<Pose>) channel;
+                }
+
+                KeyframeChannel<Pose> targetChannel = poseChannel != null ? poseChannel : sheet.channel;
+
+                for (int i = targetChannel.getList().size() - 1; i >= 0; i--)
+                {
+                    Keyframe existing = (Keyframe) targetChannel.getList().get(i);
 
                     for (Float tick : convertedTicks)
                     {
                         if (Math.abs(existing.getTick() - tick) < 0.0001F)
                         {
-                            sheet.channel.remove(i);
+                            targetChannel.remove(i);
                             break;
                         }
                     }
