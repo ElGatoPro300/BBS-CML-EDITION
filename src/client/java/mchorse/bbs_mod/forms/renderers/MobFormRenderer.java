@@ -255,7 +255,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
             MobTextureOverride.begin(this.form.texture.get());
             try
             {
-                MinecraftClient.getInstance().getEntityRenderDispatcher().render(this.entity, 0D, 0D, 0D, 0F, context.getTransition(), stack, consumers, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE);
+                MinecraftClient.getInstance().getEntityRenderDispatcher().render(this.entity, 0D, 0D, 0D, 0F, stack, consumers, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE);
             }
             finally
             {
@@ -332,7 +332,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
             MobTextureOverride.begin(this.form.texture.get());
             try
             {
-                MinecraftClient.getInstance().getEntityRenderDispatcher().render(this.entity, 0D, 0D, 0D, 0F, context.getTransition(), context.stack, consumers, light);
+                MinecraftClient.getInstance().getEntityRenderDispatcher().render(this.entity, 0D, 0D, 0D, 0F, context.stack, consumers, light);
             }
             finally
             {
