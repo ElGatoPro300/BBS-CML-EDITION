@@ -746,6 +746,11 @@ public abstract class BaseFilmController
             return;
         }
 
+        if (this.paused)
+        {
+            return;
+        }
+
         if (!this.isReplayVisible(replay, ticks))
         {
             return;
@@ -757,7 +762,7 @@ public abstract class BaseFilmController
         }
 
         /* Reduce spam and approximate vanilla stepping cadence. */
-        if ((ticks & 3) != 0)
+        if ((ticks & 7) != 0)
         {
             return;
         }
@@ -765,7 +770,7 @@ public abstract class BaseFilmController
         double vX = replay.keyframes.vX.interpolate(ticks);
         double vZ = replay.keyframes.vZ.interpolate(ticks);
 
-        if ((vX * vX + vZ * vZ) < 0.0005D)
+        if ((vX * vX + vZ * vZ) < 0.01D)
         {
             return;
         }
