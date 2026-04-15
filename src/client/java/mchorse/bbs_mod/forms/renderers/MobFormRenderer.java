@@ -5,6 +5,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.brigadier.StringReader;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.client.BBSShaders;
+import mchorse.bbs_mod.client.MobTextureOverride;
 import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.ITickable;
@@ -249,7 +250,15 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
             });
 
             consumers.setUI(true);
-            MinecraftClient.getInstance().getEntityRenderDispatcher().render(this.entity, 0D, 0D, 0D, 0F, context.getTransition(), stack, consumers, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE);
+            MobTextureOverride.begin(this.form.texture.get());
+            try
+            {
+                MinecraftClient.getInstance().getEntityRenderDispatcher().render(this.entity, 0D, 0D, 0D, 0F, context.getTransition(), stack, consumers, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE);
+            }
+            finally
+            {
+                MobTextureOverride.end();
+            }
             consumers.draw();
             consumers.setUI(false);
 
@@ -318,8 +327,15 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
             currentPose = this.form.pose.get();
             currentPoseOverlay = this.form.poseOverlay.get();
-
-            MinecraftClient.getInstance().getEntityRenderDispatcher().render(this.entity, 0D, 0D, 0D, 0F, context.getTransition(), context.stack, consumers, light);
+            MobTextureOverride.begin(this.form.texture.get());
+            try
+            {
+                MinecraftClient.getInstance().getEntityRenderDispatcher().render(this.entity, 0D, 0D, 0D, 0F, context.getTransition(), context.stack, consumers, light);
+            }
+            finally
+            {
+                MobTextureOverride.end();
+            }
 
             currentPose = currentPoseOverlay = null;
 
