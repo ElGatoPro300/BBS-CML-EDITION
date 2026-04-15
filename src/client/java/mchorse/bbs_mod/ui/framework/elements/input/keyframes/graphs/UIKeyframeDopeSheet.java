@@ -892,11 +892,8 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
 
             int totalWidth = iconWidth + lw + 10;
 
-            int c1 = hover ? Colors.setA(sheet.color, 0.66F) : 0x00000000;
-            int c2 = hover ? Colors.setA(sheet.color, 0.24F) : 0x00000000;
-
-            c1 = hover ? Colors.setA(sheet.color, 0.58F) : 0x00000000;
-            c2 = hover ? Colors.setA(sheet.color, 0.18F) : 0x00000000;
+            int c1 = hover ? Colors.setA(sheet.color, 0.28F) : 0x00000000;
+            int c2 = hover ? Colors.setA(sheet.color, 0.08F) : 0x00000000;
 
             context.batcher.box(area.x, y, area.x + 2, y + (int) this.trackHeight, sheet.color | Colors.A100);
 
