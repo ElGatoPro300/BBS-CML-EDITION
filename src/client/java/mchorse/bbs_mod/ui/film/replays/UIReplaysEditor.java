@@ -915,20 +915,9 @@ public class UIReplaysEditor extends UIElement
 
                     if (colon != -1)
                     {
-                        String propertyPath = key.substring(0, colon);
                         String boneName = key.substring(colon + 1);
-                        String propertyName = StringUtils.fileName(propertyPath);
 
                         title = boneName;
-
-                        if (propertyName.equals("pose_overlay"))
-                        {
-                            title += "_overlay";
-                        }
-                        else if (propertyName.startsWith("pose_overlay"))
-                        {
-                            title += "_overlay" + propertyName.substring("pose_overlay".length());
-                        }
                     }
 
                     UIKeyframeSheet sheet = customTitle != null && !customTitle.isEmpty()
@@ -1548,7 +1537,7 @@ public class UIReplaysEditor extends UIElement
 
         if (isPbrTrack)
         {
-            if (this.collapsedModelTracks.getOrDefault(textureParentKey, false))
+            if (this.collapsedModelTracks.getOrDefault(textureParentKey, true))
             {
                 return;
             }
@@ -1577,7 +1566,9 @@ public class UIReplaysEditor extends UIElement
 
             sheet.level += 1;
 
-            if (parentId.startsWith("pose_overlay"))
+            String parentTrackName = StringUtils.fileName(parentId);
+
+            if (parentTrackName.startsWith("pose_overlay"))
             {
                 overlayLimbs.add(sheet);
             }
@@ -1616,12 +1607,12 @@ public class UIReplaysEditor extends UIElement
         }
         else if (trackName.equals("texture"))
         {
-            boolean expanded = !this.collapsedModelTracks.getOrDefault(textureParentKey, false);
+            boolean expanded = !this.collapsedModelTracks.getOrDefault(textureParentKey, true);
 
             sheet.expanded = expanded;
             sheet.toggleExpanded = () ->
             {
-                this.collapsedModelTracks.put(textureParentKey, !this.collapsedModelTracks.getOrDefault(textureParentKey, false));
+                this.collapsedModelTracks.put(textureParentKey, !this.collapsedModelTracks.getOrDefault(textureParentKey, true));
                 this.updateChannelsList();
             };
 
