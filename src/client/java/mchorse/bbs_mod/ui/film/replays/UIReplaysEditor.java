@@ -1996,15 +1996,25 @@ public class UIReplaysEditor extends UIElement
 
             if (!convertedTicks.isEmpty())
             {
-                for (int i = sheet.channel.getList().size() - 1; i >= 0; i--)
+                KeyframeChannel<Pose> poseChannel = null;
+                BaseValue liveProperty = this.replay.properties.get(sheet.id);
+
+                if (liveProperty instanceof KeyframeChannel<?> channel)
                 {
-                    Keyframe existing = (Keyframe) sheet.channel.getList().get(i);
+                    poseChannel = (KeyframeChannel<Pose>) channel;
+                }
+
+                KeyframeChannel<Pose> targetChannel = poseChannel != null ? poseChannel : sheet.channel;
+
+                for (int i = targetChannel.getList().size() - 1; i >= 0; i--)
+                {
+                    Keyframe existing = (Keyframe) targetChannel.getList().get(i);
 
                     for (Float tick : convertedTicks)
                     {
                         if (Math.abs(existing.getTick() - tick) < 0.0001F)
                         {
-                            sheet.channel.remove(i);
+                            targetChannel.remove(i);
                             break;
                         }
                     }
