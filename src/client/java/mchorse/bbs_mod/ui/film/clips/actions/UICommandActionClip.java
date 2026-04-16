@@ -23,12 +23,17 @@ public class UICommandActionClip extends UIActionClip<CommandActionClip>
     {
         super.registerUI();
 
-        this.command = new UITextarea<>((t) -> this.clip.command.set(t.replace("\n", ""))) {
+        this.command = new UITextarea<>((t) -> this.clip.command.set(t.replace("\n", "")))
+        {
             @Override
-            protected void keyNewLine(TextEditUndo undo) {}
+            protected void keyNewLine(TextEditUndo undo)
+            {
+
+            }
 
             @Override
-            public void writeString(String string) {
+            public void writeString(String string)
+            {
                 super.writeString(string.replace("\n", ""));
             }
         };
