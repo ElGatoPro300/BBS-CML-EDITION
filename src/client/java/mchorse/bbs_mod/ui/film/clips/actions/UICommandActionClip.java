@@ -5,13 +5,13 @@ import mchorse.bbs_mod.actions.types.chat.CommandActionClip;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.IUIClipsDelegate;
 import mchorse.bbs_mod.ui.framework.elements.input.text.UITextarea;
-import mchorse.bbs_mod.ui.framework.elements.input.text.UITextbox;
 import mchorse.bbs_mod.ui.framework.elements.input.text.undo.TextEditUndo;
+import mchorse.bbs_mod.ui.framework.elements.input.text.utils.TextLine;
 import mchorse.bbs_mod.ui.utils.UI;
 
 public class UICommandActionClip extends UIActionClip<CommandActionClip>
 {
-    public UITextarea command;
+    public UITextarea<TextLine> command;
 
     public UICommandActionClip(CommandActionClip clip, IUIClipsDelegate editor)
     {
