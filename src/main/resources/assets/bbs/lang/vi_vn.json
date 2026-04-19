@@ -1,6 +1,5 @@
 {
     "block.bbs.model": "Khối model",
-    "item.bbs.gun": "súng BBS",
     "block.bbs.chroma_red": "Phông đỏ",
     "block.bbs.chroma_green": "Phông xanh",
     "block.bbs.chroma_blue": "Phông xanh dương",
@@ -25,5 +24,4 @@
     "category.bbs.main": "BBS mod",
 
     "gamerule.bbsEditing": "Quyền chỉnh sửa của BBS mod"
-}
 }

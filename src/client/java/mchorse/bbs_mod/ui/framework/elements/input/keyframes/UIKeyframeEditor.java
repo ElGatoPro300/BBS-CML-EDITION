@@ -132,18 +132,36 @@ public class UIKeyframeEditor extends UIElement
         if (editor instanceof UIPoseKeyframeFactory pose)
         {
             UIKeyframeSheet sheet = this.getSheet(editor.getKeyframe());
-            String currentFirst = pose.poseEditor.groups.getCurrentFirst();
+            String currentFirst = pose.poseEditor.groups.list.getCurrentFirst();
 
             if (sheet != null)
             {
-                String id = StringUtils.fileName(sheet.id);
+                boolean isPose = sheet.id.endsWith("pose") || sheet.id.contains("pose_overlay");
 
-                if (id.startsWith("pose"))
+                if (isPose)
                 {
-                    int i = sheet.id.lastIndexOf('/');
+                    String targetBone = sheet.anchoredBone != null && !sheet.anchoredBone.isEmpty() ? sheet.anchoredBone : currentFirst;
 
-                    bone = i >= 0 ? sheet.id.substring(0, i + 1) + currentFirst : currentFirst;
-                    local = pose.poseEditor.transform.isLocal();
+                    /* If the ID includes a property path (e.g., formPath/pose or formPath/pose_overlayX),
+                     * retain the form prefix to correctly position the bone in the renderer.*/
+                    if (sheet.id.contains("/pose") || sheet.id.contains("/pose_overlay"))
+                    {
+                        int lastSlash = sheet.id.lastIndexOf('/');
+                        String prefix = sheet.id.substring(0, lastSlash);
+
+                        bone = targetBone == null || targetBone.isEmpty() ? prefix : prefix + "/" + targetBone;
+                    }
+                    else
+                    {
+                        bone = targetBone;
+                    }
+
+                    String id = StringUtils.fileName(sheet.id);
+
+                    if (id.startsWith("pose"))
+                    {
+                        local = pose.poseEditor.transform.isLocal();
+                    }
                 }
             }
         }
@@ -153,6 +171,16 @@ public class UIKeyframeEditor extends UIElement
 
             if (sheet != null)
             {
+                if (sheet.id.endsWith("transform"))
+                {
+                    bone = sheet.id.endsWith("/transform") ? sheet.id.substring(0, sheet.id.lastIndexOf('/')) : "";
+                }
+                else if (sheet.id.contains("transform_overlay"))
+                {
+                    int slash = sheet.id.lastIndexOf('/');
+                    bone = slash >= 0 ? sheet.id.substring(0, slash) : "";
+                }
+
                 String id = StringUtils.fileName(sheet.id);
 
                 if (id.startsWith("transform"))

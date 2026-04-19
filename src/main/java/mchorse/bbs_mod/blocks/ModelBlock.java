@@ -2,6 +2,7 @@ package mchorse.bbs_mod.blocks;
 
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.blocks.entities.ModelBlockEntity;
+import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.network.ServerNetwork;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockEntityProvider;
@@ -9,6 +10,7 @@ import net.minecraft.block.BlockRenderType;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Waterloggable;
 import net.minecraft.block.entity.BlockEntity;
+import net.minecraft.block.ShapeContext;
 import net.minecraft.block.entity.BlockEntityTicker;
 import net.minecraft.block.entity.BlockEntityType;
 import net.minecraft.entity.player.PlayerEntity;
@@ -20,12 +22,15 @@ import net.minecraft.nbt.NbtCompound;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.state.StateManager;
 import net.minecraft.state.property.Properties;
+import net.minecraft.state.property.IntProperty;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
 import net.minecraft.util.ItemScatterer;
 import net.minecraft.util.collection.DefaultedList;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.shape.VoxelShape;
+import net.minecraft.util.shape.VoxelShapes;
 import net.minecraft.world.BlockView;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldView;
@@ -33,6 +38,8 @@ import org.jetbrains.annotations.Nullable;
 
 public class ModelBlock extends Block implements BlockEntityProvider, Waterloggable
 {
+    public static final IntProperty LIGHT_LEVEL = IntProperty.of("light_level", 0, 15);
+
     public static <E extends BlockEntity, A extends BlockEntity> BlockEntityTicker<A> validateTicker(BlockEntityType<A> givenType, BlockEntityType<E> expectedType, BlockEntityTicker<? super E> ticker)
     {
         return expectedType == givenType ? (BlockEntityTicker<A>) ticker : null;
@@ -43,13 +50,14 @@ public class ModelBlock extends Block implements BlockEntityProvider, Waterlogga
         super(settings);
 
         this.setDefaultState(getDefaultState()
-            .with(Properties.WATERLOGGED, false));
+            .with(Properties.WATERLOGGED, false)
+            .with(LIGHT_LEVEL, 0));
     }
 
     @Override
     protected void appendProperties(StateManager.Builder<Block, BlockState> builder)
     {
-        builder.add(Properties.WATERLOGGED);
+        builder.add(Properties.WATERLOGGED, LIGHT_LEVEL);
     }
 
     @Nullable
@@ -71,6 +79,9 @@ public class ModelBlock extends Block implements BlockEntityProvider, Waterlogga
             NbtCompound compound = new NbtCompound();
 
             compound.put("BlockEntityTag", modelBlock.createNbtWithId());
+            NbtCompound stateTag = new NbtCompound();
+            stateTag.putInt("light_level", modelBlock.getProperties().getLightLevel());
+            compound.put("BlockStateTag", stateTag);
             stack.setNbt(compound);
 
             return stack;
@@ -95,12 +106,7 @@ public class ModelBlock extends Block implements BlockEntityProvider, Waterlogga
     @Override
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(World world, BlockState state, BlockEntityType<T> type)
     {
-        if (world.isClient())
-        {
-            return validateTicker(type, BBSMod.MODEL_BLOCK_ENTITY, (theWorld, blockPos, blockState, blockEntity) -> blockEntity.tick(theWorld, blockPos, blockState));
-        }
-
-        return null;
+        return validateTicker(type, BBSMod.MODEL_BLOCK_ENTITY, (w, p, s, e) -> ModelBlockEntity.tick(w, p, s, e));
     }
 
     @Nullable
@@ -108,6 +114,60 @@ public class ModelBlock extends Block implements BlockEntityProvider, Waterlogga
     public BlockEntity createBlockEntity(BlockPos pos, BlockState state)
     {
         return new ModelBlockEntity(pos, state);
+    }
+
+    @Override
+    public VoxelShape getCollisionShape(BlockState state, BlockView world, BlockPos pos, ShapeContext context)
+    {
+        try
+        {
+            if (world instanceof World w)
+            {
+                BlockEntity be = w.getBlockEntity(pos);
+
+                if (be instanceof ModelBlockEntity model && model.getProperties().isHitbox())
+                {
+                    Form form = model.getProperties().getForm();
+
+                    if (form != null && form.hitbox.get())
+                    {
+                        float width = form.hitboxWidth.get();
+                        float height = form.hitboxHeight.get();
+
+                        if (width > 0F && height > 0F)
+                        {
+                            float halfWidth = width / 2F;
+
+                            double minX = 0.5D - halfWidth;
+                            double maxX = 0.5D + halfWidth;
+                            double minZ = 0.5D - halfWidth;
+                            double maxZ = 0.5D + halfWidth;
+                            double minY = 0D;
+                            double maxY = height;
+
+                            minX = Math.max(0D, minX);
+                            minZ = Math.max(0D, minZ);
+                            maxX = Math.min(1D, maxX);
+                            maxZ = Math.min(1D, maxZ);
+                            maxY = Math.min(1D, maxY);
+
+                            if (minX < maxX && minZ < maxZ && maxY > minY)
+                            {
+                                return VoxelShapes.cuboid(minX, minY, minZ, maxX, maxY, maxZ);
+                            }
+                        }
+                    }
+
+                    return VoxelShapes.fullCube();
+                }
+            }
+        }
+        catch (Exception e)
+        {
+
+        }
+
+        return VoxelShapes.empty();
     }
 
     @Override
@@ -145,6 +205,9 @@ public class ModelBlock extends Block implements BlockEntityProvider, Waterlogga
                 NbtCompound wrapper = new NbtCompound();
 
                 wrapper.put("BlockEntityTag", model.createNbtWithId());
+                NbtCompound stateTag = new NbtCompound();
+                stateTag.putInt("light_level", model.getProperties().getLightLevel());
+                wrapper.put("BlockStateTag", stateTag);
                 stack.setNbt(wrapper);
 
                 ItemScatterer.spawn(world, pos, DefaultedList.ofSize(1, stack));

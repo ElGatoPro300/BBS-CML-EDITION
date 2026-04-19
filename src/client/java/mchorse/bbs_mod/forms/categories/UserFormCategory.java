@@ -40,6 +40,14 @@ public class UserFormCategory extends FormCategory
     }
 
     @Override
+    public void addForm(int index, Form form)
+    {
+        super.addForm(index, form);
+
+        this.section.writeUserCategories(this);
+    }
+
+    @Override
     public void replaceForm(int index, Form form)
     {
         super.replaceForm(index, form);
@@ -53,5 +61,18 @@ public class UserFormCategory extends FormCategory
         super.removeForm(form);
 
         this.section.writeUserCategories(this);
+    }
+
+    public void moveForm(int from, int to)
+    {
+        java.util.List<Form> forms = this.getDirectForms();
+
+        if (from >= 0 && from < forms.size() && to >= 0 && to < forms.size() && from != to)
+        {
+            Form form = forms.remove(from);
+            forms.add(to, form);
+
+            this.section.writeUserCategories(this);
+        }
     }
 }

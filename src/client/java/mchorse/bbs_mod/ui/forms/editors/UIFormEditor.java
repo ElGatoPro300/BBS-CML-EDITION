@@ -9,6 +9,7 @@ import mchorse.bbs_mod.forms.forms.BlockForm;
 import mchorse.bbs_mod.forms.forms.BodyPart;
 import mchorse.bbs_mod.forms.forms.BodyPartManager;
 import mchorse.bbs_mod.forms.forms.ExtrudedForm;
+import mchorse.bbs_mod.forms.forms.FluidForm;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.forms.FramebufferForm;
 import mchorse.bbs_mod.forms.forms.ItemForm;
@@ -16,6 +17,8 @@ import mchorse.bbs_mod.forms.forms.LabelForm;
 import mchorse.bbs_mod.forms.forms.MobForm;
 import mchorse.bbs_mod.forms.forms.ModelForm;
 import mchorse.bbs_mod.forms.forms.ParticleForm;
+import mchorse.bbs_mod.forms.forms.StructureForm;
+import mchorse.bbs_mod.forms.forms.LightForm;
 import mchorse.bbs_mod.forms.forms.TrailForm;
 import mchorse.bbs_mod.forms.forms.VanillaParticleForm;
 import mchorse.bbs_mod.forms.states.AnimationState;
@@ -31,6 +34,7 @@ import mchorse.bbs_mod.ui.forms.editors.forms.UIAnchorForm;
 import mchorse.bbs_mod.ui.forms.editors.forms.UIBillboardForm;
 import mchorse.bbs_mod.ui.forms.editors.forms.UIBlockForm;
 import mchorse.bbs_mod.ui.forms.editors.forms.UIExtrudedForm;
+import mchorse.bbs_mod.ui.forms.editors.forms.UIFluidForm;
 import mchorse.bbs_mod.ui.forms.editors.forms.UIForm;
 import mchorse.bbs_mod.ui.forms.editors.forms.UIFramebufferForm;
 import mchorse.bbs_mod.ui.forms.editors.forms.UIItemForm;
@@ -38,8 +42,10 @@ import mchorse.bbs_mod.ui.forms.editors.forms.UILabelForm;
 import mchorse.bbs_mod.ui.forms.editors.forms.UIMobForm;
 import mchorse.bbs_mod.ui.forms.editors.forms.UIModelForm;
 import mchorse.bbs_mod.ui.forms.editors.forms.UIParticleForm;
+import mchorse.bbs_mod.ui.forms.editors.forms.UIStructureForm;
 import mchorse.bbs_mod.ui.forms.editors.forms.UITrailForm;
 import mchorse.bbs_mod.ui.forms.editors.forms.UIVanillaParticleForm;
+import mchorse.bbs_mod.ui.forms.editors.forms.UILightForm;
 import mchorse.bbs_mod.ui.forms.editors.states.UIAnimationStatesOverlayPanel;
 import mchorse.bbs_mod.ui.forms.editors.states.keyframes.UIAnimationStateEditor;
 import mchorse.bbs_mod.ui.forms.editors.utils.UIPickableFormRenderer;
@@ -70,11 +76,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 public class UIFormEditor extends UIElement implements IUIFormList, ICursor
 {
-    private static Map<Class, Supplier<UIForm>> panels = new HashMap<>();
+    public static Map<Class, Supplier<UIForm>> panels = new HashMap<>();
+    public static Function<UIFormEditor, UIPickableFormRenderer> rendererFactory = UIPickableFormRenderer::new;
 
     private static float treeWidth = 0F;
     private static boolean TOGGLED = true;
@@ -118,6 +126,7 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
     static
     {
         register(BillboardForm.class, UIBillboardForm::new);
+        register(FluidForm.class, UIFluidForm::new);
         register(ExtrudedForm.class, UIExtrudedForm::new);
         register(LabelForm.class, UILabelForm::new);
         register(ModelForm.class, UIModelForm::new);
@@ -128,6 +137,8 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
         register(MobForm.class, UIMobForm::new);
         register(VanillaParticleForm.class, UIVanillaParticleForm::new);
         register(TrailForm.class, UITrailForm::new);
+        register(StructureForm.class, UIStructureForm::new);
+        register(LightForm.class, UILightForm::new);
         register(FramebufferForm.class, UIFramebufferForm::new);
     }
 
@@ -212,7 +223,7 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
         this.shiftDuration.tooltip(UIKeys.CAMERA_TIMELINE_CONTEXT_SHIFT_DURATION, Direction.RIGHT);
         this.shiftDuration.keys().register(Keys.CLIP_SHIFT, () -> this.shiftDuration.clickItself());
 
-        this.renderer = new UIPickableFormRenderer(this);
+        this.renderer = rendererFactory.apply(this);
         this.renderer.full(this);
 
         this.finish = new UIIcon(Icons.IN, (b) -> this.palette.exit());

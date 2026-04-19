@@ -4,6 +4,7 @@ import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.forms.FormCategories;
 import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.categories.FormCategory;
+import mchorse.bbs_mod.forms.categories.UserFormCategory;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
@@ -47,7 +48,17 @@ public class UIFormList extends UIElement
 
         this.forms = UI.scrollView(0, 0);
         this.forms.scroll.cancelScrolling();
-        this.bar = new UIElement();
+        this.bar = new UIElement()
+        {
+            @Override
+            public void render(UIContext context)
+            {
+                context.batcher.getContext().getMatrices().push();
+                context.batcher.getContext().getMatrices().translate(0, 0, 200);
+                super.render(context);
+                context.batcher.getContext().getMatrices().pop();
+            }
+        };
         this.search = new UITextbox(100, this::search).placeholder(UIKeys.FORMS_LIST_SEARCH);
         this.edit = new UIIcon(Icons.EDIT, this::edit);
         this.edit.tooltip(UIKeys.FORMS_LIST_EDIT, Direction.TOP);
@@ -184,6 +195,29 @@ public class UIFormList extends UIElement
             this.recent.category.addForm(copy);
             this.recent.select(copy, false);
         }
+    }
+
+    public boolean handleFormDrop(UIFormCategory source, int sourceIndex, int mouseX, int mouseY)
+    {
+        for (UIFormCategory category : this.categories)
+        {
+            if (category != source && category.area.isInside(mouseX, mouseY) && category.category instanceof UserFormCategory)
+            {
+                int index = category.getIndexAt(mouseX, mouseY);
+                
+                if (index != -1)
+                {
+                    Form form = source.category.getForms().get(sourceIndex);
+                    
+                    ((UserFormCategory) category.category).addForm(index, form);
+                    source.category.removeForm(form);
+                    
+                    return true;
+                }
+            }
+        }
+        
+        return false;
     }
 
     @Override

@@ -3,7 +3,9 @@ package mchorse.bbs_mod.settings.ui;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.l10n.L10n;
+import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.settings.Settings;
+import mchorse.bbs_mod.settings.values.numeric.ValueInt;
 import mchorse.bbs_mod.settings.values.core.ValueGroup;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.ui.UIKeys;
@@ -15,6 +17,7 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
 import mchorse.bbs_mod.ui.utils.ScrollDirection;
 import mchorse.bbs_mod.ui.utils.UI;
+import mchorse.bbs_mod.utils.interps.Interpolations;
 import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.colors.Colors;
 
@@ -94,6 +97,26 @@ public class UISettingsOverlayPanel extends UIOverlayPanel
                 if (!value.isVisible())
                 {
                     continue;
+                }
+
+                /* Populate interpolation labels for default interpolation setting on client side */
+                if (value == BBSSettings.defaultInterpolation)
+                {
+                    try
+                    {
+                        java.util.List<IKey> interpKeys = new java.util.ArrayList<>();
+
+                        for (String k : Interpolations.MAP.keySet())
+                        {
+                            interpKeys.add(mchorse.bbs_mod.ui.UIKeys.C_INTERPOLATION.get(k));
+                        }
+
+                        if (value instanceof ValueInt)
+                        {
+                            ((ValueInt) value).modes(interpKeys.toArray(new IKey[0]));
+                        }
+                    }
+                    catch (Throwable ignored) {}
                 }
 
                 List<UIElement> elements = UIValueMap.create(value, this);
