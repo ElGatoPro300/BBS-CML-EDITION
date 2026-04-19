@@ -22,11 +22,17 @@ import mchorse.bbs_mod.utils.pose.Pose;
 import mchorse.bbs_mod.utils.pose.Transform;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.ShaderProgram;
+import net.minecraft.client.render.Camera;
 import net.minecraft.client.model.ModelPart;
 import net.minecraft.client.network.OtherClientPlayerEntity;
 import net.minecraft.client.render.LightmapTextureManager;
+import net.minecraft.client.render.command.OrderedRenderCommandQueueImpl;
+import net.minecraft.client.render.entity.EntityRenderManager;
+import net.minecraft.client.render.entity.EntityRenderer;
 import net.minecraft.client.render.entity.LivingEntityRenderer;
 import net.minecraft.client.render.entity.model.EntityModel;
+import net.minecraft.client.render.entity.state.EntityRenderState;
+import net.minecraft.client.render.state.CameraRenderState;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityPose;
@@ -245,7 +251,23 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
             MobTextureOverride.begin(this.form.texture.get());
             try
             {
-                MinecraftClient.getInstance().getEntityRenderDispatcher().render(this.entity, 0D, 0D, 0D, 0F, context.getTransition(), stack, consumers, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE);
+                EntityRenderManager manager = MinecraftClient.getInstance().getEntityRenderDispatcher();
+                EntityRenderer renderer = manager.getRenderer(this.entity);
+
+                if (renderer != null)
+                {
+                    EntityRenderState state = manager.getAndUpdateRenderState(this.entity, context.getTransition());
+                    Camera camera = MinecraftClient.getInstance().gameRenderer.getCamera();
+                    CameraRenderState cameraState = new CameraRenderState();
+
+                    cameraState.blockPos = camera.getBlockPos();
+                    cameraState.pos = camera.getCameraPos();
+                    cameraState.entityPos = camera.getCameraPos();
+                    cameraState.orientation = camera.getRotation();
+                    cameraState.initialized = true;
+
+                    renderer.render(state, stack, new OrderedRenderCommandQueueImpl(), cameraState);
+                }
             }
             finally
             {
@@ -322,7 +344,23 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
             MobTextureOverride.begin(this.form.texture.get());
             try
             {
-                MinecraftClient.getInstance().getEntityRenderDispatcher().render(this.entity, 0D, 0D, 0D, 0F, context.getTransition(), context.stack, consumers, light);
+                EntityRenderManager manager = MinecraftClient.getInstance().getEntityRenderDispatcher();
+                EntityRenderer renderer = manager.getRenderer(this.entity);
+
+                if (renderer != null)
+                {
+                    EntityRenderState state = manager.getAndUpdateRenderState(this.entity, context.getTransition());
+                    Camera camera = MinecraftClient.getInstance().gameRenderer.getCamera();
+                    CameraRenderState cameraState = new CameraRenderState();
+
+                    cameraState.blockPos = camera.getBlockPos();
+                    cameraState.pos = camera.getCameraPos();
+                    cameraState.entityPos = camera.getCameraPos();
+                    cameraState.orientation = camera.getRotation();
+                    cameraState.initialized = true;
+
+                    renderer.render(state, context.stack, new OrderedRenderCommandQueueImpl(), cameraState);
+                }
             }
             finally
             {

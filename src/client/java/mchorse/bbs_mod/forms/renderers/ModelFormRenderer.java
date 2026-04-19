@@ -334,7 +334,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             this.applyPBRTextureIntensity();
             BBSModClient.getTextures().bindTexture(texture);
             this.clearPBRTextureIntensity();
-            GlStateManager.depthFunc(GL11.GL_LEQUAL);
+            GlStateManager._depthFunc(GL11.GL_LEQUAL);
 
             Vector3f light0 = new Vector3f(0.85F, 0.85F, -1F).normalize();
             Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1F).normalize();
