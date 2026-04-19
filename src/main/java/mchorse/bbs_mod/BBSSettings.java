@@ -135,6 +135,8 @@ public class BBSSettings
     public static ValueBoolean poseBonesFilterMarked;
     public static ValueBoolean replayMarkedBonesOnly;
     public static ValueBoolean presetsGridPanel;
+    public static ValueFloat replayFpBobbingIntensity;
+    public static ValueFloat replayFpBobbingFrequency;
     public static ValueBoolean pickLimbTexture;
     public static ValueBoolean fluidRealisticModelInteraction;
 

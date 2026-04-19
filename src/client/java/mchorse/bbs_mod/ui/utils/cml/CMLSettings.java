@@ -59,5 +59,7 @@ public class CMLSettings
         builder.category("replay_editor");
         BBSSettings.editorReplayEditorTitleLimit = builder.getInt("replay_editor_title_limit", 12, 0, 64);
         BBSSettings.presetsGridPanel = builder.getBoolean("presets_grid_panel", false);
+        BBSSettings.replayFpBobbingIntensity = builder.getFloat("replay_fp_bobbing_intensity", 0.25F, 0F, 2F);
+        BBSSettings.replayFpBobbingFrequency = builder.getFloat("replay_fp_bobbing_frequency", 0.25F, 0F, 3F);
     }
 }
