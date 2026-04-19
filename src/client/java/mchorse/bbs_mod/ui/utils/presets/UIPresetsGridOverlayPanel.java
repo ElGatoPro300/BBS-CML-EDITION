@@ -1,0 +1,584 @@
+package mchorse.bbs_mod.ui.utils.presets;
+
+import mchorse.bbs_mod.BBSSettings;
+import mchorse.bbs_mod.data.types.MapType;
+import mchorse.bbs_mod.l10n.keys.IKey;
+import mchorse.bbs_mod.ui.UIKeys;
+import mchorse.bbs_mod.ui.framework.UIContext;
+import mchorse.bbs_mod.ui.framework.elements.UIElement;
+import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
+import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframes;
+import mchorse.bbs_mod.ui.framework.elements.input.text.UITextbox;
+import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
+import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlayPanel;
+import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
+import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
+import mchorse.bbs_mod.ui.utils.UIUtils;
+import mchorse.bbs_mod.ui.utils.icons.Icons;
+import mchorse.bbs_mod.utils.Direction;
+import mchorse.bbs_mod.utils.colors.Colors;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+
+public class UIPresetsGridOverlayPanel extends UIOverlayPanel
+{
+    private static final int COLUMNS = 4;
+    private static final int ROWS = 4;
+    private static final int PAGE_SIZE = COLUMNS * ROWS;
+
+    private final UICopyPasteController controller;
+    private final int mouseX;
+    private final int mouseY;
+
+    private final UITextbox search;
+    private final PresetCell[] cells = new PresetCell[PAGE_SIZE];
+
+    private final List<String> allPresets = new ArrayList<>();
+    private final List<String> filteredPresets = new ArrayList<>();
+
+    private String selectedPreset = "";
+    private int page;
+
+    private final UIIcon prev;
+    private final UIIcon next;
+    private boolean needsInitialRefresh = true;
+    private int lastContentWidth = -1;
+    private int lastContentHeight = -1;
+    private static final int TRACKER_POSE = 1;
+    private static final int TRACKER_TRANSFORM = 2;
+    private static final int TRACKER_POSE_TO_LIMBS = 4;
+
+    public UIPresetsGridOverlayPanel(UICopyPasteController controller, int mouseX, int mouseY)
+    {
+        super(UIKeys.PRESETS_TITLE);
+
+        this.controller = controller;
+        this.mouseX = mouseX;
+        this.mouseY = mouseY;
+
+        this.search = new UITextbox(this::setFilter).placeholder(UIKeys.GENERAL_SEARCH);
+        this.search.relative(this.content).xy(6, 6).w(1F, -12).h(20);
+        this.content.add(this.search);
+
+        for (int i = 0; i < this.cells.length; i++)
+        {
+            PresetCell cell = new PresetCell(this::onCellClick, this.createPreviewForCell());
+            cell.relative(this.content);
+            this.cells[i] = cell;
+            this.content.add(cell);
+        }
+
+        UIIcon save = new UIIcon(Icons.SAVED, (b) -> this.savePreset());
+        save.setEnabled(controller.canCopy());
+        save.tooltip(UIKeys.PRESETS_SAVE, Direction.LEFT);
+
+        UIIcon folder = new UIIcon(Icons.FOLDER, (b) -> UIUtils.openFolder(controller.manager.getFolder()));
+        folder.tooltip(UIKeys.PRESETS_OPEN, Direction.LEFT);
+
+        this.next = new UIIcon(Icons.ARROW_RIGHT, (b) ->
+        {
+            if (this.canNext())
+            {
+                this.page += 1;
+                this.refreshGrid();
+            }
+        });
+        this.next.tooltip(IKey.raw("Siguiente"), Direction.LEFT);
+
+        this.prev = new UIIcon(Icons.ARROW_LEFT, (b) ->
+        {
+            if (this.canPrev())
+            {
+                this.page -= 1;
+                this.refreshGrid();
+            }
+        });
+        this.prev.tooltip(IKey.raw("Anterior"), Direction.LEFT);
+
+        this.icons.add(save, folder, this.prev, this.next);
+
+        this.reloadPresets();
+    }
+
+    private UICopyPasteController.IPresetPreview createPreviewForCell()
+    {
+        UICopyPasteController.IPresetPreview preview = this.controller.getPreview();
+
+        UICopyPasteController.IPresetPreview fork = preview == null ? null : preview.fork();
+
+        if (fork instanceof mchorse.bbs_mod.ui.film.replays.UIReplayPresetPreview replayPreview)
+        {
+            replayPreview.setPreviewDistance(13);
+        }
+
+        return fork;
+    }
+
+    private void savePreset()
+    {
+        MapType type = this.controller.getSupplier().get();
+
+        if (type == null)
+        {
+            return;
+        }
+
+        UIPromptOverlayPanel pane = new UIPromptOverlayPanel(UIKeys.PRESETS_SAVE_TITLE, UIKeys.PRESETS_SAVE_DESCRIPTION, (t) ->
+        {
+            this.controller.manager.save(t, type);
+            this.reloadPresets();
+        });
+
+        pane.text.filename();
+        UIOverlay.addOverlay(this.getContext(), pane);
+    }
+
+    private void onCellClick(String presetId)
+    {
+        if (presetId == null || presetId.isEmpty())
+        {
+            return;
+        }
+
+        if (!presetId.equals(this.selectedPreset))
+        {
+            this.selectedPreset = presetId;
+            this.refreshSelection();
+
+            return;
+        }
+
+        MapType load = this.controller.manager.load(presetId);
+
+        if (load == null)
+        {
+            return;
+        }
+
+        this.controller.getConsumer().paste(load, this.mouseX, this.mouseY);
+        this.close();
+    }
+
+    private void reloadPresets()
+    {
+        this.allPresets.clear();
+        this.allPresets.addAll(this.controller.manager.getKeys());
+        this.setFilter(this.search.textbox.getText());
+    }
+
+    private void setFilter(String query)
+    {
+        String filter = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
+
+        this.filteredPresets.clear();
+
+        for (String preset : this.allPresets)
+        {
+            if (filter.isEmpty() || preset.toLowerCase(Locale.ROOT).contains(filter))
+            {
+                this.filteredPresets.add(preset);
+            }
+        }
+
+        this.page = 0;
+        this.selectedPreset = "";
+        this.refreshGrid();
+    }
+
+    private void refreshGrid()
+    {
+        this.layoutCells();
+        /* Apply updated flex values immediately, otherwise cells stay at stale areas
+           until an external resize happens (e.g. moving panel). */
+        this.content.resize();
+
+        int start = this.page * PAGE_SIZE;
+
+        for (int i = 0; i < PAGE_SIZE; i++)
+        {
+            int index = start + i;
+            PresetCell cell = this.cells[i];
+
+            if (index >= 0 && index < this.filteredPresets.size())
+            {
+                String presetId = this.filteredPresets.get(index);
+                MapType data = this.controller.manager.load(presetId);
+                int trackerMask = this.collectTrackerMask(data);
+
+                cell.setVisible(true);
+                cell.bind(presetId, data, trackerMask);
+                cell.setSelected(presetId.equals(this.selectedPreset));
+            }
+            else
+            {
+                cell.unbind();
+                cell.setVisible(false);
+            }
+        }
+
+        /* One more pass after final visibility/layout settles to avoid first-page-switch misses. */
+        this.content.resize();
+
+        for (int i = 0; i < PAGE_SIZE; i++)
+        {
+            PresetCell cell = this.cells[i];
+
+            if (cell.isVisible())
+            {
+                cell.syncIndicators();
+            }
+        }
+
+        this.prev.setEnabled(this.canPrev());
+        this.next.setEnabled(this.canNext());
+    }
+
+    private int collectTrackerMask(MapType data)
+    {
+        if (data == null)
+        {
+            return 0;
+        }
+
+        int mask = 0;
+
+        for (String key : UIKeyframes.parseKeyframes(data).keySet())
+        {
+            int colon = key.indexOf(':');
+            String propertyPath = colon == -1 ? key : key.substring(0, colon);
+            String property = mchorse.bbs_mod.utils.StringUtils.fileName(propertyPath);
+            String boneName = colon == -1 ? "" : key.substring(colon + 1);
+            String propertyLower = property.toLowerCase(Locale.ROOT);
+            String pathLower = propertyPath.toLowerCase(Locale.ROOT);
+
+            boolean isPoseTracker = property.equals("pose")
+                || property.startsWith("pose_overlay")
+                || propertyLower.contains("pose")
+                || pathLower.contains("pose");
+            boolean isTransformTracker = property.equals("transform")
+                || property.startsWith("transform_overlay")
+                || propertyLower.contains("transform")
+                || pathLower.contains("transform");
+
+            if (isPoseTracker)
+            {
+                mask |= TRACKER_POSE;
+
+                if (!boneName.isEmpty())
+                {
+                    mask |= TRACKER_POSE_TO_LIMBS;
+                }
+            }
+
+            if (isTransformTracker)
+            {
+                mask |= TRACKER_TRANSFORM;
+            }
+
+            if (mask == (TRACKER_POSE | TRACKER_TRANSFORM | TRACKER_POSE_TO_LIMBS))
+            {
+                break;
+            }
+        }
+
+        return mask;
+    }
+
+    private void refreshSelection()
+    {
+        for (PresetCell cell : this.cells)
+        {
+            cell.setSelected(cell.getPresetId().equals(this.selectedPreset));
+        }
+    }
+
+    private boolean canPrev()
+    {
+        return this.page > 0;
+    }
+
+    private boolean canNext()
+    {
+        return (this.page + 1) * PAGE_SIZE < this.filteredPresets.size();
+    }
+
+    private void layoutCells()
+    {
+        int padding = 6;
+        int spacing = 4;
+        int top = 6 + 20 + spacing;
+        int availableW = this.content.area.w - padding * 2;
+        int availableH = this.content.area.h - top - padding;
+        int safeW = Math.max(1, availableW);
+        int safeH = Math.max(1, availableH);
+        int cellW = Math.max(1, (safeW - (COLUMNS - 1) * spacing) / COLUMNS);
+        int stretchedCellH = Math.max(1, (safeH - (ROWS - 1) * spacing) / ROWS);
+        int cellH = Math.min(stretchedCellH, cellW);
+
+        for (int i = 0; i < PAGE_SIZE; i++)
+        {
+            int col = i % COLUMNS;
+            int row = i / COLUMNS;
+            int x = padding + col * (cellW + spacing);
+            int y = top + row * (cellH + spacing);
+
+            this.cells[i].xy(x, y).wh(cellW, cellH);
+        }
+    }
+
+    @Override
+    public void resize()
+    {
+        super.resize();
+
+        int width = this.content.area.w;
+        int height = this.content.area.h;
+
+        if (width != this.lastContentWidth || height != this.lastContentHeight)
+        {
+            this.lastContentWidth = width;
+            this.lastContentHeight = height;
+            this.refreshGrid();
+        }
+    }
+
+    @Override
+    protected void onAdd(UIElement parent)
+    {
+        super.onAdd(parent);
+
+        this.needsInitialRefresh = true;
+    }
+
+    @Override
+    public void render(UIContext context)
+    {
+        if (this.needsInitialRefresh && this.content.area.w > 0 && this.content.area.h > 0)
+        {
+            this.needsInitialRefresh = false;
+            this.refreshGrid();
+        }
+
+        super.render(context);
+    }
+
+    private static class PresetCell extends UIElement
+    {
+        private final java.util.function.Consumer<String> callback;
+        private final UICopyPasteController.IPresetPreview preview;
+        private final UIElement previewElement;
+
+        private String presetId = "";
+        private boolean selected;
+        private int trackerMask;
+        private final PresetIndicator indicatorTransform;
+        private final PresetIndicator indicatorPose;
+        private final PresetIndicator indicatorPoseToLimbs;
+
+        public PresetCell(java.util.function.Consumer<String> callback, UICopyPasteController.IPresetPreview preview)
+        {
+            this.callback = callback;
+            this.preview = preview;
+            this.previewElement = preview == null ? null : preview.createElement();
+
+            if (this.previewElement != null)
+            {
+                this.previewElement.relative(this);
+                this.add(this.previewElement);
+            }
+
+            this.indicatorTransform = new PresetIndicator(Colors.GREEN, Colors.A100 + Colors.GREEN);
+            this.indicatorTransform.tooltip(IKey.raw("Tracker: Transform"), Direction.TOP);
+            this.indicatorTransform.relative(this);
+            this.indicatorTransform.setVisible(false);
+            this.add(this.indicatorTransform);
+
+            this.indicatorPose = new PresetIndicator(Colors.RED, Colors.A100 + Colors.RED);
+            this.indicatorPose.tooltip(IKey.raw("Tracker: Pose"), Direction.TOP);
+            this.indicatorPose.relative(this);
+            this.indicatorPose.setVisible(false);
+            this.add(this.indicatorPose);
+
+            this.indicatorPoseToLimbs = new PresetIndicator(Colors.RED, Colors.WHITE);
+            this.indicatorPoseToLimbs.tooltip(IKey.raw("Tracker: To limbs"), Direction.TOP);
+            this.indicatorPoseToLimbs.relative(this);
+            this.indicatorPoseToLimbs.setVisible(false);
+            this.add(this.indicatorPoseToLimbs);
+        }
+
+        public String getPresetId()
+        {
+            return this.presetId;
+        }
+
+        public void setSelected(boolean selected)
+        {
+            this.selected = selected;
+        }
+
+        public void bind(String presetId, MapType data, int trackerMask)
+        {
+            this.presetId = presetId == null ? "" : presetId;
+            this.trackerMask = trackerMask;
+            this.updateIndicatorVisibility();
+            this.layoutIndicators();
+
+            if (this.preview != null && data != null)
+            {
+                this.preview.preview(this.presetId, data);
+            }
+        }
+
+        public void unbind()
+        {
+            this.presetId = "";
+            this.trackerMask = 0;
+            this.updateIndicatorVisibility();
+
+            if (this.preview != null)
+            {
+                this.preview.reset();
+            }
+        }
+
+        @Override
+        public void resize()
+        {
+            super.resize();
+
+            if (this.previewElement != null)
+            {
+                int maxW = Math.max(1, this.area.w - 8);
+                int maxH = Math.max(1, this.area.h - 22);
+                int size = Math.max(1, Math.min(maxW, maxH));
+                int x = (this.area.w - size) / 2;
+
+                this.previewElement.xy(x, 4).wh(size, size);
+            }
+
+            this.layoutIndicators();
+        }
+
+        @Override
+        public boolean subMouseClicked(UIContext context)
+        {
+            if (context.mouseButton == 0 && this.area.isInside(context) && !this.presetId.isEmpty())
+            {
+                this.callback.accept(this.presetId);
+
+                return true;
+            }
+
+            return super.subMouseClicked(context);
+        }
+
+        @Override
+        public void render(UIContext context)
+        {
+            int color = this.selected
+                ? Colors.A50 + BBSSettings.primaryColor.get()
+                : Colors.A50 + Colors.DARKEST_GRAY;
+
+            this.renderTrackerIndicators(context);
+
+            this.area.render(context.batcher, color);
+            context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), this.selected ? Colors.WHITE : Colors.A25);
+
+            super.render(context);
+
+            if (!this.presetId.isEmpty())
+            {
+                FontRenderer font = context.batcher.getFont();
+                String label = font.limitToWidth(this.presetId, this.area.w - 6);
+                int x = this.area.mx(font.getWidth(label));
+                int y = this.area.ey() - font.getHeight() - 3;
+
+                context.batcher.text(label, x, y, Colors.WHITE);
+            }
+        }
+
+        private void renderTrackerIndicators(UIContext context)
+        {
+            this.syncIndicators();
+        }
+
+        public void syncIndicators()
+        {
+            this.updateIndicatorVisibility();
+            this.layoutIndicators();
+        }
+
+        private void updateIndicatorVisibility()
+        {
+            boolean hasTransform = (this.trackerMask & TRACKER_TRANSFORM) != 0;
+            boolean hasPoseToLimbs = (this.trackerMask & TRACKER_POSE_TO_LIMBS) != 0;
+            boolean hasPose = !hasPoseToLimbs && (this.trackerMask & TRACKER_POSE) != 0;
+
+            this.indicatorTransform.setVisible(hasTransform);
+            this.indicatorPose.setVisible(hasPose);
+            this.indicatorPoseToLimbs.setVisible(hasPoseToLimbs);
+        }
+
+        private void layoutIndicators()
+        {
+            int size = 8;
+            int spacing = 3;
+            int previewX = 4;
+            int previewY = 4;
+            int maxW = Math.max(1, this.area.w - 8);
+            int maxH = Math.max(1, this.area.h - 22);
+            int previewW = Math.max(1, Math.min(maxW, maxH));
+            int previewH = previewW;
+
+            previewX = (this.area.w - previewW) / 2;
+
+            int x = previewX + previewW - size - 2;
+            int y = previewY + 2;
+
+            if (previewH < size + 2)
+            {
+                y = previewY;
+            }
+
+            if (this.indicatorTransform.isVisible())
+            {
+                this.indicatorTransform.xy(x, y).wh(size, size);
+                x -= size + spacing;
+            }
+
+            if (this.indicatorPose.isVisible())
+            {
+                this.indicatorPose.xy(x, y).wh(size, size);
+                x -= size + spacing;
+            }
+
+            if (this.indicatorPoseToLimbs.isVisible())
+            {
+                this.indicatorPoseToLimbs.xy(x, y).wh(size, size);
+            }
+        }
+    }
+
+    private static class PresetIndicator extends UIElement
+    {
+        private final int fillColor;
+        private final int borderColor;
+
+        public PresetIndicator(int rgbColor, int borderColor)
+        {
+            this.fillColor = Colors.A75 + rgbColor;
+            this.borderColor = borderColor;
+        }
+
+        @Override
+        public void render(UIContext context)
+        {
+            this.area.render(context.batcher, this.fillColor);
+            context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), this.borderColor);
+
+            super.render(context);
+        }
+    }
+}

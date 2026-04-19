@@ -904,6 +904,13 @@ public class UIKeyframes extends UIElement
         return this.currentGraph;
     }
 
+    public UIKeyframes setPresetsPreview(UICopyPasteController.IPresetPreview preview)
+    {
+        this.copyPasteController.preview(preview);
+
+        return this;
+    }
+
     public Scale getXAxis()
     {
         return this.xAxis;

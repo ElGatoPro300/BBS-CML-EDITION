@@ -1401,12 +1401,19 @@ public class UIReplaysEditor extends UIElement
         if (!sheets.isEmpty())
         {
             this.lastPickedKeyframe = null;
-            this.keyframeEditor = new UIKeyframeEditor((consumer) -> new UIFilmKeyframes(this.filmPanel.cameraEditor, (keyframe) ->
+            this.keyframeEditor = new UIKeyframeEditor((consumer) ->
             {
-                this.cleanupUntouchedAutomaticKeyframe(this.lastPickedKeyframe, keyframe);
-                this.lastPickedKeyframe = keyframe;
-                consumer.accept(keyframe);
-            }).absolute()).target(this.filmPanel.editArea);
+                UIFilmKeyframes keyframes = new UIFilmKeyframes(this.filmPanel.cameraEditor, (keyframe) ->
+                {
+                    this.cleanupUntouchedAutomaticKeyframe(this.lastPickedKeyframe, keyframe);
+                    this.lastPickedKeyframe = keyframe;
+                    consumer.accept(keyframe);
+                }).absolute();
+
+                keyframes.setPresetsPreview(new UIReplayPresetPreview(this::getReplay));
+
+                return keyframes;
+            }).target(this.filmPanel.editArea);
             this.keyframeEditor.full(this);
             this.keyframeEditor.setUndoId("replay_keyframe_editor");
 

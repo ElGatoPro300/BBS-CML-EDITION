@@ -58,5 +58,6 @@ public class CMLSettings
         BBSSettings.replayMarkedBonesOnly = builder.getBoolean("replay_marked_bones_only", false);
         builder.category("replay_editor");
         BBSSettings.editorReplayEditorTitleLimit = builder.getInt("replay_editor_title_limit", 12, 0, 64);
+        BBSSettings.presetsGridPanel = builder.getBoolean("presets_grid_panel", false);
     }
 }
