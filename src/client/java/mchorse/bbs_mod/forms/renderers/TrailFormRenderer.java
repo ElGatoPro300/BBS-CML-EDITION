@@ -11,7 +11,6 @@ import mchorse.bbs_mod.forms.forms.TrailForm;
 import mchorse.bbs_mod.graphics.Draw;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.ui.framework.UIContext;
-import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.*;
 import net.minecraft.client.util.math.MatrixStack;
 import org.joml.Matrix4f;
@@ -78,7 +77,7 @@ public class TrailFormRenderer extends FormRenderer<TrailForm> implements ITicka
             Draw.fillBox(builder, stack, -axisOffset, -1F, -axisOffset, axisOffset, 1F, axisOffset, 0, 1, 0);
 
 
-            RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
+            RenderSystem.setShader(GameRenderer::getPositionColorProgram);
             RenderSystem.disableDepthTest();
             BufferRenderer.drawWithGlobalProgram(builder.end());
             RenderSystem.enableDepthTest();
@@ -202,7 +201,7 @@ public class TrailFormRenderer extends FormRenderer<TrailForm> implements ITicka
         }
 
 
-        RenderSystem.setShader(ShaderProgramKeys.POSITION_TEX);
+        RenderSystem.setShader(GameRenderer::getPositionTexProgram);
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
         BufferRenderer.drawWithGlobalProgram(builder.end());

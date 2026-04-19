@@ -130,7 +130,7 @@ public class VanillaParticleFormRenderer extends FormRenderer<VanillaParticleFor
                     double y = this.pos.y + temp3f.y;
                     double z = this.pos.z + temp3f.z;
 
-                    world.addParticle(effect, x, y, z, v.x, v.y, v.z);
+                    world.addParticle(effect, true, x, y, z, v.x, v.y, v.z);
                 }
 
                 this.tick = frequency;

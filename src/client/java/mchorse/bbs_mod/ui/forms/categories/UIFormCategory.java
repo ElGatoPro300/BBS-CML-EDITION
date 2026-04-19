@@ -25,7 +25,6 @@ import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
-import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Colors;
@@ -362,7 +361,7 @@ public class UIFormCategory extends UIElement
                 int cy = this.area.y + h;
                 boolean isSelected = this.selected == form;
 
-                /* context.batcher.clip(cx, cy, CELL_WIDTH, CELL_HEIGHT, context); */
+                context.batcher.clip(cx, cy, CELL_WIDTH, CELL_HEIGHT, context);
 
                 if (isSelected)
                 {
@@ -370,9 +369,9 @@ public class UIFormCategory extends UIElement
                     context.batcher.outline(cx, cy, cx + CELL_WIDTH, cy + CELL_HEIGHT, Colors.A50 | BBSSettings.primaryColor.get(), 2);
                 }
 
-                FormUtilsClient.renderUI(form, context, cx + 4, cy + 4, cx + CELL_WIDTH - 4, cy + CELL_HEIGHT - 4);
+                FormUtilsClient.renderUI(form, context, cx, cy, cx + CELL_WIDTH, cy + CELL_HEIGHT);
 
-                /* context.batcher.unclip(context); */
+                context.batcher.unclip(context);
 
                 x += CELL_WIDTH;
                 i += 1;

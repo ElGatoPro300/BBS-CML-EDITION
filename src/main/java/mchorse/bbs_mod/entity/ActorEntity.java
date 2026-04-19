@@ -36,10 +36,10 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
     public static DefaultAttributeContainer.Builder createActorAttributes()
     {
         return LivingEntity.createLivingAttributes()
-            .add(EntityAttributes.ATTACK_DAMAGE, 1D)
-            .add(EntityAttributes.MOVEMENT_SPEED, 0.1D)
-            .add(EntityAttributes.ATTACK_SPEED)
-            .add(EntityAttributes.LUCK);
+            .add(EntityAttributes.GENERIC_ATTACK_DAMAGE, 1D)
+            .add(EntityAttributes.GENERIC_MOVEMENT_SPEED, 0.1D)
+            .add(EntityAttributes.GENERIC_ATTACK_SPEED)
+            .add(EntityAttributes.GENERIC_LUCK);
     }
 
     private boolean despawn;
@@ -545,6 +545,7 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
         nbt.putBoolean("despawn", true);
     }
 
+    @Override
     protected int getPermissionLevel()
     {
         return 4;

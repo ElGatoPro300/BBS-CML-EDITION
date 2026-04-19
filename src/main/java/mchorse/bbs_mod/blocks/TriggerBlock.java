@@ -37,7 +37,7 @@ public class TriggerBlock extends Block implements BlockEntityProvider
     }
 
     @Override
-    public ItemStack getPickStack(WorldView world, BlockPos pos, BlockState state, boolean includeData)
+    public ItemStack getPickStack(WorldView world, BlockPos pos, BlockState state)
     {
         BlockEntity entity = world.getBlockEntity(pos);
 
@@ -49,7 +49,7 @@ public class TriggerBlock extends Block implements BlockEntityProvider
             return stack;
         }
 
-        return super.getPickStack(world, pos, state, includeData);
+        return super.getPickStack(world, pos, state);
     }
 
     @Override
@@ -64,6 +64,7 @@ public class TriggerBlock extends Block implements BlockEntityProvider
         return 1.0F;
     }
 
+    @Override
     public boolean isTransparent(BlockState state, BlockView world, BlockPos pos)
     {
         return true;

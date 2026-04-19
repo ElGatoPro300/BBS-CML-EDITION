@@ -14,12 +14,10 @@ import mchorse.bbs_mod.ui.framework.UIScreen;
 import mchorse.bbs_mod.ui.model_blocks.UIModelBlockEditorMenu;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.pose.Transform;
-import com.mojang.serialization.MapCodec;
-import net.minecraft.client.render.entity.model.LoadedEntityModels;
-import net.minecraft.client.render.item.model.special.SpecialModelRenderer;
+import net.fabricmc.fabric.api.client.rendering.v1.BuiltinItemRendererRegistry;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.item.ModelTransformationMode;
+import net.minecraft.client.render.model.json.ModelTransformationMode;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.DiffuseLighting;
 import net.minecraft.client.util.math.MatrixStack;
@@ -30,7 +28,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
-public class GunItemRenderer implements SpecialModelRenderer<ItemStack>
+public class GunItemRenderer implements BuiltinItemRendererRegistry.DynamicItemRenderer
 {
     private Map<ItemStack, Item> map = new HashMap<>();
 
@@ -54,15 +52,9 @@ public class GunItemRenderer implements SpecialModelRenderer<ItemStack>
     }
 
     @Override
-    public ItemStack getData(ItemStack stack)
+    public void render(ItemStack stack, ModelTransformationMode mode, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, int overlay)
     {
-        return stack;
-    }
-
-    @Override
-    public void render(ItemStack data, ModelTransformationMode mode, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, int overlay, boolean hasGlint)
-    {
-        Item item = this.get(data);
+        Item item = this.get(stack);
 
         if (item != null)
         {
@@ -135,23 +127,6 @@ public class GunItemRenderer implements SpecialModelRenderer<ItemStack>
         this.map.put(stack, item);
 
         return item;
-    }
-
-    public static class Unbaked implements SpecialModelRenderer.Unbaked
-    {
-        public static final MapCodec<Unbaked> CODEC = MapCodec.unit(new Unbaked());
-
-        @Override
-        public MapCodec<Unbaked> getCodec()
-        {
-            return CODEC;
-        }
-
-        @Override
-        public SpecialModelRenderer<?> bake(net.minecraft.client.render.entity.model.LoadedEntityModels config)
-        {
-            return BBSModClient.getGunItemRenderer();
-        }
     }
 
     public static class Item
