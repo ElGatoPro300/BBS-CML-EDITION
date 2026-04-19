@@ -7,6 +7,7 @@ import mchorse.bbs_mod.data.DataToString;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
+import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
@@ -79,6 +80,8 @@ public class UIPoseEditor extends UIElement
     protected Map<String, String> flippedParts;
     /** Proveedor opcional para obtener la textura base del modelo cuando no hay override por hueso. */
     protected Supplier<Link> defaultTextureSupplier;
+    /** Proveedor opcional del form a renderizar en la preview 3D del selector de texturas. */
+    protected Supplier<Form> texturePreviewFormSupplier;
     /** Gestor de categorías de huesos (por grupo de pose). */
     protected BoneCategoriesManager boneCategories = new BoneCategoriesManager();
     private final List<String> allBones = new ArrayList<>();
@@ -309,7 +312,7 @@ public class UIPoseEditor extends UIElement
                 current = this.defaultTextureSupplier.get();
             }
 
-            UITexturePicker.open(this.getContext(), current, (l) ->
+            UITexturePicker picker = UITexturePicker.open(this.getContext(), current, (l) ->
             {
                 String selectedCategory = this.categories != null ? this.categories.getCurrentFirst() : null;
                 if (selectedCategory != null && !selectedCategory.isEmpty())
@@ -325,6 +328,11 @@ public class UIPoseEditor extends UIElement
 
                 if (this.onChange != null) this.onChange.run();
             });
+
+            if (picker != null)
+            {
+                picker.withFormPreview(this.texturePreviewFormSupplier);
+            }
         });
         this.pickTexture.context((menu) ->
         {
@@ -460,6 +468,13 @@ public class UIPoseEditor extends UIElement
     public UIPoseEditor setDefaultTextureSupplier(Supplier<Link> supplier)
     {
         this.defaultTextureSupplier = supplier;
+
+        return this;
+    }
+
+    public UIPoseEditor setTexturePreviewFormSupplier(Supplier<Form> supplier)
+    {
+        this.texturePreviewFormSupplier = supplier;
 
         return this;
     }

@@ -6,6 +6,8 @@ import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.data.DataToString;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.MapType;
+import mchorse.bbs_mod.forms.FormUtils;
+import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.importers.IImportPathProvider;
@@ -30,6 +32,7 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIMcmetaEditorPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.utils.EventPropagation;
 import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
+import mchorse.bbs_mod.ui.forms.editors.utils.UIFormRenderer;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
@@ -55,6 +58,7 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 /**
  * Texture picker GUI
@@ -84,6 +88,8 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
     public UIElement options;
     public UIToggle linear;
     public UIToggle mipmap;
+    public UIElement formPreviewArea;
+    public UIFormRenderer formPreview;
 
     public Consumer<Link> callback;
 
@@ -95,6 +101,8 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
     private Timer lastChecked = new Timer(1000);
     private String typed = "";
     private boolean canBeClosed = true;
+    private Supplier<Form> formPreviewSupplier;
+    private static final int FORM_PREVIEW_WIDTH = 150;
 
     private UICopyPasteController copyPasteController;
 
@@ -272,6 +280,16 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
         this.options = UI.column(5, 10, this.linear, this.mipmap);
         this.options.relative(this).xy(1F, 1F).w(148).anchor(1F, 1F);
 
+        this.formPreviewArea = new UIElement();
+        this.formPreview = new UIFormRenderer();
+        this.formPreview.grid = false;
+        this.formPreview.setDistance(14);
+        this.formPreview.setPosition(0F, 1F, 0F);
+        this.formPreview.setRotation(34F, 8F);
+        this.formPreviewArea.add(this.formPreview);
+        this.formPreview.relative(this.formPreviewArea).full(this.formPreviewArea);
+        this.formPreviewArea.setVisible(false);
+
         this.multi = new UIButton(UIKeys.TEXTURE_MULTISKIN, (b) -> this.toggleMulti());
         this.multiList = new UIFilteredLinkList((list) -> this.setFilteredLink(list.get(0)));
         this.multiList.sorting();
@@ -292,6 +310,7 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
         this.right.full(this);
         this.text.relative(this.multi).x(1F, 20).wTo(icons.area).h(20);
         this.picker.relative(this.right).set(10, 30, 0, 0).w(1, -10).h(1, -30);
+        this.formPreviewArea.relative(this.right).x(1F, -FORM_PREVIEW_WIDTH).y(30).w(FORM_PREVIEW_WIDTH - 10).h(1F, -40);
 
         this.multi.relative(this).set(10, 10, 100, 20);
         this.multiList.relative(this).set(10, 35, 100, 0).hTo(this.buttons.getFlex());
@@ -302,7 +321,7 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
         this.remove.relative(this.add).set(20, 0, 20, 20);
         this.edit.relative(this.buttons).wh(20, 20).x(1F, -20);
 
-        this.right.add(icons, this.text, this.picker);
+        this.right.add(icons, this.text, this.picker, this.formPreviewArea);
         this.buttons.add(this.add, this.remove, this.edit);
         this.add(this.multi, this.multiList, this.right, this.editor, this.buttons, this.options);
 
@@ -319,6 +338,17 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
 
         this.fill(null);
         this.markContainer().eventPropagataion(EventPropagation.BLOCK);
+    }
+
+    public UITexturePicker withFormPreview(Supplier<Form> supplier)
+    {
+        this.formPreviewSupplier = supplier;
+        /* Keep 3D preview out of "Pick a texture" panel; it's rendered only in texture editor. */
+        this.formPreviewArea.setVisible(false);
+        this.picker.w(1F, -10);
+        this.resize();
+
+        return this;
     }
 
     public UITexturePicker cantBeClosed()
@@ -422,6 +452,11 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
     {
         boolean wasVisible = this.hasParent();
 
+        if (this.pixelEditor != null)
+        {
+            this.pixelEditor.discardPreviewTextureChanges();
+        }
+
         this.editor.close();
         this.removeFromParent();
 
@@ -479,6 +514,7 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
                 this.selectCurrent(l);
                 this.displayCurrent(l);
             });
+            this.pixelEditor.withFormPreview(this.formPreviewSupplier);
             this.pixelEditor.fillTexture(this.current);
 
             UIIcon close = new UIIcon(Icons.CLOSE, (b) -> this.togglePixelEditor());
@@ -491,6 +527,7 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
         }
         else
         {
+            this.pixelEditor.discardPreviewTextureChanges();
             this.pixelEditor.fillTexture(null);
             this.pixelEditor.removeFromParent();
             this.pixelEditor = null;
@@ -588,6 +625,7 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
         this.picker.setCurrent(link, scroll);
 
         this.updateOptions();
+        this.refreshFormPreview();
     }
 
     /**
@@ -622,6 +660,7 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
         this.picker.setCurrent(link);
         this.text.setText(link == null ? "" : link.toString());
         this.updateOptions();
+        this.refreshFormPreview();
     }
 
     protected void updateOptions()
@@ -721,6 +760,20 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
 
         this.resize();
         this.updateFolderButton();
+        this.refreshFormPreview();
+    }
+
+    private void refreshFormPreview()
+    {
+        if (this.formPreviewSupplier == null)
+        {
+            this.formPreview.form = null;
+
+            return;
+        }
+
+        Form source = this.formPreviewSupplier.get();
+        this.formPreview.form = source == null ? null : FormUtils.copy(source);
     }
 
     @Override
@@ -865,6 +918,12 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
         if (this.editor.isVisible())
         {
             this.edit.area.render(context.batcher, Colors.A50 | BBSSettings.primaryColor.get());
+        }
+
+        if (this.formPreviewArea.isVisible())
+        {
+            this.formPreviewArea.area.render(context.batcher, Colors.A25);
+            context.batcher.outline(this.formPreviewArea.area.x, this.formPreviewArea.area.y, this.formPreviewArea.area.ex(), this.formPreviewArea.area.ey(), Colors.A50);
         }
 
         super.render(context);

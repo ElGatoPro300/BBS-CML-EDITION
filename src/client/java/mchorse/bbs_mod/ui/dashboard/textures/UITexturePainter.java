@@ -1,5 +1,9 @@
 package mchorse.bbs_mod.ui.dashboard.textures;
 
+import mchorse.bbs_mod.BBSModClient;
+import mchorse.bbs_mod.forms.FormUtils;
+import mchorse.bbs_mod.forms.forms.Form;
+import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.resources.Link;
@@ -10,14 +14,19 @@ import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
 import mchorse.bbs_mod.ui.framework.elements.input.UITexturePicker;
+import mchorse.bbs_mod.ui.forms.editors.utils.UIFormRenderer;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.colors.Color;
+import mchorse.bbs_mod.utils.resources.Pixels;
 import mchorse.bbs_mod.utils.colors.Colors;
 import org.joml.Vector2i;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 public class UITexturePainter extends UIElement
 {
@@ -30,6 +39,11 @@ public class UITexturePainter extends UIElement
 
     public UITextureEditor main;
     public UITextureEditor reference;
+    public UIElement modelPreviewArea;
+    public UIFormRenderer modelPreview;
+
+    private Supplier<Form> formPreviewSupplier;
+    private final Set<Link> touchedPreviewTextures = new HashSet<>();
 
     public UITexturePainter(Consumer<Link> saveCallback)
     {
@@ -68,6 +82,15 @@ public class UITexturePainter extends UIElement
         {
             UITexturePicker.findAllTextures(this.getContext(), this.main.getTexture(), (s) ->
             {
+                if (this.modelPreviewArea.isVisible())
+                {
+                    this.main.fillTexture(Link.create(s));
+                    this.main.setEditing(true);
+                    this.refreshModelPreview();
+
+                    return;
+                }
+
                 if (this.reference != null)
                 {
                     this.reference.fillTexture(Link.create(s));
@@ -109,11 +132,33 @@ public class UITexturePainter extends UIElement
         this.add(this.brightness);
         this.add(this.brush);
 
+        this.modelPreviewArea = new UIElement();
+        this.modelPreview = new UIFormRenderer();
+        this.modelPreview.grid = false;
+        this.modelPreview.setDistance(14);
+        this.modelPreview.setPosition(0F, 1F, 0F);
+        this.modelPreview.setRotation(34F, 8F);
+        this.modelPreview.relative(this.modelPreviewArea).full(this.modelPreviewArea);
+        this.modelPreviewArea.add(this.modelPreview);
+        this.modelPreviewArea.setVisible(false);
+        this.add(this.modelPreviewArea);
+
         IKey category = UIKeys.TEXTURES_KEYS_CATEGORY;
 
         this.keys().register(Keys.PIXEL_SWAP, this::swapColors).inside().category(category);
         this.keys().register(Keys.PIXEL_PICK, this::pickColor).inside().category(category);
         this.keys().register(Keys.PIXEL_FILL, this::fillColor).inside().category(category);
+    }
+
+    public UITexturePainter withFormPreview(Supplier<Form> supplier)
+    {
+        this.formPreviewSupplier = supplier;
+        this.modelPreviewArea.setVisible(supplier != null);
+        this.refreshModelPreview();
+        this.updateEditorsLayout();
+        this.resize();
+
+        return this;
     }
 
     private void swapColors()
@@ -163,11 +208,100 @@ public class UITexturePainter extends UIElement
     {
         this.main.fillTexture(current);
         this.main.setEditing(true);
+        this.refreshModelPreview();
+    }
+
+    private void refreshModelPreview()
+    {
+        if (this.formPreviewSupplier == null)
+        {
+            this.modelPreview.form = null;
+
+            return;
+        }
+
+        Form source = this.formPreviewSupplier.get();
+        this.modelPreview.form = source == null ? null : FormUtils.copy(source);
+    }
+
+    private void updateEditorsLayout()
+    {
+        if (this.modelPreviewArea.isVisible())
+        {
+            this.main.relative(this).xy(0, 0).w(0.5F, -4).h(1F);
+
+            if (this.reference != null)
+            {
+                this.reference.setVisible(false);
+            }
+
+            this.modelPreviewArea.relative(this).x(0.5F, 4).y(36).w(0.5F, -10).h(1F, -46);
+
+            return;
+        }
+
+        if (this.reference == null)
+        {
+            this.main.relative(this).xy(0, 0).w(1F).h(1F);
+        }
+        else
+        {
+            this.main.relative(this).xy(0, 0).w(0.5F).h(1F);
+            this.reference.relative(this).xy(0.5F, 0F).w(0.5F).h(1F);
+            this.reference.setVisible(true);
+        }
+    }
+
+    private void updateLiveModelPreviewTexture()
+    {
+        if (!this.modelPreviewArea.isVisible() || this.formPreviewSupplier == null)
+        {
+            return;
+        }
+
+        Link textureLink = this.main.getTexture();
+        Pixels pixels = this.main.getPixels();
+
+        if (textureLink == null || pixels == null)
+        {
+            return;
+        }
+
+        Texture texture = BBSModClient.getTextures().getTexture(textureLink);
+
+        if (texture == null)
+        {
+            return;
+        }
+
+        pixels.rewindBuffer();
+        texture.bind();
+        texture.updateTexture(pixels);
+        this.touchedPreviewTextures.add(textureLink);
+    }
+
+    public void discardPreviewTextureChanges()
+    {
+        for (Link link : this.touchedPreviewTextures)
+        {
+            BBSModClient.getTextures().delete(link);
+        }
+
+        this.touchedPreviewTextures.clear();
     }
 
     @Override
     public void render(UIContext context)
     {
+        this.updateEditorsLayout();
+        this.updateLiveModelPreviewTexture();
+
+        if (this.modelPreviewArea.isVisible())
+        {
+            this.modelPreviewArea.area.render(context.batcher, Colors.A25);
+            context.batcher.outline(this.modelPreviewArea.area.x, this.modelPreviewArea.area.y, this.modelPreviewArea.area.ex(), this.modelPreviewArea.area.ey(), Colors.A50);
+        }
+
         super.render(context);
 
         UITextureEditor editor = this.getHoverEditor(context);
