@@ -57,13 +57,18 @@ public class MorphRenderer
                 int overlay = OverlayTexture.DEFAULT_UV;
 
                 matrixStack.push();
-                matrixStack.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-bodyYaw));
+                try
+                {
+                    matrixStack.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-bodyYaw));
 
-                FormUtilsClient.render(morph.getForm(), new FormRenderingContext()
-                    .set(FormRenderType.ENTITY, morph.entity, matrixStack, i, overlay, g)
-                    .camera(MinecraftClient.getInstance().gameRenderer.getCamera()));
-
-                matrixStack.pop();
+                    FormUtilsClient.render(morph.getForm(), new FormRenderingContext()
+                        .set(FormRenderType.ENTITY, morph.entity, matrixStack, i, overlay, g)
+                        .camera(MinecraftClient.getInstance().gameRenderer.getCamera()));
+                }
+                finally
+                {
+                    matrixStack.pop();
+                }
 
                 GlStateManager._disableDepthTest();
             }
@@ -111,13 +116,18 @@ public class MorphRenderer
             float bodyYaw = Lerps.lerp(livingEntity.lastBodyYaw, livingEntity.bodyYaw, g);
 
             matrixStack.push();
-            matrixStack.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-bodyYaw));
+            try
+            {
+                matrixStack.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-bodyYaw));
 
-            FormUtilsClient.render(form, new FormRenderingContext()
-                .set(FormRenderType.ENTITY, owner.entity, matrixStack, i, o, g)
-                .camera(MinecraftClient.getInstance().gameRenderer.getCamera()));
-
-            matrixStack.pop();
+                FormUtilsClient.render(form, new FormRenderingContext()
+                    .set(FormRenderType.ENTITY, owner.entity, matrixStack, i, o, g)
+                    .camera(MinecraftClient.getInstance().gameRenderer.getCamera()));
+            }
+            finally
+            {
+                matrixStack.pop();
+            }
 
             GlStateManager._disableDepthTest();
 

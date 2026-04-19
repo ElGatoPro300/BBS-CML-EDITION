@@ -112,25 +112,30 @@ public abstract class FormRenderer <T extends Form>
         boolean isPicking = context.stencilMap != null;
 
         context.stack.push();
-        this.applyTransforms(context.stack, false, context.getTransition());
-
-        float lf = 1F - MathUtils.clamp(this.form.lighting.get(), 0F, 1F);
-        int u = context.light & '\uffff';
-        int v = context.light >> 16 & '\uffff';
-
-        u = (int) Lerps.lerp(u, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, lf);
-        context.light = u | v << 16;
-
-        this.render3D(context);
-
-        if (isPicking)
+        try
         {
-            this.updateStencilMap(context);
+            this.applyTransforms(context.stack, false, context.getTransition());
+
+            float lf = 1F - MathUtils.clamp(this.form.lighting.get(), 0F, 1F);
+            int u = context.light & '\uffff';
+            int v = context.light >> 16 & '\uffff';
+
+            u = (int) Lerps.lerp(u, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, lf);
+            context.light = u | v << 16;
+
+            this.render3D(context);
+
+            if (isPicking)
+            {
+                this.updateStencilMap(context);
+            }
+
+            this.renderBodyParts(context);
         }
-
-        this.renderBodyParts(context);
-
-        context.stack.pop();
+        finally
+        {
+            context.stack.pop();
+        }
 
         context.light = light;
 
@@ -264,11 +269,16 @@ public abstract class FormRenderer <T extends Form>
         if (part.getForm() != null)
         {
             context.stack.push();
-            MatrixStackUtils.applyTransform(context.stack, part.transform.get());
+            try
+            {
+                MatrixStackUtils.applyTransform(context.stack, part.transform.get());
 
-            FormUtilsClient.render(part.getForm(), context);
-
-            context.stack.pop();
+                FormUtilsClient.render(part.getForm(), context);
+            }
+            finally
+            {
+                context.stack.pop();
+            }
         }
 
         context.entity = oldEntity;
@@ -290,35 +300,51 @@ public abstract class FormRenderer <T extends Form>
         Matrix4f oo = new Matrix4f();
 
         stack.push();
-        this.applyTransforms(stack, true, transition);
-        oo.set(new Matrix4f());
-        stack.pop();
-
-        stack.push();
-        this.applyTransforms(stack, false, transition);
-        mm.set(new Matrix4f());
-
-        matrices.put(prefix, mm, oo);
-
-        int i = 0;
-
-        for (BodyPart part : this.form.parts.getAllTyped())
+        try
         {
-            Form form = part.getForm();
-
-            if (form != null)
-            {
-                stack.push();
-                MatrixStackUtils.applyTransform(stack, part.transform.get());
-
-                FormUtilsClient.getRenderer(form).collectMatrices(entity, stack, matrices, StringUtils.combinePaths(prefix, String.valueOf(i)), transition);
-
-                stack.pop();
-            }
-
-            i += 1;
+            this.applyTransforms(stack, true, transition);
+            oo.set(new Matrix4f());
+        }
+        finally
+        {
+            stack.pop();
         }
 
-        stack.pop();
+        stack.push();
+        try
+        {
+            this.applyTransforms(stack, false, transition);
+            mm.set(new Matrix4f());
+
+            matrices.put(prefix, mm, oo);
+
+            int i = 0;
+
+            for (BodyPart part : this.form.parts.getAllTyped())
+            {
+                Form form = part.getForm();
+
+                if (form != null)
+                {
+                    stack.push();
+                    try
+                    {
+                        MatrixStackUtils.applyTransform(stack, part.transform.get());
+
+                        FormUtilsClient.getRenderer(form).collectMatrices(entity, stack, matrices, StringUtils.combinePaths(prefix, String.valueOf(i)), transition);
+                    }
+                    finally
+                    {
+                        stack.pop();
+                    }
+                }
+
+                i += 1;
+            }
+        }
+        finally
+        {
+            stack.pop();
+        }
     }
 }
