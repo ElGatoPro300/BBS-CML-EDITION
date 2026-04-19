@@ -1,13 +1,13 @@
 package mchorse.bbs_mod.mixin.client;
 
 import mchorse.bbs_mod.client.MobTextureOverride;
-import net.minecraft.client.render.RenderLayer;
-import net.minecraft.util.Identifier;
+import net.minecraft.client.renderer.rendertype.RenderType;
+import net.minecraft.resources.Identifier;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 
-@Mixin(RenderLayer.class)
+@Mixin(RenderType.class)
 public class RenderLayerTextureOverrideMixin
 {
     @ModifyVariable(method = "getEntityCutoutNoCull", at = @At("HEAD"), argsOnly = true, require = 0)
