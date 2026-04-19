@@ -13,6 +13,7 @@ import mchorse.bbs_mod.forms.forms.ItemForm;
 import mchorse.bbs_mod.forms.forms.LabelForm;
 import mchorse.bbs_mod.forms.forms.MobForm;
 import mchorse.bbs_mod.forms.forms.StructureForm;
+import mchorse.bbs_mod.forms.forms.ShapeForm;
 import mchorse.bbs_mod.forms.forms.TrailForm;
 import mchorse.bbs_mod.forms.forms.VanillaParticleForm;
 import mchorse.bbs_mod.forms.forms.LightForm;
@@ -59,6 +60,7 @@ public class ExtraFormSection extends FormSection
         StructureForm structure = new StructureForm();
         FluidForm fluid = new FluidForm();
         LightForm light = new LightForm();
+        ShapeForm shape = new ShapeForm();
         try
         {
             String preferred = "structures/tree.nbt";
@@ -102,6 +104,7 @@ public class ExtraFormSection extends FormSection
         extra.addForm(vanillaParticle);
         extra.addForm(trail);
         extra.addForm(structure);
+        extra.addForm(shape);
         extra.addForm(fluid);
         extra.addForm(light);
 

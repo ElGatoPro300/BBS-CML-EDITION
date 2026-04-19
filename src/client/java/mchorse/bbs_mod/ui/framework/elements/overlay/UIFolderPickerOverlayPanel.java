@@ -43,7 +43,6 @@ public class UIFolderPickerOverlayPanel extends UIOverlayPanel
             this.content.add(descElement);
         }
         
-        // File picker - only show folders
         this.picker = new UIFileLinkList((link) -> {})
         {
             @Override
@@ -53,9 +52,13 @@ public class UIFolderPickerOverlayPanel extends UIOverlayPanel
                 UIFolderPickerOverlayPanel.this.updateOpenFolderButton();
             }
         };
-        
-        // Show folders first, then PNG files
-        this.picker.filter((l) -> l.path.endsWith("/") || l.path.toLowerCase().endsWith(".png"));
+
+        this.picker.filter((l) ->
+        {
+            String path = l.path.toLowerCase();
+
+            return path.endsWith("/") || path.endsWith(".png") || path.endsWith(".jpg") || path.endsWith(".jpeg");
+        });
         this.picker.background();
         
         // Buttons

@@ -184,6 +184,21 @@ public class Icons
     public static final Icon SIX_STAR = register(new Icon(ATLAS, "six_star", 192, 144));
     public static final Icon LIKE = register(new Icon(ATLAS, "like", 208, 144));
     public static final Icon DISLIKE = register(new Icon(ATLAS, "dislike", 224, 144));
+    public static final Icon PICKAXE = register(new Icon(ATLAS, "pickaxe", 240, 144));
+
+    public static final Icon COLLAPSED = register(new Icon(ATLAS, "collapsed", 0, 160));
+    public static final Icon UNCOLLAPSED = register(new Icon(ATLAS, "uncollapsed", 16, 160));
+    public static final Icon NEWS = register(new Icon(ATLAS, "news", 32, 160));
+    public static final Icon NEWS_UNREAD = register(new Icon(ATLAS, "news_unread", 48, 160));
+    public static final Icon NOTIFICATION = register(new Icon(ATLAS, "notification", 64, 160));
+    public static final Icon IK = register(new Icon(ATLAS, "ik", 80, 160));
+    public static final Icon DYNAMIC_BONES = register(new Icon(ATLAS, "dynamic_bones", 96, 160));
+    public static final Icon MODELS_SETTINGS = register(new Icon(ATLAS, "models_settings", 112, 160));
+    public static final Icon LOADING_BBS_1 = register(new Icon(ATLAS, "loading_bbs_1", 128, 160));
+    public static final Icon LOADING_BBS_2 = register(new Icon(ATLAS, "loading_bbs_2", 144, 160));
+    public static final Icon LOADING_BBS_3 = register(new Icon(ATLAS, "loading_bbs_3", 160, 160));
+    public static final Icon GEOMETRY_EDITOR = register(new Icon(ATLAS, "geometry_editor", 176, 160));
+    public static final Icon CHEST = register(new Icon(ATLAS, "chest", 192, 160));
 
     public static final Icon INTERP_LINEAR = register(new Icon(ATLAS, "interp_linear", 0, 192));
     public static final Icon INTERP_CONST = register(new Icon(ATLAS, "interp_const", 16, 192));

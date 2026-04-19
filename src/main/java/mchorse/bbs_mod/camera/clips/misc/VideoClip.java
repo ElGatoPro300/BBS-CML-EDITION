@@ -23,8 +23,15 @@ public class VideoClip extends CameraClip
     public ValueInt y = new ValueInt("y", 0);
     public ValueInt width = new ValueInt("width", 100);
     public ValueInt height = new ValueInt("height", 100);
+    /* Recorte por lados en porcentaje (0-100): izquierda, arriba, derecha, abajo. */
+    public ValueInt cropX = new ValueInt("cropX", 0, 0, 100);
+    public ValueInt cropY = new ValueInt("cropY", 0, 0, 100);
+    public ValueInt cropWidth = new ValueInt("cropWidth", 0, 0, 100);
+    public ValueInt cropHeight = new ValueInt("cropHeight", 0, 0, 100);
+    /* Opacidad interna en 0-1 para el render, UI en porcentaje 0-100. */
     public ValueFloat opacity = new ValueFloat("opacity", 1.0F, 0.0F, 1.0F);
-    public ValueBoolean loops = new ValueBoolean("loops", true);
+    /* Por defecto el loop queda desactivado. */
+    public ValueBoolean loops = new ValueBoolean("loops", false);
     public ValueBoolean global = new ValueBoolean("global", false);
 
     public VideoClip()
@@ -38,6 +45,10 @@ public class VideoClip extends CameraClip
         this.add(this.y);
         this.add(this.width);
         this.add(this.height);
+        this.add(this.cropX);
+        this.add(this.cropY);
+        this.add(this.cropWidth);
+        this.add(this.cropHeight);
         this.add(this.opacity);
         this.add(this.loops);
         this.add(this.global);

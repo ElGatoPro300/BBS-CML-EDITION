@@ -22,6 +22,9 @@ import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.entities.MCEntity;
 import mchorse.bbs_mod.forms.forms.Form;
+import mchorse.bbs_mod.forms.forms.ModelForm;
+import mchorse.bbs_mod.forms.renderers.ModelFormRenderer;
+import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.l10n.keys.IKey;
@@ -49,6 +52,7 @@ import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.keys.KeyAction;
+import mchorse.bbs_mod.ui.utils.pose.UIPoseEditor;
 import mchorse.bbs_mod.utils.CollectionUtils;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
@@ -1128,6 +1132,22 @@ public class UIFilmController extends UIElement
         int w = texture.width;
         int h = texture.height;
 
+        if (BBSSettings.replayMarkedBonesOnly.get() && !altPressed && !Window.isShiftPressed() && pair != null && pair.a instanceof ModelForm modelForm)
+        {
+            ModelInstance model = ModelFormRenderer.getModel(modelForm);
+            String poseGroup = model == null ? modelForm.model.get() : model.poseGroup;
+
+            if (poseGroup == null || poseGroup.isEmpty())
+            {
+                poseGroup = model == null ? modelForm.model.get() : model.id;
+            }
+
+            if (UIPoseEditor.hasMarkedBones(poseGroup) && !UIPoseEditor.isMarkedBone(poseGroup, pair.b))
+            {
+                return;
+            }
+        }
+
         ShaderProgram previewProgram = BBSShaders.getPickerPreviewProgram();
         Supplier<ShaderProgram> getPickerPreviewProgram = BBSShaders::getPickerPreviewProgram;
         GlUniform target = previewProgram.getUniform("Target");
@@ -1256,6 +1276,7 @@ public class UIFilmController extends UIElement
 
         this.stencilMap.setup();
         this.stencilMap.setIncrement(!altPressed);
+        this.stencilMap.allowedBones = null;
         this.stencil.apply();
 
         if (altPressed)
@@ -1280,6 +1301,27 @@ public class UIFilmController extends UIElement
 
             if (replay != null)
             {
+                if (BBSSettings.replayMarkedBonesOnly.get() && !Window.isShiftPressed())
+                {
+                    Form form = replay.form.get();
+
+                    if (form instanceof ModelForm modelForm)
+                    {
+                        ModelInstance model = ModelFormRenderer.getModel(modelForm);
+                        String poseGroup = model == null ? modelForm.model.get() : model.poseGroup;
+
+                        if (poseGroup == null || poseGroup.isEmpty())
+                        {
+                            poseGroup = model == null ? modelForm.model.get() : model.id;
+                        }
+
+                        if (UIPoseEditor.hasMarkedBones(poseGroup))
+                        {
+                            this.stencilMap.allowedBones = UIPoseEditor.getMarkedBones(poseGroup);
+                        }
+                    }
+                }
+
                 BaseFilmController.renderEntity(FilmControllerContext.instance
                     .setup(this.getEntities(), entity, replay, renderContext)
                     .transition(isPlaying ? renderContext.tickDelta() : 0)

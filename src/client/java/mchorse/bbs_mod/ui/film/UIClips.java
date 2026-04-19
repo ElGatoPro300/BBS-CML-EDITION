@@ -142,7 +142,19 @@ public class UIClips extends UIElement
         this.delegate = delegate;
         this.factory = factory;
 
-        this.embeddedClose = new UIIcon(Icons.CLOSE, (b) -> this.embedView(null));
+        this.embeddedClose = new UIIcon(Icons.CLOSE, (b) -> this.embedView(null))
+        {
+            @Override
+            protected void renderSkin(UIContext context)
+            {
+                if (UIClips.this.embedded != null && UIClips.this.delegate.getClip() instanceof KeyframeClip)
+                {
+                    this.area.render(context.batcher, Colors.setA(Colors.RED, 0.5F));
+                }
+
+                super.renderSkin(context);
+            }
+        };
         this.embeddedClose.relative(this);
 
         this.context((menu) ->
@@ -189,6 +201,21 @@ public class UIClips extends UIElement
         this.keys().register(Keys.COPY, () ->
         {
             if (this.copyPasteController.copy()) UIUtils.playClick();
+        }).category(KEYS_CATEGORY).active(canUseKeybindsSelected);
+        this.keys().register(Keys.CUT, () ->
+        {
+            if (this.delegate.getClip() == null)
+            {
+                this.getContext().notifyError(UIKeys.GENERAL_CUT_EMPTY);
+                return;
+            }
+
+            if (this.copyPasteController.copy())
+            {
+                this.removeSelected();
+                UIUtils.playClick();
+                this.getContext().notifyInfo(UIKeys.GENERAL_CUT);
+            }
         }).category(KEYS_CATEGORY).active(canUseKeybindsSelected);
         this.keys().register(Keys.PASTE, () ->
         {

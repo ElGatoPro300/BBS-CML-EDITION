@@ -6,6 +6,7 @@ import mchorse.bbs_mod.data.DataStorageUtils;
 import mchorse.bbs_mod.settings.values.core.ValueList;
 import mchorse.bbs_mod.settings.values.misc.ValueVector3f;
 import mchorse.bbs_mod.settings.values.numeric.ValueBoolean;
+import mchorse.bbs_mod.settings.values.numeric.ValueInt;
 import mchorse.bbs_mod.triggers.Trigger;
 import mchorse.bbs_mod.events.TriggerBlockEntityUpdateCallback;
 import mchorse.bbs_mod.forms.FormUtils;
@@ -20,11 +21,15 @@ import net.minecraft.network.packet.Packet;
 import net.minecraft.network.packet.s2c.play.BlockEntityUpdateS2CPacket;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Box;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3f;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
 public class TriggerBlockEntity extends BlockEntity
 {
@@ -46,9 +51,43 @@ public class TriggerBlockEntity extends BlockEntity
         }
     };
 
+    public final ValueList<Trigger> enter = new ValueList<Trigger>("enter")
+    {
+        @Override
+        protected Trigger create(String id)
+        {
+            return new Trigger(id);
+        }
+    };
+
+    public final ValueList<Trigger> exit = new ValueList<Trigger>("exit")
+    {
+        @Override
+        protected Trigger create(String id)
+        {
+            return new Trigger(id);
+        }
+    };
+
+    public final ValueList<Trigger> whileIn = new ValueList<Trigger>("whileIn")
+    {
+        @Override
+        protected Trigger create(String id)
+        {
+            return new Trigger(id);
+        }
+    };
+
     public final ValueBoolean collidable = new ValueBoolean("collidable", false);
+    public final ValueBoolean region = new ValueBoolean("region", false);
+    public final ValueInt regionDelay = new ValueInt("regionDelay", 15);
     public final ValueVector3f pos1 = new ValueVector3f("pos1", new Vector3f(0, 0, 0));
     public final ValueVector3f pos2 = new ValueVector3f("pos2", new Vector3f(1, 1, 1));
+    public final ValueVector3f regionOffset = new ValueVector3f("regionOffset", new Vector3f(0, 0, 0));
+    public final ValueVector3f regionSize = new ValueVector3f("regionSize", new Vector3f(1, 1, 1));
+
+    private Set<UUID> playersInRegion = new HashSet<>();
+    private java.util.Map<UUID, Long> regionNextTriggerTick = new java.util.HashMap<>();
 
     public TriggerBlockEntity(BlockPos pos, BlockState state)
     {
@@ -57,8 +96,11 @@ public class TriggerBlockEntity extends BlockEntity
 
     public void trigger(ServerPlayerEntity player, boolean rightClick)
     {
-        List<Trigger> triggers = rightClick ? this.right.getList() : this.left.getList();
-        
+        this.trigger(player, rightClick ? this.right.getList() : this.left.getList());
+    }
+
+    public void trigger(ServerPlayerEntity player, List<Trigger> triggers)
+    {
         for (Trigger trigger : triggers)
         {
             String type = trigger.type.get();
@@ -112,7 +154,87 @@ public class TriggerBlockEntity extends BlockEntity
     
     public static void tick(World world, BlockPos pos, BlockState state, TriggerBlockEntity blockEntity)
     {
+        if (!world.isClient && blockEntity.region.get())
+        {
+            blockEntity.tickRegion();
+        }
+
         TriggerBlockEntityUpdateCallback.EVENT.invoker().update(blockEntity);
+    }
+
+    public Box getRegionBox()
+    {
+        return this.getRegionBox(this.pos.getX(), this.pos.getY(), this.pos.getZ());
+    }
+
+    public Box getRegionBoxRelative()
+    {
+        return this.getRegionBox(0, 0, 0);
+    }
+
+    public Box getRegionBox(double x, double y, double z)
+    {
+        Vector3f offset = this.regionOffset.get();
+        Vector3f size = this.regionSize.get();
+
+        /* Slightly expand the region box so it's bigger than the 1x1 hitbox by default */
+        double expansion = 1.0;
+        double minX = offset.x + 0.5 - size.x / 2.0 - expansion;
+        double minY = offset.y + 0.5 - size.y / 2.0 - expansion;
+        double minZ = offset.z + 0.5 - size.z / 2.0 - expansion;
+        double maxX = offset.x + 0.5 + size.x / 2.0 + expansion;
+        double maxY = offset.y + 0.5 + size.y / 2.0 + expansion;
+        double maxZ = offset.z + 0.5 + size.z / 2.0 + expansion;
+
+        return new Box(
+            x + minX, y + minY, z + minZ,
+            x + maxX, y + maxY, z + maxZ
+        );
+    }
+
+    private void tickRegion()
+    {
+        Box box = this.getRegionBox();
+        List<ServerPlayerEntity> players = this.world.getEntitiesByClass(ServerPlayerEntity.class, box, (p) -> true);
+        Set<UUID> currentPlayers = new HashSet<>();
+        long time = this.world.getTime();
+
+        for (ServerPlayerEntity player : players)
+        {
+            UUID uuid = player.getUuid();
+            currentPlayers.add(uuid);
+
+            boolean isNew = !this.playersInRegion.contains(uuid);
+            long nextTick = this.regionNextTriggerTick.getOrDefault(uuid, 0L);
+
+            if (isNew)
+            {
+                this.trigger(player, this.enter.getList());
+                this.regionNextTriggerTick.put(uuid, time + this.regionDelay.get());
+            }
+            else if (time >= nextTick)
+            {
+                this.trigger(player, this.whileIn.getList());
+                this.regionNextTriggerTick.put(uuid, time + this.regionDelay.get());
+            }
+        }
+
+        for (UUID uuid : this.playersInRegion)
+        {
+            if (!currentPlayers.contains(uuid))
+            {
+                ServerPlayerEntity player = (ServerPlayerEntity) this.world.getPlayerByUuid(uuid);
+
+                if (player != null)
+                {
+                    this.trigger(player, this.exit.getList());
+                }
+                
+                this.regionNextTriggerTick.remove(uuid);
+            }
+        }
+
+        this.playersInRegion = currentPlayers;
     }
 
     @Override
@@ -122,9 +244,16 @@ public class TriggerBlockEntity extends BlockEntity
         
         if (nbt.contains("Left")) this.left.fromData(DataStorageUtils.fromNbt(nbt.get("Left")));
         if (nbt.contains("Right")) this.right.fromData(DataStorageUtils.fromNbt(nbt.get("Right")));
+        if (nbt.contains("Enter")) this.enter.fromData(DataStorageUtils.fromNbt(nbt.get("Enter")));
+        if (nbt.contains("Exit")) this.exit.fromData(DataStorageUtils.fromNbt(nbt.get("Exit")));
+        if (nbt.contains("WhileIn")) this.whileIn.fromData(DataStorageUtils.fromNbt(nbt.get("WhileIn")));
+        if (nbt.contains("RegionDelay")) this.regionDelay.set(nbt.getInt("RegionDelay"));
         if (nbt.contains("Collidable")) this.collidable.set(nbt.getBoolean("Collidable"));
+        if (nbt.contains("Region")) this.region.set(nbt.getBoolean("Region"));
         if (nbt.contains("Pos1")) this.pos1.fromData(DataStorageUtils.fromNbt(nbt.get("Pos1")));
         if (nbt.contains("Pos2")) this.pos2.fromData(DataStorageUtils.fromNbt(nbt.get("Pos2")));
+        if (nbt.contains("RegionOffset")) this.regionOffset.fromData(DataStorageUtils.fromNbt(nbt.get("RegionOffset")));
+        if (nbt.contains("RegionSize")) this.regionSize.fromData(DataStorageUtils.fromNbt(nbt.get("RegionSize")));
     }
 
     @Override
@@ -134,9 +263,16 @@ public class TriggerBlockEntity extends BlockEntity
         
         nbt.put("Left", DataStorageUtils.toNbt(this.left.toData()));
         nbt.put("Right", DataStorageUtils.toNbt(this.right.toData()));
+        nbt.put("Enter", DataStorageUtils.toNbt(this.enter.toData()));
+        nbt.put("Exit", DataStorageUtils.toNbt(this.exit.toData()));
+        nbt.put("WhileIn", DataStorageUtils.toNbt(this.whileIn.toData()));
+        nbt.putInt("RegionDelay", this.regionDelay.get());
         nbt.putBoolean("Collidable", this.collidable.get());
+        nbt.putBoolean("Region", this.region.get());
         nbt.put("Pos1", DataStorageUtils.toNbt(this.pos1.toData()));
         nbt.put("Pos2", DataStorageUtils.toNbt(this.pos2.toData()));
+        nbt.put("RegionOffset", DataStorageUtils.toNbt(this.regionOffset.toData()));
+        nbt.put("RegionSize", DataStorageUtils.toNbt(this.regionSize.toData()));
     }
 
     @Nullable

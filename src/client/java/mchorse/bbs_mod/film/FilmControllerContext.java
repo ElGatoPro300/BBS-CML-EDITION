@@ -26,6 +26,7 @@ public class FilmControllerContext
     public float transition;
     public int color;
     public float shadowRadius;
+    public float shadowOpacity;
 
     public String bone;
     public boolean local;
@@ -44,6 +45,7 @@ public class FilmControllerContext
     {
         this.map = null;
         this.shadowRadius = 0F;
+        this.shadowOpacity = 1F;
         this.color = Colors.WHITE;
         this.bone = null;
         this.local = false;
@@ -99,6 +101,15 @@ public class FilmControllerContext
     public FilmControllerContext shadow(boolean shadow, float shadowRadius)
     {
         this.shadowRadius = shadow ? shadowRadius : 0F;
+        this.shadowOpacity = 1F;
+
+        return this;
+    }
+
+    public FilmControllerContext shadow(boolean shadow, float shadowRadius, float shadowOpacity)
+    {
+        this.shadowRadius = shadow ? shadowRadius : 0F;
+        this.shadowOpacity = shadow ? shadowOpacity : 0F;
 
         return this;
     }
@@ -106,6 +117,7 @@ public class FilmControllerContext
     public FilmControllerContext shadow(float shadowRadius)
     {
         this.shadowRadius = shadowRadius;
+        this.shadowOpacity = 1F;
 
         return this;
     }

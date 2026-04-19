@@ -4,27 +4,35 @@ import java.util.function.Consumer;
 
 import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
+import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
+import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemStack;
 
 public class UIPlayerInventoryPanel extends UIOverlayPanel
 {
-    private static final int PANEL_WIDTH      = 200;
+    public static final int PANEL_WIDTH       = 232;
+    public static final int PANEL_HEIGHT      = 290;
+
     private static final int PADDING_X        = 16;
     private static final int PADDING_Y        = 16;
-    private static final int SECTION_GAP_Y    = 16;
+    private static final int SECTION_GAP_Y    = 10;
     private static final int TITLE_HEIGHT     = 14;
+    private static final int BUTTON_HEIGHT    = 20;
 
     private static final int SLOT_SIZE        = 18;
-    private static final int SLOT_SPACING     = 18;
+    private static final int SLOT_GAP         = 2;
+    private static final int SLOT_SPACING     = SLOT_SIZE + SLOT_GAP;
     private static final int GRID_COLS        = 9;
 
     private static final int SLOT_BG_EMPTY    = 0x66000000;
@@ -33,10 +41,8 @@ public class UIPlayerInventoryPanel extends UIOverlayPanel
     private static final int SLOT_BORDER      = 0xFF666666;
     private static final int SLOT_HOVER_TINT  = 0x33FFFFFF;
 
-    private static final int EMPTY_BG         = 0x55333333;
-    private static final int EMPTY_BG_HOVER   = 0x77555555;
-
     private final Consumer<ItemStack> callback;
+    private final ClientPlayerEntity player;
     private final PlayerInventory playerInventory;
 
     public UIPlayerInventoryPanel(Consumer<ItemStack> callback)
@@ -46,7 +52,8 @@ public class UIPlayerInventoryPanel extends UIOverlayPanel
         this.callback = callback;
 
         MinecraftClient mc = MinecraftClient.getInstance();
-        this.playerInventory = (mc.player != null) ? mc.player.getInventory() : null;
+        this.player = mc.player;
+        this.playerInventory = (this.player != null) ? this.player.getInventory() : null;
 
         this.setupUI();
     }
@@ -60,38 +67,57 @@ public class UIPlayerInventoryPanel extends UIOverlayPanel
         UILabel emptyTitle = sectionTitle(L10n.lang("bbs.ui.inventory.selection").get());
         centerHorizontally(emptyTitle, TITLE_HEIGHT, cursorY);
         this.content.add(emptyTitle);
-        cursorY += TITLE_HEIGHT + 8;
+        cursorY += TITLE_HEIGHT + 4;
 
-        UIEmptySlot emptySlot = new UIEmptySlot();
-        centerSlot(emptySlot, cursorY);
-        this.content.add(emptySlot);
-        cursorY += SLOT_SIZE + 6;
+        UIButton clear = new UIButton(L10n.lang("bbs.ui.inventory.empty"), (b) ->
+        {
+            if (this.callback != null)
+            {
+                this.callback.accept(ItemStack.EMPTY);
+            }
 
-        UILabel emptyLabel = UI.label(L10n.lang("bbs.ui.inventory.empty"));
-        centerLabel(emptyLabel, 12, cursorY);
-        this.content.add(emptyLabel);
-        cursorY += 12 + SECTION_GAP_Y;
+            this.close();
+            UIUtils.playClick();
+        });
 
-        if (this.playerInventory == null)
+        clear.relative(this.content).x(0.5F, -72).y(cursorY).w(144).h(BUTTON_HEIGHT);
+        this.content.add(clear);
+        cursorY += BUTTON_HEIGHT + SECTION_GAP_Y;
+
+        if (this.playerInventory == null || this.player == null)
         {
             this.content.h(cursorY + PADDING_Y);
             return;
         }
 
+        UILabel equipmentTitle = sectionTitle(UIKeys.MODELS_ARMOR.get());
+        centerHorizontally(equipmentTitle, TITLE_HEIGHT, cursorY);
+        this.content.add(equipmentTitle);
+        cursorY += TITLE_HEIGHT + 4;
+
+        int equipmentStartX = centerSlotsX(PANEL_WIDTH, 5);
+
+        this.content.add(new UIEquipmentSlot(EquipmentSlot.HEAD).relative(this.content).x(equipmentStartX).y(cursorY).w(SLOT_SIZE).h(SLOT_SIZE));
+        this.content.add(new UIEquipmentSlot(EquipmentSlot.CHEST).relative(this.content).x(equipmentStartX + SLOT_SPACING).y(cursorY).w(SLOT_SIZE).h(SLOT_SIZE));
+        this.content.add(new UIEquipmentSlot(EquipmentSlot.LEGS).relative(this.content).x(equipmentStartX + SLOT_SPACING * 2).y(cursorY).w(SLOT_SIZE).h(SLOT_SIZE));
+        this.content.add(new UIEquipmentSlot(EquipmentSlot.FEET).relative(this.content).x(equipmentStartX + SLOT_SPACING * 3).y(cursorY).w(SLOT_SIZE).h(SLOT_SIZE));
+        this.content.add(new UIEquipmentSlot(EquipmentSlot.OFFHAND).relative(this.content).x(equipmentStartX + SLOT_SPACING * 4).y(cursorY).w(SLOT_SIZE).h(SLOT_SIZE));
+        cursorY += SLOT_SIZE + SECTION_GAP_Y;
+
         UILabel hotbarTitle = sectionTitle(L10n.lang("bbs.ui.inventory.hotbar").get());
         centerHorizontally(hotbarTitle, TITLE_HEIGHT, cursorY);
         this.content.add(hotbarTitle);
-        cursorY += TITLE_HEIGHT + 8;
+        cursorY += TITLE_HEIGHT + 4;
 
         int gridStartX = gridStartX(PANEL_WIDTH, GRID_COLS, SLOT_SPACING, SLOT_SIZE);
         cursorY = placeGridRow(cursorY, gridStartX, 0, 9);
 
         cursorY += SECTION_GAP_Y;
 
-        UILabel mainTitle = sectionTitle(L10n.lang("bbs.ui.inventory.main").get());
+        UILabel mainTitle = sectionTitle(L10n.lang("bbs.ui.inventory.full").get());
         centerHorizontally(mainTitle, TITLE_HEIGHT, cursorY);
         this.content.add(mainTitle);
-        cursorY += TITLE_HEIGHT + 8;
+        cursorY += TITLE_HEIGHT + 4;
 
         int startIndex = 9;
         for (int row = 0; row < 3; row++)
@@ -114,20 +140,18 @@ public class UIPlayerInventoryPanel extends UIOverlayPanel
         element.relative(this.content).x(0.5F, -PANEL_WIDTH / 2 + PADDING_X).y(y).w(PANEL_WIDTH - PADDING_X * 2).h(h);
     }
 
-    private void centerLabel(UILabel label, int h, int y)
-    {
-        label.relative(this.content).x(0.5F, -40).y(y).w(80).h(h);
-    }
-
-    private void centerSlot(UIElement slot, int y)
-    {
-        slot.relative(this.content).x(0.5F, -SLOT_SIZE / 2).y(y).w(SLOT_SIZE).h(SLOT_SIZE);
-    }
-
     private int gridStartX(int panelW, int cols, int spacing, int slotSize)
     {
-        int gridWidth = cols * spacing;
-        return (panelW - gridWidth) / 2 + (spacing - slotSize) / 2;
+        int gridWidth = cols * slotSize + (cols - 1) * SLOT_GAP;
+
+        return (panelW - gridWidth) / 2;
+    }
+
+    private int centerSlotsX(int panelW, int slots)
+    {
+        int width = slots * SLOT_SIZE + (slots - 1) * SLOT_GAP;
+
+        return (panelW - width) / 2;
     }
 
     private int placeGridRow(int cursorY, int startX, int indexStart, int count)
@@ -180,8 +204,8 @@ public class UIPlayerInventoryPanel extends UIOverlayPanel
         public void render(UIContext context)
         {
             ItemStack stack = this.getStack();
-            boolean isEmpty  = stack.isEmpty();
-            boolean hovered  = this.area.isInside(context);
+            boolean isEmpty = stack.isEmpty();
+            boolean hovered = this.area.isInside(context);
 
             int bg = isEmpty ? SLOT_BG_EMPTY : SLOT_BG_FILLED;
             if (hovered && !isEmpty) bg = SLOT_BG_HOVER;
@@ -206,37 +230,75 @@ public class UIPlayerInventoryPanel extends UIOverlayPanel
         }
     }
 
-    private class UIEmptySlot extends UIElement
+    private class UIEquipmentSlot extends UIElement
     {
+        private final EquipmentSlot slot;
+
+        public UIEquipmentSlot(EquipmentSlot slot)
+        {
+            this.slot = slot;
+        }
+
+        private ItemStack getStack()
+        {
+            if (player == null)
+            {
+                return ItemStack.EMPTY;
+            }
+
+            return player.getEquippedStack(this.slot);
+        }
+
         @Override
         protected boolean subMouseClicked(UIContext context)
         {
             if (this.area.isInside(context) && context.mouseButton == 0)
             {
-                if (callback != null)
+                ItemStack stack = this.getStack();
+
+                if (!stack.isEmpty() && callback != null)
                 {
-                    callback.accept(ItemStack.EMPTY);
+                    callback.accept(stack.copy());
                     UIPlayerInventoryPanel.this.close();
                     UIUtils.playClick();
+
                     return true;
                 }
             }
+
             return super.subMouseClicked(context);
         }
 
         @Override
         public void render(UIContext context)
         {
+            ItemStack stack = this.getStack();
+            boolean isEmpty = stack.isEmpty();
             boolean hovered = this.area.isInside(context);
 
-            int bg = hovered ? EMPTY_BG_HOVER : EMPTY_BG;
+            int bg = isEmpty ? SLOT_BG_EMPTY : SLOT_BG_FILLED;
+
+            if (hovered && !isEmpty)
+            {
+                bg = SLOT_BG_HOVER;
+            }
+
             context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), bg);
             context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), SLOT_BORDER);
 
-            int cx = this.area.mx();
-            int cy = this.area.my();
-            context.batcher.box(cx - 6, cy - 1, cx + 6, cy + 1, Colors.WHITE);
-            context.batcher.box(cx - 1, cy - 6, cx + 1, cy + 6, Colors.WHITE);
+            if (!isEmpty)
+            {
+                int itemX = this.area.x + 1;
+                int itemY = this.area.y + 1;
+
+                context.batcher.getContext().drawItem(stack, itemX, itemY);
+                context.batcher.getContext().drawItemInSlot(context.batcher.getFont().getRenderer(), stack, itemX, itemY);
+
+                if (hovered)
+                {
+                    context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), SLOT_HOVER_TINT);
+                }
+            }
 
             super.render(context);
         }

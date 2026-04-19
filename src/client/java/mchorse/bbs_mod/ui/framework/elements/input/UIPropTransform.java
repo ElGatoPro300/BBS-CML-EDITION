@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.ui.framework.elements.input;
 
 import mchorse.bbs_mod.BBSSettings;
+import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.settings.values.IValueNotifier;
@@ -58,28 +59,27 @@ public class UIPropTransform extends UITransform
     {
         this.handler = new UITransformHandler(this);
 
-        this.context((menu) ->
-        {
-            menu.action(
-                this.local ? Icons.FULLSCREEN : Icons.MINIMIZE,
-                this.local ? UIKeys.TRANSFORMS_CONTEXT_SWITCH_GLOBAL : UIKeys.TRANSFORMS_CONTEXT_SWITCH_LOCAL,
-                this::toggleLocal
-            );
-
-            menu.actions.add(0, menu.actions.remove(menu.actions.size() - 1));
-
-            for (BiConsumer<UIPropTransform, ContextMenuManager> consumer : contextMenuExtensions)
-            {
-                consumer.accept(this, menu);
-            }
-        });
-
         this.iconT.callback = (b) -> this.toggleLocal();
         this.iconT.hoverColor = Colors.LIGHTEST_GRAY;
         this.iconT.setEnabled(true);
         this.iconT.tooltip(this.local ? UIKeys.TRANSFORMS_CONTEXT_SWITCH_GLOBAL : UIKeys.TRANSFORMS_CONTEXT_SWITCH_LOCAL);
 
         this.noCulling();
+    }
+
+    @Override
+    protected void addGeneralTabActions(ContextMenuManager menu, ListType transforms)
+    {
+        menu.action(
+            this.local ? Icons.FULLSCREEN : Icons.MINIMIZE,
+            this.local ? UIKeys.TRANSFORMS_CONTEXT_SWITCH_GLOBAL : UIKeys.TRANSFORMS_CONTEXT_SWITCH_LOCAL,
+            this::toggleLocal
+        );
+
+        for (BiConsumer<UIPropTransform, ContextMenuManager> consumer : contextMenuExtensions)
+        {
+            consumer.accept(this, menu);
+        }
     }
 
     public UIPropTransform callbacks(Supplier<IValueNotifier> notifier)
@@ -92,8 +92,25 @@ public class UIPropTransform extends UITransform
 
     public UIPropTransform callbacks(Runnable pre, Runnable post)
     {
-        this.preCallback = pre;
-        this.postCallback = post;
+        if (pre != null)
+        {
+            Runnable existing = this.preCallback;
+            this.preCallback = existing == null ? pre : () ->
+            {
+                existing.run();
+                pre.run();
+            };
+        }
+
+        if (post != null)
+        {
+            Runnable existing = this.postCallback;
+            this.postCallback = existing == null ? post : () ->
+            {
+                existing.run();
+                post.run();
+            };
+        }
 
         return this;
     }
@@ -226,6 +243,11 @@ public class UIPropTransform extends UITransform
 
         UIContext context = this.getContext();
 
+        if (context == null)
+        {
+            return;
+        }
+
         if (this.editing)
         {
             Axis[] values = Axis.values();
@@ -265,6 +287,11 @@ public class UIPropTransform extends UITransform
 
         UIContext context = this.getContext();
 
+        if (context == null)
+        {
+            return;
+        }
+
         this.axis = primary == null ? Axis.X : primary;
         this.secondaryAxis = secondary;
         this.freeRotation = false;
@@ -290,6 +317,11 @@ public class UIPropTransform extends UITransform
         }
 
         UIContext context = this.getContext();
+
+        if (context == null)
+        {
+            return;
+        }
 
         if (this.editing)
         {
@@ -522,7 +554,20 @@ public class UIPropTransform extends UITransform
 
                     if (this.secondaryAxis == null)
                     {
-                        double delta = this.axis == Axis.Y ? factor * dy : factor * dx;
+                        double delta;
+
+                        if (this.axis == Axis.Y && BBSSettings.gizmoYAxisHorizontal.get())
+                        {
+                            delta = factor * dx;
+                        }
+                        else if (this.axis == Axis.Y)
+                        {
+                            delta = factor * dy;
+                        }
+                        else
+                        {
+                            delta = factor * dx;
+                        }
 
                         local.add(this.calculateLocalVector(delta, this.axis));
                     }
@@ -591,7 +636,14 @@ public class UIPropTransform extends UITransform
                             }
                             else if (this.axis == Axis.Y)
                             {
-                                vector3f.y -= factor * dy;
+                                if (BBSSettings.gizmoYAxisHorizontal.get())
+                                {
+                                    vector3f.y += factor * dx;
+                                }
+                                else
+                                {
+                                    vector3f.y -= factor * dy;
+                                }
                             }
                             else if (this.axis == Axis.Z)
                             {

@@ -40,6 +40,7 @@ public class ModelManager implements IWatchDogListener
     public final List<IModelLoader> loaders = new ArrayList<>();
     public final AssetProvider provider;
     public final MolangParser parser;
+    private final Set<String> relodableSuffixes = new HashSet<>();
 
     private ModelLoader loader = new ModelLoader(this);
 
@@ -56,12 +57,44 @@ public class ModelManager implements IWatchDogListener
     private void setupLoaders()
     {
         this.loaders.clear();
+        this.relodableSuffixes.clear();
         this.loaders.add(new BOBJModelLoader());
         this.loaders.add(new CubicModelLoader());
         this.loaders.add(new GeoCubicModelLoader());
         this.loaders.add(new VoxModelLoader());
         this.loaders.add(new GLTFModelLoader());
         this.loaders.add(new MiModelLoader());
+
+        this.registerRelodableSuffix(".bbs.json");
+        this.registerRelodableSuffix(".geo.json");
+        this.registerRelodableSuffix(".bobj");
+        this.registerRelodableSuffix(".obj");
+        this.registerRelodableSuffix(".gltf");
+        this.registerRelodableSuffix(".glb");
+        this.registerRelodableSuffix(".mimodel");
+        this.registerRelodableSuffix(".animation.json");
+        this.registerRelodableSuffix(".vox");
+        this.registerRelodableSuffix("/config.json");
+    }
+
+    public void registerLoader(IModelLoader loader)
+    {
+        if (loader == null)
+        {
+            return;
+        }
+
+        this.loaders.add(loader);
+    }
+
+    public void registerRelodableSuffix(String suffix)
+    {
+        if (suffix == null || suffix.isEmpty())
+        {
+            return;
+        }
+
+        this.relodableSuffixes.add(suffix);
     }
 
     /**
@@ -183,16 +216,15 @@ public class ModelManager implements IWatchDogListener
             return false;
         }
 
-        return link.path.endsWith(".bbs.json")
-            || link.path.endsWith(".geo.json")
-            || link.path.endsWith(".bobj")
-            || link.path.endsWith(".obj")
-            || link.path.endsWith(".gltf")
-            || link.path.endsWith(".glb")
-            || link.path.endsWith(".mimodel")
-            || link.path.endsWith(".animation.json")
-            || link.path.endsWith(".vox")
-            || link.path.endsWith("/config.json");
+        for (String suffix : this.relodableSuffixes)
+        {
+            if (link.path.endsWith(suffix))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public void saveConfig(String id, MapType config)

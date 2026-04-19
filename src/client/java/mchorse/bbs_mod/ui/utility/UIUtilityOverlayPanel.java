@@ -34,6 +34,9 @@ import java.util.List;
 
 public class UIUtilityOverlayPanel extends UIOverlayPanel
 {
+    private static final String VIDEO_FOLDER = "videos";
+    private static final String LEGACY_VIDEO_FOLDER = "video";
+
     public Runnable callback;
 
     public UIScrollView view;
@@ -55,6 +58,7 @@ public class UIUtilityOverlayPanel extends UIOverlayPanel
         UIButton openGameDirectory = new UIButton(UIKeys.UTILITY_OPEN_GAME_FOLDER, (b) -> this.openFolder(BBSMod.getGameFolder()));
         UIButton openAudioDirectory = new UIButton(UIKeys.UTILITY_OPEN_AUDIO_FOLDER, (b) -> this.openFolder(BBSMod.getAudioFolder()));
         UIButton openModelsDirectory = new UIButton(UIKeys.UTILITY_OPEN_MODELS_FOLDER, (b) -> this.openFolder(BBSMod.getAssetsPath("models")));
+        UIButton openVideoDirectory = new UIButton(UIKeys.UTILITY_OPEN_VIDEO_FOLDER, (b) -> this.openFolder(this.getAssetsVideoFolder()));
 
         UIIcon textures = new UIIcon(Icons.MATERIAL, (b) ->
         {
@@ -174,7 +178,7 @@ public class UIUtilityOverlayPanel extends UIOverlayPanel
             thread.start();
         });
 
-        this.view.add(UI.label(UIKeys.UTILITY_OPEN_FOLDER), UI.row(openGameDirectory, openModelsDirectory, openAudioDirectory).marginBottom(8));
+        this.view.add(UI.label(UIKeys.UTILITY_OPEN_FOLDER), UI.row(openGameDirectory, openModelsDirectory, openAudioDirectory, openVideoDirectory).marginBottom(8));
         this.view.add(UI.label(UIKeys.UTILITY_RELOAD_LABEL), UI.row(textures, language, models, sounds, terrain));
         this.view.add(defaultCommands.marginBottom(8));
         this.view.add(UI.column(UI.label(UIKeys.UTILITY_RESIZE_WINDOW), UI.row(this.width, this.height)).marginBottom(8));
@@ -206,6 +210,24 @@ public class UIUtilityOverlayPanel extends UIOverlayPanel
         gameFolder.mkdirs();
 
         UIUtils.openFolder(gameFolder);
+    }
+
+    private File getAssetsVideoFolder()
+    {
+        File videos = BBSMod.getAssetsPath(VIDEO_FOLDER);
+        File legacyVideo = BBSMod.getAssetsPath(LEGACY_VIDEO_FOLDER);
+
+        if (videos.exists())
+        {
+            return videos;
+        }
+
+        if (legacyVideo.exists())
+        {
+            return legacyVideo;
+        }
+
+        return videos;
     }
 
     private void openLangEditor()

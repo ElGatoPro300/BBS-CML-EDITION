@@ -28,6 +28,7 @@ import net.minecraft.client.render.Camera;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
+import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
@@ -222,6 +223,13 @@ public class UITriggerBlockPanel extends UIDashboardPanel implements IFlightSupp
         if (this.entity != null)
         {
             this.renderBox(context.matrixStack(), this.entity, 0F, 1F, 0F);
+
+            if (this.entity.region.get())
+            {
+                RenderSystem.disableDepthTest();
+                this.renderRegionBox(context.matrixStack(), this.entity, 1F, 1F, 1F);
+                RenderSystem.enableDepthTest();
+            }
         }
 
         for (TriggerBlockEntity entity : TriggerBlockEntityRenderer.capturedTriggerBlocks)
@@ -271,6 +279,13 @@ public class UITriggerBlockPanel extends UIDashboardPanel implements IFlightSupp
             Draw.renderBox(stack, x, y, z, w, h, d);
         else
             Draw.renderBox(stack, x, y, z, w, h, d, r, g, b);
+    }
+
+    private void renderRegionBox(net.minecraft.client.util.math.MatrixStack stack, TriggerBlockEntity entity, float r, float g, float b)
+    {
+        Box box = entity.getRegionBox();
+
+        Draw.renderBox(stack, box.minX, box.minY, box.minZ, box.maxX - box.minX, box.maxY - box.minY, box.maxZ - box.minZ, r, g, b);
     }
 
     protected double getDistance(TriggerBlockEntity object, Vector3d pos, Vector3f dir)

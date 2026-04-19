@@ -186,6 +186,26 @@ public class KeyframeChannel <T> extends ValueList<Keyframe<T>>
         this.postNotify();
     }
 
+    public boolean removeSilently(Keyframe<T> keyframe)
+    {
+        if (keyframe == null)
+        {
+            return false;
+        }
+
+        int index = this.list.indexOf(keyframe);
+
+        if (index < 0)
+        {
+            return false;
+        }
+
+        this.list.remove(index);
+        this.sync();
+
+        return true;
+    }
+
     public void insertSpace(int where, int ticks)
     {
         KeyframeSegment<T> segment = this.findSegment(where);
@@ -431,7 +451,7 @@ public class KeyframeChannel <T> extends ValueList<Keyframe<T>>
             Keyframe<T> value = new Keyframe<>(keyframe.getId(), keyframe.getFactory());
 
             value.copy(keyframe);
-            this.add(value);
+            this.list.add(value);
         }
 
         this.sort();

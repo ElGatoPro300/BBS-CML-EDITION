@@ -4,10 +4,15 @@ import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.network.ClientNetwork;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
+import mchorse.bbs_mod.settings.values.core.ValueGroup;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
+import mchorse.bbs_mod.ui.film.utils.undo.ValueChangeUndo;
 import mchorse.bbs_mod.ui.forms.editors.UIFormUndoHandler;
+import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.utils.Timer;
 import mchorse.bbs_mod.utils.clips.Clips;
+import mchorse.bbs_mod.utils.undo.CompoundUndo;
+import mchorse.bbs_mod.utils.undo.IUndo;
 
 import java.util.HashSet;
 import java.util.Iterator;
@@ -18,16 +23,100 @@ public class UIFilmUndoHandler extends UIFormUndoHandler
 {
     private Timer actionsTimer = new Timer(100);
     private Set<BaseValue> syncData = new HashSet<>();
+    private boolean isUndoing;
 
     public UIFilmUndoHandler(UIFilmPanel panel)
     {
         super(panel);
     }
 
+    public boolean undo(ValueGroup context)
+    {
+        this.isUndoing = true;
+
+        try
+        {
+            return this.undoManager.undo(context);
+        }
+        finally
+        {
+            this.isUndoing = false;
+        }
+    }
+
+    public boolean redo(ValueGroup context)
+    {
+        this.isUndoing = true;
+
+        try
+        {
+            return this.undoManager.redo(context);
+        }
+        finally
+        {
+            this.isUndoing = false;
+        }
+    }
+
+    @Override
+    public void reset()
+    {
+        super.reset();
+
+        this.undoManager.setCallback(this::handleFilmUndos);
+    }
+
+    private void handleFilmUndos(IUndo<ValueGroup> undo, boolean redo)
+    {
+        this.isUndoing = true;
+
+        try
+        {
+            IUndo<ValueGroup> anotherUndo = undo;
+
+            if (anotherUndo instanceof CompoundUndo)
+            {
+                anotherUndo = ((CompoundUndo<ValueGroup>) anotherUndo).getFirst(ValueChangeUndo.class);
+            }
+
+            if (anotherUndo instanceof ValueChangeUndo)
+            {
+                ValueChangeUndo change = (ValueChangeUndo) anotherUndo;
+                UIElement root = this.uiElement.getRoot();
+                if (root != null)
+                {
+                    root.applyAllUndoData(change.getUIData(redo));
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+        finally
+        {
+            this.isUndoing = false;
+        }
+    }
+
+    @Override
+    public void handlePreValues(BaseValue baseValue, int flag)
+    {
+        if (this.isUndoing)
+        {
+            return;
+        }
+
+        super.handlePreValues(baseValue, flag);
+    }
+
     @Override
     protected void handleValue(BaseValue value)
     {
-        super.handleValue(value);
+        if (!this.isUndoing)
+        {
+            super.handleValue(value);
+        }
 
         if (this.isReplayActions(value))
         {

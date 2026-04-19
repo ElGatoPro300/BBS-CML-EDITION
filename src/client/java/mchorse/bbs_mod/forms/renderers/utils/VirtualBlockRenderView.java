@@ -126,6 +126,26 @@ public class VirtualBlockRenderView implements BlockRenderView
         return this;
     }
 
+    protected BlockPos getWorldAnchor()
+    {
+        return this.worldAnchor;
+    }
+
+    protected int getBaseDx()
+    {
+        return this.baseDx;
+    }
+
+    protected int getBaseDy()
+    {
+        return this.baseDy;
+    }
+
+    protected int getBaseDz()
+    {
+        return this.baseDz;
+    }
+
     /**
      * Sets a biome to use for color queries. Pass null or "" to clear.
      */

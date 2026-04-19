@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 
 public class StencilMap
@@ -17,6 +18,7 @@ public class StencilMap
     public int objectIndex;
     public Map<Integer, Pair<Form, String>> indexMap = new HashMap<>();
     public boolean increment = true;
+    public Set<String> allowedBones;
 
     public void setIncrement(boolean increment)
     {
@@ -60,5 +62,10 @@ public class StencilMap
         {
             this.indexMap.put(this.objectIndex, new Pair<>(form, ""));
         }
+    }
+
+    public boolean isBoneAllowed(String bone)
+    {
+        return this.allowedBones == null || this.allowedBones.contains(bone);
     }
 }
