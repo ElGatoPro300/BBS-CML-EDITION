@@ -34,6 +34,7 @@ import mchorse.bbs_mod.math.molang.expressions.MolangExpression;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.settings.values.base.BaseValueBasic;
+import mchorse.bbs_mod.settings.values.IValueListener;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.UIClipsPanel;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
@@ -71,6 +72,7 @@ import mchorse.bbs_mod.utils.StringUtils;
 import mchorse.bbs_mod.utils.clips.Clip;
 import mchorse.bbs_mod.utils.clips.Clips;
 import mchorse.bbs_mod.utils.colors.Colors;
+import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 import mchorse.bbs_mod.utils.keyframes.KeyframeSegment;
@@ -117,6 +119,7 @@ public class UIReplaysEditor extends UIElement
     private Film film;
     private Replay replay;
     private Set<String> keys = new LinkedHashSet<>();
+    private Keyframe lastPickedKeyframe;
     private final Map<String, Boolean> collapsedModelTracks = new HashMap<>();
 
     static
@@ -262,6 +265,12 @@ public class UIReplaysEditor extends UIElement
                     }
 
                     propertyPaths.add(StringUtils.combinePaths(path, "pose") + ":" + bone.a);
+                    propertyPaths.add(StringUtils.combinePaths(path, "pose_overlay") + ":" + bone.a);
+
+                    for (int i = 0, c = modelForm.additionalOverlays.size(); i < c; i++)
+                    {
+                        propertyPaths.add(StringUtils.combinePaths(path, "pose_overlay" + i) + ":" + bone.a);
+                    }
                 }
             }
         }
@@ -330,6 +339,8 @@ public class UIReplaysEditor extends UIElement
 
             if (this.isAncestorCollapsed(limb, parentByBone))
             {
+                /* Mark as handled so collapsed descendants don't get re-added by fallback pass. */
+                used.add(limb);
                 continue;
             }
 
@@ -558,6 +569,14 @@ public class UIReplaysEditor extends UIElement
 
         if (colon != -1)
         {
+            String propertyPath = key.substring(0, colon);
+            String propertyName = StringUtils.fileName(propertyPath);
+
+            if (propertyName.equals("pose") || propertyName.startsWith("pose_overlay"))
+            {
+                return getPoseBoneColor(key.substring(colon + 1), propertyName.startsWith("pose_overlay"));
+            }
+
             return 0xff3333;
         }
 
@@ -567,6 +586,17 @@ public class UIReplaysEditor extends UIElement
         if (topLevel.startsWith("transform_overlay")) return COLORS.get("transform_overlay");
 
         return COLORS.getOrDefault(topLevel, Colors.ACTIVE);
+    }
+
+    private static int getPoseBoneColor(String boneName, boolean overlay)
+    {
+        int hash = Integer.rotateLeft(boneName.hashCode(), 13) ^ boneName.hashCode();
+        float hue = (hash & 0xffff) / 65535F;
+        float saturation = overlay ? 0.52F : 0.72F;
+        float brightness = overlay ? 0.95F : 0.9F;
+        int rgb = java.awt.Color.HSBtoRGB(hue, saturation, brightness) & 0x00ffffff;
+
+        return 0xff000000 | rgb;
     }
 
     public static void offerAdjacent(UIContext context, Form form, String bone, Consumer<String> consumer)
@@ -631,17 +661,12 @@ public class UIReplaysEditor extends UIElement
     {
         Scale scale = keyframes.getXAxis();
         boolean renderedOnce = false;
-        boolean simplified = BBSSettings.simplifiedKeyframeUI.get();
+        Area area = new Area();
+        area.copy(keyframes.area);
+        area.x += IUIKeyframeGraph.SIDEBAR_WIDTH;
+        area.w -= IUIKeyframeGraph.SIDEBAR_WIDTH;
 
-        if (simplified)
-        {
-            Area area = new Area();
-            area.copy(keyframes.area);
-            area.x += IUIKeyframeGraph.SIDEBAR_WIDTH;
-            area.w -= IUIKeyframeGraph.SIDEBAR_WIDTH;
-
-            context.batcher.clip(area, context);
-        }
+        context.batcher.clip(area, context);
 
         /* First pass: Render selected clip background */
         for (Clip clip : camera.get())
@@ -716,10 +741,7 @@ public class UIReplaysEditor extends UIElement
             }
         }
 
-        if (simplified)
-        {
-            context.batcher.unclip(context);
-        }
+        context.batcher.unclip(context);
 
         return renderedOnce;
     }
@@ -796,7 +818,7 @@ public class UIReplaysEditor extends UIElement
     }
 
     private static final List<String> WORLD_CHANNELS = Arrays.asList("x", "y", "z", "vX", "vY", "vZ", "yaw", "pitch", "headYaw", "bodyYaw", "grounded", "damage", "fall", "sneaking", "sprinting", "item_main_hand", "item_off_hand", "item_head", "item_chest", "item_legs", "item_feet", "selected_slot", "stick_lx", "stick_ly", "stick_rx", "stick_ry", "trigger_l", "trigger_r", "extra1_x", "extra1_y", "extra2_x", "extra2_y", "shadow_size", "shadow_opacity");
-    private static final List<String> MODEL_PROPERTIES = Arrays.asList("visible", "lighting", "transform", "transform_overlay", "pose", "pose_overlay", "anchor", "color", "texture", "model", "actions", "shape_keys", "block_state", "item_stack", "modelTransform", "settings", "paused", "frequency", "count", "structure_file", "biome_id", "emit_light", "light_intensity", "structure_light", "enabled", "level", "effect");
+    private static final List<String> MODEL_PROPERTIES = Arrays.asList("visible", "lighting", "transform", "transform_overlay", "pose", "pose_overlay", "anchor", "color", "texture", "pbr_normal_intensity", "pbr_specular_intensity", "model", "actions", "shape_keys", "block_state", "item_stack", "modelTransform", "settings", "paused", "frequency", "count", "structure_file", "biome_id", "emit_light", "light_intensity", "structure_light", "enabled", "level", "effect");
 
     public void updateChannelsList()
     {
@@ -848,7 +870,6 @@ public class UIReplaysEditor extends UIElement
                 KeyframeChannel channel = (KeyframeChannel) value;
 
                 String customTitle = this.replay.getCustomSheetTitle(key);
-                String anchoredBone = this.replay.getAnchoredBone(key);
                 Integer customColor = this.replay.getSheetColor(key);
                 int baseColor = getColor(key);
                 int sheetColor = customColor != null ? customColor : baseColor;
@@ -856,11 +877,6 @@ public class UIReplaysEditor extends UIElement
                 UIKeyframeSheet sheet = customTitle != null && !customTitle.isEmpty()
                     ? new UIKeyframeSheet(key, IKey.constant(customTitle), sheetColor, false, channel, null)
                     : new UIKeyframeSheet(sheetColor, false, channel, null);
-
-                if (anchoredBone != null && !anchoredBone.isEmpty())
-                {
-                    sheet.anchoredBone = anchoredBone;
-                }
 
                 sheets.add(sheet.icon(ICONS.get(key)));
             }
@@ -875,10 +891,7 @@ public class UIReplaysEditor extends UIElement
                 }
             }
 
-            if (BBSSettings.limbTracks.get())
-            {
-                this.collectLimbTracks(this.replay.form.get(), propertyPaths);
-            }
+            this.collectLimbTracks(this.replay.form.get(), propertyPaths);
 
             for (String key : propertyPaths)
             {
@@ -893,7 +906,6 @@ public class UIReplaysEditor extends UIElement
                 {
                     BaseValueBasic formProperty = FormUtils.getProperty(this.replay.form.get(), key);
                     String customTitle = this.replay.getCustomSheetTitle(key);
-                    String anchoredBone = this.replay.getAnchoredBone(key);
                     Integer customColor = this.replay.getSheetColor(key);
                     int baseColor = getColor(key);
                     int sheetColor = customColor != null ? customColor : baseColor;
@@ -903,30 +915,14 @@ public class UIReplaysEditor extends UIElement
 
                     if (colon != -1)
                     {
-                        String propertyPath = key.substring(0, colon);
                         String boneName = key.substring(colon + 1);
-                        String propertyName = StringUtils.fileName(propertyPath);
 
                         title = boneName;
-
-                        if (propertyName.equals("pose_overlay"))
-                        {
-                            title += " (Overlay)";
-                        }
-                        else if (propertyName.startsWith("pose_overlay"))
-                        {
-                            title += " (Overlay " + propertyName.substring("pose_overlay".length()) + ")";
-                        }
                     }
 
                     UIKeyframeSheet sheet = customTitle != null && !customTitle.isEmpty()
                         ? new UIKeyframeSheet(key, IKey.constant(customTitle), sheetColor, false, property, formProperty)
                         : new UIKeyframeSheet(key, IKey.constant(title), sheetColor, false, property, formProperty);
-
-                    if (anchoredBone != null && !anchoredBone.isEmpty())
-                    {
-                        sheet.anchoredBone = anchoredBone;
-                    }
 
                     sheets.add(sheet.icon(getIcon(key)));
                 }
@@ -988,6 +984,10 @@ public class UIReplaysEditor extends UIElement
                 if (name.equals("biome_id")) return 33;
                 if (name.equals("structure_light")) return 34;
                 if (name.equals("color")) return 35;
+                if (name.equals("texture")) return 36;
+                if (name.equals("pbr_normal_intensity")) return 37;
+                if (name.equals("pbr_specular_intensity")) return 38;
+                if (name.equals("model")) return 39;
 
                 return 500;
             };
@@ -1034,7 +1034,9 @@ public class UIReplaysEditor extends UIElement
         List<UIKeyframeSheet> grouped = new ArrayList<>();
         Set<String> addedGroups = new HashSet<>();
 
-        if (BBSSettings.originalKeyframeUI.get() && !this.replay.isGroup.get())
+        final boolean legacyOriginalLayout = false;
+
+        if (legacyOriginalLayout && !this.replay.isGroup.get())
         {
             Form formObj = this.replay.form.get();
 
@@ -1105,7 +1107,7 @@ public class UIReplaysEditor extends UIElement
 
                         if (path.equals(rootPath))
                         {
-                            this.processTrack(sheet, "", 1, rootTracks.before, rootTracks.pose, rootTracks.limbs, rootTracks.overlays, rootTracks.after);
+                            this.processTrack(sheet, "", 1, rootTracks.before, rootTracks.pose, rootTracks.limbs, rootTracks.overlayRoots, rootTracks.overlayLimbs, rootTracks.after);
                         }
                         else
                         {
@@ -1114,7 +1116,7 @@ public class UIReplaysEditor extends UIElement
                                 subForms.put(path, new FormTracks(form));
                             }
 
-                            this.processTrack(sheet, "", 1, subForms.get(path).before, subForms.get(path).pose, subForms.get(path).limbs, subForms.get(path).overlays, subForms.get(path).after);
+                            this.processTrack(sheet, "", 1, subForms.get(path).before, subForms.get(path).pose, subForms.get(path).limbs, subForms.get(path).overlayRoots, subForms.get(path).overlayLimbs, subForms.get(path).after);
                         }
                     }
                     else
@@ -1124,11 +1126,12 @@ public class UIReplaysEditor extends UIElement
                 }
 
                 this.orderLimbTracks(rootTracks.form, rootTracks.limbs);
+                List<UIKeyframeSheet> orderedRootOverlays = this.orderOverlayTracks(rootTracks.form, rootTracks.overlayRoots, rootTracks.overlayLimbs);
 
                 /* Add root tracks first */
                 grouped.addAll(rootTracks.before);
                 grouped.addAll(rootTracks.pose);
-                grouped.addAll(rootTracks.overlays);
+                grouped.addAll(orderedRootOverlays);
                 grouped.addAll(rootTracks.limbs);
                 grouped.addAll(rootTracks.after);
 
@@ -1143,9 +1146,10 @@ public class UIReplaysEditor extends UIElement
                     }
 
                     this.orderLimbTracks(subForm.form, subForm.limbs);
+                    List<UIKeyframeSheet> orderedSubOverlays = this.orderOverlayTracks(subForm.form, subForm.overlayRoots, subForm.overlayLimbs);
 
                     grouped.addAll(subForm.before);
-                    grouped.addAll(subForm.overlays);
+                    grouped.addAll(orderedSubOverlays);
                     grouped.addAll(subForm.limbs);
                     grouped.addAll(subForm.after);
                 }
@@ -1231,6 +1235,7 @@ public class UIReplaysEditor extends UIElement
                 List<UIKeyframeSheet> poseTrack = new ArrayList<>();
                 List<UIKeyframeSheet> poseLimbTracks = new ArrayList<>();
                 List<UIKeyframeSheet> overlayTracks = new ArrayList<>();
+                List<UIKeyframeSheet> overlayLimbTracks = new ArrayList<>();
                 List<UIKeyframeSheet> modelTracksAfterPose = new ArrayList<>();
 
                 Map<String, FormTracks> subForms = new LinkedHashMap<>();
@@ -1249,7 +1254,7 @@ public class UIReplaysEditor extends UIElement
                     {
                         if (!this.collapsedModelTracks.getOrDefault(modelPropsKey, false))
                         {
-                            this.processTrack(sheet, modelPropsKey, 2, modelTracksBeforePose, poseTrack, poseLimbTracks, overlayTracks, modelTracksAfterPose);
+                            this.processTrack(sheet, modelPropsKey, 2, modelTracksBeforePose, poseTrack, poseLimbTracks, overlayTracks, overlayLimbTracks, modelTracksAfterPose);
                         }
                     }
                     else
@@ -1287,7 +1292,7 @@ public class UIReplaysEditor extends UIElement
                             {
                                 if (!this.collapsedModelTracks.getOrDefault(modelPropsKey, false))
                                 {
-                                    this.processTrack(sheet, modelPropsKey, 2, modelTracksBeforePose, poseTrack, poseLimbTracks, overlayTracks, modelTracksAfterPose);
+                                    this.processTrack(sheet, modelPropsKey, 2, modelTracksBeforePose, poseTrack, poseLimbTracks, overlayTracks, overlayLimbTracks, modelTracksAfterPose);
                                 }
 
                                 continue;
@@ -1300,19 +1305,20 @@ public class UIReplaysEditor extends UIElement
 
                             String groupKey = this.replay.uuid.get() + ":" + path;
 
-                            this.processTrack(sheet, groupKey, path.split("/").length, subForms.get(path).before, subForms.get(path).pose, subForms.get(path).limbs, subForms.get(path).overlays, subForms.get(path).after);
+                            this.processTrack(sheet, groupKey, path.split("/").length, subForms.get(path).before, subForms.get(path).pose, subForms.get(path).limbs, subForms.get(path).overlayRoots, subForms.get(path).overlayLimbs, subForms.get(path).after);
                         }
                     }
                 }
 
                 this.orderLimbTracks(rootForm, poseLimbTracks);
+                List<UIKeyframeSheet> orderedOverlayTracks = this.orderOverlayTracks(rootForm, overlayTracks, overlayLimbTracks);
 
                 grouped.addAll(worldTracks);
                 grouped.add(modelPropsHeader);
                 grouped.addAll(modelTracksBeforePose);
                 grouped.addAll(poseTrack);
                 grouped.addAll(poseLimbTracks);
-                grouped.addAll(overlayTracks);
+                grouped.addAll(orderedOverlayTracks);
                 grouped.addAll(modelTracksAfterPose);
 
                 List<String> subFormPaths = new ArrayList<>(subForms.keySet());
@@ -1347,11 +1353,12 @@ public class UIReplaysEditor extends UIElement
                     if (!this.collapsedModelTracks.getOrDefault(groupKey, false))
                     {
                         this.orderLimbTracks(subForm.form, subForm.limbs);
+                        List<UIKeyframeSheet> orderedSubOverlays = this.orderOverlayTracks(subForm.form, subForm.overlayRoots, subForm.overlayLimbs);
 
                         grouped.addAll(subForm.before);
                         grouped.addAll(subForm.pose);
                         grouped.addAll(subForm.limbs);
-                        grouped.addAll(subForm.overlays);
+                        grouped.addAll(orderedSubOverlays);
                         grouped.addAll(subForm.after);
                     }
                 }
@@ -1391,7 +1398,13 @@ public class UIReplaysEditor extends UIElement
 
         if (!sheets.isEmpty())
         {
-            this.keyframeEditor = new UIKeyframeEditor((consumer) -> new UIFilmKeyframes(this.filmPanel.cameraEditor, consumer).absolute()).target(this.filmPanel.editArea);
+            this.lastPickedKeyframe = null;
+            this.keyframeEditor = new UIKeyframeEditor((consumer) -> new UIFilmKeyframes(this.filmPanel.cameraEditor, (keyframe) ->
+            {
+                this.cleanupUntouchedAutomaticKeyframe(this.lastPickedKeyframe, keyframe);
+                this.lastPickedKeyframe = keyframe;
+                consumer.accept(keyframe);
+            }).absolute()).target(this.filmPanel.editArea);
             this.keyframeEditor.full(this);
             this.keyframeEditor.setUndoId("replay_keyframe_editor");
 
@@ -1496,11 +1509,66 @@ public class UIReplaysEditor extends UIElement
 
         int colon = key.indexOf(':');
         String path = colon == -1 ? key : key.substring(0, colon);
+        BaseValueBasic property = FormUtils.getProperty(rootForm, path);
 
-        return FormUtils.getProperty(rootForm, path) != null;
+        if (property == null)
+        {
+            return false;
+        }
+
+        if (colon == -1)
+        {
+            return true;
+        }
+
+        String boneName = key.substring(colon + 1);
+
+        return this.isCompatibleBoneProperty(property, boneName);
     }
 
-    private void processTrack(UIKeyframeSheet sheet, String groupKey, int level, List<UIKeyframeSheet> before, List<UIKeyframeSheet> pose, List<UIKeyframeSheet> limbs, List<UIKeyframeSheet> overlays, List<UIKeyframeSheet> after)
+    private boolean isCompatibleBoneProperty(BaseValueBasic property, String boneName)
+    {
+        if (boneName == null || boneName.isEmpty() || !(property.getParent() instanceof Form parentForm))
+        {
+            return false;
+        }
+
+        if (!(parentForm instanceof ModelForm modelForm))
+        {
+            return false;
+        }
+
+        ModelInstance model = ModelFormRenderer.getModel(modelForm);
+
+        if (model == null)
+        {
+            return false;
+        }
+
+        IModel modelDef = model.model;
+
+        if (modelDef instanceof Model cubicModel)
+        {
+            return cubicModel.getAllGroupKeys().contains(boneName);
+        }
+
+        Collection<BOBJBone> bones = modelDef.getAllBOBJBones();
+
+        if (bones != null)
+        {
+            for (BOBJBone bone : bones)
+            {
+                if (boneName.equals(bone.name))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private void processTrack(UIKeyframeSheet sheet, String groupKey, int level, List<UIKeyframeSheet> before, List<UIKeyframeSheet> pose, List<UIKeyframeSheet> limbs, List<UIKeyframeSheet> overlayRoots, List<UIKeyframeSheet> overlayLimbs, List<UIKeyframeSheet> after)
     {
         sheet.level = level;
         String customTitle = this.replay.getCustomSheetTitle(sheet.id);
@@ -1518,28 +1586,46 @@ public class UIReplaysEditor extends UIElement
 
         int colon = sheet.id.indexOf(':');
         String trackName = StringUtils.fileName(sheet.id);
+        String scopeKey = groupKey == null || groupKey.isEmpty() ? this.replay.uuid.get() + ":__model__" : groupKey;
+        String textureParentKey = scopeKey + ":texture";
+        boolean isPbrTrack = trackName.equals("pbr_normal_intensity") || trackName.equals("pbr_specular_intensity");
 
-        if (colon != -1)
+        if (isPbrTrack)
         {
-            String parentId = sheet.id.substring(0, colon);
-            String actualParentId = parentId.replaceAll("pose_overlay_?\\d*", "pose");
-            String parentKey = this.replay.uuid.get() + ":" + actualParentId;
-
-            if (!BBSSettings.originalKeyframeUI.get() && this.collapsedModelTracks.getOrDefault(parentKey, true))
+            if (this.collapsedModelTracks.getOrDefault(textureParentKey, true))
             {
                 return;
             }
 
             sheet.level += 1;
 
-            if (BBSSettings.originalKeyframeUI.get())
+            if ((customTitle == null || customTitle.isEmpty()) && trackName.equals("pbr_normal_intensity"))
             {
-                sheet.title = IKey.constant(sheet.id.substring(colon + 1));
+                sheet.title = UIKeys.FILM_REPLAY_TRACK_PBR_NORMAL_INTENSITY;
+            }
+            else if ((customTitle == null || customTitle.isEmpty()) && trackName.equals("pbr_specular_intensity"))
+            {
+                sheet.title = UIKeys.FILM_REPLAY_TRACK_PBR_SPECULAR_INTENSITY;
+            }
+        }
+
+        if (colon != -1)
+        {
+            String parentId = sheet.id.substring(0, colon);
+            String parentKey = this.replay.uuid.get() + ":" + parentId;
+
+            if (this.collapsedModelTracks.getOrDefault(parentKey, true))
+            {
+                return;
             }
 
-            if (parentId.startsWith("pose_overlay"))
+            sheet.level += 1;
+
+            String parentTrackName = StringUtils.fileName(parentId);
+
+            if (parentTrackName.startsWith("pose_overlay"))
             {
-                overlays.add(sheet);
+                overlayLimbs.add(sheet);
             }
             else
             {
@@ -1562,7 +1648,30 @@ public class UIReplaysEditor extends UIElement
         }
         else if (trackName.startsWith("pose_overlay"))
         {
-            overlays.add(sheet);
+            String parentKey = this.replay.uuid.get() + ":" + sheet.id;
+            boolean expanded = !this.collapsedModelTracks.getOrDefault(parentKey, true);
+
+            sheet.expanded = expanded;
+            sheet.toggleExpanded = () ->
+            {
+                this.collapsedModelTracks.put(parentKey, !this.collapsedModelTracks.getOrDefault(parentKey, true));
+                this.updateChannelsList();
+            };
+
+            overlayRoots.add(sheet);
+        }
+        else if (trackName.equals("texture"))
+        {
+            boolean expanded = !this.collapsedModelTracks.getOrDefault(textureParentKey, true);
+
+            sheet.expanded = expanded;
+            sheet.toggleExpanded = () ->
+            {
+                this.collapsedModelTracks.put(textureParentKey, !this.collapsedModelTracks.getOrDefault(textureParentKey, true));
+                this.updateChannelsList();
+            };
+
+            this.addTrackByPriority(trackName, before, after, sheet);
         }
         else if (trackName.startsWith("transform_overlay") || trackName.equals("transform"))
         {
@@ -1570,25 +1679,7 @@ public class UIReplaysEditor extends UIElement
         }
         else
         {
-            /* Decide whether it's before or after pose based on MODEL_PROPERTIES index */
-            int poseIndex = MODEL_PROPERTIES.indexOf("pose");
-            int currentIndex = MODEL_PROPERTIES.indexOf(trackName);
-
-            if (WORLD_CHANNELS.contains(trackName))
-            {
-                before.add(sheet);
-
-                return;
-            }
-
-            if (currentIndex != -1 && currentIndex < poseIndex)
-            {
-                before.add(sheet);
-            }
-            else
-            {
-                after.add(sheet);
-            }
+            this.addTrackByPriority(trackName, before, after, sheet);
         }
 
         if (customTitle != null && !customTitle.isEmpty())
@@ -1597,13 +1688,79 @@ public class UIReplaysEditor extends UIElement
         }
     }
 
+    private void addTrackByPriority(String trackName, List<UIKeyframeSheet> before, List<UIKeyframeSheet> after, UIKeyframeSheet sheet)
+    {
+        int poseIndex = MODEL_PROPERTIES.indexOf("pose");
+        int currentIndex = MODEL_PROPERTIES.indexOf(trackName);
+
+        if (WORLD_CHANNELS.contains(trackName))
+        {
+            before.add(sheet);
+
+            return;
+        }
+
+        if (currentIndex != -1 && currentIndex < poseIndex)
+        {
+            before.add(sheet);
+        }
+        else
+        {
+            after.add(sheet);
+        }
+    }
+
+    private List<UIKeyframeSheet> orderOverlayTracks(Form form, List<UIKeyframeSheet> overlayRoots, List<UIKeyframeSheet> overlayLimbs)
+    {
+        List<UIKeyframeSheet> ordered = new ArrayList<>();
+
+        if (overlayRoots.isEmpty() && overlayLimbs.isEmpty())
+        {
+            return ordered;
+        }
+
+        Set<UIKeyframeSheet> used = new HashSet<>();
+
+        for (UIKeyframeSheet root : overlayRoots)
+        {
+            ordered.add(root);
+            used.add(root);
+
+            List<UIKeyframeSheet> limbs = new ArrayList<>();
+            String prefix = root.id + ":";
+
+            for (UIKeyframeSheet limb : overlayLimbs)
+            {
+                if (limb.id.startsWith(prefix))
+                {
+                    limbs.add(limb);
+                    used.add(limb);
+                }
+            }
+
+            this.orderLimbTracks(form, limbs);
+            ordered.addAll(limbs);
+        }
+
+        for (UIKeyframeSheet limb : overlayLimbs)
+        {
+            if (!used.contains(limb))
+            {
+                ordered.add(limb);
+            }
+        }
+
+        return ordered;
+    }
+
     private static class FormTracks
     {
         public final Form form;
         public final List<UIKeyframeSheet> before = new ArrayList<>();
         public final List<UIKeyframeSheet> pose = new ArrayList<>();
         public final List<UIKeyframeSheet> limbs = new ArrayList<>();
-        public final List<UIKeyframeSheet> overlays = new ArrayList<>();
+        public final List<UIKeyframeSheet> overlayRoots = new ArrayList<>();
+        public final List<UIKeyframeSheet> overlayLimbs = new ArrayList<>();
         public final List<UIKeyframeSheet> after = new ArrayList<>();
 
         public FormTracks(Form form)
@@ -1790,38 +1947,61 @@ public class UIReplaysEditor extends UIElement
 
     private void convertToLimbs(UIKeyframeSheet sheet)
     {
-        List<Keyframe> selected = sheet.selection.getSelected();
+        List<Keyframe> selected = new ArrayList<>(sheet.selection.getSelected());
 
         if (selected.isEmpty())
         {
             return;
         }
 
-        Form form = sheet.property != null ? FormUtils.getForm(sheet.property) : this.replay.form.get();
+        Form form = this.replay.form.get();
 
         if (form == null)
         {
             return;
         }
 
-        BaseValue.edit(this.replay, (r) ->
+        Form rootForm = FormUtils.getRoot(form);
+
+        Set<String> boneNames = new HashSet<>();
+
+        for (Keyframe kf : selected)
         {
+            Pose pose = (Pose) kf.getValue();
+
+            if (pose != null)
+            {
+                boneNames.addAll(pose.transforms.keySet());
+            }
+        }
+
+        BaseValue.edit(this.replay, IValueListener.FLAG_UNMERGEABLE, (r) ->
+        {
+            Set<Float> convertedTicks = new HashSet<>();
+
             for (Keyframe kf : selected)
             {
-                Pose pose = (Pose) kf.getValue();
+                Pose pose = (Pose) sheet.channel.interpolate(kf.getTick());
 
                 if (pose == null)
                 {
                     continue;
                 }
 
-                for (Map.Entry<String, PoseTransform> entry : pose.transforms.entrySet())
+                convertedTicks.add(kf.getTick());
+
+                for (String boneName : boneNames)
                 {
-                    String boneName = entry.getKey();
-                    PoseTransform transform = entry.getValue();
+                    PoseTransform transform = pose.transforms.get(boneName);
+
+                    if (transform == null)
+                    {
+                        transform = new PoseTransform();
+                    }
+
                     String key = sheet.id + ":" + boneName;
 
-                    KeyframeChannel<Transform> channel = this.replay.properties.getOrCreate(this.replay.form.get(), key);
+                    KeyframeChannel<Transform> channel = this.replay.properties.getOrCreate(rootForm, key);
 
                     if (channel != null)
                     {
@@ -1831,10 +2011,34 @@ public class UIReplaysEditor extends UIElement
                         newKf.copyOverExtra(kf);
                     }
                 }
-
-                sheet.channel.remove(kf);
             }
+
+            if (!convertedTicks.isEmpty())
+            {
+                for (int i = sheet.channel.getList().size() - 1; i >= 0; i--)
+                {
+                    Keyframe existing = (Keyframe) sheet.channel.getList().get(i);
+
+                    for (Float tick : convertedTicks)
+                    {
+                        if (Math.abs(existing.getTick() - tick) < 0.0001F)
+                        {
+                            sheet.channel.remove(i);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            this.replay.properties.cleanUp();
         });
+
+        this.replay.properties.resetProperties(this.replay.form.get());
+
+        if (this.filmPanel.getUndoHandler() != null)
+        {
+            this.filmPanel.getUndoHandler().submitUndo();
+        }
 
         this.updateChannelsList();
     }
@@ -2017,18 +2221,6 @@ public class UIReplaysEditor extends UIElement
         }
 
         /* Redirección al sheet anclado si el hueso seleccionado está anclado y no hay override */
-        if (bone != null && !bone.isEmpty() && BBSSettings.boneAnchoringEnabled.get() && !BBSSettings.anchorOverrideEnabled.get())
-        {
-            for (UIKeyframeSheet s : this.keyframeEditor.view.getGraph().getSheets())
-            {
-                if (s.anchoredBone != null && s.anchoredBone.equals(bone))
-                {
-                    this.pickProperty(bone, s, insert);
-                    return;
-                }
-            }
-        }
-
         /* Redirección a la pista de limb track si existe */
         if (bone != null && !bone.isEmpty())
         {
@@ -2069,6 +2261,8 @@ public class UIReplaysEditor extends UIElement
             return;
         }
 
+        Keyframe provisionalKeyframe = this.ensureAutomaticLimbKeyframe(sheet, bone, tick);
+
         KeyframeSegment segment = sheet.channel.find(tick);
         Keyframe closest = null;
 
@@ -2081,6 +2275,11 @@ public class UIReplaysEditor extends UIElement
             closest = sheet.channel.get(0);
         }
 
+        if (closest == null)
+        {
+            closest = provisionalKeyframe;
+        }
+
         if (closest != null)
         {
             if (this.keyframeEditor.view.getGraph().getSelected() != closest)
@@ -2090,19 +2289,131 @@ public class UIReplaysEditor extends UIElement
 
             if (this.keyframeEditor.editor instanceof UIPoseKeyframeFactory poseFactory)
             {
-                String targetBone = bone;
-
-                if (BBSSettings.boneAnchoringEnabled.get() && sheet.anchoredBone != null)
-                {
-                    /* Redirigir siempre al hueso anclado cuando la pista está anclada */
-                    targetBone = sheet.anchoredBone;
-                }
-
-                poseFactory.poseEditor.selectBone(targetBone);
+                poseFactory.poseEditor.selectBone(bone);
             }
 
             this.filmPanel.setCursor((int) closest.getTick());
         }
+    }
+
+    private boolean isPoseTrackId(String id)
+    {
+        String property = StringUtils.fileName(id);
+
+        return property.equals("pose") || property.startsWith("pose_overlay");
+    }
+
+    private boolean isProvisionalAutomaticKeyframe(Keyframe keyframe, UIKeyframeSheet sheet)
+    {
+        if (keyframe == null || sheet == null || keyframe.getColor() == null)
+        {
+            return false;
+        }
+
+        int colon = sheet.id.indexOf(':');
+
+        if (colon == -1)
+        {
+            return false;
+        }
+
+        String propertyId = sheet.id.substring(0, colon);
+
+        return this.isPoseTrackId(propertyId) && keyframe.getColor().a < 0.99F;
+    }
+
+    private void cleanupUntouchedAutomaticKeyframe(Keyframe previous, Keyframe current)
+    {
+        if (previous == null || previous == current || this.keyframeEditor == null)
+        {
+            return;
+        }
+
+        IUIKeyframeGraph graph = this.keyframeEditor.view.getGraph();
+        UIKeyframeSheet sheet = graph.getSheet(previous);
+
+        if (!this.isProvisionalAutomaticKeyframe(previous, sheet))
+        {
+            return;
+        }
+
+        if (sheet.channel.removeSilently(previous))
+        {
+            graph.pickSelected();
+        }
+    }
+
+    private Keyframe ensureAutomaticLimbKeyframe(UIKeyframeSheet sheet, String bone, int tick)
+    {
+        if (sheet == null || !BBSSettings.autoKeyframes.get())
+        {
+            return null;
+        }
+
+        if (bone == null || bone.isEmpty())
+        {
+            return null;
+        }
+
+        int colon = sheet.id.indexOf(':');
+
+        if (colon == -1)
+        {
+            return null;
+        }
+
+        String propertyId = sheet.id.substring(0, colon);
+        String boneId = sheet.id.substring(colon + 1);
+
+        if (!this.isPoseTrackId(propertyId) || !bone.equals(boneId))
+        {
+            return null;
+        }
+
+        for (Object o : sheet.channel.getList())
+        {
+            Keyframe keyframe = (Keyframe) o;
+
+            if (Math.abs(keyframe.getTick() - tick) < 0.0001F)
+            {
+                return keyframe;
+            }
+        }
+
+        KeyframeSegment segment = sheet.channel.find(tick);
+        Keyframe source = null;
+        Transform transform = null;
+
+        if (segment != null)
+        {
+            source = segment.a;
+            Object interpolated = segment.createInterpolated();
+
+            if (interpolated instanceof Transform value)
+            {
+                transform = (Transform) sheet.channel.getFactory().copy(value);
+            }
+        }
+
+        if (transform == null)
+        {
+            transform = (Transform) sheet.channel.getFactory().createEmpty();
+        }
+
+        int index = sheet.channel.insert(tick, transform);
+        Keyframe keyframe = (Keyframe) sheet.channel.get(index);
+
+        if (keyframe != null)
+        {
+            if (source != null)
+            {
+                keyframe.getInterpolation().copy(source.getInterpolation());
+            }
+
+            keyframe.setColor(Color.rgba(Colors.setA(sheet.color, 0.35F)));
+        }
+
+        return keyframe;
     }
 
     public boolean clickViewport(UIContext context, Area area)

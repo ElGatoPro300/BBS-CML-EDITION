@@ -250,6 +250,16 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         this.lastModel = null;
     }
 
+    private void applyPBRTextureIntensity()
+    {
+        BBSRendering.setPBRTextureIntensity(this.form.pbrNormalIntensity.get(), this.form.pbrSpecularIntensity.get());
+    }
+
+    private void clearPBRTextureIntensity()
+    {
+        BBSRendering.clearPBRTextureIntensity();
+    }
+
     public void ensureAnimator(float transition)
     {
         ModelInstance model = this.getModel();
@@ -317,7 +327,9 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             MatrixStackUtils.multiply(stack, uiMatrix);
             stack.scale(scale, scale, scale);
 
+            this.applyPBRTextureIntensity();
             BBSModClient.getTextures().bindTexture(texture);
+            this.clearPBRTextureIntensity();
             GlStateManager._depthFunc(GL11.GL_LEQUAL);
 
             Vector3f light0 = new Vector3f(0.85F, 0.85F, -1F).normalize();
@@ -380,7 +392,16 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         /* Pass form-level texture so VAO renderer can respect it */
         Link link = this.form.texture.get();
         Link defaultTexture = link == null ? model.texture : link;
-        model.render(newStack, program, color, light, overlay, stencilMap, this.form.shapeKeys.get(), defaultTexture);
+        this.applyPBRTextureIntensity();
+
+        try
+        {
+            model.render(newStack, program, color, light, overlay, stencilMap, this.form.shapeKeys.get(), defaultTexture);
+        }
+        finally
+        {
+            this.clearPBRTextureIntensity();
+        }
 
         GlStateManager._disableBlend();
 
@@ -527,7 +548,9 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             matrices.mulPose(Axis.YP.rotation(MathUtils.PI));
             MatrixStackUtils.applyTransform(matrices, slot.transform);
 
+            this.applyPBRTextureIntensity();
             BBSModClient.getTextures().bindTexture(texture);
+            this.clearPBRTextureIntensity();
 
             Supplier<GlProgram> mainShader = (BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld()) || !model.isVAORendered()
                 ? () ->
@@ -578,7 +601,9 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
             if (texture != null)
             {
+                this.applyPBRTextureIntensity();
                 BBSModClient.getTextures().bindTexture(texture);
+                this.clearPBRTextureIntensity();
             }
 
             Supplier<GlProgram> mainShader = (BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld()) || !model.isVAORendered()
