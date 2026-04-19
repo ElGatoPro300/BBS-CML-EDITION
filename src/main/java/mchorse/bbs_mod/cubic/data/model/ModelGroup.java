@@ -5,8 +5,6 @@ import mchorse.bbs_mod.data.IMapSerializable;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
-import mchorse.bbs_mod.resources.Link;
-import mchorse.bbs_mod.utils.resources.LinkUtils;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.pose.Transform;
 
@@ -26,7 +24,6 @@ public class ModelGroup implements IMapSerializable
 
     public float lighting = 0F;
     public Color color = new Color().set(1F, 1F, 1F);
-    public Link textureOverride;
     public Transform initial = new Transform();
     public Transform current = new Transform();
 
@@ -39,50 +36,7 @@ public class ModelGroup implements IMapSerializable
     {
         this.lighting = 0F;
         this.color.set(1F, 1F, 1F);
-        this.textureOverride = null;
         this.current.copy(this.initial);
-    }
-
-    public ModelGroup copy(Model newOwner, ModelGroup newParent)
-    {
-        ModelGroup group = new ModelGroup(this.id);
-        
-        group.owner = newOwner;
-        group.parent = newParent;
-        group.visible = this.visible;
-        group.index = this.index;
-        
-        group.lighting = this.lighting;
-        group.color.copy(this.color);
-        if (this.textureOverride != null) group.textureOverride = LinkUtils.copy(this.textureOverride);
-        
-        group.initial.copy(this.initial);
-        group.current.copy(this.current);
-        
-        // Copy meshes and cubes (assuming they are immutable or can be shared?)
-        // Meshes have data (Map) and texture (Link). 
-        // Cubes have transforms.
-        // If we modify meshes/cubes at runtime, we must clone them too.
-        // Usually only transforms change.
-        
-        // Deep copy cubes just in case
-        for (ModelCube cube : this.cubes)
-        {
-            group.cubes.add(cube.copy());
-        }
-        
-        // Deep copy meshes just in case
-        for (ModelMesh mesh : this.meshes)
-        {
-            group.meshes.add(mesh.copy());
-        }
-        
-        for (ModelGroup child : this.children)
-        {
-            group.children.add(child.copy(newOwner, group));
-        }
-        
-        return group;
     }
 
     @Override
@@ -91,8 +45,6 @@ public class ModelGroup implements IMapSerializable
         /* Setup initial transformations */
         if (data.has("origin")) this.initial.translate.set(DataStorageUtils.vector3fFromData(data.getList("origin")));
         if (data.has("rotate")) this.initial.rotate.set(DataStorageUtils.vector3fFromData(data.getList("rotate")));
-        if (data.has("pivot")) this.initial.pivot.set(DataStorageUtils.vector3fFromData(data.getList("pivot")));
-        else this.initial.pivot.set(this.initial.translate);
 
         /* Setup cubes and meshes */
         if (data.has("cubes"))
@@ -126,7 +78,6 @@ public class ModelGroup implements IMapSerializable
     {
         data.put("origin", DataStorageUtils.vector3fToData(this.initial.translate));
         data.put("rotate", DataStorageUtils.vector3fToData(this.initial.rotate));
-        data.put("pivot", DataStorageUtils.vector3fToData(this.initial.pivot));
 
         if (!this.cubes.isEmpty())
         {

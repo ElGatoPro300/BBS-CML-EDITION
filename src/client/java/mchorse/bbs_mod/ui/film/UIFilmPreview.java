@@ -3,18 +3,15 @@ package mchorse.bbs_mod.ui.film;
 import com.mojang.blaze3d.systems.RenderSystem;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
-import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.audio.AudioRenderer;
 import mchorse.bbs_mod.camera.Camera;
 import mchorse.bbs_mod.camera.clips.misc.AudioClip;
-import mchorse.bbs_mod.camera.clips.misc.VideoClip;
 import mchorse.bbs_mod.camera.controller.RunnerCameraController;
 import mchorse.bbs_mod.camera.data.Angle;
 import mchorse.bbs_mod.camera.data.Point;
 import mchorse.bbs_mod.camera.data.Position;
 import mchorse.bbs_mod.camera.utils.TimeUtils;
 import mchorse.bbs_mod.client.BBSRendering;
-import mchorse.bbs_mod.client.video.VideoRenderer;
 import mchorse.bbs_mod.film.Films;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.graphics.window.Window;
@@ -54,12 +51,9 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
 
 public class UIFilmPreview extends UIElement
 {
-    public static final List<Consumer<UIFilmPreview>> extensions = new ArrayList<>();
-
     private List<AudioClip> clips = new ArrayList<>();
     private UIFilmPanel panel;
 
@@ -158,11 +152,6 @@ public class UIFilmPreview extends UIElement
             {
                 this.panel.getController().toggleInstantKeyframes();
             });
-
-            menu.action(Icons.ALL_DIRECTIONS, UIKeys.FILM_CONTROLLER_KEYS_TOGGLE_COUNTDOWN_CONTROL, this.panel.getController().isCountdownControlEnabled(), () ->
-            {
-                this.panel.getController().toggleCountdownControl();
-            });
         });
         this.recordVideo = new UIIcon(Icons.VIDEO_CAMERA, (b) ->
         {
@@ -217,25 +206,13 @@ public class UIFilmPreview extends UIElement
 
         this.icons.add(this.replays, this.onionSkin, this.plause, this.teleport, this.flight, this.control, this.perspective, this.recordReplay, this.recordVideo);
         this.add(this.icons);
-
-        for (Consumer<UIFilmPreview> consumer : extensions)
-        {
-            consumer.accept(this);
-        }
     }
 
     public void openReplays()
     {
-        /* if (!this.panel.isDockedLayout())
-        { */
-            UIOverlay overlay = UIOverlay.addOverlayLeft(this.getContext(), this.panel.replayEditor.replays, 360);
+        UIOverlay overlay = UIOverlay.addOverlayLeft(this.getContext(), this.panel.replayEditor.replays, 360);
 
-            overlay.eventPropagataion(EventPropagation.PASS);
-        /* }
-        else
-        { */
-            //this.panel.toggleReplaysSidebar();
-        //}
+        overlay.eventPropagataion(EventPropagation.PASS);
     }
 
     public void openOnionSkin()
@@ -314,24 +291,6 @@ public class UIFilmPreview extends UIElement
             context.batcher.texturedBox(texture.id, Colors.WHITE, area.x, area.y, area.w, area.h, 0, texture.height, texture.width, 0, texture.width, texture.height);
         }
 
-        if (this.panel.getData() != null)
-        {
-            /* Render global video clips (overlays) */
-            VideoRenderer.renderClips(
-                context.batcher.getContext().getMatrices(),
-                context.batcher,
-                this.panel.getData().camera.getClips(this.panel.getCursor()),
-                this.panel.getCursor(),
-                this.panel.getRunner().isRunning(),
-                this.getViewport(),
-                context.menu.viewport,
-                context,
-                context.menu.width,
-                context.menu.height,
-                true
-            );
-        }
-
         this.renderCursor(context);
 
         /* Render rule of thirds */
@@ -343,40 +302,8 @@ public class UIFilmPreview extends UIElement
             context.batcher.box(area.x + area.w - area.w / 3, area.y, area.x + area.w - area.w / 3 + 1, area.y + area.h, guidesColor);
 
             context.batcher.box(area.x, area.y + area.h / 3 - 1, area.x + area.w, area.y + area.h / 3, guidesColor);
-            context.batcher.box(area.x, area.y + area.h - area.h / 3 - 1, area.x + area.w, area.y + area.h - area.h / 3, guidesColor);
+            context.batcher.box(area.x, area.y + area.h - area.h / 3, area.x + area.w, area.y + area.h - area.h / 3 + 1, guidesColor);
         }
-
-        /* Render safe margins (action safe 90%, title safe 80%) */
-        if (BBSSettings.editorSafeMargins.get())
-        {
-            int guidesColor = BBSSettings.editorSafeMarginsColor.get();
-
-            int actionMarginX = Math.round(area.w * 0.05F);
-            int actionMarginY = Math.round(area.h * 0.05F);
-            int actionLeft = area.x + actionMarginX;
-            int actionRight = area.x + area.w - actionMarginX;
-            int actionTop = area.y + actionMarginY;
-            int actionBottom = area.y + area.h - actionMarginY;
-
-            context.batcher.box(actionLeft, actionTop, actionLeft + 1, actionBottom, guidesColor);
-            context.batcher.box(actionRight - 1, actionTop, actionRight, actionBottom, guidesColor);
-            context.batcher.box(actionLeft, actionTop, actionRight, actionTop + 1, guidesColor);
-            context.batcher.box(actionLeft, actionBottom - 1, actionRight, actionBottom, guidesColor);
-
-            int titleMarginX = Math.round(area.w * 0.10F);
-            int titleMarginY = Math.round(area.h * 0.10F);
-            int titleLeft = area.x + titleMarginX;
-            int titleRight = area.x + area.w - titleMarginX;
-            int titleTop = area.y + titleMarginY;
-            int titleBottom = area.y + area.h - titleMarginY;
-
-            context.batcher.box(titleLeft, titleTop, titleLeft + 1, titleBottom, guidesColor);
-            context.batcher.box(titleRight - 1, titleTop, titleRight, titleBottom, guidesColor);
-            context.batcher.box(titleLeft, titleTop, titleRight, titleTop + 1, guidesColor);
-            context.batcher.box(titleLeft, titleBottom - 1, titleRight, titleBottom, guidesColor);
-        }
-
-        VideoRenderer.update();
 
         if (BBSSettings.editorCenterLines.get())
         {

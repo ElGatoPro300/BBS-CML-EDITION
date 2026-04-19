@@ -36,11 +36,11 @@ import java.util.List;
 
 public class UIKeyframeGraph implements IUIKeyframeGraph
 {
-    protected UIKeyframes keyframes;
+    private UIKeyframes keyframes;
 
-    protected UIKeyframeSheet sheet;
+    private UIKeyframeSheet sheet;
 
-    protected final Scale yAxis;
+    private final Scale yAxis;
 
     public UIKeyframeGraph(UIKeyframes keyframes, UIKeyframeSheet sheet)
     {
@@ -354,7 +354,7 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
         }
         else if (type.b == KeyframeType.LEFT_HANDLE)
         {
-            keyframe.lx = Math.max(0, -(float) ((this.keyframes.fromGraphX(context.mouseX)) - keyframe.getTick()));
+            keyframe.lx = -(float) ((this.keyframes.fromGraphX(context.mouseX)) - keyframe.getTick());
             keyframe.ly = (float) (this.fromGraphY(context.mouseY) - factory.getY(originalV));
 
             if (!Window.isShiftPressed())
@@ -365,7 +365,7 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
         }
         else if (type.b == KeyframeType.RIGHT_HANDLE)
         {
-            keyframe.rx = Math.max(0, (float) ((this.keyframes.fromGraphX(context.mouseX)) - keyframe.getTick()));
+            keyframe.rx = (float) ((this.keyframes.fromGraphX(context.mouseX)) - keyframe.getTick());
             keyframe.ry = (float) (this.fromGraphY(context.mouseY) - factory.getY(originalV));
 
             if (!Window.isShiftPressed())
@@ -507,7 +507,7 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
         }
     }
 
-    protected void renderPreviewKeyframe(UIContext context, UIKeyframeSheet sheet, double tick, int y, int color)
+    private void renderPreviewKeyframe(UIContext context, UIKeyframeSheet sheet, double tick, int y, int color)
     {
         int x = this.keyframes.toGraphX(tick);
         float a = (float) Math.sin(context.getTickTransition() / 2D) * 0.1F + 0.5F;
@@ -712,14 +712,7 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
         }
 
         RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
-
-        if (keyframes.isEmpty())
-        {
-            return;
-        }
-
         BufferRenderer.drawWithGlobalProgram(builder.end());
     }
 

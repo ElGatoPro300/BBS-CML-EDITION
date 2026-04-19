@@ -22,11 +22,6 @@ public class UIDashboardPanel extends UIElement
         return true;
     }
 
-    public boolean canHideHUD()
-    {
-        return true;
-    }
-
     public boolean canToggleVisibility()
     {
         return true;
@@ -65,9 +60,4 @@ public class UIDashboardPanel extends UIElement
 
     public void renderPanelBackground(UIContext context)
     {}
-
-    public UIDashboardPanel getMainPanel()
-    {
-        return this;
-    }
 }

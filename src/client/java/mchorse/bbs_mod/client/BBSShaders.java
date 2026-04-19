@@ -10,14 +10,10 @@ import net.minecraft.resource.ResourceManager;
 import net.minecraft.util.Identifier;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
 
 public class BBSShaders
 {
-    public static final List<Runnable> LOADERS = new ArrayList<>();
-
     private static ShaderProgram model;
     private static ShaderProgram multiLink;
     private static ShaderProgram subtitles;
@@ -58,11 +54,6 @@ public class BBSShaders
             pickerBillboardNoShading = new ShaderProgram(factory, "picker_billboard_no_shading", VertexFormats.POSITION_TEXTURE_LIGHT_COLOR);
             pickerParticles = new ShaderProgram(factory, "picker_particles", VertexFormats.POSITION_COLOR_TEXTURE_LIGHT);
             pickerModels = new ShaderProgram(factory, "picker_models", VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL);
-        
-            for (Runnable runnable : LOADERS)
-            {
-                runnable.run();
-            }
         }
         catch (IOException e)
         {

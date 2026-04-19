@@ -61,7 +61,6 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
     public UIParticleSchemePanel(UIDashboard dashboard)
     {
         super(dashboard);
-        this.overlay.resizable().minSize(260, 220);
 
         this.renderer = new UIParticleSchemeRenderer();
         this.renderer.relative(this).wTo(this.iconBar.getFlex()).h(1F);
