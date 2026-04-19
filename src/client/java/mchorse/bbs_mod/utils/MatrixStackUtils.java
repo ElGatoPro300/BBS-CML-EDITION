@@ -23,14 +23,14 @@ public class MatrixStackUtils
 
     public static void scaleStack(MatrixStack stack, float x, float y, float z)
     {
-        new Matrix4f().scale(x, y, z);
+        stack.peek().getPositionMatrix().scale(x, y, z);
         stack.peek().getNormalMatrix().scale(x < 0F ? -1F : 1F, y < 0F ? -1F : 1F, z < 0F ? -1F : 1F);
     }
 
     public static void cacheMatrices()
     {
         /* Cache the global stuff */
-        oldProjection.set(RenderSystem.getModelViewMatrix());
+        oldProjection.set(RenderSystem.getProjectionMatrix());
         oldMV.set(RenderSystem.getModelViewMatrix());
         oldInverse.set(new Matrix3f(RenderSystem.getModelViewMatrix()));
 
@@ -42,7 +42,7 @@ public class MatrixStackUtils
     public static void restoreMatrices()
     {
         /* Return back to orthographic projection */
-        /* projection matrix state managed by 1.21.11 renderer */
+        RenderSystem.setProjectionMatrix(oldProjection, ProjectionType.ORTHOGRAPHIC);
 
         Matrix4fStack mvStack = RenderSystem.getModelViewStack();
         mvStack.set(oldMV);
@@ -51,7 +51,17 @@ public class MatrixStackUtils
 
     public static void applyModelViewMatrix()
     {
-        // 1.21.11 no longer exposes direct shader uniform mutation for this path.
+        ShaderProgram program = RenderSystem.getShader();
+
+        if (program != null)
+        {
+            GlUniform uniform = program.getUniform("ModelViewMat");
+
+            if (uniform != null)
+            {
+                uniform.set(RenderSystem.getModelViewStack());
+            }
+        }
     }
 
     public static void applyTransform(MatrixStack stack, Transform transform)
@@ -88,13 +98,13 @@ public class MatrixStackUtils
 
         normal.scale(Vectors.TEMP_3F);
 
-        new Matrix4f().mul(matrix);
+        stack.peek().getPositionMatrix().mul(matrix);
         stack.peek().getNormalMatrix().mul(normal);
     }
 
     public static void scaleBack(MatrixStack matrices)
     {
-        Matrix4f position = new Matrix4f();
+        Matrix4f position = matrices.peek().getPositionMatrix();
 
         float scaleX = (float) Math.sqrt(position.m00() * position.m00() + position.m10() * position.m10() + position.m20() * position.m20());
         float scaleY = (float) Math.sqrt(position.m01() * position.m01() + position.m11() * position.m11() + position.m21() * position.m21());

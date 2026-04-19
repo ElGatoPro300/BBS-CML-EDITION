@@ -1,7 +1,6 @@
 package mchorse.bbs_mod.client.renderer;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.blocks.entities.ModelBlockEntity;
@@ -32,6 +31,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.WorldRenderer;
+import net.minecraft.client.render.block.entity.BlockEntityRenderer;
 import net.minecraft.client.render.block.entity.BlockEntityRendererFactory;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.client.world.ClientWorld;
@@ -40,7 +40,7 @@ import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
-public class ModelBlockEntityRenderer
+public class ModelBlockEntityRenderer implements BlockEntityRenderer<ModelBlockEntity>
 {
     private static ActorEntity entity;
 
@@ -53,7 +53,7 @@ public class ModelBlockEntityRenderer
     {
         ClientWorld world = MinecraftClient.getInstance().world;
 
-        if (entity == null || entity.getEntityWorld() != world)
+        if (entity == null || entity.getWorld() != world)
         {
             entity = new ActorEntity(BBSMod.ACTOR_ENTITY, world);
         }
@@ -62,8 +62,11 @@ public class ModelBlockEntityRenderer
         entity.lastRenderX = x;
         entity.lastRenderY = y;
         entity.lastRenderZ = z;
+        entity.prevX = x;
+        entity.prevY = y;
+        entity.prevZ = z;
 
-        double distance = MinecraftClient.getInstance().getEntityRenderDispatcher().getSquaredDistanceToCamera(entity);
+        double distance = MinecraftClient.getInstance().getEntityRenderDispatcher().getSquaredDistanceToCamera(x, y, z);
 
         opacity = (float) ((1D - distance / 256D) * opacity);
 
@@ -95,11 +98,13 @@ public class ModelBlockEntityRenderer
     public ModelBlockEntityRenderer(BlockEntityRendererFactory.Context ctx)
     {}
 
+    @Override
     public boolean rendersOutsideBoundingBox(ModelBlockEntity blockEntity)
     {
         return blockEntity.getProperties().isGlobal();
     }
 
+    @Override
     public void render(ModelBlockEntity entity, float tickDelta, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, int overlay)
     {
         MinecraftClient mc = MinecraftClient.getInstance();
@@ -137,11 +142,11 @@ public class ModelBlockEntityRenderer
             int lightAbove = WorldRenderer.getLightmapCoordinates(entity.getWorld(), pos.add((int) transform.translate.x, (int) transform.translate.y, (int) transform.translate.z));
             Camera camera = mc.gameRenderer.getCamera();
 
-            GlStateManager._enableDepthTest();
+            RenderSystem.enableDepthTest();
             FormUtilsClient.render(properties.getForm(), new FormRenderingContext()
                 .set(FormRenderType.MODEL_BLOCK, entity.getEntity(), matrices, lightAbove, overlay, tickDelta)
                 .camera(camera));
-            GlStateManager._disableDepthTest();
+            RenderSystem.disableDepthTest();
 
             if (this.canRenderAxes(entity) && UIBaseMenu.renderAxes)
             {
@@ -154,7 +159,7 @@ public class ModelBlockEntityRenderer
             matrices.pop();
         }
 
-        GlStateManager._disableDepthTest();
+        RenderSystem.disableDepthTest();
 
         if (mc.getDebugHud().shouldShowDebugHud())
         {
@@ -187,7 +192,7 @@ public class ModelBlockEntityRenderer
         Camera camera = mc.gameRenderer.getCamera();
         Vec3d position = !mc.options.getPerspective().isFirstPerson() && mc.player != null
             ? mc.player.getCameraPosVec(tickDelta)
-            : camera.getCameraPos();
+            : camera.getPos();
 
         BlockPos pos = entity.getPos();
         double x = pos.getX() + 0.5D + transform.translate.x;
@@ -270,6 +275,7 @@ public class ModelBlockEntityRenderer
         return finalTransform;
     }
 
+    @Override
     public int getRenderDistance()
     {
         return 512;

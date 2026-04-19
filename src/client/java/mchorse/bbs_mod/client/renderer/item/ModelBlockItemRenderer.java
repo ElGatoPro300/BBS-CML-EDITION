@@ -1,7 +1,6 @@
 package mchorse.bbs_mod.client.renderer.item;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.blocks.entities.ModelBlockEntity;
@@ -14,23 +13,24 @@ import mchorse.bbs_mod.forms.renderers.FormRenderType;
 import mchorse.bbs_mod.forms.renderers.FormRenderingContext;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.pose.Transform;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.NbtComponent;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.entity.model.LoadedEntityModels;
 import net.minecraft.client.render.item.model.special.SpecialModelRenderer;
 import net.minecraft.client.render.DiffuseLighting;
-import net.minecraft.client.render.command.OrderedRenderCommandQueue;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.item.ItemStack;
-import net.minecraft.item.ItemDisplayContext;
+import net.minecraft.item.ModelTransformationMode;
+import net.minecraft.nbt.NbtCompound;
 import net.minecraft.util.math.BlockPos;
 import org.joml.Vector3f;
 
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.function.Consumer;
-import org.joml.Vector3fc;
 
 public class ModelBlockItemRenderer implements SpecialModelRenderer<ItemStack>
 {
@@ -62,7 +62,7 @@ public class ModelBlockItemRenderer implements SpecialModelRenderer<ItemStack>
     }
 
     @Override
-    public void render(ItemStack stack, ItemDisplayContext mode, MatrixStack matrices, OrderedRenderCommandQueue queue, int light, int overlay, boolean hasGlint, int seed)
+    public void render(ItemStack stack, ModelTransformationMode mode, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, int overlay, boolean hasGlint)
     {
         Item item = this.get(stack);
 
@@ -81,32 +81,30 @@ public class ModelBlockItemRenderer implements SpecialModelRenderer<ItemStack>
                 matrices.translate(0.5F, 0F, 0.5F);
                 MatrixStackUtils.applyTransform(matrices, transform);
 
-                GlStateManager._enableDepthTest();
+                RenderSystem.enableDepthTest();
 
-                if (mode == ItemDisplayContext.GUI)
+                if (mode == ModelTransformationMode.GUI)
                 {
-                    // GUI diffuse helper moved in 1.21.11 pipeline.
+                    Vector3f a = new Vector3f(0.85F, 0.85F, -1F).normalize();
+                    Vector3f b = new Vector3f(-0.85F, 0.85F, 1F).normalize();
+                    RenderSystem.setupLevelDiffuseLighting(a, b);
                 }
 
                 FormUtilsClient.render(form, new FormRenderingContext()
-                    .set(FormRenderType.fromModelMode(mode), item.formEntity, matrices, light, overlay, MinecraftClient.getInstance().getRenderTickCounter().getTickProgress(false))
+                    .set(FormRenderType.fromModelMode(mode), item.formEntity, matrices, light, overlay, MinecraftClient.getInstance().getRenderTickCounter().getTickDelta(false))
                     .camera(MinecraftClient.getInstance().gameRenderer.getCamera()));
 
-                if (mode == ItemDisplayContext.GUI)
+                if (mode == ModelTransformationMode.GUI)
                 {
-                    // Keep compatibility with newer pipeline API where GUI depth-light toggle was removed.
+                    DiffuseLighting.disableGuiDepthLighting();
                 }
 
-                GlStateManager._disableDepthTest();
+                RenderSystem.disableDepthTest();
 
                 matrices.pop();
             }
         }
     }
-
-    @Override
-    public void collectVertices(Consumer<Vector3fc> consumer)
-    {}
 
     public Item get(ItemStack stack)
     {
@@ -125,6 +123,19 @@ public class ModelBlockItemRenderer implements SpecialModelRenderer<ItemStack>
 
         this.map.put(stack, item);
 
+        NbtComponent nbtComponent = stack.get(DataComponentTypes.BLOCK_ENTITY_DATA);
+        if (nbtComponent == null)
+        {
+            return item;
+        }
+
+        NbtCompound nbt = nbtComponent.getNbt();
+        var world = MinecraftClient.getInstance().world;
+        if (world != null)
+        {
+            entity.readNbt(nbt, world.getRegistryManager());
+        }
+
         return item;
     }
 
@@ -139,7 +150,7 @@ public class ModelBlockItemRenderer implements SpecialModelRenderer<ItemStack>
         }
 
         @Override
-        public SpecialModelRenderer<?> bake(SpecialModelRenderer.BakeContext config)
+        public SpecialModelRenderer<?> bake(net.minecraft.client.render.entity.model.LoadedEntityModels config)
         {
             return BBSModClient.getModelBlockItemRenderer();
         }

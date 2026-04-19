@@ -319,7 +319,7 @@ public class UIFilmPreview extends UIElement
         {
             /* Render global video clips (overlays) */
             VideoRenderer.renderClips(
-                new MatrixStack(),
+                context.batcher.getContext().getMatrices(),
                 context.batcher,
                 this.panel.getData().camera.getClips(this.panel.getCursor()),
                 this.panel.getCursor(),
@@ -451,12 +451,13 @@ public class UIFilmPreview extends UIElement
 
         stack.pushMatrix();
 
+        stack.mul(context.batcher.getContext().getMatrices().peek().getPositionMatrix());
         stack.translate(area.x + 16, area.ey() - 12, 0F);
         stack.rotate(RotationAxis.NEGATIVE_X.rotationDegrees(mcCamera.getPitch()));
         stack.rotate(RotationAxis.POSITIVE_Y.rotationDegrees(mcCamera.getYaw()));
         stack.scale(-1F, -1F, -1F);
         MatrixStackUtils.applyModelViewMatrix();
-        /* crosshair rendering is managed by vanilla pipeline */
+        RenderSystem.renderCrosshair(10);
 
         stack.popMatrix();
         MatrixStackUtils.applyModelViewMatrix();

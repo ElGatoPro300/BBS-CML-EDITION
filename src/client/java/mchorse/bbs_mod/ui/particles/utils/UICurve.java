@@ -21,9 +21,9 @@ import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.interps.Lerps;
 import mchorse.bbs_mod.utils.MathUtils;
 import net.minecraft.client.render.BufferBuilder;
+import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.render.RenderLayers;
-import com.mojang.blaze3d.vertex.VertexFormat;
+import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.BufferAllocator;
 import org.joml.Matrix4f;
@@ -257,7 +257,7 @@ public class UICurve extends UIElement
 
     private void drawGraph(UIContext context)
     {
-        Matrix4f matrix = new Matrix4f();
+        Matrix4f matrix = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
         int c = this.curve.nodes.size();
 
         BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
@@ -289,7 +289,7 @@ public class UICurve extends UIElement
             builder.vertex(matrix, (float) last.x, this.graph.ey(), 0F).color(0.25F, 0.25F, 0.25F, 0.5F);
         }
 
-        RenderLayers.lines().draw(builder.end());
+        BufferRenderer.drawWithGlobalProgram(builder.end());
 
         Color color = Colors.COLOR;
         LineBuilder line = new LineBuilder(0.75F);

@@ -1,8 +1,6 @@
 package mchorse.bbs_mod.cubic;
 
-import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.VertexFormat;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.bobj.BOBJBone;
 import mchorse.bbs_mod.cubic.data.animation.Animations;
@@ -37,9 +35,9 @@ import mchorse.bbs_mod.utils.resources.LinkUtils;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.render.BufferBuilder;
-import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.render.RenderLayers;
+import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.util.BufferAllocator;
+import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.RotationAxis;
@@ -475,13 +473,15 @@ public class ModelInstance implements IModelInstance
             }
             else
             {
+                RenderSystem.setShader(program.get());
+
                 BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL);
 
                 CubicRenderer.processRenderModel(renderProcessor, builder, stack, model);
 
                 try
                 {
-                    RenderLayers.solid().draw(builder.end());
+                    BufferRenderer.drawWithGlobalProgram(builder.end());
                 }
                 catch (IllegalStateException e)
                 {
@@ -507,4 +507,3 @@ public class ModelInstance implements IModelInstance
         }
     }
 }
-

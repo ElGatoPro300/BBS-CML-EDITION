@@ -18,14 +18,16 @@ import net.minecraft.fluid.FluidState;
 import net.minecraft.fluid.Fluids;
 import net.minecraft.item.ItemPlacementContext;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NbtCompound;
 import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.NbtComponent;
 import net.minecraft.component.type.BlockStateComponent;
-import net.minecraft.entity.TypedEntityData;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.state.StateManager;
 import net.minecraft.state.property.Properties;
 import net.minecraft.state.property.IntProperty;
 import net.minecraft.util.ActionResult;
+import net.minecraft.util.Hand;
 import net.minecraft.util.ItemScatterer;
 import net.minecraft.util.collection.DefaultedList;
 import net.minecraft.util.hit.BlockHitResult;
@@ -44,7 +46,6 @@ public class ModelBlock extends Block implements BlockEntityProvider, Waterlogga
 {
     public static final IntProperty LIGHT_LEVEL = IntProperty.of("light_level", 0, 15);
 
-    @SuppressWarnings("unchecked")
     public static <E extends BlockEntity, A extends BlockEntity> BlockEntityTicker<A> validateTicker(BlockEntityType<A> givenType, BlockEntityType<E> expectedType, BlockEntityTicker<? super E> ticker)
     {
         return expectedType == givenType ? (BlockEntityTicker<A>) ticker : null;
@@ -81,7 +82,7 @@ public class ModelBlock extends Block implements BlockEntityProvider, Waterlogga
         if (entity instanceof ModelBlockEntity modelBlock)
         {
             ItemStack stack = new ItemStack(this);
-            stack.set(DataComponentTypes.BLOCK_ENTITY_DATA, TypedEntityData.create(BBSMod.MODEL_BLOCK_ENTITY, modelBlock.createNbt(world.getRegistryManager())));
+            stack.set(DataComponentTypes.BLOCK_ENTITY_DATA, NbtComponent.of(modelBlock.createNbtWithId(world.getRegistryManager())));
             
             stack.set(DataComponentTypes.BLOCK_STATE, new BlockStateComponent(Map.of("light_level", String.valueOf(modelBlock.getProperties().getLightLevel()))));
 
@@ -264,12 +265,12 @@ public class ModelBlock extends Block implements BlockEntityProvider, Waterlogga
     @Override
     public void afterBreak(World world, PlayerEntity player, BlockPos pos, BlockState state, BlockEntity be, ItemStack tool)
     {
-        if (!world.isClient() && !player.getAbilities().creativeMode)
+        if (!world.isClient && !player.getAbilities().creativeMode)
         {
             if (be instanceof ModelBlockEntity model)
             {
                 ItemStack stack = new ItemStack(this);
-                stack.set(DataComponentTypes.BLOCK_ENTITY_DATA, TypedEntityData.create(BBSMod.MODEL_BLOCK_ENTITY, model.createNbt(world.getRegistryManager())));
+                stack.set(DataComponentTypes.BLOCK_ENTITY_DATA, NbtComponent.of(model.createNbtWithId(world.getRegistryManager())));
                 
                 stack.set(DataComponentTypes.BLOCK_STATE, new BlockStateComponent(Map.of("light_level", String.valueOf(model.getProperties().getLightLevel()))));
 

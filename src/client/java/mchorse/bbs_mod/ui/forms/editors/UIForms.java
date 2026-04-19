@@ -8,7 +8,6 @@ import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UIList;
 import mchorse.bbs_mod.utils.StringUtils;
 import net.minecraft.client.render.DiffuseLighting;
-import net.minecraft.client.MinecraftClient;
 import org.joml.Vector3f;
 
 import java.util.List;
@@ -88,9 +87,9 @@ public class UIForms extends UIList<UIForms.FormEntry>
 
             org.joml.Vector3f a = new org.joml.Vector3f(0.85F, 0.85F, -1F).normalize();
             org.joml.Vector3f b = new org.joml.Vector3f(-0.85F, 0.85F, 1F).normalize();
-            MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.LEVEL);
+            RenderSystem.setupLevelDiffuseLighting(a, b);
             FormUtilsClient.renderUI(form, context, x, y, x + 40, y + 40);
-            
+            DiffuseLighting.disableGuiDepthLighting();
 
             context.batcher.unclip(context);
         }

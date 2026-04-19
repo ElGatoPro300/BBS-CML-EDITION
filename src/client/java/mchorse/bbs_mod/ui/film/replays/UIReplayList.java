@@ -2546,9 +2546,9 @@ public class UIReplayList extends UIList<Replay> {
 
             Vector3f a = new Vector3f(0.85F, 0.85F, -1F).normalize();
             Vector3f b = new Vector3f(-0.85F, 0.85F, 1F).normalize();
-            MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.LEVEL);
+            RenderSystem.setupLevelDiffuseLighting(a, b);
             FormUtilsClient.renderUI(form, context, x, y, x + 40, y + 40);
-            
+            DiffuseLighting.disableGuiDepthLighting();
 
             context.batcher.unclip(context);
 

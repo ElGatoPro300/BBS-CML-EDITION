@@ -1,9 +1,6 @@
 package mchorse.bbs_mod.forms.renderers;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.VertexFormat;
-import com.mojang.blaze3d.opengl.GlStateManager;
-import com.mojang.blaze3d.pipeline.RenderPipeline;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.forms.forms.ShapeForm;
@@ -12,11 +9,11 @@ import mchorse.bbs_mod.utils.MatrixStackUtils;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.Tessellator;
+import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.render.GameRenderer;
-import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.util.math.MatrixStack;
 
 import org.joml.Matrix3f;
@@ -31,9 +28,11 @@ import mchorse.bbs_mod.forms.forms.shape.nodes.IrisAttributeNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.IrisShaderNode;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.iris.ShaderCurves;
-import net.minecraft.client.gl.RenderPipelines;
+import net.minecraft.client.render.BufferRenderer;
 
-
+import net.minecraft.client.gl.ShaderProgram;
+import net.minecraft.client.gl.ShaderProgramKey;
+import net.minecraft.client.gl.ShaderProgramKeys;
 import java.util.function.Supplier;
 
 import mchorse.bbs_mod.utils.math.Noise;
@@ -53,7 +52,7 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
     @Override
     protected void renderInUI(UIContext context, int x1, int y1, int x2, int y2)
     {
-        MatrixStack stack = new MatrixStack();
+        MatrixStack stack = context.batcher.getContext().getMatrices();
         int scale = (y2 - y1) / 2;
 
         stack.push();
@@ -69,7 +68,7 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
         stack.peek().getNormalMatrix().getScale(normalScale);
         stack.peek().getNormalMatrix().scale(1F / normalScale.x, -1F / normalScale.y, 1F / normalScale.z);
 
-        this.renderShape(stack, RenderPipelines.ENTITY_TRANSLUCENT, OverlayTexture.DEFAULT_UV, LightmapTextureManager.MAX_LIGHT_COORDINATE);
+        this.renderShape(stack, ShaderProgramKeys.RENDERTYPE_ENTITY_TRANSLUCENT, OverlayTexture.DEFAULT_UV, LightmapTextureManager.MAX_LIGHT_COORDINATE);
 
         stack.pop();
     }
@@ -77,12 +76,12 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
     @Override
     protected void render3D(FormRenderingContext context)
     {
-        RenderPipeline shader = RenderPipelines.ENTITY_TRANSLUCENT;
+        ShaderProgramKey shader = ShaderProgramKeys.RENDERTYPE_ENTITY_TRANSLUCENT;
 
         this.renderShape(context.stack, shader, context.overlay, context.light);
     }
 
-    private void renderShape(MatrixStack stack, RenderPipeline shader, int overlay, int light)
+    private void renderShape(MatrixStack stack, ShaderProgramKey shader, int overlay, int light)
     {
         this.evaluator = new ShapeGraphEvaluator(this.form.graph.get());
         
@@ -103,23 +102,25 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
             }
         }
 
-        /* shader binding handled by RenderLayer in 1.21.11 */
-        /* shader color state handled by pipeline in 1.21.11 */
-        GlStateManager._enableBlend();
+        RenderSystem.setShader(shader);
+        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+        RenderSystem.enableBlend();
         
         if (this.form.lighting.get())
         {
-            GlStateManager._blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE, GL11.GL_SRC_ALPHA, GL11.GL_ONE);
+            RenderSystem.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
         }
         else
         {
-            GlStateManager._blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+            RenderSystem.defaultBlendFunc();
         }
         
-        GlStateManager._disableCull();
-        GlStateManager._enableDepthTest();
+        RenderSystem.disableCull();
+        RenderSystem.enableDepthTest();
 
         GameRenderer gameRenderer = MinecraftClient.getInstance().gameRenderer;
+        gameRenderer.getLightmapTextureManager().enable();
+        gameRenderer.getOverlayTexture().setupOverlayColor();
 
         // Bind texture if available
         Link texture = this.form.texture.get();
@@ -202,13 +203,15 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
             this.renderCylinder(builder, stack, true, c, overlay, light);
         }
         
-        RenderLayers.debugFilledBox().draw(builder.end());
+        BufferRenderer.drawWithGlobalProgram(builder.end());
         
         stack.pop();
         
+        gameRenderer.getLightmapTextureManager().disable();
+        gameRenderer.getOverlayTexture().teardownOverlayColor();
         
-        GlStateManager._disableBlend();
-        GlStateManager._blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+        RenderSystem.disableBlend();
+        RenderSystem.defaultBlendFunc();
     }
 
     private void renderVolumeParticles(BufferBuilder builder, MatrixStack stack, ShapeForm.ShapeType type, Color c, int overlay, int light)

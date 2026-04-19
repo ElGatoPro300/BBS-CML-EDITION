@@ -1,8 +1,6 @@
 package mchorse.bbs_mod.forms.renderers;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.VertexFormat;
-import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.camera.Camera;
@@ -13,11 +11,9 @@ import mchorse.bbs_mod.forms.forms.TrailForm;
 import mchorse.bbs_mod.graphics.Draw;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.ui.framework.UIContext;
+import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.*;
-import net.minecraft.client.render.RenderLayers;
-import net.minecraft.client.render.DiffuseLighting;
 import net.minecraft.client.util.math.MatrixStack;
-import org.lwjgl.opengl.GL11;
 import org.joml.Matrix4f;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
@@ -82,11 +78,10 @@ public class TrailFormRenderer extends FormRenderer<TrailForm> implements ITicka
             Draw.fillBox(builder, stack, -axisOffset, -1F, -axisOffset, axisOffset, 1F, axisOffset, 0, 1, 0);
 
 
-            // RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
-            /* shader binding handled by RenderLayer in 1.21.11 */
-            GlStateManager._disableDepthTest();
-            RenderLayers.debugFilledBox().draw(builder.end());
-            GlStateManager._enableDepthTest();
+            RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
+            RenderSystem.disableDepthTest();
+            BufferRenderer.drawWithGlobalProgram(builder.end());
+            RenderSystem.enableDepthTest();
 
             return;
         }
@@ -207,12 +202,11 @@ public class TrailFormRenderer extends FormRenderer<TrailForm> implements ITicka
         }
 
 
-        // RenderSystem.setShader(ShaderProgramKeys.POSITION_TEX);
-        /* shader binding handled by RenderLayer in 1.21.11 */
-        GlStateManager._enableBlend();
-        GlStateManager._blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
-        RenderLayers.debugFilledBox().draw(builder.end());
-        GlStateManager._enableDepthTest();
+        RenderSystem.setShader(ShaderProgramKeys.POSITION_TEX);
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        BufferRenderer.drawWithGlobalProgram(builder.end());
+        RenderSystem.enableDepthTest();
 
 
         stack.pop();

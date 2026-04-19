@@ -23,7 +23,6 @@ import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.joml.Matrices;
 import net.minecraft.client.render.DiffuseLighting;
-import net.minecraft.client.MinecraftClient;
 import org.joml.Vector3f;
 import org.joml.Matrix3f;
 
@@ -58,7 +57,10 @@ public class UIFormList extends UIElement
             @Override
             public void render(UIContext context)
             {
+                context.batcher.getContext().getMatrices().push();
+                context.batcher.getContext().getMatrices().translate(0, 0, 200);
                 super.render(context);
+                context.batcher.getContext().getMatrices().pop();
             }
         };
         this.search = new UITextbox(100, this::search).placeholder(UIKeys.FORMS_LIST_SEARCH);
@@ -247,11 +249,11 @@ public class UIFormList extends UIElement
         Vector3f a = new Vector3f(0.85F, 0.85F, -1F).normalize();
         Vector3f b = new Vector3f(-0.85F, 0.85F, 1F).normalize();
 
-        MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.LEVEL);
+        RenderSystem.setupLevelDiffuseLighting(a, b);
 
         super.render(context);
 
-        
+        DiffuseLighting.disableGuiDepthLighting();
 
         /* Render form's display name and ID */
         Form selected = this.getSelected();

@@ -1,8 +1,6 @@
 package mchorse.bbs_mod.forms.renderers;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.VertexFormat;
-import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.camera.Camera;
 import mchorse.bbs_mod.client.BBSRendering;
@@ -19,20 +17,21 @@ import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.joml.Vectors;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.ShaderProgram;
+import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.BufferBuilder;
+import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.render.VertexConsumer;
+import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.client.util.BufferAllocator;
-import net.minecraft.client.render.RenderLayers;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
-import org.lwjgl.opengl.GL11;
 
 import java.util.function.Supplier;
 
@@ -51,7 +50,7 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
     @Override
     public void renderInUI(UIContext context, int x1, int y1, int x2, int y2)
     {
-        MatrixStack stack = new MatrixStack();
+        MatrixStack stack = context.batcher.getContext().getMatrices();
 
         stack.push();
 
@@ -67,8 +66,8 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
 
         this.renderModel(format, () ->
             {
-                // RenderSystem.setShader(ShaderProgramKeys.RENDERTYPE_ENTITY_TRANSLUCENT);
-                return null;
+                RenderSystem.setShader(ShaderProgramKeys.RENDERTYPE_ENTITY_TRANSLUCENT);
+                return RenderSystem.getShader();
             },
             stack,
             OverlayTexture.DEFAULT_UV, LightmapTextureManager.MAX_LIGHT_COORDINATE, Colors.WHITE,
@@ -97,15 +96,13 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
             shading
                 ? () ->
                 {
-                    // RenderSystem.setShader(ShaderProgramKeys.RENDERTYPE_ENTITY_TRANSLUCENT);
-                    /* shader binding handled by RenderLayer in 1.21.11 */
-                    return null;
+                    RenderSystem.setShader(ShaderProgramKeys.RENDERTYPE_ENTITY_TRANSLUCENT);
+                    return RenderSystem.getShader();
                 }
                 : () ->
                 {
-                    // RenderSystem.setShader(ShaderProgramKeys.POSITION_TEX_COLOR);
-                    /* shader binding handled by RenderLayer in 1.21.11 */
-                    return null;
+                    RenderSystem.setShader(ShaderProgramKeys.POSITION_TEX_COLOR);
+                    return RenderSystem.getShader();
                 },
             shading ? BBSShaders::getPickerBillboardProgram : BBSShaders::getPickerBillboardNoShadingProgram
         );
@@ -226,11 +223,16 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
         }
 
         GameRenderer gameRenderer = MinecraftClient.getInstance().gameRenderer;
+        if (format == VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL)
+        {
+            gameRenderer.getLightmapTextureManager().enable();
+            gameRenderer.getOverlayTexture().setupOverlayColor();
+        }
         BBSModClient.getTextures().bindTexture(texture);
         ShaderProgram program = shader.get();
         if (program != null)
         {
-            /* shader binding handled by RenderLayer in 1.21.11 */
+            RenderSystem.setShader(program);
         }
 
         texture.bind();
@@ -254,11 +256,16 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
         this.fill(format, builder, matrix, quad.p4.x, quad.p4.y, color, uvQuad.p4.x, uvQuad.p4.y, overlay, light, entry, -1F);
         this.fill(format, builder, matrix, quad.p3.x, quad.p3.y, color, uvQuad.p3.x, uvQuad.p3.y, overlay, light, entry, -1F);
 
-        GlStateManager._blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
-        GlStateManager._enableBlend();
-        RenderLayers.debugFilledBox().draw(builder.end());
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.enableBlend();
+        BufferRenderer.drawWithGlobalProgram(builder.end());
 
         texture.setFilterMipmap(false, false);
+        if (format == VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL)
+        {
+            gameRenderer.getLightmapTextureManager().disable();
+            gameRenderer.getOverlayTexture().teardownOverlayColor();
+        }
     }
 
     private VertexConsumer fill(VertexFormat format, VertexConsumer consumer, Matrix4f matrix, float x, float y, Color color, float u, float v, int overlay, int light, MatrixStack.Entry entry, float nz)

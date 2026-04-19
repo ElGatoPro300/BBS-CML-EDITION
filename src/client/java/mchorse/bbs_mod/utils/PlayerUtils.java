@@ -1,8 +1,13 @@
 package mchorse.bbs_mod.utils;
 
+import com.mojang.authlib.GameProfile;
 import mchorse.bbs_mod.network.ClientNetwork;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.entity.data.TrackedData;
+import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.util.math.BlockPos;
+import net.minecraft.world.World;
 
 public class PlayerUtils
 {
@@ -17,9 +22,9 @@ public class PlayerUtils
 
         if (!ClientNetwork.isIsBBSModOnServer())
         {
-            String command = "tp " + player.getName().getString() + " " + x + " " + y + " " + z + " " + yaw + " " + pitch;
+            String command = "tp " + player.getGameProfile().getName() + " " + x + " " + y + " " + z + " " + yaw + " " + pitch;
 
-            player.networkHandler.sendChatCommand(command);
+            player.networkHandler.sendCommand(command);
         }
         else
         {
@@ -37,7 +42,7 @@ public class PlayerUtils
 
         if (!ClientNetwork.isIsBBSModOnServer())
         {
-            player.networkHandler.sendChatCommand("tp " + player.getName().getString() + " " + x + " " + y + " " + z);
+            player.networkHandler.sendCommand("tp " + player.getGameProfile().getName() + " " + x + " " + y + " " + z);
         }
         else
         {
@@ -45,4 +50,28 @@ public class PlayerUtils
         }
     }
 
+    public static class ProtectedAccess extends PlayerEntity
+    {
+        public static TrackedData<Byte> getModelParts()
+        {
+            return PLAYER_MODEL_PARTS;
+        }
+
+        public ProtectedAccess(World world, BlockPos pos, float yaw, GameProfile gameProfile)
+        {
+            super(world, pos, yaw, gameProfile);
+        }
+
+        @Override
+        public boolean isSpectator()
+        {
+            return false;
+        }
+
+        @Override
+        public boolean isCreative()
+        {
+            return false;
+        }
+    }
 }

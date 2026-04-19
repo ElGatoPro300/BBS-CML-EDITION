@@ -40,6 +40,7 @@ public class SuperFakePlayer extends ServerPlayerEntity
         this.networkHandler = new SuperFakePlayerNetworkHandler(this);
     }
 
+    @Override
     public int getPermissionLevel()
     {
         return 2;
@@ -87,6 +88,7 @@ public class SuperFakePlayer extends ServerPlayerEntity
     public void sleep(BlockPos pos)
     {}
 
+    @Override
     public boolean startRiding(Entity entity, boolean force)
     {
         return false;

@@ -1,7 +1,6 @@
 package mchorse.bbs_mod.forms;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.forms.renderers.utils.RecolorVertexConsumer;
 import net.minecraft.client.util.BufferAllocator;
 import net.minecraft.client.render.RenderLayer;
@@ -86,7 +85,7 @@ public class CustomVertexConsumerProvider implements VertexConsumerProvider
             /* Force back the depth func because it seems like stuff rendered by a vertex
              * consumer is resetting the depth func to GL_LESS, and since this vertex consumer
              * is designed  */
-            GlStateManager._depthFunc(GL11.GL_ALWAYS);
+            RenderSystem.depthFunc(GL11.GL_ALWAYS);
         }
     }
 }

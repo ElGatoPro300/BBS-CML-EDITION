@@ -1,6 +1,6 @@
 package mchorse.bbs_mod.ui.film;
 
-import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.systems.ProjectionType;
 import com.mojang.blaze3d.systems.VertexSorter;
@@ -63,7 +63,7 @@ public class UISubtitleRenderer
         int width = fb.textureWidth;
         int height = fb.textureHeight;
 
-        Matrix4f cache = new Matrix4f(RenderSystem.getModelViewMatrix());
+        Matrix4f cache = new Matrix4f(RenderSystem.getProjectionMatrix());
 
         width /= 2;
         height /= 2;
@@ -73,8 +73,8 @@ public class UISubtitleRenderer
         Matrix4f ortho = new Matrix4f().ortho(0, width, height, 0, -100, 100);
         FontRenderer font = Batcher2D.getDefaultTextRenderer();
 
-        GlStateManager._depthFunc(GL11.GL_ALWAYS);
-        GlStateManager._disableCull();
+        RenderSystem.depthFunc(GL11.GL_ALWAYS);
+        RenderSystem.disableCull();
 
         for (Subtitle subtitle : subtitles)
         {
@@ -105,7 +105,7 @@ public class UISubtitleRenderer
             int fw = (int) ((w + 10) * scale);
             int fh = (int) ((h + 10) * scale);
 
-            /* projection matrix state managed by 1.21.11 renderer */
+            RenderSystem.setProjectionMatrix(new Matrix4f().ortho(0, w + 10, 0, h + 10, -100, 100), ProjectionType.ORTHOGRAPHIC);
 
             framebuffer.resize(fw, fh);
             framebuffer.applyClear();
@@ -131,8 +131,9 @@ public class UISubtitleRenderer
             }
 
             /* Render the texture */
+            fb.beginWrite(true);
 
-            /* projection matrix state managed by 1.21.11 renderer */
+            RenderSystem.setProjectionMatrix(ortho, ProjectionType.ORTHOGRAPHIC);
 
             Transform transform = new Transform();
 
@@ -144,23 +145,23 @@ public class UISubtitleRenderer
 
             if (blur != null)
             {
-                // Uniform setter API changed in 1.21.11.
+                blur.set(subtitle.shadow, subtitle.shadowOpaque ? 1F : 0F);
             }
 
             if (textureSize != null)
             {
-                // Uniform setter API changed in 1.21.11.
+                textureSize.set((float) texture.width, (float) texture.height);
             }
 
-            GlStateManager._enableBlend();
-            GlStateManager._blendFuncSeparate(770, 771, 1, 771);
+            RenderSystem.enableBlend();
+            RenderSystem.blendFuncSeparate(GlStateManager.SrcFactor.SRC_ALPHA, GlStateManager.DstFactor.ONE_MINUS_SRC_ALPHA, GlStateManager.SrcFactor.ONE, GlStateManager.DstFactor.ONE_MINUS_SRC_ALPHA);
 
             batcher.texturedBox(program, texture.id, Colors.setA(Colors.WHITE, alpha), -fw * subtitle.anchorX, -fh * subtitle.anchorY, texture.width, texture.height, 0, 0, texture.width, texture.height, texture.width, texture.height);
 
             stack.pop();
         }
 
-        /* projection matrix state managed by 1.21.11 renderer */
-        GlStateManager._enableCull();
+        RenderSystem.setProjectionMatrix(cache, ProjectionType.ORTHOGRAPHIC);
+        RenderSystem.enableCull();
     }
 }

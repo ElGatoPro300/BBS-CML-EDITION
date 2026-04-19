@@ -1,6 +1,6 @@
 package mchorse.bbs_mod.client.renderer.entity;
 
-import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.systems.RenderSystem;
 import mchorse.bbs_mod.entity.GunProjectileEntity;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.renderers.FormRenderType;
@@ -60,8 +60,8 @@ public class GunProjectileEntityRenderer extends EntityRenderer<GunProjectileEnt
         GunProperties properties = projectile.getProperties();
         int out = properties.lifeSpan - 2;
 
-        float bodyYaw = projectile.getYaw();
-        float pitch = projectile.getPitch();
+        float bodyYaw = MathHelper.lerpAngleDegrees(tickDelta, projectile.prevYaw, projectile.getYaw());
+        float pitch = MathHelper.lerpAngleDegrees(tickDelta, projectile.prevPitch, projectile.getPitch());
         float scale = Lerps.envelope(projectile.age + tickDelta, 0, properties.fadeIn, out - properties.fadeOut, out);
 
         if (properties.yaw) matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(bodyYaw));
@@ -69,12 +69,14 @@ public class GunProjectileEntityRenderer extends EntityRenderer<GunProjectileEnt
         matrices.scale(scale, scale, scale);
         MatrixStackUtils.applyTransform(matrices, properties.projectileTransform);
 
-        GlStateManager._enableDepthTest();
+        RenderSystem.enableDepthTest();
         FormUtilsClient.render(projectile.getForm(), new FormRenderingContext()
-            .set(FormRenderType.ENTITY, projectile.getFormEntity(), matrices, light, OverlayTexture.DEFAULT_UV, tickDelta)
+            .set(FormRenderType.ENTITY, projectile.getEntity(), matrices, light, OverlayTexture.DEFAULT_UV, tickDelta)
             .camera(MinecraftClient.getInstance().gameRenderer.getCamera()));
-        GlStateManager._disableDepthTest();
+        RenderSystem.disableDepthTest();
 
         matrices.pop();
+
+        super.render(state, matrices, vertexConsumers, light);
     }
 }
