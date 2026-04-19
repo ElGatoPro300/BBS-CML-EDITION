@@ -67,47 +67,42 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
         int light = context.light;
 
         context.stack.push();
-        try
+        context.stack.translate(-0.5F, 0F, -0.5F);
+
+        if (context.isPicking())
         {
-            context.stack.translate(-0.5F, 0F, -0.5F);
-
-            if (context.isPicking())
+            CustomVertexConsumerProvider.hijackVertexFormat((layer) ->
             {
-                CustomVertexConsumerProvider.hijackVertexFormat((layer) ->
-                {
-                    this.setupTarget(context, BBSShaders.getPickerModelsProgram());
-                    // RenderSystem.setShader(BBSShaders.getPickerModelsProgram());
-                });
+                this.setupTarget(context, BBSShaders.getPickerModelsProgram());
+                // RenderSystem.setShader(BBSShaders.getPickerModelsProgram());
+            });
 
-                light = 0;
-            }
-            else
-            {
-                CustomVertexConsumerProvider.hijackVertexFormat((l) -> GlStateManager._enableBlend());
-            }
-
-            Color set = this.form.color.get();
-
-            color.set(context.color);
-            color.mul(set);
-
-            consumers.setSubstitute(BBSRendering.getColorConsumer(set));
-            MinecraftClient.getInstance().getBlockRenderManager().renderBlockAsEntity(this.form.blockState.get(), context.stack, consumers, light, context.overlay);
-
-            if (!context.isPicking())
-            {
-                this.renderBlockEntity(context.stack, consumers, light, context.overlay);
-            }
-
-            consumers.draw();
-            consumers.setSubstitute(null);
-
-            CustomVertexConsumerProvider.clearRunnables();
+            light = 0;
         }
-        finally
+        else
         {
-            context.stack.pop();
+            CustomVertexConsumerProvider.hijackVertexFormat((l) -> GlStateManager._enableBlend());
         }
+
+        Color set = this.form.color.get();
+
+        color.set(context.color);
+        color.mul(set);
+
+        consumers.setSubstitute(BBSRendering.getColorConsumer(set));
+        MinecraftClient.getInstance().getBlockRenderManager().renderBlockAsEntity(this.form.blockState.get(), context.stack, consumers, light, context.overlay);
+
+        if (!context.isPicking())
+        {
+            this.renderBlockEntity(context.stack, consumers, light, context.overlay);
+        }
+
+        consumers.draw();
+        consumers.setSubstitute(null);
+
+        CustomVertexConsumerProvider.clearRunnables();
+
+        context.stack.pop();
 
         GlStateManager._enableDepthTest();
     }

@@ -553,51 +553,42 @@ public class BBSModClient implements ClientModInitializer
                     Color color = Colors.COLOR.set(BBSSettings.chromaSkyColor.get());
 
                     stack.push();
-                    try
-                    {
-                        MatrixStack.Entry peek = stack.peek();
 
-                        peek.getPositionMatrix().identity();
-                        peek.getNormalMatrix().identity();
-                        stack.translate(0F, 0F, -d);
+                    MatrixStack.Entry peek = stack.peek();
 
-                        GlStateManager._enableDepthTest();
-                        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
+                    peek.getPositionMatrix().identity();
+                    peek.getNormalMatrix().identity();
+                    stack.translate(0F, 0F, -d);
 
-                        float fov = MinecraftClient.getInstance().options.getFov().getValue();
-                        float dd = d * (float) Math.pow(fov / 40F, 2F);
+                    GlStateManager._enableDepthTest();
+                    BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
 
-                        Draw.fillQuad(builder, stack,
-                            -dd, -dd, 0,
-                            dd, -dd, 0,
-                            dd, dd, 0,
-                            -dd, dd, 0,
-                            color.r, color.g, color.b, 1F
-                        );
+                    float fov = MinecraftClient.getInstance().options.getFov().getValue();
+                    float dd = d * (float) Math.pow(fov / 40F, 2F);
 
-                        // RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
+                    Draw.fillQuad(builder, stack,
+                        -dd, -dd, 0,
+                        dd, -dd, 0,
+                        dd, dd, 0,
+                        -dd, dd, 0,
+                        color.r, color.g, color.b, 1F
+                    );
 
-                        Matrix4fStack mvStack = RenderSystem.getModelViewStack();
-                        mvStack.pushMatrix();
-                        try
-                        {
-                            mvStack.identity();
-                            MatrixStackUtils.applyModelViewMatrix();
+                    // RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
 
-                            RenderLayers.debugFilledBox().draw(builder.end());
-                        }
-                        finally
-                        {
-                            mvStack.popMatrix();
-                            MatrixStackUtils.applyModelViewMatrix();
-                        }
+                    Matrix4fStack mvStack = RenderSystem.getModelViewStack();
+                    mvStack.pushMatrix();
+                    mvStack.identity();
+                    MatrixStackUtils.applyModelViewMatrix();
 
-                        GlStateManager._disableDepthTest();
-                    }
-                    finally
-                    {
-                        stack.pop();
-                    }
+                    RenderLayers.debugFilledBox().draw(builder.end());
+
+                    mvStack.popMatrix();
+                    MatrixStackUtils.applyModelViewMatrix();
+
+                    GlStateManager._disableDepthTest();
+
+                    stack.pop();
                 }
             }
         });

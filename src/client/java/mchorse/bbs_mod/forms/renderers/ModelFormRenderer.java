@@ -334,7 +334,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             this.applyPBRTextureIntensity();
             BBSModClient.getTextures().bindTexture(texture);
             this.clearPBRTextureIntensity();
-            GlStateManager._depthFunc(GL11.GL_LEQUAL);
+            GlStateManager.depthFunc(GL11.GL_LEQUAL);
 
             Vector3f light0 = new Vector3f(0.85F, 0.85F, -1F).normalize();
             Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1F).normalize();
@@ -647,38 +647,29 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
     public void renderBodyParts(FormRenderingContext context)
     {
         context.stack.push();
-        try
+
+        for (BodyPart part : this.form.parts.getAllTyped())
         {
-            for (BodyPart part : this.form.parts.getAllTyped())
+            Matrix4f matrix = this.bones.get(part.bone.get()).matrix();
+
+            context.stack.push();
+
+            if (matrix != null)
             {
-                Matrix4f matrix = this.bones.get(part.bone.get()).matrix();
-
-                context.stack.push();
-                try
-                {
-                    if (matrix != null)
-                    {
-                        MatrixStackUtils.multiply(context.stack, matrix);
-                    }
-                    else
-                    {
-                        context.stack.multiply(RotationAxis.POSITIVE_Y.rotation(MathUtils.PI));
-                    }
-
-                    this.renderBodyPart(part, context);
-                }
-                finally
-                {
-                    context.stack.pop();
-                }
+                MatrixStackUtils.multiply(context.stack, matrix);
+            }
+            else
+            {
+                context.stack.multiply(RotationAxis.POSITIVE_Y.rotation(MathUtils.PI));
             }
 
-            this.bones.clear();
-        }
-        finally
-        {
+            this.renderBodyPart(part, context);
+
             context.stack.pop();
         }
+
+        this.bones.clear();
+        context.stack.pop();
     }
 
     @Override

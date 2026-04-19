@@ -1113,34 +1113,23 @@ public class UIFilmController extends UIElement
         if (worldStack != null)
         {
             worldStack.push();
-            try
-            {
-                worldStack.loadIdentity();
-                MatrixStackUtils.multiply(worldStack, BBSRendering.camera);
-                this.renderStencil(this.worldRenderContext, this.getContext(), altPressed);
-            }
-            finally
-            {
-                worldStack.pop();
-            }
+            worldStack.loadIdentity();
+            MatrixStackUtils.multiply(worldStack, BBSRendering.camera);
+            this.renderStencil(this.worldRenderContext, this.getContext(), altPressed);
+            worldStack.pop();
         }
         else
         {
             Matrix4fStack mvStack = RenderSystem.getModelViewStack();
             mvStack.pushMatrix();
-            try
-            {
-                mvStack.identity();
-                mvStack.set(BBSRendering.camera);
-                MatrixStackUtils.applyModelViewMatrix();
+            mvStack.identity();
+            mvStack.set(BBSRendering.camera);
+            MatrixStackUtils.applyModelViewMatrix();
 
-                this.renderStencil(this.worldRenderContext, this.getContext(), altPressed);
-            }
-            finally
-            {
-                mvStack.popMatrix();
-                MatrixStackUtils.applyModelViewMatrix();
-            }
+            this.renderStencil(this.worldRenderContext, this.getContext(), altPressed);
+
+            mvStack.popMatrix();
+            MatrixStackUtils.applyModelViewMatrix();
         }
 
         /* Return back to orthographic projection */

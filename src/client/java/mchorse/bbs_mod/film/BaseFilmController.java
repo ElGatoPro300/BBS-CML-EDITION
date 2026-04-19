@@ -178,72 +178,62 @@ public abstract class BaseFilmController
         formContext.viewMatrix = context.viewMatrix;
 
         stack.push();
-        try
-        {
-            if (relative)
-            {
-                if (!context.isShadowPass)
-                {
-                    stack.peek().getPositionMatrix().identity();
-                    stack.peek().getNormalMatrix().identity();
-                }
 
-                if (context.map == null)
-                {
-                    stack.multiply(camera.getRotation());
-                }
+        if (relative)
+        {
+            if (!context.isShadowPass)
+            {
+                stack.peek().getPositionMatrix().identity();
+                stack.peek().getNormalMatrix().identity();
             }
 
-            MatrixStackUtils.multiply(stack, target);
-            FormUtilsClient.render(form, formContext);
-
-            if (UIBaseMenu.renderAxes)
+            if (context.map == null)
             {
-                if (context.bone != null && !context.local)
-                {
-                    Form root = FormUtils.getRoot(form);
-                    MatrixCache map = FormUtilsClient.getRenderer(root).collectMatrices(entity, transition);
-                    MatrixCacheEntry entry = map.get(context.bone);
-
-                    Matrix4f matrix = entry.origin();
-
-                    if (matrix == null)
-                    {
-                        matrix = entry.matrix();
-                    }
-
-                    if (matrix != null)
-                    {
-                        stack.push();
-                        try
-                        {
-                            MatrixStackUtils.multiply(stack, matrix);
-
-                            if (context.map == null)
-                            {
-                                Gizmo.INSTANCE.render(stack);
-                            }
-                            else
-                            {
-                                Gizmo.INSTANCE.renderStencil(stack, context.map);
-                            }
-
-                            GlStateManager._enableDepthTest();
-                        }
-                        finally
-                        {
-                            stack.pop();
-                        }
-                    }
-                }
-                if (context.bone != null) renderAxes(context.bone, context.local, context.map, form, entity, transition, stack);
-                if (context.bone2 != null && context.map == null) renderAxes(context.bone2, context.local2, context.map, form, entity, transition, stack);
+                stack.multiply(camera.getRotation());
             }
         }
-        finally
+
+        MatrixStackUtils.multiply(stack, target);
+        FormUtilsClient.render(form, formContext);
+
+        if (UIBaseMenu.renderAxes)
         {
-            stack.pop();
+            if (context.bone != null && !context.local)
+            {
+                Form root = FormUtils.getRoot(form);
+                MatrixCache map = FormUtilsClient.getRenderer(root).collectMatrices(entity, transition);
+                MatrixCacheEntry entry = map.get(context.bone);
+
+                Matrix4f matrix = entry.origin();
+
+                if (matrix == null)
+                {
+                    matrix = entry.matrix();
+                }
+
+                if (matrix != null)
+                {
+                    stack.push();
+                    MatrixStackUtils.multiply(stack, matrix);
+
+                    if (context.map == null)
+                    {
+                        Gizmo.INSTANCE.render(stack);
+                    }
+                    else
+                    {
+                        Gizmo.INSTANCE.renderStencil(stack, context.map);
+                    }
+
+                    GlStateManager._enableDepthTest();
+                    stack.pop();
+                }
+            }
+            if (context.bone != null) renderAxes(context.bone, context.local, context.map, form, entity, transition, stack);
+            if (context.bone2 != null && context.map == null) renderAxes(context.bone2, context.local2, context.map, form, entity, transition, stack);
         }
+
+        stack.pop();
 
         if (!relative && context.map == null && opacity > 0F && context.shadowRadius > 0F && form.visible.get())
         {
@@ -252,32 +242,22 @@ public abstract class BaseFilmController
             if (shadowOpacity > 0F)
             {
                 stack.push();
-                try
-                {
-                    stack.translate(position.x - cx, position.y - cy, position.z - cz);
+                stack.translate(position.x - cx, position.y - cy, position.z - cz);
 
-                    ModelBlockEntityRenderer.renderShadow(context.consumers, stack, transition, position.x, position.y, position.z, 0F, 0F, 0F, context.shadowRadius, shadowOpacity);
-                }
-                finally
-                {
-                    stack.pop();
-                }
+                ModelBlockEntityRenderer.renderShadow(context.consumers, stack, transition, position.x, position.y, position.z, 0F, 0F, 0F, context.shadowRadius, shadowOpacity);
+
+                stack.pop();
             }
         }
 
         if (!relative && !context.nameTag.isEmpty())
         {
             stack.push();
-            try
-            {
-                stack.translate(position.x - cx, position.y - cy, position.z - cz);
+            stack.translate(position.x - cx, position.y - cy, position.z - cz);
 
-                renderNameTag(entity, Text.literal(StringUtils.processColoredText(context.nameTag)), stack, context.consumers, LightmapTextureManager.MAX_LIGHT_COORDINATE);
-            }
-            finally
-            {
-                stack.pop();
-            }
+            renderNameTag(entity, Text.literal(StringUtils.processColoredText(context.nameTag)), stack, context.consumers, LightmapTextureManager.MAX_LIGHT_COORDINATE);
+
+            stack.pop();
         }
 
         GlStateManager._enableDepthTest();
@@ -319,25 +299,19 @@ public abstract class BaseFilmController
         if (matrix != null)
         {
             stack.push();
-            try
-            {
-                MatrixStackUtils.multiply(stack, matrix);
+            MatrixStackUtils.multiply(stack, matrix);
 
-                if (stencilMap == null)
-                {
-                    Gizmo.INSTANCE.render(stack);
-                }
-                else
-                {
-                    Gizmo.INSTANCE.renderStencil(stack, stencilMap);
-                }
-
-                GlStateManager._enableDepthTest();
-            }
-            finally
+            if (stencilMap == null)
             {
-                stack.pop();
+                Gizmo.INSTANCE.render(stack);
             }
+            else
+            {
+                Gizmo.INSTANCE.renderStencil(stack, stencilMap);
+            }
+
+            GlStateManager._enableDepthTest();
+            stack.pop();
         }
     }
 
@@ -484,47 +458,42 @@ public abstract class BaseFilmController
 
 
         matrices.push();
-        try
-        {
-            matrices.translate(0F, hitboxH, 0F);
-            matrices.multiply(MinecraftClient.getInstance().gameRenderer.getCamera().getRotation());
-            matrices.scale(0.025F, -0.025F, 0.025F);
+        matrices.translate(0F, hitboxH, 0F);
+        matrices.multiply(MinecraftClient.getInstance().gameRenderer.getCamera().getRotation());
+        matrices.scale(0.025F, -0.025F, 0.025F);
 
-            Matrix4f matrix4f = new Matrix4f();
-            TextRenderer textRenderer = MinecraftClient.getInstance().textRenderer;
+        Matrix4f matrix4f = new Matrix4f();
+        TextRenderer textRenderer = MinecraftClient.getInstance().textRenderer;
 
-            float opacity = MinecraftClient.getInstance().options.getTextBackgroundOpacity(0.25F);
-            int background = (int) (opacity * 255F) << 24;
-            float h = (float) (-textRenderer.getWidth(text) / 2);
+        float opacity = MinecraftClient.getInstance().options.getTextBackgroundOpacity(0.25F);
+        int background = (int) (opacity * 255F) << 24;
+        float h = (float) (-textRenderer.getWidth(text) / 2);
 
-            int maxLight = LightmapTextureManager.MAX_LIGHT_COORDINATE;
+        int maxLight = LightmapTextureManager.MAX_LIGHT_COORDINATE;
 
-                GlStateManager._enableBlend();
-                GlStateManager._disableCull();
+            GlStateManager._enableBlend();
+            GlStateManager._disableCull();
 
-                CustomVertexConsumerProvider consumers = FormUtilsClient.getProvider();
+            CustomVertexConsumerProvider consumers = FormUtilsClient.getProvider();
 
-                CustomVertexConsumerProvider.hijackVertexFormat((layer) ->
-                {
-                    GlStateManager._disableDepthTest();
-                });
+            CustomVertexConsumerProvider.hijackVertexFormat((layer) ->
+            {
+                GlStateManager._disableDepthTest();
+            });
 
-                textRenderer.draw(text, h, 0, 0x00FFFFFF, false, matrix4f, consumers, TextRenderer.TextLayerType.NORMAL, background, maxLight);
-                consumers.draw();
+            textRenderer.draw(text, h, 0, 0x00FFFFFF, false, matrix4f, consumers, TextRenderer.TextLayerType.NORMAL, background, maxLight);
+            consumers.draw();
 
-                textRenderer.draw(text, h, 0, -1, false, matrix4f, consumers, TextRenderer.TextLayerType.NORMAL, 0, maxLight);
-                consumers.draw();
+            textRenderer.draw(text, h, 0, -1, false, matrix4f, consumers, TextRenderer.TextLayerType.NORMAL, 0, maxLight);
+            consumers.draw();
 
-                CustomVertexConsumerProvider.clearRunnables();
-                GlStateManager._enableDepthTest();
+            CustomVertexConsumerProvider.clearRunnables();
+            GlStateManager._enableDepthTest();
 
-                GlStateManager._enableCull();
-                GlStateManager._disableBlend();
-        }
-        finally
-        {
-            matrices.pop();
-        }
+            GlStateManager._enableCull();
+            GlStateManager._disableBlend();
+
+        matrices.pop();
     }
 
     /* Film controller */
@@ -1031,19 +1000,16 @@ public abstract class BaseFilmController
             filmContext.transition = getTransition(entity, MinecraftClient.getInstance().getRenderTickCounter().getTickProgress(false));
 
             filmContext.stack.push();
-            try
-            {
-                if (!this.applyGroupProperties(replay, filmContext))
-                {
-                    return;
-                }
 
-                renderEntity(filmContext);
-            }
-            finally
+            if (!this.applyGroupProperties(replay, filmContext))
             {
                 filmContext.stack.pop();
+                return;
             }
+
+            renderEntity(filmContext);
+
+            filmContext.stack.pop();
         }
     }
 

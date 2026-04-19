@@ -116,56 +116,51 @@ public class FluidFormRenderer extends FormRenderer<FluidForm> implements ITicka
             if (sample.localPos == null) continue;
             
             stack.push();
-            try
-            {
-                stack.translate(sample.localPos.x, sample.localPos.y, sample.localPos.z);
-                
-                /* Draw sphere (simplified as 3 circles) */
-                float r = (float) sample.radius;
-                int segments = 12;
-                
-                Matrix4f matrix = stack.peek().getPositionMatrix();
-                Matrix3f normal = stack.peek().getNormalMatrix();
-                
-                float nx1 = normal.m20();
-                float ny1 = normal.m21();
-                float nz1 = normal.m22();
+            stack.translate(sample.localPos.x, sample.localPos.y, sample.localPos.z);
+            
+            /* Draw sphere (simplified as 3 circles) */
+            float r = (float) sample.radius;
+            int segments = 12;
+            
+            Matrix4f matrix = stack.peek().getPositionMatrix();
+            Matrix3f normal = stack.peek().getNormalMatrix();
+            
+            float nx1 = normal.m20();
+            float ny1 = normal.m21();
+            float nz1 = normal.m22();
 
-                float nx2 = normal.m10();
-                float ny2 = normal.m11();
-                float nz2 = normal.m12();
+            float nx2 = normal.m10();
+            float ny2 = normal.m11();
+            float nz2 = normal.m12();
 
-                float nx3 = normal.m00();
-                float ny3 = normal.m01();
-                float nz3 = normal.m02();
-                
-                for (int i = 0; i < segments; i++)
-                {
-                    float a1 = (float) (i * Math.PI * 2 / segments);
-                    float a2 = (float) ((i + 1) * Math.PI * 2 / segments);
-                    
-                    float c1 = (float) Math.cos(a1) * r;
-                    float s1 = (float) Math.sin(a1) * r;
-                    float c2 = (float) Math.cos(a2) * r;
-                    float s2 = (float) Math.sin(a2) * r;
-                    
-                    /* XY circle */
-                    builder.vertex(matrix, c1, s1, 0).color(1f, 0f, 0f, 1f).normal(nx1, ny1, nz1);
-                    builder.vertex(matrix, c2, s2, 0).color(1f, 0f, 0f, 1f).normal(nx1, ny1, nz1);
-                    
-                    /* XZ circle */
-                    builder.vertex(matrix, c1, 0, s1).color(1f, 0f, 0f, 1f).normal(nx2, ny2, nz2);
-                    builder.vertex(matrix, c2, 0, s2).color(1f, 0f, 0f, 1f).normal(nx2, ny2, nz2);
-                    
-                    /* YZ circle */
-                    builder.vertex(matrix, 0, c1, s1).color(1f, 0f, 0f, 1f).normal(nx3, ny3, nz3);
-                    builder.vertex(matrix, 0, c2, s2).color(1f, 0f, 0f, 1f).normal(nx3, ny3, nz3);
-                }
-            }
-            finally
+            float nx3 = normal.m00();
+            float ny3 = normal.m01();
+            float nz3 = normal.m02();
+            
+            for (int i = 0; i < segments; i++)
             {
-                stack.pop();
+                float a1 = (float) (i * Math.PI * 2 / segments);
+                float a2 = (float) ((i + 1) * Math.PI * 2 / segments);
+                
+                float c1 = (float) Math.cos(a1) * r;
+                float s1 = (float) Math.sin(a1) * r;
+                float c2 = (float) Math.cos(a2) * r;
+                float s2 = (float) Math.sin(a2) * r;
+                
+                /* XY circle */
+                builder.vertex(matrix, c1, s1, 0).color(1f, 0f, 0f, 1f).normal(nx1, ny1, nz1);
+                builder.vertex(matrix, c2, s2, 0).color(1f, 0f, 0f, 1f).normal(nx1, ny1, nz1);
+                
+                /* XZ circle */
+                builder.vertex(matrix, c1, 0, s1).color(1f, 0f, 0f, 1f).normal(nx2, ny2, nz2);
+                builder.vertex(matrix, c2, 0, s2).color(1f, 0f, 0f, 1f).normal(nx2, ny2, nz2);
+                
+                /* YZ circle */
+                builder.vertex(matrix, 0, c1, s1).color(1f, 0f, 0f, 1f).normal(nx3, ny3, nz3);
+                builder.vertex(matrix, 0, c2, s2).color(1f, 0f, 0f, 1f).normal(nx3, ny3, nz3);
             }
+            
+            stack.pop();
         }
         
         RenderLayers.debugFilledBox().draw(builder.end());

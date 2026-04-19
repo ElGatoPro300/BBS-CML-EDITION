@@ -112,17 +112,12 @@ public class FramebufferFormRenderer extends FormRenderer<FramebufferForm>
         framebuffer.clear();
 
         context.stack.push();
-        try
-        {
-            context.stack.peek().getPositionMatrix().identity();
-            context.stack.peek().getNormalMatrix().identity();
+        context.stack.peek().getPositionMatrix().identity();
+        context.stack.peek().getNormalMatrix().identity();
 
-            super.renderBodyParts(context);
-        }
-        finally
-        {
-            context.stack.pop();
-        }
+        super.renderBodyParts(context);
+
+        context.stack.pop();
 
         GL30.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, prevDraw);
         GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, prevRead);
