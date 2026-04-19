@@ -589,6 +589,10 @@ public class UIKeys
     public static final IKey FORMS_EDITOR_MODEL_PICK_MODEL = L10n.lang("bbs.ui.forms.editor.model.pick_model");
     public static final IKey FORMS_EDITOR_MODEL_PICK_TEXTURE = L10n.lang("bbs.ui.forms.editor.model.pick_texture");
     public static final IKey FORMS_EDITOR_MODEL_OPEN_IN = L10n.lang("bbs.ui.forms.editor.model.open_in");
+    public static final IKey FORMS_EDITOR_MODEL_PBR_NORMAL_INTENSITY = L10n.lang("bbs.ui.forms.editor.model.pbr_normal_intensity");
+    public static final IKey FORMS_EDITOR_MODEL_PBR_SPECULAR_INTENSITY = L10n.lang("bbs.ui.forms.editor.model.pbr_specular_intensity");
+    public static final IKey FILM_REPLAY_TRACK_PBR_NORMAL_INTENSITY = L10n.lang("bbs.ui.film.replay.track.pbr_normal_intensity");
+    public static final IKey FILM_REPLAY_TRACK_PBR_SPECULAR_INTENSITY = L10n.lang("bbs.ui.film.replay.track.pbr_specular_intensity");
     public static final IKey FORMS_EDITOR_PICK_FORM = L10n.lang("bbs.ui.forms.editor.pick_form");
     public static final IKey FORMS_EDITOR_SLIM = L10n.lang("bbs.ui.forms.editor.slim");
     public static final IKey FORMS_EDITOR_SLIM_TOOLTIP = L10n.lang("bbs.ui.forms.editor.slim-tooltip");

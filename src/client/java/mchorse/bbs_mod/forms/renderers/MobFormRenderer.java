@@ -6,6 +6,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.brigadier.StringReader;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.client.BBSShaders;
+import mchorse.bbs_mod.client.MobTextureOverride;
 import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.ITickable;
@@ -241,7 +242,15 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
             });
 
             consumers.setUI(true);
-            /* Entity render-dispatch API changed in 1.21.11; this UI path requires state-based porting. */
+            MobTextureOverride.begin(this.form.texture.get());
+            try
+            {
+                MinecraftClient.getInstance().getEntityRenderDispatcher().render(this.entity, 0D, 0D, 0D, 0F, context.getTransition(), stack, consumers, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE);
+            }
+            finally
+            {
+                MobTextureOverride.end();
+            }
             consumers.draw();
             consumers.setUI(false);
 
@@ -310,8 +319,15 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
             currentPose = this.form.pose.get();
             currentPoseOverlay = this.form.poseOverlay.get();
-
-            /* Entity render-dispatch API changed in 1.21.11; this world path requires state-based porting. */
+            MobTextureOverride.begin(this.form.texture.get());
+            try
+            {
+                MinecraftClient.getInstance().getEntityRenderDispatcher().render(this.entity, 0D, 0D, 0D, 0F, context.getTransition(), context.stack, consumers, light);
+            }
+            finally
+            {
+                MobTextureOverride.end();
+            }
 
             currentPose = currentPoseOverlay = null;
 
@@ -331,7 +347,11 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
         if (this.entity != null)
         {
-            this.entity.tick();
+            // Only tick if it's safe - skip player entities when not connected
+            if (!(this.entity instanceof OtherClientPlayerEntity) || MinecraftClient.getInstance().getNetworkHandler() != null)
+            {
+                this.entity.tick();
+            }
 
             this.entity.lastPitch = this.prevPitch;
             this.entity.lastYaw = 0F;
