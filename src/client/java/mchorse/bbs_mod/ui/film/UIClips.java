@@ -4,7 +4,6 @@ import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.camera.clips.CameraClip;
 import mchorse.bbs_mod.camera.clips.ClipFactoryData;
 import mchorse.bbs_mod.camera.clips.converters.IClipConverter;
-import mchorse.bbs_mod.camera.clips.misc.CurveClip;
 import mchorse.bbs_mod.camera.clips.overwrite.KeyframeClip;
 import mchorse.bbs_mod.camera.utils.TimeUtils;
 import mchorse.bbs_mod.data.types.BaseType;
@@ -151,7 +150,7 @@ public class UIClips extends UIElement
             @Override
             protected void renderSkin(UIContext context)
             {
-                if (UIClips.this.embedded != null && (UIClips.this.delegate.getClip() instanceof KeyframeClip || UIClips.this.delegate.getClip() instanceof CurveClip))
+                if (UIClips.this.embedded != null)
                 {
                     this.area.render(context.batcher, Colors.setA(Colors.RED, 0.5F));
                 }

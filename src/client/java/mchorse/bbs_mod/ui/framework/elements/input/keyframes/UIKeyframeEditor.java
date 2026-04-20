@@ -24,6 +24,7 @@ public class UIKeyframeEditor extends UIElement
     public static final int[] COLORS = {Colors.RED, Colors.GREEN, Colors.BLUE, Colors.CYAN, Colors.MAGENTA, Colors.YELLOW, Colors.LIGHTEST_GRAY & 0xffffff, Colors.DEEP_PINK};
     private static final int SIDE_PANEL_WIDTH = 140;
     private static final int BOTTOM_PANEL_HEIGHT = 140;
+    private static final int GLOBAL_TRACKERS_TOP_GAP = 36;
 
     public UIKeyframes view;
     public UIKeyframeFactory editor;
@@ -41,6 +42,7 @@ public class UIKeyframeEditor extends UIElement
                 this.editor.update();
             }
         });
+        this.view.getDopeSheet().setTopMargin(GLOBAL_TRACKERS_TOP_GAP);
 
         this.add(this.view.full(this).w(1F, -SIDE_PANEL_WIDTH));
     }
