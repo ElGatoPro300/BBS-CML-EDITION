@@ -55,6 +55,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
     private int sidebarScrollMax;
     private boolean sidebarDragging;
     private float sidebarDragRatio;
+    private int sidebarWidth = SIDEBAR_WIDTH;
 
     public static IKeyframeShapeRenderer renderShape(Keyframe frame, UIContext context, BufferBuilder builder, Matrix4f matrix, int x, int y, int offset, int c)
     {
@@ -174,6 +175,20 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
     public Scroll getYAxis()
     {
         return this.dopeSheet;
+    }
+
+    @Override
+    public int getSidebarWidth()
+    {
+        return this.sidebarWidth;
+    }
+
+    public void setSidebarWidth(int sidebarWidth)
+    {
+        int min = 100;
+        int max = this.keyframes.area.w > 0 ? Math.max(min, this.keyframes.area.w / 2) : Integer.MAX_VALUE;
+
+        this.sidebarWidth = Math.max(min, Math.min(max, sidebarWidth));
     }
 
     public int getDopeSheetY()
@@ -420,7 +435,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
                     left += 4;
                 }
                 int iconWidth = 2 + (arrow != null ? arrow.w + 4 : 0);
-                int clickableWidth = Math.min(SIDEBAR_WIDTH - sheet.level * LEVEL_INDENT, iconWidth + font.getWidth(displayTitle) + 6);
+                int clickableWidth = Math.min(this.sidebarWidth - sheet.level * LEVEL_INDENT, iconWidth + font.getWidth(displayTitle) + 6);
                 clickableWidth = Math.max(0, clickableWidth);
 
                 if (context.mouseX >= left && context.mouseX <= left + clickableWidth)
@@ -454,7 +469,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
     public void mouseScrolled(UIContext context)
     {
         Area area = this.keyframes.area;
-        boolean inSidebar = area.isInside(context) && context.mouseX < area.x + SIDEBAR_WIDTH;
+        boolean inSidebar = area.isInside(context) && context.mouseX < area.x + this.sidebarWidth;
 
         if (inSidebar)
         {
@@ -583,7 +598,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
                 break;
             }
 
-            if (x < area.x + SIDEBAR_WIDTH)
+            if (x < area.x + this.sidebarWidth)
             {
                 continue;
             }
@@ -790,10 +805,10 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
                     int rightColor = Colors.setA(primary, 0F);
 
                     context.batcher.box(area.x, y, area.x + 2, (float) (y + this.trackHeight), Colors.A100 | primary);
-                    context.batcher.gradientHBox(area.x, y, area.x + SIDEBAR_WIDTH, (float) (y + this.trackHeight), leftColor, rightColor);
+                    context.batcher.gradientHBox(area.x, y, area.x + this.sidebarWidth, (float) (y + this.trackHeight), leftColor, rightColor);
                 }
 
-                context.batcher.clip(area.x, y, SIDEBAR_WIDTH, (int) this.trackHeight, context);
+                context.batcher.clip(area.x, y, this.sidebarWidth, (int) this.trackHeight, context);
                 context.batcher.icon(arrow, iconX, iconY);
                 context.batcher.textShadow(displayTitle, textX, textY);
                 context.batcher.unclip(context);
@@ -807,7 +822,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
             int startX = area.x;
             int endX = area.ex();
 
-            startX += SIDEBAR_WIDTH;
+            startX += this.sidebarWidth;
 
             context.batcher.fillRect(builder, matrix, startX, my - TRACK_LINE_HALF_HEIGHT, endX - startX, TRACK_LINE_HALF_HEIGHT * 2, cc, cc, cc, cc);
 
@@ -816,7 +831,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
                 int c = Colors.setA(sheet.color, 0F);
                 int sepStartX = area.x;
 
-                sepStartX += SIDEBAR_WIDTH;
+                sepStartX += this.sidebarWidth;
 
                 /* Render separator */
                 context.batcher.fillRect(builder, matrix, sepStartX, y, endX - sepStartX, (int) this.trackHeight, c | Colors.A25, c | Colors.A25, c, c);
@@ -831,8 +846,8 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
                 int xx = this.keyframes.toGraphX(previous.getTick());
                 int xxx = this.keyframes.toGraphX(frame.getTick());
 
-                xx = Math.max(xx, area.x + SIDEBAR_WIDTH);
-                xxx = Math.max(xxx, area.x + SIDEBAR_WIDTH);
+                xx = Math.max(xx, area.x + this.sidebarWidth);
+                xxx = Math.max(xxx, area.x + this.sidebarWidth);
 
                 if (previous.getFactory().compare(previous.getValue(), frame.getValue()))
                 {
@@ -844,7 +859,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
 
                 if (Math.abs(xxx - xx) < 5)
                 {
-                    if (xx >= area.x + SIDEBAR_WIDTH)
+                    if (xx >= area.x + this.sidebarWidth)
                     {
                         c = Colors.YELLOW | Colors.A50;
 
@@ -869,8 +884,8 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
                     int rx1 = x1;
                     int rx2 = x2;
 
-                    rx1 = Math.max(x1, area.x + SIDEBAR_WIDTH);
-                    rx2 = Math.max(x2, area.x + SIDEBAR_WIDTH);
+                    rx1 = Math.max(x1, area.x + this.sidebarWidth);
+                    rx2 = Math.max(x2, area.x + this.sidebarWidth);
 
                     if (rx2 > rx1)
                     {
@@ -885,7 +900,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
                     forcedIndex += 1;
                 }
 
-                if (x1 < area.x + SIDEBAR_WIDTH)
+                if (x1 < area.x + this.sidebarWidth)
                 {
                     continue;
                 }
@@ -923,7 +938,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
                 Keyframe frame = (Keyframe) keyframes.get(j);
                 int mx = this.keyframes.toGraphX(frame.getTick());
 
-                if (mx < area.x + SIDEBAR_WIDTH)
+                if (mx < area.x + this.sidebarWidth)
                 {
                     continue;
                 }
@@ -956,9 +971,9 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
 
             context.batcher.box(area.x, y, area.x + 2, y + (int) this.trackHeight, sheet.color | Colors.A100);
 
-            context.batcher.gradientHBox(area.x, y, area.x + SIDEBAR_WIDTH, y + (int) this.trackHeight, c1, c2);
+            context.batcher.gradientHBox(area.x, y, area.x + this.sidebarWidth, y + (int) this.trackHeight, c1, c2);
 
-            context.batcher.clip(area.x, y, SIDEBAR_WIDTH, (int) this.trackHeight, context);
+            context.batcher.clip(area.x, y, this.sidebarWidth, (int) this.trackHeight, context);
 
             if (arrow != null)
             {
@@ -1003,7 +1018,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
         int barHeight = this.sidebarScrollbar.getScrollbarWidth();
         int y = area.ey() - barHeight;
         int trackX = area.x;
-        int trackW = SIDEBAR_WIDTH;
+        int trackW = this.sidebarWidth;
 
         context.batcher.box(trackX, y, trackX + trackW, y + barHeight, Colors.A50);
 
@@ -1020,7 +1035,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
     private void updateSidebarScrollLimits(UIContext context)
     {
         FontRenderer font = context.batcher.getFont();
-        int maxWidth = SIDEBAR_WIDTH;
+        int maxWidth = this.sidebarWidth;
 
         for (UIKeyframeSheet sheet : this.sheets)
         {
@@ -1051,9 +1066,9 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
             maxWidth = Math.max(maxWidth, totalWidth);
         }
 
-        this.sidebarScrollMax = Math.max(0, maxWidth - SIDEBAR_WIDTH);
+        this.sidebarScrollMax = Math.max(0, maxWidth - this.sidebarWidth);
         this.sidebarScroll = Math.max(0, Math.min(this.sidebarScrollMax, this.sidebarScroll));
-        this.sidebarScrollbar.scrollSize = SIDEBAR_WIDTH + this.sidebarScrollMax;
+        this.sidebarScrollbar.scrollSize = this.sidebarWidth + this.sidebarScrollMax;
         this.sidebarScrollbar.setScroll(this.sidebarScroll);
     }
 
@@ -1061,7 +1076,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
     {
         int barHeight = this.sidebarScrollbar.getScrollbarWidth();
 
-        this.sidebarScrollbar.area.set(area.x, area.ey() - barHeight, SIDEBAR_WIDTH, barHeight);
+        this.sidebarScrollbar.area.set(area.x, area.ey() - barHeight, this.sidebarWidth, barHeight);
     }
 
     /* State recovery */
