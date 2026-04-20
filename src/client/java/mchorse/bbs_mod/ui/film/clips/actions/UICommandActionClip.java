@@ -1,14 +1,17 @@
 package mchorse.bbs_mod.ui.film.clips.actions;
 
+import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.actions.types.chat.CommandActionClip;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.IUIClipsDelegate;
-import mchorse.bbs_mod.ui.framework.elements.input.text.UITextbox;
+import mchorse.bbs_mod.ui.framework.elements.input.text.UITextarea;
+import mchorse.bbs_mod.ui.framework.elements.input.text.undo.TextEditUndo;
+import mchorse.bbs_mod.ui.framework.elements.input.text.utils.TextLine;
 import mchorse.bbs_mod.ui.utils.UI;
 
 public class UICommandActionClip extends UIActionClip<CommandActionClip>
 {
-    public UITextbox command;
+    public UITextarea<TextLine> command;
 
     public UICommandActionClip(CommandActionClip clip, IUIClipsDelegate editor)
     {
@@ -20,7 +23,24 @@ public class UICommandActionClip extends UIActionClip<CommandActionClip>
     {
         super.registerUI();
 
-        this.command = new UITextbox(10000, (t) -> this.clip.command.set(t));
+        this.command = new UITextarea<>((t) -> this.clip.command.set(t.replace("\n", "")))
+        {
+            @Override
+            protected void keyNewLine(TextEditUndo undo)
+            {
+
+            }
+
+            @Override
+            public void writeString(String string)
+            {
+                super.writeString(string.replace("\n", ""));
+            }
+        };
+        this.command.w(BBSSettings.editorCommandWidth.get());
+        this.command.h(BBSSettings.editorCommandHeight.get());
+        this.command.wrap(BBSSettings.editorCommandAutoWrap.get());
+        this.command.background();
     }
 
     @Override
