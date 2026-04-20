@@ -798,12 +798,77 @@ public class UIReplaysEditor extends UIElement
 
         this.replays.setReplay(replay);
         this.filmPanel.actionEditor.setClips(replay == null ? null : replay.actions);
+        this.initializeCollapsedGroupsForReplay(replay);
         this.updateChannelsList();
 
         if (select)
         {
             this.replays.replays.ensureVisible(replay);
             this.replays.replays.setCurrentScroll(replay);
+        }
+    }
+
+    private void initializeCollapsedGroupsForReplay(Replay replay)
+    {
+        if (replay == null || replay.uuid == null)
+        {
+            return;
+        }
+
+        String replayId = replay.uuid.get();
+        replayId = replayId == null ? "" : replayId;
+
+        String initKey = replayId + ":__collapsed_init__";
+
+        /* Initialize only once per replay, then preserve user folding choices. */
+        if (this.collapsedModelTracks.containsKey(initKey))
+        {
+            return;
+        }
+
+        Form form = replay.form.get();
+
+        if (form == null)
+        {
+            return;
+        }
+
+        Form rootForm = FormUtils.getRoot(form);
+        String rootPath = FormUtils.getPath(rootForm);
+
+        this.collapsedModelTracks.put(replayId + ":" + rootPath, false);
+        this.collapsedModelTracks.put(replayId + ":__model__", false);
+        this.collapsedModelTracks.put(replayId + ":__world__", true);
+
+        List<String> childPaths = new ArrayList<>();
+
+        this.collectChildFormPaths(rootForm, "", childPaths);
+
+        for (String path : childPaths)
+        {
+            this.collapsedModelTracks.put(replayId + ":" + path, true);
+        }
+
+        this.collapsedModelTracks.put(initKey, true);
+    }
+
+    private void collectChildFormPaths(Form form, String parentPath, List<String> out)
+    {
+        List<BodyPart> parts = form.parts.getAllTyped();
+
+        for (int i = 0; i < parts.size(); i++)
+        {
+            Form child = parts.get(i).getForm();
+
+            if (child == null)
+            {
+                continue;
+            }
+
+            String path = parentPath.isEmpty() ? String.valueOf(i) : parentPath + "/" + i;
+
+            out.add(path);
+            this.collectChildFormPaths(child, path, out);
         }
     }
 
@@ -842,6 +907,8 @@ public class UIReplaysEditor extends UIElement
         {
             return;
         }
+
+        this.initializeCollapsedGroupsForReplay(this.replay);
 
         /* Replay keyframes */
         List<UIKeyframeSheet> sheets = new ArrayList<>();

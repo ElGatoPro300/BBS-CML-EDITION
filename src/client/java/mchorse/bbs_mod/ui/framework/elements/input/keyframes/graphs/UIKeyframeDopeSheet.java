@@ -139,6 +139,36 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
         return sheet.title.get();
     }
 
+    private boolean isWorldOrModelGroup(UIKeyframeSheet sheet)
+    {
+        return sheet.groupKey != null && (sheet.groupKey.endsWith("__world__") || sheet.groupKey.endsWith("__model__"));
+    }
+
+    private boolean isRootFormGroup(UIKeyframeSheet sheet)
+    {
+        return sheet.groupHeader && sheet.level == 0 && !this.isWorldOrModelGroup(sheet);
+    }
+
+    private boolean isFormGroup(UIKeyframeSheet sheet)
+    {
+        return sheet.groupHeader && !this.isWorldOrModelGroup(sheet);
+    }
+
+    private Icon getGroupArrow(UIKeyframeSheet sheet)
+    {
+        if (!sheet.groupHeader)
+        {
+            return null;
+        }
+
+        if (this.isWorldOrModelGroup(sheet) || this.isFormGroup(sheet))
+        {
+            return sheet.groupExpanded ? Icons.UNCOLLAPSED : Icons.COLLAPSED;
+        }
+
+        return sheet.groupExpanded ? Icons.ARROW_DOWN : Icons.ARROW_RIGHT;
+    }
+
     /* Graphing */
 
     public Scroll getYAxis()
@@ -381,11 +411,11 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
                 String title = this.getEffectiveSidebarTitle(sheet);
                 String displayTitle = this.getSidebarTitle(title);
                 Icon arrow = sheet.groupHeader
-                    ? (sheet.groupKey != null && (sheet.groupKey.endsWith("__world__") || sheet.groupKey.endsWith("__model__")) ? (sheet.groupExpanded ? Icons.UNCOLLAPSED : Icons.COLLAPSED) : (sheet.groupExpanded ? Icons.ARROW_DOWN : Icons.ARROW_RIGHT))
+                    ? this.getGroupArrow(sheet)
                     : (sheet.toggleExpanded != null ? (sheet.expanded ? Icons.UNCOLLAPSED : Icons.COLLAPSED) : null);
 
                 int left = this.keyframes.area.x + sheet.level * LEVEL_INDENT - this.sidebarScroll;
-                if (sheet.groupHeader && (sheet.groupKey == null || (!sheet.groupKey.endsWith("__world__") && !sheet.groupKey.endsWith("__model__"))))
+                if (sheet.groupHeader && !this.isWorldOrModelGroup(sheet) && !this.isFormGroup(sheet))
                 {
                     left += 4;
                 }
@@ -727,12 +757,11 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
                 String title = this.getEffectiveSidebarTitle(sheet);
                 String displayTitle = this.getSidebarTitle(title);
 
-                Icon arrow = sheet.groupExpanded ? Icons.ARROW_DOWN : Icons.ARROW_RIGHT;
+                Icon arrow = this.getGroupArrow(sheet);
                 int iconX = sidebarX + 6 + sheet.level * LEVEL_INDENT;
 
-                if (sheet.groupKey != null && (sheet.groupKey.endsWith("__world__") || sheet.groupKey.endsWith("__model__")))
+                if (this.isWorldOrModelGroup(sheet) || this.isFormGroup(sheet))
                 {
-                    arrow = sheet.groupExpanded ? Icons.UNCOLLAPSED : Icons.COLLAPSED;
                     iconX = sidebarX + 2 + sheet.level * LEVEL_INDENT;
                 }
 
@@ -740,6 +769,16 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
                 int textX = iconX + arrow.w + 4;
                 int textY = my - font.getHeight() / 2;
                 int textW = font.getWidth(displayTitle);
+
+                if (this.isFormGroup(sheet))
+                {
+                    int primary = BBSSettings.primaryColor.get();
+                    int leftColor = Colors.setA(primary, 0.5F);
+                    int rightColor = Colors.setA(primary, 0F);
+
+                    context.batcher.box(area.x, y, area.x + 2, (float) (y + this.trackHeight), Colors.A100 | primary);
+                    context.batcher.gradientHBox(area.x, y, area.x + SIDEBAR_WIDTH, (float) (y + this.trackHeight), leftColor, rightColor);
+                }
 
                 context.batcher.clip(area.x, y, SIDEBAR_WIDTH, (int) this.trackHeight, context);
                 context.batcher.icon(arrow, iconX, iconY);
@@ -977,12 +1016,11 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
 
             if (sheet.groupHeader)
             {
-                Icon arrow = sheet.groupExpanded ? Icons.ARROW_DOWN : Icons.ARROW_RIGHT;
+                Icon arrow = this.getGroupArrow(sheet);
                 int base = 6 + sheet.level * LEVEL_INDENT;
 
-                if (sheet.groupKey != null && (sheet.groupKey.endsWith("__world__") || sheet.groupKey.endsWith("__model__")))
+                if (this.isWorldOrModelGroup(sheet) || this.isFormGroup(sheet))
                 {
-                    arrow = sheet.groupExpanded ? Icons.UNCOLLAPSED : Icons.COLLAPSED;
                     base = 2 + sheet.level * LEVEL_INDENT;
                 }
 
