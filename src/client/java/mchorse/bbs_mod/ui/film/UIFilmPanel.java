@@ -1326,8 +1326,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         this.duplicateFilm.tooltip(UIKeys.FILM_CRUD_DUPE, Direction.LEFT);
 
-        crudPanel.icons.add(this.duplicateFilm);
-
         return crudPanel;
     }
 
