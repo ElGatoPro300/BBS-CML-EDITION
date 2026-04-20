@@ -461,14 +461,26 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
             this.updateSidebarScrollLimits(context);
         }
 
-        if (inSidebar && (context.mouseWheelHorizontal != 0 || context.mouseWheel != 0D))
+        /* When hovering tracker names, wheel input should drive sidebar's horizontal scroll.
+         * Priority:
+         * 1) Real horizontal wheel
+         * 2) Shift + vertical wheel
+         * 3) Vertical wheel fallback
+         */
+        if (inSidebar && (context.mouseWheelHorizontal != 0D || context.mouseWheel != 0D))
         {
             if (this.sidebarScrollMax <= 0)
             {
                 return;
             }
 
-            double wheel = context.mouseWheelHorizontal != 0 ? context.mouseWheelHorizontal : context.mouseWheel;
+            double wheel = context.mouseWheelHorizontal;
+
+            if (wheel == 0D)
+            {
+                wheel = context.mouseWheel;
+            }
+
             float sensitivity = BBSSettings.scrollingSensitivityHorizontal.get();
             int delta = (int) Math.round(25F * sensitivity * wheel);
 
@@ -478,6 +490,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
             }
 
             this.sidebarScrollbar.scrollBy(-delta);
+            this.sidebarScrollbar.updateTarget();
             this.sidebarScroll = (int) Math.round(this.sidebarScrollbar.getScroll());
 
             return;
