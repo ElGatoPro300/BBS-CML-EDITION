@@ -26,6 +26,7 @@ public class CMLSettings
         BBSSettings.pickLimbTexture = builder.getBoolean("pick_limb_texture", true);
         BBSSettings.defaultInterpolation = builder.getInt("default_interpolation", 0);
         builder.category("editor");
+        BBSSettings.defaultPathInterpolation = builder.getInt("default_path_interpolation", 34);
         BBSSettings.editorSafeMarginsColor = builder.getInt("safe_margins_color", 0xcccc0000).colorAlpha();
         BBSSettings.editorSafeMargins = builder.getBoolean("safe_margins", false);
         BBSSettings.editorFlightFreeLook = builder.getBoolean("flight_free_look", false);

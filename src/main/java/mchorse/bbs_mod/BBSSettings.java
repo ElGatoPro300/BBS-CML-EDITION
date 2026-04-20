@@ -41,6 +41,7 @@ public class BBSSettings
     public static ValueBoolean gizmos;
     public static ValueBoolean gizmoYAxisHorizontal;
     public static ValueInt defaultInterpolation;
+    public static ValueInt defaultPathInterpolation;
 
     public static ValueBoolean enableCursorRendering;
     public static ValueBoolean enableMouseButtonRendering;
