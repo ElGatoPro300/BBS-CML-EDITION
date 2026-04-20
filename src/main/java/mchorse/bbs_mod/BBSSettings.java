@@ -95,9 +95,6 @@ public class BBSSettings
     public static ValueBoolean editorReplayHud;
     public static ValueInt editorReplayHudPosition;
     public static ValueBoolean editorReplayHudDisplayName;
-    public static ValueInt editorCommandWidth;
-    public static ValueInt editorCommandHeight;
-    public static ValueBoolean editorCommandAutoWrap;
     public static ValueBoolean modelFormsHierarchy;
     public static ValueBoolean mediaFoldersEnhancements;
     public static ValueInt replayContextOptions;
