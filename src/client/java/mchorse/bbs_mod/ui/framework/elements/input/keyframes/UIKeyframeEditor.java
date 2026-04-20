@@ -22,11 +22,14 @@ import java.util.function.Function;
 public class UIKeyframeEditor extends UIElement
 {
     public static final int[] COLORS = {Colors.RED, Colors.GREEN, Colors.BLUE, Colors.CYAN, Colors.MAGENTA, Colors.YELLOW, Colors.LIGHTEST_GRAY & 0xffffff, Colors.DEEP_PINK};
+    private static final int SIDE_PANEL_WIDTH = 140;
+    private static final int BOTTOM_PANEL_HEIGHT = 140;
 
     public UIKeyframes view;
     public UIKeyframeFactory editor;
 
     private UIElement target;
+    private boolean stackedLayout;
 
     public UIKeyframeEditor(Function<Consumer<Keyframe>, UIKeyframes> factory)
     {
@@ -39,7 +42,7 @@ public class UIKeyframeEditor extends UIElement
             }
         });
 
-        this.add(this.view.full(this).w(1F, -140));
+        this.add(this.view.full(this).w(1F, -SIDE_PANEL_WIDTH));
     }
 
     public UIKeyframeEditor target(UIElement target)
@@ -65,21 +68,62 @@ public class UIKeyframeEditor extends UIElement
         {
             this.editor = UIKeyframeFactory.createPanel(keyframe, this.view);
 
-            if (this.target != null)
-            {
-                this.editor.full(this.target);
-
-                this.target.resize();
-            }
-            else
-            {
-                this.editor.relative(this).x(1F, -140).w(140).h(1F);
-            }
-
             this.add(this.editor);
-            this.resize();
         }
 
+        this.applyLayout();
+        this.resize();
+    }
+
+    private void applyLayout()
+    {
+        if (this.target != null)
+        {
+            this.view.resetFlex().full(this).w(1F);
+
+            if (this.editor != null)
+            {
+                this.editor.full(this.target);
+                this.target.resize();
+            }
+
+            return;
+        }
+
+        if (this.stackedLayout)
+        {
+            this.view.resetFlex().relative(this).xy(0, 0).w(1F).h(1F, this.editor == null ? 0 : -BOTTOM_PANEL_HEIGHT);
+
+            if (this.editor != null)
+            {
+                this.editor.relative(this).x(0).y(1F, -BOTTOM_PANEL_HEIGHT).w(1F).h(BOTTOM_PANEL_HEIGHT);
+            }
+        }
+        else
+        {
+            this.view.resetFlex().relative(this).xy(0, 0).w(1F, this.editor == null ? 0 : -SIDE_PANEL_WIDTH).h(1F);
+
+            if (this.editor != null)
+            {
+                this.editor.relative(this).x(1F, -SIDE_PANEL_WIDTH).y(0).w(SIDE_PANEL_WIDTH).h(1F);
+            }
+        }
+    }
+
+    public void toggleLayout()
+    {
+        this.setStackedLayout(!this.stackedLayout);
+    }
+
+    public boolean isStackedLayout()
+    {
+        return this.stackedLayout;
+    }
+
+    public void setStackedLayout(boolean stackedLayout)
+    {
+        this.stackedLayout = stackedLayout;
+        this.applyLayout();
         this.resize();
     }
 
