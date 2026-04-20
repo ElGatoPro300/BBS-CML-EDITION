@@ -30,6 +30,8 @@ import java.util.function.Consumer;
 
 public class UICurveClip extends UIClip<CurveClip>
 {
+    private static final int CURVE_TRACKERS_TOP_GAP = 36;
+
     public UIKeyframeEditor keyframes;
     public UIButton edit;
 
@@ -79,6 +81,7 @@ public class UICurveClip extends UIClip<CurveClip>
         super.registerUI();
 
         this.keyframes = new UIKeyframeEditor((consumer) -> new UIFilmKeyframes(this.editor, consumer));
+        this.keyframes.view.getDopeSheet().setTopMargin(CURVE_TRACKERS_TOP_GAP);
         this.keyframes.view.backgroundRenderer((context) ->
         {
             UIReplaysEditor.renderBackground(context, this.keyframes.view, (Clips) this.clip.getParent(), this.clip.tick.get(), this.clip);

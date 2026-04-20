@@ -21,6 +21,8 @@ import org.joml.Vector3f;
 
 public class UIKeyframeClip extends UIClip<KeyframeClip>
 {
+    private static final int KEYFRAME_TRACKERS_TOP_GAP = 36;
+
     public UIButton edit;
     public UIKeyframeEditor keyframes;
     public UIToggle additive;
@@ -49,6 +51,7 @@ public class UIKeyframeClip extends UIClip<KeyframeClip>
         super.registerUI();
 
         this.keyframes = new UIKeyframeEditor((consumer) -> new UIFilmKeyframes(this.editor, consumer));
+        this.keyframes.view.getDopeSheet().setTopMargin(KEYFRAME_TRACKERS_TOP_GAP);
         this.keyframes.view.backgroundRenderer((context) ->
         {
             UIReplaysEditor.renderBackground(context, this.keyframes.view, (Clips) this.clip.getParent(), this.clip.tick.get(), this.clip);
