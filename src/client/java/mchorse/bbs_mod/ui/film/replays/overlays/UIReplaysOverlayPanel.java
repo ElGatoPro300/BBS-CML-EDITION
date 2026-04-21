@@ -20,6 +20,8 @@ import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.UIDataUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Colors;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.network.ClientPlayerEntity;
 import org.slf4j.Logger;
 
 import java.util.ArrayList;
@@ -57,6 +59,7 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
     public UIToggle axesPreview;
     public UIButton pickAxesPreviewBone;
     public UIToggle dropItemsOnDeath;
+    public UIButton replaceReplayInventory;
     public UIIcon addReplay;
     public UIIcon dupeReplay;
     public UIIcon removeReplay;
@@ -162,6 +165,16 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
             this.updateDropVelocityVisibility(b.getValue());
         });
         this.dropItemsOnDeath.tooltip(UIKeys.FILM_REPLAY_DROP_ITEMS_ON_DEATH_TOOLTIP);
+        this.replaceReplayInventory = new UIButton(UIKeys.FILM_REPLACE_INVENTORY, (b) ->
+        {
+            ClientPlayerEntity player = MinecraftClient.getInstance().player;
+
+            if (player != null)
+            {
+                this.edit((replay) -> BaseValue.edit(replay.inventory, (inv) -> inv.fromPlayer(player)));
+            }
+        });
+        this.replaceReplayInventory.tooltip(UIKeys.FILM_REPLACE_INVENTORY_TOOLTIP);
 
         this.addReplay = new UIIcon(Icons.ADD, (b) -> this.replays.addReplay());
         this.addReplay.tooltip(UIKeys.SCENE_REPLAYS_CONTEXT_ADD);
@@ -215,7 +228,8 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
             this.dropVelocityLabel,
             this.dropVelocityRowX,
             this.dropVelocityRowY,
-            this.dropVelocityRowZ
+            this.dropVelocityRowZ,
+            this.replaceReplayInventory
         );
         this.groupProperties = UI.scrollView(5, 6, this.groupLabel);
 
@@ -323,6 +337,7 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
         this.dropVelocityRowX.setVisible(visible);
         this.dropVelocityRowY.setVisible(visible);
         this.dropVelocityRowZ.setVisible(visible);
+        this.replaceReplayInventory.setVisible(visible);
     }
 
     @Override

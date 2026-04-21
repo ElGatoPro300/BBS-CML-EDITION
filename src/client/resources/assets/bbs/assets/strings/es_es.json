@@ -650,6 +650,7 @@
     "bbs.ui.film.render_audio.error": "¡No se pudieron renderizar los clips de audio! Consulta el latest.log para obtener más información...",
     "bbs.ui.film.render_audio.success": "¡Los clips de audio se renderizaron exitosamente!",
     "bbs.ui.film.replace_inventory": "Reemplazar inventario",
+    "bbs.ui.film.replace_inventory-tooltip": "Reemplaza el inventario guardado de esta reproducción con tu inventario actual.",
     "bbs.ui.film.replay.actor": "Actor",
     "bbs.ui.film.replay.actor-tooltip": "Cuando esté habilitada, esta reproducción se mostrará como una entidad (lo que significa que puedes golpearla, puede recoger elementos, activar placas de presión, etc.)",
     "bbs.ui.film.replay.animation_to_pose.generate": "Generar",
