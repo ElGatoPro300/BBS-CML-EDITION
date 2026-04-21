@@ -534,6 +534,7 @@
     "bbs.ui.camera.timeline.keys.clips": "Add clips",
     "bbs.ui.camera.timeline.keys.enabled": "Toggle enable",
     "bbs.ui.camera.tooltips.open_video_settings": "Open videos settings...",
+    "bbs.ui.camera.tooltips.open_screenshots": "Open screenshots folder...",
     "bbs.ui.camera.tooltips.open_videos": "Open videos folder...",
     "bbs.ui.camera.tooltips.record": "Record video",
     "bbs.ui.cdn.downloading-title": "Downloading...",

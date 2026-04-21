@@ -212,6 +212,7 @@ public class UIKeys
     public static final IKey CAMERA_TIMELINE_KEYS_CLIPS = L10n.lang("bbs.ui.camera.timeline.keys.clips");
     public static final IKey CAMERA_TIMELINE_KEYS_ENABLED = L10n.lang("bbs.ui.camera.timeline.keys.enabled");
     public static final IKey CAMERA_TOOLTIPS_OPEN_VIDEOS = L10n.lang("bbs.ui.camera.tooltips.open_videos");
+    public static final IKey CAMERA_TOOLTIPS_OPEN_SCREENSHOTS = L10n.lang("bbs.ui.camera.tooltips.open_screenshots");
     public static final IKey CAMERA_TOOLTIPS_OPEN_VIDEO_SETTINGS = L10n.lang("bbs.ui.camera.tooltips.open_video_settings");
     public static final IKey CAMERA_TOOLTIPS_RECORD = L10n.lang("bbs.ui.camera.tooltips.record");
     public static final IKey CDN_DOWNLOADING_TITLE = L10n.lang("bbs.ui.cdn.downloading-title");

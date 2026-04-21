@@ -535,6 +535,7 @@
     "bbs.ui.camera.timeline.keys.clips": "Agregar clips",
     "bbs.ui.camera.timeline.keys.enabled": "Habilitar alternamiento",
     "bbs.ui.camera.tooltips.open_video_settings": "Abrir configuración de videos...",
+    "bbs.ui.camera.tooltips.open_screenshots": "Abrir carpeta de capturas...",
     "bbs.ui.camera.tooltips.open_videos": "Abrir carpeta de vídeos...",
     "bbs.ui.camera.tooltips.record": "Grabar video",
     "bbs.ui.cdn.downloading-title": "Descargando...",
