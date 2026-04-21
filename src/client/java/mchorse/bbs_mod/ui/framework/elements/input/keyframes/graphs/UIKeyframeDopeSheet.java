@@ -41,6 +41,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
 {
     private static final int LEVEL_INDENT = 8;
     private static final int TRACK_LINE_HALF_HEIGHT = 1;
+    private static final int TRACKS_BOTTOM_MARGIN = 36;
 
     private UIKeyframes keyframes;
 
@@ -96,7 +97,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
     {
         this.trackHeight = MathUtils.clamp(height, 8D, 100D);
         this.dopeSheet.scrollSpeed = (int) this.trackHeight * 2;
-        this.dopeSheet.scrollSize = (int) this.trackHeight * this.sheets.size() + this.topMargin;
+        this.dopeSheet.scrollSize = (int) this.trackHeight * this.sheets.size() + this.topMargin + TRACKS_BOTTOM_MARGIN;
 
         this.dopeSheet.clamp();
     }
@@ -104,7 +105,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
     public void setTopMargin(int topMargin)
     {
         this.topMargin = Math.max(0, topMargin);
-        this.dopeSheet.scrollSize = (int) this.trackHeight * this.sheets.size() + this.topMargin;
+        this.dopeSheet.scrollSize = (int) this.trackHeight * this.sheets.size() + this.topMargin + TRACKS_BOTTOM_MARGIN;
         this.dopeSheet.clamp();
     }
 
@@ -754,7 +755,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
             return;
         }
 
-        this.dopeSheet.scrollSize = (int) this.trackHeight * this.sheets.size() + this.topMargin;
+        this.dopeSheet.scrollSize = (int) this.trackHeight * this.sheets.size() + this.topMargin + TRACKS_BOTTOM_MARGIN;
 
         Area area = this.keyframes.area;
         this.updateSidebarScrollLimits(context);
@@ -1011,25 +1012,32 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
     private void renderSidebarScrollbar(UIContext context)
     {
         Area area = this.keyframes.area;
+        boolean inSidebar = area.isInside(context) && context.mouseX < area.x + this.sidebarWidth;
 
         this.updateSidebarScrollLimits(context);
         this.updateSidebarScrollbarArea(area);
+
+        if (!inSidebar)
+        {
+            return;
+        }
 
         int barHeight = this.sidebarScrollbar.getScrollbarWidth();
         int y = area.ey() - barHeight;
         int trackX = area.x;
         int trackW = this.sidebarWidth;
+        int scrollbarColor = Colors.setA(BBSSettings.scrollbarShadow.get(), 0.25F);
 
-        context.batcher.box(trackX, y, trackX + trackW, y + barHeight, Colors.A50);
+        context.batcher.box(trackX, y, trackX + trackW, y + barHeight, Colors.A25);
 
         if (this.sidebarScrollMax <= 0)
         {
-            Scroll.bar(context.batcher, trackX, y, trackX + trackW, y + barHeight, BBSSettings.scrollbarShadow.get());
+            Scroll.bar(context.batcher, trackX, y, trackX + trackW, y + barHeight, scrollbarColor);
             return;
         }
 
         Area knob = this.sidebarScrollbar.getScrollbarArea();
-        Scroll.bar(context.batcher, knob.x, knob.y, knob.ex(), knob.ey(), BBSSettings.scrollbarShadow.get());
+        Scroll.bar(context.batcher, knob.x, knob.y, knob.ex(), knob.ey(), scrollbarColor);
     }
 
     private void updateSidebarScrollLimits(UIContext context)
