@@ -46,6 +46,7 @@ import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.RotationAxis;
 import org.joml.Matrix4f;
+import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.slf4j.Logger;
 
@@ -79,6 +80,8 @@ public class UIModelEditorRenderer extends UIModelRenderer
 
     private ModelInstance previewModel;
     private String lastModelId;
+    private final Matrix4f lastGizmoMatrix = new Matrix4f();
+    private boolean hasGizmoMatrix;
 
     public UIModelEditorRenderer()
     {
@@ -175,6 +178,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
                     
                     if (index >= Gizmo.STENCIL_X && index <= Gizmo.STENCIL_FREE)
                     {
+                        this.prepareGizmoDrag(this.transform);
                         Gizmo.INSTANCE.start(index, context.mouseX, context.mouseY, this.transform);
                         return true;
                     }
@@ -229,6 +233,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
 
         /* Render Axes */
         Matrix4f gizmoMatrix = null;
+        this.hasGizmoMatrix = false;
 
         if (UIBaseMenu.renderAxes && this.selectedBone != null && !this.selectedBone.isEmpty())
         {
@@ -255,6 +260,8 @@ public class UIModelEditorRenderer extends UIModelRenderer
 
             if (gizmoMatrix != null)
             {
+                this.lastGizmoMatrix.set(gizmoMatrix);
+                this.hasGizmoMatrix = true;
                 MatrixStack stack = context.batcher.getContext().getMatrices();
 
                 stack.push();
@@ -307,6 +314,62 @@ public class UIModelEditorRenderer extends UIModelRenderer
         {
             this.stencil.clearPicking();
         }
+    }
+
+    private void prepareGizmoDrag(UIPropTransform transform)
+    {
+        if (transform == null)
+        {
+            return;
+        }
+
+        transform.setGizmoRayProvider(new UIPropTransform.IGizmoRayProvider()
+        {
+            @Override
+            public boolean getMouseRay(UIContext context, int mouseX, int mouseY, Vector3d rayOrigin, Vector3f rayDirection)
+            {
+                if (UIModelEditorRenderer.this.area.w <= 0 || UIModelEditorRenderer.this.area.h <= 0)
+                {
+                    return false;
+                }
+
+                Vector3f direction = UIModelEditorRenderer.this.camera.getMouseDirection(
+                    mouseX,
+                    mouseY,
+                    UIModelEditorRenderer.this.area.x,
+                    UIModelEditorRenderer.this.area.y,
+                    UIModelEditorRenderer.this.area.w,
+                    UIModelEditorRenderer.this.area.h
+                );
+
+                if (direction.lengthSquared() <= 1.0E-12F)
+                {
+                    return false;
+                }
+
+                rayDirection.set(direction).normalize();
+                rayOrigin.set(
+                    UIModelEditorRenderer.this.camera.position.x - UIModelEditorRenderer.this.pos.x,
+                    UIModelEditorRenderer.this.camera.position.y - UIModelEditorRenderer.this.pos.y,
+                    UIModelEditorRenderer.this.camera.position.z - UIModelEditorRenderer.this.pos.z
+                );
+
+                return true;
+            }
+
+            @Override
+            public boolean getGizmoMatrix(Matrix4f matrix)
+            {
+                if (!UIModelEditorRenderer.this.hasGizmoMatrix)
+                {
+                    return false;
+                }
+
+                matrix.set(UIModelEditorRenderer.this.lastGizmoMatrix);
+
+                return true;
+            }
+        });
     }
 
     private void renderSelectedCubeVisualizer(UIContext context, MatrixCache cache)
