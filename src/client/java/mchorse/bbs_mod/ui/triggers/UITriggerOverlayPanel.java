@@ -21,6 +21,8 @@ import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlayPanel;
 import mchorse.bbs_mod.ui.model_blocks.UIModelBlockEntityList;
+import mchorse.bbs_mod.ui.film.UIFilmPickerOverlayPanel;
+import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.player.PlayerEntity;
 
@@ -105,6 +107,17 @@ public class UITriggerOverlayPanel extends UIEditorOverlayPanel<Trigger>
 
                     return TriggerKeys.ADD_FORM_NAME.format(form.getDisplayName()).get();
                 }
+                else if (type.equals("film"))
+                {
+                    String filmName = element.film.get();
+
+                    if (filmName.isEmpty())
+                    {
+                        return TriggerKeys.PLAY_FILM_EMPTY.get();
+                    }
+
+                    return TriggerKeys.PLAY_FILM_NAME.format(filmName).get();
+                }
 
                 return type;
             }
@@ -127,6 +140,10 @@ public class UITriggerOverlayPanel extends UIEditorOverlayPanel<Trigger>
                 {
                     color = Colors.ORANGE;
                 }
+                else if (type.equals("film"))
+                {
+                    color = Colors.BLUE;
+                }
 
                 context.batcher.box(x, y, x + 2, y + this.scroll.scrollItemSize, Colors.A100 | color);
                 context.batcher.gradientHBox(x + 2, y, x + 24, y + this.scroll.scrollItemSize, Colors.A25 | color, color);
@@ -146,6 +163,7 @@ public class UITriggerOverlayPanel extends UIEditorOverlayPanel<Trigger>
             menu.action(Icons.CONSOLE, TriggerKeys.ADD_COMMAND, 0xA020F0, () -> this.addTrigger("command"));
             menu.action(Icons.MORPH, TriggerKeys.ADD_FORM, Colors.ORANGE, () -> this.addTrigger("form"));
             menu.action(Icons.BLOCK, TriggerKeys.ADD_BLOCK, Colors.ACTIVE, () -> this.addTrigger("block"));
+            menu.action(Icons.FILM, TriggerKeys.ADD_FILM, Colors.BLUE, () -> this.addTrigger("film"));
         });
     }
 
@@ -263,6 +281,23 @@ public class UITriggerOverlayPanel extends UIEditorOverlayPanel<Trigger>
             this.editor.add(UI.row(x, y, z));
             this.editor.add(pickBlock);
             this.editor.add(UI.label(TriggerKeys.ACTION_BLOCK_FORM), UI.row(pick, edit));
+        }
+        else if (type.equals("film"))
+        {
+            UIButton pick = new UIButton(UIKeys.GENERAL_PICK, (b) ->
+            {
+                UIFilmPickerOverlayPanel panel = new UIFilmPickerOverlayPanel((f) ->
+                {
+                    item.film.set(f);
+                });
+
+                UIOverlay.addOverlay(this.getContext(), panel);
+            });
+
+            UIToggle playCamera = new UIToggle(TriggerKeys.PLAY_CAMERA, item.playCamera.get(), (b) -> item.playCamera.set(b.getValue()));
+
+            this.editor.add(UI.label(TriggerKeys.ACTION_FILM), pick);
+            this.editor.add(playCamera);
         }
     }
 
