@@ -1,17 +1,21 @@
 package mchorse.bbs_mod.ui.framework.elements.input.keyframes;
 
+import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.camera.clips.overwrite.KeyframeClip;
 import mchorse.bbs_mod.data.DataStorageUtils;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
+import mchorse.bbs_mod.graphics.window.Window;
+import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UIKeyframeFactory;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UIPoseKeyframeFactory;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UITransformKeyframeFactory;
+import mchorse.bbs_mod.ui.framework.elements.utils.UIDraggable;
+import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.Pair;
 import mchorse.bbs_mod.utils.StringUtils;
-import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 
@@ -23,7 +27,11 @@ public class UIKeyframeEditor extends UIElement
 {
     public static final int[] COLORS = {Colors.RED, Colors.GREEN, Colors.BLUE, Colors.CYAN, Colors.MAGENTA, Colors.YELLOW, Colors.LIGHTEST_GRAY & 0xffffff, Colors.DEEP_PINK};
     private static final int SIDE_PANEL_WIDTH = 140;
+    private static final int SIDE_PANEL_WIDTH_MIN = 90;
+    private static final int SIDE_PANEL_WIDTH_MAX = 420;
     private static final int BOTTOM_PANEL_HEIGHT = 140;
+    private static final int BOTTOM_PANEL_HEIGHT_MIN = 90;
+    private static final int BOTTOM_PANEL_HEIGHT_MAX = 420;
     private static final int GLOBAL_TRACKERS_TOP_GAP = 36;
 
     public UIKeyframes view;
@@ -31,6 +39,9 @@ public class UIKeyframeEditor extends UIElement
 
     private UIElement target;
     private boolean stackedLayout;
+    private int sidePanelWidth = SIDE_PANEL_WIDTH;
+    private int bottomPanelHeight = BOTTOM_PANEL_HEIGHT;
+    private UIDraggable sidePanelResizer;
 
     public UIKeyframeEditor(Function<Consumer<Keyframe>, UIKeyframes> factory)
     {
@@ -45,6 +56,56 @@ public class UIKeyframeEditor extends UIElement
         this.view.getDopeSheet().setTopMargin(GLOBAL_TRACKERS_TOP_GAP);
 
         this.add(this.view.full(this).w(1F, -SIDE_PANEL_WIDTH));
+
+        this.sidePanelResizer = new UIDraggable((context) ->
+        {
+            if (this.stackedLayout)
+            {
+                int height = this.area.ey() - context.mouseY;
+
+                this.bottomPanelHeight = Math.max(BOTTOM_PANEL_HEIGHT_MIN, Math.min(BOTTOM_PANEL_HEIGHT_MAX, height));
+            }
+            else
+            {
+                int width = this.area.ex() - context.mouseX;
+
+                this.sidePanelWidth = Math.max(SIDE_PANEL_WIDTH_MIN, Math.min(SIDE_PANEL_WIDTH_MAX, width));
+            }
+
+            this.applyLayout();
+            this.resize();
+        })
+        {
+            @Override
+            protected boolean subMouseClicked(UIContext context)
+            {
+                if (this.area.isInside(context) && context.mouseButton == 0 && Window.isCtrlPressed())
+                {
+                    if (UIKeyframeEditor.this.stackedLayout)
+                    {
+                        UIKeyframeEditor.this.bottomPanelHeight = BOTTOM_PANEL_HEIGHT;
+                    }
+                    else
+                    {
+                        UIKeyframeEditor.this.sidePanelWidth = SIDE_PANEL_WIDTH;
+                    }
+                    UIKeyframeEditor.this.applyLayout();
+                    UIKeyframeEditor.this.resize();
+
+                    return true;
+                }
+
+                return super.subMouseClicked(context);
+            }
+        }.rendering((context) ->
+        {
+            float alpha = (this.sidePanelResizer.isDragging() || this.sidePanelResizer.area.isInside(context)) ? 0.75F : 0.5F;
+            int color = Colors.setA(BBSSettings.primaryColor.get(), alpha);
+
+            context.batcher.box(this.sidePanelResizer.area.x, this.sidePanelResizer.area.y, this.sidePanelResizer.area.ex(), this.sidePanelResizer.area.ey(), color);
+        });
+        this.add(this.sidePanelResizer);
+        this.updateSidePanelResizerState();
     }
 
     public UIKeyframeEditor target(UIElement target)
@@ -94,22 +155,78 @@ public class UIKeyframeEditor extends UIElement
 
         if (this.stackedLayout)
         {
-            this.view.resetFlex().relative(this).xy(0, 0).w(1F).h(1F, this.editor == null ? 0 : -BOTTOM_PANEL_HEIGHT);
+            this.view.resetFlex().relative(this).xy(0, 0).w(1F).h(1F, this.editor == null ? 0 : -this.bottomPanelHeight);
 
             if (this.editor != null)
             {
-                this.editor.relative(this).x(0).y(1F, -BOTTOM_PANEL_HEIGHT).w(1F).h(BOTTOM_PANEL_HEIGHT);
+                this.editor.relative(this).x(0).y(1F, -this.bottomPanelHeight).w(1F).h(this.bottomPanelHeight);
             }
         }
         else
         {
-            this.view.resetFlex().relative(this).xy(0, 0).w(1F, this.editor == null ? 0 : -SIDE_PANEL_WIDTH).h(1F);
+            this.view.resetFlex().relative(this).xy(0, 0).w(1F, this.editor == null ? 0 : -this.sidePanelWidth).h(1F);
 
             if (this.editor != null)
             {
-                this.editor.relative(this).x(1F, -SIDE_PANEL_WIDTH).y(0).w(SIDE_PANEL_WIDTH).h(1F);
+                this.editor.relative(this).x(1F, -this.sidePanelWidth).y(0).w(this.sidePanelWidth).h(1F);
             }
         }
+
+        this.updateSidePanelResizerState();
+    }
+
+    @Override
+    public void resize()
+    {
+        super.resize();
+        this.updateSidePanelResizerState();
+    }
+
+    @Override
+    public void render(UIContext context)
+    {
+        this.updateSidePanelResizerState();
+        super.render(context);
+    }
+
+    private void updateSidePanelResizerState()
+    {
+        if (this.sidePanelResizer == null)
+        {
+            return;
+        }
+
+        boolean locked = BBSSettings.editorLayoutSettings != null && BBSSettings.editorLayoutSettings.isLayoutLocked();
+        boolean visible = this.target == null && this.editor != null && !locked;
+
+        this.sidePanelResizer.setVisible(visible);
+        this.sidePanelResizer.setEnabled(visible);
+
+        if (!visible)
+        {
+            return;
+        }
+
+        if (this.stackedLayout)
+        {
+            this.bottomPanelHeight = Math.max(BOTTOM_PANEL_HEIGHT_MIN, Math.min(BOTTOM_PANEL_HEIGHT_MAX, this.bottomPanelHeight));
+
+            int x = this.area.mx() - 20;
+            int y = this.area.ey() - this.bottomPanelHeight - 3;
+
+            this.sidePanelResizer.relative(this).x(x - this.area.x).y(y - this.area.y).w(40).h(6);
+        }
+        else
+        {
+            this.sidePanelWidth = Math.max(SIDE_PANEL_WIDTH_MIN, Math.min(SIDE_PANEL_WIDTH_MAX, this.sidePanelWidth));
+
+            int x = this.area.ex() - this.sidePanelWidth - 3;
+            int y = this.area.my() - 20;
+
+            this.sidePanelResizer.relative(this).x(x - this.area.x).y(y - this.area.y).w(6).h(40);
+        }
+
+        this.sidePanelResizer.resize();
     }
 
     public void toggleLayout()
