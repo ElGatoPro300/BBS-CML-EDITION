@@ -10,6 +10,7 @@ import net.minecraft.util.Identifier;
 import net.minecraft.util.math.MathHelper;
 
 import java.util.List;
+import java.util.Random;
 
 public class UIHotbarRenderer
 {
@@ -123,20 +124,22 @@ public class UIHotbarRenderer
         int absorptionSlots = MathHelper.ceil(MathHelper.clamp(hotbar.absorptionContainer, 0F, MAX_HEALTH_CONTAINER) / 2F);
         absorptionSlots = MathHelper.clamp(absorptionSlots, 0, MAX_HEALTH_ROWS * 10);
         int absorptionRows = absorptionSlots <= 0 ? 0 : Math.max(1, Math.min(MAX_HEALTH_ROWS, (absorptionSlots + 9) / 10));
+        Random heartShakeRandom = hotbar.health <= 4F ? new Random(thisTickSeed()) : null;
+        Random hungerShakeRandom = hotbar.hunger <= 6F ? new Random(thisTickSeed() + 17L) : null;
 
-        renderBar(batcher, hotbar.health, container, heartHalf, heartFull, 0, barsY, healthSlots);
+        renderBar(batcher, hotbar.health, container, heartHalf, heartFull, 0, barsY, healthSlots, heartShakeRandom);
         if (absorptionSlots > 0)
         {
-            renderBar(batcher, hotbar.absorption, container, absorptionHalf, absorptionFull, 0, barsY - healthRows * 10, absorptionSlots);
+            renderBar(batcher, hotbar.absorption, container, absorptionHalf, absorptionFull, 0, barsY - healthRows * 10, absorptionSlots, heartShakeRandom);
         }
         if (hotbar.armor > 0F)
         {
-            renderBar(batcher, hotbar.armor, ARMOR_EMPTY, ARMOR_HALF, ARMOR_FULL, 0, barsY - (healthRows + absorptionRows) * 10, 10);
+            renderBar(batcher, hotbar.armor, ARMOR_EMPTY, ARMOR_HALF, ARMOR_FULL, 0, barsY - (healthRows + absorptionRows) * 10, 10, null);
         }
         Identifier foodEmpty = hotbar.hungerEffect ? FOOD_EMPTY_HUNGER : FOOD_EMPTY;
         Identifier foodHalf = hotbar.hungerEffect ? FOOD_HALF_HUNGER : FOOD_HALF;
         Identifier foodFull = hotbar.hungerEffect ? FOOD_FULL_HUNGER : FOOD_FULL;
-        renderBarReverse(batcher, hotbar.hunger, foodEmpty, foodHalf, foodFull, 182 - 9, barsY, 10);
+        renderBarReverse(batcher, hotbar.hunger, foodEmpty, foodHalf, foodFull, 182 - 9, barsY, 10, hungerShakeRandom);
 
         float experience = MathHelper.clamp(hotbar.experience, 0F, 1F);
         int xpPixels = MathHelper.ceil(experience * 182F);
@@ -183,7 +186,7 @@ public class UIHotbarRenderer
         batcher.flush();
     }
 
-    private static void renderBar(Batcher2D batcher, float value, Identifier empty, Identifier half, Identifier full, int x, int y, int slots)
+    private static void renderBar(Batcher2D batcher, float value, Identifier empty, Identifier half, Identifier full, int x, int y, int slots, Random lowHealthShakeRandom)
     {
         if (slots <= 0)
         {
@@ -198,6 +201,11 @@ public class UIHotbarRenderer
             int col = i % 10;
             int iconX = x + col * 8;
             int iconY = y - row * 10;
+
+            if (lowHealthShakeRandom != null)
+            {
+                iconY += lowHealthShakeRandom.nextInt(2);
+            }
 
             batcher.getContext().drawGuiTexture(empty, iconX, iconY, 9, 9);
 
@@ -214,7 +222,15 @@ public class UIHotbarRenderer
         }
     }
 
-    private static void renderBarReverse(Batcher2D batcher, float value, Identifier empty, Identifier half, Identifier full, int x, int y, int slots)
+    private static long thisTickSeed()
+    {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        long tick = mc.world != null ? mc.world.getTime() : System.currentTimeMillis() / 50L;
+
+        return tick * 312871L;
+    }
+
+    private static void renderBarReverse(Batcher2D batcher, float value, Identifier empty, Identifier half, Identifier full, int x, int y, int slots, Random lowHungerShakeRandom)
     {
         if (slots <= 0)
         {
@@ -229,6 +245,11 @@ public class UIHotbarRenderer
             int col = i % 10;
             int iconX = x - col * 8;
             int iconY = y - row * 10;
+
+            if (lowHungerShakeRandom != null)
+            {
+                iconY += lowHungerShakeRandom.nextInt(2);
+            }
 
             batcher.getContext().drawGuiTexture(empty, iconX, iconY, 9, 9);
 
