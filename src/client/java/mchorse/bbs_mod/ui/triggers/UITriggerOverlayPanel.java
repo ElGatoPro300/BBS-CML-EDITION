@@ -44,6 +44,50 @@ public class UITriggerOverlayPanel extends UIEditorOverlayPanel<Trigger>
         this.triggers = triggers;
         this.list.add(triggers.getAllTyped());
         this.pickItem(triggers.getAllTyped().isEmpty() ? null : triggers.getAllTyped().get(0), true);
+
+        this.list.resetContext();
+        this.list.context((menu) ->
+        {
+            menu.action(Icons.ADD, this.getAddLabel(), this::addItem);
+
+            if (!this.list.getList().isEmpty())
+            {
+                menu.action(Icons.COPY, TriggerKeys.COPY_TRIGGER, () ->
+                {
+                    try
+                    {
+                        net.minecraft.client.MinecraftClient.getInstance().keyboard.setClipboard(mchorse.bbs_mod.data.DataStorageUtils.toNbt(this.item.toData()).toString());
+                    }
+                    catch (Exception e)
+                    {}
+                });
+            }
+
+            try
+            {
+                String clipboard = net.minecraft.client.MinecraftClient.getInstance().keyboard.getClipboard();
+                net.minecraft.nbt.NbtElement element = net.minecraft.nbt.StringNbtReader.parse(clipboard);
+
+                if (element instanceof net.minecraft.nbt.NbtCompound)
+                {
+                    menu.action(Icons.PASTE, TriggerKeys.PASTE_TRIGGER, () ->
+                    {
+                        Trigger newTrigger = new Trigger("");
+                        newTrigger.fromData(mchorse.bbs_mod.data.DataStorageUtils.fromNbt(element));
+                        this.list.getList().add(newTrigger);
+                        this.list.update();
+                        this.pickItem(newTrigger, true);
+                    });
+                }
+            }
+            catch (Exception e)
+            {}
+
+            if (!this.list.getList().isEmpty())
+            {
+                menu.action(Icons.REMOVE, this.getRemoveLabel(), Colors.NEGATIVE, this::removeItem);
+            }
+        });
     }
 
     @Override
