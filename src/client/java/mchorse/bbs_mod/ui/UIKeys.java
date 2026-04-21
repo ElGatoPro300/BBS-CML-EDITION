@@ -146,6 +146,7 @@ public class UIKeys
     public static final IKey CAMERA_PANELS_FORWARD = L10n.lang("bbs.ui.camera.panels.forward");
     public static final IKey CAMERA_PANELS_FORWARD_TOOLTIP = L10n.lang("bbs.ui.camera.panels.forward_tooltip");
     public static final IKey CAMERA_PANELS_FOV = L10n.lang("bbs.ui.camera.panels.fov");
+    public static final IKey CAMERA_PANELS_HOTBAR = L10n.lang("bbs.ui.camera.panels.hotbar");
     public static final IKey CAMERA_PANELS_INTERPOLATION = L10n.lang("bbs.ui.camera.panels.interpolation");
     public static final IKey CAMERA_PANELS_KEYFRAMES = L10n.lang("bbs.ui.camera.panels.keyframes");
     public static final IKey CAMERA_PANELS_LAYER = L10n.lang("bbs.ui.camera.panels.layer");

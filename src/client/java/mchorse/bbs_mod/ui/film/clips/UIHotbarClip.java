@@ -1,0 +1,131 @@
+package mchorse.bbs_mod.ui.film.clips;
+
+import mchorse.bbs_mod.camera.clips.misc.HotbarClip;
+import mchorse.bbs_mod.data.types.MapType;
+import mchorse.bbs_mod.l10n.keys.IKey;
+import mchorse.bbs_mod.ui.Keys;
+import mchorse.bbs_mod.ui.UIKeys;
+import mchorse.bbs_mod.ui.film.IUIClipsDelegate;
+import mchorse.bbs_mod.ui.film.utils.keyframes.UIFilmKeyframes;
+import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
+import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeEditor;
+import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeSheet;
+import mchorse.bbs_mod.ui.utils.UI;
+import mchorse.bbs_mod.utils.keyframes.factories.KeyframeFactories;
+
+public class UIHotbarClip extends UIClip<HotbarClip>
+{
+    public UIButton edit;
+    public UIKeyframeEditor keyframes;
+
+    public UIHotbarClip(HotbarClip clip, IUIClipsDelegate editor)
+    {
+        super(clip, editor);
+    }
+
+    @Override
+    protected void registerUI()
+    {
+        super.registerUI();
+
+        this.keyframes = new UIKeyframeEditor((consumer) -> new UIFilmKeyframes(this.editor, consumer));
+        this.keyframes.view.duration(() -> this.clip.duration.get());
+        this.keyframes.setUndoId("hotbar_keyframes");
+
+        this.edit = new UIButton(UIKeys.CAMERA_PANELS_EDIT_KEYFRAMES, (b) ->
+        {
+            this.editor.embedView(this.keyframes);
+            this.keyframes.view.resetView();
+            this.keyframes.view.getGraph().clearSelection();
+        });
+        this.edit.keys().register(Keys.FORMS_EDIT, () -> this.edit.clickItself());
+    }
+
+    @Override
+    protected void registerPanels()
+    {
+        super.registerPanels();
+
+        this.panels.add(UI.column(UIClip.label(UIKeys.CAMERA_PANELS_HOTBAR), this.edit).marginTop(12));
+    }
+
+    @Override
+    public void fillData()
+    {
+        super.fillData();
+        this.ensureHardcoreIsBoolean();
+
+        this.keyframes.setChannels(this.clip.channels);
+
+        for (UIKeyframeSheet sheet : this.keyframes.view.getGraph().getSheets())
+        {
+            sheet.title = this.getTrackTitle(sheet.id);
+        }
+    }
+
+    @Override
+    public void applyUndoData(MapType data)
+    {
+        super.applyUndoData(data);
+
+        if ("hotbar".equals(data.getString("embed")))
+        {
+            this.editor.embedView(this.keyframes);
+            this.keyframes.view.resetView();
+        }
+    }
+
+    @Override
+    public void collectUndoData(MapType data)
+    {
+        super.collectUndoData(data);
+
+        if (this.keyframes.hasParent())
+        {
+            data.putString("embed", "hotbar");
+        }
+    }
+
+    private IKey getTrackTitle(String id)
+    {
+        return switch (id)
+        {
+            case "selected_slot" -> UIKeys.C_CLIP.get("bbs:selected_slot");
+            case "slot_0" -> UIKeys.C_CLIP.get("bbs:slot_0");
+            case "slot_1" -> UIKeys.C_CLIP.get("bbs:slot_1");
+            case "slot_2" -> UIKeys.C_CLIP.get("bbs:slot_2");
+            case "slot_3" -> UIKeys.C_CLIP.get("bbs:slot_3");
+            case "slot_4" -> UIKeys.C_CLIP.get("bbs:slot_4");
+            case "slot_5" -> UIKeys.C_CLIP.get("bbs:slot_5");
+            case "slot_6" -> UIKeys.C_CLIP.get("bbs:slot_6");
+            case "slot_7" -> UIKeys.C_CLIP.get("bbs:slot_7");
+            case "slot_8" -> UIKeys.C_CLIP.get("bbs:slot_8");
+            case "health" -> UIKeys.C_CLIP.get("bbs:health");
+            case "health_container" -> UIKeys.C_CLIP.get("bbs:health_container");
+            case "heart_type" -> UIKeys.C_CLIP.get("bbs:heart_type");
+            case "hardcore" -> UIKeys.C_CLIP.get("bbs:hardcore");
+            case "hunger_effect" -> UIKeys.C_CLIP.get("bbs:hunger_effect");
+            case "armor" -> UIKeys.C_CLIP.get("bbs:armor");
+            case "hunger" -> UIKeys.C_CLIP.get("bbs:hunger");
+            case "experience" -> UIKeys.C_CLIP.get("bbs:experience");
+            case "experience_level" -> UIKeys.C_CLIP.get("bbs:experience_level");
+            case "x" -> UIKeys.C_CLIP.get("bbs:x");
+            case "y" -> UIKeys.C_CLIP.get("bbs:y");
+            case "scale" -> UIKeys.C_CLIP.get("bbs:scale");
+            default -> IKey.constant(id);
+        };
+    }
+
+    private void ensureHardcoreIsBoolean()
+    {
+        if (this.clip.hardcore.getFactory() == KeyframeFactories.BOOLEAN)
+        {
+            return;
+        }
+
+        MapType data = this.clip.hardcore.toData().asMap();
+
+        data.putString("type", "boolean");
+        this.clip.hardcore.fromData(data);
+    }
+}

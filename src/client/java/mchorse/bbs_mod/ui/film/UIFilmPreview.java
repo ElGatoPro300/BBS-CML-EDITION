@@ -331,6 +331,7 @@ public class UIFilmPreview extends UIElement
                 context.menu.height,
                 true
             );
+
         }
 
         this.renderCursor(context);

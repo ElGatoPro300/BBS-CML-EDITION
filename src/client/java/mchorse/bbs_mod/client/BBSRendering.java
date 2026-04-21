@@ -8,6 +8,7 @@ import mchorse.bbs_mod.blocks.entities.ModelBlockEntity;
 import mchorse.bbs_mod.client.renderer.ModelBlockEntityRenderer;
 import mchorse.bbs_mod.client.renderer.TriggerBlockEntityRenderer;
 import mchorse.bbs_mod.camera.clips.misc.CurveClip;
+import mchorse.bbs_mod.camera.clips.misc.HotbarClip;
 import mchorse.bbs_mod.camera.clips.misc.SubtitleClip;
 import mchorse.bbs_mod.camera.controller.CameraWorkCameraController;
 import mchorse.bbs_mod.camera.controller.PlayCameraController;
@@ -29,6 +30,7 @@ import mchorse.bbs_mod.ui.dashboard.UIDashboard;
 import mchorse.bbs_mod.client.video.VideoRenderer;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
+import mchorse.bbs_mod.ui.film.UIHotbarRenderer;
 import mchorse.bbs_mod.ui.film.UISubtitleRenderer;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.UIRenderingContext;
@@ -38,6 +40,7 @@ import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.VideoRecorder;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.colors.Colors;
+import mchorse.bbs_mod.utils.clips.ClipContext;
 import mchorse.bbs_mod.utils.iris.IrisUtils;
 import mchorse.bbs_mod.utils.iris.ShaderCurves;
 import mchorse.bbs_mod.utils.sodium.SodiumUtils;
@@ -358,20 +361,19 @@ public class BBSRendering
     public static void onWorldRenderEnd()
     {
         MinecraftClient mc = MinecraftClient.getInstance();
+        UIBaseMenu currentMenu = UIScreen.getCurrentMenu();
 
         if (BBSModClient.getCameraController().getCurrent() instanceof PlayCameraController controller)
         {
             DrawContext drawContext = new DrawContext(mc, mc.getBufferBuilders().getEntityVertexConsumers());
             Batcher2D batcher = new Batcher2D(drawContext);
-
-            UISubtitleRenderer.renderSubtitles(batcher.getContext().getMatrices(), batcher, SubtitleClip.getSubtitles(controller.getContext()));
-
             Window window = mc.getWindow();
             Area area = new Area(0, 0, window.getScaledWidth(), window.getScaledHeight());
             Matrix4f cache = new Matrix4f(RenderSystem.getProjectionMatrix());
             Matrix4f ortho = new Matrix4f().ortho(0, area.w, area.h, 0, -1000, 3000);
 
             RenderSystem.setProjectionMatrix(ortho, VertexSorter.BY_Z);
+            renderHudOverlays(batcher, controller.getContext(), area.w, area.h);
             VideoRenderer.renderClips(batcher.getContext().getMatrices(), batcher, controller.getContext().clips.getClips(controller.getContext().relativeTick), controller.getContext().relativeTick, true, area, area, null, area.w, area.h, false);
 
             if (controller.screenClips != null)
@@ -389,6 +391,15 @@ public class BBSRendering
             RenderSystem.setProjectionMatrix(cache, VertexSorter.BY_Z);
         }
 
+        if (BBSModClient.getVideoRecorder().isRecording() && BBSModClient.getCameraController().getCurrent() instanceof CameraWorkCameraController controller)
+        {
+            DrawContext drawContext = new DrawContext(mc, mc.getBufferBuilders().getEntityVertexConsumers());
+            Batcher2D batcher = new Batcher2D(drawContext);
+            Window window = mc.getWindow();
+
+            renderHudOverlays(batcher, controller.getContext(), window.getScaledWidth(), window.getScaledHeight());
+        }
+
         if (!customSize)
         {
             renderingWorld = false;
@@ -396,13 +407,12 @@ public class BBSRendering
             return;
         }
 
-        UIBaseMenu currentMenu = UIScreen.getCurrentMenu();
-
         if (currentMenu instanceof UIDashboard dashboard)
         {
             if (dashboard.getPanels().panel instanceof UIFilmPanel panel && panel.getData() != null)
             {
-                UISubtitleRenderer.renderSubtitles(currentMenu.context.batcher.getContext().getMatrices(), currentMenu.context.batcher, SubtitleClip.getSubtitles(panel.getRunner().getContext()));
+                DrawContext drawContext = new DrawContext(mc, mc.getBufferBuilders().getEntityVertexConsumers());
+                Batcher2D offscreenBatcher = new Batcher2D(drawContext);
 
                 Window window = mc.getWindow();
                 Matrix4f cache = new Matrix4f(RenderSystem.getProjectionMatrix());
@@ -410,7 +420,8 @@ public class BBSRendering
 
                 RenderSystem.setProjectionMatrix(ortho, VertexSorter.BY_Z);
                 Area fullScreen = new Area(0, 0, window.getScaledWidth(), window.getScaledHeight());
-                VideoRenderer.renderClips(new MatrixStack(), currentMenu.context.batcher, panel.getData().camera.getClips(panel.getCursor()), panel.getCursor(), panel.getRunner().isRunning(), fullScreen, fullScreen, null, window.getScaledWidth(), window.getScaledHeight(), false);
+                renderHudOverlays(offscreenBatcher, panel.getRunner().getContext(), fullScreen.w, fullScreen.h);
+                VideoRenderer.renderClips(new MatrixStack(), offscreenBatcher, panel.getData().camera.getClips(panel.getCursor()), panel.getCursor(), panel.getRunner().isRunning(), fullScreen, fullScreen, null, window.getScaledWidth(), window.getScaledHeight(), false);
 
                 Position screenDummy = new Position();
 
@@ -419,7 +430,7 @@ public class BBSRendering
                     panel.getRunner().getContext().apply(screenClip, screenDummy);
                 }
 
-                ScreenEffectRenderer.render(currentMenu.context.batcher, panel.getRunner().getContext(), window.getScaledWidth(), window.getScaledHeight());
+                ScreenEffectRenderer.render(offscreenBatcher, panel.getRunner().getContext(), window.getScaledWidth(), window.getScaledHeight());
 
                 RenderSystem.setProjectionMatrix(cache, VertexSorter.BY_Z);
             }
@@ -825,5 +836,13 @@ public class BBSRendering
         }
 
         return (b) -> new RecolorVertexConsumer(b, color);
+    }
+
+    private static void renderHudOverlays(Batcher2D batcher, ClipContext context, int width, int height)
+    {
+        RenderSystem.disableDepthTest();
+        UISubtitleRenderer.renderSubtitles(batcher.getContext().getMatrices(), batcher, SubtitleClip.getSubtitles(context));
+        UIHotbarRenderer.renderHotbars(batcher.getContext().getMatrices(), batcher, HotbarClip.getHotbars(context), 0, 0, width, height);
+        RenderSystem.enableDepthTest();
     }
 }

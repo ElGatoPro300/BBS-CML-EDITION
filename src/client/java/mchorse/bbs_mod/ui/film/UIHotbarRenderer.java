@@ -1,0 +1,238 @@
+package mchorse.bbs_mod.ui.film;
+
+import com.mojang.blaze3d.systems.RenderSystem;
+import mchorse.bbs_mod.camera.clips.misc.HotbarState;
+import mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.item.ItemStack;
+import net.minecraft.util.Identifier;
+import net.minecraft.util.math.MathHelper;
+
+import java.util.List;
+
+public class UIHotbarRenderer
+{
+    private static final int HUD_GREEN = 8453920;
+    private static final int BAR_ICON_Y = -17;
+    private static final int EXPERIENCE_BAR_Y = -7;
+    private static final int EXPERIENCE_TEXT_Y = -12;
+    private static final float SCALE_PIVOT_X = 91F;
+    private static final float SCALE_PIVOT_Y = 0.5F;
+    private static final int MAX_HEALTH_ROWS = 60;
+    private static final float MAX_HEALTH_CONTAINER = MAX_HEALTH_ROWS * 10F * 2F;
+    private static final Identifier HOTBAR = new Identifier("minecraft", "hud/hotbar");
+    private static final Identifier HOTBAR_SELECTION = new Identifier("minecraft", "hud/hotbar_selection");
+    private static final Identifier HEART_CONTAINER = new Identifier("minecraft", "hud/heart/container");
+    private static final Identifier HEART_HARDCORE_CONTAINER = new Identifier("minecraft", "hud/heart/container_hardcore");
+    private static final Identifier[][] HEART_HALVES = {
+        {new Identifier("minecraft", "hud/heart/half"), new Identifier("minecraft", "hud/heart/hardcore_half")},
+        {new Identifier("minecraft", "hud/heart/poisoned_half"), new Identifier("minecraft", "hud/heart/poisoned_hardcore_half")},
+        {new Identifier("minecraft", "hud/heart/withered_half"), new Identifier("minecraft", "hud/heart/withered_hardcore_half")},
+        {new Identifier("minecraft", "hud/heart/absorbing_half"), new Identifier("minecraft", "hud/heart/absorbing_hardcore_half")},
+        {new Identifier("minecraft", "hud/heart/frozen_half"), new Identifier("minecraft", "hud/heart/frozen_hardcore_half")}
+    };
+    private static final Identifier[][] HEART_FULLS = {
+        {new Identifier("minecraft", "hud/heart/full"), new Identifier("minecraft", "hud/heart/hardcore_full")},
+        {new Identifier("minecraft", "hud/heart/poisoned_full"), new Identifier("minecraft", "hud/heart/poisoned_hardcore_full")},
+        {new Identifier("minecraft", "hud/heart/withered_full"), new Identifier("minecraft", "hud/heart/withered_hardcore_full")},
+        {new Identifier("minecraft", "hud/heart/absorbing_full"), new Identifier("minecraft", "hud/heart/absorbing_hardcore_full")},
+        {new Identifier("minecraft", "hud/heart/frozen_full"), new Identifier("minecraft", "hud/heart/frozen_hardcore_full")}
+    };
+    private static final Identifier ARMOR_EMPTY = new Identifier("minecraft", "hud/armor_empty");
+    private static final Identifier ARMOR_FULL = new Identifier("minecraft", "hud/armor_full");
+    private static final Identifier ARMOR_HALF = new Identifier("minecraft", "hud/armor_half");
+    private static final Identifier FOOD_EMPTY = new Identifier("minecraft", "hud/food_empty");
+    private static final Identifier FOOD_FULL = new Identifier("minecraft", "hud/food_full");
+    private static final Identifier FOOD_HALF = new Identifier("minecraft", "hud/food_half");
+    private static final Identifier FOOD_EMPTY_HUNGER = new Identifier("minecraft", "hud/food_empty_hunger");
+    private static final Identifier FOOD_FULL_HUNGER = new Identifier("minecraft", "hud/food_full_hunger");
+    private static final Identifier FOOD_HALF_HUNGER = new Identifier("minecraft", "hud/food_half_hunger");
+    private static final Identifier EXPERIENCE_BAR_BACKGROUND_TEXTURE = new Identifier("minecraft", "textures/gui/sprites/hud/experience_bar_background.png");
+    private static final Identifier EXPERIENCE_BAR_PROGRESS_TEXTURE = new Identifier("minecraft", "textures/gui/sprites/hud/experience_bar_progress.png");
+
+    public static void renderHotbars(MatrixStack stack, Batcher2D batcher, List<HotbarState> hotbars)
+    {
+        if (hotbars == null || hotbars.isEmpty())
+        {
+            return;
+        }
+
+        MinecraftClient mc = MinecraftClient.getInstance();
+        int width = mc.getWindow().getScaledWidth();
+        int height = mc.getWindow().getScaledHeight();
+
+        renderHotbars(stack, batcher, hotbars, 0, 0, width, height);
+    }
+
+    public static void renderHotbars(MatrixStack stack, Batcher2D batcher, List<HotbarState> hotbars, int originX, int originY, int width, int height)
+    {
+        if (hotbars == null || hotbars.isEmpty())
+        {
+            return;
+        }
+
+        for (HotbarState hotbar : hotbars)
+        {
+            renderHotbar(stack, batcher, hotbar, originX, originY, width, height);
+        }
+    }
+
+    private static void renderHotbar(MatrixStack stack, Batcher2D batcher, HotbarState hotbar, int originX, int originY, int width, int height)
+    {
+        float alpha = MathHelper.clamp(hotbar.alpha, 0F, 1F);
+
+        if (alpha <= 0F)
+        {
+            return;
+        }
+
+        float scale = Math.max(0.05F, hotbar.scale);
+        int hotbarWidth = 182;
+        int x = originX + Math.round(width / 2F + hotbar.x - hotbarWidth / 2F);
+        int y = originY + Math.round(height - 22 - 9 + hotbar.y);
+
+        batcher.flush();
+        stack.push();
+        stack.translate(x, y, 0);
+        stack.translate(SCALE_PIVOT_X, SCALE_PIVOT_Y, 0F);
+        stack.scale(scale, scale, 1F);
+        stack.translate(-SCALE_PIVOT_X, -SCALE_PIVOT_Y, 0F);
+
+        /* HUD layers must ignore world depth to avoid bottom clipping against terrain. */
+        RenderSystem.disableDepthTest();
+        RenderSystem.depthMask(false);
+        RenderSystem.setShaderColor(1F, 1F, 1F, alpha);
+
+        batcher.getContext().drawGuiTexture(HOTBAR, 0, 0, 182, 22);
+
+        int selectedSlot = MathHelper.clamp(hotbar.selectedSlot, 0, 8);
+        batcher.getContext().drawGuiTexture(HOTBAR_SELECTION, selectedSlot * 20 - 1, -1, 24, 23);
+
+        int barsY = BAR_ICON_Y;
+        int heartType = MathHelper.clamp(hotbar.heartType, HotbarState.HEART_NORMAL, HotbarState.HEART_FROZEN);
+        int hardcore = hotbar.hardcore ? 1 : 0;
+        Identifier container = hotbar.hardcore ? HEART_HARDCORE_CONTAINER : HEART_CONTAINER;
+        Identifier heartHalf = HEART_HALVES[heartType][hardcore];
+        Identifier heartFull = HEART_FULLS[heartType][hardcore];
+        int healthSlots = MathHelper.ceil(MathHelper.clamp(hotbar.healthContainer, 0F, MAX_HEALTH_CONTAINER) / 2F);
+        healthSlots = MathHelper.clamp(healthSlots, 0, MAX_HEALTH_ROWS * 10);
+        int healthRows = Math.max(1, Math.min(MAX_HEALTH_ROWS, (healthSlots + 9) / 10));
+
+        renderBar(batcher, hotbar.health, container, heartHalf, heartFull, 0, barsY, healthSlots);
+        if (hotbar.armor > 0F)
+        {
+            renderBar(batcher, hotbar.armor, ARMOR_EMPTY, ARMOR_HALF, ARMOR_FULL, 0, barsY - healthRows * 10, 10);
+        }
+        Identifier foodEmpty = hotbar.hungerEffect ? FOOD_EMPTY_HUNGER : FOOD_EMPTY;
+        Identifier foodHalf = hotbar.hungerEffect ? FOOD_HALF_HUNGER : FOOD_HALF;
+        Identifier foodFull = hotbar.hungerEffect ? FOOD_FULL_HUNGER : FOOD_FULL;
+        renderBarReverse(batcher, hotbar.hunger, foodEmpty, foodHalf, foodFull, 182 - 9, barsY, 10);
+
+        float experience = MathHelper.clamp(hotbar.experience, 0F, 1F);
+        int xpPixels = MathHelper.ceil(experience * 182F);
+        batcher.getContext().drawTexture(EXPERIENCE_BAR_BACKGROUND_TEXTURE, 0, EXPERIENCE_BAR_Y, 0F, 0F, 182, 5, 182, 5);
+        if (xpPixels > 0)
+        {
+            batcher.getContext().drawTexture(EXPERIENCE_BAR_PROGRESS_TEXTURE, 0, EXPERIENCE_BAR_Y, 0F, 0F, xpPixels, 5, 182, 5);
+        }
+
+        if (hotbar.experienceLevel > 0)
+        {
+            String level = Integer.toString(hotbar.experienceLevel);
+            int levelX = (182 - batcher.getFont().getWidth(level)) / 2;
+
+            batcher.textShadow(level, levelX, EXPERIENCE_TEXT_Y, HUD_GREEN);
+        }
+
+        /* Item glint (enchants) requires depth test in GUI item renderer. */
+        RenderSystem.enableDepthTest();
+        RenderSystem.depthMask(true);
+
+        for (int i = 0; i < 9; i++)
+        {
+            ItemStack stackItem = hotbar.items[i];
+
+            if (stackItem == null || stackItem.isEmpty())
+            {
+                continue;
+            }
+
+            int itemX = 3 + i * 20;
+            int itemY = 3;
+
+            batcher.getContext().drawItem(stackItem, itemX, itemY);
+            batcher.getContext().drawItemInSlot(batcher.getFont().getRenderer(), stackItem, itemX, itemY);
+        }
+
+        RenderSystem.disableDepthTest();
+        RenderSystem.depthMask(false);
+
+        RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
+
+        stack.pop();
+        batcher.flush();
+    }
+
+    private static void renderBar(Batcher2D batcher, float value, Identifier empty, Identifier half, Identifier full, int x, int y, int slots)
+    {
+        if (slots <= 0)
+        {
+            return;
+        }
+
+        float normalized = MathHelper.clamp(value, 0F, slots * 2F) / 2F;
+
+        for (int i = 0; i < slots; i++)
+        {
+            int row = i / 10;
+            int col = i % 10;
+            int iconX = x + col * 8;
+            int iconY = y - row * 10;
+
+            batcher.getContext().drawGuiTexture(empty, iconX, iconY, 9, 9);
+
+            float current = normalized - i;
+
+            if (current >= 1F)
+            {
+                batcher.getContext().drawGuiTexture(full, iconX, iconY, 9, 9);
+            }
+            else if (current >= 0.5F)
+            {
+                batcher.getContext().drawGuiTexture(half, iconX, iconY, 9, 9);
+            }
+        }
+    }
+
+    private static void renderBarReverse(Batcher2D batcher, float value, Identifier empty, Identifier half, Identifier full, int x, int y, int slots)
+    {
+        if (slots <= 0)
+        {
+            return;
+        }
+
+        float normalized = MathHelper.clamp(value, 0F, slots * 2F) / 2F;
+
+        for (int i = 0; i < slots; i++)
+        {
+            int row = i / 10;
+            int col = i % 10;
+            int iconX = x - col * 8;
+            int iconY = y - row * 10;
+
+            batcher.getContext().drawGuiTexture(empty, iconX, iconY, 9, 9);
+
+            float current = normalized - i;
+
+            if (current >= 1F)
+            {
+                batcher.getContext().drawGuiTexture(full, iconX, iconY, 9, 9);
+            }
+            else if (current >= 0.5F)
+            {
+                batcher.getContext().drawGuiTexture(half, iconX, iconY, 9, 9);
+            }
+        }
+    }
+}
