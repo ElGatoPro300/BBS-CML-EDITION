@@ -659,6 +659,8 @@
     "bbs.ui.film.replay.animation_to_pose.step": "Paso al procesar/hacer bake",
     "bbs.ui.film.replay.animation_to_pose.title": "Animación a poses",
     "bbs.ui.film.replay.axes_preview": "Vista previa de ejes",
+    "bbs.ui.film.replay.drop_items_on_death": "Soltar ítems al morir",
+    "bbs.ui.film.replay.drop_items_on_death-tooltip": "Si está activado, esta reproducción soltará sus ítems al morir. Requiere el modo Actor.",
     "bbs.ui.film.replay.context.add": "Añadir una reproducción aquí",
     "bbs.ui.film.replay.context.animation_to_keyframes": "Fotogramas clave de animación a poses...",
     "bbs.ui.film.replay.context.move_here": "Mover la reproducción aquí",

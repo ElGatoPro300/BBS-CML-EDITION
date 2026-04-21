@@ -660,6 +660,8 @@
     "bbs.ui.film.replay.animation_to_pose.title": "Animation to poses",
     "bbs.ui.film.replay.axes_preview": "Axes preview",
     "bbs.ui.film.replay.pick_axes_preview": "Pick preview bone...",
+    "bbs.ui.film.replay.drop_items_on_death": "Drop items on death",
+    "bbs.ui.film.replay.drop_items_on_death-tooltip": "When enabled, this replay drops its items on death. Requires Actor mode.",
     "bbs.ui.film.replay.context.add": "Add a replay here",
     "bbs.ui.film.replay.context.animation_to_keyframes": "Animation to pose keyframes...",
     "bbs.ui.film.replay.context.move_here": "Move actor here",
