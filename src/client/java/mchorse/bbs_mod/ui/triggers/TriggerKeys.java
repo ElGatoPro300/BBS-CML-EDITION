@@ -41,4 +41,5 @@ public class TriggerKeys
     public static final IKey POS2 = L10n.lang("bbs.ui.trigger_blocks.pos2");
     public static final IKey REGION_OFFSET = L10n.lang("bbs.ui.trigger_blocks.region_offset");
     public static final IKey REGION_SIZE = L10n.lang("bbs.ui.trigger_blocks.region_size");
+    public static final IKey PICK_BLOCK = L10n.lang("bbs.ui.trigger_blocks.pick_block");
 }

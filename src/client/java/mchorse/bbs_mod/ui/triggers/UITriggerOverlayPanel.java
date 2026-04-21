@@ -16,6 +16,11 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIEditorOverlayPanel;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Colors;
+import mchorse.bbs_mod.blocks.entities.ModelBlockEntity;
+import mchorse.bbs_mod.client.BBSRendering;
+import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
+import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlayPanel;
+import mchorse.bbs_mod.ui.model_blocks.UIModelBlockEntityList;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.player.PlayerEntity;
 
@@ -229,8 +234,34 @@ public class UITriggerOverlayPanel extends UIEditorOverlayPanel<Trigger>
             z.setValue(item.z.get());
             z.integer();
 
+            UIButton pickBlock = new UIButton(TriggerKeys.PICK_BLOCK, (b) ->
+            {
+                UIOverlayPanel panel = new UIOverlayPanel(TriggerKeys.PICK_BLOCK);
+                UIModelBlockEntityList modelBlocks = new UIModelBlockEntityList((l) ->
+                {
+                    ModelBlockEntity entity = l.get(0);
+
+                    item.x.set(entity.getPos().getX());
+                    item.y.set(entity.getPos().getY());
+                    item.z.set(entity.getPos().getZ());
+
+                    x.setValue(entity.getPos().getX());
+                    y.setValue(entity.getPos().getY());
+                    z.setValue(entity.getPos().getZ());
+
+                    panel.close();
+                });
+
+                modelBlocks.background().add(BBSRendering.capturedModelBlocks);
+                modelBlocks.relative(panel.content).w(1F).h(1F);
+                panel.content.add(modelBlocks);
+
+                UIOverlay.addOverlay(this.getContext(), panel, 200, 250);
+            });
+
             this.editor.add(UI.label(TriggerKeys.ACTION_BLOCK_POS));
             this.editor.add(UI.row(x, y, z));
+            this.editor.add(pickBlock);
             this.editor.add(UI.label(TriggerKeys.ACTION_BLOCK_FORM), UI.row(pick, edit));
         }
     }
