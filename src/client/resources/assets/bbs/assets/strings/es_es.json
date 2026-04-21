@@ -382,6 +382,8 @@
     "bbs.ui.camera.clips.bbs:slot_8": "Slot 9",
     "bbs.ui.camera.clips.bbs:health": "Vida",
     "bbs.ui.camera.clips.bbs:health_container": "Contenedor de vida",
+    "bbs.ui.camera.clips.bbs:absorption": "Absorción",
+    "bbs.ui.camera.clips.bbs:absorption_container": "Contenedor de absorción",
     "bbs.ui.camera.clips.bbs:heart_type": "Tipo de corazón",
     "bbs.ui.camera.clips.bbs:heart_normal": "Normal",
     "bbs.ui.camera.clips.bbs:heart_poisoned": "Veneno",

@@ -29,6 +29,8 @@ public class HotbarClip extends CameraClip
     public final KeyframeChannel<ItemStack> slot8 = new KeyframeChannel<>("slot_8", KeyframeFactories.ITEM_STACK);
     public final KeyframeChannel<Double> health = new KeyframeChannel<>("health", KeyframeFactories.DOUBLE);
     public final KeyframeChannel<Double> healthContainer = new KeyframeChannel<>("health_container", KeyframeFactories.DOUBLE);
+    public final KeyframeChannel<Double> absorption = new KeyframeChannel<>("absorption", KeyframeFactories.DOUBLE);
+    public final KeyframeChannel<Double> absorptionContainer = new KeyframeChannel<>("absorption_container", KeyframeFactories.DOUBLE);
     public final KeyframeChannel<Integer> heartType = new KeyframeChannel<>("heart_type", KeyframeFactories.INTEGER);
     public final KeyframeChannel<Boolean> hardcore = new KeyframeChannel<>("hardcore", KeyframeFactories.BOOLEAN);
     public final KeyframeChannel<Double> armor = new KeyframeChannel<>("armor", KeyframeFactories.DOUBLE);
@@ -46,7 +48,7 @@ public class HotbarClip extends CameraClip
         this.channels = new KeyframeChannel[] {
             this.selectedSlot,
             this.slot0, this.slot1, this.slot2, this.slot3, this.slot4, this.slot5, this.slot6, this.slot7, this.slot8,
-            this.health, this.healthContainer, this.heartType, this.hardcore, this.armor, this.hunger, this.hungerEffect, this.experience, this.experienceLevel,
+            this.health, this.healthContainer, this.absorption, this.absorptionContainer, this.heartType, this.hardcore, this.armor, this.hunger, this.hungerEffect, this.experience, this.experienceLevel,
             this.x, this.y, this.scale
         };
 
@@ -58,6 +60,8 @@ public class HotbarClip extends CameraClip
         this.selectedSlot.insert(0, 0);
         this.health.insert(0, 20D);
         this.healthContainer.insert(0, 20D);
+        this.absorption.insert(0, 0D);
+        this.absorptionContainer.insert(0, 0D);
         this.heartType.insert(0, HotbarState.HEART_NORMAL);
         this.hardcore.insert(0, false);
         this.armor.insert(0, 0D);
@@ -100,6 +104,8 @@ public class HotbarClip extends CameraClip
         state.items[8] = this.copyItem(this.slot8.interpolate(t));
         state.healthContainer = this.clampHealthContainer(this.healthContainer.interpolate(t));
         state.health = this.clampHealth(this.health.interpolate(t), state.healthContainer);
+        state.absorptionContainer = this.clampHealthContainer(this.absorptionContainer.interpolate(t));
+        state.absorption = this.clampHealth(this.absorption.interpolate(t), state.absorptionContainer);
         state.heartType = this.clampHeartType(this.heartType.interpolate(t));
         state.hardcore = this.interpolateHardcore(t);
         state.armor = this.clampStat(this.armor.interpolate(t));

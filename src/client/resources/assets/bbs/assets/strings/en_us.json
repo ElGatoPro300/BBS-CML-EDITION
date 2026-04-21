@@ -381,6 +381,8 @@
     "bbs.ui.camera.clips.bbs:slot_8": "Slot 9",
     "bbs.ui.camera.clips.bbs:health": "Health",
     "bbs.ui.camera.clips.bbs:health_container": "Health container",
+    "bbs.ui.camera.clips.bbs:absorption": "Absorption",
+    "bbs.ui.camera.clips.bbs:absorption_container": "Absorption container",
     "bbs.ui.camera.clips.bbs:heart_type": "Heart type",
     "bbs.ui.camera.clips.bbs:heart_normal": "Normal",
     "bbs.ui.camera.clips.bbs:heart_poisoned": "Poison",

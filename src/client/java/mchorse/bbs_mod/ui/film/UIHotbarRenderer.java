@@ -115,14 +115,23 @@ public class UIHotbarRenderer
         Identifier container = hotbar.hardcore ? HEART_HARDCORE_CONTAINER : HEART_CONTAINER;
         Identifier heartHalf = HEART_HALVES[heartType][hardcore];
         Identifier heartFull = HEART_FULLS[heartType][hardcore];
+        Identifier absorptionHalf = HEART_HALVES[HotbarState.HEART_ABSORBING][hardcore];
+        Identifier absorptionFull = HEART_FULLS[HotbarState.HEART_ABSORBING][hardcore];
         int healthSlots = MathHelper.ceil(MathHelper.clamp(hotbar.healthContainer, 0F, MAX_HEALTH_CONTAINER) / 2F);
         healthSlots = MathHelper.clamp(healthSlots, 0, MAX_HEALTH_ROWS * 10);
         int healthRows = Math.max(1, Math.min(MAX_HEALTH_ROWS, (healthSlots + 9) / 10));
+        int absorptionSlots = MathHelper.ceil(MathHelper.clamp(hotbar.absorptionContainer, 0F, MAX_HEALTH_CONTAINER) / 2F);
+        absorptionSlots = MathHelper.clamp(absorptionSlots, 0, MAX_HEALTH_ROWS * 10);
+        int absorptionRows = absorptionSlots <= 0 ? 0 : Math.max(1, Math.min(MAX_HEALTH_ROWS, (absorptionSlots + 9) / 10));
 
         renderBar(batcher, hotbar.health, container, heartHalf, heartFull, 0, barsY, healthSlots);
+        if (absorptionSlots > 0)
+        {
+            renderBar(batcher, hotbar.absorption, container, absorptionHalf, absorptionFull, 0, barsY - healthRows * 10, absorptionSlots);
+        }
         if (hotbar.armor > 0F)
         {
-            renderBar(batcher, hotbar.armor, ARMOR_EMPTY, ARMOR_HALF, ARMOR_FULL, 0, barsY - healthRows * 10, 10);
+            renderBar(batcher, hotbar.armor, ARMOR_EMPTY, ARMOR_HALF, ARMOR_FULL, 0, barsY - (healthRows + absorptionRows) * 10, 10);
         }
         Identifier foodEmpty = hotbar.hungerEffect ? FOOD_EMPTY_HUNGER : FOOD_EMPTY;
         Identifier foodHalf = hotbar.hungerEffect ? FOOD_HALF_HUNGER : FOOD_HALF;

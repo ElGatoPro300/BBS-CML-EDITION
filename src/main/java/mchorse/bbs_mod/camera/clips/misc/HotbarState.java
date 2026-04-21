@@ -17,6 +17,8 @@ public class HotbarState
     public boolean hungerEffect;
     public float health;
     public float healthContainer;
+    public float absorption;
+    public float absorptionContainer;
     public float armor;
     public float hunger;
     public float experience;
