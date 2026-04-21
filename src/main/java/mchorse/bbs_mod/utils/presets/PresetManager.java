@@ -12,6 +12,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 
 public class PresetManager
 {
@@ -38,9 +39,40 @@ public class PresetManager
         return this.folder;
     }
 
+    private static String normalizePath(String path)
+    {
+        if (path == null)
+        {
+            return "";
+        }
+
+        String normalized = path.trim().replace('\\', '/');
+
+        while (normalized.startsWith("/"))
+        {
+            normalized = normalized.substring(1);
+        }
+
+        while (normalized.endsWith("/"))
+        {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+
+        return normalized;
+    }
+
     private File getPresetFile(String id)
     {
-        return new File(this.folder, id + ".json");
+        String normalized = normalizePath(id);
+
+        return new File(this.folder, normalized + ".json");
+    }
+
+    private File getDirectory(String directory)
+    {
+        String normalized = normalizePath(directory);
+
+        return normalized.isEmpty() ? this.folder : new File(this.folder, normalized);
     }
 
     public boolean exists(String id)
@@ -89,7 +121,14 @@ public class PresetManager
         this.folder.mkdirs();
 
         File file = this.getPresetFile(id);
-        File tempFile = new File(this.folder, id + ".json.tmp");
+        File parent = file.getParentFile();
+
+        if (parent != null)
+        {
+            parent.mkdirs();
+        }
+
+        File tempFile = new File(parent == null ? this.folder : parent, file.getName() + ".tmp");
 
         if (!DataToString.writeSilently(tempFile, mapType, true))
         {
@@ -205,8 +244,52 @@ public class PresetManager
 
     public List<String> getKeys()
     {
+        ArrayList<String> keys = new ArrayList<>();
+
+        this.collectKeysRecursive(this.folder, "", keys);
+        keys.sort(Comparator.comparing((s) -> s.toLowerCase(Locale.ROOT)));
+
+        return keys;
+    }
+
+    public List<String> getKeys(String directory)
+    {
         ArrayList<String> strings = new ArrayList<>();
-        File[] files = this.folder.listFiles();
+        File dir = this.getDirectory(directory);
+        File[] files = dir.listFiles();
+
+        if (files == null)
+        {
+            return strings;
+        }
+
+        String prefix = normalizePath(directory);
+
+        if (!prefix.isEmpty())
+        {
+            prefix += "/";
+        }
+
+        for (File file : files)
+        {
+            String name = file.getName();
+
+            if (file.isFile() && name.endsWith(".json"))
+            {
+                strings.add(prefix + name.substring(0, name.length() - 5));
+            }
+        }
+
+        strings.sort(Comparator.comparing((s) -> s.toLowerCase(Locale.ROOT)));
+
+        return strings;
+    }
+
+    public List<String> getFolders(String directory)
+    {
+        ArrayList<String> strings = new ArrayList<>();
+        File dir = this.getDirectory(directory);
+        File[] files = dir.listFiles();
 
         if (files == null)
         {
@@ -215,16 +298,38 @@ public class PresetManager
 
         for (File file : files)
         {
-            String name = file.getName();
-
-            if (name.endsWith(".json"))
+            if (file.isDirectory())
             {
-                strings.add(name.substring(0, name.length() - 5));
+                strings.add(file.getName());
             }
         }
 
-        strings.sort(Comparator.comparing(String::toLowerCase));
+        strings.sort(Comparator.comparing((s) -> s.toLowerCase(Locale.ROOT)));
 
         return strings;
+    }
+
+    private void collectKeysRecursive(File directory, String prefix, List<String> output)
+    {
+        File[] files = directory.listFiles();
+
+        if (files == null)
+        {
+            return;
+        }
+
+        for (File file : files)
+        {
+            String name = file.getName();
+
+            if (file.isDirectory())
+            {
+                this.collectKeysRecursive(file, prefix + name + "/", output);
+            }
+            else if (name.endsWith(".json"))
+            {
+                output.add(prefix + name.substring(0, name.length() - 5));
+            }
+        }
     }
 }

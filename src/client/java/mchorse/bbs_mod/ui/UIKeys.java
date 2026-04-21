@@ -975,6 +975,9 @@ public class UIKeys
     public static final IKey POSE_TRACKS_ANCHOR_SELECT_BONE_DESCRIPTION = L10n.lang("bbs.ui.replays.bone_anchoring.select_bone_description");
     public static final IKey POSE_TRACKS_ANCHOR_LEGEND = L10n.lang("bbs.ui.replays.bone_anchoring.legend");
     public static final IKey PRESETS_OPEN = L10n.lang("bbs.ui.presets.open");
+    public static final IKey PRESETS_FOLDER_UP = L10n.lang("bbs.ui.presets.folder_up");
+    public static final IKey PRESETS_PAGE_PREVIOUS = L10n.lang("bbs.ui.presets.page_previous");
+    public static final IKey PRESETS_PAGE_NEXT = L10n.lang("bbs.ui.presets.page_next");
     public static final IKey PRESETS_SAVE = L10n.lang("bbs.ui.presets.save");
     public static final IKey PRESETS_SAVE_DESCRIPTION = L10n.lang("bbs.ui.presets.save-description");
     public static final IKey PRESETS_SAVE_TITLE = L10n.lang("bbs.ui.presets.save-title");

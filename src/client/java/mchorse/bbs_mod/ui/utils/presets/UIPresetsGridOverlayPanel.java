@@ -25,6 +25,7 @@ import java.util.Locale;
 
 public class UIPresetsGridOverlayPanel extends UIOverlayPanel
 {
+    private static final String FOLDER_TOKEN_PREFIX = "__folder__:";
     private static final int COLUMNS = 4;
     private static final int ROWS = 4;
     private static final int PAGE_SIZE = COLUMNS * ROWS;
@@ -36,12 +37,14 @@ public class UIPresetsGridOverlayPanel extends UIOverlayPanel
     private final UITextbox search;
     private final PresetCell[] cells = new PresetCell[PAGE_SIZE];
 
-    private final List<String> allPresets = new ArrayList<>();
-    private final List<String> filteredPresets = new ArrayList<>();
+    private final List<PresetEntry> allEntries = new ArrayList<>();
+    private final List<PresetEntry> filteredEntries = new ArrayList<>();
 
+    private String currentFolder = "";
     private String selectedPreset = "";
     private int page;
 
+    private final UIIcon up;
     private final UIIcon prev;
     private final UIIcon next;
     private boolean needsInitialRefresh = true;
@@ -77,6 +80,8 @@ public class UIPresetsGridOverlayPanel extends UIOverlayPanel
 
         UIIcon folder = new UIIcon(Icons.FOLDER, (b) -> UIUtils.openFolder(controller.manager.getFolder()));
         folder.tooltip(UIKeys.PRESETS_OPEN, Direction.LEFT);
+        this.up = new UIIcon(Icons.ARROW_UP, (b) -> this.goUpFolder());
+        this.up.tooltip(UIKeys.PRESETS_FOLDER_UP, Direction.LEFT);
 
         this.next = new UIIcon(Icons.ARROW_RIGHT, (b) ->
         {
@@ -86,7 +91,7 @@ public class UIPresetsGridOverlayPanel extends UIOverlayPanel
                 this.refreshGrid();
             }
         });
-        this.next.tooltip(IKey.raw("Siguiente"), Direction.LEFT);
+        this.next.tooltip(UIKeys.PRESETS_PAGE_NEXT, Direction.LEFT);
 
         this.prev = new UIIcon(Icons.ARROW_LEFT, (b) ->
         {
@@ -96,9 +101,9 @@ public class UIPresetsGridOverlayPanel extends UIOverlayPanel
                 this.refreshGrid();
             }
         });
-        this.prev.tooltip(IKey.raw("Anterior"), Direction.LEFT);
+        this.prev.tooltip(UIKeys.PRESETS_PAGE_PREVIOUS, Direction.LEFT);
 
-        this.icons.add(save, folder, this.prev, this.next);
+        this.icons.add(save, folder, this.up, this.prev, this.next);
 
         this.reloadPresets();
     }
@@ -128,7 +133,7 @@ public class UIPresetsGridOverlayPanel extends UIOverlayPanel
 
         UIPromptOverlayPanel pane = new UIPromptOverlayPanel(UIKeys.PRESETS_SAVE_TITLE, UIKeys.PRESETS_SAVE_DESCRIPTION, (t) ->
         {
-            this.controller.manager.save(t, type);
+            this.controller.manager.save(this.joinPath(this.currentFolder, t), type);
             this.reloadPresets();
         });
 
@@ -140,6 +145,13 @@ public class UIPresetsGridOverlayPanel extends UIOverlayPanel
     {
         if (presetId == null || presetId.isEmpty())
         {
+            return;
+        }
+
+        if (this.isFolderToken(presetId))
+        {
+            this.enterFolder(this.folderPathFromToken(presetId));
+
             return;
         }
 
@@ -164,8 +176,20 @@ public class UIPresetsGridOverlayPanel extends UIOverlayPanel
 
     private void reloadPresets()
     {
-        this.allPresets.clear();
-        this.allPresets.addAll(this.controller.manager.getKeys());
+        this.allEntries.clear();
+
+        for (String folderName : this.controller.manager.getFolders(this.currentFolder))
+        {
+            String folderPath = this.joinPath(this.currentFolder, folderName);
+            this.allEntries.add(PresetEntry.folder(folderPath, folderName));
+        }
+
+        for (String presetId : this.controller.manager.getKeys(this.currentFolder))
+        {
+            this.allEntries.add(PresetEntry.preset(presetId, this.baseName(presetId)));
+        }
+
+        this.updateTitle();
         this.setFilter(this.search.textbox.getText());
     }
 
@@ -173,13 +197,32 @@ public class UIPresetsGridOverlayPanel extends UIOverlayPanel
     {
         String filter = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
 
-        this.filteredPresets.clear();
+        this.filteredEntries.clear();
 
-        for (String preset : this.allPresets)
+        if (filter.isEmpty())
         {
-            if (filter.isEmpty() || preset.toLowerCase(Locale.ROOT).contains(filter))
+            this.filteredEntries.addAll(this.allEntries);
+        }
+        else
+        {
+            String prefix = this.currentFolder.isEmpty() ? "" : this.currentFolder + "/";
+
+            for (String presetId : this.controller.manager.getKeys())
             {
-                this.filteredPresets.add(preset);
+                if (!prefix.isEmpty() && !presetId.startsWith(prefix))
+                {
+                    continue;
+                }
+
+                String relativePath = prefix.isEmpty() ? presetId : presetId.substring(prefix.length());
+                String basename = this.baseName(relativePath);
+                String loweredPath = relativePath.toLowerCase(Locale.ROOT);
+                String loweredName = basename.toLowerCase(Locale.ROOT);
+
+                if (loweredPath.contains(filter) || loweredName.contains(filter))
+                {
+                    this.filteredEntries.add(PresetEntry.preset(presetId, relativePath));
+                }
             }
         }
 
@@ -202,15 +245,25 @@ public class UIPresetsGridOverlayPanel extends UIOverlayPanel
             int index = start + i;
             PresetCell cell = this.cells[i];
 
-            if (index >= 0 && index < this.filteredPresets.size())
+            if (index >= 0 && index < this.filteredEntries.size())
             {
-                String presetId = this.filteredPresets.get(index);
-                MapType data = this.controller.manager.load(presetId);
-                int trackerMask = this.collectTrackerMask(data);
+                PresetEntry entry = this.filteredEntries.get(index);
 
                 cell.setVisible(true);
-                cell.bind(presetId, data, trackerMask);
-                cell.setSelected(presetId.equals(this.selectedPreset));
+
+                if (entry.folder)
+                {
+                    cell.bindFolder(this.toFolderToken(entry.path), entry.displayName);
+                    cell.setSelected(false);
+                }
+                else
+                {
+                    MapType data = this.controller.manager.load(entry.path);
+                    int trackerMask = this.collectTrackerMask(data);
+
+                    cell.bindPreset(entry.path, entry.displayName, data, trackerMask);
+                    cell.setSelected(entry.path.equals(this.selectedPreset));
+                }
             }
             else
             {
@@ -234,6 +287,7 @@ public class UIPresetsGridOverlayPanel extends UIOverlayPanel
 
         this.prev.setEnabled(this.canPrev());
         this.next.setEnabled(this.canNext());
+        this.up.setEnabled(!this.currentFolder.isEmpty());
     }
 
     private int collectTrackerMask(MapType data)
@@ -302,7 +356,104 @@ public class UIPresetsGridOverlayPanel extends UIOverlayPanel
 
     private boolean canNext()
     {
-        return (this.page + 1) * PAGE_SIZE < this.filteredPresets.size();
+        return (this.page + 1) * PAGE_SIZE < this.filteredEntries.size();
+    }
+
+    private void enterFolder(String folderPath)
+    {
+        this.currentFolder = this.normalizePath(folderPath);
+        this.selectedPreset = "";
+        this.page = 0;
+        this.reloadPresets();
+    }
+
+    private void goUpFolder()
+    {
+        if (this.currentFolder.isEmpty())
+        {
+            return;
+        }
+
+        int slash = this.currentFolder.lastIndexOf('/');
+
+        this.enterFolder(slash >= 0 ? this.currentFolder.substring(0, slash) : "");
+    }
+
+    private String normalizePath(String path)
+    {
+        if (path == null)
+        {
+            return "";
+        }
+
+        String normalized = path.trim().replace('\\', '/');
+
+        while (normalized.startsWith("/"))
+        {
+            normalized = normalized.substring(1);
+        }
+
+        while (normalized.endsWith("/"))
+        {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+
+        return normalized;
+    }
+
+    private String joinPath(String folder, String name)
+    {
+        String base = this.normalizePath(folder);
+        String leaf = this.normalizePath(name);
+
+        if (base.isEmpty())
+        {
+            return leaf;
+        }
+
+        if (leaf.isEmpty())
+        {
+            return base;
+        }
+
+        return base + "/" + leaf;
+    }
+
+    private String baseName(String path)
+    {
+        String normalized = this.normalizePath(path);
+        int slash = normalized.lastIndexOf('/');
+
+        return slash >= 0 ? normalized.substring(slash + 1) : normalized;
+    }
+
+    private String toFolderToken(String folderPath)
+    {
+        return FOLDER_TOKEN_PREFIX + this.normalizePath(folderPath);
+    }
+
+    private boolean isFolderToken(String id)
+    {
+        return id.startsWith(FOLDER_TOKEN_PREFIX);
+    }
+
+    private String folderPathFromToken(String token)
+    {
+        return token.substring(FOLDER_TOKEN_PREFIX.length());
+    }
+
+    private void updateTitle()
+    {
+        String base = UIKeys.PRESETS_TITLE.get();
+
+        if (this.currentFolder.isEmpty())
+        {
+            this.title.label = IKey.raw(base);
+
+            return;
+        }
+
+        this.title.label = IKey.raw(base + " > " + this.currentFolder.replace("/", " > "));
     }
 
     private void layoutCells()
@@ -372,6 +523,8 @@ public class UIPresetsGridOverlayPanel extends UIOverlayPanel
         private final UIElement previewElement;
 
         private String presetId = "";
+        private String label = "";
+        private boolean folder;
         private boolean selected;
         private int trackerMask;
         private final PresetIndicator indicatorTransform;
@@ -419,12 +572,19 @@ public class UIPresetsGridOverlayPanel extends UIOverlayPanel
             this.selected = selected;
         }
 
-        public void bind(String presetId, MapType data, int trackerMask)
+        public void bindPreset(String presetId, String label, MapType data, int trackerMask)
         {
             this.presetId = presetId == null ? "" : presetId;
+            this.label = label == null ? "" : label;
+            this.folder = false;
             this.trackerMask = trackerMask;
             this.updateIndicatorVisibility();
             this.layoutIndicators();
+
+            if (this.previewElement != null)
+            {
+                this.previewElement.setVisible(true);
+            }
 
             if (this.preview != null && data != null)
             {
@@ -432,11 +592,38 @@ public class UIPresetsGridOverlayPanel extends UIOverlayPanel
             }
         }
 
+        public void bindFolder(String folderToken, String label)
+        {
+            this.presetId = folderToken == null ? "" : folderToken;
+            this.label = label == null ? "" : label;
+            this.folder = true;
+            this.trackerMask = 0;
+            this.updateIndicatorVisibility();
+            this.layoutIndicators();
+
+            if (this.previewElement != null)
+            {
+                this.previewElement.setVisible(false);
+            }
+
+            if (this.preview != null)
+            {
+                this.preview.reset();
+            }
+        }
+
         public void unbind()
         {
             this.presetId = "";
+            this.label = "";
+            this.folder = false;
             this.trackerMask = 0;
             this.updateIndicatorVisibility();
+
+            if (this.previewElement != null)
+            {
+                this.previewElement.setVisible(true);
+            }
 
             if (this.preview != null)
             {
@@ -480,23 +667,29 @@ public class UIPresetsGridOverlayPanel extends UIOverlayPanel
         {
             int color = this.selected
                 ? Colors.A50 + BBSSettings.primaryColor.get()
-                : Colors.A50 + Colors.DARKEST_GRAY;
+                : Colors.A50 + (this.folder ? Colors.DARKER_GRAY : Colors.DARKEST_GRAY);
 
             this.renderTrackerIndicators(context);
 
             this.area.render(context.batcher, color);
             context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), this.selected ? Colors.WHITE : Colors.A25);
 
+            if (this.folder)
+            {
+                context.batcher.icon(Icons.FOLDER, Colors.WHITE, this.area.mx(), this.area.my() - 4, 0.5F, 0.5F);
+            }
+
             super.render(context);
 
             if (!this.presetId.isEmpty())
             {
                 FontRenderer font = context.batcher.getFont();
-                String label = font.limitToWidth(this.presetId, this.area.w - 6);
-                int x = this.area.mx(font.getWidth(label));
+                String visibleLabel = this.folder ? "[DIR] " + this.label : this.label;
+                String line = font.limitToWidth(visibleLabel, this.area.w - 6);
+                int x = this.area.mx(font.getWidth(line));
                 int y = this.area.ey() - font.getHeight() - 3;
 
-                context.batcher.text(label, x, y, Colors.WHITE);
+                context.batcher.text(line, x, y, Colors.WHITE);
             }
         }
 
@@ -559,6 +752,30 @@ public class UIPresetsGridOverlayPanel extends UIOverlayPanel
             {
                 this.indicatorPoseToLimbs.xy(x, y).wh(size, size);
             }
+        }
+    }
+
+    private static class PresetEntry
+    {
+        public final boolean folder;
+        public final String path;
+        public final String displayName;
+
+        private PresetEntry(boolean folder, String path, String displayName)
+        {
+            this.folder = folder;
+            this.path = path;
+            this.displayName = displayName;
+        }
+
+        public static PresetEntry folder(String path, String displayName)
+        {
+            return new PresetEntry(true, path, displayName);
+        }
+
+        public static PresetEntry preset(String path, String displayName)
+        {
+            return new PresetEntry(false, path, displayName);
         }
     }
 
