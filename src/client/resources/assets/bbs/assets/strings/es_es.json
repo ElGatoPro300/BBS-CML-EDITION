@@ -1020,6 +1020,7 @@
     "bbs.ui.item_stack.context.options": "Más opciones del item...",
     "bbs.ui.item_stack.context.paste": "Pegar el item principal del jugador",
     "bbs.ui.item_stack.context.reset": "Restablecer stack de item",
+    "bbs.ui.item_stack.count": "Cantidad de items",
     "bbs.ui.keyframes.change_color": "Cambiar el color del fotograma clave...",
     "bbs.ui.keyframes.change_shape": "Cambiar la forma del fotograma clave...",
     "bbs.ui.keyframes.context.adjust_values": "Ajustar valores",

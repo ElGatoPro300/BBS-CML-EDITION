@@ -1023,6 +1023,7 @@
     "bbs.ui.item_stack.context.options": "More item options...",
     "bbs.ui.item_stack.context.paste": "Paste player's main item",
     "bbs.ui.item_stack.context.reset": "Reset item stack",
+    "bbs.ui.item_stack.count": "Item count",
     "bbs.ui.keyframes.change_color": "Change keyframe's color...",
     "bbs.ui.keyframes.change_shape": "Change keyframe's shape...",
     "bbs.ui.keyframes.context.adjust_values": "Adjust values",

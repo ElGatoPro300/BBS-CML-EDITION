@@ -103,6 +103,9 @@ public class UIHotbarRenderer
         /* HUD layers must ignore world depth to avoid bottom clipping against terrain. */
         RenderSystem.disableDepthTest();
         RenderSystem.depthMask(false);
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        batcher.getContext().setShaderColor(1F, 1F, 1F, alpha);
         RenderSystem.setShaderColor(1F, 1F, 1F, alpha);
 
         batcher.getContext().drawGuiTexture(HOTBAR, 0, 0, 182, 22);
@@ -154,7 +157,7 @@ public class UIHotbarRenderer
             String level = Integer.toString(hotbar.experienceLevel);
             int levelX = (182 - batcher.getFont().getWidth(level)) / 2;
 
-            batcher.textShadow(level, levelX, EXPERIENCE_TEXT_Y, HUD_GREEN);
+            batcher.textShadow(level, levelX, EXPERIENCE_TEXT_Y, applyAlpha(HUD_GREEN, alpha));
         }
 
         /* Item glint (enchants) requires depth test in GUI item renderer. */
@@ -179,7 +182,9 @@ public class UIHotbarRenderer
 
         RenderSystem.disableDepthTest();
         RenderSystem.depthMask(false);
+        RenderSystem.disableBlend();
 
+        batcher.getContext().setShaderColor(1F, 1F, 1F, 1F);
         RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
 
         stack.pop();
@@ -264,5 +269,12 @@ public class UIHotbarRenderer
                 batcher.getContext().drawGuiTexture(half, iconX, iconY, 9, 9);
             }
         }
+    }
+
+    private static int applyAlpha(int color, float alpha)
+    {
+        int a = MathHelper.clamp(Math.round(MathHelper.clamp(alpha, 0F, 1F) * 255F), 0, 255);
+
+        return (a << 24) | (color & 0x00FFFFFF);
     }
 }
