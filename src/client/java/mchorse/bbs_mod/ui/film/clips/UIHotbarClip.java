@@ -111,9 +111,7 @@ public class UIHotbarClip extends UIClip<HotbarClip>
             case "hunger" -> UIKeys.C_CLIP.get("bbs:hunger");
             case "experience" -> UIKeys.C_CLIP.get("bbs:experience");
             case "experience_level" -> UIKeys.C_CLIP.get("bbs:experience_level");
-            case "x" -> UIKeys.C_CLIP.get("bbs:x");
-            case "y" -> UIKeys.C_CLIP.get("bbs:y");
-            case "scale" -> UIKeys.C_CLIP.get("bbs:scale");
+            case "layout" -> UIKeys.C_CLIP.get("bbs:layout");
             default -> IKey.constant(id);
         };
     }

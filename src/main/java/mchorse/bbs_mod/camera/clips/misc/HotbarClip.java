@@ -3,15 +3,21 @@ package mchorse.bbs_mod.camera.clips.misc;
 import mchorse.bbs_mod.camera.clips.CameraClip;
 import mchorse.bbs_mod.camera.data.Position;
 import mchorse.bbs_mod.data.types.BaseType;
+import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.utils.clips.Clip;
 import mchorse.bbs_mod.utils.clips.ClipContext;
+import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 import mchorse.bbs_mod.utils.keyframes.factories.KeyframeFactories;
 import net.minecraft.item.ItemStack;
+import org.joml.Vector4f;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeSet;
 
 public class HotbarClip extends CameraClip
 {
@@ -38,18 +44,16 @@ public class HotbarClip extends CameraClip
     public final KeyframeChannel<Boolean> hungerEffect = new KeyframeChannel<>("hunger_effect", KeyframeFactories.BOOLEAN);
     public final KeyframeChannel<Double> experience = new KeyframeChannel<>("experience", KeyframeFactories.DOUBLE);
     public final KeyframeChannel<Integer> experienceLevel = new KeyframeChannel<>("experience_level", KeyframeFactories.INTEGER);
-    public final KeyframeChannel<Double> x = new KeyframeChannel<>("x", KeyframeFactories.DOUBLE);
-    public final KeyframeChannel<Double> y = new KeyframeChannel<>("y", KeyframeFactories.DOUBLE);
-    public final KeyframeChannel<Double> scale = new KeyframeChannel<>("scale", KeyframeFactories.DOUBLE);
+    public final KeyframeChannel<Vector4f> layout = new KeyframeChannel<>("layout", KeyframeFactories.VECTOR4F);
 
     public final KeyframeChannel[] channels;
     public HotbarClip()
     {
         this.channels = new KeyframeChannel[] {
+            this.layout,
             this.selectedSlot,
             this.slot0, this.slot1, this.slot2, this.slot3, this.slot4, this.slot5, this.slot6, this.slot7, this.slot8,
             this.health, this.healthContainer, this.absorption, this.absorptionContainer, this.heartType, this.hardcore, this.armor, this.hunger, this.hungerEffect, this.experience, this.experienceLevel,
-            this.x, this.y, this.scale
         };
 
         for (KeyframeChannel channel : this.channels)
@@ -69,9 +73,7 @@ public class HotbarClip extends CameraClip
         this.hungerEffect.insert(0, false);
         this.experience.insert(0, 0D);
         this.experienceLevel.insert(0, 0);
-        this.x.insert(0, 0D);
-        this.y.insert(0, 0D);
-        this.scale.insert(0, 1D);
+        this.layout.insert(0, new Vector4f(0F, 0F, 1F, 0F));
     }
 
     public static List<HotbarState> getHotbars(ClipContext context)
@@ -113,9 +115,10 @@ public class HotbarClip extends CameraClip
         state.hungerEffect = this.hungerEffect.interpolate(t, false);
         state.experience = this.clampExperience(this.experience.interpolate(t));
         state.experienceLevel = this.clampExperienceLevel(this.experienceLevel.interpolate(t));
-        state.x = this.x.interpolate(t).floatValue();
-        state.y = this.y.interpolate(t).floatValue();
-        state.scale = Math.max(0.05F, this.scale.interpolate(t).floatValue());
+        Vector4f layout = this.layout.interpolate(t, new Vector4f(0F, 0F, 1F, 0F));
+        state.x = layout.x;
+        state.y = layout.y;
+        state.scale = Math.max(0.05F, layout.z);
         state.alpha = alpha;
 
         getHotbars(context).add(state);
@@ -168,9 +171,96 @@ public class HotbarClip extends CameraClip
             {
                 hardcoreData.putString("type", "boolean");
             }
+
+            this.migrateLegacyLayout(map);
         }
 
         super.fromData(data);
+    }
+
+    private void migrateLegacyLayout(MapType map)
+    {
+        if (map.has("layout") || (!map.has("x") && !map.has("y") && !map.has("scale")))
+        {
+            return;
+        }
+
+        KeyframeChannel<Double> legacyX = this.readLegacyDoubleChannel(map.getMap("x", null));
+        KeyframeChannel<Double> legacyY = this.readLegacyDoubleChannel(map.getMap("y", null));
+        KeyframeChannel<Double> legacyScale = this.readLegacyDoubleChannel(map.getMap("scale", null));
+
+        TreeSet<Float> ticks = new TreeSet<>();
+        Map<Float, Keyframe<Double>> xByTick = this.collectByTick(legacyX, ticks);
+        Map<Float, Keyframe<Double>> yByTick = this.collectByTick(legacyY, ticks);
+        Map<Float, Keyframe<Double>> scaleByTick = this.collectByTick(legacyScale, ticks);
+
+        if (ticks.isEmpty())
+        {
+            ticks.add(0F);
+        }
+
+        MapType layoutData = new MapType();
+        ListType keyframes = new ListType();
+
+        layoutData.putString("type", "vector4f");
+        layoutData.put("keyframes", keyframes);
+
+        for (float tick : ticks)
+        {
+            float x = legacyX.interpolate(tick, 0D).floatValue();
+            float y = legacyY.interpolate(tick, 0D).floatValue();
+            float scale = legacyScale.interpolate(tick, 1D).floatValue();
+            Keyframe<Double> source = xByTick.get(tick);
+
+            if (source == null)
+            {
+                source = yByTick.get(tick);
+            }
+
+            if (source == null)
+            {
+                source = scaleByTick.get(tick);
+            }
+
+            MapType keyframeData = source == null ? new MapType() : source.toData().asMap();
+            ListType value = new ListType();
+
+            value.addFloat(x);
+            value.addFloat(y);
+            value.addFloat(scale);
+            value.addFloat(0F);
+
+            keyframeData.putFloat("tick", tick);
+            keyframeData.put("value", value);
+            keyframes.add(keyframeData);
+        }
+
+        map.put("layout", layoutData);
+    }
+
+    private KeyframeChannel<Double> readLegacyDoubleChannel(MapType data)
+    {
+        KeyframeChannel<Double> channel = new KeyframeChannel<>("legacy", KeyframeFactories.DOUBLE);
+
+        if (data != null)
+        {
+            channel.fromData(data);
+        }
+
+        return channel;
+    }
+
+    private Map<Float, Keyframe<Double>> collectByTick(KeyframeChannel<Double> channel, TreeSet<Float> ticks)
+    {
+        Map<Float, Keyframe<Double>> byTick = new HashMap<>();
+
+        for (Keyframe<Double> keyframe : channel.getKeyframes())
+        {
+            ticks.add(keyframe.getTick());
+            byTick.put(keyframe.getTick(), keyframe);
+        }
+
+        return byTick;
     }
 
     @SuppressWarnings("rawtypes")

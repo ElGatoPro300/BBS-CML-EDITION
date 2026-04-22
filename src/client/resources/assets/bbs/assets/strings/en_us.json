@@ -396,6 +396,7 @@
     "bbs.ui.camera.clips.bbs:experience": "Experience",
     "bbs.ui.camera.clips.bbs:experience_level": "Experience level",
     "bbs.ui.camera.clips.bbs:scale": "Scale",
+    "bbs.ui.camera.clips.bbs:layout": "Layout",
     "bbs.ui.camera.clips.bbs:swipe": "Swipe arm",
     "bbs.ui.camera.clips.bbs:tracker": "Tracker",
     "bbs.ui.camera.clips.bbs:translate": "Translate",
