@@ -238,7 +238,9 @@ public class Batcher2D
         Matrix4f matrix4f = this.context.getMatrices().peek().getPositionMatrix();
         BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLE_FAN, VertexFormats.POSITION_COLOR);
 
-        
+        RenderSystem.enableBlend();
+        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
+        builder.begin(VertexFormat.DrawMode.TRIANGLE_FAN, VertexFormats.POSITION_COLOR);
         builder.vertex(matrix4f, x, y, 0F).color(opaque);
 
         for (int i = 0; i <= segments; i ++)
@@ -247,8 +249,6 @@ public class Batcher2D
 
             builder.vertex(matrix4f, (float) (x - Math.cos(a) * radius), (float) (y + Math.sin(a) * radius), 0F).color(shadow);
         }
-        RenderSystem.enableBlend();
-        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
         BufferRenderer.drawWithGlobalProgram(builder.end());
     }
 
@@ -578,14 +578,27 @@ public class Batcher2D
 
     public void textCard(String text, float x, float y, int color, int background, float offset, boolean shadow)
     {
+        if (text == null || text.isEmpty())
+        {
+            return;
+        }
+
         int a = background >> 24 & 0xff;
 
         if (a != 0)
         {
-            this.box(x - offset, y - offset, x + this.font.getWidth(text) + offset - 1, y + this.font.getHeight() + offset, background);
+            int left = (int) Math.floor(x - offset);
+            int top = (int) Math.floor(y - offset);
+            int right = (int) Math.ceil(x + this.font.getWidth(text) + offset - 1F);
+            int bottom = (int) Math.ceil(y + this.font.getHeight() + offset);
+
+            if (right > left && bottom > top)
+            {
+                this.context.fill(left, top, right, bottom, background);
+            }
         }
 
-        this.text(text, x, y, color, shadow);
+        this.context.drawText(this.font.getRenderer(), text, (int) x, (int) y, color, shadow);
     }
 
     public void flush()
