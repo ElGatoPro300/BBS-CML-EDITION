@@ -7,24 +7,33 @@ import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.utils.colors.Colors;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
+import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexFormat;
+import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.VertexFormats;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.function.Supplier;
 
 public class Batcher2D
 {
     private static FontRenderer fontRenderer = new FontRenderer();
+    private static final boolean DISABLE_TEXT_SHADOW_COMPAT =
+        FabricLoader.getInstance().isModLoaded("immediatelyfast") &&
+        FabricLoader.getInstance().isModLoaded("iris");
+    private static Boolean amdGpu;
 
     private DrawContext context;
     private FontRenderer font;
@@ -241,6 +250,8 @@ public class Batcher2D
         Matrix4f matrix4f = this.context.getMatrices().peek().getPositionMatrix();
         BufferBuilder builder = Tessellator.getInstance().getBuffer();
 
+        RenderSystem.enableBlend();
+        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
         builder.begin(VertexFormat.DrawMode.TRIANGLE_FAN, VertexFormats.POSITION_COLOR);
         builder.vertex(matrix4f, x, y, 0F).color(opaque).next();
 
@@ -250,6 +261,8 @@ public class Batcher2D
 
             builder.vertex(matrix4f, (float) (x - Math.cos(a) * radius), (float) (y + Math.sin(a) * radius), 0F).color(shadow).next();
         }
+
+        BufferRenderer.drawWithGlobalProgram(builder.end());
     }
 
     public void dropCircleShadow(int x, int y, int radius, int offset, int segments, int opaque, int shadow)
@@ -508,10 +521,60 @@ public class Batcher2D
 
     public void text(String label, float x, float y, int color, boolean shadow)
     {
+        if (label == null || label.isEmpty())
+        {
+            return;
+        }
+
+        if (DISABLE_TEXT_SHADOW_COMPAT && isAmdGpu())
+        {
+            VertexConsumerProvider.Immediate consumers = VertexConsumerProvider.immediate(Tessellator.getInstance().getBuffer());
+            TextRenderer renderer = this.font.getRenderer();
+
+            RenderSystem.enableBlend();
+            RenderSystem.defaultBlendFunc();
+            renderer.draw(
+                label,
+                x,
+                y,
+                color,
+                false,
+                this.context.getMatrices().peek().getPositionMatrix(),
+                consumers,
+                TextRenderer.TextLayerType.NORMAL,
+                0,
+                LightmapTextureManager.MAX_LIGHT_COORDINATE
+            );
+            consumers.draw();
+
+            return;
+        }
+
         this.context.drawText(this.font.getRenderer(), label, (int) x, (int) y, color, shadow);
         this.context.draw();
 
         RenderSystem.depthFunc(GL11.GL_ALWAYS);
+    }
+
+    private static boolean isAmdGpu()
+    {
+        if (amdGpu == null)
+        {
+            String vendor = GL11.glGetString(GL11.GL_VENDOR);
+
+            if (vendor != null)
+            {
+                String lower = vendor.toLowerCase(Locale.ROOT);
+
+                amdGpu = lower.contains("amd") || lower.contains("ati") || lower.contains("advanced micro devices");
+            }
+            else
+            {
+                amdGpu = false;
+            }
+        }
+
+        return amdGpu;
     }
 
     /* Text helpers */
