@@ -240,7 +240,6 @@ public class Batcher2D
 
         RenderSystem.enableBlend();
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
-        builder.begin(VertexFormat.DrawMode.TRIANGLE_FAN, VertexFormats.POSITION_COLOR);
         builder.vertex(matrix4f, x, y, 0F).color(opaque);
 
         for (int i = 0; i <= segments; i ++)
