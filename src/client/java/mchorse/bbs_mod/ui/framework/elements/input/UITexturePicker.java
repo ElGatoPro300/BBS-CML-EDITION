@@ -75,11 +75,11 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
     public UIIcon folder;
     public UIIcon pixelEdit;
     public UIIcon viewMode;
+    public UIIcon previewSettings;
     public UIFileLinkList picker;
     public UIElement textureHeader;
     public UIElement textureTabs;
     public UIIconTabButton tabFiles;
-    public UIIconTabButton tabEditor;
 
     public UIButton multi;
     public UIFilteredLinkList multiList;
@@ -92,6 +92,8 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
     public UIIcon edit;
 
     public UIElement options;
+    public UIElement texturePreview;
+    public UIElement texturePreviewPopup;
     public UIToggle linear;
     public UIToggle mipmap;
     public UIElement formPreviewArea;
@@ -117,9 +119,25 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
     private static final int CONTENT_Y = HEADER_HEIGHT + 4;
     private static final int TAB_FILES = 0;
     private static final int TAB_EDITOR = 1;
+    private static final int PREVIEW_POPUP_WIDTH = 220;
+    private static final int PREVIEW_POPUP_HEIGHT = 190;
 
     private UICopyPasteController copyPasteController;
     private int activeTab = TAB_FILES;
+    private Link activeEditorTexture;
+    private final List<EditorTabEntry> editorTabs = new ArrayList<>();
+
+    private static class EditorTabEntry
+    {
+        public final Link texture;
+        public final UIIconTabButton tab;
+
+        public EditorTabEntry(Link texture, UIIconTabButton tab)
+        {
+            this.texture = texture;
+            this.tab = tab;
+        }
+    }
 
     public static UITexturePicker open(UIContext context, Link current, Consumer<Link> callback)
     {
@@ -213,9 +231,7 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
             }
         };
         this.textureTabs = new UIElement();
-        this.tabFiles = new UIIconTabButton(IKey.constant("Archivos"), Icons.FOLDER, (b) -> this.setActiveTab(TAB_FILES));
-        this.tabEditor = new UIIconTabButton(IKey.constant("Editor"), Icons.EDIT, (b) -> this.setActiveTab(TAB_EDITOR)).removable((tab) -> this.closePixelEditorTab());
-        this.tabEditor.setVisible(false);
+        this.tabFiles = new UIIconTabButton(UIKeys.TEXTURES_TAB_FILES, Icons.FOLDER, (b) -> this.setActiveTab(TAB_FILES));
         this.text = new UITextbox(1000, (str) -> this.selectCurrent(str.isEmpty() ? null : LinkUtils.create(str)));
         this.text.delayedInput().context((menu) ->
         {
@@ -257,6 +273,8 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
         this.folder = new UIIcon(Icons.FOLDER, (b) -> this.openFolder());
         this.folder.tooltip(UIKeys.TEXTURE_OPEN_FOLDER, Direction.BOTTOM);
         this.pixelEdit = new UIIcon(Icons.EDIT, (b) -> this.togglePixelEditor());
+        this.previewSettings = new UIIcon(Icons.IMAGE, (b) -> this.openTexturePreviewPanel());
+        this.previewSettings.tooltip(UIKeys.TEXTURES_PREVIEW_TOOLTIP, Direction.BOTTOM);
         this.viewMode = new UIIcon(() -> this.picker != null && this.picker.getItemSize() <= UIFileLinkList.VIEW_LIST ? Icons.LIST : Icons.BLOCK, (b) ->
         {
             this.openViewPresetMenu();
@@ -318,7 +336,54 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
             }
         });
         this.options = UI.column(5, 10, this.linear, this.mipmap);
-        this.options.relative(this).xy(1F, 1F).w(148).anchor(1F, 1F);
+        this.texturePreview = new UIElement()
+        {
+            @Override
+            public void render(UIContext context)
+            {
+                this.area.render(context.batcher, Colors.A25);
+                context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), Colors.A50);
+
+                if (UITexturePicker.this.current == null)
+                {
+                    String label = UIKeys.TEXTURES_PREVIEW_EMPTY.get();
+                    FontRenderer font = context.batcher.getFont();
+
+                    context.batcher.textShadow(label, this.area.mx(font.getWidth(label)), this.area.my() - font.getHeight() / 2);
+
+                    return;
+                }
+
+                Texture texture = context.render.getTextures().getTexture(UITexturePicker.this.current);
+                int w = Math.max(1, texture.width);
+                int h = Math.max(1, texture.height);
+                int maxW = Math.max(8, this.area.w - 12);
+                int maxH = Math.max(8, this.area.h - 12);
+                float scale = Math.min(maxW / (float) w, maxH / (float) h);
+                int fw = Math.max(1, Math.round(w * scale));
+                int fh = Math.max(1, Math.round(h * scale));
+                int x = this.area.mx() - fw / 2;
+                int y = this.area.my() - fh / 2;
+
+                context.batcher.iconArea(Icons.CHECKBOARD, x, y, fw, fh);
+                context.batcher.fullTexturedBox(texture, x, y, fw, fh);
+            }
+        };
+        this.texturePreviewPopup = new UIElement()
+        {
+            @Override
+            public void render(UIContext context)
+            {
+                int background = Colors.mulRGB(Colors.CONTROL_BAR, 0.86F);
+
+                this.area.render(context.batcher, background);
+                context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), Colors.A75);
+                context.batcher.box(this.area.x, this.area.y + 1, this.area.ex(), this.area.y + 2, Colors.A50);
+
+                super.render(context);
+            }
+        };
+        this.texturePreviewPopup.setVisible(false);
 
         this.formPreviewArea = new UIElement();
         this.formPreview = new UIFormRenderer();
@@ -342,17 +407,20 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
         this.remove = new UIIcon(Icons.REMOVE, (b) -> this.removeMulti());
         this.edit = new UIIcon(Icons.EDIT, (b) -> this.toggleEditor());
 
-        UIElement icons = UI.row(0, this.viewMode, this.pixelEdit, this.folder, this.close);
+        UIElement icons = UI.row(0, this.viewMode, this.previewSettings, this.pixelEdit, this.folder, this.close);
 
         this.textureHeader.relative(this.right).x(0).y(0).w(1F).h(HEADER_HEIGHT);
         this.textureTabs.relative(this.textureHeader).x(10).y(0).w(0).h(TOP_TABS_HEIGHT).row(0).resize();
         this.tabFiles.w(TAB_WIDTH_FILES).h(TOP_TABS_HEIGHT);
-        this.tabEditor.w(108).h(TOP_TABS_HEIGHT);
-        this.textureTabs.add(this.tabFiles, this.tabEditor);
+        this.textureTabs.add(this.tabFiles);
         this.textureHeader.add(this.textureTabs);
+        this.texturePreviewPopup.relative(this.right).x(1F, -10).y(CONTENT_Y + 2).wh(PREVIEW_POPUP_WIDTH, PREVIEW_POPUP_HEIGHT).anchorX(1F);
+        this.texturePreview.relative(this.texturePreviewPopup).set(8, 8, 0, 0).w(1F, -16).h(1F, -62);
+        this.options.relative(this.texturePreviewPopup).set(8, 0, 0, 42).w(1F, -16).y(1F, -50);
+        this.texturePreviewPopup.add(this.texturePreview, this.options);
 
         icons.row().preferred(0);
-        icons.relative(this.textureHeader).x(1F, -10).y(TOP_ROW_Y).w(80).h(20).anchorX(1F);
+        icons.relative(this.textureHeader).x(1F, -10).y(TOP_ROW_Y).w(100).h(20).anchorX(1F);
 
         this.right.full(this);
         this.text.relative(this.textureHeader).set(10, TOP_ROW_Y, 0, 20).wTo(icons.area);
@@ -368,9 +436,9 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
         this.remove.relative(this.add).set(20, 0, 20, 20);
         this.edit.relative(this.buttons).wh(20, 20).x(1F, -20);
 
-        this.right.add(this.textureHeader, icons, this.text, this.picker, this.formPreviewArea);
+        this.right.add(this.textureHeader, icons, this.text, this.picker, this.formPreviewArea, this.texturePreviewPopup);
         this.buttons.add(this.add, this.remove, this.edit);
-        this.add(this.multi, this.multiList, this.right, this.editor, this.buttons, this.options);
+        this.add(this.multi, this.multiList, this.right, this.editor, this.buttons);
         this.setActiveTab(TAB_FILES);
 
         this.callback = callback;
@@ -500,10 +568,7 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
     {
         boolean wasVisible = this.hasParent();
 
-        if (this.pixelEditor != null)
-        {
-            this.pixelEditor.discardPreviewTextureChanges();
-        }
+        this.closeAllEditorTabs();
 
         this.editor.close();
         this.removeFromParent();
@@ -555,43 +620,178 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
             return;
         }
 
-        if (this.pixelEditor == null)
-        {
-            this.pixelEditor = new UITexturePainter((l) ->
-            {
-                this.selectCurrent(l);
-                this.displayCurrent(l);
-            });
-            this.pixelEditor.withFormPreview(this.formPreviewSupplier);
-            this.pixelEditor.fillTexture(this.current);
-            this.pixelEditor.relative(this.right).set(0, CONTENT_Y, 0, 0).w(1F).h(1F, -CONTENT_Y);
-            this.pixelEditor.resize();
-            this.right.add(this.pixelEditor);
-            this.tabEditor.setVisible(true);
-            this.textureTabs.resize();
-        }
-        else
-        {
-            this.pixelEditor.fillTexture(this.current);
-        }
-
-        this.setActiveTab(TAB_EDITOR);
+        this.ensurePixelEditor();
+        this.openEditorTab(this.current);
     }
 
-    private void closePixelEditorTab()
+    private void ensurePixelEditor()
     {
-        if (this.pixelEditor == null)
+        if (this.pixelEditor != null)
         {
             return;
         }
 
-        this.pixelEditor.discardPreviewTextureChanges();
-        this.pixelEditor.fillTexture(null);
-        this.pixelEditor.removeFromParent();
-        this.pixelEditor = null;
-        this.tabEditor.setVisible(false);
+        this.pixelEditor = new UITexturePainter((l) ->
+        {
+            this.selectCurrent(l);
+            this.openEditorTab(l);
+        });
+        this.pixelEditor.withFormPreview(this.formPreviewSupplier);
+        this.pixelEditor.relative(this.right).set(0, CONTENT_Y, 0, 0).w(1F).h(1F, -CONTENT_Y);
+        this.pixelEditor.resize();
+        this.right.add(this.pixelEditor);
+    }
+
+    private void openEditorTab(Link link)
+    {
+        if (link == null)
+        {
+            return;
+        }
+
+        EditorTabEntry entry = this.findEditorTabByLink(link);
+
+        if (entry == null)
+        {
+            String title = this.getEditorTabTitle(link);
+            UIIconTabButton tab = new UIIconTabButton(IKey.constant(title), Icons.EDIT, (b) -> this.switchEditorTo(link))
+                .removable(this::closeEditorTab);
+
+            tab.w(132).h(TOP_TABS_HEIGHT);
+            this.textureTabs.add(tab);
+            this.textureTabs.resize();
+
+            entry = new EditorTabEntry(link, tab);
+            this.editorTabs.add(entry);
+        }
+
+        this.switchEditorTo(entry.texture);
+    }
+
+    private void switchEditorTo(Link link)
+    {
+        if (link == null)
+        {
+            return;
+        }
+
+        this.activeEditorTexture = link;
+
+        if (this.pixelEditor != null)
+        {
+            this.pixelEditor.fillTexture(link);
+        }
+
+        this.displayCurrent(link);
+        this.setActiveTab(TAB_EDITOR);
+    }
+
+    private void closeEditorTab(UIIconTabButton tab)
+    {
+        int index = this.findEditorTabIndex(tab);
+
+        if (index < 0)
+        {
+            return;
+        }
+
+        EditorTabEntry entry = this.editorTabs.remove(index);
+        boolean wasActive = this.areLinksEqual(entry.texture, this.activeEditorTexture);
+
+        tab.removeFromParent();
+        this.textureTabs.resize();
+
+        if (this.editorTabs.isEmpty())
+        {
+            this.closeAllEditorTabs();
+
+            return;
+        }
+
+        if (wasActive)
+        {
+            int nextIndex = Math.max(0, Math.min(index, this.editorTabs.size() - 1));
+
+            this.switchEditorTo(this.editorTabs.get(nextIndex).texture);
+        }
+        else
+        {
+            this.updateTextureTabs();
+        }
+    }
+
+    private void closeAllEditorTabs()
+    {
+        if (this.pixelEditor != null)
+        {
+            this.pixelEditor.discardPreviewTextureChanges();
+            this.pixelEditor.fillTexture(null);
+            this.pixelEditor.removeFromParent();
+            this.pixelEditor = null;
+        }
+
+        for (EditorTabEntry entry : this.editorTabs)
+        {
+            entry.tab.removeFromParent();
+        }
+
+        this.editorTabs.clear();
+        this.activeEditorTexture = null;
         this.textureTabs.resize();
         this.setActiveTab(TAB_FILES);
+    }
+
+    private EditorTabEntry findEditorTabByLink(Link link)
+    {
+        for (EditorTabEntry entry : this.editorTabs)
+        {
+            if (this.areLinksEqual(entry.texture, link))
+            {
+                return entry;
+            }
+        }
+
+        return null;
+    }
+
+    private int findEditorTabIndex(UIIconTabButton tab)
+    {
+        for (int i = 0; i < this.editorTabs.size(); i++)
+        {
+            if (this.editorTabs.get(i).tab == tab)
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    private boolean areLinksEqual(Link a, Link b)
+    {
+        if (a == b)
+        {
+            return true;
+        }
+
+        if (a == null || b == null)
+        {
+            return false;
+        }
+
+        return a.toString().equals(b.toString());
+    }
+
+    private String getEditorTabTitle(Link link)
+    {
+        String fileName = StringUtils.fileName(link.path);
+
+        if (fileName == null || fileName.isEmpty())
+        {
+            fileName = link.toString();
+        }
+
+        return fileName;
     }
 
     private void setActiveTab(int tab)
@@ -610,7 +810,12 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
         this.multi.setVisible(!editor);
         this.multiList.setVisible(!editor);
         this.buttons.setVisible(!editor);
-        this.options.setVisible(!editor);
+        this.previewSettings.setVisible(files);
+
+        if (!files)
+        {
+            this.texturePreviewPopup.setVisible(false);
+        }
 
         if (this.pixelEditor != null)
         {
@@ -625,10 +830,13 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
         this.tabFiles.background(true);
         this.tabFiles.color(this.activeTab == TAB_FILES ? BBSSettings.primaryColor.get() : 0x2d2d2d);
 
-        if (this.tabEditor.isVisible())
+        for (EditorTabEntry entry : this.editorTabs)
         {
-            this.tabEditor.background(true);
-            this.tabEditor.color(this.activeTab == TAB_EDITOR ? BBSSettings.primaryColor.get() : 0x2d2d2d);
+            entry.tab.background(true);
+
+            boolean selected = this.activeTab == TAB_EDITOR && this.areLinksEqual(entry.texture, this.activeEditorTexture);
+
+            entry.tab.color(selected ? BBSSettings.primaryColor.get() : 0x2d2d2d);
         }
     }
 
@@ -638,12 +846,18 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
 
         this.getContext().replaceContextMenu((menu) ->
         {
-            menu.action(Icons.BLOCK, IKey.constant("Iconos muy grandes"), currentPreset == UIFileLinkList.VIEW_ICONS_VERY_LARGE, () -> this.picker.setItemSize(UIFileLinkList.VIEW_ICONS_VERY_LARGE));
-            menu.action(Icons.BLOCK, IKey.constant("Iconos grandes"), currentPreset == UIFileLinkList.VIEW_ICONS_LARGE, () -> this.picker.setItemSize(UIFileLinkList.VIEW_ICONS_LARGE));
-            menu.action(Icons.BLOCK, IKey.constant("Iconos medianos"), currentPreset == UIFileLinkList.VIEW_ICONS_MEDIUM, () -> this.picker.setItemSize(UIFileLinkList.VIEW_ICONS_MEDIUM));
-            menu.action(Icons.BLOCK, IKey.constant("Iconos pequeños"), currentPreset == UIFileLinkList.VIEW_ICONS_SMALL, () -> this.picker.setItemSize(UIFileLinkList.VIEW_ICONS_SMALL));
-            menu.action(Icons.LIST, IKey.constant("Lista"), currentPreset == UIFileLinkList.VIEW_LIST, () -> this.picker.setItemSize(UIFileLinkList.VIEW_LIST));
+            menu.action(Icons.BLOCK, UIKeys.TEXTURES_VIEW_PRESETS_VERY_LARGE, currentPreset == UIFileLinkList.VIEW_ICONS_VERY_LARGE, () -> this.picker.setItemSize(UIFileLinkList.VIEW_ICONS_VERY_LARGE));
+            menu.action(Icons.BLOCK, UIKeys.TEXTURES_VIEW_PRESETS_LARGE, currentPreset == UIFileLinkList.VIEW_ICONS_LARGE, () -> this.picker.setItemSize(UIFileLinkList.VIEW_ICONS_LARGE));
+            menu.action(Icons.BLOCK, UIKeys.TEXTURES_VIEW_PRESETS_MEDIUM, currentPreset == UIFileLinkList.VIEW_ICONS_MEDIUM, () -> this.picker.setItemSize(UIFileLinkList.VIEW_ICONS_MEDIUM));
+            menu.action(Icons.BLOCK, UIKeys.TEXTURES_VIEW_PRESETS_SMALL, currentPreset == UIFileLinkList.VIEW_ICONS_SMALL, () -> this.picker.setItemSize(UIFileLinkList.VIEW_ICONS_SMALL));
+            menu.action(Icons.LIST, UIKeys.TEXTURES_VIEW_PRESETS_LIST, currentPreset == UIFileLinkList.VIEW_LIST, () -> this.picker.setItemSize(UIFileLinkList.VIEW_LIST));
         });
+    }
+
+    private void openTexturePreviewPanel()
+    {
+        this.texturePreviewPopup.setVisible(!this.texturePreviewPopup.isVisible());
+        this.updateOptions();
     }
 
     private int getCurrentViewPreset()
@@ -800,15 +1014,12 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
 
     protected void updateOptions()
     {
-        if (this.current == null)
-        {
-            this.options.setVisible(false);
-            return;
-        }
+        this.linear.setEnabled(this.current != null);
+        this.mipmap.setEnabled(this.current != null);
+
+        if (this.current == null) return;
 
         Texture texture = BBSModClient.getTextures().getTexture(this.current);
-
-        this.options.setVisible(true);
 
         if (texture != null)
         {
@@ -850,6 +1061,11 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
         if (this.editor.isVisible())
         {
             this.toggleEditor();
+        }
+
+        if (skin instanceof MultiLink)
+        {
+            this.closeAllEditorTabs();
         }
 
         boolean show = skin instanceof MultiLink;
@@ -1086,41 +1302,6 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
                 context.batcher.textShadow(this.typed, x + 2, y + 2);
             }
 
-            Link link = this.current;
-
-            /* Draw preview */
-            if (link != null)
-            {
-                Texture texture = context.render.getTextures().getTexture(link);
-
-                int w = texture.width;
-                int h = texture.height;
-
-                int x = this.area.ex();
-                int y = this.options.area.y;
-                int fw = w;
-                int fh = h;
-
-                if (fw > 128 || fh > 128)
-                {
-                    fw = fh = 128;
-
-                    if (w > h)
-                    {
-                        fh = (int) ((h / (float) w) * fw);
-                    }
-                    else if (h > w)
-                    {
-                        fw = (int) ((w / (float) h) * fh);
-                    }
-                }
-
-                x -= fw + 10;
-                y -= fh;
-
-                context.batcher.iconArea(Icons.CHECKBOARD, x, y, fw, fh);
-                context.batcher.fullTexturedBox(texture, x, y, fw, fh);
-            }
         }
     }
 }

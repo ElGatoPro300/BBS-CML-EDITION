@@ -1253,6 +1253,14 @@ public class UIKeys
     public static final IKey TEXTURES_SAVE = L10n.lang("bbs.ui.textures.save");
     public static final IKey TEXTURES_SAVE_WRONG_PATH = L10n.lang("bbs.ui.textures.save_wrong_path");
     public static final IKey TEXTURES_TOOLTIP = L10n.lang("bbs.ui.textures.tooltip");
+    public static final IKey TEXTURES_VIEW_PRESETS_VERY_LARGE = L10n.lang("bbs.ui.textures.view_presets.very_large");
+    public static final IKey TEXTURES_VIEW_PRESETS_LARGE = L10n.lang("bbs.ui.textures.view_presets.large");
+    public static final IKey TEXTURES_VIEW_PRESETS_MEDIUM = L10n.lang("bbs.ui.textures.view_presets.medium");
+    public static final IKey TEXTURES_VIEW_PRESETS_SMALL = L10n.lang("bbs.ui.textures.view_presets.small");
+    public static final IKey TEXTURES_VIEW_PRESETS_LIST = L10n.lang("bbs.ui.textures.view_presets.list");
+    public static final IKey TEXTURES_PREVIEW_TOOLTIP = L10n.lang("bbs.ui.textures.preview.tooltip");
+    public static final IKey TEXTURES_PREVIEW_EMPTY = L10n.lang("bbs.ui.textures.preview.empty");
+    public static final IKey TEXTURES_TAB_FILES = L10n.lang("bbs.ui.textures.tab.files");
     public static final IKey TEXTURES_VIEWER_BRIGHTNESS = L10n.lang("bbs.ui.textures.viewer.brightness");
     public static final IKey TEXTURES_VIEWER_CONTEXT_COPY_HEX = L10n.lang("bbs.ui.textures.viewer.context.copy_hex");
     public static final IKey TEXTURE_EDITOR_AUTO_SIZE = L10n.lang("bbs.ui.texture.editor.auto_size");
