@@ -11,6 +11,10 @@ import mchorse.bbs_mod.ui.utils.UI;
 
 public class UICommandActionClip extends UIActionClip<CommandActionClip>
 {
+    private static final int BASE_COMMAND_HEIGHT = 72;
+    private static final int COMMAND_LINE_HEIGHT = 12;
+    private static final int COMMAND_PADDING = 20;
+
     public UITextarea<TextLine> command;
 
     public UICommandActionClip(CommandActionClip clip, IUIClipsDelegate editor)
@@ -25,8 +29,6 @@ public class UICommandActionClip extends UIActionClip<CommandActionClip>
 
         this.command = new UITextarea<>((t) -> this.clip.command.set(t.replace("\n", "")))
         {
-            @Override
-
             @Override
             public void writeString(String string)
             {
