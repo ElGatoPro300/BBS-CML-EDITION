@@ -26,6 +26,7 @@ import mchorse.bbs_mod.ui.framework.elements.input.list.UIFileLinkList;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UIFilteredLinkList;
 import mchorse.bbs_mod.ui.framework.elements.input.multilink.UIMultiLinkEditor;
 import mchorse.bbs_mod.ui.framework.elements.input.text.UITextbox;
+import mchorse.bbs_mod.ui.framework.elements.navigation.UIIconTabButton;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIConfirmOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIListOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIMcmetaEditorPanel;
@@ -77,6 +78,10 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
     public UIIcon zoomIn;
     public UIIcon zoomOut;
     public UIFileLinkList picker;
+    public UIElement textureHeader;
+    public UIElement textureTabs;
+    public UIIconTabButton tabFiles;
+    public UIIconTabButton tabEditor;
 
     public UIButton multi;
     public UIFilteredLinkList multiList;
@@ -107,9 +112,16 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
     private Supplier<Form> formPreviewSupplier;
     private static final int FORM_PREVIEW_WIDTH = 150;
     private static final int LIST_ITEM_SIZE_SMALL = 16;
-    private static final int LIST_ITEM_SIZE_LARGE = 48;
+    private static final int TAB_WIDTH_FILES = 88;
+    private static final int TOP_TABS_HEIGHT = 20;
+    private static final int HEADER_HEIGHT = 44;
+    private static final int TOP_ROW_Y = 22;
+    private static final int CONTENT_Y = HEADER_HEIGHT + 4;
+    private static final int TAB_FILES = 0;
+    private static final int TAB_EDITOR = 1;
 
     private UICopyPasteController copyPasteController;
+    private int activeTab = TAB_FILES;
 
     public static UITexturePicker open(UIContext context, Link current, Consumer<Link> callback)
     {
@@ -186,6 +198,26 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
             .canCopy(() -> this.current != null);
 
         this.right = new UIElement();
+        this.textureHeader = new UIElement()
+        {
+            @Override
+            public void render(UIContext context)
+            {
+                int topRowColor = Colors.CONTROL_BAR;
+                int bottomRowColor = Colors.mulRGB(Colors.CONTROL_BAR, 0.86F);
+
+                context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.y + TOP_TABS_HEIGHT, topRowColor);
+                context.batcher.box(this.area.x, this.area.y + TOP_TABS_HEIGHT, this.area.ex(), this.area.ey(), bottomRowColor);
+                context.batcher.box(this.area.x, this.area.y + TOP_TABS_HEIGHT, this.area.ex(), this.area.y + TOP_TABS_HEIGHT + 1, Colors.A50);
+                context.batcher.box(this.area.x, this.area.ey() - 1, this.area.ex(), this.area.ey(), Colors.A75);
+
+                super.render(context);
+            }
+        };
+        this.textureTabs = new UIElement();
+        this.tabFiles = new UIIconTabButton(IKey.constant("Archivos"), Icons.FOLDER, (b) -> this.setActiveTab(TAB_FILES));
+        this.tabEditor = new UIIconTabButton(IKey.constant("Editor"), Icons.EDIT, (b) -> this.setActiveTab(TAB_EDITOR)).removable((tab) -> this.closePixelEditorTab());
+        this.tabEditor.setVisible(false);
         this.text = new UITextbox(1000, (str) -> this.selectCurrent(str.isEmpty() ? null : LinkUtils.create(str)));
         this.text.delayedInput().context((menu) ->
         {
@@ -325,13 +357,20 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
 
         UIElement icons = UI.row(0, this.viewMode, this.zoomOut, this.zoomIn, this.pixelEdit, this.folder, this.close);
 
+        this.textureHeader.relative(this.right).x(0).y(0).w(1F).h(HEADER_HEIGHT);
+        this.textureTabs.relative(this.textureHeader).x(10).y(0).w(0).h(TOP_TABS_HEIGHT).row(0).resize();
+        this.tabFiles.w(TAB_WIDTH_FILES).h(TOP_TABS_HEIGHT);
+        this.tabEditor.w(108).h(TOP_TABS_HEIGHT);
+        this.textureTabs.add(this.tabFiles, this.tabEditor);
+        this.textureHeader.add(this.textureTabs);
+
         icons.row().preferred(0);
-        icons.relative(this).x(1F, -10).y(10).w(140).h(20).anchorX(1F);
+        icons.relative(this.textureHeader).x(1F, -10).y(TOP_ROW_Y).w(140).h(20).anchorX(1F);
 
         this.right.full(this);
-        this.text.relative(this.multi).x(1F, 20).wTo(icons.area).h(20);
-        this.picker.relative(this.right).set(10, 30, 0, 0).w(1, -10).h(1, -30);
-        this.formPreviewArea.relative(this.right).x(1F, -FORM_PREVIEW_WIDTH).y(30).w(FORM_PREVIEW_WIDTH - 10).h(1F, -40);
+        this.text.relative(this.textureHeader).set(10, TOP_ROW_Y, 0, 20).wTo(icons.area);
+        this.picker.relative(this.right).set(10, CONTENT_Y, 0, 0).w(1F, -10).h(1F, -CONTENT_Y);
+        this.formPreviewArea.relative(this.right).x(1F, -FORM_PREVIEW_WIDTH).y(CONTENT_Y).w(FORM_PREVIEW_WIDTH - 10).h(1F, -(CONTENT_Y + 10));
 
         this.multi.relative(this).set(10, 10, 100, 20);
         this.multiList.relative(this).set(10, 35, 100, 0).hTo(this.buttons.getFlex());
@@ -342,9 +381,10 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
         this.remove.relative(this.add).set(20, 0, 20, 20);
         this.edit.relative(this.buttons).wh(20, 20).x(1F, -20);
 
-        this.right.add(icons, this.text, this.picker, this.formPreviewArea);
+        this.right.add(this.textureHeader, icons, this.text, this.picker, this.formPreviewArea);
         this.buttons.add(this.add, this.remove, this.edit);
         this.add(this.multi, this.multiList, this.right, this.editor, this.buttons, this.options);
+        this.setActiveTab(TAB_FILES);
         this.updateViewButtons();
 
         this.callback = callback;
@@ -538,37 +578,83 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
             });
             this.pixelEditor.withFormPreview(this.formPreviewSupplier);
             this.pixelEditor.fillTexture(this.current);
-
-            UIIcon close = new UIIcon(Icons.CLOSE, (b) -> this.togglePixelEditor());
-
-            this.pixelEditor.savebar.add(close);
-            this.pixelEditor.full(this);
+            this.pixelEditor.relative(this.right).set(0, CONTENT_Y, 0, 0).w(1F).h(1F, -CONTENT_Y);
             this.pixelEditor.resize();
-
-            this.add(this.pixelEditor);
+            this.right.add(this.pixelEditor);
+            this.tabEditor.setVisible(true);
+            this.textureTabs.resize();
         }
         else
         {
-            this.pixelEditor.discardPreviewTextureChanges();
-            this.pixelEditor.fillTexture(null);
-            this.pixelEditor.removeFromParent();
-            this.pixelEditor = null;
+            this.pixelEditor.fillTexture(this.current);
         }
 
-        this.right.setVisible(this.pixelEditor == null);
-        this.multi.setVisible(this.pixelEditor == null);
-        this.options.setVisible(this.pixelEditor == null);
-        this.viewMode.setVisible(this.pixelEditor == null);
-        this.zoomOut.setVisible(this.pixelEditor == null);
-        this.zoomIn.setVisible(this.pixelEditor == null);
+        this.setActiveTab(TAB_EDITOR);
+    }
+
+    private void closePixelEditorTab()
+    {
+        if (this.pixelEditor == null)
+        {
+            return;
+        }
+
+        this.pixelEditor.discardPreviewTextureChanges();
+        this.pixelEditor.fillTexture(null);
+        this.pixelEditor.removeFromParent();
+        this.pixelEditor = null;
+        this.tabEditor.setVisible(false);
+        this.textureTabs.resize();
+        this.setActiveTab(TAB_FILES);
+    }
+
+    private void setActiveTab(int tab)
+    {
+        this.activeTab = tab;
+
+        boolean files = tab == TAB_FILES;
+        boolean editor = tab == TAB_EDITOR && this.pixelEditor != null;
+
+        this.text.setVisible(files);
+        this.picker.setVisible(files);
+        this.formPreviewArea.setVisible(false);
+        this.viewMode.setVisible(files);
+        this.zoomOut.setVisible(files);
+        this.zoomIn.setVisible(files);
+        this.pixelEdit.setVisible(files);
+        this.folder.setVisible(files);
+        this.multi.setVisible(!editor);
+        this.multiList.setVisible(!editor);
+        this.buttons.setVisible(!editor);
+        this.options.setVisible(!editor);
+
+        if (this.pixelEditor != null)
+        {
+            this.pixelEditor.setVisible(editor);
+        }
+
+        this.updateTextureTabs();
+        this.updateViewButtons();
+    }
+
+    private void updateTextureTabs()
+    {
+        this.tabFiles.background(true);
+        this.tabFiles.color(this.activeTab == TAB_FILES ? BBSSettings.primaryColor.get() : 0x2d2d2d);
+
+        if (this.tabEditor.isVisible())
+        {
+            this.tabEditor.background(true);
+            this.tabEditor.color(this.activeTab == TAB_EDITOR ? BBSSettings.primaryColor.get() : 0x2d2d2d);
+        }
     }
 
     private void updateViewButtons()
     {
-        boolean largeView = this.picker != null && this.picker.isLargeViewEnabled();
+        boolean largeView = this.activeTab == TAB_FILES && this.picker != null && this.picker.isLargeViewEnabled();
 
-        this.zoomOut.setEnabled(largeView && this.picker.getItemSize() > LIST_ITEM_SIZE_SMALL);
-        this.zoomIn.setEnabled(largeView && this.picker.getItemSize() < LIST_ITEM_SIZE_LARGE);
+        this.zoomOut.setEnabled(largeView && this.picker.canDecreaseViewSize());
+        this.zoomIn.setEnabled(largeView && this.picker.canIncreaseViewSize());
     }
 
     public void updateFolderButton()

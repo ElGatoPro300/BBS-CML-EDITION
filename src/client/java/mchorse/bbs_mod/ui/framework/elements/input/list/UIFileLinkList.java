@@ -18,7 +18,10 @@ import java.util.function.Predicate;
 public class UIFileLinkList extends UIList<UIFileLinkList.FileLink>
 {
     private static final int MIN_ITEM_SIZE = 16;
+    private static final int SMALL_ITEM_SIZE = 24;
+    private static final int MEDIUM_ITEM_SIZE = 32;
     private static final int MAX_ITEM_SIZE = 48;
+    private static final int[] VIEW_STEPS = new int[] {MIN_ITEM_SIZE, SMALL_ITEM_SIZE, MEDIUM_ITEM_SIZE, MAX_ITEM_SIZE};
     private static final int GRID_PADDING = 4;
     private static final int GRID_GAP = 6;
     private static final int GRID_TITLE_HEIGHT = 12;
@@ -63,12 +66,24 @@ public class UIFileLinkList extends UIList<UIFileLinkList.FileLink>
 
     public void toggleLargeView()
     {
-        this.setItemSize(this.itemSize <= MIN_ITEM_SIZE ? 32 : MIN_ITEM_SIZE);
+        this.setItemSize(this.itemSize <= MIN_ITEM_SIZE ? MEDIUM_ITEM_SIZE : MIN_ITEM_SIZE);
     }
 
     public void changeItemSize(int delta)
     {
-        this.setItemSize(this.itemSize + delta);
+        if (delta == 0)
+        {
+            return;
+        }
+
+        if (delta > 0)
+        {
+            this.setItemSize(this.getStepSize(true));
+        }
+        else
+        {
+            this.setItemSize(this.getStepSize(false));
+        }
     }
 
     public void setItemSize(int size)
@@ -87,6 +102,16 @@ public class UIFileLinkList extends UIList<UIFileLinkList.FileLink>
     public boolean isLargeViewEnabled()
     {
         return this.itemSize > MIN_ITEM_SIZE;
+    }
+
+    public boolean canDecreaseViewSize()
+    {
+        return this.itemSize > VIEW_STEPS[0];
+    }
+
+    public boolean canIncreaseViewSize()
+    {
+        return this.itemSize < VIEW_STEPS[VIEW_STEPS.length - 1];
     }
 
     @Override
@@ -469,6 +494,32 @@ public class UIFileLinkList extends UIList<UIFileLinkList.FileLink>
     private int getGridTileWidth()
     {
         return Math.max(56, this.itemSize + 20);
+    }
+
+    private int getStepSize(boolean forward)
+    {
+        if (forward)
+        {
+            for (int step : VIEW_STEPS)
+            {
+                if (step > this.itemSize)
+                {
+                    return step;
+                }
+            }
+
+            return VIEW_STEPS[VIEW_STEPS.length - 1];
+        }
+
+        for (int i = VIEW_STEPS.length - 1; i >= 0; i--)
+        {
+            if (VIEW_STEPS[i] < this.itemSize)
+            {
+                return VIEW_STEPS[i];
+            }
+        }
+
+        return VIEW_STEPS[0];
     }
 
     private int getGridTileHeight()
