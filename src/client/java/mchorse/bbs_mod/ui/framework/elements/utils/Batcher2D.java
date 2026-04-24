@@ -21,8 +21,10 @@ import net.minecraft.client.render.VertexConsumerProvider;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.font.TextRenderer;
 import org.joml.Matrix4f;
+import org.lwjgl.opengl.GL11;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.function.Supplier;
 
 public class Batcher2D
@@ -31,6 +33,7 @@ public class Batcher2D
     private static final boolean DISABLE_TEXT_SHADOW_COMPAT =
         FabricLoader.getInstance().isModLoaded("immediatelyfast") &&
         FabricLoader.getInstance().isModLoaded("iris");
+    private static Boolean amdGpu;
 
     private DrawContext context;
     private FontRenderer font;
@@ -523,6 +526,12 @@ public class Batcher2D
             return;
         }
 
+        if (DISABLE_TEXT_SHADOW_COMPAT && isAmdGpu())
+        {
+            /* Last-resort fallback: AMD + Iris + ImmediatelyFast crashes in text draw calls. */
+            return;
+        }
+
         /* Workaround for AMD driver crashes in text draws through ImmediatelyFast + Iris batching. */
         boolean safeShadow = shadow && !DISABLE_TEXT_SHADOW_COMPAT;
 
@@ -552,6 +561,27 @@ public class Batcher2D
             this.context.drawText(this.font.getRenderer(), label, (int) x, (int) y, color, safeShadow);
             this.context.draw();
         }
+    }
+
+    private static boolean isAmdGpu()
+    {
+        if (amdGpu == null)
+        {
+            String vendor = GL11.glGetString(GL11.GL_VENDOR);
+
+            if (vendor != null)
+            {
+                String lower = vendor.toLowerCase(Locale.ROOT);
+
+                amdGpu = lower.contains("amd") || lower.contains("ati") || lower.contains("advanced micro devices");
+            }
+            else
+            {
+                amdGpu = false;
+            }
+        }
+
+        return amdGpu;
     }
 
     /* Text helpers */
