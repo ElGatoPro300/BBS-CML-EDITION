@@ -73,6 +73,9 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
     public UIIcon close;
     public UIIcon folder;
     public UIIcon pixelEdit;
+    public UIIcon viewMode;
+    public UIIcon zoomIn;
+    public UIIcon zoomOut;
     public UIFileLinkList picker;
 
     public UIButton multi;
@@ -103,6 +106,8 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
     private boolean canBeClosed = true;
     private Supplier<Form> formPreviewSupplier;
     private static final int FORM_PREVIEW_WIDTH = 150;
+    private static final int LIST_ITEM_SIZE_SMALL = 16;
+    private static final int LIST_ITEM_SIZE_LARGE = 48;
 
     private UICopyPasteController copyPasteController;
 
@@ -222,6 +227,21 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
         this.folder = new UIIcon(Icons.FOLDER, (b) -> this.openFolder());
         this.folder.tooltip(UIKeys.TEXTURE_OPEN_FOLDER, Direction.BOTTOM);
         this.pixelEdit = new UIIcon(Icons.EDIT, (b) -> this.togglePixelEditor());
+        this.viewMode = new UIIcon(() -> this.picker != null && this.picker.isLargeViewEnabled() ? Icons.LIST : Icons.BLOCK, (b) ->
+        {
+            this.picker.toggleLargeView();
+            this.updateViewButtons();
+        });
+        this.zoomOut = new UIIcon(Icons.REMOVE, (b) ->
+        {
+            this.picker.changeItemSize(-8);
+            this.updateViewButtons();
+        });
+        this.zoomIn = new UIIcon(Icons.ADD, (b) ->
+        {
+            this.picker.changeItemSize(8);
+            this.updateViewButtons();
+        });
         this.picker = new UIFileLinkList(this::selectCurrent)
         {
             @Override
@@ -237,6 +257,7 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
 
             return path.endsWith("/") || path.endsWith(".png") || path.endsWith(".jpg") || path.endsWith(".jpeg");
         }).cancelScrollEdge();
+        this.picker.setItemSize(LIST_ITEM_SIZE_SMALL);
 
         this.linear = new UIToggle(UIKeys.TEXTURES_LINEAR, (b) ->
         {
@@ -302,10 +323,10 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
         this.remove = new UIIcon(Icons.REMOVE, (b) -> this.removeMulti());
         this.edit = new UIIcon(Icons.EDIT, (b) -> this.toggleEditor());
 
-        UIElement icons = UI.row(0, this.pixelEdit, this.folder, this.close);
+        UIElement icons = UI.row(0, this.viewMode, this.zoomOut, this.zoomIn, this.pixelEdit, this.folder, this.close);
 
         icons.row().preferred(0);
-        icons.relative(this).x(1F, -10).y(10).w(60).h(20).anchorX(1F);
+        icons.relative(this).x(1F, -10).y(10).w(140).h(20).anchorX(1F);
 
         this.right.full(this);
         this.text.relative(this.multi).x(1F, 20).wTo(icons.area).h(20);
@@ -324,6 +345,7 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
         this.right.add(icons, this.text, this.picker, this.formPreviewArea);
         this.buttons.add(this.add, this.remove, this.edit);
         this.add(this.multi, this.multiList, this.right, this.editor, this.buttons, this.options);
+        this.updateViewButtons();
 
         this.callback = callback;
 
@@ -536,6 +558,17 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
         this.right.setVisible(this.pixelEditor == null);
         this.multi.setVisible(this.pixelEditor == null);
         this.options.setVisible(this.pixelEditor == null);
+        this.viewMode.setVisible(this.pixelEditor == null);
+        this.zoomOut.setVisible(this.pixelEditor == null);
+        this.zoomIn.setVisible(this.pixelEditor == null);
+    }
+
+    private void updateViewButtons()
+    {
+        boolean largeView = this.picker != null && this.picker.isLargeViewEnabled();
+
+        this.zoomOut.setEnabled(largeView && this.picker.getItemSize() > LIST_ITEM_SIZE_SMALL);
+        this.zoomIn.setEnabled(largeView && this.picker.getItemSize() < LIST_ITEM_SIZE_LARGE);
     }
 
     public void updateFolderButton()
