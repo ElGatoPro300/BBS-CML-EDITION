@@ -7,6 +7,7 @@ import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.utils.colors.Colors;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gl.ShaderProgram;
@@ -19,7 +20,6 @@ import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.VertexFormats;
-import net.fabricmc.loader.api.FabricLoader;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
 
@@ -528,19 +528,6 @@ public class Batcher2D
 
         if (DISABLE_TEXT_SHADOW_COMPAT && isAmdGpu())
         {
-            /*
-             * Keep vanilla font on AMD, but avoid the immediate flush path that triggers
-             * atio6axx crashes when Iris + ImmediatelyFast are both active.
-             */
-            this.context.drawText(this.font.getRenderer(), label, (int) x, (int) y, color, false);
-
-            return;
-        }
-
-        boolean safeShadow = shadow && !DISABLE_TEXT_SHADOW_COMPAT;
-
-        if (DISABLE_TEXT_SHADOW_COMPAT)
-        {
             VertexConsumerProvider.Immediate consumers = VertexConsumerProvider.immediate(Tessellator.getInstance().getBuffer());
             TextRenderer renderer = this.font.getRenderer();
 
@@ -551,7 +538,7 @@ public class Batcher2D
                 x,
                 y,
                 color,
-                safeShadow,
+                false,
                 this.context.getMatrices().peek().getPositionMatrix(),
                 consumers,
                 TextRenderer.TextLayerType.NORMAL,
@@ -559,12 +546,14 @@ public class Batcher2D
                 LightmapTextureManager.MAX_LIGHT_COORDINATE
             );
             consumers.draw();
+
+            return;
         }
-        else
-        {
-            this.context.drawText(this.font.getRenderer(), label, (int) x, (int) y, color, safeShadow);
-            this.context.draw();
-        }
+
+        this.context.drawText(this.font.getRenderer(), label, (int) x, (int) y, color, shadow);
+        this.context.draw();
+
+        RenderSystem.depthFunc(GL11.GL_ALWAYS);
     }
 
     private static boolean isAmdGpu()
@@ -637,24 +626,11 @@ public class Batcher2D
 
     public void textCard(String text, float x, float y, int color, int background, float offset, boolean shadow)
     {
-        if (text == null || text.isEmpty())
-        {
-            return;
-        }
-
         int a = background >> 24 & 0xff;
 
         if (a != 0)
         {
-            int left = (int) Math.floor(x - offset);
-            int top = (int) Math.floor(y - offset);
-            int right = (int) Math.ceil(x + this.font.getWidth(text) + offset - 1F);
-            int bottom = (int) Math.ceil(y + this.font.getHeight() + offset);
-
-            if (right > left && bottom > top)
-            {
-                this.context.fill(left, top, right, bottom, background);
-            }
+            this.box(x - offset, y - offset, x + this.font.getWidth(text) + offset - 1, y + this.font.getHeight() + offset, background);
         }
 
         this.text(text, x, y, color, shadow);
