@@ -22,6 +22,8 @@ import java.util.List;
 public class BBSSettings
 {
     public static ValueColors favoriteColors;
+    public static ValueStringKeys favoriteModelForms;
+    public static ValueString favoriteFormCategoriesData;
     public static ValueStringKeys disabledSheets;
     public static ValueLanguage language;
     public static ValueInt primaryColor;
@@ -205,9 +207,12 @@ public class BBSSettings
         uniformScale = builder.getBoolean("uniform_scale", false);
         clickSound = builder.getBoolean("click_sound", false);
         favoriteColors = new ValueColors("favorite_colors");
+        favoriteModelForms = new ValueStringKeys("favorite_model_forms");
+        favoriteFormCategoriesData = builder.getString("favorite_form_categories_data", "");
         disabledSheets = new ValueStringKeys("disabled_sheets");
         disabledSheets.set(defaultFilters);
         builder.register(favoriteColors);
+        builder.register(favoriteModelForms);
         builder.register(disabledSheets);
         textureDefaultPath = builder.getRL("texture_default_path", null);
 

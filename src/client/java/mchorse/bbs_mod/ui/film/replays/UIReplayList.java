@@ -103,6 +103,7 @@ public class UIReplayList extends UIList<Replay> {
     public static final List<BiConsumer<UIReplayList, ContextMenuManager>> extensions = new ArrayList<>();
 
     private static String LAST_PROCESS = "v";
+    private static String LAST_PICK_FAVORITE_CATEGORY_ID = null;
     private static String LAST_OFFSET = "0";
     private static List<String> LAST_PROCESS_PROPERTIES = Arrays.asList("x");
     private static int LAST_PROCESS_SECTION = 0;
@@ -1709,6 +1710,17 @@ public class UIReplayList extends UIList<Replay> {
             }
         });
 
+        if (!editing) {
+            palette.immersive();
+
+            if (!palette.list.hasFavoriteCategory(LAST_PICK_FAVORITE_CATEGORY_ID))
+            {
+                LAST_PICK_FAVORITE_CATEGORY_ID = null;
+            }
+
+            palette.list.setFavoriteCategoryChangedListener((categoryId) -> LAST_PICK_FAVORITE_CATEGORY_ID = categoryId);
+            palette.list.setActiveFavoriteCategoryWithFallback(LAST_PICK_FAVORITE_CATEGORY_ID);
+        }
         palette.updatable();
     }
 

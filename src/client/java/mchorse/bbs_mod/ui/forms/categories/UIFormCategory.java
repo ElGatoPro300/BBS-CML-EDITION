@@ -44,6 +44,7 @@ public class UIFormCategory extends UIElement
     public static final int HEADER_HEIGHT = 20;
     public static final int CELL_WIDTH = 60;
     public static final int CELL_HEIGHT = 80;
+    public static final int MARKER_ICON_SIZE = 12;
 
     public UIFormList list;
     public FormCategory category;
@@ -52,6 +53,7 @@ public class UIFormCategory extends UIElement
     private int last;
     private String search = "";
     private List<Form> searched = new ArrayList<>();
+    private List<Form> favoritesFiltered = new ArrayList<>();
 
     private boolean dragging;
     private int dragIndex = -1;
@@ -159,6 +161,42 @@ public class UIFormCategory extends UIElement
                         });
                     });
                 }
+
+                if (this.list.supportsFavorites())
+                {
+                    boolean hasCustomCategories = this.list.hasCustomFavoriteCategories();
+                    boolean isFavorite = this.list.getFavoriteMarker(this.selected) != null;
+
+                    if (isFavorite)
+                    {
+                        menu.action(Icons.FIVE_STAR, this.list.getRemoveFavoriteContextLabel(this.selected), Colors.RED, () ->
+                        {
+                            this.list.removeFavoriteForm(this.selected);
+                        });
+
+                        if (hasCustomCategories)
+                        {
+                            menu.action(Icons.REFRESH, this.list.getMoveFavoriteContextLabel(), Colors.YELLOW, () ->
+                            {
+                                this.list.openAddToCategoryPanel(this.selected);
+                            });
+                        }
+                    }
+                    else
+                    {
+                        menu.action(Icons.FIVE_STAR, this.list.getAddFavoriteContextLabel(), Colors.YELLOW, () ->
+                        {
+                            if (hasCustomCategories)
+                            {
+                                this.list.openAddToCategoryPanel(this.selected);
+                            }
+                            else
+                            {
+                                this.list.addFavoriteForm(this.selected);
+                            }
+                        });
+                    }
+                }
             }
         });
 
@@ -187,12 +225,24 @@ public class UIFormCategory extends UIElement
 
     public List<Form> getForms()
     {
-        if (this.search.isEmpty())
+        List<Form> source = this.search.isEmpty() ? this.category.getForms() : this.searched;
+
+        if (!this.list.supportsFavorites() || !this.list.isFavoritesOnly())
         {
-            return this.category.getForms();
+            return source;
         }
 
-        return this.searched;
+        this.favoritesFiltered.clear();
+
+        for (Form form : source)
+        {
+            if (this.list.shouldDisplayForm(form))
+            {
+                this.favoritesFiltered.add(form);
+            }
+        }
+
+        return this.favoritesFiltered;
     }
 
     public int getIndexAt(int mouseX, int mouseY)
@@ -329,6 +379,27 @@ public class UIFormCategory extends UIElement
 
         super.render(context);
 
+        List<Form> forms = this.getForms();
+        boolean hideEmptyInFavorites = this.list.isFavoritesOnly() && forms.isEmpty();
+
+        if (hideEmptyInFavorites)
+        {
+            if (this.last != 0 || this.area.h != 0)
+            {
+                this.last = 0;
+                this.h(0);
+
+                UIElement container = this.getParentContainer();
+
+                if (container != null)
+                {
+                    container.resize();
+                }
+            }
+
+            return;
+        }
+
         context.batcher.textCard(this.category.getProcessedTitle(), this.area.x + 26, this.area.y + 6);
 
         if (this.category.visible.get())
@@ -340,7 +411,6 @@ public class UIFormCategory extends UIElement
             context.batcher.icon(Icons.MOVE_UP, this.area.x + 16, this.area.y + 4, 0.5F, 0F);
         }
 
-        List<Form> forms = this.getForms();
         int h = HEADER_HEIGHT;
         int x = 0;
         int i = 0;
@@ -370,8 +440,15 @@ public class UIFormCategory extends UIElement
                 }
 
                 FormUtilsClient.renderUI(form, context, cx, cy, cx + CELL_WIDTH, cy + CELL_HEIGHT);
-
                 context.batcher.unclip(context);
+
+                UIFormList.FavoriteMarker marker = this.list.getFavoriteMarker(form);
+
+                if (marker != null)
+                {
+                    context.batcher.outline(cx, cy, cx + CELL_WIDTH, cy + CELL_HEIGHT, marker.color, 1);
+                    this.renderFavoriteMarkerIcon(context, marker, cx, cy);
+                }
 
                 x += CELL_WIDTH;
                 i += 1;
@@ -404,5 +481,16 @@ public class UIFormCategory extends UIElement
 
             FormUtilsClient.renderUI(form, context, cx, cy, cx + CELL_WIDTH, cy + CELL_HEIGHT);
         }
+    }
+
+    protected void renderFavoriteMarkerIcon(UIContext context, UIFormList.FavoriteMarker marker, int cx, int cy)
+    {
+        if (marker == null || marker.icon == null || marker.icon.w <= 0 || marker.icon.h <= 0)
+        {
+            return;
+        }
+
+        /* Render at native icon size to avoid UV resampling artifacts/cropping look */
+        context.batcher.icon(marker.icon, Colors.WHITE, cx + CELL_WIDTH - 3, cy + 2, 1F, 0F);
     }
 }
