@@ -13,18 +13,27 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
+import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
+import net.minecraft.client.render.VertexConsumerProvider;
+import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.client.font.TextRenderer;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.function.Supplier;
 
 public class Batcher2D
 {
     private static FontRenderer fontRenderer = new FontRenderer();
+    private static final boolean DISABLE_TEXT_SHADOW_COMPAT =
+        FabricLoader.getInstance().isModLoaded("immediatelyfast") &&
+        FabricLoader.getInstance().isModLoaded("iris");
+    private static Boolean amdGpu;
 
     private DrawContext context;
     private FontRenderer font;
@@ -241,6 +250,8 @@ public class Batcher2D
         Matrix4f matrix4f = this.context.getMatrices().peek().getPositionMatrix();
         BufferBuilder builder = Tessellator.getInstance().getBuffer();
 
+        RenderSystem.enableBlend();
+        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
         builder.begin(VertexFormat.DrawMode.TRIANGLE_FAN, VertexFormats.POSITION_COLOR);
         builder.vertex(matrix4f, x, y, 0F).color(opaque).next();
 
@@ -250,6 +261,8 @@ public class Batcher2D
 
             builder.vertex(matrix4f, (float) (x - Math.cos(a) * radius), (float) (y + Math.sin(a) * radius), 0F).color(shadow).next();
         }
+
+        BufferRenderer.drawWithGlobalProgram(builder.end());
     }
 
     public void dropCircleShadow(int x, int y, int radius, int offset, int segments, int opaque, int shadow)
@@ -508,10 +521,67 @@ public class Batcher2D
 
     public void text(String label, float x, float y, int color, boolean shadow)
     {
-        this.context.drawText(this.font.getRenderer(), label, (int) x, (int) y, color, shadow);
-        this.context.draw();
+        if (label == null || label.isEmpty())
+        {
+            return;
+        }
 
-        RenderSystem.depthFunc(GL11.GL_ALWAYS);
+        if (DISABLE_TEXT_SHADOW_COMPAT && isAmdGpu())
+        {
+            /* Last-resort fallback: AMD + Iris + ImmediatelyFast crashes in text draw calls. */
+            return;
+        }
+
+        /* Workaround for AMD driver crashes in text draws through ImmediatelyFast + Iris batching. */
+        boolean safeShadow = shadow && !DISABLE_TEXT_SHADOW_COMPAT;
+
+        if (DISABLE_TEXT_SHADOW_COMPAT)
+        {
+            VertexConsumerProvider.Immediate consumers = VertexConsumerProvider.immediate(Tessellator.getInstance().getBuffer());
+            TextRenderer renderer = this.font.getRenderer();
+
+            RenderSystem.enableBlend();
+            RenderSystem.defaultBlendFunc();
+            renderer.draw(
+                label,
+                x,
+                y,
+                color,
+                safeShadow,
+                this.context.getMatrices().peek().getPositionMatrix(),
+                consumers,
+                TextRenderer.TextLayerType.NORMAL,
+                0,
+                LightmapTextureManager.MAX_LIGHT_COORDINATE
+            );
+            consumers.draw();
+        }
+        else
+        {
+            this.context.drawText(this.font.getRenderer(), label, (int) x, (int) y, color, safeShadow);
+            this.context.draw();
+        }
+    }
+
+    private static boolean isAmdGpu()
+    {
+        if (amdGpu == null)
+        {
+            String vendor = GL11.glGetString(GL11.GL_VENDOR);
+
+            if (vendor != null)
+            {
+                String lower = vendor.toLowerCase(Locale.ROOT);
+
+                amdGpu = lower.contains("amd") || lower.contains("ati") || lower.contains("advanced micro devices");
+            }
+            else
+            {
+                amdGpu = false;
+            }
+        }
+
+        return amdGpu;
     }
 
     /* Text helpers */
@@ -563,11 +633,24 @@ public class Batcher2D
 
     public void textCard(String text, float x, float y, int color, int background, float offset, boolean shadow)
     {
+        if (text == null || text.isEmpty())
+        {
+            return;
+        }
+
         int a = background >> 24 & 0xff;
 
         if (a != 0)
         {
-            this.box(x - offset, y - offset, x + this.font.getWidth(text) + offset - 1, y + this.font.getHeight() + offset, background);
+            int left = (int) Math.floor(x - offset);
+            int top = (int) Math.floor(y - offset);
+            int right = (int) Math.ceil(x + this.font.getWidth(text) + offset - 1F);
+            int bottom = (int) Math.ceil(y + this.font.getHeight() + offset);
+
+            if (right > left && bottom > top)
+            {
+                this.context.fill(left, top, right, bottom, background);
+            }
         }
 
         this.text(text, x, y, color, shadow);

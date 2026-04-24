@@ -57,6 +57,7 @@ import org.lwjgl.opengl.GL11;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
@@ -64,6 +65,7 @@ import java.util.function.Supplier;
 public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITickable
 {
     private static Matrix4f uiMatrix = new Matrix4f();
+    private static Boolean amdGpu;
 
     private MatrixCache bones = new MatrixCache();
 
@@ -76,6 +78,32 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
     private int lastAge = -1;
 
     private IEntity entity = new StubEntity();
+
+    private static boolean shouldSkipUiModelPreview()
+    {
+        if (!BBSRendering.isIrisShadersEnabled())
+        {
+            return false;
+        }
+
+        if (amdGpu == null)
+        {
+            String vendor = GL11.glGetString(GL11.GL_VENDOR);
+
+            if (vendor != null)
+            {
+                String lower = vendor.toLowerCase(Locale.ROOT);
+
+                amdGpu = lower.contains("amd") || lower.contains("ati") || lower.contains("advanced micro devices");
+            }
+            else
+            {
+                amdGpu = false;
+            }
+        }
+
+        return amdGpu;
+    }
 
     @Override
     protected void applyTransforms(MatrixStack stack, boolean origin, float transition)
@@ -298,6 +326,11 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
     public void renderInUI(UIContext context, int x1, int y1, int x2, int y2)
     {
         context.batcher.flush();
+
+        if (shouldSkipUiModelPreview())
+        {
+            return;
+        }
 
         this.ensureAnimator(context.getTransition());
 
