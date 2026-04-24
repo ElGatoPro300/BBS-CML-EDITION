@@ -16,8 +16,8 @@ import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
+import net.fabricmc.loader.api.FabricLoader;
 import org.joml.Matrix4f;
-import org.lwjgl.opengl.GL11;
 
 import java.util.List;
 import java.util.function.Supplier;
@@ -25,6 +25,9 @@ import java.util.function.Supplier;
 public class Batcher2D
 {
     private static FontRenderer fontRenderer = new FontRenderer();
+    private static final boolean DISABLE_TEXT_SHADOW_COMPAT =
+        FabricLoader.getInstance().isModLoaded("immediatelyfast") &&
+        FabricLoader.getInstance().isModLoaded("iris");
 
     private DrawContext context;
     private FontRenderer font;
@@ -512,10 +515,16 @@ public class Batcher2D
 
     public void text(String label, float x, float y, int color, boolean shadow)
     {
-        this.context.drawText(this.font.getRenderer(), label, (int) x, (int) y, color, shadow);
-        this.context.draw();
+        if (label == null || label.isEmpty())
+        {
+            return;
+        }
 
-        RenderSystem.depthFunc(GL11.GL_ALWAYS);
+        /* Workaround for AMD driver crashes in text draws through ImmediatelyFast + Iris batching. */
+        boolean safeShadow = shadow && !DISABLE_TEXT_SHADOW_COMPAT;
+
+        this.context.drawText(this.font.getRenderer(), label, (int) x, (int) y, color, safeShadow);
+        this.context.draw();
     }
 
     /* Text helpers */
