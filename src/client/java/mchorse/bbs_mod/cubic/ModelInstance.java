@@ -300,11 +300,12 @@ public class ModelInstance implements IModelInstance
                 );
                 matrix.rotateY(MathUtils.PI);
                 origin.translate(
-                    group.initial.translate.x / 16,
-                    group.initial.translate.y / 16,
-                    group.initial.translate.z / 16
+                    group.initial.translate.x / 8192,
+                    group.initial.translate.y / 8192,
+                    group.initial.translate.z / 8192
                 );
                 origin.rotateY(MathUtils.PI);
+                
                 bones.put(group.id, matrix, origin);
             }
         }
@@ -324,13 +325,13 @@ public class ModelInstance implements IModelInstance
         }
     }
 
-    public void render(MatrixStack stack, Supplier<ShaderProgram> program, Color color, int light, int overlay, StencilMap stencilMap, ShapeKeys keys)
+    public void render(MatrixStack stack, Supplier<ShaderProgram> program, Color color, int light, int overlay, StencilMap stencilMap, ShapeKeys keys, Link defaultTexture)
     {
         if (this.model instanceof Model model)
         {
             boolean isVao = this.isVAORendered();
             CubicCubeRenderer renderProcessor = isVao
-                ? new CubicVAORenderer(program.get(), this, light, overlay, stencilMap, keys)
+                ? new CubicVAORenderer(program.get(), this, light, overlay, stencilMap, keys, defaultTexture)
                 : new CubicCubeRenderer(light, overlay, stencilMap, keys);
 
             renderProcessor.setColor(color.r, color.g, color.b, color.a);
@@ -347,7 +348,15 @@ public class ModelInstance implements IModelInstance
 
                 builder.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL);
                 CubicRenderer.processRenderModel(renderProcessor, builder, stack, model);
-                BufferRenderer.drawWithGlobalProgram(builder.end());
+
+                try
+                {
+                    BufferRenderer.drawWithGlobalProgram(builder.end());
+                }
+                catch (IllegalStateException e)
+                {
+                    
+                }
             }
         }
         else if (this.model instanceof BOBJModel model)

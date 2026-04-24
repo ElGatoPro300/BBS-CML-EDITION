@@ -118,8 +118,8 @@ public class BOBJModel implements IModel
                 bone.transform.lerp(Transform.DEFAULT, transform.fix);
             }
 
-            // TODO: bone.lighting = transform.lighting;
-            // TODO: bone.color.copy(transform.color);
+            bone.lighting = transform.lighting;
+            bone.color.copy(transform.color);
             bone.transform.translate.add(transform.translate);
             bone.transform.scale.add(transform.scale).sub(1, 1, 1);
             bone.transform.rotate.add(transform.rotate);

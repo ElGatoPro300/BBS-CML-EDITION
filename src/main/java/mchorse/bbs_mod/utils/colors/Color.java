@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.utils.colors;
 
 import mchorse.bbs_mod.utils.MathUtils;
+import mchorse.bbs_mod.utils.interps.Lerps;
 import mchorse.bbs_mod.utils.StringUtils;
 
 public class Color
@@ -96,6 +97,14 @@ public class Color
         this.set(r, g, b, a);
 
         return this;
+    }
+
+    public void lerp(Color color, float factor)
+    {
+        this.r = Lerps.lerp(this.r, color.r, factor);
+        this.g = Lerps.lerp(this.g, color.g, factor);
+        this.b = Lerps.lerp(this.b, color.b, factor);
+        this.a = Lerps.lerp(this.a, color.a, factor);
     }
 
     public Color copy()

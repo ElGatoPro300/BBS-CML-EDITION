@@ -4,6 +4,7 @@ import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.forms.FormCategories;
 import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.categories.FormCategory;
+import mchorse.bbs_mod.forms.categories.UserFormCategory;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
@@ -184,6 +185,29 @@ public class UIFormList extends UIElement
             this.recent.category.addForm(copy);
             this.recent.select(copy, false);
         }
+    }
+
+    public boolean handleFormDrop(UIFormCategory source, int sourceIndex, int mouseX, int mouseY)
+    {
+        for (UIFormCategory category : this.categories)
+        {
+            if (category != source && category.area.isInside(mouseX, mouseY) && category.category instanceof UserFormCategory)
+            {
+                int index = category.getIndexAt(mouseX, mouseY);
+                
+                if (index != -1)
+                {
+                    Form form = source.category.getForms().get(sourceIndex);
+                    
+                    ((UserFormCategory) category.category).addForm(index, form);
+                    source.category.removeForm(form);
+                    
+                    return true;
+                }
+            }
+        }
+        
+        return false;
     }
 
     @Override

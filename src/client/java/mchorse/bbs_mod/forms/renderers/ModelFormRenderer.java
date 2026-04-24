@@ -30,12 +30,14 @@ import mchorse.bbs_mod.settings.values.core.ValuePose;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.utils.MathUtils;
+import mchorse.bbs_mod.utils.interps.Lerps;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.StringUtils;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.joml.Vectors;
 import mchorse.bbs_mod.utils.pose.Pose;
 import mchorse.bbs_mod.utils.pose.PoseTransform;
+import mchorse.bbs_mod.utils.resources.LinkUtils;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
@@ -166,6 +168,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                 poseTransform.scale.lerp(value.scale, value.fix);
                 poseTransform.rotate.lerp(value.rotate, value.fix);
                 poseTransform.rotate2.lerp(value.rotate2, value.fix);
+                poseTransform.pivot.lerp(value.pivot, value.fix);
             }
             else
             {
@@ -173,6 +176,18 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                 poseTransform.scale.add(value.scale).sub(1, 1, 1);
                 poseTransform.rotate.add(value.rotate);
                 poseTransform.rotate2.add(value.rotate2);
+                poseTransform.pivot.add(value.pivot);
+            }
+
+            if (value.fix != 0)
+            {
+                poseTransform.color.lerp(value.color, value.fix);
+                poseTransform.lighting = Lerps.lerp(poseTransform.lighting, value.lighting, value.fix);
+            }
+
+            if (value.texture != null)
+            {
+                poseTransform.texture = LinkUtils.copy(value.texture);
             }
         }
     }
@@ -300,7 +315,10 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             newStack.peek().getNormalMatrix().scale(1F / Vectors.EMPTY_3F.x, -1F / Vectors.EMPTY_3F.y, 1F / Vectors.EMPTY_3F.z);
         }
 
-        model.render(newStack, program, color, light, overlay, stencilMap, this.form.shapeKeys.get());
+        /* Pass form-level texture so VAO renderer can respect it */
+        Link link = this.form.texture.get();
+        Link defaultTexture = link == null ? model.texture : link;
+        model.render(newStack, program, color, light, overlay, stencilMap, this.form.shapeKeys.get(), defaultTexture);
 
         gameRenderer.getLightmapTextureManager().disable();
         gameRenderer.getOverlayTexture().teardownOverlayColor();

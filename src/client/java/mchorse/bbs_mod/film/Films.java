@@ -132,6 +132,11 @@ public class Films
         return null;
     }
 
+    public List<BaseFilmController> getControllers()
+    {
+        return this.controllers;
+    }
+
     public Recorder getRecorder()
     {
         return this.recorder;

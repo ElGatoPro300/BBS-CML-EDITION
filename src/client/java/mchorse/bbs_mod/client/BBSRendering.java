@@ -15,6 +15,8 @@ import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.graphics.texture.TextureFormat;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.UIDashboard;
+import mchorse.bbs_mod.client.video.VideoRenderer;
+import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.film.UISubtitleRenderer;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
@@ -38,6 +40,8 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.util.Window;
 import net.minecraft.client.util.math.MatrixStack;
+import org.joml.Matrix4f;
+import com.mojang.blaze3d.systems.VertexSorter;
 import org.lwjgl.opengl.GL11;
 
 import java.io.File;
@@ -334,6 +338,15 @@ public class BBSRendering
             Batcher2D batcher = new Batcher2D(drawContext);
 
             UISubtitleRenderer.renderSubtitles(batcher.getContext().getMatrices(), batcher, SubtitleClip.getSubtitles(controller.getContext()));
+
+            Window window = mc.getWindow();
+            Area area = new Area(0, 0, window.getScaledWidth(), window.getScaledHeight());
+            Matrix4f cache = new Matrix4f(RenderSystem.getProjectionMatrix());
+            Matrix4f ortho = new Matrix4f().ortho(0, area.w, area.h, 0, -1000, 3000);
+
+            RenderSystem.setProjectionMatrix(ortho, VertexSorter.BY_Z);
+            VideoRenderer.renderClips(batcher.getContext().getMatrices(), batcher, controller.getContext().clips.getClips(controller.getContext().relativeTick), controller.getContext().relativeTick, true, area, area, null, area.w, area.h, false);
+            RenderSystem.setProjectionMatrix(cache, VertexSorter.BY_Z);
         }
 
         if (!customSize)
@@ -347,9 +360,18 @@ public class BBSRendering
 
         if (currentMenu instanceof UIDashboard dashboard)
         {
-            if (dashboard.getPanels().panel instanceof UIFilmPanel panel)
+            if (dashboard.getPanels().panel instanceof UIFilmPanel panel && panel.getData() != null)
             {
                 UISubtitleRenderer.renderSubtitles(currentMenu.context.batcher.getContext().getMatrices(), currentMenu.context.batcher, SubtitleClip.getSubtitles(panel.getRunner().getContext()));
+
+                Window window = mc.getWindow();
+                Matrix4f cache = new Matrix4f(RenderSystem.getProjectionMatrix());
+                Matrix4f ortho = new Matrix4f().ortho(0, window.getScaledWidth(), window.getScaledHeight(), 0, -1000, 3000);
+
+                RenderSystem.setProjectionMatrix(ortho, VertexSorter.BY_Z);
+                Area fullScreen = new Area(0, 0, window.getScaledWidth(), window.getScaledHeight());
+                VideoRenderer.renderClips(new MatrixStack(), currentMenu.context.batcher, panel.getData().camera.getClips(panel.getCursor()), panel.getCursor(), panel.getRunner().isRunning(), fullScreen, fullScreen, null, window.getScaledWidth(), window.getScaledHeight(), false);
+                RenderSystem.setProjectionMatrix(cache, VertexSorter.BY_Z);
             }
         }
 
@@ -514,6 +536,11 @@ public class BBSRendering
 
     public static Long getTimeOfDay()
     {
+        if (!MinecraftClient.getInstance().isOnThread())
+        {
+            return null;
+        }
+
         if (BBSModClient.getCameraController().getCurrent() instanceof CameraWorkCameraController controller)
         {
             Map<String, Double> values = CurveClip.getValues(controller.getContext());
@@ -530,6 +557,11 @@ public class BBSRendering
 
     public static Double getBrightness()
     {
+        if (!MinecraftClient.getInstance().isOnThread())
+        {
+            return null;
+        }
+
         if (BBSModClient.getCameraController().getCurrent() instanceof CameraWorkCameraController controller)
         {
             Map<String, Double> values = CurveClip.getValues(controller.getContext());
@@ -546,6 +578,11 @@ public class BBSRendering
 
     public static Double getWeather()
     {
+        if (!MinecraftClient.getInstance().isOnThread())
+        {
+            return null;
+        }
+
         if (BBSModClient.getCameraController().getCurrent() instanceof CameraWorkCameraController controller)
         {
             Map<String, Double> values = CurveClip.getValues(controller.getContext());

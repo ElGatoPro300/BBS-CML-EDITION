@@ -23,6 +23,7 @@ import java.io.File;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.Stack;
 
 public class UITextureEditor extends UIPixelsEditor
 {
@@ -143,32 +144,41 @@ public class UITextureEditor extends UIPixelsEditor
 
     private void floodFill(Set<Vector2i> set, PixelsUndo undo, Pixels pixels, int x, int y, int targetColor, int replacementColor)
     {
-        if (x < 0 || y < 0 || x >= pixels.width || y >= pixels.height)
+        Stack<Vector2i> stack = new Stack<>();
+
+        stack.push(new Vector2i(x, y));
+
+        while (!stack.isEmpty())
         {
-            return;
+            Vector2i v = stack.pop();
+            int px = v.x;
+            int py = v.y;
+
+            if (px < 0 || py < 0 || px >= pixels.width || py >= pixels.height)
+            {
+                continue;
+            }
+
+            int current = pixels.getColor(px, py).getARGBColor();
+
+            if (current != targetColor)
+            {
+                continue;
+            }
+
+            if (set.contains(v))
+            {
+                continue;
+            }
+
+            set.add(v);
+            undo.setColor(pixels, px, py, new Color().set(replacementColor, true));
+
+            stack.push(new Vector2i(px + 1, py));
+            stack.push(new Vector2i(px - 1, py));
+            stack.push(new Vector2i(px, py + 1));
+            stack.push(new Vector2i(px, py - 1));
         }
-
-        int current = pixels.getColor(x, y).getARGBColor();
-
-        if (current != targetColor)
-        {
-            return;
-        }
-
-        Vector2i v = new Vector2i(x, y);
-
-        if (set.contains(v))
-        {
-            return;
-        }
-
-        set.add(v);
-        undo.setColor(pixels, x, y, new Color().set(replacementColor, true));
-
-        this.floodFill(set, undo, pixels, x + 1, y, targetColor, replacementColor);
-        this.floodFill(set, undo, pixels, x - 1, y, targetColor, replacementColor);
-        this.floodFill(set, undo, pixels, x, y + 1, targetColor, replacementColor);
-        this.floodFill(set, undo, pixels, x, y - 1, targetColor, replacementColor);
     }
 
     private void saveTexture()

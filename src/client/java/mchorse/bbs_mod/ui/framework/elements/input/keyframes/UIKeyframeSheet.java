@@ -24,6 +24,7 @@ public class UIKeyframeSheet
     public final KeyframeChannel channel;
     public final KeyframeSelection selection;
     public final BaseValueBasic property;
+    public String anchoredBone;
 
     public UIKeyframeSheet(int color, boolean separator, KeyframeChannel channel, BaseValueBasic property)
     {
@@ -40,6 +41,7 @@ public class UIKeyframeSheet
         this.channel = channel;
         this.selection = new KeyframeSelection(channel);
         this.property = property;
+        this.anchoredBone = null;
     }
 
     public UIKeyframeSheet icon(Icon icon)

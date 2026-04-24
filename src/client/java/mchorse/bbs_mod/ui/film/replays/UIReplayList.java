@@ -39,6 +39,7 @@ import mchorse.bbs_mod.ui.framework.elements.input.text.UITextbox;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIConfirmOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UINumberOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
+import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.CollectionUtils;
 import mchorse.bbs_mod.utils.MathUtils;
@@ -78,6 +79,9 @@ public class UIReplayList extends UIList<Replay>
     public UIFilmPanel panel;
     public UIReplaysOverlayPanel overlay;
 
+    private Map<String, Boolean> expandedGroups = new java.util.HashMap<>();
+    private List<Replay> visualList = new ArrayList<>();
+
     public UIReplayList(Consumer<List<Replay>> callback, UIReplaysOverlayPanel overlay, UIFilmPanel panel)
     {
         super(callback);
@@ -113,39 +117,49 @@ public class UIReplayList extends UIList<Replay>
 
             if (this.isSelected())
             {
+                boolean isGroup = this.getCurrentFirst().isGroup.get();
                 boolean shift = Window.isShiftPressed();
                 MapType data = Window.getClipboardMap("_CopyKeyframes");
 
-                menu.action(Icons.ALL_DIRECTIONS, UIKeys.SCENE_REPLAYS_CONTEXT_PROCESS, this::processReplays);
-                menu.action(Icons.TIME, UIKeys.SCENE_REPLAYS_CONTEXT_OFFSET_TIME, this::offsetTimeReplays);
+                if (!isGroup)
+                {
+                    menu.action(Icons.ALL_DIRECTIONS, UIKeys.SCENE_REPLAYS_CONTEXT_PROCESS, this::processReplays);
+                    menu.action(Icons.TIME, UIKeys.SCENE_REPLAYS_CONTEXT_OFFSET_TIME, this::offsetTimeReplays);
+                }
+                
+                menu.action(Icons.FOLDER, UIKeys.SCENE_REPLAYS_CONTEXT_ADD_GROUP, this::addGroup);
 
-                if (data != null)
+                if (!isGroup && data != null)
                 {
                     menu.action(Icons.PASTE, UIKeys.SCENE_REPLAYS_CONTEXT_PASTE_KEYFRAMES, () -> this.pasteToReplays(data));
                 }
 
-                menu.action(Icons.DUPE, UIKeys.SCENE_REPLAYS_CONTEXT_DUPE, () ->
+                if (!isGroup)
                 {
-                    if (Window.isShiftPressed() || shift)
+                    menu.action(Icons.DUPE, UIKeys.SCENE_REPLAYS_CONTEXT_DUPE, () ->
                     {
-                        this.dupeReplay();
-                    }
-                    else
-                    {
-                        UINumberOverlayPanel numberPanel = new UINumberOverlayPanel(UIKeys.SCENE_REPLAYS_CONTEXT_DUPE, UIKeys.SCENE_REPLAYS_CONTEXT_DUPE_DESCRIPTION, (n) ->
+                        if (Window.isShiftPressed() || shift)
                         {
-                            for (int i = 0; i < n; i++)
+                            this.dupeReplay();
+                        }
+                        else
+                        {
+                            UINumberOverlayPanel numberPanel = new UINumberOverlayPanel(UIKeys.SCENE_REPLAYS_CONTEXT_DUPE, UIKeys.SCENE_REPLAYS_CONTEXT_DUPE_DESCRIPTION, (n) ->
                             {
-                                this.dupeReplay();
-                            }
-                        });
+                                for (int i = 0; i < n; i++)
+                                {
+                                    this.dupeReplay();
+                                }
+                            });
 
-                        numberPanel.value.limit(1).integer();
-                        numberPanel.value.setValue(1D);
+                            numberPanel.value.limit(1).integer();
+                            numberPanel.value.setValue(1D);
 
-                        UIOverlay.addOverlay(this.getContext(), numberPanel);
-                    }
-                });
+                            UIOverlay.addOverlay(this.getContext(), numberPanel);
+                        }
+                    });
+                }
+                
                 menu.action(Icons.REMOVE, UIKeys.SCENE_REPLAYS_CONTEXT_REMOVE, this::removeReplay);
             }
         });
@@ -154,43 +168,164 @@ public class UIReplayList extends UIList<Replay>
     @Override
     protected void handleSwap(int from, int to)
     {
-        Film data = this.panel.getData();
-        Replays replays = data.replays;
-        Replay value = replays.getList().get(from);
+        Replay src = this.list.get(from);
+        Replay dest = this.list.get(to);
 
-        data.preNotify(IValueListener.FLAG_UNMERGEABLE);
-
-        replays.remove(value);
-        replays.add(to, value);
-        replays.sync();
-
-        /* Readjust tracker and anchor indices */
-        for (Replay replay : replays.getList())
+        if (src.isGroup.get())
         {
-            if (replay.properties.get("anchor") instanceof KeyframeChannel<?> channel && channel.getFactory() == KeyframeFactories.ANCHOR)
-            {
-                KeyframeChannel<Anchor> keyframeChannel = (KeyframeChannel<Anchor>) channel;
+            String srcPath = getReplayPath(src);
+            String srcFullPath = srcPath.isEmpty() ? src.uuid.get() : srcPath + "/" + src.uuid.get();
 
-                for (Keyframe<Anchor> keyframe : keyframeChannel.getKeyframes())
+            String destPath = getReplayPath(dest);
+            String destFullPath = destPath.isEmpty() ? dest.uuid.get() : destPath + "/" + dest.uuid.get();
+
+            if (destFullPath.equals(srcFullPath) || destFullPath.startsWith(srcFullPath + "/") ||
+                dest.group.get().equals(srcFullPath) || dest.group.get().startsWith(srcFullPath + "/"))
+            {
+                return;
+            }
+        }
+
+        if (dest.isGroup.get())
+        {
+            String destPath = getReplayPath(dest);
+            String destGroupPath = destPath.isEmpty() ? dest.uuid.get() : destPath + "/" + dest.uuid.get();
+            String srcGroup = src.group.get();
+
+            if (!srcGroup.equals(destGroupPath))
+            {
+                
+                Replay insertionAnchor = dest;
+                List<Replay> allReplays = this.panel.getData().replays.getAllTyped();
+                
+                String srcPathForCheck = getReplayPath(src);
+                String srcFullPathForCheck = srcPathForCheck.isEmpty() ? src.uuid.get() : srcPathForCheck + "/" + src.uuid.get();
+
+                for (Replay r : allReplays)
                 {
-                    keyframe.getValue().replay = MathUtils.remapIndex(keyframe.getValue().replay, from, to);
+                    if (r == src) continue;
+
+                    if (src.isGroup.get())
+                    {
+                        String g = r.group.get();
+                        if (g.equals(srcFullPathForCheck) || g.startsWith(srcFullPathForCheck + "/"))
+                        {
+                            continue;
+                        }
+                    }
+
+                    String g = r.group.get();
+                    if (g.equals(destGroupPath) || g.startsWith(destGroupPath + "/"))
+                    {
+                        insertionAnchor = r;
+                    }
+                }
+
+                if (src.isGroup.get())
+                {
+                    String oldPath = getReplayPath(src);
+                    String oldFullPath = oldPath.isEmpty() ? src.uuid.get() : oldPath + "/" + src.uuid.get();
+
+                    src.group.set(destGroupPath);
+
+                    String newPath = getReplayPath(src);
+                    String newFullPath = newPath.isEmpty() ? src.uuid.get() : newPath + "/" + src.uuid.get();
+
+                    this.updateGroupPath(oldFullPath, newFullPath);
+                }
+                else
+                {
+                    src.group.set(destGroupPath);
+                }
+
+                this.moveReplayAndChildren(src, insertionAnchor, true);
+
+                this.expandedGroups.put(destGroupPath, true);
+                this.buildVisualList();
+                this.updateFilmEditor();
+
+                return;
+            }
+        }
+
+        String destGroup = dest.group.get();
+
+        if (src.isGroup.get())
+        {
+            String oldPath = getReplayPath(src);
+            String oldFullPath = oldPath.isEmpty() ? src.uuid.get() : oldPath + "/" + src.uuid.get();
+
+            src.group.set(destGroup);
+
+            String newPath = getReplayPath(src);
+            String newFullPath = newPath.isEmpty() ? src.uuid.get() : newPath + "/" + src.uuid.get();
+
+            if (!oldFullPath.equals(newFullPath))
+            {
+                this.updateGroupPath(oldFullPath, newFullPath);
+            }
+        }
+        else
+        {
+            src.group.set(destGroup);
+        }
+
+        this.moveReplayAndChildren(src, dest, from < to);
+    }
+
+    private void moveReplayAndChildren(Replay src, Replay dest, boolean insertAfter)
+    {
+        Film data = this.panel.getData();
+        List<Replay> list = data.replays.getAllTyped();
+        List<Replay> toMove = new ArrayList<>();
+
+        toMove.add(src);
+
+        if (src.isGroup.get())
+        {
+            String srcPath = getReplayPath(src);
+            String srcFullPath = srcPath.isEmpty() ? src.uuid.get() : srcPath + "/" + src.uuid.get();
+
+            for (Replay r : list)
+            {
+                if (r == src) continue;
+
+                String g = r.group.get();
+                if (g.equals(srcFullPath) || g.startsWith(srcFullPath + "/"))
+                {
+                    toMove.add(r);
                 }
             }
         }
 
-        for (Clip clip : data.camera.get())
+        data.preNotify(IValueListener.FLAG_UNMERGEABLE);
+
+        list.removeAll(toMove);
+
+        int destIndex = list.indexOf(dest);
+
+        if (destIndex != -1)
         {
-            if (clip instanceof EntityClip entityClip)
-            {
-                entityClip.selector.set(MathUtils.remapIndex(entityClip.selector.get(), from, to));
-            }
+            int insertIndex = insertAfter ? destIndex + 1 : destIndex;
+            insertIndex = Math.max(0, Math.min(insertIndex, list.size()));
+            list.addAll(insertIndex, toMove);
+        }
+        else
+        {
+            list.addAll(toMove);
         }
 
+        data.replays.sync();
         data.postNotify(IValueListener.FLAG_UNMERGEABLE);
 
-        this.setList(replays.getList());
+        this.buildVisualList();
         this.updateFilmEditor();
-        this.pick(to);
+
+        int newIndex = this.visualList.indexOf(src);
+        if (newIndex != -1)
+        {
+            this.setIndex(newIndex);
+        }
     }
 
     private void pasteToReplays(MapType data)
@@ -422,13 +557,15 @@ public class UIReplayList extends UIList<Replay>
             Replay replay = film.replays.addReplay();
 
             BaseValue.edit(replay, (r) -> r.fromData(replayType));
+            replay.uuid.set(java.util.UUID.randomUUID().toString());
 
             last = replay;
         }
 
         if (last != null)
         {
-            this.update();
+            this.buildVisualList();
+            this.setCurrentDirect(last);
             this.panel.replayEditor.setReplay(last);
             this.updateFilmEditor();
         }
@@ -516,7 +653,8 @@ public class UIReplayList extends UIList<Replay>
             replay.keyframes.pitch.insert(i, (double) position.angle.pitch);
         }
 
-        this.update();
+        this.buildVisualList();
+        this.setCurrentDirect(replay);
         this.panel.replayEditor.setReplay(replay);
         this.updateFilmEditor();
 
@@ -603,7 +741,8 @@ public class UIReplayList extends UIList<Replay>
             }
         }
 
-        this.update();
+        this.buildVisualList();
+        this.setCurrentDirect(replay);
         this.panel.replayEditor.setReplay(replay);
         this.updateFilmEditor();
     }
@@ -622,7 +761,8 @@ public class UIReplayList extends UIList<Replay>
         replay.keyframes.headYaw.insert(0, (double) yaw);
         replay.keyframes.bodyYaw.insert(0, (double) yaw);
 
-        this.update();
+        this.buildVisualList();
+        this.setCurrentDirect(replay);
         this.panel.replayEditor.setReplay(replay);
         this.updateFilmEditor();
 
@@ -650,13 +790,15 @@ public class UIReplayList extends UIList<Replay>
             Replay newReplay = film.replays.addReplay();
 
             newReplay.copy(replay);
+            newReplay.uuid.set(java.util.UUID.randomUUID().toString());
 
             last = newReplay;
         }
 
         if (last != null)
         {
-            this.update();
+            this.buildVisualList();
+            this.setCurrentDirect(last);
             this.panel.replayEditor.setReplay(last);
             this.updateFilmEditor();
         }
@@ -674,20 +816,66 @@ public class UIReplayList extends UIList<Replay>
 
         for (Replay replay : this.getCurrent())
         {
+            if (replay.isGroup.get())
+            {
+                this.reparentChildren(replay);
+            }
+
             film.replays.remove(replay);
         }
 
         int size = this.list.size();
         index = MathUtils.clamp(index, 0, size - 1);
 
-        this.update();
-        this.panel.replayEditor.setReplay(size == 0 ? null : this.list.get(index));
+        this.buildVisualList();
+        size = this.list.size();
+        this.panel.replayEditor.setReplay(size == 0 ? null : CollectionUtils.getSafe(this.list, index));
         this.updateFilmEditor();
+    }
+
+    private void reparentChildren(Replay groupToDelete)
+    {
+        Film data = this.panel.getData();
+        List<Replay> allReplays = data.replays.getAllTyped();
+
+        String targetPath = getReplayPath(groupToDelete);
+        String targetID = groupToDelete.uuid.get();
+        String childPrefix = targetPath.isEmpty() ? targetID : targetPath + "/" + targetID;
+        String newParentPath = targetPath;
+
+        for (Replay r : allReplays)
+        {
+            if (r == groupToDelete) continue;
+
+            String g = r.group.get();
+
+            if (g.equals(childPrefix) || g.startsWith(childPrefix + "/"))
+            {
+                String suffix = g.substring(childPrefix.length());
+                String newPath;
+
+                if (newParentPath.isEmpty())
+                {
+                    newPath = suffix.startsWith("/") ? suffix.substring(1) : suffix;
+                }
+                else
+                {
+                    newPath = newParentPath + suffix;
+                }
+
+                r.group.set(newPath);
+            }
+        }
     }
 
     @Override
     public void render(UIContext context)
     {
+        if (this.panel != null && this.panel.getData() != null)
+        {
+            this.buildVisualList();
+        }
+
         super.render(context);
     }
 
@@ -700,13 +888,28 @@ public class UIReplayList extends UIList<Replay>
     @Override
     protected void renderElementPart(UIContext context, Replay element, int i, int x, int y, boolean hover, boolean selected)
     {
+        int depth = getReplayDepth(element);
+        int indent = depth * 10;
+        int textX = x + indent;
+
+        if (element.isGroup.get())
+        {
+            String path = getReplayPath(element);
+            String myPath = path.isEmpty() ? element.uuid.get() : path + "/" + element.uuid.get();
+            boolean expanded = this.expandedGroups.getOrDefault(myPath, true);
+            Icon icon = expanded ? Icons.ARROW_DOWN : Icons.ARROW_RIGHT;
+
+            context.batcher.icon(icon, textX, y + 2);
+            textX += 12;
+        }
+
         if (element.enabled.get())
         {
-            super.renderElementPart(context, element, i, x, y, hover, selected);
+            super.renderElementPart(context, element, i, textX, y, hover, selected);
         }
         else
         {
-            context.batcher.textShadow(this.elementToString(context, i, element), x + 4, y + (this.scroll.scrollItemSize - context.batcher.getFont().getHeight()) / 2, hover ? Colors.mulRGB(Colors.HIGHLIGHT, 0.75F) : Colors.GRAY);
+            context.batcher.textShadow(this.elementToString(context, i, element), textX + 4, y + (this.scroll.scrollItemSize - context.batcher.getFont().getHeight()) / 2, hover ? Colors.mulRGB(Colors.HIGHLIGHT, 0.75F) : Colors.GRAY);
         }
 
         Form form = element.form.get();
@@ -729,4 +932,198 @@ public class UIReplayList extends UIList<Replay>
             }
         }
     }
+
+    private void addGroup()
+    {
+        Film film = this.panel.getData();
+        Replay group = new Replay("replay");
+
+        group.uuid.set(java.util.UUID.randomUUID().toString());
+        group.isGroup.set(true);
+        group.label.set("New Group");
+
+        List<Replay> selected = this.getCurrent();
+
+        if (!selected.isEmpty())
+        {
+            List<Replay> list = film.replays.getAllTyped();
+            Replay first = selected.get(0);
+            
+            int insertionIndex = list.size();
+
+            for (Replay r : selected)
+            {
+                int index = list.indexOf(r);
+
+                if (index != -1 && index < insertionIndex)
+                {
+                    insertionIndex = index;
+                }
+            }
+            
+            String parentPath = first.group.get();
+
+            group.group.set(parentPath);
+            
+            String newGroupPath = parentPath.isEmpty() ? group.uuid.get() : parentPath + "/" + group.uuid.get();
+            
+            list.removeAll(selected);
+            
+            for (Replay r : selected)
+            {
+                r.group.set(newGroupPath);
+            }
+            
+            if (insertionIndex > list.size())
+            {
+                insertionIndex = list.size();
+            }
+            
+            list.add(insertionIndex, group);
+            list.addAll(insertionIndex + 1, selected);
+            
+            this.expandedGroups.put(newGroupPath, true);
+        }
+        else
+        {
+            film.replays.add(group);
+        }
+
+        film.replays.sync();
+
+        this.buildVisualList();
+        this.updateFilmEditor();
+    }
+
+    public void buildVisualList()
+    {
+        if (this.panel == null || this.panel.getData() == null) return;
+
+        List<Replay> selected = new ArrayList<>();
+
+        if (this.list != null && !this.list.isEmpty())
+        {
+             selected = this.getCurrent();
+        }
+
+        List<Replay> all = this.panel.getData().replays.getList();
+
+        this.visualList.clear();
+
+        for (Replay r : all)
+        {
+            String path = getReplayPath(r);
+
+            if (path.isEmpty() || isPathExpanded(path))
+            {
+                this.visualList.add(r);
+            }
+        }
+
+        this.setList(this.visualList);
+        this.current.clear();
+
+        for (Replay r : selected)
+        {
+            int index = this.visualList.indexOf(r);
+
+            if (index != -1)
+            {
+                this.current.add(index);
+            }
+        }
+    }
+
+    private boolean isPathExpanded(String path)
+    {
+        String[] parts = path.split("/");
+        String current = "";
+
+        for (String part : parts)
+        {
+            current = current.isEmpty() ? part : current + "/" + part;
+
+            if (!this.expandedGroups.getOrDefault(current, true))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public void updateGroupPath(String oldFullPath, String newFullPath)
+    {
+        Film film = this.panel.getData();
+        List<Replay> all = film.replays.getList();
+        boolean changed = false;
+
+        if (this.expandedGroups.containsKey(oldFullPath))
+        {
+            this.expandedGroups.put(newFullPath, this.expandedGroups.remove(oldFullPath));
+        }
+
+        for (Replay r : all)
+        {
+            String group = r.group.get();
+            
+            if (group.equals(oldFullPath) || group.startsWith(oldFullPath + "/"))
+            {
+                String suffix = group.substring(oldFullPath.length());
+                r.group.set(newFullPath + suffix);
+                changed = true;
+            }
+        }
+
+        if (changed)
+        {
+            film.replays.sync();
+            this.buildVisualList();
+            this.updateFilmEditor();
+        }
+    }
+
+    public String getReplayPath(Replay r)
+    {
+        return r.group.get();
+    }
+
+    private int getReplayDepth(Replay r)
+    {
+        String path = getReplayPath(r);
+        return path.isEmpty() ? 0 : path.split("/").length;
+    }
+
+    @Override
+    public boolean subMouseClicked(UIContext context)
+    {
+        if (context.mouseButton == 0)
+        {
+            int index = this.scroll.getIndex(context.mouseX, context.mouseY);
+
+            if (this.exists(index))
+            {
+                Replay r = this.list.get(index);
+                int depth = getReplayDepth(r);
+                int indent = depth * 10;
+                int x = this.area.x + indent;
+
+                if (r.isGroup.get() && context.mouseX >= x && context.mouseX < x + 16)
+                {
+                    String path = getReplayPath(r);
+                    String myPath = path.isEmpty() ? r.uuid.get() : path + "/" + r.uuid.get();
+
+                    boolean expanded = this.expandedGroups.getOrDefault(myPath, true);
+
+                    this.expandedGroups.put(myPath, !expanded);
+                    this.buildVisualList();
+
+                    return true;
+                }
+            }
+        }
+
+        return super.subMouseClicked(context);
+    }
+
 }

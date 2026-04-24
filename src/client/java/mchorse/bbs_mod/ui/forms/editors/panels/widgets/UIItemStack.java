@@ -3,6 +3,7 @@ package mchorse.bbs_mod.ui.forms.editors.panels.widgets;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
 import mchorse.bbs_mod.forms.FormUtilsClient;
+import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.UIContext;
@@ -32,6 +33,25 @@ public class UIItemStack extends UIElement
 
         this.context((menu) ->
         {
+            menu.action(Icons.SPHERE, UIKeys.ITEM_STACK_CONTEXT_INVENTORY, () ->
+            {
+                this.opened = true;
+
+                UIPlayerInventoryPanel panel = new UIPlayerInventoryPanel((i) ->
+                {
+                    if (this.callback != null)
+                    {
+                        this.callback.accept(i);
+                    }
+
+                    this.setStack(i);
+                });
+
+                panel.onClose((a) -> this.opened = false);
+                UIOverlay.addOverlay(this.getContext(), panel, 0.23F, 0.5F);
+                UIUtils.playClick();
+            });
+
             menu.action(Icons.PASTE, UIKeys.ITEM_STACK_CONTEXT_PASTE, () ->
             {
                 ItemStack stack = MinecraftClient.getInstance().player.getMainHandStack().copy();
@@ -109,9 +129,9 @@ public class UIItemStack extends UIElement
             UIUtils.playClick();
 
             return true;
-        } else {
-            return super.subMouseClicked(context);
         }
+
+        return super.subMouseClicked(context);
     }
 
     public void render(UIContext context)

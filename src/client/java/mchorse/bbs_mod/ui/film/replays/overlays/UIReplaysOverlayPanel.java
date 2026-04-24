@@ -25,17 +25,22 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
 {
     public UIReplayList replays;
 
-    public UIElement properties;
+    public UIElement replayProperties;
+    public UIElement groupProperties;
+    public UIElement replayLabel;
     public UINestedEdit pickEdit;
     public UIToggle enabled;
     public UITextbox label;
+    public UITextbox groupLabel;
     public UITextbox nameTag;
     public UIToggle shadow;
     public UITrackpad shadowSize;
+    public UIElement loopingLabel;
     public UITrackpad looping;
     public UIToggle actor;
     public UIToggle fp;
     public UIToggle relative;
+    public UIElement relativeRow;
     public UITrackpad relativeOffsetX;
     public UITrackpad relativeOffsetY;
     public UITrackpad relativeOffsetZ;
@@ -43,6 +48,7 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
     public UIButton pickAxesPreviewBone;
 
     private Consumer<Replay> callback;
+    private boolean docked;
 
     public UIReplaysOverlayPanel(UIFilmPanel filmPanel, Consumer<Replay> callback)
     {
@@ -65,6 +71,20 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
         });
         this.label = new UITextbox(1000, (s) -> this.edit((replay) -> replay.label.set(s)));
         this.label.textbox.setPlaceholder(UIKeys.FILM_REPLAY_LABEL);
+
+        this.groupLabel = new UITextbox(1000, (s) ->
+        {
+             this.edit((replay) ->
+             {
+                 if (replay.isGroup.get())
+                 {
+                     replay.label.set(s);
+                     this.replays.buildVisualList();
+                     this.replays.setCurrentDirect(replay);
+                 }
+             });
+        });
+        this.groupLabel.textbox.setPlaceholder(UIKeys.FILM_REPLAY_LABEL);
         this.nameTag = new UITextbox(1000, (s) -> this.edit((replay) -> replay.nameTag.set(s)));
         this.nameTag.textbox.setPlaceholder(UIKeys.FILM_REPLAY_NAME_TAG);
         this.shadow = new UIToggle(UIKeys.FILM_REPLAY_SHADOW, (b) -> this.edit((replay) -> replay.shadow.set(b.getValue())));
@@ -105,20 +125,53 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
             });
         });
 
-        this.properties = UI.scrollView(5, 6,
-            UI.label(UIKeys.FILM_REPLAY_REPLAY),
+        this.replayLabel = UI.label(UIKeys.FILM_REPLAY_REPLAY);
+        this.loopingLabel = UI.label(UIKeys.FILM_REPLAY_LOOPING);
+        this.relativeRow = UI.row(this.relativeOffsetX, this.relativeOffsetY, this.relativeOffsetZ);
+
+        this.replayProperties = UI.scrollView(5, 6,
+            this.replayLabel,
             this.pickEdit, this.enabled,
             this.label, this.nameTag,
             this.shadow, this.shadowSize,
-            UI.label(UIKeys.FILM_REPLAY_LOOPING),
+            this.loopingLabel,
             this.looping, this.actor, this.fp,
-            this.relative, UI.row(this.relativeOffsetX, this.relativeOffsetY, this.relativeOffsetZ),
+            this.relative, this.relativeRow,
             this.axesPreview, this.pickAxesPreviewBone
         );
-        this.properties.relative(this.replays).x(1F).wTo(this.icons.area).h(1F);
+        this.groupProperties = UI.scrollView(0, 0, this.groupLabel);
+
+        this.replayProperties.relative(this.replays).x(1F).wTo(this.icons.area).h(1F);
+        this.groupProperties.relative(this.replays).x(1F).wTo(this.icons.area).h(1F);
         this.replays.relative(this.content).w(0.5F).h(1F);
 
-        this.content.add(this.replays, this.properties);
+        this.content.add(this.replays, this.replayProperties, this.groupProperties);
+    }
+
+    public void setDocked(boolean docked)
+    {
+        this.docked = docked;
+
+        if (docked)
+        {
+            this.title.setVisible(false);
+            this.icons.setVisible(false);
+            this.close.setVisible(false);
+
+            this.title.area.set(0, 0, 0, 0);
+
+            this.content.relative(this).xy(0, 0).w(1F).h(1F);
+        }
+        else
+        {
+            this.title.setVisible(true);
+            this.icons.setVisible(true);
+            this.close.setVisible(true);
+
+            this.title.labelAnchor(0, 0.5F).relative(this).xy(6, 0).w(0.6F).h(20);
+            this.icons.relative(this).x(1F, -20).y(0).w(20).h(1F).column(0).stretch();
+            this.content.relative(this).xy(0, 20).w(1F, -20).h(1F, -20);
+        }
     }
 
     private void edit(Consumer<Replay> consumer)
@@ -136,31 +189,46 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
 
     public void setReplay(Replay replay)
     {
-        this.properties.setVisible(replay != null);
+        boolean hasReplay = replay != null;
+        boolean isGroup = hasReplay && replay.isGroup.get();
 
-        if (replay != null)
+        this.replayProperties.setVisible(hasReplay && !isGroup);
+        this.groupProperties.setVisible(hasReplay && isGroup);
+
+        if (hasReplay)
         {
-            this.pickEdit.setForm(replay.form.get());
-            this.enabled.setValue(replay.enabled.get());
-            this.label.setText(replay.label.get());
-            this.nameTag.setText(replay.nameTag.get());
-            this.shadow.setValue(replay.shadow.get());
-            this.shadowSize.setValue(replay.shadowSize.get());
-            this.looping.setValue(replay.looping.get());
-            this.actor.setValue(replay.actor.get());
-            this.fp.setValue(replay.fp.get());
-            this.relative.setValue(replay.relative.get());
-            this.relativeOffsetX.setValue(replay.relativeOffset.get().x);
-            this.relativeOffsetY.setValue(replay.relativeOffset.get().y);
-            this.relativeOffsetZ.setValue(replay.relativeOffset.get().z);
-            this.axesPreview.setValue(replay.axesPreview.get());
+            if (isGroup)
+            {
+                this.groupLabel.setText(replay.label.get());
+            }
+            else
+            {
+                this.label.setText(replay.label.get());
+
+                this.pickEdit.setForm(replay.form.get());
+                this.enabled.setValue(replay.enabled.get());
+                this.nameTag.setText(replay.nameTag.get());
+                this.shadow.setValue(replay.shadow.get());
+                this.shadowSize.setValue(replay.shadowSize.get());
+                this.looping.setValue(replay.looping.get());
+                this.actor.setValue(replay.actor.get());
+                this.fp.setValue(replay.fp.get());
+                this.relative.setValue(replay.relative.get());
+                this.relativeOffsetX.setValue(replay.relativeOffset.get().x);
+                this.relativeOffsetY.setValue(replay.relativeOffset.get().y);
+                this.relativeOffsetZ.setValue(replay.relativeOffset.get().z);
+                this.axesPreview.setValue(replay.axesPreview.get());
+            }
         }
     }
 
     @Override
     protected void renderBackground(UIContext context)
     {
-        super.renderBackground(context);
+        if (!this.docked)
+        {
+            super.renderBackground(context);
+        }
 
         this.content.area.render(context.batcher, Colors.A100);
 

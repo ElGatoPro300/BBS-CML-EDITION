@@ -1,5 +1,6 @@
 package mchorse.bbs_mod.bobj;
 
+import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.pose.Transform;
 import org.joml.Matrix4f;
 
@@ -13,6 +14,9 @@ public class BOBJBone
 
     /* Transformations */
     public final Transform transform = new Transform();
+
+    public float lighting;
+    public final Color color = new Color(1, 1, 1, 1);
 
     /**
      * Computed bone matrix which is used for transformations. This 

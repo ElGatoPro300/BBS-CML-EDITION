@@ -36,11 +36,11 @@ import java.util.List;
 
 public class UIKeyframeGraph implements IUIKeyframeGraph
 {
-    private UIKeyframes keyframes;
+    protected UIKeyframes keyframes;
 
-    private UIKeyframeSheet sheet;
+    protected UIKeyframeSheet sheet;
 
-    private final Scale yAxis;
+    protected final Scale yAxis;
 
     public UIKeyframeGraph(UIKeyframes keyframes, UIKeyframeSheet sheet)
     {
@@ -507,7 +507,7 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
         }
     }
 
-    private void renderPreviewKeyframe(UIContext context, UIKeyframeSheet sheet, double tick, int y, int color)
+    protected void renderPreviewKeyframe(UIContext context, UIKeyframeSheet sheet, double tick, int y, int color)
     {
         int x = this.keyframes.toGraphX(tick);
         float a = (float) Math.sin(context.getTickTransition() / 2D) * 0.1F + 0.5F;

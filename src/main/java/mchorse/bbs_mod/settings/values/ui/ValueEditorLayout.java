@@ -14,6 +14,9 @@ public class ValueEditorLayout extends BaseValue
     private float editorSizeV = 0.5F;
     private float stateEditorSizeH = 0.7F;
     private float stateEditorSizeV = 0.25F;
+    private float newFilmSidebarSize = 0.25F;
+    private float newFilmMainSizeH = 0.5F;
+    private int filmLayoutMode;
 
     public ValueEditorLayout(String id)
     {
@@ -43,6 +46,21 @@ public class ValueEditorLayout extends BaseValue
     public void setEditorSizeV(float editorSizeV)
     {
         BaseValue.edit(this, (v) -> this.editorSizeV = editorSizeV);
+    }
+
+    public void setNewFilmSidebarSize(float sidebarSize)
+    {
+        BaseValue.edit(this, (v) -> this.newFilmSidebarSize = sidebarSize);
+    }
+
+    public void setNewFilmMainSizeH(float mainSizeH)
+    {
+        BaseValue.edit(this, (v) -> this.newFilmMainSizeH = mainSizeH);
+    }
+
+    public void setFilmLayoutMode(int filmLayoutMode)
+    {
+        BaseValue.edit(this, (v) -> this.filmLayoutMode = filmLayoutMode);
     }
 
     public void setStateEditorSizeH(float editorSizeH)
@@ -80,6 +98,21 @@ public class ValueEditorLayout extends BaseValue
         return this.editorSizeV;
     }
 
+    public float getNewFilmSidebarSize()
+    {
+        return MathUtils.clamp(this.newFilmSidebarSize, 0.1F, 0.6F);
+    }
+
+    public float getNewFilmMainSizeH()
+    {
+        return MathUtils.clamp(this.newFilmMainSizeH, 0.15F, 0.7F);
+    }
+
+    public int getFilmLayoutMode()
+    {
+        return MathUtils.clamp(this.filmLayoutMode, 0, 2);
+    }
+
     public float getStateEditorSizeH()
     {
         return MathUtils.clamp(this.stateEditorSizeH, 0.1F, 0.9F);
@@ -102,6 +135,9 @@ public class ValueEditorLayout extends BaseValue
         data.putFloat("editor_size_v", this.editorSizeV);
         data.putFloat("state_editor_size_h", this.stateEditorSizeH);
         data.putFloat("state_editor_size_v", this.stateEditorSizeV);
+        data.putFloat("new_film_sidebar_size", this.newFilmSidebarSize);
+        data.putFloat("new_film_main_size_h", this.newFilmMainSizeH);
+        data.putInt("film_layout_mode", this.filmLayoutMode);
 
         return data;
     }
@@ -120,6 +156,9 @@ public class ValueEditorLayout extends BaseValue
             this.editorSizeV = map.getFloat("editor_size_v", 0.5F);
             this.stateEditorSizeH = map.getFloat("state_editor_size_h", 0.7F);
             this.stateEditorSizeV = map.getFloat("state_editor_size_v", 0.25F);
+            this.newFilmSidebarSize = map.getFloat("new_film_sidebar_size", 0.25F);
+            this.newFilmMainSizeH = map.getFloat("new_film_main_size_h", 0.5F);
+            this.filmLayoutMode = map.getInt("film_layout_mode", 0);
         }
     }
 }

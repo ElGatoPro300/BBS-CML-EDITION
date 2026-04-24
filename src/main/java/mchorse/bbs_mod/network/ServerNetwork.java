@@ -221,7 +221,11 @@ public class ServerNetwork
                 String id = data.getString("id");
                 Film film = films.load(id);
 
-                sendManagerData(player, callbackId, op, film.toData());
+                 if (film != null)
+                {
+                    sendManagerData(player, callbackId, op, film.toData());
+                }
+
             }
             else if (op == RepositoryOperation.SAVE)
             {
