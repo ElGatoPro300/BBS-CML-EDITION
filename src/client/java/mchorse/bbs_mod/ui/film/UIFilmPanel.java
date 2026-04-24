@@ -83,6 +83,7 @@ import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix4f;
 import org.joml.Vector2i;
 import org.joml.Vector3d;
+import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -129,6 +130,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     private Camera camera = new Camera();
     private boolean entered;
+    private boolean resetFreeFlightLookDrag;
 
     /* Entity control */
     private UIFilmController controller;
@@ -1855,6 +1857,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         {
             this.runner.setManual(flight ? this.position : null);
             this.dashboard.orbitUI.setControl(flight);
+            this.updateFreeFlightMouseCapture(flight);
 
             /* Marking the latest undo as unmergeable */
             if (this.undoHandler != null && !flight)
@@ -2044,11 +2047,32 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         {
             if (BBSSettings.editorFlightFreeLook.get())
             {
+                if (this.enforceFreeFlightMouseCapture())
+                {
+                    this.resetFreeFlightLookDrag = true;
+                }
+
+                int centerX = context.menu.width / 2;
+                int centerY = context.menu.height / 2;
+
+                if (this.resetFreeFlightLookDrag)
+                {
+                    this.dashboard.orbitUI.orbit.release();
+                    this.dashboard.orbitUI.orbit.cache(centerX, centerY);
+
+                    if (context.mouseX >= 0 && context.mouseY >= 0
+                        && Math.abs(context.mouseX - centerX) <= 1
+                        && Math.abs(context.mouseY - centerY) <= 1)
+                    {
+                        this.resetFreeFlightLookDrag = false;
+                    }
+                }
+
                 boolean anyPressed = Window.isMouseButtonPressed(0) || Window.isMouseButtonPressed(1) || Window.isMouseButtonPressed(2);
 
-                if (!anyPressed && !this.dashboard.orbitUI.orbit.isDragging() && context.mouseX >= 0 && context.mouseY >= 0)
+                if (!this.resetFreeFlightLookDrag && !anyPressed && !this.dashboard.orbitUI.orbit.isDragging() && context.mouseX >= 0 && context.mouseY >= 0)
                 {
-                    this.dashboard.orbitUI.orbit.start(0, context.mouseX, context.mouseY);
+                    this.dashboard.orbitUI.orbit.start(0, centerX, centerY);
                 }
             }
 
@@ -2086,6 +2110,52 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                 this.notifyServer(ActionState.RESTART);
             }
         }
+    }
+
+    private void updateFreeFlightMouseCapture(boolean flight)
+    {
+        if (!BBSSettings.editorFlightFreeLook.get())
+        {
+            return;
+        }
+
+        net.minecraft.client.util.Window window = MinecraftClient.getInstance().getWindow();
+
+        if (flight)
+        {
+            this.centerCursor(window);
+            GLFW.glfwSetInputMode(window.getHandle(), GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_DISABLED);
+            this.resetFreeFlightLookDrag = true;
+        }
+        else if (!this.controller.isControlling())
+        {
+            GLFW.glfwSetInputMode(window.getHandle(), GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_NORMAL);
+            this.resetFreeFlightLookDrag = false;
+        }
+    }
+
+    private boolean enforceFreeFlightMouseCapture()
+    {
+        if (!this.isFlying() || !BBSSettings.editorFlightFreeLook.get())
+        {
+            return false;
+        }
+
+        net.minecraft.client.util.Window window = MinecraftClient.getInstance().getWindow();
+
+        if (GLFW.glfwGetInputMode(window.getHandle(), GLFW.GLFW_CURSOR) != GLFW.GLFW_CURSOR_DISABLED)
+        {
+            this.centerCursor(window);
+            GLFW.glfwSetInputMode(window.getHandle(), GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_DISABLED);
+            return true;
+        }
+
+        return false;
+    }
+
+    private void centerCursor(net.minecraft.client.util.Window window)
+    {
+        mchorse.bbs_mod.graphics.window.Window.moveCursor(window.getWidth() / 2, window.getHeight() / 2);
     }
 
     @Override

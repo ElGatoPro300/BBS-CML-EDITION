@@ -209,6 +209,7 @@ public class BBSSettings
         favoriteColors = new ValueColors("favorite_colors");
         favoriteModelForms = new ValueStringKeys("favorite_model_forms");
         favoriteFormCategoriesData = builder.getString("favorite_form_categories_data", "");
+        favoriteFormCategoriesData.invisible();
         disabledSheets = new ValueStringKeys("disabled_sheets");
         disabledSheets.set(defaultFilters);
         builder.register(favoriteColors);

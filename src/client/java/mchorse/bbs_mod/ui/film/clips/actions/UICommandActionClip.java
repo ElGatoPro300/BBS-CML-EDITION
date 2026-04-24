@@ -14,6 +14,9 @@ public class UICommandActionClip extends UIActionClip<CommandActionClip>
     private static final int BASE_COMMAND_HEIGHT = 72;
     private static final int COMMAND_LINE_HEIGHT = 12;
     private static final int COMMAND_PADDING = 20;
+    private static final int DEFAULT_COMMAND_WIDTH = 140;
+    private static final int DEFAULT_COMMAND_HEIGHT = 20;
+    private static final boolean DEFAULT_COMMAND_WRAP = true;
 
     public UITextarea<TextLine> command;
 
@@ -35,9 +38,9 @@ public class UICommandActionClip extends UIActionClip<CommandActionClip>
                 super.writeString(string.replace("\n", ""));
             }
         };
-        this.command.w(BBSSettings.editorCommandWidth.get());
-        this.command.h(BBSSettings.editorCommandHeight.get());
-        this.command.wrap(BBSSettings.editorCommandAutoWrap.get());
+        this.command.w(BBSSettings.editorCommandWidth == null ? DEFAULT_COMMAND_WIDTH : BBSSettings.editorCommandWidth.get());
+        this.command.h(BBSSettings.editorCommandHeight == null ? DEFAULT_COMMAND_HEIGHT : BBSSettings.editorCommandHeight.get());
+        this.command.wrap(BBSSettings.editorCommandAutoWrap == null ? DEFAULT_COMMAND_WRAP : BBSSettings.editorCommandAutoWrap.get());
         this.command.background();
     }
 

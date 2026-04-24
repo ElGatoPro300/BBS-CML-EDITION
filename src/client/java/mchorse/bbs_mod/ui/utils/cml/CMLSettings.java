@@ -62,9 +62,5 @@ public class CMLSettings
         BBSSettings.presetsGridPanel = builder.getBoolean("presets_grid_panel", false);
         BBSSettings.replayFpBobbingIntensity = builder.getFloat("replay_fp_bobbing_intensity", 0.25F, 0F, 2F);
         BBSSettings.replayFpBobbingFrequency = builder.getFloat("replay_fp_bobbing_frequency", 0.25F, 0F, 3F);
-        builder.category("action_editor");
-        BBSSettings.editorCommandWidth = builder.getInt("command_width", 140, -100000, 100000);
-        BBSSettings.editorCommandHeight = builder.getInt("command_height", 20, -100000, 100000);
-        BBSSettings.editorCommandAutoWrap = builder.getBoolean("command_auto_wrap", true);
     }
 }
