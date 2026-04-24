@@ -40,12 +40,6 @@ public class ModelBlockEntity extends BlockEntity
         BlockPos pos = this.getPos();
         Form form = this.getProperties().getForm();
         String s = "(" + pos.getX() + ", " + pos.getY() + ", " + pos.getZ() + ")";
-        String customName = this.getProperties().getName();
-
-        if (!customName.isEmpty())
-        {
-            return s + " " + customName;
-        }
 
         if (form != null)
         {

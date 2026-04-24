@@ -71,10 +71,9 @@ public class UILabelFormPanel extends UIFormPanel<LabelForm>
     public UIButton resetGradient;
 
     private UIElement advancedSection;
-    private UIElement advancedHeaderRow;
     private UIIcon advancedToggle;
     private UIButton advancedHeader;
-    private boolean advancedExpanded = false;
+    private boolean advancedExpanded = true;
 
     public UILabelFormPanel(UIForm editor)
     {
@@ -220,7 +219,7 @@ public class UILabelFormPanel extends UIFormPanel<LabelForm>
             this.gradient, this.gradientEndColor, this.gradientOffset, this.resetGradient
         );
 
-        this.advancedHeaderRow = new UIElement()
+        UIElement advancedHeaderRow = new UIElement()
         {
             @Override
             public void render(UIContext context)
@@ -229,11 +228,11 @@ public class UILabelFormPanel extends UIFormPanel<LabelForm>
                 super.render(context);
             }
         };
-        this.advancedHeaderRow.row(5).padding(4).height(20);
-        this.advancedHeaderRow.add(this.advancedToggle, this.advancedHeader);
-        this.advancedHeaderRow.marginTop(12);
-        this.options.add(this.advancedHeaderRow);
-        this.setAdvancedExpanded(false);
+        advancedHeaderRow.row(5).padding(4).height(20);
+        advancedHeaderRow.add(this.advancedToggle, this.advancedHeader);
+        advancedHeaderRow.marginTop(12);
+        this.options.add(advancedHeaderRow, this.advancedSection);
+        this.setAdvancedExpanded(true);
     }
 
     private void toggleAdvancedSection()
@@ -244,18 +243,8 @@ public class UILabelFormPanel extends UIFormPanel<LabelForm>
     private void setAdvancedExpanded(boolean expanded)
     {
         this.advancedExpanded = expanded;
+        this.advancedSection.setVisible(expanded);
         this.advancedToggle.both(expanded ? Icons.ARROW_DOWN : Icons.ARROW_RIGHT);
-        if (expanded)
-        {
-            if (!this.advancedSection.hasParent())
-            {
-                this.options.addAfter(this.advancedHeaderRow, this.advancedSection);
-            }
-        }
-        else
-        {
-            this.advancedSection.removeFromParent();
-        }
         this.options.resize();
     }
 

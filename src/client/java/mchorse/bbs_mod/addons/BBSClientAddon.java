@@ -14,7 +14,6 @@ import mchorse.bbs_mod.events.register.RegisterUIKeyframeFactoriesEvent;
 import mchorse.bbs_mod.events.register.RegisterFormsRenderersEvent;
 import mchorse.bbs_mod.events.register.RegisterFormEditorsEvent;
 import mchorse.bbs_mod.events.register.RegisterL10nEvent;
-import mchorse.bbs_mod.events.register.RegisterModelLoadersEvent;
 import mchorse.bbs_mod.events.register.RegisterParticleComponentsEvent;
 import mchorse.bbs_mod.events.register.RegisterPropTransformEvent;
 import mchorse.bbs_mod.events.register.RegisterStencilMapEvent;
@@ -71,12 +70,6 @@ public abstract class BBSClientAddon implements BBSAddonMod
         this.registerParticleComponents(event);
     }
 
-    @Subscribe
-    public void onRegisterModelLoaders(RegisterModelLoadersEvent event)
-    {
-        this.registerModelLoaders(event);
-    }
-
     protected void registerClientSettings(RegisterClientSettingsEvent event)
     {}
 
@@ -93,9 +86,6 @@ public abstract class BBSClientAddon implements BBSAddonMod
     {}
 
     protected void registerParticleComponents(RegisterParticleComponentsEvent event)
-    {}
-
-    protected void registerModelLoaders(RegisterModelLoadersEvent event)
     {}
 
     @Subscribe

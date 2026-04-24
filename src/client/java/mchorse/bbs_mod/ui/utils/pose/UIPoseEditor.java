@@ -1,16 +1,11 @@
 package mchorse.bbs_mod.ui.utils.pose;
 
-import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.cubic.IModel;
-import mchorse.bbs_mod.data.DataToString;
-import mchorse.bbs_mod.data.types.BaseType;
-import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
-import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
@@ -27,7 +22,6 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIConfirmOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UISearchList;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UIList;
-import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.utils.CollectionUtils;
@@ -40,27 +34,17 @@ import mchorse.bbs_mod.utils.resources.LinkUtils;
 import mchorse.bbs_mod.utils.pose.Transform;
 import mchorse.bbs_mod.utils.Axis;
 import mchorse.bbs_mod.utils.MathUtils;
-import com.mojang.blaze3d.systems.RenderSystem;
 
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
-import java.io.File;
-import java.io.IOException;
 
 public class UIPoseEditor extends UIElement
 {
-    private static final Map<String, String> LAST_LIMB_CACHE = new HashMap<>();
-    private static final Map<String, Set<String>> MARKED_BONES_CACHE = new HashMap<>();
-    private static final String MARKED_BONES_FILE = "marked_bones.json";
-    private static boolean MARKED_BONES_LOADED = false;
+    private static String lastLimb = "";
 
     public UISearchList<String> groups;
     public UIElement extra;
@@ -81,30 +65,18 @@ public class UIPoseEditor extends UIElement
     protected Supplier<Link> defaultTextureSupplier;
     /** Gestor de categorías de huesos (por grupo de pose). */
     protected BoneCategoriesManager boneCategories = new BoneCategoriesManager();
-    private final List<String> allBones = new ArrayList<>();
-    private final Set<String> markedBones = new HashSet<>();
-    private boolean showOnlyMarked;
-    private UIIcon showOnlyMarkedButton;
-    private String currentBone;
 
     public UIPoseEditor()
     {
         this.extra = new UIElement();
         this.extra.column().vertical().stretch();
 
-        this.groupsList = new MarkableBoneList((l) -> this.pickBone(l.get(0)));
+        this.groupsList = new UIStringList((l) -> this.pickBone(l.get(0)));
         this.groups = new UISearchList<>(this.groupsList);
         this.groups.label(UIKeys.GENERAL_SEARCH);
         this.groups.h(UIStringList.DEFAULT_HEIGHT * 8 + 12); // 20px search box + list height
         this.groups.list.background();
         this.groups.list.scroll.cancelScrolling();
-        this.groups.search.w(1F, -20);
-        this.showOnlyMarkedButton = new UIIcon(() -> this.showOnlyMarked ? Icons.VISIBLE : Icons.FILTER, (b) -> this.toggleShowOnlyMarked());
-        this.showOnlyMarked = BBSSettings.poseBonesFilterMarked != null && BBSSettings.poseBonesFilterMarked.get();
-        this.showOnlyMarkedButton.active(this.showOnlyMarked);
-        this.showOnlyMarkedButton.tooltip(UIKeys.POSE_BONES_FILTER_MARKED_TOOLTIP);
-        this.showOnlyMarkedButton.relative(this.groups).x(1F, -20).y(0).w(20).h(20);
-        this.groups.add(this.showOnlyMarkedButton);
         this.groups.list.context(() ->
         {
             UIDataContextMenu menu = new UIDataContextMenu(PoseManager.INSTANCE, this.group, () -> this.pose != null ? this.pose.toData() : new MapType(), this::pastePose);
@@ -390,25 +362,14 @@ public class UIPoseEditor extends UIElement
 
         this.column().vertical().stretch();
         boolean categoriesEnabled = BBSSettings.modelBlockCategoriesPanelEnabled != null && BBSSettings.modelBlockCategoriesPanelEnabled.get();
-        boolean pickLimbTexture = BBSSettings.pickLimbTexture != null && BBSSettings.pickLimbTexture.get();
-
         if (categoriesEnabled)
         {
-            this.add(UI.row(this.groups, this.categories));
+            this.add(UI.row(this.groups, this.categories), this.extra, UI.label(UIKeys.POSE_CONTEXT_FIX), this.fix, this.pickTexture, UI.row(this.color, this.lighting), this.transform);
         }
         else
         {
-            this.add(this.groups);
+            this.add(this.groups, this.extra, UI.label(UIKeys.POSE_CONTEXT_FIX), this.fix, this.pickTexture, UI.row(this.color, this.lighting), this.transform);
         }
-
-        this.add(this.extra, UI.label(UIKeys.POSE_CONTEXT_FIX), this.fix);
-
-        if (pickLimbTexture)
-        {
-            this.add(this.pickTexture);
-        }
-
-        this.add(UI.row(this.color, this.lighting), this.transform);
     }
 
     /**
@@ -483,7 +444,6 @@ public class UIPoseEditor extends UIElement
     {
         this.pose = pose;
         this.group = group;
-        this.loadMarkedBonesCache();
         this.refreshCategories();
     }
 
@@ -516,56 +476,37 @@ public class UIPoseEditor extends UIElement
         this.groups.list.clear();
         this.groups.list.add(groups);
         this.groups.list.sort();
-        this.allBones.clear();
-        this.allBones.addAll(this.groups.list.getList());
-        if (!this.allBones.isEmpty())
-        {
-            this.markedBones.retainAll(this.allBones);
-            this.saveMarkedBonesCache();
-        }
 
         this.fix.setVisible(!groups.isEmpty());
         this.color.setVisible(!groups.isEmpty());
         this.transform.setVisible(!groups.isEmpty());
 
-        boolean persistedFilter = BBSSettings.poseBonesFilterMarked != null && BBSSettings.poseBonesFilterMarked.get();
-        if (persistedFilter != this.showOnlyMarked)
+        List<String> list = this.groups.list.getList();
+        int i = Math.max(reset ? 0 : list.indexOf(lastLimb), 0);
+        String element = CollectionUtils.getSafe(list, i);
+
+        if (reset)
         {
-            this.showOnlyMarked = persistedFilter;
-            this.showOnlyMarkedButton.active(this.showOnlyMarked);
+            this.groups.list.setCurrentScroll(element);
+        }
+        else
+        {
+            this.groups.list.setCurrent(element);
+            this.groups.list.scroll.setScroll(scroll);
         }
 
-        String preferred = this.getLastSelectedBone();
-        this.applyMarkedFilter(reset, preferred, scroll);
+        this.pickBone(this.groups.list.getCurrentFirst());
+        this.refreshCategories();
     }
 
     public void selectBone(String bone)
     {
-        this.cacheLastSelectedBone(bone);
+        lastLimb = bone;
 
-        if (this.showOnlyMarked && bone != null && !bone.isEmpty() && !this.markedBones.contains(bone))
-        {
-            this.showOnlyMarked = false;
-            this.showOnlyMarkedButton.active(false);
-            if (BBSSettings.poseBonesFilterMarked != null)
-            {
-                BBSSettings.poseBonesFilterMarked.set(false);
-            }
+        this.groups.list.setCurrentScroll(bone);
+        this.pickBone(bone);
 
-            double scroll = this.groups.list.scroll.getScroll();
-            this.applyMarkedFilter(false, bone, scroll);
-        }
-        else
-        {
-            this.groups.list.setCurrentScroll(bone);
-            this.pickBone(bone);
-        }
-
-        this.selectCategoryForBone(bone);
-    }
-
-    private void selectCategoryForBone(String bone)
-    {
+        /* Si el hueso pertenece a alguna categoría del grupo actual, seleccionarla automáticamente */
         if (this.categories != null && this.model != null)
         {
             List<String> cats = this.boneCategories.getCategories(this.group);
@@ -767,7 +708,7 @@ public class UIPoseEditor extends UIElement
         this.fix.setVisible(true);
         this.color.setVisible(true);
         this.lighting.setVisible(true);
-        this.pickTexture.setVisible(BBSSettings.pickLimbTexture != null && BBSSettings.pickLimbTexture.get());
+        this.pickTexture.setVisible(true);
 
         this.fix.setEnabled(isPoseTransform);
         this.color.setEnabled(isPoseTransform);
@@ -784,19 +725,17 @@ public class UIPoseEditor extends UIElement
 
     protected void pickBone(String bone)
     {
-        this.currentBone = bone;
-
         if (this.pickCallback != null)
         {
             this.pickCallback.accept(bone);
         }
 
-        this.cacheLastSelectedBone(bone);
+        lastLimb = bone;
 
         this.fix.setVisible(true);
         this.color.setVisible(true);
         this.lighting.setVisible(true);
-        this.pickTexture.setVisible(BBSSettings.pickLimbTexture != null && BBSSettings.pickLimbTexture.get());
+        this.pickTexture.setVisible(true);
 
         this.fix.setEnabled(true);
         this.color.setEnabled(true);
@@ -875,394 +814,6 @@ public class UIPoseEditor extends UIElement
             {
                 consumer.accept(t);
             }
-        }
-    }
-
-    private void toggleShowOnlyMarked()
-    {
-        this.showOnlyMarked = !this.showOnlyMarked;
-        this.showOnlyMarkedButton.active(this.showOnlyMarked);
-        if (BBSSettings.poseBonesFilterMarked != null)
-        {
-            BBSSettings.poseBonesFilterMarked.set(this.showOnlyMarked);
-        }
-
-        String current = this.groups.list.getCurrentFirst();
-        double scroll = this.groups.list.scroll.getScroll();
-        this.applyMarkedFilter(false, current, scroll);
-    }
-
-    private void toggleBoneMarked(String bone)
-    {
-        if (bone == null || bone.isEmpty())
-        {
-            return;
-        }
-
-        if (this.markedBones.contains(bone))
-        {
-            this.markedBones.remove(bone);
-        }
-        else
-        {
-            this.markedBones.add(bone);
-        }
-        this.saveMarkedBonesCache();
-
-        if (this.showOnlyMarked)
-        {
-            String current = this.groups.list.getCurrentFirst();
-            double scroll = this.groups.list.scroll.getScroll();
-            this.applyMarkedFilter(false, current, scroll);
-        }
-    }
-
-    private void applyMarkedFilter(boolean reset, String preferredBone, double scroll)
-    {
-        List<String> source = this.showOnlyMarked ? this.getMarkedBonesInOrder() : this.allBones;
-        this.groups.list.clear();
-        this.groups.list.add(source);
-        this.groups.list.sort();
-
-        this.applySearchFilter();
-
-        List<String> list = this.groups.list.getList();
-        String element = preferredBone != null && list.contains(preferredBone) ? preferredBone : CollectionUtils.getSafe(list, 0);
-
-        if (element != null)
-        {
-            if (reset)
-            {
-                this.groups.list.setCurrentScroll(element);
-            }
-            else
-            {
-                this.groups.list.setCurrent(element);
-                this.groups.list.scroll.setScroll(scroll);
-            }
-
-            this.pickBone(element);
-        }
-        else
-        {
-            this.groups.list.setIndex(-1);
-        }
-
-        this.refreshCategories();
-    }
-
-    private void applySearchFilter()
-    {
-        String filter = this.groups.search.getText();
-
-        this.groups.list.filter("");
-        if (!filter.isEmpty())
-        {
-            this.groups.list.filter(filter);
-        }
-    }
-
-    private List<String> getMarkedBonesInOrder()
-    {
-        List<String> marked = new ArrayList<>();
-
-        for (String bone : this.allBones)
-        {
-            if (this.markedBones.contains(bone))
-            {
-                marked.add(bone);
-            }
-        }
-
-        return marked;
-    }
-
-    private void loadMarkedBonesCache()
-    {
-        this.ensureMarkedBonesLoaded();
-        this.markedBones.clear();
-
-        Set<String> cached = MARKED_BONES_CACHE.get(this.getMarkedBonesCacheKey());
-        if (cached != null)
-        {
-            this.markedBones.addAll(cached);
-        }
-    }
-
-    private void saveMarkedBonesCache()
-    {
-        this.ensureMarkedBonesLoaded();
-
-        String key = this.getMarkedBonesCacheKey();
-        if (key.isEmpty())
-        {
-            return;
-        }
-
-        if (this.markedBones.isEmpty())
-        {
-            MARKED_BONES_CACHE.remove(key);
-        }
-        else
-        {
-            MARKED_BONES_CACHE.put(key, new HashSet<>(this.markedBones));
-        }
-
-        this.saveMarkedBonesToFile();
-    }
-
-    public static boolean hasMarkedBones(String groupKey)
-    {
-        if (groupKey == null || groupKey.isEmpty())
-        {
-            return false;
-        }
-
-        ensureMarkedBonesLoadedStatic();
-
-        Set<String> cached = MARKED_BONES_CACHE.get(groupKey);
-        return cached != null && !cached.isEmpty();
-    }
-
-    public static Set<String> getMarkedBones(String groupKey)
-    {
-        if (groupKey == null || groupKey.isEmpty())
-        {
-            return Collections.emptySet();
-        }
-
-        ensureMarkedBonesLoadedStatic();
-
-        Set<String> cached = MARKED_BONES_CACHE.get(groupKey);
-        return cached == null ? Collections.emptySet() : new HashSet<>(cached);
-    }
-
-    public String getCurrentBone()
-    {
-        return this.currentBone;
-    }
-
-    public static boolean isMarkedBone(String groupKey, String bone)
-    {
-        if (bone == null || bone.isEmpty())
-        {
-            return false;
-        }
-
-        ensureMarkedBonesLoadedStatic();
-
-        Set<String> cached = groupKey == null ? null : MARKED_BONES_CACHE.get(groupKey);
-        return cached != null && cached.contains(bone);
-    }
-
-    private String getMarkedBonesCacheKey()
-    {
-        return this.group == null ? "" : this.group;
-    }
-
-    private String getLastSelectedBone()
-    {
-        String key = this.getMarkedBonesCacheKey();
-        String preferred = LAST_LIMB_CACHE.get(key);
-        if (preferred == null || preferred.isEmpty())
-        {
-            preferred = LAST_LIMB_CACHE.get("");
-        }
-
-        if (preferred != null && !preferred.isEmpty())
-        {
-            return preferred;
-        }
-
-        return null;
-    }
-
-    private void cacheLastSelectedBone(String bone)
-    {
-        if (bone == null || bone.isEmpty())
-        {
-            return;
-        }
-
-        String key = this.getMarkedBonesCacheKey();
-        if (!key.isEmpty())
-        {
-            LAST_LIMB_CACHE.put(key, bone);
-        }
-        LAST_LIMB_CACHE.put("", bone);
-    }
-
-    private void ensureMarkedBonesLoaded()
-    {
-        ensureMarkedBonesLoadedStatic();
-    }
-
-    private static void ensureMarkedBonesLoadedStatic()
-    {
-        if (MARKED_BONES_LOADED)
-        {
-            return;
-        }
-
-        MARKED_BONES_LOADED = true;
-
-        try
-        {
-            BaseType type = DataToString.read(getMarkedBonesFileStatic());
-
-            if (type != null && type.isMap())
-            {
-                MapType map = (MapType) type;
-
-                for (String key : map.keys())
-                {
-                    ListType list = map.getList(key);
-                    if (list == null)
-                    {
-                        continue;
-                    }
-
-                    Set<String> bones = new HashSet<>();
-                    for (int i = 0; i < list.size(); i++)
-                    {
-                        bones.add(list.getString(i));
-                    }
-
-                    if (!bones.isEmpty())
-                    {
-                        MARKED_BONES_CACHE.put(key, bones);
-                    }
-                }
-            }
-        }
-        catch (IOException e)
-        {
-        }
-    }
-
-    private void saveMarkedBonesToFile()
-    {
-        MapType root = new MapType();
-
-        for (Map.Entry<String, Set<String>> entry : MARKED_BONES_CACHE.entrySet())
-        {
-            ListType list = new ListType();
-            for (String bone : entry.getValue())
-            {
-                list.addString(bone);
-            }
-            root.put(entry.getKey(), list);
-        }
-
-        DataToString.writeSilently(this.getMarkedBonesFile(), root, true);
-    }
-
-    private File getMarkedBonesFile()
-    {
-        return getMarkedBonesFileStatic();
-    }
-
-    private static File getMarkedBonesFileStatic()
-    {
-        return BBSMod.getSettingsPath(MARKED_BONES_FILE);
-    }
-
-    private class MarkableBoneList extends UIStringList
-    {
-        public MarkableBoneList(Consumer<List<String>> callback)
-        {
-            super(callback);
-        }
-
-        @Override
-        public void render(UIContext context)
-        {
-            super.render(context);
-
-            if (!UIPoseEditor.this.showOnlyMarked || !UIPoseEditor.this.markedBones.isEmpty())
-            {
-                return;
-            }
-
-            String line1 = L10n.lang("bbs.ui.pose.bones.empty_line1").get();
-            String line2 = L10n.lang("bbs.ui.pose.bones.empty_line2").get();
-            int lineHeight = context.batcher.getFont().getHeight() + 4;
-            int totalHeight = lineHeight * 2 - 4;
-            int y = this.area.my() - totalHeight / 2;
-            int color = Colors.setA(Colors.WHITE, 0.6F);
-
-            context.batcher.clip(this.area, context);
-            int x1 = this.area.mx() - context.batcher.getFont().getWidth(line1) / 2;
-            context.batcher.textShadow(line1, x1, y, color);
-            y += lineHeight;
-
-            int iconSize = 16;
-            int iconSpacing = 4;
-            int line2TextWidth = context.batcher.getFont().getWidth(line2);
-            int totalLine2Width = line2TextWidth + iconSpacing + iconSize;
-            int x2 = this.area.mx() - totalLine2Width / 2;
-            context.batcher.textShadow(line2, x2, y, color);
-            int iconX = x2 + line2TextWidth + iconSpacing;
-            int iconY = y + (context.batcher.getFont().getHeight() - iconSize) / 2;
-            RenderSystem.enableBlend();
-            context.batcher.icon(Icons.VISIBLE, color, iconX, iconY);
-            context.batcher.unclip(context);
-        }
-
-        @Override
-        protected void renderElementPart(UIContext context, String element, int i, int x, int y, boolean hover, boolean selected)
-        {
-            int iconX = x + 2;
-            int iconY = y + (this.scroll.scrollItemSize - 16) / 2;
-            boolean marked = UIPoseEditor.this.markedBones.contains(element);
-            int iconColor = marked ? Colors.WHITE : Colors.setA(Colors.WHITE, 0.35F);
-
-            RenderSystem.enableBlend();
-            context.batcher.icon(Icons.CHECKMARK, iconColor, iconX, iconY);
-
-            int textX = x + 22;
-            int maxWidth = this.area.w - 24;
-            String displayText = element;
-            int textWidth = context.batcher.getFont().getWidth(displayText);
-
-            if (textWidth > maxWidth)
-            {
-                displayText = context.batcher.getFont().limitToWidth(displayText, maxWidth);
-            }
-
-            context.batcher.textShadow(displayText, textX, y + (this.scroll.scrollItemSize - context.batcher.getFont().getHeight()) / 2, hover ? Colors.HIGHLIGHT : Colors.WHITE);
-        }
-
-        @Override
-        public boolean subMouseClicked(UIContext context)
-        {
-            if (!this.area.isInside(context) || context.mouseButton != 0)
-            {
-                return super.subMouseClicked(context);
-            }
-
-            int scrollIndex = this.scroll.getIndex(context.mouseX, context.mouseY);
-            String element = this.getElementAt(scrollIndex);
-
-            if (element == null)
-            {
-                return super.subMouseClicked(context);
-            }
-
-            int y = this.area.y + scrollIndex * this.scroll.scrollItemSize - (int) this.scroll.getScroll();
-            int iconY = y + (this.scroll.scrollItemSize - 16) / 2;
-            int iconX = this.area.x + 2;
-
-            if (context.mouseX >= iconX && context.mouseX < iconX + 16 && context.mouseY >= iconY && context.mouseY < iconY + 16)
-            {
-                if (Window.isShiftPressed())
-                {
-                    UIPoseEditor.this.toggleBoneMarked(element);
-                    return true;
-                }
-            }
-
-            return super.subMouseClicked(context);
         }
     }
 }

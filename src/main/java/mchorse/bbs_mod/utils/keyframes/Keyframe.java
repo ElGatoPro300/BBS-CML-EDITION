@@ -142,10 +142,6 @@ public class Keyframe <T> extends BaseValue
         this.duration = keyframe.duration;
         this.value = this.factory.copy(keyframe.value);
         this.interp.copy(keyframe.interp);
-        this.lx = keyframe.lx;
-        this.ly = keyframe.ly;
-        this.rx = keyframe.rx;
-        this.ry = keyframe.ry;
         this.shape = keyframe.shape;
         this.color = keyframe.color;
     }

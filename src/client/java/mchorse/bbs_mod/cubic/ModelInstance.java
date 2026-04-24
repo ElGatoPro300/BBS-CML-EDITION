@@ -137,10 +137,6 @@ public class ModelInstance implements IModelInstance
         this.culling = config.getBool("culling", this.culling);
         this.onCpu = config.getBool("on_cpu", this.onCpu);
         this.poseGroup = config.getString("pose_group", this.poseGroup);
-        if (this.poseGroup == null || this.poseGroup.isEmpty())
-        {
-            this.poseGroup = this.id;
-        }
 
         if (config.has("texture"))
         {
@@ -500,7 +496,7 @@ public class ModelInstance implements IModelInstance
 
                 vao.armature.setupMatrices();
                 vao.updateMesh(stencilMap);
-                vao.render(program.get(), stack, color.r, color.g, color.b, color.a, stencilMap, light, overlay, this.texture);
+                vao.render(program.get(), stack, color.r, color.g, color.b, color.a, stencilMap, light, overlay);
 
                 stack.pop();
             }

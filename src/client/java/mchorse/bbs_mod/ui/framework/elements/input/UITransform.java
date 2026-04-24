@@ -8,22 +8,13 @@ import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
-import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
-import mchorse.bbs_mod.ui.framework.elements.context.UISimpleContextMenu;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.utils.UI;
-import mchorse.bbs_mod.ui.utils.UIUtils;
-import mchorse.bbs_mod.ui.utils.context.ContextAction;
-import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
-import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.Axis;
 import mchorse.bbs_mod.utils.colors.Colors;
 import org.joml.Vector3d;
 import org.lwjgl.glfw.GLFW;
-
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Transformation editor GUI
@@ -162,20 +153,31 @@ public abstract class UITransform extends UIElement
 
         this.context((menu) ->
         {
-            menu.custom(new UITransformContextMenu(this, this.getClipboardTransforms()));
+            ListType transforms = Window.getClipboardList();
+
+            if (transforms != null && transforms.size() < 12)
+            {
+                transforms = null;
+            }
+
+            menu.autoKeys().action(Icons.COPY, UIKeys.TRANSFORMS_CONTEXT_COPY, this::copyTransformations);
+
+            if (transforms != null)
+            {
+                final ListType innerList = transforms;
+
+                menu.action(Icons.PASTE, UIKeys.TRANSFORMS_CONTEXT_PASTE, () -> this.pasteAll(innerList));
+                menu.action(Icons.ALL_DIRECTIONS, UIKeys.TRANSFORMS_CONTEXT_PASTE_TRANSLATION, () -> this.pasteTranslation(this.getVector(innerList, 0)));
+                menu.action(Icons.MAXIMIZE, UIKeys.TRANSFORMS_CONTEXT_PASTE_SCALE, () -> this.pasteScale(this.getVector(innerList, 3)));
+                menu.action(Icons.REFRESH, UIKeys.TRANSFORMS_CONTEXT_PASTE_ROTATION, () -> this.pasteRotation(this.getVector(innerList, 6)));
+            }
+
+            menu.action(Icons.CLOSE, UIKeys.TRANSFORMS_CONTEXT_RESET, this::reset);
         });
 
         this.wh(190, 90);
 
         this.keys().register(Keys.COPY, this::copyTransformations).inside().label(UIKeys.TRANSFORMS_CONTEXT_COPY);
-        this.keys().register(Keys.CUT, () ->
-        {
-            this.copyTransformations();
-            this.reset();
-            UIContext context = this.getContext();
-            if (context != null) context.notifyInfo(UIKeys.GENERAL_CUT);
-            UIUtils.playClick();
-        }).inside().label(UIKeys.GENERAL_CUT);
         this.keys().register(Keys.PASTE, () ->
         {
             ListType transforms = Window.getClipboardList();
@@ -383,102 +385,6 @@ public abstract class UITransform extends UIElement
         }
     }
 
-    protected void addGeneralTabActions(ContextMenuManager menu, ListType transforms)
-    {}
-
-    private ListType getClipboardTransforms()
-    {
-        ListType transforms = Window.getClipboardList();
-
-        if (transforms != null && transforms.size() < 12)
-        {
-            transforms = null;
-        }
-
-        return transforms;
-    }
-
-    private void fillGeneralTabActions(ContextMenuManager menu, ListType transforms)
-    {
-        this.addGeneralTabActions(menu, transforms);
-        menu.action(Icons.COPY, UIKeys.TRANSFORMS_CONTEXT_COPY, this::copyTransformations);
-
-        if (transforms != null)
-        {
-            menu.action(Icons.PASTE, UIKeys.TRANSFORMS_CONTEXT_PASTE, () -> this.pasteAll(transforms));
-        }
-
-        menu.action(Icons.CLOSE, UIKeys.TRANSFORMS_CONTEXT_RESET, this::reset);
-    }
-
-    private void fillPastesTabActions(ContextMenuManager menu, ListType transforms)
-    {
-        if (transforms == null)
-        {
-            return;
-        }
-
-        menu.action(Icons.PASTE, UIKeys.TRANSFORMS_CONTEXT_PASTE, () -> this.pasteAll(transforms));
-        menu.action(Icons.ALL_DIRECTIONS, UIKeys.TRANSFORMS_CONTEXT_PASTE_TRANSLATION, () -> this.pasteTranslation(this.getVector(transforms, 0)));
-        menu.action(Icons.MAXIMIZE, UIKeys.TRANSFORMS_CONTEXT_PASTE_SCALE, () -> this.pasteScale(this.getVector(transforms, 3)));
-        menu.action(Icons.REFRESH, UIKeys.TRANSFORMS_CONTEXT_PASTE_ROTATION, () -> this.pasteRotation(this.getVector(transforms, 6)));
-        menu.action(Icons.REFRESH, UIKeys.TRANSFORMS_CONTEXT_PASTE_ROTATION2, () -> this.pasteRotation2(this.getVector(transforms, 9)));
-    }
-
-    private void fillResetsTabActions(ContextMenuManager menu)
-    {
-        menu.action(Icons.CLOSE, UIKeys.TRANSFORMS_CONTEXT_RESET, this::reset);
-        menu.action(Icons.ALL_DIRECTIONS, UIKeys.TRANSFORMS_CONTEXT_RESET_TRANSLATION, this::resetTranslation);
-        menu.action(Icons.MAXIMIZE, UIKeys.TRANSFORMS_CONTEXT_RESET_SCALE, this::resetScale);
-        menu.action(Icons.REFRESH, UIKeys.TRANSFORMS_CONTEXT_RESET_ROTATION, this::resetRotation);
-        menu.action(Icons.REFRESH, UIKeys.TRANSFORMS_CONTEXT_RESET_ROTATION2, this::resetRotation2);
-    }
-
-    private void fillInvertsTabActions(ContextMenuManager menu)
-    {
-        menu.action(Icons.REFRESH, UIKeys.TRANSFORMS_CONTEXT_INVERT, this::invert);
-        menu.action(Icons.ALL_DIRECTIONS, UIKeys.TRANSFORMS_CONTEXT_INVERT_TRANSLATION, this::invertTranslation);
-        menu.action(Icons.MAXIMIZE, UIKeys.TRANSFORMS_CONTEXT_INVERT_SCALE, this::invertScale);
-        menu.action(Icons.REFRESH, UIKeys.TRANSFORMS_CONTEXT_INVERT_ROTATION, this::invertRotation);
-        menu.action(Icons.REFRESH, UIKeys.TRANSFORMS_CONTEXT_INVERT_ROTATION2, this::invertRotation2);
-    }
-
-    private List<ContextAction> buildGeneralTabActions(ListType transforms)
-    {
-        ContextMenuManager menu = new ContextMenuManager();
-
-        this.fillGeneralTabActions(menu, transforms);
-
-        return new ArrayList<>(menu.actions);
-    }
-
-    private List<ContextAction> buildPastesTabActions(ListType transforms)
-    {
-        ContextMenuManager menu = new ContextMenuManager();
-
-        this.fillPastesTabActions(menu, transforms);
-
-        return new ArrayList<>(menu.actions);
-    }
-
-    private List<ContextAction> buildResetsTabActions()
-    {
-        ContextMenuManager menu = new ContextMenuManager();
-
-        this.fillResetsTabActions(menu);
-
-        return new ArrayList<>(menu.actions);
-    }
-
-    private List<ContextAction> buildInvertsTabActions()
-    {
-        ContextMenuManager menu = new ContextMenuManager();
-
-        this.fillInvertsTabActions(menu);
-
-        return new ArrayList<>(menu.actions);
-    }
-
     public abstract void setT(Axis axis, double x, double y, double z);
 
     public abstract void setS(Axis axis, double x, double y, double z);
@@ -584,55 +490,6 @@ public abstract class UITransform extends UIElement
         }
     }
 
-    protected void resetTranslation()
-    {
-        this.fillSetT(0, 0, 0);
-    }
-
-    protected void resetScale()
-    {
-        this.fillSetS(1, 1, 1);
-    }
-
-    protected void resetRotation()
-    {
-        this.fillSetR(0, 0, 0);
-        this.fillSetR2(0, 0, 0);
-    }
-
-    protected void resetRotation2()
-    {
-        this.fillSetR2(0, 0, 0);
-    }
-
-    protected void invert()
-    {
-        this.fillSetT(-this.tx.value, -this.ty.value, -this.tz.value);
-        this.fillSetS(-this.sx.value, -this.sy.value, -this.sz.value);
-        this.fillSetR(-this.rx.value, -this.ry.value, -this.rz.value);
-        this.fillSetR2(-this.r2x.value, -this.r2y.value, -this.r2z.value);
-    }
-
-    protected void invertTranslation()
-    {
-        this.fillSetT(-this.tx.value, -this.ty.value, -this.tz.value);
-    }
-
-    protected void invertScale()
-    {
-        this.fillSetS(-this.sx.value, -this.sy.value, -this.sz.value);
-    }
-
-    protected void invertRotation()
-    {
-        this.fillSetR(-this.rx.value, -this.ry.value, -this.rz.value);
-    }
-
-    protected void invertRotation2()
-    {
-        this.fillSetR2(-this.r2x.value, -this.r2y.value, -this.r2z.value);
-    }
-
     @Override
     protected boolean subMouseClicked(UIContext context)
     {
@@ -672,216 +529,5 @@ public abstract class UITransform extends UIElement
         }
 
         return super.subKeyPressed(context);
-    }
-
-    private enum TransformContextTab
-    {
-        GENERAL,
-        PASTES,
-        RESETS,
-        INVERTS
-    }
-
-    private static class UITransformContextMenu extends UISimpleContextMenu
-    {
-        private final UIElement tabs;
-        private final UIElement separator;
-        private final UIButton general;
-        private final UIButton pastes;
-        private final UIButton resets;
-        private final UIButton inverts;
-        private final List<ContextAction> generalActions;
-        private final List<ContextAction> pastesActions;
-        private final List<ContextAction> resetsActions;
-        private final List<ContextAction> invertsActions;
-        private TransformContextTab tab = TransformContextTab.GENERAL;
-
-        public UITransformContextMenu(UITransform transform, ListType transforms)
-        {
-            this.generalActions = transform.buildGeneralTabActions(transforms);
-            this.pastesActions = transform.buildPastesTabActions(transforms);
-            this.resetsActions = transform.buildResetsTabActions();
-            this.invertsActions = transform.buildInvertsTabActions();
-            this.general = new UITabButton(IKey.EMPTY, UIKeys.MODELS_GENERAL, Icons.SETTINGS, (b) -> this.setTab(TransformContextTab.GENERAL));
-            this.pastes = new UITabButton(IKey.EMPTY, UIKeys.TRANSFORMS_CONTEXT_PASTES_OPTIONS, Icons.PASTE, (b) -> this.setTab(TransformContextTab.PASTES));
-            this.resets = new UITabButton(IKey.EMPTY, UIKeys.TRANSFORMS_CONTEXT_RESETS_OPTIONS, Icons.CLOSE, (b) -> this.setTab(TransformContextTab.RESETS));
-            this.inverts = new UITabButton(IKey.EMPTY, UIKeys.TRANSFORMS_CONTEXT_INVERTS_OPTIONS, Icons.CONVERT, (b) -> this.setTab(TransformContextTab.INVERTS));
-            ((UITabButton) this.inverts).noSeparator();
-            this.tabs = UI.row(0, this.general, this.pastes, this.resets, this.inverts);
-            this.separator = new UIElement()
-            {
-                @Override
-                public void render(UIContext context)
-                {
-                    context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0x44ffffff);
-                }
-            };
-
-            this.tabs.relative(this).w(1F).h(20).row(0).resize();
-            this.separator.relative(this).xy(0, 20).w(1F).h(1);
-            this.actions.relative(this).xy(0, 21).w(1F).h(1F, -21);
-            this.add(this.tabs, this.separator);
-            this.pastes.setEnabled(!this.pastesActions.isEmpty());
-            this.setTab(TransformContextTab.GENERAL);
-        }
-
-        private void setTab(TransformContextTab tab)
-        {
-            this.tab = tab;
-            ((UITabButton) this.general).setActive(tab == TransformContextTab.GENERAL);
-            ((UITabButton) this.pastes).setActive(tab == TransformContextTab.PASTES);
-            ((UITabButton) this.resets).setActive(tab == TransformContextTab.RESETS);
-            ((UITabButton) this.inverts).setActive(tab == TransformContextTab.INVERTS);
-
-            if (tab == TransformContextTab.GENERAL)
-            {
-                this.actions.setList(new ArrayList<>(this.generalActions));
-            }
-            else if (tab == TransformContextTab.PASTES)
-            {
-                this.actions.setList(new ArrayList<>(this.pastesActions));
-            }
-            else if (tab == TransformContextTab.RESETS)
-            {
-                this.actions.setList(new ArrayList<>(this.resetsActions));
-            }
-            else
-            {
-                this.actions.setList(new ArrayList<>(this.invertsActions));
-            }
-
-            UIContext context = this.getContext();
-
-            if (context != null)
-            {
-                this.w(this.calculateWidth(context));
-                this.h(this.calculateHeight());
-                this.bounds(context.menu.overlay, 5);
-                this.resize();
-            }
-        }
-
-        @Override
-        public void setMouse(UIContext context)
-        {
-            int w = this.calculateWidth(context);
-            int h = this.calculateHeight();
-
-            this.xy(context.mouseX(), context.mouseY()).w(w).h(h).bounds(context.menu.overlay, 5);
-            this.resize();
-        }
-
-        private int calculateWidth(UIContext context)
-        {
-            int w = 120;
-
-            for (ContextAction action : this.generalActions) w = Math.max(w, action.getWidth(context.batcher.getFont()));
-            for (ContextAction action : this.pastesActions) w = Math.max(w, action.getWidth(context.batcher.getFont()));
-            for (ContextAction action : this.resetsActions) w = Math.max(w, action.getWidth(context.batcher.getFont()));
-            for (ContextAction action : this.invertsActions) w = Math.max(w, action.getWidth(context.batcher.getFont()));
-
-            return w % 4 == 0 ? w : w + (4 - w % 4);
-        }
-
-        private List<ContextAction> getActions(TransformContextTab tab)
-        {
-            if (tab == TransformContextTab.GENERAL)
-            {
-                return this.generalActions;
-            }
-            else if (tab == TransformContextTab.PASTES)
-            {
-                return this.pastesActions;
-            }
-            else if (tab == TransformContextTab.RESETS)
-            {
-                return this.resetsActions;
-            }
-
-            return this.invertsActions;
-        }
-
-        private int calculateHeight()
-        {
-            int actions = 1;
-
-            if (this.tab == TransformContextTab.GENERAL)
-            {
-                actions = this.generalActions.size();
-            }
-            else if (this.tab == TransformContextTab.PASTES)
-            {
-                actions = this.pastesActions.size();
-            }
-            else if (this.tab == TransformContextTab.RESETS)
-            {
-                actions = this.resetsActions.size();
-            }
-            else if (this.tab == TransformContextTab.INVERTS)
-            {
-                actions = this.invertsActions.size();
-            }
-
-            actions = Math.max(actions, 1);
-
-            return 21 + actions * this.actions.scroll.scrollItemSize;
-        }
-
-        private static class UITabButton extends UIButton
-        {
-            private final Icon icon;
-            private final IKey tooltip;
-            private boolean active;
-            private boolean noSeparator;
-
-            public UITabButton(IKey label, IKey tooltip, Icon icon, java.util.function.Consumer<UIButton> callback)
-            {
-                super(label, callback);
-                this.tooltip = tooltip;
-                this.icon = icon;
-                this.tooltip(this.tooltip);
-            }
-
-            public void noSeparator()
-            {
-                this.noSeparator = true;
-            }
-
-            public void setActive(boolean active)
-            {
-                this.active = active;
-            }
-
-            @Override
-            protected void renderSkin(UIContext context)
-            {
-                boolean enabled = this.isEnabled();
-                int primary = BBSSettings.primaryColor.get();
-                int color = this.active ? primary : 0;
-                int iconColor = this.active ? Colors.WHITE : 0xddffffff;
-
-                if (!enabled)
-                {
-                    iconColor = 0x80404040;
-                }
-                else if (this.hover)
-                {
-                    color = this.active ? Colors.mulRGB(primary, 0.9F) : Colors.A25;
-                    iconColor = Colors.WHITE;
-                }
-
-                if (color != 0)
-                {
-                    this.area.render(context.batcher, this.active ? (color | Colors.A100) : color);
-                }
-
-                if (!this.noSeparator)
-                {
-                    context.batcher.box(this.area.ex() - 1, this.area.y + 2, this.area.ex(), this.area.ey() - 2, 0x22ffffff);
-                }
-
-                context.batcher.icon(this.icon, iconColor, this.area.mx(), this.area.my(), 0.5F, 0.5F);
-            }
-        }
     }
 }

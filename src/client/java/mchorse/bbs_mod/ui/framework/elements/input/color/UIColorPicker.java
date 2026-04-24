@@ -32,10 +32,7 @@ import java.util.function.Consumer;
  */
 public class UIColorPicker extends UIElement
 {
-    public static final int COLOR_PICKER_SIZE = 120;
-    public static final int COLOR_PICKER_TOP = 30;
-    public static final int COLOR_PICKER_GAP = 4;
-    public static final int COLOR_PICKER_BAR_WIDTH = 14;
+    public static final int COLOR_SLIDER_HEIGHT = 50;
 
     public static ValueColors recentColors = new ValueColors("recent");
 
@@ -121,7 +118,7 @@ public class UIColorPicker extends UIElement
         });
 
         this.input.relative(this).set(5, 5, 0, 20).w(1, -35);
-        this.favorite.relative(this).xy(5, COLOR_PICKER_TOP + COLOR_PICKER_SIZE + 10).w(1F, -10);
+        this.favorite.relative(this).xy(5, 95).w(1F, -10);
         this.recent.relative(this.favorite).w(1F);
 
         this.eventPropagataion(EventPropagation.BLOCK_INSIDE).add(this.input, this.favorite, this.recent);
@@ -175,19 +172,17 @@ public class UIColorPicker extends UIElement
 
     private void setupSize()
     {
-        int width = 10 + COLOR_PICKER_SIZE + COLOR_PICKER_GAP + COLOR_PICKER_BAR_WIDTH + (this.editAlpha ? COLOR_PICKER_GAP + COLOR_PICKER_BAR_WIDTH : 0);
+        int width = 200;
         int recent = this.recent.colors.isEmpty() ? 0 : this.recent.getHeight(width - 10);
         int favorite = this.favorite.colors.isEmpty() ? 0 : this.favorite.getHeight(width - 10);
-        int base = COLOR_PICKER_TOP + COLOR_PICKER_SIZE + 10;
+        int base = 85;
 
-        this.w(width);
         base += favorite > 0 ? favorite + 15 : 0;
         base += recent > 0 ? recent + 15 : 0;
 
         this.h(base);
         this.favorite.h(favorite);
         this.recent.h(recent);
-        this.favorite.y(COLOR_PICKER_TOP + COLOR_PICKER_SIZE + 10);
 
         if (favorite > 0)
         {
@@ -229,24 +224,24 @@ public class UIColorPicker extends UIElement
     {
         super.resize();
 
-        int x = this.area.x + 5;
-        int y = this.area.y + COLOR_PICKER_TOP;
-        int width = this.area.w - 10;
-        int alphaSpace = this.editAlpha ? COLOR_PICKER_BAR_WIDTH + COLOR_PICKER_GAP : 0;
-        int maxSquareWidth = width - COLOR_PICKER_BAR_WIDTH - COLOR_PICKER_GAP - alphaSpace;
-        int squareSize = Math.max(40, Math.min(COLOR_PICKER_SIZE, maxSquareWidth));
+        int c = this.editAlpha ? 4 : 3;
+        int h = COLOR_SLIDER_HEIGHT / c;
+        int w = this.area.w - 10;
+        int remainder = COLOR_SLIDER_HEIGHT - h * c;
+        int y = this.area.y + 30;
 
-        this.red.set(x, y, squareSize, squareSize);
-        this.green.set(this.red.ex() + COLOR_PICKER_GAP, y, COLOR_PICKER_BAR_WIDTH, squareSize);
-        this.blue.set(this.green.ex() + COLOR_PICKER_GAP, y, 0, 0);
+        this.red.set(this.area.x + 5, y, w, h);
 
         if (this.editAlpha)
         {
-            this.alpha.set(this.green.ex() + COLOR_PICKER_GAP, y, COLOR_PICKER_BAR_WIDTH, squareSize);
+            this.green.set(this.area.x + 5, y + h, w, h);
+            this.blue.set(this.area.x + 5, y + h + h, w, h + remainder);
+            this.alpha.set(this.area.x + 5, y + COLOR_SLIDER_HEIGHT - h, w, h);
         }
         else
         {
-            this.alpha.set(0, 0, 0, 0);
+            this.green.set(this.area.x + 5, y + h, w, h + remainder);
+            this.blue.set(this.area.x + 5, y + COLOR_SLIDER_HEIGHT - h, w, h);
         }
     }
 
@@ -262,6 +257,12 @@ public class UIColorPicker extends UIElement
         else if (this.green.isInside(context))
         {
             this.dragging = 2;
+
+            return true;
+        }
+        else if (this.blue.isInside(context))
+        {
+            this.dragging = 3;
 
             return true;
         }
@@ -306,28 +307,21 @@ public class UIColorPicker extends UIElement
     @Override
     public void render(UIContext context)
     {
+        boolean isHsv = BBSSettings.hsvColorPicker.get();
+        Color color = isHsv ? this.hsv : this.color;
+
         if (this.dragging >= 0)
         {
-            if (this.dragging == 1)
+            float factor = (context.mouseX - (this.red.x + 7)) / (float) (this.red.w - 14);
+
+            color.set(MathUtils.clamp(factor, 0, 1), this.dragging);
+
+            if (isHsv)
             {
-                float saturation = MathUtils.clamp((context.mouseX - this.red.x) / (float) this.red.w, 0F, 1F);
-                float value = 1F - MathUtils.clamp((context.mouseY - this.red.y) / (float) this.red.h, 0F, 1F);
-                this.hsv.g = saturation;
-                this.hsv.b = value;
-            }
-            else if (this.dragging == 2)
-            {
-                float hue = MathUtils.clamp((context.mouseY - this.green.y) / (float) this.green.h, 0F, 1F);
-                this.hsv.r = hue;
-            }
-            else if (this.dragging == 4 && this.editAlpha)
-            {
-                float alpha = 1F - MathUtils.clamp((context.mouseY - this.alpha.y) / (float) this.alpha.h, 0F, 1F);
-                this.hsv.a = alpha;
+                Colors.HSVtoRGB(this.color, this.hsv.r, this.hsv.g, this.hsv.b);
+                this.color.a = this.hsv.a;
             }
 
-            Colors.HSVtoRGB(this.color, this.hsv.r, this.hsv.g, this.hsv.b);
-            this.color.a = this.hsv.a;
             this.updateColor();
         }
 
@@ -336,48 +330,104 @@ public class UIColorPicker extends UIElement
 
         context.batcher.outline(this.area.ex() - 25, this.area.y + 5, this.area.ex() - 5, this.area.y + 25, Colors.A25);
 
+        if (this.editAlpha)
+        {
+            context.batcher.iconArea(Icons.CHECKBOARD, this.alpha.x, this.red.y, this.alpha.w, this.alpha.ey() - this.red.y);
+        }
+
         Color temp = new Color();
-        Colors.HSVtoRGB(temp, this.hsv.r, 1F, 1F);
-        context.batcher.box(this.red.x, this.red.y, this.red.ex(), this.red.ey(), temp.getARGBColor());
-        context.batcher.gradientHBox(this.red.x, this.red.y, this.red.ex(), this.red.ey(), Colors.WHITE, Colors.setA(Colors.WHITE, 0F));
-        context.batcher.gradientVBox(this.red.x, this.red.y, this.red.ex(), this.red.ey(), 0, 0xff000000);
+        int left = 0;
+        int right = 0;
 
-        for (int i = 0; i < 6; i++)
+        if (isHsv)
         {
-            Colors.HSVtoRGB(temp, i / 6F, 1F, 1F);
-            int top = temp.getARGBColor();
-            Colors.HSVtoRGB(temp, (i + 1) / 6F, 1F, 1F);
-            int bottom = temp.getARGBColor();
-            int y1 = this.green.y + (int) (this.green.h * (i / 6F));
-            int y2 = this.green.y + (int) (this.green.h * ((i + 1) / 6F));
-            context.batcher.gradientVBox(this.green.x, y1, this.green.ex(), y2, top, bottom);
+            temp.a = color.a;
+
+            /* Draw hue slider */
+            for (int i = 0; i < 6; i++)
+            {
+                Colors.HSVtoRGB(temp, i / 6F, 1F, 1F);
+                left = temp.getARGBColor();
+                Colors.HSVtoRGB(temp, (i + 1) / 6F, 1F, 1F);
+                right = temp.getARGBColor();
+
+                context.batcher.gradientHBox(this.red.x(i / 6F), this.red.y, this.red.x((i + 1) / 6F), this.red.ey(), left, right);
+            }
+
+            /* Draw green slider */
+            Colors.HSVtoRGB(temp, this.hsv.r, 0F, this.hsv.b);
+            left = temp.getARGBColor();
+            Colors.HSVtoRGB(temp, this.hsv.r, 1F, this.hsv.b);
+            right = temp.getARGBColor();
+
+            context.batcher.gradientHBox(this.green.x, this.green.y, this.green.ex(), this.green.ey(), left, right);
+
+            /* Draw blue slider */
+            Colors.HSVtoRGB(temp, this.hsv.r, this.hsv.g, 0F);
+            left = temp.getARGBColor();
+            Colors.HSVtoRGB(temp, this.hsv.r, this.hsv.g, 1F);
+            right = temp.getARGBColor();
+            context.batcher.gradientHBox(this.blue.x, this.blue.y, this.blue.ex(), this.blue.ey(), left, right);
+
+            if (this.editAlpha)
+            {
+                /* Draw alpha slider */
+                Colors.HSVtoRGB(temp, this.hsv.r, this.hsv.g, this.hsv.b);
+                temp.a = 0F;
+                left = temp.getARGBColor();
+                Colors.HSVtoRGB(temp, this.hsv.r, this.hsv.g, this.hsv.b);
+                temp.a = 1F;
+                right = temp.getARGBColor();
+
+                context.batcher.gradientHBox(this.alpha.x, this.alpha.y, this.alpha.ex(), this.alpha.ey(), left, right);
+            }
         }
+        else
+        {
+            /* Draw red slider */
+            temp.copy(color).r = 0;
+            left = temp.getARGBColor();
+            temp.copy(color).r = 1;
+            right = temp.getARGBColor();
+
+            context.batcher.gradientHBox(this.red.x, this.red.y, this.red.ex(), this.red.ey(), left, right);
+
+            /* Draw green slider */
+            temp.copy(color).g = 0;
+            left = temp.getARGBColor();
+            temp.copy(color).g = 1;
+            right = temp.getARGBColor();
+
+            context.batcher.gradientHBox(this.green.x, this.green.y, this.green.ex(), this.green.ey(), left, right);
+
+            /* Draw blue slider */
+            temp.copy(color).b = 0;
+            left = temp.getARGBColor();
+            temp.copy(color).b = 1;
+            right = temp.getARGBColor();
+            context.batcher.gradientHBox(this.blue.x, this.blue.y, this.blue.ex(), this.blue.ey(), left, right);
+
+            if (this.editAlpha)
+            {
+                /* Draw alpha slider */
+                temp.copy(color).a = 0;
+                left = temp.getARGBColor();
+                temp.copy(color).a = 1;
+                right = temp.getARGBColor();
+
+                context.batcher.gradientHBox(this.alpha.x, this.alpha.y, this.alpha.ex(), this.alpha.ey(), left, right);
+            }
+        }
+
+        context.batcher.outline(this.red.x, this.red.y, this.red.ex(), this.editAlpha ? this.alpha.ey() : this.blue.ey(), 0x44000000);
+
+        this.renderMarker(context.batcher, this.red.x + 7 + (int) ((this.red.w - 14) * color.r), this.red.my());
+        this.renderMarker(context.batcher, this.green.x + 7 + (int) ((this.green.w - 14) * color.g), this.green.my());
+        this.renderMarker(context.batcher, this.blue.x + 7 + (int) ((this.blue.w - 14) * color.b), this.blue.my());
 
         if (this.editAlpha)
         {
-            context.batcher.iconArea(Icons.CHECKBOARD, this.alpha.x, this.alpha.y, this.alpha.w, this.alpha.h);
-            Colors.HSVtoRGB(temp, this.hsv.r, this.hsv.g, this.hsv.b);
-            temp.a = 1F;
-            int top = temp.getARGBColor();
-            temp.a = 0F;
-            int bottom = temp.getARGBColor();
-            context.batcher.gradientVBox(this.alpha.x, this.alpha.y, this.alpha.ex(), this.alpha.ey(), top, bottom);
-        }
-
-        context.batcher.outline(this.red.x, this.red.y, this.red.ex(), this.red.ey(), 0x44000000);
-        context.batcher.outline(this.green.x, this.green.y, this.green.ex(), this.green.ey(), 0x44000000);
-
-        if (this.editAlpha)
-        {
-            context.batcher.outline(this.alpha.x, this.alpha.y, this.alpha.ex(), this.alpha.ey(), 0x44000000);
-        }
-
-        this.renderMarker(context.batcher, this.red.x + (int) (this.red.w * this.hsv.g), this.red.y + (int) (this.red.h * (1F - this.hsv.b)));
-        this.renderMarker(context.batcher, this.green.mx(), this.green.y + (int) (this.green.h * this.hsv.r));
-
-        if (this.editAlpha)
-        {
-            this.renderMarker(context.batcher, this.alpha.mx(), this.alpha.y + (int) (this.alpha.h * (1F - this.hsv.a)));
+            this.renderMarker(context.batcher, this.alpha.x + 7 + (int) ((this.alpha.w - 14) * color.a), this.alpha.my());
         }
 
         if (!this.favorite.colors.isEmpty())

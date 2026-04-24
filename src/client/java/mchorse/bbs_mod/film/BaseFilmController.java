@@ -52,7 +52,6 @@ import net.minecraft.entity.MovementType;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.particle.BlockStateParticleEffect;
 import net.minecraft.particle.ParticleTypes;
-import net.minecraft.sound.SoundCategory;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
@@ -208,17 +207,12 @@ public abstract class BaseFilmController
 
         if (!relative && context.map == null && opacity > 0F && context.shadowRadius > 0F && form.visible.get())
         {
-            float shadowOpacity = MathUtils.clamp(opacity * context.shadowOpacity, 0F, 1F);
+            stack.push();
+            stack.translate(position.x - cx, position.y - cy, position.z - cz);
 
-            if (shadowOpacity > 0F)
-            {
-                stack.push();
-                stack.translate(position.x - cx, position.y - cy, position.z - cz);
+            ModelBlockEntityRenderer.renderShadow(context.consumers, stack, transition, position.x, position.y, position.z, 0F, 0F, 0F, context.shadowRadius, opacity);
 
-                ModelBlockEntityRenderer.renderShadow(context.consumers, stack, transition, position.x, position.y, position.z, 0F, 0F, 0F, context.shadowRadius, shadowOpacity);
-
-                stack.pop();
-            }
+            stack.pop();
         }
 
         if (!relative && !context.nameTag.isEmpty() && context.map == null)
@@ -537,10 +531,10 @@ public abstract class BaseFilmController
 
             if (replay != null)
             {
-                int replayTick = replay.getTick(ticks);
+                ticks = replay.getTick(ticks);
 
-                this.updateEntityAndForm(entity, replayTick);
-                this.applyReplay(replay, replayTick, entity);
+                this.updateEntityAndForm(entity, ticks);
+                this.applyReplay(replay, ticks, entity);
 
                 boolean spawned = false;
 
@@ -557,26 +551,26 @@ public abstract class BaseFilmController
                         if (anEntity instanceof ActorEntity actor)
                         {
                             /* Force synchronize entity angles */
-                            actor.setYaw(replay.keyframes.yaw.interpolate(replayTick).floatValue());
-                            actor.setHeadYaw(replay.keyframes.headYaw.interpolate(replayTick).floatValue());
-                            actor.setBodyYaw(replay.keyframes.bodyYaw.interpolate(replayTick).floatValue());
-                            actor.setPitch(replay.keyframes.pitch.interpolate(replayTick).floatValue());
-                            replay.applyClientActions(replayTick, new MCEntity(anEntity), this.film);
+                            actor.setYaw(replay.keyframes.yaw.interpolate(ticks).floatValue());
+                            actor.setHeadYaw(replay.keyframes.headYaw.interpolate(ticks).floatValue());
+                            actor.setBodyYaw(replay.keyframes.bodyYaw.interpolate(ticks).floatValue());
+                            actor.setPitch(replay.keyframes.pitch.interpolate(ticks).floatValue());
+                            replay.applyClientActions(ticks, new MCEntity(anEntity), this.film);
 
                             spawned = true;
                         }
                         else if (anEntity instanceof PlayerEntity player)
                         {
-                            double x = replay.keyframes.x.interpolate(replayTick);
-                            double y = replay.keyframes.y.interpolate(replayTick);
-                            double z = replay.keyframes.z.interpolate(replayTick);
-                            double prevX = replay.keyframes.x.interpolate(replayTick - 1);
-                            double prevY = replay.keyframes.y.interpolate(replayTick - 1);
-                            double prevZ = replay.keyframes.z.interpolate(replayTick - 1);
+                            double x = replay.keyframes.x.interpolate(ticks);
+                            double y = replay.keyframes.y.interpolate(ticks);
+                            double z = replay.keyframes.z.interpolate(ticks);
+                            double prevX = replay.keyframes.x.interpolate(ticks - 1);
+                            double prevY = replay.keyframes.y.interpolate(ticks - 1);
+                            double prevZ = replay.keyframes.z.interpolate(ticks - 1);
 
                             player.setVelocity(x - prevX, y - prevY, z - prevZ);
 
-                            this.spawnSprintParticles(replay, replayTick, player);
+                            this.spawnSprintParticles(replay, ticks, player);
                             spawned = true;
                         }
                     }
@@ -588,8 +582,7 @@ public abstract class BaseFilmController
                     Form form = replay.form.get();
                     double width = form != null ? form.hitboxWidth.get() : 0.6D;
 
-                    this.spawnReplayStepSound(replay, replayTick, world);
-                    this.spawnSprintParticles(replay, replayTick, world, width);
+                    this.spawnSprintParticles(replay, ticks, world, width);
                 }
             }
         }
@@ -613,7 +606,7 @@ public abstract class BaseFilmController
 
             if (replay != null)
             {
-                int replayTick = replay.getTick(ticks);
+                ticks = replay.getTick(ticks);
 
                 Map<String, Integer> actors = this.getActors();
 
@@ -627,24 +620,18 @@ public abstract class BaseFilmController
 
                         if (anEntity instanceof PlayerEntity player)
                         {
-                            double x = replay.keyframes.x.interpolate(replayTick);
-                            double y = replay.keyframes.y.interpolate(replayTick);
-                            double z = replay.keyframes.z.interpolate(replayTick);
-                            boolean sneaking = replay.keyframes.sneaking.interpolate(replayTick) > 0;
-                            boolean grounded = replay.keyframes.grounded.interpolate(replayTick) > 0;
+                            double x = replay.keyframes.x.interpolate(ticks);
+                            double y = replay.keyframes.y.interpolate(ticks);
+                            double z = replay.keyframes.z.interpolate(ticks);
+                            boolean sneaking = replay.keyframes.sneaking.interpolate(ticks) > 0;
 
                             Vec3d pos = player.getPos();
 
-                            if (BBSSettings.editorReplayStepSound == null || BBSSettings.editorReplayStepSound.get())
-                            {
-                                player.setOnGround(grounded);
-                                player.move(MovementType.SELF, new Vec3d(x - pos.x, y - pos.y, z - pos.z));
-                            }
-
+                            player.move(MovementType.SELF, new Vec3d(x - pos.x, y - pos.y, z - pos.z));
                             player.setPosition(x, y, z);
 
                             player.setSneaking(sneaking);
-                            player.setOnGround(grounded);
+                            player.setOnGround(replay.keyframes.grounded.interpolate(ticks) > 0);
 
                             if (player instanceof ClientPlayerEntityAccessor accessor)
                             {
@@ -656,7 +643,7 @@ public abstract class BaseFilmController
                                 playerEntity.input.sneaking = sneaking;
                             }
 
-                            player.fallDistance = replay.keyframes.fall.interpolate(replayTick).floatValue();
+                            player.fallDistance = replay.keyframes.fall.interpolate(ticks).floatValue();
                         }
                     }
                 }
@@ -666,7 +653,6 @@ public abstract class BaseFilmController
 
     protected void updateEntityAndForm(IEntity entity, int tick)
     {
-        entity.setAge(tick);
         entity.update();
 
         if (entity.getForm() != null)
@@ -694,11 +680,6 @@ public abstract class BaseFilmController
     private void spawnSprintParticles(Replay replay, int ticks, World world, double width)
     {
         if (!BBSSettings.editorReplaySprintParticles.get() || replay == null || world == null)
-        {
-            return;
-        }
-
-        if (!this.isReplayVisible(replay, ticks))
         {
             return;
         }
@@ -739,111 +720,6 @@ public abstract class BaseFilmController
         world.addParticle(new BlockStateParticleEffect(ParticleTypes.BLOCK, world.getBlockState(pos)), x, y, z, 0D, 0.1D, 0D);
     }
 
-    private void spawnReplayStepSound(Replay replay, int ticks, World world)
-    {
-        if (BBSSettings.editorReplayStepSound == null || !BBSSettings.editorReplayStepSound.get() || replay == null || world == null)
-        {
-            return;
-        }
-
-        if (this.paused)
-        {
-            return;
-        }
-
-        if (!this.isReplayVisible(replay, ticks))
-        {
-            return;
-        }
-
-        if (replay.keyframes.grounded.interpolate(ticks) <= 0D)
-        {
-            return;
-        }
-
-        /* Reduce spam and approximate vanilla stepping cadence. */
-        if ((ticks & 7) != 0)
-        {
-            return;
-        }
-
-        double vX = replay.keyframes.vX.interpolate(ticks);
-        double vZ = replay.keyframes.vZ.interpolate(ticks);
-
-        if ((vX * vX + vZ * vZ) < 0.01D)
-        {
-            return;
-        }
-
-        double xPos = replay.keyframes.x.interpolate(ticks);
-        double yPos = replay.keyframes.y.interpolate(ticks);
-        double zPos = replay.keyframes.z.interpolate(ticks);
-        BlockPos pos = BlockPos.ofFloored(xPos, yPos - 0.2D, zPos);
-
-        if (world.isAir(pos))
-        {
-            return;
-        }
-
-        var soundGroup = world.getBlockState(pos).getSoundGroup();
-
-        world.playSound(
-            xPos,
-            yPos,
-            zPos,
-            soundGroup.getStepSound(),
-            SoundCategory.PLAYERS,
-            soundGroup.getVolume() * 0.15F,
-            soundGroup.getPitch(),
-            false
-        );
-    }
-
-    private boolean isReplayVisible(Replay replay, int ticks)
-    {
-        if (!this.isReplayVisibleAt(replay, ticks))
-        {
-            return false;
-        }
-
-        if (!replay.group.get().isEmpty())
-        {
-            String[] groups = replay.group.get().split("/");
-
-            for (String uuid : groups)
-            {
-                Replay groupReplay = this.replayMap.get(uuid);
-
-                if (groupReplay != null)
-                {
-                    int groupTick = groupReplay.getTick(this.getTick());
-
-                    if (!this.isReplayVisibleAt(groupReplay, groupTick))
-                    {
-                        return false;
-                    }
-                }
-            }
-        }
-
-        return true;
-    }
-
-    private boolean isReplayVisibleAt(Replay replay, float tick)
-    {
-        BaseValue visibleValue = replay.properties.get("visible");
-
-        if (visibleValue instanceof KeyframeChannel)
-        {
-            @SuppressWarnings("unchecked")
-            KeyframeChannel<Boolean> visible = (KeyframeChannel<Boolean>) visibleValue;
-
-            return visible.isEmpty() || visible.interpolate(tick);
-        }
-
-        return true;
-    }
-
 
     public void startRenderFrame(float transition)
     {
@@ -863,7 +739,6 @@ public abstract class BaseFilmController
 
             /* Apply property */
             Form form1 = entity.getForm();
-            replay.properties.resetProperties(form1);
             replay.properties.applyProperties(form1, tick + delta);
 
             Map<String, Integer> actors = this.getActors();
@@ -879,7 +754,6 @@ public abstract class BaseFilmController
                     if (anEntity instanceof ActorEntity actor)
                     {
                         Form form = actor.getForm();
-                        replay.properties.resetProperties(form);
                         replay.properties.applyProperties(form, tick + delta);
                     }
                     else if (anEntity instanceof PlayerEntity player)
@@ -889,7 +763,6 @@ public abstract class BaseFilmController
                         if (morph != null)
                         {
                             Form form = morph.getForm();
-                            replay.properties.resetProperties(form);
                             replay.properties.applyProperties(form, tick + delta);
                         }
 
@@ -1103,27 +976,9 @@ public abstract class BaseFilmController
 
     protected FilmControllerContext getFilmControllerContext(WorldRenderContext context, Replay replay, IEntity entity)
     {
-        float tick = replay.getTick(this.getTick()) + this.getTransition(entity, context.tickDelta());
-
-        float shadowSize = replay.shadowSize.get();
-        float shadowOpacity = replay.shadowOpacity.get();
-
-        if (!replay.keyframes.shadowSize.isEmpty())
-        {
-            shadowSize = replay.keyframes.shadowSize.interpolate(tick).floatValue();
-        }
-
-        if (!replay.keyframes.shadowOpacity.isEmpty())
-        {
-            shadowOpacity = replay.keyframes.shadowOpacity.interpolate(tick).floatValue();
-        }
-
-        shadowSize = Math.max(0F, shadowSize);
-        shadowOpacity = MathUtils.clamp(shadowOpacity, 0F, 1F);
-
         return FilmControllerContext.instance
             .setup(this.entities, entity, replay, context)
-            .shadow(replay.shadow.get(), shadowSize, shadowOpacity)
+            .shadow(replay.shadow.get(), replay.shadowSize.get())
             .nameTag(replay.nameTag.get())
             .relative(replay.relative.get());
     }

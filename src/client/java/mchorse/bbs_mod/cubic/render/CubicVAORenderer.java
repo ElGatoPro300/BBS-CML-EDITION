@@ -35,11 +35,6 @@ public class CubicVAORenderer extends CubicCubeRenderer
     @Override
     public boolean renderGroup(BufferBuilder builder, MatrixStack stack, ModelGroup group, Model model)
     {
-        if (this.stencilMap != null && !this.stencilMap.isBoneAllowed(group.id))
-        {
-            return false;
-        }
-
         ModelVAO modelVAO = this.model.getVaos().get(group);
 
         if (modelVAO != null && group.visible)

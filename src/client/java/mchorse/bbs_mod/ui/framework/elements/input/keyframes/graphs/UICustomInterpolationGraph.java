@@ -109,7 +109,7 @@ public class UICustomInterpolationGraph extends UIKeyframeGraph
         }
         else if (type.b == KeyframeType.LEFT_HANDLE)
         {
-            keyframe.lx = Math.max(0, -(float) ((this.keyframes.fromGraphX(context.mouseX)) - keyframe.getTick()));
+            keyframe.lx = -(float) ((this.keyframes.fromGraphX(context.mouseX)) - keyframe.getTick());
             keyframe.ly = (float) (this.fromGraphY(context.mouseY) - factory.getY(originalV));
 
             if (!Window.isShiftPressed())
@@ -120,7 +120,7 @@ public class UICustomInterpolationGraph extends UIKeyframeGraph
         }
         else if (type.b == KeyframeType.RIGHT_HANDLE)
         {
-            keyframe.rx = Math.max(0, (float) ((this.keyframes.fromGraphX(context.mouseX)) - keyframe.getTick()));
+            keyframe.rx = (float) ((this.keyframes.fromGraphX(context.mouseX)) - keyframe.getTick());
             keyframe.ry = (float) (this.fromGraphY(context.mouseY) - factory.getY(originalV));
 
             if (!Window.isShiftPressed())

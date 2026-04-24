@@ -96,37 +96,22 @@ public class UIReplaysEditorUtils
         if (selected != null)
         {
             String id = selected.getParent().getId();
-            int colon = id.indexOf(':');
-            String pathWithProperty = colon != -1 ? id.substring(0, colon) : id;
+            int index = id.indexOf("pose_overlay");
 
-            if (pathWithProperty.startsWith(path))
+            if (index >= 0)
             {
-                String propertyId = StringUtils.fileName(pathWithProperty);
-
-                if (propertyId.equals("pose") || propertyId.startsWith("pose_overlay"))
-                {
-                    type = propertyId;
-                }
+                type = id.substring(index);
             }
         }
         else
         {
             UIKeyframeSheet lastSheet = keyframeEditor.view.getGraph().getLastSheet();
 
-            if (lastSheet != null)
+            if (lastSheet != null && lastSheet.property != null)
             {
-                String id = lastSheet.id;
-                int colon = id.indexOf(':');
-                String pathWithProperty = colon != -1 ? id.substring(0, colon) : id;
-
-                if (pathWithProperty.startsWith(path))
+                if (FormUtils.getPath((Form) lastSheet.property.getParent()).equals(FormUtils.getPath(form)) && lastSheet.property.getId().startsWith("pose"))
                 {
-                    String propertyId = StringUtils.fileName(pathWithProperty);
-
-                    if (propertyId.equals("pose") || propertyId.startsWith("pose_overlay"))
-                    {
-                        type = propertyId;
-                    }
+                    type = lastSheet.property.getId();
                 }
             }
         }
@@ -136,42 +121,6 @@ public class UIReplaysEditorUtils
 
     private static void pickProperty(UIKeyframeEditor keyframeEditor, ICursor cursor, String bone, String key, boolean insert)
     {
-        IUIKeyframeGraph graph = keyframeEditor.view.getGraph();
-        Keyframe selected = graph.getSelected();
-        UIKeyframeSheet activeSheet = selected != null ? graph.getSheet(selected) : null;
-
-        if (activeSheet != null)
-        {
-            String id = activeSheet.id;
-            int colon = id.indexOf(':');
-            String baseId = colon != -1 ? id.substring(0, colon) : id;
-            String boneId = colon != -1 ? id.substring(colon + 1) : null;
-
-            if (baseId.equals(key))
-            {
-                if (boneId == null || boneId.equals(bone))
-                {
-                    pickProperty(keyframeEditor, cursor, bone, activeSheet, insert);
-
-                    return;
-                }
-            }
-        }
-
-        /* Redirect to limb track if it exists */
-        if (bone != null && !bone.isEmpty())
-        {
-            String limbTrackId = key + ":" + bone;
-            UIKeyframeSheet limbSheet = keyframeEditor.view.getGraph().getSheet(limbTrackId);
-
-            if (limbSheet != null)
-            {
-                pickProperty(keyframeEditor, cursor, bone, limbSheet, insert);
-
-                return;
-            }
-        }
-
         UIKeyframeSheet sheet = keyframeEditor.view.getGraph().getSheet(key);
 
         if (sheet != null)
@@ -195,19 +144,11 @@ public class UIReplaysEditorUtils
         }
 
         KeyframeSegment segment = sheet.channel.find(tick);
-        Keyframe closest = null;
 
         if (segment != null)
         {
-            closest = segment.getClosest();
-        }
-        else if (!sheet.channel.isEmpty())
-        {
-            closest = sheet.channel.get(0);
-        }
+            Keyframe closest = segment.getClosest();
 
-        if (closest != null)
-        {
             if (graph.getSelected() != closest)
             {
                 boolean select = true;

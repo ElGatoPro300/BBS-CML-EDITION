@@ -68,11 +68,12 @@ public class UIClipRenderer <T extends Clip> implements IUIClipRenderer<T>
 
         FontRenderer font = context.batcher.getFont();
         String baseTitle = clip.title.get();
-        String typeLabel = UIKeys.C_CLIP.get(clips.getFactory().getType(clip)).get();
         String label = baseTitle;
 
-        if (baseTitle.isEmpty() || BBSSettings.editorClipTypeLabels.get())
+        if (BBSSettings.editorClipTypeLabels.get())
         {
+            String typeLabel = UIKeys.C_CLIP.get(clips.getFactory().getType(clip)).get();
+
             if (baseTitle.isEmpty())
             {
                 label = typeLabel;

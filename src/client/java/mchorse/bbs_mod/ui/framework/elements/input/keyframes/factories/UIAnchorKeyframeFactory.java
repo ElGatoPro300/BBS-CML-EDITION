@@ -43,44 +43,22 @@ public class UIAnchorKeyframeFactory extends UIKeyframeFactory<Anchor>
         {
             menu.action(Icons.CLOSE, UIKeys.GENERAL_NONE, Colors.NEGATIVE, () -> callback.accept(-1));
 
-            if (replays != null)
+            for (int i = 0; i < entities.size(); i++)
             {
-                for (int i = 0; i < replays.size(); i++)
+                final int actor = i;
+                IEntity entity = entities.get(i);
+
+                if (entity == null)
                 {
-                    final int actor = i;
-                    IEntity entity = entities.get(i);
-
-                    if (entity == null)
-                    {
-                        continue;
-                    }
-
-                    Replay replay = replays.get(i);
-                    Form form = entity.getForm();
-                    String stringLabel = i + (replay != null ? " - " + replay.getName() : (form == null ? "" : " - " + form.getFormIdOrName()));
-                    IKey label = IKey.constant(stringLabel);
-
-                    menu.action(Icons.CLOSE, label, actor == value, () -> callback.accept(actor));
+                    continue;
                 }
-            }
-            else
-            {
-                for (int i = 0; i < entities.size(); i++)
-                {
-                    final int actor = i;
-                    IEntity entity = entities.get(i);
 
-                    if (entity == null)
-                    {
-                        continue;
-                    }
+                Replay replay = replays == null ? null : replays.get(i);
+                Form form = entity.getForm();
+                String stringLabel = i + (replay != null ? " - " + replay.getName() : (form == null ? "" : " - " + form.getFormIdOrName()));
+                IKey label = IKey.constant(stringLabel);
 
-                    Form form = entity.getForm();
-                    String stringLabel = i + (form == null ? "" : " - " + form.getFormIdOrName());
-                    IKey label = IKey.constant(stringLabel);
-
-                    menu.action(Icons.CLOSE, label, actor == value, () -> callback.accept(actor));
-                }
+                menu.action(Icons.CLOSE, label, actor == value, () -> callback.accept(actor));
             }
         });
     }

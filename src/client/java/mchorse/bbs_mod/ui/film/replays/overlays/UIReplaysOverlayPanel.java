@@ -1,6 +1,5 @@
 package mchorse.bbs_mod.ui.film.replays.overlays;
 
-import com.mojang.logging.LogUtils;
 import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.ui.UIKeys;
@@ -10,7 +9,6 @@ import mchorse.bbs_mod.ui.forms.UINestedEdit;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
-import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UIAnchorKeyframeFactory;
@@ -18,9 +16,7 @@ import mchorse.bbs_mod.ui.framework.elements.input.text.UITextbox;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlayPanel;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.UIDataUtils;
-import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Colors;
-import org.slf4j.Logger;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,8 +24,6 @@ import java.util.function.Consumer;
 
 public class UIReplaysOverlayPanel extends UIOverlayPanel
 {
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     public static final List<Consumer<UIReplaysOverlayPanel>> extensions = new ArrayList<>();
 
     public UIReplayList replays;
@@ -44,7 +38,6 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
     public UITextbox nameTag;
     public UIToggle shadow;
     public UITrackpad shadowSize;
-    public UITrackpad shadowOpacity;
     public UIElement loopingLabel;
     public UITrackpad looping;
     public UIToggle actor;
@@ -56,9 +49,6 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
     public UITrackpad relativeOffsetZ;
     public UIToggle axesPreview;
     public UIButton pickAxesPreviewBone;
-    public UIIcon addReplay;
-    public UIIcon dupeReplay;
-    public UIIcon removeReplay;
 
     /* Item drop velocity configuration */
     public UITrackpad dropVelocityMinX;
@@ -90,11 +80,7 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
             this.edit((replay) -> replay.enabled.set(b.getValue()));
             filmPanel.getController().createEntities();
         });
-        this.label = new UITextbox(1000, (s) -> this.edit((replay) ->
-        {
-            replay.label.set(s);
-            LOGGER.info("Replay display name changed: replayId={}, label={}", replay.getId(), s);
-        }));
+        this.label = new UITextbox(1000, (s) -> this.edit((replay) -> replay.label.set(s)));
         this.label.textbox.setPlaceholder(UIKeys.FILM_REPLAY_LABEL);
 
         this.groupLabel = new UITextbox(1000, (s) ->
@@ -115,8 +101,6 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
         this.shadow = new UIToggle(UIKeys.FILM_REPLAY_SHADOW, (b) -> this.edit((replay) -> replay.shadow.set(b.getValue())));
         this.shadowSize = new UITrackpad((v) -> this.edit((replay) -> replay.shadowSize.set(v.floatValue())));
         this.shadowSize.tooltip(UIKeys.FILM_REPLAY_SHADOW_SIZE);
-        this.shadowOpacity = new UITrackpad((v) -> this.edit((replay) -> replay.shadowOpacity.set(v.floatValue())));
-        this.shadowOpacity.limit(0F, 1F).tooltip(UIKeys.FILM_REPLAY_SHADOW_OPACITY);
         this.looping = new UITrackpad((v) -> this.edit((replay) -> replay.looping.set(v.intValue())));
         this.looping.limit(0).integer().tooltip(UIKeys.FILM_REPLAY_LOOPING_TOOLTIP);
         this.actor = new UIToggle(UIKeys.FILM_REPLAY_ACTOR, (b) -> this.edit((replay) -> replay.actor.set(b.getValue())));
@@ -152,23 +136,6 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
             });
         });
 
-        this.addReplay = new UIIcon(Icons.ADD, (b) -> this.replays.addReplay());
-        this.addReplay.tooltip(UIKeys.SCENE_REPLAYS_CONTEXT_ADD);
-
-        this.dupeReplay = new UIIcon(Icons.DUPE, (b) -> this.replays.dupeReplay());
-        this.dupeReplay.tooltip(UIKeys.SCENE_REPLAYS_CONTEXT_DUPE);
-
-        this.removeReplay = new UIIcon(Icons.REMOVE, (b) -> this.replays.removeReplay());
-        this.removeReplay.tooltip(UIKeys.SCENE_REPLAYS_CONTEXT_REMOVE);
-
-        this.dupeReplay.setEnabled(false);
-        this.removeReplay.setEnabled(false);
-
-        this.icons.add(this.addReplay, this.dupeReplay, this.removeReplay);
-
-        this.keys().register(mchorse.bbs_mod.ui.Keys.REPLAYS_REMOVE, () -> this.replays.removeReplay())
-            .active(() -> !this.replays.getCurrent().isEmpty());
-
         /* Item drop velocity configuration */
         this.dropVelocityMinX = new UITrackpad((v) -> this.edit((replay) -> replay.dropVelocityMinX.set(v.floatValue())));
         this.dropVelocityMinX.tooltip(UIKeys.FILM_REPLAY_DROP_VELOCITY_MIN_X);
@@ -192,7 +159,7 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
             this.replayLabel,
             this.pickEdit, this.enabled,
             this.label, this.nameTag,
-            this.shadow, this.shadowSize, this.shadowOpacity,
+            this.shadow, this.shadowSize,
             this.loopingLabel,
             this.looping, this.actor, this.fp,
             this.relative, this.relativeRow,
@@ -202,7 +169,7 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
             UI.row(5, 0, this.dropVelocityMinY, this.dropVelocityMaxY),
             UI.row(5, 0, this.dropVelocityMinZ, this.dropVelocityMaxZ)
         );
-        this.groupProperties = UI.scrollView(5, 6, this.groupLabel);
+        this.groupProperties = UI.scrollView(0, 0, this.groupLabel);
 
         this.replayProperties.relative(this.replays).x(1F).wTo(this.icons.area).h(1F);
         this.groupProperties.relative(this.replays).x(1F).wTo(this.icons.area).h(1F);
@@ -260,9 +227,6 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
         boolean hasReplay = replay != null;
         boolean isGroup = hasReplay && replay.isGroup.get();
 
-        this.dupeReplay.setEnabled(hasReplay && !isGroup);
-        this.removeReplay.setEnabled(hasReplay);
-
         this.replayProperties.setVisible(hasReplay && !isGroup);
         this.groupProperties.setVisible(hasReplay && isGroup);
 
@@ -281,7 +245,6 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
                 this.nameTag.setText(replay.nameTag.get());
                 this.shadow.setValue(replay.shadow.get());
                 this.shadowSize.setValue(replay.shadowSize.get());
-                this.shadowOpacity.setValue(replay.shadowOpacity.get());
                 this.looping.setValue(replay.looping.get());
                 this.actor.setValue(replay.actor.get());
                 this.fp.setValue(replay.fp.get());

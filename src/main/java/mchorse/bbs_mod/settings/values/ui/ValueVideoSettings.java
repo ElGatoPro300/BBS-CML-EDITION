@@ -13,7 +13,6 @@ public class ValueVideoSettings extends ValueGroup
     public final ValueString arguments = new ValueString("arguments", DEFAULT_FFMPEG_ARGUMENTS);
     public final ValueString argumentsAudio = new ValueString("arguments_audio", DEFAULT_AUDIO_FFMPEG_ARGUMENTS);
     public final ValueBoolean audio = new ValueBoolean("audio", false);
-    public final ValueBoolean audioEnvironment = new ValueBoolean("audio_environment", false);
     public final ValueInt width = new ValueInt("width", 1280, 2, 8096);
     public final ValueInt height = new ValueInt("height", 720, 2, 8096);
     public final ValueInt frameRate = new ValueInt("frameRate", 60, 10, 1000);
@@ -28,7 +27,6 @@ public class ValueVideoSettings extends ValueGroup
         this.add(this.arguments);
         this.add(this.argumentsAudio);
         this.add(this.audio);
-        this.add(this.audioEnvironment);
         this.add(this.width);
         this.add(this.height);
         this.add(this.frameRate);

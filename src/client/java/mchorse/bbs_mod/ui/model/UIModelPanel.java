@@ -25,7 +25,6 @@ import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.ScrollDirection;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
-import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.pose.UIPoseEditor;
 import mchorse.bbs_mod.utils.Direction;
@@ -41,7 +40,6 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
     
     public UIElement mainView;
     public List<UIElement> panels = new ArrayList<>();
-    public List<UIIcon> panelButtons = new ArrayList<>();
     
     public UIElement modelSettingsPanel;
     public UIScrollView sectionsView;
@@ -51,7 +49,6 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
     public UIModelPanel(UIDashboard dashboard)
     {
         super(dashboard);
-        this.overlay.resizable().minSize(260, 220);
 
         this.overlay.add.setEnabled(false);
 
@@ -101,10 +98,9 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         spacer.relative(this.iconBar).w(1F).h(10);
         this.iconBar.add(spacer);
 
-        this.registerPanel(this.modelSettingsPanel, UIKeys.MODELS_SETTINGS, Icons.MODELS_SETTINGS);
-        this.registerPanel(this.createUnavailablePanel(), UIKeys.MODELS_IK_EDITOR, Icons.IK);
-        this.registerPanel(this.createUnavailablePanel(), UIKeys.MODELS_DYNAMIC_BONES, Icons.DYNAMIC_BONES);
-        this.registerPanel(this.createUnavailablePanel(), UIKeys.MODELS_GEOMETRY_EDITOR, Icons.GEOMETRY_EDITOR);
+        this.registerPanel(this.modelSettingsPanel, UIKeys.MODELS_SETTINGS, Icons.POSE);
+        this.registerPanel(this.createUnavailablePanel(), UIKeys.MODELS_IK_EDITOR, Icons.LIMB);
+        this.registerPanel(this.createUnavailablePanel(), UIKeys.MODELS_DYNAMIC_BONES, Icons.CURVES);
 
         this.setPanel(this.modelSettingsPanel);
         
@@ -181,7 +177,6 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         }
 
         this.panels.add(panel);
-        this.panelButtons.add(button);
         this.iconBar.add(button);
 
         return button;
@@ -290,11 +285,6 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
     @Override
     protected void fillData(ModelConfig data)
     {
-        for (UIIcon button : this.panelButtons)
-        {
-            button.setEnabled(data != null);
-        }
-
         if (data != null)
         {
             this.renderer.setModel(data.getId());

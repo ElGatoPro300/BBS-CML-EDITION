@@ -30,13 +30,6 @@ import java.util.function.Supplier;
 
 public abstract class FormRenderer <T extends Form>
 {
-    private static boolean suppressFormDisplayName;
-
-    public static void setSuppressFormDisplayName(boolean suppress)
-    {
-        suppressFormDisplayName = suppress;
-    }
-
     protected T form;
 
     public FormRenderer(T form)
@@ -61,7 +54,7 @@ public abstract class FormRenderer <T extends Form>
         FontRenderer font = context.batcher.getFont();
         String name = this.form.name.get();
 
-        if (!suppressFormDisplayName && !name.isEmpty())
+        if (!name.isEmpty())
         {
             name = font.limitToWidth(name, x2 - x1 - 3);
 

@@ -16,8 +16,6 @@ import mchorse.bbs_mod.events.TriggerBlockEntityUpdateCallback;
 import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.forms.Form;
-import mchorse.bbs_mod.forms.renderers.FormRenderer;
-import mchorse.bbs_mod.forms.renderers.FormRenderer;
 import mchorse.bbs_mod.forms.renderers.utils.RecolorVertexConsumer;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.graphics.texture.TextureFormat;
@@ -43,7 +41,6 @@ import net.fabricmc.fabric.impl.client.rendering.WorldRenderContextImpl;
 import net.fabricmc.loader.api.FabricLoader;
 import net.irisshaders.iris.uniforms.custom.cached.CachedUniform;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.option.CloudRenderMode;
 import net.minecraft.client.gl.Framebuffer;
 import net.minecraft.client.gl.WindowFramebuffer;
 import net.minecraft.client.gui.DrawContext;
@@ -88,8 +85,6 @@ public class BBSRendering
     private static Framebuffer framebuffer;
     private static Framebuffer clientFramebuffer;
     private static Texture texture;
-    private static CloudRenderMode cachedCloudRenderMode;
-    private static boolean cloudsForced;
 
     public static int getMotionBlur()
     {
@@ -342,7 +337,6 @@ public class BBSRendering
         }
 
         renderingWorld = true;
-        updateCloudRenderMode(mc);
 
         if (!customSize)
         {
@@ -400,34 +394,6 @@ public class BBSRendering
         }
 
         renderingWorld = false;
-    }
-
-    private static void updateCloudRenderMode(MinecraftClient mc)
-    {
-        boolean shouldHideClouds = BBSSettings.chromaSkyEnabled.get() && !BBSSettings.chromaSkyClouds.get();
-
-        if (shouldHideClouds)
-        {
-            if (!cloudsForced)
-            {
-                cachedCloudRenderMode = mc.options.getCloudRenderMode().getValue();
-                cloudsForced = true;
-            }
-
-            if (mc.options.getCloudRenderMode().getValue() != CloudRenderMode.OFF)
-            {
-                mc.options.getCloudRenderMode().setValue(CloudRenderMode.OFF);
-            }
-        }
-        else if (cloudsForced)
-        {
-            if (cachedCloudRenderMode != null)
-            {
-                mc.options.getCloudRenderMode().setValue(cachedCloudRenderMode);
-            }
-
-            cloudsForced = false;
-        }
     }
 
     public static void onRenderBeforeScreen()
@@ -501,38 +467,30 @@ public class BBSRendering
         }
 
         Form form = replay.form.get();
-        String label = getReplayHudLabel(replay);
-        boolean hasLabel = BBSSettings.editorReplayHudDisplayName.get() && !label.isEmpty();
+        String label = getReplayDisplayName(replay, form);
         boolean hasForm = form != null;
-
-        if (!hasForm && !hasLabel)
-        {
-            return;
-        }
-
         int size = hasForm ? 24 : 0;
         int padding = 3;
-        int gap = hasForm && hasLabel ? 4 : 0;
+        int gap = hasForm ? 4 : 0;
 
         int margin = 5;
-        float textScale = 0.67F;
-        int textWidth = hasLabel ? batcher2D.getFont().getWidth(label) : 0;
-        int textHeight = hasLabel ? batcher2D.getFont().getHeight() : 0;
+        float textScale = 0.85F;
+        int textWidth = batcher2D.getFont().getWidth(label);
+        int textHeight = batcher2D.getFont().getHeight();
         int scaledTextWidth = Math.round(textWidth * textScale);
         int scaledTextHeight = Math.round(textHeight * textScale);
         int boxH = Math.max(size, scaledTextHeight) + padding * 2;
-        int textBoxW = hasLabel ? scaledTextWidth + padding * 2 : 0;
-        int totalW = (hasForm ? size : 0) + (hasLabel ? gap + textBoxW : 0);
+        int textBoxW = scaledTextWidth + padding * 2;
+        int totalW = (hasForm ? size + gap : 0) + textBoxW;
         int x = getReplayHudX(margin, totalW);
         int y = getReplayHudY(margin + yOffset, boxH);
         int contentX = x + padding;
         int contentY = y + padding;
-
         int textBoxX = contentX + (hasForm ? size + gap : 0) - padding;
         int textBoxH = scaledTextHeight + padding * 2;
         int textBoxY = y + (boxH - textBoxH) / 2;
 
-        if (hasLabel)
+        if (!label.isEmpty())
         {
             batcher2D.box(textBoxX, textBoxY, textBoxX + textBoxW, textBoxY + textBoxH, Colors.A50);
         }
@@ -550,41 +508,18 @@ public class BBSRendering
             int modelX2 = modelX1 + size;
             int modelY2 = modelY1 + size;
 
-            try
-            {
-                FormRenderer.setSuppressFormDisplayName(true);
-                FormUtilsClient.renderUI(form, replayHudMenu.context, modelX1, modelY1, modelX2, modelY2);
-            }
-            finally
-            {
-                FormRenderer.setSuppressFormDisplayName(false);
-            }
+            FormUtilsClient.renderUI(form, replayHudMenu.context, modelX1, modelY1, modelX2, modelY2);
+
+            contentX = modelX2 + gap;
         }
 
-        if (hasLabel)
-        {
-            int textX = textBoxX + padding;
-            int textY = textBoxY + padding;
+        int textX = textBoxX + padding;
+        int textY = textBoxY + padding;
 
-            drawContext.getMatrices().push();
-            drawContext.getMatrices().scale(textScale, textScale, 1F);
-            batcher2D.textShadow(label, textX / textScale, textY / textScale);
-            drawContext.getMatrices().pop();
-        }
-    }
-
-    private static String getReplayHudLabel(Replay replay)
-    {
-        String label = replay.label.get();
-
-        if (!label.isEmpty())
-        {
-            return label;
-        }
-
-        Form form = replay.form.get();
-
-        return form == null ? "" : form.getDefaultDisplayNameForHud();
+        drawContext.getMatrices().push();
+        drawContext.getMatrices().scale(textScale, textScale, 1F);
+        batcher2D.textShadow(label, textX / textScale, textY / textScale);
+        drawContext.getMatrices().pop();
     }
 
     private static int getReplayHudX(int margin, int totalW)
@@ -604,6 +539,35 @@ public class BBSRendering
         int extraTopLeft = position == 0 ? 12 : 0;
 
         return bottom ? screenH - margin - boxH : margin + extraTopLeft;
+    }
+
+    private static String getReplayDisplayName(Replay replay, Form form)
+    {
+        String label = replay.label.get();
+
+        if (!label.isEmpty())
+        {
+            return label;
+        }
+
+        if (form != null)
+        {
+            String formName = form.getDisplayName();
+
+            if (!formName.isEmpty())
+            {
+                return formName;
+            }
+        }
+
+        String nameTag = replay.nameTag.get();
+
+        if (!nameTag.isEmpty())
+        {
+            return nameTag;
+        }
+
+        return replay.getId();
     }
 
     public static void renderCoolStuff(WorldRenderContext worldRenderContext)
@@ -654,26 +618,6 @@ public class BBSRendering
         }
 
         IrisUtils.trackTexture(texture);
-    }
-
-    public static void setPBRTextureIntensity(float normalIntensity, float specularIntensity)
-    {
-        if (!iris)
-        {
-            return;
-        }
-
-        IrisUtils.setPBRTextureIntensity(normalIntensity, specularIntensity);
-    }
-
-    public static void clearPBRTextureIntensity()
-    {
-        if (!iris)
-        {
-            return;
-        }
-
-        IrisUtils.clearPBRTextureIntensity();
     }
 
     public static float[] calculateTangents(float[] t, float[] v, float[] n, float[] u)

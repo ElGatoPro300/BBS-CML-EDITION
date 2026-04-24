@@ -73,8 +73,6 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
     private ModelInstance cachedModel;
     private ModelInstance sourceModel;
 
-    private int lastAge = -1;
-
     private IEntity entity = new StubEntity();
 
     @Override
@@ -249,16 +247,6 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         this.lastModel = null;
     }
 
-    private void applyPBRTextureIntensity()
-    {
-        BBSRendering.setPBRTextureIntensity(this.form.pbrNormalIntensity.get(), this.form.pbrSpecularIntensity.get());
-    }
-
-    private void clearPBRTextureIntensity()
-    {
-        BBSRendering.clearPBRTextureIntensity();
-    }
-
     public void ensureAnimator(float transition)
     {
         ModelInstance model = this.getModel();
@@ -326,9 +314,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             MatrixStackUtils.multiply(stack, uiMatrix);
             stack.scale(scale, scale, scale);
 
-            this.applyPBRTextureIntensity();
             BBSModClient.getTextures().bindTexture(texture);
-            this.clearPBRTextureIntensity();
             RenderSystem.depthFunc(GL11.GL_LEQUAL);
 
             Supplier<ShaderProgram> mainShader = (BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld()) || !model.isVAORendered()
@@ -381,16 +367,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         /* Pass form-level texture so VAO renderer can respect it */
         Link link = this.form.texture.get();
         Link defaultTexture = link == null ? model.texture : link;
-        this.applyPBRTextureIntensity();
-
-        try
-        {
-            model.render(newStack, program, color, light, overlay, stencilMap, this.form.shapeKeys.get(), defaultTexture);
-        }
-        finally
-        {
-            this.clearPBRTextureIntensity();
-        }
+        model.render(newStack, program, color, light, overlay, stencilMap, this.form.shapeKeys.get(), defaultTexture);
 
         gameRenderer.getLightmapTextureManager().disable();
         gameRenderer.getOverlayTexture().teardownOverlayColor();
@@ -541,9 +518,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             matrices.multiply(RotationAxis.POSITIVE_Y.rotation(MathUtils.PI));
             MatrixStackUtils.applyTransform(matrices, slot.transform);
 
-            this.applyPBRTextureIntensity();
             BBSModClient.getTextures().bindTexture(texture);
-            this.clearPBRTextureIntensity();
 
             Supplier<ShaderProgram> mainShader = (BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld()) || !model.isVAORendered()
                 ? GameRenderer::getRenderTypeEntityTranslucentCullProgram
@@ -590,9 +565,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
             if (texture != null)
             {
-                this.applyPBRTextureIntensity();
                 BBSModClient.getTextures().bindTexture(texture);
-                this.clearPBRTextureIntensity();
             }
 
             Supplier<ShaderProgram> mainShader = (BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld()) || !model.isVAORendered()
@@ -742,19 +715,9 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
     {
         this.ensureAnimator(0F);
 
-        int age = entity.getAge();
-
         if (this.animator != null)
         {
-            if (this.lastAge != -1 && age != this.lastAge + 1)
-            {
-                this.resetAnimator();
-                this.ensureAnimator(0F);
-            }
-
             this.animator.update(entity);
         }
-
-        this.lastAge = age;
     }
 }

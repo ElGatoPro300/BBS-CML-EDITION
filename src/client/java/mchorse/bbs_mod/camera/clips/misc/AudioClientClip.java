@@ -5,7 +5,6 @@ import mchorse.bbs_mod.audio.SoundPlayer;
 import mchorse.bbs_mod.camera.data.Position;
 import mchorse.bbs_mod.camera.utils.TimeUtils;
 import mchorse.bbs_mod.resources.Link;
-import mchorse.bbs_mod.utils.LoopbackAudioController;
 import mchorse.bbs_mod.utils.clips.Clip;
 import mchorse.bbs_mod.utils.clips.ClipContext;
 
@@ -33,19 +32,6 @@ public class AudioClientClip extends AudioClip
     {
         Map<Link, Float> playback = getPlayback(context);
         Map<Link, Float> volumes = getVolumes(context);
-
-        if (LoopbackAudioController.isFilmClipPlaybackSuppressed())
-        {
-            for (Link link : playback.keySet())
-            {
-                BBSModClient.getSounds().stop(link);
-            }
-
-            playback.clear();
-            volumes.clear();
-
-            return;
-        }
 
         for (Map.Entry<Link, Float> entry : playback.entrySet())
         {
