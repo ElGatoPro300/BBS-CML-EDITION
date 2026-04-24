@@ -13,10 +13,13 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
+import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
+import net.minecraft.client.render.VertexConsumerProvider;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.client.font.TextRenderer;
 import org.joml.Matrix4f;
 
 import java.util.List;
@@ -523,8 +526,32 @@ public class Batcher2D
         /* Workaround for AMD driver crashes in text draws through ImmediatelyFast + Iris batching. */
         boolean safeShadow = shadow && !DISABLE_TEXT_SHADOW_COMPAT;
 
-        this.context.drawText(this.font.getRenderer(), label, (int) x, (int) y, color, safeShadow);
-        this.context.draw();
+        if (DISABLE_TEXT_SHADOW_COMPAT)
+        {
+            VertexConsumerProvider.Immediate consumers = VertexConsumerProvider.immediate(Tessellator.getInstance().getBuffer());
+            TextRenderer renderer = this.font.getRenderer();
+
+            RenderSystem.enableBlend();
+            RenderSystem.defaultBlendFunc();
+            renderer.draw(
+                label,
+                x,
+                y,
+                color,
+                safeShadow,
+                this.context.getMatrices().peek().getPositionMatrix(),
+                consumers,
+                TextRenderer.TextLayerType.NORMAL,
+                0,
+                LightmapTextureManager.MAX_LIGHT_COORDINATE
+            );
+            consumers.draw();
+        }
+        else
+        {
+            this.context.drawText(this.font.getRenderer(), label, (int) x, (int) y, color, safeShadow);
+            this.context.draw();
+        }
     }
 
     /* Text helpers */
@@ -596,7 +623,7 @@ public class Batcher2D
             }
         }
 
-        this.context.drawText(this.font.getRenderer(), text, (int) x, (int) y, color, shadow);
+        this.text(text, x, y, color, shadow);
     }
 
     public void flush()
