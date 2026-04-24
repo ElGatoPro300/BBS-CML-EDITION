@@ -6,9 +6,9 @@ import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
-import mchorse.bbs_mod.utils.TextureFont;
 import mchorse.bbs_mod.utils.colors.Colors;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.render.BufferBuilder;
@@ -17,14 +17,12 @@ import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexFormat;
-import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.render.VertexConsumerProvider;
+import net.minecraft.client.render.VertexFormats;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.client.font.TextRenderer;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
 
-import java.awt.Font;
 import java.util.List;
 import java.util.Locale;
 import java.util.function.Supplier;
@@ -32,7 +30,6 @@ import java.util.function.Supplier;
 public class Batcher2D
 {
     private static FontRenderer fontRenderer = new FontRenderer();
-    private static TextureFont amdFallbackFont;
     private static final boolean DISABLE_TEXT_SHADOW_COMPAT =
         FabricLoader.getInstance().isModLoaded("immediatelyfast") &&
         FabricLoader.getInstance().isModLoaded("iris");
@@ -531,24 +528,15 @@ public class Batcher2D
 
         if (DISABLE_TEXT_SHADOW_COMPAT && isAmdGpu())
         {
-            TextureFont fallback = getAmdFallbackFont();
-
-            if (fallback != null && fallback.isInitialized())
-            {
-                Matrix4f matrix = this.context.getMatrices().peek().getPositionMatrix();
-
-                if (shadow)
-                {
-                    fallback.drawSafe(label, x + 1, y + 1, darkenColor(color), matrix);
-                }
-
-                fallback.drawSafe(label, x, y, color, matrix);
-            }
+            /*
+             * Keep vanilla font on AMD, but avoid the immediate flush path that triggers
+             * atio6axx crashes when Iris + ImmediatelyFast are both active.
+             */
+            this.context.drawText(this.font.getRenderer(), label, (int) x, (int) y, color, false);
 
             return;
         }
 
-        /* Workaround for AMD driver crashes in text draws through ImmediatelyFast + Iris batching. */
         boolean safeShadow = shadow && !DISABLE_TEXT_SHADOW_COMPAT;
 
         if (DISABLE_TEXT_SHADOW_COMPAT)
@@ -598,26 +586,6 @@ public class Batcher2D
         }
 
         return amdGpu;
-    }
-
-    private static TextureFont getAmdFallbackFont()
-    {
-        if (amdFallbackFont == null)
-        {
-            amdFallbackFont = new TextureFont(new Font("SansSerif", Font.PLAIN, 64));
-        }
-
-        return amdFallbackFont;
-    }
-
-    private static int darkenColor(int color)
-    {
-        int a = color & 0xFF000000;
-        int r = (int) (((color >> 16) & 0xFF) * 0.25F);
-        int g = (int) (((color >> 8) & 0xFF) * 0.25F);
-        int b = (int) ((color & 0xFF) * 0.25F);
-
-        return a | (r << 16) | (g << 8) | b;
     }
 
     /* Text helpers */
