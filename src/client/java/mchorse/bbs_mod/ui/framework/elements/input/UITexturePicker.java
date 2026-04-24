@@ -75,8 +75,6 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
     public UIIcon folder;
     public UIIcon pixelEdit;
     public UIIcon viewMode;
-    public UIIcon zoomIn;
-    public UIIcon zoomOut;
     public UIFileLinkList picker;
     public UIElement textureHeader;
     public UIElement textureTabs;
@@ -259,20 +257,9 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
         this.folder = new UIIcon(Icons.FOLDER, (b) -> this.openFolder());
         this.folder.tooltip(UIKeys.TEXTURE_OPEN_FOLDER, Direction.BOTTOM);
         this.pixelEdit = new UIIcon(Icons.EDIT, (b) -> this.togglePixelEditor());
-        this.viewMode = new UIIcon(() -> this.picker != null && this.picker.isLargeViewEnabled() ? Icons.LIST : Icons.BLOCK, (b) ->
+        this.viewMode = new UIIcon(() -> this.picker != null && this.picker.getItemSize() <= UIFileLinkList.VIEW_LIST ? Icons.LIST : Icons.BLOCK, (b) ->
         {
-            this.picker.toggleLargeView();
-            this.updateViewButtons();
-        });
-        this.zoomOut = new UIIcon(Icons.REMOVE, (b) ->
-        {
-            this.picker.changeItemSize(-8);
-            this.updateViewButtons();
-        });
-        this.zoomIn = new UIIcon(Icons.ADD, (b) ->
-        {
-            this.picker.changeItemSize(8);
-            this.updateViewButtons();
+            this.openViewPresetMenu();
         });
         this.picker = new UIFileLinkList(this::selectCurrent)
         {
@@ -355,7 +342,7 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
         this.remove = new UIIcon(Icons.REMOVE, (b) -> this.removeMulti());
         this.edit = new UIIcon(Icons.EDIT, (b) -> this.toggleEditor());
 
-        UIElement icons = UI.row(0, this.viewMode, this.zoomOut, this.zoomIn, this.pixelEdit, this.folder, this.close);
+        UIElement icons = UI.row(0, this.viewMode, this.pixelEdit, this.folder, this.close);
 
         this.textureHeader.relative(this.right).x(0).y(0).w(1F).h(HEADER_HEIGHT);
         this.textureTabs.relative(this.textureHeader).x(10).y(0).w(0).h(TOP_TABS_HEIGHT).row(0).resize();
@@ -365,7 +352,7 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
         this.textureHeader.add(this.textureTabs);
 
         icons.row().preferred(0);
-        icons.relative(this.textureHeader).x(1F, -10).y(TOP_ROW_Y).w(140).h(20).anchorX(1F);
+        icons.relative(this.textureHeader).x(1F, -10).y(TOP_ROW_Y).w(80).h(20).anchorX(1F);
 
         this.right.full(this);
         this.text.relative(this.textureHeader).set(10, TOP_ROW_Y, 0, 20).wTo(icons.area);
@@ -385,7 +372,6 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
         this.buttons.add(this.add, this.remove, this.edit);
         this.add(this.multi, this.multiList, this.right, this.editor, this.buttons, this.options);
         this.setActiveTab(TAB_FILES);
-        this.updateViewButtons();
 
         this.callback = callback;
 
@@ -619,8 +605,6 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
         this.picker.setVisible(files);
         this.formPreviewArea.setVisible(false);
         this.viewMode.setVisible(files);
-        this.zoomOut.setVisible(files);
-        this.zoomIn.setVisible(files);
         this.pixelEdit.setVisible(files);
         this.folder.setVisible(files);
         this.multi.setVisible(!editor);
@@ -634,7 +618,6 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
         }
 
         this.updateTextureTabs();
-        this.updateViewButtons();
     }
 
     private void updateTextureTabs()
@@ -649,12 +632,45 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
         }
     }
 
-    private void updateViewButtons()
+    private void openViewPresetMenu()
     {
-        boolean largeView = this.activeTab == TAB_FILES && this.picker != null && this.picker.isLargeViewEnabled();
+        int currentPreset = this.getCurrentViewPreset();
 
-        this.zoomOut.setEnabled(largeView && this.picker.canDecreaseViewSize());
-        this.zoomIn.setEnabled(largeView && this.picker.canIncreaseViewSize());
+        this.getContext().replaceContextMenu((menu) ->
+        {
+            menu.action(Icons.BLOCK, IKey.constant("Iconos muy grandes"), currentPreset == UIFileLinkList.VIEW_ICONS_VERY_LARGE, () -> this.picker.setItemSize(UIFileLinkList.VIEW_ICONS_VERY_LARGE));
+            menu.action(Icons.BLOCK, IKey.constant("Iconos grandes"), currentPreset == UIFileLinkList.VIEW_ICONS_LARGE, () -> this.picker.setItemSize(UIFileLinkList.VIEW_ICONS_LARGE));
+            menu.action(Icons.BLOCK, IKey.constant("Iconos medianos"), currentPreset == UIFileLinkList.VIEW_ICONS_MEDIUM, () -> this.picker.setItemSize(UIFileLinkList.VIEW_ICONS_MEDIUM));
+            menu.action(Icons.BLOCK, IKey.constant("Iconos pequeños"), currentPreset == UIFileLinkList.VIEW_ICONS_SMALL, () -> this.picker.setItemSize(UIFileLinkList.VIEW_ICONS_SMALL));
+            menu.action(Icons.LIST, IKey.constant("Lista"), currentPreset == UIFileLinkList.VIEW_LIST, () -> this.picker.setItemSize(UIFileLinkList.VIEW_LIST));
+        });
+    }
+
+    private int getCurrentViewPreset()
+    {
+        int size = this.picker.getItemSize();
+
+        if (size <= UIFileLinkList.VIEW_LIST)
+        {
+            return UIFileLinkList.VIEW_LIST;
+        }
+
+        if (size >= UIFileLinkList.VIEW_ICONS_VERY_LARGE)
+        {
+            return UIFileLinkList.VIEW_ICONS_VERY_LARGE;
+        }
+
+        if (size >= UIFileLinkList.VIEW_ICONS_LARGE)
+        {
+            return UIFileLinkList.VIEW_ICONS_LARGE;
+        }
+
+        if (size >= UIFileLinkList.VIEW_ICONS_MEDIUM)
+        {
+            return UIFileLinkList.VIEW_ICONS_MEDIUM;
+        }
+
+        return UIFileLinkList.VIEW_ICONS_SMALL;
     }
 
     public void updateFolderButton()

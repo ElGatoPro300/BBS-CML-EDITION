@@ -3,6 +3,7 @@ package mchorse.bbs_mod.ui.framework.elements.input.list;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.resources.Link;
+import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
@@ -18,10 +19,13 @@ import java.util.function.Predicate;
 public class UIFileLinkList extends UIList<UIFileLinkList.FileLink>
 {
     private static final int MIN_ITEM_SIZE = 16;
-    private static final int SMALL_ITEM_SIZE = 24;
-    private static final int MEDIUM_ITEM_SIZE = 32;
-    private static final int MAX_ITEM_SIZE = 48;
-    private static final int[] VIEW_STEPS = new int[] {MIN_ITEM_SIZE, SMALL_ITEM_SIZE, MEDIUM_ITEM_SIZE, MAX_ITEM_SIZE};
+    public static final int VIEW_LIST = MIN_ITEM_SIZE;
+    public static final int VIEW_ICONS_SMALL = 32;
+    public static final int VIEW_ICONS_MEDIUM = 64;
+    public static final int VIEW_ICONS_LARGE = 96;
+    public static final int VIEW_ICONS_VERY_LARGE = 160;
+    private static final int MAX_ITEM_SIZE = 220;
+    private static final int FREE_ZOOM_STEP = 8;
     private static final int GRID_PADDING = 4;
     private static final int GRID_GAP = 6;
     private static final int GRID_TITLE_HEIGHT = 12;
@@ -66,7 +70,7 @@ public class UIFileLinkList extends UIList<UIFileLinkList.FileLink>
 
     public void toggleLargeView()
     {
-        this.setItemSize(this.itemSize <= MIN_ITEM_SIZE ? MEDIUM_ITEM_SIZE : MIN_ITEM_SIZE);
+        this.setItemSize(this.itemSize <= MIN_ITEM_SIZE ? VIEW_ICONS_MEDIUM : MIN_ITEM_SIZE);
     }
 
     public void changeItemSize(int delta)
@@ -76,14 +80,7 @@ public class UIFileLinkList extends UIList<UIFileLinkList.FileLink>
             return;
         }
 
-        if (delta > 0)
-        {
-            this.setItemSize(this.getStepSize(true));
-        }
-        else
-        {
-            this.setItemSize(this.getStepSize(false));
-        }
+        this.setItemSize(this.itemSize + delta);
     }
 
     public void setItemSize(int size)
@@ -106,12 +103,27 @@ public class UIFileLinkList extends UIList<UIFileLinkList.FileLink>
 
     public boolean canDecreaseViewSize()
     {
-        return this.itemSize > VIEW_STEPS[0];
+        return this.itemSize > MIN_ITEM_SIZE;
     }
 
     public boolean canIncreaseViewSize()
     {
-        return this.itemSize < VIEW_STEPS[VIEW_STEPS.length - 1];
+        return this.itemSize < MAX_ITEM_SIZE;
+    }
+
+    @Override
+    public boolean subMouseScrolled(UIContext context)
+    {
+        if (this.area.isInside(context.mouseX, context.mouseY) && Window.isCtrlPressed() && context.mouseWheel != 0)
+        {
+            int direction = context.mouseWheel > 0 ? 1 : -1;
+
+            this.setItemSize(this.itemSize + direction * FREE_ZOOM_STEP);
+
+            return true;
+        }
+
+        return super.subMouseScrolled(context);
     }
 
     @Override
@@ -494,32 +506,6 @@ public class UIFileLinkList extends UIList<UIFileLinkList.FileLink>
     private int getGridTileWidth()
     {
         return Math.max(56, this.itemSize + 20);
-    }
-
-    private int getStepSize(boolean forward)
-    {
-        if (forward)
-        {
-            for (int step : VIEW_STEPS)
-            {
-                if (step > this.itemSize)
-                {
-                    return step;
-                }
-            }
-
-            return VIEW_STEPS[VIEW_STEPS.length - 1];
-        }
-
-        for (int i = VIEW_STEPS.length - 1; i >= 0; i--)
-        {
-            if (VIEW_STEPS[i] < this.itemSize)
-            {
-                return VIEW_STEPS[i];
-            }
-        }
-
-        return VIEW_STEPS[0];
     }
 
     private int getGridTileHeight()
