@@ -391,7 +391,7 @@ public class UIFileLinkList extends UIList<UIFileLinkList.FileLink>
             {
                 Texture texture = BBSModClient.getTextures().getTexture(element.link);
 
-                context.batcher.fullTexturedBox(texture, previewX, previewY, preview, preview);
+                this.renderTexturePreview(context, texture, previewX, previewY, preview);
             }
 
             context.batcher.textShadow(element.title, x + preview + 8, y + (size - context.batcher.getFont().getHeight()) / 2, hover ? Colors.HIGHLIGHT : Colors.WHITE);
@@ -412,7 +412,7 @@ public class UIFileLinkList extends UIList<UIFileLinkList.FileLink>
         {
             Texture texture = BBSModClient.getTextures().getTexture(element.link);
 
-            context.batcher.fullTexturedBox(texture, previewX, previewY, preview, preview);
+            this.renderTexturePreview(context, texture, previewX, previewY, preview);
         }
 
         FontRenderer font = context.batcher.getFont();
@@ -443,6 +443,27 @@ public class UIFileLinkList extends UIList<UIFileLinkList.FileLink>
             Icons.FOLDER.textureW,
             Icons.FOLDER.textureH
         );
+    }
+
+    private void renderTexturePreview(UIContext context, Texture texture, int x, int y, int boxSize)
+    {
+        int width = texture.width;
+        int height = texture.height;
+
+        if (width <= 0 || height <= 0)
+        {
+            context.batcher.fullTexturedBox(texture, x, y, boxSize, boxSize);
+
+            return;
+        }
+
+        float scale = Math.min(boxSize / (float) width, boxSize / (float) height);
+        int drawWidth = Math.max(1, Math.round(width * scale));
+        int drawHeight = Math.max(1, Math.round(height * scale));
+        int drawX = x + (boxSize - drawWidth) / 2;
+        int drawY = y + (boxSize - drawHeight) / 2;
+
+        context.batcher.fullTexturedBox(texture, drawX, drawY, drawWidth, drawHeight);
     }
 
     private int getGridTileWidth()
