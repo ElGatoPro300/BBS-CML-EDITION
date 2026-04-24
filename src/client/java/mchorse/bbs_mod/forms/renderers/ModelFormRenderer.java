@@ -90,7 +90,16 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         {
             String vendor = GL11.glGetString(GL11.GL_VENDOR);
 
-            amdGpu = vendor != null && vendor.toLowerCase(Locale.ROOT).contains("amd");
+            if (vendor != null)
+            {
+                String lower = vendor.toLowerCase(Locale.ROOT);
+
+                amdGpu = lower.contains("amd") || lower.contains("ati") || lower.contains("advanced micro devices");
+            }
+            else
+            {
+                amdGpu = false;
+            }
         }
 
         return amdGpu;
