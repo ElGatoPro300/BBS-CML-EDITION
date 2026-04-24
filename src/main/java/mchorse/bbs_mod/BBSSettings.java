@@ -147,6 +147,7 @@ public class BBSSettings
     public static ValueBoolean fluidRealisticModelInteraction;
 
     public static ValueLink textureDefaultPath;
+    public static ValueInt texturePickerItemSize;
 
     public static ValueString cdnUrl;
     public static ValueString cdnToken;
@@ -216,6 +217,7 @@ public class BBSSettings
         builder.register(favoriteModelForms);
         builder.register(disabledSheets);
         textureDefaultPath = builder.getRL("texture_default_path", null);
+        texturePickerItemSize = builder.getInt("texture_picker_item_size", 16, 16, 220);
 
         builder.category("axes");
         gizmos = builder.getBoolean("gizmos", true);

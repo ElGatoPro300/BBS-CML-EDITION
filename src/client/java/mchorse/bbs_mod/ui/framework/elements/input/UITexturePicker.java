@@ -287,6 +287,17 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
                 super.setPath(folder, fastForward);
                 UITexturePicker.this.updateFolderButton();
             }
+
+            @Override
+            public void setItemSize(int size)
+            {
+                super.setItemSize(size);
+
+                if (BBSSettings.texturePickerItemSize != null)
+                {
+                    BBSSettings.texturePickerItemSize.set(this.getItemSize());
+                }
+            }
         };
         this.picker.filter((l) ->
         {
@@ -294,7 +305,8 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
 
             return path.endsWith("/") || path.endsWith(".png") || path.endsWith(".jpg") || path.endsWith(".jpeg");
         }).cancelScrollEdge();
-        this.picker.setItemSize(LIST_ITEM_SIZE_SMALL);
+        int savedItemSize = BBSSettings.texturePickerItemSize == null ? LIST_ITEM_SIZE_SMALL : BBSSettings.texturePickerItemSize.get();
+        this.picker.setItemSize(savedItemSize);
 
         this.linear = new UIToggle(UIKeys.TEXTURES_LINEAR, (b) ->
         {
