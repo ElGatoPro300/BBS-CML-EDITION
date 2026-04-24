@@ -18,6 +18,7 @@ import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.Scale;
 import mchorse.bbs_mod.ui.utils.Scroll;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
+import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.CollectionUtils;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.Pair;
@@ -75,6 +76,18 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
         this.dopeSheet.scrollSize = (int) this.trackHeight * this.sheets.size() + TOP_MARGIN;
 
         this.dopeSheet.clamp();
+    }
+
+    private String getDisplayTitle(String title)
+    {
+        int limit = BBSSettings.editorReplayEditorTitleLimit.get();
+
+        if (limit <= 0)
+        {
+            return title;
+        }
+
+        return title.length() > limit ? title.substring(0, limit) + "..." : title;
     }
 
     /* Graphing */
@@ -150,6 +163,12 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
         for (int i = 0; i < sheets.size(); i++)
         {
             UIKeyframeSheet sheet = sheets.get(i);
+
+            if (sheet.groupHeader)
+            {
+                continue;
+            }
+
             List keyframes = sheet.channel.getKeyframes();
 
             for (int j = 0; j < keyframes.size(); j++)
@@ -214,12 +233,12 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
             tick = Math.round(tick);
         }
 
-        if (sheet != null)
+        if (sheet != null && !sheet.groupHeader)
         {
             this.addKeyframe(sheet, tick, null);
         }
 
-        return sheet != null;
+        return sheet != null && !sheet.groupHeader;
     }
 
     @Override
@@ -227,7 +246,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
     {
         UIKeyframeSheet sheet = this.getSheet(mouseY);
 
-        if (sheet == null)
+        if (sheet == null || sheet.groupHeader)
         {
             return null;
         }
@@ -298,6 +317,31 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
     @Override
     public boolean mouseClicked(UIContext context)
     {
+        if (context.mouseButton == 0 && this.keyframes.area.isInside(context))
+        {
+            UIKeyframeSheet sheet = this.getSheet(context.mouseY);
+
+            if (sheet != null && sheet.groupHeader)
+            {
+                if (sheet.toggleGroup != null)
+                {
+                    FontRenderer font = context.batcher.getFont();
+                    String title = sheet.title.get();
+                    String displayTitle = this.getDisplayTitle(title);
+                    Icon arrow = sheet.groupExpanded ? Icons.ARROW_DOWN : Icons.ARROW_RIGHT;
+                    int clickableWidth = 2 + arrow.w + 4 + font.getWidth(displayTitle) + 6;
+                    int left = this.keyframes.area.x;
+
+                    if (context.mouseX >= left && context.mouseX <= left + clickableWidth)
+                    {
+                        sheet.toggleGroup.run();
+
+                        return true;
+                    }
+                }
+            }
+        }
+
         return this.dopeSheet.mouseClicked(context);
     }
 
@@ -562,6 +606,30 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
             boolean hover = area.isInside(context) && context.mouseY >= y && context.mouseY < y + this.trackHeight;
             int my = y + (int) this.trackHeight / 2;
             int cc = Colors.setA(sheet.color, hover ? 1F : 0.45F);
+
+            if (sheet.groupHeader)
+            {
+                FontRenderer font = context.batcher.getFont();
+                String title = sheet.title.get();
+                String displayTitle = this.getDisplayTitle(title);
+                int bg = Colors.setA(0, 0.35F);
+
+                context.batcher.box(area.x, y, area.ex(), y + (int) this.trackHeight, bg);
+
+                Icon arrow = sheet.groupExpanded ? Icons.ARROW_DOWN : Icons.ARROW_RIGHT;
+                int iconX = area.x + 2;
+                int iconY = my - arrow.h / 2;
+                int textX = iconX + arrow.w + 4;
+                int textY = my - font.getHeight() / 2;
+                int textW = font.getWidth(displayTitle);
+                int textBg = Colors.setA(BBSSettings.primaryColor.get(), 0.35F);
+
+                context.batcher.box(iconX - 3, textY - 2, textX + textW + 3, textY + font.getHeight() + 2, textBg);
+                context.batcher.icon(arrow, iconX, iconY);
+                context.batcher.textShadow(displayTitle, textX, textY);
+
+                continue;
+            }
 
             /* Render track bars (horizontal lines) */
             builder.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);

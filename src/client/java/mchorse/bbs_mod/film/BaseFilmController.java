@@ -50,6 +50,8 @@ import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.MovementType;
 import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.particle.BlockStateParticleEffect;
+import net.minecraft.particle.ParticleTypes;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
@@ -417,7 +419,8 @@ public abstract class BaseFilmController
     private static void renderNameTag(IEntity entity, Text text, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light)
     {
         boolean sneaking = !entity.isSneaking();
-        float hitboxH = (float) entity.getPickingHitbox().h + 0.5F;
+        float hitboxH = (float) entity.getPickingHitbox().h + (entity.isSneaking() ? 0.25F : 0.5F);
+
 
         matrices.push();
         matrices.translate(0F, hitboxH, 0F);
@@ -533,6 +536,8 @@ public abstract class BaseFilmController
                 this.updateEntityAndForm(entity, ticks);
                 this.applyReplay(replay, ticks, entity);
 
+                boolean spawned = false;
+
                 Map<String, Integer> actors = this.getActors();
 
                 if (actors != null)
@@ -551,6 +556,8 @@ public abstract class BaseFilmController
                             actor.setBodyYaw(replay.keyframes.bodyYaw.interpolate(ticks).floatValue());
                             actor.setPitch(replay.keyframes.pitch.interpolate(ticks).floatValue());
                             replay.applyClientActions(ticks, new MCEntity(anEntity), this.film);
+
+                            spawned = true;
                         }
                         else if (anEntity instanceof PlayerEntity player)
                         {
@@ -562,8 +569,20 @@ public abstract class BaseFilmController
                             double prevZ = replay.keyframes.z.interpolate(ticks - 1);
 
                             player.setVelocity(x - prevX, y - prevY, z - prevZ);
+
+                            this.spawnSprintParticles(replay, ticks, player);
+                            spawned = true;
                         }
                     }
+                }
+
+                if (!spawned)
+                {
+                    World world = MinecraftClient.getInstance().world;
+                    Form form = replay.form.get();
+                    double width = form != null ? form.hitboxWidth.get() : 0.6D;
+
+                    this.spawnSprintParticles(replay, ticks, world, width);
                 }
             }
         }
@@ -647,6 +666,60 @@ public abstract class BaseFilmController
         replay.keyframes.apply(ticks, entity);
         replay.applyClientActions(ticks, entity, this.film);
     }
+
+      private void spawnSprintParticles(Replay replay, int ticks, Entity entity)
+    {
+        if (entity == null)
+        {
+            return;
+        }
+
+        this.spawnSprintParticles(replay, ticks, entity.getWorld(), entity.getWidth());
+    }
+
+    private void spawnSprintParticles(Replay replay, int ticks, World world, double width)
+    {
+        if (!BBSSettings.editorReplaySprintParticles.get() || replay == null || world == null)
+        {
+            return;
+        }
+
+        if (replay.keyframes.sprinting.interpolate(ticks) <= 0D)
+        {
+            return;
+        }
+
+        if (replay.keyframes.grounded.interpolate(ticks) <= 0D)
+        {
+            return;
+        }
+
+        double vX = replay.keyframes.vX.interpolate(ticks);
+        double vZ = replay.keyframes.vZ.interpolate(ticks);
+
+        if ((vX * vX + vZ * vZ) < 0.001D)
+        {
+            return;
+        }
+
+        double xPos = replay.keyframes.x.interpolate(ticks);
+        double yPos = replay.keyframes.y.interpolate(ticks);
+        double zPos = replay.keyframes.z.interpolate(ticks);
+
+        BlockPos pos = BlockPos.ofFloored(xPos, yPos - 0.2D, zPos);
+
+        if (world.isAir(pos))
+        {
+            return;
+        }
+
+        double x = xPos + (world.random.nextDouble() - 0.5D) * width;
+        double y = yPos + 0.1D;
+        double z = zPos + (world.random.nextDouble() - 0.5D) * width;
+
+        world.addParticle(new BlockStateParticleEffect(ParticleTypes.BLOCK, world.getBlockState(pos)), x, y, z, 0D, 0.1D, 0D);
+    }
+
 
     public void startRenderFrame(float transition)
     {

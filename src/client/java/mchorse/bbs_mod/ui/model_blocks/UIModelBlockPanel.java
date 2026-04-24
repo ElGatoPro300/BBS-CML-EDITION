@@ -9,6 +9,7 @@ import mchorse.bbs_mod.blocks.ModelBlock;
 import mchorse.bbs_mod.camera.CameraUtils;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.graphics.Draw;
+import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.network.ClientNetwork;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
@@ -499,7 +500,53 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
     {
         BlockPos pos = closest.getPos();
 
-        return new AABB(pos.getX(), pos.getY(), pos.getZ(), 1D, 1D, 1D);
+        double x = pos.getX();
+        double y = pos.getY();
+        double z = pos.getZ();
+        double w = 1D;
+        double h = 1D;
+        double d = 1D;
+
+        if (closest.getProperties().isHitbox())
+        {
+            Form form = closest.getProperties().getForm();
+
+            if (form != null && form.hitbox.get())
+            {
+                float width = form.hitboxWidth.get();
+                float height = form.hitboxHeight.get();
+
+                if (width > 0F && height > 0F)
+                {
+                    float halfWidth = width / 2F;
+
+                    double minX = x + 0.5D - halfWidth;
+                    double maxX = x + 0.5D + halfWidth;
+                    double minZ = z + 0.5D - halfWidth;
+                    double maxZ = z + 0.5D + halfWidth;
+                    double minY = y;
+                    double maxY = y + height;
+
+                    double clampedMinX = Math.max(x, minX);
+                    double clampedMinZ = Math.max(z, minZ);
+                    double clampedMaxX = Math.min(x + 1D, maxX);
+                    double clampedMaxZ = Math.min(z + 1D, maxZ);
+                    double clampedMaxY = Math.min(y + 1D, maxY);
+
+                    if (clampedMinX < clampedMaxX && clampedMinZ < clampedMaxZ && clampedMaxY > minY)
+                    {
+                        x = clampedMinX;
+                        y = minY;
+                        z = clampedMinZ;
+                        w = clampedMaxX - clampedMinX;
+                        h = clampedMaxY - minY;
+                        d = clampedMaxZ - clampedMinZ;
+                    }
+                }
+            }
+        }
+
+        return new AABB(x, y, z, w, h, d);
     }
 
     public boolean isEditing(ModelBlockEntity entity)

@@ -135,4 +135,9 @@ public class ExtraFormSection extends FormSection
     {
         return this.categories;
     }
+
+    public FormCategory getExtraCategory()
+    {
+        return this.extra;
+    }
 }

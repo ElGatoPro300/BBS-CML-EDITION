@@ -174,6 +174,11 @@ public class UIPropTransform extends UITransform
 
     public void setTransform(Transform transform)
     {
+        if (transform == null)
+        {
+            return;
+        }
+
         this.transform = transform;
 
         float minScale = Math.min(transform.scale.x, Math.min(transform.scale.y, transform.scale.z));

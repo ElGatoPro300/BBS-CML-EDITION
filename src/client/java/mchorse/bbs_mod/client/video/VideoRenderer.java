@@ -80,8 +80,17 @@ public class VideoRenderer
                     }
                 }
 
-                int vw = Math.max(1, baseW + video.width.get());
-                int vh = Math.max(1, baseH + video.height.get());
+                float widthPercent = video.width.get() / 100F;
+                float heightPercent = video.height.get() / 100F;
+
+                if (video.width.get() == 0 && video.height.get() == 0)
+                {
+                    widthPercent = 1F;
+                    heightPercent = 1F;
+                }
+
+                int vw = widthPercent == 0F ? 0 : Math.max(1, Math.round(baseW * Math.abs(widthPercent))) * (widthPercent < 0F ? -1 : 1);
+                int vh = heightPercent == 0F ? 0 : Math.max(1, Math.round(baseH * Math.abs(heightPercent))) * (heightPercent < 0F ? -1 : 1);
 
                 int vx = baseArea.x + (baseArea.w - vw) / 2 + video.x.get();
                 int vy = baseArea.y + (baseArea.h - vh) / 2 + video.y.get();
@@ -165,6 +174,20 @@ public class VideoRenderer
         {}
 
         return path;
+    }
+
+    public static File getResolvedVideoFile(String path)
+    {
+        String resolved = resolveVideoPath(path);
+
+        if (resolved == null || resolved.isEmpty())
+        {
+            return null;
+        }
+
+        File file = new File(resolved);
+
+        return file.exists() ? file : null;
     }
 
     public static void render(MatrixStack stack, String path, long position, boolean playing, int volume, int x, int y, int w, int h, float opacity, boolean loops)
@@ -401,6 +424,61 @@ public class VideoRenderer
         String resolved = resolveVideoPath(path);
         PlayerWrapper wrapper = resolved == null ? null : PLAYERS.get(resolved);
         return wrapper != null && wrapper.player != null ? wrapper.player.height() : 0;
+    }
+
+    public static long getVideoDuration(String path)
+    {
+        String resolved = resolveVideoPath(path);
+
+        if (resolved == null || resolved.isEmpty())
+        {
+            return 0L;
+        }
+
+        PlayerWrapper wrapper = PLAYERS.get(resolved);
+
+        if (wrapper != null && wrapper.player != null)
+        {
+            return wrapper.player.getDuration();
+        }
+
+        if (factoryFailed)
+        {
+            return 0L;
+        }
+
+        if (FACTORY == null)
+        {
+            try
+            {
+                FACTORY = new MediaPlayerFactory(new String[] {"--avcodec-hw=none"});
+            }
+            catch (Throwable t)
+            {
+                t.printStackTrace();
+                factoryFailed = true;
+                return 0L;
+            }
+        }
+
+        try
+        {
+            VideoPlayer player = new VideoPlayer(FACTORY, MinecraftClient.getInstance());
+            player.start(new File(resolved).toURI());
+            player.pause();
+
+            wrapper = new PlayerWrapper(player);
+            wrapper.lastRenderTime = System.currentTimeMillis();
+            wrapper.wasPlaying = false;
+            PLAYERS.put(resolved, wrapper);
+
+            return player.getDuration();
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+            return 0L;
+        }
     }
 
     public static void releaseVideo(String path)

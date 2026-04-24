@@ -86,17 +86,34 @@ public class UIAnchorKeyframeFactory extends UIKeyframeFactory<Anchor>
 
         attachments.sort(String::compareToIgnoreCase);
 
+        boolean fallbackToBones = attachments.isEmpty() || (attachments.size() == 1 && attachments.get(0).isEmpty());
+
+        if (fallbackToBones)
+        {
+            List<String> bones = FormUtilsClient.getRenderer(form).getBones();
+
+            if (bones.isEmpty())
+            {
+                return;
+            }
+
+            attachments = new ArrayList<>(bones);
+        }
+
         /* Collect labels (substitute track names) */
         List<String> labels = new ArrayList<>(attachments);
 
-        for (int i = 0; i < labels.size(); i++)
+        if (!fallbackToBones)
         {
-            String label = labels.get(i);
-            Form path = FormUtils.getForm(form, label);
-
-            if (path != null)
+            for (int i = 0; i < labels.size(); i++)
             {
-                labels.set(i, path.getTrackName(label));
+                String label = labels.get(i);
+                Form path = FormUtils.getForm(form, label);
+
+                if (path != null)
+                {
+                    labels.set(i, path.getTrackName(label));
+                }
             }
         }
 
@@ -106,13 +123,15 @@ public class UIAnchorKeyframeFactory extends UIKeyframeFactory<Anchor>
         }
 
         String normalized = value == null ? null : value.replace("#origin", "");
+        final List<String> attachmentsFinal = attachments;
+        final List<String> labelsFinal = labels;
 
         panel.getContext().replaceContextMenu((menu) ->
         {
-            for (int i = 0; i < attachments.size(); i++)
+            for (int i = 0; i < attachmentsFinal.size(); i++)
             {
-                String attachment = attachments.get(i);
-                String label = labels.get(i);
+                String attachment = attachmentsFinal.get(i);
+                String label = labelsFinal.get(i);
 
                 menu.action(Icons.LIMB, IKey.constant(label), attachment.equals(normalized), () -> consumer.accept(attachment));
             }

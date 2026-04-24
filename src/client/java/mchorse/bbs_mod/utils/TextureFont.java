@@ -31,12 +31,38 @@ public class TextureFont
     private final Map<Character, Glyph> glyphs = new HashMap<>();
     private int height;
     private boolean initialized = false;
+    private static final int[] COLORS = new int[32];
 
-    public TextureFont(File fontFile)
+    static
+    {
+        for (int i = 0; i < 16; ++i)
+        {
+            int j = (i >> 3 & 1) * 85;
+            int k = (i >> 2 & 1) * 170 + j;
+            int l = (i >> 1 & 1) * 170 + j;
+            int m = (i & 1) * 170 + j;
+
+            if (i == 6)
+            {
+                k += 85;
+            }
+
+            if (i >= 16)
+            {
+                k /= 4;
+                l /= 4;
+                m /= 4;
+            }
+
+            COLORS[i] = (k & 255) << 16 | (l & 255) << 8 | (m & 255);
+        }
+    }
+
+    public TextureFont(File fontFile, int style)
     {
         try
         {
-            Font font = Font.createFont(Font.TRUETYPE_FONT, fontFile).deriveFont(64f); /* High res for quality */
+            Font font = Font.createFont(Font.TRUETYPE_FONT, fontFile).deriveFont(style, 64f); /* High res for quality */
             generateTexture(font);
             this.initialized = true;
         }
@@ -105,7 +131,12 @@ public class TextureFont
 
     public int getWidth(String text)
     {
-        int w = 0;
+        return this.getWidth(text, 0);
+    }
+
+    public int getWidth(String text, float letterSpacing)
+    {
+        float w = 0;
         float scale = 0.25f;
         for (int i = 0; i < text.length(); i++)
         {
@@ -118,12 +149,17 @@ public class TextureFont
             }
 
             Glyph g = glyphs.get(c);
-            if (g != null) w += g.width * scale;
+            if (g != null) w += g.width * scale + letterSpacing;
         }
-        return w;
+        return (int) w;
     }
 
     public java.util.List<String> wrap(String text, int width)
+    {
+        return this.wrap(text, width, 0);
+    }
+
+    public java.util.List<String> wrap(String text, int width, float letterSpacing)
     {
         java.util.List<String> lines = new java.util.ArrayList<>();
         String[] words = text.split(" ");
@@ -132,7 +168,7 @@ public class TextureFont
         for (String word : words)
         {
             String testLine = currentLine.length() > 0 ? currentLine + " " + word : word;
-            if (this.getWidth(testLine) <= width)
+            if (this.getWidth(testLine, letterSpacing) <= width)
             {
                 if (currentLine.length() > 0) currentLine.append(" ");
                 currentLine.append(word);
@@ -162,29 +198,75 @@ public class TextureFont
 
     public void draw(String text, float x, float y, int color, Matrix4f matrix, VertexConsumerProvider consumers, int light)
     {
+        this.draw(text, x, y, color, color, 0, 0, matrix, consumers, light);
+    }
+
+    public void draw(String text, float x, float y, int color, int color2, float letterSpacing, float spaceWidth, Matrix4f matrix, VertexConsumerProvider consumers, int light)
+    {
+        this.draw(text, x, y, color, color2, letterSpacing, spaceWidth, matrix, consumers, light, 0.5F);
+    }
+
+    public void draw(String text, float x, float y, int color, int color2, float letterSpacing, float spaceWidth, Matrix4f matrix, VertexConsumerProvider consumers, int light, float gradientOffset)
+    {
         if (this.textureId == null) return;
 
-        VertexConsumer consumer = consumers.getBuffer(RenderLayer.getTextSeeThrough(this.textureId));
+        VertexConsumer consumer = consumers.getBuffer(RenderLayer.getText(this.textureId));
         float scale = 0.25f; /* Scale down because we generated at 64px */
         
-        float r = (color >> 16 & 255) / 255.0F;
-        float g = (color >> 8 & 255) / 255.0F;
-        float b = (color & 255) / 255.0F;
-        float a = (color >> 24 & 255) / 255.0F;
+        float r1 = (color >> 16 & 255) / 255.0F;
+        float g1 = (color >> 8 & 255) / 255.0F;
+        float b1 = (color & 255) / 255.0F;
+        float a1 = (color >> 24 & 255) / 255.0F;
+
+        float r2 = (color2 >> 16 & 255) / 255.0F;
+        float g2 = (color2 >> 8 & 255) / 255.0F;
+        float b2 = (color2 & 255) / 255.0F;
+        float a2 = (color2 >> 24 & 255) / 255.0F;
+
+        float cr1 = r1;
+        float cg1 = g1;
+        float cb1 = b1;
+
+        float cr2 = r2;
+        float cg2 = g2;
+        float cb2 = b2;
 
         float cx = x;
         
-        /* Simple color code parser */
         for (int i = 0; i < text.length(); i++)
         {
             char c = text.charAt(i);
             
-            if (c == '\u00A7' && i + 1 < text.length())
+            if ((c == '\u00A7' || c == '&') && i + 1 < text.length())
             {
-                /* 
-                 * Handle color codes (simplified)
-                 * Just skip the color code for now
-                 */
+                int codeIndex = "0123456789abcdef".indexOf(Character.toLowerCase(text.charAt(i + 1)));
+                if (codeIndex >= 0)
+                {
+                    int colorCode = COLORS[codeIndex];
+                    float cr = (colorCode >> 16 & 255) / 255.0F;
+                    float cg = (colorCode >> 8 & 255) / 255.0F;
+                    float cb = (colorCode & 255) / 255.0F;
+                    
+                    /* Apply original tint if not white */
+                    cr1 = cr * r1;
+                    cg1 = cg * g1;
+                    cb1 = cb * b1;
+                    
+                    cr2 = cr * r2;
+                    cg2 = cg * g2;
+                    cb2 = cb * b2;
+                }
+                else if (Character.toLowerCase(text.charAt(i + 1)) == 'r')
+                {
+                    cr1 = r1;
+                    cg1 = g1;
+                    cb1 = b1;
+                    
+                    cr2 = r2;
+                    cg2 = g2;
+                    cb2 = b2;
+                }
+                
                 i++;
                 continue;
             }
@@ -196,12 +278,39 @@ public class TextureFont
             float gh = glyph.height * scale;
             
             /* Draw quad */
-            drawVertex(consumer, matrix, cx, y + gh, 0, glyph.u, glyph.v + glyph.vh, r, g, b, a, light);
-            drawVertex(consumer, matrix, cx + gw, y + gh, 0, glyph.u + glyph.uw, glyph.v + glyph.vh, r, g, b, a, light);
-            drawVertex(consumer, matrix, cx + gw, y, 0, glyph.u + glyph.uw, glyph.v, r, g, b, a, light);
-            drawVertex(consumer, matrix, cx, y, 0, glyph.u, glyph.v, r, g, b, a, light);
+            if (Math.abs(gradientOffset - 0.5F) < 0.01F)
+            {
+                drawVertex(consumer, matrix, cx, y + gh, 0, glyph.u, glyph.v + glyph.vh, cr2, cg2, cb2, a2, light);
+                drawVertex(consumer, matrix, cx + gw, y + gh, 0, glyph.u + glyph.uw, glyph.v + glyph.vh, cr2, cg2, cb2, a2, light);
+                drawVertex(consumer, matrix, cx + gw, y, 0, glyph.u + glyph.uw, glyph.v, cr1, cg1, cb1, a1, light);
+                drawVertex(consumer, matrix, cx, y, 0, glyph.u, glyph.v, cr1, cg1, cb1, a1, light);
+            }
+            else
+            {
+                float offset = Math.max(0.01F, Math.min(0.99F, gradientOffset));
+                float mr = (cr1 + cr2) / 2F;
+                float mg = (cg1 + cg2) / 2F;
+                float mb = (cb1 + cb2) / 2F;
+                float ma = (a1 + a2) / 2F;
+
+                float splitY = y + gh * offset;
+                float splitV = glyph.v + glyph.vh * offset;
+
+                /* Top Quad */
+                drawVertex(consumer, matrix, cx, splitY, 0, glyph.u, splitV, mr, mg, mb, ma, light);
+                drawVertex(consumer, matrix, cx + gw, splitY, 0, glyph.u + glyph.uw, splitV, mr, mg, mb, ma, light);
+                drawVertex(consumer, matrix, cx + gw, y, 0, glyph.u + glyph.uw, glyph.v, cr1, cg1, cb1, a1, light);
+                drawVertex(consumer, matrix, cx, y, 0, glyph.u, glyph.v, cr1, cg1, cb1, a1, light);
+
+                /* Bottom Quad */
+                drawVertex(consumer, matrix, cx, y + gh, 0, glyph.u, glyph.v + glyph.vh, cr2, cg2, cb2, a2, light);
+                drawVertex(consumer, matrix, cx + gw, y + gh, 0, glyph.u + glyph.uw, glyph.v + glyph.vh, cr2, cg2, cb2, a2, light);
+                drawVertex(consumer, matrix, cx + gw, splitY, 0, glyph.u + glyph.uw, splitV, mr, mg, mb, ma, light);
+                drawVertex(consumer, matrix, cx, splitY, 0, glyph.u, splitV, mr, mg, mb, ma, light);
+            }
             
-            cx += gw;
+            cx += gw + letterSpacing;
+            if (c == ' ') cx += spaceWidth;
         }
     }
 

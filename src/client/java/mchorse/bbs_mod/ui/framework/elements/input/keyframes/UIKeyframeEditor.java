@@ -132,7 +132,7 @@ public class UIKeyframeEditor extends UIElement
         if (editor instanceof UIPoseKeyframeFactory pose)
         {
             UIKeyframeSheet sheet = this.getSheet(editor.getKeyframe());
-            String currentFirst = pose.poseEditor.groups.getCurrentFirst();
+            String currentFirst = pose.poseEditor.groups.list.getCurrentFirst();
 
             if (sheet != null)
             {
@@ -146,7 +146,10 @@ public class UIKeyframeEditor extends UIElement
                      * retain the form prefix to correctly position the bone in the renderer.*/
                     if (sheet.id.contains("/pose") || sheet.id.contains("/pose_overlay"))
                     {
-                        bone = sheet.id.substring(0, sheet.id.lastIndexOf('/') + 1) + targetBone;
+                        int lastSlash = sheet.id.lastIndexOf('/');
+                        String prefix = sheet.id.substring(0, lastSlash);
+
+                        bone = targetBone == null || targetBone.isEmpty() ? prefix : prefix + "/" + targetBone;
                     }
                     else
                     {
@@ -157,9 +160,6 @@ public class UIKeyframeEditor extends UIElement
 
                     if (id.startsWith("pose"))
                     {
-                        int i = sheet.id.lastIndexOf('/');
-
-                        bone = i >= 0 ? id.substring(0, i + 1) + currentFirst : currentFirst;
                         local = pose.poseEditor.transform.isLocal();
                     }
                 }

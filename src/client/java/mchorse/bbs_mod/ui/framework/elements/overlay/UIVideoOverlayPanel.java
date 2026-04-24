@@ -33,6 +33,10 @@ import java.util.function.Consumer;
 
 public class UIVideoOverlayPanel extends UIStringOverlayPanel
 {
+    private static final String INTERNAL_PREFIX = "assets:videos/";
+    private static final String INTERNAL_FOLDER = "videos";
+    private static final String LEGACY_PREFIX = "assets:video/";
+    private static final String LEGACY_FOLDER = "video";
     private static final String EXTERNAL_PREFIX = "external:";
     private static final String ADD_EXTERNAL_ENTRY = "<add_external_video>";
 
@@ -140,7 +144,9 @@ public class UIVideoOverlayPanel extends UIStringOverlayPanel
     private static Collection<String> getInternalVideos()
     {
         Set<String> videos = new HashSet<>();
-        File folder = new File(BBSMod.getAssetsFolder(), "video");
+        File internalFolder = new File(BBSMod.getAssetsFolder(), INTERNAL_FOLDER);
+        File legacyFolder = new File(BBSMod.getAssetsFolder(), LEGACY_FOLDER);
+        File folder = internalFolder.exists() ? internalFolder : legacyFolder;
 
         if (!folder.exists() || !folder.isDirectory())
         {
@@ -167,11 +173,27 @@ public class UIVideoOverlayPanel extends UIStringOverlayPanel
 
             if (supported)
             {
-                videos.add("assets:video/" + name);
+                String prefix = folder.equals(legacyFolder) ? LEGACY_PREFIX : INTERNAL_PREFIX;
+                videos.add(prefix + name);
             }
         }
 
         return videos;
+    }
+
+    private static String stripInternalPrefix(String value)
+    {
+        if (value.startsWith(INTERNAL_PREFIX))
+        {
+            return value.substring(INTERNAL_PREFIX.length());
+        }
+
+        if (value.startsWith(LEGACY_PREFIX))
+        {
+            return value.substring(LEGACY_PREFIX.length());
+        }
+
+        return value;
     }
 
     private static String formatDisplay(String value)
@@ -402,8 +424,8 @@ public class UIVideoOverlayPanel extends UIStringOverlayPanel
             return;
         }
 
-        String oldFileName = oldName.replace("assets:video/", "");
-        String newFileName = newName.replace("assets:video/", "");
+        String oldFileName = stripInternalPrefix(oldName);
+        String newFileName = stripInternalPrefix(newName);
 
         int index = oldFileName.lastIndexOf('.');
         String extension = index >= 0 ? oldFileName.substring(index) : "";
@@ -417,8 +439,14 @@ public class UIVideoOverlayPanel extends UIStringOverlayPanel
 
         newFileName = newFileName + extension;
 
-        File oldFile = new File(BBSMod.getAssetsFolder(), "video/" + oldFileName);
-        File newFile = new File(BBSMod.getAssetsFolder(), "video/" + newFileName);
+        File oldFile = new File(BBSMod.getAssetsFolder(), INTERNAL_FOLDER + "/" + oldFileName);
+
+        if (!oldFile.exists())
+        {
+            oldFile = new File(BBSMod.getAssetsFolder(), LEGACY_FOLDER + "/" + oldFileName);
+        }
+
+        File newFile = new File(BBSMod.getAssetsFolder(), INTERNAL_FOLDER + "/" + newFileName);
 
         if (newFile.exists())
         {
@@ -434,7 +462,7 @@ public class UIVideoOverlayPanel extends UIStringOverlayPanel
 
         if (oldFile.renameTo(newFile))
         {
-            String newPath = "assets:video/" + newFileName;
+            String newPath = INTERNAL_PREFIX + newFileName;
 
             if (this.likeManager.isVideoLiked(oldName))
             {
@@ -464,8 +492,13 @@ public class UIVideoOverlayPanel extends UIStringOverlayPanel
             return;
         }
 
-        String fileName = videoName.replace("assets:video/", "");
-        File videoFile = new File(BBSMod.getAssetsFolder(), "video/" + fileName);
+        String fileName = stripInternalPrefix(videoName);
+        File videoFile = new File(BBSMod.getAssetsFolder(), INTERNAL_FOLDER + "/" + fileName);
+
+        if (!videoFile.exists())
+        {
+            videoFile = new File(BBSMod.getAssetsFolder(), LEGACY_FOLDER + "/" + fileName);
+        }
 
         if (videoFile.exists() && videoFile.delete())
         {

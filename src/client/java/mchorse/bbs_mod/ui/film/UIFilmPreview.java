@@ -155,6 +155,11 @@ public class UIFilmPreview extends UIElement
             {
                 this.panel.getController().toggleInstantKeyframes();
             });
+
+            menu.action(Icons.ALL_DIRECTIONS, UIKeys.FILM_CONTROLLER_KEYS_TOGGLE_COUNTDOWN_CONTROL, this.panel.getController().isCountdownControlEnabled(), () ->
+            {
+                this.panel.getController().toggleCountdownControl();
+            });
         });
         this.recordVideo = new UIIcon(Icons.VIDEO_CAMERA, (b) ->
         {
@@ -213,16 +218,16 @@ public class UIFilmPreview extends UIElement
 
     public void openReplays()
     {
-        if (!this.panel.isDockedLayout())
-        {
+        /* if (!this.panel.isDockedLayout())
+        { */
             UIOverlay overlay = UIOverlay.addOverlayLeft(this.getContext(), this.panel.replayEditor.replays, 360);
 
             overlay.eventPropagataion(EventPropagation.PASS);
-        }
+        /* }
         else
-        {
-            this.panel.toggleReplaysSidebar();
-        }
+        { */
+            //this.panel.toggleReplaysSidebar();
+        //}
     }
 
     public void openOnionSkin()
@@ -331,6 +336,36 @@ public class UIFilmPreview extends UIElement
 
             context.batcher.box(area.x, area.y + area.h / 3 - 1, area.x + area.w, area.y + area.h / 3, guidesColor);
             context.batcher.box(area.x, area.y + area.h - area.h / 3 - 1, area.x + area.w, area.y + area.h - area.h / 3, guidesColor);
+        }
+
+        /* Render safe margins (action safe 90%, title safe 80%) */
+        if (BBSSettings.editorSafeMargins.get())
+        {
+            int guidesColor = BBSSettings.editorSafeMarginsColor.get();
+
+            int actionMarginX = Math.round(area.w * 0.05F);
+            int actionMarginY = Math.round(area.h * 0.05F);
+            int actionLeft = area.x + actionMarginX;
+            int actionRight = area.x + area.w - actionMarginX;
+            int actionTop = area.y + actionMarginY;
+            int actionBottom = area.y + area.h - actionMarginY;
+
+            context.batcher.box(actionLeft, actionTop, actionLeft + 1, actionBottom, guidesColor);
+            context.batcher.box(actionRight - 1, actionTop, actionRight, actionBottom, guidesColor);
+            context.batcher.box(actionLeft, actionTop, actionRight, actionTop + 1, guidesColor);
+            context.batcher.box(actionLeft, actionBottom - 1, actionRight, actionBottom, guidesColor);
+
+            int titleMarginX = Math.round(area.w * 0.10F);
+            int titleMarginY = Math.round(area.h * 0.10F);
+            int titleLeft = area.x + titleMarginX;
+            int titleRight = area.x + area.w - titleMarginX;
+            int titleTop = area.y + titleMarginY;
+            int titleBottom = area.y + area.h - titleMarginY;
+
+            context.batcher.box(titleLeft, titleTop, titleLeft + 1, titleBottom, guidesColor);
+            context.batcher.box(titleRight - 1, titleTop, titleRight, titleBottom, guidesColor);
+            context.batcher.box(titleLeft, titleTop, titleRight, titleTop + 1, guidesColor);
+            context.batcher.box(titleLeft, titleBottom - 1, titleRight, titleBottom, guidesColor);
         }
 
         VideoRenderer.update();

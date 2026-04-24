@@ -4,6 +4,7 @@ import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.camera.clips.misc.VideoClip;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.UIKeys;
+import mchorse.bbs_mod.client.video.VideoRenderer;
 import mchorse.bbs_mod.ui.film.IUIClipsDelegate;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
@@ -14,11 +15,15 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIVideoOverlayPanel;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
+import mchorse.bbs_mod.utils.colors.Colors;
+import mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D;
 
 public class UIVideoClip extends UIClip<VideoClip>
 {
     public UIButton pickVideo;
     public UIIcon openFolder;
+    public UIIcon extendDuration;
+    public UIIcon aspectLock;
     public UITrackpad offset;
     public UITrackpad volume;
     public UITrackpad x;
@@ -28,6 +33,8 @@ public class UIVideoClip extends UIClip<VideoClip>
     public UITrackpad opacity;
     public UIToggle loops;
     public UIToggle global;
+
+    private boolean keepAspect;
 
     public UIVideoClip(VideoClip clip, IUIClipsDelegate editor)
     {
@@ -86,8 +93,27 @@ public class UIVideoClip extends UIClip<VideoClip>
                 }
             }
 
-            UIUtils.openFolder(BBSMod.getAssetsPath("video"));
+            java.io.File videoFolder = BBSMod.getAssetsPath("video");
+            videoFolder.mkdirs();
+            UIUtils.openFolder(videoFolder);
         });
+
+        this.extendDuration = new UIIcon(Icons.RIGHTLOAD, (b) ->
+        {
+            String videoPath = this.clip.video.get();
+
+            if (videoPath != null && !videoPath.isEmpty())
+            {
+                long duration = VideoRenderer.getVideoDuration(videoPath);
+
+                if (duration > 0)
+                {
+                    this.clip.duration.set((int) ((duration / 50L) - this.clip.offset.get()));
+                    this.fillData();
+                }
+            }
+        });
+        this.extendDuration.tooltip(UIKeys.CAMERA_PANELS_VIDEO_EXTEND_DURATION);
 
         this.offset = new UITrackpad((v) -> this.clip.offset.set(v.intValue()));
          this.offset.integer();
@@ -106,11 +132,11 @@ public class UIVideoClip extends UIClip<VideoClip>
         this.y.integer();
         this.y.tooltip(UIKeys.C_CLIP.get("bbs:y"));
 
-        this.width = new UITrackpad((v) -> this.clip.width.set(v.intValue()));
+        this.width = new UITrackpad((v) -> this.setWidthWithAspect(v.intValue()));
         this.width.integer();
         this.width.tooltip(UIKeys.C_CLIP.get("bbs:width"));
 
-        this.height = new UITrackpad((v) -> this.clip.height.set(v.intValue()));
+        this.height = new UITrackpad((v) -> this.setHeightWithAspect(v.intValue()));
         this.height.integer();
         this.height.tooltip(UIKeys.C_CLIP.get("bbs:height"));
 
@@ -120,6 +146,11 @@ public class UIVideoClip extends UIClip<VideoClip>
 
         this.loops = new UIToggle(UIKeys.C_CLIP.get("bbs:loops"), (b) -> this.clip.loops.set(b.getValue()));
         this.global = new UIToggle(UIKeys.C_CLIP.get("bbs:global"), (b) -> this.clip.global.set(b.getValue()));
+
+        this.aspectLock = new UIIcon(Icons.LINK, (b) -> this.toggleAspectLock());
+        this.aspectLock.tooltip(UIKeys.CAMERA_PANELS_VIDEO_ASPECT_LOCK);
+        this.aspectLock.iconColor(Colors.GRAY).activeColor(Colors.A100 + Colors.ACTIVE);
+        this.aspectLock.marginTop(Batcher2D.getDefaultTextRenderer().getHeight() + 5);
     }
 
     @Override
@@ -127,7 +158,8 @@ public class UIVideoClip extends UIClip<VideoClip>
     {
         super.registerPanels();
 
-        this.panels.add(UI.column(UIClip.label(UIKeys.C_CLIP.get("bbs:video")), UI.row(this.pickVideo, this.openFolder)).marginTop(12));
+        this.panels.add(UI.column(UI.label(UIKeys.CAMERA_PANELS_VIDEO_DISCLAIMER, 12, Colors.LIGHTER_GRAY).color(Colors.LIGHTER_GRAY, false)).marginTop(12));
+        this.panels.add(UI.column(UIClip.label(UIKeys.C_CLIP.get("bbs:video")), UI.row(this.pickVideo, this.extendDuration, this.openFolder)).marginTop(12));
         this.panels.add(UI.column(UIClip.label(UIKeys.CAMERA_PANELS_VIDEO_OFFSET).marginTop(6), this.offset).marginTop(12));
         this.panels.add(UI.column(UIClip.label(UIKeys.CAMERA_PANELS_VIDEO_VOLUME).marginTop(6), this.volume).marginTop(12));
         this.panels.add(UI.row(
@@ -136,6 +168,7 @@ public class UIVideoClip extends UIClip<VideoClip>
         ).marginTop(12));
         this.panels.add(UI.row(
             UI.column(UIClip.label(UIKeys.C_CLIP.get("bbs:width")), this.width),
+            this.aspectLock,
             UI.column(UIClip.label(UIKeys.C_CLIP.get("bbs:height")), this.height)
         ).marginTop(12));
         this.panels.add(UI.column(UIClip.label(UIKeys.C_CLIP.get("bbs:opacity")).marginTop(6), this.opacity).marginTop(12));
@@ -147,6 +180,12 @@ public class UIVideoClip extends UIClip<VideoClip>
     {
         super.fillData();
 
+        if (this.clip.width.get() == 0 && this.clip.height.get() == 0)
+        {
+            this.clip.width.set(100);
+            this.clip.height.set(100);
+        }
+
         this.offset.setValue(this.clip.offset.get());
         this.volume.setValue(this.clip.volume.get());
         this.x.setValue(this.clip.x.get());
@@ -156,5 +195,44 @@ public class UIVideoClip extends UIClip<VideoClip>
         this.opacity.setValue(this.clip.opacity.get());
         this.loops.setValue(this.clip.loops.get());
         this.global.setValue(this.clip.global.get());
+        this.aspectLock.active(this.keepAspect);
+    }
+
+    private void toggleAspectLock()
+    {
+        this.keepAspect = !this.keepAspect;
+        this.aspectLock.active(this.keepAspect);
+
+        if (this.keepAspect && this.clip.width.get() != this.clip.height.get())
+        {
+            this.clip.height.set(this.clip.width.get());
+            this.height.setValue(this.clip.height.get());
+        }
+    }
+
+    private void setWidthWithAspect(int width)
+    {
+        this.clip.width.set(width);
+
+        if (!this.keepAspect)
+        {
+            return;
+        }
+
+        this.clip.height.set(width);
+        this.height.setValue(width);
+    }
+
+    private void setHeightWithAspect(int height)
+    {
+        this.clip.height.set(height);
+
+        if (!this.keepAspect)
+        {
+            return;
+        }
+
+        this.clip.width.set(height);
+        this.width.setValue(height);
     }
 }

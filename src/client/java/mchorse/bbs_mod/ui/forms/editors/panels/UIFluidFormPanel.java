@@ -78,8 +78,8 @@ public class UIFluidFormPanel extends UIFormPanel<FluidForm>
         this.smoothShading = new UIToggle(UIKeys.FLUID_SMOOTH_SHADING, true, (b) -> this.form.smoothShading.set(b.getValue()));
         this.smoothShading.tooltip(UIKeys.FLUID_SMOOTH_SHADING);
 
-        this.debug = new UIToggle(L10n.lang("bbs.fluid.debug"), false, (b) -> this.form.debug.set(b.getValue()));
-        this.debug.tooltip(L10n.lang("bbs.fluid.debug"));
+        this.debug = new UIToggle(UIKeys.FLUID_DEBUG, false, (b) -> this.form.debug.set(b.getValue()));
+        this.debug.tooltip(UIKeys.FLUID_DEBUG);
 
         this.color = new UIColor((c) -> this.form.color.set(Color.rgba(c))).direction(Direction.LEFT).withAlpha();
         
@@ -91,13 +91,13 @@ public class UIFluidFormPanel extends UIFormPanel<FluidForm>
         });
 
         this.sizeX = new UITrackpad((v) -> this.form.sizeX.set(v.floatValue()));
-        this.sizeX.tooltip(L10n.lang("bbs.fluid.size_x"));
+        this.sizeX.tooltip(UIKeys.FLUID_SIZE_X);
         
         this.sizeY = new UITrackpad((v) -> this.form.sizeY.set(v.floatValue()));
-        this.sizeY.tooltip(L10n.lang("bbs.fluid.size_y"));
+        this.sizeY.tooltip(UIKeys.FLUID_SIZE_Y);
         
         this.sizeZ = new UITrackpad((v) -> this.form.sizeZ.set(v.floatValue()));
-        this.sizeZ.tooltip(L10n.lang("bbs.fluid.size_z"));
+        this.sizeZ.tooltip(UIKeys.FLUID_SIZE_Z);
         
         this.fillBlock = new UIToggle(UIKeys.FLUID_FILL_BLOCK, false, (b) -> this.form.fillBlock.set(b.getValue()));
         
@@ -177,16 +177,16 @@ public class UIFluidFormPanel extends UIFormPanel<FluidForm>
         boolean anyOcean = ocean || procedural;
         boolean isDrop = !anyOcean;
         
-        this.sizeX.setVisible(anyOcean);
-        this.sizeY.setVisible(anyOcean);
-        this.sizeZ.setVisible(anyOcean);
-        this.fillBlock.setVisible(ocean);
-        this.waveAmplitude.setVisible(anyOcean);
-        this.waveFrequency.setVisible(procedural);
+        this.sizeX.setEnabled(anyOcean);
+        this.sizeY.setEnabled(anyOcean);
+        this.sizeZ.setEnabled(anyOcean);
+        this.fillBlock.setEnabled(ocean);
+        this.waveAmplitude.setEnabled(anyOcean);
+        this.waveFrequency.setEnabled(procedural);
 
-        this.dropSize.setVisible(isDrop);
-        this.surfaceTension.setVisible(isDrop);
-        this.viscosity.setVisible(isDrop);
+        this.dropSize.setEnabled(isDrop);
+        this.surfaceTension.setEnabled(isDrop);
+        this.viscosity.setEnabled(isDrop);
     }
 
     @Override

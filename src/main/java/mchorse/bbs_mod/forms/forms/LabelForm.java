@@ -11,6 +11,7 @@ public class LabelForm extends Form
 {
     public final ValueString text = new ValueString("text", "Hello, World!");
     public final ValueBoolean billboard = new ValueBoolean("billboard", false);
+    public final ValueBoolean nametag = new ValueBoolean("nametag", false);
     public final ValueColor color = new ValueColor("color", Color.white());
 
     public final ValueInt max = new ValueInt("max", -1);
@@ -50,6 +51,7 @@ public class LabelForm extends Form
     /* Gradient */
     public final ValueBoolean gradient = new ValueBoolean("gradient", false);
     public final ValueColor gradientEndColor = new ValueColor("gradientEndColor", Color.white());
+    public final ValueFloat gradientOffset = new ValueFloat("gradientOffset", 0.5F);
 
     public LabelForm()
     {
@@ -57,6 +59,7 @@ public class LabelForm extends Form
 
         this.add(this.text);
         this.add(this.billboard);
+        this.add(this.nametag);
         this.add(this.color);
         this.add(this.max);
         this.add(this.anchorX);
@@ -84,6 +87,7 @@ public class LabelForm extends Form
         this.add(this.outlineWidth);
         this.add(this.gradient);
         this.add(this.gradientEndColor);
+        this.add(this.gradientOffset);
     }
 
     @Override
