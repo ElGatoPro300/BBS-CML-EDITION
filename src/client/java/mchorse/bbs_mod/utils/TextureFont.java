@@ -2,7 +2,13 @@ package mchorse.bbs_mod.utils;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.render.BufferBuilder;
+import net.minecraft.client.render.BufferRenderer;
+import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.RenderLayer;
+import net.minecraft.client.render.Tessellator;
+import net.minecraft.client.render.VertexFormat;
+import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.texture.NativeImage;
@@ -64,6 +70,19 @@ public class TextureFont
         {
             Font font = Font.createFont(Font.TRUETYPE_FONT, fontFile).deriveFont(style, 64f); /* High res for quality */
             generateTexture(font);
+            this.initialized = true;
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+    }
+
+    public TextureFont(Font font)
+    {
+        try
+        {
+            generateTexture(font.deriveFont(64f));
             this.initialized = true;
         }
         catch (Exception e)
@@ -312,6 +331,79 @@ public class TextureFont
             cx += gw + letterSpacing;
             if (c == ' ') cx += spaceWidth;
         }
+    }
+
+    public void drawSafe(String text, float x, float y, int color, Matrix4f matrix)
+    {
+        if (this.textureId == null || text == null || text.isEmpty())
+        {
+            return;
+        }
+
+        RenderSystem.setShader(GameRenderer::getPositionTexColorProgram);
+        RenderSystem.setShaderTexture(0, this.textureId);
+
+        BufferBuilder builder = Tessellator.getInstance().getBuffer();
+        builder.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_TEXTURE_COLOR);
+
+        float scale = 0.25f;
+        float cx = x;
+
+        float cr = (color >> 16 & 255) / 255.0F;
+        float cg = (color >> 8 & 255) / 255.0F;
+        float cb = (color & 255) / 255.0F;
+        float ca = (color >> 24 & 255) / 255.0F;
+
+        for (int i = 0; i < text.length(); i++)
+        {
+            char c = text.charAt(i);
+
+            if (c == '\u00A7' && i + 1 < text.length())
+            {
+                int codeIndex = "0123456789abcdef".indexOf(Character.toLowerCase(text.charAt(i + 1)));
+
+                if (codeIndex >= 0)
+                {
+                    int colorCode = COLORS[codeIndex];
+                    cr = (colorCode >> 16 & 255) / 255.0F;
+                    cg = (colorCode >> 8 & 255) / 255.0F;
+                    cb = (colorCode & 255) / 255.0F;
+                }
+                else if (Character.toLowerCase(text.charAt(i + 1)) == 'r')
+                {
+                    cr = (color >> 16 & 255) / 255.0F;
+                    cg = (color >> 8 & 255) / 255.0F;
+                    cb = (color & 255) / 255.0F;
+                    ca = (color >> 24 & 255) / 255.0F;
+                }
+
+                i++;
+                continue;
+            }
+
+            Glyph glyph = this.glyphs.get(c);
+
+            if (glyph == null)
+            {
+                continue;
+            }
+
+            float gw = glyph.width * scale;
+            float gh = glyph.height * scale;
+            float x2 = cx + gw;
+            float y2 = y + gh;
+
+            builder.vertex(matrix, cx, y2, 0F).texture(glyph.u, glyph.v + glyph.vh).color(cr, cg, cb, ca).next();
+            builder.vertex(matrix, x2, y2, 0F).texture(glyph.u + glyph.uw, glyph.v + glyph.vh).color(cr, cg, cb, ca).next();
+            builder.vertex(matrix, x2, y, 0F).texture(glyph.u + glyph.uw, glyph.v).color(cr, cg, cb, ca).next();
+            builder.vertex(matrix, cx, y2, 0F).texture(glyph.u, glyph.v + glyph.vh).color(cr, cg, cb, ca).next();
+            builder.vertex(matrix, x2, y, 0F).texture(glyph.u + glyph.uw, glyph.v).color(cr, cg, cb, ca).next();
+            builder.vertex(matrix, cx, y, 0F).texture(glyph.u, glyph.v).color(cr, cg, cb, ca).next();
+
+            cx += gw;
+        }
+
+        BufferRenderer.drawWithGlobalProgram(builder.end());
     }
 
     private void drawVertex(VertexConsumer consumer, Matrix4f matrix, float x, float y, float z, float u, float v, float r, float g, float b, float a, int light)
