@@ -17,13 +17,14 @@ public class UIHotbarRenderer
     private static final int HUD_GREEN = 8453920;
     private static final int BAR_ICON_Y = -17;
     private static final int EXPERIENCE_BAR_Y = -7;
-    private static final int EXPERIENCE_TEXT_Y = -12;
+    private static final int EXPERIENCE_TEXT_Y = -13;
     private static final float SCALE_PIVOT_X = 91F;
     private static final float SCALE_PIVOT_Y = 0.5F;
     private static final int MAX_HEALTH_ROWS = 60;
     private static final float MAX_HEALTH_CONTAINER = MAX_HEALTH_ROWS * 10F * 2F;
     private static final Identifier HOTBAR = new Identifier("minecraft", "hud/hotbar");
     private static final Identifier HOTBAR_SELECTION = new Identifier("minecraft", "hud/hotbar_selection");
+    private static final Identifier HOTBAR_OFFHAND_LEFT = new Identifier("minecraft", "hud/hotbar_offhand_left");
     private static final Identifier HEART_CONTAINER = new Identifier("minecraft", "hud/heart/container");
     private static final Identifier HEART_HARDCORE_CONTAINER = new Identifier("minecraft", "hud/heart/container_hardcore");
     private static final Identifier[][] HEART_HALVES = {
@@ -49,6 +50,8 @@ public class UIHotbarRenderer
     private static final Identifier FOOD_EMPTY_HUNGER = new Identifier("minecraft", "hud/food_empty_hunger");
     private static final Identifier FOOD_FULL_HUNGER = new Identifier("minecraft", "hud/food_full_hunger");
     private static final Identifier FOOD_HALF_HUNGER = new Identifier("minecraft", "hud/food_half_hunger");
+    private static final Identifier AIR = new Identifier("minecraft", "hud/air");
+    private static final Identifier AIR_BURSTING = new Identifier("minecraft", "hud/air_bursting");
     private static final Identifier EXPERIENCE_BAR_BACKGROUND_TEXTURE = new Identifier("minecraft", "textures/gui/sprites/hud/experience_bar_background.png");
     private static final Identifier EXPERIENCE_BAR_PROGRESS_TEXTURE = new Identifier("minecraft", "textures/gui/sprites/hud/experience_bar_progress.png");
 
@@ -110,6 +113,13 @@ public class UIHotbarRenderer
 
         batcher.getContext().drawGuiTexture(HOTBAR, 0, 0, 182, 22);
 
+        boolean hasOffhandItem = hotbar.offhandItem != null && !hotbar.offhandItem.isEmpty();
+
+        if (hasOffhandItem)
+        {
+            batcher.getContext().drawGuiTexture(HOTBAR_OFFHAND_LEFT, -29, -1, 29, 24);
+        }
+
         int selectedSlot = MathHelper.clamp(hotbar.selectedSlot, 0, 8);
         batcher.getContext().drawGuiTexture(HOTBAR_SELECTION, selectedSlot * 20 - 1, -1, 24, 23);
 
@@ -143,6 +153,7 @@ public class UIHotbarRenderer
         Identifier foodHalf = hotbar.hungerEffect ? FOOD_HALF_HUNGER : FOOD_HALF;
         Identifier foodFull = hotbar.hungerEffect ? FOOD_FULL_HUNGER : FOOD_FULL;
         renderBarReverse(batcher, hotbar.hunger, foodEmpty, foodHalf, foodFull, 182 - 9, barsY, 10, hungerShakeRandom);
+        renderAirBar(batcher, hotbar.air, 182 - 9, barsY - 10);
 
         float experience = MathHelper.clamp(hotbar.experience, 0F, 1F);
         int xpPixels = MathHelper.ceil(experience * 182F);
@@ -156,8 +167,15 @@ public class UIHotbarRenderer
         {
             String level = Integer.toString(hotbar.experienceLevel);
             int levelX = (182 - batcher.getFont().getWidth(level)) / 2;
+            int outlineColor = applyAlpha(0x000000, alpha);
+            int levelColor = applyAlpha(HUD_GREEN, alpha);
 
-            batcher.textShadow(level, levelX, EXPERIENCE_TEXT_Y, applyAlpha(HUD_GREEN, alpha));
+            /* Vanilla-like outlined XP number: no drop shadow, solid contour around glyphs. */
+            batcher.text(level, levelX - 1, EXPERIENCE_TEXT_Y, outlineColor, false);
+            batcher.text(level, levelX + 1, EXPERIENCE_TEXT_Y, outlineColor, false);
+            batcher.text(level, levelX, EXPERIENCE_TEXT_Y - 1, outlineColor, false);
+            batcher.text(level, levelX, EXPERIENCE_TEXT_Y + 1, outlineColor, false);
+            batcher.text(level, levelX, EXPERIENCE_TEXT_Y, levelColor, false);
         }
 
         /* Item glint (enchants) requires depth test in GUI item renderer. */
@@ -178,6 +196,15 @@ public class UIHotbarRenderer
 
             batcher.getContext().drawItem(stackItem, itemX, itemY);
             batcher.getContext().drawItemInSlot(batcher.getFont().getRenderer(), stackItem, itemX, itemY);
+        }
+
+        if (hasOffhandItem)
+        {
+            int offhandX = -26;
+            int offhandY = 3;
+
+            batcher.getContext().drawItem(hotbar.offhandItem, offhandX, offhandY);
+            batcher.getContext().drawItemInSlot(batcher.getFont().getRenderer(), hotbar.offhandItem, offhandX, offhandY);
         }
 
         RenderSystem.disableDepthTest();
@@ -276,5 +303,27 @@ public class UIHotbarRenderer
         int a = MathHelper.clamp(Math.round(MathHelper.clamp(alpha, 0F, 1F) * 255F), 0, 255);
 
         return (a << 24) | (color & 0x00FFFFFF);
+    }
+
+    private static void renderAirBar(Batcher2D batcher, float air, int x, int y)
+    {
+        if (air >= 300F)
+        {
+            return;
+        }
+
+        int full = MathHelper.ceil((air - 2F) * 10F / 300F);
+        int popping = MathHelper.ceil(air * 10F / 300F) - full;
+
+        full = MathHelper.clamp(full, 0, 10);
+        popping = MathHelper.clamp(popping, 0, 10 - full);
+
+        for (int i = 0; i < full + popping; i++)
+        {
+            int iconX = x - i * 8;
+            Identifier icon = i < full ? AIR : AIR_BURSTING;
+
+            batcher.getContext().drawGuiTexture(icon, iconX, y, 9, 9);
+        }
     }
 }

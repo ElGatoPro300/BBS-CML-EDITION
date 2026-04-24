@@ -11,6 +11,7 @@ public class HotbarState
     public static final int HEART_FROZEN = 4;
 
     public final ItemStack[] items = new ItemStack[9];
+    public ItemStack offhandItem = ItemStack.EMPTY;
     public int selectedSlot;
     public int heartType;
     public boolean hardcore;
@@ -21,6 +22,7 @@ public class HotbarState
     public float absorptionContainer;
     public float armor;
     public float hunger;
+    public float air;
     public float experience;
     public int experienceLevel;
     public float x;

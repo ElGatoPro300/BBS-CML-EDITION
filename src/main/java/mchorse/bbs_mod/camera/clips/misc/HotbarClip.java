@@ -33,6 +33,7 @@ public class HotbarClip extends CameraClip
     public final KeyframeChannel<ItemStack> slot6 = new KeyframeChannel<>("slot_6", KeyframeFactories.ITEM_STACK);
     public final KeyframeChannel<ItemStack> slot7 = new KeyframeChannel<>("slot_7", KeyframeFactories.ITEM_STACK);
     public final KeyframeChannel<ItemStack> slot8 = new KeyframeChannel<>("slot_8", KeyframeFactories.ITEM_STACK);
+    public final KeyframeChannel<ItemStack> offhandSlot = new KeyframeChannel<>("offhand_slot", KeyframeFactories.ITEM_STACK);
     public final KeyframeChannel<Double> health = new KeyframeChannel<>("health", KeyframeFactories.DOUBLE);
     public final KeyframeChannel<Double> healthContainer = new KeyframeChannel<>("health_container", KeyframeFactories.DOUBLE);
     public final KeyframeChannel<Double> absorption = new KeyframeChannel<>("absorption", KeyframeFactories.DOUBLE);
@@ -42,6 +43,7 @@ public class HotbarClip extends CameraClip
     public final KeyframeChannel<Double> armor = new KeyframeChannel<>("armor", KeyframeFactories.DOUBLE);
     public final KeyframeChannel<Double> hunger = new KeyframeChannel<>("hunger", KeyframeFactories.DOUBLE);
     public final KeyframeChannel<Boolean> hungerEffect = new KeyframeChannel<>("hunger_effect", KeyframeFactories.BOOLEAN);
+    public final KeyframeChannel<Double> air = new KeyframeChannel<>("air", KeyframeFactories.DOUBLE);
     public final KeyframeChannel<Double> experience = new KeyframeChannel<>("experience", KeyframeFactories.DOUBLE);
     public final KeyframeChannel<Integer> experienceLevel = new KeyframeChannel<>("experience_level", KeyframeFactories.INTEGER);
     public final KeyframeChannel<Vector4f> layout = new KeyframeChannel<>("layout", KeyframeFactories.VECTOR4F);
@@ -52,8 +54,8 @@ public class HotbarClip extends CameraClip
         this.channels = new KeyframeChannel[] {
             this.layout,
             this.selectedSlot,
-            this.slot0, this.slot1, this.slot2, this.slot3, this.slot4, this.slot5, this.slot6, this.slot7, this.slot8,
-            this.health, this.healthContainer, this.absorption, this.absorptionContainer, this.heartType, this.hardcore, this.armor, this.hunger, this.hungerEffect, this.experience, this.experienceLevel,
+            this.slot0, this.slot1, this.slot2, this.slot3, this.slot4, this.slot5, this.slot6, this.slot7, this.slot8, this.offhandSlot,
+            this.health, this.healthContainer, this.absorption, this.absorptionContainer, this.heartType, this.hardcore, this.armor, this.hunger, this.hungerEffect, this.air, this.experience, this.experienceLevel,
         };
 
         for (KeyframeChannel channel : this.channels)
@@ -71,6 +73,7 @@ public class HotbarClip extends CameraClip
         this.armor.insert(0, 0D);
         this.hunger.insert(0, 20D);
         this.hungerEffect.insert(0, false);
+        this.air.insert(0, 300D);
         this.experience.insert(0, 0D);
         this.experienceLevel.insert(0, 0);
         this.layout.insert(0, new Vector4f(0F, 0F, 1F, 0F));
@@ -104,6 +107,7 @@ public class HotbarClip extends CameraClip
         state.items[6] = this.copyItem(this.slot6.interpolate(t));
         state.items[7] = this.copyItem(this.slot7.interpolate(t));
         state.items[8] = this.copyItem(this.slot8.interpolate(t));
+        state.offhandItem = this.copyItem(this.offhandSlot.interpolate(t));
         state.healthContainer = this.clampHealthContainer(this.healthContainer.interpolate(t));
         state.health = this.clampHealth(this.health.interpolate(t), state.healthContainer);
         state.absorptionContainer = this.clampHealthContainer(this.absorptionContainer.interpolate(t));
@@ -113,6 +117,7 @@ public class HotbarClip extends CameraClip
         state.armor = this.clampStat(this.armor.interpolate(t));
         state.hunger = this.clampStat(this.hunger.interpolate(t));
         state.hungerEffect = this.hungerEffect.interpolate(t, false);
+        state.air = this.clampAir(this.air.interpolate(t));
         state.experience = this.clampExperience(this.experience.interpolate(t));
         state.experienceLevel = this.clampExperienceLevel(this.experienceLevel.interpolate(t));
         Vector4f layout = this.layout.interpolate(t, new Vector4f(0F, 0F, 1F, 0F));
@@ -152,6 +157,11 @@ public class HotbarClip extends CameraClip
     private float clampExperience(Double value)
     {
         return Math.max(0F, Math.min(1F, value.floatValue()));
+    }
+
+    private float clampAir(Double value)
+    {
+        return Math.max(0F, Math.min(300F, value.floatValue()));
     }
 
     private int clampExperienceLevel(Integer value)

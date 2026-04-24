@@ -100,6 +100,7 @@ public class UIHotbarClip extends UIClip<HotbarClip>
             case "slot_6" -> UIKeys.C_CLIP.get("bbs:slot_6");
             case "slot_7" -> UIKeys.C_CLIP.get("bbs:slot_7");
             case "slot_8" -> UIKeys.C_CLIP.get("bbs:slot_8");
+            case "offhand_slot" -> UIKeys.C_CLIP.get("bbs:offhand_slot");
             case "health" -> UIKeys.C_CLIP.get("bbs:health");
             case "health_container" -> UIKeys.C_CLIP.get("bbs:health_container");
             case "absorption" -> UIKeys.C_CLIP.get("bbs:absorption");
@@ -109,6 +110,7 @@ public class UIHotbarClip extends UIClip<HotbarClip>
             case "hunger_effect" -> UIKeys.C_CLIP.get("bbs:hunger_effect");
             case "armor" -> UIKeys.C_CLIP.get("bbs:armor");
             case "hunger" -> UIKeys.C_CLIP.get("bbs:hunger");
+            case "air" -> UIKeys.C_CLIP.get("bbs:air");
             case "experience" -> UIKeys.C_CLIP.get("bbs:experience");
             case "experience_level" -> UIKeys.C_CLIP.get("bbs:experience_level");
             case "layout" -> UIKeys.C_CLIP.get("bbs:layout");
