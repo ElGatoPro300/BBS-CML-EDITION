@@ -107,6 +107,7 @@ public class UIHotbarClip extends UIClip<HotbarClip>
             case "absorption_container" -> UIKeys.C_CLIP.get("bbs:absorption_container");
             case "heart_type" -> UIKeys.C_CLIP.get("bbs:heart_type");
             case "hardcore" -> UIKeys.C_CLIP.get("bbs:hardcore");
+            case "heart_regeneration" -> UIKeys.C_CLIP.get("bbs:heart_regeneration");
             case "hunger_effect" -> UIKeys.C_CLIP.get("bbs:hunger_effect");
             case "armor" -> UIKeys.C_CLIP.get("bbs:armor");
             case "hunger" -> UIKeys.C_CLIP.get("bbs:hunger");

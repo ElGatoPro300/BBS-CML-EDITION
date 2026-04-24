@@ -15,6 +15,7 @@ public class HotbarState
     public int selectedSlot;
     public int heartType;
     public boolean hardcore;
+    public boolean heartRegeneration;
     public boolean hungerEffect;
     public float health;
     public float healthContainer;

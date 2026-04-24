@@ -54,6 +54,8 @@ public class UIHotbarRenderer
     private static final Identifier AIR_BURSTING = new Identifier("minecraft", "hud/air_bursting");
     private static final Identifier EXPERIENCE_BAR_BACKGROUND_TEXTURE = new Identifier("minecraft", "textures/gui/sprites/hud/experience_bar_background.png");
     private static final Identifier EXPERIENCE_BAR_PROGRESS_TEXTURE = new Identifier("minecraft", "textures/gui/sprites/hud/experience_bar_progress.png");
+    private static boolean wasHeartRegenerationEnabled;
+    private static long heartRegenerationStartTick;
 
     public static void renderHotbars(MatrixStack stack, Batcher2D batcher, List<HotbarState> hotbars)
     {
@@ -139,15 +141,36 @@ public class UIHotbarRenderer
         int absorptionRows = absorptionSlots <= 0 ? 0 : Math.max(1, Math.min(MAX_HEALTH_ROWS, (absorptionSlots + 9) / 10));
         Random heartShakeRandom = hotbar.health <= 4F ? new Random(thisTickSeed()) : null;
         Random hungerShakeRandom = hotbar.hunger <= 6F ? new Random(thisTickSeed() + 17L) : null;
+        int regenerationHeartIndex = -1;
+        long hudTick = currentHudTick();
 
-        renderBar(batcher, hotbar.health, container, heartHalf, heartFull, 0, barsY, healthSlots, heartShakeRandom);
+        if (hotbar.heartRegeneration && healthSlots > 0 && hotbar.health > 0F)
+        {
+            if (!wasHeartRegenerationEnabled)
+            {
+                heartRegenerationStartTick = hudTick;
+            }
+
+            wasHeartRegenerationEnabled = true;
+
+            int cycleLength = healthSlots + 5; /* Vanilla-like pacing: one sweep plus idle tail. */
+            int cycleIndex = cycleLength <= 0 ? 0 : (int) Math.floorMod(hudTick - heartRegenerationStartTick, cycleLength);
+
+            regenerationHeartIndex = cycleIndex < healthSlots ? cycleIndex : -1;
+        }
+        else if (wasHeartRegenerationEnabled)
+        {
+            wasHeartRegenerationEnabled = false;
+        }
+
+        renderBar(batcher, hotbar.health, container, heartHalf, heartFull, 0, barsY, healthSlots, heartShakeRandom, regenerationHeartIndex);
         if (absorptionSlots > 0)
         {
-            renderBar(batcher, hotbar.absorption, container, absorptionHalf, absorptionFull, 0, barsY - healthRows * 10, absorptionSlots, heartShakeRandom);
+            renderBar(batcher, hotbar.absorption, container, absorptionHalf, absorptionFull, 0, barsY - healthRows * 10, absorptionSlots, heartShakeRandom, -1);
         }
         if (hotbar.armor > 0F)
         {
-            renderBar(batcher, hotbar.armor, ARMOR_EMPTY, ARMOR_HALF, ARMOR_FULL, 0, barsY - (healthRows + absorptionRows) * 10, 10, null);
+            renderBar(batcher, hotbar.armor, ARMOR_EMPTY, ARMOR_HALF, ARMOR_FULL, 0, barsY - (healthRows + absorptionRows) * 10, 10, null, -1);
         }
         Identifier foodEmpty = hotbar.hungerEffect ? FOOD_EMPTY_HUNGER : FOOD_EMPTY;
         Identifier foodHalf = hotbar.hungerEffect ? FOOD_HALF_HUNGER : FOOD_HALF;
@@ -218,7 +241,7 @@ public class UIHotbarRenderer
         batcher.flush();
     }
 
-    private static void renderBar(Batcher2D batcher, float value, Identifier empty, Identifier half, Identifier full, int x, int y, int slots, Random lowHealthShakeRandom)
+    private static void renderBar(Batcher2D batcher, float value, Identifier empty, Identifier half, Identifier full, int x, int y, int slots, Random lowHealthShakeRandom, int regenerationHeartIndex)
     {
         if (slots <= 0)
         {
@@ -239,6 +262,11 @@ public class UIHotbarRenderer
                 iconY += lowHealthShakeRandom.nextInt(2);
             }
 
+            if (i == regenerationHeartIndex)
+            {
+                iconY -= 2;
+            }
+
             batcher.getContext().drawGuiTexture(empty, iconX, iconY, 9, 9);
 
             float current = normalized - i;
@@ -256,10 +284,14 @@ public class UIHotbarRenderer
 
     private static long thisTickSeed()
     {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        long tick = mc.world != null ? mc.world.getTime() : System.currentTimeMillis() / 50L;
+        return currentHudTick() * 312871L;
+    }
 
-        return tick * 312871L;
+    private static long currentHudTick()
+    {
+        MinecraftClient mc = MinecraftClient.getInstance();
+
+        return mc.world != null ? mc.world.getTime() : System.currentTimeMillis() / 50L;
     }
 
     private static void renderBarReverse(Batcher2D batcher, float value, Identifier empty, Identifier half, Identifier full, int x, int y, int slots, Random lowHungerShakeRandom)
