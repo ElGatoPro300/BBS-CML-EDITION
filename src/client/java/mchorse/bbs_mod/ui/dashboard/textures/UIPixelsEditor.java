@@ -27,10 +27,20 @@ import org.lwjgl.opengl.GL11;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 public class UIPixelsEditor extends UICanvasEditor
 {
+    public enum Tool
+    {
+        BRUSH,
+        ERASER,
+        PICK,
+        FILL
+    }
+
     public UIElement toolbar;
 
     /* Tools */
@@ -50,6 +60,10 @@ public class UIPixelsEditor extends UICanvasEditor
 
     private Supplier<Float> backgroundSupplier = () -> 0.7F;
     private Supplier<Color> colorSupplier = Color::white;
+    private Consumer<Color> pickColorCallback;
+    private BiConsumer<Vector2i, Boolean> fillColorCallback;
+    private Tool activeTool = Tool.BRUSH;
+    protected boolean showInternalToolbar = true;
 
     public UIPixelsEditor()
     {
@@ -102,6 +116,40 @@ public class UIPixelsEditor extends UICanvasEditor
         return this.brushSize;
     }
 
+    public UIPixelsEditor useExternalToolbar()
+    {
+        this.showInternalToolbar = false;
+        this.toolbar.setVisible(false);
+
+        return this;
+    }
+
+    public UIPixelsEditor onPickColor(Consumer<Color> callback)
+    {
+        this.pickColorCallback = callback;
+
+        return this;
+    }
+
+    public UIPixelsEditor onFillColor(BiConsumer<Vector2i, Boolean> callback)
+    {
+        this.fillColorCallback = callback;
+
+        return this;
+    }
+
+    public UIPixelsEditor setTool(Tool tool)
+    {
+        this.activeTool = tool == null ? Tool.BRUSH : tool;
+
+        return this;
+    }
+
+    public Tool getTool()
+    {
+        return this.activeTool;
+    }
+
     public void setBrushSize(int brushSize)
     {
         this.brushSize = Math.max(1, brushSize);
@@ -124,7 +172,7 @@ public class UIPixelsEditor extends UICanvasEditor
     {
         this.editing = editing;
 
-        this.toolbar.setVisible(editing);
+        this.toolbar.setVisible(this.showInternalToolbar && editing);
 
         if (editing)
         {
@@ -217,10 +265,12 @@ public class UIPixelsEditor extends UICanvasEditor
     {
         super.startDragging(context);
 
-        if (this.editing && (this.mouse == 0 || this.mouse == 1) && this.pixelsUndo == null)
+        boolean canPaint = this.mouse == 1 || this.activeTool == Tool.BRUSH || this.activeTool == Tool.ERASER;
+
+        if (this.editing && canPaint && (this.mouse == 0 || this.mouse == 1) && this.pixelsUndo == null)
         {
             this.pixelsUndo = new PixelsUndo();
-            this.drawColor = this.mouse == 1 ? new Color(0, 0, 0, 0) : this.colorSupplier.get();
+            this.drawColor = (this.mouse == 1 || this.activeTool == Tool.ERASER) ? new Color(0, 0, 0, 0) : this.colorSupplier.get();
 
             Vector2i pixel = this.getHoverPixel(context.mouseX, context.mouseY);
 
@@ -267,6 +317,42 @@ public class UIPixelsEditor extends UICanvasEditor
     }
 
     @Override
+    public boolean subMouseClicked(UIContext context)
+    {
+        if (this.editing && this.pixels != null && this.area.isInside(context) && context.mouseButton == 0)
+        {
+            Vector2i pixel = this.getHoverPixel(context.mouseX, context.mouseY);
+
+            if (this.activeTool == Tool.PICK)
+            {
+                if (this.pickColorCallback != null)
+                {
+                    Color color = this.pixels.getColor(pixel.x, pixel.y);
+
+                    if (color != null)
+                    {
+                        this.pickColorCallback.accept(color.copy());
+                    }
+                }
+
+                return true;
+            }
+
+            if (this.activeTool == Tool.FILL)
+            {
+                if (this.fillColorCallback != null)
+                {
+                    this.fillColorCallback.accept(pixel, Window.isShiftPressed());
+                }
+
+                return true;
+            }
+        }
+
+        return super.subMouseClicked(context);
+    }
+
+    @Override
     protected void renderBackground(UIContext context)
     {}
 
@@ -295,7 +381,7 @@ public class UIPixelsEditor extends UICanvasEditor
             Colors.A50
         );
 
-        if (this.editing && this.dragging && (this.lastX != context.mouseX || this.lastY != context.mouseY) && (this.mouse == 0 || this.mouse == 1))
+        if (this.editing && this.dragging && this.pixelsUndo != null && (this.lastX != context.mouseX || this.lastY != context.mouseY) && (this.mouse == 0 || this.mouse == 1))
         {
             Vector2i last = this.getHoverPixel(this.lastX, this.lastY);
             Vector2i current = this.getHoverPixel(context.mouseX, context.mouseY);
@@ -353,8 +439,11 @@ public class UIPixelsEditor extends UICanvasEditor
 
         if (this.editing)
         {
-            context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.y + 10, Colors.A50);
-            context.batcher.gradientVBox(this.area.x, this.area.y + 10, this.area.ex(), this.area.y + 30, Colors.A50, 0);
+            if (this.showInternalToolbar)
+            {
+                context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.y + 10, Colors.A50);
+                context.batcher.gradientVBox(this.area.x, this.area.y + 10, this.area.ex(), this.area.y + 30, Colors.A50, 0);
+            }
         }
     }
 }

@@ -76,6 +76,7 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
     public UIIcon pixelEdit;
     public UIIcon viewMode;
     public UIIcon previewSettings;
+    public UIElement headerIcons;
     public UIFileLinkList picker;
     public UIElement textureHeader;
     public UIElement textureTabs;
@@ -116,7 +117,8 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
     private static final int TOP_TABS_HEIGHT = 20;
     private static final int HEADER_HEIGHT = 44;
     private static final int TOP_ROW_Y = 22;
-    private static final int CONTENT_Y = HEADER_HEIGHT + 4;
+    private static final int CONTENT_Y_FILES = HEADER_HEIGHT + 4;
+    private static final int CONTENT_Y_EDITOR = TOP_TABS_HEIGHT + 2;
     private static final int TAB_FILES = 0;
     private static final int TAB_EDITOR = 1;
     private static final int PREVIEW_POPUP_WIDTH = 220;
@@ -419,25 +421,25 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
         this.remove = new UIIcon(Icons.REMOVE, (b) -> this.removeMulti());
         this.edit = new UIIcon(Icons.EDIT, (b) -> this.toggleEditor());
 
-        UIElement icons = UI.row(0, this.viewMode, this.previewSettings, this.pixelEdit, this.folder, this.close);
+        this.headerIcons = UI.row(0, this.viewMode, this.previewSettings, this.pixelEdit, this.folder, this.close);
 
         this.textureHeader.relative(this.right).x(0).y(0).w(1F).h(HEADER_HEIGHT);
         this.textureTabs.relative(this.textureHeader).x(10).y(0).w(0).h(TOP_TABS_HEIGHT).row(0).resize();
         this.tabFiles.w(TAB_WIDTH_FILES).h(TOP_TABS_HEIGHT);
         this.textureTabs.add(this.tabFiles);
         this.textureHeader.add(this.textureTabs);
-        this.texturePreviewPopup.relative(this.right).x(1F, -10).y(CONTENT_Y + 2).wh(PREVIEW_POPUP_WIDTH, PREVIEW_POPUP_HEIGHT).anchorX(1F);
+        this.texturePreviewPopup.relative(this.right).x(1F, -10).y(CONTENT_Y_FILES + 2).wh(PREVIEW_POPUP_WIDTH, PREVIEW_POPUP_HEIGHT).anchorX(1F);
         this.texturePreview.relative(this.texturePreviewPopup).set(8, 8, 0, 0).w(1F, -16).h(1F, -62);
         this.options.relative(this.texturePreviewPopup).set(8, 0, 0, 42).w(1F, -16).y(1F, -50);
         this.texturePreviewPopup.add(this.texturePreview, this.options);
 
-        icons.row().preferred(0);
-        icons.relative(this.textureHeader).x(1F, -10).y(TOP_ROW_Y).w(100).h(20).anchorX(1F);
+        this.headerIcons.row().preferred(0);
+        this.headerIcons.relative(this.textureHeader).x(1F, -10).y(TOP_ROW_Y).w(100).h(20).anchorX(1F);
 
         this.right.full(this);
-        this.text.relative(this.textureHeader).set(10, TOP_ROW_Y, 0, 20).wTo(icons.area);
-        this.picker.relative(this.right).set(10, CONTENT_Y, 0, 0).w(1F, -10).h(1F, -CONTENT_Y);
-        this.formPreviewArea.relative(this.right).x(1F, -FORM_PREVIEW_WIDTH).y(CONTENT_Y).w(FORM_PREVIEW_WIDTH - 10).h(1F, -(CONTENT_Y + 10));
+        this.text.relative(this.textureHeader).set(10, TOP_ROW_Y, 0, 20).wTo(this.headerIcons.area);
+        this.picker.relative(this.right).set(10, CONTENT_Y_FILES, 0, 0).w(1F, -10).h(1F, -CONTENT_Y_FILES);
+        this.formPreviewArea.relative(this.right).x(1F, -FORM_PREVIEW_WIDTH).y(CONTENT_Y_FILES).w(FORM_PREVIEW_WIDTH - 10).h(1F, -(CONTENT_Y_FILES + 10));
 
         this.multi.relative(this).set(10, 10, 100, 20);
         this.multiList.relative(this).set(10, 35, 100, 0).hTo(this.buttons.getFlex());
@@ -448,7 +450,7 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
         this.remove.relative(this.add).set(20, 0, 20, 20);
         this.edit.relative(this.buttons).wh(20, 20).x(1F, -20);
 
-        this.right.add(this.textureHeader, icons, this.text, this.picker, this.formPreviewArea, this.texturePreviewPopup);
+        this.right.add(this.textureHeader, this.headerIcons, this.text, this.picker, this.formPreviewArea, this.texturePreviewPopup);
         this.buttons.add(this.add, this.remove, this.edit);
         this.add(this.multi, this.multiList, this.right, this.editor, this.buttons);
         this.setActiveTab(TAB_FILES);
@@ -649,7 +651,7 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
             this.openEditorTab(l);
         });
         this.pixelEditor.withFormPreview(this.formPreviewSupplier);
-        this.pixelEditor.relative(this.right).set(0, CONTENT_Y, 0, 0).w(1F).h(1F, -CONTENT_Y);
+        this.pixelEditor.relative(this.right).set(0, CONTENT_Y_EDITOR, 0, 0).w(1F).h(1F, -CONTENT_Y_EDITOR);
         this.pixelEditor.resize();
         this.right.add(this.pixelEditor);
     }
@@ -823,6 +825,7 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
         this.multiList.setVisible(!editor);
         this.buttons.setVisible(!editor);
         this.previewSettings.setVisible(files);
+        this.headerIcons.setVisible(files);
 
         if (!files)
         {
@@ -834,7 +837,23 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
             this.pixelEditor.setVisible(editor);
         }
 
+        this.updateContentLayout(editor ? CONTENT_Y_EDITOR : CONTENT_Y_FILES);
         this.updateTextureTabs();
+    }
+
+    private void updateContentLayout(int contentY)
+    {
+        int headerHeight = contentY == CONTENT_Y_EDITOR ? TOP_TABS_HEIGHT : HEADER_HEIGHT;
+
+        this.textureHeader.h(headerHeight);
+        this.texturePreviewPopup.y(contentY + 2);
+        this.picker.y(contentY).h(1F, -contentY);
+        this.formPreviewArea.y(contentY).h(1F, -(contentY + 10));
+
+        if (this.pixelEditor != null)
+        {
+            this.pixelEditor.y(contentY).h(1F, -contentY);
+        }
     }
 
     private void updateTextureTabs()
