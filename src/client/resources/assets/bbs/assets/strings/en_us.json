@@ -465,6 +465,7 @@
     "bbs.ui.camera.panels.curve.add": "Add a curve...",
     "bbs.ui.camera.panels.curve.remove": "Remove curve",
     "bbs.ui.camera.panels.curves.brightness": "Brightness",
+    "bbs.ui.camera.panels.curves.chroma_sky": "Chroma sky",
     "bbs.ui.camera.panels.curves.sun_rotation": "Sun rotation",
     "bbs.ui.camera.panels.curves.weather": "Weather",
     "bbs.ui.camera.panels.deterministic": "Deterministic",

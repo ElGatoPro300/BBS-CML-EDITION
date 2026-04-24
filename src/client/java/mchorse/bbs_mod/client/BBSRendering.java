@@ -8,6 +8,7 @@ import mchorse.bbs_mod.blocks.entities.ModelBlockEntity;
 import mchorse.bbs_mod.client.renderer.ModelBlockEntityRenderer;
 import mchorse.bbs_mod.client.renderer.TriggerBlockEntityRenderer;
 import mchorse.bbs_mod.camera.clips.misc.CurveClip;
+import mchorse.bbs_mod.camera.clips.misc.ChromaSkyCurveSettings;
 import mchorse.bbs_mod.camera.clips.misc.HotbarClip;
 import mchorse.bbs_mod.camera.clips.misc.SubtitleClip;
 import mchorse.bbs_mod.camera.controller.CameraWorkCameraController;
@@ -37,6 +38,7 @@ import mchorse.bbs_mod.ui.framework.UIRenderingContext;
 import mchorse.bbs_mod.ui.framework.UIScreen;
 import mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
+import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.VideoRecorder;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.colors.Colors;
@@ -441,7 +443,7 @@ public class BBSRendering
 
     private static void updateCloudRenderMode(MinecraftClient mc)
     {
-        boolean shouldHideClouds = BBSSettings.chromaSkyEnabled.get() && !BBSSettings.chromaSkyClouds.get();
+        boolean shouldHideClouds = isChromaSkyEnabled() && !isChromaSkyClouds();
 
         if (shouldHideClouds)
         {
@@ -765,7 +767,7 @@ public class BBSRendering
 
     /* Curves */
 
-    public static Long getTimeOfDay()
+    private static Double getCurveValue(String key)
     {
         if (!MinecraftClient.getInstance().isOnThread())
         {
@@ -775,57 +777,78 @@ public class BBSRendering
         if (BBSModClient.getCameraController().getCurrent() instanceof CameraWorkCameraController controller)
         {
             Map<String, Double> values = CurveClip.getValues(controller.getContext());
-            Double v = values != null ? values.get(ShaderCurves.SUN_ROTATION) : null;
 
-            if (v != null)
-            {
-                return (long) (v * 1000L);
-            }
+            return values != null ? values.get(key) : null;
         }
 
         return null;
+    }
+
+    public static boolean isChromaSkyEnabled()
+    {
+        ChromaSkyCurveSettings settings = getChromaSkySettings();
+
+        return settings != null ? settings.enabled : BBSSettings.chromaSkyEnabled.get();
+    }
+
+    public static boolean isChromaSkyTerrain()
+    {
+        ChromaSkyCurveSettings settings = getChromaSkySettings();
+
+        return settings != null ? settings.terrain : BBSSettings.chromaSkyTerrain.get();
+    }
+
+    public static boolean isChromaSkyClouds()
+    {
+        ChromaSkyCurveSettings settings = getChromaSkySettings();
+
+        return settings != null ? settings.clouds : BBSSettings.chromaSkyClouds.get();
+    }
+
+    public static float getChromaSkyBillboard()
+    {
+        ChromaSkyCurveSettings settings = getChromaSkySettings();
+
+        return settings == null ? BBSSettings.chromaSkyBillboard.get() : settings.billboard;
+    }
+
+    public static int getChromaSkyColor()
+    {
+        ChromaSkyCurveSettings settings = getChromaSkySettings();
+
+        return settings == null ? BBSSettings.chromaSkyColor.get() : settings.color.getARGBColor();
+    }
+
+    private static ChromaSkyCurveSettings getChromaSkySettings()
+    {
+        if (getCurveValue(CurveClip.CHROMA_SKY_MARKER) == null)
+        {
+            return null;
+        }
+
+        if (BBSModClient.getCameraController().getCurrent() instanceof CameraWorkCameraController controller)
+        {
+            return CurveClip.getChromaSkySettings(controller.getContext());
+        }
+
+        return null;
+    }
+
+    public static Long getTimeOfDay()
+    {
+        Double v = getCurveValue(ShaderCurves.SUN_ROTATION);
+
+        return v == null ? null : (long) (v * 1000L);
     }
 
     public static Double getBrightness()
     {
-        if (!MinecraftClient.getInstance().isOnThread())
-        {
-            return null;
-        }
-
-        if (BBSModClient.getCameraController().getCurrent() instanceof CameraWorkCameraController controller)
-        {
-            Map<String, Double> values = CurveClip.getValues(controller.getContext());
-            Double v = values != null ? values.get(ShaderCurves.BRIGHTNESS) : null;
-
-            if (v != null)
-            {
-                return v;
-            }
-        }
-
-        return null;
+        return getCurveValue(ShaderCurves.BRIGHTNESS);
     }
 
     public static Double getWeather()
     {
-        if (!MinecraftClient.getInstance().isOnThread())
-        {
-            return null;
-        }
-
-        if (BBSModClient.getCameraController().getCurrent() instanceof CameraWorkCameraController controller)
-        {
-            Map<String, Double> values = CurveClip.getValues(controller.getContext());
-            Double v = values != null ? values.get(ShaderCurves.WEATHER) : null;
-
-            if (v != null)
-            {
-                return v;
-            }
-        }
-
-        return null;
+        return getCurveValue(ShaderCurves.WEATHER);
     }
 
     public static Function<VertexConsumer, VertexConsumer> getColorConsumer(Color color)
