@@ -36,6 +36,4 @@ public interface IModel
     public void apply(IEntity target, Animation action, float tick, float blend, float transition, boolean skipInitial);
 
     public void postApply(IEntity target, Animation action, float tick, float transition);
-
-    public IModel copy();
 }

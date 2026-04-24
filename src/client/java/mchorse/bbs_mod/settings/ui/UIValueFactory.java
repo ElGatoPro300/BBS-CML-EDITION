@@ -63,8 +63,6 @@ public class UIValueFactory
             callback.accept(toggle);
         });
 
-        value.postCallback((changed, flag) -> booleanToogle.setValue(value.get()));
-
         booleanToogle.tooltip(L10n.lang(getValueCommentKey(value)));
 
         return booleanToogle;

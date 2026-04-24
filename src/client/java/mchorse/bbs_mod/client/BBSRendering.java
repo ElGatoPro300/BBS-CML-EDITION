@@ -5,28 +5,19 @@ import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.blocks.entities.ModelBlockEntity;
-import mchorse.bbs_mod.client.renderer.ModelBlockEntityRenderer;
-import mchorse.bbs_mod.client.renderer.TriggerBlockEntityRenderer;
 import mchorse.bbs_mod.camera.clips.misc.CurveClip;
 import mchorse.bbs_mod.camera.clips.misc.SubtitleClip;
 import mchorse.bbs_mod.camera.controller.CameraWorkCameraController;
 import mchorse.bbs_mod.camera.controller.PlayCameraController;
 import mchorse.bbs_mod.events.ModelBlockEntityUpdateCallback;
-import mchorse.bbs_mod.events.TriggerBlockEntityUpdateCallback;
-import mchorse.bbs_mod.film.replays.Replay;
-import mchorse.bbs_mod.forms.FormUtilsClient;
-import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.renderers.utils.RecolorVertexConsumer;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.graphics.texture.TextureFormat;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.UIDashboard;
-import mchorse.bbs_mod.client.video.VideoRenderer;
-import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.film.UISubtitleRenderer;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
-import mchorse.bbs_mod.ui.framework.UIRenderingContext;
 import mchorse.bbs_mod.ui.framework.UIScreen;
 import mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
@@ -47,8 +38,6 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.util.Window;
 import net.minecraft.client.util.math.MatrixStack;
-import org.joml.Matrix4f;
-import com.mojang.blaze3d.systems.VertexSorter;
 import org.lwjgl.opengl.GL11;
 
 import java.io.File;
@@ -78,8 +67,6 @@ public class BBSRendering
 
     private static int width;
     private static int height;
-
-    private static final UIBaseMenu replayHudMenu = new UIBaseMenu() {};
 
     private static boolean toggleFramebuffer;
     private static Framebuffer framebuffer;
@@ -190,7 +177,6 @@ public class BBSRendering
     public static void startTick()
     {
         capturedModelBlocks.clear();
-        TriggerBlockEntityRenderer.capturedTriggerBlocks.clear();
     }
 
     public static void setup()
@@ -204,14 +190,6 @@ public class BBSRendering
             if (entity.getWorld().isClient())
             {
                 capturedModelBlocks.add(entity);
-            }
-        });
-
-        TriggerBlockEntityUpdateCallback.EVENT.register((entity) ->
-        {
-            if (entity.getWorld().isClient())
-            {
-                TriggerBlockEntityRenderer.capturedTriggerBlocks.add(entity);
             }
         });
 
@@ -356,15 +334,6 @@ public class BBSRendering
             Batcher2D batcher = new Batcher2D(drawContext);
 
             UISubtitleRenderer.renderSubtitles(batcher.getContext().getMatrices(), batcher, SubtitleClip.getSubtitles(controller.getContext()));
-
-            Window window = mc.getWindow();
-            Area area = new Area(0, 0, window.getScaledWidth(), window.getScaledHeight());
-            Matrix4f cache = new Matrix4f(RenderSystem.getProjectionMatrix());
-            Matrix4f ortho = new Matrix4f().ortho(0, area.w, area.h, 0, -1000, 3000);
-
-            RenderSystem.setProjectionMatrix(ortho, VertexSorter.BY_Z);
-            VideoRenderer.renderClips(batcher.getContext().getMatrices(), batcher, controller.getContext().clips.getClips(controller.getContext().relativeTick), controller.getContext().relativeTick, true, area, area, null, area.w, area.h, false);
-            RenderSystem.setProjectionMatrix(cache, VertexSorter.BY_Z);
         }
 
         if (!customSize)
@@ -378,18 +347,9 @@ public class BBSRendering
 
         if (currentMenu instanceof UIDashboard dashboard)
         {
-            if (dashboard.getPanels().panel instanceof UIFilmPanel panel && panel.getData() != null)
+            if (dashboard.getPanels().panel instanceof UIFilmPanel panel)
             {
                 UISubtitleRenderer.renderSubtitles(currentMenu.context.batcher.getContext().getMatrices(), currentMenu.context.batcher, SubtitleClip.getSubtitles(panel.getRunner().getContext()));
-
-                Window window = mc.getWindow();
-                Matrix4f cache = new Matrix4f(RenderSystem.getProjectionMatrix());
-                Matrix4f ortho = new Matrix4f().ortho(0, window.getScaledWidth(), window.getScaledHeight(), 0, -1000, 3000);
-
-                RenderSystem.setProjectionMatrix(ortho, VertexSorter.BY_Z);
-                Area fullScreen = new Area(0, 0, window.getScaledWidth(), window.getScaledHeight());
-                VideoRenderer.renderClips(new MatrixStack(), currentMenu.context.batcher, panel.getData().camera.getClips(panel.getCursor()), panel.getCursor(), panel.getRunner().isRunning(), fullScreen, fullScreen, null, window.getScaledWidth(), window.getScaledHeight(), false);
-                RenderSystem.setProjectionMatrix(cache, VertexSorter.BY_Z);
             }
         }
 
@@ -432,9 +392,7 @@ public class BBSRendering
 
         BBSModClient.getFilms().renderHud(batcher2D, tickDelta);
 
-        boolean showRecordingOverlay = videoRecorder.isRecording() && BBSSettings.recordingOverlays.get() && UIScreen.getCurrentMenu() == null;
-
-        if (showRecordingOverlay)
+        if (videoRecorder.isRecording() && BBSSettings.recordingOverlays.get() && UIScreen.getCurrentMenu() == null)
         {
             int count = videoRecorder.getCounter();
             String label = UIKeys.FILM_VIDEO_RECORDING.format(
@@ -450,124 +408,6 @@ public class BBSRendering
             batcher2D.icon(Icons.SPHERE, Colors.RED | Colors.A100, x, y);
             batcher2D.textShadow(label, x + 18, y + 4);
         }
-
-        if (UIScreen.getCurrentMenu() == null && BBSSettings.editorReplayHud.get())
-        {
-            renderSelectedReplayHud(drawContext, batcher2D, showRecordingOverlay ? 20 : 0);
-        }
-    }
-
-    private static void renderSelectedReplayHud(DrawContext drawContext, Batcher2D batcher2D, int yOffset)
-    {
-        Replay replay = BBSModClient.getSelectedReplay();
-
-        if (replay == null)
-        {
-            return;
-        }
-
-        Form form = replay.form.get();
-        String label = getReplayDisplayName(replay, form);
-        boolean hasForm = form != null;
-        int size = hasForm ? 24 : 0;
-        int padding = 3;
-        int gap = hasForm ? 4 : 0;
-
-        int margin = 5;
-        float textScale = 0.85F;
-        int textWidth = batcher2D.getFont().getWidth(label);
-        int textHeight = batcher2D.getFont().getHeight();
-        int scaledTextWidth = Math.round(textWidth * textScale);
-        int scaledTextHeight = Math.round(textHeight * textScale);
-        int boxH = Math.max(size, scaledTextHeight) + padding * 2;
-        int textBoxW = scaledTextWidth + padding * 2;
-        int totalW = (hasForm ? size + gap : 0) + textBoxW;
-        int x = getReplayHudX(margin, totalW);
-        int y = getReplayHudY(margin + yOffset, boxH);
-        int contentX = x + padding;
-        int contentY = y + padding;
-        int textBoxX = contentX + (hasForm ? size + gap : 0) - padding;
-        int textBoxH = scaledTextHeight + padding * 2;
-        int textBoxY = y + (boxH - textBoxH) / 2;
-
-        if (!label.isEmpty())
-        {
-            batcher2D.box(textBoxX, textBoxY, textBoxX + textBoxW, textBoxY + textBoxH, Colors.A50);
-        }
-
-        if (hasForm)
-        {
-            MinecraftClient mc = MinecraftClient.getInstance();
-            Window window = mc.getWindow();
-
-            replayHudMenu.resize(window.getScaledWidth(), window.getScaledHeight());
-            replayHudMenu.context.setup(new UIRenderingContext(drawContext));
-
-            int modelX1 = contentX;
-            int modelY1 = contentY + (boxH - padding * 2 - size) / 2;
-            int modelX2 = modelX1 + size;
-            int modelY2 = modelY1 + size;
-
-            FormUtilsClient.renderUI(form, replayHudMenu.context, modelX1, modelY1, modelX2, modelY2);
-
-            contentX = modelX2 + gap;
-        }
-
-        int textX = textBoxX + padding;
-        int textY = textBoxY + padding;
-
-        drawContext.getMatrices().push();
-        drawContext.getMatrices().scale(textScale, textScale, 1F);
-        batcher2D.textShadow(label, textX / textScale, textY / textScale);
-        drawContext.getMatrices().pop();
-    }
-
-    private static int getReplayHudX(int margin, int totalW)
-    {
-        int position = BBSSettings.editorReplayHudPosition.get();
-        int screenW = MinecraftClient.getInstance().getWindow().getScaledWidth();
-        boolean right = position == 1 || position == 3;
-
-        return right ? screenW - margin - totalW : margin;
-    }
-
-    private static int getReplayHudY(int margin, int boxH)
-    {
-        int position = BBSSettings.editorReplayHudPosition.get();
-        int screenH = MinecraftClient.getInstance().getWindow().getScaledHeight();
-        boolean bottom = position == 2 || position == 3;
-        int extraTopLeft = position == 0 ? 12 : 0;
-
-        return bottom ? screenH - margin - boxH : margin + extraTopLeft;
-    }
-
-    private static String getReplayDisplayName(Replay replay, Form form)
-    {
-        String label = replay.label.get();
-
-        if (!label.isEmpty())
-        {
-            return label;
-        }
-
-        if (form != null)
-        {
-            String formName = form.getDisplayName();
-
-            if (!formName.isEmpty())
-            {
-                return formName;
-            }
-        }
-
-        String nameTag = replay.nameTag.get();
-
-        if (!nameTag.isEmpty())
-        {
-            return nameTag;
-        }
-
-        return replay.getId();
     }
 
     public static void renderCoolStuff(WorldRenderContext worldRenderContext)
@@ -674,11 +514,6 @@ public class BBSRendering
 
     public static Long getTimeOfDay()
     {
-        if (!MinecraftClient.getInstance().isOnThread())
-        {
-            return null;
-        }
-
         if (BBSModClient.getCameraController().getCurrent() instanceof CameraWorkCameraController controller)
         {
             Map<String, Double> values = CurveClip.getValues(controller.getContext());
@@ -695,11 +530,6 @@ public class BBSRendering
 
     public static Double getBrightness()
     {
-        if (!MinecraftClient.getInstance().isOnThread())
-        {
-            return null;
-        }
-
         if (BBSModClient.getCameraController().getCurrent() instanceof CameraWorkCameraController controller)
         {
             Map<String, Double> values = CurveClip.getValues(controller.getContext());
@@ -716,11 +546,6 @@ public class BBSRendering
 
     public static Double getWeather()
     {
-        if (!MinecraftClient.getInstance().isOnThread())
-        {
-            return null;
-        }
-
         if (BBSModClient.getCameraController().getCurrent() instanceof CameraWorkCameraController controller)
         {
             Map<String, Double> values = CurveClip.getValues(controller.getContext());

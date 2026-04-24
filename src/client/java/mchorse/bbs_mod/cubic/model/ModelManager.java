@@ -6,9 +6,7 @@ import mchorse.bbs_mod.cubic.MolangHelper;
 import mchorse.bbs_mod.cubic.model.loaders.BOBJModelLoader;
 import mchorse.bbs_mod.cubic.model.loaders.CubicModelLoader;
 import mchorse.bbs_mod.cubic.model.loaders.GeoCubicModelLoader;
-import mchorse.bbs_mod.cubic.model.loaders.GLTFModelLoader;
 import mchorse.bbs_mod.cubic.model.loaders.IModelLoader;
-import mchorse.bbs_mod.cubic.model.loaders.MiModelLoader;
 import mchorse.bbs_mod.cubic.model.loaders.VoxModelLoader;
 import mchorse.bbs_mod.data.DataToString;
 import mchorse.bbs_mod.data.types.MapType;
@@ -60,8 +58,6 @@ public class ModelManager implements IWatchDogListener
         this.loaders.add(new CubicModelLoader());
         this.loaders.add(new GeoCubicModelLoader());
         this.loaders.add(new VoxModelLoader());
-        this.loaders.add(new GLTFModelLoader());
-        this.loaders.add(new MiModelLoader());
     }
 
     /**
@@ -187,45 +183,9 @@ public class ModelManager implements IWatchDogListener
             || link.path.endsWith(".geo.json")
             || link.path.endsWith(".bobj")
             || link.path.endsWith(".obj")
-            || link.path.endsWith(".gltf")
-            || link.path.endsWith(".glb")
-            || link.path.endsWith(".mimodel")
             || link.path.endsWith(".animation.json")
             || link.path.endsWith(".vox")
             || link.path.endsWith("/config.json");
-    }
-
-    public void saveConfig(String id, MapType config)
-    {
-        Link modelLink = Link.assets(MODELS_PREFIX + id + "/config.json");
-        java.io.File file = BBSMod.getProvider().getFile(modelLink);
-
-        if (file != null)
-        {
-            try
-            {
-                IOUtils.writeText(file, DataToString.toString(config, true));
-            }
-            catch (Exception e)
-            {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    public boolean renameModel(String from, String to)
-    {
-        Link fromLink = Link.assets(MODELS_PREFIX + from);
-        Link toLink = Link.assets(MODELS_PREFIX + to);
-        java.io.File fromFile = BBSMod.getProvider().getFile(fromLink);
-        java.io.File toFile = BBSMod.getProvider().getFile(toLink);
-
-        if (fromFile != null && fromFile.exists() && fromFile.isDirectory() && toFile != null && !toFile.exists())
-        {
-            return fromFile.renameTo(toFile);
-        }
-
-        return false;
     }
 
     /**

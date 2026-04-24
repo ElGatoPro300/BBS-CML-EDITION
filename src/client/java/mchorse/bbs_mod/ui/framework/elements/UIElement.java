@@ -163,7 +163,7 @@ public class UIElement implements IUIElement, IUndoElement
         {
             element = element.getParent();
 
-            if (element != null && element.getClass() == clazz)
+            if (element.getClass() == clazz)
             {
                 return (T) element;
             }
@@ -1436,11 +1436,6 @@ public class UIElement implements IUIElement, IUndoElement
 
     public void applyAllUndoData(MapType data)
     {
-        if (data == null)
-        {
-            return;
-        }
-
         this.visitChildren(IUndoElement.class, true, (child) ->
         {
             String id = child.getUndoId();

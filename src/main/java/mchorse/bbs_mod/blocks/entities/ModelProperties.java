@@ -23,9 +23,7 @@ public class ModelProperties implements IMapSerializable
     private boolean enabled = true;
     private boolean global;
     private boolean shadow;
-    private boolean hitbox;
     private boolean lookAt;
-    private int lightLevel = 0;
 
     public Form getForm()
     {
@@ -127,16 +125,6 @@ public class ModelProperties implements IMapSerializable
         this.shadow = shadow;
     }
 
-    public boolean isHitbox()
-    {
-        return this.hitbox;
-    }
-
-    public void setHitbox(boolean hitbox)
-    {
-        this.hitbox = hitbox;
-    }
-
     public boolean isLookAt()
     {
         return this.lookAt;
@@ -145,16 +133,6 @@ public class ModelProperties implements IMapSerializable
     public void setLookAt(boolean lookAt)
     {
         this.lookAt = lookAt;
-    }
-
-    public int getLightLevel()
-    {
-        return this.lightLevel;
-    }
-
-    public void setLightLevel(int level)
-    {
-        this.lightLevel = Math.max(0, Math.min(15, level));
     }
 
     public Form getForm(ModelTransformationMode mode)
@@ -214,8 +192,6 @@ public class ModelProperties implements IMapSerializable
         this.shadow = data.getBool("shadow");
         this.global = data.getBool("global");
         this.lookAt = data.getBool("look_at");
-        if (data.has("hitbox")) this.hitbox = data.getBool("hitbox");
-        if (data.has("light_level")) this.lightLevel = data.getInt("light_level");
     }
 
     @Override
@@ -234,9 +210,7 @@ public class ModelProperties implements IMapSerializable
         data.putBool("enabled", this.enabled);
         data.putBool("shadow", this.shadow);
         data.putBool("global", this.global);
-        data.putBool("hitbox", this.hitbox);
         data.putBool("look_at", this.lookAt);
-        data.putInt("light_level", this.lightLevel);
     }
 
     public void update(IEntity entity)

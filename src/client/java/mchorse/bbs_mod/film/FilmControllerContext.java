@@ -9,7 +9,6 @@ import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.util.math.MatrixStack;
-import org.joml.Matrix4f;
 
 public class FilmControllerContext
 {
@@ -35,7 +34,6 @@ public class FilmControllerContext
 
     public String nameTag = "";
     public boolean relative;
-    public Matrix4f localGroupTransform;
 
     private FilmControllerContext()
     {}
@@ -49,7 +47,6 @@ public class FilmControllerContext
         this.local = false;
         this.nameTag = "";
         this.relative = false;
-        this.localGroupTransform = null;
     }
 
     public FilmControllerContext setup(IntObjectMap<IEntity> entities, IEntity entity, Replay replay, WorldRenderContext context)

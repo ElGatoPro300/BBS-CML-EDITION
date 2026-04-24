@@ -11,7 +11,6 @@ import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.importers.IImportPathProvider;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.resources.packs.URLSourcePack;
-import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.textures.UITexturePainter;
@@ -26,7 +25,6 @@ import mchorse.bbs_mod.ui.framework.elements.input.multilink.UIMultiLinkEditor;
 import mchorse.bbs_mod.ui.framework.elements.input.text.UITextbox;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIConfirmOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIListOverlayPanel;
-import mchorse.bbs_mod.ui.framework.elements.overlay.UIMcmetaEditorPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.utils.EventPropagation;
 import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
@@ -184,24 +182,13 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
 
             if (file.isFile() && file.getName().endsWith(".png"))
             {
-                File mcmeta = new File(file.getAbsolutePath() + ".mcmeta");
-
-                if (!mcmeta.exists())
+                menu.action(Icons.ADD, UIKeys.TEXTURES_CREATE_MCMETA, () ->
                 {
-                    menu.action(Icons.ADD, UIKeys.TEXTURES_CREATE_MCMETA, () ->
-                    {
-                        MapType data = DataToString.mapFromString("{\"animation\":{\"frametime\":2}}");
+                    MapType data = DataToString.mapFromString("{\"animation\":{\"frametime\":2}}");
+                    String path = file.getAbsolutePath() + ".mcmeta";
 
-                        DataToString.writeSilently(mcmeta, data, true);
-                    });
-                }
-                else
-                {
-                    menu.action(Icons.EDIT, UIKeys.TEXTURES_MCMETA_EDIT, () ->
-                    {
-                    UIOverlay.addOverlay(this.getContext(), new UIMcmetaEditorPanel(mcmeta), 240, 160);
+                    DataToString.writeSilently(new File(path), data, true);
                 });
-                }
             }
 
             menu.action(Icons.DOWNLOAD, UIKeys.TEXTURES_DOWNLOAD, () -> this.download(""));
@@ -617,15 +604,9 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
 
     protected void updateOptions()
     {
-        if (this.current == null)
-        {
-            this.options.setVisible(false);
-            return;
-        }
-
         Texture texture = BBSModClient.getTextures().getTexture(this.current);
 
-        this.options.setVisible(true);
+        this.options.setVisible(this.current != null);
 
         if (texture != null)
         {

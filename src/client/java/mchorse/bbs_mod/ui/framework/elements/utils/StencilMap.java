@@ -4,16 +4,11 @@ import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.utils.Pair;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
 
 public class StencilMap
 {
-    public static final List<Consumer<StencilMap>> extensions = new ArrayList<>();
-
     public int objectIndex;
     public Map<Integer, Pair<Form, String>> indexMap = new HashMap<>();
     public boolean increment = true;
@@ -36,11 +31,6 @@ public class StencilMap
         this.indexMap.put(Gizmo.STENCIL_XZ, new Pair<>(null, "xz"));
         this.indexMap.put(Gizmo.STENCIL_XY, new Pair<>(null, "xy"));
         this.indexMap.put(Gizmo.STENCIL_ZY, new Pair<>(null, "zy"));
-
-        for (Consumer<StencilMap> consumer : extensions)
-        {
-            consumer.accept(this);
-        }
     }
 
     public void addPicking(Form form)

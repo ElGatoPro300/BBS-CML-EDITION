@@ -16,8 +16,6 @@ import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
 
 import java.util.HashSet;
-import java.util.ArrayList;
-import java.util.List;
 
 public class BBSSettings
 {
@@ -36,9 +34,7 @@ public class BBSSettings
     public static ValueFloat axesScale;
     public static ValueBoolean uniformScale;
     public static ValueBoolean clickSound;
-    public static ValueBoolean disablePivotTransform;
     public static ValueBoolean gizmos;
-    public static ValueInt defaultInterpolation;
 
     public static ValueBoolean enableCursorRendering;
     public static ValueBoolean enableMouseButtonRendering;
@@ -72,24 +68,16 @@ public class BBSSettings
     public static ValueBoolean editorLoop;
     public static ValueInt editorJump;
     public static ValueInt editorGuidesColor;
-    public static ValueInt editorSafeMarginsColor;
     public static ValueBoolean editorRuleOfThirds;
-    public static ValueBoolean editorSafeMargins;
     public static ValueBoolean editorCenterLines;
     public static ValueBoolean editorCrosshair;
     public static ValueBoolean editorSeconds;
     public static ValueInt editorPeriodicSave;
     public static ValueBoolean editorHorizontalFlight;
-    public static ValueBoolean editorFlightFreeLook;
     public static ValueEditorLayout editorLayoutSettings;
     public static ValueOnionSkin editorOnionSkin;
     public static ValueBoolean editorSnapToMarkers;
     public static ValueBoolean editorClipPreview;
-    public static ValueBoolean editorClipTypeLabels;
-    public static ValueBoolean editorReplaySprintParticles;
-    public static ValueInt editorReplayEditorTitleLimit;
-    public static ValueBoolean editorReplayHud;
-    public static ValueInt editorReplayHudPosition;
     public static ValueBoolean editorRewind;
     public static ValueBoolean editorHorizontalClipEditor;
     public static ValueBoolean editorMinutesBackup;
@@ -102,7 +90,6 @@ public class BBSSettings
 
     public static ValueBoolean renderAllModelBlocks;
     public static ValueBoolean clickModelBlocks;
-    public static ValueBoolean modelBlockCategoriesPanelEnabled;
 
     public static ValueString entitySelectorsPropertyWhitelist;
 
@@ -116,11 +103,6 @@ public class BBSSettings
     public static ValueInt audioWaveformHeight;
     public static ValueBoolean audioWaveformFilename;
     public static ValueBoolean audioWaveformTime;
-    /* Pose track bone anchoring */
-    public static ValueBoolean boneAnchoringEnabled;
-    public static ValueBoolean anchorOverrideEnabled;
-    public static ValueBoolean autoKeyframe;
-    public static ValueBoolean fluidRealisticModelInteraction;
 
     public static ValueString cdnUrl;
     public static ValueString cdnToken;
@@ -181,9 +163,7 @@ public class BBSSettings
         axesScale = builder.getFloat("axes_scale", 1F, 0F, 2F);
         uniformScale = builder.getBoolean("uniform_scale", false);
         clickSound = builder.getBoolean("click_sound", false);
-        disablePivotTransform = builder.getBoolean("disable_pivot_transform", false);
         gizmos = builder.getBoolean("gizmos", true);
-        defaultInterpolation = builder.getInt("default_interpolation", 0);
         favoriteColors = new ValueColors("favorite_colors");
         disabledSheets = new ValueStringKeys("disabled_sheets");
         disabledSheets.set(defaultFilters);
@@ -230,29 +210,19 @@ public class BBSSettings
         editorJump = builder.getInt("jump", 5, 1, 1000);
         editorLoop = builder.getBoolean("loop", false);
         editorGuidesColor = builder.getInt("guides_color", 0xcccc0000).colorAlpha();
-        editorSafeMarginsColor = builder.getInt("safe_margins_color", 0xcccc0000).colorAlpha();
         editorRuleOfThirds = builder.getBoolean("rule_of_thirds", false);
-        editorSafeMargins = builder.getBoolean("safe_margins", false);
         editorCenterLines = builder.getBoolean("center_lines", false);
         editorCrosshair = builder.getBoolean("crosshair", false);
         editorSeconds = builder.getBoolean("seconds", false);
         editorPeriodicSave = builder.getInt("periodic_save", 60, 0, 3600);
         editorHorizontalFlight = builder.getBoolean("horizontal_flight", false);
-        editorFlightFreeLook = builder.getBoolean("flight_free_look", false);
         builder.register(editorLayoutSettings = new ValueEditorLayout("layout"));
         builder.register(editorOnionSkin = new ValueOnionSkin("onion_skin"));
         editorSnapToMarkers = builder.getBoolean("snap_to_markers", false);
         editorClipPreview = builder.getBoolean("clip_preview", true);
-        editorClipTypeLabels = builder.getBoolean("clip_type_labels", true);
-        editorReplaySprintParticles = builder.getBoolean("replay_sprint_particles", true);
-        editorReplayEditorTitleLimit = builder.getInt("replay_editor_title_limit", 12, 0, 64);
         editorRewind = builder.getBoolean("rewind", true);
         editorHorizontalClipEditor = builder.getBoolean("horizontal_clip_editor", true);
         editorMinutesBackup = builder.getBoolean("minutes_backup", true);
-
-        builder.category("display");
-        editorReplayHud = builder.getBoolean("replay_hud", true);
-        editorReplayHudPosition = builder.getInt("replay_hud_position", 0, 0, 3);
 
         builder.category("recording");
         recordingCountdown = builder.getFloat("countdown", 1.5F, 0F, 30F);
@@ -264,7 +234,6 @@ public class BBSSettings
         builder.category("model_blocks");
         renderAllModelBlocks = builder.getBoolean("render_all", true);
         clickModelBlocks = builder.getBoolean("click", true);
-        modelBlockCategoriesPanelEnabled = builder.getBoolean("categories_panel_enabled", false);
 
         builder.category("entity_selectors");
         entitySelectorsPropertyWhitelist = builder.getString("whitelist", "CustomName,Name");
@@ -275,9 +244,6 @@ public class BBSSettings
         builder.category("shader_curves");
         shaderCurvesEnabled = builder.getBoolean("enabled", true);
 
-        builder.category("fluid_simulation");
-        fluidRealisticModelInteraction = builder.getBoolean("realistic_model_interaction", false);
-
         builder.category("audio");
         audioWaveformVisible = builder.getBoolean("waveform_visible", true);
         audioWaveformDensity = builder.getInt("waveform_density", 20, 10, 100);
@@ -286,12 +252,6 @@ public class BBSSettings
         audioWaveformFilename = builder.getBoolean("waveform_filename", false);
         audioWaveformTime = builder.getBoolean("waveform_time", false);
 
-
-        /* Pose track selection */
-        builder.category("pose_track_selection");
-        boneAnchoringEnabled = builder.getBoolean("bone_anchoring_enabled", false);
-        anchorOverrideEnabled = builder.getBoolean("anchor_override_enabled", false);
-        autoKeyframe = builder.getBoolean("auto_keyframe", false);
         builder.category("cdn");
         cdnUrl = builder.getString("url", "");
         cdnToken = builder.getString("token", "");
