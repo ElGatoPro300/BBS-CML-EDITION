@@ -206,6 +206,10 @@ public class Icons
     public static final Icon CHESTPLATE = register(new Icon(ATLAS, "chestplate", 0, 176));
     public static final Icon LEGINGS = register(new Icon(ATLAS, "armor", 16, 176));
     public static final Icon BOOTS = register(new Icon(ATLAS, "boots", 32, 176));
+    public static final Icon BRUSH = register(new Icon(ATLAS, "brush", 48, 176));
+    public static final Icon ERASER = register(new Icon(ATLAS, "eraser", 64, 176));
+    public static final Icon DROPPER = register(new Icon(ATLAS, "dropper", 80, 176));
+    public static final Icon GRADIENT = register(new Icon(ATLAS, "gradient", 96, 176));
 
     public static final Icon INTERP_LINEAR = register(new Icon(ATLAS, "interp_linear", 0, 192));
     public static final Icon INTERP_CONST = register(new Icon(ATLAS, "interp_const", 16, 192));
