@@ -1277,6 +1277,15 @@ public class UIKeys
     public static final IKey TEXTURE_EDITOR_SHIFT = L10n.lang("bbs.ui.texture.editor.shift");
     public static final IKey TEXTURE_EDITOR_SIZE_H = L10n.lang("bbs.ui.texture.editor.size_h");
     public static final IKey TEXTURE_EDITOR_SIZE_W = L10n.lang("bbs.ui.texture.editor.size_w");
+    public static final IKey TEXTURE_PAINTER_TAB_COLOR = L10n.lang("bbs.ui.texture.painter.tab.color");
+    public static final IKey TEXTURE_PAINTER_TAB_PALETTE = L10n.lang("bbs.ui.texture.painter.tab.palette");
+    public static final IKey TEXTURE_PAINTER_TAB_IMAGES = L10n.lang("bbs.ui.texture.painter.tab.images");
+    public static final IKey TEXTURE_PAINTER_TAB_LAYERS = L10n.lang("bbs.ui.texture.painter.tab.layers");
+    public static final IKey TEXTURE_PAINTER_PRIMARY_COLOR = L10n.lang("bbs.ui.texture.painter.primary_color");
+    public static final IKey TEXTURE_PAINTER_SECONDARY_COLOR = L10n.lang("bbs.ui.texture.painter.secondary_color");
+    public static final IKey TEXTURE_PAINTER_OPEN_TEXTURE_PICKER = L10n.lang("bbs.ui.texture.painter.open_texture_picker");
+    public static final IKey TEXTURE_PAINTER_ADD_LAYER = L10n.lang("bbs.ui.texture.painter.add_layer");
+    public static final IKey TEXTURE_PAINTER_LAYER_OPACITY = L10n.lang("bbs.ui.texture.painter.layer_opacity");
     public static final IKey TEXTURE_FIND_TITLE = L10n.lang("bbs.ui.texture.find-title");
     public static final IKey TEXTURE_KEYS_FIND_ALL = L10n.lang("bbs.ui.texture.keys.find_all");
     public static final IKey TEXTURE_MULTISKIN = L10n.lang("bbs.ui.texture.multiskin");

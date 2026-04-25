@@ -445,8 +445,8 @@ public class UITexturePainter extends UIElement
         this.fixedColorPicker.relative(this.sidePanel).xy(8, 34).w(1F, -16);
         this.fixedColorPicker.h(164);
 
-        this.tabColor = new UIButton(IKey.constant("COLOR"), (b) -> this.setTopTab(true));
-        this.tabPalette = new UIButton(IKey.constant("PALETA"), (b) -> this.setTopTab(false));
+        this.tabColor = new UIButton(UIKeys.TEXTURE_PAINTER_TAB_COLOR, (b) -> this.setTopTab(true));
+        this.tabPalette = new UIButton(UIKeys.TEXTURE_PAINTER_TAB_PALETTE, (b) -> this.setTopTab(false));
         this.tabColor.relative(this.sidePanel).xy(8, 8).w(0.5F, -10).h(20);
         this.tabPalette.relative(this.sidePanel).x(0.5F, 2).y(8).w(0.5F, -10).h(20);
 
@@ -468,7 +468,7 @@ public class UITexturePainter extends UIElement
                 }
             }
         };
-        this.primarySlot.wh(12, 12).tooltip(IKey.constant("Color primario"), Direction.TOP);
+        this.primarySlot.wh(12, 12).tooltip(UIKeys.TEXTURE_PAINTER_PRIMARY_COLOR, Direction.TOP);
         this.primarySlot.relative(this.colorTabContent).xy(6, 6);
 
         this.secondarySlot = new UIButton(IKey.EMPTY, (b) -> this.setEditingPrimary(false))
@@ -485,7 +485,7 @@ public class UITexturePainter extends UIElement
                 }
             }
         };
-        this.secondarySlot.wh(12, 12).tooltip(IKey.constant("Color secundario"), Direction.TOP);
+        this.secondarySlot.wh(12, 12).tooltip(UIKeys.TEXTURE_PAINTER_SECONDARY_COLOR, Direction.TOP);
         this.secondarySlot.relative(this.colorTabContent).xy(12, 12);
 
         this.colorTabContent.add(this.fixedColorPicker, this.secondarySlot, this.primarySlot);
@@ -535,8 +535,8 @@ public class UITexturePainter extends UIElement
 
         this.paletteTabContent.add(paletteRowOne, paletteRowTwo);
 
-        this.tabImages = new UIButton(IKey.constant("IMAGENES"), (b) -> this.setBottomTab(false));
-        this.tabLayers = new UIButton(IKey.constant("CAPAS"), (b) -> this.setBottomTab(true));
+        this.tabImages = new UIButton(UIKeys.TEXTURE_PAINTER_TAB_IMAGES, (b) -> this.setBottomTab(false));
+        this.tabLayers = new UIButton(UIKeys.TEXTURE_PAINTER_TAB_LAYERS, (b) -> this.setBottomTab(true));
         this.tabImages.relative(this.sidePanel).x(8).y(206).w(0.5F, -10).h(18);
         this.tabLayers.relative(this.sidePanel).x(0.5F, 2).y(206).w(0.5F, -10).h(18);
 
@@ -546,8 +546,8 @@ public class UITexturePainter extends UIElement
         this.imageRow = new UIElement();
         this.imageRow.relative(this.mediaTabContent).full(this.mediaTabContent);
 
-        this.selectTextureButton = new UIButton(IKey.constant("Seleccionar textura"), (b) -> this.openTextureSelector());
-        this.selectTextureButton.relative(this.imageRow).xy(0, 0).w(1F).h(20).tooltip(IKey.constant("Abrir selector de texturas"), Direction.BOTTOM);
+        this.selectTextureButton = new UIButton(UIKeys.TEXTURE_PICK_TEXTURE, (b) -> this.openTextureSelector());
+        this.selectTextureButton.relative(this.imageRow).xy(0, 0).w(1F).h(20).tooltip(UIKeys.TEXTURE_PAINTER_OPEN_TEXTURE_PICKER, Direction.BOTTOM);
 
         this.imageRows = UI.scrollView(2, 0);
         this.imageRows.relative(this.imageRow).xy(0, 24).w(1F).h(1F, -24);
@@ -558,7 +558,7 @@ public class UITexturePainter extends UIElement
         this.layerRow.relative(this.mediaTabContent).full(this.mediaTabContent);
 
         this.addLayerButton = new UIIcon(Icons.ADD, (b) -> this.addLayer());
-        this.addLayerButton.wh(20, 20).tooltip(IKey.constant("Crear capa"), Direction.BOTTOM);
+        this.addLayerButton.wh(20, 20).tooltip(UIKeys.TEXTURE_PAINTER_ADD_LAYER, Direction.BOTTOM);
         this.addLayerButton.relative(this.layerRow).xy(0, 0);
 
         this.layerOpacity = new UITrackpad((v) ->
@@ -572,7 +572,7 @@ public class UITexturePainter extends UIElement
         });
         this.layerOpacity.integer().limit(0, 100, true);
         this.layerOpacity.setValue(100);
-        this.layerOpacity.tooltip(IKey.constant("Opacidad de capa"), Direction.BOTTOM);
+        this.layerOpacity.tooltip(UIKeys.TEXTURE_PAINTER_LAYER_OPACITY, Direction.BOTTOM);
         this.layerOpacity.relative(this.layerRow).x(1F, -58).y(0).w(58).h(20);
 
         this.layerRows = UI.scrollView(2, 0);
