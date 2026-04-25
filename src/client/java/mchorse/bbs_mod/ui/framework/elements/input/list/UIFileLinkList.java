@@ -53,7 +53,7 @@ public class UIFileLinkList extends UIList<UIFileLinkList.FileLink>
             }
             else
             {
-                this.setPath(fileLink.link, !fileLink.title.equals(".."));
+                this.setPath(fileLink.link, !fileLink.up);
             }
         };
         this.fileCallback = fileCallback;
@@ -350,8 +350,8 @@ public class UIFileLinkList extends UIList<UIFileLinkList.FileLink>
             this.path = link;
 
             FileLink parent = link.path.isEmpty()
-                ? new FileLink("..", new Link("", ""), true)
-                : new FileLink("..", new Link(link.source, StringUtils.parentPath(link.path)), true);
+                ? new FileLink("...", new Link("", ""), true, true)
+                : new FileLink("...", new Link(link.source, StringUtils.parentPath(link.path)), true, true);
 
             this.clear();
             this.add(parent);
@@ -441,7 +441,15 @@ public class UIFileLinkList extends UIList<UIFileLinkList.FileLink>
         int previewX = x + (tileWidth - preview) / 2;
         int previewY = y + 3;
 
-        if (element.folder)
+        if (element.up)
+        {
+            this.renderArrowPreview(context, previewX, previewY, preview, hover);
+        }
+        else if (element.folder)
+        {
+            this.renderFolderPreview(context, previewX, previewY, preview, hover);
+        }
+        else if (element.folder)
         {
             this.renderFolderPreview(context, previewX, previewY, preview, hover);
         }
@@ -479,6 +487,27 @@ public class UIFileLinkList extends UIList<UIFileLinkList.FileLink>
             Icons.FOLDER.y + Icons.FOLDER.h,
             Icons.FOLDER.textureW,
             Icons.FOLDER.textureH
+        );
+    }
+
+    private void renderArrowPreview(UIContext context, int x, int y, int size, boolean hover)
+    {
+        int color = Colors.setA(Colors.WHITE, hover ? 0.95F : 0.82F);
+        Texture atlas = BBSModClient.getTextures().getTexture(Icons.ARROW_LEFT.texture);
+
+        context.batcher.texturedBox(
+            atlas,
+            color,
+            x,
+            y,
+            size,
+            size,
+            Icons.ARROW_LEFT.x,
+            Icons.ARROW_LEFT.y,
+            Icons.ARROW_LEFT.x + Icons.ARROW_LEFT.w,
+            Icons.ARROW_LEFT.y + Icons.ARROW_LEFT.h,
+            Icons.ARROW_LEFT.textureW,
+            Icons.ARROW_LEFT.textureH
         );
     }
 
@@ -630,12 +659,19 @@ public class UIFileLinkList extends UIList<UIFileLinkList.FileLink>
         public String title;
         public Link link;
         public boolean folder;
+        public boolean up;
 
         public FileLink(String title, Link link, boolean folder)
+        {
+            this(title, link, folder, false);
+        }
+
+        public FileLink(String title, Link link, boolean folder, boolean up)
         {
             this.title = title;
             this.link = link;
             this.folder = folder;
+            this.up = up;
         }
     }
 }

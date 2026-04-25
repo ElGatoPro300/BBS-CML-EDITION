@@ -26,6 +26,7 @@ import mchorse.bbs_mod.utils.StringUtils;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.resources.Pixels;
 import mchorse.bbs_mod.utils.colors.Colors;
+import mchorse.bbs_mod.utils.undo.UndoManager;
 import org.joml.Vector2i;
 import org.lwjgl.opengl.GL11;
 
@@ -101,13 +102,15 @@ public class UITexturePainter extends UIElement
         public float opacity;
         public boolean visible;
         public Pixels pixels;
+        public UndoManager<Pixels> undoManager;
 
-        public TextureLayer(String name, float opacity, boolean visible, Pixels pixels)
+        public TextureLayer(String name, float opacity, boolean visible, Pixels pixels, UndoManager<Pixels> undoManager)
         {
             this.name = name;
             this.opacity = opacity;
             this.visible = visible;
             this.pixels = pixels;
+            this.undoManager = undoManager;
         }
     }
 
@@ -124,7 +127,7 @@ public class UITexturePainter extends UIElement
                 pixels = Pixels.fromSize(layer.pixels.width, layer.pixels.height);
             }
 
-            copy.add(new TextureLayer(layer.name, layer.opacity, layer.visible, pixels));
+            copy.add(new TextureLayer(layer.name, layer.opacity, layer.visible, pixels, layer.undoManager));
         }
 
         return copy;
@@ -344,6 +347,7 @@ public class UITexturePainter extends UIElement
 
         this.main = new UITextureEditor().saveCallback(saveCallback);
         this.main.renderTextureSupplier(this::getComposedEditorTexture);
+        this.main.savePixelsSupplier(this::getComposedSavePixels);
         this.configureEditor(this.main);
         this.main.full(this);
         this.main.undo.removeFromParent();
@@ -676,7 +680,7 @@ public class UITexturePainter extends UIElement
     {
         if (this.layers.isEmpty())
         {
-            this.layers.add(new TextureLayer("layer", 1F, true, this.main.getPixels()));
+            this.layers.add(new TextureLayer("layer", 1F, true, this.main.getPixels(), this.main.exportUndoManager()));
             this.selectedLayerIndex = 0;
             this.layerOpacity.setValue(100);
         }
@@ -688,7 +692,7 @@ public class UITexturePainter extends UIElement
 
         String name = this.layers.isEmpty() ? "layer" : "layer_" + this.layers.size();
         Pixels pixels = this.createTransparentLayerPixels();
-        this.layers.add(new TextureLayer(name, 1F, true, pixels));
+        this.layers.add(new TextureLayer(name, 1F, true, pixels, null));
         this.selectedLayerIndex = this.layers.size() - 1;
         this.layerOpacity.setValue(100);
         this.loadSelectedLayerPixels();
@@ -714,7 +718,10 @@ public class UITexturePainter extends UIElement
             return;
         }
 
-        this.layers.get(this.selectedLayerIndex).pixels = this.main.getPixels();
+        TextureLayer activeLayer = this.layers.get(this.selectedLayerIndex);
+
+        activeLayer.pixels = this.main.getPixels();
+        activeLayer.undoManager = this.main.exportUndoManager();
     }
 
     private void loadSelectedLayerPixels()
@@ -735,6 +742,8 @@ public class UITexturePainter extends UIElement
         {
             this.main.fillPixels(layer.pixels, true);
             this.main.setEditing(true);
+            this.main.importUndoManager(layer.undoManager);
+            layer.undoManager = this.main.exportUndoManager();
         }
     }
 
@@ -1059,6 +1068,13 @@ public class UITexturePainter extends UIElement
         this.layersCompositeTexture.updateTexture(composed);
 
         return this.layersCompositeTexture;
+    }
+
+    private Pixels getComposedSavePixels()
+    {
+        this.storeActiveLayerPixels();
+
+        return this.composeVisibleLayers();
     }
 
     private UITextureEditor getHoverEditor(UIContext context)

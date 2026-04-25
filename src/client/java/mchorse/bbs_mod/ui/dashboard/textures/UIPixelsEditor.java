@@ -249,6 +249,18 @@ public class UIPixelsEditor extends UICanvasEditor
         }
     }
 
+    public UndoManager<Pixels> exportUndoManager()
+    {
+        return this.undoManager;
+    }
+
+    public void importUndoManager(UndoManager<Pixels> undoManager)
+    {
+        this.undoManager = undoManager == null ? new UndoManager<>() : undoManager;
+        this.undoManager.setCallback(this::handleUndo);
+        this.pixelsUndo = null;
+    }
+
     public void fillPixels(Pixels pixels)
     {
         this.fillPixels(pixels, false);
