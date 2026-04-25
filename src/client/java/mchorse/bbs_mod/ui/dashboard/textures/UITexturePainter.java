@@ -63,10 +63,13 @@ public class UITexturePainter extends UIElement
     public UIIcon toolEraser;
     public UIIcon toolPick;
     public UIIcon toolFill;
+    public UIIcon toolSquare;
+    public UIIcon toolCircle;
 
     private Supplier<Form> formPreviewSupplier;
     private final Set<Link> touchedPreviewTextures = new HashSet<>();
     private UIPixelsEditor.Tool activeTool = UIPixelsEditor.Tool.BRUSH;
+    private UIPixelsEditor.BrushShape activeBrushShape = UIPixelsEditor.BrushShape.SQUARE;
     private boolean editingPrimary = true;
     private boolean topTabColor = true;
     private boolean bottomTabLayers = true;
@@ -75,8 +78,8 @@ public class UITexturePainter extends UIElement
     {
         this.brightness = new UITrackpad();
         this.brightness.limit(0, 1).setValue(0.7);
-        this.brightness.tooltip(UIKeys.TEXTURES_VIEWER_BRIGHTNESS, Direction.TOP);
-        this.brightness.w(100);
+        this.brightness.tooltip(UIKeys.TEXTURES_VIEWER_BRIGHTNESS, Direction.BOTTOM);
+        this.brightness.w(62);
 
         this.brush = new UITrackpad((v) ->
         {
@@ -90,8 +93,8 @@ public class UITexturePainter extends UIElement
             }
         });
         this.brush.integer().limit(1, 32, true).setValue(1);
-        this.brush.tooltip(UIKeys.TEXTURES_BRUSH_SIZE, Direction.TOP);
-        this.brush.w(100);
+        this.brush.tooltip(UIKeys.TEXTURES_BRUSH_SIZE, Direction.BOTTOM);
+        this.brush.w(44).maxW(44);
 
         this.primary = new UIColor((c) -> {}).noLabel();
         this.primary.direction(Direction.BOTTOM).h(20);
@@ -153,11 +156,39 @@ public class UITexturePainter extends UIElement
                 }
             }
         };
+        this.toolSquare = new UIIcon(Icons.SQUARE, (b) -> this.setBrushShape(UIPixelsEditor.BrushShape.SQUARE))
+        {
+            @Override
+            protected void renderSkin(UIContext context)
+            {
+                super.renderSkin(context);
 
-        this.toolBrush.tooltip(UIKeys.GENERAL_EDIT, Direction.TOP);
-        this.toolEraser.tooltip(UIKeys.TEXTURE_EDITOR_ERASE, Direction.TOP);
-        this.toolPick.tooltip(UIKeys.TEXTURES_KEYS_PICK, Direction.TOP);
-        this.toolFill.tooltip(UIKeys.TEXTURES_KEYS_FILL, Direction.TOP);
+                if (this.isActive())
+                {
+                    context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xff000000 | BBSSettings.primaryColor.get());
+                }
+            }
+        };
+        this.toolCircle = new UIIcon(Icons.CIRCLE, (b) -> this.setBrushShape(UIPixelsEditor.BrushShape.CIRCLE))
+        {
+            @Override
+            protected void renderSkin(UIContext context)
+            {
+                super.renderSkin(context);
+
+                if (this.isActive())
+                {
+                    context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xff000000 | BBSSettings.primaryColor.get());
+                }
+            }
+        };
+
+        this.toolBrush.tooltip(UIKeys.GENERAL_EDIT, Direction.BOTTOM);
+        this.toolEraser.tooltip(UIKeys.TEXTURE_EDITOR_ERASE, Direction.BOTTOM);
+        this.toolPick.tooltip(UIKeys.TEXTURES_KEYS_PICK, Direction.BOTTOM);
+        this.toolFill.tooltip(UIKeys.TEXTURES_KEYS_FILL, Direction.BOTTOM);
+        this.toolSquare.tooltip(UIKeys.KEYFRAMES_SHAPES_SQUARE, Direction.BOTTOM);
+        this.toolCircle.tooltip(UIKeys.KEYFRAMES_SHAPES_CIRCLE, Direction.BOTTOM);
 
         this.main = new UITextureEditor().saveCallback(saveCallback);
         this.configureEditor(this.main);
@@ -167,6 +198,21 @@ public class UITexturePainter extends UIElement
         this.main.resize.removeFromParent();
         this.main.extract.removeFromParent();
         this.main.save.removeFromParent();
+        this.main.resize.tooltip(UIKeys.TEXTURES_RESIZE, Direction.BOTTOM);
+        this.main.extract.tooltip(UIKeys.TEXTURES_EXTRACT_FRAMES_TITLE, Direction.BOTTOM);
+        this.main.save.tooltip(UIKeys.TEXTURES_SAVE, Direction.BOTTOM);
+        this.toolBrush.wh(20, 20).minW(20).maxW(20);
+        this.toolEraser.wh(20, 20).minW(20).maxW(20);
+        this.toolPick.wh(20, 20).minW(20).maxW(20);
+        this.toolFill.wh(20, 20).minW(20).maxW(20);
+        this.toolSquare.wh(20, 20).minW(20).maxW(20);
+        this.toolCircle.wh(20, 20).minW(20).maxW(20);
+        this.main.undo.wh(20, 20).minW(20).maxW(20);
+        this.main.redo.wh(20, 20).minW(20).maxW(20);
+        this.main.resize.wh(20, 20).minW(20).maxW(20);
+        this.main.extract.wh(20, 20).minW(20).maxW(20);
+        this.main.save.wh(20, 20).minW(20).maxW(20);
+        UIElement toolbarSpacer = new UIElement().h(20);
 
         this.headerToolbar = UI.row(
             0,
@@ -174,13 +220,18 @@ public class UITexturePainter extends UIElement
             this.toolEraser,
             this.toolPick,
             this.toolFill.marginRight(8),
+            this.toolSquare,
+            this.toolCircle.marginRight(8),
             this.main.undo,
             this.main.redo,
             this.main.resize,
             this.main.extract,
-            this.main.save
+            this.main.save.marginRight(8),
+            toolbarSpacer,
+            this.brush,
+            this.brightness
         );
-        this.headerToolbar.row().preferred(0);
+        this.headerToolbar.row();
         this.updateToolButtons();
 
         this.add(this.main);
@@ -241,8 +292,8 @@ public class UITexturePainter extends UIElement
         this.tabPalette.relative(this.sidePanel).x(0.5F, 2).y(8).w(0.5F, -10).h(20);
 
         this.colorTabContent = new UIElement();
-        this.colorTabContent.relative(this.sidePanel).xy(8, 34).w(1F, -16).h(168);
-        this.fixedColorPicker.relative(this.colorTabContent).x(0).y(0).w(1F).h(164);
+        this.colorTabContent.relative(this.sidePanel).xy(8, 34).w(1F, -16).h(164);
+        this.fixedColorPicker.relative(this.colorTabContent).x(0).y(0).w(1F).h(1F);
 
         this.primarySlot = new UIButton(IKey.EMPTY, (b) -> this.setEditingPrimary(true))
         {
@@ -325,16 +376,13 @@ public class UITexturePainter extends UIElement
 
         this.paletteTabContent.add(paletteRowOne, paletteRowTwo);
 
-        this.brush.relative(this.sidePanel).xy(8, 206).w(1F, -16);
-        this.brightness.relative(this.sidePanel).xy(8, 230).w(1F, -16);
-
         this.tabImages = new UIButton(IKey.constant("IMAGENES"), (b) -> this.setBottomTab(false));
         this.tabLayers = new UIButton(IKey.constant("CAPAS"), (b) -> this.setBottomTab(true));
-        this.tabImages.relative(this.sidePanel).x(8).y(1F, -54).w(0.5F, -10).h(18);
-        this.tabLayers.relative(this.sidePanel).x(0.5F, 2).y(1F, -54).w(0.5F, -10).h(18);
+        this.tabImages.relative(this.sidePanel).x(8).y(206).w(0.5F, -10).h(18);
+        this.tabLayers.relative(this.sidePanel).x(0.5F, 2).y(206).w(0.5F, -10).h(18);
 
         this.mediaTabContent = new UIElement();
-        this.mediaTabContent.relative(this.sidePanel).x(8).y(1F, -34).w(1F, -16).h(24);
+        this.mediaTabContent.relative(this.sidePanel).x(8).y(226).w(1F, -16).h(24);
 
         this.imageRow = new UIElement()
         {
@@ -386,8 +434,6 @@ public class UITexturePainter extends UIElement
             this.tabPalette,
             this.colorTabContent,
             this.paletteTabContent,
-            this.brush,
-            this.brightness,
             this.tabImages,
             this.tabLayers,
             this.mediaTabContent
@@ -529,6 +575,7 @@ public class UITexturePainter extends UIElement
             })
             .onFillColor((pixel, replace) -> editor.fillColor(pixel, this.getActiveBrushColor(), replace))
             .setTool(this.activeTool)
+            .setBrushShape(this.activeBrushShape)
             .useExternalToolbar();
         editor.setBrushSize((int) this.brush.getValue());
     }
@@ -547,12 +594,28 @@ public class UITexturePainter extends UIElement
         this.updateToolButtons();
     }
 
+    private void setBrushShape(UIPixelsEditor.BrushShape brushShape)
+    {
+        this.activeBrushShape = brushShape == null ? UIPixelsEditor.BrushShape.SQUARE : brushShape;
+
+        this.main.setBrushShape(this.activeBrushShape);
+
+        if (this.reference != null)
+        {
+            this.reference.setBrushShape(this.activeBrushShape);
+        }
+
+        this.updateToolButtons();
+    }
+
     private void updateToolButtons()
     {
         this.toolBrush.active(this.activeTool == UIPixelsEditor.Tool.BRUSH);
         this.toolEraser.active(this.activeTool == UIPixelsEditor.Tool.ERASER);
         this.toolPick.active(this.activeTool == UIPixelsEditor.Tool.PICK);
         this.toolFill.active(this.activeTool == UIPixelsEditor.Tool.FILL);
+        this.toolSquare.active(this.activeBrushShape == UIPixelsEditor.BrushShape.SQUARE);
+        this.toolCircle.active(this.activeBrushShape == UIPixelsEditor.BrushShape.CIRCLE);
     }
 
     public void fillTexture(Link current)
@@ -694,7 +757,7 @@ public class UITexturePainter extends UIElement
             String[] information = {
                 editor.getPixels().width + "x" + editor.getPixels().height + " (" + pixel.x + ", " + pixel.y + ")",
                 "\u00A7cR\u00A7aG\u00A79B\u00A7rA (" + r + ", " + g + ", " + b + ", " + a + ")",
-                "Brush " + editor.getBrushSize() + "x" + editor.getBrushSize(),
+                "Brush " + editor.getBrushSize() + "x" + editor.getBrushSize() + " " + (editor.getBrushShape() == UIPixelsEditor.BrushShape.CIRCLE ? "Circle" : "Square"),
             };
 
             int x = this.area.x + 10;

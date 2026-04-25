@@ -18,6 +18,7 @@ import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.textures.UITexturePainter;
 import mchorse.bbs_mod.ui.framework.UIContext;
+import mchorse.bbs_mod.ui.framework.elements.IUIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
@@ -657,11 +658,29 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
         this.right.add(this.pixelEditor);
 
         this.editorToolbar = this.pixelEditor.getHeaderToolbar();
-        this.editorToolbar.relative(this.textureHeader).x(10).y(TOP_ROW_Y).w(188).h(20);
+        this.editorToolbar.relative(this.textureHeader).x(10).y(TOP_ROW_Y).w(1F, -20).h(20);
         this.editorToolbar.setVisible(false);
         this.textureHeader.add(this.editorToolbar);
         this.editorToolbar.resize();
         this.textureHeader.resize();
+    }
+
+    @Override
+    protected IUIElement childrenKeyPressed(UIContext context)
+    {
+        if (context.isPressed(GLFW.GLFW_KEY_ESCAPE))
+        {
+            if (this.activeTab == TAB_EDITOR || !this.canBeClosed)
+            {
+                return null;
+            }
+
+            this.close();
+
+            return this;
+        }
+
+        return super.childrenKeyPressed(context);
     }
 
     private void openEditorTab(Link link)

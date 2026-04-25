@@ -41,6 +41,12 @@ public class UIPixelsEditor extends UICanvasEditor
         FILL
     }
 
+    public enum BrushShape
+    {
+        SQUARE,
+        CIRCLE
+    }
+
     public UIElement toolbar;
 
     /* Tools */
@@ -54,6 +60,7 @@ public class UIPixelsEditor extends UICanvasEditor
     private Color drawColor;
     private Vector2i lastPixel;
     private int brushSize = 1;
+    private BrushShape brushShape = BrushShape.SQUARE;
 
     protected UndoManager<Pixels> undoManager;
     private PixelsUndo pixelsUndo;
@@ -116,6 +123,11 @@ public class UIPixelsEditor extends UICanvasEditor
         return this.brushSize;
     }
 
+    public BrushShape getBrushShape()
+    {
+        return this.brushShape;
+    }
+
     public UIPixelsEditor useExternalToolbar()
     {
         this.showInternalToolbar = false;
@@ -153,6 +165,13 @@ public class UIPixelsEditor extends UICanvasEditor
     public void setBrushSize(int brushSize)
     {
         this.brushSize = Math.max(1, brushSize);
+    }
+
+    public UIPixelsEditor setBrushShape(BrushShape brushShape)
+    {
+        this.brushShape = brushShape == null ? BrushShape.SQUARE : brushShape;
+
+        return this;
     }
 
     protected void wasChanged()
@@ -370,16 +389,7 @@ public class UIPixelsEditor extends UICanvasEditor
         int pixelX = (int) Math.floor(this.scaleX.from(context.mouseX));
         int pixelY = (int) Math.floor(this.scaleY.from(context.mouseY));
 
-        int brushMinX = pixelX - (this.brushSize - 1) / 2;
-        int brushMinY = pixelY - (this.brushSize - 1) / 2;
-        int brushMaxX = brushMinX + this.brushSize;
-        int brushMaxY = brushMinY + this.brushSize;
-
-        context.batcher.outline(
-            (int) Math.round(this.scaleX.to(brushMinX)), (int) Math.round(this.scaleY.to(brushMinY)),
-            (int) Math.round(this.scaleX.to(brushMaxX)), (int) Math.round(this.scaleY.to(brushMaxY)),
-            Colors.A50
-        );
+        this.renderBrushPreview(context, pixelX, pixelY);
 
         if (this.editing && this.dragging && this.pixelsUndo != null && (this.lastX != context.mouseX || this.lastY != context.mouseY) && (this.mouse == 0 || this.mouse == 1))
         {
@@ -418,9 +428,93 @@ public class UIPixelsEditor extends UICanvasEditor
         {
             for (int j = 0; j < this.brushSize; j++)
             {
-                undo.setColor(this.pixels, minX + i, minY + j, color);
+                if (this.isBrushOffsetInside(i, j))
+                {
+                    undo.setColor(this.pixels, minX + i, minY + j, color);
+                }
             }
         }
+    }
+
+    private boolean isBrushOffsetInside(int offsetX, int offsetY)
+    {
+        if (this.brushShape == BrushShape.SQUARE)
+        {
+            return true;
+        }
+
+        float center = (this.brushSize - 1) / 2F;
+        float radius = Math.max(0.5F, this.brushSize / 2F);
+        float dx = offsetX - center;
+        float dy = offsetY - center;
+
+        return dx * dx + dy * dy <= radius * radius;
+    }
+
+    private void renderBrushPreview(UIContext context, int pixelX, int pixelY)
+    {
+        int brushMinX = pixelX - (this.brushSize - 1) / 2;
+        int brushMinY = pixelY - (this.brushSize - 1) / 2;
+
+        if (this.brushShape == BrushShape.SQUARE)
+        {
+            int brushMaxX = brushMinX + this.brushSize;
+            int brushMaxY = brushMinY + this.brushSize;
+
+            context.batcher.outline(
+                (int) Math.round(this.scaleX.to(brushMinX)), (int) Math.round(this.scaleY.to(brushMinY)),
+                (int) Math.round(this.scaleX.to(brushMaxX)), (int) Math.round(this.scaleY.to(brushMaxY)),
+                Colors.A50
+            );
+
+            return;
+        }
+
+        for (int i = 0; i < this.brushSize; i++)
+        {
+            for (int j = 0; j < this.brushSize; j++)
+            {
+                if (!this.isBrushOffsetInside(i, j))
+                {
+                    continue;
+                }
+
+                int cellMinX = (int) Math.round(this.scaleX.to(brushMinX + i));
+                int cellMinY = (int) Math.round(this.scaleY.to(brushMinY + j));
+                int cellMaxX = (int) Math.round(this.scaleX.to(brushMinX + i + 1));
+                int cellMaxY = (int) Math.round(this.scaleY.to(brushMinY + j + 1));
+
+                if (!this.isBrushOffsetInsideBounds(i - 1, j))
+                {
+                    context.batcher.box(cellMinX, cellMinY, cellMinX + 1, cellMaxY, Colors.A50);
+                }
+
+                if (!this.isBrushOffsetInsideBounds(i + 1, j))
+                {
+                    context.batcher.box(cellMaxX - 1, cellMinY, cellMaxX, cellMaxY, Colors.A50);
+                }
+
+                if (!this.isBrushOffsetInsideBounds(i, j - 1))
+                {
+                    context.batcher.box(cellMinX, cellMinY, cellMaxX, cellMinY + 1, Colors.A50);
+                }
+
+                if (!this.isBrushOffsetInsideBounds(i, j + 1))
+                {
+                    context.batcher.box(cellMinX, cellMaxY - 1, cellMaxX, cellMaxY, Colors.A50);
+                }
+            }
+        }
+    }
+
+    private boolean isBrushOffsetInsideBounds(int offsetX, int offsetY)
+    {
+        if (offsetX < 0 || offsetY < 0 || offsetX >= this.brushSize || offsetY >= this.brushSize)
+        {
+            return false;
+        }
+
+        return this.isBrushOffsetInside(offsetX, offsetY);
     }
 
     @Override
