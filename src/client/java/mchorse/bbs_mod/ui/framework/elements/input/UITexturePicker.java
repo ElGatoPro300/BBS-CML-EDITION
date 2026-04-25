@@ -77,6 +77,7 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
     public UIIcon viewMode;
     public UIIcon previewSettings;
     public UIElement headerIcons;
+    public UIElement editorToolbar;
     public UIFileLinkList picker;
     public UIElement textureHeader;
     public UIElement textureTabs;
@@ -651,9 +652,16 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
             this.openEditorTab(l);
         });
         this.pixelEditor.withFormPreview(this.formPreviewSupplier);
-        this.pixelEditor.relative(this.right).set(0, CONTENT_Y_EDITOR, 0, 0).w(1F).h(1F, -CONTENT_Y_EDITOR);
+        this.pixelEditor.relative(this.right).set(0, CONTENT_Y_FILES, 0, 0).w(1F).h(1F, -CONTENT_Y_FILES);
         this.pixelEditor.resize();
         this.right.add(this.pixelEditor);
+
+        this.editorToolbar = this.pixelEditor.getHeaderToolbar();
+        this.editorToolbar.relative(this.textureHeader).x(10).y(TOP_ROW_Y).w(188).h(20);
+        this.editorToolbar.setVisible(false);
+        this.textureHeader.add(this.editorToolbar);
+        this.editorToolbar.resize();
+        this.textureHeader.resize();
     }
 
     private void openEditorTab(Link link)
@@ -738,6 +746,12 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
     {
         if (this.pixelEditor != null)
         {
+            if (this.editorToolbar != null)
+            {
+                this.editorToolbar.removeFromParent();
+                this.editorToolbar = null;
+            }
+
             this.pixelEditor.discardPreviewTextureChanges();
             this.pixelEditor.fillTexture(null);
             this.pixelEditor.removeFromParent();
@@ -837,13 +851,20 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
             this.pixelEditor.setVisible(editor);
         }
 
-        this.updateContentLayout(editor ? CONTENT_Y_EDITOR : CONTENT_Y_FILES);
+        if (this.editorToolbar != null)
+        {
+            this.editorToolbar.setVisible(editor);
+            this.editorToolbar.resize();
+            this.textureHeader.resize();
+        }
+
+        this.updateContentLayout(CONTENT_Y_FILES);
         this.updateTextureTabs();
     }
 
     private void updateContentLayout(int contentY)
     {
-        int headerHeight = contentY == CONTENT_Y_EDITOR ? TOP_TABS_HEIGHT : HEADER_HEIGHT;
+        int headerHeight = HEADER_HEIGHT;
 
         this.textureHeader.h(headerHeight);
         this.texturePreviewPopup.y(contentY + 2);

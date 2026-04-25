@@ -17,6 +17,7 @@ import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
 import mchorse.bbs_mod.ui.forms.editors.utils.UIFormRenderer;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
+import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.StringUtils;
@@ -32,12 +33,11 @@ import java.util.function.Supplier;
 
 public class UITexturePainter extends UIElement
 {
-    private static final int DIVIDER_BAR_HEIGHT = 30;
     private static final int SIDE_PANEL_WIDTH = 186;
 
     public UITrackpad brightness;
     public UITrackpad brush;
-    public UIElement dividerBar;
+    public UIElement headerToolbar;
     public UIElement sidePanel;
     public UIElement colorTabContent;
     public UIElement paletteTabContent;
@@ -93,20 +93,6 @@ public class UITexturePainter extends UIElement
         this.brush.tooltip(UIKeys.TEXTURES_BRUSH_SIZE, Direction.TOP);
         this.brush.w(100);
 
-        this.dividerBar = new UIElement()
-        {
-            @Override
-            public void render(UIContext context)
-            {
-                this.area.render(context.batcher, Colors.CONTROL_BAR);
-                context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.y + 1, Colors.A50);
-                context.batcher.box(this.area.x, this.area.ey() - 1, this.area.ex(), this.area.ey(), Colors.A75);
-
-                super.render(context);
-            }
-        };
-        this.dividerBar.relative(this).xy(0, 0).w(1F).h(DIVIDER_BAR_HEIGHT).row(4).resize().padding(5);
-
         this.primary = new UIColor((c) -> {}).noLabel();
         this.primary.direction(Direction.BOTTOM).h(20);
         this.secondary = new UIColor((c) -> {}).noLabel();
@@ -115,10 +101,58 @@ public class UITexturePainter extends UIElement
         this.primary.setColor(Colors.WHITE);
         this.secondary.setColor(0);
 
-        this.toolBrush = new UIIcon(Icons.BRUSH, (b) -> this.setActiveTool(UIPixelsEditor.Tool.BRUSH));
-        this.toolEraser = new UIIcon(Icons.ERASER, (b) -> this.setActiveTool(UIPixelsEditor.Tool.ERASER));
-        this.toolPick = new UIIcon(Icons.DROPPER, (b) -> this.setActiveTool(UIPixelsEditor.Tool.PICK));
-        this.toolFill = new UIIcon(Icons.DROP, (b) -> this.setActiveTool(UIPixelsEditor.Tool.FILL));
+        this.toolBrush = new UIIcon(Icons.BRUSH, (b) -> this.setActiveTool(UIPixelsEditor.Tool.BRUSH))
+        {
+            @Override
+            protected void renderSkin(UIContext context)
+            {
+                super.renderSkin(context);
+
+                if (this.isActive())
+                {
+                    context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xff000000 | BBSSettings.primaryColor.get());
+                }
+            }
+        };
+        this.toolEraser = new UIIcon(Icons.ERASER, (b) -> this.setActiveTool(UIPixelsEditor.Tool.ERASER))
+        {
+            @Override
+            protected void renderSkin(UIContext context)
+            {
+                super.renderSkin(context);
+
+                if (this.isActive())
+                {
+                    context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xff000000 | BBSSettings.primaryColor.get());
+                }
+            }
+        };
+        this.toolPick = new UIIcon(Icons.DROPPER, (b) -> this.setActiveTool(UIPixelsEditor.Tool.PICK))
+        {
+            @Override
+            protected void renderSkin(UIContext context)
+            {
+                super.renderSkin(context);
+
+                if (this.isActive())
+                {
+                    context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xff000000 | BBSSettings.primaryColor.get());
+                }
+            }
+        };
+        this.toolFill = new UIIcon(Icons.DROP, (b) -> this.setActiveTool(UIPixelsEditor.Tool.FILL))
+        {
+            @Override
+            protected void renderSkin(UIContext context)
+            {
+                super.renderSkin(context);
+
+                if (this.isActive())
+                {
+                    context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xff000000 | BBSSettings.primaryColor.get());
+                }
+            }
+        };
 
         this.toolBrush.tooltip(UIKeys.GENERAL_EDIT, Direction.TOP);
         this.toolEraser.tooltip(UIKeys.TEXTURE_EDITOR_ERASE, Direction.TOP);
@@ -134,7 +168,8 @@ public class UITexturePainter extends UIElement
         this.main.extract.removeFromParent();
         this.main.save.removeFromParent();
 
-        this.dividerBar.add(
+        this.headerToolbar = UI.row(
+            0,
             this.toolBrush,
             this.toolEraser,
             this.toolPick,
@@ -145,9 +180,10 @@ public class UITexturePainter extends UIElement
             this.main.extract,
             this.main.save
         );
+        this.headerToolbar.row().preferred(0);
         this.updateToolButtons();
 
-        this.add(this.main, this.dividerBar);
+        this.add(this.main);
         this.setupSidePanel();
 
         this.modelPreviewArea = new UIElement();
@@ -180,7 +216,7 @@ public class UITexturePainter extends UIElement
                 super.render(context);
             }
         };
-        this.sidePanel.relative(this).x(1F, -SIDE_PANEL_WIDTH).y(DIVIDER_BAR_HEIGHT + 2).w(SIDE_PANEL_WIDTH).h(1F, -(DIVIDER_BAR_HEIGHT + 2));
+        this.sidePanel.relative(this).x(1F, -SIDE_PANEL_WIDTH).y(0).w(SIDE_PANEL_WIDTH).h(1F);
 
         this.fixedColorPicker = new UITextureInlineColorPicker((color) ->
         {
@@ -546,14 +582,14 @@ public class UITexturePainter extends UIElement
 
         if (this.modelPreviewArea.isVisible())
         {
-            this.main.relative(this).xy(0, DIVIDER_BAR_HEIGHT + 2).w(0.5F, -4).h(1F, -(DIVIDER_BAR_HEIGHT + 2));
+            this.main.relative(this).xy(0, 0).w(0.5F, -4).h(1F);
 
             if (this.reference != null)
             {
                 this.reference.setVisible(false);
             }
 
-            this.modelPreviewArea.relative(this).x(0.5F, 4).y(DIVIDER_BAR_HEIGHT + 8).w(0.5F, -10).h(1F, -(DIVIDER_BAR_HEIGHT + 18));
+            this.modelPreviewArea.relative(this).x(0.5F, 4).y(6).w(0.5F, -10).h(1F, -12);
 
             return;
         }
@@ -562,20 +598,25 @@ public class UITexturePainter extends UIElement
         {
             if (sidePanelVisible)
             {
-                this.main.relative(this).xy(0, DIVIDER_BAR_HEIGHT + 2).w(1F, -(SIDE_PANEL_WIDTH + 4)).h(1F, -(DIVIDER_BAR_HEIGHT + 2));
-                this.sidePanel.relative(this).x(1F, -SIDE_PANEL_WIDTH).y(DIVIDER_BAR_HEIGHT + 2).w(SIDE_PANEL_WIDTH).h(1F, -(DIVIDER_BAR_HEIGHT + 2));
+                this.main.relative(this).xy(0, 0).w(1F, -(SIDE_PANEL_WIDTH + 4)).h(1F);
+                this.sidePanel.relative(this).x(1F, -SIDE_PANEL_WIDTH).y(0).w(SIDE_PANEL_WIDTH).h(1F);
             }
             else
             {
-                this.main.relative(this).xy(0, DIVIDER_BAR_HEIGHT + 2).w(1F).h(1F, -(DIVIDER_BAR_HEIGHT + 2));
+                this.main.relative(this).xy(0, 0).w(1F).h(1F);
             }
         }
         else
         {
-            this.main.relative(this).xy(0, DIVIDER_BAR_HEIGHT + 2).w(0.5F).h(1F, -(DIVIDER_BAR_HEIGHT + 2));
-            this.reference.relative(this).xy(0.5F, DIVIDER_BAR_HEIGHT + 2).w(0.5F).h(1F, -(DIVIDER_BAR_HEIGHT + 2));
+            this.main.relative(this).xy(0, 0).w(0.5F).h(1F);
+            this.reference.relative(this).xy(0.5F, 0).w(0.5F).h(1F);
             this.reference.setVisible(true);
         }
+    }
+
+    public UIElement getHeaderToolbar()
+    {
+        return this.headerToolbar;
     }
 
     private void updateLiveModelPreviewTexture()
