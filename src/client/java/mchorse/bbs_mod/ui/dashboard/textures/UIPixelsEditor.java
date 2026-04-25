@@ -251,7 +251,18 @@ public class UIPixelsEditor extends UICanvasEditor
 
     public void fillPixels(Pixels pixels)
     {
+        this.fillPixels(pixels, false);
+    }
+
+    public void fillPixels(Pixels pixels, boolean preserveView)
+    {
         this.lastPixel = null;
+        double oldZoomX = this.scaleX.getZoom();
+        double oldZoomY = this.scaleY.getZoom();
+        double oldShiftX = this.scaleX.getShift();
+        double oldShiftY = this.scaleY.getShift();
+        int oldW = this.w;
+        int oldH = this.h;
 
         if (this.temporary != null)
         {
@@ -270,6 +281,14 @@ public class UIPixelsEditor extends UICanvasEditor
 
             this.updateTexture();
             this.setSize(pixels.width, pixels.height);
+
+            if (preserveView && oldW == pixels.width && oldH == pixels.height)
+            {
+                this.scaleX.setZoom(oldZoomX);
+                this.scaleY.setZoom(oldZoomY);
+                this.scaleX.setShift(oldShiftX);
+                this.scaleY.setShift(oldShiftY);
+            }
         }
     }
 

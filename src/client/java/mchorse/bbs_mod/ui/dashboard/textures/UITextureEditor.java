@@ -23,6 +23,7 @@ import java.io.File;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.Stack;
 
 public class UITextureEditor extends UIPixelsEditor
@@ -35,6 +36,7 @@ public class UITextureEditor extends UIPixelsEditor
     private boolean dirty;
 
     private Consumer<Link> saveCallback;
+    private Supplier<Texture> renderTextureSupplier;
 
     public UITextureEditor()
     {
@@ -75,6 +77,13 @@ public class UITextureEditor extends UIPixelsEditor
     public UITextureEditor saveCallback(Consumer<Link> saveCallback)
     {
         this.saveCallback = saveCallback;
+
+        return this;
+    }
+
+    public UITextureEditor renderTextureSupplier(Supplier<Texture> renderTextureSupplier)
+    {
+        this.renderTextureSupplier = renderTextureSupplier;
 
         return this;
     }
@@ -266,6 +275,21 @@ public class UITextureEditor extends UIPixelsEditor
     @Override
     protected Texture getRenderTexture(UIContext context)
     {
-        return this.isEditing() ? super.getRenderTexture(context) : context.render.getTextures().getTexture(this.texture);
+        if (this.isEditing())
+        {
+            if (this.renderTextureSupplier != null)
+            {
+                Texture texture = this.renderTextureSupplier.get();
+
+                if (texture != null)
+                {
+                    return texture;
+                }
+            }
+
+            return super.getRenderTexture(context);
+        }
+
+        return context.render.getTextures().getTexture(this.texture);
     }
 }

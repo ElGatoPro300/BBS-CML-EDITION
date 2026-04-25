@@ -12,9 +12,11 @@ import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
+import mchorse.bbs_mod.ui.framework.elements.UIScrollView;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
+import mchorse.bbs_mod.ui.framework.elements.input.UITexturePicker;
 import mchorse.bbs_mod.ui.forms.editors.utils.UIFormRenderer;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
 import mchorse.bbs_mod.ui.utils.UI;
@@ -25,8 +27,13 @@ import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.resources.Pixels;
 import mchorse.bbs_mod.utils.colors.Colors;
 import org.joml.Vector2i;
+import org.lwjgl.opengl.GL11;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -50,6 +57,11 @@ public class UITexturePainter extends UIElement
     public UIButton secondarySlot;
     public UIElement layerRow;
     public UIElement imageRow;
+    public UITrackpad layerOpacity;
+    public UIButton selectTextureButton;
+    public UIIcon addLayerButton;
+    public UIScrollView imageRows;
+    public UIScrollView layerRows;
 
     public UIColor primary;
     public UIColor secondary;
@@ -73,13 +85,153 @@ public class UITexturePainter extends UIElement
     private boolean editingPrimary = true;
     private boolean topTabColor = true;
     private boolean bottomTabLayers = true;
+    private final List<Link> imageTextures = new ArrayList<>();
+    private final List<TextureLayer> layers = new ArrayList<>();
+    private final List<Texture> layerPreviewTextures = new ArrayList<>();
+    private final Map<Link, List<TextureLayer>> layersByTexture = new HashMap<>();
+    private final Map<Link, Integer> selectedLayerByTexture = new HashMap<>();
+    private int selectedImageIndex = -1;
+    private int selectedLayerIndex = -1;
+    private Texture layersCompositeTexture;
+    private Pixels layersCompositePixels;
+
+    private static class TextureLayer
+    {
+        public String name;
+        public float opacity;
+        public boolean visible;
+        public Pixels pixels;
+
+        public TextureLayer(String name, float opacity, boolean visible, Pixels pixels)
+        {
+            this.name = name;
+            this.opacity = opacity;
+            this.visible = visible;
+            this.pixels = pixels;
+        }
+    }
+
+    private List<TextureLayer> copyLayers(List<TextureLayer> source)
+    {
+        List<TextureLayer> copy = new ArrayList<>();
+
+        for (TextureLayer layer : source)
+        {
+            Pixels pixels = this.copyPixels(layer.pixels);
+
+            if (pixels == null && layer.pixels != null && layer.pixels.width > 0 && layer.pixels.height > 0)
+            {
+                pixels = Pixels.fromSize(layer.pixels.width, layer.pixels.height);
+            }
+
+            copy.add(new TextureLayer(layer.name, layer.opacity, layer.visible, pixels));
+        }
+
+        return copy;
+    }
+
+    private Pixels copyPixels(Pixels pixels)
+    {
+        if (pixels == null || pixels.getBuffer() == null || pixels.width <= 0 || pixels.height <= 0)
+        {
+            return null;
+        }
+
+        Pixels copy = Pixels.fromSize(pixels.width, pixels.height);
+
+        copy.draw(pixels, 0, 0, copy.width, copy.height);
+
+        return copy;
+    }
+
+    private void clearLayerPreviewTextures()
+    {
+        for (Texture texture : this.layerPreviewTextures)
+        {
+            if (texture != null && texture.isValid())
+            {
+                texture.delete();
+            }
+        }
+
+        this.layerPreviewTextures.clear();
+    }
+
+    private Texture createLayerPreviewTexture(TextureLayer layer)
+    {
+        if (layer == null || layer.pixels == null || layer.pixels.getBuffer() == null)
+        {
+            return null;
+        }
+
+        Texture previewTexture = new Texture();
+        previewTexture.setFilter(GL11.GL_NEAREST);
+
+        layer.pixels.rewindBuffer();
+        previewTexture.bind();
+        previewTexture.updateTexture(layer.pixels);
+        this.layerPreviewTextures.add(previewTexture);
+
+        return previewTexture;
+    }
+
+    private void saveCurrentTextureLayers()
+    {
+        Link texture = this.main.getTexture();
+
+        if (texture == null)
+        {
+            return;
+        }
+
+        this.storeActiveLayerPixels();
+        this.layersByTexture.put(texture, this.copyLayers(this.layers));
+
+        if (this.selectedLayerIndex >= 0)
+        {
+            this.selectedLayerByTexture.put(texture, this.selectedLayerIndex);
+        }
+        else
+        {
+            this.selectedLayerByTexture.remove(texture);
+        }
+    }
+
+    private void loadTextureLayers(Link texture)
+    {
+        this.layers.clear();
+        this.selectedLayerIndex = -1;
+
+        if (texture == null)
+        {
+            this.ensureDefaultLayer();
+
+            return;
+        }
+
+        List<TextureLayer> storedLayers = this.layersByTexture.get(texture);
+
+        if (storedLayers == null || storedLayers.isEmpty())
+        {
+            this.ensureDefaultLayer();
+            this.layersByTexture.put(texture, this.copyLayers(this.layers));
+
+            return;
+        }
+
+        this.layers.addAll(this.copyLayers(storedLayers));
+
+        int selected = this.selectedLayerByTexture.getOrDefault(texture, this.layers.size() - 1);
+        this.selectedLayerIndex = Math.max(0, Math.min(selected, this.layers.size() - 1));
+        this.layerOpacity.setValue(Math.round(this.layers.get(this.selectedLayerIndex).opacity * 100F));
+    }
 
     public UITexturePainter(Consumer<Link> saveCallback)
     {
         this.brightness = new UITrackpad();
         this.brightness.limit(0, 1).setValue(0.7);
         this.brightness.tooltip(UIKeys.TEXTURES_VIEWER_BRIGHTNESS, Direction.BOTTOM);
-        this.brightness.w(62);
+        this.brightness.w(52).maxW(52);
 
         this.brush = new UITrackpad((v) ->
         {
@@ -94,7 +246,7 @@ public class UITexturePainter extends UIElement
         });
         this.brush.integer().limit(1, 32, true).setValue(1);
         this.brush.tooltip(UIKeys.TEXTURES_BRUSH_SIZE, Direction.BOTTOM);
-        this.brush.w(44).maxW(44);
+        this.brush.w(40).maxW(40);
 
         this.primary = new UIColor((c) -> {}).noLabel();
         this.primary.direction(Direction.BOTTOM).h(20);
@@ -191,6 +343,7 @@ public class UITexturePainter extends UIElement
         this.toolCircle.tooltip(UIKeys.KEYFRAMES_SHAPES_CIRCLE, Direction.BOTTOM);
 
         this.main = new UITextureEditor().saveCallback(saveCallback);
+        this.main.renderTextureSupplier(this::getComposedEditorTexture);
         this.configureEditor(this.main);
         this.main.full(this);
         this.main.undo.removeFromParent();
@@ -212,9 +365,8 @@ public class UITexturePainter extends UIElement
         this.main.resize.wh(20, 20).minW(20).maxW(20);
         this.main.extract.wh(20, 20).minW(20).maxW(20);
         this.main.save.wh(20, 20).minW(20).maxW(20);
-        UIElement toolbarSpacer = new UIElement().h(20);
-
-        this.headerToolbar = UI.row(
+        this.headerToolbar = new UIElement();
+        UIElement toolsGroup = UI.row(
             0,
             this.toolBrush,
             this.toolEraser,
@@ -226,12 +378,15 @@ public class UITexturePainter extends UIElement
             this.main.redo,
             this.main.resize,
             this.main.extract,
-            this.main.save.marginRight(8),
-            toolbarSpacer,
-            this.brush,
-            this.brightness
+            this.main.save
         );
-        this.headerToolbar.row();
+        toolsGroup.row(0).width(20);
+        toolsGroup.relative(this.headerToolbar).xy(0, 0).h(20).w(1F, -108);
+
+        UIElement controlsGroup = UI.row(0, this.brush.marginRight(4), this.brightness);
+        controlsGroup.relative(this.headerToolbar).x(1F, -96).y(0).wh(96, 20);
+
+        this.headerToolbar.add(toolsGroup, controlsGroup);
         this.updateToolButtons();
 
         this.add(this.main);
@@ -382,52 +537,44 @@ public class UITexturePainter extends UIElement
         this.tabLayers.relative(this.sidePanel).x(0.5F, 2).y(206).w(0.5F, -10).h(18);
 
         this.mediaTabContent = new UIElement();
-        this.mediaTabContent.relative(this.sidePanel).x(8).y(226).w(1F, -16).h(24);
+        this.mediaTabContent.relative(this.sidePanel).x(8).y(226).w(1F, -16).h(1F, -234);
 
-        this.imageRow = new UIElement()
+        this.imageRow = new UIElement();
+        this.imageRow.relative(this.mediaTabContent).full(this.mediaTabContent);
+
+        this.selectTextureButton = new UIButton(IKey.constant("Seleccionar textura"), (b) -> this.openTextureSelector());
+        this.selectTextureButton.relative(this.imageRow).xy(0, 0).w(1F).h(20).tooltip(IKey.constant("Abrir selector de texturas"), Direction.BOTTOM);
+
+        this.imageRows = UI.scrollView(2, 0);
+        this.imageRows.relative(this.imageRow).xy(0, 24).w(1F).h(1F, -24);
+
+        this.imageRow.add(this.selectTextureButton, this.imageRows);
+
+        this.layerRow = new UIElement();
+        this.layerRow.relative(this.mediaTabContent).full(this.mediaTabContent);
+
+        this.addLayerButton = new UIIcon(Icons.ADD, (b) -> this.addLayer());
+        this.addLayerButton.wh(20, 20).tooltip(IKey.constant("Crear capa"), Direction.BOTTOM);
+        this.addLayerButton.relative(this.layerRow).xy(0, 0);
+
+        this.layerOpacity = new UITrackpad((v) ->
         {
-            @Override
-            public void render(UIContext context)
+            if (this.selectedLayerIndex >= 0 && this.selectedLayerIndex < this.layers.size())
             {
-                this.area.render(context.batcher, Colors.A50);
-                context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), Colors.A75);
-                context.batcher.icon(Icons.IMAGE, Colors.WHITE, this.area.x + 8, this.area.my(), 0F, 0.5F);
-                context.batcher.text("imagen", this.area.x + 24, this.area.my(11), 0xdadada, false);
-
-                super.render(context);
+                float opacity = Math.max(0F, Math.min(1F, v.floatValue() / 100F));
+                this.layers.get(this.selectedLayerIndex).opacity = opacity;
+                this.refreshLayerRows();
             }
-        };
-        this.imageRow.relative(this.mediaTabContent).xy(0, 0).w(1F).h(22);
+        });
+        this.layerOpacity.integer().limit(0, 100, true);
+        this.layerOpacity.setValue(100);
+        this.layerOpacity.tooltip(IKey.constant("Opacidad de capa"), Direction.BOTTOM);
+        this.layerOpacity.relative(this.layerRow).x(1F, -58).y(0).w(58).h(20);
 
-        this.layerRow = new UIElement()
-        {
-            @Override
-            public void render(UIContext context)
-            {
-                this.area.render(context.batcher, Colors.A50);
-                context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), Colors.A75);
-                context.batcher.icon(Icons.IMAGE, Colors.WHITE, this.area.x + 8, this.area.my(), 0F, 0.5F);
+        this.layerRows = UI.scrollView(2, 0);
+        this.layerRows.relative(this.layerRow).xy(0, 24).w(1F).h(1F, -24);
 
-                String label = "layer";
-                Link texture = UITexturePainter.this.main.getTexture();
-
-                if (texture != null)
-                {
-                    String fileName = StringUtils.fileName(texture.path);
-
-                    if (fileName != null && !fileName.isEmpty())
-                    {
-                        label = fileName;
-                    }
-                }
-
-                context.batcher.text(label, this.area.x + 24, this.area.my(11), 0xdadada, false);
-
-                super.render(context);
-            }
-        };
-        this.layerRow.relative(this.mediaTabContent).xy(0, 0).w(1F).h(22);
-
+        this.layerRow.add(this.addLayerButton, this.layerOpacity, this.layerRows);
         this.mediaTabContent.add(this.imageRow, this.layerRow);
         this.sidePanel.add(
             this.tabColor,
@@ -441,6 +588,8 @@ public class UITexturePainter extends UIElement
         this.fixedColorPicker.setColor(this.primary.picker.color.getRGBColor());
         this.setTopTab(true);
         this.setBottomTab(true);
+        this.ensureDefaultLayer();
+        this.refreshLayerRows();
         this.updateColorSlots();
         this.add(this.sidePanel);
     }
@@ -507,6 +656,409 @@ public class UITexturePainter extends UIElement
 
         this.tabLayers.background(layers).textColor(layers ? Colors.WHITE : 0xb0b0b0, false);
         this.tabImages.background(!layers).textColor(layers ? 0xb0b0b0 : Colors.WHITE, false);
+    }
+
+    private void openTextureSelector()
+    {
+        UITexturePicker.open(this.getContext(), this.main.getTexture(), (link) ->
+        {
+            if (link == null)
+            {
+                return;
+            }
+
+            this.addImageTexture(link, true);
+            this.fillTexture(link);
+        });
+    }
+
+    private void ensureDefaultLayer()
+    {
+        if (this.layers.isEmpty())
+        {
+            this.layers.add(new TextureLayer("layer", 1F, true, this.main.getPixels()));
+            this.selectedLayerIndex = 0;
+            this.layerOpacity.setValue(100);
+        }
+    }
+
+    private void addLayer()
+    {
+        this.storeActiveLayerPixels();
+
+        String name = this.layers.isEmpty() ? "layer" : "layer_" + this.layers.size();
+        Pixels pixels = this.createTransparentLayerPixels();
+        this.layers.add(new TextureLayer(name, 1F, true, pixels));
+        this.selectedLayerIndex = this.layers.size() - 1;
+        this.layerOpacity.setValue(100);
+        this.loadSelectedLayerPixels();
+        this.refreshLayerRows();
+    }
+
+    private Pixels createTransparentLayerPixels()
+    {
+        Pixels current = this.main.getPixels();
+
+        if (current == null)
+        {
+            return null;
+        }
+
+        return Pixels.fromSize(current.width, current.height);
+    }
+
+    private void storeActiveLayerPixels()
+    {
+        if (this.selectedLayerIndex < 0 || this.selectedLayerIndex >= this.layers.size())
+        {
+            return;
+        }
+
+        this.layers.get(this.selectedLayerIndex).pixels = this.main.getPixels();
+    }
+
+    private void loadSelectedLayerPixels()
+    {
+        if (this.selectedLayerIndex < 0 || this.selectedLayerIndex >= this.layers.size())
+        {
+            return;
+        }
+
+        TextureLayer layer = this.layers.get(this.selectedLayerIndex);
+
+        if (layer.pixels == null)
+        {
+            layer.pixels = this.createTransparentLayerPixels();
+        }
+
+        if (layer.pixels != null)
+        {
+            this.main.fillPixels(layer.pixels, true);
+            this.main.setEditing(true);
+        }
+    }
+
+    private void selectLayer(int index)
+    {
+        if (index < 0 || index >= this.layers.size())
+        {
+            return;
+        }
+
+        this.storeActiveLayerPixels();
+        this.selectedLayerIndex = index;
+        this.layerOpacity.setValue(Math.round(this.layers.get(index).opacity * 100F));
+        this.loadSelectedLayerPixels();
+        this.refreshLayerRows();
+    }
+
+    private void toggleLayerVisibility(int index)
+    {
+        if (index < 0 || index >= this.layers.size())
+        {
+            return;
+        }
+
+        TextureLayer layer = this.layers.get(index);
+        layer.visible = !layer.visible;
+
+        if (!layer.visible && this.selectedLayerIndex == index)
+        {
+            int next = this.findVisibleLayerIndex();
+
+            if (next >= 0)
+            {
+                this.selectLayer(next);
+
+                return;
+            }
+        }
+
+        this.refreshLayerRows();
+    }
+
+    private int findVisibleLayerIndex()
+    {
+        for (int i = this.layers.size() - 1; i >= 0; i--)
+        {
+            if (this.layers.get(i).visible)
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    private void addImageTexture(Link texture, boolean select)
+    {
+        if (texture == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < this.imageTextures.size(); i++)
+        {
+            if (texture.equals(this.imageTextures.get(i)))
+            {
+                if (select)
+                {
+                    this.selectedImageIndex = i;
+                }
+
+                this.refreshImageRows();
+
+                return;
+            }
+        }
+
+        this.imageTextures.add(texture);
+
+        if (select)
+        {
+            this.selectedImageIndex = this.imageTextures.size() - 1;
+        }
+
+        this.refreshImageRows();
+    }
+
+    private void refreshImageRows()
+    {
+        if (this.imageRows == null)
+        {
+            return;
+        }
+
+        this.imageRows.removeAll();
+
+        for (int i = 0; i < this.imageTextures.size(); i++)
+        {
+            final int index = i;
+            Link texture = this.imageTextures.get(i);
+            String name = StringUtils.fileName(texture.path);
+
+            if (name == null || name.isEmpty())
+            {
+                name = texture.toString();
+            }
+
+            UIElement row = new UIElement()
+            {
+                @Override
+                public void render(UIContext context)
+                {
+                    boolean selected = index == UITexturePainter.this.selectedImageIndex;
+                    int color = selected ? (Colors.A50 | BBSSettings.primaryColor.get()) : Colors.A25;
+
+                    this.area.render(context.batcher, color);
+                    super.render(context);
+                }
+            };
+            row.relative(this.imageRows).x(0).y(i * 22).w(1F, -8).h(20);
+
+            UIElement preview = new UIElement()
+            {
+                @Override
+                public void render(UIContext context)
+                {
+                    super.render(context);
+
+                    context.batcher.iconArea(Icons.CHECKBOARD, Colors.A50, this.area.x, this.area.y, this.area.w, this.area.h);
+                    context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), Colors.A100);
+
+                    Texture thumbnail = BBSModClient.getTextures().getTexture(texture);
+
+                    if (thumbnail != null && thumbnail.isValid())
+                    {
+                        context.batcher.fullTexturedBox(thumbnail, this.area.x, this.area.y, this.area.w, this.area.h);
+                    }
+                }
+            };
+            preview.relative(row).xy(2, 2).wh(16, 16);
+
+            UIButton select = new UIButton(IKey.constant(name), (b) ->
+            {
+                this.selectedImageIndex = index;
+                this.fillTexture(this.imageTextures.get(index));
+            });
+            select.relative(row).x(20).y(0).w(1F, -20).h(20);
+            select.background(false).textColor(index == this.selectedImageIndex ? Colors.WHITE : 0xd0d0d0, false);
+            select.tooltip(IKey.constant(texture.toString()), Direction.BOTTOM);
+
+            row.add(preview, select);
+            this.imageRows.add(row);
+        }
+
+        this.imageRows.resize();
+    }
+
+    private void refreshLayerRows()
+    {
+        if (this.layerRows == null)
+        {
+            return;
+        }
+
+        this.clearLayerPreviewTextures();
+        this.layerRows.removeAll();
+
+        int count = this.layers.size();
+
+        for (int rowIndex = 0; rowIndex < count; rowIndex++)
+        {
+            final int index = count - 1 - rowIndex;
+            TextureLayer layer = this.layers.get(index);
+            int opacity = Math.round(layer.opacity * 100F);
+            String text = (rowIndex + 1) + ". " + layer.name + " (" + opacity + "%)";
+
+            UIElement row = new UIElement()
+            {
+                @Override
+                public void render(UIContext context)
+                {
+                    boolean selected = index == UITexturePainter.this.selectedLayerIndex;
+                    int color = selected ? (Colors.A50 | BBSSettings.primaryColor.get()) : Colors.A25;
+
+                    this.area.render(context.batcher, color);
+                    super.render(context);
+                }
+            };
+            row.relative(this.layerRows).x(0).y(rowIndex * 26).w(1F, -8).h(24);
+            Texture previewTexture = this.createLayerPreviewTexture(layer);
+
+            UIElement preview = new UIElement()
+            {
+                @Override
+                public void render(UIContext context)
+                {
+                    super.render(context);
+
+                    context.batcher.iconArea(Icons.CHECKBOARD, Colors.A50, this.area.x, this.area.y, this.area.w, this.area.h);
+                    context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), Colors.A100);
+
+                    if (previewTexture != null && previewTexture.isValid())
+                    {
+                        int alpha = Math.max(0, Math.min(255, Math.round(layer.opacity * 255F)));
+
+                        context.batcher.fullTexturedBox(previewTexture, (alpha << 24) | 0x00ffffff, this.area.x, this.area.y, this.area.w, this.area.h);
+                    }
+                }
+            };
+            preview.relative(row).xy(2, 2).wh(20, 20);
+
+            UIButton select = new UIButton(IKey.constant(text), (b) -> this.selectLayer(index));
+            select.relative(row).x(24).y(0).w(1F, -44).h(24);
+            select.background(false).textColor(index == this.selectedLayerIndex ? Colors.WHITE : 0xd0d0d0, false);
+
+            UIIcon visibility = new UIIcon(() -> layer.visible ? Icons.VISIBLE : Icons.INVISIBLE, (b) -> this.toggleLayerVisibility(index));
+            visibility.relative(row).x(1F, -20).y(0).wh(20, 20);
+            visibility.tooltip(IKey.constant(layer.visible ? "Ocultar capa" : "Mostrar capa"), Direction.LEFT);
+
+            row.add(preview, select, visibility);
+            this.layerRows.add(row);
+        }
+
+        this.layerRows.resize();
+    }
+
+    private Pixels composeVisibleLayers()
+    {
+        Pixels base = this.main.getPixels();
+
+        if (base == null)
+        {
+            return null;
+        }
+
+        if (this.layersCompositePixels == null || this.layersCompositePixels.width != base.width || this.layersCompositePixels.height != base.height)
+        {
+            if (this.layersCompositePixels != null)
+            {
+                this.layersCompositePixels.delete();
+            }
+
+            this.layersCompositePixels = Pixels.fromSize(base.width, base.height);
+        }
+
+        Pixels composed = this.layersCompositePixels;
+        composed.drawRect(0, 0, composed.width, composed.height, 0);
+        Color output = new Color();
+
+        for (int i = 0; i < this.layers.size(); i++)
+        {
+            TextureLayer layer = this.layers.get(i);
+
+            if (!layer.visible || layer.opacity <= 0F || layer.pixels == null)
+            {
+                continue;
+            }
+
+            Pixels source = layer.pixels;
+
+            if (source.getBuffer() == null)
+            {
+                continue;
+            }
+
+            for (int x = 0; x < composed.width; x++)
+            {
+                for (int y = 0; y < composed.height; y++)
+                {
+                    Color src = source.getColor(x, y);
+
+                    if (src == null)
+                    {
+                        continue;
+                    }
+
+                    float alpha = src.a * layer.opacity;
+
+                    if (alpha <= 0F)
+                    {
+                        continue;
+                    }
+
+                    Color dst = composed.getColor(x, y);
+                    float outA = alpha + dst.a * (1F - alpha);
+
+                    if (outA <= 0F)
+                    {
+                        continue;
+                    }
+
+                    output.a = outA;
+                    output.r = (src.r * alpha + dst.r * dst.a * (1F - alpha)) / outA;
+                    output.g = (src.g * alpha + dst.g * dst.a * (1F - alpha)) / outA;
+                    output.b = (src.b * alpha + dst.b * dst.a * (1F - alpha)) / outA;
+                    composed.setColor(x, y, output);
+                }
+            }
+        }
+
+        return composed;
+    }
+
+    private Texture getComposedEditorTexture()
+    {
+        this.storeActiveLayerPixels();
+        Pixels composed = this.composeVisibleLayers();
+
+        if (composed == null)
+        {
+            return null;
+        }
+
+        if (this.layersCompositeTexture == null || !this.layersCompositeTexture.isValid())
+        {
+            this.layersCompositeTexture = new Texture();
+            this.layersCompositeTexture.setFilter(GL11.GL_NEAREST);
+        }
+
+        composed.rewindBuffer();
+        this.layersCompositeTexture.bind();
+        this.layersCompositeTexture.updateTexture(composed);
+
+        return this.layersCompositeTexture;
     }
 
     private UITextureEditor getHoverEditor(UIContext context)
@@ -620,8 +1172,14 @@ public class UITexturePainter extends UIElement
 
     public void fillTexture(Link current)
     {
+        this.saveCurrentTextureLayers();
         this.main.fillTexture(current);
         this.main.setEditing(true);
+        this.addImageTexture(current, true);
+        this.loadTextureLayers(current);
+        this.loadSelectedLayerPixels();
+        this.refreshLayerRows();
+        this.saveCurrentTextureLayers();
         this.refreshModelPreview();
     }
 
@@ -690,7 +1248,8 @@ public class UITexturePainter extends UIElement
         }
 
         Link textureLink = this.main.getTexture();
-        Pixels pixels = this.main.getPixels();
+        this.storeActiveLayerPixels();
+        Pixels pixels = this.composeVisibleLayers();
 
         if (textureLink == null || pixels == null)
         {
