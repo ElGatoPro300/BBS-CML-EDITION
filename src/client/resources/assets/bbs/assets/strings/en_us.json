@@ -1552,6 +1552,8 @@
     "bbs.ui.texture.painter.open_texture_picker": "Open texture picker",
     "bbs.ui.texture.painter.add_layer": "Create layer",
     "bbs.ui.texture.painter.layer_opacity": "Layer opacity",
+    "bbs.ui.texture.painter.hide_layer": "Hide layer",
+    "bbs.ui.texture.painter.show_layer": "Show layer",
     "bbs.ui.texture.find-title": "Find texture",
     "bbs.ui.texture.keys.find_all": "Find all texture paths",
     "bbs.ui.texture.multiskin": "Multi-skin",

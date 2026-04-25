@@ -1525,6 +1525,8 @@
     "bbs.ui.texture.painter.open_texture_picker": "Abrir selector de texturas",
     "bbs.ui.texture.painter.add_layer": "Crear capa",
     "bbs.ui.texture.painter.layer_opacity": "Opacidad de capa",
+    "bbs.ui.texture.painter.hide_layer": "Ocultar capa",
+    "bbs.ui.texture.painter.show_layer": "Mostrar capa",
     "bbs.ui.texture.find-title": "Buscar textura",
     "bbs.ui.texture.keys.find_all": "Encontrar todas las rutas de textura",
     "bbs.ui.texture.multiskin": "Multi-skin",

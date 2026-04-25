@@ -1286,6 +1286,8 @@ public class UIKeys
     public static final IKey TEXTURE_PAINTER_OPEN_TEXTURE_PICKER = L10n.lang("bbs.ui.texture.painter.open_texture_picker");
     public static final IKey TEXTURE_PAINTER_ADD_LAYER = L10n.lang("bbs.ui.texture.painter.add_layer");
     public static final IKey TEXTURE_PAINTER_LAYER_OPACITY = L10n.lang("bbs.ui.texture.painter.layer_opacity");
+    public static final IKey TEXTURE_PAINTER_HIDE_LAYER = L10n.lang("bbs.ui.texture.painter.hide_layer");
+    public static final IKey TEXTURE_PAINTER_SHOW_LAYER = L10n.lang("bbs.ui.texture.painter.show_layer");
     public static final IKey TEXTURE_FIND_TITLE = L10n.lang("bbs.ui.texture.find-title");
     public static final IKey TEXTURE_KEYS_FIND_ALL = L10n.lang("bbs.ui.texture.keys.find_all");
     public static final IKey TEXTURE_MULTISKIN = L10n.lang("bbs.ui.texture.multiskin");

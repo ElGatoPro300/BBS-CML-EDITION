@@ -961,7 +961,7 @@ public class UITexturePainter extends UIElement
 
             UIIcon visibility = new UIIcon(() -> layer.visible ? Icons.VISIBLE : Icons.INVISIBLE, (b) -> this.toggleLayerVisibility(index));
             visibility.relative(row).x(1F, -20).y(0).wh(20, 20);
-            visibility.tooltip(IKey.constant(layer.visible ? "Ocultar capa" : "Mostrar capa"), Direction.LEFT);
+            visibility.tooltip(layer.visible ? UIKeys.TEXTURE_PAINTER_HIDE_LAYER : UIKeys.TEXTURE_PAINTER_SHOW_LAYER, Direction.LEFT);
 
             row.add(preview, select, visibility);
             this.layerRows.add(row);
