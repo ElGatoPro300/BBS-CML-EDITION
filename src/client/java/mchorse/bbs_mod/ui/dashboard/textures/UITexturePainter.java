@@ -4,7 +4,9 @@ import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.forms.Form;
+import mchorse.bbs_mod.forms.forms.ModelForm;
 import mchorse.bbs_mod.graphics.texture.Texture;
+import mchorse.bbs_mod.graphics.texture.TextureManager;
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.resources.Link;
@@ -43,6 +45,8 @@ import java.util.function.Supplier;
 public class UITexturePainter extends UIElement
 {
     private static final int SIDE_PANEL_WIDTH = 186;
+    private static final int MODEL_PREVIEW_LEFT_WIDTH = 220;
+    private static final int MODEL_PREVIEW_GAP = 6;
 
     public UITrackpad brightness;
     public UITrackpad brush;
@@ -1276,19 +1280,22 @@ public class UITexturePainter extends UIElement
 
     private void updateEditorsLayout()
     {
-        boolean sidePanelVisible = !this.modelPreviewArea.isVisible() && this.reference == null;
+        boolean sidePanelVisible = this.reference == null || this.modelPreviewArea.isVisible();
         this.sidePanel.setVisible(sidePanelVisible);
 
         if (this.modelPreviewArea.isVisible())
         {
-            this.main.relative(this).xy(0, 0).w(0.5F, -4).h(1F);
+            this.modelPreviewArea.relative(this).x(0).y(6).w(MODEL_PREVIEW_LEFT_WIDTH).h(1F, -12);
+            this.sidePanel.relative(this).x(1F, -SIDE_PANEL_WIDTH).y(0).w(SIDE_PANEL_WIDTH).h(1F);
+            this.main.relative(this)
+                .xy(MODEL_PREVIEW_LEFT_WIDTH + MODEL_PREVIEW_GAP, 0)
+                .w(1F, -(SIDE_PANEL_WIDTH + MODEL_PREVIEW_LEFT_WIDTH + MODEL_PREVIEW_GAP + 4))
+                .h(1F);
 
             if (this.reference != null)
             {
                 this.reference.setVisible(false);
             }
-
-            this.modelPreviewArea.relative(this).x(0.5F, 4).y(6).w(0.5F, -10).h(1F, -12);
 
             return;
         }
@@ -1318,7 +1325,29 @@ public class UITexturePainter extends UIElement
         return this.headerToolbar;
     }
 
-    private void updateLiveModelPreviewTexture()
+    private boolean updatePreviewTexture(TextureManager manager, Link textureLink, Pixels pixels)
+    {
+        if (manager == null)
+        {
+            return false;
+        }
+
+        Texture texture = manager.getTexture(textureLink, GL11.GL_NEAREST, true);
+
+        if (texture == null || texture == manager.getError())
+        {
+            return false;
+        }
+
+        pixels.rewindBuffer();
+        texture.bind();
+        texture.updateTexture(pixels);
+        this.touchedPreviewTextures.add(textureLink);
+
+        return true;
+    }
+
+    private void updateLiveModelPreviewTexture(UIContext context)
     {
         if (!this.modelPreviewArea.isVisible() || this.formPreviewSupplier == null)
         {
@@ -1334,17 +1363,22 @@ public class UITexturePainter extends UIElement
             return;
         }
 
-        Texture texture = BBSModClient.getTextures().getTexture(textureLink);
-
-        if (texture == null)
+        if (this.modelPreview.form instanceof ModelForm modelForm)
         {
-            return;
+            modelForm.texture.set(textureLink);
         }
 
-        pixels.rewindBuffer();
-        texture.bind();
-        texture.updateTexture(pixels);
-        this.touchedPreviewTextures.add(textureLink);
+        boolean updated = this.updatePreviewTexture(context == null ? null : context.render.getTextures(), textureLink, pixels);
+
+        if (context == null || context.render.getTextures() != BBSModClient.getTextures())
+        {
+            updated = this.updatePreviewTexture(BBSModClient.getTextures(), textureLink, pixels) || updated;
+        }
+
+        if (!updated)
+        {
+            this.updatePreviewTexture(BBSModClient.getTextures(), textureLink, pixels);
+        }
     }
 
     public void discardPreviewTextureChanges()
@@ -1361,7 +1395,7 @@ public class UITexturePainter extends UIElement
     public void render(UIContext context)
     {
         this.updateEditorsLayout();
-        this.updateLiveModelPreviewTexture();
+        this.updateLiveModelPreviewTexture(context);
 
         if (this.modelPreviewArea.isVisible())
         {
