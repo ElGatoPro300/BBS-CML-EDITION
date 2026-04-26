@@ -717,6 +717,7 @@ public class UITexturePainter extends UIElement
             this.fillTexture(link);
         });
         picker.disablePixelEditor();
+        picker.disableMultiSkin();
         content.add(picker);
         popup.add(content);
         overlay.add(popup);

@@ -113,6 +113,7 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
     private String typed = "";
     private boolean canBeClosed = true;
     private boolean pixelEditorEnabled = true;
+    private boolean multiSkinEnabled = true;
     private Supplier<Form> formPreviewSupplier;
     private static final int FORM_PREVIEW_WIDTH = 150;
     private static final int LIST_ITEM_SIZE_SMALL = 16;
@@ -120,6 +121,9 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
     private static final int TOP_TABS_HEIGHT = 20;
     private static final int HEADER_HEIGHT = 44;
     private static final int TOP_ROW_Y = 22;
+    private static final int MULTI_BUTTON_WIDTH = 100;
+    private static final int MULTI_SIDEBAR_WIDTH = 120;
+    private static final int MULTI_SIDEBAR_TOP_GAP = 4;
     private static final int CONTENT_Y_FILES = HEADER_HEIGHT + 4;
     private static final int CONTENT_Y_EDITOR = TOP_TABS_HEIGHT + 2;
     private static final int TAB_FILES = 0;
@@ -440,22 +444,22 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
         this.headerIcons.relative(this.textureHeader).x(1F, -10).y(TOP_ROW_Y).w(100).h(20).anchorX(1F);
 
         this.right.full(this);
-        this.text.relative(this.textureHeader).set(10, TOP_ROW_Y, 0, 20).wTo(this.headerIcons.area);
+        this.multi.relative(this.textureHeader).set(10, TOP_ROW_Y, MULTI_BUTTON_WIDTH, 20);
+        this.text.relative(this.textureHeader).set(10 + MULTI_BUTTON_WIDTH + 4, TOP_ROW_Y, 0, 20).wTo(this.headerIcons.area);
         this.picker.relative(this.right).set(10, CONTENT_Y_FILES, 0, 0).w(1F, -10).h(1F, -CONTENT_Y_FILES);
         this.formPreviewArea.relative(this.right).x(1F, -FORM_PREVIEW_WIDTH).y(CONTENT_Y_FILES).w(FORM_PREVIEW_WIDTH - 10).h(1F, -(CONTENT_Y_FILES + 10));
 
-        this.multi.relative(this).set(10, 10, 100, 20);
-        this.multiList.relative(this).set(10, 35, 100, 0).hTo(this.buttons.getFlex());
+        this.multiList.relative(this).set(10, HEADER_HEIGHT + MULTI_SIDEBAR_TOP_GAP, MULTI_SIDEBAR_WIDTH - 20, 0).hTo(this.buttons.getFlex());
         this.editor.relative(this).set(120, 0, 0, 0).w(1F, -120).h(1F);
 
-        this.buttons.relative(this).y(1F, -20).wTo(this.right.area).h(20);
+        this.buttons.relative(this).x(0).y(1F, -20).w(MULTI_SIDEBAR_WIDTH).h(20);
         this.add.relative(this.buttons).set(0, 0, 20, 20);
         this.remove.relative(this.add).set(20, 0, 20, 20);
         this.edit.relative(this.buttons).wh(20, 20).x(1F, -20);
 
-        this.right.add(this.textureHeader, this.headerIcons, this.text, this.picker, this.formPreviewArea, this.texturePreviewPopup);
+        this.right.add(this.textureHeader, this.headerIcons, this.multi, this.text, this.picker, this.formPreviewArea, this.texturePreviewPopup);
         this.buttons.add(this.add, this.remove, this.edit);
-        this.add(this.multi, this.multiList, this.right, this.editor, this.buttons);
+        this.add(this.multiList, this.right, this.editor, this.buttons);
         this.setActiveTab(TAB_FILES);
 
         this.callback = callback;
@@ -498,6 +502,20 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
     {
         this.pixelEditorEnabled = false;
         this.pixelEdit.removeFromParent();
+
+        return this;
+    }
+
+    public UITexturePicker disableMultiSkin()
+    {
+        this.multiSkinEnabled = false;
+        this.multiLink = null;
+        this.multi.setVisible(false);
+        this.multiList.setVisible(false);
+        this.buttons.setVisible(false);
+        this.updateHeaderRowLayout();
+        this.updateMultiSidebarLayout(false);
+        this.resize();
 
         return this;
     }
@@ -640,7 +658,7 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
 
     public void togglePixelEditor()
     {
-        if (!this.pixelEditorEnabled || this.current == null || this.multiLink != null)
+        if (!this.pixelEditorEnabled || this.current == null)
         {
             return;
         }
@@ -856,6 +874,8 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
 
         boolean files = tab == TAB_FILES;
         boolean editor = tab == TAB_EDITOR && this.pixelEditor != null;
+        boolean showMultiButton = files && this.multiSkinEnabled;
+        boolean showMultiSidebar = files && this.multiSkinEnabled && this.multiLink != null;
 
         this.text.setVisible(files);
         this.picker.setVisible(files);
@@ -863,9 +883,9 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
         this.viewMode.setVisible(files);
         this.pixelEdit.setVisible(files);
         this.folder.setVisible(files);
-        this.multi.setVisible(!editor);
-        this.multiList.setVisible(!editor);
-        this.buttons.setVisible(!editor);
+        this.multi.setVisible(showMultiButton);
+        this.multiList.setVisible(showMultiSidebar);
+        this.buttons.setVisible(showMultiSidebar);
         this.previewSettings.setVisible(files);
         this.headerIcons.setVisible(files);
 
@@ -886,6 +906,8 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
             this.textureHeader.resize();
         }
 
+        this.updateHeaderRowLayout();
+        this.updateMultiSidebarLayout(showMultiSidebar);
         this.updateContentLayout(CONTENT_Y_FILES);
         this.updateTextureTabs();
     }
@@ -1112,6 +1134,11 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
 
     protected void toggleMulti()
     {
+        if (!this.multiSkinEnabled)
+        {
+            return;
+        }
+
         if (this.multiLink != null)
         {
             this.setMulti(this.multiLink.children.get(0).path, true);
@@ -1138,6 +1165,13 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
 
     protected void setMulti(Link skin, boolean notify, boolean scroll)
     {
+        if (!this.multiSkinEnabled && skin instanceof MultiLink)
+        {
+            MultiLink multi = (MultiLink) skin;
+
+            skin = multi.children.isEmpty() ? null : multi.children.get(0).path;
+        }
+
         if (this.editor.isVisible())
         {
             this.toggleEditor();
@@ -1148,7 +1182,7 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
             this.closeAllEditorTabs();
         }
 
-        boolean show = skin instanceof MultiLink;
+        boolean show = this.multiSkinEnabled && skin instanceof MultiLink;
 
         if (show)
         {
@@ -1163,13 +1197,10 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
                 this.multiList.setIndex(0);
             }
 
-            this.right.x(120).w(1F, -120);
         }
         else
         {
             this.multiLink = null;
-
-            this.right.x(0).w(1F);
             this.displayCurrent(skin, scroll);
         }
 
@@ -1188,10 +1219,31 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
 
         this.multiList.setVisible(show);
         this.buttons.setVisible(show);
+        this.updateMultiSidebarLayout(this.activeTab == TAB_FILES && show);
 
         this.resize();
         this.updateFolderButton();
         this.refreshFormPreview();
+    }
+
+    private void updateMultiSidebarLayout(boolean showSidebar)
+    {
+        int leftOffset = showSidebar ? MULTI_SIDEBAR_WIDTH : 0;
+        int rightPadding = 10;
+
+        this.picker.x(10 + leftOffset).w(1F, -(10 + leftOffset + rightPadding));
+
+        if (this.pixelEditor != null)
+        {
+            this.pixelEditor.x(10 + leftOffset).w(1F, -(10 + leftOffset + rightPadding));
+        }
+    }
+
+    private void updateHeaderRowLayout()
+    {
+        int textX = this.multiSkinEnabled ? 10 + MULTI_BUTTON_WIDTH + 4 : 10;
+
+        this.text.x(textX).wTo(this.headerIcons.area);
     }
 
     private void refreshFormPreview()
@@ -1341,8 +1393,8 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
 
         if (this.multiList.isVisible())
         {
-            context.batcher.box(this.area.x, this.area.y, this.area.x + 120, this.area.ey(), 0xff181818);
-            context.batcher.box(this.area.x, this.area.y, this.area.x + 120, this.area.y + 30, Colors.A25);
+            context.batcher.box(this.area.x, this.area.y + HEADER_HEIGHT, this.area.x + MULTI_SIDEBAR_WIDTH, this.area.ey(), 0xff181818);
+            context.batcher.box(this.area.x, this.area.y + HEADER_HEIGHT, this.area.x + MULTI_SIDEBAR_WIDTH, this.area.y + HEADER_HEIGHT + 20, Colors.A25);
             context.batcher.gradientVBox(this.area.x, this.area.ey() - 20, this.buttons.area.ex(), this.area.ey(), 0, Colors.A50);
         }
 
