@@ -21,6 +21,7 @@ import mchorse.bbs_mod.ui.forms.categories.UIRecentFormCategory;
 import mchorse.bbs_mod.ui.forms.overlays.UIFavoriteCategoryOverlayPanel;
 import mchorse.bbs_mod.ui.forms.overlays.UIRemoveFavoriteCategoryOverlayPanel;
 import mchorse.bbs_mod.ui.framework.UIContext;
+import mchorse.bbs_mod.ui.framework.elements.IUIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIScrollView;
 import mchorse.bbs_mod.ui.framework.elements.navigation.UIControlBar;
@@ -61,6 +62,8 @@ public class UIFormList extends UIElement
     private static final int TAB_WIDTH_FAVORITES = 108;
     private static final int TAB_WIDTH_CUSTOM = 122;
     private static final int TAB_WIDTH_ADD = 24;
+    private static final int ACTIONS_BAR_HEIGHT = 20;
+    private static final int SELECTED_INFO_WIDTH = 200;
     private static final int MAX_CATEGORY_NAME_LENGTH = 20;
     private static final int MAX_TAB_TITLE_LENGTH = 10;
 
@@ -110,7 +113,24 @@ public class UIFormList extends UIElement
             {
                 context.batcher.getContext().getMatrices().push();
                 context.batcher.getContext().getMatrices().translate(0, 0, 200);
+                this.area.render(context.batcher, Colors.CONTROL_BAR);
                 super.render(context);
+
+                Form selected = UIFormList.this.getSelected();
+
+                if (selected != null)
+                {
+                    FontRenderer font = context.batcher.getFont();
+                    int x = this.area.x + 4;
+                    int y = this.area.y;
+                    int maxTextWidth = SELECTED_INFO_WIDTH - 10;
+                    String display = font.limitToWidth(selected.getDisplayName() == null ? "" : selected.getDisplayName(), maxTextWidth);
+                    String valueId = font.limitToWidth(selected.getFormId() == null ? "" : selected.getFormId(), maxTextWidth);
+
+                    context.batcher.textShadow(display, x, y + 1);
+                    context.batcher.textShadow(valueId, x, y + 10, Colors.LIGHTEST_GRAY);
+                }
+
                 context.batcher.getContext().getMatrices().pop();
             }
         };
@@ -122,11 +142,10 @@ public class UIFormList extends UIElement
         this.edit.tooltip(UIKeys.FORMS_LIST_EDIT, Direction.TOP);
         this.close = new UIIcon(Icons.CLOSE, this::close);
 
-        this.forms.relative(this).x(0).y(0).w(1F).h(1F, -30);
+        this.forms.relative(this).x(0).y(ACTIONS_BAR_HEIGHT).w(1F).h(1F, -ACTIONS_BAR_HEIGHT);
         this.tabsBar.relative(this).x(0).y(0).w(1F).h(FAVORITES_TOP_BAR_HEIGHT);
-        this.tabs.relative(this.tabsBar).x(10).y(0).w(0).h(FAVORITES_TOP_BAR_HEIGHT).row(0).resize();
-        this.bar.relative(this).x(10).y(1F, -30).w(1F, -20).h(20).row().height(20);
-        this.close.w(20);
+        this.tabs.relative(this.tabsBar).x(10).y(0).w(1F, -20).h(FAVORITES_TOP_BAR_HEIGHT).row(0).resize();
+        this.bar.relative(this).x(0).y(FAVORITES_TOP_BAR_HEIGHT).w(1F).h(ACTIONS_BAR_HEIGHT);
 
         this.allTab.w(TAB_WIDTH_ALL).h(FAVORITES_TOP_BAR_HEIGHT);
         this.favoritesTab.w(TAB_WIDTH_FAVORITES).h(FAVORITES_TOP_BAR_HEIGHT);
@@ -136,6 +155,7 @@ public class UIFormList extends UIElement
         this.tabsBar.add(this.tabs);
         this.tabsBar.setVisible(false);
         this.bar.add(this.search, this.edit, this.close);
+        this.layoutActionBar();
         this.add(this.forms, this.bar, this.tabsBar);
 
         this.applyFavoritesLayout(this.isFavoritesFeatureEnabled());
@@ -1017,6 +1037,7 @@ public class UIFormList extends UIElement
 
         this.favoritesUiVisible = enabled;
         this.tabsBar.setVisible(enabled);
+        this.tabs.setVisible(enabled);
 
         if (!enabled)
         {
@@ -1024,9 +1045,54 @@ public class UIFormList extends UIElement
             this.notifyFavoriteCategoryChanged();
         }
 
-        this.forms.relative(this).x(0).y(enabled ? FAVORITES_TOP_BAR_HEIGHT + FAVORITES_TOP_BAR_BOTTOM_SPACING : 0).w(1F).h(1F, enabled ? -(FAVORITES_TOP_BAR_HEIGHT + FAVORITES_TOP_BAR_BOTTOM_SPACING + 30) : -30);
+        int barY = enabled ? FAVORITES_TOP_BAR_HEIGHT : 0;
+        int topOffset = ACTIONS_BAR_HEIGHT + (enabled ? FAVORITES_TOP_BAR_HEIGHT + FAVORITES_TOP_BAR_BOTTOM_SPACING : 0);
+
+        this.bar.relative(this).x(0).y(barY).w(1F).h(ACTIONS_BAR_HEIGHT);
+        this.layoutActionBar();
+        this.bar.resize();
+
+        this.forms.relative(this).x(0).y(topOffset).w(1F).h(1F, -topOffset);
         this.forms.resize();
         this.resize();
+    }
+
+    private void layoutActionBar()
+    {
+        int rightOffset = 0;
+
+        if (this.close.getParent() == this.bar)
+        {
+            this.close.relative(this.bar).x(1F, -20 - rightOffset).y(0).w(20).h(ACTIONS_BAR_HEIGHT);
+            rightOffset += 20;
+        }
+
+        if (this.edit.getParent() == this.bar)
+        {
+            this.edit.relative(this.bar).x(1F, -20 - rightOffset).y(0).w(20).h(ACTIONS_BAR_HEIGHT);
+            rightOffset += 20;
+        }
+
+        for (IUIElement child : this.bar.getChildren())
+        {
+            if (!(child instanceof UIIcon))
+            {
+                continue;
+            }
+
+            UIIcon icon = (UIIcon) child;
+
+            if (icon == this.edit || icon == this.close)
+            {
+                continue;
+            }
+
+            icon.relative(this.bar).x(1F, -20 - rightOffset).y(0).w(20).h(ACTIONS_BAR_HEIGHT);
+            rightOffset += 20;
+        }
+
+        int searchX = SELECTED_INFO_WIDTH + 6;
+        this.search.relative(this.bar).x(searchX).y(0).w(1F, -(searchX + rightOffset)).h(ACTIONS_BAR_HEIGHT);
     }
 
     public void setFavoriteCategoryChangedListener(Consumer<String> callback)
@@ -1208,6 +1274,7 @@ public class UIFormList extends UIElement
     {
         FormCategories categories = BBSModClient.getFormCategories();
         this.applyFavoritesLayout(this.isFavoritesFeatureEnabled());
+        this.layoutActionBar();
         this.syncFavoriteData();
         this.updateTabs();
 
@@ -1234,23 +1301,6 @@ public class UIFormList extends UIElement
 
         DiffuseLighting.disableGuiDepthLighting();
 
-        /* Render form's display name and ID */
-        Form selected = this.getSelected();
-
-        if (selected != null)
-        {
-            String displayName = selected.getDisplayName();
-            String id = selected.getFormId();
-            FontRenderer font = context.batcher.getFont();
-
-            int w = Math.max(font.getWidth(displayName), font.getWidth(id));
-            int x = this.search.area.x;
-            int y = this.search.area.y - 24;
-
-            context.batcher.box(x, y, x + w + 8, this.search.area.y, Colors.A50);
-            context.batcher.textShadow(displayName, x + 4, y + 4);
-            context.batcher.textShadow(id, x + 4, y + 14, Colors.LIGHTEST_GRAY);
-        }
     }
 
     public static class FavoriteMarker
