@@ -112,6 +112,7 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
     private Timer lastChecked = new Timer(1000);
     private String typed = "";
     private boolean canBeClosed = true;
+    private boolean pixelEditorEnabled = true;
     private Supplier<Form> formPreviewSupplier;
     private static final int FORM_PREVIEW_WIDTH = 150;
     private static final int LIST_ITEM_SIZE_SMALL = 16;
@@ -493,6 +494,14 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
         return this;
     }
 
+    public UITexturePicker disablePixelEditor()
+    {
+        this.pixelEditorEnabled = false;
+        this.pixelEdit.removeFromParent();
+
+        return this;
+    }
+
     private Link parseLink(MapType map)
     {
         return map == null ? null : LinkUtils.create(map.get("link"));
@@ -631,7 +640,7 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
 
     public void togglePixelEditor()
     {
-        if (this.current == null || this.multiLink != null)
+        if (!this.pixelEditorEnabled || this.current == null || this.multiLink != null)
         {
             return;
         }

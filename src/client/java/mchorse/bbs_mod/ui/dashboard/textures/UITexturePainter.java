@@ -17,6 +17,7 @@ import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
 import mchorse.bbs_mod.ui.framework.elements.input.UITexturePicker;
+import mchorse.bbs_mod.ui.framework.elements.utils.EventPropagation;
 import mchorse.bbs_mod.ui.forms.editors.utils.UIFormRenderer;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
 import mchorse.bbs_mod.ui.utils.UI;
@@ -95,6 +96,7 @@ public class UITexturePainter extends UIElement
     private int selectedLayerIndex = -1;
     private Texture layersCompositeTexture;
     private Pixels layersCompositePixels;
+    private UIElement texturePickerPopup;
 
     private static class TextureLayer
     {
@@ -664,8 +666,48 @@ public class UITexturePainter extends UIElement
 
     private void openTextureSelector()
     {
-        UITexturePicker.open(this.getContext(), this.main.getTexture(), (link) ->
+        if (this.texturePickerPopup != null && this.texturePickerPopup.hasParent())
         {
+            return;
+        }
+
+        UIContext context = this.getContext();
+
+        if (context == null || context.menu == null || context.menu.overlay == null)
+        {
+            return;
+        }
+
+        UIElement overlay = context.menu.overlay;
+        UIElement popup = new UIElement()
+        {
+            @Override
+            public void render(UIContext context)
+            {
+                this.area.render(context.batcher, Colors.A50);
+                super.render(context);
+            }
+        };
+        popup.full(overlay);
+        popup.markContainer().eventPropagataion(EventPropagation.BLOCK);
+
+        UIElement content = new UIElement()
+        {
+            @Override
+            public void render(UIContext context)
+            {
+                this.area.render(context.batcher, Colors.A25);
+                context.batcher.outline(this.area.x - 1, this.area.y - 1, this.area.ex() + 1, this.area.ey() + 1, Colors.A100);
+                context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xff000000 | BBSSettings.primaryColor.get());
+                super.render(context);
+            }
+        };
+        content.relative(popup).set(20, 20, 0, 0).w(1F, -40).h(1F, -40);
+
+        UITexturePicker picker = new UITexturePicker((link) ->
+        {
+            this.closeTextureSelectorPopup();
+
             if (link == null)
             {
                 return;
@@ -674,6 +716,25 @@ public class UITexturePainter extends UIElement
             this.addImageTexture(link, true);
             this.fillTexture(link);
         });
+        picker.disablePixelEditor();
+        content.add(picker);
+        popup.add(content);
+        overlay.add(popup);
+        popup.resize();
+        content.resize();
+        picker.full(content);
+        picker.resize();
+        picker.fill(this.main.getTexture());
+        this.texturePickerPopup = popup;
+    }
+
+    private void closeTextureSelectorPopup()
+    {
+        if (this.texturePickerPopup != null)
+        {
+            this.texturePickerPopup.removeFromParent();
+            this.texturePickerPopup = null;
+        }
     }
 
     private void ensureDefaultLayer()
