@@ -10,6 +10,7 @@ import mchorse.bbs_mod.forms.FormCategories;
 import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.categories.FormCategory;
+import mchorse.bbs_mod.forms.categories.ModelFormCategory;
 import mchorse.bbs_mod.forms.categories.UserFormCategory;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.forms.ModelForm;
@@ -130,6 +131,7 @@ public class UIFormList extends UIElement
     private UIElement categoryPopup;
     private UICategoryCardsGrid categoryCards;
     private final Set<String> hiddenCategoryPreviews = new HashSet<>();
+    private final List<String> modelCategoryOrder = new ArrayList<>();
     private String pendingSearchQuery = "";
     private String appliedSearchQuery = "";
     private long pendingSearchDeadline = -1L;
@@ -226,8 +228,11 @@ public class UIFormList extends UIElement
         this.closeCategoryPopup();
         this.categories.clear();
         this.forms.removeAll();
+        List<FormCategory> allCategories = new ArrayList<>(forms.getAllCategories());
 
-        for (FormCategory category : forms.getAllCategories())
+        this.applyStoredModelCategoryOrder(allCategories);
+
+        for (FormCategory category : allCategories)
         {
             UIFormCategory uiCategory = category.createUI(this);
 
@@ -851,6 +856,7 @@ public class UIFormList extends UIElement
         root.put("categories", categories);
         root.put("entries", entries);
         root.put("hidden_previews", this.toList(this.hiddenCategoryPreviews));
+        root.put("model_categories_order", this.toList(this.modelCategoryOrder));
         BBSSettings.favoriteFormCategoriesData.set(DataToString.toString(root));
         this.syncedFavoriteCategoriesData = BBSSettings.favoriteFormCategoriesData.get();
         this.syncedFavoriteModels.clear();
@@ -890,6 +896,7 @@ public class UIFormList extends UIElement
         this.customFavoriteCategories.clear();
         this.customCategoryForms.clear();
         this.hiddenCategoryPreviews.clear();
+        this.modelCategoryOrder.clear();
 
         String raw = BBSSettings.favoriteFormCategoriesData.get();
         MapType root = DataToString.mapFromString(raw);
@@ -947,6 +954,11 @@ public class UIFormList extends UIElement
         if (root != null && root.has("hidden_previews", BaseType.TYPE_LIST))
         {
             this.hiddenCategoryPreviews.addAll(this.fromList(root.getList("hidden_previews")));
+        }
+
+        if (root != null && root.has("model_categories_order", BaseType.TYPE_LIST))
+        {
+            this.modelCategoryOrder.addAll(this.fromList(root.getList("model_categories_order")));
         }
 
         if (this.activeFavoriteCategoryId != null && !FAVORITES_CATEGORY_ID.equals(this.activeFavoriteCategoryId) && !this.customFavoriteCategories.containsKey(this.activeFavoriteCategoryId))
@@ -1030,6 +1042,18 @@ public class UIFormList extends UIElement
     }
 
     private ListType toList(Set<String> values)
+    {
+        ListType list = new ListType();
+
+        for (String value : values)
+        {
+            list.addString(value);
+        }
+
+        return list;
+    }
+
+    private ListType toList(Iterable<String> values)
     {
         ListType list = new ListType();
 
@@ -1519,6 +1543,240 @@ public class UIFormList extends UIElement
         return true;
     }
 
+    private boolean isMovableUserCategory(UIFormCategory category)
+    {
+        return category != null && category.category instanceof UserFormCategory;
+    }
+
+    private boolean isMovableModelCategory(UIFormCategory category)
+    {
+        return category != null && category.category instanceof ModelFormCategory;
+    }
+
+    private boolean isMovableCategory(UIFormCategory category)
+    {
+        return this.isMovableUserCategory(category) || this.isMovableModelCategory(category);
+    }
+
+    private boolean canDropCategoryOn(UIFormCategory sourceCategory, UIFormCategory targetCategory)
+    {
+        if (sourceCategory == null || targetCategory == null || sourceCategory == targetCategory)
+        {
+            return false;
+        }
+
+        if (this.isMovableUserCategory(sourceCategory))
+        {
+            return this.isMovableUserCategory(targetCategory);
+        }
+
+        if (this.isMovableModelCategory(sourceCategory))
+        {
+            return this.isMovableModelCategory(targetCategory);
+        }
+
+        return false;
+    }
+
+    private boolean moveCategory(UIFormCategory sourceCategory, UIFormCategory targetCategory)
+    {
+        if (!this.canDropCategoryOn(sourceCategory, targetCategory))
+        {
+            return false;
+        }
+
+        if (sourceCategory instanceof UIUserFormCategory sourceUser && targetCategory instanceof UIUserFormCategory targetUser)
+        {
+            return this.moveUserCategory(sourceUser, targetUser);
+        }
+
+        return this.moveModelCategory(sourceCategory, targetCategory);
+    }
+
+    private boolean moveModelCategory(UIFormCategory sourceCategory, UIFormCategory targetCategory)
+    {
+        String sourceKey = this.getModelCategoryOrderKey(sourceCategory.category);
+        String targetKey = this.getModelCategoryOrderKey(targetCategory.category);
+
+        if (sourceKey == null || targetKey == null || sourceKey.equals(targetKey))
+        {
+            return false;
+        }
+
+        List<String> mergedOrder = this.mergeModelCategoryOrderWithCurrent();
+        int from = mergedOrder.indexOf(sourceKey);
+        int to = mergedOrder.indexOf(targetKey);
+
+        if (from < 0 || to < 0 || from == to)
+        {
+            return false;
+        }
+
+        String moved = mergedOrder.remove(from);
+        mergedOrder.add(to, moved);
+
+        this.modelCategoryOrder.clear();
+        this.modelCategoryOrder.addAll(mergedOrder);
+
+        this.persistFavoriteData();
+
+        Form selected = this.getSelected();
+        String query = this.search.getText();
+
+        this.setupForms(BBSModClient.getFormCategories());
+        this.applySearchNow(query);
+        this.restoreSelectedIfPresent(selected);
+
+        return true;
+    }
+
+    private List<String> mergeModelCategoryOrderWithCurrent()
+    {
+        List<String> current = new ArrayList<>();
+
+        for (UIFormCategory category : this.categories)
+        {
+            String key = this.getModelCategoryOrderKey(category.category);
+
+            if (key != null && !current.contains(key))
+            {
+                current.add(key);
+            }
+        }
+
+        List<String> merged = new ArrayList<>();
+
+        for (String key : this.modelCategoryOrder)
+        {
+            if (current.contains(key) && !merged.contains(key))
+            {
+                merged.add(key);
+            }
+        }
+
+        for (String key : current)
+        {
+            if (!merged.contains(key))
+            {
+                merged.add(key);
+            }
+        }
+
+        return merged;
+    }
+
+    private void applyStoredModelCategoryOrder(List<FormCategory> allCategories)
+    {
+        if (allCategories.isEmpty())
+        {
+            return;
+        }
+
+        List<String> mergedOrder = this.mergeModelCategoryOrderWithCurrent(allCategories);
+        Map<String, Integer> ranks = new HashMap<>();
+
+        for (int i = 0; i < mergedOrder.size(); i++)
+        {
+            ranks.put(mergedOrder.get(i), i);
+        }
+
+        List<Integer> positions = new ArrayList<>();
+        List<FormCategory> modelCategories = new ArrayList<>();
+
+        for (int i = 0; i < allCategories.size(); i++)
+        {
+            FormCategory category = allCategories.get(i);
+
+            if (this.getModelCategoryOrderKey(category) != null)
+            {
+                positions.add(i);
+                modelCategories.add(category);
+            }
+        }
+
+        modelCategories.sort((a, b) ->
+        {
+            String aKey = this.getModelCategoryOrderKey(a);
+            String bKey = this.getModelCategoryOrderKey(b);
+            int aRank = ranks.getOrDefault(aKey, Integer.MAX_VALUE);
+            int bRank = ranks.getOrDefault(bKey, Integer.MAX_VALUE);
+
+            return Integer.compare(aRank, bRank);
+        });
+
+        for (int i = 0; i < positions.size() && i < modelCategories.size(); i++)
+        {
+            allCategories.set(positions.get(i), modelCategories.get(i));
+        }
+    }
+
+    private List<String> mergeModelCategoryOrderWithCurrent(List<FormCategory> allCategories)
+    {
+        List<String> current = new ArrayList<>();
+
+        for (FormCategory category : allCategories)
+        {
+            String key = this.getModelCategoryOrderKey(category);
+
+            if (key != null && !current.contains(key))
+            {
+                current.add(key);
+            }
+        }
+
+        List<String> merged = new ArrayList<>();
+
+        for (String key : this.modelCategoryOrder)
+        {
+            if (current.contains(key) && !merged.contains(key))
+            {
+                merged.add(key);
+            }
+        }
+
+        for (String key : current)
+        {
+            if (!merged.contains(key))
+            {
+                merged.add(key);
+            }
+        }
+
+        this.modelCategoryOrder.clear();
+        this.modelCategoryOrder.addAll(merged);
+
+        return merged;
+    }
+
+    private String getModelCategoryOrderKey(FormCategory category)
+    {
+        if (!(category instanceof ModelFormCategory))
+        {
+            return null;
+        }
+
+        if (category instanceof ModelFormCategory.Folder folder)
+        {
+            return "folder:" + folder.path;
+        }
+
+        for (Form form : category.getForms())
+        {
+            if (form instanceof ModelForm modelForm)
+            {
+                String modelKey = modelForm.model.get();
+                int slash = modelKey == null ? -1 : modelKey.lastIndexOf('/');
+                String path = slash >= 0 ? modelKey.substring(0, slash) : "";
+
+                return "path:" + path;
+            }
+        }
+
+        String title = category.getProcessedTitle();
+
+        return "title:" + (title == null ? "" : title.toLowerCase(Locale.ROOT));
+    }
+
     private void openCategoryPopup(UIFormCategory category)
     {
         if (category == null)
@@ -1864,7 +2122,7 @@ public class UIFormList extends UIElement
         private boolean dirty = true;
         private int lastHeight;
         private int cachedPerRow = 1;
-        private UIUserFormCategory dragCategory;
+        private UIFormCategory dragCategory;
         private CategoryCell dragCell;
         private long dragStart = -1L;
         private boolean draggingCategory;
@@ -1927,9 +2185,9 @@ public class UIFormList extends UIElement
                 return true;
             }
 
-            if (UIFormList.this.userCategoryOrderUnlocked && cell.category instanceof UIUserFormCategory userCategory)
+            if (UIFormList.this.userCategoryOrderUnlocked && UIFormList.this.isMovableCategory(cell.category))
             {
-                this.dragCategory = userCategory;
+                this.dragCategory = cell.category;
                 this.dragCell = cell;
                 this.dragStart = System.currentTimeMillis();
                 this.draggingCategory = false;
@@ -1956,9 +2214,9 @@ public class UIFormList extends UIElement
             {
                 CategoryCell hovered = this.getCategoryCellAt(context.mouseX, context.mouseY);
 
-                if (hovered != null && hovered.category instanceof UIUserFormCategory hoveredUserCategory)
+                if (hovered != null)
                 {
-                    handled = UIFormList.this.moveUserCategory(this.dragCategory, hoveredUserCategory);
+                    handled = UIFormList.this.moveCategory(this.dragCategory, hovered.category);
                 }
             }
             else if (this.dragCell != null
@@ -2047,7 +2305,7 @@ public class UIFormList extends UIElement
             {
                 CategoryCell hovered = this.getCategoryCellAt(context.mouseX, context.mouseY);
 
-                if (hovered != null && hovered.category instanceof UIUserFormCategory && hovered.category != this.dragCategory)
+                if (hovered != null && UIFormList.this.canDropCategoryOn(this.dragCategory, hovered.category))
                 {
                     context.batcher.box(hovered.x, hovered.y, hovered.x + CATEGORY_CARD_WIDTH, hovered.y + CATEGORY_CARD_HEIGHT, Colors.A25 | BBSSettings.primaryColor.get());
                     context.batcher.outline(hovered.x, hovered.y, hovered.x + CATEGORY_CARD_WIDTH, hovered.y + CATEGORY_CARD_HEIGHT, Colors.A100 | BBSSettings.primaryColor.get(), 2);
@@ -2215,7 +2473,8 @@ public class UIFormList extends UIElement
             UIFormCategory selectedCategory = UIFormList.this.getSelectedCategory();
             boolean selected = selectedCategory == category;
             boolean userCategory = category.category instanceof UserFormCategory;
-            boolean hoverMoveHandle = UIFormList.this.userCategoryOrderUnlocked && userCategory && context.mouseX >= x && context.mouseX < x + CATEGORY_CARD_WIDTH && context.mouseY >= y && context.mouseY < y + CATEGORY_CARD_HEIGHT;
+            boolean movableCategory = UIFormList.this.isMovableCategory(category);
+            boolean hoverMoveHandle = UIFormList.this.userCategoryOrderUnlocked && movableCategory && context.mouseX >= x && context.mouseX < x + CATEGORY_CARD_WIDTH && context.mouseY >= y && context.mouseY < y + CATEGORY_CARD_HEIGHT;
             int baseColor = selected ? (Colors.A50 | BBSSettings.primaryColor.get()) : Colors.A25;
             int outlineColor = selected ? (Colors.A100 | BBSSettings.primaryColor.get()) : Colors.A100;
             int titleColor = userCategory ? (Colors.LIGHTEST_GRAY | Colors.A100) : Colors.WHITE;

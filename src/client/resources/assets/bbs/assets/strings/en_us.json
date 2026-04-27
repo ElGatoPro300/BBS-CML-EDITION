@@ -964,7 +964,7 @@
     "bbs.ui.forms.list.tab.all": "All",
     "bbs.ui.forms.list.tab.favorites": "Favorites",
     "bbs.ui.forms.list.toggle_all_previews": "Show/hide previews for all categories",
-    "bbs.ui.forms.list.toggle_category_order_lock": "Lock/unlock user category order",
+    "bbs.ui.forms.list.toggle_category_order_lock": "Lock/unlock category order",
     "bbs.ui.generic_keyframes.anchor.pick_actor": "Pick actor...",
     "bbs.ui.generic_keyframes.anchor.pick_attachment": "Pick attachment...",
     "bbs.ui.generic_keyframes.boolean.true": "True",
