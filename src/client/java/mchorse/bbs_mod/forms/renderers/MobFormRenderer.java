@@ -53,9 +53,8 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 {
     private static final Map<Class, Map<String, ModelPart>> parts = new HashMap<>();
     private static final Map<ModelPart, Transform> cache = new HashMap<>();
-    private static final ThreadLocal<Pose> CURRENT_POSE = new ThreadLocal<>();
-    private static final ThreadLocal<Pose> CURRENT_POSE_OVERLAY = new ThreadLocal<>();
-    private static final ThreadLocal<LivingEntity> CURRENT_ENTITY = new ThreadLocal<>();
+    private static Pose currentPose;
+    private static Pose currentPoseOverlay;
 
     public static final GameProfile WIDE = new GameProfile(UUID.fromString("b99a2400-28a8-4288-92dc-924beafbf756"), "McHorseYT");
     public static final GameProfile SLIM = new GameProfile(UUID.fromString("5477bd28-e672-4f87-a209-c03cf75f3606"), "osmiq");
@@ -72,17 +71,12 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
     public static Pose getCurrentPose()
     {
-        return CURRENT_POSE.get();
+        return currentPose;
     }
 
     public static Pose getCurrentPoseOverlay()
     {
-        return CURRENT_POSE_OVERLAY.get();
-    }
-
-    public static LivingEntity getCurrentEntity()
-    {
-        return CURRENT_ENTITY.get();
+        return currentPoseOverlay;
     }
 
     public static Map<Class, Map<String, ModelPart>> getParts()
@@ -323,57 +317,44 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
                 context.stack.multiply(RotationAxis.POSITIVE_Y.rotation(MathUtils.PI));
             }
 
-            LivingEntity livingMorph = this.entity instanceof LivingEntity ? (LivingEntity)this.entity : null;
+            if (this.entity instanceof LivingEntity livingMorph) 
+{
+    LivingEntity player = MinecraftClient.getInstance().player;
+    LivingEntity source = (context.entity instanceof LivingEntity) ? (LivingEntity)context.entity : null;
 
-            if (livingMorph != null)
-            {
-                LivingEntity player = MinecraftClient.getInstance().player;
-                LivingEntity source = (context.entity instanceof LivingEntity) ? (LivingEntity)context.entity : null;
-
-                // 1. LIVE GAMEPLAY: We know this works perfectly. 
-                // If you are playing, exactly mimic your player's countdown.
-                if (player != null && source == player && player.hurtTime > 0)
-                {
-                    livingMorph.hurtTime = player.hurtTime;
-                    livingMorph.maxHurtTime = player.maxHurtTime;
-                }
-                // 2. REPLAYS & NPCs: Use the Red Flash, but let it count down naturally!
-                else
-                {
-                    int v = context.overlay >> 16 & '\uffff';
-                    if (v != 10 && v != 0)
-                    {
-                        // ONLY start the animation if it isn't already playing.
-                        // This prevents the stutter/spasm!
-                        if (livingMorph.hurtTime == 0)
-                        {
-                            livingMorph.hurtTime = 10;
-                            livingMorph.maxHurtTime = 10;
-                        }
-                    }
-                    // Notice we DO NOT force hurtTime = 0 here anymore. 
-                    // We let the entity's natural tick() count it down smoothly.
-                }
-
-                // 3. Keep the limbs synced so running/walking looks correct
-                if (source != null)
-                {
-                    if (livingMorph.limbAnimator instanceof mchorse.bbs_mod.mixin.LimbAnimatorAccessor a && 
-                        source.limbAnimator instanceof mchorse.bbs_mod.mixin.LimbAnimatorAccessor b)
-                    {
-                        a.setPos(b.getPos());
-                        a.setSpeed(b.getSpeed());
-                    }
-                }
+    // 1. LIVE GAMEPLAY: We know this works perfectly. 
+    // If you are playing, exactly mimic your player's countdown.
+    if (player != null && source == player && player.hurtTime > 0) {
+        livingMorph.hurtTime = player.hurtTime;
+        livingMorph.maxHurtTime = player.maxHurtTime;
+    } 
+    // 2. REPLAYS & NPCs: Use the Red Flash, but let it count down naturally!
+    else {
+        int v = context.overlay >> 16 & '\uffff';
+        if (v != 10 && v != 0) {
+            // ONLY start the animation if it isn't already playing.
+            // This prevents the stutter/spasm!
+            if (livingMorph.hurtTime == 0) {
+                livingMorph.hurtTime = 10;
+                livingMorph.maxHurtTime = 10;
             }
+        }
+        // Notice we DO NOT force hurtTime = 0 here anymore. 
+        // We let the entity's natural tick() count it down smoothly.
+    }
 
-            if (livingMorph != null)
-            {
-                CURRENT_POSE.set(this.form.pose.get());
-                CURRENT_POSE_OVERLAY.set(this.form.poseOverlay.get());
-                CURRENT_ENTITY.set(livingMorph);
-            }
+    // 3. Keep the limbs synced so running/walking looks correct
+    if (source != null) {
+        if (livingMorph.limbAnimator instanceof mchorse.bbs_mod.mixin.LimbAnimatorAccessor a && 
+            source.limbAnimator instanceof mchorse.bbs_mod.mixin.LimbAnimatorAccessor b) {
+            a.setPos(b.getPos());
+            a.setSpeed(b.getSpeed());
+        }
+    }
+}
 
+            currentPose = this.form.pose.get();
+            currentPoseOverlay = this.form.poseOverlay.get();
             MobTextureOverride.begin(this.form.texture.get());
             try
             {
@@ -384,9 +365,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
                 MobTextureOverride.end();
             }
 
-            CURRENT_POSE.remove();
-            CURRENT_POSE_OVERLAY.remove();
-            CURRENT_ENTITY.remove();
+            currentPose = currentPoseOverlay = null;
 
             consumers.draw();
             CustomVertexConsumerProvider.clearRunnables();
@@ -404,67 +383,66 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
         if (this.entity != null)
         {
-            // 1. Update PREVIOUS positions for smooth interpolation
-            this.entity.prevX = this.entity.getX();
-            this.entity.prevY = this.entity.getY();
-            this.entity.prevZ = this.entity.getZ();
+            // Only tick if it's safe - skip player entities when not connected
+            if (!(this.entity instanceof OtherClientPlayerEntity) || MinecraftClient.getInstance().getNetworkHandler() != null)
+            {
+                this.entity.tick();
+            }
+
             this.entity.prevPitch = this.prevPitch;
             this.entity.prevYaw = 0F;
 
-            if (this.entity instanceof LivingEntity living)
+            if (this.entity instanceof LivingEntity livingEntity)
             {
-                living.prevHeadYaw = this.prevYawHead;
-                living.prevBodyYaw = 0F; // Matches your original file's logic
+                livingEntity.prevHeadYaw = this.prevYawHead;
+                livingEntity.prevBodyYaw = 0F;
 
-                // FIX: Manual hurtTime countdown so you don't stay red/jittery forever
-                if (living.hurtTime > 0) 
-                {
-                    living.hurtTime--;
-                }
-
-                // 2. Sync Limb Animator (using the mixin accessors)
-                if (living.limbAnimator instanceof LimbAnimatorAccessor a && 
-                    entity.getLimbAnimator() instanceof LimbAnimatorAccessor b) 
+                /* Limb swing is so ugly */
+                if (livingEntity.limbAnimator instanceof LimbAnimatorAccessor a && entity.getLimbAnimator() instanceof LimbAnimatorAccessor b)
                 {
                     a.setPrevSpeed(b.getPrevSpeed());
                     a.setSpeed(b.getSpeed());
                     a.setPos(b.getPos());
                 }
 
-                // 3. Sync Arm Swing
+                /* Arm swing */
                 float handSwingProgress = entity.getHandSwingProgress(0F);
-                if (handSwingProgress < this.prevHandSwing) this.prevHandSwing = 0;
-                if (handSwingProgress > 0 && this.prevHandSwing == 0) living.swingHand(Hand.MAIN_HAND);
-                this.prevHandSwing = handSwingProgress;
 
-                // 4. Sync Equipment (using the loop to ensure all slots match)
-                for (EquipmentSlot slot : EquipmentSlot.values()) 
+                if (handSwingProgress < this.prevHandSwing)
                 {
-                    living.equipStack(slot, entity.getEquipmentStack(slot));
+                    this.prevHandSwing = 0;
                 }
+
+                if (handSwingProgress > 0 && this.prevHandSwing == 0)
+                {
+                    livingEntity.swingHand(Hand.MAIN_HAND);
+                }
+
+                this.prevHandSwing = handSwingProgress;
             }
 
-            // 5. Update Current State & Reset Physics (Using setters to avoid "not a field" errors)
             this.entity.setYaw(0F);
             this.entity.setHeadYaw(entity.getHeadYaw() - entity.getBodyYaw());
             this.entity.setPitch(entity.getPitch());
-            this.entity.setBodyYaw(0F); // Changed from .bodyYaw to .setBodyYaw()
+            this.entity.setBodyYaw(0F);
 
             this.entity.setPos(entity.getX(), entity.getY(), entity.getZ());
-            
-            // Stop gravity accumulation and mid-air flailing
-            this.entity.setVelocity(0, 0, 0); 
-            this.entity.fallDistance = 0;
-            
             this.entity.setOnGround(entity.isOnGround());
             this.entity.setSneaking(entity.isSneaking());
             this.entity.setSprinting(entity.isSprinting());
             this.entity.setPose(entity.isSneaking() ? EntityPose.CROUCHING : EntityPose.STANDING);
-            
+            if (this.entity instanceof LivingEntity living)
+            {
+                living.equipStack(EquipmentSlot.MAINHAND, entity.getEquipmentStack(EquipmentSlot.MAINHAND));
+                living.equipStack(EquipmentSlot.OFFHAND, entity.getEquipmentStack(EquipmentSlot.OFFHAND));
+                living.equipStack(EquipmentSlot.HEAD, entity.getEquipmentStack(EquipmentSlot.HEAD));
+                living.equipStack(EquipmentSlot.CHEST, entity.getEquipmentStack(EquipmentSlot.CHEST));
+                living.equipStack(EquipmentSlot.LEGS, entity.getEquipmentStack(EquipmentSlot.LEGS));
+                living.equipStack(EquipmentSlot.FEET, entity.getEquipmentStack(EquipmentSlot.FEET));
+            }
             this.entity.age = entity.getAge();
             this.entity.noClip = true;
 
-            // 6. Update class-wide "previous" fields for the NEXT tick
             this.prevYawHead = entity.getHeadYaw() - entity.getBodyYaw();
             this.prevPitch = entity.getPitch();
         }
