@@ -1854,7 +1854,7 @@ public class UIFormList extends UIElement
 
         if (Objects.equals(folder.path, this.activeModelFolderPath))
         {
-            return true;
+            return !folder.getForms().isEmpty();
         }
 
         return folder.getParent() != null && Objects.equals(folder.getParent().path, this.activeModelFolderPath);
@@ -1912,10 +1912,38 @@ public class UIFormList extends UIElement
             return;
         }
 
-        this.activeModelFolderPath = folder.path;
+        ModelFormCategory.Folder targetFolder = this.resolveModelFolderNavigationTarget(folder);
+        this.activeModelFolderPath = targetFolder.path;
         this.syncModelFolderNavigationState();
         this.categoryCardsView.scroll.scrollTo(0);
         this.invalidateCategoryCards();
+    }
+
+    private ModelFormCategory.Folder resolveModelFolderNavigationTarget(ModelFormCategory.Folder folder)
+    {
+        ModelFormCategory.Folder current = folder;
+
+        while (current.getForms().isEmpty() && current.getChildren().size() == 1)
+        {
+            ModelFormCategory.Folder child = current.getChildren().get(0);
+
+            if (child == null)
+            {
+                break;
+            }
+
+            String currentName = current.name == null ? "" : current.name;
+            String childName = child.name == null ? "" : child.name;
+
+            if (!currentName.equalsIgnoreCase(childName))
+            {
+                break;
+            }
+
+            current = child;
+        }
+
+        return current;
     }
 
     private void navigateUpModelFolder()
