@@ -92,6 +92,8 @@ public class UIFormList extends UIElement
     private static final int CATEGORY_GROUP_HEADER_HEIGHT = 14;
     private static final int CATEGORY_SECTION_GAP = 16;
     private static final int POPUP_TARGET_BUTTON_GAP = 4;
+    private static final int CATEGORY_MOVE_HANDLE_ICON_SIZE = 60;
+    private static final int CATEGORY_DRAG_MOVE_ICON_SIZE = 60;
 
     public IUIFormList palette;
 
@@ -178,9 +180,9 @@ public class UIFormList extends UIElement
         this.favoritesTab = new UIIconTabButton(UIKeys.FORMS_LIST_TAB_FAVORITES, Icons.FIVE_STAR, (b) -> this.setActiveFavoriteCategory(FAVORITES_CATEGORY_ID));
         this.addCategoryTab = new UIIconTabButton(IKey.constant(""), Icons.ADD, (b) -> this.openCreateCategoryPanel());
         this.toggleAllPreviews = new UIIcon(() -> this.areAllCategoryPreviewsVisible() ? Icons.VISIBLE : Icons.INVISIBLE, this::toggleAllCategoryPreviews);
-        this.toggleAllPreviews.tooltip(IKey.constant("Ocultar/mostrar previews de todas las categorias"), Direction.TOP);
+        this.toggleAllPreviews.tooltip(UIKeys.FORMS_LIST_TOGGLE_ALL_PREVIEWS, Direction.TOP);
         this.toggleCategoryOrderLock = new UIIcon(() -> this.userCategoryOrderUnlocked ? Icons.UNLOCKED : Icons.LOCKED, (b) -> this.userCategoryOrderUnlocked = !this.userCategoryOrderUnlocked);
-        this.toggleCategoryOrderLock.tooltip(IKey.constant("Bloquear/desbloquear orden de categorias de usuario"), Direction.TOP);
+        this.toggleCategoryOrderLock.tooltip(UIKeys.FORMS_LIST_TOGGLE_CATEGORY_ORDER_LOCK, Direction.TOP);
         this.edit = new UIIcon(Icons.EDIT, this::edit);
         this.edit.tooltip(UIKeys.FORMS_LIST_EDIT, Direction.TOP);
         this.close = new UIIcon(Icons.CLOSE, this::close);
@@ -1869,14 +1871,14 @@ public class UIFormList extends UIElement
 
         private enum CardGroup
         {
-            RECENT("Formas recientes"),
-            USER_CREATED("Categorias"),
-            MODELS("Modelos"),
-            BBS("Misceláneos");
+            RECENT(UIKeys.FORMS_LIST_GROUP_RECENT),
+            USER_CREATED(UIKeys.FORMS_LIST_GROUP_USER),
+            MODELS(UIKeys.FORMS_LIST_GROUP_MODELS),
+            BBS(UIKeys.FORMS_LIST_GROUP_MISC);
 
-            private final String label;
+            private final IKey label;
 
-            CardGroup(String label)
+            CardGroup(IKey label)
             {
                 this.label = label;
             }
@@ -2017,7 +2019,7 @@ public class UIFormList extends UIElement
                     continue;
                 }
 
-                context.batcher.textShadow(divider.group.label, this.area.x + CATEGORY_CARD_GAP, divider.y, Colors.LIGHTEST_GRAY);
+                context.batcher.textShadow(divider.group.label.get(), this.area.x + CATEGORY_CARD_GAP, divider.y, Colors.LIGHTEST_GRAY);
                 context.batcher.box(this.area.x + CATEGORY_CARD_GAP, divider.y + 10, this.area.ex() - CATEGORY_CARD_GAP, divider.y + 11, Colors.A100 | BBSSettings.primaryColor.get());
             }
 
@@ -2058,7 +2060,7 @@ public class UIFormList extends UIElement
                 context.batcher.box(previewX, previewY, previewX + CATEGORY_CARD_WIDTH, previewY + CATEGORY_CARD_HEIGHT, Colors.A50 | BBSSettings.primaryColor.get());
                 context.batcher.outline(previewX, previewY, previewX + CATEGORY_CARD_WIDTH, previewY + CATEGORY_CARD_HEIGHT, Colors.A100 | BBSSettings.primaryColor.get(), 2);
                 context.batcher.textShadow(title, previewX + 6, previewY + 6, Colors.WHITE);
-                context.batcher.icon(Icons.ALL_DIRECTIONS, Colors.WHITE, previewX + CATEGORY_CARD_WIDTH / 2, previewY + CATEGORY_CARD_HEIGHT / 2, 0.5F, 0.5F);
+                this.renderScaledIcon(context, Icons.ALL_DIRECTIONS, Colors.WHITE, previewX + CATEGORY_CARD_WIDTH / 2, previewY + CATEGORY_CARD_HEIGHT / 2, CATEGORY_DRAG_MOVE_ICON_SIZE);
             }
         }
 
@@ -2295,8 +2297,30 @@ public class UIFormList extends UIElement
 
             if (hoverMoveHandle)
             {
-                context.batcher.icon(Icons.ALL_DIRECTIONS, Colors.A100 | BBSSettings.primaryColor.get(), x + CATEGORY_CARD_WIDTH / 2, y + CATEGORY_CARD_HEIGHT / 2, 0.5F, 0.5F);
+                this.renderScaledIcon(context, Icons.ALL_DIRECTIONS, Colors.A100 | BBSSettings.primaryColor.get(), x + CATEGORY_CARD_WIDTH / 2, y + CATEGORY_CARD_HEIGHT / 2, CATEGORY_MOVE_HANDLE_ICON_SIZE);
             }
+        }
+
+        private void renderScaledIcon(UIContext context, Icon icon, int color, int centerX, int centerY, int size)
+        {
+            int half = Math.max(1, size / 2);
+            int x = centerX - half;
+            int y = centerY - half;
+
+            context.batcher.texturedBox(
+                BBSModClient.getTextures().getTexture(icon.texture),
+                color,
+                x,
+                y,
+                size,
+                size,
+                icon.x,
+                icon.y,
+                icon.x + icon.w,
+                icon.y + icon.h,
+                icon.textureW,
+                icon.textureH
+            );
         }
 
         private void clearCategoryDragState()

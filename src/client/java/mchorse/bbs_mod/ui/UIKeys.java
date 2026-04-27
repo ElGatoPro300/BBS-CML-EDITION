@@ -654,6 +654,12 @@ public class UIKeys
     public static final IKey FORMS_LIST_CATEGORIES_PICK_COLOR = L10n.lang("bbs.ui.forms.list.categories.pick.color");
     public static final IKey FORMS_LIST_CATEGORIES_PICK_CATEGORY = L10n.lang("bbs.ui.forms.list.categories.pick.category");
     public static final IKey FORMS_LIST_SEARCH = L10n.lang("bbs.ui.forms.list.search");
+    public static final IKey FORMS_LIST_TOGGLE_ALL_PREVIEWS = L10n.lang("bbs.ui.forms.list.toggle_all_previews");
+    public static final IKey FORMS_LIST_TOGGLE_CATEGORY_ORDER_LOCK = L10n.lang("bbs.ui.forms.list.toggle_category_order_lock");
+    public static final IKey FORMS_LIST_GROUP_RECENT = L10n.lang("bbs.ui.forms.list.group.recent");
+    public static final IKey FORMS_LIST_GROUP_USER = L10n.lang("bbs.ui.forms.list.group.user");
+    public static final IKey FORMS_LIST_GROUP_MODELS = L10n.lang("bbs.ui.forms.list.group.models");
+    public static final IKey FORMS_LIST_GROUP_MISC = L10n.lang("bbs.ui.forms.list.group.misc");
     public static final IKey FORMS_CATEGORIES_CONTEXT_ADD_TO_CATEGORY = L10n.lang("bbs.ui.forms.categories.context.add_to_category");
     public static final IKey FORMS_CATEGORIES_CONTEXT_ADD_TO_PICK = L10n.lang("bbs.ui.forms.categories.context.add_to_pick");
     public static final IKey FORMS_CATEGORIES_CONTEXT_MOVE_TO_PICK = L10n.lang("bbs.ui.forms.categories.context.move_to_pick");
