@@ -75,6 +75,8 @@ public class UIFormList extends UIElement
     private static final int CATEGORY_PREVIEW_ROWS = 3;
     private static final int POPUP_CELL_WIDTH = 80;
     private static final int POPUP_CELL_HEIGHT = 100;
+    private static final int POPUP_TARGETS_BAR_HEIGHT = 20;
+    private static final long POPUP_DRAG_DELAY_MS = 250L;
     private static final int MAX_CATEGORY_NAME_LENGTH = 20;
     private static final int MAX_TAB_TITLE_LENGTH = 10;
     private static final long SEARCH_DEBOUNCE_MS = 150L;
@@ -1432,16 +1434,73 @@ public class UIFormList extends UIElement
         UIIcon closePopup = new UIIcon(Icons.CLOSE, (button) -> this.closeCategoryPopup());
         closePopup.relative(content).x(1F, -20).y(0).w(20).h(20).tooltip(UIKeys.GENERAL_CLOSE, Direction.LEFT);
 
+        Map<UIElement, UIFormCategory> popupDropTargets = new HashMap<>();
+        UICategoryPopupGrid[] popupGridHolder = new UICategoryPopupGrid[1];
+
+        UIElement targetsBar = new UIElement()
+        {
+            @Override
+            public void render(UIContext context)
+            {
+                super.render(context);
+
+                UICategoryPopupGrid grid = popupGridHolder[0];
+
+                if (grid == null || !grid.isDraggingModel())
+                {
+                    return;
+                }
+
+                UIFormCategory hoveredTarget = grid.getHoveredDropCategory(context.mouseX, context.mouseY);
+
+                for (Map.Entry<UIElement, UIFormCategory> entry : popupDropTargets.entrySet())
+                {
+                    UIFormCategory targetCategory = entry.getValue();
+
+                    if (targetCategory == category || !(targetCategory.category instanceof UserFormCategory))
+                    {
+                        continue;
+                    }
+
+                    UIElement target = entry.getKey();
+                    boolean hovered = targetCategory == hoveredTarget;
+                    int fill = hovered ? (Colors.A50 | BBSSettings.primaryColor.get()) : Colors.A25;
+                    int outline = hovered ? (Colors.A100 | BBSSettings.primaryColor.get()) : Colors.A100;
+
+                    context.batcher.box(target.area.x, target.area.y, target.area.ex(), target.area.ey(), fill);
+                    context.batcher.outline(target.area.x, target.area.y, target.area.ex(), target.area.ey(), outline, hovered ? 2 : 1);
+                }
+            }
+        };
+        targetsBar.relative(content).x(6).y(20).w(1F, -12).h(POPUP_TARGETS_BAR_HEIGHT).row(0);
+
+        for (UIFormCategory targetCategory : this.categories)
+        {
+            if (!(targetCategory.category instanceof UserFormCategory))
+            {
+                continue;
+            }
+
+            UIButton targetButton = new UIButton(IKey.constant(this.getCategoryTabTitle(targetCategory.category.getProcessedTitle())), (button) -> this.openCategoryPopup(targetCategory));
+            targetButton.w(112).h(POPUP_TARGETS_BAR_HEIGHT);
+            targetButton.color(targetCategory == category ? BBSSettings.primaryColor.get() : 0x2d2d2d);
+            targetsBar.add(targetButton);
+            popupDropTargets.put(targetButton, targetCategory);
+        }
+
+        targetsBar.resize();
+
         UIScrollView popupScroll = UI.scrollView(0, 0);
-        popupScroll.relative(content).x(0).y(20).w(1F).h(1F, -20);
+        popupScroll.relative(content).x(0).y(24 + POPUP_TARGETS_BAR_HEIGHT).w(1F).h(1F, -(24 + POPUP_TARGETS_BAR_HEIGHT));
         popupScroll.scroll.cancelScrolling();
 
-        UICategoryPopupGrid popupGrid = new UICategoryPopupGrid(category);
+        UICategoryPopupGrid popupGrid = new UICategoryPopupGrid(category, popupDropTargets);
+        popupGridHolder[0] = popupGrid;
         popupGrid.relative(popupScroll).x(0).y(0).w(1F).h(0);
         popupScroll.add(popupGrid);
         popupGrid.h(1);
 
-        content.add(closePopup, popupScroll);
+        content.add(closePopup, targetsBar, popupScroll);
         popup.add(content);
         overlay.add(popup);
         popup.resize();
@@ -1751,13 +1810,16 @@ public class UIFormList extends UIElement
             boolean previewsVisible = UIFormList.this.isCategoryPreviewVisible(category);
             UIFormCategory selectedCategory = UIFormList.this.getSelectedCategory();
             boolean selected = selectedCategory == category;
+            boolean userCategory = category.category instanceof UserFormCategory;
             int baseColor = selected ? (Colors.A50 | BBSSettings.primaryColor.get()) : Colors.A25;
+            int outlineColor = selected ? (Colors.A100 | BBSSettings.primaryColor.get()) : (userCategory ? (Colors.A100 | BBSSettings.primaryColor.get()) : Colors.A100);
+            int titleColor = userCategory ? (Colors.LIGHTEST_GRAY | Colors.A100) : Colors.WHITE;
 
             context.batcher.box(x, y, x + CATEGORY_CARD_WIDTH, y + CATEGORY_CARD_HEIGHT, baseColor);
-            context.batcher.outline(x, y, x + CATEGORY_CARD_WIDTH, y + CATEGORY_CARD_HEIGHT, Colors.A100);
+            context.batcher.outline(x, y, x + CATEGORY_CARD_WIDTH, y + CATEGORY_CARD_HEIGHT, outlineColor);
 
             String title = context.batcher.getFont().limitToWidth(category.category.getProcessedTitle(), CATEGORY_CARD_WIDTH - 28);
-            context.batcher.textShadow(title, x + 6, y + 4);
+            context.batcher.textShadow(title, x + 6, y + 4, titleColor);
 
             int iconX = x + CATEGORY_CARD_WIDTH - CATEGORY_PREVIEW_TOGGLE_SIZE - 6;
             int iconY = y + 4;
@@ -1838,11 +1900,46 @@ public class UIFormList extends UIElement
     private class UICategoryPopupGrid extends UIElement
     {
         private final UIFormCategory category;
+        private final Map<UIElement, UIFormCategory> dropTargets;
         private int lastHeight;
+        private int dragIndex = -1;
+        private long dragStart = -1L;
+        private boolean dragging;
 
-        public UICategoryPopupGrid(UIFormCategory category)
+        public UICategoryPopupGrid(UIFormCategory category, Map<UIElement, UIFormCategory> dropTargets)
         {
             this.category = category;
+            this.dropTargets = dropTargets;
+        }
+
+        public boolean isDraggingModel()
+        {
+            return this.dragging && this.dragIndex >= 0 && this.dragIndex < this.category.getForms().size() && this.category.category instanceof UserFormCategory;
+        }
+
+        public UIFormCategory getHoveredDropCategory(int mouseX, int mouseY)
+        {
+            if (!this.isDraggingModel())
+            {
+                return null;
+            }
+
+            for (Map.Entry<UIElement, UIFormCategory> entry : this.dropTargets.entrySet())
+            {
+                UIFormCategory targetCategory = entry.getValue();
+
+                if (targetCategory == this.category || !(targetCategory.category instanceof UserFormCategory))
+                {
+                    continue;
+                }
+
+                if (entry.getKey().area.isInside(mouseX, mouseY))
+                {
+                    return targetCategory;
+                }
+            }
+
+            return null;
         }
 
         @Override
@@ -1867,8 +1964,14 @@ public class UIFormList extends UIElement
 
             if (index >= 0 && index < forms.size())
             {
+                if (this.category.category instanceof UserFormCategory)
+                {
+                    this.dragIndex = index;
+                    this.dragStart = System.currentTimeMillis();
+                    this.dragging = false;
+                }
+
                 this.category.select(forms.get(index), true);
-                UIFormList.this.closeCategoryPopup();
 
                 return true;
             }
@@ -1884,6 +1987,18 @@ public class UIFormList extends UIElement
             int h = 0;
             int x = 0;
             int i = 0;
+
+            if (this.dragIndex >= forms.size())
+            {
+                this.dragIndex = -1;
+                this.dragging = false;
+                this.dragStart = -1L;
+            }
+
+            if (this.dragIndex != -1 && !this.dragging && this.category.category instanceof UserFormCategory && System.currentTimeMillis() - this.dragStart > POPUP_DRAG_DELAY_MS)
+            {
+                this.dragging = true;
+            }
 
             for (Form form : forms)
             {
@@ -1929,6 +2044,67 @@ public class UIFormList extends UIElement
                     this.getParent().resize();
                 }
             }
+
+            if (this.dragging && this.dragIndex >= 0 && this.dragIndex < forms.size() && this.category.category instanceof UserFormCategory)
+            {
+                int cx = context.mouseX - POPUP_CELL_WIDTH / 2;
+                int cy = context.mouseY - POPUP_CELL_HEIGHT / 2;
+
+                context.batcher.box(cx, cy, cx + POPUP_CELL_WIDTH, cy + POPUP_CELL_HEIGHT, Colors.A50 | BBSSettings.primaryColor.get());
+                context.batcher.outline(cx, cy, cx + POPUP_CELL_WIDTH, cy + POPUP_CELL_HEIGHT, Colors.A100 | BBSSettings.primaryColor.get(), 2);
+                FormUtilsClient.renderUI(forms.get(this.dragIndex), context, cx, cy, cx + POPUP_CELL_WIDTH, cy + POPUP_CELL_HEIGHT);
+            }
+        }
+
+        @Override
+        public boolean subMouseReleased(UIContext context)
+        {
+            if (this.dragIndex != -1)
+            {
+                if (this.dragging && this.category.category instanceof UserFormCategory)
+                {
+                    List<Form> forms = this.category.getForms();
+
+                    if (!forms.isEmpty())
+                    {
+                        UIFormCategory targetCategory = this.getHoveredDropCategory(context.mouseX, context.mouseY);
+
+                        if (targetCategory != null)
+                        {
+                            Form form = forms.get(this.dragIndex);
+                            ((UserFormCategory) targetCategory.category).addForm(form);
+                            this.category.category.removeForm(form);
+                            UIFormList.this.openCategoryPopup(targetCategory);
+                            this.dragIndex = -1;
+                            this.dragStart = -1L;
+                            this.dragging = false;
+
+                            return true;
+                        }
+
+                        if (this.area.isInside(context.mouseX, context.mouseY))
+                        {
+                            int perRow = Math.max(1, this.area.w / POPUP_CELL_WIDTH);
+                            int localX = Math.max(0, context.mouseX - this.area.x);
+                            int localY = Math.max(0, context.mouseY - this.area.y);
+                            int column = Math.min(perRow - 1, localX / POPUP_CELL_WIDTH);
+                            int row = Math.max(0, localY / POPUP_CELL_HEIGHT);
+                            int targetIndex = Math.min(forms.size() - 1, column + row * perRow);
+
+                            if (targetIndex >= 0 && targetIndex < forms.size() && targetIndex != this.dragIndex)
+                            {
+                                ((UserFormCategory) this.category.category).moveForm(this.dragIndex, targetIndex);
+                            }
+                        }
+                    }
+                }
+
+                this.dragIndex = -1;
+                this.dragStart = -1L;
+                this.dragging = false;
+            }
+
+            return super.subMouseReleased(context);
         }
     }
 
