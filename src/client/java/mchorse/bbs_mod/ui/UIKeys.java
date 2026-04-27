@@ -656,6 +656,7 @@ public class UIKeys
     public static final IKey FORMS_LIST_SEARCH = L10n.lang("bbs.ui.forms.list.search");
     public static final IKey FORMS_LIST_TOGGLE_ALL_PREVIEWS = L10n.lang("bbs.ui.forms.list.toggle_all_previews");
     public static final IKey FORMS_LIST_TOGGLE_CATEGORY_ORDER_LOCK = L10n.lang("bbs.ui.forms.list.toggle_category_order_lock");
+    public static final IKey FORMS_LIST_MODEL_FOLDER_BACK = L10n.lang("bbs.ui.forms.list.model_folder.back");
     public static final IKey FORMS_LIST_GROUP_RECENT = L10n.lang("bbs.ui.forms.list.group.recent");
     public static final IKey FORMS_LIST_GROUP_USER = L10n.lang("bbs.ui.forms.list.group.user");
     public static final IKey FORMS_LIST_GROUP_MODELS = L10n.lang("bbs.ui.forms.list.group.models");

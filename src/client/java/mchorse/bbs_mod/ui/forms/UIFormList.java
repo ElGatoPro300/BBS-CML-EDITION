@@ -132,6 +132,7 @@ public class UIFormList extends UIElement
     private UICategoryCardsGrid categoryCards;
     private final Set<String> hiddenCategoryPreviews = new HashSet<>();
     private final List<String> modelCategoryOrder = new ArrayList<>();
+    private String activeModelFolderPath;
     private String pendingSearchQuery = "";
     private String appliedSearchQuery = "";
     private long pendingSearchDeadline = -1L;
@@ -246,6 +247,7 @@ public class UIFormList extends UIElement
         }
 
         this.categories.get(this.categories.size() - 1).marginBottom(40);
+        this.syncModelFolderNavigationState();
         this.hiddenCategoryPreviews.retainAll(this.getAvailableCategoryPreviewKeys());
         this.applySearchNow(this.appliedSearchQuery);
         this.categoryCardsView.scroll.scrollTo(0);
@@ -958,7 +960,7 @@ public class UIFormList extends UIElement
 
         if (root != null && root.has("model_categories_order", BaseType.TYPE_LIST))
         {
-            this.modelCategoryOrder.addAll(this.fromList(root.getList("model_categories_order")));
+            this.modelCategoryOrder.addAll(this.fromListOrdered(root.getList("model_categories_order")));
         }
 
         if (this.activeFavoriteCategoryId != null && !FAVORITES_CATEGORY_ID.equals(this.activeFavoriteCategoryId) && !this.customFavoriteCategories.containsKey(this.activeFavoriteCategoryId))
@@ -1068,6 +1070,21 @@ public class UIFormList extends UIElement
     private Set<String> fromList(ListType list)
     {
         Set<String> values = new HashSet<>();
+
+        for (BaseType type : list)
+        {
+            if (type.isString())
+            {
+                values.add(type.asString());
+            }
+        }
+
+        return values;
+    }
+
+    private List<String> fromListOrdered(ListType list)
+    {
+        List<String> values = new ArrayList<>();
 
         for (BaseType type : list)
         {
@@ -1777,6 +1794,156 @@ public class UIFormList extends UIElement
         return "title:" + (title == null ? "" : title.toLowerCase(Locale.ROOT));
     }
 
+    private boolean isModelFolderNavigationActive()
+    {
+        return this.activeModelFolderPath != null && !this.activeModelFolderPath.isEmpty();
+    }
+
+    private void syncModelFolderNavigationState()
+    {
+        if (!this.isModelFolderNavigationActive())
+        {
+            this.activeModelFolderPath = null;
+            return;
+        }
+
+        UIFormCategory activeFolder = this.findModelFolderCategory(this.activeModelFolderPath);
+
+        if (activeFolder == null || !(activeFolder.category instanceof ModelFormCategory.Folder))
+        {
+            this.activeModelFolderPath = null;
+            return;
+        }
+    }
+
+    private UIFormCategory findModelFolderCategory(String path)
+    {
+        if (path == null)
+        {
+            return null;
+        }
+
+        for (UIFormCategory category : this.categories)
+        {
+            if (!(category.category instanceof ModelFormCategory.Folder folder))
+            {
+                continue;
+            }
+
+            if (Objects.equals(folder.path, path))
+            {
+                return category;
+            }
+        }
+
+        return null;
+    }
+
+    private boolean isTopLevelModelFolder(ModelFormCategory.Folder folder)
+    {
+        return !folder.path.isEmpty() && folder.getParent() == null;
+    }
+
+    private boolean isVisibleModelFolderInActiveNavigation(ModelFormCategory.Folder folder)
+    {
+        if (!this.isModelFolderNavigationActive())
+        {
+            return false;
+        }
+
+        if (Objects.equals(folder.path, this.activeModelFolderPath))
+        {
+            return true;
+        }
+
+        return folder.getParent() != null && Objects.equals(folder.getParent().path, this.activeModelFolderPath);
+    }
+
+    private boolean isCategoryVisibleInCards(UIFormCategory category)
+    {
+        if (!(category.category instanceof ModelFormCategory.Folder folder))
+        {
+            return !this.isModelFolderNavigationActive();
+        }
+
+        if (folder.path.isEmpty())
+        {
+            return !this.isModelFolderNavigationActive();
+        }
+
+        if (!this.isModelFolderNavigationActive())
+        {
+            return this.isTopLevelModelFolder(folder);
+        }
+
+        return this.isVisibleModelFolderInActiveNavigation(folder);
+    }
+
+    private boolean shouldEnterModelFolder(UIFormCategory category)
+    {
+        if (!(category.category instanceof ModelFormCategory.Folder folder))
+        {
+            return false;
+        }
+
+        if (folder.path.isEmpty())
+        {
+            return false;
+        }
+
+        if (!this.isModelFolderNavigationActive())
+        {
+            return this.isTopLevelModelFolder(folder);
+        }
+
+        if (Objects.equals(folder.path, this.activeModelFolderPath))
+        {
+            return false;
+        }
+
+        return folder.getParent() != null && Objects.equals(folder.getParent().path, this.activeModelFolderPath);
+    }
+
+    private void enterModelFolder(UIFormCategory category)
+    {
+        if (!(category.category instanceof ModelFormCategory.Folder folder))
+        {
+            return;
+        }
+
+        this.activeModelFolderPath = folder.path;
+        this.syncModelFolderNavigationState();
+        this.categoryCardsView.scroll.scrollTo(0);
+        this.invalidateCategoryCards();
+    }
+
+    private void navigateUpModelFolder()
+    {
+        if (!this.isModelFolderNavigationActive())
+        {
+            return;
+        }
+
+        UIFormCategory activeCategory = this.findModelFolderCategory(this.activeModelFolderPath);
+
+        if (!(activeCategory != null && activeCategory.category instanceof ModelFormCategory.Folder activeFolder))
+        {
+            this.activeModelFolderPath = null;
+        }
+        else if (activeFolder.getParent() == null || activeFolder.getParent().path.isEmpty())
+        {
+            this.activeModelFolderPath = null;
+        }
+        else
+        {
+            this.activeModelFolderPath = activeFolder.getParent().path;
+        }
+
+        this.syncModelFolderNavigationState();
+        this.categoryCardsView.scroll.scrollTo(0);
+        this.invalidateCategoryCards();
+    }
+
     private void openCategoryPopup(UIFormCategory category)
     {
         if (category == null)
@@ -2084,6 +2251,7 @@ public class UIFormList extends UIElement
         FormCategories categories = BBSModClient.getFormCategories();
         this.applyFavoritesLayout(this.isFavoritesFeatureEnabled());
         this.layoutActionBar();
+        this.syncModelFolderNavigationState();
         this.syncFavoriteData();
         this.updateTabs();
         this.flushPendingSearch();
@@ -2171,6 +2339,16 @@ public class UIFormList extends UIElement
                 return false;
             }
 
+            if (cell.isBackCard())
+            {
+                if (context.mouseButton == 0)
+                {
+                    UIFormList.this.navigateUpModelFolder();
+                }
+
+                return true;
+            }
+
             if (this.isToggleButtonAt(context.mouseX, context.mouseY, cell.x, cell.y))
             {
                 UIFormList.this.toggleCategoryPreview(cell.category);
@@ -2195,6 +2373,13 @@ public class UIFormList extends UIElement
                 return true;
             }
 
+            if (UIFormList.this.shouldEnterModelFolder(cell.category))
+            {
+                UIFormList.this.enterModelFolder(cell.category);
+
+                return true;
+            }
+
             UIFormList.this.openCategoryPopup(cell.category);
 
             return true;
@@ -2214,7 +2399,7 @@ public class UIFormList extends UIElement
             {
                 CategoryCell hovered = this.getCategoryCellAt(context.mouseX, context.mouseY);
 
-                if (hovered != null)
+                if (hovered != null && !hovered.isBackCard())
                 {
                     handled = UIFormList.this.moveCategory(this.dragCategory, hovered.category);
                 }
@@ -2225,7 +2410,15 @@ public class UIFormList extends UIElement
                 && context.mouseY >= this.dragCell.y
                 && context.mouseY < this.dragCell.y + CATEGORY_CARD_HEIGHT)
             {
-                UIFormList.this.openCategoryPopup(this.dragCell.category);
+                if (UIFormList.this.shouldEnterModelFolder(this.dragCell.category))
+                {
+                    UIFormList.this.enterModelFolder(this.dragCell.category);
+                }
+                else
+                {
+                    UIFormList.this.openCategoryPopup(this.dragCell.category);
+                }
+
                 handled = true;
             }
 
@@ -2251,7 +2444,7 @@ public class UIFormList extends UIElement
                 }
             }
 
-            if (this.filteredCategories.isEmpty())
+            if (this.cardCells.isEmpty())
             {
                 return;
             }
@@ -2293,7 +2486,14 @@ public class UIFormList extends UIElement
                     continue;
                 }
 
-                this.renderCategoryCard(context, cell.category, cell.x, cell.y);
+                if (cell.isBackCard())
+                {
+                    this.renderModelBackCard(context, cell.x, cell.y);
+                }
+                else
+                {
+                    this.renderCategoryCard(context, cell.category, cell.x, cell.y);
+                }
             }
 
             if (this.dragCategory != null && !this.draggingCategory && UIFormList.this.userCategoryOrderUnlocked && System.currentTimeMillis() - this.dragStart > POPUP_DRAG_DELAY_MS)
@@ -2305,7 +2505,7 @@ public class UIFormList extends UIElement
             {
                 CategoryCell hovered = this.getCategoryCellAt(context.mouseX, context.mouseY);
 
-                if (hovered != null && UIFormList.this.canDropCategoryOn(this.dragCategory, hovered.category))
+                if (hovered != null && !hovered.isBackCard() && UIFormList.this.canDropCategoryOn(this.dragCategory, hovered.category))
                 {
                     context.batcher.box(hovered.x, hovered.y, hovered.x + CATEGORY_CARD_WIDTH, hovered.y + CATEGORY_CARD_HEIGHT, Colors.A25 | BBSSettings.primaryColor.get());
                     context.batcher.outline(hovered.x, hovered.y, hovered.x + CATEGORY_CARD_WIDTH, hovered.y + CATEGORY_CARD_HEIGHT, Colors.A100 | BBSSettings.primaryColor.get(), 2);
@@ -2346,10 +2546,16 @@ public class UIFormList extends UIElement
 
             for (UIFormCategory category : UIFormList.this.categories)
             {
+                if (!UIFormList.this.isCategoryVisibleInCards(category))
+                {
+                    continue;
+                }
+
                 List<Form> forms = category.getForms();
                 boolean isUserCategory = category instanceof UIUserFormCategory || category.category instanceof UserFormCategory;
+                boolean isModelFolder = category.category instanceof ModelFormCategory.Folder;
 
-                if (!forms.isEmpty() || isUserCategory)
+                if (!forms.isEmpty() || isUserCategory || isModelFolder)
                 {
                     this.filteredCategories.add(category);
                     this.previewCache.put(category, forms);
@@ -2364,8 +2570,9 @@ public class UIFormList extends UIElement
             for (Map.Entry<CardGroup, List<UIFormCategory>> entry : groups.entrySet())
             {
                 List<UIFormCategory> groupCategories = entry.getValue();
+                boolean hasBackCard = entry.getKey() == CardGroup.MODELS && this.shouldShowModelBackCard();
 
-                if (groupCategories.isEmpty())
+                if (groupCategories.isEmpty() && !hasBackCard)
                 {
                     continue;
                 }
@@ -2378,16 +2585,27 @@ public class UIFormList extends UIElement
                 this.groupDividers.add(new GroupDivider(entry.getKey(), currentY));
                 currentY += CATEGORY_GROUP_HEADER_HEIGHT;
 
-                for (int i = 0; i < groupCategories.size(); i++)
+                int cardsCount = groupCategories.size() + (hasBackCard ? 1 : 0);
+
+                for (int i = 0; i < cardsCount; i++)
                 {
                     int row = i / this.cachedPerRow;
                     int column = i % this.cachedPerRow;
                     int x = this.area.x + CATEGORY_CARD_GAP + column * (CATEGORY_CARD_WIDTH + CATEGORY_CARD_GAP);
                     int y = currentY + row * step;
-                    this.cardCells.add(new CategoryCell(groupCategories.get(i), x, y));
+
+                    if (hasBackCard && i == 0)
+                    {
+                        this.cardCells.add(new CategoryCell(null, x, y, true));
+                    }
+                    else
+                    {
+                        int index = hasBackCard ? i - 1 : i;
+                        this.cardCells.add(new CategoryCell(groupCategories.get(index), x, y, false));
+                    }
                 }
 
-                int rows = (groupCategories.size() + this.cachedPerRow - 1) / this.cachedPerRow;
+                int rows = (cardsCount + this.cachedPerRow - 1) / this.cachedPerRow;
                 currentY += rows * step;
                 firstGroup = false;
             }
@@ -2464,6 +2682,24 @@ public class UIFormList extends UIElement
             int iconY = cardY + 4;
 
             return mouseX >= iconX && mouseX < iconX + CATEGORY_PREVIEW_TOGGLE_SIZE && mouseY >= iconY && mouseY < iconY + CATEGORY_PREVIEW_TOGGLE_SIZE;
+        }
+
+        private boolean shouldShowModelBackCard()
+        {
+            return UIFormList.this.isModelFolderNavigationActive();
+        }
+
+        private void renderModelBackCard(UIContext context, int x, int y)
+        {
+            boolean hovered = context.mouseX >= x && context.mouseX < x + CATEGORY_CARD_WIDTH && context.mouseY >= y && context.mouseY < y + CATEGORY_CARD_HEIGHT;
+            int baseColor = hovered ? (Colors.A50 | BBSSettings.primaryColor.get()) : Colors.A25;
+            int outlineColor = hovered ? (Colors.A100 | BBSSettings.primaryColor.get()) : Colors.A100;
+            String title = context.batcher.getFont().limitToWidth(UIKeys.FORMS_LIST_MODEL_FOLDER_BACK.get(), CATEGORY_CARD_WIDTH - 28);
+
+            context.batcher.box(x, y, x + CATEGORY_CARD_WIDTH, y + CATEGORY_CARD_HEIGHT, baseColor);
+            context.batcher.outline(x, y, x + CATEGORY_CARD_WIDTH, y + CATEGORY_CARD_HEIGHT, outlineColor);
+            context.batcher.textShadow(title, x + 6, y + 4, Colors.LIGHTEST_GRAY | Colors.A100);
+            this.renderScaledIcon(context, Icons.ARROW_LEFT, Colors.WHITE, x + CATEGORY_CARD_WIDTH / 2, y + CATEGORY_CARD_HEIGHT / 2 + 4, CATEGORY_MOVE_HANDLE_ICON_SIZE);
         }
 
         private void renderCategoryCard(UIContext context, UIFormCategory category, int x, int y)
@@ -2595,12 +2831,19 @@ public class UIFormList extends UIElement
             private final UIFormCategory category;
             private final int x;
             private final int y;
+            private final boolean backCard;
 
-            private CategoryCell(UIFormCategory category, int x, int y)
+            private CategoryCell(UIFormCategory category, int x, int y, boolean backCard)
             {
                 this.category = category;
                 this.x = x;
                 this.y = y;
+                this.backCard = backCard;
+            }
+
+            private boolean isBackCard()
+            {
+                return this.backCard;
             }
         }
 

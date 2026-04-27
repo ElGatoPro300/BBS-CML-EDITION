@@ -962,6 +962,7 @@
     "bbs.ui.forms.list.tab.favorites": "Favorites",
     "bbs.ui.forms.list.toggle_all_previews": "Mostrar/ocultar previews de todas las categorías",
     "bbs.ui.forms.list.toggle_category_order_lock": "Bloquear/desbloquear orden de categorías",
+    "bbs.ui.forms.list.model_folder.back": "Volver a la categoría de modelos anterior",
     "bbs.ui.generic_keyframes.anchor.pick_actor": "Elegir actor...",
     "bbs.ui.generic_keyframes.anchor.pick_attachment": "Elije una parte...",
     "bbs.ui.generic_keyframes.boolean.true": "Verdadero",
