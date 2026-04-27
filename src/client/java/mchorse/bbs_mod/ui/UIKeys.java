@@ -660,6 +660,7 @@ public class UIKeys
     public static final IKey FORMS_LIST_GROUP_RECENT = L10n.lang("bbs.ui.forms.list.group.recent");
     public static final IKey FORMS_LIST_GROUP_USER = L10n.lang("bbs.ui.forms.list.group.user");
     public static final IKey FORMS_LIST_GROUP_MODELS = L10n.lang("bbs.ui.forms.list.group.models");
+    public static final IKey FORMS_LIST_GROUP_PARTICLES = L10n.lang("bbs.ui.forms.list.group.particles");
     public static final IKey FORMS_LIST_GROUP_MISC = L10n.lang("bbs.ui.forms.list.group.misc");
     public static final IKey FORMS_CATEGORIES_CONTEXT_ADD_TO_CATEGORY = L10n.lang("bbs.ui.forms.categories.context.add_to_category");
     public static final IKey FORMS_CATEGORIES_CONTEXT_ADD_TO_PICK = L10n.lang("bbs.ui.forms.categories.context.add_to_pick");

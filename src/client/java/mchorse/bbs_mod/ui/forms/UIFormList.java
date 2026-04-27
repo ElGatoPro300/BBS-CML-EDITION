@@ -20,6 +20,7 @@ import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.forms.categories.UIFormCategory;
+import mchorse.bbs_mod.ui.forms.categories.UIParticleFormCategory;
 import mchorse.bbs_mod.ui.forms.categories.UIRecentFormCategory;
 import mchorse.bbs_mod.ui.forms.categories.UIUserFormCategory;
 import mchorse.bbs_mod.ui.forms.overlays.UIFavoriteCategoryOverlayPanel;
@@ -2300,6 +2301,7 @@ public class UIFormList extends UIElement
             RECENT(UIKeys.FORMS_LIST_GROUP_RECENT),
             USER_CREATED(UIKeys.FORMS_LIST_GROUP_USER),
             MODELS(UIKeys.FORMS_LIST_GROUP_MODELS),
+            PARTICLES(UIKeys.FORMS_LIST_GROUP_PARTICLES),
             BBS(UIKeys.FORMS_LIST_GROUP_MISC);
 
             private final IKey label;
@@ -2554,8 +2556,9 @@ public class UIFormList extends UIElement
                 List<Form> forms = category.getForms();
                 boolean isUserCategory = category instanceof UIUserFormCategory || category.category instanceof UserFormCategory;
                 boolean isModelFolder = category.category instanceof ModelFormCategory.Folder;
+                boolean includeWhenEmpty = !UIFormList.this.isFavoritesOnly() && (isUserCategory || isModelFolder);
 
-                if (!forms.isEmpty() || isUserCategory || isModelFolder)
+                if (!forms.isEmpty() || includeWhenEmpty)
                 {
                     this.filteredCategories.add(category);
                     this.previewCache.put(category, forms);
@@ -2638,6 +2641,11 @@ public class UIFormList extends UIElement
             if (category.category instanceof UserFormCategory)
             {
                 return CardGroup.USER_CREATED;
+            }
+
+            if (category instanceof UIParticleFormCategory)
+            {
+                return CardGroup.PARTICLES;
             }
 
             if (this.isBbsCategory(category))

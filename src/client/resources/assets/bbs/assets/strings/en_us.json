@@ -958,6 +958,7 @@
     "bbs.ui.forms.list.edit": "Edit",
     "bbs.ui.forms.list.group.misc": "Miscellaneous",
     "bbs.ui.forms.list.group.models": "Models",
+    "bbs.ui.forms.list.group.particles": "Particles",
     "bbs.ui.forms.list.group.recent": "Recent forms",
     "bbs.ui.forms.list.group.user": "Categories",
     "bbs.ui.forms.list.search": "Search...",
