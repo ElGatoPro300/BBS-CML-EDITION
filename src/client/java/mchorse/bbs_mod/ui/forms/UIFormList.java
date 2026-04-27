@@ -19,6 +19,7 @@ import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.forms.categories.UIFormCategory;
 import mchorse.bbs_mod.ui.forms.categories.UIRecentFormCategory;
+import mchorse.bbs_mod.ui.forms.categories.UIUserFormCategory;
 import mchorse.bbs_mod.ui.forms.overlays.UIFavoriteCategoryOverlayPanel;
 import mchorse.bbs_mod.ui.forms.overlays.UIRemoveFavoriteCategoryOverlayPanel;
 import mchorse.bbs_mod.ui.framework.UIContext;
@@ -86,6 +87,7 @@ public class UIFormList extends UIElement
     private static final int CATEGORY_HIDDEN_ICON_SIZE = 50;
     private static final int CATEGORY_GROUP_HEADER_HEIGHT = 14;
     private static final int CATEGORY_SECTION_GAP = 16;
+    private static final int POPUP_TARGET_BUTTON_GAP = 4;
 
     public IUIFormList palette;
 
@@ -260,20 +262,21 @@ public class UIFormList extends UIElement
     public FavoriteMarker getFavoriteMarker(Form form)
     {
         String key = this.getFavoriteKey(form);
+        String legacyKey = this.getLegacyFavoriteKey(form);
 
-        if (key == null)
+        if (key == null && legacyKey == null)
         {
             return null;
         }
 
-        FavoriteCategory customCategory = this.findCustomCategoryForKey(key);
+        FavoriteCategory customCategory = this.findCustomCategoryForKeys(key, legacyKey);
 
         if (customCategory != null)
         {
             return new FavoriteMarker(customCategory.id, customCategory.name, this.getIconByName(customCategory.icon), (customCategory.color & Colors.RGB) | Colors.A100);
         }
 
-        if (this.favoriteModelForms.contains(key))
+        if (this.favoriteModelForms.contains(key) || (legacyKey != null && this.favoriteModelForms.contains(legacyKey)))
         {
             return new FavoriteMarker(FAVORITES_CATEGORY_ID, UIKeys.FORMS_LIST_TAB_FAVORITES.get(), Icons.FIVE_STAR, Colors.YELLOW | Colors.A100);
         }
@@ -312,6 +315,7 @@ public class UIFormList extends UIElement
     public boolean addFavoriteFormToCategory(Form form, String categoryId)
     {
         String key = this.getFavoriteKey(form);
+        String legacyKey = this.getLegacyFavoriteKey(form);
 
         if (key == null || categoryId == null)
         {
@@ -328,9 +332,19 @@ public class UIFormList extends UIElement
         for (Set<String> forms : this.customCategoryForms.values())
         {
             changed = forms.remove(key) || changed;
+
+            if (legacyKey != null)
+            {
+                changed = forms.remove(legacyKey) || changed;
+            }
         }
 
         changed = this.favoriteModelForms.remove(key) || changed;
+
+        if (legacyKey != null)
+        {
+            changed = this.favoriteModelForms.remove(legacyKey) || changed;
+        }
 
         if (FAVORITES_CATEGORY_ID.equals(categoryId))
         {
@@ -364,6 +378,7 @@ public class UIFormList extends UIElement
     public boolean removeFavoriteForm(Form form)
     {
         String key = this.getFavoriteKey(form);
+        String legacyKey = this.getLegacyFavoriteKey(form);
 
         if (key == null)
         {
@@ -372,20 +387,20 @@ public class UIFormList extends UIElement
 
         Set<String> currentCategoryForms = this.getFormsForCategory(this.getCurrentMarkerCategoryId(), false);
 
-        if (currentCategoryForms != null && currentCategoryForms.remove(key))
+        if (currentCategoryForms != null && (currentCategoryForms.remove(key) || (legacyKey != null && currentCategoryForms.remove(legacyKey))))
         {
             this.persistFavoriteData();
 
             return true;
         }
 
-        FavoriteCategory customCategory = this.findCustomCategoryForKey(key);
+        FavoriteCategory customCategory = this.findCustomCategoryForKeys(key, legacyKey);
 
         if (customCategory != null)
         {
             Set<String> customForms = this.customCategoryForms.get(customCategory.id);
 
-            if (customForms != null && customForms.remove(key))
+            if (customForms != null && (customForms.remove(key) || (legacyKey != null && customForms.remove(legacyKey))))
             {
                 this.persistFavoriteData();
 
@@ -393,7 +408,7 @@ public class UIFormList extends UIElement
             }
         }
 
-        if (this.favoriteModelForms.remove(key))
+        if (this.favoriteModelForms.remove(key) || (legacyKey != null && this.favoriteModelForms.remove(legacyKey)))
         {
             this.persistFavoriteData();
 
@@ -464,9 +479,10 @@ public class UIFormList extends UIElement
         }
 
         String key = this.getFavoriteKey(form);
+        String legacyKey = this.getLegacyFavoriteKey(form);
         Set<String> categoryForms = this.getFormsForCategory(this.activeFavoriteCategoryId, false);
 
-        return key != null && categoryForms != null && categoryForms.contains(key);
+        return key != null && categoryForms != null && (categoryForms.contains(key) || (legacyKey != null && categoryForms.contains(legacyKey)));
     }
 
     public IKey getAddToCurrentCategoryLabel()
@@ -758,9 +774,9 @@ public class UIFormList extends UIElement
         return trimmed.substring(0, MAX_TAB_TITLE_LENGTH) + "...";
     }
 
-    private FavoriteCategory findCustomCategoryForKey(String key)
+    private FavoriteCategory findCustomCategoryForKeys(String key, String legacyKey)
     {
-        if (key == null)
+        if (key == null && legacyKey == null)
         {
             return null;
         }
@@ -769,7 +785,7 @@ public class UIFormList extends UIElement
         {
             Set<String> forms = this.customCategoryForms.get(category.id);
 
-            if (forms != null && forms.contains(key))
+            if (forms != null && (forms.contains(key) || (legacyKey != null && forms.contains(legacyKey))))
             {
                 return category;
             }
@@ -1031,6 +1047,25 @@ public class UIFormList extends UIElement
     }
 
     private String getFavoriteKey(Form form)
+    {
+        String legacyKey = this.getLegacyFavoriteKey(form);
+
+        if (form == null)
+        {
+            return null;
+        }
+
+        MapType data = FormUtils.toData(form);
+
+        if (data != null)
+        {
+            return "data:" + DataToString.toString(data);
+        }
+
+        return legacyKey;
+    }
+
+    private String getLegacyFavoriteKey(Form form)
     {
         if (form == null)
         {
@@ -1475,26 +1510,38 @@ public class UIFormList extends UIElement
                 }
             }
         };
-        targetsBar.relative(content).x(6).y(20).w(1F, -12).h(POPUP_TARGETS_BAR_HEIGHT).row(0);
+        List<UIButton> targetButtons = new ArrayList<>();
+        boolean userCategoryPopup = category instanceof UIUserFormCategory || category.category instanceof UserFormCategory;
 
-        for (UIFormCategory targetCategory : this.categories)
+        targetsBar.relative(content).x(6).y(20).w(1F, -12).h(POPUP_TARGETS_BAR_HEIGHT);
+
+        if (userCategoryPopup)
         {
-            if (!(targetCategory.category instanceof UserFormCategory))
+            for (UIFormCategory targetCategory : this.categories)
             {
-                continue;
-            }
+                if (!(targetCategory.category instanceof UserFormCategory))
+                {
+                    continue;
+                }
 
-            UIButton targetButton = new UIButton(IKey.constant(this.getCategoryTabTitle(targetCategory.category.getProcessedTitle())), (button) -> this.openCategoryPopup(targetCategory));
-            targetButton.w(112).h(POPUP_TARGETS_BAR_HEIGHT);
-            targetButton.color(targetCategory == category ? BBSSettings.primaryColor.get() : 0x2d2d2d);
-            targetsBar.add(targetButton);
-            popupDropTargets.put(targetButton, targetCategory);
+                UIButton targetButton = new UIButton(IKey.constant(this.getCategoryTabTitle(targetCategory.category.getProcessedTitle())), (button) -> this.openCategoryPopup(targetCategory));
+                targetButton.h(POPUP_TARGETS_BAR_HEIGHT);
+                targetButton.color(targetCategory == category ? BBSSettings.primaryColor.get() : 0x2d2d2d);
+                targetsBar.add(targetButton);
+                targetButtons.add(targetButton);
+                popupDropTargets.put(targetButton, targetCategory);
+            }
         }
 
-        targetsBar.resize();
-
         UIScrollView popupScroll = UI.scrollView(0, 0);
-        popupScroll.relative(content).x(0).y(24 + POPUP_TARGETS_BAR_HEIGHT).w(1F).h(1F, -(24 + POPUP_TARGETS_BAR_HEIGHT));
+        if (userCategoryPopup)
+        {
+            popupScroll.relative(content).x(0).y(24 + POPUP_TARGETS_BAR_HEIGHT).w(1F).h(1F, -(24 + POPUP_TARGETS_BAR_HEIGHT));
+        }
+        else
+        {
+            popupScroll.relative(content).x(0).y(24).w(1F).h(1F, -24);
+        }
         popupScroll.scroll.cancelScrolling();
 
         UICategoryPopupGrid popupGrid = new UICategoryPopupGrid(category, popupDropTargets);
@@ -1503,14 +1550,49 @@ public class UIFormList extends UIElement
         popupScroll.add(popupGrid);
         popupGrid.h(1);
 
-        content.add(closePopup, targetsBar, popupScroll);
+        if (userCategoryPopup)
+        {
+            content.add(closePopup, targetsBar, popupScroll);
+        }
+        else
+        {
+            content.add(closePopup, popupScroll);
+        }
         popup.add(content);
         overlay.add(popup);
         popup.resize();
         content.resize();
+        if (userCategoryPopup)
+        {
+            this.layoutPopupTargetButtons(targetsBar, targetButtons);
+        }
         popupScroll.resize();
         popupGrid.resize();
         this.categoryPopup = popup;
+    }
+
+    private void layoutPopupTargetButtons(UIElement targetsBar, List<UIButton> buttons)
+    {
+        if (buttons.isEmpty() || targetsBar.area.w <= 0)
+        {
+            return;
+        }
+
+        int totalGap = POPUP_TARGET_BUTTON_GAP * (buttons.size() - 1);
+        int availableWidth = Math.max(64 * buttons.size(), targetsBar.area.w - totalGap);
+        int buttonWidth = Math.max(64, availableWidth / buttons.size());
+        int usedWidth = buttonWidth * buttons.size() + totalGap;
+        int startX = Math.max(0, (targetsBar.area.w - usedWidth) / 2);
+        int x = 0;
+
+        for (UIButton button : buttons)
+        {
+            button.relative(targetsBar).xy(startX + x, 0).wh(buttonWidth, POPUP_TARGETS_BAR_HEIGHT);
+            button.resize();
+            x += buttonWidth + POPUP_TARGET_BUTTON_GAP;
+        }
+
+        targetsBar.resize();
     }
 
     private void closeCategoryPopup()
@@ -1798,8 +1880,9 @@ public class UIFormList extends UIElement
             for (UIFormCategory category : UIFormList.this.categories)
             {
                 List<Form> forms = category.getForms();
+                boolean isUserCategory = category instanceof UIUserFormCategory || category.category instanceof UserFormCategory;
 
-                if (!forms.isEmpty())
+                if (!forms.isEmpty() || isUserCategory)
                 {
                     this.filteredCategories.add(category);
                     this.previewCache.put(category, forms);
@@ -1954,12 +2037,21 @@ public class UIFormList extends UIElement
                 {
                     int px = previewAreaX + (i % CATEGORY_PREVIEW_COLUMNS) * (cellW + CATEGORY_PREVIEW_GAP);
                     int py = previewAreaY + (i / CATEGORY_PREVIEW_COLUMNS) * (cellH + CATEGORY_PREVIEW_GAP);
+                    FavoriteMarker marker = UIFormList.this.getFavoriteMarker(forms.get(i));
 
                     context.batcher.box(px, py, px + cellW, py + cellH, Colors.A25);
                     context.batcher.clip(px, py, cellW, cellH, context);
                     FormUtilsClient.renderUI(forms.get(i), context, px, py, px + cellW, py + cellH);
                     context.batcher.unclip(context);
-                    context.batcher.outline(px, py, px + cellW, py + cellH, Colors.A50);
+
+                    if (marker != null)
+                    {
+                        context.batcher.outline(px, py, px + cellW, py + cellH, marker.color);
+                    }
+                    else
+                    {
+                        context.batcher.outline(px, py, px + cellW, py + cellH, Colors.A50);
+                    }
                 }
 
                 if (forms.size() > maxPreview)
@@ -2091,19 +2183,18 @@ public class UIFormList extends UIElement
             }
 
             List<Form> forms = this.category.getForms();
-
-            if (forms.isEmpty())
-            {
-                return false;
-            }
-
             int x = context.mouseX - this.area.x;
             int y = context.mouseY - this.area.y;
             int perRow = Math.max(1, this.area.w / POPUP_CELL_WIDTH);
             int index = x / POPUP_CELL_WIDTH + (y / POPUP_CELL_HEIGHT) * perRow;
 
-            if (index >= 0 && index < forms.size())
+            if (context.mouseButton == 0)
             {
+                if (index < 0 || index >= forms.size())
+                {
+                    return false;
+                }
+
                 if (this.category.category instanceof UserFormCategory)
                 {
                     this.dragIndex = index;
@@ -2113,22 +2204,26 @@ public class UIFormList extends UIElement
 
                 this.category.select(forms.get(index), true);
 
-                if (context.mouseButton == 1)
-                {
-                    UIContextMenu menu = this.category.createContextMenu(context);
-
-                    if (menu != null && !menu.isEmpty())
-                    {
-                        context.setContextMenu(menu);
-                    }
-
-                    return true;
-                }
-
                 return true;
             }
 
-            return false;
+            if (index >= 0 && index < forms.size())
+            {
+                this.category.select(forms.get(index), true);
+            }
+            else
+            {
+                this.category.select(null, false);
+            }
+
+            UIContextMenu menu = this.category.createContextMenu(context);
+
+            if (menu != null && !menu.isEmpty())
+            {
+                context.setContextMenu(menu);
+            }
+
+            return true;
         }
 
         @Override
@@ -2178,7 +2273,16 @@ public class UIFormList extends UIElement
                 context.batcher.clip(cx, cy, POPUP_CELL_WIDTH, POPUP_CELL_HEIGHT, context);
                 FormUtilsClient.renderUI(form, context, cx, cy, cx + POPUP_CELL_WIDTH, cy + POPUP_CELL_HEIGHT);
                 context.batcher.unclip(context);
-                context.batcher.outline(cx, cy, cx + POPUP_CELL_WIDTH, cy + POPUP_CELL_HEIGHT, Colors.A50);
+                FavoriteMarker marker = UIFormList.this.getFavoriteMarker(form);
+
+                if (marker != null)
+                {
+                    context.batcher.outline(cx, cy, cx + POPUP_CELL_WIDTH, cy + POPUP_CELL_HEIGHT, marker.color);
+                }
+                else
+                {
+                    context.batcher.outline(cx, cy, cx + POPUP_CELL_WIDTH, cy + POPUP_CELL_HEIGHT, Colors.A50);
+                }
 
                 x += POPUP_CELL_WIDTH;
                 i += 1;
