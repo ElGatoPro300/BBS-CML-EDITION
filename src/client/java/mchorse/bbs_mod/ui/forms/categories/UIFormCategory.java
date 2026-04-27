@@ -23,8 +23,6 @@ import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.forms.UIFormList;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
-import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
-import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Colors;
@@ -37,7 +35,6 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.Collection;
 import java.util.List;
-import java.util.UUID;
 
 public class UIFormCategory extends UIElement
 {
@@ -71,6 +68,7 @@ public class UIFormCategory extends UIElement
 
             menu.action(Icons.EDIT, UIKeys.GENERAL_EDIT, () ->
             {
+                this.list.closeOpenedCategoryPopup();
                 this.list.palette.toggleEditor();
             });
 
@@ -83,27 +81,6 @@ public class UIFormCategory extends UIElement
                     UIUtils.openFolder(BBSMod.getAssetsPath(ModelManager.MODELS_PREFIX + form.model.get() + "/"));
                 });
             }
-
-            menu.action(Icons.ADD, UIKeys.FORMS_CATEGORIES_CONTEXT_ADD_CATEGORY, () ->
-            {
-                UIOverlay.addOverlay(this.getContext(), new UIPromptOverlayPanel(
-                    UIKeys.FORMS_CATEGORIES_ADD_CATEGORY_TITLE,
-                    UIKeys.FORMS_CATEGORIES_ADD_CATEGORY_DESCRIPTION,
-                    (str) ->
-                    {
-                        userForms.addUserCategory(new UserFormCategory(IKey.constant(str), formCategories.visibility.get(UUID.randomUUID().toString()), userForms));
-                        list.setupForms(formCategories);
-                    }
-                ));
-            });
-
-            menu.action(Icons.REFRESH, UIKeys.FORMS_CATEGORIES_ORDER, () ->
-            {
-                UIOverlay.addOverlay(this.getContext(), new UIOrderCategoriesOverlayPanel(userForms, () ->
-                {
-                    list.setupForms(formCategories);
-                }), 240, 0.6F);
-            });
 
             if (this.selected != null)
             {

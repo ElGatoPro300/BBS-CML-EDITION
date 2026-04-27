@@ -14,6 +14,7 @@ import mchorse.bbs_mod.forms.categories.UserFormCategory;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.forms.ModelForm;
 import mchorse.bbs_mod.forms.forms.ParticleForm;
+import mchorse.bbs_mod.forms.sections.UserFormSection;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
@@ -37,6 +38,8 @@ import mchorse.bbs_mod.ui.framework.elements.input.text.UITextbox;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIMessageOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlayPanel;
+import mchorse.bbs_mod.ui.framework.elements.overlay.UIConfirmOverlayPanel;
+import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.utils.EventPropagation;
 import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
 import mchorse.bbs_mod.ui.utils.UI;
@@ -55,6 +58,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Consumer;
 
 public class UIFormList extends UIElement
@@ -102,6 +106,7 @@ public class UIFormList extends UIElement
     public UIButton favoritesTab;
     public UIButton addCategoryTab;
     public UIIcon toggleAllPreviews;
+    public UIIcon toggleCategoryOrderLock;
     public UIIcon edit;
     public UIIcon close;
 
@@ -126,6 +131,7 @@ public class UIFormList extends UIElement
     private String pendingSearchQuery = "";
     private String appliedSearchQuery = "";
     private long pendingSearchDeadline = -1L;
+    private boolean userCategoryOrderUnlocked;
 
     public UIFormList(IUIFormList palette)
     {
@@ -173,6 +179,8 @@ public class UIFormList extends UIElement
         this.addCategoryTab = new UIIconTabButton(IKey.constant(""), Icons.ADD, (b) -> this.openCreateCategoryPanel());
         this.toggleAllPreviews = new UIIcon(() -> this.areAllCategoryPreviewsVisible() ? Icons.VISIBLE : Icons.INVISIBLE, this::toggleAllCategoryPreviews);
         this.toggleAllPreviews.tooltip(IKey.constant("Ocultar/mostrar previews de todas las categorias"), Direction.TOP);
+        this.toggleCategoryOrderLock = new UIIcon(() -> this.userCategoryOrderUnlocked ? Icons.UNLOCKED : Icons.LOCKED, (b) -> this.userCategoryOrderUnlocked = !this.userCategoryOrderUnlocked);
+        this.toggleCategoryOrderLock.tooltip(IKey.constant("Bloquear/desbloquear orden de categorias de usuario"), Direction.TOP);
         this.edit = new UIIcon(Icons.EDIT, this::edit);
         this.edit.tooltip(UIKeys.FORMS_LIST_EDIT, Direction.TOP);
         this.close = new UIIcon(Icons.CLOSE, this::close);
@@ -191,7 +199,7 @@ public class UIFormList extends UIElement
         this.rebuildCategoryTabs();
         this.tabsBar.add(this.tabs);
         this.tabsBar.setVisible(false);
-        this.bar.add(this.search, this.toggleAllPreviews, this.edit, this.close);
+        this.bar.add(this.search, this.toggleAllPreviews, this.toggleCategoryOrderLock, this.edit, this.close);
         this.categoryCardsView.add(this.categoryCards);
         this.forms.setVisible(false);
         this.layoutActionBar();
@@ -1389,12 +1397,124 @@ public class UIFormList extends UIElement
 
     private void edit(UIIcon b)
     {
+        this.closeCategoryPopup();
         this.palette.toggleEditor();
     }
 
     private void close(UIIcon b)
     {
         this.palette.exit();
+    }
+
+    public void closeOpenedCategoryPopup()
+    {
+        this.closeCategoryPopup();
+    }
+
+    private void openCreateUserCategoryPanel()
+    {
+        FormCategories formCategories = BBSModClient.getFormCategories();
+        UserFormSection userForms = formCategories.getUserForms();
+
+        UIOverlay.addOverlay(this.getContext(), new UIPromptOverlayPanel(
+            UIKeys.FORMS_CATEGORIES_ADD_CATEGORY_TITLE,
+            UIKeys.FORMS_CATEGORIES_ADD_CATEGORY_DESCRIPTION,
+            (str) ->
+            {
+                userForms.addUserCategory(new UserFormCategory(IKey.constant(str), formCategories.visibility.get(UUID.randomUUID().toString()), userForms));
+                this.setupForms(formCategories);
+            }
+        ));
+    }
+
+    private void openRenameUserCategoryPanel(UIUserFormCategory category)
+    {
+        if (category == null)
+        {
+            return;
+        }
+
+        UserFormSection userForms = BBSModClient.getFormCategories().getUserForms();
+        UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
+            UIKeys.FORMS_CATEGORIES_RENAME_CATEGORY_TITLE,
+            UIKeys.FORMS_CATEGORIES_RENAME_CATEGORY_DESCRIPTION,
+            (str) ->
+            {
+                category.category.title = IKey.constant(str);
+                userForms.writeUserCategories((UserFormCategory) category.category);
+                this.invalidateCategoryCards();
+            }
+        );
+
+        panel.text.setText(category.category.title.get());
+        UIOverlay.addOverlay(this.getContext(), panel);
+    }
+
+    private void openRemoveUserCategoryPanel(UIUserFormCategory category)
+    {
+        if (category == null)
+        {
+            return;
+        }
+
+        FormCategories formCategories = BBSModClient.getFormCategories();
+        UserFormSection userForms = formCategories.getUserForms();
+        UIConfirmOverlayPanel panel = new UIConfirmOverlayPanel(
+            UIKeys.FORMS_CATEGORIES_REMOVE_CATEGORY_TITLE.format(category.category.getProcessedTitle()),
+            UIKeys.FORMS_CATEGORIES_REMOVE_CATEGORY_DESCRIPTION,
+            (confirm) ->
+            {
+                if (!confirm)
+                {
+                    return;
+                }
+
+                userForms.removeUserCategory((UserFormCategory) category.category);
+                this.setupForms(formCategories);
+            }
+        );
+
+        UIOverlay.addOverlay(this.getContext(), panel);
+    }
+
+    private void openCategoryCardContextMenu(UIContext context, UIFormCategory category)
+    {
+        context.replaceContextMenu((menu) ->
+        {
+            menu.action(Icons.ADD, UIKeys.FORMS_CATEGORIES_CONTEXT_ADD_CATEGORY, this::openCreateUserCategoryPanel);
+
+            if (category instanceof UIUserFormCategory userCategory)
+            {
+                menu.action(Icons.EDIT, UIKeys.FORMS_CATEGORIES_CONTEXT_RENAME_CATEGORY, () -> this.openRenameUserCategoryPanel(userCategory));
+                menu.action(Icons.TRASH, UIKeys.FORMS_CATEGORIES_CONTEXT_REMOVE_CATEGORY, () -> this.openRemoveUserCategoryPanel(userCategory));
+            }
+        });
+    }
+
+    private boolean moveUserCategory(UIUserFormCategory sourceCategory, UIUserFormCategory targetCategory)
+    {
+        if (sourceCategory == null || targetCategory == null || sourceCategory == targetCategory)
+        {
+            return false;
+        }
+
+        UserFormSection userForms = BBSModClient.getFormCategories().getUserForms();
+        int from = userForms.categories.indexOf((UserFormCategory) sourceCategory.category);
+        int to = userForms.categories.indexOf((UserFormCategory) targetCategory.category);
+
+        if (!userForms.moveUserCategory(from, to))
+        {
+            return false;
+        }
+
+        Form selected = this.getSelected();
+        String query = this.search.getText();
+
+        this.setupForms(BBSModClient.getFormCategories());
+        this.applySearchNow(query);
+        this.restoreSelectedIfPresent(selected);
+
+        return true;
     }
 
     private void openCategoryPopup(UIFormCategory category)
@@ -1742,6 +1862,10 @@ public class UIFormList extends UIElement
         private boolean dirty = true;
         private int lastHeight;
         private int cachedPerRow = 1;
+        private UIUserFormCategory dragCategory;
+        private CategoryCell dragCell;
+        private long dragStart = -1L;
+        private boolean draggingCategory;
 
         private enum CardGroup
         {
@@ -1777,6 +1901,13 @@ public class UIFormList extends UIElement
 
             if (cell == null)
             {
+                if (context.mouseButton == 1)
+                {
+                    UIFormList.this.openCategoryCardContextMenu(context, null);
+
+                    return true;
+                }
+
                 return false;
             }
 
@@ -1787,9 +1918,60 @@ public class UIFormList extends UIElement
                 return true;
             }
 
+            if (context.mouseButton == 1)
+            {
+                UIFormList.this.openCategoryCardContextMenu(context, cell.category);
+
+                return true;
+            }
+
+            if (UIFormList.this.userCategoryOrderUnlocked && cell.category instanceof UIUserFormCategory userCategory)
+            {
+                this.dragCategory = userCategory;
+                this.dragCell = cell;
+                this.dragStart = System.currentTimeMillis();
+                this.draggingCategory = false;
+
+                return true;
+            }
+
             UIFormList.this.openCategoryPopup(cell.category);
 
             return true;
+        }
+
+        @Override
+        public boolean subMouseReleased(UIContext context)
+        {
+            if (context.mouseButton != 0 || this.dragCategory == null)
+            {
+                return super.subMouseReleased(context);
+            }
+
+            boolean handled = false;
+
+            if (this.draggingCategory)
+            {
+                CategoryCell hovered = this.getCategoryCellAt(context.mouseX, context.mouseY);
+
+                if (hovered != null && hovered.category instanceof UIUserFormCategory hoveredUserCategory)
+                {
+                    handled = UIFormList.this.moveUserCategory(this.dragCategory, hoveredUserCategory);
+                }
+            }
+            else if (this.dragCell != null
+                && context.mouseX >= this.dragCell.x
+                && context.mouseX < this.dragCell.x + CATEGORY_CARD_WIDTH
+                && context.mouseY >= this.dragCell.y
+                && context.mouseY < this.dragCell.y + CATEGORY_CARD_HEIGHT)
+            {
+                UIFormList.this.openCategoryPopup(this.dragCell.category);
+                handled = true;
+            }
+
+            this.clearCategoryDragState();
+
+            return handled || super.subMouseReleased(context);
         }
 
         @Override
@@ -1852,6 +2034,31 @@ public class UIFormList extends UIElement
                 }
 
                 this.renderCategoryCard(context, cell.category, cell.x, cell.y);
+            }
+
+            if (this.dragCategory != null && !this.draggingCategory && UIFormList.this.userCategoryOrderUnlocked && System.currentTimeMillis() - this.dragStart > POPUP_DRAG_DELAY_MS)
+            {
+                this.draggingCategory = true;
+            }
+
+            if (this.draggingCategory && this.dragCategory != null)
+            {
+                CategoryCell hovered = this.getCategoryCellAt(context.mouseX, context.mouseY);
+
+                if (hovered != null && hovered.category instanceof UIUserFormCategory && hovered.category != this.dragCategory)
+                {
+                    context.batcher.box(hovered.x, hovered.y, hovered.x + CATEGORY_CARD_WIDTH, hovered.y + CATEGORY_CARD_HEIGHT, Colors.A25 | BBSSettings.primaryColor.get());
+                    context.batcher.outline(hovered.x, hovered.y, hovered.x + CATEGORY_CARD_WIDTH, hovered.y + CATEGORY_CARD_HEIGHT, Colors.A100 | BBSSettings.primaryColor.get(), 2);
+                }
+
+                int previewX = context.mouseX - CATEGORY_CARD_WIDTH / 2;
+                int previewY = context.mouseY - CATEGORY_CARD_HEIGHT / 2;
+                String title = context.batcher.getFont().limitToWidth(this.dragCategory.category.getProcessedTitle(), CATEGORY_CARD_WIDTH - 16);
+
+                context.batcher.box(previewX, previewY, previewX + CATEGORY_CARD_WIDTH, previewY + CATEGORY_CARD_HEIGHT, Colors.A50 | BBSSettings.primaryColor.get());
+                context.batcher.outline(previewX, previewY, previewX + CATEGORY_CARD_WIDTH, previewY + CATEGORY_CARD_HEIGHT, Colors.A100 | BBSSettings.primaryColor.get(), 2);
+                context.batcher.textShadow(title, previewX + 6, previewY + 6, Colors.WHITE);
+                context.batcher.icon(Icons.ALL_DIRECTIONS, Colors.WHITE, previewX + CATEGORY_CARD_WIDTH / 2, previewY + CATEGORY_CARD_HEIGHT / 2, 0.5F, 0.5F);
             }
         }
 
@@ -2006,6 +2213,7 @@ public class UIFormList extends UIElement
             UIFormCategory selectedCategory = UIFormList.this.getSelectedCategory();
             boolean selected = selectedCategory == category;
             boolean userCategory = category.category instanceof UserFormCategory;
+            boolean hoverMoveHandle = UIFormList.this.userCategoryOrderUnlocked && userCategory && context.mouseX >= x && context.mouseX < x + CATEGORY_CARD_WIDTH && context.mouseY >= y && context.mouseY < y + CATEGORY_CARD_HEIGHT;
             int baseColor = selected ? (Colors.A50 | BBSSettings.primaryColor.get()) : Colors.A25;
             int outlineColor = selected ? (Colors.A100 | BBSSettings.primaryColor.get()) : Colors.A100;
             int titleColor = userCategory ? (Colors.LIGHTEST_GRAY | Colors.A100) : Colors.WHITE;
@@ -2084,6 +2292,19 @@ public class UIFormList extends UIElement
                     Icons.CROSSED_OUT_EYE.textureH
                 );
             }
+
+            if (hoverMoveHandle)
+            {
+                context.batcher.icon(Icons.ALL_DIRECTIONS, Colors.A100 | BBSSettings.primaryColor.get(), x + CATEGORY_CARD_WIDTH / 2, y + CATEGORY_CARD_HEIGHT / 2, 0.5F, 0.5F);
+            }
+        }
+
+        private void clearCategoryDragState()
+        {
+            this.dragCategory = null;
+            this.dragCell = null;
+            this.dragStart = -1L;
+            this.draggingCategory = false;
         }
 
         private class CategoryCell
