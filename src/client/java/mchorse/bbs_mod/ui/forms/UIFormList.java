@@ -77,6 +77,9 @@ public class UIFormList extends UIElement
     private static final int POPUP_CELL_HEIGHT = 100;
     private static final int MAX_CATEGORY_NAME_LENGTH = 20;
     private static final int MAX_TAB_TITLE_LENGTH = 10;
+    private static final long SEARCH_DEBOUNCE_MS = 150L;
+    private static final int CATEGORY_VIRTUALIZATION_BUFFER_ROWS = 1;
+    private static final int CATEGORY_PREVIEW_TOGGLE_SIZE = 14;
 
     public IUIFormList palette;
 
@@ -110,6 +113,10 @@ public class UIFormList extends UIElement
     private int lastScroll;
     private UIElement categoryPopup;
     private UICategoryCardsGrid categoryCards;
+    private final Set<String> hiddenCategoryPreviews = new HashSet<>();
+    private String pendingSearchQuery = "";
+    private String appliedSearchQuery = "";
+    private long pendingSearchDeadline = -1L;
 
     public UIFormList(IUIFormList palette)
     {
@@ -213,9 +220,8 @@ public class UIFormList extends UIElement
         }
 
         this.categories.get(this.categories.size() - 1).marginBottom(40);
-        this.categoryCards.h(1);
+        this.applySearchNow(this.appliedSearchQuery);
         this.categoryCardsView.scroll.scrollTo(0);
-        this.categoryCardsView.resize();
         this.resize();
 
         this.lastUpdate = forms.getLastUpdate();
@@ -493,7 +499,7 @@ public class UIFormList extends UIElement
         this.notifyFavoriteCategoryChanged();
         this.updateTabs();
         this.setupForms(BBSModClient.getFormCategories());
-        this.search(query);
+        this.applySearchNow(query);
         this.restoreSelectedIfPresent(selected);
         this.forms.scroll.scrollTo(0);
         this.forms.resize();
@@ -570,7 +576,7 @@ public class UIFormList extends UIElement
         Form selected = this.getSelected();
         String query = this.search.getText();
         this.setupForms(BBSModClient.getFormCategories());
-        this.search(query);
+        this.applySearchNow(query);
         this.restoreSelectedIfPresent(selected);
     }
 
@@ -655,7 +661,7 @@ public class UIFormList extends UIElement
         Form selected = this.getSelected();
         String query = this.search.getText();
         this.setupForms(BBSModClient.getFormCategories());
-        this.search(query);
+        this.applySearchNow(query);
         this.restoreSelectedIfPresent(selected);
 
         return true;
@@ -701,7 +707,7 @@ public class UIFormList extends UIElement
         Form selected = this.getSelected();
         String query = this.search.getText();
         this.setupForms(BBSModClient.getFormCategories());
-        this.search(query);
+        this.applySearchNow(query);
         this.restoreSelectedIfPresent(selected);
 
         return true;
@@ -833,7 +839,7 @@ public class UIFormList extends UIElement
         if (this.isFavoritesOnly())
         {
             this.setupForms(BBSModClient.getFormCategories());
-            this.search(query);
+            this.applySearchNow(query);
             this.restoreSelectedIfPresent(selected);
             this.forms.resize();
             this.resize();
@@ -1159,15 +1165,76 @@ public class UIFormList extends UIElement
 
     private void search(String search)
     {
+        this.pendingSearchQuery = search == null ? "" : search.trim();
+        this.pendingSearchDeadline = System.currentTimeMillis() + SEARCH_DEBOUNCE_MS;
+    }
+
+    private void applySearchNow(String search)
+    {
         search = search.trim();
+        this.pendingSearchQuery = search;
+        this.appliedSearchQuery = search;
+        this.pendingSearchDeadline = -1L;
 
         for (UIFormCategory category : this.categories)
         {
             category.search(search);
         }
 
+        this.invalidateCategoryCards();
+    }
+
+    private void flushPendingSearch()
+    {
+        if (this.pendingSearchDeadline >= 0L && System.currentTimeMillis() >= this.pendingSearchDeadline)
+        {
+            this.applySearchNow(this.pendingSearchQuery);
+        }
+    }
+
+    private void invalidateCategoryCards()
+    {
         this.categoryCards.h(1);
+        this.categoryCards.invalidateCache();
         this.categoryCardsView.resize();
+    }
+
+    private String getCategoryPreviewKey(UIFormCategory category)
+    {
+        if (category == null || category.category == null)
+        {
+            return "";
+        }
+
+        String title = category.category.getProcessedTitle();
+
+        return title == null ? "" : title.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private boolean isCategoryPreviewVisible(UIFormCategory category)
+    {
+        return !this.hiddenCategoryPreviews.contains(this.getCategoryPreviewKey(category));
+    }
+
+    private void toggleCategoryPreview(UIFormCategory category)
+    {
+        String key = this.getCategoryPreviewKey(category);
+
+        if (key.isEmpty())
+        {
+            return;
+        }
+
+        if (this.hiddenCategoryPreviews.contains(key))
+        {
+            this.hiddenCategoryPreviews.remove(key);
+        }
+        else
+        {
+            this.hiddenCategoryPreviews.add(key);
+        }
+
+        this.invalidateCategoryCards();
     }
 
     private void restoreSelectedIfPresent(Form form)
@@ -1410,6 +1477,7 @@ public class UIFormList extends UIElement
         this.layoutActionBar();
         this.syncFavoriteData();
         this.updateTabs();
+        this.flushPendingSearch();
 
         if (this.lastScroll >= 0)
         {
@@ -1438,8 +1506,18 @@ public class UIFormList extends UIElement
 
     private class UICategoryCardsGrid extends UIElement
     {
-        private final List<UIFormCategory> visibleCategories = new ArrayList<>();
+        private final List<UIFormCategory> filteredCategories = new ArrayList<>();
+        private final Map<UIFormCategory, List<Form>> previewCache = new HashMap<>();
+        private boolean dirty = true;
         private int lastHeight;
+        private int cachedPerRow = 1;
+
+        public void invalidateCache()
+        {
+            this.dirty = true;
+            this.lastHeight = 0;
+            this.previewCache.clear();
+        }
 
         @Override
         public boolean subMouseClicked(UIContext context)
@@ -1449,37 +1527,33 @@ public class UIFormList extends UIElement
                 return false;
             }
 
-            UIFormCategory category = this.getCategoryAt(context.mouseX, context.mouseY);
+            CategoryCell cell = this.getCategoryCellAt(context.mouseX, context.mouseY);
 
-            if (category != null)
+            if (cell == null)
             {
-                UIFormList.this.openCategoryPopup(category);
+                return false;
+            }
+
+            if (this.isToggleButtonAt(context.mouseX, context.mouseY, cell.x, cell.y))
+            {
+                UIFormList.this.toggleCategoryPreview(cell.category);
 
                 return true;
             }
 
-            return false;
+            UIFormList.this.openCategoryPopup(cell.category);
+
+            return true;
         }
 
         @Override
         public void render(UIContext context)
         {
-            this.rebuildVisibleCategories();
+            this.rebuildIfNeeded();
 
-            int perRow = Math.max(1, (this.area.w - CATEGORY_CARD_GAP) / (CATEGORY_CARD_WIDTH + CATEGORY_CARD_GAP));
-
-            for (int i = 0; i < this.visibleCategories.size(); i++)
-            {
-                UIFormCategory category = this.visibleCategories.get(i);
-                int row = i / perRow;
-                int column = i % perRow;
-                int x = this.area.x + CATEGORY_CARD_GAP + column * (CATEGORY_CARD_WIDTH + CATEGORY_CARD_GAP);
-                int y = this.area.y + CATEGORY_CARD_GAP + row * (CATEGORY_CARD_HEIGHT + CATEGORY_CARD_GAP);
-                this.renderCategoryCard(context, category, x, y);
-            }
-
-            int rows = (this.visibleCategories.size() + perRow - 1) / perRow;
-            int contentHeight = CATEGORY_CARD_GAP + rows * (CATEGORY_CARD_HEIGHT + CATEGORY_CARD_GAP);
+            int step = CATEGORY_CARD_HEIGHT + CATEGORY_CARD_GAP;
+            int rows = (this.filteredCategories.size() + this.cachedPerRow - 1) / this.cachedPerRow;
+            int contentHeight = CATEGORY_CARD_GAP + rows * step;
 
             if (this.lastHeight != contentHeight)
             {
@@ -1491,46 +1565,91 @@ public class UIFormList extends UIElement
                     this.getParent().resize();
                 }
             }
-        }
 
-        private void rebuildVisibleCategories()
-        {
-            this.visibleCategories.clear();
-
-            for (UIFormCategory category : UIFormList.this.categories)
+            if (this.filteredCategories.isEmpty())
             {
-                if (!category.getForms().isEmpty())
+                return;
+            }
+
+            for (int row = 0; row < rows; row++)
+            {
+                for (int column = 0; column < this.cachedPerRow; column++)
                 {
-                    this.visibleCategories.add(category);
+                    int index = row * this.cachedPerRow + column;
+
+                    if (index >= this.filteredCategories.size())
+                    {
+                        break;
+                    }
+
+                    UIFormCategory category = this.filteredCategories.get(index);
+                    int x = this.area.x + CATEGORY_CARD_GAP + column * (CATEGORY_CARD_WIDTH + CATEGORY_CARD_GAP);
+                    int y = this.area.y + CATEGORY_CARD_GAP + row * step;
+                    this.renderCategoryCard(context, category, x, y);
                 }
             }
         }
 
-        private UIFormCategory getCategoryAt(int mouseX, int mouseY)
+        private void rebuildIfNeeded()
         {
-            this.rebuildVisibleCategories();
-
             int perRow = Math.max(1, (this.area.w - CATEGORY_CARD_GAP) / (CATEGORY_CARD_WIDTH + CATEGORY_CARD_GAP));
 
-            for (int i = 0; i < this.visibleCategories.size(); i++)
+            if (!this.dirty && this.cachedPerRow == perRow)
             {
-                int row = i / perRow;
-                int column = i % perRow;
+                return;
+            }
+
+            this.cachedPerRow = perRow;
+            this.filteredCategories.clear();
+
+            for (UIFormCategory category : UIFormList.this.categories)
+            {
+                List<Form> forms = category.getForms();
+
+                if (!forms.isEmpty())
+                {
+                    this.filteredCategories.add(category);
+                    this.previewCache.put(category, forms);
+                }
+            }
+
+            this.dirty = false;
+        }
+
+        private CategoryCell getCategoryCellAt(int mouseX, int mouseY)
+        {
+            this.rebuildIfNeeded();
+
+            int step = CATEGORY_CARD_HEIGHT + CATEGORY_CARD_GAP;
+
+            for (int i = 0; i < this.filteredCategories.size(); i++)
+            {
+                int row = i / this.cachedPerRow;
+                int column = i % this.cachedPerRow;
                 int x = this.area.x + CATEGORY_CARD_GAP + column * (CATEGORY_CARD_WIDTH + CATEGORY_CARD_GAP);
-                int y = this.area.y + CATEGORY_CARD_GAP + row * (CATEGORY_CARD_HEIGHT + CATEGORY_CARD_GAP);
+                int y = this.area.y + CATEGORY_CARD_GAP + row * step;
 
                 if (mouseX >= x && mouseX < x + CATEGORY_CARD_WIDTH && mouseY >= y && mouseY < y + CATEGORY_CARD_HEIGHT)
                 {
-                    return this.visibleCategories.get(i);
+                    return new CategoryCell(this.filteredCategories.get(i), x, y);
                 }
             }
 
             return null;
         }
 
+        private boolean isToggleButtonAt(int mouseX, int mouseY, int cardX, int cardY)
+        {
+            int iconX = cardX + CATEGORY_CARD_WIDTH - CATEGORY_PREVIEW_TOGGLE_SIZE - 6;
+            int iconY = cardY + 4;
+
+            return mouseX >= iconX && mouseX < iconX + CATEGORY_PREVIEW_TOGGLE_SIZE && mouseY >= iconY && mouseY < iconY + CATEGORY_PREVIEW_TOGGLE_SIZE;
+        }
+
         private void renderCategoryCard(UIContext context, UIFormCategory category, int x, int y)
         {
-            List<Form> forms = category.getForms();
+            List<Form> forms = this.previewCache.getOrDefault(category, category.getForms());
+            boolean previewsVisible = UIFormList.this.isCategoryPreviewVisible(category);
             UIFormCategory selectedCategory = UIFormList.this.getSelectedCategory();
             boolean selected = selectedCategory == category;
             int baseColor = selected ? (Colors.A50 | BBSSettings.primaryColor.get()) : Colors.A25;
@@ -1538,39 +1657,69 @@ public class UIFormList extends UIElement
             context.batcher.box(x, y, x + CATEGORY_CARD_WIDTH, y + CATEGORY_CARD_HEIGHT, baseColor);
             context.batcher.outline(x, y, x + CATEGORY_CARD_WIDTH, y + CATEGORY_CARD_HEIGHT, Colors.A100);
 
-            String title = context.batcher.getFont().limitToWidth(category.category.getProcessedTitle(), CATEGORY_CARD_WIDTH - 12);
+            String title = context.batcher.getFont().limitToWidth(category.category.getProcessedTitle(), CATEGORY_CARD_WIDTH - 28);
             context.batcher.textShadow(title, x + 6, y + 4);
 
-            int previewAreaX = x + CATEGORY_PREVIEW_PADDING;
-            int previewAreaY = y + 20;
-            int previewAreaW = CATEGORY_CARD_WIDTH - CATEGORY_PREVIEW_PADDING * 2;
-            int previewAreaH = CATEGORY_CARD_HEIGHT - 28;
-            int cellW = (previewAreaW - CATEGORY_PREVIEW_GAP * (CATEGORY_PREVIEW_COLUMNS - 1)) / CATEGORY_PREVIEW_COLUMNS;
-            int cellH = (previewAreaH - CATEGORY_PREVIEW_GAP * (CATEGORY_PREVIEW_ROWS - 1)) / CATEGORY_PREVIEW_ROWS;
-            int maxPreview = CATEGORY_PREVIEW_COLUMNS * CATEGORY_PREVIEW_ROWS;
-            int shown = Math.min(maxPreview, forms.size());
+            int iconX = x + CATEGORY_CARD_WIDTH - CATEGORY_PREVIEW_TOGGLE_SIZE - 6;
+            int iconY = y + 4;
+            int hoverColor = this.isToggleButtonAt(context.mouseX, context.mouseY, x, y) ? Colors.A100 : Colors.A50;
+            context.batcher.box(iconX - 1, iconY - 1, iconX + CATEGORY_PREVIEW_TOGGLE_SIZE + 1, iconY + CATEGORY_PREVIEW_TOGGLE_SIZE + 1, hoverColor);
+            context.batcher.icon(previewsVisible ? Icons.VISIBLE : Icons.INVISIBLE, Colors.WHITE, iconX + CATEGORY_PREVIEW_TOGGLE_SIZE / 2, iconY + CATEGORY_PREVIEW_TOGGLE_SIZE / 2, 0.5F, 0.5F);
 
-            for (int i = 0; i < shown; i++)
+            if (previewsVisible)
             {
-                int px = previewAreaX + (i % CATEGORY_PREVIEW_COLUMNS) * (cellW + CATEGORY_PREVIEW_GAP);
-                int py = previewAreaY + (i / CATEGORY_PREVIEW_COLUMNS) * (cellH + CATEGORY_PREVIEW_GAP);
+                int previewAreaX = x + CATEGORY_PREVIEW_PADDING;
+                int previewAreaY = y + 20;
+                int previewAreaW = CATEGORY_CARD_WIDTH - CATEGORY_PREVIEW_PADDING * 2;
+                int previewAreaH = CATEGORY_CARD_HEIGHT - 28;
+                int cellW = (previewAreaW - CATEGORY_PREVIEW_GAP * (CATEGORY_PREVIEW_COLUMNS - 1)) / CATEGORY_PREVIEW_COLUMNS;
+                int cellH = (previewAreaH - CATEGORY_PREVIEW_GAP * (CATEGORY_PREVIEW_ROWS - 1)) / CATEGORY_PREVIEW_ROWS;
+                int maxPreview = CATEGORY_PREVIEW_COLUMNS * CATEGORY_PREVIEW_ROWS;
+                int shown = Math.min(maxPreview, forms.size());
 
-                context.batcher.box(px, py, px + cellW, py + cellH, Colors.A25);
-                context.batcher.clip(px, py, cellW, cellH, context);
-                FormUtilsClient.renderUI(forms.get(i), context, px, py, px + cellW, py + cellH);
-                context.batcher.unclip(context);
-                context.batcher.outline(px, py, px + cellW, py + cellH, Colors.A50);
+                for (int i = 0; i < shown; i++)
+                {
+                    int px = previewAreaX + (i % CATEGORY_PREVIEW_COLUMNS) * (cellW + CATEGORY_PREVIEW_GAP);
+                    int py = previewAreaY + (i / CATEGORY_PREVIEW_COLUMNS) * (cellH + CATEGORY_PREVIEW_GAP);
+
+                    context.batcher.box(px, py, px + cellW, py + cellH, Colors.A25);
+                    context.batcher.clip(px, py, cellW, cellH, context);
+                    FormUtilsClient.renderUI(forms.get(i), context, px, py, px + cellW, py + cellH);
+                    context.batcher.unclip(context);
+                    context.batcher.outline(px, py, px + cellW, py + cellH, Colors.A50);
+                }
+
+                if (forms.size() > maxPreview)
+                {
+                    String count = "+" + (forms.size() - maxPreview);
+                    int width = context.batcher.getFont().getWidth(count) + 6;
+                    int badgeX = x + CATEGORY_CARD_WIDTH - width - 6;
+                    int badgeY = y + CATEGORY_CARD_HEIGHT - 16;
+
+                    context.batcher.box(badgeX, badgeY, badgeX + width, badgeY + 12, Colors.A100 | 0x1a1a1a);
+                    context.batcher.textShadow(count, badgeX + 3, badgeY + 2);
+                }
             }
-
-            if (forms.size() > maxPreview)
+            else
             {
-                String count = "+" + (forms.size() - maxPreview);
-                int width = context.batcher.getFont().getWidth(count) + 6;
-                int badgeX = x + CATEGORY_CARD_WIDTH - width - 6;
-                int badgeY = y + CATEGORY_CARD_HEIGHT - 16;
+                String hiddenText = "Preview oculto";
+                int tx = x + 6;
+                int ty = y + CATEGORY_CARD_HEIGHT / 2 - 4;
+                context.batcher.textShadow(hiddenText, tx, ty, Colors.LIGHTEST_GRAY);
+            }
+        }
 
-                context.batcher.box(badgeX, badgeY, badgeX + width, badgeY + 12, Colors.A100 | 0x1a1a1a);
-                context.batcher.textShadow(count, badgeX + 3, badgeY + 2);
+        private class CategoryCell
+        {
+            private final UIFormCategory category;
+            private final int x;
+            private final int y;
+
+            private CategoryCell(UIFormCategory category, int x, int y)
+            {
+                this.category = category;
+                this.x = x;
+                this.y = y;
             }
         }
     }
