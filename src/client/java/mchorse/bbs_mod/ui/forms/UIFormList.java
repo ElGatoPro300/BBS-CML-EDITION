@@ -8,6 +8,7 @@ import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.forms.FormCategories;
 import mchorse.bbs_mod.forms.FormUtils;
+import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.categories.FormCategory;
 import mchorse.bbs_mod.forms.categories.UserFormCategory;
 import mchorse.bbs_mod.forms.forms.Form;
@@ -34,6 +35,7 @@ import mchorse.bbs_mod.ui.framework.elements.input.text.UITextbox;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIMessageOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlayPanel;
+import mchorse.bbs_mod.ui.framework.elements.utils.EventPropagation;
 import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
@@ -64,12 +66,22 @@ public class UIFormList extends UIElement
     private static final int TAB_WIDTH_ADD = 24;
     private static final int ACTIONS_BAR_HEIGHT = 20;
     private static final int SELECTED_INFO_WIDTH = 200;
+    private static final int CATEGORY_CARD_WIDTH = 180;
+    private static final int CATEGORY_CARD_HEIGHT = 140;
+    private static final int CATEGORY_CARD_GAP = 10;
+    private static final int CATEGORY_PREVIEW_PADDING = 8;
+    private static final int CATEGORY_PREVIEW_GAP = 4;
+    private static final int CATEGORY_PREVIEW_COLUMNS = 3;
+    private static final int CATEGORY_PREVIEW_ROWS = 3;
+    private static final int POPUP_CELL_WIDTH = 80;
+    private static final int POPUP_CELL_HEIGHT = 100;
     private static final int MAX_CATEGORY_NAME_LENGTH = 20;
     private static final int MAX_TAB_TITLE_LENGTH = 10;
 
     public IUIFormList palette;
 
     public UIScrollView forms;
+    public UIScrollView categoryCardsView;
 
     public UIElement tabsBar;
     public UIElement tabs;
@@ -96,6 +108,8 @@ public class UIFormList extends UIElement
 
     private long lastUpdate;
     private int lastScroll;
+    private UIElement categoryPopup;
+    private UICategoryCardsGrid categoryCards;
 
     public UIFormList(IUIFormList palette)
     {
@@ -104,8 +118,11 @@ public class UIFormList extends UIElement
 
         this.forms = UI.scrollView(0, 0);
         this.forms.scroll.cancelScrolling();
+        this.categoryCardsView = UI.scrollView(0, 0);
+        this.categoryCardsView.scroll.cancelScrolling();
         this.tabsBar = new UIControlBar();
         this.tabs = new UIElement();
+        this.categoryCards = new UICategoryCardsGrid();
         this.bar = new UIElement()
         {
             @Override
@@ -143,6 +160,8 @@ public class UIFormList extends UIElement
         this.close = new UIIcon(Icons.CLOSE, this::close);
 
         this.forms.relative(this).x(0).y(ACTIONS_BAR_HEIGHT).w(1F).h(1F, -ACTIONS_BAR_HEIGHT);
+        this.categoryCardsView.relative(this).x(0).y(ACTIONS_BAR_HEIGHT).w(1F).h(1F, -ACTIONS_BAR_HEIGHT);
+        this.categoryCards.relative(this.categoryCardsView).x(0).y(0).w(1F).h(1F);
         this.tabsBar.relative(this).x(0).y(0).w(1F).h(FAVORITES_TOP_BAR_HEIGHT);
         this.tabs.relative(this.tabsBar).x(10).y(0).w(1F, -20).h(FAVORITES_TOP_BAR_HEIGHT).row(0).resize();
         this.bar.relative(this).x(0).y(FAVORITES_TOP_BAR_HEIGHT).w(1F).h(ACTIONS_BAR_HEIGHT);
@@ -155,8 +174,10 @@ public class UIFormList extends UIElement
         this.tabsBar.add(this.tabs);
         this.tabsBar.setVisible(false);
         this.bar.add(this.search, this.edit, this.close);
+        this.categoryCardsView.add(this.categoryCards);
+        this.forms.setVisible(false);
         this.layoutActionBar();
-        this.add(this.forms, this.bar, this.tabsBar);
+        this.add(this.forms, this.categoryCardsView, this.bar, this.tabsBar);
 
         this.applyFavoritesLayout(this.isFavoritesFeatureEnabled());
         this.updateTabs();
@@ -174,6 +195,7 @@ public class UIFormList extends UIElement
 
     public void setupForms(FormCategories forms)
     {
+        this.closeCategoryPopup();
         this.categories.clear();
         this.forms.removeAll();
 
@@ -191,6 +213,9 @@ public class UIFormList extends UIElement
         }
 
         this.categories.get(this.categories.size() - 1).marginBottom(40);
+        this.categoryCards.h(1);
+        this.categoryCardsView.scroll.scrollTo(0);
+        this.categoryCardsView.resize();
         this.resize();
 
         this.lastUpdate = forms.getLastUpdate();
@@ -1053,7 +1078,9 @@ public class UIFormList extends UIElement
         this.bar.resize();
 
         this.forms.relative(this).x(0).y(topOffset).w(1F).h(1F, -topOffset);
+        this.categoryCardsView.relative(this).x(0).y(topOffset).w(1F).h(1F, -topOffset);
         this.forms.resize();
+        this.categoryCardsView.resize();
         this.resize();
     }
 
@@ -1138,6 +1165,9 @@ public class UIFormList extends UIElement
         {
             category.search(search);
         }
+
+        this.categoryCards.h(1);
+        this.categoryCardsView.resize();
     }
 
     private void restoreSelectedIfPresent(Form form)
@@ -1173,6 +1203,109 @@ public class UIFormList extends UIElement
     private void close(UIIcon b)
     {
         this.palette.exit();
+    }
+
+    private void openCategoryPopup(UIFormCategory category)
+    {
+        if (category == null)
+        {
+            return;
+        }
+
+        this.closeCategoryPopup();
+
+        UIContext context = this.getContext();
+
+        if (context == null || context.menu == null || context.menu.overlay == null)
+        {
+            return;
+        }
+
+        UIElement overlay = context.menu.overlay;
+        UIElement[] contentHolder = new UIElement[1];
+
+        UIElement popup = new UIElement()
+        {
+            @Override
+            public boolean subMouseClicked(UIContext context)
+            {
+                if (context.mouseButton == 0 && contentHolder[0] != null && !contentHolder[0].area.isInside(context))
+                {
+                    UIFormList.this.closeCategoryPopup();
+
+                    return true;
+                }
+
+                return super.subMouseClicked(context);
+            }
+
+            @Override
+            public boolean subKeyPressed(UIContext context)
+            {
+                if (context.isPressed(Keys.CLOSE))
+                {
+                    UIFormList.this.closeCategoryPopup();
+
+                    return true;
+                }
+
+                return super.subKeyPressed(context);
+            }
+
+            @Override
+            public void render(UIContext context)
+            {
+                this.area.render(context.batcher, Colors.A50);
+                super.render(context);
+            }
+        };
+        popup.full(overlay);
+        popup.markContainer().eventPropagataion(EventPropagation.BLOCK);
+
+        UIElement content = new UIElement()
+        {
+            @Override
+            public void render(UIContext context)
+            {
+                this.area.render(context.batcher, Colors.A25);
+                context.batcher.outline(this.area.x - 1, this.area.y - 1, this.area.ex() + 1, this.area.ey() + 1, Colors.A100);
+                context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xff000000 | BBSSettings.primaryColor.get());
+                context.batcher.textCard(category.category.getProcessedTitle(), this.area.x + 6, this.area.y + 6);
+                super.render(context);
+            }
+        };
+        content.relative(popup).set(20, 20, 0, 0).w(1F, -40).h(1F, -40);
+        contentHolder[0] = content;
+
+        UIIcon closePopup = new UIIcon(Icons.CLOSE, (button) -> this.closeCategoryPopup());
+        closePopup.relative(content).x(1F, -20).y(0).w(20).h(20).tooltip(UIKeys.GENERAL_CLOSE, Direction.LEFT);
+
+        UIScrollView popupScroll = UI.scrollView(0, 0);
+        popupScroll.relative(content).x(0).y(20).w(1F).h(1F, -20);
+        popupScroll.scroll.cancelScrolling();
+
+        UICategoryPopupGrid popupGrid = new UICategoryPopupGrid(category);
+        popupGrid.relative(popupScroll).x(0).y(0).w(1F).h(0);
+        popupScroll.add(popupGrid);
+        popupGrid.h(1);
+
+        content.add(closePopup, popupScroll);
+        popup.add(content);
+        overlay.add(popup);
+        popup.resize();
+        content.resize();
+        popupScroll.resize();
+        popupGrid.resize();
+        this.categoryPopup = popup;
+    }
+
+    private void closeCategoryPopup()
+    {
+        if (this.categoryPopup != null)
+        {
+            this.categoryPopup.removeFromParent();
+            this.categoryPopup = null;
+        }
     }
 
     public void selectCategory(UIFormCategory category, Form form, boolean notify)
@@ -1301,6 +1434,242 @@ public class UIFormList extends UIElement
 
         DiffuseLighting.disableGuiDepthLighting();
 
+    }
+
+    private class UICategoryCardsGrid extends UIElement
+    {
+        private final List<UIFormCategory> visibleCategories = new ArrayList<>();
+        private int lastHeight;
+
+        @Override
+        public boolean subMouseClicked(UIContext context)
+        {
+            if (context.mouseButton != 0 || !this.area.isInside(context))
+            {
+                return false;
+            }
+
+            UIFormCategory category = this.getCategoryAt(context.mouseX, context.mouseY);
+
+            if (category != null)
+            {
+                UIFormList.this.openCategoryPopup(category);
+
+                return true;
+            }
+
+            return false;
+        }
+
+        @Override
+        public void render(UIContext context)
+        {
+            this.rebuildVisibleCategories();
+
+            int perRow = Math.max(1, (this.area.w - CATEGORY_CARD_GAP) / (CATEGORY_CARD_WIDTH + CATEGORY_CARD_GAP));
+
+            for (int i = 0; i < this.visibleCategories.size(); i++)
+            {
+                UIFormCategory category = this.visibleCategories.get(i);
+                int row = i / perRow;
+                int column = i % perRow;
+                int x = this.area.x + CATEGORY_CARD_GAP + column * (CATEGORY_CARD_WIDTH + CATEGORY_CARD_GAP);
+                int y = this.area.y + CATEGORY_CARD_GAP + row * (CATEGORY_CARD_HEIGHT + CATEGORY_CARD_GAP);
+                this.renderCategoryCard(context, category, x, y);
+            }
+
+            int rows = (this.visibleCategories.size() + perRow - 1) / perRow;
+            int contentHeight = CATEGORY_CARD_GAP + rows * (CATEGORY_CARD_HEIGHT + CATEGORY_CARD_GAP);
+
+            if (this.lastHeight != contentHeight)
+            {
+                this.lastHeight = contentHeight;
+                this.h(contentHeight);
+
+                if (this.getParent() != null)
+                {
+                    this.getParent().resize();
+                }
+            }
+        }
+
+        private void rebuildVisibleCategories()
+        {
+            this.visibleCategories.clear();
+
+            for (UIFormCategory category : UIFormList.this.categories)
+            {
+                if (!category.getForms().isEmpty())
+                {
+                    this.visibleCategories.add(category);
+                }
+            }
+        }
+
+        private UIFormCategory getCategoryAt(int mouseX, int mouseY)
+        {
+            this.rebuildVisibleCategories();
+
+            int perRow = Math.max(1, (this.area.w - CATEGORY_CARD_GAP) / (CATEGORY_CARD_WIDTH + CATEGORY_CARD_GAP));
+
+            for (int i = 0; i < this.visibleCategories.size(); i++)
+            {
+                int row = i / perRow;
+                int column = i % perRow;
+                int x = this.area.x + CATEGORY_CARD_GAP + column * (CATEGORY_CARD_WIDTH + CATEGORY_CARD_GAP);
+                int y = this.area.y + CATEGORY_CARD_GAP + row * (CATEGORY_CARD_HEIGHT + CATEGORY_CARD_GAP);
+
+                if (mouseX >= x && mouseX < x + CATEGORY_CARD_WIDTH && mouseY >= y && mouseY < y + CATEGORY_CARD_HEIGHT)
+                {
+                    return this.visibleCategories.get(i);
+                }
+            }
+
+            return null;
+        }
+
+        private void renderCategoryCard(UIContext context, UIFormCategory category, int x, int y)
+        {
+            List<Form> forms = category.getForms();
+            UIFormCategory selectedCategory = UIFormList.this.getSelectedCategory();
+            boolean selected = selectedCategory == category;
+            int baseColor = selected ? (Colors.A50 | BBSSettings.primaryColor.get()) : Colors.A25;
+
+            context.batcher.box(x, y, x + CATEGORY_CARD_WIDTH, y + CATEGORY_CARD_HEIGHT, baseColor);
+            context.batcher.outline(x, y, x + CATEGORY_CARD_WIDTH, y + CATEGORY_CARD_HEIGHT, Colors.A100);
+
+            String title = context.batcher.getFont().limitToWidth(category.category.getProcessedTitle(), CATEGORY_CARD_WIDTH - 12);
+            context.batcher.textShadow(title, x + 6, y + 4);
+
+            int previewAreaX = x + CATEGORY_PREVIEW_PADDING;
+            int previewAreaY = y + 20;
+            int previewAreaW = CATEGORY_CARD_WIDTH - CATEGORY_PREVIEW_PADDING * 2;
+            int previewAreaH = CATEGORY_CARD_HEIGHT - 28;
+            int cellW = (previewAreaW - CATEGORY_PREVIEW_GAP * (CATEGORY_PREVIEW_COLUMNS - 1)) / CATEGORY_PREVIEW_COLUMNS;
+            int cellH = (previewAreaH - CATEGORY_PREVIEW_GAP * (CATEGORY_PREVIEW_ROWS - 1)) / CATEGORY_PREVIEW_ROWS;
+            int maxPreview = CATEGORY_PREVIEW_COLUMNS * CATEGORY_PREVIEW_ROWS;
+            int shown = Math.min(maxPreview, forms.size());
+
+            for (int i = 0; i < shown; i++)
+            {
+                int px = previewAreaX + (i % CATEGORY_PREVIEW_COLUMNS) * (cellW + CATEGORY_PREVIEW_GAP);
+                int py = previewAreaY + (i / CATEGORY_PREVIEW_COLUMNS) * (cellH + CATEGORY_PREVIEW_GAP);
+
+                context.batcher.box(px, py, px + cellW, py + cellH, Colors.A25);
+                context.batcher.clip(px, py, cellW, cellH, context);
+                FormUtilsClient.renderUI(forms.get(i), context, px, py, px + cellW, py + cellH);
+                context.batcher.unclip(context);
+                context.batcher.outline(px, py, px + cellW, py + cellH, Colors.A50);
+            }
+
+            if (forms.size() > maxPreview)
+            {
+                String count = "+" + (forms.size() - maxPreview);
+                int width = context.batcher.getFont().getWidth(count) + 6;
+                int badgeX = x + CATEGORY_CARD_WIDTH - width - 6;
+                int badgeY = y + CATEGORY_CARD_HEIGHT - 16;
+
+                context.batcher.box(badgeX, badgeY, badgeX + width, badgeY + 12, Colors.A100 | 0x1a1a1a);
+                context.batcher.textShadow(count, badgeX + 3, badgeY + 2);
+            }
+        }
+    }
+
+    private class UICategoryPopupGrid extends UIElement
+    {
+        private final UIFormCategory category;
+        private int lastHeight;
+
+        public UICategoryPopupGrid(UIFormCategory category)
+        {
+            this.category = category;
+        }
+
+        @Override
+        public boolean subMouseClicked(UIContext context)
+        {
+            if (context.mouseButton != 0 || !this.area.isInside(context))
+            {
+                return false;
+            }
+
+            List<Form> forms = this.category.getForms();
+
+            if (forms.isEmpty())
+            {
+                return false;
+            }
+
+            int x = context.mouseX - this.area.x;
+            int y = context.mouseY - this.area.y;
+            int perRow = Math.max(1, this.area.w / POPUP_CELL_WIDTH);
+            int index = x / POPUP_CELL_WIDTH + (y / POPUP_CELL_HEIGHT) * perRow;
+
+            if (index >= 0 && index < forms.size())
+            {
+                this.category.select(forms.get(index), true);
+                UIFormList.this.closeCategoryPopup();
+
+                return true;
+            }
+
+            return false;
+        }
+
+        @Override
+        public void render(UIContext context)
+        {
+            List<Form> forms = this.category.getForms();
+            int perRow = Math.max(1, this.area.w / POPUP_CELL_WIDTH);
+            int h = 0;
+            int x = 0;
+            int i = 0;
+
+            for (Form form : forms)
+            {
+                if (i == perRow)
+                {
+                    h += POPUP_CELL_HEIGHT;
+                    x = 0;
+                    i = 0;
+                }
+
+                int cx = this.area.x + x;
+                int cy = this.area.y + h;
+                boolean selected = this.category.selected == form;
+
+                if (selected)
+                {
+                    context.batcher.box(cx, cy, cx + POPUP_CELL_WIDTH, cy + POPUP_CELL_HEIGHT, Colors.A50 | BBSSettings.primaryColor.get());
+                    context.batcher.outline(cx, cy, cx + POPUP_CELL_WIDTH, cy + POPUP_CELL_HEIGHT, Colors.A50 | BBSSettings.primaryColor.get(), 2);
+                }
+                else
+                {
+                    context.batcher.box(cx, cy, cx + POPUP_CELL_WIDTH, cy + POPUP_CELL_HEIGHT, Colors.A25);
+                }
+
+                context.batcher.clip(cx, cy, POPUP_CELL_WIDTH, POPUP_CELL_HEIGHT, context);
+                FormUtilsClient.renderUI(form, context, cx, cy, cx + POPUP_CELL_WIDTH, cy + POPUP_CELL_HEIGHT);
+                context.batcher.unclip(context);
+                context.batcher.outline(cx, cy, cx + POPUP_CELL_WIDTH, cy + POPUP_CELL_HEIGHT, Colors.A50);
+
+                x += POPUP_CELL_WIDTH;
+                i += 1;
+            }
+
+            h += POPUP_CELL_HEIGHT;
+
+            if (this.lastHeight != h)
+            {
+                this.lastHeight = h;
+                this.h(h);
+
+                if (this.getParent() != null)
+                {
+                    this.getParent().resize();
+                }
+            }
+        }
     }
 
     public static class FavoriteMarker
