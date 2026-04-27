@@ -29,6 +29,7 @@ import mchorse.bbs_mod.ui.framework.elements.navigation.UIControlBar;
 import mchorse.bbs_mod.ui.framework.elements.navigation.UIIconTabButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
+import mchorse.bbs_mod.ui.framework.elements.context.UIContextMenu;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UISearchList;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UIList;
 import mchorse.bbs_mod.ui.framework.elements.input.text.UITextbox;
@@ -83,6 +84,8 @@ public class UIFormList extends UIElement
     private static final int CATEGORY_VIRTUALIZATION_BUFFER_ROWS = 1;
     private static final int CATEGORY_PREVIEW_TOGGLE_SIZE = 14;
     private static final int CATEGORY_HIDDEN_ICON_SIZE = 50;
+    private static final int CATEGORY_GROUP_HEADER_HEIGHT = 14;
+    private static final int CATEGORY_SECTION_GAP = 16;
 
     public IUIFormList palette;
 
@@ -1651,10 +1654,27 @@ public class UIFormList extends UIElement
     private class UICategoryCardsGrid extends UIElement
     {
         private final List<UIFormCategory> filteredCategories = new ArrayList<>();
+        private final List<CategoryCell> cardCells = new ArrayList<>();
+        private final List<GroupDivider> groupDividers = new ArrayList<>();
         private final Map<UIFormCategory, List<Form>> previewCache = new HashMap<>();
         private boolean dirty = true;
         private int lastHeight;
         private int cachedPerRow = 1;
+
+        private enum CardGroup
+        {
+            RECENT("Formas recientes"),
+            USER_CREATED("Categorias"),
+            MODELS("Modelos"),
+            BBS("Misceláneos");
+
+            private final String label;
+
+            CardGroup(String label)
+            {
+                this.label = label;
+            }
+        }
 
         public void invalidateCache()
         {
@@ -1666,7 +1686,7 @@ public class UIFormList extends UIElement
         @Override
         public boolean subMouseClicked(UIContext context)
         {
-            if (context.mouseButton != 0 || !this.area.isInside(context))
+            if (!this.area.isInside(context) || (context.mouseButton != 0 && context.mouseButton != 1))
             {
                 return false;
             }
@@ -1694,10 +1714,7 @@ public class UIFormList extends UIElement
         public void render(UIContext context)
         {
             this.rebuildIfNeeded();
-
-            int step = CATEGORY_CARD_HEIGHT + CATEGORY_CARD_GAP;
-            int rows = (this.filteredCategories.size() + this.cachedPerRow - 1) / this.cachedPerRow;
-            int contentHeight = CATEGORY_CARD_GAP + rows * step;
+            int contentHeight = this.cardCells.isEmpty() ? CATEGORY_CARD_GAP : (this.cardCells.get(this.cardCells.size() - 1).y - this.area.y + CATEGORY_CARD_HEIGHT + CATEGORY_CARD_GAP);
 
             if (this.lastHeight != contentHeight)
             {
@@ -1725,26 +1742,34 @@ public class UIFormList extends UIElement
             }
 
             int top = Math.max(0, scrollY - CATEGORY_CARD_GAP);
-            int bottom = Math.max(0, scrollY + viewportHeight - CATEGORY_CARD_GAP);
-            int rowStart = Math.max(0, top / step - CATEGORY_VIRTUALIZATION_BUFFER_ROWS);
-            int rowEnd = Math.min(rows - 1, bottom / step + CATEGORY_VIRTUALIZATION_BUFFER_ROWS);
+            int bottom = Math.max(0, scrollY + viewportHeight + CATEGORY_CARD_GAP);
 
-            for (int row = rowStart; row <= rowEnd; row++)
+            for (GroupDivider divider : this.groupDividers)
             {
-                for (int column = 0; column < this.cachedPerRow; column++)
+                int dividerTop = divider.y - this.area.y;
+
+                if (dividerTop + 12 < top || dividerTop > bottom)
                 {
-                    int index = row * this.cachedPerRow + column;
-
-                    if (index >= this.filteredCategories.size())
-                    {
-                        break;
-                    }
-
-                    UIFormCategory category = this.filteredCategories.get(index);
-                    int x = this.area.x + CATEGORY_CARD_GAP + column * (CATEGORY_CARD_WIDTH + CATEGORY_CARD_GAP);
-                    int y = this.area.y + CATEGORY_CARD_GAP + row * step;
-                    this.renderCategoryCard(context, category, x, y);
+                    continue;
                 }
+
+                context.batcher.textShadow(divider.group.label, this.area.x + CATEGORY_CARD_GAP, divider.y, Colors.LIGHTEST_GRAY);
+                context.batcher.box(this.area.x + CATEGORY_CARD_GAP, divider.y + 10, this.area.ex() - CATEGORY_CARD_GAP, divider.y + 11, Colors.A100 | BBSSettings.primaryColor.get());
+            }
+
+            int buffer = CATEGORY_VIRTUALIZATION_BUFFER_ROWS * (CATEGORY_CARD_HEIGHT + CATEGORY_CARD_GAP);
+
+            for (CategoryCell cell : this.cardCells)
+            {
+                int cellTop = cell.y - this.area.y;
+                int cellBottom = cellTop + CATEGORY_CARD_HEIGHT;
+
+                if (cellBottom < top - buffer || cellTop > bottom + buffer)
+                {
+                    continue;
+                }
+
+                this.renderCategoryCard(context, cell.category, cell.x, cell.y);
             }
         }
 
@@ -1759,6 +1784,16 @@ public class UIFormList extends UIElement
 
             this.cachedPerRow = perRow;
             this.filteredCategories.clear();
+            this.cardCells.clear();
+            this.groupDividers.clear();
+            this.previewCache.clear();
+
+            Map<CardGroup, List<UIFormCategory>> groups = new LinkedHashMap<>();
+
+            for (CardGroup group : CardGroup.values())
+            {
+                groups.put(group, new ArrayList<>());
+            }
 
             for (UIFormCategory category : UIFormList.this.categories)
             {
@@ -1768,7 +1803,43 @@ public class UIFormList extends UIElement
                 {
                     this.filteredCategories.add(category);
                     this.previewCache.put(category, forms);
+                    groups.get(this.getCardGroup(category)).add(category);
                 }
+            }
+
+            int step = CATEGORY_CARD_HEIGHT + CATEGORY_CARD_GAP;
+            int currentY = this.area.y + CATEGORY_CARD_GAP;
+            boolean firstGroup = true;
+
+            for (Map.Entry<CardGroup, List<UIFormCategory>> entry : groups.entrySet())
+            {
+                List<UIFormCategory> groupCategories = entry.getValue();
+
+                if (groupCategories.isEmpty())
+                {
+                    continue;
+                }
+
+                if (!firstGroup)
+                {
+                    currentY += CATEGORY_SECTION_GAP;
+                }
+
+                this.groupDividers.add(new GroupDivider(entry.getKey(), currentY));
+                currentY += CATEGORY_GROUP_HEADER_HEIGHT;
+
+                for (int i = 0; i < groupCategories.size(); i++)
+                {
+                    int row = i / this.cachedPerRow;
+                    int column = i % this.cachedPerRow;
+                    int x = this.area.x + CATEGORY_CARD_GAP + column * (CATEGORY_CARD_WIDTH + CATEGORY_CARD_GAP);
+                    int y = currentY + row * step;
+                    this.cardCells.add(new CategoryCell(groupCategories.get(i), x, y));
+                }
+
+                int rows = (groupCategories.size() + this.cachedPerRow - 1) / this.cachedPerRow;
+                currentY += rows * step;
+                firstGroup = false;
             }
 
             this.dirty = false;
@@ -1778,22 +1849,63 @@ public class UIFormList extends UIElement
         {
             this.rebuildIfNeeded();
 
-            int step = CATEGORY_CARD_HEIGHT + CATEGORY_CARD_GAP;
-
-            for (int i = 0; i < this.filteredCategories.size(); i++)
+            for (CategoryCell cell : this.cardCells)
             {
-                int row = i / this.cachedPerRow;
-                int column = i % this.cachedPerRow;
-                int x = this.area.x + CATEGORY_CARD_GAP + column * (CATEGORY_CARD_WIDTH + CATEGORY_CARD_GAP);
-                int y = this.area.y + CATEGORY_CARD_GAP + row * step;
-
-                if (mouseX >= x && mouseX < x + CATEGORY_CARD_WIDTH && mouseY >= y && mouseY < y + CATEGORY_CARD_HEIGHT)
+                if (mouseX >= cell.x && mouseX < cell.x + CATEGORY_CARD_WIDTH && mouseY >= cell.y && mouseY < cell.y + CATEGORY_CARD_HEIGHT)
                 {
-                    return new CategoryCell(this.filteredCategories.get(i), x, y);
+                    return cell;
                 }
             }
 
             return null;
+        }
+
+        private CardGroup getCardGroup(UIFormCategory category)
+        {
+            if (category instanceof UIRecentFormCategory)
+            {
+                return CardGroup.RECENT;
+            }
+
+            if (category.category instanceof UserFormCategory)
+            {
+                return CardGroup.USER_CREATED;
+            }
+
+            if (this.isBbsCategory(category))
+            {
+                return CardGroup.BBS;
+            }
+
+            return CardGroup.MODELS;
+        }
+
+        private boolean isBbsCategory(UIFormCategory category)
+        {
+            String title = this.normalize(category.category.getProcessedTitle());
+
+            if (title.equals("miscelaneo"))
+            {
+                return true;
+            }
+
+            return title.equals("mobs (animales)") || title.equals("mobs (neutrales)") || title.equals("mobs (hostiles)") || title.equals("mobs (miscelaneos)") || title.equals("mobs (misceláneos)");
+        }
+
+        private String normalize(String value)
+        {
+            if (value == null)
+            {
+                return "";
+            }
+
+            return value.toLowerCase(Locale.ROOT)
+                .replace("á", "a")
+                .replace("é", "e")
+                .replace("í", "i")
+                .replace("ó", "o")
+                .replace("ú", "u")
+                .trim();
         }
 
         private boolean isToggleButtonAt(int mouseX, int mouseY, int cardX, int cardY)
@@ -1812,7 +1924,7 @@ public class UIFormList extends UIElement
             boolean selected = selectedCategory == category;
             boolean userCategory = category.category instanceof UserFormCategory;
             int baseColor = selected ? (Colors.A50 | BBSSettings.primaryColor.get()) : Colors.A25;
-            int outlineColor = selected ? (Colors.A100 | BBSSettings.primaryColor.get()) : (userCategory ? (Colors.A100 | BBSSettings.primaryColor.get()) : Colors.A100);
+            int outlineColor = selected ? (Colors.A100 | BBSSettings.primaryColor.get()) : Colors.A100;
             int titleColor = userCategory ? (Colors.LIGHTEST_GRAY | Colors.A100) : Colors.WHITE;
 
             context.batcher.box(x, y, x + CATEGORY_CARD_WIDTH, y + CATEGORY_CARD_HEIGHT, baseColor);
@@ -1895,6 +2007,18 @@ public class UIFormList extends UIElement
                 this.y = y;
             }
         }
+
+        private class GroupDivider
+        {
+            private final CardGroup group;
+            private final int y;
+
+            private GroupDivider(CardGroup group, int y)
+            {
+                this.group = group;
+                this.y = y;
+            }
+        }
     }
 
     private class UICategoryPopupGrid extends UIElement
@@ -1942,10 +2066,26 @@ public class UIFormList extends UIElement
             return null;
         }
 
+        private int getHoverDropIndex(int mouseX, int mouseY, int size)
+        {
+            if (!this.isDraggingModel() || size <= 0 || !this.area.isInside(mouseX, mouseY))
+            {
+                return -1;
+            }
+
+            int perRow = Math.max(1, this.area.w / POPUP_CELL_WIDTH);
+            int localX = Math.max(0, mouseX - this.area.x);
+            int localY = Math.max(0, mouseY - this.area.y);
+            int column = Math.min(perRow - 1, localX / POPUP_CELL_WIDTH);
+            int row = Math.max(0, localY / POPUP_CELL_HEIGHT);
+
+            return Math.min(size - 1, column + row * perRow);
+        }
+
         @Override
         public boolean subMouseClicked(UIContext context)
         {
-            if (context.mouseButton != 0 || !this.area.isInside(context))
+            if (!this.area.isInside(context) || (context.mouseButton != 0 && context.mouseButton != 1))
             {
                 return false;
             }
@@ -1972,6 +2112,18 @@ public class UIFormList extends UIElement
                 }
 
                 this.category.select(forms.get(index), true);
+
+                if (context.mouseButton == 1)
+                {
+                    UIContextMenu menu = this.category.createContextMenu(context);
+
+                    if (menu != null && !menu.isEmpty())
+                    {
+                        context.setContextMenu(menu);
+                    }
+
+                    return true;
+                }
 
                 return true;
             }
@@ -2047,6 +2199,17 @@ public class UIFormList extends UIElement
 
             if (this.dragging && this.dragIndex >= 0 && this.dragIndex < forms.size() && this.category.category instanceof UserFormCategory)
             {
+                int hoverDropIndex = this.getHoverDropIndex(context.mouseX, context.mouseY, forms.size());
+
+                if (hoverDropIndex >= 0 && hoverDropIndex < forms.size() && hoverDropIndex != this.dragIndex)
+                {
+                    int previewX = this.area.x + (hoverDropIndex % perRow) * POPUP_CELL_WIDTH;
+                    int previewY = this.area.y + (hoverDropIndex / perRow) * POPUP_CELL_HEIGHT;
+
+                    context.batcher.box(previewX, previewY, previewX + POPUP_CELL_WIDTH, previewY + POPUP_CELL_HEIGHT, Colors.A25 | BBSSettings.primaryColor.get());
+                    context.batcher.outline(previewX, previewY, previewX + POPUP_CELL_WIDTH, previewY + POPUP_CELL_HEIGHT, Colors.A100 | BBSSettings.primaryColor.get(), 2);
+                }
+
                 int cx = context.mouseX - POPUP_CELL_WIDTH / 2;
                 int cy = context.mouseY - POPUP_CELL_HEIGHT / 2;
 
@@ -2084,12 +2247,7 @@ public class UIFormList extends UIElement
 
                         if (this.area.isInside(context.mouseX, context.mouseY))
                         {
-                            int perRow = Math.max(1, this.area.w / POPUP_CELL_WIDTH);
-                            int localX = Math.max(0, context.mouseX - this.area.x);
-                            int localY = Math.max(0, context.mouseY - this.area.y);
-                            int column = Math.min(perRow - 1, localX / POPUP_CELL_WIDTH);
-                            int row = Math.max(0, localY / POPUP_CELL_HEIGHT);
-                            int targetIndex = Math.min(forms.size() - 1, column + row * perRow);
+                            int targetIndex = this.getHoverDropIndex(context.mouseX, context.mouseY, forms.size());
 
                             if (targetIndex >= 0 && targetIndex < forms.size() && targetIndex != this.dragIndex)
                             {
