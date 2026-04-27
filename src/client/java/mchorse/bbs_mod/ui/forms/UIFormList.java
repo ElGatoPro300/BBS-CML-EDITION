@@ -80,6 +80,7 @@ public class UIFormList extends UIElement
     private static final long SEARCH_DEBOUNCE_MS = 150L;
     private static final int CATEGORY_VIRTUALIZATION_BUFFER_ROWS = 1;
     private static final int CATEGORY_PREVIEW_TOGGLE_SIZE = 14;
+    private static final int CATEGORY_HIDDEN_ICON_SIZE = 50;
 
     public IUIFormList palette;
 
@@ -93,6 +94,7 @@ public class UIFormList extends UIElement
     public UIButton allTab;
     public UIButton favoritesTab;
     public UIButton addCategoryTab;
+    public UIIcon toggleAllPreviews;
     public UIIcon edit;
     public UIIcon close;
 
@@ -162,6 +164,8 @@ public class UIFormList extends UIElement
         this.allTab = new UIIconTabButton(UIKeys.FORMS_LIST_TAB_ALL, Icons.LIST, (b) -> this.setActiveFavoriteCategory(null));
         this.favoritesTab = new UIIconTabButton(UIKeys.FORMS_LIST_TAB_FAVORITES, Icons.FIVE_STAR, (b) -> this.setActiveFavoriteCategory(FAVORITES_CATEGORY_ID));
         this.addCategoryTab = new UIIconTabButton(IKey.constant(""), Icons.ADD, (b) -> this.openCreateCategoryPanel());
+        this.toggleAllPreviews = new UIIcon(() -> this.areAllCategoryPreviewsVisible() ? Icons.VISIBLE : Icons.INVISIBLE, this::toggleAllCategoryPreviews);
+        this.toggleAllPreviews.tooltip(IKey.constant("Ocultar/mostrar previews de todas las categorias"), Direction.TOP);
         this.edit = new UIIcon(Icons.EDIT, this::edit);
         this.edit.tooltip(UIKeys.FORMS_LIST_EDIT, Direction.TOP);
         this.close = new UIIcon(Icons.CLOSE, this::close);
@@ -180,7 +184,7 @@ public class UIFormList extends UIElement
         this.rebuildCategoryTabs();
         this.tabsBar.add(this.tabs);
         this.tabsBar.setVisible(false);
-        this.bar.add(this.search, this.edit, this.close);
+        this.bar.add(this.search, this.toggleAllPreviews, this.edit, this.close);
         this.categoryCardsView.add(this.categoryCards);
         this.forms.setVisible(false);
         this.layoutActionBar();
@@ -220,6 +224,7 @@ public class UIFormList extends UIElement
         }
 
         this.categories.get(this.categories.size() - 1).marginBottom(40);
+        this.hiddenCategoryPreviews.retainAll(this.getAvailableCategoryPreviewKeys());
         this.applySearchNow(this.appliedSearchQuery);
         this.categoryCardsView.scroll.scrollTo(0);
         this.resize();
@@ -814,6 +819,7 @@ public class UIFormList extends UIElement
         root.putInt("version", 1);
         root.put("categories", categories);
         root.put("entries", entries);
+        root.put("hidden_previews", this.toList(this.hiddenCategoryPreviews));
         BBSSettings.favoriteFormCategoriesData.set(DataToString.toString(root));
         this.syncedFavoriteCategoriesData = BBSSettings.favoriteFormCategoriesData.get();
         this.syncedFavoriteModels.clear();
@@ -852,6 +858,7 @@ public class UIFormList extends UIElement
         this.favoriteModelForms.addAll(BBSSettings.favoriteModelForms.get());
         this.customFavoriteCategories.clear();
         this.customCategoryForms.clear();
+        this.hiddenCategoryPreviews.clear();
 
         String raw = BBSSettings.favoriteFormCategoriesData.get();
         MapType root = DataToString.mapFromString(raw);
@@ -904,6 +911,11 @@ public class UIFormList extends UIElement
                     this.customCategoryForms.put(entry.getKey(), this.fromList(entry.getValue().asList()));
                 }
             }
+        }
+
+        if (root != null && root.has("hidden_previews", BaseType.TYPE_LIST))
+        {
+            this.hiddenCategoryPreviews.addAll(this.fromList(root.getList("hidden_previews")));
         }
 
         if (this.activeFavoriteCategoryId != null && !FAVORITES_CATEGORY_ID.equals(this.activeFavoriteCategoryId) && !this.customFavoriteCategories.containsKey(this.activeFavoriteCategoryId))
@@ -1194,9 +1206,10 @@ public class UIFormList extends UIElement
 
     private void invalidateCategoryCards()
     {
-        this.categoryCards.h(1);
+        double scroll = this.categoryCardsView.scroll.getScroll();
         this.categoryCards.invalidateCache();
         this.categoryCardsView.resize();
+        this.categoryCardsView.scroll.setScroll(scroll);
     }
 
     private String getCategoryPreviewKey(UIFormCategory category)
@@ -1206,9 +1219,38 @@ public class UIFormList extends UIElement
             return "";
         }
 
+        String id = category.category.visible.getId();
+
+        if (id != null)
+        {
+            id = id.trim().toLowerCase(Locale.ROOT);
+        }
+
+        if (id != null && !id.isEmpty())
+        {
+            return id;
+        }
+
         String title = category.category.getProcessedTitle();
 
         return title == null ? "" : title.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private Set<String> getAvailableCategoryPreviewKeys()
+    {
+        Set<String> keys = new HashSet<>();
+
+        for (UIFormCategory category : this.categories)
+        {
+            String key = this.getCategoryPreviewKey(category);
+
+            if (!key.isEmpty())
+            {
+                keys.add(key);
+            }
+        }
+
+        return keys;
     }
 
     private boolean isCategoryPreviewVisible(UIFormCategory category)
@@ -1234,6 +1276,49 @@ public class UIFormList extends UIElement
             this.hiddenCategoryPreviews.add(key);
         }
 
+        this.persistFavoriteData();
+        this.invalidateCategoryCards();
+    }
+
+    private boolean areAllCategoryPreviewsVisible()
+    {
+        Set<String> keys = this.getAvailableCategoryPreviewKeys();
+
+        if (keys.isEmpty())
+        {
+            return true;
+        }
+
+        for (String key : keys)
+        {
+            if (this.hiddenCategoryPreviews.contains(key))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private void toggleAllCategoryPreviews(UIIcon button)
+    {
+        Set<String> keys = this.getAvailableCategoryPreviewKeys();
+
+        if (keys.isEmpty())
+        {
+            return;
+        }
+
+        if (this.areAllCategoryPreviewsVisible())
+        {
+            this.hiddenCategoryPreviews.addAll(keys);
+        }
+        else
+        {
+            this.hiddenCategoryPreviews.removeAll(keys);
+        }
+
+        this.persistFavoriteData();
         this.invalidateCategoryCards();
     }
 
@@ -1571,7 +1656,21 @@ public class UIFormList extends UIElement
                 return;
             }
 
-            for (int row = 0; row < rows; row++)
+            int scrollY = 0;
+            int viewportHeight = this.area.h;
+
+            if (this.getParent() instanceof UIScrollView scrollView)
+            {
+                scrollY = (int) scrollView.scroll.getScroll();
+                viewportHeight = scrollView.area.h;
+            }
+
+            int top = Math.max(0, scrollY - CATEGORY_CARD_GAP);
+            int bottom = Math.max(0, scrollY + viewportHeight - CATEGORY_CARD_GAP);
+            int rowStart = Math.max(0, top / step - CATEGORY_VIRTUALIZATION_BUFFER_ROWS);
+            int rowEnd = Math.min(rows - 1, bottom / step + CATEGORY_VIRTUALIZATION_BUFFER_ROWS);
+
+            for (int row = rowStart; row <= rowEnd; row++)
             {
                 for (int column = 0; column < this.cachedPerRow; column++)
                 {
@@ -1702,10 +1801,22 @@ public class UIFormList extends UIElement
             }
             else
             {
-                String hiddenText = "Preview oculto";
-                int tx = x + 6;
-                int ty = y + CATEGORY_CARD_HEIGHT / 2 - 4;
-                context.batcher.textShadow(hiddenText, tx, ty, Colors.LIGHTEST_GRAY);
+                int hiddenIconX = x + (CATEGORY_CARD_WIDTH - CATEGORY_HIDDEN_ICON_SIZE) / 2;
+                int hiddenIconY = y + (CATEGORY_CARD_HEIGHT - CATEGORY_HIDDEN_ICON_SIZE) / 2 + 6;
+                context.batcher.texturedBox(
+                    BBSModClient.getTextures().getTexture(Icons.CROSSED_OUT_EYE.texture),
+                    Colors.LIGHTEST_GRAY,
+                    hiddenIconX,
+                    hiddenIconY,
+                    CATEGORY_HIDDEN_ICON_SIZE,
+                    CATEGORY_HIDDEN_ICON_SIZE,
+                    Icons.CROSSED_OUT_EYE.x,
+                    Icons.CROSSED_OUT_EYE.y,
+                    Icons.CROSSED_OUT_EYE.x + Icons.CROSSED_OUT_EYE.w,
+                    Icons.CROSSED_OUT_EYE.y + Icons.CROSSED_OUT_EYE.h,
+                    Icons.CROSSED_OUT_EYE.textureW,
+                    Icons.CROSSED_OUT_EYE.textureH
+                );
             }
         }
 
