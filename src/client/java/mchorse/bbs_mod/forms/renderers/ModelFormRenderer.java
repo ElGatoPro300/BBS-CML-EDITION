@@ -38,7 +38,6 @@ import mchorse.bbs_mod.utils.joml.Vectors;
 import mchorse.bbs_mod.utils.pose.Pose;
 import mchorse.bbs_mod.utils.pose.PoseTransform;
 import mchorse.bbs_mod.utils.resources.LinkUtils;
-import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
@@ -58,7 +57,6 @@ import org.lwjgl.opengl.GL11;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
@@ -66,45 +64,16 @@ import java.util.function.Supplier;
 public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITickable
 {
     private static Matrix4f uiMatrix = new Matrix4f();
-    private static Boolean amdGpu;
 
     private MatrixCache bones = new MatrixCache();
 
     private ActionsConfig lastConfigs;
     private IAnimator animator;
     private ModelInstance lastModel;
-    private ModelInstance cachedModel;
-    private ModelInstance sourceModel;
 
     private int lastAge = -1;
 
     private IEntity entity = new StubEntity();
-
-    private static boolean shouldUseAmdSafeUiPreviewPath()
-    {
-        if (!BBSRendering.isIrisShadersEnabled() || !FabricLoader.getInstance().isModLoaded("immediatelyfast"))
-        {
-            return false;
-        }
-
-        if (amdGpu == null)
-        {
-            String vendor = GL11.glGetString(GL11.GL_VENDOR);
-
-            if (vendor != null)
-            {
-                String lower = vendor.toLowerCase(Locale.ROOT);
-
-                amdGpu = lower.contains("amd") || lower.contains("ati") || lower.contains("advanced micro devices");
-            }
-            else
-            {
-                amdGpu = false;
-            }
-        }
-
-        return amdGpu;
-    }
 
     @Override
     protected void applyTransforms(MatrixStack stack, boolean origin, float transition)
@@ -170,41 +139,12 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
     public void invalidateCachedModel()
     {
-        if (this.cachedModel != null)
-        {
-            this.cachedModel.delete();
-            this.cachedModel = null;
-        }
-
-        this.sourceModel = null;
+        /* No-op: UI now uses the source model directly to avoid copy/setup GPU churn. */
     }
 
     public ModelInstance getModel()
     {
-        String modelId = this.form.model.get();
-        ModelInstance model = BBSModClient.getModels().getModel(modelId);
-
-        if (this.cachedModel == null || !this.cachedModel.id.equals(modelId) || this.sourceModel != model)
-        {
-            if (this.cachedModel != null)
-            {
-                this.cachedModel.delete();
-            }
-
-            if (model != null)
-            {
-                this.cachedModel = model.copy();
-                this.cachedModel.setup();
-                this.sourceModel = model;
-            }
-            else
-            {
-                this.cachedModel = null;
-                this.sourceModel = null;
-            }
-        }
-
-        return this.cachedModel;
+        return BBSModClient.getModels().getModel(this.form.model.get());
     }
 
     public Pose getPose()
@@ -360,23 +300,9 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             this.clearPBRTextureIntensity();
             RenderSystem.depthFunc(GL11.GL_LEQUAL);
 
-            boolean amdSafeUiPreview = shouldUseAmdSafeUiPreviewPath();
-
-            /*
-             * AMD + Iris + ImmediatelyFast can crash inside glDrawElements during UI previews.
-             * For regular cubic models, forcing the non-VAO path avoids the problematic draw route
-             * while keeping the preview visible.
-             */
-            if (amdSafeUiPreview && !(model.model instanceof BOBJModel))
-            {
-                model.delete();
-            }
-
-            Supplier<ShaderProgram> mainShader = amdSafeUiPreview
+            Supplier<ShaderProgram> mainShader = (BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld()) || !model.isVAORendered()
                 ? GameRenderer::getRenderTypeEntityTranslucentCullProgram
-                : ((BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld()) || !model.isVAORendered()
-                    ? GameRenderer::getRenderTypeEntityTranslucentCullProgram
-                    : BBSShaders::getModel);
+                : BBSShaders::getModel;
 
             this.renderModel(this.entity, mainShader, stack, model, LightmapTextureManager.pack(15, 15), OverlayTexture.DEFAULT_UV, color, true, null, context.getTransition());
 
