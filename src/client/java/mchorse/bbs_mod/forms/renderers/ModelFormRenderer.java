@@ -80,7 +80,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
     private IEntity entity = new StubEntity();
 
-    private static boolean shouldUseAmdSafeUiPreviewPath()
+    private static boolean shouldSkipUiModelPreview()
     {
         if (!BBSRendering.isIrisShadersEnabled() || !FabricLoader.getInstance().isModLoaded("immediatelyfast"))
         {
@@ -328,6 +328,11 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
     {
         context.batcher.flush();
 
+        if (shouldSkipUiModelPreview())
+        {
+            return;
+        }
+
         this.ensureAnimator(context.getTransition());
 
         ModelInstance model = this.getModel();
@@ -360,23 +365,9 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             this.clearPBRTextureIntensity();
             RenderSystem.depthFunc(GL11.GL_LEQUAL);
 
-            boolean amdSafeUiPreview = shouldUseAmdSafeUiPreviewPath();
-
-            /*
-             * AMD + Iris + ImmediatelyFast can crash inside glDrawElements during UI previews.
-             * For regular cubic models, forcing the non-VAO path avoids the problematic draw route
-             * while keeping the preview visible.
-             */
-            if (amdSafeUiPreview && !(model.model instanceof BOBJModel))
-            {
-                model.delete();
-            }
-
-            Supplier<ShaderProgram> mainShader = amdSafeUiPreview
+            Supplier<ShaderProgram> mainShader = (BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld()) || !model.isVAORendered()
                 ? GameRenderer::getRenderTypeEntityTranslucentCullProgram
-                : ((BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld()) || !model.isVAORendered()
-                    ? GameRenderer::getRenderTypeEntityTranslucentCullProgram
-                    : BBSShaders::getModel);
+                : BBSShaders::getModel;
 
             this.renderModel(this.entity, mainShader, stack, model, LightmapTextureManager.pack(15, 15), OverlayTexture.DEFAULT_UV, color, true, null, context.getTransition());
 
