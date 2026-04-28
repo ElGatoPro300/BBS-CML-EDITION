@@ -641,6 +641,12 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         if (layout.isLayoutLocked())
         {
             this.setPanelDragHandlesVisible(false);
+            
+            for (UIDraggable handle : this.splitterHandles)
+            {
+                handle.removeFromParent();
+            }
+            this.splitterHandles.clear();
         }
         else
         {
@@ -716,12 +722,12 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                 if (ratio >= 0F)
                 {
                     layout.setFilmSplitterRatio(index, ratio);
-                    this.setupEditorFlex(true, true, true);
+                    this.setupEditorFlex(true, true, false);
                 }
             });
 
             handle.hoverOnly();
-            handle.dragEnd(() -> this.setupEditorFlex(true, true, true));
+            handle.dragEnd(() -> this.setupEditorFlex(true, false, false));
             handle.reference(() -> this.getSplitterHandleReferencePosition(index, splitters));
             handle.rendering((context) -> this.renderSplitter(context, index));
             this.applySplitterHandleBounds(handle, this.splitterHandleInfos.get(index));
@@ -1688,10 +1694,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         if (this.editor.area.w >= EDITOR_MIN_SIZE_FOR_PX_HANDLES && this.editor.area.h >= EDITOR_MIN_SIZE_FOR_PX_HANDLES)
         {
-            if (!BBSSettings.editorLayoutSettings.isLayoutLocked() && this.splitterHandles.size() == this.splitterHandleInfos.size())
-            {
-                this.syncSplitterHandleBounds();
-            }
+            this.updateEditorFlexBoundsOnly(BBSSettings.editorLayoutSettings, BBSSettings.editorLayoutSettings.getFilmLayoutRoot());
 
             this.editor.resize();
         }
@@ -2489,6 +2492,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         List<EditorLayoutNode.TabbedNode> tabbedNodes = new ArrayList<>();
         EditorLayoutNode.collectTabbedNodes(root, tabbedNodes);
         
+        int tabBarIndex = 0;
         for (int i = 0; i < tabbedNodes.size(); i++)
         {
             EditorLayoutNode.TabbedNode tabbed = tabbedNodes.get(i);
@@ -2510,14 +2514,16 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                         this.tabBars.add(tabBar);
                         this.editor.add(tabBar);
                     }
-                    else if (i < this.tabBars.size())
+                    else if (tabBarIndex < this.tabBars.size())
                     {
-                        tabBar = this.tabBars.get(i);
+                        tabBar = this.tabBars.get(tabBarIndex);
                     }
                     else
                     {
                         continue;
                     }
+                    
+                    tabBarIndex++;
                     
                     tabBar.relative(this.editor).x(b[0]).y(b[1]).w(b[2]).h(0F, 20);
                     
@@ -2599,7 +2605,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                         case "replayEditor": nameKey = mchorse.bbs_mod.ui.UIKeys.FILM_OPEN_REPLAY_EDITOR; break;
                         case "actionEditor": nameKey = mchorse.bbs_mod.ui.UIKeys.FILM_OPEN_ACTION_EDITOR; break;
                         case "screenEditor": nameKey = mchorse.bbs_mod.ui.UIKeys.FILM_OPEN_SCREEN_EDITOR; break;
-                        case "editArea": nameKey = mchorse.bbs_mod.l10n.keys.IKey.raw("Edit Area"); break;
+                        case "editArea": nameKey = mchorse.bbs_mod.l10n.keys.IKey.raw("Properties"); break;
                         case "preview": nameKey = mchorse.bbs_mod.l10n.keys.IKey.raw("Preview"); break;
                         case "main": nameKey = mchorse.bbs_mod.l10n.keys.IKey.raw("Main"); break;
                     }
@@ -2691,9 +2697,12 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                 this.panel.setupEditorFlex(true, false, true);
 
                 /* Track click position for drag detection */
-                this.panel.mouseHeldPanelId = this.panelId;
-                this.panel.clickX = context.mouseX;
-                this.panel.clickY = context.mouseY;
+                if (!layout.isLayoutLocked())
+                {
+                    this.panel.mouseHeldPanelId = this.panelId;
+                    this.panel.clickX = context.mouseX;
+                    this.panel.clickY = context.mouseY;
+                }
                 return true;
             }
             return false;
