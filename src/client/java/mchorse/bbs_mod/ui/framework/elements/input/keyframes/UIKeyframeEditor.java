@@ -117,6 +117,28 @@ public class UIKeyframeEditor extends UIElement
         return this;
     }
 
+    @Override
+    public void removeFromParent()
+    {
+        super.removeFromParent();
+
+        if (this.editor != null)
+        {
+            this.editor.removeFromParent();
+        }
+    }
+
+    @Override
+    public void setVisible(boolean visible)
+    {
+        super.setVisible(visible);
+
+        if (this.editor != null)
+        {
+            this.editor.setVisible(visible);
+        }
+    }
+
     private void pickKeyframe(Keyframe keyframe)
     {
         UIKeyframeFactory.saveScroll(this.editor);
@@ -130,8 +152,16 @@ public class UIKeyframeEditor extends UIElement
         if (keyframe != null)
         {
             this.editor = UIKeyframeFactory.createPanel(keyframe, this.view);
+            this.editor.setVisible(this.isVisible());
 
-            this.add(this.editor);
+            if (this.target != null)
+            {
+                this.target.add(this.editor);
+            }
+            else
+            {
+                this.add(this.editor);
+            }
         }
 
         this.applyLayout();

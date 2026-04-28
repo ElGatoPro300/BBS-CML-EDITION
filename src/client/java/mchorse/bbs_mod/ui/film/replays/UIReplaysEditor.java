@@ -2654,6 +2654,17 @@ public class UIReplaysEditor extends UIElement
     }
 
     @Override
+    public void setVisible(boolean visible)
+    {
+        super.setVisible(visible);
+
+        if (this.keyframeEditor != null)
+        {
+            this.keyframeEditor.setVisible(visible);
+        }
+    }
+
+    @Override
     public void collectUndoData(MapType data)
     {
         super.collectUndoData(data);

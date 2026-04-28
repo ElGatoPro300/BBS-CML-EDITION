@@ -11,11 +11,13 @@ import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+import mchorse.bbs_mod.data.types.ListType;
 
 public abstract class EditorLayoutNode
 {
     public static final String TYPE_SPLITTER = "splitter";
     public static final String TYPE_PANEL = "panel";
+    public static final String TYPE_TABBED = "tabbed";
     public static final String DIR_V = "v";
     public static final String DIR_H = "h";
 
@@ -104,6 +106,24 @@ public abstract class EditorLayoutNode
         return rebuilt == null ? root : rebuilt;
     }
 
+    
+    public static EditorLayoutNode copyWithDockedLeaf(EditorLayoutNode root, String targetPanelId, String droppedPanelId)
+    {
+        if (root == null || targetPanelId == null || droppedPanelId == null || targetPanelId.equals(droppedPanelId))
+        {
+            return root;
+        }
+
+        LayoutModel model = LayoutModel.fromRoot(root);
+        if (!model.dockPanelAt(targetPanelId, droppedPanelId))
+        {
+            return root;
+        }
+
+        EditorLayoutNode rebuilt = model.toRoot();
+        return rebuilt == null ? root : rebuilt;
+    }
+
     public static void collectSplitters(EditorLayoutNode node, List<SplitterNode> out)
     {
         if (node == null)
@@ -117,15 +137,52 @@ public abstract class EditorLayoutNode
         while (!stack.isEmpty())
         {
             EditorLayoutNode current = stack.pop();
-            if (!(current instanceof SplitterNode))
+            if (current instanceof SplitterNode)
             {
-                continue;
+                SplitterNode splitter = (SplitterNode) current;
+                out.add(splitter);
+                stack.push(splitter.second);
+                stack.push(splitter.first);
             }
+            else if (current instanceof TabbedNode)
+            {
+                TabbedNode tabbed = (TabbedNode) current;
+                for (int i = tabbed.tabs.size() - 1; i >= 0; i--)
+                {
+                    stack.push(tabbed.tabs.get(i));
+                }
+            }
+        }
+    }
 
-            SplitterNode splitter = (SplitterNode) current;
-            out.add(splitter);
-            stack.push(splitter.second);
-            stack.push(splitter.first);
+    public static void collectTabbedNodes(EditorLayoutNode node, List<TabbedNode> out)
+    {
+        if (node == null)
+        {
+            return;
+        }
+
+        Deque<EditorLayoutNode> stack = new ArrayDeque<>();
+        stack.push(node);
+
+        while (!stack.isEmpty())
+        {
+            EditorLayoutNode current = stack.pop();
+            if (current instanceof TabbedNode)
+            {
+                TabbedNode tabbed = (TabbedNode) current;
+                out.add(tabbed);
+                for (int i = tabbed.tabs.size() - 1; i >= 0; i--)
+                {
+                    stack.push(tabbed.tabs.get(i));
+                }
+            }
+            else if (current instanceof SplitterNode)
+            {
+                SplitterNode splitter = (SplitterNode) current;
+                stack.push(splitter.second);
+                stack.push(splitter.first);
+            }
         }
     }
 
@@ -195,6 +252,26 @@ public abstract class EditorLayoutNode
                 return new SplitterNode(horizontal, ratio, first, second);
             }
 
+            
+            if (TYPE_TABBED.equals(type))
+            {
+                List<EditorLayoutNode> tabs = new ArrayList<>();
+                if (map.has("tabs"))
+                {
+                    for (BaseType item : map.getList("tabs"))
+                    {
+                        EditorLayoutNode tab = decode(item);
+                        if (tab != null)
+                        {
+                            tabs.add(tab);
+                        }
+                    }
+                }
+                int activeTab = map.getInt("active_tab", 0);
+                if (tabs.isEmpty()) return null;
+                return new TabbedNode(tabs, activeTab);
+            }
+
             return null;
         }
     }
@@ -231,6 +308,16 @@ public abstract class EditorLayoutNode
                         PanelNode panel = (PanelNode) cursor.node;
                         ids.put(cursor.node, this.addPanel(panel.panelId));
                     }
+                                        else if (cursor.node instanceof TabbedNode)
+                    {
+                        TabbedNode tabbed = (TabbedNode) cursor.node;
+                        List<Integer> tabIds = new ArrayList<>();
+                        for (EditorLayoutNode tab : tabbed.tabs)
+                        {
+                            tabIds.add(ids.get(tab));
+                        }
+                        ids.put(cursor.node, this.addTabbed(tabIds, tabbed.activeTab));
+                    }
                     else
                     {
                         SplitterNode splitter = (SplitterNode) cursor.node;
@@ -243,6 +330,14 @@ public abstract class EditorLayoutNode
                 }
 
                 stack.push(new BuildCursor(cursor.node, true));
+                                if (cursor.node instanceof TabbedNode)
+                {
+                    TabbedNode tabbed = (TabbedNode) cursor.node;
+                    for (int i = tabbed.tabs.size() - 1; i >= 0; i--)
+                    {
+                        stack.push(new BuildCursor(tabbed.tabs.get(i), false));
+                    }
+                }
                 if (cursor.node instanceof SplitterNode)
                 {
                     SplitterNode splitter = (SplitterNode) cursor.node;
@@ -276,6 +371,15 @@ public abstract class EditorLayoutNode
                     {
                         built.put(cursor.index, new PanelNode(modelNode.panelId));
                     }
+                                        else if (modelNode.type == ModelNodeType.TABBED)
+                    {
+                        List<EditorLayoutNode> tabs = new ArrayList<>();
+                        for (int tabIndex : modelNode.tabs)
+                        {
+                            tabs.add(built.get(tabIndex));
+                        }
+                        built.put(cursor.index, new TabbedNode(tabs, modelNode.activeTab));
+                    }
                     else
                     {
                         EditorLayoutNode first = built.get(modelNode.first);
@@ -287,6 +391,13 @@ public abstract class EditorLayoutNode
                 }
 
                 stack.push(new IndexCursor(cursor.index, true));
+                                if (modelNode.type == ModelNodeType.TABBED)
+                {
+                    for (int i = modelNode.tabs.size() - 1; i >= 0; i--)
+                    {
+                        stack.push(new IndexCursor(modelNode.tabs.get(i), false));
+                    }
+                }
                 if (modelNode.type == ModelNodeType.SPLITTER)
                 {
                     stack.push(new IndexCursor(modelNode.second, false));
@@ -319,7 +430,52 @@ public abstract class EditorLayoutNode
             }
 
             ModelNode parentNode = this.nodes.get(parent);
+
+            if (parentNode.type == ModelNodeType.TABBED)
+            {
+                /* Remove the tab from the list */
+                int tabIdx = parentNode.tabs.indexOf(panel);
+                if (tabIdx < 0) return false;
+                parentNode.tabs.remove(tabIdx);
+
+                /* Fix activeTab index */
+                if (parentNode.activeTab >= parentNode.tabs.size())
+                {
+                    parentNode.activeTab = Math.max(0, parentNode.tabs.size() - 1);
+                }
+
+                /* Collapse TabbedNode if only 1 tab remains */
+                if (parentNode.tabs.size() == 1)
+                {
+                    int remaining = parentNode.tabs.get(0);
+                    parentNode.tabs.clear(); /* Prevent orphaned node from corrupting parentLinks */
+                    int grandParent = parents[parent];
+                    if (!this.isValid(grandParent))
+                    {
+                        this.root = remaining;
+                    }
+                    else
+                    {
+                        this.relink(grandParent, parent, remaining);
+                    }
+                }
+                else if (parentNode.tabs.isEmpty())
+                {
+                    int grandParent = parents[parent];
+                    if (!this.isValid(grandParent))
+                    {
+                        this.root = -1;
+                    }
+                }
+
+                return true;
+            }
+
+            /* SplitterNode parent: replace parent with the sibling */
             int sibling = parentNode.first == panel ? parentNode.second : parentNode.first;
+            /* Prevent orphaned splitter from corrupting parentLinks */
+            parentNode.first = -1;
+            parentNode.second = -1;
             int grandParent = parents[parent];
 
             if (!this.isValid(grandParent))
@@ -384,6 +540,14 @@ public abstract class EditorLayoutNode
             int[] parents = this.parentLinks();
             int parent = parents[target];
 
+            if (this.isValid(parent) && this.nodes.get(parent).type == ModelNodeType.TABBED)
+            {
+                // We cannot insert a SplitterNode inside a TabbedNode.
+                // We must promote the target to the TabbedNode itself, so we split the entire TabbedNode block.
+                target = parent;
+                parent = parents[target];
+            }
+
             int dropped = this.addPanel(droppedPanelId);
             int first = placement.droppedFirst ? dropped : target;
             int second = placement.droppedFirst ? target : dropped;
@@ -442,6 +606,14 @@ public abstract class EditorLayoutNode
                 if (node.type == ModelNodeType.PANEL)
                 {
                     out.put(node.panelId, new float[] {cursor.x, cursor.y, cursor.w, cursor.h});
+                    continue;
+                }
+                if (node.type == ModelNodeType.TABBED)
+                {
+                    if (node.tabs.size() > 0 && node.activeTab >= 0 && node.activeTab < node.tabs.size())
+                    {
+                        stack.push(new BoundsCursor(node.tabs.get(node.activeTab), cursor.x, cursor.y, cursor.w, cursor.h));
+                    }
                     continue;
                 }
 
@@ -505,6 +677,64 @@ public abstract class EditorLayoutNode
             return this.nodes.size() - 1;
         }
 
+        
+        private int addTabbed(List<Integer> tabs, int activeTab)
+        {
+            this.nodes.add(ModelNode.tabbed(tabs, activeTab));
+            return this.nodes.size() - 1;
+        }
+
+        private boolean dockPanelAt(String targetPanelId, String droppedPanelId)
+        {
+            if (targetPanelId == null || droppedPanelId == null || targetPanelId.equals(droppedPanelId))
+            {
+                return false;
+            }
+
+            if (!this.removePanel(droppedPanelId))
+            {
+                return false;
+            }
+
+            int target = this.findPanel(targetPanelId);
+            if (!this.isValid(target))
+            {
+                return false;
+            }
+
+            int dropped = this.addPanel(droppedPanelId);
+
+            int[] parents = this.parentLinks();
+            int parent = parents[target];
+
+            if (this.isValid(parent) && this.nodes.get(parent).type == ModelNodeType.TABBED)
+            {
+                // Target is already in a tabbed node, just append
+                ModelNode parentNode = this.nodes.get(parent);
+                parentNode.tabs.add(dropped);
+                parentNode.activeTab = parentNode.tabs.size() - 1;
+            }
+            else
+            {
+                // Create a new tabbed node
+                List<Integer> tabIds = new ArrayList<>();
+                tabIds.add(target);
+                tabIds.add(dropped);
+                int tabbed = this.addTabbed(tabIds, 1);
+
+                if (!this.isValid(parent))
+                {
+                    this.root = tabbed;
+                }
+                else
+                {
+                    this.relink(parent, target, tabbed);
+                }
+            }
+
+            return true;
+        }
+
         private int addSplitter(boolean horizontal, float ratio, int first, int second)
         {
             this.nodes.add(ModelNode.splitter(horizontal, ratio, first, second));
@@ -536,19 +766,17 @@ public abstract class EditorLayoutNode
             for (int i = 0; i < this.nodes.size(); i++)
             {
                 ModelNode node = this.nodes.get(i);
-                if (node.type != ModelNodeType.SPLITTER)
+                if (node.type == ModelNodeType.SPLITTER)
                 {
-                    continue;
+                    if (this.isValid(node.first)) parents[node.first] = i;
+                    if (this.isValid(node.second)) parents[node.second] = i;
                 }
-
-                if (this.isValid(node.first))
+                else if (node.type == ModelNodeType.TABBED)
                 {
-                    parents[node.first] = i;
-                }
-
-                if (this.isValid(node.second))
-                {
-                    parents[node.second] = i;
+                    for (int tab : node.tabs)
+                    {
+                        if (this.isValid(tab)) parents[tab] = i;
+                    }
                 }
             }
 
@@ -558,13 +786,15 @@ public abstract class EditorLayoutNode
         private void relink(int parent, int oldChild, int newChild)
         {
             ModelNode node = this.nodes.get(parent);
-            if (node.first == oldChild)
+            if (node.type == ModelNodeType.SPLITTER)
             {
-                node.first = newChild;
+                if (node.first == oldChild) node.first = newChild;
+                else if (node.second == oldChild) node.second = newChild;
             }
-            else if (node.second == oldChild)
+            else if (node.type == ModelNodeType.TABBED)
             {
-                node.second = newChild;
+                int idx = node.tabs.indexOf(oldChild);
+                if (idx >= 0) node.tabs.set(idx, newChild);
             }
         }
 
@@ -648,7 +878,8 @@ public abstract class EditorLayoutNode
     private enum ModelNodeType
     {
         PANEL,
-        SPLITTER
+        SPLITTER,
+        TABBED
     }
 
     private static class ModelNode
@@ -659,6 +890,9 @@ public abstract class EditorLayoutNode
         private float ratio;
         private int first;
         private int second;
+
+                private List<Integer> tabs;
+        private int activeTab;
 
         private ModelNode(ModelNodeType type)
         {
@@ -679,6 +913,14 @@ public abstract class EditorLayoutNode
             node.ratio = MathUtils.clamp(ratio, 0.05F, 0.95F);
             node.first = first;
             node.second = second;
+            return node;
+        }
+
+        private static ModelNode tabbed(List<Integer> tabs, int activeTab)
+        {
+            ModelNode node = new ModelNode(ModelNodeType.TABBED);
+            node.tabs = new ArrayList<>(tabs);
+            node.activeTab = activeTab;
             return node;
         }
     }
@@ -798,6 +1040,52 @@ public abstract class EditorLayoutNode
             }
 
             return this;
+        }
+    }
+
+    public static class TabbedNode extends EditorLayoutNode
+    {
+        public final List<EditorLayoutNode> tabs;
+        public int activeTab;
+
+        public TabbedNode(List<EditorLayoutNode> tabs, int activeTab)
+        {
+            this.tabs = new ArrayList<>(tabs);
+            this.activeTab = Math.max(0, Math.min(activeTab, Math.max(0, this.tabs.size() - 1)));
+        }
+
+        @Override
+        public BaseType toData()
+        {
+            MapType map = new MapType();
+            map.putString("type", TYPE_TABBED);
+            map.putInt("active_tab", this.activeTab);
+            ListType list = new ListType();
+            for (EditorLayoutNode tab : this.tabs)
+            {
+                list.add(tab.toData());
+            }
+            map.put("tabs", list);
+            return map;
+        }
+
+        @Override
+        public void computeBounds(float x, float y, float w, float h, Map<String, float[]> out)
+        {
+            LayoutModel.fromRoot(this).fillBounds(x, y, w, h, out);
+        }
+
+        @Override
+        public EditorLayoutNode copyWithSwappedIds(String id1, String id2)
+        {
+            LayoutModel model = LayoutModel.fromRoot(this);
+            if (!model.swapPanelIds(id1, id2))
+            {
+                return this;
+            }
+
+            EditorLayoutNode rebuilt = model.toRoot();
+            return rebuilt == null ? this : rebuilt;
         }
     }
 }
