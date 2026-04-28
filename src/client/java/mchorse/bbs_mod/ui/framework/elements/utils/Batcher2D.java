@@ -238,6 +238,7 @@ public class Batcher2D
         Matrix4f matrix4f = this.context.getMatrices().peek().getPositionMatrix();
         BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLE_FAN, VertexFormats.POSITION_COLOR);
 
+        
         builder.vertex(matrix4f, x, y, 0F).color(opaque);
 
         for (int i = 0; i <= segments; i ++)
@@ -246,9 +247,16 @@ public class Batcher2D
 
             builder.vertex(matrix4f, (float) (x - Math.cos(a) * radius), (float) (y + Math.sin(a) * radius), 0F).color(shadow);
         }
+        RenderSystem.enableBlend();
+        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
+        BufferRenderer.drawWithGlobalProgram(builder.end());
     }
 
     public void dropCircleShadow(int x, int y, int radius, int offset, int segments, int opaque, int shadow)
+    {
+        if (offset >= radius)
+        {
+            this.dropCircleShadow(x, y, radius, segments, opaque, shadow);
 
             return;
         }
