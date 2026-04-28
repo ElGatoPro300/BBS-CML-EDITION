@@ -197,6 +197,11 @@ public interface IUIKeyframeGraph
     public default void setTick(float tick, boolean dirty)
     {
         Keyframe selected = this.getSelected();
+        if (selected == null)
+        {
+            return;
+        }
+
         float diff = tick - selected.getTick();
 
         for (UIKeyframeSheet sheet : this.getSheets())
@@ -224,6 +229,11 @@ public interface IUIKeyframeGraph
     public default void setValue(Object value, boolean unmergeable)
     {
         Keyframe selected = this.getSelected();
+        if (selected == null)
+        {
+            return;
+        }
+
         IKeyframeFactory factory = selected.getFactory();
         Object keyframe = factory.copy(selected.getValue());
 
