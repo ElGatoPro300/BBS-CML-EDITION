@@ -22,6 +22,8 @@ import java.util.List;
 public class BBSSettings
 {
     public static ValueColors favoriteColors;
+    public static ValueStringKeys favoriteModelForms;
+    public static ValueString favoriteFormCategoriesData;
     public static ValueStringKeys disabledSheets;
     public static ValueLanguage language;
     public static ValueInt primaryColor;
@@ -100,6 +102,9 @@ public class BBSSettings
     public static ValueBoolean editorReplayHud;
     public static ValueInt editorReplayHudPosition;
     public static ValueBoolean editorReplayHudDisplayName;
+    public static ValueInt editorCommandWidth;
+    public static ValueInt editorCommandHeight;
+    public static ValueBoolean editorCommandAutoWrap;
     public static ValueBoolean modelFormsHierarchy;
     public static ValueBoolean mediaFoldersEnhancements;
     public static ValueInt replayContextOptions;
@@ -142,6 +147,7 @@ public class BBSSettings
     public static ValueBoolean fluidRealisticModelInteraction;
 
     public static ValueLink textureDefaultPath;
+    public static ValueInt texturePickerItemSize;
 
     public static ValueString cdnUrl;
     public static ValueString cdnToken;
@@ -202,11 +208,16 @@ public class BBSSettings
         uniformScale = builder.getBoolean("uniform_scale", false);
         clickSound = builder.getBoolean("click_sound", false);
         favoriteColors = new ValueColors("favorite_colors");
+        favoriteModelForms = new ValueStringKeys("favorite_model_forms");
+        favoriteFormCategoriesData = builder.getString("favorite_form_categories_data", "");
+        favoriteFormCategoriesData.invisible();
         disabledSheets = new ValueStringKeys("disabled_sheets");
         disabledSheets.set(defaultFilters);
         builder.register(favoriteColors);
+        builder.register(favoriteModelForms);
         builder.register(disabledSheets);
         textureDefaultPath = builder.getRL("texture_default_path", null);
+        texturePickerItemSize = builder.getInt("texture_picker_item_size", 16, 16, 220);
 
         builder.category("axes");
         gizmos = builder.getBoolean("gizmos", true);

@@ -1,9 +1,11 @@
 package mchorse.bbs_mod.ui.film.clips.actions;
 
+import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.actions.types.chat.CommandActionClip;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.IUIClipsDelegate;
 import mchorse.bbs_mod.ui.framework.elements.input.text.UITextarea;
+import mchorse.bbs_mod.ui.framework.elements.input.text.undo.TextEditUndo;
 import mchorse.bbs_mod.ui.framework.elements.input.text.utils.TextLine;
 import mchorse.bbs_mod.ui.utils.UI;
 
@@ -12,6 +14,9 @@ public class UICommandActionClip extends UIActionClip<CommandActionClip>
     private static final int BASE_COMMAND_HEIGHT = 72;
     private static final int COMMAND_LINE_HEIGHT = 12;
     private static final int COMMAND_PADDING = 20;
+    private static final int DEFAULT_COMMAND_WIDTH = 140;
+    private static final int DEFAULT_COMMAND_HEIGHT = 20;
+    private static final boolean DEFAULT_COMMAND_WRAP = true;
 
     public UITextarea<TextLine> command;
 
@@ -25,15 +30,24 @@ public class UICommandActionClip extends UIActionClip<CommandActionClip>
     {
         super.registerUI();
 
-        this.command = new UITextarea<>((t) -> this.clip.command.set(t)).background().wrap(true);
-        this.command.h(BASE_COMMAND_HEIGHT);
+        this.command = new UITextarea<>((t) -> this.clip.command.set(t.replace("\n", "")))
+        {
+            @Override
+            public void writeString(String string)
+            {
+                super.writeString(string.replace("\n", ""));
+            }
+        };
+        this.command.w(BBSSettings.editorCommandWidth == null ? DEFAULT_COMMAND_WIDTH : BBSSettings.editorCommandWidth.get());
+        this.command.h(BBSSettings.editorCommandHeight == null ? DEFAULT_COMMAND_HEIGHT : BBSSettings.editorCommandHeight.get());
+        this.command.wrap(BBSSettings.editorCommandAutoWrap == null ? DEFAULT_COMMAND_WRAP : BBSSettings.editorCommandAutoWrap.get());
+        this.command.background();
     }
 
     @Override
     protected void registerPanels()
     {
         super.registerPanels();
-
         this.panels.add(UI.label(UIKeys.ACTIONS_COMMAND_COMMAND).marginTop(12), this.command);
     }
 

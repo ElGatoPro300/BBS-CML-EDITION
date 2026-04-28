@@ -17,13 +17,14 @@ public class UIHotbarRenderer
     private static final int HUD_GREEN = 8453920;
     private static final int BAR_ICON_Y = -17;
     private static final int EXPERIENCE_BAR_Y = -7;
-    private static final int EXPERIENCE_TEXT_Y = -12;
+    private static final int EXPERIENCE_TEXT_Y = -13;
     private static final float SCALE_PIVOT_X = 91F;
     private static final float SCALE_PIVOT_Y = 0.5F;
     private static final int MAX_HEALTH_ROWS = 60;
     private static final float MAX_HEALTH_CONTAINER = MAX_HEALTH_ROWS * 10F * 2F;
     private static final Identifier HOTBAR = new Identifier("minecraft", "hud/hotbar");
     private static final Identifier HOTBAR_SELECTION = new Identifier("minecraft", "hud/hotbar_selection");
+    private static final Identifier HOTBAR_OFFHAND_LEFT = new Identifier("minecraft", "hud/hotbar_offhand_left");
     private static final Identifier HEART_CONTAINER = new Identifier("minecraft", "hud/heart/container");
     private static final Identifier HEART_HARDCORE_CONTAINER = new Identifier("minecraft", "hud/heart/container_hardcore");
     private static final Identifier[][] HEART_HALVES = {
@@ -49,8 +50,12 @@ public class UIHotbarRenderer
     private static final Identifier FOOD_EMPTY_HUNGER = new Identifier("minecraft", "hud/food_empty_hunger");
     private static final Identifier FOOD_FULL_HUNGER = new Identifier("minecraft", "hud/food_full_hunger");
     private static final Identifier FOOD_HALF_HUNGER = new Identifier("minecraft", "hud/food_half_hunger");
+    private static final Identifier AIR = new Identifier("minecraft", "hud/air");
+    private static final Identifier AIR_BURSTING = new Identifier("minecraft", "hud/air_bursting");
     private static final Identifier EXPERIENCE_BAR_BACKGROUND_TEXTURE = new Identifier("minecraft", "textures/gui/sprites/hud/experience_bar_background.png");
     private static final Identifier EXPERIENCE_BAR_PROGRESS_TEXTURE = new Identifier("minecraft", "textures/gui/sprites/hud/experience_bar_progress.png");
+    private static boolean wasHeartRegenerationEnabled;
+    private static long heartRegenerationStartTick;
 
     public static void renderHotbars(MatrixStack stack, Batcher2D batcher, List<HotbarState> hotbars)
     {
@@ -110,6 +115,13 @@ public class UIHotbarRenderer
 
         batcher.getContext().drawGuiTexture(HOTBAR, 0, 0, 182, 22);
 
+        boolean hasOffhandItem = hotbar.offhandItem != null && !hotbar.offhandItem.isEmpty();
+
+        if (hasOffhandItem)
+        {
+            batcher.getContext().drawGuiTexture(HOTBAR_OFFHAND_LEFT, -29, -1, 29, 24);
+        }
+
         int selectedSlot = MathHelper.clamp(hotbar.selectedSlot, 0, 8);
         batcher.getContext().drawGuiTexture(HOTBAR_SELECTION, selectedSlot * 20 - 1, -1, 24, 23);
 
@@ -129,20 +141,42 @@ public class UIHotbarRenderer
         int absorptionRows = absorptionSlots <= 0 ? 0 : Math.max(1, Math.min(MAX_HEALTH_ROWS, (absorptionSlots + 9) / 10));
         Random heartShakeRandom = hotbar.health <= 4F ? new Random(thisTickSeed()) : null;
         Random hungerShakeRandom = hotbar.hunger <= 6F ? new Random(thisTickSeed() + 17L) : null;
+        int regenerationHeartIndex = -1;
+        long hudTick = currentHudTick();
 
-        renderBar(batcher, hotbar.health, container, heartHalf, heartFull, 0, barsY, healthSlots, heartShakeRandom);
+        if (hotbar.heartRegeneration && healthSlots > 0 && hotbar.health > 0F)
+        {
+            if (!wasHeartRegenerationEnabled)
+            {
+                heartRegenerationStartTick = hudTick;
+            }
+
+            wasHeartRegenerationEnabled = true;
+
+            int cycleLength = healthSlots + 5; /* Vanilla-like pacing: one sweep plus idle tail. */
+            int cycleIndex = cycleLength <= 0 ? 0 : (int) Math.floorMod(hudTick - heartRegenerationStartTick, cycleLength);
+
+            regenerationHeartIndex = cycleIndex < healthSlots ? cycleIndex : -1;
+        }
+        else if (wasHeartRegenerationEnabled)
+        {
+            wasHeartRegenerationEnabled = false;
+        }
+
+        renderBar(batcher, hotbar.health, container, heartHalf, heartFull, 0, barsY, healthSlots, heartShakeRandom, regenerationHeartIndex);
         if (absorptionSlots > 0)
         {
-            renderBar(batcher, hotbar.absorption, container, absorptionHalf, absorptionFull, 0, barsY - healthRows * 10, absorptionSlots, heartShakeRandom);
+            renderBar(batcher, hotbar.absorption, container, absorptionHalf, absorptionFull, 0, barsY - healthRows * 10, absorptionSlots, heartShakeRandom, -1);
         }
         if (hotbar.armor > 0F)
         {
-            renderBar(batcher, hotbar.armor, ARMOR_EMPTY, ARMOR_HALF, ARMOR_FULL, 0, barsY - (healthRows + absorptionRows) * 10, 10, null);
+            renderBar(batcher, hotbar.armor, ARMOR_EMPTY, ARMOR_HALF, ARMOR_FULL, 0, barsY - (healthRows + absorptionRows) * 10, 10, null, -1);
         }
         Identifier foodEmpty = hotbar.hungerEffect ? FOOD_EMPTY_HUNGER : FOOD_EMPTY;
         Identifier foodHalf = hotbar.hungerEffect ? FOOD_HALF_HUNGER : FOOD_HALF;
         Identifier foodFull = hotbar.hungerEffect ? FOOD_FULL_HUNGER : FOOD_FULL;
         renderBarReverse(batcher, hotbar.hunger, foodEmpty, foodHalf, foodFull, 182 - 9, barsY, 10, hungerShakeRandom);
+        renderAirBar(batcher, hotbar.air, 182 - 9, barsY - 10);
 
         float experience = MathHelper.clamp(hotbar.experience, 0F, 1F);
         int xpPixels = MathHelper.ceil(experience * 182F);
@@ -156,8 +190,15 @@ public class UIHotbarRenderer
         {
             String level = Integer.toString(hotbar.experienceLevel);
             int levelX = (182 - batcher.getFont().getWidth(level)) / 2;
+            int outlineColor = applyAlpha(0x000000, alpha);
+            int levelColor = applyAlpha(HUD_GREEN, alpha);
 
-            batcher.textShadow(level, levelX, EXPERIENCE_TEXT_Y, applyAlpha(HUD_GREEN, alpha));
+            /* Vanilla-like outlined XP number: no drop shadow, solid contour around glyphs. */
+            batcher.text(level, levelX - 1, EXPERIENCE_TEXT_Y, outlineColor, false);
+            batcher.text(level, levelX + 1, EXPERIENCE_TEXT_Y, outlineColor, false);
+            batcher.text(level, levelX, EXPERIENCE_TEXT_Y - 1, outlineColor, false);
+            batcher.text(level, levelX, EXPERIENCE_TEXT_Y + 1, outlineColor, false);
+            batcher.text(level, levelX, EXPERIENCE_TEXT_Y, levelColor, false);
         }
 
         /* Item glint (enchants) requires depth test in GUI item renderer. */
@@ -180,6 +221,15 @@ public class UIHotbarRenderer
             batcher.getContext().drawItemInSlot(batcher.getFont().getRenderer(), stackItem, itemX, itemY);
         }
 
+        if (hasOffhandItem)
+        {
+            int offhandX = -26;
+            int offhandY = 3;
+
+            batcher.getContext().drawItem(hotbar.offhandItem, offhandX, offhandY);
+            batcher.getContext().drawItemInSlot(batcher.getFont().getRenderer(), hotbar.offhandItem, offhandX, offhandY);
+        }
+
         RenderSystem.disableDepthTest();
         RenderSystem.depthMask(false);
         RenderSystem.disableBlend();
@@ -191,7 +241,7 @@ public class UIHotbarRenderer
         batcher.flush();
     }
 
-    private static void renderBar(Batcher2D batcher, float value, Identifier empty, Identifier half, Identifier full, int x, int y, int slots, Random lowHealthShakeRandom)
+    private static void renderBar(Batcher2D batcher, float value, Identifier empty, Identifier half, Identifier full, int x, int y, int slots, Random lowHealthShakeRandom, int regenerationHeartIndex)
     {
         if (slots <= 0)
         {
@@ -212,6 +262,11 @@ public class UIHotbarRenderer
                 iconY += lowHealthShakeRandom.nextInt(2);
             }
 
+            if (i == regenerationHeartIndex)
+            {
+                iconY -= 2;
+            }
+
             batcher.getContext().drawGuiTexture(empty, iconX, iconY, 9, 9);
 
             float current = normalized - i;
@@ -229,10 +284,14 @@ public class UIHotbarRenderer
 
     private static long thisTickSeed()
     {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        long tick = mc.world != null ? mc.world.getTime() : System.currentTimeMillis() / 50L;
+        return currentHudTick() * 312871L;
+    }
 
-        return tick * 312871L;
+    private static long currentHudTick()
+    {
+        MinecraftClient mc = MinecraftClient.getInstance();
+
+        return mc.world != null ? mc.world.getTime() : System.currentTimeMillis() / 50L;
     }
 
     private static void renderBarReverse(Batcher2D batcher, float value, Identifier empty, Identifier half, Identifier full, int x, int y, int slots, Random lowHungerShakeRandom)
@@ -276,5 +335,27 @@ public class UIHotbarRenderer
         int a = MathHelper.clamp(Math.round(MathHelper.clamp(alpha, 0F, 1F) * 255F), 0, 255);
 
         return (a << 24) | (color & 0x00FFFFFF);
+    }
+
+    private static void renderAirBar(Batcher2D batcher, float air, int x, int y)
+    {
+        if (air >= 300F)
+        {
+            return;
+        }
+
+        int full = MathHelper.ceil((air - 2F) * 10F / 300F);
+        int popping = MathHelper.ceil(air * 10F / 300F) - full;
+
+        full = MathHelper.clamp(full, 0, 10);
+        popping = MathHelper.clamp(popping, 0, 10 - full);
+
+        for (int i = 0; i < full + popping; i++)
+        {
+            int iconX = x - i * 8;
+            Identifier icon = i < full ? AIR : AIR_BURSTING;
+
+            batcher.getContext().drawGuiTexture(icon, iconX, y, 9, 9);
+        }
     }
 }
