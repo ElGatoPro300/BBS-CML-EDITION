@@ -2,7 +2,7 @@ package mchorse.bbs_mod.ui.addons;
 
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSModClient;
-import mchorse.bbs_mod.events.BBSAddonMod;
+import mchorse.bbs_mod.addons.AddonInfo;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.ui.UIKeys;
@@ -19,11 +19,6 @@ import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.resources.packs.InternalAssetsSourcePack;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Colors;
-import net.fabricmc.loader.api.FabricLoader;
-import net.fabricmc.loader.api.ModContainer;
-import net.fabricmc.loader.api.metadata.ContactInformation;
-import net.fabricmc.loader.api.metadata.ModMetadata;
-import net.fabricmc.loader.api.metadata.Person;
 
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -67,14 +62,10 @@ public class UIAddonsPanel extends UISidebarDashboardPanel
     {
         this.addons.removeAll();
 
-        var containers = FabricLoader.getInstance().getEntrypointContainers("bbs-addon", BBSAddonMod.class);
-        System.out.println("BBS Addons Debug: Found " + containers.size() + " containers for 'bbs-addon'");
-
-        containers.forEach(container -> {
-            System.out.println("BBS Addons Debug: Adding container " + container.getProvider().getMetadata().getId());
-            UIAddonEntry entry = new UIAddonEntry(container.getProvider());
-            this.addons.add(entry);
-        });
+        for (AddonInfo info : BBSModClient.registeredAddons)
+        {
+            this.addons.add(new UIAddonEntry(info));
+        }
 
         if (this.addons.getChildren().isEmpty())
         {
@@ -89,37 +80,30 @@ public class UIAddonsPanel extends UISidebarDashboardPanel
 
     public static class UIAddonEntry extends UIElement
     {
-        public ModContainer mod;
+        public AddonInfo mod;
         public Texture icon;
 
-        public UIAddonEntry(ModContainer mod)
+        public UIAddonEntry(AddonInfo mod)
         {
             this.mod = mod;
-            ModMetadata meta = mod.getMetadata();
 
             this.h(80);
             
             /* Try to load icon */
-            Optional<String> iconPath = meta.getIconPath(64);
-            if (iconPath.isPresent())
+            if (mod.icon != null)
             {
-                String path = iconPath.get();
-                if (path.startsWith("assets/"))
-                {
-                    String relative = path.substring("assets/".length());
-                    this.icon = BBSModClient.getTextures().getTexture(new Link("mod_icons", relative));
-                }
+                this.icon = BBSModClient.getTextures().getTexture(mod.icon);
             }
 
             int textX = this.icon != null ? 80 : 10;
             
-            UILabel version = new UILabel(IKey.raw("v" + meta.getVersion().getFriendlyString()).format(Colors.GRAY));
+            UILabel version = new UILabel(IKey.raw("v" + mod.version).format(Colors.GRAY));
             version.relative(this).x(1F, -10).y(10).anchorX(1F);
             
-            UILabel description = new UILabel(IKey.raw(meta.getDescription()).format(Colors.LIGHTER_GRAY));
+            UILabel description = new UILabel(IKey.raw(mod.description).format(Colors.LIGHTER_GRAY));
             description.relative(this).x(textX).y(30).w(1F, -10 - textX);
             
-            String authors = meta.getAuthors().stream().map(Person::getName).collect(Collectors.joining(", "));
+            String authors = String.join(", ", mod.authors);
             UILabel authorLabel = new UILabel(UIKeys.ADDONS_AUTHOR.format(IKey.raw(authors)).format(Colors.LIGHTER_GRAY));
             authorLabel.relative(this).x(textX).y(1F, -10).anchorY(1F).w(1F, -10 - textX);
 
@@ -127,29 +111,28 @@ public class UIAddonsPanel extends UISidebarDashboardPanel
             
             // Buttons
             int x = 0;
-            ContactInformation contact = meta.getContact();
             
-            if (contact.get("homepage").isPresent())
+            if (!mod.website.isEmpty())
             {
-                UIIcon web = new UIIcon(Icons.GLOBE, (b) -> openLink(contact.get("homepage").get()));
+                UIIcon web = new UIIcon(Icons.GLOBE, (b) -> openLink(mod.website));
                 web.tooltip(UIKeys.ADDONS_WEBSITE);
                 web.relative(this).x(1F, -10 - x).y(1F, -5).anchor(1F, 1F).w(20).h(20);
                 this.add(web);
                 x += 24;
             }
             
-            if (contact.get("issues").isPresent())
+            if (!mod.issues.isEmpty())
             {
-                UIIcon issues = new UIIcon(Icons.EXCLAMATION, (b) -> openLink(contact.get("issues").get()));
+                UIIcon issues = new UIIcon(Icons.EXCLAMATION, (b) -> openLink(mod.issues));
                 issues.tooltip(UIKeys.ADDONS_ISSUES);
                 issues.relative(this).x(1F, -10 - x).y(1F, -5).anchor(1F, 1F).w(20).h(20);
                 this.add(issues);
                 x += 24;
             }
             
-            if (contact.get("sources").isPresent())
+            if (!mod.source.isEmpty())
             {
-                UIIcon source = new UIIcon(Icons.CODE, (b) -> openLink(contact.get("sources").get()));
+                UIIcon source = new UIIcon(Icons.CODE, (b) -> openLink(mod.source));
                 source.tooltip(UIKeys.ADDONS_SOURCE);
                 source.relative(this).x(1F, -10 - x).y(1F, -5).anchor(1F, 1F).w(20).h(20);
                 this.add(source);
@@ -180,7 +163,7 @@ public class UIAddonsPanel extends UISidebarDashboardPanel
             
             /*  Draw Name Scaled */
             int textX = this.icon != null ? 80 : 10;
-            String name = this.mod.getMetadata().getName();
+            String name = this.mod.name;
             
             context.batcher.getContext().getMatrices().push();
             context.batcher.getContext().getMatrices().translate(this.area.x + textX, this.area.y + 10, 0);

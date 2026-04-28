@@ -42,7 +42,7 @@ public class UIPathClip extends UIClip<PathClip>
         super.registerUI();
 
         this.point = new UIPointModule(editor);
-        this.angle = new UIAngleModule(editor);
+        this.angle = new UIAngleModule(editor, true);
         this.interpPoint = new UIButton(UIKeys.CAMERA_PANELS_POINT, (b) ->
         {
             this.getContext().replaceContextMenu(new UIInterpolationContextMenu(this.clip.interpolationPoint));

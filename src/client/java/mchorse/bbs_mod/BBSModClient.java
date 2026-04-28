@@ -2,6 +2,7 @@ package mchorse.bbs_mod;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import mchorse.bbs_mod.audio.SoundManager;
+import mchorse.bbs_mod.addons.AddonInfo;
 import mchorse.bbs_mod.blocks.entities.ModelProperties;
 import mchorse.bbs_mod.camera.clips.ClipFactoryData;
 import mchorse.bbs_mod.camera.clips.misc.AudioClientClip;
@@ -32,9 +33,18 @@ import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.settings.ui.UIValueMap;
 import mchorse.bbs_mod.ui.forms.editors.UIFormEditor;
 import mchorse.bbs_mod.events.register.RegisterL10nEvent;
+import mchorse.bbs_mod.events.register.RegisterModelLoadersEvent;
 import mchorse.bbs_mod.events.register.RegisterParticleComponentsEvent;
+import mchorse.bbs_mod.events.register.RegisterPropTransformEvent;
+import mchorse.bbs_mod.events.register.RegisterStencilMapEvent;
+import mchorse.bbs_mod.events.register.RegisterRayTracingEvent;
+import mchorse.bbs_mod.events.register.RegisterFilmPreviewEvent;
+import mchorse.bbs_mod.events.register.RegisterReplayListContextMenuEvent;
+import mchorse.bbs_mod.events.register.RegisterReplayPanelEvent;
 import mchorse.bbs_mod.events.register.RegisterShadersEvent;
 import mchorse.bbs_mod.events.register.RegisterSourcePacksEvent;
+import mchorse.bbs_mod.film.BaseFilmController;
+import mchorse.bbs_mod.film.Film;
 import mchorse.bbs_mod.film.Films;
 import mchorse.bbs_mod.film.Recorder;
 import mchorse.bbs_mod.film.replays.Replay;
@@ -63,12 +73,14 @@ import mchorse.bbs_mod.selectors.EntitySelectors;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.UIDashboard;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
+import mchorse.bbs_mod.ui.film.replays.overlays.UIQuickReplayOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UIKeyframeFactory;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.shapes.KeyframeShapeRenderers;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.UIScreen;
 import mchorse.bbs_mod.ui.model_blocks.UIModelBlockEditorMenu;
 import mchorse.bbs_mod.ui.morphing.UIMorphingPanel;
+import mchorse.bbs_mod.ui.utils.cml.CMLSettings;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.keys.KeyCombo;
 import mchorse.bbs_mod.ui.utils.keys.KeybindSettings;
@@ -81,6 +93,8 @@ import mchorse.bbs_mod.utils.resources.MinecraftSourcePack;
 import mchorse.bbs_mod.blocks.entities.TriggerBlockEntity;
 import net.fabricmc.fabric.api.event.player.AttackBlockCallback;
 import net.fabricmc.loader.api.FabricLoader;
+import net.fabricmc.loader.api.metadata.ContactInformation;
+import net.fabricmc.loader.api.metadata.Person;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -115,8 +129,18 @@ import java.io.File;
 import java.util.Collections;
 import java.util.List;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
 public class BBSModClient implements ClientModInitializer
 {
+    public static final List<AddonInfo> registeredAddons = new ArrayList<>();
+
+    public static void registerAddon(AddonInfo info)
+    {
+        registeredAddons.add(info);
+    }
     private static TextureManager textures;
     private static FramebufferManager framebuffers;
     private static SoundManager sounds;
@@ -137,6 +161,7 @@ public class BBSModClient implements ClientModInitializer
     private static KeyBinding keyRecordReplay;
     private static KeyBinding keyRecordVideo;
     private static KeyBinding keyOpenReplays;
+    private static KeyBinding keyOpenQuickReplays;
     private static KeyBinding keyOpenMorphing;
     private static KeyBinding keyDemorph;
     private static KeyBinding keyTeleport;
@@ -239,6 +264,11 @@ public class BBSModClient implements ClientModInitializer
     public static KeyBinding getKeyRecordVideo()
     {
         return keyRecordVideo;
+    }
+
+    public static KeyBinding getKeyOpenQuickReplays()
+    {
+        return keyOpenQuickReplays;
     }
 
     public static UIDashboard getDashboard()
@@ -397,6 +427,7 @@ public class BBSModClient implements ClientModInitializer
         particles = new ParticleManager(() -> new File(BBSMod.getAssetsFolder(), "particles"));
 
         models = new ModelManager(provider);
+        BBSMod.events.post(new RegisterModelLoadersEvent(models));
         formCategories = new FormCategories();
         BBSMod.events.post(new RegisterFormCategoriesEvent(formCategories));
         BBSMod.events.post(new RegisterImportersEvent());
@@ -408,6 +439,12 @@ public class BBSModClient implements ClientModInitializer
         BBSMod.events.post(new RegisterUIValueFactoriesEvent(UIValueMap.factories));
         BBSMod.events.post(new RegisterUIKeyframeFactoriesEvent(UIKeyframeFactory.FACTORIES));
         BBSMod.events.post(new RegisterKeyframeShapesEvent(KeyframeShapeRenderers.SHAPES));
+        BBSMod.events.post(new RegisterPropTransformEvent());
+        BBSMod.events.post(new RegisterStencilMapEvent());
+        BBSMod.events.post(new RegisterRayTracingEvent());
+        BBSMod.events.post(new RegisterFilmPreviewEvent());
+        BBSMod.events.post(new RegisterReplayListContextMenuEvent());
+        BBSMod.events.post(new RegisterReplayPanelEvent());
         screenshotRecorder = new ScreenshotRecorder(new File(parentFile, "screenshots"));
         videoRecorder = new VideoRecorder();
         selectors = new EntitySelectors();
@@ -424,11 +461,13 @@ public class BBSModClient implements ClientModInitializer
         KeybindSettings.registerClasses();
 
         BBSMod.setupConfig(Icons.KEY_CAP, "keybinds", new File(BBSMod.getSettingsFolder(), "keybinds.json"), KeybindSettings::register);
+        BBSMod.setupConfig(Icons.SETTINGS, "cml", new File(BBSMod.getSettingsFolder(), "cml.json"), CMLSettings::register);
 
         BBSMod.events.post(new RegisterClientSettingsEvent());
 
         BBSSettings.language.postCallback((v, f) -> reloadLanguage(getLanguageKey()));
-        BBSSettings.editorSeconds.postCallback((v, f) ->
+
+        BBSSettings.editorTimeMode.postCallback((v, f) ->
         {
             if (dashboard != null && dashboard.getPanels().panel instanceof UIFilmPanel panel)
             {
@@ -466,6 +505,7 @@ public class BBSModClient implements ClientModInitializer
         keyRecordReplay = this.createKey("record_replay", GLFW.GLFW_KEY_RIGHT_ALT);
         keyRecordVideo = this.createKey("record_video", GLFW.GLFW_KEY_F4);
         keyOpenReplays = this.createKey("open_replays", GLFW.GLFW_KEY_RIGHT_SHIFT);
+        keyOpenQuickReplays = this.createKey("open_quick_replays", GLFW.GLFW_KEY_RIGHT_BRACKET);
         keyOpenMorphing = this.createKey("open_morphing", GLFW.GLFW_KEY_B);
         keyDemorph = this.createKey("demorph", GLFW.GLFW_KEY_PERIOD);
         keyTeleport = this.createKey("teleport", GLFW.GLFW_KEY_Y);
@@ -534,6 +574,7 @@ public class BBSModClient implements ClientModInitializer
         {
             dashboard = null;
             films = new Films();
+            setSelectedReplay(null);
 
             ClientNetwork.resetHandshake();
             films.reset();
@@ -595,6 +636,13 @@ public class BBSModClient implements ClientModInitializer
                 BBSRendering.setCustomSize(videoRecorder.isRecording(), width, height);
             }
             while (keyOpenReplays.wasPressed()) this.keyOpenReplays();
+            while (keyOpenQuickReplays.wasPressed())
+            {
+                if (!UIQuickReplayOverlayPanel.isOpened())
+                {
+                    this.keyOpenQuickReplays();
+                }
+            }
             while (keyOpenMorphing.wasPressed())
             {
                 UIDashboard dashboard = getDashboard();
@@ -671,6 +719,38 @@ public class BBSModClient implements ClientModInitializer
 
         /* Network */
         ClientNetwork.setup();
+
+        /* Register addons from FabricLoader */
+        FabricLoader.getInstance()
+            .getEntrypointContainers("bbs-addon", BBSAddonMod.class)
+            .forEach((container) ->
+            {
+                net.fabricmc.loader.api.metadata.ModMetadata meta = container.getProvider().getMetadata();
+                String id = meta.getId();
+                String name = meta.getName();
+                String version = meta.getVersion().getFriendlyString();
+                String description = meta.getDescription();
+                List<String> authors = meta.getAuthors().stream().map(Person::getName).toList();
+                
+                Link icon = null;
+                Optional<String> iconPath = meta.getIconPath(64);
+                if (iconPath.isPresent())
+                {
+                    String path = iconPath.get();
+                    if (path.startsWith("assets/"))
+                    {
+                        String relative = path.substring("assets/".length());
+                        icon = new Link("mod_icons", relative);
+                    }
+                }
+                
+                ContactInformation contact = meta.getContact();
+                String website = contact.get("homepage").orElse("");
+                String issues = contact.get("issues").orElse("");
+                String source = contact.get("sources").orElse("");
+
+                registerAddon(new AddonInfo(id, name, version, description, authors, icon, website, issues, source));
+            });
 
         /* Entity renderers */
         EntityRendererRegistry.register(BBSMod.ACTOR_ENTITY, ActorEntityRenderer::new);
@@ -800,6 +880,78 @@ public class BBSModClient implements ClientModInitializer
         {
             dashboard.setPanel(dashboard.getPanel(UIFilmPanel.class));
         }
+    }
+
+    private void keyOpenQuickReplays()
+    {
+        UIDashboard dashboard = getDashboard();
+
+        Film quickReplayFilm = this.getQuickReplayFilm(dashboard);
+
+        if (quickReplayFilm != null && !quickReplayFilm.replays.getList().isEmpty())
+        {
+            UIQuickReplayOverlayPanel.open(
+                new UIQuickReplayOverlayPanel(
+                    quickReplayFilm.replays.getList(),
+                    getSelectedReplay(),
+                    this::setQuickReplaySelection
+                )
+            );
+
+            return;
+        }
+    }
+
+    private void setQuickReplaySelection(Replay replay)
+    {
+        setSelectedReplay(replay);
+
+        UIDashboard dashboard = getDashboard();
+        UIFilmPanel panel = dashboard.getPanel(UIFilmPanel.class);
+
+        if (panel != null && panel.getData() != null && panel.getData().replays.getList().contains(replay))
+        {
+            panel.replayEditor.setReplay(replay);
+        }
+    }
+
+    private Film getQuickReplayFilm(UIDashboard dashboard)
+    {
+        Replay selected = getSelectedReplay();
+        UIFilmPanel panel = dashboard.getPanel(UIFilmPanel.class);
+        Film film = panel == null ? null : panel.getData();
+
+        if (this.isFilmUsableForQuickSelection(film, selected))
+        {
+            return film;
+        }
+
+        Recorder recorder = getFilms().getRecorder();
+
+        if (recorder != null && this.isFilmUsableForQuickSelection(recorder.film, selected))
+        {
+            return recorder.film;
+        }
+
+        for (BaseFilmController controller : getFilms().getControllers())
+        {
+            if (this.isFilmUsableForQuickSelection(controller.film, selected))
+            {
+                return controller.film;
+            }
+        }
+
+        return null;
+    }
+
+    private boolean isFilmUsableForQuickSelection(Film film, Replay selected)
+    {
+        if (film == null || film.replays.getList().isEmpty())
+        {
+            return false;
+        }
+
+        return selected == null || film.replays.getList().contains(selected);
     }
 
     private void keyTeleport()

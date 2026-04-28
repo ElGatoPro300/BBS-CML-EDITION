@@ -44,7 +44,7 @@ public class FloatKeyframeFactory implements IKeyframeFactory<Float>
                 a.getValue(), b.getValue(),
                 a.getTick(), b.getTick(),
                 a.rx, a.ry,
-                a.lx, a.ly,
+                b.lx, b.ly,
                 x
             );
         }

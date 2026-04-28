@@ -109,6 +109,9 @@ public class Replays extends ValueList<Replay>
     {
         Replay replay = new Replay(String.valueOf(this.list.size()));
 
+        replay.keyframes.shadowSize.insert(0, 0.5D);
+        replay.keyframes.shadowOpacity.insert(0, 1D);
+
         this.preNotify();
         this.add(replay);
         this.postNotify();

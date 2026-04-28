@@ -16,6 +16,7 @@ import mchorse.bbs_mod.settings.ui.UISettingsOverlayPanel;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.addons.UIAddonsPanel;
+import mchorse.bbs_mod.ui.news.UINewsPanel;
 import mchorse.bbs_mod.ui.dashboard.panels.IFlightSupported;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanels;
@@ -136,10 +137,8 @@ public class UIDashboard extends UIBaseMenu
                 return;
             }
 
-            UIOverlay.addOverlay(this.context, new UIUtilityOverlayPanel(UIKeys.UTILITY_TITLE, null), 240, 160);
+            UIOverlay.addOverlay(this.context, new UIUtilityOverlayPanel(UIKeys.UTILITY_TITLE, null), 240, 230);
         });
-
-        this.showAnnoyingPopups();
     }
 
     private void showAnnoyingPopups()
@@ -218,6 +217,9 @@ public class UIDashboard extends UIBaseMenu
         }
 
         BBSModClient.getCameraController().add(this.camera);
+
+        this.showAnnoyingPopups();
+        UINewsPanel.onDashboardOpened(this);
     }
 
     @Override
@@ -259,7 +261,10 @@ public class UIDashboard extends UIBaseMenu
         this.panels.registerPanel(new UITextureManagerPanel(this), UIKeys.TEXTURES_TOOLTIP, Icons.MATERIAL);
         this.panels.registerPanel(new UIAudioEditorPanel(this), UIKeys.AUDIO_TITLE, Icons.SOUND);
         this.panels.registerPanel(new UIGraphPanel(this), UIKeys.GRAPH_TOOLTIP, Icons.GRAPH);
-        this.panels.registerPanel(new UIAddonsPanel(this), UIKeys.ADDONS_TITLE, Icons.PROCESSOR);
+        this.panels.registerPanel(new UIAddonsPanel(this), UIKeys.ADDONS_TITLE, Icons.PROCESSOR).marginLeft(10);
+        UINewsPanel newsPanel = new UINewsPanel(this);
+        UIIcon newsButton = this.panels.registerPanel(newsPanel, UIKeys.NEWS_TITLE, Icons.NEWS);
+        UINewsPanel.attachIcon(newsButton);
 
         if (FabricLoader.getInstance().isDevelopmentEnvironment())
         {
@@ -293,6 +298,12 @@ public class UIDashboard extends UIBaseMenu
         if (this.panels.panel != null)
         {
             this.panels.panel.update();
+        }
+
+        if (this.main.isVisible())
+        {
+            UINewsPanel.tickAuto(this);
+            UINewsPanel.tickPriorityAnnouncement(this);
         }
     }
 

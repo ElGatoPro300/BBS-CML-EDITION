@@ -128,25 +128,29 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
         for (Link link : BBSMod.getProvider().getLinksFromPath(Link.assets("")))
         {
             String string = link.toString();
+            String lower = string.toLowerCase();
 
-            if (string.endsWith(".png") && !string.contains(":textures/banners/")) list.add(string);
+            if (!string.contains(":textures/banners/") && (lower.endsWith(".png") || lower.endsWith(".jpg") || lower.endsWith(".jpeg"))) list.add(string);
         }
 
         for (Link link : BBSMod.getProvider().getLinksFromPath(new Link("http", "")))
         {
             String string = link.toString();
+            String lower = string.toLowerCase();
 
-            if (string.contains(".png")) list.add(string);
+            if (lower.contains(".png") || lower.contains(".jpg") || lower.contains(".jpeg")) list.add(string);
         }
 
         for (Link link : BBSMod.getProvider().getLinksFromPath(new Link("https", "")))
         {
             String string = link.toString();
+            String lower = string.toLowerCase();
 
-            if (string.contains(".png")) list.add(string);
+            if (lower.contains(".png") || lower.contains(".jpg") || lower.contains(".jpeg")) list.add(string);
         }
 
         UIListOverlayPanel panel = new UIListOverlayPanel(UIKeys.TEXTURE_FIND_TITLE, callback);
+        panel.resizable().minSize(360, 240);
 
         panel.addValues(list);
         panel.list.list.sort();
@@ -182,7 +186,7 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
 
             File file = BBSMod.getProvider().getFile(this.current);
 
-            if (file.isFile() && file.getName().endsWith(".png"))
+            if (file != null && file.isFile() && file.getName().endsWith(".png"))
             {
                 File mcmeta = new File(file.getAbsolutePath() + ".mcmeta");
 
@@ -219,7 +223,12 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
                 UITexturePicker.this.updateFolderButton();
             }
         };
-        this.picker.filter((l) -> l.path.endsWith("/") || l.path.endsWith(".png")).cancelScrollEdge();
+        this.picker.filter((l) ->
+        {
+            String path = l.path.toLowerCase();
+
+            return path.endsWith("/") || path.endsWith(".png") || path.endsWith(".jpg") || path.endsWith(".jpeg");
+        }).cancelScrollEdge();
 
         this.linear = new UIToggle(UIKeys.TEXTURES_LINEAR, (b) ->
         {
@@ -763,6 +772,11 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
         int index = this.picker.getIndex() + factor;
         int length = this.picker.getList().size();
 
+        if (length <= 0)
+        {
+            return true;
+        }
+
         if (index < 0) index = length - 1;
         else if (index >= length) index = 0;
 
@@ -770,6 +784,14 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
 
         this.picker.setIndex(index);
         this.picker.scroll.scrollIntoView(index * this.picker.scroll.scrollItemSize);
+
+        UIFileLinkList.FileLink link = this.picker.getCurrentFirst();
+
+        if (link != null && !link.folder)
+        {
+            this.selectCurrent(link.link);
+        }
+
         this.typed = "";
 
         return true;

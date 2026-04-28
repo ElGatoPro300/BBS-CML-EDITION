@@ -17,6 +17,7 @@ public class PresetManager
     public static final PresetManager KEYFRAMES = new PresetManager(BBSMod.getSettingsPath("presets/keyframes"));
     public static final PresetManager GUNS = new PresetManager(BBSMod.getSettingsPath("presets/guns"));
     public static final PresetManager ANIMATION_STATES = new PresetManager(BBSMod.getSettingsPath("presets/animation_states"));
+    public static final PresetManager SHAPE_GRAPHS = new PresetManager(BBSMod.getSettingsPath("presets/shape_graphs"));
 
     private File folder;
 

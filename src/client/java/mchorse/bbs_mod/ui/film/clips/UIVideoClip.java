@@ -9,6 +9,7 @@ import mchorse.bbs_mod.ui.film.IUIClipsDelegate;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
+import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIVideoOverlayPanel;
@@ -30,6 +31,10 @@ public class UIVideoClip extends UIClip<VideoClip>
     public UITrackpad y;
     public UITrackpad width;
     public UITrackpad height;
+    public UITrackpad cropX;
+    public UITrackpad cropY;
+    public UITrackpad cropWidth;
+    public UITrackpad cropHeight;
     public UITrackpad opacity;
     public UIToggle loops;
     public UIToggle global;
@@ -140,9 +145,32 @@ public class UIVideoClip extends UIClip<VideoClip>
         this.height.integer();
         this.height.tooltip(UIKeys.C_CLIP.get("bbs:height"));
 
-        this.opacity = new UITrackpad((v) -> this.clip.opacity.set(v.floatValue()));
-        this.opacity.limit(0.0F, 1.0F);
-        this.opacity.tooltip(UIKeys.C_CLIP.get("bbs:opacity"));
+        /* Recorte por lados en porcentaje 0-100 (izquierda, arriba, derecha, abajo). */
+        this.cropX = new UITrackpad((v) -> this.clip.cropX.set(v.intValue()));
+        this.cropX.integer();
+        this.cropX.limit(0, 100);
+        this.cropX.tooltip(UIKeys.C_CLIP.get("bbs:crop_x"));
+
+        this.cropY = new UITrackpad((v) -> this.clip.cropY.set(v.intValue()));
+        this.cropY.integer();
+        this.cropY.limit(0, 100);
+        this.cropY.tooltip(UIKeys.C_CLIP.get("bbs:crop_y"));
+
+        this.cropWidth = new UITrackpad((v) -> this.clip.cropWidth.set(v.intValue()));
+        this.cropWidth.integer();
+        this.cropWidth.limit(0, 100);
+        this.cropWidth.tooltip(UIKeys.C_CLIP.get("bbs:crop_width"));
+
+        this.cropHeight = new UITrackpad((v) -> this.clip.cropHeight.set(v.intValue()));
+        this.cropHeight.integer();
+        this.cropHeight.limit(0, 100);
+        this.cropHeight.tooltip(UIKeys.C_CLIP.get("bbs:crop_height"));
+
+        /* UI usa porcentaje 0-100, pero el clip guarda opacidad 0-1. */
+        this.opacity = new UITrackpad((v) -> this.clip.opacity.set(v.floatValue() / 100F));
+        this.opacity.integer();
+        this.opacity.limit(0, 100);
+        this.opacity.tooltip(UIKeys.C_CLIP.get("bbs:video_opacity"));
 
         this.loops = new UIToggle(UIKeys.C_CLIP.get("bbs:loops"), (b) -> this.clip.loops.set(b.getValue()));
         this.global = new UIToggle(UIKeys.C_CLIP.get("bbs:global"), (b) -> this.clip.global.set(b.getValue()));
@@ -158,10 +186,17 @@ public class UIVideoClip extends UIClip<VideoClip>
     {
         super.registerPanels();
 
-        this.panels.add(UI.column(UI.label(UIKeys.CAMERA_PANELS_VIDEO_DISCLAIMER, 12, Colors.LIGHTER_GRAY).color(Colors.LIGHTER_GRAY, false)).marginTop(12));
+        /* Tooltip en el disclaimer para que se pueda leer completo en layouts estrechos. */
+        UIElement disclaimer = UI.label(UIKeys.CAMERA_PANELS_VIDEO_DISCLAIMER, 12, Colors.LIGHTER_GRAY)
+            .color(Colors.LIGHTER_GRAY, false)
+            .tooltip(UIKeys.CAMERA_PANELS_VIDEO_DISCLAIMER);
+        this.panels.add(UI.column(disclaimer).marginTop(12));
         this.panels.add(UI.column(UIClip.label(UIKeys.C_CLIP.get("bbs:video")), UI.row(this.pickVideo, this.extendDuration, this.openFolder)).marginTop(12));
-        this.panels.add(UI.column(UIClip.label(UIKeys.CAMERA_PANELS_VIDEO_OFFSET).marginTop(6), this.offset).marginTop(12));
         this.panels.add(UI.column(UIClip.label(UIKeys.CAMERA_PANELS_VIDEO_VOLUME).marginTop(6), this.volume).marginTop(12));
+        this.panels.add(UI.row(
+            UI.column(UIClip.label(UIKeys.C_CLIP.get("bbs:video_opacity")).marginTop(6), this.opacity),
+            UI.column(UIClip.label(UIKeys.CAMERA_PANELS_VIDEO_OFFSET).marginTop(6), this.offset)
+        ).marginTop(12));
         this.panels.add(UI.row(
             UI.column(UIClip.label(UIKeys.C_CLIP.get("bbs:x")), this.x),
             UI.column(UIClip.label(UIKeys.C_CLIP.get("bbs:y")), this.y)
@@ -171,7 +206,14 @@ public class UIVideoClip extends UIClip<VideoClip>
             this.aspectLock,
             UI.column(UIClip.label(UIKeys.C_CLIP.get("bbs:height")), this.height)
         ).marginTop(12));
-        this.panels.add(UI.column(UIClip.label(UIKeys.C_CLIP.get("bbs:opacity")).marginTop(6), this.opacity).marginTop(12));
+        this.panels.add(UI.row(
+            UI.column(UIClip.label(UIKeys.C_CLIP.get("bbs:crop_x")), this.cropX),
+            UI.column(UIClip.label(UIKeys.C_CLIP.get("bbs:crop_y")), this.cropY)
+        ).marginTop(12));
+        this.panels.add(UI.row(
+            UI.column(UIClip.label(UIKeys.C_CLIP.get("bbs:crop_width")), this.cropWidth),
+            UI.column(UIClip.label(UIKeys.C_CLIP.get("bbs:crop_height")), this.cropHeight)
+        ).marginTop(12));
         this.panels.add(UI.row(this.loops, this.global).marginTop(12));
     }
 
@@ -192,7 +234,12 @@ public class UIVideoClip extends UIClip<VideoClip>
         this.y.setValue(this.clip.y.get());
         this.width.setValue(this.clip.width.get());
         this.height.setValue(this.clip.height.get());
-        this.opacity.setValue(this.clip.opacity.get());
+        this.cropX.setValue(this.clip.cropX.get());
+        this.cropY.setValue(this.clip.cropY.get());
+        this.cropWidth.setValue(this.clip.cropWidth.get());
+        this.cropHeight.setValue(this.clip.cropHeight.get());
+        /* Convertir opacidad interna (0-1) a porcentaje para el UI. */
+        this.opacity.setValue(this.clip.opacity.get() * 100F);
         this.loops.setValue(this.clip.loops.get());
         this.global.setValue(this.clip.global.get());
         this.aspectLock.active(this.keepAspect);

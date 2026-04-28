@@ -74,7 +74,10 @@ public class UIModelPartsSection extends UIModelSection
             }
         };
         this.poseEditor.prepend(this.color);
-        this.poseEditor.prepend(this.texture);
+        if (BBSSettings.pickLimbTexture.get())
+        {
+            this.poseEditor.prepend(this.texture);
+        }
         this.poseEditor.prepend(this.openModel);
     }
     

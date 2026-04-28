@@ -23,5 +23,8 @@
     "key.bbs.zoom": "Zoom (Súng BBS)",
     "category.bbs.main": "BBS mod",
 
-    "gamerule.bbsEditing": "Quyền chỉnh sửa của BBS mod"
+    "gamerule.bbsEditing": "Quyền chỉnh sửa của BBS mod",
+    "command.getskin.success": "Tất cả người chơi đều có thể nhìn thấy hình ảnh mới",
+    "command.getskin.error": "Lỗi: %s",
+    "command.getskin.downloading": "Tải xuống hình ảnh..."
 }

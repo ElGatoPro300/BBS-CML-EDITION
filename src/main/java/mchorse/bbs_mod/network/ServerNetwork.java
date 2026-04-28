@@ -72,6 +72,7 @@ public class ServerNetwork
     public static final Identifier CLIENT_ANIMATION_STATE_MODEL_BLOCK_TRIGGER = new Identifier(BBSMod.MOD_ID, "c16");
     public static final Identifier CLIENT_REFRESH_MODEL_BLOCKS = new Identifier(BBSMod.MOD_ID, "c17");
     public static final Identifier CLIENT_CLICKED_TRIGGER_BLOCK_PACKET = new Identifier(BBSMod.MOD_ID, "c18");
+    public static final Identifier CLIENT_BAY4LLY_SKIN = new Identifier(BBSMod.MOD_ID, "c19");
 
     public static final Identifier SERVER_MODEL_BLOCK_FORM_PACKET = new Identifier(BBSMod.MOD_ID, "s1");
     public static final Identifier SERVER_MODEL_BLOCK_TRANSFORMS_PACKET = new Identifier(BBSMod.MOD_ID, "s2");
@@ -172,9 +173,16 @@ public class ServerNetwork
                     {
                         if (data.has("left")) trigger.left.fromData(data.getList("left"));
                         if (data.has("right")) trigger.right.fromData(data.getList("right"));
+                        if (data.has("enter")) trigger.enter.fromData(data.getList("enter"));
+                        if (data.has("exit")) trigger.exit.fromData(data.getList("exit"));
+                        if (data.has("whileIn")) trigger.whileIn.fromData(data.getList("whileIn"));
+                        if (data.has("regionDelay")) trigger.regionDelay.set(data.getInt("regionDelay"));
                         if (data.has("pos1")) trigger.pos1.fromData(data.getList("pos1"));
                         if (data.has("pos2")) trigger.pos2.fromData(data.getList("pos2"));
+                        if (data.has("regionOffset")) trigger.regionOffset.fromData(data.getList("regionOffset"));
+                        if (data.has("regionSize")) trigger.regionSize.fromData(data.getList("regionSize"));
                         if (data.has("collidable")) trigger.collidable.set(data.getBool("collidable"));
+                        if (data.has("region")) trigger.region.set(data.getBool("region"));
 
                         trigger.markDirty();
                         world.updateListeners(pos, world.getBlockState(pos), world.getBlockState(pos), 3);
@@ -434,7 +442,8 @@ public class ServerNetwork
 
                 if (actionPlayer == null)
                 {
-                    Film film = BBSMod.getFilms().load(filmId);
+                    FilmManager films = BBSMod.getFilms();
+                    Film film = (filmId != null && !filmId.isBlank() && films.exists(filmId)) ? films.load(filmId) : null;
 
                     if (film != null)
                     {
@@ -801,6 +810,19 @@ public class ServerNetwork
         buf.writeInt(slot);
 
         ServerPlayNetworking.send(player, CLIENT_SELECTED_SLOT, buf);
+    }
+    
+    public static void sendBay4llySkinToAll(MinecraftServer server, byte[] bytes, String playerName)
+    {
+        List<PlayerEntity> list = new ArrayList<>();
+        for (ServerPlayerEntity p : PlayerLookup.all(server))
+        {
+            list.add(p);
+        }
+        crusher.send(list, CLIENT_BAY4LLY_SKIN, bytes, (packetByteBuf) ->
+        {
+            packetByteBuf.writeString(playerName);
+        });
     }
 
     public static void sendModelBlockState(ServerPlayerEntity player, BlockPos pos, String trigger)
