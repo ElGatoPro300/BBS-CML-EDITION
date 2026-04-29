@@ -91,6 +91,13 @@ import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix4f;
 import org.joml.Vector2i;
 import org.joml.Vector3d;
+import org.joml.Matrix4f;
+import net.minecraft.client.render.BufferBuilder;
+import net.minecraft.client.render.BufferRenderer;
+import net.minecraft.client.render.GameRenderer;
+import net.minecraft.client.render.Tessellator;
+import net.minecraft.client.render.VertexFormat;
+import net.minecraft.client.render.VertexFormats;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
@@ -430,14 +437,14 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.filmTabsBar.relative(this.editor).x(0).y(0).w(1F).h(FILM_DOCUMENT_TABS_HEIGHT);
         this.filmTabs.relative(this.filmTabsBar).x(8).y(0).w(1F, -16).h(FILM_DOCUMENT_TABS_HEIGHT).row(0).resize();
         this.filmTabsBar.add(this.filmTabs);
-        this.homePage.relative(this.editor).x(0.27F).y(FILM_DOCUMENT_TABS_HEIGHT + 8).w(0.46F).h(1F, -(FILM_DOCUMENT_TABS_HEIGHT + 16));
-        this.homeActionsPanel.relative(this.homePage).x(10).y(HOME_BANNER_HEIGHT + 36).w(0.34F, -15).h(1F, -(HOME_BANNER_HEIGHT + 46)).column(4).vertical().stretch();
+        this.homePage.relative(this.editor).x(0.5F, -250).y(FILM_DOCUMENT_TABS_HEIGHT).w(500).h(1F, -FILM_DOCUMENT_TABS_HEIGHT);
+        this.homeActionsPanel.relative(this.homePage).x(0).y(HOME_BANNER_HEIGHT + 20).w(0.35F).h(1F, -(HOME_BANNER_HEIGHT + 20)).column(0).vertical().stretch();
         
         UIElement spacing = new UIElement();
         spacing.h(8);
 
         this.homeActionsPanel.add(this.homeCreateFilm, this.homeOpenManager, this.homeRefreshFilms, spacing, this.homeDuplicateCurrent, this.homeRenameCurrent, this.homeDeleteCurrent);
-        this.homeFilmsSearch.relative(this.homePage).x(0.34F, 5).y(HOME_BANNER_HEIGHT + 36).w(0.66F, -15).h(1F, -(HOME_BANNER_HEIGHT + 46));
+        this.homeFilmsSearch.relative(this.homePage).x(0.35F).y(HOME_BANNER_HEIGHT + 20).w(0.65F).h(1F, -(HOME_BANNER_HEIGHT + 20));
         this.homePage.add(new UIRenderable(this::renderHomeBanner), this.homeActionsPanel, this.homeFilmsSearch);
 
         this.editor.add(this.main, this.editArea, this.preview, this.homePage, new UIRenderable(this::renderIcons), new UIRenderable(this::renderDropZoneHighlight), this.filmTabsBar);
@@ -3013,40 +3020,138 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         int pageY = this.homePage.area.y;
         int pageW = this.homePage.area.w;
         int pageH = this.homePage.area.h;
-        int bannerX = pageX + 10;
-        int bannerY = pageY + 10;
-        int bannerW = Math.max(20, pageW - 20);
-        int bannerH = Math.max(32, HOME_BANNER_HEIGHT);
-        int splitY = bannerY + bannerH + 6;
-        int dividerX = this.homeActionsPanel.area.ex() + 8;
+        int bannerH = HOME_BANNER_HEIGHT;
+        int splitY = pageY + bannerH;
+        int dividerX = this.homeFilmsSearch.area.x;
 
-        context.batcher.box(editorX, editorY, editorX + editorW, editorY + editorH, Colors.setA(0x161616, 1F));
+        // Render deeper background for the aurora to pop
+        context.batcher.box(editorX, editorY, editorX + editorW, editorY + editorH, Colors.setA(0x0b0b0b, 1F));
+        
+        // Render Animated Aurora Effect
+        int primary = BBSSettings.primaryColor.get();
+        float tick = context.getTickTransition() * 0.015F;
+        int segments = 40; // We can use fewer segments because it interpolates smoothly!
+        float segW = editorW / (float) segments;
+        
+        Matrix4f matrix4f = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
+        BufferBuilder builder = Tessellator.getInstance().getBuffer();
+        
+        RenderSystem.enableBlend();
+        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
+        builder.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
+        
+        float[] yBot1 = new float[segments + 1];
+        float[] yMid1 = new float[segments + 1];
+        int[] cMid1 = new int[segments + 1];
+        
+        float[] yBot2 = new float[segments + 1];
+        float[] yMid2 = new float[segments + 1];
+        int[] cMid2 = new int[segments + 1];
+        
+        for (int i = 0; i <= segments; i++)
+        {
+            float nx = (float) i / segments;
+            
+            // Layer 1
+            float w1 = (float) Math.sin(tick * 1.2F + nx * 8F);
+            float w2 = (float) Math.sin(tick * 0.7F + nx * 15F);
+            float w3 = (float) Math.cos(tick * 0.4F - nx * 12F);
+            float comb1 = (w1 + w2 + w3) / 3F;
+            
+            float curtainYTop = editorY + editorH * 0.05F;
+            float curtainYBot = editorY + editorH * 0.5F + comb1 * (editorH * 0.35F);
+            if (curtainYBot < curtainYTop + 10) curtainYBot = curtainYTop + 10;
+            
+            float transitionY = curtainYBot - editorH * 0.3F;
+            if (transitionY < curtainYTop) transitionY = curtainYTop;
+            
+            yBot1[i] = curtainYBot;
+            yMid1[i] = transitionY;
+            cMid1[i] = Colors.setA(primary, 0.15F + Math.max(0, comb1) * 0.2F);
+            
+            // Layer 2
+            float w4 = (float) Math.sin(tick * 1.5F - nx * 10F);
+            float w5 = (float) Math.cos(tick * 0.9F + nx * 18F);
+            float comb2 = (w4 + w5) / 2F;
+            
+            float curtain2YTop = editorY + editorH * 0.15F;
+            float curtain2YBot = editorY + editorH * 0.75F + comb2 * (editorH * 0.25F);
+            if (curtain2YBot < curtain2YTop + 10) curtain2YBot = curtain2YTop + 10;
+            
+            float transition2Y = curtain2YBot - editorH * 0.25F;
+            if (transition2Y < curtain2YTop) transition2Y = curtain2YTop;
+            
+            yBot2[i] = curtain2YBot;
+            yMid2[i] = transition2Y;
+            cMid2[i] = Colors.setA(Colors.mulRGB(primary, 0.8F), 0.1F + Math.max(0, comb2) * 0.15F);
+        }
+        
+        int colTop = Colors.setA(primary, 0.0F);
+        int colBot = Colors.setA(primary, 0.0F);
+        float yTop1 = editorY + editorH * 0.05F;
+        float yTop2 = editorY + editorH * 0.15F;
+        
+        for (int i = 0; i < segments; i++)
+        {
+            float x1 = editorX + i * segW;
+            float x2 = editorX + (i + 1) * segW;
+            
+            // Layer 1 - Upper Quad (yTop1 -> yMid1)
+            builder.vertex(matrix4f, x1, yTop1, 0).color(colTop).next();
+            builder.vertex(matrix4f, x1, yMid1[i], 0).color(cMid1[i]).next();
+            builder.vertex(matrix4f, x2, yMid1[i+1], 0).color(cMid1[i+1]).next();
+            builder.vertex(matrix4f, x2, yTop1, 0).color(colTop).next();
+            
+            // Layer 1 - Lower Quad (yMid1 -> yBot1)
+            builder.vertex(matrix4f, x1, yMid1[i], 0).color(cMid1[i]).next();
+            builder.vertex(matrix4f, x1, yBot1[i], 0).color(colBot).next();
+            builder.vertex(matrix4f, x2, yBot1[i+1], 0).color(colBot).next();
+            builder.vertex(matrix4f, x2, yMid1[i+1], 0).color(cMid1[i+1]).next();
+            
+            // Layer 2 - Upper Quad (yTop2 -> yMid2)
+            builder.vertex(matrix4f, x1, yTop2, 0).color(colTop).next();
+            builder.vertex(matrix4f, x1, yMid2[i], 0).color(cMid2[i]).next();
+            builder.vertex(matrix4f, x2, yMid2[i+1], 0).color(cMid2[i+1]).next();
+            builder.vertex(matrix4f, x2, yTop2, 0).color(colTop).next();
+            
+            // Layer 2 - Lower Quad (yMid2 -> yBot2)
+            builder.vertex(matrix4f, x1, yMid2[i], 0).color(cMid2[i]).next();
+            builder.vertex(matrix4f, x1, yBot2[i], 0).color(colBot).next();
+            builder.vertex(matrix4f, x2, yBot2[i+1], 0).color(colBot).next();
+            builder.vertex(matrix4f, x2, yMid2[i+1], 0).color(cMid2[i+1]).next();
+        }
+        
+        BufferRenderer.drawWithGlobalProgram(builder.end());
+        
+        // Black shadow gradients on the sides of the central column
+        context.batcher.gradientHBox(pageX - 18, pageY, pageX, pageY + pageH, 0, Colors.setA(0x000000, 0.7F));
+        context.batcher.gradientHBox(pageX + pageW, pageY, pageX + pageW + 18, pageY + pageH, Colors.setA(0x000000, 0.7F), 0);
+        
+        // Panel backgrounds
         context.batcher.box(pageX, pageY, pageX + pageW, pageY + pageH, Colors.setA(0x1e1e1e, 1F));
-        context.batcher.box(bannerX, bannerY, bannerX + bannerW, bannerY + bannerH, Colors.setA(0x000000, 1F));
+        context.batcher.box(pageX, pageY, pageX + pageW, pageY + bannerH, Colors.setA(0x000000, 1F));
 
         Texture texture = BBSModClient.getTextures().getTexture(this.homeBanner);
 
         if (texture == null)
         {
-            context.batcher.textShadow("No se pudo cargar: " + this.homeBanner, bannerX + 8, bannerY + 8, Colors.LIGHTEST_GRAY);
-
-            return;
+            context.batcher.textShadow("No se pudo cargar: " + this.homeBanner, pageX + 8, pageY + 8, Colors.LIGHTEST_GRAY);
         }
+        else
+        {
+            float scale = Math.min((pageW - 20) / (float) texture.width, (bannerH - 20) / (float) texture.height);
+            int tw = Math.max(1, Math.round(texture.width * scale));
+            int th = Math.max(1, Math.round(texture.height * scale));
+            int tx = pageX + (pageW - tw) / 2;
+            int ty = pageY + (bannerH - th) / 2;
 
-        int contentY = bannerY + 4;
-        int contentH = Math.max(1, bannerH - 8);
-        int contentW = Math.max(1, bannerW - 8);
-        float scale = Math.min(contentW / (float) texture.width, contentH / (float) texture.height);
-        int tw = Math.max(1, Math.round(texture.width * scale));
-        int th = Math.max(1, Math.round(texture.height * scale));
-        int tx = bannerX + (bannerW - tw) / 2;
-        int ty = contentY + (contentH - th) / 2;
-
-        context.batcher.fullTexturedBox(texture, tx, ty, tw, th);
-        context.batcher.box(pageX + 10, splitY, pageX + pageW - 10, splitY + 1, Colors.A12);
-        context.batcher.box(dividerX, splitY + 2, dividerX + 1, pageY + pageH - 10, Colors.A12);
-        context.batcher.textShadow("Acciones", this.homeActionsPanel.area.x + 2, splitY + 6);
-        context.batcher.textShadow("Listado De Films", this.homeFilmsSearch.area.x + 2, splitY + 6);
+            context.batcher.fullTexturedBox(texture, tx, ty, tw, th);
+        }
+        
+        context.batcher.box(pageX, splitY, pageX + pageW, splitY + 1, Colors.A12);
+        context.batcher.box(dividerX, splitY + 1, dividerX + 1, pageY + pageH, Colors.A12);
+        context.batcher.textShadow("Acciones", pageX + 4, splitY + 6);
+        context.batcher.textShadow("Listado De Films", dividerX + 4, splitY + 6);
     }
 
     private static class FilmDocumentTab
