@@ -7,6 +7,7 @@ import mchorse.bbs_mod.settings.values.core.ValueGroup;
 import mchorse.bbs_mod.ui.ContentType;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDataDashboardPanel;
+import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.IOUtils;
@@ -18,6 +19,14 @@ import java.util.function.Consumer;
 public class UIDataOverlayPanel <T extends ValueGroup> extends UICRUDOverlayPanel
 {
     protected UIDataDashboardPanel<T> panel;
+
+    @Override
+    public UIContext getContext()
+    {
+        UIContext context = super.getContext();
+
+        return context == null && this.panel != null ? this.panel.getContext() : context;
+    }
 
     public UIDataOverlayPanel(IKey title, UIDataDashboardPanel<T> panel, Consumer<String> callback)
     {

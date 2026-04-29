@@ -29,6 +29,7 @@ import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.network.ClientNetwork;
+import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.settings.values.IValueListener;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.settings.values.ui.EditorLayoutNode;
@@ -37,6 +38,7 @@ import mchorse.bbs_mod.ui.ContentType;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.UIDashboard;
+import mchorse.bbs_mod.ui.dashboard.list.UIDataPathList;
 import mchorse.bbs_mod.ui.dashboard.panels.IFlightSupported;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanels;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDataDashboardPanel;
@@ -50,7 +52,11 @@ import mchorse.bbs_mod.ui.film.utils.undo.UIUndoHistoryOverlay;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.IUIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
+import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
+import mchorse.bbs_mod.ui.framework.elements.input.list.UISearchList;
+import mchorse.bbs_mod.ui.framework.elements.navigation.UIControlBar;
+import mchorse.bbs_mod.ui.framework.elements.navigation.UIIconTabButton;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIMessageOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UINumberOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
@@ -58,6 +64,7 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIDraggable;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIRenderable;
 import mchorse.bbs_mod.ui.utils.Area;
+import mchorse.bbs_mod.ui.utils.UIDataUtils;
 import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
 import mchorse.bbs_mod.ui.utils.presets.UICopyPasteController;
 import mchorse.bbs_mod.ui.utils.UIUtils;
@@ -68,6 +75,7 @@ import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.PlayerUtils;
 import mchorse.bbs_mod.utils.Timer;
+import mchorse.bbs_mod.utils.DataPath;
 import mchorse.bbs_mod.utils.clips.Clip;
 import mchorse.bbs_mod.utils.clips.Clips;
 import mchorse.bbs_mod.utils.colors.Colors;
@@ -86,6 +94,7 @@ import org.joml.Vector3d;
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -147,6 +156,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private boolean newFilm;
     private final Map<String, UIElement> panelById = new LinkedHashMap<>();
     private final Map<String, UIDraggable> dragHandlesById = new LinkedHashMap<>();
+    private static final int FILM_DOCUMENT_TABS_HEIGHT = 20;
+    private static final int HOME_BANNER_HEIGHT = 108;
     private static final float DRAG_HANDLE_HEIGHT_NORM = 0.02F;
     private static final float DRAG_HANDLE_TOP_OFFSET_NORM = 0.01F;
     private static final int SPLITTER_HANDLE_PX = 6;
@@ -159,6 +170,24 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private int dropTargetZone = DROP_ZONE_CENTER;
     public String mouseHeldPanelId;
     public int clickX, clickY;
+    private UIControlBar filmTabsBar;
+    private UIElement filmTabs;
+    private UIElement homePage;
+    private UISearchList<DataPath> homeFilmsSearch;
+    private UIDataPathList homeFilmsList;
+    private UIElement homeActionsPanel;
+    private UIButton homeCreateFilm;
+    private UIButton homeOpenManager;
+    private UIButton homeRefreshFilms;
+    private UIButton homeDuplicateCurrent;
+    private UIButton homeRenameCurrent;
+    private UIButton homeDeleteCurrent;
+    private String homeLastClickedFilmId;
+    private long homeLastClickTime;
+    private final List<FilmDocumentTab> filmDocumentTabs = new ArrayList<>();
+    private final Link homeBanner = Link.assets("textures/banners/CML.png");
+    private int activeFilmDocumentTab = -1;
+    private boolean showingHomePage = true;
 
     /**
      * Initialize the camera editor with a camera profile.
@@ -323,6 +352,21 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.actionEditor.full(this.main).setVisible(false);
         this.screenEditor = new UIClipsPanel(this, BBSMod.getFactoryScreenClips()).target(this.editArea);
         this.screenEditor.full(this.main).setVisible(false);
+        this.filmTabsBar = new UIControlBar();
+        this.filmTabs = new UIElement();
+        this.homePage = new UIElement();
+        this.homeActionsPanel = new UIElement();
+        this.homeFilmsList = new UIDataPathList((list) -> this.handleHomeFilmsSelection(list));
+        this.homeFilmsList.setFileIcon(Icons.FILM);
+        this.homeFilmsSearch = new UISearchList<>(this.homeFilmsList).label(UIKeys.GENERAL_SEARCH);
+        this.homeFilmsSearch.list.background();
+        this.homeCreateFilm = this.createHomeButton(UIKeys.FILM_CRUD_ADD, (b) -> this.clickWithContext(this.overlay.add));
+        this.homeOpenManager = this.createHomeButton(UIKeys.FILM_OPEN_MANAGER, (b) -> this.clickWithContext(this.openOverlay));
+        this.homeRefreshFilms = this.createHomeButton(IKey.constant("Actualizar"), (b) -> this.requestNames());
+        this.homeDuplicateCurrent = this.createHomeButton(UIKeys.FILM_CRUD_DUPE, (b) -> this.clickWithContext(this.overlay.dupe));
+        this.homeRenameCurrent = this.createHomeButton(UIKeys.FILM_CRUD_RENAME, (b) -> this.clickWithContext(this.overlay.rename));
+        this.homeDeleteCurrent = this.createHomeButton(UIKeys.FILM_CRUD_REMOVE, (b) -> this.clickWithContext(this.overlay.remove));
+        this.updateHomeButtonsState();
 
         /* Icon bar buttons */
         this.openHistory = new UIIcon(Icons.LIST, (b) ->
@@ -383,8 +427,20 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         bottomIcons.relative(this).x(1F, -20).y(1F).wh(20, 60).anchorY(1F).column(0).stretch();
         bottomIcons.add(this.toggleHorizontal, this.layoutLock, this.layoutPresets);
+        this.filmTabsBar.relative(this.editor).x(0).y(0).w(1F).h(FILM_DOCUMENT_TABS_HEIGHT);
+        this.filmTabs.relative(this.filmTabsBar).x(8).y(0).w(1F, -16).h(FILM_DOCUMENT_TABS_HEIGHT).row(0).resize();
+        this.filmTabsBar.add(this.filmTabs);
+        this.homePage.relative(this.editor).x(0.27F).y(FILM_DOCUMENT_TABS_HEIGHT + 8).w(0.46F).h(1F, -(FILM_DOCUMENT_TABS_HEIGHT + 16));
+        this.homeActionsPanel.relative(this.homePage).x(10).y(HOME_BANNER_HEIGHT + 36).w(0.34F, -15).h(1F, -(HOME_BANNER_HEIGHT + 46)).column(4).vertical().stretch();
+        
+        UIElement spacing = new UIElement();
+        spacing.h(8);
 
-        this.editor.add(this.main, this.editArea, this.preview, new UIRenderable(this::renderIcons), new UIRenderable(this::renderDropZoneHighlight));
+        this.homeActionsPanel.add(this.homeCreateFilm, this.homeOpenManager, this.homeRefreshFilms, spacing, this.homeDuplicateCurrent, this.homeRenameCurrent, this.homeDeleteCurrent);
+        this.homeFilmsSearch.relative(this.homePage).x(0.34F, 5).y(HOME_BANNER_HEIGHT + 36).w(0.66F, -15).h(1F, -(HOME_BANNER_HEIGHT + 46));
+        this.homePage.add(new UIRenderable(this::renderHomeBanner), this.homeActionsPanel, this.homeFilmsSearch);
+
+        this.editor.add(this.main, this.editArea, this.preview, this.homePage, new UIRenderable(this::renderIcons), new UIRenderable(this::renderDropZoneHighlight), this.filmTabsBar);
         for (String id : this.panelById.keySet())
         {
             UIDraggable handle = this.createPanelDragHandle(id);
@@ -394,12 +450,13 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.main.add(this.cameraEditor, this.replayEditor, this.actionEditor, this.screenEditor, this.draggableMain, this.draggableEditor);
         this.add(this.controller, new UIRenderable(this::renderDividers), bottomIcons);
         this.overlay.namesList.setFileIcon(Icons.FILM);
+        this.createHomeDocumentTab(true);
 
         /* Register keybinds */
         IKey modes = UIKeys.CAMERA_EDITOR_KEYS_MODES_TITLE;
         IKey editor = UIKeys.CAMERA_EDITOR_KEYS_EDITOR_TITLE;
         IKey looping = UIKeys.CAMERA_EDITOR_KEYS_LOOPING_TITLE;
-        Supplier<Boolean> active = () -> !this.isFlying();
+        Supplier<Boolean> active = () -> this.data != null && !this.isFlying();
 
         this.keys().register(Keys.PLAUSE, () -> this.preview.plause.clickItself()).active(active).category(editor);
         this.keys().register(Keys.NEXT_CLIP, () -> this.setCursor(this.data.camera.findNextTick(this.getCursor()))).active(active).category(editor);
@@ -500,6 +557,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         this.fill(null);
         this.setupEditorFlex(false);
+        this.updateFilmDocumentView();
         this.flightEditTime.mark();
 
         this.panels.add(this.cameraEditor);
@@ -662,6 +720,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             this.resize();
             this.resize();
         }
+
+        this.updateFilmDocumentView();
     }
 
     private void resetDynamicLayoutElements(boolean recreateTabs)
@@ -1131,6 +1191,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     private void renderDropZoneHighlight(UIContext context)
     {
+        if (this.showingHomePage)
+        {
+            return;
+        }
+
         if (BBSSettings.editorLayoutSettings.isLayoutLocked() || this.draggingPanelId == null || this.dropTargetPanelId == null)
         {
             return;
@@ -1698,6 +1763,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
             this.editor.resize();
         }
+
+        this.updateFilmDocumentView();
     }
 
     @Override
@@ -1862,6 +1929,44 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     }
 
     @Override
+    public void pickData(String id)
+    {
+        this.save();
+        this.openFilmInDocumentTabs(id);
+    }
+
+    @Override
+    public void requestNames()
+    {
+        UIDataUtils.requestNames(this.getType(), this::fillNames);
+    }
+
+    @Override
+    public void fillNames(Collection<String> names)
+    {
+        super.fillNames(names);
+
+        DataPath selected = this.homeFilmsList.getCurrentFirst();
+        String current = selected != null && !selected.folder ? selected.toString() : null;
+
+        this.homeFilmsList.fill(names);
+        this.homeFilmsList.setCurrentFile(current);
+        this.updateHomeButtonsState();
+    }
+
+    @Override
+    protected boolean shouldOpenOverlayOnFirstResize()
+    {
+        return false;
+    }
+
+    @Override
+    protected boolean shouldRenderOpenOverlayHint()
+    {
+        return false;
+    }
+
+    @Override
     public void fillDefaultData(Film data)
     {
         super.fillDefaultData(data);
@@ -1885,7 +1990,14 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     {
         this.notifyServer(ActionState.STOP);
         super.fill(data);
-        this.notifyServer(ActionState.RESTART);
+        this.editor.setVisible(true);
+
+        if (data != null)
+        {
+            this.notifyServer(ActionState.RESTART);
+        }
+
+        this.syncActiveDocumentTabWithData(data);
     }
 
     @Override
@@ -1938,6 +2050,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         }
 
         this.entered = data != null;
+        this.updateHomeButtonsState();
         this.newFilm = false;
     }
 
@@ -2295,6 +2408,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
      */
     private void renderIcons(UIContext context)
     {
+        if (this.showingHomePage)
+        {
+            return;
+        }
+
         int x = this.iconBar.area.ex() - 18;
         int y = this.iconBar.area.ey() - 18;
 
@@ -2306,6 +2424,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     private void renderDividers(UIContext context)
     {
+        if (this.showingHomePage)
+        {
+            return;
+        }
+
         Area a1 = this.openHistory.area;
 
         context.batcher.box(a1.x + 3, a1.ey() + 4, a1.ex() - 3, a1.ey() + 5, 0x22ffffff);
@@ -2485,6 +2608,459 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         return !this.recorder.isRecording();
     }
 
+    private void openSelectedFilmFromHome()
+    {
+        String selected = this.getSelectedHomeFilmId();
+
+        if (selected != null)
+        {
+            this.openFilmInDocumentTabs(selected);
+        }
+    }
+
+    private String getSelectedHomeFilmId()
+    {
+        DataPath selected = this.homeFilmsList.getCurrentFirst();
+
+        if (selected == null || selected.folder)
+        {
+            return null;
+        }
+
+        return selected.toString();
+    }
+
+    private void handleHomeFilmsSelection(List<DataPath> list)
+    {
+        this.updateHomeButtonsState();
+
+        String selected = this.getSelectedHomeFilmId();
+
+        if (selected == null)
+        {
+            return;
+        }
+
+        long now = System.currentTimeMillis();
+        boolean sameAsPrevious = selected.equals(this.homeLastClickedFilmId);
+        boolean doubleClick = sameAsPrevious && now - this.homeLastClickTime <= 300L;
+
+        this.homeLastClickedFilmId = selected;
+        this.homeLastClickTime = now;
+
+        if (doubleClick)
+        {
+            this.openFilmInDocumentTabs(selected);
+        }
+    }
+
+    private void updateHomeButtonsState()
+    {
+        boolean hasCurrentFilm = this.data != null;
+
+        if (this.homeDuplicateCurrent != null)
+        {
+            this.homeDuplicateCurrent.setEnabled(hasCurrentFilm);
+        }
+
+        if (this.homeRenameCurrent != null)
+        {
+            this.homeRenameCurrent.setEnabled(hasCurrentFilm);
+        }
+
+        if (this.homeDeleteCurrent != null)
+        {
+            this.homeDeleteCurrent.setEnabled(hasCurrentFilm);
+        }
+    }
+
+    private UIButton createHomeButton(IKey label, java.util.function.Consumer<UIButton> callback)
+    {
+        UIButton button = new UIButton(label, callback) {
+            @Override
+            protected void renderSkin(UIContext context)
+            {
+                int bg = this.hover ? Colors.setA(Colors.WHITE, 0.25F) : Colors.setA(0, 0.4F);
+                this.area.render(context.batcher, bg);
+                boolean b = this.background;
+                this.background = false;
+                super.renderSkin(context);
+                this.background = b;
+            }
+        };
+        button.textColor(Colors.LIGHTEST_GRAY, true);
+        button.h(20);
+        return button;
+    }
+
+    private void clickWithContext(UIElement element)
+    {
+        UIContext context = this.getContext();
+
+        if (context == null || element == null)
+        {
+            return;
+        }
+
+        element.clickItself(context);
+    }
+
+    private void createHomeDocumentTab(boolean activate)
+    {
+        this.filmDocumentTabs.add(new FilmDocumentTab(true, null));
+        int index = this.filmDocumentTabs.size() - 1;
+
+        this.rebuildFilmDocumentTabs();
+
+        if (activate)
+        {
+            this.activateFilmDocumentTab(index, false);
+        }
+    }
+
+    private void addHomeDocumentTab()
+    {
+        int insertAt = Math.max(0, this.activeFilmDocumentTab + 1);
+
+        this.filmDocumentTabs.add(insertAt, new FilmDocumentTab(true, null));
+        this.rebuildFilmDocumentTabs();
+        this.activateFilmDocumentTab(insertAt, false);
+    }
+
+    private void ensureHomeDocumentTab()
+    {
+        for (FilmDocumentTab tab : this.filmDocumentTabs)
+        {
+            if (tab.home)
+            {
+                return;
+            }
+        }
+
+        this.filmDocumentTabs.add(new FilmDocumentTab(true, null));
+    }
+
+    private int findTabByFilmId(String id)
+    {
+        for (int i = 0; i < this.filmDocumentTabs.size(); i++)
+        {
+            FilmDocumentTab tab = this.filmDocumentTabs.get(i);
+
+            if (!tab.home && id.equals(tab.filmId))
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    private void openFilmInDocumentTabs(String id)
+    {
+        if (id == null || id.trim().isEmpty())
+        {
+            return;
+        }
+
+        int existingIndex = this.findTabByFilmId(id);
+
+        if (existingIndex >= 0)
+        {
+            this.activateFilmDocumentTab(existingIndex, true);
+
+            return;
+        }
+
+        if (this.activeFilmDocumentTab < 0 || this.activeFilmDocumentTab >= this.filmDocumentTabs.size())
+        {
+            if (this.filmDocumentTabs.isEmpty())
+            {
+                this.filmDocumentTabs.add(new FilmDocumentTab(true, null));
+            }
+
+            this.activeFilmDocumentTab = 0;
+        }
+
+        FilmDocumentTab active = this.filmDocumentTabs.get(this.activeFilmDocumentTab);
+
+        if (active.home)
+        {
+            active.home = false;
+            active.filmId = id;
+            this.ensureHomeDocumentTab();
+            this.rebuildFilmDocumentTabs();
+            this.activateFilmDocumentTab(this.activeFilmDocumentTab, true);
+        }
+        else
+        {
+            int insertAt = this.activeFilmDocumentTab + 1;
+            this.filmDocumentTabs.add(insertAt, new FilmDocumentTab(false, id));
+            this.rebuildFilmDocumentTabs();
+            this.activateFilmDocumentTab(insertAt, true);
+        }
+    }
+
+    private void activateFilmDocumentTab(int index, boolean loadFilm)
+    {
+        if (index < 0 || index >= this.filmDocumentTabs.size())
+        {
+            return;
+        }
+
+        if (this.data != null && this.activeFilmDocumentTab != index)
+        {
+            this.save();
+        }
+
+        this.activeFilmDocumentTab = index;
+
+        FilmDocumentTab tab = this.filmDocumentTabs.get(index);
+
+        if (tab.home)
+        {
+            this.updateFilmDocumentView();
+        }
+        else
+        {
+            if (loadFilm || this.data == null || this.data.getId() == null || !this.data.getId().equals(tab.filmId))
+            {
+                this.requestData(tab.filmId);
+            }
+            else
+            {
+                this.updateFilmDocumentView();
+            }
+        }
+
+        this.rebuildFilmDocumentTabs();
+    }
+
+    private void removeFilmDocumentTab(int index)
+    {
+        if (index < 0 || index >= this.filmDocumentTabs.size())
+        {
+            return;
+        }
+
+        this.filmDocumentTabs.remove(index);
+
+        if (this.filmDocumentTabs.isEmpty())
+        {
+            this.filmDocumentTabs.add(new FilmDocumentTab(true, null));
+            this.activeFilmDocumentTab = 0;
+            this.rebuildFilmDocumentTabs();
+            this.activateFilmDocumentTab(0, false);
+
+            return;
+        }
+
+        if (index < this.activeFilmDocumentTab)
+        {
+            this.activeFilmDocumentTab--;
+        }
+        else if (index == this.activeFilmDocumentTab)
+        {
+            this.activeFilmDocumentTab = Math.max(0, Math.min(this.activeFilmDocumentTab, this.filmDocumentTabs.size() - 1));
+        }
+
+        this.ensureHomeDocumentTab();
+        this.rebuildFilmDocumentTabs();
+        this.activateFilmDocumentTab(this.activeFilmDocumentTab, false);
+    }
+
+    private void rebuildFilmDocumentTabs()
+    {
+        this.filmTabs.removeAll();
+
+        for (int i = 0; i < this.filmDocumentTabs.size(); i++)
+        {
+            int tabIndex = i;
+            FilmDocumentTab tab = this.filmDocumentTabs.get(i);
+            String title = tab.home ? "Inicio" : tab.filmId;
+            UIIconTabButton button = new UIIconTabButton(IKey.constant(title), tab.home ? Icons.FOLDER : Icons.FILM, (b) -> this.activateFilmDocumentTab(tabIndex, false)) {
+                @Override
+                protected void renderSkin(UIContext context)
+                {
+                    if (UIFilmPanel.this.activeFilmDocumentTab == tabIndex)
+                    {
+                        int primary = BBSSettings.primaryColor.get();
+                        context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.y + 2, Colors.A100 | primary);
+                        context.batcher.gradientVBox(this.area.x, this.area.y + 2, this.area.ex(), this.area.ey(), Colors.A75 | primary, primary);
+                    }
+                    else
+                    {
+                        int bg = Colors.setA(0, 0.4F);
+                        if (this.hover) bg = Colors.mulRGB(bg, 1.2F);
+                        int x1 = this.area.x;
+                        int y1 = this.area.y;
+                        int x2 = this.area.ex();
+                        int y2 = this.area.ey();
+                        context.batcher.box(x1 + 1, y1, x2 - 1, y2, bg);
+                        context.batcher.box(x1, y1 + 1, x2, y2, bg);
+                    }
+                    boolean b = this.background;
+                    this.background = false;
+                    super.renderSkin(context);
+                    this.background = b;
+                }
+            };
+
+            button.w(tab.home ? 110 : 140).h(FILM_DOCUMENT_TABS_HEIGHT);
+
+            if (!tab.home || this.filmDocumentTabs.size() > 1)
+            {
+                button.removable((b) -> this.removeFilmDocumentTab(tabIndex));
+            }
+
+            this.filmTabs.add(button);
+        }
+
+        UIIconTabButton add = new UIIconTabButton(IKey.constant(""), Icons.ADD, (b) -> this.addHomeDocumentTab()) {
+            @Override
+            protected void renderSkin(UIContext context)
+            {
+                int bg = this.hover ? Colors.setA(Colors.WHITE, 0.15F) : Colors.setA(0, 0.4F);
+                int x1 = this.area.x;
+                int y1 = this.area.y;
+                int x2 = this.area.ex();
+                int y2 = this.area.ey();
+                context.batcher.box(x1 + 1, y1, x2 - 1, y2, bg);
+                context.batcher.box(x1, y1 + 1, x2, y2, bg);
+                boolean b = this.background;
+                this.background = false;
+                super.renderSkin(context);
+                this.background = b;
+            }
+        };
+        add.w(24).h(FILM_DOCUMENT_TABS_HEIGHT);
+        this.filmTabs.add(add);
+        this.filmTabs.resize();
+    }
+
+    private void syncActiveDocumentTabWithData(Film data)
+    {
+        if (data != null)
+        {
+            if (this.activeFilmDocumentTab < 0 || this.activeFilmDocumentTab >= this.filmDocumentTabs.size())
+            {
+                this.filmDocumentTabs.add(new FilmDocumentTab(false, data.getId()));
+                this.activeFilmDocumentTab = this.filmDocumentTabs.size() - 1;
+            }
+            else
+            {
+                FilmDocumentTab tab = this.filmDocumentTabs.get(this.activeFilmDocumentTab);
+
+                tab.home = false;
+                tab.filmId = data.getId();
+            }
+
+            this.ensureHomeDocumentTab();
+        }
+
+        this.rebuildFilmDocumentTabs();
+        this.updateFilmDocumentView();
+    }
+
+    private void setWorkspaceVisible(boolean visible)
+    {
+        this.main.setVisible(visible);
+        this.editArea.setVisible(visible);
+        this.preview.setVisible(visible);
+        this.draggableMain.setVisible(visible);
+        this.draggableEditor.setVisible(visible);
+
+        for (UIDraggable handle : this.dragHandlesById.values())
+        {
+            handle.setVisible(visible && !BBSSettings.editorLayoutSettings.isLayoutLocked());
+        }
+
+        for (UIDraggable handle : this.splitterHandles)
+        {
+            handle.setVisible(visible);
+        }
+
+        for (UITabBar tabBar : this.tabBars)
+        {
+            tabBar.setVisible(visible);
+        }
+    }
+
+    private void updateFilmDocumentView()
+    {
+        boolean home = this.activeFilmDocumentTab < 0
+            || this.activeFilmDocumentTab >= this.filmDocumentTabs.size()
+            || this.filmDocumentTabs.get(this.activeFilmDocumentTab).home
+            || this.data == null;
+
+        this.showingHomePage = home;
+        this.homePage.setVisible(home);
+        this.editor.setVisible(true);
+        this.setWorkspaceVisible(!home);
+    }
+
+    private void renderHomeBanner(UIContext context)
+    {
+        if (!this.showingHomePage)
+        {
+            return;
+        }
+
+        int editorX = this.editor.area.x;
+        int editorY = this.editor.area.y;
+        int editorW = this.editor.area.w;
+        int editorH = this.editor.area.h;
+        int pageX = this.homePage.area.x;
+        int pageY = this.homePage.area.y;
+        int pageW = this.homePage.area.w;
+        int pageH = this.homePage.area.h;
+        int bannerX = pageX + 10;
+        int bannerY = pageY + 10;
+        int bannerW = Math.max(20, pageW - 20);
+        int bannerH = Math.max(32, HOME_BANNER_HEIGHT);
+        int splitY = bannerY + bannerH + 6;
+        int dividerX = this.homeActionsPanel.area.ex() + 8;
+
+        context.batcher.box(editorX, editorY, editorX + editorW, editorY + editorH, Colors.setA(0x161616, 1F));
+        context.batcher.box(pageX, pageY, pageX + pageW, pageY + pageH, Colors.setA(0x1e1e1e, 1F));
+        context.batcher.box(bannerX, bannerY, bannerX + bannerW, bannerY + bannerH, Colors.setA(0x000000, 1F));
+
+        Texture texture = BBSModClient.getTextures().getTexture(this.homeBanner);
+
+        if (texture == null)
+        {
+            context.batcher.textShadow("No se pudo cargar: " + this.homeBanner, bannerX + 8, bannerY + 8, Colors.LIGHTEST_GRAY);
+
+            return;
+        }
+
+        int contentY = bannerY + 4;
+        int contentH = Math.max(1, bannerH - 8);
+        int contentW = Math.max(1, bannerW - 8);
+        float scale = Math.min(contentW / (float) texture.width, contentH / (float) texture.height);
+        int tw = Math.max(1, Math.round(texture.width * scale));
+        int th = Math.max(1, Math.round(texture.height * scale));
+        int tx = bannerX + (bannerW - tw) / 2;
+        int ty = contentY + (contentH - th) / 2;
+
+        context.batcher.fullTexturedBox(texture, tx, ty, tw, th);
+        context.batcher.box(pageX + 10, splitY, pageX + pageW - 10, splitY + 1, Colors.A12);
+        context.batcher.box(dividerX, splitY + 2, dividerX + 1, pageY + pageH - 10, Colors.A12);
+        context.batcher.textShadow("Acciones", this.homeActionsPanel.area.x + 2, splitY + 6);
+        context.batcher.textShadow("Listado De Films", this.homeFilmsSearch.area.x + 2, splitY + 6);
+    }
+
+    private static class FilmDocumentTab
+    {
+        private boolean home;
+        private String filmId;
+
+        private FilmDocumentTab(boolean home, String filmId)
+        {
+            this.home = home;
+            this.filmId = filmId;
+        }
+    }
+
     private final List<UITabBar> tabBars = new ArrayList<>();
 
     private void setupTabBars(EditorLayoutNode root, Map<String, float[]> bounds, boolean recreate)
@@ -2658,12 +3234,21 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             }
             
             boolean active = this.tabbedNode.activeTab == this.index;
-            int bg = active ? Colors.setA(Colors.ACTIVE, 0.8F) : Colors.setA(0, 0.6F);
-            if (this.area.isInside(context))
+            if (active)
             {
-                bg = Colors.mulRGB(bg, 1.2F);
+                int primary = BBSSettings.primaryColor.get();
+                context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.y + 2, Colors.A100 | primary);
+                context.batcher.gradientVBox(this.area.x, this.area.y + 2, this.area.ex(), this.area.ey(), Colors.A75 | primary, primary);
             }
-            context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), bg);
+            else
+            {
+                int bg = Colors.setA(0, 0.6F);
+                if (this.area.isInside(context))
+                {
+                    bg = Colors.mulRGB(bg, 1.2F);
+                }
+                context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), bg);
+            }
             
             // Render icon and name based on panelId
             Icon icon = Icons.FILM;
