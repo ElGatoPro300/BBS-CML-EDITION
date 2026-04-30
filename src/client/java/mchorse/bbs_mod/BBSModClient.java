@@ -577,6 +577,10 @@ public class BBSModClient implements ClientModInitializer
             }
         });
 
+        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
+            BBSMod.setRegistryManager(handler.getRegistryManager());
+        });
+
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) ->
         {
             dashboard = null;
@@ -586,6 +590,7 @@ public class BBSModClient implements ClientModInitializer
             ClientNetwork.resetHandshake();
             films.reset();
             cameraController.reset();
+            BBSMod.setRegistryManager(null);
         });
 
         ClientTickEvents.START_CLIENT_TICK.register((client) ->
