@@ -185,7 +185,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private UIElement homeActionsPanel;
     private UIButton homeCreateFilm;
     private UIButton homeOpenManager;
-    private UIButton homeRefreshFilms;
     private UIButton homeDuplicateCurrent;
     private UIButton homeRenameCurrent;
     private UIButton homeDeleteCurrent;
@@ -361,15 +360,42 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.screenEditor.full(this.main).setVisible(false);
         this.filmTabsBar = new UIControlBar();
         this.filmTabs = new UIElement();
-        this.homePage = new UIElement();
+        this.homePage = new UIElement()
+        {
+            @Override
+            protected boolean subMouseClicked(UIContext context)
+            {
+                if (!UIFilmPanel.this.homeFilmsSearch.area.isInside(context))
+                {
+                    UIFilmPanel.this.homeFilmsList.deselect();
+                    UIFilmPanel.this.handleHomeFilmsSelection(null);
+                }
+                return super.subMouseClicked(context);
+            }
+        };
         this.homeActionsPanel = new UIElement();
         this.homeFilmsList = new UIDataPathList((list) -> this.handleHomeFilmsSelection(list));
         this.homeFilmsList.setFileIcon(Icons.FILM);
         this.homeFilmsSearch = new UISearchList<>(this.homeFilmsList).label(UIKeys.GENERAL_SEARCH);
         this.homeFilmsSearch.list.background();
-        this.homeCreateFilm = this.createHomeButton(UIKeys.FILM_CRUD_ADD, (b) -> this.clickWithContext(this.overlay.add));
-        this.homeOpenManager = this.createHomeButton(UIKeys.FILM_OPEN_MANAGER, (b) -> this.clickWithContext(this.openOverlay));
-        this.homeRefreshFilms = this.createHomeButton(IKey.constant("Actualizar"), (b) -> this.requestNames());
+        this.homeCreateFilm = this.createHomeButton(UIKeys.FILM_CRUD_ADD, (b) ->
+        {
+            UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
+                UIKeys.GENERAL_ADD,
+                UIKeys.PANELS_MODALS_ADD,
+                (str) -> {
+                    try {
+                        java.lang.reflect.Method m = mchorse.bbs_mod.ui.dashboard.panels.overlay.UIDataOverlayPanel.class.getDeclaredMethod("addNewData", String.class, mchorse.bbs_mod.data.types.MapType.class);
+                        m.setAccessible(true);
+                        m.invoke(this.overlay, str, null);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            );
+            panel.text.filename();
+            UIOverlay.addOverlay(this.getContext(), panel);
+        });
         this.homeDuplicateCurrent = this.createHomeButton(UIKeys.FILM_CRUD_DUPE, (b) -> this.clickWithContext(this.overlay.dupe));
         this.homeRenameCurrent = this.createHomeButton(UIKeys.FILM_CRUD_RENAME, (b) -> this.clickWithContext(this.overlay.rename));
         this.homeDeleteCurrent = this.createHomeButton(UIKeys.FILM_CRUD_REMOVE, (b) -> this.clickWithContext(this.overlay.remove));
@@ -443,7 +469,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         UIElement spacing = new UIElement();
         spacing.h(8);
 
-        this.homeActionsPanel.add(this.homeCreateFilm, this.homeOpenManager, this.homeRefreshFilms, spacing, this.homeDuplicateCurrent, this.homeRenameCurrent, this.homeDeleteCurrent);
+        this.homeActionsPanel.add(this.homeCreateFilm, spacing, this.homeDuplicateCurrent, this.homeRenameCurrent, this.homeDeleteCurrent);
         this.homeFilmsSearch.relative(this.homePage).x(0.35F).y(HOME_BANNER_HEIGHT + 20).w(0.65F).h(1F, -(HOME_BANNER_HEIGHT + 20));
         this.homePage.add(new UIRenderable(this::renderHomeBanner), this.homeActionsPanel, this.homeFilmsSearch);
 
@@ -2639,9 +2665,10 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     private void handleHomeFilmsSelection(List<DataPath> list)
     {
-        this.updateHomeButtonsState();
-
         String selected = this.getSelectedHomeFilmId();
+        this.overlay.namesList.setCurrentFile(selected);
+
+        this.updateHomeButtonsState();
 
         if (selected == null)
         {
@@ -2663,22 +2690,36 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     private void updateHomeButtonsState()
     {
-        boolean hasCurrentFilm = this.data != null;
+        boolean hasSelectedFilm = this.homeFilmsList.getCurrentFirst() != null;
+        boolean enableIcons = !this.showingHomePage;
 
         if (this.homeDuplicateCurrent != null)
         {
-            this.homeDuplicateCurrent.setEnabled(hasCurrentFilm);
+            this.homeDuplicateCurrent.setEnabled(hasSelectedFilm);
         }
 
         if (this.homeRenameCurrent != null)
         {
-            this.homeRenameCurrent.setEnabled(hasCurrentFilm);
+            this.homeRenameCurrent.setEnabled(hasSelectedFilm);
         }
 
         if (this.homeDeleteCurrent != null)
         {
-            this.homeDeleteCurrent.setEnabled(hasCurrentFilm);
+            this.homeDeleteCurrent.setEnabled(hasSelectedFilm);
         }
+
+        if (this.openHistory != null) this.openHistory.setEnabled(enableIcons);
+        if (this.openRenderQueue != null) this.openRenderQueue.setEnabled(enableIcons);
+        if (this.openOverlay != null) this.openOverlay.setEnabled(enableIcons);
+        if (this.saveIcon != null) this.saveIcon.setEnabled(enableIcons);
+        if (this.toggleHorizontal != null) this.toggleHorizontal.setEnabled(enableIcons);
+        
+        if (this.openCameraEditor != null) this.openCameraEditor.setEnabled(enableIcons);
+        if (this.openReplayEditor != null) this.openReplayEditor.setEnabled(enableIcons);
+        if (this.openActionEditor != null) this.openActionEditor.setEnabled(enableIcons);
+        if (this.openScreenEditor != null) this.openScreenEditor.setEnabled(enableIcons);
+        if (this.layoutLock != null) this.layoutLock.setEnabled(enableIcons);
+        if (this.layoutPresets != null) this.layoutPresets.setEnabled(enableIcons);
     }
 
     private UIButton createHomeButton(IKey label, java.util.function.Consumer<UIButton> callback)
@@ -3003,6 +3044,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.homePage.setVisible(home);
         this.editor.setVisible(true);
         this.setWorkspaceVisible(!home);
+        this.updateHomeButtonsState();
     }
 
     private void renderHomeBanner(UIContext context)
@@ -3150,8 +3192,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         
         context.batcher.box(pageX, splitY, pageX + pageW, splitY + 1, Colors.A12);
         context.batcher.box(dividerX, splitY + 1, dividerX + 1, pageY + pageH, Colors.A12);
-        context.batcher.textShadow("Acciones", pageX + 4, splitY + 6);
-        context.batcher.textShadow("Listado De Films", dividerX + 4, splitY + 6);
+        context.batcher.textShadow(L10n.lang("bbs.ui.film.home.actions").get(), pageX + 4, splitY + 6);
+        context.batcher.textShadow(L10n.lang("bbs.ui.film.home.list").get(), dividerX + 4, splitY + 6);
     }
 
     private static class FilmDocumentTab
