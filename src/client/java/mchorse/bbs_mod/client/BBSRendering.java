@@ -10,6 +10,8 @@ import mchorse.bbs_mod.client.renderer.TriggerBlockEntityRenderer;
 import mchorse.bbs_mod.camera.clips.misc.CurveClip;
 import mchorse.bbs_mod.camera.clips.misc.ChromaSkyCurveSettings;
 import mchorse.bbs_mod.camera.clips.misc.HotbarClip;
+import mchorse.bbs_mod.camera.clips.misc.HotbarState;
+import mchorse.bbs_mod.camera.clips.misc.Subtitle;
 import mchorse.bbs_mod.camera.clips.misc.SubtitleClip;
 import mchorse.bbs_mod.camera.controller.CameraWorkCameraController;
 import mchorse.bbs_mod.camera.controller.PlayCameraController;
@@ -863,9 +865,37 @@ public class BBSRendering
 
     private static void renderHudOverlays(Batcher2D batcher, ClipContext context, int width, int height)
     {
+        List<Subtitle> subtitles = SubtitleClip.getSubtitles(context);
+        List<HotbarState> hotbars = HotbarClip.getHotbars(context);
+
+        if (subtitles.isEmpty() && hotbars.isEmpty())
+        {
+            return;
+        }
+
         RenderSystem.disableDepthTest();
-        UISubtitleRenderer.renderSubtitles(batcher.getContext().getMatrices(), batcher, SubtitleClip.getSubtitles(context));
-        UIHotbarRenderer.renderHotbars(batcher.getContext().getMatrices(), batcher, HotbarClip.getHotbars(context), 0, 0, width, height);
+
+        MatrixStack matrices = batcher.getContext().getMatrices();
+        int subtitleIndex = 0;
+        int hotbarIndex = 0;
+
+        while (subtitleIndex < subtitles.size() || hotbarIndex < hotbars.size())
+        {
+            boolean renderSubtitle = hotbarIndex >= hotbars.size()
+                || subtitleIndex < subtitles.size() && subtitles.get(subtitleIndex).renderOrder < hotbars.get(hotbarIndex).renderOrder;
+
+            if (renderSubtitle)
+            {
+                UISubtitleRenderer.renderSubtitle(matrices, batcher, subtitles.get(subtitleIndex));
+                subtitleIndex += 1;
+            }
+            else
+            {
+                UIHotbarRenderer.renderHotbar(matrices, batcher, hotbars.get(hotbarIndex), 0, 0, width, height);
+                hotbarIndex += 1;
+            }
+        }
+
         RenderSystem.enableDepthTest();
     }
 }

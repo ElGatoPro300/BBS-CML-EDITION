@@ -25,6 +25,7 @@ import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL30;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Supplier;
 
@@ -162,5 +163,15 @@ public class UISubtitleRenderer
 
         RenderSystem.setProjectionMatrix(cache, VertexSorter.BY_Z);
         RenderSystem.enableCull();
+    }
+
+    public static void renderSubtitle(MatrixStack stack, Batcher2D batcher, Subtitle subtitle)
+    {
+        if (subtitle == null)
+        {
+            return;
+        }
+
+        renderSubtitles(stack, batcher, Collections.singletonList(subtitle));
     }
 }

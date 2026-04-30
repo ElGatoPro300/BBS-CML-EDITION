@@ -84,7 +84,7 @@ public class UIHotbarRenderer
         }
     }
 
-    private static void renderHotbar(MatrixStack stack, Batcher2D batcher, HotbarState hotbar, int originX, int originY, int width, int height)
+    public static void renderHotbar(MatrixStack stack, Batcher2D batcher, HotbarState hotbar, int originX, int originY, int width, int height)
     {
         float alpha = MathHelper.clamp(hotbar.alpha, 0F, 1F);
 

@@ -30,4 +30,5 @@ public class HotbarState
     public float y;
     public float scale;
     public float alpha;
+    public int renderOrder;
 }
