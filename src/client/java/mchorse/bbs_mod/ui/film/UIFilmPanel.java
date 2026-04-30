@@ -71,6 +71,8 @@ import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.CollectionUtils;
+import java.util.HashSet;
+import java.util.Set;
 import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.PlayerUtils;
@@ -149,6 +151,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private boolean resetFreeFlightLookDrag;
 
     /* Entity control */
+    private boolean performingLayout;
     private UIFilmController controller;
     private UIFilmUndoHandler undoHandler;
 
@@ -725,7 +728,25 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         }
 
         Map<String, float[]> bounds = this.computePanelBounds(root);
-        this.applyPanelBoundsFromMap(bounds);
+        
+        List<EditorLayoutNode.TabbedNode> tabbedNodes = new ArrayList<>();
+        EditorLayoutNode.collectTabbedNodes(root, tabbedNodes);
+        Set<String> multiTabPanels = new HashSet<>();
+        for (EditorLayoutNode.TabbedNode tabbed : tabbedNodes)
+        {
+            if (tabbed.tabs.size() > 1)
+            {
+                for (EditorLayoutNode tab : tabbed.tabs)
+                {
+                    if (tab instanceof EditorLayoutNode.PanelNode)
+                    {
+                        multiTabPanels.add(((EditorLayoutNode.PanelNode) tab).getPanelId());
+                    }
+                }
+            }
+        }
+
+        this.applyPanelBoundsFromMap(bounds, multiTabPanels);
 
         if (layout.isLayoutLocked())
         {
@@ -739,8 +760,15 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         }
         else
         {
-            this.setPanelDragHandlesVisible(true);
-            this.rebuildSplitterHandles(layout, root, splitters);
+            if (recreateTabs)
+            {
+                this.rebuildSplitterHandles(layout, root, splitters);
+            }
+
+            float th = FILM_DOCUMENT_TABS_HEIGHT / (float) Math.max(1, this.editor.area.h);
+            this.splitterHandleInfos.clear();
+            EditorLayoutNode.computeSplitterHandles(root, 0F, th, 1F, 1F - th, this.splitterHandleInfos);
+            this.syncSplitterHandleBounds();
             this.applyDragHandleBoundsFromMap(bounds);
         }
         
@@ -780,8 +808,9 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     private Map<String, float[]> computePanelBounds(EditorLayoutNode root)
     {
+        float th = FILM_DOCUMENT_TABS_HEIGHT / (float) Math.max(1, this.editor.area.h);
         Map<String, float[]> bounds = new HashMap<>();
-        root.computeBounds(0F, 0F, 1F, 1F, bounds);
+        root.computeBounds(0F, th, 1F, 1F - th, bounds);
         return bounds;
     }
 
@@ -802,7 +831,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.splitterHandles.clear();
 
         this.splitterHandleInfos.clear();
-        EditorLayoutNode.computeSplitterHandles(root, 0F, 0F, 1F, 1F, this.splitterHandleInfos);
+        float th = FILM_DOCUMENT_TABS_HEIGHT / (float) Math.max(1, this.editor.area.h);
+        EditorLayoutNode.computeSplitterHandles(root, 0F, th, 1F, 1F - th, this.splitterHandleInfos);
 
         for (int i = 0; i < splitters.size(); i++)
         {
@@ -817,15 +847,13 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                 }
             });
 
-            handle.hoverOnly();
             handle.dragEnd(() -> this.setupEditorFlex(true, false, false));
-            handle.reference(() -> this.getSplitterHandleReferencePosition(index, splitters));
             handle.rendering((context) -> this.renderSplitter(context, index));
             this.applySplitterHandleBounds(handle, this.splitterHandleInfos.get(index));
             this.splitterHandles.add(handle);
 
-            IUIElement insertAfter = index == 0 ? this.main : this.splitterHandles.get(index - 1);
-            this.editor.addAfter(insertAfter, handle);
+            this.editor.add(handle);
+            handle.resize();
         }
     }
 
@@ -899,15 +927,22 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         return new Vector2i(hx, hy);
     }
 
-    private void applyPanelBoundsFromMap(Map<String, float[]> bounds)
+    private void applyPanelBoundsFromMap(Map<String, float[]> bounds, Set<String> multiTabPanels)
     {
+        for (UIElement el : this.panelById.values())
+        {
+            el.setVisible(false);
+        }
+        this.homePage.setVisible(false);
+
         for (Map.Entry<String, float[]> e : bounds.entrySet())
         {
             UIElement el = this.panelById.get(e.getKey());
             if (el != null)
             {
                 float[] b = e.getValue();
-                el.relative(this.editor).x(b[0]).y(b[1]).w(b[2]).h(b[3]);
+                int offset = multiTabPanels.contains(e.getKey()) ? 20 : 0;
+                el.relative(this.editor).x(b[0]).y(b[1], offset).w(b[2]).h(b[3], -offset);
                 el.setVisible(true);
             }
         }
@@ -915,27 +950,59 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     private void applyDragHandleBoundsFromMap(Map<String, float[]> bounds)
     {
+        for (UIDraggable h : this.dragHandlesById.values())
+        {
+            h.setVisible(false);
+        }
+
         for (Map.Entry<String, float[]> e : bounds.entrySet())
         {
-            UIDraggable h = this.dragHandlesById.get(e.getKey());
-            if (h != null)
+            String id = e.getKey();
+            UIDraggable h = this.dragHandlesById.get(id);
+            UIElement el = this.panelById.get(id);
+            
+            if (h != null && el != null && el.isVisible())
             {
                 float[] b = e.getValue();
                 h.relative(this.editor).x(b[0]).y(b[1] + DRAG_HANDLE_TOP_OFFSET_NORM).w(b[2]).h(DRAG_HANDLE_HEIGHT_NORM);
+                h.setVisible(!BBSSettings.editorLayoutSettings.isLayoutLocked());
             }
         }
     }
 
     private void updateEditorFlexBoundsOnly(ValueEditorLayout layout, EditorLayoutNode root)
     {
+        float th = FILM_DOCUMENT_TABS_HEIGHT / (float) Math.max(1, this.editor.area.h);
         Map<String, float[]> bounds = this.computePanelBounds(root);
-        this.applyPanelBoundsFromMap(bounds);
+        
+        List<EditorLayoutNode.TabbedNode> tabbedNodes = new ArrayList<>();
+        EditorLayoutNode.collectTabbedNodes(root, tabbedNodes);
+        Set<String> multiTabPanels = new HashSet<>();
+        for (EditorLayoutNode.TabbedNode tabbed : tabbedNodes)
+        {
+            if (tabbed.tabs.size() > 1)
+            {
+                for (EditorLayoutNode tab : tabbed.tabs)
+                {
+                    if (tab instanceof EditorLayoutNode.PanelNode)
+                    {
+                        multiTabPanels.add(((EditorLayoutNode.PanelNode) tab).getPanelId());
+                    }
+                }
+            }
+        }
+
+        this.applyPanelBoundsFromMap(bounds, multiTabPanels);
         this.splitterHandleInfos.clear();
-        EditorLayoutNode.computeSplitterHandles(root, 0F, 0F, 1F, 1F, this.splitterHandleInfos);
+        EditorLayoutNode.computeSplitterHandles(root, 0F, th, 1F, 1F - th, this.splitterHandleInfos);
         this.syncSplitterHandleBounds();
         this.applyDragHandleBoundsFromMap(bounds);
         
         this.setupTabBars(root, bounds, false);
+        
+        // Ensure indicators and icons are on top
+        this.editor.getChildren().removeIf(c -> c instanceof UIRenderable);
+        this.editor.add(new UIRenderable(this::renderIcons), new UIRenderable(this::renderDropZoneHighlight));
     }
 
     private void clearPanelDragState()
@@ -2252,7 +2319,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         this.area.render(context.batcher, Colors.mulRGB(color | Colors.A100, 0.2F));
 
-        if (this.editor.isVisible())
+        if (this.editor.isVisible() && this.preview.isVisible())
         {
             this.preview.area.render(context.batcher, Colors.A75);
         }
@@ -2968,9 +3035,12 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     private void setWorkspaceVisible(boolean visible)
     {
-        this.main.setVisible(visible);
-        this.editArea.setVisible(visible);
-        this.preview.setVisible(visible);
+        if (!visible)
+        {
+            this.main.setVisible(false);
+            this.editArea.setVisible(false);
+            this.preview.setVisible(false);
+        }
         this.draggableMain.setVisible(visible);
         this.draggableEditor.setVisible(visible);
 
@@ -2992,6 +3062,13 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     private void updateFilmDocumentView()
     {
+        if (this.performingLayout)
+        {
+            return;
+        }
+
+        this.performingLayout = true;
+
         boolean home = this.activeFilmDocumentTab < 0
             || this.activeFilmDocumentTab >= this.filmDocumentTabs.size()
             || this.filmDocumentTabs.get(this.activeFilmDocumentTab).home
@@ -3002,6 +3079,13 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.editor.setVisible(true);
         this.setWorkspaceVisible(!home);
         this.updateHomeButtonsState();
+        
+        if (!home)
+        {
+            this.setupEditorFlex(true, false, false);
+        }
+
+        this.performingLayout = false;
     }
 
     private void renderHomeBanner(UIContext context)
@@ -3176,7 +3260,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         for (int i = 0; i < tabbedNodes.size(); i++)
         {
             EditorLayoutNode.TabbedNode tabbed = tabbedNodes.get(i);
-            if (tabbed.tabs.isEmpty()) continue;
+            if (tabbed.tabs.size() < 2) continue;
             
             int safeActiveTab = Math.max(0, Math.min(tabbed.tabs.size() - 1, tabbed.activeTab));
             EditorLayoutNode activeNode = tabbed.tabs.get(safeActiveTab);
@@ -3206,6 +3290,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                     tabBarIndex++;
                     
                     tabBar.relative(this.editor).x(b[0]).y(b[1]).w(b[2]).h(0F, 20);
+                    tabBar.setVisible(true);
                     
                     boolean locked = BBSSettings.editorLayoutSettings.isLayoutLocked();
                     
@@ -3218,7 +3303,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                             if (el != null)
                             {
                                 el.relative(this.editor).x(b[0]).y(b[1], 20).w(b[2]).h(b[3], -20);
-                                el.setVisible(tab == activeNode);
+                                boolean isActive = tab == activeNode;
+                                el.setVisible(isActive);
+                                
+                                UIDraggable handle = this.dragHandlesById.get(panelId);
+                                if (handle != null) handle.setVisible(isActive && !BBSSettings.editorLayoutSettings.isLayoutLocked());
                             }
                             
                             UIDraggable handle = this.dragHandlesById.get(panelId);
