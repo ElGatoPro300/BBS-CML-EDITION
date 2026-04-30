@@ -49,6 +49,7 @@ import mchorse.bbs_mod.ui.film.controller.UIFilmController;
 import mchorse.bbs_mod.ui.film.replays.UIReplaysEditor;
 import mchorse.bbs_mod.ui.film.utils.UIFilmUndoHandler;
 import mchorse.bbs_mod.ui.film.utils.undo.UIUndoHistoryOverlay;
+import mchorse.bbs_mod.utils.interps.Interpolations;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.IUIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
@@ -194,7 +195,14 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private String homeLastClickedFilmId;
     private long homeLastClickTime;
     private final List<FilmDocumentTab> filmDocumentTabs = new ArrayList<>();
-    private final Link homeBanner = Link.assets("textures/banners/CML.png");
+    private final List<Link> homeBanners = java.util.Arrays.asList(
+        Link.assets("textures/banners/films/BannerTEST.png"),
+        Link.assets("textures/banners/films/Home.png")
+    );
+    private int bannerIndex = 0;
+    private long lastBannerTime = -1;
+    private static final int BANNER_DURATION = 400; // 20 seconds at 20 ticks/sec
+    private static final int BANNER_TRANSITION = 60; // 3 seconds transition
     private int activeFilmDocumentTab = -1;
     private boolean showingHomePage = true;
 
@@ -3212,29 +3220,58 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         
         // Panel backgrounds
         context.batcher.box(pageX, pageY, pageX + pageW, pageY + pageH, Colors.setA(0x1e1e1e, 1F));
-        context.batcher.box(pageX, pageY, pageX + pageW, pageY + bannerH, Colors.setA(0x000000, 1F));
-
-        Texture texture = BBSModClient.getTextures().getTexture(this.homeBanner);
-
-        if (texture == null)
+        
+        if (this.lastBannerTime == -1) this.lastBannerTime = (long) context.getTickTransition();
+        
+        long totalTicks = (long) context.getTickTransition();
+        long elapsed = totalTicks - this.lastBannerTime;
+        
+        if (elapsed >= BANNER_DURATION)
         {
-            context.batcher.textShadow("No se pudo cargar: " + this.homeBanner, pageX + 8, pageY + 8, Colors.LIGHTEST_GRAY);
+            this.bannerIndex = (this.bannerIndex + 1) % this.homeBanners.size();
+            this.lastBannerTime = totalTicks;
+            elapsed = 0;
+        }
+
+        float transition = 0F;
+        if (elapsed < BANNER_TRANSITION)
+        {
+            transition = (float) Interpolations.CUBIC_INOUT.interpolate(1F, 0F, elapsed / (float) BANNER_TRANSITION);
+        }
+
+        int prevIndex = (this.bannerIndex + this.homeBanners.size() - 1) % this.homeBanners.size();
+        Link currentLink = this.homeBanners.get(this.bannerIndex);
+        Link prevLink = this.homeBanners.get(prevIndex);
+
+        if (transition > 0F)
+        {
+            this.drawBanner(context, prevLink, pageX, pageY, pageW, bannerH, transition);
+            this.drawBanner(context, currentLink, pageX, pageY, pageW, bannerH, 1F - transition);
         }
         else
         {
-            float scale = Math.min((pageW - 20) / (float) texture.width, (bannerH - 20) / (float) texture.height);
-            int tw = Math.max(1, Math.round(texture.width * scale));
-            int th = Math.max(1, Math.round(texture.height * scale));
-            int tx = pageX + (pageW - tw) / 2;
-            int ty = pageY + (bannerH - th) / 2;
-
-            context.batcher.fullTexturedBox(texture, tx, ty, tw, th);
+            this.drawBanner(context, currentLink, pageX, pageY, pageW, bannerH, 1F);
         }
         
         context.batcher.box(pageX, splitY, pageX + pageW, splitY + 1, Colors.A12);
         context.batcher.box(dividerX, splitY + 1, dividerX + 1, pageY + pageH, Colors.A12);
         context.batcher.textShadow(L10n.lang("bbs.ui.film.home.actions").get(), pageX + 4, splitY + 6);
         context.batcher.textShadow(L10n.lang("bbs.ui.film.home.list").get(), dividerX + 4, splitY + 6);
+    }
+
+    private void drawBanner(UIContext context, Link link, int x, int y, int w, int h, float alpha)
+    {
+        Texture texture = BBSModClient.getTextures().getTexture(link);
+        if (texture != null)
+        {
+            float scale = Math.min(w / (float) texture.width, h / (float) texture.height);
+            int tw = Math.max(1, Math.round(texture.width * scale));
+            int th = Math.max(1, Math.round(texture.height * scale));
+            int tx = x + (w - tw) / 2;
+            int ty = y + (h - th) / 2;
+
+            context.batcher.fullTexturedBox(texture, Colors.setA(Colors.WHITE, alpha), tx, ty, tw, th);
+        }
     }
 
     private static class FilmDocumentTab
