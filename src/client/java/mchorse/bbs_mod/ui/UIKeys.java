@@ -293,6 +293,7 @@ public class UIKeys
     public static final IKey FILM_OPEN_HISTORY = L10n.lang("bbs.ui.film.open_history");
     public static final IKey FILM_OPEN_REPLAY_EDITOR = L10n.lang("bbs.ui.film.open_replay_editor");
     public static final IKey FILM_OPEN_SCREEN_EDITOR = L10n.lang("bbs.ui.film.open_screen_editor");
+    public static final IKey FILM_HOME_BANNER_AUTHOR = L10n.lang("bbs.ui.film.home.banner_author");
 
     public static final IKey SCREEN_PANELS_OVERLAY_COLOR = L10n.lang("bbs.ui.screen_panels.overlay_color");
     public static final IKey SCREEN_PANELS_VIGNETTE_COLOR = L10n.lang("bbs.ui.screen_panels.vignette_color");

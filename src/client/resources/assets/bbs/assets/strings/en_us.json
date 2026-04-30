@@ -649,6 +649,7 @@
     "bbs.ui.film.groups.triggers": "Triggers",
     "bbs.ui.film.history-title": "Undo history",
     "bbs.ui.film.home.actions": "Actions",
+    "bbs.ui.film.home.banner_author": "Render Created By: %s",
     "bbs.ui.film.home.list": "Film List",
     "bbs.ui.film.home.search": "Search...",
     "bbs.ui.film.home.title": "Home",

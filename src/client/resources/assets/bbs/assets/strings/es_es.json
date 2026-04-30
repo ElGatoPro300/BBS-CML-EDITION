@@ -650,6 +650,7 @@
     "bbs.ui.film.groups.triggers": "Desencadenantes",
     "bbs.ui.film.history-title": "Deshacer historial",
     "bbs.ui.film.home.actions": "Acciones",
+    "bbs.ui.film.home.banner_author": "Render Creado Por: %s",
     "bbs.ui.film.home.list": "Listado De Films",
     "bbs.ui.film.home.search": "Buscar...",
     "bbs.ui.film.home.title": "Inicio",

@@ -94,16 +94,29 @@ import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix4f;
 import org.joml.Vector2i;
 import org.joml.Vector3d;
-import org.joml.Matrix4f;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.Tessellator;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+import mchorse.bbs_mod.resources.packs.URLSourcePack;
+import mchorse.bbs_mod.utils.resources.Pixels;
+import java.io.InputStream;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.util.concurrent.CompletableFuture;
+import java.util.Collections;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import org.lwjgl.glfw.GLFW;
+import org.lwjgl.opengl.GL11;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -195,12 +208,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private String homeLastClickedFilmId;
     private long homeLastClickTime;
     private final List<FilmDocumentTab> filmDocumentTabs = new ArrayList<>();
-    private final List<Link> homeBanners = java.util.Arrays.asList(
-        Link.assets("textures/banners/films/BannerTEST.png"),
-        Link.assets("textures/banners/films/Home.png")
-    );
+    private static final String BANNERS_URL = "https://raw.githubusercontent.com/BBSCommunity/CML-NEWS/main/Banners_Panel/banners.json";
+    private final List<BannerEntry> homeBanners = new ArrayList<>();
+    private static final Set<Link> prefetchingBanners = Collections.synchronizedSet(new HashSet<>());
     private int bannerIndex = 0;
-    private long lastBannerTime = -1;
+    private float lastBannerTicks = -1;
     private static final int BANNER_DURATION = 400; // 20 seconds at 20 ticks/sec
     private static final int BANNER_TRANSITION = 60; // 3 seconds transition
     private int activeFilmDocumentTab = -1;
@@ -209,6 +221,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     /**
      * Initialize the camera editor with a camera profile.
      */
+
     public UIFilmPanel(UIDashboard dashboard)
     {
         super(dashboard);
@@ -223,6 +236,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             this.notifyServer(playing ? ActionState.PLAY : ActionState.PAUSE);
         });
         this.runner.getContext().captureSnapshots();
+        this.initBanners();
 
         this.recorder = event.createRecorder(this);
 
@@ -636,6 +650,82 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         };
 
         this.add(element);
+    }
+
+    private void initBanners()
+    {
+        BannerEntry home = new BannerEntry();
+        home.author = "ElGatoPro300";
+        home.link = Link.assets("textures/banners/films/Home.png");
+        this.homeBanners.add(home);
+
+        this.fetchRemoteBanners();
+    }
+
+    private void fetchRemoteBanners()
+    {
+        CompletableFuture.runAsync(() ->
+        {
+            try
+            {
+                HttpClient client = HttpClient.newBuilder().build();
+                HttpRequest req = HttpRequest.newBuilder(URI.create(BANNERS_URL)).GET().build();
+                HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
+
+                if (resp.statusCode() == 200)
+                {
+                    List<BannerEntry> remote = new Gson().fromJson(resp.body(), new TypeToken<List<BannerEntry>>(){}.getType());
+                    if (remote != null)
+                    {
+                        for (BannerEntry entry : remote)
+                        {
+                            entry.link = Link.create(entry.url);
+                            this.prefetchBannerImage(entry.link);
+                        }
+
+                        MinecraftClient.getInstance().execute(() -> this.homeBanners.addAll(remote));
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                e.printStackTrace();
+            }
+        });
+    }
+
+    private void prefetchBannerImage(Link link)
+    {
+        if (link == null || link.source == null || !link.source.startsWith("http")) return;
+        if (BBSModClient.getTextures().textures.get(link) != null) return;
+        if (!prefetchingBanners.add(link)) return;
+
+        CompletableFuture.runAsync(() ->
+        {
+            try (InputStream stream = URLSourcePack.downloadImage(link))
+            {
+                if (stream != null)
+                {
+                    Pixels pixels = Pixels.fromPNGStream(stream);
+                    if (pixels != null)
+                    {
+                        RenderSystem.recordRenderCall(() ->
+                        {
+                            Texture texture = Texture.textureFromPixels(pixels, GL11.GL_LINEAR);
+                            BBSModClient.getTextures().textures.put(link, texture);
+                        });
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                e.printStackTrace();
+            }
+            finally
+            {
+                prefetchingBanners.remove(link);
+            }
+        });
     }
 
     private Vector2i getMainHandlerReferencePosition()
@@ -3221,36 +3311,53 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         // Panel backgrounds
         context.batcher.box(pageX, pageY, pageX + pageW, pageY + pageH, Colors.setA(0x1e1e1e, 1F));
         
-        if (this.lastBannerTime == -1) this.lastBannerTime = (long) context.getTickTransition();
+        // Background stripe drawing
+        int stripeH = 16;
+        int stripeY = pageY + bannerH - stripeH;
         
-        long totalTicks = (long) context.getTickTransition();
-        long elapsed = totalTicks - this.lastBannerTime;
+        float currentTicks = context.getTickTransition();
+        if (this.lastBannerTicks < 0) this.lastBannerTicks = currentTicks - BANNER_TRANSITION;
+        
+        float elapsed = Math.max(0, currentTicks - this.lastBannerTicks);
         
         if (elapsed >= BANNER_DURATION)
         {
             this.bannerIndex = (this.bannerIndex + 1) % this.homeBanners.size();
-            this.lastBannerTime = totalTicks;
+            this.lastBannerTicks = currentTicks;
             elapsed = 0;
         }
 
         float transition = 0F;
-        if (elapsed < BANNER_TRANSITION)
+        float textTransitionPrev = 1F;
+        float textTransitionCurr = 0F;
+
+        if (elapsed < BANNER_TRANSITION && this.homeBanners.size() > 1)
         {
             transition = (float) Interpolations.CUBIC_INOUT.interpolate(1F, 0F, elapsed / (float) BANNER_TRANSITION);
-        }
+            transition = Math.max(0F, Math.min(1F, transition));
 
-        int prevIndex = (this.bannerIndex + this.homeBanners.size() - 1) % this.homeBanners.size();
-        Link currentLink = this.homeBanners.get(this.bannerIndex);
-        Link prevLink = this.homeBanners.get(prevIndex);
-
-        if (transition > 0F)
-        {
-            this.drawBanner(context, prevLink, pageX, pageY, pageW, bannerH, transition);
-            this.drawBanner(context, currentLink, pageX, pageY, pageW, bannerH, 1F - transition);
+            // Staggered text transition: new text waits 20 ticks (1 second) to start fading in
+            textTransitionPrev = transition;
+            float textElapsed = Math.max(0, elapsed - 20);
+            textTransitionCurr = (float) Interpolations.CUBIC_INOUT.interpolate(0F, 1F, textElapsed / (float) (BANNER_TRANSITION - 20));
         }
         else
         {
-            this.drawBanner(context, currentLink, pageX, pageY, pageW, bannerH, 1F);
+            textTransitionCurr = 1F;
+        }
+
+        int prevIndex = (this.bannerIndex + this.homeBanners.size() - 1) % this.homeBanners.size();
+        BannerEntry current = this.homeBanners.get(this.bannerIndex);
+        BannerEntry prev = this.homeBanners.get(prevIndex);
+
+        if (transition > 0.001F)
+        {
+            this.drawBanner(context, prev, pageX, pageY, pageW, bannerH, transition, textTransitionPrev, true);
+            this.drawBanner(context, current, pageX, pageY, pageW, bannerH, 1F - transition, textTransitionCurr, true);
+        }
+        else
+        {
+            this.drawBanner(context, current, pageX, pageY, pageW, bannerH, 1F, textTransitionCurr, true);
         }
         
         context.batcher.box(pageX, splitY, pageX + pageW, splitY + 1, Colors.A12);
@@ -3259,9 +3366,15 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         context.batcher.textShadow(L10n.lang("bbs.ui.film.home.list").get(), dividerX + 4, splitY + 6);
     }
 
-    private void drawBanner(UIContext context, Link link, int x, int y, int w, int h, float alpha)
+    private void drawBanner(UIContext context, BannerEntry entry, int x, int y, int w, int h, float alpha, float textAlpha, boolean drawStripe)
     {
-        Texture texture = BBSModClient.getTextures().getTexture(link);
+        if (alpha < 0.001F && textAlpha < 0.001F) return;
+
+        Link link = entry.link;
+        Texture texture = link.source != null && link.source.startsWith("http") ? 
+            BBSModClient.getTextures().textures.get(link) : 
+            BBSModClient.getTextures().getTexture(link);
+
         if (texture != null)
         {
             float scale = Math.min(w / (float) texture.width, h / (float) texture.height);
@@ -3270,8 +3383,36 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             int tx = x + (w - tw) / 2;
             int ty = y + (h - th) / 2;
 
-            context.batcher.fullTexturedBox(texture, Colors.setA(Colors.WHITE, alpha), tx, ty, tw, th);
+            if (alpha > 0.001F)
+            {
+                RenderSystem.enableBlend();
+                RenderSystem.defaultBlendFunc();
+                context.batcher.texturedBox(texture, Colors.setA(Colors.WHITE, alpha), tx, ty, tw, th, 0, 0, texture.width, texture.height);
+            }
+
+            if (textAlpha > 0.001F && entry.author != null && !entry.author.isEmpty())
+            {
+                String label = UIKeys.FILM_HOME_BANNER_AUTHOR.format(entry.author).get();
+                int lw = context.batcher.getFont().getWidth(label);
+                
+                int stripeH = 16;
+                int stripeY = ty + th - stripeH - 6;
+                int bx = tx + tw - lw - 6;
+
+                if (drawStripe)
+                {
+                    context.batcher.box(bx - 6, stripeY, tx + tw, ty + th - 6, Colors.setA(0, textAlpha * 0.6F));
+                }
+                context.batcher.textShadow(label, bx, stripeY + (stripeH - 8) / 2, Colors.setA(Colors.WHITE, textAlpha));
+            }
         }
+    }
+
+    public static class BannerEntry
+    {
+        public String author;
+        public String url;
+        public transient Link link;
     }
 
     private static class FilmDocumentTab
