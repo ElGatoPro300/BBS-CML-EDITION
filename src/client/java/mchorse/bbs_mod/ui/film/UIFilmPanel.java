@@ -365,11 +365,9 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             @Override
             protected boolean subMouseClicked(UIContext context)
             {
-                if (!UIFilmPanel.this.homeFilmsSearch.area.isInside(context))
-                {
-                    UIFilmPanel.this.homeFilmsList.deselect();
-                    UIFilmPanel.this.handleHomeFilmsSelection(null);
-                }
+                UIFilmPanel.this.homeFilmsList.deselect();
+                UIFilmPanel.this.handleHomeFilmsSelection(null);
+
                 return super.subMouseClicked(context);
             }
         };
@@ -2731,11 +2729,13 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                 int bg = this.hover ? Colors.setA(Colors.WHITE, 0.25F) : Colors.setA(0, 0.4F);
                 this.area.render(context.batcher, bg);
 
+                int color = this.isEnabled() ? Colors.LIGHTEST_GRAY : 0x44ffffff;
+
                 if (icon != null) {
-                    context.batcher.icon(icon, Colors.LIGHTEST_GRAY, this.area.x + 4, this.area.y + this.area.h / 2 - icon.h / 2);
+                    context.batcher.icon(icon, color, this.area.x + 4, this.area.y + this.area.h / 2 - icon.h / 2);
                 }
 
-                context.batcher.textShadow(this.label.get(), this.area.x + 22, this.area.y + this.area.h / 2 - 4, Colors.LIGHTEST_GRAY);
+                context.batcher.textShadow(this.label.get(), this.area.x + 22, this.area.y + this.area.h / 2 - 4, color);
             }
         };
         button.h(20);
@@ -2836,7 +2836,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         {
             active.home = false;
             active.filmId = id;
-            this.ensureHomeDocumentTab();
             this.rebuildFilmDocumentTabs();
             this.activateFilmDocumentTab(this.activeFilmDocumentTab, true);
         }
@@ -2912,7 +2911,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             this.activeFilmDocumentTab = Math.max(0, Math.min(this.activeFilmDocumentTab, this.filmDocumentTabs.size() - 1));
         }
 
-        this.ensureHomeDocumentTab();
         this.rebuildFilmDocumentTabs();
         this.activateFilmDocumentTab(this.activeFilmDocumentTab, false);
     }
