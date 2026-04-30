@@ -465,6 +465,8 @@ public class BBSCommands
         Collection<ServerPlayerEntity> players = EntityArgumentType.getPlayers(source, "target");
         String filmId = StringArgumentType.getString(source, "film");
 
+        BBSMod.getActions().stop(filmId);
+
         for (ServerPlayerEntity player : players)
         {
             ServerNetwork.sendStopFilm(player, filmId);
