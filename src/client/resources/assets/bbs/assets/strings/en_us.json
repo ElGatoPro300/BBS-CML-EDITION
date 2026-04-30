@@ -308,6 +308,7 @@
     "bbs.ui.actions.item.main_hand": "Main hand",
     "bbs.ui.actions.item.position": "Item position",
     "bbs.ui.actions.item.stack": "Item stack",
+    "bbs.ui.actions.item.trajectory_preview": "Trajectory preview",
     "bbs.ui.actions.item.velocity": "Item velocity",
     "bbs.ui.add": "Add",
     "bbs.ui.addon.add": "Add",

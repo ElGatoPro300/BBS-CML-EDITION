@@ -31,6 +31,7 @@ public class UIKeys
     public static final IKey ACTIONS_ITEM_MAIN_HAND = L10n.lang("bbs.ui.actions.item.main_hand");
     public static final IKey ACTIONS_ITEM_POSITION = L10n.lang("bbs.ui.actions.item.position");
     public static final IKey ACTIONS_ITEM_STACK = L10n.lang("bbs.ui.actions.item.stack");
+    public static final IKey ACTIONS_ITEM_TRAJECTORY_PREVIEW = L10n.lang("bbs.ui.actions.item.trajectory_preview");
     public static final IKey ACTIONS_ITEM_VELOCITY = L10n.lang("bbs.ui.actions.item.velocity");
     public static final IKey ADDONS_TITLE = L10n.lang("bbs.ui.addons.title");
     public static final IKey ADDONS_CONFIGURE = L10n.lang("bbs.ui.addons.configure");

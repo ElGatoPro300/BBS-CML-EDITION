@@ -309,6 +309,7 @@
     "bbs.ui.actions.item.main_hand": "Mano principal",
     "bbs.ui.actions.item.position": "Posición del item",
     "bbs.ui.actions.item.stack": "Stack de item",
+    "bbs.ui.actions.item.trajectory_preview": "Vista previa de trayectoria",
     "bbs.ui.actions.item.velocity": "Velocidad del item",
     "bbs.ui.add": "Añadir",
     "bbs.ui.addon.add": "Añadir",
