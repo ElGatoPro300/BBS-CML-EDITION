@@ -652,6 +652,7 @@
     "bbs.ui.film.home.actions": "Acciones",
     "bbs.ui.film.home.list": "Listado De Films",
     "bbs.ui.film.home.search": "Buscar...",
+    "bbs.ui.film.home.title": "Inicio",
     "bbs.ui.film.insert_space-description": "Ingresa la cantidad de ticks de vacío que deseas insertar:",
     "bbs.ui.film.insert_space-title": "Insertar espacio",
     "bbs.ui.film.layout.docked": "Diseño acoplado",

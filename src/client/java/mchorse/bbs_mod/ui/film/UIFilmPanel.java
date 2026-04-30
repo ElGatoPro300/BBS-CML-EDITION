@@ -378,7 +378,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.homeFilmsList.setFileIcon(Icons.FILM);
         this.homeFilmsSearch = new UISearchList<>(this.homeFilmsList).label(UIKeys.GENERAL_SEARCH);
         this.homeFilmsSearch.list.background();
-        this.homeCreateFilm = this.createHomeButton(UIKeys.FILM_CRUD_ADD, (b) ->
+        this.homeCreateFilm = this.createHomeButton(UIKeys.FILM_CRUD_ADD, Icons.ADD, (b) ->
         {
             UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
                 UIKeys.GENERAL_ADD,
@@ -396,9 +396,9 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             panel.text.filename();
             UIOverlay.addOverlay(this.getContext(), panel);
         });
-        this.homeDuplicateCurrent = this.createHomeButton(UIKeys.FILM_CRUD_DUPE, (b) -> this.clickWithContext(this.overlay.dupe));
-        this.homeRenameCurrent = this.createHomeButton(UIKeys.FILM_CRUD_RENAME, (b) -> this.clickWithContext(this.overlay.rename));
-        this.homeDeleteCurrent = this.createHomeButton(UIKeys.FILM_CRUD_REMOVE, (b) -> this.clickWithContext(this.overlay.remove));
+        this.homeDuplicateCurrent = this.createHomeButton(UIKeys.FILM_CRUD_DUPE, Icons.COPY, (b) -> this.clickWithContext(this.overlay.dupe));
+        this.homeRenameCurrent = this.createHomeButton(UIKeys.FILM_CRUD_RENAME, Icons.EDIT, (b) -> this.clickWithContext(this.overlay.rename));
+        this.homeDeleteCurrent = this.createHomeButton(UIKeys.FILM_CRUD_REMOVE, Icons.REMOVE, (b) -> this.clickWithContext(this.overlay.remove));
         this.updateHomeButtonsState();
 
         /* Icon bar buttons */
@@ -2722,7 +2722,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         if (this.layoutPresets != null) this.layoutPresets.setEnabled(enableIcons);
     }
 
-    private UIButton createHomeButton(IKey label, java.util.function.Consumer<UIButton> callback)
+    private UIButton createHomeButton(IKey label, mchorse.bbs_mod.ui.utils.icons.Icon icon, java.util.function.Consumer<UIButton> callback)
     {
         UIButton button = new UIButton(label, callback) {
             @Override
@@ -2730,13 +2730,14 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             {
                 int bg = this.hover ? Colors.setA(Colors.WHITE, 0.25F) : Colors.setA(0, 0.4F);
                 this.area.render(context.batcher, bg);
-                boolean b = this.background;
-                this.background = false;
-                super.renderSkin(context);
-                this.background = b;
+
+                if (icon != null) {
+                    context.batcher.icon(icon, Colors.LIGHTEST_GRAY, this.area.x + 4, this.area.y + this.area.h / 2 - icon.h / 2);
+                }
+
+                context.batcher.textShadow(this.label.get(), this.area.x + 22, this.area.y + this.area.h / 2 - 4, Colors.LIGHTEST_GRAY);
             }
         };
-        button.textColor(Colors.LIGHTEST_GRAY, true);
         button.h(20);
         return button;
     }
@@ -2924,36 +2925,10 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         {
             int tabIndex = i;
             FilmDocumentTab tab = this.filmDocumentTabs.get(i);
-            String title = tab.home ? "Inicio" : tab.filmId;
-            UIIconTabButton button = new UIIconTabButton(IKey.constant(title), tab.home ? Icons.FOLDER : Icons.FILM, (b) -> this.activateFilmDocumentTab(tabIndex, false)) {
-                @Override
-                protected void renderSkin(UIContext context)
-                {
-                    if (UIFilmPanel.this.activeFilmDocumentTab == tabIndex)
-                    {
-                        int primary = BBSSettings.primaryColor.get();
-                        context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.y + 2, Colors.A100 | primary);
-                        context.batcher.gradientVBox(this.area.x, this.area.y + 2, this.area.ex(), this.area.ey(), Colors.A75 | primary, primary);
-                    }
-                    else
-                    {
-                        int bg = Colors.setA(0, 0.4F);
-                        if (this.hover) bg = Colors.mulRGB(bg, 1.2F);
-                        int x1 = this.area.x;
-                        int y1 = this.area.y;
-                        int x2 = this.area.ex();
-                        int y2 = this.area.ey();
-                        context.batcher.box(x1 + 1, y1, x2 - 1, y2, bg);
-                        context.batcher.box(x1, y1 + 1, x2, y2, bg);
-                    }
-                    boolean b = this.background;
-                    this.background = false;
-                    super.renderSkin(context);
-                    this.background = b;
-                }
-            };
-
-            button.w(tab.home ? 110 : 140).h(FILM_DOCUMENT_TABS_HEIGHT);
+            IKey title = tab.home ? mchorse.bbs_mod.l10n.L10n.lang("bbs.ui.film.home.title") : IKey.constant(tab.filmId);
+            UIIconTabButton button = new UIIconTabButton(title, tab.home ? Icons.FOLDER : Icons.FILM, (b) -> this.activateFilmDocumentTab(tabIndex, false));
+            button.color(this.activeFilmDocumentTab == tabIndex ? BBSSettings.primaryColor.get() : 0x2d2d2d);
+            button.w(tab.home ? 88 : 122).h(FILM_DOCUMENT_TABS_HEIGHT);
 
             if (!tab.home || this.filmDocumentTabs.size() > 1)
             {
@@ -2963,23 +2938,9 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             this.filmTabs.add(button);
         }
 
-        UIIconTabButton add = new UIIconTabButton(IKey.constant(""), Icons.ADD, (b) -> this.addHomeDocumentTab()) {
-            @Override
-            protected void renderSkin(UIContext context)
-            {
-                int bg = this.hover ? Colors.setA(Colors.WHITE, 0.15F) : Colors.setA(0, 0.4F);
-                int x1 = this.area.x;
-                int y1 = this.area.y;
-                int x2 = this.area.ex();
-                int y2 = this.area.ey();
-                context.batcher.box(x1 + 1, y1, x2 - 1, y2, bg);
-                context.batcher.box(x1, y1 + 1, x2, y2, bg);
-                boolean b = this.background;
-                this.background = false;
-                super.renderSkin(context);
-                this.background = b;
-            }
-        };
+        UIIconTabButton add = new UIIconTabButton(IKey.constant(""), Icons.ADD, (b) -> this.addHomeDocumentTab());
+        add.color(0x2d2d2d);
+        add.background(false);
         add.w(24).h(FILM_DOCUMENT_TABS_HEIGHT);
         this.filmTabs.add(add);
         this.filmTabs.resize();
@@ -3001,8 +2962,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                 tab.home = false;
                 tab.filmId = data.getId();
             }
-
-            this.ensureHomeDocumentTab();
         }
 
         this.rebuildFilmDocumentTabs();
