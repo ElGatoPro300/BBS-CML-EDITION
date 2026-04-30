@@ -120,7 +120,7 @@ public class VanillaParticleFormRenderer extends FormRenderer<VanillaParticleFor
 
                 if (type != null)
                 {
-                    net.minecraft.registry.RegistryWrapper.WrapperLookup registries = mchorse.bbs_mod.BBSMod.getRegistryManager();
+                    net.minecraft.registry.RegistryWrapper.WrapperLookup registries = world.getRegistryManager();
 
                     if (type instanceof net.minecraft.particle.SimpleParticleType simple)
                     {
@@ -142,12 +142,36 @@ public class VanillaParticleFormRenderer extends FormRenderer<VanillaParticleFor
                         }
                         catch (Exception e)
                         {
-                            /* Fallback to simple lookup if full string parsing fails */
-                            net.minecraft.particle.ParticleType<?> particleType = Registries.PARTICLE_TYPE.get(settings.particle);
-
-                            if (particleType instanceof net.minecraft.particle.SimpleParticleType simple)
+                            /* Manual fallbacks for common complex particles using direct registry lookups */
+                            if (!args.isEmpty())
                             {
-                                effect = simple;
+                                try
+                                {
+                                    net.minecraft.util.Identifier id = net.minecraft.util.Identifier.tryParse(args);
+
+                                    if (id != null)
+                                    {
+                                        /* Try to find as block first */
+                                        net.minecraft.block.Block block = net.minecraft.registry.Registries.BLOCK.get(id);
+
+                                        if (block != net.minecraft.block.Blocks.AIR)
+                                        {
+                                            effect = new net.minecraft.particle.BlockStateParticleEffect(net.minecraft.particle.ParticleTypes.BLOCK, block.getDefaultState());
+                                        }
+                                        else
+                                        {
+                                            /* Try to find as item */
+                                            net.minecraft.item.Item item = net.minecraft.registry.Registries.ITEM.get(id);
+
+                                            if (item != net.minecraft.item.Items.AIR)
+                                            {
+                                                effect = new net.minecraft.particle.ItemStackParticleEffect(net.minecraft.particle.ParticleTypes.ITEM, new net.minecraft.item.ItemStack(item));
+                                            }
+                                        }
+                                    }
+                                }
+                                catch (Exception e2)
+                                {}
                             }
                         }
                     }
