@@ -163,6 +163,9 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private Camera camera = new Camera();
     private boolean entered;
     private boolean resetFreeFlightLookDrag;
+    private boolean freeFlightLookPrimed;
+    private int freeFlightLookRawX;
+    private int freeFlightLookRawY;
 
     /* Entity control */
     private boolean performingLayout;
@@ -2469,33 +2472,13 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         {
             if (BBSSettings.editorFlightFreeLook.get())
             {
-                if (this.enforceFreeFlightMouseCapture())
-                {
-                    this.resetFreeFlightLookDrag = true;
-                }
-
-                int centerX = context.menu.width / 2;
-                int centerY = context.menu.height / 2;
-
-                if (this.resetFreeFlightLookDrag)
-                {
-                    this.dashboard.orbitUI.orbit.release();
-                    this.dashboard.orbitUI.orbit.cache(centerX, centerY);
-
-                    if (context.mouseX >= 0 && context.mouseY >= 0
-                        && Math.abs(context.mouseX - centerX) <= 1
-                        && Math.abs(context.mouseY - centerY) <= 1)
-                    {
-                        this.resetFreeFlightLookDrag = false;
-                    }
-                }
-
-                boolean anyPressed = Window.isMouseButtonPressed(0) || Window.isMouseButtonPressed(1) || Window.isMouseButtonPressed(2);
-
-                if (!this.resetFreeFlightLookDrag && !anyPressed && !this.dashboard.orbitUI.orbit.isDragging() && context.mouseX >= 0 && context.mouseY >= 0)
-                {
-                    this.dashboard.orbitUI.orbit.start(0, centerX, centerY);
-                }
+                this.updateFreeFlightLookFromRawCursor();
+            }
+            else if (this.resetFreeFlightLookDrag || this.freeFlightLookPrimed)
+            {
+                this.resetFreeFlightLookDrag = false;
+                this.freeFlightLookPrimed = false;
+                this.dashboard.orbitUI.orbit.release();
             }
 
             this.dashboard.orbit.apply(this.position);
@@ -2548,11 +2531,15 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             this.centerCursor(window);
             GLFW.glfwSetInputMode(window.getHandle(), GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_DISABLED);
             this.resetFreeFlightLookDrag = true;
+            this.freeFlightLookPrimed = false;
+            this.dashboard.orbitUI.orbit.release();
         }
         else if (!this.controller.isControlling())
         {
             GLFW.glfwSetInputMode(window.getHandle(), GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_NORMAL);
             this.resetFreeFlightLookDrag = false;
+            this.freeFlightLookPrimed = false;
+            this.dashboard.orbitUI.orbit.release();
         }
     }
 
@@ -2578,6 +2565,49 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private void centerCursor(net.minecraft.client.util.Window window)
     {
         mchorse.bbs_mod.graphics.window.Window.moveCursor(window.getWidth() / 2, window.getHeight() / 2);
+    }
+
+    private void updateFreeFlightLookFromRawCursor()
+    {
+        net.minecraft.client.util.Window window = MinecraftClient.getInstance().getWindow();
+
+        if (this.enforceFreeFlightMouseCapture())
+        {
+            this.resetFreeFlightLookDrag = true;
+            this.freeFlightLookPrimed = false;
+        }
+
+        double[] rawX = new double[1];
+        double[] rawY = new double[1];
+        GLFW.glfwGetCursorPos(window.getHandle(), rawX, rawY);
+        int mouseX = (int) Math.round(rawX[0]);
+        int mouseY = (int) Math.round(rawY[0]);
+
+        if (this.resetFreeFlightLookDrag || !this.freeFlightLookPrimed)
+        {
+            this.freeFlightLookRawX = mouseX;
+            this.freeFlightLookRawY = mouseY;
+
+            this.resetFreeFlightLookDrag = false;
+            this.freeFlightLookPrimed = true;
+            this.dashboard.orbitUI.orbit.release();
+
+            return;
+        }
+
+        int dx = mouseX - this.freeFlightLookRawX;
+        int dy = mouseY - this.freeFlightLookRawY;
+
+        this.freeFlightLookRawX = mouseX;
+        this.freeFlightLookRawY = mouseY;
+
+        if (dx != 0 || dy != 0)
+        {
+            float angleSpeed = this.dashboard.orbitUI.orbit.getAngleSpeed();
+
+            this.dashboard.orbitUI.orbit.rotation.x += dy * angleSpeed;
+            this.dashboard.orbitUI.orbit.rotation.y += dx * angleSpeed;
+        }
     }
 
     @Override
