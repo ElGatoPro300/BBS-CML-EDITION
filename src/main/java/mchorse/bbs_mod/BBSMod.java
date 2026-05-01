@@ -144,6 +144,9 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
+import net.minecraft.registry.DynamicRegistryManager;
+import net.minecraft.registry.RegistryOps;
+import net.minecraft.registry.RegistryWrapper;
 
 public class BBSMod implements ModInitializer
 {
@@ -171,6 +174,25 @@ public class BBSMod implements ModInitializer
     private static FilmManager films;
 
     private static List<Runnable> runnables = new ArrayList<>();
+
+    private static final ThreadLocal<RegistryWrapper.WrapperLookup> registryManager = new ThreadLocal<>();
+
+    public static RegistryWrapper.WrapperLookup getRegistryManager()
+    {
+        return registryManager.get();
+    }
+
+    public static void setRegistryManager(RegistryWrapper.WrapperLookup registryManager)
+    {
+        if (registryManager == null)
+        {
+            BBSMod.registryManager.remove();
+        }
+        else
+        {
+            BBSMod.registryManager.set(registryManager);
+        }
+    }
 
     private static MapFactory<Clip, ClipFactoryData> factoryCameraClips;
     private static MapFactory<Clip, ClipFactoryData> factoryActionClips;
@@ -608,7 +630,10 @@ public class BBSMod implements ModInitializer
             }
         });
 
-        ServerLifecycleEvents.SERVER_STARTED.register((event) -> worldFolder = event.getSavePath(WorldSavePath.ROOT).toFile());
+        ServerLifecycleEvents.SERVER_STARTED.register((event) -> {
+            worldFolder = event.getSavePath(WorldSavePath.ROOT).toFile();
+            setRegistryManager(event.getRegistryManager());
+        });
         ServerPlayConnectionEvents.JOIN.register((a, b, c) -> ServerNetwork.sendHandshake(c, b));
 
         ActionHandler.registerHandlers(actions);
@@ -632,6 +657,7 @@ public class BBSMod implements ModInitializer
         {
             actions.reset();
             ServerNetwork.reset();
+            setRegistryManager(null);
         });
 
         EntityTrackingEvents.START_TRACKING.register((trackedEntity, player) ->

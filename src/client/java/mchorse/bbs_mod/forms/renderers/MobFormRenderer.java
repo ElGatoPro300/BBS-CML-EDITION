@@ -319,13 +319,41 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
                 context.stack.multiply(RotationAxis.POSITIVE_Y.rotation(MathUtils.PI));
             }
 
-            if (this.entity instanceof LivingEntity entity)
-            {
-                int u = context.overlay & '\uffff';
-                int v = context.overlay >> 16 & '\uffff';
+            if (this.entity instanceof LivingEntity livingMorph) 
+{
+    LivingEntity player = MinecraftClient.getInstance().player;
+    LivingEntity source = (context.entity instanceof LivingEntity) ? (LivingEntity)context.entity : null;
 
-                entity.hurtTime = v != 10 ? 100 : 0;
+    // 1. LIVE GAMEPLAY: We know this works perfectly. 
+    // If you are playing, exactly mimic your player's countdown.
+    if (player != null && source == player && player.hurtTime > 0) {
+        livingMorph.hurtTime = player.hurtTime;
+        livingMorph.maxHurtTime = player.maxHurtTime;
+    } 
+    // 2. REPLAYS & NPCs: Use the Red Flash, but let it count down naturally!
+    else {
+        int v = context.overlay >> 16 & '\uffff';
+        if (v != 10 && v != 0) {
+            // ONLY start the animation if it isn't already playing.
+            // This prevents the stutter/spasm!
+            if (livingMorph.hurtTime == 0) {
+                livingMorph.hurtTime = 10;
+                livingMorph.maxHurtTime = 10;
             }
+        }
+        // Notice we DO NOT force hurtTime = 0 here anymore. 
+        // We let the entity's natural tick() count it down smoothly.
+    }
+
+    // 3. Keep the limbs synced so running/walking looks correct
+    if (source != null) {
+        if (livingMorph.limbAnimator instanceof mchorse.bbs_mod.mixin.LimbAnimatorAccessor a && 
+            source.limbAnimator instanceof mchorse.bbs_mod.mixin.LimbAnimatorAccessor b) {
+            a.setPos(b.getPos());
+            a.setSpeed(b.getSpeed());
+        }
+    }
+}
 
             currentPose = this.form.pose.get();
             currentPoseOverlay = this.form.poseOverlay.get();

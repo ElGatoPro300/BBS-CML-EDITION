@@ -205,6 +205,13 @@ public class UIPickableFormRenderer extends UIFormRenderer
         if (this.update && this.target != null)
         {
             this.form.update(this.entity);
+
+            mchorse.bbs_mod.forms.renderers.FormRenderer renderer = mchorse.bbs_mod.forms.FormUtilsClient.getRenderer(this.form);
+
+            if (renderer instanceof mchorse.bbs_mod.forms.ITickable tickable)
+            {
+                tickable.tick(this.entity);
+            }
         }
     }
 

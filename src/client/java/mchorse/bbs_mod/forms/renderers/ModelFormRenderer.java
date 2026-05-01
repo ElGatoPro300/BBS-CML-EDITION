@@ -74,8 +74,6 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
     private ActionsConfig lastConfigs;
     private IAnimator animator;
     private ModelInstance lastModel;
-    private ModelInstance cachedModel;
-    private ModelInstance sourceModel;
 
     private int lastAge = -1;
 
@@ -145,41 +143,12 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
     public void invalidateCachedModel()
     {
-        if (this.cachedModel != null)
-        {
-            this.cachedModel.delete();
-            this.cachedModel = null;
-        }
-
-        this.sourceModel = null;
+        /* No-op: UI now uses the source model directly to avoid copy/setup GPU churn. */
     }
 
     public ModelInstance getModel()
     {
-        String modelId = this.form.model.get();
-        ModelInstance model = BBSModClient.getModels().getModel(modelId);
-
-        if (this.cachedModel == null || !this.cachedModel.id.equals(modelId) || this.sourceModel != model)
-        {
-            if (this.cachedModel != null)
-            {
-                this.cachedModel.delete();
-            }
-
-            if (model != null)
-            {
-                this.cachedModel = model.copy();
-                this.cachedModel.setup();
-                this.sourceModel = model;
-            }
-            else
-            {
-                this.cachedModel = null;
-                this.sourceModel = null;
-            }
-        }
-
-        return this.cachedModel;
+        return BBSModClient.getModels().getModel(this.form.model.get());
     }
 
     public Pose getPose()

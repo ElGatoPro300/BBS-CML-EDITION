@@ -150,6 +150,16 @@ public class TriggerBlockEntity extends BlockEntity
                     }
                 }
             }
+            else if (type.equals("film"))
+            {
+                String filmName = trigger.film.get();
+                boolean playCamera = trigger.playCamera.get();
+                
+                if (!filmName.isEmpty())
+                {
+                    ServerNetwork.sendPlayFilm(player, filmName, playCamera);
+                }
+            }
         }
     }
     
