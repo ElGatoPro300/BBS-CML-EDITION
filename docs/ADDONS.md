@@ -275,6 +275,31 @@ Registers stencil effects.
 
 ## Advanced Topics
 
+### Customizing Replay Tracks
+
+You can customize the visual appearance of property tracks in the Replay Editor (Timeline) by registering custom colors and icons. This is useful when your addon adds new animatable properties to forms.
+
+To register a color or icon, call the static methods in `UIReplaysEditor` during your client-side initialization:
+
+```java
+import mchorse.bbs_mod.ui.film.replays.UIReplaysEditor;
+import mchorse.bbs_mod.ui.utils.icons.Icons;
+
+// In your client addon initialization
+public void init() {
+    // Register a custom color (0xRRGGBB)
+    UIReplaysEditor.registerColor("Halo", 0xFFFFD3);
+    UIReplaysEditor.registerColor("Horse", 0xFF1413);
+    
+    // Register a custom icon
+    UIReplaysEditor.registerIcon("Photon", Icons.FADING);
+    UIReplaysEditor.registerIcon("Sun", Icons.SUN);
+    UIReplaysEditor.registerIcon("fog", Icons.SPRAY);
+}
+```
+
+*Note: The ID should match the property name used in your Form.*
+
 ### Custom UI Components
 
 To create a custom widget, extend `UIElement`.
