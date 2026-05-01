@@ -21,7 +21,7 @@ import net.minecraft.util.math.RotationAxis;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 
-public class GunProjectileEntityRenderer extends EntityRenderer<GunProjectileEntity>
+public class GunProjectileEntityRenderer extends EntityRenderer<GunProjectileEntity, GunProjectileEntityRenderer.GunProjectileEntityState>
 {
     public static class GunProjectileEntityState extends EntityRenderState {
         public GunProjectileEntity projectile;
@@ -50,6 +50,7 @@ public class GunProjectileEntityRenderer extends EntityRenderer<GunProjectileEnt
         return Identifier.of("minecraft", "textures/entity/player/wide/steve.png");
     }
 
+    @Override
     public void render(GunProjectileEntityState state, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light)
     {
         GunProjectileEntity projectile = state.projectile;

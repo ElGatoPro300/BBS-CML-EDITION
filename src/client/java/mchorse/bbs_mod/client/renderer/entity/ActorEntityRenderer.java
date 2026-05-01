@@ -23,7 +23,7 @@ import net.minecraft.util.math.RotationAxis;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 
-public class ActorEntityRenderer extends EntityRenderer<ActorEntity>
+public class ActorEntityRenderer extends EntityRenderer<ActorEntity, ActorEntityRenderer.ActorEntityState>
 {
     public static class ActorEntityState extends LivingEntityRenderState {
         public ActorEntity entity;
@@ -70,6 +70,7 @@ public class ActorEntityRenderer extends EntityRenderer<ActorEntity>
         return Identifier.of("minecraft", "textures/entity/player/wide/steve.png");
     }
 
+    @Override
     public void render(ActorEntityState state, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light)
     {
         ActorEntity livingEntity = state.entity;
