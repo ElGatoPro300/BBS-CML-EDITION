@@ -4,9 +4,9 @@ import mchorse.bbs_mod.camera.clips.misc.HotbarState;
 import mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D;
 
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.item.ItemStack;
-import net.minecraft.client.render.RenderLayer;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.MathHelper;
 

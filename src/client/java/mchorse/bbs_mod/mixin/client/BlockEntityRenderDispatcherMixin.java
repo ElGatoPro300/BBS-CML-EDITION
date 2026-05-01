@@ -31,12 +31,12 @@ public class BlockEntityRenderDispatcherMixin
         }
     }
 
-    @Inject(method = "renderEntity", at = @At("HEAD"), cancellable = true)
+/*     @Inject(method = "renderEntity", at = @At("HEAD"), cancellable = true)
     public void onRenderEntity(CallbackInfoReturnable<Boolean> info)
     {
         if (BBSRendering.isChromaSkyEnabled() && !BBSRendering.isChromaSkyTerrain())
         {
             info.setReturnValue(false);
         }
-    }
+    } */
 }
