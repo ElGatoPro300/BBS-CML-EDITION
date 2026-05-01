@@ -1,15 +1,18 @@
 package mchorse.bbs_mod.bay4lly;
 
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-import com.mojang.brigadier.builder.LiteralArgumentBuilder;
-import com.mojang.brigadier.builder.RequiredArgumentBuilder;
-import com.mojang.brigadier.arguments.StringArgumentType;
+import mchorse.bbs_mod.network.ServerNetwork;
+
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.text.Text;
-import mchorse.bbs_mod.network.ServerNetwork;
-import net.minecraft.server.MinecraftServer;
+
+import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.builder.RequiredArgumentBuilder;
+
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -17,6 +20,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.Base64;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
@@ -65,7 +70,7 @@ public class SkinCommands
                     {
                         SkinManager.saveSkin(playerName, file);
                         MinecraftServer srv = source.getServer();
-                        byte[] bytes = java.nio.file.Files.readAllBytes(file.toPath());
+                        byte[] bytes = Files.readAllBytes(file.toPath());
                         ServerNetwork.sendBay4llySkinToAll(srv, bytes, playerName);
                         source.sendFeedback(() -> Text.translatable("command.getskin.success"), true);
                     }
@@ -106,7 +111,7 @@ public class SkinCommands
                     {
                         SkinManager.saveSkin(n, file);
                         MinecraftServer srv = source.getServer();
-                        byte[] bytes = java.nio.file.Files.readAllBytes(file.toPath());
+                        byte[] bytes = Files.readAllBytes(file.toPath());
                         ServerNetwork.sendBay4llySkinToAll(srv, bytes, n);
                         source.sendFeedback(() -> Text.translatable("command.getskin.success"), true);
                     }
@@ -178,7 +183,7 @@ public class SkinCommands
         File tmpFolder = new File("tmp_skins");
         if (!tmpFolder.exists()) tmpFolder.mkdirs();
         File tempFile = new File(tmpFolder, playerName + ".png");
-        java.nio.file.Files.copy(connection.getInputStream(), tempFile.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        Files.copy(connection.getInputStream(), tempFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
         return tempFile;
     }
 }

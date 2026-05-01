@@ -1,8 +1,8 @@
 package mchorse.bbs_mod.ui.film.replays.overlays;
 
-import com.mojang.logging.LogUtils;
 import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
+import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.film.replays.UIReplayList;
@@ -20,11 +20,17 @@ import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.UIDataUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Colors;
-import org.slf4j.Logger;
+
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.network.ClientPlayerEntity;
+
+import com.mojang.logging.LogUtils;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
+
+import org.slf4j.Logger;
 
 public class UIReplaysOverlayPanel extends UIOverlayPanel
 {
@@ -56,6 +62,8 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
     public UITrackpad relativeOffsetZ;
     public UIToggle axesPreview;
     public UIButton pickAxesPreviewBone;
+    public UIToggle dropItemsOnDeath;
+    public UIButton replaceReplayInventory;
     public UIIcon addReplay;
     public UIIcon dupeReplay;
     public UIIcon removeReplay;
@@ -67,6 +75,10 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
     public UITrackpad dropVelocityMaxY;
     public UITrackpad dropVelocityMinZ;
     public UITrackpad dropVelocityMaxZ;
+    public UIElement dropVelocityLabel;
+    public UIElement dropVelocityRowX;
+    public UIElement dropVelocityRowY;
+    public UIElement dropVelocityRowZ;
 
     private Consumer<Replay> callback;
     private boolean docked;
@@ -151,6 +163,22 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
                 this.edit((r) -> r.axesPreviewBone.set(s));
             });
         });
+        this.dropItemsOnDeath = new UIToggle(UIKeys.FILM_REPLAY_DROP_ITEMS_ON_DEATH, (b) ->
+        {
+            this.edit((replay) -> replay.dropItemsOnDeath.set(b.getValue()));
+            this.updateDropVelocityVisibility(b.getValue());
+        });
+        this.dropItemsOnDeath.tooltip(UIKeys.FILM_REPLAY_DROP_ITEMS_ON_DEATH_TOOLTIP);
+        this.replaceReplayInventory = new UIButton(UIKeys.FILM_REPLACE_INVENTORY, (b) ->
+        {
+            ClientPlayerEntity player = MinecraftClient.getInstance().player;
+
+            if (player != null)
+            {
+                this.edit((replay) -> BaseValue.edit(replay.inventory, (inv) -> inv.fromPlayer(player)));
+            }
+        });
+        this.replaceReplayInventory.tooltip(UIKeys.FILM_REPLACE_INVENTORY_TOOLTIP);
 
         this.addReplay = new UIIcon(Icons.ADD, (b) -> this.replays.addReplay());
         this.addReplay.tooltip(UIKeys.SCENE_REPLAYS_CONTEXT_ADD);
@@ -166,7 +194,7 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
 
         this.icons.add(this.addReplay, this.dupeReplay, this.removeReplay);
 
-        this.keys().register(mchorse.bbs_mod.ui.Keys.REPLAYS_REMOVE, () -> this.replays.removeReplay())
+        this.keys().register(Keys.REPLAYS_REMOVE, () -> this.replays.removeReplay())
             .active(() -> !this.replays.getCurrent().isEmpty());
 
         /* Item drop velocity configuration */
@@ -187,6 +215,10 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
         this.replayLabel = UI.label(UIKeys.FILM_REPLAY_REPLAY);
         this.loopingLabel = UI.label(UIKeys.FILM_REPLAY_LOOPING);
         this.relativeRow = UI.row(this.relativeOffsetX, this.relativeOffsetY, this.relativeOffsetZ);
+        this.dropVelocityLabel = UI.label(UIKeys.FILM_REPLAY_DROP_VELOCITY);
+        this.dropVelocityRowX = UI.row(5, 0, this.dropVelocityMinX, this.dropVelocityMaxX);
+        this.dropVelocityRowY = UI.row(5, 0, this.dropVelocityMinY, this.dropVelocityMaxY);
+        this.dropVelocityRowZ = UI.row(5, 0, this.dropVelocityMinZ, this.dropVelocityMaxZ);
 
         this.replayProperties = UI.scrollView(5, 6,
             this.replayLabel,
@@ -196,11 +228,12 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
             this.loopingLabel,
             this.looping, this.actor, this.fp,
             this.relative, this.relativeRow,
-            this.axesPreview, this.pickAxesPreviewBone,
-            UI.label(UIKeys.FILM_REPLAY_DROP_VELOCITY),
-            UI.row(5, 0, this.dropVelocityMinX, this.dropVelocityMaxX),
-            UI.row(5, 0, this.dropVelocityMinY, this.dropVelocityMaxY),
-            UI.row(5, 0, this.dropVelocityMinZ, this.dropVelocityMaxZ)
+            this.axesPreview, this.pickAxesPreviewBone, this.dropItemsOnDeath,
+            this.dropVelocityLabel,
+            this.dropVelocityRowX,
+            this.dropVelocityRowY,
+            this.dropVelocityRowZ,
+            this.replaceReplayInventory
         );
         this.groupProperties = UI.scrollView(5, 6, this.groupLabel);
 
@@ -290,14 +323,25 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
                 this.relativeOffsetY.setValue(replay.relativeOffset.get().y);
                 this.relativeOffsetZ.setValue(replay.relativeOffset.get().z);
                 this.axesPreview.setValue(replay.axesPreview.get());
+                this.dropItemsOnDeath.setValue(replay.dropItemsOnDeath.get());
                 this.dropVelocityMinX.setValue(replay.dropVelocityMinX.get());
                 this.dropVelocityMaxX.setValue(replay.dropVelocityMaxX.get());
                 this.dropVelocityMinY.setValue(replay.dropVelocityMinY.get());
                 this.dropVelocityMaxY.setValue(replay.dropVelocityMaxY.get());
                 this.dropVelocityMinZ.setValue(replay.dropVelocityMinZ.get());
                 this.dropVelocityMaxZ.setValue(replay.dropVelocityMaxZ.get());
+                this.updateDropVelocityVisibility(replay.dropItemsOnDeath.get());
             }
         }
+    }
+
+    private void updateDropVelocityVisibility(boolean visible)
+    {
+        this.dropVelocityLabel.setVisible(visible);
+        this.dropVelocityRowX.setVisible(visible);
+        this.dropVelocityRowY.setVisible(visible);
+        this.dropVelocityRowZ.setVisible(visible);
+        this.replaceReplayInventory.setVisible(visible);
     }
 
     @Override

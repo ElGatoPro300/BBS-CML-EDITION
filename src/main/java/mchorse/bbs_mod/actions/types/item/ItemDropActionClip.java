@@ -7,6 +7,7 @@ import mchorse.bbs_mod.settings.values.numeric.ValueBoolean;
 import mchorse.bbs_mod.settings.values.numeric.ValueDouble;
 import mchorse.bbs_mod.settings.values.numeric.ValueFloat;
 import mchorse.bbs_mod.utils.clips.Clip;
+
 import net.minecraft.entity.ItemEntity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.server.world.ServerWorld;
@@ -20,6 +21,7 @@ public class ItemDropActionClip extends ItemActionClip
     public final ValueFloat velocityY = new ValueFloat("vy", 0F);
     public final ValueFloat velocityZ = new ValueFloat("vz", 0F);
     public final ValueBoolean relative = new ValueBoolean("relative", false);
+    public final ValueBoolean trajectoryPreview = new ValueBoolean("trajectory_preview", false);
 
     public ItemDropActionClip()
     {
@@ -32,6 +34,7 @@ public class ItemDropActionClip extends ItemActionClip
         this.add(this.velocityY);
         this.add(this.velocityZ);
         this.add(this.relative);
+        this.add(this.trajectoryPreview);
     }
 
     public void shift(double dx, double dy, double dz)

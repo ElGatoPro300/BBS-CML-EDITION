@@ -25,9 +25,10 @@ import mchorse.bbs_mod.ui.framework.UIScreen;
 import mchorse.bbs_mod.ui.model_blocks.UIModelBlockPanel;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
-import mchorse.bbs_mod.utils.pose.Transform;
 import mchorse.bbs_mod.utils.pose.Pose;
 import mchorse.bbs_mod.utils.pose.PoseTransform;
+import mchorse.bbs_mod.utils.pose.Transform;
+
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.VertexConsumerProvider;
@@ -37,10 +38,13 @@ import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
+
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
-public class ModelBlockEntityRenderer
+import com.mojang.blaze3d.systems.RenderSystem;
+
+public class ModelBlockEntityRenderer implements BlockEntityRenderer<ModelBlockEntity>
 {
     private static ActorEntity entity;
 

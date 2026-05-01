@@ -2,6 +2,7 @@ package mchorse.bbs_mod.client;
 
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.resources.Link;
+
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.texture.NativeImage;
 import net.minecraft.client.texture.NativeImageBackedTexture;
@@ -56,9 +57,9 @@ public class MobTextureOverride
         try (InputStream stream = BBSMod.getProvider().getAsset(link))
         {
             NativeImage image = NativeImage.read(stream);
-            String key = "bbs_mob_override_" + Integer.toUnsignedString(link.toString().hashCode());
-            Identifier id = Identifier.of(BBSMod.MOD_ID, key);
-            NativeImageBackedTexture texture = new NativeImageBackedTexture(() -> key, image);
+            NativeImageBackedTexture texture = new NativeImageBackedTexture(image);
+            String key = "mob_override_" + Integer.toUnsignedString(link.toString().hashCode());
+            Identifier id = Identifier.of("bbs", key);
 
             MinecraftClient.getInstance().getTextureManager().registerTexture(id, texture);
             return id;

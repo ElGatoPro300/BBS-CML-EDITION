@@ -2,7 +2,10 @@ package mchorse.bbs_mod.cubic.render.vao;
 
 import mchorse.bbs_mod.client.BBSRendering;
 import com.mojang.blaze3d.vertex.VertexFormat;
+
+import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
+
 import org.lwjgl.opengl.GL30;
 
 public class ModelVAO implements IModelVAO

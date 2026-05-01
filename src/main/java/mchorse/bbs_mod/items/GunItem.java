@@ -3,16 +3,16 @@ package mchorse.bbs_mod.items;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.entity.GunProjectileEntity;
 import mchorse.bbs_mod.forms.FormUtils;
+
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
-
-import net.minecraft.server.world.ServerWorld;
 
 public class GunItem extends Item
 {

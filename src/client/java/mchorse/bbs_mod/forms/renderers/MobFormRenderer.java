@@ -20,6 +20,7 @@ import mchorse.bbs_mod.utils.PlayerUtils;
 import mchorse.bbs_mod.utils.joml.Vectors;
 import mchorse.bbs_mod.utils.pose.Pose;
 import mchorse.bbs_mod.utils.pose.Transform;
+
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.render.Camera;
@@ -38,14 +39,20 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityPose;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.SpawnReason;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.StringNbtReader;
 import net.minecraft.registry.Registries;
-import net.minecraft.entity.SpawnReason;
 import net.minecraft.util.Hand;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.RotationAxis;
+
 import org.joml.Matrix4f;
+
+import com.mojang.authlib.GameProfile;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.brigadier.StringReader;
+
 import org.lwjgl.opengl.GL11;
 
 import java.lang.reflect.Field;
@@ -268,6 +275,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
                     renderer.render(state, stack, new OrderedRenderCommandQueueImpl(), cameraState);
                 }
+                MinecraftClient.getInstance().getEntityRenderDispatcher().render(this.entity, 0D, 0D, 0D, 0F, stack, consumers, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE);
             }
             finally
             {
@@ -331,13 +339,41 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
                 context.stack.multiply(RotationAxis.POSITIVE_Y.rotation(MathUtils.PI));
             }
 
-            if (this.entity instanceof LivingEntity entity)
-            {
-                int u = context.overlay & '\uffff';
-                int v = context.overlay >> 16 & '\uffff';
+            if (this.entity instanceof LivingEntity livingMorph) 
+{
+    LivingEntity player = MinecraftClient.getInstance().player;
+    LivingEntity source = (context.entity instanceof LivingEntity) ? (LivingEntity)context.entity : null;
 
-                entity.hurtTime = v != 10 ? 100 : 0;
+    // 1. LIVE GAMEPLAY: We know this works perfectly. 
+    // If you are playing, exactly mimic your player's countdown.
+    if (player != null && source == player && player.hurtTime > 0) {
+        livingMorph.hurtTime = player.hurtTime;
+        livingMorph.maxHurtTime = player.maxHurtTime;
+    } 
+    // 2. REPLAYS & NPCs: Use the Red Flash, but let it count down naturally!
+    else {
+        int v = context.overlay >> 16 & '\uffff';
+        if (v != 10 && v != 0) {
+            // ONLY start the animation if it isn't already playing.
+            // This prevents the stutter/spasm!
+            if (livingMorph.hurtTime == 0) {
+                livingMorph.hurtTime = 10;
+                livingMorph.maxHurtTime = 10;
             }
+        }
+        // Notice we DO NOT force hurtTime = 0 here anymore. 
+        // We let the entity's natural tick() count it down smoothly.
+    }
+
+    // 3. Keep the limbs synced so running/walking looks correct
+    if (source != null) {
+        if (livingMorph.limbAnimator instanceof LimbAnimatorAccessor a && 
+            source.limbAnimator instanceof LimbAnimatorAccessor b) {
+            a.setPos(b.getPos());
+            a.setSpeed(b.getSpeed());
+        }
+    }
+}
 
             currentPose = this.form.pose.get();
             currentPoseOverlay = this.form.poseOverlay.get();
@@ -361,6 +397,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
                     renderer.render(state, context.stack, new OrderedRenderCommandQueueImpl(), cameraState);
                 }
+                MinecraftClient.getInstance().getEntityRenderDispatcher().render(this.entity, 0D, 0D, 0D, 0F, context.stack, consumers, light);
             }
             finally
             {

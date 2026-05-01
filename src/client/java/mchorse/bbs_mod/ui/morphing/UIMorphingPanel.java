@@ -13,6 +13,7 @@ import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.morphing.camera.ImmersiveMorphingCameraController;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.Direction;
+
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.Perspective;
 

@@ -8,16 +8,19 @@ import mchorse.bbs_mod.forms.renderers.FormRenderingContext;
 import mchorse.bbs_mod.items.GunProperties;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.interps.Lerps;
+
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.client.render.entity.state.EntityRenderState;
 import net.minecraft.client.render.entity.EntityRenderer;
 import net.minecraft.client.render.entity.EntityRendererFactory;
+import net.minecraft.client.render.entity.state.EntityRenderState;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.RotationAxis;
+
+import com.mojang.blaze3d.systems.RenderSystem;
 
 public class GunProjectileEntityRenderer extends EntityRenderer<GunProjectileEntity, GunProjectileEntityRenderer.GunProjectileEntityState>
 {
@@ -48,6 +51,7 @@ public class GunProjectileEntityRenderer extends EntityRenderer<GunProjectileEnt
         return Identifier.of("minecraft", "textures/entity/player/wide/steve.png");
     }
 
+    @Override
     public void render(GunProjectileEntityState state, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light)
     {
         GunProjectileEntity projectile = state.projectile;

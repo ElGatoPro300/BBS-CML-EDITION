@@ -4,11 +4,12 @@ import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import io.netty.util.collection.IntObjectHashMap;
 import io.netty.util.collection.IntObjectMap;
+import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.client.renderer.ModelBlockEntityRenderer;
 import mchorse.bbs_mod.entity.ActorEntity;
 import mchorse.bbs_mod.film.replays.Replay;
-import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
+import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.entities.MCEntity;
@@ -17,12 +18,12 @@ import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.forms.utils.Anchor;
 import mchorse.bbs_mod.forms.renderers.FormRenderType;
 import mchorse.bbs_mod.forms.renderers.FormRenderingContext;
-import mchorse.bbs_mod.graphics.Draw;
-import mchorse.bbs_mod.BBSSettings;
-import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.forms.renderers.utils.MatrixCache;
+import mchorse.bbs_mod.forms.renderers.utils.MatrixCacheEntry;
+import mchorse.bbs_mod.graphics.Draw;
 import mchorse.bbs_mod.mixin.client.ClientPlayerEntityAccessor;
 import mchorse.bbs_mod.morphing.Morph;
+import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.ui.utils.Gizmo;
@@ -31,7 +32,6 @@ import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.Pair;
 import mchorse.bbs_mod.utils.StringUtils;
-import mchorse.bbs_mod.utils.interps.Lerps;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.pose.Transform;
@@ -40,6 +40,14 @@ import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 import mchorse.bbs_mod.utils.joml.Matrices;
 import mchorse.bbs_mod.utils.joml.Vectors;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
+import mchorse.bbs_mod.utils.interps.Lerps;
+import mchorse.bbs_mod.utils.joml.Matrices;
+import mchorse.bbs_mod.utils.joml.Vectors;
+import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
+import mchorse.bbs_mod.utils.pose.Transform;
+
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
+
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.network.ClientPlayerEntity;
@@ -59,21 +67,28 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.LightType;
 import net.minecraft.world.World;
+
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 
+import com.mojang.blaze3d.systems.RenderSystem;
+
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+
+import io.netty.util.collection.IntObjectHashMap;
+import io.netty.util.collection.IntObjectMap;
 
 public abstract class BaseFilmController
 {
     public final Film film;
 
     protected IntObjectMap<IEntity> entities = new IntObjectHashMap<>();
-    protected Map<String, Replay> replayMap = new java.util.HashMap<>();
+    protected Map<String, Replay> replayMap = new HashMap<>();
 
     public boolean paused;
     public int exception = -1;
@@ -284,7 +299,7 @@ public abstract class BaseFilmController
             if (localMatrix != null && originMatrix != null)
             {
                 matrix = new Matrix4f(localMatrix);
-                matrix.setTranslation(originMatrix.getTranslation(new org.joml.Vector3f()));
+                matrix.setTranslation(originMatrix.getTranslation(new Vector3f()));
             }
             else
             {
@@ -677,6 +692,7 @@ public abstract class BaseFilmController
                             double y = replay.keyframes.y.interpolate(replayTick);
                             double z = replay.keyframes.z.interpolate(replayTick);
                             boolean sneaking = replay.keyframes.sneaking.interpolate(replayTick) > 0;
+                            boolean sprinting = replay.keyframes.sprinting.interpolate(replayTick) > 0;
                             boolean grounded = replay.keyframes.grounded.interpolate(replayTick) > 0;
 
                             Vec3d pos = new Vec3d(player.getX(), player.getY(), player.getZ());
@@ -690,6 +706,7 @@ public abstract class BaseFilmController
                             player.setPosition(x, y, z);
 
                             player.setSneaking(sneaking);
+                            player.setSprinting(sprinting);
                             player.setOnGround(grounded);
 
                             if (player instanceof ClientPlayerEntityAccessor accessor)

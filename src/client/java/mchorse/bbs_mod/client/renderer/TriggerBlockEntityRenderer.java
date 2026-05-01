@@ -3,12 +3,16 @@ package mchorse.bbs_mod.client.renderer;
 import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.blocks.entities.TriggerBlockEntity;
 import mchorse.bbs_mod.graphics.Draw;
+
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.block.entity.BlockEntityRendererFactory;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.Box;
+
 import org.joml.Vector3f;
+
+import com.mojang.blaze3d.systems.RenderSystem;
 
 import java.util.HashSet;
 import java.util.Set;

@@ -3,6 +3,7 @@ package mchorse.bbs_mod.utils.iris;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.utils.Pair;
+
 import net.irisshaders.iris.uniforms.custom.cached.CachedUniform;
 
 import java.util.HashMap;

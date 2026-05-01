@@ -2,8 +2,10 @@ package mchorse.bbs_mod.network;
 
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.actions.ActionState;
+import mchorse.bbs_mod.bay4lly.SkinManager;
 import mchorse.bbs_mod.blocks.entities.ModelBlockEntity;
 import mchorse.bbs_mod.blocks.entities.ModelProperties;
+import mchorse.bbs_mod.blocks.entities.TriggerBlockEntity;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.data.DataStorageUtils;
 import mchorse.bbs_mod.data.types.BaseType;
@@ -24,13 +26,14 @@ import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.UIScreen;
 import mchorse.bbs_mod.ui.model_blocks.UIModelBlockPanel;
 import mchorse.bbs_mod.ui.morphing.UIMorphingPanel;
+import mchorse.bbs_mod.ui.triggers.UITriggerBlockPanel;
 import mchorse.bbs_mod.utils.DataPath;
 import mchorse.bbs_mod.utils.repos.RepositoryOperation;
-import mchorse.bbs_mod.blocks.entities.TriggerBlockEntity;
-import mchorse.bbs_mod.ui.triggers.UITriggerBlockPanel;
+
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
+
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.Entity;
@@ -428,7 +431,7 @@ public class ClientNetwork
             {
                 try
                 {
-                    mchorse.bbs_mod.bay4lly.SkinManager.saveSkin(playerName, bytes);
+                    SkinManager.saveSkin(playerName, bytes);
                 }
                 catch (Exception e)
                 {

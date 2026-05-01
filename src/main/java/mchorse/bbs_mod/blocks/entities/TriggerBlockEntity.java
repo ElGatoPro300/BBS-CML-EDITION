@@ -8,31 +8,43 @@ import mchorse.bbs_mod.settings.values.misc.ValueVector3f;
 import mchorse.bbs_mod.settings.values.numeric.ValueBoolean;
 import mchorse.bbs_mod.settings.values.numeric.ValueInt;
 import mchorse.bbs_mod.triggers.Trigger;
+import mchorse.bbs_mod.blocks.entities.ModelBlockEntity;
+import mchorse.bbs_mod.data.DataStorageUtils;
 import mchorse.bbs_mod.events.TriggerBlockEntityUpdateCallback;
 import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.morphing.Morph;
 import mchorse.bbs_mod.network.ServerNetwork;
+import mchorse.bbs_mod.settings.values.core.ValueList;
+import mchorse.bbs_mod.settings.values.misc.ValueVector3f;
+import mchorse.bbs_mod.settings.values.numeric.ValueBoolean;
+import mchorse.bbs_mod.settings.values.numeric.ValueInt;
+import mchorse.bbs_mod.triggers.Trigger;
+
 import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.network.listener.ClientPlayPacketListener;
 import net.minecraft.network.packet.Packet;
 import net.minecraft.network.packet.s2c.play.BlockEntityUpdateS2CPacket;
+import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.storage.ReadView;
 import net.minecraft.storage.WriteView;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
 import net.minecraft.world.World;
-import net.minecraft.registry.RegistryWrapper;
-import org.jetbrains.annotations.Nullable;
+
 import org.joml.Vector3f;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+
+import org.jetbrains.annotations.Nullable;
 
 public class TriggerBlockEntity extends BlockEntity
 {
@@ -90,7 +102,7 @@ public class TriggerBlockEntity extends BlockEntity
     public final ValueVector3f regionSize = new ValueVector3f("regionSize", new Vector3f(1, 1, 1));
 
     private Set<UUID> playersInRegion = new HashSet<>();
-    private java.util.Map<UUID, Long> regionNextTriggerTick = new java.util.HashMap<>();
+    private Map<UUID, Long> regionNextTriggerTick = new HashMap<>();
 
     public TriggerBlockEntity(BlockPos pos, BlockState state)
     {
@@ -150,6 +162,16 @@ public class TriggerBlockEntity extends BlockEntity
                         modelBlock.markDirty();
                         this.world.updateListeners(pos, this.world.getBlockState(pos), this.world.getBlockState(pos), 3);
                     }
+                }
+            }
+            else if (type.equals("film"))
+            {
+                String filmName = trigger.film.get();
+                boolean playCamera = trigger.playCamera.get();
+                
+                if (!filmName.isEmpty())
+                {
+                    ServerNetwork.sendPlayFilm(player, filmName, playCamera);
                 }
             }
         }

@@ -4,9 +4,11 @@ import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.forms.FormUtilsClient;
+import mchorse.bbs_mod.forms.ITickable;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.renderers.FormRenderType;
+import mchorse.bbs_mod.forms.renderers.FormRenderer;
 import mchorse.bbs_mod.forms.renderers.FormRenderingContext;
 import mchorse.bbs_mod.graphics.Draw;
 import mchorse.bbs_mod.graphics.texture.Texture;
@@ -14,19 +16,29 @@ import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.forms.editors.UIFormEditor;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.UIContext;
+import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.ui.utils.StencilFormFramebuffer;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.Pair;
 import mchorse.bbs_mod.utils.colors.Colors;
+
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.GlUniform;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.util.math.MatrixStack;
+
 import org.joml.Matrix4f;
+import org.joml.Vector3d;
+import org.joml.Vector3f;
+
+import com.mojang.blaze3d.platform.GlStateManager;
+import com.mojang.blaze3d.systems.RenderSystem;
+
+import org.lwjgl.opengl.GL11;
 
 import java.util.function.Supplier;
 
@@ -38,6 +50,8 @@ public class UIPickableFormRenderer extends UIFormRenderer
 
     private StencilFormFramebuffer stencil = new StencilFormFramebuffer();
     private StencilMap stencilMap = new StencilMap();
+    private final Matrix4f lastGizmoMatrix = new Matrix4f();
+    private boolean hasGizmoMatrix;
 
     private IEntity target;
     private Supplier<Boolean> renderForm;
@@ -110,7 +124,8 @@ public class UIPickableFormRenderer extends UIFormRenderer
         FormRenderingContext formContext = new FormRenderingContext()
             .set(FormRenderType.PREVIEW, this.target == null ? this.entity : this.target, new MatrixStack(), LightmapTextureManager.pack(15, 15), OverlayTexture.DEFAULT_UV, context.getTransition())
             .camera(this.camera)
-            .modelRenderer();
+            .modelRenderer()
+            .equipment(false);
 
         if (this.renderForm == null || this.renderForm.get())
         {
@@ -121,8 +136,6 @@ public class UIPickableFormRenderer extends UIFormRenderer
                 this.renderFormHitbox(context);
             }
         }
-
-        this.renderAxes(context);
 
         if (this.area.isInside(context))
         {
@@ -144,6 +157,9 @@ public class UIPickableFormRenderer extends UIFormRenderer
             }
 
             Gizmo.INSTANCE.renderStencil(new MatrixStack(), this.stencilMap);
+            RenderSystem.disableCull();
+            Gizmo.INSTANCE.renderStencil(stack, this.stencilMap);
+            RenderSystem.enableCull();
 
             stack.pop();
 
@@ -158,6 +174,20 @@ public class UIPickableFormRenderer extends UIFormRenderer
         {
             this.stencil.clearPicking();
         }
+
+        this.prepareGizmoRenderState();
+        this.renderAxes(context);
+    }
+
+    private void prepareGizmoRenderState()
+    {
+        RenderSystem.depthMask(true);
+        RenderSystem.colorMask(true, true, true, true);
+        RenderSystem.enableDepthTest();
+        RenderSystem.depthFunc(GL11.GL_LEQUAL);
+        RenderSystem.disableBlend();
+        RenderSystem.disableCull();
+        RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
     }
 
     private void renderAxes(UIContext context)
@@ -169,7 +199,12 @@ public class UIPickableFormRenderer extends UIFormRenderer
 
         if (matrix != null)
         {
+            this.lastGizmoMatrix.set(matrix);
             MatrixStackUtils.multiply(stack, matrix);
+        }
+        else
+        {
+            this.lastGizmoMatrix.identity();
         }
 
         /* Draw axes */
@@ -178,9 +213,70 @@ public class UIPickableFormRenderer extends UIFormRenderer
             GlStateManager._disableDepthTest();
             Gizmo.INSTANCE.render(stack);
             GlStateManager._enableDepthTest();
+            RenderSystem.disableCull();
+            RenderSystem.disableDepthTest();
+            Gizmo.INSTANCE.render(stack);
+            RenderSystem.enableDepthTest();
+            RenderSystem.enableCull();
         }
 
         stack.pop();
+    }
+
+    public void prepareGizmoDrag(UIPropTransform transform)
+    {
+        if (transform == null)
+        {
+            return;
+        }
+
+        transform.setGizmoRayProvider(new UIPropTransform.IGizmoRayProvider()
+        {
+            @Override
+            public boolean getMouseRay(UIContext context, int mouseX, int mouseY, Vector3d rayOrigin, Vector3f rayDirection)
+            {
+                if (UIPickableFormRenderer.this.area.w <= 0 || UIPickableFormRenderer.this.area.h <= 0)
+                {
+                    return false;
+                }
+
+                Vector3f direction = UIPickableFormRenderer.this.camera.getMouseDirection(
+                    mouseX,
+                    mouseY,
+                    UIPickableFormRenderer.this.area.x,
+                    UIPickableFormRenderer.this.area.y,
+                    UIPickableFormRenderer.this.area.w,
+                    UIPickableFormRenderer.this.area.h
+                );
+
+                if (direction.lengthSquared() <= 1.0E-12F)
+                {
+                    return false;
+                }
+
+                rayDirection.set(direction).normalize();
+                rayOrigin.set(
+                    UIPickableFormRenderer.this.camera.position.x - UIPickableFormRenderer.this.pos.x,
+                    UIPickableFormRenderer.this.camera.position.y - UIPickableFormRenderer.this.pos.y,
+                    UIPickableFormRenderer.this.camera.position.z - UIPickableFormRenderer.this.pos.z
+                );
+
+                return true;
+            }
+
+            @Override
+            public boolean getGizmoMatrix(Matrix4f matrix)
+            {
+                if (!UIPickableFormRenderer.this.hasGizmoMatrix)
+                {
+                    return false;
+                }
+
+                matrix.set(UIPickableFormRenderer.this.lastGizmoMatrix);
+
+                return true;
+            }
+        });
     }
 
     private void renderFormHitbox(UIContext context)
@@ -205,6 +301,13 @@ public class UIPickableFormRenderer extends UIFormRenderer
         if (this.update && this.target != null)
         {
             this.form.update(this.entity);
+
+            FormRenderer renderer = FormUtilsClient.getRenderer(this.form);
+
+            if (renderer instanceof ITickable tickable)
+            {
+                tickable.tick(this.entity);
+            }
         }
     }
 

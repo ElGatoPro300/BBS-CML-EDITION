@@ -17,22 +17,28 @@ import mchorse.bbs_mod.particles.components.IComponentParticleUpdate;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.interps.Lerps;
+
 import net.minecraft.client.gl.ShaderProgram;
+import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.RenderLayers;
-import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.render.VertexConsumer;
-import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.client.render.VertexFormat;
+import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.BufferAllocator;
+import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.world.World;
 import org.lwjgl.opengl.GL11;
+
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
+
+import com.mojang.blaze3d.systems.RenderSystem;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -149,7 +155,14 @@ public class ParticleEmitter
         this.setupVariables();
         this.setEmitterVariables(0);
 
-        for (IComponentEmitterInitialize component : this.scheme.emitterInitializes)
+        List<IComponentEmitterInitialize> initializes = this.scheme.emitterInitializes;
+
+        if (initializes == null)
+        {
+            return;
+        }
+
+        for (IComponentEmitterInitialize component : initializes)
         {
             component.apply(this);
         }

@@ -1,28 +1,43 @@
 package mchorse.bbs_mod.forms.renderers;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.brigadier.StringReader;
 import mchorse.bbs_mod.forms.ITickable;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.forms.VanillaParticleForm;
 import mchorse.bbs_mod.forms.forms.utils.ParticleSettings;
+import mchorse.bbs_mod.forms.renderers.FormRenderType;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.joml.Matrices;
 import mchorse.bbs_mod.utils.joml.Vectors;
+
+import net.minecraft.block.Block;
+import net.minecraft.block.Blocks;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
+import net.minecraft.command.argument.ParticleEffectArgumentType;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.particle.BlockStateParticleEffect;
+import net.minecraft.particle.ItemStackParticleEffect;
 import net.minecraft.particle.ParticleEffect;
 import net.minecraft.particle.ParticleType;
 import net.minecraft.particle.ParticleTypes;
+import net.minecraft.particle.SimpleParticleType;
 import net.minecraft.registry.Registries;
+import net.minecraft.registry.RegistryWrapper;
+import net.minecraft.util.Identifier;
 import net.minecraft.world.World;
+
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
+
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.brigadier.StringReader;
 
 public class VanillaParticleFormRenderer extends FormRenderer<VanillaParticleForm> implements ITickable
 {
@@ -63,12 +78,35 @@ public class VanillaParticleFormRenderer extends FormRenderer<VanillaParticleFor
 
         Matrix4f positionMatrix = new Matrix4f(new Matrix4f());
         Vector3f translation = positionMatrix.getTranslation(new Vector3f());
+        Matrix4f positionMatrix;
 
-        this.pos.set(
-            translation.x + context.camera.position.x,
-            translation.y + context.camera.position.y,
-            translation.z + context.camera.position.z
-        );
+        if (context.type == FormRenderType.PREVIEW)
+        {
+            net.minecraft.client.render.Camera realCamera = MinecraftClient.getInstance().gameRenderer.getCamera();
+
+            positionMatrix = new Matrix4f().rotation(realCamera.getRotation());
+            positionMatrix.mul(context.stack.peek().getPositionMatrix());
+
+            Vector3f translation = positionMatrix.getTranslation(new Vector3f());
+
+            this.pos.set(
+                translation.x + (float) realCamera.getPos().x,
+                translation.y + (float) realCamera.getPos().y,
+                translation.z + (float) realCamera.getPos().z
+            );
+        }
+        else
+        {
+            positionMatrix = new Matrix4f(context.stack.peek().getPositionMatrix());
+
+            Vector3f translation = positionMatrix.getTranslation(new Vector3f());
+
+            this.pos.set(
+                translation.x + context.camera.position.x,
+                translation.y + context.camera.position.y,
+                translation.z + context.camera.position.z
+            );
+        }
 
         positionMatrix.get3x3(this.rot);
 
@@ -97,9 +135,63 @@ public class VanillaParticleFormRenderer extends FormRenderer<VanillaParticleFor
                 ParticleType<?> type = Registries.PARTICLE_TYPE.get(settings.particle);
                 ParticleEffect effect = ParticleTypes.FLAME;
 
-                if (type instanceof net.minecraft.particle.SimpleParticleType simple)
+                if (type != null)
                 {
-                    effect = simple;
+                    RegistryWrapper.WrapperLookup registries = world.getRegistryManager();
+
+                    if (type instanceof SimpleParticleType simple)
+                    {
+                        effect = simple;
+                    }
+                    else if (registries != null)
+                    {
+                        String full = settings.particle.toString();
+                        String args = settings.arguments.trim();
+
+                        if (!args.isEmpty())
+                        {
+                            full += " " + args;
+                        }
+
+                        try
+                        {
+                            effect = ParticleEffectArgumentType.readParameters(new StringReader(full), registries);
+                        }
+                        catch (Exception e)
+                        {
+                            /* Manual fallbacks for common complex particles using direct registry lookups */
+                            if (!args.isEmpty())
+                            {
+                                try
+                                {
+                                    Identifier id = Identifier.tryParse(args);
+
+                                    if (id != null)
+                                    {
+                                        /* Try to find as block first */
+                                        Block block = Registries.BLOCK.get(id);
+
+                                        if (block != Blocks.AIR)
+                                        {
+                                            effect = new BlockStateParticleEffect(ParticleTypes.BLOCK, block.getDefaultState());
+                                        }
+                                        else
+                                        {
+                                            /* Try to find as item */
+                                            Item item = Registries.ITEM.get(id);
+
+                                            if (item != Items.AIR)
+                                            {
+                                                effect = new ItemStackParticleEffect(ParticleTypes.ITEM, new ItemStack(item));
+                                            }
+                                        }
+                                    }
+                                }
+                                catch (Exception e2)
+                                {}
+                            }
+                        }
+                    }
                 }
 
                 for (int i = 0; i < count; i++)

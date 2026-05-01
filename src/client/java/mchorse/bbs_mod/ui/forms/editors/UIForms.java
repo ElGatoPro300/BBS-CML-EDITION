@@ -1,15 +1,18 @@
 package mchorse.bbs_mod.ui.forms.editors;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.forms.BodyPart;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UIList;
 import mchorse.bbs_mod.utils.StringUtils;
+
 import net.minecraft.client.render.DiffuseLighting;
 import net.minecraft.client.MinecraftClient;
+
 import org.joml.Vector3f;
+
+import com.mojang.blaze3d.systems.RenderSystem;
 
 import java.util.List;
 import java.util.Objects;
@@ -86,9 +89,9 @@ public class UIForms extends UIList<UIForms.FormEntry>
 
             y -= 10;
 
-            org.joml.Vector3f a = new org.joml.Vector3f(0.85F, 0.85F, -1F).normalize();
-            org.joml.Vector3f b = new org.joml.Vector3f(-0.85F, 0.85F, 1F).normalize();
-            MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.LEVEL);
+            Vector3f a = new Vector3f(0.85F, 0.85F, -1F).normalize();
+            Vector3f b = new Vector3f(-0.85F, 0.85F, 1F).normalize();
+            RenderSystem.setupLevelDiffuseLighting(a, b);
             FormUtilsClient.renderUI(form, context, x, y, x + 40, y + 40);
             
 

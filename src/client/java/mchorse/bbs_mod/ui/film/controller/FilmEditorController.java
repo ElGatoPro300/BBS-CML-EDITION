@@ -22,6 +22,8 @@ import mchorse.bbs_mod.utils.keyframes.KeyframeSegment;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.minecraft.client.MinecraftClient;
 
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
+
 import java.util.List;
 import java.util.Map;
 

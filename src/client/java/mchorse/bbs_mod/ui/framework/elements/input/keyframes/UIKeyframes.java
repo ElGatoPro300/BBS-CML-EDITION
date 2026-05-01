@@ -1,5 +1,6 @@
 package mchorse.bbs_mod.ui.framework.elements.input.keyframes;
 
+import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
@@ -15,6 +16,7 @@ import mchorse.bbs_mod.ui.framework.elements.input.keyframes.graphs.IUIKeyframeG
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.graphs.KeyframeType;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.graphs.UIKeyframeDopeSheet;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.graphs.UIKeyframeGraph;
+import mchorse.bbs_mod.ui.framework.elements.utils.UIDraggable;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.Scale;
 import mchorse.bbs_mod.ui.utils.ScrollDirection;
@@ -34,16 +36,17 @@ import mchorse.bbs_mod.utils.keyframes.KeyframeSegment;
 import mchorse.bbs_mod.utils.keyframes.factories.IKeyframeFactory;
 import mchorse.bbs_mod.utils.keyframes.factories.KeyframeFactories;
 import mchorse.bbs_mod.utils.presets.PresetManager;
+
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -87,6 +90,7 @@ public class UIKeyframes extends UIElement
     private SheetCache cache;
 
     private UICopyPasteController copyPasteController;
+    private UIDraggable sidebarResizer;
 
     public UIKeyframes(Consumer<Keyframe> callback)
     {
@@ -240,6 +244,39 @@ public class UIKeyframes extends UIElement
         this.keys().register(Keys.KEYFRAMES_SELECT_NEXT, () -> this.selectNextKeyframe(1)).category(category);
         this.keys().register(Keys.KEYFRAMES_SPREAD, this::spreadKeyframes).category(category);
         this.keys().register(Keys.KEYFRAMES_ADJUST_VALUES, this::adjustValues).category(category);
+
+        this.sidebarResizer = new UIDraggable((context) ->
+        {
+            int width = context.mouseX - this.area.x;
+
+            this.dopeSheet.setSidebarWidth(width);
+            this.updateSidebarResizerState();
+            this.resize();
+        })
+        {
+            @Override
+            protected boolean subMouseClicked(UIContext context)
+            {
+                if (this.area.isInside(context) && context.mouseButton == 0 && Window.isCtrlPressed())
+                {
+                    UIKeyframes.this.dopeSheet.setSidebarWidth(IUIKeyframeGraph.SIDEBAR_WIDTH);
+                    UIKeyframes.this.updateSidebarResizerState();
+                    UIKeyframes.this.resize();
+
+                    return true;
+                }
+
+                return super.subMouseClicked(context);
+            }
+        }.rendering((context) ->
+        {
+            float alpha = (this.sidebarResizer.isDragging() || this.sidebarResizer.area.isInside(context)) ? 0.75F : 0.5F;
+            int color = Colors.setA(BBSSettings.primaryColor.get(), alpha);
+
+            context.batcher.box(this.sidebarResizer.area.x, this.sidebarResizer.area.y, this.sidebarResizer.area.ex(), this.sidebarResizer.area.ey(), color);
+        });
+        this.add(this.sidebarResizer);
+        this.updateSidebarResizerState();
     }
 
     public UIKeyframes single()
@@ -904,6 +941,13 @@ public class UIKeyframes extends UIElement
         return this.currentGraph;
     }
 
+    public UIKeyframes setPresetsPreview(UICopyPasteController.IPresetPreview preview)
+    {
+        this.copyPasteController.preview(preview);
+
+        return this;
+    }
+
     public Scale getXAxis()
     {
         return this.xAxis;
@@ -991,7 +1035,7 @@ public class UIKeyframes extends UIElement
             max = this.getDuration();
         }
 
-        int sidebar = this.currentGraph instanceof UIKeyframeDopeSheet ? IUIKeyframeGraph.SIDEBAR_WIDTH : 0;
+        int sidebar = this.currentGraph instanceof UIKeyframeDopeSheet ? this.currentGraph.getSidebarWidth() : 0;
 
         if (Math.abs(max - min) > 0.01F)
         {
@@ -1026,6 +1070,7 @@ public class UIKeyframes extends UIElement
         super.resize();
 
         this.currentGraph.resize();
+        this.updateSidebarResizerState();
 
         if (!Operation.equals(minValue, maxValue))
         {
@@ -1245,6 +1290,7 @@ public class UIKeyframes extends UIElement
     @Override
     public void render(UIContext context)
     {
+        this.updateSidebarResizerState();
         super.render(context);
 
         this.handleMouse(context);
@@ -1331,7 +1377,7 @@ public class UIKeyframes extends UIElement
         {
             int leftBorder = this.toGraphX(0);
             int rightBorder = this.toGraphX(duration);
-            int sidebarX = this.area.x + IUIKeyframeGraph.SIDEBAR_WIDTH;
+            int sidebarX = this.area.x + (this.currentGraph instanceof UIKeyframeDopeSheet ? this.currentGraph.getSidebarWidth() : 0);
 
             if (leftBorder > sidebarX) context.batcher.box(sidebarX, this.area.y, Math.min(this.area.ex(), leftBorder), this.area.y + this.area.h, Colors.A50);
             if (rightBorder < this.area.ex()) context.batcher.box(Math.max(sidebarX, rightBorder), this.area.y, this.area.ex() , this.area.y + this.area.h, Colors.A50);
@@ -1341,6 +1387,34 @@ public class UIKeyframes extends UIElement
         {
             this.backgroundRender.accept(context);
         }
+    }
+
+    private void updateSidebarResizerState()
+    {
+        if (this.sidebarResizer == null)
+        {
+            return;
+        }
+
+        boolean dopeSheet = this.currentGraph == this.dopeSheet;
+        boolean locked = BBSSettings.editorLayoutSettings != null && BBSSettings.editorLayoutSettings.isLayoutLocked();
+        boolean visible = dopeSheet && !locked;
+
+        this.sidebarResizer.setVisible(visible);
+        this.sidebarResizer.setEnabled(visible);
+
+        if (!visible)
+        {
+            return;
+        }
+
+        this.dopeSheet.setSidebarWidth(this.dopeSheet.getSidebarWidth());
+
+        int x = this.area.x + this.dopeSheet.getSidebarWidth() - 3;
+        int y = this.area.my() - 20;
+
+        this.sidebarResizer.relative(this).x(x - this.area.x).y(y - this.area.y).w(6).h(40);
+        this.sidebarResizer.resize();
     }
 
     /* Caching state */
@@ -1382,6 +1456,7 @@ public class UIKeyframes extends UIElement
 
     public void copyViewport(UIKeyframes lastEditor)
     {
+        this.getDopeSheet().setSidebarWidth(lastEditor.getDopeSheet().getSidebarWidth());
         this.getDopeSheet().setTrackHeight(lastEditor.getDopeSheet().getTrackHeight());
         this.getXAxis().copy(lastEditor.getXAxis());
         this.getDopeSheet().getYAxis().copy(lastEditor.getDopeSheet().getYAxis());

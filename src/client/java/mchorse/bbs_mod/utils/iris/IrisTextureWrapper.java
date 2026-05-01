@@ -4,8 +4,10 @@ import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.utils.CollectionUtils;
+
 import net.minecraft.client.texture.AbstractTexture;
 import net.minecraft.resource.ResourceManager;
+
 import org.lwjgl.opengl.GL11;
 
 import java.io.IOException;

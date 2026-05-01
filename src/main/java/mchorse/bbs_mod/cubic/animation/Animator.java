@@ -1,15 +1,21 @@
 package mchorse.bbs_mod.cubic.animation;
 
+import mchorse.bbs_mod.cubic.IModel;
 import mchorse.bbs_mod.cubic.IModelInstance;
 import mchorse.bbs_mod.cubic.data.animation.Animation;
 import mchorse.bbs_mod.cubic.data.animation.Animations;
+import mchorse.bbs_mod.cubic.physics.PhysBoneRuntime;
+import mchorse.bbs_mod.cubic.physics.PhysBoneState;
 import mchorse.bbs_mod.forms.entities.IEntity;
+
 import net.minecraft.util.math.Vec3d;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Animator class
@@ -54,6 +60,7 @@ public class Animator implements IAnimator
     public int jumpingCounter;
 
     private IModelInstance model;
+    private final Map<String, PhysBoneState> physStates = new HashMap<>();
 
     @Override
     public List<String> getActions()
@@ -68,6 +75,7 @@ public class Animator implements IAnimator
     public void setup(IModelInstance model, ActionsConfig actions, boolean fade)
     {
         this.model = model;
+        this.physStates.clear();
 
         this.idle = this.createAction(this.idle, actions.getConfig("idle"), true);
         this.running = this.createAction(this.running, actions.getConfig("running"), true);
@@ -194,6 +202,8 @@ public class Animator implements IAnimator
                 it.remove();
             }
         }
+
+        this.updatePhysBones(target);
     }
 
     /**
@@ -392,6 +402,8 @@ public class Animator implements IAnimator
                 action.apply(target, armature.getModel(), transition, 1F, true);
             }
         }
+
+        this.applyPhysBones(armature.getModel());
     }
 
     @Override
@@ -400,5 +412,15 @@ public class Animator implements IAnimator
         Animation animation = this.model.getAnimations().get(name);
 
         this.addAction(new ActionPlayback(animation, new ActionConfig(), false, -1));
+    }
+
+    private void updatePhysBones(IEntity entity)
+    {
+        PhysBoneRuntime.update(entity, this.model, this.physStates);
+    }
+
+    private void applyPhysBones(IModel model)
+    {
+        PhysBoneRuntime.apply(model, this.physStates);
     }
 }

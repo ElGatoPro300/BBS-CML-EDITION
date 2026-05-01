@@ -25,6 +25,7 @@ import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.Pair;
 import mchorse.bbs_mod.utils.StringUtils;
 import mchorse.bbs_mod.utils.resources.CDNAssetSyncService;
+
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.util.Window;
 

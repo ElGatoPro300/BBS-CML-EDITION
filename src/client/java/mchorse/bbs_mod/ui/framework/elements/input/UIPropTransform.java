@@ -10,18 +10,24 @@ import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
-import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
 import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.ui.utils.UIUtils;
+import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.Axis;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.Timer;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.pose.Transform;
+
 import net.minecraft.client.MinecraftClient;
+
+import org.joml.Intersectiond;
 import org.joml.Matrix3f;
+import org.joml.Matrix4f;
+import org.joml.Vector3d;
 import org.joml.Vector3f;
+
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
@@ -31,6 +37,12 @@ import java.util.function.Supplier;
 
 public class UIPropTransform extends UITransform
 {
+    public interface IGizmoRayProvider
+    {
+        public boolean getMouseRay(UIContext context, int mouseX, int mouseY, Vector3d rayOrigin, Vector3f rayDirection);
+        public boolean getGizmoMatrix(Matrix4f matrix);
+    }
+
     public static final List<BiConsumer<UIPropTransform, ContextMenuManager>> contextMenuExtensions = new ArrayList<>();
 
     private static final double[] CURSOR_X = new double[1];
@@ -52,6 +64,22 @@ public class UIPropTransform extends UITransform
     private boolean model;
     private boolean local;
     private boolean freeRotation;
+    private boolean rayDragInitialized;
+
+    private IGizmoRayProvider gizmoRayProvider;
+    private final Vector3d rayOrigin = new Vector3d();
+    private final Vector3f rayDirection = new Vector3f();
+    private final Matrix4f rayGizmoMatrix = new Matrix4f();
+    private final Vector3f rayPrimaryAxis = new Vector3f();
+    private final Vector3f raySecondaryAxis = new Vector3f();
+    private final Vector3f rayPlaneNormal = new Vector3f();
+    private final Vector3d rayLastPoint = new Vector3d();
+    private final Vector3d rayCurrentPoint = new Vector3d();
+    private final Vector3f rayGizmoOrigin = new Vector3f();
+    private double rayLastAxisValue;
+    private final Vector3d planeOrigin = new Vector3d();
+    private final Vector3d planeNormal = new Vector3d();
+    private final Vector3d rayDirectionD = new Vector3d();
 
     private UITransformHandler handler;
 
@@ -229,6 +257,11 @@ public class UIPropTransform extends UITransform
         this.fillP(transform.pivot.x, transform.pivot.y, transform.pivot.z);
     }
 
+    public void setGizmoRayProvider(IGizmoRayProvider provider)
+    {
+        this.gizmoRayProvider = provider;
+    }
+
     public void enableMode(int mode)
     {
         this.enableMode(mode, null);
@@ -269,6 +302,7 @@ public class UIPropTransform extends UITransform
 
         this.editing = true;
         this.mode = mode;
+        this.rayDragInitialized = false;
 
         this.cache.copy(this.transform);
 
@@ -276,6 +310,8 @@ public class UIPropTransform extends UITransform
         {
             context.menu.overlay.add(this.handler);
         }
+
+        this.initializeRayDrag(context);
     }
 
     public void enablePlaneMode(int mode, Axis primary, Axis secondary)
@@ -300,6 +336,7 @@ public class UIPropTransform extends UITransform
 
         this.editing = true;
         this.mode = mode;
+        this.rayDragInitialized = false;
 
         this.cache.copy(this.transform);
 
@@ -307,6 +344,8 @@ public class UIPropTransform extends UITransform
         {
             context.menu.overlay.add(this.handler);
         }
+
+        this.initializeRayDrag(context);
     }
 
     public void enableFreeRotation(int mode, Axis marker)
@@ -341,6 +380,7 @@ public class UIPropTransform extends UITransform
 
         this.editing = true;
         this.mode = mode;
+        this.rayDragInitialized = false;
 
         this.cache.copy(this.transform);
 
@@ -348,6 +388,8 @@ public class UIPropTransform extends UITransform
         {
             context.menu.overlay.add(this.handler);
         }
+
+        this.initializeRayDrag(context);
     }
 
     private Vector3f getValue()
@@ -379,6 +421,7 @@ public class UIPropTransform extends UITransform
     {
         this.editing = false;
         this.freeRotation = false;
+        this.rayDragInitialized = false;
 
         if (this.handler.hasParent())
         {
@@ -541,94 +584,62 @@ public class UIPropTransform extends UITransform
             }
             else
             {
-                int dx = context.mouseX - this.lastX;
-                int dy = context.mouseY - this.lastY;
-                Vector3f vector = this.getValue();
-                boolean all = this.mode == 1 && Window.isCtrlPressed();
-                UITrackpad reference = this.mode == 0 ? this.tx : (this.mode == 1 ? this.sx : this.rx);
-                float factor = (float) reference.getValueModifier();
+                boolean handledByRayDrag = this.applyRayDrag(context);
 
-                if (this.local && this.mode == 0)
+                if (!handledByRayDrag)
                 {
-                    Vector3f local = new Vector3f();
+                    int dx = context.mouseX - this.lastX;
+                    int dy = context.mouseY - this.lastY;
+                    Vector3f vector = this.getValue();
+                    boolean all = this.mode == 1 && Window.isCtrlPressed();
+                    UITrackpad reference = this.mode == 0 ? this.tx : (this.mode == 1 ? this.sx : this.rx);
+                    float factor = (float) reference.getValueModifier();
 
-                    if (this.secondaryAxis == null)
+                    if (this.local && this.mode == 0)
                     {
-                        double delta;
+                        Vector3f local = new Vector3f();
 
-                        if (this.axis == Axis.Y && BBSSettings.gizmoYAxisHorizontal.get())
+                        if (this.secondaryAxis == null)
                         {
-                            delta = factor * dx;
-                        }
-                        else if (this.axis == Axis.Y)
-                        {
-                            delta = factor * dy;
+                            double delta;
+
+                            if (this.axis == Axis.Y)
+                            {
+                                delta = factor * dy;
+                            }
+                            else
+                            {
+                                delta = factor * dx;
+                            }
+
+                            local.add(this.calculateLocalVector(delta, this.axis));
                         }
                         else
                         {
-                            delta = factor * dx;
+                            double primaryDelta = factor * dx;
+                            double secondaryDelta = factor * dy;
+
+                            local.add(this.calculateLocalVector(primaryDelta, this.axis));
+                            local.add(this.calculateLocalVector(secondaryDelta, this.secondaryAxis));
                         }
 
-                        local.add(this.calculateLocalVector(delta, this.axis));
+                        this.setT(null, vector.x + local.x, vector.y + local.y, vector.z + local.z);
                     }
                     else
                     {
-                        double primaryDelta = factor * dx;
-                        double secondaryDelta = factor * dy;
+                        Vector3f vector3f = new Vector3f(vector);
 
-                        local.add(this.calculateLocalVector(primaryDelta, this.axis));
-                        local.add(this.calculateLocalVector(secondaryDelta, this.secondaryAxis));
-                    }
-
-                    this.setT(null, vector.x + local.x, vector.y + local.y, vector.z + local.z);
-                }
-                else
-                {
-                    Vector3f vector3f = new Vector3f(vector);
-
-                    if (this.mode == 2)
-                    {
-                        vector3f.mul(180F / MathUtils.PI);
-                    }
-
-                    if (this.mode == 2 && this.freeRotation)
-                    {
-                        vector3f.x -= factor * dy;
-                        vector3f.y += factor * dx;
-                    }
-                    else if (this.mode == 0 && this.secondaryAxis != null)
-                    {
-                        if (this.axis == Axis.X)
+                        if (this.mode == 2)
                         {
-                            vector3f.x += factor * dx;
+                            vector3f.mul(180F / MathUtils.PI);
                         }
-                        else if (this.axis == Axis.Y)
+
+                        if (this.mode == 2 && this.freeRotation)
                         {
+                            vector3f.x -= factor * dy;
                             vector3f.y += factor * dx;
                         }
-                        else if (this.axis == Axis.Z)
-                        {
-                            vector3f.z += factor * dx;
-                        }
-
-                        float secondaryDelta = factor * dy;
-
-                        if (this.secondaryAxis == Axis.X)
-                        {
-                            vector3f.x += secondaryDelta;
-                        }
-                        else if (this.secondaryAxis == Axis.Y)
-                        {
-                            vector3f.y -= secondaryDelta;
-                        }
-                        else if (this.secondaryAxis == Axis.Z)
-                        {
-                            vector3f.z -= secondaryDelta;
-                        }
-                    }
-                    else
-                    {
-                        if (this.mode == 0 && !this.local && this.secondaryAxis == null && !all)
+                        else if (this.mode == 0 && this.secondaryAxis != null)
                         {
                             if (this.axis == Axis.X)
                             {
@@ -636,34 +647,60 @@ public class UIPropTransform extends UITransform
                             }
                             else if (this.axis == Axis.Y)
                             {
-                                if (BBSSettings.gizmoYAxisHorizontal.get())
-                                {
-                                    vector3f.y += factor * dx;
-                                }
-                                else
-                                {
-                                    vector3f.y -= factor * dy;
-                                }
+                                vector3f.y += factor * dx;
                             }
                             else if (this.axis == Axis.Z)
                             {
                                 vector3f.z += factor * dx;
                             }
+
+                            float secondaryDelta = factor * dy;
+
+                            if (this.secondaryAxis == Axis.X)
+                            {
+                                vector3f.x += secondaryDelta;
+                            }
+                            else if (this.secondaryAxis == Axis.Y)
+                            {
+                                vector3f.y -= secondaryDelta;
+                            }
+                            else if (this.secondaryAxis == Axis.Z)
+                            {
+                                vector3f.z -= secondaryDelta;
+                            }
                         }
                         else
                         {
-                            if (this.axis == Axis.X || all) vector3f.x += factor * dx;
-                            if (this.axis == Axis.Y || all) vector3f.y += factor * dx;
-                            if (this.axis == Axis.Z || all) vector3f.z += factor * dx;
+                            if (this.mode == 0 && !this.local && this.secondaryAxis == null && !all)
+                            {
+                                if (this.axis == Axis.X)
+                                {
+                                    vector3f.x += factor * dx;
+                                }
+                                else if (this.axis == Axis.Y)
+                                {
+                                    vector3f.y -= factor * dy;
+                                }
+                                else if (this.axis == Axis.Z)
+                                {
+                                    vector3f.z += factor * dx;
+                                }
+                            }
+                            else
+                            {
+                                if (this.axis == Axis.X || all) vector3f.x += factor * dx;
+                                if (this.axis == Axis.Y || all) vector3f.y += factor * dx;
+                                if (this.axis == Axis.Z || all) vector3f.z += factor * dx;
+                            }
                         }
-                    }
 
-                    if (this.mode == 0) this.setT(null, vector3f.x, vector3f.y, vector3f.z);
-                    if (this.mode == 1) this.setS(null, vector3f.x, vector3f.y, vector3f.z);
-                    if (this.mode == 2)
-                    {
-                        if (this.local && BBSSettings.gizmos.get()) this.setR2(null, vector3f.x, vector3f.y, vector3f.z);
-                        else this.setR(null, vector3f.x, vector3f.y, vector3f.z);
+                        if (this.mode == 0) this.setT(null, vector3f.x, vector3f.y, vector3f.z);
+                        if (this.mode == 1) this.setS(null, vector3f.x, vector3f.y, vector3f.z);
+                        if (this.mode == 2)
+                        {
+                            if (this.local && BBSSettings.gizmos.get()) this.setR2(null, vector3f.x, vector3f.y, vector3f.z);
+                            else this.setR(null, vector3f.x, vector3f.y, vector3f.z);
+                        }
                     }
                 }
 
@@ -685,6 +722,333 @@ public class UIPropTransform extends UITransform
 
             context.batcher.textCard(label, x, y, Colors.WHITE, BBSSettings.primaryColor(Colors.A50));
         }
+    }
+
+    private boolean initializeRayDrag(UIContext context)
+    {
+        if (this.gizmoRayProvider == null || context == null)
+        {
+            this.rayDragInitialized = false;
+            return false;
+        }
+
+        if (this.mode == 1 || (this.mode == 2 && this.freeRotation))
+        {
+            this.rayDragInitialized = false;
+            return false;
+        }
+
+        if (!this.gizmoRayProvider.getGizmoMatrix(this.rayGizmoMatrix))
+        {
+            this.rayDragInitialized = false;
+            return false;
+        }
+
+        if (!this.gizmoRayProvider.getMouseRay(context, context.mouseX, context.mouseY, this.rayOrigin, this.rayDirection))
+        {
+            this.rayDragInitialized = false;
+            return false;
+        }
+
+        this.rayGizmoMatrix.getTranslation(this.rayGizmoOrigin);
+        this.extractAxisWorld(this.axis, this.rayPrimaryAxis);
+
+        if (this.mode == 0 && this.secondaryAxis != null)
+        {
+            this.extractAxisWorld(this.secondaryAxis, this.raySecondaryAxis);
+            this.rayPlaneNormal.set(this.rayPrimaryAxis).cross(this.raySecondaryAxis);
+
+            if (!this.normalizeSafe(this.rayPlaneNormal))
+            {
+                this.rayDragInitialized = false;
+                return false;
+            }
+        }
+        else if (this.mode == 0)
+        {
+            double axisValue = this.computeAxisValue(this.rayOrigin, this.rayDirection, this.rayPrimaryAxis);
+
+            if (!Double.isFinite(axisValue))
+            {
+                this.rayDragInitialized = false;
+                return false;
+            }
+
+            this.rayLastAxisValue = axisValue;
+        }
+        else if (this.mode == 2)
+        {
+            this.rayPlaneNormal.set(this.rayPrimaryAxis);
+
+            if (!this.normalizeSafe(this.rayPlaneNormal))
+            {
+                this.rayDragInitialized = false;
+                return false;
+            }
+        }
+        else
+        {
+            this.rayDragInitialized = false;
+            return false;
+        }
+
+        if ((this.mode != 0 || this.secondaryAxis != null) && !this.intersectCurrentRay(this.rayLastPoint))
+        {
+            this.rayDragInitialized = false;
+            return false;
+        }
+
+        this.rayDragInitialized = true;
+
+        return true;
+    }
+
+    private boolean applyRayDrag(UIContext context)
+    {
+        if (this.gizmoRayProvider == null || context == null)
+        {
+            return false;
+        }
+
+        if (!this.rayDragInitialized && !this.initializeRayDrag(context))
+        {
+            return false;
+        }
+
+        if (!this.gizmoRayProvider.getMouseRay(context, context.mouseX, context.mouseY, this.rayOrigin, this.rayDirection))
+        {
+            return false;
+        }
+
+        if (this.mode == 0)
+        {
+            if (this.secondaryAxis == null)
+            {
+                double axisValue = this.computeAxisValue(this.rayOrigin, this.rayDirection, this.rayPrimaryAxis);
+
+                if (!Double.isFinite(axisValue))
+                {
+                    return false;
+                }
+
+                float primaryDelta = (float) (axisValue - this.rayLastAxisValue);
+
+                if (Math.abs(primaryDelta) <= 1.0E-8F)
+                {
+                    return true;
+                }
+
+                Vector3f value = this.getValue();
+
+                if (this.local)
+                {
+                    Vector3f result = this.calculateLocalVector(primaryDelta, this.axis);
+
+                    this.setT(null, value.x + result.x, value.y + result.y, value.z + result.z);
+                }
+                else
+                {
+                    Vector3f result = new Vector3f(value);
+
+                    this.addAxisDelta(result, this.axis, primaryDelta);
+                    this.setT(null, result.x, result.y, result.z);
+                }
+
+                this.rayLastAxisValue = axisValue;
+            }
+            else
+            {
+                if (!this.intersectCurrentRay(this.rayCurrentPoint))
+                {
+                    return false;
+                }
+
+                Vector3d delta = new Vector3d(this.rayCurrentPoint).sub(this.rayLastPoint);
+
+                if (delta.lengthSquared() <= 1.0E-12D)
+                {
+                    return true;
+                }
+
+                float primaryDelta = (float) delta.dot(this.rayPrimaryAxis.x, this.rayPrimaryAxis.y, this.rayPrimaryAxis.z);
+                Vector3f value = this.getValue();
+
+                if (this.local)
+                {
+                    Vector3f result = new Vector3f();
+
+                    result.add(this.calculateLocalVector(primaryDelta, this.axis));
+
+                    if (this.secondaryAxis != null)
+                    {
+                        float secondaryDelta = (float) delta.dot(this.raySecondaryAxis.x, this.raySecondaryAxis.y, this.raySecondaryAxis.z);
+
+                        result.add(this.calculateLocalVector(secondaryDelta, this.secondaryAxis));
+                    }
+
+                    this.setT(null, value.x + result.x, value.y + result.y, value.z + result.z);
+                }
+                else
+                {
+                    Vector3f result = new Vector3f(value);
+
+                    this.addAxisDelta(result, this.axis, primaryDelta);
+
+                    float secondaryDelta = (float) delta.dot(this.raySecondaryAxis.x, this.raySecondaryAxis.y, this.raySecondaryAxis.z);
+                    this.addAxisDelta(result, this.secondaryAxis, secondaryDelta);
+
+                    this.setT(null, result.x, result.y, result.z);
+                }
+
+                this.rayLastPoint.set(this.rayCurrentPoint);
+            }
+        }
+        else if (this.mode == 2 && !this.freeRotation)
+        {
+            if (!this.intersectCurrentRay(this.rayCurrentPoint))
+            {
+                return false;
+            }
+
+            Vector3f from = new Vector3f(
+                (float) (this.rayLastPoint.x - this.rayGizmoOrigin.x),
+                (float) (this.rayLastPoint.y - this.rayGizmoOrigin.y),
+                (float) (this.rayLastPoint.z - this.rayGizmoOrigin.z)
+            );
+            Vector3f to = new Vector3f(
+                (float) (this.rayCurrentPoint.x - this.rayGizmoOrigin.x),
+                (float) (this.rayCurrentPoint.y - this.rayGizmoOrigin.y),
+                (float) (this.rayCurrentPoint.z - this.rayGizmoOrigin.z)
+            );
+
+            if (!this.normalizeSafe(from) || !this.normalizeSafe(to))
+            {
+                return false;
+            }
+
+            Vector3f cross = new Vector3f(from).cross(to);
+            float sin = this.rayPlaneNormal.dot(cross);
+            float cos = from.dot(to);
+            float angle = (float) Math.toDegrees(Math.atan2(sin, cos));
+
+            Vector3f value = new Vector3f(this.getValue()).mul(180F / MathUtils.PI);
+            this.addAxisDelta(value, this.axis, angle);
+
+            if (this.local && BBSSettings.gizmos.get())
+            {
+                this.setR2(null, value.x, value.y, value.z);
+            }
+            else
+            {
+                this.setR(null, value.x, value.y, value.z);
+            }
+
+            this.rayLastPoint.set(this.rayCurrentPoint);
+        }
+        else
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    private boolean intersectCurrentRay(Vector3d out)
+    {
+        this.planeOrigin.set(this.rayGizmoOrigin.x, this.rayGizmoOrigin.y, this.rayGizmoOrigin.z);
+        this.planeNormal.set(this.rayPlaneNormal.x, this.rayPlaneNormal.y, this.rayPlaneNormal.z);
+        this.rayDirectionD.set(this.rayDirection.x, this.rayDirection.y, this.rayDirection.z);
+
+        if (this.planeNormal.dot(this.rayDirectionD) > 0)
+        {
+            this.planeNormal.negate();
+        }
+
+        double distance = Intersectiond.intersectRayPlane(this.rayOrigin, this.rayDirectionD, this.planeOrigin, this.planeNormal, 1.0E-6D);
+
+        if (!Double.isFinite(distance) || distance < 0D)
+        {
+            return false;
+        }
+
+        out.set(this.rayOrigin).fma(distance, this.rayDirectionD);
+
+        return true;
+    }
+
+    private void extractAxisWorld(Axis axis, Vector3f out)
+    {
+        if (axis == Axis.X)
+        {
+            out.set(1F, 0F, 0F);
+        }
+        else if (axis == Axis.Y)
+        {
+            out.set(0F, 1F, 0F);
+        }
+        else
+        {
+            out.set(0F, 0F, 1F);
+        }
+
+        this.rayGizmoMatrix.transformDirection(out);
+        this.normalizeSafe(out);
+    }
+
+    private boolean normalizeSafe(Vector3f vector)
+    {
+        float lengthSquared = vector.lengthSquared();
+
+        if (lengthSquared <= 1.0E-12F)
+        {
+            return false;
+        }
+
+        vector.mul((float) (1D / Math.sqrt(lengthSquared)));
+
+        return true;
+    }
+
+    private void addAxisDelta(Vector3f vector, Axis axis, float delta)
+    {
+        if (axis == Axis.X)
+        {
+            vector.x += delta;
+        }
+        else if (axis == Axis.Y)
+        {
+            vector.y += delta;
+        }
+        else
+        {
+            vector.z += delta;
+        }
+    }
+
+    private double computeAxisValue(Vector3d origin, Vector3f direction, Vector3f axisDirection)
+    {
+        double ux = direction.x;
+        double uy = direction.y;
+        double uz = direction.z;
+        double vx = axisDirection.x;
+        double vy = axisDirection.y;
+        double vz = axisDirection.z;
+
+        double wx = origin.x - this.rayGizmoOrigin.x;
+        double wy = origin.y - this.rayGizmoOrigin.y;
+        double wz = origin.z - this.rayGizmoOrigin.z;
+
+        double b = ux * vx + uy * vy + uz * vz;
+        double d = ux * wx + uy * wy + uz * wz;
+        double e = vx * wx + vy * wy + vz * wz;
+        double denom = 1D - b * b;
+
+        if (Math.abs(denom) <= 1.0E-8D)
+        {
+            return e;
+        }
+
+        return (e - b * d) / denom;
     }
 
     public static class UITransformHandler extends UIElement

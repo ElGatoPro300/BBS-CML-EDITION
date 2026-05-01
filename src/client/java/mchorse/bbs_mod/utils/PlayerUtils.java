@@ -1,8 +1,11 @@
 package mchorse.bbs_mod.utils;
 
 import mchorse.bbs_mod.network.ClientNetwork;
+
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
+
+import com.mojang.authlib.GameProfile;
 
 public class PlayerUtils
 {

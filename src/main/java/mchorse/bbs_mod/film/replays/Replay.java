@@ -6,24 +6,28 @@ import mchorse.bbs_mod.actions.types.ActionClip;
 import mchorse.bbs_mod.camera.data.Point;
 import mchorse.bbs_mod.camera.values.ValuePoint;
 import mchorse.bbs_mod.data.types.BaseType;
+import mchorse.bbs_mod.data.types.IntType;
 import mchorse.bbs_mod.data.types.MapType;
+import mchorse.bbs_mod.data.types.StringType;
 import mchorse.bbs_mod.film.Film;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.forms.Form;
+import mchorse.bbs_mod.settings.values.base.BaseValueGroup;
 import mchorse.bbs_mod.settings.values.core.ValueForm;
 import mchorse.bbs_mod.settings.values.core.ValueGroup;
 import mchorse.bbs_mod.settings.values.core.ValueString;
 import mchorse.bbs_mod.settings.values.numeric.ValueBoolean;
 import mchorse.bbs_mod.settings.values.numeric.ValueFloat;
 import mchorse.bbs_mod.settings.values.numeric.ValueInt;
-import mchorse.bbs_mod.settings.values.base.BaseValueGroup;
 import mchorse.bbs_mod.utils.clips.Clip;
 import mchorse.bbs_mod.utils.clips.Clips;
+
 import net.minecraft.entity.LivingEntity;
 
-import java.util.List;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 public class Replay extends ValueGroup
 {
@@ -55,6 +59,7 @@ public class Replay extends ValueGroup
     public final ValueString uuid = new ValueString("uuid", "");
 
     /* Item drop velocity configuration */
+    public final ValueBoolean dropItemsOnDeath = new ValueBoolean("drop_items_on_death", false);
     public final ValueFloat dropVelocityMinX = new ValueFloat("drop_velocity_min_x", -0.1F);
     public final ValueFloat dropVelocityMaxX = new ValueFloat("drop_velocity_max_x", 0.1F);
     public final ValueFloat dropVelocityMinY = new ValueFloat("drop_velocity_min_y", 0.1F);
@@ -88,6 +93,7 @@ public class Replay extends ValueGroup
 
         this.add(this.axesPreview);
         this.add(this.axesPreviewBone);
+        this.add(this.dropItemsOnDeath);
         this.add(this.dropVelocityMinX);
         this.add(this.dropVelocityMaxX);
         this.add(this.dropVelocityMinY);
@@ -97,7 +103,7 @@ public class Replay extends ValueGroup
         this.add(this.isGroup);
         this.add(this.uuid);
         
-        this.uuid.set(java.util.UUID.randomUUID().toString());
+        this.uuid.set(UUID.randomUUID().toString());
     }
 
     public String getName()
@@ -220,7 +226,7 @@ public class Replay extends ValueGroup
 
             for (Map.Entry<String, String> entry : this.customSheetTitles.entrySet())
             {
-                titles.put(entry.getKey(), new mchorse.bbs_mod.data.types.StringType(entry.getValue()));
+                titles.put(entry.getKey(), new StringType(entry.getValue()));
             }
 
             map.put("custom_sheet_titles", titles);
@@ -232,7 +238,7 @@ public class Replay extends ValueGroup
 
             for (Map.Entry<String, Integer> entry : this.sheetColors.entrySet())
             {
-                colors.put(entry.getKey(), new mchorse.bbs_mod.data.types.IntType(entry.getValue()));
+                colors.put(entry.getKey(), new IntType(entry.getValue()));
             }
 
             map.put("sheet_colors", colors);

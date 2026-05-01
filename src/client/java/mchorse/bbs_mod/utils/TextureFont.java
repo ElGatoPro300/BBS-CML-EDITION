@@ -1,6 +1,5 @@
 package mchorse.bbs_mod.utils;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.TexturedRenderLayers;
@@ -9,9 +8,11 @@ import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.texture.NativeImage;
 import net.minecraft.client.texture.NativeImageBackedTexture;
 import net.minecraft.util.Identifier;
+
 import org.joml.Matrix4f;
 
-import javax.imageio.ImageIO;
+import com.mojang.blaze3d.systems.RenderSystem;
+
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.FontMetrics;
@@ -22,8 +23,12 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+
+import javax.imageio.ImageIO;
 
 public class TextureFont
 {
@@ -155,14 +160,14 @@ public class TextureFont
         return (int) w;
     }
 
-    public java.util.List<String> wrap(String text, int width)
+    public List<String> wrap(String text, int width)
     {
         return this.wrap(text, width, 0);
     }
 
-    public java.util.List<String> wrap(String text, int width, float letterSpacing)
+    public List<String> wrap(String text, int width, float letterSpacing)
     {
-        java.util.List<String> lines = new java.util.ArrayList<>();
+        List<String> lines = new ArrayList<>();
         String[] words = text.split(" ");
         StringBuilder currentLine = new StringBuilder();
 

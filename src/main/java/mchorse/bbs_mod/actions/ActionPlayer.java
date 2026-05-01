@@ -4,15 +4,18 @@ import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.entity.ActorEntity;
 import mchorse.bbs_mod.film.Film;
+import mchorse.bbs_mod.film.replays.FormProperties;
 import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.morphing.Morph;
 import mchorse.bbs_mod.network.ServerNetwork;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
+import mchorse.bbs_mod.settings.values.base.BaseValueGroup;
 import mchorse.bbs_mod.utils.CollectionUtils;
 import mchorse.bbs_mod.utils.DataPath;
 import mchorse.bbs_mod.utils.MathUtils;
+
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.MovementType;
@@ -284,7 +287,7 @@ public class ActionPlayer
 
     public void syncData(DataPath key, BaseType data)
     {
-        BaseValue baseValue = this.film.getRecursively(key);
+        BaseValue baseValue = this.resolveValue(key);
 
         if (baseValue != null)
         {
@@ -295,6 +298,45 @@ public class ActionPlayer
                 this.updateReplayEntities();
             }
         }
+    }
+
+    private BaseValue resolveValue(DataPath path)
+    {
+        BaseValue current = this.film;
+
+        for (int i = 0; i < path.size(); i++)
+        {
+            String part = path.strings.get(i);
+
+            if (current instanceof BaseValueGroup group)
+            {
+                BaseValue next = group.get(part);
+
+                if (next == null)
+                {
+                    if (group instanceof FormProperties formProps)
+                    {
+                        if (formProps.getParent() instanceof Replay replay)
+                        {
+                            next = formProps.getOrCreate(replay.form.get(), part);
+                        }
+                    }
+                }
+
+                if (next == null)
+                {
+                    return null;
+                }
+
+                current = next;
+            }
+            else
+            {
+                return null;
+            }
+        }
+
+        return current;
     }
 
     public void goTo(int tick)
@@ -329,6 +371,15 @@ public class ActionPlayer
 
     public void stop()
     {
+        SuperFakePlayer fakePlayer = SuperFakePlayer.get(this.world);
+
+        for (Replay replay : this.film.replays.getList())
+        {
+            fakePlayer.closeReplayChest(replay.getId());
+        }
+
+        fakePlayer.closeHandledScreen();
+
         for (LivingEntity value : this.actors.values())
         {
             if (!value.isPlayer())

@@ -5,6 +5,8 @@ import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
+
 public class UIDashboardPanel extends UIElement
 {
     public final UIDashboard dashboard;

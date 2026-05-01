@@ -6,16 +6,20 @@ import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.forms.editors.forms.UIForm;
 import mchorse.bbs_mod.ui.forms.editors.panels.widgets.UIItemStack;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
+import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
 import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Color;
 import net.minecraft.item.ItemDisplayContext;
 
+import net.minecraft.item.ModelTransformationMode;
+
 public class UIItemFormPanel extends UIFormPanel<ItemForm>
 {
     public UIColor color;
     public UIButton modelTransform;
+    public UIToggle sameAnimationWhenDropped;
     public UIItemStack itemStackEditor;
 
     public UIItemFormPanel(UIForm editor)
@@ -41,9 +45,11 @@ public class UIItemFormPanel extends UIFormPanel<ItemForm>
             });
         });
 
+        this.sameAnimationWhenDropped = new UIToggle(UIKeys.FORMS_EDITORS_ITEM_SAME_ANIMATION_WHEN_DROPPED, (b) -> this.form.sameAnimationWhenDropped.set(b.getValue()));
+        this.sameAnimationWhenDropped.tooltip(UIKeys.FORMS_EDITORS_ITEM_SAME_ANIMATION_WHEN_DROPPED_TOOLTIP);
         this.itemStackEditor = new UIItemStack((itemStack) -> this.form.stack.set(itemStack.copy()));
 
-        this.options.add(this.color, UI.label(UIKeys.FORMS_EDITORS_ITEM_TRANSFORMS), this.modelTransform, this.itemStackEditor);
+        this.options.add(this.color, UI.label(UIKeys.FORMS_EDITORS_ITEM_TRANSFORMS), this.modelTransform, this.sameAnimationWhenDropped, this.itemStackEditor);
     }
 
     private void setModelTransform(ItemDisplayContext value)
@@ -60,6 +66,7 @@ public class UIItemFormPanel extends UIFormPanel<ItemForm>
 
         this.color.setColor(form.color.get().getARGBColor());
         this.modelTransform.label = IKey.constant(form.modelTransform.get().asString());
+        this.sameAnimationWhenDropped.setValue(form.sameAnimationWhenDropped.get());
         this.itemStackEditor.setStack(form.stack.get());
     }
 }

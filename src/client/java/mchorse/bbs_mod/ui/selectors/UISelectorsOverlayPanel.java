@@ -1,6 +1,5 @@
 package mchorse.bbs_mod.ui.selectors;
 
-import com.mojang.brigadier.StringReader;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.selectors.EntitySelector;
@@ -20,9 +19,12 @@ import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Colors;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
+
 import net.minecraft.nbt.StringNbtReader;
 import net.minecraft.command.argument.NbtCompoundArgumentType;
 import net.minecraft.util.Identifier;
+
+import com.mojang.brigadier.StringReader;
 
 import java.util.List;
 

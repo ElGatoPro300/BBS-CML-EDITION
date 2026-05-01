@@ -3,8 +3,10 @@ package mchorse.bbs_mod.ui.addons;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.addons.AddonInfo;
-import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.graphics.texture.Texture;
+import mchorse.bbs_mod.l10n.keys.IKey;
+import mchorse.bbs_mod.resources.Link;
+import mchorse.bbs_mod.resources.packs.InternalAssetsSourcePack;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.UIDashboard;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel;
@@ -13,12 +15,12 @@ import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIScrollView;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
-import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
 import mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D;
-import mchorse.bbs_mod.resources.Link;
-import mchorse.bbs_mod.resources.packs.InternalAssetsSourcePack;
+import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Colors;
+
+import net.minecraft.util.Util;
 
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -143,7 +145,7 @@ public class UIAddonsPanel extends UISidebarDashboardPanel
         private void openLink(String url)
         {
              try {
-                net.minecraft.util.Util.getOperatingSystem().open(url);
+                Util.getOperatingSystem().open(url);
             } catch (Exception e) {
                 e.printStackTrace();
             }

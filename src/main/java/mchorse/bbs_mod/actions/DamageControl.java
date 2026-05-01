@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.actions;
 
 import mchorse.bbs_mod.BBSSettings;
+
 import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.entity.Entity;

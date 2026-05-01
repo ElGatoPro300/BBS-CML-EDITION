@@ -4,11 +4,12 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
+import mchorse.bbs_mod.blocks.ModelBlock;
 import mchorse.bbs_mod.blocks.entities.ModelBlockEntity;
 import mchorse.bbs_mod.blocks.entities.ModelProperties;
-import mchorse.bbs_mod.blocks.ModelBlock;
 import mchorse.bbs_mod.camera.CameraUtils;
 import mchorse.bbs_mod.client.BBSRendering;
+import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.graphics.Draw;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.network.ClientNetwork;
@@ -20,6 +21,7 @@ import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel;
 import mchorse.bbs_mod.ui.forms.UIFormPalette;
 import mchorse.bbs_mod.ui.forms.UINestedEdit;
 import mchorse.bbs_mod.ui.forms.UIToggleEditorEvent;
+import mchorse.bbs_mod.ui.forms.editors.panels.widgets.UIItemStack;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIScrollView;
@@ -33,9 +35,9 @@ import mchorse.bbs_mod.ui.framework.elements.input.list.UIStringList;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
+import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIDraggable;
 import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
-import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
 import mchorse.bbs_mod.ui.model_blocks.camera.ImmersiveModelBlockCameraController;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.UIUtils;
@@ -44,14 +46,20 @@ import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.AABB;
+import mchorse.bbs_mod.utils.Direction;
+import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.PlayerUtils;
 import mchorse.bbs_mod.utils.RayTracing;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.pose.Transform;
-import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.undo.IUndo;
 import mchorse.bbs_mod.utils.undo.UndoManager;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
+
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
+
+import net.minecraft.block.Block;
+import net.minecraft.block.BlockState;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.util.math.MatrixStack;
@@ -59,13 +67,14 @@ import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
-import net.minecraft.block.Block;
-import net.minecraft.block.BlockState;
+
 import org.joml.Matrix4f;
 import org.joml.Vector2d;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
+
+import com.mojang.blaze3d.systems.RenderSystem;
 
 import java.util.HashSet;
 import java.util.List;
@@ -94,6 +103,12 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
     public UITrackpad hitboxPos2Y;
     public UITrackpad hitboxPos2Z;
     public UIPropTransform transform;
+    public UIItemStack mainHand;
+    public UIItemStack offHand;
+    public UIItemStack armorHead;
+    public UIItemStack armorChest;
+    public UIItemStack armorLegs;
+    public UIItemStack armorFeet;
     public UIElement properties;
     public UIDraggable sidebarResizer;
 
@@ -347,10 +362,67 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         this.transform.callbacks(this::beginUndoCapture, this::endUndoCapture);
         this.transform.enableHotkeys().marginBottom(4);
 
+        this.mainHand = new UIItemStack((stack) ->
+        {
+            if (this.modelBlock == null) return;
+            this.beginUndoCapture();
+            this.modelBlock.getProperties().setItemMainHand(stack);
+            this.endUndoCapture();
+        }).optionsOnLeft(true).optionsIcon(Icons.MAIN_HAND);
+        this.offHand = new UIItemStack((stack) ->
+        {
+            if (this.modelBlock == null) return;
+            this.beginUndoCapture();
+            this.modelBlock.getProperties().setItemOffHand(stack);
+            this.endUndoCapture();
+        }).optionsOnLeft(true).optionsIcon(Icons.SECONDARY_HAND);
+        this.armorHead = new UIItemStack((stack) ->
+        {
+            if (this.modelBlock == null) return;
+            this.beginUndoCapture();
+            this.modelBlock.getProperties().setArmorHead(stack);
+            this.endUndoCapture();
+        }).optionsOnLeft(true).optionsIcon(Icons.HELMET);
+        this.armorChest = new UIItemStack((stack) ->
+        {
+            if (this.modelBlock == null) return;
+            this.beginUndoCapture();
+            this.modelBlock.getProperties().setArmorChest(stack);
+            this.endUndoCapture();
+        }).optionsOnLeft(true).optionsIcon(Icons.CHESTPLATE);
+        this.armorLegs = new UIItemStack((stack) ->
+        {
+            if (this.modelBlock == null) return;
+            this.beginUndoCapture();
+            this.modelBlock.getProperties().setArmorLegs(stack);
+            this.endUndoCapture();
+        }).optionsOnLeft(true).optionsIcon(Icons.LEGINGS);
+        this.armorFeet = new UIItemStack((stack) ->
+        {
+            if (this.modelBlock == null) return;
+            this.beginUndoCapture();
+            this.modelBlock.getProperties().setArmorFeet(stack);
+            this.endUndoCapture();
+        }).optionsOnLeft(true).optionsIcon(Icons.BOOTS);
+
         UIIcon hitboxIcon1 = new UIIcon(Icons.BLOCK, null);
         UIIcon hitboxIcon2 = new UIIcon(Icons.BLOCK, null);
         hitboxIcon1.iconColor = hitboxIcon1.hoverColor = hitboxIcon1.activeColor = hitboxIcon1.disabledColor = Colors.WHITE;
         hitboxIcon2.iconColor = hitboxIcon2.hoverColor = hitboxIcon2.activeColor = hitboxIcon2.disabledColor = Colors.WHITE;
+
+        UIElement mainHandColumn = UI.column(2, UI.label(UIKeys.MODELS_ITEMS_MAIN), this.mainHand);
+        UIElement offHandColumn = UI.column(2, UI.label(UIKeys.MODELS_ITEMS_OFF), this.offHand);
+        UIElement armorHeadColumn = UI.column(2, UI.label(IKey.constant("Head")), this.armorHead);
+        UIElement armorChestColumn = UI.column(2, UI.label(IKey.constant("Chest")), this.armorChest);
+        UIElement armorLegsColumn = UI.column(2, UI.label(IKey.constant("Legs")), this.armorLegs);
+        UIElement armorFeetColumn = UI.column(2, UI.label(IKey.constant("Feet")), this.armorFeet);
+
+        mainHandColumn.w(0.5F, -2);
+        offHandColumn.w(0.5F, -2);
+        armorHeadColumn.w(0.25F, -3);
+        armorChestColumn.w(0.25F, -3);
+        armorLegsColumn.w(0.25F, -3);
+        armorFeetColumn.w(0.25F, -3);
 
         this.properties = UI.column(4,
             UI.row(5, 0, 20, new UIElement()
@@ -374,7 +446,9 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
                 }
             }.w(20).h(20), this.hardness),
             UI.row(hitboxIcon1, this.hitboxPos1X, this.hitboxPos1Y, this.hitboxPos1Z),
-            UI.row(hitboxIcon2, this.hitboxPos2X, this.hitboxPos2Y, this.hitboxPos2Z));
+            UI.row(hitboxIcon2, this.hitboxPos2X, this.hitboxPos2Y, this.hitboxPos2Z),
+            UI.row(4, mainHandColumn, offHandColumn),
+            UI.row(4, armorHeadColumn, armorChestColumn, armorLegsColumn, armorFeetColumn));
         this.properties.setVisible(true);
 
         this.editor = UI.column(4,
@@ -812,6 +886,12 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         this.hitboxPos2X.setValue(p2.x);
         this.hitboxPos2Y.setValue(p2.y);
         this.hitboxPos2Z.setValue(p2.z);
+        this.mainHand.setStack(properties.getItemMainHand());
+        this.offHand.setStack(properties.getItemOffHand());
+        this.armorHead.setStack(properties.getArmorHead());
+        this.armorChest.setStack(properties.getArmorChest());
+        this.armorLegs.setStack(properties.getArmorLegs());
+        this.armorFeet.setStack(properties.getArmorFeet());
 
         this.updateHitboxControls();
     }

@@ -4,10 +4,10 @@ import mchorse.bbs_mod.importers.types.GIFImporter;
 import mchorse.bbs_mod.importers.types.IImporter;
 import mchorse.bbs_mod.importers.types.OldSkinImporter;
 import mchorse.bbs_mod.importers.types.PNGImporter;
+import mchorse.bbs_mod.importers.types.StructureImporter;
 import mchorse.bbs_mod.importers.types.ToPNGImporter;
 import mchorse.bbs_mod.importers.types.ToWAVImporter;
 import mchorse.bbs_mod.importers.types.WAVImporter;
-import mchorse.bbs_mod.importers.types.StructureImporter;
 import mchorse.bbs_mod.ui.UIKeys;
 
 import java.util.ArrayList;

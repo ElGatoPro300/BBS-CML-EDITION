@@ -2,6 +2,9 @@ package mchorse.bbs_mod.graphics;
 
 import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.graphics.texture.Texture;
+
+import com.mojang.blaze3d.platform.GlStateManager;
+
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
 

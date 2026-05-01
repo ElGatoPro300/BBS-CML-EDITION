@@ -5,6 +5,9 @@ import mchorse.bbs_mod.utils.StringUtils;
 import mchorse.bbs_mod.utils.resources.FilteredLink;
 import mchorse.bbs_mod.utils.resources.MultiLink;
 
+import net.minecraft.client.texture.AbstractTexture;
+import net.minecraft.resource.ResourceManager;
+
 public class IrisTextureWrapperLoader
 {
     public IrisTextureWrapperLoader() {}

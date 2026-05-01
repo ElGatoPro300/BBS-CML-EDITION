@@ -19,6 +19,11 @@ public interface IUIKeyframeGraph
     public static final int TOP_MARGIN = 15;
     public static final int SIDEBAR_WIDTH = 140;
 
+    public default int getSidebarWidth()
+    {
+        return SIDEBAR_WIDTH;
+    }
+
     public void resetView();
 
     public UIKeyframeSheet getLastSheet();
@@ -197,6 +202,11 @@ public interface IUIKeyframeGraph
     public default void setTick(float tick, boolean dirty)
     {
         Keyframe selected = this.getSelected();
+        if (selected == null)
+        {
+            return;
+        }
+
         float diff = tick - selected.getTick();
 
         for (UIKeyframeSheet sheet : this.getSheets())
@@ -224,6 +234,11 @@ public interface IUIKeyframeGraph
     public default void setValue(Object value, boolean unmergeable)
     {
         Keyframe selected = this.getSelected();
+        if (selected == null)
+        {
+            return;
+        }
+
         IKeyframeFactory factory = selected.getFactory();
         Object keyframe = factory.copy(selected.getValue());
 

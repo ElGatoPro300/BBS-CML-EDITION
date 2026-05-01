@@ -4,6 +4,9 @@ import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.utils.resources.Pixels;
+
+import com.mojang.blaze3d.platform.GlStateManager;
+
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
