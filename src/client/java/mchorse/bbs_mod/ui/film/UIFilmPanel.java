@@ -216,7 +216,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private static final Set<Link> prefetchingBanners = Collections.synchronizedSet(new HashSet<>());
     private int bannerIndex = 0;
     private float lastBannerTicks = -1;
-    private static final int BANNER_DURATION = 400; // 20 seconds at 20 ticks/sec
+    private static final int BANNER_DURATION = 200; // 10 seconds at 20 ticks/sec
     private static final int BANNER_TRANSITION = 60; // 3 seconds transition
     private int activeFilmDocumentTab = -1;
     private boolean showingHomePage = true;
