@@ -1,9 +1,9 @@
 package mchorse.bbs_mod.ui.film.replays.overlays;
 
 import mchorse.bbs_mod.BBSModClient;
+import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.forms.Form;
-import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
@@ -15,6 +15,7 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlayPanel;
 import mchorse.bbs_mod.ui.utils.keys.KeyAction;
 import mchorse.bbs_mod.utils.colors.Colors;
+
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.option.KeyBinding;
@@ -201,7 +202,7 @@ public class UIQuickReplayOverlayPanel extends UIOverlayPanel
                 if (form != null)
                 {
                     context.batcher.clip(iconX, iconY, iconW, iconH, context);
-                    FormUtilsClient.renderUI(form, context, iconX - 10, iconY - 10, iconX + 30, iconY + 30);
+                    FormUtilsClient.renderUI(form, context, iconX, iconY, iconX + iconW, iconY + iconH);
                     context.batcher.unclip(context);
                 }
 

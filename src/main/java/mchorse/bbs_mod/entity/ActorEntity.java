@@ -5,6 +5,7 @@ import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.forms.entities.MCEntity;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.network.ServerNetwork;
+
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityDimensions;
 import net.minecraft.entity.EntityPose;
@@ -26,6 +27,8 @@ import net.minecraft.util.Arm;
 import net.minecraft.util.math.Box;
 import net.minecraft.world.World;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -63,7 +66,7 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
     private boolean replayItemsDropped;
     
     /* Runtime inventory for replay actors (initial inventory + picked up items) */
-    private final List<ItemStack> runtimeInventory = new java.util.ArrayList<>();
+    private final List<ItemStack> runtimeInventory = new ArrayList<>();
     private boolean runtimeInventoryInitialized;
     private final Set<UUID> pickedUpEntityIds = new HashSet<>();
 
@@ -379,7 +382,7 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
     {
         super.onDeath(damageSource);
         
-        if (!this.getWorld().isClient() && !this.replayItemsDropped && this.replay != null && this.film != null)
+        if (!this.getWorld().isClient() && !this.replayItemsDropped && this.replay != null && this.film != null && this.replay.dropItemsOnDeath.get())
         {
             this.dropReplayItems();
             this.replayItemsDropped = true;
@@ -394,7 +397,7 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
     {
         List<ItemStack> inventoryStacks = this.runtimeInventoryInitialized
             ? this.runtimeInventory
-            : (this.replay.inventory == null ? java.util.Collections.emptyList() : this.replay.inventory.getStacks());
+            : (this.replay.inventory == null ? Collections.emptyList() : this.replay.inventory.getStacks());
         boolean hasInventoryData = !inventoryStacks.isEmpty();
         boolean inventoryHasItems = false;
 

@@ -1,6 +1,5 @@
 package mchorse.bbs_mod.forms.renderers;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.client.BBSRendering;
@@ -30,14 +29,15 @@ import mchorse.bbs_mod.settings.values.core.ValuePose;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.utils.MathUtils;
-import mchorse.bbs_mod.utils.interps.Lerps;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.StringUtils;
 import mchorse.bbs_mod.utils.colors.Color;
+import mchorse.bbs_mod.utils.interps.Lerps;
 import mchorse.bbs_mod.utils.joml.Vectors;
 import mchorse.bbs_mod.utils.pose.Pose;
 import mchorse.bbs_mod.utils.pose.PoseTransform;
 import mchorse.bbs_mod.utils.resources.LinkUtils;
+
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
@@ -52,8 +52,12 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.RotationAxis;
+
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
+
+import com.mojang.blaze3d.systems.RenderSystem;
+
 import org.lwjgl.opengl.GL11;
 
 import java.util.ArrayList;
@@ -233,7 +237,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
     public void ensureAnimator(float transition)
     {
         ModelInstance model = this.getModel();
-        ActionsConfig actionsConfig = this.form.actions.get();
+        ActionsConfig actionsConfig = this.resolveActionsConfig(model);
 
         if (model == null || this.lastModel == model)
         {
@@ -255,6 +259,34 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         this.lastConfigs = new ActionsConfig();
         this.lastConfigs.copy(actionsConfig);
         this.lastModel = model;
+    }
+
+    private ActionsConfig resolveActionsConfig(ModelInstance model)
+    {
+        ActionsConfig output = new ActionsConfig();
+        ActionsConfig formActions = this.form.actions.get();
+
+        if (formActions != null)
+        {
+            output.copy(formActions);
+        }
+
+        if (model == null || model.actions == null)
+        {
+            return output;
+        }
+
+        if (output.geckoAnimations.isDefault() && !model.actions.geckoAnimations.isDefault())
+        {
+            output.geckoAnimations.copy(model.actions.geckoAnimations);
+
+            if ((output.geckoAnimationsJavascript == null || output.geckoAnimationsJavascript.isBlank()) && model.actions.geckoAnimationsJavascript != null)
+            {
+                output.geckoAnimationsJavascript = model.actions.geckoAnimationsJavascript;
+            }
+        }
+
+        return output;
     }
 
     @Override
@@ -310,7 +342,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                 ? GameRenderer::getRenderTypeEntityTranslucentCullProgram
                 : BBSShaders::getModel;
 
-            this.renderModel(this.entity, mainShader, stack, model, LightmapTextureManager.pack(15, 15), OverlayTexture.DEFAULT_UV, color, true, null, context.getTransition());
+            this.renderModel(this.entity, mainShader, stack, model, LightmapTextureManager.pack(15, 15), OverlayTexture.DEFAULT_UV, color, true, null, context.getTransition(), true);
 
             /* Render body parts */
             stack.push();
@@ -329,7 +361,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         }
     }
 
-    private void renderModel(IEntity target, Supplier<ShaderProgram> program, MatrixStack stack, ModelInstance model, int light, int overlay, Color color, boolean ui, StencilMap stencilMap, float transition)
+    private void renderModel(IEntity target, Supplier<ShaderProgram> program, MatrixStack stack, ModelInstance model, int light, int overlay, Color color, boolean ui, StencilMap stencilMap, float transition, boolean renderEquipment)
     {
         if (!model.culling)
         {
@@ -380,16 +412,30 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         /* Render items */
         this.captureMatrices(model);
 
-        if (stencilMap == null)
+        if (stencilMap == null && renderEquipment)
         {
-            this.renderItems(target, model, stack, EquipmentSlot.MAINHAND, ModelTransformationMode.THIRD_PERSON_RIGHT_HAND, model.itemsMain, color, overlay, light);
-            this.renderItems(target, model, stack, EquipmentSlot.OFFHAND, ModelTransformationMode.THIRD_PERSON_LEFT_HAND, model.itemsOff, color, overlay, light);
+            this.renderItems(target, model, stack, EquipmentSlot.MAINHAND, ModelTransformationMode.THIRD_PERSON_RIGHT_HAND, model.itemsMain, model.itemsMainTransform, color, overlay, light);
+            this.renderItems(target, model, stack, EquipmentSlot.OFFHAND, ModelTransformationMode.THIRD_PERSON_LEFT_HAND, model.itemsOff, model.itemsOffTransform, color, overlay, light);
 
             for (Map.Entry<ArmorType, ArmorSlot> entry : model.armorSlots.entrySet())
             {
                 this.renderArmor(target, stack, entry.getKey(), entry.getValue(), color, overlay, light);
             }
+
+            this.resetPostEquipmentRenderState();
         }
+    }
+
+    private void resetPostEquipmentRenderState()
+    {
+        RenderSystem.depthMask(true);
+        RenderSystem.colorMask(true, true, true, true);
+        RenderSystem.enableDepthTest();
+        RenderSystem.depthFunc(GL11.GL_LEQUAL);
+        RenderSystem.disableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.enableCull();
+        RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
     }
 
     private void renderArmor(IEntity target, MatrixStack stack, ArmorType type, ArmorSlot armorSlot, Color color, int overlay, int light)
@@ -419,7 +465,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         }
     }
 
-    private void renderItems(IEntity target, ModelInstance model, MatrixStack stack, EquipmentSlot slot, ModelTransformationMode mode, List<ArmorSlot> items, Color color, int overlay, int light)
+    private void renderItems(IEntity target, ModelInstance model, MatrixStack stack, EquipmentSlot slot, ModelTransformationMode mode, List<ArmorSlot> items, ArmorSlot globalTransform, Color color, int overlay, int light)
     {
         ItemStack itemStack = target.getEquipmentStack(slot);
 
@@ -441,6 +487,12 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                 stack.multiply(RotationAxis.POSITIVE_X.rotationDegrees(90F));
                 stack.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(180F));
                 stack.translate(0F, 0.125F, 0F);
+
+                if (globalTransform != null)
+                {
+                    MatrixStackUtils.applyTransform(stack, globalTransform.transform);
+                }
+
                 MatrixStackUtils.applyTransform(stack, armorSlot.transform);
 
                 CustomVertexConsumerProvider.hijackVertexFormat((l) -> RenderSystem.enableBlend());
@@ -528,7 +580,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             RenderSystem.enableDepthTest();
             RenderSystem.enableBlend();
 
-            this.renderModel(this.entity, mainShader, matrices, model, light, OverlayTexture.DEFAULT_UV, color, false, null, 0F);
+            this.renderModel(this.entity, mainShader, matrices, model, light, OverlayTexture.DEFAULT_UV, color, false, null, 0F, true);
 
             for (ModelGroup group : model.getModel().getAllGroups())
             {
@@ -576,7 +628,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                 : BBSShaders::getModel;
             Supplier<ShaderProgram> shader = this.getShader(context, mainShader, BBSShaders::getPickerModelsProgram);
 
-            this.renderModel(context.entity, shader, context.stack, model, context.light, context.overlay, color, false, context.stencilMap, context.getTransition());
+            this.renderModel(context.entity, shader, context.stack, model, context.light, context.overlay, color, false, context.stencilMap, context.getTransition(), context.renderEquipment);
         }
     }
 

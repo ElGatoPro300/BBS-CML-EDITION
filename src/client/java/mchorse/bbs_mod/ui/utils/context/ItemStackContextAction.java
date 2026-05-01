@@ -7,8 +7,13 @@ import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Colors;
+
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.item.ItemStack;
+
+import com.mojang.blaze3d.systems.RenderSystem;
+
+import org.lwjgl.opengl.GL11;
 
 public class ItemStackContextAction extends ContextAction
 {
@@ -32,10 +37,13 @@ public class ItemStackContextAction extends ContextAction
             CustomVertexConsumerProvider consumers = FormUtilsClient.getProvider();
 
             matrices.push();
+            RenderSystem.disableDepthTest();
             consumers.setUI(true);
             context.batcher.getContext().drawItem(this.stack, x + 2, y + 2);
             context.batcher.getContext().drawItemInSlot(context.batcher.getFont().getRenderer(), this.stack, x + 2, y + 2);
             consumers.setUI(false);
+            RenderSystem.enableDepthTest();
+            RenderSystem.depthFunc(GL11.GL_ALWAYS);
             matrices.pop();
         }
 

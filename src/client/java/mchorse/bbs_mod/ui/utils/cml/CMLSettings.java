@@ -18,17 +18,22 @@ public class CMLSettings
             UIKeys.CONFIG_GENERAL_COMPACTED_OPTIONS_SEPARATED,
             UIKeys.CONFIG_GENERAL_COMPACTED_OPTIONS_COMPACTED
         );
+        BBSSettings.editorDockGuideColor = builder.getInt("dock_guide_color", 0x57CCFF).color();
+        BBSSettings.editorDockGuideOpacity = builder.getFloat("dock_guide_opacity", 0.5F, 0F, 1F);
         builder.category("appearance");
         BBSSettings.disablePivotTransform = builder.getBoolean("disable_pivot_transform", false);
         BBSSettings.gizmoYAxisHorizontal = builder.getBoolean("gizmo_y_axis_horizontal", true);
         BBSSettings.pickLimbTexture = builder.getBoolean("pick_limb_texture", true);
         BBSSettings.defaultInterpolation = builder.getInt("default_interpolation", 0);
         builder.category("editor");
+        BBSSettings.defaultPathInterpolation = builder.getInt("default_path_interpolation", 34);
         BBSSettings.editorSafeMarginsColor = builder.getInt("safe_margins_color", 0xcccc0000).colorAlpha();
         BBSSettings.editorSafeMargins = builder.getBoolean("safe_margins", false);
         BBSSettings.editorFlightFreeLook = builder.getBoolean("flight_free_look", false);
         BBSSettings.editorClipTypeLabels = builder.getBoolean("clip_type_labels", false);
         BBSSettings.editorReplaySprintParticles = builder.getBoolean("replay_sprint_particles", false);
+        BBSSettings.editorCameraPreviewPlayerSync = builder.getBoolean("camera_preview_player_sync", false);
+        BBSSettings.recordingCameraPreviewFutureCount = builder.getInt("camera_preview_future_count", 3, 1, 8);
         BBSSettings.editorReplayStepSound = builder.getBoolean("replay_step_sound", false);
         BBSSettings.editorMuteRenderAudioClips = builder.getBoolean("mute_render_audio_clips", false);
         BBSSettings.editorTimeMode = builder.getInt("time_mode", 0, 0, 2);
@@ -54,9 +59,8 @@ public class CMLSettings
         BBSSettings.replayMarkedBonesOnly = builder.getBoolean("replay_marked_bones_only", false);
         builder.category("replay_editor");
         BBSSettings.editorReplayEditorTitleLimit = builder.getInt("replay_editor_title_limit", 12, 0, 64);
-        builder.category("action_editor");
-        BBSSettings.editorCommandWidth = builder.getInt("command_width", 140, -100000, 100000);
-        BBSSettings.editorCommandHeight = builder.getInt("command_height", 20, -100000, 100000);
-        BBSSettings.editorCommandAutoWrap = builder.getBoolean("command_auto_wrap", true);
+        BBSSettings.presetsGridPanel = builder.getBoolean("presets_grid_panel", false);
+        BBSSettings.replayFpBobbingIntensity = builder.getFloat("replay_fp_bobbing_intensity", 0.25F, 0F, 2F);
+        BBSSettings.replayFpBobbingFrequency = builder.getFloat("replay_fp_bobbing_frequency", 0.25F, 0F, 3F);
     }
 }

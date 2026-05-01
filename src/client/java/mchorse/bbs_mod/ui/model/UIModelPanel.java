@@ -1,13 +1,18 @@
 package mchorse.bbs_mod.ui.model;
 
+import mchorse.bbs_mod.BBSClient;
 import mchorse.bbs_mod.BBSSettings;
+import mchorse.bbs_mod.cubic.ModelInstance;
+import mchorse.bbs_mod.cubic.animation.ActionsConfig;
+import mchorse.bbs_mod.cubic.animation.gecko.config.GeckoAnimationsConfig;
+import mchorse.bbs_mod.cubic.animation.gecko.validation.GeckoAnimationValidator;
 import mchorse.bbs_mod.cubic.model.ModelConfig;
-import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.forms.ModelForm;
 import mchorse.bbs_mod.forms.renderers.FormRenderer;
 import mchorse.bbs_mod.forms.renderers.ModelFormRenderer;
+import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.morphing.Morph;
 import mchorse.bbs_mod.ui.ContentType;
 import mchorse.bbs_mod.ui.UIKeys;
@@ -15,9 +20,9 @@ import mchorse.bbs_mod.ui.dashboard.UIDashboard;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanels;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDataDashboardPanel;
 import mchorse.bbs_mod.ui.framework.UIContext;
-import mchorse.bbs_mod.ui.framework.elements.UIScrollView;
-import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.IUIElement;
+import mchorse.bbs_mod.ui.framework.elements.UIElement;
+import mchorse.bbs_mod.ui.framework.elements.UIScrollView;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIRenderable;
@@ -25,25 +30,37 @@ import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.ScrollDirection;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
-import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.pose.UIPoseEditor;
 import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.colors.Colors;
+
 import net.minecraft.client.MinecraftClient;
 
+import com.mojang.logging.LogUtils;
+
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+
+import org.slf4j.Logger;
 
 public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
 {
+    private static final Logger LOGGER = LogUtils.getLogger();
+    private static final GeckoAnimationValidator GECKO_VALIDATOR = new GeckoAnimationValidator();
+
     public UIModelEditorRenderer renderer;
+    public UIIcon reloadIcon;
     
     public UIElement mainView;
     public List<UIElement> panels = new ArrayList<>();
     public List<UIIcon> panelButtons = new ArrayList<>();
     
     public UIElement modelSettingsPanel;
+    public UIElement placeholderPanel;
+    public UIModelGeometryPanel geometryPanel;
     public UIScrollView sectionsView;
     public UIScrollView rightView;
     public List<UIModelSection> sections = new ArrayList<>();
@@ -54,6 +71,19 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         this.overlay.resizable().minSize(260, 220);
 
         this.overlay.add.setEnabled(false);
+
+        this.reloadIcon = new UIIcon(Icons.REFRESH, (b) ->
+        {
+            if (this.data != null)
+            {
+                String modelId = this.data.getId();
+                BBSClient.getModels().loadModel(modelId);
+                this.renderer.invalidatePreviewModel();
+                this.fillData(this.data);
+            }
+        });
+        this.reloadIcon.tooltip(UIKeys.MODELS_RELOAD, Direction.LEFT);
+        this.iconBar.add(this.reloadIcon);
 
         this.renderer = new UIModelEditorRenderer();
         this.renderer.relative(this).wTo(this.iconBar.getFlex()).h(1F);
@@ -73,13 +103,15 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         
         this.sectionsView = UI.scrollView(20, 10);
         this.sectionsView.scroll.cancelScrolling().opposite().scrollSpeed *= 3;
-        this.sectionsView.relative(this.modelSettingsPanel).w(200).h(1F);
+        this.sectionsView.relative(this.modelSettingsPanel).y(0).w(200).h(1F);
         
         this.rightView = UI.scrollView(20, 10);
         this.rightView.scroll.cancelScrolling().opposite().scrollSpeed *= 3;
-        this.rightView.relative(this.modelSettingsPanel).x(1F, -200).w(200).h(1F);
+        this.rightView.relative(this.modelSettingsPanel).x(1F, -200).y(0).w(200).h(1F);
         
         this.modelSettingsPanel.add(this.sectionsView, this.rightView);
+
+        this.placeholderPanel = this.createPlaceholderPanel();
 
         /* Sections setup */
         this.overlay.namesList.setFileIcon(Icons.MORPH);
@@ -95,16 +127,19 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         this.addSection(new UIModelItemsSection(this));
         this.addSection(new UIModelHandsSection(this));
         this.addSection(new UIModelSneakingSection(this));
-        
+        this.addSection(new UIModelLookAtSection(this));
+
         /* Register Panels */
         UIElement spacer = new UIElement();
         spacer.relative(this.iconBar).w(1F).h(10);
         this.iconBar.add(spacer);
 
+        this.geometryPanel = new UIModelGeometryPanel(this);
+
         this.registerPanel(this.modelSettingsPanel, UIKeys.MODELS_SETTINGS, Icons.MODELS_SETTINGS);
         this.registerPanel(this.createUnavailablePanel(), UIKeys.MODELS_IK_EDITOR, Icons.IK);
-        this.registerPanel(this.createUnavailablePanel(), UIKeys.MODELS_DYNAMIC_BONES, Icons.DYNAMIC_BONES);
-        this.registerPanel(this.createUnavailablePanel(), UIKeys.MODELS_GEOMETRY_EDITOR, Icons.GEOMETRY_EDITOR);
+        this.registerPanel(this.placeholderPanel, UIKeys.COMING_SOON, Icons.GEAR);
+        this.registerPanel(this.geometryPanel, UIKeys.MODELS_GEOMETRY_EDITOR, Icons.GEOMETRY_EDITOR);
 
         this.setPanel(this.modelSettingsPanel);
         
@@ -131,7 +166,13 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
             }
         }
 
-        if (this.saveIcon != null)
+        if (this.reloadIcon != null)
+        {
+            Area a = this.reloadIcon.area;
+
+            context.batcher.box(a.x + 3, a.ey() + 4, a.ex() - 3, a.ey() + 5, 0x22ffffff);
+        }
+        else if (this.saveIcon != null)
         {
             Area a = this.saveIcon.area;
 
@@ -171,6 +212,19 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         return panel;
     }
 
+    private UIElement createPlaceholderPanel()
+    {
+        UIElement panel = new UIElement();
+        panel.relative(this.mainView).w(1F).h(1F);
+
+        UILabel label = new UILabel(UIKeys.COMING_SOON).background();
+        label.relative(panel).w(0.9F).h(0.78F).xy(0.5F, 0.5F).anchor(0.5F, 0.5F);
+        label.labelAnchor(0.5F, 0.5F);
+        panel.add(label);
+
+        return panel;
+    }
+
     public UIIcon registerPanel(UIElement panel, IKey tooltip, Icon icon)
     {
         UIIcon button = new UIIcon(icon, (b) -> this.setPanel(panel));
@@ -191,29 +245,111 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
     {
         this.mainView.removeAll();
         this.mainView.add(panel);
+        this.resetEditorScrolls();
+        this.rightView.removeAll();
+
+        if (panel == this.modelSettingsPanel)
+        {
+            this.setRight(this.getPoseEditor());
+            this.renderer.transform = this.getPoseEditor().transform;
+        }
+        else if (panel == this.geometryPanel)
+        {
+            this.renderer.transform = this.geometryPanel.getGizmoTransformEditor();
+        }
+
         this.mainView.resize();
     }
     
     public void setRight(UIElement element)
     {
         this.rightView.removeAll();
+
+        if (element != null && element.getParent() != null && element.getParent() != this.rightView)
+        {
+            element.removeFromParent();
+        }
+
         this.rightView.add(element);
+        this.rightView.scroll.setScroll(0);
         this.rightView.resize();
+    }
+
+    private void resetEditorScrolls()
+    {
+        this.sectionsView.scroll.dragging = false;
+        this.rightView.scroll.dragging = false;
+        this.sectionsView.scroll.setScroll(0);
+        this.rightView.scroll.setScroll(0);
     }
     
     @Override
+    public void save()
+    {
+        boolean hasData = this.data != null;
+        boolean editorEnabled = this.editor != null && this.editor.isEnabled();
+
+        LOGGER.debug("Model Editor save requested: hasData={}, update={}, editorEnabled={}", hasData, this.update, editorEnabled);
+
+        if (!hasData)
+        {
+            LOGGER.warn("Model Editor save skipped: no model is selected");
+            return;
+        }
+
+        if (!editorEnabled)
+        {
+            LOGGER.warn("Model Editor save skipped: editor is disabled for model {}", this.data.getId());
+            return;
+        }
+
+        if (this.update)
+        {
+            LOGGER.warn("Model Editor save requested while update flag is true for model {}. Forcing save anyway", this.data.getId());
+        }
+
+        this.forceSave();
+    }
+
+    @Override
     public void forceSave()
     {
-        super.forceSave();
+        if (this.data == null)
+        {
+            LOGGER.warn("Model Editor forceSave skipped: no model data");
+            return;
+        }
+
+        if (!this.prepareAnimationCode())
+        {
+            return;
+        }
+
+        LOGGER.debug("Model Editor forceSave start: model={}", this.data.getId());
+
+        for (UIModelSection section : this.sections)
+        {
+            section.setConfig(this.data);
+        }
+
+        try
+        {
+            super.forceSave();
+        }
+        catch (Exception e)
+        {
+            LOGGER.error("Model Editor forceSave failed during repository save for model {}", this.data.getId(), e);
+            return;
+        }
 
         if (this.data == null)
         {
             return;
         }
 
-        for (UIModelSection section : this.sections)
+        if (this.geometryPanel != null)
         {
-            section.setConfig(this.data);
+            this.geometryPanel.setConfig(this.data);
         }
 
         this.sectionsView.resize();
@@ -235,6 +371,99 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
                 }
             }
         }
+
+        LOGGER.debug("Model Editor forceSave completed: model={}", this.data.getId());
+        this.setSaveDirty(false);
+    }
+
+    public void persistModelDataWithoutReload()
+    {
+        if (this.data == null)
+        {
+            LOGGER.warn("Model Editor persist without reload skipped: no model data");
+            return;
+        }
+
+        if (!this.prepareAnimationCode())
+        {
+            return;
+        }
+
+        LOGGER.debug("Model Editor persist without reload start: model={}", this.data.getId());
+
+        try
+        {
+            super.forceSave();
+        }
+        catch (Exception e)
+        {
+            LOGGER.error("Model Editor persist without reload failed for model {}", this.data.getId(), e);
+            return;
+        }
+
+        Morph morph = Morph.getMorph(MinecraftClient.getInstance().player);
+
+        if (morph != null)
+        {
+            Form form = morph.getForm();
+
+            if (form instanceof ModelForm && ((ModelForm) form).model.get().equals(this.data.getId()))
+            {
+                FormRenderer renderer = FormUtilsClient.getRenderer(form);
+
+                if (renderer instanceof ModelFormRenderer)
+                {
+                    ((ModelFormRenderer) renderer).invalidateCachedModel();
+                }
+            }
+        }
+
+        LOGGER.debug("Model Editor persist without reload completed: model={}", this.data.getId());
+        this.setSaveDirty(false);
+    }
+
+    private boolean prepareAnimationCode()
+    {
+        if (this.data == null)
+        {
+            return false;
+        }
+
+        ActionsConfig actions = this.data.animations.get();
+
+        if (actions == null)
+        {
+            return true;
+        }
+
+        GeckoAnimationsConfig geckoSanitized = GECKO_VALIDATOR.sanitize(actions.geckoAnimations);
+        ModelInstance preview = this.renderer == null ? null : this.renderer.getPreviewModelInstance();
+        Set<String> bones = new HashSet<>();
+        Set<String> animations = new HashSet<>();
+
+        if (preview != null && preview.model != null)
+        {
+            preview.model.getAllGroups().forEach((group) -> bones.add(group.id));
+            preview.model.getAllBOBJBones().forEach((bone) -> bones.add(bone.name));
+        }
+
+        if (preview != null && preview.animations != null)
+        {
+            animations.addAll(preview.animations.animations.keySet());
+        }
+
+        List<String> geckoValidationErrors = GECKO_VALIDATOR.validate(geckoSanitized, bones, animations);
+
+        if (!geckoValidationErrors.isEmpty())
+        {
+            LOGGER.error("Model Editor save blocked by invalid gecko animation config for model {}: {}", this.data.getId(), String.join("; ", geckoValidationErrors));
+            return false;
+        }
+
+        actions.geckoAnimations.copy(geckoSanitized);
+        actions.geckoAnimationsJavascript = "var geckoAnimations = { enabled: " + geckoSanitized.enabled + " };";
+
+        return true;
     }
 
     public UIPoseEditor getPoseEditor()
@@ -255,6 +484,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         for (UIModelSection section : this.sections)
         {
             section.deselect();
+            section.onBoneSelected(bone);
 
             if (section instanceof UIModelPartsSection)
             {
@@ -267,6 +497,15 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
     public void dirty()
     {
         this.renderer.dirty();
+        this.setSaveDirty(true);
+    }
+
+    private void setSaveDirty(boolean dirty)
+    {
+        if (this.saveIcon != null)
+        {
+            this.saveIcon.both(dirty ? Icons.SAVE : Icons.SAVED);
+        }
     }
 
     private void addSection(UIModelSection section)
@@ -290,6 +529,8 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
     @Override
     protected void fillData(ModelConfig data)
     {
+        this.setSaveDirty(false);
+
         for (UIIcon button : this.panelButtons)
         {
             button.setEnabled(data != null);
@@ -304,9 +545,15 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
             {
                 section.setConfig(data);
             }
+
+            if (this.geometryPanel != null)
+            {
+                this.geometryPanel.setConfig(data);
+            }
             
             this.sectionsView.resize();
             this.rightView.resize();
+            this.resetEditorScrolls();
         }
     }
 

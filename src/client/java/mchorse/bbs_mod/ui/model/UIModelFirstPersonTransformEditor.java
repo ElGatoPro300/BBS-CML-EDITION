@@ -2,29 +2,31 @@ package mchorse.bbs_mod.ui.model;
 
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
+import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.cubic.model.ArmorSlot;
 import mchorse.bbs_mod.cubic.model.ModelConfig;
-import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.forms.FormUtilsClient;
-import mchorse.bbs_mod.forms.renderers.FormRenderer;
-import mchorse.bbs_mod.forms.renderers.ModelFormRenderer;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.forms.ModelForm;
+import mchorse.bbs_mod.forms.renderers.FormRenderer;
+import mchorse.bbs_mod.forms.renderers.ModelFormRenderer;
 import mchorse.bbs_mod.morphing.Morph;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
+import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UISearchList;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UIStringList;
-import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
-import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.UI;
+import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Colors;
+
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.option.Perspective;
+
 import org.lwjgl.glfw.GLFW;
 
 public class UIModelFirstPersonTransformEditor extends UIDashboardPanel

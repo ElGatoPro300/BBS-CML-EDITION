@@ -26,11 +26,13 @@ import mchorse.bbs_mod.utils.EnumUtils;
 import mchorse.bbs_mod.utils.PermissionUtils;
 import mchorse.bbs_mod.utils.clips.Clips;
 import mchorse.bbs_mod.utils.repos.RepositoryOperation;
+
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.LivingEntity;
@@ -270,7 +272,7 @@ public class ServerNetwork
                     World world = player.getWorld();
                     BlockEntity be = world.getBlockEntity(pos);
 
-                    if (be instanceof mchorse.bbs_mod.blocks.entities.TriggerBlockEntity trigger)
+                    if (be instanceof TriggerBlockEntity trigger)
                     {
                         if (data.has("left")) trigger.left.fromData(data.getList("left"));
                         if (data.has("right")) trigger.right.fromData(data.getList("right"));

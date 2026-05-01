@@ -1,27 +1,27 @@
 package mchorse.bbs_mod.forms.renderers;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.cubic.render.vao.IModelVAO;
+import mchorse.bbs_mod.cubic.render.vao.LightmapModelVAO;
 import mchorse.bbs_mod.cubic.render.vao.ModelVAO;
 import mchorse.bbs_mod.cubic.render.vao.ModelVAOData;
 import mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer;
 import mchorse.bbs_mod.cubic.render.vao.StructureVAOCollector;
-import mchorse.bbs_mod.cubic.render.vao.LightmapModelVAO;
 import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.forms.StructureForm;
 import mchorse.bbs_mod.forms.forms.utils.StructureLightSettings;
 import mchorse.bbs_mod.forms.renderers.utils.RecolorVertexConsumer;
-import mchorse.bbs_mod.forms.renderers.utils.VirtualBlockRenderView;
 import mchorse.bbs_mod.forms.renderers.utils.StructureVirtualBlockRenderView;
+import mchorse.bbs_mod.forms.renderers.utils.VirtualBlockRenderView;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.joml.Vectors;
+
 import net.minecraft.block.AttachedStemBlock;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockEntityProvider;
@@ -64,7 +64,11 @@ import net.minecraft.util.Identifier;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.random.Random;
 import net.minecraft.world.LightType;
+
 import org.joml.Matrix4f;
+
+import com.mojang.blaze3d.systems.RenderSystem;
+
 import org.lwjgl.opengl.GL11;
 
 import java.io.File;
@@ -72,11 +76,13 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
-import java.util.Optional;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Function;
+
+import net.irisshaders.iris.api.v0.IrisApi;
 
 /**
  * StructureForm Renderer
@@ -1065,7 +1071,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
     {
         try
         {
-            Class<?> apiClass = Class.forName("net.irisshaders.iris.api.v0.IrisApi");
+            Class<?> apiClass = Class.forName("IrisApi");
             Object api = apiClass.getMethod("getInstance").invoke(null);
             Object result = apiClass.getMethod("isShaderPackInUse").invoke(api);
 

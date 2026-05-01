@@ -169,6 +169,11 @@ public abstract class UIList <T> extends UIElement
         return this.exists(this.filtered, visibleIndex) ? this.filtered.get(visibleIndex).a : null;
     }
 
+    public T getVisibleElement(int visibleIndex)
+    {
+        return this.getElementAt(visibleIndex);
+    }
+
     /* Index and current value(s) methods */
 
     public boolean isSelected()

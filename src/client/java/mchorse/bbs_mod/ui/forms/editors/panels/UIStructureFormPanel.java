@@ -2,33 +2,40 @@ package mchorse.bbs_mod.ui.forms.editors.panels;
 
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.forms.forms.StructureForm;
+import mchorse.bbs_mod.forms.forms.utils.StructureLightSettings;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.forms.editors.forms.UIForm;
 import mchorse.bbs_mod.ui.forms.editors.utils.UIStructureOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
-import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
+import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
 import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
 import mchorse.bbs_mod.ui.framework.elements.input.text.UITextbox;
-import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIListOverlayPanel;
+import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.colors.Colors;
+
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
-import net.minecraft.nbt.NbtList;
 import net.minecraft.nbt.NbtIo;
 import net.minecraft.nbt.NbtSizeTracker;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.nbt.NbtList;
+import net.minecraft.nbt.NbtTagSizeTracker;
 import net.minecraft.registry.Registry;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.util.Identifier;
 import net.minecraft.world.biome.Biome;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class UIStructureFormPanel extends UIFormPanel<StructureForm>
 {
@@ -102,7 +109,7 @@ public class UIStructureFormPanel extends UIFormPanel<StructureForm>
         });
 
         // Construir lista de biomas de forma segura
-        java.util.List<String> ids = new java.util.ArrayList<>();
+        List<String> ids = new ArrayList<>();
         try
         {
             if (MinecraftClient.getInstance().world != null)
@@ -123,8 +130,8 @@ public class UIStructureFormPanel extends UIFormPanel<StructureForm>
 
     private void toggleLight(UIToggle t)
     {
-        mchorse.bbs_mod.forms.forms.utils.StructureLightSettings s = this.form.structureLight.get();
-        if (s == null) s = new mchorse.bbs_mod.forms.forms.utils.StructureLightSettings(false, 15);
+        StructureLightSettings s = this.form.structureLight.get();
+        if (s == null) s = new StructureLightSettings(false, 15);
         s.enabled = t.getValue();
         this.form.structureLight.set(s);
         // Mantener sincronizados los valores legados usados como fallback cuando
@@ -134,8 +141,8 @@ public class UIStructureFormPanel extends UIFormPanel<StructureForm>
 
     private void setLightIntensity(int v)
     {
-        mchorse.bbs_mod.forms.forms.utils.StructureLightSettings s = this.form.structureLight.get();
-        if (s == null) s = new mchorse.bbs_mod.forms.forms.utils.StructureLightSettings(false, 15);
+        StructureLightSettings s = this.form.structureLight.get();
+        if (s == null) s = new StructureLightSettings(false, 15);
         s.intensity = Math.max(1, Math.min(15, v));
         this.form.structureLight.set(s);
         // Mantener sincronizado el valor legado de intensidad
@@ -161,7 +168,7 @@ public class UIStructureFormPanel extends UIFormPanel<StructureForm>
 
         this.structureFile.setText(form.structureFile.get());
         this.color.setColor(form.color.get().getARGBColor());
-        mchorse.bbs_mod.forms.forms.utils.StructureLightSettings s = form.structureLight.get();
+        StructureLightSettings s = form.structureLight.get();
         boolean enabled = (s != null) ? s.enabled : form.emitLight.get();
         int intensity = (s != null) ? s.intensity : form.lightIntensity.get();
 

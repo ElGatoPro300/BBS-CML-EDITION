@@ -9,8 +9,12 @@ import mchorse.bbs_mod.entity.GunProjectileEntity;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.forms.LightForm;
 import mchorse.bbs_mod.morphing.Morph;
+
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.player.PlayerEntity;
+
+import dev.lambdaurora.lambdynlights.api.DynamicLightHandlers;
+import dev.lambdaurora.lambdynlights.api.DynamicLightsInitializer;
 
 public class LambDynLightsIntegration implements DynamicLightsInitializer
 {

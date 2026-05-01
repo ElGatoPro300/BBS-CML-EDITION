@@ -5,6 +5,9 @@ import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.utils.MathUtils;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class ValueEditorLayout extends BaseValue
 {
     /* private boolean horizontal;
@@ -28,6 +31,8 @@ public class ValueEditorLayout extends BaseValue
     private boolean middleLayoutInverted;
     private boolean verticalLayoutInverted;
     private boolean horizontalLayoutInverted;
+    private EditorLayoutNode filmLayoutRoot = EditorLayoutNode.defaultFilmLayout();
+    private final List<EditorLayoutNode.SplitterNode> filmSplitters = new ArrayList<>();
     /* private float newFilmSidebarSize = 0.25F;
     private float newFilmMainSizeH = 0.5F;
     private int filmLayoutMode; */
@@ -35,6 +40,36 @@ public class ValueEditorLayout extends BaseValue
     public ValueEditorLayout(String id)
     {
         super(id);
+        this.rebuildFilmSplitters();
+    }
+
+    public EditorLayoutNode getFilmLayoutRoot()
+    {
+        return this.filmLayoutRoot;
+    }
+
+    public void setFilmLayoutRoot(EditorLayoutNode root)
+    {
+        BaseValue.edit(this, (v) ->
+        {
+            this.filmLayoutRoot = root == null ? EditorLayoutNode.defaultFilmLayout() : root;
+            this.rebuildFilmSplitters();
+        });
+    }
+
+    public List<EditorLayoutNode.SplitterNode> getFilmSplitters()
+    {
+        return this.filmSplitters;
+    }
+
+    public void setFilmSplitterRatio(int index, float ratio)
+    {
+        if (index < 0 || index >= this.filmSplitters.size())
+        {
+            return;
+        }
+
+        BaseValue.edit(this, (v) -> this.filmSplitters.get(index).setRatio(ratio));
     }
 
     public void setHorizontal(boolean horizontal)
@@ -216,6 +251,122 @@ public class ValueEditorLayout extends BaseValue
         return this.verticalLayoutInverted;
     }
 
+    public EditorLayoutNode buildFilmLayoutFromLegacyState()
+    {
+        float mainH = this.clampRatio(this.mainSizeH);
+        float mainV = this.clampRatio(this.mainSizeV);
+        float editorH = this.clampRatio(this.editorSizeH);
+        float editorV = this.clampRatio(this.editorSizeV);
+        EditorLayoutNode panelMain = this.panel("main");
+        EditorLayoutNode panelPreview = this.panel("preview");
+        EditorLayoutNode panelEdit = this.panel("editArea");
+
+        switch (this.layout)
+        {
+            case LAYOUT_HORIZONTAL_TOP:
+                return this.layoutHorizontalTop(mainH, editorH, panelMain, panelPreview, panelEdit);
+
+            case LAYOUT_HORIZONTAL_BOTTOM:
+                return this.layoutHorizontalBottom(mainH, editorH, panelMain, panelPreview, panelEdit);
+
+            case LAYOUT_VERTICAL_LEFT:
+                return this.layoutVerticalLeft(mainV, editorV, panelMain, panelPreview, panelEdit);
+
+            case LAYOUT_VERTICAL_RIGHT:
+                return this.layoutVerticalRight(mainV, editorV, panelMain, panelPreview, panelEdit);
+
+            case LAYOUT_VERTICAL_MIDDLE:
+                return this.layoutVerticalMiddle(mainV, editorH, panelMain, panelPreview, panelEdit);
+
+            default:
+                return this.layoutHorizontalBottom(mainH, editorH, panelMain, panelPreview, panelEdit);
+        }
+    }
+
+    private float clampRatio(float value)
+    {
+        return MathUtils.clamp(value, 0.05F, 0.95F);
+    }
+
+    private EditorLayoutNode panel(String id)
+    {
+        return new EditorLayoutNode.PanelNode(id);
+    }
+
+    private EditorLayoutNode split(boolean horizontal, float ratio, EditorLayoutNode first, EditorLayoutNode second)
+    {
+        return new EditorLayoutNode.SplitterNode(horizontal, this.clampRatio(ratio), first, second);
+    }
+
+    private EditorLayoutNode layoutHorizontalTop(float mainH, float editorH, EditorLayoutNode panelMain, EditorLayoutNode panelPreview, EditorLayoutNode panelEdit)
+    {
+        EditorLayoutNode lowerBand = this.split(false, 1F - editorH, panelPreview, panelEdit);
+        return this.split(true, mainH, panelMain, lowerBand);
+    }
+
+    private EditorLayoutNode layoutHorizontalBottom(float mainH, float editorH, EditorLayoutNode panelMain, EditorLayoutNode panelPreview, EditorLayoutNode panelEdit)
+    {
+        EditorLayoutNode leftPanel = this.verticalLayoutInverted ? panelEdit : panelPreview;
+        EditorLayoutNode rightPanel = this.verticalLayoutInverted ? panelPreview : panelEdit;
+        EditorLayoutNode upperBand = this.split(false, 1F - editorH, leftPanel, rightPanel);
+
+        return this.split(true, 1F - mainH, upperBand, panelMain);
+    }
+
+    private EditorLayoutNode layoutVerticalLeft(float mainV, float editorV, EditorLayoutNode panelMain, EditorLayoutNode panelPreview, EditorLayoutNode panelEdit)
+    {
+        EditorLayoutNode rightColumn = this.split(true, editorV, panelPreview, panelEdit);
+
+        if (this.verticalLayoutInverted)
+        {
+            return this.split(false, 1F - mainV, rightColumn, panelMain);
+        }
+
+        return this.split(false, mainV, panelMain, rightColumn);
+    }
+
+    private EditorLayoutNode layoutVerticalRight(float mainV, float editorV, EditorLayoutNode panelMain, EditorLayoutNode panelPreview, EditorLayoutNode panelEdit)
+    {
+        EditorLayoutNode rightColumn = this.split(true, editorV, panelMain, panelEdit);
+        float previewWidth = 1F - mainV;
+
+        if (this.verticalLayoutInverted)
+        {
+            return this.split(false, previewWidth, rightColumn, panelPreview);
+        }
+
+        return this.split(false, previewWidth, panelPreview, rightColumn);
+    }
+
+    private EditorLayoutNode layoutVerticalMiddle(float mainV, float editorH, EditorLayoutNode panelMain, EditorLayoutNode panelPreview, EditorLayoutNode panelEdit)
+    {
+        float topWidth = mainV;
+        float rightTopWidth = editorH;
+
+        if (topWidth + rightTopWidth > 0.95F)
+        {
+            rightTopWidth = 0.95F - topWidth;
+            if (rightTopWidth < 0.05F)
+            {
+                rightTopWidth = 0.05F;
+                topWidth = 0.95F - rightTopWidth;
+            }
+        }
+
+        float rightColumnWidth = Math.max(0.05F, 1F - topWidth);
+        float rightRatio = this.clampRatio(rightTopWidth / rightColumnWidth);
+        EditorLayoutNode trailing = this.middleLayoutInverted
+            ? this.split(false, rightRatio, panelMain, panelPreview)
+            : this.split(false, rightRatio, panelMain, panelEdit);
+
+        if (this.middleLayoutInverted)
+        {
+            return this.split(false, topWidth, panelEdit, trailing);
+        }
+
+        return this.split(false, topWidth, panelPreview, trailing);
+    }
+
     public void setHorizontalLayoutInverted(boolean horizontalLayoutInverted)
     {
         BaseValue.edit(this, (v) -> this.horizontalLayoutInverted = horizontalLayoutInverted);
@@ -246,6 +397,7 @@ public class ValueEditorLayout extends BaseValue
         data.putBool("middle_layout_inverted", this.middleLayoutInverted);
         data.putBool("vertical_layout_inverted", this.verticalLayoutInverted);
         data.putBool("horizontal_layout_inverted", this.horizontalLayoutInverted);
+        data.put("film_layout", this.filmLayoutRoot.toData());
         /* data.putFloat("new_film_sidebar_size", this.newFilmSidebarSize);
         data.putFloat("new_film_main_size_h", this.newFilmMainSizeH);
         data.putInt("film_layout_mode", this.filmLayoutMode); */
@@ -283,10 +435,31 @@ public class ValueEditorLayout extends BaseValue
             this.middleLayoutInverted = map.getBool("middle_layout_inverted", false);
             this.verticalLayoutInverted = map.getBool("vertical_layout_inverted", false);
             this.horizontalLayoutInverted = map.getBool("horizontal_layout_inverted", false);
+
+            if (map.has("film_layout"))
+            {
+                this.filmLayoutRoot = EditorLayoutNode.fromData(map.get("film_layout"));
+            }
+            else
+            {
+                this.filmLayoutRoot = this.buildFilmLayoutFromLegacyState();
+            }
+            this.rebuildFilmSplitters();
             /* this.newFilmSidebarSize = map.getFloat("new_film_sidebar_size", 0.25F);
             this.newFilmMainSizeH = map.getFloat("new_film_main_size_h", 0.5F);
             this.filmLayoutMode = map.getInt("film_layout_mode", 0); */
         }
+    }
+
+    private void rebuildFilmSplitters()
+    {
+        if (this.filmLayoutRoot == null)
+        {
+            this.filmLayoutRoot = EditorLayoutNode.defaultFilmLayout();
+        }
+
+        this.filmSplitters.clear();
+        EditorLayoutNode.collectSplitters(this.filmLayoutRoot, this.filmSplitters);
     }
 
     private int clampLayout(int layout)

@@ -1,9 +1,9 @@
 package mchorse.bbs_mod;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import mchorse.bbs_mod.audio.SoundManager;
 import mchorse.bbs_mod.addons.AddonInfo;
+import mchorse.bbs_mod.audio.SoundManager;
 import mchorse.bbs_mod.blocks.entities.ModelProperties;
+import mchorse.bbs_mod.blocks.entities.TriggerBlockEntity;
 import mchorse.bbs_mod.camera.clips.ClipFactoryData;
 import mchorse.bbs_mod.camera.clips.misc.AudioClientClip;
 import mchorse.bbs_mod.camera.clips.misc.CurveClientClip;
@@ -21,35 +21,33 @@ import mchorse.bbs_mod.cubic.model.ModelManager;
 import mchorse.bbs_mod.events.BBSAddonMod;
 import mchorse.bbs_mod.events.register.RegisterClientSettingsEvent;
 import mchorse.bbs_mod.events.register.RegisterDashboardPanelsEvent;
+import mchorse.bbs_mod.events.register.RegisterFilmPreviewEvent;
 import mchorse.bbs_mod.events.register.RegisterFormCategoriesEvent;
+import mchorse.bbs_mod.events.register.RegisterFormEditorsEvent;
+import mchorse.bbs_mod.events.register.RegisterFormsRenderersEvent;
+import mchorse.bbs_mod.events.register.RegisterIconsEvent;
 import mchorse.bbs_mod.events.register.RegisterImportersEvent;
 import mchorse.bbs_mod.events.register.RegisterInterpolationsEvent;
-import mchorse.bbs_mod.events.register.RegisterIconsEvent;
-import mchorse.bbs_mod.events.register.RegisterUIKeyframeFactoriesEvent;
 import mchorse.bbs_mod.events.register.RegisterKeyframeShapesEvent;
-import mchorse.bbs_mod.events.register.RegisterFormsRenderersEvent;
-import mchorse.bbs_mod.events.register.RegisterUIValueFactoriesEvent;
-import mchorse.bbs_mod.events.register.RegisterFormEditorsEvent;
-import mchorse.bbs_mod.forms.FormUtilsClient;
-import mchorse.bbs_mod.settings.ui.UIValueMap;
-import mchorse.bbs_mod.ui.forms.editors.UIFormEditor;
 import mchorse.bbs_mod.events.register.RegisterL10nEvent;
 import mchorse.bbs_mod.events.register.RegisterModelLoadersEvent;
 import mchorse.bbs_mod.events.register.RegisterParticleComponentsEvent;
 import mchorse.bbs_mod.events.register.RegisterPropTransformEvent;
-import mchorse.bbs_mod.events.register.RegisterStencilMapEvent;
 import mchorse.bbs_mod.events.register.RegisterRayTracingEvent;
-import mchorse.bbs_mod.events.register.RegisterFilmPreviewEvent;
 import mchorse.bbs_mod.events.register.RegisterReplayListContextMenuEvent;
 import mchorse.bbs_mod.events.register.RegisterReplayPanelEvent;
 import mchorse.bbs_mod.events.register.RegisterShadersEvent;
 import mchorse.bbs_mod.events.register.RegisterSourcePacksEvent;
+import mchorse.bbs_mod.events.register.RegisterStencilMapEvent;
+import mchorse.bbs_mod.events.register.RegisterUIKeyframeFactoriesEvent;
+import mchorse.bbs_mod.events.register.RegisterUIValueFactoriesEvent;
 import mchorse.bbs_mod.film.BaseFilmController;
 import mchorse.bbs_mod.film.Film;
 import mchorse.bbs_mod.film.Films;
 import mchorse.bbs_mod.film.Recorder;
 import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.forms.FormCategories;
+import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.categories.UserFormCategory;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.graphics.Draw;
@@ -63,7 +61,6 @@ import mchorse.bbs_mod.network.ClientNetwork;
 import mchorse.bbs_mod.network.ServerNetwork;
 import mchorse.bbs_mod.particles.ParticleManager;
 import mchorse.bbs_mod.particles.ParticleScheme;
-import mchorse.bbs_mod.utils.interps.Interpolations;
 import mchorse.bbs_mod.resources.AssetProvider;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.resources.packs.URLError;
@@ -71,14 +68,16 @@ import mchorse.bbs_mod.resources.packs.URLRepository;
 import mchorse.bbs_mod.resources.packs.URLSourcePack;
 import mchorse.bbs_mod.resources.packs.URLTextureErrorCallback;
 import mchorse.bbs_mod.selectors.EntitySelectors;
+import mchorse.bbs_mod.settings.ui.UIValueMap;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.UIDashboard;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIQuickReplayOverlayPanel;
-import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UIKeyframeFactory;
-import mchorse.bbs_mod.ui.framework.elements.input.keyframes.shapes.KeyframeShapeRenderers;
+import mchorse.bbs_mod.ui.forms.editors.UIFormEditor;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.UIScreen;
+import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UIKeyframeFactory;
+import mchorse.bbs_mod.ui.framework.elements.input.keyframes.shapes.KeyframeShapeRenderers;
 import mchorse.bbs_mod.ui.model_blocks.UIModelBlockEditorMenu;
 import mchorse.bbs_mod.ui.morphing.UIMorphingPanel;
 import mchorse.bbs_mod.ui.utils.cml.CMLSettings;
@@ -90,22 +89,26 @@ import mchorse.bbs_mod.utils.ScreenshotRecorder;
 import mchorse.bbs_mod.utils.VideoRecorder;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.colors.Colors;
+import mchorse.bbs_mod.utils.interps.Interpolations;
 import mchorse.bbs_mod.utils.resources.MinecraftSourcePack;
-import mchorse.bbs_mod.blocks.entities.TriggerBlockEntity;
-import net.fabricmc.fabric.api.event.player.AttackBlockCallback;
-import net.fabricmc.loader.api.FabricLoader;
-import net.fabricmc.loader.api.metadata.ContactInformation;
-import net.fabricmc.loader.api.metadata.Person;
+
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keybinding.v1.KeyBindingHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.BlockEntityRendererRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.BuiltinItemRendererRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
+import net.fabricmc.fabric.api.event.player.AttackBlockCallback;
 import net.fabricmc.fabric.impl.client.rendering.BlockEntityRendererRegistryImpl;
+import net.fabricmc.loader.api.FabricLoader;
+import net.fabricmc.loader.api.metadata.ContactInformation;
+import net.fabricmc.loader.api.metadata.ModMetadata;
+import net.fabricmc.loader.api.metadata.Person;
+
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.option.KeyBinding;
@@ -114,7 +117,6 @@ import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexFormat;
-import net.fabricmc.fabric.api.client.rendering.v1.BlockEntityRendererRegistry;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.BufferAllocator;
 import net.minecraft.client.util.InputUtil;
@@ -125,16 +127,18 @@ import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
+
+import com.mojang.blaze3d.systems.RenderSystem;
+
 import org.lwjgl.glfw.GLFW;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
+
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 public class BBSModClient implements ClientModInitializer
 {
@@ -519,14 +523,14 @@ public class BBSModClient implements ClientModInitializer
         {
             BBSRendering.renderCoolStuff(context);
 
-            if (BBSSettings.chromaSkyEnabled.get())
+            if (BBSRendering.isChromaSkyEnabled())
             {
-                float d = BBSSettings.chromaSkyBillboard.get();
+                float d = BBSRendering.getChromaSkyBillboard();
 
                 if (d > 0)
                 {
                     MatrixStack stack = context.matrixStack();
-                    Color color = Colors.COLOR.set(BBSSettings.chromaSkyColor.get());
+                    Color color = Colors.COLOR.set(BBSRendering.getChromaSkyColor());
 
                     stack.push();
 
@@ -737,7 +741,7 @@ public class BBSModClient implements ClientModInitializer
             .getEntrypointContainers("bbs-addon", BBSAddonMod.class)
             .forEach((container) ->
             {
-                net.fabricmc.loader.api.metadata.ModMetadata meta = container.getProvider().getMetadata();
+                ModMetadata meta = container.getProvider().getMetadata();
                 String id = meta.getId();
                 String name = meta.getName();
                 String version = meta.getVersion().getFriendlyString();

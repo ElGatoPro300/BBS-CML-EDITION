@@ -1,16 +1,14 @@
 package mchorse.bbs_mod.ui.film.controller;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.systems.VertexSorter;
-import io.netty.util.collection.IntObjectHashMap;
-import io.netty.util.collection.IntObjectMap;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.actions.ActionState;
+import mchorse.bbs_mod.actions.types.item.ItemDropActionClip;
 import mchorse.bbs_mod.camera.Camera;
 import mchorse.bbs_mod.camera.controller.RunnerCameraController;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.client.BBSShaders;
+import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.film.BaseFilmController;
 import mchorse.bbs_mod.film.Film;
@@ -24,7 +22,7 @@ import mchorse.bbs_mod.forms.entities.MCEntity;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.forms.ModelForm;
 import mchorse.bbs_mod.forms.renderers.ModelFormRenderer;
-import mchorse.bbs_mod.cubic.ModelInstance;
+import mchorse.bbs_mod.graphics.Draw;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.l10n.keys.IKey;
@@ -59,20 +57,33 @@ import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.Pair;
 import mchorse.bbs_mod.utils.PlayerUtils;
 import mchorse.bbs_mod.utils.RayTracing;
+import mchorse.bbs_mod.utils.clips.Clip;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.joml.Matrices;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
+
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
+
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.Mouse;
 import net.minecraft.client.gl.GlUniform;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.option.GameOptions;
+import net.minecraft.client.render.BufferBuilder;
+import net.minecraft.client.render.BufferRenderer;
+import net.minecraft.client.render.GameRenderer;
+import net.minecraft.client.render.Tessellator;
+import net.minecraft.client.render.VertexFormat;
+import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
+import net.minecraft.util.math.Vec3d;
+import net.minecraft.world.RaycastContext;
 import net.minecraft.world.World;
+
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fStack;
@@ -80,6 +91,10 @@ import org.joml.Vector2f;
 import org.joml.Vector2i;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
+
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.systems.VertexSorter;
+
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.opengl.GL11;
 
@@ -88,6 +103,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
+
+import io.netty.util.collection.IntObjectHashMap;
+import io.netty.util.collection.IntObjectMap;
 
 public class UIFilmController extends UIElement
 {
@@ -1219,12 +1237,17 @@ public class UIFilmController extends UIElement
         if (this.editorController != null)
         {
             this.editorController.render(context);
+            this.renderDropItemTrajectory(context);
 
             int povMode = this.panel.getController().getPovMode();
 
             if (povMode != UIFilmController.CAMERA_MODE_CAMERA && BBSSettings.recordingCameraPreview.get())
             {
-                Recorder.renderCameraPreview(this.panel.getRunner().getPosition(), context.camera(), context.matrixStack());
+                RunnerCameraController runner = this.panel.getRunner();
+                int tick = runner.ticks;
+                int duration = runner.getContext().clips == null ? 0 : runner.getContext().clips.calculateDuration();
+
+                Recorder.renderCameraPreviewTimeline(runner.getContext().clips, tick, context.tickDelta(), duration, runner.getPosition(), context.camera(), context.matrixStack());
             }
         }
 
@@ -1258,6 +1281,136 @@ public class UIFilmController extends UIElement
         this.lastMouse.set(x, y);
 
         RenderSystem.disableDepthTest();
+    }
+
+    private void renderDropItemTrajectory(WorldRenderContext context)
+    {
+        Clip clip = this.panel.actionEditor == null ? null : this.panel.actionEditor.getClip();
+
+        if (!(clip instanceof ItemDropActionClip itemDrop) || !itemDrop.trajectoryPreview.get())
+        {
+            return;
+        }
+
+        Replay replay = this.getReplay();
+        World world = MinecraftClient.getInstance().world;
+
+        if (replay == null || world == null)
+        {
+            return;
+        }
+
+        int actionTick = replay.getTick(itemDrop.tick.get());
+        ReplayKeyframes keyframes = replay.keyframes;
+        double replayX = keyframes.x.interpolate(actionTick);
+        double replayY = keyframes.y.interpolate(actionTick);
+        double replayZ = keyframes.z.interpolate(actionTick);
+        double x = itemDrop.relative.get() ? replayX + itemDrop.posX.get() : itemDrop.posX.get();
+        double y = itemDrop.relative.get() ? replayY + itemDrop.posY.get() : itemDrop.posY.get();
+        double z = itemDrop.relative.get() ? replayZ + itemDrop.posZ.get() : itemDrop.posZ.get();
+        double vx = itemDrop.velocityX.get();
+        double vy = itemDrop.velocityY.get();
+        double vz = itemDrop.velocityZ.get();
+        double cx = context.camera().getPos().x;
+        double cy = context.camera().getPos().y;
+        double cz = context.camera().getPos().z;
+        BufferBuilder builder = Tessellator.getInstance().getBuffer();
+
+        /* Preview path follows ItemEntity-like drag and gravity and stops on first block hit. */
+        int primaryColor = BBSSettings.primaryColor.get() & 0x00FFFFFF;
+        float baseR = ((primaryColor >> 16) & 0xFF) / 255F;
+        float baseG = ((primaryColor >> 8) & 0xFF) / 255F;
+        float baseB = (primaryColor & 0xFF) / 255F;
+
+        RenderSystem.disableDepthTest();
+        RenderSystem.depthMask(false);
+        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
+        RenderSystem.enableBlend();
+        builder.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
+        MatrixStack stack = context.matrixStack();
+
+        final int maxSteps = 80;
+        final int subSteps = 4;
+        final float thickness = 0.05F;
+        boolean hit = false;
+        float prevX = (float) (x - cx);
+        float prevY = (float) (y - cy);
+        float prevZ = (float) (z - cz);
+
+        for (int i = 0; i < maxSteps; i++)
+        {
+            for (int s = 0; s < subSteps; s++)
+            {
+                double nextX = x + vx / subSteps;
+                double nextY = y + vy / subSteps;
+                double nextZ = z + vz / subSteps;
+                Vec3d from = new Vec3d(x, y, z);
+                Vec3d to = new Vec3d(nextX, nextY, nextZ);
+                BlockHitResult hitResult = world.raycast(new RaycastContext(from, to, RaycastContext.ShapeType.COLLIDER, RaycastContext.FluidHandling.NONE, MinecraftClient.getInstance().player));
+
+                if (hitResult.getType() == HitResult.Type.BLOCK)
+                {
+                    Vec3d pos = hitResult.getPos();
+
+                    nextX = pos.x;
+                    nextY = pos.y;
+                    nextZ = pos.z;
+                    hit = true;
+                }
+
+                float progress = Math.min(1F, (i + s / (float) subSteps) / (float) maxSteps);
+                float fade = 1F - progress;
+                float alpha = Math.max(0.16F, fade * 0.85F);
+                float r = Math.min(1F, baseR * (1F + 0.18F * fade));
+                float g = Math.min(1F, baseG * (1F + 0.18F * fade));
+                float b = Math.min(1F, baseB * (1F + 0.18F * fade));
+                float nextRenderX = (float) (nextX - cx);
+                float nextRenderY = (float) (nextY - cy);
+                float nextRenderZ = (float) (nextZ - cz);
+
+                if ((nextRenderX - prevX) * (nextRenderX - prevX) + (nextRenderY - prevY) * (nextRenderY - prevY) + (nextRenderZ - prevZ) * (nextRenderZ - prevZ) < 0.000001F)
+                {
+                    hit = true;
+                    break;
+                }
+
+                Draw.fillBoxTo(
+                    builder,
+                    stack,
+                    prevX, prevY, prevZ,
+                    nextRenderX, nextRenderY, nextRenderZ,
+                    thickness,
+                    r, g, b, alpha
+                );
+
+                x = nextX;
+                y = nextY;
+                z = nextZ;
+                prevX = nextRenderX;
+                prevY = nextRenderY;
+                prevZ = nextRenderZ;
+
+                if (hit)
+                {
+                    break;
+                }
+            }
+
+            if (hit)
+            {
+                break;
+            }
+
+            vy -= 0.04D;
+            vx *= 0.98D;
+            vy *= 0.98D;
+            vz *= 0.98D;
+        }
+
+        BufferRenderer.drawWithGlobalProgram(builder.end());
+        RenderSystem.disableBlend();
+        RenderSystem.depthMask(true);
+        RenderSystem.enableDepthTest();
     }
 
     public Pair<String, Boolean> getBone()

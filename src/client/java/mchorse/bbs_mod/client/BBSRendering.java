@@ -1,57 +1,70 @@
 package mchorse.bbs_mod.client;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.blocks.entities.ModelBlockEntity;
-import mchorse.bbs_mod.client.renderer.ModelBlockEntityRenderer;
-import mchorse.bbs_mod.client.renderer.TriggerBlockEntityRenderer;
+import mchorse.bbs_mod.camera.clips.misc.ChromaSkyCurveSettings;
 import mchorse.bbs_mod.camera.clips.misc.CurveClip;
+import mchorse.bbs_mod.camera.clips.misc.HotbarClip;
+import mchorse.bbs_mod.camera.clips.misc.HotbarState;
+import mchorse.bbs_mod.camera.clips.misc.Subtitle;
 import mchorse.bbs_mod.camera.clips.misc.SubtitleClip;
 import mchorse.bbs_mod.camera.controller.CameraWorkCameraController;
 import mchorse.bbs_mod.camera.controller.PlayCameraController;
+import mchorse.bbs_mod.camera.data.Position;
+import mchorse.bbs_mod.client.renderer.ModelBlockEntityRenderer;
+import mchorse.bbs_mod.client.renderer.TriggerBlockEntityRenderer;
+import mchorse.bbs_mod.client.screen.ScreenEffectRenderer;
+import mchorse.bbs_mod.client.video.VideoRenderer;
 import mchorse.bbs_mod.events.ModelBlockEntityUpdateCallback;
 import mchorse.bbs_mod.events.TriggerBlockEntityUpdateCallback;
 import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.renderers.FormRenderer;
-import mchorse.bbs_mod.forms.renderers.FormRenderer;
 import mchorse.bbs_mod.forms.renderers.utils.RecolorVertexConsumer;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.graphics.texture.TextureFormat;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.UIDashboard;
-import mchorse.bbs_mod.client.video.VideoRenderer;
-import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
+import mchorse.bbs_mod.ui.film.UIHotbarRenderer;
 import mchorse.bbs_mod.ui.film.UISubtitleRenderer;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.UIRenderingContext;
 import mchorse.bbs_mod.ui.framework.UIScreen;
 import mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D;
+import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
+import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.VideoRecorder;
+import mchorse.bbs_mod.utils.clips.Clip;
+import mchorse.bbs_mod.utils.clips.ClipContext;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.iris.IrisUtils;
 import mchorse.bbs_mod.utils.iris.ShaderCurves;
 import mchorse.bbs_mod.utils.sodium.SodiumUtils;
+
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.fabricmc.fabric.impl.client.rendering.WorldRenderContextImpl;
 import net.fabricmc.loader.api.FabricLoader;
-import net.irisshaders.iris.uniforms.custom.cached.CachedUniform;
+
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.option.CloudRenderMode;
 import net.minecraft.client.gl.Framebuffer;
 import net.minecraft.client.gl.WindowFramebuffer;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.option.CloudRenderMode;
 import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.util.Window;
 import net.minecraft.client.util.math.MatrixStack;
+
 import org.joml.Matrix4f;
+
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.systems.VertexSorter;
+
 import org.lwjgl.opengl.GL11;
 
 import java.io.File;
@@ -61,6 +74,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+
+import net.irisshaders.iris.uniforms.custom.cached.CachedUniform;
 
 public class BBSRendering
 {
@@ -357,22 +372,43 @@ public class BBSRendering
     public static void onWorldRenderEnd()
     {
         MinecraftClient mc = MinecraftClient.getInstance();
+        UIBaseMenu currentMenu = UIScreen.getCurrentMenu();
 
         if (BBSModClient.getCameraController().getCurrent() instanceof PlayCameraController controller)
         {
             DrawContext drawContext = new DrawContext(mc, mc.getBufferBuilders().getEntityVertexConsumers());
             Batcher2D batcher = new Batcher2D(drawContext);
-
-            UISubtitleRenderer.renderSubtitles(batcher.getContext().getMatrices(), batcher, SubtitleClip.getSubtitles(controller.getContext()));
-
             Window window = mc.getWindow();
             Area area = new Area(0, 0, window.getScaledWidth(), window.getScaledHeight());
             Matrix4f cache = new Matrix4f(RenderSystem.getProjectionMatrix());
             Matrix4f ortho = new Matrix4f().ortho(0, area.w, area.h, 0, -1000, 3000);
 
             RenderSystem.setProjectionMatrix(ortho, VertexSorter.BY_Z);
+            renderHudOverlays(batcher, controller.getContext(), area.w, area.h);
             VideoRenderer.renderClips(batcher.getContext().getMatrices(), batcher, controller.getContext().clips.getClips(controller.getContext().relativeTick), controller.getContext().relativeTick, true, area, area, null, area.w, area.h, false);
+
+            if (controller.screenClips != null)
+            {
+                Position screenDummy = new Position();
+
+                for (Clip screenClip : controller.screenClips.getClips(controller.getContext().ticks))
+                {
+                    controller.getContext().apply(screenClip, screenDummy);
+                }
+
+                ScreenEffectRenderer.render(batcher, controller.getContext(), area.w, area.h);
+            }
+
             RenderSystem.setProjectionMatrix(cache, VertexSorter.BY_Z);
+        }
+
+        if (BBSModClient.getVideoRecorder().isRecording() && BBSModClient.getCameraController().getCurrent() instanceof CameraWorkCameraController controller)
+        {
+            DrawContext drawContext = new DrawContext(mc, mc.getBufferBuilders().getEntityVertexConsumers());
+            Batcher2D batcher = new Batcher2D(drawContext);
+            Window window = mc.getWindow();
+
+            renderHudOverlays(batcher, controller.getContext(), window.getScaledWidth(), window.getScaledHeight());
         }
 
         if (!customSize)
@@ -382,13 +418,12 @@ public class BBSRendering
             return;
         }
 
-        UIBaseMenu currentMenu = UIScreen.getCurrentMenu();
-
         if (currentMenu instanceof UIDashboard dashboard)
         {
             if (dashboard.getPanels().panel instanceof UIFilmPanel panel && panel.getData() != null)
             {
-                UISubtitleRenderer.renderSubtitles(currentMenu.context.batcher.getContext().getMatrices(), currentMenu.context.batcher, SubtitleClip.getSubtitles(panel.getRunner().getContext()));
+                DrawContext drawContext = new DrawContext(mc, mc.getBufferBuilders().getEntityVertexConsumers());
+                Batcher2D offscreenBatcher = new Batcher2D(drawContext);
 
                 Window window = mc.getWindow();
                 Matrix4f cache = new Matrix4f(RenderSystem.getProjectionMatrix());
@@ -396,7 +431,18 @@ public class BBSRendering
 
                 RenderSystem.setProjectionMatrix(ortho, VertexSorter.BY_Z);
                 Area fullScreen = new Area(0, 0, window.getScaledWidth(), window.getScaledHeight());
-                VideoRenderer.renderClips(new MatrixStack(), currentMenu.context.batcher, panel.getData().camera.getClips(panel.getCursor()), panel.getCursor(), panel.getRunner().isRunning(), fullScreen, fullScreen, null, window.getScaledWidth(), window.getScaledHeight(), false);
+                renderHudOverlays(offscreenBatcher, panel.getRunner().getContext(), fullScreen.w, fullScreen.h);
+                VideoRenderer.renderClips(new MatrixStack(), offscreenBatcher, panel.getData().camera.getClips(panel.getCursor()), panel.getCursor(), panel.getRunner().isRunning(), fullScreen, fullScreen, null, window.getScaledWidth(), window.getScaledHeight(), false);
+
+                Position screenDummy = new Position();
+
+                for (Clip screenClip : panel.getData().screen.getClips(panel.getCursor()))
+                {
+                    panel.getRunner().getContext().apply(screenClip, screenDummy);
+                }
+
+                ScreenEffectRenderer.render(offscreenBatcher, panel.getRunner().getContext(), window.getScaledWidth(), window.getScaledHeight());
+
                 RenderSystem.setProjectionMatrix(cache, VertexSorter.BY_Z);
             }
         }
@@ -406,7 +452,7 @@ public class BBSRendering
 
     private static void updateCloudRenderMode(MinecraftClient mc)
     {
-        boolean shouldHideClouds = BBSSettings.chromaSkyEnabled.get() && !BBSSettings.chromaSkyClouds.get();
+        boolean shouldHideClouds = isChromaSkyEnabled() && !isChromaSkyClouds();
 
         if (shouldHideClouds)
         {
@@ -747,7 +793,7 @@ public class BBSRendering
 
     /* Curves */
 
-    public static Long getTimeOfDay()
+    private static Double getCurveValue(String key)
     {
         if (!MinecraftClient.getInstance().isOnThread())
         {
@@ -757,57 +803,78 @@ public class BBSRendering
         if (BBSModClient.getCameraController().getCurrent() instanceof CameraWorkCameraController controller)
         {
             Map<String, Double> values = CurveClip.getValues(controller.getContext());
-            Double v = values != null ? values.get(ShaderCurves.SUN_ROTATION) : null;
 
-            if (v != null)
-            {
-                return (long) (v * 1000L);
-            }
+            return values != null ? values.get(key) : null;
         }
 
         return null;
+    }
+
+    public static boolean isChromaSkyEnabled()
+    {
+        ChromaSkyCurveSettings settings = getChromaSkySettings();
+
+        return settings != null ? settings.enabled : BBSSettings.chromaSkyEnabled.get();
+    }
+
+    public static boolean isChromaSkyTerrain()
+    {
+        ChromaSkyCurveSettings settings = getChromaSkySettings();
+
+        return settings != null ? settings.terrain : BBSSettings.chromaSkyTerrain.get();
+    }
+
+    public static boolean isChromaSkyClouds()
+    {
+        ChromaSkyCurveSettings settings = getChromaSkySettings();
+
+        return settings != null ? settings.clouds : BBSSettings.chromaSkyClouds.get();
+    }
+
+    public static float getChromaSkyBillboard()
+    {
+        ChromaSkyCurveSettings settings = getChromaSkySettings();
+
+        return settings == null ? BBSSettings.chromaSkyBillboard.get() : settings.billboard;
+    }
+
+    public static int getChromaSkyColor()
+    {
+        ChromaSkyCurveSettings settings = getChromaSkySettings();
+
+        return settings == null ? BBSSettings.chromaSkyColor.get() : settings.color.getARGBColor();
+    }
+
+    private static ChromaSkyCurveSettings getChromaSkySettings()
+    {
+        if (getCurveValue(CurveClip.CHROMA_SKY_MARKER) == null)
+        {
+            return null;
+        }
+
+        if (BBSModClient.getCameraController().getCurrent() instanceof CameraWorkCameraController controller)
+        {
+            return CurveClip.getChromaSkySettings(controller.getContext());
+        }
+
+        return null;
+    }
+
+    public static Long getTimeOfDay()
+    {
+        Double v = getCurveValue(ShaderCurves.SUN_ROTATION);
+
+        return v == null ? null : (long) (v * 1000L);
     }
 
     public static Double getBrightness()
     {
-        if (!MinecraftClient.getInstance().isOnThread())
-        {
-            return null;
-        }
-
-        if (BBSModClient.getCameraController().getCurrent() instanceof CameraWorkCameraController controller)
-        {
-            Map<String, Double> values = CurveClip.getValues(controller.getContext());
-            Double v = values != null ? values.get(ShaderCurves.BRIGHTNESS) : null;
-
-            if (v != null)
-            {
-                return v;
-            }
-        }
-
-        return null;
+        return getCurveValue(ShaderCurves.BRIGHTNESS);
     }
 
     public static Double getWeather()
     {
-        if (!MinecraftClient.getInstance().isOnThread())
-        {
-            return null;
-        }
-
-        if (BBSModClient.getCameraController().getCurrent() instanceof CameraWorkCameraController controller)
-        {
-            Map<String, Double> values = CurveClip.getValues(controller.getContext());
-            Double v = values != null ? values.get(ShaderCurves.WEATHER) : null;
-
-            if (v != null)
-            {
-                return v;
-            }
-        }
-
-        return null;
+        return getCurveValue(ShaderCurves.WEATHER);
     }
 
     public static Function<VertexConsumer, VertexConsumer> getColorConsumer(Color color)
@@ -818,5 +885,41 @@ public class BBSRendering
         }
 
         return (b) -> new RecolorVertexConsumer(b, color);
+    }
+
+    private static void renderHudOverlays(Batcher2D batcher, ClipContext context, int width, int height)
+    {
+        List<Subtitle> subtitles = SubtitleClip.getSubtitles(context);
+        List<HotbarState> hotbars = HotbarClip.getHotbars(context);
+
+        if (subtitles.isEmpty() && hotbars.isEmpty())
+        {
+            return;
+        }
+
+        RenderSystem.disableDepthTest();
+
+        MatrixStack matrices = batcher.getContext().getMatrices();
+        int subtitleIndex = 0;
+        int hotbarIndex = 0;
+
+        while (subtitleIndex < subtitles.size() || hotbarIndex < hotbars.size())
+        {
+            boolean renderSubtitle = hotbarIndex >= hotbars.size()
+                || subtitleIndex < subtitles.size() && subtitles.get(subtitleIndex).renderOrder < hotbars.get(hotbarIndex).renderOrder;
+
+            if (renderSubtitle)
+            {
+                UISubtitleRenderer.renderSubtitle(matrices, batcher, subtitles.get(subtitleIndex));
+                subtitleIndex += 1;
+            }
+            else
+            {
+                UIHotbarRenderer.renderHotbar(matrices, batcher, hotbars.get(hotbarIndex), 0, 0, width, height);
+                hotbarIndex += 1;
+            }
+        }
+
+        RenderSystem.enableDepthTest();
     }
 }
