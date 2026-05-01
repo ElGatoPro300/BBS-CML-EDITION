@@ -106,6 +106,17 @@ public class UIReplaysEditor extends UIElement
 {
     private static final Map<String, Integer> COLORS = new HashMap<>();
     private static final Map<String, Icon> ICONS = new HashMap<>();
+
+    public static void registerColor(String id, int color)
+    {
+        COLORS.put(id, color);
+    }
+
+    public static void registerIcon(String id, Icon icon)
+    {
+        ICONS.put(id, icon);
+    }
+
     private static String lastFilm = "";
     private static int lastReplay;
 
