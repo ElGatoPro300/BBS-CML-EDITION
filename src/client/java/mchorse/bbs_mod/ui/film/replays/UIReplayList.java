@@ -1,6 +1,8 @@
 package mchorse.bbs_mod.ui.film.replays;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import mchorse.bbs_mod.BBSMod;
+import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.blocks.entities.ModelBlockEntity;
 import mchorse.bbs_mod.blocks.entities.ModelProperties;
@@ -9,14 +11,12 @@ import mchorse.bbs_mod.camera.clips.CameraClipContext;
 import mchorse.bbs_mod.camera.clips.modifiers.EntityClip;
 import mchorse.bbs_mod.camera.data.Position;
 import mchorse.bbs_mod.client.BBSRendering;
-import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.film.Film;
 import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.film.replays.Replays;
-import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.forms.AnchorForm;
@@ -26,6 +26,7 @@ import mchorse.bbs_mod.forms.forms.MobForm;
 import mchorse.bbs_mod.forms.forms.ModelForm;
 import mchorse.bbs_mod.forms.forms.utils.Anchor;
 import mchorse.bbs_mod.graphics.window.Window;
+import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.math.IExpression;
 import mchorse.bbs_mod.math.MathBuilder;
 import mchorse.bbs_mod.resources.Link;
@@ -57,10 +58,10 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
 import mchorse.bbs_mod.ui.utils.UI;
-import mchorse.bbs_mod.ui.utils.icons.Icon;
-import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
 import mchorse.bbs_mod.ui.utils.context.ContextSeparatorAction;
+import mchorse.bbs_mod.ui.utils.icons.Icon;
+import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.CollectionUtils;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.RayTracing;
@@ -69,31 +70,39 @@ import mchorse.bbs_mod.utils.clips.Clips;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
-import mchorse.bbs_mod.utils.keyframes.factories.KeyframeFactories;
 import mchorse.bbs_mod.utils.keyframes.factories.IKeyframeFactory;
+import mchorse.bbs_mod.utils.keyframes.factories.KeyframeFactories;
 import mchorse.bbs_mod.utils.pose.Transform;
 import mchorse.bbs_mod.utils.resources.Pixels;
+
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.render.DiffuseLighting;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
-import org.joml.Vector3d;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.function.BiConsumer;
-import java.util.function.Consumer;
+import org.joml.Vector3d;
+import org.joml.Vector3f;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
+import java.util.UUID;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 
 /**
  * This GUI is responsible for drawing replays available in the
@@ -132,7 +141,7 @@ public class UIReplayList extends UIList<Replay> {
     public UIFilmPanel panel;
     public UIReplaysOverlayPanel overlay;
 
-    private Map<String, Boolean> expandedGroups = new java.util.HashMap<>();
+    private Map<String, Boolean> expandedGroups = new HashMap<>();
     private List<Replay> visualList = new ArrayList<>();
 
     public UIReplayList(Consumer<List<Replay>> callback, UIReplaysOverlayPanel overlay, UIFilmPanel panel) {
@@ -349,14 +358,14 @@ public class UIReplayList extends UIList<Replay> {
             return null;
         }
 
-        java.util.Set<IKeyframeFactory> allow = new java.util.HashSet<>();
+        Set<IKeyframeFactory> allow = new HashSet<>();
         if (factories != null && factories.length > 0) {
-            allow.addAll(java.util.Arrays.asList(factories));
+            allow.addAll(Arrays.asList(factories));
         }
 
         MapType out = new MapType();
 
-        for (java.util.Map.Entry<String, KeyframeChannel> entry : replay.properties.properties.entrySet()) {
+        for (Map.Entry<String, KeyframeChannel> entry : replay.properties.properties.entrySet()) {
             KeyframeChannel channel = entry.getValue();
 
             if (!allow.isEmpty() && !allow.contains(channel.getFactory())) {
@@ -387,14 +396,14 @@ public class UIReplayList extends UIList<Replay> {
             return null;
         }
 
-        java.util.Set<String> allow = new java.util.HashSet<>();
+        Set<String> allow = new HashSet<>();
         if (suffixes != null && suffixes.length > 0) {
-            allow.addAll(java.util.Arrays.asList(suffixes));
+            allow.addAll(Arrays.asList(suffixes));
         }
 
         MapType out = new MapType();
 
-        for (java.util.Map.Entry<String, KeyframeChannel> entry : replay.properties.properties.entrySet()) {
+        for (Map.Entry<String, KeyframeChannel> entry : replay.properties.properties.entrySet()) {
             if (!allow.isEmpty() && !matchesPropertySuffix(entry.getKey(), allow)) {
                 continue;
             }
@@ -419,7 +428,7 @@ public class UIReplayList extends UIList<Replay> {
         return out;
     }
 
-    private boolean matchesPropertySuffix(String property, java.util.Set<String> allow) {
+    private boolean matchesPropertySuffix(String property, Set<String> allow) {
         for (String suffix : allow) {
             if (property.equals(suffix) || property.endsWith("/" + suffix)) {
                 return true;
@@ -798,7 +807,7 @@ public class UIReplayList extends UIList<Replay> {
                             double minSepSq = minSep * minSep;
                             long seed = (long) Math.round(scatterSeed.getValue());
 
-                            java.util.Random random = new java.util.Random(seed);
+                            Random random = new Random(seed);
                             List<double[]> placed = new ArrayList<>();
 
                             for (int order = 0; order < count; order++) {
@@ -1233,7 +1242,7 @@ public class UIReplayList extends UIList<Replay> {
                             double max = randomMax.getValue();
                             double start = Math.min(min, max);
                             double end = Math.max(min, max);
-                            java.util.Random random = new java.util.Random((long) Math.round(seed));
+                            Random random = new Random((long) Math.round(seed));
                             int count = indices.size();
 
                             for (int order = 0; order < count; order++) {
@@ -1544,7 +1553,7 @@ public class UIReplayList extends UIList<Replay> {
             String oldUuid = replay.uuid.get();
             String oldParentPath = replay.group.get();
 
-            replay.uuid.set(java.util.UUID.randomUUID().toString());
+            replay.uuid.set(UUID.randomUUID().toString());
 
             if (replay.isGroup.get()) {
                 remappedGroupUuids.put(oldUuid, replay.uuid.get());
@@ -1676,7 +1685,7 @@ public class UIReplayList extends UIList<Replay> {
             Replay replay = film.replays.addReplay();
 
             BaseValue.edit(replay, (r) -> r.fromData(replayType));
-            replay.uuid.set(java.util.UUID.randomUUID().toString());
+            replay.uuid.set(UUID.randomUUID().toString());
 
             last = replay;
         }
@@ -1920,7 +1929,7 @@ public class UIReplayList extends UIList<Replay> {
             Replay newReplay = film.replays.addReplay();
 
             newReplay.copy(replay);
-            newReplay.uuid.set(java.util.UUID.randomUUID().toString());
+            newReplay.uuid.set(UUID.randomUUID().toString());
 
             last = newReplay;
         }
@@ -2564,7 +2573,11 @@ public class UIReplayList extends UIList<Replay> {
 
             y -= 10;
 
+            Vector3f a = new Vector3f(0.85F, 0.85F, -1F).normalize();
+            Vector3f b = new Vector3f(-0.85F, 0.85F, 1F).normalize();
+            RenderSystem.setupLevelDiffuseLighting(a, b);
             FormUtilsClient.renderUI(form, context, x, y, x + 40, y + 40);
+            DiffuseLighting.disableGuiDepthLighting();
 
             context.batcher.unclip(context);
 
@@ -2578,7 +2591,7 @@ public class UIReplayList extends UIList<Replay> {
         Film film = this.panel.getData();
         Replay group = new Replay("replay");
 
-        group.uuid.set(java.util.UUID.randomUUID().toString());
+        group.uuid.set(UUID.randomUUID().toString());
         group.isGroup.set(true);
         group.label.set("New Group");
 

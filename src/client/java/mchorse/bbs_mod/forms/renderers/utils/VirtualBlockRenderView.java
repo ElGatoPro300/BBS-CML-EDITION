@@ -1,21 +1,21 @@
 package mchorse.bbs_mod.forms.renderers.utils;
 
 import net.minecraft.block.BlockState;
+import net.minecraft.block.Blocks;
+import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.fluid.FluidState;
+import net.minecraft.fluid.Fluids;
 import net.minecraft.registry.Registry;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.util.Identifier;
-import net.minecraft.fluid.FluidState;
-import net.minecraft.fluid.Fluids;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Direction;
 import net.minecraft.world.BlockRenderView;
 import net.minecraft.world.LightType;
-import net.minecraft.world.chunk.light.LightingProvider;
-import net.minecraft.block.entity.BlockEntity;
-import net.minecraft.block.Blocks;
-import net.minecraft.world.biome.ColorResolver;
 import net.minecraft.world.biome.Biome;
+import net.minecraft.world.biome.ColorResolver;
+import net.minecraft.world.chunk.light.LightingProvider;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -160,7 +160,7 @@ public class VirtualBlockRenderView implements BlockRenderView
 
         try
         {
-            this.biomeOverrideId = new Identifier(biomeId);
+            this.biomeOverrideId = Identifier.of(biomeId);
             /* Resolve preferably from the client world */
             if (MinecraftClient.getInstance().world != null)
             {

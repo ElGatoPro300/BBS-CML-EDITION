@@ -5,6 +5,7 @@ import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.ui.UIKeys;
+import mchorse.bbs_mod.ui.film.replays.UIReplayPresetPreview;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
@@ -17,11 +18,13 @@ import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.Direction;
+import mchorse.bbs_mod.utils.StringUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.function.Consumer;
 
 public class UIPresetsGridOverlayPanel extends UIOverlayPanel
 {
@@ -114,7 +117,7 @@ public class UIPresetsGridOverlayPanel extends UIOverlayPanel
 
         UICopyPasteController.IPresetPreview fork = preview == null ? null : preview.fork();
 
-        if (fork instanceof mchorse.bbs_mod.ui.film.replays.UIReplayPresetPreview replayPreview)
+        if (fork instanceof UIReplayPresetPreview replayPreview)
         {
             replayPreview.setPreviewDistance(13);
         }
@@ -303,7 +306,7 @@ public class UIPresetsGridOverlayPanel extends UIOverlayPanel
         {
             int colon = key.indexOf(':');
             String propertyPath = colon == -1 ? key : key.substring(0, colon);
-            String property = mchorse.bbs_mod.utils.StringUtils.fileName(propertyPath);
+            String property = StringUtils.fileName(propertyPath);
             String boneName = colon == -1 ? "" : key.substring(colon + 1);
             String propertyLower = property.toLowerCase(Locale.ROOT);
             String pathLower = propertyPath.toLowerCase(Locale.ROOT);
@@ -518,7 +521,7 @@ public class UIPresetsGridOverlayPanel extends UIOverlayPanel
 
     private static class PresetCell extends UIElement
     {
-        private final java.util.function.Consumer<String> callback;
+        private final Consumer<String> callback;
         private final UICopyPasteController.IPresetPreview preview;
         private final UIElement previewElement;
 
@@ -531,7 +534,7 @@ public class UIPresetsGridOverlayPanel extends UIOverlayPanel
         private final PresetIndicator indicatorPose;
         private final PresetIndicator indicatorPoseToLimbs;
 
-        public PresetCell(java.util.function.Consumer<String> callback, UICopyPasteController.IPresetPreview preview)
+        public PresetCell(Consumer<String> callback, UICopyPasteController.IPresetPreview preview)
         {
             this.callback = callback;
             this.preview = preview;

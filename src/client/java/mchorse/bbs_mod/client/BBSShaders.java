@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.client;
 
 import mchorse.bbs_mod.BBSMod;
+
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.render.VertexFormats;
@@ -124,7 +125,7 @@ public class BBSShaders
         {
             if (id.getPath().contains("/core/"))
             {
-                return this.manager.getResource(new Identifier(BBSMod.MOD_ID, id.getPath()));
+                return this.manager.getResource(Identifier.of(BBSMod.MOD_ID, id.getPath()));
             }
 
             return this.manager.getResource(id);

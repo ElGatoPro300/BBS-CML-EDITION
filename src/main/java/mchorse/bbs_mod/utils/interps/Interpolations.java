@@ -4,6 +4,7 @@ import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.interps.easings.Easings;
 import mchorse.bbs_mod.utils.interps.types.BaseInterp;
 import mchorse.bbs_mod.utils.interps.types.EasingInterp;
+
 import org.lwjgl.glfw.GLFW;
 
 import java.util.LinkedHashMap;

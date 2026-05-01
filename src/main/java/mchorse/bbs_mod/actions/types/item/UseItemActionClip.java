@@ -4,14 +4,16 @@ import mchorse.bbs_mod.actions.SuperFakePlayer;
 import mchorse.bbs_mod.film.Film;
 import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.items.GunItem;
+import mchorse.bbs_mod.settings.values.numeric.ValueInt;
 import mchorse.bbs_mod.utils.clips.Clip;
+
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.Hand;
 
 public class UseItemActionClip extends ItemActionClip
 {
-    public final mchorse.bbs_mod.settings.values.numeric.ValueInt useTicks = new mchorse.bbs_mod.settings.values.numeric.ValueInt("use_ticks", 0, 0, Integer.MAX_VALUE);
+    public final ValueInt useTicks = new ValueInt("use_ticks", 0, 0, Integer.MAX_VALUE);
 
     public UseItemActionClip()
     {
@@ -29,7 +31,7 @@ public class UseItemActionClip extends ItemActionClip
 
         this.applyPositionRotation(player, replay, tick);
         ItemStack copy = this.itemStack.get().copy();
-        int maxUseTime = copy.getMaxUseTime();
+        int maxUseTime = copy.getMaxUseTime(player);
         int used = this.useTicks.get();
 
         player.setStackInHand(hand, copy);

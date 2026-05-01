@@ -1,0 +1,182 @@
+import os
+import re
+import glob
+import subprocess
+
+# -----------------------------------------------------------------------------
+# Console Command: python organize_imports.py
+# -----------------------------------------------------------------------------
+
+# Configuration
+PROJECT_ROOT = os.getcwd()
+JAVA_SRC_DIR = os.path.join(PROJECT_ROOT, "src")
+
+# Import groups order
+IMPORT_GROUPS = [
+    "mchorse.bbs_mod",
+    "net.fabricmc",
+    "net.minecraft",
+    "org.joml",
+    "com.mojang",
+    "com.google",
+    "org.lwjgl",
+    "java",
+    "javax"
+]
+
+# Classes that should remain fully qualified to avoid ambiguity
+# If these are found as FQNs in code, they will NOT be simplified.
+# If they are already imported, they will be kept in imports.
+WHITELIST = [
+    "mchorse.bbs_mod.camera.Camera",
+    "net.minecraft.client.render.Camera",
+    "mchorse.bbs_mod.graphics.window.Window",
+    "net.minecraft.client.util.Window",
+    "mchorse.bbs_mod.graphics.Framebuffer",
+    "net.minecraft.client.gl.Framebuffer",
+    "mchorse.bbs_mod.utils.colors.Color",
+    "java.awt.Color"
+]
+
+# Regex for finding fully qualified names (FQNs)
+FQN_REGEX = r'\b((?:mchorse|net|com|org|java|javax)\.(?:[a-z0-9_]+\.)+[A-Z][a-zA-Z0-9_]*)\b'
+
+def get_modified_files():
+    """Get list of modified Java files using git."""
+    try:
+        # Get files modified in the last 50 commits
+        output = subprocess.check_output(["git", "diff", "--name-only", "HEAD"], encoding="utf-8")
+        files = [f for f in output.splitlines() if f.endswith(".java")]
+        return [os.path.abspath(os.path.join(PROJECT_ROOT, f)) for f in files if os.path.exists(f)]
+    except Exception as e:
+        print(f"Error getting modified files: {e}")
+        return glob.glob(os.path.join(JAVA_SRC_DIR, "**", "*.java"), recursive=True)
+
+def sort_imports(imports):
+    """Sort imports into groups and alphabetically."""
+    if not imports:
+        return []
+
+    # Remove duplicates and clean up
+    imports = sorted(list(set(i.strip().rstrip(';') for i in imports if i.strip())))
+    
+    # We DO NOT filter out whitelisted imports anymore, because they might be needed 
+    # if the code uses simple names for one of them.
+
+    grouped = {group: [] for group in IMPORT_GROUPS}
+    others = []
+
+    for imp in imports:
+        matched = False
+        for group in IMPORT_GROUPS:
+            if imp.startswith(f"import {group}."):
+                grouped[group].append(imp)
+                matched = True
+                break
+        if not matched:
+            others.append(imp)
+
+    result = []
+    # Add groups in order
+    for group in IMPORT_GROUPS:
+        if grouped[group]:
+            if result:
+                result.append("") # Spacer
+            result.extend(sorted(grouped[group]))
+    
+    # Add others at the end if any
+    if others:
+        if result:
+            result.append("")
+        result.extend(sorted(others))
+        
+    return result
+
+def process_file(filepath):
+    try:
+        with open(filepath, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+
+        content = "".join(lines)
+        
+        # 1. Extract package, imports, and body
+        package_line = ""
+        imports = []
+        body_lines = []
+        
+        in_imports = False
+        finished_imports = False
+        
+        for line in lines:
+            trimmed = line.strip()
+            if trimmed.startswith("package "):
+                package_line = trimmed.rstrip(';')
+            elif trimmed.startswith("import "):
+                imports.append(trimmed.rstrip(';'))
+                in_imports = True
+            elif in_imports and not trimmed and not finished_imports:
+                continue # Skip empty lines between imports
+            elif in_imports and not trimmed.startswith("import ") and trimmed:
+                finished_imports = True
+                body_lines.append(line)
+            elif finished_imports or (not in_imports and trimmed and not trimmed.startswith("package ")):
+                finished_imports = True
+                body_lines.append(line)
+        
+        body = "".join(body_lines)
+        
+        # 2. Find and replace FQNs in the body
+        def replace_fqn(match):
+            fqn = match.group(1)
+            
+            # If FQN is whitelisted, KEEP it as FQN and don't add to imports
+            if fqn in WHITELIST:
+                return fqn
+            
+            class_name = fqn.split('.')[-1]
+            imports.append(f"import {fqn}")
+            return class_name
+
+        new_body = re.sub(FQN_REGEX, replace_fqn, body)
+        
+        # 3. Sort imports
+        sorted_imps = sort_imports(imports)
+        
+        # 4. Construct new content
+        new_content = []
+        if package_line:
+            new_content.append(package_line + ";\n\n")
+        
+        for imp in sorted_imps:
+            if imp == "":
+                new_content.append("\n")
+            else:
+                new_content.append(imp + ";\n")
+        
+        if sorted_imps:
+            new_content.append("\n")
+            
+        new_content.append(new_body.lstrip())
+        
+        final_text = "".join(new_content)
+        final_text = final_text.replace(";;", ";")
+        
+        if final_text != content:
+            with open(filepath, 'w', encoding='utf-8') as f:
+                f.write(final_text)
+            print(f"Organized imports in {os.path.basename(filepath)}")
+            return True
+        return False
+
+    except Exception as e:
+        print(f"Error processing {filepath}: {e}")
+        return False
+
+if __name__ == "__main__":
+    files = get_modified_files()
+    print(f"Found {len(files)} files to check...")
+    count = 0
+    for f in files:
+        if process_file(f):
+            count += 1
+    print(f"Finished. Modified {count} files.")

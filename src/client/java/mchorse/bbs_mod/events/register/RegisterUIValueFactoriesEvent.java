@@ -2,6 +2,7 @@ package mchorse.bbs_mod.events.register;
 
 import mchorse.bbs_mod.settings.ui.UIValueMap.IUIValueFactory;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
+
 import java.util.Map;
 
 public class RegisterUIValueFactoriesEvent

@@ -1,7 +1,5 @@
 package mchorse.bbs_mod.ui.forms.editors.utils;
 
-import com.mojang.blaze3d.platform.GlStateManager;
-import com.mojang.blaze3d.systems.RenderSystem;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.entities.IEntity;
@@ -21,15 +19,21 @@ import mchorse.bbs_mod.ui.utils.StencilFormFramebuffer;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.Pair;
 import mchorse.bbs_mod.utils.colors.Colors;
+
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.GlUniform;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.util.math.MatrixStack;
+
 import org.joml.Matrix4f;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
+
+import com.mojang.blaze3d.platform.GlStateManager;
+import com.mojang.blaze3d.systems.RenderSystem;
+
 import org.lwjgl.opengl.GL11;
 
 import java.util.function.Supplier;
@@ -290,6 +294,13 @@ public class UIPickableFormRenderer extends UIFormRenderer
         if (this.update && this.target != null)
         {
             this.form.update(this.entity);
+
+            mchorse.bbs_mod.forms.renderers.FormRenderer renderer = mchorse.bbs_mod.forms.FormUtilsClient.getRenderer(this.form);
+
+            if (renderer instanceof mchorse.bbs_mod.forms.ITickable tickable)
+            {
+                tickable.tick(this.entity);
+            }
         }
     }
 

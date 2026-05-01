@@ -16,11 +16,11 @@ import mchorse.bbs_mod.utils.interps.Interpolation;
 import mchorse.bbs_mod.utils.interps.Interpolations;
 import mchorse.bbs_mod.utils.joml.Matrices;
 
+import org.joml.Vector3f;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-
-import org.joml.Vector3f;
 
 /**
  * Path camera fixture
@@ -133,8 +133,8 @@ public class PathClip extends CameraClip
         if (position.angle.distance != 0F)
         {
             Vector3f rotation = Matrices.rotation(
-                mchorse.bbs_mod.utils.MathUtils.toRad(position.angle.pitch),
-                mchorse.bbs_mod.utils.MathUtils.toRad(-position.angle.yaw - 180)
+                MathUtils.toRad(position.angle.pitch),
+                MathUtils.toRad(-position.angle.yaw - 180)
             );
 
             position.point.x += rotation.x * position.angle.distance;

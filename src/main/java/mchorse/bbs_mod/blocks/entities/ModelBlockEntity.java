@@ -9,7 +9,10 @@ import mchorse.bbs_mod.events.ModelBlockEntityUpdateCallback;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.entities.StubEntity;
 import mchorse.bbs_mod.forms.forms.Form;
+import mchorse.bbs_mod.forms.forms.BillboardForm;
 import mchorse.bbs_mod.forms.forms.LightForm;
+import mchorse.bbs_mod.resources.Link;
+
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntity;
@@ -17,8 +20,10 @@ import net.minecraft.nbt.NbtCompound;
 import net.minecraft.network.listener.ClientPlayPacketListener;
 import net.minecraft.network.packet.Packet;
 import net.minecraft.network.packet.s2c.play.BlockEntityUpdateS2CPacket;
+import net.minecraft.registry.RegistryWrapper.WrapperLookup;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
+
 import org.jetbrains.annotations.Nullable;
 
 public class ModelBlockEntity extends BlockEntity
@@ -191,15 +196,15 @@ public class ModelBlockEntity extends BlockEntity
     }
 
     @Override
-    public NbtCompound toInitialChunkDataNbt()
+    public NbtCompound toInitialChunkDataNbt(WrapperLookup registryLookup)
     {
-        return createNbt();
+        return this.createNbtWithId(registryLookup);
     }
 
     @Override
-    protected void writeNbt(NbtCompound nbt)
+    protected void writeNbt(NbtCompound nbt, WrapperLookup registryLookup)
     {
-        super.writeNbt(nbt);
+        super.writeNbt(nbt, registryLookup);
 
         MapType data = this.properties.toData();
 
@@ -207,9 +212,9 @@ public class ModelBlockEntity extends BlockEntity
     }
 
     @Override
-    public void readNbt(NbtCompound nbt)
+    public void readNbt(NbtCompound nbt, WrapperLookup registryLookup)
     {
-        super.readNbt(nbt);
+        super.readNbt(nbt, registryLookup);
 
         BaseType baseType = DataStorageUtils.readFromNbtCompound(nbt, "Properties");
 
@@ -226,9 +231,9 @@ public class ModelBlockEntity extends BlockEntity
                 BlockPos pos = this.getPos();
                 BlockState state = this.world.getBlockState(pos);
 
-                if (state.getBlock() instanceof net.minecraft.block.Block)
+                if (state.getBlock() instanceof Block)
                 {
-                    this.world.setBlockState(pos, state.with(mchorse.bbs_mod.blocks.ModelBlock.LIGHT_LEVEL, level), Block.NOTIFY_LISTENERS);
+                    this.world.setBlockState(pos, state.with(ModelBlock.LIGHT_LEVEL, level), Block.NOTIFY_LISTENERS);
                 }
             }
             catch (Exception e) {}
@@ -246,7 +251,7 @@ public class ModelBlockEntity extends BlockEntity
         {
             int level = this.properties.getLightLevel();
 
-            world.setBlockState(pos, blockState.with(mchorse.bbs_mod.blocks.ModelBlock.LIGHT_LEVEL, level), Block.NOTIFY_LISTENERS);
+            world.setBlockState(pos, blockState.with(ModelBlock.LIGHT_LEVEL, level), Block.NOTIFY_LISTENERS);
         }
         catch (Exception e)
         {

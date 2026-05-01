@@ -1,5 +1,6 @@
 package mchorse.bbs_mod.camera.clips.screen.nodes;
 
+import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.forms.forms.shape.nodes.ShapeNode;
 
 import java.util.Arrays;
@@ -33,14 +34,14 @@ public class PosterizeNode extends ShapeNode
     }
 
     @Override
-    public void toData(mchorse.bbs_mod.data.types.MapType data)
+    public void toData(MapType data)
     {
         super.toData(data);
         data.putInt("mode", this.mode);
     }
 
     @Override
-    public void fromData(mchorse.bbs_mod.data.types.MapType data)
+    public void fromData(MapType data)
     {
         super.fromData(data);
         this.mode = data.getInt("mode");

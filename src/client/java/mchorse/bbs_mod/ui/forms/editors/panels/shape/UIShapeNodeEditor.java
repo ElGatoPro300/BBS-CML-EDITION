@@ -1,12 +1,13 @@
 package mchorse.bbs_mod.ui.forms.editors.panels.shape;
 
+import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.forms.forms.shape.INodeGraph;
 import mchorse.bbs_mod.forms.forms.shape.ShapeConnection;
-import mchorse.bbs_mod.forms.forms.shape.ValueShapeGraph;
 import mchorse.bbs_mod.forms.forms.shape.ShapeFormGraph;
+import mchorse.bbs_mod.forms.forms.shape.ValueShapeGraph;
 import mchorse.bbs_mod.forms.forms.shape.nodes.BumpNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.ClampNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.ColorNode;
@@ -14,9 +15,9 @@ import mchorse.bbs_mod.forms.forms.shape.nodes.CombineColorNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.CommentNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.CoordinateNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.FlowNoiseNode;
+import mchorse.bbs_mod.forms.forms.shape.nodes.InvertNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.IrisAttributeNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.IrisShaderNode;
-import mchorse.bbs_mod.forms.forms.shape.nodes.InvertNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.MathNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.MixColorNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.NoiseNode;
@@ -31,8 +32,10 @@ import mchorse.bbs_mod.forms.forms.shape.nodes.TriggerNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.ValueNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.VectorMathNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.VoronoiNode;
+import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.l10n.keys.IKey;
+import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.UIContext;
@@ -49,13 +52,11 @@ import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.presets.UICopyPasteController;
-import mchorse.bbs_mod.BBSModClient;
-import mchorse.bbs_mod.graphics.texture.Texture;
-import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.presets.PresetManager;
 
 import org.joml.Vector2f;
+
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
@@ -1397,6 +1398,8 @@ public class UIShapeNodeEditor extends UIElement
 
         if (out == null || in == null) return;
 
+        Matrix4f matrix4f = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
+        Tessellator tessellator = Tessellator.getInstance();
         int x1 = this.nodeScreenX(out) + this.nodeScreenW(out);
         int y1 = this.socketScreenY(out, c.outputIndex);
         int x2 = this.nodeScreenX(in);
@@ -1406,6 +1409,33 @@ public class UIShapeNodeEditor extends UIElement
             ? (Colors.A100 | Colors.ACTIVE)
             : Colors.WHITE;
 
+        // Border
+        BufferBuilder builder = tessellator.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
+
+        for (int i = 0; i < segments; i++)
+        {
+            double a1 = i / (double) segments * Math.PI * 2;
+            double a2 = (i + 1) / (double) segments * Math.PI * 2;
+
+            builder.vertex(matrix4f, x, y, 0F).color(0xFF000000);
+            builder.vertex(matrix4f, (float) (x + Math.cos(a1) * (radius + 1.5F)), (float) (y + Math.sin(a1) * (radius + 1.5F)), 0F).color(0xFF000000);
+            builder.vertex(matrix4f, (float) (x + Math.cos(a2) * (radius + 1.5F)), (float) (y + Math.sin(a2) * (radius + 1.5F)), 0F).color(0xFF000000);
+        }
+
+        BufferRenderer.drawWithGlobalProgram(builder.end());
+
+        // Fill
+        builder = tessellator.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
+
+        for (int i = 0; i < segments; i++)
+        {
+            double a1 = i / (double) segments * Math.PI * 2;
+            double a2 = (i + 1) / (double) segments * Math.PI * 2;
+
+            builder.vertex(matrix4f, x, y, 0F).color(color);
+            builder.vertex(matrix4f, (float) (x + Math.cos(a1) * radius), (float) (y + Math.sin(a1) * radius), 0F).color(color);
+            builder.vertex(matrix4f, (float) (x + Math.cos(a2) * radius), (float) (y + Math.sin(a2) * radius), 0F).color(color);
+        }
         this.drawBezier(context, x1, y1, x2, y2, color, 2F * this.scale);
     }
 

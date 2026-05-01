@@ -1,6 +1,10 @@
 package mchorse.bbs_mod.camera.clips.screen;
 
+import mchorse.bbs_mod.utils.clips.ClipContext;
 import mchorse.bbs_mod.utils.colors.Colors;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /** Holds all screen-node effect parameters evaluated from a ScreenNodeGraph. */
 public class ScreenNodeEffect
@@ -31,8 +35,8 @@ public class ScreenNodeEffect
     public float distortX;
     public float distortY;
 
-    public static java.util.List<ScreenNodeEffect> getEffects(mchorse.bbs_mod.utils.clips.ClipContext context)
+    public static List<ScreenNodeEffect> getEffects(ClipContext context)
     {
-        return context.clipData.get("screenNodeEffects", java.util.ArrayList::new);
+        return context.clipData.get("screenNodeEffects", ArrayList::new);
     }
 }

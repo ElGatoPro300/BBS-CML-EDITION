@@ -7,7 +7,9 @@ import mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.interps.Lerps;
+
 import net.minecraft.client.MinecraftClient;
+
 import org.lwjgl.glfw.GLFW;
 
 /**
@@ -457,7 +459,7 @@ public class Scroll
 
         if (BBSSettings.scrollingSmoothness.get())
         {
-            float delta = MinecraftClient.getInstance().getLastFrameDuration();
+            float delta = MinecraftClient.getInstance().getRenderTickCounter().getLastFrameDuration();
 
             /* The higher the FPS, the smaller the lerp factor is,
              * the lower the FPS, the bigger the factor is */
