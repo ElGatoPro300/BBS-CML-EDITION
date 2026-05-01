@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.mixin.client.iris;
 
 import mchorse.bbs_mod.utils.iris.ShaderCurves;
+
 import net.irisshaders.iris.uniforms.custom.CustomUniforms;
 import net.irisshaders.iris.uniforms.custom.CustomUniformFixedInputUniformsHolder;
 import org.spongepowered.asm.mixin.Mixin;
