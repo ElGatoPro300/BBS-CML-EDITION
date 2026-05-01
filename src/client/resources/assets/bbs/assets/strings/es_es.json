@@ -1109,8 +1109,6 @@
     "bbs.ui.model_blocks.global": "Global",
     "bbs.ui.model_blocks.hardness": "Dureza",
     "bbs.ui.model_blocks.hitbox": "Activar Hitbox",
-    "bbs.ui.model_blocks.hitbox_pos1": "Posición 1",
-    "bbs.ui.model_blocks.hitbox_pos2": "Posición 2",
     "bbs.ui.model_blocks.keys.move_to": "Mover a",
     "bbs.ui.model_blocks.keys.teleport": "Teletransportarse al bloque de modelos",
     "bbs.ui.model_blocks.keys.toggle_rendering": "Alternar renderizado del mundo",

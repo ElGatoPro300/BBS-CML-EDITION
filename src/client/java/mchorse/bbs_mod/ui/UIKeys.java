@@ -853,9 +853,6 @@ public class UIKeys
     public static final IKey MODEL_BLOCKS_PROPERTIES = L10n.lang("bbs.ui.model_blocks.properties");
     public static final IKey MODEL_BLOCKS_SHADOW = L10n.lang("bbs.ui.model_blocks.shadow");
     public static final IKey MODEL_BLOCKS_HITBOX = L10n.lang("bbs.ui.model_blocks.hitbox");
-    public static final IKey MODEL_BLOCKS_HITBOX_CUSTOM = L10n.lang("bbs.ui.model_blocks.hitbox_custom");
-    public static final IKey MODEL_BLOCKS_HITBOX_POS1 = L10n.lang("bbs.ui.model_blocks.hitbox_pos1");
-    public static final IKey MODEL_BLOCKS_HITBOX_POS2 = L10n.lang("bbs.ui.model_blocks.hitbox_pos2");
     public static final IKey MODEL_BLOCKS_TITLE = L10n.lang("bbs.ui.model_blocks.title");
     public static final IKey MODEL_BLOCKS_TRANSFORM_DEFAULT = L10n.lang("bbs.ui.model_blocks.transform.default");
     public static final IKey MODEL_BLOCKS_TRANSFORM_FIRST_PERSON = L10n.lang("bbs.ui.model_blocks.transform.first_person");

@@ -1117,8 +1117,6 @@
     "bbs.ui.model_blocks.global": "Global",
     "bbs.ui.model_blocks.hardness": "Block hardness",
     "bbs.ui.model_blocks.hitbox": "Enable Hitbox",
-    "bbs.ui.model_blocks.hitbox_pos1": "Position 1",
-    "bbs.ui.model_blocks.hitbox_pos2": "Posotion 2",
     "bbs.ui.model_blocks.keys.move_to": "Move to",
     "bbs.ui.model_blocks.keys.teleport": "Teleport to model block",
     "bbs.ui.model_blocks.keys.toggle_rendering": "Toggle world rendering",

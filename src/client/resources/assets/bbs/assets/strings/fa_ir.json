@@ -1024,8 +1024,6 @@
     "bbs.ui.model_blocks.global": "جهانی",
     "bbs.ui.model_blocks.hardness": "سختی بلوک",
     "bbs.ui.model_blocks.hitbox": "فعال کردن هیت‌باکس",
-    "bbs.ui.model_blocks.hitbox_pos1": "موقعیت ۱",
-    "bbs.ui.model_blocks.hitbox_pos2": "موقعیت ۲",
     "bbs.ui.model_blocks.keys.move_to": "حرکت به",
     "bbs.ui.model_blocks.keys.teleport": "تلپورت به بلوک مدل",
     "bbs.ui.model_blocks.keys.toggle_rendering": "تغییر رندر جهان",
