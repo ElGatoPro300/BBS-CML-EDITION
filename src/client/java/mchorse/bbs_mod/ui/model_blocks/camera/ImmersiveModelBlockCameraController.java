@@ -5,7 +5,6 @@ import mchorse.bbs_mod.camera.Camera;
 import mchorse.bbs_mod.camera.controller.ICameraController;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIModelRenderer;
 import mchorse.bbs_mod.utils.pose.Transform;
-
 import net.minecraft.util.math.BlockPos;
 
 public class ImmersiveModelBlockCameraController implements ICameraController

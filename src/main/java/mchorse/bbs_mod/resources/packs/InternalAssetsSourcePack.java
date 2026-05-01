@@ -4,7 +4,6 @@ import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.resources.ISourcePack;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.utils.DataPath;
-
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
 
@@ -19,8 +18,6 @@ import java.util.Enumeration;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
-
-import net.minecraftforge.common.MinecraftForge;
 
 public class InternalAssetsSourcePack implements ISourcePack
 {
@@ -45,7 +42,7 @@ public class InternalAssetsSourcePack implements ISourcePack
 
         try
         {
-            Class.forName("MinecraftForge");
+            Class.forName("net.minecraftforge.common.MinecraftForge");
 
             isForge = true;
         }

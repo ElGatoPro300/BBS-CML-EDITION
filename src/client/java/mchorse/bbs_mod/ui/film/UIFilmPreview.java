@@ -47,7 +47,6 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.RotationAxis;
 
-import org.joml.Matrix4fStack;
 import org.joml.Vector2i;
 
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -451,7 +450,7 @@ public class UIFilmPreview extends UIElement
     private void renderCursor(UIContext context)
     {
         net.minecraft.client.render.Camera mcCamera = MinecraftClient.getInstance().gameRenderer.getCamera();
-        Matrix4fStack stack = RenderSystem.getModelViewStack();
+        org.joml.Matrix4fStack stack = RenderSystem.getModelViewStack();
 
         stack.pushMatrix();
 

@@ -1,6 +1,5 @@
 package mchorse.bbs_mod.entity;
 
-import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.film.Film;
 import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.forms.entities.MCEntity;
@@ -22,8 +21,6 @@ import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.network.packet.s2c.play.ItemPickupAnimationS2CPacket;
-import net.minecraft.registry.RegistryOps;
-import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.Arm;
@@ -547,7 +544,7 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
         if (nbt.contains("Equipment", 10))
         {
             NbtCompound equipmentNbt = nbt.getCompound("Equipment");
-            RegistryWrapper.WrapperLookup registries = this.getWorld() != null ? this.getWorld().getRegistryManager() : BBSMod.getRegistryManager();
+            net.minecraft.registry.RegistryWrapper.WrapperLookup registries = this.getWorld() != null ? this.getWorld().getRegistryManager() : mchorse.bbs_mod.BBSMod.getRegistryManager();
 
             for (EquipmentSlot slot : EquipmentSlot.values())
             {
@@ -555,7 +552,7 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
                 {
                     NbtCompound itemNbt = equipmentNbt.getCompound(slot.getName());
                     ItemStack stack = registries != null
-                        ? ItemStack.CODEC.parse(RegistryOps.of(NbtOps.INSTANCE, registries), itemNbt).result().orElse(ItemStack.EMPTY)
+                        ? ItemStack.CODEC.parse(net.minecraft.registry.RegistryOps.of(NbtOps.INSTANCE, registries), itemNbt).result().orElse(ItemStack.EMPTY)
                         : ItemStack.fromNbtOrEmpty(null, itemNbt);
 
                     this.equipment.put(slot, stack);
@@ -572,7 +569,7 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
         nbt.putBoolean("despawn", true);
 
         NbtCompound equipmentNbt = new NbtCompound();
-        RegistryWrapper.WrapperLookup registries = this.getWorld() != null ? this.getWorld().getRegistryManager() : BBSMod.getRegistryManager();
+        net.minecraft.registry.RegistryWrapper.WrapperLookup registries = this.getWorld() != null ? this.getWorld().getRegistryManager() : mchorse.bbs_mod.BBSMod.getRegistryManager();
 
         for (Map.Entry<EquipmentSlot, ItemStack> entry : this.equipment.entrySet())
         {
@@ -580,7 +577,7 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
             {
                 ItemStack stack = entry.getValue();
                 NbtElement itemNbt = registries != null
-                    ? ItemStack.CODEC.encodeStart(RegistryOps.of(NbtOps.INSTANCE, registries), stack).result().orElse(null)
+                    ? ItemStack.CODEC.encodeStart(net.minecraft.registry.RegistryOps.of(NbtOps.INSTANCE, registries), stack).result().orElse(null)
                     : ItemStack.CODEC.encodeStart(NbtOps.INSTANCE, stack).result().orElse(null);
 
                 if (itemNbt instanceof NbtCompound compound)

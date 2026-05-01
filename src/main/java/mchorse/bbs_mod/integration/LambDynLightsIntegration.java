@@ -1,5 +1,8 @@
 package mchorse.bbs_mod.integration;
 
+import dev.lambdaurora.lambdynlights.api.DynamicLightHandlers;
+import dev.lambdaurora.lambdynlights.api.DynamicLightsInitializer;
+import dev.lambdaurora.lambdynlights.api.item.ItemLightSourceManager;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.entity.ActorEntity;
 import mchorse.bbs_mod.entity.GunProjectileEntity;
@@ -12,7 +15,6 @@ import net.minecraft.entity.player.PlayerEntity;
 
 import dev.lambdaurora.lambdynlights.api.DynamicLightHandlers;
 import dev.lambdaurora.lambdynlights.api.DynamicLightsInitializer;
-import dev.lambdaurora.lambdynlights.api.item.ItemLightSourceManager;
 
 public class LambDynLightsIntegration implements DynamicLightsInitializer
 {

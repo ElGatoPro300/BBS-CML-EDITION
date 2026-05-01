@@ -7,7 +7,6 @@ import mchorse.bbs_mod.utils.MathUtils;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.util.math.MatrixStack;
-
 import org.joml.Matrix4f;
 
 public class FormRenderingContext

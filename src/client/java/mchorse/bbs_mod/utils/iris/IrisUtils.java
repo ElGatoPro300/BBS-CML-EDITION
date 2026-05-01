@@ -7,11 +7,6 @@ import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.utils.CollectionUtils;
 import mchorse.bbs_mod.utils.DataPath;
 
-import net.minecraft.client.texture.AbstractTexture;
-
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
-import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -24,11 +19,6 @@ import joptsimple.internal.Strings;
 import net.irisshaders.iris.Iris;
 import net.irisshaders.iris.api.v0.IrisApi;
 import net.irisshaders.iris.gl.uniform.UniformUpdateFrequency;
-import net.irisshaders.iris.pbr.PBRType;
-import net.irisshaders.iris.pbr.TextureTracker;
-import net.irisshaders.iris.pbr.loader.PBRTextureLoader;
-import net.irisshaders.iris.pbr.loader.PBRTextureLoaderRegistry;
-import net.irisshaders.iris.pbr.texture.PBRType;
 import net.irisshaders.iris.shaderpack.LanguageMap;
 import net.irisshaders.iris.shaderpack.ShaderPack;
 import net.irisshaders.iris.shaderpack.option.menu.OptionMenuContainer;
@@ -37,18 +27,24 @@ import net.irisshaders.iris.shaderpack.option.menu.OptionMenuElementScreen;
 import net.irisshaders.iris.shaderpack.option.menu.OptionMenuLinkElement;
 import net.irisshaders.iris.shaderpack.option.menu.OptionMenuOptionElement;
 import net.irisshaders.iris.shaderpack.properties.ShaderProperties;
-import net.irisshaders.iris.targets.backed.NativeImageBackedSingleColorTexture;
-import net.irisshaders.iris.texture.TextureTracker;
-import net.irisshaders.iris.texture.pbr.PBRType;
-import net.irisshaders.iris.texture.pbr.loader.PBRTextureLoader;
-import net.irisshaders.iris.texture.pbr.loader.PBRTextureLoaderRegistry;
-import net.irisshaders.iris.texture.tracking.TextureTracker;
 import net.irisshaders.iris.uniforms.custom.cached.CachedUniform;
 import net.irisshaders.iris.uniforms.custom.cached.FloatCachedUniform;
 import net.irisshaders.iris.uniforms.custom.cached.IntCachedUniform;
 import net.irisshaders.iris.vertices.NormI8;
 import net.irisshaders.iris.vertices.NormalHelper;
 import net.irisshaders.iris.vertices.views.TriView;
+import net.minecraft.client.texture.AbstractTexture;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
+import java.lang.reflect.Constructor;
 
 public class IrisUtils
 {
@@ -186,13 +182,13 @@ public class IrisUtils
 
             try
             {
-                registryClass = Class.forName("PBRTextureLoaderRegistry");
-                loaderInterface = Class.forName("PBRTextureLoader");
+                registryClass = Class.forName("net.irisshaders.iris.pbr.loader.PBRTextureLoaderRegistry");
+                loaderInterface = Class.forName("net.irisshaders.iris.pbr.loader.PBRTextureLoader");
             }
             catch (ClassNotFoundException e)
             {
-                registryClass = Class.forName("PBRTextureLoaderRegistry");
-                loaderInterface = Class.forName("PBRTextureLoader");
+                registryClass = Class.forName("net.irisshaders.iris.texture.pbr.loader.PBRTextureLoaderRegistry");
+                loaderInterface = Class.forName("net.irisshaders.iris.texture.pbr.loader.PBRTextureLoader");
             }
 
             Object registryInstance = registryClass.getField("INSTANCE").get(null);
@@ -201,21 +197,21 @@ public class IrisUtils
             Class<?> pbrTypeClass;
             try
             {
-                pbrTypeClass = Class.forName("PBRType");
+                pbrTypeClass = Class.forName("net.irisshaders.iris.pbr.texture.PBRType");
             }
             catch (ClassNotFoundException e1)
             {
                 try
                 {
-                    pbrTypeClass = Class.forName("PBRType");
+                    pbrTypeClass = Class.forName("net.irisshaders.iris.pbr.PBRType");
                 }
                 catch (ClassNotFoundException e2)
                 {
-                    pbrTypeClass = Class.forName("PBRType");
+                    pbrTypeClass = Class.forName("net.irisshaders.iris.texture.pbr.PBRType");
                 }
             }
 
-            Class<?> singleColorClass = Class.forName("NativeImageBackedSingleColorTexture");
+            Class<?> singleColorClass = Class.forName("net.irisshaders.iris.targets.backed.NativeImageBackedSingleColorTexture");
 
             Method loadMethod = null;
             for (Method m : loaderInterface.getMethods())
@@ -369,17 +365,17 @@ public class IrisUtils
                     Class<?> trackerClass;
                     try
                     {
-                        trackerClass = Class.forName("TextureTracker");
+                        trackerClass = Class.forName("net.irisshaders.iris.pbr.TextureTracker");
                     }
                     catch (ClassNotFoundException e)
                     {
                         try
                         {
-                            trackerClass = Class.forName("TextureTracker");
+                            trackerClass = Class.forName("net.irisshaders.iris.texture.TextureTracker");
                         }
                         catch (ClassNotFoundException e2)
                         {
-                            trackerClass = Class.forName("TextureTracker");
+                            trackerClass = Class.forName("net.irisshaders.iris.texture.tracking.TextureTracker");
                         }
                     }
 
