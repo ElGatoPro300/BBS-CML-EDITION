@@ -85,7 +85,7 @@ public class WorldFilmController extends BaseFilmController
 
         if (BBSSettings.recordingCameraPreview.get())
         {
-            Recorder.renderCameraPreviewTimeline(this.context.clips, tick, context.tickDelta(), this.duration, this.position, context.camera(), context.matrixStack());
+            Recorder.renderCameraPreviewTimeline(this.context.clips, tick, context.tickCounter().getTickDelta(true), this.duration, this.position, context.camera(), context.matrixStack());
         }
 
         AudioClientClip.manageSounds(this.context);

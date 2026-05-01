@@ -55,7 +55,14 @@ import mchorse.bbs_mod.ui.utils.presets.UICopyPasteController;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.presets.PresetManager;
 
+import org.joml.Matrix4f;
 import org.joml.Vector2f;
+
+import net.minecraft.client.render.BufferBuilder;
+import net.minecraft.client.render.BufferRenderer;
+import net.minecraft.client.render.Tessellator;
+import net.minecraft.client.render.VertexFormat;
+import net.minecraft.client.render.VertexFormats;
 
 import org.lwjgl.glfw.GLFW;
 
@@ -1398,8 +1405,6 @@ public class UIShapeNodeEditor extends UIElement
 
         if (out == null || in == null) return;
 
-        Matrix4f matrix4f = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
-        Tessellator tessellator = Tessellator.getInstance();
         int x1 = this.nodeScreenX(out) + this.nodeScreenW(out);
         int y1 = this.socketScreenY(out, c.outputIndex);
         int x2 = this.nodeScreenX(in);
@@ -1409,33 +1414,6 @@ public class UIShapeNodeEditor extends UIElement
             ? (Colors.A100 | Colors.ACTIVE)
             : Colors.WHITE;
 
-        // Border
-        BufferBuilder builder = tessellator.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
-
-        for (int i = 0; i < segments; i++)
-        {
-            double a1 = i / (double) segments * Math.PI * 2;
-            double a2 = (i + 1) / (double) segments * Math.PI * 2;
-
-            builder.vertex(matrix4f, x, y, 0F).color(0xFF000000);
-            builder.vertex(matrix4f, (float) (x + Math.cos(a1) * (radius + 1.5F)), (float) (y + Math.sin(a1) * (radius + 1.5F)), 0F).color(0xFF000000);
-            builder.vertex(matrix4f, (float) (x + Math.cos(a2) * (radius + 1.5F)), (float) (y + Math.sin(a2) * (radius + 1.5F)), 0F).color(0xFF000000);
-        }
-
-        BufferRenderer.drawWithGlobalProgram(builder.end());
-
-        // Fill
-        builder = tessellator.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
-
-        for (int i = 0; i < segments; i++)
-        {
-            double a1 = i / (double) segments * Math.PI * 2;
-            double a2 = (i + 1) / (double) segments * Math.PI * 2;
-
-            builder.vertex(matrix4f, x, y, 0F).color(color);
-            builder.vertex(matrix4f, (float) (x + Math.cos(a1) * radius), (float) (y + Math.sin(a1) * radius), 0F).color(color);
-            builder.vertex(matrix4f, (float) (x + Math.cos(a2) * radius), (float) (y + Math.sin(a2) * radius), 0F).color(color);
-        }
         this.drawBezier(context, x1, y1, x2, y2, color, 2F * this.scale);
     }
 
