@@ -1,13 +1,16 @@
 package mchorse.bbs_mod.ui.news;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+import com.mojang.blaze3d.systems.RenderSystem;
 import mchorse.bbs_mod.BBSModClient;
-import mchorse.bbs_mod.graphics.texture.Texture;
-import mchorse.bbs_mod.graphics.texture.TextureManager;
-import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.news.NewsReadManager;
 import mchorse.bbs_mod.news.PriorityAnnouncementStateManager;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.resources.packs.URLSourcePack;
+import mchorse.bbs_mod.l10n.keys.IKey;
+import mchorse.bbs_mod.graphics.texture.Texture;
+import mchorse.bbs_mod.graphics.texture.TextureManager;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.UIDashboard;
 import mchorse.bbs_mod.ui.dashboard.panels.UISidebarDashboardPanel;
@@ -23,17 +26,10 @@ import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.NaturalOrderComparator;
-import mchorse.bbs_mod.utils.Timer;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.resources.Pixels;
-
+import mchorse.bbs_mod.utils.Timer;
 import net.minecraft.client.MinecraftClient;
-
-import com.mojang.blaze3d.systems.RenderSystem;
-
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
-
 import org.lwjgl.opengl.GL11;
 
 import java.io.InputStream;
@@ -45,13 +41,13 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CompletableFuture;
 
 public class UINewsPanel extends UISidebarDashboardPanel
 {

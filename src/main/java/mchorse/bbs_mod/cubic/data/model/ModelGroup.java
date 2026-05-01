@@ -6,9 +6,9 @@ import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.resources.Link;
+import mchorse.bbs_mod.utils.resources.LinkUtils;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.pose.Transform;
-import mchorse.bbs_mod.utils.resources.LinkUtils;
 
 import java.util.ArrayList;
 import java.util.List;

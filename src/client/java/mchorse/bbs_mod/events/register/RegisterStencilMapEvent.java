@@ -1,7 +1,6 @@
 package mchorse.bbs_mod.events.register;
 
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
-
 import java.util.function.Consumer;
 
 public class RegisterStencilMapEvent

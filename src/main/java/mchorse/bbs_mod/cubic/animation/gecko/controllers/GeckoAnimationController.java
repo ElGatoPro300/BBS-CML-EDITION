@@ -1,5 +1,6 @@
 package mchorse.bbs_mod.cubic.animation.gecko.controllers;
 
+import com.mojang.logging.LogUtils;
 import mchorse.bbs_mod.cubic.IModel;
 import mchorse.bbs_mod.cubic.animation.gecko.config.GeckoAnimationsConfig;
 import mchorse.bbs_mod.cubic.animation.gecko.model.GeckoAnimationContext;
@@ -7,14 +8,11 @@ import mchorse.bbs_mod.cubic.animation.gecko.services.GeckoAnimationService;
 import mchorse.bbs_mod.cubic.animation.gecko.validation.GeckoAnimationValidator;
 import mchorse.bbs_mod.cubic.data.animation.Animations;
 import mchorse.bbs_mod.forms.entities.IEntity;
-
-import com.mojang.logging.LogUtils;
+import org.slf4j.Logger;
 
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-
-import org.slf4j.Logger;
 
 public class GeckoAnimationController
 {

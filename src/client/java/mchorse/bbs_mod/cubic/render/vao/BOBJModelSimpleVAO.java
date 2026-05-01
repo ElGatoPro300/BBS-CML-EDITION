@@ -4,7 +4,6 @@ import mchorse.bbs_mod.bobj.BOBJArmature;
 import mchorse.bbs_mod.bobj.BOBJBone;
 import mchorse.bbs_mod.bobj.BOBJLoader;
 import mchorse.bbs_mod.utils.MathUtils;
-
 import org.joml.Vector4f;
 
 import java.util.ArrayList;

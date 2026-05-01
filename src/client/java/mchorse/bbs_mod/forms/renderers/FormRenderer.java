@@ -16,14 +16,12 @@ import mchorse.bbs_mod.utils.StringUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.interps.Lerps;
 import mchorse.bbs_mod.utils.pose.Transform;
-
 import net.minecraft.client.gl.GlUniform;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.Hand;
-
 import org.joml.Matrix4f;
 
 import java.util.Collections;
@@ -184,16 +182,9 @@ public abstract class FormRenderer <T extends Form>
     {
         if (context.isPicking())
         {
-            ShaderProgram program = picking.get();
+            this.setupTarget(context, picking.get());
 
-            if (program == null)
-            {
-                return normal;
-            }
-
-            this.setupTarget(context, program);
-
-            return () -> program;
+            return picking;
         }
 
         return normal;
@@ -201,11 +192,6 @@ public abstract class FormRenderer <T extends Form>
 
     protected void setupTarget(FormRenderingContext context, ShaderProgram program)
     {
-        if (program == null)
-        {
-            return;
-        }
-
         GlUniform target = program.getUniform("Target");
 
         if (target != null)

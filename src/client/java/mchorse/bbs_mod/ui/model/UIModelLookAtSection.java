@@ -8,8 +8,8 @@ import mchorse.bbs_mod.cubic.model.ModelConfig;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.UIContext;
-import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UICirculate;
+import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
 import mchorse.bbs_mod.ui.framework.elements.context.UIContextMenu;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
@@ -20,7 +20,6 @@ import mchorse.bbs_mod.ui.utils.UI;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.function.Consumer;
 
 public class UIModelLookAtSection extends UIModelSection
 {
@@ -237,7 +236,7 @@ public class UIModelLookAtSection extends UIModelSection
         return config;
     }
 
-    private void editLimb(Consumer<GeckoLimbAnimationConfig> editor)
+    private void editLimb(java.util.function.Consumer<GeckoLimbAnimationConfig> editor)
     {
         GeckoLimbAnimationConfig config = this.getCurrentLimbConfig(true);
 
@@ -297,7 +296,7 @@ public class UIModelLookAtSection extends UIModelSection
     {
         public UISearchList<String> list;
 
-        public UILookAtStringListContextMenu(List<String> groups, Consumer<String> callback)
+        public UILookAtStringListContextMenu(List<String> groups, java.util.function.Consumer<String> callback)
         {
             this.list = new UISearchList<>(new UIStringList((l) ->
             {

@@ -61,40 +61,23 @@ public class VanillaParticleFormRenderer extends FormRenderer<VanillaParticleFor
     {
         super.render3D(context);
 
-        Matrix4f positionMatrix;
+        Camera camera = MinecraftClient.getInstance().gameRenderer.getCamera();
+        Matrix4f matrix = new Matrix4f(RenderSystem.getInverseViewRotationMatrix());
 
-        if (context.type == mchorse.bbs_mod.forms.renderers.FormRenderType.PREVIEW)
-        {
-            net.minecraft.client.render.Camera realCamera = MinecraftClient.getInstance().gameRenderer.getCamera();
+        matrix.mul(context.stack.peek().getPositionMatrix());
 
-            positionMatrix = new Matrix4f().rotation(realCamera.getRotation());
-            positionMatrix.mul(context.stack.peek().getPositionMatrix());
+        Vector3d translation = new Vector3d(matrix.getTranslation(Vectors.TEMP_3F));
 
-            Vector3f translation = positionMatrix.getTranslation(new Vector3f());
+        translation.add(camera.getPos().x, camera.getPos().y, camera.getPos().z);
+        context.stack.push();
+        context.stack.loadIdentity();
+        context.stack.multiplyPositionMatrix(new Matrix4f(RenderSystem.getInverseViewRotationMatrix()).invert());
 
-            this.pos.set(
-                translation.x + (float) realCamera.getPos().x,
-                translation.y + (float) realCamera.getPos().y,
-                translation.z + (float) realCamera.getPos().z
-            );
-        }
-        else
-        {
-            positionMatrix = new Matrix4f(context.stack.peek().getPositionMatrix());
-
-            Vector3f translation = positionMatrix.getTranslation(new Vector3f());
-
-            this.pos.set(
-                translation.x + context.camera.position.x,
-                translation.y + context.camera.position.y,
-                translation.z + context.camera.position.z
-            );
-        }
-
-        positionMatrix.get3x3(this.rot);
-
+        this.pos.set(translation);
         this.vel.set(0F, 0F, 1F);
-        this.rot.transform(this.vel);
+        this.rot.set(matrix).transform(this.vel);
+
+        context.stack.pop();
     }
 
     @Override
@@ -115,67 +98,18 @@ public class VanillaParticleFormRenderer extends FormRenderer<VanillaParticleFor
                 Matrix3f m = Matrices.TEMP_3F;
                 Vector3f v = Vectors.TEMP_3F;
                 ParticleSettings settings = this.form.settings.get();
-                ParticleType<?> type = Registries.PARTICLE_TYPE.get(settings.particle);
+                ParticleType type = Registries.PARTICLE_TYPE.get(settings.particle);
                 ParticleEffect effect = ParticleTypes.FLAME;
 
-                if (type != null)
+                try
                 {
-                    net.minecraft.registry.RegistryWrapper.WrapperLookup registries = world.getRegistryManager();
-
-                    if (type instanceof net.minecraft.particle.SimpleParticleType simple)
+                    if (type != null)
                     {
-                        effect = simple;
-                    }
-                    else if (registries != null)
-                    {
-                        String full = settings.particle.toString();
-                        String args = settings.arguments.trim();
-
-                        if (!args.isEmpty())
-                        {
-                            full += " " + args;
-                        }
-
-                        try
-                        {
-                            effect = net.minecraft.command.argument.ParticleEffectArgumentType.readParameters(new com.mojang.brigadier.StringReader(full), registries);
-                        }
-                        catch (Exception e)
-                        {
-                            /* Manual fallbacks for common complex particles using direct registry lookups */
-                            if (!args.isEmpty())
-                            {
-                                try
-                                {
-                                    net.minecraft.util.Identifier id = net.minecraft.util.Identifier.tryParse(args);
-
-                                    if (id != null)
-                                    {
-                                        /* Try to find as block first */
-                                        net.minecraft.block.Block block = net.minecraft.registry.Registries.BLOCK.get(id);
-
-                                        if (block != net.minecraft.block.Blocks.AIR)
-                                        {
-                                            effect = new net.minecraft.particle.BlockStateParticleEffect(net.minecraft.particle.ParticleTypes.BLOCK, block.getDefaultState());
-                                        }
-                                        else
-                                        {
-                                            /* Try to find as item */
-                                            net.minecraft.item.Item item = net.minecraft.registry.Registries.ITEM.get(id);
-
-                                            if (item != net.minecraft.item.Items.AIR)
-                                            {
-                                                effect = new net.minecraft.particle.ItemStackParticleEffect(net.minecraft.particle.ParticleTypes.ITEM, new net.minecraft.item.ItemStack(item));
-                                            }
-                                        }
-                                    }
-                                }
-                                catch (Exception e2)
-                                {}
-                            }
-                        }
+                        effect = type.getParametersFactory().read(type, new StringReader(" " + settings.arguments));
                     }
                 }
+                catch (Exception e)
+                {}
 
                 for (int i = 0; i < count; i++)
                 {

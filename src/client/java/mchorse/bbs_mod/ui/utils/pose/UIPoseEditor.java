@@ -8,53 +8,53 @@ import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.forms.forms.Form;
-import mchorse.bbs_mod.graphics.window.Window;
-import mchorse.bbs_mod.l10n.L10n;
-import mchorse.bbs_mod.l10n.keys.IKey;
-import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.UIKeys;
-import mchorse.bbs_mod.ui.framework.UIContext;
+import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
-import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
+import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
+import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
+import mchorse.bbs_mod.ui.framework.elements.input.list.UISearchList;
 import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
 import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
-import mchorse.bbs_mod.ui.framework.elements.input.UITexturePicker;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
-import mchorse.bbs_mod.ui.framework.elements.input.list.UIList;
-import mchorse.bbs_mod.ui.framework.elements.input.list.UISearchList;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UIStringList;
-import mchorse.bbs_mod.ui.framework.elements.overlay.UIConfirmOverlayPanel;
-import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
-import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.presets.UIDataContextMenu;
-import mchorse.bbs_mod.utils.Axis;
+import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
+import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
+import mchorse.bbs_mod.ui.framework.elements.overlay.UIConfirmOverlayPanel;
+import mchorse.bbs_mod.ui.framework.elements.input.list.UISearchList;
+import mchorse.bbs_mod.ui.framework.elements.input.list.UIList;
+import mchorse.bbs_mod.graphics.window.Window;
+import mchorse.bbs_mod.l10n.L10n;
+import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.utils.CollectionUtils;
-import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.pose.Pose;
 import mchorse.bbs_mod.utils.pose.PoseManager;
 import mchorse.bbs_mod.utils.pose.PoseTransform;
-import mchorse.bbs_mod.utils.pose.Transform;
+import mchorse.bbs_mod.ui.framework.elements.input.UITexturePicker;
 import mchorse.bbs_mod.utils.resources.LinkUtils;
-
+import mchorse.bbs_mod.utils.pose.Transform;
+import mchorse.bbs_mod.utils.Axis;
+import mchorse.bbs_mod.utils.MathUtils;
 import com.mojang.blaze3d.systems.RenderSystem;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import java.io.File;
+import java.io.IOException;
 
 public class UIPoseEditor extends UIElement
 {
@@ -199,7 +199,7 @@ public class UIPoseEditor extends UIElement
                 menu.action(Icons.LIST, L10n.lang("bbs.ui.pose.categories.context.view_bones"), () ->
                 {
                     String group = this.group;
-                    List<String> bones = this.boneCategories.getBones(group, selectedCategory);
+                    java.util.List<String> bones = this.boneCategories.getBones(group, selectedCategory);
 
                     UISearchList<String> search = new UISearchList<>(new UIStringList(null));
                     UIList<String> list = search.list;
@@ -667,7 +667,7 @@ public class UIPoseEditor extends UIElement
                 }
 
                 String current = this.editor.groups.list.getCurrentFirst();
-                return current == null ? Collections.emptyList() : Collections.singletonList(current);
+                return current == null ? java.util.Collections.emptyList() : java.util.Collections.singletonList(current);
             }
 
             return this.editor.boneCategories.getBones(this.editor.group, selectedCategory);
@@ -927,7 +927,7 @@ public class UIPoseEditor extends UIElement
         }
     }
 
-    protected void applyCategory(Consumer<PoseTransform> consumer)
+    protected void applyCategory(java.util.function.Consumer<PoseTransform> consumer)
     {
         boolean categoriesEnabled = BBSSettings.modelBlockCategoriesPanelEnabled != null && BBSSettings.modelBlockCategoriesPanelEnabled.get();
         String selectedCategory = categoriesEnabled ? this.categories.getCurrentFirst() : null;

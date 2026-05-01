@@ -21,7 +21,6 @@ import mchorse.bbs_mod.settings.values.numeric.ValueFloat;
 import mchorse.bbs_mod.settings.values.numeric.ValueInt;
 import mchorse.bbs_mod.utils.StringUtils;
 import mchorse.bbs_mod.utils.pose.Transform;
-
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.attribute.EntityAttributes;
 
@@ -240,7 +239,7 @@ public abstract class Form extends ValueGroup
             entity.setHealth(hp);
         }
         if (speed != 0.1F) entity.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED).setBaseValue(speed);
-        /* if (stepHeight != 0.5F) entity.setStepHeight(stepHeight); */
+        if (stepHeight != 0.5F) entity.setStepHeight(stepHeight);
     }
 
     public void onDemorph(LivingEntity entity)
@@ -248,7 +247,7 @@ public abstract class Form extends ValueGroup
         entity.getAttributeInstance(EntityAttributes.GENERIC_MAX_HEALTH).setBaseValue(20F);
         entity.setHealth(20F);
         entity.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED).setBaseValue(0.1F);
-        /* entity.setStepHeight(0.5F); */
+        entity.setStepHeight(0.5F);
     }
 
     /* ID and display name */

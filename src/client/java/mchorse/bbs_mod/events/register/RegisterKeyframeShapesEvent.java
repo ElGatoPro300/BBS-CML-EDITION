@@ -2,7 +2,6 @@ package mchorse.bbs_mod.events.register;
 
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.shapes.IKeyframeShapeRenderer;
 import mchorse.bbs_mod.utils.keyframes.KeyframeShape;
-
 import java.util.Map;
 
 public class RegisterKeyframeShapesEvent

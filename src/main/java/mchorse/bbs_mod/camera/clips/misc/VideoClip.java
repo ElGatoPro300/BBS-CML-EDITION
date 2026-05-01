@@ -1,4 +1,4 @@
-package mchorse.bbs_mod.camera.clips.misc;
+ package mchorse.bbs_mod.camera.clips.misc;
 
 import mchorse.bbs_mod.camera.clips.CameraClip;
 import mchorse.bbs_mod.camera.data.Position;

@@ -2,7 +2,6 @@ package mchorse.bbs_mod.utils;
 
 import mchorse.bbs_mod.BBSMod;
 
-import java.awt.Font;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -48,7 +47,7 @@ public class FontUtils
 
     public static TextureFont getFont(String name)
     {
-        return getFont(name, Font.PLAIN);
+        return getFont(name, java.awt.Font.PLAIN);
     }
 
     public static List<String> getAvailableFonts()

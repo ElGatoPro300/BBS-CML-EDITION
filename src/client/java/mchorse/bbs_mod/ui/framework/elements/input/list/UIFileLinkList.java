@@ -2,11 +2,10 @@ package mchorse.bbs_mod.ui.framework.elements.input.list;
 
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSModClient;
-import mchorse.bbs_mod.BBSSettings;
-import mchorse.bbs_mod.graphics.texture.Texture;
-import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.resources.Link;
+import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.ui.framework.UIContext;
+import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.NaturalOrderComparator;
@@ -298,7 +297,7 @@ public class UIFileLinkList extends UIList<UIFileLinkList.FileLink>
 
         if (selected)
         {
-            color = Colors.A50 | BBSSettings.primaryColor.get();
+            color = Colors.A50 | mchorse.bbs_mod.BBSSettings.primaryColor.get();
         }
         else if (hover)
         {

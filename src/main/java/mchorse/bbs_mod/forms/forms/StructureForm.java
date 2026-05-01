@@ -1,14 +1,13 @@
 package mchorse.bbs_mod.forms.forms;
 
-import mchorse.bbs_mod.forms.forms.utils.StructureLightSettings;
 import mchorse.bbs_mod.settings.values.core.ValueColor;
-import mchorse.bbs_mod.settings.values.core.ValueString;
-import mchorse.bbs_mod.settings.values.misc.ValueStructureLightSettings;
 import mchorse.bbs_mod.settings.values.numeric.ValueBoolean;
 import mchorse.bbs_mod.settings.values.numeric.ValueFloat;
 import mchorse.bbs_mod.settings.values.numeric.ValueInt;
+import mchorse.bbs_mod.settings.values.core.ValueString;
+import mchorse.bbs_mod.settings.values.misc.ValueStructureLightSettings;
+import mchorse.bbs_mod.forms.forms.utils.StructureLightSettings;
 import mchorse.bbs_mod.utils.colors.Color;
-
 import org.joml.Vector4f;
 
 /**

@@ -1,7 +1,6 @@
 package mchorse.bbs_mod.morphing;
 
 import mchorse.bbs_mod.forms.forms.Form;
-
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 

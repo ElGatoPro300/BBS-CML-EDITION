@@ -17,7 +17,6 @@ import mchorse.bbs_mod.utils.clips.Clips;
 import mchorse.bbs_mod.utils.joml.Matrices;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 import mchorse.bbs_mod.utils.keyframes.KeyframeSegment;
-
 import org.joml.Vector3f;
 
 public class UIKeyframeClip extends UIClip<KeyframeClip>

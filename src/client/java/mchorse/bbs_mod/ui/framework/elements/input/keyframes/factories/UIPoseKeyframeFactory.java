@@ -1,16 +1,14 @@
 package mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories;
 
-import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.cubic.ModelInstance;
+import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.forms.MobForm;
 import mchorse.bbs_mod.forms.forms.ModelForm;
 import mchorse.bbs_mod.forms.renderers.ModelFormRenderer;
-import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.UIKeys;
-import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeSheet;
@@ -22,13 +20,12 @@ import mchorse.bbs_mod.utils.CollectionUtils;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.joml.Vectors;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
+import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.utils.pose.Pose;
 import mchorse.bbs_mod.utils.pose.PoseTransform;
 import mchorse.bbs_mod.utils.pose.Transform;
-
 import org.joml.Vector3d;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -194,22 +191,22 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
         }
 
         /** Acceso seguro a huesos de la categoría actual del grupo de pose. */
-        public List<String> getCategoryBones(String category)
+        public java.util.List<String> getCategoryBones(String category)
         {
             if (category == null || category.isEmpty())
             {
-                return Collections.emptyList();
+                return java.util.Collections.emptyList();
             }
 
             return this.boneCategories.getBones(this.getPoseGroupKey(), category);
         }
 
-        public List<String> getLiveMirrorBonesForReplayEditor()
+        public java.util.List<String> getLiveMirrorBonesForReplayEditor()
         {
             return this.getLiveMirrorBones();
         }
 
-        public boolean shouldInvertLiveMirrorRotationZForReplayEditor(List<String> targets)
+        public boolean shouldInvertLiveMirrorRotationZForReplayEditor(java.util.List<String> targets)
         {
             return this.shouldInvertLiveMirrorRotationZ(targets);
         }
@@ -280,7 +277,7 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
         {
             if (BBSSettings.realtimeKeyframes.get())
             {
-                UIFilmPanel filmPanel = this.editor.getParent(UIFilmPanel.class);
+                mchorse.bbs_mod.ui.film.UIFilmPanel filmPanel = this.editor.getParent(mchorse.bbs_mod.ui.film.UIFilmPanel.class);
 
                 if (filmPanel != null)
                 {
@@ -357,13 +354,13 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
          * Targets affected by editing. If a category is selected, return all
          * bones in that category; otherwise return the currently selected group.
          */
-        private List<String> targets()
+        private java.util.List<String> targets()
         {
             boolean categoriesEnabled = BBSSettings.modelBlockCategoriesPanelEnabled != null && BBSSettings.modelBlockCategoriesPanelEnabled.get();
             String selectedCategory = categoriesEnabled && this.editor.categories != null ? this.editor.categories.getCurrentFirst() : null;
             if (selectedCategory == null || selectedCategory.isEmpty())
             {
-                List<String> liveMirror = this.editor.getLiveMirrorBonesForReplayEditor();
+                java.util.List<String> liveMirror = this.editor.getLiveMirrorBonesForReplayEditor();
                 if (!liveMirror.isEmpty())
                 {
                     return liveMirror;
@@ -376,7 +373,7 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
                     currentBone = this.editor.getGroup();
                 }
 
-                return Collections.singletonList(currentBone);
+                return java.util.Collections.singletonList(currentBone);
             }
 
             return this.editor.getCategoryBones(selectedCategory);
@@ -500,7 +497,7 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
             float dx = MathUtils.toRad((float) x) - transform.rotate.x;
             float dy = MathUtils.toRad((float) y) - transform.rotate.y;
             float dz = MathUtils.toRad((float) z) - transform.rotate.z;
-            List<String> targets = this.targets();
+            java.util.List<String> targets = this.targets();
             boolean invertAxes = this.editor.shouldInvertLiveMirrorRotationZForReplayEditor(targets);
             String sourceBone = this.editor.getCurrentBone();
 
@@ -525,7 +522,7 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
             float dx = MathUtils.toRad((float) x) - transform.rotate2.x;
             float dy = MathUtils.toRad((float) y) - transform.rotate2.y;
             float dz = MathUtils.toRad((float) z) - transform.rotate2.z;
-            List<String> targets = this.targets();
+            java.util.List<String> targets = this.targets();
             boolean invertAxes = this.editor.shouldInvertLiveMirrorRotationZForReplayEditor(targets);
             String sourceBone = this.editor.getCurrentBone();
 

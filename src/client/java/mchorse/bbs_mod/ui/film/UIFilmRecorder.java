@@ -18,9 +18,7 @@ import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.utils.StringUtils;
 import mchorse.bbs_mod.utils.VideoRecorder;
 import mchorse.bbs_mod.utils.clips.Clips;
-
 import org.joml.Vector2i;
-
 import org.lwjgl.glfw.GLFW;
 
 import java.io.File;

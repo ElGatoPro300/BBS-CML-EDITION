@@ -1,13 +1,11 @@
 package mchorse.bbs_mod.cubic.animation;
 
-import mchorse.bbs_mod.cubic.IModel;
 import mchorse.bbs_mod.cubic.IModelInstance;
 import mchorse.bbs_mod.cubic.data.animation.Animation;
 import mchorse.bbs_mod.cubic.data.animation.Animations;
 import mchorse.bbs_mod.cubic.physics.PhysBoneRuntime;
 import mchorse.bbs_mod.cubic.physics.PhysBoneState;
 import mchorse.bbs_mod.forms.entities.IEntity;
-
 import net.minecraft.util.math.Vec3d;
 
 import java.util.ArrayList;
@@ -419,7 +417,7 @@ public class Animator implements IAnimator
         PhysBoneRuntime.update(entity, this.model, this.physStates);
     }
 
-    private void applyPhysBones(IModel model)
+    private void applyPhysBones(mchorse.bbs_mod.cubic.IModel model)
     {
         PhysBoneRuntime.apply(model, this.physStates);
     }

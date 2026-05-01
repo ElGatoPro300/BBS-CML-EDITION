@@ -21,10 +21,8 @@ import mchorse.bbs_mod.utils.interps.rasterizers.LineRasterizer;
 import mchorse.bbs_mod.utils.resources.Pixels;
 import mchorse.bbs_mod.utils.undo.IUndo;
 import mchorse.bbs_mod.utils.undo.UndoManager;
-
 import org.joml.Vector2d;
 import org.joml.Vector2i;
-
 import org.lwjgl.opengl.GL11;
 
 import java.util.HashSet;

@@ -1,7 +1,7 @@
 package mchorse.bbs_mod.ui.forms.editors.panels;
 
-import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
+import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.forms.forms.ModelForm;
 import mchorse.bbs_mod.forms.renderers.ModelFormRenderer;
@@ -101,7 +101,7 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
         this.pbrSpecularIntensity.tooltip(UIKeys.FORMS_EDITOR_MODEL_PBR_SPECULAR_INTENSITY);
 
         this.options.add(this.pickModel);
-        if (BBSSettings.pickLimbTexture.get())
+        if (mchorse.bbs_mod.BBSSettings.pickLimbTexture.get())
         {
             this.options.add(this.pick);
         }

@@ -6,7 +6,6 @@ import mchorse.bbs_mod.camera.clips.CameraClipContext;
 import mchorse.bbs_mod.camera.clips.misc.AudioClientClip;
 import mchorse.bbs_mod.camera.data.Position;
 import mchorse.bbs_mod.utils.clips.Clip;
-
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 
 import java.util.List;
@@ -74,7 +73,7 @@ public class WorldFilmController extends BaseFilmController
         }
 
         this.context.clipData.clear();
-        this.context.setup(tick, context.tickCounter().getTickDelta(false));
+        this.context.setup(tick, context.tickDelta());
 
         for (Clip clip : clips)
         {

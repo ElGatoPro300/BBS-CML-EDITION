@@ -1,5 +1,6 @@
 package mchorse.bbs_mod.cubic.model.loaders;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.bobj.BOBJAction;
@@ -26,9 +27,6 @@ import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 import mchorse.bbs_mod.utils.resources.Pixels;
-
-import com.mojang.blaze3d.systems.RenderSystem;
-
 import org.lwjgl.opengl.GL11;
 
 import java.io.ByteArrayInputStream;

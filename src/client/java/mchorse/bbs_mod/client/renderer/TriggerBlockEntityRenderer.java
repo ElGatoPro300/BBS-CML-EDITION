@@ -2,17 +2,13 @@ package mchorse.bbs_mod.client.renderer;
 
 import mchorse.bbs_mod.blocks.entities.TriggerBlockEntity;
 import mchorse.bbs_mod.graphics.Draw;
-
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.block.entity.BlockEntityRenderer;
 import net.minecraft.client.render.block.entity.BlockEntityRendererFactory;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.Box;
-
 import org.joml.Vector3f;
-
-import com.mojang.blaze3d.systems.RenderSystem;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -44,9 +40,9 @@ public class TriggerBlockEntityRenderer implements BlockEntityRenderer<TriggerBl
                 Box box = entity.getRegionBoxRelative();
 
                 /* Render white debug box for region triggers */
-                RenderSystem.disableDepthTest();
+                com.mojang.blaze3d.systems.RenderSystem.disableDepthTest();
                 Draw.renderBox(matrices, box.minX, box.minY, box.minZ, box.maxX - box.minX, box.maxY - box.minY, box.maxZ - box.minZ, 1F, 1F, 1F, 0.5F);
-                RenderSystem.enableDepthTest();
+                com.mojang.blaze3d.systems.RenderSystem.enableDepthTest();
             }
         }
     }

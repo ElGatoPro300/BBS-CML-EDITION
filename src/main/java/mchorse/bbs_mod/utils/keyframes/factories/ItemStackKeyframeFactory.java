@@ -17,9 +17,7 @@ public class ItemStackKeyframeFactory implements IKeyframeFactory<ItemStack>
     @Override
     public ItemStack fromData(BaseType data)
     {
-        net.minecraft.registry.RegistryWrapper.WrapperLookup registries = mchorse.bbs_mod.BBSMod.getRegistryManager();
-        com.mojang.serialization.DynamicOps<NbtElement> ops = registries != null ? net.minecraft.registry.RegistryOps.of(NbtOps.INSTANCE, registries) : NbtOps.INSTANCE;
-        DataResult<Pair<ItemStack, NbtElement>> decode = ItemStack.CODEC.decode(ops, DataStorageUtils.toNbt(data));
+        DataResult<Pair<ItemStack, NbtElement>> decode = ItemStack.CODEC.decode(NbtOps.INSTANCE, DataStorageUtils.toNbt(data));
         Optional<Pair<ItemStack, NbtElement>> result = decode.result();
 
         return result.map(Pair::getFirst).orElse(ItemStack.EMPTY);
@@ -28,9 +26,7 @@ public class ItemStackKeyframeFactory implements IKeyframeFactory<ItemStack>
     @Override
     public BaseType toData(ItemStack value)
     {
-        net.minecraft.registry.RegistryWrapper.WrapperLookup registries = mchorse.bbs_mod.BBSMod.getRegistryManager();
-        com.mojang.serialization.DynamicOps<NbtElement> ops = registries != null ? net.minecraft.registry.RegistryOps.of(NbtOps.INSTANCE, registries) : NbtOps.INSTANCE;
-        Optional<NbtElement> result = ItemStack.CODEC.encodeStart(ops, value).result();
+        Optional<NbtElement> result = ItemStack.CODEC.encodeStart(NbtOps.INSTANCE, value).result();
 
         return result.map(DataStorageUtils::fromNbt).orElse(new MapType());
     }

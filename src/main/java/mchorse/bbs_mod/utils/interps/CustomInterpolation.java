@@ -4,7 +4,6 @@ import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.utils.interps.types.BaseInterp;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 import mchorse.bbs_mod.utils.keyframes.factories.KeyframeFactories;
-
 import org.lwjgl.glfw.GLFW;
 
 public class CustomInterpolation extends BaseInterp

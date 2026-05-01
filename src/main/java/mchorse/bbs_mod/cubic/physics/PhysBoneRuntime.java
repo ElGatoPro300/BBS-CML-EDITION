@@ -13,19 +13,17 @@ import mchorse.bbs_mod.settings.values.core.ValuePose;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.pose.Pose;
 import mchorse.bbs_mod.utils.pose.PoseTransform;
-
 import net.minecraft.block.BlockState;
-import net.minecraft.block.ShapeContext;
 import net.minecraft.entity.Entity;
-import net.minecraft.util.hit.HitResult;
+import net.minecraft.block.ShapeContext;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Box;
+import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
-import net.minecraft.util.shape.VoxelShape;
 import net.minecraft.world.RaycastContext;
 import net.minecraft.world.World;
-
+import net.minecraft.util.shape.VoxelShape;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Vector2f;

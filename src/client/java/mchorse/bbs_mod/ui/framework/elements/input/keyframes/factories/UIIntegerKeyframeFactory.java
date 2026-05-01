@@ -2,10 +2,10 @@ package mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories;
 
 import mchorse.bbs_mod.camera.utils.TimeUtils;
 import mchorse.bbs_mod.film.Film;
-import mchorse.bbs_mod.film.replays.Replay;
-import mchorse.bbs_mod.film.replays.ReplayKeyframes;
 import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
 import mchorse.bbs_mod.forms.FormUtilsClient;
+import mchorse.bbs_mod.film.replays.Replay;
+import mchorse.bbs_mod.film.replays.ReplayKeyframes;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.UIContext;
@@ -20,12 +20,9 @@ import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
-
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.item.ItemStack;
-
-import java.util.List;
+import net.minecraft.client.util.math.MatrixStack;
 
 public class UIIntegerKeyframeFactory extends UIKeyframeFactory<Integer>
 {
@@ -83,7 +80,7 @@ public class UIIntegerKeyframeFactory extends UIKeyframeFactory<Integer>
 
                         if (UIIntegerKeyframeFactory.this.replay != null)
                         {
-                            List<ItemStack> stacks = UIIntegerKeyframeFactory.this.replay.inventory.getStacks();
+                            java.util.List<ItemStack> stacks = UIIntegerKeyframeFactory.this.replay.inventory.getStacks();
                             if (!stacks.isEmpty())
                             {
                                 stack = stacks.size() > i ? stacks.get(i) : ItemStack.EMPTY;
@@ -92,7 +89,7 @@ public class UIIntegerKeyframeFactory extends UIKeyframeFactory<Integer>
 
                         if ((stack == null || stack.isEmpty()) && UIIntegerKeyframeFactory.this.film != null)
                         {
-                            List<ItemStack> stacks = UIIntegerKeyframeFactory.this.film.inventory.getStacks();
+                            java.util.List<ItemStack> stacks = UIIntegerKeyframeFactory.this.film.inventory.getStacks();
                             if (!stacks.isEmpty())
                             {
                                 stack = stacks.size() > i ? stacks.get(i) : ItemStack.EMPTY;

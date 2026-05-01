@@ -1,7 +1,7 @@
 package mchorse.bbs_mod.ui.framework.elements.input;
 
-import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.data.types.ListType;
+import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.ui.Keys;
@@ -9,8 +9,8 @@ import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
-import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.context.UISimpleContextMenu;
+import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.context.ContextAction;
@@ -19,14 +19,11 @@ import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.Axis;
 import mchorse.bbs_mod.utils.colors.Colors;
-
 import org.joml.Vector3d;
-
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Consumer;
 
 /**
  * Transformation editor GUI
@@ -837,7 +834,7 @@ public abstract class UITransform extends UIElement
             private boolean active;
             private boolean noSeparator;
 
-            public UITabButton(IKey label, IKey tooltip, Icon icon, Consumer<UIButton> callback)
+            public UITabButton(IKey label, IKey tooltip, Icon icon, java.util.function.Consumer<UIButton> callback)
             {
                 super(label, callback);
                 this.tooltip = tooltip;

@@ -2,7 +2,6 @@ package mchorse.bbs_mod.cubic.model.gltf;
 
 import mchorse.bbs_mod.bobj.BOBJArmature;
 import mchorse.bbs_mod.bobj.BOBJBone;
-
 import org.joml.Matrix4f;
 
 import java.util.ArrayList;

@@ -1,20 +1,12 @@
 package mchorse.bbs_mod.client.video;
 
-import mchorse.bbs_mod.BBSMod;
-import mchorse.bbs_mod.camera.clips.misc.VideoClip;
-import mchorse.bbs_mod.resources.Link;
-import mchorse.bbs_mod.ui.framework.UIContext;
-import mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D;
-import mchorse.bbs_mod.ui.utils.Area;
-import mchorse.bbs_mod.utils.clips.Clip;
-
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.*;
 import net.minecraft.client.util.math.MatrixStack;
-
 import org.joml.Matrix4f;
-
-import com.mojang.blaze3d.systems.RenderSystem;
+import org.watermedia.api.player.videolan.VideoPlayer;
+import org.watermedia.videolan4j.factory.MediaPlayerFactory;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -22,8 +14,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.watermedia.api.player.videolan.VideoPlayer;
-import org.watermedia.videolan4j.factory.MediaPlayerFactory;
+import mchorse.bbs_mod.BBSMod;
+import mchorse.bbs_mod.resources.Link;
+import mchorse.bbs_mod.utils.clips.Clip;
+import mchorse.bbs_mod.camera.clips.misc.VideoClip;
+import mchorse.bbs_mod.ui.utils.Area;
+import mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D;
+import mchorse.bbs_mod.ui.framework.UIContext;
 
 public class VideoRenderer
 {
@@ -430,18 +427,19 @@ public class VideoRenderer
             RenderSystem.disableCull();
 
             Tessellator tessellator = Tessellator.getInstance();
-            BufferBuilder buffer = tessellator.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_TEXTURE);
+            BufferBuilder buffer = tessellator.getBuffer();
             Matrix4f matrix = stack.peek().getPositionMatrix();
 
             /* Desplazar por recorte de izquierda/arriba para mantener el contenido en su lugar. */
             int drawX = x + Math.round(absW * left) * wSign;
             int drawY = y + Math.round(absH * top) * hSign;
 
-            buffer.vertex(matrix, drawX, drawY + drawH, 0).texture(u0, v1);
-            buffer.vertex(matrix, drawX + drawW, drawY + drawH, 0).texture(u1, v1);
-            buffer.vertex(matrix, drawX + drawW, drawY, 0).texture(u1, v0);
-            buffer.vertex(matrix, drawX, drawY, 0).texture(u0, v0);
-            BufferRenderer.drawWithGlobalProgram(buffer.end());
+            buffer.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_TEXTURE);
+            buffer.vertex(matrix, drawX, drawY + drawH, 0).texture(u0, v1).next();
+            buffer.vertex(matrix, drawX + drawW, drawY + drawH, 0).texture(u1, v1).next();
+            buffer.vertex(matrix, drawX + drawW, drawY, 0).texture(u1, v0).next();
+            buffer.vertex(matrix, drawX, drawY, 0).texture(u0, v0).next();
+            tessellator.draw();
             
             RenderSystem.enableCull();
             RenderSystem.depthMask(true);

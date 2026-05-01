@@ -1,12 +1,15 @@
 package mchorse.bbs_mod.ui.film;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import mchorse.bbs_mod.BBS;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
+import mchorse.bbs_mod.events.register.RegisterFilmEditorFactoriesEvent;
 import mchorse.bbs_mod.actions.ActionState;
 import mchorse.bbs_mod.camera.Camera;
 import mchorse.bbs_mod.camera.clips.misc.VideoClip;
+import mchorse.bbs_mod.client.video.VideoRenderer;
 import mchorse.bbs_mod.camera.clips.modifiers.TranslateClip;
 import mchorse.bbs_mod.camera.clips.overwrite.IdleClip;
 import mchorse.bbs_mod.camera.controller.CameraController;
@@ -14,10 +17,8 @@ import mchorse.bbs_mod.camera.controller.RunnerCameraController;
 import mchorse.bbs_mod.camera.data.Position;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.client.renderer.MorphRenderer;
-import mchorse.bbs_mod.client.video.VideoRenderer;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.MapType;
-import mchorse.bbs_mod.events.register.RegisterFilmEditorFactoriesEvent;
 import mchorse.bbs_mod.film.Film;
 import mchorse.bbs_mod.film.Recorder;
 import mchorse.bbs_mod.film.replays.Replay;
@@ -29,7 +30,6 @@ import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.network.ClientNetwork;
 import mchorse.bbs_mod.resources.Link;
-import mchorse.bbs_mod.resources.packs.URLSourcePack;
 import mchorse.bbs_mod.settings.values.IValueListener;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.settings.values.ui.EditorLayoutNode;
@@ -43,19 +43,18 @@ import mchorse.bbs_mod.ui.dashboard.panels.IFlightSupported;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanels;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDataDashboardPanel;
 import mchorse.bbs_mod.ui.dashboard.panels.overlay.UICRUDOverlayPanel;
-import mchorse.bbs_mod.ui.dashboard.panels.overlay.UIDataOverlayPanel;
 import mchorse.bbs_mod.ui.dashboard.utils.IUIOrbitKeysHandler;
 import mchorse.bbs_mod.ui.film.audio.UIAudioRecorder;
 import mchorse.bbs_mod.ui.film.controller.UIFilmController;
 import mchorse.bbs_mod.ui.film.replays.UIReplaysEditor;
 import mchorse.bbs_mod.ui.film.utils.UIFilmUndoHandler;
 import mchorse.bbs_mod.ui.film.utils.undo.UIUndoHistoryOverlay;
+import mchorse.bbs_mod.utils.interps.Interpolations;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.IUIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
-import mchorse.bbs_mod.ui.framework.elements.context.UISimpleContextMenu;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UISearchList;
 import mchorse.bbs_mod.ui.framework.elements.navigation.UIControlBar;
 import mchorse.bbs_mod.ui.framework.elements.navigation.UIIconTabButton;
@@ -67,72 +66,62 @@ import mchorse.bbs_mod.ui.framework.elements.utils.UIDraggable;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIRenderable;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.UIDataUtils;
-import mchorse.bbs_mod.ui.utils.UIUtils;
-import mchorse.bbs_mod.ui.utils.context.ContextAction;
 import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
+import mchorse.bbs_mod.ui.utils.presets.UICopyPasteController;
+import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
-import mchorse.bbs_mod.ui.utils.presets.UICopyPasteController;
 import mchorse.bbs_mod.utils.CollectionUtils;
-import mchorse.bbs_mod.utils.DataPath;
+import java.util.HashSet;
+import java.util.Set;
 import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.PlayerUtils;
 import mchorse.bbs_mod.utils.Timer;
-import net.minecraft.client.util.math.MatrixStack;
+import mchorse.bbs_mod.utils.DataPath;
 import mchorse.bbs_mod.utils.clips.Clip;
 import mchorse.bbs_mod.utils.clips.Clips;
 import mchorse.bbs_mod.utils.colors.Colors;
-import mchorse.bbs_mod.utils.interps.Interpolations;
 import mchorse.bbs_mod.utils.joml.Vectors;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 import mchorse.bbs_mod.utils.keyframes.KeyframeSegment;
 import mchorse.bbs_mod.utils.presets.PresetManager;
-import mchorse.bbs_mod.utils.resources.Pixels;
-
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
-
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.util.math.Vec3d;
+import org.joml.Matrix4f;
+import org.joml.Vector2i;
+import org.joml.Vector3d;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.render.VertexFormat;
-import net.minecraft.client.render.VertexFormats;
-import net.minecraft.util.math.Vec3d;
-
-import org.joml.Matrix4f;
-import org.joml.Vector2i;
-import org.joml.Vector3d;
-
-import com.mojang.blaze3d.systems.RenderSystem;
-
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
-
-import org.lwjgl.glfw.GLFW;
-import org.lwjgl.opengl.GL11;
-
+import mchorse.bbs_mod.resources.packs.URLSourcePack;
+import mchorse.bbs_mod.utils.resources.Pixels;
 import java.io.InputStream;
-import java.lang.reflect.Method;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.util.concurrent.CompletableFuture;
+import java.util.Collections;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import net.minecraft.client.render.VertexFormat;
+import net.minecraft.client.render.VertexFormats;
+import org.lwjgl.glfw.GLFW;
+import org.lwjgl.opengl.GL11;
+
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSupported, IUIOrbitKeysHandler, ICursor
@@ -422,7 +411,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                 UIKeys.PANELS_MODALS_ADD,
                 (str) -> {
                     try {
-                        Method m = UIDataOverlayPanel.class.getDeclaredMethod("addNewData", String.class, MapType.class);
+                        java.lang.reflect.Method m = mchorse.bbs_mod.ui.dashboard.panels.overlay.UIDataOverlayPanel.class.getDeclaredMethod("addNewData", String.class, mchorse.bbs_mod.data.types.MapType.class);
                         m.setAccessible(true);
                         m.invoke(this.overlay, str, null);
                     } catch (Exception e) {
@@ -1795,14 +1784,14 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         context.replaceContextMenu((menu) ->
         {
-            menu.custom(new UISimpleContextMenu()
+            menu.custom(new mchorse.bbs_mod.ui.framework.elements.context.UISimpleContextMenu()
             {
                 @Override
                 public void setMouse(UIContext context)
                 {
                     int w = 100;
 
-                    for (ContextAction action : this.actions.getList())
+                    for (mchorse.bbs_mod.ui.utils.context.ContextAction action : this.actions.getList())
                     {
                         w = Math.max(action.getWidth(context.batcher.getFont()), w);
                     }
@@ -1906,7 +1895,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.setupEditorFlex(true);
     }
 
-    private Icon getLayoutIcon()
+    private mchorse.bbs_mod.ui.utils.icons.Icon getLayoutIcon()
     {
         ValueEditorLayout layout = BBSSettings.editorLayoutSettings;
 
@@ -1934,7 +1923,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         layout.setFilmLayoutRoot(layout.buildFilmLayoutFromLegacyState());
     }
 
-    private Icon getLayoutLockIcon()
+    private mchorse.bbs_mod.ui.utils.icons.Icon getLayoutLockIcon()
     {
         return BBSSettings.editorLayoutSettings.isLayoutLocked() ? Icons.LOCKED : Icons.UNLOCKED;
     }
@@ -2687,15 +2676,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         if (!BBSRendering.isIrisShadowPass())
         {
             this.lastProjection.set(RenderSystem.getProjectionMatrix());
-            MatrixStack ms = context.matrixStack();
-            if (ms != null)
-            {
-                this.lastView.set(ms.peek().getPositionMatrix());
-            }
-            else
-            {
-                this.lastView.set(RenderSystem.getModelViewMatrix());
-            }
+            this.lastView.set(context.matrixStack().peek().getPositionMatrix());
         }
 
         this.controller.renderFrame(context);
@@ -2934,7 +2915,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         if (this.layoutPresets != null) this.layoutPresets.setEnabled(enableIcons);
     }
 
-    private UIButton createHomeButton(IKey label, Icon icon, Consumer<UIButton> callback)
+    private UIButton createHomeButton(IKey label, mchorse.bbs_mod.ui.utils.icons.Icon icon, java.util.function.Consumer<UIButton> callback)
     {
         UIButton button = new UIButton(label, callback) {
             @Override
@@ -3137,7 +3118,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         {
             int tabIndex = i;
             FilmDocumentTab tab = this.filmDocumentTabs.get(i);
-            IKey title = tab.home ? L10n.lang("bbs.ui.film.home.title") : IKey.constant(tab.filmId);
+            IKey title = tab.home ? mchorse.bbs_mod.l10n.L10n.lang("bbs.ui.film.home.title") : IKey.constant(tab.filmId);
             UIIconTabButton button = new UIIconTabButton(title, tab.home ? Icons.FOLDER : Icons.FILM, (b) -> this.activateFilmDocumentTab(tabIndex, false));
             button.color(this.activeFilmDocumentTab == tabIndex ? BBSSettings.primaryColor.get() : 0x2d2d2d);
             button.w(tab.home ? 88 : 122).h(FILM_DOCUMENT_TABS_HEIGHT);
@@ -3586,7 +3567,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         public void render(UIContext context)
         {
             int x = this.area.x;
-            for (IUIElement child : this.getChildren())
+            for (mchorse.bbs_mod.ui.framework.elements.IUIElement child : this.getChildren())
             {
                 if (child instanceof UITab)
                 {
@@ -3595,15 +3576,15 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                     tab.area.y = this.area.y;
                     tab.area.h = this.area.h;
                     
-                    IKey nameKey = IKey.raw(tab.panelId);
+                    mchorse.bbs_mod.l10n.keys.IKey nameKey = mchorse.bbs_mod.l10n.keys.IKey.raw(tab.panelId);
                     switch (tab.panelId) {
-                        case "cameraEditor": nameKey = UIKeys.FILM_OPEN_CAMERA_EDITOR; break;
-                        case "replayEditor": nameKey = UIKeys.FILM_OPEN_REPLAY_EDITOR; break;
-                        case "actionEditor": nameKey = UIKeys.FILM_OPEN_ACTION_EDITOR; break;
-                        case "screenEditor": nameKey = UIKeys.FILM_OPEN_SCREEN_EDITOR; break;
-                        case "editArea": nameKey = IKey.raw("Properties"); break;
-                        case "preview": nameKey = IKey.raw("Preview"); break;
-                        case "main": nameKey = IKey.raw("Main"); break;
+                        case "cameraEditor": nameKey = mchorse.bbs_mod.ui.UIKeys.FILM_OPEN_CAMERA_EDITOR; break;
+                        case "replayEditor": nameKey = mchorse.bbs_mod.ui.UIKeys.FILM_OPEN_REPLAY_EDITOR; break;
+                        case "actionEditor": nameKey = mchorse.bbs_mod.ui.UIKeys.FILM_OPEN_ACTION_EDITOR; break;
+                        case "screenEditor": nameKey = mchorse.bbs_mod.ui.UIKeys.FILM_OPEN_SCREEN_EDITOR; break;
+                        case "editArea": nameKey = mchorse.bbs_mod.l10n.keys.IKey.raw("Properties"); break;
+                        case "preview": nameKey = mchorse.bbs_mod.l10n.keys.IKey.raw("Preview"); break;
+                        case "main": nameKey = mchorse.bbs_mod.l10n.keys.IKey.raw("Main"); break;
                     }
                     int w = 20 + context.batcher.getFont().getWidth(nameKey.get()) + 8;
                     tab.area.w = w;

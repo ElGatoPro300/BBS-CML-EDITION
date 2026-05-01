@@ -11,11 +11,9 @@ import mchorse.bbs_mod.cubic.animation.gecko.routes.GeckoAnimationRouteRegistry;
 import mchorse.bbs_mod.cubic.animation.gecko.routes.GeckoLimbRole;
 import mchorse.bbs_mod.cubic.data.model.ModelGroup;
 import mchorse.bbs_mod.forms.entities.IEntity;
-
 import net.minecraft.util.math.MathHelper;
 
 import java.util.EnumMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.WeakHashMap;
@@ -80,7 +78,7 @@ public class GeckoAnimationService
 
     public Set<String> knownBones(IModel model)
     {
-        HashSet<String> set = new HashSet<>();
+        java.util.HashSet<String> set = new java.util.HashSet<>();
 
         for (ModelGroup group : model.getAllGroups())
         {

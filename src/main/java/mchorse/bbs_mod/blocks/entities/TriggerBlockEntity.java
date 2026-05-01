@@ -3,17 +3,16 @@ package mchorse.bbs_mod.blocks.entities;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.blocks.entities.ModelBlockEntity;
 import mchorse.bbs_mod.data.DataStorageUtils;
-import mchorse.bbs_mod.events.TriggerBlockEntityUpdateCallback;
-import mchorse.bbs_mod.forms.FormUtils;
-import mchorse.bbs_mod.forms.forms.Form;
-import mchorse.bbs_mod.morphing.Morph;
-import mchorse.bbs_mod.network.ServerNetwork;
 import mchorse.bbs_mod.settings.values.core.ValueList;
 import mchorse.bbs_mod.settings.values.misc.ValueVector3f;
 import mchorse.bbs_mod.settings.values.numeric.ValueBoolean;
 import mchorse.bbs_mod.settings.values.numeric.ValueInt;
 import mchorse.bbs_mod.triggers.Trigger;
-
+import mchorse.bbs_mod.events.TriggerBlockEntityUpdateCallback;
+import mchorse.bbs_mod.forms.FormUtils;
+import mchorse.bbs_mod.forms.forms.Form;
+import mchorse.bbs_mod.morphing.Morph;
+import mchorse.bbs_mod.network.ServerNetwork;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.nbt.NbtCompound;
@@ -24,19 +23,13 @@ import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
 import net.minecraft.world.World;
-import net.minecraft.registry.RegistryWrapper;
 import org.jetbrains.annotations.Nullable;
-
 import org.joml.Vector3f;
 
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-
-import org.jetbrains.annotations.Nullable;
 
 public class TriggerBlockEntity extends BlockEntity
 {
@@ -94,7 +87,7 @@ public class TriggerBlockEntity extends BlockEntity
     public final ValueVector3f regionSize = new ValueVector3f("regionSize", new Vector3f(1, 1, 1));
 
     private Set<UUID> playersInRegion = new HashSet<>();
-    private Map<UUID, Long> regionNextTriggerTick = new HashMap<>();
+    private java.util.Map<UUID, Long> regionNextTriggerTick = new java.util.HashMap<>();
 
     public TriggerBlockEntity(BlockPos pos, BlockState state)
     {
@@ -255,9 +248,9 @@ public class TriggerBlockEntity extends BlockEntity
     }
 
     @Override
-    public void readNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registryLookup)
+    public void readNbt(NbtCompound nbt)
     {
-        super.readNbt(nbt, registryLookup);
+        super.readNbt(nbt);
         
         if (nbt.contains("Left")) this.left.fromData(DataStorageUtils.fromNbt(nbt.get("Left")));
         if (nbt.contains("Right")) this.right.fromData(DataStorageUtils.fromNbt(nbt.get("Right")));
@@ -274,9 +267,9 @@ public class TriggerBlockEntity extends BlockEntity
     }
 
     @Override
-    public void writeNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registryLookup)
+    public void writeNbt(NbtCompound nbt)
     {
-        super.writeNbt(nbt, registryLookup);
+        super.writeNbt(nbt);
         
         nbt.put("Left", DataStorageUtils.toNbt(this.left.toData()));
         nbt.put("Right", DataStorageUtils.toNbt(this.right.toData()));
@@ -300,8 +293,8 @@ public class TriggerBlockEntity extends BlockEntity
     }
 
     @Override
-    public NbtCompound toInitialChunkDataNbt(RegistryWrapper.WrapperLookup registryLookup)
+    public NbtCompound toInitialChunkDataNbt()
     {
-        return this.createNbt(registryLookup);
+        return this.createNbt();
     }
 }

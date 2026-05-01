@@ -27,7 +27,6 @@ import mchorse.bbs_mod.utils.IOUtils;
 
 import java.io.File;
 import java.io.IOException;
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -367,7 +366,7 @@ public class UIDebugPanel extends UIDashboardPanel
 
         try
         {
-            Field field = Icons.class.getField(name);
+            java.lang.reflect.Field field = Icons.class.getField(name);
             Object value = field.get(null);
 
             if (value instanceof Icon)
@@ -388,7 +387,7 @@ public class UIDebugPanel extends UIDashboardPanel
             return "";
         }
 
-        for (Field field : Icons.class.getFields())
+        for (java.lang.reflect.Field field : Icons.class.getFields())
         {
             if (field.getType() == Icon.class)
             {

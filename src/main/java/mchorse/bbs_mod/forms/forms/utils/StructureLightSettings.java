@@ -2,9 +2,7 @@ package mchorse.bbs_mod.forms.forms.utils;
 
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.MapType;
-
 import java.util.Objects;
-
 // Numeric parsing is handled via MapType helpers; no direct NumberType/NumericType import required
 
 /**

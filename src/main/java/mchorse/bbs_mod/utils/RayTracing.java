@@ -3,7 +3,6 @@ package mchorse.bbs_mod.utils;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.camera.Camera;
 import mchorse.bbs_mod.entity.ActorEntity;
-
 import net.minecraft.block.ShapeContext;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.projectile.ProjectileUtil;
@@ -14,7 +13,6 @@ import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.RaycastContext;
 import net.minecraft.world.World;
-
 import org.joml.Vector2d;
 import org.joml.Vector3d;
 import org.joml.Vector3f;

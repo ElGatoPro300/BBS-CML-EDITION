@@ -33,12 +33,10 @@ import mchorse.bbs_mod.utils.interps.InterpContext;
 import mchorse.bbs_mod.utils.interps.Interpolation;
 import mchorse.bbs_mod.utils.interps.Interpolations;
 import mchorse.bbs_mod.utils.interps.easings.EasingArgs;
-import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 import mchorse.bbs_mod.utils.keyframes.factories.KeyframeFactories;
 import mchorse.bbs_mod.utils.undo.IUndo;
 import mchorse.bbs_mod.utils.undo.UndoManager;
-
 import org.lwjgl.glfw.GLFW;
 
 import java.util.Map;
@@ -91,7 +89,7 @@ public class UICustomInterpolationPanel extends UIOverlayPanel
         channel.insert(0, 0D);
         channel.insert(1, 1D);
 
-        for (Keyframe keyframe : channel.getKeyframes())
+        for (mchorse.bbs_mod.utils.keyframes.Keyframe keyframe : channel.getKeyframes())
         {
             keyframe.getInterpolation().setInterp(Interpolations.BEZIER);
             keyframe.lx = 0.15f;
@@ -217,7 +215,7 @@ public class UICustomInterpolationPanel extends UIOverlayPanel
 
         for (int i = 0; i <= samples; i++)
         {
-            Keyframe<Double> k = channel.get(i);
+            mchorse.bbs_mod.utils.keyframes.Keyframe<Double> k = channel.get(i);
             double x = k.getTick();
             double y = k.getValue();
 

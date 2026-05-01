@@ -16,7 +16,6 @@ import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.utils.IOUtils;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.resources.Pixels;
-
 import org.joml.Vector2f;
 import org.joml.Vector3f;
 

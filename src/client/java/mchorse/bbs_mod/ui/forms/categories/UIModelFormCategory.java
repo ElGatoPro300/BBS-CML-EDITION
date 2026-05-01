@@ -1,17 +1,16 @@
 package mchorse.bbs_mod.ui.forms.categories;
 
 import mchorse.bbs_mod.BBSMod;
-import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.cubic.CubicLoader;
 import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.cubic.model.ModelManager;
 import mchorse.bbs_mod.data.DataToString;
 import mchorse.bbs_mod.data.types.MapType;
-import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.categories.FormCategory;
 import mchorse.bbs_mod.forms.categories.ModelFormCategory;
-import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.forms.ModelForm;
+import mchorse.bbs_mod.forms.forms.Form;
+import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.renderers.ModelFormRenderer;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.forms.UIFormList;
@@ -22,6 +21,7 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.IOUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
+import mchorse.bbs_mod.BBSSettings;
 
 import java.io.File;
 import java.io.IOException;

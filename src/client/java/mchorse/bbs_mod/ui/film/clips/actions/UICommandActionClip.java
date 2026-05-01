@@ -4,7 +4,6 @@ import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.actions.types.chat.CommandActionClip;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.IUIClipsDelegate;
-import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.input.text.UITextarea;
 import mchorse.bbs_mod.ui.framework.elements.input.text.undo.TextEditUndo;
 import mchorse.bbs_mod.ui.framework.elements.input.text.utils.TextLine;
@@ -62,7 +61,7 @@ public class UICommandActionClip extends UIActionClip<CommandActionClip>
     }
 
     @Override
-    public void render(UIContext context)
+    public void render(mchorse.bbs_mod.ui.framework.UIContext context)
     {
         this.updateCommandHeight();
         super.render(context);

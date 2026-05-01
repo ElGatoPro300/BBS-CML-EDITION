@@ -7,7 +7,6 @@ import mchorse.bbs_mod.settings.values.core.ValueString;
 import mchorse.bbs_mod.settings.values.mc.ValueBlockState;
 import mchorse.bbs_mod.settings.values.numeric.ValueBoolean;
 import mchorse.bbs_mod.utils.clips.Clip;
-
 import net.minecraft.block.Blocks;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.entity.LivingEntity;
@@ -53,14 +52,24 @@ public class PlaceBlockActionClip extends BlockActionClip
                     nbt.putInt("x", pos.getX());
                     nbt.putInt("y", pos.getY());
                     nbt.putInt("z", pos.getZ());
-                    BlockEntity created = BlockEntity.createFromNbt(pos, this.state.get(), nbt, player.getWorld().getRegistryManager());
+                    BlockEntity blockEntity = player.getWorld().getBlockEntity(pos);
 
-                    if (created != null)
+                    if (blockEntity != null)
                     {
-                        player.getWorld().removeBlockEntity(pos);
-                        player.getWorld().addBlockEntity(created);
-                        created.markDirty();
+                        blockEntity.readNbt(nbt);
+                        blockEntity.markDirty();
                         player.getWorld().updateListeners(pos, this.state.get(), this.state.get(), 3);
+                    }
+                    else
+                    {
+                        BlockEntity created = BlockEntity.createFromNbt(pos, this.state.get(), nbt);
+
+                        if (created != null)
+                        {
+                            player.getWorld().addBlockEntity(created);
+                            created.markDirty();
+                            player.getWorld().updateListeners(pos, this.state.get(), this.state.get(), 3);
+                        }
                     }
                 }
                 catch (Exception ignored)

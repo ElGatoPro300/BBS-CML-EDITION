@@ -11,12 +11,11 @@ import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.utils.Axis;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.StringUtils;
-import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.joml.Vectors;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import mchorse.bbs_mod.utils.pose.PoseTransform;
 import mchorse.bbs_mod.utils.pose.Transform;
-
+import mchorse.bbs_mod.utils.colors.Color;
 import org.joml.Vector3d;
 
 import java.util.HashSet;

@@ -1,35 +1,30 @@
 package mchorse.bbs_mod.ui.triggers;
 
-import mchorse.bbs_mod.blocks.entities.ModelBlockEntity;
-import mchorse.bbs_mod.client.BBSRendering;
-import mchorse.bbs_mod.data.DataStorageUtils;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.morphing.Morph;
 import mchorse.bbs_mod.settings.values.core.ValueList;
 import mchorse.bbs_mod.triggers.Trigger;
 import mchorse.bbs_mod.ui.UIKeys;
-import mchorse.bbs_mod.ui.film.UIFilmPickerOverlayPanel;
 import mchorse.bbs_mod.ui.forms.UIFormPalette;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
-import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UIList;
 import mchorse.bbs_mod.ui.framework.elements.input.text.UITextbox;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIEditorOverlayPanel;
-import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
-import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlayPanel;
-import mchorse.bbs_mod.ui.model_blocks.UIModelBlockEntityList;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Colors;
-
+import mchorse.bbs_mod.blocks.entities.ModelBlockEntity;
+import mchorse.bbs_mod.client.BBSRendering;
+import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
+import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlayPanel;
+import mchorse.bbs_mod.ui.model_blocks.UIModelBlockEntityList;
+import mchorse.bbs_mod.ui.film.UIFilmPickerOverlayPanel;
+import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.NbtElement;
-import net.minecraft.nbt.StringNbtReader;
 
 public class UITriggerOverlayPanel extends UIEditorOverlayPanel<Trigger>
 {
@@ -61,7 +56,7 @@ public class UITriggerOverlayPanel extends UIEditorOverlayPanel<Trigger>
                 {
                     try
                     {
-                        MinecraftClient.getInstance().keyboard.setClipboard(DataStorageUtils.toNbt(this.item.toData()).toString());
+                        net.minecraft.client.MinecraftClient.getInstance().keyboard.setClipboard(mchorse.bbs_mod.data.DataStorageUtils.toNbt(this.item.toData()).toString());
                     }
                     catch (Exception e)
                     {}
@@ -70,15 +65,15 @@ public class UITriggerOverlayPanel extends UIEditorOverlayPanel<Trigger>
 
             try
             {
-                String clipboard = MinecraftClient.getInstance().keyboard.getClipboard();
-                NbtElement element = StringNbtReader.parse(clipboard);
+                String clipboard = net.minecraft.client.MinecraftClient.getInstance().keyboard.getClipboard();
+                net.minecraft.nbt.NbtElement element = net.minecraft.nbt.StringNbtReader.parse(clipboard);
 
-                if (element instanceof NbtCompound)
+                if (element instanceof net.minecraft.nbt.NbtCompound)
                 {
                     menu.action(Icons.PASTE, TriggerKeys.PASTE_TRIGGER, () ->
                     {
                         Trigger newTrigger = new Trigger("");
-                        newTrigger.fromData(DataStorageUtils.fromNbt(element));
+                        newTrigger.fromData(mchorse.bbs_mod.data.DataStorageUtils.fromNbt(element));
                         this.list.getList().add(newTrigger);
                         this.list.update();
                         this.pickItem(newTrigger, true);

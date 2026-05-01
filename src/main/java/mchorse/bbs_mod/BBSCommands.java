@@ -1,5 +1,14 @@
 package mchorse.bbs_mod;
 
+import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.BoolArgumentType;
+import com.mojang.brigadier.arguments.FloatArgumentType;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.builder.RequiredArgumentBuilder;
+import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import mchorse.bbs_mod.bay4lly.SkinCommands;
 import mchorse.bbs_mod.blocks.entities.ModelBlockEntity;
 import mchorse.bbs_mod.data.DataToString;
@@ -13,7 +22,6 @@ import mchorse.bbs_mod.network.ServerNetwork;
 import mchorse.bbs_mod.settings.Settings;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.settings.values.core.ValueGroup;
-
 import net.minecraft.block.Blocks;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.command.CommandRegistryAccess;
@@ -40,16 +48,6 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.SaveProperties;
 import net.minecraft.world.World;
 import net.minecraft.world.level.LevelInfo;
-
-import com.mojang.brigadier.CommandDispatcher;
-import com.mojang.brigadier.arguments.BoolArgumentType;
-import com.mojang.brigadier.arguments.FloatArgumentType;
-import com.mojang.brigadier.arguments.IntegerArgumentType;
-import com.mojang.brigadier.arguments.StringArgumentType;
-import com.mojang.brigadier.builder.LiteralArgumentBuilder;
-import com.mojang.brigadier.builder.RequiredArgumentBuilder;
-import com.mojang.brigadier.context.CommandContext;
-import com.mojang.brigadier.exceptions.CommandSyntaxException;
 
 import java.util.Collection;
 import java.util.function.Predicate;
@@ -525,7 +523,7 @@ public class BBSCommands
 
         try
         {
-            structureTemplate = structureTemplateManager.getTemplateOrBlank(Identifier.of(name));
+            structureTemplate = structureTemplateManager.getTemplateOrBlank(new Identifier(name));
         }
         catch (InvalidIdentifierException e)
         {
@@ -540,7 +538,7 @@ public class BBSCommands
 
         try
         {
-            if (structureTemplateManager.saveTemplate(Identifier.of(name)))
+            if (structureTemplateManager.saveTemplate(new Identifier(name)))
             {
                 return 1;
             }

@@ -15,7 +15,6 @@ import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.colors.Colors;
-
 import org.lwjgl.glfw.GLFW;
 
 import java.util.function.Consumer;

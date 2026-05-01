@@ -1,5 +1,6 @@
 package mchorse.bbs_mod.particles.emitter;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.camera.Camera;
 import mchorse.bbs_mod.graphics.texture.Texture;
@@ -14,26 +15,21 @@ import mchorse.bbs_mod.particles.components.IComponentParticleUpdate;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.interps.Lerps;
-
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
+import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.client.util.BufferAllocator;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.world.World;
-
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
-
-import com.mojang.blaze3d.systems.RenderSystem;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -460,7 +456,9 @@ public class ParticleEmitter
             this.setParticleVariables(this.uiParticle, transition);
 
             Matrix4f matrix = stack.peek().getPositionMatrix();
-            BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_TEXTURE_COLOR);
+            BufferBuilder builder = Tessellator.getInstance().getBuffer();
+
+            builder.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_TEXTURE_COLOR);
 
             for (IComponentParticleRender render : list)
             {
@@ -494,9 +492,10 @@ public class ParticleEmitter
         if (!this.particles.isEmpty())
         {
             Matrix4f matrix = stack.peek().getPositionMatrix();
-            BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, format);
+            BufferBuilder builder = Tessellator.getInstance().getBuffer();
 
             this.bindTexture();
+            builder.begin(VertexFormat.DrawMode.TRIANGLES, format);
 
             for (Particle particle : this.particles)
             {
@@ -510,12 +509,10 @@ public class ParticleEmitter
             }
 
             RenderSystem.setShader(program);
-            RenderSystem.enableBlend();
-            RenderSystem.defaultBlendFunc();
+            RenderSystem.disableBlend();
             RenderSystem.disableCull();
             BufferRenderer.drawWithGlobalProgram(builder.end());
             RenderSystem.enableCull();
-            RenderSystem.disableBlend();
         }
 
         for (IComponentParticleRender component : renders)
@@ -538,14 +535,5 @@ public class ParticleEmitter
         this.cX = camera.position.x;
         this.cY = camera.position.y;
         this.cZ = camera.position.z;
-    }
-
-    public void setupCameraProperties(net.minecraft.client.render.Camera camera)
-    {
-        this.cYaw = 180 - camera.getYaw();
-        this.cPitch = -camera.getPitch();
-        this.cX = camera.getPos().x;
-        this.cY = camera.getPos().y;
-        this.cZ = camera.getPos().z;
     }
 }

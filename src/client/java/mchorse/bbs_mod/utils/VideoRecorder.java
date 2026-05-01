@@ -1,15 +1,14 @@
 package mchorse.bbs_mod.utils;
 
 import mchorse.bbs_mod.BBSMod;
-import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
+import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.ui.utils.UIUtils;
-
 import net.minecraft.client.MinecraftClient;
-
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.system.MemoryUtil;
+import sun.misc.Unsafe;
 
 import java.io.File;
 import java.io.FilterOutputStream;
@@ -28,8 +27,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
-
-import sun.misc.Unsafe;
 
 public class VideoRecorder
 {

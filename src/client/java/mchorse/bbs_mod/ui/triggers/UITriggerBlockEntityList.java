@@ -4,7 +4,6 @@ import mchorse.bbs_mod.blocks.entities.TriggerBlockEntity;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UIList;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UIStringList;
-
 import net.minecraft.util.math.BlockPos;
 
 import java.util.List;

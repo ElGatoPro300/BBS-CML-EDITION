@@ -1,7 +1,7 @@
 package mchorse.bbs_mod.events.register;
 
-import mchorse.bbs_mod.camera.clips.ClipFactoryData;
 import mchorse.bbs_mod.utils.clips.Clip;
+import mchorse.bbs_mod.camera.clips.ClipFactoryData;
 import mchorse.bbs_mod.utils.factory.MapFactory;
 
 public class RegisterActionClipsEvent

@@ -10,7 +10,6 @@ import mchorse.bbs_mod.cubic.data.model.ModelGroup;
 import mchorse.bbs_mod.cubic.model.ModelConfig;
 import mchorse.bbs_mod.data.DataToString;
 import mchorse.bbs_mod.data.types.MapType;
-import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.UIKeys;
@@ -19,19 +18,19 @@ import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
+import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
+import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
 import mchorse.bbs_mod.ui.framework.elements.input.UITransform;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UIList;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UISearchList;
-import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
-import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.UIUtils;
-import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
+import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
 import mchorse.bbs_mod.utils.Axis;
 import mchorse.bbs_mod.utils.IOUtils;
 import mchorse.bbs_mod.utils.MathUtils;
@@ -39,10 +38,9 @@ import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.pose.Transform;
 import mchorse.bbs_mod.utils.undo.IUndo;
 import mchorse.bbs_mod.utils.undo.UndoManager;
-
+import mchorse.bbs_mod.graphics.window.Window;
 import org.joml.Vector2f;
 import org.joml.Vector3f;
-
 import org.lwjgl.glfw.GLFW;
 
 import java.io.File;
@@ -50,7 +48,6 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Consumer;
 
 public class UIModelGeometryPanel extends UIElement
 {
@@ -380,7 +377,7 @@ public class UIModelGeometryPanel extends UIElement
         this.syncGizmoTransformFromSelection();
     }
 
-    private UITrackpad trackpad(Consumer<Double> callback)
+    private UITrackpad trackpad(java.util.function.Consumer<Double> callback)
     {
         UITrackpad pad = new UITrackpad((v) -> callback.accept(v.doubleValue())).increment(1);
 

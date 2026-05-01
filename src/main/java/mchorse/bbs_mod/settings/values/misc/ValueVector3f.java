@@ -3,7 +3,6 @@ package mchorse.bbs_mod.settings.values.misc;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.settings.values.base.BaseValueBasic;
-
 import org.joml.Vector3f;
 
 public class ValueVector3f extends BaseValueBasic<Vector3f>

@@ -1,7 +1,6 @@
 package mchorse.bbs_mod.actions;
 
 import mchorse.bbs_mod.BBSSettings;
-
 import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.entity.Entity;
@@ -45,7 +44,7 @@ public class DamageControl
             }
         }
 
-        this.blocks.add(new BlockCapture(new BlockPos(pos), state, entity == null ? null : entity.createNbtWithId(this.world.getRegistryManager())));
+        this.blocks.add(new BlockCapture(new BlockPos(pos), state, entity == null ? null : entity.createNbtWithId()));
     }
 
     public void addEntity(Entity entity)
@@ -75,7 +74,7 @@ public class DamageControl
 
             if (block.blockEntity != null)
             {
-                BlockEntity blockEntity = BlockEntity.createFromNbt(block.pos, block.lastState, block.blockEntity, this.world.getRegistryManager());
+                BlockEntity blockEntity = BlockEntity.createFromNbt(block.pos, block.lastState, block.blockEntity);
 
                 this.world.addBlockEntity(blockEntity);
             }
