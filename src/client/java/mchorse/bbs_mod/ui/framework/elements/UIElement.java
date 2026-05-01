@@ -163,7 +163,7 @@ public class UIElement implements IUIElement, IUndoElement
         {
             element = element.getParent();
 
-            if (element != null && element.getClass() == clazz)
+            if (element.getClass() == clazz)
             {
                 return (T) element;
             }

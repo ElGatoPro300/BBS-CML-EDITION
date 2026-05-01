@@ -34,13 +34,11 @@ import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.film.replays.UIRecordOverlayPanel;
-import mchorse.bbs_mod.ui.film.replays.overlays.UIReplaysOverlayPanel;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeEditor;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
-import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.ui.utils.Area;
@@ -393,14 +391,14 @@ public class UIFilmController extends UIElement
     {
         UIContext context = this.getContext();
 
-        return this.controlled != null && context != null && this.panel.isRunning() && !this.hasBlockingOverlay();
+        return this.controlled != null && context != null && !UIOverlay.has(context);
     }
 
     /* Recording */
 
     public boolean isPlaying()
     {
-        boolean playing = !this.hasBlockingOverlay() && this.panel.isRunning();
+        boolean playing = !UIOverlay.has(this.getContext()) && this.panel.isRunning();
 
         if (this.isPaused())
         {
@@ -408,28 +406,6 @@ public class UIFilmController extends UIElement
         }
 
         return playing;
-    }
-
-    private boolean hasBlockingOverlay()
-    {
-        UIContext context = this.getContext();
-
-        if (context == null)
-        {
-            return false;
-        }
-
-        List<UIOverlayPanel> overlays = context.menu.getRoot().getChildren(UIOverlayPanel.class);
-
-        for (UIOverlayPanel panel : overlays)
-        {
-            if (!(panel instanceof UIReplaysOverlayPanel))
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     public boolean isRecording()

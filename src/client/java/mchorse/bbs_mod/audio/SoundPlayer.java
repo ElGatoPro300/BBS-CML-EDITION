@@ -18,7 +18,6 @@ public class SoundPlayer
 
         AL10.alSourcei(this.source, AL10.AL_BUFFER, buffer.getBuffer());
         AL10.alSourcef(this.source, AL10.AL_MAX_DISTANCE, 60);
-        AL10.alSourcef(this.source, AL10.AL_MAX_GAIN, 10F);
 
         this.setRelative(false);
     }

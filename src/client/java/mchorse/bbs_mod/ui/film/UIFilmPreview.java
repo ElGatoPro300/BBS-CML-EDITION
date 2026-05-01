@@ -3,18 +3,15 @@ package mchorse.bbs_mod.ui.film;
 import com.mojang.blaze3d.systems.RenderSystem;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
-import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.audio.AudioRenderer;
 import mchorse.bbs_mod.camera.Camera;
 import mchorse.bbs_mod.camera.clips.misc.AudioClip;
-import mchorse.bbs_mod.camera.clips.misc.VideoClip;
 import mchorse.bbs_mod.camera.controller.RunnerCameraController;
 import mchorse.bbs_mod.camera.data.Angle;
 import mchorse.bbs_mod.camera.data.Point;
 import mchorse.bbs_mod.camera.data.Position;
 import mchorse.bbs_mod.camera.utils.TimeUtils;
 import mchorse.bbs_mod.client.BBSRendering;
-import mchorse.bbs_mod.client.video.VideoRenderer;
 import mchorse.bbs_mod.film.Films;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.graphics.window.Window;
@@ -213,16 +210,9 @@ public class UIFilmPreview extends UIElement
 
     public void openReplays()
     {
-        if (!this.panel.isDockedLayout())
-        {
-            UIOverlay overlay = UIOverlay.addOverlayLeft(this.getContext(), this.panel.replayEditor.replays, 360);
+        UIOverlay overlay = UIOverlay.addOverlayLeft(this.getContext(), this.panel.replayEditor.replays, 360);
 
-            overlay.eventPropagataion(EventPropagation.PASS);
-        }
-        else
-        {
-            this.panel.toggleReplaysSidebar();
-        }
+        overlay.eventPropagataion(EventPropagation.PASS);
     }
 
     public void openOnionSkin()
@@ -301,24 +291,6 @@ public class UIFilmPreview extends UIElement
             context.batcher.texturedBox(texture.id, Colors.WHITE, area.x, area.y, area.w, area.h, 0, texture.height, texture.width, 0, texture.width, texture.height);
         }
 
-        if (this.panel.getData() != null)
-        {
-            /* Render global video clips (overlays) */
-            VideoRenderer.renderClips(
-                context.batcher.getContext().getMatrices(),
-                context.batcher,
-                this.panel.getData().camera.getClips(this.panel.getCursor()),
-                this.panel.getCursor(),
-                this.panel.getRunner().isRunning(),
-                this.getViewport(),
-                context.menu.viewport,
-                context,
-                context.menu.width,
-                context.menu.height,
-                true
-            );
-        }
-
         this.renderCursor(context);
 
         /* Render rule of thirds */
@@ -330,10 +302,8 @@ public class UIFilmPreview extends UIElement
             context.batcher.box(area.x + area.w - area.w / 3, area.y, area.x + area.w - area.w / 3 + 1, area.y + area.h, guidesColor);
 
             context.batcher.box(area.x, area.y + area.h / 3 - 1, area.x + area.w, area.y + area.h / 3, guidesColor);
-            context.batcher.box(area.x, area.y + area.h - area.h / 3 - 1, area.x + area.w, area.y + area.h - area.h / 3, guidesColor);
+            context.batcher.box(area.x, area.y + area.h - area.h / 3, area.x + area.w, area.y + area.h - area.h / 3 + 1, guidesColor);
         }
-
-        VideoRenderer.update();
 
         if (BBSSettings.editorCenterLines.get())
         {

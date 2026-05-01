@@ -70,8 +70,8 @@ public class UIKeyframes extends UIElement
 
     /* Fields */
 
-    protected final UIKeyframeDopeSheet dopeSheet = new UIKeyframeDopeSheet(this);
-    protected IUIKeyframeGraph currentGraph = this.dopeSheet;
+    private final UIKeyframeDopeSheet dopeSheet = new UIKeyframeDopeSheet(this);
+    private IUIKeyframeGraph currentGraph = this.dopeSheet;
 
     private final Scale xAxis = new Scale(this.area, ScrollDirection.HORIZONTAL);
 
