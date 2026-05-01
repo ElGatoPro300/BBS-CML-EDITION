@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.events.register;
 
 import mchorse.bbs_mod.math.functions.Function;
+
 import java.util.Map;
 
 public class RegisterMolangFunctionsEvent

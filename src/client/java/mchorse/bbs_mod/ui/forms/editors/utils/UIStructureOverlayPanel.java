@@ -3,6 +3,7 @@ package mchorse.bbs_mod.ui.forms.editors.utils;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.forms.StructureLikeManager;
+import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.UIContext;
@@ -12,26 +13,28 @@ import mchorse.bbs_mod.ui.framework.elements.input.list.UILikedStructureList;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UISearchList;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UIVanillaStructureList;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIConfirmOverlayPanel;
+import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIStringOverlayPanel;
-import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Colors;
-import mchorse.bbs_mod.l10n.keys.IKey;
+
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.util.WorldSavePath;
-import org.apache.commons.io.FileUtils;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
+
+import org.apache.commons.io.FileUtils;
 
 /**
  * Overlay panel for picking structures with three tabs: World, Vanilla, and Favorites.
@@ -420,7 +423,7 @@ public class UIStructureOverlayPanel extends UIStringOverlayPanel
         UILikeableStructureList list = (UILikeableStructureList) this.strings.list;
         list.getList().clear();
 
-        java.util.List<String> sorted = new java.util.ArrayList<>(structureFiles);
+        List<String> sorted = new ArrayList<>(structureFiles);
 
         sorted.sort(null);
         list.getList().addAll(sorted);

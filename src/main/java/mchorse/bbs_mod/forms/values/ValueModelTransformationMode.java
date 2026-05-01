@@ -5,6 +5,8 @@ import mchorse.bbs_mod.data.types.StringType;
 import mchorse.bbs_mod.settings.values.base.BaseValueBasic;
 import net.minecraft.item.ModelTransformationMode;
 
+import net.minecraft.client.render.model.json.ModelTransformationMode;
+
 public class ValueModelTransformationMode extends BaseValueBasic<ModelTransformationMode>
 {
     public ValueModelTransformationMode(String id, ModelTransformationMode value)

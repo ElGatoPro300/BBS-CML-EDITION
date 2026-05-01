@@ -2,14 +2,15 @@ package mchorse.bbs_mod.ui.model;
 
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
+import mchorse.bbs_mod.camera.OrbitDistanceCamera;
+import mchorse.bbs_mod.camera.controller.OrbitCameraController;
 import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.cubic.model.ArmorSlot;
 import mchorse.bbs_mod.cubic.model.ArmorType;
 import mchorse.bbs_mod.cubic.model.ModelConfig;
-import mchorse.bbs_mod.camera.OrbitDistanceCamera;
-import mchorse.bbs_mod.camera.controller.OrbitCameraController;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.forms.Form;
+import mchorse.bbs_mod.forms.forms.ItemForm;
 import mchorse.bbs_mod.forms.forms.ModelForm;
 import mchorse.bbs_mod.forms.renderers.FormRenderer;
 import mchorse.bbs_mod.forms.renderers.ModelFormRenderer;
@@ -27,13 +28,24 @@ import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
+
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.option.Perspective;
+import net.minecraft.entity.EquipmentSlot;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.registry.Registries;
+
 import org.lwjgl.glfw.GLFW;
 
 public class UIModelArmorTransformEditor extends UIDashboardPanel
 {
+    private static final ItemStack HELMET = new ItemStack(Items.DIAMOND_HELMET);
+    private static final ItemStack CHESTPLATE = new ItemStack(Items.DIAMOND_CHESTPLATE);
+    private static final ItemStack LEGGINGS = new ItemStack(Items.DIAMOND_LEGGINGS);
+    private static final ItemStack BOOTS = new ItemStack(Items.DIAMOND_BOOTS);
+
     public UIModelPanel parent;
     public ModelConfig config;
 
@@ -233,6 +245,11 @@ public class UIModelArmorTransformEditor extends UIDashboardPanel
 
             form.model.set(this.config.getId());
             morph.setForm(form);
+
+            morph.entity.setEquipmentStack(EquipmentSlot.HEAD, HELMET);
+            morph.entity.setEquipmentStack(EquipmentSlot.CHEST, CHESTPLATE);
+            morph.entity.setEquipmentStack(EquipmentSlot.LEGS, LEGGINGS);
+            morph.entity.setEquipmentStack(EquipmentSlot.FEET, BOOTS);
         }
 
         this.acquireModel();
@@ -242,6 +259,16 @@ public class UIModelArmorTransformEditor extends UIDashboardPanel
     public void disappear()
     {
         super.disappear();
+
+        Morph morph = Morph.getMorph(MinecraftClient.getInstance().player);
+
+        if (morph != null)
+        {
+            morph.entity.setEquipmentStack(EquipmentSlot.HEAD, ItemStack.EMPTY);
+            morph.entity.setEquipmentStack(EquipmentSlot.CHEST, ItemStack.EMPTY);
+            morph.entity.setEquipmentStack(EquipmentSlot.LEGS, ItemStack.EMPTY);
+            morph.entity.setEquipmentStack(EquipmentSlot.FEET, ItemStack.EMPTY);
+        }
 
         this.parent.forceSave();
         this.restore();

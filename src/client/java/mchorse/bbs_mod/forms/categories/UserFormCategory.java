@@ -8,6 +8,8 @@ import mchorse.bbs_mod.ui.forms.UIFormList;
 import mchorse.bbs_mod.ui.forms.categories.UIFormCategory;
 import mchorse.bbs_mod.ui.forms.categories.UIUserFormCategory;
 
+import java.util.List;
+
 public class UserFormCategory extends FormCategory
 {
     private UserFormSection section;
@@ -65,7 +67,7 @@ public class UserFormCategory extends FormCategory
 
     public void moveForm(int from, int to)
     {
-        java.util.List<Form> forms = this.getDirectForms();
+        List<Form> forms = this.getDirectForms();
 
         if (from >= 0 && from < forms.size() && to >= 0 && to < forms.size() && from != to)
         {

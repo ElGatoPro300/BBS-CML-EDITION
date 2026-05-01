@@ -1,16 +1,17 @@
 package mchorse.bbs_mod.ui.forms.categories;
 
 import mchorse.bbs_mod.BBSMod;
+import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.cubic.CubicLoader;
 import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.cubic.model.ModelManager;
 import mchorse.bbs_mod.data.DataToString;
 import mchorse.bbs_mod.data.types.MapType;
+import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.categories.FormCategory;
 import mchorse.bbs_mod.forms.categories.ModelFormCategory;
-import mchorse.bbs_mod.forms.forms.ModelForm;
 import mchorse.bbs_mod.forms.forms.Form;
-import mchorse.bbs_mod.forms.FormUtilsClient;
+import mchorse.bbs_mod.forms.forms.ModelForm;
 import mchorse.bbs_mod.forms.renderers.ModelFormRenderer;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.forms.UIFormList;
@@ -21,7 +22,6 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.IOUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
-import mchorse.bbs_mod.BBSSettings;
 
 import java.io.File;
 import java.io.IOException;
@@ -73,6 +73,7 @@ public class UIModelFormCategory extends UIFormCategory
                     }
                 }
             });
+
         });
     }
 
@@ -158,6 +159,25 @@ public class UIModelFormCategory extends UIFormCategory
         }
 
         int indent = this.getIndent();
+        List<Form> forms = this.getForms();
+        boolean hideEmptyInFavorites = this.list.isFavoritesOnly() && forms.isEmpty();
+
+        if (hideEmptyInFavorites)
+        {
+            if (this.last != 0 || this.area.h != 0)
+            {
+                this.last = 0;
+                this.h(0);
+                UIElement container = this.getParentContainer();
+
+                if (container != null)
+                {
+                    container.resize();
+                }
+            }
+
+            return;
+        }
 
         context.batcher.textCard(this.category.getProcessedTitle(), this.area.x + 26 + indent, this.area.y + 6);
 
@@ -170,7 +190,6 @@ public class UIModelFormCategory extends UIFormCategory
             context.batcher.icon(Icons.MOVE_UP, this.area.x + 16 + indent, this.area.y + 4, 0.5F, 0F);
         }
 
-        List<Form> forms = this.getForms();
         int h = HEADER_HEIGHT;
         int x = 0;
         int i = 0;
@@ -200,8 +219,15 @@ public class UIModelFormCategory extends UIFormCategory
                 }
 
                 FormUtilsClient.renderUI(form, context, cx, cy, cx + CELL_WIDTH, cy + CELL_HEIGHT);
-
                 context.batcher.unclip(context);
+
+                UIFormList.FavoriteMarker marker = this.list.getFavoriteMarker(form);
+
+                if (marker != null)
+                {
+                    context.batcher.outline(cx, cy, cx + CELL_WIDTH, cy + CELL_HEIGHT, marker.color, 1);
+                    this.renderFavoriteMarkerIcon(context, marker, cx, cy);
+                }
 
                 x += CELL_WIDTH;
                 i += 1;

@@ -1,8 +1,5 @@
 package mchorse.bbs_mod.forms.renderers;
 
-import com.mojang.authlib.GameProfile;
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.brigadier.StringReader;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.client.MobTextureOverride;
@@ -20,6 +17,7 @@ import mchorse.bbs_mod.utils.PlayerUtils;
 import mchorse.bbs_mod.utils.joml.Vectors;
 import mchorse.bbs_mod.utils.pose.Pose;
 import mchorse.bbs_mod.utils.pose.Transform;
+
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.model.ModelPart;
@@ -39,7 +37,13 @@ import net.minecraft.entity.SpawnReason;
 import net.minecraft.util.Hand;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.RotationAxis;
+
 import org.joml.Matrix4f;
+
+import com.mojang.authlib.GameProfile;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.brigadier.StringReader;
+
 import org.lwjgl.opengl.GL11;
 
 import java.lang.reflect.Field;
@@ -347,8 +351,8 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
     // 3. Keep the limbs synced so running/walking looks correct
     if (source != null) {
-        if (livingMorph.limbAnimator instanceof mchorse.bbs_mod.mixin.LimbAnimatorAccessor a && 
-            source.limbAnimator instanceof mchorse.bbs_mod.mixin.LimbAnimatorAccessor b) {
+        if (livingMorph.limbAnimator instanceof LimbAnimatorAccessor a && 
+            source.limbAnimator instanceof LimbAnimatorAccessor b) {
             a.setPos(b.getPos());
             a.setSpeed(b.getSpeed());
         }

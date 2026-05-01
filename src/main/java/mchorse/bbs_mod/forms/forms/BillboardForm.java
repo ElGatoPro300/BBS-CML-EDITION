@@ -1,12 +1,13 @@
 package mchorse.bbs_mod.forms.forms;
 
-import mchorse.bbs_mod.settings.values.core.ValueColor;
-import mchorse.bbs_mod.settings.values.misc.ValueVector4f;
 import mchorse.bbs_mod.resources.Link;
+import mchorse.bbs_mod.settings.values.core.ValueColor;
+import mchorse.bbs_mod.settings.values.core.ValueLink;
+import mchorse.bbs_mod.settings.values.misc.ValueVector4f;
 import mchorse.bbs_mod.settings.values.numeric.ValueBoolean;
 import mchorse.bbs_mod.settings.values.numeric.ValueFloat;
-import mchorse.bbs_mod.settings.values.core.ValueLink;
 import mchorse.bbs_mod.utils.colors.Color;
+
 import org.joml.Vector4f;
 
 public class BillboardForm extends Form

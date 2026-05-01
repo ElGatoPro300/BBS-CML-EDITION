@@ -3,6 +3,7 @@ package mchorse.bbs_mod.audio;
 import mchorse.bbs_mod.audio.wav.WaveCue;
 import mchorse.bbs_mod.audio.wav.WaveList;
 import mchorse.bbs_mod.utils.MathUtils;
+
 import org.lwjgl.openal.AL10;
 import org.lwjgl.system.MemoryUtil;
 

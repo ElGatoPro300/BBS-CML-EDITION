@@ -5,9 +5,9 @@ import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.settings.Settings;
-import mchorse.bbs_mod.settings.values.numeric.ValueInt;
-import mchorse.bbs_mod.settings.values.core.ValueGroup;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
+import mchorse.bbs_mod.settings.values.core.ValueGroup;
+import mchorse.bbs_mod.settings.values.numeric.ValueInt;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
@@ -18,9 +18,9 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
 import mchorse.bbs_mod.ui.utils.ScrollDirection;
 import mchorse.bbs_mod.ui.utils.UI;
-import mchorse.bbs_mod.utils.interps.Interpolations;
 import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.colors.Colors;
+import mchorse.bbs_mod.utils.interps.Interpolations;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -122,16 +122,16 @@ public class UISettingsOverlayPanel extends UIOverlayPanel
                     continue;
                 }
 
-                /* Populate interpolation labels for default interpolation setting on client side */
-                if (value == BBSSettings.defaultInterpolation)
+                /* Populate interpolation labels for default interpolation settings on client side */
+                if (value == BBSSettings.defaultInterpolation || value == BBSSettings.defaultPathInterpolation)
                 {
                     try
                     {
-                        java.util.List<IKey> interpKeys = new java.util.ArrayList<>();
+                        List<IKey> interpKeys = new ArrayList<>();
 
                         for (String k : Interpolations.MAP.keySet())
                         {
-                            interpKeys.add(mchorse.bbs_mod.ui.UIKeys.C_INTERPOLATION.get(k));
+                            interpKeys.add(UIKeys.C_INTERPOLATION.get(k));
                         }
 
                         if (value instanceof ValueInt)

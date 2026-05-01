@@ -2,13 +2,22 @@ package mchorse.bbs_mod.client.video;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import mchorse.bbs_mod.client.BBSShaders;
+import mchorse.bbs_mod.BBSMod;
+import mchorse.bbs_mod.camera.clips.misc.VideoClip;
+import mchorse.bbs_mod.resources.Link;
+import mchorse.bbs_mod.ui.framework.UIContext;
+import mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D;
+import mchorse.bbs_mod.ui.utils.Area;
+import mchorse.bbs_mod.utils.clips.Clip;
+
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.*;
 import net.minecraft.client.util.math.MatrixStack;
+
 import org.joml.Matrix4f;
-import org.watermedia.api.player.videolan.VideoPlayer;
-import org.watermedia.videolan4j.factory.MediaPlayerFactory;
+
+import com.mojang.blaze3d.systems.RenderSystem;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -16,13 +25,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import mchorse.bbs_mod.BBSMod;
-import mchorse.bbs_mod.resources.Link;
-import mchorse.bbs_mod.utils.clips.Clip;
-import mchorse.bbs_mod.camera.clips.misc.VideoClip;
-import mchorse.bbs_mod.ui.utils.Area;
-import mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D;
-import mchorse.bbs_mod.ui.framework.UIContext;
+import org.watermedia.api.player.videolan.VideoPlayer;
+import org.watermedia.videolan4j.factory.MediaPlayerFactory;
 
 public class VideoRenderer
 {

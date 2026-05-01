@@ -18,31 +18,37 @@ public class CurveClientClip extends CurveClip
         super.breakDownClip(original, offset);
 
         /* Clean up keyframes prior to broken apart */
-        for (KeyframeChannel<Double> channel : this.channels.getChannels())
-        {
-            channel.moveX(-offset);
-
-            KeyframeSegment<Double> segment = channel.find(0);
-
-            if (segment != null)
-            {
-                while (segment.a != channel.get(0)) channel.remove(0);
-            }
-        }
+        for (KeyframeChannel<Double> channel : this.channels.getChannels()) this.trimCurrentChannel(channel, offset);
+        this.trimCurrentChannel(this.chromaSky, offset);
 
         CurveClip curveClip = (CurveClip) original;
 
         /* Clean up keyframes prior to broken apart */
-        for (KeyframeChannel<Double> channel : curveClip.channels.getChannels())
-        {
-            KeyframeSegment<Double> segment = channel.find(offset);
+        for (KeyframeChannel<Double> channel : curveClip.channels.getChannels()) this.trimOriginalChannel(channel, offset);
+        this.trimOriginalChannel(curveClip.chromaSky, offset);
+    }
 
-            if (segment != null)
+    private <T> void trimCurrentChannel(KeyframeChannel<T> channel, int offset)
+    {
+        channel.moveX(-offset);
+
+        KeyframeSegment<T> segment = channel.find(0);
+
+        if (segment != null)
+        {
+            while (segment.a != channel.get(0)) channel.remove(0);
+        }
+    }
+
+    private <T> void trimOriginalChannel(KeyframeChannel<T> channel, int offset)
+    {
+        KeyframeSegment<T> segment = channel.find(offset);
+
+        if (segment != null)
+        {
+            while (segment.b != channel.get(channel.getKeyframes().size() - 1))
             {
-                while (segment.b != channel.get(channel.getKeyframes().size() - 1))
-                {
-                    channel.remove(channel.getKeyframes().size() - 1);
-                }
+                channel.remove(channel.getKeyframes().size() - 1);
             }
         }
     }

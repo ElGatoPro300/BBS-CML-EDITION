@@ -24,6 +24,7 @@ public class Subtitle
 
     public int lineHeight;
     public int maxWidth;
+    public int renderOrder;
 
     public void update(String label, int x, int y, float size, float anchorX, float anchorY, int color, boolean textShadow)
     {
