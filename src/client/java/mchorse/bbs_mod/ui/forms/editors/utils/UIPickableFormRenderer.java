@@ -2,9 +2,11 @@ package mchorse.bbs_mod.ui.forms.editors.utils;
 
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.forms.FormUtilsClient;
+import mchorse.bbs_mod.forms.ITickable;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.renderers.FormRenderType;
+import mchorse.bbs_mod.forms.renderers.FormRenderer;
 import mchorse.bbs_mod.forms.renderers.FormRenderingContext;
 import mchorse.bbs_mod.graphics.Draw;
 import mchorse.bbs_mod.graphics.texture.Texture;
@@ -294,6 +296,13 @@ public class UIPickableFormRenderer extends UIFormRenderer
         if (this.update && this.target != null)
         {
             this.form.update(this.entity);
+
+            FormRenderer renderer = FormUtilsClient.getRenderer(this.form);
+
+            if (renderer instanceof ITickable tickable)
+            {
+                tickable.tick(this.entity);
+            }
         }
     }
 

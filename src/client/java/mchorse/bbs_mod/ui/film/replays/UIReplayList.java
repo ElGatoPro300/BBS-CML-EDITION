@@ -75,6 +75,7 @@ import mchorse.bbs_mod.utils.pose.Transform;
 import mchorse.bbs_mod.utils.resources.Pixels;
 
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.render.DiffuseLighting;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
@@ -83,6 +84,9 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 
 import org.joml.Vector3d;
+import org.joml.Vector3f;
+
+import com.mojang.blaze3d.systems.RenderSystem;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -2569,7 +2573,11 @@ public class UIReplayList extends UIList<Replay> {
 
             y -= 10;
 
+            Vector3f a = new Vector3f(0.85F, 0.85F, -1F).normalize();
+            Vector3f b = new Vector3f(-0.85F, 0.85F, 1F).normalize();
+            RenderSystem.setupLevelDiffuseLighting(a, b);
             FormUtilsClient.renderUI(form, context, x, y, x + 40, y + 40);
+            DiffuseLighting.disableGuiDepthLighting();
 
             context.batcher.unclip(context);
 
