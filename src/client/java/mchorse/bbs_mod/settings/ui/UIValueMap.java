@@ -81,7 +81,7 @@ public class UIValueMap
 
         register(ValueInt.class, (value, ui) ->
         {
-            if (value == BBSSettings.defaultInterpolation)
+            if (value == BBSSettings.defaultInterpolation || value == BBSSettings.defaultPathInterpolation)
             {
                 List<IKey> labels = value.getLabels();
                 int currentIndex = value.get();

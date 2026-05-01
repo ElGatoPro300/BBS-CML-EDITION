@@ -22,6 +22,8 @@ import java.util.List;
 public class BBSSettings
 {
     public static ValueColors favoriteColors;
+    public static ValueStringKeys favoriteModelForms;
+    public static ValueString favoriteFormCategoriesData;
     public static ValueStringKeys disabledSheets;
     public static ValueLanguage language;
     public static ValueInt primaryColor;
@@ -34,12 +36,14 @@ public class BBSSettings
     public static ValueBoolean forceQwerty;
     public static ValueBoolean freezeModels;
     public static ValueFloat axesScale;
+    public static ValueFloat axesThickness;
     public static ValueBoolean uniformScale;
     public static ValueBoolean clickSound;
     public static ValueBoolean disablePivotTransform;
     public static ValueBoolean gizmos;
     public static ValueBoolean gizmoYAxisHorizontal;
     public static ValueInt defaultInterpolation;
+    public static ValueInt defaultPathInterpolation;
 
     public static ValueBoolean enableCursorRendering;
     public static ValueBoolean enableMouseButtonRendering;
@@ -88,6 +92,9 @@ public class BBSSettings
     public static ValueBoolean editorClipPreview;
     public static ValueBoolean editorClipTypeLabels;
     public static ValueBoolean editorReplaySprintParticles;
+    public static ValueBoolean editorCameraPreviewPlayerSync;
+    public static ValueInt editorDockGuideColor;
+    public static ValueFloat editorDockGuideOpacity;
     public static ValueBoolean editorReplayStepSound;
     public static ValueBoolean editorMuteRenderAudioClips;
     public static ValueInt editorTimeMode;
@@ -111,6 +118,7 @@ public class BBSSettings
     public static ValueBoolean recordingOverlays;
     public static ValueInt recordingPoseTransformOverlays;
     public static ValueBoolean recordingCameraPreview;
+    public static ValueInt recordingCameraPreviewFutureCount;
 
     public static ValueBoolean renderAllModelBlocks;
     public static ValueBoolean clickModelBlocks;
@@ -132,8 +140,14 @@ public class BBSSettings
     public static ValueBoolean autoKeyframes;
     public static ValueBoolean poseBonesFilterMarked;
     public static ValueBoolean replayMarkedBonesOnly;
+    public static ValueBoolean presetsGridPanel;
+    public static ValueFloat replayFpBobbingIntensity;
+    public static ValueFloat replayFpBobbingFrequency;
     public static ValueBoolean pickLimbTexture;
     public static ValueBoolean fluidRealisticModelInteraction;
+
+    public static ValueLink textureDefaultPath;
+    public static ValueInt texturePickerItemSize;
 
     public static ValueString cdnUrl;
     public static ValueString cdnToken;
@@ -191,15 +205,24 @@ public class BBSSettings
         hsvColorPicker = builder.getBoolean("hsv_color_picker", true);
         forceQwerty = builder.getBoolean("force_qwerty", false);
         freezeModels = builder.getBoolean("freeze_models", false);
-        axesScale = builder.getFloat("axes_scale", 1F, 0F, 2F);
         uniformScale = builder.getBoolean("uniform_scale", false);
         clickSound = builder.getBoolean("click_sound", false);
-        gizmos = builder.getBoolean("gizmos", true);
         favoriteColors = new ValueColors("favorite_colors");
+        favoriteModelForms = new ValueStringKeys("favorite_model_forms");
+        favoriteFormCategoriesData = builder.getString("favorite_form_categories_data", "");
+        favoriteFormCategoriesData.invisible();
         disabledSheets = new ValueStringKeys("disabled_sheets");
         disabledSheets.set(defaultFilters);
         builder.register(favoriteColors);
+        builder.register(favoriteModelForms);
         builder.register(disabledSheets);
+        textureDefaultPath = builder.getRL("texture_default_path", null);
+        texturePickerItemSize = builder.getInt("texture_picker_item_size", 16, 16, 220);
+
+        builder.category("axes");
+        gizmos = builder.getBoolean("gizmos", true);
+        axesScale = builder.getFloat("axes_scale", 1F, 0F, 2F);
+        axesThickness = builder.getFloat("axes_thickness", 1F, 0.25F, 3F);
 
         builder.category("tutorials");
         enableCursorRendering = builder.getBoolean("cursor", false);

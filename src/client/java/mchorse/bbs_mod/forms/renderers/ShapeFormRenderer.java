@@ -122,9 +122,16 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
         gameRenderer.getLightmapTextureManager().enable();
         gameRenderer.getOverlayTexture().setupOverlayColor();
 
-        // Bind texture if available
+        // Bind texture — material node overrides the form's static texture
         Link texture = this.form.texture.get();
-        
+
+        mchorse.bbs_mod.forms.forms.shape.nodes.TextureNode matNode = this.evaluator.getMaterialNode();
+
+        if (matNode != null && matNode.texture != null)
+        {
+            texture = matNode.texture;
+        }
+
         if (texture != null)
         {
             BBSModClient.getTextures().bindTexture(texture);

@@ -3,11 +3,23 @@ package mchorse.bbs_mod.cubic.animation;
 import mchorse.bbs_mod.bobj.BOBJBone;
 import mchorse.bbs_mod.cubic.IModel;
 import mchorse.bbs_mod.cubic.IModelInstance;
+import mchorse.bbs_mod.cubic.animation.gecko.config.GeckoAnimationsConfig;
+import mchorse.bbs_mod.cubic.animation.gecko.controllers.GeckoAnimationController;
+import mchorse.bbs_mod.cubic.animation.gecko.model.GeckoAnimationContext;
+import mchorse.bbs_mod.cubic.animation.gecko.services.GeckoAnimationBlendService;
+import mchorse.bbs_mod.cubic.animation.gecko.services.GeckoAnimationEventBus;
+import mchorse.bbs_mod.cubic.animation.gecko.services.GeckoAnimationService;
+import mchorse.bbs_mod.cubic.animation.gecko.services.GeckoBOBJLimbService;
+import mchorse.bbs_mod.cubic.animation.gecko.services.GeckoModelLimbService;
+import mchorse.bbs_mod.cubic.animation.gecko.routes.GeckoAnimationRouteRegistry;
 import mchorse.bbs_mod.cubic.data.animation.Animation;
 import mchorse.bbs_mod.cubic.data.animation.Animations;
 import mchorse.bbs_mod.cubic.data.model.Model;
 import mchorse.bbs_mod.cubic.data.model.ModelGroup;
+import mchorse.bbs_mod.cubic.physics.PhysBoneRuntime;
+import mchorse.bbs_mod.cubic.physics.PhysBoneState;
 import mchorse.bbs_mod.forms.entities.IEntity;
+import mchorse.bbs_mod.forms.entities.StubEntity;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.interps.Lerps;
 import net.minecraft.entity.EntityPose;
@@ -17,7 +29,9 @@ import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class ProceduralAnimator implements IAnimator
 {
@@ -25,6 +39,17 @@ public class ProceduralAnimator implements IAnimator
     public ActionPlayback basePost;
 
     private IModelInstance model;
+    private final Map<String, PhysBoneState> physStates = new HashMap<>();
+    private GeckoAnimationsConfig geckoAnimations = new GeckoAnimationsConfig();
+    private final GeckoAnimationController geckoController = new GeckoAnimationController(
+        new GeckoAnimationService(
+            new GeckoAnimationRouteRegistry(),
+            new GeckoModelLimbService(),
+            new GeckoBOBJLimbService(),
+            new GeckoAnimationBlendService(),
+            new GeckoAnimationEventBus()
+        )
+    );
 
     @Override
     public List<String> getActions()
@@ -36,9 +61,12 @@ public class ProceduralAnimator implements IAnimator
     public void setup(IModelInstance model, ActionsConfig actions, boolean fade)
     {
         this.model = model;
+        this.physStates.clear();
+        ActionsConfig safeActions = actions == null ? new ActionsConfig() : actions;
+        this.geckoAnimations = safeActions.geckoAnimations;
 
-        this.basePre = this.createAction(this.basePre, actions.getConfig("base_pre"), true);
-        this.basePost = this.createAction(this.basePost, actions.getConfig("base_post"), true);
+        this.basePre = this.createAction(this.basePre, safeActions.getConfig("base_pre"), true);
+        this.basePost = this.createAction(this.basePost, safeActions.getConfig("base_post"), true);
     }
 
     /**
@@ -97,6 +125,8 @@ public class ProceduralAnimator implements IAnimator
         {
             this.basePost.update();
         }
+
+        this.updatePhysBones(entity);
     }
 
     @Override
@@ -128,7 +158,20 @@ public class ProceduralAnimator implements IAnimator
         float pitch = Lerps.lerp(target.getPrevPitch(), target.getPitch(), transition);
         float limbSpeed = target.getLimbSpeed(transition);
         float limbPhase = target.getLimbPos(transition);
+        Vec3d entityVelocity = target.getVelocity();
+        double dx = target.getX() - target.getPrevX();
+        double dz = target.getZ() - target.getPrevZ();
+        float velocityHorizontalSpeed = (float) Math.sqrt(entityVelocity.x * entityVelocity.x + entityVelocity.z * entityVelocity.z) * 20F;
+        float displacementHorizontalSpeed = (float) Math.sqrt(dx * dx + dz * dz) * 20F;
+        float horizontalSpeed = Math.max(velocityHorizontalSpeed, displacementHorizontalSpeed);
+        float bodyYawRad = MathUtils.toRad(bodyYaw);
+        float forwardX = -MathHelper.sin(bodyYawRad);
+        float forwardZ = MathHelper.cos(bodyYawRad);
+        float velocityForwardSpeed = ((float) entityVelocity.x * forwardX + (float) entityVelocity.z * forwardZ) * 20F;
+        float displacementForwardSpeed = ((float) dx * forwardX + (float) dz * forwardZ) * 20F;
+        float forwardSpeed = Math.abs(velocityForwardSpeed) >= Math.abs(displacementForwardSpeed) ? velocityForwardSpeed : displacementForwardSpeed;
         float leaningPitch = target.getLeaningPitch(transition);
+        String headBone = armature.getHeadBone();
 
         float coefficient = 1F;
 
@@ -198,7 +241,7 @@ public class ProceduralAnimator implements IAnimator
                         }
                     }
                 }
-                else if (group.id.equals("head"))
+                else if (group.id.equals(headBone))
                 {
                     group.current.rotate.y = -yaw;
 
@@ -339,7 +382,7 @@ public class ProceduralAnimator implements IAnimator
                         }
                     }
                 }
-                else if (bone.name.equals("head"))
+                else if (bone.name.equals(headBone))
                 {
                     bone.transform.rotate.y = MathUtils.toRad(-yaw);
 
@@ -424,10 +467,47 @@ public class ProceduralAnimator implements IAnimator
             }
         }
 
+        GeckoAnimationContext geckoContext = new GeckoAnimationContext();
+        geckoContext.handSwing = handSwingProgress;
+        geckoContext.age = age;
+        geckoContext.yaw = yaw;
+        geckoContext.pitch = pitch;
+        geckoContext.limbSpeed = limbSpeed;
+        geckoContext.limbPhase = limbPhase;
+        geckoContext.movementCoefficient = coefficient;
+        geckoContext.roll = target.getRoll() + transition;
+        geckoContext.forwardSpeed = forwardSpeed;
+        geckoContext.horizontalSpeed = horizontalSpeed;
+        geckoContext.verticalSpeed = (float) entityVelocity.y * 20F;
+        geckoContext.onGround = target.isOnGround();
+        geckoContext.sneaking = target.isSneaking();
+        geckoContext.sprinting = target.isSprinting();
+        geckoContext.swimming = target.getEntityPose() == EntityPose.SWIMMING;
+        geckoContext.fallFlying = target.isFallFlying();
+        geckoContext.usingRiptide = target.isUsingRiptide();
+        geckoContext.hasMainHandItem = !main.isEmpty();
+        geckoContext.hasOffHandItem = !offhand.isEmpty();
+        geckoContext.preview = target instanceof StubEntity;
+        geckoContext.previewWheelSpeed = this.geckoAnimations.previewWheelSpeed;
+
+        this.geckoController.apply(target, model, this.model == null ? null : this.model.getAnimations(), this.geckoAnimations, geckoContext);
+
+        this.applyPhysBones(model);
+
         if (this.basePost != null)
         {
             this.basePost.postApply(target, armature.getModel(), transition);
         }
+    }
+
+    private void updatePhysBones(IEntity entity)
+    {
+        PhysBoneRuntime.update(entity, this.model, this.physStates);
+    }
+
+    private void applyPhysBones(IModel model)
+    {
+        PhysBoneRuntime.apply(model, this.physStates);
     }
 
     @Override
@@ -443,4 +523,5 @@ public class ProceduralAnimator implements IAnimator
 
         return b + a * factor;
     }
+
 }

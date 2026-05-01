@@ -631,6 +631,7 @@ public abstract class BaseFilmController
                             double y = replay.keyframes.y.interpolate(replayTick);
                             double z = replay.keyframes.z.interpolate(replayTick);
                             boolean sneaking = replay.keyframes.sneaking.interpolate(replayTick) > 0;
+                            boolean sprinting = replay.keyframes.sprinting.interpolate(replayTick) > 0;
                             boolean grounded = replay.keyframes.grounded.interpolate(replayTick) > 0;
 
                             Vec3d pos = player.getPos();
@@ -644,6 +645,7 @@ public abstract class BaseFilmController
                             player.setPosition(x, y, z);
 
                             player.setSneaking(sneaking);
+                            player.setSprinting(sprinting);
                             player.setOnGround(grounded);
 
                             if (player instanceof ClientPlayerEntityAccessor accessor)

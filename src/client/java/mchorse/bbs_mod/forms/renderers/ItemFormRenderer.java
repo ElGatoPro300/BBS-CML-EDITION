@@ -1,5 +1,6 @@
 package mchorse.bbs_mod.forms.renderers;
 
+import com.mojang.logging.LogUtils;
 import com.mojang.blaze3d.systems.RenderSystem;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.client.BBSShaders;
@@ -13,11 +14,17 @@ import mchorse.bbs_mod.utils.joml.Vectors;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
+import net.minecraft.client.render.model.json.ModelTransformationMode;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.math.RotationAxis;
 import org.joml.Matrix4f;
+import org.slf4j.Logger;
 
 public class ItemFormRenderer extends FormRenderer<ItemForm>
 {
+    private static final Logger LOGGER = LogUtils.getLogger();
+
     public ItemFormRenderer(ItemForm form)
     {
         super(form);
@@ -57,8 +64,12 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
     {
         CustomVertexConsumerProvider consumers = FormUtilsClient.getProvider();
         int light = context.light;
+        boolean isDropped = context.type == FormRenderType.ITEM;
+        boolean useDroppedMode = this.shouldUseDroppedMode(isDropped);
+        ModelTransformationMode mode = this.getRenderMode(useDroppedMode);
 
         context.stack.push();
+        this.applyDroppedAnimation(context, useDroppedMode);
 
         if (context.isPicking())
         {
@@ -81,7 +92,7 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
         BlockFormRenderer.color.mul(set);
 
         consumers.setSubstitute(BBSRendering.getColorConsumer(BlockFormRenderer.color));
-        MinecraftClient.getInstance().getItemRenderer().renderItem(this.form.stack.get(), this.form.modelTransform.get(), light, context.overlay, context.stack, consumers, context.entity.getWorld(), 0);
+        MinecraftClient.getInstance().getItemRenderer().renderItem(this.form.stack.get(), mode, light, context.overlay, context.stack, consumers, context.entity.getWorld(), 0);
         consumers.draw();
         consumers.setSubstitute(null);
 
@@ -90,5 +101,52 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
         context.stack.pop();
 
         RenderSystem.enableDepthTest();
+    }
+
+    private boolean shouldUseDroppedMode(boolean isDropped)
+    {
+        return isDropped || this.form.sameAnimationWhenDropped.get();
+    }
+
+    private ModelTransformationMode getRenderMode(boolean useDroppedMode)
+    {
+        if (useDroppedMode)
+        {
+            if (this.form.sameAnimationWhenDropped.get())
+            {
+                LOGGER.debug("Forced dropped animation for form {} using GROUND transform", this.form.getFormId());
+            }
+            else
+            {
+                LOGGER.debug("Dropped context for form {} using GROUND transform", this.form.getFormId());
+            }
+
+            return ModelTransformationMode.GROUND;
+        }
+
+        return this.form.modelTransform.get();
+    }
+
+    private void applyDroppedAnimation(FormRenderingContext context, boolean useDroppedMode)
+    {
+        if (!useDroppedMode || context.entity == null || context.entity.getWorld() == null)
+        {
+            return;
+        }
+
+        float age = context.entity.getAge() + context.getTransition();
+        float uniqueOffset = this.getDroppedUniqueOffset();
+        float bob = MathHelper.sin(age / 10F + uniqueOffset) * 0.1F + 0.1F;
+        float angle = (age / 20F + uniqueOffset) * 57.295776F;
+
+        context.stack.translate(0F, bob + 0.25F, 0F);
+        context.stack.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(angle));
+    }
+
+    private float getDroppedUniqueOffset()
+    {
+        int hash = this.form.stack.get().hashCode();
+
+        return (hash & 65535) / 65535F * 6.2831855F;
     }
 }

@@ -122,8 +122,8 @@ public class UISettingsOverlayPanel extends UIOverlayPanel
                     continue;
                 }
 
-                /* Populate interpolation labels for default interpolation setting on client side */
-                if (value == BBSSettings.defaultInterpolation)
+                /* Populate interpolation labels for default interpolation settings on client side */
+                if (value == BBSSettings.defaultInterpolation || value == BBSSettings.defaultPathInterpolation)
                 {
                     try
                     {
