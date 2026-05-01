@@ -22,36 +22,36 @@ public class UIHotbarRenderer
     private static final float SCALE_PIVOT_Y = 0.5F;
     private static final int MAX_HEALTH_ROWS = 60;
     private static final float MAX_HEALTH_CONTAINER = MAX_HEALTH_ROWS * 10F * 2F;
-    private static final Identifier HOTBAR = new Identifier("minecraft", "hud/hotbar");
-    private static final Identifier HOTBAR_SELECTION = new Identifier("minecraft", "hud/hotbar_selection");
-    private static final Identifier HOTBAR_OFFHAND_LEFT = new Identifier("minecraft", "hud/hotbar_offhand_left");
-    private static final Identifier HEART_CONTAINER = new Identifier("minecraft", "hud/heart/container");
-    private static final Identifier HEART_HARDCORE_CONTAINER = new Identifier("minecraft", "hud/heart/container_hardcore");
+    private static final Identifier HOTBAR = new Identifier("minecraft", "textures/gui/sprites/hud/hotbar.png");
+    private static final Identifier HOTBAR_SELECTION = new Identifier("minecraft", "textures/gui/sprites/hud/hotbar_selection.png");
+    private static final Identifier HOTBAR_OFFHAND_LEFT = new Identifier("minecraft", "textures/gui/sprites/hud/hotbar_offhand_left.png");
+    private static final Identifier HEART_CONTAINER = new Identifier("minecraft", "textures/gui/sprites/hud/heart/container.png");
+    private static final Identifier HEART_HARDCORE_CONTAINER = new Identifier("minecraft", "textures/gui/sprites/hud/heart/container_hardcore.png");
     private static final Identifier[][] HEART_HALVES = {
-        {new Identifier("minecraft", "hud/heart/half"), new Identifier("minecraft", "hud/heart/hardcore_half")},
-        {new Identifier("minecraft", "hud/heart/poisoned_half"), new Identifier("minecraft", "hud/heart/poisoned_hardcore_half")},
-        {new Identifier("minecraft", "hud/heart/withered_half"), new Identifier("minecraft", "hud/heart/withered_hardcore_half")},
-        {new Identifier("minecraft", "hud/heart/absorbing_half"), new Identifier("minecraft", "hud/heart/absorbing_hardcore_half")},
-        {new Identifier("minecraft", "hud/heart/frozen_half"), new Identifier("minecraft", "hud/heart/frozen_hardcore_half")}
+        {new Identifier("minecraft", "textures/gui/sprites/hud/heart/half.png"), new Identifier("minecraft", "textures/gui/sprites/hud/heart/hardcore_half.png")},
+        {new Identifier("minecraft", "textures/gui/sprites/hud/heart/poisoned_half.png"), new Identifier("minecraft", "textures/gui/sprites/hud/heart/poisoned_hardcore_half.png")},
+        {new Identifier("minecraft", "textures/gui/sprites/hud/heart/withered_half.png"), new Identifier("minecraft", "textures/gui/sprites/hud/heart/withered_hardcore_half.png")},
+        {new Identifier("minecraft", "textures/gui/sprites/hud/heart/absorbing_half.png"), new Identifier("minecraft", "textures/gui/sprites/hud/heart/absorbing_hardcore_half.png")},
+        {new Identifier("minecraft", "textures/gui/sprites/hud/heart/frozen_half.png"), new Identifier("minecraft", "textures/gui/sprites/hud/heart/frozen_hardcore_half.png")}
     };
     private static final Identifier[][] HEART_FULLS = {
-        {new Identifier("minecraft", "hud/heart/full"), new Identifier("minecraft", "hud/heart/hardcore_full")},
-        {new Identifier("minecraft", "hud/heart/poisoned_full"), new Identifier("minecraft", "hud/heart/poisoned_hardcore_full")},
-        {new Identifier("minecraft", "hud/heart/withered_full"), new Identifier("minecraft", "hud/heart/withered_hardcore_full")},
-        {new Identifier("minecraft", "hud/heart/absorbing_full"), new Identifier("minecraft", "hud/heart/absorbing_hardcore_full")},
-        {new Identifier("minecraft", "hud/heart/frozen_full"), new Identifier("minecraft", "hud/heart/frozen_hardcore_full")}
+        {new Identifier("minecraft", "textures/gui/sprites/hud/heart/full.png"), new Identifier("minecraft", "textures/gui/sprites/hud/heart/hardcore_full.png")},
+        {new Identifier("minecraft", "textures/gui/sprites/hud/heart/poisoned_full.png"), new Identifier("minecraft", "textures/gui/sprites/hud/heart/poisoned_hardcore_full.png")},
+        {new Identifier("minecraft", "textures/gui/sprites/hud/heart/withered_full.png"), new Identifier("minecraft", "textures/gui/sprites/hud/heart/withered_hardcore_full.png")},
+        {new Identifier("minecraft", "textures/gui/sprites/hud/heart/absorbing_full.png"), new Identifier("minecraft", "textures/gui/sprites/hud/heart/absorbing_hardcore_full.png")},
+        {new Identifier("minecraft", "textures/gui/sprites/hud/heart/frozen_full.png"), new Identifier("minecraft", "textures/gui/sprites/hud/heart/frozen_hardcore_full.png")}
     };
-    private static final Identifier ARMOR_EMPTY = new Identifier("minecraft", "hud/armor_empty");
-    private static final Identifier ARMOR_FULL = new Identifier("minecraft", "hud/armor_full");
-    private static final Identifier ARMOR_HALF = new Identifier("minecraft", "hud/armor_half");
-    private static final Identifier FOOD_EMPTY = new Identifier("minecraft", "hud/food_empty");
-    private static final Identifier FOOD_FULL = new Identifier("minecraft", "hud/food_full");
-    private static final Identifier FOOD_HALF = new Identifier("minecraft", "hud/food_half");
-    private static final Identifier FOOD_EMPTY_HUNGER = new Identifier("minecraft", "hud/food_empty_hunger");
-    private static final Identifier FOOD_FULL_HUNGER = new Identifier("minecraft", "hud/food_full_hunger");
-    private static final Identifier FOOD_HALF_HUNGER = new Identifier("minecraft", "hud/food_half_hunger");
-    private static final Identifier AIR = new Identifier("minecraft", "hud/air");
-    private static final Identifier AIR_BURSTING = new Identifier("minecraft", "hud/air_bursting");
+    private static final Identifier ARMOR_EMPTY = new Identifier("minecraft", "textures/gui/sprites/hud/armor_empty.png");
+    private static final Identifier ARMOR_FULL = new Identifier("minecraft", "textures/gui/sprites/hud/armor_full.png");
+    private static final Identifier ARMOR_HALF = new Identifier("minecraft", "textures/gui/sprites/hud/armor_half.png");
+    private static final Identifier FOOD_EMPTY = new Identifier("minecraft", "textures/gui/sprites/hud/food_empty.png");
+    private static final Identifier FOOD_FULL = new Identifier("minecraft", "textures/gui/sprites/hud/food_full.png");
+    private static final Identifier FOOD_HALF = new Identifier("minecraft", "textures/gui/sprites/hud/food_half.png");
+    private static final Identifier FOOD_EMPTY_HUNGER = new Identifier("minecraft", "textures/gui/sprites/hud/food_empty_hunger.png");
+    private static final Identifier FOOD_FULL_HUNGER = new Identifier("minecraft", "textures/gui/sprites/hud/food_full_hunger.png");
+    private static final Identifier FOOD_HALF_HUNGER = new Identifier("minecraft", "textures/gui/sprites/hud/food_half_hunger.png");
+    private static final Identifier AIR = new Identifier("minecraft", "textures/gui/sprites/hud/air.png");
+    private static final Identifier AIR_BURSTING = new Identifier("minecraft", "textures/gui/sprites/hud/air_bursting.png");
     private static final Identifier EXPERIENCE_BAR_BACKGROUND_TEXTURE = new Identifier("minecraft", "textures/gui/sprites/hud/experience_bar_background.png");
     private static final Identifier EXPERIENCE_BAR_PROGRESS_TEXTURE = new Identifier("minecraft", "textures/gui/sprites/hud/experience_bar_progress.png");
     private static boolean wasHeartRegenerationEnabled;
@@ -113,17 +113,17 @@ public class UIHotbarRenderer
         batcher.getContext().setShaderColor(1F, 1F, 1F, alpha);
         RenderSystem.setShaderColor(1F, 1F, 1F, alpha);
 
-        batcher.getContext().drawGuiTexture(HOTBAR, 0, 0, 182, 22);
+        batcher.getContext().drawTexture(HOTBAR, 0, 0, 0, 0, 182, 22, 182, 22);
 
         boolean hasOffhandItem = hotbar.offhandItem != null && !hotbar.offhandItem.isEmpty();
 
         if (hasOffhandItem)
         {
-            batcher.getContext().drawGuiTexture(HOTBAR_OFFHAND_LEFT, -29, -1, 29, 24);
+            batcher.getContext().drawTexture(HOTBAR_OFFHAND_LEFT, -29, -1, 0, 0, 29, 24, 29, 24);
         }
 
         int selectedSlot = MathHelper.clamp(hotbar.selectedSlot, 0, 8);
-        batcher.getContext().drawGuiTexture(HOTBAR_SELECTION, selectedSlot * 20 - 1, -1, 24, 23);
+        batcher.getContext().drawTexture(HOTBAR_SELECTION, selectedSlot * 20 - 1, -1, 0, 0, 24, 23, 24, 23);
 
         int barsY = BAR_ICON_Y;
         int heartType = MathHelper.clamp(hotbar.heartType, HotbarState.HEART_NORMAL, HotbarState.HEART_FROZEN);
@@ -267,17 +267,17 @@ public class UIHotbarRenderer
                 iconY -= 2;
             }
 
-            batcher.getContext().drawGuiTexture(empty, iconX, iconY, 9, 9);
+            batcher.getContext().drawTexture(empty, iconX, iconY, 0, 0, 9, 9, 9, 9);
 
             float current = normalized - i;
 
             if (current >= 1F)
             {
-                batcher.getContext().drawGuiTexture(full, iconX, iconY, 9, 9);
+                batcher.getContext().drawTexture(full, iconX, iconY, 0, 0, 9, 9, 9, 9);
             }
             else if (current >= 0.5F)
             {
-                batcher.getContext().drawGuiTexture(half, iconX, iconY, 9, 9);
+                batcher.getContext().drawTexture(half, iconX, iconY, 0, 0, 9, 9, 9, 9);
             }
         }
     }
@@ -315,17 +315,17 @@ public class UIHotbarRenderer
                 iconY += lowHungerShakeRandom.nextInt(2);
             }
 
-            batcher.getContext().drawGuiTexture(empty, iconX, iconY, 9, 9);
+            batcher.getContext().drawTexture(empty, iconX, iconY, 0, 0, 9, 9, 9, 9);
 
             float current = normalized - i;
 
             if (current >= 1F)
             {
-                batcher.getContext().drawGuiTexture(full, iconX, iconY, 9, 9);
+                batcher.getContext().drawTexture(full, iconX, iconY, 0, 0, 9, 9, 9, 9);
             }
             else if (current >= 0.5F)
             {
-                batcher.getContext().drawGuiTexture(half, iconX, iconY, 9, 9);
+                batcher.getContext().drawTexture(half, iconX, iconY, 0, 0, 9, 9, 9, 9);
             }
         }
     }
@@ -355,7 +355,7 @@ public class UIHotbarRenderer
             int iconX = x - i * 8;
             Identifier icon = i < full ? AIR : AIR_BURSTING;
 
-            batcher.getContext().drawGuiTexture(icon, iconX, y, 9, 9);
+            batcher.getContext().drawTexture(icon, iconX, y, 0, 0, 9, 9, 9, 9);
         }
     }
 }
