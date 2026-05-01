@@ -22,6 +22,7 @@ import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
+import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.world.World;
@@ -145,7 +146,14 @@ public class ParticleEmitter
         this.setupVariables();
         this.setEmitterVariables(0);
 
-        for (IComponentEmitterInitialize component : this.scheme.emitterInitializes)
+        List<IComponentEmitterInitialize> initializes = this.scheme.emitterInitializes;
+
+        if (initializes == null)
+        {
+            return;
+        }
+
+        for (IComponentEmitterInitialize component : initializes)
         {
             component.apply(this);
         }

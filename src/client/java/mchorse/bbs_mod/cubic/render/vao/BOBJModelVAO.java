@@ -1,8 +1,11 @@
 package mchorse.bbs_mod.cubic.render.vao;
 
 import mchorse.bbs_mod.bobj.BOBJArmature;
+import mchorse.bbs_mod.bobj.BOBJBone;
 import mchorse.bbs_mod.bobj.BOBJLoader;
+import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.client.BBSRendering;
+import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.utils.joml.Matrices;
 import net.minecraft.client.gl.ShaderProgram;
@@ -10,8 +13,13 @@ import net.minecraft.client.util.math.MatrixStack;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
+import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL30;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.IntPredicate;
 
 public class BOBJModelVAO
 {
@@ -33,11 +41,12 @@ public class BOBJModelVAO
     private float[] tmpNormals;
     private int[] tmpLight;
     private float[] tmpTangents;
+    private int[] dominantBonePerTriangle;
 
-    public BOBJModelVAO(BOBJLoader.CompiledData data)
+    public BOBJModelVAO(BOBJLoader.CompiledData data, BOBJArmature armature)
     {
         this.data = data;
-        this.armature = this.data.mesh.armature;
+        this.armature = armature;
 
         this.initBuffers();
     }
@@ -65,6 +74,8 @@ public class BOBJModelVAO
         this.tmpNormals = new float[this.data.normData.length];
         this.tmpLight = new int[this.data.posData.length];
         this.tmpTangents = new float[this.count * 4];
+        this.dominantBonePerTriangle = new int[this.count / 3];
+        this.buildDominantBones();
 
         GL30.glBindBuffer(GL30.GL_ARRAY_BUFFER, this.vertexBuffer);
         GL30.glBufferData(GL30.GL_ARRAY_BUFFER, this.data.posData, GL30.GL_DYNAMIC_DRAW);
@@ -89,6 +100,9 @@ public class BOBJModelVAO
         GL30.glBindBuffer(GL30.GL_ARRAY_BUFFER, this.texCoordBuffer);
         GL30.glBufferData(GL30.GL_ARRAY_BUFFER, this.data.texData, GL30.GL_STATIC_DRAW);
         GL30.glVertexAttribPointer(Attributes.MID_TEXTURE_UV, 2, GL30.GL_FLOAT, false, 0, 0);
+
+        GL30.glBindBuffer(GL30.GL_ARRAY_BUFFER, 0);
+        GL30.glBindVertexArray(0);
     }
 
     /**
@@ -178,9 +192,16 @@ public class BOBJModelVAO
             result.set(0F, 0F, 0F, 0F);
             resultNormal.set(0F, 0F, 0F);
 
+            boolean allowBone = true;
+            if (stencilMap != null && stencilMap.allowedBones != null && lightBone >= 0)
+            {
+                String boneName = this.armature.orderedBones.get(lightBone).name;
+                allowBone = stencilMap.allowedBones.contains(boneName);
+            }
+
             if (stencilMap != null)
             {
-                this.tmpLight[i * 2] = Math.max(0, stencilMap.increment ? lightBone : 0);
+                this.tmpLight[i * 2] = Math.max(0, stencilMap.increment ? (allowBone ? lightBone : 0) : 0);
                 this.tmpLight[i * 2 + 1] = 0;
             }
         }
@@ -206,12 +227,84 @@ public class BOBJModelVAO
             GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, this.lightBuffer);
             GL15.glBufferData(GL15.GL_ARRAY_BUFFER, this.tmpLight, GL15.GL_DYNAMIC_DRAW);
         }
+
+        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
     }
 
     protected void processData(float[] newVertices, float[] newNormals)
     {}
 
-    public void render(ShaderProgram shader, MatrixStack stack, float r, float g, float b, float a, StencilMap stencilMap, int light, int overlay)
+    private void buildDominantBones()
+    {
+        for (int triangle = 0, triCount = this.dominantBonePerTriangle.length; triangle < triCount; triangle++)
+        {
+            int base = triangle * 3;
+            int a = this.getDominantBoneForVertex(base);
+            int b = this.getDominantBoneForVertex(base + 1);
+            int c = this.getDominantBoneForVertex(base + 2);
+
+            if (a == b || a == c)
+            {
+                this.dominantBonePerTriangle[triangle] = a;
+            }
+            else if (b == c)
+            {
+                this.dominantBonePerTriangle[triangle] = b;
+            }
+            else
+            {
+                this.dominantBonePerTriangle[triangle] = a;
+            }
+        }
+    }
+
+    private int getDominantBoneForVertex(int vertex)
+    {
+        int base = vertex * 4;
+        float max = -1F;
+        int bone = -1;
+
+        for (int i = 0; i < 4; i++)
+        {
+            float weight = this.data.weightData[base + i];
+            int boneIndex = this.data.boneIndexData[base + i];
+
+            if (boneIndex >= 0 && weight > max)
+            {
+                max = weight;
+                bone = boneIndex;
+            }
+        }
+
+        return bone;
+    }
+
+    private void drawTriangles(IntPredicate predicate)
+    {
+        int start = -1;
+
+        for (int i = 0; i < this.dominantBonePerTriangle.length; i++)
+        {
+            boolean draw = predicate.test(this.dominantBonePerTriangle[i]);
+
+            if (draw && start == -1)
+            {
+                start = i;
+            }
+            else if (!draw && start != -1)
+            {
+                GL30.glDrawArrays(GL30.GL_TRIANGLES, start * 3, (i - start) * 3);
+                start = -1;
+            }
+        }
+
+        if (start != -1)
+        {
+            GL30.glDrawArrays(GL30.GL_TRIANGLES, start * 3, (this.dominantBonePerTriangle.length - start) * 3);
+        }
+    }
+
+    public void render(ShaderProgram shader, MatrixStack stack, float r, float g, float b, float a, StencilMap stencilMap, int light, int overlay, Link defaultTexture)
     {
         boolean hasShaders = BBSRendering.isIrisShadersEnabled();
 
@@ -236,7 +329,42 @@ public class BOBJModelVAO
         if (hasShaders) GL30.glEnableVertexAttribArray(Attributes.TANGENTS);
         if (hasShaders) GL30.glEnableVertexAttribArray(Attributes.MID_TEXTURE_UV);
 
-        GL30.glDrawArrays(GL30.GL_TRIANGLES, 0, this.count);
+        if (stencilMap == null)
+        {
+            Map<Integer, Link> overrides = new HashMap<>();
+
+            for (BOBJBone bone : this.armature.orderedBones)
+            {
+                if (bone.texture != null)
+                {
+                    overrides.put(bone.index, bone.texture);
+                }
+            }
+
+            if (overrides.isEmpty())
+            {
+                GL30.glDrawArrays(GL30.GL_TRIANGLES, 0, this.count);
+            }
+            else
+            {
+                if (defaultTexture != null)
+                {
+                    BBSModClient.getTextures().bindTexture(defaultTexture);
+                }
+
+                this.drawTriangles((bone) -> bone < 0 || !overrides.containsKey(bone));
+
+                for (Map.Entry<Integer, Link> entry : overrides.entrySet())
+                {
+                    BBSModClient.getTextures().bindTexture(entry.getValue());
+                    this.drawTriangles((bone) -> bone == entry.getKey());
+                }
+            }
+        }
+        else
+        {
+            GL30.glDrawArrays(GL30.GL_TRIANGLES, 0, this.count);
+        }
 
         GL30.glDisableVertexAttribArray(Attributes.POSITION);
         GL30.glDisableVertexAttribArray(Attributes.TEXTURE_UV);

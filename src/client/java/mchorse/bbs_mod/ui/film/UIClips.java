@@ -22,6 +22,7 @@ import mchorse.bbs_mod.ui.film.clips.renderer.UIClipRenderers;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
+import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeEditor;
 import mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D;
 import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
 import mchorse.bbs_mod.ui.utils.Area;
@@ -94,7 +95,9 @@ public class UIClips extends UIElement
 
     /* Embedded view */
     private UIIcon embeddedClose;
+    private UIIcon embeddedLayout;
     private UIElement embedded;
+    private boolean embeddedStackedLayout;
 
     private Vector3i addPreview;
     private int layers;
@@ -142,8 +145,43 @@ public class UIClips extends UIElement
         this.delegate = delegate;
         this.factory = factory;
 
-        this.embeddedClose = new UIIcon(Icons.CLOSE, (b) -> this.embedView(null));
-        this.embeddedClose.relative(this);
+        this.embeddedClose = new UIIcon(Icons.CLOSE, (b) -> this.embedView(null))
+        {
+            @Override
+            protected void renderSkin(UIContext context)
+            {
+                if (UIClips.this.embedded != null)
+                {
+                    this.area.render(context.batcher, Colors.setA(Colors.RED, 0.5F));
+                }
+
+                super.renderSkin(context);
+            }
+        };
+        this.embeddedClose.relative(this).xy(4, 4);
+
+        this.embeddedLayout = new UIIcon(Icons.EXCHANGE, (b) ->
+        {
+            if (this.embedded instanceof UIKeyframeEditor keyframeEditor)
+            {
+                this.embeddedStackedLayout = !this.embeddedStackedLayout;
+                keyframeEditor.setStackedLayout(this.embeddedStackedLayout);
+                b.active(this.embeddedStackedLayout);
+            }
+        })
+        {
+            @Override
+            protected void renderSkin(UIContext context)
+            {
+                int primary = BBSSettings.primaryColor.get();
+                /* Match Open Camera Editor highlight colors, but with vertical top->bottom gradient. */
+                context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.y + 2, Colors.A100 | primary);
+                context.batcher.gradientVBox(this.area.x, this.area.y + 2, this.area.ex(), this.area.ey(), Colors.A75 | primary, primary);
+
+                super.renderSkin(context);
+            }
+        };
+        this.embeddedLayout.relative(this).xy(26, 4);
 
         this.context((menu) ->
         {
@@ -189,6 +227,21 @@ public class UIClips extends UIElement
         this.keys().register(Keys.COPY, () ->
         {
             if (this.copyPasteController.copy()) UIUtils.playClick();
+        }).category(KEYS_CATEGORY).active(canUseKeybindsSelected);
+        this.keys().register(Keys.CUT, () ->
+        {
+            if (this.delegate.getClip() == null)
+            {
+                this.getContext().notifyError(UIKeys.GENERAL_CUT_EMPTY);
+                return;
+            }
+
+            if (this.copyPasteController.copy())
+            {
+                this.removeSelected();
+                UIUtils.playClick();
+                this.getContext().notifyInfo(UIKeys.GENERAL_CUT);
+            }
         }).category(KEYS_CATEGORY).active(canUseKeybindsSelected);
         this.keys().register(Keys.PASTE, () ->
         {
@@ -949,6 +1002,7 @@ public class UIClips extends UIElement
     public void embedView(UIElement element)
     {
         this.embeddedClose.removeFromParent();
+        this.embeddedLayout.removeFromParent();
 
         if (this.embedded != null)
         {
@@ -963,6 +1017,15 @@ public class UIClips extends UIElement
 
             this.prepend(this.embedded);
             this.add(this.embeddedClose);
+
+            if (this.embedded instanceof UIKeyframeEditor keyframeEditor)
+            {
+                keyframeEditor.setStackedLayout(this.embeddedStackedLayout);
+                this.embeddedLayout.active(this.embeddedStackedLayout);
+                this.add(this.embeddedLayout);
+                this.embeddedLayout.resize();
+            }
+
             this.embedded.resize();
             this.embeddedClose.resize();
         }
@@ -1206,7 +1269,13 @@ public class UIClips extends UIElement
         }
 
         this.vertical.mouseReleased(context);
+        this.resetStates();
 
+        return super.subMouseReleased(context);
+    }
+
+    private void resetStates()
+    {
         if (this.selecting)
         {
             this.pickLastSelectedClip();
@@ -1223,8 +1292,8 @@ public class UIClips extends UIElement
         this.otherClips = Collections.emptyList();
         this.snappingPoints.clear();
         this.grabbedData.clear();
-
-        return super.subMouseReleased(context);
+        
+        this.vertical.dragging = false;
     }
 
     @Override
@@ -1259,6 +1328,20 @@ public class UIClips extends UIElement
 
     private void handleInput(int mouseX, int mouseY)
     {
+        if ((this.scrubbing || this.selecting || this.grabbing || this.selectingLoop == 0) && !Window.isMouseButtonPressed(GLFW.GLFW_MOUSE_BUTTON_1))
+        {
+            this.resetStates();
+
+            return;
+        }
+
+        if (this.selectingLoop == 1 && !Window.isMouseButtonPressed(GLFW.GLFW_MOUSE_BUTTON_2))
+        {
+            this.resetStates();
+
+            return;
+        }
+
         if (this.scrubbing)
         {
             this.delegate.setCursor(this.fromGraphX(mouseX));
@@ -1510,6 +1593,13 @@ public class UIClips extends UIElement
     {
         if (this.scrolling)
         {
+            if (!Window.isMouseButtonPressed(GLFW.GLFW_MOUSE_BUTTON_3))
+            {
+                this.resetStates();
+
+                return;
+            }
+
             this.scale.setShift(this.scale.getShift() - (mouseX - this.lastX) / this.scale.getZoom());
             this.vertical.scrollBy(this.lastY - mouseY);
             this.vertical.clamp();

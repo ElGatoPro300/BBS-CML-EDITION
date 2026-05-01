@@ -187,6 +187,11 @@ public class TextureManager implements IWatchDogListener
 
     public Texture getTexture(Link link, int filter, boolean silent)
     {
+        if (link == null)
+        {
+            return this.getError();
+        }
+
         Texture texture = this.get(link);
 
         if (texture == null)
