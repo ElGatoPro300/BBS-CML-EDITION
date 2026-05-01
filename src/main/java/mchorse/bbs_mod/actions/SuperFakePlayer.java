@@ -1,7 +1,5 @@
 package mchorse.bbs_mod.actions;
 
-import com.google.common.collect.MapMaker;
-import com.mojang.authlib.GameProfile;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.ChestBlock;
 import net.minecraft.block.entity.SignBlockEntity;
@@ -18,13 +16,18 @@ import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvents;
 import net.minecraft.stat.Stat;
 import net.minecraft.util.math.BlockPos;
-import org.jetbrains.annotations.Nullable;
+
+import com.mojang.authlib.GameProfile;
+
+import com.google.common.collect.MapMaker;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.OptionalInt;
 import java.util.UUID;
+
+import org.jetbrains.annotations.Nullable;
 
 public class SuperFakePlayer extends ServerPlayerEntity
 {

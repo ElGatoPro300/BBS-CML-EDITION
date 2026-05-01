@@ -10,7 +10,9 @@ import mchorse.bbs_mod.utils.clips.ClipContext;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 import mchorse.bbs_mod.utils.keyframes.factories.KeyframeFactories;
+
 import net.minecraft.item.ItemStack;
+
 import org.joml.Vector4f;
 
 import java.util.ArrayList;

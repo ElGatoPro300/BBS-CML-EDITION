@@ -10,6 +10,7 @@ import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.keys.KeyCombo;
 import mchorse.bbs_mod.ui.utils.keys.Keybind;
 import mchorse.bbs_mod.utils.colors.Colors;
+
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;

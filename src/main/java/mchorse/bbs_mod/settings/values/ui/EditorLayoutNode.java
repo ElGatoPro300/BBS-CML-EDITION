@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.settings.values.ui;
 
 import mchorse.bbs_mod.data.types.BaseType;
+import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.utils.MathUtils;
 
@@ -11,7 +12,6 @@ import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
-import mchorse.bbs_mod.data.types.ListType;
 
 public abstract class EditorLayoutNode
 {

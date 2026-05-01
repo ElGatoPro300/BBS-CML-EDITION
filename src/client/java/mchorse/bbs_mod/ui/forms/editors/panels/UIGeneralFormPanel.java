@@ -1,6 +1,5 @@
 package mchorse.bbs_mod.ui.forms.editors.panels;
 
-import com.mojang.logging.LogUtils;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.ui.UIKeys;
@@ -12,6 +11,9 @@ import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
 import mchorse.bbs_mod.ui.framework.elements.input.text.UITextbox;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.keys.KeyCombo;
+
+import com.mojang.logging.LogUtils;
+
 import org.slf4j.Logger;
 
 public class UIGeneralFormPanel extends UIFormPanel
