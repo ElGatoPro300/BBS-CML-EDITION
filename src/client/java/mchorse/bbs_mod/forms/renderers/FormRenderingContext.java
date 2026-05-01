@@ -20,7 +20,6 @@ public class FormRenderingContext
     public boolean ui;
     public int color;
     public boolean modelRenderer;
-    public boolean renderEquipment;
 
     public FormRenderingContext()
     {}
@@ -36,7 +35,6 @@ public class FormRenderingContext
         this.stencilMap = null;
         this.ui = false;
         this.color = 0xffffffff;
-        this.renderEquipment = true;
 
         return this;
     }
@@ -83,13 +81,6 @@ public class FormRenderingContext
     public FormRenderingContext modelRenderer()
     {
         this.modelRenderer = true;
-
-        return this;
-    }
-
-    public FormRenderingContext equipment(boolean renderEquipment)
-    {
-        this.renderEquipment = renderEquipment;
 
         return this;
     }

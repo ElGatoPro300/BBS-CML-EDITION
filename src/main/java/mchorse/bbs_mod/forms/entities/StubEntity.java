@@ -49,8 +49,6 @@ public class StubEntity implements IEntity
 
     private float[] extraVariables = new float[10];
     private float[] prevExtraVariables = new float[10];
-    private boolean externalPrevPosition;
-    private boolean externalPrevRotation;
 
     private LimbAnimator limbAnimator = new LimbAnimator();
     private final Map<EquipmentSlot, ItemStack> items = new HashMap<>();
@@ -215,7 +213,6 @@ public class StubEntity implements IEntity
     public void setPrevX(double x)
     {
         this.prevX = x;
-        this.externalPrevPosition = true;
     }
 
     @Override
@@ -234,7 +231,6 @@ public class StubEntity implements IEntity
     public void setPrevY(double y)
     {
         this.prevY = y;
-        this.externalPrevPosition = true;
     }
 
     @Override
@@ -253,7 +249,6 @@ public class StubEntity implements IEntity
     public void setPrevZ(double z)
     {
         this.prevZ = z;
-        this.externalPrevPosition = true;
     }
 
     @Override
@@ -304,7 +299,6 @@ public class StubEntity implements IEntity
     public void setPrevYaw(float prevYaw)
     {
         this.prevYaw = prevYaw;
-        this.externalPrevRotation = true;
     }
 
     @Override
@@ -329,7 +323,6 @@ public class StubEntity implements IEntity
     public void setPrevHeadYaw(float prevHeadYaw)
     {
         this.prevHeadYaw = prevHeadYaw;
-        this.externalPrevRotation = true;
     }
 
     @Override
@@ -354,7 +347,6 @@ public class StubEntity implements IEntity
     public void setPrevPitch(float prevPitch)
     {
         this.prevPitch = prevPitch;
-        this.externalPrevRotation = true;
     }
 
     @Override
@@ -385,14 +377,12 @@ public class StubEntity implements IEntity
     public void setPrevBodyYaw(float prevBodyYaw)
     {
         this.prevBodyYaw = prevBodyYaw;
-        this.externalPrevRotation = true;
     }
 
     @Override
     public void setPrevPrevBodyYaw(float prevPrevBodyYaw)
     {
         this.prevPrevBodyYaw = prevPrevBodyYaw;
-        this.externalPrevRotation = true;
     }
 
     @Override
@@ -437,24 +427,16 @@ public class StubEntity implements IEntity
         this.armSwing -= 1;
         this.age += 1;
 
-        if (!this.externalPrevPosition)
-        {
-            this.prevX = this.x;
-            this.prevY = this.y;
-            this.prevZ = this.z;
-        }
+        this.prevX = this.x;
+        this.prevY = this.y;
+        this.prevZ = this.z;
 
-        if (!this.externalPrevRotation)
-        {
-            this.prevPrevBodyYaw = this.prevBodyYaw;
-            this.prevYaw = this.yaw;
-            this.prevHeadYaw = this.headYaw;
-            this.prevPitch = this.pitch;
-            this.prevBodyYaw = this.bodyYaw;
-        }
+        this.prevPrevBodyYaw = this.prevBodyYaw;
 
-        this.externalPrevPosition = false;
-        this.externalPrevRotation = false;
+        this.prevYaw = this.yaw;
+        this.prevHeadYaw = this.headYaw;
+        this.prevPitch = this.pitch;
+        this.prevBodyYaw = this.bodyYaw;
 
         for (int i = 0; i < this.extraVariables.length; i++)
         {

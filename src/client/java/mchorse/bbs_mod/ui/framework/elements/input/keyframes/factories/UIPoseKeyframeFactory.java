@@ -1,7 +1,6 @@
 package mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories;
 
 import mchorse.bbs_mod.cubic.ModelInstance;
-import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.FormUtilsClient;
@@ -20,7 +19,6 @@ import mchorse.bbs_mod.utils.CollectionUtils;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.joml.Vectors;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
-import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.utils.pose.Pose;
 import mchorse.bbs_mod.utils.pose.PoseTransform;
 import mchorse.bbs_mod.utils.pose.Transform;
@@ -45,26 +43,10 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
         {
             ModelInstance model = ((ModelFormRenderer) FormUtilsClient.getRenderer(modelForm)).getModel();
 
-            /* Hacer que el selector de textura del hueso abra la carpeta
-             * de la textura base del modelo cuando no haya override */
-            this.poseEditor.setDefaultTextureSupplier(() ->
-            {
-                Link base = modelForm.texture.get();
-                if (base != null)
-                {
-                    return base;
-                }
-
-                ModelInstance m = ((ModelFormRenderer) FormUtilsClient.getRenderer(modelForm)).getModel();
-                return m != null ? m.texture : null;
-            });
-
             if (model != null)
             {
                 this.poseEditor.setPose(keyframe.getValue(), model.poseGroup);
                 this.poseEditor.fillGroups(model.model, model.flippedParts, false);
-
-                this.poseEditor.refreshCurrentBone();
             }
         }
         else if (FormUtils.getForm(sheet.property) instanceof MobForm mobForm)
@@ -73,22 +55,9 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
 
             this.poseEditor.setPose(keyframe.getValue(), "");
             this.poseEditor.fillGroups(bones, false);
-
         }
 
         this.scroll.add(this.poseEditor);
-    }
-
-    @Override
-    public void update()
-    {
-        super.update();
-
-        if (this.poseEditor != null)
-        {
-            this.poseEditor.setPose(this.keyframe.getValue(), this.poseEditor.getPoseGroupKey());
-            this.poseEditor.refreshCurrentBone();
-        }
     }
 
     @Override
@@ -96,34 +65,16 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
     {
         this.poseEditor.removeAll();
 
-        boolean categoriesEnabled = BBSSettings.modelBlockCategoriesPanelEnabled != null && BBSSettings.modelBlockCategoriesPanelEnabled.get();
-
         if (this.getFlex().getW() > 240)
         {
-            UIElement left = UI.column(UI.label(UIKeys.POSE_CONTEXT_FIX), this.poseEditor.fix, UI.row(this.poseEditor.color, this.poseEditor.lighting), this.poseEditor.transform);
-
-            this.poseEditor.pickTexture.w(1F);
-            UIElement groupsRow = categoriesEnabled ? UI.row(this.poseEditor.groups, this.poseEditor.categories) : UI.row(this.poseEditor.groups);
-            UIElement right = UI.column(
-                UI.label(UIKeys.FORMS_EDITOR_BONE),
-                groupsRow,
-                this.poseEditor.pickTexture
-            );
-
-            this.poseEditor.add(UI.row(left, right));
+            this.poseEditor.add(UI.row(
+                UI.column(UI.label(UIKeys.POSE_CONTEXT_FIX), this.poseEditor.fix, UI.row(this.poseEditor.color, this.poseEditor.lighting), this.poseEditor.transform),
+                UI.column(UI.label(UIKeys.FORMS_EDITOR_BONE), this.poseEditor.groups)
+            ));
         }
         else
         {
-            UIElement groupsRow = categoriesEnabled ? UI.row(this.poseEditor.groups, this.poseEditor.categories) : UI.row(this.poseEditor.groups);
-            this.poseEditor.add(
-                UI.label(UIKeys.FORMS_EDITOR_BONE),
-                groupsRow,
-                this.poseEditor.pickTexture,
-                UI.label(UIKeys.POSE_CONTEXT_FIX),
-                this.poseEditor.fix,
-                UI.row(this.poseEditor.color, this.poseEditor.lighting),
-                this.poseEditor.transform
-            );
+            this.poseEditor.add(UI.label(UIKeys.FORMS_EDITOR_BONE), this.poseEditor.groups, UI.label(UIKeys.POSE_CONTEXT_FIX), this.poseEditor.fix, UI.row(this.poseEditor.color, this.poseEditor.lighting), this.poseEditor.transform);
         }
 
         /* Ew... */
@@ -139,18 +90,6 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
     {
         private UIKeyframes editor;
         private Keyframe<Pose> keyframe;
-
-        public void refreshCurrentBone()
-        {
-            String currentBone = this.getCurrentBone();
-
-            if (currentBone == null || currentBone.isEmpty())
-            {
-                currentBone = this.groups.list.getCurrentFirst();
-            }
-
-            this.pickBone(currentBone);
-        }
 
         public static void apply(UIKeyframes editor, Keyframe keyframe, Consumer<Pose> consumer)
         {
@@ -190,27 +129,6 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
             return CollectionUtils.getKey(this.getPose().transforms, transform);
         }
 
-        /** Acceso seguro a huesos de la categoría actual del grupo de pose. */
-        public java.util.List<String> getCategoryBones(String category)
-        {
-            if (category == null || category.isEmpty())
-            {
-                return java.util.Collections.emptyList();
-            }
-
-            return this.boneCategories.getBones(this.getPoseGroupKey(), category);
-        }
-
-        public java.util.List<String> getLiveMirrorBonesForReplayEditor()
-        {
-            return this.getLiveMirrorBones();
-        }
-
-        public boolean shouldInvertLiveMirrorRotationZForReplayEditor(java.util.List<String> targets)
-        {
-            return this.shouldInvertLiveMirrorRotationZ(targets);
-        }
-
         @Override
         protected UIPropTransform createTransformEditor()
         {
@@ -220,12 +138,7 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
         @Override
         protected void pastePose(MapType data)
         {
-            String current = this.getCurrentBone();
-
-            if (current == null || current.isEmpty())
-            {
-                current = this.groups.list.getCurrentFirst();
-            }
+            String current = this.groups.getCurrentFirst();
 
             apply(this.editor, this.keyframe, (pose) -> pose.fromData(data));
             this.pickBone(current);
@@ -234,12 +147,7 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
         @Override
         protected void flipPose()
         {
-            String current = this.getCurrentBone();
-
-            if (current == null || current.isEmpty())
-            {
-                current = this.groups.list.getCurrentFirst();
-            }
+            String current = this.groups.getCurrentFirst();
 
             apply(this.editor, this.keyframe, (pose) -> pose.flip(this.flippedParts));
             this.pickBone(current);
@@ -273,290 +181,109 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
             this.editor = editor;
         }
 
-        private void checkAutoKeyframe()
-        {
-            if (BBSSettings.realtimeKeyframes.get())
-            {
-                mchorse.bbs_mod.ui.film.UIFilmPanel filmPanel = this.editor.getParent(mchorse.bbs_mod.ui.film.UIFilmPanel.class);
-
-                if (filmPanel != null)
-                {
-                    int cursor = filmPanel.getCursor();
-
-                    if (cursor != this.editor.keyframe.getTick())
-                    {
-                        UIKeyframeSheet sheet = this.editor.editor.getGraph().getSheet(this.editor.keyframe);
-
-                        if (sheet != null)
-                        {
-                            // Use interpolated pose at current cursor position instead of copying previous keyframe
-                            Pose pose = (Pose) sheet.channel.interpolate(cursor);
-                            String currentBone = this.editor.getCurrentBone();
-
-                            if (currentBone == null || currentBone.isEmpty())
-                            {
-                                currentBone = this.editor.groups.list.getCurrentFirst();
-                            }
-                            int index = sheet.channel.insert(cursor, pose);
-                            Keyframe<Pose> newKeyframe = sheet.channel.get(index);
-
-                            this.editor.keyframe = newKeyframe;
-                            this.editor.setPose(newKeyframe.getValue(), this.editor.getPoseGroupKey());
-
-                            if (currentBone != null)
-                            {
-                                this.editor.groups.list.setCurrentScroll(currentBone);
-                            }
-
-                            this.editor.refreshCurrentBone();
-
-                            // Explicitly update the transform editor's reference to the new keyframe's bone data
-                            // This prevents the 'accumulation' bug where dx/dy/dz are calculated against the OLD keyframe
-                            // but applied to the NEW keyframe, leading to exponential growth.
-                            if (currentBone != null)
-                            {
-                                PoseTransform pt = newKeyframe.getValue().get(currentBone);
-                                if (pt != null)
-                                {
-                                    this.setTransform(pt);
-                                }
-                            }
-
-                            sheet.selection.clear();
-                            sheet.selection.add(newKeyframe);
-                        }
-                    }
-                }
-            }
-        }
-
-        private void ensureTransformSync()
-        {
-            String currentBone = this.editor.getCurrentBone();
-
-            if (currentBone == null || currentBone.isEmpty())
-            {
-                currentBone = this.editor.groups.list.getCurrentFirst();
-            }
-
-            if (currentBone != null)
-            {
-                PoseTransform pt = this.editor.keyframe.getValue().get(currentBone);
-
-                if (pt != null && pt != this.getTransform())
-                {
-                    this.setTransform(pt);
-                }
-            }
-        }
-
-        /**
-         * Targets affected by editing. If a category is selected, return all
-         * bones in that category; otherwise return the currently selected group.
-         */
-        private java.util.List<String> targets()
-        {
-            boolean categoriesEnabled = BBSSettings.modelBlockCategoriesPanelEnabled != null && BBSSettings.modelBlockCategoriesPanelEnabled.get();
-            String selectedCategory = categoriesEnabled && this.editor.categories != null ? this.editor.categories.getCurrentFirst() : null;
-            if (selectedCategory == null || selectedCategory.isEmpty())
-            {
-                java.util.List<String> liveMirror = this.editor.getLiveMirrorBonesForReplayEditor();
-                if (!liveMirror.isEmpty())
-                {
-                    return liveMirror;
-                }
-
-                String currentBone = this.editor.getCurrentBone();
-
-                if (currentBone == null || currentBone.isEmpty())
-                {
-                    currentBone = this.editor.getGroup();
-                }
-
-                return java.util.Collections.singletonList(currentBone);
-            }
-
-            return this.editor.getCategoryBones(selectedCategory);
-        }
-
         @Override
         protected void reset()
         {
-            for (String key : this.targets())
+            UIPoseFactoryEditor.apply(this.editor.editor, this.editor.keyframe, this.editor.getGroup(), (poseT) ->
             {
-                UIPoseFactoryEditor.apply(this.editor.editor, this.editor.keyframe, key, (poseT) ->
-                {
-                    poseT.translate.set(0F, 0F, 0F);
-                    poseT.scale.set(1F, 1F, 1F);
-                    poseT.rotate.set(0F, 0F, 0F);
-                    poseT.rotate2.set(0F, 0F, 0F);
-                    poseT.pivot.set(0F, 0F, 0F);
-                });
-            }
+                poseT.translate.set(0F, 0F, 0F);
+                poseT.scale.set(1F, 1F, 1F);
+                poseT.rotate.set(0F, 0F, 0F);
+                poseT.rotate2.set(0F, 0F, 0F);
+            });
             this.refillTransform();
         }
 
         @Override
         public void pasteTranslation(Vector3d translation)
         {
-            for (String key : this.targets())
-            {
-                UIPoseFactoryEditor.apply(this.editor.editor, this.editor.keyframe, key, (poseT) -> poseT.translate.set(translation));
-            }
+            UIPoseFactoryEditor.apply(this.editor.editor, this.editor.keyframe, this.editor.getGroup(), (poseT) -> poseT.translate.set(translation));
             this.refillTransform();
         }
 
         @Override
         public void pasteScale(Vector3d scale)
         {
-            for (String key : this.targets())
-            {
-                UIPoseFactoryEditor.apply(this.editor.editor, this.editor.keyframe, key, (poseT) -> poseT.scale.set(scale));
-            }
+            UIPoseFactoryEditor.apply(this.editor.editor, this.editor.keyframe, this.editor.getGroup(), (poseT) -> poseT.scale.set(scale));
             this.refillTransform();
         }
 
         @Override
         public void pasteRotation(Vector3d rotation)
         {
-            for (String key : this.targets())
-            {
-                UIPoseFactoryEditor.apply(this.editor.editor, this.editor.keyframe, key, (poseT) -> poseT.rotate.set(Vectors.toRad(rotation)));
-            }
+            UIPoseFactoryEditor.apply(this.editor.editor, this.editor.keyframe, this.editor.getGroup(), (poseT) -> poseT.rotate.set(Vectors.toRad(rotation)));
             this.refillTransform();
         }
 
         @Override
         public void pasteRotation2(Vector3d rotation)
         {
-            for (String key : this.targets())
-            {
-                UIPoseFactoryEditor.apply(this.editor.editor, this.editor.keyframe, key, (poseT) -> poseT.rotate2.set(Vectors.toRad(rotation)));
-            }
-            this.refillTransform();
-        }
-
-        @Override
-        public void pastePivot(Vector3d pivot)
-        {
-            for (String key : this.targets())
-            {
-                UIPoseFactoryEditor.apply(this.editor.editor, this.editor.keyframe, key, (poseT) -> poseT.pivot.set((float) pivot.x, (float) pivot.y, (float) pivot.z));
-            }
+            UIPoseFactoryEditor.apply(this.editor.editor, this.editor.keyframe, this.editor.getGroup(), (poseT) -> poseT.rotate2.set(Vectors.toRad(rotation)));
             this.refillTransform();
         }
 
         @Override
         public void setT(Axis axis, double x, double y, double z)
         {
-            this.checkAutoKeyframe();
-            this.ensureTransformSync();
             Transform transform = this.getTransform();
             float dx = (float) (x - transform.translate.x);
             float dy = (float) (y - transform.translate.y);
             float dz = (float) (z - transform.translate.z);
 
-            for (String key : this.targets())
+            UIPoseFactoryEditor.apply(this.editor.editor, this.editor.keyframe, this.editor.getGroup(), (poseT) ->
             {
-                UIPoseFactoryEditor.apply(this.editor.editor, this.editor.keyframe, key, (poseT) ->
-                {
-                    poseT.translate.x += dx;
-                    poseT.translate.y += dy;
-                    poseT.translate.z += dz;
-                });
-            }
+                poseT.translate.x += dx;
+                poseT.translate.y += dy;
+                poseT.translate.z += dz;
+            });
         }
 
         @Override
         public void setS(Axis axis, double x, double y, double z)
         {
-            this.checkAutoKeyframe();
-            this.ensureTransformSync();
             Transform transform = this.getTransform();
             float dx = (float) (x - transform.scale.x);
             float dy = (float) (y - transform.scale.y);
             float dz = (float) (z - transform.scale.z);
 
-            for (String key : this.targets())
+            UIPoseFactoryEditor.apply(this.editor.editor, this.editor.keyframe, this.editor.getGroup(), (poseT) ->
             {
-                UIPoseFactoryEditor.apply(this.editor.editor, this.editor.keyframe, key, (poseT) ->
-                {
-                    poseT.scale.x += dx;
-                    poseT.scale.y += dy;
-                    poseT.scale.z += dz;
-                });
-            }
+                poseT.scale.x += dx;
+                poseT.scale.y += dy;
+                poseT.scale.z += dz;
+            });
         }
 
         @Override
         public void setR(Axis axis, double x, double y, double z)
         {
-            this.checkAutoKeyframe();
-            this.ensureTransformSync();
             Transform transform = this.getTransform();
             float dx = MathUtils.toRad((float) x) - transform.rotate.x;
             float dy = MathUtils.toRad((float) y) - transform.rotate.y;
             float dz = MathUtils.toRad((float) z) - transform.rotate.z;
-            java.util.List<String> targets = this.targets();
-            boolean invertAxes = this.editor.shouldInvertLiveMirrorRotationZForReplayEditor(targets);
-            String sourceBone = this.editor.getCurrentBone();
 
-            for (String key : targets)
+            UIPoseFactoryEditor.apply(this.editor.editor, this.editor.keyframe, this.editor.getGroup(), (poseT) ->
             {
-                UIPoseFactoryEditor.apply(this.editor.editor, this.editor.keyframe, key, (poseT) ->
-                {
-                    boolean mirroredBone = invertAxes && !key.equals(sourceBone);
-                    poseT.rotate.x += mirroredBone ? -dx : dx;
-                    poseT.rotate.y += mirroredBone ? -dy : dy;
-                    poseT.rotate.z += mirroredBone ? -dz : dz;
-                });
-            }
+                poseT.rotate.x += dx;
+                poseT.rotate.y += dy;
+                poseT.rotate.z += dz;
+            });
         }
 
         @Override
         public void setR2(Axis axis, double x, double y, double z)
         {
-            this.checkAutoKeyframe();
-            this.ensureTransformSync();
             Transform transform = this.getTransform();
             float dx = MathUtils.toRad((float) x) - transform.rotate2.x;
             float dy = MathUtils.toRad((float) y) - transform.rotate2.y;
             float dz = MathUtils.toRad((float) z) - transform.rotate2.z;
-            java.util.List<String> targets = this.targets();
-            boolean invertAxes = this.editor.shouldInvertLiveMirrorRotationZForReplayEditor(targets);
-            String sourceBone = this.editor.getCurrentBone();
 
-            for (String key : targets)
+            UIPoseFactoryEditor.apply(this.editor.editor, this.editor.keyframe, this.editor.getGroup(), (poseT) ->
             {
-                UIPoseFactoryEditor.apply(this.editor.editor, this.editor.keyframe, key, (poseT) ->
-                {
-                    boolean mirroredBone = invertAxes && !key.equals(sourceBone);
-                    poseT.rotate2.x += mirroredBone ? -dx : dx;
-                    poseT.rotate2.y += mirroredBone ? -dy : dy;
-                    poseT.rotate2.z += mirroredBone ? -dz : dz;
-                });
-            }
-        }
-
-        @Override
-        public void setP(Axis axis, double x, double y, double z)
-        {
-            this.checkAutoKeyframe();
-            this.ensureTransformSync();
-            Transform transform = this.getTransform();
-            float dx = (float) x - transform.pivot.x;
-            float dy = (float) y - transform.pivot.y;
-            float dz = (float) z - transform.pivot.z;
-
-            for (String key : this.targets())
-            {
-                UIPoseFactoryEditor.apply(this.editor.editor, this.editor.keyframe, key, (poseT) ->
-                {
-                    poseT.pivot.x += dx;
-                    poseT.pivot.y += dy;
-                    poseT.pivot.z += dz;
-                });
-            }
+                poseT.rotate2.x += dx;
+                poseT.rotate2.y += dy;
+                poseT.rotate2.z += dz;
+            });
         }
     }
 }

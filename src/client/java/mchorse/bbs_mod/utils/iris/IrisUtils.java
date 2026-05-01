@@ -38,34 +38,7 @@ import java.util.Set;
 public class IrisUtils
 {
     private static Set<Texture> textureSet = new HashSet<>();
-    private static Map<Integer, PBRIntensity> trackedPBRIntensities = new HashMap<>();
-    private static final ThreadLocal<PBRIntensity> activePBRIntensity = new ThreadLocal<>();
     private static ShaderProperties properties;
-
-    private static class PBRIntensity
-    {
-        public float normal = 1F;
-        public float specular = 1F;
-
-        public PBRIntensity()
-        {}
-
-        public PBRIntensity(float normal, float specular)
-        {
-            this.normal = normal;
-            this.specular = specular;
-        }
-
-        public PBRIntensity(PBRIntensity other)
-        {
-            this(other.normal, other.specular);
-        }
-
-        public boolean sameAs(PBRIntensity other)
-        {
-            return other != null && Math.abs(this.normal - other.normal) < 0.0001F && Math.abs(this.specular - other.specular) < 0.0001F;
-        }
-    }
 
     public static void setShaderProperties(ShaderProperties shaderProperties)
     {
@@ -171,10 +144,8 @@ public class IrisUtils
     {
         TextureManager textures = BBSModClient.getTextures();
         Texture error = textures.getError();
-        PBRIntensity active = activePBRIntensity.get();
-        PBRIntensity current = active == null ? new PBRIntensity(1F, 1F) : new PBRIntensity(active);
 
-        if (texture != error)
+        if (texture != error && !textureSet.contains(texture))
         {
             Link key = CollectionUtils.getKey(textures.textures, texture);
 
@@ -192,41 +163,11 @@ public class IrisUtils
                     index = texture.getParent().textures.indexOf(texture);
                 }
 
-                PBRIntensity tracked = trackedPBRIntensities.get(texture.id);
-
-                if (!textureSet.contains(texture) || tracked == null || !tracked.sameAs(current))
-                {
-                    TextureTracker.INSTANCE.trackTexture(texture.id, new IrisTextureWrapper(key, index, current.normal, current.specular));
-                    trackedPBRIntensities.put(texture.id, current);
-                }
+                TextureTracker.INSTANCE.trackTexture(texture.id, new IrisTextureWrapper(key, index));
             }
 
             textureSet.add(texture);
         }
-    }
-
-    public static void setPBRTextureIntensity(float normalIntensity, float specularIntensity)
-    {
-        activePBRIntensity.set(new PBRIntensity(normalIntensity, specularIntensity));
-    }
-
-    public static void clearPBRTextureIntensity()
-    {
-        activePBRIntensity.remove();
-    }
-
-    public static float getActivePBRNormalIntensity()
-    {
-        PBRIntensity intensity = activePBRIntensity.get();
-
-        return intensity == null ? 1F : intensity.normal;
-    }
-
-    public static float getActivePBRSpecularIntensity()
-    {
-        PBRIntensity intensity = activePBRIntensity.get();
-
-        return intensity == null ? 1F : intensity.specular;
     }
 
     public static boolean isShaderPackEnabled()
