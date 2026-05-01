@@ -132,8 +132,6 @@ public class UIFilmUndoHandler extends UIFormUndoHandler
 
         if (this.actionsTimer.checkReset())
         {
-            this.submitUndo();
-
             for (BaseValue syncData : this.syncData)
             {
                 ClientNetwork.sendSyncData(((UIFilmPanel) this.uiElement).getData().getId(), syncData);
@@ -149,12 +147,25 @@ public class UIFilmUndoHandler extends UIFormUndoHandler
 
         if (
             path.endsWith("/replays") ||
-            path.contains("/keyframes/") ||
-            path.contains("/properties/") ||
+            path.endsWith("/keyframes") ||
+            path.contains("/keyframes/x") ||
+            path.contains("/keyframes/y") ||
+            path.contains("/keyframes/z") ||
+            path.contains("/keyframes/item_main_hand") ||
+            path.contains("/keyframes/item_off_hand") ||
+            path.contains("/keyframes/item_head") ||
+            path.contains("/keyframes/item_chest") ||
+            path.contains("/keyframes/item_legs") ||
+            path.contains("/keyframes/item_feet") ||
             path.endsWith("/actor") ||
             path.endsWith("/enabled") ||
             path.endsWith("/form") ||
-            path.contains("/drop_velocity_")
+            path.endsWith("/drop_velocity_min_x") ||
+            path.endsWith("/drop_velocity_max_x") ||
+            path.endsWith("/drop_velocity_min_y") ||
+            path.endsWith("/drop_velocity_max_y") ||
+            path.endsWith("/drop_velocity_min_z") ||
+            path.endsWith("/drop_velocity_max_z")
         ) {
             return true;
         }
