@@ -1390,9 +1390,7 @@ public class UIElement implements IUIElement, IUndoElement
             context.resetTooltip();
         }
 
-        List<IUIElement> snapshot = new ArrayList<>(this.children);
-
-        for (IUIElement element : snapshot)
+        for (IUIElement element : this.children)
         {
             if (element.isVisible() && element.canBeRendered(context.getViewport()))
             {
@@ -1413,7 +1411,7 @@ public class UIElement implements IUIElement, IUndoElement
     {
         if (!this.isEnabled())
         {
-            context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xAA000000);
+            this.area.render(context.batcher, Colors.A50);
 
             context.batcher.outlinedIcon(Icons.LOCKED, this.area.mx(), this.area.my(), 0.5F, 0.5F);
         }

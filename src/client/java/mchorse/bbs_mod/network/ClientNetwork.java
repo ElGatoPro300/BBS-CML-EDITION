@@ -71,7 +71,6 @@ public class ClientNetwork
         ClientPlayNetworking.registerGlobalReceiver(ServerNetwork.CLIENT_CLICKED_MODEL_BLOCK_PACKET, (client, handler, buf, responseSender) -> handleClientModelBlockPacket(client, buf));
         ClientPlayNetworking.registerGlobalReceiver(ServerNetwork.CLIENT_CLICKED_TRIGGER_BLOCK_PACKET, (client, handler, buf, responseSender) -> handleClickedTriggerBlockPacket(client, buf));
         ClientPlayNetworking.registerGlobalReceiver(ServerNetwork.CLIENT_PLAYER_FORM_PACKET, (client, handler, buf, responseSender) -> handlePlayerFormPacket(client, buf));
-        ClientPlayNetworking.registerGlobalReceiver(ServerNetwork.CLIENT_BAY4LLY_SKIN, (client, handler, buf, responseSender) -> handleBay4llySkinPacket(client, buf));
         ClientPlayNetworking.registerGlobalReceiver(ServerNetwork.CLIENT_PLAY_FILM_PACKET, (client, handler, buf, responseSender) -> handlePlayFilmPacket(client, buf));
         ClientPlayNetworking.registerGlobalReceiver(ServerNetwork.CLIENT_MANAGER_DATA_PACKET, (client, handler, buf, responseSender) -> handleManagerDataPacket(client, buf));
         ClientPlayNetworking.registerGlobalReceiver(ServerNetwork.CLIENT_STOP_FILM_PACKET, (client, handler, buf, responseSender) -> handleStopFilmPacket(client, buf));
@@ -374,24 +373,6 @@ public class ClientNetwork
             Films.togglePauseFilm(filmId);
         });
     }
-    
-    private static void handleBay4llySkinPacket(MinecraftClient client, PacketByteBuf buf)
-    {
-        crusher.receive(buf, (bytes, packetByteBuf) ->
-        {
-            String playerName = packetByteBuf.readString();
-            client.execute(() ->
-            {
-                try
-                {
-                    mchorse.bbs_mod.bay4lly.SkinManager.saveSkin(playerName, bytes);
-                }
-                catch (Exception e)
-                {
-                }
-            });
-        });
-    }
 
     private static void handleSelectedSlotPacket(MinecraftClient client, PacketByteBuf buf)
     {
@@ -461,16 +442,9 @@ public class ClientNetwork
 
         data.put("left", entity.left.toData());
         data.put("right", entity.right.toData());
-        data.put("enter", entity.enter.toData());
-        data.put("exit", entity.exit.toData());
-        data.put("whileIn", entity.whileIn.toData());
-        data.putInt("regionDelay", entity.regionDelay.get());
         data.put("pos1", entity.pos1.toData());
         data.put("pos2", entity.pos2.toData());
-        data.put("regionOffset", entity.regionOffset.toData());
-        data.put("regionSize", entity.regionSize.toData());
         data.putBool("collidable", entity.collidable.get());
-        data.putBool("region", entity.region.get());
 
         crusher.send(MinecraftClient.getInstance().player, ServerNetwork.SERVER_TRIGGER_BLOCK_UPDATE, data, (packetByteBuf) ->
         {

@@ -13,9 +13,6 @@ import java.util.function.Consumer;
 
 public class UILikeableVideoList extends UIStringList
 {
-    private static final String ADD_EXTERNAL_ENTRY = "<add_external_video>";
-    private static final String PARENT_FOLDER_ENTRY = "<parent_folder>";
-
     private VideoLikeManager likeManager;
     private boolean showOnlyLiked = false;
     private UIIcon likeButton;
@@ -42,20 +39,6 @@ public class UILikeableVideoList extends UIStringList
 
     private String getDisplayText(String element)
     {
-        if (element.equals(PARENT_FOLDER_ENTRY))
-        {
-            return "../";
-        }
-
-        if (this.isFolderEntry(element))
-        {
-            String path = element.substring(0, element.length() - 1);
-            int slash = path.lastIndexOf('/');
-            String name = slash >= 0 ? path.substring(slash + 1) : path;
-
-            return name;
-        }
-
         String display = this.likeManager.getDisplayName(element);
 
         return display != null ? display : element;
@@ -75,36 +58,26 @@ public class UILikeableVideoList extends UIStringList
         }
 
         boolean isNoneOption = element.equals(UIKeys.GENERAL_NONE.get());
-        boolean isAddExternal = element.equals(ADD_EXTERNAL_ENTRY);
-        boolean isFolder = this.isFolderEntry(element);
+        boolean isAddExternal = element.equals("<add_external_video>");
         String displayText = isAddExternal ? UIKeys.OVERLAYS_VIDEOS_ADD_EXTERNAL.get() : this.getDisplayText(element);
-        int textY = y + (this.scroll.scrollItemSize - context.batcher.getFont().getHeight()) / 2;
         int textWidth = context.batcher.getFont().getWidth(displayText);
         int buttonSpace = 0;
-        int textX = x + 4;
-        boolean isActionable = !isNoneOption && !isAddExternal && !element.equals(PARENT_FOLDER_ENTRY) && !isFolder;
 
-        if (isActionable)
+        if (!isNoneOption && !isAddExternal)
         {
             buttonSpace = this.showEditRemoveButtons ? 60 : 20;
         }
 
-        if (isFolder)
-        {
-            context.batcher.icon(Icons.FOLDER, textX - 2, y);
-            textX += 16;
-        }
-
-        int maxWidth = this.area.w - (textX - x) - 4 - buttonSpace;
+        int maxWidth = this.area.w - 8 - buttonSpace;
 
         if (textWidth > maxWidth)
         {
             displayText = context.batcher.getFont().limitToWidth(displayText, maxWidth);
         }
 
-        context.batcher.textShadow(displayText, textX, textY, hover ? Colors.HIGHLIGHT : Colors.WHITE);
+        context.batcher.textShadow(displayText, x + 4, y + (this.scroll.scrollItemSize - context.batcher.getFont().getHeight()) / 2, hover ? Colors.HIGHLIGHT : Colors.WHITE);
 
-        if (!isActionable)
+        if (isNoneOption || isAddExternal)
         {
             return;
         }
@@ -173,7 +146,7 @@ public class UILikeableVideoList extends UIStringList
             return super.subMouseClicked(context);
         }
 
-        if (element.equals(ADD_EXTERNAL_ENTRY))
+        if (element.equals("<add_external_video>"))
         {
             return super.subMouseClicked(context);
         }
@@ -181,10 +154,8 @@ public class UILikeableVideoList extends UIStringList
         int y = this.area.y + scrollIndex * this.scroll.scrollItemSize - (int) this.scroll.getScroll();
         int iconY = y + (this.scroll.scrollItemSize - 16) / 2;
         int likeIconX = this.area.x + this.area.w - 20;
-        boolean isActionable = !element.equals(UIKeys.GENERAL_NONE.get()) && !element.equals(PARENT_FOLDER_ENTRY) && !this.isFolderEntry(element);
 
-        if (isActionable &&
-            context.mouseX >= likeIconX &&
+        if (context.mouseX >= likeIconX &&
             context.mouseX < likeIconX + 16 &&
             context.mouseY >= iconY &&
             context.mouseY < iconY + 16)
@@ -199,7 +170,7 @@ public class UILikeableVideoList extends UIStringList
             return true;
         }
 
-        if (this.showEditRemoveButtons && isActionable)
+        if (this.showEditRemoveButtons)
         {
             int removeIconX = likeIconX - 20;
 
@@ -375,11 +346,6 @@ public class UILikeableVideoList extends UIStringList
     public void setShowEditRemoveButtons(boolean show)
     {
         this.showEditRemoveButtons = show;
-    }
-
-    private boolean isFolderEntry(String element)
-    {
-        return element.startsWith("assets:") && element.endsWith("/");
     }
 
     @Override

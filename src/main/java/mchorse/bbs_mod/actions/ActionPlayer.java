@@ -160,13 +160,11 @@ public class ActionPlayer
         float yawHead = replay.keyframes.headYaw.interpolate(tick).floatValue();
         float yawBody = replay.keyframes.bodyYaw.interpolate(tick).floatValue();
         float pitch = replay.keyframes.pitch.interpolate(tick).floatValue();
-        boolean grounded = replay.keyframes.grounded.interpolate(tick) > 0;
 
         Vec3d pos = actor.getPos();
 
         if (ticking)
         {
-            actor.setOnGround(grounded);
             actor.move(MovementType.SELF, new Vec3d(x - pos.x, y - pos.y, z - pos.z));
         }
 
@@ -176,7 +174,7 @@ public class ActionPlayer
         actor.setPitch(pitch);
         actor.setBodyYaw(yawBody);
         actor.setSneaking(replay.keyframes.sneaking.interpolate(tick) > 0);
-        actor.setOnGround(grounded);
+        actor.setOnGround(replay.keyframes.grounded.interpolate(tick) > 0);
         actor.equipStack(EquipmentSlot.OFFHAND, replay.keyframes.offHand.interpolate(tick, ItemStack.EMPTY));
         actor.equipStack(EquipmentSlot.HEAD, replay.keyframes.armorHead.interpolate(tick, ItemStack.EMPTY));
         actor.equipStack(EquipmentSlot.CHEST, replay.keyframes.armorChest.interpolate(tick, ItemStack.EMPTY));

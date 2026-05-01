@@ -358,10 +358,8 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
         int lineHeight = (int) (fh + this.form.lineHeight.get());
         int totalHeight = (lines.size() - 1) * lineHeight + fh - 2;
 
-        float anchorX = this.form.anchorX.get();
-        int x = (int) (-w * anchorX);
+        int x = (int) (-w * this.form.anchorX.get());
         int y = (int) (-totalHeight * this.form.anchorY.get());
-        int shadowY = y;
 
         Color shadowColor = this.form.shadowColor.get().copy();
         Color color = this.form.color.get().copy();
@@ -375,25 +373,14 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
         shadowColor.a *= this.nametagAlpha;
         
         int align = this.form.textAlign.get(); // 0: Left, 1: Center, 2: Right
-        boolean anchorLines = this.form.anchorLines.get();
 
         for (String line : lines)
         {
             int lw = customFont != null ? customFont.getWidth(line, letterSpacing) : renderer.getWidth(line) - 1;
             int lx = x;
-
-            if (anchorLines)
-            {
-                lx = (int) (-lw * anchorX);
-            }
-            else if (align == 1)
-            {
-                lx = x + (w - lw) / 2;
-            }
-            else if (align == 2)
-            {
-                lx = x + (w - lw);
-            }
+            
+            if (align == 1) lx = x + (w - lw) / 2;
+            else if (align == 2) lx = x + (w - lw);
 
             this.renderTextShadow(context, consumers, renderer, customFont, line, lx, y, letterSpacing, light, shadowColor);
             
@@ -462,7 +449,7 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
 
         consumers.draw();
 
-        this.renderShadow(context, x, shadowY, w, totalHeight);
+        this.renderShadow(context, x, y, w, totalHeight);
     }
 
     private void renderShadow(FormRenderingContext context, int x, int y, int w, int h)

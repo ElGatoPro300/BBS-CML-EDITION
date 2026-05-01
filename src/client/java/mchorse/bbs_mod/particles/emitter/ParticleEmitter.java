@@ -146,14 +146,7 @@ public class ParticleEmitter
         this.setupVariables();
         this.setEmitterVariables(0);
 
-        List<IComponentEmitterInitialize> initializes = this.scheme.emitterInitializes;
-
-        if (initializes == null)
-        {
-            return;
-        }
-
-        for (IComponentEmitterInitialize component : initializes)
+        for (IComponentEmitterInitialize component : this.scheme.emitterInitializes)
         {
             component.apply(this);
         }

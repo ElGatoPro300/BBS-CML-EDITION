@@ -65,7 +65,6 @@ import mchorse.bbs_mod.forms.forms.BlockForm;
 import mchorse.bbs_mod.forms.forms.ExtrudedForm;
 import mchorse.bbs_mod.forms.forms.FluidForm;
 import mchorse.bbs_mod.forms.forms.FramebufferForm;
-import mchorse.bbs_mod.forms.forms.ShapeForm;
 import mchorse.bbs_mod.forms.forms.StructureForm;
 import mchorse.bbs_mod.forms.forms.LightForm;
 import mchorse.bbs_mod.forms.forms.ItemForm;
@@ -460,7 +459,6 @@ public class BBSMod implements ModInitializer
             .register(Link.bbs("trail"), TrailForm.class, null)
             .register(Link.bbs("framebuffer"), FramebufferForm.class, null)
             .register(Link.bbs("structure"), StructureForm.class, null)
-            .register(Link.bbs("shape"), ShapeForm.class, null)
             .register(Link.bbs("light"), LightForm.class, null);
 
         events.post(new RegisterFormsEvent(forms));

@@ -8,7 +8,6 @@ import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.settings.values.numeric.ValueBoolean;
 import mchorse.bbs_mod.utils.clips.Clip;
 import net.minecraft.entity.LivingEntity;
-import net.minecraft.item.ItemStack;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
 
@@ -39,10 +38,8 @@ public class InteractBlockActionClip extends ActionClip
         this.applyPositionRotation(player, replay, tick);
 
         BlockHitResult result = this.hit.getHitResult();
-        Hand hand = this.hand.get() ? Hand.MAIN_HAND : Hand.OFF_HAND;
-        ItemStack stack = player.getStackInHand(hand);
 
-        player.interactionManager.interactBlock(player, player.getWorld(), stack, hand, result);
+        player.getWorld().getBlockState(result.getBlockPos()).onUse(player.getWorld(), player, this.hand.get() ? Hand.MAIN_HAND : Hand.OFF_HAND, result);
     }
 
     @Override

@@ -54,12 +54,9 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Consumer;
 
 public class UIFilmPreview extends UIElement
 {
-    public static final List<Consumer<UIFilmPreview>> extensions = new ArrayList<>();
-
     private List<AudioClip> clips = new ArrayList<>();
     private UIFilmPanel panel;
 
@@ -217,11 +214,6 @@ public class UIFilmPreview extends UIElement
 
         this.icons.add(this.replays, this.onionSkin, this.plause, this.teleport, this.flight, this.control, this.perspective, this.recordReplay, this.recordVideo);
         this.add(this.icons);
-
-        for (Consumer<UIFilmPreview> consumer : extensions)
-        {
-            consumer.accept(this);
-        }
     }
 
     public void openReplays()

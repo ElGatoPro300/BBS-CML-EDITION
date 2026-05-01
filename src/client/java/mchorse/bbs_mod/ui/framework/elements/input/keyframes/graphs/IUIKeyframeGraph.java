@@ -16,8 +16,7 @@ import java.util.List;
 
 public interface IUIKeyframeGraph
 {
-    public static final int TOP_MARGIN = 15;
-    public static final int SIDEBAR_WIDTH = 140;
+    public static final int TOP_MARGIN = 25;
 
     public void resetView();
 
@@ -123,15 +122,7 @@ public interface IUIKeyframeGraph
 
         if (value == null)
         {
-            if ("shadow_size".equals(sheet.id))
-            {
-                value = 0.5D;
-            }
-            else if ("shadow_opacity".equals(sheet.id))
-            {
-                value = 1D;
-            }
-            else if (segment != null)
+            if (segment != null)
             {
                 value = segment.createInterpolated();
                 extra = segment.a;
@@ -197,11 +188,6 @@ public interface IUIKeyframeGraph
     public default void setTick(float tick, boolean dirty)
     {
         Keyframe selected = this.getSelected();
-        if (selected == null)
-        {
-            return;
-        }
-
         float diff = tick - selected.getTick();
 
         for (UIKeyframeSheet sheet : this.getSheets())
@@ -229,11 +215,6 @@ public interface IUIKeyframeGraph
     public default void setValue(Object value, boolean unmergeable)
     {
         Keyframe selected = this.getSelected();
-        if (selected == null)
-        {
-            return;
-        }
-
         IKeyframeFactory factory = selected.getFactory();
         Object keyframe = factory.copy(selected.getValue());
 

@@ -18,7 +18,6 @@ import mchorse.bbs_mod.forms.forms.MobForm;
 import mchorse.bbs_mod.forms.forms.ModelForm;
 import mchorse.bbs_mod.forms.forms.ParticleForm;
 import mchorse.bbs_mod.forms.forms.StructureForm;
-import mchorse.bbs_mod.forms.forms.ShapeForm;
 import mchorse.bbs_mod.forms.forms.LightForm;
 import mchorse.bbs_mod.forms.forms.TrailForm;
 import mchorse.bbs_mod.forms.forms.VanillaParticleForm;
@@ -44,7 +43,6 @@ import mchorse.bbs_mod.ui.forms.editors.forms.UIMobForm;
 import mchorse.bbs_mod.ui.forms.editors.forms.UIModelForm;
 import mchorse.bbs_mod.ui.forms.editors.forms.UIParticleForm;
 import mchorse.bbs_mod.ui.forms.editors.forms.UIStructureForm;
-import mchorse.bbs_mod.ui.forms.editors.forms.UIShapeForm;
 import mchorse.bbs_mod.ui.forms.editors.forms.UITrailForm;
 import mchorse.bbs_mod.ui.forms.editors.forms.UIVanillaParticleForm;
 import mchorse.bbs_mod.ui.forms.editors.forms.UILightForm;
@@ -78,13 +76,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import java.util.function.Supplier;
 
 public class UIFormEditor extends UIElement implements IUIFormList, ICursor
 {
     public static Map<Class, Supplier<UIForm>> panels = new HashMap<>();
-    public static Function<UIFormEditor, UIPickableFormRenderer> rendererFactory = UIPickableFormRenderer::new;
 
     private static float treeWidth = 0F;
     private static boolean TOGGLED = true;
@@ -140,7 +136,6 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
         register(VanillaParticleForm.class, UIVanillaParticleForm::new);
         register(TrailForm.class, UITrailForm::new);
         register(StructureForm.class, UIStructureForm::new);
-        register(ShapeForm.class, UIShapeForm::new);
         register(LightForm.class, UILightForm::new);
         register(FramebufferForm.class, UIFramebufferForm::new);
     }
@@ -226,7 +221,7 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
         this.shiftDuration.tooltip(UIKeys.CAMERA_TIMELINE_CONTEXT_SHIFT_DURATION, Direction.RIGHT);
         this.shiftDuration.keys().register(Keys.CLIP_SHIFT, () -> this.shiftDuration.clickItself());
 
-        this.renderer = rendererFactory.apply(this);
+        this.renderer = new UIPickableFormRenderer(this);
         this.renderer.full(this);
 
         this.finish = new UIIcon(Icons.IN, (b) -> this.palette.exit());
