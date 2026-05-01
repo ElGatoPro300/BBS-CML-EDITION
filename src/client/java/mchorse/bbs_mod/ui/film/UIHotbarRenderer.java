@@ -25,6 +25,8 @@ public class UIHotbarRenderer
     private static final Identifier GUI_ICONS = new Identifier("minecraft", "textures/gui/icons.png");
     private static final Identifier WIDGETS_TEXTURE = new Identifier("minecraft", "textures/gui/widgets.png");
     private static final int GUI_ICONS_SIZE = 256;
+    private static boolean wasHeartRegenerationEnabled;
+    private static long heartRegenerationStartTick;
 
     public static void renderHotbars(MatrixStack stack, Batcher2D batcher, List<HotbarState> hotbars)
     {
@@ -84,6 +86,12 @@ public class UIHotbarRenderer
 
         drawTexture(batcher, WIDGETS_TEXTURE, 0, 0, 0, 0, 182, 22);
 
+        boolean hasOffhandItem = hotbar.offhandItem != null && !hotbar.offhandItem.isEmpty();
+        if (hasOffhandItem)
+        {
+            drawTexture(batcher, WIDGETS_TEXTURE, -29, -1, 24, 22, 29, 24);
+        }
+
         int selectedSlot = MathHelper.clamp(hotbar.selectedSlot, 0, 8);
         drawTexture(batcher, WIDGETS_TEXTURE, selectedSlot * 20 - 1, -1, 0, 22, 24, 22);
 
@@ -110,14 +118,33 @@ public class UIHotbarRenderer
         Random heartShakeRandom = hotbar.health <= 4F ? new Random(thisTickSeed()) : null;
         Random hungerShakeRandom = hotbar.hunger <= 6F ? new Random(thisTickSeed() + 17L) : null;
 
-        renderBar(batcher, hotbar.health, containerU, containerV, heartHalfU, heartV, heartFullU, heartV, 0, barsY, healthSlots, heartShakeRandom);
+        int regenerationHeartIndex = -1;
+        long hudTick = MinecraftClient.getInstance().world != null ? MinecraftClient.getInstance().world.getTime() : System.currentTimeMillis() / 50L;
+
+        if (hotbar.heartRegeneration && healthSlots > 0 && hotbar.health > 0F)
+        {
+            if (!wasHeartRegenerationEnabled)
+            {
+                heartRegenerationStartTick = hudTick;
+            }
+            wasHeartRegenerationEnabled = true;
+            int cycleLength = healthSlots + 5;
+            int cycleIndex = cycleLength <= 0 ? 0 : (int) Math.floorMod(hudTick - heartRegenerationStartTick, cycleLength);
+            regenerationHeartIndex = cycleIndex < healthSlots ? cycleIndex : -1;
+        }
+        else if (wasHeartRegenerationEnabled)
+        {
+            wasHeartRegenerationEnabled = false;
+        }
+
+        renderBar(batcher, hotbar.health, containerU, containerV, heartHalfU, heartV, heartFullU, heartV, 0, barsY, healthSlots, heartShakeRandom, regenerationHeartIndex);
         if (absorptionSlots > 0)
         {
-            renderBar(batcher, hotbar.absorption, containerU, containerV, absorptionHalfU, absorptionV, absorptionFullU, absorptionV, 0, barsY - healthRows * 10, absorptionSlots, heartShakeRandom);
+            renderBar(batcher, hotbar.absorption, containerU, containerV, absorptionHalfU, absorptionV, absorptionFullU, absorptionV, 0, barsY - healthRows * 10, absorptionSlots, heartShakeRandom, -1);
         }
         if (hotbar.armor > 0F)
         {
-            renderBar(batcher, hotbar.armor, 16, 9, 25, 9, 34, 9, 0, barsY - (healthRows + absorptionRows) * 10, 10, null);
+            renderBar(batcher, hotbar.armor, 16, 9, 25, 9, 34, 9, 0, barsY - (healthRows + absorptionRows) * 10, 10, null, -1);
         }
 
         int foodEmptyU = 16;
@@ -125,6 +152,8 @@ public class UIHotbarRenderer
         int foodFullU = 52;
         int foodV = hotbar.hungerEffect ? 144 : 27;
         renderBarReverse(batcher, hotbar.hunger, foodEmptyU, foodV, foodHalfU, foodV, foodFullU, foodV, 182 - 9, barsY, 10, hungerShakeRandom);
+
+        renderAirBar(batcher, hotbar.air, 182 - 9, barsY - 10);
 
         float experience = MathHelper.clamp(hotbar.experience, 0F, 1F);
         int xpPixels = MathHelper.ceil(experience * 182F);
@@ -162,7 +191,7 @@ public class UIHotbarRenderer
             batcher.getContext().drawItemInSlot(batcher.getFont().getRenderer(), stackItem, itemX, itemY);
         }
 
-        if (hotbar.offhandItem != null && !hotbar.offhandItem.isEmpty())
+        if (hasOffhandItem)
         {
             int offhandX = -26;
             int offhandY = 3;
@@ -182,7 +211,7 @@ public class UIHotbarRenderer
         batcher.flush();
     }
 
-    private static void renderBar(Batcher2D batcher, float value, int emptyU, int emptyV, int halfU, int halfV, int fullU, int fullV, int x, int y, int slots, Random lowHealthShakeRandom)
+    private static void renderBar(Batcher2D batcher, float value, int emptyU, int emptyV, int halfU, int halfV, int fullU, int fullV, int x, int y, int slots, Random lowHealthShakeRandom, int regenerationHeartIndex)
     {
         if (slots <= 0)
         {
@@ -201,6 +230,11 @@ public class UIHotbarRenderer
             if (lowHealthShakeRandom != null)
             {
                 iconY += lowHealthShakeRandom.nextInt(2);
+            }
+
+            if (i == regenerationHeartIndex)
+            {
+                iconY -= 2;
             }
 
             drawGuiIcon(batcher, iconX, iconY, emptyU, emptyV, 9, 9);
@@ -267,6 +301,29 @@ public class UIHotbarRenderer
         int a = MathHelper.clamp(Math.round(MathHelper.clamp(alpha, 0F, 1F) * 255F), 0, 255);
 
         return (a << 24) | (color & 0x00FFFFFF);
+    }
+
+    private static void renderAirBar(Batcher2D batcher, float air, int x, int y)
+    {
+        if (air >= 300F)
+        {
+            return;
+        }
+
+        int full = MathHelper.ceil((air - 2F) * 10F / 300F);
+        int popping = MathHelper.ceil(air * 10F / 300F) - full;
+
+        full = MathHelper.clamp(full, 0, 10);
+        popping = MathHelper.clamp(popping, 0, 10 - full);
+
+        for (int i = 0; i < full + popping; i++)
+        {
+            int iconX = x - i * 8;
+            int u = i < full ? 16 : 25;
+            int v = 18;
+
+            drawGuiIcon(batcher, iconX, y, u, v, 9, 9);
+        }
     }
 
     private static void drawGuiIcon(Batcher2D batcher, int x, int y, int u, int v, int w, int h)
