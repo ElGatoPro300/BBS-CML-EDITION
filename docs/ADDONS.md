@@ -286,6 +286,7 @@ import mchorse.bbs_mod.ui.film.replays.UIReplaysEditor;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 
 // In your client addon initialization
+public void init() {
     // Register a custom color (0xRRGGBB)
     UIReplaysEditor.registerColor("Halo", 0xFFFFD3);
     UIReplaysEditor.registerColor("Horse", 0xFF1413);
