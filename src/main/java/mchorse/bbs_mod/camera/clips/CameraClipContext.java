@@ -1,7 +1,5 @@
 package mchorse.bbs_mod.camera.clips;
 
-import io.netty.util.collection.IntObjectHashMap;
-import io.netty.util.collection.IntObjectMap;
 import mchorse.bbs_mod.camera.data.Position;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.utils.clips.Clip;
@@ -10,6 +8,9 @@ import mchorse.bbs_mod.utils.clips.ClipContext;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Predicate;
+
+import io.netty.util.collection.IntObjectHashMap;
+import io.netty.util.collection.IntObjectMap;
 
 public class CameraClipContext extends ClipContext<CameraClip, Position>
 {

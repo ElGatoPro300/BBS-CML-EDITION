@@ -2,6 +2,7 @@ package mchorse.bbs_mod.ui.utils.keys;
 
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.utils.OS;
+
 import org.lwjgl.glfw.GLFW;
 
 import java.util.HashMap;

@@ -4,6 +4,7 @@ import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.ui.framework.UIScreen;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.Mouse;
+
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
