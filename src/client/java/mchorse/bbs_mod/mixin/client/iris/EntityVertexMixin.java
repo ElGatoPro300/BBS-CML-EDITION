@@ -10,7 +10,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 
 @Pseudo
-@Mixin(targets = "net.irisshaders.iris.compat.sodium.impl.vertex_format.entity_xhfp.EntityVertex")
+@Mixin(targets = "EntityVertex")
 public class EntityVertexMixin
 {
     @ModifyVariable(method = "write2", at = @At("HEAD"), ordinal = 0, remap = false, require = 0)

@@ -349,8 +349,8 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
     // 3. Keep the limbs synced so running/walking looks correct
     if (source != null) {
-        if (livingMorph.limbAnimator instanceof mchorse.bbs_mod.mixin.LimbAnimatorAccessor a && 
-            source.limbAnimator instanceof mchorse.bbs_mod.mixin.LimbAnimatorAccessor b) {
+        if (livingMorph.limbAnimator instanceof LimbAnimatorAccessor a && 
+            source.limbAnimator instanceof LimbAnimatorAccessor b) {
             a.setPos(b.getPos());
             a.setSpeed(b.getSpeed());
         }
