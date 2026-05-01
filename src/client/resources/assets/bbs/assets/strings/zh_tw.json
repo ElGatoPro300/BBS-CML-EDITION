@@ -1027,8 +1027,6 @@
     "bbs.ui.model_blocks.global": "全局",
     "bbs.ui.model_blocks.hardness": "方塊硬度",
     "bbs.ui.model_blocks.hitbox": "啟用碰撞箱",
-    "bbs.ui.model_blocks.hitbox_pos1": "位置 1",
-    "bbs.ui.model_blocks.hitbox_pos2": "位置 2",
     "bbs.ui.model_blocks.keys.move_to": "移動至",
     "bbs.ui.model_blocks.keys.teleport": "傳送至模方塊",
     "bbs.ui.model_blocks.keys.toggle_rendering": "切換世界渲染",

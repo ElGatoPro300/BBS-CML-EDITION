@@ -1,6 +1,5 @@
 package mchorse.bbs_mod.blocks.entities;
 
-import mchorse.bbs_mod.data.DataStorageUtils;
 import mchorse.bbs_mod.data.IMapSerializable;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.forms.FormUtils;
@@ -12,8 +11,6 @@ import mchorse.bbs_mod.utils.pose.Transform;
 import net.minecraft.client.render.model.json.ModelTransformationMode;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.item.ItemStack;
-
-import org.joml.Vector3f;
 
 public class ModelProperties implements IMapSerializable
 {
@@ -42,9 +39,6 @@ public class ModelProperties implements IMapSerializable
     private boolean lookAt;
     private int lightLevel = 0;
     private float hardness;
-
-    private final Vector3f hitboxPos1 = new Vector3f(0F, 0F, 0F);
-    private final Vector3f hitboxPos2 = new Vector3f(1F, 1F, 1F);
 
     public Form getForm()
     {
@@ -265,26 +259,6 @@ public class ModelProperties implements IMapSerializable
         this.hardness = hardness;
     }
 
-    public Vector3f getHitboxPos1()
-    {
-        return this.hitboxPos1;
-    }
-
-    public Vector3f getHitboxPos2()
-    {
-        return this.hitboxPos2;
-    }
-
-    public void setHitboxPos1(float x, float y, float z)
-    {
-        this.hitboxPos1.set(x, y, z);
-    }
-
-    public void setHitboxPos2(float x, float y, float z)
-    {
-        this.hitboxPos2.set(x, y, z);
-    }
-
     public Form getForm(ModelTransformationMode mode)
     {
         Form form = this.form;
@@ -352,26 +326,6 @@ public class ModelProperties implements IMapSerializable
         if (data.has("hitbox")) this.hitbox = data.getBool("hitbox");
         if (data.has("light_level")) this.lightLevel = data.getInt("light_level");
         this.setHardness(data.getFloat("hardness", 0F));
-
-        if (data.has("hitbox_pos1"))
-        {
-            Vector3f value = DataStorageUtils.vector3fFromData(data.getList("hitbox_pos1"), this.hitboxPos1);
-            this.hitboxPos1.set(value);
-        }
-        else
-        {
-            this.hitboxPos1.set(0F, 0F, 0F);
-        }
-
-        if (data.has("hitbox_pos2"))
-        {
-            Vector3f value = DataStorageUtils.vector3fFromData(data.getList("hitbox_pos2"), this.hitboxPos2);
-            this.hitboxPos2.set(value);
-        }
-        else
-        {
-            this.hitboxPos2.set(1F, 1F, 1F);
-        }
     }
 
     @Override
@@ -401,9 +355,6 @@ public class ModelProperties implements IMapSerializable
         data.putBool("look_at", this.lookAt);
         data.putInt("light_level", this.lightLevel);
         data.putFloat("hardness", this.hardness);
-
-        data.put("hitbox_pos1", DataStorageUtils.vector3fToData(this.hitboxPos1));
-        data.put("hitbox_pos2", DataStorageUtils.vector3fToData(this.hitboxPos2));
     }
 
     public void update(IEntity entity)
