@@ -51,9 +51,8 @@ import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.joml.Matrices;
 
-import net.minecraft.client.render.DiffuseLighting;
 import net.minecraft.client.MinecraftClient;
-import org.joml.Vector3f;
+import net.minecraft.client.render.DiffuseLighting;
 
 import org.joml.Matrix3f;
 import org.joml.Vector3f;

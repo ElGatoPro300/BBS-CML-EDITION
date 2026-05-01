@@ -1,9 +1,5 @@
 package mchorse.bbs_mod.client.video;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.opengl.GlStateManager;
-import com.mojang.blaze3d.vertex.VertexFormat;
-import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.camera.clips.misc.VideoClip;
 import mchorse.bbs_mod.client.BBSShaders;
@@ -19,11 +15,12 @@ import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.util.math.MatrixStack;
 
 import org.joml.Matrix4f;
-import org.watermedia.api.player.videolan.VideoPlayer;
-import org.watermedia.videolan4j.factory.MediaPlayerFactory;
-import org.lwjgl.opengl.GL11;
 
+import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.VertexFormat;
+
+import org.lwjgl.opengl.GL11;
 
 import java.io.File;
 import java.util.ArrayList;

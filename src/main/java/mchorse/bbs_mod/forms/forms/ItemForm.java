@@ -5,8 +5,8 @@ import mchorse.bbs_mod.settings.values.core.ValueColor;
 import mchorse.bbs_mod.settings.values.mc.ValueItemStack;
 import mchorse.bbs_mod.settings.values.numeric.ValueBoolean;
 import mchorse.bbs_mod.utils.colors.Color;
-import net.minecraft.item.ItemDisplayContext;
 
+import net.minecraft.item.ItemDisplayContext;
 import net.minecraft.item.ModelTransformationMode;
 import net.minecraft.registry.Registries;
 

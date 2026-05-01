@@ -3,9 +3,9 @@ package mchorse.bbs_mod.ui.dashboard.panels;
 import mchorse.bbs_mod.ui.dashboard.UIDashboard;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
-import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 
 public class UIDashboardPanel extends UIElement
 {

@@ -1,9 +1,5 @@
 package mchorse.bbs_mod.forms.renderers;
 
-import com.mojang.authlib.GameProfile;
-import com.mojang.blaze3d.opengl.GlStateManager;
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.brigadier.StringReader;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.client.MobTextureOverride;
@@ -23,9 +19,9 @@ import mchorse.bbs_mod.utils.pose.Transform;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.ShaderProgram;
-import net.minecraft.client.render.Camera;
 import net.minecraft.client.model.ModelPart;
 import net.minecraft.client.network.OtherClientPlayerEntity;
+import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.command.OrderedRenderCommandQueueImpl;
 import net.minecraft.client.render.entity.EntityRenderManager;
@@ -50,6 +46,7 @@ import net.minecraft.util.math.RotationAxis;
 import org.joml.Matrix4f;
 
 import com.mojang.authlib.GameProfile;
+import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.brigadier.StringReader;
 

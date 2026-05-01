@@ -26,9 +26,9 @@ import net.minecraft.util.Hand;
 
 import org.joml.Matrix4f;
 
-import java.lang.reflect.Method;
 import com.mojang.blaze3d.systems.RenderSystem;
 
+import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Supplier;

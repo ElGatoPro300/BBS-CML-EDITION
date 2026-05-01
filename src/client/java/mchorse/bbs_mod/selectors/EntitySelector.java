@@ -5,8 +5,8 @@ import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.utils.StringUtils;
-import net.minecraft.command.argument.NbtCompoundArgumentType;
 
+import net.minecraft.command.argument.NbtCompoundArgumentType;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;

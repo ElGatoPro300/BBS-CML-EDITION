@@ -7,8 +7,8 @@ import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UIList;
 import mchorse.bbs_mod.utils.StringUtils;
 
-import net.minecraft.client.render.DiffuseLighting;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.render.DiffuseLighting;
 
 import org.joml.Vector3f;
 
