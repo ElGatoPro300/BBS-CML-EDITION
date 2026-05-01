@@ -4,15 +4,17 @@ import mchorse.bbs_mod.math.IExpression;
 import mchorse.bbs_mod.math.MathBuilder;
 import mchorse.bbs_mod.math.functions.NNFunction;
 
+import java.util.Random;
+
 public class Random extends NNFunction
 {
-    public java.util.Random random;
+    public Random random;
 
     public Random(MathBuilder builder, IExpression[] expressions, String name) throws Exception
     {
         super(builder, expressions, name);
 
-        this.random = new java.util.Random();
+        this.random = new Random();
     }
 
     @Override

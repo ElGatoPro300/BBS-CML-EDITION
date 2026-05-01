@@ -1,14 +1,20 @@
 package mchorse.bbs_mod.utils.keyframes.factories;
 
-import com.mojang.datafixers.util.Pair;
-import com.mojang.serialization.DataResult;
+import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.data.DataStorageUtils;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.utils.interps.IInterp;
+
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtElement;
 import net.minecraft.nbt.NbtOps;
+import net.minecraft.registry.RegistryOps;
+import net.minecraft.registry.RegistryWrapper;
+
+import com.mojang.datafixers.util.Pair;
+import com.mojang.serialization.DataResult;
+import com.mojang.serialization.DynamicOps;
 
 import java.util.Optional;
 
@@ -17,8 +23,8 @@ public class ItemStackKeyframeFactory implements IKeyframeFactory<ItemStack>
     @Override
     public ItemStack fromData(BaseType data)
     {
-        net.minecraft.registry.RegistryWrapper.WrapperLookup registries = mchorse.bbs_mod.BBSMod.getRegistryManager();
-        com.mojang.serialization.DynamicOps<NbtElement> ops = registries != null ? net.minecraft.registry.RegistryOps.of(NbtOps.INSTANCE, registries) : NbtOps.INSTANCE;
+        RegistryWrapper.WrapperLookup registries = BBSMod.getRegistryManager();
+        DynamicOps<NbtElement> ops = registries != null ? RegistryOps.of(NbtOps.INSTANCE, registries) : NbtOps.INSTANCE;
         DataResult<Pair<ItemStack, NbtElement>> decode = ItemStack.CODEC.decode(ops, DataStorageUtils.toNbt(data));
         Optional<Pair<ItemStack, NbtElement>> result = decode.result();
 
@@ -28,8 +34,8 @@ public class ItemStackKeyframeFactory implements IKeyframeFactory<ItemStack>
     @Override
     public BaseType toData(ItemStack value)
     {
-        net.minecraft.registry.RegistryWrapper.WrapperLookup registries = mchorse.bbs_mod.BBSMod.getRegistryManager();
-        com.mojang.serialization.DynamicOps<NbtElement> ops = registries != null ? net.minecraft.registry.RegistryOps.of(NbtOps.INSTANCE, registries) : NbtOps.INSTANCE;
+        RegistryWrapper.WrapperLookup registries = BBSMod.getRegistryManager();
+        DynamicOps<NbtElement> ops = registries != null ? RegistryOps.of(NbtOps.INSTANCE, registries) : NbtOps.INSTANCE;
         Optional<NbtElement> result = ItemStack.CODEC.encodeStart(ops, value).result();
 
         return result.map(DataStorageUtils::fromNbt).orElse(new MapType());

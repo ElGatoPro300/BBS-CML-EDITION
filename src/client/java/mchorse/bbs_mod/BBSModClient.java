@@ -122,11 +122,12 @@ import net.minecraft.client.util.BufferAllocator;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.client.util.Window;
 import net.minecraft.client.util.math.MatrixStack;
-import org.joml.Matrix4fStack;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
+
+import org.joml.Matrix4fStack;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 
