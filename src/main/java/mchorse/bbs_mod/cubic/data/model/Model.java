@@ -258,22 +258,6 @@ public class Model implements IMapSerializable, IModel
         CubicModelAnimator.postAnimate(this, action, tick);
     }
 
-    public Model copy()
-    {
-        Model model = new Model(this.parser);
-        model.textureWidth = this.textureWidth;
-        model.textureHeight = this.textureHeight;
-
-        for (ModelGroup group : this.topGroups)
-        {
-            model.topGroups.add(group.copy(model, null));
-        }
-
-        model.initialize();
-
-        return model;
-    }
-
     /* Deserialization / Serialization */
 
     @Override

@@ -12,9 +12,5 @@
     "key.bbs.record_replay": "Grabar reproducción actual",
     "key.bbs.record_video": "Grabar vídeo",
     "key.bbs.teleport": "Teletransportarse a la reproducción actual",
-    "key.bbs.toggle_replay_hud": "Alternar HUD de replay",
-    "category.bbs.main": "BBS mod",
-
-    "bbs.config.editor.clip_type_labels": "Mostrar etiquetas de tipo de clip",
-    "bbs.config.editor.clip_type_labels-comment": "Muestra el tipo de clip en la línea de tiempo del Editor de Cámara y Acciones"
+    "category.bbs.main": "BBS mod"
 }

@@ -13,7 +13,6 @@ import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.RaycastContext;
 import net.minecraft.world.World;
-import org.joml.Vector2d;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 
@@ -77,17 +76,5 @@ public class RayTracing
         EntityHitResult entityHit = ProjectileUtil.raycast(entity, pos, posDir, box, e -> !e.isSpectator() && e.canHit(), dist1);
 
         return entityHit == null || entityHit.getType() == HitResult.Type.MISS ? blockHit : entityHit;
-    }
-
-    public static double intersect(Vector3d pos, Vector3f dir, AABB aabb)
-    {
-        Vector2d result = new Vector2d();
-
-        if (aabb.intersectsRay(pos, dir, result))
-        {
-            return result.x;
-        }
-
-        return Double.POSITIVE_INFINITY;
     }
 }

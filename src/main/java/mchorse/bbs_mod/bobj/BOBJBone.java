@@ -98,21 +98,6 @@ public class BOBJBone
         this.mat.scale(this.transform.scale);
     }
 
-    public BOBJBone copy()
-    {
-        BOBJBone bone = new BOBJBone(this.index, this.name, this.parent, new Matrix4f(this.boneMat));
-
-        bone.transform.copy(this.transform);
-        bone.lighting = this.lighting;
-        bone.color.copy(this.color);
-        bone.mat.set(this.mat);
-        bone.originMat.set(this.originMat);
-        bone.invBoneMat.set(this.invBoneMat);
-        bone.relBoneMat.set(this.relBoneMat);
-
-        return bone;
-    }
-
     public void reset()
     {
         this.transform.identity();

@@ -76,8 +76,6 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
                 {
                     this.poseEditor.selectBone(sheet.anchoredBone);
                 }
-
-                this.poseEditor.refreshCurrentBone();
             }
         }
         else if (FormUtils.getForm(sheet.property) instanceof MobForm mobForm)
@@ -94,18 +92,6 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
         }
 
         this.scroll.add(this.poseEditor);
-    }
-
-    @Override
-    public void update()
-    {
-        super.update();
-
-        if (this.poseEditor != null)
-        {
-            this.poseEditor.setPose(this.keyframe.getValue(), this.poseEditor.getPoseGroupKey());
-            this.poseEditor.refreshCurrentBone();
-        }
     }
 
     @Override
@@ -240,7 +226,7 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
 
         public void refreshCurrentBone()
         {
-            this.pickBone(this.groups.list.getCurrentFirst());
+            this.pickBone(this.groups.getCurrentFirst());
         }
 
         public static void apply(UIKeyframes editor, Keyframe keyframe, Consumer<Pose> consumer)
@@ -289,7 +275,7 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
                 if (sheet == null) return;
 
                 /* Overlay para elegir el hueso */
-                java.util.List<String> bones = this.groups.list.getList();
+                java.util.List<String> bones = this.groups.getList();
                 UISearchList<String> search = new UISearchList<>(new UIStringList(null));
                 UIList<String> list = search.list;
                 UIConfirmOverlayPanel panel = new UIConfirmOverlayPanel(
@@ -327,7 +313,7 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
                 for (String g : bones) { list.add(g); }
 
                 /* Preseleccionar */
-                String current = sheet.anchoredBone != null ? sheet.anchoredBone : this.groups.list.getCurrentFirst();
+                String current = sheet.anchoredBone != null ? sheet.anchoredBone : this.groups.getCurrentFirst();
                 int idx = bones.indexOf(current);
                 list.setIndex(Math.max(idx, 0));
 
@@ -389,7 +375,7 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
         @Override
         protected void pastePose(MapType data)
         {
-            String current = this.groups.list.getCurrentFirst();
+            String current = this.groups.getCurrentFirst();
 
             apply(this.editor, this.keyframe, (pose) -> pose.fromData(data));
             this.pickBone(current);
@@ -398,7 +384,7 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
         @Override
         protected void flipPose()
         {
-            String current = this.groups.list.getCurrentFirst();
+            String current = this.groups.getCurrentFirst();
 
             apply(this.editor, this.keyframe, (pose) -> pose.flip(this.flippedParts));
             this.pickBone(current);
@@ -450,7 +436,7 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
                         {
                             // Use interpolated pose at current cursor position instead of copying previous keyframe
                             Pose pose = (Pose) sheet.channel.interpolate(cursor);
-                            String currentBone = this.editor.groups.list.getCurrentFirst();
+                            String currentBone = this.editor.groups.getCurrentFirst();
                             int index = sheet.channel.insert(cursor, pose);
                             Keyframe<Pose> newKeyframe = sheet.channel.get(index);
 
@@ -459,7 +445,7 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
 
                             if (currentBone != null)
                             {
-                                this.editor.groups.list.setCurrentScroll(currentBone);
+                                this.editor.groups.setCurrentScroll(currentBone);
                             }
 
                             this.editor.refreshCurrentBone();
@@ -486,7 +472,7 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
 
         private void ensureTransformSync()
         {
-            String currentBone = this.editor.groups.list.getCurrentFirst();
+            String currentBone = this.editor.groups.getCurrentFirst();
 
             if (currentBone != null)
             {

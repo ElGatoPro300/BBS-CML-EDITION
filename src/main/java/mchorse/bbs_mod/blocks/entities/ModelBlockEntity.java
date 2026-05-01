@@ -96,38 +96,38 @@ public class ModelBlockEntity extends BlockEntity
         this.currentYaw = currentYaw;
     }
 
-    public static void tick(World world, BlockPos pos, BlockState state, ModelBlockEntity blockEntity)
+    public void tick(World world, BlockPos pos, BlockState state)
     {
-        ModelBlockEntityUpdateCallback.EVENT.invoker().update(blockEntity);
+        ModelBlockEntityUpdateCallback.EVENT.invoker().update(this);
         /* Asegura que el StubEntity tenga posición y mundo correctos para cálculos de luz/bioma.
          * Sin esto, el entity se queda en (0,0,0) y los renders toman luz de esa zona,
          * provocando oscurecimiento en editor, miniatura y bloque de modelo. */
-        blockEntity.entity.setWorld(world);
+        this.entity.setWorld(world);
 
         double x = pos.getX() + 0.5D;
         double y = pos.getY();
         double z = pos.getZ() + 0.5D;
 
-        blockEntity.entity.setPosition(x, y, z);
+        this.entity.setPosition(x, y, z);
 
         /* Initialize previous position/yaw on the very first tick to avoid
          * a huge movement delta (spike) when the block is placed. */
         try
         {
-            if (blockEntity.entity.getAge() == 0)
+            if (this.entity.getAge() == 0)
             {
-                blockEntity.entity.setPrevX(x);
-                blockEntity.entity.setPrevY(y);
-                blockEntity.entity.setPrevZ(z);
+                this.entity.setPrevX(x);
+                this.entity.setPrevY(y);
+                this.entity.setPrevZ(z);
 
-                blockEntity.entity.setPrevYaw(blockEntity.entity.getYaw());
-                blockEntity.entity.setPrevHeadYaw(blockEntity.entity.getHeadYaw());
-                blockEntity.entity.setPrevPitch(blockEntity.entity.getPitch());
-                blockEntity.entity.setPrevBodyYaw(blockEntity.entity.getBodyYaw());
-                blockEntity.entity.setPrevPrevBodyYaw(blockEntity.entity.getPrevBodyYaw());
+                this.entity.setPrevYaw(this.entity.getYaw());
+                this.entity.setPrevHeadYaw(this.entity.getHeadYaw());
+                this.entity.setPrevPitch(this.entity.getPitch());
+                this.entity.setPrevBodyYaw(this.entity.getBodyYaw());
+                this.entity.setPrevPrevBodyYaw(this.entity.getPrevBodyYaw());
 
-                float[] extra = blockEntity.entity.getExtraVariables();
-                float[] prevExtra = blockEntity.entity.getPrevExtraVariables();
+                float[] extra = this.entity.getExtraVariables();
+                float[] prevExtra = this.entity.getPrevExtraVariables();
 
                 if (extra != null && prevExtra != null)
                 {
@@ -140,12 +140,12 @@ public class ModelBlockEntity extends BlockEntity
         }
         catch (Exception e) {}
 
-        blockEntity.entity.update();
-        blockEntity.properties.update(blockEntity.entity);
+        this.entity.update();
+        this.properties.update(this.entity);
         if (!world.isClient)
         {
-            int target = blockEntity.properties.getLightLevel();
-            Form form = blockEntity.properties.getForm();
+            int target = 0;
+            Form form = this.properties.getForm();
 
             if (form instanceof LightForm lightForm && lightForm.enabled.get())
             {
@@ -163,10 +163,10 @@ public class ModelBlockEntity extends BlockEntity
                 target = level;
             }
 
-            if (target != blockEntity.lastLightLevel)
+            if (target != this.lastLightLevel)
             {
-                blockEntity.lastLightLevel = target;
-                blockEntity.properties.setLightLevel(target);
+                this.lastLightLevel = target;
+                this.properties.setLightLevel(target);
 
                 try
                 {

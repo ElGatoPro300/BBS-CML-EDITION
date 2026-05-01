@@ -70,8 +70,6 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
     private ActionsConfig lastConfigs;
     private IAnimator animator;
     private ModelInstance lastModel;
-    private ModelInstance cachedModel;
-    private ModelInstance sourceModel;
 
     private IEntity entity = new StubEntity();
 
@@ -137,56 +135,15 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         return this.animator;
     }
 
-    public void invalidateCachedModel()
-    {
-        if (this.cachedModel != null)
-        {
-            this.cachedModel.delete();
-            this.cachedModel = null;
-        }
-
-        this.sourceModel = null;
-    }
-
     public ModelInstance getModel()
     {
-        String modelId = this.form.model.get();
-        ModelInstance model = BBSModClient.getModels().getModel(modelId);
-
-        if (this.cachedModel == null || !this.cachedModel.id.equals(modelId) || this.sourceModel != model)
-        {
-            if (this.cachedModel != null)
-            {
-                this.cachedModel.delete();
-            }
-
-            if (model != null)
-            {
-                this.cachedModel = model.copy();
-                this.cachedModel.setup();
-                this.sourceModel = model;
-            }
-            else
-            {
-                this.cachedModel = null;
-                this.sourceModel = null;
-            }
-        }
-
-        return this.cachedModel;
+        return getModel(this.form);
     }
 
     public Pose getPose()
     {
         Pose pose = this.form.pose.get().copy();
         Pose overlay = this.form.poseOverlay.get();
-
-        ModelInstance model = this.getModel();
-
-        if (model != null)
-        {
-            this.applyPose(pose, model.parts);
-        }
 
         this.applyPose(pose, overlay);
 
@@ -207,7 +164,6 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
             if (value.fix != 0)
             {
-                poseTransform.fix = value.fix;
                 poseTransform.translate.lerp(value.translate, value.fix);
                 poseTransform.scale.lerp(value.scale, value.fix);
                 poseTransform.rotate.lerp(value.rotate, value.fix);
@@ -227,11 +183,6 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             {
                 poseTransform.color.lerp(value.color, value.fix);
                 poseTransform.lighting = Lerps.lerp(poseTransform.lighting, value.lighting, value.fix);
-            }
-            else
-            {
-                poseTransform.color.mul(value.color);
-                poseTransform.lighting += value.lighting;
             }
 
             if (value.texture != null)
@@ -395,7 +346,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
     private void renderArmor(IEntity target, MatrixStack stack, ArmorType type, ArmorSlot armorSlot, Color color, int overlay, int light)
     {
-        Matrix4f matrix = this.bones.get(armorSlot.group.get()).matrix();
+        Matrix4f matrix = this.bones.get(armorSlot.group).matrix();
 
         if (matrix != null)
         {
@@ -431,7 +382,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
         for (ArmorSlot armorSlot : items)
         {
-            Matrix4f matrix = this.bones.get(armorSlot.group.get()).matrix();
+            Matrix4f matrix = this.bones.get(armorSlot.group).matrix();
 
             if (matrix != null)
             {
@@ -476,7 +427,6 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
     @Override
     public boolean renderArm(MatrixStack matrices, int light, AbstractClientPlayerEntity player, Hand hand)
     {
-        this.ensureAnimator(MinecraftClient.getInstance().getTickDelta());
         ModelInstance model = this.getModel();
 
         if (this.animator != null && model != null)
@@ -499,7 +449,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
                 while (g != null)
                 {
-                    if (g.id.equals(slot.group.get()))
+                    if (g.id.equals(slot.group))
                     {
                         visible = true;
 
@@ -563,10 +513,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
             context.stack.multiply(RotationAxis.POSITIVE_Y.rotation(MathUtils.PI));
 
-            if (texture != null)
-            {
-                BBSModClient.getTextures().bindTexture(texture);
-            }
+            BBSModClient.getTextures().bindTexture(texture);
 
             Supplier<ShaderProgram> mainShader = (BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld()) || !model.isVAORendered()
                 ? GameRenderer::getRenderTypeEntityTranslucentCullProgram

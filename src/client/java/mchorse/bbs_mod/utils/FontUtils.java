@@ -23,31 +23,23 @@ public class FontUtils
         }
     }
 
-    public static TextureFont getFont(String name, int style)
+    public static TextureFont getFont(String name)
     {
-        String key = name + ":" + style;
-        
-        if (fonts.containsKey(key))
+        if (fonts.containsKey(name))
         {
-            return fonts.get(key);
+            return fonts.get(name);
         }
         
-        /* Case-insensitive search */
-        File[] files = FONTS_FOLDER.listFiles((dir, f) -> f.toLowerCase().startsWith(name.toLowerCase() + ".") && (f.toLowerCase().endsWith(".ttf") || f.toLowerCase().endsWith(".otf")));
+        File[] files = FONTS_FOLDER.listFiles((dir, f) -> f.startsWith(name + ".") && (f.endsWith(".ttf") || f.endsWith(".otf")));
         
         if (files != null && files.length > 0)
         {
-            TextureFont font = new TextureFont(files[0], style);
-            fonts.put(key, font);
+            TextureFont font = new TextureFont(files[0]);
+            fonts.put(name, font);
             return font;
         }
         
         return null;
-    }
-
-    public static TextureFont getFont(String name)
-    {
-        return getFont(name, java.awt.Font.PLAIN);
     }
 
     public static List<String> getAvailableFonts()

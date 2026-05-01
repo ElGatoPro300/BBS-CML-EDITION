@@ -80,7 +80,7 @@ import java.util.function.Supplier;
 
 public class UIFormEditor extends UIElement implements IUIFormList, ICursor
 {
-    public static Map<Class, Supplier<UIForm>> panels = new HashMap<>();
+    private static Map<Class, Supplier<UIForm>> panels = new HashMap<>();
 
     private static float treeWidth = 0F;
     private static boolean TOGGLED = true;

@@ -64,8 +64,8 @@ public class BOBJModel implements IModel
     public void setup()
     {
         this.vao = this.simple
-            ? new BOBJModelSimpleVAO(this.meshData, this.armature)
-            : new BOBJModelVAO(this.meshData, this.armature);
+            ? new BOBJModelSimpleVAO(this.meshData)
+            : new BOBJModelVAO(this.meshData);
 
         this.armature.setupMatrices();
     }
@@ -125,16 +125,6 @@ public class BOBJModel implements IModel
             bone.transform.rotate.add(transform.rotate);
             bone.transform.rotate2.add(transform.rotate2);
         }
-    }
-
-    @Override
-    public IModel copy()
-    {
-        BOBJModel model = new BOBJModel(this.armature.copy(), this.meshData, this.simple);
-        
-        model.setup();
-        
-        return model;
     }
 
     @Override

@@ -2,7 +2,6 @@ package mchorse.bbs_mod.blocks;
 
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.blocks.entities.ModelBlockEntity;
-import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.network.ServerNetwork;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockEntityProvider;
@@ -39,7 +38,6 @@ import org.jetbrains.annotations.Nullable;
 public class ModelBlock extends Block implements BlockEntityProvider, Waterloggable
 {
     public static final IntProperty LIGHT_LEVEL = IntProperty.of("light_level", 0, 15);
-
     public static <E extends BlockEntity, A extends BlockEntity> BlockEntityTicker<A> validateTicker(BlockEntityType<A> givenType, BlockEntityType<E> expectedType, BlockEntityTicker<? super E> ticker)
     {
         return expectedType == givenType ? (BlockEntityTicker<A>) ticker : null;
@@ -106,7 +104,7 @@ public class ModelBlock extends Block implements BlockEntityProvider, Waterlogga
     @Override
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(World world, BlockState state, BlockEntityType<T> type)
     {
-        return validateTicker(type, BBSMod.MODEL_BLOCK_ENTITY, (w, p, s, e) -> ModelBlockEntity.tick(w, p, s, e));
+        return validateTicker(type, BBSMod.MODEL_BLOCK_ENTITY, (theWorld, blockPos, blockState, blockEntity) -> blockEntity.tick(theWorld, blockPos, blockState));
     }
 
     @Nullable
@@ -127,37 +125,6 @@ public class ModelBlock extends Block implements BlockEntityProvider, Waterlogga
 
                 if (be instanceof ModelBlockEntity model && model.getProperties().isHitbox())
                 {
-                    Form form = model.getProperties().getForm();
-
-                    if (form != null && form.hitbox.get())
-                    {
-                        float width = form.hitboxWidth.get();
-                        float height = form.hitboxHeight.get();
-
-                        if (width > 0F && height > 0F)
-                        {
-                            float halfWidth = width / 2F;
-
-                            double minX = 0.5D - halfWidth;
-                            double maxX = 0.5D + halfWidth;
-                            double minZ = 0.5D - halfWidth;
-                            double maxZ = 0.5D + halfWidth;
-                            double minY = 0D;
-                            double maxY = height;
-
-                            minX = Math.max(0D, minX);
-                            minZ = Math.max(0D, minZ);
-                            maxX = Math.min(1D, maxX);
-                            maxZ = Math.min(1D, maxZ);
-                            maxY = Math.min(1D, maxY);
-
-                            if (minX < maxX && minZ < maxZ && maxY > minY)
-                            {
-                                return VoxelShapes.cuboid(minX, minY, minZ, maxX, maxY, maxZ);
-                            }
-                        }
-                    }
-
                     return VoxelShapes.fullCube();
                 }
             }

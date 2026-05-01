@@ -105,7 +105,6 @@ public class UIReplaysEditor extends UIElement
     private Film film;
     private Replay replay;
     private Set<String> keys = new LinkedHashSet<>();
-    private final Map<String, Boolean> collapsedModelTracks = new HashMap<>();
 
     static
     {
@@ -352,8 +351,6 @@ public class UIReplaysEditor extends UIElement
     {
         this.replay = replay;
 
-        BBSModClient.setSelectedReplay(replay);
-
         if (resetOrbit)
         {
             this.filmPanel.getController().orbit.reset();
@@ -365,7 +362,6 @@ public class UIReplaysEditor extends UIElement
 
         if (select)
         {
-            this.replays.replays.ensureVisible(replay);
             this.replays.replays.setCurrentScroll(replay);
         }
     }
@@ -615,118 +611,10 @@ public class UIReplaysEditor extends UIElement
             return false;
         });
 
-        List<UIKeyframeSheet> grouped = new ArrayList<>();
-        Set<String> addedGroups = new HashSet<>();
-
-        for (UIKeyframeSheet sheet : sheets)
-        {
-            Form form = sheet.property == null ? null : FormUtils.getForm(sheet.property);
-
-            if (form != null && (form.getParent() != null || form instanceof ModelForm))
-            {
-                String path = FormUtils.getPath(form);
-                String groupKey = this.replay.uuid.get() + ":" + path;
-
-                if (addedGroups.add(groupKey))
-                {
-                    boolean expanded = !this.collapsedModelTracks.getOrDefault(groupKey, false);
-                    UIKeyframeSheet header = UIKeyframeSheet.groupHeader(
-                        "__group__" + groupKey,
-                        IKey.constant(form.getDisplayName()),
-                        Colors.LIGHTEST_GRAY & Colors.RGB,
-                        groupKey,
-                        expanded,
-                        () ->
-                        {
-                            this.collapsedModelTracks.put(groupKey, expanded);
-                            this.updateChannelsList();
-                        }
-                    );
-
-                    grouped.add(header);
-                }
-
-                if (this.collapsedModelTracks.getOrDefault(groupKey, false))
-                {
-                    continue;
-                }
-            }
-
-            grouped.add(sheet);
-        }
-
-        sheets = grouped;
-
-        /* Ensure main model header is on top without reordering tracks */
-        if (this.replay.form.get() instanceof ModelForm)
-        {
-            Form rootForm = FormUtils.getRoot(this.replay.form.get());
-            String rootPath = FormUtils.getPath(rootForm);
-            String rootKey = this.replay.uuid.get() + ":" + rootPath;
-            UIKeyframeSheet rootHeader = null;
-
-            for (UIKeyframeSheet sheet : sheets)
-            {
-                if (sheet.groupHeader && rootKey.equals(sheet.groupKey))
-                {
-                    rootHeader = sheet;
-                    break;
-                }
-            }
-
-            if (rootHeader != null)
-            {
-                List<UIKeyframeSheet> reordered = new ArrayList<>();
-                reordered.add(rootHeader);
-
-                for (UIKeyframeSheet sheet : sheets)
-                {
-                    if (sheet != rootHeader)
-                    {
-                        reordered.add(sheet);
-                    }
-                }
-
-                sheets = reordered;
-
-                if (this.collapsedModelTracks.getOrDefault(rootKey, false))
-                {
-                    sheets.removeIf((sheet) ->
-                    {
-                        if (sheet.groupHeader)
-                        {
-                            return false;
-                        }
-
-                        if (sheet.property == null)
-                        {
-                            return ReplayKeyframes.CURATED_CHANNELS.contains(sheet.id);
-                        }
-
-                        Form sheetForm = FormUtils.getForm(sheet.property);
-
-                        if (sheetForm == null)
-                        {
-                            return false;
-                        }
-
-                        return FormUtils.getPath(sheetForm).equals(rootPath);
-                    });
-                }
-            }
-        }
-
         Object lastForm = null;
 
         for (UIKeyframeSheet sheet : sheets)
         {
-            if (sheet.groupHeader)
-            {
-                sheet.separator = false;
-                lastForm = null;
-                continue;
-            }
-
             Object form = sheet.property == null ? null : FormUtils.getForm(sheet.property);
 
             if (!Objects.equals(lastForm, form))
@@ -970,9 +858,6 @@ public class UIReplaysEditor extends UIElement
         {
             String activeOverlayPath = null;
             String posePath = null;
-            double minPoseDist = Double.MAX_VALUE;
-            double minOverlayDist = Double.MAX_VALUE;
-            int currentTick = this.filmPanel.getCursor();
 
             for (UIKeyframeSheet sheet : graph.getSheets())
             {
@@ -988,40 +873,20 @@ public class UIReplaysEditor extends UIElement
                         if (property.getId().equals("pose"))
                         {
                             posePath = FormUtils.getPropertyPath(property);
-
-                            if (!sheet.channel.isEmpty())
-                            {
-                                KeyframeSegment segment = sheet.channel.find(currentTick);
-
-                                if (segment != null)
-                                {
-                                    minPoseDist = Math.abs(segment.getClosest().getTick() - currentTick);
-                                }
-                            }
                         }
                         else if (property.getId().startsWith("pose_overlay"))
                         {
                             if (!sheet.channel.isEmpty())
                             {
-                                KeyframeSegment segment = sheet.channel.find(currentTick);
-
-                                if (segment != null)
-                                {
-                                    double dist = Math.abs(segment.getClosest().getTick() - currentTick);
-
-                                    if (activeOverlayPath == null)
-                                    {
-                                        activeOverlayPath = FormUtils.getPropertyPath(property);
-                                        minOverlayDist = dist;
-                                    }
-                                }
+                                activeOverlayPath = FormUtils.getPropertyPath(property);
+                                break;
                             }
                         }
                     }
                 }
             }
 
-            if (activeOverlayPath != null && minOverlayDist < minPoseDist)
+            if (activeOverlayPath != null)
             {
                 propertyPath = activeOverlayPath;
             }

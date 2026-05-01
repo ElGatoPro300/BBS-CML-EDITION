@@ -18,11 +18,11 @@ public class VideoClip extends CameraClip
     public ValueString video = new ValueString("video", "");
     public ValueInt offset = new ValueInt("offset", 0, Integer.MIN_VALUE, Integer.MAX_VALUE);
     /* Volumen del clip: 0–100 */
-    public ValueInt volume = new ValueInt("volume", 50, 0, 100);
+    public ValueInt volume = new ValueInt("volume", 100, 0, 100);
     public ValueInt x = new ValueInt("x", 0);
     public ValueInt y = new ValueInt("y", 0);
-    public ValueInt width = new ValueInt("width", 100);
-    public ValueInt height = new ValueInt("height", 100);
+    public ValueInt width = new ValueInt("width", 0);
+    public ValueInt height = new ValueInt("height", 0);
     public ValueFloat opacity = new ValueFloat("opacity", 1.0F, 0.0F, 1.0F);
     public ValueBoolean loops = new ValueBoolean("loops", true);
     public ValueBoolean global = new ValueBoolean("global", false);
