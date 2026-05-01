@@ -22,6 +22,7 @@ import mchorse.bbs_mod.ui.film.clips.renderer.UIClipRenderers;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
+import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeEditor;
 import mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D;
 import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
 import mchorse.bbs_mod.ui.utils.Area;
@@ -94,7 +95,9 @@ public class UIClips extends UIElement
 
     /* Embedded view */
     private UIIcon embeddedClose;
+    private UIIcon embeddedLayout;
     private UIElement embedded;
+    private boolean embeddedStackedLayout;
 
     private Vector3i addPreview;
     private int layers;
@@ -147,7 +150,7 @@ public class UIClips extends UIElement
             @Override
             protected void renderSkin(UIContext context)
             {
-                if (UIClips.this.embedded != null && UIClips.this.delegate.getClip() instanceof KeyframeClip)
+                if (UIClips.this.embedded != null)
                 {
                     this.area.render(context.batcher, Colors.setA(Colors.RED, 0.5F));
                 }
@@ -155,7 +158,30 @@ public class UIClips extends UIElement
                 super.renderSkin(context);
             }
         };
-        this.embeddedClose.relative(this);
+        this.embeddedClose.relative(this).xy(4, 4);
+
+        this.embeddedLayout = new UIIcon(Icons.EXCHANGE, (b) ->
+        {
+            if (this.embedded instanceof UIKeyframeEditor keyframeEditor)
+            {
+                this.embeddedStackedLayout = !this.embeddedStackedLayout;
+                keyframeEditor.setStackedLayout(this.embeddedStackedLayout);
+                b.active(this.embeddedStackedLayout);
+            }
+        })
+        {
+            @Override
+            protected void renderSkin(UIContext context)
+            {
+                int primary = BBSSettings.primaryColor.get();
+                /* Match Open Camera Editor highlight colors, but with vertical top->bottom gradient. */
+                context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.y + 2, Colors.A100 | primary);
+                context.batcher.gradientVBox(this.area.x, this.area.y + 2, this.area.ex(), this.area.ey(), Colors.A75 | primary, primary);
+
+                super.renderSkin(context);
+            }
+        };
+        this.embeddedLayout.relative(this).xy(26, 4);
 
         this.context((menu) ->
         {
@@ -976,6 +1002,7 @@ public class UIClips extends UIElement
     public void embedView(UIElement element)
     {
         this.embeddedClose.removeFromParent();
+        this.embeddedLayout.removeFromParent();
 
         if (this.embedded != null)
         {
@@ -990,6 +1017,15 @@ public class UIClips extends UIElement
 
             this.prepend(this.embedded);
             this.add(this.embeddedClose);
+
+            if (this.embedded instanceof UIKeyframeEditor keyframeEditor)
+            {
+                keyframeEditor.setStackedLayout(this.embeddedStackedLayout);
+                this.embeddedLayout.active(this.embeddedStackedLayout);
+                this.add(this.embeddedLayout);
+                this.embeddedLayout.resize();
+            }
+
             this.embedded.resize();
             this.embeddedClose.resize();
         }

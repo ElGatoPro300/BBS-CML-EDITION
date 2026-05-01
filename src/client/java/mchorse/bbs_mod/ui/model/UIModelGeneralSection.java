@@ -5,12 +5,11 @@ import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
-import mchorse.bbs_mod.ui.framework.elements.input.text.UITextbox;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
+import mchorse.bbs_mod.ui.framework.elements.input.text.UITextbox;
 import mchorse.bbs_mod.ui.utils.UI;
-import org.joml.Vector3f;
-
 import mchorse.bbs_mod.ui.utils.pose.UIPoseEditor;
+import org.joml.Vector3f;
 
 public class UIModelGeneralSection extends UIModelSection
 {
@@ -71,7 +70,7 @@ public class UIModelGeneralSection extends UIModelSection
             if (this.config != null) this.config.anchorGroup.set(str);
         });
         this.anchorGroup.tooltip(UIKeys.MODELS_ANCHOR_GROUP_TOOLTIP);
-        
+
         this.uiScale = new UITrackpad((v) ->
         {
             if (this.config != null) this.config.uiScale.set(v.floatValue());

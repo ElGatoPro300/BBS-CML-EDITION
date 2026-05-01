@@ -111,7 +111,7 @@ public class UIFilmPreview extends UIElement
         this.teleport.tooltip(UIKeys.FILM_TELEPORT_TITLE);
         this.teleport.context((menu) ->
         {
-            menu.action(Icons.MOVE_TO, UIKeys.FILM_TELEPORT_CONTEXT_PLAYER, this.panel.playerToCamera, () -> this.panel.playerToCamera = !this.panel.playerToCamera);
+            menu.action(Icons.MOVE_TO, UIKeys.FILM_TELEPORT_CONTEXT_PLAYER, BBSSettings.editorCameraPreviewPlayerSync.get(), () -> BBSSettings.editorCameraPreviewPlayerSync.set(!BBSSettings.editorCameraPreviewPlayerSync.get()));
             menu.action(Icons.COPY, UIKeys.CAMERA_PANELS_CONTEXT_COPY_POSITION, () ->
             {
                 Position current = new Position(this.panel.getCamera());
@@ -204,6 +204,7 @@ public class UIFilmPreview extends UIElement
 
                 UIOverlay.addOverlay(this.getContext(), overlayPanel);
             });
+            menu.action(Icons.FOLDER, UIKeys.CAMERA_TOOLTIPS_OPEN_SCREENSHOTS, () -> UIUtils.openFolder(BBSModClient.getScreenshotRecorder().getScreenshots()));
 
             menu.action(Icons.FILM, UIKeys.CAMERA_TOOLTIPS_OPEN_VIDEOS, () -> this.panel.recorder.openMovies());
             menu.action(Icons.GEAR, UIKeys.CAMERA_TOOLTIPS_OPEN_VIDEO_SETTINGS, () -> UIOverlay.addOverlay(this.getContext(), new UIVideoSettingsOverlayPanel(BBSSettings.videoSettings)));
@@ -330,6 +331,7 @@ public class UIFilmPreview extends UIElement
                 context.menu.height,
                 true
             );
+
         }
 
         this.renderCursor(context);

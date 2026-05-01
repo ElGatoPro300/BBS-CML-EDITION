@@ -53,8 +53,8 @@ public class UIColorPicker extends UIElement
     public Area blue = new Area();
     public Area alpha = new Area();
 
-    private int dragging = -1;
-    private Color hsv = new Color();
+    protected int dragging = -1;
+    protected Color hsv = new Color();
 
     public static void renderAlphaPreviewQuad(Batcher2D batcher, int x1, int y1, int x2, int y2, Color color)
     {

@@ -6,6 +6,7 @@ import mchorse.bbs_mod.actions.types.AttackActionClip;
 import mchorse.bbs_mod.actions.types.DamageActionClip;
 import mchorse.bbs_mod.actions.types.SwipeActionClip;
 import mchorse.bbs_mod.actions.types.blocks.BreakBlockActionClip;
+import mchorse.bbs_mod.actions.types.blocks.CloseContainerActionClip;
 import mchorse.bbs_mod.actions.types.blocks.InteractBlockActionClip;
 import mchorse.bbs_mod.actions.types.blocks.PlaceBlockActionClip;
 import mchorse.bbs_mod.actions.types.chat.ChatActionClip;
@@ -29,8 +30,14 @@ import mchorse.bbs_mod.camera.clips.converters.PathToDollyConverter;
 import mchorse.bbs_mod.camera.clips.converters.PathToKeyframeConverter;
 import mchorse.bbs_mod.camera.clips.misc.AudioClip;
 import mchorse.bbs_mod.camera.clips.misc.CurveClip;
+import mchorse.bbs_mod.camera.clips.misc.HotbarClip;
 import mchorse.bbs_mod.camera.clips.misc.SubtitleClip;
 import mchorse.bbs_mod.camera.clips.misc.VideoClip;
+import mchorse.bbs_mod.camera.clips.screen.ColorClip;
+import mchorse.bbs_mod.camera.clips.screen.GrainClip;
+import mchorse.bbs_mod.camera.clips.screen.LetterboxClip;
+import mchorse.bbs_mod.camera.clips.screen.ScreenNodeClip;
+import mchorse.bbs_mod.camera.clips.screen.VignetteClip;
 import mchorse.bbs_mod.camera.clips.modifiers.AngleClip;
 import mchorse.bbs_mod.camera.clips.modifiers.DollyZoomClip;
 import mchorse.bbs_mod.camera.clips.modifiers.DragClip;
@@ -167,6 +174,7 @@ public class BBSMod implements ModInitializer
 
     private static MapFactory<Clip, ClipFactoryData> factoryCameraClips;
     private static MapFactory<Clip, ClipFactoryData> factoryActionClips;
+    private static MapFactory<Clip, ClipFactoryData> factoryScreenClips;
 
     public static final EntityType<ActorEntity> ACTOR_ENTITY = Registry.register(
         Registries.ENTITY_TYPE,
@@ -412,6 +420,11 @@ public class BBSMod implements ModInitializer
         return factoryActionClips;
     }
 
+    public static MapFactory<Clip, ClipFactoryData> getFactoryScreenClips()
+    {
+        return factoryScreenClips;
+    }
+
     @Override
     public void onInitialize()
     {
@@ -497,6 +510,7 @@ public class BBSMod implements ModInitializer
             .register(Link.bbs("audio"), AudioClip.class, new ClipFactoryData(Icons.SOUND, 0xffc825))
             .register(Link.bbs("video"), VideoClip.class, new ClipFactoryData(Icons.IMAGE, 0x9933cc))
             .register(Link.bbs("subtitle"), SubtitleClip.class, new ClipFactoryData(Icons.FONT, 0x888899))
+            .register(Link.bbs("hotbar"), HotbarClip.class, new ClipFactoryData(Icons.BLOCK, 0x55aaff))
             .register(Link.bbs("curve"), CurveClip.class, new ClipFactoryData(Icons.ARC, 0xff1493))
             .register(Link.bbs("tracker"), TrackerClip.class, new ClipFactoryData(Icons.USER, 0xffffff))
             .register(Link.bbs("dolly_zoom"), DollyZoomClip.class, new ClipFactoryData(Icons.FILTER, 0x7d56c9));
@@ -508,6 +522,7 @@ public class BBSMod implements ModInitializer
             .register(Link.bbs("command"), CommandActionClip.class, new ClipFactoryData(Icons.PROPERTIES, Colors.ACTIVE))
             .register(Link.bbs("place_block"), PlaceBlockActionClip.class, new ClipFactoryData(Icons.BLOCK, Colors.INACTIVE))
             .register(Link.bbs("interact_block"), InteractBlockActionClip.class, new ClipFactoryData(Icons.FULLSCREEN, Colors.MAGENTA))
+            .register(Link.bbs("close_container"), CloseContainerActionClip.class, new ClipFactoryData(Icons.FULLSCREEN, Colors.MAGENTA))
             .register(Link.bbs("break_block"), BreakBlockActionClip.class, new ClipFactoryData(Icons.BULLET, Colors.GREEN))
             .register(Link.bbs("use_item"), UseItemActionClip.class, new ClipFactoryData(Icons.POINTER, Colors.BLUE))
             .register(Link.bbs("use_block_item"), UseBlockItemActionClip.class, new ClipFactoryData(Icons.BUCKET, Colors.CYAN))
@@ -517,6 +532,13 @@ public class BBSMod implements ModInitializer
             .register(Link.bbs("swipe"), SwipeActionClip.class, new ClipFactoryData(Icons.LIMB, Colors.ORANGE));
 
         events.post(new RegisterActionClipsEvent(factoryActionClips));
+
+        factoryScreenClips = new MapFactory<Clip, ClipFactoryData>()
+            .register(Link.bbs("color"), ColorClip.class, new ClipFactoryData(Icons.FILTER, 0xff6633))
+            .register(Link.bbs("vignette"), VignetteClip.class, new ClipFactoryData(Icons.CIRCLE, 0x222244))
+            .register(Link.bbs("letterbox"), LetterboxClip.class, new ClipFactoryData(Icons.FULLSCREEN, 0x111111))
+            .register(Link.bbs("grain"), GrainClip.class, new ClipFactoryData(Icons.SIX_STAR, 0x887766))
+            .register(Link.bbs("screen_node"), ScreenNodeClip.class, new ClipFactoryData(Icons.GRAPH, 0x3355cc));
 
         setupConfig(Icons.PROCESSOR, "bbs", new File(settingsFolder, "bbs.json"), BBSSettings::register);
 

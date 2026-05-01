@@ -201,7 +201,7 @@ public class UIQuickReplayOverlayPanel extends UIOverlayPanel
                 if (form != null)
                 {
                     context.batcher.clip(iconX, iconY, iconW, iconH, context);
-                    FormUtilsClient.renderUI(form, context, iconX - 10, iconY - 10, iconX + 30, iconY + 30);
+                    FormUtilsClient.renderUI(form, context, iconX, iconY, iconX + iconW, iconY + iconH);
                     context.batcher.unclip(context);
                 }
 

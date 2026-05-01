@@ -390,7 +390,7 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
     {
         super.onDeath(damageSource);
         
-        if (!this.getWorld().isClient() && !this.replayItemsDropped && this.replay != null && this.film != null)
+        if (!this.getWorld().isClient() && !this.replayItemsDropped && this.replay != null && this.film != null && this.replay.dropItemsOnDeath.get())
         {
             this.dropReplayItems();
             this.replayItemsDropped = true;

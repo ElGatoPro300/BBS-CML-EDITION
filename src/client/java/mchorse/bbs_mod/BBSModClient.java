@@ -519,14 +519,14 @@ public class BBSModClient implements ClientModInitializer
                 BBSRendering.renderCoolStuff(context);
             }
 
-            if (BBSSettings.chromaSkyEnabled.get())
+            if (BBSRendering.isChromaSkyEnabled())
             {
-                float d = BBSSettings.chromaSkyBillboard.get();
+                float d = BBSRendering.getChromaSkyBillboard();
 
                 if (d > 0)
                 {
                     MatrixStack stack = context.matrixStack();
-                    Color color = Colors.COLOR.set(BBSSettings.chromaSkyColor.get());
+                    Color color = Colors.COLOR.set(BBSRendering.getChromaSkyColor());
 
                     stack.push();
 
