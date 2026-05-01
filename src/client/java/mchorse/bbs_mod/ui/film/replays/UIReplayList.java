@@ -95,7 +95,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiConsumer;
@@ -804,7 +803,7 @@ public class UIReplayList extends UIList<Replay> {
                             double minSepSq = minSep * minSep;
                             long seed = (long) Math.round(scatterSeed.getValue());
 
-                            Random random = new Random(seed);
+                            java.util.Random random = new java.util.Random(seed);
                             List<double[]> placed = new ArrayList<>();
 
                             for (int order = 0; order < count; order++) {
@@ -1239,7 +1238,7 @@ public class UIReplayList extends UIList<Replay> {
                             double max = randomMax.getValue();
                             double start = Math.min(min, max);
                             double end = Math.max(min, max);
-                            Random random = new Random((long) Math.round(seed));
+                            java.util.Random random = new java.util.Random((long) Math.round(seed));
                             int count = indices.size();
 
                             for (int order = 0; order < count; order++) {

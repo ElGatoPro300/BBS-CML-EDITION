@@ -5,6 +5,7 @@ import mchorse.bbs_mod.ui.forms.editors.forms.UIForm;
 import mchorse.bbs_mod.ui.forms.editors.panels.widgets.UIBlockStateEditor;
 import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
 import mchorse.bbs_mod.utils.colors.Color;
+
 import net.minecraft.block.BlockState;
 
 public class UIBlockFormPanel extends UIFormPanel<BlockForm>
