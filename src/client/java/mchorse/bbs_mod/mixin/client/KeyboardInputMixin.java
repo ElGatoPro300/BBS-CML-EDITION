@@ -5,8 +5,8 @@ import mchorse.bbs_mod.ui.dashboard.UIDashboard;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.UIScreen;
-import net.minecraft.client.MinecraftClient;
 
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.input.KeyboardInput;
 
 import org.lwjgl.glfw.GLFW;

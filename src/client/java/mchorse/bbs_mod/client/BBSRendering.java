@@ -64,9 +64,9 @@ import net.irisshaders.iris.uniforms.custom.cached.CachedUniform;
 
 import org.joml.Matrix4f;
 
+import com.mojang.blaze3d.systems.ProjectionType;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.systems.VertexSorter;
-import com.mojang.blaze3d.systems.ProjectionType;
 
 import org.lwjgl.opengl.GL11;
 

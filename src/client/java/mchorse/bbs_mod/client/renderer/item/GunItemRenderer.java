@@ -13,9 +13,6 @@ import mchorse.bbs_mod.ui.framework.UIScreen;
 import mchorse.bbs_mod.ui.model_blocks.UIModelBlockEditorMenu;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.pose.Transform;
-import com.mojang.serialization.MapCodec;
-import net.minecraft.client.render.entity.model.LoadedEntityModels;
-import net.minecraft.client.render.item.model.special.SpecialModelRenderer;
 
 import net.fabricmc.fabric.api.client.rendering.v1.BuiltinItemRendererRegistry;
 
@@ -23,16 +20,17 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.DiffuseLighting;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.item.ModelTransformationMode;
-import net.minecraft.client.render.LightmapTextureManager;
-import net.minecraft.client.render.DiffuseLighting;
+import net.minecraft.client.render.entity.model.LoadedEntityModels;
+import net.minecraft.client.render.item.model.special.SpecialModelRenderer;
 import net.minecraft.client.render.model.json.ModelTransformationMode;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.ModelTransformationMode;
 
 import org.joml.Vector3f;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.serialization.MapCodec;
 
 import java.util.HashMap;
 import java.util.Iterator;
@@ -156,7 +154,7 @@ public class GunItemRenderer implements SpecialModelRenderer<ItemStack>
         }
 
         @Override
-        public SpecialModelRenderer<?> bake(net.minecraft.client.render.entity.model.LoadedEntityModels config)
+        public SpecialModelRenderer<?> bake(LoadedEntityModels config)
         {
             return BBSModClient.getGunItemRenderer();
         }

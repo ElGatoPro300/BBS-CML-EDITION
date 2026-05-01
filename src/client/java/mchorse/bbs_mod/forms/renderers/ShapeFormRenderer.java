@@ -18,6 +18,8 @@ import mchorse.bbs_mod.utils.math.Noise;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.ShaderProgram;
+import net.minecraft.client.gl.ShaderProgramKey;
+import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
@@ -37,21 +39,6 @@ import com.mojang.blaze3d.systems.RenderSystem;
 
 import org.lwjgl.opengl.GL11;
 
-import mchorse.bbs_mod.BBSModClient;
-import mchorse.bbs_mod.resources.Link;
-import mchorse.bbs_mod.forms.forms.shape.ShapeGraphEvaluator;
-import mchorse.bbs_mod.forms.forms.shape.nodes.IrisAttributeNode;
-import mchorse.bbs_mod.forms.forms.shape.nodes.IrisShaderNode;
-import mchorse.bbs_mod.utils.colors.Color;
-import mchorse.bbs_mod.utils.iris.ShaderCurves;
-import net.minecraft.client.render.BufferRenderer;
-
-import net.minecraft.client.gl.ShaderProgram;
-import net.minecraft.client.gl.ShaderProgramKey;
-import net.minecraft.client.gl.ShaderProgramKeys;
-import java.util.function.Supplier;
-
-import mchorse.bbs_mod.utils.math.Noise;
 import java.util.Random;
 import java.util.function.Supplier;
 
