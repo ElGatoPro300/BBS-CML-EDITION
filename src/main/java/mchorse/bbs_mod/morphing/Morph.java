@@ -7,6 +7,7 @@ import mchorse.bbs_mod.forms.entities.MCEntity;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.forms.MobForm;
 import mchorse.bbs_mod.utils.RayTracing;
+
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityType;
 import net.minecraft.entity.player.PlayerEntity;
@@ -17,11 +18,15 @@ import net.minecraft.registry.RegistryKey;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.hit.HitResult;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 
 public class Morph
 {
+    public static final List<IEntityCaptureHandler> HANDLERS = new ArrayList<>();
+
     private Form form;
     public final MCEntity entity;
 
@@ -32,6 +37,17 @@ public class Morph
         if (hitResult.getType() == HitResult.Type.ENTITY)
         {
             Entity target = ((EntityHitResult) hitResult).getEntity();
+
+            for (IEntityCaptureHandler handler : HANDLERS)
+            {
+                Form form = handler.capture(player, target);
+
+                if (form != null)
+                {
+                    return form;
+                }
+            }
+
             Optional<RegistryKey<EntityType<?>>> key = Registries.ENTITY_TYPE.getKey(target.getType());
 
             if (key.isPresent())

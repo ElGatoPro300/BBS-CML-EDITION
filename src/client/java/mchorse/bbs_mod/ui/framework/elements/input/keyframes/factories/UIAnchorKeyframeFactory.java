@@ -1,6 +1,5 @@
 package mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories;
 
-import io.netty.util.collection.IntObjectMap;
 import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.FormUtilsClient;
@@ -19,12 +18,15 @@ import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.Pair;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
+
 import org.joml.Matrix4f;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
+
+import io.netty.util.collection.IntObjectMap;
 
 public class UIAnchorKeyframeFactory extends UIKeyframeFactory<Anchor>
 {
@@ -43,22 +45,44 @@ public class UIAnchorKeyframeFactory extends UIKeyframeFactory<Anchor>
         {
             menu.action(Icons.CLOSE, UIKeys.GENERAL_NONE, Colors.NEGATIVE, () -> callback.accept(-1));
 
-            for (int i = 0; i < entities.size(); i++)
+            if (replays != null)
             {
-                final int actor = i;
-                IEntity entity = entities.get(i);
-
-                if (entity == null)
+                for (int i = 0; i < replays.size(); i++)
                 {
-                    continue;
+                    final int actor = i;
+                    IEntity entity = entities.get(i);
+
+                    if (entity == null)
+                    {
+                        continue;
+                    }
+
+                    Replay replay = replays.get(i);
+                    Form form = entity.getForm();
+                    String stringLabel = i + (replay != null ? " - " + replay.getName() : (form == null ? "" : " - " + form.getFormIdOrName()));
+                    IKey label = IKey.constant(stringLabel);
+
+                    menu.action(Icons.CLOSE, label, actor == value, () -> callback.accept(actor));
                 }
+            }
+            else
+            {
+                for (int i = 0; i < entities.size(); i++)
+                {
+                    final int actor = i;
+                    IEntity entity = entities.get(i);
 
-                Replay replay = replays == null ? null : replays.get(i);
-                Form form = entity.getForm();
-                String stringLabel = i + (replay != null ? " - " + replay.getName() : (form == null ? "" : " - " + form.getFormIdOrName()));
-                IKey label = IKey.constant(stringLabel);
+                    if (entity == null)
+                    {
+                        continue;
+                    }
 
-                menu.action(Icons.CLOSE, label, actor == value, () -> callback.accept(actor));
+                    Form form = entity.getForm();
+                    String stringLabel = i + (form == null ? "" : " - " + form.getFormIdOrName());
+                    IKey label = IKey.constant(stringLabel);
+
+                    menu.action(Icons.CLOSE, label, actor == value, () -> callback.accept(actor));
+                }
             }
         });
     }
@@ -75,19 +99,45 @@ public class UIAnchorKeyframeFactory extends UIKeyframeFactory<Anchor>
         Form form = entity.getForm();
         List<String> attachments = new ArrayList<>(FormUtilsClient.getRenderer(form).collectMatrices(entity, 0F).keySet());
 
+        for (int i = attachments.size() - 1; i >= 0; i--)
+        {
+            String name = attachments.get(i);
+            if (name.endsWith("#origin"))
+            {
+                attachments.remove(i);
+            }
+        }
+
         attachments.sort(String::compareToIgnoreCase);
+
+        boolean fallbackToBones = attachments.isEmpty() || (attachments.size() == 1 && attachments.get(0).isEmpty());
+
+        if (fallbackToBones)
+        {
+            List<String> bones = FormUtilsClient.getRenderer(form).getBones();
+
+            if (bones.isEmpty())
+            {
+                return;
+            }
+
+            attachments = new ArrayList<>(bones);
+        }
 
         /* Collect labels (substitute track names) */
         List<String> labels = new ArrayList<>(attachments);
 
-        for (int i = 0; i < labels.size(); i++)
+        if (!fallbackToBones)
         {
-            String label = labels.get(i);
-            Form path = FormUtils.getForm(form, label);
-
-            if (path != null)
+            for (int i = 0; i < labels.size(); i++)
             {
-                labels.set(i, path.getTrackName(label));
+                String label = labels.get(i);
+                Form path = FormUtils.getForm(form, label);
+
+                if (path != null)
+                {
+                    labels.set(i, path.getTrackName(label));
+                }
             }
         }
 
@@ -96,14 +146,18 @@ public class UIAnchorKeyframeFactory extends UIKeyframeFactory<Anchor>
             return;
         }
 
+        String normalized = value == null ? null : value.replace("#origin", "");
+        final List<String> attachmentsFinal = attachments;
+        final List<String> labelsFinal = labels;
+
         panel.getContext().replaceContextMenu((menu) ->
         {
-            for (int i = 0; i < attachments.size(); i++)
+            for (int i = 0; i < attachmentsFinal.size(); i++)
             {
-                String attachment = attachments.get(i);
-                String label = labels.get(i);
+                String attachment = attachmentsFinal.get(i);
+                String label = labelsFinal.get(i);
 
-                menu.action(Icons.LIMB, IKey.constant(label), attachment.equals(value), () -> consumer.accept(attachment));
+                menu.action(Icons.LIMB, IKey.constant(label), attachment.equals(normalized), () -> consumer.accept(attachment));
             }
         });
     }

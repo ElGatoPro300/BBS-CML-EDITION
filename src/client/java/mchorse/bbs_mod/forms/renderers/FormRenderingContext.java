@@ -4,6 +4,7 @@ import mchorse.bbs_mod.camera.Camera;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.utils.MathUtils;
+
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.util.math.MatrixStack;
 
@@ -20,6 +21,7 @@ public class FormRenderingContext
     public boolean ui;
     public int color;
     public boolean modelRenderer;
+    public boolean renderEquipment;
 
     public FormRenderingContext()
     {}
@@ -35,6 +37,7 @@ public class FormRenderingContext
         this.stencilMap = null;
         this.ui = false;
         this.color = 0xffffffff;
+        this.renderEquipment = true;
 
         return this;
     }
@@ -81,6 +84,13 @@ public class FormRenderingContext
     public FormRenderingContext modelRenderer()
     {
         this.modelRenderer = true;
+
+        return this;
+    }
+
+    public FormRenderingContext equipment(boolean renderEquipment)
+    {
+        this.renderEquipment = renderEquipment;
 
         return this;
     }

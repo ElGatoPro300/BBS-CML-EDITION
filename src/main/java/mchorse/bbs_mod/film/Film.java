@@ -12,6 +12,7 @@ import mchorse.bbs_mod.utils.clips.Clips;
 public class Film extends ValueGroup
 {
     public final Clips camera = new Clips("camera", BBSMod.getFactoryCameraClips());
+    public final Clips screen = new Clips("screen", BBSMod.getFactoryScreenClips());
     public final Replays replays = new Replays("replays");
 
     public final Inventory inventory = new Inventory("inventory");
@@ -25,6 +26,7 @@ public class Film extends ValueGroup
         super("");
 
         this.add(this.camera);
+        this.add(this.screen);
         this.add(this.replays);
 
         this.add(this.inventory);

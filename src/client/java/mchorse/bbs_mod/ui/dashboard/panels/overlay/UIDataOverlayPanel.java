@@ -4,23 +4,44 @@ import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.settings.values.core.ValueGroup;
+import mchorse.bbs_mod.ui.ContentType;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDataDashboardPanel;
+import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
+import mchorse.bbs_mod.utils.IOUtils;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.function.Consumer;
 
 public class UIDataOverlayPanel <T extends ValueGroup> extends UICRUDOverlayPanel
 {
     protected UIDataDashboardPanel<T> panel;
 
+    @Override
+    public UIContext getContext()
+    {
+        UIContext context = super.getContext();
+
+        return context == null && this.panel != null ? this.panel.getContext() : context;
+    }
+
     public UIDataOverlayPanel(IKey title, UIDataDashboardPanel<T> panel, Consumer<String> callback)
     {
         super(title, callback);
 
         this.panel = panel;
+
+        if (this.panel.getType() == ContentType.MODELS)
+        {
+            this.setTooltips(UIKeys.MODELS_CRUD_ADD, UIKeys.MODELS_CRUD_DUPE, UIKeys.MODELS_CRUD_RENAME, UIKeys.MODELS_CRUD_REMOVE);
+        }
+        else if (this.panel.getType() == ContentType.PARTICLES)
+        {
+            this.setTooltips(UIKeys.PARTICLES_CRUD_ADD, UIKeys.PARTICLES_CRUD_DUPE, UIKeys.PARTICLES_CRUD_RENAME, UIKeys.PARTICLES_CRUD_REMOVE);
+        }
 
         this.namesList.context((menu) ->
         {
@@ -136,12 +157,25 @@ public class UIDataOverlayPanel <T extends ValueGroup> extends UICRUDOverlayPane
         if (this.panel.getData() != null && !this.namesList.hasInHierarchy(name))
         {
             this.panel.save();
+
+            File folder = this.panel.getType().getRepository().getFolder();
+            File source = new File(folder, this.panel.getData().getId());
+            File destination = new File(folder, name);
+
+            if (source.isDirectory())
+            {
+                try
+                {
+                    IOUtils.copyFolder(source, destination);
+                }
+                catch (IOException e)
+                {
+                    e.printStackTrace();
+                }
+            }
+
             this.panel.getType().getRepository().save(name, this.panel.getData().toData().asMap());
-            this.namesList.addFile(name);
-
-            T data = (T) this.panel.getType().getRepository().create(name, this.panel.getData().toData().asMap());
-
-            this.panel.fill(data);
+            this.namesList.addFile(name, false);
         }
     }
 

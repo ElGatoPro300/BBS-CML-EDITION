@@ -8,6 +8,7 @@ public class PlayCameraController extends CameraWorkCameraController
 {
     private int ticks;
     private int duration;
+    public Clips screenClips;
 
     public PlayCameraController(Clips clips)
     {

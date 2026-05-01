@@ -5,10 +5,14 @@ import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.cubic.MolangHelper;
 import mchorse.bbs_mod.cubic.model.loaders.BOBJModelLoader;
 import mchorse.bbs_mod.cubic.model.loaders.CubicModelLoader;
+import mchorse.bbs_mod.cubic.model.loaders.GLTFModelLoader;
 import mchorse.bbs_mod.cubic.model.loaders.GeoCubicModelLoader;
 import mchorse.bbs_mod.cubic.model.loaders.IModelLoader;
+import mchorse.bbs_mod.cubic.model.loaders.MiModelLoader;
 import mchorse.bbs_mod.cubic.model.loaders.VoxModelLoader;
 import mchorse.bbs_mod.data.DataToString;
+import mchorse.bbs_mod.data.types.BaseType;
+import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.math.molang.MolangParser;
 import mchorse.bbs_mod.resources.AssetProvider;
@@ -20,6 +24,7 @@ import mchorse.bbs_mod.utils.pose.ShapeKeysManager;
 import mchorse.bbs_mod.utils.watchdog.IWatchDogListener;
 import mchorse.bbs_mod.utils.watchdog.WatchDogEvent;
 
+import java.io.File;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -33,11 +38,15 @@ import java.util.Set;
 public class ModelManager implements IWatchDogListener
 {
     public static final String MODELS_PREFIX = "models/";
+    public static final String CONFIG_FILE = "config.json";
+    public static final String DYNAMIC_CONFIG_FILE = "dynamic_config.json";
+    public static final String DYNAMIC_PHYS_BONES_KEY = "phys_bones";
 
     public final Map<String, ModelInstance> models = new HashMap<>();
     public final List<IModelLoader> loaders = new ArrayList<>();
     public final AssetProvider provider;
     public final MolangParser parser;
+    private final Set<String> relodableSuffixes = new HashSet<>();
 
     private ModelLoader loader = new ModelLoader(this);
 
@@ -54,10 +63,45 @@ public class ModelManager implements IWatchDogListener
     private void setupLoaders()
     {
         this.loaders.clear();
+        this.relodableSuffixes.clear();
         this.loaders.add(new BOBJModelLoader());
         this.loaders.add(new CubicModelLoader());
         this.loaders.add(new GeoCubicModelLoader());
         this.loaders.add(new VoxModelLoader());
+        this.loaders.add(new GLTFModelLoader());
+        this.loaders.add(new MiModelLoader());
+
+        this.registerRelodableSuffix(".bbs.json");
+        this.registerRelodableSuffix(".geo.json");
+        this.registerRelodableSuffix(".bobj");
+        this.registerRelodableSuffix(".obj");
+        this.registerRelodableSuffix(".gltf");
+        this.registerRelodableSuffix(".glb");
+        this.registerRelodableSuffix(".mimodel");
+        this.registerRelodableSuffix(".animation.json");
+        this.registerRelodableSuffix(".vox");
+        this.registerRelodableSuffix("/" + CONFIG_FILE);
+        this.registerRelodableSuffix("/" + DYNAMIC_CONFIG_FILE);
+    }
+
+    public void registerLoader(IModelLoader loader)
+    {
+        if (loader == null)
+        {
+            return;
+        }
+
+        this.loaders.add(loader);
+    }
+
+    public void registerRelodableSuffix(String suffix)
+    {
+        if (suffix == null || suffix.isEmpty())
+        {
+            return;
+        }
+
+        this.relodableSuffixes.add(suffix);
     }
 
     /**
@@ -139,11 +183,38 @@ public class ModelManager implements IWatchDogListener
 
     private MapType loadConfig(Link modelLink)
     {
-        try (InputStream asset = this.provider.getAsset(modelLink.combine("config.json")))
+        MapType config = this.loadConfigFile(modelLink, CONFIG_FILE);
+        MapType dynamicConfig = this.loadConfigFile(modelLink, DYNAMIC_CONFIG_FILE);
+
+        if (config == null && dynamicConfig == null)
+        {
+            return null;
+        }
+
+        if (config == null)
+        {
+            config = new MapType();
+        }
+
+        if (dynamicConfig != null && dynamicConfig.has(DYNAMIC_PHYS_BONES_KEY, BaseType.TYPE_LIST))
+        {
+            config.put(DYNAMIC_PHYS_BONES_KEY, dynamicConfig.get(DYNAMIC_PHYS_BONES_KEY).copy());
+        }
+
+        return config;
+    }
+
+    private MapType loadConfigFile(Link modelLink, String fileName)
+    {
+        try (InputStream asset = this.provider.getAsset(modelLink.combine(fileName)))
         {
             String string = IOUtils.readText(asset);
+            BaseType base = DataToString.fromString(string);
 
-            return (MapType) DataToString.fromString(string);
+            if (BaseType.isMap(base))
+            {
+                return base.asMap();
+            }
         }
         catch (Exception e)
         {}
@@ -179,13 +250,88 @@ public class ModelManager implements IWatchDogListener
             return false;
         }
 
-        return link.path.endsWith(".bbs.json")
-            || link.path.endsWith(".geo.json")
-            || link.path.endsWith(".bobj")
-            || link.path.endsWith(".obj")
-            || link.path.endsWith(".animation.json")
-            || link.path.endsWith(".vox")
-            || link.path.endsWith("/config.json");
+        for (String suffix : this.relodableSuffixes)
+        {
+            if (link.path.endsWith(suffix))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public void saveConfig(String id, MapType config)
+    {
+        if (config == null)
+        {
+            return;
+        }
+
+        Link modelLink = Link.assets(MODELS_PREFIX + id);
+        MapType baseConfig = config.copy().asMap();
+        MapType dynamicConfig = this.loadConfigFile(modelLink, DYNAMIC_CONFIG_FILE);
+
+        if (dynamicConfig == null)
+        {
+            dynamicConfig = new MapType();
+        }
+
+        if (baseConfig.has(DYNAMIC_PHYS_BONES_KEY, BaseType.TYPE_LIST))
+        {
+            dynamicConfig.put(DYNAMIC_PHYS_BONES_KEY, baseConfig.get(DYNAMIC_PHYS_BONES_KEY).copy());
+        }
+        else if (!dynamicConfig.has(DYNAMIC_PHYS_BONES_KEY, BaseType.TYPE_LIST))
+        {
+            dynamicConfig.put(DYNAMIC_PHYS_BONES_KEY, new ListType());
+        }
+
+        baseConfig.remove(DYNAMIC_PHYS_BONES_KEY);
+
+        this.writeConfigIfChanged(modelLink, CONFIG_FILE, baseConfig);
+        this.writeConfigIfChanged(modelLink, DYNAMIC_CONFIG_FILE, dynamicConfig);
+    }
+
+    private void writeConfigIfChanged(Link modelLink, String fileName, MapType config)
+    {
+        File file = BBSMod.getProvider().getFile(modelLink.combine(fileName));
+
+        if (file != null)
+        {
+            try
+            {
+                if (file.exists())
+                {
+                    BaseType existing = DataToString.fromString(IOUtils.readText(file));
+
+                    if (BaseType.isMap(existing) && existing.asMap().equals(config))
+                    {
+                        return;
+                    }
+                }
+
+                IOUtils.writeText(file, DataToString.toString(config, true));
+            }
+            catch (Exception e)
+            {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    public boolean renameModel(String from, String to)
+    {
+        Link fromLink = Link.assets(MODELS_PREFIX + from);
+        Link toLink = Link.assets(MODELS_PREFIX + to);
+        File fromFile = BBSMod.getProvider().getFile(fromLink);
+        File toFile = BBSMod.getProvider().getFile(toLink);
+
+        if (fromFile != null && fromFile.exists() && fromFile.isDirectory() && toFile != null && !toFile.exists())
+        {
+            return fromFile.renameTo(toFile);
+        }
+
+        return false;
     }
 
     /**
