@@ -1,8 +1,8 @@
 package mchorse.bbs_mod.utils.colors;
 
 import mchorse.bbs_mod.utils.MathUtils;
-import mchorse.bbs_mod.utils.interps.Lerps;
 import mchorse.bbs_mod.utils.StringUtils;
+import mchorse.bbs_mod.utils.interps.Lerps;
 
 public class Color
 {

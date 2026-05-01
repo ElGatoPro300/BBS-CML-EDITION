@@ -19,8 +19,8 @@ import mchorse.bbs_mod.forms.states.AnimationState;
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.resources.Link;
-import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.settings.values.IValueListener;
+import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.settings.values.base.BaseValueBasic;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.replays.UIReplaysEditor;
@@ -49,8 +49,10 @@ import mchorse.bbs_mod.utils.keyframes.factories.KeyframeFactories;
 import mchorse.bbs_mod.utils.pose.Pose;
 import mchorse.bbs_mod.utils.pose.PoseTransform;
 import mchorse.bbs_mod.utils.pose.Transform;
+
 import org.joml.Matrix4f;
 import org.joml.Vector2i;
+import org.joml.Vector3f;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -71,7 +73,7 @@ public class UIAnimationStateEditor extends UIElement
 
     private AnimationState state;
     private Set<String> keys = new LinkedHashSet<>();
-    private final Map<String, Boolean> collapsedModelTracks = new java.util.HashMap<>();
+    private final Map<String, Boolean> collapsedModelTracks = new HashMap<>();
 
     public UIAnimationStateEditor(UIFormEditor editor)
     {
@@ -413,7 +415,7 @@ public class UIAnimationStateEditor extends UIElement
             if (localMatrix != null && originMatrix != null)
             {
                 matrix = new Matrix4f(localMatrix);
-                matrix.setTranslation(originMatrix.getTranslation(new org.joml.Vector3f()));
+                matrix.setTranslation(originMatrix.getTranslation(new Vector3f()));
             }
             else
             {
@@ -453,7 +455,7 @@ public class UIAnimationStateEditor extends UIElement
 
         BaseValue.edit(this.state, IValueListener.FLAG_UNMERGEABLE, (s) ->
         {
-            Set<Float> convertedTicks = new java.util.HashSet<>();
+            Set<Float> convertedTicks = new HashSet<>();
 
             for (Keyframe kf : selected)
             {

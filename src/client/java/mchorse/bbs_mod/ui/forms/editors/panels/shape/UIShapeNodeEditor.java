@@ -1,12 +1,13 @@
 package mchorse.bbs_mod.ui.forms.editors.panels.shape;
 
+import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.forms.forms.shape.INodeGraph;
 import mchorse.bbs_mod.forms.forms.shape.ShapeConnection;
-import mchorse.bbs_mod.forms.forms.shape.ValueShapeGraph;
 import mchorse.bbs_mod.forms.forms.shape.ShapeFormGraph;
+import mchorse.bbs_mod.forms.forms.shape.ValueShapeGraph;
 import mchorse.bbs_mod.forms.forms.shape.nodes.BumpNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.ClampNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.ColorNode;
@@ -14,9 +15,9 @@ import mchorse.bbs_mod.forms.forms.shape.nodes.CombineColorNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.CommentNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.CoordinateNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.FlowNoiseNode;
+import mchorse.bbs_mod.forms.forms.shape.nodes.InvertNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.IrisAttributeNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.IrisShaderNode;
-import mchorse.bbs_mod.forms.forms.shape.nodes.InvertNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.MathNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.MixColorNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.NoiseNode;
@@ -31,8 +32,10 @@ import mchorse.bbs_mod.forms.forms.shape.nodes.TriggerNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.ValueNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.VectorMathNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.VoronoiNode;
+import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.l10n.keys.IKey;
+import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.UIContext;
@@ -49,13 +52,11 @@ import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.presets.UICopyPasteController;
-import mchorse.bbs_mod.BBSModClient;
-import mchorse.bbs_mod.graphics.texture.Texture;
-import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.presets.PresetManager;
 
 import org.joml.Vector2f;
+
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;

@@ -1,8 +1,8 @@
 package mchorse.bbs_mod.ui.film.replays.overlays;
 
-import com.mojang.logging.LogUtils;
 import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
+import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.film.replays.UIReplayList;
@@ -20,13 +20,17 @@ import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.UIDataUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Colors;
+
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
-import org.slf4j.Logger;
+
+import com.mojang.logging.LogUtils;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
+
+import org.slf4j.Logger;
 
 public class UIReplaysOverlayPanel extends UIOverlayPanel
 {
@@ -190,7 +194,7 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
 
         this.icons.add(this.addReplay, this.dupeReplay, this.removeReplay);
 
-        this.keys().register(mchorse.bbs_mod.ui.Keys.REPLAYS_REMOVE, () -> this.replays.removeReplay())
+        this.keys().register(Keys.REPLAYS_REMOVE, () -> this.replays.removeReplay())
             .active(() -> !this.replays.getCurrent().isEmpty());
 
         /* Item drop velocity configuration */

@@ -4,6 +4,15 @@ import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.settings.values.core.ValueList;
 import mchorse.bbs_mod.utils.CollectionUtils;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+
 public class Replays extends ValueList<Replay>
 {
     public Replays(String id)
@@ -16,8 +25,8 @@ public class Replays extends ValueList<Replay>
     {
         super.fromData(data);
 
-        java.util.List<Replay> allReplays = this.getList();
-        java.util.Set<String> existingUUIDs = new java.util.HashSet<>();
+        List<Replay> allReplays = this.getList();
+        Set<String> existingUUIDs = new HashSet<>();
         
         /* Collect existing UUIDs */
         for (Replay r : allReplays)
@@ -26,8 +35,8 @@ public class Replays extends ValueList<Replay>
         }
 
         /* Identify old groups and their members */
-        java.util.Map<String, java.util.List<Replay>> oldGroups = new java.util.LinkedHashMap<>();
-        java.util.Map<String, Replay> labelToGroup = new java.util.HashMap<>();
+        Map<String, List<Replay>> oldGroups = new LinkedHashMap<>();
+        Map<String, Replay> labelToGroup = new HashMap<>();
 
         for (Replay r : allReplays)
         {
@@ -59,7 +68,7 @@ public class Replays extends ValueList<Replay>
                     continue;
                 }
 
-                oldGroups.computeIfAbsent(groupName, k -> new java.util.ArrayList<>()).add(replay);
+                oldGroups.computeIfAbsent(groupName, k -> new ArrayList<>()).add(replay);
             }
         }
 
@@ -70,9 +79,9 @@ public class Replays extends ValueList<Replay>
         }
 
         /* Reconstruct list with new Group Replays and contiguous members */
-        java.util.List<Replay> newList = new java.util.ArrayList<>();
-        java.util.Set<Replay> processed = new java.util.HashSet<>();
-        java.util.Map<String, Replay> createdGroups = new java.util.HashMap<>();
+        List<Replay> newList = new ArrayList<>();
+        Set<Replay> processed = new HashSet<>();
+        Map<String, Replay> createdGroups = new HashMap<>();
 
         for (Replay replay : allReplays)
         {
@@ -107,7 +116,7 @@ public class Replays extends ValueList<Replay>
                     /* Ensure unique UUID if by chance it collides (unlikely but safe) */
                     while (existingUUIDs.contains(groupReplay.uuid.get()))
                     {
-                        groupReplay.uuid.set(java.util.UUID.randomUUID().toString());
+                        groupReplay.uuid.set(UUID.randomUUID().toString());
                     }
                     existingUUIDs.add(groupReplay.uuid.get());
                     
@@ -115,7 +124,7 @@ public class Replays extends ValueList<Replay>
                     newList.add(groupReplay);
 
                     /* Add all members of this group immediately */
-                    java.util.List<Replay> members = oldGroups.get(groupName);
+                    List<Replay> members = oldGroups.get(groupName);
                     if (members != null)
                     {
                         for (Replay member : members)

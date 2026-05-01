@@ -3,11 +3,11 @@ package mchorse.bbs_mod.camera.clips.screen;
 import mchorse.bbs_mod.camera.clips.screen.nodes.BrightnessContrastNode;
 import mchorse.bbs_mod.camera.clips.screen.nodes.ColorGradeEffectNode;
 import mchorse.bbs_mod.camera.clips.screen.nodes.DistortionEffectNode;
-import mchorse.bbs_mod.camera.clips.screen.nodes.LayerNode;
 import mchorse.bbs_mod.camera.clips.screen.nodes.GammaCorrectionNode;
 import mchorse.bbs_mod.camera.clips.screen.nodes.GlitchNode;
 import mchorse.bbs_mod.camera.clips.screen.nodes.GrainEffectNode;
 import mchorse.bbs_mod.camera.clips.screen.nodes.HueSaturationNode;
+import mchorse.bbs_mod.camera.clips.screen.nodes.LayerNode;
 import mchorse.bbs_mod.camera.clips.screen.nodes.LetterboxEffectNode;
 import mchorse.bbs_mod.camera.clips.screen.nodes.LevelsNode;
 import mchorse.bbs_mod.camera.clips.screen.nodes.OverlayBlendNode;
@@ -19,10 +19,10 @@ import mchorse.bbs_mod.camera.clips.screen.nodes.ScreenUVNode;
 import mchorse.bbs_mod.camera.clips.screen.nodes.SineWaveNode;
 import mchorse.bbs_mod.camera.clips.screen.nodes.SquareWaveNode;
 import mchorse.bbs_mod.camera.clips.screen.nodes.VignetteEffectNode;
-import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.forms.forms.shape.ShapeFormGraph;
 import mchorse.bbs_mod.forms.forms.shape.ShapeGraphEvaluator;
 import mchorse.bbs_mod.forms.forms.shape.nodes.ShapeNode;
+import mchorse.bbs_mod.utils.colors.Colors;
 
 /**
  * Evaluator for ScreenNodeGraph. Extends ShapeGraphEvaluator to handle all

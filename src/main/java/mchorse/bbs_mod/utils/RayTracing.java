@@ -12,6 +12,7 @@ import net.minecraft.util.math.Box;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.RaycastContext;
 import net.minecraft.world.World;
+
 import org.joml.Vector2d;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
