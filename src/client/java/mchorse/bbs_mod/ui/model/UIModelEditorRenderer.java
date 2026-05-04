@@ -1,9 +1,9 @@
 package mchorse.bbs_mod.ui.model;
 
 import mchorse.bbs_mod.BBSModClient;
+import mchorse.bbs_mod.bobj.BOBJBone;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.cubic.ModelInstance;
-import mchorse.bbs_mod.bobj.BOBJBone;
 import mchorse.bbs_mod.cubic.animation.ActionsConfig;
 import mchorse.bbs_mod.cubic.animation.IAnimator;
 import mchorse.bbs_mod.cubic.animation.ProceduralAnimator;
@@ -57,17 +57,13 @@ import org.joml.Matrix4f;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Consumer;
-
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.logging.LogUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
 
@@ -89,7 +85,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
 
     /* ---- IK gizmo state ---- */
     /** The currently active IK chain config — set by UIModelIKPanel. null = no IK gizmo. */
-    private mchorse.bbs_mod.cubic.model.IKChainConfig activeIKChain;
+    private IKChainConfig activeIKChain;
 
     private StencilFormFramebuffer stencil = new StencilFormFramebuffer();
     private StencilMap stencilMap = new StencilMap();
@@ -122,7 +118,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
      * Sets the IK chain whose target gizmo should be drawn in the 3D viewport.
      * Pass null to hide the IK gizmo.
      */
-    public void setActiveIKChain(mchorse.bbs_mod.cubic.model.IKChainConfig chain)
+    public void setActiveIKChain(IKChainConfig chain)
     {
         this.activeIKChain = chain;
     }
@@ -585,7 +581,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
         Matrix4f uiMatrix = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
 
         /* ---- target crosshair ---- */
-        org.joml.Vector3f targetWorld = new org.joml.Vector3f(this.activeIKChain.target.get());
+        Vector3f targetWorld = new Vector3f(this.activeIKChain.target.get());
 
         /* Convert from IK metres to render units:
            In Cubic models, pivots are in 1/16 blocks; FABRIK works in metres
@@ -622,12 +618,12 @@ public class UIModelEditorRenderer extends UIModelRenderer
 
         /* --- diamond outline around target (XZ plane) --- */
         float ds = cs * 0.7F;
-        org.joml.Vector3f px = new org.joml.Vector3f(targetWorld).add(ds, 0, 0);
-        org.joml.Vector3f nx = new org.joml.Vector3f(targetWorld).add(-ds, 0, 0);
-        org.joml.Vector3f pz = new org.joml.Vector3f(targetWorld).add(0, 0, ds);
-        org.joml.Vector3f nz = new org.joml.Vector3f(targetWorld).add(0, 0, -ds);
-        org.joml.Vector3f py = new org.joml.Vector3f(targetWorld).add(0, ds, 0);
-        org.joml.Vector3f ny = new org.joml.Vector3f(targetWorld).add(0, -ds, 0);
+        Vector3f px = new Vector3f(targetWorld).add(ds, 0, 0);
+        Vector3f nx = new Vector3f(targetWorld).add(-ds, 0, 0);
+        Vector3f pz = new Vector3f(targetWorld).add(0, 0, ds);
+        Vector3f nz = new Vector3f(targetWorld).add(0, 0, -ds);
+        Vector3f py = new Vector3f(targetWorld).add(0, ds, 0);
+        Vector3f ny = new Vector3f(targetWorld).add(0, -ds, 0);
 
         /* XZ diamond */
         this.line(builder, gizmoMat, px, pz, tr, tg, tb, ta);
@@ -652,12 +648,12 @@ public class UIModelEditorRenderer extends UIModelRenderer
             if (inst != null && inst.model instanceof Model model)
             {
                 /* Walk from tip to root collecting bone points */
-                List<org.joml.Vector3f> bonePoints = new ArrayList<>();
+                List<Vector3f> bonePoints = new ArrayList<>();
                 ModelGroup cursor = model.getGroup(tipName);
 
                 while (cursor != null)
                 {
-                    org.joml.Vector3f pt = this.getBonePoint(matrixCache, cursor.id);
+                    Vector3f pt = this.getBonePoint(matrixCache, cursor.id);
 
                     if (pt != null)
                     {
@@ -681,7 +677,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
                 }
 
                 /* Small crosshair at each joint */
-                for (org.joml.Vector3f pt : bonePoints)
+                for (Vector3f pt : bonePoints)
                 {
                     this.cross(builder, uiMatrix, pt, 0.025F, 0.2F, 0.9F, 1.0F, 0.8F);
                 }
@@ -1058,7 +1054,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
 
         if (animator instanceof ProceduralAnimator pa)
         {
-            pa.setIKChains(new java.util.ArrayList<>(this.config.ikChains.getList()));
+            pa.setIKChains(new ArrayList<>(this.config.ikChains.getList()));
         }
     }
 
