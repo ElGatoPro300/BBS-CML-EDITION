@@ -3,12 +3,16 @@ package mchorse.bbs_mod.ui.model;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.cubic.ModelInstance;
+import mchorse.bbs_mod.bobj.BOBJBone;
 import mchorse.bbs_mod.cubic.animation.ActionsConfig;
+import mchorse.bbs_mod.cubic.animation.IAnimator;
+import mchorse.bbs_mod.cubic.animation.ProceduralAnimator;
 import mchorse.bbs_mod.cubic.data.model.Model;
 import mchorse.bbs_mod.cubic.data.model.ModelCube;
 import mchorse.bbs_mod.cubic.data.model.ModelGroup;
 import mchorse.bbs_mod.cubic.data.model.ModelQuad;
 import mchorse.bbs_mod.cubic.data.model.ModelVertex;
+import mchorse.bbs_mod.cubic.model.IKChainConfig;
 import mchorse.bbs_mod.cubic.model.ModelConfig;
 import mchorse.bbs_mod.cubic.render.CubicCubeRenderer;
 import mchorse.bbs_mod.cubic.render.ICubicRenderer;
@@ -53,6 +57,11 @@ import org.joml.Matrix4f;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Consumer;
+
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.logging.LogUtils;
@@ -78,6 +87,10 @@ public class UIModelEditorRenderer extends UIModelRenderer
     private ModelCube selectedCube;
     private boolean dirty = true;
 
+    /* ---- IK gizmo state ---- */
+    /** The currently active IK chain config — set by UIModelIKPanel. null = no IK gizmo. */
+    private mchorse.bbs_mod.cubic.model.IKChainConfig activeIKChain;
+
     private StencilFormFramebuffer stencil = new StencilFormFramebuffer();
     private StencilMap stencilMap = new StencilMap();
 
@@ -85,6 +98,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
     private String lastModelId;
     private final Matrix4f lastGizmoMatrix = new Matrix4f();
     private boolean hasGizmoMatrix;
+    private boolean showSkeleton = true;
 
     public UIModelEditorRenderer()
     {
@@ -103,7 +117,21 @@ public class UIModelEditorRenderer extends UIModelRenderer
     {
         this.form.model.set(modelId);
     }
+
+    /**
+     * Sets the IK chain whose target gizmo should be drawn in the 3D viewport.
+     * Pass null to hide the IK gizmo.
+     */
+    public void setActiveIKChain(mchorse.bbs_mod.cubic.model.IKChainConfig chain)
+    {
+        this.activeIKChain = chain;
+    }
     
+    public void setShowSkeleton(boolean showSkeleton)
+    {
+        this.showSkeleton = showSkeleton;
+    }
+
     public void setConfig(ModelConfig config)
     {
         this.config = config;
@@ -234,6 +262,13 @@ public class UIModelEditorRenderer extends UIModelRenderer
         MatrixCache matrixCache = this.renderer.collectMatrices(this.entity, context.getTransition());
         this.renderSelectedCubeVisualizer(context, matrixCache);
 
+        if (this.showSkeleton)
+        {
+            this.renderSkeleton(context, matrixCache);
+        }
+
+        this.renderIKGizmo(context, matrixCache);
+
         /* Render Axes */
         Matrix4f gizmoMatrix = null;
         this.hasGizmoMatrix = false;
@@ -291,6 +326,11 @@ public class UIModelEditorRenderer extends UIModelRenderer
             this.stencil.apply();
 
             this.renderer.render(formContext.stencilMap(this.stencilMap));
+            
+            if (this.showSkeleton)
+            {
+                this.renderSkeletonPicking(context, matrixCache);
+            }
 
             if (gizmoMatrix != null)
             {
@@ -527,6 +567,326 @@ public class UIModelEditorRenderer extends UIModelRenderer
         this.line(builder, matrix, new Vector3f(p).add(0, 0, -size), new Vector3f(p).add(0, 0, size), r, g, b, a);
     }
 
+    /**
+     * Renders the IK gizmo:
+     *  - A magenta 3D crosshair at the IK target position.
+     *  - Cyan lines connecting the bones of the active chain (tip→root).
+     *
+     * Positions are in model-local space (1 unit = 1/16 block for Cubic models).
+     * The renderer uses the same MatrixCache used for the bone gizmo / cube outline.
+     */
+    private void renderIKGizmo(UIContext context, MatrixCache matrixCache)
+    {
+        if (this.activeIKChain == null || !this.activeIKChain.enabled.get())
+        {
+            return;
+        }
+
+        Matrix4f uiMatrix = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
+
+        /* ---- target crosshair ---- */
+        org.joml.Vector3f targetWorld = new org.joml.Vector3f(this.activeIKChain.target.get());
+
+        /* Convert from IK metres to render units:
+           In Cubic models, pivots are in 1/16 blocks; FABRIK works in metres
+           (we divided by 16 in IKChain). For the gizmo we use the same metres.
+           Multiply by 16 to match the model-local render coordinate system. */
+        targetWorld.mul(16F);
+
+        /* Apply model root matrix (same transform the bones live under) */
+        MatrixCacheEntry rootEntry = matrixCache.get("");
+        Matrix4f rootMat = rootEntry != null ? rootEntry.matrix() : null;
+        Matrix4f gizmoMat = new Matrix4f(uiMatrix);
+
+        if (rootMat != null)
+        {
+            /* Combine: UI projection × root bone matrix */
+            gizmoMat.mul(rootMat);
+        }
+
+        /* Flip Z to match the renderer's Y-rotation PI applied in getCubePivotMatrix */
+        gizmoMat.rotateY(MathUtils.PI);
+
+        BufferBuilder builder = Tessellator.getInstance().getBuffer();
+        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
+        RenderSystem.enableBlend();
+        RenderSystem.disableDepthTest();
+
+        builder.begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
+
+        /* --- magenta crosshair at target --- */
+        float cs = 0.12F * 16F;   /* crosshair arm length in render units */
+        float tr = 1.0F, tg = 0.2F, tb = 1.0F, ta = 0.9F;
+
+        this.cross(builder, gizmoMat, targetWorld, cs, tr, tg, tb, ta);
+
+        /* --- diamond outline around target (XZ plane) --- */
+        float ds = cs * 0.7F;
+        org.joml.Vector3f px = new org.joml.Vector3f(targetWorld).add(ds, 0, 0);
+        org.joml.Vector3f nx = new org.joml.Vector3f(targetWorld).add(-ds, 0, 0);
+        org.joml.Vector3f pz = new org.joml.Vector3f(targetWorld).add(0, 0, ds);
+        org.joml.Vector3f nz = new org.joml.Vector3f(targetWorld).add(0, 0, -ds);
+        org.joml.Vector3f py = new org.joml.Vector3f(targetWorld).add(0, ds, 0);
+        org.joml.Vector3f ny = new org.joml.Vector3f(targetWorld).add(0, -ds, 0);
+
+        /* XZ diamond */
+        this.line(builder, gizmoMat, px, pz, tr, tg, tb, ta);
+        this.line(builder, gizmoMat, pz, nx, tr, tg, tb, ta);
+        this.line(builder, gizmoMat, nx, nz, tr, tg, tb, ta);
+        this.line(builder, gizmoMat, nz, px, tr, tg, tb, ta);
+
+        /* Vertical diamond */
+        this.line(builder, gizmoMat, px, py, tr, tg, tb, ta);
+        this.line(builder, gizmoMat, py, nx, tr, tg, tb, ta);
+        this.line(builder, gizmoMat, nx, ny, tr, tg, tb, ta);
+        this.line(builder, gizmoMat, ny, px, tr, tg, tb, ta);
+
+        /* --- cyan lines connecting IK chain bones (tip → root) --- */
+        String tipName  = this.activeIKChain.tipBone.get();
+        String rootName = this.activeIKChain.rootBone.get();
+
+        if (!tipName.isEmpty() && !rootName.isEmpty())
+        {
+            ModelInstance inst = this.getPreviewModelInstance();
+
+            if (inst != null && inst.model instanceof Model model)
+            {
+                /* Walk from tip to root collecting bone points */
+                List<org.joml.Vector3f> bonePoints = new ArrayList<>();
+                ModelGroup cursor = model.getGroup(tipName);
+
+                while (cursor != null)
+                {
+                    org.joml.Vector3f pt = this.getBonePoint(matrixCache, cursor.id);
+
+                    if (pt != null)
+                    {
+                        bonePoints.add(pt);
+                    }
+
+                    if (cursor.id.equals(rootName))
+                    {
+                        break;
+                    }
+
+                    cursor = cursor.parent;
+                }
+
+                /* Draw lines between consecutive bone points */
+                for (int i = 0; i < bonePoints.size() - 1; i++)
+                {
+                    this.line(builder, uiMatrix,
+                              bonePoints.get(i), bonePoints.get(i + 1),
+                              0.2F, 0.9F, 1.0F, 0.85F);
+                }
+
+                /* Small crosshair at each joint */
+                for (org.joml.Vector3f pt : bonePoints)
+                {
+                    this.cross(builder, uiMatrix, pt, 0.025F, 0.2F, 0.9F, 1.0F, 0.8F);
+                }
+            }
+        }
+
+        BufferRenderer.drawWithGlobalProgram(builder.end());
+
+        RenderSystem.enableDepthTest();
+        RenderSystem.disableBlend();
+    }
+
+    /**
+     * Renders a full visual skeleton of the model using octahedral bones.
+     */
+    private void renderSkeleton(UIContext context, MatrixCache matrixCache)
+    {
+        ModelInstance instance = this.getPreviewModelInstance();
+        if (instance == null || instance.model == null) return;
+
+        Matrix4f uiMatrix = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
+        MatrixCacheEntry rootEntry = matrixCache.get("");
+        Matrix4f rootMat = rootEntry != null ? rootEntry.matrix() : null;
+        Matrix4f gizmoMat = new Matrix4f(uiMatrix);
+
+        if (rootMat != null)
+        {
+            gizmoMat.mul(rootMat);
+        }
+
+        BufferBuilder builder = Tessellator.getInstance().getBuffer();
+        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
+        RenderSystem.enableBlend();
+        RenderSystem.disableDepthTest();
+
+        builder.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
+
+        float r = 0.5F, g = 0.8F, b = 0.5F, a = 0.4F;
+
+        if (instance.model instanceof Model model)
+        {
+            for (ModelGroup group : model.getOrderedGroups())
+            {
+                if (group.parent != null)
+                {
+                    Vector3f start = this.getBonePoint(matrixCache, group.parent.id);
+                    Vector3f end = this.getBonePoint(matrixCache, group.id);
+
+                    if (start != null && end != null)
+                    {
+                        boolean inChain = this.activeIKChain != null && this.activeIKChain.enabled.get() && this.activeIKChain.isInChain(group.id);
+                        float cr = inChain ? 0.2F : r;
+                        float cg = inChain ? 0.8F : g;
+                        float cb = inChain ? 0.9F : b;
+
+                        this.drawOctahedron(builder, gizmoMat, start, end, cr, cg, cb, a);
+                    }
+                }
+            }
+        }
+        else if (!instance.model.getAllBOBJBones().isEmpty())
+        {
+            for (BOBJBone bone : instance.model.getAllBOBJBones())
+            {
+                if (bone.parentBone != null)
+                {
+                    Vector3f start = this.getBonePoint(matrixCache, bone.parentBone.name);
+                    Vector3f end = this.getBonePoint(matrixCache, bone.name);
+
+                    if (start != null && end != null)
+                    {
+                        boolean inChain = this.activeIKChain != null && this.activeIKChain.enabled.get() && this.activeIKChain.isInChain(bone.name);
+                        float cr = inChain ? 0.2F : r;
+                        float cg = inChain ? 0.8F : g;
+                        float cb = inChain ? 0.9F : b;
+
+                        this.drawOctahedron(builder, gizmoMat, start, end, cr, cg, cb, a);
+                    }
+                }
+            }
+        }
+
+        BufferRenderer.drawWithGlobalProgram(builder.end());
+        RenderSystem.enableDepthTest();
+        RenderSystem.disableBlend();
+    }
+
+    private void drawOctahedron(BufferBuilder builder, Matrix4f matrix, Vector3f start, Vector3f end, float r, float g, float b, float a)
+    {
+        Vector3f diff = new Vector3f(end).sub(start);
+        float len = diff.length();
+        if (len < 0.01F) return;
+
+        Vector3f dir = new Vector3f(diff).normalize();
+        Vector3f p1 = new Vector3f();
+        if (Math.abs(dir.y) < 0.9F) p1.set(0, 1, 0).cross(dir).normalize();
+        else p1.set(1, 0, 0).cross(dir).normalize();
+        Vector3f p2 = new Vector3f(dir).cross(p1).normalize();
+
+        float thick = Math.min(len * 0.2F, 0.15F * 16F);
+        Vector3f mid = new Vector3f(start).add(new Vector3f(diff).mul(0.2F));
+
+        Vector3f v1 = new Vector3f(mid).add(new Vector3f(p1).mul(thick));
+        Vector3f v2 = new Vector3f(mid).add(new Vector3f(p2).mul(thick));
+        Vector3f v3 = new Vector3f(mid).add(new Vector3f(p1).mul(-thick));
+        Vector3f v4 = new Vector3f(mid).add(new Vector3f(p2).mul(-thick));
+
+        /* Top faces (to start) */
+        this.triangle(builder, matrix, start, v1, v2, r * 1.1F, g * 1.1F, b * 1.1F, a);
+        this.triangle(builder, matrix, start, v2, v3, r, g, b, a);
+        this.triangle(builder, matrix, start, v3, v4, r * 0.9F, g * 0.9F, b * 0.9F, a);
+        this.triangle(builder, matrix, start, v4, v1, r * 0.8F, g * 0.8F, b * 0.8F, a);
+
+        /* Bottom faces (to end) */
+        this.triangle(builder, matrix, end, v2, v1, r * 0.8F, g * 0.8F, b * 0.8F, a);
+        this.triangle(builder, matrix, end, v3, v2, r * 0.7F, g * 0.7F, b * 0.7F, a);
+        this.triangle(builder, matrix, end, v4, v3, r * 0.6F, g * 0.6F, b * 0.6F, a);
+        this.triangle(builder, matrix, end, v1, v4, r * 0.5F, g * 0.5F, b * 0.5F, a);
+    }
+
+    private void triangle(BufferBuilder builder, Matrix4f matrix, Vector3f v1, Vector3f v2, Vector3f v3, float r, float g, float b, float a)
+    {
+        builder.vertex(matrix, v1.x, v1.y, v1.z).color(r, g, b, a).next();
+        builder.vertex(matrix, v2.x, v2.y, v2.z).color(r, g, b, a).next();
+        builder.vertex(matrix, v3.x, v3.y, v3.z).color(r, g, b, a).next();
+    }
+
+    private void renderSkeletonPicking(UIContext context, MatrixCache matrixCache)
+    {
+        ModelInstance instance = this.getPreviewModelInstance();
+        if (instance == null || instance.model == null) return;
+
+        Matrix4f uiMatrix = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
+        MatrixCacheEntry rootEntry = matrixCache.get("");
+        Matrix4f rootMat = rootEntry != null ? rootEntry.matrix() : null;
+        Matrix4f gizmoMat = new Matrix4f(uiMatrix);
+
+        if (rootMat != null)
+        {
+            gizmoMat.mul(rootMat);
+        }
+
+        BufferBuilder builder = Tessellator.getInstance().getBuffer();
+        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
+
+        builder.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
+
+        if (instance.model instanceof Model model)
+        {
+            for (ModelGroup group : model.getOrderedGroups())
+            {
+                if (group.parent != null)
+                {
+                    Vector3f start = this.getBonePoint(matrixCache, group.parent.id);
+                    Vector3f end = this.getBonePoint(matrixCache, group.id);
+
+                    if (start != null && end != null)
+                    {
+                        int id = this.getBoneStencilId(group.id);
+                        float r = ((id >> 16) & 0xFF) / 255F;
+                        float g = ((id >> 8) & 0xFF) / 255F;
+                        float b = (id & 0xFF) / 255F;
+
+                        this.drawOctahedron(builder, gizmoMat, start, end, r, g, b, 1F);
+                    }
+                }
+            }
+        }
+        else if (!instance.model.getAllBOBJBones().isEmpty())
+        {
+            for (BOBJBone bone : instance.model.getAllBOBJBones())
+            {
+                if (bone.parentBone != null)
+                {
+                    Vector3f start = this.getBonePoint(matrixCache, bone.parentBone.name);
+                    Vector3f end = this.getBonePoint(matrixCache, bone.name);
+
+                    if (start != null && end != null)
+                    {
+                        int id = this.getBoneStencilId(bone.name);
+                        float r = ((id >> 16) & 0xFF) / 255F;
+                        float g = ((id >> 8) & 0xFF) / 255F;
+                        float b = (id & 0xFF) / 255F;
+
+                        this.drawOctahedron(builder, gizmoMat, start, end, r, g, b, 1F);
+                    }
+                }
+            }
+        }
+
+        BufferRenderer.drawWithGlobalProgram(builder.end());
+    }
+
+    private int getBoneStencilId(String bone)
+    {
+        for (Map.Entry<Integer, Pair<Form, String>> entry : this.stencilMap.indexMap.entrySet())
+        {
+            if (entry.getValue().a == this.form && entry.getValue().b.equals(bone))
+            {
+                return entry.getKey();
+            }
+        }
+        return 0;
+    }
+
     @Override
     public void render(UIContext context)
     {
@@ -596,6 +956,9 @@ public class UIModelEditorRenderer extends UIModelRenderer
                 {
                     this.renderer.resetAnimator();
                 }
+
+                /* Live IK preview: push chain configs into the preview animator */
+                this.applyIKChainsToPreview(model);
             }
         }
         catch (Exception e)
@@ -674,6 +1037,28 @@ public class UIModelEditorRenderer extends UIModelRenderer
                 target.geckoAnimations.enabled,
                 target.geckoAnimations.limbs.size()
             );
+        }
+    }
+
+    /**
+     * Pushes the IK chain configurations from the active ModelConfig into the
+     * preview model's ProceduralAnimator so the FABRIK solver runs every frame
+     * in the editor preview viewport.
+     */
+    private void applyIKChainsToPreview(ModelInstance model)
+    {
+        if (this.config == null || this.config.ikChains.getList().isEmpty())
+        {
+            return;
+        }
+
+        /* ModelFormRenderer.getAnimator() returns the live IAnimator.
+           If the model is procedural, it will be a ProceduralAnimator. */
+        IAnimator animator = this.renderer.getAnimator();
+
+        if (animator instanceof ProceduralAnimator pa)
+        {
+            pa.setIKChains(new java.util.ArrayList<>(this.config.ikChains.getList()));
         }
     }
 

@@ -72,6 +72,7 @@ import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.pose.UIPoseEditor;
+import mchorse.bbs_mod.ui.model.UIModelIKPanel;
 import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.colors.Colors;
 
@@ -127,6 +128,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
     public UIElement modelSettingsPanel;
     public UIElement placeholderPanel;
     public UIModelGeometryPanel geometryPanel;
+    public UIModelIKPanel ikPanel;
     public UIScrollView sectionsView;
     public UIScrollView rightView;
     public List<UIModelSection> sections = new ArrayList<>();
@@ -260,9 +262,10 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         this.iconBar.add(spacer);
 
         this.geometryPanel = new UIModelGeometryPanel(this);
+        this.ikPanel = new UIModelIKPanel(this);
 
         this.registerPanel(this.modelSettingsPanel, UIKeys.MODELS_SETTINGS, Icons.MODELS_SETTINGS);
-        this.registerPanel(this.createUnavailablePanel(), UIKeys.MODELS_IK_EDITOR, Icons.IK);
+        this.registerPanel(this.ikPanel, UIKeys.MODELS_IK_EDITOR, Icons.IK);
         this.registerPanel(this.placeholderPanel, UIKeys.COMING_SOON, Icons.GEAR);
         this.registerPanel(this.geometryPanel, UIKeys.MODELS_GEOMETRY_EDITOR, Icons.GEOMETRY_EDITOR);
 
@@ -929,6 +932,10 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         {
             this.renderer.transform = this.geometryPanel.getGizmoTransformEditor();
         }
+        else if (panel == this.ikPanel)
+        {
+            /* No special gizmo for IK panel in v1 */
+        }
 
         this.mainView.resize();
     }
@@ -1164,6 +1171,11 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
                 this.setRight(((UIModelPartsSection) section).poseEditor);
             }
         }
+
+        if (this.ikPanel.hasParent())
+        {
+            this.ikPanel.onBoneSelected(bone);
+        }
     }
     
     public void dirty()
@@ -1221,6 +1233,11 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
             if (this.geometryPanel != null)
             {
                 this.geometryPanel.setConfig(data);
+            }
+
+            if (this.ikPanel != null)
+            {
+                this.ikPanel.setConfig(data);
             }
             
             this.sectionsView.resize();

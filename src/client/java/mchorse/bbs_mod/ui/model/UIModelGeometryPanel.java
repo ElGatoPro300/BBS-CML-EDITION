@@ -80,6 +80,7 @@ public class UIModelGeometryPanel extends UIElement
     private final UIToggle cubeMirror;
     private final UIIcon addCubeIcon;
     private final UIIcon addFolderIcon;
+    private final UIIcon addIKLocatorIcon;
     private final Set<String> collapsedGroupIds = new HashSet<>();
     private ModelGroup copiedGroup;
     private ModelCube copiedCube;
@@ -320,12 +321,15 @@ public class UIModelGeometryPanel extends UIElement
 
         this.addCubeIcon = new UIIcon(Icons.BLOCK, (b) -> this.addCube());
         this.addFolderIcon = new UIIcon(Icons.FOLDER, (b) -> this.addFolder());
+        this.addIKLocatorIcon = new UIIcon(Icons.POSE, (b) -> this.addIKLocator());
         this.addCubeIcon.tooltip(UIKeys.MODELS_GEOMETRY_ADD_CUBE);
         this.addFolderIcon.tooltip(UIKeys.MODELS_GEOMETRY_ADD_FOLDER);
+        this.addIKLocatorIcon.tooltip(UIKeys.MODELS_IK_CREATE_LOCATOR_TOOLTIP);
         this.addCubeIcon.relative(this).x(sideMargin).y(26).w(20).h(20);
         this.addFolderIcon.relative(this.addCubeIcon).x(1F, 2).y(0).w(20).h(20);
+        this.addIKLocatorIcon.relative(this.addFolderIcon).x(1F, 2).y(0).w(20).h(20);
 
-        this.add(hierarchyTitle, this.addCubeIcon, this.addFolderIcon, this.hierarchySearch, editor);
+        this.add(hierarchyTitle, this.addCubeIcon, this.addFolderIcon, this.addIKLocatorIcon, this.hierarchySearch, editor);
 
         this.fillControls();
         this.fillCubeControls();
@@ -987,6 +991,34 @@ public class UIModelGeometryPanel extends UIElement
 
         model.initialize();
         this.reloadHierarchyPreserveSelection(new GeometryEntry(GeometryEntryType.BONE, id, -1, 0, id, true));
+        this.refreshCubeRenderAndSave();
+    }
+
+    private void addIKLocator()
+    {
+        if (this.instance == null || !(this.instance.model instanceof Model model))
+        {
+            return;
+        }
+
+        Set<String> used = new HashSet<>(model.getAllGroupKeys());
+        String id = this.makeUniqueGroupId("ik_locator", used);
+        ModelGroup group = new ModelGroup(id);
+        group.ikLocator = true;
+        ModelGroup parent = this.selectedGroup;
+
+        if (parent == null)
+        {
+            model.topGroups.add(group);
+        }
+        else
+        {
+            group.parent = parent;
+            parent.children.add(group);
+        }
+
+        model.initialize();
+        this.reloadHierarchyPreserveSelection(new GeometryEntry(GeometryEntryType.BONE, id, -1, 0, id, false));
         this.refreshCubeRenderAndSave();
     }
 
