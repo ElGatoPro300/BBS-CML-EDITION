@@ -225,6 +225,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private final List<BannerEntry> homeBanners = new ArrayList<>();
     private static final Set<Link> prefetchingBanners = Collections.synchronizedSet(new HashSet<>());
     private int bannerIndex = 0;
+    private List<Integer> bannerSequence = new ArrayList<>();
+    private int sequenceIndex = 0;
     private float lastBannerTicks = -1;
     private static final int BANNER_DURATION = 200; // 10 seconds at 20 ticks/sec
     private static final int BANNER_TRANSITION = 60; // 3 seconds transition
@@ -3362,7 +3364,21 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         
         if (elapsed >= BANNER_DURATION)
         {
-            this.bannerIndex = (this.bannerIndex + 1) % this.homeBanners.size();
+            if (this.homeBanners.size() > 1)
+            {
+                if (this.bannerSequence.size() != this.homeBanners.size())
+                {
+                    this.regenerateBannerSequence();
+                }
+
+                this.sequenceIndex++;
+                if (this.sequenceIndex >= this.bannerSequence.size())
+                {
+                    this.sequenceIndex = 0;
+                    this.shuffleRemoteBanners();
+                }
+                this.bannerIndex = this.bannerSequence.get(this.sequenceIndex);
+            }
             this.lastBannerTicks = currentTicks;
             elapsed = 0;
         }
@@ -3386,7 +3402,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             textTransitionCurr = 1F;
         }
 
-        int prevIndex = (this.bannerIndex + this.homeBanners.size() - 1) % this.homeBanners.size();
+        int prevIndex = this.bannerSequence.isEmpty() ? 0 : this.bannerSequence.get((this.sequenceIndex + this.bannerSequence.size() - 1) % this.bannerSequence.size());
         BannerEntry current = this.homeBanners.get(this.bannerIndex);
         BannerEntry prev = this.homeBanners.get(prevIndex);
 
@@ -3404,6 +3420,27 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         context.batcher.box(dividerX, splitY + 1, dividerX + 1, pageY + pageH, Colors.A12);
         context.batcher.textShadow(L10n.lang("bbs.ui.film.home.actions").get(), pageX + 4, splitY + 6);
         context.batcher.textShadow(L10n.lang("bbs.ui.film.home.list").get(), dividerX + 4, splitY + 6);
+    }
+
+    private void regenerateBannerSequence()
+    {
+        this.bannerSequence.clear();
+        for (int i = 0; i < this.homeBanners.size(); i++)
+        {
+            this.bannerSequence.add(i);
+        }
+        this.shuffleRemoteBanners();
+        this.sequenceIndex = 0;
+        this.bannerIndex = 0; // Always start with local
+    }
+
+    private void shuffleRemoteBanners()
+    {
+        if (this.bannerSequence.size() > 2)
+        {
+            List<Integer> remote = this.bannerSequence.subList(1, this.bannerSequence.size());
+            Collections.shuffle(remote);
+        }
     }
 
     private void drawBanner(UIContext context, BannerEntry entry, int x, int y, int w, int h, float alpha, float textAlpha, boolean drawStripe)
