@@ -63,6 +63,12 @@ public class ColorGradeRenderer
             /* UV distortion */
             uniform vec2 u_distort;
 
+            /* Cinematic effects */
+            uniform float u_aberration;
+            uniform float u_vhs;
+            uniform float u_lensDistortion;
+            uniform float u_time;
+
             /* --- HSL helpers --- */
 
             vec3 rgb2hsl(vec3 c)
@@ -106,8 +112,45 @@ public class ColorGradeRenderer
             void main()
             {
                 vec2 sampleUV = v_uv + u_distort;
-                vec4 color = texture(u_sampler, sampleUV);
-                vec3 rgb = color.rgb;
+
+                /* VHS Horizontal Glitch displacement before sampling */
+                if (u_vhs > 0.001)
+                {
+                    float glitchNoise = hash(vec2(floor(sampleUV.y * 80.0), floor(u_time * 12.0)));
+                    if (glitchNoise > 0.95 - (u_vhs * 0.05))
+                    {
+                        sampleUV.x += sin(sampleUV.y * 30.0 + u_time * 10.0) * 0.02 * u_vhs;
+                    }
+                }
+
+                /* Lens Distortion (Fisheye) warping */
+                vec2 distortedUV = sampleUV;
+                if (abs(u_lensDistortion) > 0.001)
+                {
+                    vec2 uvOffset = sampleUV - vec2(0.5);
+                    float r2 = dot(uvOffset, uvOffset);
+                    distortedUV = uvOffset * (1.0 + u_lensDistortion * r2) + vec2(0.5);
+                    distortedUV = clamp(distortedUV, 0.0, 1.0);
+                }
+
+                /* Chromatic Aberration splitting */
+                vec2 uvRed = distortedUV;
+                vec2 uvBlue = distortedUV;
+                if (u_aberration > 0.001)
+                {
+                    vec2 dir = distortedUV - vec2(0.5);
+                    float dist = length(dir);
+                    vec2 offset = dir * dist * u_aberration;
+                    uvRed += offset;
+                    uvBlue -= offset;
+                    uvRed = clamp(uvRed, 0.0, 1.0);
+                    uvBlue = clamp(uvBlue, 0.0, 1.0);
+                }
+
+                float r = texture(u_sampler, uvRed).r;
+                float g = texture(u_sampler, distortedUV).g;
+                float b = texture(u_sampler, uvBlue).b;
+                vec3 rgb = vec3(r, g, b);
 
                 /* 1 — Lift / Gamma / Gain */
                 rgb = rgb * (vec3(1.0) + u_gain);
@@ -149,7 +192,17 @@ public class ColorGradeRenderer
                     rgb += (noise - 0.5) * u_grainStr * 2.0;
                 }
 
-                fragColor = vec4(clamp(rgb, 0.0, 1.0), color.a);
+                /* 7 — VHS Scanlines and Static noise */
+                if (u_vhs > 0.001)
+                {
+                    float scanline = sin(distortedUV.y * 300.0 - u_time * 15.0) * 0.08 * u_vhs;
+                    rgb -= vec3(scanline);
+
+                    float vhsNoise = hash(distortedUV + vec2(u_time * 0.01));
+                    rgb = mix(rgb, vec3(vhsNoise), 0.03 * u_vhs);
+                }
+
+                fragColor = vec4(clamp(rgb, 0.0, 1.0), texture(u_sampler, distortedUV).a);
             }
             """;
 
@@ -175,6 +228,10 @@ public class ColorGradeRenderer
     private static int uGrainSize;
     private static int uGrainSeed;
     private static int uDistort;
+    private static int uAberration;
+    private static int uVHS;
+    private static int uLensDistortion;
+    private static int uTime;
 
     public static void apply(List<ColorEffect> effects, List<GrainEffect> grainEffects)
     {
@@ -182,12 +239,14 @@ public class ColorGradeRenderer
         boolean needGrade = false;
         boolean needGrain = false;
         boolean needDistort = false;
+        boolean needCinematic = false;
 
         for (ColorEffect e : effects)
         {
             if (e.hasVignette) needVignette = true;
             if (e.hasGrade) needGrade = true;
             if (e.hasDistort) needDistort = true;
+            if (e.hasCinematic) needCinematic = true;
         }
 
         for (GrainEffect e : grainEffects)
@@ -195,7 +254,7 @@ public class ColorGradeRenderer
             if (e.strength > 0F) needGrain = true;
         }
 
-        if (!needVignette && !needGrade && !needGrain && !needDistort)
+        if (!needVignette && !needGrade && !needGrain && !needDistort && !needCinematic)
         {
             return;
         }
@@ -302,6 +361,21 @@ public class ColorGradeRenderer
             }
         }
 
+        /* Accumulate cinematic effects */
+        float aberration = 0F;
+        float vhs = 0F;
+        float lensDistortion = 0F;
+
+        for (ColorEffect e : effects)
+        {
+            if (e.hasCinematic)
+            {
+                aberration = Math.max(aberration, e.aberration);
+                vhs = Math.max(vhs, e.vhs);
+                lensDistortion += e.lensDistortion;
+            }
+        }
+
         /* Save and set viewport */
         int[] prevViewport = new int[4];
         GL11.glGetIntegerv(GL11.GL_VIEWPORT, prevViewport);
@@ -330,6 +404,12 @@ public class ColorGradeRenderer
         GL20.glUniform1f(uGrainSize, grainSize);
         GL20.glUniform1f(uGrainSeed, grainSeed);
         GL20.glUniform2f(uDistort, distortX, distortY);
+        GL20.glUniform1f(uAberration, aberration);
+        GL20.glUniform1f(uVHS, vhs);
+        GL20.glUniform1f(uLensDistortion, lensDistortion);
+
+        float time = (System.currentTimeMillis() % 1000000) / 1000.0F;
+        GL20.glUniform1f(uTime, time);
 
         GL30.glBindVertexArray(vao);
         GL11.glDrawArrays(GL11.GL_TRIANGLES, 0, 6);
@@ -405,6 +485,10 @@ public class ColorGradeRenderer
         uGrainSize = GL20.glGetUniformLocation(program, "u_grainSize");
         uGrainSeed = GL20.glGetUniformLocation(program, "u_grainSeed");
         uDistort = GL20.glGetUniformLocation(program, "u_distort");
+        uAberration = GL20.glGetUniformLocation(program, "u_aberration");
+        uVHS = GL20.glGetUniformLocation(program, "u_vhs");
+        uLensDistortion = GL20.glGetUniformLocation(program, "u_lensDistortion");
+        uTime = GL20.glGetUniformLocation(program, "u_time");
 
         /* Fullscreen quad VAO/VBO (NDC coords + UV) */
         vao = GL30.glGenVertexArrays();

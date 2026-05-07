@@ -23,11 +23,17 @@ public class ColorEffect
     public float gammaR, gammaG, gammaB;
     public float gainR, gainG, gainB;
 
+    public boolean hasCinematic;
+    public float aberration;
+    public float vhs;
+    public float lensDistortion;
+
     public void reset()
     {
         this.hasOverlay = false;
         this.hasVignette = false;
         this.hasGrade = false;
         this.hasDistort = false;
+        this.hasCinematic = false;
     }
 }

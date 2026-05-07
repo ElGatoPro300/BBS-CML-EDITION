@@ -2,6 +2,7 @@ package mchorse.bbs_mod.ui.film.clips;
 
 import mchorse.bbs_mod.camera.clips.screen.ColorClip;
 import mchorse.bbs_mod.data.types.MapType;
+import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
@@ -113,7 +114,70 @@ public class UIColorClip extends UIClip<ColorClip>
             new KeyframeChannel[] {this.clip.gainR, this.clip.gainG, this.clip.gainB},
             new int[] {Colors.RED, Colors.GREEN, Colors.BLUE});
 
+        this.addCinematicGroup(view);
+
         this.keyframes.view.getGraph().clearSelection();
+    }
+
+    private void addCinematicGroup(UIKeyframes view)
+    {
+        String key = "cinematic";
+        boolean expanded = !this.collapsed.getOrDefault(key, false);
+
+        UIKeyframeSheet header = UIKeyframeSheet.groupHeader(
+            "__color__" + key,
+            L10n.lang("bbs.ui.color_clip.cinematic"),
+            COLOR_GRADE,
+            key,
+            expanded,
+            () ->
+            {
+                this.collapsed.put(key, !this.collapsed.getOrDefault(key, false));
+                this.rebuildChannels();
+            }
+        );
+
+        header.level = 0;
+        view.addSheet(header);
+
+        if (expanded)
+        {
+            UIKeyframeSheet shAberration = new UIKeyframeSheet(
+                "aberration",
+                L10n.lang("bbs.ui.camera.clips.channel.aberration"),
+                Colors.RED,
+                false,
+                this.clip.aberration,
+                null
+            );
+            shAberration.level = 1;
+            shAberration.groupKey = key;
+            view.addSheet(shAberration);
+
+            UIKeyframeSheet shVHS = new UIKeyframeSheet(
+                "vhs",
+                L10n.lang("bbs.ui.camera.clips.channel.vhs"),
+                Colors.GREEN,
+                false,
+                this.clip.vhs,
+                null
+            );
+            shVHS.level = 1;
+            shVHS.groupKey = key;
+            view.addSheet(shVHS);
+
+            UIKeyframeSheet shLensDistortion = new UIKeyframeSheet(
+                "lensDistortion",
+                L10n.lang("bbs.ui.camera.clips.channel.lens_distortion"),
+                Colors.BLUE,
+                false,
+                this.clip.lensDistortion,
+                null
+            );
+            shLensDistortion.level = 1;
+            shLensDistortion.groupKey = key;
+            view.addSheet(shLensDistortion);
+        }
     }
 
     private void addGroup(UIKeyframes view, String key, IKey title, int color, KeyframeChannel[] channels, int[] colors)
