@@ -237,18 +237,6 @@ public class UIColorClip extends UIClip<ColorClip>
             shLightLeak.level = 1;
             shLightLeak.groupKey = key;
             view.addSheet(shLightLeak);
-
-            UIKeyframeSheet shNightVision = new UIKeyframeSheet(
-                "nightVision",
-                L10n.lang("bbs.ui.camera.clips.channel.night_vision"),
-                0xff33ff33, // Bright green color
-                false,
-                this.clip.nightVision,
-                null
-            );
-            shNightVision.level = 1;
-            shNightVision.groupKey = key;
-            view.addSheet(shNightVision);
         }
     }
 

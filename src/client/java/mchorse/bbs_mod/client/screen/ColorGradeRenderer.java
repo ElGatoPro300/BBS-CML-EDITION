@@ -72,7 +72,6 @@ public class ColorGradeRenderer
             uniform float u_rain;
             uniform float u_dust;
             uniform float u_lightLeak;
-            uniform float u_nightVision;
             uniform float u_time;
 
             /* --- HSL helpers --- */
@@ -270,22 +269,7 @@ public class ColorGradeRenderer
                     rgb = mix(rgb, vec3(vhsNoise), 0.03 * u_vhs);
                 }
 
-                /* 8 — Film Dust & Specks (White & Dark spots) */
-                if (u_dust > 0.001)
-                {
-                    float dustTime = floor(u_time * 18.0);
-                    float dustSeed = hash(distortedUV + vec2(dustTime));
-                    if (dustSeed > 0.994)
-                    {
-                        rgb = mix(rgb, vec3(1.0), u_dust);
-                    }
-                    else if (dustSeed > 0.990)
-                    {
-                        rgb = mix(rgb, vec3(0.0), u_dust * 0.85);
-                    }
-                }
-
-                /* 9 — Cinematic Light Leak Flare */
+                /* 8 — Cinematic Light Leak Flare */
                 if (u_lightLeak > 0.001)
                 {
                     float leakGrad = smoothstep(1.2, 0.0, length(distortedUV - vec2(0.0, 0.4)));
@@ -298,19 +282,71 @@ public class ColorGradeRenderer
                     rgb += leakColor + blueColor;
                 }
 
-                /* 10 — Digital Night Vision */
-                if (u_nightVision > 0.001)
+                /* 9 — Projector Dust & Specks (60s tape/projector) */
+                if (u_dust > 0.001)
                 {
-                    float greenLuma = dot(rgb, vec3(0.299, 0.587, 0.114));
-                    vec3 nvColor = vec3(0.1, 0.95, 0.15) * greenLuma;
+                    float dustTime = floor(u_time * 12.0);
 
-                    float nvNoise = hash(distortedUV + vec2(u_time * 0.13));
-                    nvColor = mix(nvColor, vec3(0.05, 0.45, 0.1), nvNoise * 0.25);
+                    for (int i = 0; i < 3; i++)
+                    {
+                        vec2 randPos = vec2(
+                            hash(vec2(dustTime, float(i) * 15.3)),
+                            hash(vec2(dustTime, float(i) * 31.7))
+                        );
 
-                    float nvScanline = sin(distortedUV.y * 600.0) * 0.15;
-                    nvColor -= vec3(nvScanline);
+                        float spawnProb = hash(vec2(dustTime, float(i) * 7.9));
+                        if (spawnProb < u_dust)
+                        {
+                            vec2 diff = distortedUV - randPos;
+                            diff.x *= 1.77;
 
-                    rgb = mix(rgb, nvColor, u_nightVision);
+                            // Randomly rotate the coordinates for each speck
+                            float rotAngle = hash(vec2(dustTime, float(i) * 19.3)) * 6.28318;
+                            float cosA = cos(rotAngle);
+                            float sinA = sin(rotAngle);
+                            vec2 rotatedDiff = vec2(
+                                diff.x * cosA - diff.y * sinA,
+                                diff.x * sinA + diff.y * cosA
+                            );
+
+                            float typeDecider = hash(vec2(dustTime, float(i) * 88.1));
+
+                            if (typeDecider < 0.33)
+                            {
+                                // Type A: Rounded / Irregular Speck (soot flake)
+                                float angle = atan(rotatedDiff.y, rotatedDiff.x);
+                                float deform = 1.0 + 0.4 * sin(angle * 4.0) + 0.3 * cos(angle * 7.0 + 0.8);
+                                float rLimit = 0.008 * u_dust * deform;
+                                if (length(rotatedDiff) < rLimit)
+                                {
+                                    rgb = mix(rgb, vec3(1.0), 0.95);
+                                }
+                            }
+                            else if (typeDecider < 0.66)
+                            {
+                                // Type B: Thread / Curved Lint Hair
+                                float hairLength = 0.022 * u_dust;
+                                float hairThickness = 0.0010 * u_dust;
+                                float bend = sin(rotatedDiff.x * 180.0) * 0.005;
+                                if (abs(rotatedDiff.x) < hairLength && abs(rotatedDiff.y - bend) < hairThickness)
+                                {
+                                    rgb = mix(rgb, vec3(1.0), 0.95);
+                                }
+                            }
+                            else
+                            {
+                                // Type C: Deformed Elongated Ellipse Speck (dust fiber clump)
+                                vec2 stretched = vec2(rotatedDiff.x * 2.8, rotatedDiff.y);
+                                float angle = atan(stretched.y, stretched.x);
+                                float deform = 1.0 + 0.35 * sin(angle * 3.0);
+                                float rLimit = 0.012 * u_dust * deform;
+                                if (length(stretched) < rLimit)
+                                {
+                                    rgb = mix(rgb, vec3(1.0), 0.95);
+                                }
+                            }
+                        }
+                    }
                 }
 
                 fragColor = vec4(clamp(rgb, 0.0, 1.0), texture(u_sampler, distortedUV).a);
@@ -347,7 +383,6 @@ public class ColorGradeRenderer
     private static int uRain;
     private static int uDust;
     private static int uLightLeak;
-    private static int uNightVision;
     private static int uTime;
 
     public static void apply(List<ColorEffect> effects, List<GrainEffect> grainEffects)
@@ -487,7 +522,7 @@ public class ColorGradeRenderer
         float rain = 0F;
         float dust = 0F;
         float lightLeak = 0F;
-        float nightVision = 0F;
+        float time = 0F;
 
         for (ColorEffect e : effects)
         {
@@ -501,7 +536,7 @@ public class ColorGradeRenderer
                 rain = Math.max(rain, e.rain);
                 dust = Math.max(dust, e.dust);
                 lightLeak = Math.max(lightLeak, e.lightLeak);
-                nightVision = Math.max(nightVision, e.nightVision);
+                time = e.time;
             }
         }
 
@@ -541,9 +576,6 @@ public class ColorGradeRenderer
         GL20.glUniform1f(uRain, rain);
         GL20.glUniform1f(uDust, dust);
         GL20.glUniform1f(uLightLeak, lightLeak);
-        GL20.glUniform1f(uNightVision, nightVision);
-
-        float time = (System.currentTimeMillis() % 1000000) / 1000.0F;
         GL20.glUniform1f(uTime, time);
 
         GL30.glBindVertexArray(vao);
@@ -628,7 +660,6 @@ public class ColorGradeRenderer
         uRain = GL20.glGetUniformLocation(program, "u_rain");
         uDust = GL20.glGetUniformLocation(program, "u_dust");
         uLightLeak = GL20.glGetUniformLocation(program, "u_lightLeak");
-        uNightVision = GL20.glGetUniformLocation(program, "u_nightVision");
         uTime = GL20.glGetUniformLocation(program, "u_time");
 
         /* Fullscreen quad VAO/VBO (NDC coords + UV) */

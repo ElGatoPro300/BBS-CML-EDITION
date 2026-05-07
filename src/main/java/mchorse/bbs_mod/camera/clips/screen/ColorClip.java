@@ -47,7 +47,6 @@ public class ColorClip extends CameraClip
     public final KeyframeChannel<Double> rain = new KeyframeChannel<>("rain", KeyframeFactories.DOUBLE);
     public final KeyframeChannel<Double> dust = new KeyframeChannel<>("dust", KeyframeFactories.DOUBLE);
     public final KeyframeChannel<Double> lightLeak = new KeyframeChannel<>("lightLeak", KeyframeFactories.DOUBLE);
-    public final KeyframeChannel<Double> nightVision = new KeyframeChannel<>("nightVision", KeyframeFactories.DOUBLE);
 
     public final KeyframeChannel<Double>[] channels;
 
@@ -83,7 +82,6 @@ public class ColorClip extends CameraClip
             this.rain,
             this.dust,
             this.lightLeak,
-            this.nightVision,
         };
 
         this.add(this.overlayColor);
@@ -109,7 +107,6 @@ public class ColorClip extends CameraClip
         this.add(this.rain);
         this.add(this.dust);
         this.add(this.lightLeak);
-        this.add(this.nightVision);
     }
 
     @Override
@@ -176,9 +173,8 @@ public class ColorClip extends CameraClip
         float rn = (this.rain.isEmpty() ? 0F : (float) (double) this.rain.interpolate(t)) * 0.25F;
         float ds = (this.dust.isEmpty() ? 0F : (float) (double) this.dust.interpolate(t)) * 0.25F;
         float ll = (this.lightLeak.isEmpty() ? 0F : (float) (double) this.lightLeak.interpolate(t)) * 0.25F;
-        float nv = (this.nightVision.isEmpty() ? 0F : (float) (double) this.nightVision.interpolate(t)) * 0.25F;
 
-        if (ab != 0F || vh != 0F || ld != 0F || vt != 0F || rb != 0F || rn != 0F || ds != 0F || ll != 0F || nv != 0F)
+        if (ab != 0F || vh != 0F || ld != 0F || vt != 0F || rb != 0F || rn != 0F || ds != 0F || ll != 0F)
         {
             this.effect.hasCinematic = true;
             this.effect.aberration = ab * factor;
@@ -189,7 +185,7 @@ public class ColorClip extends CameraClip
             this.effect.rain = rn * factor;
             this.effect.dust = ds * factor;
             this.effect.lightLeak = ll * factor;
-            this.effect.nightVision = nv * factor;
+            this.effect.time = t / 20.0F; // Convert timeline ticks to seconds
         }
 
         if (this.effect.hasOverlay || this.effect.hasGrade || this.effect.hasCinematic)

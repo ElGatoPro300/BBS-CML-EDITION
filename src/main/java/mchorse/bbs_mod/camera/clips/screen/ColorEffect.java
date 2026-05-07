@@ -32,7 +32,7 @@ public class ColorEffect
     public float rain;
     public float dust;
     public float lightLeak;
-    public float nightVision;
+    public float time;
 
     public void reset()
     {
@@ -41,5 +41,15 @@ public class ColorEffect
         this.hasGrade = false;
         this.hasDistort = false;
         this.hasCinematic = false;
+
+        this.aberration = 0F;
+        this.vhs = 0F;
+        this.lensDistortion = 0F;
+        this.vintage = 0F;
+        this.radialBlur = 0F;
+        this.rain = 0F;
+        this.dust = 0F;
+        this.lightLeak = 0F;
+        this.time = 0F;
     }
 }
