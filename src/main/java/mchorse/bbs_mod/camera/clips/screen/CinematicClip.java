@@ -82,6 +82,12 @@ public class CinematicClip extends CameraClip
     }
 
     @Override
+    public boolean isPositionClip()
+    {
+        return false;
+    }
+
+    @Override
     protected Clip create()
     {
         return new CinematicClip();

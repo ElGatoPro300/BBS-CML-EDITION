@@ -77,6 +77,12 @@ public class SubtitleClip extends CameraClip
     }
 
     @Override
+    public boolean isPositionClip()
+    {
+        return false;
+    }
+
+    @Override
     protected Clip create()
     {
         return new SubtitleClip();
