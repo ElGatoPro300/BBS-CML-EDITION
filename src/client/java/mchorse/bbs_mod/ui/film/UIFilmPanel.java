@@ -448,6 +448,42 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                 });
             }
         });
+        this.homeFilmsList.moveCallback = (from, to) ->
+        {
+            String fromStr = from.toString();
+            String toStr = to.toString();
+
+            if (from.folder)
+            {
+                this.getType().getRepository().renameFolder(fromStr, toStr, (bool) ->
+                {
+                    if (bool)
+                    {
+                        this.requestNames();
+                    }
+                });
+            }
+            else
+            {
+                this.getType().getRepository().rename(fromStr, toStr);
+
+                for (FilmDocumentTab tab : this.filmDocumentTabs)
+                {
+                    if (!tab.home && fromStr.equals(tab.filmId))
+                    {
+                        tab.filmId = toStr;
+                    }
+                }
+                this.rebuildFilmDocumentTabs();
+
+                if (this.data != null && fromStr.equals(this.data.getId()))
+                {
+                    this.data.setId(toStr);
+                }
+
+                this.requestNames();
+            }
+        };
         this.homeFilmsSearch = new UISearchList<>(this.homeFilmsList).label(UIKeys.GENERAL_SEARCH);
         this.homeFilmsSearch.list.background();
         this.homeCreateFilm = this.createHomeButton(UIKeys.FILM_CRUD_ADD, Icons.ADD, (b) ->
