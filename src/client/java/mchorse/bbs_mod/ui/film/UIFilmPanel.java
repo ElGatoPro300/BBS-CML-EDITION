@@ -115,6 +115,7 @@ import com.google.gson.reflect.TypeToken;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.opengl.GL11;
 
+import java.io.File;
 import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.net.URI;
@@ -415,6 +416,38 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.homeActionsPanel = new UIElement();
         this.homeFilmsList = new UIDataPathList((list) -> this.handleHomeFilmsSelection(list));
         this.homeFilmsList.setFileIcon(Icons.FILM);
+        this.homeFilmsList.context((menu) ->
+        {
+            menu.action(Icons.FOLDER, UIKeys.PANELS_MODALS_ADD_FOLDER_TITLE, this::addFolderFromHome);
+
+            String selectedId = this.getSelectedHomeFilmId();
+            if (selectedId != null)
+            {
+                menu.action(Icons.COPY, UIKeys.PANELS_CONTEXT_COPY, this::copyHomeFilm);
+            }
+
+            try
+            {
+                MapType clipboardData = Window.getClipboardMap("_ContentType_" + this.getType().getId());
+
+                if (clipboardData != null)
+                {
+                    menu.action(Icons.PASTE, UIKeys.PANELS_CONTEXT_PASTE, () -> this.pasteHomeFilm(clipboardData));
+                }
+            }
+            catch (Exception e)
+            {}
+
+            File folder = this.getType().getRepository().getFolder();
+
+            if (folder != null)
+            {
+                menu.action(Icons.FOLDER, UIKeys.PANELS_CONTEXT_OPEN, () ->
+                {
+                    UIUtils.openFolder(new File(folder, this.homeFilmsList.getPath().toString()));
+                });
+            }
+        });
         this.homeFilmsSearch = new UISearchList<>(this.homeFilmsList).label(UIKeys.GENERAL_SEARCH);
         this.homeFilmsSearch.list.background();
         this.homeCreateFilm = this.createHomeButton(UIKeys.FILM_CRUD_ADD, Icons.ADD, (b) ->
@@ -2965,6 +2998,67 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         }
 
         return selected.toString();
+    }
+
+    private void addFolderFromHome()
+    {
+        UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
+            UIKeys.PANELS_MODALS_ADD_FOLDER_TITLE,
+            UIKeys.PANELS_MODALS_ADD_FOLDER,
+            (str) -> {
+                String path = this.homeFilmsList.getPath(str).toString();
+                if (path.trim().isEmpty()) {
+                    this.getContext().notifyError(UIKeys.PANELS_MODALS_EMPTY);
+                    return;
+                }
+                this.getType().getRepository().addFolder(path, (bool) -> {
+                    if (bool) {
+                        this.requestNames();
+                    }
+                });
+            }
+        );
+
+        panel.text.filename();
+
+        UIOverlay.addOverlay(this.getContext(), panel);
+    }
+
+    private void copyHomeFilm()
+    {
+        String selectedId = this.getSelectedHomeFilmId();
+        if (selectedId == null) return;
+
+        this.getType().getRepository().load(selectedId, (film) -> {
+            if (film != null) {
+                Window.setClipboard(film.toData().asMap(), "_ContentType_" + this.getType().getId());
+            }
+        });
+    }
+
+    private void pasteHomeFilm(MapType data)
+    {
+        UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
+            UIKeys.GENERAL_ADD,
+            UIKeys.PANELS_MODALS_ADD,
+            (str) -> {
+                String targetId = this.homeFilmsList.getPath(str).toString();
+                if (targetId.trim().isEmpty()) {
+                    this.getContext().notifyError(UIKeys.PANELS_MODALS_EMPTY);
+                    return;
+                }
+                if (this.homeFilmsList.hasInHierarchy(targetId)) {
+                    return;
+                }
+
+                Film newFilm = (Film) this.getType().getRepository().create(targetId, data);
+                this.fill(newFilm);
+            }
+        );
+
+        panel.text.filename();
+
+        UIOverlay.addOverlay(this.getContext(), panel);
     }
 
     private void handleHomeFilmsSelection(List<DataPath> list)
