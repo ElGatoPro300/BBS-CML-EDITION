@@ -602,12 +602,10 @@ public class UIModelEditorRenderer extends UIModelRenderer
         /* Flip Z to match the renderer's Y-rotation PI applied in getCubePivotMatrix */
         gizmoMat.rotateY(MathUtils.PI);
 
-        BufferBuilder builder = Tessellator.getInstance().getBuffer();
+        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
         RenderSystem.enableBlend();
         RenderSystem.disableDepthTest();
-
-        builder.begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
 
         /* --- magenta crosshair at target --- */
         float cs = 0.12F * 16F;   /* crosshair arm length in render units */
@@ -707,12 +705,10 @@ public class UIModelEditorRenderer extends UIModelRenderer
             gizmoMat.mul(rootMat);
         }
 
-        BufferBuilder builder = Tessellator.getInstance().getBuffer();
+        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
         RenderSystem.enableBlend();
         RenderSystem.disableDepthTest();
-
-        builder.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
 
         float r = 0.5F, g = 0.8F, b = 0.5F, a = 0.4F;
 
@@ -799,9 +795,9 @@ public class UIModelEditorRenderer extends UIModelRenderer
 
     private void triangle(BufferBuilder builder, Matrix4f matrix, Vector3f v1, Vector3f v2, Vector3f v3, float r, float g, float b, float a)
     {
-        builder.vertex(matrix, v1.x, v1.y, v1.z).color(r, g, b, a).next();
-        builder.vertex(matrix, v2.x, v2.y, v2.z).color(r, g, b, a).next();
-        builder.vertex(matrix, v3.x, v3.y, v3.z).color(r, g, b, a).next();
+        builder.vertex(matrix, v1.x, v1.y, v1.z).color(r, g, b, a);
+        builder.vertex(matrix, v2.x, v2.y, v2.z).color(r, g, b, a);
+        builder.vertex(matrix, v3.x, v3.y, v3.z).color(r, g, b, a);
     }
 
     private void renderSkeletonPicking(UIContext context, MatrixCache matrixCache)
@@ -819,10 +815,8 @@ public class UIModelEditorRenderer extends UIModelRenderer
             gizmoMat.mul(rootMat);
         }
 
-        BufferBuilder builder = Tessellator.getInstance().getBuffer();
+        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
-
-        builder.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
 
         if (instance.model instanceof Model model)
         {
