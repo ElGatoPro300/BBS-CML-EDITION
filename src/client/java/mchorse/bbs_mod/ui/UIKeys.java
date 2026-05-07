@@ -1408,6 +1408,11 @@ public class UIKeys
     public static final IKey VIDEO_SETTINGS_TITLE = L10n.lang("bbs.ui.video_settings.title");
     public static final IKey VIDEO_SETTINGS_WIDTH = L10n.lang("bbs.ui.video_settings.width");
     public static final IKey WORLD_KEYS_CYCLE_PANELS = L10n.lang("bbs.ui.world.keys.cycle_panels");
+    public static final IKey CAMERA_TIMELINE_CLIPS_TABS_CAMERA = L10n.lang("bbs.ui.camera.clips.tabs.camera");
+    public static final IKey CAMERA_TIMELINE_CLIPS_TABS_RESOURCE = L10n.lang("bbs.ui.camera.clips.tabs.resource");
+    public static final IKey CAMERA_TIMELINE_CLIPS_TABS_SCREEN = L10n.lang("bbs.ui.camera.clips.tabs.screen");
+    public static final IKey CAMERA_TIMELINE_CLIPS_TABS_ANCHOR = L10n.lang("bbs.ui.camera.clips.tabs.anchor");
+    public static final IKey CAMERA_TIMELINE_CLIPS_TABS_EXTRAS = L10n.lang("bbs.ui.camera.clips.tabs.extras");
 
     /* Key collections */
     public static final KeyCollection C_CLIP = new KeyCollection("bbs.ui.camera.clips.^")
