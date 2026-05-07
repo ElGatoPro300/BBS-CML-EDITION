@@ -1017,8 +1017,6 @@
     "bbs.ui.model_blocks.hitbox": "Hitbox'ı Etkinleştir",
     "bbs.ui.model_blocks.hitbox.pos1": "Konum 1",
     "bbs.ui.model_blocks.hitbox.pos2": "Konum 2",
-    "bbs.ui.model_blocks.hitbox_pos1": "Konum 1",
-    "bbs.ui.model_blocks.hitbox_pos2": "Konum 2",
     "bbs.ui.model_blocks.keys.move_to": "Şuraya ötele",
     "bbs.ui.model_blocks.keys.teleport": "Model bloğuna ışınlan",
     "bbs.ui.model_blocks.keys.toggle_rendering": "Dünya işlemesini aç",

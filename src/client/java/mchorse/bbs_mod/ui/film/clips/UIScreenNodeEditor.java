@@ -20,6 +20,7 @@ import mchorse.bbs_mod.camera.clips.screen.nodes.SineWaveNode;
 import mchorse.bbs_mod.camera.clips.screen.nodes.SquareWaveNode;
 import mchorse.bbs_mod.camera.clips.screen.nodes.VignetteEffectNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.ShapeNode;
+import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.ui.forms.editors.panels.shape.UIShapeNodeEditor;
 import mchorse.bbs_mod.ui.framework.UIContext;
@@ -43,27 +44,27 @@ public class UIScreenNodeEditor extends UIShapeNodeEditor
     @Override
     protected String getNodeTitle(ShapeNode node)
     {
-        if (node instanceof ScreenOutputNode)   return "Screen Output";
-        if (node instanceof ScreenUVNode)       return "Screen UV";
-        if (node instanceof ColorGradeEffectNode) return "Color Grade";
-        if (node instanceof LayerNode)          return "Layer";
-        if (node instanceof DistortionEffectNode) return "Distortion";
-        if (node instanceof VignetteEffectNode) return "Vignette";
-        if (node instanceof GrainEffectNode)    return "Grain";
-        if (node instanceof LetterboxEffectNode) return "Letterbox";
-        if (node instanceof OverlayEffectNode)  return "Overlay";
-        if (node instanceof SineWaveNode)     return "Sine Wave";
-        if (node instanceof SquareWaveNode)   return "Square Wave";
-        if (node instanceof ScreenBlendNode)  return "Screen Blend";
-        if (node instanceof OverlayBlendNode) return "Overlay Blend";
-        if (node instanceof GammaCorrectionNode)  return "Gamma Correction";
-        if (node instanceof HueSaturationNode)    return "Hue / Saturation";
-        if (node instanceof BrightnessContrastNode) return "Brightness / Contrast";
-        if (node instanceof LevelsNode)       return "Levels";
-        if (node instanceof GlitchNode)       return "Glitch";
+        if (node instanceof ScreenOutputNode)   return L10n.lang("bbs.ui.screen_node.screen_output").get();
+        if (node instanceof ScreenUVNode)       return L10n.lang("bbs.ui.screen_node.screen_uv").get();
+        if (node instanceof ColorGradeEffectNode) return L10n.lang("bbs.ui.screen_node.color_grade").get();
+        if (node instanceof LayerNode)          return L10n.lang("bbs.ui.screen_node.layer").get();
+        if (node instanceof DistortionEffectNode) return L10n.lang("bbs.ui.screen_node.distortion").get();
+        if (node instanceof VignetteEffectNode) return L10n.lang("bbs.ui.screen_node.vignette").get();
+        if (node instanceof GrainEffectNode)    return L10n.lang("bbs.ui.screen_node.grain").get();
+        if (node instanceof LetterboxEffectNode) return L10n.lang("bbs.ui.screen_node.letterbox").get();
+        if (node instanceof OverlayEffectNode)  return L10n.lang("bbs.ui.screen_node.overlay").get();
+        if (node instanceof SineWaveNode)     return L10n.lang("bbs.ui.screen_node.sine_wave").get();
+        if (node instanceof SquareWaveNode)   return L10n.lang("bbs.ui.screen_node.square_wave").get();
+        if (node instanceof ScreenBlendNode)  return L10n.lang("bbs.ui.screen_node.screen_blend").get();
+        if (node instanceof OverlayBlendNode) return L10n.lang("bbs.ui.screen_node.overlay_blend").get();
+        if (node instanceof GammaCorrectionNode)  return L10n.lang("bbs.ui.screen_node.gamma_correction").get();
+        if (node instanceof HueSaturationNode)    return L10n.lang("bbs.ui.screen_node.hue_saturation").get();
+        if (node instanceof BrightnessContrastNode) return L10n.lang("bbs.ui.screen_node.brightness_contrast").get();
+        if (node instanceof LevelsNode)       return L10n.lang("bbs.ui.screen_node.levels").get();
+        if (node instanceof GlitchNode)       return L10n.lang("bbs.ui.screen_node.glitch").get();
         if (node instanceof PosterizeNode)
         {
-            return ((PosterizeNode) node).mode == 1 ? "Posterize (color)" : "Posterize";
+            return ((PosterizeNode) node).mode == 1 ? L10n.lang("bbs.ui.screen_node.posterize_color").get() : L10n.lang("bbs.ui.screen_node.posterize").get();
         }
 
         return super.getNodeTitle(node);
