@@ -67,6 +67,12 @@ public class ColorGradeRenderer
             uniform float u_aberration;
             uniform float u_vhs;
             uniform float u_lensDistortion;
+            uniform float u_vintage;
+            uniform float u_radialBlur;
+            uniform float u_rain;
+            uniform float u_dust;
+            uniform float u_lightLeak;
+            uniform float u_nightVision;
             uniform float u_time;
 
             /* --- HSL helpers --- */
@@ -133,6 +139,42 @@ public class ColorGradeRenderer
                     distortedUV = clamp(distortedUV, 0.0, 1.0);
                 }
 
+                /* Lens Dirt & Rain Overlay (Procedural raindrops and static spots refraction) */
+                if (u_rain > 0.001)
+                {
+                    // Falling rain droplets grid
+                    vec2 rainUV = distortedUV * vec2(8.0, 4.5);
+                    rainUV.y += u_time * 1.2;
+                    vec2 cell = fract(rainUV) - vec2(0.5);
+                    vec2 id = floor(rainUV);
+                    float dropSeed = hash(id);
+                    if (dropSeed > 0.45)
+                    {
+                        float size = 0.22 * (0.4 + 0.6 * sin(u_time * 1.5 + dropSeed * 6.28));
+                        float d = length(cell);
+                        if (d < size)
+                        {
+                            vec2 refractOffset = cell * (size - d) * 1.5;
+                            distortedUV += refractOffset * u_rain;
+                        }
+                    }
+
+                    // Static lens dirt / condensation drops
+                    vec2 dirtUV = distortedUV * vec2(12.0, 9.0);
+                    vec2 dirtCell = fract(dirtUV) - vec2(0.5);
+                    vec2 dirtId = floor(dirtUV);
+                    float dirtSeed = hash(dirtId);
+                    if (dirtSeed > 0.72)
+                    {
+                        float d = length(dirtCell);
+                        float size = 0.12 * dirtSeed;
+                        if (d < size)
+                        {
+                            distortedUV += dirtCell * (size - d) * 0.4 * u_rain;
+                        }
+                    }
+                }
+
                 /* Chromatic Aberration splitting */
                 vec2 uvRed = distortedUV;
                 vec2 uvBlue = distortedUV;
@@ -151,6 +193,19 @@ public class ColorGradeRenderer
                 float g = texture(u_sampler, distortedUV).g;
                 float b = texture(u_sampler, uvBlue).b;
                 vec3 rgb = vec3(r, g, b);
+
+                /* Radial Action Blur */
+                if (u_radialBlur > 0.001)
+                {
+                    vec2 blurDir = (distortedUV - vec2(0.5)) * u_radialBlur * 0.12;
+                    vec3 blurRGB = vec3(0.0);
+                    blurRGB += texture(u_sampler, clamp(distortedUV - blurDir * 2.0, 0.0, 1.0)).rgb;
+                    blurRGB += texture(u_sampler, clamp(distortedUV - blurDir, 0.0, 1.0)).rgb;
+                    blurRGB += rgb;
+                    blurRGB += texture(u_sampler, clamp(distortedUV + blurDir, 0.0, 1.0)).rgb;
+                    blurRGB += texture(u_sampler, clamp(distortedUV + blurDir * 2.0, 0.0, 1.0)).rgb;
+                    rgb = blurRGB / 5.0;
+                }
 
                 /* 1 — Lift / Gamma / Gain */
                 rgb = rgb * (vec3(1.0) + u_gain);
@@ -192,6 +247,19 @@ public class ColorGradeRenderer
                     rgb += (noise - 0.5) * u_grainStr * 2.0;
                 }
 
+                /* Vintage Film Flicker & Scratches */
+                if (u_vintage > 0.001)
+                {
+                    float flicker = sin(u_time * 73.0) * cos(u_time * 59.0) * 0.07 * u_vintage;
+                    rgb += vec3(flicker);
+
+                    float scratchX = hash(vec2(floor(distortedUV.x * 250.0), floor(u_time * 16.0)));
+                    if (scratchX > 0.993)
+                    {
+                        rgb *= mix(1.0, 0.45, u_vintage);
+                    }
+                }
+
                 /* 7 — VHS Scanlines and Static noise */
                 if (u_vhs > 0.001)
                 {
@@ -200,6 +268,49 @@ public class ColorGradeRenderer
 
                     float vhsNoise = hash(distortedUV + vec2(u_time * 0.01));
                     rgb = mix(rgb, vec3(vhsNoise), 0.03 * u_vhs);
+                }
+
+                /* 8 — Film Dust & Specks (White & Dark spots) */
+                if (u_dust > 0.001)
+                {
+                    float dustTime = floor(u_time * 18.0);
+                    float dustSeed = hash(distortedUV + vec2(dustTime));
+                    if (dustSeed > 0.994)
+                    {
+                        rgb = mix(rgb, vec3(1.0), u_dust);
+                    }
+                    else if (dustSeed > 0.990)
+                    {
+                        rgb = mix(rgb, vec3(0.0), u_dust * 0.85);
+                    }
+                }
+
+                /* 9 — Cinematic Light Leak Flare */
+                if (u_lightLeak > 0.001)
+                {
+                    float leakGrad = smoothstep(1.2, 0.0, length(distortedUV - vec2(0.0, 0.4)));
+                    float leakPulse = 0.65 + 0.35 * sin(u_time * 1.8 + cos(u_time * 1.2));
+                    vec3 leakColor = vec3(0.95, 0.48, 0.12) * leakGrad * leakPulse * u_lightLeak;
+
+                    float blueGrad = smoothstep(1.5, 0.0, length(distortedUV - vec2(1.0, 0.7)));
+                    vec3 blueColor = vec3(0.12, 0.35, 0.95) * blueGrad * (0.8 + 0.2 * cos(u_time * 0.9)) * u_lightLeak * 0.45;
+
+                    rgb += leakColor + blueColor;
+                }
+
+                /* 10 — Digital Night Vision */
+                if (u_nightVision > 0.001)
+                {
+                    float greenLuma = dot(rgb, vec3(0.299, 0.587, 0.114));
+                    vec3 nvColor = vec3(0.1, 0.95, 0.15) * greenLuma;
+
+                    float nvNoise = hash(distortedUV + vec2(u_time * 0.13));
+                    nvColor = mix(nvColor, vec3(0.05, 0.45, 0.1), nvNoise * 0.25);
+
+                    float nvScanline = sin(distortedUV.y * 600.0) * 0.15;
+                    nvColor -= vec3(nvScanline);
+
+                    rgb = mix(rgb, nvColor, u_nightVision);
                 }
 
                 fragColor = vec4(clamp(rgb, 0.0, 1.0), texture(u_sampler, distortedUV).a);
@@ -231,6 +342,12 @@ public class ColorGradeRenderer
     private static int uAberration;
     private static int uVHS;
     private static int uLensDistortion;
+    private static int uVintage;
+    private static int uRadialBlur;
+    private static int uRain;
+    private static int uDust;
+    private static int uLightLeak;
+    private static int uNightVision;
     private static int uTime;
 
     public static void apply(List<ColorEffect> effects, List<GrainEffect> grainEffects)
@@ -365,6 +482,12 @@ public class ColorGradeRenderer
         float aberration = 0F;
         float vhs = 0F;
         float lensDistortion = 0F;
+        float vintage = 0F;
+        float radialBlur = 0F;
+        float rain = 0F;
+        float dust = 0F;
+        float lightLeak = 0F;
+        float nightVision = 0F;
 
         for (ColorEffect e : effects)
         {
@@ -373,6 +496,12 @@ public class ColorGradeRenderer
                 aberration = Math.max(aberration, e.aberration);
                 vhs = Math.max(vhs, e.vhs);
                 lensDistortion += e.lensDistortion;
+                vintage = Math.max(vintage, e.vintage);
+                radialBlur = Math.max(radialBlur, e.radialBlur);
+                rain = Math.max(rain, e.rain);
+                dust = Math.max(dust, e.dust);
+                lightLeak = Math.max(lightLeak, e.lightLeak);
+                nightVision = Math.max(nightVision, e.nightVision);
             }
         }
 
@@ -407,6 +536,12 @@ public class ColorGradeRenderer
         GL20.glUniform1f(uAberration, aberration);
         GL20.glUniform1f(uVHS, vhs);
         GL20.glUniform1f(uLensDistortion, lensDistortion);
+        GL20.glUniform1f(uVintage, vintage);
+        GL20.glUniform1f(uRadialBlur, radialBlur);
+        GL20.glUniform1f(uRain, rain);
+        GL20.glUniform1f(uDust, dust);
+        GL20.glUniform1f(uLightLeak, lightLeak);
+        GL20.glUniform1f(uNightVision, nightVision);
 
         float time = (System.currentTimeMillis() % 1000000) / 1000.0F;
         GL20.glUniform1f(uTime, time);
@@ -488,6 +623,12 @@ public class ColorGradeRenderer
         uAberration = GL20.glGetUniformLocation(program, "u_aberration");
         uVHS = GL20.glGetUniformLocation(program, "u_vhs");
         uLensDistortion = GL20.glGetUniformLocation(program, "u_lensDistortion");
+        uVintage = GL20.glGetUniformLocation(program, "u_vintage");
+        uRadialBlur = GL20.glGetUniformLocation(program, "u_radialBlur");
+        uRain = GL20.glGetUniformLocation(program, "u_rain");
+        uDust = GL20.glGetUniformLocation(program, "u_dust");
+        uLightLeak = GL20.glGetUniformLocation(program, "u_lightLeak");
+        uNightVision = GL20.glGetUniformLocation(program, "u_nightVision");
         uTime = GL20.glGetUniformLocation(program, "u_time");
 
         /* Fullscreen quad VAO/VBO (NDC coords + UV) */

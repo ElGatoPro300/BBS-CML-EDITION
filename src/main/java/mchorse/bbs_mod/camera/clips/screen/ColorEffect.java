@@ -27,6 +27,12 @@ public class ColorEffect
     public float aberration;
     public float vhs;
     public float lensDistortion;
+    public float vintage;
+    public float radialBlur;
+    public float rain;
+    public float dust;
+    public float lightLeak;
+    public float nightVision;
 
     public void reset()
     {

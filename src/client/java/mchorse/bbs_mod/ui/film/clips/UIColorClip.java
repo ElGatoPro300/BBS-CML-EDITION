@@ -177,6 +177,78 @@ public class UIColorClip extends UIClip<ColorClip>
             shLensDistortion.level = 1;
             shLensDistortion.groupKey = key;
             view.addSheet(shLensDistortion);
+
+            UIKeyframeSheet shVintage = new UIKeyframeSheet(
+                "vintage",
+                L10n.lang("bbs.ui.camera.clips.channel.vintage"),
+                Colors.YELLOW,
+                false,
+                this.clip.vintage,
+                null
+            );
+            shVintage.level = 1;
+            shVintage.groupKey = key;
+            view.addSheet(shVintage);
+
+            UIKeyframeSheet shRadialBlur = new UIKeyframeSheet(
+                "radialBlur",
+                L10n.lang("bbs.ui.camera.clips.channel.radial_blur"),
+                Colors.CYAN,
+                false,
+                this.clip.radialBlur,
+                null
+            );
+            shRadialBlur.level = 1;
+            shRadialBlur.groupKey = key;
+            view.addSheet(shRadialBlur);
+
+            UIKeyframeSheet shRain = new UIKeyframeSheet(
+                "rain",
+                L10n.lang("bbs.ui.camera.clips.channel.rain"),
+                0xff5577ff, // Light blue color
+                false,
+                this.clip.rain,
+                null
+            );
+            shRain.level = 1;
+            shRain.groupKey = key;
+            view.addSheet(shRain);
+
+            UIKeyframeSheet shDust = new UIKeyframeSheet(
+                "dust",
+                L10n.lang("bbs.ui.camera.clips.channel.dust"),
+                0xffcccccc, // Light gray color
+                false,
+                this.clip.dust,
+                null
+            );
+            shDust.level = 1;
+            shDust.groupKey = key;
+            view.addSheet(shDust);
+
+            UIKeyframeSheet shLightLeak = new UIKeyframeSheet(
+                "lightLeak",
+                L10n.lang("bbs.ui.camera.clips.channel.light_leak"),
+                0xffffa033, // Warm orange color
+                false,
+                this.clip.lightLeak,
+                null
+            );
+            shLightLeak.level = 1;
+            shLightLeak.groupKey = key;
+            view.addSheet(shLightLeak);
+
+            UIKeyframeSheet shNightVision = new UIKeyframeSheet(
+                "nightVision",
+                L10n.lang("bbs.ui.camera.clips.channel.night_vision"),
+                0xff33ff33, // Bright green color
+                false,
+                this.clip.nightVision,
+                null
+            );
+            shNightVision.level = 1;
+            shNightVision.groupKey = key;
+            view.addSheet(shNightVision);
         }
     }
 
