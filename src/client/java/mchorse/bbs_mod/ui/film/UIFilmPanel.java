@@ -59,6 +59,7 @@ import mchorse.bbs_mod.ui.framework.elements.context.UISimpleContextMenu;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UISearchList;
 import mchorse.bbs_mod.ui.framework.elements.navigation.UIControlBar;
 import mchorse.bbs_mod.ui.framework.elements.navigation.UIIconTabButton;
+import mchorse.bbs_mod.ui.framework.elements.overlay.UIConfirmOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIMessageOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UINumberOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
@@ -434,9 +435,107 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             panel.text.filename();
             UIOverlay.addOverlay(this.getContext(), panel);
         });
-        this.homeDuplicateCurrent = this.createHomeButton(UIKeys.FILM_CRUD_DUPE, Icons.COPY, (b) -> this.clickWithContext(this.overlay.dupe));
-        this.homeRenameCurrent = this.createHomeButton(UIKeys.FILM_CRUD_RENAME, Icons.EDIT, (b) -> this.clickWithContext(this.overlay.rename));
-        this.homeDeleteCurrent = this.createHomeButton(UIKeys.FILM_CRUD_REMOVE, Icons.REMOVE, (b) -> this.clickWithContext(this.overlay.remove));
+        this.homeDuplicateCurrent = this.createHomeButton(UIKeys.FILM_CRUD_DUPE, Icons.COPY, (b) ->
+        {
+            String selectedId = this.getSelectedHomeFilmId();
+            if (selectedId == null) return;
+
+            UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
+                UIKeys.GENERAL_DUPE,
+                UIKeys.PANELS_MODALS_DUPE,
+                (str) -> {
+                    String targetId = this.homeFilmsList.getPath(str).toString();
+                    if (targetId.trim().isEmpty()) {
+                        this.getContext().notifyError(UIKeys.PANELS_MODALS_EMPTY);
+                        return;
+                    }
+                    if (this.homeFilmsList.hasInHierarchy(targetId)) {
+                        return;
+                    }
+                    this.getType().getRepository().load(selectedId, (originalFilm) -> {
+                        if (originalFilm != null) {
+                            this.getType().getRepository().save(targetId, originalFilm.toData().asMap());
+                            this.requestNames();
+                        }
+                    });
+                }
+            );
+
+            panel.text.setText(new DataPath(selectedId).getLast());
+            panel.text.filename();
+
+            UIOverlay.addOverlay(this.getContext(), panel);
+        });
+        this.homeRenameCurrent = this.createHomeButton(UIKeys.FILM_CRUD_RENAME, Icons.EDIT, (b) ->
+        {
+            String selectedId = this.getSelectedHomeFilmId();
+            if (selectedId == null) return;
+
+            UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
+                UIKeys.GENERAL_RENAME,
+                UIKeys.PANELS_MODALS_RENAME,
+                (str) -> {
+                    String targetId = this.homeFilmsList.getPath(str).toString();
+                    if (targetId.trim().isEmpty()) {
+                        this.getContext().notifyError(UIKeys.PANELS_MODALS_EMPTY);
+                        return;
+                    }
+                    if (this.homeFilmsList.hasInHierarchy(targetId)) {
+                        return;
+                    }
+                    this.getType().getRepository().rename(selectedId, targetId);
+
+                    for (FilmDocumentTab tab : this.filmDocumentTabs) {
+                        if (!tab.home && selectedId.equals(tab.filmId)) {
+                            tab.filmId = targetId;
+                        }
+                    }
+                    this.rebuildFilmDocumentTabs();
+
+                    if (this.data != null && selectedId.equals(this.data.getId())) {
+                        this.data.setId(targetId);
+                    }
+
+                    this.requestNames();
+                }
+            );
+
+            panel.text.setText(new DataPath(selectedId).getLast());
+            panel.text.filename();
+
+            UIOverlay.addOverlay(this.getContext(), panel);
+        });
+        this.homeDeleteCurrent = this.createHomeButton(UIKeys.FILM_CRUD_REMOVE, Icons.REMOVE, (b) ->
+        {
+            String selectedId = this.getSelectedHomeFilmId();
+            if (selectedId == null) return;
+
+            UIConfirmOverlayPanel panel = new UIConfirmOverlayPanel(
+                UIKeys.GENERAL_REMOVE,
+                UIKeys.PANELS_MODALS_REMOVE,
+                (confirm) ->
+                {
+                    if (confirm) {
+                        this.getType().getRepository().delete(selectedId);
+
+                        for (int i = this.filmDocumentTabs.size() - 1; i >= 0; i--) {
+                            FilmDocumentTab tab = this.filmDocumentTabs.get(i);
+                            if (!tab.home && selectedId.equals(tab.filmId)) {
+                                this.removeFilmDocumentTab(i);
+                            }
+                        }
+
+                        if (this.data != null && selectedId.equals(this.data.getId())) {
+                            this.fill(null);
+                        }
+
+                        this.requestNames();
+                    }
+                }
+            );
+
+            UIOverlay.addOverlay(this.getContext(), panel);
+        });
         this.updateHomeButtonsState();
 
         /* Icon bar buttons */
