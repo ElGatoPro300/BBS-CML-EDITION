@@ -620,7 +620,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         });
         this.openRenderQueue.tooltip(UIKeys.FILM_OPEN_RENDER_QUEUE, Direction.LEFT);
 
-        this.openOverlay.tooltip(UIKeys.FILM_OPEN_MANAGER, Direction.LEFT);
+        this.openOverlay.removeFromParent();
         this.saveIcon.tooltip(UIKeys.FILM_SAVE, Direction.LEFT);
 
         this.toggleHorizontal = new UIIcon(this::getLayoutIcon, (b) -> this.openLayoutSelector())
@@ -666,7 +666,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         bottomIcons.relative(this).x(1F, -20).y(1F).wh(20, 60).anchorY(1F).column(0).stretch();
         bottomIcons.add(this.toggleHorizontal, this.layoutLock, this.layoutPresets);
-        this.filmTabsBar.relative(this.editor).x(0).y(0).w(1F).h(FILM_DOCUMENT_TABS_HEIGHT);
+        this.iconBar.relative(this).x(1F, -20).y(FILM_DOCUMENT_TABS_HEIGHT).w(20).h(1F, -FILM_DOCUMENT_TABS_HEIGHT).column(0).stretch();
+        this.filmTabsBar.relative(this).x(0).y(0).w(1F).h(FILM_DOCUMENT_TABS_HEIGHT);
         this.filmTabs.relative(this.filmTabsBar).x(8).y(0).w(1F, -16).h(FILM_DOCUMENT_TABS_HEIGHT).row(0).resize();
         this.filmTabsBar.add(this.filmTabs);
         this.homePage.relative(this.editor).x(0.5F, -250).y(FILM_DOCUMENT_TABS_HEIGHT).w(500).h(1F, -FILM_DOCUMENT_TABS_HEIGHT);
@@ -679,7 +680,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.homeFilmsSearch.relative(this.homePage).x(0.35F).y(HOME_BANNER_HEIGHT + 20).w(0.65F).h(1F, -(HOME_BANNER_HEIGHT + 20));
         this.homePage.add(new UIRenderable(this::renderHomeBanner), this.homeActionsPanel, this.homeFilmsSearch);
 
-        this.editor.add(this.main, this.editArea, this.preview, this.homePage, new UIRenderable(this::renderIcons), new UIRenderable(this::renderDropZoneHighlight), this.filmTabsBar);
+        this.editor.add(this.main, this.editArea, this.preview, this.homePage, new UIRenderable(this::renderIcons), new UIRenderable(this::renderDropZoneHighlight));
         for (String id : this.panelById.keySet())
         {
             UIDraggable handle = this.createPanelDragHandle(id);
@@ -687,7 +688,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             this.editor.add(handle);
         }
         this.main.add(this.cameraEditor, this.replayEditor, this.actionEditor, this.screenEditor, this.draggableMain, this.draggableEditor);
-        this.add(this.controller, new UIRenderable(this::renderDividers), bottomIcons);
+        this.add(this.controller, new UIRenderable(this::renderDividers), bottomIcons, this.filmTabsBar);
         this.overlay.namesList.setFileIcon(Icons.FILM);
         this.createHomeDocumentTab(true);
 
@@ -720,7 +721,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             UIUtils.playClick();
         }).category(editor);
 
-        this.openOverlay.context((menu) ->
+        this.saveIcon.context((menu) ->
         {
             if (this.data == null)
             {
