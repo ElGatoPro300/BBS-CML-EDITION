@@ -31,6 +31,7 @@ import mchorse.bbs_mod.camera.clips.overwrite.DollyClip;
 import mchorse.bbs_mod.camera.clips.overwrite.IdleClip;
 import mchorse.bbs_mod.camera.clips.overwrite.KeyframeClip;
 import mchorse.bbs_mod.camera.clips.overwrite.PathClip;
+import mchorse.bbs_mod.camera.clips.screen.CinematicClip;
 import mchorse.bbs_mod.camera.clips.screen.ColorClip;
 import mchorse.bbs_mod.camera.clips.screen.GrainClip;
 import mchorse.bbs_mod.camera.clips.screen.LetterboxClip;
@@ -112,6 +113,7 @@ public abstract class UIClip <T extends Clip> extends UIElement
         register(CurveClientClip.class, UICurveClip::new);
         register(DollyZoomClip.class, UIDollyZoomClip::new);
         register(ColorClip.class, UIColorClip::new);
+        register(CinematicClip.class, UICinematicClip::new);
         register(VignetteClip.class, UIVignetteClip::new);
         register(LetterboxClip.class, UILetterboxClip::new);
         register(GrainClip.class, UIGrainClip::new);
