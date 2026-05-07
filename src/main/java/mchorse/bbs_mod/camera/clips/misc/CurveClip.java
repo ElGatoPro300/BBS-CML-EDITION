@@ -68,6 +68,12 @@ public class CurveClip extends CameraClip
     }
 
     @Override
+    public boolean isPositionClip()
+    {
+        return false;
+    }
+
+    @Override
     protected Clip create()
     {
         return new CurveClip();
