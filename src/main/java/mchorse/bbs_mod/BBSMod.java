@@ -47,6 +47,7 @@ import mchorse.bbs_mod.camera.clips.overwrite.DollyClip;
 import mchorse.bbs_mod.camera.clips.overwrite.IdleClip;
 import mchorse.bbs_mod.camera.clips.overwrite.KeyframeClip;
 import mchorse.bbs_mod.camera.clips.overwrite.PathClip;
+import mchorse.bbs_mod.camera.clips.screen.CinematicClip;
 import mchorse.bbs_mod.camera.clips.screen.ColorClip;
 import mchorse.bbs_mod.camera.clips.screen.GrainClip;
 import mchorse.bbs_mod.camera.clips.screen.LetterboxClip;
@@ -562,6 +563,7 @@ public class BBSMod implements ModInitializer
 
         factoryScreenClips = new MapFactory<Clip, ClipFactoryData>()
             .register(Link.bbs("color"), ColorClip.class, new ClipFactoryData(Icons.FILTER, 0xff6633))
+            .register(Link.bbs("cinematic"), CinematicClip.class, new ClipFactoryData(Icons.VIDEO_CAMERA, 0xffaa00))
             .register(Link.bbs("vignette"), VignetteClip.class, new ClipFactoryData(Icons.CIRCLE, 0x222244))
             .register(Link.bbs("letterbox"), LetterboxClip.class, new ClipFactoryData(Icons.FULLSCREEN, 0x111111))
             .register(Link.bbs("grain"), GrainClip.class, new ClipFactoryData(Icons.SIX_STAR, 0x887766))
