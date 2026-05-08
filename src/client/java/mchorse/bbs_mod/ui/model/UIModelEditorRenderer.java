@@ -434,17 +434,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
 
         cubeMatrix = new Matrix4f(cubeStack.peek().getPositionMatrix());
 
-        boolean hasQuads = false;
-        for (ModelQuad quad : this.selectedCube.quads)
-        {
-            if (quad.vertices.size() == 4)
-            {
-                hasQuads = true;
-                break;
-            }
-        }
-
-        if (!hasQuads)
+        if (this.selectedCube.quads.isEmpty())
         {
             return;
         }
@@ -715,54 +705,12 @@ public class UIModelEditorRenderer extends UIModelRenderer
             gizmoMat.mul(rootMat);
         }
 
-        boolean hasBones = false;
-        if (instance.model instanceof Model model)
-        {
-            for (ModelGroup group : model.getOrderedGroups())
-            {
-                if (group.parent != null)
-                {
-                    Vector3f start = this.getBonePoint(matrixCache, group.parent.id);
-                    Vector3f end = this.getBonePoint(matrixCache, group.id);
-
-                    if (start != null && end != null)
-                    {
-                        hasBones = true;
-                        break;
-                    }
-                }
-            }
-        }
-        else if (!instance.model.getAllBOBJBones().isEmpty())
-        {
-            for (BOBJBone bone : instance.model.getAllBOBJBones())
-            {
-                if (bone.parentBone != null)
-                {
-                    Vector3f start = this.getBonePoint(matrixCache, bone.parentBone.name);
-                    Vector3f end = this.getBonePoint(matrixCache, bone.name);
-
-                    if (start != null && end != null)
-                    {
-                        hasBones = true;
-                        break;
-                    }
-                }
-            }
-        }
-
-        if (!hasBones)
-        {
-            return;
-        }
-
         BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
         RenderSystem.enableBlend();
         RenderSystem.disableDepthTest();
 
         float r = 0.5F, g = 0.8F, b = 0.5F, a = 0.4F;
-        boolean verticesAdded = false;
 
         if (instance.model instanceof Model model)
         {
@@ -780,10 +728,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
                         float cg = inChain ? 0.8F : g;
                         float cb = inChain ? 0.9F : b;
 
-                        if (this.drawOctahedron(builder, gizmoMat, start, end, cr, cg, cb, a))
-                        {
-                            verticesAdded = true;
-                        }
+                        this.drawOctahedron(builder, gizmoMat, start, end, cr, cg, cb, a);
                     }
                 }
             }
@@ -804,35 +749,22 @@ public class UIModelEditorRenderer extends UIModelRenderer
                         float cg = inChain ? 0.8F : g;
                         float cb = inChain ? 0.9F : b;
 
-                        if (this.drawOctahedron(builder, gizmoMat, start, end, cr, cg, cb, a))
-                        {
-                            verticesAdded = true;
-                        }
+                        this.drawOctahedron(builder, gizmoMat, start, end, cr, cg, cb, a);
                     }
                 }
             }
         }
 
-        if (verticesAdded)
-        {
-            BufferRenderer.drawWithGlobalProgram(builder.end());
-        }
-        else
-        {
-            builder.vertex(gizmoMat, 0, 0, 0).color(0, 0, 0, 0);
-            builder.vertex(gizmoMat, 0, 0, 0).color(0, 0, 0, 0);
-            builder.vertex(gizmoMat, 0, 0, 0).color(0, 0, 0, 0);
-            BufferRenderer.drawWithGlobalProgram(builder.end());
-        }
+        BufferRenderer.drawWithGlobalProgram(builder.end());
         RenderSystem.enableDepthTest();
         RenderSystem.disableBlend();
     }
 
-    private boolean drawOctahedron(BufferBuilder builder, Matrix4f matrix, Vector3f start, Vector3f end, float r, float g, float b, float a)
+    private void drawOctahedron(BufferBuilder builder, Matrix4f matrix, Vector3f start, Vector3f end, float r, float g, float b, float a)
     {
         Vector3f diff = new Vector3f(end).sub(start);
         float len = diff.length();
-        if (len < 0.01F) return false;
+        if (len < 0.01F) return;
 
         Vector3f dir = new Vector3f(diff).normalize();
         Vector3f p1 = new Vector3f();
@@ -859,8 +791,6 @@ public class UIModelEditorRenderer extends UIModelRenderer
         this.triangle(builder, matrix, end, v3, v2, r * 0.7F, g * 0.7F, b * 0.7F, a);
         this.triangle(builder, matrix, end, v4, v3, r * 0.6F, g * 0.6F, b * 0.6F, a);
         this.triangle(builder, matrix, end, v1, v4, r * 0.5F, g * 0.5F, b * 0.5F, a);
-
-        return true;
     }
 
     private void triangle(BufferBuilder builder, Matrix4f matrix, Vector3f v1, Vector3f v2, Vector3f v3, float r, float g, float b, float a)
@@ -885,51 +815,8 @@ public class UIModelEditorRenderer extends UIModelRenderer
             gizmoMat.mul(rootMat);
         }
 
-        boolean hasBones = false;
-        if (instance.model instanceof Model model)
-        {
-            for (ModelGroup group : model.getOrderedGroups())
-            {
-                if (group.parent != null)
-                {
-                    Vector3f start = this.getBonePoint(matrixCache, group.parent.id);
-                    Vector3f end = this.getBonePoint(matrixCache, group.id);
-
-                    if (start != null && end != null)
-                    {
-                        hasBones = true;
-                        break;
-                    }
-                }
-            }
-        }
-        else if (!instance.model.getAllBOBJBones().isEmpty())
-        {
-            for (BOBJBone bone : instance.model.getAllBOBJBones())
-            {
-                if (bone.parentBone != null)
-                {
-                    Vector3f start = this.getBonePoint(matrixCache, bone.parentBone.name);
-                    Vector3f end = this.getBonePoint(matrixCache, bone.name);
-
-                    if (start != null && end != null)
-                    {
-                        hasBones = true;
-                        break;
-                    }
-                }
-            }
-        }
-
-        if (!hasBones)
-        {
-            return;
-        }
-
         BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
-
-        boolean verticesAdded = false;
 
         if (instance.model instanceof Model model)
         {
@@ -947,10 +834,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
                         float g = ((id >> 8) & 0xFF) / 255F;
                         float b = (id & 0xFF) / 255F;
 
-                        if (this.drawOctahedron(builder, gizmoMat, start, end, r, g, b, 1F))
-                        {
-                            verticesAdded = true;
-                        }
+                        this.drawOctahedron(builder, gizmoMat, start, end, r, g, b, 1F);
                     }
                 }
             }
@@ -971,26 +855,13 @@ public class UIModelEditorRenderer extends UIModelRenderer
                         float g = ((id >> 8) & 0xFF) / 255F;
                         float b = (id & 0xFF) / 255F;
 
-                        if (this.drawOctahedron(builder, gizmoMat, start, end, r, g, b, 1F))
-                        {
-                            verticesAdded = true;
-                        }
+                        this.drawOctahedron(builder, gizmoMat, start, end, r, g, b, 1F);
                     }
                 }
             }
         }
 
-        if (verticesAdded)
-        {
-            BufferRenderer.drawWithGlobalProgram(builder.end());
-        }
-        else
-        {
-            builder.vertex(gizmoMat, 0, 0, 0).color(0, 0, 0, 0);
-            builder.vertex(gizmoMat, 0, 0, 0).color(0, 0, 0, 0);
-            builder.vertex(gizmoMat, 0, 0, 0).color(0, 0, 0, 0);
-            BufferRenderer.drawWithGlobalProgram(builder.end());
-        }
+        BufferRenderer.drawWithGlobalProgram(builder.end());
     }
 
     private int getBoneStencilId(String bone)
