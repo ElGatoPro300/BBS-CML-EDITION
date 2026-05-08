@@ -10,8 +10,6 @@ public class CMLSettings
     public static void register(SettingsBuilder builder)
     {
         builder.category("general");
-        BBSSettings.modelFormsHierarchy = builder.getBoolean("model_forms_hierarchy", false);
-        BBSSettings.mediaFoldersEnhancements = builder.getBoolean("media_folders_enhancements", false);
         BBSSettings.replayContextOptions = builder.getInt("compacted_options", 0, 0, 2);
         BBSSettings.replayContextOptions.modes(
             UIKeys.CONFIG_GENERAL_COMPACTED_OPTIONS_DEFAULT,
