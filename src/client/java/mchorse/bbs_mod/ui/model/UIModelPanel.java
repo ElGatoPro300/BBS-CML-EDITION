@@ -671,8 +671,8 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         int splitY = pageY + bannerH;
         context.batcher.box(pageX, splitY, pageX + pageW, splitY + 1, Colors.A12);
         context.batcher.box(dividerX, splitY + 1, dividerX + 1, pageY + pageH, Colors.A12);
-        context.batcher.textShadow(IKey.raw("Actions").get(), pageX + 4, splitY + 6);
-        context.batcher.textShadow(IKey.raw("Model List").get(), dividerX + 4, splitY + 6);
+        context.batcher.textShadow(L10n.lang("bbs.ui.models.home.actions").get(), pageX + 4, splitY + 6);
+        context.batcher.textShadow(L10n.lang("bbs.ui.models.home.list").get(), dividerX + 4, splitY + 6);
     }
 
     private void clickWithContext(UIElement element)

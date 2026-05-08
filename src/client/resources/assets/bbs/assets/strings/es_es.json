@@ -1163,6 +1163,8 @@
     "bbs.ui.models.hands.edit": "Editar transformaciones",
     "bbs.ui.models.hands.title": "Manos en primera persona",
     "bbs.ui.models.home.title": "Inicio",
+    "bbs.ui.models.home.actions": "Acciones",
+    "bbs.ui.models.home.list": "Listado De Modelos",
     "bbs.ui.models.ik.chain_add": "Añadir cadena IK",
     "bbs.ui.models.ik.chain_add-tooltip": "Crea una nueva cadena IK. Configura los huesos de punta y raíz, luego define una posición objetivo para mover la cadena.",
     "bbs.ui.models.ik.chain_length": "Longitud de cadena (0=auto)",
