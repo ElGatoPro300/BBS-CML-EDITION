@@ -704,6 +704,7 @@
     "bbs.ui.film.open_history": "Abrir historial de deshacer/rehacer...",
     "bbs.ui.film.open_render_queue": "Abrir cola de renderizado...",
     "bbs.ui.film.open_replay_editor": "Abrir editor de reproducciones",
+    "bbs.ui.film.open_screen_editor": "Abrir editor de pantalla",
     "bbs.ui.film.recording": "Grabando %s",
     "bbs.ui.film.render_audio": "Renderizar audio (desde los clips de audio)",
     "bbs.ui.film.render_audio.error": "¡No se pudieron renderizar los clips de audio! Consulta el latest.log para obtener más información...",
