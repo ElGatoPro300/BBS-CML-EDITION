@@ -1129,6 +1129,14 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
         }
     }
 
+    private static final mchorse.bbs_mod.utils.colors.Color TEMP_COLOR = new mchorse.bbs_mod.utils.colors.Color();
+
+    private static int getInterpolatedColor(int a, int b, float x)
+    {
+        Colors.interpolate(TEMP_COLOR, a, b, x);
+        return TEMP_COLOR.getARGBColor();
+    }
+
     private void renderHomeBackground(UIContext context)
     {
         if (!this.showingHomePage)
@@ -1146,104 +1154,52 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
         int pageH = this.homePage.area.h;
         int dividerX = this.homeParticlesSearch.area.x;
 
-        // Render deeper background
+        // Render solid dark background matching films
         context.batcher.box(editorX, editorY, editorX + editorW, editorY + editorH, Colors.setA(0x0b0b0b, 1F));
 
-        // Render Animated Aurora Effect
+        // Render Dynamic Snow Storm / Snowfall (Optimized & Deterministic)
         int primary = BBSSettings.primaryColor.get();
-        float tick = context.getTickTransition() * 0.015F;
-        int segments = 40;
-        float segW = editorW / (float) segments;
+        int numFlakes = 160;
+        float tick = context.getTickTransition();
 
-        Matrix4f matrix4f = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
-        BufferBuilder builder = Tessellator.getInstance().getBuffer();
-
-        RenderSystem.enableBlend();
-        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
-        builder.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
-
-        float[] yBot1 = new float[segments + 1];
-        float[] yMid1 = new float[segments + 1];
-        int[] cMid1 = new int[segments + 1];
-
-        float[] yBot2 = new float[segments + 1];
-        float[] yMid2 = new float[segments + 1];
-        int[] cMid2 = new int[segments + 1];
-
-        for (int i = 0; i <= segments; i++)
+        for (int i = 0; i < numFlakes; i++)
         {
-            float nx = (float) i / segments;
+            float xPercent = (float) ((i * 17.53F + 0.1F) % 1.0F);
+            float baseX = editorX + xPercent * editorW;
 
-            // Layer 1
-            float w1 = (float) Math.sin(tick * 1.2F + nx * 8F);
-            float w2 = (float) Math.sin(tick * 0.7F + nx * 15F);
-            float w3 = (float) Math.cos(tick * 0.4F - nx * 12F);
-            float comb1 = (w1 + w2 + w3) / 3F;
+            float speed = 0.5F + (float) ((i * 13.27F) % 0.8F);
+            float fallOffset = (tick * speed) % (editorH + 40);
+            float startY = (float) ((i * 37.89F) % (editorH + 40));
+            float flakeY = editorY - 20 + ((startY + fallOffset) % (editorH + 40));
 
-            float curtainYTop = editorY + editorH * 0.05F;
-            float curtainYBot = editorY + editorH * 0.5F + comb1 * (editorH * 0.35F);
-            if (curtainYBot < curtainYTop + 10) curtainYBot = curtainYTop + 10;
+            float wobbleSpeed = 0.05F + (float) ((i * 7.41F) % 0.05F);
+            float wobbleWidth = 4F + (float) ((i * 9.15F) % 8F);
+            float wobbleX = (float) Math.sin(tick * wobbleSpeed + i) * wobbleWidth;
+            float flakeX = baseX + wobbleX;
 
-            float transitionY = curtainYBot - editorH * 0.3F;
-            if (transitionY < curtainYTop) transitionY = curtainYTop;
+            float size = 1.0F + (float) ((i * 21.63F) % 3.0F);
+            float alphaNorm = (size - 1.0F) / 3.0F;
+            float baseAlpha = 0.25F + alphaNorm * 0.55F;
 
-            yBot1[i] = curtainYBot;
-            yMid1[i] = transitionY;
-            cMid1[i] = Colors.setA(primary, 0.15F + Math.max(0, comb1) * 0.2F);
+            // Fade out near top/bottom edges
+            float edgeFade = 1.0F;
+            float distToTop = flakeY - editorY;
+            float distToBot = (editorY + editorH) - flakeY;
+            if (distToTop < 30) edgeFade = distToTop / 30F;
+            else if (distToBot < 30) edgeFade = distToBot / 30F;
+            float finalAlpha = baseAlpha * edgeFade;
 
-            // Layer 2
-            float w4 = (float) Math.sin(tick * 1.5F - nx * 10F);
-            float w5 = (float) Math.cos(tick * 0.9F + nx * 18F);
-            float comb2 = (w4 + w5) / 2F;
+            // Mix user primary color with white: larger flakes are whiter/brighter, smaller ones have beautiful primary color tint
+            int baseColor = getInterpolatedColor(primary, Colors.WHITE, 0.3F + alphaNorm * 0.5F);
+            int finalColor = Colors.setA(baseColor, finalAlpha);
 
-            float curtain2YTop = editorY + editorH * 0.15F;
-            float curtain2YBot = editorY + editorH * 0.75F + comb2 * (editorH * 0.25F);
-            if (curtain2YBot < curtain2YTop + 10) curtain2YBot = curtain2YTop + 10;
+            int rx = Math.round(flakeX - size / 2F);
+            int ry = Math.round(flakeY - size / 2F);
+            int rsize = Math.round(size);
+            if (rsize < 1) rsize = 1;
 
-            float transition2Y = curtain2YBot - editorH * 0.25F;
-            if (transition2Y < curtain2YTop) transition2Y = curtain2YTop;
-
-            yBot2[i] = curtain2YBot;
-            yMid2[i] = transition2Y;
-            cMid2[i] = Colors.setA(Colors.mulRGB(primary, 0.8F), 0.1F + Math.max(0, comb2) * 0.15F);
+            context.batcher.box(rx, ry, rx + rsize, ry + rsize, finalColor);
         }
-
-        int colTop = Colors.setA(primary, 0.0F);
-        int colBot = Colors.setA(primary, 0.0F);
-        float yTop1 = editorY + editorH * 0.05F;
-        float yTop2 = editorY + editorH * 0.15F;
-
-        for (int i = 0; i < segments; i++)
-        {
-            float x1 = editorX + i * segW;
-            float x2 = editorX + (i + 1) * segW;
-
-            // Layer 1 - Upper Quad (yTop1 -> yMid1)
-            builder.vertex(matrix4f, x1, yTop1, 0).color(colTop).next();
-            builder.vertex(matrix4f, x1, yMid1[i], 0).color(cMid1[i]).next();
-            builder.vertex(matrix4f, x2, yMid1[i+1], 0).color(cMid1[i+1]).next();
-            builder.vertex(matrix4f, x2, yTop1, 0).color(colTop).next();
-
-            // Layer 1 - Lower Quad (yMid1 -> yBot1)
-            builder.vertex(matrix4f, x1, yMid1[i], 0).color(cMid1[i]).next();
-            builder.vertex(matrix4f, x1, yBot1[i], 0).color(colBot).next();
-            builder.vertex(matrix4f, x2, yBot1[i+1], 0).color(colBot).next();
-            builder.vertex(matrix4f, x2, yMid1[i+1], 0).color(cMid1[i+1]).next();
-
-            // Layer 2 - Upper Quad (yTop2 -> yMid2)
-            builder.vertex(matrix4f, x1, yTop2, 0).color(colTop).next();
-            builder.vertex(matrix4f, x1, yMid2[i], 0).color(cMid2[i]).next();
-            builder.vertex(matrix4f, x2, yMid2[i+1], 0).color(cMid2[i+1]).next();
-            builder.vertex(matrix4f, x2, yTop2, 0).color(colTop).next();
-
-            // Layer 2 - Lower Quad (yMid2 -> yBot2)
-            builder.vertex(matrix4f, x1, yMid2[i], 0).color(cMid2[i]).next();
-            builder.vertex(matrix4f, x1, yBot2[i], 0).color(colBot).next();
-            builder.vertex(matrix4f, x2, yBot2[i+1], 0).color(colBot).next();
-            builder.vertex(matrix4f, x2, yMid2[i+1], 0).color(cMid2[i+1]).next();
-        }
-
-        BufferRenderer.drawWithGlobalProgram(builder.end());
 
         // Drop shadow for the main page panel
         context.batcher.gradientHBox(pageX - 18, pageY, pageX, pageY + pageH, 0, Colors.setA(0x000000, 0.7F));
