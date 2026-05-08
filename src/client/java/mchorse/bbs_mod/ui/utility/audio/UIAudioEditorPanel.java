@@ -133,8 +133,9 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
         super(dashboard);
 
         // Document tabs layout
+        this.iconBar.relative(this).x(1F, -20).y(AUDIO_DOCUMENT_TABS_HEIGHT).w(20).h(1F, -AUDIO_DOCUMENT_TABS_HEIGHT).column(0).stretch();
         this.audioTabsBar = new UIControlBar();
-        this.audioTabsBar.relative(this.editor).x(0).y(0).w(1F).h(AUDIO_DOCUMENT_TABS_HEIGHT);
+        this.audioTabsBar.relative(this).x(0).y(0).w(1F).h(AUDIO_DOCUMENT_TABS_HEIGHT);
         this.audioTabs = new UIElement();
         this.audioTabs.relative(this.audioTabsBar).x(8).y(0).w(1F, -16).h(AUDIO_DOCUMENT_TABS_HEIGHT).row(0).resize();
         this.audioTabsBar.add(this.audioTabs);
@@ -307,7 +308,8 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
         this.homeAudiosSearch.relative(this.homePage).x(0.35F).y(HOME_BANNER_HEIGHT + 20).w(0.65F).h(1F, -(HOME_BANNER_HEIGHT + 20));
         this.homePage.add(new UIRenderable(this::renderHomeBackground), this.homeActionsPanel, this.homeAudiosSearch);
 
-        this.editor.add(this.mainView, this.homePage, this.audioTabsBar);
+        this.editor.add(this.mainView, this.homePage);
+        this.add(this.audioTabsBar);
 
         this.createHomeDocumentTab(true);
         this.openAudio(null);
@@ -513,7 +515,7 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
             IKey title = tab.home ? L10n.lang("bbs.ui.audio.home.title") : IKey.constant(tab.audioLink.path);
             UIIconTabButton button = new UIIconTabButton(title, tab.home ? Icons.FOLDER : Icons.SOUND, (b) -> this.activateAudioDocumentTab(tabIndex, false));
             button.color(this.activeAudioDocumentTab == tabIndex ? BBSSettings.primaryColor.get() : 0x2d2d2d);
-            button.w(tab.home ? 88 : 140).h(AUDIO_DOCUMENT_TABS_HEIGHT);
+            button.w(tab.home ? 88 : 122).h(AUDIO_DOCUMENT_TABS_HEIGHT);
 
             if (!tab.home || this.audioDocumentTabs.size() > 1)
             {
@@ -792,6 +794,16 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
     {
         Colors.interpolate(TEMP_COLOR, a, b, x);
         return TEMP_COLOR.getARGBColor();
+    }
+
+    @Override
+    public void render(UIContext context)
+    {
+        int color = BBSSettings.primaryColor.get();
+
+        this.area.render(context.batcher, Colors.mulRGB(color | Colors.A100, 0.2F));
+
+        super.render(context);
     }
 
     private void renderHomeBackground(UIContext context)

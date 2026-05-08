@@ -167,8 +167,9 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
         this.overlay.resizable().minSize(260, 220);
 
         // Document tabs layout
+        this.iconBar.relative(this).x(1F, -20).y(PARTICLE_DOCUMENT_TABS_HEIGHT).w(20).h(1F, -PARTICLE_DOCUMENT_TABS_HEIGHT).column(0).stretch();
         this.particleTabsBar = new UIControlBar();
-        this.particleTabsBar.relative(this.editor).x(0).y(0).w(1F).h(PARTICLE_DOCUMENT_TABS_HEIGHT);
+        this.particleTabsBar.relative(this).x(0).y(0).w(1F).h(PARTICLE_DOCUMENT_TABS_HEIGHT);
         this.particleTabs = new UIElement();
         this.particleTabs.relative(this.particleTabsBar).x(8).y(0).w(1F, -16).h(PARTICLE_DOCUMENT_TABS_HEIGHT).row(0).resize();
         this.particleTabsBar.add(this.particleTabs);
@@ -453,7 +454,8 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
         this.homeParticlesSearch.relative(this.homePage).x(0.35F).y(HOME_BANNER_HEIGHT + 20).w(0.65F).h(1F, -(HOME_BANNER_HEIGHT + 20));
         this.homePage.add(new UIRenderable(this::renderHomeBackground), this.homeActionsPanel, this.homeParticlesSearch);
 
-        this.editor.add(this.mainView, this.homePage, this.particleTabsBar);
+        this.editor.add(this.mainView, this.homePage);
+        this.add(this.particleTabsBar);
 
         this.createHomeDocumentTab(true);
         this.fill(null);
@@ -970,6 +972,10 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
     @Override
     public void render(UIContext context)
     {
+        int color = BBSSettings.primaryColor.get();
+
+        this.area.render(context.batcher, Colors.mulRGB(color | Colors.A100, 0.2F));
+
         super.render(context);
 
         if (this.molangId != null)

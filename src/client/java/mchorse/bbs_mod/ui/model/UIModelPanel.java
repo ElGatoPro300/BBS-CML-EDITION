@@ -375,7 +375,8 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         });
         this.updateHomeButtonsState();
 
-        this.modelTabsBar.relative(this.editor).x(0).y(0).w(1F).h(MODEL_DOCUMENT_TABS_HEIGHT);
+        this.iconBar.relative(this).x(1F, -20).y(MODEL_DOCUMENT_TABS_HEIGHT).w(20).h(1F, -MODEL_DOCUMENT_TABS_HEIGHT).column(0).stretch();
+        this.modelTabsBar.relative(this).x(0).y(0).w(1F).h(MODEL_DOCUMENT_TABS_HEIGHT);
         this.modelTabs.relative(this.modelTabsBar).x(8).y(0).w(1F, -16).h(MODEL_DOCUMENT_TABS_HEIGHT).row(0).resize();
         this.modelTabsBar.add(this.modelTabs);
         
@@ -392,7 +393,8 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         this.mainView = new UIElement();
         this.mainView.relative(this.editor).y(MODEL_DOCUMENT_TABS_HEIGHT).w(1F).h(1F, -MODEL_DOCUMENT_TABS_HEIGHT);
 
-        this.editor.add(this.mainView, this.homePage, this.modelTabsBar);
+        this.editor.add(this.mainView, this.homePage);
+        this.add(this.modelTabsBar);
         this.iconBar.prepend(new UIRenderable(this::renderIcons));
 
         /* Model Settings Panel */
@@ -1555,7 +1557,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
     {
         int color = BBSSettings.primaryColor.get();
 
-        this.area.render(context.batcher, Colors.mulRGB(color | Colors.A100, 0.1F));
+        this.area.render(context.batcher, Colors.mulRGB(color | Colors.A100, 0.2F));
 
         super.render(context);
     }
