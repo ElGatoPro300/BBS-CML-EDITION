@@ -605,7 +605,14 @@ public class UIPropTransform extends UITransform
 
                             if (this.axis == Axis.Y)
                             {
-                                delta = factor * dy;
+                                if (!Gizmo.INSTANCE.isDragging())
+                                {
+                                    delta = factor * dx;
+                                }
+                                else
+                                {
+                                    delta = factor * dy;
+                                }
                             }
                             else
                             {
@@ -679,7 +686,14 @@ public class UIPropTransform extends UITransform
                                 }
                                 else if (this.axis == Axis.Y)
                                 {
-                                    vector3f.y -= factor * dy;
+                                    if (!Gizmo.INSTANCE.isDragging())
+                                    {
+                                        vector3f.y += factor * dx;
+                                    }
+                                    else
+                                    {
+                                        vector3f.y -= factor * dy;
+                                    }
                                 }
                                 else if (this.axis == Axis.Z)
                                 {
@@ -726,6 +740,12 @@ public class UIPropTransform extends UITransform
 
     private boolean initializeRayDrag(UIContext context)
     {
+        if (!Gizmo.INSTANCE.isDragging())
+        {
+            this.rayDragInitialized = false;
+            return false;
+        }
+
         if (this.gizmoRayProvider == null || context == null)
         {
             this.rayDragInitialized = false;
@@ -805,6 +825,11 @@ public class UIPropTransform extends UITransform
 
     private boolean applyRayDrag(UIContext context)
     {
+        if (!Gizmo.INSTANCE.isDragging())
+        {
+            return false;
+        }
+
         if (this.gizmoRayProvider == null || context == null)
         {
             return false;

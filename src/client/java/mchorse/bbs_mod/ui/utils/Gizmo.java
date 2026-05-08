@@ -60,6 +60,11 @@ public class Gizmo
         this.handlers.put(index, handler);
     }
 
+    public boolean isDragging()
+    {
+        return this.index != -1;
+    }
+
     public Mode getMode()
     {
         return this.mode;
