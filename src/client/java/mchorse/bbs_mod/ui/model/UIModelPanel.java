@@ -480,7 +480,40 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
             context.batcher.box(a.x + 3, a.ey() + 4, a.ex() - 3, a.ey() + 5, 0x22ffffff);
         }
     }
-    
+
+    private static final mchorse.bbs_mod.utils.colors.Color TEMP_COLOR = new mchorse.bbs_mod.utils.colors.Color();
+
+    private static int getInterpolatedColor(int a, int b, float x)
+    {
+        Colors.interpolate(TEMP_COLOR, a, b, x);
+        return TEMP_COLOR.getARGBColor();
+    }
+
+    private void drawBeveledBlock(UIContext context, float bx, float by, float size, int color)
+    {
+        int rx = Math.round(bx);
+        int ry = Math.round(by);
+        int rsize = Math.round(size);
+        if (rsize < 1) rsize = 1;
+
+        // Base box
+        context.batcher.box(rx, ry, rx + rsize, ry + rsize, color);
+
+        // Bevel highlights
+        float alpha = Colors.getA(color);
+        int whiteBevel = Colors.setA(Colors.WHITE, alpha * 0.3F);
+        int blackBevel = Colors.setA(0xff000000, alpha * 0.4F);
+
+        // Top bevel
+        context.batcher.box(rx, ry, rx + rsize, ry + 1, whiteBevel);
+        // Left bevel
+        context.batcher.box(rx, ry, rx + 1, ry + rsize, whiteBevel);
+        // Bottom shadow
+        context.batcher.box(rx, ry + rsize - 1, rx + rsize, ry + rsize, blackBevel);
+        // Right shadow
+        context.batcher.box(rx + rsize - 1, ry, rx + rsize, ry + rsize, blackBevel);
+    }
+
     private void renderHomeBackground(UIContext context)
     {
         if (!this.showingHomePage)
@@ -498,104 +531,129 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         int pageH = this.homePage.area.h;
         int dividerX = this.homeModelsSearch.area.x;
 
-        // Render deeper background
+        // Render solid dark background matching films
         context.batcher.box(editorX, editorY, editorX + editorW, editorY + editorH, Colors.setA(0x0b0b0b, 1F));
-        
-        // Render Animated Aurora Effect
+
         int primary = BBSSettings.primaryColor.get();
-        float tick = context.getTickTransition() * 0.015F;
-        int segments = 40;
-        float segW = editorW / (float) segments;
-        
-        Matrix4f matrix4f = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
-        BufferBuilder builder = Tessellator.getInstance().getBuffer();
-        
-        RenderSystem.enableBlend();
-        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
-        builder.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
-        
-        float[] yBot1 = new float[segments + 1];
-        float[] yMid1 = new float[segments + 1];
-        int[] cMid1 = new int[segments + 1];
-        
-        float[] yBot2 = new float[segments + 1];
-        float[] yMid2 = new float[segments + 1];
-        int[] cMid2 = new int[segments + 1];
-        
-        for (int i = 0; i <= segments; i++)
+        float tick = context.getTickTransition();
+
+        float blockSize = 12F;
+        float gap = 1F;
+        float gridW = blockSize + gap;
+
+        // Calculate columns for left and right visible areas separately
+        int leftCols = Math.round((pageX - editorX) / gridW);
+        if (leftCols < 1) leftCols = 1;
+
+        int rightCols = Math.round(((editorX + editorW - 65) - (pageX + pageW)) / gridW);
+        if (rightCols < 1) rightCols = 1;
+
+        // Calculate slots per side based on screen dimensions to guarantee no horizontal overlaps
+        int maxLeftSlots = leftCols - 3;
+        if (maxLeftSlots < 3) maxLeftSlots = 3;
+        int maxRightSlots = rightCols - 3;
+        if (maxRightSlots < 3) maxRightSlots = 3;
+
+        int desiredHalfPieces = 10;
+        int leftHalf = Math.min(desiredHalfPieces, maxLeftSlots);
+        int rightHalf = Math.min(desiredHalfPieces, maxRightSlots);
+
+        int numPieces = leftHalf + rightHalf;
+
+        for (int p = 0; p < numPieces; p++)
         {
-            float nx = (float) i / segments;
-            
-            // Layer 1
-            float w1 = (float) Math.sin(tick * 1.2F + nx * 8F);
-            float w2 = (float) Math.sin(tick * 0.7F + nx * 15F);
-            float w3 = (float) Math.cos(tick * 0.4F - nx * 12F);
-            float comb1 = (w1 + w2 + w3) / 3F;
-            
-            float curtainYTop = editorY + editorH * 0.05F;
-            float curtainYBot = editorY + editorH * 0.5F + comb1 * (editorH * 0.35F);
-            if (curtainYBot < curtainYTop + 10) curtainYBot = curtainYTop + 10;
-            
-            float transitionY = curtainYBot - editorH * 0.3F;
-            if (transitionY < curtainYTop) transitionY = curtainYTop;
-            
-            yBot1[i] = curtainYBot;
-            yMid1[i] = transitionY;
-            cMid1[i] = Colors.setA(primary, 0.15F + Math.max(0, comb1) * 0.2F);
-            
-            // Layer 2
-            float w4 = (float) Math.sin(tick * 1.5F - nx * 10F);
-            float w5 = (float) Math.cos(tick * 0.9F + nx * 18F);
-            float comb2 = (w4 + w5) / 2F;
-            
-            float curtain2YTop = editorY + editorH * 0.15F;
-            float curtain2YBot = editorY + editorH * 0.75F + comb2 * (editorH * 0.25F);
-            if (curtain2YBot < curtain2YTop + 10) curtain2YBot = curtain2YTop + 10;
-            
-            float transition2Y = curtain2YBot - editorH * 0.25F;
-            if (transition2Y < curtain2YTop) transition2Y = curtain2YTop;
-            
-            yBot2[i] = curtain2YBot;
-            yMid2[i] = transition2Y;
-            cMid2[i] = Colors.setA(Colors.mulRGB(primary, 0.8F), 0.1F + Math.max(0, comb2) * 0.15F);
+            float alignedX;
+
+            if (p < leftHalf)
+            {
+                // Left visible area: map p uniquely to a non-overlapping column using a coprime multiplier
+                int step = 3;
+                if (leftHalf % 3 == 0) step = 5;
+                int slot = (p * step) % leftHalf;
+
+                int colIndex = Math.round(((float) slot / (leftHalf - 1 == 0 ? 1 : leftHalf - 1)) * (leftCols - 3));
+                if (colIndex < 0) colIndex = 0;
+                alignedX = editorX + colIndex * gridW;
+            }
+            else
+            {
+                // Right visible area: map rIndex uniquely to a non-overlapping column
+                int rIndex = p - leftHalf;
+                int step = 3;
+                if (rightHalf % 3 == 0) step = 5;
+                int slot = (rIndex * step) % rightHalf;
+
+                int colIndex = Math.round(((float) slot / (rightHalf - 1 == 0 ? 1 : rightHalf - 1)) * (rightCols - 3));
+                if (colIndex < 0) colIndex = 0;
+                alignedX = (pageX + pageW) + colIndex * gridW;
+            }
+
+            float speed = 0.35F + (float) ((p * 3.17F) % 0.45F);
+
+            float fallOffset = (tick * speed) % (editorH + 80);
+            float startY = (float) ((p * 47.19F) % (editorH + 80));
+            float pieceY = editorY - 40 + ((startY + fallOffset) % (editorH + 80));
+            float alignedY = Math.round(pieceY / gridW) * gridW;
+
+            int shapeType = p % 7;
+            int[][] blocks;
+            switch (shapeType)
+            {
+                case 0: // O (2x2 square)
+                    blocks = new int[][] {{0, 0}, {1, 0}, {0, 1}, {1, 1}};
+                    break;
+                case 1: // I (4x1 line)
+                    blocks = new int[][] {{0, 0}, {0, 1}, {0, 2}, {0, 3}};
+                    break;
+                case 2: // T
+                    blocks = new int[][] {{0, 0}, {1, 0}, {2, 0}, {1, 1}};
+                    break;
+                case 3: // L
+                    blocks = new int[][] {{0, 0}, {0, 1}, {0, 2}, {1, 2}};
+                    break;
+                case 4: // J
+                    blocks = new int[][] {{1, 0}, {1, 1}, {1, 2}, {0, 2}};
+                    break;
+                case 5: // S
+                    blocks = new int[][] {{1, 0}, {2, 0}, {0, 1}, {1, 1}};
+                    break;
+                default: // Z
+                    blocks = new int[][] {{0, 0}, {1, 0}, {1, 1}, {2, 1}};
+                    break;
+            }
+
+            int rotation = (int) (tick * 0.012F + p) % 4;
+            float shadeFactor = 0.5F + (float) ((p * 3.14F) % 0.5F);
+            int pieceColor = Colors.mulRGB(primary, shadeFactor);
+
+            for (int[] b : blocks)
+            {
+                int rx = b[0];
+                int ry = b[1];
+
+                for (int r = 0; r < rotation; r++)
+                {
+                    int temp = rx;
+                    rx = 1 - (ry - 1);
+                    ry = temp;
+                }
+
+                float blockX = alignedX + rx * gridW;
+                float blockY = alignedY + ry * gridW;
+
+                if (blockY >= editorY - gridW && blockY < editorY + editorH)
+                {
+                    float edgeFade = 1.0F;
+                    float distToTop = blockY - editorY;
+                    float distToBot = (editorY + editorH) - blockY;
+                    if (distToTop < 30) edgeFade = distToTop / 30F;
+                    else if (distToBot < 30) edgeFade = distToBot / 30F;
+
+                    int finalColor = Colors.setA(pieceColor, 0.4F * edgeFade);
+                    drawBeveledBlock(context, blockX, blockY, blockSize, finalColor);
+                }
+            }
         }
-        
-        int colTop = Colors.setA(primary, 0.0F);
-        int colBot = Colors.setA(primary, 0.0F);
-        float yTop1 = editorY + editorH * 0.05F;
-        float yTop2 = editorY + editorH * 0.15F;
-        
-        for (int i = 0; i < segments; i++)
-        {
-            float x1 = editorX + i * segW;
-            float x2 = editorX + (i + 1) * segW;
-            
-            // Layer 1 - Upper Quad (yTop1 -> yMid1)
-            builder.vertex(matrix4f, x1, yTop1, 0).color(colTop).next();
-            builder.vertex(matrix4f, x1, yMid1[i], 0).color(cMid1[i]).next();
-            builder.vertex(matrix4f, x2, yMid1[i+1], 0).color(cMid1[i+1]).next();
-            builder.vertex(matrix4f, x2, yTop1, 0).color(colTop).next();
-            
-            // Layer 1 - Lower Quad (yMid1 -> yBot1)
-            builder.vertex(matrix4f, x1, yMid1[i], 0).color(cMid1[i]).next();
-            builder.vertex(matrix4f, x1, yBot1[i], 0).color(colBot).next();
-            builder.vertex(matrix4f, x2, yBot1[i+1], 0).color(colBot).next();
-            builder.vertex(matrix4f, x2, yMid1[i+1], 0).color(cMid1[i+1]).next();
-            
-            // Layer 2 - Upper Quad (yTop2 -> yMid2)
-            builder.vertex(matrix4f, x1, yTop2, 0).color(colTop).next();
-            builder.vertex(matrix4f, x1, yMid2[i], 0).color(cMid2[i]).next();
-            builder.vertex(matrix4f, x2, yMid2[i+1], 0).color(cMid2[i+1]).next();
-            builder.vertex(matrix4f, x2, yTop2, 0).color(colTop).next();
-            
-            // Layer 2 - Lower Quad (yMid2 -> yBot2)
-            builder.vertex(matrix4f, x1, yMid2[i], 0).color(cMid2[i]).next();
-            builder.vertex(matrix4f, x1, yBot2[i], 0).color(colBot).next();
-            builder.vertex(matrix4f, x2, yBot2[i+1], 0).color(colBot).next();
-            builder.vertex(matrix4f, x2, yMid2[i+1], 0).color(cMid2[i+1]).next();
-        }
-        
-        BufferRenderer.drawWithGlobalProgram(builder.end());
         
         // Black shadow gradients on the sides of the central column
         context.batcher.gradientHBox(pageX - 18, pageY, pageX, pageY + pageH, 0, Colors.setA(0x000000, 0.7F));
