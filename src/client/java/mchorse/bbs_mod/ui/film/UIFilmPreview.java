@@ -101,7 +101,10 @@ public class UIFilmPreview extends UIElement
                 {
                     this.panel.dashboard.closeThisMenu();
 
-                    Films.playFilm(this.panel.getData().getId(), true);
+                    if (this.panel.getData() != null)
+                    {
+                        Films.playFilm(this.panel.getData().getId(), true);
+                    }
                 }
             });
 
@@ -187,7 +190,10 @@ public class UIFilmPreview extends UIElement
                 return;
             }
 
-            this.panel.recorder.startRecording(this.panel.getData().camera.calculateDuration(), BBSRendering.getTexture());
+            if (this.panel.getData() != null)
+            {
+                this.panel.recorder.startRecording(this.panel.getData().camera.calculateDuration(), BBSRendering.getTexture());
+            }
         });
         this.recordVideo.tooltip(UIKeys.CAMERA_TOOLTIPS_RECORD);
         this.recordVideo.context((menu) ->
@@ -249,6 +255,11 @@ public class UIFilmPreview extends UIElement
 
     private void renderAudio()
     {
+        if (this.panel.getData() == null)
+        {
+            return;
+        }
+
         Clips camera = this.panel.getData().camera;
         List<AudioClip> audioClips = camera.getClips(AudioClip.class);
 
@@ -404,7 +415,7 @@ public class UIFilmPreview extends UIElement
 
         this.panel.getController().renderHUD(context, area);
 
-        if (this.panel.replayEditor.isVisible())
+        if (this.panel.replayEditor.isVisible() && this.panel.getData() != null)
         {
             RunnerCameraController runner = this.panel.getRunner();
             int w = (int) (area.w * BBSSettings.audioWaveformWidth.get());

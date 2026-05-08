@@ -704,8 +704,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.keys().register(Keys.PREV_CLIP, () -> this.setCursor(this.data.camera.findPreviousTick(this.getCursor()))).active(active).category(editor);
         this.keys().register(Keys.NEXT, () -> this.setCursor(this.getCursor() + 1)).active(active).category(editor);
         this.keys().register(Keys.PREV, () -> this.setCursor(this.getCursor() - 1)).active(active).category(editor);
-        this.keys().register(Keys.UNDO, this::undo).category(editor);
-        this.keys().register(Keys.REDO, this::redo).category(editor);
+        this.keys().register(Keys.UNDO, this::undo).active(active).category(editor);
+        this.keys().register(Keys.REDO, this::redo).active(active).category(editor);
         this.keys().register(Keys.FLIGHT, this::toggleFlight).active(() -> this.data != null).category(modes);
         this.keys().register(Keys.LOOPING, () ->
         {
@@ -720,7 +720,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         {
             this.showPanel(MathUtils.cycler(this.getPanelIndex() + (Window.isShiftPressed() ? -1 : 1), this.panels));
             UIUtils.playClick();
-        }).category(editor);
+        }).active(active).category(editor);
 
         this.saveIcon.context((menu) ->
         {
@@ -2298,6 +2298,18 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     }
 
     @Override
+    public boolean canToggleVisibility()
+    {
+        return !this.showingHomePage;
+    }
+
+    @Override
+    public boolean canHideHUD()
+    {
+        return !this.showingHomePage;
+    }
+
+    @Override
     public ContentType getType()
     {
         return ContentType.FILMS;
@@ -2480,6 +2492,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     public Vector2i getLoopingRange()
     {
+        if (this.data == null)
+        {
+            return new Vector2i(0, 0);
+        }
+
         Clip clip = this.cameraEditor.getClip();
 
         int min = -1;
@@ -3312,7 +3329,12 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         if (tab.home)
         {
-            this.updateFilmDocumentView();
+            if (this.replayEditor != null && this.replayEditor.replays != null && this.replayEditor.replays.hasParent() && this.replayEditor.replays.getParent() instanceof UIOverlay overlay)
+            {
+                overlay.closeItself();
+            }
+
+            this.fill(null);
         }
         else
         {

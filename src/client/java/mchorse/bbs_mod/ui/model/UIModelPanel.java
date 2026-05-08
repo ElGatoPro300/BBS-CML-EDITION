@@ -15,6 +15,7 @@ import mchorse.bbs_mod.forms.forms.ModelForm;
 import mchorse.bbs_mod.forms.renderers.FormRenderer;
 import mchorse.bbs_mod.forms.renderers.ModelFormRenderer;
 import mchorse.bbs_mod.graphics.texture.Texture;
+import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.morphing.Morph;
@@ -36,6 +37,7 @@ import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UISearchList;
 import mchorse.bbs_mod.ui.framework.elements.navigation.UIControlBar;
 import mchorse.bbs_mod.ui.framework.elements.navigation.UIIconTabButton;
+import mchorse.bbs_mod.ui.framework.elements.overlay.UIConfirmOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
@@ -44,6 +46,7 @@ import mchorse.bbs_mod.ui.model.UIModelIKPanel;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.ScrollDirection;
 import mchorse.bbs_mod.ui.utils.UI;
+import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.pose.UIPoseEditor;
@@ -71,6 +74,7 @@ import com.google.gson.reflect.TypeToken;
 
 import org.lwjgl.opengl.GL11;
 
+import java.io.File;
 import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.net.URI;
@@ -117,6 +121,8 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
     private final List<BannerEntry> homeBanners = new ArrayList<>();
     private static final Set<Link> prefetchingBanners = Collections.synchronizedSet(new HashSet<>());
     private int bannerIndex = 0;
+    private List<Integer> bannerSequence = new ArrayList<>();
+    private int sequenceIndex = 0;
     private float lastBannerTicks = -1;
     private static final int BANNER_DURATION = 200; // 10 seconds at 20 ticks/sec
     private static final int BANNER_TRANSITION = 60; // 3 seconds transition
@@ -177,6 +183,74 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         this.homeActionsPanel = new UIElement();
         this.homeModelsList = new UIDataPathList((list) -> this.handleHomeModelsSelection(list));
         this.homeModelsList.setFileIcon(Icons.MORPH);
+        this.homeModelsList.context((menu) ->
+        {
+            menu.action(Icons.FOLDER, UIKeys.PANELS_MODALS_ADD_FOLDER_TITLE, this::addFolderFromHome);
+
+            String selectedId = this.getSelectedHomeModelId();
+            if (selectedId != null)
+            {
+                menu.action(Icons.COPY, UIKeys.PANELS_CONTEXT_COPY, this::copyHomeModel);
+            }
+
+            try
+            {
+                MapType clipboardData = Window.getClipboardMap("_ContentType_" + this.getType().getId());
+
+                if (clipboardData != null)
+                {
+                    menu.action(Icons.PASTE, UIKeys.PANELS_CONTEXT_PASTE, () -> this.pasteHomeModel(clipboardData));
+                }
+            }
+            catch (Exception e)
+            {}
+
+            File folder = this.getType().getRepository().getFolder();
+
+            if (folder != null)
+            {
+                menu.action(Icons.FOLDER, UIKeys.PANELS_CONTEXT_OPEN, () ->
+                {
+                    UIUtils.openFolder(new File(folder, this.homeModelsList.getPath().toString()));
+                });
+            }
+        });
+        this.homeModelsList.moveCallback = (from, to) ->
+        {
+            String fromStr = from.toString();
+            String toStr = to.toString();
+
+            if (from.folder)
+            {
+                this.getType().getRepository().renameFolder(fromStr, toStr, (bool) ->
+                {
+                    if (bool)
+                    {
+                        this.requestNames();
+                    }
+                });
+            }
+            else
+            {
+                this.getType().getRepository().rename(fromStr, toStr);
+
+                for (ModelDocumentTab tab : this.modelDocumentTabs)
+                {
+                    if (!tab.home && fromStr.equals(tab.modelId))
+                    {
+                        tab.modelId = toStr;
+                    }
+                }
+                this.rebuildModelDocumentTabs();
+
+                if (this.data != null && fromStr.equals(this.data.getId()))
+                {
+                    this.data.setId(toStr);
+                }
+
+                this.requestNames();
+            }
+        };
         this.homeModelsSearch = new UISearchList<>(this.homeModelsList).label(UIKeys.GENERAL_SEARCH);
         this.homeModelsSearch.list.background();
         
@@ -198,13 +272,111 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
             panel.text.filename();
             UIOverlay.addOverlay(this.getContext(), panel);
         });
-        this.homeCreateModel.setEnabled(false);
-        this.homeDuplicateCurrent = this.createHomeButton(UIKeys.MODELS_CRUD_DUPE, Icons.COPY, (b) -> this.clickWithContext(this.overlay.dupe));
-        this.homeRenameCurrent = this.createHomeButton(UIKeys.MODELS_CRUD_RENAME, Icons.EDIT, (b) -> this.clickWithContext(this.overlay.rename));
-        this.homeDeleteCurrent = this.createHomeButton(UIKeys.MODELS_CRUD_REMOVE, Icons.REMOVE, (b) -> this.clickWithContext(this.overlay.remove));
+        this.homeDuplicateCurrent = this.createHomeButton(UIKeys.MODELS_CRUD_DUPE, Icons.COPY, (b) ->
+        {
+            String selectedId = this.getSelectedHomeModelId();
+            if (selectedId == null) return;
+
+            UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
+                UIKeys.GENERAL_DUPE,
+                UIKeys.PANELS_MODALS_DUPE,
+                (str) -> {
+                    String targetId = this.homeModelsList.getPath(str).toString();
+                    if (targetId.trim().isEmpty()) {
+                        this.getContext().notifyError(UIKeys.PANELS_MODALS_EMPTY);
+                        return;
+                    }
+                    if (this.homeModelsList.hasInHierarchy(targetId)) {
+                        return;
+                    }
+                    this.getType().getRepository().load(selectedId, (originalModel) -> {
+                        if (originalModel != null) {
+                            this.getType().getRepository().save(targetId, originalModel.toData().asMap());
+                            this.requestNames();
+                        }
+                    });
+                }
+            );
+
+            panel.text.setText(new DataPath(selectedId).getLast());
+            panel.text.filename();
+
+            UIOverlay.addOverlay(this.getContext(), panel);
+        });
+        this.homeRenameCurrent = this.createHomeButton(UIKeys.MODELS_CRUD_RENAME, Icons.EDIT, (b) ->
+        {
+            String selectedId = this.getSelectedHomeModelId();
+            if (selectedId == null) return;
+
+            UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
+                UIKeys.GENERAL_RENAME,
+                UIKeys.PANELS_MODALS_RENAME,
+                (str) -> {
+                    String targetId = this.homeModelsList.getPath(str).toString();
+                    if (targetId.trim().isEmpty()) {
+                        this.getContext().notifyError(UIKeys.PANELS_MODALS_EMPTY);
+                        return;
+                    }
+                    if (this.homeModelsList.hasInHierarchy(targetId)) {
+                        return;
+                    }
+                    this.getType().getRepository().rename(selectedId, targetId);
+
+                    for (ModelDocumentTab tab : this.modelDocumentTabs) {
+                        if (!tab.home && selectedId.equals(tab.modelId)) {
+                            tab.modelId = targetId;
+                        }
+                    }
+                    this.rebuildModelDocumentTabs();
+
+                    if (this.data != null && selectedId.equals(this.data.getId())) {
+                        this.data.setId(targetId);
+                    }
+
+                    this.requestNames();
+                }
+            );
+
+            panel.text.setText(new DataPath(selectedId).getLast());
+            panel.text.filename();
+
+            UIOverlay.addOverlay(this.getContext(), panel);
+        });
+        this.homeDeleteCurrent = this.createHomeButton(UIKeys.MODELS_CRUD_REMOVE, Icons.REMOVE, (b) ->
+        {
+            String selectedId = this.getSelectedHomeModelId();
+            if (selectedId == null) return;
+
+            UIConfirmOverlayPanel panel = new UIConfirmOverlayPanel(
+                UIKeys.GENERAL_REMOVE,
+                UIKeys.PANELS_MODALS_REMOVE,
+                (confirm) ->
+                {
+                    if (confirm) {
+                        this.getType().getRepository().delete(selectedId);
+
+                        for (int i = this.modelDocumentTabs.size() - 1; i >= 0; i--) {
+                            ModelDocumentTab tab = this.modelDocumentTabs.get(i);
+                            if (!tab.home && selectedId.equals(tab.modelId)) {
+                                this.removeModelDocumentTab(i);
+                            }
+                        }
+
+                        if (this.data != null && selectedId.equals(this.data.getId())) {
+                            this.fill(null);
+                        }
+
+                        this.requestNames();
+                    }
+                }
+            );
+
+            UIOverlay.addOverlay(this.getContext(), panel);
+        });
         this.updateHomeButtonsState();
 
-        this.modelTabsBar.relative(this.editor).x(0).y(0).w(1F).h(MODEL_DOCUMENT_TABS_HEIGHT);
+        this.iconBar.relative(this).x(1F, -20).y(MODEL_DOCUMENT_TABS_HEIGHT).w(20).h(1F, -MODEL_DOCUMENT_TABS_HEIGHT).column(0).stretch();
+        this.modelTabsBar.relative(this).x(0).y(0).w(1F).h(MODEL_DOCUMENT_TABS_HEIGHT);
         this.modelTabs.relative(this.modelTabsBar).x(8).y(0).w(1F, -16).h(MODEL_DOCUMENT_TABS_HEIGHT).row(0).resize();
         this.modelTabsBar.add(this.modelTabs);
         
@@ -221,7 +393,8 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         this.mainView = new UIElement();
         this.mainView.relative(this.editor).y(MODEL_DOCUMENT_TABS_HEIGHT).w(1F).h(1F, -MODEL_DOCUMENT_TABS_HEIGHT);
 
-        this.editor.add(this.mainView, this.homePage, this.modelTabsBar);
+        this.editor.add(this.mainView, this.homePage);
+        this.add(this.modelTabsBar);
         this.iconBar.prepend(new UIRenderable(this::renderIcons));
 
         /* Model Settings Panel */
@@ -309,7 +482,40 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
             context.batcher.box(a.x + 3, a.ey() + 4, a.ex() - 3, a.ey() + 5, 0x22ffffff);
         }
     }
-    
+
+    private static final mchorse.bbs_mod.utils.colors.Color TEMP_COLOR = new mchorse.bbs_mod.utils.colors.Color();
+
+    private static int getInterpolatedColor(int a, int b, float x)
+    {
+        Colors.interpolate(TEMP_COLOR, a, b, x);
+        return TEMP_COLOR.getARGBColor();
+    }
+
+    private void drawBeveledBlock(UIContext context, float bx, float by, float size, int color)
+    {
+        int rx = Math.round(bx);
+        int ry = Math.round(by);
+        int rsize = Math.round(size);
+        if (rsize < 1) rsize = 1;
+
+        // Base box
+        context.batcher.box(rx, ry, rx + rsize, ry + rsize, color);
+
+        // Bevel highlights
+        float alpha = Colors.getA(color);
+        int whiteBevel = Colors.setA(Colors.WHITE, alpha * 0.3F);
+        int blackBevel = Colors.setA(0xff000000, alpha * 0.4F);
+
+        // Top bevel
+        context.batcher.box(rx, ry, rx + rsize, ry + 1, whiteBevel);
+        // Left bevel
+        context.batcher.box(rx, ry, rx + 1, ry + rsize, whiteBevel);
+        // Bottom shadow
+        context.batcher.box(rx, ry + rsize - 1, rx + rsize, ry + rsize, blackBevel);
+        // Right shadow
+        context.batcher.box(rx + rsize - 1, ry, rx + rsize, ry + rsize, blackBevel);
+    }
+
     private void renderHomeBackground(UIContext context)
     {
         if (!this.showingHomePage)
@@ -327,103 +533,129 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         int pageH = this.homePage.area.h;
         int dividerX = this.homeModelsSearch.area.x;
 
-        // Render deeper background
+        // Render solid dark background matching films
         context.batcher.box(editorX, editorY, editorX + editorW, editorY + editorH, Colors.setA(0x0b0b0b, 1F));
-        
-        // Render Animated Aurora Effect
+
         int primary = BBSSettings.primaryColor.get();
-        float tick = context.getTickTransition() * 0.015F;
-        int segments = 40;
-        float segW = editorW / (float) segments;
-        
-        Matrix4f matrix4f = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
-        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
-        
-        RenderSystem.enableBlend();
-        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
-        
-        float[] yBot1 = new float[segments + 1];
-        float[] yMid1 = new float[segments + 1];
-        int[] cMid1 = new int[segments + 1];
-        
-        float[] yBot2 = new float[segments + 1];
-        float[] yMid2 = new float[segments + 1];
-        int[] cMid2 = new int[segments + 1];
-        
-        for (int i = 0; i <= segments; i++)
+        float tick = context.getTickTransition();
+
+        float blockSize = 12F;
+        float gap = 1F;
+        float gridW = blockSize + gap;
+
+        // Calculate columns for left and right visible areas separately
+        int leftCols = Math.round((pageX - editorX) / gridW);
+        if (leftCols < 1) leftCols = 1;
+
+        int rightCols = Math.round(((editorX + editorW - 65) - (pageX + pageW)) / gridW);
+        if (rightCols < 1) rightCols = 1;
+
+        // Calculate slots per side based on screen dimensions to guarantee no horizontal overlaps
+        int maxLeftSlots = leftCols - 3;
+        if (maxLeftSlots < 3) maxLeftSlots = 3;
+        int maxRightSlots = rightCols - 3;
+        if (maxRightSlots < 3) maxRightSlots = 3;
+
+        int desiredHalfPieces = 10;
+        int leftHalf = Math.min(desiredHalfPieces, maxLeftSlots);
+        int rightHalf = Math.min(desiredHalfPieces, maxRightSlots);
+
+        int numPieces = leftHalf + rightHalf;
+
+        for (int p = 0; p < numPieces; p++)
         {
-            float nx = (float) i / segments;
-            
-            // Layer 1
-            float w1 = (float) Math.sin(tick * 1.2F + nx * 8F);
-            float w2 = (float) Math.sin(tick * 0.7F + nx * 15F);
-            float w3 = (float) Math.cos(tick * 0.4F - nx * 12F);
-            float comb1 = (w1 + w2 + w3) / 3F;
-            
-            float curtainYTop = editorY + editorH * 0.05F;
-            float curtainYBot = editorY + editorH * 0.5F + comb1 * (editorH * 0.35F);
-            if (curtainYBot < curtainYTop + 10) curtainYBot = curtainYTop + 10;
-            
-            float transitionY = curtainYBot - editorH * 0.3F;
-            if (transitionY < curtainYTop) transitionY = curtainYTop;
-            
-            yBot1[i] = curtainYBot;
-            yMid1[i] = transitionY;
-            cMid1[i] = Colors.setA(primary, 0.15F + Math.max(0, comb1) * 0.2F);
-            
-            // Layer 2
-            float w4 = (float) Math.sin(tick * 1.5F - nx * 10F);
-            float w5 = (float) Math.cos(tick * 0.9F + nx * 18F);
-            float comb2 = (w4 + w5) / 2F;
-            
-            float curtain2YTop = editorY + editorH * 0.15F;
-            float curtain2YBot = editorY + editorH * 0.75F + comb2 * (editorH * 0.25F);
-            if (curtain2YBot < curtain2YTop + 10) curtain2YBot = curtain2YTop + 10;
-            
-            float transition2Y = curtain2YBot - editorH * 0.25F;
-            if (transition2Y < curtain2YTop) transition2Y = curtain2YTop;
-            
-            yBot2[i] = curtain2YBot;
-            yMid2[i] = transition2Y;
-            cMid2[i] = Colors.setA(Colors.mulRGB(primary, 0.8F), 0.1F + Math.max(0, comb2) * 0.15F);
+            float alignedX;
+
+            if (p < leftHalf)
+            {
+                // Left visible area: map p uniquely to a non-overlapping column using a coprime multiplier
+                int step = 3;
+                if (leftHalf % 3 == 0) step = 5;
+                int slot = (p * step) % leftHalf;
+
+                int colIndex = Math.round(((float) slot / (leftHalf - 1 == 0 ? 1 : leftHalf - 1)) * (leftCols - 3));
+                if (colIndex < 0) colIndex = 0;
+                alignedX = editorX + colIndex * gridW;
+            }
+            else
+            {
+                // Right visible area: map rIndex uniquely to a non-overlapping column
+                int rIndex = p - leftHalf;
+                int step = 3;
+                if (rightHalf % 3 == 0) step = 5;
+                int slot = (rIndex * step) % rightHalf;
+
+                int colIndex = Math.round(((float) slot / (rightHalf - 1 == 0 ? 1 : rightHalf - 1)) * (rightCols - 3));
+                if (colIndex < 0) colIndex = 0;
+                alignedX = (pageX + pageW) + colIndex * gridW;
+            }
+
+            float speed = 0.35F + (float) ((p * 3.17F) % 0.45F);
+
+            float fallOffset = (tick * speed) % (editorH + 80);
+            float startY = (float) ((p * 47.19F) % (editorH + 80));
+            float pieceY = editorY - 40 + ((startY + fallOffset) % (editorH + 80));
+            float alignedY = Math.round(pieceY / gridW) * gridW;
+
+            int shapeType = p % 7;
+            int[][] blocks;
+            switch (shapeType)
+            {
+                case 0: // O (2x2 square)
+                    blocks = new int[][] {{0, 0}, {1, 0}, {0, 1}, {1, 1}};
+                    break;
+                case 1: // I (4x1 line)
+                    blocks = new int[][] {{0, 0}, {0, 1}, {0, 2}, {0, 3}};
+                    break;
+                case 2: // T
+                    blocks = new int[][] {{0, 0}, {1, 0}, {2, 0}, {1, 1}};
+                    break;
+                case 3: // L
+                    blocks = new int[][] {{0, 0}, {0, 1}, {0, 2}, {1, 2}};
+                    break;
+                case 4: // J
+                    blocks = new int[][] {{1, 0}, {1, 1}, {1, 2}, {0, 2}};
+                    break;
+                case 5: // S
+                    blocks = new int[][] {{1, 0}, {2, 0}, {0, 1}, {1, 1}};
+                    break;
+                default: // Z
+                    blocks = new int[][] {{0, 0}, {1, 0}, {1, 1}, {2, 1}};
+                    break;
+            }
+
+            int rotation = (int) (tick * 0.012F + p) % 4;
+            float shadeFactor = 0.5F + (float) ((p * 3.14F) % 0.5F);
+            int pieceColor = Colors.mulRGB(primary, shadeFactor);
+
+            for (int[] b : blocks)
+            {
+                int rx = b[0];
+                int ry = b[1];
+
+                for (int r = 0; r < rotation; r++)
+                {
+                    int temp = rx;
+                    rx = 1 - (ry - 1);
+                    ry = temp;
+                }
+
+                float blockX = alignedX + rx * gridW;
+                float blockY = alignedY + ry * gridW;
+
+                if (blockY >= editorY - gridW && blockY < editorY + editorH)
+                {
+                    float edgeFade = 1.0F;
+                    float distToTop = blockY - editorY;
+                    float distToBot = (editorY + editorH) - blockY;
+                    if (distToTop < 30) edgeFade = distToTop / 30F;
+                    else if (distToBot < 30) edgeFade = distToBot / 30F;
+
+                    int finalColor = Colors.setA(pieceColor, 0.4F * edgeFade);
+                    drawBeveledBlock(context, blockX, blockY, blockSize, finalColor);
+                }
+            }
         }
-        
-        int colTop = Colors.setA(primary, 0.0F);
-        int colBot = Colors.setA(primary, 0.0F);
-        float yTop1 = editorY + editorH * 0.05F;
-        float yTop2 = editorY + editorH * 0.15F;
-        
-        for (int i = 0; i < segments; i++)
-        {
-            float x1 = editorX + i * segW;
-            float x2 = editorX + (i + 1) * segW;
-            
-            // Layer 1 - Upper Quad (yTop1 -> yMid1)
-            builder.vertex(matrix4f, x1, yTop1, 0).color(colTop);
-            builder.vertex(matrix4f, x1, yMid1[i], 0).color(cMid1[i]);
-            builder.vertex(matrix4f, x2, yMid1[i+1], 0).color(cMid1[i+1]);
-            builder.vertex(matrix4f, x2, yTop1, 0).color(colTop);
-            
-            // Layer 1 - Lower Quad (yMid1 -> yBot1)
-            builder.vertex(matrix4f, x1, yMid1[i], 0).color(cMid1[i]);
-            builder.vertex(matrix4f, x1, yBot1[i], 0).color(colBot);
-            builder.vertex(matrix4f, x2, yBot1[i+1], 0).color(colBot);
-            builder.vertex(matrix4f, x2, yMid1[i+1], 0).color(cMid1[i+1]);
-            
-            // Layer 2 - Upper Quad (yTop2 -> yMid2)
-            builder.vertex(matrix4f, x1, yTop2, 0).color(colTop);
-            builder.vertex(matrix4f, x1, yMid2[i], 0).color(cMid2[i]);
-            builder.vertex(matrix4f, x2, yMid2[i+1], 0).color(cMid2[i+1]);
-            builder.vertex(matrix4f, x2, yTop2, 0).color(colTop);
-            
-            // Layer 2 - Lower Quad (yMid2 -> yBot2)
-            builder.vertex(matrix4f, x1, yMid2[i], 0).color(cMid2[i]);
-            builder.vertex(matrix4f, x1, yBot2[i], 0).color(colBot);
-            builder.vertex(matrix4f, x2, yBot2[i+1], 0).color(colBot);
-            builder.vertex(matrix4f, x2, yMid2[i+1], 0).color(cMid2[i+1]);
-        }
-        
-        BufferRenderer.drawWithGlobalProgram(builder.end());
         
         // Black shadow gradients on the sides of the central column
         context.batcher.gradientHBox(pageX - 18, pageY, pageX, pageY + pageH, 0, Colors.setA(0x000000, 0.7F));
@@ -444,7 +676,21 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         
         if (elapsed >= BANNER_DURATION)
         {
-            this.bannerIndex = (this.bannerIndex + 1) % this.homeBanners.size();
+            if (this.homeBanners.size() > 1)
+            {
+                if (this.bannerSequence.size() != this.homeBanners.size())
+                {
+                    this.regenerateBannerSequence();
+                }
+
+                this.sequenceIndex++;
+                if (this.sequenceIndex >= this.bannerSequence.size())
+                {
+                    this.sequenceIndex = 0;
+                    this.shuffleRemoteBanners();
+                }
+                this.bannerIndex = this.bannerSequence.get(this.sequenceIndex);
+            }
             this.lastBannerTicks = currentTicks;
             elapsed = 0;
         }
@@ -468,7 +714,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
             textTransitionCurr = 1F;
         }
 
-        int prevIndex = (this.bannerIndex + this.homeBanners.size() - 1) % this.homeBanners.size();
+        int prevIndex = this.bannerSequence.isEmpty() ? 0 : this.bannerSequence.get((this.sequenceIndex + this.bannerSequence.size() - 1) % this.bannerSequence.size());
         BannerEntry current = this.homeBanners.get(this.bannerIndex);
         BannerEntry prev = this.homeBanners.get(prevIndex);
 
@@ -485,8 +731,8 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         int splitY = pageY + bannerH;
         context.batcher.box(pageX, splitY, pageX + pageW, splitY + 1, Colors.A12);
         context.batcher.box(dividerX, splitY + 1, dividerX + 1, pageY + pageH, Colors.A12);
-        context.batcher.textShadow(IKey.raw("Actions").get(), pageX + 4, splitY + 6);
-        context.batcher.textShadow(IKey.raw("Model List").get(), dividerX + 4, splitY + 6);
+        context.batcher.textShadow(L10n.lang("bbs.ui.models.home.actions").get(), pageX + 4, splitY + 6);
+        context.batcher.textShadow(L10n.lang("bbs.ui.models.home.list").get(), dividerX + 4, splitY + 6);
     }
 
     private void clickWithContext(UIElement element)
@@ -586,6 +832,67 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         {
             this.openModelInDocumentTabs(selected);
         }
+    }
+
+    private void addFolderFromHome()
+    {
+        UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
+            UIKeys.PANELS_MODALS_ADD_FOLDER_TITLE,
+            UIKeys.PANELS_MODALS_ADD_FOLDER,
+            (str) -> {
+                String path = this.homeModelsList.getPath(str).toString();
+                if (path.trim().isEmpty()) {
+                    this.getContext().notifyError(UIKeys.PANELS_MODALS_EMPTY);
+                    return;
+                }
+                this.getType().getRepository().addFolder(path, (bool) -> {
+                    if (bool) {
+                        this.requestNames();
+                    }
+                });
+            }
+        );
+
+        panel.text.filename();
+
+        UIOverlay.addOverlay(this.getContext(), panel);
+    }
+
+    private void copyHomeModel()
+    {
+        String selectedId = this.getSelectedHomeModelId();
+        if (selectedId == null) return;
+
+        this.getType().getRepository().load(selectedId, (model) -> {
+            if (model != null) {
+                Window.setClipboard(model.toData().asMap(), "_ContentType_" + this.getType().getId());
+            }
+        });
+    }
+
+    private void pasteHomeModel(MapType data)
+    {
+        UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
+            UIKeys.GENERAL_ADD,
+            UIKeys.PANELS_MODALS_ADD,
+            (str) -> {
+                String targetId = this.homeModelsList.getPath(str).toString();
+                if (targetId.trim().isEmpty()) {
+                    this.getContext().notifyError(UIKeys.PANELS_MODALS_EMPTY);
+                    return;
+                }
+                if (this.homeModelsList.hasInHierarchy(targetId)) {
+                    return;
+                }
+
+                ModelConfig newModel = (ModelConfig) this.getType().getRepository().create(targetId, data);
+                this.fill(newModel);
+            }
+        );
+
+        panel.text.filename();
+
+        UIOverlay.addOverlay(this.getContext(), panel);
     }
 
     private void createHomeDocumentTab(boolean activate)
@@ -744,7 +1051,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         {
             int tabIndex = i;
             ModelDocumentTab tab = this.modelDocumentTabs.get(i);
-            IKey title = tab.home ? IKey.raw("Home") : IKey.constant(tab.modelId);
+            IKey title = tab.home ? L10n.lang("bbs.ui.models.home.title") : IKey.constant(tab.modelId);
             UIIconTabButton button = new UIIconTabButton(title, tab.home ? Icons.FOLDER : Icons.MORPH, (b) -> this.activateModelDocumentTab(tabIndex, false));
             button.color(this.activeModelDocumentTab == tabIndex ? BBSSettings.primaryColor.get() : 0x2d2d2d);
             button.w(tab.home ? 88 : 122).h(MODEL_DOCUMENT_TABS_HEIGHT);
@@ -1250,7 +1557,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
     {
         int color = BBSSettings.primaryColor.get();
 
-        this.area.render(context.batcher, Colors.mulRGB(color | Colors.A100, 0.1F));
+        this.area.render(context.batcher, Colors.mulRGB(color | Colors.A100, 0.2F));
 
         super.render(context);
     }
@@ -1314,6 +1621,27 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
                 e.printStackTrace();
             }
         });
+    }
+
+    private void regenerateBannerSequence()
+    {
+        this.bannerSequence.clear();
+        for (int i = 0; i < this.homeBanners.size(); i++)
+        {
+            this.bannerSequence.add(i);
+        }
+        this.shuffleRemoteBanners();
+        this.sequenceIndex = 0;
+        this.bannerIndex = 0; // Always start with local
+    }
+
+    private void shuffleRemoteBanners()
+    {
+        if (this.bannerSequence.size() > 2)
+        {
+            List<Integer> remote = this.bannerSequence.subList(1, this.bannerSequence.size());
+            Collections.shuffle(remote);
+        }
     }
 
     private void prefetchBannerImage(Link link)

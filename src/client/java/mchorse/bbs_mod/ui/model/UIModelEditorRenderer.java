@@ -94,7 +94,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
     private String lastModelId;
     private final Matrix4f lastGizmoMatrix = new Matrix4f();
     private boolean hasGizmoMatrix;
-    private boolean showSkeleton = true;
+
 
     public UIModelEditorRenderer()
     {
@@ -123,10 +123,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
         this.activeIKChain = chain;
     }
     
-    public void setShowSkeleton(boolean showSkeleton)
-    {
-        this.showSkeleton = showSkeleton;
-    }
+
 
     public void setConfig(ModelConfig config)
     {
@@ -258,10 +255,6 @@ public class UIModelEditorRenderer extends UIModelRenderer
         MatrixCache matrixCache = this.renderer.collectMatrices(this.entity, context.getTransition());
         this.renderSelectedCubeVisualizer(context, matrixCache);
 
-        if (this.showSkeleton)
-        {
-            this.renderSkeleton(context, matrixCache);
-        }
 
         this.renderIKGizmo(context, matrixCache);
 
@@ -323,10 +316,6 @@ public class UIModelEditorRenderer extends UIModelRenderer
 
             this.renderer.render(formContext.stencilMap(this.stencilMap));
             
-            if (this.showSkeleton)
-            {
-                this.renderSkeletonPicking(context, matrixCache);
-            }
 
             if (gizmoMatrix != null)
             {
@@ -687,182 +676,6 @@ public class UIModelEditorRenderer extends UIModelRenderer
         RenderSystem.disableBlend();
     }
 
-    /**
-     * Renders a full visual skeleton of the model using octahedral bones.
-     */
-    private void renderSkeleton(UIContext context, MatrixCache matrixCache)
-    {
-        ModelInstance instance = this.getPreviewModelInstance();
-        if (instance == null || instance.model == null) return;
-
-        Matrix4f uiMatrix = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
-        MatrixCacheEntry rootEntry = matrixCache.get("");
-        Matrix4f rootMat = rootEntry != null ? rootEntry.matrix() : null;
-        Matrix4f gizmoMat = new Matrix4f(uiMatrix);
-
-        if (rootMat != null)
-        {
-            gizmoMat.mul(rootMat);
-        }
-
-        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
-        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
-        RenderSystem.enableBlend();
-        RenderSystem.disableDepthTest();
-
-        float r = 0.5F, g = 0.8F, b = 0.5F, a = 0.4F;
-
-        if (instance.model instanceof Model model)
-        {
-            for (ModelGroup group : model.getOrderedGroups())
-            {
-                if (group.parent != null)
-                {
-                    Vector3f start = this.getBonePoint(matrixCache, group.parent.id);
-                    Vector3f end = this.getBonePoint(matrixCache, group.id);
-
-                    if (start != null && end != null)
-                    {
-                        boolean inChain = this.activeIKChain != null && this.activeIKChain.enabled.get() && this.activeIKChain.isInChain(group.id);
-                        float cr = inChain ? 0.2F : r;
-                        float cg = inChain ? 0.8F : g;
-                        float cb = inChain ? 0.9F : b;
-
-                        this.drawOctahedron(builder, gizmoMat, start, end, cr, cg, cb, a);
-                    }
-                }
-            }
-        }
-        else if (!instance.model.getAllBOBJBones().isEmpty())
-        {
-            for (BOBJBone bone : instance.model.getAllBOBJBones())
-            {
-                if (bone.parentBone != null)
-                {
-                    Vector3f start = this.getBonePoint(matrixCache, bone.parentBone.name);
-                    Vector3f end = this.getBonePoint(matrixCache, bone.name);
-
-                    if (start != null && end != null)
-                    {
-                        boolean inChain = this.activeIKChain != null && this.activeIKChain.enabled.get() && this.activeIKChain.isInChain(bone.name);
-                        float cr = inChain ? 0.2F : r;
-                        float cg = inChain ? 0.8F : g;
-                        float cb = inChain ? 0.9F : b;
-
-                        this.drawOctahedron(builder, gizmoMat, start, end, cr, cg, cb, a);
-                    }
-                }
-            }
-        }
-
-        BufferRenderer.drawWithGlobalProgram(builder.end());
-        RenderSystem.enableDepthTest();
-        RenderSystem.disableBlend();
-    }
-
-    private void drawOctahedron(BufferBuilder builder, Matrix4f matrix, Vector3f start, Vector3f end, float r, float g, float b, float a)
-    {
-        Vector3f diff = new Vector3f(end).sub(start);
-        float len = diff.length();
-        if (len < 0.01F) return;
-
-        Vector3f dir = new Vector3f(diff).normalize();
-        Vector3f p1 = new Vector3f();
-        if (Math.abs(dir.y) < 0.9F) p1.set(0, 1, 0).cross(dir).normalize();
-        else p1.set(1, 0, 0).cross(dir).normalize();
-        Vector3f p2 = new Vector3f(dir).cross(p1).normalize();
-
-        float thick = Math.min(len * 0.2F, 0.15F * 16F);
-        Vector3f mid = new Vector3f(start).add(new Vector3f(diff).mul(0.2F));
-
-        Vector3f v1 = new Vector3f(mid).add(new Vector3f(p1).mul(thick));
-        Vector3f v2 = new Vector3f(mid).add(new Vector3f(p2).mul(thick));
-        Vector3f v3 = new Vector3f(mid).add(new Vector3f(p1).mul(-thick));
-        Vector3f v4 = new Vector3f(mid).add(new Vector3f(p2).mul(-thick));
-
-        /* Top faces (to start) */
-        this.triangle(builder, matrix, start, v1, v2, r * 1.1F, g * 1.1F, b * 1.1F, a);
-        this.triangle(builder, matrix, start, v2, v3, r, g, b, a);
-        this.triangle(builder, matrix, start, v3, v4, r * 0.9F, g * 0.9F, b * 0.9F, a);
-        this.triangle(builder, matrix, start, v4, v1, r * 0.8F, g * 0.8F, b * 0.8F, a);
-
-        /* Bottom faces (to end) */
-        this.triangle(builder, matrix, end, v2, v1, r * 0.8F, g * 0.8F, b * 0.8F, a);
-        this.triangle(builder, matrix, end, v3, v2, r * 0.7F, g * 0.7F, b * 0.7F, a);
-        this.triangle(builder, matrix, end, v4, v3, r * 0.6F, g * 0.6F, b * 0.6F, a);
-        this.triangle(builder, matrix, end, v1, v4, r * 0.5F, g * 0.5F, b * 0.5F, a);
-    }
-
-    private void triangle(BufferBuilder builder, Matrix4f matrix, Vector3f v1, Vector3f v2, Vector3f v3, float r, float g, float b, float a)
-    {
-        builder.vertex(matrix, v1.x, v1.y, v1.z).color(r, g, b, a);
-        builder.vertex(matrix, v2.x, v2.y, v2.z).color(r, g, b, a);
-        builder.vertex(matrix, v3.x, v3.y, v3.z).color(r, g, b, a);
-    }
-
-    private void renderSkeletonPicking(UIContext context, MatrixCache matrixCache)
-    {
-        ModelInstance instance = this.getPreviewModelInstance();
-        if (instance == null || instance.model == null) return;
-
-        Matrix4f uiMatrix = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
-        MatrixCacheEntry rootEntry = matrixCache.get("");
-        Matrix4f rootMat = rootEntry != null ? rootEntry.matrix() : null;
-        Matrix4f gizmoMat = new Matrix4f(uiMatrix);
-
-        if (rootMat != null)
-        {
-            gizmoMat.mul(rootMat);
-        }
-
-        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
-        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
-
-        if (instance.model instanceof Model model)
-        {
-            for (ModelGroup group : model.getOrderedGroups())
-            {
-                if (group.parent != null)
-                {
-                    Vector3f start = this.getBonePoint(matrixCache, group.parent.id);
-                    Vector3f end = this.getBonePoint(matrixCache, group.id);
-
-                    if (start != null && end != null)
-                    {
-                        int id = this.getBoneStencilId(group.id);
-                        float r = ((id >> 16) & 0xFF) / 255F;
-                        float g = ((id >> 8) & 0xFF) / 255F;
-                        float b = (id & 0xFF) / 255F;
-
-                        this.drawOctahedron(builder, gizmoMat, start, end, r, g, b, 1F);
-                    }
-                }
-            }
-        }
-        else if (!instance.model.getAllBOBJBones().isEmpty())
-        {
-            for (BOBJBone bone : instance.model.getAllBOBJBones())
-            {
-                if (bone.parentBone != null)
-                {
-                    Vector3f start = this.getBonePoint(matrixCache, bone.parentBone.name);
-                    Vector3f end = this.getBonePoint(matrixCache, bone.name);
-
-                    if (start != null && end != null)
-                    {
-                        int id = this.getBoneStencilId(bone.name);
-                        float r = ((id >> 16) & 0xFF) / 255F;
-                        float g = ((id >> 8) & 0xFF) / 255F;
-                        float b = (id & 0xFF) / 255F;
-
-                        this.drawOctahedron(builder, gizmoMat, start, end, r, g, b, 1F);
-                    }
-                }
-            }
-        }
-
-        BufferRenderer.drawWithGlobalProgram(builder.end());
-    }
 
     private int getBoneStencilId(String bone)
     {
