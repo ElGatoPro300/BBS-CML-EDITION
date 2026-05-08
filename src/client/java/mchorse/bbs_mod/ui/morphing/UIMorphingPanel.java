@@ -45,7 +45,7 @@ public class UIMorphingPanel extends UIDashboardPanel
         this.palette.noBackground();
         this.palette.canModify();
 
-        this.morph = new UIIcon(Icons.CHECKMARK, (b) ->
+        this.morph = new UIIcon(Icons.USER, (b) ->
         {
             Form form = this.palette.list.getSelected();
 
@@ -74,7 +74,7 @@ public class UIMorphingPanel extends UIDashboardPanel
         });
         this.fromMob.tooltip(UIKeys.MORPHING_FROM_MOB, Direction.TOP);
 
-        this.palette.list.bar.add(this.morph, this.fromMob, this.demorph);
+        this.palette.list.bar.add(this.fromMob, this.morph, this.demorph);
 
         this.add(this.palette);
 
