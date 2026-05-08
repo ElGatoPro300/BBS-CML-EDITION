@@ -593,7 +593,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
         gizmoMat.rotateY(MathUtils.PI);
 
         BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
-        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
+        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
         RenderSystem.enableBlend();
         RenderSystem.disableDepthTest();
 
