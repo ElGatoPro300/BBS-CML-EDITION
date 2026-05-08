@@ -1013,8 +1013,6 @@
     "bbs.ui.model_blocks.global": "ทั่วโลก",
     "bbs.ui.model_blocks.hardness": "ความแข็งของบล็อก",
     "bbs.ui.model_blocks.hitbox": "เปิดใช้งาน Hitbox",
-    "bbs.ui.model_blocks.hitbox_pos1": "ตำแหน่ง 1",
-    "bbs.ui.model_blocks.hitbox_pos2": "ตำแหน่ง 2",
     "bbs.ui.model_blocks.keys.move_to": "ย้ายไปที่",
     "bbs.ui.model_blocks.keys.teleport": "เทเลพอร์ตไปยังโมเดลบล็อก",
     "bbs.ui.model_blocks.keys.toggle_rendering": "สลับการเรนเดอร์โลก",

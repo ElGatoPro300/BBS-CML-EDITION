@@ -63,6 +63,17 @@ public class ColorGradeRenderer
             /* UV distortion */
             uniform vec2 u_distort;
 
+            /* Cinematic effects */
+            uniform float u_aberration;
+            uniform float u_vhs;
+            uniform float u_lensDistortion;
+            uniform float u_vintage;
+            uniform float u_radialBlur;
+            uniform float u_rain;
+            uniform float u_dust;
+            uniform float u_lightLeak;
+            uniform float u_time;
+
             /* --- HSL helpers --- */
 
             vec3 rgb2hsl(vec3 c)
@@ -106,8 +117,94 @@ public class ColorGradeRenderer
             void main()
             {
                 vec2 sampleUV = v_uv + u_distort;
-                vec4 color = texture(u_sampler, sampleUV);
-                vec3 rgb = color.rgb;
+
+                /* VHS Horizontal Glitch displacement before sampling */
+                if (u_vhs > 0.001)
+                {
+                    float glitchNoise = hash(vec2(floor(sampleUV.y * 80.0), floor(u_time * 12.0)));
+                    if (glitchNoise > 0.95 - (u_vhs * 0.05))
+                    {
+                        sampleUV.x += sin(sampleUV.y * 30.0 + u_time * 10.0) * 0.02 * u_vhs;
+                    }
+                }
+
+                /* Lens Distortion (Fisheye) warping */
+                vec2 distortedUV = sampleUV;
+                if (abs(u_lensDistortion) > 0.001)
+                {
+                    vec2 uvOffset = sampleUV - vec2(0.5);
+                    float r2 = dot(uvOffset, uvOffset);
+                    distortedUV = uvOffset * (1.0 + u_lensDistortion * r2) + vec2(0.5);
+                    distortedUV = clamp(distortedUV, 0.0, 1.0);
+                }
+
+                /* Lens Dirt & Rain Overlay (Procedural raindrops and static spots refraction) */
+                if (u_rain > 0.001)
+                {
+                    // Falling rain droplets grid
+                    vec2 rainUV = distortedUV * vec2(8.0, 4.5);
+                    rainUV.y += u_time * 1.2;
+                    vec2 cell = fract(rainUV) - vec2(0.5);
+                    vec2 id = floor(rainUV);
+                    float dropSeed = hash(id);
+                    if (dropSeed > 0.45)
+                    {
+                        float size = 0.22 * (0.4 + 0.6 * sin(u_time * 1.5 + dropSeed * 6.28));
+                        float d = length(cell);
+                        if (d < size)
+                        {
+                            vec2 refractOffset = cell * (size - d) * 1.5;
+                            distortedUV += refractOffset * u_rain;
+                        }
+                    }
+
+                    // Static lens dirt / condensation drops
+                    vec2 dirtUV = distortedUV * vec2(12.0, 9.0);
+                    vec2 dirtCell = fract(dirtUV) - vec2(0.5);
+                    vec2 dirtId = floor(dirtUV);
+                    float dirtSeed = hash(dirtId);
+                    if (dirtSeed > 0.72)
+                    {
+                        float d = length(dirtCell);
+                        float size = 0.12 * dirtSeed;
+                        if (d < size)
+                        {
+                            distortedUV += dirtCell * (size - d) * 0.4 * u_rain;
+                        }
+                    }
+                }
+
+                /* Chromatic Aberration splitting */
+                vec2 uvRed = distortedUV;
+                vec2 uvBlue = distortedUV;
+                if (u_aberration > 0.001)
+                {
+                    vec2 dir = distortedUV - vec2(0.5);
+                    float dist = length(dir);
+                    vec2 offset = dir * dist * u_aberration;
+                    uvRed += offset;
+                    uvBlue -= offset;
+                    uvRed = clamp(uvRed, 0.0, 1.0);
+                    uvBlue = clamp(uvBlue, 0.0, 1.0);
+                }
+
+                float r = texture(u_sampler, uvRed).r;
+                float g = texture(u_sampler, distortedUV).g;
+                float b = texture(u_sampler, uvBlue).b;
+                vec3 rgb = vec3(r, g, b);
+
+                /* Radial Action Blur */
+                if (u_radialBlur > 0.001)
+                {
+                    vec2 blurDir = (distortedUV - vec2(0.5)) * u_radialBlur * 0.12;
+                    vec3 blurRGB = vec3(0.0);
+                    blurRGB += texture(u_sampler, clamp(distortedUV - blurDir * 2.0, 0.0, 1.0)).rgb;
+                    blurRGB += texture(u_sampler, clamp(distortedUV - blurDir, 0.0, 1.0)).rgb;
+                    blurRGB += rgb;
+                    blurRGB += texture(u_sampler, clamp(distortedUV + blurDir, 0.0, 1.0)).rgb;
+                    blurRGB += texture(u_sampler, clamp(distortedUV + blurDir * 2.0, 0.0, 1.0)).rgb;
+                    rgb = blurRGB / 5.0;
+                }
 
                 /* 1 — Lift / Gamma / Gain */
                 rgb = rgb * (vec3(1.0) + u_gain);
@@ -149,7 +246,110 @@ public class ColorGradeRenderer
                     rgb += (noise - 0.5) * u_grainStr * 2.0;
                 }
 
-                fragColor = vec4(clamp(rgb, 0.0, 1.0), color.a);
+                /* Vintage Film Flicker & Scratches */
+                if (u_vintage > 0.001)
+                {
+                    float flicker = sin(u_time * 73.0) * cos(u_time * 59.0) * 0.07 * u_vintage;
+                    rgb += vec3(flicker);
+
+                    float scratchX = hash(vec2(floor(distortedUV.x * 250.0), floor(u_time * 16.0)));
+                    if (scratchX > 0.993)
+                    {
+                        rgb *= mix(1.0, 0.45, u_vintage);
+                    }
+                }
+
+                /* 7 — VHS Scanlines and Static noise */
+                if (u_vhs > 0.001)
+                {
+                    float scanline = sin(distortedUV.y * 300.0 - u_time * 15.0) * 0.08 * u_vhs;
+                    rgb -= vec3(scanline);
+
+                    float vhsNoise = hash(distortedUV + vec2(u_time * 0.01));
+                    rgb = mix(rgb, vec3(vhsNoise), 0.03 * u_vhs);
+                }
+
+                /* 8 — Cinematic Light Leak Flare */
+                if (u_lightLeak > 0.001)
+                {
+                    float leakGrad = smoothstep(1.2, 0.0, length(distortedUV - vec2(0.0, 0.4)));
+                    float leakPulse = 0.65 + 0.35 * sin(u_time * 1.8 + cos(u_time * 1.2));
+                    vec3 leakColor = vec3(0.95, 0.48, 0.12) * leakGrad * leakPulse * u_lightLeak;
+
+                    float blueGrad = smoothstep(1.5, 0.0, length(distortedUV - vec2(1.0, 0.7)));
+                    vec3 blueColor = vec3(0.12, 0.35, 0.95) * blueGrad * (0.8 + 0.2 * cos(u_time * 0.9)) * u_lightLeak * 0.45;
+
+                    rgb += leakColor + blueColor;
+                }
+
+                /* 9 — Projector Dust & Specks (60s tape/projector) */
+                if (u_dust > 0.001)
+                {
+                    float dustTime = floor(u_time * 12.0);
+
+                    for (int i = 0; i < 3; i++)
+                    {
+                        vec2 randPos = vec2(
+                            hash(vec2(dustTime, float(i) * 15.3)),
+                            hash(vec2(dustTime, float(i) * 31.7))
+                        );
+
+                        float spawnProb = hash(vec2(dustTime, float(i) * 7.9));
+                        if (spawnProb < u_dust)
+                        {
+                            vec2 diff = distortedUV - randPos;
+                            diff.x *= 1.77;
+
+                            // Randomly rotate the coordinates for each speck
+                            float rotAngle = hash(vec2(dustTime, float(i) * 19.3)) * 6.28318;
+                            float cosA = cos(rotAngle);
+                            float sinA = sin(rotAngle);
+                            vec2 rotatedDiff = vec2(
+                                diff.x * cosA - diff.y * sinA,
+                                diff.x * sinA + diff.y * cosA
+                            );
+
+                            float typeDecider = hash(vec2(dustTime, float(i) * 88.1));
+
+                            if (typeDecider < 0.33)
+                            {
+                                // Type A: Rounded / Irregular Speck (soot flake)
+                                float angle = atan(rotatedDiff.y, rotatedDiff.x);
+                                float deform = 1.0 + 0.4 * sin(angle * 4.0) + 0.3 * cos(angle * 7.0 + 0.8);
+                                float rLimit = 0.008 * u_dust * deform;
+                                if (length(rotatedDiff) < rLimit)
+                                {
+                                    rgb = mix(rgb, vec3(1.0), 0.95);
+                                }
+                            }
+                            else if (typeDecider < 0.66)
+                            {
+                                // Type B: Thread / Curved Lint Hair
+                                float hairLength = 0.022 * u_dust;
+                                float hairThickness = 0.0010 * u_dust;
+                                float bend = sin(rotatedDiff.x * 180.0) * 0.005;
+                                if (abs(rotatedDiff.x) < hairLength && abs(rotatedDiff.y - bend) < hairThickness)
+                                {
+                                    rgb = mix(rgb, vec3(1.0), 0.95);
+                                }
+                            }
+                            else
+                            {
+                                // Type C: Deformed Elongated Ellipse Speck (dust fiber clump)
+                                vec2 stretched = vec2(rotatedDiff.x * 2.8, rotatedDiff.y);
+                                float angle = atan(stretched.y, stretched.x);
+                                float deform = 1.0 + 0.35 * sin(angle * 3.0);
+                                float rLimit = 0.012 * u_dust * deform;
+                                if (length(stretched) < rLimit)
+                                {
+                                    rgb = mix(rgb, vec3(1.0), 0.95);
+                                }
+                            }
+                        }
+                    }
+                }
+
+                fragColor = vec4(clamp(rgb, 0.0, 1.0), texture(u_sampler, distortedUV).a);
             }
             """;
 
@@ -175,6 +375,15 @@ public class ColorGradeRenderer
     private static int uGrainSize;
     private static int uGrainSeed;
     private static int uDistort;
+    private static int uAberration;
+    private static int uVHS;
+    private static int uLensDistortion;
+    private static int uVintage;
+    private static int uRadialBlur;
+    private static int uRain;
+    private static int uDust;
+    private static int uLightLeak;
+    private static int uTime;
 
     public static void apply(List<ColorEffect> effects, List<GrainEffect> grainEffects)
     {
@@ -182,12 +391,14 @@ public class ColorGradeRenderer
         boolean needGrade = false;
         boolean needGrain = false;
         boolean needDistort = false;
+        boolean needCinematic = false;
 
         for (ColorEffect e : effects)
         {
             if (e.hasVignette) needVignette = true;
             if (e.hasGrade) needGrade = true;
             if (e.hasDistort) needDistort = true;
+            if (e.hasCinematic) needCinematic = true;
         }
 
         for (GrainEffect e : grainEffects)
@@ -195,7 +406,7 @@ public class ColorGradeRenderer
             if (e.strength > 0F) needGrain = true;
         }
 
-        if (!needVignette && !needGrade && !needGrain && !needDistort)
+        if (!needVignette && !needGrade && !needGrain && !needDistort && !needCinematic)
         {
             return;
         }
@@ -302,6 +513,33 @@ public class ColorGradeRenderer
             }
         }
 
+        /* Accumulate cinematic effects */
+        float aberration = 0F;
+        float vhs = 0F;
+        float lensDistortion = 0F;
+        float vintage = 0F;
+        float radialBlur = 0F;
+        float rain = 0F;
+        float dust = 0F;
+        float lightLeak = 0F;
+        float time = 0F;
+
+        for (ColorEffect e : effects)
+        {
+            if (e.hasCinematic)
+            {
+                aberration = Math.max(aberration, e.aberration);
+                vhs = Math.max(vhs, e.vhs);
+                lensDistortion += e.lensDistortion;
+                vintage = Math.max(vintage, e.vintage);
+                radialBlur = Math.max(radialBlur, e.radialBlur);
+                rain = Math.max(rain, e.rain);
+                dust = Math.max(dust, e.dust);
+                lightLeak = Math.max(lightLeak, e.lightLeak);
+                time = e.time;
+            }
+        }
+
         /* Save and set viewport */
         int[] prevViewport = new int[4];
         GL11.glGetIntegerv(GL11.GL_VIEWPORT, prevViewport);
@@ -330,6 +568,15 @@ public class ColorGradeRenderer
         GL20.glUniform1f(uGrainSize, grainSize);
         GL20.glUniform1f(uGrainSeed, grainSeed);
         GL20.glUniform2f(uDistort, distortX, distortY);
+        GL20.glUniform1f(uAberration, aberration);
+        GL20.glUniform1f(uVHS, vhs);
+        GL20.glUniform1f(uLensDistortion, lensDistortion);
+        GL20.glUniform1f(uVintage, vintage);
+        GL20.glUniform1f(uRadialBlur, radialBlur);
+        GL20.glUniform1f(uRain, rain);
+        GL20.glUniform1f(uDust, dust);
+        GL20.glUniform1f(uLightLeak, lightLeak);
+        GL20.glUniform1f(uTime, time);
 
         GL30.glBindVertexArray(vao);
         GL11.glDrawArrays(GL11.GL_TRIANGLES, 0, 6);
@@ -405,6 +652,15 @@ public class ColorGradeRenderer
         uGrainSize = GL20.glGetUniformLocation(program, "u_grainSize");
         uGrainSeed = GL20.glGetUniformLocation(program, "u_grainSeed");
         uDistort = GL20.glGetUniformLocation(program, "u_distort");
+        uAberration = GL20.glGetUniformLocation(program, "u_aberration");
+        uVHS = GL20.glGetUniformLocation(program, "u_vhs");
+        uLensDistortion = GL20.glGetUniformLocation(program, "u_lensDistortion");
+        uVintage = GL20.glGetUniformLocation(program, "u_vintage");
+        uRadialBlur = GL20.glGetUniformLocation(program, "u_radialBlur");
+        uRain = GL20.glGetUniformLocation(program, "u_rain");
+        uDust = GL20.glGetUniformLocation(program, "u_dust");
+        uLightLeak = GL20.glGetUniformLocation(program, "u_lightLeak");
+        uTime = GL20.glGetUniformLocation(program, "u_time");
 
         /* Fullscreen quad VAO/VBO (NDC coords + UV) */
         vao = GL30.glGenVertexArrays();

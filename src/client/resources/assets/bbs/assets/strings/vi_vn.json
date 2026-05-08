@@ -1035,8 +1035,6 @@
     "bbs.ui.model_blocks.grid": "Lưới (Grid)",
     "bbs.ui.model_blocks.hardness": "Độ cứng khối",
     "bbs.ui.model_blocks.hitbox": "Bật Hitbox",
-    "bbs.ui.model_blocks.hitbox_pos1": "Vị trí 1",
-    "bbs.ui.model_blocks.hitbox_pos2": "Vị trí 2",
     "bbs.ui.model_blocks.keys.move_to": "Di chuyển đến",
     "bbs.ui.model_blocks.keys.teleport": "Dịch chuyển đến Khối Model.",
     "bbs.ui.model_blocks.keys.toggle_rendering": "Bật/Tắt Hiển thị Thế giới",

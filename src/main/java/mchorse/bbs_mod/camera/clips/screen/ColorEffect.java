@@ -23,11 +23,33 @@ public class ColorEffect
     public float gammaR, gammaG, gammaB;
     public float gainR, gainG, gainB;
 
+    public boolean hasCinematic;
+    public float aberration;
+    public float vhs;
+    public float lensDistortion;
+    public float vintage;
+    public float radialBlur;
+    public float rain;
+    public float dust;
+    public float lightLeak;
+    public float time;
+
     public void reset()
     {
         this.hasOverlay = false;
         this.hasVignette = false;
         this.hasGrade = false;
         this.hasDistort = false;
+        this.hasCinematic = false;
+
+        this.aberration = 0F;
+        this.vhs = 0F;
+        this.lensDistortion = 0F;
+        this.vintage = 0F;
+        this.radialBlur = 0F;
+        this.rain = 0F;
+        this.dust = 0F;
+        this.lightLeak = 0F;
+        this.time = 0F;
     }
 }
