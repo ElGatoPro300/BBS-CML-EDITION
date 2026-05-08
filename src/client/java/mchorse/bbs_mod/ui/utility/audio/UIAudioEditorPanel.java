@@ -101,6 +101,8 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
     private int sequenceIndex = 0;
     private int bannerIndex = 0;
     private float lastBannerTicks = -1;
+    private float lastRenderTicks = -1;
+    private final float[] barPeaks = new float[64];
 
     private static final int HOME_BANNER_HEIGHT = 108;
     private static final int BANNER_DURATION = 140;
@@ -784,6 +786,14 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
         }
     }
 
+    private static final mchorse.bbs_mod.utils.colors.Color TEMP_COLOR = new mchorse.bbs_mod.utils.colors.Color();
+
+    private static int getInterpolatedColor(int a, int b, float x)
+    {
+        Colors.interpolate(TEMP_COLOR, a, b, x);
+        return TEMP_COLOR.getARGBColor();
+    }
+
     private void renderHomeBackground(UIContext context)
     {
         if (!this.showingHomePage)
@@ -801,104 +811,89 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
         int pageH = this.homePage.area.h;
         int dividerX = this.homeAudiosSearch.area.x;
 
-        // Render deeper background
+        // Render solid 0x0b0b0b dark background matching films
         context.batcher.box(editorX, editorY, editorX + editorW, editorY + editorH, Colors.setA(0x0b0b0b, 1F));
 
-        // Render Animated Aurora Effect
+        // Update elapsed ticks for decay of peaks
+        float currentTicks = context.getTickTransition();
+        if (this.lastRenderTicks < 0) this.lastRenderTicks = currentTicks;
+        float elapsedTicks = Math.max(0, currentTicks - this.lastRenderTicks);
+        this.lastRenderTicks = currentTicks;
+
+        // Base equalizer gradient colors on user primary color
         int primary = BBSSettings.primaryColor.get();
-        float tick = context.getTickTransition() * 0.015F;
-        int segments = 40;
-        float segW = editorW / (float) segments;
+        int darkColor = Colors.mulRGB(primary, 0.45F);
+        Colors.interpolate(TEMP_COLOR, primary, Colors.WHITE, 0.6F);
+        int brightColor = TEMP_COLOR.getARGBColor();
 
-        Matrix4f matrix4f = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
-        BufferBuilder builder = Tessellator.getInstance().getBuffer();
+        // Render 2D Equalizer Sound Bars
+        int numBars = 32;
+        float barW = (float) editorW / numBars;
+        float gap = 2F;
+        float maxHeight = editorH * 0.75F;
+        float stepH = 6F;
+        int maxBlocks = Math.round(maxHeight / stepH);
 
-        RenderSystem.enableBlend();
-        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
-        builder.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
-
-        float[] yBot1 = new float[segments + 1];
-        float[] yMid1 = new float[segments + 1];
-        int[] cMid1 = new int[segments + 1];
-
-        float[] yBot2 = new float[segments + 1];
-        float[] yMid2 = new float[segments + 1];
-        int[] cMid2 = new int[segments + 1];
-
-        for (int i = 0; i <= segments; i++)
+        for (int i = 0; i < numBars; i++)
         {
-            float nx = (float) i / segments;
+            float xNorm = (float) i / numBars;
+            float speed = 0.04F + xNorm * 0.08F;
 
-            // Layer 1
-            float w1 = (float) Math.sin(tick * 1.2F + nx * 8F);
-            float w2 = (float) Math.sin(tick * 0.7F + nx * 15F);
-            float w3 = (float) Math.cos(tick * 0.4F - nx * 12F);
-            float comb1 = (w1 + w2 + w3) / 3F;
+            float w1 = (float) Math.sin(currentTicks * speed + i * 0.4F);
+            float w2 = (float) Math.sin(currentTicks * speed * 2.3F - i * 0.9F);
+            float w3 = (float) Math.cos(currentTicks * speed * 0.5F + i * 1.5F);
 
-            float curtainYTop = editorY + editorH * 0.05F;
-            float curtainYBot = editorY + editorH * 0.5F + comb1 * (editorH * 0.35F);
-            if (curtainYBot < curtainYTop + 10) curtainYBot = curtainYTop + 10;
+            float val = (w1 * 0.4F + w2 * 0.3F + w3 * 0.3F + 1F) / 2F;
+            float envelope = 0.3F + 0.7F * (float) Math.sin(xNorm * Math.PI);
+            val *= envelope;
+            val = Math.max(0.02F, Math.min(0.98F, val));
 
-            float transitionY = curtainYBot - editorH * 0.3F;
-            if (transitionY < curtainYTop) transitionY = curtainYTop;
+            // Peak tracking and decay
+            float peak = this.barPeaks[i];
+            if (val > peak)
+            {
+                peak = val;
+            }
+            else
+            {
+                peak -= elapsedTicks * 0.005F;
+                if (peak < 0) peak = 0;
+            }
+            this.barPeaks[i] = peak;
 
-            yBot1[i] = curtainYBot;
-            yMid1[i] = transitionY;
-            cMid1[i] = Colors.setA(primary, 0.15F + Math.max(0, comb1) * 0.2F);
+            int activeBlocks = Math.round(val * maxBlocks);
+            int peakBlockIndex = Math.round(peak * maxBlocks);
 
-            // Layer 2
-            float w4 = (float) Math.sin(tick * 1.5F - nx * 10F);
-            float w5 = (float) Math.cos(tick * 0.9F + nx * 18F);
-            float comb2 = (w4 + w5) / 2F;
+            int bx = Math.round(editorX + i * barW + gap / 2F);
+            int bw = Math.round(barW - gap);
+            if (bw < 1) bw = 1;
 
-            float curtain2YTop = editorY + editorH * 0.15F;
-            float curtain2YBot = editorY + editorH * 0.75F + comb2 * (editorH * 0.25F);
-            if (curtain2YBot < curtain2YTop + 10) curtain2YBot = curtain2YTop + 10;
+            for (int j = 0; j < activeBlocks; j++)
+            {
+                float yNorm = (float) j / maxBlocks;
+                int color = getInterpolatedColor(darkColor, brightColor, yNorm);
 
-            float transition2Y = curtain2YBot - editorH * 0.25F;
-            if (transition2Y < curtain2YTop) transition2Y = curtain2YTop;
+                color = Colors.setA(color, 0.45F);
 
-            yBot2[i] = curtain2YBot;
-            yMid2[i] = transition2Y;
-            cMid2[i] = Colors.setA(Colors.mulRGB(primary, 0.8F), 0.1F + Math.max(0, comb2) * 0.15F);
+                int by = Math.round(editorY + editorH - (j + 1) * stepH + 1.5F);
+                int bh = Math.round(stepH - 1.5F);
+
+                context.batcher.box(bx, by, bx + bw, by + bh, color);
+            }
+
+            if (peakBlockIndex > 0)
+            {
+                float yNorm = (float) peakBlockIndex / maxBlocks;
+                int peakColor = getInterpolatedColor(darkColor, brightColor, yNorm);
+
+                peakColor = Colors.setA(peakColor, 0.65F);
+
+                int peakY = Math.round(editorY + editorH - peakBlockIndex * stepH + 1.5F);
+                int peakH = 2;
+
+                context.batcher.box(bx, peakY, bx + bw, peakY + peakH, peakColor);
+            }
         }
-
-        int colTop = Colors.setA(primary, 0.0F);
-        int colBot = Colors.setA(primary, 0.0F);
-        float yTop1 = editorY + editorH * 0.05F;
-        float yTop2 = editorY + editorH * 0.15F;
-
-        for (int i = 0; i < segments; i++)
-        {
-            float x1 = editorX + i * segW;
-            float x2 = editorX + (i + 1) * segW;
-
-            // Layer 1 - Upper Quad (yTop1 -> yMid1)
-            builder.vertex(matrix4f, x1, yTop1, 0).color(colTop).next();
-            builder.vertex(matrix4f, x1, yMid1[i], 0).color(cMid1[i]).next();
-            builder.vertex(matrix4f, x2, yMid1[i+1], 0).color(cMid1[i+1]).next();
-            builder.vertex(matrix4f, x2, yTop1, 0).color(colTop).next();
-
-            // Layer 1 - Lower Quad (yMid1 -> yBot1)
-            builder.vertex(matrix4f, x1, yMid1[i], 0).color(cMid1[i]).next();
-            builder.vertex(matrix4f, x1, yBot1[i], 0).color(colBot).next();
-            builder.vertex(matrix4f, x2, yBot1[i+1], 0).color(colBot).next();
-            builder.vertex(matrix4f, x2, yMid1[i+1], 0).color(cMid1[i+1]).next();
-
-            // Layer 2 - Upper Quad (yTop2 -> yMid2)
-            builder.vertex(matrix4f, x1, yTop2, 0).color(colTop).next();
-            builder.vertex(matrix4f, x1, yMid2[i], 0).color(cMid2[i]).next();
-            builder.vertex(matrix4f, x2, yMid2[i+1], 0).color(cMid2[i+1]).next();
-            builder.vertex(matrix4f, x2, yTop2, 0).color(colTop).next();
-
-            // Layer 2 - Lower Quad (yMid2 -> yBot2)
-            builder.vertex(matrix4f, x1, yMid2[i], 0).color(cMid2[i]).next();
-            builder.vertex(matrix4f, x1, yBot2[i], 0).color(colBot).next();
-            builder.vertex(matrix4f, x2, yBot2[i+1], 0).color(colBot).next();
-            builder.vertex(matrix4f, x2, yMid2[i+1], 0).color(cMid2[i+1]).next();
-        }
-
-        BufferRenderer.drawWithGlobalProgram(builder.end());
 
         // Drop shadow for the main page panel
         context.batcher.gradientHBox(pageX - 18, pageY, pageX, pageY + pageH, 0, Colors.setA(0x000000, 0.7F));
@@ -912,10 +907,10 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
         int stripeH = 16;
         int stripeY = pageY + bannerH - stripeH;
 
-        float currentTicks = context.getTickTransition();
-        if (this.lastBannerTicks < 0) this.lastBannerTicks = currentTicks - BANNER_TRANSITION;
+        float lastTicks = context.getTickTransition();
+        if (this.lastBannerTicks < 0) this.lastBannerTicks = lastTicks - BANNER_TRANSITION;
 
-        float elapsed = Math.max(0, currentTicks - this.lastBannerTicks);
+        float elapsed = Math.max(0, lastTicks - this.lastBannerTicks);
 
         if (elapsed >= BANNER_DURATION)
         {
@@ -934,7 +929,7 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
                 }
                 this.bannerIndex = this.bannerSequence.get(this.sequenceIndex);
             }
-            this.lastBannerTicks = currentTicks;
+            this.lastBannerTicks = lastTicks;
             elapsed = 0;
         }
 
@@ -947,7 +942,6 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
             transition = (float) Interpolations.CUBIC_INOUT.interpolate(1F, 0F, elapsed / (float) BANNER_TRANSITION);
             transition = Math.max(0F, Math.min(1F, transition));
 
-            // Staggered text transition: new text waits 20 ticks (1 second) to start fading in
             textTransitionPrev = transition;
             float textElapsed = Math.max(0, elapsed - 20);
             textTransitionCurr = (float) Interpolations.CUBIC_INOUT.interpolate(0F, 1F, textElapsed / (float) (BANNER_TRANSITION - 20));
