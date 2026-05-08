@@ -64,6 +64,7 @@ public class UIPropTransform extends UITransform
     private boolean model;
     private boolean local;
     private boolean freeRotation;
+    private boolean freeTranslation;
     private boolean rayDragInitialized;
 
     private IGizmoRayProvider gizmoRayProvider;
@@ -392,6 +393,36 @@ public class UIPropTransform extends UITransform
         this.initializeRayDrag(context);
     }
 
+    public void enableFreeTranslation(int mode)
+    {
+        UIContext context = this.getContext();
+
+        if (context == null)
+        {
+            return;
+        }
+
+        this.axis = Axis.X;
+        this.secondaryAxis = null;
+        this.freeRotation = false;
+        this.freeTranslation = true;
+        this.lastX = context.mouseX;
+        this.lastY = context.mouseY;
+
+        this.editing = true;
+        this.mode = mode;
+        this.rayDragInitialized = false;
+
+        this.cache.copy(this.transform);
+
+        if (!this.handler.hasParent())
+        {
+            context.menu.overlay.add(this.handler);
+        }
+
+        this.initializeRayDrag(context);
+    }
+
     private Vector3f getValue()
     {
         if (this.mode == 1)
@@ -421,6 +452,7 @@ public class UIPropTransform extends UITransform
     {
         this.editing = false;
         this.freeRotation = false;
+        this.freeTranslation = false;
         this.rayDragInitialized = false;
 
         if (this.handler.hasParent())
@@ -773,7 +805,17 @@ public class UIPropTransform extends UITransform
         this.rayGizmoMatrix.getTranslation(this.rayGizmoOrigin);
         this.extractAxisWorld(this.axis, this.rayPrimaryAxis);
 
-        if (this.mode == 0 && this.secondaryAxis != null)
+        if (this.mode == 0 && this.freeTranslation)
+        {
+            this.rayPlaneNormal.set(this.rayDirection);
+
+            if (!this.normalizeSafe(this.rayPlaneNormal))
+            {
+                this.rayDragInitialized = false;
+                return false;
+            }
+        }
+        else if (this.mode == 0 && this.secondaryAxis != null)
         {
             this.extractAxisWorld(this.secondaryAxis, this.raySecondaryAxis);
             this.rayPlaneNormal.set(this.rayPrimaryAxis).cross(this.raySecondaryAxis);
@@ -812,7 +854,7 @@ public class UIPropTransform extends UITransform
             return false;
         }
 
-        if ((this.mode != 0 || this.secondaryAxis != null) && !this.intersectCurrentRay(this.rayLastPoint))
+        if ((this.mode != 0 || this.secondaryAxis != null || this.freeTranslation) && !this.intersectCurrentRay(this.rayLastPoint))
         {
             this.rayDragInitialized = false;
             return false;
@@ -847,7 +889,57 @@ public class UIPropTransform extends UITransform
 
         if (this.mode == 0)
         {
-            if (this.secondaryAxis == null)
+            if (this.freeTranslation)
+            {
+                if (!this.intersectCurrentRay(this.rayCurrentPoint))
+                {
+                    return false;
+                }
+
+                Vector3d delta = new Vector3d(this.rayCurrentPoint).sub(this.rayLastPoint);
+
+                if (delta.lengthSquared() <= 1.0E-12D)
+                {
+                    return true;
+                }
+
+                Vector3f value = this.getValue();
+
+                Vector3f worldX = new Vector3f();
+                Vector3f worldY = new Vector3f();
+                Vector3f worldZ = new Vector3f();
+                this.extractAxisWorld(Axis.X, worldX);
+                this.extractAxisWorld(Axis.Y, worldY);
+                this.extractAxisWorld(Axis.Z, worldZ);
+
+                float dx_world = (float) delta.dot(worldX.x, worldX.y, worldX.z);
+                float dy_world = (float) delta.dot(worldY.x, worldY.y, worldY.z);
+                float dz_world = (float) delta.dot(worldZ.x, worldZ.y, worldZ.z);
+
+                if (this.local)
+                {
+                    Vector3f result = new Vector3f();
+
+                    result.add(this.calculateLocalVector(dx_world, Axis.X));
+                    result.add(this.calculateLocalVector(dy_world, Axis.Y));
+                    result.add(this.calculateLocalVector(dz_world, Axis.Z));
+
+                    this.setT(null, value.x + result.x, value.y + result.y, value.z + result.z);
+                }
+                else
+                {
+                    Vector3f result = new Vector3f(value);
+
+                    this.addAxisDelta(result, Axis.X, dx_world);
+                    this.addAxisDelta(result, Axis.Y, dy_world);
+                    this.addAxisDelta(result, Axis.Z, dz_world);
+
+                    this.setT(null, result.x, result.y, result.z);
+                }
+
+                this.rayLastPoint.set(this.rayCurrentPoint);
+            }
+            else if (this.secondaryAxis == null)
             {
                 double axisValue = this.computeAxisValue(this.rayOrigin, this.rayDirection, this.rayPrimaryAxis);
 
