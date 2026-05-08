@@ -160,6 +160,7 @@ public class UIFilmController extends UIElement
 
         Supplier<Boolean> hasActor = () -> this.getCurrentEntity() != null;
         Supplier<Boolean> hasTwoOrMoreReplays = () -> this.panel.getData() != null && this.panel.getData().replays.getList().size() >= 2;
+        Supplier<Boolean> hasFilm = () -> this.panel.getData() != null;
 
         this.keys().register(Keys.FILM_CONTROLLER_START_RECORDING, this::pickRecording).active(hasActor).category(category);
         this.keys().register(Keys.FILM_CONTROLLER_INSERT_FRAME, () ->
@@ -167,8 +168,8 @@ public class UIFilmController extends UIElement
             this.insertFrame();
             UIUtils.playClick();
         }).active(hasActor).category(category);
-        this.keys().register(Keys.FILM_CONTROLLER_TOGGLE_CONTROL, this::toggleControl).category(category);
-        this.keys().register(Keys.FILM_CONTROLLER_TOGGLE_ORBIT_MODE, this::toggleOrbitMode).category(category);
+        this.keys().register(Keys.FILM_CONTROLLER_TOGGLE_CONTROL, this::toggleControl).active(hasFilm).category(category);
+        this.keys().register(Keys.FILM_CONTROLLER_TOGGLE_ORBIT_MODE, this::toggleOrbitMode).active(hasFilm).category(category);
         this.keys().register(Keys.FILM_CONTROLLER_MOVE_REPLAY_TO_CURSOR, () ->
         {
             Area area = this.panel.preview.getViewport();
@@ -192,17 +193,17 @@ public class UIFilmController extends UIElement
         {
             this.panel.notifyServer(ActionState.RESTART);
             this.createEntities();
-        }).category(category);
+        }).active(hasFilm).category(category);
         this.keys().register(Keys.FILM_CONTROLLER_TOGGLE_ONION_SKIN, () ->
         {
             this.getOnionSkin().enabled.toggle();
 
             UIUtils.playClick();
-        }).category(category);
+        }).active(hasFilm).category(category);
         this.keys().register(Keys.FILM_CONTROLLER_OPEN_REPLAYS, () ->
         {
             this.panel.preview.openReplays();
-        }).category(category);
+        }).active(hasFilm).category(category);
         this.keys().register(Keys.FILM_CONTROLLER_PREV_REPLAY, () -> this.switchReplay(-1)).active(hasTwoOrMoreReplays).category(category);
         this.keys().register(Keys.FILM_CONTROLLER_NEXT_REPLAY, () -> this.switchReplay(1)).active(hasTwoOrMoreReplays).category(category);
 
@@ -211,6 +212,11 @@ public class UIFilmController extends UIElement
 
     private void switchReplay(int direction)
     {
+        if (this.panel.getData() == null)
+        {
+            return;
+        }
+
         List<Replay> list = this.panel.getData().replays.getList();
 
         int index = list.indexOf(this.getReplay());
@@ -287,6 +293,11 @@ public class UIFilmController extends UIElement
 
     public IEntity getCurrentEntity()
     {
+        if (this.panel.getData() == null)
+        {
+            return null;
+        }
+
         Replay replay = this.panel.replayEditor.getReplay();
 
         if (replay == null)
@@ -352,6 +363,12 @@ public class UIFilmController extends UIElement
         if (this.controlled != null)
         {
             this.toggleControl();
+        }
+
+        if (this.panel.getData() == null)
+        {
+            this.editorController = null;
+            return;
         }
 
         this.editorController = new FilmEditorController(this.panel.getData(), this);
@@ -497,6 +514,11 @@ public class UIFilmController extends UIElement
 
     public void startRecording(List<String> groups)
     {
+        if (this.panel.getData() == null)
+        {
+            return;
+        }
+
         if (groups != null && groups.contains("outside"))
         {
             MinecraftClient.getInstance().setScreen(null);
@@ -651,6 +673,11 @@ public class UIFilmController extends UIElement
 
     private void pickEntity(IEntity entity)
     {
+        if (this.panel.getData() == null)
+        {
+            return;
+        }
+
         int index = CollectionUtils.getKey(this.getEntities(), entity);
 
         this.panel.replayEditor.setReplay(this.panel.getData().replays.getList().get(index));
@@ -1407,6 +1434,12 @@ public class UIFilmController extends UIElement
 
     private void renderStencil(WorldRenderContext renderContext, UIContext context, boolean altPressed)
     {
+        if (this.panel.getData() == null)
+        {
+            this.stencil.clearPicking();
+            return;
+        }
+
         Area viewport = this.panel.preview.getViewport();
 
         if (!viewport.isInside(context) || this.controlled != null)

@@ -57,7 +57,6 @@ public class UIModelIKPanel extends UIElement
     private final UIButton     removeChain;
 
     /* ---- RIGHT side (detail editor) ---- */
-    private final UIToggle     showSkeleton;
     private final UIScrollView detailScroll;
     private final UILabel      noSelectionLabel;
     private final UIButton     tipBoneButton;
@@ -105,7 +104,7 @@ public class UIModelIKPanel extends UIElement
         });
         this.chainList.relative(this)
                       .x(SIDE_MARGIN).y(26)
-                      .w(LEFT_WIDTH).h(1F, -68);
+                      .w(LEFT_WIDTH).h(1F, -44);
         this.chainList.background();
         this.chainList.scroll.scrollItemSize = 18;
 
@@ -267,18 +266,8 @@ public class UIModelIKPanel extends UIElement
         );
         this.detailScroll.add(fields);
 
-        this.removeChain.relative(this.chainList).x(1F, -16).y(1F, 2).w(16).h(16);
-        this.removeChain.tooltip(UIKeys.MODELS_IK_CHAIN_REMOVE_TOOLTIP);
-
-        this.showSkeleton = new UIToggle(UIKeys.MODELS_IK_SHOW_SKELETON, true, (b) ->
-        {
-            this.editor.renderer.setShowSkeleton(b.getValue());
-        });
-        this.showSkeleton.relative(this.chainList).x(0).y(1F, 22).w(1F).h(16);
-        this.showSkeleton.tooltip(UIKeys.MODELS_IK_SHOW_SKELETON_TOOLTIP);
-
         /* ---- assemble whole panel ---- */
-        this.add(listTitle, this.chainList, this.addChain, this.removeChain, this.showSkeleton);
+        this.add(listTitle, this.chainList, this.addChain, this.removeChain);
         this.add(editorTitle, this.chainNameLabel, this.noSelectionLabel, this.detailScroll);
 
         this.setDetailVisible(false);

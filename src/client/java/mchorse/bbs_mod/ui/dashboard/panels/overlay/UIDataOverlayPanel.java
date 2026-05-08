@@ -117,6 +117,8 @@ public class UIDataOverlayPanel <T extends ValueGroup> extends UICRUDOverlayPane
             }
 
             this.panel.fill(data);
+            this.panel.save();
+            this.panel.requestNames();
         }
     }
 
