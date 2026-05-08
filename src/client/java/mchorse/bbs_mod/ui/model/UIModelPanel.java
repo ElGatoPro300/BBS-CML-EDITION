@@ -15,6 +15,7 @@ import mchorse.bbs_mod.forms.forms.ModelForm;
 import mchorse.bbs_mod.forms.renderers.FormRenderer;
 import mchorse.bbs_mod.forms.renderers.ModelFormRenderer;
 import mchorse.bbs_mod.graphics.texture.Texture;
+import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.morphing.Morph;
@@ -36,6 +37,7 @@ import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UISearchList;
 import mchorse.bbs_mod.ui.framework.elements.navigation.UIControlBar;
 import mchorse.bbs_mod.ui.framework.elements.navigation.UIIconTabButton;
+import mchorse.bbs_mod.ui.framework.elements.overlay.UIConfirmOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
@@ -44,6 +46,7 @@ import mchorse.bbs_mod.ui.model.UIModelIKPanel;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.ScrollDirection;
 import mchorse.bbs_mod.ui.utils.UI;
+import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.pose.UIPoseEditor;
@@ -71,6 +74,7 @@ import com.google.gson.reflect.TypeToken;
 
 import org.lwjgl.opengl.GL11;
 
+import java.io.File;
 import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.net.URI;
@@ -117,6 +121,8 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
     private final List<BannerEntry> homeBanners = new ArrayList<>();
     private static final Set<Link> prefetchingBanners = Collections.synchronizedSet(new HashSet<>());
     private int bannerIndex = 0;
+    private List<Integer> bannerSequence = new ArrayList<>();
+    private int sequenceIndex = 0;
     private float lastBannerTicks = -1;
     private static final int BANNER_DURATION = 200; // 10 seconds at 20 ticks/sec
     private static final int BANNER_TRANSITION = 60; // 3 seconds transition
@@ -177,6 +183,74 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         this.homeActionsPanel = new UIElement();
         this.homeModelsList = new UIDataPathList((list) -> this.handleHomeModelsSelection(list));
         this.homeModelsList.setFileIcon(Icons.MORPH);
+        this.homeModelsList.context((menu) ->
+        {
+            menu.action(Icons.FOLDER, UIKeys.PANELS_MODALS_ADD_FOLDER_TITLE, this::addFolderFromHome);
+
+            String selectedId = this.getSelectedHomeModelId();
+            if (selectedId != null)
+            {
+                menu.action(Icons.COPY, UIKeys.PANELS_CONTEXT_COPY, this::copyHomeModel);
+            }
+
+            try
+            {
+                MapType clipboardData = Window.getClipboardMap("_ContentType_" + this.getType().getId());
+
+                if (clipboardData != null)
+                {
+                    menu.action(Icons.PASTE, UIKeys.PANELS_CONTEXT_PASTE, () -> this.pasteHomeModel(clipboardData));
+                }
+            }
+            catch (Exception e)
+            {}
+
+            File folder = this.getType().getRepository().getFolder();
+
+            if (folder != null)
+            {
+                menu.action(Icons.FOLDER, UIKeys.PANELS_CONTEXT_OPEN, () ->
+                {
+                    UIUtils.openFolder(new File(folder, this.homeModelsList.getPath().toString()));
+                });
+            }
+        });
+        this.homeModelsList.moveCallback = (from, to) ->
+        {
+            String fromStr = from.toString();
+            String toStr = to.toString();
+
+            if (from.folder)
+            {
+                this.getType().getRepository().renameFolder(fromStr, toStr, (bool) ->
+                {
+                    if (bool)
+                    {
+                        this.requestNames();
+                    }
+                });
+            }
+            else
+            {
+                this.getType().getRepository().rename(fromStr, toStr);
+
+                for (ModelDocumentTab tab : this.modelDocumentTabs)
+                {
+                    if (!tab.home && fromStr.equals(tab.modelId))
+                    {
+                        tab.modelId = toStr;
+                    }
+                }
+                this.rebuildModelDocumentTabs();
+
+                if (this.data != null && fromStr.equals(this.data.getId()))
+                {
+                    this.data.setId(toStr);
+                }
+
+                this.requestNames();
+            }
+        };
         this.homeModelsSearch = new UISearchList<>(this.homeModelsList).label(UIKeys.GENERAL_SEARCH);
         this.homeModelsSearch.list.background();
         
@@ -198,10 +272,107 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
             panel.text.filename();
             UIOverlay.addOverlay(this.getContext(), panel);
         });
-        this.homeCreateModel.setEnabled(false);
-        this.homeDuplicateCurrent = this.createHomeButton(UIKeys.MODELS_CRUD_DUPE, Icons.COPY, (b) -> this.clickWithContext(this.overlay.dupe));
-        this.homeRenameCurrent = this.createHomeButton(UIKeys.MODELS_CRUD_RENAME, Icons.EDIT, (b) -> this.clickWithContext(this.overlay.rename));
-        this.homeDeleteCurrent = this.createHomeButton(UIKeys.MODELS_CRUD_REMOVE, Icons.REMOVE, (b) -> this.clickWithContext(this.overlay.remove));
+        this.homeDuplicateCurrent = this.createHomeButton(UIKeys.MODELS_CRUD_DUPE, Icons.COPY, (b) ->
+        {
+            String selectedId = this.getSelectedHomeModelId();
+            if (selectedId == null) return;
+
+            UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
+                UIKeys.GENERAL_DUPE,
+                UIKeys.PANELS_MODALS_DUPE,
+                (str) -> {
+                    String targetId = this.homeModelsList.getPath(str).toString();
+                    if (targetId.trim().isEmpty()) {
+                        this.getContext().notifyError(UIKeys.PANELS_MODALS_EMPTY);
+                        return;
+                    }
+                    if (this.homeModelsList.hasInHierarchy(targetId)) {
+                        return;
+                    }
+                    this.getType().getRepository().load(selectedId, (originalModel) -> {
+                        if (originalModel != null) {
+                            this.getType().getRepository().save(targetId, originalModel.toData().asMap());
+                            this.requestNames();
+                        }
+                    });
+                }
+            );
+
+            panel.text.setText(new DataPath(selectedId).getLast());
+            panel.text.filename();
+
+            UIOverlay.addOverlay(this.getContext(), panel);
+        });
+        this.homeRenameCurrent = this.createHomeButton(UIKeys.MODELS_CRUD_RENAME, Icons.EDIT, (b) ->
+        {
+            String selectedId = this.getSelectedHomeModelId();
+            if (selectedId == null) return;
+
+            UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
+                UIKeys.GENERAL_RENAME,
+                UIKeys.PANELS_MODALS_RENAME,
+                (str) -> {
+                    String targetId = this.homeModelsList.getPath(str).toString();
+                    if (targetId.trim().isEmpty()) {
+                        this.getContext().notifyError(UIKeys.PANELS_MODALS_EMPTY);
+                        return;
+                    }
+                    if (this.homeModelsList.hasInHierarchy(targetId)) {
+                        return;
+                    }
+                    this.getType().getRepository().rename(selectedId, targetId);
+
+                    for (ModelDocumentTab tab : this.modelDocumentTabs) {
+                        if (!tab.home && selectedId.equals(tab.modelId)) {
+                            tab.modelId = targetId;
+                        }
+                    }
+                    this.rebuildModelDocumentTabs();
+
+                    if (this.data != null && selectedId.equals(this.data.getId())) {
+                        this.data.setId(targetId);
+                    }
+
+                    this.requestNames();
+                }
+            );
+
+            panel.text.setText(new DataPath(selectedId).getLast());
+            panel.text.filename();
+
+            UIOverlay.addOverlay(this.getContext(), panel);
+        });
+        this.homeDeleteCurrent = this.createHomeButton(UIKeys.MODELS_CRUD_REMOVE, Icons.REMOVE, (b) ->
+        {
+            String selectedId = this.getSelectedHomeModelId();
+            if (selectedId == null) return;
+
+            UIConfirmOverlayPanel panel = new UIConfirmOverlayPanel(
+                UIKeys.GENERAL_REMOVE,
+                UIKeys.PANELS_MODALS_REMOVE,
+                (confirm) ->
+                {
+                    if (confirm) {
+                        this.getType().getRepository().delete(selectedId);
+
+                        for (int i = this.modelDocumentTabs.size() - 1; i >= 0; i--) {
+                            ModelDocumentTab tab = this.modelDocumentTabs.get(i);
+                            if (!tab.home && selectedId.equals(tab.modelId)) {
+                                this.removeModelDocumentTab(i);
+                            }
+                        }
+
+                        if (this.data != null && selectedId.equals(this.data.getId())) {
+                            this.fill(null);
+                        }
+
+                        this.requestNames();
+                    }
+                }
+            );
+
+            UIOverlay.addOverlay(this.getContext(), panel);
+        });
         this.updateHomeButtonsState();
 
         this.modelTabsBar.relative(this.editor).x(0).y(0).w(1F).h(MODEL_DOCUMENT_TABS_HEIGHT);
@@ -445,7 +616,21 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         
         if (elapsed >= BANNER_DURATION)
         {
-            this.bannerIndex = (this.bannerIndex + 1) % this.homeBanners.size();
+            if (this.homeBanners.size() > 1)
+            {
+                if (this.bannerSequence.size() != this.homeBanners.size())
+                {
+                    this.regenerateBannerSequence();
+                }
+
+                this.sequenceIndex++;
+                if (this.sequenceIndex >= this.bannerSequence.size())
+                {
+                    this.sequenceIndex = 0;
+                    this.shuffleRemoteBanners();
+                }
+                this.bannerIndex = this.bannerSequence.get(this.sequenceIndex);
+            }
             this.lastBannerTicks = currentTicks;
             elapsed = 0;
         }
@@ -469,7 +654,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
             textTransitionCurr = 1F;
         }
 
-        int prevIndex = (this.bannerIndex + this.homeBanners.size() - 1) % this.homeBanners.size();
+        int prevIndex = this.bannerSequence.isEmpty() ? 0 : this.bannerSequence.get((this.sequenceIndex + this.bannerSequence.size() - 1) % this.bannerSequence.size());
         BannerEntry current = this.homeBanners.get(this.bannerIndex);
         BannerEntry prev = this.homeBanners.get(prevIndex);
 
@@ -587,6 +772,67 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         {
             this.openModelInDocumentTabs(selected);
         }
+    }
+
+    private void addFolderFromHome()
+    {
+        UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
+            UIKeys.PANELS_MODALS_ADD_FOLDER_TITLE,
+            UIKeys.PANELS_MODALS_ADD_FOLDER,
+            (str) -> {
+                String path = this.homeModelsList.getPath(str).toString();
+                if (path.trim().isEmpty()) {
+                    this.getContext().notifyError(UIKeys.PANELS_MODALS_EMPTY);
+                    return;
+                }
+                this.getType().getRepository().addFolder(path, (bool) -> {
+                    if (bool) {
+                        this.requestNames();
+                    }
+                });
+            }
+        );
+
+        panel.text.filename();
+
+        UIOverlay.addOverlay(this.getContext(), panel);
+    }
+
+    private void copyHomeModel()
+    {
+        String selectedId = this.getSelectedHomeModelId();
+        if (selectedId == null) return;
+
+        this.getType().getRepository().load(selectedId, (model) -> {
+            if (model != null) {
+                Window.setClipboard(model.toData().asMap(), "_ContentType_" + this.getType().getId());
+            }
+        });
+    }
+
+    private void pasteHomeModel(MapType data)
+    {
+        UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
+            UIKeys.GENERAL_ADD,
+            UIKeys.PANELS_MODALS_ADD,
+            (str) -> {
+                String targetId = this.homeModelsList.getPath(str).toString();
+                if (targetId.trim().isEmpty()) {
+                    this.getContext().notifyError(UIKeys.PANELS_MODALS_EMPTY);
+                    return;
+                }
+                if (this.homeModelsList.hasInHierarchy(targetId)) {
+                    return;
+                }
+
+                ModelConfig newModel = (ModelConfig) this.getType().getRepository().create(targetId, data);
+                this.fill(newModel);
+            }
+        );
+
+        panel.text.filename();
+
+        UIOverlay.addOverlay(this.getContext(), panel);
     }
 
     private void createHomeDocumentTab(boolean activate)
@@ -745,7 +991,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         {
             int tabIndex = i;
             ModelDocumentTab tab = this.modelDocumentTabs.get(i);
-            IKey title = tab.home ? IKey.raw("Home") : IKey.constant(tab.modelId);
+            IKey title = tab.home ? L10n.lang("bbs.ui.models.home.title") : IKey.constant(tab.modelId);
             UIIconTabButton button = new UIIconTabButton(title, tab.home ? Icons.FOLDER : Icons.MORPH, (b) -> this.activateModelDocumentTab(tabIndex, false));
             button.color(this.activeModelDocumentTab == tabIndex ? BBSSettings.primaryColor.get() : 0x2d2d2d);
             button.w(tab.home ? 88 : 122).h(MODEL_DOCUMENT_TABS_HEIGHT);
@@ -1315,6 +1561,27 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
                 e.printStackTrace();
             }
         });
+    }
+
+    private void regenerateBannerSequence()
+    {
+        this.bannerSequence.clear();
+        for (int i = 0; i < this.homeBanners.size(); i++)
+        {
+            this.bannerSequence.add(i);
+        }
+        this.shuffleRemoteBanners();
+        this.sequenceIndex = 0;
+        this.bannerIndex = 0; // Always start with local
+    }
+
+    private void shuffleRemoteBanners()
+    {
+        if (this.bannerSequence.size() > 2)
+        {
+            List<Integer> remote = this.bannerSequence.subList(1, this.bannerSequence.size());
+            Collections.shuffle(remote);
+        }
     }
 
     private void prefetchBannerImage(Link link)
