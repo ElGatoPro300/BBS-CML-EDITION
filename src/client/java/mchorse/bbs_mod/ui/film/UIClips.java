@@ -41,6 +41,7 @@ import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.presets.UICopyPasteController;
 import mchorse.bbs_mod.ui.utils.presets.UIPresetContextMenu;
+import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.clips.Clip;
 import mchorse.bbs_mod.utils.clips.Clips;
@@ -1839,7 +1840,7 @@ public class UIClips extends UIElement
             super(label, callback);
             this.tooltip = tooltip;
             this.icon = icon;
-            this.tooltip(this.tooltip);
+            this.tooltip(this.tooltip, Direction.TOP);
         }
 
         public void noSeparator()
@@ -1915,8 +1916,8 @@ public class UIClips extends UIElement
         {
             super();
 
-            List<Link> cameraGroup = List.of(Link.bbs("idle"), Link.bbs("path"), Link.bbs("keyframe"));
-            List<Link> resourceGroup = List.of(Link.bbs("curve"), Link.bbs("audio"), Link.bbs("video"), Link.bbs("shake"));
+            List<Link> cameraGroup = List.of(Link.bbs("idle"), Link.bbs("path"), Link.bbs("keyframe"), Link.bbs("dolly"));
+            List<Link> resourceGroup = List.of(Link.bbs("curve"), Link.bbs("audio"), Link.bbs("video"), Link.bbs("shake"), Link.bbs("translate"), Link.bbs("angle"));
             List<Link> screenGroup = List.of(Link.bbs("subtitle"), Link.bbs("hotbar"));
             List<Link> anchorGroup = List.of(Link.bbs("look"), Link.bbs("orbit"), Link.bbs("tracker"));
 
