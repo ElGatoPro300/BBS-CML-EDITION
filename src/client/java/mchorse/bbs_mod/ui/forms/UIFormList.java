@@ -1199,13 +1199,13 @@ public class UIFormList extends UIElement
     {
         int rightOffset = 0;
 
-        if (this.close.getParent() == this.bar)
+        if (this.close.getParent() == this.bar && this.close.isVisible())
         {
             this.close.relative(this.bar).x(1F, -20 - rightOffset).y(0).w(20).h(ACTIONS_BAR_HEIGHT);
             rightOffset += 20;
         }
 
-        if (this.edit.getParent() == this.bar)
+        if (this.edit.getParent() == this.bar && this.edit.isVisible())
         {
             this.edit.relative(this.bar).x(1F, -20 - rightOffset).y(0).w(20).h(ACTIONS_BAR_HEIGHT);
             rightOffset += 20;
@@ -1213,7 +1213,7 @@ public class UIFormList extends UIElement
 
         for (IUIElement child : this.bar.getChildren())
         {
-            if (!(child instanceof UIIcon))
+            if (!(child instanceof UIIcon) || !child.isVisible())
             {
                 continue;
             }

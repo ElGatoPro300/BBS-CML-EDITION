@@ -60,5 +60,7 @@ public class CMLSettings
         BBSSettings.presetsGridPanel = builder.getBoolean("presets_grid_panel", false);
         BBSSettings.replayFpBobbingIntensity = builder.getFloat("replay_fp_bobbing_intensity", 0.25F, 0F, 2F);
         BBSSettings.replayFpBobbingFrequency = builder.getFloat("replay_fp_bobbing_frequency", 0.25F, 0F, 3F);
+        builder.category("morphing");
+        BBSSettings.morphingAutoMorph = builder.getBoolean("auto_morph", false);
     }
 }
