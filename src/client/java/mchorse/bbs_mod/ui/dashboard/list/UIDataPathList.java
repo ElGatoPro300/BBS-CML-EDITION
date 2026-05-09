@@ -261,6 +261,21 @@ public class UIDataPathList extends UIList<DataPath>
         }
     }
 
+    public List<DataPath> getFilteredList()
+    {
+        if (this.isFiltering())
+        {
+            List<DataPath> list = new java.util.ArrayList<>();
+            for (mchorse.bbs_mod.utils.Pair<DataPath, Integer> pair : this.filtered)
+            {
+                list.add(pair.a);
+            }
+            return list;
+        }
+
+        return this.list;
+    }
+
     /* UIList overrides */
 
     @Override

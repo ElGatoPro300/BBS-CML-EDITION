@@ -1179,6 +1179,8 @@
     "bbs.ui.models.home.actions": "Actions",
     "bbs.ui.models.home.list": "Model List",
     "bbs.ui.models.home.title": "Home",
+    "bbs.ui.models.home.view_list": "Switch to List View",
+    "bbs.ui.models.home.view_mosaic": "Switch to Mosaic View",
     "bbs.ui.models.ik.chain_add": "Add IK Chain",
     "bbs.ui.models.ik.chain_add-tooltip": "Creates a new IK chain. Configure the tip and root bones, then set a target position to drive the chain.",
     "bbs.ui.models.ik.chain_length": "Chain Length (0=auto)",
