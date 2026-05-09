@@ -922,6 +922,8 @@ public class UIKeys
     public static final IKey MODELS_SNEAKING_TITLE = L10n.lang("bbs.ui.models.sneaking_pose");
     public static final IKey MODELS_RELOAD = L10n.lang("bbs.ui.models.reload");
     public static final IKey MODELS_TITLE = L10n.lang("bbs.ui.models.title");
+    public static final IKey MODELS_HOME_VIEW_LIST = L10n.lang("bbs.ui.models.home.view_list");
+    public static final IKey MODELS_HOME_VIEW_MOSAIC = L10n.lang("bbs.ui.models.home.view_mosaic");
     public static final IKey MODELS_SETTINGS = L10n.lang("bbs.ui.models.settings");
     public static final IKey MODELS_IK_EDITOR = L10n.lang("bbs.ui.models.ik_editor");
     public static final IKey MODELS_IK_SHOW_SKELETON = L10n.lang("bbs.ui.models.ik.show_skeleton");
@@ -961,6 +963,7 @@ public class UIKeys
     public static final IKey MODELS_UI_SCALE = L10n.lang("bbs.ui.models.ui_scale");
     public static final IKey MORPHING_DEMORPH = L10n.lang("bbs.ui.morphing.demorph");
     public static final IKey MORPHING_FROM_MOB = L10n.lang("bbs.ui.morphing.from_mob");
+    public static final IKey MORPHING_MORPH = L10n.lang("bbs.ui.morphing.morph");
 
     public static final IKey MORPHING_TITLE = L10n.lang("bbs.ui.morphing.title");
     public static final IKey NEWS_TITLE = L10n.lang("bbs.ui.news.title");

@@ -10,8 +10,6 @@ public class CMLSettings
     public static void register(SettingsBuilder builder)
     {
         builder.category("general");
-        BBSSettings.modelFormsHierarchy = builder.getBoolean("model_forms_hierarchy", false);
-        BBSSettings.mediaFoldersEnhancements = builder.getBoolean("media_folders_enhancements", false);
         BBSSettings.replayContextOptions = builder.getInt("compacted_options", 0, 0, 2);
         BBSSettings.replayContextOptions.modes(
             UIKeys.CONFIG_GENERAL_COMPACTED_OPTIONS_DEFAULT,
@@ -62,5 +60,7 @@ public class CMLSettings
         BBSSettings.presetsGridPanel = builder.getBoolean("presets_grid_panel", false);
         BBSSettings.replayFpBobbingIntensity = builder.getFloat("replay_fp_bobbing_intensity", 0.25F, 0F, 2F);
         BBSSettings.replayFpBobbingFrequency = builder.getFloat("replay_fp_bobbing_frequency", 0.25F, 0F, 3F);
+        builder.category("morphing");
+        BBSSettings.morphingAutoMorph = builder.getBoolean("auto_morph", false);
     }
 }

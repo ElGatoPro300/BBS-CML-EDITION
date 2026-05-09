@@ -48,10 +48,13 @@ import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.RotationAxis;
 
 import org.joml.Vector2i;
+import org.lwjgl.BufferUtils;
+import org.lwjgl.opengl.GL11;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 
 import java.io.File;
+import java.nio.FloatBuffer;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -63,6 +66,7 @@ public class UIFilmPreview extends UIElement
     public static final List<Consumer<UIFilmPreview>> extensions = new ArrayList<>();
 
     private List<AudioClip> clips = new ArrayList<>();
+    private File pendingThumbnail;
     private UIFilmPanel panel;
 
     public UIElement icons;
@@ -328,6 +332,18 @@ public class UIFilmPreview extends UIElement
             context.batcher.texturedBox(texture.id, Colors.WHITE, area.x, area.y, area.w, area.h, 0, texture.height, texture.width, 0, texture.width, texture.height);
         }
 
+        if (this.pendingThumbnail != null)
+        {
+            boolean oldNames = BBSSettings.editorReplayHudDisplayName.get();
+            BBSSettings.editorReplayHudDisplayName.set(false);
+
+            context.batcher.flush();
+            this.captureThumbnailInternal(this.pendingThumbnail);
+            this.pendingThumbnail = null;
+
+            BBSSettings.editorReplayHudDisplayName.set(oldNames);
+        }
+
         if (this.panel.getData() != null)
         {
             /* Render global video clips (overlays) */
@@ -475,5 +491,50 @@ public class UIFilmPreview extends UIElement
 
         stack.pop();
         RenderSystem.applyModelViewMatrix();
+    }
+
+    public void cancelCapture()
+    {
+        this.pendingThumbnail = null;
+    }
+
+    public void captureThumbnail(File output)
+    {
+        this.pendingThumbnail = output;
+    }
+
+    private void captureThumbnailInternal(File output)
+    {
+        Area area = this.getViewport();
+        UIContext context = this.getContext();
+        double scale = MinecraftClient.getInstance().getWindow().getScaleFactor();
+        
+        int width = (int) (area.w * scale);
+        int height = (int) (area.h * scale);
+        int x = (int) (context.globalX(area.x) * scale);
+        int y = (int) (MinecraftClient.getInstance().getWindow().getFramebufferHeight() - context.globalY(area.y) * scale - height);
+
+        FloatBuffer pixelData = BufferUtils.createFloatBuffer(width * height * 4);
+
+        GL11.glReadPixels(x, y, width, height, GL11.GL_RGBA, GL11.GL_FLOAT, pixelData);
+        pixelData.rewind();
+
+        int[] pixels = new int[width * height];
+
+        for (int i = 0; i < height; ++i)
+        {
+            for (int j = 0; j < width; ++j)
+            {
+                float r = pixelData.get() * 255;
+                float g = pixelData.get() * 255;
+                float b = pixelData.get() * 255;
+                float a = pixelData.get() * 255;
+                int k = ((height - 1) - i) * width + j;
+
+                pixels[k] = ((int) a << 24) + ((int) r << 16) + ((int) g << 8) + (int) b;
+            }
+        }
+
+        new Thread(new ScreenshotRecorder.ScreenshotRunner(width, height, pixels, output)).start();
     }
 }
