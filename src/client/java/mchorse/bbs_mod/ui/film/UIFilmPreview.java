@@ -1,17 +1,18 @@
 package mchorse.bbs_mod.ui.film;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.audio.AudioRenderer;
 import mchorse.bbs_mod.camera.Camera;
 import mchorse.bbs_mod.camera.clips.misc.AudioClip;
+import mchorse.bbs_mod.camera.clips.misc.VideoClip;
 import mchorse.bbs_mod.camera.controller.RunnerCameraController;
 import mchorse.bbs_mod.camera.data.Angle;
 import mchorse.bbs_mod.camera.data.Point;
 import mchorse.bbs_mod.camera.data.Position;
 import mchorse.bbs_mod.camera.utils.TimeUtils;
 import mchorse.bbs_mod.client.BBSRendering;
+import mchorse.bbs_mod.client.video.VideoRenderer;
 import mchorse.bbs_mod.film.Films;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.graphics.window.Window;
@@ -41,20 +42,32 @@ import mchorse.bbs_mod.utils.clips.Clip;
 import mchorse.bbs_mod.utils.clips.Clips;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.joml.Vectors;
+
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.RotationAxis;
+
 import org.joml.Vector2i;
 
+import com.mojang.blaze3d.systems.RenderSystem;
+
+import org.lwjgl.BufferUtils;
+import org.lwjgl.opengl.GL11;
+
 import java.io.File;
+import java.nio.FloatBuffer;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 
 public class UIFilmPreview extends UIElement
 {
+    public static final List<Consumer<UIFilmPreview>> extensions = new ArrayList<>();
+
     private List<AudioClip> clips = new ArrayList<>();
+    private File pendingThumbnail;
     private UIFilmPanel panel;
 
     public UIElement icons;
@@ -92,7 +105,10 @@ public class UIFilmPreview extends UIElement
                 {
                     this.panel.dashboard.closeThisMenu();
 
-                    Films.playFilm(this.panel.getData().getId(), true);
+                    if (this.panel.getData() != null)
+                    {
+                        Films.playFilm(this.panel.getData().getId(), true);
+                    }
                 }
             });
 
@@ -105,7 +121,7 @@ public class UIFilmPreview extends UIElement
         this.teleport.tooltip(UIKeys.FILM_TELEPORT_TITLE);
         this.teleport.context((menu) ->
         {
-            menu.action(Icons.MOVE_TO, UIKeys.FILM_TELEPORT_CONTEXT_PLAYER, this.panel.playerToCamera, () -> this.panel.playerToCamera = !this.panel.playerToCamera);
+            menu.action(Icons.MOVE_TO, UIKeys.FILM_TELEPORT_CONTEXT_PLAYER, BBSSettings.editorCameraPreviewPlayerSync.get(), () -> BBSSettings.editorCameraPreviewPlayerSync.set(!BBSSettings.editorCameraPreviewPlayerSync.get()));
             menu.action(Icons.COPY, UIKeys.CAMERA_PANELS_CONTEXT_COPY_POSITION, () ->
             {
                 Position current = new Position(this.panel.getCamera());
@@ -152,6 +168,11 @@ public class UIFilmPreview extends UIElement
             {
                 this.panel.getController().toggleInstantKeyframes();
             });
+
+            menu.action(Icons.ALL_DIRECTIONS, UIKeys.FILM_CONTROLLER_KEYS_TOGGLE_COUNTDOWN_CONTROL, this.panel.getController().isCountdownControlEnabled(), () ->
+            {
+                this.panel.getController().toggleCountdownControl();
+            });
         });
         this.recordVideo = new UIIcon(Icons.VIDEO_CAMERA, (b) ->
         {
@@ -173,7 +194,10 @@ public class UIFilmPreview extends UIElement
                 return;
             }
 
-            this.panel.recorder.startRecording(this.panel.getData().camera.calculateDuration(), BBSRendering.getTexture());
+            if (this.panel.getData() != null)
+            {
+                this.panel.recorder.startRecording(this.panel.getData().camera.calculateDuration(), BBSRendering.getTexture());
+            }
         });
         this.recordVideo.tooltip(UIKeys.CAMERA_TOOLTIPS_RECORD);
         this.recordVideo.context((menu) ->
@@ -193,6 +217,7 @@ public class UIFilmPreview extends UIElement
 
                 UIOverlay.addOverlay(this.getContext(), overlayPanel);
             });
+            menu.action(Icons.FOLDER, UIKeys.CAMERA_TOOLTIPS_OPEN_SCREENSHOTS, () -> UIUtils.openFolder(BBSModClient.getScreenshotRecorder().getScreenshots()));
 
             menu.action(Icons.FILM, UIKeys.CAMERA_TOOLTIPS_OPEN_VIDEOS, () -> this.panel.recorder.openMovies());
             menu.action(Icons.GEAR, UIKeys.CAMERA_TOOLTIPS_OPEN_VIDEO_SETTINGS, () -> UIOverlay.addOverlay(this.getContext(), new UIVideoSettingsOverlayPanel(BBSSettings.videoSettings)));
@@ -206,13 +231,25 @@ public class UIFilmPreview extends UIElement
 
         this.icons.add(this.replays, this.onionSkin, this.plause, this.teleport, this.flight, this.control, this.perspective, this.recordReplay, this.recordVideo);
         this.add(this.icons);
+
+        for (Consumer<UIFilmPreview> consumer : extensions)
+        {
+            consumer.accept(this);
+        }
     }
 
     public void openReplays()
     {
-        UIOverlay overlay = UIOverlay.addOverlayLeft(this.getContext(), this.panel.replayEditor.replays, 360);
+        /* if (!this.panel.isDockedLayout())
+        { */
+            UIOverlay overlay = UIOverlay.addOverlayLeft(this.getContext(), this.panel.replayEditor.replays, 360);
 
-        overlay.eventPropagataion(EventPropagation.PASS);
+            overlay.eventPropagataion(EventPropagation.PASS);
+        /* }
+        else
+        { */
+            //this.panel.toggleReplaysSidebar();
+        //}
     }
 
     public void openOnionSkin()
@@ -222,6 +259,11 @@ public class UIFilmPreview extends UIElement
 
     private void renderAudio()
     {
+        if (this.panel.getData() == null)
+        {
+            return;
+        }
+
         Clips camera = this.panel.getData().camera;
         List<AudioClip> audioClips = camera.getClips(AudioClip.class);
 
@@ -291,6 +333,37 @@ public class UIFilmPreview extends UIElement
             context.batcher.texturedBox(texture.id, Colors.WHITE, area.x, area.y, area.w, area.h, 0, texture.height, texture.width, 0, texture.width, texture.height);
         }
 
+        if (this.pendingThumbnail != null)
+        {
+            boolean oldNames = BBSSettings.editorReplayHudDisplayName.get();
+            BBSSettings.editorReplayHudDisplayName.set(false);
+
+            context.batcher.flush();
+            this.captureThumbnailInternal(this.pendingThumbnail);
+            this.pendingThumbnail = null;
+
+            BBSSettings.editorReplayHudDisplayName.set(oldNames);
+        }
+
+        if (this.panel.getData() != null)
+        {
+            /* Render global video clips (overlays) */
+            VideoRenderer.renderClips(
+                context.batcher.getContext().getMatrices(),
+                context.batcher,
+                this.panel.getData().camera.getClips(this.panel.getCursor()),
+                this.panel.getCursor(),
+                this.panel.getRunner().isRunning(),
+                this.getViewport(),
+                context.menu.viewport,
+                context,
+                context.menu.width,
+                context.menu.height,
+                true
+            );
+
+        }
+
         this.renderCursor(context);
 
         /* Render rule of thirds */
@@ -302,8 +375,40 @@ public class UIFilmPreview extends UIElement
             context.batcher.box(area.x + area.w - area.w / 3, area.y, area.x + area.w - area.w / 3 + 1, area.y + area.h, guidesColor);
 
             context.batcher.box(area.x, area.y + area.h / 3 - 1, area.x + area.w, area.y + area.h / 3, guidesColor);
-            context.batcher.box(area.x, area.y + area.h - area.h / 3, area.x + area.w, area.y + area.h - area.h / 3 + 1, guidesColor);
+            context.batcher.box(area.x, area.y + area.h - area.h / 3 - 1, area.x + area.w, area.y + area.h - area.h / 3, guidesColor);
         }
+
+        /* Render safe margins (action safe 90%, title safe 80%) */
+        if (BBSSettings.editorSafeMargins.get())
+        {
+            int guidesColor = BBSSettings.editorSafeMarginsColor.get();
+
+            int actionMarginX = Math.round(area.w * 0.05F);
+            int actionMarginY = Math.round(area.h * 0.05F);
+            int actionLeft = area.x + actionMarginX;
+            int actionRight = area.x + area.w - actionMarginX;
+            int actionTop = area.y + actionMarginY;
+            int actionBottom = area.y + area.h - actionMarginY;
+
+            context.batcher.box(actionLeft, actionTop, actionLeft + 1, actionBottom, guidesColor);
+            context.batcher.box(actionRight - 1, actionTop, actionRight, actionBottom, guidesColor);
+            context.batcher.box(actionLeft, actionTop, actionRight, actionTop + 1, guidesColor);
+            context.batcher.box(actionLeft, actionBottom - 1, actionRight, actionBottom, guidesColor);
+
+            int titleMarginX = Math.round(area.w * 0.10F);
+            int titleMarginY = Math.round(area.h * 0.10F);
+            int titleLeft = area.x + titleMarginX;
+            int titleRight = area.x + area.w - titleMarginX;
+            int titleTop = area.y + titleMarginY;
+            int titleBottom = area.y + area.h - titleMarginY;
+
+            context.batcher.box(titleLeft, titleTop, titleLeft + 1, titleBottom, guidesColor);
+            context.batcher.box(titleRight - 1, titleTop, titleRight, titleBottom, guidesColor);
+            context.batcher.box(titleLeft, titleTop, titleRight, titleTop + 1, guidesColor);
+            context.batcher.box(titleLeft, titleBottom - 1, titleRight, titleBottom, guidesColor);
+        }
+
+        VideoRenderer.update();
 
         if (BBSSettings.editorCenterLines.get())
         {
@@ -326,7 +431,7 @@ public class UIFilmPreview extends UIElement
 
         this.panel.getController().renderHUD(context, area);
 
-        if (this.panel.replayEditor.isVisible())
+        if (this.panel.replayEditor.isVisible() && this.panel.getData() != null)
         {
             RunnerCameraController runner = this.panel.getRunner();
             int w = (int) (area.w * BBSSettings.audioWaveformWidth.get());
@@ -387,5 +492,50 @@ public class UIFilmPreview extends UIElement
 
         stack.pop();
         RenderSystem.applyModelViewMatrix();
+    }
+
+    public void cancelCapture()
+    {
+        this.pendingThumbnail = null;
+    }
+
+    public void captureThumbnail(File output)
+    {
+        this.pendingThumbnail = output;
+    }
+
+    private void captureThumbnailInternal(File output)
+    {
+        Area area = this.getViewport();
+        UIContext context = this.getContext();
+        double scale = MinecraftClient.getInstance().getWindow().getScaleFactor();
+        
+        int width = (int) (area.w * scale);
+        int height = (int) (area.h * scale);
+        int x = (int) (context.globalX(area.x) * scale);
+        int y = (int) (MinecraftClient.getInstance().getWindow().getFramebufferHeight() - context.globalY(area.y) * scale - height);
+
+        FloatBuffer pixelData = BufferUtils.createFloatBuffer(width * height * 4);
+
+        GL11.glReadPixels(x, y, width, height, GL11.GL_RGBA, GL11.GL_FLOAT, pixelData);
+        pixelData.rewind();
+
+        int[] pixels = new int[width * height];
+
+        for (int i = 0; i < height; ++i)
+        {
+            for (int j = 0; j < width; ++j)
+            {
+                float r = pixelData.get() * 255;
+                float g = pixelData.get() * 255;
+                float b = pixelData.get() * 255;
+                float a = pixelData.get() * 255;
+                int k = ((height - 1) - i) * width + j;
+
+                pixels[k] = ((int) a << 24) + ((int) r << 16) + ((int) g << 8) + (int) b;
+            }
+        }
+
+        new Thread(new ScreenshotRecorder.ScreenshotRunner(width, height, pixels, output)).start();
     }
 }

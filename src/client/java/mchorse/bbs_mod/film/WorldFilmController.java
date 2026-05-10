@@ -1,10 +1,12 @@
 package mchorse.bbs_mod.film;
 
 import mchorse.bbs_mod.BBSModClient;
+import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.camera.clips.CameraClipContext;
 import mchorse.bbs_mod.camera.clips.misc.AudioClientClip;
 import mchorse.bbs_mod.camera.data.Position;
 import mchorse.bbs_mod.utils.clips.Clip;
+
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 
 import java.util.List;
@@ -80,6 +82,11 @@ public class WorldFilmController extends BaseFilmController
         }
 
         this.context.currentLayer = 0;
+
+        if (BBSSettings.recordingCameraPreview.get())
+        {
+            Recorder.renderCameraPreviewTimeline(this.context.clips, tick, context.tickDelta(), this.duration, this.position, context.camera(), context.matrixStack());
+        }
 
         AudioClientClip.manageSounds(this.context);
     }

@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.particles.emitter;
 
 import mchorse.bbs_mod.utils.joml.Vectors;
+
 import org.joml.Matrix3f;
 import org.joml.Vector3d;
 import org.joml.Vector3f;

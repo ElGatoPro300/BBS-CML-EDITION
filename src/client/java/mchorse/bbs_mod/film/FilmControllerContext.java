@@ -1,14 +1,19 @@
 package mchorse.bbs_mod.film;
 
-import io.netty.util.collection.IntObjectMap;
 import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.utils.colors.Colors;
+
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
+
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.util.math.MatrixStack;
+
+import org.joml.Matrix4f;
+
+import io.netty.util.collection.IntObjectMap;
 
 public class FilmControllerContext
 {
@@ -25,6 +30,7 @@ public class FilmControllerContext
     public float transition;
     public int color;
     public float shadowRadius;
+    public float shadowOpacity;
 
     public String bone;
     public boolean local;
@@ -34,6 +40,7 @@ public class FilmControllerContext
 
     public String nameTag = "";
     public boolean relative;
+    public Matrix4f localGroupTransform;
 
     private FilmControllerContext()
     {}
@@ -42,11 +49,13 @@ public class FilmControllerContext
     {
         this.map = null;
         this.shadowRadius = 0F;
+        this.shadowOpacity = 1F;
         this.color = Colors.WHITE;
         this.bone = null;
         this.local = false;
         this.nameTag = "";
         this.relative = false;
+        this.localGroupTransform = null;
     }
 
     public FilmControllerContext setup(IntObjectMap<IEntity> entities, IEntity entity, Replay replay, WorldRenderContext context)
@@ -96,6 +105,15 @@ public class FilmControllerContext
     public FilmControllerContext shadow(boolean shadow, float shadowRadius)
     {
         this.shadowRadius = shadow ? shadowRadius : 0F;
+        this.shadowOpacity = 1F;
+
+        return this;
+    }
+
+    public FilmControllerContext shadow(boolean shadow, float shadowRadius, float shadowOpacity)
+    {
+        this.shadowRadius = shadow ? shadowRadius : 0F;
+        this.shadowOpacity = shadow ? shadowOpacity : 0F;
 
         return this;
     }
@@ -103,6 +121,7 @@ public class FilmControllerContext
     public FilmControllerContext shadow(float shadowRadius)
     {
         this.shadowRadius = shadowRadius;
+        this.shadowOpacity = 1F;
 
         return this;
     }

@@ -44,6 +44,28 @@ public class UIClipsPanel extends UIElement implements IUIClipsDelegate
         return this;
     }
 
+    @Override
+    public void removeFromParent()
+    {
+        super.removeFromParent();
+
+        if (this.panel != null)
+        {
+            this.panel.removeFromParent();
+        }
+    }
+
+    @Override
+    public void setVisible(boolean visible)
+    {
+        super.setVisible(visible);
+
+        if (this.panel != null)
+        {
+            this.panel.setVisible(visible);
+        }
+    }
+
     public void setClips(Clips clips)
     {
         this.clips.setClips(clips);
@@ -145,17 +167,20 @@ public class UIClipsPanel extends UIElement implements IUIClipsDelegate
 
             this.panel = UIClip.createPanel(clip, this);
             this.panel.setUndoId("clip_panel");
+            this.panel.setVisible(this.isVisible());
 
             if (this.target == null)
             {
                 this.panel.relative(this).x(1F, -160).w(160).h(1F);
+                this.add(this.panel);
             }
             else
             {
                 this.panel.full(this.target);
+                this.target.add(this.panel);
+                this.target.resize();
             }
 
-            this.add(this.panel);
             this.resize();
             this.panel.fillData();
 

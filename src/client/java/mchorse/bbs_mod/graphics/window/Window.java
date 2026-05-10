@@ -4,9 +4,11 @@ import mchorse.bbs_mod.data.DataToString;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
+
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.util.InputUtil;
+
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.system.MemoryUtil;
 
@@ -17,6 +19,8 @@ public class Window
 {
     private static int verticalScroll;
     private static long lastScroll;
+    private static long arrowCursor = -1L;
+    private static long activeCursor = -1L;
 
     public static long getWindow()
     {
@@ -144,5 +148,35 @@ public class Window
     public static void moveCursor(int x, int y)
     {
         GLFW.glfwSetCursorPos(getWindow(), x, y);
+    }
+
+    public static void setCursorDefault()
+    {
+        setCursor(GLFW.GLFW_ARROW_CURSOR);
+    }
+
+    private static void setCursor(int type)
+    {
+        long cursor = getOrCreateCursor(type);
+        if (cursor != 0L && activeCursor != cursor)
+        {
+            GLFW.glfwSetCursor(getWindow(), cursor);
+            activeCursor = cursor;
+        }
+    }
+
+    private static long getOrCreateCursor(int type)
+    {
+        if (type == GLFW.GLFW_ARROW_CURSOR)
+        {
+            if (arrowCursor == -1L)
+            {
+                arrowCursor = GLFW.glfwCreateStandardCursor(type);
+            }
+
+            return arrowCursor;
+        }
+
+        return 0L;
     }
 }

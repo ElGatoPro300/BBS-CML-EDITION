@@ -1,6 +1,5 @@
 package mchorse.bbs_mod.ui.framework.elements.input.keyframes.graphs;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.camera.utils.TimeUtils;
 import mchorse.bbs_mod.data.types.MapType;
@@ -23,24 +22,28 @@ import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 import mchorse.bbs_mod.utils.keyframes.KeyframeSegment;
 import mchorse.bbs_mod.utils.keyframes.factories.IKeyframeFactory;
+
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
+
 import org.joml.Matrix4f;
+
+import com.mojang.blaze3d.systems.RenderSystem;
 
 import java.util.Collections;
 import java.util.List;
 
 public class UIKeyframeGraph implements IUIKeyframeGraph
 {
-    private UIKeyframes keyframes;
+    protected UIKeyframes keyframes;
 
-    private UIKeyframeSheet sheet;
+    protected UIKeyframeSheet sheet;
 
-    private final Scale yAxis;
+    protected final Scale yAxis;
 
     public UIKeyframeGraph(UIKeyframes keyframes, UIKeyframeSheet sheet)
     {
@@ -354,7 +357,7 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
         }
         else if (type.b == KeyframeType.LEFT_HANDLE)
         {
-            keyframe.lx = -(float) ((this.keyframes.fromGraphX(context.mouseX)) - keyframe.getTick());
+            keyframe.lx = Math.max(0, -(float) ((this.keyframes.fromGraphX(context.mouseX)) - keyframe.getTick()));
             keyframe.ly = (float) (this.fromGraphY(context.mouseY) - factory.getY(originalV));
 
             if (!Window.isShiftPressed())
@@ -365,7 +368,7 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
         }
         else if (type.b == KeyframeType.RIGHT_HANDLE)
         {
-            keyframe.rx = (float) ((this.keyframes.fromGraphX(context.mouseX)) - keyframe.getTick());
+            keyframe.rx = Math.max(0, (float) ((this.keyframes.fromGraphX(context.mouseX)) - keyframe.getTick()));
             keyframe.ry = (float) (this.fromGraphY(context.mouseY) - factory.getY(originalV));
 
             if (!Window.isShiftPressed())
@@ -507,7 +510,7 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
         }
     }
 
-    private void renderPreviewKeyframe(UIContext context, UIKeyframeSheet sheet, double tick, int y, int color)
+    protected void renderPreviewKeyframe(UIContext context, UIKeyframeSheet sheet, double tick, int y, int color)
     {
         int x = this.keyframes.toGraphX(tick);
         float a = (float) Math.sin(context.getTickTransition() / 2D) * 0.1F + 0.5F;
@@ -712,7 +715,14 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
         }
 
         RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
+
+        if (keyframes.isEmpty())
+        {
+            return;
+        }
+
         BufferRenderer.drawWithGlobalProgram(builder.end());
     }
 
