@@ -18,7 +18,6 @@ import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.BufferAllocator;
 import net.minecraft.client.util.math.MatrixStack;
-
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
@@ -71,8 +70,6 @@ public class UIParticleSchemeRenderer extends UIModelRenderer
         MatrixStack stack = context.batcher.getContext().getMatrices();
 
         stack.push();
-        stack.loadIdentity();
-        stack.multiplyPositionMatrix(this.camera.view);
 
         RenderSystem.enableBlend();
         RenderSystem.enableDepthTest();
@@ -150,5 +147,11 @@ public class UIParticleSchemeRenderer extends UIModelRenderer
         {
             Draw.coolerAxes(context.batcher.getContext().getMatrices(), 1F, 0.01F, 1.01F, 0.02F);
         }
+    }
+
+    @Override
+    public void render(UIContext context)
+    {
+        super.render(context);
     }
 }
