@@ -190,6 +190,8 @@ public class Gizmo
         outlineSize *= scale;
         outlineOffset *= scale;
 
+        Tessellator tessellator = Tessellator.getInstance();
+        BufferBuilder builder = tessellator.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
         Matrix4f inv = new Matrix4f(stack.peek().getPositionMatrix()).invert();
         Vector4f camPos = new Vector4f(0, 0, 0, 1).mul(inv);
         float sx = camPos.x >= 0 ? 1F : -1F;
@@ -216,10 +218,6 @@ public class Gizmo
         boolean activeXY = this.index == -1 || this.index == STENCIL_XY;
         boolean activeZY = this.index == -1 || this.index == STENCIL_ZY;
         boolean activeFree = this.index == -1 || this.index == STENCIL_FREE;
-
-        BufferBuilder builder = Tessellator.getInstance().getBuffer();
-
-        builder.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
 
         if (this.mode == Mode.ROTATE)
         {
@@ -316,6 +314,8 @@ public class Gizmo
         axisSize *= scale;
         axisOffset *= scale;
 
+        Tessellator tessellator = Tessellator.getInstance();
+        BufferBuilder builder = tessellator.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
         Matrix4f inv = new Matrix4f(stack.peek().getPositionMatrix()).invert();
         Vector4f camPos = new Vector4f(0, 0, 0, 1).mul(inv);
         float sx = camPos.x >= 0 ? 1F : -1F;
@@ -334,10 +334,6 @@ public class Gizmo
             sy = this.lastSy;
             sz = this.lastSz;
         }
-
-        BufferBuilder builder = Tessellator.getInstance().getBuffer();
-
-        builder.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
 
         if (this.mode == Mode.ROTATE)
         {
