@@ -2,10 +2,11 @@ package mchorse.bbs_mod.client;
 
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.resources.Link;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.texture.DynamicTexture;
-import net.minecraft.resources.Identifier;
-import com.mojang.blaze3d.platform.NativeImage;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.texture.NativeImage;
+import net.minecraft.client.texture.NativeImageBackedTexture;
+import net.minecraft.util.Identifier;
+
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.Map;
@@ -56,10 +57,10 @@ public class MobTextureOverride
         {
             NativeImage image = NativeImage.read(stream);
             String key = "bbs_mob_override_" + Integer.toUnsignedString(link.toString().hashCode());
-            Identifier id = Identifier.fromNamespaceAndPath(BBSMod.MOD_ID, key);
-            DynamicTexture texture = new DynamicTexture(() -> key, image);
+            Identifier id = Identifier.of(BBSMod.MOD_ID, key);
+            NativeImageBackedTexture texture = new NativeImageBackedTexture(() -> key, image);
 
-            Minecraft.getInstance().getTextureManager().register(id, texture);
+            MinecraftClient.getInstance().getTextureManager().registerTexture(id, texture);
             return id;
         }
         catch (Exception e)
