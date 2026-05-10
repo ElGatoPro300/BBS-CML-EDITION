@@ -4278,14 +4278,14 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                             int iconX = this.area.mx();
                             int iconY = this.area.y + CARD_SIZE / 2;
                             
-                            context.batcher.getContext().getMatrices().push();
-                            context.batcher.getContext().getMatrices().translate(iconX, iconY, 0);
-                            context.batcher.getContext().getMatrices().scale(2F, 2F, 1F);
-                            context.batcher.getContext().getMatrices().translate(-iconX, -iconY, 0);
+                            context.batcher.getContext().getMatrices().pushMatrix();
+                            context.batcher.getContext().getMatrices().translate(iconX, iconY);
+                            context.batcher.getContext().getMatrices().scale(2F, 2F);
+                            context.batcher.getContext().getMatrices().translate(-iconX, -iconY);
                             
                             context.batcher.icon(Icons.FILM, iconX, iconY, 0.5F, 0.5F);
                             
-                            context.batcher.getContext().getMatrices().pop();
+                            context.batcher.getContext().getMatrices().popMatrix();
                         }
 
                         String label = new DataPath(id).getLast();

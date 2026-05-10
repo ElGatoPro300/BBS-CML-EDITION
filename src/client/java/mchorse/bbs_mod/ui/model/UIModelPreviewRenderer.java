@@ -121,12 +121,12 @@ public class UIModelPreviewRenderer extends UIModelRenderer
         int sx = -context.globalX(0);
         int sy = -context.globalY(0);
 
-        context.batcher.getContext().getMatrices().push();
-        context.batcher.getContext().getMatrices().translate(sx, sy, 0);
+        context.batcher.getContext().getMatrices().pushMatrix();
+        context.batcher.getContext().getMatrices().translate(sx, sy);
 
         super.render(context);
 
-        context.batcher.getContext().getMatrices().pop();
+        context.batcher.getContext().getMatrices().popMatrix();
     }
 
     /* ---- Orthographic viewport ---- */
@@ -151,7 +151,7 @@ public class UIModelPreviewRenderer extends UIModelRenderer
         int vw = (int) (this.area.w * rx);
         int vh = (int) (this.area.h * ry);
 
-        RenderSystem.viewport((int) (vx * size), (int) (vy * size), (int) (vw * size), (int) (vh * size));
+        com.mojang.blaze3d.opengl.GlStateManager._viewport((int) (vx * size), (int) (vy * size), (int) (vw * size), (int) (vh * size));
 
         /* Orthographic projection scaled so the model fits nicely (zoomed out) */
         float orthoScale = (float) this.distance.getValue() * 0.3F;
@@ -170,7 +170,7 @@ public class UIModelPreviewRenderer extends UIModelRenderer
     protected void renderUserModel(UIContext context)
     {
         FormRenderingContext formContext = new FormRenderingContext()
-            .set(FormRenderType.PREVIEW, this.entity, context.batcher.getContext().getMatrices(), LightmapTextureManager.pack(15, 15), OverlayTexture.DEFAULT_UV, context.getTransition())
+            .set(FormRenderType.PREVIEW, this.entity, new net.minecraft.client.util.math.MatrixStack(), LightmapTextureManager.pack(15, 15), OverlayTexture.DEFAULT_UV, context.getTransition())
             .camera(this.camera)
             .modelRenderer();
 
