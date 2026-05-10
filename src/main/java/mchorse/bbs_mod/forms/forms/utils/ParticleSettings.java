@@ -22,7 +22,22 @@ public class ParticleSettings implements IMapSerializable
     @Override
     public void fromData(MapType data)
     {
-        this.particle = Identifier.tryParse(data.getString("particle"));
+        this.particle = new Identifier(data.getString("particle"));
         this.arguments = data.getString("args");
+    }
+
+    @Override
+    public boolean equals(Object o)
+    {
+        if (this == o) return true;
+        if (!(o instanceof ParticleSettings)) return false;
+        ParticleSettings that = (ParticleSettings) o;
+        return Objects.equals(this.particle, that.particle) && Objects.equals(this.arguments, that.arguments);
+    }
+
+    @Override
+    public int hashCode()
+    {
+        return Objects.hash(this.particle, this.arguments);
     }
 }

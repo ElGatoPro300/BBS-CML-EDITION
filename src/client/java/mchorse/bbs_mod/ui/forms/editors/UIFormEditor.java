@@ -229,7 +229,6 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
         this.shiftDuration.keys().register(Keys.CLIP_SHIFT, () -> this.shiftDuration.clickItself());
 
         this.renderer = rendererFactory.apply(this);
-        this.renderer.updatable();
         this.renderer.full(this);
 
         this.finish = new UIIcon(Icons.IN, (b) -> this.palette.exit());
