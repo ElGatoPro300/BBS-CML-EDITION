@@ -13,6 +13,7 @@ import mchorse.bbs_mod.utils.joml.Vectors;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
+import net.minecraft.client.render.item.ItemRenderState;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.item.ItemDisplayContext;
@@ -97,7 +98,7 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
         BlockFormRenderer.color.mul(set);
 
         consumers.setSubstitute(BBSRendering.getColorConsumer(BlockFormRenderer.color));
-        net.minecraft.client.render.item.ItemRenderState state = new net.minecraft.client.render.item.ItemRenderState();
+        ItemRenderState state = new ItemRenderState();
         MinecraftClient.getInstance().getItemModelManager().update(state, this.form.stack.get(), MinecraftClient.getInstance().getItemModelManager(), mode, context.entity != null ? context.entity.getWorld() : null, context.entity instanceof LivingEntity ? (LivingEntity) context.entity : null, 0);
         state.render(context.stack, consumers, light, context.overlay);
         consumers.draw();
