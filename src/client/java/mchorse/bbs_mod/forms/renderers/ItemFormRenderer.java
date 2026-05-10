@@ -97,18 +97,9 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
         BlockFormRenderer.color.mul(set);
 
         consumers.setSubstitute(BBSRendering.getColorConsumer(BlockFormRenderer.color));
-        MinecraftClient.getInstance().getItemRenderer().renderItem(
-            context.entity instanceof LivingEntity ? (LivingEntity) context.entity : null,
-            this.form.stack.get(),
-            mode,
-            false,
-            context.stack,
-            consumers,
-            context.entity != null ? context.entity.getWorld() : null,
-            light,
-            context.overlay,
-            0
-        );
+        net.minecraft.client.render.item.ItemRenderState state = new net.minecraft.client.render.item.ItemRenderState();
+        MinecraftClient.getInstance().getItemModelManager().update(state, this.form.stack.get(), MinecraftClient.getInstance().getItemModelManager(), mode, context.entity != null ? context.entity.getWorld() : null, context.entity instanceof LivingEntity ? (LivingEntity) context.entity : null, 0);
+        state.render(context.stack, consumers, light, context.overlay);
         consumers.draw();
         consumers.setSubstitute(null);
 

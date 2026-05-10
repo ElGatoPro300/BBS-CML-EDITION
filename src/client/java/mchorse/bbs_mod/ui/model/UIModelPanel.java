@@ -1698,7 +1698,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
             if (alpha > 0.001F)
             {
                 GlStateManager._enableBlend();
-                GlStateManager._blendFunc(770, 771);
+                // GlStateManager._blendFunc(770, 771);
                 context.batcher.texturedBox(texture, Colors.setA(Colors.WHITE, alpha), tx, ty, tw, th, 0, 0, texture.width, texture.height);
             }
 

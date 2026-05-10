@@ -434,7 +434,7 @@ public class ColorGradeRenderer
             tempTex.setFilter(GL11.GL_LINEAR);
         }
 
-        fb.beginWrite(false);
+        fb.beginWrite();
         tempTex.bind();
 
         if (tempTex.width != fbW || tempTex.height != fbH)

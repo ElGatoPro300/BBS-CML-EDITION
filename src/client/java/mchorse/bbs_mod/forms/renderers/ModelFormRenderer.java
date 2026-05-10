@@ -438,7 +438,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         GlStateManager._enableDepthTest();
         GlStateManager._depthFunc(GL11.GL_LEQUAL);
         GlStateManager._disableBlend();
-        GlStateManager._blendFunc(770, 771);
+        // GlStateManager._blendFunc(770, 771);
         GlStateManager._enableCull();
     }
 

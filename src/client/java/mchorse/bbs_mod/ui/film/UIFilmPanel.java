@@ -1,6 +1,6 @@
 package mchorse.bbs_mod.ui.film;
-
 import mchorse.bbs_mod.BBS;
+import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
@@ -3515,12 +3515,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         int segments = 40; // We can use fewer segments because it interpolates smoothly!
         float segW = editorW / (float) segments;
         
-        Matrix4f matrix4f = new Matrix4f(context.batcher.getContext().getMatrices());
+        Matrix4f matrix4f = new Matrix4f();
         Tessellator tessellator = Tessellator.getInstance();
         BufferBuilder builder = tessellator.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
         
-        RenderSystem.enableBlend();
-        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
+        GlStateManager._enableBlend();
         
         float[] yBot1 = new float[segments + 1];
         float[] yMid1 = new float[segments + 1];
@@ -3603,7 +3602,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             builder.vertex(matrix4f, x2, yMid2[i+1], 0).color(cMid2[i+1]);
         }
         
-        BufferRenderer.drawWithGlobalProgram(builder.end());
+        net.minecraft.client.render.RenderLayers.debugFilledBox().draw(builder.end());
         
         // Black shadow gradients on the sides of the central column
         context.batcher.gradientHBox(pageX - 18, pageY, pageX, pageY + pageH, 0, Colors.setA(0x000000, 0.7F));
@@ -3721,8 +3720,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
             if (alpha > 0.001F)
             {
-                RenderSystem.enableBlend();
-                RenderSystem.defaultBlendFunc();
+                GlStateManager._enableBlend();
                 context.batcher.texturedBox(texture, Colors.setA(Colors.WHITE, alpha), tx, ty, tw, th, 0, 0, texture.width, texture.height);
             }
 

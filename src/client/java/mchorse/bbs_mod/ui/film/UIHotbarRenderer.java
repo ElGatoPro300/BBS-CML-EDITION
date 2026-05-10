@@ -114,7 +114,7 @@ public class UIHotbarRenderer
         GlStateManager._disableDepthTest();
         GlStateManager._depthMask(false);
         GlStateManager._enableBlend();
-        GlStateManager._defaultBlendFunc();
+        // GlStateManager._defaultBlendFunc();
         int colorVal = ((int) (alpha * 255F) << 24) | 0xFFFFFF;
 
         batcher.getContext().drawGuiTexture(RenderPipelines.GUI_TEXTURED, HOTBAR, 0, 0, 182, 22, colorVal);

@@ -89,7 +89,7 @@ public class UIForms extends UIList<UIForms.FormEntry>
 
             Vector3f a = new Vector3f(0.85F, 0.85F, -1F).normalize();
             Vector3f b = new Vector3f(-0.85F, 0.85F, 1F).normalize();
-            DiffuseLighting.setupGui3DDiffuseLighting();
+            // DiffuseLighting.setupGui3DDiffuseLighting();
             FormUtilsClient.renderUI(form, context, x, y, x + 40, y + 40);
             
 

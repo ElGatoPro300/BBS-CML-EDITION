@@ -67,7 +67,7 @@ import net.minecraft.client.render.VertexFormats;
 
 import org.joml.Matrix4f;
 
-import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.vertex.VertexFormat;
 
 import com.google.gson.Gson;
@@ -1111,8 +1111,7 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
 
             if (alpha > 0.001F)
             {
-                RenderSystem.enableBlend();
-                RenderSystem.defaultBlendFunc();
+                GlStateManager._enableBlend();
                 context.batcher.texturedBox(texture, Colors.setA(Colors.WHITE, alpha), tx, ty, tw, th, 0, 0, texture.width, texture.height);
             }
 

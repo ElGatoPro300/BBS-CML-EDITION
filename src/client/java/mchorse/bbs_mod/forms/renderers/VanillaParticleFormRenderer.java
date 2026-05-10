@@ -89,9 +89,9 @@ public class VanillaParticleFormRenderer extends FormRenderer<VanillaParticleFor
             translation = positionMatrix.getTranslation(new Vector3f());
 
             this.pos.set(
-                translation.x + (float) realCamera.getPos().x,
-                translation.y + (float) realCamera.getPos().y,
-                translation.z + (float) realCamera.getPos().z
+                translation.x + (float) realCamera.getCameraPos().x,
+                translation.y + (float) realCamera.getCameraPos().y,
+                translation.z + (float) realCamera.getCameraPos().z
             );
         }
         else

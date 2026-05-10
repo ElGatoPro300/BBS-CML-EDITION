@@ -78,7 +78,7 @@ public class UIItemStackOverlayPanel extends UIOverlayPanel
         {
             try
             {
-                NbtCompound nbtCompound = StringNbtReader.parse(v);
+                NbtCompound nbtCompound = StringNbtReader.readCompound(v);
                 RegistryWrapper.WrapperLookup registries = BBSMod.getRegistryManager();
                 RegistryOps<NbtElement> ops = registries != null ? RegistryOps.of(NbtOps.INSTANCE, registries) : null;
 

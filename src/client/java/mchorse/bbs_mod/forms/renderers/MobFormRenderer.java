@@ -272,7 +272,6 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
                     renderer.render(state, stack, new OrderedRenderCommandQueueImpl(), cameraState);
                 }
-                MinecraftClient.getInstance().getEntityRenderDispatcher().render(this.entity, 0D, 0D, 0D, 0F, stack, consumers, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE);
             }
             finally
             {
@@ -363,6 +362,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
     }
 
     // 3. Keep the limbs synced so running/walking looks correct
+    /*
     if (source != null) {
         if (livingMorph.limbAnimator instanceof LimbAnimatorAccessor a && 
             source.limbAnimator instanceof LimbAnimatorAccessor b) {
@@ -370,6 +370,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
             a.setSpeed(b.getSpeed());
         }
     }
+    */
 }
 
             currentPose = this.form.pose.get();
@@ -394,7 +395,6 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
                     renderer.render(state, context.stack, new OrderedRenderCommandQueueImpl(), cameraState);
                 }
-                MinecraftClient.getInstance().getEntityRenderDispatcher().render(this.entity, 0D, 0D, 0D, 0F, context.stack, consumers, light);
             }
             finally
             {
