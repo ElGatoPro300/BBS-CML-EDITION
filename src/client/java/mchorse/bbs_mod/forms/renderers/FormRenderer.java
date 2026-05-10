@@ -26,6 +26,8 @@ import net.minecraft.util.Hand;
 
 import org.joml.Matrix4f;
 
+import com.mojang.blaze3d.systems.RenderSystem;
+
 import org.lwjgl.opengl.GL11;
 
 import java.util.Collections;

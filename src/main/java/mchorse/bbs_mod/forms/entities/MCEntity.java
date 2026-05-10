@@ -510,7 +510,7 @@ public class MCEntity implements IEntity
     {
         if (this.mcEntity instanceof LivingEntity living)
         {
-            return living.isFallFlying();
+            return living.isGliding();
         }
 
         return false;
