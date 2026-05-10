@@ -2,6 +2,7 @@ package mchorse.bbs_mod.cubic.model;
 
 import mchorse.bbs_mod.cubic.animation.ActionsConfig;
 import mchorse.bbs_mod.cubic.model.ArmorConfig;
+import mchorse.bbs_mod.cubic.model.IKChainConfig;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.forms.values.ValueActionsConfig;
 import mchorse.bbs_mod.settings.values.core.ValueGroup;
@@ -68,6 +69,15 @@ public class ModelConfig extends ValueGroup
         }
     };
 
+    public final ValueList<IKChainConfig> ikChains = new ValueList<IKChainConfig>("ik_chains")
+    {
+        @Override
+        protected IKChainConfig create(String id)
+        {
+            return new IKChainConfig(id);
+        }
+    };
+
     public ModelConfig(String id)
     {
         super(id);
@@ -93,5 +103,6 @@ public class ModelConfig extends ValueGroup
         this.add(this.itemsMain);
         this.add(this.itemsOff);
         this.add(this.physBones);
+        this.add(this.ikChains);
     }
 }

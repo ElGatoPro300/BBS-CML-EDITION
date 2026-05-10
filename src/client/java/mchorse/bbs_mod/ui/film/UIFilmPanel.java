@@ -59,6 +59,7 @@ import mchorse.bbs_mod.ui.framework.elements.context.UISimpleContextMenu;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UISearchList;
 import mchorse.bbs_mod.ui.framework.elements.navigation.UIControlBar;
 import mchorse.bbs_mod.ui.framework.elements.navigation.UIIconTabButton;
+import mchorse.bbs_mod.ui.framework.elements.overlay.UIConfirmOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIMessageOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UINumberOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
@@ -117,6 +118,7 @@ import com.google.gson.reflect.TypeToken;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.opengl.GL11;
 
+import java.io.File;
 import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.net.URI;
@@ -228,6 +230,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private final List<BannerEntry> homeBanners = new ArrayList<>();
     private static final Set<Link> prefetchingBanners = Collections.synchronizedSet(new HashSet<>());
     private int bannerIndex = 0;
+    private List<Integer> bannerSequence = new ArrayList<>();
+    private int sequenceIndex = 0;
     private float lastBannerTicks = -1;
     private static final int BANNER_DURATION = 200; // 10 seconds at 20 ticks/sec
     private static final int BANNER_TRANSITION = 60; // 3 seconds transition
@@ -415,6 +419,74 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.homeActionsPanel = new UIElement();
         this.homeFilmsList = new UIDataPathList((list) -> this.handleHomeFilmsSelection(list));
         this.homeFilmsList.setFileIcon(Icons.FILM);
+        this.homeFilmsList.context((menu) ->
+        {
+            menu.action(Icons.FOLDER, UIKeys.PANELS_MODALS_ADD_FOLDER_TITLE, this::addFolderFromHome);
+
+            String selectedId = this.getSelectedHomeFilmId();
+            if (selectedId != null)
+            {
+                menu.action(Icons.COPY, UIKeys.PANELS_CONTEXT_COPY, this::copyHomeFilm);
+            }
+
+            try
+            {
+                MapType clipboardData = Window.getClipboardMap("_ContentType_" + this.getType().getId());
+
+                if (clipboardData != null)
+                {
+                    menu.action(Icons.PASTE, UIKeys.PANELS_CONTEXT_PASTE, () -> this.pasteHomeFilm(clipboardData));
+                }
+            }
+            catch (Exception e)
+            {}
+
+            File folder = this.getType().getRepository().getFolder();
+
+            if (folder != null)
+            {
+                menu.action(Icons.FOLDER, UIKeys.PANELS_CONTEXT_OPEN, () ->
+                {
+                    UIUtils.openFolder(new File(folder, this.homeFilmsList.getPath().toString()));
+                });
+            }
+        });
+        this.homeFilmsList.moveCallback = (from, to) ->
+        {
+            String fromStr = from.toString();
+            String toStr = to.toString();
+
+            if (from.folder)
+            {
+                this.getType().getRepository().renameFolder(fromStr, toStr, (bool) ->
+                {
+                    if (bool)
+                    {
+                        this.requestNames();
+                    }
+                });
+            }
+            else
+            {
+                this.getType().getRepository().rename(fromStr, toStr);
+
+                for (FilmDocumentTab tab : this.filmDocumentTabs)
+                {
+                    if (!tab.home && fromStr.equals(tab.filmId))
+                    {
+                        tab.filmId = toStr;
+                    }
+                }
+                this.rebuildFilmDocumentTabs();
+
+                if (this.data != null && fromStr.equals(this.data.getId()))
+                {
+                    this.data.setId(toStr);
+                }
+
+                this.requestNames();
+            }
+        };
         this.homeFilmsSearch = new UISearchList<>(this.homeFilmsList).label(UIKeys.GENERAL_SEARCH);
         this.homeFilmsSearch.list.background();
         this.homeCreateFilm = this.createHomeButton(UIKeys.FILM_CRUD_ADD, Icons.ADD, (b) ->
@@ -435,9 +507,107 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             panel.text.filename();
             UIOverlay.addOverlay(this.getContext(), panel);
         });
-        this.homeDuplicateCurrent = this.createHomeButton(UIKeys.FILM_CRUD_DUPE, Icons.COPY, (b) -> this.clickWithContext(this.overlay.dupe));
-        this.homeRenameCurrent = this.createHomeButton(UIKeys.FILM_CRUD_RENAME, Icons.EDIT, (b) -> this.clickWithContext(this.overlay.rename));
-        this.homeDeleteCurrent = this.createHomeButton(UIKeys.FILM_CRUD_REMOVE, Icons.REMOVE, (b) -> this.clickWithContext(this.overlay.remove));
+        this.homeDuplicateCurrent = this.createHomeButton(UIKeys.FILM_CRUD_DUPE, Icons.COPY, (b) ->
+        {
+            String selectedId = this.getSelectedHomeFilmId();
+            if (selectedId == null) return;
+
+            UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
+                UIKeys.GENERAL_DUPE,
+                UIKeys.PANELS_MODALS_DUPE,
+                (str) -> {
+                    String targetId = this.homeFilmsList.getPath(str).toString();
+                    if (targetId.trim().isEmpty()) {
+                        this.getContext().notifyError(UIKeys.PANELS_MODALS_EMPTY);
+                        return;
+                    }
+                    if (this.homeFilmsList.hasInHierarchy(targetId)) {
+                        return;
+                    }
+                    this.getType().getRepository().load(selectedId, (originalFilm) -> {
+                        if (originalFilm != null) {
+                            this.getType().getRepository().save(targetId, originalFilm.toData().asMap());
+                            this.requestNames();
+                        }
+                    });
+                }
+            );
+
+            panel.text.setText(new DataPath(selectedId).getLast());
+            panel.text.filename();
+
+            UIOverlay.addOverlay(this.getContext(), panel);
+        });
+        this.homeRenameCurrent = this.createHomeButton(UIKeys.FILM_CRUD_RENAME, Icons.EDIT, (b) ->
+        {
+            String selectedId = this.getSelectedHomeFilmId();
+            if (selectedId == null) return;
+
+            UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
+                UIKeys.GENERAL_RENAME,
+                UIKeys.PANELS_MODALS_RENAME,
+                (str) -> {
+                    String targetId = this.homeFilmsList.getPath(str).toString();
+                    if (targetId.trim().isEmpty()) {
+                        this.getContext().notifyError(UIKeys.PANELS_MODALS_EMPTY);
+                        return;
+                    }
+                    if (this.homeFilmsList.hasInHierarchy(targetId)) {
+                        return;
+                    }
+                    this.getType().getRepository().rename(selectedId, targetId);
+
+                    for (FilmDocumentTab tab : this.filmDocumentTabs) {
+                        if (!tab.home && selectedId.equals(tab.filmId)) {
+                            tab.filmId = targetId;
+                        }
+                    }
+                    this.rebuildFilmDocumentTabs();
+
+                    if (this.data != null && selectedId.equals(this.data.getId())) {
+                        this.data.setId(targetId);
+                    }
+
+                    this.requestNames();
+                }
+            );
+
+            panel.text.setText(new DataPath(selectedId).getLast());
+            panel.text.filename();
+
+            UIOverlay.addOverlay(this.getContext(), panel);
+        });
+        this.homeDeleteCurrent = this.createHomeButton(UIKeys.FILM_CRUD_REMOVE, Icons.REMOVE, (b) ->
+        {
+            String selectedId = this.getSelectedHomeFilmId();
+            if (selectedId == null) return;
+
+            UIConfirmOverlayPanel panel = new UIConfirmOverlayPanel(
+                UIKeys.GENERAL_REMOVE,
+                UIKeys.PANELS_MODALS_REMOVE,
+                (confirm) ->
+                {
+                    if (confirm) {
+                        this.getType().getRepository().delete(selectedId);
+
+                        for (int i = this.filmDocumentTabs.size() - 1; i >= 0; i--) {
+                            FilmDocumentTab tab = this.filmDocumentTabs.get(i);
+                            if (!tab.home && selectedId.equals(tab.filmId)) {
+                                this.removeFilmDocumentTab(i);
+                            }
+                        }
+
+                        if (this.data != null && selectedId.equals(this.data.getId())) {
+                            this.fill(null);
+                        }
+
+                        this.requestNames();
+                    }
+                }
+            );
+
+            UIOverlay.addOverlay(this.getContext(), panel);
+        });
         this.updateHomeButtonsState();
 
         /* Icon bar buttons */
@@ -453,7 +623,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         });
         this.openRenderQueue.tooltip(UIKeys.FILM_OPEN_RENDER_QUEUE, Direction.LEFT);
 
-        this.openOverlay.tooltip(UIKeys.FILM_OPEN_MANAGER, Direction.LEFT);
+        this.openOverlay.removeFromParent();
         this.saveIcon.tooltip(UIKeys.FILM_SAVE, Direction.LEFT);
 
         this.toggleHorizontal = new UIIcon(this::getLayoutIcon, (b) -> this.openLayoutSelector())
@@ -499,7 +669,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         bottomIcons.relative(this).x(1F, -20).y(1F).wh(20, 60).anchorY(1F).column(0).stretch();
         bottomIcons.add(this.toggleHorizontal, this.layoutLock, this.layoutPresets);
-        this.filmTabsBar.relative(this.editor).x(0).y(0).w(1F).h(FILM_DOCUMENT_TABS_HEIGHT);
+        this.iconBar.relative(this).x(1F, -20).y(FILM_DOCUMENT_TABS_HEIGHT).w(20).h(1F, -FILM_DOCUMENT_TABS_HEIGHT).column(0).stretch();
+        this.filmTabsBar.relative(this).x(0).y(0).w(1F).h(FILM_DOCUMENT_TABS_HEIGHT);
         this.filmTabs.relative(this.filmTabsBar).x(8).y(0).w(1F, -16).h(FILM_DOCUMENT_TABS_HEIGHT).row(0).resize();
         this.filmTabsBar.add(this.filmTabs);
         this.homePage.relative(this.editor).x(0.5F, -250).y(FILM_DOCUMENT_TABS_HEIGHT).w(500).h(1F, -FILM_DOCUMENT_TABS_HEIGHT);
@@ -512,7 +683,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.homeFilmsSearch.relative(this.homePage).x(0.35F).y(HOME_BANNER_HEIGHT + 20).w(0.65F).h(1F, -(HOME_BANNER_HEIGHT + 20));
         this.homePage.add(new UIRenderable(this::renderHomeBanner), this.homeActionsPanel, this.homeFilmsSearch);
 
-        this.editor.add(this.main, this.editArea, this.preview, this.homePage, new UIRenderable(this::renderIcons), new UIRenderable(this::renderDropZoneHighlight), this.filmTabsBar);
+        this.editor.add(this.main, this.editArea, this.preview, this.homePage, new UIRenderable(this::renderIcons), new UIRenderable(this::renderDropZoneHighlight));
         for (String id : this.panelById.keySet())
         {
             UIDraggable handle = this.createPanelDragHandle(id);
@@ -520,7 +691,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             this.editor.add(handle);
         }
         this.main.add(this.cameraEditor, this.replayEditor, this.actionEditor, this.screenEditor, this.draggableMain, this.draggableEditor);
-        this.add(this.controller, new UIRenderable(this::renderDividers), bottomIcons);
+        this.add(this.controller, new UIRenderable(this::renderDividers), bottomIcons, this.filmTabsBar);
         this.overlay.namesList.setFileIcon(Icons.FILM);
         this.createHomeDocumentTab(true);
 
@@ -535,8 +706,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.keys().register(Keys.PREV_CLIP, () -> this.setCursor(this.data.camera.findPreviousTick(this.getCursor()))).active(active).category(editor);
         this.keys().register(Keys.NEXT, () -> this.setCursor(this.getCursor() + 1)).active(active).category(editor);
         this.keys().register(Keys.PREV, () -> this.setCursor(this.getCursor() - 1)).active(active).category(editor);
-        this.keys().register(Keys.UNDO, this::undo).category(editor);
-        this.keys().register(Keys.REDO, this::redo).category(editor);
+        this.keys().register(Keys.UNDO, this::undo).active(active).category(editor);
+        this.keys().register(Keys.REDO, this::redo).active(active).category(editor);
         this.keys().register(Keys.FLIGHT, this::toggleFlight).active(() -> this.data != null).category(modes);
         this.keys().register(Keys.LOOPING, () ->
         {
@@ -551,9 +722,9 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         {
             this.showPanel(MathUtils.cycler(this.getPanelIndex() + (Window.isShiftPressed() ? -1 : 1), this.panels));
             UIUtils.playClick();
-        }).category(editor);
+        }).active(active).category(editor);
 
-        this.openOverlay.context((menu) ->
+        this.saveIcon.context((menu) ->
         {
             if (this.data == null)
             {
@@ -2129,6 +2300,18 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     }
 
     @Override
+    public boolean canToggleVisibility()
+    {
+        return !this.showingHomePage;
+    }
+
+    @Override
+    public boolean canHideHUD()
+    {
+        return !this.showingHomePage;
+    }
+
+    @Override
     public ContentType getType()
     {
         return ContentType.FILMS;
@@ -2311,6 +2494,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     public Vector2i getLoopingRange()
     {
+        if (this.data == null)
+        {
+            return new Vector2i(0, 0);
+        }
+
         Clip clip = this.cameraEditor.getClip();
 
         int min = -1;
@@ -2877,6 +3065,67 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         return selected.toString();
     }
 
+    private void addFolderFromHome()
+    {
+        UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
+            UIKeys.PANELS_MODALS_ADD_FOLDER_TITLE,
+            UIKeys.PANELS_MODALS_ADD_FOLDER,
+            (str) -> {
+                String path = this.homeFilmsList.getPath(str).toString();
+                if (path.trim().isEmpty()) {
+                    this.getContext().notifyError(UIKeys.PANELS_MODALS_EMPTY);
+                    return;
+                }
+                this.getType().getRepository().addFolder(path, (bool) -> {
+                    if (bool) {
+                        this.requestNames();
+                    }
+                });
+            }
+        );
+
+        panel.text.filename();
+
+        UIOverlay.addOverlay(this.getContext(), panel);
+    }
+
+    private void copyHomeFilm()
+    {
+        String selectedId = this.getSelectedHomeFilmId();
+        if (selectedId == null) return;
+
+        this.getType().getRepository().load(selectedId, (film) -> {
+            if (film != null) {
+                Window.setClipboard(film.toData().asMap(), "_ContentType_" + this.getType().getId());
+            }
+        });
+    }
+
+    private void pasteHomeFilm(MapType data)
+    {
+        UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
+            UIKeys.GENERAL_ADD,
+            UIKeys.PANELS_MODALS_ADD,
+            (str) -> {
+                String targetId = this.homeFilmsList.getPath(str).toString();
+                if (targetId.trim().isEmpty()) {
+                    this.getContext().notifyError(UIKeys.PANELS_MODALS_EMPTY);
+                    return;
+                }
+                if (this.homeFilmsList.hasInHierarchy(targetId)) {
+                    return;
+                }
+
+                Film newFilm = (Film) this.getType().getRepository().create(targetId, data);
+                this.fill(newFilm);
+            }
+        );
+
+        panel.text.filename();
+
+        UIOverlay.addOverlay(this.getContext(), panel);
+    }
+
     private void handleHomeFilmsSelection(List<DataPath> list)
     {
         String selected = this.getSelectedHomeFilmId();
@@ -3082,7 +3331,12 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         if (tab.home)
         {
-            this.updateFilmDocumentView();
+            if (this.replayEditor != null && this.replayEditor.replays != null && this.replayEditor.replays.hasParent() && this.replayEditor.replays.getParent() instanceof UIOverlay overlay)
+            {
+                overlay.closeItself();
+            }
+
+            this.fill(null);
         }
         else
         {
@@ -3373,7 +3627,21 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         
         if (elapsed >= BANNER_DURATION)
         {
-            this.bannerIndex = (this.bannerIndex + 1) % this.homeBanners.size();
+            if (this.homeBanners.size() > 1)
+            {
+                if (this.bannerSequence.size() != this.homeBanners.size())
+                {
+                    this.regenerateBannerSequence();
+                }
+
+                this.sequenceIndex++;
+                if (this.sequenceIndex >= this.bannerSequence.size())
+                {
+                    this.sequenceIndex = 0;
+                    this.shuffleRemoteBanners();
+                }
+                this.bannerIndex = this.bannerSequence.get(this.sequenceIndex);
+            }
             this.lastBannerTicks = currentTicks;
             elapsed = 0;
         }
@@ -3397,7 +3665,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             textTransitionCurr = 1F;
         }
 
-        int prevIndex = (this.bannerIndex + this.homeBanners.size() - 1) % this.homeBanners.size();
+        int prevIndex = this.bannerSequence.isEmpty() ? 0 : this.bannerSequence.get((this.sequenceIndex + this.bannerSequence.size() - 1) % this.bannerSequence.size());
         BannerEntry current = this.homeBanners.get(this.bannerIndex);
         BannerEntry prev = this.homeBanners.get(prevIndex);
 
@@ -3415,6 +3683,27 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         context.batcher.box(dividerX, splitY + 1, dividerX + 1, pageY + pageH, Colors.A12);
         context.batcher.textShadow(L10n.lang("bbs.ui.film.home.actions").get(), pageX + 4, splitY + 6);
         context.batcher.textShadow(L10n.lang("bbs.ui.film.home.list").get(), dividerX + 4, splitY + 6);
+    }
+
+    private void regenerateBannerSequence()
+    {
+        this.bannerSequence.clear();
+        for (int i = 0; i < this.homeBanners.size(); i++)
+        {
+            this.bannerSequence.add(i);
+        }
+        this.shuffleRemoteBanners();
+        this.sequenceIndex = 0;
+        this.bannerIndex = 0; // Always start with local
+    }
+
+    private void shuffleRemoteBanners()
+    {
+        if (this.bannerSequence.size() > 2)
+        {
+            List<Integer> remote = this.bannerSequence.subList(1, this.bannerSequence.size());
+            Collections.shuffle(remote);
+        }
     }
 
     private void drawBanner(UIContext context, BannerEntry entry, int x, int y, int w, int h, float alpha, float textAlpha, boolean drawStripe)

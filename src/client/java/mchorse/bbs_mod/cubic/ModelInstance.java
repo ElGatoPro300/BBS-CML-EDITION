@@ -8,6 +8,7 @@ import mchorse.bbs_mod.cubic.data.model.Model;
 import mchorse.bbs_mod.cubic.data.model.ModelGroup;
 import mchorse.bbs_mod.cubic.model.ArmorSlot;
 import mchorse.bbs_mod.cubic.model.ArmorType;
+import mchorse.bbs_mod.cubic.model.IKChainConfig;
 import mchorse.bbs_mod.cubic.model.View;
 import mchorse.bbs_mod.cubic.model.bobj.BOBJModel;
 import mchorse.bbs_mod.cubic.physics.PhysBoneDefinition;
@@ -83,6 +84,7 @@ public class ModelInstance implements IModelInstance
     public List<ArmorSlot> itemsMain = new ArrayList<>();
     public List<ArmorSlot> itemsOff = new ArrayList<>();
     public List<PhysBoneDefinition> physBones = new ArrayList<>();
+    public List<IKChainConfig> ikChains = new ArrayList<>();
     public Map<String, String> flippedParts = new HashMap<>();
     public Map<ArmorType, ArmorSlot> armorSlots = new HashMap<>();
 
@@ -303,6 +305,29 @@ public class ModelInstance implements IModelInstance
 
             this.view.fromData(config.getMap("look_at"));
         }
+
+        /* IK chains */
+        if (config.has("ik_chains", BaseType.TYPE_LIST))
+        {
+            this.ikChains.clear();
+
+            ListType list = config.get("ik_chains").asList();
+
+            for (int i = 0; i < list.size(); i++)
+            {
+                BaseType type = list.get(i);
+
+                if (!type.isMap())
+                {
+                    continue;
+                }
+
+                IKChainConfig chain = new IKChainConfig(String.valueOf(i));
+
+                chain.fromData(type);
+                this.ikChains.add(chain);
+            }
+        }
     }
 
     public MapType toConfig()
@@ -429,6 +454,19 @@ public class ModelInstance implements IModelInstance
         if (this.actions != null && !this.actions.geckoAnimations.isDefault())
         {
             config.put("animations", this.actions.toData());
+        }
+
+        /* IK chains */
+        if (!this.ikChains.isEmpty())
+        {
+            ListType ikList = new ListType();
+
+            for (IKChainConfig chain : this.ikChains)
+            {
+                ikList.add(chain.toData());
+            }
+
+            config.put("ik_chains", ikList);
         }
 
         return config;

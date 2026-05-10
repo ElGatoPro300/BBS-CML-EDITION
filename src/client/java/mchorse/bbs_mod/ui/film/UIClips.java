@@ -21,7 +21,9 @@ import mchorse.bbs_mod.ui.film.clips.renderer.IUIClipRenderer;
 import mchorse.bbs_mod.ui.film.clips.renderer.UIClipRenderers;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
+import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
+import mchorse.bbs_mod.ui.framework.elements.context.UISimpleContextMenu;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeEditor;
 import mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D;
 import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
@@ -29,11 +31,17 @@ import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.Scale;
 import mchorse.bbs_mod.ui.utils.Scroll;
 import mchorse.bbs_mod.ui.utils.ScrollDirection;
+import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.UIUtils;
+import mchorse.bbs_mod.ui.utils.context.ColorfulContextAction;
+import mchorse.bbs_mod.ui.utils.context.ContextAction;
+import mchorse.bbs_mod.ui.utils.context.ContextCategoryAction;
 import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
+import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.presets.UICopyPasteController;
 import mchorse.bbs_mod.ui.utils.presets.UIPresetContextMenu;
+import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.clips.Clip;
 import mchorse.bbs_mod.utils.clips.Clips;
@@ -53,6 +61,7 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -402,16 +411,7 @@ public class UIClips extends UIElement
 
         context.replaceContextMenu((add) ->
         {
-            add.autoKeys(UIKeys.CAMERA_TIMELINE_KEYS_CLIPS);
-
-            for (Link type : this.factory.getKeys())
-            {
-                IKey typeKey = UIKeys.CAMERA_TIMELINE_CONTEXT_ADD_CLIP_TYPE.format(UIKeys.C_CLIP.get(type));
-                ClipFactoryData data = this.factory.getData(type);
-
-                add.action(data.icon, typeKey, data.color, () -> this.addClip(type, preview.x, preview.y, preview.z));
-            }
-
+            add.custom(new UIClipsAddContextMenu(this, preview));
             add.onClose((m) -> this.addPreview = null);
         });
 
@@ -1826,5 +1826,236 @@ public class UIClips extends UIElement
     private interface ClipTransformStrategy
     {
         public void apply(List<Clip> others, List<Clip> grabbedClips, List<Vector3i> grabbedData, int dx, int dy);
+    }
+
+    private static class UITabButton extends UIButton
+    {
+        private final Icon icon;
+        private final IKey tooltip;
+        private boolean active;
+        private boolean noSeparator;
+
+        public UITabButton(IKey label, IKey tooltip, Icon icon, Consumer<UIButton> callback)
+        {
+            super(label, callback);
+            this.tooltip = tooltip;
+            this.icon = icon;
+            this.tooltip(this.tooltip, Direction.TOP);
+        }
+
+        public void noSeparator()
+        {
+            this.noSeparator = true;
+        }
+
+        public void setActive(boolean active)
+        {
+            this.active = active;
+        }
+
+        @Override
+        protected void renderSkin(UIContext context)
+        {
+            boolean enabled = this.isEnabled();
+            int primary = BBSSettings.primaryColor.get();
+            int color = this.active ? primary : 0;
+            int iconColor = this.active ? Colors.WHITE : 0xddffffff;
+
+            if (!enabled)
+            {
+                iconColor = 0x80404040;
+            }
+            else if (this.hover)
+            {
+                color = this.active ? Colors.mulRGB(primary, 0.9F) : Colors.A25;
+                iconColor = Colors.WHITE;
+            }
+
+            if (color != 0)
+            {
+                this.area.render(context.batcher, this.active ? (color | Colors.A100) : color);
+            }
+
+            if (!this.noSeparator)
+            {
+                context.batcher.box(this.area.ex() - 1, this.area.y + 2, this.area.ex(), this.area.ey() - 2, 0x22ffffff);
+            }
+
+            context.batcher.icon(this.icon, iconColor, this.area.mx(), this.area.my(), 0.5F, 0.5F);
+        }
+    }
+
+    private enum ClipTab
+    {
+        CAMERA,
+        RESOURCE,
+        SCREEN,
+        ANCHOR,
+        EXTRAS
+    }
+
+    private static class UIClipsAddContextMenu extends UISimpleContextMenu
+    {
+        private final UIElement tabs;
+        private final UIElement separator;
+        private final UIButton camera;
+        private final UIButton resource;
+        private final UIButton screen;
+        private final UIButton anchor;
+        private final UIButton extras;
+
+        private final List<ContextAction> cameraActions = new ArrayList<>();
+        private final List<ContextAction> resourceActions = new ArrayList<>();
+        private final List<ContextAction> screenActions = new ArrayList<>();
+        private final List<ContextAction> anchorActions = new ArrayList<>();
+        private final List<ContextAction> extrasActions = new ArrayList<>();
+
+        private ClipTab tab = ClipTab.CAMERA;
+
+        public UIClipsAddContextMenu(UIClips uiClips, Vector3i preview)
+        {
+            super();
+
+            List<Link> cameraGroup = List.of(Link.bbs("idle"), Link.bbs("path"), Link.bbs("keyframe"), Link.bbs("dolly"));
+            List<Link> resourceGroup = List.of(Link.bbs("curve"), Link.bbs("audio"), Link.bbs("video"), Link.bbs("shake"), Link.bbs("translate"), Link.bbs("angle"));
+            List<Link> screenGroup = List.of(Link.bbs("subtitle"), Link.bbs("hotbar"));
+            List<Link> anchorGroup = List.of(Link.bbs("look"), Link.bbs("orbit"), Link.bbs("tracker"));
+
+            List<Link> allKeys = new ArrayList<>(uiClips.factory.getKeys());
+
+            for (Link type : allKeys)
+            {
+                IKey typeKey = UIKeys.CAMERA_TIMELINE_CONTEXT_ADD_CLIP_TYPE.format(UIKeys.C_CLIP.get(type));
+                ClipFactoryData data = uiClips.factory.getData(type);
+                Runnable runnable = () -> uiClips.addClip(type, preview.x, preview.y, preview.z);
+                ContextAction action = new ColorfulContextAction(data.icon, typeKey, runnable, data.color);
+
+                if (cameraGroup.contains(type))
+                {
+                    cameraActions.add(action);
+                }
+                else if (resourceGroup.contains(type))
+                {
+                    resourceActions.add(action);
+                }
+                else if (screenGroup.contains(type))
+                {
+                    screenActions.add(action);
+                }
+                else if (anchorGroup.contains(type))
+                {
+                    anchorActions.add(action);
+                }
+                else
+                {
+                    extrasActions.add(action);
+                }
+            }
+
+            this.camera = new UITabButton(IKey.EMPTY, UIKeys.CAMERA_TIMELINE_CLIPS_TABS_CAMERA, Icons.CAMERA, (b) -> this.setTab(ClipTab.CAMERA));
+            this.resource = new UITabButton(IKey.EMPTY, UIKeys.CAMERA_TIMELINE_CLIPS_TABS_RESOURCE, Icons.FOLDER, (b) -> this.setTab(ClipTab.RESOURCE));
+            this.screen = new UITabButton(IKey.EMPTY, UIKeys.CAMERA_TIMELINE_CLIPS_TABS_SCREEN, Icons.CONSOLE, (b) -> this.setTab(ClipTab.SCREEN));
+            this.anchor = new UITabButton(IKey.EMPTY, UIKeys.CAMERA_TIMELINE_CLIPS_TABS_ANCHOR, Icons.ORBIT, (b) -> this.setTab(ClipTab.ANCHOR));
+            this.extras = new UITabButton(IKey.EMPTY, UIKeys.CAMERA_TIMELINE_CLIPS_TABS_EXTRAS, Icons.MORE, (b) -> this.setTab(ClipTab.EXTRAS));
+
+            ((UITabButton) this.extras).noSeparator();
+
+            this.tabs = UI.row(0, this.camera, this.resource, this.screen, this.anchor, this.extras);
+            this.separator = new UIElement()
+            {
+                @Override
+                public void render(UIContext context)
+                {
+                    context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0x44ffffff);
+                }
+            };
+
+            this.tabs.relative(this).w(1F).h(20).row(0).resize();
+            this.separator.relative(this).xy(0, 20).w(1F).h(1);
+            this.actions.relative(this).xy(0, 21).w(1F).h(1F, -21);
+            this.add(this.tabs, this.separator);
+
+            this.camera.setEnabled(!this.cameraActions.isEmpty());
+            this.resource.setEnabled(!this.resourceActions.isEmpty());
+            this.screen.setEnabled(!this.screenActions.isEmpty());
+            this.anchor.setEnabled(!this.anchorActions.isEmpty());
+            this.extras.setEnabled(!this.extrasActions.isEmpty());
+
+            if (!this.cameraActions.isEmpty()) this.setTab(ClipTab.CAMERA);
+            else if (!this.resourceActions.isEmpty()) this.setTab(ClipTab.RESOURCE);
+            else if (!this.screenActions.isEmpty()) this.setTab(ClipTab.SCREEN);
+            else if (!this.anchorActions.isEmpty()) this.setTab(ClipTab.ANCHOR);
+            else this.setTab(ClipTab.EXTRAS);
+        }
+
+        private void setTab(ClipTab tab)
+        {
+            this.tab = tab;
+            ((UITabButton) this.camera).setActive(tab == ClipTab.CAMERA);
+            ((UITabButton) this.resource).setActive(tab == ClipTab.RESOURCE);
+            ((UITabButton) this.screen).setActive(tab == ClipTab.SCREEN);
+            ((UITabButton) this.anchor).setActive(tab == ClipTab.ANCHOR);
+            ((UITabButton) this.extras).setActive(tab == ClipTab.EXTRAS);
+
+            List<ContextAction> activeList;
+            switch (tab)
+            {
+                case CAMERA: activeList = this.cameraActions; break;
+                case RESOURCE: activeList = this.resourceActions; break;
+                case SCREEN: activeList = this.screenActions; break;
+                case ANCHOR: activeList = this.anchorActions; break;
+                default: activeList = this.extrasActions; break;
+            }
+
+            this.actions.setList(new ArrayList<>(activeList));
+
+            UIContext context = this.getContext();
+            if (context != null)
+            {
+                this.w(this.calculateWidth(context));
+                this.h(this.calculateHeight());
+                this.bounds(context.menu.overlay, 5);
+                this.resize();
+            }
+        }
+
+        @Override
+        public void setMouse(UIContext context)
+        {
+            int w = this.calculateWidth(context);
+            int h = this.calculateHeight();
+
+            this.xy(context.mouseX(), context.mouseY()).w(w).h(h).bounds(context.menu.overlay, 5);
+            this.resize();
+        }
+
+        private int calculateWidth(UIContext context)
+        {
+            int w = 120;
+
+            for (ContextAction action : this.cameraActions) w = Math.max(w, action.getWidth(context.batcher.getFont()));
+            for (ContextAction action : this.resourceActions) w = Math.max(w, action.getWidth(context.batcher.getFont()));
+            for (ContextAction action : this.screenActions) w = Math.max(w, action.getWidth(context.batcher.getFont()));
+            for (ContextAction action : this.anchorActions) w = Math.max(w, action.getWidth(context.batcher.getFont()));
+            for (ContextAction action : this.extrasActions) w = Math.max(w, action.getWidth(context.batcher.getFont()));
+
+            return w % 4 == 0 ? w : w + (4 - w % 4);
+        }
+
+        private int calculateHeight()
+        {
+            int actionsSize;
+            switch (this.tab)
+            {
+                case CAMERA: actionsSize = this.cameraActions.size(); break;
+                case RESOURCE: actionsSize = this.resourceActions.size(); break;
+                case SCREEN: actionsSize = this.screenActions.size(); break;
+                case ANCHOR: actionsSize = this.anchorActions.size(); break;
+                default: actionsSize = this.extrasActions.size(); break;
+            }
+
+            actionsSize = Math.max(actionsSize, 1);
+            return 21 + actionsSize * this.actions.scroll.scrollItemSize;
+        }
     }
 }
