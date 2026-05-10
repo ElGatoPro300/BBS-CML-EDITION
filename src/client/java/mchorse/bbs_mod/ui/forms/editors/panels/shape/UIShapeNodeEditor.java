@@ -57,7 +57,6 @@ import mchorse.bbs_mod.utils.presets.PresetManager;
 
 import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.render.BufferBuilder;
-
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.render.Tessellator;

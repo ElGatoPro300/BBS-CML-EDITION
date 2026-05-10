@@ -12,8 +12,6 @@ import net.minecraft.client.render.DiffuseLighting;
 
 import org.joml.Vector3f;
 
-
-
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;

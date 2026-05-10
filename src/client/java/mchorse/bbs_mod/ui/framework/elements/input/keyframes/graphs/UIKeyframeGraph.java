@@ -25,11 +25,9 @@ import mchorse.bbs_mod.utils.keyframes.factories.IKeyframeFactory;
 
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.render.BufferBuilder;
-
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.render.Tessellator;
-import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.BufferAllocator;
 

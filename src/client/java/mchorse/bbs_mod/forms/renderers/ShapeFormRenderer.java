@@ -19,9 +19,7 @@ import mchorse.bbs_mod.utils.math.Noise;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.gl.ShaderProgram;
-
 import net.minecraft.client.render.BufferBuilder;
-
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;

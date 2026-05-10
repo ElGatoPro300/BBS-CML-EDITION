@@ -14,6 +14,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.entity.LivingEntity;
 import net.minecraft.item.ItemDisplayContext;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.RotationAxis;
@@ -97,7 +98,7 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
 
         consumers.setSubstitute(BBSRendering.getColorConsumer(BlockFormRenderer.color));
         MinecraftClient.getInstance().getItemRenderer().renderItem(
-            context.entity instanceof net.minecraft.entity.LivingEntity ? (net.minecraft.entity.LivingEntity) context.entity : null,
+            context.entity instanceof LivingEntity ? (LivingEntity) context.entity : null,
             this.form.stack.get(),
             mode,
             false,

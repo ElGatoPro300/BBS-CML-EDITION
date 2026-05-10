@@ -48,7 +48,6 @@ import mchorse.bbs_mod.utils.iris.ShaderCurves;
 import mchorse.bbs_mod.utils.sodium.SodiumUtils;
 
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
-
 import net.fabricmc.loader.api.FabricLoader;
 
 import net.minecraft.client.MinecraftClient;
