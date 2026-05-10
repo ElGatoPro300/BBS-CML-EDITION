@@ -42,14 +42,13 @@ import mchorse.bbs_mod.utils.colors.Colors;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.GlUniform;
 import net.minecraft.client.gl.ShaderProgram;
-import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.BufferBuilder;
-import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
+import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.render.VertexFormat;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.RotationAxis;
@@ -59,7 +58,6 @@ import org.joml.Vector3d;
 import org.joml.Vector3f;
 
 import com.mojang.blaze3d.opengl.GlStateManager;
-import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.logging.LogUtils;
 
@@ -276,16 +274,6 @@ public class UIModelEditorRenderer extends UIModelRenderer
             {
                 MatrixCacheEntry entry = matrixCache.get(this.selectedBone);
 
-                    MatrixStack stack = new MatrixStack();
-                    
-                    stack.push();
-                    MatrixStackUtils.multiply(stack, matrix);
-                    
-                    GL11.glDisable(GL11.GL_DEPTH_TEST);
-                    Gizmo.INSTANCE.render(stack);
-                    stack.pop();
-                    
-                    GL11.glEnable(GL11.GL_DEPTH_TEST);
                 if (entry != null)
                 {
                     Matrix4f matrix = entry.matrix();
@@ -303,14 +291,14 @@ public class UIModelEditorRenderer extends UIModelRenderer
             {
                 this.lastGizmoMatrix.set(gizmoMatrix);
                 this.hasGizmoMatrix = true;
-                MatrixStack stack = context.batcher.getContext().getMatrices();
+                MatrixStack stack = new MatrixStack();
 
                 stack.push();
                 MatrixStackUtils.multiply(stack, gizmoMatrix);
 
-                RenderSystem.disableDepthTest();
+                GlStateManager._disableDepthTest();
                 Gizmo.INSTANCE.render(stack);
-                RenderSystem.enableDepthTest();
+                GlStateManager._enableDepthTest();
 
                 stack.pop();
             }
@@ -422,7 +410,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
         }
 
         Matrix4f cubeMatrix = this.getCubePivotMatrix(cache);
-        Matrix4f uiMatrix = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
+         Matrix4f uiMatrix = new Matrix4f();
 
         if (cubeMatrix == null)
         {
@@ -443,8 +431,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
         }
 
         Tessellator tessellator = Tessellator.getInstance();
-        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
-        RenderSystem.enableBlend();
+        GlStateManager._enableBlend();
         BufferBuilder builder = tessellator.begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
 
         for (ModelQuad quad : this.selectedCube.quads)
@@ -468,7 +455,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
             }
         }
 
-        BufferRenderer.drawWithGlobalProgram(builder.end());
+        RenderLayers.debugFilledBox().draw(builder.end());
     }
 
     private Matrix4f getCubePivotMatrix(MatrixCache cache)
@@ -580,7 +567,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
             return;
         }
 
-        Matrix4f uiMatrix = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
+         Matrix4f uiMatrix = new Matrix4f();
 
         /* ---- target crosshair ---- */
         Vector3f targetWorld = new Vector3f(this.activeIKChain.target.get());
@@ -606,9 +593,8 @@ public class UIModelEditorRenderer extends UIModelRenderer
         gizmoMat.rotateY(MathUtils.PI);
 
         BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
-        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
-        RenderSystem.enableBlend();
-        RenderSystem.disableDepthTest();
+        GlStateManager._enableBlend();
+        GlStateManager._disableDepthTest();
 
         /* --- magenta crosshair at target --- */
         float cs = 0.12F * 16F;   /* crosshair arm length in render units */
@@ -684,10 +670,10 @@ public class UIModelEditorRenderer extends UIModelRenderer
             }
         }
 
-        BufferRenderer.drawWithGlobalProgram(builder.end());
+        RenderLayers.debugFilledBox().draw(builder.end());
 
-        RenderSystem.enableDepthTest();
-        RenderSystem.disableBlend();
+        GlStateManager._enableDepthTest();
+        GlStateManager._disableBlend();
     }
 
 

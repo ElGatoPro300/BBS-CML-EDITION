@@ -165,8 +165,7 @@ public class UIFormList extends UIElement
             public void render(UIContext context)
             {
                 super.render(context);
-                context.batcher.getContext().getMatrices().push();
-                context.batcher.getContext().getMatrices().translate(0, 0, 200);
+                context.batcher.getContext().getMatrices().pushMatrix();
                 this.area.render(context.batcher, Colors.CONTROL_BAR);
                 super.render(context);
 
@@ -185,7 +184,7 @@ public class UIFormList extends UIElement
                     context.batcher.textShadow(valueId, x, y + 10, Colors.LIGHTEST_GRAY);
                 }
 
-                context.batcher.getContext().getMatrices().pop();
+                context.batcher.getContext().getMatrices().popMatrix();
             }
         };
         this.search = new UITextbox(100, this::search).placeholder(UIKeys.FORMS_LIST_SEARCH);

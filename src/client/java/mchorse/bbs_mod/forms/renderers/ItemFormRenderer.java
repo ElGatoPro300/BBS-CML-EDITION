@@ -14,7 +14,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.item.ModelTransformationMode;
+import net.minecraft.item.ItemDisplayContext;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.RotationAxis;
 
@@ -70,7 +70,7 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
         int light = context.light;
         boolean isDropped = context.type == FormRenderType.ITEM;
         boolean useDroppedMode = this.shouldUseDroppedMode(isDropped);
-        ModelTransformationMode mode = this.getRenderMode(useDroppedMode);
+        ItemDisplayContext mode = this.getRenderMode(useDroppedMode);
 
         context.stack.push();
         this.applyDroppedAnimation(context, useDroppedMode);
@@ -96,7 +96,18 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
         BlockFormRenderer.color.mul(set);
 
         consumers.setSubstitute(BBSRendering.getColorConsumer(BlockFormRenderer.color));
-        MinecraftClient.getInstance().getItemRenderer().renderItem(this.form.stack.get(), mode, light, context.overlay, context.stack, consumers, context.entity.getWorld(), 0);
+        MinecraftClient.getInstance().getItemRenderer().renderItem(
+            context.entity instanceof net.minecraft.entity.LivingEntity ? (net.minecraft.entity.LivingEntity) context.entity : null,
+            this.form.stack.get(),
+            mode,
+            false,
+            context.stack,
+            consumers,
+            context.entity != null ? context.entity.getWorld() : null,
+            light,
+            context.overlay,
+            0
+        );
         consumers.draw();
         consumers.setSubstitute(null);
 
@@ -112,7 +123,7 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
         return isDropped || this.form.sameAnimationWhenDropped.get();
     }
 
-    private ModelTransformationMode getRenderMode(boolean useDroppedMode)
+    private ItemDisplayContext getRenderMode(boolean useDroppedMode)
     {
         if (useDroppedMode)
         {
@@ -125,7 +136,7 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
                 LOGGER.debug("Dropped context for form {} using GROUND transform", this.form.getFormId());
             }
 
-            return ModelTransformationMode.GROUND;
+            return ItemDisplayContext.GROUND;
         }
 
         return this.form.modelTransform.get();

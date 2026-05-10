@@ -44,8 +44,45 @@ import org.joml.Vector3f;
 import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 
-public class ModelBlockEntityRenderer implements BlockEntityRenderer<ModelBlockEntity>
+import net.minecraft.client.render.block.entity.state.BlockEntityRenderState;
+import net.minecraft.client.render.state.CameraRenderState;
+import net.minecraft.client.render.command.OrderedRenderCommandQueue;
+import net.minecraft.client.render.OverlayTexture;
+
+public class ModelBlockEntityRenderer implements BlockEntityRenderer<ModelBlockEntity, ModelBlockEntityRenderer.RenderState>
 {
+    public static class RenderState extends BlockEntityRenderState
+    {
+        public ModelBlockEntity entity;
+        public float tickDelta;
+        public int light;
+        public int overlay;
+    }
+
+    @Override
+    public RenderState createRenderState()
+    {
+        return new RenderState();
+    }
+
+    @Override
+    public void extractRenderState(ModelBlockEntity blockEntity, RenderState state, float tickProgress)
+    {
+        state.entity = blockEntity;
+        state.tickDelta = tickProgress;
+        state.light = WorldRenderer.getLightmapCoordinates(blockEntity.getWorld(), blockEntity.getPos());
+        state.overlay = OverlayTexture.DEFAULT_UV;
+    }
+
+    @Override
+    public void render(RenderState state, MatrixStack matrices, OrderedRenderCommandQueue queue, CameraRenderState cameraState)
+    {
+        if (state.entity != null)
+        {
+            this.render(state.entity, state.tickDelta, matrices, null, state.light, state.overlay);
+        }
+    }
+
     private static ActorEntity entity;
 
     public static void renderShadow(VertexConsumerProvider provider, MatrixStack matrices, float tickDelta, double x, double y, double z, float tx, float ty, float tz)

@@ -76,9 +76,8 @@ public class VanillaParticleFormRenderer extends FormRenderer<VanillaParticleFor
     {
         super.render3D(context);
 
-        Matrix4f positionMatrix = new Matrix4f(new Matrix4f());
-        Vector3f translation = positionMatrix.getTranslation(new Vector3f());
         Matrix4f positionMatrix;
+        Vector3f translation;
 
         if (context.type == FormRenderType.PREVIEW)
         {
@@ -87,7 +86,7 @@ public class VanillaParticleFormRenderer extends FormRenderer<VanillaParticleFor
             positionMatrix = new Matrix4f().rotation(realCamera.getRotation());
             positionMatrix.mul(context.stack.peek().getPositionMatrix());
 
-            Vector3f translation = positionMatrix.getTranslation(new Vector3f());
+            translation = positionMatrix.getTranslation(new Vector3f());
 
             this.pos.set(
                 translation.x + (float) realCamera.getPos().x,
@@ -99,7 +98,7 @@ public class VanillaParticleFormRenderer extends FormRenderer<VanillaParticleFor
         {
             positionMatrix = new Matrix4f(context.stack.peek().getPositionMatrix());
 
-            Vector3f translation = positionMatrix.getTranslation(new Vector3f());
+            translation = positionMatrix.getTranslation(new Vector3f());
 
             this.pos.set(
                 translation.x + context.camera.position.x,

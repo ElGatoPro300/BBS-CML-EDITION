@@ -160,7 +160,7 @@ public class Window
         long cursor = getOrCreateCursor(type);
         if (cursor != 0L && activeCursor != cursor)
         {
-            GLFW.glfwSetCursor(getWindow(), cursor);
+            GLFW.glfwSetCursor(getWindow().getHandle(), cursor);
             activeCursor = cursor;
         }
     }

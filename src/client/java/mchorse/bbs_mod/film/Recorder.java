@@ -25,7 +25,7 @@ import mchorse.bbs_mod.utils.joml.Matrices;
 import mchorse.bbs_mod.utils.joml.Vectors;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
 
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
@@ -34,7 +34,7 @@ import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.render.VertexFormat;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.BufferAllocator;
 import net.minecraft.client.util.math.MatrixStack;
@@ -82,9 +82,7 @@ public class Recorder extends WorldFilmController
         float x = (float) (position.point.x - camera.getCameraPos().x);
         float y = (float) (position.point.y - camera.getCameraPos().y);
         float z = (float) (position.point.z - camera.getCameraPos().z);
-        float x = (float) (position.point.x - camera.getPos().x);
-        float y = (float) (position.point.y - camera.getPos().y);
-        float z = (float) (position.point.z - camera.getPos().z);
+
         float fov = MathUtils.toRad(position.angle.fov);
         float aspect = BBSRendering.getVideoWidth() / (float) BBSRendering.getVideoHeight();
         float distance = 5.5F;

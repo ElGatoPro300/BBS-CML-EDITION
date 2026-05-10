@@ -157,7 +157,7 @@ public class GunItemRenderer implements SpecialModelRenderer<ItemStack>
         }
 
         @Override
-        public SpecialModelRenderer<?> bake(LoadedEntityModels config)
+        public SpecialModelRenderer<?> bake(SpecialModelRenderer.BakeContext context)
         {
             return BBSModClient.getGunItemRenderer();
         }

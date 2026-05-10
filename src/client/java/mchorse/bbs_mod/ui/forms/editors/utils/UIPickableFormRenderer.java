@@ -34,7 +34,6 @@ import org.joml.Vector3d;
 import org.joml.Vector3f;
 
 import com.mojang.blaze3d.opengl.GlStateManager;
-import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 
 import org.lwjgl.opengl.GL11;
@@ -156,9 +155,9 @@ public class UIPickableFormRenderer extends UIFormRenderer
             }
 
             Gizmo.INSTANCE.renderStencil(new MatrixStack(), this.stencilMap);
-            RenderSystem.disableCull();
+            GlStateManager._disableCull();
             Gizmo.INSTANCE.renderStencil(stack, this.stencilMap);
-            RenderSystem.enableCull();
+            GlStateManager._enableCull();
 
             stack.pop();
 
@@ -180,13 +179,12 @@ public class UIPickableFormRenderer extends UIFormRenderer
 
     private void prepareGizmoRenderState()
     {
-        RenderSystem.depthMask(true);
-        RenderSystem.colorMask(true, true, true, true);
-        RenderSystem.enableDepthTest();
-        RenderSystem.depthFunc(GL11.GL_LEQUAL);
-        RenderSystem.disableBlend();
-        RenderSystem.disableCull();
-        RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
+        GlStateManager._depthMask(true);
+        GlStateManager._colorMask(true, true, true, true);
+        GlStateManager._enableDepthTest();
+        GlStateManager._depthFunc(GL11.GL_LEQUAL);
+        GlStateManager._disableBlend();
+        GlStateManager._disableCull();
     }
 
     private void renderAxes(UIContext context)
@@ -212,11 +210,11 @@ public class UIPickableFormRenderer extends UIFormRenderer
             GlStateManager._disableDepthTest();
             Gizmo.INSTANCE.render(stack);
             GlStateManager._enableDepthTest();
-            RenderSystem.disableCull();
-            RenderSystem.disableDepthTest();
+            GlStateManager._disableCull();
+            GlStateManager._disableDepthTest();
             Gizmo.INSTANCE.render(stack);
-            RenderSystem.enableDepthTest();
-            RenderSystem.enableCull();
+            GlStateManager._enableDepthTest();
+            GlStateManager._enableCull();
         }
 
         stack.pop();

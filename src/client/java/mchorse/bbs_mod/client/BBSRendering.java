@@ -48,7 +48,7 @@ import mchorse.bbs_mod.utils.iris.ShaderCurves;
 import mchorse.bbs_mod.utils.sodium.SodiumUtils;
 
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
-import net.fabricmc.fabric.impl.client.rendering.WorldRenderContextImpl;
+
 import net.fabricmc.loader.api.FabricLoader;
 
 import net.minecraft.client.MinecraftClient;
@@ -65,6 +65,7 @@ import net.irisshaders.iris.uniforms.custom.cached.CachedUniform;
 
 import org.joml.Matrix4f;
 
+import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.ProjectionType;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.systems.VertexSorter;
@@ -381,8 +382,7 @@ public class BBSRendering
         MinecraftClient mc = MinecraftClient.getInstance();
         UIBaseMenu currentMenu = UIScreen.getCurrentMenu();
 
-        Matrix4f cache = new Matrix4f(RenderSystem.getProjectionMatrix());
-        ProjectionType cacheType = RenderSystem.getProjectionType();
+
 
         if (BBSModClient.getCameraController().getCurrent() instanceof PlayCameraController controller)
         {
@@ -392,9 +392,9 @@ public class BBSRendering
             Area area = new Area(0, 0, window.getScaledWidth(), window.getScaledHeight());
             Matrix4f ortho = new Matrix4f().ortho(0, area.w, area.h, 0, -1000, 3000);
 
-            RenderSystem.setProjectionMatrix(ortho, ProjectionType.ORTHOGRAPHIC);
+
             renderHudOverlays(batcher, controller.getContext(), area.w, area.h);
-            VideoRenderer.renderClips(batcher.getContext().getMatrices(), batcher, controller.getContext().clips.getClips(controller.getContext().relativeTick), controller.getContext().relativeTick, true, area, area, null, area.w, area.h, false);
+            VideoRenderer.renderClips(new MatrixStack(), batcher, controller.getContext().clips.getClips(controller.getContext().relativeTick), controller.getContext().relativeTick, true, area, area, null, area.w, area.h, false);
 
             if (controller.screenClips != null)
             {
@@ -408,7 +408,7 @@ public class BBSRendering
                 ScreenEffectRenderer.render(batcher, controller.getContext(), area.w, area.h);
             }
 
-            RenderSystem.setProjectionMatrix(cache, cacheType);
+
         }
 
         if (BBSModClient.getVideoRecorder().isRecording() && BBSModClient.getCameraController().getCurrent() instanceof CameraWorkCameraController controller)
@@ -438,7 +438,7 @@ public class BBSRendering
                 Area fullScreen = new Area(0, 0, window.getScaledWidth(), window.getScaledHeight());
                 Matrix4f ortho = new Matrix4f().ortho(0, window.getScaledWidth(), window.getScaledHeight(), 0, -1000, 3000);
 
-                RenderSystem.setProjectionMatrix(ortho, ProjectionType.ORTHOGRAPHIC);
+
                 renderHudOverlays(offscreenBatcher, panel.getRunner().getContext(), fullScreen.w, fullScreen.h);
                 VideoRenderer.renderClips(new MatrixStack(), offscreenBatcher, panel.getData().camera.getClips(panel.getCursor()), panel.getCursor(), panel.getRunner().isRunning(), fullScreen, fullScreen, null, window.getScaledWidth(), window.getScaledHeight(), false);
 
@@ -451,7 +451,7 @@ public class BBSRendering
 
                 ScreenEffectRenderer.render(offscreenBatcher, panel.getRunner().getContext(), window.getScaledWidth(), window.getScaledHeight());
 
-                RenderSystem.setProjectionMatrix(cache, cacheType);
+
             }
         }
 
@@ -880,9 +880,9 @@ public class BBSRendering
             return;
         }
 
-        RenderSystem.disableDepthTest();
+        GlStateManager._disableDepthTest();
 
-        MatrixStack matrices = batcher.getContext().getMatrices();
+        MatrixStack matrices = new MatrixStack();
         int subtitleIndex = 0;
         int hotbarIndex = 0;
 
@@ -903,6 +903,6 @@ public class BBSRendering
             }
         }
 
-        RenderSystem.enableDepthTest();
+        GlStateManager._enableDepthTest();
     }
 }
