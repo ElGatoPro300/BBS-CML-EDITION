@@ -6,9 +6,7 @@ import mchorse.bbs_mod.ui.framework.elements.utils.EventPropagation;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.resizers.Flex;
 import mchorse.bbs_mod.utils.colors.Colors;
-
 import org.joml.Vector2i;
-
 import org.lwjgl.glfw.GLFW;
 
 import java.util.HashMap;
@@ -17,7 +15,6 @@ import java.util.Map;
 public class UIOverlay extends UIElement
 {
     private static final Map<String, Vector2i> offsets = new HashMap<>();
-    private static final Map<String, Vector2i> sizes = new HashMap<>();
 
     private int background = Colors.A50;
 
@@ -99,23 +96,14 @@ public class UIOverlay extends UIElement
         }
 
         Flex flex = panel.getFlex();
-        String key = panel.getClass().getSimpleName();
         Vector2i offset = offsets.get(panel.getClass().getSimpleName());
-        Vector2i size = sizes.get(key);
 
         panel.setInitialOffset(flex.x.offset, flex.y.offset);
-        panel.setInitialSizeOffset(flex.w.offset, flex.h.offset);
 
         if (offset != null)
         {
             flex.x.offset = offset.x;
             flex.y.offset = offset.y;
-        }
-
-        if (size != null)
-        {
-            flex.w.offset = size.x;
-            flex.h.offset = size.y;
         }
 
         overlay.full(context.menu.overlay);
@@ -158,11 +146,8 @@ public class UIOverlay extends UIElement
 
             /* Save offset */
             Vector2i offset = new Vector2i(element.getFlex().x.offset, element.getFlex().y.offset);
-            Vector2i size = new Vector2i(element.getFlex().w.offset, element.getFlex().h.offset);
-            String key = element.getClass().getSimpleName();
 
-            offsets.put(key, offset);
-            sizes.put(key, size);
+            offsets.put(element.getClass().getSimpleName(), offset);
         }
     }
 

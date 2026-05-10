@@ -2,13 +2,11 @@ package mchorse.bbs_mod.cubic.render;
 
 import mchorse.bbs_mod.cubic.data.model.Model;
 import mchorse.bbs_mod.cubic.data.model.ModelGroup;
-import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
-
+import mchorse.bbs_mod.utils.MathUtils;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.RotationAxis;
-
 import org.joml.Vector3f;
 
 public interface ICubicRenderer
@@ -16,14 +14,14 @@ public interface ICubicRenderer
     public static void translateGroup(MatrixStack stack, ModelGroup group)
     {
         Vector3f translate = group.current.translate;
-        Vector3f pivot = group.current.pivot;
+        Vector3f pivot = group.initial.translate;
 
         stack.translate(-(translate.x - pivot.x) / 16F, (translate.y - pivot.y) / 16F, (translate.z - pivot.z) / 16F);
     }
 
     public static void moveToGroupPivot(MatrixStack stack, ModelGroup group)
     {
-        Vector3f pivot = group.current.pivot;
+        Vector3f pivot = group.initial.translate;
 
         stack.translate(pivot.x / 16F, pivot.y / 16F, pivot.z / 16F);
     }
@@ -48,7 +46,7 @@ public interface ICubicRenderer
 
     public static void moveBackFromGroupPivot(MatrixStack stack, ModelGroup group)
     {
-        Vector3f pivot = group.current.pivot;
+        Vector3f pivot = group.initial.translate;
 
         stack.translate(-pivot.x / 16F, -pivot.y / 16F, -pivot.z / 16F);
     }

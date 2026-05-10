@@ -107,7 +107,7 @@ public abstract class UIDataDashboardPanel <T extends ValueGroup> extends UICRUD
     {
         super.resize();
 
-        if (!this.openedBefore && this.shouldOpenOverlayOnFirstResize())
+        if (!this.openedBefore)
         {
             this.openOverlay.clickItself();
 
@@ -158,7 +158,7 @@ public abstract class UIDataDashboardPanel <T extends ValueGroup> extends UICRUD
     @Override
     public void render(UIContext context)
     {
-        if (this.data == null && this.shouldRenderOpenOverlayHint())
+        if (this.data == null)
         {
             double ticks = context.getTickTransition() % 15D;
             double factor = Math.abs(ticks / 15D * 2 - 1F);
@@ -201,16 +201,6 @@ public abstract class UIDataDashboardPanel <T extends ValueGroup> extends UICRUD
     }
 
     protected boolean canSave(UIContext context)
-    {
-        return true;
-    }
-
-    protected boolean shouldOpenOverlayOnFirstResize()
-    {
-        return true;
-    }
-
-    protected boolean shouldRenderOpenOverlayHint()
     {
         return true;
     }

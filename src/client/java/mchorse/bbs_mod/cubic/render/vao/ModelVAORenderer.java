@@ -1,14 +1,11 @@
 package mchorse.bbs_mod.cubic.render.vao;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.gl.GlUniform;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
-
 import org.joml.Matrix4f;
-
-import com.mojang.blaze3d.systems.RenderSystem;
-
 import org.lwjgl.opengl.GL30;
 
 public class ModelVAORenderer

@@ -1,24 +1,15 @@
 package mchorse.bbs_mod.blocks.entities;
 
-import mchorse.bbs_mod.data.DataStorageUtils;
 import mchorse.bbs_mod.data.IMapSerializable;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.forms.Form;
-import mchorse.bbs_mod.utils.keyframes.factories.KeyframeFactories;
 import mchorse.bbs_mod.utils.pose.Transform;
-
 import net.minecraft.client.render.model.json.ModelTransformationMode;
-import net.minecraft.entity.EquipmentSlot;
-import net.minecraft.item.ItemStack;
-
-import org.joml.Vector3f;
 
 public class ModelProperties implements IMapSerializable
 {
-    private String name = "";
-
     private Form form;
     private Form formThirdPerson;
     private Form formInventory;
@@ -28,37 +19,15 @@ public class ModelProperties implements IMapSerializable
     private final Transform transformThirdPerson = new Transform();
     private final Transform transformInventory = new Transform();
     private final Transform transformFirstPerson = new Transform();
-    private ItemStack itemMainHand = ItemStack.EMPTY;
-    private ItemStack itemOffHand = ItemStack.EMPTY;
-    private ItemStack armorHead = ItemStack.EMPTY;
-    private ItemStack armorChest = ItemStack.EMPTY;
-    private ItemStack armorLegs = ItemStack.EMPTY;
-    private ItemStack armorFeet = ItemStack.EMPTY;
 
     private boolean enabled = true;
     private boolean global;
     private boolean shadow;
-    private boolean hitbox;
     private boolean lookAt;
-    private int lightLevel = 0;
-    private float hardness;
-
-    private final Vector3f hitboxPos1 = new Vector3f(0F, 0F, 0F);
-    private final Vector3f hitboxPos2 = new Vector3f(1F, 1F, 1F);
 
     public Form getForm()
     {
         return this.form;
-    }
-
-    public String getName()
-    {
-        return this.name;
-    }
-
-    public void setName(String name)
-    {
-        this.name = name == null ? "" : name.trim();
     }
 
     protected Form processForm(Form form)
@@ -126,66 +95,6 @@ public class ModelProperties implements IMapSerializable
         return this.transformFirstPerson;
     }
 
-    public ItemStack getItemMainHand()
-    {
-        return this.itemMainHand;
-    }
-
-    public void setItemMainHand(ItemStack itemMainHand)
-    {
-        this.itemMainHand = itemMainHand == null ? ItemStack.EMPTY : itemMainHand.copy();
-    }
-
-    public ItemStack getItemOffHand()
-    {
-        return this.itemOffHand;
-    }
-
-    public void setItemOffHand(ItemStack itemOffHand)
-    {
-        this.itemOffHand = itemOffHand == null ? ItemStack.EMPTY : itemOffHand.copy();
-    }
-
-    public ItemStack getArmorHead()
-    {
-        return this.armorHead;
-    }
-
-    public void setArmorHead(ItemStack armorHead)
-    {
-        this.armorHead = armorHead == null ? ItemStack.EMPTY : armorHead.copy();
-    }
-
-    public ItemStack getArmorChest()
-    {
-        return this.armorChest;
-    }
-
-    public void setArmorChest(ItemStack armorChest)
-    {
-        this.armorChest = armorChest == null ? ItemStack.EMPTY : armorChest.copy();
-    }
-
-    public ItemStack getArmorLegs()
-    {
-        return this.armorLegs;
-    }
-
-    public void setArmorLegs(ItemStack armorLegs)
-    {
-        this.armorLegs = armorLegs == null ? ItemStack.EMPTY : armorLegs.copy();
-    }
-
-    public ItemStack getArmorFeet()
-    {
-        return this.armorFeet;
-    }
-
-    public void setArmorFeet(ItemStack armorFeet)
-    {
-        this.armorFeet = armorFeet == null ? ItemStack.EMPTY : armorFeet.copy();
-    }
-
     public boolean isEnabled()
     {
         return this.enabled;
@@ -216,16 +125,6 @@ public class ModelProperties implements IMapSerializable
         this.shadow = shadow;
     }
 
-    public boolean isHitbox()
-    {
-        return this.hitbox;
-    }
-
-    public void setHitbox(boolean hitbox)
-    {
-        this.hitbox = hitbox;
-    }
-
     public boolean isLookAt()
     {
         return this.lookAt;
@@ -234,55 +133,6 @@ public class ModelProperties implements IMapSerializable
     public void setLookAt(boolean lookAt)
     {
         this.lookAt = lookAt;
-    }
-
-    public int getLightLevel()
-    {
-        return this.lightLevel;
-    }
-
-    public void setLightLevel(int level)
-    {
-        this.lightLevel = Math.max(0, Math.min(15, level));
-    }
-
-    public float getHardness()
-    {
-        return this.hardness;
-    }
-
-    public void setHardness(float hardness)
-    {
-        if (hardness < 0F)
-        {
-            hardness = 0F;
-        }
-        else if (hardness > 50F)
-        {
-            hardness = 50F;
-        }
-
-        this.hardness = hardness;
-    }
-
-    public Vector3f getHitboxPos1()
-    {
-        return this.hitboxPos1;
-    }
-
-    public Vector3f getHitboxPos2()
-    {
-        return this.hitboxPos2;
-    }
-
-    public void setHitboxPos1(float x, float y, float z)
-    {
-        this.hitboxPos1.set(x, y, z);
-    }
-
-    public void setHitboxPos2(float x, float y, float z)
-    {
-        this.hitboxPos2.set(x, y, z);
     }
 
     public Form getForm(ModelTransformationMode mode)
@@ -328,7 +178,6 @@ public class ModelProperties implements IMapSerializable
     @Override
     public void fromData(MapType data)
     {
-        this.name = data.getString("name", "").trim();
         this.form = this.processForm(FormUtils.fromData(data.getMap("form")));
         this.formThirdPerson = this.processForm(FormUtils.fromData(data.getMap("formThirdPerson")));
         this.formInventory = this.processForm(FormUtils.fromData(data.getMap("formInventory")));
@@ -338,46 +187,16 @@ public class ModelProperties implements IMapSerializable
         this.transformThirdPerson.fromData(data.getMap("transformThirdPerson"));
         this.transformInventory.fromData(data.getMap("transformInventory"));
         this.transformFirstPerson.fromData(data.getMap("transformFirstPerson"));
-        this.setItemMainHand(data.has("item_main_hand") ? KeyframeFactories.ITEM_STACK.fromData(data.get("item_main_hand")) : ItemStack.EMPTY);
-        this.setItemOffHand(data.has("item_off_hand") ? KeyframeFactories.ITEM_STACK.fromData(data.get("item_off_hand")) : ItemStack.EMPTY);
-        this.setArmorHead(data.has("item_head") ? KeyframeFactories.ITEM_STACK.fromData(data.get("item_head")) : ItemStack.EMPTY);
-        this.setArmorChest(data.has("item_chest") ? KeyframeFactories.ITEM_STACK.fromData(data.get("item_chest")) : ItemStack.EMPTY);
-        this.setArmorLegs(data.has("item_legs") ? KeyframeFactories.ITEM_STACK.fromData(data.get("item_legs")) : ItemStack.EMPTY);
-        this.setArmorFeet(data.has("item_feet") ? KeyframeFactories.ITEM_STACK.fromData(data.get("item_feet")) : ItemStack.EMPTY);
 
         if (data.has("enabled")) this.enabled = data.getBool("enabled");
         this.shadow = data.getBool("shadow");
         this.global = data.getBool("global");
         this.lookAt = data.getBool("look_at");
-        if (data.has("hitbox")) this.hitbox = data.getBool("hitbox");
-        if (data.has("light_level")) this.lightLevel = data.getInt("light_level");
-        this.setHardness(data.getFloat("hardness", 0F));
-
-        if (data.has("hitbox_pos1"))
-        {
-            Vector3f value = DataStorageUtils.vector3fFromData(data.getList("hitbox_pos1"), this.hitboxPos1);
-            this.hitboxPos1.set(value);
-        }
-        else
-        {
-            this.hitboxPos1.set(0F, 0F, 0F);
-        }
-
-        if (data.has("hitbox_pos2"))
-        {
-            Vector3f value = DataStorageUtils.vector3fFromData(data.getList("hitbox_pos2"), this.hitboxPos2);
-            this.hitboxPos2.set(value);
-        }
-        else
-        {
-            this.hitboxPos2.set(1F, 1F, 1F);
-        }
     }
 
     @Override
     public void toData(MapType data)
     {
-        data.putString("name", this.name);
         data.put("form", FormUtils.toData(this.form));
         data.put("formThirdPerson", FormUtils.toData(this.formThirdPerson));
         data.put("formInventory", FormUtils.toData(this.formInventory));
@@ -387,34 +206,15 @@ public class ModelProperties implements IMapSerializable
         data.put("transformThirdPerson", this.transformThirdPerson.toData());
         data.put("transformInventory", this.transformInventory.toData());
         data.put("transformFirstPerson", this.transformFirstPerson.toData());
-        data.put("item_main_hand", KeyframeFactories.ITEM_STACK.toData(this.itemMainHand));
-        data.put("item_off_hand", KeyframeFactories.ITEM_STACK.toData(this.itemOffHand));
-        data.put("item_head", KeyframeFactories.ITEM_STACK.toData(this.armorHead));
-        data.put("item_chest", KeyframeFactories.ITEM_STACK.toData(this.armorChest));
-        data.put("item_legs", KeyframeFactories.ITEM_STACK.toData(this.armorLegs));
-        data.put("item_feet", KeyframeFactories.ITEM_STACK.toData(this.armorFeet));
 
         data.putBool("enabled", this.enabled);
         data.putBool("shadow", this.shadow);
         data.putBool("global", this.global);
-        data.putBool("hitbox", this.hitbox);
         data.putBool("look_at", this.lookAt);
-        data.putInt("light_level", this.lightLevel);
-        data.putFloat("hardness", this.hardness);
-
-        data.put("hitbox_pos1", DataStorageUtils.vector3fToData(this.hitboxPos1));
-        data.put("hitbox_pos2", DataStorageUtils.vector3fToData(this.hitboxPos2));
     }
 
     public void update(IEntity entity)
     {
-        entity.setEquipmentStack(EquipmentSlot.MAINHAND, this.itemMainHand.copy());
-        entity.setEquipmentStack(EquipmentSlot.OFFHAND, this.itemOffHand.copy());
-        entity.setEquipmentStack(EquipmentSlot.HEAD, this.armorHead.copy());
-        entity.setEquipmentStack(EquipmentSlot.CHEST, this.armorChest.copy());
-        entity.setEquipmentStack(EquipmentSlot.LEGS, this.armorLegs.copy());
-        entity.setEquipmentStack(EquipmentSlot.FEET, this.armorFeet.copy());
-
         if (this.form != null)
         {
             this.form.update(entity);

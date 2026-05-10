@@ -4,7 +4,6 @@ import mchorse.bbs_mod.data.DataStorageUtils;
 import mchorse.bbs_mod.data.IMapSerializable;
 import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
-
 import org.joml.Vector2f;
 import org.joml.Vector3f;
 
@@ -86,21 +85,5 @@ public class ModelMesh implements IMapSerializable
         data.put("rotate", DataStorageUtils.vector3fToData(this.rotate));
         data.put("vertices", vertices);
         data.put("uvs", uvs);
-    }
-
-    public ModelMesh copy()
-    {
-        ModelMesh mesh = new ModelMesh();
-
-        mesh.origin.set(this.origin);
-        mesh.rotate.set(this.rotate);
-        mesh.baseData = this.baseData.copy();
-
-        for (Map.Entry<String, ModelData> entry : this.data.entrySet())
-        {
-            mesh.data.put(entry.getKey(), entry.getValue().copy());
-        }
-
-        return mesh;
     }
 }
