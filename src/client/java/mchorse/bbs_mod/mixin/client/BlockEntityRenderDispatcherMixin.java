@@ -3,7 +3,6 @@ package mchorse.bbs_mod.mixin.client;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.client.BBSRendering;
 
-import net.minecraft.client.render.block.entity.BlockEntityRenderDispatcher;
 import net.minecraft.client.render.block.entity.BlockEntityRenderManager;
 
 import org.spongepowered.asm.mixin.Mixin;

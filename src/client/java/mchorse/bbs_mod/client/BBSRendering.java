@@ -412,7 +412,7 @@ public class BBSRendering
 
         if (BBSModClient.getVideoRecorder().isRecording() && BBSModClient.getCameraController().getCurrent() instanceof CameraWorkCameraController controller)
         {
-            DrawContext drawContext = new DrawContext(mc, mc.getBufferBuilders().getEntityVertexConsumers());
+            DrawContext drawContext = new DrawContext(mc, new GuiRenderState(), 0, 0);
             Batcher2D batcher = new Batcher2D(drawContext);
             Window window = mc.getWindow();
 
@@ -430,7 +430,7 @@ public class BBSRendering
         {
             if (dashboard.getPanels().panel instanceof UIFilmPanel panel && panel.getData() != null)
             {
-                DrawContext drawContext = new DrawContext(mc, mc.getBufferBuilders().getEntityVertexConsumers());
+                DrawContext drawContext = new DrawContext(mc, new GuiRenderState(), 0, 0);
                 Batcher2D offscreenBatcher = new Batcher2D(drawContext);
 
                 Window window = mc.getWindow();
