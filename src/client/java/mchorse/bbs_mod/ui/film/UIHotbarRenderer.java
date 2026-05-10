@@ -12,6 +12,7 @@ import net.minecraft.util.Identifier;
 import net.minecraft.util.math.MathHelper;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.opengl.GlStateManager;
 
 import java.util.List;
 import java.util.Random;
@@ -110,23 +111,23 @@ public class UIHotbarRenderer
         stack.translate(-SCALE_PIVOT_X, -SCALE_PIVOT_Y, 0F);
 
         /* HUD layers must ignore world depth to avoid bottom clipping against terrain. */
-        RenderSystem.disableDepthTest();
-        RenderSystem.depthMask(false);
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
-        RenderSystem.setShaderColor(1F, 1F, 1F, alpha);
+        GlStateManager._disableDepthTest();
+        GlStateManager._depthMask(false);
+        GlStateManager._enableBlend();
+        GlStateManager._defaultBlendFunc();
+        int colorVal = ((int) (alpha * 255F) << 24) | 0xFFFFFF;
 
-        batcher.getContext().drawGuiTexture(RenderPipelines.GUI_TEXTURED, HOTBAR, 0, 0, 182, 22);
+        batcher.getContext().drawGuiTexture(RenderPipelines.GUI_TEXTURED, HOTBAR, 0, 0, 182, 22, colorVal);
 
         boolean hasOffhandItem = hotbar.offhandItem != null && !hotbar.offhandItem.isEmpty();
 
         if (hasOffhandItem)
         {
-            batcher.getContext().drawGuiTexture(RenderPipelines.GUI_TEXTURED, HOTBAR_OFFHAND_LEFT, -29, -1, 29, 24);
+            batcher.getContext().drawGuiTexture(RenderPipelines.GUI_TEXTURED, HOTBAR_OFFHAND_LEFT, -29, -1, 29, 24, colorVal);
         }
 
         int selectedSlot = MathHelper.clamp(hotbar.selectedSlot, 0, 8);
-        batcher.getContext().drawGuiTexture(RenderPipelines.GUI_TEXTURED, HOTBAR_SELECTION, selectedSlot * 20 - 1, -1, 24, 23);
+        batcher.getContext().drawGuiTexture(RenderPipelines.GUI_TEXTURED, HOTBAR_SELECTION, selectedSlot * 20 - 1, -1, 24, 23, colorVal);
 
         int barsY = BAR_ICON_Y;
         int heartType = MathHelper.clamp(hotbar.heartType, HotbarState.HEART_NORMAL, HotbarState.HEART_FROZEN);
@@ -205,8 +206,8 @@ public class UIHotbarRenderer
         }
 
         /* Item glint (enchants) requires depth test in GUI item renderer. */
-        RenderSystem.enableDepthTest();
-        RenderSystem.depthMask(true);
+        GlStateManager._enableDepthTest();
+        GlStateManager._depthMask(true);
 
         for (int i = 0; i < 9; i++)
         {
@@ -233,11 +234,9 @@ public class UIHotbarRenderer
             batcher.getContext().drawStackOverlay(batcher.getFont().getRenderer(), hotbar.offhandItem, offhandX, offhandY);
         }
 
-        RenderSystem.disableDepthTest();
-        RenderSystem.depthMask(false);
-        RenderSystem.disableBlend();
-
-        RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
+        GlStateManager._disableDepthTest();
+        GlStateManager._depthMask(false);
+        GlStateManager._disableBlend();
 
         stack.pop();
         batcher.flush();

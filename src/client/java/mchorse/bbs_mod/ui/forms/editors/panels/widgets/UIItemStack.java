@@ -23,6 +23,7 @@ import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemStack;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.opengl.GlStateManager;
 
 import org.lwjgl.opengl.GL11;
 
@@ -219,13 +220,13 @@ public class UIItemStack extends UIElement
             CustomVertexConsumerProvider consumers = FormUtilsClient.getProvider();
 
             matrices.push();
-            RenderSystem.disableDepthTest();
+            GlStateManager._disableDepthTest();
             consumers.setUI(true);
             context.batcher.getContext().drawItem(this.stack, stackCenterX - 8, this.area.my() - 8);
             context.batcher.getContext().drawStackOverlay(context.batcher.getFont().getRenderer(), this.stack, stackCenterX - 8, this.area.my() - 8);
             consumers.setUI(false);
-            RenderSystem.enableDepthTest();
-            RenderSystem.depthFunc(GL11.GL_ALWAYS);
+            GlStateManager._enableDepthTest();
+            GlStateManager._depthFunc(GL11.GL_ALWAYS);
             matrices.pop();
         }
 
