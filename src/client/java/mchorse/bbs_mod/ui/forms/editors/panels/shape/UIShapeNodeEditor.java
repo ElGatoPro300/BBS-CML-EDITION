@@ -1443,13 +1443,6 @@ public class UIShapeNodeEditor extends UIElement
 
             this.drawBezier(context, x1, y1, context.mouseX, context.mouseY, Colors.WHITE, 2F * this.scale);
         }
-
-        RenderLayers.debugFilledBox().draw(builder.end());
-
-        // Fill
-        builder = tessellator.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
-
-        for (int i = 0; i < segments; i++)
         else
         {
             int x1 = this.nodeScreenX(node);
@@ -1458,8 +1451,6 @@ public class UIShapeNodeEditor extends UIElement
             this.drawBezier(context, context.mouseX, context.mouseY, x1, y1, Colors.WHITE, 2F * this.scale);
         }
     }
-
-        RenderLayers.debugFilledBox().draw(builder.end());
     private void drawSocket(UIContext context, int x, int y, int color, boolean filled)
     {
         int r = (int) Math.max(5F * this.scale, 3F);

@@ -42,7 +42,7 @@ public class InteractBlockActionClip extends ActionClip
 
         BlockHitResult result = this.hit.getHitResult();
         
-        if (player.getWorld().getBlockState(result.getBlockPos()).getBlock() instanceof ChestBlock)
+        if (player.getEntityWorld().getBlockState(result.getBlockPos()).getBlock() instanceof ChestBlock)
         {
             player.openReplayChest(replay.getId(), result.getBlockPos());
             return;

@@ -101,7 +101,7 @@ import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.render.VertexFormat;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.Vec3d;
@@ -896,8 +896,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                     Pixels pixels = Pixels.fromPNGStream(stream);
                     if (pixels != null)
                     {
-                        RenderSystem.recordRenderCall(() ->
-                        {
+                        MinecraftClient.getInstance().execute(() -> {
                             Texture texture = Texture.textureFromPixels(pixels, GL11.GL_LINEAR);
                             BBSModClient.getTextures().textures.put(link, texture);
                         });
@@ -3519,7 +3518,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         int segments = 40; // We can use fewer segments because it interpolates smoothly!
         float segW = editorW / (float) segments;
         
-        Matrix4f matrix4f = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
+        Matrix4f matrix4f = new Matrix4f(context.batcher.getContext().getMatrices());
         Tessellator tessellator = Tessellator.getInstance();
         BufferBuilder builder = tessellator.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
         

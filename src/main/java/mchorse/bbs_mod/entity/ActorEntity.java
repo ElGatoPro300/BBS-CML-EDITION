@@ -380,13 +380,12 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
 
 
 
-        @Override
+    @Override
     public void onDeath(DamageSource damageSource)
     {
         super.onDeath(damageSource);
         
-        if (!this.getEntityWorld().isClient() && !this.replayItemsDropped && this.replay != null && this.film != null)
-        if (!this.getWorld().isClient() && !this.replayItemsDropped && this.replay != null && this.film != null && this.replay.dropItemsOnDeath.get())
+        if (!this.getEntityWorld().isClient() && !this.replayItemsDropped && this.replay != null && this.film != null && this.replay.dropItemsOnDeath.get())
         {
             this.dropReplayItems();
             this.replayItemsDropped = true;
@@ -541,59 +540,32 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
     @Override
     protected void readCustomData(ReadView view)
     {
+        super.readCustomData(view);
+
         this.despawn = view.getBoolean("despawn", this.despawn);
-        super.readCustomDataFromNbt(nbt);
 
-        this.despawn = nbt.getBoolean("despawn");
-
-        if (nbt.contains("Equipment", 10))
+        for (EquipmentSlot slot : EquipmentSlot.values())
         {
-            NbtCompound equipmentNbt = nbt.getCompound("Equipment");
-            RegistryWrapper.WrapperLookup registries = this.getWorld() != null ? this.getWorld().getRegistryManager() : BBSMod.getRegistryManager();
+            ItemStack stack = view.read("Equipment_" + slot.getName(), ItemStack.CODEC).orElse(ItemStack.EMPTY);
 
-            for (EquipmentSlot slot : EquipmentSlot.values())
-            {
-                if (equipmentNbt.contains(slot.getName(), 10))
-                {
-                    NbtCompound itemNbt = equipmentNbt.getCompound(slot.getName());
-                    ItemStack stack = registries != null
-                        ? ItemStack.CODEC.parse(RegistryOps.of(NbtOps.INSTANCE, registries), itemNbt).result().orElse(ItemStack.EMPTY)
-                        : ItemStack.fromNbtOrEmpty(null, itemNbt);
-
-                    this.equipment.put(slot, stack);
-                }
-            }
+            this.equipment.put(slot, stack);
         }
     }
 
     @Override
     protected void writeCustomData(WriteView view)
     {
-        view.putBoolean("despawn", true);
-        super.writeCustomDataToNbt(nbt);
+        super.writeCustomData(view);
 
-        nbt.putBoolean("despawn", true);
-
-        NbtCompound equipmentNbt = new NbtCompound();
-        RegistryWrapper.WrapperLookup registries = this.getWorld() != null ? this.getWorld().getRegistryManager() : BBSMod.getRegistryManager();
+        view.putBoolean("despawn", this.despawn);
 
         for (Map.Entry<EquipmentSlot, ItemStack> entry : this.equipment.entrySet())
         {
             if (!entry.getValue().isEmpty())
             {
-                ItemStack stack = entry.getValue();
-                NbtElement itemNbt = registries != null
-                    ? ItemStack.CODEC.encodeStart(RegistryOps.of(NbtOps.INSTANCE, registries), stack).result().orElse(null)
-                    : ItemStack.CODEC.encodeStart(NbtOps.INSTANCE, stack).result().orElse(null);
-
-                if (itemNbt instanceof NbtCompound compound)
-                {
-                    equipmentNbt.put(entry.getKey().getName(), compound);
-                }
+                view.put("Equipment_" + entry.getKey().getName(), ItemStack.CODEC, entry.getValue());
             }
         }
-
-        nbt.put("Equipment", equipmentNbt);
     }
 
     protected int getPermissionLevel()

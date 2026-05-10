@@ -77,7 +77,7 @@ import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.render.VertexFormat;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.client.util.math.MatrixStack;
@@ -1280,7 +1280,9 @@ public class UIFilmController extends UIElement
                 int tick = runner.ticks;
                 int duration = runner.getContext().clips == null ? 0 : runner.getContext().clips.calculateDuration();
 
-                Recorder.renderCameraPreviewTimeline(runner.getContext().clips, tick, context.tickCounter().getTickDelta(true), duration, runner.getPosition(), context.camera(), context.matrixStack());
+                Recorder.renderCameraPreviewTimeline(runner.getContext().clips, tick,
+                        MinecraftClient.getInstance().getRenderTickCounter().getTickProgress(false), duration, runner.getPosition(), MinecraftClient.getInstance().gameRenderer.getCamera(),
+                        context.matrices());
             }
         }
 
@@ -1345,9 +1347,10 @@ public class UIFilmController extends UIElement
         double vx = itemDrop.velocityX.get();
         double vy = itemDrop.velocityY.get();
         double vz = itemDrop.velocityZ.get();
-        double cx = context.camera().getPos().x;
-        double cy = context.camera().getPos().y;
-        double cz = context.camera().getPos().z;
+        Camera camera = MinecraftClient.getInstance().gameRenderer.getCamera();
+        double cx = camera.getPos().x;
+        double cy = camera.getPos().y;
+        double cz = camera.getPos().z;
         Tessellator tessellator = Tessellator.getInstance();
         BufferBuilder builder = tessellator.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
 
@@ -1361,7 +1364,7 @@ public class UIFilmController extends UIElement
         RenderSystem.depthMask(false);
         RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
         RenderSystem.enableBlend();
-        MatrixStack stack = context.matrixStack();
+        MatrixStack stack = context.matrices();
 
         final int maxSteps = 80;
         final int subSteps = 4;

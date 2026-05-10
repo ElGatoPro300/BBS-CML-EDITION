@@ -7,7 +7,6 @@ import mchorse.bbs_mod.camera.clips.misc.AudioClientClip;
 import mchorse.bbs_mod.camera.data.Position;
 import mchorse.bbs_mod.utils.clips.Clip;
 
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 
 import net.minecraft.client.MinecraftClient;
@@ -88,7 +87,7 @@ public class WorldFilmController extends BaseFilmController
 
         if (BBSSettings.recordingCameraPreview.get())
         {
-            Recorder.renderCameraPreviewTimeline(this.context.clips, tick, context.tickCounter().getTickDelta(true), this.duration, this.position, context.camera(), context.matrixStack());
+            Recorder.renderCameraPreviewTimeline(this.context.clips, tick, MinecraftClient.getInstance().getRenderTickCounter().getTickProgress(false), this.duration, this.position, MinecraftClient.getInstance().gameRenderer.getCamera(), context.matrices());
         }
 
         AudioClientClip.manageSounds(this.context);

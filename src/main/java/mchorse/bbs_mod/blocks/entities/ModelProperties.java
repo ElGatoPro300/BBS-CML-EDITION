@@ -11,7 +11,6 @@ import mchorse.bbs_mod.utils.pose.Transform;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.item.ItemDisplayContext;
 import net.minecraft.item.ItemStack;
-import net.minecraft.item.ModelTransformationMode;
 
 public class ModelProperties implements IMapSerializable
 {
@@ -260,7 +259,7 @@ public class ModelProperties implements IMapSerializable
         this.hardness = hardness;
     }
 
-    public Form getForm(ModelTransformationMode mode)
+    public Form getForm(ItemDisplayContext mode)
     {
         Form form = this.form;
 

@@ -731,7 +731,7 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
                     Pixels pixels = Pixels.fromPNGStream(stream);
                     if (pixels != null)
                     {
-                        RenderSystem.recordRenderCall(() ->
+                        MinecraftClient.getInstance().execute(() ->
                         {
                             Texture texture = Texture.textureFromPixels(pixels, GL11.GL_LINEAR);
                             BBSModClient.getTextures().textures.put(link, texture);

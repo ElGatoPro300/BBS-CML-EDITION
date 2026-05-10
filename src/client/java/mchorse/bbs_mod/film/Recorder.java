@@ -26,7 +26,6 @@ import mchorse.bbs_mod.utils.joml.Vectors;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
 
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
-import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
@@ -166,10 +165,6 @@ public class Recorder extends WorldFilmController
         }
 
         RenderLayers.debugFilledBox().draw(builder.end());
-
-        GlStateManager._disableDepthTest();
-        BufferRenderer.drawWithGlobalProgram(builder.end());
-        RenderSystem.enableDepthTest();
     }
 
     public static boolean sampleCameraPosition(Clips clips, int tick, float transition, Position output)
