@@ -128,11 +128,6 @@ public class DataStorageUtils
 
     public static NbtElement toNbt(BaseType type)
     {
-        if (type == null)
-        {
-            return null;
-        }
-
         if (type instanceof ByteType byteType)
         {
             return NbtByte.of(byteType.value);
@@ -179,12 +174,7 @@ public class DataStorageUtils
 
             for (BaseType baseType : listType)
             {
-                NbtElement element = toNbt(baseType);
-
-                if (element != null)
-                {
-                    list.add(element);
-                }
+                list.add(toNbt(baseType));
             }
 
             return list;
@@ -195,12 +185,7 @@ public class DataStorageUtils
 
             for (String key : mapType.keys())
             {
-                NbtElement element = toNbt(mapType.get(key));
-
-                if (element != null)
-                {
-                    compound.put(key, element);
-                }
+                compound.put(key, toNbt(mapType.get(key)));
             }
 
             return compound;
@@ -275,12 +260,7 @@ public class DataStorageUtils
 
     public static void writeToNbtCompound(NbtCompound compound, String key, BaseType data)
     {
-        NbtElement nbt = toNbt(data);
-
-        if (nbt != null)
-        {
-            compound.put(key, nbt);
-        }
+        compound.put(key, DataStorageUtils.toNbt(data));
     }
 
     public static BaseType readFromNbtCompound(NbtCompound compound, String key)

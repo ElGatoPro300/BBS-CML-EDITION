@@ -9,7 +9,6 @@ import mchorse.bbs_mod.utils.clips.Clip;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.projectile.ProjectileUtil;
-import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.hit.EntityHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.Box;
@@ -52,9 +51,9 @@ public class AttackActionClip extends ActionClip
         {
             Entity entity = enittyHit.getEntity();
 
-            if (entity != null && player.getWorld() instanceof ServerWorld serverWorld)
+            if (entity != null)
             {
-                entity.damage(serverWorld, player.getWorld().getDamageSources().mobAttack(player), damage);
+                entity.damage(player.getWorld().getDamageSources().mobAttack(player), damage);
             }
         }
     }
