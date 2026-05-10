@@ -4,6 +4,7 @@ import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
 import mchorse.bbs_mod.forms.FormUtilsClient;
+import mchorse.bbs_mod.forms.entities.MCEntity;
 import mchorse.bbs_mod.forms.forms.ItemForm;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
@@ -17,6 +18,7 @@ import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.render.command.OrderedRenderCommandQueueImpl;
 import net.minecraft.client.render.item.ItemRenderState;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.item.ItemDisplayContext;
 import net.minecraft.util.math.MathHelper;
@@ -102,10 +104,11 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
         consumers.setSubstitute(BBSRendering.getColorConsumer(BlockFormRenderer.color));
         ItemRenderState state = new ItemRenderState();
         ItemModelManager itemModelManager = MinecraftClient.getInstance().getItemModelManager();
-        if (context.entity instanceof LivingEntity livingEntity) {
+        Entity mcEntity = context.entity instanceof MCEntity ? ((MCEntity) context.entity).getMcEntity() : null;
+        if (mcEntity instanceof LivingEntity livingEntity) {
             itemModelManager.updateForLivingEntity(state, this.form.stack.get(), mode, livingEntity);
         } else {
-            itemModelManager.updateForNonLivingEntity(state, this.form.stack.get(), mode, context.entity);
+            itemModelManager.updateForNonLivingEntity(state, this.form.stack.get(), mode, mcEntity);
         }
         OrderedRenderCommandQueueImpl queue = new OrderedRenderCommandQueueImpl();
         state.render(context.stack, queue, light, context.overlay, 0xF000F0);
