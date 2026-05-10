@@ -83,6 +83,7 @@ public class UIPropTransform extends UITransform
     private final Vector3d rayDirectionD = new Vector3d();
 
     private UITransformHandler handler;
+    private boolean wasWrapped;
 
     public UIPropTransform()
     {
@@ -586,37 +587,48 @@ public class UIPropTransform extends UITransform
             int border = 5;
             int borderPadding = border + 1;
 
-            if (rawX <= border)
+            boolean shouldWrap = this.mode == 0;
+            boolean didWrap = false;
+
+            if (shouldWrap && rawX <= border)
             {
                 Window.moveCursor(w - borderPadding, (int) mc.mouse.getY());
 
                 this.lastX = context.menu.width - (int) (borderPadding / fx);
                 this.checker.mark();
+                didWrap = true;
             }
-            else if (rawX >= w - border)
+            else if (shouldWrap && rawX >= w - border)
             {
                 Window.moveCursor(borderPadding, (int) mc.mouse.getY());
 
                 this.lastX = (int) (borderPadding / fx);
                 this.checker.mark();
+                didWrap = true;
             }
-            else if (rawY <= border)
+            else if (shouldWrap && rawY <= border)
             {
                 Window.moveCursor((int) mc.mouse.getX(), h - borderPadding);
 
                 this.lastY = context.menu.height - (int) (borderPadding / fy);
                 this.checker.mark();
+                didWrap = true;
             }
-            else if (rawY >= h - border)
+            else if (shouldWrap && rawY >= h - border)
             {
                 Window.moveCursor((int) mc.mouse.getX(), borderPadding);
 
                 this.lastY = (int) (borderPadding / fy);
                 this.checker.mark();
+                didWrap = true;
             }
-            else
+
+            if (didWrap)
             {
-                boolean handledByRayDrag = this.applyRayDrag(context);
+                this.wasWrapped = true;
+            }
+
+            boolean handledByRayDrag = this.applyRayDrag(context);
 
                 if (!handledByRayDrag)
                 {
@@ -752,9 +764,11 @@ public class UIPropTransform extends UITransform
 
                 this.setTransform(this.transform);
 
-                this.lastX = context.mouseX;
-                this.lastY = context.mouseY;
-            }
+                if (!didWrap)
+                {
+                    this.lastX = context.mouseX;
+                    this.lastY = context.mouseY;
+                }
         }
 
         super.render(context);
@@ -885,6 +899,29 @@ public class UIPropTransform extends UITransform
         if (!this.gizmoRayProvider.getMouseRay(context, context.mouseX, context.mouseY, this.rayOrigin, this.rayDirection))
         {
             return false;
+        }
+
+        if (this.wasWrapped)
+        {
+            if (this.mode == 0)
+            {
+                if (this.freeTranslation || this.secondaryAxis != null)
+                {
+                    if (this.intersectCurrentRay(this.rayLastPoint))
+                    {
+                        this.wasWrapped = false;
+                    }
+                }
+                else
+                {
+                    double axisValue = this.computeAxisValue(this.rayOrigin, this.rayDirection, this.rayPrimaryAxis);
+                    if (Double.isFinite(axisValue))
+                    {
+                        this.rayLastAxisValue = axisValue;
+                        this.wasWrapped = false;
+                    }
+                }
+            }
         }
 
         if (this.mode == 0)
