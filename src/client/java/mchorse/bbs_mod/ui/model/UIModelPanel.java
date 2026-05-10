@@ -109,6 +109,9 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
     private UIElement homePage;
     private UISearchList<DataPath> homeModelsSearch;
     private UIDataPathList homeModelsList;
+    private UIModelMosaicGrid homeModelsMosaic;
+    private UIIcon homeViewToggle;
+    private boolean mosaicViewActive = false;
     private UIElement homeActionsPanel;
     private UIButton homeCreateModel;
     private UIButton homeDuplicateCurrent;
@@ -253,6 +256,20 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         };
         this.homeModelsSearch = new UISearchList<>(this.homeModelsList).label(UIKeys.GENERAL_SEARCH);
         this.homeModelsSearch.list.background();
+
+        this.homeModelsMosaic = new UIModelMosaicGrid((modelId) -> {
+            this.homeModelsList.setCurrentFile(modelId);
+            this.handleHomeModelsSelection(null);
+        }, (modelId) -> this.openModelInDocumentTabs(modelId));
+
+        Consumer<String> oldCallback = this.homeModelsSearch.search.callback;
+        this.homeModelsSearch.search.callback = (str) -> {
+            if (oldCallback != null) oldCallback.accept(str);
+            this.homeModelsMosaic.filter(str);
+        };
+
+        this.homeViewToggle = new UIIcon(Icons.GALLERY, (b) -> this.toggleMosaicView());
+        this.homeViewToggle.tooltip(UIKeys.MODELS_HOME_VIEW_MOSAIC, Direction.LEFT);
         
         this.homeCreateModel = this.createHomeButton(UIKeys.MODELS_CRUD_ADD, Icons.ADD, (b) ->
         {
@@ -388,7 +405,11 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
 
         this.homeActionsPanel.add(this.homeCreateModel, spacing, this.homeDuplicateCurrent, this.homeRenameCurrent, this.homeDeleteCurrent);
         this.homeModelsSearch.relative(this.homePage).x(0.35F).y(HOME_BANNER_HEIGHT + 20).w(0.65F).h(1F, -(HOME_BANNER_HEIGHT + 20));
-        this.homePage.add(new UIRenderable(this::renderHomeBackground), this.homeActionsPanel, this.homeModelsSearch);
+        this.homeModelsSearch.search.w(1F, -25);
+        this.homeModelsMosaic.relative(this.homeModelsSearch).x(0).y(20).w(1F).h(1F, -20);
+        this.homeModelsMosaic.setVisible(false);
+        this.homeViewToggle.relative(this.homeModelsSearch).x(1F, -22).y(0).w(20).h(20);
+        this.homePage.add(new UIRenderable(this::renderHomeBackground), this.homeActionsPanel, this.homeModelsSearch, this.homeModelsMosaic, this.homeViewToggle);
 
         this.mainView = new UIElement();
         this.mainView.relative(this.editor).y(MODEL_DOCUMENT_TABS_HEIGHT).w(1F).h(1F, -MODEL_DOCUMENT_TABS_HEIGHT);
@@ -769,6 +790,26 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         return button;
     }
 
+    private void toggleMosaicView()
+    {
+        this.mosaicViewActive = !this.mosaicViewActive;
+        this.homeModelsSearch.list.setVisible(!this.mosaicViewActive);
+        this.homeModelsMosaic.setVisible(this.mosaicViewActive);
+        
+        if (this.mosaicViewActive)
+        {
+            this.homeViewToggle.both(Icons.LIST);
+            this.homeViewToggle.tooltip(UIKeys.MODELS_HOME_VIEW_LIST, Direction.LEFT);
+
+            this.homeModelsMosaic.filter(this.homeModelsSearch.search.getText());
+        }
+        else
+        {
+            this.homeViewToggle.both(Icons.GALLERY);
+            this.homeViewToggle.tooltip(UIKeys.MODELS_HOME_VIEW_MOSAIC, Direction.LEFT);
+        }
+    }
+
     private void updateHomeButtonsState()
     {
         boolean hasSelectedModel = this.homeModelsList != null && this.homeModelsList.getCurrentFirst() != null;
@@ -1133,6 +1174,9 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
             this.homeModelsList.fill(names);
             this.homeModelsList.setCurrentFile(current);
         }
+        if (this.homeModelsMosaic != null) {
+            this.homeModelsMosaic.fill(names, current);
+        }
         this.updateHomeButtonsState();
     }
 
@@ -1158,6 +1202,189 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         {
             this.home = home;
             this.modelId = modelId;
+        }
+    }
+
+    /**
+     * A scrollable mosaic grid showing model preview cards with live 3D renderers.
+     * Each card contains a UIModelEditorRenderer for the preview and the model name label.
+     */
+    public static class UIModelMosaicGrid extends UIScrollView
+    {
+        private static final int CARD_SIZE = 100;
+        private static final int CARD_GAP = 6;
+        private static final int CARD_LABEL_H = 16;
+
+        private final Consumer<String> selectCallback;
+        private final Consumer<String> doubleClickCallback;
+
+        private final List<String> allModelIds = new ArrayList<>();
+        private final List<String> modelIds = new ArrayList<>();
+        private String selectedId;
+        private String lastClickedId;
+        private long lastClickTime;
+        private int lastCols = -1;
+        private boolean rebuilding = false;
+
+        public UIModelMosaicGrid(Consumer<String> selectCallback, Consumer<String> doubleClickCallback)
+        {
+            super();
+            this.selectCallback = selectCallback;
+            this.doubleClickCallback = doubleClickCallback;
+            this.scroll.scrollSpeed = 20;
+        }
+
+        public void fill(Collection<String> names, String selectedId)
+        {
+            this.allModelIds.clear();
+            for (String name : names)
+            {
+                if (!name.endsWith("/"))
+                {
+                    this.allModelIds.add(name);
+                }
+            }
+            this.selectedId = selectedId;
+            this.lastCols = -1;
+            
+            /* Apply current filter (or empty) to populate modelIds and rebuild */
+            this.filter("");
+        }
+
+        public void filter(String query)
+        {
+            this.modelIds.clear();
+            String lowerQuery = query == null ? "" : query.toLowerCase();
+            
+            for (String id : this.allModelIds)
+            {
+                if (id.toLowerCase().contains(lowerQuery))
+                {
+                    this.modelIds.add(id);
+                }
+            }
+            
+            this.buildCards();
+            
+            if (this.hasParent())
+            {
+                this.resize();
+            }
+        }
+
+        private void buildCards()
+        {
+            this.removeAll();
+            if (this.modelIds.isEmpty()) return;
+
+            int effectiveW = this.area.w > 0 ? this.area.w : 500;
+            int cols = Math.max(1, (effectiveW - CARD_GAP) / (CARD_SIZE + CARD_GAP));
+
+            for (int i = 0; i < this.modelIds.size(); i++)
+            {
+                final String id = this.modelIds.get(i);
+                final int col = i % cols;
+                final int row = i / cols;
+
+                int cx = CARD_GAP + col * (CARD_SIZE + CARD_GAP);
+                int cy = CARD_GAP + row * (CARD_SIZE + CARD_GAP + CARD_LABEL_H);
+
+                UIElement card = new UIElement()
+                {
+                    @Override
+                    public boolean subMouseClicked(UIContext context)
+                    {
+                        if (this.area.isInside(context))
+                        {
+                            UIModelMosaicGrid.this.onCardClicked(id);
+                            return true;
+                        }
+                        return false;
+                    }
+
+                    @Override
+                    public void render(UIContext context)
+                    {
+                        boolean selected = id.equals(UIModelMosaicGrid.this.selectedId);
+                        int border = selected ? BBSSettings.primaryColor.get() : Colors.setA(Colors.WHITE, 0.1F);
+                        int bg = selected ? Colors.setA(BBSSettings.primaryColor.get(), 0.1F) : Colors.setA(0, 0.2F);
+                        
+                        context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), bg);
+                        context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), border);
+
+                        super.render(context);
+
+                        String label = new DataPath(id).getLast();
+                        int maxW = this.area.w - 4;
+                        if (context.batcher.getFont().getWidth(label) > maxW)
+                        {
+                            while (label.length() > 1 && context.batcher.getFont().getWidth(label + "...") > maxW)
+                            {
+                                label = label.substring(0, label.length() - 1);
+                            }
+                            label = label + "...";
+                        }
+                        context.batcher.textShadow(label, this.area.x + 2, this.area.y + CARD_SIZE + 2);
+                    }
+                };
+
+                card.relative(this).x(cx).y(cy).w(CARD_SIZE).h(CARD_SIZE + CARD_LABEL_H);
+
+                UIModelPreviewRenderer renderer = new UIModelPreviewRenderer();
+                renderer.relative(card).x(0).y(0).w(CARD_SIZE).h(CARD_SIZE);
+                renderer.setModel(id);
+
+                card.add(renderer);
+                this.add(card);
+            }
+
+            int rows = (this.modelIds.size() + cols - 1) / cols;
+            int totalH = CARD_GAP + rows * (CARD_SIZE + CARD_LABEL_H + CARD_GAP);
+            this.scroll.scrollSize = totalH;
+            this.scroll.clamp();
+        }
+
+        private void onCardClicked(String id)
+        {
+            long now = System.currentTimeMillis();
+            boolean sameAsPrev = id.equals(this.lastClickedId);
+            boolean doubleClick = sameAsPrev && now - this.lastClickTime <= 300L;
+
+            this.lastClickedId = id;
+            this.lastClickTime = now;
+            this.selectedId = id;
+
+            if (this.selectCallback != null)
+            {
+                this.selectCallback.accept(id);
+            }
+
+            if (doubleClick && this.doubleClickCallback != null)
+            {
+                this.doubleClickCallback.accept(id);
+            }
+        }
+
+        @Override
+        public void resize()
+        {
+            int effectiveW = this.area.w > 0 ? this.area.w : 500;
+            int cols = Math.max(1, (effectiveW - CARD_GAP) / (CARD_SIZE + CARD_GAP));
+            if (!this.modelIds.isEmpty() && !this.rebuilding)
+            {
+                if (cols != this.lastCols)
+                {
+                    this.lastCols = cols;
+                    this.rebuilding = true;
+                    this.buildCards();
+                    this.rebuilding = false;
+                }
+
+                int rows = (this.modelIds.size() + cols - 1) / cols;
+                int totalH = CARD_GAP + rows * (CARD_SIZE + CARD_LABEL_H + CARD_GAP);
+                this.scroll.scrollSize = totalH;
+            }
+            super.resize();
         }
     }
 

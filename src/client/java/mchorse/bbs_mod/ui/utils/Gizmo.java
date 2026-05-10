@@ -61,6 +61,11 @@ public class Gizmo
         this.handlers.put(index, handler);
     }
 
+    public boolean isDragging()
+    {
+        return this.index != -1;
+    }
+
     public Mode getMode()
     {
         return this.mode;
@@ -127,9 +132,16 @@ public class Gizmo
                 {
                     transform.enablePlaneMode(this.mode.ordinal(), Axis.Z, Axis.Y);
                 }
-                else if (this.index == STENCIL_FREE && this.mode == Mode.ROTATE)
+                else if (this.index == STENCIL_FREE)
                 {
-                    transform.enableFreeRotation(this.mode.ordinal(), Axis.X);
+                    if (this.mode == Mode.TRANSLATE)
+                    {
+                        transform.enableFreeTranslation(this.mode.ordinal());
+                    }
+                    else if (this.mode == Mode.ROTATE)
+                    {
+                        transform.enableFreeRotation(this.mode.ordinal(), Axis.X);
+                    }
                 }
             }
 
@@ -243,7 +255,7 @@ public class Gizmo
             if (activeX) this.drawBox(builder, stack, 0, -outlineOffset, -outlineOffset, outlineSize * sx, outlineOffset, outlineOffset, 0F, 0F, 0F);
             if (activeY) this.drawBox(builder, stack, -outlineOffset, 0, -outlineOffset, outlineOffset, outlineSize * sy, outlineOffset, 0F, 0F, 0F);
             if (activeZ) this.drawBox(builder, stack, -outlineOffset, -outlineOffset, 0, outlineOffset, outlineOffset, outlineSize * sz, 0F, 0F, 0F);
-            if (this.index == -1) this.drawBox(builder, stack, -outlineOffset, -outlineOffset, -outlineOffset, outlineOffset, outlineOffset, outlineOffset, 0F, 0F, 0F);
+            if (activeFree) this.drawBox(builder, stack, -outlineOffset, -outlineOffset, -outlineOffset, outlineOffset, outlineOffset, outlineOffset, 0F, 0F, 0F);
 
             if (this.mode == Mode.SCALE)
             {
@@ -259,7 +271,7 @@ public class Gizmo
             if (activeX) this.drawBox(builder, stack, 0, -axisOffset, -axisOffset, axisSize * sx, axisOffset, axisOffset, 1F, 0F, 0F);
             if (activeY) this.drawBox(builder, stack, -axisOffset, 0, -axisOffset, axisOffset, axisSize * sy, axisOffset, 0F, 1F, 0F);
             if (activeZ) this.drawBox(builder, stack, -axisOffset, -axisOffset, 0, axisOffset, axisOffset, axisSize * sz, 0F, 0F, 1F);
-            if (this.index == -1) this.drawBox(builder, stack, -axisOffset, -axisOffset, -axisOffset, axisOffset, axisOffset, axisOffset, 1F, 1F, 1F);
+            if (activeFree) this.drawBox(builder, stack, -axisOffset, -axisOffset, -axisOffset, axisOffset, axisOffset, axisOffset, 1F, 1F, 1F);
 
             if (this.mode == Mode.TRANSLATE)
             {
@@ -343,7 +355,7 @@ public class Gizmo
             this.drawBox(builder, stack, 0, -axisOffset, -axisOffset, axisSize * sx, axisOffset, axisOffset, STENCIL_X / 255F, 0F, 0F);
             this.drawBox(builder, stack, -axisOffset, 0, -axisOffset, axisOffset, axisSize * sy, axisOffset, STENCIL_Y / 255F, 0F, 0F);
             this.drawBox(builder, stack, -axisOffset, -axisOffset, 0, axisOffset, axisOffset, axisSize * sz, STENCIL_Z / 255F, 0F, 0F);
-            this.drawBox(builder, stack, -axisOffset, -axisOffset, -axisOffset, axisOffset, axisOffset, axisOffset, 0F, 0F, 0F);
+            this.drawBox(builder, stack, -axisOffset, -axisOffset, -axisOffset, axisOffset, axisOffset, axisOffset, STENCIL_FREE / 255F, 0F, 0F);
 
             if (this.mode == Mode.SCALE)
             {

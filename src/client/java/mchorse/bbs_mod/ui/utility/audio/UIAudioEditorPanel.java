@@ -16,6 +16,7 @@ import mchorse.bbs_mod.ui.dashboard.UIDashboard;
 import mchorse.bbs_mod.ui.dashboard.panels.UISidebarDashboardPanel;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
+import mchorse.bbs_mod.ui.framework.elements.UIScrollView;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UISearchList;
@@ -30,6 +31,7 @@ import mchorse.bbs_mod.ui.framework.elements.utils.UIRenderable;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
+import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.interps.Interpolations;
 import mchorse.bbs_mod.utils.resources.Pixels;
@@ -57,6 +59,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -84,6 +87,8 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
     private UIElement homePage;
     private UISearchList<String> homeAudiosSearch;
     private UIStringList homeAudiosList;
+    private UIAudioMosaicGrid homeAudiosMosaic;
+    private UIIcon homeViewToggle;
     private UIElement homeActionsPanel;
     private UIButton homeOpenFolder;
     private UIButton homeRefreshList;
@@ -91,6 +96,14 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
     private UIButton homeDeleteCurrent;
     private String homeLastClickedAudio;
     private long homeLastClickTime;
+    private static final String AUDIO_PREFIX = "assets:audio/";
+    private static final String PARENT_FOLDER_ENTRY = "<parent_folder>";
+    private static final long DOUBLE_CLICK_INTERVAL = 250L;
+
+    private String currentFolder = "";
+    private String lastClickedFolder = "";
+    private long lastFolderClickTime;
+
     private boolean showingHomePage = true;
 
     // Homepage banners
@@ -176,9 +189,102 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
         };
 
         this.homeActionsPanel = new UIElement();
-        this.homeAudiosList = new UIStringList((list) -> this.handleHomeAudiosSelection(list));
+        this.homeAudiosList = new UIStringList((list) -> this.handleHomeAudiosSelection(list))
+        {
+            @Override
+            protected String elementToString(UIContext context, int i, String element)
+            {
+                if (element.equals(PARENT_FOLDER_ENTRY))
+                {
+                    return "../";
+                }
+
+                if (UIAudioEditorPanel.this.isFolderEntry(element))
+                {
+                    String path = element.substring(0, element.length() - 1);
+                    int slash = path.lastIndexOf('/');
+                    String name = slash >= 0 ? path.substring(slash + 1) : path;
+
+                    return name;
+                }
+
+                if (element.startsWith(AUDIO_PREFIX))
+                {
+                    return element.substring(AUDIO_PREFIX.length());
+                }
+
+                return element;
+            }
+
+            @Override
+            protected void renderElementPart(UIContext context, String element, int i, int x, int y, boolean hover, boolean selected)
+            {
+                boolean isFolder = UIAudioEditorPanel.this.isFolderEntry(element);
+                String displayText = this.elementToString(context, i, element);
+                int textY = y + (this.scroll.scrollItemSize - context.batcher.getFont().getHeight()) / 2;
+                int textX = x + 4;
+
+                if (isFolder)
+                {
+                    context.batcher.icon(Icons.FOLDER, textX - 2, y);
+                    textX += 16;
+                }
+
+                context.batcher.textShadow(displayText, textX, textY, hover ? Colors.HIGHLIGHT : Colors.WHITE);
+            }
+
+            @Override
+            public boolean subMouseReleased(UIContext context)
+            {
+                if (this.sorting && !this.isFiltering())
+                {
+                    if (this.isDragging())
+                    {
+                        int index = this.scroll.getIndex(context.mouseX, context.mouseY);
+                        if (index == -2)
+                        {
+                            index = this.getList().size() - 1;
+                        }
+
+                        if (index != this.dragging && this.exists(index))
+                        {
+                            String dragged = this.getList().get(this.dragging);
+                            String target = this.getList().get(index);
+
+                            if (!dragged.equals(PARENT_FOLDER_ENTRY))
+                            {
+                                UIAudioEditorPanel.this.moveAudioFile(dragged, target);
+                            }
+                        }
+                    }
+                    this.dragging = -1;
+                }
+
+                this.scroll.mouseReleased(context);
+                return super.subMouseReleased(context);
+            }
+        };
+        this.homeAudiosList.sorting();
         this.homeAudiosSearch = new UISearchList<>(this.homeAudiosList).label(UIKeys.GENERAL_SEARCH);
         this.homeAudiosSearch.list.background();
+
+        this.homeAudiosMosaic = new UIAudioMosaicGrid((id) -> {
+            this.handleHomeAudiosSelection(Collections.singletonList(id));
+        }, (id) -> {
+            if (!this.isFolderEntry(id) && !id.equals(PARENT_FOLDER_ENTRY)) {
+                this.openAudioInDocumentTabs(Link.create(id));
+            }
+        });
+        this.homeAudiosMosaic.setVisible(false);
+
+        Consumer<String> oldCallback = this.homeAudiosSearch.search.callback;
+        this.homeAudiosSearch.search.callback = (str) -> {
+            if (oldCallback != null) oldCallback.accept(str);
+            this.homeAudiosMosaic.filter(str);
+        };
+
+        this.homeViewToggle = new UIIcon(Icons.GALLERY, (b) -> this.toggleMosaicView());
+        this.homeViewToggle.tooltip(UIKeys.MODELS_HOME_VIEW_MOSAIC, Direction.LEFT);
 
         this.homeOpenFolder = this.createHomeButton(L10n.lang("bbs.ui.audio.crud.open_folder"), Icons.FOLDER, (b) ->
         {
@@ -305,7 +411,10 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
 
         this.homeActionsPanel.add(this.homeOpenFolder, this.homeRefreshList, spacing, this.homeRenameCurrent, this.homeDeleteCurrent);
         this.homeAudiosSearch.relative(this.homePage).x(0.35F).y(HOME_BANNER_HEIGHT + 20).w(0.65F).h(1F, -(HOME_BANNER_HEIGHT + 20));
-        this.homePage.add(new UIRenderable(this::renderHomeBackground), this.homeActionsPanel, this.homeAudiosSearch);
+        this.homeAudiosSearch.search.w(1F, -25);
+        this.homeAudiosMosaic.relative(this.homeAudiosSearch).x(0).y(20).w(1F).h(1F, -20);
+        this.homeViewToggle.relative(this.homeAudiosSearch).x(1F, -22).y(0).w(20).h(20);
+        this.homePage.add(new UIRenderable(this::renderHomeBackground), this.homeActionsPanel, this.homeAudiosSearch, this.homeAudiosMosaic, this.homeViewToggle);
 
         this.editor.add(this.mainView, this.homePage);
         this.add(this.audioTabsBar);
@@ -321,9 +430,54 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
         this.keys().register(Keys.OPEN_DATA_MANAGER, this.pickAudio::clickItself);
     }
 
+    private void toggleMosaicView()
+    {
+        boolean isMosaic = !this.homeAudiosMosaic.isVisible();
+        this.homeAudiosMosaic.setVisible(isMosaic);
+        this.homeAudiosList.setVisible(!isMosaic);
+        this.homeViewToggle.both(isMosaic ? Icons.LIST : Icons.GALLERY);
+        this.homeViewToggle.tooltip(isMosaic ? UIKeys.MODELS_HOME_VIEW_LIST : UIKeys.MODELS_HOME_VIEW_MOSAIC, Direction.LEFT);
+        if (isMosaic)
+        {
+            this.homeAudiosMosaic.resize();
+        }
+    }
+
     private void handleHomeAudiosSelection(List<String> selections)
     {
         String selected = selections == null || selections.isEmpty() ? null : selections.get(0);
+
+        if (selected != null)
+        {
+            if (selected.equals(PARENT_FOLDER_ENTRY))
+            {
+                long now = System.currentTimeMillis();
+                if (now - this.homeLastClickTime < 250)
+                {
+                    this.navigateToParentFolder();
+                }
+                this.homeLastClickTime = now;
+                this.updateHomeButtonsState();
+                return;
+            }
+
+            if (this.isFolderEntry(selected))
+            {
+                long now = System.currentTimeMillis();
+                boolean isDoubleClick = selected.equals(this.lastClickedFolder) && now - this.lastFolderClickTime <= DOUBLE_CLICK_INTERVAL;
+
+                this.lastClickedFolder = selected;
+                this.lastFolderClickTime = now;
+                this.homeLastClickTime = now;
+
+                if (isDoubleClick)
+                {
+                    this.openFolderEntry(selected);
+                }
+                this.updateHomeButtonsState();
+                return;
+            }
+        }
 
         this.homeLastClickedAudio = selected;
         this.updateHomeButtonsState();
@@ -345,13 +499,250 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
     {
         String selected = this.getSelectedHomeAudio();
         boolean hasSelected = selected != null;
+        boolean isFolder = hasSelected && (selected.equals(PARENT_FOLDER_ENTRY) || this.isFolderEntry(selected));
 
-        this.homeRenameCurrent.setEnabled(hasSelected);
-        this.homeDeleteCurrent.setEnabled(hasSelected);
+        this.homeRenameCurrent.setEnabled(hasSelected && !isFolder);
+        this.homeDeleteCurrent.setEnabled(hasSelected && !isFolder);
+    }
+
+    private List<String> getCurrentFolderEntries()
+    {
+        List<String> entries = new ArrayList<>();
+        File folder = this.getCurrentAudioFolder();
+
+        if (!folder.exists() || !folder.isDirectory())
+        {
+            return entries;
+        }
+
+        if (!this.currentFolder.isEmpty())
+        {
+            entries.add(PARENT_FOLDER_ENTRY);
+        }
+
+        File[] files = folder.listFiles();
+
+        if (files == null)
+        {
+            return entries;
+        }
+
+        List<String> folders = new ArrayList<>();
+        List<String> audios = new ArrayList<>();
+
+        for (File file : files)
+        {
+            if (file.isDirectory())
+            {
+                String relative = this.getRelativeAudioPath(file);
+
+                if (!relative.isEmpty())
+                {
+                    folders.add(AUDIO_PREFIX + relative + "/");
+                }
+
+                continue;
+            }
+
+            if (!file.isFile())
+            {
+                continue;
+            }
+
+            String name = file.getName().toLowerCase();
+
+            if (!name.endsWith(".wav") && !name.endsWith(".ogg"))
+            {
+                continue;
+            }
+
+            String relative = this.getRelativeAudioPath(file);
+
+            if (!relative.isEmpty())
+            {
+                audios.add(AUDIO_PREFIX + relative);
+            }
+        }
+
+        folders.sort(null);
+        audios.sort(null);
+        entries.addAll(folders);
+        entries.addAll(audios);
+
+        return entries;
+    }
+
+    private File getAudioRootFolder()
+    {
+        return new File(BBSMod.getAssetsFolder(), "audio");
+    }
+
+    private File getCurrentAudioFolder()
+    {
+        File root = this.getAudioRootFolder();
+
+        if (this.currentFolder.isEmpty())
+        {
+            return root;
+        }
+
+        return new File(root, this.currentFolder.replace("/", File.separator));
+    }
+
+    private String getRelativeAudioPath(File file)
+    {
+        File root = this.getAudioRootFolder();
+        String rootPath = root.getAbsolutePath();
+        String filePath = file.getAbsolutePath();
+
+        if (!filePath.startsWith(rootPath))
+        {
+            return "";
+        }
+
+        String relative = filePath.substring(rootPath.length()).replace('\\', '/');
+
+        if (relative.startsWith("/"))
+        {
+            relative = relative.substring(1);
+        }
+
+        return relative;
+    }
+
+    private boolean isFolderEntry(String entry)
+    {
+        return entry.startsWith(AUDIO_PREFIX) && entry.endsWith("/");
+    }
+
+    private void navigateToParentFolder()
+    {
+        if (this.currentFolder.isEmpty())
+        {
+            return;
+        }
+
+        int index = this.currentFolder.lastIndexOf('/');
+        this.currentFolder = index >= 0 ? this.currentFolder.substring(0, index) : "";
+        this.homeLastClickedAudio = null;
+        this.lastClickedFolder = "";
+        this.lastFolderClickTime = 0;
+        this.requestNames();
+        this.homeAudiosSearch.search.setText("");
+        this.homeAudiosSearch.filter("", true);
+    }
+
+    private void openFolderEntry(String entry)
+    {
+        String relative = entry.substring(AUDIO_PREFIX.length(), entry.length() - 1);
+        this.currentFolder = relative;
+        this.homeLastClickedAudio = null;
+        this.lastClickedFolder = "";
+        this.lastFolderClickTime = 0;
+        this.requestNames();
+        this.homeAudiosSearch.search.setText("");
+        this.homeAudiosSearch.filter("", true);
+    }
+
+    private File getFileFromAudioEntry(String audio)
+    {
+        if (audio == null || !audio.startsWith(AUDIO_PREFIX))
+        {
+            return null;
+        }
+
+        String relative = audio.substring(AUDIO_PREFIX.length());
+
+        return new File(this.getAudioRootFolder(), relative.replace("/", File.separator));
+    }
+
+    private void moveAudioFile(String fromAudio, String toAudioOrFolder)
+    {
+        File sourceFile = this.getFileFromAudioEntry(fromAudio);
+
+        if (sourceFile == null || !sourceFile.exists())
+        {
+            return;
+        }
+
+        File targetFolder;
+
+        if (toAudioOrFolder.equals(PARENT_FOLDER_ENTRY))
+        {
+            File root = this.getAudioRootFolder();
+            if (this.currentFolder.isEmpty())
+            {
+                return;
+            }
+            int index = this.currentFolder.lastIndexOf('/');
+            String parentRelative = index >= 0 ? this.currentFolder.substring(0, index) : "";
+            targetFolder = parentRelative.isEmpty() ? root : new File(root, parentRelative.replace("/", File.separator));
+        }
+        else if (this.isFolderEntry(toAudioOrFolder))
+        {
+            String folderRelative = toAudioOrFolder.substring(AUDIO_PREFIX.length(), toAudioOrFolder.length() - 1);
+            targetFolder = new File(this.getAudioRootFolder(), folderRelative.replace("/", File.separator));
+        }
+        else
+        {
+            File targetFile = this.getFileFromAudioEntry(toAudioOrFolder);
+            if (targetFile == null)
+            {
+                return;
+            }
+            targetFolder = targetFile.getParentFile();
+        }
+
+        if (targetFolder == null || !targetFolder.isDirectory())
+        {
+            return;
+        }
+
+        File destinationFile = new File(targetFolder, sourceFile.getName());
+
+        if (sourceFile.equals(destinationFile))
+        {
+            return;
+        }
+
+        try
+        {
+            if (sourceFile.renameTo(destinationFile))
+            {
+                this.requestNames();
+
+                String oldLinkStr = Link.create(fromAudio).toString();
+                String newRelative = this.getRelativeAudioPath(destinationFile);
+                String newLinkStr = Link.create(AUDIO_PREFIX + newRelative).toString();
+
+                for (AudioDocumentTab tab : this.audioDocumentTabs)
+                {
+                    if (!tab.home && tab.audioLink != null && tab.audioLink.toString().equals(oldLinkStr))
+                    {
+                        tab.audioLink = Link.create(newLinkStr);
+                    }
+                }
+
+                if (this.audioEditor.isEditing() && this.audioEditor.getAudio() != null && this.audioEditor.getAudio().toString().equals(oldLinkStr))
+                {
+                    this.audioEditor.setup(Link.create(newLinkStr));
+                }
+
+                this.rebuildAudioDocumentTabs();
+            }
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
     }
 
     private String getSelectedHomeAudio()
     {
+        if (this.homeAudiosMosaic != null && this.homeAudiosMosaic.isVisible())
+        {
+            return this.homeAudiosMosaic.selectedId;
+        }
         return this.homeAudiosList == null ? null : this.homeAudiosList.getCurrentFirst();
     }
 
@@ -607,13 +998,14 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
     @Override
     public void requestNames()
     {
-        List<String> entries = new ArrayList<>();
-        Set<String> locations = getSoundEvents();
-        entries.addAll(locations);
-        entries.sort(null);
+        List<String> entries = new ArrayList<>(this.getCurrentFolderEntries());
 
         this.homeAudiosList.clear();
         this.homeAudiosList.add(entries);
+        if (this.homeAudiosMosaic != null)
+        {
+            this.homeAudiosMosaic.fill(entries, this.getSelectedHomeAudio());
+        }
         this.updateHomeButtonsState();
     }
 
@@ -980,5 +1372,204 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
         context.batcher.box(dividerX, splitY + 1, dividerX + 1, pageY + pageH, Colors.A12);
         context.batcher.textShadow(L10n.lang("bbs.ui.audio.home.actions").get(), pageX + 4, splitY + 6);
         context.batcher.textShadow(L10n.lang("bbs.ui.audio.home.list").get(), dividerX + 4, splitY + 6);
+    }
+
+    public class UIAudioMosaicGrid extends UIScrollView
+    {
+        private static final int CARD_SIZE = 100;
+        private static final int CARD_GAP = 6;
+        private static final int CARD_LABEL_H = 16;
+
+        private final Consumer<String> selectCallback;
+        private final Consumer<String> doubleClickCallback;
+
+        private final List<String> allAudioIds = new ArrayList<>();
+        private final List<String> audioIds = new ArrayList<>();
+        public String selectedId;
+        private String lastClickedId;
+        private long lastClickTime;
+        private int lastCols = -1;
+        private boolean rebuilding = false;
+
+        public UIAudioMosaicGrid(Consumer<String> selectCallback, Consumer<String> doubleClickCallback)
+        {
+            super();
+            this.selectCallback = selectCallback;
+            this.doubleClickCallback = doubleClickCallback;
+            this.scroll.scrollSpeed = 20;
+        }
+
+        public void fill(Collection<String> names, String selectedId)
+        {
+            this.allAudioIds.clear();
+            for (String name : names)
+            {
+                this.allAudioIds.add(name);
+            }
+            this.selectedId = selectedId;
+            this.lastCols = -1;
+            
+            this.filter("");
+        }
+
+        public void filter(String query)
+        {
+            this.audioIds.clear();
+            String lowerQuery = query == null ? "" : query.toLowerCase();
+            
+            for (String id : this.allAudioIds)
+            {
+                String name = id;
+                if (id.startsWith(AUDIO_PREFIX))
+                {
+                    name = id.substring(AUDIO_PREFIX.length());
+                }
+                
+                if (name.toLowerCase().contains(lowerQuery))
+                {
+                    this.audioIds.add(id);
+                }
+            }
+            
+            this.buildCards();
+            
+            if (this.hasParent())
+            {
+                this.resize();
+            }
+        }
+
+        private void buildCards()
+        {
+            this.removeAll();
+            if (this.audioIds.isEmpty()) return;
+
+            int effectiveW = this.area.w > 0 ? this.area.w : 500;
+            int cols = Math.max(1, (effectiveW - CARD_GAP) / (CARD_SIZE + CARD_GAP));
+
+            for (int i = 0; i < this.audioIds.size(); i++)
+            {
+                final String id = this.audioIds.get(i);
+                final int col = i % cols;
+                final int row = i / cols;
+
+                int cx = CARD_GAP + col * (CARD_SIZE + CARD_GAP);
+                int cy = CARD_GAP + row * (CARD_SIZE + CARD_GAP + CARD_LABEL_H);
+
+                UIElement card = new UIElement()
+                {
+                    @Override
+                    public boolean subMouseClicked(UIContext context)
+                    {
+                        if (this.area.isInside(context))
+                        {
+                            UIAudioMosaicGrid.this.onCardClicked(id);
+                            return true;
+                        }
+                        return false;
+                    }
+
+                    @Override
+                    public void render(UIContext context)
+                    {
+                        boolean selected = id.equals(UIAudioMosaicGrid.this.selectedId);
+                        int border = selected ? BBSSettings.primaryColor.get() : Colors.setA(Colors.WHITE, 0.1F);
+                        int bg = selected ? Colors.setA(BBSSettings.primaryColor.get(), 0.1F) : Colors.setA(0, 0.2F);
+                        
+                        context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), bg);
+                        context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), border);
+
+                        super.render(context);
+                        
+                        /* Render audio icon in center */
+                        int iconX = this.area.mx();
+                        int iconY = this.area.y + CARD_SIZE / 2;
+                        boolean isFolder = id.endsWith("/");
+                        Icon icon = isFolder || id.equals(PARENT_FOLDER_ENTRY) ? Icons.FOLDER : Icons.SOUND;
+                        
+                        context.batcher.getContext().getMatrices().push();
+                        context.batcher.getContext().getMatrices().translate(iconX, iconY, 0);
+                        context.batcher.getContext().getMatrices().scale(2F, 2F, 1F);
+                        context.batcher.getContext().getMatrices().translate(-iconX, -iconY, 0);
+                        
+                        context.batcher.icon(icon, iconX, iconY, 0.5F, 0.5F);
+                        
+                        context.batcher.getContext().getMatrices().pop();
+
+                        String label = id;
+                        if (id.startsWith(AUDIO_PREFIX))
+                        {
+                            label = id.substring(AUDIO_PREFIX.length());
+                        }
+                        if (id.equals(PARENT_FOLDER_ENTRY))
+                        {
+                            label = "../";
+                        }
+                        
+                        int maxW = this.area.w - 4;
+                        if (context.batcher.getFont().getWidth(label) > maxW)
+                        {
+                            while (label.length() > 1 && context.batcher.getFont().getWidth(label + "...") > maxW)
+                            {
+                                label = label.substring(0, label.length() - 1);
+                            }
+                            label = label + "...";
+                        }
+                        context.batcher.textShadow(label, this.area.x + 2, this.area.y + CARD_SIZE + 2);
+                    }
+                };
+
+                card.relative(this).x(cx).y(cy).w(CARD_SIZE).h(CARD_SIZE + CARD_LABEL_H);
+                this.add(card);
+            }
+
+            int rows = (this.audioIds.size() + cols - 1) / cols;
+            int totalH = CARD_GAP + rows * (CARD_SIZE + CARD_LABEL_H + CARD_GAP);
+            this.scroll.scrollSize = totalH;
+            this.scroll.clamp();
+        }
+
+        private void onCardClicked(String id)
+        {
+            long now = System.currentTimeMillis();
+            boolean sameAsPrev = id.equals(this.lastClickedId);
+            boolean doubleClick = sameAsPrev && now - this.lastClickTime <= 300L;
+
+            this.lastClickedId = id;
+            this.lastClickTime = now;
+            this.selectedId = id;
+
+            if (this.selectCallback != null)
+            {
+                this.selectCallback.accept(id);
+            }
+
+            if (doubleClick && this.doubleClickCallback != null)
+            {
+                this.doubleClickCallback.accept(id);
+            }
+        }
+
+        @Override
+        public void resize()
+        {
+            int effectiveW = this.area.w > 0 ? this.area.w : 500;
+            int cols = Math.max(1, (effectiveW - CARD_GAP) / (CARD_SIZE + CARD_GAP));
+            if (!this.audioIds.isEmpty() && !this.rebuilding)
+            {
+                if (cols != this.lastCols)
+                {
+                    this.lastCols = cols;
+                    this.rebuilding = true;
+                    this.buildCards();
+                    this.rebuilding = false;
+                }
+
+                int rows = (this.audioIds.size() + cols - 1) / cols;
+                int totalH = CARD_GAP + rows * (CARD_SIZE + CARD_LABEL_H + CARD_GAP);
+                this.scroll.scrollSize = totalH;
+            }
+            super.resize();
+        }
     }
 }

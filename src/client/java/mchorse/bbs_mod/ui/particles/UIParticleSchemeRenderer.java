@@ -71,8 +71,6 @@ public class UIParticleSchemeRenderer extends UIModelRenderer
         MatrixStack stack = new MatrixStack();
 
         stack.push();
-        stack.loadIdentity();
-        stack.multiplyPositionMatrix(this.camera.view);
 
         GlStateManager._enableBlend();
         GlStateManager._enableDepthTest();
@@ -150,5 +148,11 @@ public class UIParticleSchemeRenderer extends UIModelRenderer
         {
             Draw.coolerAxes(new MatrixStack(), 1F, 0.01F, 1.01F, 0.02F);
         }
+    }
+
+    @Override
+    public void render(UIContext context)
+    {
+        super.render(context);
     }
 }

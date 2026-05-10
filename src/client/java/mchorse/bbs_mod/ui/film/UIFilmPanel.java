@@ -53,6 +53,7 @@ import mchorse.bbs_mod.ui.film.utils.undo.UIUndoHistoryOverlay;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.IUIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
+import mchorse.bbs_mod.ui.framework.elements.UIScrollView;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.context.UISimpleContextMenu;
@@ -118,6 +119,7 @@ import org.lwjgl.glfw.GLFW;
 import org.lwjgl.opengl.GL11;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.net.URI;
@@ -215,7 +217,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private UIElement filmTabs;
     private UIElement homePage;
     private UISearchList<DataPath> homeFilmsSearch;
+    private static final String PARENT_FOLDER_ENTRY = "..";
+
     private UIDataPathList homeFilmsList;
+    private UIFilmMosaicGrid homeFilmsMosaic;
+    private UIIcon homeViewToggle;
     private UIElement homeActionsPanel;
     private UIButton homeCreateFilm;
     private UIButton homeOpenManager;
@@ -236,6 +242,12 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private static final int BANNER_TRANSITION = 60; // 3 seconds transition
     private int activeFilmDocumentTab = -1;
     private boolean showingHomePage = true;
+
+    private boolean shouldCaptureThumbnail;
+    private final Map<String, Texture> thumbnails = new HashMap<>();
+
+    private static boolean lastMosaicView = true;
+    private static boolean lastShowingHomePage = true;
 
     /**
      * Initialize the camera editor with a camera profile.
@@ -488,6 +500,25 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         };
         this.homeFilmsSearch = new UISearchList<>(this.homeFilmsList).label(UIKeys.GENERAL_SEARCH);
         this.homeFilmsSearch.list.background();
+
+        this.homeFilmsMosaic = new UIFilmMosaicGrid((id) -> {
+            this.handleHomeFilmsSelection(Collections.singletonList(new DataPath(id)));
+        }, (id) -> {
+            if (!id.endsWith("/") && !id.equals(PARENT_FOLDER_ENTRY)) {
+                this.openFilmInDocumentTabs(id);
+            }
+        });
+        this.homeFilmsMosaic.setVisible(lastMosaicView);
+        this.homeFilmsList.setVisible(!lastMosaicView);
+
+        Consumer<String> oldCallback = this.homeFilmsSearch.search.callback;
+        this.homeFilmsSearch.search.callback = (str) -> {
+            if (oldCallback != null) oldCallback.accept(str);
+            this.homeFilmsMosaic.filter(str);
+        };
+
+        this.homeViewToggle = new UIIcon(lastMosaicView ? Icons.LIST : Icons.GALLERY, (b) -> this.toggleMosaicView());
+        this.homeViewToggle.tooltip(lastMosaicView ? UIKeys.MODELS_HOME_VIEW_LIST : UIKeys.MODELS_HOME_VIEW_MOSAIC, Direction.LEFT);
         this.homeCreateFilm = this.createHomeButton(UIKeys.FILM_CRUD_ADD, Icons.ADD, (b) ->
         {
             UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
@@ -680,7 +711,10 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         this.homeActionsPanel.add(this.homeCreateFilm, spacing, this.homeDuplicateCurrent, this.homeRenameCurrent, this.homeDeleteCurrent);
         this.homeFilmsSearch.relative(this.homePage).x(0.35F).y(HOME_BANNER_HEIGHT + 20).w(0.65F).h(1F, -(HOME_BANNER_HEIGHT + 20));
-        this.homePage.add(new UIRenderable(this::renderHomeBanner), this.homeActionsPanel, this.homeFilmsSearch);
+        this.homeFilmsSearch.search.w(1F, -25);
+        this.homeFilmsMosaic.relative(this.homeFilmsSearch).x(0).y(20).w(1F).h(1F, -20);
+        this.homeViewToggle.relative(this.homeFilmsSearch).x(1F, -22).y(0).w(20).h(20);
+        this.homePage.add(new UIRenderable(this::renderHomeBanner), this.homeActionsPanel, this.homeFilmsSearch, this.homeFilmsMosaic, this.homeViewToggle);
 
         this.editor.add(this.main, this.editArea, this.preview, this.homePage, new UIRenderable(this::renderIcons), new UIRenderable(this::renderDropZoneHighlight));
         for (String id : this.panelById.keySet())
@@ -2165,6 +2199,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.applyRecordedKeyframes(recorder, this.data);
     }
 
+
+
     public void receiveActions(String filmId, int replayId, int tick, BaseType clips)
     {
         Film film = this.data;
@@ -2238,6 +2274,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     @Override
     public void close()
     {
+        this.save();
+        this.shouldCaptureThumbnail = false;
+        this.preview.cancelCapture();
+        lastShowingHomePage = this.showingHomePage;
+
         super.close();
 
         BBSRendering.setCustomSize(false);
@@ -2344,6 +2385,10 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         this.homeFilmsList.fill(names);
         this.homeFilmsList.setCurrentFile(current);
+        if (this.homeFilmsMosaic != null)
+        {
+            this.homeFilmsMosaic.fill(names, current);
+        }
         this.updateHomeButtonsState();
     }
 
@@ -2455,6 +2500,53 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     public void redo()
     {
         if (this.data != null && this.undoHandler.redo(this.data)) UIUtils.playClick();
+    }
+
+    @Override
+    public void forceSave()
+    {
+        super.forceSave();
+        this.shouldCaptureThumbnail = true;
+    }
+
+    public File getThumbnailFile(String id)
+    {
+        return new File(BBS.getGameFolder(), "config/bbs/thumbnails/films/" + id + ".png");
+    }
+
+    public Texture getThumbnail(String id)
+    {
+        if (this.thumbnails.containsKey(id))
+        {
+            return this.thumbnails.get(id);
+        }
+
+        File file = this.getThumbnailFile(id);
+
+        if (file.exists())
+        {
+            try (FileInputStream stream = new FileInputStream(file))
+            {
+                Pixels pixels = Pixels.fromPNGStream(stream);
+
+                if (pixels != null)
+                {
+                    Texture texture = Texture.textureFromPixels(pixels, GL11.GL_LINEAR);
+
+                    this.thumbnails.put(id, texture);
+
+                    return texture;
+                }
+            }
+            catch (Exception e)
+            {
+                e.printStackTrace();
+            }
+        }
+
+        this.thumbnails.put(id, null);
+
+        return null;
     }
 
     public boolean isFlying()
@@ -2580,6 +2672,20 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     @Override
     public void render(UIContext context)
     {
+        super.render(context);
+
+        if (this.shouldCaptureThumbnail && this.data != null)
+        {
+            File output = this.getThumbnailFile(this.data.getId());
+            output.getParentFile().mkdirs();
+            this.preview.captureThumbnail(output);
+            this.shouldCaptureThumbnail = false;
+            
+            // Clear cache for this film so it reloads the new thumbnail
+            Texture texture = this.thumbnails.remove(this.data.getId());
+            if (texture != null) texture.delete();
+        }
+
         if (this.data != null)
         {
             /*
@@ -3053,6 +3159,10 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     private String getSelectedHomeFilmId()
     {
+        if (this.homeFilmsMosaic != null && this.homeFilmsMosaic.isVisible())
+        {
+            return this.homeFilmsMosaic.selectedId;
+        }
         DataPath selected = this.homeFilmsList.getCurrentFirst();
 
         if (selected == null || selected.folder)
@@ -3061,6 +3171,23 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         }
 
         return selected.toString();
+    }
+
+    private void toggleMosaicView()
+    {
+        boolean isMosaic = !this.homeFilmsMosaic.isVisible();
+
+        this.homeFilmsMosaic.setVisible(isMosaic);
+        this.homeFilmsList.setVisible(!isMosaic);
+        this.homeViewToggle.both(isMosaic ? Icons.LIST : Icons.GALLERY);
+        this.homeViewToggle.tooltip(isMosaic ? UIKeys.MODELS_HOME_VIEW_LIST : UIKeys.MODELS_HOME_VIEW_MOSAIC, Direction.LEFT);
+
+        lastMosaicView = isMosaic;
+
+        if (isMosaic)
+        {
+            this.homeFilmsMosaic.resize();
+        }
     }
 
     private void addFolderFromHome()
@@ -4024,6 +4151,208 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                 return true;
             }
             return false;
+        }
+    }
+    public class UIFilmMosaicGrid extends UIScrollView
+    {
+        private static final int CARD_SIZE = 100;
+        private static final int CARD_GAP = 6;
+        private static final int CARD_LABEL_H = 16;
+
+        private final Consumer<String> selectCallback;
+        private final Consumer<String> doubleClickCallback;
+
+        private final List<String> allFilmIds = new ArrayList<>();
+        private final List<String> filmIds = new ArrayList<>();
+        public String selectedId;
+        private String lastClickedId;
+        private long lastClickTime;
+        private int lastCols = -1;
+        private boolean rebuilding = false;
+
+        public UIFilmMosaicGrid(Consumer<String> selectCallback, Consumer<String> doubleClickCallback)
+        {
+            super();
+            this.selectCallback = selectCallback;
+            this.doubleClickCallback = doubleClickCallback;
+            this.scroll.scrollSpeed = 20;
+        }
+
+        public void fill(Collection<String> names, String selectedId)
+        {
+            this.allFilmIds.clear();
+            for (String name : names)
+            {
+                if (!name.endsWith("/"))
+                {
+                    this.allFilmIds.add(name);
+                }
+            }
+            this.selectedId = selectedId;
+            this.lastCols = -1;
+            
+            this.filter("");
+        }
+
+        public void filter(String query)
+        {
+            this.filmIds.clear();
+            String lowerQuery = query == null ? "" : query.toLowerCase();
+            
+            for (String id : this.allFilmIds)
+            {
+                if (id.toLowerCase().contains(lowerQuery))
+                {
+                    this.filmIds.add(id);
+                }
+            }
+            
+            this.buildCards();
+            
+            if (this.hasParent())
+            {
+                this.resize();
+            }
+        }
+
+        private void buildCards()
+        {
+            this.removeAll();
+            if (this.filmIds.isEmpty()) return;
+
+            int effectiveW = this.area.w > 0 ? this.area.w : 500;
+            int cols = Math.max(1, (effectiveW - CARD_GAP) / (CARD_SIZE + CARD_GAP));
+
+            for (int i = 0; i < this.filmIds.size(); i++)
+            {
+                final String id = this.filmIds.get(i);
+                final int col = i % cols;
+                final int row = i / cols;
+
+                int cx = CARD_GAP + col * (CARD_SIZE + CARD_GAP);
+                int cy = CARD_GAP + row * (CARD_SIZE + CARD_GAP + CARD_LABEL_H);
+
+                UIElement card = new UIElement()
+                {
+                    @Override
+                    public boolean subMouseClicked(UIContext context)
+                    {
+                        if (this.area.isInside(context))
+                        {
+                            UIFilmMosaicGrid.this.onCardClicked(id);
+                            return true;
+                        }
+                        return false;
+                    }
+
+                    @Override
+                    public void render(UIContext context)
+                    {
+                        boolean selected = id.equals(UIFilmMosaicGrid.this.selectedId);
+                        int border = selected ? BBSSettings.primaryColor.get() : Colors.setA(Colors.WHITE, 0.1F);
+                        int bg = selected ? Colors.setA(BBSSettings.primaryColor.get(), 0.1F) : Colors.setA(0, 0.2F);
+                        
+                        context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), bg);
+                        context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), border);
+
+                        super.render(context);
+
+                        Texture thumbnail = UIFilmPanel.this.getThumbnail(id);
+                        if (thumbnail != null)
+                        {
+                            int w = CARD_SIZE - 4;
+                            int h = (int) (w * (thumbnail.height / (float) thumbnail.width));
+                            if (h > CARD_SIZE - 4)
+                            {
+                                h = CARD_SIZE - 4;
+                                w = (int) (h * (thumbnail.width / (float) thumbnail.height));
+                            }
+                            int x = this.area.x + 2 + (CARD_SIZE - 4 - w) / 2;
+                            int y = this.area.y + 2 + (CARD_SIZE - 4 - h) / 2;
+
+                            context.batcher.fullTexturedBox(thumbnail, x, y, w, h);
+                        }
+                        else
+                        {
+                            /* Render film icon in center */
+                            int iconX = this.area.mx();
+                            int iconY = this.area.y + CARD_SIZE / 2;
+                            
+                            context.batcher.getContext().getMatrices().push();
+                            context.batcher.getContext().getMatrices().translate(iconX, iconY, 0);
+                            context.batcher.getContext().getMatrices().scale(2F, 2F, 1F);
+                            context.batcher.getContext().getMatrices().translate(-iconX, -iconY, 0);
+                            
+                            context.batcher.icon(Icons.FILM, iconX, iconY, 0.5F, 0.5F);
+                            
+                            context.batcher.getContext().getMatrices().pop();
+                        }
+
+                        String label = new DataPath(id).getLast();
+                        int maxW = this.area.w - 4;
+                        if (context.batcher.getFont().getWidth(label) > maxW)
+                        {
+                            while (label.length() > 1 && context.batcher.getFont().getWidth(label + "...") > maxW)
+                            {
+                                label = label.substring(0, label.length() - 1);
+                            }
+                            label = label + "...";
+                        }
+                        context.batcher.textShadow(label, this.area.x + 2, this.area.y + CARD_SIZE + 2);
+                    }
+                };
+
+                card.relative(this).x(cx).y(cy).w(CARD_SIZE).h(CARD_SIZE + CARD_LABEL_H);
+                this.add(card);
+            }
+
+            int rows = (this.filmIds.size() + cols - 1) / cols;
+            int totalH = CARD_GAP + rows * (CARD_SIZE + CARD_LABEL_H + CARD_GAP);
+            this.scroll.scrollSize = totalH;
+            this.scroll.clamp();
+        }
+
+        private void onCardClicked(String id)
+        {
+            long now = System.currentTimeMillis();
+            boolean sameAsPrev = id.equals(this.lastClickedId);
+            boolean doubleClick = sameAsPrev && now - this.lastClickTime <= 300L;
+
+            this.lastClickedId = id;
+            this.lastClickTime = now;
+            this.selectedId = id;
+
+            if (this.selectCallback != null)
+            {
+                this.selectCallback.accept(id);
+            }
+
+            if (doubleClick && this.doubleClickCallback != null)
+            {
+                this.doubleClickCallback.accept(id);
+            }
+        }
+
+        @Override
+        public void resize()
+        {
+            int effectiveW = this.area.w > 0 ? this.area.w : 500;
+            int cols = Math.max(1, (effectiveW - CARD_GAP) / (CARD_SIZE + CARD_GAP));
+            if (!this.filmIds.isEmpty() && !this.rebuilding)
+            {
+                if (cols != this.lastCols)
+                {
+                    this.lastCols = cols;
+                    this.rebuilding = true;
+                    this.buildCards();
+                    this.rebuilding = false;
+                }
+
+                int rows = (this.filmIds.size() + cols - 1) / cols;
+                int totalH = CARD_GAP + rows * (CARD_SIZE + CARD_LABEL_H + CARD_GAP);
+                this.scroll.scrollSize = totalH;
+            }
+            super.resize();
         }
     }
 }

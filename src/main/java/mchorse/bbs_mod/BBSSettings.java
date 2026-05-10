@@ -105,8 +105,6 @@ public class BBSSettings
     public static ValueInt editorCommandWidth;
     public static ValueInt editorCommandHeight;
     public static ValueBoolean editorCommandAutoWrap;
-    public static ValueBoolean modelFormsHierarchy;
-    public static ValueBoolean mediaFoldersEnhancements;
     public static ValueInt replayContextOptions;
     public static ValueBoolean editorRewind;
     public static ValueBoolean editorHorizontalClipEditor;
@@ -151,6 +149,7 @@ public class BBSSettings
 
     public static ValueString cdnUrl;
     public static ValueString cdnToken;
+    public static ValueBoolean morphingAutoMorph;
 
     public static int primaryColor()
     {
