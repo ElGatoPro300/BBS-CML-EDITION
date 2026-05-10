@@ -6,7 +6,9 @@ import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.DataPath;
 import mchorse.bbs_mod.utils.NaturalOrderComparator;
+import mchorse.bbs_mod.utils.Pair;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -259,6 +261,21 @@ public class UIDataPathList extends UIList<DataPath>
             this.goTo(dataPath.getParent());
             this.setCurrentScroll(dataPath);
         }
+    }
+
+    public List<DataPath> getFilteredList()
+    {
+        if (this.isFiltering())
+        {
+            List<DataPath> list = new ArrayList<>();
+            for (Pair<DataPath, Integer> pair : this.filtered)
+            {
+                list.add(pair.a);
+            }
+            return list;
+        }
+
+        return this.list;
     }
 
     /* UIList overrides */
