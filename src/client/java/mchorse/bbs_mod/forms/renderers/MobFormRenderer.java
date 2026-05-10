@@ -8,7 +8,6 @@ import com.mojang.brigadier.StringReader;
 import com.mojang.math.Axis;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.client.BBSShaders;
-import mchorse.bbs_mod.client.MobTextureOverride;
 import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.ITickable;
@@ -34,31 +33,6 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gl.ShaderProgram;
-import net.minecraft.client.render.Camera;
-import net.minecraft.client.model.ModelPart;
-import net.minecraft.client.network.OtherClientPlayerEntity;
-import net.minecraft.client.render.LightmapTextureManager;
-import net.minecraft.client.render.command.OrderedRenderCommandQueueImpl;
-import net.minecraft.client.render.entity.EntityRenderManager;
-import net.minecraft.client.render.entity.EntityRenderer;
-import net.minecraft.client.render.entity.LivingEntityRenderer;
-import net.minecraft.client.render.entity.model.EntityModel;
-import net.minecraft.client.render.entity.state.EntityRenderState;
-import net.minecraft.client.render.state.CameraRenderState;
-import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityPose;
-import net.minecraft.entity.EquipmentSlot;
-import net.minecraft.entity.LivingEntity;
-import net.minecraft.nbt.NbtCompound;
-import net.minecraft.nbt.StringNbtReader;
-import net.minecraft.registry.Registries;
-import net.minecraft.entity.SpawnReason;
-import net.minecraft.util.Hand;
-import net.minecraft.util.Identifier;
-import net.minecraft.util.math.RotationAxis;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
 
@@ -262,31 +236,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
             });
 
             consumers.setUI(true);
-            MobTextureOverride.begin(this.form.texture.get());
-            try
-            {
-                EntityRenderManager manager = MinecraftClient.getInstance().getEntityRenderDispatcher();
-                EntityRenderer renderer = manager.getRenderer(this.entity);
-
-                if (renderer != null)
-                {
-                    EntityRenderState state = manager.getAndUpdateRenderState(this.entity, context.getTransition());
-                    Camera camera = MinecraftClient.getInstance().gameRenderer.getCamera();
-                    CameraRenderState cameraState = new CameraRenderState();
-
-                    cameraState.blockPos = camera.getBlockPos();
-                    cameraState.pos = camera.getCameraPos();
-                    cameraState.entityPos = camera.getCameraPos();
-                    cameraState.orientation = camera.getRotation();
-                    cameraState.initialized = true;
-
-                    renderer.render(state, stack, new OrderedRenderCommandQueueImpl(), cameraState);
-                }
-            }
-            finally
-            {
-                MobTextureOverride.end();
-            }
+            /* Entity render-dispatch API changed in 1.21.11; this UI path requires state-based porting. */
             consumers.draw();
             consumers.setUI(false);
 
@@ -355,31 +305,8 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
             currentPose = this.form.pose.get();
             currentPoseOverlay = this.form.poseOverlay.get();
-            MobTextureOverride.begin(this.form.texture.get());
-            try
-            {
-                EntityRenderManager manager = MinecraftClient.getInstance().getEntityRenderDispatcher();
-                EntityRenderer renderer = manager.getRenderer(this.entity);
 
-                if (renderer != null)
-                {
-                    EntityRenderState state = manager.getAndUpdateRenderState(this.entity, context.getTransition());
-                    Camera camera = MinecraftClient.getInstance().gameRenderer.getCamera();
-                    CameraRenderState cameraState = new CameraRenderState();
-
-                    cameraState.blockPos = camera.getBlockPos();
-                    cameraState.pos = camera.getCameraPos();
-                    cameraState.entityPos = camera.getCameraPos();
-                    cameraState.orientation = camera.getRotation();
-                    cameraState.initialized = true;
-
-                    renderer.render(state, context.stack, new OrderedRenderCommandQueueImpl(), cameraState);
-                }
-            }
-            finally
-            {
-                MobTextureOverride.end();
-            }
+            /* Entity render-dispatch API changed in 1.21.11; this world path requires state-based porting. */
 
             currentPose = currentPoseOverlay = null;
 
@@ -399,11 +326,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
         if (this.entity != null)
         {
-            // Only tick if it's safe - skip player entities when not connected
-            if (!(this.entity instanceof OtherClientPlayerEntity) || MinecraftClient.getInstance().getNetworkHandler() != null)
-            {
-                this.entity.tick();
-            }
+            this.entity.tick();
 
             this.entity.xRotO = this.prevPitch;
             this.entity.yRotO = 0F;

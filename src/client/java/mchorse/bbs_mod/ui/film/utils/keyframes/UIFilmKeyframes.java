@@ -1,5 +1,6 @@
 package mchorse.bbs_mod.ui.film.utils.keyframes;
 
+import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.camera.utils.TimeUtils;
 import mchorse.bbs_mod.ui.film.IUIClipsDelegate;
 import mchorse.bbs_mod.ui.film.UIClips;
@@ -87,7 +88,7 @@ public class UIFilmKeyframes extends UIKeyframes
         {
             int cx = this.toGraphX(this.getOffset());
 
-            if (cx < this.area.x + IUIKeyframeGraph.SIDEBAR_WIDTH)
+            if (BBSSettings.simplifiedKeyframeUI.get() && cx < this.area.x + IUIKeyframeGraph.SIDEBAR_WIDTH)
             {
                 return;
             }

@@ -20,7 +20,6 @@ import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
-import mchorse.bbs_mod.settings.values.IValueListener;
 import mchorse.bbs_mod.settings.values.base.BaseValueBasic;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.replays.UIReplaysEditor;
@@ -55,7 +54,6 @@ import org.joml.Vector2i;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -430,54 +428,31 @@ public class UIAnimationStateEditor extends UIElement
 
     private void convertToLimbs(UIKeyframeSheet sheet)
     {
-        List<Keyframe> selected = new ArrayList<>(sheet.selection.getSelected());
+        List<Keyframe> selected = sheet.selection.getSelected();
 
         if (selected.isEmpty())
         {
             return;
         }
 
-        Form rootForm = FormUtils.getRoot(this.editor.form);
-
-        Set<String> boneNames = new HashSet<>();
-
-        for (Keyframe kf : selected)
+        BaseValue.edit(this.state, (s) ->
         {
-            Pose pose = (Pose) kf.getValue();
-
-            if (pose != null)
-            {
-                boneNames.addAll(pose.transforms.keySet());
-            }
-        }
-
-        BaseValue.edit(this.state, IValueListener.FLAG_UNMERGEABLE, (s) ->
-        {
-            Set<Float> convertedTicks = new java.util.HashSet<>();
-
             for (Keyframe kf : selected)
             {
-                Pose pose = (Pose) sheet.channel.interpolate(kf.getTick());
+                Pose pose = (Pose) kf.getValue();
 
                 if (pose == null)
                 {
                     continue;
                 }
 
-                convertedTicks.add(kf.getTick());
-
-                for (String boneName : boneNames)
+                for (Map.Entry<String, PoseTransform> entry : pose.transforms.entrySet())
                 {
-                    PoseTransform transform = pose.transforms.get(boneName);
-
-                    if (transform == null)
-                    {
-                        transform = new PoseTransform();
-                    }
-
+                    String boneName = entry.getKey();
+                    PoseTransform transform = entry.getValue();
                     String key = sheet.id + ":" + boneName;
 
-                    KeyframeChannel<Transform> channel = this.state.properties.getOrCreate(rootForm, key);
+                    KeyframeChannel<Transform> channel = this.state.properties.getOrCreate(this.editor.form, key);
 
                     if (channel != null)
                     {
@@ -487,26 +462,9 @@ public class UIAnimationStateEditor extends UIElement
                         newKf.copyOverExtra(kf);
                     }
                 }
+
+                sheet.channel.remove(kf);
             }
-
-            if (!convertedTicks.isEmpty())
-            {
-                for (int i = sheet.channel.getList().size() - 1; i >= 0; i--)
-                {
-                    Keyframe existing = (Keyframe) sheet.channel.getList().get(i);
-
-                    for (Float tick : convertedTicks)
-                    {
-                        if (Math.abs(existing.getTick() - tick) < 0.0001F)
-                        {
-                            sheet.channel.remove(i);
-                            break;
-                        }
-                    }
-                }
-            }
-
-            this.state.properties.cleanUp();
         });
 
         this.setState(this.state);

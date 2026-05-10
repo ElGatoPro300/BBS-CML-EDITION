@@ -55,12 +55,11 @@ public class PoseTransform extends Transform
     {
         super.lerp(preA, a, b, postB, interp, x);
 
-        if (preA instanceof PoseTransform || a instanceof PoseTransform || b instanceof PoseTransform || postB instanceof PoseTransform)
+        if (preA instanceof PoseTransform preA1)
         {
-            PoseTransform preA1 = preA instanceof PoseTransform ? (PoseTransform) preA : DEFAULT;
-            PoseTransform a1 = a instanceof PoseTransform ? (PoseTransform) a : DEFAULT;
-            PoseTransform b1 = b instanceof PoseTransform ? (PoseTransform) b : DEFAULT;
-            PoseTransform postB1 = postB instanceof PoseTransform ? (PoseTransform) postB : DEFAULT;
+            PoseTransform a1 = (PoseTransform) a;
+            PoseTransform b1 = (PoseTransform) b;
+            PoseTransform postB1 = (PoseTransform) postB;
 
             this.fix = (float) interp.interpolate(IInterp.context.set(preA1.fix, a1.fix, b1.fix, postB1.fix, x));
 
@@ -80,12 +79,11 @@ public class PoseTransform extends Transform
     {
         super.lerp(preA, a, b, postB, interp, x, w0, w1, w2, w3);
 
-        if (preA instanceof PoseTransform || a instanceof PoseTransform || b instanceof PoseTransform || postB instanceof PoseTransform)
+        if (preA instanceof PoseTransform preA1)
         {
-            PoseTransform preA1 = preA instanceof PoseTransform ? (PoseTransform) preA : DEFAULT;
-            PoseTransform a1 = a instanceof PoseTransform ? (PoseTransform) a : DEFAULT;
-            PoseTransform b1 = b instanceof PoseTransform ? (PoseTransform) b : DEFAULT;
-            PoseTransform postB1 = postB instanceof PoseTransform ? (PoseTransform) postB : DEFAULT;
+            PoseTransform a1 = (PoseTransform) a;
+            PoseTransform b1 = (PoseTransform) b;
+            PoseTransform postB1 = (PoseTransform) postB;
 
             EasingArgs args = null;
 
