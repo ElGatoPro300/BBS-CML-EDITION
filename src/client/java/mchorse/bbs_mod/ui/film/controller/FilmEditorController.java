@@ -20,7 +20,9 @@ import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 import mchorse.bbs_mod.utils.keyframes.KeyframeSegment;
 
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
+
+import net.minecraft.client.MinecraftClient;
 
 import java.util.List;
 import java.util.Map;
@@ -176,7 +178,7 @@ public class FilmEditorController extends BaseFilmController
                     this.renderOnion(replay, pose.getKeyframes().indexOf(segment.b), 1, pose, onionSkin.postColor.get(), onionSkin.postFrames.get(), context, isPlaying, entity);
 
                     replay.keyframes.apply(ticks, entity);
-                    float tick = ticks + this.getTransition(entity, context.tickCounter().getTickDelta(false));
+                    float tick = ticks + this.getTransition(entity, MinecraftClient.getInstance().getRenderTickCounter().getTickProgress(false));
                     Form form = entity.getForm();
                     replay.properties.applyProperties(form, tick);
 
@@ -250,7 +252,7 @@ public class FilmEditorController extends BaseFilmController
         }
 
         return super.getFilmControllerContext(context, replay, entity)
-            .transition(this.getTransition(entity, context.tickCounter().getTickDelta(false)))
+            .transition(this.getTransition(entity, MinecraftClient.getInstance().getRenderTickCounter().getTickProgress(false)))
             .bone(aBone, local)
             .bone2(aBone2, local2);
     }

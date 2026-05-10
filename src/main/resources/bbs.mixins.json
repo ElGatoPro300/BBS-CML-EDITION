@@ -13,7 +13,6 @@
         "WorldMixin",
         "LivingEntityMixin",
         "ServerPlayerEntityMixin",
-        "LimbAnimatorAccessor",
         "LevelPropertiesAccessor",
         "EntityMixin"
     ],

@@ -58,15 +58,15 @@ import mchorse.bbs_mod.utils.resources.Pixels;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.BufferBuilder;
-import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 
 import org.joml.Matrix4f;
 
+import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import com.mojang.logging.LogUtils;
 
 import com.google.gson.Gson;
@@ -1398,18 +1398,18 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
             @Override
             public void render(UIContext context)
             {
-                context.batcher.getContext().getMatrices().push();
+                context.batcher.getContext().getMatrices().pushMatrix();
                 
                 int cx = this.area.mx();
                 int cy = this.area.my();
                 
-                context.batcher.getContext().getMatrices().translate(cx, cy, 0);
-                context.batcher.getContext().getMatrices().scale(2F, 2F, 1F);
-                context.batcher.getContext().getMatrices().translate(-cx, -cy, 0);
+                context.batcher.getContext().getMatrices().translate(cx, cy);
+                context.batcher.getContext().getMatrices().scale(2F, 2F);
+                context.batcher.getContext().getMatrices().translate(-cx, -cy);
                 
                 super.render(context);
                 
-                context.batcher.getContext().getMatrices().pop();
+                context.batcher.getContext().getMatrices().popMatrix();
             }
         }.background();
         
@@ -1886,7 +1886,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
                     Pixels pixels = Pixels.fromPNGStream(stream);
                     if (pixels != null)
                     {
-                        RenderSystem.recordRenderCall(() ->
+                        MinecraftClient.getInstance().execute(() ->
                         {
                             Texture texture = Texture.textureFromPixels(pixels, GL11.GL_LINEAR);
                             BBSModClient.getTextures().textures.put(link, texture);
@@ -1924,8 +1924,8 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
 
             if (alpha > 0.001F)
             {
-                RenderSystem.enableBlend();
-                RenderSystem.defaultBlendFunc();
+                GlStateManager._enableBlend();
+                // GlStateManager._blendFunc(770, 771);
                 context.batcher.texturedBox(texture, Colors.setA(Colors.WHITE, alpha), tx, ty, tw, th, 0, 0, texture.width, texture.height);
             }
 

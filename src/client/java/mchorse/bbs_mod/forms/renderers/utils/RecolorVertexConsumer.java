@@ -19,19 +19,16 @@ public class RecolorVertexConsumer implements VertexConsumer
         this.color = color;
     }
 
-    @Override
     public VertexConsumer vertex(float x, float y, float z)
     {
         return this.consumer.vertex(x, y, z);
     }
 
-    @Override
     public VertexConsumer vertex(Matrix4f matrix, float x, float y, float z)
     {
         return this.consumer.vertex(matrix, x, y, z);
     }
 
-    @Override
     public VertexConsumer color(int red, int green, int blue, int alpha)
     {
         red = (int) (this.color.r * red);
@@ -43,27 +40,35 @@ public class RecolorVertexConsumer implements VertexConsumer
     }
 
     @Override
+    public VertexConsumer color(int argb)
+    {
+        return this.consumer.color(argb);
+    }
+
     public VertexConsumer texture(float u, float v)
     {
         return this.consumer.texture(u, v);
     }
 
-    @Override
     public VertexConsumer overlay(int u, int v)
     {
         return this.consumer.overlay(u, v);
     }
 
-    @Override
     public VertexConsumer light(int u, int v)
     {
         return this.consumer.light(u, v);
     }
 
-    @Override
     public VertexConsumer normal(float x, float y, float z)
     {
         return this.consumer.normal(x, y, z);
+    }
+
+    @Override
+    public VertexConsumer lineWidth(float width)
+    {
+        return this.consumer.lineWidth(width);
     }
 
 }

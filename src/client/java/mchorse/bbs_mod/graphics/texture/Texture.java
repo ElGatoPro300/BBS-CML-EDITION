@@ -2,10 +2,11 @@ package mchorse.bbs_mod.graphics.texture;
 
 import mchorse.bbs_mod.utils.resources.Pixels;
 
-import com.mojang.blaze3d.platform.GlStateManager;
+import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.platform.TextureUtil;
 
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.system.MemoryUtil;
 
@@ -60,7 +61,7 @@ public class Texture
 
     public Texture()
     {
-        this.id = TextureUtil.generateTextureId();
+        this.id = GL11.glGenTextures();
         this.target = GL11.GL_TEXTURE_2D;
 
         this.bind();
@@ -113,7 +114,7 @@ public class Texture
 
     public void bind(int texture)
     {
-        GlStateManager.glActiveTexture(texture);
+        GL13.glActiveTexture(texture);
         GL11.glBindTexture(this.target, this.id);
     }
 
@@ -124,7 +125,7 @@ public class Texture
 
     public void unbind(int texture)
     {
-        GlStateManager.glActiveTexture(texture);
+        GL13.glActiveTexture(texture);
         GL11.glBindTexture(this.target, 0);
     }
 

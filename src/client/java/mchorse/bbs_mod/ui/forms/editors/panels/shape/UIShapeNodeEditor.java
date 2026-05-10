@@ -55,17 +55,21 @@ import mchorse.bbs_mod.ui.utils.presets.UICopyPasteController;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.presets.PresetManager;
 
-import net.minecraft.client.gl.ShaderProgramKeys;
+import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.render.BufferBuilder;
-import net.minecraft.client.render.BufferRenderer;
+import net.minecraft.client.render.GameRenderer;
+import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 
 import org.joml.Matrix4f;
 import org.joml.Vector2f;
 
+import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.vertex.VertexFormat;
+
 import org.lwjgl.glfw.GLFW;
+import org.lwjgl.opengl.GL11;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -1406,6 +1410,12 @@ public class UIShapeNodeEditor extends UIElement
 
         if (out == null || in == null) return;
 
+        Matrix4f matrix4f = new Matrix4f();
+        Tessellator tessellator = Tessellator.getInstance();
+
+        GlStateManager._enableBlend();
+        GlStateManager._blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+        /* shader binding handled by RenderLayer in 1.21.11 */
         int x1 = this.nodeScreenX(out) + this.nodeScreenW(out);
         int y1 = this.socketScreenY(out, c.outputIndex);
         int x2 = this.nodeScreenX(in);
@@ -1439,7 +1449,6 @@ public class UIShapeNodeEditor extends UIElement
             this.drawBezier(context, context.mouseX, context.mouseY, x1, y1, Colors.WHITE, 2F * this.scale);
         }
     }
-
     private void drawSocket(UIContext context, int x, int y, int color, boolean filled)
     {
         int r = (int) Math.max(5F * this.scale, 3F);

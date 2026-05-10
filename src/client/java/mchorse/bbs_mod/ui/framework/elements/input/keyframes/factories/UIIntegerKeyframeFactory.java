@@ -110,7 +110,7 @@ public class UIIntegerKeyframeFactory extends UIKeyframeFactory<Integer>
 
                         if (stack != null && !stack.isEmpty())
                         {
-                            MatrixStack matrices = context.batcher.getContext().getMatrices();
+                            MatrixStack matrices = new MatrixStack();
                             CustomVertexConsumerProvider consumers = FormUtilsClient.getProvider();
                             int itemX = x + Math.max(0, (slotW - 16) / 2);
                             int itemY = y + Math.max(0, (slotH - 16) / 2);

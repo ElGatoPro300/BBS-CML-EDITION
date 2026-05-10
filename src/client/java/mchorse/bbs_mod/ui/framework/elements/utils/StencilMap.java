@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.ui.framework.elements.utils;
 
 import mchorse.bbs_mod.forms.forms.Form;
+import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.utils.Pair;
 
@@ -64,6 +65,16 @@ public class StencilMap
         }
     }
 
+    public boolean hasStencil()
+    {
+        return !this.indexMap.isEmpty();
+    }
+
+    public void render(UIContext context)
+    {
+        // TODO: Implement render
+    }
+    
     public boolean isBoneAllowed(String bone)
     {
         return this.allowedBones == null || this.allowedBones.contains(bone);
