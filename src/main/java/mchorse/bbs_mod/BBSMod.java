@@ -248,7 +248,7 @@ public class BBSMod implements ModInitializer
     );
 
     public static final ItemGroup ITEM_GROUP = FabricItemGroup.builder()
-        .icon(() -> createModelBlockStack(Link.assets("textures/bbs.png")))
+        .icon(() -> createModelBlockStack(Link.assets("textures/icon.png")))
         .displayName(Text.translatable("itemGroup.bbs.main"))
         .entries((context, entries) ->
         {
