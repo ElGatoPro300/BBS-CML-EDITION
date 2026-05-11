@@ -188,7 +188,7 @@ public class UIPropTransform extends UITransform
         Vector3f vector3f = new Vector3f(
             (float) (axis == Axis.X ? factor : 0D),
             (float) (axis == Axis.Y ? factor : 0D),
-            (float) (axis == Axis.Z ? factor : 0D)
+            (float) (axis == Axis.Z ? (this.model ? -factor : factor) : 0D)
         );
         /* I have no fucking idea why I have to rotate it 180 degrees by X axis... but it works! */
         Matrix3f matrix = new Matrix3f()
@@ -939,7 +939,7 @@ public class UIPropTransform extends UITransform
 
                     this.addAxisDelta(result, Axis.X, dx_world);
                     this.addAxisDelta(result, Axis.Y, dy_world);
-                    this.addAxisDelta(result, Axis.Z, dz_world);
+                    this.addAxisDelta(result, Axis.Z, this.model ? -dz_world : dz_world);
 
                     this.setT(null, result.x, result.y, result.z);
                 }
@@ -974,7 +974,7 @@ public class UIPropTransform extends UITransform
                 {
                     Vector3f result = new Vector3f(value);
 
-                    this.addAxisDelta(result, this.axis, primaryDelta);
+                    this.addAxisDelta(result, this.axis, this.model && this.axis == Axis.Z ? -primaryDelta : primaryDelta);
                     this.setT(null, result.x, result.y, result.z);
                 }
 
@@ -1016,10 +1016,10 @@ public class UIPropTransform extends UITransform
                 {
                     Vector3f result = new Vector3f(value);
 
-                    this.addAxisDelta(result, this.axis, primaryDelta);
+                    this.addAxisDelta(result, this.axis, this.model && this.axis == Axis.Z ? -primaryDelta : primaryDelta);
 
                     float secondaryDelta = (float) delta.dot(this.raySecondaryAxis.x, this.raySecondaryAxis.y, this.raySecondaryAxis.z) * this.translationScale;
-                    this.addAxisDelta(result, this.secondaryAxis, secondaryDelta);
+                    this.addAxisDelta(result, this.secondaryAxis, this.model && this.secondaryAxis == Axis.Z ? -secondaryDelta : secondaryDelta);
 
                     this.setT(null, result.x, result.y, result.z);
                 }
