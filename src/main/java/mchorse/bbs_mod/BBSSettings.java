@@ -220,7 +220,7 @@ public class BBSSettings
 
         builder.category("axes");
         gizmos = builder.getBoolean("gizmos", true);
-        axesScale = builder.getFloat("axes_scale", 1F, 0F, 2F);
+        axesScale = builder.getFloat("axes_scale", 1F, 0F, 10F);
         axesThickness = builder.getFloat("axes_thickness", 1F, 0.25F, 3F);
 
         builder.category("tutorials");
