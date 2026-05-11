@@ -1417,6 +1417,17 @@ public class UIKeys
     public static final IKey CAMERA_TIMELINE_CLIPS_TABS_ANCHOR = L10n.lang("bbs.ui.camera.clips.tabs.anchor");
     public static final IKey CAMERA_TIMELINE_CLIPS_TABS_EXTRAS = L10n.lang("bbs.ui.camera.clips.tabs.extras");
 
+    /* Welcome Panel */
+    public static final IKey WELCOME_TITLE1 = L10n.lang("bbs.welcome.title1");
+    public static final IKey WELCOME_TITLE2 = L10n.lang("bbs.welcome.title2");
+    public static final IKey WELCOME_READY = L10n.lang("bbs.welcome.ready");
+    public static final IKey WELCOME_YES = L10n.lang("bbs.welcome.yes");
+    public static final IKey WELCOME_NO = L10n.lang("bbs.welcome.no");
+    public static final IKey WELCOME_ALPHA_WARNING = L10n.lang("bbs.welcome.alpha_warning");
+    public static final IKey WELCOME_DOWNGRADE_WARNING = L10n.lang("bbs.welcome.downgrade_warning");
+    public static final IKey WELCOME_ACCEPT = L10n.lang("bbs.welcome.accept");
+    public static final IKey WELCOME_EXIT = L10n.lang("bbs.welcome.exit");
+
     /* Key collections */
     public static final KeyCollection C_CLIP = new KeyCollection("bbs.ui.camera.clips.^")
         .load(BBSMod.getFactoryCameraClips().getStringKeys())

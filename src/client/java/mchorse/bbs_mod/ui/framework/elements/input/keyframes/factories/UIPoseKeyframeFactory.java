@@ -217,7 +217,7 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
         @Override
         protected UIPropTransform createTransformEditor()
         {
-            return new UIPoseTransforms().enableHotkeys();
+            return new UIPoseTransforms().enableHotkeys().translationScale(16F);
         }
 
         @Override

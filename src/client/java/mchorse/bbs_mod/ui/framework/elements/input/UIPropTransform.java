@@ -83,6 +83,7 @@ public class UIPropTransform extends UITransform
     private final Vector3d rayDirectionD = new Vector3d();
 
     private UITransformHandler handler;
+    private float translationScale = 1F;
 
     public UIPropTransform()
     {
@@ -187,7 +188,7 @@ public class UIPropTransform extends UITransform
         Vector3f vector3f = new Vector3f(
             (float) (axis == Axis.X ? factor : 0D),
             (float) (axis == Axis.Y ? factor : 0D),
-            (float) (axis == Axis.Z ? factor : 0D)
+            (float) (axis == Axis.Z ? (this.model ? -factor : factor) : 0D)
         );
         /* I have no fucking idea why I have to rotate it 180 degrees by X axis... but it works! */
         Matrix3f matrix = new Matrix3f()
@@ -261,6 +262,12 @@ public class UIPropTransform extends UITransform
     public void setGizmoRayProvider(IGizmoRayProvider provider)
     {
         this.gizmoRayProvider = provider;
+    }
+
+    public UIPropTransform translationScale(float translationScale)
+    {
+        this.translationScale = translationScale;
+        return this;
     }
 
     public void enableMode(int mode)
@@ -912,9 +919,9 @@ public class UIPropTransform extends UITransform
                 this.extractAxisWorld(Axis.Y, worldY);
                 this.extractAxisWorld(Axis.Z, worldZ);
 
-                float dx_world = (float) delta.dot(worldX.x, worldX.y, worldX.z);
-                float dy_world = (float) delta.dot(worldY.x, worldY.y, worldY.z);
-                float dz_world = (float) delta.dot(worldZ.x, worldZ.y, worldZ.z);
+                float dx_world = (float) delta.dot(worldX.x, worldX.y, worldX.z) * this.translationScale;
+                float dy_world = (float) delta.dot(worldY.x, worldY.y, worldY.z) * this.translationScale;
+                float dz_world = (float) delta.dot(worldZ.x, worldZ.y, worldZ.z) * this.translationScale;
 
                 if (this.local)
                 {
@@ -932,7 +939,7 @@ public class UIPropTransform extends UITransform
 
                     this.addAxisDelta(result, Axis.X, dx_world);
                     this.addAxisDelta(result, Axis.Y, dy_world);
-                    this.addAxisDelta(result, Axis.Z, dz_world);
+                    this.addAxisDelta(result, Axis.Z, this.model ? -dz_world : dz_world);
 
                     this.setT(null, result.x, result.y, result.z);
                 }
@@ -948,7 +955,7 @@ public class UIPropTransform extends UITransform
                     return false;
                 }
 
-                float primaryDelta = (float) (axisValue - this.rayLastAxisValue);
+                float primaryDelta = (float) (axisValue - this.rayLastAxisValue) * this.translationScale;
 
                 if (Math.abs(primaryDelta) <= 1.0E-8F)
                 {
@@ -967,7 +974,7 @@ public class UIPropTransform extends UITransform
                 {
                     Vector3f result = new Vector3f(value);
 
-                    this.addAxisDelta(result, this.axis, primaryDelta);
+                    this.addAxisDelta(result, this.axis, this.model && this.axis == Axis.Z ? -primaryDelta : primaryDelta);
                     this.setT(null, result.x, result.y, result.z);
                 }
 
@@ -987,7 +994,7 @@ public class UIPropTransform extends UITransform
                     return true;
                 }
 
-                float primaryDelta = (float) delta.dot(this.rayPrimaryAxis.x, this.rayPrimaryAxis.y, this.rayPrimaryAxis.z);
+                float primaryDelta = (float) delta.dot(this.rayPrimaryAxis.x, this.rayPrimaryAxis.y, this.rayPrimaryAxis.z) * this.translationScale;
                 Vector3f value = this.getValue();
 
                 if (this.local)
@@ -998,7 +1005,7 @@ public class UIPropTransform extends UITransform
 
                     if (this.secondaryAxis != null)
                     {
-                        float secondaryDelta = (float) delta.dot(this.raySecondaryAxis.x, this.raySecondaryAxis.y, this.raySecondaryAxis.z);
+                        float secondaryDelta = (float) delta.dot(this.raySecondaryAxis.x, this.raySecondaryAxis.y, this.raySecondaryAxis.z) * this.translationScale;
 
                         result.add(this.calculateLocalVector(secondaryDelta, this.secondaryAxis));
                     }
@@ -1009,10 +1016,10 @@ public class UIPropTransform extends UITransform
                 {
                     Vector3f result = new Vector3f(value);
 
-                    this.addAxisDelta(result, this.axis, primaryDelta);
+                    this.addAxisDelta(result, this.axis, this.model && this.axis == Axis.Z ? -primaryDelta : primaryDelta);
 
-                    float secondaryDelta = (float) delta.dot(this.raySecondaryAxis.x, this.raySecondaryAxis.y, this.raySecondaryAxis.z);
-                    this.addAxisDelta(result, this.secondaryAxis, secondaryDelta);
+                    float secondaryDelta = (float) delta.dot(this.raySecondaryAxis.x, this.raySecondaryAxis.y, this.raySecondaryAxis.z) * this.translationScale;
+                    this.addAxisDelta(result, this.secondaryAxis, this.model && this.secondaryAxis == Axis.Z ? -secondaryDelta : secondaryDelta);
 
                     this.setT(null, result.x, result.y, result.z);
                 }

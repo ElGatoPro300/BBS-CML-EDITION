@@ -641,7 +641,7 @@ public class UIPoseEditor extends UIElement
 
     protected UIPropTransform createTransformEditor()
     {
-        return new CategoryPropTransform(this).enableHotkeys();
+        return new CategoryPropTransform(this).enableHotkeys().translationScale(16F);
     }
 
     /* Transformaciones aplicables por categoría */
