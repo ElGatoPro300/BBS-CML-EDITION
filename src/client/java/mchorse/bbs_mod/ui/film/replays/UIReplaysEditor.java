@@ -89,6 +89,7 @@ import net.minecraft.util.hit.HitResult;
 import net.minecraft.world.World;
 
 import org.joml.Vector3d;
+import org.joml.Matrix4f;
 
 import org.lwjgl.glfw.GLFW;
 
@@ -2598,7 +2599,13 @@ public class UIReplaysEditor extends UIElement
                                     return false;
                                 }
 
-                                matrix.set(Gizmo.INSTANCE.lastGizmoMatrix);
+                                Camera camera = UIReplaysEditor.this.filmPanel.getCamera();
+                                if (camera == null)
+                                {
+                                    return false;
+                                }
+
+                                matrix.set(new Matrix4f(camera.view).invert().mul(Gizmo.INSTANCE.lastGizmoMatrix));
 
                                 return true;
                             }
