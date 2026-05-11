@@ -88,8 +88,9 @@ import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.world.World;
 
-import org.joml.Vector3d;
 import org.joml.Matrix4f;
+import org.joml.Vector3d;
+import org.joml.Vector3f;
 
 import org.lwjgl.glfw.GLFW;
 
@@ -2556,7 +2557,7 @@ public class UIReplaysEditor extends UIElement
                         editableTransform.setGizmoRayProvider(new UIPropTransform.IGizmoRayProvider()
                         {
                             @Override
-                            public boolean getMouseRay(UIContext context, int mouseX, int mouseY, Vector3d rayOrigin, org.joml.Vector3f rayDirection)
+                            public boolean getMouseRay(UIContext context, int mouseX, int mouseY, Vector3d rayOrigin, Vector3f rayDirection)
                             {
                                 if (finalArea.w <= 0 || finalArea.h <= 0)
                                 {
@@ -2569,7 +2570,7 @@ public class UIReplaysEditor extends UIElement
                                     return false;
                                 }
 
-                                org.joml.Vector3f direction = CameraUtils.getMouseDirection(
+                                Vector3f direction = CameraUtils.getMouseDirection(
                                     camera.projection,
                                     camera.view,
                                     mouseX,
@@ -2592,7 +2593,7 @@ public class UIReplaysEditor extends UIElement
                             }
 
                             @Override
-                            public boolean getGizmoMatrix(org.joml.Matrix4f matrix)
+                            public boolean getGizmoMatrix(Matrix4f matrix)
                             {
                                 if (!Gizmo.INSTANCE.hasGizmoMatrix)
                                 {
