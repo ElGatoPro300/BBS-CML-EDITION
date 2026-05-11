@@ -42,6 +42,7 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
 
         if (isPoseLimbTrack(sheet))
         {
+            this.transform.translationScale(16F);
             this.fix = new UITrackpad((v) ->
             {
                 UIPoseTransforms.applyPoseTransform(this.editor, this.keyframe, (poseT) -> poseT.fix = MathUtils.clamp(v.floatValue(), 0F, 1F));

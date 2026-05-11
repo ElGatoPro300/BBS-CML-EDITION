@@ -46,6 +46,7 @@ import mchorse.bbs_mod.ui.film.replays.overlays.UIReplaysOverlayPanel;
 import mchorse.bbs_mod.ui.film.utils.keyframes.UIFilmKeyframes;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
+import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeEditor;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeSheet;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframes;
@@ -87,7 +88,9 @@ import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.world.World;
 
+import org.joml.Matrix4f;
 import org.joml.Vector3d;
+import org.joml.Vector3f;
 
 import org.lwjgl.glfw.GLFW;
 
@@ -2547,7 +2550,70 @@ public class UIReplaysEditor extends UIElement
                         this.filmPanel.showPanel(this);
                     }
 
-                    if (Gizmo.INSTANCE.start(stencil.getIndex(), context.mouseX, context.mouseY, UIReplaysEditorUtils.getEditableTransform(this.keyframeEditor)))
+                    UIPropTransform editableTransform = UIReplaysEditorUtils.getEditableTransform(this.keyframeEditor);
+                    if (editableTransform != null)
+                    {
+                        final Area finalArea = area;
+                        editableTransform.setGizmoRayProvider(new UIPropTransform.IGizmoRayProvider()
+                        {
+                            @Override
+                            public boolean getMouseRay(UIContext context, int mouseX, int mouseY, Vector3d rayOrigin, Vector3f rayDirection)
+                            {
+                                if (finalArea.w <= 0 || finalArea.h <= 0)
+                                {
+                                    return false;
+                                }
+
+                                Camera camera = UIReplaysEditor.this.filmPanel.getCamera();
+                                if (camera == null)
+                                {
+                                    return false;
+                                }
+
+                                Vector3f direction = CameraUtils.getMouseDirection(
+                                    camera.projection,
+                                    camera.view,
+                                    mouseX,
+                                    mouseY,
+                                    finalArea.x,
+                                    finalArea.y,
+                                    finalArea.w,
+                                    finalArea.h
+                                );
+
+                                if (direction.lengthSquared() <= 1.0E-12F)
+                                {
+                                    return false;
+                                }
+
+                                rayDirection.set(direction).normalize();
+                                rayOrigin.set(0, 0, 0);
+
+                                return true;
+                            }
+
+                            @Override
+                            public boolean getGizmoMatrix(Matrix4f matrix)
+                            {
+                                if (!Gizmo.INSTANCE.hasGizmoMatrix)
+                                {
+                                    return false;
+                                }
+
+                                Camera camera = UIReplaysEditor.this.filmPanel.getCamera();
+                                if (camera == null)
+                                {
+                                    return false;
+                                }
+
+                                matrix.set(new Matrix4f(camera.view).invert().mul(Gizmo.INSTANCE.lastGizmoMatrix));
+
+                                return true;
+                            }
+                        });
+                    }
+
+                    if (Gizmo.INSTANCE.start(stencil.getIndex(), context.mouseX, context.mouseY, editableTransform))
                     {
                         return true;
                     }
