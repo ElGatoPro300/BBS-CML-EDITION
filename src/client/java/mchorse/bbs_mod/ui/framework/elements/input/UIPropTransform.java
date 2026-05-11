@@ -84,6 +84,7 @@ public class UIPropTransform extends UITransform
 
     private UITransformHandler handler;
     private boolean wasWrapped;
+    private float translationScale = 1F;
 
     public UIPropTransform()
     {
@@ -262,6 +263,12 @@ public class UIPropTransform extends UITransform
     public void setGizmoRayProvider(IGizmoRayProvider provider)
     {
         this.gizmoRayProvider = provider;
+    }
+
+    public UIPropTransform translationScale(float translationScale)
+    {
+        this.translationScale = translationScale;
+        return this;
     }
 
     public void enableMode(int mode)
@@ -949,9 +956,9 @@ public class UIPropTransform extends UITransform
                 this.extractAxisWorld(Axis.Y, worldY);
                 this.extractAxisWorld(Axis.Z, worldZ);
 
-                float dx_world = (float) delta.dot(worldX.x, worldX.y, worldX.z);
-                float dy_world = (float) delta.dot(worldY.x, worldY.y, worldY.z);
-                float dz_world = (float) delta.dot(worldZ.x, worldZ.y, worldZ.z);
+                float dx_world = (float) delta.dot(worldX.x, worldX.y, worldX.z) * this.translationScale;
+                float dy_world = (float) delta.dot(worldY.x, worldY.y, worldY.z) * this.translationScale;
+                float dz_world = (float) delta.dot(worldZ.x, worldZ.y, worldZ.z) * this.translationScale;
 
                 if (this.local)
                 {
@@ -985,7 +992,7 @@ public class UIPropTransform extends UITransform
                     return false;
                 }
 
-                float primaryDelta = (float) (axisValue - this.rayLastAxisValue);
+                float primaryDelta = (float) (axisValue - this.rayLastAxisValue) * this.translationScale;
 
                 if (Math.abs(primaryDelta) <= 1.0E-8F)
                 {
@@ -1024,7 +1031,7 @@ public class UIPropTransform extends UITransform
                     return true;
                 }
 
-                float primaryDelta = (float) delta.dot(this.rayPrimaryAxis.x, this.rayPrimaryAxis.y, this.rayPrimaryAxis.z);
+                float primaryDelta = (float) delta.dot(this.rayPrimaryAxis.x, this.rayPrimaryAxis.y, this.rayPrimaryAxis.z) * this.translationScale;
                 Vector3f value = this.getValue();
 
                 if (this.local)
@@ -1035,7 +1042,7 @@ public class UIPropTransform extends UITransform
 
                     if (this.secondaryAxis != null)
                     {
-                        float secondaryDelta = (float) delta.dot(this.raySecondaryAxis.x, this.raySecondaryAxis.y, this.raySecondaryAxis.z);
+                        float secondaryDelta = (float) delta.dot(this.raySecondaryAxis.x, this.raySecondaryAxis.y, this.raySecondaryAxis.z) * this.translationScale;
 
                         result.add(this.calculateLocalVector(secondaryDelta, this.secondaryAxis));
                     }
@@ -1048,7 +1055,7 @@ public class UIPropTransform extends UITransform
 
                     this.addAxisDelta(result, this.axis, primaryDelta);
 
-                    float secondaryDelta = (float) delta.dot(this.raySecondaryAxis.x, this.raySecondaryAxis.y, this.raySecondaryAxis.z);
+                    float secondaryDelta = (float) delta.dot(this.raySecondaryAxis.x, this.raySecondaryAxis.y, this.raySecondaryAxis.z) * this.translationScale;
                     this.addAxisDelta(result, this.secondaryAxis, secondaryDelta);
 
                     this.setT(null, result.x, result.y, result.z);

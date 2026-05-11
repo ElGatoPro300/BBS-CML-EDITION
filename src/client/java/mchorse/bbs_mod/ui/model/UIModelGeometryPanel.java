@@ -275,6 +275,7 @@ public class UIModelGeometryPanel extends UIElement
                 UIModelGeometryPanel.this.applyGizmoChange(2, axis, x, y, z);
             }
         };
+        this.gizmoTransform.translationScale(16F);
         this.gizmoTransform.setTransform(this.gizmoTransformData);
         this.gizmoTransform.noCulling();
         this.gizmoTransform.relative(this).xy(-1000, -1000).wh(1, 1);
