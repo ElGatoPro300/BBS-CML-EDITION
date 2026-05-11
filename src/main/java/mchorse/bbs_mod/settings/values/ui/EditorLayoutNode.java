@@ -526,9 +526,13 @@ public abstract class EditorLayoutNode
                 return false;
             }
 
-            if (!this.removePanel(droppedPanelId))
+            int existingPanel = this.findPanel(droppedPanelId);
+            if (this.isValid(existingPanel))
             {
-                return false;
+                if (!this.removePanel(droppedPanelId))
+                {
+                    return false;
+                }
             }
 
             int target = this.findPanel(targetPanelId);
@@ -691,9 +695,13 @@ public abstract class EditorLayoutNode
                 return false;
             }
 
-            if (!this.removePanel(droppedPanelId))
+            int existingPanel = this.findPanel(droppedPanelId);
+            if (this.isValid(existingPanel))
             {
-                return false;
+                if (!this.removePanel(droppedPanelId))
+                {
+                    return false;
+                }
             }
 
             int target = this.findPanel(targetPanelId);
