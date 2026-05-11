@@ -1268,7 +1268,7 @@
     "bbs.ui.models.sneaking_pose": "Sneaking pose",
     "bbs.ui.models.sneaking_pose.context": "Copy/Paste Sneaking Pose",
     "bbs.ui.models.sneaking_pose.desc": "Configure the sneaking pose for procedural animation.",
-    "bbs.ui.models.title": "Model editor",
+    "bbs.ui.models.title": "Models",
     "bbs.ui.models.ui_scale": "UI Scale",
     "bbs.ui.morphing.demorph": "Demorph",
     "bbs.ui.morphing.from_mob": "Create a form from a mob you're currently looking at",

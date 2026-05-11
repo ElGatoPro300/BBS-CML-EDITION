@@ -60,7 +60,7 @@ import java.util.List;
 
 public class UIDashboard extends UIBaseMenu
 {
-    private UIDashboardPanels panels;
+    public UIDashboardPanels panels;
 
     public UIIcon settings;
     public UIIcon selectors;
@@ -71,16 +71,21 @@ public class UIDashboard extends UIBaseMenu
     public final OrbitCamera orbit = this.orbitUI.orbit;
     public final OrbitCameraController camera = new OrbitCameraController(this.orbit, 5);
 
-    private UISettingsOverlayPanel settingsPanel;
+    public UISettingsOverlayPanel settingsPanel;
     private Perspective lastPerspective = Perspective.FIRST_PERSON;
 
     private UIChalkboard chalkboard;
+
+    public UIMainMenuBar menuBar;
 
     public UIDashboard()
     {
         super();
 
         this.orbitUI.setControl(true);
+
+        this.menuBar = new UIMainMenuBar(this);
+        this.menuBar.relative(this.main).w(1F);
 
         /* Setup panels */
         this.panels = new UIDashboardPanels();
@@ -95,12 +100,12 @@ public class UIDashboard extends UIBaseMenu
 
             this.copyCurrentEntityCamera();
         });
-        this.panels.full(this.viewport);
+        this.panels.relative(this.main).y(16).w(1F).h(1F, -16);
         this.registerPanels();
 
         BBSMod.events.post(new RegisterDashboardPanelsEvent(this));
 
-        this.main.add(this.panels);
+        this.main.add(this.menuBar, this.panels);
 
         this.settingsPanel = new UISettingsOverlayPanel();
 
