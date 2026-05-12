@@ -872,6 +872,7 @@
     "bbs.ui.forms.editors.billboard.shading": "Shading",
     "bbs.ui.forms.editors.billboard.title": "Billboard",
     "bbs.ui.forms.editors.billboard.uv_shift": "UV shift",
+    "bbs.ui.forms.editors.block.breaking": "Breaking stage",
     "bbs.ui.forms.editors.block.title": "Block",
     "bbs.ui.forms.editors.extruded.title": "Extruded",
     "bbs.ui.forms.editors.general": "General",
