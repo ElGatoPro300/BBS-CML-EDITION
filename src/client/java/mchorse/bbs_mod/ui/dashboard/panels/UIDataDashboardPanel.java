@@ -65,6 +65,8 @@ public abstract class UIDataDashboardPanel <T extends ValueGroup> extends UICRUD
     {
         this.save();
         this.requestData(id);
+
+        mchorse.bbs_mod.utils.RecentAssetsTracker.add(this.getType(), id);
     }
 
     public void requestData(String id)

@@ -57,6 +57,15 @@ public class ContentType
         this.dashboardPanel = dashboardPanel;
     }
 
+    public static ContentType fromId(String id)
+    {
+        if ("particles".equals(id)) return PARTICLES;
+        if ("models".equals(id)) return MODELS;
+        if ("films".equals(id)) return FILMS;
+
+        return null;
+    }
+
     public String getId()
     {
         return this.id;

@@ -54,7 +54,7 @@ public class UIOverlayPanel extends UIElement
         this.content = new UIElement();
         this.icons = new UIElement();
 
-        this.title.labelAnchor(0, 0.5F).relative(this).xy(6, 0).w(0.6F).h(20);
+        this.title.labelAnchor(0.5F, 0.5F).relative(this).xy(0.5F, 0).anchor(0.5F, 0).w(0.8F).h(20);
         this.icons.relative(this).x(1F, -20).y(0).w(20).h(1F).column(0).stretch();
         this.content.relative(this).xy(0, 20).w(1F, -20).h(1F, -20);
 

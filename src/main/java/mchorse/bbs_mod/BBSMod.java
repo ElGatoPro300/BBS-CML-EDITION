@@ -159,6 +159,7 @@ import java.util.function.Consumer;
 public class BBSMod implements ModInitializer
 {
     public static final String MOD_ID = "bbs";
+    public static final String VERSION = "2.0-dev-1";
 
     public static final EventBus events = new EventBus();
 
