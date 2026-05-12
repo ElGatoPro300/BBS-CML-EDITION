@@ -85,6 +85,7 @@ import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.keys.KeyCombo;
 import mchorse.bbs_mod.ui.utils.keys.KeybindSettings;
 import mchorse.bbs_mod.utils.MathUtils;
+import mchorse.bbs_mod.utils.RecentAssetsTracker;
 import mchorse.bbs_mod.utils.ScreenshotRecorder;
 import mchorse.bbs_mod.utils.VideoRecorder;
 import mchorse.bbs_mod.utils.colors.Color;
@@ -395,7 +396,7 @@ public class BBSModClient implements ClientModInitializer
     @Override
     public void onInitializeClient()
     {
-        mchorse.bbs_mod.utils.RecentAssetsTracker.load();
+        RecentAssetsTracker.load();
 
         AttackBlockCallback.EVENT.register((player, world, hand, pos, direction) ->
         {

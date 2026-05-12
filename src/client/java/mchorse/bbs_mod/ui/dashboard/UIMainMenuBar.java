@@ -4,22 +4,29 @@ import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.l10n.keys.IKey;
+import mchorse.bbs_mod.settings.values.core.ValueGroup;
 import mchorse.bbs_mod.ui.ContentType;
+import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
+import mchorse.bbs_mod.ui.addons.UIAddonsPanel;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDataDashboardPanel;
 import mchorse.bbs_mod.ui.dashboard.panels.overlay.UIAboutOverlayPanel;
 import mchorse.bbs_mod.ui.dashboard.panels.overlay.UIOpenAssetOverlayPanel;
-import mchorse.bbs_mod.utils.repos.IRepository;
-import mchorse.bbs_mod.settings.values.core.ValueGroup;
-import mchorse.bbs_mod.ui.framework.elements.IUIElement;
-import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.UIContext;
+import mchorse.bbs_mod.ui.framework.elements.IUIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
+import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
+import mchorse.bbs_mod.ui.supporters.UISupportersPanel;
+import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
+import mchorse.bbs_mod.ui.utils.keys.KeyCombo;
+import mchorse.bbs_mod.ui.utils.keys.Keybind;
+import mchorse.bbs_mod.utils.RecentAssetsTracker;
 import mchorse.bbs_mod.utils.colors.Colors;
+import mchorse.bbs_mod.utils.repos.IRepository;
 
 import java.util.function.Consumer;
 
@@ -72,7 +79,7 @@ public class UIMainMenuBar extends UIElement
             menu.action(Icons.FOLDER, IKey.raw("Open"), () -> this.openOpenPopup());
             menu.action(Icons.TIME, IKey.raw("Recent"), () -> this.openRecentMenu());
             menu.action(Icons.SETTINGS, UIKeys.CONFIG_TITLE, () -> UIOverlay.addOverlayRight(this.getContext(), this.dashboard.settingsPanel, 240));
-            menu.action(Icons.JOYSTICK, IKey.raw("Addons"), () -> this.dashboard.setPanel(this.dashboard.getPanel(mchorse.bbs_mod.ui.addons.UIAddonsPanel.class)));
+            menu.action(Icons.JOYSTICK, IKey.raw("Addons"), () -> this.dashboard.setPanel(this.dashboard.getPanel(UIAddonsPanel.class)));
         });
     }
 
@@ -128,13 +135,13 @@ public class UIMainMenuBar extends UIElement
     {
         this.getContext().replaceContextMenu((menu) ->
         {
-            if (mchorse.bbs_mod.utils.RecentAssetsTracker.RECENT.isEmpty())
+            if (RecentAssetsTracker.RECENT.isEmpty())
             {
                 menu.action(Icons.NONE, IKey.raw("No recent assets"), () -> {});
                 return;
             }
 
-            for (mchorse.bbs_mod.utils.RecentAssetsTracker.Entry entry : mchorse.bbs_mod.utils.RecentAssetsTracker.RECENT)
+            for (RecentAssetsTracker.Entry entry : RecentAssetsTracker.RECENT)
             {
                 menu.action(this.getIcon(entry.type), IKey.raw(entry.id), () ->
                 {
@@ -150,7 +157,7 @@ public class UIMainMenuBar extends UIElement
         });
     }
 
-    private mchorse.bbs_mod.ui.utils.icons.Icon getIcon(ContentType type)
+    private Icon getIcon(ContentType type)
     {
         if (type == ContentType.FILMS) return Icons.FILM;
         if (type == ContentType.PARTICLES) return Icons.PARTICLE;
@@ -163,20 +170,20 @@ public class UIMainMenuBar extends UIElement
     {
         this.getContext().replaceContextMenu((menu) ->
         {
-            menu.action(Icons.UNDO, UIKeys.CAMERA_EDITOR_KEYS_EDITOR_UNDO, () -> this.triggerKey(mchorse.bbs_mod.ui.Keys.UNDO));
-            menu.action(Icons.REDO, UIKeys.CAMERA_EDITOR_KEYS_EDITOR_REDO, () -> this.triggerKey(mchorse.bbs_mod.ui.Keys.REDO));
+            menu.action(Icons.UNDO, UIKeys.CAMERA_EDITOR_KEYS_EDITOR_UNDO, () -> this.triggerKey(Keys.UNDO));
+            menu.action(Icons.REDO, UIKeys.CAMERA_EDITOR_KEYS_EDITOR_REDO, () -> this.triggerKey(Keys.REDO));
 
         });
     }
 
-    private void triggerKey(mchorse.bbs_mod.ui.utils.keys.KeyCombo combo)
+    private void triggerKey(KeyCombo combo)
     {
         if (this.dashboard.panels.panel == null)
         {
             return;
         }
 
-        for (mchorse.bbs_mod.ui.utils.keys.Keybind keybind : this.dashboard.panels.panel.keys().keybinds)
+        for (Keybind keybind : this.dashboard.panels.panel.keys().keybinds)
         {
             if (combo.equals(keybind.getCombo()) && keybind.isActive())
             {
@@ -191,20 +198,20 @@ public class UIMainMenuBar extends UIElement
         this.getContext().replaceContextMenu((menu) ->
         {
             menu.action(Icons.HELP, IKey.raw("About"), () -> UIOverlay.addOverlay(this.getContext(), new UIAboutOverlayPanel(IKey.raw("About"), this.dashboard), 200, 150));
-            menu.action(Icons.HEART, IKey.raw("Credits"), () -> this.dashboard.setPanel(this.dashboard.getPanel(mchorse.bbs_mod.ui.supporters.UISupportersPanel.class)));
+            menu.action(Icons.HEART, IKey.raw("Credits"), () -> this.dashboard.setPanel(this.dashboard.getPanel(UISupportersPanel.class)));
         });
     }
 
     public static class UIMenuButton extends UIButton
     {
-        private mchorse.bbs_mod.ui.utils.icons.Icon icon;
+        private Icon icon;
 
         public UIMenuButton(IKey label, Consumer<UIButton> callback)
         {
             super(label, callback);
         }
 
-        public UIMenuButton(mchorse.bbs_mod.ui.utils.icons.Icon icon, Consumer<UIButton> callback)
+        public UIMenuButton(Icon icon, Consumer<UIButton> callback)
         {
             super(IKey.EMPTY, callback);
             this.icon = icon;

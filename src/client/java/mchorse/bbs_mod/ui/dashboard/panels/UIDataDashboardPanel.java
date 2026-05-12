@@ -13,6 +13,7 @@ import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.utils.UIDataUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
+import mchorse.bbs_mod.utils.RecentAssetsTracker;
 import mchorse.bbs_mod.utils.Timer;
 import mchorse.bbs_mod.utils.interps.Interpolations;
 
@@ -66,7 +67,7 @@ public abstract class UIDataDashboardPanel <T extends ValueGroup> extends UICRUD
         this.save();
         this.requestData(id);
 
-        mchorse.bbs_mod.utils.RecentAssetsTracker.add(this.getType(), id);
+        RecentAssetsTracker.add(this.getType(), id);
     }
 
     public void requestData(String id)
