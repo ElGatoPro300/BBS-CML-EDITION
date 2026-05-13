@@ -77,7 +77,6 @@ import com.google.gson.reflect.TypeToken;
 import org.lwjgl.opengl.GL11;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -87,10 +86,8 @@ import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
@@ -111,10 +108,7 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
     private String molangId;
 
     // Tab and Home fields
-    public static final int PARTICLE_DOCUMENT_TABS_HEIGHT = 20;
 
-    private UIControlBar particleTabsBar;
-    private UIElement particleTabs;
     private int activeParticleDocumentTab = -1;
     private final List<ParticleDocumentTab> particleDocumentTabs = new ArrayList<>();
 
@@ -123,8 +117,6 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
     private UIElement homePage;
     private UISearchList<DataPath> homeParticlesSearch;
     private UIDataPathList homeParticlesList;
-    private UIParticleMosaicGrid homeParticlesMosaic;
-    private UIIcon homeViewToggle;
     private UIElement homeActionsPanel;
     private UIButton homeCreateParticle;
     private UIButton homeDuplicateCurrent;
@@ -166,26 +158,15 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
         public transient Link link;
     }
 
-    private static final String PARENT_FOLDER_ENTRY = "..";
-
-    private static boolean lastMosaicView = true;
-    private static boolean lastShowingHomePage = true;
-
     public UIParticleSchemePanel(UIDashboard dashboard)
     {
         super(dashboard);
         this.overlay.resizable().minSize(260, 220);
 
-        // Document tabs layout
-        this.iconBar.relative(this).x(1F, -20).y(PARTICLE_DOCUMENT_TABS_HEIGHT).w(20).h(1F, -PARTICLE_DOCUMENT_TABS_HEIGHT).column(0).stretch();
-        this.particleTabsBar = new UIControlBar();
-        this.particleTabsBar.relative(this).x(0).y(0).w(1F).h(PARTICLE_DOCUMENT_TABS_HEIGHT);
-        this.particleTabs = new UIElement();
-        this.particleTabs.relative(this.particleTabsBar).x(8).y(0).w(1F, -16).h(PARTICLE_DOCUMENT_TABS_HEIGHT).row(0).resize();
-        this.particleTabsBar.add(this.particleTabs);
+        this.iconBar.relative(this).x(1F, -20).y(0).w(20).h(1F).column(0).stretch();
 
         this.mainView = new UIElement();
-        this.mainView.relative(this.editor).y(PARTICLE_DOCUMENT_TABS_HEIGHT).w(1F).h(1F, -PARTICLE_DOCUMENT_TABS_HEIGHT);
+        this.mainView.relative(this.editor).y(0).w(1F).h(1F);
 
         this.renderer = new UIParticleSchemeRenderer();
         this.renderer.relative(this).wTo(this.iconBar.getFlex()).h(1F);
@@ -303,26 +284,6 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
         this.homeParticlesSearch = new UISearchList<>(this.homeParticlesList).label(UIKeys.GENERAL_SEARCH);
         this.homeParticlesSearch.list.background();
 
-        this.homeParticlesMosaic = new UIParticleMosaicGrid((id) -> {
-            this.handleHomeParticlesSelection(Collections.singletonList(new DataPath(id)));
-        }, (id) -> {
-            if (!id.endsWith("/") && !id.equals(PARENT_FOLDER_ENTRY)) {
-                this.openParticleInDocumentTabs(id);
-            }
-        });
-        this.homeParticlesMosaic.setVisible(false);
-
-        Consumer<String> oldCallback = this.homeParticlesSearch.search.callback;
-        this.homeParticlesSearch.search.callback = (str) -> {
-            if (oldCallback != null) oldCallback.accept(str);
-            this.homeParticlesMosaic.filter(str);
-        };
-
-        this.homeParticlesMosaic.setVisible(lastMosaicView);
-        this.homeParticlesSearch.list.setVisible(!lastMosaicView);
-
-        this.homeViewToggle = new UIIcon(lastMosaicView ? Icons.LIST : Icons.GALLERY, (b) -> this.toggleMosaicView());
-        this.homeViewToggle.tooltip(lastMosaicView ? UIKeys.MODELS_HOME_VIEW_LIST : UIKeys.MODELS_HOME_VIEW_MOSAIC, Direction.LEFT);
         this.homeCreateParticle = this.createHomeButton(UIKeys.PARTICLES_CRUD_ADD, Icons.ADD, (b) ->
         {
             UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
@@ -474,7 +435,7 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
 
         this.updateHomeButtonsState();
 
-        this.homePage.relative(this.editor).x(0.5F, -250).y(PARTICLE_DOCUMENT_TABS_HEIGHT).w(500).h(1F, -PARTICLE_DOCUMENT_TABS_HEIGHT);
+        this.homePage.relative(this.editor).x(0.5F, -250).y(0).w(500).h(1F);
         this.homeActionsPanel.relative(this.homePage).x(0).y(HOME_BANNER_HEIGHT + 20).w(0.35F).h(1F, -(HOME_BANNER_HEIGHT + 20)).column(0).vertical().stretch();
         
         UIElement spacing = new UIElement();
@@ -482,13 +443,9 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
 
         this.homeActionsPanel.add(this.homeCreateParticle, spacing, this.homeDuplicateCurrent, this.homeRenameCurrent, this.homeDeleteCurrent);
         this.homeParticlesSearch.relative(this.homePage).x(0.35F).y(HOME_BANNER_HEIGHT + 20).w(0.65F).h(1F, -(HOME_BANNER_HEIGHT + 20));
-        this.homeParticlesSearch.search.w(1F, -25);
-        this.homeParticlesMosaic.relative(this.homeParticlesSearch).x(0).y(20).w(1F).h(1F, -20);
-        this.homeViewToggle.relative(this.homeParticlesSearch).x(1F, -22).y(0).w(20).h(20);
-        this.homePage.add(new UIRenderable(this::renderHomeBackground), this.homeActionsPanel, this.homeParticlesSearch, this.homeParticlesMosaic, this.homeViewToggle);
+        this.homePage.add(new UIRenderable(this::renderHomeBackground), this.homeActionsPanel, this.homeParticlesSearch);
 
         this.editor.add(this.mainView, this.homePage);
-        this.add(this.particleTabsBar);
 
         this.createHomeDocumentTab(true);
         this.fill(null);
@@ -530,10 +487,6 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
 
     private String getSelectedHomeParticleId()
     {
-        if (this.homeParticlesMosaic != null && this.homeParticlesMosaic.isVisible())
-        {
-            return this.homeParticlesMosaic.selectedId;
-        }
         DataPath selected = this.homeParticlesList == null ? null : this.homeParticlesList.getCurrentFirst();
         return selected != null && !selected.folder ? selected.toString() : null;
     }
@@ -745,31 +698,7 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
 
     private void rebuildParticleDocumentTabs()
     {
-        this.particleTabs.removeAll();
-
-        for (int i = 0; i < this.particleDocumentTabs.size(); i++)
-        {
-            int tabIndex = i;
-            ParticleDocumentTab tab = this.particleDocumentTabs.get(i);
-            IKey title = tab.home ? L10n.lang("bbs.ui.particles.home.title") : IKey.constant(tab.particleId);
-            UIIconTabButton button = new UIIconTabButton(title, tab.home ? Icons.FOLDER : Icons.PARTICLE, (b) -> this.activateParticleDocumentTab(tabIndex, false));
-            button.color(this.activeParticleDocumentTab == tabIndex ? BBSSettings.primaryColor.get() : 0x2d2d2d);
-            button.w(tab.home ? 88 : 122).h(PARTICLE_DOCUMENT_TABS_HEIGHT);
-
-            if (!tab.home || this.particleDocumentTabs.size() > 1)
-            {
-                button.removable((b) -> this.removeParticleDocumentTab(tabIndex));
-            }
-
-            this.particleTabs.add(button);
-        }
-
-        UIIconTabButton add = new UIIconTabButton(IKey.constant(""), Icons.ADD, (b) -> this.addHomeDocumentTab());
-        add.color(0x2d2d2d);
-        add.background(false);
-        add.w(24).h(PARTICLE_DOCUMENT_TABS_HEIGHT);
-        this.particleTabs.add(add);
-        this.particleTabs.resize();
+        /* No-op: the legacy tab bar UI was removed; the unified UIDocumentTabsBar at the dashboard level replaces it. */
     }
 
     private void syncActiveDocumentTabWithData(ParticleScheme data)
@@ -827,8 +756,6 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
         this.updateHomeButtonsState();
     }
 
-
-
     private UIButton createHomeButton(IKey label, Icon icon, Consumer<UIButton> callback)
     {
         UIButton button = new UIButton(label, callback) {
@@ -882,6 +809,14 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
         return ContentType.PARTICLES;
     }
 
+    @Override
+    public mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel getMainPanel()
+    {
+        mchorse.bbs_mod.ui.home.UIHomePanel home = this.dashboard.getPanel(mchorse.bbs_mod.ui.home.UIHomePanel.class);
+
+        return home != null ? home : this;
+    }
+
     public void dirty()
     {
         this.renderer.emitter.setupVariables();
@@ -932,10 +867,6 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
             this.homeParticlesList.fill(names);
             this.homeParticlesList.setCurrentFile(current);
         }
-        if (this.homeParticlesMosaic != null)
-        {
-            this.homeParticlesMosaic.fill(names, current);
-        }
         this.updateHomeButtonsState();
     }
 
@@ -944,6 +875,7 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
     {
         this.save();
         this.openParticleInDocumentTabs(id);
+        mchorse.bbs_mod.utils.RecentAssetsTracker.add(this.getType(), id);
     }
 
     @Override
@@ -980,31 +912,11 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
     @Override
     public void close()
     {
-        this.save();
-        lastShowingHomePage = this.showingHomePage;
-
         super.close();
 
         if (this.renderer.emitter != null)
         {
             this.renderer.emitter.particles.clear();
-        }
-    }
-
-    private void toggleMosaicView()
-    {
-        boolean isMosaic = !this.homeParticlesMosaic.isVisible();
-
-        this.homeParticlesMosaic.setVisible(isMosaic);
-        this.homeParticlesSearch.list.setVisible(!isMosaic);
-        this.homeViewToggle.both(isMosaic ? Icons.LIST : Icons.GALLERY);
-        this.homeViewToggle.tooltip(isMosaic ? UIKeys.MODELS_HOME_VIEW_LIST : UIKeys.MODELS_HOME_VIEW_MOSAIC, Direction.LEFT);
-
-        lastMosaicView = isMosaic;
-
-        if (isMosaic)
-        {
-            this.homeParticlesMosaic.resize();
         }
     }
 
@@ -1050,12 +962,7 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
         }
     }
 
-
-
-
-
-
-
+    @Override
     protected boolean shouldOpenOverlayOnFirstResize()
     {
         return false;
@@ -1351,190 +1258,5 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
         context.batcher.box(dividerX, splitY + 1, dividerX + 1, pageY + pageH, Colors.A12);
         context.batcher.textShadow(L10n.lang("bbs.ui.particles.home.actions").get(), pageX + 4, splitY + 6);
         context.batcher.textShadow(L10n.lang("bbs.ui.particles.home.list").get(), dividerX + 4, splitY + 6);
-    }
-
-    public class UIParticleMosaicGrid extends UIScrollView
-    {
-        private static final int CARD_SIZE = 100;
-        private static final int CARD_GAP = 6;
-        private static final int CARD_LABEL_H = 16;
-
-        private final Consumer<String> selectCallback;
-        private final Consumer<String> doubleClickCallback;
-
-        private final List<String> allParticleIds = new ArrayList<>();
-        private final List<String> particleIds = new ArrayList<>();
-        public String selectedId;
-        private String lastClickedId;
-        private long lastClickTime;
-        private int lastCols = -1;
-        private boolean rebuilding = false;
-
-        public UIParticleMosaicGrid(Consumer<String> selectCallback, Consumer<String> doubleClickCallback)
-        {
-            super();
-            this.selectCallback = selectCallback;
-            this.doubleClickCallback = doubleClickCallback;
-            this.scroll.scrollSpeed = 20;
-        }
-
-        public void fill(Collection<String> names, String selectedId)
-        {
-            this.allParticleIds.clear();
-            for (String name : names)
-            {
-                if (!name.endsWith("/"))
-                {
-                    this.allParticleIds.add(name);
-                }
-            }
-            this.selectedId = selectedId;
-            this.lastCols = -1;
-            
-            this.filter("");
-        }
-
-        public void filter(String query)
-        {
-            this.particleIds.clear();
-            String lowerQuery = query == null ? "" : query.toLowerCase();
-            
-            for (String id : this.allParticleIds)
-            {
-                if (id.toLowerCase().contains(lowerQuery))
-                {
-                    this.particleIds.add(id);
-                }
-            }
-            
-            this.buildCards();
-            
-            if (this.hasParent())
-            {
-                this.resize();
-            }
-        }
-
-        private void buildCards()
-        {
-            this.removeAll();
-            if (this.particleIds.isEmpty()) return;
-
-            int effectiveW = this.area.w > 0 ? this.area.w : 500;
-            int cols = Math.max(1, (effectiveW - CARD_GAP) / (CARD_SIZE + CARD_GAP));
-
-            for (int i = 0; i < this.particleIds.size(); i++)
-            {
-                final String id = this.particleIds.get(i);
-                final int col = i % cols;
-                final int row = i / cols;
-
-                int cx = CARD_GAP + col * (CARD_SIZE + CARD_GAP);
-                int cy = CARD_GAP + row * (CARD_SIZE + CARD_GAP + CARD_LABEL_H);
-
-                UIElement card = new UIElement()
-                {
-                    @Override
-                    public boolean subMouseClicked(UIContext context)
-                    {
-                        if (this.area.isInside(context))
-                        {
-                            UIParticleMosaicGrid.this.onCardClicked(id);
-                            return true;
-                        }
-                        return false;
-                    }
-
-                    @Override
-                    public void render(UIContext context)
-                    {
-                        boolean selected = id.equals(UIParticleMosaicGrid.this.selectedId);
-                        int border = selected ? BBSSettings.primaryColor.get() : Colors.setA(Colors.WHITE, 0.1F);
-                        int bg = selected ? Colors.setA(BBSSettings.primaryColor.get(), 0.1F) : Colors.setA(0, 0.2F);
-                        
-                        context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), bg);
-                        context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), border);
-
-                        super.render(context);
-
-                        /* Render particle icon in center */
-                        int iconX = this.area.mx();
-                        int iconY = this.area.y + CARD_SIZE / 2;
-                        
-                        context.batcher.getContext().getMatrices().push();
-                        context.batcher.getContext().getMatrices().translate(iconX, iconY, 0);
-                        context.batcher.getContext().getMatrices().scale(2F, 2F, 1F);
-                        context.batcher.getContext().getMatrices().translate(-iconX, -iconY, 0);
-                        
-                        context.batcher.icon(Icons.PARTICLE, iconX, iconY, 0.5F, 0.5F);
-                        
-                        context.batcher.getContext().getMatrices().pop();
-
-                        String label = new DataPath(id).getLast();
-                        int maxW = this.area.w - 4;
-                        if (context.batcher.getFont().getWidth(label) > maxW)
-                        {
-                            while (label.length() > 1 && context.batcher.getFont().getWidth(label + "...") > maxW)
-                            {
-                                label = label.substring(0, label.length() - 1);
-                            }
-                            label = label + "...";
-                        }
-                        context.batcher.textShadow(label, this.area.x + 2, this.area.y + CARD_SIZE + 2);
-                    }
-                };
-
-                card.relative(this).x(cx).y(cy).w(CARD_SIZE).h(CARD_SIZE + CARD_LABEL_H);
-                this.add(card);
-            }
-
-            int rows = (this.particleIds.size() + cols - 1) / cols;
-            int totalH = CARD_GAP + rows * (CARD_SIZE + CARD_LABEL_H + CARD_GAP);
-            this.scroll.scrollSize = totalH;
-            this.scroll.clamp();
-        }
-
-        private void onCardClicked(String id)
-        {
-            long now = System.currentTimeMillis();
-            boolean sameAsPrev = id.equals(this.lastClickedId);
-            boolean doubleClick = sameAsPrev && now - this.lastClickTime <= 300L;
-
-            this.lastClickedId = id;
-            this.lastClickTime = now;
-            this.selectedId = id;
-
-            if (this.selectCallback != null)
-            {
-                this.selectCallback.accept(id);
-            }
-
-            if (doubleClick && this.doubleClickCallback != null)
-            {
-                this.doubleClickCallback.accept(id);
-            }
-        }
-
-        @Override
-        public void resize()
-        {
-            int effectiveW = this.area.w > 0 ? this.area.w : 500;
-            int cols = Math.max(1, (effectiveW - CARD_GAP) / (CARD_SIZE + CARD_GAP));
-            if (!this.particleIds.isEmpty() && !this.rebuilding)
-            {
-                if (cols != this.lastCols)
-                {
-                    this.lastCols = cols;
-                    this.rebuilding = true;
-                    this.buildCards();
-                    this.rebuilding = false;
-                }
-
-                int rows = (this.particleIds.size() + cols - 1) / cols;
-                int totalH = CARD_GAP + rows * (CARD_SIZE + CARD_LABEL_H + CARD_GAP);
-                this.scroll.scrollSize = totalH;
-            }
-            super.resize();
-        }
     }
 }

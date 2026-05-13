@@ -16,12 +16,16 @@ import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.colors.Colors;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class UIDashboardPanels extends UIElement
 {
     public List<UIDashboardPanel> panels = new ArrayList<>();
     public UIDashboardPanel panel;
+
+    private final Map<UIDashboardPanel, UIIcon> panelButtonsMap = new HashMap<>();
 
     public UIElement taskBar;
     public UIElement pinned;
@@ -55,12 +59,24 @@ public class UIDashboardPanels extends UIElement
         this.panelButtons.scroll.scrollSpeed = 5;
         this.panelButtons.preRender((context) ->
         {
-            for (int i = 0, c = this.panels.size(); i < c; i++)
+            if (this.panel == null) return;
+
+            UIDashboardPanel current = this.panel.getMainPanel();
+            UIIcon button = this.panelButtonsMap.get(current);
+
+            while (button == null && current != null)
             {
-                if (this.panel != null && this.panel.getMainPanel() == this.panels.get(i))
-                {
-                    renderHighlight(context.batcher, ((UIIcon) this.panelButtons.getChildren().get(i)).area);
-                }
+                UIDashboardPanel next = current.getMainPanel();
+
+                if (next == current) break;
+
+                current = next;
+                button = this.panelButtonsMap.get(current);
+            }
+
+            if (button != null)
+            {
+                renderHighlight(context.batcher, button.area);
             }
         });
 
@@ -138,9 +154,15 @@ public class UIDashboardPanels extends UIElement
         button.tooltip(tooltip, Direction.TOP);
 
         this.panels.add(panel);
+        this.panelButtonsMap.put(panel, button);
         this.panelButtons.add(button);
 
         return button;
+    }
+
+    public void registerHiddenPanel(UIDashboardPanel panel)
+    {
+        this.panels.add(panel);
     }
 
     protected void renderBackground(UIContext context)

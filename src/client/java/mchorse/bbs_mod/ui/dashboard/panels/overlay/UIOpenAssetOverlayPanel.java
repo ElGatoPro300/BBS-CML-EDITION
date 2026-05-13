@@ -114,17 +114,23 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
 
     private void openAsset(String id)
     {
-        if (this.currentType != null)
+        if (this.dashboard.documentTabsBar != null)
+        {
+            this.dashboard.documentTabsBar.addOrActivate(this.currentType, id);
+        }
+        else if (this.currentType != null)
         {
             this.dashboard.setPanel(this.currentType.get(this.dashboard));
             this.currentType.get(this.dashboard).pickData(id);
         }
         else
         {
-            // Audio handling
             mchorse.bbs_mod.ui.utility.audio.UIAudioEditorPanel panel = this.dashboard.getPanel(mchorse.bbs_mod.ui.utility.audio.UIAudioEditorPanel.class);
+
             this.dashboard.setPanel(panel);
+            panel.openAudioFile(id);
         }
+
         this.close();
     }
 
@@ -144,24 +150,39 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
         this.currentType = null;
         File folder = new File(BBSMod.getAssetsFolder(), "audio");
         List<String> names = new ArrayList<>();
-        
+
         if (folder.exists() && folder.isDirectory())
         {
-            File[] files = folder.listFiles();
-            if (files != null)
-            {
-                for (File file : files)
-                {
-                    if (file.isFile() && (file.getName().endsWith(".wav") || file.getName().endsWith(".ogg")))
-                    {
-                        names.add(file.getName());
-                    }
-                }
-            }
+            this.collectAudioFiles(folder, "", names);
         }
-        ((UIDataPathList)this.searchList.list).fill(names);
+
+        ((UIDataPathList) this.searchList.list).fill(names);
         this.mosaicGrid.fill(names, null);
         this.mosaicGrid.filter(this.filter);
+    }
+
+    private void collectAudioFiles(File dir, String relativePath, List<String> result)
+    {
+        File[] files = dir.listFiles();
+
+        if (files == null)
+        {
+            return;
+        }
+
+        for (File file : files)
+        {
+            String name = file.getName().toLowerCase();
+
+            if (file.isDirectory())
+            {
+                this.collectAudioFiles(file, relativePath + file.getName() + "/", result);
+            }
+            else if (file.isFile() && (name.endsWith(".wav") || name.endsWith(".ogg")))
+            {
+                result.add("assets:audio/" + relativePath + file.getName());
+            }
+        }
     }
 
     public static class UIMosaicGrid extends UIScrollView
