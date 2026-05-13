@@ -16,6 +16,7 @@ import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UISearchList;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlayPanel;
 import mchorse.bbs_mod.ui.model.UIModelPreviewRenderer;
+import mchorse.bbs_mod.ui.utility.audio.UIAudioEditorPanel;
 import mchorse.bbs_mod.ui.utils.UIDataUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
@@ -125,8 +126,13 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
         }
         else
         {
+<<<<<<< HEAD
             mchorse.bbs_mod.ui.utility.audio.UIAudioEditorPanel panel = this.dashboard.getPanel(mchorse.bbs_mod.ui.utility.audio.UIAudioEditorPanel.class);
 
+=======
+            // Audio handling
+            UIAudioEditorPanel panel = this.dashboard.getPanel(UIAudioEditorPanel.class);
+>>>>>>> 0db2a11a81d1d7a1f0960ee05ad7e2d8b748207c
             this.dashboard.setPanel(panel);
             panel.openAudioFile(id);
         }

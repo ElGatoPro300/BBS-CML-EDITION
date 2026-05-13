@@ -870,6 +870,7 @@
     "bbs.ui.forms.editors.billboard.shading": "Sombreado",
     "bbs.ui.forms.editors.billboard.title": "Imagen",
     "bbs.ui.forms.editors.billboard.uv_shift": "Desplazamiento UV",
+    "bbs.ui.forms.editors.block.breaking": "Nivel de daño",
     "bbs.ui.forms.editors.block.title": "Bloque",
     "bbs.ui.forms.editors.extruded.title": "Extruido",
     "bbs.ui.forms.editors.general": "General",
