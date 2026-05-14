@@ -577,6 +577,11 @@ public class BBSModClient implements ClientModInitializer
             }
         });
 
+        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) ->
+        {
+            mchorse.bbs_mod.utils.RecentAssetsTracker.load();
+        });
+
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) ->
         {
             dashboard = null;

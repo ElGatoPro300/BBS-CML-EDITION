@@ -789,6 +789,8 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
             return;
         }
 
+        mchorse.bbs_mod.utils.RecentAssetsTracker.add(mchorse.bbs_mod.ui.ContentType.SOUNDS, link.toString());
+
         int existingIndex = this.findTabByAudio(link);
 
         if (existingIndex >= 0)

@@ -2578,6 +2578,54 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         return new File(BBS.getGameFolder(), "config/bbs/thumbnails/films/" + id + ".png");
     }
 
+    public void deleteThumbnail(String id)
+    {
+        this.thumbnails.remove(id);
+
+        File file = this.getThumbnailFile(id);
+
+        if (file.exists())
+        {
+            file.delete();
+        }
+    }
+
+    public void clearThumbnailCache()
+    {
+        this.thumbnails.clear();
+
+        File folder = new File(BBS.getGameFolder(), "config/bbs/thumbnails/films");
+
+        this.deleteFolder(folder);
+    }
+
+    private void deleteFolder(File folder)
+    {
+        if (!folder.exists())
+        {
+            return;
+        }
+
+        File[] files = folder.listFiles();
+
+        if (files != null)
+        {
+            for (File file : files)
+            {
+                if (file.isDirectory())
+                {
+                    this.deleteFolder(file);
+                }
+                else
+                {
+                    file.delete();
+                }
+            }
+        }
+
+        folder.delete();
+    }
+
     public Texture getThumbnail(String id)
     {
         if (this.thumbnails.containsKey(id))

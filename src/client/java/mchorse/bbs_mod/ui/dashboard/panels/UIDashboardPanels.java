@@ -57,30 +57,7 @@ public class UIDashboardPanels extends UIElement
         this.panelButtons.relative(this.pinned).x(1F, 5).h(20).wTo(this.taskBar.area, 1F).column(0).scroll();
         this.panelButtons.scroll.cancelScrolling().noScrollbar();
         this.panelButtons.scroll.scrollSpeed = 5;
-        this.panelButtons.preRender((context) ->
-        {
-            if (this.panel == null) return;
-
-            UIDashboardPanel current = this.panel.getMainPanel();
-            UIIcon button = this.panelButtonsMap.get(current);
-
-            while (button == null && current != null)
-            {
-                UIDashboardPanel next = current.getMainPanel();
-
-                if (next == current) break;
-
-                current = next;
-                button = this.panelButtonsMap.get(current);
-            }
-
-            if (button != null)
-            {
-                renderHighlight(context.batcher, button.area);
-            }
-        });
-
-        this.taskBar.add(new UIRenderable(this::renderBackground), this.pinned, this.panelButtons);
+        this.taskBar.add(new UIRenderable(this::renderBackground), new UIRenderable(this::renderActiveHighlight), this.pinned, this.panelButtons);
         this.add(this.taskBar);
     }
 
@@ -160,9 +137,45 @@ public class UIDashboardPanels extends UIElement
         return button;
     }
 
+    public UIIcon registerPinnedPanel(UIDashboardPanel panel, IKey tooltip, Icon icon)
+    {
+        UIIcon button = new UIIcon(icon, (b) -> this.setPanel(panel));
+
+        button.tooltip(tooltip, Direction.TOP);
+
+        this.panels.add(panel);
+        this.panelButtonsMap.put(panel, button);
+        this.pinned.add(button);
+
+        return button;
+    }
+
     public void registerHiddenPanel(UIDashboardPanel panel)
     {
         this.panels.add(panel);
+    }
+
+    private void renderActiveHighlight(UIContext context)
+    {
+        if (this.panel == null) return;
+
+        UIDashboardPanel current = this.panel.getMainPanel();
+        UIIcon button = this.panelButtonsMap.get(current);
+
+        while (button == null && current != null)
+        {
+            UIDashboardPanel next = current.getMainPanel();
+
+            if (next == current) break;
+
+            current = next;
+            button = this.panelButtonsMap.get(current);
+        }
+
+        if (button != null)
+        {
+            renderHighlight(context.batcher, button.area);
+        }
     }
 
     protected void renderBackground(UIContext context)

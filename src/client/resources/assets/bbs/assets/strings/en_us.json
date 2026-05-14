@@ -678,6 +678,7 @@
     "bbs.ui.film.history-title": "Undo history",
     "bbs.ui.film.home.actions": "Actions",
     "bbs.ui.film.home.banner_author": "Render Created By: %s",
+    "bbs.ui.film.home.remove_recent": "Remove from Recent",
     "bbs.ui.film.home.list": "Recent",
     "bbs.ui.film.home.search": "Search...",
     "bbs.ui.film.home.title": "Home",
@@ -1310,6 +1311,7 @@
     "bbs.ui.panels.modals.rename": "Type in a new name:",
     "bbs.ui.panels.modals.rename_folder": "Type in a new name for selected folder:",
     "bbs.ui.panels.modals.rename_folder-title": "Rename this folder",
+    "bbs.ui.panels.audios": "Audios",
     "bbs.ui.panels.particles": "Particles",
     "bbs.ui.panels.saved-notification": "%s was saved!",
     "bbs.ui.particles.crud.add": "Add particle",
@@ -2034,6 +2036,7 @@
     "studio.ui.utility.reload_sounds": "Sounds",
     "studio.ui.utility.reload_terrain": "Terrain",
     "studio.ui.utility.reload_textures": "Textures",
+    "studio.ui.utility.clear_thumbnail_cache": "Clear Thumbnails",
     "studio.ui.utility.resize": "Resize window",
     "studio.ui.utility.title": "Utility panel"
 }

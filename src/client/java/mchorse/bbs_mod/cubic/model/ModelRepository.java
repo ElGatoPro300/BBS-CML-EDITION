@@ -10,7 +10,9 @@ import mchorse.bbs_mod.utils.IOUtils;
 import mchorse.bbs_mod.utils.repos.IRepository;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.function.Consumer;
 
 public class ModelRepository implements IRepository<ModelConfig>
@@ -102,7 +104,48 @@ public class ModelRepository implements IRepository<ModelConfig>
     @Override
     public void requestKeys(Consumer<Collection<String>> callback)
     {
-        callback.accept(this.manager.getAvailableKeys());
+        List<String> keys = new ArrayList<>(this.manager.getAvailableKeys());
+
+        this.addEmptyFolders(this.getFolder(), "", keys);
+        callback.accept(keys);
+    }
+
+    /* Recursively find subdirectories that are not themselves model directories
+       (i.e. they appear as navigation folders, not as model entries in keys). */
+    private void addEmptyFolders(File dir, String prefix, List<String> keys)
+    {
+        File[] files = dir.listFiles();
+
+        if (files == null)
+        {
+            return;
+        }
+
+        for (File file : files)
+        {
+            if (!file.isDirectory())
+            {
+                continue;
+            }
+
+            String modelKey = prefix + file.getName();
+            String folderPath = modelKey + "/";
+
+            /* Directories that are models appear in keys without a trailing slash */
+            if (keys.contains(modelKey))
+            {
+                continue;
+            }
+
+            boolean hasContent = keys.stream().anyMatch((k) -> k.startsWith(folderPath));
+
+            if (!hasContent)
+            {
+                keys.add(folderPath);
+            }
+
+            this.addEmptyFolders(file, folderPath, keys);
+        }
     }
 
     @Override

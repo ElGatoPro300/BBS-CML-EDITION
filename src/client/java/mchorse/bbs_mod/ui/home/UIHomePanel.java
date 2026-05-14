@@ -125,13 +125,13 @@ public class UIHomePanel extends UIDashboardPanel
         this.homeActionsPanel = new UIElement();
 
         this.homeOpenButton = this.createHomeButton(IKey.raw("Open..."), Icons.FOLDER, (b) ->
-            UIOverlay.addOverlay(this.getContext(), new UIOpenAssetOverlayPanel(IKey.raw("Open Asset"), this.dashboard), 400, 300));
+            UIOverlay.addOverlay(this.getContext(), new UIOpenAssetOverlayPanel(IKey.raw("Open Asset"), this.dashboard), 520, 320));
 
         this.homeCreateFilm = this.createHomeButton(UIKeys.FILM_TITLE, Icons.FILM, (b) -> this.createNewAsset(ContentType.FILMS));
         this.homeCreateModel = this.createHomeButton(UIKeys.MODELS_TITLE, Icons.PLAYER, (b) -> this.createNewAsset(ContentType.MODELS));
         this.homeCreateParticle = this.createHomeButton(UIKeys.PANELS_PARTICLES, Icons.PARTICLE, (b) -> this.createNewAsset(ContentType.PARTICLES));
-        this.homeCreateAudio = this.createHomeButton(IKey.raw("Audio"), Icons.SOUND, (b) ->
-            UIOverlay.addOverlay(this.getContext(), new UISoundOverlayPanel((link) -> this.openAsset(null, link.toString()))));
+        this.homeCreateAudio = this.createHomeButton(UIKeys.PANELS_AUDIOS, Icons.SOUND, (b) ->
+            UIOverlay.addOverlay(this.getContext(), new UISoundOverlayPanel((link) -> this.openAsset(ContentType.SOUNDS, link.toString()))));
 
         this.homeDuplicateCurrent = this.createHomeButton(UIKeys.FILM_CRUD_DUPE, Icons.COPY, (b) -> this.duplicateSelected());
         this.homeRenameCurrent = this.createHomeButton(UIKeys.FILM_CRUD_RENAME, Icons.EDIT, (b) -> this.renameSelected());
@@ -187,6 +187,14 @@ public class UIHomePanel extends UIDashboardPanel
         };
 
         this.homeRecentList.background();
+        this.homeRecentList.context((menu) ->
+        {
+            if (this.selectedId != null && this.selectedType != null)
+            {
+                RecentAssetsTracker.Entry e = new RecentAssetsTracker.Entry(this.selectedType, this.selectedId);
+                menu.action(Icons.REMOVE, UIKeys.FILM_HOME_REMOVE_RECENT, () -> this.removeFromRecent(e));
+            }
+        });
 
         this.homeMosaic = new UIRecentMosaicGrid(this, this::handleRecentSelection, this::openRecent);
         this.homeMosaic.setVisible(lastMosaicView);
@@ -269,7 +277,9 @@ public class UIHomePanel extends UIDashboardPanel
     {
         if (this.dashboard.documentTabsBar != null)
         {
-            this.dashboard.documentTabsBar.addOrActivate(type, id);
+            /* The tabs bar identifies audio by null type; translate SOUNDS accordingly */
+            ContentType tabsType = (type == ContentType.SOUNDS) ? null : type;
+            this.dashboard.documentTabsBar.addOrActivate(tabsType, id);
         }
     }
 
@@ -301,7 +311,7 @@ public class UIHomePanel extends UIDashboardPanel
         return sep < 0 ? key : key.substring(sep + 1);
     }
 
-    private void refreshRecentList()
+    public void refreshRecentList()
     {
         List<RecentAssetsTracker.Entry> recent = RecentAssetsTracker.RECENT;
         List<String> keys = new ArrayList<>();
@@ -335,6 +345,23 @@ public class UIHomePanel extends UIDashboardPanel
         }
     }
 
+    void removeFromRecent(RecentAssetsTracker.Entry entry)
+    {
+        if (entry == null)
+        {
+            return;
+        }
+
+        RecentAssetsTracker.remove(entry.type, entry.id);
+
+        if (this.selectedId != null && this.selectedId.equals(entry.id) && this.selectedType == entry.type)
+        {
+            this.clearSelection();
+        }
+
+        this.refreshRecentList();
+    }
+
     private void clearSelection()
     {
         this.selectedId = null;
@@ -348,7 +375,7 @@ public class UIHomePanel extends UIDashboardPanel
 
     private void updateHomeButtonsState()
     {
-        boolean hasSelection = this.selectedId != null && this.selectedType != null;
+        boolean hasSelection = this.selectedId != null && this.selectedType != null && this.selectedType != ContentType.SOUNDS;
 
         this.homeDuplicateCurrent.setEnabled(hasSelection);
         this.homeRenameCurrent.setEnabled(hasSelection);
@@ -459,6 +486,17 @@ public class UIHomePanel extends UIDashboardPanel
                 if (!confirm) return;
 
                 type.getRepository().delete(current);
+
+                if (type == ContentType.FILMS)
+                {
+                    UIFilmPanel filmPanel = this.dashboard.getPanel(UIFilmPanel.class);
+
+                    if (filmPanel != null)
+                    {
+                        filmPanel.deleteThumbnail(current);
+                    }
+                }
+
                 RecentAssetsTracker.RECENT.removeIf(e -> e.type == type && e.id.equals(current));
                 RecentAssetsTracker.save();
                 this.refreshRecentList();
@@ -967,7 +1005,22 @@ public class UIHomePanel extends UIDashboardPanel
                 {
                     if (this.area.isInside(context))
                     {
-                        UIRecentMosaicGrid.this.onCardClicked(entry);
+                        if (context.mouseButton == 0)
+                        {
+                            UIRecentMosaicGrid.this.onCardClicked(entry);
+                        }
+                        else if (context.mouseButton == 1)
+                        {
+                            UIRecentMosaicGrid.this.selectedId = entry.id;
+                            UIRecentMosaicGrid.this.selectedType = entry.type;
+
+                            if (UIRecentMosaicGrid.this.selectCallback != null)
+                            {
+                                UIRecentMosaicGrid.this.selectCallback.accept(entry);
+                            }
+
+                            this.mouseClickedContextMenu(context);
+                        }
 
                         return true;
                     }
@@ -1017,7 +1070,7 @@ public class UIHomePanel extends UIDashboardPanel
                     {
                         this.renderIcon(context, Icons.PARTICLE);
                     }
-                    else if (entry.type == null)
+                    else if (entry.type == ContentType.SOUNDS)
                     {
                         this.renderIcon(context, Icons.SOUND);
                     }
@@ -1053,6 +1106,8 @@ public class UIHomePanel extends UIDashboardPanel
                 }
             };
 
+            card.context((menu) -> menu.action(Icons.REMOVE, UIKeys.FILM_HOME_REMOVE_RECENT,
+                () -> UIRecentMosaicGrid.this.home.removeFromRecent(entry)));
             card.relative(this).x(cx).y(cy).w(CARD_SIZE).h(CARD_SIZE + CARD_LABEL_H);
 
             if (entry.type == ContentType.MODELS)
