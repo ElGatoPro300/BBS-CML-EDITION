@@ -392,11 +392,6 @@ public class BBSModClient implements ClientModInitializer
     @Override
     public void onInitializeClient()
     {
-<<<<<<< HEAD
-=======
-        RecentAssetsTracker.load();
-
->>>>>>> 0db2a11a81d1d7a1f0960ee05ad7e2d8b748207c
         AttackBlockCallback.EVENT.register((player, world, hand, pos, direction) ->
         {
             if (world.getBlockEntity(pos) instanceof TriggerBlockEntity)
