@@ -122,6 +122,7 @@ public class BBSSettings
     public static ValueBoolean renderAllModelBlocks;
     public static ValueBoolean clickModelBlocks;
     public static ValueBoolean modelBlockCategoriesPanelEnabled;
+    public static ValueFloat modelBlockAnimationStateDistance;
 
     public static ValueString entitySelectorsPropertyWhitelist;
 
@@ -291,6 +292,7 @@ public class BBSSettings
         builder.category("model_blocks");
         renderAllModelBlocks = builder.getBoolean("render_all", true);
         clickModelBlocks = builder.getBoolean("click", true);
+        modelBlockAnimationStateDistance = builder.getFloat("distance", 64F);
 
         builder.category("entity_selectors");
         entitySelectorsPropertyWhitelist = builder.getString("whitelist", "CustomName,Name");
