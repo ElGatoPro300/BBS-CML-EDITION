@@ -52,12 +52,7 @@ public class UIAboutOverlayPanel extends UIOverlayPanel
             @Override
             public void render(UIContext context)
             {
-                int primary = BBSSettings.primaryColor.get();
                 int y = this.area.y;
-                int h = this.area.h;
-
-                context.batcher.gradientVBox(this.area.x, y, this.area.ex(), y + h / 2, primary | Colors.A100, primary | Colors.A50);
-                context.batcher.gradientVBox(this.area.x, y + h / 2, this.area.ex(), this.area.ey(), primary | Colors.A50, 0);
 
                 /* Brand */
                 int scale2y = y + 14;
@@ -197,7 +192,28 @@ public class UIAboutOverlayPanel extends UIOverlayPanel
             {
                 Texture texture = BBSModClient.getTextures().getTexture(this.supporter.banner, GL11.GL_LINEAR);
 
-                context.batcher.fullTexturedBox(texture, bx, by, bw, BANNER_H);
+                float tw = texture.width;
+                float th = texture.height;
+                float texAR = tw / th;
+                float boxAR = (float) bw / BANNER_H;
+                float u1, v1, u2, v2;
+
+                if (texAR > boxAR)
+                {
+                    float visibleW = th * boxAR;
+                    float offset = (tw - visibleW) / 2F;
+
+                    u1 = offset; v1 = 0; u2 = offset + visibleW; v2 = th;
+                }
+                else
+                {
+                    float visibleH = tw / boxAR;
+                    float offset = (th - visibleH) / 2F;
+
+                    u1 = 0; v1 = offset; u2 = tw; v2 = offset + visibleH;
+                }
+
+                context.batcher.texturedBox(texture, Colors.WHITE, bx, by, bw, BANNER_H, u1, v1, u2, v2);
             }
             else
             {

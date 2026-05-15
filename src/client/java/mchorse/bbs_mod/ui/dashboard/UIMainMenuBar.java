@@ -142,7 +142,7 @@ public class UIMainMenuBar extends UIElement
 
     private void buildHelpMenu(ContextMenuManager menu)
     {
-        menu.action(Icons.HELP, IKey.raw("About"), () -> UIOverlay.addOverlay(this.getContext(), new UIAboutOverlayPanel(IKey.raw("About"), this.dashboard), 640, 520));
+        menu.action(Icons.HELP, IKey.raw("About"), () -> UIOverlay.addOverlay(this.getContext(), new UIAboutOverlayPanel(IKey.raw("About"), this.dashboard), 560, 440));
     }
 
     /* ------------------------------------------------------------------ */
