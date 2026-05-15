@@ -163,6 +163,8 @@
     "bbs.config.model_blocks.categories_panel_enabled-comment": "Mostrar painel de categorias de ossos em editores de pose",
     "bbs.config.model_blocks.click": "Pode ser clicado",
     "bbs.config.model_blocks.click-comment": "Se os blocos de modelo podem ser selecionados no editor do painel de blocos de modelo ao clicar neles",
+    "bbs.config.model_blocks.distance": "Distância do estado de animação",
+    "bbs.config.model_blocks.distance-comment": "A distância em que o comando play_state irá ativar",
     "bbs.config.model_blocks.render_all": "Renderizar todos",
     "bbs.config.model_blocks.render_all-comment": "Se todos os blocos do modelo deverão ser renderizados",
     "bbs.config.model_blocks.title": "Blocos de modelo",
