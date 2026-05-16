@@ -76,10 +76,7 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
     public UIAudioEditor audioEditor;
 
     // Tab and Home fields
-    public static final int AUDIO_DOCUMENT_TABS_HEIGHT = 20;
 
-    private UIControlBar audioTabsBar;
-    private UIElement audioTabs;
     private int activeAudioDocumentTab = -1;
     private final List<AudioDocumentTab> audioDocumentTabs = new ArrayList<>();
 
@@ -145,16 +142,10 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
     {
         super(dashboard);
 
-        // Document tabs layout
-        this.iconBar.relative(this).x(1F, -20).y(AUDIO_DOCUMENT_TABS_HEIGHT).w(20).h(1F, -AUDIO_DOCUMENT_TABS_HEIGHT).column(0).stretch();
-        this.audioTabsBar = new UIControlBar();
-        this.audioTabsBar.relative(this).x(0).y(0).w(1F).h(AUDIO_DOCUMENT_TABS_HEIGHT);
-        this.audioTabs = new UIElement();
-        this.audioTabs.relative(this.audioTabsBar).x(8).y(0).w(1F, -16).h(AUDIO_DOCUMENT_TABS_HEIGHT).row(0).resize();
-        this.audioTabsBar.add(this.audioTabs);
+        this.iconBar.relative(this).x(1F, -20).y(0).w(20).h(1F).column(0).stretch();
 
         this.mainView = new UIElement();
-        this.mainView.relative(this.editor).y(AUDIO_DOCUMENT_TABS_HEIGHT).w(1F).h(1F, -AUDIO_DOCUMENT_TABS_HEIGHT);
+        this.mainView.relative(this.editor).y(0).w(1F).h(1F);
 
         this.pickAudio = new UIIcon(Icons.MORE, (b) -> UIOverlay.addOverlay(this.getContext(), new UISoundOverlayPanel(this::pickAudioFromOverlay)));
         this.plause = new UIIcon(() ->
@@ -404,7 +395,7 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
 
         this.updateHomeButtonsState();
 
-        this.homePage.relative(this.editor).x(0.5F, -250).y(AUDIO_DOCUMENT_TABS_HEIGHT).w(500).h(1F, -AUDIO_DOCUMENT_TABS_HEIGHT);
+        this.homePage.relative(this.editor).x(0.5F, -250).y(0).w(500).h(1F);
         this.homeActionsPanel.relative(this.homePage).x(0).y(HOME_BANNER_HEIGHT + 20).w(0.35F).h(1F, -(HOME_BANNER_HEIGHT + 20)).column(0).vertical().stretch();
         
         UIElement spacing = new UIElement();
@@ -418,7 +409,6 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
         this.homePage.add(new UIRenderable(this::renderHomeBackground), this.homeActionsPanel, this.homeAudiosSearch, this.homeAudiosMosaic, this.homeViewToggle);
 
         this.editor.add(this.mainView, this.homePage);
-        this.add(this.audioTabsBar);
 
         this.createHomeDocumentTab(true);
         this.openAudio(null);
@@ -799,6 +789,8 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
             return;
         }
 
+        mchorse.bbs_mod.utils.RecentAssetsTracker.add(mchorse.bbs_mod.ui.ContentType.SOUNDS, link.toString());
+
         int existingIndex = this.findTabByAudio(link);
 
         if (existingIndex >= 0)
@@ -897,31 +889,7 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
 
     private void rebuildAudioDocumentTabs()
     {
-        this.audioTabs.removeAll();
-
-        for (int i = 0; i < this.audioDocumentTabs.size(); i++)
-        {
-            int tabIndex = i;
-            AudioDocumentTab tab = this.audioDocumentTabs.get(i);
-            IKey title = tab.home ? L10n.lang("bbs.ui.audio.home.title") : IKey.constant(tab.audioLink.path);
-            UIIconTabButton button = new UIIconTabButton(title, tab.home ? Icons.FOLDER : Icons.SOUND, (b) -> this.activateAudioDocumentTab(tabIndex, false));
-            button.color(this.activeAudioDocumentTab == tabIndex ? BBSSettings.primaryColor.get() : 0x2d2d2d);
-            button.w(tab.home ? 88 : 122).h(AUDIO_DOCUMENT_TABS_HEIGHT);
-
-            if (!tab.home || this.audioDocumentTabs.size() > 1)
-            {
-                button.removable((b) -> this.removeAudioDocumentTab(tabIndex));
-            }
-
-            this.audioTabs.add(button);
-        }
-
-        UIIconTabButton add = new UIIconTabButton(IKey.constant(""), Icons.ADD, (b) -> this.addHomeDocumentTab());
-        add.color(0x2d2d2d);
-        add.background(false);
-        add.w(24).h(AUDIO_DOCUMENT_TABS_HEIGHT);
-        this.audioTabs.add(add);
-        this.audioTabs.resize();
+        /* No-op: the legacy tab bar UI was removed; the unified UIDocumentTabsBar at the dashboard level replaces it. */
     }
 
     private void syncActiveDocumentTabWithData(Link link)
@@ -972,6 +940,19 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
         this.mainView.setVisible(!home);
 
         this.updateHomeButtonsState();
+    }
+
+    public void openAudioFile(String id)
+    {
+        this.openAudioInDocumentTabs(mchorse.bbs_mod.resources.Link.create(id));
+    }
+
+    @Override
+    public mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel getMainPanel()
+    {
+        mchorse.bbs_mod.ui.home.UIHomePanel home = this.dashboard.getPanel(mchorse.bbs_mod.ui.home.UIHomePanel.class);
+
+        return home != null ? home : this;
     }
 
     private UIButton createHomeButton(IKey label, Icon icon, Consumer<UIButton> callback)

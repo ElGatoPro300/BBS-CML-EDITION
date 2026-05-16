@@ -20,6 +20,8 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIStatusLogOverlayPanel;
 import mchorse.bbs_mod.ui.utility.audio.UIAudioEditorPanel;
 import mchorse.bbs_mod.ui.utils.UI;
+import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanels;
+import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.Pair;
@@ -185,6 +187,9 @@ public class UIUtilityOverlayPanel extends UIOverlayPanel
         this.view.add(UI.column(UI.label(UIKeys.UTILITY_RESIZE_WINDOW), UI.row(this.width, this.height)).marginBottom(8));
         this.view.add(UI.label(UIKeys.UTILITY_LANG_LABEL), UI.row(analyze, compile), langEditor.marginBottom(8));
         this.view.add(UI.label(UIKeys.UTILITY_AUDIO), openAudioEditor.marginBottom(8));
+        UIButton clearThumbnailCache = new UIButton(UIKeys.UTILITY_CLEAR_THUMBNAIL_CACHE, (b) -> this.clearThumbnailCache());
+
+        this.view.add(UI.label(IKey.raw("Cache")), clearThumbnailCache.marginBottom(8));
         this.view.add(UI.label(IKey.raw("CDN")), UI.row(cdnDownload, cdnUpload));
         this.content.add(this.view);
     }
@@ -204,6 +209,21 @@ public class UIUtilityOverlayPanel extends UIOverlayPanel
         {
             MinecraftClient.getInstance().player.networkHandler.sendCommand(command);
         }
+    }
+
+    private void clearThumbnailCache()
+    {
+        for (UIDashboardPanels child : this.getContext().menu.getRoot().getChildren(UIDashboardPanels.class))
+        {
+            UIFilmPanel filmPanel = child.getPanel(UIFilmPanel.class);
+
+            if (filmPanel != null)
+            {
+                filmPanel.clearThumbnailCache();
+            }
+        }
+
+        this.print("Cleared thumbnail cache!");
     }
 
     private void openFolder(File gameFolder)

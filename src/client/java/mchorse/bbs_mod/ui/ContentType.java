@@ -35,6 +35,7 @@ public class ContentType
     public static final ContentType PARTICLES = new ContentType("particles", () -> PARTICLE_REPOSITORY, (dashboard) -> dashboard.getPanel(UIParticleSchemePanel.class));
     public static final ContentType MODELS = new ContentType("models", () -> new ModelRepository(BBSModClient.getModels()), (dashboard) -> dashboard.getPanel(UIModelPanel.class));
     public static final ContentType FILMS = new ContentType("films", ContentType::getFilmsRepository, (dashboard) -> dashboard.getPanel(UIFilmPanel.class));
+    public static final ContentType SOUNDS = new ContentType("sounds", () -> null, (dashboard) -> null);
 
     private static IRepository<? extends ValueGroup> getFilmsRepository()
     {
@@ -55,6 +56,16 @@ public class ContentType
         this.id = id;
         this.manager = manager;
         this.dashboardPanel = dashboardPanel;
+    }
+
+    public static ContentType fromId(String id)
+    {
+        if ("particles".equals(id)) return PARTICLES;
+        if ("models".equals(id)) return MODELS;
+        if ("films".equals(id)) return FILMS;
+        if ("sounds".equals(id)) return SOUNDS;
+
+        return null;
     }
 
     public String getId()

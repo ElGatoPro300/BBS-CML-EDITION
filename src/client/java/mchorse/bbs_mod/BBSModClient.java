@@ -84,6 +84,7 @@ import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.keys.KeyCombo;
 import mchorse.bbs_mod.ui.utils.keys.KeybindSettings;
 import mchorse.bbs_mod.utils.MathUtils;
+import mchorse.bbs_mod.utils.RecentAssetsTracker;
 import mchorse.bbs_mod.utils.ScreenshotRecorder;
 import mchorse.bbs_mod.utils.VideoRecorder;
 import mchorse.bbs_mod.utils.colors.Color;
@@ -455,6 +456,8 @@ public class BBSModClient implements ClientModInitializer
         selectors.read();
         films = new Films();
 
+        mchorse.bbs_mod.utils.RecentAssetsTracker.load();
+
         BBSResources.init();
 
         URLRepository repository = new URLRepository(new File(parentFile, "url_cache"));
@@ -572,6 +575,11 @@ public class BBSModClient implements ClientModInitializer
             {
                 videoRecorder.recordFrame();
             }
+        });
+
+        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) ->
+        {
+            mchorse.bbs_mod.utils.RecentAssetsTracker.load();
         });
 
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) ->
