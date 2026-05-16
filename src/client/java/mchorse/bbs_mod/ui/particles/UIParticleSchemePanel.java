@@ -1470,7 +1470,7 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
                         
                         context.batcher.getContext().getMatrices().pop();
 
-                        String label = new mchorse.bbs_mod.utils.DataPath(id).getLast();
+                        String label = new DataPath(id).getLast();
                         int maxW = this.area.w - 4;
                         if (context.batcher.getFont().getWidth(label) > maxW)
                         {

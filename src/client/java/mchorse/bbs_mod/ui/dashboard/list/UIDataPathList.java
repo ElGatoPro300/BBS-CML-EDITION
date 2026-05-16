@@ -6,7 +6,9 @@ import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.DataPath;
 import mchorse.bbs_mod.utils.NaturalOrderComparator;
+import mchorse.bbs_mod.utils.Pair;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -265,8 +267,8 @@ public class UIDataPathList extends UIList<DataPath>
     {
         if (this.isFiltering())
         {
-            List<DataPath> list = new java.util.ArrayList<>();
-            for (mchorse.bbs_mod.utils.Pair<DataPath, Integer> pair : this.filtered)
+            List<DataPath> list = new ArrayList<>();
+            for (Pair<DataPath, Integer> pair : this.filtered)
             {
                 list.add(pair.a);
             }

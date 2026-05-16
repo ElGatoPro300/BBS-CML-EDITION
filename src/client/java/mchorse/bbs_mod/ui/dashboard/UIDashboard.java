@@ -122,6 +122,13 @@ public class UIDashboard extends UIBaseMenu
         this.getRoot().add(this.orbitKeysUI);
         this.getRoot().add(this.chalkboard);
 
+        if (!BBSSettings.welcomePanelAcceptedAlpha1.get())
+        {
+            UIWelcomePanel welcome = new UIWelcomePanel();
+            welcome.full(this.getRoot());
+            this.getRoot().add(welcome);
+        }
+
         /* Register keys */
         IKey category = UIKeys.DASHBOARD_CATEGORY;
 

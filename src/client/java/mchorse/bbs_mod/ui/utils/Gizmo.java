@@ -45,6 +45,9 @@ public class Gizmo
 
     private int index = -1;
 
+    public final Matrix4f lastGizmoMatrix = new Matrix4f();
+    public boolean hasGizmoMatrix;
+
     private UIPropTransform currentTransform;
     private Map<Integer, IGizmoHandler> handlers = new HashMap<>();
 
@@ -164,6 +167,9 @@ public class Gizmo
 
     public void render(MatrixStack stack)
     {
+        this.lastGizmoMatrix.set(stack.peek().getPositionMatrix());
+        this.hasGizmoMatrix = true;
+
         float thickness = BBSSettings.axesThickness == null ? 1F : BBSSettings.axesThickness.get();
 
         if (BBSSettings.gizmos.get())
@@ -303,6 +309,9 @@ public class Gizmo
 
     public void renderStencil(MatrixStack stack, StencilMap map)
     {
+        this.lastGizmoMatrix.set(stack.peek().getPositionMatrix());
+        this.hasGizmoMatrix = true;
+
         if (BBSSettings.gizmos.get())
         {
             this.drawAxes(stack, map, 0.25F, 0.015F);
