@@ -104,8 +104,6 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
     public List<UIElement> panels = new ArrayList<>();
     public List<UIIcon> panelButtons = new ArrayList<>();
     
-    private UIControlBar modelTabsBar;
-    private UIElement modelTabs;
     private UIElement homePage;
     private UISearchList<DataPath> homeModelsSearch;
     private UIDataPathList homeModelsList;
@@ -132,7 +130,6 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
     private static final int HOME_BANNER_HEIGHT = 108;
     private int activeModelDocumentTab = -1;
     private boolean showingHomePage = true;
-    private static final int MODEL_DOCUMENT_TABS_HEIGHT = 20;
 
     public UIElement modelSettingsPanel;
     public UIElement placeholderPanel;
@@ -170,8 +167,6 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         
         this.initBanners();
 
-        this.modelTabsBar = new UIControlBar();
-        this.modelTabs = new UIElement();
         this.homePage = new UIElement()
         {
             @Override
@@ -392,12 +387,9 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         });
         this.updateHomeButtonsState();
 
-        this.iconBar.relative(this).x(1F, -20).y(MODEL_DOCUMENT_TABS_HEIGHT).w(20).h(1F, -MODEL_DOCUMENT_TABS_HEIGHT).column(0).stretch();
-        this.modelTabsBar.relative(this).x(0).y(0).w(1F).h(MODEL_DOCUMENT_TABS_HEIGHT);
-        this.modelTabs.relative(this.modelTabsBar).x(8).y(0).w(1F, -16).h(MODEL_DOCUMENT_TABS_HEIGHT).row(0).resize();
-        this.modelTabsBar.add(this.modelTabs);
-        
-        this.homePage.relative(this.editor).x(0.5F, -250).y(MODEL_DOCUMENT_TABS_HEIGHT).w(500).h(1F, -MODEL_DOCUMENT_TABS_HEIGHT);
+        this.iconBar.relative(this).x(1F, -20).y(0).w(20).h(1F).column(0).stretch();
+
+        this.homePage.relative(this.editor).x(0.5F, -250).y(0).w(500).h(1F);
         this.homeActionsPanel.relative(this.homePage).x(0).y(HOME_BANNER_HEIGHT + 20).w(0.35F).h(1F, -(HOME_BANNER_HEIGHT + 20)).column(0).vertical().stretch();
         
         UIElement spacing = new UIElement();
@@ -412,10 +404,9 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         this.homePage.add(new UIRenderable(this::renderHomeBackground), this.homeActionsPanel, this.homeModelsSearch, this.homeModelsMosaic, this.homeViewToggle);
 
         this.mainView = new UIElement();
-        this.mainView.relative(this.editor).y(MODEL_DOCUMENT_TABS_HEIGHT).w(1F).h(1F, -MODEL_DOCUMENT_TABS_HEIGHT);
+        this.mainView.relative(this.editor).y(0).w(1F).h(1F);
 
         this.editor.add(this.mainView, this.homePage);
-        this.add(this.modelTabsBar);
         this.iconBar.prepend(new UIRenderable(this::renderIcons));
 
         /* Model Settings Panel */
@@ -1086,31 +1077,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
 
     private void rebuildModelDocumentTabs()
     {
-        this.modelTabs.removeAll();
-
-        for (int i = 0; i < this.modelDocumentTabs.size(); i++)
-        {
-            int tabIndex = i;
-            ModelDocumentTab tab = this.modelDocumentTabs.get(i);
-            IKey title = tab.home ? L10n.lang("bbs.ui.models.home.title") : IKey.constant(tab.modelId);
-            UIIconTabButton button = new UIIconTabButton(title, tab.home ? Icons.FOLDER : Icons.MORPH, (b) -> this.activateModelDocumentTab(tabIndex, false));
-            button.color(this.activeModelDocumentTab == tabIndex ? BBSSettings.primaryColor.get() : 0x2d2d2d);
-            button.w(tab.home ? 88 : 122).h(MODEL_DOCUMENT_TABS_HEIGHT);
-
-            if (!tab.home || this.modelDocumentTabs.size() > 1)
-            {
-                button.removable((b) -> this.removeModelDocumentTab(tabIndex));
-            }
-
-            this.modelTabs.add(button);
-        }
-
-        UIIconTabButton add = new UIIconTabButton(IKey.constant(""), Icons.ADD, (b) -> this.addHomeDocumentTab());
-        add.color(0x2d2d2d);
-        add.background(false);
-        add.w(24).h(MODEL_DOCUMENT_TABS_HEIGHT);
-        this.modelTabs.add(add);
-        this.modelTabs.resize();
+        /* No-op: the legacy tab bar UI was removed; the unified UIDocumentTabsBar at the dashboard level replaces it. */
     }
 
     private void syncActiveDocumentTabWithData(ModelConfig data)
@@ -1145,12 +1112,12 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         this.showingHomePage = home;
         this.homePage.setVisible(home);
         this.mainView.setVisible(!home);
-        
+
         if (this.renderer != null)
         {
             this.renderer.setVisible(!home);
         }
-        
+
         this.updateHomeButtonsState();
     }
 
@@ -1185,6 +1152,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
     {
         this.save();
         this.openModelInDocumentTabs(id);
+        mchorse.bbs_mod.utils.RecentAssetsTracker.add(this.getType(), id);
     }
 
     @Override
@@ -1735,6 +1703,14 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
     public ContentType getType()
     {
         return ContentType.MODELS;
+    }
+
+    @Override
+    public mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel getMainPanel()
+    {
+        mchorse.bbs_mod.ui.home.UIHomePanel home = this.dashboard.getPanel(mchorse.bbs_mod.ui.home.UIHomePanel.class);
+
+        return home != null ? home : this;
     }
 
     @Override

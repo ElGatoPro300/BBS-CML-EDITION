@@ -1142,6 +1142,11 @@ public class UIFilmController extends UIElement
             return;
         }
 
+        if (this.worldRenderContext == null)
+        {
+            return;
+        }
+
         boolean altPressed = Window.isAltPressed();
 
         RenderSystem.depthFunc(GL11.GL_LESS);

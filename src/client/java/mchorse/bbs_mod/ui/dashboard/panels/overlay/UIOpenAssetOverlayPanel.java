@@ -1,28 +1,35 @@
 package mchorse.bbs_mod.ui.dashboard.panels.overlay;
 
 import mchorse.bbs_mod.BBSMod;
+import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.l10n.keys.IKey;
+import mchorse.bbs_mod.settings.values.core.ValueGroup;
 import mchorse.bbs_mod.ui.ContentType;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.UIDashboard;
-import mchorse.bbs_mod.ui.dashboard.list.UIDataPathList;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.framework.UIContext;
+import mchorse.bbs_mod.ui.framework.elements.IUIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIScrollView;
-import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
+import mchorse.bbs_mod.ui.framework.elements.buttons.UIClickable;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
-import mchorse.bbs_mod.ui.framework.elements.input.list.UISearchList;
+import mchorse.bbs_mod.ui.framework.elements.input.text.UITextbox;
+import mchorse.bbs_mod.ui.framework.elements.overlay.UIConfirmOverlayPanel;
+import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlayPanel;
+import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
 import mchorse.bbs_mod.ui.model.UIModelPreviewRenderer;
-import mchorse.bbs_mod.ui.utility.audio.UIAudioEditorPanel;
 import mchorse.bbs_mod.ui.utils.UIDataUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
-import mchorse.bbs_mod.utils.DataPath;
 import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.colors.Colors;
+import mchorse.bbs_mod.utils.RecentAssetsTracker;
+import mchorse.bbs_mod.utils.repos.IRepository;
+
+import net.minecraft.util.Util;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -32,316 +39,1638 @@ import java.util.function.Consumer;
 
 public class UIOpenAssetOverlayPanel extends UIOverlayPanel
 {
-    private UIDashboard dashboard;
-    private UIElement sidebar;
-    private UIElement mainArea;
-    private UISearchList<DataPath> searchList;
-    private UIMosaicGrid mosaicGrid;
-    private UIIcon viewToggle;
-    
-    private ContentType currentType;
-    private boolean isMosaic = true;
-    private String filter = "";
+    private static final int SIDEBAR_W = 110;
+    private static final int TOOLBAR_H = 28;
+    private static final int CARD_W = 90;
+    private static final int CARD_THUMB_H = 60;
+    private static final int CARD_LABEL_H = 20;
+    private static final int CARD_H = CARD_THUMB_H + CARD_LABEL_H;
+    private static final int CARD_GAP = 6;
+
+    private final UIDashboard dashboard;
+
+    /* Sidebar */
+    private final UIElement sidebar;
+    private UITypeTab activeTab;
+
+    /* Toolbar */
+    private final UIElement toolbar;
+    private final UIElement breadcrumb;
+    private final UITextbox searchBox;
+    private final UIIcon backButton;
+    private final UIIcon viewToggle;
+
+    /* Content */
+    private final UIElement contentArea;
+    final UIAssetGrid assetGrid;
+    final UIAssetList assetList;
+
+    /* State */
+    ContentType currentType;
+    private List<String> allNames = new ArrayList<>();
+    String currentFolder = "";
+    private String searchQuery = "";
+    private boolean gridMode = true;
+    private long lastClickTime = 0;
+    private String lastClickedId = null;
+
+    /* Drag state (shared by both views) */
+    String dragId = null;
+    boolean dragIsFolder = false;
+    int dragStartX = 0;
+    int dragStartY = 0;
+    boolean isDragging = false;
+    String dragHighlightFolder = null;
 
     public UIOpenAssetOverlayPanel(IKey title, UIDashboard dashboard)
     {
         super(title);
+        this.resizable();
 
         this.dashboard = dashboard;
 
-        // Sidebar
+        /* ---- Sidebar ---- */
         this.sidebar = new UIElement();
-        this.sidebar.relative(this.content).w(32).h(1F).column(4).stretch().padding(4);
+        this.sidebar.relative(this.content).x(0).y(0).w(SIDEBAR_W).h(1F);
+        this.sidebar.column(0).vertical().stretch().padding(6);
 
-        // Main Area
-        this.mainArea = new UIElement();
-        this.mainArea.relative(this.content).x(32).w(1F, -32).h(1F);
+        /* ---- Toolbar ---- */
+        this.toolbar = new UIElement();
+        this.toolbar.relative(this.content).x(SIDEBAR_W).y(0).w(1F, -SIDEBAR_W).h(TOOLBAR_H);
 
-        UIDataPathList pathList = new UIDataPathList((selections) -> this.openAsset(selections.get(0).toString()));
-        this.searchList = new UISearchList<>(pathList);
-        this.searchList.relative(this.mainArea).x(10).y(10).w(1F, -50).h(20);
-        this.searchList.search.callback = (s) -> 
+        this.backButton = new UIIcon(Icons.ARROW_LEFT, (b) -> this.navigateUp());
+        this.backButton.tooltip(IKey.raw("Back"), Direction.BOTTOM);
+        this.backButton.relative(this.toolbar).y(4).w(20).h(20);
+
+        this.breadcrumb = new UIElement()
         {
-            this.searchList.list.filter(s);
-            this.filter = s;
-            this.mosaicGrid.filter(s);
+            @Override
+            public void render(UIContext context)
+            {
+                String path = UIOpenAssetOverlayPanel.this.currentFolder.isEmpty()
+                    ? "/"
+                    : "/" + UIOpenAssetOverlayPanel.this.currentFolder;
+                int ty = this.area.my(context.batcher.getFont().getHeight());
+                context.batcher.textShadow(path, this.area.x + 2, ty, Colors.LIGHTER_GRAY);
+                super.render(context);
+            }
         };
-        this.searchList.label(UIKeys.GENERAL_SEARCH);
+        this.breadcrumb.relative(this.toolbar).x(24).y(0).w(130).h(TOOLBAR_H);
 
-        // List View (manual placement since searchList is now only 20px high)
-        this.searchList.list.relative(this.mainArea).x(10).y(35).w(1F, -20).h(1F, -45);
+        this.searchBox = new UITextbox(200, (str) ->
+        {
+            this.searchQuery = str;
+            this.refreshContent();
+        });
+        this.searchBox.placeholder(UIKeys.GENERAL_SEARCH);
+        this.searchBox.relative(this.toolbar).x(158).y(4).w(1F, -158 - 4 - 20).h(20);
 
-        // Grid View
-        this.mosaicGrid = new UIMosaicGrid(this, (id) -> this.openAsset(id));
-        this.mosaicGrid.relative(this.mainArea).x(10).y(35).w(1F, -20).h(1F, -45);
+        this.viewToggle = new UIIcon(Icons.GALLERY, (b) -> this.toggleView());
+        this.viewToggle.tooltip(IKey.raw("Toggle view"), Direction.LEFT);
+        this.viewToggle.relative(this.toolbar).x(1F, -20).y(4).w(20).h(20);
 
-        // View Toggle
-        this.viewToggle = new UIIcon(Icons.LIST, (b) -> this.toggleView());
-        this.viewToggle.relative(this.mainArea).x(1F, -30).y(10).wh(20, 20);
+        this.toolbar.add(this.backButton, this.breadcrumb, this.searchBox, this.viewToggle);
 
-        this.viewToggle.tooltip(IKey.raw("Toggle Grid/List View"), Direction.LEFT);
+        /* ---- Content area ---- */
+        this.contentArea = new UIElement();
+        this.contentArea.relative(this.content).x(SIDEBAR_W).y(TOOLBAR_H).w(1F, -SIDEBAR_W).h(1F, -TOOLBAR_H);
 
-        this.addSidebarButton(Icons.FILM, UIKeys.FILM_TITLE, () -> this.switchType(ContentType.FILMS));
-        this.addSidebarButton(Icons.PARTICLE, UIKeys.PANELS_PARTICLES, () -> this.switchType(ContentType.PARTICLES));
-        this.addSidebarButton(Icons.PLAYER, UIKeys.MODELS_TITLE, () -> this.switchType(ContentType.MODELS));
-        this.addSidebarButton(Icons.SOUND, UIKeys.AUDIO_TITLE, () -> this.switchAudio());
+        /* Grid view */
+        this.assetGrid = new UIAssetGrid(this);
+        this.assetGrid.relative(this.contentArea).w(1F).h(1F);
 
-        this.mainArea.add(this.searchList, this.searchList.list, this.mosaicGrid, this.viewToggle);
-        this.content.add(this.sidebar, this.mainArea);
+        /* List view */
+        this.assetList = new UIAssetList(this);
+        this.assetList.relative(this.contentArea).w(1F).h(1F);
+        this.assetList.setVisible(false);
 
-        this.updateView();
-        this.switchType(ContentType.FILMS);
+        this.contentArea.add(this.assetGrid, this.assetList);
+        this.content.add(this.sidebar, this.toolbar, this.contentArea);
+
+        /* ---- Sidebar type buttons ---- */
+        this.addTypeTab(Icons.FILM, UIKeys.FILM_TITLE, ContentType.FILMS);
+        this.addTypeTab(Icons.PLAYER, UIKeys.MODELS_TITLE, ContentType.MODELS);
+        this.addTypeTab(Icons.PARTICLE, UIKeys.PANELS_PARTICLES, ContentType.PARTICLES);
+        this.addTypeTab(Icons.SOUND, UIKeys.PANELS_AUDIOS, null);
+
+        /* ---- Open folder button (bottom of sidebar) ---- */
+        UIIcon openFolderButton = new UIIcon(Icons.FOLDER, (b) -> this.openOSFolder());
+        openFolderButton.relative(this.content).x(0).y(1F, -24).w(SIDEBAR_W - 1).h(20);
+        openFolderButton.tooltip(IKey.raw("Show in file explorer"), Direction.RIGHT);
+        this.content.add(openFolderButton);
+
+        /* Default selection */
+        UITypeTab firstTab = this.sidebar.getChildren(UITypeTab.class).get(0);
+        this.selectTab(firstTab, ContentType.FILMS);
+
+        this.markContainer();
     }
 
-    private void addSidebarButton(Icon icon, IKey tooltip, Runnable callback)
+    /* ------------------------------------------------------------------ */
+    /* Setup helpers                                                         */
+    /* ------------------------------------------------------------------ */
+
+    private void addTypeTab(Icon icon, IKey label, ContentType type)
     {
-        UIIcon button = new UIIcon(icon, (b) -> callback.run());
-        button.tooltip(tooltip, Direction.RIGHT);
-        this.sidebar.add(button);
+        UITypeTab tab = new UITypeTab(icon, label, (t) -> this.selectTab(t, type));
+        this.sidebar.add(tab);
     }
 
-    private void toggleView()
+    private void selectTab(UITypeTab tab, ContentType type)
     {
-        this.isMosaic = !this.isMosaic;
-        this.updateView();
+        if (this.activeTab != null)
+        {
+            this.activeTab.selected = false;
+        }
+
+        this.activeTab = tab;
+        tab.selected = true;
+
+        this.lastClickedId = null;
+        this.currentType = type;
+        this.currentFolder = "";
+        this.searchQuery = "";
+        this.searchBox.setText("");
+        this.loadNames(type);
     }
 
-    private void updateView()
+    private void loadNames(ContentType type)
     {
-        this.mosaicGrid.setVisible(this.isMosaic);
-        this.searchList.list.setVisible(!this.isMosaic);
-        this.viewToggle.both(this.isMosaic ? Icons.LIST : Icons.GALLERY);
+        if (type != null)
+        {
+            UIDataUtils.requestNames(type, (names) ->
+            {
+                this.allNames.clear();
+                this.allNames.addAll(names);
+                this.refreshContent();
+            });
+        }
+        else
+        {
+            /* Audio: collect from disk */
+            this.allNames.clear();
+            File folder = new File(BBSMod.getAssetsFolder(), "audio");
+
+            if (folder.exists() && folder.isDirectory())
+            {
+                this.collectAudioFiles(folder, "", this.allNames);
+            }
+
+            this.refreshContent();
+        }
     }
 
-    private void openAsset(String id)
+    private void collectAudioFiles(File dir, String relPath, List<String> result)
+    {
+        File[] files = dir.listFiles();
+
+        if (files == null)
+        {
+            return;
+        }
+
+        for (File file : files)
+        {
+            if (file.isDirectory())
+            {
+                this.collectAudioFiles(file, relPath + file.getName() + "/", result);
+            }
+            else
+            {
+                String name = file.getName().toLowerCase();
+
+                if (name.endsWith(".wav") || name.endsWith(".ogg"))
+                {
+                    result.add("assets:audio/" + relPath + file.getName());
+                }
+            }
+        }
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Navigation                                                            */
+    /* ------------------------------------------------------------------ */
+
+    public void navigateInto(String folder)
+    {
+        this.lastClickedId = null;
+        this.currentFolder = folder;
+        this.searchQuery = "";
+        this.searchBox.setText("");
+        this.refreshContent();
+    }
+
+    private void navigateUp()
+    {
+        if (this.currentFolder.isEmpty())
+        {
+            return;
+        }
+
+        this.lastClickedId = null;
+        this.currentFolder = this.getParentFolder();
+        this.searchQuery = "";
+        this.searchBox.setText("");
+        this.refreshContent();
+    }
+
+    String getParentFolder()
+    {
+        if (this.currentFolder.isEmpty())
+        {
+            return "";
+        }
+
+        String path = this.currentFolder.endsWith("/")
+            ? this.currentFolder.substring(0, this.currentFolder.length() - 1)
+            : this.currentFolder;
+        int slash = path.lastIndexOf('/');
+
+        return slash < 0 ? "" : path.substring(0, slash + 1);
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* OS folder opening                                                     */
+    /* ------------------------------------------------------------------ */
+
+    private File getTypeFolder()
     {
         if (this.currentType != null)
+        {
+            return this.currentType.getRepository().getFolder();
+        }
+
+        return new File(BBSMod.getAssetsFolder(), "audio");
+    }
+
+    private void openOSFolder()
+    {
+        try
+        {
+            File folder = this.getTypeFolder();
+
+            if (!folder.exists())
+            {
+                folder.mkdirs();
+            }
+
+            Util.getOperatingSystem().open(folder);
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Click tracking (single vs double click)                               */
+    /* ------------------------------------------------------------------ */
+
+    void handleCardClick(String id, boolean isFolder, int mouseX, int mouseY)
+    {
+        long now = System.currentTimeMillis();
+
+        if (id.equals(this.lastClickedId) && now - this.lastClickTime < 400)
+        {
+            this.lastClickedId = null;
+            this.lastClickTime = 0;
+            this.cancelDrag();
+
+            if (isFolder)
+            {
+                if (id.equals(".."))
+                {
+                    this.navigateUp();
+                }
+                else
+                {
+                    this.navigateInto(id);
+                }
+            }
+            else
+            {
+                this.openAsset(id);
+            }
+        }
+        else
+        {
+            this.lastClickedId = id;
+            this.lastClickTime = now;
+            this.dragId = id;
+            this.dragIsFolder = isFolder;
+            this.dragStartX = mouseX;
+            this.dragStartY = mouseY;
+            this.isDragging = false;
+            this.dragHighlightFolder = null;
+        }
+    }
+
+    void cancelDrag()
+    {
+        this.dragId = null;
+        this.isDragging = false;
+        this.dragHighlightFolder = null;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Asset context menu actions                                            */
+    /* ------------------------------------------------------------------ */
+
+    @SuppressWarnings("unchecked")
+    void renameAssetPrompt(String id)
+    {
+        if (this.currentType == null)
+        {
+            return;
+        }
+
+        UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
+            UIKeys.GENERAL_RENAME,
+            UIKeys.PANELS_MODALS_RENAME,
+            (name) ->
+            {
+                if (name.trim().isEmpty())
+                {
+                    return;
+                }
+
+                String newId = this.currentFolder.isEmpty() ? name : this.currentFolder + name;
+                this.currentType.getRepository().rename(id, newId);
+                RecentAssetsTracker.remove(this.currentType, id);
+                this.loadNames(this.currentType);
+                this.notifyHomePanel();
+            }
+        );
+
+        panel.text.setText(baseName(id));
+        panel.text.filename();
+        UIOverlay.addOverlay(this.getContext(), panel);
+    }
+
+    @SuppressWarnings("unchecked")
+    void duplicateAssetPrompt(String id)
+    {
+        if (this.currentType == null)
+        {
+            return;
+        }
+
+        UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
+            UIKeys.GENERAL_DUPE,
+            UIKeys.PANELS_MODALS_DUPE,
+            (name) ->
+            {
+                if (name.trim().isEmpty())
+                {
+                    return;
+                }
+
+                String newId = this.currentFolder.isEmpty() ? name : this.currentFolder + name;
+                IRepository<ValueGroup> repo = (IRepository<ValueGroup>) this.currentType.getRepository();
+
+                repo.load(id, (data) ->
+                {
+                    if (data != null)
+                    {
+                        repo.save(newId, data.toData().asMap());
+                    }
+
+                    this.loadNames(this.currentType);
+                });
+            }
+        );
+
+        panel.text.setText(baseName(id));
+        panel.text.filename();
+        UIOverlay.addOverlay(this.getContext(), panel);
+    }
+
+    void deleteAssetConfirm(String id)
+    {
+        if (this.currentType == null)
+        {
+            return;
+        }
+
+        UIConfirmOverlayPanel panel = new UIConfirmOverlayPanel(
+            UIKeys.GENERAL_REMOVE,
+            UIKeys.PANELS_MODALS_REMOVE,
+            (confirm) ->
+            {
+                if (!confirm)
+                {
+                    return;
+                }
+
+                this.currentType.getRepository().delete(id);
+
+                if (this.currentType == ContentType.FILMS)
+                {
+                    mchorse.bbs_mod.ui.film.UIFilmPanel filmPanel = this.dashboard.getPanel(mchorse.bbs_mod.ui.film.UIFilmPanel.class);
+
+                    if (filmPanel != null)
+                    {
+                        filmPanel.deleteThumbnail(id);
+                    }
+                }
+
+                RecentAssetsTracker.remove(this.currentType, id);
+                this.loadNames(this.currentType);
+                this.notifyHomePanel();
+            }
+        );
+
+        UIOverlay.addOverlay(this.getContext(), panel);
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Folder context menu actions                                           */
+    /* ------------------------------------------------------------------ */
+
+    void addFolderPrompt()
+    {
+        if (this.currentType == null)
+        {
+            return;
+        }
+
+        UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
+            UIKeys.PANELS_MODALS_ADD_FOLDER_TITLE,
+            UIKeys.PANELS_MODALS_ADD_FOLDER,
+            (name) ->
+            {
+                if (name.trim().isEmpty())
+                {
+                    return;
+                }
+
+                String path = this.currentFolder.isEmpty() ? name : this.currentFolder + name;
+                this.currentType.getRepository().addFolder(path, (success) ->
+                    this.loadNames(this.currentType));
+            }
+        );
+
+        panel.text.filename();
+        UIOverlay.addOverlay(this.getContext(), panel);
+    }
+
+    void renameFolderPrompt(String folder)
+    {
+        if (this.currentType == null)
+        {
+            return;
+        }
+
+        UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
+            UIKeys.PANELS_MODALS_RENAME_FOLDER_TITLE,
+            UIKeys.PANELS_MODALS_RENAME_FOLDER,
+            (name) ->
+            {
+                if (name.trim().isEmpty())
+                {
+                    return;
+                }
+
+                String path = folder.endsWith("/")
+                    ? folder.substring(0, folder.length() - 1)
+                    : folder;
+                int lastSlash = path.lastIndexOf('/');
+                String parentPath = lastSlash < 0 ? "" : path.substring(0, lastSlash + 1);
+                String newPath = parentPath + name;
+
+                this.currentType.getRepository().renameFolder(path, newPath, (success) ->
+                    this.loadNames(this.currentType));
+            }
+        );
+
+        panel.text.setText(baseName(folder));
+        panel.text.filename();
+        UIOverlay.addOverlay(this.getContext(), panel);
+    }
+
+    void deleteFolderConfirm(String folder)
+    {
+        if (this.currentType == null)
+        {
+            return;
+        }
+
+        UIConfirmOverlayPanel panel = new UIConfirmOverlayPanel(
+            UIKeys.PANELS_MODALS_REMOVE_FOLDER_TITLE,
+            UIKeys.PANELS_MODALS_REMOVE_FOLDER,
+            (confirm) ->
+            {
+                if (!confirm)
+                {
+                    return;
+                }
+
+                String path = folder.endsWith("/")
+                    ? folder.substring(0, folder.length() - 1)
+                    : folder;
+                this.currentType.getRepository().deleteFolder(path, (success) ->
+                    this.loadNames(this.currentType));
+            }
+        );
+
+        UIOverlay.addOverlay(this.getContext(), panel);
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Drag and drop                                                         */
+    /* ------------------------------------------------------------------ */
+
+    private String findFolderAt(int mouseX, int mouseY)
+    {
+        if (this.gridMode)
+        {
+            return this.assetGrid.findFolderAt(mouseX, mouseY);
+        }
+
+        return this.assetList.findFolderAt(mouseX, mouseY);
+    }
+
+    private void processDrop(int mouseX, int mouseY)
+    {
+        String targetFolder = this.findFolderAt(mouseX, mouseY);
+
+        if (targetFolder == null)
+        {
+            return;
+        }
+
+        String normalizedTarget = targetFolder.equals("..") ? this.getParentFolder() : targetFolder;
+
+        if (this.dragIsFolder)
+        {
+            if (normalizedTarget.startsWith(this.dragId) || normalizedTarget.equals(this.dragId))
+            {
+                return;
+            }
+
+            this.moveFolder(this.dragId, normalizedTarget);
+        }
+        else
+        {
+            this.moveAsset(this.dragId, normalizedTarget);
+        }
+    }
+
+    private void notifyHomePanel()
+    {
+        mchorse.bbs_mod.ui.home.UIHomePanel homePanel = this.dashboard.getPanel(mchorse.bbs_mod.ui.home.UIHomePanel.class);
+
+        if (homePanel != null)
+        {
+            homePanel.refreshRecentList();
+        }
+    }
+
+    void moveFolder(String folderPath, String targetFolder)
+    {
+        if (this.currentType == null)
+        {
+            return;
+        }
+
+        String name = baseName(folderPath);
+        String newPath = targetFolder.isEmpty() ? name : targetFolder + name;
+        String oldPath = folderPath.endsWith("/") ? folderPath.substring(0, folderPath.length() - 1) : folderPath;
+
+        if (!newPath.equals(oldPath))
+        {
+            this.currentType.getRepository().renameFolder(oldPath, newPath, (success) ->
+                this.loadNames(this.currentType));
+        }
+    }
+
+    void moveAsset(String id, String targetFolder)
+    {
+        if (this.currentType == null)
+        {
+            return;
+        }
+
+        String filename = baseName(id);
+        String newId = targetFolder.isEmpty() ? filename : targetFolder + filename;
+
+        if (!newId.equals(id))
+        {
+            this.currentType.getRepository().rename(id, newId);
+            this.loadNames(this.currentType);
+        }
+    }
+
+    @Override
+    public boolean subMouseReleased(UIContext context)
+    {
+        if (context.mouseButton == 0)
+        {
+            boolean wasDragging = this.isDragging;
+
+            if (this.isDragging && this.dragId != null)
+            {
+                this.processDrop(context.mouseX, context.mouseY);
+            }
+
+            if (wasDragging)
+            {
+                this.lastClickedId = null;
+            }
+
+            this.dragId = null;
+            this.isDragging = false;
+            this.dragHighlightFolder = null;
+        }
+
+        return super.subMouseReleased(context);
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Content refresh                                                       */
+    /* ------------------------------------------------------------------ */
+
+    private void refreshContent()
+    {
+        String query = this.searchQuery.trim().toLowerCase();
+        String prefix = this.currentFolder;
+        List<String> folders = new ArrayList<>();
+        List<String> files = new ArrayList<>();
+
+        if (!prefix.isEmpty() && query.isEmpty())
+        {
+            folders.add("..");
+        }
+
+        for (String name : this.allNames)
+        {
+            String stripped = stripPrefix(name, prefix);
+
+            if (stripped == null || stripped.isEmpty())
+            {
+                continue;
+            }
+
+            if (!query.isEmpty())
+            {
+                /* In search mode: flat, files only, match anywhere in full name */
+                if (name.toLowerCase().contains(query))
+                {
+                    files.add(name);
+                }
+            }
+            else
+            {
+                int slash = stripped.indexOf('/');
+
+                if (slash < 0)
+                {
+                    /* File directly in this folder */
+                    files.add(name);
+                }
+                else
+                {
+                    /* Subdirectory — show folder entry once */
+                    String folderName = prefix + stripped.substring(0, slash + 1);
+
+                    if (!folders.contains(folderName))
+                    {
+                        folders.add(folderName);
+                    }
+                }
+            }
+        }
+
+        this.backButton.setEnabled(!this.currentFolder.isEmpty());
+        this.assetGrid.fill(folders, files, this.currentType);
+        this.assetList.fill(folders, files, this.currentType);
+    }
+
+    /* Strip the given prefix from the name. Returns null if name doesn't start with prefix. */
+    private static String stripPrefix(String name, String prefix)
+    {
+        if (prefix.isEmpty())
+        {
+            return name;
+        }
+
+        if (name.startsWith(prefix))
+        {
+            return name.substring(prefix.length());
+        }
+
+        return null;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Open / view toggle                                                    */
+    /* ------------------------------------------------------------------ */
+
+    public void openAsset(String id)
+    {
+        if (this.dashboard.documentTabsBar != null)
+        {
+            this.dashboard.documentTabsBar.addOrActivate(this.currentType, id);
+        }
+        else if (this.currentType != null)
         {
             this.dashboard.setPanel(this.currentType.get(this.dashboard));
             this.currentType.get(this.dashboard).pickData(id);
         }
         else
         {
-            // Audio handling
-            UIAudioEditorPanel panel = this.dashboard.getPanel(UIAudioEditorPanel.class);
+            mchorse.bbs_mod.ui.utility.audio.UIAudioEditorPanel panel = this.dashboard.getPanel(mchorse.bbs_mod.ui.utility.audio.UIAudioEditorPanel.class);
+
             this.dashboard.setPanel(panel);
+            panel.openAudioFile(id);
         }
+
         this.close();
     }
 
-    private void switchType(ContentType type)
+    private void toggleView()
     {
-        this.currentType = type;
-        UIDataUtils.requestNames(type, (names) -> 
-        {
-            ((UIDataPathList)this.searchList.list).fill(names);
-            this.mosaicGrid.fill(names, type);
-            this.mosaicGrid.filter(this.filter);
-        });
+        this.gridMode = !this.gridMode;
+        this.assetGrid.setVisible(this.gridMode);
+        this.assetList.setVisible(!this.gridMode);
+        this.viewToggle.both(this.gridMode ? Icons.GALLERY : Icons.LIST);
+        this.refreshContent();
     }
 
-    private void switchAudio()
+    /* ------------------------------------------------------------------ */
+    /* Sidebar                                                               */
+    /* ------------------------------------------------------------------ */
+
+    @Override
+    protected void renderBackground(UIContext context)
     {
-        this.currentType = null;
-        File folder = new File(BBSMod.getAssetsFolder(), "audio");
-        List<String> names = new ArrayList<>();
-        
-        if (folder.exists() && folder.isDirectory())
+        super.renderBackground(context);
+
+        int cx = this.content.area.x;
+        int cy = this.content.area.y;
+        int cey = this.content.area.ey();
+
+        context.batcher.box(cx, cy, cx + SIDEBAR_W, cey, Colors.A50);
+        context.batcher.box(cx + SIDEBAR_W, cy, cx + SIDEBAR_W + 1, cey, Colors.A25);
+        context.batcher.box(cx + SIDEBAR_W + 1, this.toolbar.area.ey() - 1, this.content.area.ex(), this.toolbar.area.ey(), Colors.A25);
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Static helpers                                                        */
+    /* ------------------------------------------------------------------ */
+
+    static String baseName(String path)
+    {
+        String p = path.endsWith("/") ? path.substring(0, path.length() - 1) : path;
+        int slash = p.lastIndexOf('/');
+
+        return slash < 0 ? p : p.substring(slash + 1);
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Inner: type tab                                                       */
+    /* ------------------------------------------------------------------ */
+
+    public static class UITypeTab extends UIClickable<UITypeTab>
+    {
+        private final Icon icon;
+        private final IKey label;
+        public boolean selected;
+
+        public UITypeTab(Icon icon, IKey label, Consumer<UITypeTab> callback)
         {
-            File[] files = folder.listFiles();
-            if (files != null)
-            {
-                for (File file : files)
-                {
-                    if (file.isFile() && (file.getName().endsWith(".wav") || file.getName().endsWith(".ogg")))
-                    {
-                        names.add(file.getName());
-                    }
-                }
-            }
+            super(callback);
+
+            this.icon = icon;
+            this.label = label;
+            this.h(20);
         }
-        ((UIDataPathList)this.searchList.list).fill(names);
-        this.mosaicGrid.fill(names, null);
-        this.mosaicGrid.filter(this.filter);
+
+        @Override
+        protected UITypeTab get()
+        {
+            return this;
+        }
+
+        @Override
+        protected void renderSkin(UIContext context)
+        {
+            if (this.selected)
+            {
+                this.area.render(context.batcher, BBSSettings.primaryColor(Colors.A100));
+            }
+            else if (this.hover)
+            {
+                this.area.render(context.batcher, Colors.A50);
+            }
+
+            if (this.icon != null)
+            {
+                context.batcher.icon(this.icon, Colors.WHITE, this.area.x + 4, this.area.my() - 8);
+            }
+
+            int ty = this.area.my(context.batcher.getFont().getHeight());
+            context.batcher.textShadow(this.label.get(), this.area.x + 22, ty, Colors.WHITE);
+        }
     }
 
-    public static class UIMosaicGrid extends UIScrollView
+    /* ------------------------------------------------------------------ */
+    /* Inner: asset grid                                                     */
+    /* ------------------------------------------------------------------ */
+
+    public static class UIAssetGrid extends UIScrollView
     {
-        private UIOpenAssetOverlayPanel parent;
-        private List<String> ids = new ArrayList<>();
-        private List<String> filteredIds = new ArrayList<>();
-        private String filter = "";
+        private final UIOpenAssetOverlayPanel owner;
+        private List<String> folders = new ArrayList<>();
+        private List<String> files = new ArrayList<>();
         private ContentType type;
-        private Consumer<String> callback;
-        private int lastCols = -1;
+        private int lastW = -1;
 
-
-        public UIMosaicGrid(UIOpenAssetOverlayPanel parent, Consumer<String> callback)
+        public UIAssetGrid(UIOpenAssetOverlayPanel owner)
         {
-            this.parent = parent;
-            this.callback = callback;
-        }
+            this.owner = owner;
+            this.scroll.scrollSpeed = 20;
 
-        public void fill(Collection<String> names, ContentType type)
-        {
-            this.ids.clear();
-            for (String name : names)
+            /* Right-click on blank grid space → add folder */
+            this.context((menu) ->
             {
-                if (!name.endsWith("/")) this.ids.add(name);
-            }
-            this.type = type;
-            this.filter(this.filter);
-        }
-
-        public void filter(String filter)
-        {
-            this.filter = filter;
-            this.filteredIds.clear();
-            for (String id : this.ids)
-            {
-                if (filter.isEmpty() || id.toLowerCase().contains(filter.toLowerCase()))
+                if (this.owner.currentType != null)
                 {
-                    this.filteredIds.add(id);
+                    menu.action(Icons.ADD, UIKeys.PANELS_MODALS_ADD_FOLDER_TITLE,
+                        () -> this.owner.addFolderPrompt());
                 }
-            }
-            this.lastCols = -1;
+            });
+        }
+
+        public void fill(List<String> folders, List<String> files, ContentType type)
+        {
+            this.folders = new ArrayList<>(folders);
+            this.files = new ArrayList<>(files);
+            this.type = type;
+            this.lastW = -1;
             this.rebuild();
         }
 
         private void rebuild()
         {
             this.removeAll();
+
             int w = this.area.w;
-            if (w <= 0) return;
 
-            int cardW = 80;
-            int cardH = 90;
-            int gap = 10;
-            int cols = Math.max(1, (w - gap) / (cardW + gap));
-
-            int i = 0;
-            for (String id : this.filteredIds)
+            if (w <= 0)
             {
-                int col = i % cols;
-                int row = i / cols;
-
-                UIAssetCard card = new UIAssetCard(this.parent, id, this.type, (b) -> this.callback.accept(id));
-                card.relative(this).x(gap + col * (cardW + gap)).y(gap + row * (cardH + gap)).w(cardW).h(cardH);
-                this.add(card);
-                i++;
+                return;
             }
-            
-            int rows = (int) Math.ceil(this.filteredIds.size() / (double) cols);
-            this.scroll.scrollSize = rows * (cardH + gap) + gap;
-            super.resize();
-        }
 
+            int cols = Math.max(1, (w - CARD_GAP) / (CARD_W + CARD_GAP));
+            int totalItems = this.folders.size() + this.files.size();
+            int idx = 0;
+
+            for (String folder : this.folders)
+            {
+                int col = idx % cols;
+                int row = idx / cols;
+                int cx = CARD_GAP + col * (CARD_W + CARD_GAP);
+                int cy = CARD_GAP + row * (CARD_H + CARD_GAP);
+                UIFolderCard card = new UIFolderCard(folder, this.owner);
+                card.relative(this).x(cx).y(cy).w(CARD_W).h(CARD_H);
+                this.add(card);
+                idx++;
+            }
+
+            for (String file : this.files)
+            {
+                int col = idx % cols;
+                int row = idx / cols;
+                int cx = CARD_GAP + col * (CARD_W + CARD_GAP);
+                int cy = CARD_GAP + row * (CARD_H + CARD_GAP);
+                UIFileCard card = new UIFileCard(file, this.type, this.owner);
+                card.relative(this).x(cx).y(cy).w(CARD_W).h(CARD_H);
+                this.add(card);
+                idx++;
+            }
+
+            int rows = totalItems == 0 ? 0 : (totalItems + cols - 1) / cols;
+            this.scroll.scrollSize = CARD_GAP + rows * (CARD_H + CARD_GAP);
+            this.scroll.clamp();
+
+            if (this.hasParent())
+            {
+                super.resize();
+            }
+        }
 
         @Override
         public void resize()
         {
             super.resize();
-            int cols = Math.max(1, (this.area.w - 10) / 90);
-            if (cols != this.lastCols)
+
+            int w = this.area.w;
+
+            if (w > 0 && w != this.lastW)
             {
-                this.lastCols = cols;
+                this.lastW = w;
                 this.rebuild();
             }
         }
+
+        /* ---- Drag helpers ---- */
+
+        String findFolderAt(int mouseX, int mouseY)
+        {
+            if (mouseX < this.area.x || mouseX >= this.area.ex()
+                || mouseY < this.area.y || mouseY >= this.area.ey())
+            {
+                return null;
+            }
+
+            int scrollAmount = (int) this.scroll.getScroll();
+
+            for (IUIElement child : this.getChildren())
+            {
+                if (!(child instanceof UIFolderCard))
+                {
+                    continue;
+                }
+
+                UIFolderCard fc = (UIFolderCard) child;
+                int vy = fc.area.y - scrollAmount;
+
+                if (mouseX >= fc.area.x && mouseX < fc.area.ex()
+                    && mouseY >= vy && mouseY < vy + CARD_H)
+                {
+                    return fc.folder;
+                }
+            }
+
+            return null;
+        }
+
+        /* ---- Rendering ---- */
+
+        @Override
+        public void render(UIContext context)
+        {
+            /* Check drag threshold */
+            if (this.owner.dragId != null && !this.owner.isDragging)
+            {
+                int dx = context.mouseX - this.owner.dragStartX;
+                int dy = context.mouseY - this.owner.dragStartY;
+
+                if (dx * dx + dy * dy > 36)
+                {
+                    this.owner.isDragging = true;
+                }
+            }
+
+            /* Update highlight target */
+            if (this.owner.isDragging)
+            {
+                this.owner.dragHighlightFolder = this.findFolderAt(context.mouseX, context.mouseY);
+            }
+
+            super.render(context);
+
+            /* Draw drag ghost outside clip bounds */
+            if (this.owner.isDragging && this.owner.dragId != null)
+            {
+                this.renderDragGhost(context);
+            }
+        }
+
+        @Override
+        protected void postRender(UIContext context)
+        {
+            /* Draw folder highlight inside clip */
+            if (this.owner.isDragging && this.owner.dragHighlightFolder != null)
+            {
+                for (IUIElement child : this.getChildren())
+                {
+                    if (!(child instanceof UIFolderCard))
+                    {
+                        continue;
+                    }
+
+                    UIFolderCard fc = (UIFolderCard) child;
+
+                    if (fc.folder.equals(this.owner.dragHighlightFolder))
+                    {
+                        context.batcher.box(fc.area.x, fc.area.y, fc.area.ex(), fc.area.ey(),
+                            Colors.setA(BBSSettings.primaryColor.get(), 0.35F));
+                        context.batcher.outline(fc.area.x, fc.area.y, fc.area.ex(), fc.area.ey(),
+                            BBSSettings.primaryColor(Colors.A100));
+                        break;
+                    }
+                }
+            }
+        }
+
+        private void renderDragGhost(UIContext context)
+        {
+            int gx = context.mouseX - CARD_W / 2;
+            int gy = context.mouseY - CARD_H / 2;
+            int primary = BBSSettings.primaryColor.get();
+
+            context.batcher.box(gx, gy, gx + CARD_W, gy + CARD_H, Colors.setA(primary, 0.55F));
+            context.batcher.outline(gx, gy, gx + CARD_W, gy + CARD_H, primary | Colors.A100);
+
+            String label = UIOpenAssetOverlayPanel.baseName(this.owner.dragId);
+            int maxW = CARD_W - 6;
+
+            if (context.batcher.getFont().getWidth(label) > maxW)
+            {
+                while (label.length() > 1 && context.batcher.getFont().getWidth(label + "..") > maxW)
+                {
+                    label = label.substring(0, label.length() - 1);
+                }
+
+                label += "..";
+            }
+
+            int ty = gy + CARD_THUMB_H + (CARD_LABEL_H - context.batcher.getFont().getHeight()) / 2;
+            context.batcher.textShadow(label, gx + 3, ty, Colors.WHITE);
+        }
     }
 
-    public static class UIAssetCard extends UIElement
+    /* ------------------------------------------------------------------ */
+    /* Inner: folder card                                                    */
+    /* ------------------------------------------------------------------ */
+
+    public static class UIFolderCard extends UIClickable<UIFolderCard>
     {
-        private UIOpenAssetOverlayPanel parent;
-        private String id;
-        private ContentType type;
-        private Consumer<UIButton> callback;
+        final String folder;
+        private final UIOpenAssetOverlayPanel owner;
 
-        public UIAssetCard(UIOpenAssetOverlayPanel parent, String id, ContentType type, Consumer<UIButton> callback)
+        public UIFolderCard(String folder, UIOpenAssetOverlayPanel owner)
         {
-            this.parent = parent;
-            this.id = id;
-            this.type = type;
-            this.callback = callback;
+            super(null);
 
-            if (type == ContentType.MODELS)
+            this.folder = folder;
+            this.owner = owner;
+
+            /* Right-click context menu (only for real folders, with repository) */
+            if (!folder.equals("..") && owner.currentType != null)
             {
-                UIModelPreviewRenderer renderer = new UIModelPreviewRenderer();
-                renderer.relative(this).w(1F).h(60);
-                renderer.setModel(id);
-                this.add(renderer);
+                this.context((menu) ->
+                {
+                    menu.action(Icons.EDIT, UIKeys.PANELS_MODALS_RENAME_FOLDER_TITLE,
+                        () -> owner.renameFolderPrompt(folder));
+                    menu.action(Icons.REMOVE, UIKeys.PANELS_MODALS_REMOVE_FOLDER_TITLE,
+                        () -> owner.deleteFolderConfirm(folder));
+                });
             }
         }
 
         @Override
         public boolean subMouseClicked(UIContext context)
         {
-            if (this.area.isInside(context) && context.mouseButton == 0)
+            if (context.mouseButton == 0 && this.area.isInside(context))
             {
-                this.callback.accept(null);
+                this.owner.handleCardClick(this.folder, true, context.mouseX, context.mouseY);
+
                 return true;
             }
+
             return super.subMouseClicked(context);
+        }
+
+        @Override
+        protected UIFolderCard get()
+        {
+            return this;
+        }
+
+        @Override
+        protected void renderSkin(UIContext context)
+        {
+            int bg = this.hover
+                ? Colors.setA(BBSSettings.primaryColor.get(), 0.3F)
+                : Colors.setA(0, 0.35F);
+
+            this.area.render(context.batcher, bg);
+
+            /* Folder icon, centered in thumb area */
+            context.batcher.getContext().getMatrices().push();
+            context.batcher.getContext().getMatrices().translate(this.area.mx(), this.area.y + CARD_THUMB_H / 2F, 0);
+            context.batcher.getContext().getMatrices().scale(2F, 2F, 1F);
+            context.batcher.icon(Icons.FOLDER, Colors.WHITE, -8, -8);
+            context.batcher.getContext().getMatrices().pop();
+
+            /* Name strip */
+            int stripY = this.area.y + CARD_THUMB_H;
+            context.batcher.box(this.area.x, stripY, this.area.ex(), this.area.ey(), Colors.A50);
+
+            String label = folder.equals("..") ? ".." : baseName(this.folder);
+            int maxW = this.area.w - 6;
+
+            if (context.batcher.getFont().getWidth(label) > maxW)
+            {
+                while (label.length() > 1 && context.batcher.getFont().getWidth(label + "..") > maxW)
+                {
+                    label = label.substring(0, label.length() - 1);
+                }
+
+                label += "..";
+            }
+
+            int ty = stripY + (CARD_LABEL_H - context.batcher.getFont().getHeight()) / 2;
+            context.batcher.textShadow(label, this.area.x + 3, ty, Colors.LIGHTER_GRAY);
+
+            /* Border */
+            int border = this.hover
+                ? BBSSettings.primaryColor(Colors.A100)
+                : Colors.setA(Colors.WHITE, 0.1F);
+            context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), border);
+        }
+
+        private static String baseName(String fullPath)
+        {
+            String p = fullPath.endsWith("/") ? fullPath.substring(0, fullPath.length() - 1) : fullPath;
+            int slash = p.lastIndexOf('/');
+
+            return slash < 0 ? p : p.substring(slash + 1);
+        }
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Inner: file card                                                      */
+    /* ------------------------------------------------------------------ */
+
+    public static class UIFileCard extends UIClickable<UIFileCard>
+    {
+        private final String id;
+        private final ContentType type;
+        private final UIOpenAssetOverlayPanel owner;
+
+        public UIFileCard(String id, ContentType type, UIOpenAssetOverlayPanel owner)
+        {
+            super(null);
+
+            this.id = id;
+            this.type = type;
+            this.owner = owner;
+
+            if (type == ContentType.MODELS)
+            {
+                UIModelPreviewRenderer renderer = new UIModelPreviewRenderer();
+                renderer.relative(this).x(2).y(2).w(1F, -4).h(CARD_THUMB_H - 4);
+                renderer.setModel(id);
+                this.add(renderer);
+            }
+
+            /* Right-click context menu (only for types with a repository) */
+            if (type != null)
+            {
+                this.context((menu) ->
+                {
+                    menu.action(Icons.EDIT, UIKeys.FILM_CRUD_RENAME,
+                        () -> owner.renameAssetPrompt(id));
+                    menu.action(Icons.COPY, UIKeys.FILM_CRUD_DUPE,
+                        () -> owner.duplicateAssetPrompt(id));
+                    menu.action(Icons.REMOVE, UIKeys.FILM_CRUD_REMOVE,
+                        () -> owner.deleteAssetConfirm(id));
+                });
+            }
+        }
+
+        @Override
+        public boolean subMouseClicked(UIContext context)
+        {
+            if (context.mouseButton == 0 && this.area.isInside(context))
+            {
+                this.owner.handleCardClick(this.id, false, context.mouseX, context.mouseY);
+
+                return true;
+            }
+
+            return super.subMouseClicked(context);
+        }
+
+        @Override
+        protected UIFileCard get()
+        {
+            return this;
+        }
+
+        @Override
+        protected void renderSkin(UIContext context)
+        {
+            this.area.render(context.batcher, Colors.setA(0, 0.3F));
+
+            /* Thumbnail area */
+            context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.y + CARD_THUMB_H, Colors.setA(0, 0.2F));
+
+            if (this.type == ContentType.FILMS)
+            {
+                UIFilmPanel filmPanel = this.owner.dashboard.getPanel(UIFilmPanel.class);
+                Texture thumbnail = filmPanel != null ? filmPanel.getThumbnail(this.id) : null;
+
+                if (thumbnail != null)
+                {
+                    int maxW = this.area.w - 4;
+                    int tw = maxW;
+                    int th = (int) (tw * (thumbnail.height / (float) thumbnail.width));
+
+                    if (th > CARD_THUMB_H - 4)
+                    {
+                        th = CARD_THUMB_H - 4;
+                        tw = (int) (th * (thumbnail.width / (float) thumbnail.height));
+                    }
+
+                    int tx = this.area.x + 2 + (maxW - tw) / 2;
+                    int ty = this.area.y + 2 + (CARD_THUMB_H - 4 - th) / 2;
+
+                    context.batcher.fullTexturedBox(thumbnail, tx, ty, tw, th);
+                }
+                else
+                {
+                    this.renderCenteredIcon(context, Icons.FILM);
+                }
+            }
+            else if (this.type == ContentType.PARTICLES)
+            {
+                this.renderCenteredIcon(context, Icons.PARTICLE);
+            }
+            else if (this.type == null)
+            {
+                this.renderCenteredIcon(context, Icons.SOUND);
+            }
+            /* Models: renderer child handles it */
+
+            /* Hover overlay */
+            if (this.hover)
+            {
+                context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.y + CARD_THUMB_H, Colors.A25);
+            }
+
+            /* Label strip */
+            int stripY = this.area.y + CARD_THUMB_H;
+            context.batcher.box(this.area.x, stripY, this.area.ex(), this.area.ey(), Colors.A50);
+
+            String label = UIOpenAssetOverlayPanel.baseName(this.id);
+            int maxW = this.area.w - 6;
+
+            if (context.batcher.getFont().getWidth(label) > maxW)
+            {
+                while (label.length() > 1 && context.batcher.getFont().getWidth(label + "..") > maxW)
+                {
+                    label = label.substring(0, label.length() - 1);
+                }
+
+                label += "..";
+            }
+
+            int ty = stripY + (CARD_LABEL_H - context.batcher.getFont().getHeight()) / 2;
+            context.batcher.textShadow(label, this.area.x + 3, ty, Colors.WHITE);
+
+            /* Border */
+            int border = this.hover
+                ? BBSSettings.primaryColor(Colors.A100)
+                : Colors.setA(Colors.WHITE, 0.08F);
+            context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), border);
+        }
+
+        private void renderCenteredIcon(UIContext context, Icon icon)
+        {
+            context.batcher.icon(icon, Colors.WHITE, this.area.mx() - 8, this.area.y + CARD_THUMB_H / 2 - 8);
+        }
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Inner: asset list (list view)                                         */
+    /* ------------------------------------------------------------------ */
+
+    public static class UIAssetList extends UIScrollView
+    {
+        private static final int ROW_H = 20;
+        private static final int ROW_GAP = 1;
+
+        private final UIOpenAssetOverlayPanel owner;
+        private List<String> folders = new ArrayList<>();
+        private List<String> files = new ArrayList<>();
+        private ContentType type;
+
+        public UIAssetList(UIOpenAssetOverlayPanel owner)
+        {
+            this.owner = owner;
+            this.scroll.scrollSpeed = 20;
+
+            this.context((menu) ->
+            {
+                if (this.owner.currentType != null)
+                {
+                    menu.action(Icons.ADD, UIKeys.PANELS_MODALS_ADD_FOLDER_TITLE,
+                        () -> this.owner.addFolderPrompt());
+                }
+            });
+        }
+
+        public void fill(List<String> folders, List<String> files, ContentType type)
+        {
+            this.folders = new ArrayList<>(folders);
+            this.files = new ArrayList<>(files);
+            this.type = type;
+            this.rebuild();
+        }
+
+        private void rebuild()
+        {
+            this.removeAll();
+
+            int y = 2;
+
+            for (String folder : this.folders)
+            {
+                UIAssetRow row = new UIAssetRow(folder, true, this.type, this);
+                row.relative(this).x(2).y(y).w(1F, -4).h(ROW_H);
+                this.add(row);
+                y += ROW_H + ROW_GAP;
+            }
+
+            for (String file : this.files)
+            {
+                UIAssetRow row = new UIAssetRow(file, false, this.type, this);
+                row.relative(this).x(2).y(y).w(1F, -4).h(ROW_H);
+                this.add(row);
+                y += ROW_H + ROW_GAP;
+            }
+
+            this.scroll.scrollSize = y;
+            this.scroll.clamp();
+
+            if (this.hasParent())
+            {
+                super.resize();
+            }
+        }
+
+        String findFolderAt(int mouseX, int mouseY)
+        {
+            if (mouseX < this.area.x || mouseX >= this.area.ex()
+                || mouseY < this.area.y || mouseY >= this.area.ey())
+            {
+                return null;
+            }
+
+            int scrollAmount = (int) this.scroll.getScroll();
+
+            for (IUIElement child : this.getChildren())
+            {
+                if (!(child instanceof UIAssetRow))
+                {
+                    continue;
+                }
+
+                UIAssetRow row = (UIAssetRow) child;
+
+                if (!row.isFolder)
+                {
+                    continue;
+                }
+
+                int ry = row.area.y - scrollAmount;
+
+                if (mouseX >= row.area.x && mouseX < row.area.ex()
+                    && mouseY >= ry && mouseY < ry + ROW_H)
+                {
+                    return row.id;
+                }
+            }
+
+            return null;
         }
 
         @Override
         public void render(UIContext context)
         {
-            int color = this.area.isInside(context) ? Colors.A50 | Colors.HIGHLIGHT : Colors.A25;
-            context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), color);
-            context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.y + 60, Colors.A25);
-            
-            // Icon or Preview
+            /* Check drag threshold */
+            if (this.owner.dragId != null && !this.owner.isDragging)
+            {
+                int dx = context.mouseX - this.owner.dragStartX;
+                int dy = context.mouseY - this.owner.dragStartY;
+
+                if (dx * dx + dy * dy > 36)
+                {
+                    this.owner.isDragging = true;
+                }
+            }
+
+            /* Update highlight target */
+            if (this.owner.isDragging)
+            {
+                this.owner.dragHighlightFolder = this.findFolderAt(context.mouseX, context.mouseY);
+            }
+
+            super.render(context);
+
+            /* Draw drag ghost outside clip */
+            if (this.owner.isDragging && this.owner.dragId != null)
+            {
+                this.renderDragGhost(context);
+            }
+        }
+
+        @Override
+        protected void postRender(UIContext context)
+        {
+            /* Draw folder highlight inside clip */
+            if (this.owner.isDragging && this.owner.dragHighlightFolder != null)
+            {
+                for (IUIElement child : this.getChildren())
+                {
+                    if (!(child instanceof UIAssetRow))
+                    {
+                        continue;
+                    }
+
+                    UIAssetRow row = (UIAssetRow) child;
+
+                    if (row.isFolder && row.id.equals(this.owner.dragHighlightFolder))
+                    {
+                        context.batcher.box(row.area.x, row.area.y, row.area.ex(), row.area.ey(),
+                            Colors.setA(BBSSettings.primaryColor.get(), 0.35F));
+                        context.batcher.outline(row.area.x, row.area.y, row.area.ex(), row.area.ey(),
+                            BBSSettings.primaryColor(Colors.A100));
+                        break;
+                    }
+                }
+            }
+        }
+
+        private void renderDragGhost(UIContext context)
+        {
+            int gx = context.mouseX + 12;
+            int gy = context.mouseY - ROW_H / 2;
+            int primary = BBSSettings.primaryColor.get();
+            int ghostW = 160;
+
+            context.batcher.box(gx, gy, gx + ghostW, gy + ROW_H, Colors.setA(primary, 0.55F));
+            context.batcher.outline(gx, gy, gx + ghostW, gy + ROW_H, primary | Colors.A100);
+
+            Icon icon = this.owner.dragIsFolder ? Icons.FOLDER : null;
+            int textX = gx + 4;
+
+            if (icon != null)
+            {
+                context.batcher.icon(icon, Colors.WHITE, gx + 4, gy + (ROW_H - icon.h) / 2);
+                textX = gx + 4 + icon.w + 4;
+            }
+
+            String label = UIOpenAssetOverlayPanel.baseName(this.owner.dragId);
+            int maxW = gx + ghostW - textX - 2;
+
+            if (context.batcher.getFont().getWidth(label) > maxW)
+            {
+                while (label.length() > 1 && context.batcher.getFont().getWidth(label + "..") > maxW)
+                {
+                    label = label.substring(0, label.length() - 1);
+                }
+
+                label += "..";
+            }
+
+            int ty = gy + (ROW_H - context.batcher.getFont().getHeight()) / 2;
+            context.batcher.textShadow(label, textX, ty, Colors.WHITE);
+        }
+    }
+
+    /* ------------------------------------------------------------------ */
+    /* Inner: asset list row                                                 */
+    /* ------------------------------------------------------------------ */
+
+    public static class UIAssetRow extends UIClickable<UIAssetRow>
+    {
+        final String id;
+        final boolean isFolder;
+        private final ContentType type;
+        private final UIAssetList list;
+
+        public UIAssetRow(String id, boolean isFolder, ContentType type, UIAssetList list)
+        {
+            super(null);
+
+            this.id = id;
+            this.isFolder = isFolder;
+            this.type = type;
+            this.list = list;
+
+            if (isFolder)
+            {
+                if (!id.equals("..") && list.owner.currentType != null)
+                {
+                    this.context((menu) ->
+                    {
+                        menu.action(Icons.EDIT, UIKeys.PANELS_MODALS_RENAME_FOLDER_TITLE,
+                            () -> list.owner.renameFolderPrompt(id));
+                        menu.action(Icons.REMOVE, UIKeys.PANELS_MODALS_REMOVE_FOLDER_TITLE,
+                            () -> list.owner.deleteFolderConfirm(id));
+                    });
+                }
+            }
+            else if (type != null)
+            {
+                this.context((menu) ->
+                {
+                    menu.action(Icons.EDIT, UIKeys.FILM_CRUD_RENAME,
+                        () -> list.owner.renameAssetPrompt(id));
+                    menu.action(Icons.COPY, UIKeys.FILM_CRUD_DUPE,
+                        () -> list.owner.duplicateAssetPrompt(id));
+                    menu.action(Icons.REMOVE, UIKeys.FILM_CRUD_REMOVE,
+                        () -> list.owner.deleteAssetConfirm(id));
+                });
+            }
+        }
+
+        @Override
+        protected UIAssetRow get()
+        {
+            return this;
+        }
+
+        @Override
+        public boolean subMouseClicked(UIContext context)
+        {
+            if (context.mouseButton == 0 && this.area.isInside(context))
+            {
+                this.list.owner.handleCardClick(this.id, this.isFolder, context.mouseX, context.mouseY);
+
+                return true;
+            }
+
+            return super.subMouseClicked(context);
+        }
+
+        @Override
+        protected void renderSkin(UIContext context)
+        {
+            boolean isDragTarget = this.isFolder
+                && this.list.owner.isDragging
+                && this.id.equals(this.list.owner.dragHighlightFolder);
+
+            int bg = isDragTarget
+                ? Colors.setA(BBSSettings.primaryColor.get(), 0.25F)
+                : (this.hover ? Colors.A25 : Colors.setA(0, 0.15F));
+
+            context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), bg);
+
+            Icon icon = this.getRowIcon();
+            int textX = this.area.x + 4;
+
+            if (icon != null)
+            {
+                int iconY = this.area.y + (this.area.h - icon.h) / 2;
+
+                context.batcher.icon(icon, Colors.WHITE, this.area.x + 4, iconY);
+                textX = this.area.x + 4 + icon.w + 4;
+            }
+
+            String label = UIOpenAssetOverlayPanel.baseName(this.id);
+            int maxW = this.area.ex() - textX - 2;
+
+            if (context.batcher.getFont().getWidth(label) > maxW)
+            {
+                while (label.length() > 1 && context.batcher.getFont().getWidth(label + "..") > maxW)
+                {
+                    label = label.substring(0, label.length() - 1);
+                }
+
+                label += "..";
+            }
+
+            int ty = this.area.my(context.batcher.getFont().getHeight());
+            int textColor = this.isFolder ? Colors.LIGHTER_GRAY : Colors.WHITE;
+
+            context.batcher.textShadow(label, textX, ty, textColor);
+        }
+
+        private Icon getRowIcon()
+        {
+            if (this.isFolder)
+            {
+                return Icons.FOLDER;
+            }
+
             if (this.type == ContentType.FILMS)
             {
-                UIFilmPanel filmPanel = this.parent.dashboard.getPanel(UIFilmPanel.class);
-                Texture thumbnail = filmPanel.getThumbnail(this.id);
-
-                if (thumbnail != null)
-                {
-                    int w = this.area.w - 4;
-                    int h = (int) (w * (thumbnail.height / (float) thumbnail.width));
-                    if (h > 56)
-                    {
-                        h = 56;
-                        w = (int) (h * (thumbnail.width / (float) thumbnail.height));
-                    }
-                    int x = this.area.x + 2 + (this.area.w - 4 - w) / 2;
-                    int y = this.area.y + 2 + (56 - h) / 2;
-
-                    context.batcher.fullTexturedBox(thumbnail, x, y, w, h);
-                }
-                else
-                {
-                    context.batcher.icon(Icons.FILM, this.area.mx() - 8, this.area.y + 22);
-                }
-            }
-            else if (this.type == ContentType.PARTICLES)
-            {
-                context.batcher.icon(Icons.PARTICLE, this.area.mx() - 8, this.area.y + 22);
-            }
-            else if (this.type == ContentType.MODELS)
-            {
-                // Renderer is added as child
-            }
-            else if (this.type == null) // Audio
-            {
-                context.batcher.icon(Icons.SOUND, this.area.mx() - 8, this.area.y + 22);
-            }
-            else
-            {
-                context.batcher.icon(Icons.FILE, this.area.mx() - 8, this.area.y + 22);
+                return Icons.FILM;
             }
 
-            // Label
-            String label = this.id;
-            if (label.contains("/")) label = label.substring(label.lastIndexOf("/") + 1);
-            int labelW = context.batcher.getFont().getWidth(label);
-            if (labelW > this.area.w - 4) label = context.batcher.getFont().limitToWidth(label, this.area.w - 10) + "...";
-            
-            context.batcher.textShadow(label, this.area.mx(context.batcher.getFont().getWidth(label)), this.area.ey() - 14);
-            
-            super.render(context);
+            if (this.type == ContentType.MODELS)
+            {
+                return Icons.PLAYER;
+            }
+
+            if (this.type == ContentType.PARTICLES)
+            {
+                return Icons.PARTICLE;
+            }
+
+            if (this.type == null || this.type == ContentType.SOUNDS)
+            {
+                return Icons.SOUND;
+            }
+
+            return null;
         }
     }
 }

@@ -295,6 +295,7 @@ public class UIKeys
     public static final IKey FILM_OPEN_REPLAY_EDITOR = L10n.lang("bbs.ui.film.open_replay_editor");
     public static final IKey FILM_OPEN_SCREEN_EDITOR = L10n.lang("bbs.ui.film.open_screen_editor");
     public static final IKey FILM_HOME_BANNER_AUTHOR = L10n.lang("bbs.ui.film.home.banner_author");
+    public static final IKey FILM_HOME_REMOVE_RECENT = L10n.lang("bbs.ui.film.home.remove_recent");
 
     public static final IKey SCREEN_PANELS_OVERLAY_COLOR = L10n.lang("bbs.ui.screen_panels.overlay_color");
     public static final IKey SCREEN_PANELS_VIGNETTE_COLOR = L10n.lang("bbs.ui.screen_panels.vignette_color");
@@ -987,6 +988,7 @@ public class UIKeys
     public static final IKey OVERLAYS_VIDEOS_CLIENT_MODE = L10n.lang("bbs.ui.overlays.videos.client_mode");
     public static final IKey OVERLAYS_VIDEOS_EXTERNAL_MODE = L10n.lang("bbs.ui.overlays.videos.external_mode");
     public static final IKey OVERLAYS_VIDEOS_FAVORITE_MODE = L10n.lang("bbs.ui.overlays.videos.favorite_mode");
+    public static final IKey PANELS_AUDIOS = L10n.lang("bbs.ui.panels.audios");
     public static final IKey PANELS_CONTEXT_COPY = L10n.lang("bbs.ui.panels.context.copy");
     public static final IKey PANELS_CONTEXT_OPEN = L10n.lang("bbs.ui.panels.context.open");
     public static final IKey PANELS_CONTEXT_PASTE = L10n.lang("bbs.ui.panels.context.paste");
@@ -1387,6 +1389,7 @@ public class UIKeys
     public static final IKey UTILITY_RELOAD_SOUNDS = L10n.lang("studio.ui.utility.reload_sounds");
     public static final IKey UTILITY_RELOAD_TERRAIN = L10n.lang("studio.ui.utility.reload_terrain");
     public static final IKey UTILITY_RELOAD_TEXTURES = L10n.lang("studio.ui.utility.reload_textures");
+    public static final IKey UTILITY_CLEAR_THUMBNAIL_CACHE = L10n.lang("studio.ui.utility.clear_thumbnail_cache");
     public static final IKey UTILITY_RESIZE_WINDOW = L10n.lang("studio.ui.utility.resize");
     public static final IKey UTILITY_TITLE = L10n.lang("studio.ui.utility.title");
     public static final IKey VIDEO_SETTINGS_ARGS = L10n.lang("bbs.ui.video_settings.args");

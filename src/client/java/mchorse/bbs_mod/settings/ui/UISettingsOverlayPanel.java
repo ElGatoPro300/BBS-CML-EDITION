@@ -12,62 +12,106 @@ import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIScrollView;
-import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
+import mchorse.bbs_mod.ui.framework.elements.buttons.UIClickable;
 import mchorse.bbs_mod.ui.framework.elements.input.text.UITextbox;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
 import mchorse.bbs_mod.ui.utils.ScrollDirection;
 import mchorse.bbs_mod.ui.utils.UI;
+import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.interps.Interpolations;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 public class UISettingsOverlayPanel extends UIOverlayPanel
 {
+    private static final int SIDEBAR_WIDTH = 120;
+
+    public UIElement sidebar;
+    public UIElement panel;
     public UIScrollView options;
     public UITextbox search;
 
     private Settings settings;
-    private UIIcon currentButton;
+    private UISettingsTab currentTab;
 
     public UISettingsOverlayPanel()
     {
         super(UIKeys.CONFIG_TITLE);
-        this.resizable().resizeFromLeft();
+        this.resizable();
+
+        this.sidebar = new UIElement();
+        this.sidebar.relative(this.content).x(0).y(0).w(SIDEBAR_WIDTH).h(1F);
+        this.sidebar.column(2).vertical().stretch().scroll().padding(6);
+
+        this.panel = new UIElement();
+        this.panel.relative(this.content).x(SIDEBAR_WIDTH).y(0).w(1F, -SIDEBAR_WIDTH).h(1F);
 
         this.options = new UIScrollView(ScrollDirection.VERTICAL);
         this.options.scroll.scrollSpeed = 51;
-
-        this.options.full(this.content);
+        this.options.relative(this.panel).w(1F).h(1F);
         this.options.column().scroll().vertical().stretch().padding(10).height(20);
 
         this.search = new UITextbox(100, (str) -> this.refresh());
         this.search.placeholder(UIKeys.GENERAL_SEARCH);
         this.search.h(20);
 
-        for (Settings settings : BBSMod.getSettings().modules.values())
-        {
-            UIIcon icon = new UIIcon(settings.icon, (b) ->
-            {
-                this.selectConfig(settings.getId(), b);
-            });
+        this.panel.add(this.options);
+        this.content.add(this.sidebar, this.panel);
 
-            icon.tooltip(L10n.lang(UIValueFactory.getTitleKey(settings)), Direction.LEFT);
-            this.icons.add(icon);
-        }
-
-        this.add(this.options);
-        this.selectConfig("bbs", this.icons.getChildren(UIIcon.class).get(1));
+        this.rebuildTabs();
         this.markContainer();
     }
 
-    public void selectConfig(String mod, UIIcon currentButton)
+    private void rebuildTabs()
+    {
+        this.sidebar.removeAll();
+        this.currentTab = null;
+
+        String first = null;
+
+        for (Settings settings : BBSMod.getSettings().modules.values())
+        {
+            String id = settings.getId();
+            IKey label = L10n.lang(UIValueFactory.getTitleKey(settings));
+            UISettingsTab tab = new UISettingsTab(label, settings.icon, (t) -> this.selectConfig(id, t));
+
+            tab.tooltip(label, Direction.RIGHT);
+            this.sidebar.add(tab);
+
+            if (first == null)
+            {
+                first = id;
+            }
+        }
+
+        if (first != null)
+        {
+            UISettingsTab firstTab = this.sidebar.getChildren(UISettingsTab.class).get(0);
+
+            this.selectConfig(first, firstTab);
+        }
+    }
+
+    public void selectConfig(String mod, UISettingsTab tab)
     {
         this.settings = BBSMod.getSettings().modules.get(mod);
-        this.currentButton = currentButton;
+
+        if (this.currentTab != null)
+        {
+            this.currentTab.selected = false;
+        }
+
+        this.currentTab = tab;
+
+        if (this.currentTab != null)
+        {
+            this.currentTab.selected = true;
+        }
 
         this.refresh();
     }
@@ -208,9 +252,54 @@ public class UISettingsOverlayPanel extends UIOverlayPanel
     {
         super.renderBackground(context);
 
-        if (this.currentButton != null)
+        this.sidebar.area.render(context.batcher, Colors.A50);
+        context.batcher.box(this.sidebar.area.ex(), this.sidebar.area.y, this.sidebar.area.ex() + 1, this.sidebar.area.ey(), Colors.A50);
+    }
+
+    public static class UISettingsTab extends UIClickable<UISettingsTab>
+    {
+        public IKey label;
+        public Icon icon;
+        public boolean selected;
+
+        public UISettingsTab(IKey label, Icon icon, Consumer<UISettingsTab> callback)
         {
-            this.currentButton.area.render(context.batcher, BBSSettings.primaryColor(Colors.A100));
+            super(callback);
+
+            this.label = label;
+            this.icon = icon;
+            this.h(20);
+        }
+
+        @Override
+        protected UISettingsTab get()
+        {
+            return this;
+        }
+
+        @Override
+        protected void renderSkin(UIContext context)
+        {
+            if (this.selected)
+            {
+                this.area.render(context.batcher, BBSSettings.primaryColor(Colors.A100));
+            }
+            else if (this.hover)
+            {
+                this.area.render(context.batcher, Colors.A50);
+            }
+
+            int textX = this.area.x + 6;
+
+            if (this.icon != null)
+            {
+                context.batcher.icon(this.icon, Colors.WHITE, this.area.x + 4, this.area.my() - 8);
+                textX = this.area.x + 22;
+            }
+
+            int y = this.area.my(context.batcher.getFont().getHeight());
+
+            context.batcher.textShadow(this.label.get(), textX, y, Colors.WHITE);
         }
     }
 }

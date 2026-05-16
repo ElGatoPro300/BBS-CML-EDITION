@@ -209,7 +209,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private final List<Runnable> postUpdateActions = new ArrayList<>();
     private int lastDragMouseX;
     private int lastDragMouseY;
-    private static final int FILM_DOCUMENT_TABS_HEIGHT = 20;
     private static final int HOME_BANNER_HEIGHT = 108;
     private static final float DRAG_HANDLE_HEIGHT_NORM = 0.02F;
     private static final float DRAG_HANDLE_TOP_OFFSET_NORM = 0.01F;
@@ -223,8 +222,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private int dropTargetZone = DROP_ZONE_CENTER;
     public String mouseHeldPanelId;
     public int clickX, clickY;
-    private UIControlBar filmTabsBar;
-    private UIElement filmTabs;
     private UIElement homePage;
     private UISearchList<DataPath> homeFilmsSearch;
     private static final String PARENT_FOLDER_ENTRY = "..";
@@ -424,8 +421,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.actionEditor.full(this.main).setVisible(false);
         this.screenEditor = new UIClipsPanel(this, BBSMod.getFactoryScreenClips()).target(this.editArea);
         this.screenEditor.full(this.main).setVisible(false);
-        this.filmTabsBar = new UIControlBar();
-        this.filmTabs = new UIElement();
         this.homePage = new UIElement()
         {
             @Override
@@ -709,11 +704,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         bottomIcons.relative(this).x(1F, -20).y(1F).wh(20, 60).anchorY(1F).column(0).stretch();
         bottomIcons.add(this.toggleHorizontal, this.layoutLock, this.layoutPresets);
-        this.iconBar.relative(this).x(1F, -20).y(FILM_DOCUMENT_TABS_HEIGHT).w(20).h(1F, -FILM_DOCUMENT_TABS_HEIGHT).column(0).stretch();
-        this.filmTabsBar.relative(this).x(0).y(0).w(1F).h(FILM_DOCUMENT_TABS_HEIGHT);
-        this.filmTabs.relative(this.filmTabsBar).x(8).y(0).w(1F, -16).h(FILM_DOCUMENT_TABS_HEIGHT).row(0).resize();
-        this.filmTabsBar.add(this.filmTabs);
-        this.homePage.relative(this.editor).x(0.5F, -250).y(FILM_DOCUMENT_TABS_HEIGHT).w(500).h(1F, -FILM_DOCUMENT_TABS_HEIGHT);
+        this.iconBar.relative(this).x(1F, -20).y(0).w(20).h(1F).column(0).stretch();
+        this.homePage.relative(this.editor).x(0.5F, -250).y(0).w(500).h(1F);
         this.homeActionsPanel.relative(this.homePage).x(0).y(HOME_BANNER_HEIGHT + 20).w(0.35F).h(1F, -(HOME_BANNER_HEIGHT + 20)).column(0).vertical().stretch();
         
         UIElement spacing = new UIElement();
@@ -734,7 +726,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             this.editor.add(handle);
         }
         this.main.add(this.cameraEditor, this.replayEditor, this.actionEditor, this.screenEditor, this.draggableMain, this.draggableEditor);
-        this.add(this.controller, new UIRenderable(this::renderDividers), bottomIcons, this.filmTabsBar);
+        this.add(this.controller, new UIRenderable(this::renderDividers), bottomIcons);
         this.overlay.namesList.setFileIcon(Icons.FILM);
         this.createHomeDocumentTab(true);
 
@@ -1093,9 +1085,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                 this.rebuildSplitterHandles(layout, root, splitters);
             }
 
-            float th = FILM_DOCUMENT_TABS_HEIGHT / (float) Math.max(1, this.editor.area.h);
             this.splitterHandleInfos.clear();
-            EditorLayoutNode.computeSplitterHandles(root, 0F, th, 1F, 1F - th, this.splitterHandleInfos);
+            EditorLayoutNode.computeSplitterHandles(root, 0F, 0F, 1F, 1F, this.splitterHandleInfos);
             this.syncSplitterHandleBounds();
             this.applyDragHandleBoundsFromMap(bounds);
         }
@@ -1136,9 +1127,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     private Map<String, float[]> computePanelBounds(EditorLayoutNode root)
     {
-        float th = FILM_DOCUMENT_TABS_HEIGHT / (float) Math.max(1, this.editor.area.h);
         Map<String, float[]> bounds = new HashMap<>();
-        root.computeBounds(0F, th, 1F, 1F - th, bounds);
+        root.computeBounds(0F, 0F, 1F, 1F, bounds);
         return bounds;
     }
 
@@ -1159,8 +1149,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.splitterHandles.clear();
 
         this.splitterHandleInfos.clear();
-        float th = FILM_DOCUMENT_TABS_HEIGHT / (float) Math.max(1, this.editor.area.h);
-        EditorLayoutNode.computeSplitterHandles(root, 0F, th, 1F, 1F - th, this.splitterHandleInfos);
+        EditorLayoutNode.computeSplitterHandles(root, 0F, 0F, 1F, 1F, this.splitterHandleInfos);
 
         for (int i = 0; i < splitters.size(); i++)
         {
@@ -1332,9 +1321,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     private void updateEditorFlexBoundsOnly(ValueEditorLayout layout, EditorLayoutNode root)
     {
-        float th = FILM_DOCUMENT_TABS_HEIGHT / (float) Math.max(1, this.editor.area.h);
         Map<String, float[]> bounds = this.computePanelBounds(root);
-        
+
         List<EditorLayoutNode.TabbedNode> tabbedNodes = new ArrayList<>();
         EditorLayoutNode.collectTabbedNodes(root, tabbedNodes);
         Set<String> multiTabPanels = new HashSet<>();
@@ -1354,7 +1342,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         this.applyPanelBoundsFromMap(bounds, multiTabPanels);
         this.splitterHandleInfos.clear();
-        EditorLayoutNode.computeSplitterHandles(root, 0F, th, 1F, 1F - th, this.splitterHandleInfos);
+        EditorLayoutNode.computeSplitterHandles(root, 0F, 0F, 1F, 1F, this.splitterHandleInfos);
         this.syncSplitterHandleBounds();
         this.applyDragHandleBoundsFromMap(bounds);
         
@@ -2431,10 +2419,19 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     }
 
     @Override
+    public mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel getMainPanel()
+    {
+        mchorse.bbs_mod.ui.home.UIHomePanel home = this.dashboard.getPanel(mchorse.bbs_mod.ui.home.UIHomePanel.class);
+
+        return home != null ? home : this;
+    }
+
+    @Override
     public void pickData(String id)
     {
         this.save();
         this.openFilmInDocumentTabs(id);
+        mchorse.bbs_mod.utils.RecentAssetsTracker.add(this.getType(), id);
     }
 
     @Override
@@ -2580,6 +2577,54 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     public File getThumbnailFile(String id)
     {
         return new File(BBS.getGameFolder(), "config/bbs/thumbnails/films/" + id + ".png");
+    }
+
+    public void deleteThumbnail(String id)
+    {
+        this.thumbnails.remove(id);
+
+        File file = this.getThumbnailFile(id);
+
+        if (file.exists())
+        {
+            file.delete();
+        }
+    }
+
+    public void clearThumbnailCache()
+    {
+        this.thumbnails.clear();
+
+        File folder = new File(BBS.getGameFolder(), "config/bbs/thumbnails/films");
+
+        this.deleteFolder(folder);
+    }
+
+    private void deleteFolder(File folder)
+    {
+        if (!folder.exists())
+        {
+            return;
+        }
+
+        File[] files = folder.listFiles();
+
+        if (files != null)
+        {
+            for (File file : files)
+            {
+                if (file.isDirectory())
+                {
+                    this.deleteFolder(file);
+                }
+                else
+                {
+                    file.delete();
+                }
+            }
+        }
+
+        folder.delete();
     }
 
     public Texture getThumbnail(String id)
@@ -3631,31 +3676,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     private void rebuildFilmDocumentTabs()
     {
-        this.filmTabs.removeAll();
-
-        for (int i = 0; i < this.filmDocumentTabs.size(); i++)
-        {
-            int tabIndex = i;
-            FilmDocumentTab tab = this.filmDocumentTabs.get(i);
-            IKey title = tab.home ? L10n.lang("bbs.ui.film.home.title") : IKey.constant(tab.filmId);
-            UIIconTabButton button = new UIIconTabButton(title, tab.home ? Icons.FOLDER : Icons.FILM, (b) -> this.activateFilmDocumentTab(tabIndex, false));
-            button.color(this.activeFilmDocumentTab == tabIndex ? BBSSettings.primaryColor.get() : 0x2d2d2d);
-            button.w(tab.home ? 88 : 122).h(FILM_DOCUMENT_TABS_HEIGHT);
-
-            if (!tab.home || this.filmDocumentTabs.size() > 1)
-            {
-                button.removable((b) -> this.removeFilmDocumentTab(tabIndex));
-            }
-
-            this.filmTabs.add(button);
-        }
-
-        UIIconTabButton add = new UIIconTabButton(IKey.constant(""), Icons.ADD, (b) -> this.addHomeDocumentTab());
-        add.color(0x2d2d2d);
-        add.background(false);
-        add.w(24).h(FILM_DOCUMENT_TABS_HEIGHT);
-        this.filmTabs.add(add);
-        this.filmTabs.resize();
+        /* No-op: the legacy tab bar UI was removed; the unified UIDocumentTabsBar at the dashboard level replaces it. */
     }
 
     private void syncActiveDocumentTabWithData(Film data)
@@ -3726,7 +3747,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.editor.setVisible(true);
         this.setWorkspaceVisible(!home);
         this.updateHomeButtonsState();
-        
+
         if (!home)
         {
             this.setupEditorFlex(true, false, false);

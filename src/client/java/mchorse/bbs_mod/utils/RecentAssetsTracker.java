@@ -37,9 +37,27 @@ public class RecentAssetsTracker
         save();
     }
 
+    public static void remove(ContentType type, String id)
+    {
+        RECENT.removeIf(e -> e.type == type && e.id.equals(id));
+        save();
+    }
+
+    private static File getFile()
+    {
+        File worldFolder = BBSMod.getWorldFolder();
+
+        if (worldFolder != null)
+        {
+            return new File(worldFolder, "bbs/recent_assets.dat");
+        }
+
+        return BBSMod.getSettingsPath("recent_assets.dat");
+    }
+
     public static void load()
     {
-        File file = BBSMod.getSettingsPath("recent_assets.dat");
+        File file = getFile();
 
         if (!file.exists())
         {
@@ -78,7 +96,12 @@ public class RecentAssetsTracker
 
     public static void save()
     {
-        File file = BBSMod.getSettingsPath("recent_assets.dat");
+        File file = getFile();
+
+        if (file.getParentFile() != null)
+        {
+            file.getParentFile().mkdirs();
+        }
         ListType list = new ListType();
 
         for (Entry entry : RECENT)
