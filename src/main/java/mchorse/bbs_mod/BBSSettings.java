@@ -30,6 +30,7 @@ public class BBSSettings
     public static ValueBoolean enableTrackpadIncrements;
     public static ValueBoolean enableTrackpadScrolling;
     public static ValueBoolean welcomePanelAcceptedAlpha1;
+    public static ValueBoolean hideSettingDescriptions;
     public static ValueInt userIntefaceScale;
     public static ValueInt tooltipStyle;
     public static ValueFloat fov;
@@ -201,6 +202,7 @@ public class BBSSettings
         primaryColor = builder.getInt("primary_color", Colors.ACTIVE).color();
         enableTrackpadIncrements = builder.getBoolean("trackpad_increments", true);
         enableTrackpadScrolling = builder.getBoolean("trackpad_scrolling", true);
+        hideSettingDescriptions = builder.getBoolean("hide_setting_descriptions", false);
         welcomePanelAcceptedAlpha1 = builder.getBoolean("welcome_panel_accepted_alpha1", false);
         welcomePanelAcceptedAlpha1.invisible();
         userIntefaceScale = builder.getInt("ui_scale", 2, 0, 4);
@@ -211,6 +213,8 @@ public class BBSSettings
         freezeModels = builder.getBoolean("freeze_models", false);
         uniformScale = builder.getBoolean("uniform_scale", false);
         clickSound = builder.getBoolean("click_sound", false);
+        pickLimbTexture = builder.getBoolean("pick_limb_texture", true);
+        morphingAutoMorph = builder.getBoolean("auto_morph", false);
         favoriteColors = new ValueColors("favorite_colors");
         favoriteModelForms = new ValueStringKeys("favorite_model_forms");
         favoriteFormCategoriesData = builder.getString("favorite_form_categories_data", "");
@@ -227,6 +231,8 @@ public class BBSSettings
         gizmos = builder.getBoolean("gizmos", true);
         axesScale = builder.getFloat("axes_scale", 1F, 0F, 10F);
         axesThickness = builder.getFloat("axes_thickness", 1F, 0.25F, 3F);
+        disablePivotTransform = builder.getBoolean("disable_pivot_transform", false);
+        gizmoYAxisHorizontal = builder.getBoolean("gizmo_y_axis_horizontal", true);
 
         builder.category("tutorials");
         enableCursorRendering = builder.getBoolean("cursor", false);
@@ -283,16 +289,46 @@ public class BBSSettings
         editorHorizontalClipEditor = builder.getBoolean("horizontal_clip_editor", true);
         editorMinutesBackup = builder.getBoolean("minutes_backup", true);
 
+        replayContextOptions = builder.getInt("compacted_options", 0, 0, 2);
+        editorDockGuideColor = builder.getInt("dock_guide_color", 0x57CCFF).color();
+        editorDockGuideOpacity = builder.getFloat("dock_guide_opacity", 0.5F, 0F, 1F);
+        defaultInterpolation = builder.getInt("default_interpolation", 0);
+        defaultPathInterpolation = builder.getInt("default_path_interpolation", 34);
+        editorSafeMarginsColor = builder.getInt("safe_margins_color", 0xcccc0000).colorAlpha();
+        editorSafeMargins = builder.getBoolean("safe_margins", false);
+        editorFlightFreeLook = builder.getBoolean("flight_free_look", false);
+        editorClipTypeLabels = builder.getBoolean("clip_type_labels", false);
+        editorReplaySprintParticles = builder.getBoolean("replay_sprint_particles", false);
+        editorCameraPreviewPlayerSync = builder.getBoolean("camera_preview_player_sync", false);
+        editorReplayStepSound = builder.getBoolean("replay_step_sound", false);
+        editorMuteRenderAudioClips = builder.getBoolean("mute_render_audio_clips", false);
+        editorTimeMode = builder.getInt("time_mode", 0, 0, 2);
+        editorReplayHud = builder.getBoolean("replay_hud", false);
+        editorReplayHudPosition = builder.getInt("replay_hud_position", 0, 0, 3);
+        editorReplayHudDisplayName = builder.getBoolean("replay_hud_display_name", true);
+        realtimeKeyframes = builder.getBoolean("realtime_keyframes", false);
+        autoKeyframes = builder.getBoolean("auto_keyframes", true);
+        poseBonesFilterMarked = builder.getBoolean("pose_bones_filter_marked", false);
+        poseBonesFilterMarked.invisible();
+        replayMarkedBonesOnly = builder.getBoolean("replay_marked_bones_only", false);
+        editorReplayEditorTitleLimit = builder.getInt("replay_editor_title_limit", 12, 0, 64);
+        presetsGridPanel = builder.getBoolean("presets_grid_panel", false);
+        replayFpBobbingIntensity = builder.getFloat("replay_fp_bobbing_intensity", 0.25F, 0F, 2F);
+        replayFpBobbingFrequency = builder.getFloat("replay_fp_bobbing_frequency", 0.25F, 0F, 3F);
+
         builder.category("recording");
         recordingCountdown = builder.getFloat("countdown", 1.5F, 0F, 30F);
         recordingSwipeDamage = builder.getBoolean("swipe_damage", false);
         recordingOverlays = builder.getBoolean("overlays", true);
         recordingPoseTransformOverlays = builder.getInt("pose_transform_overlays", 0, 0, 42);
         recordingCameraPreview = builder.getBoolean("camera_preview", true);
+        recordingCameraPreviewFutureCount = builder.getInt("camera_preview_future_count", 3, 1, 8);
 
         builder.category("model_blocks");
         renderAllModelBlocks = builder.getBoolean("render_all", true);
         clickModelBlocks = builder.getBoolean("click", true);
+        modelBlockCategoriesPanelEnabled = builder.getBoolean("categories_panel_enabled", false);
+        modelPbrPanelControls = builder.getBoolean("model_pbr_panel_controls", false);
 
         builder.category("entity_selectors");
         entitySelectorsPropertyWhitelist = builder.getString("whitelist", "CustomName,Name");
@@ -304,6 +340,7 @@ public class BBSSettings
         shaderCurvesEnabled = builder.getBoolean("enabled", true);
 
         builder.category("fluid_simulation");
+        fluidRealisticModelInteraction = builder.getBoolean("realistic_model_interaction", false);
 
         builder.category("audio");
         audioWaveformVisible = builder.getBoolean("waveform_visible", true);
@@ -312,7 +349,6 @@ public class BBSSettings
         audioWaveformHeight = builder.getInt("waveform_height", 24, 10, 40);
         audioWaveformFilename = builder.getBoolean("waveform_filename", false);
         audioWaveformTime = builder.getBoolean("waveform_time", false);
-
 
         builder.category("cdn");
         cdnUrl = builder.getString("url", "");

@@ -37,8 +37,10 @@ import mchorse.bbs_mod.ui.ContentType;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.UIDashboard;
+import mchorse.bbs_mod.ui.dashboard.UIPanelSwitcher;
 import mchorse.bbs_mod.ui.dashboard.list.UIDataPathList;
 import mchorse.bbs_mod.ui.dashboard.panels.IFlightSupported;
+import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanels;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDataDashboardPanel;
 import mchorse.bbs_mod.ui.dashboard.panels.overlay.UICRUDOverlayPanel;
@@ -64,6 +66,7 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIDraggable;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIRenderable;
+import mchorse.bbs_mod.ui.home.UIHomePanel;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.UIDataUtils;
 import mchorse.bbs_mod.ui.utils.UIUtils;
@@ -76,6 +79,7 @@ import mchorse.bbs_mod.utils.DataPath;
 import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.PlayerUtils;
+import mchorse.bbs_mod.utils.RecentAssetsTracker;
 import mchorse.bbs_mod.utils.Timer;
 import mchorse.bbs_mod.utils.clips.Clip;
 import mchorse.bbs_mod.utils.clips.Clips;
@@ -168,6 +172,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     public UIIcon openReplayEditor;
     public UIIcon openActionEditor;
     public UIIcon openScreenEditor;
+    public UIElement bottomIcons;
     private UICopyPasteController layoutPresetsController;
 
     private Camera camera = new Camera();
@@ -224,6 +229,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private UIDataPathList homeFilmsList;
     private UIFilmMosaicGrid homeFilmsMosaic;
     private UIIcon homeViewToggle;
+    private UIPanelSwitcher panelSwitcher;
     private UIElement homeActionsPanel;
     private UIButton homeCreateFilm;
     private UIButton homeOpenManager;
@@ -233,15 +239,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private String homeLastClickedFilmId;
     private long homeLastClickTime;
     private final List<FilmDocumentTab> filmDocumentTabs = new ArrayList<>();
-    private static final String BANNERS_URL = "https://raw.githubusercontent.com/BBSCommunity/CML-NEWS/main/Banners_Panel/banners.json";
-    private final List<BannerEntry> homeBanners = new ArrayList<>();
-    private static final Set<Link> prefetchingBanners = Collections.synchronizedSet(new HashSet<>());
-    private int bannerIndex = 0;
-    private List<Integer> bannerSequence = new ArrayList<>();
-    private int sequenceIndex = 0;
-    private float lastBannerTicks = -1;
-    private static final int BANNER_DURATION = 200; // 10 seconds at 20 ticks/sec
-    private static final int BANNER_TRANSITION = 60; // 3 seconds transition
     private int activeFilmDocumentTab = -1;
     private boolean showingHomePage = true;
 
@@ -269,7 +266,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             this.notifyServer(playing ? ActionState.PLAY : ActionState.PAUSE);
         });
         this.runner.getContext().captureSnapshots();
-        this.initBanners();
 
         this.recorder = event.createRecorder(this);
 
@@ -695,23 +691,26 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         /* Setup elements */
         this.iconBar.add(this.openHistory, this.openRenderQueue, this.openCameraEditor.marginTop(9), this.openReplayEditor, this.openActionEditor, this.openScreenEditor);
 
-        UIElement bottomIcons = new UIElement();
+        this.bottomIcons = new UIElement();
 
-        bottomIcons.relative(this).x(1F, -20).y(1F).wh(20, 60).anchorY(1F).column(0).stretch();
-        bottomIcons.add(this.toggleHorizontal, this.layoutLock, this.layoutPresets);
+        this.bottomIcons.relative(this).x(1F, -20).y(1F).wh(20, 60).anchorY(1F).column(0).stretch();
+        this.bottomIcons.add(this.toggleHorizontal, this.layoutLock, this.layoutPresets);
         this.iconBar.relative(this).x(1F, -20).y(0).w(20).h(1F).column(0).stretch();
         this.homePage.relative(this.editor).x(0.5F, -250).y(0).w(500).h(1F);
-        this.homeActionsPanel.relative(this.homePage).x(0).y(HOME_BANNER_HEIGHT + 20).w(0.35F).h(1F, -(HOME_BANNER_HEIGHT + 20)).column(0).vertical().stretch();
+        this.homeActionsPanel.relative(this.homePage).x(0).y(HOME_BANNER_HEIGHT + 20).w(0.35F).h(1F, -(HOME_BANNER_HEIGHT + 20 + 44)).column(0).vertical().stretch();
         
+        this.panelSwitcher = new UIPanelSwitcher(this.dashboard);
+        this.panelSwitcher.relative(this.homePage).x(0.5F, -87).y(1F, -32).w(175).h(24);
+
         UIElement spacing = new UIElement();
         spacing.h(8);
 
         this.homeActionsPanel.add(this.homeCreateFilm, spacing, this.homeDuplicateCurrent, this.homeRenameCurrent, this.homeDeleteCurrent);
-        this.homeFilmsSearch.relative(this.homePage).x(0.35F).y(HOME_BANNER_HEIGHT + 20).w(0.65F).h(1F, -(HOME_BANNER_HEIGHT + 20));
+        this.homeFilmsSearch.relative(this.homePage).x(0.35F).y(HOME_BANNER_HEIGHT + 20).w(0.65F).h(1F, -(HOME_BANNER_HEIGHT + 20 + 44));
         this.homeFilmsSearch.search.w(1F, -25);
         this.homeFilmsMosaic.relative(this.homeFilmsSearch).x(0).y(20).w(1F).h(1F, -20);
         this.homeViewToggle.relative(this.homeFilmsSearch).x(1F, -22).y(0).w(20).h(20);
-        this.homePage.add(new UIRenderable(this::renderHomeBanner), this.homeActionsPanel, this.homeFilmsSearch, this.homeFilmsMosaic, this.homeViewToggle);
+        this.homePage.add(new UIRenderable(this::renderHomeBanner), this.homeActionsPanel, this.homeFilmsSearch, this.homeFilmsMosaic, this.homeViewToggle, this.panelSwitcher);
 
         this.editor.add(this.main, this.editArea, this.preview, this.homePage, new UIRenderable(this::renderIcons), new UIRenderable(this::renderDropZoneHighlight), new UIRenderable(this::renderFloatingPanelWindows));
         for (String id : this.panelById.keySet())
@@ -721,7 +720,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             this.editor.add(handle);
         }
         this.main.add(this.cameraEditor, this.replayEditor, this.actionEditor, this.screenEditor, this.draggableMain, this.draggableEditor);
-        this.add(this.controller, new UIRenderable(this::renderDividers), bottomIcons);
+        this.add(this.controller, new UIRenderable(this::renderDividers), this.bottomIcons);
         this.overlay.namesList.setFileIcon(Icons.FILM);
         this.createHomeDocumentTab(true);
 
@@ -869,81 +868,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.add(element);
     }
 
-    private void initBanners()
-    {
-        BannerEntry home = new BannerEntry();
-        home.author = "ElGatoPro300";
-        home.link = Link.assets("textures/banners/films/Home.png");
-        this.homeBanners.add(home);
 
-        this.fetchRemoteBanners();
-    }
-
-    private void fetchRemoteBanners()
-    {
-        CompletableFuture.runAsync(() ->
-        {
-            try
-            {
-                HttpClient client = HttpClient.newBuilder().build();
-                HttpRequest req = HttpRequest.newBuilder(URI.create(BANNERS_URL)).GET().build();
-                HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
-
-                if (resp.statusCode() == 200)
-                {
-                    List<BannerEntry> remote = new Gson().fromJson(resp.body(), new TypeToken<List<BannerEntry>>(){}.getType());
-                    if (remote != null)
-                    {
-                        for (BannerEntry entry : remote)
-                        {
-                            entry.link = Link.create(entry.url);
-                            this.prefetchBannerImage(entry.link);
-                        }
-
-                        MinecraftClient.getInstance().execute(() -> this.homeBanners.addAll(remote));
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                e.printStackTrace();
-            }
-        });
-    }
-
-    private void prefetchBannerImage(Link link)
-    {
-        if (link == null || link.source == null || !link.source.startsWith("http")) return;
-        if (BBSModClient.getTextures().textures.get(link) != null) return;
-        if (!prefetchingBanners.add(link)) return;
-
-        CompletableFuture.runAsync(() ->
-        {
-            try (InputStream stream = URLSourcePack.downloadImage(link))
-            {
-                if (stream != null)
-                {
-                    Pixels pixels = Pixels.fromPNGStream(stream);
-                    if (pixels != null)
-                    {
-                        RenderSystem.recordRenderCall(() ->
-                        {
-                            Texture texture = Texture.textureFromPixels(pixels, GL11.GL_LINEAR);
-                            BBSModClient.getTextures().textures.put(link, texture);
-                        });
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                e.printStackTrace();
-            }
-            finally
-            {
-                prefetchingBanners.remove(link);
-            }
-        });
-    }
 
     private Vector2i getMainHandlerReferencePosition()
     {
@@ -2223,7 +2148,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     {
         super.resize();
 
-        if (this.editor.area.w >= EDITOR_MIN_SIZE_FOR_PX_HANDLES && this.editor.area.h >= EDITOR_MIN_SIZE_FOR_PX_HANDLES)
+        if (this.showingHomePage)
+        {
+            this.editor.resize();
+        }
+        else if (this.editor.area.w >= EDITOR_MIN_SIZE_FOR_PX_HANDLES && this.editor.area.h >= EDITOR_MIN_SIZE_FOR_PX_HANDLES)
         {
             this.updateEditorFlexBoundsOnly(BBSSettings.editorLayoutSettings, BBSSettings.editorLayoutSettings.getFilmLayoutRoot());
 
@@ -2414,9 +2343,9 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     }
 
     @Override
-    public mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel getMainPanel()
+    public UIDashboardPanel getMainPanel()
     {
-        mchorse.bbs_mod.ui.home.UIHomePanel home = this.dashboard.getPanel(mchorse.bbs_mod.ui.home.UIHomePanel.class);
+        UIHomePanel home = this.dashboard.getPanel(UIHomePanel.class);
 
         return home != null ? home : this;
     }
@@ -2426,7 +2355,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     {
         this.save();
         this.openFilmInDocumentTabs(id);
-        mchorse.bbs_mod.utils.RecentAssetsTracker.add(this.getType(), id);
+        RecentAssetsTracker.add(this.getType(), id);
     }
 
     @Override
@@ -2496,6 +2425,12 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         }
 
         this.syncActiveDocumentTabWithData(data);
+    }
+
+    @Override
+    public void showHomeView()
+    {
+        this.fill(null);
     }
 
     @Override
@@ -3741,12 +3676,23 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.homePage.setVisible(home);
         this.editor.setVisible(true);
         this.setWorkspaceVisible(!home);
+        this.iconBar.setVisible(!home);
+        if (this.bottomIcons != null)
+        {
+            this.bottomIcons.setVisible(!home);
+        }
         this.updateHomeButtonsState();
 
-        if (!home)
+        if (home)
         {
+            this.editor.resetFlex().relative(this).w(1F).h(1F);
+        }
+        else
+        {
+            this.editor.resetFlex().relative(this).wTo(this.iconBar.area).h(1F);
             this.setupEditorFlex(true, false, false);
         }
+        this.resize();
 
         this.performingLayout = false;
     }
@@ -3763,11 +3709,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         int editorW = this.editor.area.w;
         int editorH = this.editor.area.h;
         int pageX = this.homePage.area.x;
-        int pageY = this.homePage.area.y;
-        int pageW = this.homePage.area.w;
-        int pageH = this.homePage.area.h;
-        int bannerH = HOME_BANNER_HEIGHT;
-        int splitY = pageY + bannerH;
         int dividerX = this.homeFilmsSearch.area.x;
 
         // Render deeper background for the aurora to pop
@@ -3776,7 +3717,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         // Render Animated Aurora Effect
         int primary = BBSSettings.primaryColor.get();
         float tick = context.getTickTransition() * 0.015F;
-        int segments = 40; // We can use fewer segments because it interpolates smoothly!
+        int segments = 40;
         float segW = editorW / (float) segments;
         
         Matrix4f matrix4f = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
@@ -3798,7 +3739,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         {
             float nx = (float) i / segments;
             
-            // Layer 1
             float w1 = (float) Math.sin(tick * 1.2F + nx * 8F);
             float w2 = (float) Math.sin(tick * 0.7F + nx * 15F);
             float w3 = (float) Math.cos(tick * 0.4F - nx * 12F);
@@ -3806,6 +3746,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             
             float curtainYTop = editorY + editorH * 0.05F;
             float curtainYBot = editorY + editorH * 0.5F + comb1 * (editorH * 0.35F);
+            
             if (curtainYBot < curtainYTop + 10) curtainYBot = curtainYTop + 10;
             
             float transitionY = curtainYBot - editorH * 0.3F;
@@ -3815,13 +3756,13 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             yMid1[i] = transitionY;
             cMid1[i] = Colors.setA(primary, 0.15F + Math.max(0, comb1) * 0.2F);
             
-            // Layer 2
             float w4 = (float) Math.sin(tick * 1.5F - nx * 10F);
             float w5 = (float) Math.cos(tick * 0.9F + nx * 18F);
             float comb2 = (w4 + w5) / 2F;
             
             float curtain2YTop = editorY + editorH * 0.15F;
             float curtain2YBot = editorY + editorH * 0.75F + comb2 * (editorH * 0.25F);
+            
             if (curtain2YBot < curtain2YTop + 10) curtain2YBot = curtain2YTop + 10;
             
             float transition2Y = curtain2YBot - editorH * 0.25F;
@@ -3868,151 +3809,12 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         }
         
         BufferRenderer.drawWithGlobalProgram(builder.end());
-        
-        // Black shadow gradients on the sides of the central column
-        context.batcher.gradientHBox(pageX - 18, pageY, pageX, pageY + pageH, 0, Colors.setA(0x000000, 0.7F));
-        context.batcher.gradientHBox(pageX + pageW, pageY, pageX + pageW + 18, pageY + pageH, Colors.setA(0x000000, 0.7F), 0);
-        
-        // Panel backgrounds
-        context.batcher.box(pageX, pageY, pageX + pageW, pageY + pageH, Colors.setA(0x1e1e1e, 1F));
-        
-        // Background stripe drawing
-        int stripeH = 16;
-        int stripeY = pageY + bannerH - stripeH;
-        
-        float currentTicks = context.getTickTransition();
-        if (this.lastBannerTicks < 0) this.lastBannerTicks = currentTicks - BANNER_TRANSITION;
-        
-        float elapsed = Math.max(0, currentTicks - this.lastBannerTicks);
-        
-        if (elapsed >= BANNER_DURATION)
+
+        UIHomePanel home = this.dashboard.getPanel(UIHomePanel.class);
+        if (home != null)
         {
-            if (this.homeBanners.size() > 1)
-            {
-                if (this.bannerSequence.size() != this.homeBanners.size())
-                {
-                    this.regenerateBannerSequence();
-                }
-
-                this.sequenceIndex++;
-                if (this.sequenceIndex >= this.bannerSequence.size())
-                {
-                    this.sequenceIndex = 0;
-                    this.shuffleRemoteBanners();
-                }
-                this.bannerIndex = this.bannerSequence.get(this.sequenceIndex);
-            }
-            this.lastBannerTicks = currentTicks;
-            elapsed = 0;
+            home.renderCardAndBanners(context, this.homePage, dividerX, L10n.lang("bbs.ui.film.home.list").get());
         }
-
-        float transition = 0F;
-        float textTransitionPrev = 1F;
-        float textTransitionCurr = 0F;
-
-        if (elapsed < BANNER_TRANSITION && this.homeBanners.size() > 1)
-        {
-            transition = (float) Interpolations.CUBIC_INOUT.interpolate(1F, 0F, elapsed / (float) BANNER_TRANSITION);
-            transition = Math.max(0F, Math.min(1F, transition));
-
-            // Staggered text transition: new text waits 20 ticks (1 second) to start fading in
-            textTransitionPrev = transition;
-            float textElapsed = Math.max(0, elapsed - 20);
-            textTransitionCurr = (float) Interpolations.CUBIC_INOUT.interpolate(0F, 1F, textElapsed / (float) (BANNER_TRANSITION - 20));
-        }
-        else
-        {
-            textTransitionCurr = 1F;
-        }
-
-        int prevIndex = this.bannerSequence.isEmpty() ? 0 : this.bannerSequence.get((this.sequenceIndex + this.bannerSequence.size() - 1) % this.bannerSequence.size());
-        BannerEntry current = this.homeBanners.get(this.bannerIndex);
-        BannerEntry prev = this.homeBanners.get(prevIndex);
-
-        if (transition > 0.001F)
-        {
-            this.drawBanner(context, prev, pageX, pageY, pageW, bannerH, transition, textTransitionPrev, true);
-            this.drawBanner(context, current, pageX, pageY, pageW, bannerH, 1F - transition, textTransitionCurr, true);
-        }
-        else
-        {
-            this.drawBanner(context, current, pageX, pageY, pageW, bannerH, 1F, textTransitionCurr, true);
-        }
-        
-        context.batcher.box(pageX, splitY, pageX + pageW, splitY + 1, Colors.A12);
-        context.batcher.box(dividerX, splitY + 1, dividerX + 1, pageY + pageH, Colors.A12);
-        context.batcher.textShadow(L10n.lang("bbs.ui.film.home.actions").get(), pageX + 4, splitY + 6);
-        context.batcher.textShadow(L10n.lang("bbs.ui.film.home.list").get(), dividerX + 4, splitY + 6);
-    }
-
-    private void regenerateBannerSequence()
-    {
-        this.bannerSequence.clear();
-        for (int i = 0; i < this.homeBanners.size(); i++)
-        {
-            this.bannerSequence.add(i);
-        }
-        this.shuffleRemoteBanners();
-        this.sequenceIndex = 0;
-        this.bannerIndex = 0; // Always start with local
-    }
-
-    private void shuffleRemoteBanners()
-    {
-        if (this.bannerSequence.size() > 2)
-        {
-            List<Integer> remote = this.bannerSequence.subList(1, this.bannerSequence.size());
-            Collections.shuffle(remote);
-        }
-    }
-
-    private void drawBanner(UIContext context, BannerEntry entry, int x, int y, int w, int h, float alpha, float textAlpha, boolean drawStripe)
-    {
-        if (alpha < 0.001F && textAlpha < 0.001F) return;
-
-        Link link = entry.link;
-        Texture texture = link.source != null && link.source.startsWith("http") ? 
-            BBSModClient.getTextures().textures.get(link) : 
-            BBSModClient.getTextures().getTexture(link);
-
-        if (texture != null)
-        {
-            float scale = Math.min(w / (float) texture.width, h / (float) texture.height);
-            int tw = Math.max(1, Math.round(texture.width * scale));
-            int th = Math.max(1, Math.round(texture.height * scale));
-            int tx = x + (w - tw) / 2;
-            int ty = y + (h - th) / 2;
-
-            if (alpha > 0.001F)
-            {
-                RenderSystem.enableBlend();
-                RenderSystem.defaultBlendFunc();
-                context.batcher.texturedBox(texture, Colors.setA(Colors.WHITE, alpha), tx, ty, tw, th, 0, 0, texture.width, texture.height);
-            }
-
-            if (textAlpha > 0.001F && entry.author != null && !entry.author.isEmpty())
-            {
-                String label = UIKeys.FILM_HOME_BANNER_AUTHOR.format(entry.author).get();
-                int lw = context.batcher.getFont().getWidth(label);
-                
-                int stripeH = 16;
-                int stripeY = ty + th - stripeH - 6;
-                int bx = tx + tw - lw - 6;
-
-                if (drawStripe)
-                {
-                    context.batcher.box(bx - 6, stripeY, tx + tw, ty + th - 6, Colors.setA(0, textAlpha * 0.6F));
-                }
-                context.batcher.textShadow(label, bx, stripeY + (stripeH - 8) / 2, Colors.setA(Colors.WHITE, textAlpha));
-            }
-        }
-    }
-
-    public static class BannerEntry
-    {
-        public String author;
-        public String url;
-        public transient Link link;
     }
 
     private static class FilmDocumentTab
@@ -4152,9 +3954,9 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                         case "replayEditor": nameKey = UIKeys.FILM_OPEN_REPLAY_EDITOR; break;
                         case "actionEditor": nameKey = UIKeys.FILM_OPEN_ACTION_EDITOR; break;
                         case "screenEditor": nameKey = UIKeys.FILM_OPEN_SCREEN_EDITOR; break;
-                        case "editArea": nameKey = IKey.raw("Properties"); break;
-                        case "preview": nameKey = IKey.raw("Preview"); break;
-                        case "main": nameKey = IKey.raw("Main"); break;
+                        case "editArea": nameKey = L10n.lang("bbs.ui.raw.properties"); break;
+                        case "preview": nameKey = L10n.lang("bbs.ui.raw.preview"); break;
+                        case "main": nameKey = L10n.lang("bbs.ui.raw.main"); break;
                     }
                     int w = 20 + context.batcher.getFont().getWidth(nameKey.get()) + 8;
                     tab.area.w = w;
@@ -4228,9 +4030,9 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             else if (this.panelId.equals("replayEditor")) { icon = Icons.SCENE; name = UIKeys.FILM_OPEN_REPLAY_EDITOR; }
             else if (this.panelId.equals("actionEditor")) { icon = Icons.ACTION; name = UIKeys.FILM_OPEN_ACTION_EDITOR; }
             else if (this.panelId.equals("screenEditor")) { icon = Icons.FILTER; name = UIKeys.FILM_OPEN_SCREEN_EDITOR; }
-            else if (this.panelId.equals("editArea")) { icon = Icons.EDIT; name = IKey.raw("Properties"); }
-            else if (this.panelId.equals("preview")) { icon = Icons.SPHERE; name = IKey.raw("Preview"); }
-            else if (this.panelId.equals("main")) { icon = Icons.GEAR; name = IKey.raw("Main"); }
+            else if (this.panelId.equals("editArea")) { icon = Icons.EDIT; name = L10n.lang("bbs.ui.raw.properties"); }
+            else if (this.panelId.equals("preview")) { icon = Icons.SPHERE; name = L10n.lang("bbs.ui.raw.preview"); }
+            else if (this.panelId.equals("main")) { icon = Icons.GEAR; name = L10n.lang("bbs.ui.raw.main"); }
 
             context.batcher.icon(icon, Colors.WHITE, this.area.x + 2, this.area.y + 2);
             context.batcher.textShadow(name.get(), this.area.x + 20, this.area.y + 6);

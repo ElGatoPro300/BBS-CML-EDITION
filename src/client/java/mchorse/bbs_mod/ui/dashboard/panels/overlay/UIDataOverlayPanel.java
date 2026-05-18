@@ -193,10 +193,16 @@ public class UIDataOverlayPanel <T extends ValueGroup> extends UICRUDOverlayPane
 
         if (this.panel.getData() != null && !this.namesList.hasInHierarchy(name))
         {
-            this.panel.getType().getRepository().rename(this.panel.getData().getId(), name);
+            String oldId = this.panel.getData().getId();
+            this.panel.getType().getRepository().rename(oldId, name);
 
-            this.namesList.removeFile(this.panel.getData().getId());
+            this.namesList.removeFile(oldId);
             this.namesList.addFile(name);
+
+            if (this.panel != null && this.panel.dashboard != null && this.panel.dashboard.documentTabsBar != null)
+            {
+                this.panel.dashboard.documentTabsBar.renameTab(this.panel.getType(), oldId, name);
+            }
 
             this.panel.getData().setId(name);
         }
@@ -235,9 +241,16 @@ public class UIDataOverlayPanel <T extends ValueGroup> extends UICRUDOverlayPane
     {
         if (this.panel.getData() != null)
         {
-            this.panel.getType().getRepository().delete(this.panel.getData().getId());
+            String id = this.panel.getData().getId();
+            this.panel.getType().getRepository().delete(id);
 
-            this.namesList.removeFile(this.panel.getData().getId());
+            this.namesList.removeFile(id);
+
+            if (this.panel != null && this.panel.dashboard != null && this.panel.dashboard.documentTabsBar != null)
+            {
+                this.panel.dashboard.documentTabsBar.closeTab(this.panel.getType(), id);
+            }
+
             this.panel.fill(null);
         }
     }
