@@ -7,7 +7,6 @@ import mchorse.bbs_mod.blocks.entities.ModelBlockEntity;
 import mchorse.bbs_mod.blocks.entities.ModelProperties;
 import mchorse.bbs_mod.camera.Camera;
 import mchorse.bbs_mod.camera.clips.CameraClipContext;
-import mchorse.bbs_mod.camera.clips.modifiers.EntityClip;
 import mchorse.bbs_mod.camera.data.Position;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.data.types.BaseType;
@@ -15,7 +14,6 @@ import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.film.Film;
 import mchorse.bbs_mod.film.replays.Replay;
-import mchorse.bbs_mod.film.replays.Replays;
 import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.forms.AnchorForm;
@@ -23,7 +21,6 @@ import mchorse.bbs_mod.forms.forms.BodyPart;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.forms.MobForm;
 import mchorse.bbs_mod.forms.forms.ModelForm;
-import mchorse.bbs_mod.forms.forms.utils.Anchor;
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.math.IExpression;
@@ -54,7 +51,6 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIListOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIMessageOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UINumberOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
-import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
@@ -90,7 +86,6 @@ import com.mojang.blaze3d.systems.RenderSystem;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -315,7 +310,7 @@ public class UIReplayList extends UIList<Replay> {
             // Fallback to export from replay directly
             MapType fallback = exportAllKeyframesFromReplay(this.getCurrentFirst(), factories);
             if (fallback != null && !fallback.isEmpty()) {
-                Window.setClipboard(fallback, "_CopyKeyframes");
+                Window.setInMemoryClipboard(fallback, "_CopyKeyframes");
             }
             return;
         }
@@ -327,7 +322,7 @@ public class UIReplayList extends UIList<Replay> {
         }
 
         if (data != null && !data.isEmpty()) {
-            Window.setClipboard(data, "_CopyKeyframes");
+            Window.setInMemoryClipboard(data, "_CopyKeyframes");
         }
     }
 
@@ -337,7 +332,7 @@ public class UIReplayList extends UIList<Replay> {
         if (replayEditor == null || replayEditor.keyframeEditor == null || replayEditor.keyframeEditor.view == null) {
             MapType fallback = exportKeyframesFromReplayByPropertySuffixes(this.getCurrentFirst(), suffixes);
             if (fallback != null && !fallback.isEmpty()) {
-                Window.setClipboard(fallback, "_CopyKeyframes");
+                Window.setInMemoryClipboard(fallback, "_CopyKeyframes");
             }
             return;
         }
@@ -349,7 +344,7 @@ public class UIReplayList extends UIList<Replay> {
         }
 
         if (data != null && !data.isEmpty()) {
-            Window.setClipboard(data, "_CopyKeyframes");
+            Window.setInMemoryClipboard(data, "_CopyKeyframes");
         }
     }
 
@@ -1414,7 +1409,7 @@ public class UIReplayList extends UIList<Replay> {
             replayList.add(replay.toData());
         }
 
-        Window.setClipboard(replays, "_CopyReplay");
+        Window.setInMemoryClipboard(replays, "_CopyReplay");
     }
 
     private void copyGroup() {
@@ -1427,7 +1422,7 @@ public class UIReplayList extends UIList<Replay> {
         MapType data = this.createGroupClipboardData(group);
 
         if (data != null) {
-            Window.setClipboard(data, GROUP_CLIPBOARD_KEY);
+            Window.setInMemoryClipboard(data, GROUP_CLIPBOARD_KEY);
         }
     }
 
