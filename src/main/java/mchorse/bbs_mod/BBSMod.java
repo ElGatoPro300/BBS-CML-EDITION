@@ -680,6 +680,53 @@ public class BBSMod implements ModInitializer
         BBSMod.settings.modules.put(settings.getId(), settings);
         BBSMod.settings.load(settings, settings.file);
 
+        if (id.equals("bbs"))
+        {
+            File cmlFile = new File(destination.getParentFile(), "cml.json");
+            
+            if (cmlFile.exists())
+            {
+                try
+                {
+                    mchorse.bbs_mod.data.types.BaseType data = mchorse.bbs_mod.data.DataToString.read(cmlFile);
+                    
+                    if (data != null && data.isMap())
+                    {
+                        mchorse.bbs_mod.data.types.MapType map = data.asMap();
+                        
+                        for (String key : map.keys())
+                        {
+                            if (map.get(key).isMap())
+                            {
+                                mchorse.bbs_mod.data.types.MapType category = map.getMap(key);
+                                
+                                for (String valKey : category.keys())
+                                {
+                                    for (mchorse.bbs_mod.settings.values.core.ValueGroup bbsCategory : settings.categories.values())
+                                    {
+                                        mchorse.bbs_mod.settings.values.base.BaseValue value = bbsCategory.get(valKey);
+                                        
+                                        if (value != null)
+                                        {
+                                            value.fromData(category.get(valKey));
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
+                        settings.saveLater();
+                        cmlFile.delete();
+                    }
+                }
+                catch (Exception e)
+                {
+                    e.printStackTrace();
+                }
+            }
+        }
+
         return settings;
     }
 }
