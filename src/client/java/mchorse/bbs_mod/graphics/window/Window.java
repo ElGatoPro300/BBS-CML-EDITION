@@ -22,6 +22,8 @@ public class Window
     private static long arrowCursor = -1L;
     private static long activeCursor = -1L;
 
+    private static MapType inMemoryClipboard;
+
     public static long getWindow()
     {
         return MinecraftClient.getInstance().getWindow().getHandle();
@@ -88,13 +90,11 @@ public class Window
     }
 
     /**
-     * Get a data map from clipboard with verification key.
+     * Get a data map from in-memory clipboard with verification key.
      */
     public static MapType getClipboardMap(String verificationKey)
     {
-        MapType data = DataToString.mapFromString(getClipboard());
-
-        return data != null && data.getBool(verificationKey) ? data : null;
+        return inMemoryClipboard != null && inMemoryClipboard.getBool(verificationKey) ? inMemoryClipboard : null;
     }
 
     public static ListType getClipboardList()
@@ -132,17 +132,16 @@ public class Window
     }
 
     /**
-     * Save given data to clipboard with a verification key that could be
+     * Save given data to in-memory clipboard with a verification key that could be
      * used in {@link #getClipboardMap(String)} to decode data.
      */
-    public static void setClipboard(MapType data, String verificationKey)
+    public static void setInMemoryClipboard(MapType data, String verificationKey)
     {
         if (data != null)
         {
             data.putBool(verificationKey, true);
+            inMemoryClipboard = data;
         }
-
-        setClipboard(data);
     }
 
     public static void moveCursor(int x, int y)
