@@ -62,5 +62,7 @@ public class CMLSettings
         BBSSettings.replayFpBobbingFrequency = builder.getFloat("replay_fp_bobbing_frequency", 0.25F, 0F, 3F);
         builder.category("morphing");
         BBSSettings.morphingAutoMorph = builder.getBoolean("auto_morph", false);
+        builder.category("actions");
+        BBSSettings.usingInMemoryClipboard = builder.getBoolean("using_in_memory_clipboard", false);
     }
 }

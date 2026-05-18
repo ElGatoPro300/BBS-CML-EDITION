@@ -152,6 +152,8 @@ public class BBSSettings
     public static ValueString cdnToken;
     public static ValueBoolean morphingAutoMorph;
 
+    public static ValueBoolean usingInMemoryClipboard;
+
     public static int primaryColor()
     {
         return primaryColor(Colors.A50);

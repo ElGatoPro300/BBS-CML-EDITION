@@ -1,5 +1,6 @@
 package mchorse.bbs_mod.graphics.window;
 
+import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.data.DataToString;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.ListType;
@@ -94,7 +95,16 @@ public class Window
      */
     public static MapType getClipboardMap(String verificationKey)
     {
-        return inMemoryClipboard != null && inMemoryClipboard.getBool(verificationKey) ? inMemoryClipboard : null;
+        if (BBSSettings.usingInMemoryClipboard.get())
+        {
+            return inMemoryClipboard != null && inMemoryClipboard.getBool(verificationKey) ? inMemoryClipboard : null;
+        }
+        else
+        {
+            MapType data = DataToString.mapFromString(getClipboard());
+
+            return data != null && data.getBool(verificationKey) ? data : null;
+        }
     }
 
     public static ListType getClipboardList()
@@ -140,7 +150,14 @@ public class Window
         if (data != null)
         {
             data.putBool(verificationKey, true);
-            inMemoryClipboard = data;
+            if (BBSSettings.usingInMemoryClipboard.get())
+            {
+                inMemoryClipboard = data;
+            }
+            else
+            {
+                setClipboard(DataToString.toString(data, true));
+            }
         }
     }
 
