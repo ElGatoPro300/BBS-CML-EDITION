@@ -315,6 +315,7 @@ public class BBSSettings
         presetsGridPanel = builder.getBoolean("presets_grid_panel", false);
         replayFpBobbingIntensity = builder.getFloat("replay_fp_bobbing_intensity", 0.25F, 0F, 2F);
         replayFpBobbingFrequency = builder.getFloat("replay_fp_bobbing_frequency", 0.25F, 0F, 3F);
+        usingInMemoryClipboard = builder.getBoolean("using_in_memory_clipboard", false);
 
         builder.category("recording");
         recordingCountdown = builder.getFloat("countdown", 1.5F, 0F, 30F);

@@ -206,6 +206,8 @@
     "bbs.config.editor.ticks-comment": "When enabled, this option will use raw ticks for displaying and editing in camera editor",
     "bbs.config.editor.time_mode": "Time mode",
     "bbs.config.editor.time_mode-comment": "The mode of time display in the timeline (Ticks, Seconds, Frames)",
+    "bbs.config.editor.using_in_memory_clipboard": "Using in-memory clipboard",
+    "bbs.config.editor.using_in_memory_clipboard-comment": "When enabled, the clip data that is copied will not be saved to the global system clipboard",
     "bbs.config.editor.title": "Camera editor",
     "bbs.config.editor.tooltip": "Config options used in the camera editor",
     "bbs.config.entity_selectors.title": "Entity selectors",
