@@ -25,6 +25,7 @@ import mchorse.bbs_mod.ui.ContentType;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.UIDashboard;
 import mchorse.bbs_mod.ui.dashboard.list.UIDataPathList;
+import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanels;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDataDashboardPanel;
 import mchorse.bbs_mod.ui.dashboard.panels.overlay.UIDataOverlayPanel;
@@ -42,6 +43,7 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIRenderable;
+import mchorse.bbs_mod.ui.home.UIHomePanel;
 import mchorse.bbs_mod.ui.model.UIModelIKPanel;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.ScrollDirection;
@@ -52,6 +54,7 @@ import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.pose.UIPoseEditor;
 import mchorse.bbs_mod.utils.DataPath;
 import mchorse.bbs_mod.utils.Direction;
+import mchorse.bbs_mod.utils.RecentAssetsTracker;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.interps.Interpolations;
 import mchorse.bbs_mod.utils.resources.Pixels;
@@ -1152,7 +1155,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
     {
         this.save();
         this.openModelInDocumentTabs(id);
-        mchorse.bbs_mod.utils.RecentAssetsTracker.add(this.getType(), id);
+        RecentAssetsTracker.add(this.getType(), id);
     }
 
     @Override
@@ -1706,9 +1709,9 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
     }
 
     @Override
-    public mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel getMainPanel()
+    public UIDashboardPanel getMainPanel()
     {
-        mchorse.bbs_mod.ui.home.UIHomePanel home = this.dashboard.getPanel(mchorse.bbs_mod.ui.home.UIHomePanel.class);
+        UIHomePanel home = this.dashboard.getPanel(UIHomePanel.class);
 
         return home != null ? home : this;
     }

@@ -40,6 +40,7 @@ import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.UIDashboard;
 import mchorse.bbs_mod.ui.dashboard.list.UIDataPathList;
 import mchorse.bbs_mod.ui.dashboard.panels.IFlightSupported;
+import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanels;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDataDashboardPanel;
 import mchorse.bbs_mod.ui.dashboard.panels.overlay.UICRUDOverlayPanel;
@@ -67,6 +68,7 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIDraggable;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIRenderable;
+import mchorse.bbs_mod.ui.home.UIHomePanel;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.UIDataUtils;
 import mchorse.bbs_mod.ui.utils.UIUtils;
@@ -80,6 +82,7 @@ import mchorse.bbs_mod.utils.DataPath;
 import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.PlayerUtils;
+import mchorse.bbs_mod.utils.RecentAssetsTracker;
 import mchorse.bbs_mod.utils.Timer;
 import mchorse.bbs_mod.utils.clips.Clip;
 import mchorse.bbs_mod.utils.clips.Clips;
@@ -2418,9 +2421,9 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     }
 
     @Override
-    public mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel getMainPanel()
+    public UIDashboardPanel getMainPanel()
     {
-        mchorse.bbs_mod.ui.home.UIHomePanel home = this.dashboard.getPanel(mchorse.bbs_mod.ui.home.UIHomePanel.class);
+        UIHomePanel home = this.dashboard.getPanel(UIHomePanel.class);
 
         return home != null ? home : this;
     }
@@ -2430,7 +2433,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     {
         this.save();
         this.openFilmInDocumentTabs(id);
-        mchorse.bbs_mod.utils.RecentAssetsTracker.add(this.getType(), id);
+        RecentAssetsTracker.add(this.getType(), id);
     }
 
     @Override

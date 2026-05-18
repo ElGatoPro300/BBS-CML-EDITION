@@ -20,13 +20,15 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIConfirmOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
+import mchorse.bbs_mod.ui.home.UIHomePanel;
 import mchorse.bbs_mod.ui.model.UIModelPreviewRenderer;
+import mchorse.bbs_mod.ui.utility.audio.UIAudioEditorPanel;
 import mchorse.bbs_mod.ui.utils.UIDataUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.Direction;
-import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.RecentAssetsTracker;
+import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.repos.IRepository;
 
 import net.minecraft.util.Util;
@@ -466,7 +468,7 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
 
                 if (this.currentType == ContentType.FILMS)
                 {
-                    mchorse.bbs_mod.ui.film.UIFilmPanel filmPanel = this.dashboard.getPanel(mchorse.bbs_mod.ui.film.UIFilmPanel.class);
+                    UIFilmPanel filmPanel = this.dashboard.getPanel(UIFilmPanel.class);
 
                     if (filmPanel != null)
                     {
@@ -618,7 +620,7 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
 
     private void notifyHomePanel()
     {
-        mchorse.bbs_mod.ui.home.UIHomePanel homePanel = this.dashboard.getPanel(mchorse.bbs_mod.ui.home.UIHomePanel.class);
+        UIHomePanel homePanel = this.dashboard.getPanel(UIHomePanel.class);
 
         if (homePanel != null)
         {
@@ -779,7 +781,7 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
         }
         else
         {
-            mchorse.bbs_mod.ui.utility.audio.UIAudioEditorPanel panel = this.dashboard.getPanel(mchorse.bbs_mod.ui.utility.audio.UIAudioEditorPanel.class);
+            UIAudioEditorPanel panel = this.dashboard.getPanel(UIAudioEditorPanel.class);
 
             this.dashboard.setPanel(panel);
             panel.openAudioFile(id);

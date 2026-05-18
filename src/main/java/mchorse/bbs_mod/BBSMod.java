@@ -53,6 +53,9 @@ import mchorse.bbs_mod.camera.clips.screen.GrainClip;
 import mchorse.bbs_mod.camera.clips.screen.LetterboxClip;
 import mchorse.bbs_mod.camera.clips.screen.ScreenNodeClip;
 import mchorse.bbs_mod.camera.clips.screen.VignetteClip;
+import mchorse.bbs_mod.data.DataToString;
+import mchorse.bbs_mod.data.types.BaseType;
+import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.entity.ActorEntity;
 import mchorse.bbs_mod.entity.GunProjectileEntity;
 import mchorse.bbs_mod.events.BBSAddonMod;
@@ -97,6 +100,8 @@ import mchorse.bbs_mod.resources.packs.WorldStructuresSourcePack;
 import mchorse.bbs_mod.settings.Settings;
 import mchorse.bbs_mod.settings.SettingsBuilder;
 import mchorse.bbs_mod.settings.SettingsManager;
+import mchorse.bbs_mod.settings.values.base.BaseValue;
+import mchorse.bbs_mod.settings.values.core.ValueGroup;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.clips.Clip;
@@ -688,23 +693,23 @@ public class BBSMod implements ModInitializer
             {
                 try
                 {
-                    mchorse.bbs_mod.data.types.BaseType data = mchorse.bbs_mod.data.DataToString.read(cmlFile);
+                    BaseType data = DataToString.read(cmlFile);
                     
                     if (data != null && data.isMap())
                     {
-                        mchorse.bbs_mod.data.types.MapType map = data.asMap();
+                        MapType map = data.asMap();
                         
                         for (String key : map.keys())
                         {
                             if (map.get(key).isMap())
                             {
-                                mchorse.bbs_mod.data.types.MapType category = map.getMap(key);
+                                MapType category = map.getMap(key);
                                 
                                 for (String valKey : category.keys())
                                 {
-                                    for (mchorse.bbs_mod.settings.values.core.ValueGroup bbsCategory : settings.categories.values())
+                                    for (ValueGroup bbsCategory : settings.categories.values())
                                     {
-                                        mchorse.bbs_mod.settings.values.base.BaseValue value = bbsCategory.get(valKey);
+                                        BaseValue value = bbsCategory.get(valKey);
                                         
                                         if (value != null)
                                         {

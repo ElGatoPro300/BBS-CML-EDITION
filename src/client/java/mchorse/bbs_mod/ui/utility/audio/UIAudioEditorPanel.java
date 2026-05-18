@@ -10,9 +10,11 @@ import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.resources.packs.URLSourcePack;
+import mchorse.bbs_mod.ui.ContentType;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.UIDashboard;
+import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel;
 import mchorse.bbs_mod.ui.dashboard.panels.UISidebarDashboardPanel;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
@@ -28,10 +30,12 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UISoundOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIRenderable;
+import mchorse.bbs_mod.ui.home.UIHomePanel;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.Direction;
+import mchorse.bbs_mod.utils.RecentAssetsTracker;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.interps.Interpolations;
 import mchorse.bbs_mod.utils.resources.Pixels;
@@ -789,7 +793,7 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
             return;
         }
 
-        mchorse.bbs_mod.utils.RecentAssetsTracker.add(mchorse.bbs_mod.ui.ContentType.SOUNDS, link.toString());
+        RecentAssetsTracker.add(ContentType.SOUNDS, link.toString());
 
         int existingIndex = this.findTabByAudio(link);
 
@@ -944,13 +948,13 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
 
     public void openAudioFile(String id)
     {
-        this.openAudioInDocumentTabs(mchorse.bbs_mod.resources.Link.create(id));
+        this.openAudioInDocumentTabs(Link.create(id));
     }
 
     @Override
-    public mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel getMainPanel()
+    public UIDashboardPanel getMainPanel()
     {
-        mchorse.bbs_mod.ui.home.UIHomePanel home = this.dashboard.getPanel(mchorse.bbs_mod.ui.home.UIHomePanel.class);
+        UIHomePanel home = this.dashboard.getPanel(UIHomePanel.class);
 
         return home != null ? home : this;
     }

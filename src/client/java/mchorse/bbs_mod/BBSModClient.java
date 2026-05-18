@@ -455,7 +455,7 @@ public class BBSModClient implements ClientModInitializer
         selectors.read();
         films = new Films();
 
-        mchorse.bbs_mod.utils.RecentAssetsTracker.load();
+        RecentAssetsTracker.load();
 
         BBSResources.init();
 
@@ -589,7 +589,7 @@ public class BBSModClient implements ClientModInitializer
 
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) ->
         {
-            mchorse.bbs_mod.utils.RecentAssetsTracker.load();
+            RecentAssetsTracker.load();
         });
 
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) ->
