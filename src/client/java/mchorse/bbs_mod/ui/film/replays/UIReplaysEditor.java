@@ -195,7 +195,8 @@ public class UIReplaysEditor extends UIElement
         COLORS.put("count", Colors.GREEN);
 
         COLORS.put("settings", Colors.MAGENTA);
-        COLORS.put("block_state", Colors.ACTIVE);
+        COLORS.put("block_state", 0xffffda85);
+        COLORS.put("breaking", 0xff90ffe3);
         COLORS.put("item_stack", Colors.ORANGE);
         COLORS.put("modelTransform", Colors.YELLOW);
         COLORS.put("same_animation_when_dropped", Colors.MAGENTA);
@@ -246,6 +247,7 @@ public class UIReplaysEditor extends UIElement
 
         ICONS.put("settings", Icons.GEAR);
         ICONS.put("block_state", Icons.BLOCK);
+        ICONS.put("breaking", Icons.PICKAXE);
         ICONS.put("item_stack", Icons.LIMB);
         ICONS.put("modelTransform", Icons.ALL_DIRECTIONS);
         ICONS.put("same_animation_when_dropped", Icons.POSE);
