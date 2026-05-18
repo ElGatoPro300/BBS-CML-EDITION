@@ -188,8 +188,8 @@ public class UIUtilityOverlayPanel extends UIOverlayPanel
         this.view.add(UI.label(UIKeys.UTILITY_AUDIO), openAudioEditor.marginBottom(8));
         UIButton clearThumbnailCache = new UIButton(UIKeys.UTILITY_CLEAR_THUMBNAIL_CACHE, (b) -> this.clearThumbnailCache());
 
-        this.view.add(UI.label(IKey.raw("Cache")), clearThumbnailCache.marginBottom(8));
-        this.view.add(UI.label(IKey.raw("CDN")), UI.row(cdnDownload, cdnUpload));
+        this.view.add(UI.label(mchorse.bbs_mod.l10n.L10n.lang("bbs.ui.raw.cache")), clearThumbnailCache.marginBottom(8));
+        this.view.add(UI.label(mchorse.bbs_mod.l10n.L10n.lang("bbs.ui.raw.cdn")), UI.row(cdnDownload, cdnUpload));
         this.content.add(this.view);
     }
 

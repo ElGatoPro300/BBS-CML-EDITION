@@ -124,8 +124,8 @@ public class UIHomePanel extends UIDashboardPanel
 
         this.homeActionsPanel = new UIElement();
 
-        this.homeOpenButton = this.createHomeButton(IKey.raw("Open..."), Icons.FOLDER, (b) ->
-            UIOverlay.addOverlay(this.getContext(), new UIOpenAssetOverlayPanel(IKey.raw("Open Asset"), this.dashboard), 520, 320));
+        this.homeOpenButton = this.createHomeButton(mchorse.bbs_mod.l10n.L10n.lang("bbs.ui.raw.open"), Icons.FOLDER, (b) ->
+            UIOverlay.addOverlay(this.getContext(), new UIOpenAssetOverlayPanel(mchorse.bbs_mod.l10n.L10n.lang("bbs.ui.raw.open_asset"), this.dashboard), 520, 320));
 
         this.homeCreateFilm = this.createHomeButton(UIKeys.FILM_TITLE, Icons.FILM, (b) -> this.createNewAsset(ContentType.FILMS));
         this.homeCreateModel = this.createHomeButton(UIKeys.MODELS_TITLE, Icons.PLAYER, (b) -> this.createNewAsset(ContentType.MODELS));
@@ -222,7 +222,7 @@ public class UIHomePanel extends UIDashboardPanel
         UIElement spacerOpen = new UIElement();
         spacerOpen.h(8);
 
-        UILabel labelNew = new UILabel(IKey.raw("New"), 0xAAFFFFFF);
+        UILabel labelNew = new UILabel(mchorse.bbs_mod.l10n.L10n.lang("bbs.ui.raw.new"), 0xAAFFFFFF);
         labelNew.h(12);
         labelNew.labelAnchor(0, 0.5F);
         labelNew.marginLeft(4);

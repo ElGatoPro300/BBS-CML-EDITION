@@ -259,7 +259,7 @@ public class UIDocumentTabsBar extends UIControlBar
 
     private IKey titleOf(DocumentTab tab)
     {
-        if (tab.isHome) return IKey.raw("Home");
+        if (tab.isHome) return mchorse.bbs_mod.l10n.L10n.lang("bbs.ui.raw.home");
         if (tab.id != null) return IKey.raw(new DataPath(tab.id).getLast());
         if (tab.type == ContentType.FILMS) return UIKeys.FILM_TITLE;
         if (tab.type == ContentType.MODELS) return UIKeys.MODELS_TITLE;

@@ -317,7 +317,7 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
 
                     if (newFile.exists())
                     {
-                        this.getContext().notifyError(IKey.raw("File already exists!"));
+                        this.getContext().notifyError(mchorse.bbs_mod.l10n.L10n.lang("bbs.ui.raw.file_already_exists"));
                         return;
                     }
 

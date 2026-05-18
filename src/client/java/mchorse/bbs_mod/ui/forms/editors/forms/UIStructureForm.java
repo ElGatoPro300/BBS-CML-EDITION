@@ -14,7 +14,7 @@ public class UIStructureForm extends UIForm<StructureForm>
         this.defaultPanel = new UIStructureFormPanel(this);
 
         /* Usar el icono de árbol para estructuras */
-        this.registerPanel(this.defaultPanel, IKey.raw("Structure"), Icons.TREE);
+        this.registerPanel(this.defaultPanel, mchorse.bbs_mod.l10n.L10n.lang("bbs.ui.raw.structure"), Icons.TREE);
         this.registerDefaultPanels();
     }
 }

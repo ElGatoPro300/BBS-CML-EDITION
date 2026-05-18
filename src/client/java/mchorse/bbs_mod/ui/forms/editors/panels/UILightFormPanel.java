@@ -21,7 +21,7 @@ public class UILightFormPanel extends UIFormPanel<LightForm>
     {
         super(editor);
 
-        this.enabled = new UIToggle(IKey.raw("Enable"), false, (t) ->
+        this.enabled = new UIToggle(mchorse.bbs_mod.l10n.L10n.lang("bbs.ui.raw.enable"), false, (t) ->
         {
             if (this.form != null)
             {

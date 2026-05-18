@@ -98,7 +98,7 @@ public class UICustomInterpolationPanel extends UIOverlayPanel
             keyframe.rx = 0.15f;
         }
 
-        UIKeyframeSheet sheet = new UIKeyframeSheet("interp", IKey.raw("interp"), Colors.ACTIVE, false, channel, null);
+        UIKeyframeSheet sheet = new UIKeyframeSheet("interp", mchorse.bbs_mod.l10n.L10n.lang("bbs.ui.raw.interp"), Colors.ACTIVE, false, channel, null);
 
         this.keyframes.addSheet(sheet);
         this.keyframes.editSheet(sheet);

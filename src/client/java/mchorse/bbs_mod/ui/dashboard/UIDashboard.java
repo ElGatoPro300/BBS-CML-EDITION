@@ -283,7 +283,7 @@ public class UIDashboard extends UIBaseMenu
 
     protected void registerPanels()
     {
-        this.panels.registerPinnedPanel(new UIHomePanel(this), IKey.raw("Home"), Icons.SERVER);
+        this.panels.registerPinnedPanel(new UIHomePanel(this), mchorse.bbs_mod.l10n.L10n.lang("bbs.ui.raw.home"), Icons.SERVER);
         this.panels.registerPanel(new UIMorphingPanel(this), UIKeys.MORPHING_TITLE, Icons.MORPH);
         this.panels.registerPanel(new UIModelBlockPanel(this), UIKeys.MODEL_BLOCKS_TITLE, Icons.BLOCK);
         this.panels.registerPanel(new UITriggerBlockPanel(this), TriggerKeys.TITLE, Icons.TRIGGER);
@@ -302,7 +302,7 @@ public class UIDashboard extends UIBaseMenu
 
         if (FabricLoader.getInstance().isDevelopmentEnvironment())
         {
-            this.panels.registerPanel(new UIDebugPanel(this), IKey.raw("Sandbox"), Icons.CODE);
+            this.panels.registerPanel(new UIDebugPanel(this), mchorse.bbs_mod.l10n.L10n.lang("bbs.ui.raw.sandbox"), Icons.CODE);
         }
 
         this.setPanel(this.getPanel(UIHomePanel.class));

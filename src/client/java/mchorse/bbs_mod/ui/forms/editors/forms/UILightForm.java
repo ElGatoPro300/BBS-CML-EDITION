@@ -13,7 +13,7 @@ public class UILightForm extends UIForm<LightForm>
 
         this.defaultPanel = new UILightFormPanel(this);
 
-        this.registerPanel(this.defaultPanel, IKey.raw("Light"), Icons.LIGHT);
+        this.registerPanel(this.defaultPanel, mchorse.bbs_mod.l10n.L10n.lang("bbs.ui.raw.light"), Icons.LIGHT);
         this.registerDefaultPanels();
     }
 }

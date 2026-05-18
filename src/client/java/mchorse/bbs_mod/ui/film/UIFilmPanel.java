@@ -4151,9 +4151,9 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                         case "replayEditor": nameKey = UIKeys.FILM_OPEN_REPLAY_EDITOR; break;
                         case "actionEditor": nameKey = UIKeys.FILM_OPEN_ACTION_EDITOR; break;
                         case "screenEditor": nameKey = UIKeys.FILM_OPEN_SCREEN_EDITOR; break;
-                        case "editArea": nameKey = IKey.raw("Properties"); break;
-                        case "preview": nameKey = IKey.raw("Preview"); break;
-                        case "main": nameKey = IKey.raw("Main"); break;
+                        case "editArea": nameKey = mchorse.bbs_mod.l10n.L10n.lang("bbs.ui.raw.properties"); break;
+                        case "preview": nameKey = mchorse.bbs_mod.l10n.L10n.lang("bbs.ui.raw.preview"); break;
+                        case "main": nameKey = mchorse.bbs_mod.l10n.L10n.lang("bbs.ui.raw.main"); break;
                     }
                     int w = 20 + context.batcher.getFont().getWidth(nameKey.get()) + 8;
                     tab.area.w = w;
@@ -4227,9 +4227,9 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             else if (this.panelId.equals("replayEditor")) { icon = Icons.SCENE; name = UIKeys.FILM_OPEN_REPLAY_EDITOR; }
             else if (this.panelId.equals("actionEditor")) { icon = Icons.ACTION; name = UIKeys.FILM_OPEN_ACTION_EDITOR; }
             else if (this.panelId.equals("screenEditor")) { icon = Icons.FILTER; name = UIKeys.FILM_OPEN_SCREEN_EDITOR; }
-            else if (this.panelId.equals("editArea")) { icon = Icons.EDIT; name = IKey.raw("Properties"); }
-            else if (this.panelId.equals("preview")) { icon = Icons.SPHERE; name = IKey.raw("Preview"); }
-            else if (this.panelId.equals("main")) { icon = Icons.GEAR; name = IKey.raw("Main"); }
+            else if (this.panelId.equals("editArea")) { icon = Icons.EDIT; name = mchorse.bbs_mod.l10n.L10n.lang("bbs.ui.raw.properties"); }
+            else if (this.panelId.equals("preview")) { icon = Icons.SPHERE; name = mchorse.bbs_mod.l10n.L10n.lang("bbs.ui.raw.preview"); }
+            else if (this.panelId.equals("main")) { icon = Icons.GEAR; name = mchorse.bbs_mod.l10n.L10n.lang("bbs.ui.raw.main"); }
 
             context.batcher.icon(icon, Colors.WHITE, this.area.x + 2, this.area.y + 2);
             context.batcher.textShadow(name.get(), this.area.x + 20, this.area.y + 6);

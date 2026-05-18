@@ -13,7 +13,7 @@ public class UIFramebufferForm extends UIForm<FramebufferForm>
 
         this.defaultPanel = new UIFramebufferFormPanel(this);
 
-        this.registerPanel(this.defaultPanel, IKey.raw("Framebuffer options"), Icons.CAMERA);
+        this.registerPanel(this.defaultPanel, mchorse.bbs_mod.l10n.L10n.lang("bbs.ui.raw.framebuffer_options"), Icons.CAMERA);
         this.registerDefaultPanels();
     }
 }

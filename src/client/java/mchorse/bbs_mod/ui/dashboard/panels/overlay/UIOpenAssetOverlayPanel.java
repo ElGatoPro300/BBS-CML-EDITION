@@ -101,7 +101,7 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
         this.toolbar.relative(this.content).x(SIDEBAR_W).y(0).w(1F, -SIDEBAR_W).h(TOOLBAR_H);
 
         this.backButton = new UIIcon(Icons.ARROW_LEFT, (b) -> this.navigateUp());
-        this.backButton.tooltip(IKey.raw("Back"), Direction.BOTTOM);
+        this.backButton.tooltip(mchorse.bbs_mod.l10n.L10n.lang("bbs.ui.raw.back"), Direction.BOTTOM);
         this.backButton.relative(this.toolbar).y(4).w(20).h(20);
 
         this.breadcrumb = new UIElement()
@@ -128,7 +128,7 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
         this.searchBox.relative(this.toolbar).x(158).y(4).w(1F, -158 - 4 - 20).h(20);
 
         this.viewToggle = new UIIcon(Icons.GALLERY, (b) -> this.toggleView());
-        this.viewToggle.tooltip(IKey.raw("Toggle view"), Direction.LEFT);
+        this.viewToggle.tooltip(mchorse.bbs_mod.l10n.L10n.lang("bbs.ui.raw.toggle_view"), Direction.LEFT);
         this.viewToggle.relative(this.toolbar).x(1F, -20).y(4).w(20).h(20);
 
         this.toolbar.add(this.backButton, this.breadcrumb, this.searchBox, this.viewToggle);
@@ -158,7 +158,7 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
         /* ---- Open folder button (bottom of sidebar) ---- */
         UIIcon openFolderButton = new UIIcon(Icons.FOLDER, (b) -> this.openOSFolder());
         openFolderButton.relative(this.content).x(0).y(1F, -24).w(SIDEBAR_W - 1).h(20);
-        openFolderButton.tooltip(IKey.raw("Show in file explorer"), Direction.RIGHT);
+        openFolderButton.tooltip(mchorse.bbs_mod.l10n.L10n.lang("bbs.ui.raw.show_in_file_explorer"), Direction.RIGHT);
         this.content.add(openFolderButton);
 
         /* Default selection */
