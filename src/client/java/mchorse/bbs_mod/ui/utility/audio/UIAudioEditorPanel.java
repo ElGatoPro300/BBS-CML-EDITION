@@ -1019,6 +1019,11 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
         this.audioEditor.setup(link);
         this.saveColors.setEnabled(this.audioEditor.isEditing());
         this.syncActiveDocumentTabWithData(link);
+
+        if (link != null && this.dashboard != null && this.dashboard.documentTabsBar != null)
+        {
+            this.dashboard.documentTabsBar.addOrActivate(ContentType.SOUNDS, link.toString());
+        }
     }
 
     private void saveColors()
