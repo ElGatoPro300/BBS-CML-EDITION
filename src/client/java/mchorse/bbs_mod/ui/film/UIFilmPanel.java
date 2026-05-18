@@ -3780,8 +3780,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         
         int colTop = Colors.setA(primary, 0.0F);
         int colBot = Colors.setA(primary, 0.0F);
-        float yTop1f = editorY + editorH * 0.05F;
-        float yTop2f = editorY + editorH * 0.15F;
+        float yTop1 = editorY + editorH * 0.05F;
+        float yTop2 = editorY + editorH * 0.15F;
         
         for (int i = 0; i < segments; i++)
         {
