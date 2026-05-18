@@ -9,6 +9,7 @@ import mchorse.bbs_mod.camera.controller.OrbitCameraController;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.events.register.RegisterDashboardPanelsEvent;
 import mchorse.bbs_mod.graphics.window.Window;
+import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.settings.ui.UISettingsOverlayPanel;
@@ -23,13 +24,13 @@ import mchorse.bbs_mod.ui.dashboard.utils.UIGraphPanel;
 import mchorse.bbs_mod.ui.dashboard.utils.UIOrbitCamera;
 import mchorse.bbs_mod.ui.dashboard.utils.UIOrbitCameraKeys;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
-import mchorse.bbs_mod.ui.home.UIDocumentTabsBar;
-import mchorse.bbs_mod.ui.home.UIHomePanel;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.UIRenderingContext;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIMessageOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
+import mchorse.bbs_mod.ui.home.UIDocumentTabsBar;
+import mchorse.bbs_mod.ui.home.UIHomePanel;
 import mchorse.bbs_mod.ui.model.UIModelPanel;
 import mchorse.bbs_mod.ui.model_blocks.UIModelBlockPanel;
 import mchorse.bbs_mod.ui.morphing.UIMorphingPanel;
@@ -261,7 +262,8 @@ public class UIDashboard extends UIBaseMenu
             || panel instanceof UIFilmPanel
             || panel instanceof UIModelPanel
             || panel instanceof UIParticleSchemePanel
-            || panel instanceof UIAudioEditorPanel;
+            || panel instanceof UIAudioEditorPanel
+            || panel instanceof UIGraphPanel;
     }
 
     private void updateTabsBarVisibility(UIDashboardPanel panel)
@@ -283,7 +285,7 @@ public class UIDashboard extends UIBaseMenu
 
     protected void registerPanels()
     {
-        this.panels.registerPinnedPanel(new UIHomePanel(this), IKey.raw("Home"), Icons.SERVER);
+        this.panels.registerPinnedPanel(new UIHomePanel(this), L10n.lang("bbs.ui.raw.home"), Icons.SERVER);
         this.panels.registerPanel(new UIMorphingPanel(this), UIKeys.MORPHING_TITLE, Icons.MORPH);
         this.panels.registerPanel(new UIModelBlockPanel(this), UIKeys.MODEL_BLOCKS_TITLE, Icons.BLOCK);
         this.panels.registerPanel(new UITriggerBlockPanel(this), TriggerKeys.TITLE, Icons.TRIGGER);
@@ -302,7 +304,7 @@ public class UIDashboard extends UIBaseMenu
 
         if (FabricLoader.getInstance().isDevelopmentEnvironment())
         {
-            this.panels.registerPanel(new UIDebugPanel(this), IKey.raw("Sandbox"), Icons.CODE);
+            this.panels.registerPanel(new UIDebugPanel(this), L10n.lang("bbs.ui.raw.sandbox"), Icons.CODE);
         }
 
         this.setPanel(this.getPanel(UIHomePanel.class));
