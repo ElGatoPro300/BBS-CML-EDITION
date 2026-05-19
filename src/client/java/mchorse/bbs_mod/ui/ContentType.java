@@ -36,6 +36,7 @@ public class ContentType
     public static final ContentType MODELS = new ContentType("models", () -> new ModelRepository(BBSModClient.getModels()), (dashboard) -> dashboard.getPanel(UIModelPanel.class));
     public static final ContentType FILMS = new ContentType("films", ContentType::getFilmsRepository, (dashboard) -> dashboard.getPanel(UIFilmPanel.class));
     public static final ContentType SOUNDS = new ContentType("sounds", () -> null, (dashboard) -> null);
+    public static final ContentType GRAPH = new ContentType("graph", () -> null, (dashboard) -> null);
 
     private static IRepository<? extends ValueGroup> getFilmsRepository()
     {
@@ -64,6 +65,7 @@ public class ContentType
         if ("models".equals(id)) return MODELS;
         if ("films".equals(id)) return FILMS;
         if ("sounds".equals(id)) return SOUNDS;
+        if ("graph".equals(id)) return GRAPH;
 
         return null;
     }

@@ -90,6 +90,11 @@ public abstract class UIDataDashboardPanel <T extends ValueGroup> extends UICRUD
         this.fillData(data);
 
         this.savingTimer.mark(BBSSettings.editorPeriodicSave.get() * 1000L);
+
+        if (data != null && this.dashboard != null && this.dashboard.documentTabsBar != null)
+        {
+            this.dashboard.documentTabsBar.addOrActivate(this.getType(), data.getId());
+        }
     }
 
     protected abstract void fillData(T data);

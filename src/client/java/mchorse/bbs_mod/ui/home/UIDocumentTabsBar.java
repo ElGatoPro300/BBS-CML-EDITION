@@ -1,11 +1,13 @@
 package mchorse.bbs_mod.ui.home;
 
 import mchorse.bbs_mod.BBSSettings;
+import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.ui.ContentType;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.UIDashboard;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel;
+import mchorse.bbs_mod.ui.dashboard.utils.UIGraphPanel;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.navigation.UIControlBar;
@@ -16,6 +18,7 @@ import mchorse.bbs_mod.ui.utility.audio.UIAudioEditorPanel;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.DataPath;
+import mchorse.bbs_mod.utils.RecentAssetsTracker;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -55,11 +58,20 @@ public class UIDocumentTabsBar extends UIControlBar
 
     public void addOrActivate(ContentType type, String id)
     {
+        ContentType recentType = (type == null) ? ContentType.SOUNDS : type;
+        if (recentType != ContentType.GRAPH)
+        {
+            RecentAssetsTracker.add(recentType, id);
+        }
+
         int existing = this.find(type, id);
 
         if (existing >= 0)
         {
-            this.activate(existing);
+            if (existing != this.activeTab)
+            {
+                this.activate(existing);
+            }
 
             return;
         }
@@ -84,6 +96,88 @@ public class UIDocumentTabsBar extends UIControlBar
         this.documentTabs.add(new DocumentTab(type, id));
         this.rebuild();
         this.activate(this.documentTabs.size() - 1);
+    }
+
+    public void closeTab(ContentType type, String id)
+    {
+        int index = this.find(type, id);
+
+        if (index >= 0)
+        {
+            this.remove(index);
+        }
+    }
+
+    public void renameTab(ContentType type, String oldId, String newId)
+    {
+        int index = this.find(type, oldId);
+
+        if (index >= 0)
+        {
+            DocumentTab tab = this.documentTabs.get(index);
+            tab.id = newId;
+            this.rebuild();
+        }
+    }
+
+    public void switchToType(ContentType type)
+    {
+        if (type == null)
+        {
+            this.activateHome();
+            return;
+        }
+
+        int index = -1;
+        for (int i = 0; i < this.documentTabs.size(); i++)
+        {
+            DocumentTab tab = this.documentTabs.get(i);
+            if (!tab.isHome && tab.type == type)
+            {
+                index = i;
+                break;
+            }
+        }
+
+        if (index >= 0)
+        {
+            this.activate(index);
+        }
+        else
+        {
+            /* If currently on Home, convert that tab in place instead of stacking */
+            if (this.activeTab >= 0 && this.activeTab < this.documentTabs.size())
+            {
+                DocumentTab current = this.documentTabs.get(this.activeTab);
+                if (current.isHome)
+                {
+                    current.isHome = false;
+                    current.type = type;
+                    current.id = null;
+                    this.activate(this.activeTab);
+                    this.rebuild();
+                    return;
+                }
+            }
+
+            this.documentTabs.add(new DocumentTab(type, null));
+            this.rebuild();
+            this.activate(this.documentTabs.size() - 1);
+        }
+    }
+
+    public void switchHomeType(ContentType type)
+    {
+        if (this.activeTab >= 0 && this.activeTab < this.documentTabs.size())
+        {
+            DocumentTab current = this.documentTabs.get(this.activeTab);
+            if (current.isHome)
+            {
+                current.homeType = type;
+                this.activate(this.activeTab);
+                this.rebuild();
+            }
+        }
     }
 
     public void activateHome()
@@ -183,7 +277,17 @@ public class UIDocumentTabsBar extends UIControlBar
 
         if (!tab.isHome && tab.id != null)
         {
+            ContentType recentType = (tab.type == null) ? ContentType.SOUNDS : tab.type;
+            if (recentType != ContentType.GRAPH)
+            {
+                RecentAssetsTracker.add(recentType, tab.id);
+            }
+
             this.loadAsset(tab);
+        }
+        else if (tab.isHome && target != null)
+        {
+            target.showHomeView();
         }
 
         this.rebuild();
@@ -221,10 +325,19 @@ public class UIDocumentTabsBar extends UIControlBar
 
     private UIDashboardPanel resolvePanel(DocumentTab tab)
     {
-        if (tab.isHome) return this.dashboard.getPanel(UIHomePanel.class);
+        if (tab.isHome)
+        {
+            if (tab.homeType == null) return this.dashboard.getPanel(UIHomePanel.class);
+            if (tab.homeType == ContentType.FILMS) return this.dashboard.getPanel(UIFilmPanel.class);
+            if (tab.homeType == ContentType.MODELS) return this.dashboard.getPanel(UIModelPanel.class);
+            if (tab.homeType == ContentType.PARTICLES) return this.dashboard.getPanel(UIParticleSchemePanel.class);
+
+            return this.dashboard.getPanel(UIAudioEditorPanel.class);
+        }
         if (tab.type == ContentType.FILMS) return this.dashboard.getPanel(UIFilmPanel.class);
         if (tab.type == ContentType.MODELS) return this.dashboard.getPanel(UIModelPanel.class);
         if (tab.type == ContentType.PARTICLES) return this.dashboard.getPanel(UIParticleSchemePanel.class);
+        if (tab.type == ContentType.GRAPH) return this.dashboard.getPanel(UIGraphPanel.class);
 
         return this.dashboard.getPanel(UIAudioEditorPanel.class);
     }
@@ -235,31 +348,48 @@ public class UIDocumentTabsBar extends UIControlBar
         {
             UIFilmPanel panel = this.dashboard.getPanel(UIFilmPanel.class);
 
-            if (panel != null) panel.pickData(tab.id);
+            if (panel != null && (panel.getData() == null || !tab.id.equals(panel.getData().getId())))
+            {
+                panel.pickData(tab.id);
+            }
         }
         else if (tab.type == ContentType.MODELS)
         {
             UIModelPanel panel = this.dashboard.getPanel(UIModelPanel.class);
 
-            if (panel != null) panel.pickData(tab.id);
+            if (panel != null && (panel.getData() == null || !tab.id.equals(panel.getData().getId())))
+            {
+                panel.pickData(tab.id);
+            }
         }
         else if (tab.type == ContentType.PARTICLES)
         {
             UIParticleSchemePanel panel = this.dashboard.getPanel(UIParticleSchemePanel.class);
 
-            if (panel != null) panel.pickData(tab.id);
+            if (panel != null && (panel.getData() == null || !tab.id.equals(panel.getData().getId())))
+            {
+                panel.pickData(tab.id);
+            }
+        }
+        else if (tab.type == ContentType.GRAPH)
+        {
+            // Graph has no asset file to load
         }
         else
         {
             UIAudioEditorPanel panel = this.dashboard.getPanel(UIAudioEditorPanel.class);
 
-            if (panel != null) panel.openAudioFile(tab.id);
+            if (panel != null && (panel.audioEditor.getAudio() == null || !tab.id.equals(panel.audioEditor.getAudio().toString())))
+            {
+                panel.openAudioFile(tab.id);
+            }
         }
     }
 
     private IKey titleOf(DocumentTab tab)
     {
-        if (tab.isHome) return IKey.raw("Home");
+        if (tab.isHome) return L10n.lang("bbs.ui.raw.home");
+        if (tab.type == ContentType.GRAPH) return UIKeys.GRAPH_TOOLTIP;
         if (tab.id != null) return IKey.raw(new DataPath(tab.id).getLast());
         if (tab.type == ContentType.FILMS) return UIKeys.FILM_TITLE;
         if (tab.type == ContentType.MODELS) return UIKeys.MODELS_TITLE;
@@ -274,6 +404,7 @@ public class UIDocumentTabsBar extends UIControlBar
         if (tab.type == ContentType.FILMS) return Icons.FILM;
         if (tab.type == ContentType.MODELS) return Icons.PLAYER;
         if (tab.type == ContentType.PARTICLES) return Icons.PARTICLE;
+        if (tab.type == ContentType.GRAPH) return Icons.GRAPH;
 
         return Icons.SOUND;
     }
@@ -287,6 +418,7 @@ public class UIDocumentTabsBar extends UIControlBar
         public boolean isHome;
         public ContentType type;
         public String id;
+        public ContentType homeType;
 
         private DocumentTab(ContentType type, String id)
         {
