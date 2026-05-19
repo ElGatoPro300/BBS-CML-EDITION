@@ -45,7 +45,7 @@ public class UISettingsOverlayPanel extends UIOverlayPanel
     public UISettingsOverlayPanel()
     {
         super(UIKeys.CONFIG_TITLE);
-        this.title.color(0xff000000 | BBSSettings.primaryColor.get());
+        this.title.color(Colors.WHITE);
         this.resizable();
         this.content.w(1F);
 
@@ -335,11 +335,9 @@ public class UISettingsOverlayPanel extends UIOverlayPanel
     @Override
     protected void renderBackground(UIContext context)
     {
-        int primaryColor = 0xff000000 | BBSSettings.primaryColor.get();
-
         // Main background
         context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xFF141418);
-        context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), primaryColor, 1);
+        context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xFF2A2A35, 1);
 
         // Header Row
         int headerH = 20;

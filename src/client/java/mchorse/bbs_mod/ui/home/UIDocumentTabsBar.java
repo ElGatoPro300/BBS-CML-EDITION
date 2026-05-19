@@ -52,6 +52,14 @@ public class UIDocumentTabsBar extends UIControlBar
         this.rebuild();
     }
 
+    @Override
+    public void render(mchorse.bbs_mod.ui.framework.UIContext context)
+    {
+        context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xFF141418);
+
+        super.render(context);
+    }
+
     /* ------------------------------------------------------------------ */
     /* Public API                                                            */
     /* ------------------------------------------------------------------ */
