@@ -1,6 +1,5 @@
 package mchorse.bbs_mod.ui.home;
 
-import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.ui.ContentType;
@@ -50,6 +49,14 @@ public class UIDocumentTabsBar extends UIControlBar
 
         this.documentTabs.add(DocumentTab.home());
         this.rebuild();
+    }
+
+    @Override
+    public void render(mchorse.bbs_mod.ui.framework.UIContext context)
+    {
+        context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xFF141418);
+
+        super.render(context);
     }
 
     /* ------------------------------------------------------------------ */
@@ -232,7 +239,7 @@ public class UIDocumentTabsBar extends UIControlBar
             DocumentTab tab = this.documentTabs.get(i);
             UIIconTabButton button = new UIIconTabButton(this.titleOf(tab), this.iconOf(tab), (b) -> this.activate(index));
 
-            button.color(this.activeTab == index ? BBSSettings.primaryColor.get() : 0x2d2d2d);
+            button.active(this.activeTab == index);
             button.w(tab.isHome ? HOME_TAB_WIDTH : DOC_TAB_WIDTH).h(HEIGHT);
 
             if (!tab.isHome || this.documentTabs.size() > 1)
@@ -245,7 +252,6 @@ public class UIDocumentTabsBar extends UIControlBar
 
         UIIconTabButton add = new UIIconTabButton(IKey.raw(""), Icons.ADD, (b) -> this.addHomeTab());
 
-        add.color(0x2d2d2d);
         add.background(false);
         add.w(ADD_TAB_WIDTH).h(HEIGHT);
         this.tabs.add(add);

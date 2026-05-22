@@ -1216,6 +1216,7 @@
     "bbs.ui.model_blocks.transform.first_person": "First person transform",
     "bbs.ui.model_blocks.transform.inventory": "Inventory (GUI) transform",
     "bbs.ui.model_blocks.transform.third_person": "Third person transform",
+    "bbs.ui.model_blocks.transforms": "Transforms",
     "bbs.ui.models.anchor_group": "Anchor group",
     "bbs.ui.models.anchor_group_tooltip": "Allows you to specify anchor group for the model. If you have multiple models that share the same group structure, you can reuse saved anchors by specifying the anchor group for a single model.",
     "bbs.ui.models.armor": "Armor",
