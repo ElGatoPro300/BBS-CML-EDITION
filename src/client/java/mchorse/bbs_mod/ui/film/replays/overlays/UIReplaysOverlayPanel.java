@@ -352,7 +352,7 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
             super.renderBackground(context);
         }
 
-        this.content.area.render(context.batcher, Colors.A100);
+        this.content.area.render(context.batcher, 0xFF141418);
 
         if (this.replays.getList().size() < 3)
         {

@@ -88,6 +88,7 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
     public UIOpenAssetOverlayPanel(IKey title, UIDashboard dashboard)
     {
         super(title);
+        this.title.color(Colors.WHITE);
         this.resizable();
 
         this.dashboard = dashboard;
@@ -807,15 +808,28 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
     @Override
     protected void renderBackground(UIContext context)
     {
-        super.renderBackground(context);
+        // Main background
+        context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xFF141418);
+        context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xFF2A2A35, 1);
 
-        int cx = this.content.area.x;
-        int cy = this.content.area.y;
-        int cey = this.content.area.ey();
+        // Header Row
+        int headerH = 20;
+        context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.y + headerH, 0xFF1A1A22);
+        context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.y + headerH, 0xFF2A2A35, 1);
 
-        context.batcher.box(cx, cy, cx + SIDEBAR_W, cey, Colors.A50);
-        context.batcher.box(cx + SIDEBAR_W, cy, cx + SIDEBAR_W + 1, cey, Colors.A25);
-        context.batcher.box(cx + SIDEBAR_W + 1, this.toolbar.area.ey() - 1, this.content.area.ex(), this.toolbar.area.ey(), Colors.A25);
+        // Left sidebar
+        context.batcher.box(this.sidebar.area.x, this.sidebar.area.y, this.sidebar.area.ex(), this.area.ey(), 0xFF111115);
+        context.batcher.outline(this.sidebar.area.x, this.sidebar.area.y, this.sidebar.area.ex(), this.area.ey(), 0xFF22222A, 1);
+
+        // Toolbar bottom border
+        context.batcher.box(this.toolbar.area.x, this.toolbar.area.ey() - 1, this.toolbar.area.ex(), this.toolbar.area.ey(), 0xFF22222A);
+
+        // Resize handles
+        int resizeColor = Colors.GRAY;
+        int right = this.area.ex();
+        int bottom = this.area.ey();
+        context.batcher.box(right - 9, bottom - 1, right - 1, bottom, resizeColor);
+        context.batcher.box(right - 1, bottom - 9, right, bottom - 1, resizeColor);
     }
 
     /* ------------------------------------------------------------------ */
@@ -858,22 +872,28 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
         @Override
         protected void renderSkin(UIContext context)
         {
+            int bg = this.selected ? 0xFF1D1D26 : (this.hover ? 0xFF181820 : 0xFF111115);
+            context.batcher.box(this.area.x + 2, this.area.y, this.area.ex() - 2, this.area.ey(), bg);
+
             if (this.selected)
             {
-                this.area.render(context.batcher, BBSSettings.primaryColor(Colors.A100));
+                context.batcher.box(this.area.x + 2, this.area.y, this.area.x + 5, this.area.ey(), 0xFF1976D2);
             }
-            else if (this.hover)
-            {
-                this.area.render(context.batcher, Colors.A50);
-            }
+
+            int textX = this.area.x + 8;
+            int textColor = this.selected ? (0xff000000 | BBSSettings.primaryColor.get()) : 0xFFCCCCCC;
 
             if (this.icon != null)
             {
-                context.batcher.icon(this.icon, Colors.WHITE, this.area.x + 4, this.area.my() - 8);
+                context.batcher.icon(this.icon, textColor, this.area.x + 6, this.area.my() - 8);
+                textX = this.area.x + 24;
             }
 
-            int ty = this.area.my(context.batcher.getFont().getHeight());
-            context.batcher.textShadow(this.label.get(), this.area.x + 22, ty, Colors.WHITE);
+            int y = this.area.my(context.batcher.getFont().getHeight());
+
+            context.batcher.clip(this.area.x, this.area.y, this.area.w - 6, this.area.h, context);
+            context.batcher.textShadow(this.label.get(), textX, y, textColor);
+            context.batcher.unclip(context);
         }
     }
 
