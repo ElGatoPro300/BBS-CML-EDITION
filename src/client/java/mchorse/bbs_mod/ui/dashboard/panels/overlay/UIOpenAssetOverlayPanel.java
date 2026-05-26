@@ -774,7 +774,15 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
     {
         if (this.dashboard.documentTabsBar != null)
         {
-            this.dashboard.documentTabsBar.addOrActivate(this.currentType, id);
+            /* The sounds tab in this overlay uses currentType == null as a sentinel
+               for "load from disk" (since SOUNDS has no repository), but every
+               other code path stores audio tabs with ContentType.SOUNDS. Pass
+               SOUNDS to the tab bar so its find() reconciles with the audio
+               panel's later addOrActivate(SOUNDS, …) call — otherwise it builds
+               a duplicate tab and the file appears not to open. */
+            ContentType tabType = this.currentType != null ? this.currentType : ContentType.SOUNDS;
+
+            this.dashboard.documentTabsBar.addOrActivate(tabType, id);
         }
         else if (this.currentType != null)
         {
