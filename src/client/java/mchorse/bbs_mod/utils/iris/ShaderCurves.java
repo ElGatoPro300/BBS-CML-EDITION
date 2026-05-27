@@ -4,6 +4,8 @@ import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.utils.Pair;
 
+import net.irisshaders.iris.uniforms.custom.cached.CachedUniform;
+
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -12,8 +14,6 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import net.irisshaders.iris.uniforms.custom.cached.CachedUniform;
 
 public class ShaderCurves
 {
@@ -75,7 +75,10 @@ public class ShaderCurves
         /* Remove irrelevant variables */
         List<String> filter = BBSRendering.getShadersSliderOptions();
 
-        variables.values().removeIf((v) -> !filter.contains(v.name));
+        if (!filter.isEmpty())
+        {
+            variables.values().removeIf((v) -> !filter.contains(v.name));
+        }
 
         for (String prohibitedVariable : prohibitedVariables)
         {
@@ -136,7 +139,12 @@ public class ShaderCurves
     private static Map<String, ShaderVariable> parseVariables(String source)
     {
         Map<String, ShaderVariable> variables = new HashMap<>();
-        Pattern definePattern = Pattern.compile("^\\s*(?!//)\\s*#define +([\\w_]+) +([\\d.]+) *// *(\\[|OptionAnnotatedSource)");
+        // Accept integers, decimals with optional leading zero (e.g., .5), and scientific notation (e.g., 1e-3)
+        Pattern definePattern = Pattern.compile(
+            "^\\s*(?!//)\\s*#define\\s+([A-Za-z_][A-Za-z0-9_]*)\\s+(" +
+            "(?:[-+]?\\d*\\.\\d+(?:[eE][-+]?\\d+)?|[-+]?\\d+(?:[eE][-+]?\\d+)?)" +
+            ")\\b.*$"
+        );
         int index = 0;
 
         while ((index = source.indexOf("#define", index)) != -1)

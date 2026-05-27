@@ -67,7 +67,7 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
         {
             RenderLayer crackingLayer = ModelLoader.BLOCK_DESTRUCTION_RENDER_LAYERS.get(breakingLevel - 1);
             VertexConsumer delegateConsumer = consumers.getBuffer(crackingLayer);
-            VertexConsumer crackingConsumer = new OverlayVertexConsumer(delegateConsumer, matrices.peek().getPositionMatrix(), matrices.peek().getNormalMatrix(), 1.0F);
+            VertexConsumer crackingConsumer = new OverlayVertexConsumer(delegateConsumer, matrices.peek(), 1.0F);
             consumers.setSubstitute((vertexConsumer) -> crackingConsumer);
             MinecraftClient.getInstance().getBlockRenderManager().renderBlockAsEntity(this.form.blockState.get(), matrices, consumers, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, OverlayTexture.DEFAULT_UV);
         }
@@ -121,7 +121,7 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
         {
             RenderLayer crackingLayer = ModelLoader.BLOCK_DESTRUCTION_RENDER_LAYERS.get(breakingLevel - 1);
             VertexConsumer delegateConsumer = consumers.getBuffer(crackingLayer);
-            VertexConsumer crackingConsumer = new OverlayVertexConsumer(delegateConsumer, context.stack.peek().getPositionMatrix(), context.stack.peek().getNormalMatrix(), 1.0F);
+            VertexConsumer crackingConsumer = new OverlayVertexConsumer(delegateConsumer, context.stack.peek(), 1.0F);
             consumers.setSubstitute((vertexConsumer) -> crackingConsumer);
             MinecraftClient.getInstance().getBlockRenderManager().renderBlockAsEntity(this.form.blockState.get(), context.stack, consumers, light, context.overlay);
         }
