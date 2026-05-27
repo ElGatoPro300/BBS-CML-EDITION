@@ -21,6 +21,7 @@ import java.util.Collection;
 public class UIActionsConfigEditor extends UIElement
 {
     public UIStringList actions;
+    public UISearchList<String> actionsSearch;
     public UISearchList<String> animations;
     public UIToggle loop;
     public UITrackpad speed;
@@ -39,7 +40,10 @@ public class UIActionsConfigEditor extends UIElement
 
         this.actions = new UIStringList((l) -> this.pickAction(l.get(0), false));
         this.actions.scroll.cancelScrolling();
-        this.actions.background().h(112);
+        this.actions.background();
+        this.actionsSearch = new UISearchList<>(this.actions);
+        this.actionsSearch.label(UIKeys.GENERAL_SEARCH);
+        this.actionsSearch.h(112 + 20);
 
         this.animations = new UISearchList<>(new UIStringList((l) ->
         {
@@ -49,7 +53,7 @@ public class UIActionsConfigEditor extends UIElement
         }));
         this.animations.list.cancelScrollEdge();
         this.animations.label(UIKeys.GENERAL_SEARCH).list.background();
-        this.animations.h(112);
+        this.animations.h(112 + 20);
         this.loop = new UIToggle(UIKeys.FORMS_EDITORS_ACTIONS_LOOPS, (b) ->
         {
             this.callback(this.preCallback);
@@ -78,7 +82,7 @@ public class UIActionsConfigEditor extends UIElement
         this.tick.limit(0).integer();
 
         this.column().vertical().stretch();
-        this.add(UI.label(UIKeys.FORMS_EDITORS_MODEL_ACTIONS), this.actions);
+        this.add(UI.label(UIKeys.FORMS_EDITORS_MODEL_ACTIONS), this.actionsSearch);
         this.add(UI.label(UIKeys.FORMS_EDITORS_ACTIONS_ANIMATIONS).marginTop(6), this.animations, this.loop);
         this.add(UI.label(UIKeys.FORMS_EDITORS_ACTIONS_SPEED).marginTop(6), this.speed);
         this.add(UI.label(UIKeys.FORMS_EDITORS_ACTIONS_FADE).marginTop(6), this.fade);

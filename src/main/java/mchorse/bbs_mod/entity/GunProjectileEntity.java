@@ -8,7 +8,9 @@ import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.items.GunProperties;
 import mchorse.bbs_mod.network.ServerNetwork;
 import mchorse.bbs_mod.utils.MathUtils;
+
 import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
+
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.enchantment.EnchantmentHelper;

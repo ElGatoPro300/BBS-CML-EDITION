@@ -9,6 +9,7 @@ import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.keys.KeyCombo;
 import mchorse.bbs_mod.ui.utils.keys.Keybind;
+
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
@@ -125,7 +126,7 @@ public class ContextMenuManager
                     register.category(action.keyCategory);
                 }
             }
-            else if (this.autoKeys && i < 30)
+            else if (this.autoKeys && i < 30 && action.runnable != null && !(action instanceof ContextSeparatorAction))
             {
                 IKey label = UIKeys.CONTEXT_MENU_KEY.format(action.label);
                 int mod = i % 10;

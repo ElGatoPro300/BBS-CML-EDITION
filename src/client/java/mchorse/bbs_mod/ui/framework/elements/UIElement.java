@@ -163,7 +163,7 @@ public class UIElement implements IUIElement, IUndoElement
         {
             element = element.getParent();
 
-            if (element.getClass() == clazz)
+            if (element != null && element.getClass() == clazz)
             {
                 return (T) element;
             }
@@ -1390,7 +1390,9 @@ public class UIElement implements IUIElement, IUndoElement
             context.resetTooltip();
         }
 
-        for (IUIElement element : this.children)
+        List<IUIElement> snapshot = new ArrayList<>(this.children);
+
+        for (IUIElement element : snapshot)
         {
             if (element.isVisible() && element.canBeRendered(context.getViewport()))
             {
@@ -1411,7 +1413,7 @@ public class UIElement implements IUIElement, IUndoElement
     {
         if (!this.isEnabled())
         {
-            this.area.render(context.batcher, Colors.A50);
+            context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xAA000000);
 
             context.batcher.outlinedIcon(Icons.LOCKED, this.area.mx(), this.area.my(), 0.5F, 0.5F);
         }
@@ -1436,6 +1438,11 @@ public class UIElement implements IUIElement, IUndoElement
 
     public void applyAllUndoData(MapType data)
     {
+        if (data == null)
+        {
+            return;
+        }
+
         this.visitChildren(IUndoElement.class, true, (child) ->
         {
             String id = child.getUndoId();

@@ -1,7 +1,5 @@
 package mchorse.bbs_mod.ui.forms.editors.utils;
 
-import com.mojang.blaze3d.platform.GlStateManager;
-import com.mojang.blaze3d.systems.RenderSystem;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.entities.IEntity;
@@ -20,13 +18,18 @@ import mchorse.bbs_mod.ui.utils.StencilFormFramebuffer;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.Pair;
 import mchorse.bbs_mod.utils.colors.Colors;
+
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.GlUniform;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.util.math.MatrixStack;
+
 import org.joml.Matrix4f;
+
+import com.mojang.blaze3d.platform.GlStateManager;
+import com.mojang.blaze3d.systems.RenderSystem;
 
 import java.util.function.Supplier;
 
@@ -140,7 +143,7 @@ public class UIPickableFormRenderer extends UIFormRenderer
 
             if (matrix != null)
             {
-                MatrixStackUtils.multiply(stack, MatrixStackUtils.stripScale(matrix));
+                MatrixStackUtils.multiply(stack, matrix);
             }
 
             Gizmo.INSTANCE.renderStencil(context.batcher.getContext().getMatrices(), this.stencilMap);
@@ -169,7 +172,7 @@ public class UIPickableFormRenderer extends UIFormRenderer
 
         if (matrix != null)
         {
-            MatrixStackUtils.multiply(stack, MatrixStackUtils.stripScale(matrix));
+            MatrixStackUtils.multiply(stack, matrix);
         }
 
         /* Draw axes */

@@ -26,8 +26,10 @@ public abstract class ValueList <T extends BaseValue> extends BaseValueGroup
 
     public void add(T value)
     {
+        this.preNotify(0);
         this.list.add(value);
         value.setParent(this);
+        this.postNotify(0);
     }
 
     public void add(int index, T value)
@@ -39,8 +41,30 @@ public abstract class ValueList <T extends BaseValue> extends BaseValueGroup
             return;
         }
 
+        this.preNotify(0);
         this.list.add(index, value);
         value.setParent(this);
+        this.postNotify(0);
+    }
+
+    public void remove(T value)
+    {
+        if (this.list.contains(value))
+        {
+            this.preNotify(0);
+            this.list.remove(value);
+            this.postNotify(0);
+        }
+    }
+
+    public void remove(int index)
+    {
+        if (CollectionUtils.inRange(this.list, index))
+        {
+            this.preNotify(0);
+            this.list.remove(index);
+            this.postNotify(0);
+        }
     }
 
     @Override
@@ -89,7 +113,9 @@ public abstract class ValueList <T extends BaseValue> extends BaseValueGroup
 
         for (BaseValue value : group.getAll())
         {
-            this.list.add(this.create(value.getId()));
+            T newValue = this.create(value.getId());
+
+            this.add(newValue);
         }
     }
 

@@ -3,14 +3,17 @@ package mchorse.bbs_mod.utils.keyframes;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
+import mchorse.bbs_mod.settings.values.base.BaseValueGroup;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.interps.Interpolation;
 import mchorse.bbs_mod.utils.interps.Interpolations;
 import mchorse.bbs_mod.utils.keyframes.factories.IKeyframeFactory;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
 
-public class Keyframe <T> extends BaseValue
+public class Keyframe <T> extends BaseValueGroup
 {
     private float tick;
     private T value;
@@ -45,6 +48,7 @@ public class Keyframe <T> extends BaseValue
         super(id);
 
         this.factory = factory;
+        this.interp.setParent(this);
     }
 
     public IKeyframeFactory<T> getFactory()
@@ -112,6 +116,32 @@ public class Keyframe <T> extends BaseValue
         return this.interp;
     }
 
+    @Override
+    public List<BaseValue> getAll()
+    {
+        return Collections.singletonList(this.interp);
+    }
+
+    @Override
+    public BaseValue get(String key)
+    {
+        if (key.equals("interp"))
+        {
+            return this.interp;
+        }
+
+        return null;
+    }
+
+    @Override
+    public void copy(BaseValueGroup group)
+    {
+        if (group instanceof Keyframe kf)
+        {
+            this.copy(kf);
+        }
+    }
+
     public KeyframeShape getShape()
     {
         return this.shape;
@@ -142,6 +172,10 @@ public class Keyframe <T> extends BaseValue
         this.duration = keyframe.duration;
         this.value = this.factory.copy(keyframe.value);
         this.interp.copy(keyframe.interp);
+        this.lx = keyframe.lx;
+        this.ly = keyframe.ly;
+        this.rx = keyframe.rx;
+        this.ry = keyframe.ry;
         this.shape = keyframe.shape;
         this.color = keyframe.color;
     }
@@ -178,7 +212,7 @@ public class Keyframe <T> extends BaseValue
         data.put("value", this.factory.toData(this.value));
 
         if (this.duration != 0F) data.putFloat("duration", this.duration);
-        if (this.interp.getInterp() != Interpolations.LINEAR) data.put("interp", this.interp.toData());
+        data.put("interp", this.interp.toData());
         if (this.lx != 5F) data.putFloat("lx", this.lx);
         if (this.ly != 0F) data.putFloat("ly", this.ly);
         if (this.rx != 5F) data.putFloat("rx", this.rx);

@@ -40,7 +40,8 @@
         "BlockEntityRenderDispatcherMixin",
         "WorldMixin",
         "LivingEntityRendererInvoker",
-        "EntityRenderDispatcherMixin"
+        "EntityRenderDispatcherMixin",
+        "audio.SoundEngineMixin"
     ],
     "injectors": {
         "defaultRequire": 1

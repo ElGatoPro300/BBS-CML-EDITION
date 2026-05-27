@@ -1,9 +1,12 @@
 package mchorse.bbs_mod.mixin.client;
 
-import com.mojang.blaze3d.systems.VertexSorter;
 import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
+
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.RenderLayer;
+
+import com.mojang.blaze3d.systems.VertexSorter;
+
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;

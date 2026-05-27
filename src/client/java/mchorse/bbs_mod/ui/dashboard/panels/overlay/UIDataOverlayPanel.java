@@ -8,8 +8,10 @@ import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDataDashboardPanel;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
+import mchorse.bbs_mod.utils.IOUtils;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.function.Consumer;
 
 public class UIDataOverlayPanel <T extends ValueGroup> extends UICRUDOverlayPanel
@@ -136,12 +138,25 @@ public class UIDataOverlayPanel <T extends ValueGroup> extends UICRUDOverlayPane
         if (this.panel.getData() != null && !this.namesList.hasInHierarchy(name))
         {
             this.panel.save();
+
+            File folder = this.panel.getType().getRepository().getFolder();
+            File source = new File(folder, this.panel.getData().getId());
+            File destination = new File(folder, name);
+
+            if (source.isDirectory())
+            {
+                try
+                {
+                    IOUtils.copyFolder(source, destination);
+                }
+                catch (IOException e)
+                {
+                    e.printStackTrace();
+                }
+            }
+
             this.panel.getType().getRepository().save(name, this.panel.getData().toData().asMap());
-            this.namesList.addFile(name);
-
-            T data = (T) this.panel.getType().getRepository().create(name, this.panel.getData().toData().asMap());
-
-            this.panel.fill(data);
+            this.namesList.addFile(name, false);
         }
     }
 

@@ -1,8 +1,10 @@
 package mchorse.bbs_mod.cubic.render.vao;
 
 import mchorse.bbs_mod.client.BBSRendering;
+
 import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
+
 import org.lwjgl.opengl.GL30;
 
 public class ModelVAO implements IModelVAO
@@ -96,6 +98,11 @@ public class ModelVAO implements IModelVAO
 
         if (vao == this.vao)
         {
+            /* Explicitly disable these attributes to ensure constant values are used */
+            GL30.glDisableVertexAttribArray(Attributes.COLOR);
+            GL30.glDisableVertexAttribArray(Attributes.LIGHTMAP_UV);
+            GL30.glDisableVertexAttribArray(Attributes.OVERLAY_UV);
+
             GL30.glVertexAttrib4f(Attributes.COLOR, r, g, b, a);
             GL30.glVertexAttribI2i(Attributes.OVERLAY_UV, overlay & '\uffff', overlay >> 16 & '\uffff');
             GL30.glVertexAttribI2i(Attributes.LIGHTMAP_UV, light & '\uffff', light >> 16 & '\uffff');
