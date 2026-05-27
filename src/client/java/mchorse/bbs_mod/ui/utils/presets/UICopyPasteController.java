@@ -83,7 +83,7 @@ public class UICopyPasteController
 
         if (type != null)
         {
-            Window.setClipboard(type, this.copyPrefix);
+            Window.setInMemoryClipboard(type, this.copyPrefix);
         }
 
         return type != null;

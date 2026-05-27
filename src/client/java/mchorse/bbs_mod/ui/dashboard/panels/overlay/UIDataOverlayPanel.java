@@ -78,7 +78,7 @@ public class UIDataOverlayPanel <T extends ValueGroup> extends UICRUDOverlayPane
 
     private void copy()
     {
-        Window.setClipboard(this.panel.getData().toData().asMap(), "_ContentType_" + this.panel.getType().getId());
+        Window.setInMemoryClipboard(this.panel.getData().toData().asMap(), "_ContentType_" + this.panel.getType().getId());
     }
 
     private void paste(MapType data)
