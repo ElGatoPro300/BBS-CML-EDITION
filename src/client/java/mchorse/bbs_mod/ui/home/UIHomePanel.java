@@ -77,7 +77,7 @@ public class UIHomePanel extends UIDashboardPanel
     private static final int BANNER_TRANSITION = 60;
 
     private static final Set<Link> prefetchingBanners = Collections.synchronizedSet(new HashSet<>());
-    private static boolean lastMosaicView = true;
+    /* View mode is persisted globally — see BBSSettings.lastViewMosaic. */
 
     private final List<BannerEntry> homeBanners = new ArrayList<>();
     private final List<Integer> bannerSequence = new ArrayList<>();
@@ -200,9 +200,11 @@ public class UIHomePanel extends UIDashboardPanel
             }
         });
 
+        boolean mosaic = BBSSettings.lastViewMosaic.get();
+
         this.homeMosaic = new UIRecentMosaicGrid(this, this::handleRecentSelection, this::openRecent);
-        this.homeMosaic.setVisible(lastMosaicView);
-        this.homeRecentList.setVisible(!lastMosaicView);
+        this.homeMosaic.setVisible(mosaic);
+        this.homeRecentList.setVisible(!mosaic);
 
         this.homeRecentSearch = new UISearchList<>(this.homeRecentList).label(UIKeys.GENERAL_SEARCH);
 
@@ -215,40 +217,39 @@ public class UIHomePanel extends UIDashboardPanel
             this.homeMosaic.filter(str);
         };
 
-        this.homeViewToggle = new UIIcon(lastMosaicView ? Icons.LIST : Icons.GALLERY, (b) -> this.toggleMosaicView());
-        this.homeViewToggle.tooltip(lastMosaicView ? UIKeys.MODELS_HOME_VIEW_LIST : UIKeys.MODELS_HOME_VIEW_MOSAIC, Direction.LEFT);
+        this.homeViewToggle = new UIIcon(mosaic ? Icons.LIST : Icons.GALLERY, (b) -> this.toggleMosaicView());
+        this.homeViewToggle.tooltip(mosaic ? UIKeys.MODELS_HOME_VIEW_LIST : UIKeys.MODELS_HOME_VIEW_MOSAIC, Direction.LEFT);
 
         this.layout();
     }
 
     private void layout()
     {
-        UIElement spacerOpen = new UIElement();
-        spacerOpen.h(8);
-
-        UILabel labelNew = new UILabel(L10n.lang("bbs.ui.raw.new"), 0xAAFFFFFF);
-        labelNew.h(12);
-        labelNew.labelAnchor(0, 0.5F);
-        labelNew.marginLeft(4);
-
-        UIElement spacerNew = new UIElement();
-        spacerNew.h(4);
-
-        UIElement spacerOps = new UIElement();
-        spacerOps.h(8);
+        UIElement labelNew = new UIElement()
+        {
+            @Override
+            public void render(UIContext context)
+            {
+                context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xFF1A1A22);
+                context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xFF2A2A35, 1);
+                
+                context.batcher.textShadow(L10n.lang("bbs.ui.raw.new").get(), this.area.x + 4, this.area.y + 6);
+                
+                super.render(context);
+            }
+        };
+        labelNew.h(20);
 
         this.homeActionsPanel.add(
             this.homeOpenButton,
-            spacerOpen,
-            labelNew, spacerNew,
+            this.homeDuplicateCurrent,
+            this.homeRenameCurrent,
+            this.homeDeleteCurrent,
+            labelNew,
             this.homeCreateFilm,
             this.homeCreateModel,
             this.homeCreateParticle,
-            this.homeCreateAudio,
-            spacerOps,
-            this.homeDuplicateCurrent,
-            this.homeRenameCurrent,
-            this.homeDeleteCurrent
+            this.homeCreateAudio
         );
 
         this.homePage.relative(this).x(0.5F, -250).y(0).w(500).h(1F);
@@ -514,13 +515,15 @@ public class UIHomePanel extends UIDashboardPanel
 
     private void toggleMosaicView()
     {
-        lastMosaicView = !lastMosaicView;
-        this.homeMosaic.setVisible(lastMosaicView);
-        this.homeRecentList.setVisible(!lastMosaicView);
-        this.homeViewToggle.both(lastMosaicView ? Icons.LIST : Icons.GALLERY);
-        this.homeViewToggle.tooltip(lastMosaicView ? UIKeys.MODELS_HOME_VIEW_LIST : UIKeys.MODELS_HOME_VIEW_MOSAIC, Direction.LEFT);
+        boolean mosaic = !BBSSettings.lastViewMosaic.get();
 
-        if (lastMosaicView)
+        BBSSettings.lastViewMosaic.set(mosaic);
+        this.homeMosaic.setVisible(mosaic);
+        this.homeRecentList.setVisible(!mosaic);
+        this.homeViewToggle.both(mosaic ? Icons.LIST : Icons.GALLERY);
+        this.homeViewToggle.tooltip(mosaic ? UIKeys.MODELS_HOME_VIEW_LIST : UIKeys.MODELS_HOME_VIEW_MOSAIC, Direction.LEFT);
+
+        if (mosaic)
         {
             this.homeMosaic.resize();
         }
@@ -546,18 +549,22 @@ public class UIHomePanel extends UIDashboardPanel
             @Override
             protected void renderSkin(UIContext context)
             {
-                int bg = this.hover ? Colors.setA(Colors.WHITE, 0.25F) : Colors.setA(0, 0.4F);
+                int bg = this.hover && this.isEnabled() ? 0xFF181820 : 0xFF111115;
+                context.batcher.box(this.area.x + 2, this.area.y, this.area.ex() - 2, this.area.ey(), bg);
 
-                this.area.render(context.batcher, bg);
-
-                int color = this.isEnabled() ? Colors.LIGHTEST_GRAY : 0x44ffffff;
+                int color = this.isEnabled() ? (this.hover ? Colors.WHITE : 0xFFCCCCCC) : 0xFF666666;
+                int textX = this.area.x + 8;
 
                 if (icon != null)
                 {
-                    context.batcher.icon(icon, color, this.area.x + 4, this.area.y + this.area.h / 2 - icon.h / 2);
+                    context.batcher.icon(icon, color, this.area.x + 6, this.area.my() - 8);
+                    textX = this.area.x + 24;
                 }
 
-                context.batcher.textShadow(label.get(), this.area.x + 22, this.area.y + this.area.h / 2 - 4, color);
+                int y = this.area.my(context.batcher.getFont().getHeight());
+                context.batcher.clip(this.area.x, this.area.y, this.area.w - 6, this.area.h, context);
+                context.batcher.textShadow(label.get(), textX, y, color);
+                context.batcher.unclip(context);
             }
         };
 
@@ -801,7 +808,8 @@ public class UIHomePanel extends UIDashboardPanel
 
         context.batcher.gradientHBox(pageX - 18, pageY, pageX, pageY + pageH, 0, Colors.setA(0x000000, 0.7F));
         context.batcher.gradientHBox(pageX + pageW, pageY, pageX + pageW + 18, pageY + pageH, Colors.setA(0x000000, 0.7F), 0);
-        context.batcher.box(pageX, pageY, pageX + pageW, pageY + pageH, Colors.setA(0x1e1e1e, 1F));
+        context.batcher.box(pageX, pageY, pageX + pageW, pageY + pageH, 0xFF141418);
+        context.batcher.outline(pageX, pageY, pageX + pageW, pageY + pageH, 0xFF2A2A35, 1);
 
         float currentTicks = context.getTickTransition();
 
@@ -873,8 +881,14 @@ public class UIHomePanel extends UIDashboardPanel
             }
         }
 
-        context.batcher.box(pageX, splitY, pageX + pageW, splitY + 1, Colors.A12);
-        context.batcher.box(dividerX, splitY + 1, dividerX + 1, pageY + pageH, Colors.A12);
+        // Header Row
+        context.batcher.box(pageX, splitY, pageX + pageW, splitY + 20, 0xFF1A1A22);
+        context.batcher.outline(pageX, splitY, pageX + pageW, splitY + 20, 0xFF2A2A35, 1);
+
+        // Left sidebar
+        context.batcher.box(pageX, splitY + 20, dividerX, pageY + pageH, 0xFF111115);
+        context.batcher.box(dividerX - 1, splitY + 20, dividerX, pageY + pageH, 0xFF22222A);
+
         context.batcher.textShadow(L10n.lang("bbs.ui.film.home.actions").get(), pageX + 4, splitY + 6);
         context.batcher.textShadow(listTitle, dividerX + 4, splitY + 6);
     }
@@ -1056,11 +1070,18 @@ public class UIHomePanel extends UIDashboardPanel
                 public void render(UIContext context)
                 {
                     boolean selected = entry.id.equals(UIRecentMosaicGrid.this.selectedId) && entry.type == UIRecentMosaicGrid.this.selectedType;
-                    int border = selected ? BBSSettings.primaryColor.get() : Colors.setA(Colors.WHITE, 0.1F);
-                    int bg = selected ? Colors.setA(BBSSettings.primaryColor.get(), 0.1F) : Colors.setA(0, 0.2F);
+                    boolean hover = this.area.isInside(context);
+                    int border = selected || hover ? BBSSettings.primaryColor(Colors.A100) : Colors.setA(Colors.WHITE, 0.08F);
 
-                    context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), bg);
-                    context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), border);
+                    this.area.render(context.batcher, Colors.setA(0, 0.3F));
+                    context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.y + CARD_SIZE, Colors.setA(0, 0.2F));
+                    
+                    if (selected || hover)
+                    {
+                        context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.y + CARD_SIZE, Colors.A25);
+                    }
+                    
+                    context.batcher.box(this.area.x, this.area.y + CARD_SIZE, this.area.ex(), this.area.ey(), Colors.A50);
 
                     super.render(context);
 
@@ -1113,7 +1134,10 @@ public class UIHomePanel extends UIDashboardPanel
                         label = label + "...";
                     }
 
-                    context.batcher.textShadow(label, this.area.x + 2, this.area.y + CARD_SIZE + 2);
+                    int ty = this.area.y + CARD_SIZE + (CARD_LABEL_H - context.batcher.getFont().getHeight()) / 2;
+                    context.batcher.textShadow(label, this.area.x + 3, ty, Colors.WHITE);
+
+                    context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), border);
                 }
 
                 private void renderIcon(UIContext context, Icon icon)

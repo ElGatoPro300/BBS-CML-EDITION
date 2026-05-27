@@ -400,6 +400,7 @@ public class UIKeys
     public static final IKey FILM_LAYOUT_LOCK = L10n.lang("bbs.ui.film.layout.lock");
     public static final IKey FILM_LAYOUT_UNLOCK = L10n.lang("bbs.ui.film.layout.unlock");
     public static final IKey FILM_LAYOUT_PRESETS = L10n.lang("bbs.ui.film.layout.presets");
+    public static final IKey FILM_LAYOUT_ANCHORED_REPLAYS = L10n.lang("bbs.ui.film.layout.anchored_replays");
     public static final IKey FILM_VIDEO_RECORDING = L10n.lang("bbs.ui.film.video_recording");
     public static final IKey FORMS_CATEGORIES_ADD_CATEGORY_DESCRIPTION = L10n.lang("bbs.ui.forms.categories.add_category-description");
     public static final IKey FORMS_CATEGORIES_ADD_CATEGORY_TITLE = L10n.lang("bbs.ui.forms.categories.add_category-title");
@@ -860,6 +861,7 @@ public class UIKeys
     public static final IKey MODEL_BLOCKS_TRANSFORM_FIRST_PERSON = L10n.lang("bbs.ui.model_blocks.transform.first_person");
     public static final IKey MODEL_BLOCKS_TRANSFORM_INVENTORY = L10n.lang("bbs.ui.model_blocks.transform.inventory");
     public static final IKey MODEL_BLOCKS_TRANSFORM_THIRD_PERSON = L10n.lang("bbs.ui.model_blocks.transform.third_person");
+    public static final IKey MODEL_BLOCKS_TRANSFORMS = L10n.lang("bbs.ui.model_blocks.transforms");
     public static final IKey MODEL_BLOCKS_LIGHT_LEVEL = L10n.lang("bbs.ui.model_blocks.light_level");
     public static final IKey MODEL_BLOCKS_HARDNESS = L10n.lang("bbs.ui.model_blocks.hardness");
     public static final IKey MODELS_ANCHOR_GROUP = L10n.lang("bbs.ui.models.anchor_group");
@@ -1042,6 +1044,8 @@ public class UIKeys
     public static final IKey PRESETS_SAVE_DESCRIPTION = L10n.lang("bbs.ui.presets.save-description");
     public static final IKey PRESETS_SAVE_TITLE = L10n.lang("bbs.ui.presets.save-title");
     public static final IKey PRESETS_TITLE = L10n.lang("bbs.ui.presets.title");
+    public static final IKey PRESETS_GRID_TRACKERS = L10n.lang("bbs.ui.presets_grid.trackers");
+    public static final IKey PRESETS_GRID_CELL_SIZE = L10n.lang("bbs.ui.presets_grid.cell_size");
     public static final IKey SCENE_REPLAYS_CONTEXT_ADD = L10n.lang("bbs.ui.scene.replays.context.add");
     public static final IKey SCENE_REPLAYS_CONTEXT_ADD_GROUP = L10n.lang("bbs.ui.scene.replays.context.add_group");
     public static final IKey SCENE_REPLAYS_CONTEXT_COPY = L10n.lang("bbs.ui.scene.replays.context.copy");

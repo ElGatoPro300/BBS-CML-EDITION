@@ -29,6 +29,7 @@ import mchorse.bbs_mod.forms.forms.ModelForm;
 import mchorse.bbs_mod.forms.forms.StructureForm;
 import mchorse.bbs_mod.forms.renderers.ModelFormRenderer;
 import mchorse.bbs_mod.graphics.window.Window;
+import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.math.molang.expressions.MolangExpression;
 import mchorse.bbs_mod.resources.Link;
@@ -793,6 +794,13 @@ public class UIReplaysEditor extends UIElement
             this.replays.replays.setList(replays);
             this.setReplay(replays.isEmpty() ? null : replays.get(index));
         }
+        else
+        {
+            this.replays.replays.setList(new ArrayList<>());
+            this.setReplay(null, false, false);
+        }
+
+        this.filmPanel.syncAnchoredReplaysPanelWithFilm();
     }
 
     public Replay getReplay()
@@ -816,16 +824,11 @@ public class UIReplaysEditor extends UIElement
             this.filmPanel.getController().orbit.reset();
         }
 
-        this.replays.setReplay(replay);
+        this.replays.syncReplaySelection(replay, select);
+        this.filmPanel.syncAnchoredReplaysPanelSelection(replay, select);
         this.filmPanel.actionEditor.setClips(replay == null ? null : replay.actions);
         this.initializeCollapsedGroupsForReplay(replay);
         this.updateChannelsList();
-
-        if (select)
-        {
-            this.replays.replays.ensureVisible(replay);
-            this.replays.replays.setCurrentScroll(replay);
-        }
     }
 
     private void initializeCollapsedGroupsForReplay(Replay replay)
@@ -1287,7 +1290,7 @@ public class UIReplaysEditor extends UIElement
                 boolean worldExpanded = !this.collapsedModelTracks.getOrDefault(worldKey, false);
                 UIKeyframeSheet worldHeader = UIKeyframeSheet.groupHeader(
                     "__group__" + worldKey,
-                    IKey.constant("World"),
+                    L10n.lang("bbs.ui.film.replay.world"),
                     Colors.LIGHTEST_GRAY & Colors.RGB,
                     worldKey,
                     worldExpanded,
@@ -1304,7 +1307,7 @@ public class UIReplaysEditor extends UIElement
                 boolean modelPropsExpanded = !this.collapsedModelTracks.getOrDefault(modelPropsKey, false);
                 UIKeyframeSheet modelPropsHeader = UIKeyframeSheet.groupHeader(
                     "__group__" + modelPropsKey,
-                    IKey.constant("Model"),
+                    L10n.lang("bbs.ui.film.replay.model"),
                     Colors.LIGHTEST_GRAY & Colors.RGB,
                     modelPropsKey,
                     modelPropsExpanded,

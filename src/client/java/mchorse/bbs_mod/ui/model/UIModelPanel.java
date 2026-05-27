@@ -37,8 +37,6 @@ import mchorse.bbs_mod.ui.framework.elements.UIScrollView;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UISearchList;
-import mchorse.bbs_mod.ui.framework.elements.navigation.UIControlBar;
-import mchorse.bbs_mod.ui.framework.elements.navigation.UIIconTabButton;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIConfirmOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
@@ -47,7 +45,6 @@ import mchorse.bbs_mod.ui.framework.elements.utils.UIRenderable;
 import mchorse.bbs_mod.ui.home.UIHomePanel;
 import mchorse.bbs_mod.ui.model.UIModelIKPanel;
 import mchorse.bbs_mod.ui.utils.Area;
-import mchorse.bbs_mod.ui.utils.ScrollDirection;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
@@ -61,14 +58,6 @@ import mchorse.bbs_mod.utils.interps.Interpolations;
 import mchorse.bbs_mod.utils.resources.Pixels;
 
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.render.BufferBuilder;
-import net.minecraft.client.render.BufferRenderer;
-import net.minecraft.client.render.GameRenderer;
-import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.render.VertexFormat;
-import net.minecraft.client.render.VertexFormats;
-
-import org.joml.Matrix4f;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.logging.LogUtils;
@@ -113,7 +102,6 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
     private UIDataPathList homeModelsList;
     private UIModelMosaicGrid homeModelsMosaic;
     private UIIcon homeViewToggle;
-    private boolean mosaicViewActive = false;
     private UIPanelSwitcher panelSwitcher;
     private UIElement homeActionsPanel;
     private UIButton homeCreateModel;
@@ -256,8 +244,9 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
             this.homeModelsMosaic.filter(str);
         };
 
-        this.homeViewToggle = new UIIcon(Icons.GALLERY, (b) -> this.toggleMosaicView());
-        this.homeViewToggle.tooltip(UIKeys.MODELS_HOME_VIEW_MOSAIC, Direction.LEFT);
+        boolean mosaic = BBSSettings.lastViewMosaic.get();
+        this.homeViewToggle = new UIIcon(mosaic ? Icons.LIST : Icons.GALLERY, (b) -> this.toggleMosaicView());
+        this.homeViewToggle.tooltip(mosaic ? UIKeys.MODELS_HOME_VIEW_LIST : UIKeys.MODELS_HOME_VIEW_MOSAIC, Direction.LEFT);
         
         this.homeCreateModel = this.createHomeButton(UIKeys.MODELS_CRUD_ADD, Icons.ADD, (b) ->
         {
@@ -395,7 +384,8 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         this.homeModelsSearch.relative(this.homePage).x(0.35F).y(UIHomePanel.HOME_BANNER_HEIGHT + 20).w(0.65F).h(1F, -(UIHomePanel.HOME_BANNER_HEIGHT + 20 + 44));
         this.homeModelsSearch.search.w(1F, -25);
         this.homeModelsMosaic.relative(this.homeModelsSearch).x(0).y(20).w(1F).h(1F, -20);
-        this.homeModelsMosaic.setVisible(false);
+        this.homeModelsMosaic.setVisible(mosaic);
+        this.homeModelsSearch.list.setVisible(!mosaic);
         this.homeViewToggle.relative(this.homeModelsSearch).x(1F, -22).y(0).w(20).h(20);
         this.homePage.add(new UIRenderable(this::renderHomeBackground), this.homeActionsPanel, this.homeModelsSearch, this.homeModelsMosaic, this.homeViewToggle, this.panelSwitcher);
 
@@ -708,11 +698,13 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
 
     private void toggleMosaicView()
     {
-        this.mosaicViewActive = !this.mosaicViewActive;
-        this.homeModelsSearch.list.setVisible(!this.mosaicViewActive);
-        this.homeModelsMosaic.setVisible(this.mosaicViewActive);
-        
-        if (this.mosaicViewActive)
+        boolean mosaic = !BBSSettings.lastViewMosaic.get();
+
+        BBSSettings.lastViewMosaic.set(mosaic);
+        this.homeModelsSearch.list.setVisible(!mosaic);
+        this.homeModelsMosaic.setVisible(mosaic);
+
+        if (mosaic)
         {
             this.homeViewToggle.both(Icons.LIST);
             this.homeViewToggle.tooltip(UIKeys.MODELS_HOME_VIEW_LIST, Direction.LEFT);
@@ -822,7 +814,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
 
         this.getType().getRepository().load(selectedId, (model) -> {
             if (model != null) {
-                Window.setClipboard(model.toData().asMap(), "_ContentType_" + this.getType().getId());
+                Window.setInMemoryClipboard(model.toData().asMap(), "_ContentType_" + this.getType().getId());
             }
         });
     }

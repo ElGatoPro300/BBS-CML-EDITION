@@ -14,7 +14,6 @@ import mchorse.bbs_mod.ui.framework.elements.events.UITrackpadDragStartEvent;
 import mchorse.bbs_mod.ui.framework.elements.input.text.UIBaseTextbox;
 import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
 import mchorse.bbs_mod.ui.utils.Area;
-import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.Factor;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.Timer;
@@ -353,13 +352,15 @@ public class UITrackpad extends UIBaseTextbox
     {
         super.resize();
 
-        int w = this.area.w < 60 ? 12 : 20;
+        /* Both increment buttons are grouped on the right edge. */
+        int w = this.area.w < 60 ? 10 : 13;
 
         this.textbox.area.copy(this.area);
         this.plusOne.copy(this.area);
         this.minusOne.copy(this.area);
         this.plusOne.w = this.minusOne.w = w;
         this.plusOne.x = this.area.ex() - w;
+        this.minusOne.x = this.area.ex() - w * 2;
     }
 
     /**
@@ -663,39 +664,57 @@ public class UITrackpad extends UIBaseTextbox
         boolean dragging = this.isDraggingTime();
         boolean plus = !dragging && this.plusOne.isInside(context);
         boolean minus = !dragging && this.minusOne.isInside(context);
+        boolean hovered = this.area.isInside(context);
+        int accent = 0xFF000000 | BBSSettings.primaryColor.get();
 
         if (this.textbox.isFocused())
         {
             this.textbox.render(context);
+
+            /* Accent border while editing the value. */
+            context.batcher.outline(x, y, x + w, y + h, accent);
         }
         else
         {
-            this.area.render(context.batcher, Colors.A100);
+            /* Flat dark background. */
+            context.batcher.box(x, y, x + w, y + h, 0xFF1A1A20);
 
             if (dragging)
             {
-                /* Draw filling background */
-                int color = BBSSettings.primaryColor.get();
+                /* Draw the drag-delta fill from the grab point to the cursor. */
                 int fx = MathUtils.clamp(context.mouseX, this.area.x + padding, this.area.ex() - padding);
 
-                context.batcher.box(Math.min(fx, this.initialX), this.area.y + padding, Math.max(fx, this.initialX), this.area.ey() - padding, Colors.A100 | color);
+                context.batcher.box(Math.min(fx, this.initialX), this.area.y + padding, Math.max(fx, this.initialX), this.area.ey() - padding, accent);
             }
 
+            boolean showArrows = BBSSettings.enableTrackpadIncrements.get() || hovered;
+
+            /* Value label — left-aligned, clipped so it never runs under the
+               increment buttons. */
             FontRenderer font = context.batcher.getFont();
-            String label = this.forcedLabel == null ? format(this.value) : this.forcedLabel.get();
-            int lx = this.area.mx(font.getWidth(label));
+            String raw = this.forcedLabel == null ? format(this.value) : this.forcedLabel.get();
+            int reserved = showArrows ? this.minusOne.w * 2 + 4 : 4;
+            String label = font.limitToWidth(raw, this.area.w - reserved - 6);
             int ly = this.area.my() - font.getHeight() / 2;
 
-            context.batcher.text(label, lx, ly, this.textbox.getColor());
+            context.batcher.text(label, this.area.x + 6, ly, this.textbox.getColor());
 
-            if (BBSSettings.enableTrackpadIncrements.get() || this.area.isInside(context))
+            /* Increment / decrement chevrons grouped on the right edge. */
+            if (showArrows)
             {
-                this.plusOne.render(context.batcher, plus ? 0x22ffffff : 0x0affffff, padding);
-                this.minusOne.render(context.batcher, minus ? 0x22ffffff : 0x0affffff, padding);
+                this.minusOne.render(context.batcher, minus ? 0x28FFFFFF : 0x10FFFFFF, padding);
+                this.plusOne.render(context.batcher, plus ? 0x28FFFFFF : 0x10FFFFFF, padding);
 
-                context.batcher.icon(Icons.MOVE_LEFT, minus ? Colors.WHITE : Colors.setA(Colors.WHITE, 0.5F), x + (this.plusOne.w - Icons.MOVE_LEFT.w) / 2, y + (h - 16) / 2);
-                context.batcher.icon(Icons.MOVE_RIGHT, plus ? Colors.WHITE : Colors.setA(Colors.WHITE, 0.5F), x + w - this.minusOne.w + (this.minusOne.w - Icons.MOVE_RIGHT.w) / 2, y + (h - 16) / 2);
+                int mColor = minus ? Colors.WHITE : Colors.setA(Colors.WHITE, 0.5F);
+                int pColor = plus ? Colors.WHITE : Colors.setA(Colors.WHITE, 0.5F);
+
+                drawChevron(context, this.minusOne.mx(), this.minusOne.my(), true, mColor);
+                drawChevron(context, this.plusOne.mx(), this.plusOne.my(), false, pColor);
             }
+
+            /* Border — accent when hovered or dragging, subtle grey otherwise. */
+            int border = (dragging || hovered) ? accent : 0xFF3C3C3C;
+            context.batcher.outline(x, y, x + w, y + h, border);
         }
 
         if (dragging)
@@ -771,6 +790,19 @@ public class UITrackpad extends UIBaseTextbox
         this.renderLockedArea(context);
 
         super.render(context);
+    }
+
+    /* Draws a small 5px-tall chevron from stacked 2px box rows. pointLeft =
+       true renders "<", false renders ">". */
+    private static void drawChevron(UIContext context, int cx, int cy, boolean pointLeft, int color)
+    {
+        for (int i = -2; i <= 2; i++)
+        {
+            int depth = Math.abs(i);
+            int bx = pointLeft ? (cx - 1 + depth) : (cx - 1 - depth);
+
+            context.batcher.box(bx, cy + i, bx + 2, cy + i + 1, color);
+        }
     }
 
     public double getValueModifier()

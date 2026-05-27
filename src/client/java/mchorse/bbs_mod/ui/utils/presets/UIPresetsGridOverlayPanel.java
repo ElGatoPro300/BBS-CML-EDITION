@@ -29,16 +29,20 @@ import java.util.function.Consumer;
 public class UIPresetsGridOverlayPanel extends UIOverlayPanel
 {
     private static final String FOLDER_TOKEN_PREFIX = "__folder__:";
-    private static final int COLUMNS = 4;
-    private static final int ROWS = 4;
-    private static final int PAGE_SIZE = COLUMNS * ROWS;
+    private static final int GRID_PRESET_VERY_LARGE = 0;
+    private static final int GRID_PRESET_LARGE = 1;
+    private static final int GRID_PRESET_MEDIUM = 2;
+    private static final int GRID_PRESET_SMALL = 3;
+    private static final int MAX_COLUMNS = 6;
+    private static final int MAX_ROWS = 6;
+    private static final int MAX_PAGE_SIZE = MAX_COLUMNS * MAX_ROWS;
 
     private final UICopyPasteController controller;
     private final int mouseX;
     private final int mouseY;
 
     private final UITextbox search;
-    private final PresetCell[] cells = new PresetCell[PAGE_SIZE];
+    private final PresetCell[] cells = new PresetCell[MAX_PAGE_SIZE];
 
     private final List<PresetEntry> allEntries = new ArrayList<>();
     private final List<PresetEntry> filteredEntries = new ArrayList<>();
@@ -50,6 +54,8 @@ public class UIPresetsGridOverlayPanel extends UIOverlayPanel
     private final UIIcon up;
     private final UIIcon prev;
     private final UIIcon next;
+    private final UIIcon trackersToggle;
+    private final UIIcon cellSize;
     private boolean needsInitialRefresh = true;
     private int lastContentWidth = -1;
     private int lastContentHeight = -1;
@@ -83,6 +89,15 @@ public class UIPresetsGridOverlayPanel extends UIOverlayPanel
 
         UIIcon folder = new UIIcon(Icons.FOLDER, (b) -> UIUtils.openFolder(controller.manager.getFolder()));
         folder.tooltip(UIKeys.PRESETS_OPEN, Direction.LEFT);
+        this.trackersToggle = new UIIcon(() -> this.areTrackerIndicatorsVisible() ? Icons.VISIBLE : Icons.CROSSED_OUT_EYE, (b) ->
+        {
+            BBSSettings.presetsGridTrackers.set(!this.areTrackerIndicatorsVisible());
+            this.updateToolbarStates();
+            this.refreshGrid();
+        });
+        this.trackersToggle.tooltip(UIKeys.PRESETS_GRID_TRACKERS, Direction.LEFT);
+        this.cellSize = new UIIcon(Icons.SCALE, (b) -> this.openCellSizeMenu());
+        this.cellSize.tooltip(UIKeys.PRESETS_GRID_CELL_SIZE, Direction.LEFT);
         this.up = new UIIcon(Icons.ARROW_UP, (b) -> this.goUpFolder());
         this.up.tooltip(UIKeys.PRESETS_FOLDER_UP, Direction.LEFT);
 
@@ -106,8 +121,9 @@ public class UIPresetsGridOverlayPanel extends UIOverlayPanel
         });
         this.prev.tooltip(UIKeys.PRESETS_PAGE_PREVIOUS, Direction.LEFT);
 
-        this.icons.add(save, folder, this.up, this.prev, this.next);
+        this.icons.add(save, folder, this.trackersToggle, this.cellSize, this.up, this.prev, this.next);
 
+        this.updateToolbarStates();
         this.reloadPresets();
     }
 
@@ -236,19 +252,23 @@ public class UIPresetsGridOverlayPanel extends UIOverlayPanel
 
     private void refreshGrid()
     {
+        int pageSize = this.getCurrentPageSize();
+        int maxPage = this.filteredEntries.isEmpty() ? 0 : (this.filteredEntries.size() - 1) / pageSize;
+
+        this.page = Math.max(0, Math.min(this.page, maxPage));
         this.layoutCells();
         /* Apply updated flex values immediately, otherwise cells stay at stale areas
            until an external resize happens (e.g. moving panel). */
         this.content.resize();
 
-        int start = this.page * PAGE_SIZE;
+        int start = this.page * pageSize;
 
-        for (int i = 0; i < PAGE_SIZE; i++)
+        for (int i = 0; i < this.cells.length; i++)
         {
             int index = start + i;
             PresetCell cell = this.cells[i];
 
-            if (index >= 0 && index < this.filteredEntries.size())
+            if (i < pageSize && index >= 0 && index < this.filteredEntries.size())
             {
                 PresetEntry entry = this.filteredEntries.get(index);
 
@@ -278,7 +298,7 @@ public class UIPresetsGridOverlayPanel extends UIOverlayPanel
         /* One more pass after final visibility/layout settles to avoid first-page-switch misses. */
         this.content.resize();
 
-        for (int i = 0; i < PAGE_SIZE; i++)
+        for (int i = 0; i < this.cells.length; i++)
         {
             PresetCell cell = this.cells[i];
 
@@ -291,6 +311,7 @@ public class UIPresetsGridOverlayPanel extends UIOverlayPanel
         this.prev.setEnabled(this.canPrev());
         this.next.setEnabled(this.canNext());
         this.up.setEnabled(!this.currentFolder.isEmpty());
+        this.updateToolbarStates();
     }
 
     private int collectTrackerMask(MapType data)
@@ -359,7 +380,7 @@ public class UIPresetsGridOverlayPanel extends UIOverlayPanel
 
     private boolean canNext()
     {
-        return (this.page + 1) * PAGE_SIZE < this.filteredEntries.size();
+        return (this.page + 1) * this.getCurrentPageSize() < this.filteredEntries.size();
     }
 
     private void enterFolder(String folderPath)
@@ -464,23 +485,95 @@ public class UIPresetsGridOverlayPanel extends UIOverlayPanel
         int padding = 6;
         int spacing = 4;
         int top = 6 + 20 + spacing;
+        int columns = this.getColumnsForPreset();
+        int rows = this.getRowsForPreset();
         int availableW = this.content.area.w - padding * 2;
         int availableH = this.content.area.h - top - padding;
         int safeW = Math.max(1, availableW);
         int safeH = Math.max(1, availableH);
-        int cellW = Math.max(1, (safeW - (COLUMNS - 1) * spacing) / COLUMNS);
-        int stretchedCellH = Math.max(1, (safeH - (ROWS - 1) * spacing) / ROWS);
+        int cellW = Math.max(1, (safeW - (columns - 1) * spacing) / columns);
+        int stretchedCellH = Math.max(1, (safeH - (rows - 1) * spacing) / rows);
         int cellH = Math.min(stretchedCellH, cellW);
 
-        for (int i = 0; i < PAGE_SIZE; i++)
+        for (int i = 0; i < this.cells.length; i++)
         {
-            int col = i % COLUMNS;
-            int row = i / COLUMNS;
+            int col = i % columns;
+            int row = i / columns;
             int x = padding + col * (cellW + spacing);
             int y = top + row * (cellH + spacing);
 
             this.cells[i].xy(x, y).wh(cellW, cellH);
         }
+    }
+
+    private boolean areTrackerIndicatorsVisible()
+    {
+        return BBSSettings.presetsGridTrackers == null || BBSSettings.presetsGridTrackers.get();
+    }
+
+    private void updateToolbarStates()
+    {
+        if (this.trackersToggle != null)
+        {
+            this.trackersToggle.active(this.areTrackerIndicatorsVisible());
+        }
+    }
+
+    private void openCellSizeMenu()
+    {
+        int currentPreset = this.getGridCellSizePreset();
+
+        this.getContext().replaceContextMenu((menu) ->
+        {
+            menu.action(Icons.BLOCK, UIKeys.TEXTURES_VIEW_PRESETS_VERY_LARGE, currentPreset == GRID_PRESET_VERY_LARGE, () -> this.setGridCellSizePreset(GRID_PRESET_VERY_LARGE));
+            menu.action(Icons.BLOCK, UIKeys.TEXTURES_VIEW_PRESETS_LARGE, currentPreset == GRID_PRESET_LARGE, () -> this.setGridCellSizePreset(GRID_PRESET_LARGE));
+            menu.action(Icons.BLOCK, UIKeys.TEXTURES_VIEW_PRESETS_MEDIUM, currentPreset == GRID_PRESET_MEDIUM, () -> this.setGridCellSizePreset(GRID_PRESET_MEDIUM));
+            menu.action(Icons.BLOCK, UIKeys.TEXTURES_VIEW_PRESETS_SMALL, currentPreset == GRID_PRESET_SMALL, () -> this.setGridCellSizePreset(GRID_PRESET_SMALL));
+        });
+    }
+
+    private void setGridCellSizePreset(int preset)
+    {
+        BBSSettings.presetsGridCellSize.set(Math.max(GRID_PRESET_VERY_LARGE, Math.min(GRID_PRESET_SMALL, preset)));
+        this.page = 0;
+        this.refreshGrid();
+    }
+
+    private int getGridCellSizePreset()
+    {
+        if (BBSSettings.presetsGridCellSize == null)
+        {
+            return GRID_PRESET_LARGE;
+        }
+
+        return Math.max(GRID_PRESET_VERY_LARGE, Math.min(GRID_PRESET_SMALL, BBSSettings.presetsGridCellSize.get()));
+    }
+
+    private int getColumnsForPreset()
+    {
+        return switch (this.getGridCellSizePreset())
+        {
+            case GRID_PRESET_VERY_LARGE -> 3;
+            case GRID_PRESET_MEDIUM -> 5;
+            case GRID_PRESET_SMALL -> 6;
+            default -> 4;
+        };
+    }
+
+    private int getRowsForPreset()
+    {
+        return switch (this.getGridCellSizePreset())
+        {
+            case GRID_PRESET_VERY_LARGE -> 3;
+            case GRID_PRESET_MEDIUM -> 5;
+            case GRID_PRESET_SMALL -> 6;
+            default -> 4;
+        };
+    }
+
+    private int getCurrentPageSize()
+    {
+        return this.getColumnsForPreset() * this.getRowsForPreset();
     }
 
     @Override
@@ -519,7 +612,7 @@ public class UIPresetsGridOverlayPanel extends UIOverlayPanel
         super.render(context);
     }
 
-    private static class PresetCell extends UIElement
+    private class PresetCell extends UIElement
     {
         private final Consumer<String> callback;
         private final UICopyPasteController.IPresetPreview preview;
@@ -709,13 +802,14 @@ public class UIPresetsGridOverlayPanel extends UIOverlayPanel
 
         private void updateIndicatorVisibility()
         {
+            boolean showTrackers = UIPresetsGridOverlayPanel.this.areTrackerIndicatorsVisible();
             boolean hasTransform = (this.trackerMask & TRACKER_TRANSFORM) != 0;
             boolean hasPoseToLimbs = (this.trackerMask & TRACKER_POSE_TO_LIMBS) != 0;
             boolean hasPose = !hasPoseToLimbs && (this.trackerMask & TRACKER_POSE) != 0;
 
-            this.indicatorTransform.setVisible(hasTransform);
-            this.indicatorPose.setVisible(hasPose);
-            this.indicatorPoseToLimbs.setVisible(hasPoseToLimbs);
+            this.indicatorTransform.setVisible(showTrackers && hasTransform);
+            this.indicatorPose.setVisible(showTrackers && hasPose);
+            this.indicatorPoseToLimbs.setVisible(showTrackers && hasPoseToLimbs);
         }
 
         private void layoutIndicators()
