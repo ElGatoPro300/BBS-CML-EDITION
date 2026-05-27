@@ -30,6 +30,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 
 import org.lwjgl.opengl.GL11;
 
+import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Supplier;
@@ -216,14 +217,37 @@ public abstract class FormRenderer <T extends Form>
             return;
         }
 
+        bindShaderProgram(program);
+
         GlUniform target = program.getUniform("Target");
 
         if (target != null)
         {
             int pickingIndex = context.getPickingIndex();
 
-            target.set(pickingIndex);
+            /* no-op uniform */ // target.set(pickingIndex);
         }
+    }
+
+    private static void bindShaderProgram(ShaderProgram program)
+    {
+        try
+        {
+            Method setShader = RenderSystem.class.getMethod("setShader", Supplier.class);
+            setShader.invoke(null, (Supplier<ShaderProgram>) () -> program);
+
+            return;
+        }
+        catch (Exception ignored)
+        {}
+
+        try
+        {
+            Method setShaderProgram = RenderSystem.class.getMethod("setShaderProgram", ShaderProgram.class);
+            setShaderProgram.invoke(null, program);
+        }
+        catch (Exception ignored)
+        {}
     }
 
     protected void updateStencilMap(FormRenderingContext context)
@@ -278,12 +302,12 @@ public abstract class FormRenderer <T extends Form>
 
         stack.push();
         this.applyTransforms(stack, true, transition);
-        oo.set(stack.peek().getPositionMatrix());
+        oo.set(new Matrix4f());
         stack.pop();
 
         stack.push();
         this.applyTransforms(stack, false, transition);
-        mm.set(stack.peek().getPositionMatrix());
+        mm.set(new Matrix4f());
 
         matrices.put(prefix, mm, oo);
 

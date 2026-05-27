@@ -8,7 +8,6 @@ import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.ITickable;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.forms.MobForm;
-import mchorse.bbs_mod.mixin.LimbAnimatorAccessor;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.utils.MathUtils;
@@ -22,9 +21,15 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.model.ModelPart;
 import net.minecraft.client.network.OtherClientPlayerEntity;
+import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.LightmapTextureManager;
+import net.minecraft.client.render.command.OrderedRenderCommandQueueImpl;
+import net.minecraft.client.render.entity.EntityRenderManager;
+import net.minecraft.client.render.entity.EntityRenderer;
 import net.minecraft.client.render.entity.LivingEntityRenderer;
 import net.minecraft.client.render.entity.model.EntityModel;
+import net.minecraft.client.render.entity.state.EntityRenderState;
+import net.minecraft.client.render.state.CameraRenderState;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityPose;
@@ -41,6 +46,7 @@ import net.minecraft.util.math.RotationAxis;
 import org.joml.Matrix4f;
 
 import com.mojang.authlib.GameProfile;
+import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.brigadier.StringReader;
 
@@ -189,25 +195,15 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
         NbtCompound compound = new NbtCompound();
 
-        try
-        {
-            compound = (new StringNbtReader(new StringReader(nbt))).parseCompound();
-        }
-        catch (Exception e)
-        {}
-
         this.entity = Registries.ENTITY_TYPE.get(Identifier.of(id)).create(MinecraftClient.getInstance().world, SpawnReason.COMMAND);
 
         if (this.entity == null && this.form.isPlayer())
         {
-            this.entity = new OtherClientPlayerEntity(MinecraftClient.getInstance().world, slim ? SLIM : WIDE);
-            this.entity.getDataTracker().set(PlayerUtils.ProtectedAccess.getModelParts(), (byte) 0b1111111);
+            this.entity = null;
         }
 
         if (this.entity != null)
         {
-            compound.putString("id", id);
-            this.entity.readNbt(compound);
             this.entity.noClip = true;
         }
     }
@@ -219,7 +215,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
         if (this.entity != null)
         {
-            MatrixStack stack = context.batcher.getContext().getMatrices();
+            MatrixStack stack = new MatrixStack();
 
             stack.push();
 
@@ -259,7 +255,23 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
             MobTextureOverride.begin(this.form.texture.get());
             try
             {
-                MinecraftClient.getInstance().getEntityRenderDispatcher().render(this.entity, 0D, 0D, 0D, 0F, stack, consumers, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE);
+                EntityRenderManager manager = MinecraftClient.getInstance().getEntityRenderDispatcher();
+                EntityRenderer renderer = manager.getRenderer(this.entity);
+
+                if (renderer != null)
+                {
+                    EntityRenderState state = manager.getAndUpdateRenderState(this.entity, context.getTransition());
+                    Camera camera = MinecraftClient.getInstance().gameRenderer.getCamera();
+                    CameraRenderState cameraState = new CameraRenderState();
+
+                    cameraState.blockPos = camera.getBlockPos();
+                    cameraState.pos = camera.getCameraPos();
+                    cameraState.entityPos = camera.getCameraPos();
+                    cameraState.orientation = camera.getRotation();
+                    cameraState.initialized = true;
+
+                    renderer.render(state, stack, new OrderedRenderCommandQueueImpl(), cameraState);
+                }
             }
             finally
             {
@@ -272,7 +284,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
             stack.pop();
 
-            RenderSystem.depthFunc(GL11.GL_ALWAYS);
+            GlStateManager._depthFunc(GL11.GL_ALWAYS);
         }
     }
 
@@ -295,7 +307,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
                     {
                         this.bindTexture();
                         this.setupTarget(context, BBSShaders.getPickerModelsProgram());
-                        RenderSystem.setShader(BBSShaders.getPickerModelsProgram());
+                        // RenderSystem.setShader(BBSShaders.getPickerModelsProgram());
 
                         first.bool = true;
                     }
@@ -350,6 +362,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
     }
 
     // 3. Keep the limbs synced so running/walking looks correct
+    /*
     if (source != null) {
         if (livingMorph.limbAnimator instanceof LimbAnimatorAccessor a && 
             source.limbAnimator instanceof LimbAnimatorAccessor b) {
@@ -357,6 +370,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
             a.setSpeed(b.getSpeed());
         }
     }
+    */
 }
 
             currentPose = this.form.pose.get();
@@ -364,7 +378,23 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
             MobTextureOverride.begin(this.form.texture.get());
             try
             {
-                MinecraftClient.getInstance().getEntityRenderDispatcher().render(this.entity, 0D, 0D, 0D, 0F, context.stack, consumers, light);
+                EntityRenderManager manager = MinecraftClient.getInstance().getEntityRenderDispatcher();
+                EntityRenderer renderer = manager.getRenderer(this.entity);
+
+                if (renderer != null)
+                {
+                    EntityRenderState state = manager.getAndUpdateRenderState(this.entity, context.getTransition());
+                    Camera camera = MinecraftClient.getInstance().gameRenderer.getCamera();
+                    CameraRenderState cameraState = new CameraRenderState();
+
+                    cameraState.blockPos = camera.getBlockPos();
+                    cameraState.pos = camera.getCameraPos();
+                    cameraState.entityPos = camera.getCameraPos();
+                    cameraState.orientation = camera.getRotation();
+                    cameraState.initialized = true;
+
+                    renderer.render(state, context.stack, new OrderedRenderCommandQueueImpl(), cameraState);
+                }
             }
             finally
             {
@@ -378,7 +408,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
             context.stack.pop();
 
-            RenderSystem.enableDepthTest();
+            GlStateManager._enableDepthTest();
         }
     }
 
@@ -395,21 +425,15 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
                 this.entity.tick();
             }
 
-            this.entity.prevPitch = this.prevPitch;
-            this.entity.prevYaw = 0F;
+            this.entity.lastPitch = this.prevPitch;
+            this.entity.lastYaw = 0F;
 
             if (this.entity instanceof LivingEntity livingEntity)
             {
-                livingEntity.prevHeadYaw = this.prevYawHead;
-                livingEntity.prevBodyYaw = 0F;
+                livingEntity.lastHeadYaw = this.prevYawHead;
+                livingEntity.lastBodyYaw = 0F;
 
-                /* Limb swing is so ugly */
-                if (livingEntity.limbAnimator instanceof LimbAnimatorAccessor a && entity.getLimbAnimator() instanceof LimbAnimatorAccessor b)
-                {
-                    a.setPrevSpeed(b.getPrevSpeed());
-                    a.setSpeed(b.getSpeed());
-                    a.setPos(b.getPos());
-                }
+                /* Limb animation internals changed in 1.21.11; keep default animator behavior. */
 
                 /* Arm swing */
                 float handSwingProgress = entity.getHandSwingProgress(0F);

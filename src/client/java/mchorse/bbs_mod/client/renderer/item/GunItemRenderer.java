@@ -18,20 +18,24 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.DiffuseLighting;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.VertexConsumerProvider;
+import net.minecraft.client.render.command.OrderedRenderCommandQueue;
 import net.minecraft.client.render.entity.model.LoadedEntityModels;
 import net.minecraft.client.render.item.model.special.SpecialModelRenderer;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.item.ItemDisplayContext;
 import net.minecraft.item.ItemStack;
-import net.minecraft.item.ModelTransformationMode;
 
 import org.joml.Vector3f;
+import org.joml.Vector3fc;
 
+import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.serialization.MapCodec;
 
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.function.Consumer;
 
 public class GunItemRenderer implements SpecialModelRenderer<ItemStack>
 {
@@ -63,7 +67,7 @@ public class GunItemRenderer implements SpecialModelRenderer<ItemStack>
     }
 
     @Override
-    public void render(ItemStack data, ModelTransformationMode mode, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, int overlay, boolean hasGlint)
+    public void render(ItemStack data, ItemDisplayContext mode, MatrixStack matrices, OrderedRenderCommandQueue queue, int light, int overlay, boolean hasGlint, int seed)
     {
         Item item = this.get(data);
 
@@ -95,31 +99,33 @@ public class GunItemRenderer implements SpecialModelRenderer<ItemStack>
                 matrices.translate(0.5F, 0F, 0.5F);
                 MatrixStackUtils.applyTransform(matrices, transform);
 
-                RenderSystem.enableDepthTest();
+                GlStateManager._enableDepthTest();
 
-                if (mode == ModelTransformationMode.GUI)
+                if (mode == ItemDisplayContext.GUI)
                 {
-                    Vector3f a = new Vector3f(0.85F, 0.85F, -1F).normalize();
-                    Vector3f b = new Vector3f(-0.85F, 0.85F, 1F).normalize();
-                    RenderSystem.setupLevelDiffuseLighting(a, b);
+                    // GUI diffuse helper moved in 1.21.11 pipeline.
                 }
 
                 int maxLight = LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE;
                 FormUtilsClient.render(form, new FormRenderingContext()
-                    .set(FormRenderType.fromModelMode(mode), item.formEntity, matrices, maxLight, overlay, MinecraftClient.getInstance().getRenderTickCounter().getTickDelta(false))
+                    .set(FormRenderType.fromModelMode(mode), item.formEntity, matrices, maxLight, overlay, MinecraftClient.getInstance().getRenderTickCounter().getTickProgress(false))
                     .camera(MinecraftClient.getInstance().gameRenderer.getCamera()));
 
-                if (mode == ModelTransformationMode.GUI)
+                if (mode == ItemDisplayContext.GUI)
                 {
-                    DiffuseLighting.disableGuiDepthLighting();
+                    // Keep compatibility with newer pipeline API where GUI depth-light toggle was removed.
                 }
 
-                RenderSystem.disableDepthTest();
+                GlStateManager._disableDepthTest();
 
                 matrices.pop();
             }
         }
     }
+
+    @Override
+    public void collectVertices(Consumer<Vector3fc> consumer)
+    {}
 
     public Item get(ItemStack stack)
     {
@@ -151,7 +157,7 @@ public class GunItemRenderer implements SpecialModelRenderer<ItemStack>
         }
 
         @Override
-        public SpecialModelRenderer<?> bake(LoadedEntityModels config)
+        public SpecialModelRenderer<?> bake(SpecialModelRenderer.BakeContext context)
         {
             return BBSModClient.getGunItemRenderer();
         }

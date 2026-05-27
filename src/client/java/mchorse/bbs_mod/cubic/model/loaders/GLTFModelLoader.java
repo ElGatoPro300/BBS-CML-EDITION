@@ -27,6 +27,8 @@ import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 import mchorse.bbs_mod.utils.resources.Pixels;
 
+import net.minecraft.client.MinecraftClient;
+
 import com.mojang.blaze3d.systems.RenderSystem;
 
 import org.lwjgl.opengl.GL11;
@@ -127,7 +129,7 @@ public class GLTFModelLoader implements IModelLoader
                         {
                             Link embeddedLink = new Link(gltfLink.source, gltfLink.path + "/embedded_texture.png");
                             
-                            RenderSystem.recordRenderCall(() -> 
+                            MinecraftClient.getInstance().execute(() -> 
                             {
                                 try
                                 {
