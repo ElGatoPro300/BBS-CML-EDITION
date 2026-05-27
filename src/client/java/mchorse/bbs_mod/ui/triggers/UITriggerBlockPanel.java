@@ -41,8 +41,11 @@ import org.joml.Vector3f;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.TreeSet;
 
 /**
  * Trigger block panel with the same windowing system as the model block panel.
@@ -353,19 +356,19 @@ public class UITriggerBlockPanel extends UIDashboardPanel implements IFlightSupp
         }
     }
 
-    private java.util.List<Integer> columnsOnSide(int side)
+    private List<Integer> columnsOnSide(int side)
     {
-        java.util.TreeSet<Integer> cols = new java.util.TreeSet<>();
+        TreeSet<Integer> cols = new TreeSet<>();
         for (int i = 0; i < 3; i++)
         {
             if (isCardVisible(i) && isCardDocked(i) && getCardDockSide(i) == side) cols.add(getCardDockColumn(i));
         }
-        return new java.util.ArrayList<>(cols);
+        return new ArrayList<>(cols);
     }
 
-    private java.util.List<Integer> cardsInColumn(int side, int column)
+    private List<Integer> cardsInColumn(int side, int column)
     {
-        java.util.List<Integer> list = new java.util.ArrayList<>();
+        List<Integer> list = new ArrayList<>();
         for (int i = 0; i < 3; i++)
         {
             if (isCardVisible(i) && isCardDocked(i) && getCardDockSide(i) == side && getCardDockColumn(i) == column) list.add(i);
@@ -378,11 +381,11 @@ public class UITriggerBlockPanel extends UIDashboardPanel implements IFlightSupp
     {
         for (int side = 0; side <= SIDE_RIGHT; side++)
         {
-            java.util.List<Integer> cols = columnsOnSide(side);
+            List<Integer> cols = columnsOnSide(side);
             for (int newCol = 0; newCol < cols.size(); newCol++)
             {
                 int oldCol = cols.get(newCol);
-                java.util.List<Integer> cards = cardsInColumn(side, oldCol);
+                List<Integer> cards = cardsInColumn(side, oldCol);
                 for (int row = 0; row < cards.size(); row++) setCardDockRow(cards.get(row), row);
                 for (int card : cards) setCardDockColumn(card, 100 + newCol);
             }
@@ -432,9 +435,9 @@ public class UITriggerBlockPanel extends UIDashboardPanel implements IFlightSupp
         }
     }
 
-    private java.util.List<DockZone> computeDockZones(int draggingCard)
+    private List<DockZone> computeDockZones(int draggingCard)
     {
-        java.util.List<DockZone> zones = new java.util.ArrayList<>();
+        List<DockZone> zones = new ArrayList<>();
         boolean[] sideHasCard = new boolean[2];
 
         for (int j = 0; j < 3; j++)
@@ -497,7 +500,7 @@ public class UITriggerBlockPanel extends UIDashboardPanel implements IFlightSupp
         {
             setCardDockColumn(i, zone.column);
 
-            java.util.List<Integer> existing = new java.util.ArrayList<>();
+            List<Integer> existing = new ArrayList<>();
             for (int j = 0; j < 3; j++)
             {
                 if (j != i && isCardVisible(j) && isCardDocked(j) && getCardDockSide(j) == zone.side && getCardDockColumn(j) == zone.column)
@@ -643,7 +646,7 @@ public class UITriggerBlockPanel extends UIDashboardPanel implements IFlightSupp
 
         for (int side = SIDE_LEFT; side <= SIDE_RIGHT; side++)
         {
-            java.util.List<Integer> columns = columnsOnSide(side);
+            List<Integer> columns = columnsOnSide(side);
             if (columns.isEmpty()) continue;
 
             int[] colWidths = new int[columns.size()];
@@ -668,7 +671,7 @@ public class UITriggerBlockPanel extends UIDashboardPanel implements IFlightSupp
 
             for (int c = 0; c < columns.size(); c++)
             {
-                java.util.List<Integer> cards = cardsInColumn(side, columns.get(c));
+                List<Integer> cards = cardsInColumn(side, columns.get(c));
                 int count = cards.size();
                 if (count == 0) continue;
 
@@ -842,7 +845,7 @@ public class UITriggerBlockPanel extends UIDashboardPanel implements IFlightSupp
         {
             int dropY = context.mouseY - this.area.y;
 
-            java.util.List<DockZone> zones = computeDockZones(draggingCard);
+            List<DockZone> zones = computeDockZones(draggingCard);
             DockZone hoveredZone = null;
             for (DockZone zone : zones)
             {
