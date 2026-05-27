@@ -10,14 +10,11 @@ import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.utils.IFileDropListener;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.utils.FFMpegUtils;
-
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
-
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.Text;
-
 import org.lwjgl.glfw.GLFW;
 
 import java.io.File;
@@ -104,7 +101,10 @@ public class UIScreen extends Screen implements IFileDropListener
 
         this.menu.onClose(null);
 
-        MinecraftClient.getInstance().options.hudHidden = false;
+        if (this.menu.canHideHUD())
+        {
+            MinecraftClient.getInstance().options.hudHidden = false;
+        }
     }
 
     @Override
@@ -119,7 +119,10 @@ public class UIScreen extends Screen implements IFileDropListener
 
         this.menu.onOpen(null);
 
-        MinecraftClient.getInstance().options.hudHidden = this.menu.canHideHUD();
+        if (this.menu.canHideHUD())
+        {
+            MinecraftClient.getInstance().options.hudHidden = true;
+        }
     }
 
     @Override
@@ -194,7 +197,6 @@ public class UIScreen extends Screen implements IFileDropListener
         this.menu.context.setTransition(this.client.getTickDelta());
         this.menu.renderMenu(this.context, mouseX, mouseY);
         this.menu.context.render.executeRunnables();
-        this.client.options.hudHidden = this.menu.canHideHUD();
     }
 
     @Override

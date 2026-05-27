@@ -10,7 +10,6 @@ import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.pose.UIPoseEditor;
 import mchorse.bbs_mod.utils.StringUtils;
-
 import org.joml.Matrix4f;
 
 public class UIModelForm extends UIForm<ModelForm>
@@ -40,11 +39,6 @@ public class UIModelForm extends UIForm<ModelForm>
     @Override
     public UIPropTransform getEditableTransform()
     {
-        if (this.view != this.modelPanel)
-        {
-            this.setPanel(this.modelPanel);
-        }
-
         return this.modelPanel.poseEditor.transform;
     }
 
@@ -54,6 +48,6 @@ public class UIModelForm extends UIForm<ModelForm>
         String path = FormUtils.getPath(this.form);
         UIPoseEditor poseEditor = this.modelPanel.poseEditor;
 
-        return this.getOrigin(transition, StringUtils.combinePaths(path, poseEditor.groups.list.getCurrentFirst()), poseEditor.transform.isLocal());
+        return this.getOrigin(transition, StringUtils.combinePaths(path, poseEditor.groups.getCurrentFirst()), poseEditor.transform.isLocal());
     }
 }

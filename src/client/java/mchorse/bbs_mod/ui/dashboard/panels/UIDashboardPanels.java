@@ -57,7 +57,7 @@ public class UIDashboardPanels extends UIElement
         {
             for (int i = 0, c = this.panels.size(); i < c; i++)
             {
-                if (this.panel != null && this.panel.getMainPanel() == this.panels.get(i))
+                if (this.panel == this.panels.get(i))
                 {
                     renderHighlight(context.batcher, ((UIIcon) this.panelButtons.getChildren().get(i)).area);
                 }

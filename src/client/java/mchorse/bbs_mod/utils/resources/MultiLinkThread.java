@@ -3,7 +3,6 @@ package mchorse.bbs_mod.utils.resources;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.graphics.texture.Texture;
-
 import net.minecraft.client.MinecraftClient;
 
 import java.io.IOException;

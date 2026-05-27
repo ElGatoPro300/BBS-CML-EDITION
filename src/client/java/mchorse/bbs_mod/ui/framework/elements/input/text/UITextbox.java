@@ -5,7 +5,6 @@ import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.utils.ITextColoring;
 import mchorse.bbs_mod.utils.Patterns;
-
 import org.lwjgl.glfw.GLFW;
 
 import java.util.function.Consumer;

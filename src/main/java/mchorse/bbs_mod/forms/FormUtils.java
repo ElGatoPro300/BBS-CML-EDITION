@@ -75,11 +75,6 @@ public class FormUtils
 
     public static Form getForm(BaseValue property)
     {
-        if (property == null)
-        {
-            return null;
-        }
-
         if (property.getParent() instanceof Form form)
         {
             return form;

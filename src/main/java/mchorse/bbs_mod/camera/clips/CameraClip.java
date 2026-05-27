@@ -8,11 +8,6 @@ import mchorse.bbs_mod.utils.interps.Lerps;
 
 public abstract class CameraClip extends Clip
 {
-    public boolean isPositionClip()
-    {
-        return true;
-    }
-
     public void shutdown(ClipContext context)
     {}
 

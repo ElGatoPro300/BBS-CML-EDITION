@@ -4,13 +4,10 @@ import mchorse.bbs_mod.film.BaseFilmController;
 import mchorse.bbs_mod.film.Film;
 import mchorse.bbs_mod.film.FilmControllerContext;
 import mchorse.bbs_mod.film.replays.Replay;
-import mchorse.bbs_mod.forms.FormUtilsClient;
-import mchorse.bbs_mod.forms.ITickable;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.entities.MCEntity;
 import mchorse.bbs_mod.forms.entities.StubEntity;
 import mchorse.bbs_mod.forms.forms.Form;
-import mchorse.bbs_mod.forms.renderers.FormRenderer;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.settings.values.ui.ValueOnionSkin;
 import mchorse.bbs_mod.utils.CollectionUtils;
@@ -19,7 +16,6 @@ import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 import mchorse.bbs_mod.utils.keyframes.KeyframeSegment;
-
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 
 import java.util.List;
@@ -213,7 +209,6 @@ public class FilmEditorController extends BaseFilmController
             replay.keyframes.apply(tick1, entity);
             float tick = (int) keyframe.getTick();
             Form form = entity.getForm();
-            replay.properties.resetProperties(form);
             replay.properties.applyProperties(form, tick);
 
             BaseFilmController.renderEntity(FilmControllerContext.instance

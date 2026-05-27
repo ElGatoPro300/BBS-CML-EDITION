@@ -1,5 +1,7 @@
 package mchorse.bbs_mod.camera.clips;
 
+import io.netty.util.collection.IntObjectHashMap;
+import io.netty.util.collection.IntObjectMap;
 import mchorse.bbs_mod.camera.data.Position;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.utils.clips.Clip;
@@ -8,9 +10,6 @@ import mchorse.bbs_mod.utils.clips.ClipContext;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Predicate;
-
-import io.netty.util.collection.IntObjectHashMap;
-import io.netty.util.collection.IntObjectMap;
 
 public class CameraClipContext extends ClipContext<CameraClip, Position>
 {
@@ -61,32 +60,29 @@ public class CameraClipContext extends ClipContext<CameraClip, Position>
 
             ((CameraClip) clip).apply(this, position);
 
-            if (((CameraClip) clip).isPositionClip())
+            if (this.captureSnapshots)
             {
-                if (this.captureSnapshots)
-                {
-                    Position snapshot = new Position();
+                Position snapshot = new Position();
 
-                    snapshot.copy(position);
-                    this.snapshots.put(clip, snapshot);
-                }
-
-                double dx = position.point.x - this.lastPosition.point.x;
-                double dy = position.point.y - this.lastPosition.point.y;
-                double dz = position.point.z - this.lastPosition.point.z;
-
-                if (Double.isNaN(this.distance))
-                {
-                    this.distance = 0;
-                }
-
-                this.velocity = Math.sqrt(dx * dx + dy * dy + dz * dz);
-                this.distance += this.velocity;
-
-                this.lastPosition.copy(position);
-
-                this.count += 1;
+                snapshot.copy(position);
+                this.snapshots.put(clip, snapshot);
             }
+
+            double dx = position.point.x - this.lastPosition.point.x;
+            double dy = position.point.y - this.lastPosition.point.y;
+            double dz = position.point.z - this.lastPosition.point.z;
+
+            if (Double.isNaN(this.distance))
+            {
+                this.distance = 0;
+            }
+
+            this.velocity = Math.sqrt(dx * dx + dy * dy + dz * dz);
+            this.distance += this.velocity;
+
+            this.lastPosition.copy(position);
+
+            this.count += 1;
 
             return true;
         }

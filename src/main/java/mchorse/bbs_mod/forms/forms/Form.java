@@ -21,7 +21,6 @@ import mchorse.bbs_mod.settings.values.numeric.ValueFloat;
 import mchorse.bbs_mod.settings.values.numeric.ValueInt;
 import mchorse.bbs_mod.utils.StringUtils;
 import mchorse.bbs_mod.utils.pose.Transform;
-
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.attribute.EntityAttributes;
 
@@ -285,11 +284,6 @@ public abstract class Form extends ValueGroup
     protected String getDefaultDisplayName()
     {
         return this.getFormId();
-    }
-
-    public final String getDefaultDisplayNameForHud()
-    {
-        return this.getDefaultDisplayName();
     }
 
     public String getTrackName(String property)

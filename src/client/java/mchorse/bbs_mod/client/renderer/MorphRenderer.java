@@ -1,7 +1,6 @@
 package mchorse.bbs_mod.client.renderer;
 
-import mchorse.bbs_mod.data.types.MapType;
-import mchorse.bbs_mod.forms.FormUtils;
+import com.mojang.blaze3d.systems.RenderSystem;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.forms.MobForm;
@@ -16,7 +15,6 @@ import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.UIScreen;
 import mchorse.bbs_mod.ui.morphing.UIMorphingPanel;
 import mchorse.bbs_mod.utils.interps.Lerps;
-
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.render.VertexConsumerProvider;
@@ -25,33 +23,12 @@ import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.util.math.RotationAxis;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-
 public class MorphRenderer
 {
     public static boolean hidePlayer = false;
 
     public static boolean renderPlayer(AbstractClientPlayerEntity player, float f, float g, MatrixStack matrixStack, VertexConsumerProvider vertexConsumerProvider, int i)
     {
-        Morph morph = Morph.getMorph(player);
-        Form playerForm = morph != null ? morph.getForm() : null;
-
-        UIBaseMenu menu = UIScreen.getCurrentMenu();
-        if (menu instanceof UIDashboard dashboard)
-        {
-            UIDashboardPanel panel = dashboard.getPanels().panel;
-
-            if (panel instanceof UIMorphingPanel morphingPanel && morphingPanel.palette.editor.isEditing())
-            {
-                Form editingForm = morphingPanel.palette.editor.form;
-
-                if (!areFormsEquivalent(editingForm, playerForm))
-                {
-                    return true;
-                }
-            }
-        }
-
         if (hidePlayer)
         {
             if (FormUtilsClient.getCurrentForm() instanceof MobForm form && !form.isPlayer())
@@ -60,9 +37,11 @@ public class MorphRenderer
             }
         }
 
+        Morph morph = Morph.getMorph(player);
+
         if (morph != null && morph.getForm() != null)
         {
-            if (canRender(playerForm))
+            if (canRender())
             {
                 RenderSystem.enableDepthTest();
 
@@ -87,7 +66,7 @@ public class MorphRenderer
         return false;
     }
 
-    private static boolean canRender(Form playerForm)
+    private static boolean canRender()
     {
         UIBaseMenu menu = UIScreen.getCurrentMenu();
         
@@ -95,24 +74,13 @@ public class MorphRenderer
         {
             UIDashboardPanel panel = dashboard.getPanels().panel;
 
-            if (panel instanceof UIMorphingPanel morphingPanel && morphingPanel.palette.editor.isEditing())
+            if (panel instanceof UIMorphingPanel morphingPanel)
             {
-                return areFormsEquivalent(morphingPanel.palette.editor.form, playerForm);
+                return !morphingPanel.palette.editor.isEditing();
             }
         }
 
         return true;
-    }
-
-    private static boolean areFormsEquivalent(Form a, Form b)
-    {
-        if (a == b) return true;
-        if (a == null || b == null) return false;
-
-        MapType dataA = FormUtils.toData(a);
-        MapType dataB = FormUtils.toData(b);
-
-        return dataA != null && dataA.equals(dataB);
     }
 
     public static boolean renderLivingEntity(LivingEntity livingEntity, float f, float g, MatrixStack matrixStack, VertexConsumerProvider vertexConsumerProvider, int i, int o)

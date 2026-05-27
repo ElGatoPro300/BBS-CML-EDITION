@@ -8,7 +8,6 @@ import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.utils.EventPropagation;
 import mchorse.bbs_mod.utils.colors.Colors;
-
 import org.lwjgl.glfw.GLFW;
 
 import java.util.function.Consumer;
@@ -71,7 +70,7 @@ public class UIFormPalette extends UIElement implements IUIFormList
 
         this.add(this.list, this.editor);
 
-        this.mouseEventPropagataion(EventPropagation.BLOCK_INSIDE).keyboardEventPropagataion(EventPropagation.PASS).markContainer();
+        this.eventPropagataion(EventPropagation.BLOCK_INSIDE).markContainer();
 
         this.keys().register(Keys.FORMS_EDIT, () ->
         {
@@ -80,15 +79,6 @@ public class UIFormPalette extends UIElement implements IUIFormList
                 this.toggleEditor();
             }
         });
-        this.keys().register(Keys.FORMS_EDIT_ALT, () ->
-        {
-            if (!this.editor.isEditing())
-            {
-                this.toggleEditor();
-            }
-        });
-        this.keys().register(Keys.FORMS_FOCUS, () -> this.list.focusSearch());
-        this.keys().ignoreFocus();
     }
 
     public void noBackground()
@@ -153,7 +143,6 @@ public class UIFormPalette extends UIElement implements IUIFormList
     @Override
     public void toggleEditor()
     {
-        this.list.closeOpenedCategoryPopup();
         this.events.emit(new UIToggleEditorEvent(this, !this.editor.isEditing()));
 
         if (!this.editor.isEditing())
@@ -223,7 +212,7 @@ public class UIFormPalette extends UIElement implements IUIFormList
             }
         }
 
-        return super.subKeyPressed(context);
+        return false;
     }
 
     @Override

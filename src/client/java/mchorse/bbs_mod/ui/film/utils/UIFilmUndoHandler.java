@@ -4,15 +4,10 @@ import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.network.ClientNetwork;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
-import mchorse.bbs_mod.settings.values.core.ValueGroup;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
-import mchorse.bbs_mod.ui.film.utils.undo.ValueChangeUndo;
 import mchorse.bbs_mod.ui.forms.editors.UIFormUndoHandler;
-import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.utils.Timer;
 import mchorse.bbs_mod.utils.clips.Clips;
-import mchorse.bbs_mod.utils.undo.CompoundUndo;
-import mchorse.bbs_mod.utils.undo.IUndo;
 
 import java.util.HashSet;
 import java.util.Iterator;
@@ -23,100 +18,16 @@ public class UIFilmUndoHandler extends UIFormUndoHandler
 {
     private Timer actionsTimer = new Timer(100);
     private Set<BaseValue> syncData = new HashSet<>();
-    private boolean isUndoing;
 
     public UIFilmUndoHandler(UIFilmPanel panel)
     {
         super(panel);
     }
 
-    public boolean undo(ValueGroup context)
-    {
-        this.isUndoing = true;
-
-        try
-        {
-            return this.undoManager.undo(context);
-        }
-        finally
-        {
-            this.isUndoing = false;
-        }
-    }
-
-    public boolean redo(ValueGroup context)
-    {
-        this.isUndoing = true;
-
-        try
-        {
-            return this.undoManager.redo(context);
-        }
-        finally
-        {
-            this.isUndoing = false;
-        }
-    }
-
-    @Override
-    public void reset()
-    {
-        super.reset();
-
-        this.undoManager.setCallback(this::handleFilmUndos);
-    }
-
-    private void handleFilmUndos(IUndo<ValueGroup> undo, boolean redo)
-    {
-        this.isUndoing = true;
-
-        try
-        {
-            IUndo<ValueGroup> anotherUndo = undo;
-
-            if (anotherUndo instanceof CompoundUndo)
-            {
-                anotherUndo = ((CompoundUndo<ValueGroup>) anotherUndo).getFirst(ValueChangeUndo.class);
-            }
-
-            if (anotherUndo instanceof ValueChangeUndo)
-            {
-                ValueChangeUndo change = (ValueChangeUndo) anotherUndo;
-                UIElement root = this.uiElement.getRoot();
-                if (root != null)
-                {
-                    root.applyAllUndoData(change.getUIData(redo));
-                }
-            }
-        }
-        catch (Exception e)
-        {
-            e.printStackTrace();
-        }
-        finally
-        {
-            this.isUndoing = false;
-        }
-    }
-
-    @Override
-    public void handlePreValues(BaseValue baseValue, int flag)
-    {
-        if (this.isUndoing)
-        {
-            return;
-        }
-
-        super.handlePreValues(baseValue, flag);
-    }
-
     @Override
     protected void handleValue(BaseValue value)
     {
-        if (!this.isUndoing)
-        {
-            super.handleValue(value);
-        }
+        super.handleValue(value);
 
         if (this.isReplayActions(value))
         {
@@ -132,8 +43,6 @@ public class UIFilmUndoHandler extends UIFormUndoHandler
 
         if (this.actionsTimer.checkReset())
         {
-            this.submitUndo();
-
             for (BaseValue syncData : this.syncData)
             {
                 ClientNetwork.sendSyncData(((UIFilmPanel) this.uiElement).getData().getId(), syncData);
@@ -149,14 +58,19 @@ public class UIFilmUndoHandler extends UIFormUndoHandler
 
         if (
             path.endsWith("/replays") ||
-            path.contains("/keyframes/") ||
-            path.contains("/properties/") ||
-            path.endsWith("/drop_items_on_death") ||
+            path.endsWith("/keyframes") ||
+            path.contains("/keyframes/x") ||
+            path.contains("/keyframes/y") ||
+            path.contains("/keyframes/z") ||
+            path.contains("/keyframes/item_main_hand") ||
+            path.contains("/keyframes/item_off_hand") ||
+            path.contains("/keyframes/item_head") ||
+            path.contains("/keyframes/item_chest") ||
+            path.contains("/keyframes/item_legs") ||
+            path.contains("/keyframes/item_feet") ||
             path.endsWith("/actor") ||
             path.endsWith("/enabled") ||
-            path.endsWith("/form") ||
-            path.endsWith("/inventory") ||
-            path.contains("/drop_velocity_")
+            path.endsWith("/form")
         ) {
             return true;
         }

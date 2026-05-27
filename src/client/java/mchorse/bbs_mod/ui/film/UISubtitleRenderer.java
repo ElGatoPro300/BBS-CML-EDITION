@@ -1,5 +1,8 @@
 package mchorse.bbs_mod.ui.film;
 
+import com.mojang.blaze3d.platform.GlStateManager;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.systems.VertexSorter;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.camera.clips.misc.Subtitle;
 import mchorse.bbs_mod.client.BBSShaders;
@@ -12,24 +15,16 @@ import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.StringUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.pose.Transform;
-
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.GlUniform;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.util.math.MatrixStack;
-
 import org.joml.Matrix4f;
-
-import com.mojang.blaze3d.platform.GlStateManager;
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.systems.VertexSorter;
-
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL30;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.function.Supplier;
 
@@ -167,15 +162,5 @@ public class UISubtitleRenderer
 
         RenderSystem.setProjectionMatrix(cache, VertexSorter.BY_Z);
         RenderSystem.enableCull();
-    }
-
-    public static void renderSubtitle(MatrixStack stack, Batcher2D batcher, Subtitle subtitle)
-    {
-        if (subtitle == null)
-        {
-            return;
-        }
-
-        renderSubtitles(stack, batcher, Collections.singletonList(subtitle));
     }
 }

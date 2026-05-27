@@ -9,7 +9,6 @@ import mchorse.bbs_mod.settings.values.core.ValueColor;
 import mchorse.bbs_mod.settings.values.core.ValueLink;
 import mchorse.bbs_mod.settings.values.core.ValuePose;
 import mchorse.bbs_mod.settings.values.core.ValueString;
-import mchorse.bbs_mod.settings.values.numeric.ValueFloat;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.pose.Pose;
 
@@ -20,8 +19,6 @@ public class ModelForm extends Form
 {
     public final ValueLink texture = new ValueLink("texture", null);
     public final ValueString model = new ValueString("model", "");
-    public final ValueFloat pbrNormalIntensity = new ValueFloat("pbr_normal_intensity", 1F, 0F, 4F);
-    public final ValueFloat pbrSpecularIntensity = new ValueFloat("pbr_specular_intensity", 1F, 0F, 4F);
     public final ValuePose pose = new ValuePose("pose", new Pose());
     public final ValuePose poseOverlay = new ValuePose("pose_overlay", new Pose());
     public final ValueActionsConfig actions = new ValueActionsConfig("actions", new ActionsConfig());
@@ -36,8 +33,6 @@ public class ModelForm extends Form
 
         this.add(this.texture);
         this.add(this.model);
-        this.add(this.pbrNormalIntensity);
-        this.add(this.pbrSpecularIntensity);
         this.add(this.pose);
         this.add(this.poseOverlay);
 
