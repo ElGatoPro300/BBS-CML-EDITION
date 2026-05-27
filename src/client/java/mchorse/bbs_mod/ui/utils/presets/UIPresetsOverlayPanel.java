@@ -1,17 +1,18 @@
 package mchorse.bbs_mod.ui.utils.presets;
 
 import mchorse.bbs_mod.data.types.MapType;
-import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.UIKeys;
-import mchorse.bbs_mod.ui.framework.elements.input.list.UIStringList;
+import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
+import mchorse.bbs_mod.ui.framework.elements.input.list.UISearchList;
+import mchorse.bbs_mod.ui.framework.elements.input.list.UIStringList;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIListOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
-import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.Direction;
+import mchorse.bbs_mod.utils.colors.Colors;
 
 public class UIPresetsOverlayPanel extends UIListOverlayPanel
 {
@@ -150,7 +151,7 @@ public class UIPresetsOverlayPanel extends UIListOverlayPanel
         }
     }
 
-    private class PresetsSearchList extends mchorse.bbs_mod.ui.framework.elements.input.list.UISearchList<String>
+    private class PresetsSearchList extends UISearchList<String>
     {
         public PresetsSearchList()
         {
