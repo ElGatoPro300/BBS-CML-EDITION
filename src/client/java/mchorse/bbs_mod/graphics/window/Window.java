@@ -22,11 +22,10 @@ public class Window
     private static long lastScroll;
     private static long arrowCursor = -1L;
     private static long activeCursor = -1L;
-
-    public static net.minecraft.client.util.Window getWindow()
+    
     private static MapType inMemoryClipboard;
 
-    public static long getWindow()
+    public static net.minecraft.client.util.Window getWindow()
     {
         return MinecraftClient.getInstance().getWindow();
     }
