@@ -304,7 +304,19 @@ public class ActionPlayer
     {
         BaseValue current = this.film;
 
-        for (int i = 0; i < path.size(); i++)
+        int start = 0;
+
+        if (this.film != null && path.size() > 0)
+        {
+            String filmId = this.film.getId();
+
+            if (filmId != null && !filmId.isEmpty() && filmId.equals(path.strings.get(0)))
+            {
+                start = 1;
+            }
+        }
+
+        for (int i = start; i < path.size(); i++)
         {
             String part = path.strings.get(i);
 

@@ -29,8 +29,6 @@ import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UISearchList;
 import mchorse.bbs_mod.ui.framework.elements.input.text.UITextEditor;
-import mchorse.bbs_mod.ui.framework.elements.navigation.UIControlBar;
-import mchorse.bbs_mod.ui.framework.elements.navigation.UIIconTabButton;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIConfirmOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
@@ -64,12 +62,6 @@ import mchorse.bbs_mod.utils.interps.Interpolations;
 import mchorse.bbs_mod.utils.resources.Pixels;
 
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.render.BufferBuilder;
-import net.minecraft.client.render.GameRenderer;
-import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.render.VertexFormats;
-
-import org.joml.Matrix4f;
 
 import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.vertex.VertexFormat;
@@ -512,7 +504,7 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
         String selectedId = this.getSelectedHomeParticleId();
         if (selectedId != null && this.data != null && selectedId.equals(this.data.getId()))
         {
-            Window.setClipboard(this.data.toData().asMap(), "_ContentType_" + this.getType().getId());
+            Window.setInMemoryClipboard(this.data.toData().asMap(), "_ContentType_" + this.getType().getId());
         }
     }
 
