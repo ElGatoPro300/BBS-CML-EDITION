@@ -124,6 +124,7 @@ public class BBSSettings
     public static ValueBoolean renderAllModelBlocks;
     public static ValueBoolean clickModelBlocks;
     public static ValueBoolean modelBlockCategoriesPanelEnabled;
+    public static ValueFloat modelBlockAnimationStateDistance;
     public static ValueString modelBlockPanelLayout;
     public static ValueString triggerBlockPanelLayout;
 
@@ -162,6 +163,8 @@ public class BBSSettings
     public static ValueString cdnUrl;
     public static ValueString cdnToken;
     public static ValueBoolean morphingAutoMorph;
+
+    public static ValueBoolean usingInMemoryClipboard;
 
     public static int primaryColor()
     {
@@ -328,6 +331,7 @@ public class BBSSettings
         presetsGridCellSize.invisible();
         replayFpBobbingIntensity = builder.getFloat("replay_fp_bobbing_intensity", 0.25F, 0F, 2F);
         replayFpBobbingFrequency = builder.getFloat("replay_fp_bobbing_frequency", 0.25F, 0F, 3F);
+        usingInMemoryClipboard = builder.getBoolean("using_in_memory_clipboard", false);
 
         builder.category("recording");
         recordingCountdown = builder.getFloat("countdown", 1.5F, 0F, 30F);
@@ -340,6 +344,7 @@ public class BBSSettings
         builder.category("model_blocks");
         renderAllModelBlocks = builder.getBoolean("render_all", true);
         clickModelBlocks = builder.getBoolean("click", true);
+        modelBlockAnimationStateDistance = builder.getFloat("distance", 64F);
         modelBlockCategoriesPanelEnabled = builder.getBoolean("categories_panel_enabled", false);
         modelPbrPanelControls = builder.getBoolean("model_pbr_panel_controls", false);
         modelBlockPanelLayout = builder.getString("panel_layout", "");

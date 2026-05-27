@@ -26,7 +26,6 @@
         "RenderLayerTextureOverrideMixin",
         "ClientWorldPropertiesMixin",
         "sodium.ColorAttributeMixin",
-        "iris.EntityVertexMixin",
         "KeyboardInputMixin",
         "EntityRendererMixin",
         "ClientPlayerEntityAccessor",

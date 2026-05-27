@@ -37,8 +37,6 @@ import mchorse.bbs_mod.ui.framework.elements.UIScrollView;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UISearchList;
-import mchorse.bbs_mod.ui.framework.elements.navigation.UIControlBar;
-import mchorse.bbs_mod.ui.framework.elements.navigation.UIIconTabButton;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIConfirmOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
@@ -47,7 +45,6 @@ import mchorse.bbs_mod.ui.framework.elements.utils.UIRenderable;
 import mchorse.bbs_mod.ui.home.UIHomePanel;
 import mchorse.bbs_mod.ui.model.UIModelIKPanel;
 import mchorse.bbs_mod.ui.utils.Area;
-import mchorse.bbs_mod.ui.utils.ScrollDirection;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
@@ -61,14 +58,6 @@ import mchorse.bbs_mod.utils.interps.Interpolations;
 import mchorse.bbs_mod.utils.resources.Pixels;
 
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.render.BufferBuilder;
-import net.minecraft.client.render.BufferRenderer;
-import net.minecraft.client.render.GameRenderer;
-import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.render.VertexFormat;
-import net.minecraft.client.render.VertexFormats;
-
-import org.joml.Matrix4f;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.logging.LogUtils;
@@ -825,7 +814,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
 
         this.getType().getRepository().load(selectedId, (model) -> {
             if (model != null) {
-                Window.setClipboard(model.toData().asMap(), "_ContentType_" + this.getType().getId());
+                Window.setInMemoryClipboard(model.toData().asMap(), "_ContentType_" + this.getType().getId());
             }
         });
     }
