@@ -101,6 +101,7 @@ public class BBSSettings
     public static ValueBoolean editorMuteRenderAudioClips;
     public static ValueInt editorTimeMode;
     public static ValueInt editorReplayEditorTitleLimit;
+    public static ValueBoolean editorAnchoredReplaysPanel;
     public static ValueBoolean editorReplayHud;
     public static ValueInt editorReplayHudPosition;
     public static ValueBoolean editorReplayHudDisplayName;
@@ -308,6 +309,7 @@ public class BBSSettings
         editorReplayStepSound = builder.getBoolean("replay_step_sound", false);
         editorMuteRenderAudioClips = builder.getBoolean("mute_render_audio_clips", false);
         editorTimeMode = builder.getInt("time_mode", 0, 0, 2);
+        editorAnchoredReplaysPanel = builder.getBoolean("anchored_replays_panel", false);
         editorReplayHud = builder.getBoolean("replay_hud", false);
         editorReplayHudPosition = builder.getInt("replay_hud_position", 0, 0, 3);
         editorReplayHudDisplayName = builder.getBoolean("replay_hud_display_name", true);

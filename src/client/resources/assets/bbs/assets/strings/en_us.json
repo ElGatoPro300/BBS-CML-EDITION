@@ -760,6 +760,7 @@
     "bbs.ui.film.layout.main_left": "Main panel on left",
     "bbs.ui.film.layout.main_right": "Main panel on right",
     "bbs.ui.film.layout.main_top": "Main panel on top",
+    "bbs.ui.film.layout.anchored_replays": "Anchored Replays panel",
     "bbs.ui.film.layout.presets": "Presets",
     "bbs.ui.film.layout.title": "Choose layout",
     "bbs.ui.film.layout.unlock": "Unlock layout handle",
