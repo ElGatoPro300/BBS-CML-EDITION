@@ -149,6 +149,8 @@ public class BBSSettings
     public static ValueBoolean poseBonesFilterMarked;
     public static ValueBoolean replayMarkedBonesOnly;
     public static ValueBoolean presetsGridPanel;
+    public static ValueBoolean presetsGridTrackers;
+    public static ValueInt presetsGridCellSize;
     public static ValueFloat replayFpBobbingIntensity;
     public static ValueFloat replayFpBobbingFrequency;
     public static ValueBoolean pickLimbTexture;
@@ -320,6 +322,10 @@ public class BBSSettings
         replayMarkedBonesOnly = builder.getBoolean("replay_marked_bones_only", false);
         editorReplayEditorTitleLimit = builder.getInt("replay_editor_title_limit", 12, 0, 64);
         presetsGridPanel = builder.getBoolean("presets_grid_panel", false);
+        presetsGridTrackers = builder.getBoolean("presets_grid_trackers", true);
+        presetsGridTrackers.invisible();
+        presetsGridCellSize = builder.getInt("presets_grid_cell_size", 1, 0, 3);
+        presetsGridCellSize.invisible();
         replayFpBobbingIntensity = builder.getFloat("replay_fp_bobbing_intensity", 0.25F, 0F, 2F);
         replayFpBobbingFrequency = builder.getFloat("replay_fp_bobbing_frequency", 0.25F, 0F, 3F);
 
