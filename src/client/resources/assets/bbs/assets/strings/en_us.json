@@ -228,6 +228,8 @@
     "bbs.config.model_blocks.categories_panel_enabled-comment": "Show bone categories panel in pose editors (editor and timeline)",
     "bbs.config.model_blocks.click": "Can be clicked",
     "bbs.config.model_blocks.click-comment": "Whether model blocks can be picked in the model block panel editor by clicking on them",
+    "bbs.config.model_blocks.distance": "Animation state play distance",
+    "bbs.config.model_blocks.distance-comment": "The distance that the play_state command will activate",
     "bbs.config.model_blocks.model_pbr_panel_controls": "Show PBR controls in model panel",
     "bbs.config.model_blocks.model_pbr_panel_controls-comment": "When enabled, PBR intensity controls are shown in model form panel (timeline tracks are always available)",
     "bbs.config.model_blocks.render_all": "Render all",
