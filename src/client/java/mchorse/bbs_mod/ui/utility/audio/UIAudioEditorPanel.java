@@ -38,14 +38,15 @@ import mchorse.bbs_mod.utils.resources.Pixels;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.BufferBuilder;
+import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.Tessellator;
+import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 
 import org.joml.Matrix4f;
 
-import com.mojang.blaze3d.opengl.GlStateManager;
-import com.mojang.blaze3d.vertex.VertexFormat;
+import com.mojang.blaze3d.systems.RenderSystem;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -1122,7 +1123,7 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
                     Pixels pixels = Pixels.fromPNGStream(stream);
                     if (pixels != null)
                     {
-                        MinecraftClient.getInstance().execute(() ->
+                        RenderSystem.recordRenderCall(() ->
                         {
                             Texture texture = Texture.textureFromPixels(pixels, GL11.GL_LINEAR);
                             BBSModClient.getTextures().textures.put(link, texture);
@@ -1156,7 +1157,8 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
 
             if (alpha > 0.001F)
             {
-                GlStateManager._enableBlend();
+                RenderSystem.enableBlend();
+                RenderSystem.defaultBlendFunc();
                 context.batcher.texturedBox(texture, Colors.setA(Colors.WHITE, alpha), tx, ty, tw, th, 0, 0, texture.width, texture.height);
             }
 
@@ -1487,14 +1489,14 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
                         boolean isFolder = id.endsWith("/");
                         Icon icon = isFolder || id.equals(PARENT_FOLDER_ENTRY) ? Icons.FOLDER : Icons.SOUND;
                         
-                        context.batcher.getContext().getMatrices().pushMatrix();
-                        context.batcher.getContext().getMatrices().translate(iconX, iconY);
-                        context.batcher.getContext().getMatrices().scale(2F, 2F);
-                        context.batcher.getContext().getMatrices().translate(-iconX, -iconY);
+                        context.batcher.getContext().getMatrices().push();
+                        context.batcher.getContext().getMatrices().translate(iconX, iconY, 0);
+                        context.batcher.getContext().getMatrices().scale(2F, 2F, 1F);
+                        context.batcher.getContext().getMatrices().translate(-iconX, -iconY, 0);
                         
                         context.batcher.icon(icon, iconX, iconY, 0.5F, 0.5F);
                         
-                        context.batcher.getContext().getMatrices().popMatrix();
+                        context.batcher.getContext().getMatrices().pop();
 
                         String label = id;
                         if (id.startsWith(AUDIO_PREFIX))

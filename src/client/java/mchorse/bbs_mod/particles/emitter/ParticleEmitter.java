@@ -16,11 +16,13 @@ import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.interps.Lerps;
 
 import net.minecraft.client.gl.ShaderProgram;
+import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.BufferBuilder;
+import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
-import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexConsumer;
+import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.BufferAllocator;
 import net.minecraft.client.util.math.MatrixStack;
@@ -32,11 +34,7 @@ import org.joml.Matrix4f;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 
-import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.VertexFormat;
-
-import org.lwjgl.opengl.GL11;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -129,7 +127,7 @@ public class ParticleEmitter
     public void setTarget(LivingEntity target)
     {
         this.target = target;
-        this.world = target == null ? null : target.getEntityWorld();
+        this.world = target == null ? null : target.getWorld();
     }
 
     public void setWorld(World world)
@@ -470,11 +468,10 @@ public class ParticleEmitter
                 render.renderUI(this.uiParticle, builder, matrix, transition);
             }
 
-            // RenderSystem.setShader(ShaderProgramKeys.POSITION_TEX_COLOR);
-            /* shader binding handled by RenderLayer in 1.21.11 */
-            GlStateManager._disableCull();
-            RenderLayers.debugFilledBox().draw(builder.end());
-            GlStateManager._enableCull();
+            RenderSystem.setShader(ShaderProgramKeys.POSITION_TEX_COLOR);
+            RenderSystem.disableCull();
+            BufferRenderer.drawWithGlobalProgram(builder.end());
+            RenderSystem.enableCull();
         }
     }
 
@@ -513,13 +510,13 @@ public class ParticleEmitter
                 }
             }
             
-            /* shader binding handled by RenderLayer in 1.21.11 */
-            GlStateManager._enableBlend();
-            GlStateManager._blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
-            GlStateManager._disableCull();
-            RenderLayers.debugFilledBox().draw(builder.end());
-            GlStateManager._enableCull();
-            GlStateManager._disableBlend();
+            RenderSystem.setShader(program.get());
+            RenderSystem.enableBlend();
+            RenderSystem.defaultBlendFunc();
+            RenderSystem.disableCull();
+            BufferRenderer.drawWithGlobalProgram(builder.end());
+            RenderSystem.enableCull();
+            RenderSystem.disableBlend();
         }
 
         for (IComponentParticleRender component : renders)
@@ -548,8 +545,8 @@ public class ParticleEmitter
     {
         this.cYaw = 180 - camera.getYaw();
         this.cPitch = -camera.getPitch();
-        this.cX = camera.getCameraPos().x;
-        this.cY = camera.getCameraPos().y;
-        this.cZ = camera.getCameraPos().z;
+        this.cX = camera.getPos().x;
+        this.cY = camera.getPos().y;
+        this.cZ = camera.getPos().z;
     }
 }
