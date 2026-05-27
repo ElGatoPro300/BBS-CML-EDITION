@@ -794,6 +794,13 @@ public class UIReplaysEditor extends UIElement
             this.replays.replays.setList(replays);
             this.setReplay(replays.isEmpty() ? null : replays.get(index));
         }
+        else
+        {
+            this.replays.replays.setList(new ArrayList<>());
+            this.setReplay(null, false, false);
+        }
+
+        this.filmPanel.syncAnchoredReplaysPanelWithFilm();
     }
 
     public Replay getReplay()
@@ -817,16 +824,11 @@ public class UIReplaysEditor extends UIElement
             this.filmPanel.getController().orbit.reset();
         }
 
-        this.replays.setReplay(replay);
+        this.replays.syncReplaySelection(replay, select);
+        this.filmPanel.syncAnchoredReplaysPanelSelection(replay, select);
         this.filmPanel.actionEditor.setClips(replay == null ? null : replay.actions);
         this.initializeCollapsedGroupsForReplay(replay);
         this.updateChannelsList();
-
-        if (select)
-        {
-            this.replays.replays.ensureVisible(replay);
-            this.replays.replays.setCurrentScroll(replay);
-        }
     }
 
     private void initializeCollapsedGroupsForReplay(Replay replay)

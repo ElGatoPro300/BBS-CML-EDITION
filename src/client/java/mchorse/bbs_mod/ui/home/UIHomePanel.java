@@ -77,7 +77,7 @@ public class UIHomePanel extends UIDashboardPanel
     private static final int BANNER_TRANSITION = 60;
 
     private static final Set<Link> prefetchingBanners = Collections.synchronizedSet(new HashSet<>());
-    private static boolean lastMosaicView = true;
+    /* View mode is persisted globally — see BBSSettings.lastViewMosaic. */
 
     private final List<BannerEntry> homeBanners = new ArrayList<>();
     private final List<Integer> bannerSequence = new ArrayList<>();
@@ -200,9 +200,11 @@ public class UIHomePanel extends UIDashboardPanel
             }
         });
 
+        boolean mosaic = BBSSettings.lastViewMosaic.get();
+
         this.homeMosaic = new UIRecentMosaicGrid(this, this::handleRecentSelection, this::openRecent);
-        this.homeMosaic.setVisible(lastMosaicView);
-        this.homeRecentList.setVisible(!lastMosaicView);
+        this.homeMosaic.setVisible(mosaic);
+        this.homeRecentList.setVisible(!mosaic);
 
         this.homeRecentSearch = new UISearchList<>(this.homeRecentList).label(UIKeys.GENERAL_SEARCH);
 
@@ -215,8 +217,8 @@ public class UIHomePanel extends UIDashboardPanel
             this.homeMosaic.filter(str);
         };
 
-        this.homeViewToggle = new UIIcon(lastMosaicView ? Icons.LIST : Icons.GALLERY, (b) -> this.toggleMosaicView());
-        this.homeViewToggle.tooltip(lastMosaicView ? UIKeys.MODELS_HOME_VIEW_LIST : UIKeys.MODELS_HOME_VIEW_MOSAIC, Direction.LEFT);
+        this.homeViewToggle = new UIIcon(mosaic ? Icons.LIST : Icons.GALLERY, (b) -> this.toggleMosaicView());
+        this.homeViewToggle.tooltip(mosaic ? UIKeys.MODELS_HOME_VIEW_LIST : UIKeys.MODELS_HOME_VIEW_MOSAIC, Direction.LEFT);
 
         this.layout();
     }
@@ -513,13 +515,15 @@ public class UIHomePanel extends UIDashboardPanel
 
     private void toggleMosaicView()
     {
-        lastMosaicView = !lastMosaicView;
-        this.homeMosaic.setVisible(lastMosaicView);
-        this.homeRecentList.setVisible(!lastMosaicView);
-        this.homeViewToggle.both(lastMosaicView ? Icons.LIST : Icons.GALLERY);
-        this.homeViewToggle.tooltip(lastMosaicView ? UIKeys.MODELS_HOME_VIEW_LIST : UIKeys.MODELS_HOME_VIEW_MOSAIC, Direction.LEFT);
+        boolean mosaic = !BBSSettings.lastViewMosaic.get();
 
-        if (lastMosaicView)
+        BBSSettings.lastViewMosaic.set(mosaic);
+        this.homeMosaic.setVisible(mosaic);
+        this.homeRecentList.setVisible(!mosaic);
+        this.homeViewToggle.both(mosaic ? Icons.LIST : Icons.GALLERY);
+        this.homeViewToggle.tooltip(mosaic ? UIKeys.MODELS_HOME_VIEW_LIST : UIKeys.MODELS_HOME_VIEW_MOSAIC, Direction.LEFT);
+
+        if (mosaic)
         {
             this.homeMosaic.resize();
         }

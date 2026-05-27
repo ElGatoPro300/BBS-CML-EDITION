@@ -73,7 +73,7 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
     private List<String> allNames = new ArrayList<>();
     String currentFolder = "";
     private String searchQuery = "";
-    private boolean gridMode = true;
+    private boolean gridMode = BBSSettings.lastViewMosaic.get();
     private long lastClickTime = 0;
     private String lastClickedId = null;
 
@@ -129,7 +129,7 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
         this.searchBox.placeholder(UIKeys.GENERAL_SEARCH);
         this.searchBox.relative(this.toolbar).x(158).y(4).w(1F, -158 - 4 - 20).h(20);
 
-        this.viewToggle = new UIIcon(Icons.GALLERY, (b) -> this.toggleView());
+        this.viewToggle = new UIIcon(this.gridMode ? Icons.LIST : Icons.GALLERY, (b) -> this.toggleView());
         this.viewToggle.tooltip(L10n.lang("bbs.ui.raw.toggle_view"), Direction.LEFT);
         this.viewToggle.relative(this.toolbar).x(1F, -20).y(4).w(20).h(20);
 
@@ -146,7 +146,8 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
         /* List view */
         this.assetList = new UIAssetList(this);
         this.assetList.relative(this.contentArea).w(1F).h(1F);
-        this.assetList.setVisible(false);
+        this.assetGrid.setVisible(this.gridMode);
+        this.assetList.setVisible(!this.gridMode);
 
         this.contentArea.add(this.assetGrid, this.assetList);
         this.content.add(this.sidebar, this.toolbar, this.contentArea);
@@ -774,7 +775,15 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
     {
         if (this.dashboard.documentTabsBar != null)
         {
-            this.dashboard.documentTabsBar.addOrActivate(this.currentType, id);
+            /* The sounds tab in this overlay uses currentType == null as a sentinel
+               for "load from disk" (since SOUNDS has no repository), but every
+               other code path stores audio tabs with ContentType.SOUNDS. Pass
+               SOUNDS to the tab bar so its find() reconciles with the audio
+               panel's later addOrActivate(SOUNDS, …) call — otherwise it builds
+               a duplicate tab and the file appears not to open. */
+            ContentType tabType = this.currentType != null ? this.currentType : ContentType.SOUNDS;
+
+            this.dashboard.documentTabsBar.addOrActivate(tabType, id);
         }
         else if (this.currentType != null)
         {
@@ -795,9 +804,10 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
     private void toggleView()
     {
         this.gridMode = !this.gridMode;
+        BBSSettings.lastViewMosaic.set(this.gridMode);
         this.assetGrid.setVisible(this.gridMode);
         this.assetList.setVisible(!this.gridMode);
-        this.viewToggle.both(this.gridMode ? Icons.GALLERY : Icons.LIST);
+        this.viewToggle.both(this.gridMode ? Icons.LIST : Icons.GALLERY);
         this.refreshContent();
     }
 

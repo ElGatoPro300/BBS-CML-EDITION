@@ -13,6 +13,7 @@ import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UIKeyfram
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UIPoseKeyframeFactory;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UITransformKeyframeFactory;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIDraggable;
+import mchorse.bbs_mod.ui.framework.elements.utils.UIRenderable;
 import mchorse.bbs_mod.utils.Pair;
 import mchorse.bbs_mod.utils.StringUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
@@ -39,9 +40,11 @@ public class UIKeyframeEditor extends UIElement
 
     private UIElement target;
     private boolean stackedLayout;
+    private boolean overlayPanel;
     private int sidePanelWidth = SIDE_PANEL_WIDTH;
     private int bottomPanelHeight = BOTTOM_PANEL_HEIGHT;
     private UIDraggable sidePanelResizer;
+    private UIRenderable overlayBackground;
 
     public UIKeyframeEditor(Function<Consumer<Keyframe>, UIKeyframes> factory)
     {
@@ -104,7 +107,9 @@ public class UIKeyframeEditor extends UIElement
 
             context.batcher.box(this.sidePanelResizer.area.x, this.sidePanelResizer.area.y, this.sidePanelResizer.area.ex(), this.sidePanelResizer.area.ey(), color);
         });
-        this.add(this.sidePanelResizer);
+        this.overlayBackground = new UIRenderable(this::renderOverlayPanelBackground);
+
+        this.add(this.overlayBackground, this.sidePanelResizer);
         this.updateSidePanelResizerState();
     }
 
@@ -113,6 +118,15 @@ public class UIKeyframeEditor extends UIElement
         this.target = target;
 
         this.view.resetFlex().full(this).w(1F);
+
+        return this;
+    }
+
+    public UIKeyframeEditor overlayPanel(boolean overlayPanel)
+    {
+        this.overlayPanel = overlayPanel;
+        this.applyLayout();
+        this.resize();
 
         return this;
     }
@@ -185,20 +199,30 @@ public class UIKeyframeEditor extends UIElement
 
         if (this.stackedLayout)
         {
-            this.view.resetFlex().relative(this).xy(0, 0).w(1F).h(1F, this.editor == null ? 0 : -this.bottomPanelHeight);
+            this.view.resetFlex().relative(this).xy(0, 0).w(1F).h(1F);
 
             if (this.editor != null)
             {
                 this.editor.relative(this).x(0).y(1F, -this.bottomPanelHeight).w(1F).h(this.bottomPanelHeight);
+
+                if (!this.overlayPanel)
+                {
+                    this.view.h(1F, -this.bottomPanelHeight);
+                }
             }
         }
         else
         {
-            this.view.resetFlex().relative(this).xy(0, 0).w(1F, this.editor == null ? 0 : -this.sidePanelWidth).h(1F);
+            this.view.resetFlex().relative(this).xy(0, 0).w(1F).h(1F);
 
             if (this.editor != null)
             {
                 this.editor.relative(this).x(1F, -this.sidePanelWidth).y(0).w(this.sidePanelWidth).h(1F);
+
+                if (!this.overlayPanel)
+                {
+                    this.view.w(1F, -this.sidePanelWidth);
+                }
             }
         }
 
@@ -217,6 +241,18 @@ public class UIKeyframeEditor extends UIElement
     {
         this.updateSidePanelResizerState();
         super.render(context);
+    }
+
+    private void renderOverlayPanelBackground(UIContext context)
+    {
+        if (!this.overlayPanel || this.editor == null)
+        {
+            return;
+        }
+
+        context.batcher.box(this.editor.area.x, this.editor.area.y, this.editor.area.ex(), this.editor.area.ey(), 0xFF141418);
+        context.batcher.gradientHBox(this.editor.area.x - 40, this.editor.area.y, this.editor.area.ex() - 40, this.editor.area.ey(), 0, Colors.A25);
+        context.batcher.box(this.editor.area.ex() - 40, this.editor.area.y, this.editor.area.ex(), this.editor.area.ey(), Colors.A25);
     }
 
     private void updateSidePanelResizerState()

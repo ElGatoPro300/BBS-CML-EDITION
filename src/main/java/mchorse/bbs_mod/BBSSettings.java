@@ -101,6 +101,7 @@ public class BBSSettings
     public static ValueBoolean editorMuteRenderAudioClips;
     public static ValueInt editorTimeMode;
     public static ValueInt editorReplayEditorTitleLimit;
+    public static ValueBoolean editorAnchoredReplaysPanel;
     public static ValueBoolean editorReplayHud;
     public static ValueInt editorReplayHudPosition;
     public static ValueBoolean editorReplayHudDisplayName;
@@ -126,6 +127,11 @@ public class BBSSettings
     public static ValueString modelBlockPanelLayout;
     public static ValueString triggerBlockPanelLayout;
 
+    /* Shared "mosaic vs list" view preference for the home pages and the open
+       asset overlay. Persisted globally so toggling it anywhere takes effect
+       everywhere. */
+    public static ValueBoolean lastViewMosaic;
+
     public static ValueString entitySelectorsPropertyWhitelist;
 
     public static ValueBoolean damageControl;
@@ -143,6 +149,8 @@ public class BBSSettings
     public static ValueBoolean poseBonesFilterMarked;
     public static ValueBoolean replayMarkedBonesOnly;
     public static ValueBoolean presetsGridPanel;
+    public static ValueBoolean presetsGridTrackers;
+    public static ValueInt presetsGridCellSize;
     public static ValueFloat replayFpBobbingIntensity;
     public static ValueFloat replayFpBobbingFrequency;
     public static ValueBoolean pickLimbTexture;
@@ -303,6 +311,7 @@ public class BBSSettings
         editorReplayStepSound = builder.getBoolean("replay_step_sound", false);
         editorMuteRenderAudioClips = builder.getBoolean("mute_render_audio_clips", false);
         editorTimeMode = builder.getInt("time_mode", 0, 0, 2);
+        editorAnchoredReplaysPanel = builder.getBoolean("anchored_replays_panel", false);
         editorReplayHud = builder.getBoolean("replay_hud", false);
         editorReplayHudPosition = builder.getInt("replay_hud_position", 0, 0, 3);
         editorReplayHudDisplayName = builder.getBoolean("replay_hud_display_name", true);
@@ -313,6 +322,10 @@ public class BBSSettings
         replayMarkedBonesOnly = builder.getBoolean("replay_marked_bones_only", false);
         editorReplayEditorTitleLimit = builder.getInt("replay_editor_title_limit", 12, 0, 64);
         presetsGridPanel = builder.getBoolean("presets_grid_panel", false);
+        presetsGridTrackers = builder.getBoolean("presets_grid_trackers", true);
+        presetsGridTrackers.invisible();
+        presetsGridCellSize = builder.getInt("presets_grid_cell_size", 1, 0, 3);
+        presetsGridCellSize.invisible();
         replayFpBobbingIntensity = builder.getFloat("replay_fp_bobbing_intensity", 0.25F, 0F, 2F);
         replayFpBobbingFrequency = builder.getFloat("replay_fp_bobbing_frequency", 0.25F, 0F, 3F);
 
@@ -333,6 +346,8 @@ public class BBSSettings
         modelBlockPanelLayout.invisible();
         triggerBlockPanelLayout = builder.getString("trigger_panel_layout", "");
         triggerBlockPanelLayout.invisible();
+        lastViewMosaic = builder.getBoolean("last_view_mosaic", true);
+        lastViewMosaic.invisible();
 
         builder.category("entity_selectors");
         entitySelectorsPropertyWhitelist = builder.getString("whitelist", "CustomName,Name");

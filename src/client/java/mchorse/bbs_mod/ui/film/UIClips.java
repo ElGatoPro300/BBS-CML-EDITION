@@ -1022,6 +1022,7 @@ public class UIClips extends UIElement
 
             if (this.embedded instanceof UIKeyframeEditor keyframeEditor)
             {
+                keyframeEditor.overlayPanel(true);
                 keyframeEditor.setStackedLayout(this.embeddedStackedLayout);
                 this.embeddedLayout.active(this.embeddedStackedLayout);
                 this.add(this.embeddedLayout);
