@@ -20,7 +20,7 @@ import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.block.entity.BlockEntityRenderDispatcher;
 import net.minecraft.client.render.block.entity.BlockEntityRenderer;
-import net.minecraft.client.render.model.ModelLoader;
+import net.minecraft.client.render.model.ModelBaker;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.BlockPos;
 
@@ -65,7 +65,7 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
         int breakingLevel = this.form.breaking.get();
         if (breakingLevel > 0 && breakingLevel <= 10)
         {
-            RenderLayer crackingLayer = ModelLoader.BLOCK_DESTRUCTION_RENDER_LAYERS.get(breakingLevel - 1);
+            RenderLayer crackingLayer = ModelBaker.BLOCK_DESTRUCTION_RENDER_LAYERS.get(breakingLevel - 1);
             VertexConsumer delegateConsumer = consumers.getBuffer(crackingLayer);
             VertexConsumer crackingConsumer = new OverlayVertexConsumer(delegateConsumer, matrices.peek(), 1.0F);
             consumers.setSubstitute((vertexConsumer) -> crackingConsumer);
@@ -119,7 +119,7 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
         int breakingLevel = this.form.breaking.get();
         if (!context.isPicking() && breakingLevel > 0 && breakingLevel <= 10)
         {
-            RenderLayer crackingLayer = ModelLoader.BLOCK_DESTRUCTION_RENDER_LAYERS.get(breakingLevel - 1);
+            RenderLayer crackingLayer = ModelBaker.BLOCK_DESTRUCTION_RENDER_LAYERS.get(breakingLevel - 1);
             VertexConsumer delegateConsumer = consumers.getBuffer(crackingLayer);
             VertexConsumer crackingConsumer = new OverlayVertexConsumer(delegateConsumer, context.stack.peek(), 1.0F);
             consumers.setSubstitute((vertexConsumer) -> crackingConsumer);
