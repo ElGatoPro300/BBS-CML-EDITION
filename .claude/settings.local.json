@@ -7,7 +7,11 @@
       "Bash(xargs grep:*)",
       "Bash(git log:*)",
       "Bash(grep \"\\\\.java$\")",
-      "Bash(grep -v \"^+import\\\\|^+//\")"
+      "Bash(grep -v \"^+import\\\\|^+//\")",
+      "Bash(./gradlew compileJava --rerun)",
+      "Bash(./gradlew compileClientJava --rerun)",
+      "Bash(./gradlew compileJava compileClientJava --quiet)",
+      "Bash(./gradlew compileClientJava --quiet)"
     ]
   }
 }

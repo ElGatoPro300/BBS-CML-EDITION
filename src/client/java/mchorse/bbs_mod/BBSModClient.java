@@ -80,12 +80,12 @@ import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UIKeyfram
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.shapes.KeyframeShapeRenderers;
 import mchorse.bbs_mod.ui.model_blocks.UIModelBlockEditorMenu;
 import mchorse.bbs_mod.ui.morphing.UIMorphingPanel;
-import mchorse.bbs_mod.ui.utils.cml.CMLSettings;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.keys.KeyCombo;
 import mchorse.bbs_mod.ui.utils.keys.KeybindSettings;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
+import mchorse.bbs_mod.utils.RecentAssetsTracker;
 import mchorse.bbs_mod.utils.ScreenshotRecorder;
 import mchorse.bbs_mod.utils.VideoRecorder;
 import mchorse.bbs_mod.utils.colors.Color;
@@ -482,6 +482,8 @@ public class BBSModClient implements ClientModInitializer
         selectors.read();
         films = new Films();
 
+        RecentAssetsTracker.load();
+
         BBSResources.init();
 
         URLRepository repository = new URLRepository(new File(parentFile, "url_cache"));
@@ -492,7 +494,6 @@ public class BBSModClient implements ClientModInitializer
         KeybindSettings.registerClasses();
 
         BBSMod.setupConfig(Icons.KEY_CAP, "keybinds", new File(BBSMod.getSettingsFolder(), "keybinds.json"), KeybindSettings::register);
-        BBSMod.setupConfig(Icons.SETTINGS, "cml", new File(BBSMod.getSettingsFolder(), "cml.json"), CMLSettings::register);
 
         BBSMod.events.post(new RegisterClientSettingsEvent());
 
@@ -509,6 +510,18 @@ public class BBSModClient implements ClientModInitializer
         BBSSettings.tooltipStyle.modes(
             UIKeys.ENGINE_TOOLTIP_STYLE_LIGHT,
             UIKeys.ENGINE_TOOLTIP_STYLE_DARK
+        );
+
+        BBSSettings.replayContextOptions.modes(
+            UIKeys.CONFIG_GENERAL_COMPACTED_OPTIONS_DEFAULT,
+            UIKeys.CONFIG_GENERAL_COMPACTED_OPTIONS_SEPARATED,
+            UIKeys.CONFIG_GENERAL_COMPACTED_OPTIONS_COMPACTED
+        );
+
+        BBSSettings.editorTimeMode.modes(
+            UIKeys.CONFIG_EDITOR_TICKS_MODE,
+            UIKeys.CONFIG_EDITOR_SECONDS_MODE,
+            UIKeys.CONFIG_EDITOR_FRAMES_MODE
         );
 
         BBSSettings.keystrokeMode.modes(
@@ -599,8 +612,9 @@ public class BBSModClient implements ClientModInitializer
 
         // LAST was removed from newer world render events; frame capture is handled elsewhere.
 
-        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
-            BBSMod.setRegistryManager(handler.getRegistryManager());
+        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) ->
+        {
+            RecentAssetsTracker.load();
         });
 
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) ->

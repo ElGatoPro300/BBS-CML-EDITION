@@ -71,4 +71,7 @@ public class UIDashboardPanel extends UIElement
     {
         return this;
     }
+
+    public void showHomeView()
+    {}
 }

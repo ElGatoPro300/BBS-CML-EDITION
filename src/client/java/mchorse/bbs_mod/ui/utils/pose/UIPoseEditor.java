@@ -231,7 +231,7 @@ public class UIPoseEditor extends UIElement
                     /* Click derecho para eliminar el hueso de la categoría */
                     list.context((ctx) ->
                     {
-                        ctx.action(Icons.TRASH, IKey.constant("Eliminar hueso"), Colors.RED, () ->
+                        ctx.action(Icons.TRASH, L10n.lang("bbs.ui.pose.categories.context.remove_bone"), Colors.RED, () ->
                         {
                             int idx = list.getIndex();
                             String bone = CollectionUtils.getSafe(bones, idx);
@@ -253,11 +253,11 @@ public class UIPoseEditor extends UIElement
                 String selectedBone = this.groups.list.getCurrentFirst();
                 if (selectedBone != null && !selectedBone.isEmpty())
                 {
-                    menu.action(Icons.ADD, IKey.constant("Añadir hueso seleccionado"), () ->
+                    menu.action(Icons.ADD, L10n.lang("bbs.ui.pose.categories.context.add_selected_bone"), () ->
                     {
                         this.boneCategories.addBone(this.group, selectedCategory, selectedBone);
                     });
-                    menu.action(Icons.REMOVE, IKey.constant("Quitar hueso seleccionado"), () ->
+                    menu.action(Icons.REMOVE, L10n.lang("bbs.ui.pose.categories.context.remove_selected_bone"), () ->
                     {
                         this.boneCategories.removeBone(this.group, selectedCategory, selectedBone);
                     });
@@ -292,7 +292,7 @@ public class UIPoseEditor extends UIElement
                 if (this.onChange != null) this.onChange.run();
             });
 
-            menu.action(Icons.DOWNLOAD, IKey.constant("Aplicar a categoría"), () ->
+            menu.action(Icons.DOWNLOAD, L10n.lang("bbs.ui.pose.categories.context.apply_category"), () ->
             {
                 this.applyCategory((p) -> this.setFix(p, (float) this.fix.getValue()));
                 if (this.onChange != null) this.onChange.run();
@@ -344,7 +344,7 @@ public class UIPoseEditor extends UIElement
                 this.applyChildren((p) -> this.setTexture(p, chosen));
                 if (this.onChange != null) this.onChange.run();
             });
-            menu.action(Icons.DOWNLOAD, IKey.constant("Aplicar a categoría"), () ->
+            menu.action(Icons.DOWNLOAD, L10n.lang("bbs.ui.pose.categories.context.apply_category"), () ->
             {
                 PoseTransform t = (PoseTransform) this.transform.getTransform();
                 Link chosen = t != null ? t.texture : null;
@@ -393,7 +393,7 @@ public class UIPoseEditor extends UIElement
                 this.applyChildren((p) -> this.setColor(p, this.color.picker.color.getARGBColor()));
                 if (this.onChange != null) this.onChange.run();
             });
-            menu.action(Icons.DOWNLOAD, IKey.constant("Aplicar a categoría"), () ->
+            menu.action(Icons.DOWNLOAD, L10n.lang("bbs.ui.pose.categories.context.apply_category"), () ->
             {
                 this.applyCategory((p) -> this.setColor(p, this.color.picker.color.getARGBColor()));
                 if (this.onChange != null) this.onChange.run();
@@ -423,7 +423,7 @@ public class UIPoseEditor extends UIElement
                 this.applyChildren((p) -> this.setLighting(p, this.lighting.getValue()));
                 if (this.onChange != null) this.onChange.run();
             });
-            menu.action(Icons.DOWNLOAD, IKey.constant("Aplicar a categoría"), () ->
+            menu.action(Icons.DOWNLOAD, L10n.lang("bbs.ui.pose.categories.context.apply_category"), () ->
             {
                 this.applyCategory((p) -> this.setLighting(p, this.lighting.getValue()));
                 if (this.onChange != null) this.onChange.run();
@@ -642,7 +642,7 @@ public class UIPoseEditor extends UIElement
 
     protected UIPropTransform createTransformEditor()
     {
-        return new CategoryPropTransform(this).enableHotkeys();
+        return new CategoryPropTransform(this).enableHotkeys().translationScale(16F);
     }
 
     /* Transformaciones aplicables por categoría */

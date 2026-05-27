@@ -54,6 +54,9 @@ import mchorse.bbs_mod.camera.clips.screen.LetterboxClip;
 import mchorse.bbs_mod.camera.clips.screen.ScreenNodeClip;
 import mchorse.bbs_mod.camera.clips.screen.VignetteClip;
 import mchorse.bbs_mod.data.DataStorageUtils;
+import mchorse.bbs_mod.data.DataToString;
+import mchorse.bbs_mod.data.types.BaseType;
+import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.entity.ActorEntity;
 import mchorse.bbs_mod.entity.GunProjectileEntity;
 import mchorse.bbs_mod.events.BBSAddonMod;
@@ -98,6 +101,8 @@ import mchorse.bbs_mod.resources.packs.WorldStructuresSourcePack;
 import mchorse.bbs_mod.settings.Settings;
 import mchorse.bbs_mod.settings.SettingsBuilder;
 import mchorse.bbs_mod.settings.SettingsManager;
+import mchorse.bbs_mod.settings.values.base.BaseValue;
+import mchorse.bbs_mod.settings.values.core.ValueGroup;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.clips.Clip;
@@ -159,6 +164,7 @@ import java.util.function.Consumer;
 public class BBSMod implements ModInitializer
 {
     public static final String MOD_ID = "bbs";
+    public static final String VERSION = "2.0-dev-1";
 
     public static final EventBus events = new EventBus();
 
@@ -708,6 +714,53 @@ public class BBSMod implements ModInitializer
 
         BBSMod.settings.modules.put(settings.getId(), settings);
         BBSMod.settings.load(settings, settings.file);
+
+        if (id.equals("bbs"))
+        {
+            File cmlFile = new File(destination.getParentFile(), "cml.json");
+            
+            if (cmlFile.exists())
+            {
+                try
+                {
+                    BaseType data = DataToString.read(cmlFile);
+                    
+                    if (data != null && data.isMap())
+                    {
+                        MapType map = data.asMap();
+                        
+                        for (String key : map.keys())
+                        {
+                            if (map.get(key).isMap())
+                            {
+                                MapType category = map.getMap(key);
+                                
+                                for (String valKey : category.keys())
+                                {
+                                    for (ValueGroup bbsCategory : settings.categories.values())
+                                    {
+                                        BaseValue value = bbsCategory.get(valKey);
+                                        
+                                        if (value != null)
+                                        {
+                                            value.fromData(category.get(valKey));
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        
+                        settings.saveLater();
+                        cmlFile.delete();
+                    }
+                }
+                catch (Exception e)
+                {
+                    e.printStackTrace();
+                }
+            }
+        }
 
         return settings;
     }
