@@ -40,7 +40,7 @@ public class ItemStackContextAction extends ContextAction
             RenderSystem.disableDepthTest();
             consumers.setUI(true);
             context.batcher.getContext().drawItem(this.stack, x + 2, y + 2);
-            context.batcher.getContext().drawStackOverlay(context.batcher.getFont().getRenderer(), this.stack, x + 2, y + 2);
+            context.batcher.getContext().drawItemInSlot(context.batcher.getFont().getRenderer(), this.stack, x + 2, y + 2);
             consumers.setUI(false);
             RenderSystem.enableDepthTest();
             RenderSystem.depthFunc(GL11.GL_ALWAYS);
