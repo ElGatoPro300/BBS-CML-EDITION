@@ -25,6 +25,7 @@ import mchorse.bbs_mod.forms.forms.MobForm;
 import mchorse.bbs_mod.forms.forms.ModelForm;
 import mchorse.bbs_mod.forms.forms.utils.Anchor;
 import mchorse.bbs_mod.graphics.window.Window;
+import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.math.IExpression;
 import mchorse.bbs_mod.math.MathBuilder;
@@ -54,6 +55,7 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIListOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIMessageOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UINumberOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
+import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
@@ -74,6 +76,7 @@ import mchorse.bbs_mod.utils.pose.Transform;
 import mchorse.bbs_mod.utils.resources.Pixels;
 
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.item.ItemStack;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
@@ -106,6 +109,7 @@ public class UIReplayList extends UIList<Replay> {
     public static final List<BiConsumer<UIReplayList, ContextMenuManager>> extensions = new ArrayList<>();
 
     private static String LAST_PROCESS = "v";
+    private static String LAST_PICK_FAVORITE_CATEGORY_ID = null;
     private static String LAST_OFFSET = "0";
     private static List<String> LAST_PROCESS_PROPERTIES = Arrays.asList("x");
     private static int LAST_PROCESS_SECTION = 0;
@@ -279,10 +283,10 @@ public class UIReplayList extends UIList<Replay> {
     private void openCopyKeyframesMenu() {
         this.getContext().replaceContextMenu((sub) -> {
             sub.autoKeys();
-            sub.action(Icons.POSE, IKey.constant("Copy Poses"), () -> this.copyKeyframesFiltered(KeyframeFactories.POSE));
-            sub.action(Icons.ALL_DIRECTIONS, IKey.constant("Copy Transforms"), () -> this.copyKeyframesFiltered(KeyframeFactories.TRANSFORM));
-            sub.action(Icons.IMAGE, IKey.constant("Copy texture"), () -> this.copyKeyframesByPropertySuffixes("texture"));
-            sub.action(Icons.STRUCTURE, IKey.constant("Copy model"), () -> this.copyKeyframesByPropertySuffixes("model"));
+            sub.action(Icons.POSE, L10n.lang("bbs.ui.film.replay.copy_poses"), () -> this.copyKeyframesFiltered(KeyframeFactories.POSE));
+            sub.action(Icons.ALL_DIRECTIONS, L10n.lang("bbs.ui.film.replay.copy_transforms"), () -> this.copyKeyframesFiltered(KeyframeFactories.TRANSFORM));
+            sub.action(Icons.IMAGE, L10n.lang("bbs.ui.film.replay.copy_texture"), () -> this.copyKeyframesByPropertySuffixes("texture"));
+            sub.action(Icons.STRUCTURE, L10n.lang("bbs.ui.film.replay.copy_model"), () -> this.copyKeyframesByPropertySuffixes("model"));
         });
     }
 
@@ -1712,6 +1716,17 @@ public class UIReplayList extends UIList<Replay> {
             }
         });
 
+        if (!editing) {
+            palette.immersive();
+
+            if (!palette.list.hasFavoriteCategory(LAST_PICK_FAVORITE_CATEGORY_ID))
+            {
+                LAST_PICK_FAVORITE_CATEGORY_ID = null;
+            }
+
+            palette.list.setFavoriteCategoryChangedListener((categoryId) -> LAST_PICK_FAVORITE_CATEGORY_ID = categoryId);
+            palette.list.setActiveFavoriteCategoryWithFallback(LAST_PICK_FAVORITE_CATEGORY_ID);
+        }
         palette.updatable();
     }
 
@@ -1835,6 +1850,12 @@ public class UIReplayList extends UIList<Replay> {
         replay.keyframes.x.insert(0, x);
         replay.keyframes.y.insert(0, y);
         replay.keyframes.z.insert(0, z);
+        replay.keyframes.mainHand.insert(0, this.copyItem(properties.getItemMainHand()));
+        replay.keyframes.offHand.insert(0, this.copyItem(properties.getItemOffHand()));
+        replay.keyframes.armorHead.insert(0, this.copyItem(properties.getArmorHead()));
+        replay.keyframes.armorChest.insert(0, this.copyItem(properties.getArmorChest()));
+        replay.keyframes.armorLegs.insert(0, this.copyItem(properties.getArmorLegs()));
+        replay.keyframes.armorFeet.insert(0, this.copyItem(properties.getArmorFeet()));
 
         if (!transform.isDefault()) {
             if (transform.rotate.x == 0 && transform.rotate.z == 0 &&
@@ -1861,6 +1882,10 @@ public class UIReplayList extends UIList<Replay> {
         this.setCurrentDirect(replay);
         this.panel.replayEditor.setReplay(replay);
         this.updateFilmEditor();
+    }
+
+    private ItemStack copyItem(ItemStack stack) {
+        return stack == null ? ItemStack.EMPTY : stack.copy();
     }
 
     public void addReplay(Vector3d position, float pitch, float yaw) {
@@ -1955,7 +1980,7 @@ public class UIReplayList extends UIList<Replay> {
                     }
                 });
 
-        UILabel folderCount = UI.label(IKey.constant("Selected: 0")).background();
+        UILabel folderCount = UI.label(L10n.lang("bbs.ui.film.replay.selected").format(0)).background();
         UIStringList folderList = new UIStringList((l) -> {
         });
         folderList.background().h(60);
@@ -2048,7 +2073,7 @@ public class UIReplayList extends UIList<Replay> {
             if (skinsFolder == null || !skinsFolder.exists() || !skinsFolder.isDirectory()) {
                 UIOverlay.addOverlay(this.getContext(),
                         new UIMessageOverlayPanel(UIKeys.GENERAL_ERROR,
-                                IKey.constant("One of the selected folders does not exist or is not a directory.")));
+                                L10n.lang("bbs.ui.film.replay.error_not_directory")));
                 return;
             }
 
@@ -2066,7 +2091,7 @@ public class UIReplayList extends UIList<Replay> {
         if (skinFiles.isEmpty()) {
             UIOverlay.addOverlay(this.getContext(),
                     new UIMessageOverlayPanel(UIKeys.GENERAL_ERROR,
-                            IKey.constant("No PNG files found in the selected folders.")));
+                            L10n.lang("bbs.ui.film.replay.error_no_png")));
             return;
         }
 
@@ -2132,8 +2157,7 @@ public class UIReplayList extends UIList<Replay> {
         if (successCount == 0) {
             UIOverlay.addOverlay(this.getContext(),
                     new UIMessageOverlayPanel(UIKeys.GENERAL_ERROR,
-                            IKey.constant(
-                                    "The skins folder must be inside the BBS assets folder. For example: config/bbs/assets/models/!Skins/")));
+                            L10n.lang("bbs.ui.film.replay.error_skins_folder_assets")));
         }
     }
 
@@ -2150,13 +2174,13 @@ public class UIReplayList extends UIList<Replay> {
         folderList.clear();
 
         if (folders == null || folders.isEmpty()) {
-            folderCount.label = IKey.constant("Selected: 0");
+            folderCount.label = L10n.lang("bbs.ui.film.replay.selected").format(0);
             folderList.add("<none>");
             removeButton.setEnabled(false);
             return;
         }
 
-        folderCount.label = IKey.constant("Selected: " + folders.size());
+        folderCount.label = L10n.lang("bbs.ui.film.replay.selected").format(folders.size());
         removeButton.setEnabled(true);
 
         for (File folder : folders) {

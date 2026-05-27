@@ -76,6 +76,7 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
             ModelInstance model = ModelFormRenderer.getModel(this.form);
             return model != null ? model.texture : null;
         });
+        this.poseEditor.setTexturePreviewFormSupplier(() -> this.form);
         this.shapeKeys = new UIShapeKeys();
         this.pick = new UIButton(UIKeys.FORMS_EDITOR_MODEL_PICK_TEXTURE, (b) ->
         {
@@ -87,7 +88,12 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
                 link = model.texture;
             }
 
-            UITexturePicker.open(this.getContext(), link, (l) -> this.form.texture.set(l));
+            UITexturePicker picker = UITexturePicker.open(this.getContext(), link, (l) -> this.form.texture.set(l));
+
+            if (picker != null)
+            {
+                picker.withFormPreview(() -> this.form);
+            }
         });
         this.pbrNormalIntensity = new UITrackpad((value) -> this.form.pbrNormalIntensity.set(value.floatValue()));
         this.pbrNormalIntensity.tooltip(UIKeys.FORMS_EDITOR_MODEL_PBR_NORMAL_INTENSITY);

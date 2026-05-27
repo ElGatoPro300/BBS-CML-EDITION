@@ -13,6 +13,7 @@ import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.utils.UIDataUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
+import mchorse.bbs_mod.utils.RecentAssetsTracker;
 import mchorse.bbs_mod.utils.Timer;
 import mchorse.bbs_mod.utils.interps.Interpolations;
 
@@ -65,6 +66,8 @@ public abstract class UIDataDashboardPanel <T extends ValueGroup> extends UICRUD
     {
         this.save();
         this.requestData(id);
+
+        RecentAssetsTracker.add(this.getType(), id);
     }
 
     public void requestData(String id)
@@ -87,6 +90,11 @@ public abstract class UIDataDashboardPanel <T extends ValueGroup> extends UICRUD
         this.fillData(data);
 
         this.savingTimer.mark(BBSSettings.editorPeriodicSave.get() * 1000L);
+
+        if (data != null && this.dashboard != null && this.dashboard.documentTabsBar != null)
+        {
+            this.dashboard.documentTabsBar.addOrActivate(this.getType(), data.getId());
+        }
     }
 
     protected abstract void fillData(T data);
@@ -107,7 +115,7 @@ public abstract class UIDataDashboardPanel <T extends ValueGroup> extends UICRUD
     {
         super.resize();
 
-        if (!this.openedBefore)
+        if (!this.openedBefore && this.shouldOpenOverlayOnFirstResize())
         {
             this.openOverlay.clickItself();
 
@@ -158,7 +166,7 @@ public abstract class UIDataDashboardPanel <T extends ValueGroup> extends UICRUD
     @Override
     public void render(UIContext context)
     {
-        if (this.data == null)
+        if (this.data == null && this.shouldRenderOpenOverlayHint())
         {
             double ticks = context.getTickTransition() % 15D;
             double factor = Math.abs(ticks / 15D * 2 - 1F);
@@ -201,6 +209,16 @@ public abstract class UIDataDashboardPanel <T extends ValueGroup> extends UICRUD
     }
 
     protected boolean canSave(UIContext context)
+    {
+        return true;
+    }
+
+    protected boolean shouldOpenOverlayOnFirstResize()
+    {
+        return true;
+    }
+
+    protected boolean shouldRenderOpenOverlayHint()
     {
         return true;
     }

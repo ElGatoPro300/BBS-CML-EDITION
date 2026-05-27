@@ -131,7 +131,7 @@ public class UIOverlay extends UIElement
 
     public UIOverlay()
     {
-        this.eventPropagataion(EventPropagation.BLOCK).markContainer();
+        this.mouseEventPropagataion(EventPropagation.BLOCK).keyboardEventPropagataion(EventPropagation.PASS).markContainer();
     }
 
     public UIOverlay background(int background)
