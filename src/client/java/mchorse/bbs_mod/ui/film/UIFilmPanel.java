@@ -4236,7 +4236,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             builder.vertex(matrix4f, x2, yMid2[i+1], 0).color(cMid2[i+1]);
         }
         
-        BufferRenderer.drawWithGlobalProgram(builder.end());
+        RenderLayers.debugFilledBox().draw(builder.end());
 
         UIHomePanel home = this.dashboard.getPanel(UIHomePanel.class);
         if (home != null)

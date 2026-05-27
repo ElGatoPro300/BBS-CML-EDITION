@@ -1083,8 +1083,8 @@ public class UITriggerBlockPanel extends UIDashboardPanel implements IFlightSupp
         {
             if (this.entity == entity) continue;
 
-            if (this.hovered == entity) this.renderBox(context.matrixStack(), entity, 0F, 1F, 0F);
-            else this.renderBox(context.matrixStack(), entity, -1F, -1F, -1F);
+            if (this.hovered == entity) this.renderBox(context.matrices(), entity, 0F, 1F, 0F);
+            else this.renderBox(context.matrices(), entity, -1F, -1F, -1F);
         }
 
         context.matrices().pop();
