@@ -254,7 +254,11 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
                 this.openAudioInDocumentTabs(Link.create(id));
             }
         });
-        this.homeAudiosMosaic.setVisible(false);
+
+        boolean mosaic = BBSSettings.lastViewMosaic.get();
+
+        this.homeAudiosMosaic.setVisible(mosaic);
+        this.homeAudiosList.setVisible(!mosaic);
 
         Consumer<String> oldCallback = this.homeAudiosSearch.search.callback;
         this.homeAudiosSearch.search.callback = (str) -> {
@@ -262,8 +266,8 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
             this.homeAudiosMosaic.filter(str);
         };
 
-        this.homeViewToggle = new UIIcon(Icons.GALLERY, (b) -> this.toggleMosaicView());
-        this.homeViewToggle.tooltip(UIKeys.MODELS_HOME_VIEW_MOSAIC, Direction.LEFT);
+        this.homeViewToggle = new UIIcon(mosaic ? Icons.LIST : Icons.GALLERY, (b) -> this.toggleMosaicView());
+        this.homeViewToggle.tooltip(mosaic ? UIKeys.MODELS_HOME_VIEW_LIST : UIKeys.MODELS_HOME_VIEW_MOSAIC, Direction.LEFT);
 
         this.homeOpenFolder = this.createHomeButton(L10n.lang("bbs.ui.audio.crud.open_folder"), Icons.FOLDER, (b) ->
         {
@@ -412,6 +416,8 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
     private void toggleMosaicView()
     {
         boolean isMosaic = !this.homeAudiosMosaic.isVisible();
+
+        BBSSettings.lastViewMosaic.set(isMosaic);
         this.homeAudiosMosaic.setVisible(isMosaic);
         this.homeAudiosList.setVisible(!isMosaic);
         this.homeViewToggle.both(isMosaic ? Icons.LIST : Icons.GALLERY);
