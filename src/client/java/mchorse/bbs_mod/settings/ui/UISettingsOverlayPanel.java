@@ -286,6 +286,19 @@ public class UISettingsOverlayPanel extends UIOverlayPanel
                     }
                 }
 
+                if (value == BBSSettings.editorImportMode)
+                {
+                    if (value instanceof ValueInt)
+                    {
+                        String key = UIValueFactory.getValueLabelKey(value);
+
+                        ((ValueInt) value).modes(
+                            L10n.lang(key + ".safe"),
+                            L10n.lang(key + ".original")
+                        );
+                    }
+                }
+
                 List<UIElement> elements = UIValueMap.create(value, this);
 
                 for (UIElement element : elements)
