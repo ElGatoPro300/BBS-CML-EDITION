@@ -1189,6 +1189,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         }
         this.homePage.setVisible(false);
 
+        if (this.anchoredReplaysPanel != null)
+        {
+            this.anchoredReplaysPanel.setFloating(this.floatingPanels.contains(ANCHORED_REPLAYS_PANEL_ID));
+        }
+
         for (Map.Entry<String, float[]> e : bounds.entrySet())
         {
             String id = e.getKey();
@@ -1258,7 +1263,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     private boolean usesPanelInternalDragHandle(String panelId)
     {
-        return ANCHORED_REPLAYS_PANEL_ID.equals(panelId) && this.anchoredReplaysPanel != null && this.anchoredReplaysPanel.isDocked();
+        /* All docked panels (including the replays panel) use the generic drag handle. */
+        return false;
     }
 
     private void updateEditorFlexBoundsOnly(ValueEditorLayout layout, EditorLayoutNode root)
