@@ -18,6 +18,7 @@ import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.events.register.RegisterFilmEditorFactoriesEvent;
 import mchorse.bbs_mod.film.Film;
+import mchorse.bbs_mod.film.FilmContributor;
 import mchorse.bbs_mod.film.Recorder;
 import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.forms.FormUtils;
@@ -3090,7 +3091,48 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             this.teleportToCamera();
         }
 
+        if (this.data != null && this.editor.isVisible() && !this.showingHomePage)
+        {
+            this.incrementTimeWorked();
+        }
+
         super.update();
+    }
+
+    private void incrementTimeWorked()
+    {
+        if (this.data == null)
+        {
+            return;
+        }
+
+        this.data.totalTimeWorked.set(this.data.totalTimeWorked.get() + 1);
+
+        ClientPlayerEntity player = MinecraftClient.getInstance().player;
+
+        if (player != null)
+        {
+            String name = player.getGameProfile().getName();
+            FilmContributor contributor = null;
+
+            for (FilmContributor c : this.data.contributors.getList())
+            {
+                if (c.name.get().equalsIgnoreCase(name))
+                {
+                    contributor = c;
+                    break;
+                }
+            }
+
+            if (contributor == null)
+            {
+                contributor = new FilmContributor(String.valueOf(this.data.contributors.getList().size()));
+                contributor.name.set(name);
+                this.data.contributors.add(contributor);
+            }
+
+            contributor.time.set(contributor.time.get() + 1);
+        }
     }
 
     /* Rendering code */
