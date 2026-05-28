@@ -21,6 +21,7 @@ import mchorse.bbs_mod.utils.pose.Transform;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.model.ModelPart;
 import net.minecraft.client.network.OtherClientPlayerEntity;
+import net.minecraft.client.render.DiffuseLighting;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.entity.LivingEntityRenderer;
 import net.minecraft.client.render.entity.model.EntityModel;
@@ -37,6 +38,7 @@ import net.minecraft.util.Identifier;
 import net.minecraft.util.math.RotationAxis;
 
 import org.joml.Matrix4f;
+import org.joml.Vector3f;
 
 import com.mojang.authlib.GameProfile;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -253,6 +255,10 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
                 }
             });
 
+            Vector3f light0 = new Vector3f(0.85F, 0.85F, -1F).normalize();
+            Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1F).normalize();
+            RenderSystem.setupLevelDiffuseLighting(light0, light1);
+
             consumers.setUI(true);
             MobTextureOverride.begin(this.form.texture.get());
             try
@@ -267,6 +273,8 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
             consumers.setUI(false);
 
             CustomVertexConsumerProvider.clearRunnables();
+
+            DiffuseLighting.disableGuiDepthLighting();
 
             stack.pop();
 
