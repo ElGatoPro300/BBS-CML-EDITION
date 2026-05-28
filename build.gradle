@@ -68,8 +68,8 @@ dependencies {
 	// These are included in the Fabric API production distribution and allow you to update your mod to the latest modules at a later more convenient time.
 
 	// modImplementation "net.fabricmc.fabric-api:fabric-api-deprecated:${project.fabric_version}"
-	modImplementation "maven.modrinth:sodium:mc1.21.11-0.8.4-fabric"
-	modImplementation "maven.modrinth:iris:1.10.5+1.21.11-fabric"
+	modImplementation "maven.modrinth:sodium:mc1.21.11-0.8.12-fabric"
+	modImplementation "maven.modrinth:iris:1.10.7+1.21.11-fabric"
 	modImplementation "maven.modrinth:watermedia:2.1.37"
 	modImplementation "maven.modrinth:lambdynamiclights:4.9.0+1.21.11"
 
