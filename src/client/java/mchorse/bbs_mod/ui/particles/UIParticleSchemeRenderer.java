@@ -7,6 +7,7 @@ import mchorse.bbs_mod.particles.emitter.ParticleEmitter;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIModelRenderer;
+import mchorse.bbs_mod.utils.joml.Vectors;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.BufferBuilder;
@@ -20,6 +21,7 @@ import net.minecraft.client.util.BufferAllocator;
 import net.minecraft.client.util.math.MatrixStack;
 
 import org.joml.Matrix4f;
+import org.joml.Vector3d;
 import org.joml.Vector3f;
 
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -63,14 +65,34 @@ public class UIParticleSchemeRenderer extends UIModelRenderer
             return;
         }
 
+        /* Temporarily reset camera rotation and position to 0 so CPU billboarding calculations
+         * are relative to the view matrix translation on the stack */
+        float originalPitch = this.camera.rotation.x;
+        float originalYaw = this.camera.rotation.y;
+        double originalX = this.camera.position.x;
+        double originalY = this.camera.position.y;
+        double originalZ = this.camera.position.z;
+
+        this.camera.rotation.set(0F, 0F, 0F);
+        this.camera.position.set(0D, 0D, 0D);
+
         this.emitter.setupCameraProperties(this.camera);
-        this.emitter.rotation.identity();
+
+        this.camera.rotation.x = originalPitch;
+        this.camera.rotation.y = originalYaw;
+        this.camera.position.set(originalX, originalY, originalZ);
 
         MinecraftClient.getInstance().gameRenderer.getLightmapTextureManager().enable();
 
         MatrixStack stack = context.batcher.getContext().getMatrices();
+        Matrix4f modelMatrix = new Matrix4f(stack.peek().getPositionMatrix());
+
+        this.emitter.lastGlobal.set(new Vector3d(modelMatrix.getTranslation(Vectors.TEMP_3F)));
+        this.emitter.rotation.set(modelMatrix);
+        this.emitter.modelRenderer = true;
 
         stack.push();
+        stack.loadIdentity();
 
         RenderSystem.enableBlend();
         RenderSystem.enableDepthTest();

@@ -52,6 +52,7 @@ public class ParticleEmitter
     public LivingEntity target;
     public World world;
     public boolean lit;
+    public boolean modelRenderer;
 
     public boolean running = true;
     private Particle uiParticle;
@@ -408,6 +409,13 @@ public class ParticleEmitter
         for (IComponentParticleInitialize component : this.scheme.particleInitializes)
         {
             component.apply(this, particle);
+        }
+
+        if (this.modelRenderer)
+        {
+            particle.relativePosition = true;
+            particle.relativeRotation = true;
+            particle.setupMatrix(this);
         }
 
         if (!particle.relativeRotation)
