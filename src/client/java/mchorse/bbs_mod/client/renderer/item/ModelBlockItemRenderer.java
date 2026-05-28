@@ -89,9 +89,9 @@ public class ModelBlockItemRenderer implements SpecialModelRenderer<ItemStack>
 
                 if (mode == ModelTransformationMode.GUI)
                 {
-                    Vector3f a = new Vector3f(0.85F, 0.85F, -1F).normalize();
-                    Vector3f b = new Vector3f(-0.85F, 0.85F, 1F).normalize();
-                    RenderSystem.setupLevelDiffuseLighting(a, b);
+                    Vector3f a = new Vector3f(0.85F, 0.85F, -1.0F).normalize();
+                    Vector3f b = new Vector3f(-0.85F, 0.85F, 1.0F).normalize();
+                    RenderSystem.setupGui3DDiffuseLighting(a, b);
                 }
 
                 FormUtilsClient.render(form, new FormRenderingContext()

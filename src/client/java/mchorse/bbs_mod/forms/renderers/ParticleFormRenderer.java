@@ -180,6 +180,7 @@ public class ParticleFormRenderer extends FormRenderer<ParticleForm> implements 
 
             emitter.lastGlobal.set(translation);
             emitter.rotation.set(modelMatrix);
+            emitter.modelRenderer = context.modelRenderer;
             
             if (!BBSRendering.isIrisShadowPass())
             {

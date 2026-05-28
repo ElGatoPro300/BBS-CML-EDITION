@@ -18,6 +18,7 @@ import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.events.register.RegisterFilmEditorFactoriesEvent;
 import mchorse.bbs_mod.film.Film;
+import mchorse.bbs_mod.film.FilmContributor;
 import mchorse.bbs_mod.film.Recorder;
 import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.forms.FormUtils;
@@ -1190,6 +1191,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         }
         this.homePage.setVisible(false);
 
+        if (this.anchoredReplaysPanel != null)
+        {
+            this.anchoredReplaysPanel.setFloating(this.floatingPanels.contains(ANCHORED_REPLAYS_PANEL_ID));
+        }
+
         for (Map.Entry<String, float[]> e : bounds.entrySet())
         {
             String id = e.getKey();
@@ -1259,7 +1265,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     private boolean usesPanelInternalDragHandle(String panelId)
     {
-        return ANCHORED_REPLAYS_PANEL_ID.equals(panelId) && this.anchoredReplaysPanel != null && this.anchoredReplaysPanel.isDocked();
+        /* All docked panels (including the replays panel) use the generic drag handle. */
+        return false;
     }
 
     private void updateEditorFlexBoundsOnly(ValueEditorLayout layout, EditorLayoutNode root)
@@ -1435,6 +1442,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
             if (!this.canApplyDropIntent(this.draggingPanelId, intent))
             {
+                /* Dropped on empty space: undock into a floating window, like the generic drag handle does. */
+                this.floatPanel(this.draggingPanelId, this.lastDragMouseX - 100, this.lastDragMouseY - 10);
                 this.clearPanelDragState();
 
                 return true;
@@ -2111,19 +2120,13 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                 this.applyLegacyLayoutSelection();
                 this.setupEditorFlex(true);
             });
-
-            menu.action(Icons.SCENE, UIKeys.FILM_LAYOUT_ANCHORED_REPLAYS, this.isAnchoredReplaysPanelEnabled(), () ->
-            {
-                BBSSettings.editorAnchoredReplaysPanel.set(!this.isAnchoredReplaysPanelEnabled());
-                this.setAnchoredReplaysPanelEnabled(this.isAnchoredReplaysPanelEnabled());
-            });
-
         });
     }
 
     private boolean isAnchoredReplaysPanelEnabled()
     {
-        return BBSSettings.editorAnchoredReplaysPanel.get();
+        /* The replay list is a permanent docked window; it can be moved/floated but never disabled. */
+        return true;
     }
 
     private boolean hasPanelInLayout(EditorLayoutNode node, String panelId)
@@ -2246,6 +2249,22 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         }
 
         this.anchoredReplaysPanel.syncReplaySelection(replay, select);
+    }
+
+    public void focusAnchoredReplaysPanel()
+    {
+        if (this.anchoredReplaysPanel == null)
+        {
+            return;
+        }
+
+        /* The panel is always docked/visible; if it's floating just surface it. */
+        if (this.floatingPanels.contains(ANCHORED_REPLAYS_PANEL_ID))
+        {
+            this.collapsedFloatingPanels.remove(ANCHORED_REPLAYS_PANEL_ID);
+            this.bringPanelToFront(ANCHORED_REPLAYS_PANEL_ID);
+            this.setupEditorFlex(true);
+        }
     }
 
     private void toggleLayoutLock()
@@ -2452,8 +2471,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     private void applyAnchoredReplaysPanelPresetState(MapType data, EditorLayoutNode baseRoot)
     {
-        boolean enabled = data.getBool(PRESET_REPLAYS_PANEL_ENABLED, this.isAnchoredReplaysPanelEnabled());
-        boolean floating = enabled && data.getBool(PRESET_REPLAYS_PANEL_FLOATING, this.floatingPanels.contains(ANCHORED_REPLAYS_PANEL_ID));
+        /* The panel is always enabled; only its docked/floating placement is restored from presets. */
+        boolean floating = data.getBool(PRESET_REPLAYS_PANEL_FLOATING, this.floatingPanels.contains(ANCHORED_REPLAYS_PANEL_ID));
         Vector2i position = data.has(PRESET_REPLAYS_PANEL_X) && data.has(PRESET_REPLAYS_PANEL_Y)
             ? new Vector2i(data.getInt(PRESET_REPLAYS_PANEL_X), data.getInt(PRESET_REPLAYS_PANEL_Y))
             : null;
@@ -2461,14 +2480,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             ? new Vector2i(data.getInt(PRESET_REPLAYS_PANEL_WIDTH), data.getInt(PRESET_REPLAYS_PANEL_HEIGHT))
             : null;
 
-        BBSSettings.editorAnchoredReplaysPanel.set(enabled);
-
-        if (!enabled)
-        {
-            this.setAnchoredReplaysPanelEnabled(false);
-
-            return;
-        }
+        BBSSettings.editorAnchoredReplaysPanel.set(true);
 
         if (floating)
         {
@@ -2879,7 +2891,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             BBSModClient.setSelectedReplay(null);
         }
 
-        this.preview.replays.setEnabled(data != null);
         this.openHistory.setEnabled(data != null);
         this.toggleHorizontal.setEnabled(data != null);
         this.layoutLock.setEnabled(data != null);
@@ -3092,7 +3103,48 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             this.teleportToCamera();
         }
 
+        if (this.data != null && this.editor.isVisible() && !this.showingHomePage)
+        {
+            this.incrementTimeWorked();
+        }
+
         super.update();
+    }
+
+    private void incrementTimeWorked()
+    {
+        if (this.data == null)
+        {
+            return;
+        }
+
+        this.data.totalTimeWorked.set(this.data.totalTimeWorked.get() + 1);
+
+        ClientPlayerEntity player = MinecraftClient.getInstance().player;
+
+        if (player != null)
+        {
+            String name = player.getGameProfile().getName();
+            FilmContributor contributor = null;
+
+            for (FilmContributor c : this.data.contributors.getList())
+            {
+                if (c.name.get().equalsIgnoreCase(name))
+                {
+                    contributor = c;
+                    break;
+                }
+            }
+
+            if (contributor == null)
+            {
+                contributor = new FilmContributor(String.valueOf(this.data.contributors.getList().size()));
+                contributor.name.set(name);
+                this.data.contributors.add(contributor);
+            }
+
+            contributor.time.set(contributor.time.get() + 1);
+        }
     }
 
     /* Rendering code */

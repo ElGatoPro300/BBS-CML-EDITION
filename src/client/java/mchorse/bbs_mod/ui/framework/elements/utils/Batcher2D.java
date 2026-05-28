@@ -564,6 +564,11 @@ public class Batcher2D
 
     public int wallText(String text, int x, int y, int color, int width, int lineHeight, float ax, float ay)
     {
+        return this.wallText(text, x, y, color, width, lineHeight, ax, ay, true);
+    }
+
+    public int wallText(String text, int x, int y, int color, int width, int lineHeight, float ax, float ay, boolean shadow)
+    {
         List<String> list = this.font.wrap(text, width);
         int h = (lineHeight * (list.size() - 1)) + this.font.getHeight();
 
@@ -571,7 +576,7 @@ public class Batcher2D
 
         for (String string : list)
         {
-            this.text(string.toString(), (int) (x + (width - this.font.getWidth(string)) * ax), y, color, true);
+            this.text(string.toString(), (int) (x + (width - this.font.getWidth(string)) * ax), y, color, shadow);
 
             y += lineHeight;
         }

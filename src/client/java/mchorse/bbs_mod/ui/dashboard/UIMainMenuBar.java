@@ -14,6 +14,9 @@ import mchorse.bbs_mod.ui.dashboard.panels.UIDataDashboardPanel;
 import mchorse.bbs_mod.ui.dashboard.panels.overlay.UIAboutOverlayPanel;
 import mchorse.bbs_mod.ui.dashboard.panels.overlay.UIOpenAssetOverlayPanel;
 import mchorse.bbs_mod.ui.dashboard.utils.UIGraphPanel;
+import mchorse.bbs_mod.ui.film.UIFilmLogOverlayPanel;
+import mchorse.bbs_mod.ui.film.UIFilmPanel;
+import mchorse.bbs_mod.ui.film.utils.FilmProjectHandler;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
@@ -129,6 +132,12 @@ public class UIMainMenuBar extends UIElement
         menu.action(Icons.ADD, L10n.lang("bbs.ui.raw.new"), () -> this.openNewSubmenu());
         menu.action(Icons.FOLDER, L10n.lang("bbs.ui.raw.open"), () -> this.openOpenPopup());
         menu.action(Icons.TIME, L10n.lang("bbs.ui.raw.recent"), () -> this.openRecentSubmenu());
+
+        if (this.dashboard.panels.panel instanceof UIFilmPanel filmPanel && filmPanel.getData() != null)
+        {
+            menu.action(Icons.UPLOAD, L10n.lang("bbs.ui.film.export_project"), () -> FilmProjectHandler.exportProject(filmPanel));
+        }
+
         menu.action(Icons.SETTINGS, UIKeys.CONFIG_TITLE, () -> UIOverlay.addOverlay(this.getContext(), this.dashboard.settingsPanel, 580, 340));
         menu.action(Icons.JOYSTICK, UIKeys.ADDONS_TITLE, () -> UIOverlay.addOverlay(this.getContext(), this.dashboard.addonsPanel, 520, 320));
     }
@@ -149,6 +158,13 @@ public class UIMainMenuBar extends UIElement
                 this.dashboard.documentTabsBar.addOrActivate(ContentType.GRAPH, "graph_calculator");
             }
         });
+
+        if (this.dashboard.panels.panel instanceof UIFilmPanel filmPanel && filmPanel.getData() != null)
+        {
+            menu.action(Icons.TIME, L10n.lang("bbs.ui.film.log_tools"), () -> {
+                UIOverlay.addOverlay(this.getContext(), new UIFilmLogOverlayPanel(filmPanel), 280, 240);
+            });
+        }
     }
 
     private void buildHelpMenu(ContextMenuManager menu)

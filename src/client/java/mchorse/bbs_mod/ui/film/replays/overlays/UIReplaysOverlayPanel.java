@@ -2,6 +2,7 @@ package mchorse.bbs_mod.ui.film.replays.overlays;
 
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.film.replays.Replay;
+import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
@@ -42,7 +43,7 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
     private static final int DOCKED_BOTTOM_SECTION_MIN = 70;
     private static final int DOCKED_REPLAYS_HEIGHT_MAX = 420;
     private static final int DOCKED_RESIZER_HEIGHT = 6;
-    private static final String DOCKED_PANEL_ID = "replaysPanel";
+    private static final int DOCKED_GRIP_HEIGHT = 16;
     private static final Logger LOGGER = LogUtils.getLogger();
 
     public static final List<Consumer<UIReplaysOverlayPanel>> extensions = new ArrayList<>();
@@ -51,7 +52,6 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
 
     public UIElement replayProperties;
     public UIElement groupProperties;
-    public UIElement replayLabel;
     public UINestedEdit pickEdit;
     public UIToggle enabled;
     public UITextbox label;
@@ -60,7 +60,6 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
     public UIToggle shadow;
     public UITrackpad shadowSize;
     public UITrackpad shadowOpacity;
-    public UIElement loopingLabel;
     public UITrackpad looping;
     public UIToggle actor;
     public UIToggle fp;
@@ -88,11 +87,14 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
     public UIElement dropVelocityRowX;
     public UIElement dropVelocityRowY;
     public UIElement dropVelocityRowZ;
+    public UIElement dropVelocityGroup;
+    public UIElement itemDropsContent;
     public UIDraggable dockedResizer;
 
     private Consumer<Replay> callback;
     private final UIFilmPanel filmPanel;
     private boolean docked;
+    private boolean floating;
     private int dockedReplaysHeight = DOCKED_REPLAYS_HEIGHT;
 
     public UIReplaysOverlayPanel(UIFilmPanel filmPanel, Consumer<Replay> callback)
@@ -225,29 +227,35 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
         this.dropVelocityMaxZ.tooltip(UIKeys.FILM_REPLAY_DROP_VELOCITY_MAX_Z);
 
 
-        this.replayLabel = UI.label(UIKeys.FILM_REPLAY_REPLAY);
-        this.loopingLabel = UI.label(UIKeys.FILM_REPLAY_LOOPING);
         this.relativeRow = UI.row(this.relativeOffsetX, this.relativeOffsetY, this.relativeOffsetZ);
         this.dropVelocityLabel = UI.label(UIKeys.FILM_REPLAY_DROP_VELOCITY);
         this.dropVelocityRowX = UI.row(5, 0, this.dropVelocityMinX, this.dropVelocityMaxX);
         this.dropVelocityRowY = UI.row(5, 0, this.dropVelocityMinY, this.dropVelocityMaxY);
         this.dropVelocityRowZ = UI.row(5, 0, this.dropVelocityMinZ, this.dropVelocityMaxZ);
 
-        this.replayProperties = UI.scrollView(5, 6,
-            this.replayLabel,
-            this.pickEdit, this.enabled,
-            this.label, this.nameTag,
-            this.shadow, this.shadowSize, this.shadowOpacity,
-            this.loopingLabel,
-            this.looping, this.actor, this.fp,
-            this.relative, this.relativeRow,
-            this.axesPreview, this.pickAxesPreviewBone, this.dropItemsOnDeath,
+        this.replayProperties = UI.scrollView(6, 6);
+
+        this.addPropertySection(UIKeys.FILM_REPLAY_SECTION_GENERAL, UI.column(4,
+            this.pickEdit, this.enabled, this.label, this.nameTag
+        ));
+        this.addPropertySection(UIKeys.FILM_REPLAY_SHADOW, UI.column(4,
+            this.shadow, this.shadowSize, this.shadowOpacity
+        ));
+        this.addPropertySection(UIKeys.FILM_REPLAY_SECTION_PLAYBACK, UI.column(4,
+            this.looping, this.actor, this.fp
+        ));
+        this.addPropertySection(UIKeys.FILM_REPLAY_SECTION_POSITIONING, UI.column(4,
+            this.relative, this.relativeRow, this.axesPreview, this.pickAxesPreviewBone
+        ));
+        this.dropVelocityGroup = UI.column(4,
             this.dropVelocityLabel,
-            this.dropVelocityRowX,
-            this.dropVelocityRowY,
-            this.dropVelocityRowZ,
+            this.dropVelocityRowX, this.dropVelocityRowY, this.dropVelocityRowZ,
             this.replaceReplayInventory
         );
+        this.itemDropsContent = UI.column(4, this.dropItemsOnDeath, this.dropVelocityGroup);
+
+        this.addPropertySection(UIKeys.FILM_REPLAY_SECTION_ITEM_DROPS, this.itemDropsContent);
+
         this.groupProperties = UI.scrollView(5, 6, this.groupLabel);
         this.dockedResizer = new UIDraggable((context) ->
         {
@@ -273,17 +281,48 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
         }
     }
 
+    private void addPropertySection(IKey title, UIElement content)
+    {
+        UIElement section = new UIElement();
+
+        section.column(4).vertical().stretch();
+
+        UICollapseHeader header = new UICollapseHeader(title);
+
+        header.h(16);
+        header.onToggle(() ->
+        {
+            if (header.expanded)
+            {
+                section.add(content);
+            }
+            else
+            {
+                section.remove(content);
+            }
+
+            this.resize();
+        });
+
+        section.add(header, content);
+
+        this.replayProperties.add(section);
+    }
+
     public void setDocked(boolean docked)
     {
         this.docked = docked;
 
         if (docked)
         {
-            this.title.setVisible(true);
+            /* Docked or floating: the surrounding window/layout provides the title bar,
+             * so this panel hides its own title (collapsed to a zero area so it can't
+             * intercept list clicks). */
+            this.title.setVisible(false);
             this.icons.setVisible(false);
             this.close.setVisible(false);
-            this.title.labelAnchor(0.5F, 0.5F).relative(this).xy(0.5F, 0).anchor(0.5F, 0).w(1F, -12).h(20);
-            this.content.relative(this).xy(0, 20).w(1F).h(1F, -20);
+            this.title.relative(this).xy(0, 0).w(0).h(0);
+            this.applyDockedContentLayout();
         }
         else
         {
@@ -297,6 +336,40 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
         }
 
         this.updateDockedLayout();
+    }
+
+    /**
+     * Floating windows get their title/drag bar from the floating chrome, so the content
+     * fills the panel. When docked in the layout the panel reserves a small grip strip at
+     * the top so it can be grabbed and moved without clicking the list.
+     */
+    public void setFloating(boolean floating)
+    {
+        if (this.floating == floating)
+        {
+            return;
+        }
+
+        this.floating = floating;
+
+        if (this.docked)
+        {
+            this.applyDockedContentLayout();
+            this.updateDockedLayout();
+            this.resize();
+        }
+    }
+
+    private void applyDockedContentLayout()
+    {
+        if (this.floating)
+        {
+            this.content.relative(this).xy(0, 0).w(1F).h(1F);
+        }
+        else
+        {
+            this.content.relative(this).xy(0, DOCKED_GRIP_HEIGHT).w(1F).h(1F, -DOCKED_GRIP_HEIGHT);
+        }
     }
 
     private void updateDockedLayout()
@@ -333,43 +406,6 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
     public boolean isDocked()
     {
         return this.docked;
-    }
-
-    private boolean canUseDockedTitleDrag()
-    {
-        return this.docked && !BBSSettings.editorLayoutSettings.isLayoutLocked();
-    }
-
-    @Override
-    public boolean subMouseClicked(UIContext context)
-    {
-        if (this.docked && this.title.area.isInside(context) && context.mouseButton == 0)
-        {
-            if (this.canUseDockedTitleDrag())
-            {
-                this.filmPanel.beginEmbeddedPanelDragHold(DOCKED_PANEL_ID, context.mouseX, context.mouseY);
-            }
-
-            return true;
-        }
-
-        if (this.docked && this.title.area.isInside(context) && !this.canUseDockedTitleDrag())
-        {
-            return false;
-        }
-
-        return super.subMouseClicked(context);
-    }
-
-    @Override
-    public boolean subMouseReleased(UIContext context)
-    {
-        if (this.filmPanel.finishEmbeddedPanelDrag(DOCKED_PANEL_ID))
-        {
-            return true;
-        }
-
-        return super.subMouseReleased(context);
     }
 
     private void edit(Consumer<Replay> consumer)
@@ -460,22 +496,18 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
 
     private void updateDropVelocityVisibility(boolean visible)
     {
-        this.dropVelocityLabel.setVisible(visible);
-        this.dropVelocityRowX.setVisible(visible);
-        this.dropVelocityRowY.setVisible(visible);
-        this.dropVelocityRowZ.setVisible(visible);
-        this.replaceReplayInventory.setVisible(visible);
-    }
+        boolean present = this.itemDropsContent.getChildren().contains(this.dropVelocityGroup);
 
-    @Override
-    public void render(UIContext context)
-    {
-        if (this.docked)
+        if (visible && !present)
         {
-            this.filmPanel.updateEmbeddedPanelDrag(DOCKED_PANEL_ID, context.mouseX, context.mouseY);
+            this.itemDropsContent.add(this.dropVelocityGroup);
+            this.resize();
         }
-
-        super.render(context);
+        else if (!visible && present)
+        {
+            this.itemDropsContent.remove(this.dropVelocityGroup);
+            this.resize();
+        }
     }
 
     @Override
@@ -489,12 +521,21 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
         {
             context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xFF141418);
             context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xFF2A2A35, 1);
-            context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.y + 20, 0xFF1A1A22);
-            context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.y + 20, 0xFF2A2A35, 1);
 
-            if (this.canUseDockedTitleDrag() && this.title.area.isInside(context))
+            if (!this.floating)
             {
-                context.batcher.icon(Icons.ALL_DIRECTIONS, Colors.GRAY, this.area.mx(), this.title.area.my(), 0.5F, 0.5F);
+                int gripBottom = this.area.y + DOCKED_GRIP_HEIGHT;
+
+                context.batcher.box(this.area.x, this.area.y, this.area.ex(), gripBottom, 0xFF1A1A22);
+                context.batcher.box(this.area.x, gripBottom, this.area.ex(), gripBottom + 1, 0xFF2A2A35);
+
+                int cx = this.area.mx();
+                int cy = this.area.y + DOCKED_GRIP_HEIGHT / 2 - 1;
+                int dot = Colors.setA(Colors.WHITE, 0.35F);
+
+                context.batcher.box(cx - 7, cy, cx - 5, cy + 2, dot);
+                context.batcher.box(cx - 1, cy, cx + 1, cy + 2, dot);
+                context.batcher.box(cx + 5, cy, cx + 7, cy + 2, dot);
             }
         }
 
@@ -502,7 +543,59 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
 
         if (this.replays.getList().size() < 3)
         {
-            UIDataUtils.renderRightClickHere(context, this.replays.area);
+            UIDataUtils.renderRightClickHere(context, this.replays.area, 0xFF141418);
+        }
+    }
+
+    public static class UICollapseHeader extends UIElement
+    {
+        public IKey title;
+        public boolean expanded = true;
+
+        private Runnable onToggle;
+
+        public UICollapseHeader(IKey title)
+        {
+            this.title = title;
+        }
+
+        public UICollapseHeader onToggle(Runnable onToggle)
+        {
+            this.onToggle = onToggle;
+
+            return this;
+        }
+
+        @Override
+        protected boolean subMouseClicked(UIContext context)
+        {
+            if (this.area.isInside(context) && context.mouseButton == 0)
+            {
+                this.expanded = !this.expanded;
+
+                if (this.onToggle != null)
+                {
+                    this.onToggle.run();
+                }
+
+                return true;
+            }
+
+            return super.subMouseClicked(context);
+        }
+
+        @Override
+        public void render(UIContext context)
+        {
+            boolean hover = this.area.isInside(context);
+            int background = Colors.setA(BBSSettings.primaryColor.get(), hover ? 0.5F : 0.3F);
+            int textHeight = context.batcher.getFont().getHeight();
+
+            context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), background);
+            context.batcher.icon(this.expanded ? Icons.ARROW_DOWN : Icons.ARROW_RIGHT, Colors.WHITE, this.area.x + 4, this.area.my(), 0F, 0.5F);
+            context.batcher.textShadow(this.title.get(), this.area.x + 18, this.area.my() - textHeight / 2, Colors.WHITE);
+
+            super.render(context);
         }
     }
 }
