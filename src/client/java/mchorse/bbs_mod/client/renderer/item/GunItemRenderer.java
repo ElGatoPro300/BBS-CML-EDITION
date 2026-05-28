@@ -103,7 +103,9 @@ public class GunItemRenderer implements SpecialModelRenderer<ItemStack>
 
                 if (mode == ItemDisplayContext.GUI)
                 {
-                    // GUI diffuse helper moved in 1.21.11 pipeline.
+                    Vector3f a = new Vector3f(0.85F, 0.85F, -1.0F).normalize();
+                    Vector3f b = new Vector3f(-0.85F, 0.85F, 1.0F).normalize();
+                    RenderSystem.setupGui3DDiffuseLighting(a, b);
                 }
 
                 int maxLight = LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE;

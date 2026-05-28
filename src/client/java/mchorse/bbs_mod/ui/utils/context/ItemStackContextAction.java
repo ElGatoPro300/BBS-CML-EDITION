@@ -8,10 +8,13 @@ import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Colors;
 
+import net.minecraft.client.render.DiffuseLighting;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.item.ItemStack;
 
 import com.mojang.blaze3d.opengl.GlStateManager;
+import org.joml.Vector3f;
+
 import com.mojang.blaze3d.systems.RenderSystem;
 
 import org.lwjgl.opengl.GL11;
@@ -40,8 +43,18 @@ public class ItemStackContextAction extends ContextAction
             matrices.push();
             GlStateManager._disableDepthTest();
             consumers.setUI(true);
+
+            Vector3f light0 = new Vector3f(0.85F, 0.85F, -1.0F).normalize();
+            Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1.0F).normalize();
+            RenderSystem.setupGui3DDiffuseLighting(light0, light1);
+
             context.batcher.getContext().drawItem(this.stack, x + 2, y + 2);
             context.batcher.getContext().drawStackOverlay(context.batcher.getFont().getRenderer(), this.stack, x + 2, y + 2);
+
+            context.batcher.getContext().draw();
+
+            DiffuseLighting.disableGuiDepthLighting();
+
             consumers.setUI(false);
             GlStateManager._enableDepthTest();
             GlStateManager._depthFunc(GL11.GL_ALWAYS);

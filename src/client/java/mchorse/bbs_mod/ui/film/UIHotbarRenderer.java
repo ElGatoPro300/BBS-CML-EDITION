@@ -5,6 +5,7 @@ import mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.RenderPipelines;
+import net.minecraft.client.render.DiffuseLighting;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.item.ItemStack;
@@ -12,6 +13,8 @@ import net.minecraft.util.Identifier;
 import net.minecraft.util.math.MathHelper;
 
 import com.mojang.blaze3d.opengl.GlStateManager;
+import org.joml.Vector3f;
+
 import com.mojang.blaze3d.systems.RenderSystem;
 
 import java.util.List;
@@ -209,6 +212,10 @@ public class UIHotbarRenderer
         GlStateManager._enableDepthTest();
         GlStateManager._depthMask(true);
 
+        Vector3f light0 = new Vector3f(0.85F, 0.85F, -1.0F).normalize();
+        Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1.0F).normalize();
+        RenderSystem.setupGui3DDiffuseLighting(light0, light1);
+
         for (int i = 0; i < 9; i++)
         {
             ItemStack stackItem = hotbar.items[i];
@@ -234,9 +241,15 @@ public class UIHotbarRenderer
             batcher.getContext().drawStackOverlay(batcher.getFont().getRenderer(), hotbar.offhandItem, offhandX, offhandY);
         }
 
+        batcher.getContext().draw();
+
+        DiffuseLighting.disableGuiDepthLighting();
+
         GlStateManager._disableDepthTest();
         GlStateManager._depthMask(false);
         GlStateManager._disableBlend();
+
+        RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
 
         stack.pop();
         batcher.flush();

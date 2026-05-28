@@ -69,6 +69,7 @@ import net.minecraft.world.LightType;
 import net.irisshaders.iris.api.v0.IrisApi;
 
 import org.joml.Matrix4f;
+import org.joml.Vector3f;
 
 import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -159,6 +160,201 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
     public void renderInUI(UIContext context, int x1, int y1, int x2, int y2)
     {
         this.ensureLoaded();
+
+        MatrixStack matrices = context.batcher.getContext().getMatrices();
+        Matrix4f uiMatrix = ModelFormRenderer.getUIMatrix(context, x1, y1, x2, y2);
+
+        matrices.push();
+        MatrixStackUtils.multiply(matrices, uiMatrix);
+
+        /* To draw 3D content inside UI, use standard depth test and restore it at the end to avoid affecting other panels. */
+        RenderSystem.depthFunc(GL11.GL_LEQUAL);
+
+        /* Autoscale: adjust so the structure fits in the cell without clipping */
+        float cellW = x2 - x1;
+        float cellH = y2 - y1;
+        float baseScale = cellH / 2.5F; /* same as in ModelFormRenderer#getUIMatrix */
+        float targetPixels = Math.min(cellW, cellH) * 0.9F; /* 10% margin */
+
+        int wUnits = 1;
+        int hUnits = 1;
+        int dUnits = 1;
+        int maxUnits;
+
+        float auto;
+        float finalScale;
+
+        boolean optimize = true;
+
+        if (this.boundsMin != null && this.boundsMax != null)
+        {
+            wUnits = Math.max(1, this.boundsMax.getX() - this.boundsMin.getX() + 1);
+            hUnits = Math.max(1, this.boundsMax.getY() - this.boundsMin.getY() + 1);
+            dUnits = Math.max(1, this.boundsMax.getZ() - this.boundsMin.getZ() + 1);
+        }
+        else
+        {
+            wUnits = Math.max(1, this.size.getX());
+            hUnits = Math.max(1, this.size.getY());
+            dUnits = Math.max(1, this.size.getZ());
+        }
+
+        maxUnits = Math.max(wUnits, Math.max(hUnits, dUnits));
+        auto = maxUnits > 0 ? targetPixels / (baseScale * maxUnits) : 1F;
+
+        /* Do not exceed user defined scale; only reduce if necessary */
+        finalScale = this.form.uiScale.get() * Math.min(1F, auto);
+        matrices.scale(finalScale, finalScale, finalScale);
+
+        matrices.peek().getNormalMatrix().getScale(Vectors.EMPTY_3F);
+        matrices.peek().getNormalMatrix().scale(1F / Vectors.EMPTY_3F.x, -1F / Vectors.EMPTY_3F.y, 1F / Vectors.EMPTY_3F.z);
+
+        Vector3f light0 = new Vector3f(0.85F, 0.85F, -1F).normalize();
+        Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1F).normalize();
+        RenderSystem.setupLevelDiffuseLighting(light0, light1);
+
+        StructureLightSettings slUi = this.form.structureLight.getRuntimeValue();
+        boolean currentEmitLightUi = (slUi != null) ? slUi.enabled : this.form.emitLight.get();
+        int currentLightIntensityUi = (slUi != null) ? slUi.intensity : this.form.lightIntensity.get();
+
+        if (currentEmitLightUi != this.lastEmitLight || currentLightIntensityUi != this.lastLightIntensity)
+        {
+            this.vaoDirty = true;
+            this.lastEmitLight = currentEmitLightUi;
+            this.lastLightIntensity = currentLightIntensityUi;
+        }
+
+        if (!optimize)
+        {
+            /* BufferBuilder mode: better lighting, worse performance */
+            boolean shaders = this.isShadersActive();
+            VertexConsumerProvider consumers = MinecraftClient.getInstance().getBufferBuilders().getEntityVertexConsumers();
+
+            try
+            {
+                FormRenderingContext uiContext = new FormRenderingContext()
+                    .set(FormRenderType.PREVIEW, null, matrices, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, OverlayTexture.DEFAULT_UV, 0F);
+
+                this.renderStructureCulledWorld(uiContext, matrices, consumers, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, OverlayTexture.DEFAULT_UV, shaders);
+
+                if (consumers instanceof VertexConsumerProvider.Immediate immediate)
+                {
+                    immediate.draw();
+                }
+            }
+            catch (Throwable ignored)
+            {}
+        }
+        else
+        {
+            IModelVAO vao = this.getStructureVao();
+
+            if (vao == null || this.vaoDirty)
+            {
+                this.buildStructureVAO();
+                vao = this.getStructureVao();
+            }
+
+            if (vao != null)
+            {
+                Color tint = this.form.color.get();
+                GameRenderer gameRenderer = MinecraftClient.getInstance().gameRenderer;
+                ShaderProgram shader = BBSShaders.getModel();
+
+                gameRenderer.getLightmapTextureManager().enable();
+                gameRenderer.getOverlayTexture().setupOverlayColor();
+
+                /* Revert to own model shader in vanilla to ensure VAO compatibility */
+                RenderSystem.setShader(shader);
+                RenderSystem.setShaderTexture(0, SpriteAtlasTexture.BLOCK_ATLAS_TEXTURE);
+
+                boolean needBlendUI = tint.a < 0.999F || this.hasTranslucentLayer;
+
+                if (needBlendUI)
+                {
+                    RenderSystem.enableBlend();
+                    RenderSystem.defaultBlendFunc();
+                }
+                else
+                {
+                    RenderSystem.disableBlend();
+                }
+
+                RenderSystem.enableCull();
+
+                ModelVAORenderer.render(shader, vao, matrices, tint.r, tint.g, tint.b, tint.a, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, OverlayTexture.DEFAULT_UV);
+
+                if (this.hasBlockEntityLayer)
+                {
+                    try
+                    {
+                        VertexConsumerProvider beConsumers = MinecraftClient.getInstance().getBufferBuilders().getEntityVertexConsumers();
+                        FormRenderingContext beContext = new FormRenderingContext()
+                            .set(FormRenderType.PREVIEW, null, matrices, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, OverlayTexture.DEFAULT_UV, 0F);
+
+                        this.renderBlockEntitiesOnly(beContext, matrices, beConsumers, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, OverlayTexture.DEFAULT_UV);
+
+                        if (beConsumers instanceof VertexConsumerProvider.Immediate immediate)
+                        {
+                            immediate.draw();
+                        }
+                    }
+                    catch (Throwable ignored)
+                    {}
+                }
+
+                if (this.hasBiomeTintedLayer)
+                {
+                    try
+                    {
+                        boolean shadersEnabled = BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld();
+                        VertexConsumerProvider consumersTint = MinecraftClient.getInstance().getBufferBuilders().getEntityVertexConsumers();
+                        FormRenderingContext tintContext = new FormRenderingContext()
+                            .set(FormRenderType.PREVIEW, null, matrices, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, OverlayTexture.DEFAULT_UV, 0F);
+
+                        this.renderBiomeTintedBlocksVanilla(tintContext, matrices, consumersTint, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, OverlayTexture.DEFAULT_UV);
+
+                        if (consumersTint instanceof VertexConsumerProvider.Immediate immediate)
+                        {
+                            immediate.draw();
+                        }
+                    }
+                    catch (Throwable ignored)
+                    {}
+                }
+
+                if (this.hasAnimatedLayer)
+                {
+                    try
+                    {
+                        boolean shadersEnabled = BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld();
+                        VertexConsumerProvider consumersAnim = MinecraftClient.getInstance().getBufferBuilders().getEntityVertexConsumers();
+                        FormRenderingContext animContext = new FormRenderingContext()
+                            .set(FormRenderType.PREVIEW, null, matrices, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, OverlayTexture.DEFAULT_UV, 0F);
+
+                        this.renderAnimatedBlocksVanilla(animContext, matrices, consumersAnim, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, OverlayTexture.DEFAULT_UV);
+
+                        if (consumersAnim instanceof VertexConsumerProvider.Immediate immediate)
+                        {
+                            immediate.draw();
+                        }
+                    }
+                    catch (Throwable ignored)
+                    {}
+                }
+
+                gameRenderer.getLightmapTextureManager().disable();
+                gameRenderer.getOverlayTexture().teardownOverlayColor();
+                RenderSystem.disableBlend();
+            }
+        }
+
+        DiffuseLighting.disableGuiDepthLighting();
+
+        matrices.pop();
+
+        /* Restore depth state expected by UI system */
+        RenderSystem.depthFunc(GL11.GL_ALWAYS);
     }
 
     @Override

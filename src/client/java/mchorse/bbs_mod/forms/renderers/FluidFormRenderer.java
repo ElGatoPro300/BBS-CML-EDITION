@@ -26,6 +26,7 @@ import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.render.*;
 import net.minecraft.client.render.RenderLayers;
+import net.minecraft.client.render.DiffuseLighting;
 import net.minecraft.client.util.math.MatrixStack;
 
 import org.joml.Matrix3f;
@@ -79,6 +80,10 @@ public class FluidFormRenderer extends FormRenderer<FluidForm> implements ITicka
         stack.peek().getNormalMatrix().getScale(normalScale);
         stack.peek().getNormalMatrix().scale(1F / normalScale.x, -1F / normalScale.y, 1F / normalScale.z);
 
+        Vector3f light0 = new Vector3f(0.85F, 0.85F, -1F).normalize();
+        Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1F).normalize();
+        RenderSystem.setupLevelDiffuseLighting(light0, light1);
+
         VertexFormat format = VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL;
         
         this.renderFluid(format, RenderPipelines.ENTITY_TRANSLUCENT,
@@ -86,6 +91,8 @@ public class FluidFormRenderer extends FormRenderer<FluidForm> implements ITicka
             OverlayTexture.DEFAULT_UV, LightmapTextureManager.MAX_LIGHT_COORDINATE, Colors.WHITE,
             context.getTransition()
         );
+
+        DiffuseLighting.disableGuiDepthLighting();
 
         stack.pop();
     }
