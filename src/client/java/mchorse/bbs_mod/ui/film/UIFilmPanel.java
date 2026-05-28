@@ -1434,6 +1434,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
             if (!this.canApplyDropIntent(this.draggingPanelId, intent))
             {
+                /* Dropped on empty space: undock into a floating window, like the generic drag handle does. */
+                this.floatPanel(this.draggingPanelId, this.lastDragMouseX - 100, this.lastDragMouseY - 10);
                 this.clearPanelDragState();
 
                 return true;
@@ -2110,19 +2112,13 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                 this.applyLegacyLayoutSelection();
                 this.setupEditorFlex(true);
             });
-
-            menu.action(Icons.SCENE, UIKeys.FILM_LAYOUT_ANCHORED_REPLAYS, this.isAnchoredReplaysPanelEnabled(), () ->
-            {
-                BBSSettings.editorAnchoredReplaysPanel.set(!this.isAnchoredReplaysPanelEnabled());
-                this.setAnchoredReplaysPanelEnabled(this.isAnchoredReplaysPanelEnabled());
-            });
-
         });
     }
 
     private boolean isAnchoredReplaysPanelEnabled()
     {
-        return BBSSettings.editorAnchoredReplaysPanel.get();
+        /* The replay list is a permanent docked window; it can be moved/floated but never disabled. */
+        return true;
     }
 
     private boolean hasPanelInLayout(EditorLayoutNode node, String panelId)
@@ -2245,6 +2241,22 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         }
 
         this.anchoredReplaysPanel.syncReplaySelection(replay, select);
+    }
+
+    public void focusAnchoredReplaysPanel()
+    {
+        if (this.anchoredReplaysPanel == null)
+        {
+            return;
+        }
+
+        /* The panel is always docked/visible; if it's floating just surface it. */
+        if (this.floatingPanels.contains(ANCHORED_REPLAYS_PANEL_ID))
+        {
+            this.collapsedFloatingPanels.remove(ANCHORED_REPLAYS_PANEL_ID);
+            this.bringPanelToFront(ANCHORED_REPLAYS_PANEL_ID);
+            this.setupEditorFlex(true);
+        }
     }
 
     private void toggleLayoutLock()
@@ -2451,8 +2463,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     private void applyAnchoredReplaysPanelPresetState(MapType data, EditorLayoutNode baseRoot)
     {
-        boolean enabled = data.getBool(PRESET_REPLAYS_PANEL_ENABLED, this.isAnchoredReplaysPanelEnabled());
-        boolean floating = enabled && data.getBool(PRESET_REPLAYS_PANEL_FLOATING, this.floatingPanels.contains(ANCHORED_REPLAYS_PANEL_ID));
+        /* The panel is always enabled; only its docked/floating placement is restored from presets. */
+        boolean floating = data.getBool(PRESET_REPLAYS_PANEL_FLOATING, this.floatingPanels.contains(ANCHORED_REPLAYS_PANEL_ID));
         Vector2i position = data.has(PRESET_REPLAYS_PANEL_X) && data.has(PRESET_REPLAYS_PANEL_Y)
             ? new Vector2i(data.getInt(PRESET_REPLAYS_PANEL_X), data.getInt(PRESET_REPLAYS_PANEL_Y))
             : null;
@@ -2460,14 +2472,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             ? new Vector2i(data.getInt(PRESET_REPLAYS_PANEL_WIDTH), data.getInt(PRESET_REPLAYS_PANEL_HEIGHT))
             : null;
 
-        BBSSettings.editorAnchoredReplaysPanel.set(enabled);
-
-        if (!enabled)
-        {
-            this.setAnchoredReplaysPanelEnabled(false);
-
-            return;
-        }
+        BBSSettings.editorAnchoredReplaysPanel.set(true);
 
         if (floating)
         {
@@ -2878,7 +2883,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             BBSModClient.setSelectedReplay(null);
         }
 
-        this.preview.replays.setEnabled(data != null);
         this.openHistory.setEnabled(data != null);
         this.toggleHorizontal.setEnabled(data != null);
         this.layoutLock.setEnabled(data != null);
