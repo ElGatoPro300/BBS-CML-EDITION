@@ -92,9 +92,7 @@ public class ModelBlockItemRenderer implements SpecialModelRenderer<ItemStack>
 
                 if (mode == ItemDisplayContext.GUI)
                 {
-                    Vector3f a = new Vector3f(0.85F, 0.85F, -1.0F).normalize();
-                    Vector3f b = new Vector3f(-0.85F, 0.85F, 1.0F).normalize();
-                    RenderSystem.setupGui3DDiffuseLighting(a, b);
+                    MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.ITEMS_3D);
                 }
 
                 FormUtilsClient.render(form, new FormRenderingContext()

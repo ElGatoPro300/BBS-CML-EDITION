@@ -59,9 +59,7 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
 
         Color set = this.form.color.get();
 
-        Vector3f light0 = new Vector3f(0.85F, 0.85F, -1F).normalize();
-        Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1F).normalize();
-        RenderSystem.setupLevelDiffuseLighting(light0, light1);
+        MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.LEVEL);
 
         consumers.setSubstitute(BBSRendering.getColorConsumer(set));
         consumers.setUI(true);
@@ -81,8 +79,6 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
         consumers.draw();
         consumers.setUI(false);
         consumers.setSubstitute(null);
-
-        DiffuseLighting.disableGuiDepthLighting();
 
         matrices.pop();
     }

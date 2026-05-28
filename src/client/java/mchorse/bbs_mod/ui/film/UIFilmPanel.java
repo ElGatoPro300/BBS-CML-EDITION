@@ -3124,7 +3124,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         if (player != null)
         {
-            String name = player.getGameProfile().getName();
+            String name = player.getGameProfile().name();
             FilmContributor contributor = null;
 
             for (FilmContributor c : this.data.contributors.getList())

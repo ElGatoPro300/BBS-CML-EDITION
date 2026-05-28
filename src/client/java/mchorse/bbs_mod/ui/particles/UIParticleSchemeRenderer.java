@@ -84,9 +84,7 @@ public class UIParticleSchemeRenderer extends UIModelRenderer
         this.camera.rotation.y = originalYaw;
         this.camera.position.set(originalX, originalY, originalZ);
 
-        MinecraftClient.getInstance().gameRenderer.getLightmapTextureManager().enable();
-
-        MatrixStack stack = new MatrixStack()
+        MatrixStack stack = new MatrixStack();
         Matrix4f modelMatrix = new Matrix4f(stack.peek().getPositionMatrix());
 
         this.emitter.lastGlobal.set(new Vector3d(modelMatrix.getTranslation(Vectors.TEMP_3F)));

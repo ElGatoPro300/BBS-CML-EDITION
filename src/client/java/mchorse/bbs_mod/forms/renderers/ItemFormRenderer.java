@@ -64,15 +64,13 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
 
         Vector3f light0 = new Vector3f(0.85F, 0.85F, -1F).normalize();
         Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1F).normalize();
-        RenderSystem.setupLevelDiffuseLighting(light0, light1);
+        MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.LEVEL);
 
         consumers.setSubstitute(BBSRendering.getColorConsumer(set));
         consumers.setUI(true);
         consumers.draw();
         consumers.setUI(false);
         consumers.setSubstitute(null);
-
-        DiffuseLighting.disableGuiDepthLighting();
 
         matrices.pop();
     }

@@ -60,9 +60,7 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
         stack.peek().getNormalMatrix().getScale(Vectors.EMPTY_3F);
         stack.peek().getNormalMatrix().scale(1F / Vectors.EMPTY_3F.x, -1F / Vectors.EMPTY_3F.y, 1F / Vectors.EMPTY_3F.z);
 
-        Vector3f light0 = new Vector3f(0.85F, 0.85F, -1F).normalize();
-        Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1F).normalize();
-        RenderSystem.setupLevelDiffuseLighting(light0, light1);
+        MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.LEVEL);
 
         GlStateManager._depthFunc(GL11.GL_LEQUAL);
         this.renderModel(BBSShaders::getModel,
@@ -75,7 +73,7 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
         );
         GlStateManager._depthFunc(GL11.GL_ALWAYS);
 
-        DiffuseLighting.disableGuiDepthLighting();
+
 
         stack.pop();
     }

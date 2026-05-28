@@ -23,9 +23,9 @@ import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemStack;
 
-import com.mojang.blaze3d.opengl.GlStateManager;
 import org.joml.Vector3f;
 
+import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 
 import org.lwjgl.opengl.GL11;
@@ -228,14 +228,10 @@ public class UIItemStack extends UIElement
 
             Vector3f light0 = new Vector3f(0.85F, 0.85F, -1.0F).normalize();
             Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1.0F).normalize();
-            RenderSystem.setupGui3DDiffuseLighting(light0, light1);
+            MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.ITEMS_3D);
 
             context.batcher.getContext().drawItem(this.stack, stackCenterX - 8, this.area.my() - 8);
             context.batcher.getContext().drawStackOverlay(context.batcher.getFont().getRenderer(), this.stack, stackCenterX - 8, this.area.my() - 8);
-
-            context.batcher.getContext().draw();
-
-            DiffuseLighting.disableGuiDepthLighting();
 
             consumers.setUI(false);
             GlStateManager._enableDepthTest();

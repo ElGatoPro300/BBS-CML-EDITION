@@ -255,7 +255,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
             Vector3f light0 = new Vector3f(0.85F, 0.85F, -1F).normalize();
             Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1F).normalize();
-            RenderSystem.setupLevelDiffuseLighting(light0, light1);
+            MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.LEVEL);
 
             consumers.setUI(true);
             MobTextureOverride.begin(this.form.texture.get());
@@ -287,8 +287,6 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
             consumers.setUI(false);
 
             CustomVertexConsumerProvider.clearRunnables();
-
-            DiffuseLighting.disableGuiDepthLighting();
 
             stack.pop();
 

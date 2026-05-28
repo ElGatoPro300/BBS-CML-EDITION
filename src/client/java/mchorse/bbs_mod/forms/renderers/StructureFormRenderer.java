@@ -161,14 +161,14 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
     {
         this.ensureLoaded();
 
-        MatrixStack matrices = context.batcher.getContext().getMatrices();
+        MatrixStack matrices = new MatrixStack();
         Matrix4f uiMatrix = ModelFormRenderer.getUIMatrix(context, x1, y1, x2, y2);
 
         matrices.push();
         MatrixStackUtils.multiply(matrices, uiMatrix);
 
         /* To draw 3D content inside UI, use standard depth test and restore it at the end to avoid affecting other panels. */
-        RenderSystem.depthFunc(GL11.GL_LEQUAL);
+        GlStateManager._depthFunc(GL11.GL_LEQUAL);
 
         /* Autoscale: adjust so the structure fits in the cell without clipping */
         float cellW = x2 - x1;
@@ -209,9 +209,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
         matrices.peek().getNormalMatrix().getScale(Vectors.EMPTY_3F);
         matrices.peek().getNormalMatrix().scale(1F / Vectors.EMPTY_3F.x, -1F / Vectors.EMPTY_3F.y, 1F / Vectors.EMPTY_3F.z);
 
-        Vector3f light0 = new Vector3f(0.85F, 0.85F, -1F).normalize();
-        Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1F).normalize();
-        RenderSystem.setupLevelDiffuseLighting(light0, light1);
+        MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.LEVEL);
 
         StructureLightSettings slUi = this.form.structureLight.getRuntimeValue();
         boolean currentEmitLightUi = (slUi != null) ? slUi.enabled : this.form.emitLight.get();
@@ -261,26 +259,22 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
                 GameRenderer gameRenderer = MinecraftClient.getInstance().gameRenderer;
                 ShaderProgram shader = BBSShaders.getModel();
 
-                gameRenderer.getLightmapTextureManager().enable();
-                gameRenderer.getOverlayTexture().setupOverlayColor();
-
-                /* Revert to own model shader in vanilla to ensure VAO compatibility */
-                RenderSystem.setShader(shader);
-                RenderSystem.setShaderTexture(0, SpriteAtlasTexture.BLOCK_ATLAS_TEXTURE);
+                /* lightmap and overlay state handled by renderer in 1.21.11 */
+                /* shader and texture binding handled by render pipeline */
 
                 boolean needBlendUI = tint.a < 0.999F || this.hasTranslucentLayer;
 
                 if (needBlendUI)
                 {
-                    RenderSystem.enableBlend();
-                    RenderSystem.defaultBlendFunc();
+                    GlStateManager._enableBlend();
+                    GlStateManager._blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
                 }
                 else
                 {
-                    RenderSystem.disableBlend();
+                    GlStateManager._disableBlend();
                 }
 
-                RenderSystem.enableCull();
+                GlStateManager._enableCull();
 
                 ModelVAORenderer.render(shader, vao, matrices, tint.r, tint.g, tint.b, tint.a, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, OverlayTexture.DEFAULT_UV);
 
@@ -343,18 +337,15 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
                     {}
                 }
 
-                gameRenderer.getLightmapTextureManager().disable();
-                gameRenderer.getOverlayTexture().teardownOverlayColor();
-                RenderSystem.disableBlend();
+                /* lightmap and overlay state handled by renderer in 1.21.11 */
+                GlStateManager._disableBlend();
             }
         }
-
-        DiffuseLighting.disableGuiDepthLighting();
 
         matrices.pop();
 
         /* Restore depth state expected by UI system */
-        RenderSystem.depthFunc(GL11.GL_ALWAYS);
+        GlStateManager._depthFunc(GL11.GL_ALWAYS);
     }
 
     @Override
