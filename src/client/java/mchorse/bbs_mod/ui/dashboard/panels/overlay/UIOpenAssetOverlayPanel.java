@@ -37,6 +37,7 @@ import net.minecraft.util.Util;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -745,6 +746,17 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
                 }
             }
         }
+
+        /* Sort folders (skip leading ".." entry) and files alphabetically */
+        int folderStart = (!folders.isEmpty() && folders.get(0).equals("..")) ? 1 : 0;
+
+        if (folderStart < folders.size())
+        {
+            List<String> sortable = folders.subList(folderStart, folders.size());
+            sortable.sort(String.CASE_INSENSITIVE_ORDER);
+        }
+
+        files.sort(String.CASE_INSENSITIVE_ORDER);
 
         this.backButton.setEnabled(!this.currentFolder.isEmpty());
         this.assetGrid.fill(folders, files, this.currentType);
