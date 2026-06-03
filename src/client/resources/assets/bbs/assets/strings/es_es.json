@@ -202,6 +202,8 @@
     "bbs.config.editor.safe_margins_color-comment": "Color usado para las guías de márgenes seguros (incluye transparencia)",
     "bbs.config.editor.seconds": "Segundos",
     "bbs.config.editor.seconds-comment": "Cuando está habilitada, esta opción usará segundos, en lugar de ticks, para mostrar y editar en el editor de cámara",
+    "bbs.config.editor.simplify_animations": "Simplificar animaciones",
+    "bbs.config.editor.simplify_animations-comment": "Cuando está habilitado, las transiciones y animaciones en paneles e interruptores se simplifican o desactivan para mejorar el rendimiento y la respuesta",
     "bbs.config.editor.snap_to_markers": "Ajustar a ticks",
     "bbs.config.editor.snap_to_markers-comment": "Cuando está habilitado, el ajuste de clips se ajustará a los marcadores de tick",
     "bbs.config.editor.speed": "Velocidad",

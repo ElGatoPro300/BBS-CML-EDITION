@@ -98,6 +98,7 @@ public class BBSSettings
     public static ValueInt editorDockGuideColor;
     public static ValueFloat editorDockGuideOpacity;
     public static ValueBoolean editorReplayStepSound;
+    public static ValueBoolean editorSimplifyAnimations;
     public static ValueBoolean editorMuteRenderAudioClips;
     public static ValueInt editorTimeMode;
     public static ValueInt editorImportMode;
@@ -313,6 +314,7 @@ public class BBSSettings
         editorReplaySprintParticles = builder.getBoolean("replay_sprint_particles", false);
         editorCameraPreviewPlayerSync = builder.getBoolean("camera_preview_player_sync", false);
         editorReplayStepSound = builder.getBoolean("replay_step_sound", false);
+        editorSimplifyAnimations = builder.getBoolean("simplify_animations", false);
         editorMuteRenderAudioClips = builder.getBoolean("mute_render_audio_clips", false);
         editorTimeMode = builder.getInt("time_mode", 0, 0, 2);
         editorImportMode = builder.getInt("import_mode", 0, 0, 1);

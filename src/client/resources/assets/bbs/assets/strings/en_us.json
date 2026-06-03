@@ -202,6 +202,8 @@
     "bbs.config.editor.safe_margins_color-comment": "Color used for safe margins guides (including transparency)",
     "bbs.config.editor.seconds": "Seconds",
     "bbs.config.editor.seconds-comment": "When enabled, this option will use seconds, instead of ticks, for displaying and editing in camera editor",
+    "bbs.config.editor.simplify_animations": "Simplify animations",
+    "bbs.config.editor.simplify_animations-comment": "When enabled, smooth transitions/animations in UI panels and toggles are simplified or disabled for improved performance and responsiveness",
     "bbs.config.editor.snap_to_markers": "Snap to ticks",
     "bbs.config.editor.snap_to_markers-comment": "When enabled, clip snapping will snap to tick markers",
     "bbs.config.editor.speed": "Speed",

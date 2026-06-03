@@ -1,5 +1,6 @@
 package mchorse.bbs_mod.ui.framework.elements.overlay;
 
+import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.utils.EventPropagation;
@@ -20,6 +21,13 @@ public class UIOverlay extends UIElement
     private static final Map<String, Vector2i> sizes = new HashMap<>();
 
     private int background = Colors.A50;
+    private float openTransition = 0.0F;
+    private boolean closing = false;
+
+    public float getOpenTransition()
+    {
+        return this.openTransition;
+    }
 
     public static UIOverlay addOverlay(UIContext context, UIOverlayPanel panel)
     {
@@ -148,8 +156,28 @@ public class UIOverlay extends UIElement
 
     public void closeItself()
     {
-        this.removeFromParent();
+        if (this.closing)
+        {
+            return;
+        }
+
         UIUtils.playClick();
+
+        if (BBSSettings.editorSimplifyAnimations.get())
+        {
+            this.openTransition = 0.0F;
+            this.closing = true;
+            this.performClose();
+        }
+        else
+        {
+            this.closing = true;
+        }
+    }
+
+    private void performClose()
+    {
+        this.removeFromParent();
 
         for (UIOverlayPanel element : this.getChildren(UIOverlayPanel.class))
         {
@@ -179,9 +207,33 @@ public class UIOverlay extends UIElement
     @Override
     public void render(UIContext context)
     {
+        float target = this.closing ? 0.0F : 1.0F;
+
+        if (BBSSettings.editorSimplifyAnimations.get())
+        {
+            this.openTransition = target;
+        }
+        else
+        {
+            if (this.openTransition < 0.001F && !this.closing)
+            {
+                /* Fast start on first frame */
+                this.openTransition = 0.01F;
+            }
+            this.openTransition += (target - this.openTransition) * 0.2F;
+        }
+
+        if (this.closing && this.openTransition <= 0.01F)
+        {
+            this.performClose();
+            return;
+        }
+
         if (Colors.getA(this.background) > 0F)
         {
-            this.area.render(context.batcher, this.background);
+            int alpha = (int) (Colors.getA(this.background) * this.openTransition * 255);
+            int finalBgColor = Colors.setA(this.background, alpha / 255.0F);
+            this.area.render(context.batcher, finalBgColor);
         }
 
         super.render(context);
