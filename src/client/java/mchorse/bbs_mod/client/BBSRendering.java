@@ -385,17 +385,7 @@ public class BBSRendering
             renderHudOverlays(batcher, controller.getContext(), area.w, area.h);
             VideoRenderer.renderClips(batcher.getContext().getMatrices(), batcher, controller.getContext().clips.getClips(controller.getContext().relativeTick), controller.getContext().relativeTick, true, area, area, null, area.w, area.h, false);
 
-            if (controller.screenClips != null)
-            {
-                Position screenDummy = new Position();
-
-                for (Clip screenClip : controller.screenClips.getClips(controller.getContext().ticks))
-                {
-                    controller.getContext().apply(screenClip, screenDummy);
-                }
-
-                ScreenEffectRenderer.render(batcher, controller.getContext(), area.w, area.h);
-            }
+            ScreenEffectRenderer.render(batcher, controller.getContext(), area.w, area.h);
 
             RenderSystem.setProjectionMatrix(cache, VertexSorter.BY_Z);
         }
@@ -431,13 +421,6 @@ public class BBSRendering
                 Area fullScreen = new Area(0, 0, window.getScaledWidth(), window.getScaledHeight());
                 renderHudOverlays(offscreenBatcher, panel.getRunner().getContext(), fullScreen.w, fullScreen.h);
                 VideoRenderer.renderClips(new MatrixStack(), offscreenBatcher, panel.getData().camera.getClips(panel.getCursor()), panel.getCursor(), panel.getRunner().isRunning(), fullScreen, fullScreen, null, window.getScaledWidth(), window.getScaledHeight(), false);
-
-                Position screenDummy = new Position();
-
-                for (Clip screenClip : panel.getData().screen.getClips(panel.getCursor()))
-                {
-                    panel.getRunner().getContext().apply(screenClip, screenDummy);
-                }
 
                 ScreenEffectRenderer.render(offscreenBatcher, panel.getRunner().getContext(), window.getScaledWidth(), window.getScaledHeight());
 
