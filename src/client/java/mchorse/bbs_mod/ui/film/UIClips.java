@@ -1919,7 +1919,16 @@ public class UIClips extends UIElement
 
             List<Link> cameraGroup = List.of(Link.bbs("idle"), Link.bbs("path"), Link.bbs("keyframe"), Link.bbs("dolly"));
             List<Link> resourceGroup = List.of(Link.bbs("curve"), Link.bbs("audio"), Link.bbs("video"), Link.bbs("shake"), Link.bbs("translate"), Link.bbs("angle"));
-            List<Link> screenGroup = List.of(Link.bbs("subtitle"), Link.bbs("hotbar"));
+            List<Link> screenGroup = List.of(
+                Link.bbs("subtitle"),
+                Link.bbs("hotbar"),
+                Link.bbs("color"),
+                Link.bbs("cinematic"),
+                Link.bbs("vignette"),
+                Link.bbs("letterbox"),
+                Link.bbs("grain"),
+                Link.bbs("screen_node")
+            );
             List<Link> anchorGroup = List.of(Link.bbs("look"), Link.bbs("orbit"), Link.bbs("tracker"));
 
             List<Link> allKeys = new ArrayList<>(uiClips.factory.getKeys());

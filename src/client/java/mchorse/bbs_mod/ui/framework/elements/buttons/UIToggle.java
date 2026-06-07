@@ -17,6 +17,7 @@ public class UIToggle extends UIClickable<UIToggle> implements ITextColoring
     public int color = Colors.WHITE;
     public boolean textShadow = true;
     private boolean value;
+    private float currentKnobX = -1F;
 
     public UIToggle(IKey label, Consumer<UIToggle> callback)
     {
@@ -84,6 +85,26 @@ public class UIToggle extends UIClickable<UIToggle> implements ITextColoring
         return this;
     }
 
+    private int interpolateColor(int c1, int c2, float t)
+    {
+        int a1 = (c1 >> 24) & 0xFF;
+        int r1 = (c1 >> 16) & 0xFF;
+        int g1 = (c1 >> 8) & 0xFF;
+        int b1 = c1 & 0xFF;
+
+        int a2 = (c2 >> 24) & 0xFF;
+        int r2 = (c2 >> 16) & 0xFF;
+        int g2 = (c2 >> 8) & 0xFF;
+        int b2 = c2 & 0xFF;
+
+        int a = (int) (a1 + (a2 - a1) * t);
+        int r = (int) (r1 + (r2 - r1) * t);
+        int g = (int) (g1 + (g2 - g1) * t);
+        int b = (int) (b1 + (b2 - b1) * t);
+
+        return (a << 24) | (r << 16) | (g << 8) | b;
+    }
+
     @Override
     protected void renderSkin(UIContext context)
     {
@@ -101,16 +122,26 @@ public class UIToggle extends UIClickable<UIToggle> implements ITextColoring
 
         /* Track — primary color when on, dark grey when off, with a 1px border. */
         int primary = 0xFF000000 | BBSSettings.primaryColor.get();
-        int trackColor;
 
-        if (this.value)
+        float targetKnobX = this.value ? 1.0F : 0.0F;
+
+        if (this.currentKnobX < 0)
         {
-            trackColor = this.hover ? Colors.mulRGB(primary, 1.15F) : primary;
+            this.currentKnobX = targetKnobX;
+        }
+
+        if (BBSSettings.editorSimplifyAnimations.get())
+        {
+            this.currentKnobX = targetKnobX;
         }
         else
         {
-            trackColor = this.hover ? 0xFF4A4A52 : 0xFF3B3B43;
+            this.currentKnobX += (targetKnobX - this.currentKnobX) * 0.25F;
         }
+
+        int finalActive = this.hover ? Colors.mulRGB(primary, 1.15F) : primary;
+        int finalInactive = this.hover ? 0xFF4A4A52 : 0xFF3B3B43;
+        int trackColor = this.interpolateColor(finalInactive, finalActive, this.currentKnobX);
 
         batcher.box(x, y, x + w, y + h, trackColor);
         batcher.outline(x, y, x + w, y + h, 0xFF000000 | Colors.mulRGB(trackColor, 0.55F));
@@ -118,7 +149,7 @@ public class UIToggle extends UIClickable<UIToggle> implements ITextColoring
         /* Knob — a square block that slides to the right when on, with a
            1px drop shadow for depth. */
         int knobSize = h - 4;
-        int knobX = this.value ? (x + w - knobSize - 2) : (x + 2);
+        int knobX = x + 2 + (int) (this.currentKnobX * (w - knobSize - 4));
         int knobY = y + 2;
 
         batcher.box(knobX, knobY + 1, knobX + knobSize, knobY + knobSize + 1, 0x66000000);

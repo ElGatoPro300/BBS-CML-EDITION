@@ -207,7 +207,7 @@ public class UIChalkboard extends UIElement
 
     private void finishLine(UIContext context)
     {
-        int scale = BBSSettings.userIntefaceScale.get();
+        int scale = Math.round(BBSSettings.userIntefaceScale.get());
         int x = context.mouseX;
         int y = context.mouseY;
         
@@ -283,7 +283,7 @@ public class UIChalkboard extends UIElement
         this.undo.clear();
         this.redo.clear();
 
-        int scale = BBSSettings.userIntefaceScale.get();
+        int scale = Math.round(BBSSettings.userIntefaceScale.get());
 
         this.pixels = Pixels.fromSize(this.area.w * scale, this.area.h * scale);
         this.updateTexture();
@@ -329,7 +329,7 @@ public class UIChalkboard extends UIElement
             return;
         }
 
-        int scale = BBSSettings.userIntefaceScale.get();
+        int scale = Math.round(BBSSettings.userIntefaceScale.get());
         int x = context.mouseX;
         int y = context.mouseY;
 

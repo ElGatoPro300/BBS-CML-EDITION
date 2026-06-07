@@ -291,6 +291,9 @@ public class UIKeys
     public static final IKey FILM_NO_CAMERA_TITLE = L10n.lang("bbs.ui.film.no_camera-title");
     public static final IKey FILM_OPEN_ACTION_EDITOR = L10n.lang("bbs.ui.film.open_action_editor");
     public static final IKey FILM_OPEN_CAMERA_EDITOR = L10n.lang("bbs.ui.film.open_camera_editor");
+    public static final IKey FILM_GIZMO_MOVE = L10n.lang("bbs.ui.film.gizmo.move");
+    public static final IKey FILM_GIZMO_SCALE = L10n.lang("bbs.ui.film.gizmo.scale");
+    public static final IKey FILM_GIZMO_ROTATE = L10n.lang("bbs.ui.film.gizmo.rotate");
     public static final IKey FILM_OPEN_HISTORY = L10n.lang("bbs.ui.film.open_history");
     public static final IKey FILM_OPEN_REPLAY_EDITOR = L10n.lang("bbs.ui.film.open_replay_editor");
     public static final IKey FILM_OPEN_SCREEN_EDITOR = L10n.lang("bbs.ui.film.open_screen_editor");
@@ -354,6 +357,10 @@ public class UIKeys
     public static final IKey FILM_REPLAY_RECORD = L10n.lang("bbs.ui.film.replay.record");
     public static final IKey FILM_REPLAY_RELATIVE_TOOLTIP = L10n.lang("bbs.ui.film.replay.relative-tooltip");
     public static final IKey FILM_REPLAY_REPLAY = L10n.lang("bbs.ui.film.replay.replay");
+    public static final IKey FILM_REPLAY_SECTION_GENERAL = L10n.lang("bbs.ui.film.replay.section_general");
+    public static final IKey FILM_REPLAY_SECTION_PLAYBACK = L10n.lang("bbs.ui.film.replay.section_playback");
+    public static final IKey FILM_REPLAY_SECTION_POSITIONING = L10n.lang("bbs.ui.film.replay.section_positioning");
+    public static final IKey FILM_REPLAY_SECTION_ITEM_DROPS = L10n.lang("bbs.ui.film.replay.section_item_drops");
     public static final IKey FILM_REPLAY_SHADOW = L10n.lang("bbs.ui.film.replay.shadow");
     public static final IKey FILM_REPLAY_SHADOW_SIZE = L10n.lang("bbs.ui.film.replay.shadow_size");
     public static final IKey FILM_REPLAY_SHADOW_OPACITY = L10n.lang("bbs.ui.film.replay.shadow_opacity");

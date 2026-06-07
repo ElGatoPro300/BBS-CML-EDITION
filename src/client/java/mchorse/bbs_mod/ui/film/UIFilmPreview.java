@@ -16,6 +16,7 @@ import mchorse.bbs_mod.client.video.VideoRenderer;
 import mchorse.bbs_mod.film.Films;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.graphics.window.Window;
+import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.settings.ui.UIVideoSettingsOverlayPanel;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
@@ -28,10 +29,11 @@ import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIMessageFolderOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIMessageOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
-import mchorse.bbs_mod.ui.framework.elements.utils.EventPropagation;
 import mchorse.bbs_mod.ui.utils.Area;
+import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.UIUtils;
+import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.keys.KeyCodes;
 import mchorse.bbs_mod.utils.Direction;
@@ -71,8 +73,11 @@ public class UIFilmPreview extends UIElement
     private UIFilmPanel panel;
 
     public UIElement icons;
+    public UIElement gizmos;
 
-    public UIIcon replays;
+    public UIIcon gizmoMove;
+    public UIIcon gizmoScale;
+    public UIIcon gizmoRotate;
     public UIIcon onionSkin;
     public UIIcon plause;
     public UIIcon teleport;
@@ -81,6 +86,7 @@ public class UIFilmPreview extends UIElement
     public UIIcon perspective;
     public UIIcon recordReplay;
     public UIIcon recordVideo;
+    public UIIcon renderQueue;
 
     public UIFilmPreview(UIFilmPanel filmPanel)
     {
@@ -90,9 +96,17 @@ public class UIFilmPreview extends UIElement
         this.icons.row().resize();
         this.icons.relative(this).x(0.5F).y(1F).anchor(0.5F, 1F);
 
+        /* Gizmo transform-mode buttons (move / scale / rotate), aligned to the viewport's
+           top-left corner like Blockbench's transform tools. */
+        this.gizmoMove = this.createGizmoButton(Icons.ALL_DIRECTIONS, Gizmo.Mode.TRANSLATE, UIKeys.FILM_GIZMO_MOVE);
+        this.gizmoScale = this.createGizmoButton(Icons.SCALE, Gizmo.Mode.SCALE, UIKeys.FILM_GIZMO_SCALE);
+        this.gizmoRotate = this.createGizmoButton(Icons.ARC, Gizmo.Mode.ROTATE, UIKeys.FILM_GIZMO_ROTATE);
+
+        this.gizmos = UI.row(0, this.gizmoMove, this.gizmoScale, this.gizmoRotate);
+        this.gizmos.relative(this).x(4).y(4).wh(64, 20);
+        this.add(this.gizmos);
+
         /* Preview buttons */
-        this.replays = new UIIcon(Icons.EDITOR, (b) -> this.openReplays());
-        this.replays.tooltip(UIKeys.FILM_REPLAY_TITLE);
         this.onionSkin = new UIIcon(Icons.ONION_SKIN, (b) -> this.openOnionSkin());
         this.onionSkin.tooltip(UIKeys.FILM_CONTROLLER_ONION_SKIN_TITLE);
         this.plause = new UIIcon(() -> this.panel.isRunning() ? Icons.PAUSE : Icons.PLAY, (b) -> this.panel.togglePlayback());
@@ -229,7 +243,10 @@ public class UIFilmPreview extends UIElement
             });
         });
 
-        this.icons.add(this.replays, this.onionSkin, this.plause, this.teleport, this.flight, this.control, this.perspective, this.recordReplay, this.recordVideo);
+        this.renderQueue = new UIIcon(Icons.FILM, (b) -> this.panel.openRenderQueueOverlay());
+        this.renderQueue.tooltip(UIKeys.FILM_OPEN_RENDER_QUEUE);
+
+        this.icons.add(this.onionSkin, this.plause, this.teleport, this.flight, this.control, this.perspective, this.recordReplay, this.recordVideo, this.renderQueue);
         this.add(this.icons);
 
         for (Consumer<UIFilmPreview> consumer : extensions)
@@ -238,18 +255,24 @@ public class UIFilmPreview extends UIElement
         }
     }
 
+    /* Build a single gizmo transform-mode button that selects its mode and highlights while that
+       mode is active. */
+    private UIIcon createGizmoButton(Icon icon, Gizmo.Mode mode, IKey tooltip)
+    {
+        UIIcon button = new UIIcon(icon, (b) ->
+        {
+            Gizmo.INSTANCE.setMode(mode);
+            UIUtils.playClick();
+        });
+
+        button.tooltip(tooltip);
+
+        return button;
+    }
+
     public void openReplays()
     {
-        /* if (!this.panel.isDockedLayout())
-        { */
-            UIOverlay overlay = UIOverlay.addOverlayLeft(this.getContext(), this.panel.replayEditor.replays, 360);
-
-            overlay.eventPropagataion(EventPropagation.PASS);
-        /* }
-        else
-        { */
-            //this.panel.toggleReplaysSidebar();
-        //}
+        this.panel.focusAnchoredReplaysPanel();
     }
 
     public void openOnionSkin()
@@ -319,6 +342,13 @@ public class UIFilmPreview extends UIElement
     @Override
     public void render(UIContext context)
     {
+        /* Keep the gizmo buttons highlighted to match the active transform mode. */
+        Gizmo.Mode mode = Gizmo.INSTANCE.getMode();
+
+        this.gizmoMove.active(mode == Gizmo.Mode.TRANSLATE);
+        this.gizmoScale.active(mode == Gizmo.Mode.SCALE);
+        this.gizmoRotate.active(mode == Gizmo.Mode.ROTATE);
+
         Texture texture = BBSRendering.getTexture();
         Area area = this.getViewport();
         Camera camera = this.panel.getCamera();

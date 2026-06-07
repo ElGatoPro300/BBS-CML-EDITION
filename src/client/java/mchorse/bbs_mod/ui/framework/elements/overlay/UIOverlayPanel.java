@@ -284,9 +284,34 @@ public class UIOverlayPanel extends UIElement
             this.lastY = context.mouseY;
         }
 
+        float transition = 1.0F;
+        UIElement parent = this.getParent();
+
+        if (parent instanceof UIOverlay)
+        {
+            transition = ((UIOverlay) parent).getOpenTransition();
+        }
+
+        if (transition < 0.999F)
+        {
+            float scale = 0.92F + 0.08F * transition;
+            float cx = this.area.mx();
+            float cy = this.area.my();
+
+            context.render.batcher.getContext().getMatrices().push();
+            context.render.batcher.getContext().getMatrices().translate(cx, cy, 0.0F);
+            context.render.batcher.getContext().getMatrices().scale(scale, scale, 1.0F);
+            context.render.batcher.getContext().getMatrices().translate(-cx, -cy, 0.0F);
+        }
+
         this.renderBackground(context);
 
         super.render(context);
+
+        if (transition < 0.999F)
+        {
+            context.render.batcher.getContext().getMatrices().pop();
+        }
     }
 
     protected void renderBackground(UIContext context)
