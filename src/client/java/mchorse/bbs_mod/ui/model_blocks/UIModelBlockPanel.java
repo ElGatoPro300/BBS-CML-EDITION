@@ -33,6 +33,7 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIDraggable;
+import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
 import mchorse.bbs_mod.ui.model_blocks.camera.ImmersiveModelBlockCameraController;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.UIUtils;
@@ -665,13 +666,16 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
                  this.leftCardResizer, this.middleCardResizer, this.rightCardResizer);
     }
 
-    /* A muted, slightly raised label used to group the Properties window into
-       readable sections. */
+    /* Section header for the Properties window — matches the category titles in
+       the Settings panel (primary-coloured label on a dark background). */
     private UIElement sectionHeader(IKey label)
     {
-        UIElement header = UI.label(label, 14, 0xFF8A8A95);
+        UILabel header = UI.label(label)
+            .labelAnchor(0, 1)
+            .color(0xFF000000 | BBSSettings.primaryColor.get())
+            .background(() -> 0xFF1A1A22);
 
-        header.marginTop(3);
+        header.h(20).marginTop(4);
 
         return header;
     }
