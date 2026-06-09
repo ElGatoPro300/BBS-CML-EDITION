@@ -215,12 +215,13 @@ public class UIFormList extends UIElement
         this.applyFavoritesLayout(this.isFavoritesFeatureEnabled());
         this.updateTabs();
 
+        this.search.keys().register(Keys.FORMS_FOCUS, this::focusSearch);
 
         this.markContainer();
         this.setupForms(BBSModClient.getFormCategories());
     }
 
-    public void focusSearch()
+    private void focusSearch()
     {
         this.search.clickItself();
     }
@@ -2028,7 +2029,7 @@ public class UIFormList extends UIElement
             }
         };
         popup.full(overlay);
-        popup.markContainer().mouseEventPropagataion(EventPropagation.BLOCK).keyboardEventPropagataion(EventPropagation.PASS);
+        popup.markContainer().eventPropagataion(EventPropagation.BLOCK);
 
         UIElement content = new UIElement()
         {
@@ -2040,23 +2041,6 @@ public class UIFormList extends UIElement
                 context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xff000000 | BBSSettings.primaryColor.get());
                 context.batcher.textCard(category.category.getProcessedTitle(), this.area.x + 6, this.area.y + 6);
                 super.render(context);
-            }
-            @Override
-            public boolean subMouseClicked(UIContext context)
-            {
-                if (super.subMouseClicked(context))
-                {
-                    return true;
-                }
-
-                if (this.area.isInside(context) && context.mouseButton == 0)
-                {
-                    UIFormList.this.deselect();
-
-                    return true;
-                }
-
-                return false;
             }
         };
         content.relative(popup).set(20, 20, 0, 0).w(1F, -40).h(1F, -40);
@@ -2101,23 +2085,6 @@ public class UIFormList extends UIElement
                     context.batcher.box(target.area.x, target.area.y, target.area.ex(), target.area.ey(), fill);
                     context.batcher.outline(target.area.x, target.area.y, target.area.ex(), target.area.ey(), outline, hovered ? 2 : 1);
                 }
-            }
-            @Override
-            public boolean subMouseClicked(UIContext context)
-            {
-                if (super.subMouseClicked(context))
-                {
-                    return true;
-                }
-
-                if (this.area.isInside(context) && context.mouseButton == 0)
-                {
-                    UIFormList.this.deselect();
-
-                    return true;
-                }
-
-                return false;
             }
         };
         List<UIButton> targetButtons = new ArrayList<>();
@@ -2224,24 +2191,6 @@ public class UIFormList extends UIElement
         {
             this.palette.accept(form);
         }
-    }
-
-    @Override
-    public boolean subMouseClicked(UIContext context)
-    {
-        if (super.subMouseClicked(context))
-        {
-            return true;
-        }
-
-        if (context.mouseButton == 0 && (this.forms.area.isInside(context) || this.categoryCardsView.area.isInside(context)))
-        {
-            this.deselect();
-
-            return true;
-        }
-
-        return false;
     }
 
     public void deselect()
@@ -3027,9 +2976,7 @@ public class UIFormList extends UIElement
             {
                 if (index < 0 || index >= forms.size())
                 {
-                    UIFormList.this.deselect();
-
-                    return true;
+                    return false;
                 }
 
                 if (this.category.category instanceof UserFormCategory)

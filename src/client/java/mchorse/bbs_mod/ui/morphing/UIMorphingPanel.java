@@ -84,11 +84,6 @@ public class UIMorphingPanel extends UIDashboardPanel
     private void setForm(Form form)
     {
         ClientNetwork.sendPlayerForm(form);
-
-        if (form != null)
-        {
-            this.palette.list.deselect();
-        }
     }
 
     @Override
