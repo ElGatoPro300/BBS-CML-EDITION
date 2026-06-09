@@ -456,8 +456,6 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         /* Grouped layout: Form (Pick/Edit) first, then toggles 2-per-row,
            the two block sliders side by side, then equipment as a 3-column grid. */
         this.properties = UI.column(5,
-            this.sectionHeader(L10n.lang("bbs.ui.model_blocks.form")),
-            this.pickEdit,
             this.sectionHeader(L10n.lang("bbs.ui.model_blocks.display")),
             UI.row(4, this.enabled, this.shadow),
             UI.row(4, this.global, this.lookAt),

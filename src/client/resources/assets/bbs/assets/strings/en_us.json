@@ -1251,7 +1251,6 @@
     "bbs.ui.model_blocks.block": "Block",
     "bbs.ui.model_blocks.display": "Display",
     "bbs.ui.model_blocks.equipment": "Equipment",
-    "bbs.ui.model_blocks.form": "Form",
     "bbs.ui.model_blocks.global": "Global",
     "bbs.ui.model_blocks.hardness": "Block hardness",
     "bbs.ui.model_blocks.hitbox": "Enable Hitbox",
