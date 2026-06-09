@@ -158,7 +158,6 @@ public class BBSSettings
 
     public static ValueString cdnUrl;
     public static ValueString cdnToken;
-    public static ValueBoolean morphingAutoMorph;
 
     public static ValueBoolean usingInMemoryClipboard;
 
