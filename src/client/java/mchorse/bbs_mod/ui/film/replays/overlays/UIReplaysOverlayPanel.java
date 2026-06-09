@@ -2,7 +2,6 @@ package mchorse.bbs_mod.ui.film.replays.overlays;
 
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.film.replays.Replay;
-import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
@@ -52,6 +51,7 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
 
     public UIElement replayProperties;
     public UIElement groupProperties;
+    public UIElement replayLabel;
     public UINestedEdit pickEdit;
     public UIToggle enabled;
     public UITextbox label;
@@ -60,6 +60,7 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
     public UIToggle shadow;
     public UITrackpad shadowSize;
     public UITrackpad shadowOpacity;
+    public UIElement loopingLabel;
     public UITrackpad looping;
     public UIToggle actor;
     public UIToggle fp;
@@ -87,8 +88,6 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
     public UIElement dropVelocityRowX;
     public UIElement dropVelocityRowY;
     public UIElement dropVelocityRowZ;
-    public UIElement dropVelocityGroup;
-    public UIElement itemDropsContent;
     public UIDraggable dockedResizer;
 
     private Consumer<Replay> callback;
@@ -226,35 +225,29 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
         this.dropVelocityMaxZ.tooltip(UIKeys.FILM_REPLAY_DROP_VELOCITY_MAX_Z);
 
 
+        this.replayLabel = UI.label(UIKeys.FILM_REPLAY_REPLAY);
+        this.loopingLabel = UI.label(UIKeys.FILM_REPLAY_LOOPING);
         this.relativeRow = UI.row(this.relativeOffsetX, this.relativeOffsetY, this.relativeOffsetZ);
         this.dropVelocityLabel = UI.label(UIKeys.FILM_REPLAY_DROP_VELOCITY);
         this.dropVelocityRowX = UI.row(5, 0, this.dropVelocityMinX, this.dropVelocityMaxX);
         this.dropVelocityRowY = UI.row(5, 0, this.dropVelocityMinY, this.dropVelocityMaxY);
         this.dropVelocityRowZ = UI.row(5, 0, this.dropVelocityMinZ, this.dropVelocityMaxZ);
 
-        this.replayProperties = UI.scrollView(6, 6);
-
-        this.addPropertySection(UIKeys.FILM_REPLAY_SECTION_GENERAL, UI.column(4,
-            this.pickEdit, this.enabled, this.label, this.nameTag
-        ));
-        this.addPropertySection(UIKeys.FILM_REPLAY_SHADOW, UI.column(4,
-            this.shadow, this.shadowSize, this.shadowOpacity
-        ));
-        this.addPropertySection(UIKeys.FILM_REPLAY_SECTION_PLAYBACK, UI.column(4,
-            this.looping, this.actor, this.fp
-        ));
-        this.addPropertySection(UIKeys.FILM_REPLAY_SECTION_POSITIONING, UI.column(4,
-            this.relative, this.relativeRow, this.axesPreview, this.pickAxesPreviewBone
-        ));
-        this.dropVelocityGroup = UI.column(4,
+        this.replayProperties = UI.scrollView(5, 6,
+            this.replayLabel,
+            this.pickEdit, this.enabled,
+            this.label, this.nameTag,
+            this.shadow, this.shadowSize, this.shadowOpacity,
+            this.loopingLabel,
+            this.looping, this.actor, this.fp,
+            this.relative, this.relativeRow,
+            this.axesPreview, this.pickAxesPreviewBone, this.dropItemsOnDeath,
             this.dropVelocityLabel,
-            this.dropVelocityRowX, this.dropVelocityRowY, this.dropVelocityRowZ,
+            this.dropVelocityRowX,
+            this.dropVelocityRowY,
+            this.dropVelocityRowZ,
             this.replaceReplayInventory
         );
-        this.itemDropsContent = UI.column(4, this.dropItemsOnDeath, this.dropVelocityGroup);
-
-        this.addPropertySection(UIKeys.FILM_REPLAY_SECTION_ITEM_DROPS, this.itemDropsContent);
-
         this.groupProperties = UI.scrollView(5, 6, this.groupLabel);
         this.dockedResizer = new UIDraggable((context) ->
         {
@@ -278,34 +271,6 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
         {
             consumer.accept(this);
         }
-    }
-
-    private void addPropertySection(IKey title, UIElement content)
-    {
-        UIElement section = new UIElement();
-
-        section.column(4).vertical().stretch();
-
-        UICollapseHeader header = new UICollapseHeader(title);
-
-        header.h(16);
-        header.onToggle(() ->
-        {
-            if (header.expanded)
-            {
-                section.add(content);
-            }
-            else
-            {
-                section.remove(content);
-            }
-
-            this.resize();
-        });
-
-        section.add(header, content);
-
-        this.replayProperties.add(section);
     }
 
     public void setDocked(boolean docked)
@@ -495,18 +460,11 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
 
     private void updateDropVelocityVisibility(boolean visible)
     {
-        boolean present = this.itemDropsContent.getChildren().contains(this.dropVelocityGroup);
-
-        if (visible && !present)
-        {
-            this.itemDropsContent.add(this.dropVelocityGroup);
-            this.resize();
-        }
-        else if (!visible && present)
-        {
-            this.itemDropsContent.remove(this.dropVelocityGroup);
-            this.resize();
-        }
+        this.dropVelocityLabel.setVisible(visible);
+        this.dropVelocityRowX.setVisible(visible);
+        this.dropVelocityRowY.setVisible(visible);
+        this.dropVelocityRowZ.setVisible(visible);
+        this.replaceReplayInventory.setVisible(visible);
     }
 
     @Override
@@ -544,59 +502,7 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
 
         if (this.replays.getList().size() < 3)
         {
-            UIDataUtils.renderRightClickHere(context, this.replays.area, 0xFF141418);
-        }
-    }
-
-    public static class UICollapseHeader extends UIElement
-    {
-        public IKey title;
-        public boolean expanded = true;
-
-        private Runnable onToggle;
-
-        public UICollapseHeader(IKey title)
-        {
-            this.title = title;
-        }
-
-        public UICollapseHeader onToggle(Runnable onToggle)
-        {
-            this.onToggle = onToggle;
-
-            return this;
-        }
-
-        @Override
-        protected boolean subMouseClicked(UIContext context)
-        {
-            if (this.area.isInside(context) && context.mouseButton == 0)
-            {
-                this.expanded = !this.expanded;
-
-                if (this.onToggle != null)
-                {
-                    this.onToggle.run();
-                }
-
-                return true;
-            }
-
-            return super.subMouseClicked(context);
-        }
-
-        @Override
-        public void render(UIContext context)
-        {
-            boolean hover = this.area.isInside(context);
-            int background = Colors.setA(BBSSettings.primaryColor.get(), hover ? 0.5F : 0.3F);
-            int textHeight = context.batcher.getFont().getHeight();
-
-            context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), background);
-            context.batcher.icon(this.expanded ? Icons.ARROW_DOWN : Icons.ARROW_RIGHT, Colors.WHITE, this.area.x + 4, this.area.my(), 0F, 0.5F);
-            context.batcher.textShadow(this.title.get(), this.area.x + 18, this.area.my() - textHeight / 2, Colors.WHITE);
-
-            super.render(context);
+            UIDataUtils.renderRightClickHere(context, this.replays.area);
         }
     }
 }

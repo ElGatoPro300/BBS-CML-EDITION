@@ -11,10 +11,7 @@
       "Bash(./gradlew compileJava --rerun)",
       "Bash(./gradlew compileClientJava --rerun)",
       "Bash(./gradlew compileJava compileClientJava --quiet)",
-      "Bash(./gradlew compileClientJava --quiet)",
-      "Bash(./gradlew compileJava compileClientJava -q)",
-      "Bash(./gradlew runClient)",
-      "Bash(git grep *)"
+      "Bash(./gradlew compileClientJava --quiet)"
     ]
   }
 }
