@@ -128,7 +128,6 @@ public class BBSSettings
     public static ValueBoolean modelBlockCategoriesPanelEnabled;
     public static ValueFloat modelBlockAnimationStateDistance;
     public static ValueString modelBlockPanelLayout;
-    public static ValueString triggerBlockPanelLayout;
 
     public static ValueString entitySelectorsPropertyWhitelist;
 
@@ -348,8 +347,6 @@ public class BBSSettings
         modelPbrPanelControls = builder.getBoolean("model_pbr_panel_controls", false);
         modelBlockPanelLayout = builder.getString("panel_layout", "");
         modelBlockPanelLayout.invisible();
-        triggerBlockPanelLayout = builder.getString("trigger_panel_layout", "");
-        triggerBlockPanelLayout.invisible();
 
         builder.category("entity_selectors");
         entitySelectorsPropertyWhitelist = builder.getString("whitelist", "CustomName,Name");

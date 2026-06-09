@@ -14,14 +14,12 @@ import mchorse.bbs_mod.ui.dashboard.panels.UIDataDashboardPanel;
 import mchorse.bbs_mod.ui.dashboard.panels.overlay.UIAboutOverlayPanel;
 import mchorse.bbs_mod.ui.dashboard.panels.overlay.UIOpenAssetOverlayPanel;
 import mchorse.bbs_mod.ui.dashboard.utils.UIGraphPanel;
-import mchorse.bbs_mod.ui.film.UIFilmLogOverlayPanel;
-import mchorse.bbs_mod.ui.film.UIFilmPanel;
+import mchorse.bbs_mod.ui.model_blocks.UIModelBlockPanel;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
-import mchorse.bbs_mod.ui.model_blocks.UIModelBlockPanel;
 import mchorse.bbs_mod.ui.selectors.UISelectorsOverlayPanel;
 import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
@@ -67,7 +65,7 @@ public class UIMainMenuBar extends UIElement
         this.add(new UIMenuButton(L10n.lang("bbs.ui.raw.tools"), this, this::buildToolsMenu));
         /* Window menu is always visible; its content adapts to the active panel
            (currently only the Model Editor populates it). */
-        this.add(new UIMenuButton(L10n.lang("bbs.ui.raw.window"), this, this::buildWindowMenu));
+        this.add(new UIMenuButton(IKey.constant("Window"), this, this::buildWindowMenu));
         this.add(new UIMenuButton(L10n.lang("bbs.ui.raw.help"), this, this::buildHelpMenu));
 
         this.row(2).preferred(999);
@@ -150,13 +148,6 @@ public class UIMainMenuBar extends UIElement
                 this.dashboard.documentTabsBar.addOrActivate(ContentType.GRAPH, "graph_calculator");
             }
         });
-
-        if (this.dashboard.panels.panel instanceof UIFilmPanel filmPanel && filmPanel.getData() != null)
-        {
-            menu.action(Icons.TIME, L10n.lang("bbs.ui.film.log_tools"), () -> {
-                UIOverlay.addOverlay(this.getContext(), new UIFilmLogOverlayPanel(filmPanel), 280, 240);
-            });
-        }
     }
 
     private void buildHelpMenu(ContextMenuManager menu)
@@ -180,27 +171,11 @@ public class UIMainMenuBar extends UIElement
             {
                 panel.setRightVisible(!panel.isRightVisible());
             });
-            menu.action(Icons.REFRESH, L10n.lang("bbs.ui.dashboard.menu.reset_layout"), panel::resetLayout);
-        }
-        else if (this.dashboard.panels.panel instanceof UITriggerBlockPanel trigger)
-        {
-            menu.action(trigger.isListVisible() ? Icons.CHECKMARK : Icons.NONE, IKey.constant("Triggers"), () ->
-            {
-                trigger.setListVisible(!trigger.isListVisible());
-            });
-            menu.action(trigger.isActionsVisible() ? Icons.CHECKMARK : Icons.NONE, IKey.constant("Actions"), () ->
-            {
-                trigger.setActionsVisible(!trigger.isActionsVisible());
-            });
-            menu.action(trigger.isGeometryVisible() ? Icons.CHECKMARK : Icons.NONE, IKey.constant("Geometry"), () ->
-            {
-                trigger.setGeometryVisible(!trigger.isGeometryVisible());
-            });
-            menu.action(Icons.REFRESH, IKey.constant("Reset Layout"), trigger::resetLayout);
+            menu.action(Icons.REFRESH, IKey.constant("Reset Layout"), panel::resetLayout);
         }
         else
         {
-            menu.action(Icons.NONE, L10n.lang("bbs.ui.dashboard.menu.no_windows"), () -> {});
+            menu.action(Icons.NONE, IKey.constant("No windows in this panel"), () -> {});
         }
     }
 

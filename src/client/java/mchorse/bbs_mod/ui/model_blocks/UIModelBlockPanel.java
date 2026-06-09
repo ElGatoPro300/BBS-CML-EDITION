@@ -10,7 +10,6 @@ import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.graphics.Draw;
-import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.network.ClientNetwork;
 import mchorse.bbs_mod.ui.Keys;
@@ -34,11 +33,9 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIDraggable;
-import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
 import mchorse.bbs_mod.ui.model_blocks.camera.ImmersiveModelBlockCameraController;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.UIUtils;
-import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.AABB;
 import mchorse.bbs_mod.utils.Direction;
@@ -67,13 +64,10 @@ import org.joml.Vector3f;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 
 public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSupported
 {
@@ -266,9 +260,9 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
                 this.addCameraController(palette);
             }
 
-            /* Hide every card while the form palette is open. pickEdit lives
-               inside middleScrollView now so it follows that visibility. */
+            /* Hide every card while the form palette is open. */
             this.modelBlocks.setVisible(false);
+            this.pickEdit.setVisible(false);
             this.leftDragHandle.setVisible(false);
             this.leftCardResizer.setVisible(false);
             this.middleScrollView.setVisible(false);
@@ -410,10 +404,10 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
 
         UIElement mainHandColumn = UI.column(2, UI.label(UIKeys.MODELS_ITEMS_MAIN), this.mainHand);
         UIElement offHandColumn = UI.column(2, UI.label(UIKeys.MODELS_ITEMS_OFF), this.offHand);
-        UIElement armorHeadColumn = UI.column(2, UI.label(L10n.lang("bbs.ui.model_blocks.armor.head")), this.armorHead);
-        UIElement armorChestColumn = UI.column(2, UI.label(L10n.lang("bbs.ui.model_blocks.armor.chest")), this.armorChest);
-        UIElement armorLegsColumn = UI.column(2, UI.label(L10n.lang("bbs.ui.model_blocks.armor.legs")), this.armorLegs);
-        UIElement armorFeetColumn = UI.column(2, UI.label(L10n.lang("bbs.ui.model_blocks.armor.feet")), this.armorFeet);
+        UIElement armorHeadColumn = UI.column(2, UI.label(IKey.constant("Head")), this.armorHead);
+        UIElement armorChestColumn = UI.column(2, UI.label(IKey.constant("Chest")), this.armorChest);
+        UIElement armorLegsColumn = UI.column(2, UI.label(IKey.constant("Legs")), this.armorLegs);
+        UIElement armorFeetColumn = UI.column(2, UI.label(IKey.constant("Feet")), this.armorFeet);
 
         /* Equipment is laid out as a 3-column grid (two rows). */
         float equipColumn = 1F / 3F;
@@ -453,16 +447,16 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         lightGroup.w(0.5F, -2);
         hardnessGroup.w(0.5F, -2);
 
-        /* Grouped layout: Form (Pick/Edit) first, then toggles 2-per-row,
-           the two block sliders side by side, then equipment as a 3-column grid. */
+        /* Grouped layout: toggles 2-per-row (no label truncation), the two block
+           sliders side by side, then equipment as a 3-column grid. */
         this.properties = UI.column(5,
-            this.sectionHeader(L10n.lang("bbs.ui.model_blocks.display")),
+            this.sectionHeader(IKey.constant("Display")),
             UI.row(4, this.enabled, this.shadow),
             UI.row(4, this.global, this.lookAt),
             this.hitbox,
-            this.sectionHeader(L10n.lang("bbs.ui.model_blocks.block")),
+            this.sectionHeader(IKey.constant("Block")),
             UI.row(4, lightGroup, hardnessGroup),
-            this.sectionHeader(L10n.lang("bbs.ui.model_blocks.equipment")),
+            this.sectionHeader(IKey.constant("Equipment")),
             UI.row(4, armorHeadColumn, armorChestColumn, mainHandColumn),
             UI.row(4, armorLegsColumn, armorFeetColumn, offHandColumn));
 
@@ -652,6 +646,7 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
 
         this.leftDragHandle.relative(this);
         this.modelBlocks.relative(this);
+        this.pickEdit.relative(this);
         this.leftCardResizer.relative(this);
         this.middleDragHandle.relative(this);
         this.middleScrollView.relative(this);
@@ -664,23 +659,19 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
            iterated in reverse for clicks). The boundary resizer straddles two
            cards; without this order the lower card's drag handle would eat the
            click. */
-        this.add(this.leftDragHandle, this.modelBlocks,
+        this.add(this.leftDragHandle, this.modelBlocks, this.pickEdit,
                  this.middleDragHandle, this.middleScrollView,
                  this.rightDragHandle, this.rightScrollView,
                  this.leftCardResizer, this.middleCardResizer, this.rightCardResizer);
     }
 
-    /* Section header for the Properties window — matches the category titles in
-       the Settings panel: primary-color text on a dark background, 20px tall,
-       bottom-left aligned, with breathing room above. */
+    /* A muted, slightly raised label used to group the Properties window into
+       readable sections. */
     private UIElement sectionHeader(IKey label)
     {
-        UILabel header = UI.label(label)
-            .labelAnchor(0, 1)
-            .color(0xFF000000 | BBSSettings.primaryColor.get())
-            .background(() -> 0xFF1A1A22);
+        UIElement header = UI.label(label, 14, 0xFF8A8A95);
 
-        header.h(20).marginTop(8);
+        header.marginTop(3);
 
         return header;
     }
@@ -783,9 +774,9 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
     }
 
     /* Sorted, distinct column indices for docked+visible cards in a region. */
-    private List<Integer> columnsOnSide(int side)
+    private java.util.List<Integer> columnsOnSide(int side)
     {
-        TreeSet<Integer> cols = new TreeSet<>();
+        java.util.TreeSet<Integer> cols = new java.util.TreeSet<>();
         for (int i = 0; i < 3; i++)
         {
             if (isCardVisible(i) && isCardDocked(i) && getCardDockSide(i) == side)
@@ -793,13 +784,13 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
                 cols.add(getCardDockColumn(i));
             }
         }
-        return new ArrayList<>(cols);
+        return new java.util.ArrayList<>(cols);
     }
 
     /* Card indices in a given region+column, sorted top-to-bottom by row. */
-    private List<Integer> cardsInColumn(int side, int column)
+    private java.util.List<Integer> cardsInColumn(int side, int column)
     {
-        List<Integer> list = new ArrayList<>();
+        java.util.List<Integer> list = new java.util.ArrayList<>();
         for (int i = 0; i < 3; i++)
         {
             if (isCardVisible(i) && isCardDocked(i)
@@ -818,11 +809,11 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
     {
         for (int side = 0; side <= SIDE_RIGHT; side++)
         {
-            List<Integer> cols = columnsOnSide(side);
+            java.util.List<Integer> cols = columnsOnSide(side);
             for (int newCol = 0; newCol < cols.size(); newCol++)
             {
                 int oldCol = cols.get(newCol);
-                List<Integer> cards = cardsInColumn(side, oldCol);
+                java.util.List<Integer> cards = cardsInColumn(side, oldCol);
                 for (int row = 0; row < cards.size(); row++)
                 {
                     setCardDockRow(cards.get(row), row);
@@ -950,9 +941,9 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         }
     }
 
-    private List<DockZone> computeDockZones(int draggingCard)
+    private java.util.List<DockZone> computeDockZones(int draggingCard)
     {
-        List<DockZone> zones = new ArrayList<>();
+        java.util.List<DockZone> zones = new java.util.ArrayList<>();
         boolean[] sideHasCard = new boolean[2];
 
         for (int j = 0; j < 3; j++)
@@ -1028,7 +1019,7 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         {
             setCardDockColumn(i, zone.column);
 
-            List<Integer> existing = new ArrayList<>();
+            java.util.List<Integer> existing = new java.util.ArrayList<>();
             for (int j = 0; j < 3; j++)
             {
                 if (j != i && isCardVisible(j) && isCardDocked(j)
@@ -1226,7 +1217,7 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
            from x=area.w leftward (column 0 nearest the screen edge). */
         for (int side = SIDE_LEFT; side <= SIDE_RIGHT; side++)
         {
-            List<Integer> columns = columnsOnSide(side);
+            java.util.List<Integer> columns = columnsOnSide(side);
             if (columns.isEmpty())
             {
                 continue;
@@ -1268,7 +1259,7 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
             /* Vertical layout within each column (weighted heights). */
             for (int c = 0; c < columns.size(); c++)
             {
-                List<Integer> cards = cardsInColumn(side, columns.get(c));
+                java.util.List<Integer> cards = cardsInColumn(side, columns.get(c));
                 int count = cards.size();
                 if (count == 0)
                 {
@@ -1362,19 +1353,32 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         // Update layout boundaries dynamically before resizing children elements
         this.leftDragHandle.x(this.leftCardX).y(this.leftCardY).w(this.leftCardWidth).h(22);
 
-        /* Left card body: the list fills the entire body (Pick/Edit now lives
-           in the Properties card). */
+        /* Left card body: the list fills the space; Pick/Edit pinned at the
+           bottom when a model block is selected. */
         int pad = 6;
         int bodyX = this.leftCardX + pad;
         int bodyY = this.leftCardY + 22 + pad;
         int bodyW = this.leftCardWidth - pad * 2;
         int bodyH = this.leftCardHeight - 22 - pad * 2;
         boolean leftBody = this.leftVisible && !this.leftCollapsed && !paletteOpen;
+        boolean showPick = leftBody && this.modelBlock != null;
 
-        this.modelBlocks.x(bodyX).y(bodyY).w(bodyW).h(Math.max(0, bodyH));
+        if (showPick)
+        {
+            int peH = 20;
+            int listH = Math.max(0, bodyH - peH - pad);
+
+            this.modelBlocks.x(bodyX).y(bodyY).w(bodyW).h(listH);
+            this.pickEdit.x(bodyX).y(bodyY + listH + pad).w(bodyW).h(peH);
+        }
+        else
+        {
+            this.modelBlocks.x(bodyX).y(bodyY).w(bodyW).h(Math.max(0, bodyH));
+        }
 
         this.leftDragHandle.setVisible(this.leftVisible && !paletteOpen);
         this.modelBlocks.setVisible(leftBody);
+        this.pickEdit.setVisible(showPick);
         this.leftCardResizer.setVisible(this.leftVisible && !this.leftCollapsed && !paletteOpen);
 
         this.middleDragHandle.x(this.middleCardX).y(this.middleCardY).w(this.middleCardWidth).h(22);
@@ -2028,7 +2032,7 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
 
             /* One center + two edge cubes per existing card, plus one per empty
                region. Hovering a cube highlights it and previews the drop. */
-            List<DockZone> zones = computeDockZones(draggingCard);
+            java.util.List<DockZone> zones = computeDockZones(draggingCard);
             DockZone hoveredZone = null;
             for (DockZone zone : zones)
             {
@@ -2275,11 +2279,11 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
     public static class UIPanelDragHandle extends UIDraggable
     {
         private final IKey title;
-        private final Icon icon;
-        private final Supplier<Boolean> collapsedSupplier;
+        private final mchorse.bbs_mod.ui.utils.icons.Icon icon;
+        private final java.util.function.Supplier<Boolean> collapsedSupplier;
         private final Runnable toggleCollapse;
 
-        public UIPanelDragHandle(IKey title, Icon icon, Supplier<Boolean> collapsedSupplier, Runnable toggleCollapse, Consumer<UIContext> callback)
+        public UIPanelDragHandle(IKey title, mchorse.bbs_mod.ui.utils.icons.Icon icon, java.util.function.Supplier<Boolean> collapsedSupplier, Runnable toggleCollapse, Consumer<UIContext> callback)
         {
             super(callback);
             this.title = title;
@@ -2334,7 +2338,7 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
 
             // Draw collapse/expand chevron on the right edge
             boolean collapsed = this.collapsedSupplier != null && this.collapsedSupplier.get();
-            Icon chevronIcon = collapsed ? Icons.COLLAPSED : Icons.UNCOLLAPSED;
+            mchorse.bbs_mod.ui.utils.icons.Icon chevronIcon = collapsed ? Icons.COLLAPSED : Icons.UNCOLLAPSED;
             context.batcher.icon(chevronIcon, textColor, this.area.ex() - 12, this.area.my(), 0.5F, 0.5F);
 
             super.render(context);
