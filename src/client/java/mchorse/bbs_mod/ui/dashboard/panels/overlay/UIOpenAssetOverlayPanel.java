@@ -18,7 +18,6 @@ import mchorse.bbs_mod.ui.framework.elements.buttons.UIClickable;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.input.text.UITextbox;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIConfirmOverlayPanel;
-import mchorse.bbs_mod.ui.framework.elements.overlay.UICreateAssetOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
@@ -494,34 +493,6 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
     /* Folder context menu actions                                           */
     /* ------------------------------------------------------------------ */
 
-    @SuppressWarnings("unchecked")
-    void addAssetPrompt()
-    {
-        if (this.currentType == null)
-        {
-            return;
-        }
-
-        UICreateAssetOverlayPanel panel = new UICreateAssetOverlayPanel(
-            this.currentType,
-            this.currentFolder,
-            (name) ->
-            {
-                IRepository repository = this.currentType.getRepository();
-                ValueGroup created = (ValueGroup) repository.create(name);
-
-                if (created != null)
-                {
-                    repository.save(name, created.toData().asMap());
-                }
-
-                this.loadNames(this.currentType);
-            }
-        );
-
-        UIOverlay.addOverlay(this.getContext(), panel, 260, 160);
-    }
-
     void addFolderPrompt()
     {
         if (this.currentType == null)
@@ -970,9 +941,7 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
             {
                 if (this.owner.currentType != null)
                 {
-                    menu.action(Icons.ADD, UIKeys.GENERAL_ADD,
-                        () -> this.owner.addAssetPrompt());
-                    menu.action(Icons.FOLDER, UIKeys.PANELS_MODALS_ADD_FOLDER_TITLE,
+                    menu.action(Icons.ADD, UIKeys.PANELS_MODALS_ADD_FOLDER_TITLE,
                         () -> this.owner.addFolderPrompt());
                 }
             });
@@ -1435,9 +1404,7 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
             {
                 if (this.owner.currentType != null)
                 {
-                    menu.action(Icons.ADD, UIKeys.GENERAL_ADD,
-                        () -> this.owner.addAssetPrompt());
-                    menu.action(Icons.FOLDER, UIKeys.PANELS_MODALS_ADD_FOLDER_TITLE,
+                    menu.action(Icons.ADD, UIKeys.PANELS_MODALS_ADD_FOLDER_TITLE,
                         () -> this.owner.addFolderPrompt());
                 }
             });
