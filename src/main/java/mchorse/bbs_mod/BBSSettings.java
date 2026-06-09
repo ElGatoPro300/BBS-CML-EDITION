@@ -130,11 +130,6 @@ public class BBSSettings
     public static ValueString modelBlockPanelLayout;
     public static ValueString triggerBlockPanelLayout;
 
-    /* Shared "mosaic vs list" view preference for the home pages and the open
-       asset overlay. Persisted globally so toggling it anywhere takes effect
-       everywhere. */
-    public static ValueBoolean lastViewMosaic;
-
     public static ValueString entitySelectorsPropertyWhitelist;
 
     public static ValueBoolean damageControl;
@@ -355,8 +350,6 @@ public class BBSSettings
         modelBlockPanelLayout.invisible();
         triggerBlockPanelLayout = builder.getString("trigger_panel_layout", "");
         triggerBlockPanelLayout.invisible();
-        lastViewMosaic = builder.getBoolean("last_view_mosaic", true);
-        lastViewMosaic.invisible();
 
         builder.category("entity_selectors");
         entitySelectorsPropertyWhitelist = builder.getString("whitelist", "CustomName,Name");

@@ -255,7 +255,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private boolean shouldCaptureThumbnail;
     private final Map<String, Texture> thumbnails = new HashMap<>();
 
-    /* View mode is persisted globally — see BBSSettings.lastViewMosaic. */
+    private static boolean lastMosaicView = true;
     private static boolean lastShowingHomePage = true;
 
     /**
@@ -518,10 +518,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                 this.openFilmInDocumentTabs(id);
             }
         });
-        boolean mosaic = BBSSettings.lastViewMosaic.get();
-
-        this.homeFilmsMosaic.setVisible(mosaic);
-        this.homeFilmsList.setVisible(!mosaic);
+        this.homeFilmsMosaic.setVisible(lastMosaicView);
+        this.homeFilmsList.setVisible(!lastMosaicView);
 
         Consumer<String> oldCallback = this.homeFilmsSearch.search.callback;
         this.homeFilmsSearch.search.callback = (str) -> {
@@ -529,8 +527,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             this.homeFilmsMosaic.filter(str);
         };
 
-        this.homeViewToggle = new UIIcon(mosaic ? Icons.LIST : Icons.GALLERY, (b) -> this.toggleMosaicView());
-        this.homeViewToggle.tooltip(mosaic ? UIKeys.MODELS_HOME_VIEW_LIST : UIKeys.MODELS_HOME_VIEW_MOSAIC, Direction.LEFT);
+        this.homeViewToggle = new UIIcon(lastMosaicView ? Icons.LIST : Icons.GALLERY, (b) -> this.toggleMosaicView());
+        this.homeViewToggle.tooltip(lastMosaicView ? UIKeys.MODELS_HOME_VIEW_LIST : UIKeys.MODELS_HOME_VIEW_MOSAIC, Direction.LEFT);
         this.homeCreateFilm = this.createHomeButton(UIKeys.FILM_CRUD_ADD, Icons.ADD, (b) ->
         {
             UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
@@ -3732,7 +3730,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.homeViewToggle.both(isMosaic ? Icons.LIST : Icons.GALLERY);
         this.homeViewToggle.tooltip(isMosaic ? UIKeys.MODELS_HOME_VIEW_LIST : UIKeys.MODELS_HOME_VIEW_MOSAIC, Direction.LEFT);
 
-        BBSSettings.lastViewMosaic.set(isMosaic);
+        lastMosaicView = isMosaic;
 
         if (isMosaic)
         {
