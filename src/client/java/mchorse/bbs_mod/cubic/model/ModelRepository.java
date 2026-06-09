@@ -2,8 +2,6 @@ package mchorse.bbs_mod.cubic.model;
 
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.cubic.ModelInstance;
-import mchorse.bbs_mod.data.DataToString;
-import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.utils.IOUtils;
@@ -25,54 +23,25 @@ public class ModelRepository implements IRepository<ModelConfig>
     @Override
     public ModelConfig create(String id, MapType data)
     {
-        ModelConfig config = new ModelConfig(id);
-
-        if (data != null)
-        {
-            config.fromData(data);
-        }
-
-        File folder = new File(this.getFolder(), id);
-
-        if (!folder.exists())
-        {
-            folder.mkdirs();
-        }
-
-        return config;
+        return null;
     }
 
     @Override
     public void load(String id, Consumer<ModelConfig> callback)
     {
         ModelInstance model = this.manager.loadModel(id);
-        ModelConfig config = new ModelConfig(id);
 
         if (model != null)
         {
+            ModelConfig config = new ModelConfig(id);
+
             config.fromData(model.toConfig());
+            callback.accept(config);
         }
         else
         {
-            File file = new File(this.getFolder(), id + "/" + ModelManager.CONFIG_FILE);
-
-            if (file.exists())
-            {
-                try
-                {
-                    BaseType base = DataToString.fromString(IOUtils.readText(file));
-
-                    if (base.isMap())
-                    {
-                        config.fromData(base.asMap());
-                    }
-                }
-                catch (Exception e)
-                {}
-            }
+            callback.accept(null);
         }
-
-        callback.accept(config);
     }
 
     @Override
