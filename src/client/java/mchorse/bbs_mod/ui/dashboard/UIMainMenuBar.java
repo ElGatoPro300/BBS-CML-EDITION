@@ -3,7 +3,6 @@ package mchorse.bbs_mod.ui.dashboard;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
-import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.settings.values.core.ValueGroup;
 import mchorse.bbs_mod.ui.ContentType;
@@ -14,12 +13,12 @@ import mchorse.bbs_mod.ui.dashboard.panels.UIDataDashboardPanel;
 import mchorse.bbs_mod.ui.dashboard.panels.overlay.UIAboutOverlayPanel;
 import mchorse.bbs_mod.ui.dashboard.panels.overlay.UIOpenAssetOverlayPanel;
 import mchorse.bbs_mod.ui.dashboard.utils.UIGraphPanel;
+import mchorse.bbs_mod.ui.selectors.UISelectorsOverlayPanel;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
-import mchorse.bbs_mod.ui.selectors.UISelectorsOverlayPanel;
 import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
@@ -28,8 +27,6 @@ import mchorse.bbs_mod.ui.utils.keys.Keybind;
 import mchorse.bbs_mod.utils.RecentAssetsTracker;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.repos.IRepository;
-
-import net.minecraft.client.MinecraftClient;
 
 import java.util.function.Consumer;
 
@@ -59,10 +56,10 @@ public class UIMainMenuBar extends UIElement
         brand.w(25).marginLeft(6);
 
         this.add(brand);
-        this.add(new UIMenuButton(L10n.lang("bbs.ui.raw.file"), this, this::buildFileMenu));
-        this.add(new UIMenuButton(L10n.lang("bbs.ui.raw.edit"), this, this::buildEditMenu));
-        this.add(new UIMenuButton(L10n.lang("bbs.ui.raw.tools"), this, this::buildToolsMenu));
-        this.add(new UIMenuButton(L10n.lang("bbs.ui.raw.help"), this, this::buildHelpMenu));
+        this.add(new UIMenuButton(IKey.raw("File"), this, this::buildFileMenu).w(28));
+        this.add(new UIMenuButton(IKey.raw("Edit"), this, this::buildEditMenu).w(28));
+        this.add(new UIMenuButton(IKey.raw("Tools"), this, this::buildToolsMenu).w(32));
+        this.add(new UIMenuButton(IKey.raw("Help"), this, this::buildHelpMenu).w(28));
 
         this.row(2).preferred(999);
     }
@@ -122,10 +119,10 @@ public class UIMainMenuBar extends UIElement
 
     private void buildFileMenu(ContextMenuManager menu)
     {
-        menu.action(Icons.ADD, L10n.lang("bbs.ui.raw.new"), () -> this.openNewSubmenu());
-        menu.action(Icons.FOLDER, L10n.lang("bbs.ui.raw.open"), () -> this.openOpenPopup());
-        menu.action(Icons.TIME, L10n.lang("bbs.ui.raw.recent"), () -> this.openRecentSubmenu());
-        menu.action(Icons.SETTINGS, UIKeys.CONFIG_TITLE, () -> UIOverlay.addOverlay(this.getContext(), this.dashboard.settingsPanel, 580, 340));
+        menu.action(Icons.ADD, IKey.raw("New"), () -> this.openNewSubmenu());
+        menu.action(Icons.FOLDER, IKey.raw("Open"), () -> this.openOpenPopup());
+        menu.action(Icons.TIME, IKey.raw("Recent"), () -> this.openRecentSubmenu());
+        menu.action(Icons.SETTINGS, UIKeys.CONFIG_TITLE, () -> UIOverlay.addOverlay(this.getContext(), this.dashboard.settingsPanel, 520, 320));
         menu.action(Icons.JOYSTICK, UIKeys.ADDONS_TITLE, () -> UIOverlay.addOverlay(this.getContext(), this.dashboard.addonsPanel, 520, 320));
     }
 
@@ -139,17 +136,13 @@ public class UIMainMenuBar extends UIElement
     {
         menu.action(Icons.PROPERTIES, UIKeys.SELECTORS_TITLE, () ->
             UIOverlay.addOverlayRight(this.getContext(), new UISelectorsOverlayPanel(), 240));
-        menu.action(Icons.GRAPH, UIKeys.GRAPH_TOOLTIP, () -> {
-            if (this.dashboard.documentTabsBar != null)
-            {
-                this.dashboard.documentTabsBar.addOrActivate(ContentType.GRAPH, "graph_calculator");
-            }
-        });
+        menu.action(Icons.GRAPH, UIKeys.GRAPH_TOOLTIP, () ->
+            this.dashboard.setPanel(this.dashboard.getPanel(UIGraphPanel.class)));
     }
 
     private void buildHelpMenu(ContextMenuManager menu)
     {
-        menu.action(Icons.HELP, L10n.lang("bbs.ui.raw.about"), () -> UIOverlay.addOverlay(this.getContext(), new UIAboutOverlayPanel(L10n.lang("bbs.ui.raw.about"), this.dashboard), 560, 440));
+        menu.action(Icons.HELP, IKey.raw("About"), () -> UIOverlay.addOverlay(this.getContext(), new UIAboutOverlayPanel(IKey.raw("About"), this.dashboard), 640, 520));
     }
 
     /* ------------------------------------------------------------------ */
@@ -172,7 +165,7 @@ public class UIMainMenuBar extends UIElement
         {
             if (RecentAssetsTracker.RECENT.isEmpty())
             {
-                menu.action(Icons.NONE, L10n.lang("bbs.ui.raw.no_recent_assets"), () -> {});
+                menu.action(Icons.NONE, IKey.raw("No recent assets"), () -> {});
                 return;
             }
 
@@ -227,7 +220,7 @@ public class UIMainMenuBar extends UIElement
 
     private void openOpenPopup()
     {
-        UIOverlay.addOverlay(this.getContext(), new UIOpenAssetOverlayPanel(L10n.lang("bbs.ui.raw.open_asset"), this.dashboard), 520, 320);
+        UIOverlay.addOverlay(this.getContext(), new UIOpenAssetOverlayPanel(IKey.raw("Open Asset"), this.dashboard), 520, 320);
     }
 
     private void triggerKey(KeyCombo combo)
@@ -278,31 +271,6 @@ public class UIMainMenuBar extends UIElement
             this.bar = bar;
             this.menuConsumer = menuConsumer;
             this.callback = (b) -> this.bar.toggleMenu(this, this.menuConsumer);
-
-            try
-            {
-                int textWidth = MinecraftClient.getInstance().textRenderer.getWidth(label.get());
-                this.w(textWidth + 10);
-            }
-            catch (Exception e)
-            {
-                this.w(28);
-            }
-        }
-
-        @Override
-        public void resize()
-        {
-            try
-            {
-                int textWidth = MinecraftClient.getInstance().textRenderer.getWidth(this.label.get());
-                this.w(textWidth + 10);
-            }
-            catch (Exception e)
-            {
-                this.w(28);
-            }
-            super.resize();
         }
 
         @Override
