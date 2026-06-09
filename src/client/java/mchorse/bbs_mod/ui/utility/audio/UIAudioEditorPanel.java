@@ -10,12 +10,9 @@ import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.resources.packs.URLSourcePack;
-import mchorse.bbs_mod.ui.ContentType;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.UIDashboard;
-import mchorse.bbs_mod.ui.dashboard.UIPanelSwitcher;
-import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel;
 import mchorse.bbs_mod.ui.dashboard.panels.UISidebarDashboardPanel;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
@@ -31,12 +28,10 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UISoundOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIRenderable;
-import mchorse.bbs_mod.ui.home.UIHomePanel;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.Direction;
-import mchorse.bbs_mod.utils.RecentAssetsTracker;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.interps.Interpolations;
 import mchorse.bbs_mod.utils.resources.Pixels;
@@ -92,7 +87,6 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
     private UIStringList homeAudiosList;
     private UIAudioMosaicGrid homeAudiosMosaic;
     private UIIcon homeViewToggle;
-    private UIPanelSwitcher panelSwitcher;
     private UIElement homeActionsPanel;
     private UIButton homeOpenFolder;
     private UIButton homeRefreshList;
@@ -109,8 +103,22 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
     private long lastFolderClickTime;
 
     private boolean showingHomePage = true;
+
+    // Homepage banners
+    private final List<BannerEntry> homeBanners = new ArrayList<>();
+    private static final Set<Link> prefetchingBanners = Collections.synchronizedSet(new HashSet<>());
+    private final List<Integer> bannerSequence = new ArrayList<>();
+    private int sequenceIndex = 0;
+    private int bannerIndex = 0;
+    private float lastBannerTicks = -1;
     private float lastRenderTicks = -1;
     private final float[] barPeaks = new float[64];
+
+    private static final int HOME_BANNER_HEIGHT = 108;
+    private static final int BANNER_DURATION = 140;
+    private static final int BANNER_TRANSITION = 40;
+    private static final String BANNERS_URL = "https://raw.githubusercontent.com/BBSCommunity/CML-NEWS/main/Banners_Panel/banners.json";
+
     public static class AudioDocumentTab
     {
         public boolean home;
@@ -123,7 +131,12 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
         }
     }
 
-
+    public static class BannerEntry
+    {
+        public String author;
+        public String url;
+        public transient Link link;
+    }
 
     public UIAudioEditorPanel(UIDashboard dashboard)
     {
@@ -300,7 +313,7 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
 
                     if (newFile.exists())
                     {
-                        this.getContext().notifyError(L10n.lang("bbs.ui.raw.file_already_exists"));
+                        this.getContext().notifyError(IKey.raw("File already exists!"));
                         return;
                     }
 
@@ -383,26 +396,25 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
         this.updateHomeButtonsState();
 
         this.homePage.relative(this.editor).x(0.5F, -250).y(0).w(500).h(1F);
-        this.homeActionsPanel.relative(this.homePage).x(0).y(UIHomePanel.HOME_BANNER_HEIGHT + 20).w(0.35F).h(1F, -(UIHomePanel.HOME_BANNER_HEIGHT + 20 + 44)).column(0).vertical().stretch();
+        this.homeActionsPanel.relative(this.homePage).x(0).y(HOME_BANNER_HEIGHT + 20).w(0.35F).h(1F, -(HOME_BANNER_HEIGHT + 20)).column(0).vertical().stretch();
         
-        this.panelSwitcher = new UIPanelSwitcher(this.dashboard);
-        this.panelSwitcher.relative(this.homePage).x(0.5F, -87).y(1F, -32).w(175).h(24);
-
         UIElement spacing = new UIElement();
         spacing.h(8);
 
         this.homeActionsPanel.add(this.homeOpenFolder, this.homeRefreshList, spacing, this.homeRenameCurrent, this.homeDeleteCurrent);
-        this.homeAudiosSearch.relative(this.homePage).x(0.35F).y(UIHomePanel.HOME_BANNER_HEIGHT + 20).w(0.65F).h(1F, -(UIHomePanel.HOME_BANNER_HEIGHT + 20 + 44));
+        this.homeAudiosSearch.relative(this.homePage).x(0.35F).y(HOME_BANNER_HEIGHT + 20).w(0.65F).h(1F, -(HOME_BANNER_HEIGHT + 20));
         this.homeAudiosSearch.search.w(1F, -25);
         this.homeAudiosMosaic.relative(this.homeAudiosSearch).x(0).y(20).w(1F).h(1F, -20);
         this.homeViewToggle.relative(this.homeAudiosSearch).x(1F, -22).y(0).w(20).h(20);
-        this.homePage.add(new UIRenderable(this::renderHomeBackground), this.homeActionsPanel, this.homeAudiosSearch, this.homeAudiosMosaic, this.homeViewToggle, this.panelSwitcher);
+        this.homePage.add(new UIRenderable(this::renderHomeBackground), this.homeActionsPanel, this.homeAudiosSearch, this.homeAudiosMosaic, this.homeViewToggle);
 
         this.editor.add(this.mainView, this.homePage);
 
         this.createHomeDocumentTab(true);
         this.openAudio(null);
         this.updateAudioDocumentView();
+
+        this.initBanners();
 
         this.keys().register(Keys.PLAUSE, this.audioEditor::togglePlayback);
         this.keys().register(Keys.SAVE, this::saveColors);
@@ -777,8 +789,6 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
             return;
         }
 
-        RecentAssetsTracker.add(ContentType.SOUNDS, link.toString());
-
         int existingIndex = this.findTabByAudio(link);
 
         if (existingIndex >= 0)
@@ -926,36 +936,19 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
         this.showingHomePage = home;
         this.homePage.setVisible(home);
         this.mainView.setVisible(!home);
-        this.iconBar.setVisible(!home);
-
-        if (home)
-        {
-            this.editor.resetFlex().relative(this).w(1F).h(1F);
-        }
-        else
-        {
-            this.editor.resetFlex().relative(this).wTo(this.iconBar.area).h(1F);
-        }
-        this.resize();
 
         this.updateHomeButtonsState();
     }
 
     public void openAudioFile(String id)
     {
-        this.openAudioInDocumentTabs(Link.create(id));
+        this.openAudioInDocumentTabs(mchorse.bbs_mod.resources.Link.create(id));
     }
 
     @Override
-    public void showHomeView()
+    public mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel getMainPanel()
     {
-        this.openAudio(null);
-    }
-
-    @Override
-    public UIDashboardPanel getMainPanel()
-    {
-        UIHomePanel home = this.dashboard.getPanel(UIHomePanel.class);
+        mchorse.bbs_mod.ui.home.UIHomePanel home = this.dashboard.getPanel(mchorse.bbs_mod.ui.home.UIHomePanel.class);
 
         return home != null ? home : this;
     }
@@ -1019,11 +1012,6 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
         this.audioEditor.setup(link);
         this.saveColors.setEnabled(this.audioEditor.isEditing());
         this.syncActiveDocumentTabWithData(link);
-
-        if (link != null && this.dashboard != null && this.dashboard.documentTabsBar != null)
-        {
-            this.dashboard.documentTabsBar.addOrActivate(ContentType.SOUNDS, link.toString());
-        }
     }
 
     private void saveColors()
@@ -1035,7 +1023,141 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
         sounds.deleteSound(audio);
     }
 
+    // Banners drawing/fetching logic
+    private void initBanners()
+    {
+        BannerEntry home = new BannerEntry();
+        home.author = "ElGatoPro300";
+        home.link = Link.assets("textures/banners/films/Home.png");
+        this.homeBanners.add(home);
 
+        this.fetchRemoteBanners();
+    }
+
+    private void fetchRemoteBanners()
+    {
+        CompletableFuture.runAsync(() ->
+        {
+            try
+            {
+                HttpClient client = HttpClient.newBuilder().build();
+                HttpRequest req = HttpRequest.newBuilder(URI.create(BANNERS_URL)).GET().build();
+                HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
+
+                if (resp.statusCode() == 200)
+                {
+                    List<BannerEntry> remote = new Gson().fromJson(resp.body(), new TypeToken<List<BannerEntry>>(){}.getType());
+                    if (remote != null)
+                    {
+                        for (BannerEntry entry : remote)
+                        {
+                            entry.link = Link.create(entry.url);
+                            this.prefetchBannerImage(entry.link);
+                        }
+
+                        MinecraftClient.getInstance().execute(() -> this.homeBanners.addAll(remote));
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                e.printStackTrace();
+            }
+        });
+    }
+
+    private void regenerateBannerSequence()
+    {
+        this.bannerSequence.clear();
+        for (int i = 0; i < this.homeBanners.size(); i++)
+        {
+            this.bannerSequence.add(i);
+        }
+        this.shuffleRemoteBanners();
+        this.sequenceIndex = 0;
+        this.bannerIndex = 0; // Always start with local
+    }
+
+    private void shuffleRemoteBanners()
+    {
+        if (this.bannerSequence.size() > 2)
+        {
+            List<Integer> remote = this.bannerSequence.subList(1, this.bannerSequence.size());
+            Collections.shuffle(remote);
+        }
+    }
+
+    private void prefetchBannerImage(Link link)
+    {
+        if (link == null || link.source == null || !link.source.startsWith("http")) return;
+        if (BBSModClient.getTextures().textures.get(link) != null) return;
+        if (!prefetchingBanners.add(link)) return;
+
+        CompletableFuture.runAsync(() ->
+        {
+            try (InputStream stream = URLSourcePack.downloadImage(link))
+            {
+                if (stream != null)
+                {
+                    Pixels pixels = Pixels.fromPNGStream(stream);
+                    if (pixels != null)
+                    {
+                        RenderSystem.recordRenderCall(() ->
+                        {
+                            Texture texture = Texture.textureFromPixels(pixels, GL11.GL_LINEAR);
+                            BBSModClient.getTextures().textures.put(link, texture);
+                        });
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                e.printStackTrace();
+            }
+        });
+    }
+
+    private void drawBanner(UIContext context, BannerEntry entry, int x, int y, int w, int h, float alpha, float textAlpha, boolean drawStripe)
+    {
+        if (alpha < 0.001F && textAlpha < 0.001F) return;
+
+        Link link = entry.link;
+        Texture texture = link.source != null && link.source.startsWith("http") ? 
+            BBSModClient.getTextures().textures.get(link) : 
+            BBSModClient.getTextures().getTexture(link);
+
+        if (texture != null)
+        {
+            float scale = Math.min(w / (float) texture.width, h / (float) texture.height);
+            int tw = Math.max(1, Math.round(texture.width * scale));
+            int th = Math.max(1, Math.round(texture.height * scale));
+            int tx = x + (w - tw) / 2;
+            int ty = y + (h - th) / 2;
+
+            if (alpha > 0.001F)
+            {
+                RenderSystem.enableBlend();
+                RenderSystem.defaultBlendFunc();
+                context.batcher.texturedBox(texture, Colors.setA(Colors.WHITE, alpha), tx, ty, tw, th, 0, 0, texture.width, texture.height);
+            }
+
+            if (textAlpha > 0.001F && entry.author != null && !entry.author.isEmpty())
+            {
+                String label = UIKeys.FILM_HOME_BANNER_AUTHOR.format(entry.author).get();
+                int lw = context.batcher.getFont().getWidth(label);
+                
+                int stripeH = 16;
+                int stripeY = ty + th - stripeH - 6;
+                int bx = tx + tw - lw - 6;
+
+                if (drawStripe)
+                {
+                    context.batcher.box(bx - 6, stripeY, tx + tw, ty + th - 6, Colors.setA(0, textAlpha * 0.6F));
+                }
+                context.batcher.textShadow(label, bx, stripeY + (stripeH - 8) / 2, Colors.setA(Colors.WHITE, textAlpha));
+            }
+        }
+    }
 
     private static final mchorse.bbs_mod.utils.colors.Color TEMP_COLOR = new mchorse.bbs_mod.utils.colors.Color();
 
@@ -1163,11 +1285,74 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
         // Panel backgrounds
         context.batcher.box(pageX, pageY, pageX + pageW, pageY + pageH, Colors.setA(0x1e1e1e, 1F));
 
-        UIHomePanel home = this.dashboard.getPanel(UIHomePanel.class);
-        if (home != null)
+        // Background stripe drawing
+        int bannerH = HOME_BANNER_HEIGHT;
+        int stripeH = 16;
+        int stripeY = pageY + bannerH - stripeH;
+
+        float lastTicks = context.getTickTransition();
+        if (this.lastBannerTicks < 0) this.lastBannerTicks = lastTicks - BANNER_TRANSITION;
+
+        float elapsed = Math.max(0, lastTicks - this.lastBannerTicks);
+
+        if (elapsed >= BANNER_DURATION)
         {
-            home.renderCardAndBanners(context, this.homePage, dividerX, L10n.lang("bbs.ui.audio.home.list").get());
+            if (this.homeBanners.size() > 1)
+            {
+                if (this.bannerSequence.size() != this.homeBanners.size())
+                {
+                    this.regenerateBannerSequence();
+                }
+
+                this.sequenceIndex++;
+                if (this.sequenceIndex >= this.bannerSequence.size())
+                {
+                    this.sequenceIndex = 0;
+                    this.shuffleRemoteBanners();
+                }
+                this.bannerIndex = this.bannerSequence.get(this.sequenceIndex);
+            }
+            this.lastBannerTicks = lastTicks;
+            elapsed = 0;
         }
+
+        float transition = 0F;
+        float textTransitionPrev = 1F;
+        float textTransitionCurr = 0F;
+
+        if (elapsed < BANNER_TRANSITION && this.homeBanners.size() > 1)
+        {
+            transition = (float) Interpolations.CUBIC_INOUT.interpolate(1F, 0F, elapsed / (float) BANNER_TRANSITION);
+            transition = Math.max(0F, Math.min(1F, transition));
+
+            textTransitionPrev = transition;
+            float textElapsed = Math.max(0, elapsed - 20);
+            textTransitionCurr = (float) Interpolations.CUBIC_INOUT.interpolate(0F, 1F, textElapsed / (float) (BANNER_TRANSITION - 20));
+        }
+        else
+        {
+            textTransitionCurr = 1F;
+        }
+
+        int prevIndex = this.bannerSequence.isEmpty() ? 0 : this.bannerSequence.get((this.sequenceIndex + this.bannerSequence.size() - 1) % this.bannerSequence.size());
+        BannerEntry current = this.homeBanners.get(this.bannerIndex);
+        BannerEntry prev = this.homeBanners.get(prevIndex);
+
+        if (transition > 0.001F)
+        {
+            this.drawBanner(context, prev, pageX, pageY, pageW, bannerH, transition, textTransitionPrev, true);
+            this.drawBanner(context, current, pageX, pageY, pageW, bannerH, 1F - transition, textTransitionCurr, true);
+        }
+        else
+        {
+            this.drawBanner(context, current, pageX, pageY, pageW, bannerH, 1F, textTransitionCurr, true);
+        }
+
+        int splitY = pageY + bannerH;
+        context.batcher.box(pageX, splitY, pageX + pageW, splitY + 1, Colors.A12);
+        context.batcher.box(dividerX, splitY + 1, dividerX + 1, pageY + pageH, Colors.A12);
+        context.batcher.textShadow(L10n.lang("bbs.ui.audio.home.actions").get(), pageX + 4, splitY + 6);
+        context.batcher.textShadow(L10n.lang("bbs.ui.audio.home.list").get(), dividerX + 4, splitY + 6);
     }
 
     public class UIAudioMosaicGrid extends UIScrollView

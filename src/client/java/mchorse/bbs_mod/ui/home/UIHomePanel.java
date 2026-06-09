@@ -11,7 +11,6 @@ import mchorse.bbs_mod.settings.values.core.ValueGroup;
 import mchorse.bbs_mod.ui.ContentType;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.UIDashboard;
-import mchorse.bbs_mod.ui.dashboard.UIPanelSwitcher;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel;
 import mchorse.bbs_mod.ui.dashboard.panels.overlay.UIOpenAssetOverlayPanel;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
@@ -72,7 +71,7 @@ import java.util.function.Consumer;
 public class UIHomePanel extends UIDashboardPanel
 {
     private static final String BANNERS_URL = "https://raw.githubusercontent.com/BBSCommunity/CML-NEWS/main/Banners_Panel/banners.json";
-    public static final int HOME_BANNER_HEIGHT = 108;
+    private static final int HOME_BANNER_HEIGHT = 108;
     private static final int BANNER_DURATION = 200;
     private static final int BANNER_TRANSITION = 60;
 
@@ -101,8 +100,6 @@ public class UIHomePanel extends UIDashboardPanel
     private final UISearchList<String> homeRecentSearch;
     private final UIIcon homeViewToggle;
 
-    private final UIPanelSwitcher panelSwitcher;
-
     private String selectedId;
     private ContentType selectedType;
     private String listLastClickedId;
@@ -127,20 +124,19 @@ public class UIHomePanel extends UIDashboardPanel
 
         this.homeActionsPanel = new UIElement();
 
-        this.homeOpenButton = this.createHomeButton(L10n.lang("bbs.ui.raw.open"), Icons.FOLDER, (b) ->
-            UIOverlay.addOverlay(this.getContext(), new UIOpenAssetOverlayPanel(L10n.lang("bbs.ui.raw.open_asset"), this.dashboard), 520, 320));
+        this.homeOpenButton = this.createHomeButton(IKey.raw("Open..."), Icons.FOLDER, (b) ->
+            UIOverlay.addOverlay(this.getContext(), new UIOpenAssetOverlayPanel(IKey.raw("Open Asset"), this.dashboard), 400, 300));
 
         this.homeCreateFilm = this.createHomeButton(UIKeys.FILM_TITLE, Icons.FILM, (b) -> this.createNewAsset(ContentType.FILMS));
         this.homeCreateModel = this.createHomeButton(UIKeys.MODELS_TITLE, Icons.PLAYER, (b) -> this.createNewAsset(ContentType.MODELS));
         this.homeCreateParticle = this.createHomeButton(UIKeys.PANELS_PARTICLES, Icons.PARTICLE, (b) -> this.createNewAsset(ContentType.PARTICLES));
-        this.homeCreateAudio = this.createHomeButton(UIKeys.PANELS_AUDIOS, Icons.SOUND, (b) ->
-            UIOverlay.addOverlay(this.getContext(), new UISoundOverlayPanel((link) -> this.openAsset(ContentType.SOUNDS, link.toString()))));
+        this.homeCreateAudio = this.createHomeButton(IKey.raw("Audio"), Icons.SOUND, (b) ->
+            UIOverlay.addOverlay(this.getContext(), new UISoundOverlayPanel((link) -> this.openAsset(null, link.toString()))));
 
-        this.homeDuplicateCurrent = this.createHomeButton(UIKeys.GENERAL_DUPE, Icons.COPY, (b) -> this.duplicateSelected());
-        this.homeRenameCurrent = this.createHomeButton(UIKeys.GENERAL_RENAME, Icons.EDIT, (b) -> this.renameSelected());
-        this.homeDeleteCurrent = this.createHomeButton(UIKeys.GENERAL_REMOVE, Icons.REMOVE, (b) -> this.deleteSelected());
+        this.homeDuplicateCurrent = this.createHomeButton(UIKeys.FILM_CRUD_DUPE, Icons.COPY, (b) -> this.duplicateSelected());
+        this.homeRenameCurrent = this.createHomeButton(UIKeys.FILM_CRUD_RENAME, Icons.EDIT, (b) -> this.renameSelected());
+        this.homeDeleteCurrent = this.createHomeButton(UIKeys.FILM_CRUD_REMOVE, Icons.REMOVE, (b) -> this.deleteSelected());
 
-        this.panelSwitcher = new UIPanelSwitcher(this.dashboard);
         this.updateHomeButtonsState();
 
         this.homeRecentList = new UIStringList((list) ->
@@ -191,14 +187,6 @@ public class UIHomePanel extends UIDashboardPanel
         };
 
         this.homeRecentList.background();
-        this.homeRecentList.context((menu) ->
-        {
-            if (this.selectedId != null && this.selectedType != null)
-            {
-                RecentAssetsTracker.Entry e = new RecentAssetsTracker.Entry(this.selectedType, this.selectedId);
-                menu.action(Icons.REMOVE, UIKeys.FILM_HOME_REMOVE_RECENT, () -> this.removeFromRecent(e));
-            }
-        });
 
         this.homeMosaic = new UIRecentMosaicGrid(this, this::handleRecentSelection, this::openRecent);
         this.homeMosaic.setVisible(lastMosaicView);
@@ -226,7 +214,7 @@ public class UIHomePanel extends UIDashboardPanel
         UIElement spacerOpen = new UIElement();
         spacerOpen.h(8);
 
-        UILabel labelNew = new UILabel(L10n.lang("bbs.ui.raw.new"), 0xAAFFFFFF);
+        UILabel labelNew = new UILabel(IKey.raw("New"), 0xAAFFFFFF);
         labelNew.h(12);
         labelNew.labelAnchor(0, 0.5F);
         labelNew.marginLeft(4);
@@ -252,14 +240,13 @@ public class UIHomePanel extends UIDashboardPanel
         );
 
         this.homePage.relative(this).x(0.5F, -250).y(0).w(500).h(1F);
-        this.homeActionsPanel.relative(this.homePage).x(0).y(HOME_BANNER_HEIGHT + 20).w(0.35F).h(1F, -(HOME_BANNER_HEIGHT + 20 + 44)).column(0).vertical().stretch();
-        this.panelSwitcher.relative(this.homePage).x(0.5F, -87).y(1F, -32).w(175).h(24);
-        this.homeRecentSearch.relative(this.homePage).x(0.35F).y(HOME_BANNER_HEIGHT + 20).w(0.65F).h(1F, -(HOME_BANNER_HEIGHT + 20 + 44));
+        this.homeActionsPanel.relative(this.homePage).x(0).y(HOME_BANNER_HEIGHT + 20).w(0.35F).h(1F, -(HOME_BANNER_HEIGHT + 20)).column(0).vertical().stretch();
+        this.homeRecentSearch.relative(this.homePage).x(0.35F).y(HOME_BANNER_HEIGHT + 20).w(0.65F).h(1F, -(HOME_BANNER_HEIGHT + 20));
         this.homeRecentSearch.search.w(1F, -25);
         this.homeMosaic.relative(this.homeRecentSearch).x(0).y(20).w(1F).h(1F, -20);
         this.homeViewToggle.relative(this.homeRecentSearch).x(1F, -22).y(0).w(20).h(20);
 
-        this.homePage.add(new UIRenderable(this::renderHomeBanner), this.homeActionsPanel, this.homeRecentSearch, this.homeMosaic, this.homeViewToggle, this.panelSwitcher);
+        this.homePage.add(new UIRenderable(this::renderHomeBanner), this.homeActionsPanel, this.homeRecentSearch, this.homeMosaic, this.homeViewToggle);
 
         this.add(this.homePage);
     }
@@ -282,9 +269,7 @@ public class UIHomePanel extends UIDashboardPanel
     {
         if (this.dashboard.documentTabsBar != null)
         {
-            /* The tabs bar identifies audio by null type; translate SOUNDS accordingly */
-            ContentType tabsType = (type == ContentType.SOUNDS) ? null : type;
-            this.dashboard.documentTabsBar.addOrActivate(tabsType, id);
+            this.dashboard.documentTabsBar.addOrActivate(type, id);
         }
     }
 
@@ -316,7 +301,7 @@ public class UIHomePanel extends UIDashboardPanel
         return sep < 0 ? key : key.substring(sep + 1);
     }
 
-    public void refreshRecentList()
+    private void refreshRecentList()
     {
         List<RecentAssetsTracker.Entry> recent = RecentAssetsTracker.RECENT;
         List<String> keys = new ArrayList<>();
@@ -350,23 +335,6 @@ public class UIHomePanel extends UIDashboardPanel
         }
     }
 
-    void removeFromRecent(RecentAssetsTracker.Entry entry)
-    {
-        if (entry == null)
-        {
-            return;
-        }
-
-        RecentAssetsTracker.remove(entry.type, entry.id);
-
-        if (this.selectedId != null && this.selectedId.equals(entry.id) && this.selectedType == entry.type)
-        {
-            this.clearSelection();
-        }
-
-        this.refreshRecentList();
-    }
-
     private void clearSelection()
     {
         this.selectedId = null;
@@ -380,7 +348,7 @@ public class UIHomePanel extends UIDashboardPanel
 
     private void updateHomeButtonsState()
     {
-        boolean hasSelection = this.selectedId != null && this.selectedType != null && this.selectedType != ContentType.SOUNDS;
+        boolean hasSelection = this.selectedId != null && this.selectedType != null;
 
         this.homeDuplicateCurrent.setEnabled(hasSelection);
         this.homeRenameCurrent.setEnabled(hasSelection);
@@ -491,17 +459,6 @@ public class UIHomePanel extends UIDashboardPanel
                 if (!confirm) return;
 
                 type.getRepository().delete(current);
-
-                if (type == ContentType.FILMS)
-                {
-                    UIFilmPanel filmPanel = this.dashboard.getPanel(UIFilmPanel.class);
-
-                    if (filmPanel != null)
-                    {
-                        filmPanel.deleteThumbnail(current);
-                    }
-                }
-
                 RecentAssetsTracker.RECENT.removeIf(e -> e.type == type && e.id.equals(current));
                 RecentAssetsTracker.save();
                 this.refreshRecentList();
@@ -787,18 +744,6 @@ public class UIHomePanel extends UIDashboardPanel
 
         BufferRenderer.drawWithGlobalProgram(builder.end());
 
-        this.renderCardAndBanners(context, this.homePage, dividerX, L10n.lang("bbs.ui.film.home.list").get());
-    }
-
-    public void renderCardAndBanners(UIContext context, UIElement customHomePage, int dividerX, String listTitle)
-    {
-        int pageX = customHomePage.area.x;
-        int pageY = customHomePage.area.y;
-        int pageW = customHomePage.area.w;
-        int pageH = customHomePage.area.h;
-        int bannerH = HOME_BANNER_HEIGHT;
-        int splitY = pageY + bannerH;
-
         context.batcher.gradientHBox(pageX - 18, pageY, pageX, pageY + pageH, 0, Colors.setA(0x000000, 0.7F));
         context.batcher.gradientHBox(pageX + pageW, pageY, pageX + pageW + 18, pageY + pageH, Colors.setA(0x000000, 0.7F), 0);
         context.batcher.box(pageX, pageY, pageX + pageW, pageY + pageH, Colors.setA(0x1e1e1e, 1F));
@@ -852,31 +797,24 @@ public class UIHomePanel extends UIDashboardPanel
             textTransitionCurr = 1F;
         }
 
-        if (this.homeBanners.isEmpty())
+        int prevIndex = this.bannerSequence.isEmpty() ? 0 : this.bannerSequence.get((this.sequenceIndex + this.bannerSequence.size() - 1) % this.bannerSequence.size());
+        BannerEntry current = this.homeBanners.get(this.bannerIndex);
+        BannerEntry prev = this.homeBanners.get(prevIndex);
+
+        if (transition > 0.001F)
         {
-            context.batcher.box(pageX, pageY, pageX + pageW, pageY + bannerH, Colors.setA(0, 0.3F));
+            this.drawBanner(context, prev, pageX, pageY, pageW, bannerH, transition, textTransitionPrev, true);
+            this.drawBanner(context, current, pageX, pageY, pageW, bannerH, 1F - transition, textTransitionCurr, true);
         }
         else
         {
-            int prevIndex = this.bannerSequence.isEmpty() ? 0 : this.bannerSequence.get((this.sequenceIndex + this.bannerSequence.size() - 1) % this.bannerSequence.size());
-            BannerEntry current = this.homeBanners.get(this.bannerIndex);
-            BannerEntry prev = this.homeBanners.get(prevIndex);
-
-            if (transition > 0.001F)
-            {
-                this.drawBanner(context, prev, pageX, pageY, pageW, bannerH, transition, textTransitionPrev, true);
-                this.drawBanner(context, current, pageX, pageY, pageW, bannerH, 1F - transition, textTransitionCurr, true);
-            }
-            else
-            {
-                this.drawBanner(context, current, pageX, pageY, pageW, bannerH, 1F, textTransitionCurr, true);
-            }
+            this.drawBanner(context, current, pageX, pageY, pageW, bannerH, 1F, textTransitionCurr, true);
         }
 
         context.batcher.box(pageX, splitY, pageX + pageW, splitY + 1, Colors.A12);
         context.batcher.box(dividerX, splitY + 1, dividerX + 1, pageY + pageH, Colors.A12);
         context.batcher.textShadow(L10n.lang("bbs.ui.film.home.actions").get(), pageX + 4, splitY + 6);
-        context.batcher.textShadow(listTitle, dividerX + 4, splitY + 6);
+        context.batcher.textShadow(L10n.lang("bbs.ui.film.home.list").get(), dividerX + 4, splitY + 6);
     }
 
     private void drawBanner(UIContext context, BannerEntry entry, int x, int y, int w, int h, float alpha, float textAlpha, boolean drawStripe)
@@ -1029,22 +967,7 @@ public class UIHomePanel extends UIDashboardPanel
                 {
                     if (this.area.isInside(context))
                     {
-                        if (context.mouseButton == 0)
-                        {
-                            UIRecentMosaicGrid.this.onCardClicked(entry);
-                        }
-                        else if (context.mouseButton == 1)
-                        {
-                            UIRecentMosaicGrid.this.selectedId = entry.id;
-                            UIRecentMosaicGrid.this.selectedType = entry.type;
-
-                            if (UIRecentMosaicGrid.this.selectCallback != null)
-                            {
-                                UIRecentMosaicGrid.this.selectCallback.accept(entry);
-                            }
-
-                            this.mouseClickedContextMenu(context);
-                        }
+                        UIRecentMosaicGrid.this.onCardClicked(entry);
 
                         return true;
                     }
@@ -1094,7 +1017,7 @@ public class UIHomePanel extends UIDashboardPanel
                     {
                         this.renderIcon(context, Icons.PARTICLE);
                     }
-                    else if (entry.type == ContentType.SOUNDS)
+                    else if (entry.type == null)
                     {
                         this.renderIcon(context, Icons.SOUND);
                     }
@@ -1130,8 +1053,6 @@ public class UIHomePanel extends UIDashboardPanel
                 }
             };
 
-            card.context((menu) -> menu.action(Icons.REMOVE, UIKeys.FILM_HOME_REMOVE_RECENT,
-                () -> UIRecentMosaicGrid.this.home.removeFromRecent(entry)));
             card.relative(this).x(cx).y(cy).w(CARD_SIZE).h(CARD_SIZE + CARD_LABEL_H);
 
             if (entry.type == ContentType.MODELS)

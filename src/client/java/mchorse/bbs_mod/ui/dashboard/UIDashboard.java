@@ -9,13 +9,12 @@ import mchorse.bbs_mod.camera.controller.OrbitCameraController;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.events.register.RegisterDashboardPanelsEvent;
 import mchorse.bbs_mod.graphics.window.Window;
-import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.settings.ui.UISettingsOverlayPanel;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
-import mchorse.bbs_mod.ui.addons.UIAddonsOverlayPanel;
+import mchorse.bbs_mod.ui.addons.UIAddonsPanel;
 import mchorse.bbs_mod.ui.dashboard.panels.IFlightSupported;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanels;
@@ -24,18 +23,20 @@ import mchorse.bbs_mod.ui.dashboard.utils.UIGraphPanel;
 import mchorse.bbs_mod.ui.dashboard.utils.UIOrbitCamera;
 import mchorse.bbs_mod.ui.dashboard.utils.UIOrbitCameraKeys;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
+import mchorse.bbs_mod.ui.home.UIDocumentTabsBar;
+import mchorse.bbs_mod.ui.home.UIHomePanel;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.UIRenderingContext;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIMessageOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
-import mchorse.bbs_mod.ui.home.UIDocumentTabsBar;
-import mchorse.bbs_mod.ui.home.UIHomePanel;
 import mchorse.bbs_mod.ui.model.UIModelPanel;
 import mchorse.bbs_mod.ui.model_blocks.UIModelBlockPanel;
 import mchorse.bbs_mod.ui.morphing.UIMorphingPanel;
 import mchorse.bbs_mod.ui.news.UINewsPanel;
 import mchorse.bbs_mod.ui.particles.UIParticleSchemePanel;
+import mchorse.bbs_mod.ui.selectors.UISelectorsOverlayPanel;
+import mchorse.bbs_mod.ui.supporters.UISupportersPanel;
 import mchorse.bbs_mod.ui.triggers.TriggerKeys;
 import mchorse.bbs_mod.ui.triggers.UITriggerBlockPanel;
 import mchorse.bbs_mod.ui.utility.UIUtilityOverlayPanel;
@@ -43,6 +44,7 @@ import mchorse.bbs_mod.ui.utility.audio.UIAudioEditorPanel;
 import mchorse.bbs_mod.ui.utils.UIChalkboard;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
+import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
 
@@ -62,6 +64,9 @@ public class UIDashboard extends UIBaseMenu
 {
     public UIDashboardPanels panels;
 
+    public UIIcon settings;
+    public UIIcon selectors;
+
     /* Camera data */
     public final UIOrbitCamera orbitUI = new UIOrbitCamera();
     public final UIOrbitCameraKeys orbitKeysUI = new UIOrbitCameraKeys(this);
@@ -69,7 +74,6 @@ public class UIDashboard extends UIBaseMenu
     public final OrbitCameraController camera = new OrbitCameraController(this.orbit, 5);
 
     public UISettingsOverlayPanel settingsPanel;
-    public UIAddonsOverlayPanel addonsPanel;
     private Perspective lastPerspective = Perspective.FIRST_PERSON;
 
     private UIChalkboard chalkboard;
@@ -87,9 +91,6 @@ public class UIDashboard extends UIBaseMenu
         this.menuBar.relative(this.main).w(1F);
 
         /* Setup panels */
-        this.documentTabsBar = new UIDocumentTabsBar(this);
-        this.documentTabsBar.relative(this.main).y(20).w(1F).h(UIDocumentTabsBar.HEIGHT);
-
         this.panels = new UIDashboardPanels();
         this.panels.getEvents().register(UIDashboardPanels.PanelEvent.class, (e) ->
         {
@@ -101,20 +102,33 @@ public class UIDashboard extends UIBaseMenu
             }
 
             this.copyCurrentEntityCamera();
-            this.updateTabsBarVisibility(e.panel);
         });
         this.panels.relative(this.main).y(20 + UIDocumentTabsBar.HEIGHT).w(1F).h(1F, -(20 + UIDocumentTabsBar.HEIGHT));
         this.registerPanels();
+
+        this.documentTabsBar = new UIDocumentTabsBar(this);
+        this.documentTabsBar.relative(this.main).y(20).w(1F).h(UIDocumentTabsBar.HEIGHT);
 
         BBSMod.events.post(new RegisterDashboardPanelsEvent(this));
 
         this.main.add(this.menuBar, this.documentTabsBar, this.panels);
 
         this.settingsPanel = new UISettingsOverlayPanel();
-        this.addonsPanel = new UIAddonsOverlayPanel();
 
+        this.settings = new UIIcon(Icons.SETTINGS, (b) ->
+        {
+            UIOverlay.addOverlayRight(this.context, this.settingsPanel, 240);
+        });
+        this.settings.tooltip(UIKeys.CONFIG_TITLE, Direction.TOP);
+        this.selectors = new UIIcon(Icons.PROPERTIES, (b) ->
+        {
+            UIOverlay.addOverlayRight(this.context, new UISelectorsOverlayPanel(), 240);
+        });
+        this.selectors.tooltip(UIKeys.SELECTORS_TITLE, Direction.TOP);
         this.chalkboard = new UIChalkboard();
         this.chalkboard.full(this.getRoot());
+
+        this.panels.pinned.add(this.settings, this.selectors);
         this.getRoot().prepend(this.orbitUI);
         this.getRoot().add(this.orbitKeysUI);
         this.getRoot().add(this.chalkboard);
@@ -256,43 +270,18 @@ public class UIDashboard extends UIBaseMenu
         }
     }
 
-    private boolean isDocumentPanel(UIDashboardPanel panel)
-    {
-        return panel instanceof UIHomePanel
-            || panel instanceof UIFilmPanel
-            || panel instanceof UIModelPanel
-            || panel instanceof UIParticleSchemePanel
-            || panel instanceof UIAudioEditorPanel
-            || panel instanceof UIGraphPanel;
-    }
-
-    private void updateTabsBarVisibility(UIDashboardPanel panel)
-    {
-        boolean show = this.isDocumentPanel(panel);
-
-        this.documentTabsBar.setVisible(show);
-
-        int tabsH = show ? UIDocumentTabsBar.HEIGHT : 0;
-
-        this.panels.getFlex().y.offset = 20 + tabsH;
-        this.panels.getFlex().h.offset = -(20 + tabsH);
-
-        if (this.main.hasParent())
-        {
-            this.main.resize();
-        }
-    }
-
     protected void registerPanels()
     {
-        this.panels.registerPinnedPanel(new UIHomePanel(this), L10n.lang("bbs.ui.raw.home"), Icons.SERVER);
+        this.panels.registerPanel(new UIHomePanel(this), IKey.raw("Home"), Icons.FOLDER);
+        this.panels.registerPanel(new UISupportersPanel(this), UIKeys.SUPPORTERS_TITLE, Icons.USER).marginLeft(10);
         this.panels.registerPanel(new UIMorphingPanel(this), UIKeys.MORPHING_TITLE, Icons.MORPH);
         this.panels.registerPanel(new UIModelBlockPanel(this), UIKeys.MODEL_BLOCKS_TITLE, Icons.BLOCK);
         this.panels.registerPanel(new UITriggerBlockPanel(this), TriggerKeys.TITLE, Icons.TRIGGER);
         this.panels.registerPanel(new UITextureManagerPanel(this), UIKeys.TEXTURES_TOOLTIP, Icons.MATERIAL).marginLeft(10);
+        this.panels.registerPanel(new UIGraphPanel(this), UIKeys.GRAPH_TOOLTIP, Icons.GRAPH);
+        this.panels.registerPanel(new UIAddonsPanel(this), UIKeys.ADDONS_TITLE, Icons.PROCESSOR).marginLeft(10);
         UINewsPanel newsPanel = new UINewsPanel(this);
         UIIcon newsButton = this.panels.registerPanel(newsPanel, UIKeys.NEWS_TITLE, Icons.NEWS);
-        newsButton.marginLeft(10);
         UINewsPanel.attachIcon(newsButton);
 
         /* Editor panels — reachable only through the unified document tab bar, not via dashboard buttons */
@@ -300,11 +289,10 @@ public class UIDashboard extends UIBaseMenu
         this.panels.registerHiddenPanel(new UIModelPanel(this));
         this.panels.registerHiddenPanel(new UIParticleSchemePanel(this));
         this.panels.registerHiddenPanel(new UIAudioEditorPanel(this));
-        this.panels.registerHiddenPanel(new UIGraphPanel(this));
 
         if (FabricLoader.getInstance().isDevelopmentEnvironment())
         {
-            this.panels.registerPanel(new UIDebugPanel(this), L10n.lang("bbs.ui.raw.sandbox"), Icons.CODE);
+            this.panels.registerPanel(new UIDebugPanel(this), IKey.raw("Sandbox"), Icons.CODE);
         }
 
         this.setPanel(this.getPanel(UIHomePanel.class));
