@@ -7,16 +7,11 @@ import net.minecraft.client.gl.Defines;
 import net.minecraft.client.gl.ShaderLoader;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.gl.ShaderProgramKey;
-import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.util.Identifier;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 public class BBSShaders
 {
@@ -80,8 +75,7 @@ public class BBSShaders
 
     public static ShaderProgram getModel()
     {
-        RenderSystem.setShader(ShaderProgramKeys.RENDERTYPE_ENTITY_TRANSLUCENT);
-        return RenderSystem.getShader();
+        return model;
     }
 
     public static ShaderProgram getMultilinkProgram()
