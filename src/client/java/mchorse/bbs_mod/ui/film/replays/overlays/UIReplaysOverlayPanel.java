@@ -43,6 +43,7 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
     private static final int DOCKED_BOTTOM_SECTION_MIN = 70;
     private static final int DOCKED_REPLAYS_HEIGHT_MAX = 420;
     private static final int DOCKED_RESIZER_HEIGHT = 6;
+    private static final int DOCKED_GRIP_HEIGHT = 16;
     private static final Logger LOGGER = LogUtils.getLogger();
 
     public static final List<Consumer<UIReplaysOverlayPanel>> extensions = new ArrayList<>();
@@ -93,6 +94,7 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
     private Consumer<Replay> callback;
     private final UIFilmPanel filmPanel;
     private boolean docked;
+    private boolean floating;
     private int dockedReplaysHeight = DOCKED_REPLAYS_HEIGHT;
 
     public UIReplaysOverlayPanel(UIFilmPanel filmPanel, Consumer<Replay> callback)
@@ -313,14 +315,14 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
 
         if (docked)
         {
-            /* The surrounding window/layout provides the card title bar, so this panel
-             * hides its own title (collapsed to a zero area so it can't intercept list
-             * clicks) and the content fills the whole element. */
+            /* Docked or floating: the surrounding window/layout provides the title bar,
+             * so this panel hides its own title (collapsed to a zero area so it can't
+             * intercept list clicks). */
             this.title.setVisible(false);
             this.icons.setVisible(false);
             this.close.setVisible(false);
             this.title.relative(this).xy(0, 0).w(0).h(0);
-            this.content.relative(this).xy(0, 0).w(1F).h(1F);
+            this.applyDockedContentLayout();
         }
         else
         {
@@ -334,6 +336,40 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
         }
 
         this.updateDockedLayout();
+    }
+
+    /**
+     * Floating windows get their title/drag bar from the floating chrome, so the content
+     * fills the panel. When docked in the layout the panel reserves a small grip strip at
+     * the top so it can be grabbed and moved without clicking the list.
+     */
+    public void setFloating(boolean floating)
+    {
+        if (this.floating == floating)
+        {
+            return;
+        }
+
+        this.floating = floating;
+
+        if (this.docked)
+        {
+            this.applyDockedContentLayout();
+            this.updateDockedLayout();
+            this.resize();
+        }
+    }
+
+    private void applyDockedContentLayout()
+    {
+        if (this.floating)
+        {
+            this.content.relative(this).xy(0, 0).w(1F).h(1F);
+        }
+        else
+        {
+            this.content.relative(this).xy(0, DOCKED_GRIP_HEIGHT).w(1F).h(1F, -DOCKED_GRIP_HEIGHT);
+        }
     }
 
     private void updateDockedLayout()
@@ -485,6 +521,22 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
         {
             context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xFF141418);
             context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xFF2A2A35, 1);
+
+            if (!this.floating)
+            {
+                int gripBottom = this.area.y + DOCKED_GRIP_HEIGHT;
+
+                context.batcher.box(this.area.x, this.area.y, this.area.ex(), gripBottom, 0xFF1A1A22);
+                context.batcher.box(this.area.x, gripBottom, this.area.ex(), gripBottom + 1, 0xFF2A2A35);
+
+                int cx = this.area.mx();
+                int cy = this.area.y + DOCKED_GRIP_HEIGHT / 2 - 1;
+                int dot = Colors.setA(Colors.WHITE, 0.35F);
+
+                context.batcher.box(cx - 7, cy, cx - 5, cy + 2, dot);
+                context.batcher.box(cx - 1, cy, cx + 1, cy + 2, dot);
+                context.batcher.box(cx + 5, cy, cx + 7, cy + 2, dot);
+            }
         }
 
         this.content.area.render(context.batcher, 0xFF141418);

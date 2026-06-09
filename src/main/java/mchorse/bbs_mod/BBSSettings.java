@@ -31,7 +31,7 @@ public class BBSSettings
     public static ValueBoolean enableTrackpadScrolling;
     public static ValueBoolean welcomePanelAcceptedAlpha1;
     public static ValueBoolean hideSettingDescriptions;
-    public static ValueFloat userIntefaceScale;
+    public static ValueInt userIntefaceScale;
     public static ValueInt tooltipStyle;
     public static ValueFloat fov;
     public static ValueBoolean hsvColorPicker;
@@ -218,7 +218,7 @@ public class BBSSettings
         hideSettingDescriptions = builder.getBoolean("hide_setting_descriptions", false);
         welcomePanelAcceptedAlpha1 = builder.getBoolean("welcome_panel_accepted_alpha1", false);
         welcomePanelAcceptedAlpha1.invisible();
-        userIntefaceScale = builder.getFloat("ui_scale", 2F, 0F, 4F);
+        userIntefaceScale = builder.getInt("ui_scale", 2, 0, 4);
         tooltipStyle = builder.getInt("tooltip_style", 1);
         fov = builder.getFloat("fov", 40, 0, 180);
         hsvColorPicker = builder.getBoolean("hsv_color_picker", true);

@@ -1,13 +1,11 @@
 package mchorse.bbs_mod.ui.framework.elements.utils;
 
-import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.utils.Scroll;
 import mchorse.bbs_mod.utils.colors.Colors;
 
 import org.joml.Vector2i;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -162,21 +160,6 @@ public class UIDraggable extends UIElement
     public void render(UIContext context)
     {
         super.render(context);
-
-        /* Safety net for missed mouse-release events (which do happen in this editor): once the
-           left button is no longer held, force the drag to end. Without this the "dragging" flag
-           stays stuck true and the handle re-grabs its target on the very next click — e.g. a
-           freshly docked panel undocking itself and snapping to the cursor. The normal release
-           path (subMouseReleased) runs before this each frame, so this only fires when that
-           event was genuinely dropped. */
-        if (this.dragging && !Window.isMouseButtonPressed(GLFW.GLFW_MOUSE_BUTTON_LEFT))
-        {
-            this.dragging = false;
-            this.thresholdMet = false;
-            this.dragUpdated = false;
-
-            return;
-        }
 
         if (!this.hover || this.area.isInside(context) || this.dragging)
         {

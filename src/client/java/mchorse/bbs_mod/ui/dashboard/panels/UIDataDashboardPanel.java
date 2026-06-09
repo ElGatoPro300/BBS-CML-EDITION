@@ -41,10 +41,7 @@ public abstract class UIDataDashboardPanel <T extends ValueGroup> extends UICRUD
          * the keybinds are processed afterwards. */
         UIElement savePlease = new UIElement().noCulling();
 
-        /* Call save() directly rather than simulating a click on the save icon — the icon may be
-           removed from the toolbar (e.g. the film editor moves Save into the menu bar), and
-           clickItself() would then NPE on a detached element. */
-        savePlease.keys().register(Keys.SAVE, this::save).active(() -> this.data != null);
+        savePlease.keys().register(Keys.SAVE, this.saveIcon::clickItself).active(() -> this.data != null);
         this.add(savePlease);
     }
 
