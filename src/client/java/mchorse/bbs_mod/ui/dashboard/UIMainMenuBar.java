@@ -14,7 +14,6 @@ import mchorse.bbs_mod.ui.dashboard.panels.UIDataDashboardPanel;
 import mchorse.bbs_mod.ui.dashboard.panels.overlay.UIAboutOverlayPanel;
 import mchorse.bbs_mod.ui.dashboard.panels.overlay.UIOpenAssetOverlayPanel;
 import mchorse.bbs_mod.ui.dashboard.utils.UIGraphPanel;
-import mchorse.bbs_mod.ui.model_blocks.UIModelBlockPanel;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
@@ -63,9 +62,6 @@ public class UIMainMenuBar extends UIElement
         this.add(new UIMenuButton(L10n.lang("bbs.ui.raw.file"), this, this::buildFileMenu));
         this.add(new UIMenuButton(L10n.lang("bbs.ui.raw.edit"), this, this::buildEditMenu));
         this.add(new UIMenuButton(L10n.lang("bbs.ui.raw.tools"), this, this::buildToolsMenu));
-        /* Window menu is always visible; its content adapts to the active panel
-           (currently only the Model Editor populates it). */
-        this.add(new UIMenuButton(IKey.constant("Window"), this, this::buildWindowMenu));
         this.add(new UIMenuButton(L10n.lang("bbs.ui.raw.help"), this, this::buildHelpMenu));
 
         this.row(2).preferred(999);
@@ -153,30 +149,6 @@ public class UIMainMenuBar extends UIElement
     private void buildHelpMenu(ContextMenuManager menu)
     {
         menu.action(Icons.HELP, L10n.lang("bbs.ui.raw.about"), () -> UIOverlay.addOverlay(this.getContext(), new UIAboutOverlayPanel(L10n.lang("bbs.ui.raw.about"), this.dashboard), 560, 440));
-    }
-
-    private void buildWindowMenu(ContextMenuManager menu)
-    {
-        if (this.dashboard.panels.panel instanceof UIModelBlockPanel panel)
-        {
-            menu.action(panel.isLeftVisible() ? Icons.CHECKMARK : Icons.NONE, UIKeys.MODEL_BLOCKS_TITLE, () ->
-            {
-                panel.setLeftVisible(!panel.isLeftVisible());
-            });
-            menu.action(panel.isMiddleVisible() ? Icons.CHECKMARK : Icons.NONE, UIKeys.MODEL_BLOCKS_PROPERTIES, () ->
-            {
-                panel.setMiddleVisible(!panel.isMiddleVisible());
-            });
-            menu.action(panel.isRightVisible() ? Icons.CHECKMARK : Icons.NONE, UIKeys.MODEL_BLOCKS_TRANSFORMS, () ->
-            {
-                panel.setRightVisible(!panel.isRightVisible());
-            });
-            menu.action(Icons.REFRESH, IKey.constant("Reset Layout"), panel::resetLayout);
-        }
-        else
-        {
-            menu.action(Icons.NONE, IKey.constant("No windows in this panel"), () -> {});
-        }
     }
 
     /* ------------------------------------------------------------------ */

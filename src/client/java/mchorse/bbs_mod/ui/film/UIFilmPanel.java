@@ -3279,7 +3279,9 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             this.postUpdateActions.clear();
         }
 
-        this.area.render(context.batcher, 0xFF141418);
+        int color = BBSSettings.primaryColor.get();
+
+        this.area.render(context.batcher, Colors.mulRGB(color | Colors.A100, 0.2F));
 
         if (this.editor.isVisible() && this.preview.isVisible())
         {

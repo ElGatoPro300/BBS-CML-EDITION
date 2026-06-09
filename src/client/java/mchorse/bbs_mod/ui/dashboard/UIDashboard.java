@@ -108,7 +108,7 @@ public class UIDashboard extends UIBaseMenu
 
         BBSMod.events.post(new RegisterDashboardPanelsEvent(this));
 
-        this.main.add(this.panels, this.documentTabsBar, this.menuBar);
+        this.main.add(this.menuBar, this.documentTabsBar, this.panels);
 
         this.settingsPanel = new UISettingsOverlayPanel();
         this.addonsPanel = new UIAddonsOverlayPanel();
