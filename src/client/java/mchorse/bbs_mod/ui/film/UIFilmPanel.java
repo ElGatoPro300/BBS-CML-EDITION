@@ -6,6 +6,7 @@ import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.actions.ActionState;
 import mchorse.bbs_mod.camera.Camera;
+import mchorse.bbs_mod.camera.clips.misc.VideoClip;
 import mchorse.bbs_mod.camera.clips.modifiers.TranslateClip;
 import mchorse.bbs_mod.camera.clips.overwrite.IdleClip;
 import mchorse.bbs_mod.camera.controller.CameraController;
@@ -18,7 +19,6 @@ import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.events.register.RegisterFilmEditorFactoriesEvent;
 import mchorse.bbs_mod.film.Film;
-import mchorse.bbs_mod.film.FilmContributor;
 import mchorse.bbs_mod.film.Recorder;
 import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.forms.FormUtils;
@@ -38,10 +38,8 @@ import mchorse.bbs_mod.ui.ContentType;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.UIDashboard;
-import mchorse.bbs_mod.ui.dashboard.UIPanelSwitcher;
 import mchorse.bbs_mod.ui.dashboard.list.UIDataPathList;
 import mchorse.bbs_mod.ui.dashboard.panels.IFlightSupported;
-import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanels;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDataDashboardPanel;
 import mchorse.bbs_mod.ui.dashboard.panels.overlay.UICRUDOverlayPanel;
@@ -50,7 +48,6 @@ import mchorse.bbs_mod.ui.dashboard.utils.IUIOrbitKeysHandler;
 import mchorse.bbs_mod.ui.film.audio.UIAudioRecorder;
 import mchorse.bbs_mod.ui.film.controller.UIFilmController;
 import mchorse.bbs_mod.ui.film.replays.UIReplaysEditor;
-import mchorse.bbs_mod.ui.film.replays.overlays.UIReplaysOverlayPanel;
 import mchorse.bbs_mod.ui.film.utils.UIFilmUndoHandler;
 import mchorse.bbs_mod.ui.film.utils.undo.UIUndoHistoryOverlay;
 import mchorse.bbs_mod.ui.framework.UIContext;
@@ -61,6 +58,8 @@ import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.context.UISimpleContextMenu;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UISearchList;
+import mchorse.bbs_mod.ui.framework.elements.navigation.UIControlBar;
+import mchorse.bbs_mod.ui.framework.elements.navigation.UIIconTabButton;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIConfirmOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIMessageOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UINumberOverlayPanel;
@@ -68,11 +67,11 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIDraggable;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIRenderable;
-import mchorse.bbs_mod.ui.home.UIHomePanel;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.UIDataUtils;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.context.ContextAction;
+import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.presets.UICopyPasteController;
@@ -81,7 +80,6 @@ import mchorse.bbs_mod.utils.DataPath;
 import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.PlayerUtils;
-import mchorse.bbs_mod.utils.RecentAssetsTracker;
 import mchorse.bbs_mod.utils.Timer;
 import mchorse.bbs_mod.utils.clips.Clip;
 import mchorse.bbs_mod.utils.clips.Clips;
@@ -127,6 +125,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -162,7 +161,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     public UIReplaysEditor replayEditor;
     public UIClipsPanel actionEditor;
     public UIClipsPanel screenEditor;
-    public UIReplaysOverlayPanel anchoredReplaysPanel;
 
     /* Icon bar buttons */
     public UIIcon openHistory;
@@ -174,7 +172,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     public UIIcon openReplayEditor;
     public UIIcon openActionEditor;
     public UIIcon openScreenEditor;
-    public UIElement bottomIcons;
     private UICopyPasteController layoutPresetsController;
 
     private Camera camera = new Camera();
@@ -211,6 +208,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private final List<Runnable> postUpdateActions = new ArrayList<>();
     private int lastDragMouseX;
     private int lastDragMouseY;
+    private static final int FILM_DOCUMENT_TABS_HEIGHT = 20;
     private static final int HOME_BANNER_HEIGHT = 108;
     private static final float DRAG_HANDLE_HEIGHT_NORM = 0.02F;
     private static final float DRAG_HANDLE_TOP_OFFSET_NORM = 0.01F;
@@ -219,19 +217,13 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     public static final int DROP_ZONE_TAB = 4;
     private static final float DROP_EDGE_MARGIN = 0.2F;
     private static final int EDITOR_MIN_SIZE_FOR_PX_HANDLES = 10;
-    private static final String ANCHORED_REPLAYS_PANEL_ID = "replaysPanel";
-    private static final String PRESET_REPLAYS_PANEL_ENABLED = "replays_panel_enabled";
-    private static final String PRESET_REPLAYS_PANEL_FLOATING = "replays_panel_floating";
-    private static final String PRESET_REPLAYS_PANEL_X = "replays_panel_x";
-    private static final String PRESET_REPLAYS_PANEL_Y = "replays_panel_y";
-    private static final String PRESET_REPLAYS_PANEL_WIDTH = "replays_panel_width";
-    private static final String PRESET_REPLAYS_PANEL_HEIGHT = "replays_panel_height";
-    private static final String PRESET_REPLAYS_PANEL_DOCKED_LAYOUT = "replays_panel_docked_layout";
     private String draggingPanelId;
     private String dropTargetPanelId;
     private int dropTargetZone = DROP_ZONE_CENTER;
     public String mouseHeldPanelId;
     public int clickX, clickY;
+    private UIControlBar filmTabsBar;
+    private UIElement filmTabs;
     private UIElement homePage;
     private UISearchList<DataPath> homeFilmsSearch;
     private static final String PARENT_FOLDER_ENTRY = "..";
@@ -239,7 +231,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private UIDataPathList homeFilmsList;
     private UIFilmMosaicGrid homeFilmsMosaic;
     private UIIcon homeViewToggle;
-    private UIPanelSwitcher panelSwitcher;
     private UIElement homeActionsPanel;
     private UIButton homeCreateFilm;
     private UIButton homeOpenManager;
@@ -249,6 +240,15 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private String homeLastClickedFilmId;
     private long homeLastClickTime;
     private final List<FilmDocumentTab> filmDocumentTabs = new ArrayList<>();
+    private static final String BANNERS_URL = "https://raw.githubusercontent.com/BBSCommunity/CML-NEWS/main/Banners_Panel/banners.json";
+    private final List<BannerEntry> homeBanners = new ArrayList<>();
+    private static final Set<Link> prefetchingBanners = Collections.synchronizedSet(new HashSet<>());
+    private int bannerIndex = 0;
+    private List<Integer> bannerSequence = new ArrayList<>();
+    private int sequenceIndex = 0;
+    private float lastBannerTicks = -1;
+    private static final int BANNER_DURATION = 200; // 10 seconds at 20 ticks/sec
+    private static final int BANNER_TRANSITION = 60; // 3 seconds transition
     private int activeFilmDocumentTab = -1;
     private boolean showingHomePage = true;
 
@@ -276,6 +276,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             this.notifyServer(playing ? ActionState.PLAY : ActionState.PAUSE);
         });
         this.runner.getContext().captureSnapshots();
+        this.initBanners();
 
         this.recorder = event.createRecorder(this);
 
@@ -422,10 +423,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.actionEditor.full(this.main).setVisible(false);
         this.screenEditor = new UIClipsPanel(this, BBSMod.getFactoryScreenClips()).target(this.editArea);
         this.screenEditor.full(this.main).setVisible(false);
-        this.anchoredReplaysPanel = new UIReplaysOverlayPanel(this, (replay) -> this.replayEditor.setReplay(replay, false, true));
-        this.anchoredReplaysPanel.setDocked(true);
-        this.anchoredReplaysPanel.setVisible(false);
-        this.panelById.put(ANCHORED_REPLAYS_PANEL_ID, this.anchoredReplaysPanel);
+        this.filmTabsBar = new UIControlBar();
+        this.filmTabs = new UIElement();
         this.homePage = new UIElement()
         {
             @Override
@@ -705,28 +704,28 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         /* Setup elements */
         this.iconBar.add(this.openHistory, this.openRenderQueue, this.openCameraEditor.marginTop(9), this.openReplayEditor, this.openActionEditor, this.openScreenEditor);
 
-        this.bottomIcons = new UIElement();
+        UIElement bottomIcons = new UIElement();
 
-        this.bottomIcons.relative(this).x(1F, -20).y(1F).wh(20, 60).anchorY(1F).column(0).stretch();
-        this.bottomIcons.add(this.toggleHorizontal, this.layoutLock, this.layoutPresets);
-        this.iconBar.relative(this).x(1F, -20).y(0).w(20).h(1F).column(0).stretch();
-        this.homePage.relative(this.editor).x(0.5F, -250).y(0).w(500).h(1F);
-        this.homeActionsPanel.relative(this.homePage).x(0).y(HOME_BANNER_HEIGHT + 20).w(0.35F).h(1F, -(HOME_BANNER_HEIGHT + 20 + 44)).column(0).vertical().stretch();
+        bottomIcons.relative(this).x(1F, -20).y(1F).wh(20, 60).anchorY(1F).column(0).stretch();
+        bottomIcons.add(this.toggleHorizontal, this.layoutLock, this.layoutPresets);
+        this.iconBar.relative(this).x(1F, -20).y(FILM_DOCUMENT_TABS_HEIGHT).w(20).h(1F, -FILM_DOCUMENT_TABS_HEIGHT).column(0).stretch();
+        this.filmTabsBar.relative(this).x(0).y(0).w(1F).h(FILM_DOCUMENT_TABS_HEIGHT);
+        this.filmTabs.relative(this.filmTabsBar).x(8).y(0).w(1F, -16).h(FILM_DOCUMENT_TABS_HEIGHT).row(0).resize();
+        this.filmTabsBar.add(this.filmTabs);
+        this.homePage.relative(this.editor).x(0.5F, -250).y(FILM_DOCUMENT_TABS_HEIGHT).w(500).h(1F, -FILM_DOCUMENT_TABS_HEIGHT);
+        this.homeActionsPanel.relative(this.homePage).x(0).y(HOME_BANNER_HEIGHT + 20).w(0.35F).h(1F, -(HOME_BANNER_HEIGHT + 20)).column(0).vertical().stretch();
         
-        this.panelSwitcher = new UIPanelSwitcher(this.dashboard);
-        this.panelSwitcher.relative(this.homePage).x(0.5F, -87).y(1F, -32).w(175).h(24);
-
         UIElement spacing = new UIElement();
         spacing.h(8);
 
         this.homeActionsPanel.add(this.homeCreateFilm, spacing, this.homeDuplicateCurrent, this.homeRenameCurrent, this.homeDeleteCurrent);
-        this.homeFilmsSearch.relative(this.homePage).x(0.35F).y(HOME_BANNER_HEIGHT + 20).w(0.65F).h(1F, -(HOME_BANNER_HEIGHT + 20 + 44));
+        this.homeFilmsSearch.relative(this.homePage).x(0.35F).y(HOME_BANNER_HEIGHT + 20).w(0.65F).h(1F, -(HOME_BANNER_HEIGHT + 20));
         this.homeFilmsSearch.search.w(1F, -25);
         this.homeFilmsMosaic.relative(this.homeFilmsSearch).x(0).y(20).w(1F).h(1F, -20);
         this.homeViewToggle.relative(this.homeFilmsSearch).x(1F, -22).y(0).w(20).h(20);
-        this.homePage.add(new UIRenderable(this::renderHomeBanner), this.homeActionsPanel, this.homeFilmsSearch, this.homeFilmsMosaic, this.homeViewToggle, this.panelSwitcher);
+        this.homePage.add(new UIRenderable(this::renderHomeBanner), this.homeActionsPanel, this.homeFilmsSearch, this.homeFilmsMosaic, this.homeViewToggle);
 
-        this.editor.add(this.main, this.editArea, this.preview, this.anchoredReplaysPanel, this.homePage, new UIRenderable(this::renderIcons), new UIRenderable(this::renderDropZoneHighlight), new UIRenderable(this::renderFloatingPanelWindows));
+        this.editor.add(this.main, this.editArea, this.preview, this.homePage, new UIRenderable(this::renderIcons), new UIRenderable(this::renderDropZoneHighlight), new UIRenderable(this::renderFloatingPanelWindows));
         for (String id : this.panelById.keySet())
         {
             UIDraggable handle = this.createPanelDragHandle(id);
@@ -734,7 +733,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             this.editor.add(handle);
         }
         this.main.add(this.cameraEditor, this.replayEditor, this.actionEditor, this.screenEditor, this.draggableMain, this.draggableEditor);
-        this.add(this.controller, new UIRenderable(this::renderDividers), this.bottomIcons);
+        this.add(this.controller, new UIRenderable(this::renderDividers), bottomIcons, this.filmTabsBar);
         this.overlay.namesList.setFileIcon(Icons.FILM);
         this.createHomeDocumentTab(true);
 
@@ -842,7 +841,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         });
 
         this.fill(null);
-        this.setAnchoredReplaysPanelEnabled(this.isAnchoredReplaysPanelEnabled());
         this.setupEditorFlex(false);
         this.updateFilmDocumentView();
         this.flightEditTime.mark();
@@ -883,7 +881,81 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.add(element);
     }
 
+    private void initBanners()
+    {
+        BannerEntry home = new BannerEntry();
+        home.author = "ElGatoPro300";
+        home.link = Link.assets("textures/banners/films/Home.png");
+        this.homeBanners.add(home);
 
+        this.fetchRemoteBanners();
+    }
+
+    private void fetchRemoteBanners()
+    {
+        CompletableFuture.runAsync(() ->
+        {
+            try
+            {
+                HttpClient client = HttpClient.newBuilder().build();
+                HttpRequest req = HttpRequest.newBuilder(URI.create(BANNERS_URL)).GET().build();
+                HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
+
+                if (resp.statusCode() == 200)
+                {
+                    List<BannerEntry> remote = new Gson().fromJson(resp.body(), new TypeToken<List<BannerEntry>>(){}.getType());
+                    if (remote != null)
+                    {
+                        for (BannerEntry entry : remote)
+                        {
+                            entry.link = Link.create(entry.url);
+                            this.prefetchBannerImage(entry.link);
+                        }
+
+                        MinecraftClient.getInstance().execute(() -> this.homeBanners.addAll(remote));
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                e.printStackTrace();
+            }
+        });
+    }
+
+    private void prefetchBannerImage(Link link)
+    {
+        if (link == null || link.source == null || !link.source.startsWith("http")) return;
+        if (BBSModClient.getTextures().textures.get(link) != null) return;
+        if (!prefetchingBanners.add(link)) return;
+
+        CompletableFuture.runAsync(() ->
+        {
+            try (InputStream stream = URLSourcePack.downloadImage(link))
+            {
+                if (stream != null)
+                {
+                    Pixels pixels = Pixels.fromPNGStream(stream);
+                    if (pixels != null)
+                    {
+                        RenderSystem.recordRenderCall(() ->
+                        {
+                            Texture texture = Texture.textureFromPixels(pixels, GL11.GL_LINEAR);
+                            BBSModClient.getTextures().textures.put(link, texture);
+                        });
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                e.printStackTrace();
+            }
+            finally
+            {
+                prefetchingBanners.remove(link);
+            }
+        });
+    }
 
     private Vector2i getMainHandlerReferencePosition()
     {
@@ -1020,8 +1092,9 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                 this.rebuildSplitterHandles(layout, root, splitters);
             }
 
+            float th = FILM_DOCUMENT_TABS_HEIGHT / (float) Math.max(1, this.editor.area.h);
             this.splitterHandleInfos.clear();
-            EditorLayoutNode.computeSplitterHandles(root, 0F, 0F, 1F, 1F, this.splitterHandleInfos);
+            EditorLayoutNode.computeSplitterHandles(root, 0F, th, 1F, 1F - th, this.splitterHandleInfos);
             this.syncSplitterHandleBounds();
             this.applyDragHandleBoundsFromMap(bounds);
         }
@@ -1062,8 +1135,9 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     private Map<String, float[]> computePanelBounds(EditorLayoutNode root)
     {
+        float th = FILM_DOCUMENT_TABS_HEIGHT / (float) Math.max(1, this.editor.area.h);
         Map<String, float[]> bounds = new HashMap<>();
-        root.computeBounds(0F, 0F, 1F, 1F, bounds);
+        root.computeBounds(0F, th, 1F, 1F - th, bounds);
         return bounds;
     }
 
@@ -1084,7 +1158,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.splitterHandles.clear();
 
         this.splitterHandleInfos.clear();
-        EditorLayoutNode.computeSplitterHandles(root, 0F, 0F, 1F, 1F, this.splitterHandleInfos);
+        float th = FILM_DOCUMENT_TABS_HEIGHT / (float) Math.max(1, this.editor.area.h);
+        EditorLayoutNode.computeSplitterHandles(root, 0F, th, 1F, 1F - th, this.splitterHandleInfos);
 
         for (int i = 0; i < splitters.size(); i++)
         {
@@ -1249,20 +1324,16 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             {
                 float[] b = e.getValue();
                 h.relative(this.editor).x(b[0]).y(b[1] + DRAG_HANDLE_TOP_OFFSET_NORM).w(b[2]).h(DRAG_HANDLE_HEIGHT_NORM);
-                h.setVisible(!BBSSettings.editorLayoutSettings.isLayoutLocked() && !this.usesPanelInternalDragHandle(id));
+                h.setVisible(!BBSSettings.editorLayoutSettings.isLayoutLocked());
             }
         }
     }
 
-    private boolean usesPanelInternalDragHandle(String panelId)
-    {
-        return ANCHORED_REPLAYS_PANEL_ID.equals(panelId) && this.anchoredReplaysPanel != null && this.anchoredReplaysPanel.isDocked();
-    }
-
     private void updateEditorFlexBoundsOnly(ValueEditorLayout layout, EditorLayoutNode root)
     {
+        float th = FILM_DOCUMENT_TABS_HEIGHT / (float) Math.max(1, this.editor.area.h);
         Map<String, float[]> bounds = this.computePanelBounds(root);
-
+        
         List<EditorLayoutNode.TabbedNode> tabbedNodes = new ArrayList<>();
         EditorLayoutNode.collectTabbedNodes(root, tabbedNodes);
         Set<String> multiTabPanels = new HashSet<>();
@@ -1282,7 +1353,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         this.applyPanelBoundsFromMap(bounds, multiTabPanels);
         this.splitterHandleInfos.clear();
-        EditorLayoutNode.computeSplitterHandles(root, 0F, 0F, 1F, 1F, this.splitterHandleInfos);
+        EditorLayoutNode.computeSplitterHandles(root, 0F, th, 1F, 1F - th, this.splitterHandleInfos);
         this.syncSplitterHandleBounds();
         this.applyDragHandleBoundsFromMap(bounds);
         
@@ -1378,72 +1449,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         {
             this.draggingPanelId = panelId;
         }
-    }
-
-    public void beginEmbeddedPanelDragHold(String panelId, int mouseX, int mouseY)
-    {
-        if (BBSSettings.editorLayoutSettings.isLayoutLocked())
-        {
-            return;
-        }
-
-        this.mouseHeldPanelId = panelId;
-        this.clickX = mouseX;
-        this.clickY = mouseY;
-        this.lastDragMouseX = mouseX;
-        this.lastDragMouseY = mouseY;
-    }
-
-    public void updateEmbeddedPanelDrag(String panelId, int mouseX, int mouseY)
-    {
-        if (this.mouseHeldPanelId != null && this.mouseHeldPanelId.equals(panelId) && this.draggingPanelId == null)
-        {
-            int dx = mouseX - this.clickX;
-            int dy = mouseY - this.clickY;
-
-            if (dx * dx + dy * dy > 5 * 5)
-            {
-                this.mouseHeldPanelId = null;
-                this.startPanelDrag(panelId);
-                this.updateDropTargetFromMouse(mouseX, mouseY);
-            }
-        }
-
-        if (this.draggingPanelId != null && this.draggingPanelId.equals(panelId))
-        {
-            this.updateDropTargetFromMouse(mouseX, mouseY);
-            this.lastDragMouseX = mouseX;
-            this.lastDragMouseY = mouseY;
-        }
-    }
-
-    public boolean finishEmbeddedPanelDrag(String panelId)
-    {
-        if (this.mouseHeldPanelId != null && this.mouseHeldPanelId.equals(panelId))
-        {
-            this.mouseHeldPanelId = null;
-
-            return true;
-        }
-
-        if (this.draggingPanelId != null && this.draggingPanelId.equals(panelId))
-        {
-            DropIntent intent = new DropIntent(this.dropTargetPanelId, this.dropTargetZone);
-
-            if (!this.canApplyDropIntent(this.draggingPanelId, intent))
-            {
-                this.clearPanelDragState();
-
-                return true;
-            }
-
-            this.applyPanelDropResult(this.draggingPanelId, intent.targetId, intent.zone);
-            this.clearPanelDragState();
-
-            return true;
-        }
-
-        return false;
     }
 
     private void updateDropTargetFromMouse(int mouseX, int mouseY)
@@ -2109,140 +2114,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                 this.setupEditorFlex(true);
             });
 
-            menu.action(Icons.SCENE, UIKeys.FILM_LAYOUT_ANCHORED_REPLAYS, this.isAnchoredReplaysPanelEnabled(), () ->
-            {
-                BBSSettings.editorAnchoredReplaysPanel.set(!this.isAnchoredReplaysPanelEnabled());
-                this.setAnchoredReplaysPanelEnabled(this.isAnchoredReplaysPanelEnabled());
-            });
-
         });
-    }
-
-    private boolean isAnchoredReplaysPanelEnabled()
-    {
-        return BBSSettings.editorAnchoredReplaysPanel.get();
-    }
-
-    private boolean hasPanelInLayout(EditorLayoutNode node, String panelId)
-    {
-        if (node instanceof EditorLayoutNode.PanelNode)
-        {
-            return ((EditorLayoutNode.PanelNode) node).getPanelId().equals(panelId);
-        }
-
-        if (node instanceof EditorLayoutNode.SplitterNode)
-        {
-            EditorLayoutNode.SplitterNode splitter = (EditorLayoutNode.SplitterNode) node;
-
-            return this.hasPanelInLayout(splitter.getFirst(), panelId) || this.hasPanelInLayout(splitter.getSecond(), panelId);
-        }
-
-        if (node instanceof EditorLayoutNode.TabbedNode)
-        {
-            EditorLayoutNode.TabbedNode tabbed = (EditorLayoutNode.TabbedNode) node;
-
-            for (EditorLayoutNode tab : tabbed.tabs)
-            {
-                if (this.hasPanelInLayout(tab, panelId))
-                {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    private void setAnchoredReplaysPanelEnabled(boolean enabled)
-    {
-        ValueEditorLayout layout = BBSSettings.editorLayoutSettings;
-        EditorLayoutNode root = layout.getFilmLayoutRoot();
-        EditorLayoutNode baseRoot = this.removeAnchoredReplaysPanelFromRoot(root);
-
-        if (enabled)
-        {
-            if (!this.floatingPanels.contains(ANCHORED_REPLAYS_PANEL_ID) && !this.hasPanelInLayout(root, ANCHORED_REPLAYS_PANEL_ID))
-            {
-                layout.setFilmLayoutRoot(this.addAnchoredReplaysPanelToRoot(baseRoot));
-            }
-        }
-        else
-        {
-            this.floatingPanels.remove(ANCHORED_REPLAYS_PANEL_ID);
-            this.collapsedFloatingPanels.remove(ANCHORED_REPLAYS_PANEL_ID);
-            this.floatingPanelPositions.remove(ANCHORED_REPLAYS_PANEL_ID);
-            this.floatingPanelSizes.remove(ANCHORED_REPLAYS_PANEL_ID);
-
-            if (this.hasPanelInLayout(root, ANCHORED_REPLAYS_PANEL_ID))
-            {
-                layout.setFilmLayoutRoot(baseRoot);
-            }
-        }
-
-        this.anchoredReplaysPanel.setDocked(enabled);
-        this.syncAnchoredReplaysPanelWithFilm();
-        this.setupEditorFlex(true);
-    }
-
-    private EditorLayoutNode removeAnchoredReplaysPanelFromRoot(EditorLayoutNode root)
-    {
-        if (root == null || !this.hasPanelInLayout(root, ANCHORED_REPLAYS_PANEL_ID))
-        {
-            return root;
-        }
-
-        return EditorLayoutNode.copyWithRemovedLeaf(root, ANCHORED_REPLAYS_PANEL_ID);
-    }
-
-    private EditorLayoutNode addAnchoredReplaysPanelToRoot(EditorLayoutNode root)
-    {
-        EditorLayoutNode baseRoot = root == null ? EditorLayoutNode.defaultFilmLayout() : this.removeAnchoredReplaysPanelFromRoot(root);
-
-        if (this.floatingPanels.contains(ANCHORED_REPLAYS_PANEL_ID))
-        {
-            return baseRoot;
-        }
-
-        EditorLayoutNode inserted = EditorLayoutNode.copyWithReplacedLeaf(
-            baseRoot,
-            "editArea",
-            new EditorLayoutNode.SplitterNode(
-                false,
-                0.38F,
-                new EditorLayoutNode.PanelNode(ANCHORED_REPLAYS_PANEL_ID),
-                new EditorLayoutNode.PanelNode("editArea")
-            )
-        );
-
-        if (inserted == baseRoot)
-        {
-            inserted = EditorLayoutNode.copyWithInsertSplitAt(baseRoot, "editArea", ANCHORED_REPLAYS_PANEL_ID, EditorLayoutNode.EDGE_LEFT);
-        }
-
-        return inserted;
-    }
-
-    public void syncAnchoredReplaysPanelWithFilm()
-    {
-        if (this.anchoredReplaysPanel == null)
-        {
-            return;
-        }
-
-        List<Replay> replays = this.data == null ? Collections.emptyList() : this.data.replays.getList();
-
-        this.anchoredReplaysPanel.replays.setList(replays);
-        this.syncAnchoredReplaysPanelSelection(this.replayEditor == null ? null : this.replayEditor.getReplay(), false);
-    }
-
-    public void syncAnchoredReplaysPanelSelection(Replay replay, boolean select)
-    {
-        if (this.anchoredReplaysPanel == null)
-        {
-            return;
-        }
-
-        this.anchoredReplaysPanel.syncReplaySelection(replay, select);
     }
 
     private void toggleLayoutLock()
@@ -2331,8 +2203,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private void applyLegacyLayoutSelection()
     {
         ValueEditorLayout layout = BBSSettings.editorLayoutSettings;
-        EditorLayoutNode root = layout.buildFilmLayoutFromLegacyState();
-        layout.setFilmLayoutRoot(this.isAnchoredReplaysPanelEnabled() ? this.addAnchoredReplaysPanelToRoot(root) : root);
+        layout.setFilmLayoutRoot(layout.buildFilmLayoutFromLegacyState());
     }
 
     private Icon getLayoutLockIcon()
@@ -2343,52 +2214,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private MapType getFilmLayoutPresetData()
     {
         MapType data = new MapType();
-        EditorLayoutNode currentRoot = BBSSettings.editorLayoutSettings.getFilmLayoutRoot();
-        EditorLayoutNode root = this.removeAnchoredReplaysPanelFromRoot(currentRoot);
-        boolean anchoredReplaysEnabled = this.isAnchoredReplaysPanelEnabled();
-        boolean anchoredReplaysFloating = anchoredReplaysEnabled && this.floatingPanels.contains(ANCHORED_REPLAYS_PANEL_ID);
-
-        data.put("film_layout", (root == null ? EditorLayoutNode.defaultFilmLayout() : root).toData());
-        data.putInt("video_frame_width", BBSSettings.videoSettings.width.get());
-        data.putInt("video_frame_height", BBSSettings.videoSettings.height.get());
-        data.putInt("video_frame_rate", BBSSettings.videoSettings.frameRate.get());
-        data.putInt("video_motion_blur", BBSSettings.videoSettings.motionBlur.get());
-        data.putBool(PRESET_REPLAYS_PANEL_ENABLED, anchoredReplaysEnabled);
-        data.putBool(PRESET_REPLAYS_PANEL_FLOATING, anchoredReplaysFloating);
-
-        if (anchoredReplaysEnabled && !anchoredReplaysFloating)
-        {
-            EditorLayoutNode dockedRoot = currentRoot;
-
-            if (dockedRoot == null || !this.hasPanelInLayout(dockedRoot, ANCHORED_REPLAYS_PANEL_ID))
-            {
-                dockedRoot = this.addAnchoredReplaysPanelToRoot(root);
-            }
-
-            if (dockedRoot != null)
-            {
-                data.put(PRESET_REPLAYS_PANEL_DOCKED_LAYOUT, dockedRoot.toData());
-            }
-        }
-
-        if (anchoredReplaysFloating)
-        {
-            Vector2i position = this.floatingPanelPositions.get(ANCHORED_REPLAYS_PANEL_ID);
-            Vector2i size = this.floatingPanelSizes.get(ANCHORED_REPLAYS_PANEL_ID);
-
-            if (position != null)
-            {
-                data.putInt(PRESET_REPLAYS_PANEL_X, position.x);
-                data.putInt(PRESET_REPLAYS_PANEL_Y, position.y);
-            }
-
-            if (size != null)
-            {
-                data.putInt(PRESET_REPLAYS_PANEL_WIDTH, size.x);
-                data.putInt(PRESET_REPLAYS_PANEL_HEIGHT, size.y);
-            }
-        }
-
+        data.put("film_layout", BBSSettings.editorLayoutSettings.getFilmLayoutRoot().toData());
         return data;
     }
 
@@ -2403,167 +2229,9 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         EditorLayoutNode root = EditorLayoutNode.fromData(layoutData);
         if (root != null)
         {
-            BBSSettings.editorLayoutSettings.setFilmLayoutRoot(this.removeAnchoredReplaysPanelFromRoot(root));
-
-            if (this.hasAnchoredReplaysPanelPresetState(data))
-            {
-                this.applyAnchoredReplaysPanelPresetState(data, root);
-            }
-            else
-            {
-                this.setAnchoredReplaysPanelEnabled(this.isAnchoredReplaysPanelEnabled());
-            }
+            BBSSettings.editorLayoutSettings.setFilmLayoutRoot(root);
+            this.setupEditorFlex(true);
         }
-
-        if (data.has("video_frame_width"))
-        {
-            BBSSettings.videoSettings.width.set(data.getInt("video_frame_width"));
-        }
-
-        if (data.has("video_frame_height"))
-        {
-            BBSSettings.videoSettings.height.set(data.getInt("video_frame_height"));
-        }
-
-        if (data.has("video_frame_rate"))
-        {
-            BBSSettings.videoSettings.frameRate.set(data.getInt("video_frame_rate"));
-        }
-
-        if (data.has("video_motion_blur"))
-        {
-            BBSSettings.videoSettings.motionBlur.set(data.getInt("video_motion_blur"));
-        }
-    }
-
-    private boolean hasAnchoredReplaysPanelPresetState(MapType data)
-    {
-        return data.has(PRESET_REPLAYS_PANEL_ENABLED)
-            || data.has(PRESET_REPLAYS_PANEL_FLOATING)
-            || data.has(PRESET_REPLAYS_PANEL_X)
-            || data.has(PRESET_REPLAYS_PANEL_Y)
-            || data.has(PRESET_REPLAYS_PANEL_WIDTH)
-            || data.has(PRESET_REPLAYS_PANEL_HEIGHT)
-            || data.has(PRESET_REPLAYS_PANEL_DOCKED_LAYOUT);
-    }
-
-    private void applyAnchoredReplaysPanelPresetState(MapType data, EditorLayoutNode baseRoot)
-    {
-        boolean enabled = data.getBool(PRESET_REPLAYS_PANEL_ENABLED, this.isAnchoredReplaysPanelEnabled());
-        boolean floating = enabled && data.getBool(PRESET_REPLAYS_PANEL_FLOATING, this.floatingPanels.contains(ANCHORED_REPLAYS_PANEL_ID));
-        Vector2i position = data.has(PRESET_REPLAYS_PANEL_X) && data.has(PRESET_REPLAYS_PANEL_Y)
-            ? new Vector2i(data.getInt(PRESET_REPLAYS_PANEL_X), data.getInt(PRESET_REPLAYS_PANEL_Y))
-            : null;
-        Vector2i size = data.has(PRESET_REPLAYS_PANEL_WIDTH) && data.has(PRESET_REPLAYS_PANEL_HEIGHT)
-            ? new Vector2i(data.getInt(PRESET_REPLAYS_PANEL_WIDTH), data.getInt(PRESET_REPLAYS_PANEL_HEIGHT))
-            : null;
-
-        BBSSettings.editorAnchoredReplaysPanel.set(enabled);
-
-        if (!enabled)
-        {
-            this.setAnchoredReplaysPanelEnabled(false);
-
-            return;
-        }
-
-        if (floating)
-        {
-            this.showAnchoredReplaysPanelFloating(position, size);
-        }
-        else
-        {
-            EditorLayoutNode dockedRoot = data.has(PRESET_REPLAYS_PANEL_DOCKED_LAYOUT)
-                ? EditorLayoutNode.fromData(data.get(PRESET_REPLAYS_PANEL_DOCKED_LAYOUT))
-                : null;
-
-            this.dockAnchoredReplaysPanel(dockedRoot == null ? baseRoot : dockedRoot);
-        }
-    }
-
-    private void dockAnchoredReplaysPanel(EditorLayoutNode preferredRoot)
-    {
-        ValueEditorLayout layout = BBSSettings.editorLayoutSettings;
-        EditorLayoutNode root = preferredRoot == null ? layout.getFilmLayoutRoot() : preferredRoot;
-        EditorLayoutNode dockedRoot = root;
-
-        if (dockedRoot == null || !this.hasPanelInLayout(dockedRoot, ANCHORED_REPLAYS_PANEL_ID))
-        {
-            dockedRoot = this.addAnchoredReplaysPanelToRoot(this.removeAnchoredReplaysPanelFromRoot(root));
-        }
-
-        this.floatingPanels.remove(ANCHORED_REPLAYS_PANEL_ID);
-        this.collapsedFloatingPanels.remove(ANCHORED_REPLAYS_PANEL_ID);
-        layout.setFilmLayoutRoot(dockedRoot);
-        this.anchoredReplaysPanel.setDocked(true);
-        this.syncAnchoredReplaysPanelWithFilm();
-        this.setupEditorFlex(true);
-    }
-
-    private void showAnchoredReplaysPanelFloating(Vector2i position, Vector2i size)
-    {
-        ValueEditorLayout layout = BBSSettings.editorLayoutSettings;
-
-        layout.setFilmLayoutRoot(this.removeAnchoredReplaysPanelFromRoot(layout.getFilmLayoutRoot()));
-
-        this.floatingPanels.add(ANCHORED_REPLAYS_PANEL_ID);
-        this.collapsedFloatingPanels.remove(ANCHORED_REPLAYS_PANEL_ID);
-
-        if (size != null)
-        {
-            this.floatingPanelSizes.put(ANCHORED_REPLAYS_PANEL_ID, new Vector2i(size));
-        }
-        else
-        {
-            this.ensureFloatingPanelSize(ANCHORED_REPLAYS_PANEL_ID);
-        }
-
-        this.floatingPanelPositions.put(ANCHORED_REPLAYS_PANEL_ID, this.clampFloatingPanelPosition(ANCHORED_REPLAYS_PANEL_ID, position));
-        this.anchoredReplaysPanel.setDocked(true);
-        this.syncAnchoredReplaysPanelWithFilm();
-        this.bringPanelToFront(ANCHORED_REPLAYS_PANEL_ID);
-        this.setupEditorFlex(true);
-    }
-
-    private void ensureFloatingPanelSize(String panelId)
-    {
-        if (!this.floatingPanelSizes.containsKey(panelId))
-        {
-            this.floatingPanelSizes.put(panelId, this.createDefaultFloatingPanelSize(panelId));
-        }
-    }
-
-    private Vector2i createDefaultFloatingPanelSize(String panelId)
-    {
-        if (panelId.equals("preview"))
-        {
-            return new Vector2i(320, 200);
-        }
-
-        if (panelId.equals(ANCHORED_REPLAYS_PANEL_ID))
-        {
-            return new Vector2i(360, 420);
-        }
-
-        if (panelId.equals("editArea"))
-        {
-            return new Vector2i(300, 400);
-        }
-
-        return new Vector2i(400, 300);
-    }
-
-    private Vector2i clampFloatingPanelPosition(String panelId, Vector2i desiredPosition)
-    {
-        this.ensureFloatingPanelSize(panelId);
-
-        Vector2i size = this.floatingPanelSizes.get(panelId);
-        int maxX = Math.max(0, this.editor.area.w - size.x);
-        int maxY = Math.max(0, this.editor.area.h - size.y);
-        int x = desiredPosition == null ? 20 : desiredPosition.x;
-        int y = desiredPosition == null ? 20 : desiredPosition.y;
-
-        return new Vector2i(Math.max(0, Math.min(x, maxX)), Math.max(0, Math.min(y, maxY)));
     }
 
     @Override
@@ -2571,11 +2239,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     {
         super.resize();
 
-        if (this.showingHomePage)
-        {
-            this.editor.resize();
-        }
-        else if (this.editor.area.w >= EDITOR_MIN_SIZE_FOR_PX_HANDLES && this.editor.area.h >= EDITOR_MIN_SIZE_FOR_PX_HANDLES)
+        if (this.editor.area.w >= EDITOR_MIN_SIZE_FOR_PX_HANDLES && this.editor.area.h >= EDITOR_MIN_SIZE_FOR_PX_HANDLES)
         {
             this.updateEditorFlexBoundsOnly(BBSSettings.editorLayoutSettings, BBSSettings.editorLayoutSettings.getFilmLayoutRoot());
 
@@ -2766,19 +2430,10 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     }
 
     @Override
-    public UIDashboardPanel getMainPanel()
-    {
-        UIHomePanel home = this.dashboard.getPanel(UIHomePanel.class);
-
-        return home != null ? home : this;
-    }
-
-    @Override
     public void pickData(String id)
     {
         this.save();
         this.openFilmInDocumentTabs(id);
-        RecentAssetsTracker.add(this.getType(), id);
     }
 
     @Override
@@ -2848,12 +2503,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         }
 
         this.syncActiveDocumentTabWithData(data);
-    }
-
-    @Override
-    public void showHomeView()
-    {
-        this.fill(null);
     }
 
     @Override
@@ -3041,48 +2690,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             this.teleportToCamera();
         }
 
-        if (this.data != null && this.editor.isVisible() && !this.showingHomePage)
-        {
-            this.incrementTimeWorked();
-        }
-
         super.update();
-    }
-
-    private void incrementTimeWorked()
-    {
-        if (this.data == null)
-        {
-            return;
-        }
-
-        this.data.totalTimeWorked.set(this.data.totalTimeWorked.get() + 1);
-
-        ClientPlayerEntity player = MinecraftClient.getInstance().player;
-
-        if (player != null)
-        {
-            String name = player.getGameProfile().getName();
-            FilmContributor contributor = null;
-
-            for (FilmContributor c : this.data.contributors.getList())
-            {
-                if (c.name.get().equalsIgnoreCase(name))
-                {
-                    contributor = c;
-                    break;
-                }
-            }
-
-            if (contributor == null)
-            {
-                contributor = new FilmContributor(String.valueOf(this.data.contributors.getList().size()));
-                contributor.name.set(name);
-                this.data.contributors.add(contributor);
-            }
-
-            contributor.time.set(contributor.time.get() + 1);
-        }
     }
 
     /* Rendering code */
@@ -3723,7 +3331,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         this.getType().getRepository().load(selectedId, (film) -> {
             if (film != null) {
-                Window.setInMemoryClipboard(film.toData().asMap(), "_ContentType_" + this.getType().getId());
+                Window.setClipboard(film.toData().asMap(), "_ContentType_" + this.getType().getId());
             }
         });
     }
@@ -4014,7 +3622,31 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     private void rebuildFilmDocumentTabs()
     {
-        /* No-op: the legacy tab bar UI was removed; the unified UIDocumentTabsBar at the dashboard level replaces it. */
+        this.filmTabs.removeAll();
+
+        for (int i = 0; i < this.filmDocumentTabs.size(); i++)
+        {
+            int tabIndex = i;
+            FilmDocumentTab tab = this.filmDocumentTabs.get(i);
+            IKey title = tab.home ? L10n.lang("bbs.ui.film.home.title") : IKey.constant(tab.filmId);
+            UIIconTabButton button = new UIIconTabButton(title, tab.home ? Icons.FOLDER : Icons.FILM, (b) -> this.activateFilmDocumentTab(tabIndex, false));
+            button.color(this.activeFilmDocumentTab == tabIndex ? BBSSettings.primaryColor.get() : 0x2d2d2d);
+            button.w(tab.home ? 88 : 122).h(FILM_DOCUMENT_TABS_HEIGHT);
+
+            if (!tab.home || this.filmDocumentTabs.size() > 1)
+            {
+                button.removable((b) -> this.removeFilmDocumentTab(tabIndex));
+            }
+
+            this.filmTabs.add(button);
+        }
+
+        UIIconTabButton add = new UIIconTabButton(IKey.constant(""), Icons.ADD, (b) -> this.addHomeDocumentTab());
+        add.color(0x2d2d2d);
+        add.background(false);
+        add.w(24).h(FILM_DOCUMENT_TABS_HEIGHT);
+        this.filmTabs.add(add);
+        this.filmTabs.resize();
     }
 
     private void syncActiveDocumentTabWithData(Film data)
@@ -4084,23 +3716,12 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.homePage.setVisible(home);
         this.editor.setVisible(true);
         this.setWorkspaceVisible(!home);
-        this.iconBar.setVisible(!home);
-        if (this.bottomIcons != null)
-        {
-            this.bottomIcons.setVisible(!home);
-        }
         this.updateHomeButtonsState();
-
-        if (home)
+        
+        if (!home)
         {
-            this.editor.resetFlex().relative(this).w(1F).h(1F);
-        }
-        else
-        {
-            this.editor.resetFlex().relative(this).wTo(this.iconBar.area).h(1F);
             this.setupEditorFlex(true, false, false);
         }
-        this.resize();
 
         this.performingLayout = false;
     }
@@ -4117,6 +3738,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         int editorW = this.editor.area.w;
         int editorH = this.editor.area.h;
         int pageX = this.homePage.area.x;
+        int pageY = this.homePage.area.y;
+        int pageW = this.homePage.area.w;
+        int pageH = this.homePage.area.h;
+        int bannerH = HOME_BANNER_HEIGHT;
+        int splitY = pageY + bannerH;
         int dividerX = this.homeFilmsSearch.area.x;
 
         // Render deeper background for the aurora to pop
@@ -4125,7 +3751,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         // Render Animated Aurora Effect
         int primary = BBSSettings.primaryColor.get();
         float tick = context.getTickTransition() * 0.015F;
-        int segments = 40;
+        int segments = 40; // We can use fewer segments because it interpolates smoothly!
         float segW = editorW / (float) segments;
         
         Matrix4f matrix4f = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
@@ -4147,6 +3773,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         {
             float nx = (float) i / segments;
             
+            // Layer 1
             float w1 = (float) Math.sin(tick * 1.2F + nx * 8F);
             float w2 = (float) Math.sin(tick * 0.7F + nx * 15F);
             float w3 = (float) Math.cos(tick * 0.4F - nx * 12F);
@@ -4154,7 +3781,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             
             float curtainYTop = editorY + editorH * 0.05F;
             float curtainYBot = editorY + editorH * 0.5F + comb1 * (editorH * 0.35F);
-            
             if (curtainYBot < curtainYTop + 10) curtainYBot = curtainYTop + 10;
             
             float transitionY = curtainYBot - editorH * 0.3F;
@@ -4164,13 +3790,13 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             yMid1[i] = transitionY;
             cMid1[i] = Colors.setA(primary, 0.15F + Math.max(0, comb1) * 0.2F);
             
+            // Layer 2
             float w4 = (float) Math.sin(tick * 1.5F - nx * 10F);
             float w5 = (float) Math.cos(tick * 0.9F + nx * 18F);
             float comb2 = (w4 + w5) / 2F;
             
             float curtain2YTop = editorY + editorH * 0.15F;
             float curtain2YBot = editorY + editorH * 0.75F + comb2 * (editorH * 0.25F);
-            
             if (curtain2YBot < curtain2YTop + 10) curtain2YBot = curtain2YTop + 10;
             
             float transition2Y = curtain2YBot - editorH * 0.25F;
@@ -4183,42 +3809,185 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         
         int colTop = Colors.setA(primary, 0.0F);
         int colBot = Colors.setA(primary, 0.0F);
-        float yTop1f = editorY + editorH * 0.05F;
-        float yTop2f = editorY + editorH * 0.15F;
+        float yTop1 = editorY + editorH * 0.05F;
+        float yTop2 = editorY + editorH * 0.15F;
         
         for (int i = 0; i < segments; i++)
         {
             float x1 = editorX + i * segW;
             float x2 = editorX + (i + 1) * segW;
             
-            builder.vertex(matrix4f, x1, yTop1f, 0).color(colTop).next();
+            // Layer 1 - Upper Quad (yTop1 -> yMid1)
+            builder.vertex(matrix4f, x1, yTop1, 0).color(colTop).next();
             builder.vertex(matrix4f, x1, yMid1[i], 0).color(cMid1[i]).next();
-            builder.vertex(matrix4f, x2, yMid1[i + 1], 0).color(cMid1[i + 1]).next();
-            builder.vertex(matrix4f, x2, yTop1f, 0).color(colTop).next();
+            builder.vertex(matrix4f, x2, yMid1[i+1], 0).color(cMid1[i+1]).next();
+            builder.vertex(matrix4f, x2, yTop1, 0).color(colTop).next();
             
+            // Layer 1 - Lower Quad (yMid1 -> yBot1)
             builder.vertex(matrix4f, x1, yMid1[i], 0).color(cMid1[i]).next();
             builder.vertex(matrix4f, x1, yBot1[i], 0).color(colBot).next();
-            builder.vertex(matrix4f, x2, yBot1[i + 1], 0).color(colBot).next();
-            builder.vertex(matrix4f, x2, yMid1[i + 1], 0).color(cMid1[i + 1]).next();
+            builder.vertex(matrix4f, x2, yBot1[i+1], 0).color(colBot).next();
+            builder.vertex(matrix4f, x2, yMid1[i+1], 0).color(cMid1[i+1]).next();
             
-            builder.vertex(matrix4f, x1, yTop2f, 0).color(colTop).next();
+            // Layer 2 - Upper Quad (yTop2 -> yMid2)
+            builder.vertex(matrix4f, x1, yTop2, 0).color(colTop).next();
             builder.vertex(matrix4f, x1, yMid2[i], 0).color(cMid2[i]).next();
-            builder.vertex(matrix4f, x2, yMid2[i + 1], 0).color(cMid2[i + 1]).next();
-            builder.vertex(matrix4f, x2, yTop2f, 0).color(colTop).next();
+            builder.vertex(matrix4f, x2, yMid2[i+1], 0).color(cMid2[i+1]).next();
+            builder.vertex(matrix4f, x2, yTop2, 0).color(colTop).next();
             
+            // Layer 2 - Lower Quad (yMid2 -> yBot2)
             builder.vertex(matrix4f, x1, yMid2[i], 0).color(cMid2[i]).next();
             builder.vertex(matrix4f, x1, yBot2[i], 0).color(colBot).next();
-            builder.vertex(matrix4f, x2, yBot2[i + 1], 0).color(colBot).next();
-            builder.vertex(matrix4f, x2, yMid2[i + 1], 0).color(cMid2[i + 1]).next();
+            builder.vertex(matrix4f, x2, yBot2[i+1], 0).color(colBot).next();
+            builder.vertex(matrix4f, x2, yMid2[i+1], 0).color(cMid2[i+1]).next();
         }
         
         BufferRenderer.drawWithGlobalProgram(builder.end());
-
-        UIHomePanel home = this.dashboard.getPanel(UIHomePanel.class);
-        if (home != null)
+        
+        // Black shadow gradients on the sides of the central column
+        context.batcher.gradientHBox(pageX - 18, pageY, pageX, pageY + pageH, 0, Colors.setA(0x000000, 0.7F));
+        context.batcher.gradientHBox(pageX + pageW, pageY, pageX + pageW + 18, pageY + pageH, Colors.setA(0x000000, 0.7F), 0);
+        
+        // Panel backgrounds
+        context.batcher.box(pageX, pageY, pageX + pageW, pageY + pageH, Colors.setA(0x1e1e1e, 1F));
+        
+        // Background stripe drawing
+        int stripeH = 16;
+        int stripeY = pageY + bannerH - stripeH;
+        
+        float currentTicks = context.getTickTransition();
+        if (this.lastBannerTicks < 0) this.lastBannerTicks = currentTicks - BANNER_TRANSITION;
+        
+        float elapsed = Math.max(0, currentTicks - this.lastBannerTicks);
+        
+        if (elapsed >= BANNER_DURATION)
         {
-            home.renderCardAndBanners(context, this.homePage, dividerX, L10n.lang("bbs.ui.film.home.list").get());
+            if (this.homeBanners.size() > 1)
+            {
+                if (this.bannerSequence.size() != this.homeBanners.size())
+                {
+                    this.regenerateBannerSequence();
+                }
+
+                this.sequenceIndex++;
+                if (this.sequenceIndex >= this.bannerSequence.size())
+                {
+                    this.sequenceIndex = 0;
+                    this.shuffleRemoteBanners();
+                }
+                this.bannerIndex = this.bannerSequence.get(this.sequenceIndex);
+            }
+            this.lastBannerTicks = currentTicks;
+            elapsed = 0;
         }
+
+        float transition = 0F;
+        float textTransitionPrev = 1F;
+        float textTransitionCurr = 0F;
+
+        if (elapsed < BANNER_TRANSITION && this.homeBanners.size() > 1)
+        {
+            transition = (float) Interpolations.CUBIC_INOUT.interpolate(1F, 0F, elapsed / (float) BANNER_TRANSITION);
+            transition = Math.max(0F, Math.min(1F, transition));
+
+            // Staggered text transition: new text waits 20 ticks (1 second) to start fading in
+            textTransitionPrev = transition;
+            float textElapsed = Math.max(0, elapsed - 20);
+            textTransitionCurr = (float) Interpolations.CUBIC_INOUT.interpolate(0F, 1F, textElapsed / (float) (BANNER_TRANSITION - 20));
+        }
+        else
+        {
+            textTransitionCurr = 1F;
+        }
+
+        int prevIndex = this.bannerSequence.isEmpty() ? 0 : this.bannerSequence.get((this.sequenceIndex + this.bannerSequence.size() - 1) % this.bannerSequence.size());
+        BannerEntry current = this.homeBanners.get(this.bannerIndex);
+        BannerEntry prev = this.homeBanners.get(prevIndex);
+
+        if (transition > 0.001F)
+        {
+            this.drawBanner(context, prev, pageX, pageY, pageW, bannerH, transition, textTransitionPrev, true);
+            this.drawBanner(context, current, pageX, pageY, pageW, bannerH, 1F - transition, textTransitionCurr, true);
+        }
+        else
+        {
+            this.drawBanner(context, current, pageX, pageY, pageW, bannerH, 1F, textTransitionCurr, true);
+        }
+        
+        context.batcher.box(pageX, splitY, pageX + pageW, splitY + 1, Colors.A12);
+        context.batcher.box(dividerX, splitY + 1, dividerX + 1, pageY + pageH, Colors.A12);
+        context.batcher.textShadow(L10n.lang("bbs.ui.film.home.actions").get(), pageX + 4, splitY + 6);
+        context.batcher.textShadow(L10n.lang("bbs.ui.film.home.list").get(), dividerX + 4, splitY + 6);
+    }
+
+    private void regenerateBannerSequence()
+    {
+        this.bannerSequence.clear();
+        for (int i = 0; i < this.homeBanners.size(); i++)
+        {
+            this.bannerSequence.add(i);
+        }
+        this.shuffleRemoteBanners();
+        this.sequenceIndex = 0;
+        this.bannerIndex = 0; // Always start with local
+    }
+
+    private void shuffleRemoteBanners()
+    {
+        if (this.bannerSequence.size() > 2)
+        {
+            List<Integer> remote = this.bannerSequence.subList(1, this.bannerSequence.size());
+            Collections.shuffle(remote);
+        }
+    }
+
+    private void drawBanner(UIContext context, BannerEntry entry, int x, int y, int w, int h, float alpha, float textAlpha, boolean drawStripe)
+    {
+        if (alpha < 0.001F && textAlpha < 0.001F) return;
+
+        Link link = entry.link;
+        Texture texture = link.source != null && link.source.startsWith("http") ? 
+            BBSModClient.getTextures().textures.get(link) : 
+            BBSModClient.getTextures().getTexture(link);
+
+        if (texture != null)
+        {
+            float scale = Math.min(w / (float) texture.width, h / (float) texture.height);
+            int tw = Math.max(1, Math.round(texture.width * scale));
+            int th = Math.max(1, Math.round(texture.height * scale));
+            int tx = x + (w - tw) / 2;
+            int ty = y + (h - th) / 2;
+
+            if (alpha > 0.001F)
+            {
+                RenderSystem.enableBlend();
+                RenderSystem.defaultBlendFunc();
+                context.batcher.texturedBox(texture, Colors.setA(Colors.WHITE, alpha), tx, ty, tw, th, 0, 0, texture.width, texture.height);
+            }
+
+            if (textAlpha > 0.001F && entry.author != null && !entry.author.isEmpty())
+            {
+                String label = UIKeys.FILM_HOME_BANNER_AUTHOR.format(entry.author).get();
+                int lw = context.batcher.getFont().getWidth(label);
+                
+                int stripeH = 16;
+                int stripeY = ty + th - stripeH - 6;
+                int bx = tx + tw - lw - 6;
+
+                if (drawStripe)
+                {
+                    context.batcher.box(bx - 6, stripeY, tx + tw, ty + th - 6, Colors.setA(0, textAlpha * 0.6F));
+                }
+                context.batcher.textShadow(label, bx, stripeY + (stripeH - 8) / 2, Colors.setA(Colors.WHITE, textAlpha));
+            }
+        }
+    }
+
+    public static class BannerEntry
+    {
+        public String author;
+        public String url;
+        public transient Link link;
     }
 
     private static class FilmDocumentTab
@@ -4291,7 +4060,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                                 el.setVisible(isActive);
                                 
                                 UIDraggable handle = this.dragHandlesById.get(panelId);
-                                if (handle != null) handle.setVisible(isActive && !BBSSettings.editorLayoutSettings.isLayoutLocked() && !this.usesPanelInternalDragHandle(panelId));
+                                if (handle != null) handle.setVisible(isActive && !BBSSettings.editorLayoutSettings.isLayoutLocked());
                             }
                             
                             UIDraggable handle = this.dragHandlesById.get(panelId);
@@ -4303,7 +4072,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                                 }
                                 else
                                 {
-                                    handle.setVisible(tab == activeNode && !this.usesPanelInternalDragHandle(panelId));
+                                    handle.setVisible(tab == activeNode);
                                     if (tab == activeNode)
                                     {
                                         handle.relative(this.editor).x(b[0]).y(b[1] + DRAG_HANDLE_TOP_OFFSET_NORM, 20).w(b[2]).h(DRAG_HANDLE_HEIGHT_NORM);
@@ -4358,10 +4127,9 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                         case "replayEditor": nameKey = UIKeys.FILM_OPEN_REPLAY_EDITOR; break;
                         case "actionEditor": nameKey = UIKeys.FILM_OPEN_ACTION_EDITOR; break;
                         case "screenEditor": nameKey = UIKeys.FILM_OPEN_SCREEN_EDITOR; break;
-                        case ANCHORED_REPLAYS_PANEL_ID: nameKey = UIKeys.FILM_REPLAY_TITLE; break;
-                        case "editArea": nameKey = L10n.lang("bbs.ui.raw.properties"); break;
-                        case "preview": nameKey = L10n.lang("bbs.ui.raw.preview"); break;
-                        case "main": nameKey = L10n.lang("bbs.ui.raw.main"); break;
+                        case "editArea": nameKey = IKey.raw("Properties"); break;
+                        case "preview": nameKey = IKey.raw("Preview"); break;
+                        case "main": nameKey = IKey.raw("Main"); break;
                     }
                     int w = 20 + context.batcher.getFont().getWidth(nameKey.get()) + 8;
                     tab.area.w = w;
@@ -4435,10 +4203,9 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             else if (this.panelId.equals("replayEditor")) { icon = Icons.SCENE; name = UIKeys.FILM_OPEN_REPLAY_EDITOR; }
             else if (this.panelId.equals("actionEditor")) { icon = Icons.ACTION; name = UIKeys.FILM_OPEN_ACTION_EDITOR; }
             else if (this.panelId.equals("screenEditor")) { icon = Icons.FILTER; name = UIKeys.FILM_OPEN_SCREEN_EDITOR; }
-            else if (this.panelId.equals(ANCHORED_REPLAYS_PANEL_ID)) { icon = Icons.EDITOR; name = UIKeys.FILM_REPLAY_TITLE; }
-            else if (this.panelId.equals("editArea")) { icon = Icons.EDIT; name = L10n.lang("bbs.ui.raw.properties"); }
-            else if (this.panelId.equals("preview")) { icon = Icons.SPHERE; name = L10n.lang("bbs.ui.raw.preview"); }
-            else if (this.panelId.equals("main")) { icon = Icons.GEAR; name = L10n.lang("bbs.ui.raw.main"); }
+            else if (this.panelId.equals("editArea")) { icon = Icons.EDIT; name = IKey.raw("Properties"); }
+            else if (this.panelId.equals("preview")) { icon = Icons.SPHERE; name = IKey.raw("Preview"); }
+            else if (this.panelId.equals("main")) { icon = Icons.GEAR; name = IKey.raw("Main"); }
 
             context.batcher.icon(icon, Colors.WHITE, this.area.x + 2, this.area.y + 2);
             context.batcher.textShadow(name.get(), this.area.x + 20, this.area.y + 6);
@@ -4791,10 +4558,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             {
                 this.floatingPanelSizes.put(panelId, new Vector2i(320, 200));
             }
-            else if (panelId.equals(ANCHORED_REPLAYS_PANEL_ID))
-            {
-                this.floatingPanelSizes.put(panelId, new Vector2i(360, 420));
-            }
             else if (panelId.equals("editArea"))
             {
                 this.floatingPanelSizes.put(panelId, new Vector2i(300, 400));
@@ -4954,11 +4717,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             context.batcher.gradientVBox(x, y, x + w, y + 22, 0xFF2A2A2A, 0xFF1D1D1D);
             context.batcher.box(x, y + 21, x + w, y + 22, 0xFF3C3C3C);
 
-            String title = panelId.equals("main")
-                ? "Timeline"
-                : (panelId.equals("preview")
-                    ? "Viewport"
-                    : (panelId.equals(ANCHORED_REPLAYS_PANEL_ID) ? UIKeys.FILM_REPLAY_TITLE.get() : "Properties"));
+            String title = panelId.equals("main") ? "Timeline" : (panelId.equals("preview") ? "Viewport" : "Properties");
             context.batcher.textShadow(title, x + 8, y + 6, 0xFFFFFFFF);
 
             // Expand/Collapse Icon (Icons.COLLAPSED or Icons.UNCOLLAPSED)

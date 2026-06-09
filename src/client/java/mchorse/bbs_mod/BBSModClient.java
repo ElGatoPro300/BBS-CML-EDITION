@@ -84,7 +84,6 @@ import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.keys.KeyCombo;
 import mchorse.bbs_mod.ui.utils.keys.KeybindSettings;
 import mchorse.bbs_mod.utils.MathUtils;
-import mchorse.bbs_mod.utils.RecentAssetsTracker;
 import mchorse.bbs_mod.utils.ScreenshotRecorder;
 import mchorse.bbs_mod.utils.VideoRecorder;
 import mchorse.bbs_mod.utils.colors.Color;
@@ -392,11 +391,8 @@ public class BBSModClient implements ClientModInitializer
     @Override
     public void onInitializeClient()
     {
-<<<<<<< HEAD
-=======
-        RecentAssetsTracker.load();
+        mchorse.bbs_mod.utils.RecentAssetsTracker.load();
 
->>>>>>> 0db2a11a81d1d7a1f0960ee05ad7e2d8b748207c
         AttackBlockCallback.EVENT.register((player, world, hand, pos, direction) ->
         {
             if (world.getBlockEntity(pos) instanceof TriggerBlockEntity)
@@ -460,8 +456,6 @@ public class BBSModClient implements ClientModInitializer
         selectors = new EntitySelectors();
         selectors.read();
         films = new Films();
-
-        mchorse.bbs_mod.utils.RecentAssetsTracker.load();
 
         BBSResources.init();
 

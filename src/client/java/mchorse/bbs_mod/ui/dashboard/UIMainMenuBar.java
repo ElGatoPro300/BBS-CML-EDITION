@@ -38,7 +38,7 @@ public class UIMainMenuBar extends UIElement
     {
         this.dashboard = dashboard;
 
-        this.h(20);
+        this.h(16);
 
         UIElement brand = new UIElement()
         {
