@@ -533,7 +533,7 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
         String selectedId = this.getSelectedHomeParticleId();
         if (selectedId != null && this.data != null && selectedId.equals(this.data.getId()))
         {
-            Window.setClipboard(this.data.toData().asMap(), "_ContentType_" + this.getType().getId());
+            Window.setInMemoryClipboard(this.data.toData().asMap(), "_ContentType_" + this.getType().getId());
         }
     }
 

@@ -199,11 +199,6 @@ public class UIDataOverlayPanel <T extends ValueGroup> extends UICRUDOverlayPane
             this.namesList.removeFile(oldId);
             this.namesList.addFile(name);
 
-            if (this.panel != null && this.panel.dashboard != null && this.panel.dashboard.documentTabsBar != null)
-            {
-                this.panel.dashboard.documentTabsBar.renameTab(this.panel.getType(), oldId, name);
-            }
-
             this.panel.getData().setId(name);
         }
     }
@@ -245,11 +240,6 @@ public class UIDataOverlayPanel <T extends ValueGroup> extends UICRUDOverlayPane
             this.panel.getType().getRepository().delete(id);
 
             this.namesList.removeFile(id);
-
-            if (this.panel != null && this.panel.dashboard != null && this.panel.dashboard.documentTabsBar != null)
-            {
-                this.panel.dashboard.documentTabsBar.closeTab(this.panel.getType(), id);
-            }
 
             this.panel.fill(null);
         }

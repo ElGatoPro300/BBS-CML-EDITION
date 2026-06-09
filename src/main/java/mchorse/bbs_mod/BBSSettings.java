@@ -151,6 +151,7 @@ public class BBSSettings
     public static ValueFloat replayFpBobbingIntensity;
     public static ValueFloat replayFpBobbingFrequency;
     public static ValueBoolean pickLimbTexture;
+    public static ValueBoolean morphingAutoMorph;
     public static ValueBoolean fluidRealisticModelInteraction;
 
     public static ValueLink textureDefaultPath;

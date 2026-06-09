@@ -2,14 +2,12 @@ package mchorse.bbs_mod.ui.dashboard;
 
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.l10n.L10n;
-import mchorse.bbs_mod.ui.ContentType;
 import mchorse.bbs_mod.ui.UIKeys;
-import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel;
+import mchorse.bbs_mod.ui.supporters.UISupportersPanel;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIClickable;
-import mchorse.bbs_mod.ui.home.UIHomePanel;
 import mchorse.bbs_mod.ui.model.UIModelPanel;
 import mchorse.bbs_mod.ui.particles.UIParticleSchemePanel;
 import mchorse.bbs_mod.ui.utility.audio.UIAudioEditorPanel;
@@ -29,17 +27,32 @@ public class UIPanelSwitcher extends UIElement
     {
         this.dashboard = dashboard;
 
-        UISwitcherButton home = new UISwitcherButton(Icons.FOLDER, () -> this.dashboard.getPanels().panel instanceof UIHomePanel, (b) -> this.dashboard.documentTabsBar.switchHomeType(null));
-        UISwitcherButton films = new UISwitcherButton(Icons.FILM, () -> this.dashboard.getPanels().panel instanceof UIFilmPanel, (b) -> this.dashboard.documentTabsBar.switchHomeType(ContentType.FILMS));
-        UISwitcherButton particles = new UISwitcherButton(Icons.PARTICLE, () -> this.dashboard.getPanels().panel instanceof UIParticleSchemePanel, (b) -> this.dashboard.documentTabsBar.switchHomeType(ContentType.PARTICLES));
-        UISwitcherButton models = new UISwitcherButton(Icons.PLAYER, () -> this.dashboard.getPanels().panel instanceof UIModelPanel, (b) -> this.dashboard.documentTabsBar.switchHomeType(ContentType.MODELS));
-        UISwitcherButton audios = new UISwitcherButton(Icons.SOUND, () -> this.dashboard.getPanels().panel instanceof UIAudioEditorPanel, (b) -> this.dashboard.documentTabsBar.switchHomeType(ContentType.SOUNDS));
+        UISwitcherButton home = new UISwitcherButton(Icons.FOLDER, () -> this.dashboard.getPanels().panel instanceof UISupportersPanel, (b) ->
+        {
+            this.dashboard.setPanel(this.dashboard.getPanel(UISupportersPanel.class));
+        });
+        UISwitcherButton films = new UISwitcherButton(Icons.FILM, () -> this.dashboard.getPanels().panel instanceof UIFilmPanel, (b) ->
+        {
+            this.dashboard.setPanel(this.dashboard.getPanel(UIFilmPanel.class));
+        });
+        UISwitcherButton particles = new UISwitcherButton(Icons.PARTICLE, () -> this.dashboard.getPanels().panel instanceof UIParticleSchemePanel, (b) ->
+        {
+            this.dashboard.setPanel(this.dashboard.getPanel(UIParticleSchemePanel.class));
+        });
+        UISwitcherButton models = new UISwitcherButton(Icons.PLAYER, () -> this.dashboard.getPanels().panel instanceof UIModelPanel, (b) ->
+        {
+            this.dashboard.setPanel(this.dashboard.getPanel(UIModelPanel.class));
+        });
+        UISwitcherButton audios = new UISwitcherButton(Icons.SOUND, () -> this.dashboard.getPanels().panel instanceof UIAudioEditorPanel, (b) ->
+        {
+            this.dashboard.setPanel(this.dashboard.getPanel(UIAudioEditorPanel.class));
+        });
 
         home.tooltip(L10n.lang("bbs.ui.raw.home"), Direction.TOP);
         films.tooltip(UIKeys.FILM_TITLE, Direction.TOP);
         particles.tooltip(UIKeys.PANELS_PARTICLES, Direction.TOP);
         models.tooltip(UIKeys.MODELS_TITLE, Direction.TOP);
-        audios.tooltip(UIKeys.PANELS_AUDIOS, Direction.TOP);
+        audios.tooltip(UIKeys.AUDIO_TITLE, Direction.TOP);
 
         this.add(home, films, particles, models, audios);
         this.row(0).resize();

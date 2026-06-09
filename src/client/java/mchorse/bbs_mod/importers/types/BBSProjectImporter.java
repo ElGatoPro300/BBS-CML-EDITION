@@ -33,7 +33,7 @@ public class BBSProjectImporter implements IImporter
 
         if (currentMenu instanceof UIDashboard dashboard)
         {
-            if (dashboard.panels.panel instanceof UIFilmPanel)
+            if (dashboard.getPanels().panel instanceof UIFilmPanel)
             {
                 return ImporterUtils.checkFileExtension(context.files, ".bbsproject");
             }
@@ -49,7 +49,7 @@ public class BBSProjectImporter implements IImporter
 
         if (currentMenu instanceof UIDashboard dashboard)
         {
-            if (dashboard.panels.panel instanceof UIFilmPanel filmPanel)
+            if (dashboard.getPanels().panel instanceof UIFilmPanel filmPanel)
             {
                 for (File file : context.files)
                 {
