@@ -8,6 +8,8 @@ import mchorse.bbs_mod.settings.values.core.ValueGroup;
 import mchorse.bbs_mod.settings.values.core.ValueList;
 import mchorse.bbs_mod.settings.values.numeric.ValueFloat;
 import mchorse.bbs_mod.settings.values.numeric.ValueInt;
+import mchorse.bbs_mod.data.types.BaseType;
+import mchorse.bbs_mod.utils.clips.Clip;
 import mchorse.bbs_mod.utils.clips.Clips;
 
 public class Film extends ValueGroup
@@ -66,5 +68,22 @@ public class Film extends ValueGroup
     public boolean hasFirstPerson()
     {
         return this.getFirstPersonReplay() != null;
+    }
+
+    @Override
+    public void fromData(BaseType base)
+    {
+        super.fromData(base);
+
+        if (!this.screen.get().isEmpty())
+        {
+            java.util.List<Clip> screenClips = new java.util.ArrayList<>(this.screen.get());
+
+            for (Clip clip : screenClips)
+            {
+                this.camera.addClip(clip);
+                this.screen.remove(clip);
+            }
+        }
     }
 }
