@@ -20,12 +20,14 @@ import mchorse.bbs_mod.ui.film.utils.FilmProjectHandler;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
+import mchorse.bbs_mod.ui.framework.elements.overlay.UICreateAssetOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
 import mchorse.bbs_mod.ui.model_blocks.UIModelBlockPanel;
 import mchorse.bbs_mod.ui.selectors.UISelectorsOverlayPanel;
 import mchorse.bbs_mod.ui.triggers.UITriggerBlockPanel;
 import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
+import mchorse.bbs_mod.ui.utils.context.ContextSeparatorAction;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.keys.KeyCombo;
@@ -146,6 +148,11 @@ public class UIMainMenuBar extends UIElement
     {
         menu.action(Icons.UNDO, UIKeys.CAMERA_EDITOR_KEYS_EDITOR_UNDO, () -> this.triggerKey(Keys.UNDO));
         menu.action(Icons.REDO, UIKeys.CAMERA_EDITOR_KEYS_EDITOR_REDO, () -> this.triggerKey(Keys.REDO));
+
+        if (this.dashboard.panels.panel instanceof UIFilmPanel film)
+        {
+            menu.action(Icons.LIST, UIKeys.FILM_OPEN_HISTORY, film::openUndoHistory);
+        }
     }
 
     private void buildToolsMenu(ContextMenuManager menu)
@@ -161,6 +168,8 @@ public class UIMainMenuBar extends UIElement
 
         if (this.dashboard.panels.panel instanceof UIFilmPanel filmPanel && filmPanel.getData() != null)
         {
+            filmPanel.addToolMenuActions(menu);
+
             menu.action(Icons.TIME, L10n.lang("bbs.ui.film.log_tools"), () -> {
                 UIOverlay.addOverlay(this.getContext(), new UIFilmLogOverlayPanel(filmPanel), 280, 240);
             });
@@ -205,6 +214,27 @@ public class UIMainMenuBar extends UIElement
                 trigger.setGeometryVisible(!trigger.isGeometryVisible());
             });
             menu.action(Icons.REFRESH, IKey.constant("Reset Layout"), trigger::resetLayout);
+        }
+        else if (this.dashboard.panels.panel instanceof UIFilmPanel film)
+        {
+            for (String panelId : film.getWindowPanelIds())
+            {
+                menu.action(film.isWindowPanelVisible(panelId) ? Icons.CHECKMARK : Icons.NONE, film.getWindowPanelTitle(panelId), () ->
+                {
+                    film.setWindowPanelVisible(panelId, !film.isWindowPanelVisible(panelId));
+                });
+            }
+
+            menu.action(new ContextSeparatorAction());
+            menu.action(Icons.REFRESH, L10n.lang("bbs.ui.dashboard.menu.reset_layout"), film::resetLayout);
+            menu.action(film.isLayoutLocked() ? Icons.LOCKED : Icons.UNLOCKED, film.isLayoutLocked() ? UIKeys.FILM_LAYOUT_UNLOCK : UIKeys.FILM_LAYOUT_LOCK, film::toggleLayoutLockFromMenu);
+            menu.action(Icons.SAVED, UIKeys.FILM_LAYOUT_PRESETS, () ->
+            {
+                int x = this.activeButton == null ? this.area.x : this.activeButton.area.x;
+                int y = this.activeButton == null ? this.area.ey() : this.activeButton.area.ey();
+
+                film.openLayoutPresetsFromMenu(x, y);
+            });
         }
         else
         {
@@ -254,16 +284,10 @@ public class UIMainMenuBar extends UIElement
 
     private void createNewAsset(ContentType type)
     {
-        UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
-            UIKeys.GENERAL_ADD,
-            UIKeys.PANELS_MODALS_ADD,
+        UICreateAssetOverlayPanel panel = new UICreateAssetOverlayPanel(
+            type,
             (name) ->
             {
-                if (name.trim().isEmpty())
-                {
-                    return;
-                }
-
                 IRepository repository = type.getRepository();
                 ValueGroup created = (ValueGroup) repository.create(name);
 
@@ -281,8 +305,7 @@ public class UIMainMenuBar extends UIElement
                 }
             }
         );
-        panel.text.filename();
-        UIOverlay.addOverlay(this.getContext(), panel);
+        UIOverlay.addOverlay(this.getContext(), panel, 260, 160);
     }
 
     private void openOpenPopup()

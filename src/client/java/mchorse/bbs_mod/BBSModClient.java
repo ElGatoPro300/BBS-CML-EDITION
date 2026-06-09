@@ -313,14 +313,28 @@ public class BBSModClient implements ClientModInitializer
 
     public static int getGUIScale()
     {
-        int scale = BBSSettings.userIntefaceScale.get();
+        float scale = BBSSettings.userIntefaceScale.get();
 
-        if (scale == 0)
+        if (scale <= 0F)
         {
             return MinecraftClient.getInstance().options.getGuiScale().getValue();
         }
 
-        return scale;
+        /* Minecraft's GUI scale option is integer-only, so round to the nearest whole step. The
+           exact (possibly fractional) value is applied via the window scale-factor override
+           (see WindowMixin / getUIScaleFactor). */
+        return Math.max(1, Math.round(scale));
+    }
+
+    /**
+     * The exact (possibly fractional) BBS UI scale, e.g. 1.6. Returns 0 when set to "auto" so the
+     * window keeps Minecraft's computed integer scale.
+     */
+    public static double getUIScaleFactor()
+    {
+        float scale = BBSSettings.userIntefaceScale.get();
+
+        return scale <= 0F ? 0D : scale;
     }
 
     public static float getOriginalFramebufferScale()

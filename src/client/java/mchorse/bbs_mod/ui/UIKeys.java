@@ -291,6 +291,9 @@ public class UIKeys
     public static final IKey FILM_NO_CAMERA_TITLE = L10n.lang("bbs.ui.film.no_camera-title");
     public static final IKey FILM_OPEN_ACTION_EDITOR = L10n.lang("bbs.ui.film.open_action_editor");
     public static final IKey FILM_OPEN_CAMERA_EDITOR = L10n.lang("bbs.ui.film.open_camera_editor");
+    public static final IKey FILM_GIZMO_MOVE = L10n.lang("bbs.ui.film.gizmo.move");
+    public static final IKey FILM_GIZMO_SCALE = L10n.lang("bbs.ui.film.gizmo.scale");
+    public static final IKey FILM_GIZMO_ROTATE = L10n.lang("bbs.ui.film.gizmo.rotate");
     public static final IKey FILM_OPEN_HISTORY = L10n.lang("bbs.ui.film.open_history");
     public static final IKey FILM_OPEN_REPLAY_EDITOR = L10n.lang("bbs.ui.film.open_replay_editor");
     public static final IKey FILM_OPEN_SCREEN_EDITOR = L10n.lang("bbs.ui.film.open_screen_editor");
