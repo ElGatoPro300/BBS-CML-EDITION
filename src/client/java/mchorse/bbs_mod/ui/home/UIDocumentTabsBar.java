@@ -9,7 +9,6 @@ import mchorse.bbs_mod.ui.dashboard.UIDashboard;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel;
 import mchorse.bbs_mod.ui.dashboard.utils.UIGraphPanel;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
-import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.navigation.UIControlBar;
 import mchorse.bbs_mod.ui.framework.elements.navigation.UIIconTabButton;
@@ -51,14 +50,6 @@ public class UIDocumentTabsBar extends UIControlBar
 
         this.documentTabs.add(DocumentTab.home());
         this.rebuild();
-    }
-
-    @Override
-    public void render(UIContext context)
-    {
-        context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xFF141418);
-
-        super.render(context);
     }
 
     /* ------------------------------------------------------------------ */

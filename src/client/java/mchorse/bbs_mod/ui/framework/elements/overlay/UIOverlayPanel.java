@@ -48,7 +48,7 @@ public class UIOverlayPanel extends UIElement
     {
         super();
 
-        this.title = UI.label(title).color(Colors.WHITE);
+        this.title = UI.label(title);
         this.close = new UIIcon(Icons.CLOSE, (b) -> this.close());
         this.close.tooltip(UIKeys.GENERAL_CLOSE, Direction.LEFT);
         this.content = new UIElement();
@@ -316,16 +316,12 @@ public class UIOverlayPanel extends UIElement
 
     protected void renderBackground(UIContext context)
     {
-        context.batcher.dropShadow(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 10, 0x44000000, 0x00000000);
+        int color = BBSSettings.primaryColor.get();
 
-        // Main background
-        context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xFF141418);
-        context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xFF2A2A35, 1);
+        context.batcher.dropShadow(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 10, Colors.A25 | color, color);
+        this.area.render(context.batcher, Colors.mulRGB(color | Colors.A100, 0.1F));
 
-        // Header Row
-        int headerH = 20;
-        context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.y + headerH, 0xFF1A1A22);
-        context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.y + headerH, 0xFF2A2A35, 1);
+        this.icons.area.render(context.batcher, Colors.CONTROL_BAR);
 
         if (this.close.area.isInside(context))
         {
