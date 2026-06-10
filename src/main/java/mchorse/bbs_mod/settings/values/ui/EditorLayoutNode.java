@@ -57,9 +57,14 @@ public abstract class EditorLayoutNode
             ),
             new SplitterNode(
                 false,
-                0.5F,
-                new PanelNode("cameraTimeline"),
-                new PanelNode("actionTimeline")
+                0.33F,
+                new PanelNode("cameraEditArea"),
+                new SplitterNode(
+                    false,
+                    0.5F,
+                    new PanelNode("cameraTimeline"),
+                    new PanelNode("actionTimeline")
+                )
             )
         );
     }

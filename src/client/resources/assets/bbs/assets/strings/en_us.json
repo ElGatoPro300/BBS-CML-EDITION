@@ -803,6 +803,7 @@
     "bbs.ui.film.open_history": "Open undo/redo history...",
     "bbs.ui.film.workspace.action": "Action",
     "bbs.ui.film.workspace.camera": "Camera",
+    "bbs.ui.film.workspace.camera_properties": "Camera Properties",
     "bbs.ui.film.workspace.replay": "Replay",
     "bbs.ui.film.workspace.screen": "Screen",
     "bbs.ui.film.open_render_queue": "Open render queue...",

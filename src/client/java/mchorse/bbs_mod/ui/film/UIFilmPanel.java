@@ -149,6 +149,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private final Position lastPosition = new Position(0, 0, 0, 0, 0);
 
     public UIElement editArea;
+    public UIElement cameraEditArea;
     public UIDraggable draggableMain;
     public UIDraggable draggableEditor;
     public UIFilmRecorder recorder;
@@ -288,6 +289,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.recorder = event.createRecorder(this);
 
         this.editArea = new UIElement();
+        this.cameraEditArea = new UIElement();
         this.preview = event.createPreview(this);
 
         this.draggableMain = new UIDraggable((context) ->
@@ -412,7 +414,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         });
 
         /* Editors */
-        this.cameraEditor = new UIClipsPanel(this, BBSMod.getFactoryCameraClips()).target(this.editArea);
+        this.cameraEditor = new UIClipsPanel(this, BBSMod.getFactoryCameraClips()).target(this.cameraEditArea);
 
         this.cameraEditor.clips.context((menu) ->
         {
@@ -429,6 +431,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.panelById.put("actionTimeline", this.actionEditor);
         this.panelById.put("preview", this.preview);
         this.panelById.put("editArea", this.editArea);
+        this.panelById.put("cameraEditArea", this.cameraEditArea);
         this.panelById.put(ANCHORED_REPLAYS_PANEL_ID, this.anchoredReplaysPanel);
         this.homePage = new UIElement()
         {
@@ -715,7 +718,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.homeViewToggle.relative(this.homeFilmsSearch).x(1F, -22).y(0).w(20).h(20);
         this.homePage.add(new UIRenderable(this::renderHomeBanner), this.homeActionsPanel, this.homeFilmsSearch, this.homeFilmsMosaic, this.homeViewToggle, this.panelSwitcher);
 
-        this.editor.add(this.cameraEditor, this.replayEditor, this.actionEditor, this.editArea, this.preview, this.anchoredReplaysPanel, this.homePage, new UIRenderable(this::renderDockedPanelHeaders), new UIRenderable(this::renderIcons), new UIRenderable(this::renderDropZoneHighlight), new UIRenderable(this::renderFloatingPanelWindows));
+        this.editor.add(this.cameraEditor, this.replayEditor, this.actionEditor, this.editArea, this.cameraEditArea, this.preview, this.anchoredReplaysPanel, this.homePage, new UIRenderable(this::renderDockedPanelHeaders), new UIRenderable(this::renderIcons), new UIRenderable(this::renderDropZoneHighlight), new UIRenderable(this::renderFloatingPanelWindows));
         for (String id : this.panelById.keySet())
         {
             UIDraggable handle = this.createPanelDragHandle(id);
@@ -1078,7 +1081,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         if (this.hasPanelInLayout(root, "main"))
         {
-            return EditorLayoutNode.copyWithReplacedLeaf(
+            root = EditorLayoutNode.copyWithReplacedLeaf(
                 root,
                 "main",
                 new EditorLayoutNode.SplitterNode(
@@ -1093,6 +1096,23 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                     )
                 )
             );
+        }
+
+        if (!this.hasPanelInLayout(root, "cameraEditArea") && !this.floatingPanels.contains("cameraEditArea") && !this.hiddenPanels.contains("cameraEditArea"))
+        {
+            if (this.hasPanelInLayout(root, "editArea"))
+            {
+                root = EditorLayoutNode.copyWithInsertSplitAt(root, "editArea", "cameraEditArea", EditorLayoutNode.EDGE_BOTTOM);
+            }
+            else
+            {
+                String target = this.getFirstDockedVisiblePanelId();
+
+                if (target != null)
+                {
+                    root = EditorLayoutNode.copyWithInsertSplitAt(root, target, "cameraEditArea", EditorLayoutNode.EDGE_BOTTOM);
+                }
+            }
         }
 
         return root;
@@ -1928,6 +1948,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             case "actionEditor": return UIKeys.FILM_OPEN_ACTION_EDITOR;
             case ANCHORED_REPLAYS_PANEL_ID: return UIKeys.FILM_REPLAY_TITLE;
             case "editArea": return L10n.lang("bbs.ui.raw.properties");
+            case "cameraEditArea": return L10n.lang("bbs.ui.film.workspace.camera_properties");
             case "preview": return L10n.lang("bbs.ui.raw.viewport");
             case "main": return L10n.lang("bbs.ui.raw.timeline");
             case "cameraTimeline": return L10n.lang("bbs.ui.film.workspace.camera");
@@ -1947,6 +1968,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             case "actionEditor": return Icons.ACTION;
             case ANCHORED_REPLAYS_PANEL_ID: return Icons.EDITOR;
             case "editArea": return Icons.EDIT;
+            case "cameraEditArea": return Icons.EDIT;
             case "preview": return Icons.CAMERA;
             case "main": return Icons.STOPWATCH;
             case "cameraTimeline": return Icons.FRUSTUM;
@@ -1959,7 +1981,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     public String[] getWindowPanelIds()
     {
-        return new String[] {"cameraTimeline", "replayTimeline", "actionTimeline", "preview", "editArea", ANCHORED_REPLAYS_PANEL_ID};
+        return new String[] {"cameraTimeline", "replayTimeline", "actionTimeline", "preview", "editArea", "cameraEditArea", ANCHORED_REPLAYS_PANEL_ID};
     }
 
     public IKey getWindowPanelTitle(String panelId)
@@ -3475,6 +3497,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             return new Vector2i(300, 400);
         }
 
+        if (panelId.equals("cameraEditArea"))
+        {
+            return new Vector2i(300, 400);
+        }
+
         return new Vector2i(400, 300);
     }
 
@@ -4967,6 +4994,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             this.replayEditor.setVisible(false);
             this.actionEditor.setVisible(false);
             this.editArea.setVisible(false);
+            this.cameraEditArea.setVisible(false);
             this.preview.setVisible(false);
         }
         this.draggableMain.setVisible(visible);
@@ -5391,6 +5419,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                         case "actionEditor": nameKey = UIKeys.FILM_OPEN_ACTION_EDITOR; break;
                         case ANCHORED_REPLAYS_PANEL_ID: nameKey = UIKeys.FILM_REPLAY_TITLE; break;
                         case "editArea": nameKey = L10n.lang("bbs.ui.raw.properties"); break;
+                        case "cameraEditArea": nameKey = L10n.lang("bbs.ui.film.workspace.camera_properties"); break;
                         case "preview": nameKey = L10n.lang("bbs.ui.raw.viewport"); break;
                         case "main": nameKey = L10n.lang("bbs.ui.raw.timeline"); break;
                     }
@@ -5483,6 +5512,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             else if (this.panelId.equals("actionEditor")) { icon = Icons.ACTION; name = UIKeys.FILM_OPEN_ACTION_EDITOR; }
             else if (this.panelId.equals(ANCHORED_REPLAYS_PANEL_ID)) { icon = Icons.EDITOR; name = UIKeys.FILM_REPLAY_TITLE; }
             else if (this.panelId.equals("editArea")) { icon = Icons.EDIT; name = L10n.lang("bbs.ui.raw.properties"); }
+            else if (this.panelId.equals("cameraEditArea")) { icon = Icons.EDIT; name = L10n.lang("bbs.ui.film.workspace.camera_properties"); }
             else if (this.panelId.equals("preview")) { icon = Icons.CAMERA; name = L10n.lang("bbs.ui.raw.viewport"); }
             else if (this.panelId.equals("main")) { icon = Icons.STOPWATCH; name = L10n.lang("bbs.ui.raw.timeline"); }
 
