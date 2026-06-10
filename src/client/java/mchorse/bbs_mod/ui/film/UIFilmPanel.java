@@ -2324,7 +2324,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     {
         int h = ey - y;
 
-        context.batcher.gradientVBox(x, y, ex, ey, 0xFF2A2A2A, 0xFF1D1D1D);
+        context.batcher.box(x, y, ex, ey, 0xFF1D1D1D);
         context.batcher.box(x, ey - 1, ex, ey, 0xFF3C3C3C);
 
         boolean hovered = context.mouseX >= x && context.mouseX < ex && context.mouseY >= y && context.mouseY < ey;
@@ -5191,7 +5191,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
                 if (active)
                 {
-                    context.batcher.gradientVBox(tab.x, this.area.y, tab.x + tab.w, this.area.ey(), 0xFF2A2A2A, 0xFF1D1D1D);
+                    context.batcher.box(tab.x, this.area.y, tab.x + tab.w, this.area.ey(), 0xFF1D1D1D);
                     context.batcher.box(tab.x, this.area.ey() - 2, tab.x + tab.w, this.area.ey(), primary);
                 }
                 else if (hover)
@@ -5360,13 +5360,13 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             boolean hovered = this.area.isInside(context);
             if (active)
             {
-                context.batcher.gradientVBox(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xFF2A2A2A, 0xFF1D1D1D);
+                context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xFF1D1D1D);
                 context.batcher.box(this.area.x, this.area.ey() - 1, this.area.ex(), this.area.ey(), 0xFF3C3C3C);
                 context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.y + 2, 0xFF000000 | BBSSettings.primaryColor.get());
             }
             else
             {
-                context.batcher.gradientVBox(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xDD202024, 0xDD17171B);
+                context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xDD17171B);
                 context.batcher.box(this.area.x, this.area.ey() - 1, this.area.ex(), this.area.ey(), 0xFF3C3C3C);
             }
             

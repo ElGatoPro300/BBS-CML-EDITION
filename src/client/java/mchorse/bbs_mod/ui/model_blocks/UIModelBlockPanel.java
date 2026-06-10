@@ -2314,8 +2314,8 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         @Override
         public void render(UIContext context)
         {
-            // Render solid premium gray gradient background directly using this.area
-            context.batcher.gradientVBox(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xFF2A2A2A, 0xFF1D1D1D);
+            // Render solid premium gray background directly using this.area
+            context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xFF1D1D1D);
             context.batcher.box(this.area.x, this.area.ey() - 1, this.area.ex(), this.area.ey(), 0xFF3C3C3C);
 
             boolean hovered = this.area.isInside(context) || this.isDragging();
