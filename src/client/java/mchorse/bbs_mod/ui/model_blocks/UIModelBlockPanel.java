@@ -1983,7 +1983,7 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         {
             if (isCardVisible(i))
             {
-                if (i > 0 && (this.modelBlock == null || paletteOpen))
+                if (paletteOpen || (i > 0 && this.modelBlock == null))
                 {
                     continue;
                 }
