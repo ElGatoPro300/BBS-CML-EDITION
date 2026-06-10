@@ -230,15 +230,18 @@ public class UIClips extends UIElement
         Supplier<Boolean> canUseKeybinds = () -> this.delegate.canUseKeybinds() && !this.hasEmbeddedView();
         Supplier<Boolean> canUseKeybindsSelected = () -> this.delegate.getClip() != null && canUseKeybinds.get();
 
-        this.keys().register(Keys.KEYFRAMES_MAXIMIZE, this::resetView).category(KEYS_CATEGORY);
-        this.keys().register(Keys.DESELECT, () -> this.pickClip(null)).category(KEYS_CATEGORY).active(canUseKeybindsSelected);
-        this.keys().register(Keys.ADD_ON_TOP, this::showAddsOnTop).category(KEYS_CATEGORY).active(canUseKeybindsSelected);
-        this.keys().register(Keys.ADD_AT_CURSOR, this::showAddsAtCursor).category(KEYS_CATEGORY).active(canUseKeybinds);
-        this.keys().register(Keys.ADD_AT_TICK, this::showAddsAtTick).category(KEYS_CATEGORY).active(canUseKeybinds);
+        this.keys().register(Keys.KEYFRAMES_MAXIMIZE, this::resetView).inside().category(KEYS_CATEGORY);
+        this.keys().register(Keys.DESELECT, () -> this.pickClip(null)).inside().category(KEYS_CATEGORY).active(canUseKeybindsSelected);
+        this.keys().register(Keys.ADD_ON_TOP, this::showAddsOnTop).inside().category(KEYS_CATEGORY).active(canUseKeybindsSelected);
+        this.keys().register(Keys.ADD_AT_CURSOR, this::showAddsAtCursor).inside().category(KEYS_CATEGORY).active(canUseKeybinds);
+        this.keys().register(Keys.ADD_AT_TICK, this::showAddsAtTick).inside().category(KEYS_CATEGORY).active(canUseKeybinds);
         this.keys().register(Keys.COPY, () ->
         {
-            if (this.copyPasteController.copy()) UIUtils.playClick();
-        }).category(KEYS_CATEGORY).active(canUseKeybindsSelected);
+            if (this.copyPasteController.copy())
+            {
+                UIUtils.playClick();
+            }
+        }).inside().category(KEYS_CATEGORY).active(canUseKeybindsSelected);
         this.keys().register(Keys.CUT, () ->
         {
             if (this.delegate.getClip() == null)
@@ -253,13 +256,16 @@ public class UIClips extends UIElement
                 UIUtils.playClick();
                 this.getContext().notifyInfo(UIKeys.GENERAL_CUT);
             }
-        }).category(KEYS_CATEGORY).active(canUseKeybindsSelected);
+        }).inside().category(KEYS_CATEGORY).active(canUseKeybindsSelected);
         this.keys().register(Keys.PASTE, () ->
         {
             UIContext context = this.getContext();
 
-            if (this.copyPasteController.paste(context.mouseX, context.mouseY)) UIUtils.playClick();
-        }).category(KEYS_CATEGORY).active(canUseKeybinds);
+            if (this.copyPasteController.paste(context.mouseX, context.mouseY))
+            {
+                UIUtils.playClick();
+            }
+        }).inside().category(KEYS_CATEGORY).active(canUseKeybinds);
         this.keys().register(Keys.PRESETS, () ->
         {
             UIContext context = this.getContext();
@@ -269,14 +275,14 @@ public class UIClips extends UIElement
                 this.copyPasteController.openPresets(context, context.mouseX, context.mouseY);
                 UIUtils.playClick();
             }
-        }).category(KEYS_CATEGORY).active(canUseKeybinds);
-        this.keys().register(Keys.CLIP_CUT, this::cut).category(KEYS_CATEGORY).active(canUseKeybinds);
-        this.keys().register(Keys.CLIP_SHIFT, this::shiftToCursor).category(KEYS_CATEGORY).active(canUseKeybinds);
-        this.keys().register(Keys.CLIP_DURATION, this::shiftDurationToCursor).category(KEYS_CATEGORY).active(canUseKeybinds);
-        this.keys().register(Keys.DELETE, this::removeSelected).label(UIKeys.CAMERA_TIMELINE_CONTEXT_REMOVE_CLIPS).category(KEYS_CATEGORY).active(canUseKeybinds);
-        this.keys().register(Keys.CLIP_ENABLE, this::toggleEnabled).category(KEYS_CATEGORY).active(canUseKeybinds);
-        this.keys().register(Keys.CLIP_SELECT_AFTER, this::selectAfter).category(KEYS_CATEGORY).active(canUseKeybinds);
-        this.keys().register(Keys.CLIP_SELECT_BEFORE, this::selectBefore).category(KEYS_CATEGORY).active(canUseKeybinds);
+        }).inside().category(KEYS_CATEGORY).active(canUseKeybinds);
+        this.keys().register(Keys.CLIP_CUT, this::cut).inside().category(KEYS_CATEGORY).active(canUseKeybinds);
+        this.keys().register(Keys.CLIP_SHIFT, this::shiftToCursor).inside().category(KEYS_CATEGORY).active(canUseKeybinds);
+        this.keys().register(Keys.CLIP_DURATION, this::shiftDurationToCursor).inside().category(KEYS_CATEGORY).active(canUseKeybinds);
+        this.keys().register(Keys.DELETE, this::removeSelected).inside().label(UIKeys.CAMERA_TIMELINE_CONTEXT_REMOVE_CLIPS).category(KEYS_CATEGORY).active(canUseKeybinds);
+        this.keys().register(Keys.CLIP_ENABLE, this::toggleEnabled).inside().category(KEYS_CATEGORY).active(canUseKeybinds);
+        this.keys().register(Keys.CLIP_SELECT_AFTER, this::selectAfter).inside().category(KEYS_CATEGORY).active(canUseKeybinds);
+        this.keys().register(Keys.CLIP_SELECT_BEFORE, this::selectBefore).inside().category(KEYS_CATEGORY).active(canUseKeybinds);
         this.keys().register(Keys.FADE_IN, () ->
         {
             Clip clip = this.delegate.getClip();
@@ -284,7 +290,7 @@ public class UIClips extends UIElement
 
             clip.envelope.fadeIn.set((float) tick);
             this.delegate.fillData();
-        }).category(KEYS_CATEGORY).active(canUseKeybindsSelected);
+        }).inside().category(KEYS_CATEGORY).active(canUseKeybindsSelected);
         this.keys().register(Keys.FADE_OUT, () ->
         {
             Clip clip = this.delegate.getClip();
@@ -292,7 +298,7 @@ public class UIClips extends UIElement
 
             clip.envelope.fadeOut.set((float) tick);
             this.delegate.fillData();
-        }).category(KEYS_CATEGORY).active(canUseKeybindsSelected);
+        }).inside().category(KEYS_CATEGORY).active(canUseKeybindsSelected);
     }
 
     public UIClipRenderers getRenderers()
