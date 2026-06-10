@@ -46,6 +46,9 @@ public class UITrackpad extends UIBaseTextbox
     });
 
     private static final DecimalFormat FORMAT;
+    private static final DecimalFormat FORMAT_2;
+    private static final DecimalFormat FORMAT_1;
+    private static final DecimalFormat FORMAT_0;
 
     public Consumer<Double> callback;
 
@@ -86,6 +89,21 @@ public class UITrackpad extends UIBaseTextbox
         FORMAT.setRoundingMode(RoundingMode.HALF_EVEN);
         FORMAT.setGroupingUsed(false);
         FORMAT.setDecimalFormatSymbols(new DecimalFormatSymbols(Locale.ENGLISH));
+
+        FORMAT_2 = new DecimalFormat("#.##");
+        FORMAT_2.setRoundingMode(RoundingMode.HALF_EVEN);
+        FORMAT_2.setGroupingUsed(false);
+        FORMAT_2.setDecimalFormatSymbols(new DecimalFormatSymbols(Locale.ENGLISH));
+
+        FORMAT_1 = new DecimalFormat("#.#");
+        FORMAT_1.setRoundingMode(RoundingMode.HALF_EVEN);
+        FORMAT_1.setGroupingUsed(false);
+        FORMAT_1.setDecimalFormatSymbols(new DecimalFormatSymbols(Locale.ENGLISH));
+
+        FORMAT_0 = new DecimalFormat("#");
+        FORMAT_0.setRoundingMode(RoundingMode.HALF_EVEN);
+        FORMAT_0.setGroupingUsed(false);
+        FORMAT_0.setDecimalFormatSymbols(new DecimalFormatSymbols(Locale.ENGLISH));
     }
 
     public static void updateAmplifier(UIContext context)
@@ -663,10 +681,8 @@ public class UITrackpad extends UIBaseTextbox
 
         boolean dragging = this.isDraggingTime();
         boolean hovered = this.area.isInside(context);
-        boolean hoverLeft = hovered && context.mouseX < this.area.mx();
-        boolean hoverRight = hovered && !hoverLeft;
-        boolean showMinusArrow = BBSSettings.enableTrackpadIncrements.get() && hoverLeft;
-        boolean showPlusArrow = BBSSettings.enableTrackpadIncrements.get() && hoverRight;
+        boolean showMinusArrow = BBSSettings.enableTrackpadIncrements.get() && hovered;
+        boolean showPlusArrow = BBSSettings.enableTrackpadIncrements.get() && hovered;
         boolean plus = !dragging && showPlusArrow && this.plusOne.isInside(context);
         boolean minus = !dragging && showMinusArrow && this.minusOne.isInside(context);
         int accent = 0xFF000000 | BBSSettings.primaryColor.get();
@@ -694,8 +710,16 @@ public class UITrackpad extends UIBaseTextbox
             /* Value label — centered, clipped so it never runs under the
                increment buttons. */
             FontRenderer font = context.batcher.getFont();
-            String raw = this.forcedLabel == null ? format(this.value) : this.forcedLabel.get();
-            int reserved = BBSSettings.enableTrackpadIncrements.get() ? this.minusOne.w + this.plusOne.w + 8 : 6;
+            int reserved = (showMinusArrow || showPlusArrow) ? this.minusOne.w + this.plusOne.w + 8 : 6;
+            String raw;
+            if (this.forcedLabel != null)
+            {
+                raw = this.forcedLabel.get();
+            }
+            else
+            {
+                raw = this.formatToFit(font, this.value, this.area.w - reserved);
+            }
             String label = font.limitToWidth(raw, this.area.w - reserved);
             int lx = this.area.mx(font.getWidth(label));
             int ly = this.area.my() - font.getHeight() / 2;
@@ -812,6 +836,44 @@ public class UITrackpad extends UIBaseTextbox
 
             context.batcher.box(bx, cy + i, bx + 2, cy + i + 1, color);
         }
+    }
+
+    private String formatToFit(FontRenderer font, double value, int maxWidth)
+    {
+        String raw = format(value);
+
+        if (font.getWidth(raw) <= maxWidth)
+        {
+            return raw;
+        }
+
+        if (this.integer)
+        {
+            return raw;
+        }
+
+        String raw2 = FORMAT_2.format(value).replace(',', '.');
+
+        if (font.getWidth(raw2) <= maxWidth)
+        {
+            return raw2;
+        }
+
+        String raw1 = FORMAT_1.format(value).replace(',', '.');
+
+        if (font.getWidth(raw1) <= maxWidth)
+        {
+            return raw1;
+        }
+
+        String raw0 = FORMAT_0.format(value).replace(',', '.');
+
+        if (raw0.isEmpty())
+        {
+            raw0 = "0";
+        }
+
+        return raw0;
     }
 
     public double getValueModifier()
