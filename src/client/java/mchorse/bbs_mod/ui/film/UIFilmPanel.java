@@ -1197,7 +1197,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                 /* Every docked window reserves a card title bar at the top (unless the layout is
                    locked). Tabbed panels use the tab bar (setupTabBars) as their header; the rest
                    get a card header drawn by renderDockedPanelHeaders. */
-                el.relative(this.editor).x(b[0]).y(b[1], headerInset).w(b[2]).h(b[3], -headerInset);
+                el.relative(this.editor).x(b[0], 3).y(b[1], headerInset + 3).w(b[2], -6).h(b[3], -headerInset - 6);
                 el.setVisible(!this.collapsedDockedPanels.contains(id));
 
                 if (this.hiddenPanels.contains(id))
@@ -1262,7 +1262,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             {
                 float[] b = e.getValue();
                 /* The drag handle covers the whole card title bar. */
-                h.relative(this.editor).x(b[0]).y(b[1]).w(b[2]).h(0F, PANEL_HEADER_HEIGHT);
+                h.relative(this.editor).x(b[0], 3).y(b[1], 3).w(b[2], -6).h(0F, PANEL_HEADER_HEIGHT);
                 h.setVisible(!BBSSettings.editorLayoutSettings.isLayoutLocked() && !this.usesPanelInternalDragHandle(id));
             }
         }
@@ -2201,49 +2201,76 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             return;
         }
 
-        for (String panelId : this.dockedHeaderPanels)
+        int borderColor = 0xFF323232;
+        boolean locked = BBSSettings.editorLayoutSettings.isLayoutLocked();
+
+        if (locked)
         {
-            UIElement el = this.panelById.get(panelId);
-
-            if (el == null)
+            for (Map.Entry<String, UIElement> entry : this.panelById.entrySet())
             {
-                continue;
-            }
+                String panelId = entry.getKey();
+                UIElement el = entry.getValue();
 
-            int x = el.area.x;
-            int ex = el.area.ex();
-            int y = el.area.y - PANEL_HEADER_HEIGHT;
-            boolean collapsed = this.collapsedDockedPanels.contains(panelId);
-            int ey = collapsed ? el.area.y : el.area.ey();
+                if (el == null || !el.isVisible() || this.floatingPanels.contains(panelId) || this.hiddenPanels.contains(panelId))
+                {
+                    continue;
+                }
 
-            context.batcher.outline(x - 1, y - 1, ex + 1, ey + 1, 0xFF444444);
+                int x = el.area.x;
+                int ex = el.area.ex();
+                int y = el.area.y;
+                int ey = el.area.ey();
 
-            if (!collapsed)
-            {
-                context.batcher.box(x, el.area.y, ex, ey, 0xCE111115);
+                context.batcher.outline(x - 1, y - 1, ex + 1, ey + 1, borderColor);
+                context.batcher.box(x, y, ex, ey, 0xFF111115);
             }
         }
-
-        for (UITabBar tabBar : this.tabBars)
+        else
         {
-            if (!tabBar.isVisible())
+            for (String panelId : this.dockedHeaderPanels)
             {
-                continue;
+                UIElement el = this.panelById.get(panelId);
+
+                if (el == null)
+                {
+                    continue;
+                }
+
+                int x = el.area.x;
+                int ex = el.area.ex();
+                int y = el.area.y - PANEL_HEADER_HEIGHT;
+                boolean collapsed = this.collapsedDockedPanels.contains(panelId);
+                int ey = collapsed ? el.area.y : el.area.ey();
+
+                context.batcher.outline(x - 1, y - 1, ex + 1, ey + 1, borderColor);
+
+                if (!collapsed)
+                {
+                    context.batcher.box(x, el.area.y, ex, ey, 0xFF111115);
+                }
             }
 
-            UIElement active = tabBar.getActivePanel();
-            if (active == null || !active.isVisible())
+            for (UITabBar tabBar : this.tabBars)
             {
-                continue;
+                if (!tabBar.isVisible())
+                {
+                    continue;
+                }
+
+                UIElement active = tabBar.getActivePanel();
+                if (active == null || !active.isVisible())
+                {
+                    continue;
+                }
+
+                int x = active.area.x;
+                int ex = active.area.ex();
+                int y = tabBar.area.y;
+                int ey = active.area.ey();
+
+                context.batcher.outline(x - 1, y - 1, ex + 1, ey + 1, borderColor);
+                context.batcher.box(x, active.area.y, ex, ey, 0xFF111115);
             }
-
-            int x = active.area.x;
-            int ex = active.area.ex();
-            int y = tabBar.area.y;
-            int ey = active.area.ey();
-
-            context.batcher.outline(x - 1, y - 1, ex + 1, ey + 1, 0xFF444444);
-            context.batcher.box(x, active.area.y, ex, ey, 0xCE111115);
         }
     }
 
@@ -2282,7 +2309,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             int w = size.x;
             int h = collapsed ? PANEL_HEADER_HEIGHT : size.y;
 
-            context.batcher.outline(x - 1, y - 1, x + w + 1, y + h + 1, 0xFF444444);
+            context.batcher.outline(x - 1, y - 1, x + w + 1, y + h + 1, 0xFF5A5A5A);
 
             if (!collapsed)
             {
@@ -4069,6 +4096,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         this.area.render(context.batcher, 0xFF141418);
 
+        if (!this.showingHomePage && this.editor.isVisible())
+        {
+            this.editor.area.render(context.batcher, 0xFF202020);
+        }
+
         if (this.editor.isVisible() && this.preview.isVisible())
         {
             this.preview.area.render(context.batcher, Colors.A75);
@@ -5098,7 +5130,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                        the whole bounds with no header inset. */
                     int headerInset = locked ? 0 : PANEL_HEADER_HEIGHT;
 
-                    tabBar.relative(this.editor).x(b[0]).y(b[1]).w(b[2]).h(0F, PANEL_HEADER_HEIGHT);
+                    tabBar.relative(this.editor).x(b[0], 3).y(b[1], 3).w(b[2], -6).h(0F, PANEL_HEADER_HEIGHT);
                     tabBar.setVisible(!locked);
 
                     for (EditorLayoutNode tab : tabbed.tabs)
@@ -5109,7 +5141,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                             UIElement el = this.panelById.get(panelId);
                             if (el != null)
                             {
-                                el.relative(this.editor).x(b[0]).y(b[1], headerInset).w(b[2]).h(b[3], -headerInset);
+                                el.relative(this.editor).x(b[0], 3).y(b[1], headerInset + 3).w(b[2], -6).h(b[3], -headerInset - 6);
                                 boolean isActive = tab == activeNode && !this.hiddenPanels.contains(panelId);
                                 el.setVisible(isActive);
                                 
@@ -5130,7 +5162,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                                     handle.setVisible(visibleHandle);
                                     if (visibleHandle)
                                     {
-                                        handle.relative(this.editor).x(b[0]).y(b[1]).w(b[2]).h(0F, PANEL_HEADER_HEIGHT);
+                                        handle.relative(this.editor).x(b[0], 3).y(b[1], 3).w(b[2], -6).h(0F, PANEL_HEADER_HEIGHT);
                                     }
                                 }
                             }
