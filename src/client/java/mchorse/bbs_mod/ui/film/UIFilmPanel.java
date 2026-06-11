@@ -3899,6 +3899,13 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     public void refreshAfterUndo()
     {
+        double cameraScroll = this.cameraEditor.clips.vertical.getScroll();
+        double cameraShift = this.cameraEditor.clips.scale.getShift();
+        double cameraZoom = this.cameraEditor.clips.scale.getZoom();
+        double actionScroll = this.actionEditor.clips.vertical.getScroll();
+        double actionShift = this.actionEditor.clips.scale.getShift();
+        double actionZoom = this.actionEditor.clips.scale.getZoom();
+
         this.runner.setWork(this.data.camera);
         this.cameraEditor.setClips(this.data.camera);
 
@@ -3916,6 +3923,15 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.controller.createEntities();
         this.syncAnchoredReplaysPanelWithFilm();
         this.resize();
+
+        this.restoreClipsView(this.cameraEditor, cameraScroll, cameraShift, cameraZoom);
+        this.restoreClipsView(this.actionEditor, actionScroll, actionShift, actionZoom);
+    }
+
+    private void restoreClipsView(UIClipsPanel panel, double scroll, double shift, double zoom)
+    {
+        panel.clips.vertical.setScroll(scroll);
+        panel.clips.scale.set(shift, zoom);
     }
 
     @Override
