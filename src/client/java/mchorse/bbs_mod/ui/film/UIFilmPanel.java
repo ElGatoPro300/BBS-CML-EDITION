@@ -741,8 +741,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.keys().register(Keys.PREV_CLIP, () -> this.setCursor(this.data.camera.findPreviousTick(this.getCursor()))).active(active).category(editor);
         this.keys().register(Keys.NEXT, () -> this.setCursor(this.getCursor() + 1)).active(active).category(editor);
         this.keys().register(Keys.PREV, () -> this.setCursor(this.getCursor() - 1)).active(active).category(editor);
-        this.keys().register(Keys.UNDO, this::undo).active(active).category(editor);
-        this.keys().register(Keys.REDO, this::redo).active(active).category(editor);
+        this.keys().register(Keys.UNDO, this::undo).active(() -> this.data != null).category(editor);
+        this.keys().register(Keys.REDO, this::redo).active(() -> this.data != null).category(editor);
         this.keys().register(Keys.FLIGHT, this::toggleFlight).active(() -> this.data != null).category(modes);
         this.keys().register(Keys.LOOPING, () ->
         {
@@ -3871,12 +3871,51 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     public void undo()
     {
-        if (this.data != null && this.undoHandler.undo(this.data)) UIUtils.playClick();
+        if (this.data != null)
+        {
+            this.undoHandler.submitUndo();
+
+            if (this.undoHandler.undo(this.data))
+            {
+                this.refreshAfterUndo();
+                UIUtils.playClick();
+            }
+        }
     }
 
     public void redo()
     {
-        if (this.data != null && this.undoHandler.redo(this.data)) UIUtils.playClick();
+        if (this.data != null)
+        {
+            this.undoHandler.submitUndo();
+
+            if (this.undoHandler.redo(this.data))
+            {
+                this.refreshAfterUndo();
+                UIUtils.playClick();
+            }
+        }
+    }
+
+    public void refreshAfterUndo()
+    {
+        this.runner.setWork(this.data.camera);
+        this.cameraEditor.setClips(this.data.camera);
+
+        Replay replay = this.replayEditor.getReplay();
+
+        if (replay != null && !this.data.replays.getList().contains(replay))
+        {
+            replay = null;
+        }
+
+        this.replayEditor.setFilm(this.data);
+        this.replayEditor.setReplay(replay, true, false);
+        this.actionEditor.setClips(replay == null ? null : replay.actions);
+        this.fillData();
+        this.controller.createEntities();
+        this.syncAnchoredReplaysPanelWithFilm();
+        this.resize();
     }
 
     @Override
