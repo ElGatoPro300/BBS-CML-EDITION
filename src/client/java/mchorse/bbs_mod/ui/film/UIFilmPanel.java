@@ -14,6 +14,7 @@ import mchorse.bbs_mod.camera.data.Position;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.client.renderer.MorphRenderer;
 import mchorse.bbs_mod.client.video.VideoRenderer;
+import mchorse.bbs_mod.data.DataToString;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.events.register.RegisterFilmEditorFactoriesEvent;
@@ -236,6 +237,18 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private static final String PRESET_REPLAYS_PANEL_WIDTH = "replays_panel_width";
     private static final String PRESET_REPLAYS_PANEL_HEIGHT = "replays_panel_height";
     private static final String PRESET_REPLAYS_PANEL_DOCKED_LAYOUT = "replays_panel_docked_layout";
+    private static final String[] LEGACY_LAYOUT_PRESETS = {
+        "Horizontal (Bottom)",
+        "Horizontal (Top)",
+        "Vertical (Left)",
+        "Vertical (Middle)",
+        "Vertical (Right)"
+    };
+    private static final String[][] DEFAULT_LAYOUT_PRESETS = {
+        {"Premiere Style", "premiere_style"},
+        {"Horizontal (simplified)", "horizontal_simplified"},
+        {"Vertical (simplified)", "vertical_simplified"}
+    };
     private String draggingPanelId;
     private String dropTargetPanelId;
     private int dropTargetZone = DROP_ZONE_CENTER;
@@ -2208,44 +2221,56 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     }
 
     /**
-     * Seed the built-in editor layouts as real, file-backed presets so they show up in the
-     * presets overlay just like user-saved layouts. Each one is only written if it doesn't
-     * already exist, so user edits (or deletions during a session) aren't clobbered.
+     * Seed the editor layouts as real, file-backed presets so they show up in the presets
+     * overlay just like user-saved layouts.
      */
     private void ensureDefaultLayoutPresets()
     {
-        this.ensureDefaultLayoutPreset("Horizontal (Bottom)", ValueEditorLayout.LAYOUT_HORIZONTAL_BOTTOM);
-        this.ensureDefaultLayoutPreset("Horizontal (Top)", ValueEditorLayout.LAYOUT_HORIZONTAL_TOP);
-        this.ensureDefaultLayoutPreset("Vertical (Left)", ValueEditorLayout.LAYOUT_VERTICAL_LEFT);
-        this.ensureDefaultLayoutPreset("Vertical (Middle)", ValueEditorLayout.LAYOUT_VERTICAL_MIDDLE);
-        this.ensureDefaultLayoutPreset("Vertical (Right)", ValueEditorLayout.LAYOUT_VERTICAL_RIGHT);
+        this.deleteLegacyLayoutPresets();
+
+        for (String[] preset : DEFAULT_LAYOUT_PRESETS)
+        {
+            this.ensureDefaultLayoutPreset(preset[0], preset[1]);
+        }
     }
 
-    private void ensureDefaultLayoutPreset(String id, int layoutId)
+    private void deleteLegacyLayoutPresets()
     {
-        if (PresetManager.LAYOUTS.exists(id))
+        for (String id : LEGACY_LAYOUT_PRESETS)
         {
-            return;
+            PresetManager.LAYOUTS.delete(id);
+        }
+    }
+
+    private void ensureDefaultLayoutPreset(String id, String resource)
+    {
+        MapType data = this.loadDefaultLayoutPreset(resource);
+
+        if (data != null)
+        {
+            PresetManager.LAYOUTS.save(id, data);
+        }
+    }
+
+    private MapType loadDefaultLayoutPreset(String resource)
+    {
+        try (InputStream stream = UIFilmPanel.class.getResourceAsStream("/assets/bbs/layout_presets/" + resource + ".json"))
+        {
+            if (stream == null)
+            {
+                return null;
+            }
+
+            BaseType data = DataToString.fromString(new String(stream.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8));
+
+            return data != null && data.isMap() ? data.asMap() : null;
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
         }
 
-        PresetManager.LAYOUTS.save(id, this.buildLayoutPresetData(layoutId));
-    }
-
-    private MapType buildLayoutPresetData(int layoutId)
-    {
-        /* Build the docked tree for the requested built-in arrangement without touching the
-           live editor layout. A built-in preset only carries the panel tree — no video
-           settings — so selecting it rearranges windows without changing resolution/FPS. */
-        ValueEditorLayout temp = new ValueEditorLayout("temp");
-
-        temp.setLayout(layoutId);
-
-        EditorLayoutNode root = temp.buildFilmLayoutFromLegacyState();
-        MapType data = new MapType();
-
-        data.put("film_layout", (root == null ? EditorLayoutNode.defaultFilmLayout() : root).toData());
-
-        return data;
+        return null;
     }
 
     public void applyLayoutPreset(int layoutId)
