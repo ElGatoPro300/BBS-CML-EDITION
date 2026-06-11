@@ -2457,11 +2457,27 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         int color = hovered ? (0xFF000000 | BBSSettings.primaryColor.get()) : 0xFFFFFFFF;
         int textY = y + (h - context.batcher.getFont().getHeight()) / 2;
 
-        context.batcher.icon(this.getPanelIcon(panelId), color, x + 11, y + h / 2, 0.5F, 0.5F);
-        context.batcher.text(this.getPanelTitle(panelId).get(), x + 22, textY, color);
+        if (ex - x >= 18)
+        {
+            context.batcher.icon(this.getPanelIcon(panelId), color, x + 11, y + h / 2, 0.5F, 0.5F);
+        }
+
+        int titleX = x + 22;
+        int titleW = ex - titleX - 22;
+
+        if (titleW > 4)
+        {
+            String title = context.batcher.getFont().limitToWidth(this.getPanelTitle(panelId).get(), titleW);
+
+            context.batcher.text(title, titleX, textY, color);
+        }
 
         Icon chevronIcon = collapsed ? Icons.COLLAPSED : Icons.UNCOLLAPSED;
-        context.batcher.icon(chevronIcon, color, ex - 11, y + h / 2, 0.5F, 0.5F);
+
+        if (ex - x >= 28)
+        {
+            context.batcher.icon(chevronIcon, color, ex - 11, y + h / 2, 0.5F, 0.5F);
+        }
     }
 
     private int resolveDropZone(Area area, int mouseX, int mouseY)
@@ -5282,12 +5298,12 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                     tabBarIndex++;
 
                     boolean locked = BBSSettings.editorLayoutSettings.isLayoutLocked();
-                    /* When locked, the window bars (tab strips) are hidden and the active tab fills
-                       the whole bounds with no header inset. */
-                    int headerInset = locked ? 0 : PANEL_HEADER_HEIGHT;
+                    /* Tab strips stay visible when the layout is locked so docked panels can still
+                       be switched. Locking only disables dragging/resizing, not tab selection. */
+                    int headerInset = PANEL_HEADER_HEIGHT;
 
                     tabBar.relative(this.editor).x(b[0], 3).y(b[1], 3).w(b[2], -6).h(0F, PANEL_HEADER_HEIGHT);
-                    tabBar.setVisible(!locked);
+                    tabBar.setVisible(true);
 
                     for (EditorLayoutNode tab : tabbed.tabs)
                     {
@@ -5436,6 +5452,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     {
         private UIFilmPanel panel;
         private EditorLayoutNode.TabbedNode tabbedNode;
+        private int scroll;
+        private int totalWidth;
 
         public UITabBar(UIFilmPanel panel, EditorLayoutNode.TabbedNode tabbedNode)
         {
@@ -5457,7 +5475,18 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         @Override
         public void render(UIContext context)
         {
-            int x = this.area.x;
+            this.layoutTabs(context);
+
+            context.batcher.clip(this.area, context);
+            super.render(context);
+            context.batcher.unclip(context);
+        }
+
+        private void layoutTabs(UIContext context)
+        {
+            int x = this.area.x - this.scroll;
+            int total = 0;
+
             for (IUIElement child : this.getChildren())
             {
                 if (child instanceof UITab)
@@ -5481,9 +5510,17 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                     int w = 22 + context.batcher.getFont().getWidth(nameKey.get()) + 8;
                     tab.area.w = w;
                     x += w;
+                    total += w;
                 }
             }
-            super.render(context);
+
+            this.totalWidth = total;
+            this.clampScroll();
+        }
+
+        private void clampScroll()
+        {
+            this.scroll = MathUtils.clamp(this.scroll, 0, Math.max(0, this.totalWidth - this.area.w));
         }
 
         public UIElement getActivePanel()
@@ -5497,6 +5534,48 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             }
 
             return null;
+        }
+
+        @Override
+        protected IUIElement childrenMouseClicked(UIContext context)
+        {
+            return this.area.isInside(context) ? super.childrenMouseClicked(context) : null;
+        }
+
+        @Override
+        protected IUIElement childrenMouseScrolled(UIContext context)
+        {
+            return this.area.isInside(context) ? super.childrenMouseScrolled(context) : null;
+        }
+
+        @Override
+        protected boolean subMouseScrolled(UIContext context)
+        {
+            if (!this.area.isInside(context) || this.totalWidth <= this.area.w)
+            {
+                return false;
+            }
+
+            double wheel = context.mouseWheelHorizontal != 0D ? context.mouseWheelHorizontal : context.mouseWheel;
+
+            if (wheel == 0D)
+            {
+                return false;
+            }
+
+            int lastScroll = this.scroll;
+
+            this.scroll -= (int) Math.copySign(24, wheel);
+            this.clampScroll();
+
+            if (lastScroll != this.scroll)
+            {
+                context.markUpdateScroll();
+
+                return true;
+            }
+
+            return false;
         }
     }
 
@@ -5546,7 +5625,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             }
             
             boolean active = this.tabbedNode.activeTab == this.index;
-            boolean hovered = this.area.isInside(context);
+            boolean hovered = this.getParent() != null && this.getParent().area.isInside(context) && this.area.isInside(context);
             if (active)
             {
                 context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xFF1D1D1D);
@@ -5573,9 +5652,19 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
             int color = hovered || active ? (0xFF000000 | BBSSettings.primaryColor.get()) : 0xFFFFFFFF;
             int textY = this.area.y + (this.area.h - context.batcher.getFont().getHeight()) / 2;
+            int visibleRight = this.getParent() == null ? this.area.ex() : Math.min(this.area.ex(), this.getParent().area.ex());
+            int textX = this.area.x + 22;
+            int textW = visibleRight - textX - 4;
 
-            context.batcher.icon(icon, color, this.area.x + 11, this.area.y + this.area.h / 2, 0.5F, 0.5F);
-            context.batcher.text(name.get(), this.area.x + 22, textY, color);
+            if (this.area.x + 18 <= visibleRight)
+            {
+                context.batcher.icon(icon, color, this.area.x + 11, this.area.y + this.area.h / 2, 0.5F, 0.5F);
+            }
+
+            if (textW > 4)
+            {
+                context.batcher.text(context.batcher.getFont().limitToWidth(name.get(), textW), textX, textY, color);
+            }
 
             this.area.w = 22 + context.batcher.getFont().getWidth(name.get()) + 8;
 
