@@ -4507,23 +4507,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     }
 
     /**
-     * Draw icons for indicating different active states (like syncing
-     * or flight mode)
+     * Draw icons for indicating different active states.
      */
     private void renderIcons(UIContext context)
     {
-        if (this.showingHomePage)
-        {
-            return;
-        }
-
-        int x = this.iconBar.area.ex() - 18;
-        int y = this.iconBar.area.ey() - 18;
-
-        if (BBSSettings.editorLoop.get())
-        {
-            context.batcher.icon(Icons.REFRESH, x, y);
-        }
+        /* No global status icons are currently rendered here. */
     }
 
     @Override
