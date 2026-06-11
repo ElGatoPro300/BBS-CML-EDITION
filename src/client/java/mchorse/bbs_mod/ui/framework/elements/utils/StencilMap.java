@@ -64,6 +64,16 @@ public class StencilMap
         }
     }
 
+    public void addPicking(int index, Form form, String bone)
+    {
+        this.indexMap.put(index, new Pair<>(form, bone));
+
+        if (this.increment)
+        {
+            this.objectIndex = Math.max(this.objectIndex, index + 1);
+        }
+    }
+
     public boolean isBoneAllowed(String bone)
     {
         return this.allowedBones == null || this.allowedBones.contains(bone);
