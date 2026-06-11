@@ -42,14 +42,29 @@ public abstract class EditorLayoutNode
     public static EditorLayoutNode defaultFilmLayout()
     {
         return new SplitterNode(
-            false,
-            0.66F,
-            new PanelNode("main"),
+            true,
+            0.5F,
             new SplitterNode(
-                true,
-                0.5F,
-                new PanelNode("preview"),
-                new PanelNode("editArea")
+                false,
+                0.33F,
+                new PanelNode("editArea"),
+                new SplitterNode(
+                    false,
+                    0.5F,
+                    new PanelNode("replayTimeline"),
+                    new PanelNode("preview")
+                )
+            ),
+            new SplitterNode(
+                false,
+                0.33F,
+                new PanelNode("cameraEditArea"),
+                new SplitterNode(
+                    false,
+                    0.5F,
+                    new PanelNode("cameraTimeline"),
+                    new PanelNode("actionTimeline")
+                )
             )
         );
     }

@@ -207,7 +207,7 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
 
         this.icons.add(this.addReplay, this.dupeReplay, this.removeReplay);
 
-        this.keys().register(Keys.REPLAYS_REMOVE, () -> this.replays.removeReplay())
+        this.keys().register(Keys.REPLAYS_REMOVE, () -> this.replays.removeReplay()).inside()
             .active(() -> !this.replays.getCurrent().isEmpty());
 
         /* Item drop velocity configuration */
