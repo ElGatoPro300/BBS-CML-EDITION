@@ -158,18 +158,19 @@ public class UIFormPalette extends UIElement implements IUIFormList
 
         if (!this.editor.isEditing())
         {
-            Form form = this.list.getSelected();
+            UIFormCategory selected = this.list.getSelectedCategory();
+            Form form = selected == null ? null : selected.selected;
 
             if (this.editor.edit(form))
             {
-                this.lastSelected = this.list.getSelectedCategory();
+                this.lastSelected = selected;
             }
         }
         else
         {
             Form form = this.editor.finish();
 
-            if (this.canModify && this.lastSelected.category.canModify(form))
+            if (this.canModify && this.lastSelected != null && this.lastSelected.category != null && this.lastSelected.category.canModify(form))
             {
                 int index = this.lastSelected.category.getForms().indexOf(this.lastSelected.selected);
 
