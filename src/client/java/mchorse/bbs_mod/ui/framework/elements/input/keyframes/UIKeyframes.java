@@ -53,6 +53,8 @@ import java.util.function.Supplier;
 
 public class UIKeyframes extends UIElement
 {
+    private static final int RULER_HEIGHT = 16;
+
     /* Editing states */
 
     private boolean selecting;
@@ -1369,7 +1371,9 @@ public class UIKeyframes extends UIElement
      */
     protected void renderBackground(UIContext context)
     {
-        this.area.render(context.batcher, Colors.A50);
+        context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xee0b0d12);
+        context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.y + RULER_HEIGHT, 0xff111115);
+        context.batcher.box(this.area.x, this.area.y + RULER_HEIGHT - 1, this.area.ex(), this.area.y + RULER_HEIGHT, 0x44ffffff);
 
         int duration = this.getDuration();
 
@@ -1379,8 +1383,8 @@ public class UIKeyframes extends UIElement
             int rightBorder = this.toGraphX(duration);
             int sidebarX = this.area.x + (this.currentGraph instanceof UIKeyframeDopeSheet ? this.currentGraph.getSidebarWidth() : 0);
 
-            if (leftBorder > sidebarX) context.batcher.box(sidebarX, this.area.y, Math.min(this.area.ex(), leftBorder), this.area.y + this.area.h, Colors.A50);
-            if (rightBorder < this.area.ex()) context.batcher.box(Math.max(sidebarX, rightBorder), this.area.y, this.area.ex() , this.area.y + this.area.h, Colors.A50);
+            if (leftBorder > sidebarX) context.batcher.box(sidebarX, this.area.y, Math.min(this.area.ex(), leftBorder), this.area.y + this.area.h, 0x9905070b);
+            if (rightBorder < this.area.ex()) context.batcher.box(Math.max(sidebarX, rightBorder), this.area.y, this.area.ex() , this.area.y + this.area.h, 0x9905070b);
         }
 
         if (this.backgroundRender != null)
