@@ -31,6 +31,7 @@ import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.Scale;
 import mchorse.bbs_mod.ui.utils.Scroll;
 import mchorse.bbs_mod.ui.utils.ScrollDirection;
+import mchorse.bbs_mod.ui.utils.TimelineRuler;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.context.ColorfulContextAction;
@@ -73,6 +74,7 @@ public class UIClips extends UIElement
 
     private static final int MARGIN = 10;
     private static final int LAYER_HEIGHT = 20;
+    private static final int RULER_HEIGHT = 16;
 
     private static final Area CLIP_AREA = new Area();
 
@@ -934,7 +936,7 @@ public class UIClips extends UIElement
     {
         int bottom = this.area.ey() - MARGIN;
 
-        if (mouseY > bottom)
+        if (mouseY < this.area.y + RULER_HEIGHT || mouseY > bottom)
         {
             return -1;
         }
@@ -1048,7 +1050,8 @@ public class UIClips extends UIElement
         super.afterResizeApplied();
 
         this.vertical.area.copy(this.area);
-        this.vertical.area.h -= MARGIN;
+        this.vertical.area.y += RULER_HEIGHT;
+        this.vertical.area.h -= RULER_HEIGHT + MARGIN;
     }
 
     public void updateScrollSize()
@@ -1140,8 +1143,7 @@ public class UIClips extends UIElement
 
                 if (BBSSettings.editorSnapToMarkers.get())
                 {
-                    /* TODO: generalize this code. Check also other places getMult() */
-                    int mult = this.scale.getMult() * 2;
+                    int mult = TimelineRuler.steps(this.scale).minor;
                     int start = (int) this.scale.getMinValue();
                     int end = (int) this.scale.getMaxValue();
                     int max = Integer.MAX_VALUE;
@@ -1631,28 +1633,26 @@ public class UIClips extends UIElement
         int h = LAYER_HEIGHT;
         int leftEdge = this.toGraphX(0);
 
+        this.renderTimelineBackground(context, leftEdge, h);
+
         if (leftEdge > this.area.x)
         {
-            batcher.box(this.area.x, this.area.y, Math.min(leftEdge, this.area.ex()), this.area.ey(), Colors.A75);
+            batcher.box(this.area.x, this.area.y, Math.min(leftEdge, this.area.ex()), this.area.ey(), 0x9905070b);
         }
 
-        area.render(batcher, Colors.A50);
+        batcher.clip(this.area, context);
+
+        this.renderTickMarkers(context, area.y, area.h);
+
+        batcher.unclip(context);
         batcher.clip(this.vertical.area, context);
 
         for (int i = 0; i < this.layers; i++)
         {
             int ly = this.toLayerY(i);
 
-            if (i % 2 != 0)
-            {
-                batcher.box(leftEdge, ly, this.area.ex(), ly + h, Colors.A50);
-            }
+            batcher.box(this.area.x, ly + h - 1, this.area.ex(), ly + h, 0x16000000);
         }
-
-        batcher.unclip(context);
-        batcher.clip(this.area, context);
-
-        this.renderTickMarkers(context, area.y, area.h);
 
         batcher.unclip(context);
         batcher.clip(this.vertical.area, context);
@@ -1703,6 +1703,29 @@ public class UIClips extends UIElement
         batcher.clip(this.vertical.area, context);
 
         this.vertical.renderScrollbar(batcher);
+
+        batcher.unclip(context);
+    }
+
+    private void renderTimelineBackground(UIContext context, int leftEdge, int h)
+    {
+        Batcher2D batcher = context.batcher;
+
+        batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xee0b0d12);
+        batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.y + RULER_HEIGHT, 0xff111115);
+        batcher.box(this.area.x, this.area.y + RULER_HEIGHT - 1, this.area.ex(), this.area.y + RULER_HEIGHT, 0x44ffffff);
+
+        batcher.clip(this.vertical.area, context);
+
+        for (int i = 0; i < this.layers; i++)
+        {
+            int ly = this.toLayerY(i);
+
+            if (i % 2 != 0)
+            {
+                batcher.box(Math.max(leftEdge, this.area.x), ly, this.area.ex(), ly + h, 0x26000000);
+            }
+        }
 
         batcher.unclip(context);
     }
@@ -1765,10 +1788,12 @@ public class UIClips extends UIElement
      */
     private void renderTickMarkers(UIContext context, int y, int h)
     {
-        int mult = this.scale.getMult() * 2;
+        TimelineRuler.Step step = TimelineRuler.steps(this.scale);
+        int mult = step.minor;
         int start = (int) this.scale.getMinValue();
         int end = (int) this.scale.getMaxValue();
         int max = Integer.MAX_VALUE;
+        int major = step.major;
 
         start -= start % mult;
         end -= end % mult;
@@ -1779,10 +1804,20 @@ public class UIClips extends UIElement
         for (int j = start; j <= end; j += mult)
         {
             int xx = this.toGraphX(j);
-            String value = TimeUtils.formatTime(j);
+            boolean majorTick = j % major == 0;
+            int lineColor = majorTick ? 0x44ffffff : 0x18ffffff;
+            int tickBottom = this.area.y + RULER_HEIGHT;
+            int tickHeight = majorTick ? 8 : 4;
 
-            context.batcher.box(xx, y, xx + 1, y + h, Colors.setA(Colors.WHITE, 0.2F));
-            context.batcher.textShadow(value, xx + 3, this.area.y + 4, Colors.WHITE);
+            context.batcher.box(xx, y, xx + 1, y + h, lineColor);
+            context.batcher.box(xx, tickBottom - tickHeight, xx + 1, tickBottom, majorTick ? 0xddffffff : 0x77ffffff);
+
+            if (majorTick)
+            {
+                String value = TimeUtils.formatTime(j);
+
+                context.batcher.textShadow(value, xx + 4, this.area.y + 2, Colors.WHITE);
+            }
         }
     }
 
