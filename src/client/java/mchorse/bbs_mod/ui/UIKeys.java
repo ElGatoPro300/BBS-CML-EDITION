@@ -5,6 +5,7 @@ import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.l10n.keys.KeyCollection;
 import mchorse.bbs_mod.particles.ParticleCurveType;
+import mchorse.bbs_mod.particles.components.appearance.CameraFacing;
 import mchorse.bbs_mod.utils.EnumUtils;
 import mchorse.bbs_mod.utils.interps.Interpolations;
 
@@ -1227,6 +1228,7 @@ public class UIKeys
     public static final IKey SNOWSTORM_EXPIRATION_MAX_TOOLTIP = L10n.lang("bbs.ui.snowstorm.expiration.max_tooltip");
     public static final IKey SNOWSTORM_EXPIRATION_TITLE = L10n.lang("bbs.ui.snowstorm.expiration.title");
     public static final IKey SNOWSTORM_EXPRESSION = L10n.lang("bbs.ui.snowstorm.expression");
+    public static final IKey SNOWSTORM_GENERAL_FACING = L10n.lang("bbs.ui.snowstorm.general.facing");
     public static final IKey SNOWSTORM_GENERAL_IDENTIFIER = L10n.lang("bbs.ui.snowstorm.general.identifier");
     public static final IKey SNOWSTORM_GENERAL_PARTICLES_ALPHA = L10n.lang("bbs.ui.snowstorm.general.particles_alpha");
     public static final IKey SNOWSTORM_GENERAL_PARTICLES_BLEND = L10n.lang("bbs.ui.snowstorm.general.particles_blend");
@@ -1750,6 +1752,8 @@ public class UIKeys
         .load(BBSMod.getFactoryCameraClips().getStringKeys())
         .load(BBSMod.getFactoryActionClips().getStringKeys());
 
+    public static final KeyCollection C_CAMERA_FACING = new KeyCollection("bbs.ui.snowstorm.general.facing.^")
+        .load(EnumUtils.getKeys(CameraFacing.class, (c) -> c.id));
     public static final KeyCollection C_CURVE_TYPE = new KeyCollection("bbs.ui.snowstorm.curves.types.^")
         .load(EnumUtils.getKeys(ParticleCurveType.class, (c) -> c.id));
     public static final KeyCollection C_INTERPOLATION = new KeyCollection("interpolations.^")
