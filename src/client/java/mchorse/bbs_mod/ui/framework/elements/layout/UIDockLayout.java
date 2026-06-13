@@ -3,6 +3,7 @@ package mchorse.bbs_mod.ui.framework.elements.layout;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.settings.values.ui.EditorLayoutNode;
+import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanels;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIDraggable;
@@ -10,6 +11,7 @@ import mchorse.bbs_mod.ui.framework.elements.utils.UIRenderable;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
+import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
 
@@ -1381,10 +1383,8 @@ public class UIDockLayout extends UIElement
 
                 if (active)
                 {
-                    int color = BBSSettings.primaryColor.get();
-
-                    context.batcher.box(x, ey - 2, ex, ey, Colors.A100 | color);
-                    context.batcher.gradientVBox(x, y, ex, ey - 2, color, Colors.A75 | color);
+                    Area.SHARED.set(x, y, ex - x, ey - y);
+                    UIDashboardPanels.renderHighlight(context.batcher, Area.SHARED, Direction.BOTTOM);
                 }
 
                 context.batcher.icon(icon, Colors.WHITE, (x + ex) / 2, (y + ey) / 2, 0.5F, 0.5F);
