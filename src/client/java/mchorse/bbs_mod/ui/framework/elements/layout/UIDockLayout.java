@@ -241,6 +241,12 @@ public class UIDockLayout extends UIElement
         this.refresh();
     }
 
+    /** Current layout tree (with all required panels ensured), e.g. for serializing into a preset. */
+    public EditorLayoutNode getLayoutRoot()
+    {
+        return this.ensureFn.apply(this.layoutRoot());
+    }
+
     public void applyLayoutRoot(EditorLayoutNode root)
     {
         if (root != null)

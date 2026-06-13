@@ -4,6 +4,7 @@ import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.data.DataToString;
+import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.settings.values.ui.EditorLayoutNode;
@@ -234,15 +235,15 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
         });
         presets.tooltip(UIKeys.FILM_LAYOUT_PRESETS, Direction.LEFT);
 
-        UIIcon lock = new UIIcon(() -> this.dock.isLocked() ? Icons.LOCKED : Icons.UNLOCKED, (b) -> this.dock.toggleLock());
-        lock.tooltip(() -> (this.dock.isLocked() ? UIKeys.FILM_LAYOUT_UNLOCK : UIKeys.FILM_LAYOUT_LOCK).get(), Direction.LEFT);
-
-        UIIcon resetLayout = new UIIcon(Icons.REFRESH, (b) -> this.dock.resetLayout());
+        UIIcon resetLayout = new UIIcon(Icons.ALL_DIRECTIONS, (b) -> this.dock.resetLayout());
         resetLayout.tooltip(UIKeys.FILM_LAYOUT_RESET, Direction.LEFT);
 
+        UIIcon lock = new UIIcon(() -> this.dock.isLocked() ? Icons.LOCKED : Icons.UNLOCKED, (b) -> this.dock.toggleLock());
+        lock.tooltip(UIKeys.FILM_LAYOUT_UNLOCK, Direction.LEFT);
+
         this.iconBar.add(presets);
-        this.iconBar.add(lock);
         this.iconBar.add(resetLayout);
+        this.iconBar.add(lock);
 
         /* General tab */
         this.addSection(this.generalView, new UIParticleSchemeGeneralSection(this));
@@ -254,14 +255,7 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
         this.addSection(this.emitterView, new UIParticleSchemeLifetimeSection(this));
         this.addSection(this.emitterView, new UIParticleSchemeShapeSection(this));
         /* Particle tab */
-        UIParticleSchemeMotionSection motionSection = new UIParticleSchemeMotionSection(this);
-        UIParticleSchemeRotationSection rotationSection = new UIParticleSchemeRotationSection(this);
-
-        motionSection.link(rotationSection);
-        rotationSection.link(motionSection);
-
-        this.addSection(this.particleView, motionSection);
-        this.addSection(this.particleView, rotationSection);
+        this.addSection(this.particleView, new UIParticleSchemeMotionSection(this));
         this.addSection(this.particleView, new UIParticleSchemeExpirationSection(this));
         /* Appearance tab */
         this.addSection(this.appearanceView, new UIParticleSchemeAppearanceSection(this));
@@ -322,26 +316,7 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
             String fromStr = from.toString();
             String toStr = to.toString();
 
-<<<<<<< HEAD
             this.getType().getRepository().rename(fromStr, toStr);
-=======
-        /* General tab */
-        this.addSection(this.generalView, new UIParticleSchemeGeneralSection(this));
-        this.addSection(this.generalView, new UIParticleSchemeCurvesSection(this));
-        this.addSection(this.generalView, new UIParticleSchemeSpaceSection(this));
-        this.addSection(this.generalView, new UIParticleSchemeInitializationSection(this));
-        /* Emitter tab */
-        this.addSection(this.emitterView, new UIParticleSchemeRateSection(this));
-        this.addSection(this.emitterView, new UIParticleSchemeLifetimeSection(this));
-        this.addSection(this.emitterView, new UIParticleSchemeShapeSection(this));
-        /* Particle tab */
-        this.addSection(this.particleView, new UIParticleSchemeMotionSection(this));
-        this.addSection(this.particleView, new UIParticleSchemeExpirationSection(this));
-        /* Appearance tab */
-        this.addSection(this.appearanceView, new UIParticleSchemeAppearanceSection(this));
-        this.addSection(this.appearanceView, new UIParticleSchemeLightingSection(this));
-        this.addSection(this.appearanceView, new UIParticleSchemeCollisionSection(this));
->>>>>>> 2c0376cb4 (Add layout system to particle editor, pt. 2)
 
             for (ParticleDocumentTab tab : this.particleDocumentTabs)
             {
@@ -977,6 +952,27 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
     public void dirty()
     {
         this.renderer.emitter.setupVariables();
+    }
+
+    private MapType getLayoutPresetData()
+    {
+        MapType data = new MapType();
+
+        data.put("particle_layout", this.dock.getLayoutRoot().toData());
+
+        return data;
+    }
+
+    private void applyLayoutFromPreset(MapType data, int mouseX, int mouseY)
+    {
+        BaseType layoutData = data.get("particle_layout");
+
+        if (layoutData == null)
+        {
+            return;
+        }
+
+        this.dock.applyLayoutRoot(EditorLayoutNode.fromData(layoutData));
     }
 
     private ILayoutSource createLayoutSource()
