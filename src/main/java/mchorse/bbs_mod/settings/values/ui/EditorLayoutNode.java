@@ -69,7 +69,10 @@ public abstract class EditorLayoutNode
         );
     }
 
-    /** Default particle layout: vertical split — sections column (left) | preview (right). */
+    /**
+     * Default particle layout: left column with the section-group tabs stacked on top and the
+     * MoLang panel pinned beneath, with the preview filling the right side.
+     */
     public static EditorLayoutNode defaultParticleLayout()
     {
         List<EditorLayoutNode> tabs = new ArrayList<>();

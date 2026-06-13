@@ -15,7 +15,6 @@ import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.math.molang.expressions.MolangExpression;
 import mchorse.bbs_mod.particles.ParticleScheme;
-import mchorse.bbs_mod.particles.emitter.ParticleEmitter;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.resources.packs.URLSourcePack;
 import mchorse.bbs_mod.ui.ContentType;
@@ -38,10 +37,13 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIConfirmOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
+<<<<<<< HEAD
 import mchorse.bbs_mod.ui.framework.elements.utils.UIRenderable;
 import mchorse.bbs_mod.ui.home.UIHomePanel;
 import mchorse.bbs_mod.ui.utils.presets.UICopyPasteController;
 import mchorse.bbs_mod.utils.presets.PresetManager;
+=======
+>>>>>>> 2c0376cb4 (Add layout system to particle editor, pt. 2)
 import mchorse.bbs_mod.ui.particles.sections.UIParticleSchemeAppearanceSection;
 import mchorse.bbs_mod.ui.particles.sections.UIParticleSchemeCollisionSection;
 import mchorse.bbs_mod.ui.particles.sections.UIParticleSchemeCurvesSection;
@@ -102,14 +104,20 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
 
     public UITextEditor textEditor;
     public UIParticleSchemeRenderer renderer;
+<<<<<<< HEAD
     public UIScrollView sectionsView;
 
+=======
+>>>>>>> 2c0376cb4 (Add layout system to particle editor, pt. 2)
     public UIScrollView generalView;
     public UIScrollView emitterView;
     public UIScrollView particleView;
     public UIScrollView appearanceView;
+<<<<<<< HEAD
 
     public UIElement sectionsPanel;
+=======
+>>>>>>> 2c0376cb4 (Add layout system to particle editor, pt. 2)
     public UIDockLayout dock;
 
     public List<UIParticleSchemeSection> sections = new ArrayList<>();
@@ -176,7 +184,8 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
         this.particleView = this.createSectionView();
         this.appearanceView = this.createSectionView();
 
-        /* Dockable layout: 3D preview + sections, sharing the system with the film editor. */
+        /* Dockable layout: section groups (tabbed), MoLang and 3D preview each their own panel,
+         * sharing the docking system with the film editor. */
         this.dock = new UIDockLayout();
         this.dock.relative(this.mainView).w(1F).h(1F);
         this.dock.source(this.createLayoutSource())
@@ -189,12 +198,21 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
         this.dock.addPanel("molang", this.textEditor, Icons.CODE);
         this.dock.addPanel("preview", this.renderer, Icons.VIDEO_CAMERA);
         this.dock.mount();
+<<<<<<< HEAD
         this.mainView.add(this.dock);
 
         UIIcon close = new UIIcon(Icons.CLOSE, (b) -> this.editMoLang(null, null, null));
         close.relative(this.textEditor).x(1F, -20);
         this.textEditor.add(close);
 
+=======
+        this.editor.add(this.dock);
+
+        this.selectionPanel = new UIParticleSelectionPanel(this);
+        this.selectionPanel.relative(this).y(UIDataTabs.TABS_HEIGHT_PX).wTo(this.iconBar.area).h(1F, -UIDataTabs.TABS_HEIGHT_PX);
+        this.add(this.selectionPanel);
+
+>>>>>>> 2c0376cb4 (Add layout system to particle editor, pt. 2)
         this.overlay.namesList.setFileIcon(Icons.PARTICLE);
 
         UIIcon restart = new UIIcon(Icons.REFRESH, (b) ->
@@ -304,7 +322,26 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
             String fromStr = from.toString();
             String toStr = to.toString();
 
+<<<<<<< HEAD
             this.getType().getRepository().rename(fromStr, toStr);
+=======
+        /* General tab */
+        this.addSection(this.generalView, new UIParticleSchemeGeneralSection(this));
+        this.addSection(this.generalView, new UIParticleSchemeCurvesSection(this));
+        this.addSection(this.generalView, new UIParticleSchemeSpaceSection(this));
+        this.addSection(this.generalView, new UIParticleSchemeInitializationSection(this));
+        /* Emitter tab */
+        this.addSection(this.emitterView, new UIParticleSchemeRateSection(this));
+        this.addSection(this.emitterView, new UIParticleSchemeLifetimeSection(this));
+        this.addSection(this.emitterView, new UIParticleSchemeShapeSection(this));
+        /* Particle tab */
+        this.addSection(this.particleView, new UIParticleSchemeMotionSection(this));
+        this.addSection(this.particleView, new UIParticleSchemeExpirationSection(this));
+        /* Appearance tab */
+        this.addSection(this.appearanceView, new UIParticleSchemeAppearanceSection(this));
+        this.addSection(this.appearanceView, new UIParticleSchemeLightingSection(this));
+        this.addSection(this.appearanceView, new UIParticleSchemeCollisionSection(this));
+>>>>>>> 2c0376cb4 (Add layout system to particle editor, pt. 2)
 
             for (ParticleDocumentTab tab : this.particleDocumentTabs)
             {
@@ -911,21 +948,10 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
 
     public void editMoLang(String id, Consumer<String> callback, MolangExpression expression)
     {
+        /* The MoLang editor is its own dock panel (always present); editing just swaps its target. */
         this.molangId = id;
         this.textEditor.callback = callback;
         this.textEditor.setText(expression == null ? "" : expression.toString());
-        this.textEditor.setVisible(callback != null);
-
-        if (callback != null)
-        {
-            this.sectionsView.hTo(this.textEditor.area);
-        }
-        else
-        {
-            this.sectionsView.h(1F);
-        }
-
-        this.sectionsView.resize();
     }
 
     @Override
@@ -1005,6 +1031,11 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
         return view;
     }
 
+    /**
+     * Wrap a content element (column/scroll layout) in a plain container before docking it.
+     * The dock resets each panel's flex (which would wipe a column layout's {@code flex.post}),
+     * so the actual content must live one level down where the dock never touches it.
+     */
     private UIElement wrapScroll(UIElement content)
     {
         UIElement panel = new UIElement();
@@ -1106,6 +1137,7 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
     public void showHomeView()
     {
         super.showHomeView();
+    }
     }
 
     @Override
@@ -1222,17 +1254,14 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
         }
     }
 
-    private void drawOverlay(UIContext context)
+    @Override
+    protected void renderBackground(UIContext context)
     {
-        /* Draw debug info */
-        if (this.editor.isVisible())
+        if (this.iconBar.isVisible())
         {
-            ParticleEmitter emitter = this.renderer.emitter;
-            String label = emitter.particles.size() + "P - " + emitter.age + "A";
-
-            int y = (this.textEditor.isVisible() ? this.textEditor.area.y : this.area.ey()) - 12;
-
-            context.batcher.textShadow(label, this.editor.area.ex() - 4 - context.batcher.getFont().getWidth(label), y);
+            this.iconBar.area.render(context.batcher, Colors.A50);
+            context.batcher.gradientHBox(this.iconBar.area.x - 6, this.iconBar.area.y, this.iconBar.area.x, this.iconBar.area.ey(), 0, 0x29000000);
+        }
         }
     }
 
