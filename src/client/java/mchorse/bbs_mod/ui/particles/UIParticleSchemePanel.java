@@ -54,6 +54,7 @@ import mchorse.bbs_mod.ui.particles.sections.UIParticleSchemeInitializationSecti
 import mchorse.bbs_mod.ui.particles.sections.UIParticleSchemeLifetimeSection;
 import mchorse.bbs_mod.ui.particles.sections.UIParticleSchemeLightingSection;
 import mchorse.bbs_mod.ui.particles.sections.UIParticleSchemeMotionSection;
+import mchorse.bbs_mod.ui.particles.sections.UIParticleSchemeRotationSection;
 import mchorse.bbs_mod.ui.particles.sections.UIParticleSchemeRateSection;
 import mchorse.bbs_mod.ui.particles.sections.UIParticleSchemeSection;
 import mchorse.bbs_mod.ui.particles.sections.UIParticleSchemeShapeSection;
@@ -255,7 +256,14 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
         this.addSection(this.emitterView, new UIParticleSchemeLifetimeSection(this));
         this.addSection(this.emitterView, new UIParticleSchemeShapeSection(this));
         /* Particle tab */
-        this.addSection(this.particleView, new UIParticleSchemeMotionSection(this));
+        UIParticleSchemeMotionSection motionSection = new UIParticleSchemeMotionSection(this);
+        UIParticleSchemeRotationSection rotationSection = new UIParticleSchemeRotationSection(this);
+
+        motionSection.link(rotationSection);
+        rotationSection.link(motionSection);
+
+        this.addSection(this.particleView, motionSection);
+        this.addSection(this.particleView, rotationSection);
         this.addSection(this.particleView, new UIParticleSchemeExpirationSection(this));
         /* Appearance tab */
         this.addSection(this.appearanceView, new UIParticleSchemeAppearanceSection(this));
@@ -952,6 +960,19 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
     public void dirty()
     {
         this.renderer.emitter.setupVariables();
+    }
+
+    /**
+     * Rebuild the preview emitter from scratch. Needed after structural changes (e.g. switching a
+     * motion axis between dynamic and parametric), since already-spawned particles keep the manual
+     * flags from their spawn and would otherwise lag behind the new mode.
+     */
+    public void restartEmitter()
+    {
+        if (this.data != null)
+        {
+            this.renderer.setScheme(this.data);
+        }
     }
 
     private MapType getLayoutPresetData()
