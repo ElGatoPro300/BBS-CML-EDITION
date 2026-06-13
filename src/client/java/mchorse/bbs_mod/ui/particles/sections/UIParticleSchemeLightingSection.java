@@ -13,7 +13,7 @@ import mchorse.bbs_mod.particles.components.appearance.colors.Solid;
 import mchorse.bbs_mod.particles.components.appearance.colors.Tint;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
-import mchorse.bbs_mod.ui.framework.elements.buttons.UICirculate;
+import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcons;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
 import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
 import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
@@ -30,7 +30,7 @@ import java.util.Arrays;
 
 public class UIParticleSchemeLightingSection extends UIParticleSchemeSection
 {
-    public UICirculate mode;
+    public UIIcons mode;
     public UIColor color;
     public UIMolangExpression r;
     public UIMolangExpression g;
@@ -53,10 +53,10 @@ public class UIParticleSchemeLightingSection extends UIParticleSchemeSection
     {
         super(parent);
 
-        this.mode = new UICirculate((b) -> this.changeMode(b.getValue()));
-        this.mode.addLabel(UIKeys.SNOWSTORM_LIGHTING_SOLID);
-        this.mode.addLabel(UIKeys.SNOWSTORM_LIGHTING_EXPRESSION);
-        this.mode.addLabel(UIKeys.SNOWSTORM_LIGHTING_GRADIENT);
+        this.mode = new UIIcons((b) -> this.changeMode(b.getValue()));
+        this.mode.add(Icons.COLOR, UIKeys.SNOWSTORM_LIGHTING_SOLID);
+        this.mode.add(Icons.CODE, UIKeys.SNOWSTORM_LIGHTING_EXPRESSION);
+        this.mode.add(Icons.FADING, UIKeys.SNOWSTORM_LIGHTING_GRADIENT);
 
         this.color = new UIColor((color) ->
         {

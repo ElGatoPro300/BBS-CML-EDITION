@@ -5,7 +5,7 @@ import mchorse.bbs_mod.particles.ParticleScheme;
 import mchorse.bbs_mod.particles.components.appearance.ParticleComponentAppearanceBillboard;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
-import mchorse.bbs_mod.ui.framework.elements.buttons.UICirculate;
+import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcons;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
 import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
@@ -17,7 +17,7 @@ import mchorse.bbs_mod.utils.colors.Colors;
 
 public class UIParticleSchemeAppearanceSection extends UIParticleSchemeComponentSection<ParticleComponentAppearanceBillboard>
 {
-    public UICirculate mode;
+    public UIIcons mode;
     public UILabel modeLabel;
 
     public UIMolangExpression sizeW;
@@ -39,14 +39,14 @@ public class UIParticleSchemeAppearanceSection extends UIParticleSchemeComponent
     {
         super(parent);
 
-        this.mode = new UICirculate((b) ->
+        this.mode = new UIIcons((b) ->
         {
             this.component.flipbook = this.mode.getValue() == 1;
             this.updateElements();
             this.editor.dirty();
         });
-        this.mode.addLabel(UIKeys.SNOWSTORM_APPEARANCE_REGULAR);
-        this.mode.addLabel(UIKeys.SNOWSTORM_APPEARANCE_ANIMATED);
+        this.mode.add(Icons.IMAGE, UIKeys.SNOWSTORM_APPEARANCE_REGULAR);
+        this.mode.add(Icons.FILM, UIKeys.SNOWSTORM_APPEARANCE_ANIMATED);
         this.modeLabel = UI.label(UIKeys.SNOWSTORM_MODE, 20).labelAnchor(0, 0.5F);
 
         this.sizeW = new UIMolangExpression(() -> this.component.sizeW, (b) -> this.editMoLang("appearance.width", (str) -> this.component.sizeW = this.parse(str, this.component.sizeW), this.component.sizeW));

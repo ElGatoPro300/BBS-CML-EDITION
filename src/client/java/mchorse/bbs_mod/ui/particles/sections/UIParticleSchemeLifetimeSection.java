@@ -6,7 +6,7 @@ import mchorse.bbs_mod.particles.components.lifetime.ParticleComponentLifetimeEx
 import mchorse.bbs_mod.particles.components.lifetime.ParticleComponentLifetimeLooping;
 import mchorse.bbs_mod.particles.components.lifetime.ParticleComponentLifetimeOnce;
 import mchorse.bbs_mod.ui.UIKeys;
-import mchorse.bbs_mod.ui.framework.elements.buttons.UICirculate;
+import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcons;
 import mchorse.bbs_mod.ui.particles.UIParticleSchemePanel;
 import mchorse.bbs_mod.ui.particles.utils.UIMolangExpression;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
@@ -56,11 +56,11 @@ public class UIParticleSchemeLifetimeSection extends UIParticleSchemeModeSection
     }
 
     @Override
-    protected void fillModes(UICirculate button)
+    protected void fillModes(UIIcons button)
     {
-        button.addLabel(UIKeys.SNOWSTORM_LIFETIME_EXPRESSION);
-        button.addLabel(UIKeys.SNOWSTORM_LIFETIME_LOOPING);
-        button.addLabel(UIKeys.SNOWSTORM_LIFETIME_ONCE);
+        button.add(Icons.CODE, UIKeys.SNOWSTORM_LIFETIME_EXPRESSION);
+        button.add(Icons.REFRESH, UIKeys.SNOWSTORM_LIFETIME_LOOPING);
+        button.add(Icons.STOP, UIKeys.SNOWSTORM_LIFETIME_ONCE);
     }
 
     @Override

@@ -7,13 +7,14 @@ import mchorse.bbs_mod.particles.ParticleCurve;
 import mchorse.bbs_mod.particles.ParticleCurveType;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
-import mchorse.bbs_mod.ui.framework.elements.buttons.UICirculate;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
+import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcons;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
 import mchorse.bbs_mod.ui.particles.sections.UIParticleSchemeSection;
 import mchorse.bbs_mod.ui.utils.UI;
+import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 
 import java.util.Map;
@@ -25,7 +26,7 @@ public class UICurveEditor extends UIElement
     public UILabel name;
     public UIIcon rename;
     public UIIcon delete;
-    public UICirculate type;
+    public UIIcons type;
     public UICurve curve;
     public UIMolangExpression input;
     public UIMolangExpression range;
@@ -41,11 +42,11 @@ public class UICurveEditor extends UIElement
         this.rename.tooltip(UIKeys.SNOWSTORM_CURVES_RENAME);
         this.delete = new UIIcon(Icons.REMOVE, this::remove);
         this.delete.tooltip(UIKeys.SNOWSTORM_CURVES_REMOVE);
-        this.type = new UICirculate((b) -> this.changeType(b.getValue()));
+        this.type = new UIIcons((b) -> this.changeType(b.getValue()));
 
         for (ParticleCurveType type : ParticleCurveType.values())
         {
-            this.type.addLabel(UIKeys.C_CURVE_TYPE.get(type.id));
+            this.type.add(curveTypeIcon(type), UIKeys.C_CURVE_TYPE.get(type.id));
         }
 
         this.curve = new UICurve(section);
@@ -60,6 +61,11 @@ public class UICurveEditor extends UIElement
         this.add(UI.row(0, this.name, this.rename, this.delete));
         this.add(UI.row(UI.label(UIKeys.SNOWSTORM_CURVES_TYPE, 20).labelAnchor(0, 0.5F), this.type));
         this.add(this.curve, this.input, this.range);
+    }
+
+    private static Icon curveTypeIcon(ParticleCurveType type)
+    {
+        return type == ParticleCurveType.HERMITE ? Icons.CURVES : Icons.INTERP_LINEAR;
     }
 
     private void rename(UIIcon b)

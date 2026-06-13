@@ -5,7 +5,7 @@ import mchorse.bbs_mod.particles.components.rate.ParticleComponentRate;
 import mchorse.bbs_mod.particles.components.rate.ParticleComponentRateInstant;
 import mchorse.bbs_mod.particles.components.rate.ParticleComponentRateSteady;
 import mchorse.bbs_mod.ui.UIKeys;
-import mchorse.bbs_mod.ui.framework.elements.buttons.UICirculate;
+import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcons;
 import mchorse.bbs_mod.ui.particles.UIParticleSchemePanel;
 import mchorse.bbs_mod.ui.particles.utils.UIMolangExpression;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
@@ -42,10 +42,10 @@ public class UIParticleSchemeRateSection extends UIParticleSchemeModeSection<Par
     }
 
     @Override
-    protected void fillModes(UICirculate button)
+    protected void fillModes(UIIcons button)
     {
-        button.addLabel(UIKeys.SNOWSTORM_RATE_INSTANT);
-        button.addLabel(UIKeys.SNOWSTORM_RATE_STEADY);
+        button.add(Icons.BULLET, UIKeys.SNOWSTORM_RATE_INSTANT);
+        button.add(Icons.TIME, UIKeys.SNOWSTORM_RATE_STEADY);
     }
 
     @Override

@@ -9,17 +9,18 @@ import mchorse.bbs_mod.particles.components.appearance.ParticleComponentAppearan
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
-import mchorse.bbs_mod.ui.framework.elements.buttons.UICirculate;
+import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcons;
 import mchorse.bbs_mod.ui.framework.elements.input.UITexturePicker;
 import mchorse.bbs_mod.ui.framework.elements.input.text.UITextbox;
 import mchorse.bbs_mod.ui.particles.UIParticleSchemePanel;
 import mchorse.bbs_mod.ui.utils.UI;
+import mchorse.bbs_mod.ui.utils.icons.Icons;
 
 public class UIParticleSchemeGeneralSection extends UIParticleSchemeSection
 {
     public UITextbox identifier;
     public UIButton pick;
-    public UICirculate material;
+    public UIIcons material;
 
     public UIParticleSchemeGeneralSection(UIParticleSchemePanel parent)
     {
@@ -47,14 +48,14 @@ public class UIParticleSchemeGeneralSection extends UIParticleSchemeSection
             });
         });
 
-        this.material = new UICirculate((b) ->
+        this.material = new UIIcons((b) ->
         {
             this.scheme.material = ParticleMaterial.values()[this.material.getValue()];
             this.editor.dirty();
         });
-        this.material.addLabel(UIKeys.SNOWSTORM_GENERAL_PARTICLES_OPAQUE);
-        this.material.addLabel(UIKeys.SNOWSTORM_GENERAL_PARTICLES_ALPHA);
-        this.material.addLabel(UIKeys.SNOWSTORM_GENERAL_PARTICLES_BLEND);
+        this.material.add(Icons.SQUARE, UIKeys.SNOWSTORM_GENERAL_PARTICLES_OPAQUE);
+        this.material.add(Icons.DROP, UIKeys.SNOWSTORM_GENERAL_PARTICLES_ALPHA);
+        this.material.add(Icons.FADING, UIKeys.SNOWSTORM_GENERAL_PARTICLES_BLEND);
 
         this.fields.add(this.identifier, UI.row(5, 0, 20, this.pick, this.material));
     }

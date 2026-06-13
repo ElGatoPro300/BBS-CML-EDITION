@@ -13,7 +13,7 @@ import mchorse.bbs_mod.particles.components.shape.directions.ShapeDirectionInwar
 import mchorse.bbs_mod.particles.components.shape.directions.ShapeDirectionVector;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
-import mchorse.bbs_mod.ui.framework.elements.buttons.UICirculate;
+import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcons;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
 import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
 import mchorse.bbs_mod.ui.particles.UIParticleSchemePanel;
@@ -131,13 +131,13 @@ public class UIParticleSchemeShapeSection extends UIParticleSchemeModeSection<Pa
     }
 
     @Override
-    protected void fillModes(UICirculate button)
+    protected void fillModes(UIIcons button)
     {
-        button.addLabel(UIKeys.SNOWSTORM_SHAPE_POINT);
-        button.addLabel(UIKeys.SNOWSTORM_SHAPE_BOX);
-        button.addLabel(UIKeys.SNOWSTORM_SHAPE_SPHERE);
-        button.addLabel(UIKeys.SNOWSTORM_SHAPE_DISC);
-        button.addLabel(UIKeys.SNOWSTORM_SHAPE_AABB);
+        button.add(Icons.BULLET, UIKeys.SNOWSTORM_SHAPE_POINT);
+        button.add(Icons.SQUARE, UIKeys.SNOWSTORM_SHAPE_BOX);
+        button.add(Icons.SPHERE, UIKeys.SNOWSTORM_SHAPE_SPHERE);
+        button.add(Icons.CIRCLE, UIKeys.SNOWSTORM_SHAPE_DISC);
+        button.add(Icons.OUTLINE, UIKeys.SNOWSTORM_SHAPE_AABB);
     }
 
     @Override
@@ -224,7 +224,7 @@ public class UIParticleSchemeShapeSection extends UIParticleSchemeModeSection<Pa
     {
         public UIParticleSchemeShapeSection parent;
 
-        public UICirculate mode;
+        public UIIcons mode;
         public UIElement xyz;
         public UIMolangExpression x;
         public UIMolangExpression y;
@@ -235,7 +235,7 @@ public class UIParticleSchemeShapeSection extends UIParticleSchemeModeSection<Pa
             super();
 
             this.parent = parent;
-            this.mode = new UICirculate((b) ->
+            this.mode = new UIIcons((b) ->
             {
                 int value = this.mode.getValue();
 
@@ -255,9 +255,9 @@ public class UIParticleSchemeShapeSection extends UIParticleSchemeModeSection<Pa
                 this.parent.editor.dirty();
                 this.fillData();
             });
-            this.mode.addLabel(UIKeys.SNOWSTORM_SHAPE_DIRECTION_OUTWARDS);
-            this.mode.addLabel(UIKeys.SNOWSTORM_SHAPE_DIRECTION_INWARDS);
-            this.mode.addLabel(UIKeys.SNOWSTORM_SHAPE_DIRECTION_VECTOR);
+            this.mode.add(Icons.MAXIMIZE, UIKeys.SNOWSTORM_SHAPE_DIRECTION_OUTWARDS);
+            this.mode.add(Icons.MINIMIZE, UIKeys.SNOWSTORM_SHAPE_DIRECTION_INWARDS);
+            this.mode.add(Icons.ARROW_RIGHT, UIKeys.SNOWSTORM_SHAPE_DIRECTION_VECTOR);
 
             this.x = new UIMolangExpression(() -> this.vectorComponent(0), (b) ->
             {

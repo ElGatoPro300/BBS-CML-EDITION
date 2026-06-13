@@ -9,7 +9,7 @@ import mchorse.bbs_mod.particles.components.motion.ParticleComponentMotionDynami
 import mchorse.bbs_mod.particles.components.motion.ParticleComponentMotionParametric;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
-import mchorse.bbs_mod.ui.framework.elements.buttons.UICirculate;
+import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcons;
 import mchorse.bbs_mod.ui.particles.UIParticleSchemePanel;
 import mchorse.bbs_mod.ui.particles.utils.UIMolangExpression;
 import mchorse.bbs_mod.ui.utils.UIConstants;
@@ -148,10 +148,10 @@ public class UIParticleSchemeMotionSection extends UIParticleSchemeModeSection<P
     }
 
     @Override
-    protected void fillModes(UICirculate button)
+    protected void fillModes(UIIcons button)
     {
-        button.addLabel(UIKeys.SNOWSTORM_MOTION_DYNAMIC);
-        button.addLabel(UIKeys.SNOWSTORM_MOTION_PARAMETRIC);
+        button.add(Icons.ALL_DIRECTIONS, UIKeys.SNOWSTORM_MOTION_DYNAMIC);
+        button.add(Icons.GRAPH, UIKeys.SNOWSTORM_MOTION_PARAMETRIC);
     }
 
     @Override
