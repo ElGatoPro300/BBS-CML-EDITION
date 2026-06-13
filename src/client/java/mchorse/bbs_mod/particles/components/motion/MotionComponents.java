@@ -46,24 +46,30 @@ public class MotionComponents
         ParticleComponentMotionDynamic dynamic = dynamic(scheme);
         ParticleComponentMotionParametric parametric = parametric(scheme);
 
+        boolean changed = false;
+
         if (needDynamic && dynamic == null)
         {
             dynamic = scheme.add(ParticleComponentMotionDynamic.class);
+            changed = true;
         }
         else if (!needDynamic && dynamic != null)
         {
             scheme.remove(ParticleComponentMotionDynamic.class);
             dynamic = null;
+            changed = true;
         }
 
         if (needParametric && parametric == null)
         {
             parametric = scheme.add(ParticleComponentMotionParametric.class);
+            changed = true;
         }
         else if (!needParametric && parametric != null)
         {
             scheme.remove(ParticleComponentMotionParametric.class);
             parametric = null;
+            changed = true;
         }
 
         if (dynamic != null)
@@ -76,6 +82,13 @@ public class MotionComponents
         {
             parametric.drivesPosition = positionParametric;
             parametric.drivesRotation = rotationParametric;
+        }
+
+        /* Rebuild the cached component interface lists: scheme.remove() (unlike add()) doesn't, so a
+         * removed component would otherwise keep being applied until the next full reload. */
+        if (changed)
+        {
+            scheme.setup();
         }
     }
 }
