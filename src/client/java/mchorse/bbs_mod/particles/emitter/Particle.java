@@ -53,6 +53,9 @@ public class Particle
     public float drag = 0;
     public float dragFactor = 0;
 
+    /** Last resolved facing direction for the direction_x/y/z billboard modes (kept when nearly stationary). */
+    public Vector3f facingDirection = new Vector3f();
+
     /* Color */
     public float r = 1;
     public float g = 1;
