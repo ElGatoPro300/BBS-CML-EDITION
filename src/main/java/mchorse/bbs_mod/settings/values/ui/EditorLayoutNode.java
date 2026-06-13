@@ -69,6 +69,28 @@ public abstract class EditorLayoutNode
         );
     }
 
+    /** Default particle layout: vertical split — sections column (left) | preview (right). */
+    public static EditorLayoutNode defaultParticleLayout()
+    {
+        List<EditorLayoutNode> tabs = new ArrayList<>();
+
+        tabs.add(new PanelNode("sectionsGeneral"));
+        tabs.add(new PanelNode("sectionsAppearance"));
+        tabs.add(new PanelNode("sectionsLifetime"));
+        tabs.add(new PanelNode("sectionsExpiration"));
+        tabs.add(new PanelNode("sectionsRate"));
+        tabs.add(new PanelNode("sectionsShape"));
+        tabs.add(new PanelNode("sectionsMotion"));
+        tabs.add(new PanelNode("sectionsLighting"));
+
+        return new SplitterNode(
+            false,
+            0.22F,
+            new TabbedNode(tabs, 0),
+            new PanelNode("preview")
+        );
+    }
+
     public static EditorLayoutNode copyWithRemovedLeaf(EditorLayoutNode root, String panelId)
     {
         if (root == null || panelId == null || panelId.isEmpty())
