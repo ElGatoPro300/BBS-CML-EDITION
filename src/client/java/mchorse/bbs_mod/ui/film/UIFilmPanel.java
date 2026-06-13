@@ -1866,6 +1866,67 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         return null;
     }
 
+    private void syncLinkedPropertiesTab(String panelId)
+    {
+        String linkedPanelId = this.getLinkedPropertiesPanelId(panelId);
+
+        if (linkedPanelId == null)
+        {
+            return;
+        }
+
+        EditorLayoutNode root = BBSSettings.editorLayoutSettings.getFilmLayoutRoot();
+
+        if (root != null && this.selectPanelInTabbedNode(root, linkedPanelId))
+        {
+            BBSSettings.editorLayoutSettings.setFilmLayoutRoot(root);
+        }
+    }
+
+    private String getLinkedPropertiesPanelId(String panelId)
+    {
+        if ("cameraTimeline".equals(panelId))
+        {
+            return "cameraEditArea";
+        }
+
+        if ("replayTimeline".equals(panelId) || "actionTimeline".equals(panelId))
+        {
+            return "editArea";
+        }
+
+        return null;
+    }
+
+    private boolean selectPanelInTabbedNode(EditorLayoutNode root, String panelId)
+    {
+        EditorLayoutNode.TabbedNode tabbed = this.findTabbedNodeContaining(root, panelId);
+
+        if (tabbed == null)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < tabbed.tabs.size(); i++)
+        {
+            EditorLayoutNode tab = tabbed.tabs.get(i);
+
+            if (tab instanceof EditorLayoutNode.PanelNode && ((EditorLayoutNode.PanelNode) tab).getPanelId().equals(panelId))
+            {
+                if (tabbed.activeTab != i)
+                {
+                    tabbed.activeTab = i;
+
+                    return true;
+                }
+
+                return false;
+            }
+        }
+
+        return false;
+    }
+
     private DropIntent resolveDropIntent(int mouseX, int mouseY)
     {
         String activeDragId = this.draggingPanelId != null ? this.draggingPanelId : this.activeDraggingFloatingPanelId;
@@ -5705,6 +5766,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             if (this.area.isInside(context) && context.mouseButton == 0)
             {
                 this.tabbedNode.activeTab = this.index;
+                this.panel.syncLinkedPropertiesTab(this.panelId);
                 ValueEditorLayout layout = BBSSettings.editorLayoutSettings;
                 layout.setFilmLayoutRoot(layout.getFilmLayoutRoot()); // trigger save
                 this.panel.setupEditorFlex(true, false, true);
