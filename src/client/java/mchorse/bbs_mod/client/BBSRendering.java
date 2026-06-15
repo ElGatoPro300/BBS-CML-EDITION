@@ -200,6 +200,14 @@ public class BBSRendering
         if (!customSize)
         {
             resizeExtraFramebuffers();
+
+            MinecraftClient mc = MinecraftClient.getInstance();
+            Window window = mc.getWindow();
+
+            if ((Object) window instanceof IWindowDimensionsOverride override)
+            {
+                override.bbs$restoreDimensions();
+            }
         }
     }
 
@@ -330,11 +338,25 @@ public class BBSRendering
 
             reassignFramebuffer(framebuffer);
 
+            /* Trigger onResized to notify Iris/Sodium/WorldRenderer about the new size! */
+            mc.worldRenderer.onResized(w, h);
+
             framebuffer.beginWrite(true);
         }
         else
         {
             reassignFramebuffer(clientFramebuffer);
+
+            if ((Object) window instanceof IWindowDimensionsOverride override)
+            {
+                override.bbs$restoreDimensions();
+            }
+
+            int w = mc.getWindow().getFramebufferWidth();
+            int h = mc.getWindow().getFramebufferHeight();
+
+            /* Trigger onResized to restore original size in Iris/Sodium/WorldRenderer! */
+            mc.worldRenderer.onResized(w, h);
 
             mc.getFramebuffer().beginWrite(true);
 
@@ -370,6 +392,13 @@ public class BBSRendering
         if (!customSize)
         {
             return;
+        }
+
+        Window window = mc.getWindow();
+
+        if ((Object) window instanceof IWindowDimensionsOverride override)
+        {
+            override.bbs$overrideDimensions(getVideoWidth(), getVideoHeight(), window.getScaleFactor(), BBSModClient.getOriginalFramebufferScale());
         }
 
         toggleFramebuffer(true);
@@ -436,8 +465,19 @@ public class BBSRendering
                 RenderSystem.setProjectionMatrix(cache, cacheType);
             }
         }
+    }
 
+    public static void onPostProcessingEnd()
+    {
         renderingWorld = false;
+
+        MinecraftClient mc = MinecraftClient.getInstance();
+        Window window = mc.getWindow();
+
+        if ((Object) window instanceof IWindowDimensionsOverride override)
+        {
+            override.bbs$restoreDimensions();
+        }
     }
 
     private static void updateCloudRenderMode(MinecraftClient mc)

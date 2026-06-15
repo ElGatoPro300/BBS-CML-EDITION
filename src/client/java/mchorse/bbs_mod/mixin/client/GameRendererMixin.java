@@ -164,6 +164,12 @@ public class GameRendererMixin
         BBSRendering.onWorldRenderEnd();
     }
 
+    @Inject(method = "render", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gl/Framebuffer;beginWrite(Z)V"))
+    private void onPostProcessingEnd(RenderTickCounter tickCounter, boolean tick, CallbackInfo info)
+    {
+        BBSRendering.onPostProcessingEnd();
+    }
+
     @Inject(method = "render", at = @At(value = "FIELD", target = "Lnet/minecraft/client/option/GameOptions;hudHidden:Z", opcode = Opcodes.GETFIELD, ordinal = 0))
     private void onBeforeHudRendering(RenderTickCounter tickCounter, boolean tick, CallbackInfo info)
     {
