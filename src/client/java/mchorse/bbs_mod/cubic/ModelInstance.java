@@ -1,6 +1,5 @@
 package mchorse.bbs_mod.cubic;
 
-import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.bobj.BOBJBone;
 import mchorse.bbs_mod.cubic.animation.ActionsConfig;
 import mchorse.bbs_mod.cubic.data.animation.Animations;
@@ -562,9 +561,18 @@ public class ModelInstance implements IModelInstance
         }
         else if (this.model instanceof BOBJModel model)
         {
+            if (!stencilMap.increment)
+            {
+                stencilMap.addPicking(form);
+
+                return;
+            }
+
+            int baseIndex = stencilMap.objectIndex;
+
             for (BOBJBone orderedBone : model.getArmature().orderedBones)
             {
-                stencilMap.addPicking(form, orderedBone.name);
+                stencilMap.addPicking(baseIndex + orderedBone.index, form, orderedBone.name);
             }
         }
     }

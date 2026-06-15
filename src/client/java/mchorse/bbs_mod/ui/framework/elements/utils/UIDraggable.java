@@ -7,6 +7,7 @@ import mchorse.bbs_mod.ui.utils.Scroll;
 import mchorse.bbs_mod.utils.colors.Colors;
 
 import org.joml.Vector2i;
+
 import org.lwjgl.glfw.GLFW;
 
 import java.util.function.Consumer;

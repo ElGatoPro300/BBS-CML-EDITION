@@ -17,6 +17,7 @@ import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.Scale;
 import mchorse.bbs_mod.ui.utils.Scroll;
 import mchorse.bbs_mod.ui.utils.ScrollDirection;
+import mchorse.bbs_mod.ui.utils.TimelineRuler;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.CollectionUtils;
@@ -47,6 +48,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
     private static final int LEVEL_INDENT = 8;
     private static final int TRACK_LINE_HALF_HEIGHT = 1;
     private static final int TRACKS_BOTTOM_MARGIN = 36;
+    private static final int RULER_HEIGHT = 16;
 
     private UIKeyframes keyframes;
 
@@ -56,7 +58,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
     private Scroll dopeSheet;
     private Scroll sidebarScrollbar;
     private double trackHeight;
-    private int topMargin = TOP_MARGIN;
+    private int topMargin = Math.max(TOP_MARGIN, RULER_HEIGHT);
     private int sidebarScroll;
     private int sidebarScrollMax;
     private boolean sidebarDragging;
@@ -109,7 +111,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
 
     public void setTopMargin(int topMargin)
     {
-        this.topMargin = Math.max(0, topMargin);
+        this.topMargin = Math.max(RULER_HEIGHT, topMargin);
         this.dopeSheet.scrollSize = (int) this.trackHeight * this.sheets.size() + this.topMargin + TRACKS_BOTTOM_MARGIN;
         this.dopeSheet.clamp();
     }
@@ -316,6 +318,11 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
     @Override
     public UIKeyframeSheet getSheet(int mouseY)
     {
+        if (mouseY < this.keyframes.area.y + RULER_HEIGHT)
+        {
+            return null;
+        }
+
         int dopeSheetY = this.getDopeSheetY();
         int index = (mouseY - dopeSheetY) / (int) this.trackHeight;
 
@@ -581,7 +588,9 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
     public void render(UIContext context)
     {
         this.renderGrid(context);
+        context.batcher.clip(this.keyframes.area.x, this.keyframes.area.y + RULER_HEIGHT, this.keyframes.area.w, this.keyframes.area.h - RULER_HEIGHT, context);
         this.renderGraph(context);
+        context.batcher.unclip(context);
     }
 
     /**
@@ -591,7 +600,9 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
     {
         /* Draw horizontal grid */
         Area area = this.keyframes.area;
-        int mult = this.keyframes.getXAxis().getMult();
+        TimelineRuler.Step step = TimelineRuler.steps(this.keyframes.getXAxis());
+        int mult = step.minor;
+        int major = step.major;
         int hx = this.keyframes.getDuration() / mult;
         int ht = (int) this.keyframes.fromGraphX(area.x);
 
@@ -610,9 +621,17 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
             }
 
             String label = TimeUtils.formatTime(j * mult);
+            boolean majorTick = (j * mult) % major == 0;
+            int tickBottom = area.y + RULER_HEIGHT;
+            int tickHeight = majorTick ? 8 : 4;
 
-            context.batcher.box(x, area.y, x + 1, area.ey(), Colors.setA(Colors.WHITE, 0.25F));
-            context.batcher.text(label, x + 4, area.y + 2);
+            context.batcher.box(x, area.y, x + 1, area.ey(), majorTick ? 0x44ffffff : 0x18ffffff);
+            context.batcher.box(x, tickBottom - tickHeight, x + 1, tickBottom, majorTick ? 0xddffffff : 0x77ffffff);
+
+            if (majorTick)
+            {
+                context.batcher.textShadow(label, x + 4, area.y + 2, Colors.WHITE);
+            }
         }
 
         /* Render where the keyframe will be duplicated or added */
@@ -783,6 +802,15 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
             boolean hover = area.isInside(context) && context.mouseY >= y && context.mouseY < y + this.trackHeight;
             int my = y + (int) this.trackHeight / 2;
             int cc = Colors.setA(sheet.color, hover ? 0.8F : 0.35F);
+            int startX = area.x + this.sidebarWidth;
+            int endX = area.ex();
+
+            if (i % 2 != 0)
+            {
+                context.batcher.box(startX, y, endX, (float) (y + this.trackHeight), 0x26000000);
+            }
+
+            context.batcher.box(startX, (float) (y + this.trackHeight) - 1, endX, (float) (y + this.trackHeight), 0x16000000);
 
             if (sheet.groupHeader)
             {
@@ -823,11 +851,6 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
 
             /* Render track bars (horizontal lines) */
             BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
-
-            int startX = area.x;
-            int endX = area.ex();
-
-            startX += this.sidebarWidth;
 
             context.batcher.fillRect(builder, matrix, startX, my - TRACK_LINE_HALF_HEIGHT, endX - startX, TRACK_LINE_HALF_HEIGHT * 2, cc, cc, cc, cc);
 
