@@ -15,7 +15,7 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(Window.class)
-public class WindowMixin implements mchorse.bbs_mod.client.IWindowDimensionsOverride
+public class WindowMixin
 {
     /**
      * Apply BBS's UI scale as a fractional value (e.g. 1.6). Minecraft's GUI scale is integer-only,
@@ -57,58 +57,57 @@ public class WindowMixin implements mchorse.bbs_mod.client.IWindowDimensionsOver
     @Shadow
     private double scaleFactor;
 
-    private int bbs$savedWidth;
-    private int bbs$savedHeight;
-    private int bbs$savedFramebufferWidth;
-    private int bbs$savedFramebufferHeight;
-    private int bbs$savedScaledWidth;
-    private int bbs$savedScaledHeight;
-    private double bbs$savedScaleFactor;
-    private boolean bbs$isOverridden;
-
-    @Override
-    public void bbs$overrideDimensions(int videoWidth, int videoHeight, double scaleFactor, float framebufferScale)
+    @Inject(method = "getWidth", at = @At("HEAD"), cancellable = true)
+    public void onGetWidth(CallbackInfoReturnable<Integer> info)
     {
-        if (this.bbs$isOverridden)
+        if (BBSRendering.canReplaceFramebuffer())
         {
-            return;
+            info.setReturnValue(BBSRendering.getVideoWidth());
         }
-
-        this.bbs$savedWidth = this.width;
-        this.bbs$savedHeight = this.height;
-        this.bbs$savedFramebufferWidth = this.framebufferWidth;
-        this.bbs$savedFramebufferHeight = this.framebufferHeight;
-        this.bbs$savedScaledWidth = this.scaledWidth;
-        this.bbs$savedScaledHeight = this.scaledHeight;
-        this.bbs$savedScaleFactor = this.scaleFactor;
-
-        this.width = videoWidth;
-        this.height = videoHeight;
-        this.framebufferWidth = (int) (videoWidth * framebufferScale);
-        this.framebufferHeight = (int) (videoHeight * framebufferScale);
-        this.scaleFactor = scaleFactor;
-        this.scaledWidth = (int) Math.ceil((double) this.framebufferWidth / scaleFactor);
-        this.scaledHeight = (int) Math.ceil((double) this.framebufferHeight / scaleFactor);
-
-        this.bbs$isOverridden = true;
     }
 
-    @Override
-    public void bbs$restoreDimensions()
+    @Inject(method = "getHeight", at = @At("HEAD"), cancellable = true)
+    public void onGetHeight(CallbackInfoReturnable<Integer> info)
     {
-        if (!this.bbs$isOverridden)
+        if (BBSRendering.canReplaceFramebuffer())
         {
-            return;
+            info.setReturnValue(BBSRendering.getVideoHeight());
         }
+    }
 
-        this.width = this.bbs$savedWidth;
-        this.height = this.bbs$savedHeight;
-        this.framebufferWidth = this.bbs$savedFramebufferWidth;
-        this.framebufferHeight = this.bbs$savedFramebufferHeight;
-        this.scaledWidth = this.bbs$savedScaledWidth;
-        this.scaledHeight = this.bbs$savedScaledHeight;
-        this.scaleFactor = this.bbs$savedScaleFactor;
+    @Inject(method = "getFramebufferWidth", at = @At("HEAD"), cancellable = true)
+    public void onGetFramebufferWidth(CallbackInfoReturnable<Integer> info)
+    {
+        if (BBSRendering.canReplaceFramebuffer())
+        {
+            info.setReturnValue((int) (BBSRendering.getVideoWidth() * BBSModClient.getOriginalFramebufferScale()));
+        }
+    }
 
-        this.bbs$isOverridden = false;
+    @Inject(method = "getFramebufferHeight", at = @At("HEAD"), cancellable = true)
+    public void onGetFramebufferHeight(CallbackInfoReturnable<Integer> info)
+    {
+        if (BBSRendering.canReplaceFramebuffer())
+        {
+            info.setReturnValue((int) (BBSRendering.getVideoHeight() * BBSModClient.getOriginalFramebufferScale()));
+        }
+    }
+
+    @Inject(method = "getScaledWidth", at = @At("HEAD"), cancellable = true)
+    public void onGetScaledWidth(CallbackInfoReturnable<Integer> info)
+    {
+        if (BBSRendering.canReplaceFramebuffer())
+        {
+            info.setReturnValue((int) (BBSRendering.getVideoWidth() / this.scaleFactor * BBSModClient.getOriginalFramebufferScale()));
+        }
+    }
+
+    @Inject(method = "getScaledHeight", at = @At("HEAD"), cancellable = true)
+    public void onGetScaledHeight(CallbackInfoReturnable<Integer> info)
+    {
+        if (BBSRendering.canReplaceFramebuffer())
+        {
+            info.setReturnValue((int) (BBSRendering.getVideoHeight() / this.scaleFactor * BBSModClient.getOriginalFramebufferScale()));
+        }
     }
 }
