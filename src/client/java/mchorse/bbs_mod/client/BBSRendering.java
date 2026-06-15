@@ -330,6 +330,8 @@ public class BBSRendering
 
             reassignFramebuffer(framebuffer);
 
+            mc.worldRenderer.onResized(w, h);
+
             framebuffer.beginWrite(true);
         }
         else
