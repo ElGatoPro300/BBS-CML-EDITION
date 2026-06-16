@@ -31,6 +31,7 @@ import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.network.ClientNetwork;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.resources.packs.URLSourcePack;
+import mchorse.bbs_mod.settings.Settings;
 import mchorse.bbs_mod.settings.values.IValueListener;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.settings.values.ui.EditorLayoutNode;
@@ -3299,9 +3300,20 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         ValueEditorLayout layout = BBSSettings.editorLayoutSettings;
 
         layout.setLayoutLocked(!layout.isLayoutLocked());
+        this.flushBbsSettings();
         this.clearPanelDragState();
         this.updateLayoutLockTooltip();
         this.setupEditorFlex(true);
+    }
+
+    private void flushBbsSettings()
+    {
+        Settings settings = BBSMod.getSettings().modules.get("bbs");
+
+        if (settings != null)
+        {
+            settings.save();
+        }
     }
 
     private void updateLayoutLockTooltip()
