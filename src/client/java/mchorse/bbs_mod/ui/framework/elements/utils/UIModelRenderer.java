@@ -259,6 +259,7 @@ public abstract class UIModelRenderer extends UIElement
         RenderSystem.depthFunc(GL11.GL_ALWAYS);
         RenderSystem.disableDepthTest();
         RenderSystem.disableCull();
+        RenderSystem.setShader(ShaderProgramKeys.POSITION_TEX_COLOR);
 
         this.processInputs(context);
     }

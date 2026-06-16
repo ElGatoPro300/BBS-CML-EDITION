@@ -168,6 +168,9 @@ public class UISubtitleRenderer
 
         RenderSystem.setProjectionMatrix(cache, ProjectionType.ORTHOGRAPHIC);
         RenderSystem.enableCull();
+        RenderSystem.depthFunc(GL11.GL_LEQUAL);
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.setShader(net.minecraft.client.gl.ShaderProgramKeys.POSITION_TEX_COLOR);
     }
 
     public static void renderSubtitle(MatrixStack stack, Batcher2D batcher, Subtitle subtitle)

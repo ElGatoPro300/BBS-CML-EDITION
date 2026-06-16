@@ -399,6 +399,8 @@ public class BBSRendering
 
             ScreenEffectRenderer.render(batcher, controller.getContext(), area.w, area.h);
 
+            drawContext.draw();
+
             RenderSystem.setProjectionMatrix(cache, cacheType);
         }
 
@@ -409,6 +411,8 @@ public class BBSRendering
             Window window = mc.getWindow();
 
             renderHudOverlays(batcher, controller.getContext(), window.getScaledWidth(), window.getScaledHeight());
+
+            drawContext.draw();
         }
 
         if (!customSize)
@@ -434,6 +438,8 @@ public class BBSRendering
                 VideoRenderer.renderClips(new MatrixStack(), offscreenBatcher, panel.getData().camera.getClips(panel.getCursor()), panel.getCursor(), panel.getRunner().isRunning(), fullScreen, fullScreen, null, window.getScaledWidth(), window.getScaledHeight(), false);
 
                 ScreenEffectRenderer.render(offscreenBatcher, panel.getRunner().getContext(), window.getScaledWidth(), window.getScaledHeight());
+
+                drawContext.draw();
 
                 RenderSystem.setProjectionMatrix(cache, cacheType);
             }
@@ -475,10 +481,10 @@ public class BBSRendering
         int lastTexture = RenderSystem.getShaderTexture(0);
         Texture texture = getTexture();
 
-        texture.bind();
+        RenderSystem.setShaderTexture(0, texture.id);
         texture.setSize(framebuffer.textureWidth, framebuffer.textureHeight);
         GL11.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0, framebuffer.textureWidth, framebuffer.textureHeight);
-        RenderSystem.bindTexture(lastTexture);
+        RenderSystem.setShaderTexture(0, lastTexture);
 
         toggleFramebuffer(false);
     }

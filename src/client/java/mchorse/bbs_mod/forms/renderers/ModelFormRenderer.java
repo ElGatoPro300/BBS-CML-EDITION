@@ -363,6 +363,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
             DiffuseLighting.disableGuiDepthLighting();
             RenderSystem.depthFunc(GL11.GL_ALWAYS);
+            RenderSystem.setShader(ShaderProgramKeys.POSITION_TEX_COLOR);
         }
     }
 
