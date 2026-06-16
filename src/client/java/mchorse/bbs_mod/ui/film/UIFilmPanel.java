@@ -130,6 +130,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -2323,7 +2324,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                 return null;
             }
 
-            BaseType data = DataToString.fromString(new String(stream.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8));
+            BaseType data = DataToString.fromString(new String(stream.readAllBytes(), StandardCharsets.UTF_8));
 
             return data != null && data.isMap() ? data.asMap() : null;
         }
