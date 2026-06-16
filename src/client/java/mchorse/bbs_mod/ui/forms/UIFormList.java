@@ -2576,9 +2576,29 @@ public class UIFormList extends UIElement
             }
             else
             {
+                boolean wasExpanded = UIFormList.this.expandedCategory != null && this.expansionTransition >= 1F;
+                boolean simplify = BBSSettings.editorSimplifyAnimations != null && BBSSettings.editorSimplifyAnimations.get();
+
+                if (wasExpanded && !simplify)
+                {
+                    int oldIdx = UIFormList.this.categories.indexOf(UIFormList.this.expandedCategory);
+                    int newIdx = UIFormList.this.categories.indexOf(cell.category);
+
+                    this.oldExpandedItems.clear();
+                    this.oldExpandedItems.addAll(this.expandedItems);
+                    this.oldExpandedPerRow = Math.max(1, (this.expandedPanelW - CATEGORY_CARD_GAP * 2) / (EXPANDED_CELL_WIDTH + CATEGORY_CARD_GAP));
+
+                    this.folderTransition = 0F;
+                    this.transitionDirection = newIdx > oldIdx ? 1 : -1;
+                }
+
                 UIFormList.this.expandedCategory = cell.category;
                 this.targetExpansion = 1F;
-                this.expansionTransition = (BBSSettings.editorSimplifyAnimations != null && BBSSettings.editorSimplifyAnimations.get()) ? 1F : 0F;
+
+                if (!wasExpanded)
+                {
+                    this.expansionTransition = simplify ? 1F : 0F;
+                }
 
                 if (cell.category.category instanceof ModelFormCategory.Folder folder)
                 {
@@ -3184,53 +3204,60 @@ public class UIFormList extends UIElement
                 currentY += CATEGORY_GROUP_HEADER_HEIGHT;
 
                 int cardsCount = groupCategories.size();
+                boolean hasExpandedInGroup = entry.getKey() == expandedGroup && UIFormList.this.expandedCategory != null;
+                int expandedIdx = hasExpandedInGroup ? groupCategories.indexOf(UIFormList.this.expandedCategory) : -1;
+                int expandedRowNum = expandedIdx >= 0 ? expandedIdx / this.cachedPerRow : -1;
+                int totalRows = (cardsCount + this.cachedPerRow - 1) / this.cachedPerRow;
 
-                for (int i = 0; i < cardsCount; i++)
+                for (int rowNum = 0; rowNum < totalRows; rowNum++)
                 {
-                    int row = i / this.cachedPerRow;
-                    int column = i % this.cachedPerRow;
-                    int x = this.area.x + CATEGORY_CARD_GAP + column * (CATEGORY_CARD_WIDTH + CATEGORY_CARD_GAP);
-                    int y = currentY + row * step;
+                    int startI = rowNum * this.cachedPerRow;
+                    int endI = Math.min(startI + this.cachedPerRow, cardsCount);
 
-                    this.cardCells.add(new CategoryCell(groupCategories.get(i), x, y, false));
-                }
-
-                int rows = (cardsCount + this.cachedPerRow - 1) / this.cachedPerRow;
-                currentY += rows * step;
-
-                if (entry.getKey() == expandedGroup && UIFormList.this.expandedCategory != null)
-                {
-                    this.expandedPanelX = this.area.x + CATEGORY_CARD_GAP;
-                    this.expandedPanelY = currentY;
-                    this.expandedPanelW = this.area.w - CATEGORY_CARD_GAP * 2;
-
-                    this.expandedItems.clear();
-
-                    if (UIFormList.this.activeExpandedFolder != null)
+                    for (int i = startI; i < endI; i++)
                     {
-                        for (ModelFormCategory.Folder subfolder : UIFormList.this.activeExpandedFolder.getChildren())
+                        int column = i % this.cachedPerRow;
+                        int x = this.area.x + CATEGORY_CARD_GAP + column * (CATEGORY_CARD_WIDTH + CATEGORY_CARD_GAP);
+
+                        this.cardCells.add(new CategoryCell(groupCategories.get(i), x, currentY, false));
+                    }
+
+                    currentY += step;
+
+                    if (rowNum == expandedRowNum)
+                    {
+                        this.expandedPanelX = this.area.x + CATEGORY_CARD_GAP;
+                        this.expandedPanelY = currentY;
+                        this.expandedPanelW = this.area.w - CATEGORY_CARD_GAP * 2;
+
+                        this.expandedItems.clear();
+
+                        if (UIFormList.this.activeExpandedFolder != null)
                         {
-                            this.expandedItems.add(new ExpandedItem(subfolder));
+                            for (ModelFormCategory.Folder subfolder : UIFormList.this.activeExpandedFolder.getChildren())
+                            {
+                                this.expandedItems.add(new ExpandedItem(subfolder));
+                            }
                         }
+
+                        FormCategory activeFolder = UIFormList.this.activeExpandedFolder != null ? UIFormList.this.activeExpandedFolder : UIFormList.this.expandedCategory.category;
+                        UIFormCategory uiCategory = UIFormList.this.getUIFormCategory(activeFolder);
+                        List<Form> forms = uiCategory != null ? uiCategory.getForms() : activeFolder.getForms();
+
+                        for (Form form : forms)
+                        {
+                            this.expandedItems.add(new ExpandedItem(form));
+                        }
+
+                        int expandedPerRow = Math.max(1, (this.expandedPanelW - CATEGORY_CARD_GAP * 2) / (EXPANDED_CELL_WIDTH + CATEGORY_CARD_GAP));
+                        int itemCount = this.expandedItems.size();
+                        int expandedRows = (itemCount + expandedPerRow - 1) / expandedPerRow;
+                        int gridHeight = Math.max(20, expandedRows * (EXPANDED_CELL_HEIGHT + CATEGORY_CARD_GAP));
+                        int fullPanelH = EXPANDED_HEADER_HEIGHT + gridHeight + CATEGORY_CARD_GAP * 2;
+
+                        this.expandedPanelH = (int) (fullPanelH * this.expansionTransition);
+                        currentY += this.expandedPanelH + CATEGORY_CARD_GAP;
                     }
-
-                    FormCategory activeFolder = UIFormList.this.activeExpandedFolder != null ? UIFormList.this.activeExpandedFolder : UIFormList.this.expandedCategory.category;
-                    UIFormCategory uiCategory = UIFormList.this.getUIFormCategory(activeFolder);
-                    List<Form> forms = uiCategory != null ? uiCategory.getForms() : activeFolder.getForms();
-
-                    for (Form form : forms)
-                    {
-                        this.expandedItems.add(new ExpandedItem(form));
-                    }
-
-                    int expandedPerRow = Math.max(1, (this.expandedPanelW - CATEGORY_CARD_GAP * 2) / (EXPANDED_CELL_WIDTH + CATEGORY_CARD_GAP));
-                    int itemCount = this.expandedItems.size();
-                    int expandedRows = (itemCount + expandedPerRow - 1) / expandedPerRow;
-                    int gridHeight = Math.max(20, expandedRows * (EXPANDED_CELL_HEIGHT + CATEGORY_CARD_GAP));
-                    int fullPanelH = EXPANDED_HEADER_HEIGHT + gridHeight + CATEGORY_CARD_GAP * 2;
-
-                    this.expandedPanelH = (int) (fullPanelH * this.expansionTransition);
-                    currentY += this.expandedPanelH + CATEGORY_CARD_GAP;
                 }
 
                 firstGroup = false;
