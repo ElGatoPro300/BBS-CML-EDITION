@@ -681,11 +681,14 @@ public class UITrackpad extends UIBaseTextbox
 
         boolean dragging = this.isDraggingTime();
         boolean hovered = this.area.isInside(context);
-        boolean showMinusArrow = BBSSettings.enableTrackpadIncrements.get() && hovered;
-        boolean showPlusArrow = BBSSettings.enableTrackpadIncrements.get() && hovered;
+        int accent = 0xFF000000 | BBSSettings.primaryColor.get();
+        FontRenderer font = context.batcher.getFont();
+        boolean wantsArrows = BBSSettings.enableTrackpadIncrements.get() && hovered;
+        boolean showArrows = wantsArrows && this.area.w >= this.minusOne.w + this.plusOne.w + 6;
+        boolean showMinusArrow = showArrows;
+        boolean showPlusArrow = showArrows;
         boolean plus = !dragging && showPlusArrow && this.plusOne.isInside(context);
         boolean minus = !dragging && showMinusArrow && this.minusOne.isInside(context);
-        int accent = 0xFF000000 | BBSSettings.primaryColor.get();
 
         if (this.textbox.isFocused())
         {
@@ -709,19 +712,13 @@ public class UITrackpad extends UIBaseTextbox
 
             /* Value label — centered, clipped so it never runs under the
                increment buttons. */
-            FontRenderer font = context.batcher.getFont();
-            int reserved = (showMinusArrow || showPlusArrow) ? this.minusOne.w + this.plusOne.w + 8 : 6;
-            String raw;
-            if (this.forcedLabel != null)
-            {
-                raw = this.forcedLabel.get();
-            }
-            else
-            {
-                raw = this.formatToFit(font, this.value, this.area.w - reserved);
-            }
-            String label = font.limitToWidth(raw, this.area.w - reserved);
-            int lx = this.area.mx(font.getWidth(label));
+            int textLeft = this.area.x + (showMinusArrow ? this.minusOne.w + 4 : 2);
+            int textRight = this.area.ex() - (showPlusArrow ? this.plusOne.w + 4 : 2);
+            int availableTextWidth = Math.max(1, textRight - textLeft);
+            String raw = this.forcedLabel != null ? this.forcedLabel.get() : this.formatToFit(font, this.value, availableTextWidth);
+            String label = this.truncateToWidth(font, raw, availableTextWidth);
+
+            int lx = textLeft + Math.max(0, (availableTextWidth - font.getWidth(label)) / 2);
             int ly = this.area.my() - font.getHeight() / 2;
 
             context.batcher.text(label, lx, ly, this.textbox.getColor());
@@ -847,11 +844,6 @@ public class UITrackpad extends UIBaseTextbox
             return raw;
         }
 
-        if (this.integer)
-        {
-            return raw;
-        }
-
         String raw2 = FORMAT_2.format(value).replace(',', '.');
 
         if (font.getWidth(raw2) <= maxWidth)
@@ -873,7 +865,95 @@ public class UITrackpad extends UIBaseTextbox
             raw0 = "0";
         }
 
-        return raw0;
+        if (font.getWidth(raw0) <= maxWidth)
+        {
+            return raw0;
+        }
+
+        String compact = this.formatCompact(value);
+
+        if (!compact.isEmpty() && font.getWidth(compact) <= maxWidth)
+        {
+            return compact;
+        }
+
+        String exp2 = String.format(Locale.ENGLISH, "%.2e", value);
+
+        if (font.getWidth(exp2) <= maxWidth)
+        {
+            return exp2;
+        }
+
+        String exp1 = String.format(Locale.ENGLISH, "%.1e", value);
+
+        if (font.getWidth(exp1) <= maxWidth)
+        {
+            return exp1;
+        }
+
+        return String.format(Locale.ENGLISH, "%.0e", value);
+    }
+
+    private String truncateToWidth(FontRenderer font, String text, int maxWidth)
+    {
+        if (text == null || text.isEmpty())
+        {
+            return "";
+        }
+
+        if (maxWidth <= 0)
+        {
+            return text.substring(0, 1);
+        }
+
+        if (font.getWidth(text) <= maxWidth)
+        {
+            return text;
+        }
+
+        int end = text.length();
+
+        while (end > 1 && font.getWidth(text.substring(0, end)) > maxWidth)
+        {
+            end--;
+        }
+
+        return text.substring(0, end);
+    }
+
+    private String formatCompact(double value)
+    {
+        double abs = Math.abs(value);
+
+        if (abs < 1000D)
+        {
+            return "";
+        }
+
+        String suffix;
+        double scaled;
+
+        if (abs >= 1_000_000_000D)
+        {
+            suffix = "B";
+            scaled = value / 1_000_000_000D;
+        }
+        else if (abs >= 1_000_000D)
+        {
+            suffix = "M";
+            scaled = value / 1_000_000D;
+        }
+        else
+        {
+            suffix = "k";
+            scaled = value / 1000D;
+        }
+
+        String f2 = String.format(Locale.ENGLISH, "%.2f", scaled) + suffix;
+        String f1 = String.format(Locale.ENGLISH, "%.1f", scaled) + suffix;
+        String f0 = String.format(Locale.ENGLISH, "%.0f", scaled) + suffix;
+
+        return f2.length() <= f1.length() ? (f2.length() <= f0.length() ? f2 : f0) : (f1.length() <= f0.length() ? f1 : f0);
     }
 
     public double getValueModifier()

@@ -172,9 +172,16 @@ public class UIDraggable extends UIElement
            event was genuinely dropped. */
         if (this.dragging && !Window.isMouseButtonPressed(GLFW.GLFW_MOUSE_BUTTON_LEFT))
         {
+            boolean fireEnd = this.thresholdMet;
+
             this.dragging = false;
             this.thresholdMet = false;
             this.dragUpdated = false;
+
+            if (fireEnd && this.dragEndCallback != null)
+            {
+                this.dragEndCallback.run();
+            }
 
             return;
         }
