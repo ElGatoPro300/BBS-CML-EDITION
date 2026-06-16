@@ -80,8 +80,9 @@ public class UIFormList extends UIElement
     private static final int CATEGORY_CARD_GAP = 10;
     private static final int CATEGORY_PREVIEW_PADDING = 8;
     private static final int CATEGORY_PREVIEW_GAP = 4;
-    private static final int CATEGORY_PREVIEW_COLUMNS = 3;
-    private static final int CATEGORY_PREVIEW_ROWS = 3;
+    private static final int CATEGORY_PREVIEW_COLUMNS = 2;
+    private static final int CATEGORY_PREVIEW_ROWS = 2;
+
     private static final int POPUP_CELL_WIDTH = 80;
     private static final int POPUP_CELL_HEIGHT = 100;
     private static final int POPUP_TARGETS_BAR_HEIGHT = 20;
@@ -1456,9 +1457,7 @@ public class UIFormList extends UIElement
 
     public void closeOpenedCategoryPopup()
     {
-        this.expandedCategory = null;
-        this.activeExpandedFolder = null;
-        this.categoryCards.invalidateCache();
+        this.categoryCards.collapseExpandedCategory();
     }
 
 
@@ -2383,6 +2382,16 @@ public class UIFormList extends UIElement
         private boolean draggingForm;
         private int contentHeight;
 
+        private final List<ExpandedItem> oldExpandedItems = new ArrayList<>();
+        private int oldExpandedPerRow;
+        private float folderTransition = 1F;
+        private int transitionDirection = 1;
+
+        private float expansionTransition = 0F;
+        private float targetExpansion = 0F;
+        private long lastRenderTime = -1L;
+
+
 
         private final List<UIFormCategory> filteredCategories = new ArrayList<>();
         private final List<CategoryCell> cardCells = new ArrayList<>();
@@ -2419,6 +2428,89 @@ public class UIFormList extends UIElement
             this.lastHeight = 0;
             this.previewCache.clear();
         }
+
+        public void collapseExpandedCategory()
+        {
+            this.targetExpansion = 0F;
+            this.invalidateCache();
+        }
+
+        private void navigateFolder(ModelFormCategory.Folder targetFolder, boolean goingDeeper)
+        {
+            if (BBSSettings.editorSimplifyAnimations != null && BBSSettings.editorSimplifyAnimations.get())
+            {
+                UIFormList.this.activeExpandedFolder = targetFolder;
+                this.folderTransition = 1F;
+                this.invalidateCache();
+
+                return;
+            }
+
+            this.oldExpandedItems.clear();
+            this.oldExpandedItems.addAll(this.expandedItems);
+            this.oldExpandedPerRow = Math.max(1, (this.expandedPanelW - CATEGORY_CARD_GAP * 2) / (EXPANDED_CELL_WIDTH + CATEGORY_CARD_GAP));
+
+            UIFormList.this.activeExpandedFolder = targetFolder;
+            this.folderTransition = 0F;
+            this.transitionDirection = goingDeeper ? 1 : -1;
+            this.invalidateCache();
+        }
+
+        private void updateAnimations(UIContext context)
+        {
+            long now = System.currentTimeMillis();
+            float delta = this.lastRenderTime > 0L ? (now - this.lastRenderTime) / 1000F : 0F;
+
+            this.lastRenderTime = now;
+
+            if (BBSSettings.editorSimplifyAnimations != null && BBSSettings.editorSimplifyAnimations.get())
+            {
+                if (this.expansionTransition != this.targetExpansion)
+                {
+                    this.expansionTransition = this.targetExpansion;
+                    this.invalidateCache();
+                }
+
+                if (this.folderTransition != 1F)
+                {
+                    this.folderTransition = 1F;
+                    this.invalidateCache();
+                }
+
+                return;
+            }
+
+            if (UIFormList.this.expandedCategory != null && this.targetExpansion == 0F && this.expansionTransition == 0F)
+            {
+                this.targetExpansion = 1F;
+                this.expansionTransition = 0F;
+            }
+
+            if (this.expansionTransition < this.targetExpansion)
+            {
+                this.expansionTransition = Math.min(this.targetExpansion, this.expansionTransition + delta * 5F);
+                this.invalidateCache();
+            }
+            else if (this.expansionTransition > this.targetExpansion)
+            {
+                this.expansionTransition = Math.max(this.targetExpansion, this.expansionTransition - delta * 5F);
+                this.invalidateCache();
+            }
+
+            if (this.folderTransition < 1F)
+            {
+                this.folderTransition = Math.min(1F, this.folderTransition + delta * 5F);
+                this.invalidateCache();
+            }
+
+            if (this.expansionTransition == 0F && this.targetExpansion == 0F && UIFormList.this.expandedCategory != null)
+            {
+                UIFormList.this.expandedCategory = null;
+                UIFormList.this.activeExpandedFolder = null;
+                this.invalidateCache();
+            }
+        }
+
 
         @Override
         public boolean subMouseClicked(UIContext context)
@@ -2480,12 +2572,13 @@ public class UIFormList extends UIElement
 
             if (UIFormList.this.expandedCategory == cell.category)
             {
-                UIFormList.this.expandedCategory = null;
-                UIFormList.this.activeExpandedFolder = null;
+                this.targetExpansion = 0F;
             }
             else
             {
                 UIFormList.this.expandedCategory = cell.category;
+                this.targetExpansion = 1F;
+                this.expansionTransition = (BBSSettings.editorSimplifyAnimations != null && BBSSettings.editorSimplifyAnimations.get()) ? 1F : 0F;
 
                 if (cell.category.category instanceof ModelFormCategory.Folder folder)
                 {
@@ -2502,8 +2595,15 @@ public class UIFormList extends UIElement
             return true;
         }
 
+
         private boolean handleExpandedPanelClick(UIContext context)
         {
+            /* Block clicks while any transition animation is active */
+            if (this.folderTransition < 1F || this.expansionTransition < 1F || this.targetExpansion == 0F)
+            {
+                return true;
+            }
+
             boolean hasBackArrow = UIFormList.this.activeExpandedFolder != null && UIFormList.this.activeExpandedFolder != UIFormList.this.expandedCategory.category;
 
             if (hasBackArrow && context.mouseX >= this.expandedPanelX + 4 && context.mouseX < this.expandedPanelX + 24
@@ -2511,8 +2611,8 @@ public class UIFormList extends UIElement
             {
                 if (context.mouseButton == 0)
                 {
-                    UIFormList.this.activeExpandedFolder = UIFormList.this.activeExpandedFolder.getParent();
-                    this.invalidateCache();
+                    ModelFormCategory.Folder parent = UIFormList.this.activeExpandedFolder.getParent();
+                    this.navigateFolder(parent, false);
                 }
 
                 return true;
@@ -2540,8 +2640,7 @@ public class UIFormList extends UIElement
                 {
                     if (item.isFolder())
                     {
-                        UIFormList.this.activeExpandedFolder = item.folder;
-                        this.invalidateCache();
+                        this.navigateFolder(item.folder, true);
                     }
                     else if (item.form != null)
                     {
@@ -2682,8 +2781,7 @@ public class UIFormList extends UIElement
             {
                 if (UIFormList.this.expandedCategory == this.dragCell.category)
                 {
-                    UIFormList.this.expandedCategory = null;
-                    UIFormList.this.activeExpandedFolder = null;
+                    this.collapseExpandedCategory();
                 }
                 else
                 {
@@ -2711,6 +2809,7 @@ public class UIFormList extends UIElement
         @Override
         public void render(UIContext context)
         {
+            this.updateAnimations(context);
             this.rebuildIfNeeded();
             int contentHeight = this.contentHeight;
 
@@ -2803,6 +2902,14 @@ public class UIFormList extends UIElement
 
         private void renderExpandedPanel(UIContext context)
         {
+            if (this.expandedPanelH <= 0)
+            {
+                return;
+            }
+
+            /* Clip the entire panel to its animated height */
+            context.batcher.clip(this.expandedPanelX, this.expandedPanelY, this.expandedPanelW, this.expandedPanelH, context);
+
             context.batcher.box(this.expandedPanelX, this.expandedPanelY, this.expandedPanelX + this.expandedPanelW, this.expandedPanelY + this.expandedPanelH, Colors.A50 | 0x111111);
             context.batcher.outline(this.expandedPanelX, this.expandedPanelY, this.expandedPanelX + this.expandedPanelW, this.expandedPanelY + this.expandedPanelH, Colors.A50 | BBSSettings.primaryColor.get());
 
@@ -2828,14 +2935,47 @@ public class UIFormList extends UIElement
             int gridY = this.expandedPanelY + EXPANDED_HEADER_HEIGHT + CATEGORY_CARD_GAP;
             int expandedPerRow = Math.max(1, (this.expandedPanelW - CATEGORY_CARD_GAP * 2) / (EXPANDED_CELL_WIDTH + CATEGORY_CARD_GAP));
 
-            if (this.expandedItems.isEmpty())
+            /* Render old items sliding out during a folder transition */
+            if (this.folderTransition < 1F && !this.oldExpandedItems.isEmpty())
+            {
+                this.renderExpandedItems(context, this.oldExpandedItems, this.oldExpandedPerRow, gridY, 1F - this.folderTransition, -this.transitionDirection);
+            }
+
+            /* Render current items (sliding in if folder transition is active) */
+            if (!this.expandedItems.isEmpty())
+            {
+                float newAlpha = this.folderTransition;
+                int slideDirection = this.folderTransition < 1F ? this.transitionDirection : 0;
+
+                this.renderExpandedItems(context, this.expandedItems, expandedPerRow, gridY, newAlpha, slideDirection);
+            }
+            else if (this.folderTransition >= 1F)
             {
                 String msg = "No models found";
                 context.batcher.textShadow(msg, this.expandedPanelX + (this.expandedPanelW - context.batcher.getFont().getWidth(msg)) / 2, gridY + 6, Colors.LIGHTEST_GRAY);
+            }
+
+            /* Clean up old items once transition finishes */
+            if (this.folderTransition >= 1F && !this.oldExpandedItems.isEmpty())
+            {
+                this.oldExpandedItems.clear();
+            }
+
+            this.renderExpandedDragOverlay(context, expandedPerRow, gridY);
+
+            context.batcher.unclip(context);
+        }
+
+        private void renderExpandedItems(UIContext context, List<ExpandedItem> items, int perRow, int gridY, float alpha, int slideDir)
+        {
+            if (items.isEmpty() || alpha <= 0F)
+            {
                 return;
             }
 
-            if (this.dragFormIndex >= this.expandedItems.size())
+            int slideOffset = (int) ((1F - alpha) * this.expandedPanelW * 0.3F) * slideDir;
+
+            if (this.dragFormIndex >= items.size())
             {
                 this.dragFormIndex = -1;
                 this.draggingForm = false;
@@ -2845,6 +2985,98 @@ public class UIFormList extends UIElement
             if (this.dragFormIndex != -1 && !this.draggingForm && UIFormList.this.expandedCategory.category instanceof UserFormCategory && System.currentTimeMillis() - this.dragFormStart > POPUP_DRAG_DELAY_MS)
             {
                 this.draggingForm = true;
+            }
+
+            int localX = context.mouseX - this.expandedPanelX - CATEGORY_CARD_GAP - slideOffset;
+            int localY = context.mouseY - gridY;
+            int hoverIdx = -1;
+
+            if (localX >= 0 && localY >= 0 && alpha >= 1F)
+            {
+                int col = localX / (EXPANDED_CELL_WIDTH + CATEGORY_CARD_GAP);
+                int row = localY / (EXPANDED_CELL_HEIGHT + CATEGORY_CARD_GAP);
+                int idx = col + row * perRow;
+
+                if (idx >= 0 && idx < items.size())
+                {
+                    hoverIdx = idx;
+                }
+            }
+
+            for (int idx = 0; idx < items.size(); idx++)
+            {
+                int col = idx % perRow;
+                int row = idx / perRow;
+                int cx = this.expandedPanelX + CATEGORY_CARD_GAP + col * (EXPANDED_CELL_WIDTH + CATEGORY_CARD_GAP) + slideOffset;
+                int cy = gridY + row * (EXPANDED_CELL_HEIGHT + CATEGORY_CARD_GAP);
+
+                this.renderExpandedItem(context, items.get(idx), cx, cy, idx == hoverIdx, alpha);
+            }
+        }
+
+        private void renderExpandedItem(UIContext context, ExpandedItem item, int cx, int cy, boolean hover, float alpha)
+        {
+            int bgAlpha = (int) (alpha * 0x22) << 24;
+            int outlineAlpha = (int) (alpha * 0x80) << 24;
+            int textAlpha = (int) (alpha * 255) << 24;
+            boolean selected = item.form != null && UIFormList.this.expandedCategory.selected == item.form;
+
+            if (selected)
+            {
+                int selAlpha = (int) (alpha * 0x80) << 24;
+                context.batcher.box(cx, cy, cx + EXPANDED_CELL_WIDTH, cy + EXPANDED_CELL_HEIGHT, selAlpha | (BBSSettings.primaryColor.get() & Colors.RGB));
+                context.batcher.outline(cx, cy, cx + EXPANDED_CELL_WIDTH, cy + EXPANDED_CELL_HEIGHT, selAlpha | (BBSSettings.primaryColor.get() & Colors.RGB), 2);
+            }
+            else if (hover)
+            {
+                context.batcher.box(cx, cy, cx + EXPANDED_CELL_WIDTH, cy + EXPANDED_CELL_HEIGHT, bgAlpha);
+                context.batcher.outline(cx, cy, cx + EXPANDED_CELL_WIDTH, cy + EXPANDED_CELL_HEIGHT, textAlpha);
+            }
+            else
+            {
+                context.batcher.box(cx, cy, cx + EXPANDED_CELL_WIDTH, cy + EXPANDED_CELL_HEIGHT, bgAlpha);
+                context.batcher.outline(cx, cy, cx + EXPANDED_CELL_WIDTH, cy + EXPANDED_CELL_HEIGHT, outlineAlpha);
+            }
+
+            if (item.isFolder())
+            {
+                context.batcher.icon(Icons.FOLDER, textAlpha | (Colors.WHITE & Colors.RGB), cx + EXPANDED_CELL_WIDTH / 2, cy + EXPANDED_CELL_HEIGHT / 2 - 8, 0.5F, 0.5F);
+
+                String folderName = item.folder.name;
+                String limited = context.batcher.getFont().limitToWidth(folderName, EXPANDED_CELL_WIDTH - 8);
+                int textX = cx + (EXPANDED_CELL_WIDTH - context.batcher.getFont().getWidth(limited)) / 2;
+                int textY = cy + EXPANDED_CELL_HEIGHT - 16;
+
+                context.batcher.textShadow(limited, textX, textY, textAlpha | (Colors.WHITE & Colors.RGB));
+            }
+            else if (item.form != null)
+            {
+                context.batcher.clip(cx, cy, EXPANDED_CELL_WIDTH, EXPANDED_CELL_HEIGHT, context);
+                FormUtilsClient.renderUI(item.form, context, cx, cy, cx + EXPANDED_CELL_WIDTH, cy + EXPANDED_CELL_HEIGHT);
+                context.batcher.unclip(context);
+
+                FavoriteMarker marker = UIFormList.this.getFavoriteMarker(item.form);
+
+                if (marker != null)
+                {
+                    context.batcher.outline(cx, cy, cx + EXPANDED_CELL_WIDTH, cy + EXPANDED_CELL_HEIGHT, marker.color, 1);
+                    context.batcher.icon(marker.icon, Colors.WHITE, cx + EXPANDED_CELL_WIDTH - 3, cy + 2, 1F, 0F);
+                }
+            }
+        }
+
+        private void renderExpandedDragOverlay(UIContext context, int expandedPerRow, int gridY)
+        {
+            if (!this.draggingForm || this.dragFormIndex < 0 || this.dragFormIndex >= this.expandedItems.size())
+            {
+                return;
+            }
+
+            ExpandedItem dragItem = this.expandedItems.get(this.dragFormIndex);
+
+            if (dragItem.form == null)
+            {
+                return;
             }
 
             int localX = context.mouseX - this.expandedPanelX - CATEGORY_CARD_GAP;
@@ -2863,89 +3095,26 @@ public class UIFormList extends UIElement
                 }
             }
 
-            for (int idx = 0; idx < this.expandedItems.size(); idx++)
+            if (hoverIdx >= 0 && hoverIdx < this.expandedItems.size() && hoverIdx != this.dragFormIndex)
             {
-                int col = idx % expandedPerRow;
-                int row = idx / expandedPerRow;
-                int cx = this.expandedPanelX + CATEGORY_CARD_GAP + col * (EXPANDED_CELL_WIDTH + CATEGORY_CARD_GAP);
-                int cy = gridY + row * (EXPANDED_CELL_HEIGHT + CATEGORY_CARD_GAP);
+                ExpandedItem hoverItem = this.expandedItems.get(hoverIdx);
 
-                ExpandedItem item = this.expandedItems.get(idx);
-                boolean selected = item.form != null && UIFormList.this.expandedCategory.selected == item.form;
-                boolean hover = idx == hoverIdx;
-
-                if (selected)
+                if (hoverItem.form != null)
                 {
-                    context.batcher.box(cx, cy, cx + EXPANDED_CELL_WIDTH, cy + EXPANDED_CELL_HEIGHT, Colors.A50 | BBSSettings.primaryColor.get());
-                    context.batcher.outline(cx, cy, cx + EXPANDED_CELL_WIDTH, cy + EXPANDED_CELL_HEIGHT, Colors.A50 | BBSSettings.primaryColor.get(), 2);
-                }
-                else if (hover)
-                {
-                    context.batcher.box(cx, cy, cx + EXPANDED_CELL_WIDTH, cy + EXPANDED_CELL_HEIGHT, Colors.A25);
-                    context.batcher.outline(cx, cy, cx + EXPANDED_CELL_WIDTH, cy + EXPANDED_CELL_HEIGHT, Colors.A100);
-                }
-                else
-                {
-                    context.batcher.box(cx, cy, cx + EXPANDED_CELL_WIDTH, cy + EXPANDED_CELL_HEIGHT, Colors.A12);
-                    context.batcher.outline(cx, cy, cx + EXPANDED_CELL_WIDTH, cy + EXPANDED_CELL_HEIGHT, Colors.A50);
-                }
+                    int px = this.expandedPanelX + CATEGORY_CARD_GAP + (hoverIdx % expandedPerRow) * (EXPANDED_CELL_WIDTH + CATEGORY_CARD_GAP);
+                    int py = gridY + (hoverIdx / expandedPerRow) * (EXPANDED_CELL_HEIGHT + CATEGORY_CARD_GAP);
 
-
-                if (item.isFolder())
-                {
-                    context.batcher.icon(Icons.FOLDER, Colors.WHITE, cx + EXPANDED_CELL_WIDTH / 2, cy + EXPANDED_CELL_HEIGHT / 2 - 8, 0.5F, 0.5F);
-
-                    String folderName = item.folder.name;
-                    String limited = context.batcher.getFont().limitToWidth(folderName, EXPANDED_CELL_WIDTH - 8);
-                    int textX = cx + (EXPANDED_CELL_WIDTH - context.batcher.getFont().getWidth(limited)) / 2;
-                    int textY = cy + EXPANDED_CELL_HEIGHT - 16;
-
-                    context.batcher.textShadow(limited, textX, textY, Colors.WHITE);
-                }
-                else if (item.form != null)
-                {
-                    context.batcher.clip(cx, cy, EXPANDED_CELL_WIDTH, EXPANDED_CELL_HEIGHT, context);
-                    FormUtilsClient.renderUI(item.form, context, cx, cy, cx + EXPANDED_CELL_WIDTH, cy + EXPANDED_CELL_HEIGHT);
-                    context.batcher.unclip(context);
-
-                    FavoriteMarker marker = UIFormList.this.getFavoriteMarker(item.form);
-
-                    if (marker != null)
-                    {
-                        context.batcher.outline(cx, cy, cx + EXPANDED_CELL_WIDTH, cy + EXPANDED_CELL_HEIGHT, marker.color, 1);
-                        context.batcher.icon(marker.icon, Colors.WHITE, cx + EXPANDED_CELL_WIDTH - 3, cy + 2, 1F, 0F);
-                    }
+                    context.batcher.box(px, py, px + EXPANDED_CELL_WIDTH, py + EXPANDED_CELL_HEIGHT, Colors.A25 | BBSSettings.primaryColor.get());
+                    context.batcher.outline(px, py, px + EXPANDED_CELL_WIDTH, py + EXPANDED_CELL_HEIGHT, Colors.A100 | BBSSettings.primaryColor.get(), 2);
                 }
             }
 
-            if (this.draggingForm && this.dragFormIndex >= 0 && this.dragFormIndex < this.expandedItems.size())
-            {
-                ExpandedItem dragItem = this.expandedItems.get(this.dragFormIndex);
+            int cx = context.mouseX - EXPANDED_CELL_WIDTH / 2;
+            int cy = context.mouseY - EXPANDED_CELL_HEIGHT / 2;
 
-                if (dragItem.form != null)
-                {
-                    if (hoverIdx >= 0 && hoverIdx < this.expandedItems.size() && hoverIdx != this.dragFormIndex)
-                    {
-                        ExpandedItem hoverItem = this.expandedItems.get(hoverIdx);
-
-                        if (hoverItem.form != null)
-                        {
-                            int px = this.expandedPanelX + CATEGORY_CARD_GAP + (hoverIdx % expandedPerRow) * (EXPANDED_CELL_WIDTH + CATEGORY_CARD_GAP);
-                            int py = gridY + (hoverIdx / expandedPerRow) * (EXPANDED_CELL_HEIGHT + CATEGORY_CARD_GAP);
-
-                            context.batcher.box(px, py, px + EXPANDED_CELL_WIDTH, py + EXPANDED_CELL_HEIGHT, Colors.A25 | BBSSettings.primaryColor.get());
-                            context.batcher.outline(px, py, px + EXPANDED_CELL_WIDTH, py + EXPANDED_CELL_HEIGHT, Colors.A100 | BBSSettings.primaryColor.get(), 2);
-                        }
-                    }
-
-                    int cx = context.mouseX - EXPANDED_CELL_WIDTH / 2;
-                    int cy = context.mouseY - EXPANDED_CELL_HEIGHT / 2;
-
-                    context.batcher.box(cx, cy, cx + EXPANDED_CELL_WIDTH, cy + EXPANDED_CELL_HEIGHT, Colors.A50 | BBSSettings.primaryColor.get());
-                    context.batcher.outline(cx, cy, cx + EXPANDED_CELL_WIDTH, cy + EXPANDED_CELL_HEIGHT, Colors.A100 | BBSSettings.primaryColor.get(), 2);
-                    FormUtilsClient.renderUI(dragItem.form, context, cx, cy, cx + EXPANDED_CELL_WIDTH, cy + EXPANDED_CELL_HEIGHT);
-                }
-            }
+            context.batcher.box(cx, cy, cx + EXPANDED_CELL_WIDTH, cy + EXPANDED_CELL_HEIGHT, Colors.A50 | BBSSettings.primaryColor.get());
+            context.batcher.outline(cx, cy, cx + EXPANDED_CELL_WIDTH, cy + EXPANDED_CELL_HEIGHT, Colors.A100 | BBSSettings.primaryColor.get(), 2);
+            FormUtilsClient.renderUI(dragItem.form, context, cx, cy, cx + EXPANDED_CELL_WIDTH, cy + EXPANDED_CELL_HEIGHT);
         }
 
 
@@ -3058,8 +3227,9 @@ public class UIFormList extends UIElement
                     int itemCount = this.expandedItems.size();
                     int expandedRows = (itemCount + expandedPerRow - 1) / expandedPerRow;
                     int gridHeight = Math.max(20, expandedRows * (EXPANDED_CELL_HEIGHT + CATEGORY_CARD_GAP));
+                    int fullPanelH = EXPANDED_HEADER_HEIGHT + gridHeight + CATEGORY_CARD_GAP * 2;
 
-                    this.expandedPanelH = EXPANDED_HEADER_HEIGHT + gridHeight + CATEGORY_CARD_GAP * 2;
+                    this.expandedPanelH = (int) (fullPanelH * this.expansionTransition);
                     currentY += this.expandedPanelH + CATEGORY_CARD_GAP;
                 }
 
