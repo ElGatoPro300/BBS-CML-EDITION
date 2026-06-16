@@ -243,10 +243,9 @@ public class UIHotbarRenderer
 
         DiffuseLighting.disableGuiDepthLighting();
 
-        RenderSystem.enableDepthTest();
-        RenderSystem.depthMask(true);
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
+        RenderSystem.disableDepthTest();
+        RenderSystem.depthMask(false);
+        RenderSystem.disableBlend();
 
         RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
 

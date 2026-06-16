@@ -64,11 +64,13 @@ import net.irisshaders.iris.uniforms.custom.cached.CachedUniform;
 
 import org.joml.Matrix4f;
 
+import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.ProjectionType;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.systems.VertexSorter;
 
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL13;
 
 import java.io.File;
 import java.util.Collections;
@@ -478,13 +480,16 @@ public class BBSRendering
 
     public static void onRenderBeforeScreen()
     {
+        int activeTexture = GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE);
         int lastTexture = RenderSystem.getShaderTexture(0);
         Texture texture = getTexture();
 
-        RenderSystem.setShaderTexture(0, texture.id);
+        GlStateManager._activeTexture(GL13.GL_TEXTURE0);
+        GlStateManager._bindTexture(texture.id);
         texture.setSize(framebuffer.textureWidth, framebuffer.textureHeight);
         GL11.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0, framebuffer.textureWidth, framebuffer.textureHeight);
-        RenderSystem.setShaderTexture(0, lastTexture);
+        GlStateManager._bindTexture(lastTexture);
+        GlStateManager._activeTexture(activeTexture);
 
         toggleFramebuffer(false);
     }
