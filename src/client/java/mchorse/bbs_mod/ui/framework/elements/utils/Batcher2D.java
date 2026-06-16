@@ -68,7 +68,7 @@ public class Batcher2D
 
     public void clip(int x, int y, int w, int h, UIContext context)
     {
-        this.clip(context.globalX(x), context.globalY(y), w, h, context.menu.width, context.menu.height);
+        this.clip(x, y, w, h, context.menu.width, context.menu.height);
     }
 
     /**
@@ -81,7 +81,7 @@ public class Batcher2D
 
     public void unclip(UIContext context)
     {
-        this.unclip(context.menu.width, context.menu.height);
+        this.context.disableScissor();
     }
 
     public void unclip(int sw, int sh)

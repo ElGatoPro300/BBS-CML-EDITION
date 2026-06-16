@@ -278,6 +278,8 @@ public class UIContext implements IViewportStack
     {
         this.updateScroll();
 
+        this.batcher.flush();
+
         this.tooltip.render(this);
         this.notifications.render(this);
     }
