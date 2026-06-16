@@ -1,5 +1,6 @@
 package mchorse.bbs_mod.cubic.render.vao;
 
+import mchorse.bbs_mod.client.BBSRendering;
 import net.minecraft.client.gl.GlUniform;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.render.Fog;
@@ -63,7 +64,14 @@ public class ModelVAORenderer
 
         if (normalUniform != null)
         {
-            normalUniform.set(modelView.normal(new Matrix3f()));
+            if (BBSRendering.isIrisShadersEnabled())
+            {
+                normalUniform.set(modelView.normal(new Matrix3f()));
+            }
+            else
+            {
+                normalUniform.set(stack.peek().getNormalMatrix());
+            }
         }
 
         Fog fog = RenderSystem.getShaderFog();
