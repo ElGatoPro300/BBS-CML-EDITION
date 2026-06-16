@@ -1,8 +1,10 @@
 package mchorse.bbs_mod.ui.film.replays.overlays;
 
 import mchorse.bbs_mod.BBSSettings;
+import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.l10n.keys.IKey;
+import mchorse.bbs_mod.settings.Settings;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
@@ -93,7 +95,7 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
     private Consumer<Replay> callback;
     private final UIFilmPanel filmPanel;
     private boolean docked;
-    private int dockedReplaysHeight = DOCKED_REPLAYS_HEIGHT;
+    private int dockedReplaysHeight = BBSSettings.editorAnchoredReplaysPanelHeight == null ? DOCKED_REPLAYS_HEIGHT : BBSSettings.editorAnchoredReplaysPanelHeight.get();
 
     public UIReplaysOverlayPanel(UIFilmPanel filmPanel, Consumer<Replay> callback)
     {
@@ -101,7 +103,17 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
 
         this.filmPanel = filmPanel;
         this.callback = callback;
-        this.replays = new UIReplayList((l) -> this.callback.accept(l.isEmpty() ? null : l.get(0)), this, filmPanel);
+        this.replays = new UIReplayList((l) ->
+        {
+            Replay replay = l.isEmpty() ? null : l.get(l.size() - 1);
+
+            this.setReplay(replay);
+
+            if (this.callback != null && l.size() <= 1)
+            {
+                this.callback.accept(replay);
+            }
+        }, this, filmPanel);
 
         this.pickEdit = new UINestedEdit((editing) ->
         {
@@ -261,6 +273,7 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
             int maxHeight = Math.min(DOCKED_REPLAYS_HEIGHT_MAX, Math.max(DOCKED_BOTTOM_SECTION_MIN, this.content.area.h - DOCKED_TOP_SECTION_MIN - DOCKED_RESIZER_HEIGHT));
 
             this.dockedReplaysHeight = MathUtils.clamp(bottomHeight, DOCKED_BOTTOM_SECTION_MIN, maxHeight);
+            this.persistDockedReplaysHeight();
             this.updateDockedLayout();
             this.resize();
         }).rendering((context) ->
@@ -268,7 +281,7 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
             int color = Colors.setA(BBSSettings.primaryColor.get(), this.dockedResizer.isDragging() || this.dockedResizer.area.isInside(context) ? 0.75F : 0.45F);
 
             context.batcher.box(this.dockedResizer.area.x, this.dockedResizer.area.y + 2, this.dockedResizer.area.ex(), this.dockedResizer.area.ey() - 2, color);
-        });
+        }).dragEnd(this::flushDockedReplaysHeight);
 
         this.content.add(this.replays, this.replayProperties, this.groupProperties, this.dockedResizer);
         this.updateDockedLayout();
@@ -313,6 +326,11 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
 
         if (docked)
         {
+            if (BBSSettings.editorAnchoredReplaysPanelHeight != null)
+            {
+                this.dockedReplaysHeight = BBSSettings.editorAnchoredReplaysPanelHeight.get();
+            }
+
             /* The surrounding window/layout provides the card title bar, so this panel
              * hides its own title (collapsed to a zero area so it can't intercept list
              * clicks) and the content fills the whole element. */
@@ -341,14 +359,23 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
         if (this.docked)
         {
             int maxHeight = Math.min(DOCKED_REPLAYS_HEIGHT_MAX, Math.max(DOCKED_BOTTOM_SECTION_MIN, this.content.area.h - DOCKED_TOP_SECTION_MIN - DOCKED_RESIZER_HEIGHT));
+            this.dockedReplaysHeight = MathUtils.clamp(this.dockedReplaysHeight, DOCKED_BOTTOM_SECTION_MIN, DOCKED_REPLAYS_HEIGHT_MAX);
 
-            this.dockedReplaysHeight = MathUtils.clamp(this.dockedReplaysHeight, DOCKED_BOTTOM_SECTION_MIN, maxHeight);
-            int replaysHeight = -(this.dockedReplaysHeight + DOCKED_RESIZER_HEIGHT);
+            boolean clampToAvailableHeight = this.content.area.h >= DOCKED_TOP_SECTION_MIN + DOCKED_BOTTOM_SECTION_MIN + DOCKED_RESIZER_HEIGHT;
+            int dockedHeight = this.dockedReplaysHeight;
+
+            if (clampToAvailableHeight)
+            {
+                dockedHeight = MathUtils.clamp(dockedHeight, DOCKED_BOTTOM_SECTION_MIN, maxHeight);
+                this.dockedReplaysHeight = dockedHeight;
+            }
+
+            int replaysHeight = -(dockedHeight + DOCKED_RESIZER_HEIGHT);
 
             this.replays.relative(this.content).x(0).y(0).w(1F).h(1F, replaysHeight);
-            this.dockedResizer.relative(this.content).x(0).y(1F, -(this.dockedReplaysHeight + DOCKED_RESIZER_HEIGHT)).w(1F).h(0F, DOCKED_RESIZER_HEIGHT);
-            this.replayProperties.relative(this.content).x(0).y(1F, -this.dockedReplaysHeight).w(1F).h(0F, this.dockedReplaysHeight);
-            this.groupProperties.relative(this.content).x(0).y(1F, -this.dockedReplaysHeight).w(1F).h(0F, this.dockedReplaysHeight);
+            this.dockedResizer.relative(this.content).x(0).y(1F, -(dockedHeight + DOCKED_RESIZER_HEIGHT)).w(1F).h(0F, DOCKED_RESIZER_HEIGHT);
+            this.replayProperties.relative(this.content).x(0).y(1F, -dockedHeight).w(1F).h(0F, dockedHeight);
+            this.groupProperties.relative(this.content).x(0).y(1F, -dockedHeight).w(1F).h(0F, dockedHeight);
             this.dockedResizer.setVisible(true);
         }
         else
@@ -357,6 +384,26 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
             this.replayProperties.relative(this.replays).x(1F).y(0).w(1F, -20).h(1F);
             this.groupProperties.relative(this.replays).x(1F).y(0).w(1F, -20).h(1F);
             this.dockedResizer.setVisible(false);
+        }
+    }
+
+    private void persistDockedReplaysHeight()
+    {
+        if (BBSSettings.editorAnchoredReplaysPanelHeight != null)
+        {
+            BBSSettings.editorAnchoredReplaysPanelHeight.set(this.dockedReplaysHeight);
+        }
+    }
+
+    private void flushDockedReplaysHeight()
+    {
+        this.persistDockedReplaysHeight();
+
+        Settings settings = BBSMod.getSettings().modules.get("bbs");
+
+        if (settings != null)
+        {
+            settings.save();
         }
     }
 
@@ -489,7 +536,7 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
 
         this.content.area.render(context.batcher, 0xFF141418);
 
-        if (this.replays.getList().size() < 3)
+        if (this.replays.getList().isEmpty())
         {
             UIDataUtils.renderRightClickHere(context, this.replays.area, 0xFF141418);
         }
