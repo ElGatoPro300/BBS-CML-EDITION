@@ -1867,7 +1867,27 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         return null;
     }
 
-    private void syncLinkedPropertiesTab(String panelId)
+    private boolean syncLinkedPropertiesTab(String panelId)
+    {
+        String linkedPanelId = this.getLinkedPropertiesPanelId(panelId);
+
+        if (linkedPanelId == null)
+        {
+            return false;
+        }
+
+        EditorLayoutNode root = BBSSettings.editorLayoutSettings.getFilmLayoutRoot();
+
+        if (root != null && this.selectPanelInTabbedNode(root, linkedPanelId))
+        {
+            BBSSettings.editorLayoutSettings.setFilmLayoutRoot(root);
+            return true;
+        }
+
+        return false;
+    }
+
+    public void focusLinkedPropertiesTab(String panelId)
     {
         String linkedPanelId = this.getLinkedPropertiesPanelId(panelId);
 
@@ -1876,11 +1896,13 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             return;
         }
 
-        EditorLayoutNode root = BBSSettings.editorLayoutSettings.getFilmLayoutRoot();
+        boolean changed = this.syncLinkedPropertiesTab(panelId);
+        UIElement linkedPanel = this.panelById.get(linkedPanelId);
+        boolean needsRefresh = linkedPanel != null && !linkedPanel.isVisible();
 
-        if (root != null && this.selectPanelInTabbedNode(root, linkedPanelId))
+        if (changed || needsRefresh)
         {
-            BBSSettings.editorLayoutSettings.setFilmLayoutRoot(root);
+            this.setupEditorFlex(true, false, true);
         }
     }
 
@@ -2963,7 +2985,12 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     {
         if (panel == this.cameraEditor)
         {
+            this.focusLinkedPropertiesTab("cameraTimeline");
             this.setFlight(false);
+        }
+        else if (panel == this.actionEditor)
+        {
+            this.focusLinkedPropertiesTab("actionTimeline");
         }
     }
 
