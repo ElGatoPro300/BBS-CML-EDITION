@@ -101,7 +101,17 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
 
         this.filmPanel = filmPanel;
         this.callback = callback;
-        this.replays = new UIReplayList((l) -> this.callback.accept(l.isEmpty() ? null : l.get(0)), this, filmPanel);
+        this.replays = new UIReplayList((l) ->
+        {
+            Replay replay = l.isEmpty() ? null : l.get(l.size() - 1);
+
+            this.setReplay(replay);
+
+            if (this.callback != null && l.size() <= 1)
+            {
+                this.callback.accept(replay);
+            }
+        }, this, filmPanel);
 
         this.pickEdit = new UINestedEdit((editing) ->
         {
@@ -489,7 +499,7 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
 
         this.content.area.render(context.batcher, 0xFF141418);
 
-        if (this.replays.getList().size() < 3)
+        if (this.replays.getList().isEmpty())
         {
             UIDataUtils.renderRightClickHere(context, this.replays.area, 0xFF141418);
         }
