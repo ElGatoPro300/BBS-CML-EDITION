@@ -437,7 +437,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
 
         this.registerPanel(this.modelSettingsPanel, UIKeys.MODELS_SETTINGS, Icons.MODELS_SETTINGS);
         this.registerPanel(this.ikPanel, UIKeys.MODELS_IK_EDITOR, Icons.IK);
-        this.registerPanel(this.physBonesPanel, UIKeys.MODELS_PHYS_BONES_EDITOR, Icons.GEAR);
+        this.registerPanel(this.physBonesPanel, UIKeys.MODELS_PHYS_BONES_EDITOR, Icons.DYNAMIC_BONES);
         this.registerPanel(this.geometryPanel, UIKeys.MODELS_GEOMETRY_EDITOR, Icons.GEOMETRY_EDITOR);
 
         this.setPanel(this.modelSettingsPanel);
