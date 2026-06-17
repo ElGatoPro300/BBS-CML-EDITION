@@ -28,85 +28,57 @@ import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.network.ClientNetwork;
-import mchorse.bbs_mod.resources.Link;
-import mchorse.bbs_mod.resources.packs.URLSourcePack;
 import mchorse.bbs_mod.settings.values.IValueListener;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
-import mchorse.bbs_mod.settings.values.ui.EditorLayoutNode;
 import mchorse.bbs_mod.settings.values.ui.ValueEditorLayout;
 import mchorse.bbs_mod.ui.ContentType;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.UIDashboard;
-import mchorse.bbs_mod.ui.dashboard.UIPanelSwitcher;
-import mchorse.bbs_mod.ui.dashboard.list.UIDataPathList;
 import mchorse.bbs_mod.ui.dashboard.panels.IFlightSupported;
-import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanels;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDataDashboardPanel;
 import mchorse.bbs_mod.ui.dashboard.panels.overlay.UICRUDOverlayPanel;
-import mchorse.bbs_mod.ui.dashboard.panels.overlay.UIDataOverlayPanel;
 import mchorse.bbs_mod.ui.dashboard.utils.IUIOrbitKeysHandler;
 import mchorse.bbs_mod.ui.film.audio.UIAudioRecorder;
 import mchorse.bbs_mod.ui.film.controller.UIFilmController;
 import mchorse.bbs_mod.ui.film.replays.UIReplaysEditor;
-import mchorse.bbs_mod.ui.film.replays.overlays.UIReplaysOverlayPanel;
 import mchorse.bbs_mod.ui.film.utils.UIFilmUndoHandler;
 import mchorse.bbs_mod.ui.film.utils.undo.UIUndoHistoryOverlay;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.IUIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
-import mchorse.bbs_mod.ui.framework.elements.UIScrollView;
-import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.context.UISimpleContextMenu;
-import mchorse.bbs_mod.ui.framework.elements.input.list.UISearchList;
-import mchorse.bbs_mod.ui.framework.elements.navigation.UIControlBar;
-import mchorse.bbs_mod.ui.framework.elements.navigation.UIIconTabButton;
-import mchorse.bbs_mod.ui.framework.elements.overlay.UIConfirmOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIMessageOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UINumberOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIDraggable;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIRenderable;
-import mchorse.bbs_mod.ui.home.UIHomePanel;
 import mchorse.bbs_mod.ui.utils.Area;
-import mchorse.bbs_mod.ui.utils.UIDataUtils;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.context.ContextAction;
 import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
-import mchorse.bbs_mod.ui.utils.presets.UICopyPasteController;
 import mchorse.bbs_mod.utils.CollectionUtils;
-import mchorse.bbs_mod.utils.DataPath;
 import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.PlayerUtils;
-import mchorse.bbs_mod.utils.RecentAssetsTracker;
 import mchorse.bbs_mod.utils.Timer;
 import mchorse.bbs_mod.utils.clips.Clip;
 import mchorse.bbs_mod.utils.clips.Clips;
 import mchorse.bbs_mod.utils.colors.Colors;
-import mchorse.bbs_mod.utils.interps.Interpolations;
 import mchorse.bbs_mod.utils.joml.Vectors;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 import mchorse.bbs_mod.utils.keyframes.KeyframeSegment;
-import mchorse.bbs_mod.utils.presets.PresetManager;
-import mchorse.bbs_mod.utils.resources.Pixels;
 
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.client.render.BufferBuilder;
-import net.minecraft.client.render.BufferRenderer;
-import net.minecraft.client.render.GameRenderer;
-import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.render.VertexFormat;
-import net.minecraft.client.render.VertexFormats;
 import net.minecraft.util.math.Vec3d;
 
 import org.joml.Matrix4f;
@@ -115,32 +87,9 @@ import org.joml.Vector3d;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
-
-import org.lwjgl.glfw.GLFW;
-import org.lwjgl.opengl.GL11;
-
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.InputStream;
-import java.lang.reflect.Method;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSupported, IUIOrbitKeysHandler, ICursor
@@ -156,8 +105,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     public UIDraggable draggableEditor;
     public UIFilmRecorder recorder;
     public UIFilmPreview preview;
-    private final List<UIDraggable> splitterHandles = new ArrayList<>();
-    private final List<EditorLayoutNode.SplitterHandleInfo> splitterHandleInfos = new ArrayList<>();
 
     public UIIcon duplicateFilm;
 
@@ -165,31 +112,21 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     public UIClipsPanel cameraEditor;
     public UIReplaysEditor replayEditor;
     public UIClipsPanel actionEditor;
-    public UIClipsPanel screenEditor;
-    public UIReplaysOverlayPanel anchoredReplaysPanel;
 
     /* Icon bar buttons */
     public UIIcon openHistory;
     public UIIcon openRenderQueue;
     public UIIcon toggleHorizontal;
     public UIIcon layoutLock;
-    public UIIcon layoutPresets;
     public UIIcon openCameraEditor;
     public UIIcon openReplayEditor;
     public UIIcon openActionEditor;
-    public UIIcon openScreenEditor;
-    public UIElement bottomIcons;
-    private UICopyPasteController layoutPresetsController;
 
     private Camera camera = new Camera();
     private boolean entered;
-    private boolean resetFreeFlightLookDrag;
-    private boolean freeFlightLookPrimed;
-    private int freeFlightLookRawX;
-    private int freeFlightLookRawY;
+    public boolean playerToCamera;
 
     /* Entity control */
-    private boolean performingLayout;
     private UIFilmController controller;
     private UIFilmUndoHandler undoHandler;
 
@@ -202,70 +139,10 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private UIElement secretPlay;
 
     private boolean newFilm;
-    private final Map<String, UIElement> panelById = new LinkedHashMap<>();
-    private final Map<String, UIDraggable> dragHandlesById = new LinkedHashMap<>();
-    private final Set<String> floatingPanels = new HashSet<>();
-    private final Set<String> collapsedFloatingPanels = new HashSet<>();
-    private final Map<String, Vector2i> floatingPanelPositions = new HashMap<>();
-    private final Map<String, Vector2i> floatingPanelSizes = new HashMap<>();
-    private String activeDraggingFloatingPanelId = null;
-    private int dragOffsetX = 0;
-    private int dragOffsetY = 0;
-    private String activeResizingFloatingPanelId = null;
-    private final List<Runnable> postUpdateActions = new ArrayList<>();
-    private int lastDragMouseX;
-    private int lastDragMouseY;
-    private static final int HOME_BANNER_HEIGHT = 108;
-    private static final float DRAG_HANDLE_HEIGHT_NORM = 0.02F;
-    private static final float DRAG_HANDLE_TOP_OFFSET_NORM = 0.01F;
-    private static final int SPLITTER_HANDLE_PX = 6;
-    private static final int DROP_ZONE_CENTER = -1;
-    public static final int DROP_ZONE_TAB = 4;
-    private static final float DROP_EDGE_MARGIN = 0.2F;
-    private static final int EDITOR_MIN_SIZE_FOR_PX_HANDLES = 10;
-    private static final String ANCHORED_REPLAYS_PANEL_ID = "replaysPanel";
-    private static final String PRESET_REPLAYS_PANEL_ENABLED = "replays_panel_enabled";
-    private static final String PRESET_REPLAYS_PANEL_FLOATING = "replays_panel_floating";
-    private static final String PRESET_REPLAYS_PANEL_X = "replays_panel_x";
-    private static final String PRESET_REPLAYS_PANEL_Y = "replays_panel_y";
-    private static final String PRESET_REPLAYS_PANEL_WIDTH = "replays_panel_width";
-    private static final String PRESET_REPLAYS_PANEL_HEIGHT = "replays_panel_height";
-    private static final String PRESET_REPLAYS_PANEL_DOCKED_LAYOUT = "replays_panel_docked_layout";
-    private String draggingPanelId;
-    private String dropTargetPanelId;
-    private int dropTargetZone = DROP_ZONE_CENTER;
-    public String mouseHeldPanelId;
-    public int clickX, clickY;
-    private UIElement homePage;
-    private UISearchList<DataPath> homeFilmsSearch;
-    private static final String PARENT_FOLDER_ENTRY = "..";
-
-    private UIDataPathList homeFilmsList;
-    private UIFilmMosaicGrid homeFilmsMosaic;
-    private UIIcon homeViewToggle;
-    private UIPanelSwitcher panelSwitcher;
-    private UIElement homeActionsPanel;
-    private UIButton homeCreateFilm;
-    private UIButton homeOpenManager;
-    private UIButton homeDuplicateCurrent;
-    private UIButton homeRenameCurrent;
-    private UIButton homeDeleteCurrent;
-    private String homeLastClickedFilmId;
-    private long homeLastClickTime;
-    private final List<FilmDocumentTab> filmDocumentTabs = new ArrayList<>();
-    private int activeFilmDocumentTab = -1;
-    private boolean showingHomePage = true;
-
-    private boolean shouldCaptureThumbnail;
-    private final Map<String, Texture> thumbnails = new HashMap<>();
-
-    /* View mode is persisted globally — see BBSSettings.lastViewMosaic. */
-    private static boolean lastShowingHomePage = true;
 
     /**
      * Initialize the camera editor with a camera profile.
      */
-
     public UIFilmPanel(UIDashboard dashboard)
     {
         super(dashboard);
@@ -286,9 +163,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.main = new UIElement();
         this.editArea = new UIElement();
         this.preview = event.createPreview(this);
-        this.panelById.put("main", this.main);
-        this.panelById.put("preview", this.preview);
-        this.panelById.put("editArea", this.editArea);
 
         this.draggableMain = new UIDraggable((context) ->
         {
@@ -424,237 +298,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.replayEditor.full(this.main).setVisible(false);
         this.actionEditor = new UIClipsPanel(this, BBSMod.getFactoryActionClips()).target(this.editArea);
         this.actionEditor.full(this.main).setVisible(false);
-        this.screenEditor = new UIClipsPanel(this, BBSMod.getFactoryScreenClips()).target(this.editArea);
-        this.screenEditor.full(this.main).setVisible(false);
-        this.anchoredReplaysPanel = new UIReplaysOverlayPanel(this, (replay) -> this.replayEditor.setReplay(replay, false, true));
-        this.anchoredReplaysPanel.setDocked(true);
-        this.anchoredReplaysPanel.setVisible(false);
-        this.panelById.put(ANCHORED_REPLAYS_PANEL_ID, this.anchoredReplaysPanel);
-        this.homePage = new UIElement()
-        {
-            @Override
-            protected boolean subMouseClicked(UIContext context)
-            {
-                UIFilmPanel.this.homeFilmsList.deselect();
-                UIFilmPanel.this.handleHomeFilmsSelection(null);
-
-                return super.subMouseClicked(context);
-            }
-        };
-        this.homeActionsPanel = new UIElement();
-        this.homeFilmsList = new UIDataPathList((list) -> this.handleHomeFilmsSelection(list));
-        this.homeFilmsList.setFileIcon(Icons.FILM);
-        this.homeFilmsList.context((menu) ->
-        {
-            menu.action(Icons.FOLDER, UIKeys.PANELS_MODALS_ADD_FOLDER_TITLE, this::addFolderFromHome);
-
-            String selectedId = this.getSelectedHomeFilmId();
-            if (selectedId != null)
-            {
-                menu.action(Icons.COPY, UIKeys.PANELS_CONTEXT_COPY, this::copyHomeFilm);
-            }
-
-            try
-            {
-                MapType clipboardData = Window.getClipboardMap("_ContentType_" + this.getType().getId());
-
-                if (clipboardData != null)
-                {
-                    menu.action(Icons.PASTE, UIKeys.PANELS_CONTEXT_PASTE, () -> this.pasteHomeFilm(clipboardData));
-                }
-            }
-            catch (Exception e)
-            {}
-
-            File folder = this.getType().getRepository().getFolder();
-
-            if (folder != null)
-            {
-                menu.action(Icons.FOLDER, UIKeys.PANELS_CONTEXT_OPEN, () ->
-                {
-                    UIUtils.openFolder(new File(folder, this.homeFilmsList.getPath().toString()));
-                });
-            }
-        });
-        this.homeFilmsList.moveCallback = (from, to) ->
-        {
-            String fromStr = from.toString();
-            String toStr = to.toString();
-
-            if (from.folder)
-            {
-                this.getType().getRepository().renameFolder(fromStr, toStr, (bool) ->
-                {
-                    if (bool)
-                    {
-                        this.requestNames();
-                    }
-                });
-            }
-            else
-            {
-                this.getType().getRepository().rename(fromStr, toStr);
-
-                for (FilmDocumentTab tab : this.filmDocumentTabs)
-                {
-                    if (!tab.home && fromStr.equals(tab.filmId))
-                    {
-                        tab.filmId = toStr;
-                    }
-                }
-                this.rebuildFilmDocumentTabs();
-
-                if (this.data != null && fromStr.equals(this.data.getId()))
-                {
-                    this.data.setId(toStr);
-                }
-
-                this.requestNames();
-            }
-        };
-        this.homeFilmsSearch = new UISearchList<>(this.homeFilmsList).label(UIKeys.GENERAL_SEARCH);
-        this.homeFilmsSearch.list.background();
-
-        this.homeFilmsMosaic = new UIFilmMosaicGrid((id) -> {
-            this.handleHomeFilmsSelection(Collections.singletonList(new DataPath(id)));
-        }, (id) -> {
-            if (!id.endsWith("/") && !id.equals(PARENT_FOLDER_ENTRY)) {
-                this.openFilmInDocumentTabs(id);
-            }
-        });
-        boolean mosaic = BBSSettings.lastViewMosaic.get();
-
-        this.homeFilmsMosaic.setVisible(mosaic);
-        this.homeFilmsList.setVisible(!mosaic);
-
-        Consumer<String> oldCallback = this.homeFilmsSearch.search.callback;
-        this.homeFilmsSearch.search.callback = (str) -> {
-            if (oldCallback != null) oldCallback.accept(str);
-            this.homeFilmsMosaic.filter(str);
-        };
-
-        this.homeViewToggle = new UIIcon(mosaic ? Icons.LIST : Icons.GALLERY, (b) -> this.toggleMosaicView());
-        this.homeViewToggle.tooltip(mosaic ? UIKeys.MODELS_HOME_VIEW_LIST : UIKeys.MODELS_HOME_VIEW_MOSAIC, Direction.LEFT);
-        this.homeCreateFilm = this.createHomeButton(UIKeys.FILM_CRUD_ADD, Icons.ADD, (b) ->
-        {
-            UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
-                UIKeys.GENERAL_ADD,
-                UIKeys.PANELS_MODALS_ADD,
-                (str) -> {
-                    try {
-                        Method m = UIDataOverlayPanel.class.getDeclaredMethod("addNewData", String.class, MapType.class);
-                        m.setAccessible(true);
-                        m.invoke(this.overlay, str, null);
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }
-            );
-            panel.text.filename();
-            UIOverlay.addOverlay(this.getContext(), panel);
-        });
-        this.homeDuplicateCurrent = this.createHomeButton(UIKeys.FILM_CRUD_DUPE, Icons.COPY, (b) ->
-        {
-            String selectedId = this.getSelectedHomeFilmId();
-            if (selectedId == null) return;
-
-            UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
-                UIKeys.GENERAL_DUPE,
-                UIKeys.PANELS_MODALS_DUPE,
-                (str) -> {
-                    String targetId = this.homeFilmsList.getPath(str).toString();
-                    if (targetId.trim().isEmpty()) {
-                        this.getContext().notifyError(UIKeys.PANELS_MODALS_EMPTY);
-                        return;
-                    }
-                    if (this.homeFilmsList.hasInHierarchy(targetId)) {
-                        return;
-                    }
-                    this.getType().getRepository().load(selectedId, (originalFilm) -> {
-                        if (originalFilm != null) {
-                            this.getType().getRepository().save(targetId, originalFilm.toData().asMap());
-                            this.requestNames();
-                        }
-                    });
-                }
-            );
-
-            panel.text.setText(new DataPath(selectedId).getLast());
-            panel.text.filename();
-
-            UIOverlay.addOverlay(this.getContext(), panel);
-        });
-        this.homeRenameCurrent = this.createHomeButton(UIKeys.FILM_CRUD_RENAME, Icons.EDIT, (b) ->
-        {
-            String selectedId = this.getSelectedHomeFilmId();
-            if (selectedId == null) return;
-
-            UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
-                UIKeys.GENERAL_RENAME,
-                UIKeys.PANELS_MODALS_RENAME,
-                (str) -> {
-                    String targetId = this.homeFilmsList.getPath(str).toString();
-                    if (targetId.trim().isEmpty()) {
-                        this.getContext().notifyError(UIKeys.PANELS_MODALS_EMPTY);
-                        return;
-                    }
-                    if (this.homeFilmsList.hasInHierarchy(targetId)) {
-                        return;
-                    }
-                    this.getType().getRepository().rename(selectedId, targetId);
-
-                    for (FilmDocumentTab tab : this.filmDocumentTabs) {
-                        if (!tab.home && selectedId.equals(tab.filmId)) {
-                            tab.filmId = targetId;
-                        }
-                    }
-                    this.rebuildFilmDocumentTabs();
-
-                    if (this.data != null && selectedId.equals(this.data.getId())) {
-                        this.data.setId(targetId);
-                    }
-
-                    this.requestNames();
-                }
-            );
-
-            panel.text.setText(new DataPath(selectedId).getLast());
-            panel.text.filename();
-
-            UIOverlay.addOverlay(this.getContext(), panel);
-        });
-        this.homeDeleteCurrent = this.createHomeButton(UIKeys.FILM_CRUD_REMOVE, Icons.REMOVE, (b) ->
-        {
-            String selectedId = this.getSelectedHomeFilmId();
-            if (selectedId == null) return;
-
-            UIConfirmOverlayPanel panel = new UIConfirmOverlayPanel(
-                UIKeys.GENERAL_REMOVE,
-                UIKeys.PANELS_MODALS_REMOVE,
-                (confirm) ->
-                {
-                    if (confirm) {
-                        this.getType().getRepository().delete(selectedId);
-
-                        for (int i = this.filmDocumentTabs.size() - 1; i >= 0; i--) {
-                            FilmDocumentTab tab = this.filmDocumentTabs.get(i);
-                            if (!tab.home && selectedId.equals(tab.filmId)) {
-                                this.removeFilmDocumentTab(i);
-                            }
-                        }
-
-                        if (this.data != null && selectedId.equals(this.data.getId())) {
-                            this.fill(null);
-                        }
-
-                        this.requestNames();
-                    }
-                }
-            );
-
-            UIOverlay.addOverlay(this.getContext(), panel);
-        });
-        this.updateHomeButtonsState();
 
         /* Icon bar buttons */
         this.openHistory = new UIIcon(Icons.LIST, (b) ->
@@ -669,7 +312,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         });
         this.openRenderQueue.tooltip(UIKeys.FILM_OPEN_RENDER_QUEUE, Direction.LEFT);
 
-        this.openOverlay.removeFromParent();
+        this.openOverlay.tooltip(UIKeys.FILM_OPEN_MANAGER, Direction.LEFT);
         this.saveIcon.tooltip(UIKeys.FILM_SAVE, Direction.LEFT);
 
         this.toggleHorizontal = new UIIcon(this::getLayoutIcon, (b) -> this.openLayoutSelector())
@@ -696,67 +339,33 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.openReplayEditor.tooltip(UIKeys.FILM_OPEN_REPLAY_EDITOR, Direction.LEFT);
         this.openActionEditor = new UIIcon(Icons.ACTION, (b) -> this.showPanel(this.actionEditor));
         this.openActionEditor.tooltip(UIKeys.FILM_OPEN_ACTION_EDITOR, Direction.LEFT);
-        this.openScreenEditor = new UIIcon(Icons.FILTER, (b) -> this.showPanel(this.screenEditor));
-        this.openScreenEditor.tooltip(UIKeys.FILM_OPEN_SCREEN_EDITOR, Direction.LEFT);
-        this.layoutPresetsController = new UICopyPasteController(PresetManager.LAYOUTS, "_CopyFilmLayout")
-            .supplier(this::getFilmLayoutPresetData)
-            .consumer(this::applyFilmLayoutFromPreset);
-        this.layoutPresets = new UIIcon(Icons.SAVED, (b) ->
-        {
-            UIContext ctx = this.getContext();
-            this.layoutPresetsController.openPresets(ctx, ctx.mouseX, ctx.mouseY);
-        });
-        this.layoutPresets.tooltip(UIKeys.FILM_LAYOUT_PRESETS, Direction.LEFT);
 
         /* Setup elements */
-        this.iconBar.add(this.openHistory, this.openRenderQueue, this.openCameraEditor.marginTop(9), this.openReplayEditor, this.openActionEditor, this.openScreenEditor);
+        this.iconBar.add(this.openHistory, this.openRenderQueue, this.openCameraEditor.marginTop(9), this.openReplayEditor, this.openActionEditor);
 
-        this.bottomIcons = new UIElement();
+        UIElement bottomIcons = new UIElement();
 
-        this.bottomIcons.relative(this).x(1F, -20).y(1F).wh(20, 60).anchorY(1F).column(0).stretch();
-        this.bottomIcons.add(this.toggleHorizontal, this.layoutLock, this.layoutPresets);
-        this.iconBar.relative(this).x(1F, -20).y(0).w(20).h(1F).column(0).stretch();
-        this.homePage.relative(this.editor).x(0.5F, -250).y(0).w(500).h(1F);
-        this.homeActionsPanel.relative(this.homePage).x(0).y(HOME_BANNER_HEIGHT + 20).w(0.35F).h(1F, -(HOME_BANNER_HEIGHT + 20 + 44)).column(0).vertical().stretch();
-        
-        this.panelSwitcher = new UIPanelSwitcher(this.dashboard);
-        this.panelSwitcher.relative(this.homePage).x(0.5F, -87).y(1F, -32).w(175).h(24);
+        bottomIcons.relative(this).x(1F, -20).y(1F).wh(20, 40).anchorY(1F).column(0).stretch();
+        bottomIcons.add(this.toggleHorizontal, this.layoutLock);
 
-        UIElement spacing = new UIElement();
-        spacing.h(8);
-
-        this.homeActionsPanel.add(this.homeCreateFilm, spacing, this.homeDuplicateCurrent, this.homeRenameCurrent, this.homeDeleteCurrent);
-        this.homeFilmsSearch.relative(this.homePage).x(0.35F).y(HOME_BANNER_HEIGHT + 20).w(0.65F).h(1F, -(HOME_BANNER_HEIGHT + 20 + 44));
-        this.homeFilmsSearch.search.w(1F, -25);
-        this.homeFilmsMosaic.relative(this.homeFilmsSearch).x(0).y(20).w(1F).h(1F, -20);
-        this.homeViewToggle.relative(this.homeFilmsSearch).x(1F, -22).y(0).w(20).h(20);
-        this.homePage.add(new UIRenderable(this::renderHomeBanner), this.homeActionsPanel, this.homeFilmsSearch, this.homeFilmsMosaic, this.homeViewToggle, this.panelSwitcher);
-
-        this.editor.add(this.main, this.editArea, this.preview, this.anchoredReplaysPanel, this.homePage, new UIRenderable(this::renderIcons), new UIRenderable(this::renderDropZoneHighlight), new UIRenderable(this::renderFloatingPanelWindows));
-        for (String id : this.panelById.keySet())
-        {
-            UIDraggable handle = this.createPanelDragHandle(id);
-            this.dragHandlesById.put(id, handle);
-            this.editor.add(handle);
-        }
-        this.main.add(this.cameraEditor, this.replayEditor, this.actionEditor, this.screenEditor, this.draggableMain, this.draggableEditor);
-        this.add(this.controller, new UIRenderable(this::renderDividers), this.bottomIcons);
+        this.editor.add(this.main, new UIRenderable(this::renderIcons));
+        this.main.add(this.cameraEditor, this.replayEditor, this.actionEditor, this.editArea, this.preview, this.draggableMain, this.draggableEditor);
+        this.add(this.controller, new UIRenderable(this::renderDividers), bottomIcons);
         this.overlay.namesList.setFileIcon(Icons.FILM);
-        this.createHomeDocumentTab(true);
 
         /* Register keybinds */
         IKey modes = UIKeys.CAMERA_EDITOR_KEYS_MODES_TITLE;
         IKey editor = UIKeys.CAMERA_EDITOR_KEYS_EDITOR_TITLE;
         IKey looping = UIKeys.CAMERA_EDITOR_KEYS_LOOPING_TITLE;
-        Supplier<Boolean> active = () -> this.data != null && !this.isFlying();
+        Supplier<Boolean> active = () -> !this.isFlying();
 
         this.keys().register(Keys.PLAUSE, () -> this.preview.plause.clickItself()).active(active).category(editor);
         this.keys().register(Keys.NEXT_CLIP, () -> this.setCursor(this.data.camera.findNextTick(this.getCursor()))).active(active).category(editor);
         this.keys().register(Keys.PREV_CLIP, () -> this.setCursor(this.data.camera.findPreviousTick(this.getCursor()))).active(active).category(editor);
         this.keys().register(Keys.NEXT, () -> this.setCursor(this.getCursor() + 1)).active(active).category(editor);
         this.keys().register(Keys.PREV, () -> this.setCursor(this.getCursor() - 1)).active(active).category(editor);
-        this.keys().register(Keys.UNDO, this::undo).active(active).category(editor);
-        this.keys().register(Keys.REDO, this::redo).active(active).category(editor);
+        this.keys().register(Keys.UNDO, this::undo).category(editor);
+        this.keys().register(Keys.REDO, this::redo).category(editor);
         this.keys().register(Keys.FLIGHT, this::toggleFlight).active(() -> this.data != null).category(modes);
         this.keys().register(Keys.LOOPING, () ->
         {
@@ -771,9 +380,9 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         {
             this.showPanel(MathUtils.cycler(this.getPanelIndex() + (Window.isShiftPressed() ? -1 : 1), this.panels));
             UIUtils.playClick();
-        }).active(active).category(editor);
+        }).category(editor);
 
-        this.saveIcon.context((menu) ->
+        this.openOverlay.context((menu) ->
         {
             if (this.data == null)
             {
@@ -848,15 +457,12 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         });
 
         this.fill(null);
-        this.setAnchoredReplaysPanelEnabled(this.isAnchoredReplaysPanelEnabled());
         this.setupEditorFlex(false);
-        this.updateFilmDocumentView();
         this.flightEditTime.mark();
 
         this.panels.add(this.cameraEditor);
         this.panels.add(this.replayEditor);
         this.panels.add(this.actionEditor);
-        this.panels.add(this.screenEditor);
 
         this.secretPlay = new UIElement();
         this.secretPlay.keys().register(Keys.PLAUSE, () -> this.preview.plause.clickItself()).active(() -> !this.isFlying() && !this.canBeSeen() && this.data != null).category(editor);
@@ -865,7 +471,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.cameraEditor.setUndoId("camera_editor");
         this.replayEditor.setUndoId("replay_editor");
         this.actionEditor.setUndoId("action_editor");
-        this.screenEditor.setUndoId("screen_editor");
 
         UIElement element = new UIElement()
         {
@@ -888,8 +493,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         this.add(element);
     }
-
-
 
     private Vector2i getMainHandlerReferencePosition()
     {
@@ -969,946 +572,142 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     private void setupEditorFlex(boolean resize)
     {
-        this.setupEditorFlex(resize, false, true);
-    }
-
-    private void setupEditorFlex(boolean resize, boolean fast, boolean recreateTabs)
-    {
         ValueEditorLayout layout = BBSSettings.editorLayoutSettings;
-        EditorLayoutNode root = layout.getFilmLayoutRoot();
 
-        this.resetDynamicLayoutElements(recreateTabs);
-        List<EditorLayoutNode.SplitterNode> splitters = layout.getFilmSplitters();
+        layout.setMainSizeH(MathUtils.clamp(layout.getMainSizeH(), 0.05F, 0.95F));
+        layout.setEditorSizeH(MathUtils.clamp(layout.getEditorSizeH(), 0.05F, 0.95F));
+        layout.setMainSizeV(MathUtils.clamp(layout.getMainSizeV(), 0.05F, 0.95F));
+        layout.setEditorSizeV(MathUtils.clamp(layout.getEditorSizeV(), 0.05F, 0.95F));
 
-        if (fast && !layout.isLayoutLocked() && resize && splitters.size() == this.splitterHandles.size())
+        this.main.resetFlex();
+        this.editArea.resetFlex();
+        this.preview.resetFlex();
+        this.draggableMain.resetFlex();
+        this.draggableEditor.resetFlex();
+
+        this.draggableEditor.setVisible(layout.isMiddleLayout());
+
+        if (layout.isHorizontal())
         {
-            this.updateEditorFlexBoundsOnly(layout, root);
-            this.resize();
-            this.resize();
-            return;
-        }
-
-        Map<String, float[]> bounds = this.computePanelBounds(root);
-        
-        List<EditorLayoutNode.TabbedNode> tabbedNodes = new ArrayList<>();
-        EditorLayoutNode.collectTabbedNodes(root, tabbedNodes);
-        Set<String> multiTabPanels = new HashSet<>();
-        for (EditorLayoutNode.TabbedNode tabbed : tabbedNodes)
-        {
-            if (tabbed.tabs.size() > 1)
+            if (layout.isMainOnTop())
             {
-                for (EditorLayoutNode tab : tabbed.tabs)
+                this.main.relative(this.editor).y(0).w(1F).h(layout.getMainSizeH());
+                if (this.isHorizontalEditorOnLeft(layout))
                 {
-                    if (tab instanceof EditorLayoutNode.PanelNode)
-                    {
-                        multiTabPanels.add(((EditorLayoutNode.PanelNode) tab).getPanelId());
-                    }
+                    this.editArea.relative(this.editor).y(layout.getMainSizeH()).w(layout.getEditorSizeH()).hTo(this.editor.area, 1F);
+                    this.preview.relative(this.editor).y(layout.getMainSizeH()).x(layout.getEditorSizeH()).wTo(this.editor.area, 1F).hTo(this.editor.area, 1F);
+                }
+                else
+                {
+                    this.editArea.relative(this.editor).y(layout.getMainSizeH()).x(1F - layout.getEditorSizeH()).wTo(this.editor.area, 1F).hTo(this.editor.area, 1F);
+                    this.preview.relative(this.editor).y(layout.getMainSizeH()).w(1F - layout.getEditorSizeH()).hTo(this.editor.area, 1F);
                 }
             }
-        }
-
-        this.applyPanelBoundsFromMap(bounds, multiTabPanels);
-
-        if (layout.isLayoutLocked())
-        {
-            this.setPanelDragHandlesVisible(false);
-            
-            for (UIDraggable handle : this.splitterHandles)
+            else
             {
-                handle.removeFromParent();
+                this.main.relative(this.editor).y(1F - layout.getMainSizeH()).w(1F).hTo(this.editor.area, 1F);
+                if (this.isHorizontalEditorOnLeft(layout))
+                {
+                    this.editArea.relative(this.editor).w(layout.getEditorSizeH()).hTo(this.main.area, 0F);
+                    this.preview.relative(this.editor).x(layout.getEditorSizeH()).wTo(this.editor.area, 1F).hTo(this.main.area, 0F);
+                }
+                else
+                {
+                    this.editArea.relative(this.editor).x(1F - layout.getEditorSizeH()).wTo(this.editor.area, 1F).hTo(this.main.area, 0F);
+                    this.preview.relative(this.editor).w(1F - layout.getEditorSizeH()).hTo(this.main.area, 0F);
+                }
             }
-            this.splitterHandles.clear();
+
+            if (this.isHorizontalEditorOnLeft(layout))
+            {
+                this.draggableMain.hoverOnly().relative(this.editArea).x(1F).y(0).w(12).h(1F);
+            }
+            else
+            {
+                this.draggableMain.hoverOnly().relative(this.editArea).x(-6).y(0).w(12).h(1F);
+            }
+        }
+        else if (layout.isMiddleLayout())
+        {
+            float mainSizeV = layout.getMainSizeV();
+            float editorSizeH = layout.getEditorSizeH();
+
+            if (mainSizeV + editorSizeH > 0.95F)
+            {
+                editorSizeH = 0.95F - mainSizeV;
+
+                if (editorSizeH < 0.05F)
+                {
+                    editorSizeH = 0.05F;
+                    mainSizeV = 0.95F - editorSizeH;
+                }
+
+                layout.setMainSizeV(mainSizeV);
+                layout.setEditorSizeH(editorSizeH);
+            }
+
+            if (layout.isMiddleLayoutInverted())
+            {
+                this.editArea.relative(this.editor).w(mainSizeV).h(1F);
+                this.main.relative(this.editor).x(mainSizeV).w(editorSizeH).h(1F);
+                this.preview.relative(this.editor).x(mainSizeV + editorSizeH).w(1F - mainSizeV - editorSizeH).h(1F);
+            }
+            else
+            {
+                this.preview.relative(this.editor).w(mainSizeV).h(1F);
+                this.main.relative(this.editor).x(mainSizeV).w(editorSizeH).h(1F);
+                this.editArea.relative(this.editor).x(mainSizeV + editorSizeH).w(1F - mainSizeV - editorSizeH).h(1F);
+            }
+
+            this.draggableMain.hoverOnly().relative(this.main).x(-6).w(12).h(1F);
+            this.draggableEditor.hoverOnly().relative(this.main).x(1F).w(12).h(1F);
         }
         else
         {
-            if (recreateTabs)
+            if (layout.getLayout() == ValueEditorLayout.LAYOUT_VERTICAL_LEFT)
             {
-                this.rebuildSplitterHandles(layout, root, splitters);
-            }
+                if (layout.isVerticalLayoutInverted())
+                {
+                    this.main.relative(this.editor).x(1F - layout.getMainSizeV()).w(layout.getMainSizeV()).h(1F);
+                    this.editArea.relative(this.editor).y(layout.getEditorSizeV()).w(1F - layout.getMainSizeV()).hTo(this.editor.area, 1F);
+                    this.preview.relative(this.editor).w(1F - layout.getMainSizeV()).hTo(this.editArea.area, 0F);
 
-            this.splitterHandleInfos.clear();
-            EditorLayoutNode.computeSplitterHandles(root, 0F, 0F, 1F, 1F, this.splitterHandleInfos);
-            this.syncSplitterHandleBounds();
-            this.applyDragHandleBoundsFromMap(bounds);
+                    this.draggableMain.hoverOnly().relative(this.editor).x(1F - layout.getMainSizeV()).w(12).h(1F);
+                }
+                else
+                {
+                    this.main.relative(this.editor).w(layout.getMainSizeV()).h(1F);
+                    this.editArea.relative(this.main).x(1F).y(layout.getEditorSizeV()).wTo(this.editor.area, 1F).hTo(this.editor.area, 1F);
+                    this.preview.relative(this.main).x(1F).wTo(this.editor.area, 1F).hTo(this.editArea.area, 0F);
+
+                    this.draggableMain.hoverOnly().relative(this.main).x(1F).w(12).h(1F);
+                }
+            }
+            else if (layout.getLayout() == ValueEditorLayout.LAYOUT_VERTICAL_RIGHT)
+            {
+                if (layout.isVerticalLayoutInverted())
+                {
+                    this.preview.relative(this.editor).x(1F - layout.getMainSizeV()).w(layout.getMainSizeV()).h(1F);
+                    this.main.relative(this.editor).w(1F - layout.getMainSizeV()).h(layout.getEditorSizeV());
+                    this.editArea.relative(this.editor).y(layout.getEditorSizeV()).w(1F - layout.getMainSizeV()).hTo(this.editor.area, 1F);
+
+                    this.draggableMain.hoverOnly().relative(this.main).x(1F).w(12).h(1F);
+                }
+                else
+                {
+                    this.preview.relative(this.editor).w(1F - layout.getMainSizeV()).h(1F);
+                    this.main.relative(this.editor).x(1F - layout.getMainSizeV()).w(layout.getMainSizeV()).h(layout.getEditorSizeV());
+                    this.editArea.relative(this.editor).x(1F - layout.getMainSizeV()).y(layout.getEditorSizeV()).w(layout.getMainSizeV()).hTo(this.editor.area, 1F);
+
+                    this.draggableMain.hoverOnly().relative(this.editor).x(1F - layout.getMainSizeV()).w(12).h(1F);
+                }
+            }
         }
-        
-        this.setupTabBars(root, bounds, recreateTabs);
 
         if (resize)
         {
             this.resize();
             this.resize();
-        }
-
-        this.updateFilmDocumentView();
-    }
-
-    private void resetDynamicLayoutElements(boolean recreateTabs)
-    {
-        if (recreateTabs)
-        {
-            for (UITabBar bar : this.tabBars)
-            {
-                bar.removeFromParent();
-            }
-            this.tabBars.clear();
-        }
-        for (UIElement panel : this.panelById.values())
-        {
-            panel.resetFlex();
-            panel.setVisible(false);
-        }
-        this.draggableMain.setVisible(false);
-        this.draggableEditor.setVisible(false);
-        for (UIDraggable handle : this.dragHandlesById.values())
-        {
-            handle.resetFlex();
-        }
-    }
-
-    private Map<String, float[]> computePanelBounds(EditorLayoutNode root)
-    {
-        Map<String, float[]> bounds = new HashMap<>();
-        root.computeBounds(0F, 0F, 1F, 1F, bounds);
-        return bounds;
-    }
-
-    private void setPanelDragHandlesVisible(boolean visible)
-    {
-        for (UIDraggable handle : this.dragHandlesById.values())
-        {
-            handle.setVisible(visible);
-        }
-    }
-
-    private void rebuildSplitterHandles(ValueEditorLayout layout, EditorLayoutNode root, List<EditorLayoutNode.SplitterNode> splitters)
-    {
-        for (UIDraggable handle : this.splitterHandles)
-        {
-            handle.removeFromParent();
-        }
-        this.splitterHandles.clear();
-
-        this.splitterHandleInfos.clear();
-        EditorLayoutNode.computeSplitterHandles(root, 0F, 0F, 1F, 1F, this.splitterHandleInfos);
-
-        for (int i = 0; i < splitters.size(); i++)
-        {
-            final int index = i;
-            UIDraggable handle = new UIDraggable((context) ->
-            {
-                float ratio = this.getSplitterRatioFromMouse(index, context.mouseX, context.mouseY);
-                if (ratio >= 0F)
-                {
-                    layout.setFilmSplitterRatio(index, ratio);
-                    this.setupEditorFlex(true, true, false);
-                }
-            });
-
-            handle.dragEnd(() -> this.setupEditorFlex(true, false, false));
-            handle.rendering((context) -> this.renderSplitter(context, index));
-            this.applySplitterHandleBounds(handle, this.splitterHandleInfos.get(index));
-            this.splitterHandles.add(handle);
-
-            this.editor.add(handle);
-            handle.resize();
-        }
-    }
-
-    private void applySplitterHandleBounds(UIDraggable handle, EditorLayoutNode.SplitterHandleInfo info)
-    {
-        int ew = this.editor.area.w;
-        int eh = this.editor.area.h;
-        if (ew < EDITOR_MIN_SIZE_FOR_PX_HANDLES || eh < EDITOR_MIN_SIZE_FOR_PX_HANDLES)
-        {
-            handle.relative(this.editor).x(info.hx).y(info.hy).w(info.hw).h(info.hh);
-            return;
-        }
-
-        if (info.horizontal)
-        {
-            float centerY = info.hy + info.hh * 0.5F;
-            float hyNew = centerY - (SPLITTER_HANDLE_PX / (2F * eh));
-            handle.relative(this.editor).x(info.hx).y(hyNew).w(info.hw).h(SPLITTER_HANDLE_PX);
-        }
-        else
-        {
-            float centerX = info.hx + info.hw * 0.5F;
-            float hxNew = centerX - (SPLITTER_HANDLE_PX / (2F * ew));
-            handle.relative(this.editor).x(hxNew).y(info.hy).w(SPLITTER_HANDLE_PX).h(info.hh);
-        }
-    }
-
-    private void syncSplitterHandleBounds()
-    {
-        for (int i = 0; i < this.splitterHandles.size() && i < this.splitterHandleInfos.size(); i++)
-        {
-            this.applySplitterHandleBounds(this.splitterHandles.get(i), this.splitterHandleInfos.get(i));
-        }
-    }
-
-    private float getSplitterRatioFromMouse(int index, int mouseX, int mouseY)
-    {
-        if (index < 0 || index >= this.splitterHandleInfos.size())
-        {
-            return -1F;
-        }
-
-        EditorLayoutNode.SplitterHandleInfo info = this.splitterHandleInfos.get(index);
-        int ex = this.editor.area.x;
-        int ey = this.editor.area.y;
-        int ew = Math.max(1, this.editor.area.w);
-        int eh = Math.max(1, this.editor.area.h);
-        float ratio = info.horizontal
-            ? (mouseY - (ey + info.py * eh)) / (info.ph * eh)
-            : (mouseX - (ex + info.px * ew)) / (info.pw * ew);
-
-        return MathUtils.clamp(ratio, 0.05F, 0.95F);
-    }
-
-    private Vector2i getSplitterHandleReferencePosition(int index, List<EditorLayoutNode.SplitterNode> splitters)
-    {
-        if (index < 0 || index >= this.splitterHandleInfos.size() || index >= splitters.size())
-        {
-            return new Vector2i(this.editor.area.x, this.editor.area.y);
-        }
-
-        EditorLayoutNode.SplitterHandleInfo info = this.splitterHandleInfos.get(index);
-        float r = splitters.get(index).getRatio();
-        int ex = this.editor.area.x;
-        int ey = this.editor.area.y;
-        int ew = Math.max(1, this.editor.area.w);
-        int eh = Math.max(1, this.editor.area.h);
-        int hx = ex + (int) ((info.px + (info.horizontal ? info.pw * 0.5F : r * info.pw)) * ew);
-        int hy = ey + (int) ((info.py + (info.horizontal ? r * info.ph : info.ph * 0.5F)) * eh);
-
-        return new Vector2i(hx, hy);
-    }
-
-    private void applyPanelBoundsFromMap(Map<String, float[]> bounds, Set<String> multiTabPanels)
-    {
-        for (UIElement el : this.panelById.values())
-        {
-            el.setVisible(false);
-        }
-        this.homePage.setVisible(false);
-
-        for (Map.Entry<String, float[]> e : bounds.entrySet())
-        {
-            String id = e.getKey();
-            if (this.floatingPanels.contains(id))
-            {
-                continue;
-            }
-            UIElement el = this.panelById.get(id);
-            if (el != null)
-            {
-                float[] b = e.getValue();
-                int offset = multiTabPanels.contains(e.getKey()) ? 20 : 0;
-                el.relative(this.editor).x(b[0]).y(b[1], offset).w(b[2]).h(b[3], -offset);
-                el.setVisible(true);
-            }
-        }
-
-        for (String panelId : this.floatingPanels)
-        {
-            UIElement el = this.panelById.get(panelId);
-            if (el != null)
-            {
-                boolean collapsed = this.collapsedFloatingPanels.contains(panelId);
-                Vector2i pos = this.floatingPanelPositions.get(panelId);
-                Vector2i size = this.floatingPanelSizes.get(panelId);
-                if (pos != null && size != null)
-                {
-                    if (collapsed)
-                    {
-                        el.setVisible(false);
-                    }
-                    else
-                    {
-                        el.relative(this.editor).x(0F, pos.x).y(0F, pos.y + 22).w(0F, size.x).h(0F, size.y - 22);
-                        el.setVisible(true);
-                    }
-                }
-            }
-        }
-    }
-
-    private void applyDragHandleBoundsFromMap(Map<String, float[]> bounds)
-    {
-        for (UIDraggable h : this.dragHandlesById.values())
-        {
-            h.setVisible(false);
-        }
-
-        for (Map.Entry<String, float[]> e : bounds.entrySet())
-        {
-            String id = e.getKey();
-            if (this.floatingPanels.contains(id))
-            {
-                continue;
-            }
-            UIDraggable h = this.dragHandlesById.get(id);
-            UIElement el = this.panelById.get(id);
-            
-            if (h != null && el != null && el.isVisible())
-            {
-                float[] b = e.getValue();
-                h.relative(this.editor).x(b[0]).y(b[1] + DRAG_HANDLE_TOP_OFFSET_NORM).w(b[2]).h(DRAG_HANDLE_HEIGHT_NORM);
-                h.setVisible(!BBSSettings.editorLayoutSettings.isLayoutLocked() && !this.usesPanelInternalDragHandle(id));
-            }
-        }
-    }
-
-    private boolean usesPanelInternalDragHandle(String panelId)
-    {
-        return ANCHORED_REPLAYS_PANEL_ID.equals(panelId) && this.anchoredReplaysPanel != null && this.anchoredReplaysPanel.isDocked();
-    }
-
-    private void updateEditorFlexBoundsOnly(ValueEditorLayout layout, EditorLayoutNode root)
-    {
-        Map<String, float[]> bounds = this.computePanelBounds(root);
-
-        List<EditorLayoutNode.TabbedNode> tabbedNodes = new ArrayList<>();
-        EditorLayoutNode.collectTabbedNodes(root, tabbedNodes);
-        Set<String> multiTabPanels = new HashSet<>();
-        for (EditorLayoutNode.TabbedNode tabbed : tabbedNodes)
-        {
-            if (tabbed.tabs.size() > 1)
-            {
-                for (EditorLayoutNode tab : tabbed.tabs)
-                {
-                    if (tab instanceof EditorLayoutNode.PanelNode)
-                    {
-                        multiTabPanels.add(((EditorLayoutNode.PanelNode) tab).getPanelId());
-                    }
-                }
-            }
-        }
-
-        this.applyPanelBoundsFromMap(bounds, multiTabPanels);
-        this.splitterHandleInfos.clear();
-        EditorLayoutNode.computeSplitterHandles(root, 0F, 0F, 1F, 1F, this.splitterHandleInfos);
-        this.syncSplitterHandleBounds();
-        this.applyDragHandleBoundsFromMap(bounds);
-        
-        this.setupTabBars(root, bounds, false);
-        
-        // Ensure indicators and icons are on top
-        this.editor.getChildren().removeIf(c -> c instanceof UIRenderable);
-        this.editor.add(new UIRenderable(this::renderIcons), new UIRenderable(this::renderDropZoneHighlight), new UIRenderable(this::renderFloatingPanelWindows));
-    }
-
-    private void clearPanelDragState()
-    {
-        this.draggingPanelId = null;
-        this.dropTargetPanelId = null;
-        this.dropTargetZone = DROP_ZONE_CENTER;
-    }
-
-    private void setDropIntent(DropIntent intent)
-    {
-        this.dropTargetPanelId = intent == null ? null : intent.targetId;
-        this.dropTargetZone = intent == null ? DROP_ZONE_CENTER : intent.zone;
-    }
-
-    private void applyPanelDropResult(String dragId, String targetId, int zone)
-    {
-        ValueEditorLayout layout = BBSSettings.editorLayoutSettings;
-        EditorLayoutNode root = layout.getFilmLayoutRoot();
-        EditorLayoutNode newRoot = this.buildDroppedLayout(root, dragId, targetId, zone);
-
-        if (newRoot != null)
-        {
-            layout.setFilmLayoutRoot(newRoot);
-            this.setupEditorFlex(true);
-        }
-    }
-
-    private EditorLayoutNode buildDroppedLayout(EditorLayoutNode root, String draggedId, String targetId, int zone)
-    {
-        switch (zone)
-        {
-            case DROP_ZONE_CENTER:
-                return root.copyWithSwappedIds(draggedId, targetId);
-
-                        case DROP_ZONE_TAB:
-                return EditorLayoutNode.copyWithDockedLeaf(root, targetId, draggedId);
-
-            case EditorLayoutNode.EDGE_LEFT:
-            case EditorLayoutNode.EDGE_RIGHT:
-            case EditorLayoutNode.EDGE_TOP:
-            case EditorLayoutNode.EDGE_BOTTOM:
-                return EditorLayoutNode.copyWithInsertSplitAt(root, targetId, draggedId, zone);
-
-            default:
-                return root;
-        }
-    }
-
-    private UIDraggable createPanelDragHandle(String panelId)
-    {
-        UIDraggable handle = new UIDraggable((context) ->
-        {
-            this.startPanelDrag(panelId);
-            this.updateDropTargetFromMouse(context.mouseX, context.mouseY);
-            this.lastDragMouseX = context.mouseX;
-            this.lastDragMouseY = context.mouseY;
-        });
-
-        handle.dragEnd(() ->
-        {
-            DropIntent intent = new DropIntent(this.dropTargetPanelId, this.dropTargetZone);
-            if (!this.canApplyDropIntent(this.draggingPanelId, intent))
-            {
-                if (this.draggingPanelId != null)
-                {
-                    this.floatPanel(this.draggingPanelId, this.lastDragMouseX - 100, this.lastDragMouseY - 10);
-                }
-                this.clearPanelDragState();
-                return;
-            }
-
-            this.applyPanelDropResult(this.draggingPanelId, intent.targetId, intent.zone);
-            this.clearPanelDragState();
-        });
-
-        handle.hoverOnly().rendering((context) -> this.renderPanelDragHandle(context, handle));
-
-        return handle;
-    }
-
-    private void startPanelDrag(String panelId)
-    {
-        if (this.draggingPanelId == null)
-        {
-            this.draggingPanelId = panelId;
-        }
-    }
-
-    public void beginEmbeddedPanelDragHold(String panelId, int mouseX, int mouseY)
-    {
-        if (BBSSettings.editorLayoutSettings.isLayoutLocked())
-        {
-            return;
-        }
-
-        this.mouseHeldPanelId = panelId;
-        this.clickX = mouseX;
-        this.clickY = mouseY;
-        this.lastDragMouseX = mouseX;
-        this.lastDragMouseY = mouseY;
-    }
-
-    public void updateEmbeddedPanelDrag(String panelId, int mouseX, int mouseY)
-    {
-        if (this.mouseHeldPanelId != null && this.mouseHeldPanelId.equals(panelId) && this.draggingPanelId == null)
-        {
-            int dx = mouseX - this.clickX;
-            int dy = mouseY - this.clickY;
-
-            if (dx * dx + dy * dy > 5 * 5)
-            {
-                this.mouseHeldPanelId = null;
-                this.startPanelDrag(panelId);
-                this.updateDropTargetFromMouse(mouseX, mouseY);
-            }
-        }
-
-        if (this.draggingPanelId != null && this.draggingPanelId.equals(panelId))
-        {
-            this.updateDropTargetFromMouse(mouseX, mouseY);
-            this.lastDragMouseX = mouseX;
-            this.lastDragMouseY = mouseY;
-        }
-    }
-
-    public boolean finishEmbeddedPanelDrag(String panelId)
-    {
-        if (this.mouseHeldPanelId != null && this.mouseHeldPanelId.equals(panelId))
-        {
-            this.mouseHeldPanelId = null;
-
-            return true;
-        }
-
-        if (this.draggingPanelId != null && this.draggingPanelId.equals(panelId))
-        {
-            DropIntent intent = new DropIntent(this.dropTargetPanelId, this.dropTargetZone);
-
-            if (!this.canApplyDropIntent(this.draggingPanelId, intent))
-            {
-                this.clearPanelDragState();
-
-                return true;
-            }
-
-            this.applyPanelDropResult(this.draggingPanelId, intent.targetId, intent.zone);
-            this.clearPanelDragState();
-
-            return true;
-        }
-
-        return false;
-    }
-
-    private void updateDropTargetFromMouse(int mouseX, int mouseY)
-    {
-        this.setDropIntent(this.resolveDropIntent(mouseX, mouseY));
-    }
-
-    private boolean canApplyDropIntent(String draggedId, DropIntent intent)
-    {
-        return draggedId != null && intent != null && intent.targetId != null && !draggedId.equals(intent.targetId);
-    }
-
-    private String resolveSiblingTabId(String targetId)
-    {
-        EditorLayoutNode root = BBSSettings.editorLayoutSettings.getFilmLayoutRoot();
-        if (root == null) return null;
-        
-        EditorLayoutNode.TabbedNode tabbed = this.findTabbedNodeContaining(root, targetId);
-        if (tabbed == null) return null;
-        
-        for (EditorLayoutNode tab : tabbed.tabs)
-        {
-            if (tab instanceof EditorLayoutNode.PanelNode)
-            {
-                String id = ((EditorLayoutNode.PanelNode) tab).getPanelId();
-                if (!id.equals(targetId))
-                {
-                    return id;
-                }
-            }
-        }
-        return null;
-    }
-    
-    private EditorLayoutNode.TabbedNode findTabbedNodeContaining(EditorLayoutNode node, String panelId)
-    {
-        if (node instanceof EditorLayoutNode.TabbedNode)
-        {
-            EditorLayoutNode.TabbedNode tabbed = (EditorLayoutNode.TabbedNode) node;
-            for (EditorLayoutNode tab : tabbed.tabs)
-            {
-                if (tab instanceof EditorLayoutNode.PanelNode && ((EditorLayoutNode.PanelNode) tab).getPanelId().equals(panelId))
-                {
-                    return tabbed;
-                }
-            }
-        }
-        else if (node instanceof EditorLayoutNode.SplitterNode)
-        {
-            EditorLayoutNode.SplitterNode splitter = (EditorLayoutNode.SplitterNode) node;
-            EditorLayoutNode.TabbedNode res = this.findTabbedNodeContaining(splitter.getFirst(), panelId);
-            if (res != null) return res;
-            return this.findTabbedNodeContaining(splitter.getSecond(), panelId);
-        }
-        return null;
-    }
-
-    private DropIntent resolveDropIntent(int mouseX, int mouseY)
-    {
-        String activeDragId = this.draggingPanelId != null ? this.draggingPanelId : this.activeDraggingFloatingPanelId;
-        for (Map.Entry<String, UIElement> entry : this.panelById.entrySet())
-        {
-            if (!entry.getValue().isVisible()) continue;
-            if (this.floatingPanels.contains(entry.getKey())) continue;
-            if (entry.getKey().equals(activeDragId)) continue;
-
-            Area area = entry.getValue().area;
-            int guideZone = this.resolveDockGuideZoneFromMouse(area, mouseX, mouseY);
-
-            if (guideZone != Integer.MIN_VALUE)
-            {
-                String targetId = entry.getKey();
-                if (activeDragId != null && targetId.equals(activeDragId))
-                {
-                    if (guideZone != DROP_ZONE_CENTER && guideZone != DROP_ZONE_TAB)
-                    {
-                        String sibling = this.resolveSiblingTabId(targetId);
-                        if (sibling != null)
-                        {
-                            targetId = sibling;
-                        }
-                    }
-                }
-                return new DropIntent(targetId, guideZone);
-            }
-        }
-
-        if (this.activeDraggingFloatingPanelId != null)
-        {
-            return null;
-        }
-
-        for (Map.Entry<String, UIElement> entry : this.panelById.entrySet())
-        {
-            if (!entry.getValue().isVisible()) continue;
-            if (this.floatingPanels.contains(entry.getKey())) continue;
-            if (entry.getKey().equals(activeDragId)) continue;
-
-            Area area = entry.getValue().area;
-            if (area.isInside(mouseX, mouseY))
-            {
-                String targetId = entry.getKey();
-                int zone = this.resolveDropZone(area, mouseX, mouseY);
-                
-                if (activeDragId != null && targetId.equals(activeDragId))
-                {
-                    if (zone != DROP_ZONE_CENTER && zone != DROP_ZONE_TAB)
-                    {
-                        String sibling = this.resolveSiblingTabId(targetId);
-                        if (sibling != null)
-                        {
-                            targetId = sibling;
-                        }
-                    }
-                }
-
-                return new DropIntent(targetId, zone);
-            }
-        }
-
-        return null;
-    }
-
-    private void renderPanelDragHandle(UIContext context, UIDraggable handle)
-    {
-        boolean active = handle.area.isInside(context) || handle.isDragging();
-        int color = active ? Colors.WHITE : Colors.setA(Colors.WHITE, 0.6F);
-        int cx = handle.area.mx();
-        int cy = handle.area.y + handle.area.h / 2 + 4;
-        context.batcher.icon(Icons.ALL_DIRECTIONS, color, cx, cy, 0.5F, 0.5F);
-    }
-
-    private int resolveDropZone(Area area, int mouseX, int mouseY)
-    {
-        int guideZone = this.resolveDockGuideZoneFromMouse(area, mouseX, mouseY);
-        if (guideZone != Integer.MIN_VALUE)
-        {
-            return guideZone;
-        }
-
-        float nx = area.w <= 0 ? 0.5F : MathUtils.clamp((mouseX - area.x) / (float) area.w, 0F, 1F);
-        float ny = area.h <= 0 ? 0.5F : MathUtils.clamp((mouseY - area.y) / (float) area.h, 0F, 1F);
-        float edge = DROP_EDGE_MARGIN;
-
-        if (nx > edge && nx < 1F - edge && ny > edge && ny < 1F - edge)
-        {
-            return DROP_ZONE_CENTER;
-        }
-
-        float left = nx;
-        float right = 1F - nx;
-        float top = ny;
-        float bottom = 1F - ny;
-
-        float nearest = left;
-        int zone = EditorLayoutNode.EDGE_LEFT;
-        if (right < nearest)
-        {
-            nearest = right;
-            zone = EditorLayoutNode.EDGE_RIGHT;
-        }
-        if (top < nearest)
-        {
-            nearest = top;
-            zone = EditorLayoutNode.EDGE_TOP;
-        }
-        if (bottom < nearest)
-        {
-            zone = EditorLayoutNode.EDGE_BOTTOM;
-        }
-
-        return zone;
-    }
-
-    private int resolveDockGuideZoneFromMouse(Area area, int mouseX, int mouseY)
-    {
-        int[] zones = new int[] {
-            DROP_ZONE_CENTER,
-            DROP_ZONE_TAB,
-            EditorLayoutNode.EDGE_LEFT,
-            EditorLayoutNode.EDGE_RIGHT,
-            EditorLayoutNode.EDGE_TOP,
-            EditorLayoutNode.EDGE_BOTTOM
-        };
-        int hitPadding = 8;
-
-        for (int zone : zones)
-        {
-            int[] rect = this.getDockGuideRect(area, zone);
-            if (rect == null)
-            {
-                continue;
-            }
-
-            if (mouseX >= rect[0] - hitPadding && mouseX <= rect[2] + hitPadding && mouseY >= rect[1] - hitPadding && mouseY <= rect[3] + hitPadding)
-            {
-                return zone;
-            }
-        }
-
-        return Integer.MIN_VALUE;
-    }
-
-    private static class DropIntent
-    {
-        private final String targetId;
-        private final int zone;
-
-        private DropIntent(String targetId, int zone)
-        {
-            this.targetId = targetId;
-            this.zone = zone;
-        }
-    }
-
-    private void renderDropZoneHighlight(UIContext context)
-    {
-        if (this.showingHomePage)
-        {
-            return;
-        }
-
-        String activeDragId = this.draggingPanelId != null ? this.draggingPanelId : this.activeDraggingFloatingPanelId;
-        if (BBSSettings.editorLayoutSettings.isLayoutLocked() || activeDragId == null || this.dropTargetPanelId == null)
-        {
-            return;
-        }
-
-        UIElement target = this.panelById.get(this.dropTargetPanelId);
-        if (target == null)
-        {
-            return;
-        }
-
-        int[] zones = new int[] {
-            EditorLayoutNode.EDGE_LEFT,
-            EditorLayoutNode.EDGE_RIGHT,
-            EditorLayoutNode.EDGE_TOP,
-            EditorLayoutNode.EDGE_BOTTOM,
-            DROP_ZONE_CENTER,
-            DROP_ZONE_TAB
-        };
-
-        for (int zone : zones)
-        {
-            this.renderDockGuideZone(context, target.area, zone, zone == this.dropTargetZone);
-        }
-
-        this.renderDropPreviewLayout(context);
-    }
-
-    private void renderDockGuideZone(UIContext context, Area area, int zone, boolean active)
-    {
-        int[] rect = this.getDockGuideRect(area, zone);
-        if (rect == null)
-        {
-            return;
-        }
-
-        int baseColor = this.getDockGuideBaseColor();
-        float opacity = this.getDockGuideOpacity();
-        int border = this.withAlpha(Colors.mulRGB(baseColor, active ? 1.4F : 0.9F), opacity * (active ? 0.95F : 0.35F));
-        int fill = this.withAlpha(baseColor, opacity * (active ? 0.35F : 0.1F));
-
-        context.batcher.box(rect[0], rect[1], rect[2], rect[3], fill);
-
-        int rx = rect[0];
-        int ry = rect[1];
-        int rex = rect[2];
-        int rey = rect[3];
-        context.batcher.box(rx, ry, rex, ry + 1, border);
-        context.batcher.box(rx, rey - 1, rex, rey, border);
-        context.batcher.box(rx, ry, rx + 1, rey, border);
-        context.batcher.box(rex - 1, ry, rex, rey, border);
-
-        int cx = (rect[0] + rect[2]) / 2;
-        int cy = (rect[1] + rect[3]) / 2;
-        int core = active ? 4 : 2;
-        int coreColor = this.withAlpha(Colors.mulRGB(baseColor, 1.5F), opacity * (active ? 1.0F : 0.5F));
-
-        context.batcher.box(cx - core, cy - core, cx + core, cy + core, coreColor);
-    }
-
-    private int[] getDockGuideRect(Area area, int zone)
-    {
-        int x = area.x;
-        int y = area.y;
-        int ex = area.ex();
-        int ey = area.ey();
-        int w = Math.max(1, ex - x);
-        int h = Math.max(1, ey - y);
-        int min = Math.min(w, h);
-        int size = Math.max(14, Math.min(34, Math.round(min * 0.17F)));
-        int half = size / 2;
-        int cx = x + w / 2;
-        int cy = y + h / 2;
-        int orbitX = Math.max(size, Math.round(w * 0.24F));
-        int orbitY = Math.max(size, Math.round(h * 0.24F));
-        int rx1 = cx - half;
-        int ry1 = cy - half;
-
-        switch (zone)
-        {
-            case DROP_ZONE_TAB:
-                int margin2 = 2;
-                return new int[] {x + margin2, y + margin2, ex - margin2, Math.min(ey - margin2, y + margin2 + 14)};
-            case EditorLayoutNode.EDGE_LEFT:
-                rx1 = cx - orbitX - half;
-                ry1 = cy - half;
-                break;
-            case EditorLayoutNode.EDGE_RIGHT:
-                rx1 = cx + orbitX - half;
-                ry1 = cy - half;
-                break;
-            case EditorLayoutNode.EDGE_TOP:
-                rx1 = cx - half;
-                ry1 = cy - orbitY - half;
-                break;
-            case EditorLayoutNode.EDGE_BOTTOM:
-                rx1 = cx - half;
-                ry1 = cy + orbitY - half;
-                break;
-            case DROP_ZONE_CENTER:
-                rx1 = cx - half;
-                ry1 = cy - half;
-                break;
-            default:
-                return null;
-        }
-
-        int margin = 2;
-        int rx2 = rx1 + size;
-        int ry2 = ry1 + size;
-
-        if (rx1 < x + margin)
-        {
-            rx2 += (x + margin) - rx1;
-            rx1 = x + margin;
-        }
-
-        if (ry1 < y + margin)
-        {
-            ry2 += (y + margin) - ry1;
-            ry1 = y + margin;
-        }
-
-        if (rx2 > ex - margin)
-        {
-            rx1 -= rx2 - (ex - margin);
-            rx2 = ex - margin;
-        }
-
-        if (ry2 > ey - margin)
-        {
-            ry1 -= ry2 - (ey - margin);
-            ry2 = ey - margin;
-        }
-
-        if (rx2 - rx1 <= 2 || ry2 - ry1 <= 2)
-        {
-            return null;
-        }
-
-        return new int[] {rx1, ry1, rx2, ry2};
-    }
-
-    private void renderDropPreviewLayout(UIContext context)
-    {
-        String activeDragId = this.draggingPanelId != null ? this.draggingPanelId : this.activeDraggingFloatingPanelId;
-        if (activeDragId == null || this.dropTargetPanelId == null)
-        {
-            return;
-        }
-
-        ValueEditorLayout layout = BBSSettings.editorLayoutSettings;
-        EditorLayoutNode root = layout.getFilmLayoutRoot();
-        EditorLayoutNode preview = this.buildDroppedLayout(root, activeDragId, this.dropTargetPanelId, this.dropTargetZone);
-
-        if (preview == null)
-        {
-            return;
-        }
-
-        Map<String, float[]> bounds = this.computePanelBounds(preview);
-        int baseColor = this.getDockGuideBaseColor();
-        float opacity = this.getDockGuideOpacity();
-        int previewFill = this.withAlpha(baseColor, opacity * 0.18F);
-        int previewStrong = this.withAlpha(Colors.mulRGB(baseColor, 1.2F), opacity * 0.34F);
-        int previewBorder = this.withAlpha(Colors.mulRGB(baseColor, 1.35F), opacity * 0.6F);
-
-        for (Map.Entry<String, float[]> entry : bounds.entrySet())
-        {
-            float[] b = entry.getValue();
-            int x = this.editor.area.x + Math.round(this.editor.area.w * b[0]);
-            int y = this.editor.area.y + Math.round(this.editor.area.h * b[1]);
-            int w = Math.max(1, Math.round(this.editor.area.w * b[2]));
-            int h = Math.max(1, Math.round(this.editor.area.h * b[3]));
-            int fill = entry.getKey().equals(activeDragId) ? previewStrong : previewFill;
-
-            this.renderDropZoneRect(context, x, y, x + w, y + h, previewBorder, fill);
-        }
-    }
-
-    private void renderDropZoneRect(UIContext context, Area a, int border, int fill)
-    {
-        this.renderDropZoneRect(context, a.x, a.y, a.ex(), a.ey(), border, fill);
-    }
-
-    private void renderDropZoneRect(UIContext context, int x, int y, int ex, int ey, int border, int fill)
-    {
-        context.batcher.box(x, y, ex, ey, fill);
-        int t = 2;
-        context.batcher.box(x, y, ex, y + t, border);
-        context.batcher.box(x, ey - t, ex, ey, border);
-        context.batcher.box(x, y, x + t, ey, border);
-        context.batcher.box(ex - t, y, ex, ey, border);
-    }
-
-    private int getDockGuideBaseColor()
-    {
-        return BBSSettings.editorDockGuideColor == null ? 0x57CCFF : BBSSettings.editorDockGuideColor.get();
-    }
-
-    private float getDockGuideOpacity()
-    {
-        return BBSSettings.editorDockGuideOpacity == null ? 0.5F : MathUtils.clamp(BBSSettings.editorDockGuideOpacity.get(), 0F, 1F);
-    }
-
-    private int withAlpha(int color, float alpha)
-    {
-        return Colors.setA(color, MathUtils.clamp(alpha, 0F, 1F));
-    }
-
-    private void renderSplitter(UIContext context, int index)
-    {
-        if (index < 0 || index >= this.splitterHandles.size() || index >= this.splitterHandleInfos.size())
-        {
-            return;
-        }
-
-        UIDraggable splitter = this.splitterHandles.get(index);
-        EditorLayoutNode.SplitterHandleInfo info = this.splitterHandleInfos.get(index);
-        boolean active = splitter.area.isInside(context) || splitter.isDragging();
-        int lineColor = active ? BBSSettings.primaryColor(Colors.A50) : 0x22ffffff;
-
-        if (active)
-        {
-            context.batcher.box(splitter.area.x, splitter.area.y, splitter.area.ex(), splitter.area.ey(), lineColor);
-        }
-
-        if (info.horizontal)
-        {
-            int cy = splitter.area.y + splitter.area.h / 2;
-            context.batcher.box(splitter.area.x, cy - 1, splitter.area.ex(), cy + 1, lineColor);
-        }
-        else
-        {
-            int cx = splitter.area.x + splitter.area.w / 2;
-            context.batcher.box(cx - 1, splitter.area.y, cx + 1, splitter.area.ey(), lineColor);
         }
     }
 
@@ -1943,7 +742,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.cameraEditor.setVisible(false);
         this.replayEditor.setVisible(false);
         this.actionEditor.setVisible(false);
-        this.screenEditor.setVisible(false);
 
         element.setVisible(true);
 
@@ -1951,9 +749,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         {
             this.toggleFlight();
         }
-
-        /* Re-sync tab visibility so tabbed panels are correctly shown/hidden */
-        this.setupEditorFlex(true);
     }
 
     public UIFilmController getController()
@@ -1991,6 +786,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         });
 
         this.duplicateFilm.tooltip(UIKeys.FILM_CRUD_DUPE, Direction.LEFT);
+
+        crudPanel.icons.add(this.duplicateFilm);
 
         return crudPanel;
     }
@@ -2090,165 +887,28 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             menu.action(Icons.EXCHANGE, UIKeys.FILM_LAYOUT_HORIZONTAL_BOTTOM, layout.getLayout() == ValueEditorLayout.LAYOUT_HORIZONTAL_BOTTOM, () ->
             {
                 layout.setLayout(ValueEditorLayout.LAYOUT_HORIZONTAL_BOTTOM);
-                this.applyLegacyLayoutSelection();
                 this.setupEditorFlex(true);
             });
 
             menu.action(Icons.CONVERT, UIKeys.FILM_LAYOUT_VERTICAL_LEFT, layout.getLayout() == ValueEditorLayout.LAYOUT_VERTICAL_LEFT, () ->
             {
                 layout.setLayout(ValueEditorLayout.LAYOUT_VERTICAL_LEFT);
-                this.applyLegacyLayoutSelection();
                 this.setupEditorFlex(true);
             });
 
             menu.action(Icons.ARROW_RIGHT, UIKeys.FILM_LAYOUT_VERTICAL_RIGHT, layout.getLayout() == ValueEditorLayout.LAYOUT_VERTICAL_RIGHT, () ->
             {
                 layout.setLayout(ValueEditorLayout.LAYOUT_VERTICAL_RIGHT);
-                this.applyLegacyLayoutSelection();
                 this.setupEditorFlex(true);
             });
 
             menu.action(Icons.MAIN_HANDLE, UIKeys.FILM_LAYOUT_VERTICAL_MIDDLE, layout.getLayout() == ValueEditorLayout.LAYOUT_VERTICAL_MIDDLE, () ->
             {
                 layout.setLayout(ValueEditorLayout.LAYOUT_VERTICAL_MIDDLE);
-                this.applyLegacyLayoutSelection();
                 this.setupEditorFlex(true);
             });
 
-            menu.action(Icons.SCENE, UIKeys.FILM_LAYOUT_ANCHORED_REPLAYS, this.isAnchoredReplaysPanelEnabled(), () ->
-            {
-                BBSSettings.editorAnchoredReplaysPanel.set(!this.isAnchoredReplaysPanelEnabled());
-                this.setAnchoredReplaysPanelEnabled(this.isAnchoredReplaysPanelEnabled());
-            });
-
         });
-    }
-
-    private boolean isAnchoredReplaysPanelEnabled()
-    {
-        return BBSSettings.editorAnchoredReplaysPanel.get();
-    }
-
-    private boolean hasPanelInLayout(EditorLayoutNode node, String panelId)
-    {
-        if (node instanceof EditorLayoutNode.PanelNode)
-        {
-            return ((EditorLayoutNode.PanelNode) node).getPanelId().equals(panelId);
-        }
-
-        if (node instanceof EditorLayoutNode.SplitterNode)
-        {
-            EditorLayoutNode.SplitterNode splitter = (EditorLayoutNode.SplitterNode) node;
-
-            return this.hasPanelInLayout(splitter.getFirst(), panelId) || this.hasPanelInLayout(splitter.getSecond(), panelId);
-        }
-
-        if (node instanceof EditorLayoutNode.TabbedNode)
-        {
-            EditorLayoutNode.TabbedNode tabbed = (EditorLayoutNode.TabbedNode) node;
-
-            for (EditorLayoutNode tab : tabbed.tabs)
-            {
-                if (this.hasPanelInLayout(tab, panelId))
-                {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    private void setAnchoredReplaysPanelEnabled(boolean enabled)
-    {
-        ValueEditorLayout layout = BBSSettings.editorLayoutSettings;
-        EditorLayoutNode root = layout.getFilmLayoutRoot();
-        EditorLayoutNode baseRoot = this.removeAnchoredReplaysPanelFromRoot(root);
-
-        if (enabled)
-        {
-            if (!this.floatingPanels.contains(ANCHORED_REPLAYS_PANEL_ID) && !this.hasPanelInLayout(root, ANCHORED_REPLAYS_PANEL_ID))
-            {
-                layout.setFilmLayoutRoot(this.addAnchoredReplaysPanelToRoot(baseRoot));
-            }
-        }
-        else
-        {
-            this.floatingPanels.remove(ANCHORED_REPLAYS_PANEL_ID);
-            this.collapsedFloatingPanels.remove(ANCHORED_REPLAYS_PANEL_ID);
-            this.floatingPanelPositions.remove(ANCHORED_REPLAYS_PANEL_ID);
-            this.floatingPanelSizes.remove(ANCHORED_REPLAYS_PANEL_ID);
-
-            if (this.hasPanelInLayout(root, ANCHORED_REPLAYS_PANEL_ID))
-            {
-                layout.setFilmLayoutRoot(baseRoot);
-            }
-        }
-
-        this.anchoredReplaysPanel.setDocked(enabled);
-        this.syncAnchoredReplaysPanelWithFilm();
-        this.setupEditorFlex(true);
-    }
-
-    private EditorLayoutNode removeAnchoredReplaysPanelFromRoot(EditorLayoutNode root)
-    {
-        if (root == null || !this.hasPanelInLayout(root, ANCHORED_REPLAYS_PANEL_ID))
-        {
-            return root;
-        }
-
-        return EditorLayoutNode.copyWithRemovedLeaf(root, ANCHORED_REPLAYS_PANEL_ID);
-    }
-
-    private EditorLayoutNode addAnchoredReplaysPanelToRoot(EditorLayoutNode root)
-    {
-        EditorLayoutNode baseRoot = root == null ? EditorLayoutNode.defaultFilmLayout() : this.removeAnchoredReplaysPanelFromRoot(root);
-
-        if (this.floatingPanels.contains(ANCHORED_REPLAYS_PANEL_ID))
-        {
-            return baseRoot;
-        }
-
-        EditorLayoutNode inserted = EditorLayoutNode.copyWithReplacedLeaf(
-            baseRoot,
-            "editArea",
-            new EditorLayoutNode.SplitterNode(
-                false,
-                0.38F,
-                new EditorLayoutNode.PanelNode(ANCHORED_REPLAYS_PANEL_ID),
-                new EditorLayoutNode.PanelNode("editArea")
-            )
-        );
-
-        if (inserted == baseRoot)
-        {
-            inserted = EditorLayoutNode.copyWithInsertSplitAt(baseRoot, "editArea", ANCHORED_REPLAYS_PANEL_ID, EditorLayoutNode.EDGE_LEFT);
-        }
-
-        return inserted;
-    }
-
-    public void syncAnchoredReplaysPanelWithFilm()
-    {
-        if (this.anchoredReplaysPanel == null)
-        {
-            return;
-        }
-
-        List<Replay> replays = this.data == null ? Collections.emptyList() : this.data.replays.getList();
-
-        this.anchoredReplaysPanel.replays.setList(replays);
-        this.syncAnchoredReplaysPanelSelection(this.replayEditor == null ? null : this.replayEditor.getReplay(), false);
-    }
-
-    public void syncAnchoredReplaysPanelSelection(Replay replay, boolean select)
-    {
-        if (this.anchoredReplaysPanel == null)
-        {
-            return;
-        }
-
-        this.anchoredReplaysPanel.syncReplaySelection(replay, select);
     }
 
     private void toggleLayoutLock()
@@ -2256,9 +916,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         ValueEditorLayout layout = BBSSettings.editorLayoutSettings;
 
         layout.setLayoutLocked(!layout.isLayoutLocked());
-        this.clearPanelDragState();
         this.updateLayoutLockTooltip();
-        this.setupEditorFlex(true);
     }
 
     private void updateLayoutLockTooltip()
@@ -2308,7 +966,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             layout.setMiddleLayoutInverted(!layout.isMiddleLayoutInverted());
         }
 
-        this.applyLegacyLayoutSelection();
         this.setupEditorFlex(true);
     }
 
@@ -2334,261 +991,9 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         return Icons.EXCHANGE;
     }
 
-    private void applyLegacyLayoutSelection()
-    {
-        ValueEditorLayout layout = BBSSettings.editorLayoutSettings;
-        EditorLayoutNode root = layout.buildFilmLayoutFromLegacyState();
-        layout.setFilmLayoutRoot(this.isAnchoredReplaysPanelEnabled() ? this.addAnchoredReplaysPanelToRoot(root) : root);
-    }
-
     private Icon getLayoutLockIcon()
     {
         return BBSSettings.editorLayoutSettings.isLayoutLocked() ? Icons.LOCKED : Icons.UNLOCKED;
-    }
-
-    private MapType getFilmLayoutPresetData()
-    {
-        MapType data = new MapType();
-        EditorLayoutNode currentRoot = BBSSettings.editorLayoutSettings.getFilmLayoutRoot();
-        EditorLayoutNode root = this.removeAnchoredReplaysPanelFromRoot(currentRoot);
-        boolean anchoredReplaysEnabled = this.isAnchoredReplaysPanelEnabled();
-        boolean anchoredReplaysFloating = anchoredReplaysEnabled && this.floatingPanels.contains(ANCHORED_REPLAYS_PANEL_ID);
-
-        data.put("film_layout", (root == null ? EditorLayoutNode.defaultFilmLayout() : root).toData());
-        data.putInt("video_frame_width", BBSSettings.videoSettings.width.get());
-        data.putInt("video_frame_height", BBSSettings.videoSettings.height.get());
-        data.putInt("video_frame_rate", BBSSettings.videoSettings.frameRate.get());
-        data.putInt("video_motion_blur", BBSSettings.videoSettings.motionBlur.get());
-        data.putBool(PRESET_REPLAYS_PANEL_ENABLED, anchoredReplaysEnabled);
-        data.putBool(PRESET_REPLAYS_PANEL_FLOATING, anchoredReplaysFloating);
-
-        if (anchoredReplaysEnabled && !anchoredReplaysFloating)
-        {
-            EditorLayoutNode dockedRoot = currentRoot;
-
-            if (dockedRoot == null || !this.hasPanelInLayout(dockedRoot, ANCHORED_REPLAYS_PANEL_ID))
-            {
-                dockedRoot = this.addAnchoredReplaysPanelToRoot(root);
-            }
-
-            if (dockedRoot != null)
-            {
-                data.put(PRESET_REPLAYS_PANEL_DOCKED_LAYOUT, dockedRoot.toData());
-            }
-        }
-
-        if (anchoredReplaysFloating)
-        {
-            Vector2i position = this.floatingPanelPositions.get(ANCHORED_REPLAYS_PANEL_ID);
-            Vector2i size = this.floatingPanelSizes.get(ANCHORED_REPLAYS_PANEL_ID);
-
-            if (position != null)
-            {
-                data.putInt(PRESET_REPLAYS_PANEL_X, position.x);
-                data.putInt(PRESET_REPLAYS_PANEL_Y, position.y);
-            }
-
-            if (size != null)
-            {
-                data.putInt(PRESET_REPLAYS_PANEL_WIDTH, size.x);
-                data.putInt(PRESET_REPLAYS_PANEL_HEIGHT, size.y);
-            }
-        }
-
-        return data;
-    }
-
-    private void applyFilmLayoutFromPreset(MapType data, int mouseX, int mouseY)
-    {
-        BaseType layoutData = data.get("film_layout");
-        if (layoutData == null)
-        {
-            return;
-        }
-
-        EditorLayoutNode root = EditorLayoutNode.fromData(layoutData);
-        if (root != null)
-        {
-            BBSSettings.editorLayoutSettings.setFilmLayoutRoot(this.removeAnchoredReplaysPanelFromRoot(root));
-
-            if (this.hasAnchoredReplaysPanelPresetState(data))
-            {
-                this.applyAnchoredReplaysPanelPresetState(data, root);
-            }
-            else
-            {
-                this.setAnchoredReplaysPanelEnabled(this.isAnchoredReplaysPanelEnabled());
-            }
-        }
-
-        if (data.has("video_frame_width"))
-        {
-            BBSSettings.videoSettings.width.set(data.getInt("video_frame_width"));
-        }
-
-        if (data.has("video_frame_height"))
-        {
-            BBSSettings.videoSettings.height.set(data.getInt("video_frame_height"));
-        }
-
-        if (data.has("video_frame_rate"))
-        {
-            BBSSettings.videoSettings.frameRate.set(data.getInt("video_frame_rate"));
-        }
-
-        if (data.has("video_motion_blur"))
-        {
-            BBSSettings.videoSettings.motionBlur.set(data.getInt("video_motion_blur"));
-        }
-    }
-
-    private boolean hasAnchoredReplaysPanelPresetState(MapType data)
-    {
-        return data.has(PRESET_REPLAYS_PANEL_ENABLED)
-            || data.has(PRESET_REPLAYS_PANEL_FLOATING)
-            || data.has(PRESET_REPLAYS_PANEL_X)
-            || data.has(PRESET_REPLAYS_PANEL_Y)
-            || data.has(PRESET_REPLAYS_PANEL_WIDTH)
-            || data.has(PRESET_REPLAYS_PANEL_HEIGHT)
-            || data.has(PRESET_REPLAYS_PANEL_DOCKED_LAYOUT);
-    }
-
-    private void applyAnchoredReplaysPanelPresetState(MapType data, EditorLayoutNode baseRoot)
-    {
-        boolean enabled = data.getBool(PRESET_REPLAYS_PANEL_ENABLED, this.isAnchoredReplaysPanelEnabled());
-        boolean floating = enabled && data.getBool(PRESET_REPLAYS_PANEL_FLOATING, this.floatingPanels.contains(ANCHORED_REPLAYS_PANEL_ID));
-        Vector2i position = data.has(PRESET_REPLAYS_PANEL_X) && data.has(PRESET_REPLAYS_PANEL_Y)
-            ? new Vector2i(data.getInt(PRESET_REPLAYS_PANEL_X), data.getInt(PRESET_REPLAYS_PANEL_Y))
-            : null;
-        Vector2i size = data.has(PRESET_REPLAYS_PANEL_WIDTH) && data.has(PRESET_REPLAYS_PANEL_HEIGHT)
-            ? new Vector2i(data.getInt(PRESET_REPLAYS_PANEL_WIDTH), data.getInt(PRESET_REPLAYS_PANEL_HEIGHT))
-            : null;
-
-        BBSSettings.editorAnchoredReplaysPanel.set(enabled);
-
-        if (!enabled)
-        {
-            this.setAnchoredReplaysPanelEnabled(false);
-
-            return;
-        }
-
-        if (floating)
-        {
-            this.showAnchoredReplaysPanelFloating(position, size);
-        }
-        else
-        {
-            EditorLayoutNode dockedRoot = data.has(PRESET_REPLAYS_PANEL_DOCKED_LAYOUT)
-                ? EditorLayoutNode.fromData(data.get(PRESET_REPLAYS_PANEL_DOCKED_LAYOUT))
-                : null;
-
-            this.dockAnchoredReplaysPanel(dockedRoot == null ? baseRoot : dockedRoot);
-        }
-    }
-
-    private void dockAnchoredReplaysPanel(EditorLayoutNode preferredRoot)
-    {
-        ValueEditorLayout layout = BBSSettings.editorLayoutSettings;
-        EditorLayoutNode root = preferredRoot == null ? layout.getFilmLayoutRoot() : preferredRoot;
-        EditorLayoutNode dockedRoot = root;
-
-        if (dockedRoot == null || !this.hasPanelInLayout(dockedRoot, ANCHORED_REPLAYS_PANEL_ID))
-        {
-            dockedRoot = this.addAnchoredReplaysPanelToRoot(this.removeAnchoredReplaysPanelFromRoot(root));
-        }
-
-        this.floatingPanels.remove(ANCHORED_REPLAYS_PANEL_ID);
-        this.collapsedFloatingPanels.remove(ANCHORED_REPLAYS_PANEL_ID);
-        layout.setFilmLayoutRoot(dockedRoot);
-        this.anchoredReplaysPanel.setDocked(true);
-        this.syncAnchoredReplaysPanelWithFilm();
-        this.setupEditorFlex(true);
-    }
-
-    private void showAnchoredReplaysPanelFloating(Vector2i position, Vector2i size)
-    {
-        ValueEditorLayout layout = BBSSettings.editorLayoutSettings;
-
-        layout.setFilmLayoutRoot(this.removeAnchoredReplaysPanelFromRoot(layout.getFilmLayoutRoot()));
-
-        this.floatingPanels.add(ANCHORED_REPLAYS_PANEL_ID);
-        this.collapsedFloatingPanels.remove(ANCHORED_REPLAYS_PANEL_ID);
-
-        if (size != null)
-        {
-            this.floatingPanelSizes.put(ANCHORED_REPLAYS_PANEL_ID, new Vector2i(size));
-        }
-        else
-        {
-            this.ensureFloatingPanelSize(ANCHORED_REPLAYS_PANEL_ID);
-        }
-
-        this.floatingPanelPositions.put(ANCHORED_REPLAYS_PANEL_ID, this.clampFloatingPanelPosition(ANCHORED_REPLAYS_PANEL_ID, position));
-        this.anchoredReplaysPanel.setDocked(true);
-        this.syncAnchoredReplaysPanelWithFilm();
-        this.bringPanelToFront(ANCHORED_REPLAYS_PANEL_ID);
-        this.setupEditorFlex(true);
-    }
-
-    private void ensureFloatingPanelSize(String panelId)
-    {
-        if (!this.floatingPanelSizes.containsKey(panelId))
-        {
-            this.floatingPanelSizes.put(panelId, this.createDefaultFloatingPanelSize(panelId));
-        }
-    }
-
-    private Vector2i createDefaultFloatingPanelSize(String panelId)
-    {
-        if (panelId.equals("preview"))
-        {
-            return new Vector2i(320, 200);
-        }
-
-        if (panelId.equals(ANCHORED_REPLAYS_PANEL_ID))
-        {
-            return new Vector2i(360, 420);
-        }
-
-        if (panelId.equals("editArea"))
-        {
-            return new Vector2i(300, 400);
-        }
-
-        return new Vector2i(400, 300);
-    }
-
-    private Vector2i clampFloatingPanelPosition(String panelId, Vector2i desiredPosition)
-    {
-        this.ensureFloatingPanelSize(panelId);
-
-        Vector2i size = this.floatingPanelSizes.get(panelId);
-        int maxX = Math.max(0, this.editor.area.w - size.x);
-        int maxY = Math.max(0, this.editor.area.h - size.y);
-        int x = desiredPosition == null ? 20 : desiredPosition.x;
-        int y = desiredPosition == null ? 20 : desiredPosition.y;
-
-        return new Vector2i(Math.max(0, Math.min(x, maxX)), Math.max(0, Math.min(y, maxY)));
-    }
-
-    @Override
-    public void resize()
-    {
-        super.resize();
-
-        if (this.showingHomePage)
-        {
-            this.editor.resize();
-        }
-        else if (this.editor.area.w >= EDITOR_MIN_SIZE_FOR_PX_HANDLES && this.editor.area.h >= EDITOR_MIN_SIZE_FOR_PX_HANDLES)
-        {
-            this.updateEditorFlexBoundsOnly(BBSSettings.editorLayoutSettings, BBSSettings.editorLayoutSettings.getFilmLayoutRoot());
-
-            this.editor.resize();
-        }
-
-        this.updateFilmDocumentView();
     }
 
     @Override
@@ -2607,8 +1012,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         this.applyRecordedKeyframes(recorder, this.data);
     }
-
-
 
     public void receiveActions(String filmId, int replayId, int tick, BaseType clips)
     {
@@ -2683,11 +1086,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     @Override
     public void close()
     {
-        this.save();
-        this.shouldCaptureThumbnail = false;
-        this.preview.cancelCapture();
-        lastShowingHomePage = this.showingHomePage;
-
         super.close();
 
         BBSRendering.setCustomSize(false);
@@ -2697,7 +1095,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         CameraController cameraController = this.getCameraController();
 
         this.cameraEditor.embedView(null);
-        this.screenEditor.embedView(null);
         this.setFlight(false);
         cameraController.remove(this.runner);
 
@@ -2748,18 +1145,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     }
 
     @Override
-    public boolean canToggleVisibility()
-    {
-        return !this.showingHomePage;
-    }
-
-    @Override
-    public boolean canHideHUD()
-    {
-        return !this.showingHomePage;
-    }
-
-    @Override
     public ContentType getType()
     {
         return ContentType.FILMS;
@@ -2769,57 +1154,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     public IKey getTitle()
     {
         return UIKeys.FILM_TITLE;
-    }
-
-    @Override
-    public UIDashboardPanel getMainPanel()
-    {
-        UIHomePanel home = this.dashboard.getPanel(UIHomePanel.class);
-
-        return home != null ? home : this;
-    }
-
-    @Override
-    public void pickData(String id)
-    {
-        this.save();
-        this.openFilmInDocumentTabs(id);
-        RecentAssetsTracker.add(this.getType(), id);
-    }
-
-    @Override
-    public void requestNames()
-    {
-        UIDataUtils.requestNames(this.getType(), this::fillNames);
-    }
-
-    @Override
-    public void fillNames(Collection<String> names)
-    {
-        super.fillNames(names);
-
-        DataPath selected = this.homeFilmsList.getCurrentFirst();
-        String current = selected != null && !selected.folder ? selected.toString() : null;
-
-        this.homeFilmsList.fill(names);
-        this.homeFilmsList.setCurrentFile(current);
-        if (this.homeFilmsMosaic != null)
-        {
-            this.homeFilmsMosaic.fill(names, current);
-        }
-        this.updateHomeButtonsState();
-    }
-
-    @Override
-    protected boolean shouldOpenOverlayOnFirstResize()
-    {
-        return false;
-    }
-
-    @Override
-    protected boolean shouldRenderOpenOverlayHint()
-    {
-        return false;
     }
 
     @Override
@@ -2846,20 +1180,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     {
         this.notifyServer(ActionState.STOP);
         super.fill(data);
-        this.editor.setVisible(true);
-
-        if (data != null)
-        {
-            this.notifyServer(ActionState.RESTART);
-        }
-
-        this.syncActiveDocumentTabWithData(data);
-    }
-
-    @Override
-    public void showHomeView()
-    {
-        this.fill(null);
+        this.notifyServer(ActionState.RESTART);
     }
 
     @Override
@@ -2886,17 +1207,14 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.openHistory.setEnabled(data != null);
         this.toggleHorizontal.setEnabled(data != null);
         this.layoutLock.setEnabled(data != null);
-        this.layoutPresets.setEnabled(data != null);
         this.openCameraEditor.setEnabled(data != null);
         this.openReplayEditor.setEnabled(data != null);
         this.openActionEditor.setEnabled(data != null);
-        this.openScreenEditor.setEnabled(data != null);
         this.duplicateFilm.setEnabled(data != null);
 
         this.actionEditor.setClips(null);
         this.runner.setWork(data == null ? null : data.camera);
         this.cameraEditor.setClips(data == null ? null : data.camera);
-        this.screenEditor.setClips(data == null ? null : data.screen);
         this.replayEditor.setFilm(data);
         this.cameraEditor.pickClip(null);
 
@@ -2912,7 +1230,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         }
 
         this.entered = data != null;
-        this.updateHomeButtonsState();
         this.newFilm = false;
     }
 
@@ -2924,101 +1241,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     public void redo()
     {
         if (this.data != null && this.undoHandler.redo(this.data)) UIUtils.playClick();
-    }
-
-    @Override
-    public void forceSave()
-    {
-        super.forceSave();
-        this.shouldCaptureThumbnail = true;
-    }
-
-    public File getThumbnailFile(String id)
-    {
-        return new File(BBS.getGameFolder(), "config/bbs/thumbnails/films/" + id + ".png");
-    }
-
-    public void deleteThumbnail(String id)
-    {
-        this.thumbnails.remove(id);
-
-        File file = this.getThumbnailFile(id);
-
-        if (file.exists())
-        {
-            file.delete();
-        }
-    }
-
-    public void clearThumbnailCache()
-    {
-        this.thumbnails.clear();
-
-        File folder = new File(BBS.getGameFolder(), "config/bbs/thumbnails/films");
-
-        this.deleteFolder(folder);
-    }
-
-    private void deleteFolder(File folder)
-    {
-        if (!folder.exists())
-        {
-            return;
-        }
-
-        File[] files = folder.listFiles();
-
-        if (files != null)
-        {
-            for (File file : files)
-            {
-                if (file.isDirectory())
-                {
-                    this.deleteFolder(file);
-                }
-                else
-                {
-                    file.delete();
-                }
-            }
-        }
-
-        folder.delete();
-    }
-
-    public Texture getThumbnail(String id)
-    {
-        if (this.thumbnails.containsKey(id))
-        {
-            return this.thumbnails.get(id);
-        }
-
-        File file = this.getThumbnailFile(id);
-
-        if (file.exists())
-        {
-            try (FileInputStream stream = new FileInputStream(file))
-            {
-                Pixels pixels = Pixels.fromPNGStream(stream);
-
-                if (pixels != null)
-                {
-                    Texture texture = Texture.textureFromPixels(pixels, GL11.GL_LINEAR);
-
-                    this.thumbnails.put(id, texture);
-
-                    return texture;
-                }
-            }
-            catch (Exception e)
-            {
-                e.printStackTrace();
-            }
-        }
-
-        this.thumbnails.put(id, null);
-
-        return null;
     }
 
     public boolean isFlying()
@@ -3040,7 +1262,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         {
             this.runner.setManual(flight ? this.position : null);
             this.dashboard.orbitUI.setControl(flight);
-            this.updateFreeFlightMouseCapture(flight);
 
             /* Marking the latest undo as unmergeable */
             if (this.undoHandler != null && !flight)
@@ -3056,11 +1277,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     public Vector2i getLoopingRange()
     {
-        if (this.data == null)
-        {
-            return new Vector2i(0, 0);
-        }
-
         Clip clip = this.cameraEditor.getClip();
 
         int min = -1;
@@ -3090,7 +1306,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     {
         this.controller.update();
 
-        if (BBSSettings.editorCameraPreviewPlayerSync.get() && this.data != null && this.controller.getPovMode() == UIFilmController.CAMERA_MODE_CAMERA)
+        if (this.playerToCamera && this.data != null)
         {
             this.teleportToCamera();
         }
@@ -3133,7 +1349,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         if (this.cameraEditor.isVisible()) UIDashboardPanels.renderHighlightHorizontal(context.batcher, this.openCameraEditor.area);
         if (this.replayEditor.isVisible()) UIDashboardPanels.renderHighlightHorizontal(context.batcher, this.openReplayEditor.area);
         if (this.actionEditor.isVisible()) UIDashboardPanels.renderHighlightHorizontal(context.batcher, this.openActionEditor.area);
-        if (this.screenEditor.isVisible()) UIDashboardPanels.renderHighlightHorizontal(context.batcher, this.openScreenEditor.area);
         if (BBSSettings.editorLayoutSettings.isLayoutLocked()) UIDashboardPanels.renderHighlightHorizontal(context.batcher, this.layoutLock.area);
 
     }
@@ -3144,20 +1359,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     @Override
     public void render(UIContext context)
     {
-        super.render(context);
-
-        if (this.shouldCaptureThumbnail && this.data != null)
-        {
-            File output = this.getThumbnailFile(this.data.getId());
-            output.getParentFile().mkdirs();
-            this.preview.captureThumbnail(output);
-            this.shouldCaptureThumbnail = false;
-            
-            // Clear cache for this film so it reloads the new thumbnail
-            Texture texture = this.thumbnails.remove(this.data.getId());
-            if (texture != null) texture.delete();
-        }
-
         if (this.data != null)
         {
             /*
@@ -3193,66 +1394,16 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         this.updateLogic(context);
 
-        if (this.activeDraggingFloatingPanelId != null)
-        {
-            Vector2i pos = this.floatingPanelPositions.get(this.activeDraggingFloatingPanelId);
-            if (pos != null)
-            {
-                int newX = context.mouseX - this.editor.area.x - this.dragOffsetX;
-                int newY = context.mouseY - this.editor.area.y - this.dragOffsetY;
-                
-                Vector2i size = this.floatingPanelSizes.get(this.activeDraggingFloatingPanelId);
-                int limitX = Math.max(0, Math.min(newX, this.editor.area.w - size.x));
-                int limitY = Math.max(0, Math.min(newY, this.editor.area.h - size.y));
-                pos.set(limitX, limitY);
-                this.setupEditorFlex(true);
-            }
+        int color = BBSSettings.primaryColor.get();
 
-            if (!BBSSettings.editorLayoutSettings.isLayoutLocked())
-            {
-                this.updateDropTargetFromMouse(context.mouseX, context.mouseY);
-            }
-        }
-        
-        if (this.activeResizingFloatingPanelId != null)
-        {
-            if (this.collapsedFloatingPanels.contains(this.activeResizingFloatingPanelId))
-            {
-                this.activeResizingFloatingPanelId = null;
-            }
-            else
-            {
-                Vector2i pos = this.floatingPanelPositions.get(this.activeResizingFloatingPanelId);
-                Vector2i size = this.floatingPanelSizes.get(this.activeResizingFloatingPanelId);
-                if (pos != null && size != null)
-                {
-                    int newW = context.mouseX - (this.editor.area.x + pos.x);
-                    int newH = context.mouseY - (this.editor.area.y + pos.y);
-                    
-                    size.set(Math.max(100, newW), Math.max(50, newH));
-                    this.setupEditorFlex(true);
-                }
-            }
-        }
+        this.area.render(context.batcher, Colors.mulRGB(color | Colors.A100, 0.2F));
 
-        if (!this.postUpdateActions.isEmpty())
-        {
-            for (Runnable r : this.postUpdateActions)
-            {
-                r.run();
-            }
-            this.postUpdateActions.clear();
-        }
-
-        this.area.render(context.batcher, 0xFF141418);
-
-        if (this.editor.isVisible() && this.preview.isVisible())
+        if (this.editor.isVisible())
         {
             this.preview.area.render(context.batcher, Colors.A75);
         }
 
         super.render(context);
-        this.renderDropZoneHighlight(context);
 
         if (this.entered)
         {
@@ -3298,13 +1449,12 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         {
             if (BBSSettings.editorFlightFreeLook.get())
             {
-                this.updateFreeFlightLookFromRawCursor();
-            }
-            else if (this.resetFreeFlightLookDrag || this.freeFlightLookPrimed)
-            {
-                this.resetFreeFlightLookDrag = false;
-                this.freeFlightLookPrimed = false;
-                this.dashboard.orbitUI.orbit.release();
+                boolean anyPressed = Window.isMouseButtonPressed(0) || Window.isMouseButtonPressed(1) || Window.isMouseButtonPressed(2);
+
+                if (!anyPressed && !this.dashboard.orbitUI.orbit.isDragging() && context.mouseX >= 0 && context.mouseY >= 0)
+                {
+                    this.dashboard.orbitUI.orbit.start(0, context.mouseX, context.mouseY);
+                }
             }
 
             this.dashboard.orbit.apply(this.position);
@@ -3343,99 +1493,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         }
     }
 
-    private void updateFreeFlightMouseCapture(boolean flight)
-    {
-        if (!BBSSettings.editorFlightFreeLook.get())
-        {
-            return;
-        }
-
-        net.minecraft.client.util.Window window = MinecraftClient.getInstance().getWindow();
-
-        if (flight)
-        {
-            this.centerCursor(window);
-            GLFW.glfwSetInputMode(window.getHandle(), GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_DISABLED);
-            this.resetFreeFlightLookDrag = true;
-            this.freeFlightLookPrimed = false;
-            this.dashboard.orbitUI.orbit.release();
-        }
-        else if (!this.controller.isControlling())
-        {
-            GLFW.glfwSetInputMode(window.getHandle(), GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_NORMAL);
-            this.resetFreeFlightLookDrag = false;
-            this.freeFlightLookPrimed = false;
-            this.dashboard.orbitUI.orbit.release();
-        }
-    }
-
-    private boolean enforceFreeFlightMouseCapture()
-    {
-        if (!this.isFlying() || !BBSSettings.editorFlightFreeLook.get())
-        {
-            return false;
-        }
-
-        net.minecraft.client.util.Window window = MinecraftClient.getInstance().getWindow();
-
-        if (GLFW.glfwGetInputMode(window.getHandle(), GLFW.GLFW_CURSOR) != GLFW.GLFW_CURSOR_DISABLED)
-        {
-            this.centerCursor(window);
-            GLFW.glfwSetInputMode(window.getHandle(), GLFW.GLFW_CURSOR, GLFW.GLFW_CURSOR_DISABLED);
-            return true;
-        }
-
-        return false;
-    }
-
-    private void centerCursor(net.minecraft.client.util.Window window)
-    {
-        mchorse.bbs_mod.graphics.window.Window.moveCursor(window.getWidth() / 2, window.getHeight() / 2);
-    }
-
-    private void updateFreeFlightLookFromRawCursor()
-    {
-        net.minecraft.client.util.Window window = MinecraftClient.getInstance().getWindow();
-
-        if (this.enforceFreeFlightMouseCapture())
-        {
-            this.resetFreeFlightLookDrag = true;
-            this.freeFlightLookPrimed = false;
-        }
-
-        double[] rawX = new double[1];
-        double[] rawY = new double[1];
-        GLFW.glfwGetCursorPos(window.getHandle(), rawX, rawY);
-        int mouseX = (int) Math.round(rawX[0]);
-        int mouseY = (int) Math.round(rawY[0]);
-
-        if (this.resetFreeFlightLookDrag || !this.freeFlightLookPrimed)
-        {
-            this.freeFlightLookRawX = mouseX;
-            this.freeFlightLookRawY = mouseY;
-
-            this.resetFreeFlightLookDrag = false;
-            this.freeFlightLookPrimed = true;
-            this.dashboard.orbitUI.orbit.release();
-
-            return;
-        }
-
-        int dx = mouseX - this.freeFlightLookRawX;
-        int dy = mouseY - this.freeFlightLookRawY;
-
-        this.freeFlightLookRawX = mouseX;
-        this.freeFlightLookRawY = mouseY;
-
-        if (dx != 0 || dy != 0)
-        {
-            float angleSpeed = this.dashboard.orbitUI.orbit.getAngleSpeed();
-
-            this.dashboard.orbitUI.orbit.rotation.x += dy * angleSpeed;
-            this.dashboard.orbitUI.orbit.rotation.y += dx * angleSpeed;
-        }
-    }
-
     @Override
     protected IUIElement childrenMouseScrolled(UIContext context)
     {
@@ -3460,11 +1517,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
      */
     private void renderIcons(UIContext context)
     {
-        if (this.showingHomePage)
-        {
-            return;
-        }
-
         int x = this.iconBar.area.ex() - 18;
         int y = this.iconBar.area.ey() - 18;
 
@@ -3476,11 +1528,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     private void renderDividers(UIContext context)
     {
-        if (this.showingHomePage)
-        {
-            return;
-        }
-
         Area a1 = this.openHistory.area;
 
         context.batcher.box(a1.x + 3, a1.ey() + 4, a1.ex() - 3, a1.ey() + 5, 0x22ffffff);
@@ -3587,7 +1634,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     {
         this.cameraEditor.fillData();
         this.actionEditor.fillData();
-        this.screenEditor.fillData();
 
         if (this.replayEditor.keyframeEditor != null && this.replayEditor.keyframeEditor.editor != null)
         {
@@ -3658,1339 +1704,5 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     protected boolean canSave(UIContext context)
     {
         return !this.recorder.isRecording();
-    }
-
-    private void openSelectedFilmFromHome()
-    {
-        String selected = this.getSelectedHomeFilmId();
-
-        if (selected != null)
-        {
-            this.openFilmInDocumentTabs(selected);
-        }
-    }
-
-    private String getSelectedHomeFilmId()
-    {
-        if (this.homeFilmsMosaic != null && this.homeFilmsMosaic.isVisible())
-        {
-            return this.homeFilmsMosaic.selectedId;
-        }
-        DataPath selected = this.homeFilmsList.getCurrentFirst();
-
-        if (selected == null || selected.folder)
-        {
-            return null;
-        }
-
-        return selected.toString();
-    }
-
-    private void toggleMosaicView()
-    {
-        boolean isMosaic = !this.homeFilmsMosaic.isVisible();
-
-        this.homeFilmsMosaic.setVisible(isMosaic);
-        this.homeFilmsList.setVisible(!isMosaic);
-        this.homeViewToggle.both(isMosaic ? Icons.LIST : Icons.GALLERY);
-        this.homeViewToggle.tooltip(isMosaic ? UIKeys.MODELS_HOME_VIEW_LIST : UIKeys.MODELS_HOME_VIEW_MOSAIC, Direction.LEFT);
-
-        BBSSettings.lastViewMosaic.set(isMosaic);
-
-        if (isMosaic)
-        {
-            this.homeFilmsMosaic.resize();
-        }
-    }
-
-    private void addFolderFromHome()
-    {
-        UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
-            UIKeys.PANELS_MODALS_ADD_FOLDER_TITLE,
-            UIKeys.PANELS_MODALS_ADD_FOLDER,
-            (str) -> {
-                String path = this.homeFilmsList.getPath(str).toString();
-                if (path.trim().isEmpty()) {
-                    this.getContext().notifyError(UIKeys.PANELS_MODALS_EMPTY);
-                    return;
-                }
-                this.getType().getRepository().addFolder(path, (bool) -> {
-                    if (bool) {
-                        this.requestNames();
-                    }
-                });
-            }
-        );
-
-        panel.text.filename();
-
-        UIOverlay.addOverlay(this.getContext(), panel);
-    }
-
-    private void copyHomeFilm()
-    {
-        String selectedId = this.getSelectedHomeFilmId();
-        if (selectedId == null) return;
-
-        this.getType().getRepository().load(selectedId, (film) -> {
-            if (film != null) {
-                Window.setClipboard(film.toData().asMap(), "_ContentType_" + this.getType().getId());
-            }
-        });
-    }
-
-    private void pasteHomeFilm(MapType data)
-    {
-        UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
-            UIKeys.GENERAL_ADD,
-            UIKeys.PANELS_MODALS_ADD,
-            (str) -> {
-                String targetId = this.homeFilmsList.getPath(str).toString();
-                if (targetId.trim().isEmpty()) {
-                    this.getContext().notifyError(UIKeys.PANELS_MODALS_EMPTY);
-                    return;
-                }
-                if (this.homeFilmsList.hasInHierarchy(targetId)) {
-                    return;
-                }
-
-                Film newFilm = (Film) this.getType().getRepository().create(targetId, data);
-                this.fill(newFilm);
-            }
-        );
-
-        panel.text.filename();
-
-        UIOverlay.addOverlay(this.getContext(), panel);
-    }
-
-    private void handleHomeFilmsSelection(List<DataPath> list)
-    {
-        String selected = this.getSelectedHomeFilmId();
-        this.overlay.namesList.setCurrentFile(selected);
-
-        this.updateHomeButtonsState();
-
-        if (selected == null)
-        {
-            return;
-        }
-
-        long now = System.currentTimeMillis();
-        boolean sameAsPrevious = selected.equals(this.homeLastClickedFilmId);
-        boolean doubleClick = sameAsPrevious && now - this.homeLastClickTime <= 300L;
-
-        this.homeLastClickedFilmId = selected;
-        this.homeLastClickTime = now;
-
-        if (doubleClick)
-        {
-            this.openFilmInDocumentTabs(selected);
-        }
-    }
-
-    private void updateHomeButtonsState()
-    {
-        boolean hasSelectedFilm = this.homeFilmsList.getCurrentFirst() != null;
-        boolean enableIcons = !this.showingHomePage;
-
-        if (this.homeDuplicateCurrent != null)
-        {
-            this.homeDuplicateCurrent.setEnabled(hasSelectedFilm);
-        }
-
-        if (this.homeRenameCurrent != null)
-        {
-            this.homeRenameCurrent.setEnabled(hasSelectedFilm);
-        }
-
-        if (this.homeDeleteCurrent != null)
-        {
-            this.homeDeleteCurrent.setEnabled(hasSelectedFilm);
-        }
-
-        if (this.openHistory != null) this.openHistory.setEnabled(enableIcons);
-        if (this.openRenderQueue != null) this.openRenderQueue.setEnabled(enableIcons);
-        if (this.openOverlay != null) this.openOverlay.setEnabled(enableIcons);
-        if (this.saveIcon != null) this.saveIcon.setEnabled(enableIcons);
-        if (this.toggleHorizontal != null) this.toggleHorizontal.setEnabled(enableIcons);
-        
-        if (this.openCameraEditor != null) this.openCameraEditor.setEnabled(enableIcons);
-        if (this.openReplayEditor != null) this.openReplayEditor.setEnabled(enableIcons);
-        if (this.openActionEditor != null) this.openActionEditor.setEnabled(enableIcons);
-        if (this.openScreenEditor != null) this.openScreenEditor.setEnabled(enableIcons);
-        if (this.layoutLock != null) this.layoutLock.setEnabled(enableIcons);
-        if (this.layoutPresets != null) this.layoutPresets.setEnabled(enableIcons);
-    }
-
-    private UIButton createHomeButton(IKey label, Icon icon, Consumer<UIButton> callback)
-    {
-        UIButton button = new UIButton(label, callback) {
-            @Override
-            protected void renderSkin(UIContext context)
-            {
-                int bg = this.hover ? Colors.setA(Colors.WHITE, 0.25F) : Colors.setA(0, 0.4F);
-                this.area.render(context.batcher, bg);
-
-                int color = this.isEnabled() ? Colors.LIGHTEST_GRAY : 0x44ffffff;
-
-                if (icon != null) {
-                    context.batcher.icon(icon, color, this.area.x + 4, this.area.y + this.area.h / 2 - icon.h / 2);
-                }
-
-                context.batcher.textShadow(this.label.get(), this.area.x + 22, this.area.y + this.area.h / 2 - 4, color);
-            }
-        };
-        button.h(20);
-        return button;
-    }
-
-    private void clickWithContext(UIElement element)
-    {
-        UIContext context = this.getContext();
-
-        if (context == null || element == null)
-        {
-            return;
-        }
-
-        element.clickItself(context);
-    }
-
-    private void createHomeDocumentTab(boolean activate)
-    {
-        this.filmDocumentTabs.add(new FilmDocumentTab(true, null));
-        int index = this.filmDocumentTabs.size() - 1;
-
-        this.rebuildFilmDocumentTabs();
-
-        if (activate)
-        {
-            this.activateFilmDocumentTab(index, false);
-        }
-    }
-
-    private void addHomeDocumentTab()
-    {
-        int insertAt = Math.max(0, this.activeFilmDocumentTab + 1);
-
-        this.filmDocumentTabs.add(insertAt, new FilmDocumentTab(true, null));
-        this.rebuildFilmDocumentTabs();
-        this.activateFilmDocumentTab(insertAt, false);
-    }
-
-    private void ensureHomeDocumentTab()
-    {
-        for (FilmDocumentTab tab : this.filmDocumentTabs)
-        {
-            if (tab.home)
-            {
-                return;
-            }
-        }
-
-        this.filmDocumentTabs.add(new FilmDocumentTab(true, null));
-    }
-
-    private int findTabByFilmId(String id)
-    {
-        for (int i = 0; i < this.filmDocumentTabs.size(); i++)
-        {
-            FilmDocumentTab tab = this.filmDocumentTabs.get(i);
-
-            if (!tab.home && id.equals(tab.filmId))
-            {
-                return i;
-            }
-        }
-
-        return -1;
-    }
-
-    private void openFilmInDocumentTabs(String id)
-    {
-        if (id == null || id.trim().isEmpty())
-        {
-            return;
-        }
-
-        int existingIndex = this.findTabByFilmId(id);
-
-        if (existingIndex >= 0)
-        {
-            this.activateFilmDocumentTab(existingIndex, true);
-
-            return;
-        }
-
-        if (this.activeFilmDocumentTab < 0 || this.activeFilmDocumentTab >= this.filmDocumentTabs.size())
-        {
-            if (this.filmDocumentTabs.isEmpty())
-            {
-                this.filmDocumentTabs.add(new FilmDocumentTab(true, null));
-            }
-
-            this.activeFilmDocumentTab = 0;
-        }
-
-        FilmDocumentTab active = this.filmDocumentTabs.get(this.activeFilmDocumentTab);
-
-        if (active.home)
-        {
-            active.home = false;
-            active.filmId = id;
-            this.rebuildFilmDocumentTabs();
-            this.activateFilmDocumentTab(this.activeFilmDocumentTab, true);
-        }
-        else
-        {
-            int insertAt = this.activeFilmDocumentTab + 1;
-            this.filmDocumentTabs.add(insertAt, new FilmDocumentTab(false, id));
-            this.rebuildFilmDocumentTabs();
-            this.activateFilmDocumentTab(insertAt, true);
-        }
-    }
-
-    private void activateFilmDocumentTab(int index, boolean loadFilm)
-    {
-        if (index < 0 || index >= this.filmDocumentTabs.size())
-        {
-            return;
-        }
-
-        if (this.data != null && this.activeFilmDocumentTab != index)
-        {
-            this.save();
-        }
-
-        this.activeFilmDocumentTab = index;
-
-        FilmDocumentTab tab = this.filmDocumentTabs.get(index);
-
-        if (tab.home)
-        {
-            if (this.replayEditor != null && this.replayEditor.replays != null && this.replayEditor.replays.hasParent() && this.replayEditor.replays.getParent() instanceof UIOverlay overlay)
-            {
-                overlay.closeItself();
-            }
-
-            this.fill(null);
-        }
-        else
-        {
-            if (loadFilm || this.data == null || this.data.getId() == null || !this.data.getId().equals(tab.filmId))
-            {
-                this.requestData(tab.filmId);
-            }
-            else
-            {
-                this.updateFilmDocumentView();
-            }
-        }
-
-        this.rebuildFilmDocumentTabs();
-    }
-
-    private void removeFilmDocumentTab(int index)
-    {
-        if (index < 0 || index >= this.filmDocumentTabs.size())
-        {
-            return;
-        }
-
-        this.filmDocumentTabs.remove(index);
-
-        if (this.filmDocumentTabs.isEmpty())
-        {
-            this.filmDocumentTabs.add(new FilmDocumentTab(true, null));
-            this.activeFilmDocumentTab = 0;
-            this.rebuildFilmDocumentTabs();
-            this.activateFilmDocumentTab(0, false);
-
-            return;
-        }
-
-        if (index < this.activeFilmDocumentTab)
-        {
-            this.activeFilmDocumentTab--;
-        }
-        else if (index == this.activeFilmDocumentTab)
-        {
-            this.activeFilmDocumentTab = Math.max(0, Math.min(this.activeFilmDocumentTab, this.filmDocumentTabs.size() - 1));
-        }
-
-        this.rebuildFilmDocumentTabs();
-        this.activateFilmDocumentTab(this.activeFilmDocumentTab, false);
-    }
-
-    private void rebuildFilmDocumentTabs()
-    {
-        /* No-op: the legacy tab bar UI was removed; the unified UIDocumentTabsBar at the dashboard level replaces it. */
-    }
-
-    private void syncActiveDocumentTabWithData(Film data)
-    {
-        if (data != null)
-        {
-            if (this.activeFilmDocumentTab < 0 || this.activeFilmDocumentTab >= this.filmDocumentTabs.size())
-            {
-                this.filmDocumentTabs.add(new FilmDocumentTab(false, data.getId()));
-                this.activeFilmDocumentTab = this.filmDocumentTabs.size() - 1;
-            }
-            else
-            {
-                FilmDocumentTab tab = this.filmDocumentTabs.get(this.activeFilmDocumentTab);
-
-                tab.home = false;
-                tab.filmId = data.getId();
-            }
-        }
-
-        this.rebuildFilmDocumentTabs();
-        this.updateFilmDocumentView();
-    }
-
-    private void setWorkspaceVisible(boolean visible)
-    {
-        if (!visible)
-        {
-            this.main.setVisible(false);
-            this.editArea.setVisible(false);
-            this.preview.setVisible(false);
-        }
-        this.draggableMain.setVisible(visible);
-        this.draggableEditor.setVisible(visible);
-
-        for (UIDraggable handle : this.dragHandlesById.values())
-        {
-            handle.setVisible(visible && !BBSSettings.editorLayoutSettings.isLayoutLocked());
-        }
-
-        for (UIDraggable handle : this.splitterHandles)
-        {
-            handle.setVisible(visible);
-        }
-
-        for (UITabBar tabBar : this.tabBars)
-        {
-            tabBar.setVisible(visible);
-        }
-    }
-
-    private void updateFilmDocumentView()
-    {
-        if (this.performingLayout)
-        {
-            return;
-        }
-
-        this.performingLayout = true;
-
-        boolean home = this.activeFilmDocumentTab < 0
-            || this.activeFilmDocumentTab >= this.filmDocumentTabs.size()
-            || this.filmDocumentTabs.get(this.activeFilmDocumentTab).home
-            || this.data == null;
-
-        this.showingHomePage = home;
-        this.homePage.setVisible(home);
-        this.editor.setVisible(true);
-        this.setWorkspaceVisible(!home);
-        this.iconBar.setVisible(!home);
-        if (this.bottomIcons != null)
-        {
-            this.bottomIcons.setVisible(!home);
-        }
-        this.updateHomeButtonsState();
-
-        if (home)
-        {
-            this.editor.resetFlex().relative(this).w(1F).h(1F);
-        }
-        else
-        {
-            this.editor.resetFlex().relative(this).wTo(this.iconBar.area).h(1F);
-            this.setupEditorFlex(true, false, false);
-        }
-        this.resize();
-
-        this.performingLayout = false;
-    }
-
-    private void renderHomeBanner(UIContext context)
-    {
-        if (!this.showingHomePage)
-        {
-            return;
-        }
-
-        int editorX = this.editor.area.x;
-        int editorY = this.editor.area.y;
-        int editorW = this.editor.area.w;
-        int editorH = this.editor.area.h;
-        int pageX = this.homePage.area.x;
-        int dividerX = this.homeFilmsSearch.area.x;
-
-        // Render deeper background for the aurora to pop
-        context.batcher.box(editorX, editorY, editorX + editorW, editorY + editorH, Colors.setA(0x0b0b0b, 1F));
-        
-        // Render Animated Aurora Effect
-        int primary = BBSSettings.primaryColor.get();
-        float tick = context.getTickTransition() * 0.015F;
-        int segments = 40;
-        float segW = editorW / (float) segments;
-        
-        Matrix4f matrix4f = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
-        BufferBuilder builder = Tessellator.getInstance().getBuffer();
-        
-        RenderSystem.enableBlend();
-        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
-        builder.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
-        
-        float[] yBot1 = new float[segments + 1];
-        float[] yMid1 = new float[segments + 1];
-        int[] cMid1 = new int[segments + 1];
-        
-        float[] yBot2 = new float[segments + 1];
-        float[] yMid2 = new float[segments + 1];
-        int[] cMid2 = new int[segments + 1];
-        
-        for (int i = 0; i <= segments; i++)
-        {
-            float nx = (float) i / segments;
-            
-            float w1 = (float) Math.sin(tick * 1.2F + nx * 8F);
-            float w2 = (float) Math.sin(tick * 0.7F + nx * 15F);
-            float w3 = (float) Math.cos(tick * 0.4F - nx * 12F);
-            float comb1 = (w1 + w2 + w3) / 3F;
-            
-            float curtainYTop = editorY + editorH * 0.05F;
-            float curtainYBot = editorY + editorH * 0.5F + comb1 * (editorH * 0.35F);
-            
-            if (curtainYBot < curtainYTop + 10) curtainYBot = curtainYTop + 10;
-            
-            float transitionY = curtainYBot - editorH * 0.3F;
-            if (transitionY < curtainYTop) transitionY = curtainYTop;
-            
-            yBot1[i] = curtainYBot;
-            yMid1[i] = transitionY;
-            cMid1[i] = Colors.setA(primary, 0.15F + Math.max(0, comb1) * 0.2F);
-            
-            float w4 = (float) Math.sin(tick * 1.5F - nx * 10F);
-            float w5 = (float) Math.cos(tick * 0.9F + nx * 18F);
-            float comb2 = (w4 + w5) / 2F;
-            
-            float curtain2YTop = editorY + editorH * 0.15F;
-            float curtain2YBot = editorY + editorH * 0.75F + comb2 * (editorH * 0.25F);
-            
-            if (curtain2YBot < curtain2YTop + 10) curtain2YBot = curtain2YTop + 10;
-            
-            float transition2Y = curtain2YBot - editorH * 0.25F;
-            if (transition2Y < curtain2YTop) transition2Y = curtain2YTop;
-            
-            yBot2[i] = curtain2YBot;
-            yMid2[i] = transition2Y;
-            cMid2[i] = Colors.setA(Colors.mulRGB(primary, 0.8F), 0.1F + Math.max(0, comb2) * 0.15F);
-        }
-        
-        int colTop = Colors.setA(primary, 0.0F);
-        int colBot = Colors.setA(primary, 0.0F);
-        float yTop1f = editorY + editorH * 0.05F;
-        float yTop2f = editorY + editorH * 0.15F;
-        
-        for (int i = 0; i < segments; i++)
-        {
-            float x1 = editorX + i * segW;
-            float x2 = editorX + (i + 1) * segW;
-            
-            builder.vertex(matrix4f, x1, yTop1f, 0).color(colTop).next();
-            builder.vertex(matrix4f, x1, yMid1[i], 0).color(cMid1[i]).next();
-            builder.vertex(matrix4f, x2, yMid1[i + 1], 0).color(cMid1[i + 1]).next();
-            builder.vertex(matrix4f, x2, yTop1f, 0).color(colTop).next();
-            
-            builder.vertex(matrix4f, x1, yMid1[i], 0).color(cMid1[i]).next();
-            builder.vertex(matrix4f, x1, yBot1[i], 0).color(colBot).next();
-            builder.vertex(matrix4f, x2, yBot1[i + 1], 0).color(colBot).next();
-            builder.vertex(matrix4f, x2, yMid1[i + 1], 0).color(cMid1[i + 1]).next();
-            
-            builder.vertex(matrix4f, x1, yTop2f, 0).color(colTop).next();
-            builder.vertex(matrix4f, x1, yMid2[i], 0).color(cMid2[i]).next();
-            builder.vertex(matrix4f, x2, yMid2[i + 1], 0).color(cMid2[i + 1]).next();
-            builder.vertex(matrix4f, x2, yTop2f, 0).color(colTop).next();
-            
-            builder.vertex(matrix4f, x1, yMid2[i], 0).color(cMid2[i]).next();
-            builder.vertex(matrix4f, x1, yBot2[i], 0).color(colBot).next();
-            builder.vertex(matrix4f, x2, yBot2[i + 1], 0).color(colBot).next();
-            builder.vertex(matrix4f, x2, yMid2[i + 1], 0).color(cMid2[i + 1]).next();
-        }
-        
-        BufferRenderer.drawWithGlobalProgram(builder.end());
-
-        UIHomePanel home = this.dashboard.getPanel(UIHomePanel.class);
-        if (home != null)
-        {
-            home.renderCardAndBanners(context, this.homePage, dividerX, L10n.lang("bbs.ui.film.home.list").get());
-        }
-    }
-
-    private static class FilmDocumentTab
-    {
-        private boolean home;
-        private String filmId;
-
-        private FilmDocumentTab(boolean home, String filmId)
-        {
-            this.home = home;
-            this.filmId = filmId;
-        }
-    }
-
-    private final List<UITabBar> tabBars = new ArrayList<>();
-
-    private void setupTabBars(EditorLayoutNode root, Map<String, float[]> bounds, boolean recreate)
-    {
-        List<EditorLayoutNode.TabbedNode> tabbedNodes = new ArrayList<>();
-        EditorLayoutNode.collectTabbedNodes(root, tabbedNodes);
-        
-        int tabBarIndex = 0;
-        for (int i = 0; i < tabbedNodes.size(); i++)
-        {
-            EditorLayoutNode.TabbedNode tabbed = tabbedNodes.get(i);
-            if (tabbed.tabs.size() < 2) continue;
-            
-            int safeActiveTab = Math.max(0, Math.min(tabbed.tabs.size() - 1, tabbed.activeTab));
-            EditorLayoutNode activeNode = tabbed.tabs.get(safeActiveTab);
-            
-            if (activeNode instanceof EditorLayoutNode.PanelNode)
-            {
-                String activeId = ((EditorLayoutNode.PanelNode) activeNode).getPanelId();
-                float[] b = bounds.get(activeId);
-                if (b != null)
-                {
-                    UITabBar tabBar;
-                    if (recreate)
-                    {
-                        tabBar = new UITabBar(this, tabbed);
-                        this.tabBars.add(tabBar);
-                        this.editor.add(tabBar);
-                    }
-                    else if (tabBarIndex < this.tabBars.size())
-                    {
-                        tabBar = this.tabBars.get(tabBarIndex);
-                    }
-                    else
-                    {
-                        continue;
-                    }
-                    
-                    tabBarIndex++;
-                    
-                    tabBar.relative(this.editor).x(b[0]).y(b[1]).w(b[2]).h(0F, 20);
-                    tabBar.setVisible(true);
-                    
-                    boolean locked = BBSSettings.editorLayoutSettings.isLayoutLocked();
-                    
-                    for (EditorLayoutNode tab : tabbed.tabs)
-                    {
-                        if (tab instanceof EditorLayoutNode.PanelNode)
-                        {
-                            String panelId = ((EditorLayoutNode.PanelNode) tab).getPanelId();
-                            UIElement el = this.panelById.get(panelId);
-                            if (el != null)
-                            {
-                                el.relative(this.editor).x(b[0]).y(b[1], 20).w(b[2]).h(b[3], -20);
-                                boolean isActive = tab == activeNode;
-                                el.setVisible(isActive);
-                                
-                                UIDraggable handle = this.dragHandlesById.get(panelId);
-                                if (handle != null) handle.setVisible(isActive && !BBSSettings.editorLayoutSettings.isLayoutLocked() && !this.usesPanelInternalDragHandle(panelId));
-                            }
-                            
-                            UIDraggable handle = this.dragHandlesById.get(panelId);
-                            if (handle != null)
-                            {
-                                if (locked)
-                                {
-                                    handle.setVisible(false);
-                                }
-                                else
-                                {
-                                    handle.setVisible(tab == activeNode && !this.usesPanelInternalDragHandle(panelId));
-                                    if (tab == activeNode)
-                                    {
-                                        handle.relative(this.editor).x(b[0]).y(b[1] + DRAG_HANDLE_TOP_OFFSET_NORM, 20).w(b[2]).h(DRAG_HANDLE_HEIGHT_NORM);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private static class UITabBar extends UIElement
-    {
-        private UIFilmPanel panel;
-        private EditorLayoutNode.TabbedNode tabbedNode;
-
-        public UITabBar(UIFilmPanel panel, EditorLayoutNode.TabbedNode tabbedNode)
-        {
-            this.panel = panel;
-            this.tabbedNode = tabbedNode;
-            
-            for (int i = 0; i < tabbedNode.tabs.size(); i++)
-            {
-                EditorLayoutNode tab = tabbedNode.tabs.get(i);
-                if (tab instanceof EditorLayoutNode.PanelNode)
-                {
-                    String panelId = ((EditorLayoutNode.PanelNode) tab).getPanelId();
-                    UITab tabButton = new UITab(panel, tabbedNode, i, panelId);
-                    this.add(tabButton);
-                }
-            }
-        }
-
-        @Override
-        public void render(UIContext context)
-        {
-            int x = this.area.x;
-            for (IUIElement child : this.getChildren())
-            {
-                if (child instanceof UITab)
-                {
-                    UITab tab = (UITab) child;
-                    tab.area.x = x;
-                    tab.area.y = this.area.y;
-                    tab.area.h = this.area.h;
-                    
-                    IKey nameKey = IKey.raw(tab.panelId);
-                    switch (tab.panelId) {
-                        case "cameraEditor": nameKey = UIKeys.FILM_OPEN_CAMERA_EDITOR; break;
-                        case "replayEditor": nameKey = UIKeys.FILM_OPEN_REPLAY_EDITOR; break;
-                        case "actionEditor": nameKey = UIKeys.FILM_OPEN_ACTION_EDITOR; break;
-                        case "screenEditor": nameKey = UIKeys.FILM_OPEN_SCREEN_EDITOR; break;
-                        case ANCHORED_REPLAYS_PANEL_ID: nameKey = UIKeys.FILM_REPLAY_TITLE; break;
-                        case "editArea": nameKey = L10n.lang("bbs.ui.raw.properties"); break;
-                        case "preview": nameKey = L10n.lang("bbs.ui.raw.preview"); break;
-                        case "main": nameKey = L10n.lang("bbs.ui.raw.main"); break;
-                    }
-                    int w = 20 + context.batcher.getFont().getWidth(nameKey.get()) + 8;
-                    tab.area.w = w;
-                    x += w;
-                }
-            }
-            super.render(context);
-        }
-    }
-
-    private static class UITab extends UIElement
-    {
-        private UIFilmPanel panel;
-        private EditorLayoutNode.TabbedNode tabbedNode;
-        private int index;
-        private String panelId;
-        private boolean mouseHeld;
-        private int clickX, clickY;
-        private static final int DRAG_THRESHOLD = 5;
-
-        public UITab(UIFilmPanel panel, EditorLayoutNode.TabbedNode tabbedNode, int index, String panelId)
-        {
-            this.panel = panel;
-            this.tabbedNode = tabbedNode;
-            this.index = index;
-            this.panelId = panelId;
-        }
-
-        @Override
-        public void render(UIContext context)
-        {
-            /* Detect drag initiation: if mouse is held and moved far enough, start panel drag */
-            if (this.panel.mouseHeldPanelId != null && this.panel.mouseHeldPanelId.equals(this.panelId) && this.panel.draggingPanelId == null)
-            {
-                int dx = context.mouseX - this.panel.clickX;
-                int dy = context.mouseY - this.panel.clickY;
-                if (dx * dx + dy * dy > DRAG_THRESHOLD * DRAG_THRESHOLD)
-                {
-                    this.panel.mouseHeldPanelId = null;
-                    this.panel.startPanelDrag(this.panelId);
-                    this.panel.updateDropTargetFromMouse(context.mouseX, context.mouseY);
-                }
-            }
-
-            if (this.panel.draggingPanelId != null && this.panel.draggingPanelId.equals(this.panelId))
-            {
-                this.panel.updateDropTargetFromMouse(context.mouseX, context.mouseY);
-            }
-            
-            boolean active = this.tabbedNode.activeTab == this.index;
-            if (active)
-            {
-                int primary = BBSSettings.primaryColor.get();
-                context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.y + 2, Colors.A100 | primary);
-                context.batcher.gradientVBox(this.area.x, this.area.y + 2, this.area.ex(), this.area.ey(), Colors.A75 | primary, primary);
-            }
-            else
-            {
-                int bg = Colors.setA(0, 0.6F);
-                if (this.area.isInside(context))
-                {
-                    bg = Colors.mulRGB(bg, 1.2F);
-                }
-                context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), bg);
-            }
-            
-            // Render icon and name based on panelId
-            Icon icon = Icons.FILM;
-            IKey name = IKey.raw(this.panelId);
-            if (this.panelId.equals("cameraEditor")) { icon = Icons.FRUSTUM; name = UIKeys.FILM_OPEN_CAMERA_EDITOR; }
-            else if (this.panelId.equals("replayEditor")) { icon = Icons.SCENE; name = UIKeys.FILM_OPEN_REPLAY_EDITOR; }
-            else if (this.panelId.equals("actionEditor")) { icon = Icons.ACTION; name = UIKeys.FILM_OPEN_ACTION_EDITOR; }
-            else if (this.panelId.equals("screenEditor")) { icon = Icons.FILTER; name = UIKeys.FILM_OPEN_SCREEN_EDITOR; }
-            else if (this.panelId.equals(ANCHORED_REPLAYS_PANEL_ID)) { icon = Icons.EDITOR; name = UIKeys.FILM_REPLAY_TITLE; }
-            else if (this.panelId.equals("editArea")) { icon = Icons.EDIT; name = L10n.lang("bbs.ui.raw.properties"); }
-            else if (this.panelId.equals("preview")) { icon = Icons.SPHERE; name = L10n.lang("bbs.ui.raw.preview"); }
-            else if (this.panelId.equals("main")) { icon = Icons.GEAR; name = L10n.lang("bbs.ui.raw.main"); }
-
-            context.batcher.icon(icon, Colors.WHITE, this.area.x + 2, this.area.y + 2);
-            context.batcher.textShadow(name.get(), this.area.x + 20, this.area.y + 6);
-            
-            this.area.w = 20 + context.batcher.getFont().getWidth(name.get()) + 8;
-            
-            super.render(context);
-        }
-
-        @Override
-        protected boolean subMouseClicked(UIContext context)
-        {
-            if (super.subMouseClicked(context)) return true;
-            
-            if (this.area.isInside(context) && context.mouseButton == 0)
-            {
-                this.tabbedNode.activeTab = this.index;
-                ValueEditorLayout layout = BBSSettings.editorLayoutSettings;
-                layout.setFilmLayoutRoot(layout.getFilmLayoutRoot()); // trigger save
-                this.panel.setupEditorFlex(true, false, true);
-
-                /* Track click position for drag detection */
-                if (!layout.isLayoutLocked())
-                {
-                    this.panel.mouseHeldPanelId = this.panelId;
-                    this.panel.clickX = context.mouseX;
-                    this.panel.clickY = context.mouseY;
-                }
-                return true;
-            }
-            return false;
-        }
-        
-        @Override
-        protected boolean subMouseReleased(UIContext context)
-        {
-            if (this.panel.mouseHeldPanelId != null && this.panel.mouseHeldPanelId.equals(this.panelId))
-            {
-                this.panel.mouseHeldPanelId = null;
-            }
-
-            if (super.subMouseReleased(context)) return true;
-            
-            if (this.panel.draggingPanelId != null && this.panel.draggingPanelId.equals(this.panelId))
-            {
-                DropIntent intent = new DropIntent(this.panel.dropTargetPanelId, this.panel.dropTargetZone);
-                if (!this.panel.canApplyDropIntent(this.panel.draggingPanelId, intent))
-                {
-                    this.panel.clearPanelDragState();
-                    return true;
-                }
-
-                this.panel.applyPanelDropResult(this.panel.draggingPanelId, intent.targetId, intent.zone);
-                this.panel.clearPanelDragState();
-                return true;
-            }
-            return false;
-        }
-    }
-    public class UIFilmMosaicGrid extends UIScrollView
-    {
-        private static final int CARD_SIZE = 100;
-        private static final int CARD_GAP = 6;
-        private static final int CARD_LABEL_H = 16;
-
-        private final Consumer<String> selectCallback;
-        private final Consumer<String> doubleClickCallback;
-
-        private final List<String> allFilmIds = new ArrayList<>();
-        private final List<String> filmIds = new ArrayList<>();
-        public String selectedId;
-        private String lastClickedId;
-        private long lastClickTime;
-        private int lastCols = -1;
-        private boolean rebuilding = false;
-
-        public UIFilmMosaicGrid(Consumer<String> selectCallback, Consumer<String> doubleClickCallback)
-        {
-            super();
-            this.selectCallback = selectCallback;
-            this.doubleClickCallback = doubleClickCallback;
-            this.scroll.scrollSpeed = 20;
-        }
-
-        public void fill(Collection<String> names, String selectedId)
-        {
-            this.allFilmIds.clear();
-            for (String name : names)
-            {
-                if (!name.endsWith("/"))
-                {
-                    this.allFilmIds.add(name);
-                }
-            }
-            this.selectedId = selectedId;
-            this.lastCols = -1;
-            
-            this.filter("");
-        }
-
-        public void filter(String query)
-        {
-            this.filmIds.clear();
-            String lowerQuery = query == null ? "" : query.toLowerCase();
-            
-            for (String id : this.allFilmIds)
-            {
-                if (id.toLowerCase().contains(lowerQuery))
-                {
-                    this.filmIds.add(id);
-                }
-            }
-            
-            this.buildCards();
-            
-            if (this.hasParent())
-            {
-                this.resize();
-            }
-        }
-
-        private void buildCards()
-        {
-            this.removeAll();
-            if (this.filmIds.isEmpty()) return;
-
-            int effectiveW = this.area.w > 0 ? this.area.w : 500;
-            int cols = Math.max(1, (effectiveW - CARD_GAP) / (CARD_SIZE + CARD_GAP));
-
-            for (int i = 0; i < this.filmIds.size(); i++)
-            {
-                final String id = this.filmIds.get(i);
-                final int col = i % cols;
-                final int row = i / cols;
-
-                int cx = CARD_GAP + col * (CARD_SIZE + CARD_GAP);
-                int cy = CARD_GAP + row * (CARD_SIZE + CARD_GAP + CARD_LABEL_H);
-
-                UIElement card = new UIElement()
-                {
-                    @Override
-                    public boolean subMouseClicked(UIContext context)
-                    {
-                        if (this.area.isInside(context))
-                        {
-                            UIFilmMosaicGrid.this.onCardClicked(id);
-                            return true;
-                        }
-                        return false;
-                    }
-
-                    @Override
-                    public void render(UIContext context)
-                    {
-                        boolean selected = id.equals(UIFilmMosaicGrid.this.selectedId);
-                        int border = selected ? BBSSettings.primaryColor.get() : Colors.setA(Colors.WHITE, 0.1F);
-                        int bg = selected ? Colors.setA(BBSSettings.primaryColor.get(), 0.1F) : Colors.setA(0, 0.2F);
-                        
-                        context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), bg);
-                        context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), border);
-
-                        super.render(context);
-
-                        Texture thumbnail = UIFilmPanel.this.getThumbnail(id);
-                        if (thumbnail != null)
-                        {
-                            int w = CARD_SIZE - 4;
-                            int h = (int) (w * (thumbnail.height / (float) thumbnail.width));
-                            if (h > CARD_SIZE - 4)
-                            {
-                                h = CARD_SIZE - 4;
-                                w = (int) (h * (thumbnail.width / (float) thumbnail.height));
-                            }
-                            int x = this.area.x + 2 + (CARD_SIZE - 4 - w) / 2;
-                            int y = this.area.y + 2 + (CARD_SIZE - 4 - h) / 2;
-
-                            context.batcher.fullTexturedBox(thumbnail, x, y, w, h);
-                        }
-                        else
-                        {
-                            /* Render film icon in center */
-                            int iconX = this.area.mx();
-                            int iconY = this.area.y + CARD_SIZE / 2;
-                            
-                            context.batcher.getContext().getMatrices().push();
-                            context.batcher.getContext().getMatrices().translate(iconX, iconY, 0);
-                            context.batcher.getContext().getMatrices().scale(2F, 2F, 1F);
-                            context.batcher.getContext().getMatrices().translate(-iconX, -iconY, 0);
-                            
-                            context.batcher.icon(Icons.FILM, iconX, iconY, 0.5F, 0.5F);
-                            
-                            context.batcher.getContext().getMatrices().pop();
-                        }
-
-                        String label = new DataPath(id).getLast();
-                        int maxW = this.area.w - 4;
-                        if (context.batcher.getFont().getWidth(label) > maxW)
-                        {
-                            while (label.length() > 1 && context.batcher.getFont().getWidth(label + "...") > maxW)
-                            {
-                                label = label.substring(0, label.length() - 1);
-                            }
-                            label = label + "...";
-                        }
-                        context.batcher.textShadow(label, this.area.x + 2, this.area.y + CARD_SIZE + 2);
-                    }
-                };
-
-                card.relative(this).x(cx).y(cy).w(CARD_SIZE).h(CARD_SIZE + CARD_LABEL_H);
-                this.add(card);
-            }
-
-            int rows = (this.filmIds.size() + cols - 1) / cols;
-            int totalH = CARD_GAP + rows * (CARD_SIZE + CARD_LABEL_H + CARD_GAP);
-            this.scroll.scrollSize = totalH;
-            this.scroll.clamp();
-        }
-
-        private void onCardClicked(String id)
-        {
-            long now = System.currentTimeMillis();
-            boolean sameAsPrev = id.equals(this.lastClickedId);
-            boolean doubleClick = sameAsPrev && now - this.lastClickTime <= 300L;
-
-            this.lastClickedId = id;
-            this.lastClickTime = now;
-            this.selectedId = id;
-
-            if (this.selectCallback != null)
-            {
-                this.selectCallback.accept(id);
-            }
-
-            if (doubleClick && this.doubleClickCallback != null)
-            {
-                this.doubleClickCallback.accept(id);
-            }
-        }
-
-        @Override
-        public void resize()
-        {
-            int effectiveW = this.area.w > 0 ? this.area.w : 500;
-            int cols = Math.max(1, (effectiveW - CARD_GAP) / (CARD_SIZE + CARD_GAP));
-            if (!this.filmIds.isEmpty() && !this.rebuilding)
-            {
-                if (cols != this.lastCols)
-                {
-                    this.lastCols = cols;
-                    this.rebuilding = true;
-                    this.buildCards();
-                    this.rebuilding = false;
-                }
-
-                int rows = (this.filmIds.size() + cols - 1) / cols;
-                int totalH = CARD_GAP + rows * (CARD_SIZE + CARD_LABEL_H + CARD_GAP);
-                this.scroll.scrollSize = totalH;
-            }
-            super.resize();
-        }
-    }
-
-    /* Custom floating windows logic */
-
-    @Override
-    protected IUIElement childrenMouseClicked(UIContext context)
-    {
-        if (this.handleFloatingPanelClicks(context))
-        {
-            return this;
-        }
-        return super.childrenMouseClicked(context);
-    }
-
-    @Override
-    protected IUIElement childrenMouseReleased(UIContext context)
-    {
-        if (this.activeDraggingFloatingPanelId != null)
-        {
-            String droppedPanelId = this.activeDraggingFloatingPanelId;
-            this.activeDraggingFloatingPanelId = null;
-
-            if (!BBSSettings.editorLayoutSettings.isLayoutLocked() && this.dropTargetPanelId != null)
-            {
-                this.applyFloatingPanelDockResult(droppedPanelId, this.dropTargetPanelId, this.dropTargetZone);
-            }
-
-            this.clearPanelDragState();
-            this.setupEditorFlex(true);
-            return this;
-        }
-
-        if (this.activeResizingFloatingPanelId != null)
-        {
-            this.activeResizingFloatingPanelId = null;
-            return this;
-        }
-        return super.childrenMouseReleased(context);
-    }
-
-    public void applyFloatingPanelDockResult(String panelId, String targetId, int zone)
-    {
-        this.floatingPanels.remove(panelId);
-        this.collapsedFloatingPanels.remove(panelId);
-
-        ValueEditorLayout layout = BBSSettings.editorLayoutSettings;
-        EditorLayoutNode root = layout.getFilmLayoutRoot();
-        if (root != null)
-        {
-            EditorLayoutNode newRoot = this.buildDroppedLayout(root, panelId, targetId, zone);
-            layout.setFilmLayoutRoot(newRoot);
-        }
-    }
-
-    public void safeBringToFront(String panelId)
-    {
-        this.postUpdateActions.add(() -> this.bringPanelToFront(panelId));
-    }
-
-    public void bringPanelToFront(String panelId)
-    {
-        UIElement el = this.panelById.get(panelId);
-        if (el != null)
-        {
-            this.editor.getChildren().remove(el);
-            this.editor.getChildren().add(el);
-        }
-    }
-
-    public void floatPanel(String panelId, int x, int y)
-    {
-        if (this.panelById.size() - this.floatingPanels.size() <= 1)
-        {
-            return;
-        }
-
-        ValueEditorLayout layout = BBSSettings.editorLayoutSettings;
-        EditorLayoutNode root = layout.getFilmLayoutRoot();
-        if (root != null)
-        {
-            EditorLayoutNode newRoot = EditorLayoutNode.copyWithRemovedLeaf(root, panelId);
-            layout.setFilmLayoutRoot(newRoot);
-        }
-
-        this.floatingPanels.add(panelId);
-
-        if (!this.floatingPanelSizes.containsKey(panelId))
-        {
-            if (panelId.equals("preview"))
-            {
-                this.floatingPanelSizes.put(panelId, new Vector2i(320, 200));
-            }
-            else if (panelId.equals(ANCHORED_REPLAYS_PANEL_ID))
-            {
-                this.floatingPanelSizes.put(panelId, new Vector2i(360, 420));
-            }
-            else if (panelId.equals("editArea"))
-            {
-                this.floatingPanelSizes.put(panelId, new Vector2i(300, 400));
-            }
-            else
-            {
-                this.floatingPanelSizes.put(panelId, new Vector2i(400, 300));
-            }
-        }
-
-        int editorW = this.editor.area.w;
-        int editorH = this.editor.area.h;
-        Vector2i size = this.floatingPanelSizes.get(panelId);
-        int posX = Math.max(0, Math.min(x - this.editor.area.x, editorW - size.x));
-        int posY = Math.max(0, Math.min(y - this.editor.area.y, editorH - size.y));
-        this.floatingPanelPositions.put(panelId, new Vector2i(posX, posY));
-
-        this.bringPanelToFront(panelId);
-        this.setupEditorFlex(true);
-    }
-
-    public void toggleCollapseFloatingPanel(String panelId)
-    {
-        if (this.collapsedFloatingPanels.contains(panelId))
-        {
-            this.collapsedFloatingPanels.remove(panelId);
-        }
-        else
-        {
-            this.collapsedFloatingPanels.add(panelId);
-        }
-        this.setupEditorFlex(true);
-    }
-
-    private boolean handleFloatingPanelClicks(UIContext context)
-    {
-        if (this.showingHomePage)
-        {
-            return false;
-        }
-
-        List<IUIElement> children = this.editor.getChildren();
-        for (int i = children.size() - 1; i >= 0; i--)
-        {
-            IUIElement child = children.get(i);
-            String panelId = null;
-            for (Map.Entry<String, UIElement> entry : this.panelById.entrySet())
-            {
-                if (entry.getValue() == child)
-                {
-                    panelId = entry.getKey();
-                    break;
-                }
-            }
-
-            if (panelId != null && this.floatingPanels.contains(panelId))
-            {
-                boolean collapsed = this.collapsedFloatingPanels.contains(panelId);
-                Vector2i pos = this.floatingPanelPositions.get(panelId);
-                Vector2i size = this.floatingPanelSizes.get(panelId);
-                if (pos != null && size != null)
-                {
-                    int x = this.editor.area.x + pos.x;
-                    int y = this.editor.area.y + pos.y;
-                    int w = size.x;
-                    int h = collapsed ? 22 : size.y;
-
-                    // Click in Title Bar
-                    if (context.mouseX >= x && context.mouseX <= x + w && context.mouseY >= y && context.mouseY <= y + 22)
-                    {
-                        this.bringPanelToFront(panelId);
-
-                        // Click in Expand/Collapse Button (right 20 pixels)
-                        if (context.mouseX >= x + w - 20 && context.mouseX <= x + w - 4 && context.mouseY >= y + 3 && context.mouseY <= y + 19)
-                        {
-                            if (context.mouseButton == 0)
-                            {
-                                this.toggleCollapseFloatingPanel(panelId);
-                            }
-                        }
-                        else
-                        {
-                            if (context.mouseButton == 0)
-                            {
-                                this.activeDraggingFloatingPanelId = panelId;
-                                this.dragOffsetX = context.mouseX - x;
-                                this.dragOffsetY = context.mouseY - y;
-                            }
-                        }
-                        return true;
-                    }
-
-                    // Click in Bottom-Right Resize Handle (only if NOT collapsed)
-                    if (!collapsed)
-                    {
-                        int rx = x + w - 8;
-                        int ry = y + h - 8;
-                        if (context.mouseX >= rx && context.mouseX <= x + w && context.mouseY >= ry && context.mouseY <= y + h)
-                        {
-                            this.bringPanelToFront(panelId);
-
-                            if (context.mouseButton == 0)
-                            {
-                                this.activeResizingFloatingPanelId = panelId;
-                            }
-                            return true;
-                        }
-                    }
-
-                    // Click inside body of the panel
-                    if (context.mouseX >= x && context.mouseX <= x + w && context.mouseY >= y && context.mouseY <= y + h)
-                    {
-                        this.safeBringToFront(panelId);
-                    }
-                }
-            }
-        }
-
-        return false;
-    }
-
-    private void renderFloatingPanelWindows(UIContext context)
-    {
-        if (this.showingHomePage)
-        {
-            return;
-        }
-
-        for (String panelId : this.floatingPanels)
-        {
-            UIElement el = this.panelById.get(panelId);
-            if (el == null)
-            {
-                continue;
-            }
-
-            boolean collapsed = this.collapsedFloatingPanels.contains(panelId);
-            // If expanded, check if el is visible. If collapsed, el is invisible but we still want to render its title bar!
-            if (!collapsed && !el.isVisible())
-            {
-                continue;
-            }
-
-            Vector2i pos = this.floatingPanelPositions.get(panelId);
-            Vector2i size = this.floatingPanelSizes.get(panelId);
-            if (pos == null || size == null)
-            {
-                continue;
-            }
-
-            int x = this.editor.area.x + pos.x;
-            int y = this.editor.area.y + pos.y;
-            int w = size.x;
-            int h = collapsed ? 22 : size.y;
-
-            context.batcher.outline(x - 1, y - 1, x + w + 1, y + h + 1, 0xFF444444);
-            context.batcher.gradientVBox(x, y, x + w, y + 22, 0xFF2A2A2A, 0xFF1D1D1D);
-            context.batcher.box(x, y + 21, x + w, y + 22, 0xFF3C3C3C);
-
-            String title = panelId.equals("main")
-                ? "Timeline"
-                : (panelId.equals("preview")
-                    ? "Viewport"
-                    : (panelId.equals(ANCHORED_REPLAYS_PANEL_ID) ? UIKeys.FILM_REPLAY_TITLE.get() : "Properties"));
-            context.batcher.textShadow(title, x + 8, y + 6, 0xFFFFFFFF);
-
-            // Expand/Collapse Icon (Icons.COLLAPSED or Icons.UNCOLLAPSED)
-            int btnX = x + w - 20;
-            int btnY = y + 3;
-            boolean hoverBtn = context.mouseX >= btnX && context.mouseX <= btnX + 16 && context.mouseY >= btnY && context.mouseY <= btnY + 16;
-            int btnColor = hoverBtn ? 0xFFFFFFFF : 0xFFAAAAAA;
-            Icon btnIcon = collapsed ? Icons.COLLAPSED : Icons.UNCOLLAPSED;
-            context.batcher.icon(btnIcon, btnColor, btnX, btnY);
-
-            // Resize handle (only if NOT collapsed)
-            if (!collapsed)
-            {
-                int rx = x + w - 8;
-                int ry = y + h - 8;
-                boolean hoverResize = context.mouseX >= rx && context.mouseX <= rx + 8 && context.mouseY >= ry && context.mouseY <= ry + 8;
-                int resizeColor = hoverResize ? 0xFF57CCFF : 0xFF888888;
-                context.batcher.box(rx + 2, ry + 5, rx + 6, ry + 6, resizeColor);
-                context.batcher.box(rx + 4, ry + 3, rx + 6, ry + 4, resizeColor);
-                context.batcher.box(rx + 5, ry + 1, rx + 6, ry + 2, resizeColor);
-            }
-        }
     }
 }

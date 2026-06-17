@@ -45,7 +45,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Supplier;
 
 public class UIValueMap
 {
@@ -55,11 +54,11 @@ public class UIValueMap
     {
         register(ValueBoolean.class, (value, ui) ->
         {
-            UIToggle toggle = UIValueFactory.booleanUINoLabel(value, null);
+            UIToggle toggle = UIValueFactory.booleanUI(value, null);
 
-            toggle.w(18);
+            toggle.resetFlex();
 
-            return Arrays.asList(UIValueFactory.column(toggle, value));
+            return Arrays.asList(toggle);
         });
 
         register(ValueDouble.class, (value, ui) ->
@@ -82,7 +81,7 @@ public class UIValueMap
 
         register(ValueInt.class, (value, ui) ->
         {
-            if (value == BBSSettings.defaultInterpolation || value == BBSSettings.defaultPathInterpolation)
+            if (value == BBSSettings.defaultInterpolation)
             {
                 List<IKey> labels = value.getLabels();
                 int currentIndex = value.get();
@@ -184,18 +183,7 @@ public class UIValueMap
 
         register(ValueLanguage.class, (value, ui) ->
         {
-            Supplier<IKey> getLangLabel = () -> {
-                for (Label<String> label : BBSModClient.getL10n().getSupportedLanguageLabels())
-                {
-                    if (label.value.equals(value.get()))
-                    {
-                        return label.title;
-                    }
-                }
-                return UIKeys.LANGUAGE_PICK;
-            };
-
-            UIButton button = new UIButton(getLangLabel.get(), (b) ->
+            UIButton button = new UIButton(UIKeys.LANGUAGE_PICK, (b) ->
             {
                 List<Label<String>> labels = BBSModClient.getL10n().getSupportedLanguageLabels();
                 UILabelOverlayPanel<String> panel = new UILabelOverlayPanel<>(UIKeys.LANGUAGE_PICK_TITLE, labels, (str) -> value.set(str.value));
@@ -204,9 +192,7 @@ public class UIValueMap
                 UIOverlay.addOverlay(ui.getContext(), panel);
             });
 
-            value.postCallback((changed, flag) -> button.label = getLangLabel.get());
-
-            button.w(150);
+            button.w(90);
 
             UIText credits = new UIText().text(UIKeys.LANGUAGE_CREDITS).updates();
 

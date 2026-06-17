@@ -243,18 +243,18 @@ public class ModelBlockEntity extends BlockEntity
 
         BlockPos pos = this.getPos();
         BlockState blockState = world.getBlockState(pos);
-        int level = this.properties.getLightLevel();
-        BlockState newState = blockState.with(ModelBlock.LIGHT_LEVEL, level);
+
+        try
+        {
+            int level = this.properties.getLightLevel();
+
+            world.setBlockState(pos, blockState.with(ModelBlock.LIGHT_LEVEL, level), Block.NOTIFY_LISTENERS);
+        }
+        catch (Exception e)
+        {
+            world.updateListeners(pos, blockState, blockState, Block.NOTIFY_LISTENERS);
+        }
 
         world.markDirty(pos);
-
-        if (blockState != newState)
-        {
-            world.setBlockState(pos, newState, Block.NOTIFY_LISTENERS);
-        }
-        else
-        {
-            world.updateListeners(pos, blockState, newState, Block.NOTIFY_LISTENERS);
-        }
     }
 }

@@ -7,7 +7,6 @@ import mchorse.bbs_mod.forms.forms.ShapeForm;
 import mchorse.bbs_mod.forms.forms.shape.ShapeGraphEvaluator;
 import mchorse.bbs_mod.forms.forms.shape.nodes.IrisAttributeNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.IrisShaderNode;
-import mchorse.bbs_mod.forms.forms.shape.nodes.TextureNode;
 import mchorse.bbs_mod.particles.ParticleScheme;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.framework.UIContext;
@@ -126,16 +125,9 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
         gameRenderer.getLightmapTextureManager().enable();
         gameRenderer.getOverlayTexture().setupOverlayColor();
 
-        // Bind texture — material node overrides the form's static texture
+        // Bind texture if available
         Link texture = this.form.texture.get();
-
-        TextureNode matNode = this.evaluator.getMaterialNode();
-
-        if (matNode != null && matNode.texture != null)
-        {
-            texture = matNode.texture;
-        }
-
+        
         if (texture != null)
         {
             BBSModClient.getTextures().bindTexture(texture);

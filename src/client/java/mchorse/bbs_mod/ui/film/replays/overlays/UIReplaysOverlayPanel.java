@@ -1,6 +1,5 @@
 package mchorse.bbs_mod.ui.film.replays.overlays;
 
-import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.ui.Keys;
@@ -17,15 +16,10 @@ import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UIAnchorKeyframeFactory;
 import mchorse.bbs_mod.ui.framework.elements.input.text.UITextbox;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlayPanel;
-import mchorse.bbs_mod.ui.framework.elements.utils.UIDraggable;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.UIDataUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
-import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
-
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.network.ClientPlayerEntity;
 
 import com.mojang.logging.LogUtils;
 
@@ -37,12 +31,6 @@ import org.slf4j.Logger;
 
 public class UIReplaysOverlayPanel extends UIOverlayPanel
 {
-    private static final int DOCKED_REPLAYS_HEIGHT = 170;
-    private static final int DOCKED_TOP_SECTION_MIN = 80;
-    private static final int DOCKED_BOTTOM_SECTION_MIN = 70;
-    private static final int DOCKED_REPLAYS_HEIGHT_MAX = 420;
-    private static final int DOCKED_RESIZER_HEIGHT = 6;
-    private static final String DOCKED_PANEL_ID = "replaysPanel";
     private static final Logger LOGGER = LogUtils.getLogger();
 
     public static final List<Consumer<UIReplaysOverlayPanel>> extensions = new ArrayList<>();
@@ -71,8 +59,6 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
     public UITrackpad relativeOffsetZ;
     public UIToggle axesPreview;
     public UIButton pickAxesPreviewBone;
-    public UIToggle dropItemsOnDeath;
-    public UIButton replaceReplayInventory;
     public UIIcon addReplay;
     public UIIcon dupeReplay;
     public UIIcon removeReplay;
@@ -84,22 +70,14 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
     public UITrackpad dropVelocityMaxY;
     public UITrackpad dropVelocityMinZ;
     public UITrackpad dropVelocityMaxZ;
-    public UIElement dropVelocityLabel;
-    public UIElement dropVelocityRowX;
-    public UIElement dropVelocityRowY;
-    public UIElement dropVelocityRowZ;
-    public UIDraggable dockedResizer;
 
     private Consumer<Replay> callback;
-    private final UIFilmPanel filmPanel;
     private boolean docked;
-    private int dockedReplaysHeight = DOCKED_REPLAYS_HEIGHT;
 
     public UIReplaysOverlayPanel(UIFilmPanel filmPanel, Consumer<Replay> callback)
     {
         super(UIKeys.FILM_REPLAY_TITLE);
 
-        this.filmPanel = filmPanel;
         this.callback = callback;
         this.replays = new UIReplayList((l) -> this.callback.accept(l.isEmpty() ? null : l.get(0)), this, filmPanel);
 
@@ -176,22 +154,6 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
                 this.edit((r) -> r.axesPreviewBone.set(s));
             });
         });
-        this.dropItemsOnDeath = new UIToggle(UIKeys.FILM_REPLAY_DROP_ITEMS_ON_DEATH, (b) ->
-        {
-            this.edit((replay) -> replay.dropItemsOnDeath.set(b.getValue()));
-            this.updateDropVelocityVisibility(b.getValue());
-        });
-        this.dropItemsOnDeath.tooltip(UIKeys.FILM_REPLAY_DROP_ITEMS_ON_DEATH_TOOLTIP);
-        this.replaceReplayInventory = new UIButton(UIKeys.FILM_REPLACE_INVENTORY, (b) ->
-        {
-            ClientPlayerEntity player = MinecraftClient.getInstance().player;
-
-            if (player != null)
-            {
-                this.edit((replay) -> BaseValue.edit(replay.inventory, (inv) -> inv.fromPlayer(player)));
-            }
-        });
-        this.replaceReplayInventory.tooltip(UIKeys.FILM_REPLACE_INVENTORY_TOOLTIP);
 
         this.addReplay = new UIIcon(Icons.ADD, (b) -> this.replays.addReplay());
         this.addReplay.tooltip(UIKeys.SCENE_REPLAYS_CONTEXT_ADD);
@@ -228,10 +190,6 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
         this.replayLabel = UI.label(UIKeys.FILM_REPLAY_REPLAY);
         this.loopingLabel = UI.label(UIKeys.FILM_REPLAY_LOOPING);
         this.relativeRow = UI.row(this.relativeOffsetX, this.relativeOffsetY, this.relativeOffsetZ);
-        this.dropVelocityLabel = UI.label(UIKeys.FILM_REPLAY_DROP_VELOCITY);
-        this.dropVelocityRowX = UI.row(5, 0, this.dropVelocityMinX, this.dropVelocityMaxX);
-        this.dropVelocityRowY = UI.row(5, 0, this.dropVelocityMinY, this.dropVelocityMaxY);
-        this.dropVelocityRowZ = UI.row(5, 0, this.dropVelocityMinZ, this.dropVelocityMaxZ);
 
         this.replayProperties = UI.scrollView(5, 6,
             this.replayLabel,
@@ -241,31 +199,19 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
             this.loopingLabel,
             this.looping, this.actor, this.fp,
             this.relative, this.relativeRow,
-            this.axesPreview, this.pickAxesPreviewBone, this.dropItemsOnDeath,
-            this.dropVelocityLabel,
-            this.dropVelocityRowX,
-            this.dropVelocityRowY,
-            this.dropVelocityRowZ,
-            this.replaceReplayInventory
+            this.axesPreview, this.pickAxesPreviewBone,
+            UI.label(UIKeys.FILM_REPLAY_DROP_VELOCITY),
+            UI.row(5, 0, this.dropVelocityMinX, this.dropVelocityMaxX),
+            UI.row(5, 0, this.dropVelocityMinY, this.dropVelocityMaxY),
+            UI.row(5, 0, this.dropVelocityMinZ, this.dropVelocityMaxZ)
         );
         this.groupProperties = UI.scrollView(5, 6, this.groupLabel);
-        this.dockedResizer = new UIDraggable((context) ->
-        {
-            int bottomHeight = this.content.area.ey() - context.mouseY;
-            int maxHeight = Math.min(DOCKED_REPLAYS_HEIGHT_MAX, Math.max(DOCKED_BOTTOM_SECTION_MIN, this.content.area.h - DOCKED_TOP_SECTION_MIN - DOCKED_RESIZER_HEIGHT));
 
-            this.dockedReplaysHeight = MathUtils.clamp(bottomHeight, DOCKED_BOTTOM_SECTION_MIN, maxHeight);
-            this.updateDockedLayout();
-            this.resize();
-        }).rendering((context) ->
-        {
-            int color = Colors.setA(BBSSettings.primaryColor.get(), this.dockedResizer.isDragging() || this.dockedResizer.area.isInside(context) ? 0.75F : 0.45F);
+        this.replayProperties.relative(this.replays).x(1F).wTo(this.icons.area).h(1F);
+        this.groupProperties.relative(this.replays).x(1F).wTo(this.icons.area).h(1F);
+        this.replays.relative(this.content).w(0.5F).h(1F);
 
-            context.batcher.box(this.dockedResizer.area.x, this.dockedResizer.area.y + 2, this.dockedResizer.area.ex(), this.dockedResizer.area.ey() - 2, color);
-        });
-
-        this.content.add(this.replays, this.replayProperties, this.groupProperties, this.dockedResizer);
-        this.updateDockedLayout();
+        this.content.add(this.replays, this.replayProperties, this.groupProperties);
 
         for (Consumer<UIReplaysOverlayPanel> consumer : extensions)
         {
@@ -279,11 +225,13 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
 
         if (docked)
         {
-            this.title.setVisible(true);
+            this.title.setVisible(false);
             this.icons.setVisible(false);
             this.close.setVisible(false);
-            this.title.labelAnchor(0.5F, 0.5F).relative(this).xy(0.5F, 0).anchor(0.5F, 0).w(1F, -12).h(20);
-            this.content.relative(this).xy(0, 20).w(1F).h(1F, -20);
+
+            this.title.area.set(0, 0, 0, 0);
+
+            this.content.relative(this).xy(0, 0).w(1F).h(1F);
         }
         else
         {
@@ -295,81 +243,6 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
             this.icons.relative(this).x(1F, -20).y(0).w(20).h(1F).column(0).stretch();
             this.content.relative(this).xy(0, 20).w(1F, -20).h(1F, -20);
         }
-
-        this.updateDockedLayout();
-    }
-
-    private void updateDockedLayout()
-    {
-        if (this.docked)
-        {
-            int maxHeight = Math.min(DOCKED_REPLAYS_HEIGHT_MAX, Math.max(DOCKED_BOTTOM_SECTION_MIN, this.content.area.h - DOCKED_TOP_SECTION_MIN - DOCKED_RESIZER_HEIGHT));
-
-            this.dockedReplaysHeight = MathUtils.clamp(this.dockedReplaysHeight, DOCKED_BOTTOM_SECTION_MIN, maxHeight);
-            int replaysHeight = -(this.dockedReplaysHeight + DOCKED_RESIZER_HEIGHT);
-
-            this.replays.relative(this.content).x(0).y(0).w(1F).h(1F, replaysHeight);
-            this.dockedResizer.relative(this.content).x(0).y(1F, -(this.dockedReplaysHeight + DOCKED_RESIZER_HEIGHT)).w(1F).h(0F, DOCKED_RESIZER_HEIGHT);
-            this.replayProperties.relative(this.content).x(0).y(1F, -this.dockedReplaysHeight).w(1F).h(0F, this.dockedReplaysHeight);
-            this.groupProperties.relative(this.content).x(0).y(1F, -this.dockedReplaysHeight).w(1F).h(0F, this.dockedReplaysHeight);
-            this.dockedResizer.setVisible(true);
-        }
-        else
-        {
-            this.replays.relative(this.content).x(0).y(0).w(0.5F).h(1F);
-            this.replayProperties.relative(this.replays).x(1F).y(0).w(1F, -20).h(1F);
-            this.groupProperties.relative(this.replays).x(1F).y(0).w(1F, -20).h(1F);
-            this.dockedResizer.setVisible(false);
-        }
-    }
-
-    @Override
-    public void resize()
-    {
-        super.resize();
-        this.updateDockedLayout();
-    }
-
-    public boolean isDocked()
-    {
-        return this.docked;
-    }
-
-    private boolean canUseDockedTitleDrag()
-    {
-        return this.docked && !BBSSettings.editorLayoutSettings.isLayoutLocked();
-    }
-
-    @Override
-    public boolean subMouseClicked(UIContext context)
-    {
-        if (this.docked && this.title.area.isInside(context) && context.mouseButton == 0)
-        {
-            if (this.canUseDockedTitleDrag())
-            {
-                this.filmPanel.beginEmbeddedPanelDragHold(DOCKED_PANEL_ID, context.mouseX, context.mouseY);
-            }
-
-            return true;
-        }
-
-        if (this.docked && this.title.area.isInside(context) && !this.canUseDockedTitleDrag())
-        {
-            return false;
-        }
-
-        return super.subMouseClicked(context);
-    }
-
-    @Override
-    public boolean subMouseReleased(UIContext context)
-    {
-        if (this.filmPanel.finishEmbeddedPanelDrag(DOCKED_PANEL_ID))
-        {
-            return true;
-        }
-
-        return super.subMouseReleased(context);
     }
 
     private void edit(Consumer<Replay> consumer)
@@ -383,32 +256,6 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
                 consumer.accept(replay);
             }
         }
-    }
-
-    public void syncReplaySelection(Replay replay, boolean scroll)
-    {
-        this.setReplay(replay);
-
-        if (replay == null)
-        {
-            this.replays.deselect();
-            this.replays.update();
-
-            return;
-        }
-
-        this.replays.ensureVisible(replay);
-
-        if (scroll)
-        {
-            this.replays.setCurrentScroll(replay);
-        }
-        else
-        {
-            this.replays.setCurrentDirect(replay);
-        }
-
-        this.replays.update();
     }
 
     public void setReplay(Replay replay)
@@ -446,36 +293,14 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
                 this.relativeOffsetY.setValue(replay.relativeOffset.get().y);
                 this.relativeOffsetZ.setValue(replay.relativeOffset.get().z);
                 this.axesPreview.setValue(replay.axesPreview.get());
-                this.dropItemsOnDeath.setValue(replay.dropItemsOnDeath.get());
                 this.dropVelocityMinX.setValue(replay.dropVelocityMinX.get());
                 this.dropVelocityMaxX.setValue(replay.dropVelocityMaxX.get());
                 this.dropVelocityMinY.setValue(replay.dropVelocityMinY.get());
                 this.dropVelocityMaxY.setValue(replay.dropVelocityMaxY.get());
                 this.dropVelocityMinZ.setValue(replay.dropVelocityMinZ.get());
                 this.dropVelocityMaxZ.setValue(replay.dropVelocityMaxZ.get());
-                this.updateDropVelocityVisibility(replay.dropItemsOnDeath.get());
             }
         }
-    }
-
-    private void updateDropVelocityVisibility(boolean visible)
-    {
-        this.dropVelocityLabel.setVisible(visible);
-        this.dropVelocityRowX.setVisible(visible);
-        this.dropVelocityRowY.setVisible(visible);
-        this.dropVelocityRowZ.setVisible(visible);
-        this.replaceReplayInventory.setVisible(visible);
-    }
-
-    @Override
-    public void render(UIContext context)
-    {
-        if (this.docked)
-        {
-            this.filmPanel.updateEmbeddedPanelDrag(DOCKED_PANEL_ID, context.mouseX, context.mouseY);
-        }
-
-        super.render(context);
     }
 
     @Override
@@ -485,20 +310,8 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
         {
             super.renderBackground(context);
         }
-        else
-        {
-            context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xFF141418);
-            context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xFF2A2A35, 1);
-            context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.y + 20, 0xFF1A1A22);
-            context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.y + 20, 0xFF2A2A35, 1);
 
-            if (this.canUseDockedTitleDrag() && this.title.area.isInside(context))
-            {
-                context.batcher.icon(Icons.ALL_DIRECTIONS, Colors.GRAY, this.area.mx(), this.title.area.my(), 0.5F, 0.5F);
-            }
-        }
-
-        this.content.area.render(context.batcher, 0xFF141418);
+        this.content.area.render(context.batcher, Colors.A100);
 
         if (this.replays.getList().size() < 3)
         {

@@ -60,17 +60,7 @@ public class UILikeableStringList extends UIStringList
 
         String display = this.likeManager.getDisplayName(element);
 
-        if (display == null)
-        {
-            display = element;
-        }
-
-        if (display.startsWith("assets:audio/"))
-        {
-            display = display.substring("assets:audio/".length());
-        }
-
-        return display;
+        return display != null ? display : element;
     }
     
     @Override

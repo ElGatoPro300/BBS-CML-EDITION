@@ -51,11 +51,7 @@ import org.joml.Vector2i;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 
-import org.lwjgl.BufferUtils;
-import org.lwjgl.opengl.GL11;
-
 import java.io.File;
-import java.nio.FloatBuffer;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -67,7 +63,6 @@ public class UIFilmPreview extends UIElement
     public static final List<Consumer<UIFilmPreview>> extensions = new ArrayList<>();
 
     private List<AudioClip> clips = new ArrayList<>();
-    private File pendingThumbnail;
     private UIFilmPanel panel;
 
     public UIElement icons;
@@ -105,10 +100,7 @@ public class UIFilmPreview extends UIElement
                 {
                     this.panel.dashboard.closeThisMenu();
 
-                    if (this.panel.getData() != null)
-                    {
-                        Films.playFilm(this.panel.getData().getId(), true);
-                    }
+                    Films.playFilm(this.panel.getData().getId(), true);
                 }
             });
 
@@ -121,7 +113,7 @@ public class UIFilmPreview extends UIElement
         this.teleport.tooltip(UIKeys.FILM_TELEPORT_TITLE);
         this.teleport.context((menu) ->
         {
-            menu.action(Icons.MOVE_TO, UIKeys.FILM_TELEPORT_CONTEXT_PLAYER, BBSSettings.editorCameraPreviewPlayerSync.get(), () -> BBSSettings.editorCameraPreviewPlayerSync.set(!BBSSettings.editorCameraPreviewPlayerSync.get()));
+            menu.action(Icons.MOVE_TO, UIKeys.FILM_TELEPORT_CONTEXT_PLAYER, this.panel.playerToCamera, () -> this.panel.playerToCamera = !this.panel.playerToCamera);
             menu.action(Icons.COPY, UIKeys.CAMERA_PANELS_CONTEXT_COPY_POSITION, () ->
             {
                 Position current = new Position(this.panel.getCamera());
@@ -194,10 +186,7 @@ public class UIFilmPreview extends UIElement
                 return;
             }
 
-            if (this.panel.getData() != null)
-            {
-                this.panel.recorder.startRecording(this.panel.getData().camera.calculateDuration(), BBSRendering.getTexture());
-            }
+            this.panel.recorder.startRecording(this.panel.getData().camera.calculateDuration(), BBSRendering.getTexture());
         });
         this.recordVideo.tooltip(UIKeys.CAMERA_TOOLTIPS_RECORD);
         this.recordVideo.context((menu) ->
@@ -217,7 +206,6 @@ public class UIFilmPreview extends UIElement
 
                 UIOverlay.addOverlay(this.getContext(), overlayPanel);
             });
-            menu.action(Icons.FOLDER, UIKeys.CAMERA_TOOLTIPS_OPEN_SCREENSHOTS, () -> UIUtils.openFolder(BBSModClient.getScreenshotRecorder().getScreenshots()));
 
             menu.action(Icons.FILM, UIKeys.CAMERA_TOOLTIPS_OPEN_VIDEOS, () -> this.panel.recorder.openMovies());
             menu.action(Icons.GEAR, UIKeys.CAMERA_TOOLTIPS_OPEN_VIDEO_SETTINGS, () -> UIOverlay.addOverlay(this.getContext(), new UIVideoSettingsOverlayPanel(BBSSettings.videoSettings)));
@@ -259,11 +247,6 @@ public class UIFilmPreview extends UIElement
 
     private void renderAudio()
     {
-        if (this.panel.getData() == null)
-        {
-            return;
-        }
-
         Clips camera = this.panel.getData().camera;
         List<AudioClip> audioClips = camera.getClips(AudioClip.class);
 
@@ -333,18 +316,6 @@ public class UIFilmPreview extends UIElement
             context.batcher.texturedBox(texture.id, Colors.WHITE, area.x, area.y, area.w, area.h, 0, texture.height, texture.width, 0, texture.width, texture.height);
         }
 
-        if (this.pendingThumbnail != null)
-        {
-            boolean oldNames = BBSSettings.editorReplayHudDisplayName.get();
-            BBSSettings.editorReplayHudDisplayName.set(false);
-
-            context.batcher.flush();
-            this.captureThumbnailInternal(this.pendingThumbnail);
-            this.pendingThumbnail = null;
-
-            BBSSettings.editorReplayHudDisplayName.set(oldNames);
-        }
-
         if (this.panel.getData() != null)
         {
             /* Render global video clips (overlays) */
@@ -361,7 +332,6 @@ public class UIFilmPreview extends UIElement
                 context.menu.height,
                 true
             );
-
         }
 
         this.renderCursor(context);
@@ -431,7 +401,7 @@ public class UIFilmPreview extends UIElement
 
         this.panel.getController().renderHUD(context, area);
 
-        if (this.panel.replayEditor.isVisible() && this.panel.getData() != null)
+        if (this.panel.replayEditor.isVisible())
         {
             RunnerCameraController runner = this.panel.getRunner();
             int w = (int) (area.w * BBSSettings.audioWaveformWidth.get());
@@ -492,50 +462,5 @@ public class UIFilmPreview extends UIElement
 
         stack.pop();
         RenderSystem.applyModelViewMatrix();
-    }
-
-    public void cancelCapture()
-    {
-        this.pendingThumbnail = null;
-    }
-
-    public void captureThumbnail(File output)
-    {
-        this.pendingThumbnail = output;
-    }
-
-    private void captureThumbnailInternal(File output)
-    {
-        Area area = this.getViewport();
-        UIContext context = this.getContext();
-        double scale = MinecraftClient.getInstance().getWindow().getScaleFactor();
-        
-        int width = (int) (area.w * scale);
-        int height = (int) (area.h * scale);
-        int x = (int) (context.globalX(area.x) * scale);
-        int y = (int) (MinecraftClient.getInstance().getWindow().getFramebufferHeight() - context.globalY(area.y) * scale - height);
-
-        FloatBuffer pixelData = BufferUtils.createFloatBuffer(width * height * 4);
-
-        GL11.glReadPixels(x, y, width, height, GL11.GL_RGBA, GL11.GL_FLOAT, pixelData);
-        pixelData.rewind();
-
-        int[] pixels = new int[width * height];
-
-        for (int i = 0; i < height; ++i)
-        {
-            for (int j = 0; j < width; ++j)
-            {
-                float r = pixelData.get() * 255;
-                float g = pixelData.get() * 255;
-                float b = pixelData.get() * 255;
-                float a = pixelData.get() * 255;
-                int k = ((height - 1) - i) * width + j;
-
-                pixels[k] = ((int) a << 24) + ((int) r << 16) + ((int) g << 8) + (int) b;
-            }
-        }
-
-        new Thread(new ScreenshotRecorder.ScreenshotRunner(width, height, pixels, output)).start();
     }
 }
