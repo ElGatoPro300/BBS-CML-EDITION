@@ -18,6 +18,8 @@ import mchorse.bbs_mod.utils.math.Noise;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.ShaderProgram;
+import net.minecraft.client.gl.ShaderProgramKey;
+import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.DiffuseLighting;
@@ -75,7 +77,7 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
         Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1F).normalize();
         RenderSystem.setupLevelDiffuseLighting(light0, light1);
 
-        this.renderShape(stack, GameRenderer::getRenderTypeEntityTranslucentProgram, OverlayTexture.DEFAULT_UV, LightmapTextureManager.MAX_LIGHT_COORDINATE);
+        this.renderShape(stack, ShaderProgramKeys.RENDERTYPE_ENTITY_TRANSLUCENT, OverlayTexture.DEFAULT_UV, LightmapTextureManager.MAX_LIGHT_COORDINATE);
 
         DiffuseLighting.disableGuiDepthLighting();
 
@@ -85,14 +87,12 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
     @Override
     protected void render3D(FormRenderingContext context)
     {
-        Supplier<ShaderProgram> shader = BBSRendering.isIrisShadersEnabled()
-            ? GameRenderer::getRenderTypeEntityTranslucentCullProgram
-            : GameRenderer::getRenderTypeEntityTranslucentProgram;
+        ShaderProgramKey shader = ShaderProgramKeys.RENDERTYPE_ENTITY_TRANSLUCENT;
 
         this.renderShape(context.stack, shader, context.overlay, context.light);
     }
 
-    private void renderShape(MatrixStack stack, Supplier<ShaderProgram> shader, int overlay, int light)
+    private void renderShape(MatrixStack stack, ShaderProgramKey shader, int overlay, int light)
     {
         this.evaluator = new ShapeGraphEvaluator(this.form.graph.get());
         
