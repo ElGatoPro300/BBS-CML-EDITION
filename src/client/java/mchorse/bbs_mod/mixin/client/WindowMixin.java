@@ -23,7 +23,7 @@ public abstract class WindowMixin
      * scale factor with the exact value. Whole-number and "auto" scales keep Minecraft's normal
      * (clamped) behaviour.
      */
-    @ModifyVariable(method = "setScaleFactor", at = @At("HEAD"), argsOnly = true)
+    @ModifyVariable(method = "setScaleFactor", at = @At(value = "STORE", ordinal = 0), ordinal = 0)
     private double bbs_overrideUIScaleFactor(double scaleFactor)
     {
         double uiScale = BBSModClient.getUIScaleFactor();

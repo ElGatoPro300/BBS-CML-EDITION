@@ -14,7 +14,9 @@ import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.PlayerUtils;
 import mchorse.bbs_mod.utils.joml.Vectors;
+import mchorse.bbs_mod.bridge.IEntityRenderState;
 import mchorse.bbs_mod.utils.pose.Pose;
+import mchorse.bbs_mod.utils.pose.PoseTransform;
 import mchorse.bbs_mod.utils.pose.Transform;
 
 import net.minecraft.client.MinecraftClient;
@@ -24,12 +26,14 @@ import net.minecraft.client.network.OtherClientPlayerEntity;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.DiffuseLighting;
 import net.minecraft.client.render.LightmapTextureManager;
+import net.minecraft.client.render.command.OrderedRenderCommandQueue;
 import net.minecraft.client.render.command.OrderedRenderCommandQueueImpl;
 import net.minecraft.client.render.entity.EntityRenderManager;
 import net.minecraft.client.render.entity.EntityRenderer;
 import net.minecraft.client.render.entity.LivingEntityRenderer;
 import net.minecraft.client.render.entity.model.EntityModel;
 import net.minecraft.client.render.entity.state.EntityRenderState;
+import net.minecraft.client.render.entity.state.LivingEntityRenderState;
 import net.minecraft.client.render.state.CameraRenderState;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.Entity;
@@ -91,6 +95,105 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
     public static Pose getCurrentPoseOverlay()
     {
         return currentPoseOverlay;
+    }
+
+    public static void onSetAngles(LivingEntityRenderState state, MatrixStack matrixStack, OrderedRenderCommandQueue queue, CameraRenderState cameraRenderState)
+    {
+        Entity entity = ((IEntityRenderState) state).bbs$getEntity();
+
+        if (!(entity instanceof LivingEntity livingEntity))
+        {
+            return;
+        }
+
+        Pose pose = currentPose;
+        Pose poseOverlay = currentPoseOverlay;
+
+        if (pose != null)
+        {
+            pose = pose.copy();
+
+            for (Map.Entry<String, PoseTransform> transformEntry : poseOverlay.transforms.entrySet())
+            {
+                PoseTransform poseTransform = pose.get(transformEntry.getKey());
+                PoseTransform value = transformEntry.getValue();
+
+                if (value.fix != 0)
+                {
+                    poseTransform.translate.lerp(value.translate, value.fix);
+                    poseTransform.scale.lerp(value.scale, value.fix);
+                    poseTransform.rotate.lerp(value.rotate, value.fix);
+                    poseTransform.rotate2.lerp(value.rotate2, value.fix);
+                }
+                else
+                {
+                    poseTransform.translate.add(value.translate);
+                    poseTransform.scale.add(value.scale).sub(1, 1, 1);
+                    poseTransform.rotate.add(value.rotate);
+                    poseTransform.rotate2.add(value.rotate2);
+                }
+            }
+
+            Map<String, ModelPart> partsMap = parts.get(livingEntity.getClass());
+
+            if (partsMap != null)
+            {
+                for (Map.Entry<String, ModelPart> entry : partsMap.entrySet())
+                {
+                    String key = entry.getKey();
+                    ModelPart value = entry.getValue();
+                    PoseTransform poseTransform = pose.transforms.get(key);
+
+                    if (poseTransform != null)
+                    {
+                        Transform transform = new Transform();
+
+                        transform.translate.x = value.originX;
+                        transform.translate.y = value.originY;
+                        transform.translate.z = value.originZ;
+                        transform.rotate.x = value.pitch;
+                        transform.rotate.y = value.yaw;
+                        transform.rotate.z = value.roll;
+                        transform.scale.x = value.xScale;
+                        transform.scale.y = value.yScale;
+                        transform.scale.z = value.zScale;
+
+                        value.originX += poseTransform.translate.x;
+                        value.originY += poseTransform.translate.y;
+                        value.originZ += poseTransform.translate.z;
+                        value.pitch += poseTransform.rotate.x;
+                        value.yaw += poseTransform.rotate.y;
+                        value.roll += poseTransform.rotate.z;
+                        value.xScale += poseTransform.scale.x - 1F;
+                        value.yScale += poseTransform.scale.y - 1F;
+                        value.zScale += poseTransform.scale.z - 1F;
+
+                        cache.put(value, transform);
+                    }
+                }
+            }
+        }
+    }
+
+    public static void onRenderEnd(LivingEntityRenderState state, MatrixStack matrixStack, OrderedRenderCommandQueue queue, CameraRenderState cameraRenderState)
+    {
+        for (Map.Entry<ModelPart, Transform> entry : cache.entrySet())
+        {
+            Transform transform = entry.getValue();
+            ModelPart value = entry.getKey();
+
+            value.originX = transform.translate.x;
+            value.originY = transform.translate.y;
+            value.originZ = transform.translate.z;
+            value.pitch = transform.rotate.x;
+            value.yaw = transform.rotate.y;
+            value.roll = transform.rotate.z;
+            value.xScale = transform.scale.x;
+            value.yScale = transform.scale.y;
+            value.zScale = transform.scale.z;
+        }
+
+        cache.clear();
     }
 
     public static Map<Class, Map<String, ModelPart>> getParts()
