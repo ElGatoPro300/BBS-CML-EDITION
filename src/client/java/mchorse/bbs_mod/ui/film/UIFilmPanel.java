@@ -97,14 +97,16 @@ import mchorse.bbs_mod.utils.keyframes.KeyframeSegment;
 import mchorse.bbs_mod.utils.presets.PresetManager;
 import mchorse.bbs_mod.utils.resources.Pixels;
 
-import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.render.BufferBuilder;
+import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
-import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.render.Tessellator;
+import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.Vec3d;
@@ -113,9 +115,7 @@ import org.joml.Matrix4f;
 import org.joml.Vector2i;
 import org.joml.Vector3d;
 
-import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.VertexFormat;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -4229,7 +4229,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         if (player != null)
         {
-            String name = player.getGameProfile().name();
+            String name = player.getGameProfile().getName();
             FilmContributor contributor = null;
 
             for (FilmContributor c : this.data.contributors.getList())
@@ -4373,7 +4373,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         if (this.entered)
         {
             ClientPlayerEntity player = MinecraftClient.getInstance().player;
-            Vec3d pos = new Vec3d(player.getX(), player.getY(), player.getZ());
+            Vec3d pos = player.getPos();
             Vector3d cameraPos = this.camera.position;
             double distance = cameraPos.distance(pos.x, pos.y, pos.z);
             int value = MinecraftClient.getInstance().options.getViewDistance().getValue();
@@ -4593,8 +4593,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         if (!BBSRendering.isIrisShadowPass())
         {
-            this.lastProjection.set(RenderSystem.getModelViewMatrix());
-            MatrixStack ms = context.matrices();
+            this.lastProjection.set(RenderSystem.getProjectionMatrix());
+            MatrixStack ms = context.matrixStack();
             if (ms != null)
             {
                 this.lastView.set(ms.peek().getPositionMatrix());
@@ -5237,11 +5237,12 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         int segments = 40;
         float segW = editorW / (float) segments;
         
-        Matrix4f matrix4f = new Matrix4f();
+        Matrix4f matrix4f = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
         Tessellator tessellator = Tessellator.getInstance();
         BufferBuilder builder = tessellator.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
         
-        GlStateManager._enableBlend();
+        RenderSystem.enableBlend();
+        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
         
         float[] yBot1 = new float[segments + 1];
         float[] yMid1 = new float[segments + 1];
@@ -5324,7 +5325,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             builder.vertex(matrix4f, x2, yMid2[i+1], 0).color(cMid2[i+1]);
         }
         
-        RenderLayers.debugFilledBox().draw(builder.end());
+        BufferRenderer.drawWithGlobalProgram(builder.end());
 
         UIHomePanel home = this.dashboard.getPanel(UIHomePanel.class);
         if (home != null)
@@ -5935,14 +5936,14 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                             int iconX = this.area.mx();
                             int iconY = this.area.y + CARD_SIZE / 2;
                             
-                            context.batcher.getContext().getMatrices().pushMatrix();
-                            context.batcher.getContext().getMatrices().translate(iconX, iconY);
-                            context.batcher.getContext().getMatrices().scale(2F, 2F);
-                            context.batcher.getContext().getMatrices().translate(-iconX, -iconY);
+                            context.batcher.getContext().getMatrices().push();
+                            context.batcher.getContext().getMatrices().translate(iconX, iconY, 0);
+                            context.batcher.getContext().getMatrices().scale(2F, 2F, 1F);
+                            context.batcher.getContext().getMatrices().translate(-iconX, -iconY, 0);
                             
                             context.batcher.icon(Icons.FILM, iconX, iconY, 0.5F, 0.5F);
                             
-                            context.batcher.getContext().getMatrices().popMatrix();
+                            context.batcher.getContext().getMatrices().pop();
                         }
 
                         String label = new DataPath(id).getLast();
