@@ -72,7 +72,14 @@ public class SubtitleClip extends CameraClip
         this.subtitle.updateBackground(this.background.get(), this.backgroundOffset.get(), this.shadow.get(), this.shadowOpaque.get());
         this.subtitle.updateTransform(this.transform.get(), factor);
         this.subtitle.updateConstraints(this.lineHeight.get(), this.maxWidth.get());
+        this.subtitle.renderOrder = context.count;
         subtitles.add(this.subtitle);
+    }
+
+    @Override
+    public boolean isPositionClip()
+    {
+        return false;
     }
 
     @Override

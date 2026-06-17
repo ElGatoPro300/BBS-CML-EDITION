@@ -54,6 +54,7 @@ import mchorse.bbs_mod.ui.forms.editors.utils.UIPickableFormRenderer;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
+import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.utils.EventPropagation;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIDraggable;
@@ -228,6 +229,7 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
         this.shiftDuration.keys().register(Keys.CLIP_SHIFT, () -> this.shiftDuration.clickItself());
 
         this.renderer = rendererFactory.apply(this);
+        this.renderer.updatable();
         this.renderer.full(this);
 
         this.finish = new UIIcon(Icons.IN, (b) -> this.palette.exit());
@@ -309,7 +311,10 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
 
             if (pair != null)
             {
-                if (Gizmo.INSTANCE.start(stencil.getIndex(), context.mouseX, context.mouseY, this.editor.getEditableTransform()))
+                UIPropTransform editableTransform = this.editor.getEditableTransform();
+                this.renderer.prepareGizmoDrag(editableTransform);
+
+                if (Gizmo.INSTANCE.start(stencil.getIndex(), context.mouseX, context.mouseY, editableTransform))
                 {
                     return true;
                 }

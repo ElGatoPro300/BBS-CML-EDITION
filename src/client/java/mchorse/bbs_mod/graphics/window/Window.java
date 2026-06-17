@@ -1,5 +1,6 @@
 package mchorse.bbs_mod.graphics.window;
 
+import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.data.DataToString;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.ListType;
@@ -19,6 +20,10 @@ public class Window
 {
     private static int verticalScroll;
     private static long lastScroll;
+    private static long arrowCursor = -1L;
+    private static long activeCursor = -1L;
+
+    private static MapType inMemoryClipboard;
 
     public static long getWindow()
     {
@@ -86,13 +91,20 @@ public class Window
     }
 
     /**
-     * Get a data map from clipboard with verification key.
+     * Get a data map from in-memory clipboard with verification key.
      */
     public static MapType getClipboardMap(String verificationKey)
     {
-        MapType data = DataToString.mapFromString(getClipboard());
+        if (BBSSettings.usingInMemoryClipboard.get())
+        {
+            return inMemoryClipboard != null && inMemoryClipboard.getBool(verificationKey) ? inMemoryClipboard : null;
+        }
+        else
+        {
+            MapType data = DataToString.mapFromString(getClipboard());
 
-        return data != null && data.getBool(verificationKey) ? data : null;
+            return data != null && data.getBool(verificationKey) ? data : null;
+        }
     }
 
     public static ListType getClipboardList()
@@ -130,21 +142,57 @@ public class Window
     }
 
     /**
-     * Save given data to clipboard with a verification key that could be
+     * Save given data to in-memory clipboard with a verification key that could be
      * used in {@link #getClipboardMap(String)} to decode data.
      */
-    public static void setClipboard(MapType data, String verificationKey)
+    public static void setInMemoryClipboard(MapType data, String verificationKey)
     {
         if (data != null)
         {
             data.putBool(verificationKey, true);
+            if (BBSSettings.usingInMemoryClipboard.get())
+            {
+                inMemoryClipboard = data;
+            }
+            else
+            {
+                setClipboard(DataToString.toString(data, true));
+            }
         }
-
-        setClipboard(data);
     }
 
     public static void moveCursor(int x, int y)
     {
         GLFW.glfwSetCursorPos(getWindow(), x, y);
+    }
+
+    public static void setCursorDefault()
+    {
+        setCursor(GLFW.GLFW_ARROW_CURSOR);
+    }
+
+    private static void setCursor(int type)
+    {
+        long cursor = getOrCreateCursor(type);
+        if (cursor != 0L && activeCursor != cursor)
+        {
+            GLFW.glfwSetCursor(getWindow(), cursor);
+            activeCursor = cursor;
+        }
+    }
+
+    private static long getOrCreateCursor(int type)
+    {
+        if (type == GLFW.GLFW_ARROW_CURSOR)
+        {
+            if (arrowCursor == -1L)
+            {
+                arrowCursor = GLFW.glfwCreateStandardCursor(type);
+            }
+
+            return arrowCursor;
+        }
+
+        return 0L;
     }
 }

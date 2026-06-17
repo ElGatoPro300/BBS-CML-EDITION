@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.ui.utils;
 
 import mchorse.bbs_mod.BBSSettings;
+import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D;
 import mchorse.bbs_mod.utils.MathUtils;
@@ -8,6 +9,8 @@ import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.interps.Lerps;
 
 import net.minecraft.client.MinecraftClient;
+
+import org.lwjgl.glfw.GLFW;
 
 /**
  * Scroll
@@ -449,9 +452,14 @@ public class Scroll
      */
     public void drag(int x, int y)
     {
+        if (this.dragging && !Window.isMouseButtonPressed(GLFW.GLFW_MOUSE_BUTTON_LEFT))
+        {
+            this.dragging = false;
+        }
+
         if (BBSSettings.scrollingSmoothness.get())
         {
-            float delta = MinecraftClient.getInstance().getLastFrameDuration();
+            float delta = MinecraftClient.getInstance().getRenderTickCounter().getLastFrameDuration();
 
             /* The higher the FPS, the smaller the lerp factor is,
              * the lower the FPS, the bigger the factor is */

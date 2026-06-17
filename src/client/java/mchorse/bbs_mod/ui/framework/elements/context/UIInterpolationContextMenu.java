@@ -12,7 +12,6 @@ import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
-import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlayPanel;
 import mchorse.bbs_mod.ui.utils.InterpolationUtils;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
@@ -143,7 +142,7 @@ public class UIInterpolationContextMenu extends UIContextMenu
             MapType data = new MapType();
 
             data.put("interp", this.interpolation.toData());
-            Window.setClipboard(data, "_CopyInterpolation");
+            Window.setInMemoryClipboard(data, "_CopyInterpolation");
         });
         this.copy.tooltip(UIKeys.INTERPOLATIONS_CONTEXT_COPY);
 

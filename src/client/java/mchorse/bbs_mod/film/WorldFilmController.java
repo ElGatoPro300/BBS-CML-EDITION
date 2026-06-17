@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.film;
 
 import mchorse.bbs_mod.BBSModClient;
+import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.camera.clips.CameraClipContext;
 import mchorse.bbs_mod.camera.clips.misc.AudioClientClip;
 import mchorse.bbs_mod.camera.data.Position;
@@ -73,7 +74,7 @@ public class WorldFilmController extends BaseFilmController
         }
 
         this.context.clipData.clear();
-        this.context.setup(tick, context.tickDelta());
+        this.context.setup(tick, context.tickCounter().getTickDelta(false));
 
         for (Clip clip : clips)
         {
@@ -81,6 +82,11 @@ public class WorldFilmController extends BaseFilmController
         }
 
         this.context.currentLayer = 0;
+
+        if (BBSSettings.recordingCameraPreview.get())
+        {
+            Recorder.renderCameraPreviewTimeline(this.context.clips, tick, context.tickCounter().getTickDelta(true), this.duration, this.position, context.camera(), context.matrixStack());
+        }
 
         AudioClientClip.manageSounds(this.context);
     }

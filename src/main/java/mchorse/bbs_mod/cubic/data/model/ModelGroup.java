@@ -22,6 +22,7 @@ public class ModelGroup implements IMapSerializable
     public List<ModelCube> cubes = new ArrayList<>();
     public List<ModelMesh> meshes = new ArrayList<>();
     public boolean visible = true;
+    public boolean ikLocator = false; // If true, this group acts as an IK target locator
     public int index = -1;
 
     public float lighting = 0F;
@@ -50,6 +51,7 @@ public class ModelGroup implements IMapSerializable
         group.owner = newOwner;
         group.parent = newParent;
         group.visible = this.visible;
+        group.ikLocator = this.ikLocator;
         group.index = this.index;
         
         group.lighting = this.lighting;
@@ -93,6 +95,7 @@ public class ModelGroup implements IMapSerializable
         if (data.has("rotate")) this.initial.rotate.set(DataStorageUtils.vector3fFromData(data.getList("rotate")));
         if (data.has("pivot")) this.initial.pivot.set(DataStorageUtils.vector3fFromData(data.getList("pivot")));
         else this.initial.pivot.set(this.initial.translate);
+        if (data.has("ik_locator")) this.ikLocator = data.getBool("ik_locator");
 
         /* Setup cubes and meshes */
         if (data.has("cubes"))
@@ -127,6 +130,7 @@ public class ModelGroup implements IMapSerializable
         data.put("origin", DataStorageUtils.vector3fToData(this.initial.translate));
         data.put("rotate", DataStorageUtils.vector3fToData(this.initial.rotate));
         data.put("pivot", DataStorageUtils.vector3fToData(this.initial.pivot));
+        if (this.ikLocator) data.putBool("ik_locator", this.ikLocator);
 
         if (!this.cubes.isEmpty())
         {

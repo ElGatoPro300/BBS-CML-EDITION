@@ -3,12 +3,16 @@ package mchorse.bbs_mod.utils;
 import mchorse.bbs_mod.utils.joml.Vectors;
 import mchorse.bbs_mod.utils.pose.Transform;
 
+import net.minecraft.client.gl.GlUniform;
+import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.RotationAxis;
 
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
+import org.joml.Matrix4fStack;
 
+import com.mojang.blaze3d.systems.ProjectionType;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.systems.VertexSorter;
 
@@ -31,29 +35,36 @@ public class MatrixStackUtils
         /* Cache the global stuff */
         oldProjection.set(RenderSystem.getProjectionMatrix());
         oldMV.set(RenderSystem.getModelViewMatrix());
-        oldInverse.set(RenderSystem.getInverseViewRotationMatrix());
+        oldInverse.set(new Matrix3f(RenderSystem.getModelViewMatrix()));
 
-        MatrixStack renderStack = RenderSystem.getModelViewStack();
-
-        renderStack.push();
-        renderStack.loadIdentity();
-        RenderSystem.applyModelViewMatrix();
-        renderStack.pop();
+        Matrix4fStack mvStack = RenderSystem.getModelViewStack();
+        mvStack.identity();
+        applyModelViewMatrix();
     }
 
     public static void restoreMatrices()
     {
         /* Return back to orthographic projection */
-        RenderSystem.setProjectionMatrix(oldProjection, VertexSorter.BY_Z);
-        RenderSystem.setInverseViewRotationMatrix(oldInverse);
+        RenderSystem.setProjectionMatrix(oldProjection, ProjectionType.ORTHOGRAPHIC);
 
-        MatrixStack renderStack = RenderSystem.getModelViewStack();
+        Matrix4fStack mvStack = RenderSystem.getModelViewStack();
+        mvStack.set(oldMV);
+        applyModelViewMatrix();
+    }
 
-        renderStack.push();
-        renderStack.loadIdentity();
-        MatrixStackUtils.multiply(renderStack, oldMV);
-        RenderSystem.applyModelViewMatrix();
-        renderStack.pop();
+    public static void applyModelViewMatrix()
+    {
+        ShaderProgram program = RenderSystem.getShader();
+
+        if (program != null)
+        {
+            GlUniform uniform = program.getUniform("ModelViewMat");
+
+            if (uniform != null)
+            {
+                uniform.set(RenderSystem.getModelViewStack());
+            }
+        }
     }
 
     public static void applyTransform(MatrixStack stack, Transform transform)

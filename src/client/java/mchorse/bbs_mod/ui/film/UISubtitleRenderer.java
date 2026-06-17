@@ -16,11 +16,13 @@ import mchorse.bbs_mod.utils.pose.Transform;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.GlUniform;
 import net.minecraft.client.gl.ShaderProgram;
+import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.util.math.MatrixStack;
 
 import org.joml.Matrix4f;
 
 import com.mojang.blaze3d.platform.GlStateManager;
+import com.mojang.blaze3d.systems.ProjectionType;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.systems.VertexSorter;
 
@@ -29,6 +31,7 @@ import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL30;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Supplier;
 
@@ -108,7 +111,7 @@ public class UISubtitleRenderer
             int fw = (int) ((w + 10) * scale);
             int fh = (int) ((h + 10) * scale);
 
-            RenderSystem.setProjectionMatrix(new Matrix4f().ortho(0, w + 10, 0, h + 10, -100, 100), VertexSorter.BY_Z);
+            RenderSystem.setProjectionMatrix(new Matrix4f().ortho(0, w + 10, 0, h + 10, -100, 100), ProjectionType.ORTHOGRAPHIC);
 
             framebuffer.resize(fw, fh);
             framebuffer.applyClear();
@@ -136,7 +139,7 @@ public class UISubtitleRenderer
             /* Render the texture */
             fb.beginWrite(true);
 
-            RenderSystem.setProjectionMatrix(ortho, VertexSorter.BY_Z);
+            RenderSystem.setProjectionMatrix(ortho, ProjectionType.ORTHOGRAPHIC);
 
             Transform transform = new Transform();
 
@@ -159,12 +162,25 @@ public class UISubtitleRenderer
             RenderSystem.enableBlend();
             RenderSystem.blendFuncSeparate(GlStateManager.SrcFactor.SRC_ALPHA, GlStateManager.DstFactor.ONE_MINUS_SRC_ALPHA, GlStateManager.SrcFactor.ONE, GlStateManager.DstFactor.ONE_MINUS_SRC_ALPHA);
 
-            batcher.texturedBox(supplier, texture.id, Colors.setA(Colors.WHITE, alpha), -fw * subtitle.anchorX, -fh * subtitle.anchorY, texture.width, texture.height, 0, 0, texture.width, texture.height, texture.width, texture.height);
+            batcher.texturedBox(program, texture.id, Colors.setA(Colors.WHITE, alpha), -fw * subtitle.anchorX, -fh * subtitle.anchorY, texture.width, texture.height, 0, 0, texture.width, texture.height, texture.width, texture.height);
 
             stack.pop();
         }
 
-        RenderSystem.setProjectionMatrix(cache, VertexSorter.BY_Z);
+        RenderSystem.setProjectionMatrix(cache, ProjectionType.ORTHOGRAPHIC);
         RenderSystem.enableCull();
+        RenderSystem.depthFunc(GL11.GL_LEQUAL);
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.setShader(ShaderProgramKeys.POSITION_TEX_COLOR);
+    }
+
+    public static void renderSubtitle(MatrixStack stack, Batcher2D batcher, Subtitle subtitle)
+    {
+        if (subtitle == null)
+        {
+            return;
+        }
+
+        renderSubtitles(stack, batcher, Collections.singletonList(subtitle));
     }
 }

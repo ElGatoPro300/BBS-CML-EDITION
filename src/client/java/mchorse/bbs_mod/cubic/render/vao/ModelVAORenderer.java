@@ -1,12 +1,16 @@
 package mchorse.bbs_mod.cubic.render.vao;
 
+import mchorse.bbs_mod.client.BBSRendering;
 import net.minecraft.client.gl.GlUniform;
 import net.minecraft.client.gl.ShaderProgram;
+import net.minecraft.client.render.Fog;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
 
+import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 
+import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 
 import org.lwjgl.opengl.GL30;
@@ -21,7 +25,12 @@ public class ModelVAORenderer
         setupUniforms(stack, shader);
 
         shader.bind();
-        modelVAO.render(shader.getFormat(), r, g, b, a, light, overlay);
+
+        int textureID = RenderSystem.getShaderTexture(0);
+        GlStateManager._activeTexture(GL30.GL_TEXTURE0);
+        GlStateManager._bindTexture(textureID);
+
+        modelVAO.render(VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL, r, g, b, a, light, overlay);
         shader.unbind();
 
         GL30.glBindVertexArray(currentVAO);
@@ -30,9 +39,11 @@ public class ModelVAORenderer
 
     public static void setupUniforms(MatrixStack stack, ShaderProgram shader)
     {
+        Matrix4f modelView = new Matrix4f(RenderSystem.getModelViewMatrix()).mul(stack.peek().getPositionMatrix());
+
         for (int i = 0; i < 12; i++)
         {
-            shader.addSampler("Sampler" + i, RenderSystem.getShaderTexture(i));
+            shader.addSamplerTexture("Sampler" + i, RenderSystem.getShaderTexture(i));
         }
 
         if (shader.projectionMat != null)
@@ -42,7 +53,7 @@ public class ModelVAORenderer
 
         if (shader.modelViewMat != null)
         {
-            shader.modelViewMat.set(new Matrix4f(RenderSystem.getModelViewMatrix()).mul(stack.peek().getPositionMatrix()));
+            shader.modelViewMat.set(modelView);
         }
 
         /* NormalMat is present by default in Iris' shaders, but when there is no Iris,
@@ -53,32 +64,36 @@ public class ModelVAORenderer
 
         if (normalUniform != null)
         {
-            normalUniform.set(stack.peek().getNormalMatrix());
+            if (BBSRendering.isIrisShadersEnabled())
+            {
+                normalUniform.set(modelView.normal(new Matrix3f()));
+            }
+            else
+            {
+                normalUniform.set(stack.peek().getNormalMatrix());
+            }
         }
 
-        if (shader.viewRotationMat != null)
-        {
-            shader.viewRotationMat.set(RenderSystem.getInverseViewRotationMatrix());
-        }
+        Fog fog = RenderSystem.getShaderFog();
 
         if (shader.fogStart != null)
         {
-            shader.fogStart.set(RenderSystem.getShaderFogStart());
+            shader.fogStart.set(fog.start());
         }
 
         if (shader.fogEnd != null)
         {
-            shader.fogEnd.set(RenderSystem.getShaderFogEnd());
+            shader.fogEnd.set(fog.end());
         }
 
         if (shader.fogColor != null)
         {
-            shader.fogColor.set(RenderSystem.getShaderFogColor());
+            shader.fogColor.set(fog.red(), fog.green(), fog.blue(), fog.alpha());
         }
 
         if (shader.fogShape != null)
         {
-            shader.fogShape.set(RenderSystem.getShaderFogShape().getId());
+            shader.fogShape.set(fog.shape().getId());
         }
 
         if (shader.colorModulator != null)

@@ -12,6 +12,8 @@ import net.minecraft.block.ShapeContext;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.BlockEntityTicker;
 import net.minecraft.block.entity.BlockEntityType;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.NbtComponent;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
@@ -38,22 +40,19 @@ public class TriggerBlock extends Block implements BlockEntityProvider
     }
 
     @Override
-    public ItemStack getPickStack(WorldView world, BlockPos pos, BlockState state)
+    public ItemStack getPickStack(WorldView world, BlockPos pos, BlockState state, boolean includeData)
     {
         BlockEntity entity = world.getBlockEntity(pos);
 
         if (entity instanceof TriggerBlockEntity triggerBlock)
         {
             ItemStack stack = new ItemStack(this);
-            NbtCompound compound = new NbtCompound();
-
-            compound.put("BlockEntityTag", triggerBlock.createNbtWithId());
-            stack.setNbt(compound);
+            stack.set(DataComponentTypes.BLOCK_ENTITY_DATA, NbtComponent.of(triggerBlock.createNbtWithId(world.getRegistryManager())));
 
             return stack;
         }
 
-        return super.getPickStack(world, pos, state);
+        return super.getPickStack(world, pos, state, includeData);
     }
 
     @Override
@@ -68,7 +67,6 @@ public class TriggerBlock extends Block implements BlockEntityProvider
         return 1.0F;
     }
 
-    @Override
     public boolean isTransparent(BlockState state, BlockView world, BlockPos pos)
     {
         return true;
@@ -98,9 +96,9 @@ public class TriggerBlock extends Block implements BlockEntityProvider
     }
 
     @Override
-    public ActionResult onUse(BlockState state, World world, BlockPos pos, PlayerEntity player, Hand hand, BlockHitResult hit)
+    public ActionResult onUse(BlockState state, World world, BlockPos pos, PlayerEntity player, BlockHitResult hit)
     {
-        if (hand == Hand.MAIN_HAND)
+        if (player.getMainHandStack().isEmpty())
         {
             if (!world.isClient && player instanceof ServerPlayerEntity serverPlayer)
             {
@@ -126,7 +124,7 @@ public class TriggerBlock extends Block implements BlockEntityProvider
             return ActionResult.SUCCESS;
         }
 
-        return super.onUse(state, world, pos, player, hand, hit);
+        return super.onUse(state, world, pos, player, hit);
     }
 
     @Override

@@ -16,7 +16,9 @@ import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
-import org.lwjgl.opengl.GL11;
+import com.mojang.blaze3d.platform.GlStateManager;
+import com.mojang.blaze3d.systems.RenderSystem;
+
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL30;
 
@@ -100,8 +102,10 @@ public class BOBJModelVAO
         GL30.glBufferData(GL30.GL_ARRAY_BUFFER, this.tmpTangents, GL30.GL_STATIC_DRAW);
         GL30.glVertexAttribPointer(Attributes.TANGENTS, 4, GL30.GL_FLOAT, false, 0, 0);
 
-        GL30.glBindBuffer(GL30.GL_ARRAY_BUFFER, this.texCoordBuffer);
-        GL30.glBufferData(GL30.GL_ARRAY_BUFFER, this.data.texData, GL30.GL_STATIC_DRAW);
+        float[] midTexCoords = ModelVAOData.calculateMidTexCoords(this.data.texData);
+
+        GL30.glBindBuffer(GL30.GL_ARRAY_BUFFER, this.midTextureBuffer);
+        GL30.glBufferData(GL30.GL_ARRAY_BUFFER, midTexCoords, GL30.GL_STATIC_DRAW);
         GL30.glVertexAttribPointer(Attributes.MID_TEXTURE_UV, 2, GL30.GL_FLOAT, false, 0, 0);
 
         GL30.glBindBuffer(GL30.GL_ARRAY_BUFFER, 0);
@@ -198,8 +202,8 @@ public class BOBJModelVAO
             boolean allowBone = true;
             if (stencilMap != null && stencilMap.allowedBones != null && lightBone >= 0)
             {
-                String boneName = this.armature.orderedBones.get(lightBone).name;
-                allowBone = stencilMap.allowedBones.contains(boneName);
+                BOBJBone bone = this.getBoneByIndex(lightBone);
+                allowBone = bone != null && stencilMap.allowedBones.contains(bone.name);
             }
 
             if (stencilMap != null)
@@ -282,6 +286,19 @@ public class BOBJModelVAO
         return bone;
     }
 
+    private BOBJBone getBoneByIndex(int index)
+    {
+        for (BOBJBone bone : this.armature.orderedBones)
+        {
+            if (bone.index == index)
+            {
+                return bone;
+            }
+        }
+
+        return null;
+    }
+
     private void drawTriangles(IntPredicate predicate)
     {
         int start = -1;
@@ -321,6 +338,10 @@ public class BOBJModelVAO
         ModelVAORenderer.setupUniforms(stack, shader);
 
         shader.bind();
+
+        int textureID = RenderSystem.getShaderTexture(0);
+        GlStateManager._activeTexture(GL30.GL_TEXTURE0);
+        GlStateManager._bindTexture(textureID);
 
         GL30.glBindVertexArray(this.vao);
 
