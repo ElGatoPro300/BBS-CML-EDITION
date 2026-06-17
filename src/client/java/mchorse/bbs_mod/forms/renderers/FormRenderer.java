@@ -192,16 +192,9 @@ public abstract class FormRenderer <T extends Form>
     {
         if (context.isPicking())
         {
-            ShaderProgram program = picking.get();
+            this.setupTarget(context, picking.get());
 
-            if (program == null)
-            {
-                return normal;
-            }
-
-            this.setupTarget(context, program);
-
-            return () -> program;
+            return picking;
         }
 
         return normal;
@@ -209,11 +202,6 @@ public abstract class FormRenderer <T extends Form>
 
     protected void setupTarget(FormRenderingContext context, ShaderProgram program)
     {
-        if (program == null)
-        {
-            return;
-        }
-
         GlUniform target = program.getUniform("Target");
 
         if (target != null)
