@@ -115,7 +115,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
     private boolean showingHomePage = true;
 
     public UIElement modelSettingsPanel;
-    public UIElement placeholderPanel;
+    public UIModelPhysBonePanel physBonesPanel;
     public UIModelGeometryPanel geometryPanel;
     public UIModelIKPanel ikPanel;
     public UIScrollView sectionsView;
@@ -409,7 +409,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         
         this.modelSettingsPanel.add(this.sectionsView, this.rightView);
 
-        this.placeholderPanel = this.createPlaceholderPanel();
+        this.physBonesPanel = new UIModelPhysBonePanel(this);
 
         /* Sections setup */
         this.overlay.namesList.setFileIcon(Icons.MORPH);
@@ -437,7 +437,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
 
         this.registerPanel(this.modelSettingsPanel, UIKeys.MODELS_SETTINGS, Icons.MODELS_SETTINGS);
         this.registerPanel(this.ikPanel, UIKeys.MODELS_IK_EDITOR, Icons.IK);
-        this.registerPanel(this.placeholderPanel, UIKeys.COMING_SOON, Icons.GEAR);
+        this.registerPanel(this.physBonesPanel, UIKeys.MODELS_PHYS_BONES_EDITOR, Icons.GEAR);
         this.registerPanel(this.geometryPanel, UIKeys.MODELS_GEOMETRY_EDITOR, Icons.GEOMETRY_EDITOR);
 
         this.setPanel(this.modelSettingsPanel);
@@ -1322,18 +1322,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         return panel;
     }
 
-    private UIElement createPlaceholderPanel()
-    {
-        UIElement panel = new UIElement();
-        panel.relative(this.mainView).w(1F).h(1F);
 
-        UILabel label = new UILabel(UIKeys.COMING_SOON).background();
-        label.relative(panel).w(0.9F).h(0.78F).xy(0.5F, 0.5F).anchor(0.5F, 0.5F);
-        label.labelAnchor(0.5F, 0.5F);
-        panel.add(label);
-
-        return panel;
-    }
 
     public UIIcon registerPanel(UIElement panel, IKey tooltip, Icon icon)
     {
@@ -1681,6 +1670,11 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
             if (this.ikPanel != null)
             {
                 this.ikPanel.setConfig(data);
+            }
+
+            if (this.physBonesPanel != null)
+            {
+                this.physBonesPanel.setConfig(data);
             }
             
             this.sectionsView.resize();
