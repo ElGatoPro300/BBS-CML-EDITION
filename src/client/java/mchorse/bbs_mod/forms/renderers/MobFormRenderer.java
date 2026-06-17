@@ -19,7 +19,6 @@ import mchorse.bbs_mod.utils.pose.Pose;
 import mchorse.bbs_mod.utils.pose.Transform;
 
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.model.ModelPart;
 import net.minecraft.client.network.OtherClientPlayerEntity;
 import net.minecraft.client.render.DiffuseLighting;
@@ -31,7 +30,6 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityPose;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.LivingEntity;
-import net.minecraft.entity.SpawnReason;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.StringNbtReader;
 import net.minecraft.registry.Registries;
@@ -198,7 +196,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
         catch (Exception e)
         {}
 
-        this.entity = Registries.ENTITY_TYPE.get(Identifier.of(id)).create(MinecraftClient.getInstance().world, SpawnReason.COMMAND);
+        this.entity = Registries.ENTITY_TYPE.get(Identifier.of(id)).create(MinecraftClient.getInstance().world);
 
         if (this.entity == null && this.form.isPlayer())
         {
@@ -265,7 +263,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
             MobTextureOverride.begin(this.form.texture.get());
             try
             {
-                MinecraftClient.getInstance().getEntityRenderDispatcher().render(this.entity, 0D, 0D, 0D, 0F, stack, consumers, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE);
+                MinecraftClient.getInstance().getEntityRenderDispatcher().render(this.entity, 0D, 0D, 0D, 0F, context.getTransition(), stack, consumers, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE);
             }
             finally
             {
@@ -303,7 +301,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
                     {
                         this.bindTexture();
                         this.setupTarget(context, BBSShaders.getPickerModelsProgram());
-                        RenderSystem.setShader(BBSShaders.getPickerModelsProgram());
+                        RenderSystem.setShader(BBSShaders::getPickerModelsProgram);
 
                         first.bool = true;
                     }
@@ -372,7 +370,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
             MobTextureOverride.begin(this.form.texture.get());
             try
             {
-                MinecraftClient.getInstance().getEntityRenderDispatcher().render(this.entity, 0D, 0D, 0D, 0F, context.stack, consumers, light);
+                MinecraftClient.getInstance().getEntityRenderDispatcher().render(this.entity, 0D, 0D, 0D, 0F, context.getTransition(), context.stack, consumers, light);
             }
             finally
             {
