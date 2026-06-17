@@ -16,7 +16,6 @@ import mchorse.bbs_mod.client.video.VideoRenderer;
 import mchorse.bbs_mod.film.Films;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.graphics.window.Window;
-import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.settings.ui.UIVideoSettingsOverlayPanel;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
@@ -29,16 +28,14 @@ import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIMessageFolderOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIMessageOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
+import mchorse.bbs_mod.ui.framework.elements.utils.EventPropagation;
 import mchorse.bbs_mod.ui.utils.Area;
-import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.UIUtils;
-import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.keys.KeyCodes;
 import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.FFMpegUtils;
-import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.ScreenshotRecorder;
 import mchorse.bbs_mod.utils.StringUtils;
 import mchorse.bbs_mod.utils.clips.Clip;
@@ -50,16 +47,11 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.RotationAxis;
 
-import org.joml.Matrix4fStack;
 import org.joml.Vector2i;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 
-import org.lwjgl.BufferUtils;
-import org.lwjgl.opengl.GL11;
-
 import java.io.File;
-import java.nio.FloatBuffer;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -71,15 +63,11 @@ public class UIFilmPreview extends UIElement
     public static final List<Consumer<UIFilmPreview>> extensions = new ArrayList<>();
 
     private List<AudioClip> clips = new ArrayList<>();
-    private File pendingThumbnail;
     private UIFilmPanel panel;
 
     public UIElement icons;
-    public UIElement gizmos;
 
-    public UIIcon gizmoMove;
-    public UIIcon gizmoScale;
-    public UIIcon gizmoRotate;
+    public UIIcon replays;
     public UIIcon onionSkin;
     public UIIcon plause;
     public UIIcon teleport;
@@ -88,7 +76,6 @@ public class UIFilmPreview extends UIElement
     public UIIcon perspective;
     public UIIcon recordReplay;
     public UIIcon recordVideo;
-    public UIIcon renderQueue;
 
     public UIFilmPreview(UIFilmPanel filmPanel)
     {
@@ -98,17 +85,9 @@ public class UIFilmPreview extends UIElement
         this.icons.row().resize();
         this.icons.relative(this).x(0.5F).y(1F).anchor(0.5F, 1F);
 
-        /* Gizmo transform-mode buttons (move / scale / rotate), aligned to the viewport's
-           top-left corner like Blockbench's transform tools. */
-        this.gizmoMove = this.createGizmoButton(Icons.ALL_DIRECTIONS, Gizmo.Mode.TRANSLATE, UIKeys.FILM_GIZMO_MOVE);
-        this.gizmoScale = this.createGizmoButton(Icons.SCALE, Gizmo.Mode.SCALE, UIKeys.FILM_GIZMO_SCALE);
-        this.gizmoRotate = this.createGizmoButton(Icons.ARC, Gizmo.Mode.ROTATE, UIKeys.FILM_GIZMO_ROTATE);
-
-        this.gizmos = UI.row(0, this.gizmoMove, this.gizmoScale, this.gizmoRotate);
-        this.gizmos.relative(this).x(4).y(4).wh(64, 20);
-        this.add(this.gizmos);
-
         /* Preview buttons */
+        this.replays = new UIIcon(Icons.EDITOR, (b) -> this.openReplays());
+        this.replays.tooltip(UIKeys.FILM_REPLAY_TITLE);
         this.onionSkin = new UIIcon(Icons.ONION_SKIN, (b) -> this.openOnionSkin());
         this.onionSkin.tooltip(UIKeys.FILM_CONTROLLER_ONION_SKIN_TITLE);
         this.plause = new UIIcon(() -> this.panel.isRunning() ? Icons.PAUSE : Icons.PLAY, (b) -> this.panel.togglePlayback());
@@ -121,10 +100,7 @@ public class UIFilmPreview extends UIElement
                 {
                     this.panel.dashboard.closeThisMenu();
 
-                    if (this.panel.getData() != null)
-                    {
-                        Films.playFilm(this.panel.getData().getId(), true);
-                    }
+                    Films.playFilm(this.panel.getData().getId(), true);
                 }
             });
 
@@ -137,7 +113,7 @@ public class UIFilmPreview extends UIElement
         this.teleport.tooltip(UIKeys.FILM_TELEPORT_TITLE);
         this.teleport.context((menu) ->
         {
-            menu.action(Icons.MOVE_TO, UIKeys.FILM_TELEPORT_CONTEXT_PLAYER, BBSSettings.editorCameraPreviewPlayerSync.get(), () -> BBSSettings.editorCameraPreviewPlayerSync.set(!BBSSettings.editorCameraPreviewPlayerSync.get()));
+            menu.action(Icons.MOVE_TO, UIKeys.FILM_TELEPORT_CONTEXT_PLAYER, this.panel.playerToCamera, () -> this.panel.playerToCamera = !this.panel.playerToCamera);
             menu.action(Icons.COPY, UIKeys.CAMERA_PANELS_CONTEXT_COPY_POSITION, () ->
             {
                 Position current = new Position(this.panel.getCamera());
@@ -210,10 +186,7 @@ public class UIFilmPreview extends UIElement
                 return;
             }
 
-            if (this.panel.getData() != null)
-            {
-                this.panel.recorder.startRecording(this.panel.getData().camera.calculateDuration(), BBSRendering.getTexture());
-            }
+            this.panel.recorder.startRecording(this.panel.getData().camera.calculateDuration(), BBSRendering.getTexture());
         });
         this.recordVideo.tooltip(UIKeys.CAMERA_TOOLTIPS_RECORD);
         this.recordVideo.context((menu) ->
@@ -233,7 +206,6 @@ public class UIFilmPreview extends UIElement
 
                 UIOverlay.addOverlay(this.getContext(), overlayPanel);
             });
-            menu.action(Icons.FOLDER, UIKeys.CAMERA_TOOLTIPS_OPEN_SCREENSHOTS, () -> UIUtils.openFolder(BBSModClient.getScreenshotRecorder().getScreenshots()));
 
             menu.action(Icons.FILM, UIKeys.CAMERA_TOOLTIPS_OPEN_VIDEOS, () -> this.panel.recorder.openMovies());
             menu.action(Icons.GEAR, UIKeys.CAMERA_TOOLTIPS_OPEN_VIDEO_SETTINGS, () -> UIOverlay.addOverlay(this.getContext(), new UIVideoSettingsOverlayPanel(BBSSettings.videoSettings)));
@@ -245,10 +217,7 @@ public class UIFilmPreview extends UIElement
             });
         });
 
-        this.renderQueue = new UIIcon(Icons.FILM, (b) -> this.panel.openRenderQueueOverlay());
-        this.renderQueue.tooltip(UIKeys.FILM_OPEN_RENDER_QUEUE);
-
-        this.icons.add(this.onionSkin, this.plause, this.teleport, this.flight, this.control, this.perspective, this.recordReplay, this.recordVideo, this.renderQueue);
+        this.icons.add(this.replays, this.onionSkin, this.plause, this.teleport, this.flight, this.control, this.perspective, this.recordReplay, this.recordVideo);
         this.add(this.icons);
 
         for (Consumer<UIFilmPreview> consumer : extensions)
@@ -257,24 +226,18 @@ public class UIFilmPreview extends UIElement
         }
     }
 
-    /* Build a single gizmo transform-mode button that selects its mode and highlights while that
-       mode is active. */
-    private UIIcon createGizmoButton(Icon icon, Gizmo.Mode mode, IKey tooltip)
-    {
-        UIIcon button = new UIIcon(icon, (b) ->
-        {
-            Gizmo.INSTANCE.setMode(mode);
-            UIUtils.playClick();
-        });
-
-        button.tooltip(tooltip);
-
-        return button;
-    }
-
     public void openReplays()
     {
-        this.panel.focusAnchoredReplaysPanel();
+        /* if (!this.panel.isDockedLayout())
+        { */
+            UIOverlay overlay = UIOverlay.addOverlayLeft(this.getContext(), this.panel.replayEditor.replays, 360);
+
+            overlay.eventPropagataion(EventPropagation.PASS);
+        /* }
+        else
+        { */
+            //this.panel.toggleReplaysSidebar();
+        //}
     }
 
     public void openOnionSkin()
@@ -284,11 +247,6 @@ public class UIFilmPreview extends UIElement
 
     private void renderAudio()
     {
-        if (this.panel.getData() == null)
-        {
-            return;
-        }
-
         Clips camera = this.panel.getData().camera;
         List<AudioClip> audioClips = camera.getClips(AudioClip.class);
 
@@ -344,13 +302,6 @@ public class UIFilmPreview extends UIElement
     @Override
     public void render(UIContext context)
     {
-        /* Keep the gizmo buttons highlighted to match the active transform mode. */
-        Gizmo.Mode mode = Gizmo.INSTANCE.getMode();
-
-        this.gizmoMove.active(mode == Gizmo.Mode.TRANSLATE);
-        this.gizmoScale.active(mode == Gizmo.Mode.SCALE);
-        this.gizmoRotate.active(mode == Gizmo.Mode.ROTATE);
-
         Texture texture = BBSRendering.getTexture();
         Area area = this.getViewport();
         Camera camera = this.panel.getCamera();
@@ -363,18 +314,6 @@ public class UIFilmPreview extends UIElement
         if (texture != null)
         {
             context.batcher.texturedBox(texture.id, Colors.WHITE, area.x, area.y, area.w, area.h, 0, texture.height, texture.width, 0, texture.width, texture.height);
-        }
-
-        if (this.pendingThumbnail != null)
-        {
-            boolean oldNames = BBSSettings.editorReplayHudDisplayName.get();
-            BBSSettings.editorReplayHudDisplayName.set(false);
-
-            context.batcher.flush();
-            this.captureThumbnailInternal(this.pendingThumbnail);
-            this.pendingThumbnail = null;
-
-            BBSSettings.editorReplayHudDisplayName.set(oldNames);
         }
 
         if (this.panel.getData() != null)
@@ -393,7 +332,6 @@ public class UIFilmPreview extends UIElement
                 context.menu.height,
                 true
             );
-
         }
 
         this.renderCursor(context);
@@ -463,7 +401,7 @@ public class UIFilmPreview extends UIElement
 
         this.panel.getController().renderHUD(context, area);
 
-        if (this.panel.replayEditor.isVisible() && this.panel.getData() != null)
+        if (this.panel.replayEditor.isVisible())
         {
             RunnerCameraController runner = this.panel.getRunner();
             int w = (int) (area.w * BBSSettings.audioWaveformWidth.get());
@@ -510,64 +448,19 @@ public class UIFilmPreview extends UIElement
     private void renderCursor(UIContext context)
     {
         net.minecraft.client.render.Camera mcCamera = MinecraftClient.getInstance().gameRenderer.getCamera();
-        Matrix4fStack stack = RenderSystem.getModelViewStack();
+        MatrixStack stack = RenderSystem.getModelViewStack();
 
-        stack.pushMatrix();
+        stack.push();
 
-        stack.mul(context.batcher.getContext().getMatrices().peek().getPositionMatrix());
+        stack.multiplyPositionMatrix(context.batcher.getContext().getMatrices().peek().getPositionMatrix());
         stack.translate(area.x + 16, area.ey() - 12, 0F);
-        stack.rotate(RotationAxis.NEGATIVE_X.rotationDegrees(mcCamera.getPitch()));
-        stack.rotate(RotationAxis.POSITIVE_Y.rotationDegrees(mcCamera.getYaw()));
+        stack.multiply(RotationAxis.NEGATIVE_X.rotationDegrees(mcCamera.getPitch()));
+        stack.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(mcCamera.getYaw()));
         stack.scale(-1F, -1F, -1F);
-        MatrixStackUtils.applyModelViewMatrix();
+        RenderSystem.applyModelViewMatrix();
         RenderSystem.renderCrosshair(10);
 
-        stack.popMatrix();
-        MatrixStackUtils.applyModelViewMatrix();
-    }
-
-    public void cancelCapture()
-    {
-        this.pendingThumbnail = null;
-    }
-
-    public void captureThumbnail(File output)
-    {
-        this.pendingThumbnail = output;
-    }
-
-    private void captureThumbnailInternal(File output)
-    {
-        Area area = this.getViewport();
-        UIContext context = this.getContext();
-        double scale = MinecraftClient.getInstance().getWindow().getScaleFactor();
-        
-        int width = (int) (area.w * scale);
-        int height = (int) (area.h * scale);
-        int x = (int) (context.globalX(area.x) * scale);
-        int y = (int) (MinecraftClient.getInstance().getWindow().getFramebufferHeight() - context.globalY(area.y) * scale - height);
-
-        FloatBuffer pixelData = BufferUtils.createFloatBuffer(width * height * 4);
-
-        GL11.glReadPixels(x, y, width, height, GL11.GL_RGBA, GL11.GL_FLOAT, pixelData);
-        pixelData.rewind();
-
-        int[] pixels = new int[width * height];
-
-        for (int i = 0; i < height; ++i)
-        {
-            for (int j = 0; j < width; ++j)
-            {
-                float r = pixelData.get() * 255;
-                float g = pixelData.get() * 255;
-                float b = pixelData.get() * 255;
-                float a = pixelData.get() * 255;
-                int k = ((height - 1) - i) * width + j;
-
-                pixels[k] = ((int) a << 24) + ((int) r << 16) + ((int) g << 8) + (int) b;
-            }
-        }
-
-        new Thread(new ScreenshotRecorder.ScreenshotRunner(width, height, pixels, output)).start();
+        stack.pop();
+        RenderSystem.applyModelViewMatrix();
     }
 }

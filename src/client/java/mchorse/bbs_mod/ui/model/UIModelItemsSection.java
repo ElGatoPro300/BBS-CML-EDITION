@@ -36,7 +36,6 @@ public class UIModelItemsSection extends UIModelSection
             new UIButton(UIKeys.MODELS_ITEMS_MAIN, (b) -> this.openContextMenu(this.config.itemsMain)),
             new UIButton(UIKeys.MODELS_ITEMS_OFF, (b) -> this.openContextMenu(this.config.itemsOff))
         ));
-        this.fields.add(new UIButton(UIKeys.MODELS_HANDS_EDIT, (b) -> this.editor.dashboard.setPanel(new UIModelItemsTransformEditor(this.editor, this.config))));
     }
 
     @Override
@@ -45,7 +44,7 @@ public class UIModelItemsSection extends UIModelSection
         return UIKeys.MODELS_ITEMS;
     }
 
-    private void openContextMenu(ValueList<ArmorSlot> valueList)
+    private void openContextMenu(ValueList<ValueString> valueList)
     {
         if (this.config == null) return;
 
@@ -57,18 +56,15 @@ public class UIModelItemsSection extends UIModelSection
         groups.add(0, "<none>");
 
         this.getContext().replaceContextMenu(new UIStringListContextMenu(groups, 
-            () -> valueList.getList().stream().map(v -> v.group.get()).collect(Collectors.toSet()), 
+            () -> valueList.getList().stream().map(ValueString::get).collect(Collectors.toSet()), 
             (group) ->
             {
-                boolean existed = valueList.getList().stream().anyMatch(v -> v.group.get().equals(group));
+                boolean existed = valueList.getList().stream().anyMatch(v -> v.get().equals(group));
                 valueList.getAllTyped().clear();
 
                 if (!group.equals("<none>") && !existed)
                 {
-                    ArmorSlot slot = new ArmorSlot("0");
-
-                    slot.group.set(group);
-                    valueList.add(slot);
+                    valueList.add(new ValueString("0", group));
                 }
 
                 this.editor.dirty();

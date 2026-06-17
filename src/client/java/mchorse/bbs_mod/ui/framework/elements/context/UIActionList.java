@@ -3,7 +3,6 @@ package mchorse.bbs_mod.ui.framework.elements.context;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UIList;
 import mchorse.bbs_mod.ui.utils.context.ContextAction;
-import mchorse.bbs_mod.ui.utils.context.ContextCategoryAction;
 import mchorse.bbs_mod.ui.utils.context.ContextSeparatorAction;
 
 import java.util.List;
@@ -20,10 +19,6 @@ public class UIActionList extends UIList<ContextAction>
 
     private int getItemHeight(ContextAction action)
     {
-        if (action instanceof ContextCategoryAction)
-        {
-            return 20;
-        }
         return action instanceof ContextSeparatorAction ? SEPARATOR_HEIGHT : this.scroll.scrollItemSize;
     }
 
@@ -119,7 +114,7 @@ public class UIActionList extends UIList<ContextAction>
             {
                 ContextAction action = this.list.get(index);
 
-                if (action instanceof ContextSeparatorAction || action instanceof ContextCategoryAction)
+                if (action instanceof ContextSeparatorAction)
                 {
                     return true;
                 }

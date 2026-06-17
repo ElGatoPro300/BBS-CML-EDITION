@@ -71,7 +71,7 @@ public class UIModelGeneralSection extends UIModelSection
             if (this.config != null) this.config.anchorGroup.set(str);
         });
         this.anchorGroup.tooltip(UIKeys.MODELS_ANCHOR_GROUP_TOOLTIP);
-
+        
         this.uiScale = new UITrackpad((v) ->
         {
             if (this.config != null) this.config.uiScale.set(v.floatValue());
