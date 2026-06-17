@@ -285,7 +285,11 @@ public class UITrackpad extends UIBaseTextbox
     public void setValue(double value)
     {
         this.setValueInternal(value);
-        this.updateTextField();
+
+        if (!this.textbox.isFocused())
+        {
+            this.updateTextField();
+        }
     }
 
     private void updateTextField()
@@ -345,6 +349,23 @@ public class UITrackpad extends UIBaseTextbox
     @Override
     public void unfocus(UIContext context)
     {
+        String text = this.textbox.getText().trim();
+
+        if (text.isEmpty())
+        {
+            double oldValue = this.value;
+
+            this.setValueInternal(0D);
+
+            super.unfocus(context);
+
+            this.textbox.setFocused(false);
+            this.updateTextField();
+            this.accept(this.value, oldValue);
+
+            return;
+        }
+        
         this.evaluate();
 
         super.unfocus(context);
@@ -581,11 +602,16 @@ public class UITrackpad extends UIBaseTextbox
 
         if (this.textbox.isFocused() && !text.equals(old))
         {
+            if (text.isEmpty())
+            {
+                return result;
+            }
+
             try
             {
                 double oldValue = this.value;
 
-                this.setValueInternal(text.isEmpty() ? 0 : Double.parseDouble(text));
+                this.setValueInternal(Double.parseDouble(text));
 
                 if (!this.delayedInput)
                 {
@@ -641,11 +667,16 @@ public class UITrackpad extends UIBaseTextbox
 
         if (this.textbox.isFocused() && !text.equals(old))
         {
+            if (text.isEmpty())
+            {
+                return result;
+            }
+
             try
             {
                 double oldValue = this.value;
 
-                this.setValueInternal(text.isEmpty() ? 0 : Double.parseDouble(text));
+                this.setValueInternal(Double.parseDouble(text));
 
                 if (!this.delayedInput)
                 {
