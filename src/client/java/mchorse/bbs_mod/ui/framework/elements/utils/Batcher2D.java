@@ -91,7 +91,7 @@ public class Batcher2D
 
     public void clip(int x, int y, int w, int h, UIContext context)
     {
-        this.clip(context.globalX(x), context.globalY(y), w, h, context.menu.width, context.menu.height);
+        this.clip(x, y, w, h, context.menu.width, context.menu.height);
     }
 
     /**
@@ -104,7 +104,7 @@ public class Batcher2D
 
     public void unclip(UIContext context)
     {
-        this.unclip(context.menu.width, context.menu.height);
+        this.context.disableScissor();
     }
 
     public void unclip(int sw, int sh)
@@ -403,17 +403,42 @@ public class Batcher2D
 
     public void texturedBox(Supplier<ShaderProgram> shader, int texture, int color, float x, float y, float w, float h, float u1, float v1, float u2, float v2, int textureW, int textureH)
     {
-        if (shader != null)
-        {
-            shader.get();
-        }
+        int lastTexture = RenderSystem.getShaderTexture(0);
 
-        this.drawTexturedBox(texture, color, x, y, w, h, u1, v1, u2, v2, textureW, textureH);
+        RenderSystem.setShaderTexture(0, texture);
+
+        Matrix4f matrix = this.context.getMatrices().peek().getPositionMatrix();
+        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_TEXTURE_COLOR);
+        
+        RenderSystem.setShader(shader);
+
+        
+        this.fillTexturedBox(builder, matrix, color, x, y, w, h, u1, v1, u2, v2, textureW, textureH);
+
+        BufferRenderer.drawWithGlobalProgram(builder.end());
+
+        RenderSystem.setShader(ShaderProgramKeys.POSITION_TEX_COLOR);
+        RenderSystem.setShaderTexture(0, lastTexture);
     }
 
     public void texturedBox(ShaderProgram shader, int texture, int color, float x, float y, float w, float h, float u1, float v1, float u2, float v2, int textureW, int textureH)
     {
-        this.drawTexturedBox(texture, color, x, y, w, h, u1, v1, u2, v2, textureW, textureH);
+        int lastTexture = RenderSystem.getShaderTexture(0);
+
+        RenderSystem.setShaderTexture(0, texture);
+
+        Matrix4f matrix = this.context.getMatrices().peek().getPositionMatrix();
+        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_TEXTURE_COLOR);
+
+        RenderSystem.setShader(shader);
+
+        
+        this.fillTexturedBox(builder, matrix, color, x, y, w, h, u1, v1, u2, v2, textureW, textureH);
+
+        BufferRenderer.drawWithGlobalProgram(builder.end());
+
+        RenderSystem.setShader(ShaderProgramKeys.POSITION_TEX_COLOR);
+        RenderSystem.setShaderTexture(0, lastTexture);
     }
 
     private void fillTexturedBox(BufferBuilder builder, Matrix4f matrix, int color, float x, float y, float w, float h, float u1, float v1, float u2, float v2, int textureW, int textureH)

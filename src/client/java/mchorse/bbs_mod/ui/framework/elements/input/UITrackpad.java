@@ -46,6 +46,9 @@ public class UITrackpad extends UIBaseTextbox
     });
 
     private static final DecimalFormat FORMAT;
+    private static final DecimalFormat FORMAT_2;
+    private static final DecimalFormat FORMAT_1;
+    private static final DecimalFormat FORMAT_0;
 
     public Consumer<Double> callback;
 
@@ -86,6 +89,21 @@ public class UITrackpad extends UIBaseTextbox
         FORMAT.setRoundingMode(RoundingMode.HALF_EVEN);
         FORMAT.setGroupingUsed(false);
         FORMAT.setDecimalFormatSymbols(new DecimalFormatSymbols(Locale.ENGLISH));
+
+        FORMAT_2 = new DecimalFormat("#.##");
+        FORMAT_2.setRoundingMode(RoundingMode.HALF_EVEN);
+        FORMAT_2.setGroupingUsed(false);
+        FORMAT_2.setDecimalFormatSymbols(new DecimalFormatSymbols(Locale.ENGLISH));
+
+        FORMAT_1 = new DecimalFormat("#.#");
+        FORMAT_1.setRoundingMode(RoundingMode.HALF_EVEN);
+        FORMAT_1.setGroupingUsed(false);
+        FORMAT_1.setDecimalFormatSymbols(new DecimalFormatSymbols(Locale.ENGLISH));
+
+        FORMAT_0 = new DecimalFormat("#");
+        FORMAT_0.setRoundingMode(RoundingMode.HALF_EVEN);
+        FORMAT_0.setGroupingUsed(false);
+        FORMAT_0.setDecimalFormatSymbols(new DecimalFormatSymbols(Locale.ENGLISH));
     }
 
     public static void updateAmplifier(UIContext context)
@@ -352,7 +370,7 @@ public class UITrackpad extends UIBaseTextbox
     {
         super.resize();
 
-        /* Both increment buttons are grouped on the right edge. */
+        /* Increment buttons sit on opposite edges. */
         int w = this.area.w < 60 ? 10 : 13;
 
         this.textbox.area.copy(this.area);
@@ -360,7 +378,7 @@ public class UITrackpad extends UIBaseTextbox
         this.minusOne.copy(this.area);
         this.plusOne.w = this.minusOne.w = w;
         this.plusOne.x = this.area.ex() - w;
-        this.minusOne.x = this.area.ex() - w * 2;
+        this.minusOne.x = this.area.x;
     }
 
     /**
@@ -662,10 +680,15 @@ public class UITrackpad extends UIBaseTextbox
         int padding = 0;
 
         boolean dragging = this.isDraggingTime();
-        boolean plus = !dragging && this.plusOne.isInside(context);
-        boolean minus = !dragging && this.minusOne.isInside(context);
         boolean hovered = this.area.isInside(context);
         int accent = 0xFF000000 | BBSSettings.primaryColor.get();
+        FontRenderer font = context.batcher.getFont();
+        boolean wantsArrows = BBSSettings.enableTrackpadIncrements.get() && hovered;
+        boolean showArrows = wantsArrows && this.area.w >= this.minusOne.w + this.plusOne.w + 6;
+        boolean showMinusArrow = showArrows;
+        boolean showPlusArrow = showArrows;
+        boolean plus = !dragging && showPlusArrow && this.plusOne.isInside(context);
+        boolean minus = !dragging && showMinusArrow && this.minusOne.isInside(context);
 
         if (this.textbox.isFocused())
         {
@@ -687,28 +710,35 @@ public class UITrackpad extends UIBaseTextbox
                 context.batcher.box(Math.min(fx, this.initialX), this.area.y + padding, Math.max(fx, this.initialX), this.area.ey() - padding, accent);
             }
 
-            boolean showArrows = BBSSettings.enableTrackpadIncrements.get() || hovered;
-
-            /* Value label — left-aligned, clipped so it never runs under the
+            /* Value label — centered, clipped so it never runs under the
                increment buttons. */
-            FontRenderer font = context.batcher.getFont();
-            String raw = this.forcedLabel == null ? format(this.value) : this.forcedLabel.get();
-            int reserved = showArrows ? this.minusOne.w * 2 + 4 : 4;
-            String label = font.limitToWidth(raw, this.area.w - reserved - 6);
+            int textLeft = this.area.x + (showMinusArrow ? this.minusOne.w + 4 : 2);
+            int textRight = this.area.ex() - (showPlusArrow ? this.plusOne.w + 4 : 2);
+            int availableTextWidth = Math.max(1, textRight - textLeft);
+            String raw = this.forcedLabel != null ? this.forcedLabel.get() : this.formatToFit(font, this.value, availableTextWidth);
+            String label = this.truncateToWidth(font, raw, availableTextWidth);
+
+            int lx = textLeft + Math.max(0, (availableTextWidth - font.getWidth(label)) / 2);
             int ly = this.area.my() - font.getHeight() / 2;
 
-            context.batcher.text(label, this.area.x + 6, ly, this.textbox.getColor());
+            context.batcher.text(label, lx, ly, this.textbox.getColor());
 
-            /* Increment / decrement chevrons grouped on the right edge. */
-            if (showArrows)
+            /* Increment / decrement chevrons appear only on the hovered side. */
+            if (showMinusArrow)
             {
                 this.minusOne.render(context.batcher, minus ? 0x28FFFFFF : 0x10FFFFFF, padding);
-                this.plusOne.render(context.batcher, plus ? 0x28FFFFFF : 0x10FFFFFF, padding);
 
                 int mColor = minus ? Colors.WHITE : Colors.setA(Colors.WHITE, 0.5F);
-                int pColor = plus ? Colors.WHITE : Colors.setA(Colors.WHITE, 0.5F);
 
                 drawChevron(context, this.minusOne.mx(), this.minusOne.my(), true, mColor);
+            }
+
+            if (showPlusArrow)
+            {
+                this.plusOne.render(context.batcher, plus ? 0x28FFFFFF : 0x10FFFFFF, padding);
+
+                int pColor = plus ? Colors.WHITE : Colors.setA(Colors.WHITE, 0.5F);
+
                 drawChevron(context, this.plusOne.mx(), this.plusOne.my(), false, pColor);
             }
 
@@ -803,6 +833,127 @@ public class UITrackpad extends UIBaseTextbox
 
             context.batcher.box(bx, cy + i, bx + 2, cy + i + 1, color);
         }
+    }
+
+    private String formatToFit(FontRenderer font, double value, int maxWidth)
+    {
+        String raw = format(value);
+
+        if (font.getWidth(raw) <= maxWidth)
+        {
+            return raw;
+        }
+
+        String raw2 = FORMAT_2.format(value).replace(',', '.');
+
+        if (font.getWidth(raw2) <= maxWidth)
+        {
+            return raw2;
+        }
+
+        String raw1 = FORMAT_1.format(value).replace(',', '.');
+
+        if (font.getWidth(raw1) <= maxWidth)
+        {
+            return raw1;
+        }
+
+        String raw0 = FORMAT_0.format(value).replace(',', '.');
+
+        if (raw0.isEmpty())
+        {
+            raw0 = "0";
+        }
+
+        if (font.getWidth(raw0) <= maxWidth)
+        {
+            return raw0;
+        }
+
+        String compact = this.formatCompact(value);
+
+        if (!compact.isEmpty() && font.getWidth(compact) <= maxWidth)
+        {
+            return compact;
+        }
+
+        String exp2 = String.format(Locale.ENGLISH, "%.2e", value);
+
+        if (font.getWidth(exp2) <= maxWidth)
+        {
+            return exp2;
+        }
+
+        String exp1 = String.format(Locale.ENGLISH, "%.1e", value);
+
+        if (font.getWidth(exp1) <= maxWidth)
+        {
+            return exp1;
+        }
+
+        return String.format(Locale.ENGLISH, "%.0e", value);
+    }
+
+    private String truncateToWidth(FontRenderer font, String text, int maxWidth)
+    {
+        if (text == null || text.isEmpty())
+        {
+            return "";
+        }
+
+        if (maxWidth <= 0)
+        {
+            return text.substring(0, 1);
+        }
+
+        if (font.getWidth(text) <= maxWidth)
+        {
+            return text;
+        }
+
+        int end = text.length();
+
+        while (end > 1 && font.getWidth(text.substring(0, end)) > maxWidth)
+        {
+            end--;
+        }
+
+        return text.substring(0, end);
+    }
+
+    private String formatCompact(double value)
+    {
+        double abs = Math.abs(value);
+
+        if (abs < 1000D)
+        {
+            return "";
+        }
+
+        String suffix;
+        double scaled;
+
+        if (abs >= 1_000_000_000D)
+        {
+            suffix = "B";
+            scaled = value / 1_000_000_000D;
+        }
+        else if (abs >= 1_000_000D)
+        {
+            suffix = "M";
+            scaled = value / 1_000_000D;
+        }
+        else
+        {
+            suffix = "k";
+            scaled = value / 1000D;
+        }
+
+        String f2 = String.format(Locale.ENGLISH, "%.2f", scaled) + suffix;
+        String f1 = String.format(Locale.ENGLISH, "%.1f", scaled) + suffix;
+        String f0 = String.format(Locale.ENGLISH, "%.0f", scaled) + suffix;
+
+        return f2.length() <= f1.length() ? (f2.length() <= f0.length() ? f2 : f0) : (f1.length() <= f0.length() ? f1 : f0);
     }
 
     public double getValueModifier()

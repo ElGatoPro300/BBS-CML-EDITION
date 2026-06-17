@@ -70,6 +70,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.systems.VertexSorter;
 
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL13;
 
 import java.io.File;
 import java.util.Collections;
@@ -331,7 +332,9 @@ public class BBSRendering
 
             reassignFramebuffer(framebuffer);
 
-            // Framebuffer is already assigned above for this render branch.
+            mc.worldRenderer.onResized(w, h);
+
+            framebuffer.beginWrite(true);
         }
         else
         {
@@ -395,17 +398,9 @@ public class BBSRendering
             renderHudOverlays(batcher, controller.getContext(), area.w, area.h);
             VideoRenderer.renderClips(new MatrixStack(), batcher, controller.getContext().clips.getClips(controller.getContext().relativeTick), controller.getContext().relativeTick, true, area, area, null, area.w, area.h, false);
 
-            if (controller.screenClips != null)
-            {
-                Position screenDummy = new Position();
+            ScreenEffectRenderer.render(batcher, controller.getContext(), area.w, area.h);
 
-                for (Clip screenClip : controller.screenClips.getClips(controller.getContext().ticks))
-                {
-                    controller.getContext().apply(screenClip, screenDummy);
-                }
-
-                ScreenEffectRenderer.render(batcher, controller.getContext(), area.w, area.h);
-            }
+            drawContext.draw();
 
 
         }
@@ -417,6 +412,8 @@ public class BBSRendering
             Window window = mc.getWindow();
 
             renderHudOverlays(batcher, controller.getContext(), window.getScaledWidth(), window.getScaledHeight());
+
+            drawContext.draw();
         }
 
         if (!customSize)
@@ -441,16 +438,11 @@ public class BBSRendering
                 renderHudOverlays(offscreenBatcher, panel.getRunner().getContext(), fullScreen.w, fullScreen.h);
                 VideoRenderer.renderClips(new MatrixStack(), offscreenBatcher, panel.getData().camera.getClips(panel.getCursor()), panel.getCursor(), panel.getRunner().isRunning(), fullScreen, fullScreen, null, window.getScaledWidth(), window.getScaledHeight(), false);
 
-                Position screenDummy = new Position();
-
-                for (Clip screenClip : panel.getData().screen.getClips(panel.getCursor()))
-                {
-                    panel.getRunner().getContext().apply(screenClip, screenDummy);
-                }
-
                 ScreenEffectRenderer.render(offscreenBatcher, panel.getRunner().getContext(), window.getScaledWidth(), window.getScaledHeight());
 
+                drawContext.draw();
 
+                RenderSystem.setProjectionMatrix(cache, cacheType);
             }
         }
 
@@ -487,11 +479,16 @@ public class BBSRendering
 
     public static void onRenderBeforeScreen()
     {
+        int activeTexture = GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE);
+        int lastTexture = RenderSystem.getShaderTexture(0);
         Texture texture = getTexture();
 
-        texture.bind();
+        GlStateManager._activeTexture(GL13.GL_TEXTURE0);
+        GlStateManager._bindTexture(texture.id);
         texture.setSize(framebuffer.textureWidth, framebuffer.textureHeight);
         GL11.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0, framebuffer.textureWidth, framebuffer.textureHeight);
+        GlStateManager._bindTexture(lastTexture);
+        GlStateManager._activeTexture(activeTexture);
 
         toggleFramebuffer(false);
     }

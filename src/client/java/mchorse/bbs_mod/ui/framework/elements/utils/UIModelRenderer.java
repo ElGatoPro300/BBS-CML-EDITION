@@ -255,9 +255,10 @@ public abstract class UIModelRenderer extends UIElement
         MatrixStackUtils.restoreMatrices();
         context.resetMatrix();
 
-        GlStateManager._depthFunc(GL11.GL_ALWAYS);
-        GlStateManager._disableDepthTest();
-        GlStateManager._disableCull();
+        RenderSystem.depthFunc(GL11.GL_ALWAYS);
+        RenderSystem.disableDepthTest();
+        RenderSystem.disableCull();
+        RenderSystem.setShader(ShaderProgramKeys.POSITION_TEX_COLOR);
 
         this.processInputs(context);
     }

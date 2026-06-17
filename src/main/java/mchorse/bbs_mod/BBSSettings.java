@@ -31,7 +31,7 @@ public class BBSSettings
     public static ValueBoolean enableTrackpadScrolling;
     public static ValueBoolean welcomePanelAcceptedAlpha1;
     public static ValueBoolean hideSettingDescriptions;
-    public static ValueInt userIntefaceScale;
+    public static ValueFloat userIntefaceScale;
     public static ValueInt tooltipStyle;
     public static ValueFloat fov;
     public static ValueBoolean hsvColorPicker;
@@ -98,11 +98,13 @@ public class BBSSettings
     public static ValueInt editorDockGuideColor;
     public static ValueFloat editorDockGuideOpacity;
     public static ValueBoolean editorReplayStepSound;
+    public static ValueBoolean editorSimplifyAnimations;
     public static ValueBoolean editorMuteRenderAudioClips;
     public static ValueInt editorTimeMode;
     public static ValueInt editorImportMode;
     public static ValueInt editorReplayEditorTitleLimit;
     public static ValueBoolean editorAnchoredReplaysPanel;
+    public static ValueInt editorAnchoredReplaysPanelHeight;
     public static ValueBoolean editorReplayHud;
     public static ValueInt editorReplayHudPosition;
     public static ValueBoolean editorReplayHudDisplayName;
@@ -217,7 +219,7 @@ public class BBSSettings
         hideSettingDescriptions = builder.getBoolean("hide_setting_descriptions", false);
         welcomePanelAcceptedAlpha1 = builder.getBoolean("welcome_panel_accepted_alpha1", false);
         welcomePanelAcceptedAlpha1.invisible();
-        userIntefaceScale = builder.getInt("ui_scale", 2, 0, 4);
+        userIntefaceScale = builder.getFloat("ui_scale", 2F, 0F, 4F);
         tooltipStyle = builder.getInt("tooltip_style", 1);
         fov = builder.getFloat("fov", 40, 0, 180);
         hsvColorPicker = builder.getBoolean("hsv_color_picker", true);
@@ -313,10 +315,13 @@ public class BBSSettings
         editorReplaySprintParticles = builder.getBoolean("replay_sprint_particles", false);
         editorCameraPreviewPlayerSync = builder.getBoolean("camera_preview_player_sync", false);
         editorReplayStepSound = builder.getBoolean("replay_step_sound", false);
+        editorSimplifyAnimations = builder.getBoolean("simplify_animations", false);
         editorMuteRenderAudioClips = builder.getBoolean("mute_render_audio_clips", false);
         editorTimeMode = builder.getInt("time_mode", 0, 0, 2);
         editorImportMode = builder.getInt("import_mode", 0, 0, 1);
         editorAnchoredReplaysPanel = builder.getBoolean("anchored_replays_panel", true);
+        editorAnchoredReplaysPanelHeight = builder.getInt("anchored_replays_panel_height", 170, 70, 420);
+        editorAnchoredReplaysPanelHeight.invisible();
         editorReplayHud = builder.getBoolean("replay_hud", false);
         editorReplayHudPosition = builder.getInt("replay_hud_position", 0, 0, 3);
         editorReplayHudDisplayName = builder.getBoolean("replay_hud_display_name", true);

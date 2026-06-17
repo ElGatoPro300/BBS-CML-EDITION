@@ -31,6 +31,7 @@ import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.Scale;
 import mchorse.bbs_mod.ui.utils.Scroll;
 import mchorse.bbs_mod.ui.utils.ScrollDirection;
+import mchorse.bbs_mod.ui.utils.TimelineRuler;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.context.ColorfulContextAction;
@@ -73,6 +74,7 @@ public class UIClips extends UIElement
 
     private static final int MARGIN = 10;
     private static final int LAYER_HEIGHT = 20;
+    private static final int RULER_HEIGHT = 16;
 
     private static final Area CLIP_AREA = new Area();
 
@@ -230,15 +232,18 @@ public class UIClips extends UIElement
         Supplier<Boolean> canUseKeybinds = () -> this.delegate.canUseKeybinds() && !this.hasEmbeddedView();
         Supplier<Boolean> canUseKeybindsSelected = () -> this.delegate.getClip() != null && canUseKeybinds.get();
 
-        this.keys().register(Keys.KEYFRAMES_MAXIMIZE, this::resetView).category(KEYS_CATEGORY);
-        this.keys().register(Keys.DESELECT, () -> this.pickClip(null)).category(KEYS_CATEGORY).active(canUseKeybindsSelected);
-        this.keys().register(Keys.ADD_ON_TOP, this::showAddsOnTop).category(KEYS_CATEGORY).active(canUseKeybindsSelected);
-        this.keys().register(Keys.ADD_AT_CURSOR, this::showAddsAtCursor).category(KEYS_CATEGORY).active(canUseKeybinds);
-        this.keys().register(Keys.ADD_AT_TICK, this::showAddsAtTick).category(KEYS_CATEGORY).active(canUseKeybinds);
+        this.keys().register(Keys.KEYFRAMES_MAXIMIZE, this::resetView).inside().category(KEYS_CATEGORY);
+        this.keys().register(Keys.DESELECT, () -> this.pickClip(null)).inside().category(KEYS_CATEGORY).active(canUseKeybindsSelected);
+        this.keys().register(Keys.ADD_ON_TOP, this::showAddsOnTop).inside().category(KEYS_CATEGORY).active(canUseKeybindsSelected);
+        this.keys().register(Keys.ADD_AT_CURSOR, this::showAddsAtCursor).inside().category(KEYS_CATEGORY).active(canUseKeybinds);
+        this.keys().register(Keys.ADD_AT_TICK, this::showAddsAtTick).inside().category(KEYS_CATEGORY).active(canUseKeybinds);
         this.keys().register(Keys.COPY, () ->
         {
-            if (this.copyPasteController.copy()) UIUtils.playClick();
-        }).category(KEYS_CATEGORY).active(canUseKeybindsSelected);
+            if (this.copyPasteController.copy())
+            {
+                UIUtils.playClick();
+            }
+        }).inside().category(KEYS_CATEGORY).active(canUseKeybindsSelected);
         this.keys().register(Keys.CUT, () ->
         {
             if (this.delegate.getClip() == null)
@@ -253,13 +258,16 @@ public class UIClips extends UIElement
                 UIUtils.playClick();
                 this.getContext().notifyInfo(UIKeys.GENERAL_CUT);
             }
-        }).category(KEYS_CATEGORY).active(canUseKeybindsSelected);
+        }).inside().category(KEYS_CATEGORY).active(canUseKeybindsSelected);
         this.keys().register(Keys.PASTE, () ->
         {
             UIContext context = this.getContext();
 
-            if (this.copyPasteController.paste(context.mouseX, context.mouseY)) UIUtils.playClick();
-        }).category(KEYS_CATEGORY).active(canUseKeybinds);
+            if (this.copyPasteController.paste(context.mouseX, context.mouseY))
+            {
+                UIUtils.playClick();
+            }
+        }).inside().category(KEYS_CATEGORY).active(canUseKeybinds);
         this.keys().register(Keys.PRESETS, () ->
         {
             UIContext context = this.getContext();
@@ -269,14 +277,14 @@ public class UIClips extends UIElement
                 this.copyPasteController.openPresets(context, context.mouseX, context.mouseY);
                 UIUtils.playClick();
             }
-        }).category(KEYS_CATEGORY).active(canUseKeybinds);
-        this.keys().register(Keys.CLIP_CUT, this::cut).category(KEYS_CATEGORY).active(canUseKeybinds);
-        this.keys().register(Keys.CLIP_SHIFT, this::shiftToCursor).category(KEYS_CATEGORY).active(canUseKeybinds);
-        this.keys().register(Keys.CLIP_DURATION, this::shiftDurationToCursor).category(KEYS_CATEGORY).active(canUseKeybinds);
-        this.keys().register(Keys.DELETE, this::removeSelected).label(UIKeys.CAMERA_TIMELINE_CONTEXT_REMOVE_CLIPS).category(KEYS_CATEGORY).active(canUseKeybinds);
-        this.keys().register(Keys.CLIP_ENABLE, this::toggleEnabled).category(KEYS_CATEGORY).active(canUseKeybinds);
-        this.keys().register(Keys.CLIP_SELECT_AFTER, this::selectAfter).category(KEYS_CATEGORY).active(canUseKeybinds);
-        this.keys().register(Keys.CLIP_SELECT_BEFORE, this::selectBefore).category(KEYS_CATEGORY).active(canUseKeybinds);
+        }).inside().category(KEYS_CATEGORY).active(canUseKeybinds);
+        this.keys().register(Keys.CLIP_CUT, this::cut).inside().category(KEYS_CATEGORY).active(canUseKeybinds);
+        this.keys().register(Keys.CLIP_SHIFT, this::shiftToCursor).inside().category(KEYS_CATEGORY).active(canUseKeybinds);
+        this.keys().register(Keys.CLIP_DURATION, this::shiftDurationToCursor).inside().category(KEYS_CATEGORY).active(canUseKeybinds);
+        this.keys().register(Keys.DELETE, this::removeSelected).inside().label(UIKeys.CAMERA_TIMELINE_CONTEXT_REMOVE_CLIPS).category(KEYS_CATEGORY).active(canUseKeybinds);
+        this.keys().register(Keys.CLIP_ENABLE, this::toggleEnabled).inside().category(KEYS_CATEGORY).active(canUseKeybinds);
+        this.keys().register(Keys.CLIP_SELECT_AFTER, this::selectAfter).inside().category(KEYS_CATEGORY).active(canUseKeybinds);
+        this.keys().register(Keys.CLIP_SELECT_BEFORE, this::selectBefore).inside().category(KEYS_CATEGORY).active(canUseKeybinds);
         this.keys().register(Keys.FADE_IN, () ->
         {
             Clip clip = this.delegate.getClip();
@@ -284,7 +292,7 @@ public class UIClips extends UIElement
 
             clip.envelope.fadeIn.set((float) tick);
             this.delegate.fillData();
-        }).category(KEYS_CATEGORY).active(canUseKeybindsSelected);
+        }).inside().category(KEYS_CATEGORY).active(canUseKeybindsSelected);
         this.keys().register(Keys.FADE_OUT, () ->
         {
             Clip clip = this.delegate.getClip();
@@ -292,7 +300,7 @@ public class UIClips extends UIElement
 
             clip.envelope.fadeOut.set((float) tick);
             this.delegate.fillData();
-        }).category(KEYS_CATEGORY).active(canUseKeybindsSelected);
+        }).inside().category(KEYS_CATEGORY).active(canUseKeybindsSelected);
     }
 
     public UIClipRenderers getRenderers()
@@ -928,7 +936,7 @@ public class UIClips extends UIElement
     {
         int bottom = this.area.ey() - MARGIN;
 
-        if (mouseY > bottom)
+        if (mouseY < this.area.y + RULER_HEIGHT || mouseY > bottom)
         {
             return -1;
         }
@@ -1042,7 +1050,8 @@ public class UIClips extends UIElement
         super.afterResizeApplied();
 
         this.vertical.area.copy(this.area);
-        this.vertical.area.h -= MARGIN;
+        this.vertical.area.y += RULER_HEIGHT;
+        this.vertical.area.h -= RULER_HEIGHT + MARGIN;
     }
 
     public void updateScrollSize()
@@ -1134,8 +1143,7 @@ public class UIClips extends UIElement
 
                 if (BBSSettings.editorSnapToMarkers.get())
                 {
-                    /* TODO: generalize this code. Check also other places getMult() */
-                    int mult = this.scale.getMult() * 2;
+                    int mult = TimelineRuler.steps(this.scale).minor;
                     int start = (int) this.scale.getMinValue();
                     int end = (int) this.scale.getMaxValue();
                     int max = Integer.MAX_VALUE;
@@ -1625,28 +1633,26 @@ public class UIClips extends UIElement
         int h = LAYER_HEIGHT;
         int leftEdge = this.toGraphX(0);
 
+        this.renderTimelineBackground(context, leftEdge, h);
+
         if (leftEdge > this.area.x)
         {
-            batcher.box(this.area.x, this.area.y, Math.min(leftEdge, this.area.ex()), this.area.ey(), Colors.A75);
+            batcher.box(this.area.x, this.area.y, Math.min(leftEdge, this.area.ex()), this.area.ey(), 0x9905070b);
         }
 
-        area.render(batcher, Colors.A50);
+        batcher.clip(this.area, context);
+
+        this.renderTickMarkers(context, area.y, area.h);
+
+        batcher.unclip(context);
         batcher.clip(this.vertical.area, context);
 
         for (int i = 0; i < this.layers; i++)
         {
             int ly = this.toLayerY(i);
 
-            if (i % 2 != 0)
-            {
-                batcher.box(leftEdge, ly, this.area.ex(), ly + h, Colors.A50);
-            }
+            batcher.box(this.area.x, ly + h - 1, this.area.ex(), ly + h, 0x16000000);
         }
-
-        batcher.unclip(context);
-        batcher.clip(this.area, context);
-
-        this.renderTickMarkers(context, area.y, area.h);
 
         batcher.unclip(context);
         batcher.clip(this.vertical.area, context);
@@ -1697,6 +1703,29 @@ public class UIClips extends UIElement
         batcher.clip(this.vertical.area, context);
 
         this.vertical.renderScrollbar(batcher);
+
+        batcher.unclip(context);
+    }
+
+    private void renderTimelineBackground(UIContext context, int leftEdge, int h)
+    {
+        Batcher2D batcher = context.batcher;
+
+        batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xee0b0d12);
+        batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.y + RULER_HEIGHT, 0xff111115);
+        batcher.box(this.area.x, this.area.y + RULER_HEIGHT - 1, this.area.ex(), this.area.y + RULER_HEIGHT, 0x44ffffff);
+
+        batcher.clip(this.vertical.area, context);
+
+        for (int i = 0; i < this.layers; i++)
+        {
+            int ly = this.toLayerY(i);
+
+            if (i % 2 != 0)
+            {
+                batcher.box(Math.max(leftEdge, this.area.x), ly, this.area.ex(), ly + h, 0x26000000);
+            }
+        }
 
         batcher.unclip(context);
     }
@@ -1759,10 +1788,12 @@ public class UIClips extends UIElement
      */
     private void renderTickMarkers(UIContext context, int y, int h)
     {
-        int mult = this.scale.getMult() * 2;
+        TimelineRuler.Step step = TimelineRuler.steps(this.scale);
+        int mult = step.minor;
         int start = (int) this.scale.getMinValue();
         int end = (int) this.scale.getMaxValue();
         int max = Integer.MAX_VALUE;
+        int major = step.major;
 
         start -= start % mult;
         end -= end % mult;
@@ -1773,10 +1804,20 @@ public class UIClips extends UIElement
         for (int j = start; j <= end; j += mult)
         {
             int xx = this.toGraphX(j);
-            String value = TimeUtils.formatTime(j);
+            boolean majorTick = j % major == 0;
+            int lineColor = majorTick ? 0x44ffffff : 0x18ffffff;
+            int tickBottom = this.area.y + RULER_HEIGHT;
+            int tickHeight = majorTick ? 8 : 4;
 
-            context.batcher.box(xx, y, xx + 1, y + h, Colors.setA(Colors.WHITE, 0.2F));
-            context.batcher.textShadow(value, xx + 3, this.area.y + 4, Colors.WHITE);
+            context.batcher.box(xx, y, xx + 1, y + h, lineColor);
+            context.batcher.box(xx, tickBottom - tickHeight, xx + 1, tickBottom, majorTick ? 0xddffffff : 0x77ffffff);
+
+            if (majorTick)
+            {
+                String value = TimeUtils.formatTime(j);
+
+                context.batcher.textShadow(value, xx + 4, this.area.y + 2, Colors.WHITE);
+            }
         }
     }
 
@@ -1919,7 +1960,16 @@ public class UIClips extends UIElement
 
             List<Link> cameraGroup = List.of(Link.bbs("idle"), Link.bbs("path"), Link.bbs("keyframe"), Link.bbs("dolly"));
             List<Link> resourceGroup = List.of(Link.bbs("curve"), Link.bbs("audio"), Link.bbs("video"), Link.bbs("shake"), Link.bbs("translate"), Link.bbs("angle"));
-            List<Link> screenGroup = List.of(Link.bbs("subtitle"), Link.bbs("hotbar"));
+            List<Link> screenGroup = List.of(
+                Link.bbs("subtitle"),
+                Link.bbs("hotbar"),
+                Link.bbs("color"),
+                Link.bbs("cinematic"),
+                Link.bbs("vignette"),
+                Link.bbs("letterbox"),
+                Link.bbs("grain"),
+                Link.bbs("screen_node")
+            );
             List<Link> anchorGroup = List.of(Link.bbs("look"), Link.bbs("orbit"), Link.bbs("tracker"));
 
             List<Link> allKeys = new ArrayList<>(uiClips.factory.getKeys());

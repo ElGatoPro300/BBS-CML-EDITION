@@ -23,6 +23,7 @@ import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UISearchList;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UIStringList;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIConfirmOverlayPanel;
+import mchorse.bbs_mod.ui.framework.elements.overlay.UICreateAssetOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UISoundOverlayPanel;
@@ -392,13 +393,10 @@ public class UIHomePanel extends UIDashboardPanel
     @SuppressWarnings("unchecked")
     private void createNewAsset(ContentType type)
     {
-        UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
-            UIKeys.GENERAL_ADD,
-            UIKeys.PANELS_MODALS_ADD,
+        UICreateAssetOverlayPanel panel = new UICreateAssetOverlayPanel(
+            type,
             (name) ->
             {
-                if (name.trim().isEmpty()) return;
-
                 IRepository<ValueGroup> repository = (IRepository<ValueGroup>) type.getRepository();
                 ValueGroup created = repository.create(name);
 
@@ -411,8 +409,7 @@ public class UIHomePanel extends UIDashboardPanel
             }
         );
 
-        panel.text.filename();
-        UIOverlay.addOverlay(this.getContext(), panel);
+        UIOverlay.addOverlay(this.getContext(), panel, 260, 160);
     }
 
     private void duplicateSelected()

@@ -363,8 +363,9 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             stack.pop();
             stack.pop();
 
-            
-            GlStateManager._depthFunc(GL11.GL_ALWAYS);
+            DiffuseLighting.disableGuiDepthLighting();
+            RenderSystem.depthFunc(GL11.GL_ALWAYS);
+            RenderSystem.setShader(ShaderProgramKeys.POSITION_TEX_COLOR);
         }
     }
 
