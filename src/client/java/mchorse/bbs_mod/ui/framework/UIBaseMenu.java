@@ -52,10 +52,10 @@ public abstract class UIBaseMenu
             @Override
             public void render(UIContext context)
             {
-                context.batcher.getContext().getMatrices().push();
-                context.batcher.getContext().getMatrices().translate(0F, 0F, 150F);
+                context.batcher.getContext().getMatrices().pushMatrix();
+                context.batcher.getContext().getMatrices().translate(0F, 0F);
                 super.render(context);
-                context.batcher.getContext().getMatrices().pop();
+                context.batcher.getContext().getMatrices().popMatrix();
             }
         };
         this.overlay.full(this.viewport);

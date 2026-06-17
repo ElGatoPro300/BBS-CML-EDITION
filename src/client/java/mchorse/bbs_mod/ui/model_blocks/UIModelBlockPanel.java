@@ -203,7 +203,7 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         this.keyDude.keys().register(Keys.MODEL_BLOCKS_MOVE_TO, () -> {
             MinecraftClient mc = MinecraftClient.getInstance();
             Camera camera = mc.gameRenderer.getCamera();
-            BlockHitResult blockHitResult = RayTracing.rayTrace(mc.world, camera.getPos(),
+            BlockHitResult blockHitResult = RayTracing.rayTrace(mc.world, camera.getCameraPos(),
                     RayTracing.fromVector3f(this.mouseDirection), 512F);
 
             if (blockHitResult.getType() != HitResult.Type.MISS) {
@@ -2006,14 +2006,14 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
             BlockPos blockPos = entity.getPos();
 
             if (!this.isEditing(entity)) {
-                context.matrixStack().push();
-                context.matrixStack().translate(blockPos.getX() - pos.x, blockPos.getY() - pos.y,
+                context.matrices().push();
+                context.matrices().translate(blockPos.getX() - pos.x, blockPos.getY() - pos.y,
                         blockPos.getZ() - pos.z);
 
                 if (this.hovered == entity || entity == this.modelBlock) {
-                    Draw.renderBox(context.matrixStack(), 0D, 0D, 0D, 1D, 1D, 1D, 0, 0.5F, 1F);
+                    Draw.renderBox(context.matrices(), 0D, 0D, 0D, 1D, 1D, 1D, 0, 0.5F, 1F);
                 } else {
-                    Draw.renderBox(context.matrixStack(), 0D, 0D, 0D, 1D, 1D, 1D);
+                    Draw.renderBox(context.matrices(), 0D, 0D, 0D, 1D, 1D, 1D);
                 }
 
                 context.matrices().pop();

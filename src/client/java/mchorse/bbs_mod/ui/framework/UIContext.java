@@ -280,13 +280,13 @@ public class UIContext implements IViewportStack
 
         this.batcher.flush();
 
-        this.batcher.getContext().getMatrices().push();
-        this.batcher.getContext().getMatrices().translate(0F, 0F, 300F);
+        this.batcher.getContext().getMatrices().pushMatrix();
+        this.batcher.getContext().getMatrices().translate(0F, 0F);
 
         this.tooltip.render(this);
         this.notifications.render(this);
 
-        this.batcher.getContext().getMatrices().pop();
+        this.batcher.getContext().getMatrices().popMatrix();
     }
 
     /* Element focusing */

@@ -16,7 +16,6 @@ import mchorse.bbs_mod.utils.pose.Transform;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.GlUniform;
 import net.minecraft.client.gl.ShaderProgram;
-import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.util.math.MatrixStack;
 
 import org.joml.Matrix4f;
@@ -166,11 +165,9 @@ public class UISubtitleRenderer
             stack.pop();
         }
 
-        RenderSystem.setProjectionMatrix(cache, ProjectionType.ORTHOGRAPHIC);
-        RenderSystem.enableCull();
-        RenderSystem.depthFunc(GL11.GL_LEQUAL);
-        RenderSystem.defaultBlendFunc();
-        RenderSystem.setShader(ShaderProgramKeys.POSITION_TEX_COLOR);
+        GlStateManager._enableCull();
+        GlStateManager._depthFunc(GL11.GL_LEQUAL);
+        GlStateManager._blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
     }
 
     public static void renderSubtitle(MatrixStack stack, Batcher2D batcher, Subtitle subtitle)

@@ -333,8 +333,6 @@ public class BBSRendering
             reassignFramebuffer(framebuffer);
 
             mc.worldRenderer.onResized(w, h);
-
-            framebuffer.beginWrite(true);
         }
         else
         {
@@ -399,10 +397,6 @@ public class BBSRendering
             VideoRenderer.renderClips(new MatrixStack(), batcher, controller.getContext().clips.getClips(controller.getContext().relativeTick), controller.getContext().relativeTick, true, area, area, null, area.w, area.h, false);
 
             ScreenEffectRenderer.render(batcher, controller.getContext(), area.w, area.h);
-
-            drawContext.draw();
-
-
         }
 
         if (BBSModClient.getVideoRecorder().isRecording() && BBSModClient.getCameraController().getCurrent() instanceof CameraWorkCameraController controller)
@@ -412,8 +406,6 @@ public class BBSRendering
             Window window = mc.getWindow();
 
             renderHudOverlays(batcher, controller.getContext(), window.getScaledWidth(), window.getScaledHeight());
-
-            drawContext.draw();
         }
 
         if (!customSize)
@@ -439,10 +431,6 @@ public class BBSRendering
                 VideoRenderer.renderClips(new MatrixStack(), offscreenBatcher, panel.getData().camera.getClips(panel.getCursor()), panel.getCursor(), panel.getRunner().isRunning(), fullScreen, fullScreen, null, window.getScaledWidth(), window.getScaledHeight(), false);
 
                 ScreenEffectRenderer.render(offscreenBatcher, panel.getRunner().getContext(), window.getScaledWidth(), window.getScaledHeight());
-
-                drawContext.draw();
-
-                RenderSystem.setProjectionMatrix(cache, cacheType);
             }
         }
 
@@ -480,10 +468,10 @@ public class BBSRendering
     public static void onRenderBeforeScreen()
     {
         int activeTexture = GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE);
-        int lastTexture = RenderSystem.getShaderTexture(0);
+        GlStateManager._activeTexture(GL13.GL_TEXTURE0);
+        int lastTexture = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
         Texture texture = getTexture();
 
-        GlStateManager._activeTexture(GL13.GL_TEXTURE0);
         GlStateManager._bindTexture(texture.id);
         texture.setSize(framebuffer.textureWidth, framebuffer.textureHeight);
         GL11.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0, framebuffer.textureWidth, framebuffer.textureHeight);
