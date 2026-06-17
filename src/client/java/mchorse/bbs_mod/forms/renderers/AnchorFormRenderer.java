@@ -16,7 +16,6 @@ import net.minecraft.util.math.RotationAxis;
 
 import org.joml.Matrix4f;
 
-import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 
 import org.lwjgl.opengl.GL11;
@@ -48,10 +47,10 @@ public class AnchorFormRenderer extends FormRenderer<AnchorForm>
         }
         else
         {
-            MatrixStack stack = new MatrixStack();
+            MatrixStack stack = context.batcher.getContext().getMatrices();
             Matrix4f uiMatrix = ModelFormRenderer.getUIMatrix(context, x1, y1, x2, y2);
 
-            GlStateManager._depthFunc(GL11.GL_LEQUAL);
+            RenderSystem.depthFunc(GL11.GL_LEQUAL);
             stack.push();
 
             this.applyTransforms(uiMatrix, context.getTransition());
@@ -66,7 +65,7 @@ public class AnchorFormRenderer extends FormRenderer<AnchorForm>
                 .inUI());
 
             stack.pop();
-            GlStateManager._depthFunc(GL11.GL_ALWAYS);
+            RenderSystem.depthFunc(GL11.GL_ALWAYS);
         }
     }
 }

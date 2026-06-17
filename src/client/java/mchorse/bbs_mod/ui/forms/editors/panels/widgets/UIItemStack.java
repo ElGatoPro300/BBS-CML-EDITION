@@ -22,7 +22,6 @@ import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemStack;
 
-import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 
 import org.lwjgl.opengl.GL11;
@@ -216,17 +215,17 @@ public class UIItemStack extends UIElement
 
         if (this.stack != null && !this.stack.isEmpty())
         {
-            MatrixStack matrices = new MatrixStack();
+            MatrixStack matrices = context.batcher.getContext().getMatrices();
             CustomVertexConsumerProvider consumers = FormUtilsClient.getProvider();
 
             matrices.push();
-            GlStateManager._disableDepthTest();
+            RenderSystem.disableDepthTest();
             consumers.setUI(true);
             context.batcher.getContext().drawItem(this.stack, stackCenterX - 8, this.area.my() - 8);
             context.batcher.getContext().drawStackOverlay(context.batcher.getFont().getRenderer(), this.stack, stackCenterX - 8, this.area.my() - 8);
             consumers.setUI(false);
-            GlStateManager._enableDepthTest();
-            GlStateManager._depthFunc(GL11.GL_ALWAYS);
+            RenderSystem.enableDepthTest();
+            RenderSystem.depthFunc(GL11.GL_ALWAYS);
             matrices.pop();
         }
 

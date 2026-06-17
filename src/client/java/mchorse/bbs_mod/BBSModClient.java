@@ -101,7 +101,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.BlockEntityRendererRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
-import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
 import net.fabricmc.fabric.api.event.player.AttackBlockCallback;
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
 import net.fabricmc.fabric.api.resource.SimpleSynchronousResourceReloadListener;
@@ -112,12 +112,14 @@ import net.fabricmc.loader.api.metadata.ModMetadata;
 import net.fabricmc.loader.api.metadata.Person;
 
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.render.BufferBuilder;
+import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
-import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.render.Tessellator;
+import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.render.block.entity.BlockEntityRendererFactories;
 import net.minecraft.client.render.item.model.special.SpecialModelTypes;
@@ -137,9 +139,7 @@ import net.minecraft.util.Identifier;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fStack;
 
-import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.VertexFormat;
 import com.mojang.serialization.MapCodec;
 
 import org.lwjgl.glfw.GLFW;
@@ -171,7 +171,6 @@ public class BBSModClient implements ClientModInitializer
     private static ScreenshotRecorder screenshotRecorder;
     private static VideoRecorder videoRecorder;
     private static EntitySelectors selectors;
-    private static final KeyBinding.Category MAIN_KEY_CATEGORY = KeyBinding.Category.create(Identifier.of(BBSMod.MOD_ID, "main"));
 
     private static ParticleManager particles;
 
@@ -566,7 +565,7 @@ public class BBSModClient implements ClientModInitializer
 
                 if (d > 0)
                 {
-                    MatrixStack stack = context.matrices();
+                    MatrixStack stack = context.matrixStack();
                     Color color = Colors.COLOR.set(BBSRendering.getChromaSkyColor());
 
                     stack.push();
@@ -577,7 +576,7 @@ public class BBSModClient implements ClientModInitializer
                     peek.getNormalMatrix().identity();
                     stack.translate(0F, 0F, -d);
 
-                    GlStateManager._enableDepthTest();
+                    RenderSystem.enableDepthTest();
                     BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
 
                     float fov = MinecraftClient.getInstance().options.getFov().getValue();
@@ -591,26 +590,32 @@ public class BBSModClient implements ClientModInitializer
                         color.r, color.g, color.b, 1F
                     );
 
-                    // RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
+                    RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
 
                     Matrix4fStack mvStack = RenderSystem.getModelViewStack();
                     mvStack.pushMatrix();
                     mvStack.identity();
                     MatrixStackUtils.applyModelViewMatrix();
 
-                    RenderLayers.debugFilledBox().draw(builder.end());
+                    BufferRenderer.drawWithGlobalProgram(builder.end());
 
                     mvStack.popMatrix();
                     MatrixStackUtils.applyModelViewMatrix();
 
-                    GlStateManager._disableDepthTest();
+                    RenderSystem.disableDepthTest();
 
                     stack.pop();
                 }
             }
         });
 
-        // LAST was removed from newer world render events; frame capture is handled elsewhere.
+        WorldRenderEvents.LAST.register((context) ->
+        {
+            if (videoRecorder.isRecording() && BBSRendering.canRender)
+            {
+                videoRecorder.recordFrame();
+            }
+        });
 
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) ->
         {
@@ -719,11 +724,11 @@ public class BBSModClient implements ClientModInitializer
 
         HudRenderCallback.EVENT.register((drawContext, tickCounter) ->
         {
-            BBSRendering.renderHud(drawContext, tickCounter.getTickProgress(false));
+            BBSRendering.renderHud(drawContext, tickCounter.getTickDelta(false));
 
             if (gunZoom != null)
             {
-                gunZoom.update(keyZoom.isPressed(), tickCounter.getDynamicDeltaTicks());
+                gunZoom.update(keyZoom.isPressed(), tickCounter.getLastFrameDuration());
 
                 if (gunZoom.canBeRemoved())
                 {
@@ -805,6 +810,8 @@ public class BBSModClient implements ClientModInitializer
         EntityRendererRegistry.register(BBSMod.GUN_PROJECTILE_ENTITY, (ctx) -> new GunProjectileEntityRenderer(ctx));
 
         /* Block entity renderers */
+        BlockEntityRendererFactories.register(BBSMod.MODEL_BLOCK_ENTITY, ModelBlockEntityRenderer::new);
+        BlockEntityRendererFactories.register(BBSMod.TRIGGER_BLOCK_ENTITY, TriggerBlockEntityRenderer::new);
 
         SpecialModelTypes.ID_MAPPER.put(Identifier.of(BBSMod.MOD_ID, "gun"), GunItemRenderer.Unbaked.CODEC);
         SpecialModelTypes.ID_MAPPER.put(Identifier.of(BBSMod.MOD_ID, "model_block"), ModelBlockItemRenderer.Unbaked.CODEC);
@@ -830,7 +837,7 @@ public class BBSModClient implements ClientModInitializer
             "key." + BBSMod.MOD_ID + "." + id,
             InputUtil.Type.KEYSYM,
             key,
-            MAIN_KEY_CATEGORY
+            "category." + BBSMod.MOD_ID + ".main"
         ));
     }
 
@@ -840,7 +847,7 @@ public class BBSModClient implements ClientModInitializer
             "key." + BBSMod.MOD_ID + "." + id,
             InputUtil.Type.MOUSE,
             button,
-            MAIN_KEY_CATEGORY
+            "category." + BBSMod.MOD_ID + ".main"
         ));
     }
 
