@@ -47,7 +47,7 @@ public class GunItem extends Item
             return ActionResult.SUCCESS;
         }
 
-        if (!world.isClient)
+        if (!world.isClient())
         {
             /* Shoot projectiles */
             int projectiles = Math.max(properties.projectiles, 1);
@@ -69,9 +69,9 @@ public class GunItem extends Item
 
             if (!properties.cmdFiring.isEmpty())
             {
-                if (owner.getServer() != null && world instanceof ServerWorld serverWorld)
+                if (world.getServer() != null && world instanceof ServerWorld serverWorld)
                 {
-                    owner.getServer().getCommandManager().executeWithPrefix(owner.getCommandSource(serverWorld), properties.cmdFiring);
+                    world.getServer().getCommandManager().parseAndExecute(owner.getCommandSource(serverWorld), properties.cmdFiring);
                 }
             }
         }
