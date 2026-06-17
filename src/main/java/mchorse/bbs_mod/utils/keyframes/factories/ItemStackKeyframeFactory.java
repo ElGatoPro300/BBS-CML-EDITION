@@ -67,6 +67,33 @@ public class ItemStackKeyframeFactory implements IKeyframeFactory<ItemStack>
     @Override
     public ItemStack interpolate(ItemStack preA, ItemStack a, ItemStack b, ItemStack postB, IInterp interpolation, float x)
     {
-        return a;
+        if (a == null || b == null)
+        {
+            return a == null ? ItemStack.EMPTY : a;
+        }
+
+        if (a.isEmpty() || b.isEmpty())
+        {
+            return x < 1F ? a : b;
+        }
+
+        if (!ItemStack.canCombine(a, b))
+        {
+            return x < 1F ? a : b;
+        }
+
+        int aCount = a.getCount();
+        int bCount = b.getCount();
+        int count = (int) Math.round(interpolation.interpolate(aCount, bCount, x));
+
+        if (count < 0)
+        {
+            count = 0;
+        }
+
+        ItemStack copy = a.copy();
+        copy.setCount(count);
+
+        return copy;
     }
 }
