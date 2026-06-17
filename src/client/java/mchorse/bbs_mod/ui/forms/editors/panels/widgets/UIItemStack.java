@@ -222,7 +222,7 @@ public class UIItemStack extends UIElement
             RenderSystem.disableDepthTest();
             consumers.setUI(true);
             context.batcher.getContext().drawItem(this.stack, stackCenterX - 8, this.area.my() - 8);
-            context.batcher.getContext().drawStackOverlay(context.batcher.getFont().getRenderer(), this.stack, stackCenterX - 8, this.area.my() - 8);
+            context.batcher.getContext().drawItemInSlot(context.batcher.getFont().getRenderer(), this.stack, stackCenterX - 8, this.area.my() - 8);
             consumers.setUI(false);
             RenderSystem.enableDepthTest();
             RenderSystem.depthFunc(GL11.GL_ALWAYS);
