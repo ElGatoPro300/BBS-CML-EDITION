@@ -33,6 +33,7 @@ public class TextureProcessor
             catch (Exception e)
             {
                 e.printStackTrace();
+                images.add(null);
             }
         }
 
@@ -41,6 +42,12 @@ public class TextureProcessor
         for (int i = 0; i < multi.children.size(); i++)
         {
             Pixels pixels = images.get(i);
+
+            if (pixels == null)
+            {
+                continue;
+            }
+
             FilteredLink filter = multi.children.get(i);
             int iw = pixels.width;
             int ih = pixels.height;
