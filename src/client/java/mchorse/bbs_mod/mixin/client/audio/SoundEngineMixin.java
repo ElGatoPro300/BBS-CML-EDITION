@@ -1,21 +1,24 @@
 package mchorse.bbs_mod.mixin.client.audio;
 
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import mchorse.bbs_mod.utils.LoopbackAudioController;
+
 import com.mojang.blaze3d.audio.DeviceList;
 import com.mojang.blaze3d.audio.Library;
-import mchorse.bbs_mod.utils.LoopbackAudioController;
+
 import org.lwjgl.openal.ALC10;
 import org.lwjgl.openal.SOFTLoopback;
 import org.lwjgl.system.MemoryStack;
+
+import java.nio.IntBuffer;
+
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-
-import java.nio.IntBuffer;
 
 @Mixin(Library.class)
 public class SoundEngineMixin

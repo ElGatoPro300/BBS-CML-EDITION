@@ -1,10 +1,8 @@
 package mchorse.bbs_mod.client.renderer.item;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSModClient;
+import mchorse.bbs_mod.client.renderer.item.GunItemRenderer;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.entities.StubEntity;
@@ -16,19 +14,25 @@ import mchorse.bbs_mod.ui.framework.UIScreen;
 import mchorse.bbs_mod.ui.model_blocks.UIModelBlockEditorMenu;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.pose.Transform;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.special.SpecialModelRenderer;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
-import com.mojang.serialization.MapCodec;
+
 import org.joml.Vector3f;
+import org.joml.Vector3fc;
+
+import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.serialization.MapCodec;
 
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.function.Consumer;
-import org.joml.Vector3fc;
 
 public class GunItemRenderer implements SpecialModelRenderer<ItemStack>
 {
@@ -142,7 +146,7 @@ public class GunItemRenderer implements SpecialModelRenderer<ItemStack>
 
     public static class Unbaked implements SpecialModelRenderer.Unbaked<ItemStack>
     {
-        public static final MapCodec<mchorse.bbs_mod.client.renderer.item.GunItemRenderer.Unbaked> CODEC = MapCodec.unit(new mchorse.bbs_mod.client.renderer.item.GunItemRenderer.Unbaked());
+        public static final MapCodec<GunItemRenderer.Unbaked> CODEC = MapCodec.unit(new GunItemRenderer.Unbaked());
 
         @Override
         public MapCodec<? extends SpecialModelRenderer.Unbaked<ItemStack>> type()

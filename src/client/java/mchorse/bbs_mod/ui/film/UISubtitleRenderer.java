@@ -1,10 +1,5 @@
 package mchorse.bbs_mod.ui.film;
 
-import com.mojang.blaze3d.opengl.GlProgram;
-import com.mojang.blaze3d.opengl.GlStateManager;
-import com.mojang.blaze3d.opengl.Uniform;
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.PoseStack;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.camera.clips.misc.Subtitle;
 import mchorse.bbs_mod.client.BBSShaders;
@@ -17,8 +12,18 @@ import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.StringUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.pose.Transform;
+
 import net.minecraft.client.Minecraft;
+
 import org.joml.Matrix4f;
+
+import com.mojang.blaze3d.opengl.GlProgram;
+import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.opengl.Uniform;
+import com.mojang.blaze3d.pipeline.RenderTarget;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.PoseStack;
+
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL30;
@@ -57,7 +62,7 @@ public class UISubtitleRenderer
         Uniform textureSize = program.getUniform("TextureSize");
         Supplier<GlProgram> supplier = () -> program;
 
-        com.mojang.blaze3d.pipeline.RenderTarget fb = Minecraft.getInstance().getMainRenderTarget();
+        RenderTarget fb = Minecraft.getInstance().getMainRenderTarget();
         int width = fb.width;
         int height = fb.height;
 

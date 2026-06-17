@@ -2,6 +2,7 @@ package mchorse.bbs_mod.l10n.keys;
 
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.resources.Link;
+
 import java.util.Collection;
 
 /**

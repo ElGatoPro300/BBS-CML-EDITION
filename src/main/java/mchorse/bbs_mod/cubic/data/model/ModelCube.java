@@ -5,6 +5,7 @@ import mchorse.bbs_mod.data.IMapSerializable;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.utils.Quad;
+
 import org.joml.Vector2f;
 import org.joml.Vector3f;
 

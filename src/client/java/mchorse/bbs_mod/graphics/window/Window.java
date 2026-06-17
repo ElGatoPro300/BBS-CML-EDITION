@@ -4,10 +4,15 @@ import mchorse.bbs_mod.data.DataToString;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
+
 import net.minecraft.client.Minecraft;
+
+import com.mojang.blaze3d.platform.InputConstants;
+import com.mojang.blaze3d.platform.Window;
+
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.system.MemoryUtil;
-import com.mojang.blaze3d.platform.InputConstants;
+
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 
@@ -16,7 +21,7 @@ public class Window
     private static int verticalScroll;
     private static long lastScroll;
 
-    public static com.mojang.blaze3d.platform.Window getWindow()
+    public static Window getWindow()
     {
         return Minecraft.getInstance().getWindow();
     }

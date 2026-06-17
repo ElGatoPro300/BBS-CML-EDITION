@@ -1,20 +1,23 @@
 package mchorse.bbs_mod.integration;
 
-import com.mojang.serialization.MapCodec;
-import dev.lambdaurora.lambdynlights.api.DynamicLightsContext;
-import dev.lambdaurora.lambdynlights.api.DynamicLightsInitializer;
-import dev.lambdaurora.lambdynlights.api.entity.luminance.EntityLuminance;
-import dev.lambdaurora.lambdynlights.api.item.ItemLightSourceManager;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.entity.ActorEntity;
 import mchorse.bbs_mod.entity.GunProjectileEntity;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.forms.LightForm;
 import mchorse.bbs_mod.morphing.Morph;
+
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.player.Player;
+
+import com.mojang.serialization.MapCodec;
+
+import dev.lambdaurora.lambdynlights.api.DynamicLightsContext;
+import dev.lambdaurora.lambdynlights.api.DynamicLightsInitializer;
+import dev.lambdaurora.lambdynlights.api.entity.luminance.EntityLuminance;
+import dev.lambdaurora.lambdynlights.api.item.ItemLightSourceManager;
 
 public class LambDynLightsIntegration implements DynamicLightsInitializer
 {

@@ -1,13 +1,5 @@
 package mchorse.bbs_mod.ui.film.controller;
 
-import com.mojang.blaze3d.opengl.GlProgram;
-import com.mojang.blaze3d.opengl.GlStateManager;
-import com.mojang.blaze3d.opengl.Uniform;
-import com.mojang.blaze3d.platform.InputConstants;
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.PoseStack;
-import io.netty.util.collection.IntObjectHashMap;
-import io.netty.util.collection.IntObjectMap;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.actions.ActionState;
@@ -15,6 +7,7 @@ import mchorse.bbs_mod.camera.Camera;
 import mchorse.bbs_mod.camera.controller.RunnerCameraController;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.client.BBSShaders;
+import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.film.BaseFilmController;
 import mchorse.bbs_mod.film.Film;
@@ -28,7 +21,6 @@ import mchorse.bbs_mod.forms.entities.MCEntity;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.forms.ModelForm;
 import mchorse.bbs_mod.forms.renderers.ModelFormRenderer;
-import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.l10n.keys.IKey;
@@ -66,7 +58,9 @@ import mchorse.bbs_mod.utils.RayTracing;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.joml.Matrices;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
+
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.MouseHandler;
 import net.minecraft.client.Options;
@@ -74,12 +68,22 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.HitResult;
-import org.joml.Matrix4fStack;
+
 import org.joml.Matrix3f;
+import org.joml.Matrix4fStack;
 import org.joml.Vector2f;
 import org.joml.Vector2i;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
+
+import com.mojang.blaze3d.opengl.GlProgram;
+import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.opengl.Uniform;
+import com.mojang.blaze3d.platform.InputConstants;
+import com.mojang.blaze3d.platform.Window;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.PoseStack;
+
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.opengl.GL11;
 
@@ -88,6 +92,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
+
+import io.netty.util.collection.IntObjectHashMap;
+import io.netty.util.collection.IntObjectMap;
 
 public class UIFilmController extends UIElement
 {
@@ -236,7 +243,7 @@ public class UIFilmController extends UIElement
 
     private void toggleMousePointer(boolean disable)
     {
-        com.mojang.blaze3d.platform.Window window = Minecraft.getInstance().getWindow();
+        Window window = Minecraft.getInstance().getWindow();
 
         if (disable)
         {

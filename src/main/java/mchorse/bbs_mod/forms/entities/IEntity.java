@@ -2,6 +2,7 @@ package mchorse.bbs_mod.forms.entities;
 
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.utils.AABB;
+
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.WalkAnimationState;

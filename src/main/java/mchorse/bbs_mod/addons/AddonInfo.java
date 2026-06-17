@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.addons;
 
 import mchorse.bbs_mod.resources.Link;
+
 import java.util.List;
 
 public class AddonInfo

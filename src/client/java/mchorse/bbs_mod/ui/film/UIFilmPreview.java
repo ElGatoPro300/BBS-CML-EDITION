@@ -1,10 +1,6 @@
 package mchorse.bbs_mod.ui.film;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.math.Axis;
 import mchorse.bbs_mod.BBSModClient;
-import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.audio.AudioRenderer;
 import mchorse.bbs_mod.camera.Camera;
@@ -40,15 +36,23 @@ import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.keys.KeyCodes;
 import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.FFMpegUtils;
+import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.ScreenshotRecorder;
 import mchorse.bbs_mod.utils.StringUtils;
 import mchorse.bbs_mod.utils.clips.Clip;
 import mchorse.bbs_mod.utils.clips.Clips;
 import mchorse.bbs_mod.utils.colors.Colors;
-import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.joml.Vectors;
+
+import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
+
+import org.joml.Matrix4fStack;
 import org.joml.Vector2i;
+
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -446,8 +450,8 @@ public class UIFilmPreview extends UIElement
 
     private void renderCursor(UIContext context)
     {
-        net.minecraft.client.Camera mcCamera = Minecraft.getInstance().gameRenderer.getMainCamera();
-        org.joml.Matrix4fStack stack = RenderSystem.getModelViewStack();
+        Camera mcCamera = Minecraft.getInstance().gameRenderer.getMainCamera();
+        Matrix4fStack stack = RenderSystem.getModelViewStack();
 
         stack.pushMatrix();
 

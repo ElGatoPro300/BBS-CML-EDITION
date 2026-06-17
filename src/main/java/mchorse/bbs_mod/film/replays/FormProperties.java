@@ -5,6 +5,7 @@ import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.forms.ModelForm;
+import mchorse.bbs_mod.forms.forms.utils.StructureLightSettings;
 import mchorse.bbs_mod.settings.values.base.BaseKeyframeFactoryValue;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.settings.values.base.BaseValueBasic;
@@ -24,6 +25,7 @@ import mchorse.bbs_mod.utils.pose.Transform;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.TreeSet;
 
 public class FormProperties extends ValueGroup
 {
@@ -313,8 +315,8 @@ public class FormProperties extends ValueGroup
             {
                 KeyframeChannel<?> mergedAny = this.properties.get("structure_light");
                 @SuppressWarnings("unchecked")
-                KeyframeChannel<mchorse.bbs_mod.forms.forms.utils.StructureLightSettings> merged = mergedAny != null
-                    ? (KeyframeChannel<mchorse.bbs_mod.forms.forms.utils.StructureLightSettings>) mergedAny
+                KeyframeChannel<StructureLightSettings> merged = mergedAny != null
+                    ? (KeyframeChannel<StructureLightSettings>) mergedAny
                     : new KeyframeChannel<>("structure_light", KeyframeFactories.STRUCTURE_LIGHT_SETTINGS);
 
                 if (mergedAny == null)
@@ -323,7 +325,7 @@ public class FormProperties extends ValueGroup
                     this.add(merged);
                 }
 
-                java.util.TreeSet<Float> ticks = new java.util.TreeSet<>();
+                TreeSet<Float> ticks = new TreeSet<>();
                 if (emit != null) for (Object kfObj : emit.getKeyframes()) { ticks.add(((Keyframe<?>) kfObj).getTick()); }
                 if (intensity != null) for (Object kfObj : intensity.getKeyframes()) { ticks.add(((Keyframe<?>) kfObj).getTick()); }
 
@@ -353,7 +355,7 @@ public class FormProperties extends ValueGroup
                         }
                     }
 
-                    mchorse.bbs_mod.forms.forms.utils.StructureLightSettings payload = new mchorse.bbs_mod.forms.forms.utils.StructureLightSettings(
+                    StructureLightSettings payload = new StructureLightSettings(
                         enabled,
                         Math.max(0, Math.min(15, value))
                     );

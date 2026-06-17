@@ -1,14 +1,17 @@
 package mchorse.bbs_mod.utils.keyframes.factories;
 
-import com.mojang.datafixers.util.Pair;
-import com.mojang.serialization.DataResult;
 import mchorse.bbs_mod.data.DataStorageUtils;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.utils.interps.IInterp;
+
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.item.ItemStack;
+
+import com.mojang.datafixers.util.Pair;
+import com.mojang.serialization.DataResult;
+
 import java.util.Optional;
 
 public class ItemStackKeyframeFactory implements IKeyframeFactory<ItemStack>

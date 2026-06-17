@@ -1,13 +1,9 @@
 package mchorse.bbs_mod.ui.film.clips.renderer;
 
-import com.mojang.blaze3d.vertex.BufferBuilder;
-import com.mojang.blaze3d.vertex.DefaultVertexFormat;
-import com.mojang.blaze3d.vertex.Tesselator;
-import com.mojang.blaze3d.vertex.VertexFormat;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.camera.clips.ClipFactoryData;
-import mchorse.bbs_mod.ui.film.UIClips;
 import mchorse.bbs_mod.ui.UIKeys;
+import mchorse.bbs_mod.ui.film.UIClips;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
 import mchorse.bbs_mod.ui.utils.Area;
@@ -19,9 +15,16 @@ import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
+
 import net.minecraft.client.renderer.rendertype.RenderTypes;
+
 import org.joml.Matrix4f;
 import org.joml.Vector2f;
+
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import com.mojang.blaze3d.vertex.Tesselator;
+import com.mojang.blaze3d.vertex.VertexFormat;
 
 public class UIClipRenderer <T extends Clip> implements IUIClipRenderer<T>
 {

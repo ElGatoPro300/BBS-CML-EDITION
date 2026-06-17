@@ -1,7 +1,8 @@
 package mchorse.bbs_mod.graphics.line;
 
-import com.mojang.blaze3d.vertex.BufferBuilder;
 import org.joml.Matrix4f;
+
+import com.mojang.blaze3d.vertex.BufferBuilder;
 
 public interface ILineRenderer <T>
 {

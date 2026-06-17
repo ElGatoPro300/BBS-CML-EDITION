@@ -1,16 +1,12 @@
 package mchorse.bbs_mod.ui.film;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.PoseStack;
 import mchorse.bbs_mod.BBS;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
-import mchorse.bbs_mod.events.register.RegisterFilmEditorFactoriesEvent;
 import mchorse.bbs_mod.actions.ActionState;
 import mchorse.bbs_mod.camera.Camera;
 import mchorse.bbs_mod.camera.clips.misc.VideoClip;
-import mchorse.bbs_mod.client.video.VideoRenderer;
 import mchorse.bbs_mod.camera.clips.modifiers.TranslateClip;
 import mchorse.bbs_mod.camera.clips.overwrite.IdleClip;
 import mchorse.bbs_mod.camera.controller.CameraController;
@@ -18,8 +14,10 @@ import mchorse.bbs_mod.camera.controller.RunnerCameraController;
 import mchorse.bbs_mod.camera.data.Position;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.client.renderer.MorphRenderer;
+import mchorse.bbs_mod.client.video.VideoRenderer;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.MapType;
+import mchorse.bbs_mod.events.register.RegisterFilmEditorFactoriesEvent;
 import mchorse.bbs_mod.film.Film;
 import mchorse.bbs_mod.film.Recorder;
 import mchorse.bbs_mod.film.replays.Replay;
@@ -51,6 +49,7 @@ import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.IUIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
+import mchorse.bbs_mod.ui.framework.elements.context.UISimpleContextMenu;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIMessageOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UINumberOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
@@ -58,8 +57,9 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIDraggable;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIRenderable;
 import mchorse.bbs_mod.ui.utils.Area;
-import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
 import mchorse.bbs_mod.ui.utils.UIUtils;
+import mchorse.bbs_mod.ui.utils.context.ContextAction;
+import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.CollectionUtils;
@@ -74,13 +74,19 @@ import mchorse.bbs_mod.utils.joml.Vectors;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 import mchorse.bbs_mod.utils.keyframes.KeyframeSegment;
+
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.phys.Vec3;
+
 import org.joml.Matrix4f;
 import org.joml.Vector2i;
 import org.joml.Vector3d;
+
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.PoseStack;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -860,14 +866,14 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         context.replaceContextMenu((menu) ->
         {
-            menu.custom(new mchorse.bbs_mod.ui.framework.elements.context.UISimpleContextMenu()
+            menu.custom(new UISimpleContextMenu()
             {
                 @Override
                 public void setMouse(UIContext context)
                 {
                     int w = 100;
 
-                    for (mchorse.bbs_mod.ui.utils.context.ContextAction action : this.actions.getList())
+                    for (ContextAction action : this.actions.getList())
                     {
                         w = Math.max(action.getWidth(context.batcher.getFont()), w);
                     }
@@ -964,7 +970,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.setupEditorFlex(true);
     }
 
-    private mchorse.bbs_mod.ui.utils.icons.Icon getLayoutIcon()
+    private Icon getLayoutIcon()
     {
         ValueEditorLayout layout = BBSSettings.editorLayoutSettings;
 
@@ -986,7 +992,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         return Icons.EXCHANGE;
     }
 
-    private mchorse.bbs_mod.ui.utils.icons.Icon getLayoutLockIcon()
+    private Icon getLayoutLockIcon()
     {
         return BBSSettings.editorLayoutSettings.isLayoutLocked() ? Icons.LOCKED : Icons.UNLOCKED;
     }

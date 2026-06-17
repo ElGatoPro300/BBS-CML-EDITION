@@ -26,11 +26,14 @@ import mchorse.bbs_mod.utils.EnumUtils;
 import mchorse.bbs_mod.utils.PermissionUtils;
 import mchorse.bbs_mod.utils.clips.Clips;
 import mchorse.bbs_mod.utils.repos.RepositoryOperation;
-import io.netty.buffer.Unpooled;
+
+import net.fabricmc.api.EnvType;
 import net.fabricmc.fabric.api.networking.v1.PacketSender;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.fabricmc.loader.api.FabricLoader;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
@@ -50,10 +53,13 @@ import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.item.component.TypedEntityData;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+
+import io.netty.buffer.Unpooled;
 
 public class ServerNetwork
 {
@@ -171,8 +177,8 @@ public class ServerNetwork
         PayloadTypeRegistry.serverboundPlay().register(idFor(SERVER_TRIGGER_BLOCK_CLICK), BufPayload.codecFor(idFor(SERVER_TRIGGER_BLOCK_CLICK)));
 
         try {
-            Class<?> envTypeClass = Class.forName("net.fabricmc.api.EnvType");
-            Class<?> loaderClass = Class.forName("net.fabricmc.loader.api.FabricLoader");
+            Class<?> envTypeClass = Class.forName("EnvType");
+            Class<?> loaderClass = Class.forName("FabricLoader");
             Object loader = loaderClass.getMethod("getInstance").invoke(null);
             Object envType = loaderClass.getMethod("getEnvironmentType").invoke(loader);
             Object serverEnum = envTypeClass.getField("SERVER").get(null);
@@ -268,7 +274,7 @@ public class ServerNetwork
                     Level world = player.level();
                     BlockEntity be = world.getBlockEntity(pos);
 
-                    if (be instanceof mchorse.bbs_mod.blocks.entities.TriggerBlockEntity trigger)
+                    if (be instanceof TriggerBlockEntity trigger)
                     {
                         if (data.has("left")) trigger.left.fromData(data.getList("left"));
                         if (data.has("right")) trigger.right.fromData(data.getList("right"));

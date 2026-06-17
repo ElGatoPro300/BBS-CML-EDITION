@@ -7,10 +7,12 @@ import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.input.text.UITextbox;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIListOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceKey;
-import net.minecraft.resources.Identifier;
+
 import net.minecraft.core.particles.ParticleType;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
+
 import java.util.ArrayList;
 import java.util.List;
 

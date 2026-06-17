@@ -6,6 +6,7 @@ import mchorse.bbs_mod.ui.utils.context.ContextAction;
 import mchorse.bbs_mod.utils.interps.CustomInterpolation;
 import mchorse.bbs_mod.utils.interps.IInterp;
 import mchorse.bbs_mod.utils.interps.Interpolation;
+
 import org.lwjgl.glfw.GLFW;
 
 public class InterpolationUtils

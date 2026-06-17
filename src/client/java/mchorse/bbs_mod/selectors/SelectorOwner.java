@@ -6,10 +6,12 @@ import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.entities.MCEntity;
 import mchorse.bbs_mod.forms.forms.Form;
+
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.Level;
+
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;

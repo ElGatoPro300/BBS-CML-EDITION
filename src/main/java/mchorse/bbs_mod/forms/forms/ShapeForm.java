@@ -8,6 +8,7 @@ import mchorse.bbs_mod.settings.values.numeric.ValueBoolean;
 import mchorse.bbs_mod.settings.values.numeric.ValueFloat;
 import mchorse.bbs_mod.settings.values.numeric.ValueInt;
 import mchorse.bbs_mod.utils.colors.Color;
+
 import org.joml.Vector2f;
 
 public class ShapeForm extends Form

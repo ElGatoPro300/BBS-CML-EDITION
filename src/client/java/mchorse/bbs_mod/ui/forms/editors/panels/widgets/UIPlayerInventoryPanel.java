@@ -1,7 +1,5 @@
 package mchorse.bbs_mod.ui.forms.editors.panels.widgets;
 
-import java.util.function.Consumer;
-
 import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.ui.UIKeys;
@@ -13,11 +11,14 @@ import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
+
+import java.util.function.Consumer;
 
 public class UIPlayerInventoryPanel extends UIOverlayPanel
 {

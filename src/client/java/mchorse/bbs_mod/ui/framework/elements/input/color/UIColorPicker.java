@@ -1,11 +1,5 @@
 package mchorse.bbs_mod.ui.framework.elements.input.color;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.opengl.GlStateManager;
-import com.mojang.blaze3d.vertex.BufferBuilder;
-import com.mojang.blaze3d.vertex.DefaultVertexFormat;
-import com.mojang.blaze3d.vertex.Tesselator;
-import com.mojang.blaze3d.vertex.VertexFormat;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.settings.values.ui.ValueColors;
 import mchorse.bbs_mod.ui.UIKeys;
@@ -16,11 +10,21 @@ import mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D;
 import mchorse.bbs_mod.ui.framework.elements.utils.EventPropagation;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
+import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.colors.Colors;
+
 import net.minecraft.client.renderer.rendertype.RenderTypes;
-import mchorse.bbs_mod.utils.MathUtils;
+
 import org.joml.Matrix4f;
+
+import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import com.mojang.blaze3d.vertex.Tesselator;
+import com.mojang.blaze3d.vertex.VertexFormat;
+
 import org.lwjgl.glfw.GLFW;
 
 import java.util.function.Consumer;

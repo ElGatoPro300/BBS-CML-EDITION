@@ -1,9 +1,5 @@
 package mchorse.bbs_mod.forms.renderers;
 
-import com.mojang.blaze3d.opengl.GlProgram;
-import com.mojang.blaze3d.opengl.Uniform;
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.PoseStack;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.entities.IEntity;
@@ -20,9 +16,16 @@ import mchorse.bbs_mod.utils.StringUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.interps.Lerps;
 import mchorse.bbs_mod.utils.pose.Transform;
+
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.world.InteractionHand;
+
 import org.joml.Matrix4f;
+
+import com.mojang.blaze3d.opengl.GlProgram;
+import com.mojang.blaze3d.opengl.Uniform;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.PoseStack;
 
 import java.lang.reflect.Method;
 import java.util.Collections;

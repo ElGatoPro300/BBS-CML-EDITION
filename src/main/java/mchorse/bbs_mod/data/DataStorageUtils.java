@@ -11,6 +11,7 @@ import mchorse.bbs_mod.data.types.LongType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.data.types.ShortType;
 import mchorse.bbs_mod.data.types.StringType;
+
 import net.minecraft.nbt.ByteTag;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.DoubleTag;
@@ -22,6 +23,7 @@ import net.minecraft.nbt.ShortTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.FriendlyByteBuf;
+
 import org.joml.Matrix3f;
 import org.joml.Vector2i;
 import org.joml.Vector3d;

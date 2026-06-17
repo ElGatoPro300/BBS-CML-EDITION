@@ -1,20 +1,28 @@
 package mchorse.bbs_mod.client.video;
 
-import com.mojang.blaze3d.systems.RenderSystem;
+import mchorse.bbs_mod.BBSMod;
+import mchorse.bbs_mod.camera.clips.misc.VideoClip;
+import mchorse.bbs_mod.client.BBSShaders;
+import mchorse.bbs_mod.resources.Link;
+import mchorse.bbs_mod.ui.framework.UIContext;
+import mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D;
+import mchorse.bbs_mod.ui.utils.Area;
+import mchorse.bbs_mod.utils.clips.Clip;
+
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.*;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+
+import org.joml.Matrix4f;
+
 import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexFormat;
-import com.mojang.blaze3d.opengl.GlStateManager;
-import mchorse.bbs_mod.client.BBSShaders;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.*;
-import net.minecraft.client.renderer.rendertype.RenderTypes;
-import org.joml.Matrix4f;
-import org.watermedia.api.player.videolan.VideoPlayer;
-import org.watermedia.videolan4j.factory.MediaPlayerFactory;
+
 import org.lwjgl.opengl.GL11;
 
 import java.io.File;
@@ -23,13 +31,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import mchorse.bbs_mod.BBSMod;
-import mchorse.bbs_mod.resources.Link;
-import mchorse.bbs_mod.utils.clips.Clip;
-import mchorse.bbs_mod.camera.clips.misc.VideoClip;
-import mchorse.bbs_mod.ui.utils.Area;
-import mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D;
-import mchorse.bbs_mod.ui.framework.UIContext;
+import org.watermedia.api.player.videolan.VideoPlayer;
+import org.watermedia.videolan4j.factory.MediaPlayerFactory;
 
 public class VideoRenderer
 {

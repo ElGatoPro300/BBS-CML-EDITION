@@ -1,8 +1,10 @@
 package mchorse.bbs_mod.forms.renderers.utils;
 
-import com.mojang.blaze3d.vertex.VertexConsumer;
 import mchorse.bbs_mod.utils.colors.Color;
+
 import org.joml.Matrix4f;
+
+import com.mojang.blaze3d.vertex.VertexConsumer;
 
 /**
  * VertexConsumer que fija un color constante (incluido alpha) en el

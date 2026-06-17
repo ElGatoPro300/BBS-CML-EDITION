@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.cubic.data.model;
 
 import mchorse.bbs_mod.obj.MeshOBJ;
+
 import org.joml.Vector2f;
 import org.joml.Vector3f;
 

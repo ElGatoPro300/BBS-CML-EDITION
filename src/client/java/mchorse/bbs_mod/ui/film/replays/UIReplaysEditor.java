@@ -2,9 +2,9 @@ package mchorse.bbs_mod.ui.film.replays;
 
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
-import mchorse.bbs_mod.bobj.BOBJBone;
 import mchorse.bbs_mod.audio.SoundBuffer;
 import mchorse.bbs_mod.audio.Waveform;
+import mchorse.bbs_mod.bobj.BOBJBone;
 import mchorse.bbs_mod.camera.Camera;
 import mchorse.bbs_mod.camera.CameraUtils;
 import mchorse.bbs_mod.camera.clips.ClipFactoryData;
@@ -12,10 +12,10 @@ import mchorse.bbs_mod.camera.clips.misc.AudioClip;
 import mchorse.bbs_mod.camera.utils.TimeUtils;
 import mchorse.bbs_mod.cubic.IModel;
 import mchorse.bbs_mod.cubic.ModelInstance;
-import mchorse.bbs_mod.cubic.data.model.Model;
-import mchorse.bbs_mod.cubic.data.model.ModelGroup;
 import mchorse.bbs_mod.cubic.data.animation.Animation;
 import mchorse.bbs_mod.cubic.data.animation.AnimationPart;
+import mchorse.bbs_mod.cubic.data.model.Model;
+import mchorse.bbs_mod.cubic.data.model.ModelGroup;
 import mchorse.bbs_mod.data.DataStorageUtils;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.film.Film;
@@ -38,6 +38,10 @@ import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.UIClipsPanel;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.film.clips.renderer.IUIClipRenderer;
+import mchorse.bbs_mod.ui.film.replays.overlays.UIAnimationToPoseOverlayPanel;
+import mchorse.bbs_mod.ui.film.replays.overlays.UIKeyframeSheetFilterOverlayPanel;
+import mchorse.bbs_mod.ui.film.replays.overlays.UIRenameSheetOverlayPanel;
+import mchorse.bbs_mod.ui.film.replays.overlays.UIReplaysOverlayPanel;
 import mchorse.bbs_mod.ui.film.utils.keyframes.UIFilmKeyframes;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
@@ -49,10 +53,6 @@ import mchorse.bbs_mod.ui.framework.elements.input.keyframes.graphs.IUIKeyframeG
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.graphs.UIKeyframeDopeSheet;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
-import mchorse.bbs_mod.ui.film.replays.overlays.UIReplaysOverlayPanel;
-import mchorse.bbs_mod.ui.film.replays.overlays.UIKeyframeSheetFilterOverlayPanel;
-import mchorse.bbs_mod.ui.film.replays.overlays.UIRenameSheetOverlayPanel;
-import mchorse.bbs_mod.ui.film.replays.overlays.UIAnimationToPoseOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.Gizmo;
@@ -78,12 +78,15 @@ import mchorse.bbs_mod.utils.keyframes.factories.KeyframeFactories;
 import mchorse.bbs_mod.utils.pose.Pose;
 import mchorse.bbs_mod.utils.pose.PoseTransform;
 import mchorse.bbs_mod.utils.pose.Transform;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
+
 import org.joml.Vector3d;
+
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
@@ -99,6 +102,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.ToIntFunction;
 
 public class UIReplaysEditor extends UIElement
 {
@@ -866,7 +870,7 @@ public class UIReplaysEditor extends UIElement
             }
 
             /* Form properties */
-            java.util.Set<String> propertyPaths = new java.util.LinkedHashSet<>(FormUtils.collectPropertyPaths(this.replay.form.get()));
+            Set<String> propertyPaths = new LinkedHashSet<>(FormUtils.collectPropertyPaths(this.replay.form.get()));
             for (String key : this.replay.properties.properties.keySet())
             {
                 if (this.isCompatiblePropertyPath(this.replay.form.get(), key))
@@ -948,7 +952,7 @@ public class UIReplaysEditor extends UIElement
                 return pathComp;
             }
 
-            java.util.function.ToIntFunction<UIKeyframeSheet> getPriority = (sheet) ->
+            ToIntFunction<UIKeyframeSheet> getPriority = (sheet) ->
             {
                 String id = sheet.id;
                 String name = StringUtils.fileName(id);

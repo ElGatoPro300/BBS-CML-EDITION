@@ -1,13 +1,5 @@
 package mchorse.bbs_mod.particles.emitter;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.opengl.GlProgram;
-import com.mojang.blaze3d.opengl.GlStateManager;
-import com.mojang.blaze3d.vertex.BufferBuilder;
-import com.mojang.blaze3d.vertex.DefaultVertexFormat;
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.Tesselator;
-import com.mojang.blaze3d.vertex.VertexFormat;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.camera.Camera;
 import mchorse.bbs_mod.graphics.texture.Texture;
@@ -22,14 +14,27 @@ import mchorse.bbs_mod.particles.components.IComponentParticleUpdate;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.interps.Lerps;
+
+import net.minecraft.client.Camera;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.Level;
-import org.lwjgl.opengl.GL11;
+
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
+
+import com.mojang.blaze3d.opengl.GlProgram;
+import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.Tesselator;
+import com.mojang.blaze3d.vertex.VertexFormat;
+
+import org.lwjgl.opengl.GL11;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -530,7 +535,7 @@ public class ParticleEmitter
         this.cZ = camera.position.z;
     }
 
-    public void setupCameraProperties(net.minecraft.client.Camera camera)
+    public void setupCameraProperties(Camera camera)
     {
         this.cYaw = 180 - camera.yRot();
         this.cPitch = -camera.xRot();

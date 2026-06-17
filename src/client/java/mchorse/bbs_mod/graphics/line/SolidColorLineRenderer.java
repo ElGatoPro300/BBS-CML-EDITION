@@ -1,8 +1,10 @@
 package mchorse.bbs_mod.graphics.line;
 
-import com.mojang.blaze3d.vertex.BufferBuilder;
 import mchorse.bbs_mod.utils.colors.Color;
+
 import org.joml.Matrix4f;
+
+import com.mojang.blaze3d.vertex.BufferBuilder;
 
 public class SolidColorLineRenderer implements ILineRenderer
 {

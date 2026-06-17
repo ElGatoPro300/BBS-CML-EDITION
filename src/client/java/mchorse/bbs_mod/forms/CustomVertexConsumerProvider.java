@@ -1,11 +1,14 @@
 package mchorse.bbs_mod.forms;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.VertexConsumer;
-import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.forms.renderers.utils.RecolorVertexConsumer;
+
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.rendertype.RenderType;
+
+import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+
 import org.lwjgl.opengl.GL11;
 
 import java.util.Map;

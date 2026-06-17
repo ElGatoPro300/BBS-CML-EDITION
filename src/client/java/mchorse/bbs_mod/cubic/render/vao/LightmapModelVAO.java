@@ -1,7 +1,9 @@
 package mchorse.bbs_mod.cubic.render.vao;
 
 import mchorse.bbs_mod.client.BBSRendering;
+
 import com.mojang.blaze3d.vertex.VertexFormat;
+
 import org.lwjgl.opengl.GL30;
 
 public class LightmapModelVAO implements IModelVAO

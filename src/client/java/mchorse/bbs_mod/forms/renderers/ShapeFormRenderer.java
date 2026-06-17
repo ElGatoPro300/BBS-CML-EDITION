@@ -1,39 +1,44 @@
 package mchorse.bbs_mod.forms.renderers;
 
+import mchorse.bbs_mod.BBSModClient;
+import mchorse.bbs_mod.client.BBSRendering;
+import mchorse.bbs_mod.client.BBSShaders;
+import mchorse.bbs_mod.forms.forms.ShapeForm;
+import mchorse.bbs_mod.forms.forms.shape.ShapeGraphEvaluator;
+import mchorse.bbs_mod.forms.forms.shape.nodes.IrisAttributeNode;
+import mchorse.bbs_mod.forms.forms.shape.nodes.IrisShaderNode;
+import mchorse.bbs_mod.particles.ParticleScheme;
+import mchorse.bbs_mod.resources.Link;
+import mchorse.bbs_mod.ui.framework.UIContext;
+import mchorse.bbs_mod.utils.MatrixStackUtils;
+import mchorse.bbs_mod.utils.colors.Color;
+import mchorse.bbs_mod.utils.iris.ShaderCurves;
+import mchorse.bbs_mod.utils.math.Noise;
+
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.GameRenderer;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.texture.OverlayTexture;
+
+import org.joml.Matrix3f;
+import org.joml.Matrix4f;
+import org.joml.Vector3f;
+
+import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexFormat;
-import com.mojang.blaze3d.opengl.GlStateManager;
-import com.mojang.blaze3d.pipeline.RenderPipeline;
-import mchorse.bbs_mod.client.BBSRendering;
-import mchorse.bbs_mod.client.BBSShaders;
-import mchorse.bbs_mod.forms.forms.ShapeForm;
-import mchorse.bbs_mod.ui.framework.UIContext;
-import mchorse.bbs_mod.utils.MatrixStackUtils;
-import org.joml.Matrix3f;
-import org.joml.Matrix4f;
-import org.joml.Vector3f;
+import com.mojang.math.Axis;
+
 import org.lwjgl.opengl.GL11;
 
-import mchorse.bbs_mod.BBSModClient;
-import mchorse.bbs_mod.resources.Link;
-import mchorse.bbs_mod.forms.forms.shape.ShapeGraphEvaluator;
-import mchorse.bbs_mod.forms.forms.shape.nodes.IrisAttributeNode;
-import mchorse.bbs_mod.forms.forms.shape.nodes.IrisShaderNode;
-import mchorse.bbs_mod.utils.colors.Color;
-import mchorse.bbs_mod.utils.iris.ShaderCurves;
-import java.util.function.Supplier;
-
-import mchorse.bbs_mod.utils.math.Noise;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.GameRenderer;
-import net.minecraft.client.renderer.RenderPipelines;
-import net.minecraft.client.renderer.rendertype.RenderTypes;
-import net.minecraft.client.renderer.texture.OverlayTexture;
 import java.util.Random;
+import java.util.function.Supplier;
 
 public class ShapeFormRenderer extends FormRenderer<ShapeForm>
 {
@@ -57,8 +62,8 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
         MatrixStackUtils.scaleStack(stack, scale, scale, scale);
 
         // Simple rotation for UI preview
-        stack.mulPose(com.mojang.math.Axis.YP.rotationDegrees(context.getTransition() * 2));
-        stack.mulPose(com.mojang.math.Axis.XP.rotationDegrees(20));
+        stack.mulPose(Axis.YP.rotationDegrees(context.getTransition() * 2));
+        stack.mulPose(Axis.XP.rotationDegrees(20));
 
         /* Shading fix for UI */
         Vector3f normalScale = new Vector3f();
@@ -126,7 +131,7 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
         }
         else
         {
-            BBSModClient.getTextures().bindTexture(mchorse.bbs_mod.particles.ParticleScheme.DEFAULT_TEXTURE);
+            BBSModClient.getTextures().bindTexture(ParticleScheme.DEFAULT_TEXTURE);
         }
 
         Color finalColor = new Color(this.form.color.get().r, this.form.color.get().g, this.form.color.get().b, this.form.color.get().a);

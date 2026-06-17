@@ -2,22 +2,24 @@ package mchorse.bbs_mod.ui.film.clips;
 
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.camera.clips.misc.VideoClip;
+import mchorse.bbs_mod.client.video.VideoRenderer;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.UIKeys;
-import mchorse.bbs_mod.client.video.VideoRenderer;
 import mchorse.bbs_mod.ui.film.IUIClipsDelegate;
+import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
-import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIVideoOverlayPanel;
+import mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Colors;
-import mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D;
+
+import java.io.File;
 
 public class UIVideoClip extends UIClip<VideoClip>
 {
@@ -67,11 +69,11 @@ public class UIVideoClip extends UIClip<VideoClip>
                 if (videoPath.startsWith("external:"))
                 {
                     String rawPath = videoPath.substring("external:".length());
-                    java.io.File file = new java.io.File(rawPath);
+                    File file = new File(rawPath);
 
                     if (!file.isAbsolute())
                     {
-                        file = new java.io.File(BBSMod.getGameFolder(), rawPath);
+                        file = new File(BBSMod.getGameFolder(), rawPath);
                     }
 
                     if (file.isDirectory())
@@ -88,7 +90,7 @@ public class UIVideoClip extends UIClip<VideoClip>
                 else
                 {
                     Link link = Link.create(videoPath);
-                    java.io.File file = BBSMod.getProvider().getFile(link);
+                    File file = BBSMod.getProvider().getFile(link);
 
                     if (file != null && file.exists())
                     {
@@ -98,7 +100,7 @@ public class UIVideoClip extends UIClip<VideoClip>
                 }
             }
 
-            java.io.File videoFolder = BBSMod.getAssetsPath("video");
+            File videoFolder = BBSMod.getAssetsPath("video");
             videoFolder.mkdirs();
             UIUtils.openFolder(videoFolder);
         });

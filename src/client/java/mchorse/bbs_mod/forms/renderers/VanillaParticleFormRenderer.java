@@ -1,7 +1,5 @@
 package mchorse.bbs_mod.forms.renderers;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.brigadier.StringReader;
 import mchorse.bbs_mod.forms.ITickable;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.forms.VanillaParticleForm;
@@ -12,15 +10,21 @@ import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.joml.Matrices;
 import mchorse.bbs_mod.utils.joml.Vectors;
+
 import net.minecraft.core.particles.ParticleOptions;
 import net.minecraft.core.particles.ParticleType;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.core.particles.SimpleParticleType;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.level.Level;
+
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
+
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.brigadier.StringReader;
 
 public class VanillaParticleFormRenderer extends FormRenderer<VanillaParticleForm> implements ITickable
 {
@@ -95,7 +99,7 @@ public class VanillaParticleFormRenderer extends FormRenderer<VanillaParticleFor
                 ParticleType<?> type = BuiltInRegistries.PARTICLE_TYPE.getValue(settings.particle);
                 ParticleOptions effect = ParticleTypes.FLAME;
 
-                if (type instanceof net.minecraft.core.particles.SimpleParticleType simple)
+                if (type instanceof SimpleParticleType simple)
                 {
                     effect = simple;
                 }

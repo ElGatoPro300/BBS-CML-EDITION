@@ -1,41 +1,34 @@
 package mchorse.bbs_mod.client;
 
-import com.mojang.blaze3d.pipeline.MainTarget;
-import com.mojang.blaze3d.pipeline.RenderTarget;
-import com.mojang.blaze3d.platform.Window;
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexConsumer;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.blocks.entities.ModelBlockEntity;
-import mchorse.bbs_mod.client.renderer.ModelBlockEntityRenderer;
-import mchorse.bbs_mod.client.renderer.TriggerBlockEntityRenderer;
 import mchorse.bbs_mod.camera.clips.misc.CurveClip;
 import mchorse.bbs_mod.camera.clips.misc.SubtitleClip;
 import mchorse.bbs_mod.camera.controller.CameraWorkCameraController;
 import mchorse.bbs_mod.camera.controller.PlayCameraController;
+import mchorse.bbs_mod.client.renderer.ModelBlockEntityRenderer;
+import mchorse.bbs_mod.client.renderer.TriggerBlockEntityRenderer;
+import mchorse.bbs_mod.client.video.VideoRenderer;
 import mchorse.bbs_mod.events.ModelBlockEntityUpdateCallback;
 import mchorse.bbs_mod.events.TriggerBlockEntityUpdateCallback;
 import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.renderers.FormRenderer;
-import mchorse.bbs_mod.forms.renderers.FormRenderer;
 import mchorse.bbs_mod.forms.renderers.utils.RecolorVertexConsumer;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.graphics.texture.TextureFormat;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.UIDashboard;
-import mchorse.bbs_mod.client.video.VideoRenderer;
-import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.film.UISubtitleRenderer;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.UIRenderingContext;
 import mchorse.bbs_mod.ui.framework.UIScreen;
 import mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D;
+import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.VideoRecorder;
 import mchorse.bbs_mod.utils.colors.Color;
@@ -43,14 +36,24 @@ import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.iris.IrisUtils;
 import mchorse.bbs_mod.utils.iris.ShaderCurves;
 import mchorse.bbs_mod.utils.sodium.SodiumUtils;
+
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 import net.fabricmc.loader.api.FabricLoader;
-import net.irisshaders.iris.uniforms.custom.cached.CachedUniform;
+
 import net.minecraft.client.CloudStatus;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.renderer.state.gui.GuiRenderState;
+
 import org.joml.Matrix4f;
+
+import com.mojang.blaze3d.pipeline.MainTarget;
+import com.mojang.blaze3d.pipeline.RenderTarget;
+import com.mojang.blaze3d.platform.Window;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+
 import org.lwjgl.opengl.GL11;
 
 import java.io.File;
@@ -60,6 +63,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+
+import net.irisshaders.iris.uniforms.custom.cached.CachedUniform;
 
 public class BBSRendering
 {

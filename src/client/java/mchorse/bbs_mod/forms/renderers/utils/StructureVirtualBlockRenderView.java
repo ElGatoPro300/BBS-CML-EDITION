@@ -1,11 +1,12 @@
 package mchorse.bbs_mod.forms.renderers.utils;
 
-import java.util.ArrayList;
-import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.LightLayer;
 import net.minecraft.world.level.block.state.BlockState;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class StructureVirtualBlockRenderView extends VirtualBlockRenderView
 {

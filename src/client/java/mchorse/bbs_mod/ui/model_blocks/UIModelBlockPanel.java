@@ -1,17 +1,16 @@
 package mchorse.bbs_mod.ui.model_blocks;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
+import mchorse.bbs_mod.blocks.ModelBlock;
 import mchorse.bbs_mod.blocks.entities.ModelBlockEntity;
 import mchorse.bbs_mod.blocks.entities.ModelProperties;
-import mchorse.bbs_mod.blocks.ModelBlock;
 import mchorse.bbs_mod.camera.CameraUtils;
 import mchorse.bbs_mod.client.BBSRendering;
-import mchorse.bbs_mod.graphics.Draw;
+import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.forms.forms.Form;
+import mchorse.bbs_mod.graphics.Draw;
+import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.network.ClientNetwork;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
@@ -31,28 +30,27 @@ import mchorse.bbs_mod.ui.framework.elements.events.UIRemovedEvent;
 import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UIStringList;
-import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
+import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIDraggable;
 import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
-import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
 import mchorse.bbs_mod.ui.model_blocks.camera.ImmersiveModelBlockCameraController;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
-import mchorse.bbs_mod.l10n.keys.IKey;
-import mchorse.bbs_mod.data.types.MapType;
-import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.AABB;
+import mchorse.bbs_mod.utils.Direction;
+import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.PlayerUtils;
 import mchorse.bbs_mod.utils.RayTracing;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.pose.Transform;
-import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.undo.IUndo;
 import mchorse.bbs_mod.utils.undo.UndoManager;
+
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
+
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
@@ -61,11 +59,16 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
+
 import org.joml.Matrix4f;
 import org.joml.Vector2d;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
+
+import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.PoseStack;
 
 import java.util.HashSet;
 import java.util.List;

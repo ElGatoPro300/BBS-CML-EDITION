@@ -2,6 +2,7 @@ package mchorse.bbs_mod.forms.forms.utils;
 
 import mchorse.bbs_mod.data.IMapSerializable;
 import mchorse.bbs_mod.data.types.MapType;
+
 import net.minecraft.resources.Identifier;
 
 public class ParticleSettings implements IMapSerializable

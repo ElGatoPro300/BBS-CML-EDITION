@@ -8,7 +8,9 @@ import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.items.GunProperties;
 import mchorse.bbs_mod.network.ServerNetwork;
 import mchorse.bbs_mod.utils.MathUtils;
+
 import net.fabricmc.fabric.api.networking.v1.PlayerLookup;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;

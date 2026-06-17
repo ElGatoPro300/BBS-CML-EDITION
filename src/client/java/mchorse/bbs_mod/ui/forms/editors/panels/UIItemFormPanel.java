@@ -10,6 +10,7 @@ import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Color;
+
 import net.minecraft.world.item.ItemDisplayContext;
 
 public class UIItemFormPanel extends UIFormPanel<ItemForm>

@@ -4,7 +4,9 @@ import mchorse.bbs_mod.cubic.IModelInstance;
 import mchorse.bbs_mod.cubic.data.animation.Animation;
 import mchorse.bbs_mod.cubic.data.animation.Animations;
 import mchorse.bbs_mod.forms.entities.IEntity;
+
 import net.minecraft.world.phys.Vec3;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;

@@ -1,14 +1,17 @@
 package mchorse.bbs_mod.utils.keyframes.factories;
 
-import com.mojang.datafixers.util.Pair;
-import com.mojang.serialization.DataResult;
 import mchorse.bbs_mod.data.DataStorageUtils;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.utils.interps.IInterp;
+
 import net.minecraft.nbt.NbtOps;
 import net.minecraft.nbt.Tag;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+
+import com.mojang.datafixers.util.Pair;
+import com.mojang.serialization.DataResult;
+
 import java.util.Optional;
 
 public class BlockStateKeyframeFactory implements IKeyframeFactory<BlockState>

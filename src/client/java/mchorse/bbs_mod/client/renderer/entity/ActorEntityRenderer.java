@@ -1,13 +1,11 @@
 package mchorse.bbs_mod.client.renderer.entity;
 
-import com.mojang.blaze3d.opengl.GlStateManager;
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.math.Axis;
 import mchorse.bbs_mod.cubic.render.vanilla.ArmorRenderer;
 import mchorse.bbs_mod.entity.ActorEntity;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.renderers.FormRenderType;
 import mchorse.bbs_mod.forms.renderers.FormRenderingContext;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EntityRenderer;
@@ -17,6 +15,10 @@ import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Pose;
+
+import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
 
 public class ActorEntityRenderer extends EntityRenderer<ActorEntity, ActorEntityRenderer.ActorEntityState>
 {

@@ -1,8 +1,10 @@
 package mchorse.bbs_mod.mixin.client;
 
-import com.mojang.blaze3d.platform.Window;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.client.BBSRendering;
+
+import com.mojang.blaze3d.platform.Window;
+
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;

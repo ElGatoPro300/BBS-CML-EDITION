@@ -2,16 +2,19 @@ package mchorse.bbs_mod.network;
 
 import mchorse.bbs_mod.data.DataStorageUtils;
 import mchorse.bbs_mod.data.types.BaseType;
-import io.netty.buffer.Unpooled;
+
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
+
 import java.io.ByteArrayOutputStream;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Consumer;
+
+import io.netty.buffer.Unpooled;
 
 public abstract class PacketCrusher
 {

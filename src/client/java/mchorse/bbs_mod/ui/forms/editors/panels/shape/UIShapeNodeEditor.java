@@ -1,30 +1,25 @@
 package mchorse.bbs_mod.ui.forms.editors.panels.shape;
 
-import com.mojang.blaze3d.vertex.BufferBuilder;
-import com.mojang.blaze3d.vertex.DefaultVertexFormat;
-import com.mojang.blaze3d.vertex.Tesselator;
-import com.mojang.blaze3d.vertex.VertexFormat;
-import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.forms.forms.shape.ShapeConnection;
-import mchorse.bbs_mod.forms.forms.shape.ValueShapeGraph;
 import mchorse.bbs_mod.forms.forms.shape.ShapeFormGraph;
+import mchorse.bbs_mod.forms.forms.shape.ValueShapeGraph;
 import mchorse.bbs_mod.forms.forms.shape.nodes.BumpNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.ColorNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.CommentNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.CoordinateNode;
-import mchorse.bbs_mod.forms.forms.shape.nodes.MathNode;
-import mchorse.bbs_mod.forms.forms.shape.nodes.MixColorNode;
-import mchorse.bbs_mod.forms.forms.shape.nodes.NoiseNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.FlowNoiseNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.IrisAttributeNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.IrisShaderNode;
-import mchorse.bbs_mod.forms.forms.shape.nodes.TriggerNode;
+import mchorse.bbs_mod.forms.forms.shape.nodes.MathNode;
+import mchorse.bbs_mod.forms.forms.shape.nodes.MixColorNode;
+import mchorse.bbs_mod.forms.forms.shape.nodes.NoiseNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.OutputNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.ShapeNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.TimeNode;
+import mchorse.bbs_mod.forms.forms.shape.nodes.TriggerNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.ValueNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.VectorMathNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.VoronoiNode;
@@ -37,21 +32,29 @@ import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIColorOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UINumberOverlayPanel;
+import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UITextareaOverlayPanel;
-import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.UIUtils;
-
 import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.presets.UICopyPasteController;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.presets.PresetManager;
+
 import net.minecraft.client.renderer.rendertype.RenderTypes;
-import com.mojang.blaze3d.systems.RenderSystem;
+
 import org.joml.Matrix4f;
 import org.joml.Vector2f;
+
+import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import com.mojang.blaze3d.vertex.Tesselator;
+import com.mojang.blaze3d.vertex.VertexFormat;
+
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.opengl.GL11;
 

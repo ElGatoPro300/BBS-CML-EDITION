@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.network;
 
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
+
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;

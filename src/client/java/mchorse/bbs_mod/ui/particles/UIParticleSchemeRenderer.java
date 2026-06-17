@@ -1,12 +1,5 @@
 package mchorse.bbs_mod.ui.particles;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.opengl.GlStateManager;
-import com.mojang.blaze3d.vertex.BufferBuilder;
-import com.mojang.blaze3d.vertex.DefaultVertexFormat;
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.Tesselator;
-import com.mojang.blaze3d.vertex.VertexFormat;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.graphics.Draw;
 import mchorse.bbs_mod.particles.ParticleScheme;
@@ -15,10 +8,20 @@ import mchorse.bbs_mod.particles.emitter.ParticleEmitter;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIModelRenderer;
+
 import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.texture.OverlayTexture;
+
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
+
+import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.Tesselator;
+import com.mojang.blaze3d.vertex.VertexFormat;
 
 public class UIParticleSchemeRenderer extends UIModelRenderer
 {

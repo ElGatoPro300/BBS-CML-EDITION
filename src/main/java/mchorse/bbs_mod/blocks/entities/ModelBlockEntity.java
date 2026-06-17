@@ -10,6 +10,7 @@ import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.entities.StubEntity;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.forms.LightForm;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup.Provider;
 import net.minecraft.nbt.CompoundTag;
@@ -22,6 +23,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.ValueInput;
 import net.minecraft.world.level.storage.ValueOutput;
+
 import org.jetbrains.annotations.Nullable;
 
 public class ModelBlockEntity extends BlockEntity
@@ -231,9 +233,9 @@ public class ModelBlockEntity extends BlockEntity
                 BlockPos pos = this.getBlockPos();
                 BlockState state = this.level.getBlockState(pos);
 
-                if (state.getBlock() instanceof net.minecraft.world.level.block.Block)
+                if (state.getBlock() instanceof Block)
                 {
-                    this.level.setBlock(pos, state.setValue(mchorse.bbs_mod.blocks.ModelBlock.LIGHT_LEVEL, level), Block.UPDATE_CLIENTS);
+                    this.level.setBlock(pos, state.setValue(ModelBlock.LIGHT_LEVEL, level), Block.UPDATE_CLIENTS);
                 }
             }
             catch (Exception e) {}
@@ -251,7 +253,7 @@ public class ModelBlockEntity extends BlockEntity
         {
             int level = this.properties.getLightLevel();
 
-            world.setBlock(pos, blockState.setValue(mchorse.bbs_mod.blocks.ModelBlock.LIGHT_LEVEL, level), Block.UPDATE_CLIENTS);
+            world.setBlock(pos, blockState.setValue(ModelBlock.LIGHT_LEVEL, level), Block.UPDATE_CLIENTS);
         }
         catch (Exception e)
         {

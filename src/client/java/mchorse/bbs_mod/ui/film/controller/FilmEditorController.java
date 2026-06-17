@@ -19,8 +19,11 @@ import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 import mchorse.bbs_mod.utils.keyframes.KeyframeSegment;
+
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
+
 import net.minecraft.client.Minecraft;
+
 import java.util.List;
 import java.util.Map;
 

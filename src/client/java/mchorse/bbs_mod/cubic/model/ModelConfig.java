@@ -14,6 +14,7 @@ import mchorse.bbs_mod.settings.values.numeric.ValueFloat;
 import mchorse.bbs_mod.settings.values.numeric.ValueInt;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.pose.Pose;
+
 import org.joml.Vector3f;
 
 public class ModelConfig extends ValueGroup

@@ -1,10 +1,13 @@
 package mchorse.bbs_mod.forms.renderers.utils;
 
+import mchorse.bbs_mod.utils.colors.Color;
+
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.blaze3d.vertex.VertexFormat;
-import mchorse.bbs_mod.utils.colors.Color;
-import net.caffeinemc.mods.sodium.api.vertex.buffer.VertexBufferWriter;
+
 import org.lwjgl.system.MemoryStack;
+
+import net.caffeinemc.mods.sodium.api.vertex.buffer.VertexBufferWriter;
 
 public class RecolorVertexSodiumConsumer extends RecolorVertexConsumer implements VertexBufferWriter
 {

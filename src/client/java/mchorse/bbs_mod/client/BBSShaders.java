@@ -1,16 +1,20 @@
 package mchorse.bbs_mod.client;
 
 import mchorse.bbs_mod.BBSMod;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.ShaderManager;
 import net.minecraft.resources.Identifier;
+
 import com.mojang.blaze3d.opengl.GlProgram;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import com.mojang.blaze3d.vertex.VertexFormat;
+
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
-import java.lang.reflect.Method;
 
 public class BBSShaders
 {
@@ -134,7 +138,7 @@ public class BBSShaders
     {
         try
         {
-            Class<?> renderPipelineClass = Class.forName("com.mojang.blaze3d.pipeline.RenderPipeline");
+            Class<?> renderPipelineClass = Class.forName("RenderPipeline");
             Object builder = renderPipelineClass.getMethod("builder").invoke(null);
             builder = invokeBest(builder, "withLocation", Identifier.fromNamespaceAndPath(BBSMod.MOD_ID, pipelinePath));
             builder = invokeBest(builder, "withVertexShader", Identifier.fromNamespaceAndPath(BBSMod.MOD_ID, shaderPath));
@@ -143,7 +147,7 @@ public class BBSShaders
             Object mode = null;
             try
             {
-                Class<?> modeClass = Class.forName("com.mojang.blaze3d.vertex.VertexFormat$DrawMode");
+                Class<?> modeClass = Class.forName("VertexFormat$DrawMode");
                 mode = Enum.valueOf((Class<Enum>) modeClass, "TRIANGLES");
             }
             catch (Exception ignored) {}

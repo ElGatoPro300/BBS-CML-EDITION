@@ -1,5 +1,7 @@
 package mchorse.bbs_mod.utils;
 
+import net.minecraft.util.FormattedCharSequence;
+
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector4d;
@@ -8,7 +10,6 @@ import org.joml.Vector4f;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
-import net.minecraft.util.FormattedCharSequence;
 
 public class StringUtils
 {

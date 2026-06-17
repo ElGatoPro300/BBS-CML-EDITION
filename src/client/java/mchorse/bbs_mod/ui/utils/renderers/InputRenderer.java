@@ -10,8 +10,10 @@ import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.keys.KeyCodes;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.interps.Interpolations;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
+
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;

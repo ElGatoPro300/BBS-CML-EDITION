@@ -1,10 +1,12 @@
 package mchorse.bbs_mod.cubic.render.vanilla;
 
-import com.mojang.blaze3d.vertex.PoseStack;
 import mchorse.bbs_mod.cubic.model.ArmorType;
 import mchorse.bbs_mod.forms.entities.IEntity;
+
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.world.entity.EquipmentSlot;
+
+import com.mojang.blaze3d.vertex.PoseStack;
 
 public class ArmorRenderer
 {

@@ -5,8 +5,10 @@ import mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.resources.Pixels;
+
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
+
 import java.util.ArrayList;
 import java.util.List;
 

@@ -1,12 +1,11 @@
 package mchorse.bbs_mod.selectors;
 
-import com.mojang.brigadier.StringReader;
-import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import mchorse.bbs_mod.data.IMapSerializable;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.utils.StringUtils;
+
 import net.minecraft.commands.arguments.CompoundTagArgument;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
@@ -14,6 +13,10 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.LivingEntity;
+
+import com.mojang.brigadier.StringReader;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
+
 import java.util.Objects;
 
 public class EntitySelector implements IMapSerializable

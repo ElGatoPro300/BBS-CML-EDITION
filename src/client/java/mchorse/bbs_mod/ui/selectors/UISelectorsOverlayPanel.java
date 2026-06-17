@@ -1,6 +1,5 @@
 package mchorse.bbs_mod.ui.selectors;
 
-import com.mojang.brigadier.StringReader;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.selectors.EntitySelector;
@@ -18,8 +17,12 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlayPanel;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Colors;
+
 import net.minecraft.commands.arguments.CompoundTagArgument;
 import net.minecraft.resources.Identifier;
+
+import com.mojang.brigadier.StringReader;
+
 import java.util.List;
 
 public class UISelectorsOverlayPanel extends UIOverlayPanel

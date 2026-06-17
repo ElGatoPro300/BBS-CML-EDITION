@@ -5,8 +5,8 @@ import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.cubic.MolangHelper;
 import mchorse.bbs_mod.cubic.model.loaders.BOBJModelLoader;
 import mchorse.bbs_mod.cubic.model.loaders.CubicModelLoader;
-import mchorse.bbs_mod.cubic.model.loaders.GeoCubicModelLoader;
 import mchorse.bbs_mod.cubic.model.loaders.GLTFModelLoader;
+import mchorse.bbs_mod.cubic.model.loaders.GeoCubicModelLoader;
 import mchorse.bbs_mod.cubic.model.loaders.IModelLoader;
 import mchorse.bbs_mod.cubic.model.loaders.MiModelLoader;
 import mchorse.bbs_mod.cubic.model.loaders.VoxModelLoader;
@@ -22,6 +22,7 @@ import mchorse.bbs_mod.utils.pose.ShapeKeysManager;
 import mchorse.bbs_mod.utils.watchdog.IWatchDogListener;
 import mchorse.bbs_mod.utils.watchdog.WatchDogEvent;
 
+import java.io.File;
 import java.io.InputStream;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -230,7 +231,7 @@ public class ModelManager implements IWatchDogListener
     public void saveConfig(String id, MapType config)
     {
         Link modelLink = Link.assets(MODELS_PREFIX + id + "/config.json");
-        java.io.File file = BBSMod.getProvider().getFile(modelLink);
+        File file = BBSMod.getProvider().getFile(modelLink);
 
         if (file != null)
         {
@@ -249,8 +250,8 @@ public class ModelManager implements IWatchDogListener
     {
         Link fromLink = Link.assets(MODELS_PREFIX + from);
         Link toLink = Link.assets(MODELS_PREFIX + to);
-        java.io.File fromFile = BBSMod.getProvider().getFile(fromLink);
-        java.io.File toFile = BBSMod.getProvider().getFile(toLink);
+        File fromFile = BBSMod.getProvider().getFile(fromLink);
+        File toFile = BBSMod.getProvider().getFile(toLink);
 
         if (fromFile != null && fromFile.exists() && fromFile.isDirectory() && toFile != null && !toFile.exists())
         {

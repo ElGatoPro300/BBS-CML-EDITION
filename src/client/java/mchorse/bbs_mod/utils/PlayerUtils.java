@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.utils;
 
 import mchorse.bbs_mod.network.ClientNetwork;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 

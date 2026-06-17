@@ -3,6 +3,8 @@ package mchorse.bbs_mod.utils;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.camera.Camera;
 import mchorse.bbs_mod.entity.ActorEntity;
+import mchorse.bbs_mod.utils.AABB;
+
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.level.ClipContext;
@@ -13,6 +15,7 @@ import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
+
 import org.joml.Vector2d;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
@@ -104,7 +107,7 @@ public class RayTracing
         return entityHit == null || entityHit.getType() == HitResult.Type.MISS ? blockHit : entityHit;
     }
 
-    public static double intersect(Vector3d pos, Vector3f dir, mchorse.bbs_mod.utils.AABB aabb)
+    public static double intersect(Vector3d pos, Vector3f dir, AABB aabb)
     {
         Vector2d result = new Vector2d();
 

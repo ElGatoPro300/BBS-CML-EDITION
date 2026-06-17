@@ -17,13 +17,14 @@ import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.PNGEncoder;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.resources.Pixels;
+
 import org.joml.Vector2i;
 
 import java.io.File;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.function.Consumer;
 import java.util.Stack;
+import java.util.function.Consumer;
 
 public class UITextureEditor extends UIPixelsEditor
 {

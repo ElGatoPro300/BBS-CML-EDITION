@@ -1,12 +1,14 @@
 package mchorse.bbs_mod.ui.framework.elements.input.keyframes.shapes;
 
-import com.mojang.blaze3d.vertex.BufferBuilder;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
+
 import org.joml.Matrix4f;
+
+import com.mojang.blaze3d.vertex.BufferBuilder;
 
 public class CircleKeyframeShapeRenderer implements IKeyframeShapeRenderer
 {

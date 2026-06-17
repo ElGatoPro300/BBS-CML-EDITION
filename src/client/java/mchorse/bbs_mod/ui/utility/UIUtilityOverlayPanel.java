@@ -25,8 +25,11 @@ import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.Pair;
 import mchorse.bbs_mod.utils.StringUtils;
 import mchorse.bbs_mod.utils.resources.CDNAssetSyncService;
+
 import net.minecraft.client.Minecraft;
+
 import com.mojang.blaze3d.platform.Window;
+
 import java.io.File;
 import java.util.Arrays;
 import java.util.List;

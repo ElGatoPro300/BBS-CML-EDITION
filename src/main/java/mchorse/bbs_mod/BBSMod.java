@@ -51,11 +51,11 @@ import mchorse.bbs_mod.entity.GunProjectileEntity;
 import mchorse.bbs_mod.events.BBSAddonMod;
 import mchorse.bbs_mod.events.EventBus;
 import mchorse.bbs_mod.events.register.RegisterActionClipsEvent;
-import mchorse.bbs_mod.events.register.RegisterMolangFunctionsEvent;
-import mchorse.bbs_mod.events.register.RegisterKeyframeFactoriesEvent;
 import mchorse.bbs_mod.events.register.RegisterCameraClipsEvent;
 import mchorse.bbs_mod.events.register.RegisterEntityCaptureHandlersEvent;
 import mchorse.bbs_mod.events.register.RegisterFormsEvent;
+import mchorse.bbs_mod.events.register.RegisterKeyframeFactoriesEvent;
+import mchorse.bbs_mod.events.register.RegisterMolangFunctionsEvent;
 import mchorse.bbs_mod.events.register.RegisterSettingsEvent;
 import mchorse.bbs_mod.events.register.RegisterSourcePacksEvent;
 import mchorse.bbs_mod.film.FilmManager;
@@ -66,14 +66,14 @@ import mchorse.bbs_mod.forms.forms.BlockForm;
 import mchorse.bbs_mod.forms.forms.ExtrudedForm;
 import mchorse.bbs_mod.forms.forms.FluidForm;
 import mchorse.bbs_mod.forms.forms.FramebufferForm;
-import mchorse.bbs_mod.forms.forms.ShapeForm;
-import mchorse.bbs_mod.forms.forms.StructureForm;
-import mchorse.bbs_mod.forms.forms.LightForm;
 import mchorse.bbs_mod.forms.forms.ItemForm;
 import mchorse.bbs_mod.forms.forms.LabelForm;
+import mchorse.bbs_mod.forms.forms.LightForm;
 import mchorse.bbs_mod.forms.forms.MobForm;
 import mchorse.bbs_mod.forms.forms.ModelForm;
 import mchorse.bbs_mod.forms.forms.ParticleForm;
+import mchorse.bbs_mod.forms.forms.ShapeForm;
+import mchorse.bbs_mod.forms.forms.StructureForm;
 import mchorse.bbs_mod.forms.forms.TrailForm;
 import mchorse.bbs_mod.forms.forms.VanillaParticleForm;
 import mchorse.bbs_mod.items.GunItem;
@@ -96,6 +96,7 @@ import mchorse.bbs_mod.utils.clips.Clip;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.factory.MapFactory;
 import mchorse.bbs_mod.utils.keyframes.factories.KeyframeFactories;
+
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.creativetab.v1.FabricCreativeModeTab;
@@ -109,6 +110,7 @@ import net.fabricmc.fabric.api.object.builder.v1.block.entity.FabricBlockEntityT
 import net.fabricmc.fabric.api.object.builder.v1.entity.FabricDefaultAttributeRegistry;
 import net.fabricmc.fabric.api.object.builder.v1.entity.FabricEntityTypeBuilder;
 import net.fabricmc.loader.api.FabricLoader;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Registry;
 import net.minecraft.core.component.DataComponents;
@@ -134,10 +136,11 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.storage.LevelResource;
-import java.util.Map;
+
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 public class BBSMod implements ModInitializer
@@ -292,7 +295,7 @@ public class BBSMod implements ModInitializer
 
         CompoundTag compound = new CompoundTag();
         compound.putString("id", BuiltInRegistries.BLOCK_ENTITY_TYPE.getKey(MODEL_BLOCK_ENTITY).toString());
-        mchorse.bbs_mod.data.DataStorageUtils.writeToNbtCompound(compound, "Properties", properties.toData());
+        DataStorageUtils.writeToNbtCompound(compound, "Properties", properties.toData());
 
         stack.set(DataComponents.BLOCK_ENTITY_DATA, TypedEntityData.of(MODEL_BLOCK_ENTITY, compound));
         stack.set(DataComponents.BLOCK_STATE, new BlockItemStateProperties(Map.of("light_level", String.valueOf(properties.getLightLevel()))));

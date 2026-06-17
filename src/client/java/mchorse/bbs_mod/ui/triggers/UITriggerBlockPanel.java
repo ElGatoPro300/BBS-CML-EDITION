@@ -1,7 +1,5 @@
 package mchorse.bbs_mod.ui.triggers;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.blocks.entities.TriggerBlockEntity;
 import mchorse.bbs_mod.camera.CameraUtils;
@@ -23,13 +21,21 @@ import mchorse.bbs_mod.utils.AABB;
 import mchorse.bbs_mod.utils.PlayerUtils;
 import mchorse.bbs_mod.utils.RayTracing;
 import mchorse.bbs_mod.utils.colors.Colors;
+
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
+
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+
 import org.joml.Vector3d;
 import org.joml.Vector3f;
+
+import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.PoseStack;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -252,7 +258,7 @@ public class UITriggerBlockPanel extends UIDashboardPanel implements IFlightSupp
         GlStateManager._disableBlend();
     }
 
-    private void renderBox(com.mojang.blaze3d.vertex.PoseStack stack, TriggerBlockEntity entity, float r, float g, float b)
+    private void renderBox(PoseStack stack, TriggerBlockEntity entity, float r, float g, float b)
     {
         BlockPos bp = entity.getBlockPos();
         Vector3f p1 = entity.pos1.get();
@@ -278,9 +284,9 @@ public class UITriggerBlockPanel extends UIDashboardPanel implements IFlightSupp
             Draw.renderBox(stack, x, y, z, w, h, d, r, g, b);
     }
 
-    private void renderRegionBox(com.mojang.blaze3d.vertex.PoseStack stack, TriggerBlockEntity entity, float r, float g, float b)
+    private void renderRegionBox(PoseStack stack, TriggerBlockEntity entity, float r, float g, float b)
     {
-        net.minecraft.world.phys.AABB box = entity.getRegionBox();
+        AABB box = entity.getRegionBox();
 
         Draw.renderBox(stack, box.minX, box.minY, box.minZ, box.maxX - box.minX, box.maxY - box.minY, box.maxZ - box.minZ, r, g, b);
     }

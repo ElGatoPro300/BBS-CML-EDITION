@@ -3,6 +3,7 @@ package mchorse.bbs_mod.cubic.data.model;
 import mchorse.bbs_mod.data.IDataSerializable;
 import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.utils.Quad;
+
 import org.joml.Vector2f;
 import org.joml.Vector3f;
 

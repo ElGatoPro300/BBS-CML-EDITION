@@ -4,6 +4,7 @@ import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.blocks.entities.ModelBlockEntity;
 import mchorse.bbs_mod.blocks.entities.ModelProperties;
 import mchorse.bbs_mod.network.ServerNetwork;
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.NonNullList;
 import net.minecraft.core.component.DataComponents;
@@ -35,10 +36,12 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import org.jetbrains.annotations.Nullable;
+
 import org.joml.Vector3f;
 
 import java.util.Map;
+
+import org.jetbrains.annotations.Nullable;
 
 public class ModelBlock extends Block implements EntityBlock, SimpleWaterloggedBlock
 {

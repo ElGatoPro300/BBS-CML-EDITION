@@ -2,12 +2,12 @@ package mchorse.bbs_mod.ui.model;
 
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
+import mchorse.bbs_mod.camera.OrbitDistanceCamera;
+import mchorse.bbs_mod.camera.controller.OrbitCameraController;
 import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.cubic.model.ArmorSlot;
 import mchorse.bbs_mod.cubic.model.ArmorType;
 import mchorse.bbs_mod.cubic.model.ModelConfig;
-import mchorse.bbs_mod.camera.OrbitDistanceCamera;
-import mchorse.bbs_mod.camera.controller.OrbitCameraController;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.forms.ModelForm;
@@ -27,9 +27,11 @@ import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
+
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
+
 import org.lwjgl.glfw.GLFW;
 
 public class UIModelArmorTransformEditor extends UIDashboardPanel

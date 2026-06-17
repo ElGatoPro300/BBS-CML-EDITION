@@ -1,13 +1,5 @@
 package mchorse.bbs_mod.actions;
 
-import com.google.common.collect.MapMaker;
-import com.mojang.authlib.GameProfile;
-import org.jetbrains.annotations.Nullable;
-
-import java.util.Map;
-import java.util.Objects;
-import java.util.OptionalInt;
-import java.util.UUID;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerLevel;
@@ -20,6 +12,17 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.animal.equine.AbstractHorse;
 import net.minecraft.world.level.block.entity.SignBlockEntity;
 import net.minecraft.world.scores.PlayerTeam;
+
+import com.mojang.authlib.GameProfile;
+
+import com.google.common.collect.MapMaker;
+
+import java.util.Map;
+import java.util.Objects;
+import java.util.OptionalInt;
+import java.util.UUID;
+
+import org.jetbrains.annotations.Nullable;
 
 public class SuperFakePlayer extends ServerPlayer
 {

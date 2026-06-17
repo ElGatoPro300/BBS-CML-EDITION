@@ -5,12 +5,14 @@ import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeSheet;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframes;
 import mchorse.bbs_mod.ui.utils.Area;
-import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.Pair;
+import mchorse.bbs_mod.utils.colors.Colors;
+import mchorse.bbs_mod.utils.interps.Interpolations;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import mchorse.bbs_mod.utils.keyframes.factories.IKeyframeFactory;
 
 import java.text.DecimalFormat;
+import java.util.ArrayList;
 import java.util.List;
 
 public class UICustomInterpolationGraph extends UIKeyframeGraph
@@ -38,7 +40,7 @@ public class UICustomInterpolationGraph extends UIKeyframeGraph
     {
         Keyframe keyframe = super.addKeyframe(sheet, tick, value);
         
-        keyframe.getInterpolation().setInterp(mchorse.bbs_mod.utils.interps.Interpolations.BEZIER);
+        keyframe.getInterpolation().setInterp(Interpolations.BEZIER);
         keyframe.lx = 0.15f;
         keyframe.rx = 0.15f;
         
@@ -50,8 +52,8 @@ public class UICustomInterpolationGraph extends UIKeyframeGraph
     {
         for (UIKeyframeSheet sheet : this.getSheets())
         {
-            java.util.List<Keyframe> selected = sheet.selection.getSelected();
-            java.util.List<Keyframe> toRemove = new java.util.ArrayList<>();
+            List<Keyframe> selected = sheet.selection.getSelected();
+            List<Keyframe> toRemove = new ArrayList<>();
             
             for (Keyframe kf : selected)
             {

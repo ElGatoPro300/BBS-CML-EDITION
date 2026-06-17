@@ -4,12 +4,15 @@ import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.forms.LightForm;
 import mchorse.bbs_mod.ui.framework.UIContext;
+
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.BlockItemStateProperties;
+
 import com.mojang.blaze3d.vertex.PoseStack;
+
 import java.util.Map;
 
 public class LightFormRenderer extends FormRenderer<LightForm>

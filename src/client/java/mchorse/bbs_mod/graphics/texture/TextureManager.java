@@ -1,6 +1,5 @@
 package mchorse.bbs_mod.graphics.texture;
 
-import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.resources.AssetProvider;
@@ -12,7 +11,11 @@ import mchorse.bbs_mod.utils.resources.MultiLinkThread;
 import mchorse.bbs_mod.utils.resources.Pixels;
 import mchorse.bbs_mod.utils.watchdog.IWatchDogListener;
 import mchorse.bbs_mod.utils.watchdog.WatchDogEvent;
+
+import com.mojang.blaze3d.opengl.GlStateManager;
+
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL13;
 
 import java.io.InputStream;
 import java.nio.file.Path;
@@ -103,7 +106,7 @@ public class TextureManager implements IWatchDogListener
 
         BBSRendering.trackTexture(resolved);
 
-        GlStateManager._activeTexture(org.lwjgl.opengl.GL13.GL_TEXTURE0 + unit);
+        GlStateManager._activeTexture(GL13.GL_TEXTURE0 + unit);
         GlStateManager._bindTexture(resolved.id);
     }
 

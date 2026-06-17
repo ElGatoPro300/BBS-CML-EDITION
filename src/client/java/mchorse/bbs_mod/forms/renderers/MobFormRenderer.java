@@ -1,11 +1,5 @@
 package mchorse.bbs_mod.forms.renderers;
 
-import com.mojang.authlib.GameProfile;
-import com.mojang.blaze3d.opengl.GlStateManager;
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.brigadier.StringReader;
-import com.mojang.math.Axis;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
@@ -21,6 +15,7 @@ import mchorse.bbs_mod.utils.PlayerUtils;
 import mchorse.bbs_mod.utils.joml.Vectors;
 import mchorse.bbs_mod.utils.pose.Pose;
 import mchorse.bbs_mod.utils.pose.Transform;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.model.geom.ModelPart;
@@ -33,7 +28,17 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.Pose;
+
 import org.joml.Matrix4f;
+
+import com.mojang.authlib.GameProfile;
+import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.brigadier.StringReader;
+import com.mojang.math.Axis;
+
 import org.lwjgl.opengl.GL11;
 
 import java.lang.reflect.Field;
@@ -363,7 +368,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
             this.entity.setOnGround(entity.isOnGround());
             this.entity.setShiftKeyDown(entity.isSneaking());
             this.entity.setSprinting(entity.isSprinting());
-            this.entity.setPose(entity.isSneaking() ? net.minecraft.world.entity.Pose.CROUCHING : net.minecraft.world.entity.Pose.STANDING);
+            this.entity.setPose(entity.isSneaking() ? Pose.CROUCHING : Pose.STANDING);
             if (this.entity instanceof LivingEntity living)
             {
                 living.setItemSlot(EquipmentSlot.MAINHAND, entity.getEquipmentStack(EquipmentSlot.MAINHAND));

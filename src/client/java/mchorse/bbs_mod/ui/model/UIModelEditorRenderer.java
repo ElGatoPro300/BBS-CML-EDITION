@@ -1,10 +1,5 @@
 package mchorse.bbs_mod.ui.model;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.opengl.GlProgram;
-import com.mojang.blaze3d.opengl.GlStateManager;
-import com.mojang.blaze3d.opengl.Uniform;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.cubic.ModelInstance;
@@ -16,9 +11,13 @@ import mchorse.bbs_mod.forms.forms.ModelForm;
 import mchorse.bbs_mod.forms.renderers.FormRenderType;
 import mchorse.bbs_mod.forms.renderers.FormRenderingContext;
 import mchorse.bbs_mod.forms.renderers.ModelFormRenderer;
+import mchorse.bbs_mod.forms.renderers.utils.MatrixCache;
+import mchorse.bbs_mod.forms.renderers.utils.MatrixCacheEntry;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.resources.Link;
+import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.UIContext;
+import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIModelRenderer;
 import mchorse.bbs_mod.ui.utils.Gizmo;
@@ -26,18 +25,21 @@ import mchorse.bbs_mod.ui.utils.StencilFormFramebuffer;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.Pair;
 import mchorse.bbs_mod.utils.colors.Colors;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.OverlayTexture;
+
 import org.joml.Matrix4f;
+
+import com.mojang.blaze3d.opengl.GlProgram;
+import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.opengl.Uniform;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.PoseStack;
+
 import org.lwjgl.opengl.GL11;
 
 import java.util.function.Consumer;
-
-import mchorse.bbs_mod.ui.utils.Gizmo;
-import mchorse.bbs_mod.ui.framework.UIBaseMenu;
-import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
-import mchorse.bbs_mod.forms.renderers.utils.MatrixCache;
-import mchorse.bbs_mod.forms.renderers.utils.MatrixCacheEntry;
 
 public class UIModelEditorRenderer extends UIModelRenderer
 {

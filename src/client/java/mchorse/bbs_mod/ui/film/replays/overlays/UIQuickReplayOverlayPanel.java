@@ -1,9 +1,9 @@
 package mchorse.bbs_mod.ui.film.replays.overlays;
 
 import mchorse.bbs_mod.BBSModClient;
+import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.forms.Form;
-import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
@@ -15,10 +15,14 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlayPanel;
 import mchorse.bbs_mod.ui.utils.keys.KeyAction;
 import mchorse.bbs_mod.utils.colors.Colors;
+
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
+
+import com.mojang.blaze3d.platform.Window;
+
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -114,7 +118,7 @@ public class UIQuickReplayOverlayPanel extends UIOverlayPanel
             return;
         }
 
-        com.mojang.blaze3d.platform.Window mcWindow = Minecraft.getInstance().getWindow();
+        Window mcWindow = Minecraft.getInstance().getWindow();
         double fx = mcWindow.getScreenWidth() / (double) context.menu.width;
         double fy = mcWindow.getScreenHeight() / (double) context.menu.height;
         int x = (int) Math.round(this.area.mx() * fx);

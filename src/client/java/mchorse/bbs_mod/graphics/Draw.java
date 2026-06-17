@@ -1,19 +1,23 @@
 package mchorse.bbs_mod.graphics;
 
+import mchorse.bbs_mod.BBSSettings;
+import mchorse.bbs_mod.camera.data.Angle;
+import mchorse.bbs_mod.utils.Axis;
+import mchorse.bbs_mod.utils.MathUtils;
+import mchorse.bbs_mod.utils.MatrixStackUtils;
+
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+
+import org.joml.Matrix4f;
+
+import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexFormat;
-import com.mojang.blaze3d.opengl.GlStateManager;
-import mchorse.bbs_mod.BBSSettings;
-import mchorse.bbs_mod.camera.data.Angle;
-import mchorse.bbs_mod.utils.Axis;
-import mchorse.bbs_mod.utils.MathUtils;
-import org.joml.Matrix4f;
-import mchorse.bbs_mod.utils.MatrixStackUtils;
-import net.minecraft.client.renderer.rendertype.RenderTypes;
+import com.mojang.math.Axis;
 
 public class Draw
 {
@@ -63,7 +67,7 @@ public class Draw
     }
 
     /**
-     * Fill a quad for {@link com.mojang.blaze3d.vertex.DefaultVertexFormat#POSITION_TEX_COLOR_NORMAL}. Points should
+     * Fill a quad for {@link DefaultVertexFormat#POSITION_TEX_COLOR_NORMAL}. Points should
      * be supplied in this order:
      *
      *     3 -------> 4
@@ -119,8 +123,8 @@ public class Draw
         stack.pushPose();
 
         stack.translate(x1, y1, z1);
-        stack.mulPose(com.mojang.math.Axis.YP.rotationDegrees(angle.yaw));
-        stack.mulPose(com.mojang.math.Axis.XP.rotationDegrees(angle.pitch));
+        stack.mulPose(Axis.YP.rotationDegrees(angle.yaw));
+        stack.mulPose(Axis.XP.rotationDegrees(angle.pitch));
 
         fillBox(builder, stack, -thickness / 2, -thickness / 2, 0, thickness / 2, thickness / 2, (float) distance, r, g, b, a);
 
@@ -193,8 +197,8 @@ public class Draw
 
         stack.pushPose();
 
-        if (axis == Axis.X) stack.mulPose(com.mojang.math.Axis.ZP.rotation(MathUtils.PI / 2F));
-        if (axis == Axis.Z) stack.mulPose(com.mojang.math.Axis.XP.rotation(MathUtils.PI / 2F));
+        if (axis == Axis.X) stack.mulPose(Axis.ZP.rotation(MathUtils.PI / 2F));
+        if (axis == Axis.Z) stack.mulPose(Axis.XP.rotation(MathUtils.PI / 2F));
 
         float tubeR = thickness * 0.5F;
         Matrix4f mat = new Matrix4f();

@@ -1,8 +1,9 @@
 package mchorse.bbs_mod.forms.forms.shape;
 
 import mchorse.bbs_mod.forms.forms.shape.nodes.*;
-import mchorse.bbs_mod.utils.math.Noise;
 import mchorse.bbs_mod.utils.colors.Color;
+import mchorse.bbs_mod.utils.math.Noise;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;

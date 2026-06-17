@@ -1,12 +1,16 @@
 package mchorse.bbs_mod.forms.renderers;
 
-import com.mojang.blaze3d.vertex.PoseStack;
 import mchorse.bbs_mod.camera.Camera;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.utils.MathUtils;
+
+import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
+
 import org.joml.Matrix4f;
+
+import com.mojang.blaze3d.vertex.PoseStack;
 
 public class FormRenderingContext
 {
@@ -54,7 +58,7 @@ public class FormRenderingContext
         return this;
     }
 
-    public FormRenderingContext camera(net.minecraft.client.Camera camera)
+    public FormRenderingContext camera(Camera camera)
     {
         this.camera.position.set(camera.position().x, camera.position().y, camera.position().z);
         this.camera.rotation.set(MathUtils.toRad(-camera.xRot()), MathUtils.toRad(camera.yRot()), 0F);

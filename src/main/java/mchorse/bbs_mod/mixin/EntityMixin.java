@@ -1,12 +1,14 @@
 package mchorse.bbs_mod.mixin;
 
+import mchorse.bbs_mod.entity.IEntityFormProvider;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.morphing.IMorphProvider;
 import mchorse.bbs_mod.morphing.Morph;
+
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.player.Player;
-import mchorse.bbs_mod.entity.IEntityFormProvider;
+
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;

@@ -1,12 +1,10 @@
 package mchorse.bbs_mod.client.renderer.item;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.blocks.entities.ModelBlockEntity;
 import mchorse.bbs_mod.blocks.entities.ModelProperties;
+import mchorse.bbs_mod.client.renderer.item.ModelBlockItemRenderer;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.entities.StubEntity;
@@ -15,19 +13,26 @@ import mchorse.bbs_mod.forms.renderers.FormRenderType;
 import mchorse.bbs_mod.forms.renderers.FormRenderingContext;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.pose.Transform;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.special.SpecialModelRenderer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
+
 import org.joml.Vector3f;
+import org.joml.Vector3fc;
+
+import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.serialization.MapCodec;
 
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.function.Consumer;
-import org.joml.Vector3fc;
 
 public class ModelBlockItemRenderer implements SpecialModelRenderer<ItemStack>
 {
@@ -128,10 +133,10 @@ public class ModelBlockItemRenderer implements SpecialModelRenderer<ItemStack>
 
     public static class Unbaked implements SpecialModelRenderer.Unbaked<ItemStack>
     {
-        public static final com.mojang.serialization.MapCodec<mchorse.bbs_mod.client.renderer.item.ModelBlockItemRenderer.Unbaked> CODEC = com.mojang.serialization.MapCodec.unit(new mchorse.bbs_mod.client.renderer.item.ModelBlockItemRenderer.Unbaked());
+        public static final MapCodec<ModelBlockItemRenderer.Unbaked> CODEC = MapCodec.unit(new ModelBlockItemRenderer.Unbaked());
 
         @Override
-        public com.mojang.serialization.MapCodec<? extends SpecialModelRenderer.Unbaked<ItemStack>> type()
+        public MapCodec<? extends SpecialModelRenderer.Unbaked<ItemStack>> type()
         {
             return CODEC;
         }

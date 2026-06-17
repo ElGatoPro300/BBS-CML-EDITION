@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.forms.forms.shape.nodes;
 
 import mchorse.bbs_mod.data.types.MapType;
+
 import java.util.Arrays;
 import java.util.List;
 

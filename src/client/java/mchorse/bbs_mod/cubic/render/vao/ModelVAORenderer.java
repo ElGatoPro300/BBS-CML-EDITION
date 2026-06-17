@@ -3,6 +3,7 @@ package mchorse.bbs_mod.cubic.render.vao;
 import com.mojang.blaze3d.opengl.GlProgram;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
+
 import org.lwjgl.opengl.GL30;
 
 public class ModelVAORenderer

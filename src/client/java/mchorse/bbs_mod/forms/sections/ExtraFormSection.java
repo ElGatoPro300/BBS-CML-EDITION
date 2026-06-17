@@ -11,15 +11,17 @@ import mchorse.bbs_mod.forms.forms.FluidForm;
 import mchorse.bbs_mod.forms.forms.FramebufferForm;
 import mchorse.bbs_mod.forms.forms.ItemForm;
 import mchorse.bbs_mod.forms.forms.LabelForm;
+import mchorse.bbs_mod.forms.forms.LightForm;
 import mchorse.bbs_mod.forms.forms.MobForm;
-import mchorse.bbs_mod.forms.forms.StructureForm;
 import mchorse.bbs_mod.forms.forms.ShapeForm;
+import mchorse.bbs_mod.forms.forms.StructureForm;
 import mchorse.bbs_mod.forms.forms.TrailForm;
 import mchorse.bbs_mod.forms.forms.VanillaParticleForm;
-import mchorse.bbs_mod.forms.forms.LightForm;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.UIKeys;
+
 import net.minecraft.world.level.block.Blocks;
+
 import java.util.Arrays;
 import java.util.List;
 

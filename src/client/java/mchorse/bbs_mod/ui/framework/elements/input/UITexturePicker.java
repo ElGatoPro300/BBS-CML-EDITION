@@ -9,9 +9,9 @@ import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.importers.IImportPathProvider;
+import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.resources.packs.URLSourcePack;
-import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.textures.UITexturePainter;
@@ -43,7 +43,7 @@ import mchorse.bbs_mod.utils.presets.PresetManager;
 import mchorse.bbs_mod.utils.resources.FilteredLink;
 import mchorse.bbs_mod.utils.resources.LinkUtils;
 import mchorse.bbs_mod.utils.resources.MultiLink;
-import org.apache.commons.io.IOUtils;
+
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
@@ -55,6 +55,8 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
+
+import org.apache.commons.io.IOUtils;
 
 /**
  * Texture picker GUI

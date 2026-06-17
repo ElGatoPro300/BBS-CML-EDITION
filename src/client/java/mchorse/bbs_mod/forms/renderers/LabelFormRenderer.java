@@ -1,30 +1,34 @@
 package mchorse.bbs_mod.forms.renderers;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.opengl.GlStateManager;
-import com.mojang.blaze3d.vertex.BufferBuilder;
-import com.mojang.blaze3d.vertex.DefaultVertexFormat;
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.Tesselator;
-import com.mojang.blaze3d.vertex.VertexFormat;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.forms.LabelForm;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
+import mchorse.bbs_mod.utils.FontUtils;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.StringUtils;
+import mchorse.bbs_mod.utils.TextureFont;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.joml.Vectors;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
-import mchorse.bbs_mod.utils.FontUtils;
-import mchorse.bbs_mod.utils.TextureFont;
+
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
+import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.Tesselator;
+import com.mojang.blaze3d.vertex.VertexFormat;
+
+import java.awt.Font;
 import java.util.List;
 
 public class LabelFormRenderer extends FormRenderer<LabelForm>
@@ -217,9 +221,9 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
         
         if (!fontName.isEmpty())
         {
-            int style = java.awt.Font.PLAIN;
-            if (this.form.fontWeight.get() >= 700) style |= java.awt.Font.BOLD;
-            if (this.form.fontStyle.get() >= 1) style |= java.awt.Font.ITALIC;
+            int style = Font.PLAIN;
+            if (this.form.fontWeight.get() >= 700) style |= Font.BOLD;
+            if (this.form.fontStyle.get() >= 1) style |= Font.ITALIC;
             
             customFont = FontUtils.getFont(fontName, style);
         }
@@ -324,9 +328,9 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
         
         if (!fontName.isEmpty())
         {
-            int style = java.awt.Font.PLAIN;
-            if (this.form.fontWeight.get() >= 700) style |= java.awt.Font.BOLD;
-            if (this.form.fontStyle.get() >= 1) style |= java.awt.Font.ITALIC;
+            int style = Font.PLAIN;
+            if (this.form.fontWeight.get() >= 700) style |= Font.BOLD;
+            if (this.form.fontStyle.get() >= 1) style |= Font.ITALIC;
             
             customFont = FontUtils.getFont(fontName, style);
         }

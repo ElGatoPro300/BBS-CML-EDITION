@@ -1,9 +1,5 @@
 package mchorse.bbs_mod.forms.renderers;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.math.Axis;
-import com.mojang.blaze3d.opengl.GlStateManager;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.entities.StubEntity;
 import mchorse.bbs_mod.forms.forms.AnchorForm;
@@ -12,8 +8,16 @@ import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.joml.Vectors;
+
 import net.minecraft.client.renderer.texture.OverlayTexture;
+
 import org.joml.Matrix4f;
+
+import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
+
 import org.lwjgl.opengl.GL11;
 
 public class AnchorFormRenderer extends FormRenderer<AnchorForm>

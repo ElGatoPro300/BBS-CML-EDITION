@@ -16,17 +16,20 @@ import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
 import mchorse.bbs_mod.ui.particles.sections.UIParticleSchemeSection;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
+import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.interps.Lerps;
+
 import net.minecraft.client.renderer.rendertype.RenderTypes;
-import mchorse.bbs_mod.utils.MathUtils;
+
+import org.joml.Matrix4f;
+import org.joml.Vector2d;
+
 import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.Tesselator;
 import com.mojang.blaze3d.vertex.VertexFormat;
-import org.joml.Matrix4f;
-import org.joml.Vector2d;
 
 public class UICurve extends UIElement
 {

@@ -15,9 +15,12 @@ import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
 import mchorse.bbs_mod.ui.utils.context.ItemStackContextAction;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Colors;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.item.ItemStack;
+
 import com.mojang.blaze3d.vertex.PoseStack;
+
 import java.util.function.Consumer;
 
 public class UIItemStack extends UIElement

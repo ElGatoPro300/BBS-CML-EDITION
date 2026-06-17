@@ -1,6 +1,5 @@
 package mchorse.bbs_mod.ui.forms.editors.panels.widgets;
 
-import com.mojang.brigadier.StringReader;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
@@ -10,6 +9,7 @@ import mchorse.bbs_mod.ui.framework.elements.input.text.UITextarea;
 import mchorse.bbs_mod.ui.framework.elements.input.text.UITextbox;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlayPanel;
 import mchorse.bbs_mod.ui.utils.UI;
+
 import net.minecraft.commands.arguments.CompoundTagArgument;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -20,6 +20,9 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+
+import com.mojang.brigadier.StringReader;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;

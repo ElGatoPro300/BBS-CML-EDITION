@@ -10,6 +10,7 @@ import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.pose.UIPoseEditor;
 import mchorse.bbs_mod.utils.StringUtils;
+
 import org.joml.Matrix4f;
 
 public class UIModelForm extends UIForm<ModelForm>

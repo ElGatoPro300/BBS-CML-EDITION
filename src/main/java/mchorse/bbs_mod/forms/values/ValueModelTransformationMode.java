@@ -3,6 +3,7 @@ package mchorse.bbs_mod.forms.values;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.StringType;
 import mchorse.bbs_mod.settings.values.base.BaseValueBasic;
+
 import net.minecraft.world.item.ItemDisplayContext;
 
 public class ValueModelTransformationMode extends BaseValueBasic<ItemDisplayContext>

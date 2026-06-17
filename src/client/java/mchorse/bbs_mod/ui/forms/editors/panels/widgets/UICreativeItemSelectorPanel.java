@@ -13,6 +13,7 @@ import mchorse.bbs_mod.ui.utils.Scroll;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.colors.Colors;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -22,6 +23,7 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;

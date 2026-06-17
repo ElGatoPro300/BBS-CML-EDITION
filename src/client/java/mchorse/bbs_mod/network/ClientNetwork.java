@@ -1,11 +1,11 @@
 package mchorse.bbs_mod.network;
 
-import io.netty.buffer.Unpooled;
-
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.actions.ActionState;
+import mchorse.bbs_mod.bay4lly.SkinManager;
 import mchorse.bbs_mod.blocks.entities.ModelBlockEntity;
 import mchorse.bbs_mod.blocks.entities.ModelProperties;
+import mchorse.bbs_mod.blocks.entities.TriggerBlockEntity;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.data.DataStorageUtils;
 import mchorse.bbs_mod.data.types.BaseType;
@@ -26,12 +26,13 @@ import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.UIScreen;
 import mchorse.bbs_mod.ui.model_blocks.UIModelBlockPanel;
 import mchorse.bbs_mod.ui.morphing.UIMorphingPanel;
+import mchorse.bbs_mod.ui.triggers.UITriggerBlockPanel;
 import mchorse.bbs_mod.utils.DataPath;
 import mchorse.bbs_mod.utils.repos.RepositoryOperation;
-import mchorse.bbs_mod.blocks.entities.TriggerBlockEntity;
-import mchorse.bbs_mod.ui.triggers.UITriggerBlockPanel;
+
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
@@ -42,10 +43,13 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
+
+import io.netty.buffer.Unpooled;
 
 public class ClientNetwork
 {
@@ -426,7 +430,7 @@ public class ClientNetwork
             {
                 try
                 {
-                    mchorse.bbs_mod.bay4lly.SkinManager.saveSkin(playerName, bytes);
+                    SkinManager.saveSkin(playerName, bytes);
                 }
                 catch (Exception e)
                 {

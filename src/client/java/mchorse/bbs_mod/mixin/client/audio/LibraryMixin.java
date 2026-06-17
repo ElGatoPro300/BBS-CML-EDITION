@@ -4,6 +4,7 @@ import com.mojang.blaze3d.audio.DeviceList;
 import com.mojang.blaze3d.audio.DeviceTracker;
 import com.mojang.blaze3d.audio.Library;
 import com.mojang.blaze3d.audio.PollingDeviceTracker;
+
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;

@@ -7,13 +7,15 @@ import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.data.types.StringType;
 import mchorse.bbs_mod.resources.Link;
+
 import com.mojang.logging.LogUtils;
-import org.slf4j.Logger;
 
 import java.io.File;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+
+import org.slf4j.Logger;
 
 /**
  * Manages structure files' like/unlike status
