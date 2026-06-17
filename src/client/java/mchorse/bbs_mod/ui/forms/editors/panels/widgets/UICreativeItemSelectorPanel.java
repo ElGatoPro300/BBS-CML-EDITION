@@ -59,8 +59,8 @@ public class UICreativeItemSelectorPanel extends UIOverlayPanel
         this.callback = callback;
         this.player = MinecraftClient.getInstance().player;
         this.search = new UITextbox(200, (s) -> this.refreshItems()).placeholder(UIKeys.GENERAL_SEARCH);
-        this.allButton = new UIButton(IKey.constant("All"), (b) -> this.setMode(ViewMode.ALL));
-        this.inventoryButton = new UIButton(IKey.constant("Inventory"), (b) -> this.setMode(ViewMode.INVENTORY));
+        this.allButton = new UIButton(L10n.lang("bbs.ui.creative.all"), (b) -> this.setMode(ViewMode.ALL));
+        this.inventoryButton = new UIButton(L10n.lang("bbs.ui.creative.inventory"), (b) -> this.setMode(ViewMode.INVENTORY));
         this.grid = new UIItemGrid(this::pick);
         this.hotbar = new UIHotbarStrip(this::pick);
 

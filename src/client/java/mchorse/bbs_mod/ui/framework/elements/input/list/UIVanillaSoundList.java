@@ -723,7 +723,7 @@ public class UIVanillaSoundList extends UIStringList
 
     private boolean isMediaFoldersEnhancementsEnabled()
     {
-        return BBSSettings.mediaFoldersEnhancements != null && BBSSettings.mediaFoldersEnhancements.get();
+        return true;
     }
 
     /**

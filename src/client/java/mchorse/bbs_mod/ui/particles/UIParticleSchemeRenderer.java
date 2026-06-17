@@ -70,8 +70,7 @@ public class UIParticleSchemeRenderer extends UIModelRenderer
         MatrixStack stack = context.batcher.getContext().getMatrices();
 
         stack.push();
-        stack.loadIdentity();
-        stack.multiplyPositionMatrix(new Matrix4f(RenderSystem.getInverseViewRotationMatrix()).invert());
+
 
         RenderSystem.enableBlend();
         RenderSystem.enableDepthTest();
@@ -150,5 +149,11 @@ public class UIParticleSchemeRenderer extends UIModelRenderer
         {
             Draw.coolerAxes(context.batcher.getContext().getMatrices(), 1F, 0.01F, 1.01F, 0.02F);
         }
+    }
+
+    @Override
+    public void render(UIContext context)
+    {
+        super.render(context);
     }
 }
