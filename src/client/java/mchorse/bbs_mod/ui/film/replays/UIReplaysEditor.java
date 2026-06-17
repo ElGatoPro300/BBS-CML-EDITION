@@ -1497,6 +1497,7 @@ public class UIReplaysEditor extends UIElement
                 {
                     this.cleanupUntouchedAutomaticKeyframe(this.lastPickedKeyframe, keyframe);
                     this.lastPickedKeyframe = keyframe;
+                    this.filmPanel.focusLinkedPropertiesTab("replayTimeline");
                     consumer.accept(keyframe);
                 }).absolute();
 
