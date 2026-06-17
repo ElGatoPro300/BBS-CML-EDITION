@@ -59,7 +59,9 @@ import mchorse.bbs_mod.utils.resources.Pixels;
 
 import net.minecraft.client.MinecraftClient;
 
+import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import com.mojang.logging.LogUtils;
 
 import com.google.gson.Gson;
@@ -1300,18 +1302,18 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
             @Override
             public void render(UIContext context)
             {
-                context.batcher.getContext().getMatrices().push();
+                context.batcher.getContext().getMatrices().pushMatrix();
                 
                 int cx = this.area.mx();
                 int cy = this.area.my();
                 
-                context.batcher.getContext().getMatrices().translate(cx, cy, 0);
-                context.batcher.getContext().getMatrices().scale(2F, 2F, 1F);
-                context.batcher.getContext().getMatrices().translate(-cx, -cy, 0);
+                context.batcher.getContext().getMatrices().translate(cx, cy);
+                context.batcher.getContext().getMatrices().scale(2F, 2F);
+                context.batcher.getContext().getMatrices().translate(-cx, -cy);
                 
                 super.render(context);
                 
-                context.batcher.getContext().getMatrices().pop();
+                context.batcher.getContext().getMatrices().popMatrix();
             }
         }.background();
         

@@ -1,7 +1,7 @@
 package mchorse.bbs_mod.ui.film.replays.overlays;
 
-import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.BBSMod;
+import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.settings.Settings;
