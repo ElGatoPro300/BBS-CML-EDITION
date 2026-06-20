@@ -2498,18 +2498,18 @@ public class UIFormList extends UIElement
 
             if (this.expansionTransition < this.targetExpansion)
             {
-                this.expansionTransition = Math.min(this.targetExpansion, this.expansionTransition + delta * 5F);
+                this.expansionTransition = Math.min(this.targetExpansion, this.expansionTransition + delta * 4F);
                 this.invalidateCache();
             }
             else if (this.expansionTransition > this.targetExpansion)
             {
-                this.expansionTransition = Math.max(this.targetExpansion, this.expansionTransition - delta * 5F);
+                this.expansionTransition = Math.max(this.targetExpansion, this.expansionTransition - delta * 4F);
                 this.invalidateCache();
             }
 
             if (this.folderTransition < 1F)
             {
-                this.folderTransition = Math.min(1F, this.folderTransition + delta * 5F);
+                this.folderTransition = Math.min(1F, this.folderTransition + delta * 4F);
                 this.invalidateCache();
             }
 
@@ -2519,6 +2519,13 @@ public class UIFormList extends UIElement
                 UIFormList.this.activeExpandedFolder = null;
                 this.invalidateCache();
             }
+        }
+
+        private float easeOutCubic(float t)
+        {
+            float f = t - 1F;
+
+            return f * f * f + 1F;
         }
 
 
@@ -2968,13 +2975,16 @@ public class UIFormList extends UIElement
             /* Render old items sliding out during a folder transition */
             if (this.folderTransition < 1F && !this.oldExpandedItems.isEmpty())
             {
-                this.renderExpandedItems(context, this.oldExpandedItems, this.oldExpandedPerRow, gridY, 1F - this.folderTransition, -this.transitionDirection);
+                float easedFolder = this.easeOutCubic(this.folderTransition);
+
+                this.renderExpandedItems(context, this.oldExpandedItems, this.oldExpandedPerRow, gridY, 1F - easedFolder, -this.transitionDirection);
             }
 
             /* Render current items (sliding in if folder transition is active) */
             if (!this.expandedItems.isEmpty())
             {
-                float newAlpha = this.folderTransition;
+                float easedFolder = this.easeOutCubic(this.folderTransition);
+                float newAlpha = easedFolder;
                 int slideDirection = this.folderTransition < 1F ? this.transitionDirection : 0;
 
                 this.renderExpandedItems(context, this.expandedItems, expandedPerRow, gridY, newAlpha, slideDirection);
@@ -3003,7 +3013,7 @@ public class UIFormList extends UIElement
                 return;
             }
 
-            int slideOffset = (int) ((1F - alpha) * this.expandedPanelW * 0.3F) * slideDir;
+            int slideOffset = (int) ((1F - alpha) * this.expandedPanelW) * slideDir;
 
             if (this.dragFormIndex >= items.size())
             {
@@ -3265,7 +3275,7 @@ public class UIFormList extends UIElement
                         int gridHeight = Math.max(20, expandedRows * (EXPANDED_CELL_HEIGHT + CATEGORY_CARD_GAP));
                         int fullPanelH = EXPANDED_HEADER_HEIGHT + gridHeight + CATEGORY_CARD_GAP * 2;
 
-                        this.expandedPanelH = (int) (fullPanelH * this.expansionTransition);
+                        this.expandedPanelH = (int) (fullPanelH * this.easeOutCubic(this.expansionTransition));
                         currentY += this.expandedPanelH + CATEGORY_CARD_GAP;
                     }
                 }
