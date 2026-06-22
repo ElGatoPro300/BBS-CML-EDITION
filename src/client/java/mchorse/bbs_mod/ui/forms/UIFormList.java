@@ -230,9 +230,43 @@ public class UIFormList extends UIElement
         this.search.clickItself();
     }
 
+    private UIFormCategory findMatchingCategory(UIFormCategory other)
+    {
+        if (other == null)
+        {
+            return null;
+        }
+
+        for (UIFormCategory category : this.categories)
+        {
+            if (other.category instanceof ModelFormCategory.Folder otherFolder && category.category instanceof ModelFormCategory.Folder thisFolder)
+            {
+                if (Objects.equals(otherFolder.path, thisFolder.path))
+                {
+                    return category;
+                }
+            }
+            else
+            {
+                String otherTitle = other.category.getProcessedTitle();
+                String thisTitle = category.category.getProcessedTitle();
+
+                if (Objects.equals(otherTitle, thisTitle))
+                {
+                    return category;
+                }
+            }
+        }
+
+        return null;
+    }
+
     public void setupForms(FormCategories forms)
     {
         this.closeCategoryPopup();
+
+        UIFormCategory oldExpanded = this.expandedCategory;
+
         this.categories.clear();
         this.forms.removeAll();
         List<FormCategory> allCategories = new ArrayList<>(forms.getAllCategories());
@@ -255,6 +289,27 @@ public class UIFormList extends UIElement
         this.categories.get(this.categories.size() - 1).marginBottom(40);
         this.syncModelFolderNavigationState();
         this.hiddenCategoryPreviews.retainAll(this.getAvailableCategoryPreviewKeys());
+
+        UIFormCategory matched = this.findMatchingCategory(oldExpanded);
+
+        if (matched != null)
+        {
+            this.expandedCategory = matched;
+
+            if (matched.category instanceof ModelFormCategory.Folder folder)
+            {
+                this.activeExpandedFolder = folder;
+            }
+            else
+            {
+                this.activeExpandedFolder = null;
+            }
+        }
+        else
+        {
+            this.categoryCards.collapseExpandedCategoryInstantly();
+        }
+
         this.applySearchNow(this.appliedSearchQuery);
         this.categoryCardsView.scroll.scrollTo(0);
         this.resize();
@@ -2432,6 +2487,15 @@ public class UIFormList extends UIElement
         public void collapseExpandedCategory()
         {
             this.targetExpansion = 0F;
+            this.invalidateCache();
+        }
+
+        public void collapseExpandedCategoryInstantly()
+        {
+            this.targetExpansion = 0F;
+            this.expansionTransition = 0F;
+            UIFormList.this.expandedCategory = null;
+            UIFormList.this.activeExpandedFolder = null;
             this.invalidateCache();
         }
 
