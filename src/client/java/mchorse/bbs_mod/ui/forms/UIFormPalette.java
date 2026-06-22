@@ -24,6 +24,7 @@ public class UIFormPalette extends UIElement implements IUIFormList
     private boolean background = true;
     private boolean cantExit;
     private boolean immersive;
+    private boolean favorites;
     private boolean canModify;
 
     public static UIFormPalette open(UIElement parent, boolean editing, Form form, Consumer<Form> callback)
@@ -117,6 +118,16 @@ public class UIFormPalette extends UIElement implements IUIFormList
     public void immersive()
     {
         this.immersive = true;
+    }
+
+    public boolean hasFavorites()
+    {
+        return this.favorites;
+    }
+
+    public void favorites()
+    {
+        this.favorites = true;
     }
 
     public UIFormPalette updatable()
@@ -230,12 +241,9 @@ public class UIFormPalette extends UIElement implements IUIFormList
     @Override
     public void render(UIContext context)
     {
-        if (this.background)
+        if (this.background && (!this.immersive || this.list.isVisible()))
         {
-            if (!this.immersive || this.list.isVisible())
-            {
-                this.area.render(context.batcher, Colors.A75);
-            }
+            this.area.render(context.batcher, Colors.A75);
         }
 
         super.render(context);

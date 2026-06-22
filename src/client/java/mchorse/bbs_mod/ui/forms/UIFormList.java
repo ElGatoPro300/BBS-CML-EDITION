@@ -1220,7 +1220,7 @@ public class UIFormList extends UIElement
 
     private boolean isFavoritesFeatureEnabled()
     {
-        return this.palette instanceof UIFormPalette formPalette && formPalette.isImmersive();
+        return this.palette instanceof UIFormPalette formPalette && (formPalette.isImmersive() || formPalette.hasFavorites());
     }
 
     private void applyFavoritesLayout(boolean enabled)
