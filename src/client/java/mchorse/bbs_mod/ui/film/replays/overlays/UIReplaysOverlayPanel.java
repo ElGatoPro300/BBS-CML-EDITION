@@ -1,7 +1,7 @@
 package mchorse.bbs_mod.ui.film.replays.overlays;
 
-import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.BBSMod;
+import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.settings.Settings;
@@ -41,9 +41,9 @@ import org.slf4j.Logger;
 public class UIReplaysOverlayPanel extends UIOverlayPanel
 {
     private static final int DOCKED_REPLAYS_HEIGHT = 170;
-    private static final int DOCKED_TOP_SECTION_MIN = 80;
+    private static final int DOCKED_TOP_SECTION_MIN = 16;
     private static final int DOCKED_BOTTOM_SECTION_MIN = 70;
-    private static final int DOCKED_REPLAYS_HEIGHT_MAX = 420;
+    private static final int DOCKED_REPLAYS_HEIGHT_MAX = 2000;
     private static final int DOCKED_RESIZER_HEIGHT = 6;
     private static final Logger LOGGER = LogUtils.getLogger();
 

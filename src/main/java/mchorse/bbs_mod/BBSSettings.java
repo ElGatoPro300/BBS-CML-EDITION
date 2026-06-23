@@ -320,7 +320,7 @@ public class BBSSettings
         editorTimeMode = builder.getInt("time_mode", 0, 0, 2);
         editorImportMode = builder.getInt("import_mode", 0, 0, 1);
         editorAnchoredReplaysPanel = builder.getBoolean("anchored_replays_panel", true);
-        editorAnchoredReplaysPanelHeight = builder.getInt("anchored_replays_panel_height", 170, 70, 420);
+        editorAnchoredReplaysPanelHeight = builder.getInt("anchored_replays_panel_height", 170, 70, 2000);
         editorAnchoredReplaysPanelHeight.invisible();
         editorReplayHud = builder.getBoolean("replay_hud", false);
         editorReplayHudPosition = builder.getInt("replay_hud_position", 0, 0, 3);

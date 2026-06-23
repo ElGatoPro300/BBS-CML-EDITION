@@ -43,6 +43,9 @@ public class PhysBoneRuntime
 {
     private static final float MOTION_EPSILON = 0.00075F;
     private static final float ROTATION_EPSILON = 0.04F;
+    private static final long LAG_SPIKE_THRESHOLD_NANOS = 80_000_000L;
+    private static final float STABILITY_LIMIT = 0.45F;
+    private static final int MAX_SUB_STEPS = 8;
 
     public static void update(IEntity entity, IModelInstance modelInstance, Map<String, PhysBoneState> physStates)
     {
@@ -78,7 +81,54 @@ public class PhysBoneRuntime
         Set<String> enabledPhysBones = new HashSet<>();
         Set<String> activeBones = new HashSet<>();
 
-        for (PhysBoneDefinition definition : definitions)
+        /* Expand automatic bone chains */
+        List<PhysBoneDefinition> expandedDefinitions = new ArrayList<>();
+        Set<String> explicitBones = new HashSet<>();
+
+        for (PhysBoneDefinition def : definitions)
+        {
+            if (def != null && def.enabled && def.bone != null && !def.bone.isEmpty())
+            {
+                explicitBones.add(resolveBoneName(def.bone, modelGroups, bobjBones));
+            }
+        }
+
+        for (PhysBoneDefinition def : definitions)
+        {
+            if (def == null || !def.enabled || def.bone == null || def.bone.isEmpty())
+            {
+                continue;
+            }
+
+            expandedDefinitions.add(def);
+
+            String startBone = resolveBoneName(def.bone, modelGroups, bobjBones);
+            String endBone = def.chainEnd == null ? "" : resolveBoneName(def.chainEnd, modelGroups, bobjBones);
+
+            if (!endBone.isEmpty() && !endBone.equals(startBone))
+            {
+                List<String> chainPath = getChainPath(startBone, endBone, modelGroups, bobjBones);
+
+                if (chainPath != null && chainPath.size() > 1)
+                {
+                    for (int i = 1; i < chainPath.size(); i++)
+                    {
+                        String chainBone = chainPath.get(i);
+
+                        if (!explicitBones.contains(chainBone))
+                        {
+                            PhysBoneDefinition virtualDef = def.copy();
+
+                            virtualDef.bone = chainBone;
+                            virtualDef.chainEnd = "";
+                            expandedDefinitions.add(virtualDef);
+                        }
+                    }
+                }
+            }
+        }
+
+        for (PhysBoneDefinition definition : expandedDefinitions)
         {
             if (definition != null && definition.enabled && definition.bone != null && !definition.bone.isEmpty())
             {
@@ -88,7 +138,10 @@ public class PhysBoneRuntime
 
         List<CollisionSphere> collisionSpheres = getCollisionSpheres(model, modelGroups, bobjBones, enabledPhysBones);
 
-        for (PhysBoneDefinition definition : definitions)
+        /* Sort definitions by hierarchy depth (parents first) for chain propagation */
+        List<PhysBoneDefinition> sorted = sortByHierarchyDepth(expandedDefinitions, modelGroups, bobjBones);
+
+        for (PhysBoneDefinition definition : sorted)
         {
             if (definition == null || definition.bone == null || definition.bone.isEmpty())
             {
@@ -107,37 +160,110 @@ public class PhysBoneRuntime
             activeBones.add(bone);
 
             PhysBoneState state = physStates.computeIfAbsent(bone, (key) -> new PhysBoneState());
+
+            /* Lag spike detection: reset smoothly if too much time has passed */
+            long nowNanos = System.nanoTime();
+
+            if (state.lastUpdateNanos != 0L && (nowNanos - state.lastUpdateNanos) > LAG_SPIKE_THRESHOLD_NANOS)
+            {
+                state.yawVelocity *= 0.15F;
+                state.pitchVelocity *= 0.15F;
+                state.rollVelocity *= 0.15F;
+                state.resetMotionHistory();
+            }
+
+            state.lastUpdateNanos = nowNanos;
+
+            /* Record and smooth motion */
+            state.recordMotion(localStrafe, localForward, verticalVelocity);
+
+            float smoothStrafe = state.getSmoothedStrafe();
+            float smoothForward = state.getSmoothedForward();
+            float smoothVertical = state.getSmoothedVertical();
+
             float maxAngle = Math.max(0F, definition.maxAngle);
             float collisionLimit = getMapFloatIgnoreCase(collisionLimits, bone, maxAngle);
             float chainFactor = (float) Math.pow(0.72F, getDynamicChainDepth(bone, modelGroups, enabledPhysBones));
             float safeAngle = Math.max(6F, Math.min(maxAngle, collisionLimit) * chainFactor);
             float inertia = Math.max(0F, definition.inertia);
-            float strafeAccel = sanitizeMotion(localStrafe - state.prevStrafeMotion);
-            float forwardAccel = sanitizeMotion(localForward - state.prevForwardMotion);
-            float verticalAccel = sanitizeMotion(verticalVelocity - state.prevVerticalVelocity);
-            Vector2f parentDelta = getParentPoseDelta(entity, bone, modelGroups, bobjBones, state);
-            Vector3f parentGravity = getParentPoseGravity(entity, model, bone, modelGroups, bobjBones);
-            float parentYawTurn = sanitizeRotation(parentDelta.x);
-            float parentPitchTurn = sanitizeRotation(parentDelta.y);
-            float gravitySign = definition.gravity < 0F ? -1F : 1F;
-            float gravityFactor = Math.max(Math.abs(definition.gravity), 0.35F);
-            float gravityYaw = computeGravityTilt(parentGravity.x, parentGravity.y) * gravityFactor * gravitySign;
-            float gravityPitch = computeGravityTilt(parentGravity.z, parentGravity.y) * gravityFactor * gravitySign;
-            float fallWindPitch = definition.affectPitch ? Math.max(0F, -verticalVelocity) * 45F * inertia : 0F;
+            float strafeAccel = sanitizeMotion(smoothStrafe - state.prevStrafeMotion);
+            float forwardAccel = sanitizeMotion(smoothForward - state.prevForwardMotion);
+            float verticalAccel = sanitizeMotion(smoothVertical - state.prevVerticalVelocity);
 
-            state.prevStrafeMotion = localStrafe;
-            state.prevForwardMotion = localForward;
-            state.prevVerticalVelocity = verticalVelocity;
+            /* Chain-aware parent delta: include dynamic parent rotation */
+            Vector2f parentDelta = getParentPoseDelta(entity, bone, modelGroups, bobjBones, state);
+            float chainParentYaw = getChainParentDynamicYaw(bone, physStates, modelGroups, bobjBones, enabledPhysBones);
+            float chainParentPitch = getChainParentDynamicPitch(bone, physStates, modelGroups, bobjBones, enabledPhysBones);
+
+            String parent = getParentBoneName(bone, modelGroups, bobjBones);
+            Vector3f parentGravity = getParentPoseGravity(entity, model, bone, modelGroups, bobjBones, definition.gravityDir, definition.localForce);
+            float parentYawTurn = sanitizeRotation(parentDelta.x) + chainParentYaw * 0.6F;
+            float parentPitchTurn = sanitizeRotation(parentDelta.y) + chainParentPitch * 0.6F;
+            float gravityStrength = definition.gravityStrength;
+            float gravityYaw = computeGravityTilt(parentGravity.x, parentGravity.y) * gravityStrength;
+            float gravityPitch = computeGravityTilt(parentGravity.z, parentGravity.y) * gravityStrength;
+            float fallWindPitch = definition.affectPitch ? Math.max(0F, -smoothVertical) * 45F * inertia : 0F;
+
+            state.prevStrafeMotion = smoothStrafe;
+            state.prevForwardMotion = smoothForward;
+            state.prevVerticalVelocity = smoothVertical;
 
             float swayYaw = (-strafeAccel * 220F - bodyTurn * 0.9F - parentYawTurn * 1.35F) * inertia + gravityYaw;
-            float swayPitch = (definition.affectPitch ? ((forwardAccel * 180F - verticalAccel * 120F - parentPitchTurn * 1.2F) * inertia + definition.gravity * 8F - fallWindPitch) : 0F) + gravityPitch;
+            float swayPitch = (definition.affectPitch ? ((forwardAccel * 180F - verticalAccel * 120F - parentPitchTurn * 1.2F) * inertia - fallWindPitch) : 0F) + gravityPitch;
             float targetYaw = MathHelper.clamp(swayYaw, -safeAngle, safeAngle);
             float targetPitch = MathHelper.clamp(swayPitch, -safeAngle, safeAngle);
+
+            /* Anchor attraction force if anchorEnd is specified */
+            if (definition.anchorEnd != null && !definition.anchorEnd.isEmpty())
+            {
+                String resolvedAnchor = resolveBoneName(definition.anchorEnd, modelGroups, bobjBones);
+                Vector3f anchorPivot = getBonePivotTransformed(model, resolvedAnchor, physStates, modelGroups, bobjBones, null, 0F, 0F);
+                Vector3f bonePivot = getBonePivotTransformed(model, bone, physStates, modelGroups, bobjBones, null, 0F, 0F);
+
+                if (anchorPivot != null && bonePivot != null)
+                {
+                    Vector3f toAnchor = new Vector3f(anchorPivot).sub(bonePivot);
+
+                    if (toAnchor.lengthSquared() > 0.0001F)
+                    {
+                        toAnchor.normalize();
+                        Matrix3f parentRot = getPoseRotationMatrix(entity, parent, modelGroups, bobjBones);
+
+                        if (parentRot == null)
+                        {
+                            parentRot = getCurrentRotationMatrix(model, parent, modelGroups, bobjBones);
+                        }
+
+                        if (parentRot != null)
+                        {
+                            Matrix3f invRot = new Matrix3f(parentRot).transpose();
+                            Vector3f localToAnchor = invRot.transform(toAnchor).normalize();
+                            float anchorYaw = computeGravityTilt(localToAnchor.x, localToAnchor.y);
+                            float anchorPitch = computeGravityTilt(localToAnchor.z, localToAnchor.y);
+
+                            targetYaw = MathHelper.lerp(0.35F, targetYaw, anchorYaw);
+                            targetPitch = MathHelper.lerp(0.35F, targetPitch, anchorPitch);
+                        }
+                    }
+                }
+            }
+
+            /* Roll target: derived from lateral motion and body turning */
+            float targetRoll = 0F;
+
+            if (definition.affectRoll)
+            {
+                float rollFactor = Math.max(0F, definition.rollFactor);
+                float rollSway = (strafeAccel * 160F + bodyTurn * 1.2F) * inertia * rollFactor;
+
+                targetRoll = MathHelper.clamp(rollSway, -safeAngle * 0.7F, safeAngle * 0.7F);
+            }
 
             if (!state.initialized)
             {
                 state.yaw = targetYaw;
                 state.pitch = targetPitch;
+                state.roll = targetRoll;
                 state.initialized = true;
             }
 
@@ -147,19 +273,177 @@ public class PhysBoneRuntime
             float prevYaw = state.yaw;
             float prevPitch = state.pitch;
 
-            float yawAccel = (targetYaw - state.yaw) * stiffness - state.yawVelocity * damping;
-            state.yawVelocity += yawAccel * dt;
-            state.yaw += state.yawVelocity * dt;
-            state.yaw = MathHelper.clamp(state.yaw, -safeAngle, safeAngle);
+            /* Symplectic Euler with customizable sub-stepping for stability */
+            integrateSpring(state, definition, targetYaw, targetPitch, targetRoll, stiffness, damping, definition.gravityStrength, dt, safeAngle);
 
-            float pitchAccel = (targetPitch - state.pitch) * stiffness - state.pitchVelocity * damping + definition.gravity;
-            state.pitchVelocity += pitchAccel * dt;
-            state.pitch += state.pitchVelocity * dt;
-            state.pitch = MathHelper.clamp(state.pitch, -safeAngle, safeAngle);
-            solveCollision(entity, model, bone, state, prevYaw, prevPitch, physStates, modelGroups, bobjBones, collisionSpheres);
+            if (definition.collisionEnabled)
+            {
+                solveCollision(entity, model, bone, state, prevYaw, prevPitch, physStates, modelGroups, bobjBones, collisionSpheres, definition.collisionRadius);
+            }
         }
 
         physStates.entrySet().removeIf((entry) -> !activeBones.contains(entry.getKey()));
+    }
+
+    private static void integrateSpring(PhysBoneState state, PhysBoneDefinition definition, float targetYaw, float targetPitch, float targetRoll, float stiffness, float damping, float gravity, float dt, float safeAngle)
+    {
+        int subSteps = Math.max(1, definition.solverSteps);
+        float subDt = dt / subSteps;
+
+        float limitMinYaw = definition.limitAngles ? definition.minYaw : -safeAngle;
+        float limitMaxYaw = definition.limitAngles ? definition.maxYaw : safeAngle;
+        float limitMinPitch = definition.limitAngles ? definition.minPitch : -safeAngle;
+        float limitMaxPitch = definition.limitAngles ? definition.maxPitch : safeAngle;
+        float limitMinRoll = definition.limitAngles ? definition.minRoll : -safeAngle * 0.7F;
+        float limitMaxRoll = definition.limitAngles ? definition.maxRoll : safeAngle * 0.7F;
+
+        for (int step = 0; step < subSteps; step++)
+        {
+            /* Yaw spring */
+            float yawForce = (targetYaw - state.yaw) * stiffness - state.yawVelocity * damping;
+            state.yawVelocity += yawForce * subDt;
+            state.yaw = MathHelper.clamp(state.yaw + state.yawVelocity * subDt, limitMinYaw, limitMaxYaw);
+
+            /* Pitch spring with gravity bias */
+            float pitchForce = (targetPitch - state.pitch) * stiffness - state.pitchVelocity * damping + gravity;
+            state.pitchVelocity += pitchForce * subDt;
+            state.pitch = MathHelper.clamp(state.pitch + state.pitchVelocity * subDt, limitMinPitch, limitMaxPitch);
+
+            /* Roll spring */
+            float rollForce = (targetRoll - state.roll) * stiffness - state.rollVelocity * damping;
+            state.rollVelocity += rollForce * subDt;
+            state.roll = MathHelper.clamp(state.roll + state.rollVelocity * subDt, limitMinRoll, limitMaxRoll);
+        }
+
+        state.yaw = MathHelper.clamp(state.yaw, limitMinYaw, limitMaxYaw);
+        state.pitch = MathHelper.clamp(state.pitch, limitMinPitch, limitMaxPitch);
+        state.roll = MathHelper.clamp(state.roll, limitMinRoll, limitMaxRoll);
+    }
+
+    /**
+     * Tethers/tracks parent-to-child bone path for auto chains.
+     */
+    private static List<String> getChainPath(String startBone, String endBone, Map<String, ModelGroup> groupsById, Map<String, BOBJBone> bobjBones)
+    {
+        List<String> path = new ArrayList<>();
+        String current = endBone;
+
+        while (current != null && !current.equals(startBone))
+        {
+            path.add(current);
+            current = getParentBoneName(current, groupsById, bobjBones);
+        }
+
+        if (current != null && current.equals(startBone))
+        {
+            path.add(startBone);
+            Collections.reverse(path);
+
+            return path;
+        }
+
+        return null;
+    }
+
+    /**
+     * Sort definitions by bone hierarchy depth so parent dynamic bones
+     * are processed before their children, enabling proper chain propagation.
+     */
+    private static List<PhysBoneDefinition> sortByHierarchyDepth(List<PhysBoneDefinition> definitions, Map<String, ModelGroup> groupsById, Map<String, BOBJBone> bobjBones)
+    {
+        if (definitions.size() <= 1)
+        {
+            return definitions;
+        }
+
+        List<PhysBoneDefinition> sorted = new ArrayList<>(definitions);
+
+        sorted.sort((a, b) ->
+        {
+            int depthA = getBoneDepth(a.bone, groupsById, bobjBones);
+            int depthB = getBoneDepth(b.bone, groupsById, bobjBones);
+
+            return Integer.compare(depthA, depthB);
+        });
+
+        return sorted;
+    }
+
+    private static int getBoneDepth(String bone, Map<String, ModelGroup> groupsById, Map<String, BOBJBone> bobjBones)
+    {
+        if (bone == null || bone.isEmpty())
+        {
+            return 0;
+        }
+
+        ModelGroup group = findModelGroup(groupsById, bone);
+
+        if (group != null)
+        {
+            int depth = 0;
+            ModelGroup current = group;
+
+            while (current.parent != null)
+            {
+                depth++;
+                current = current.parent;
+            }
+
+            return depth;
+        }
+
+        BOBJBone bobjBone = findBOBJBone(bobjBones, bone);
+
+        if (bobjBone != null)
+        {
+            int depth = 0;
+            BOBJBone current = bobjBone;
+
+            while (current.parentBone != null)
+            {
+                depth++;
+                current = current.parentBone;
+            }
+
+            return depth;
+        }
+
+        return 0;
+    }
+
+    /**
+     * Get dynamic yaw rotation from parent bone in the physics chain.
+     * Used for chain propagation — child bones inherit parent motion.
+     */
+    private static float getChainParentDynamicYaw(String bone, Map<String, PhysBoneState> physStates, Map<String, ModelGroup> groupsById, Map<String, BOBJBone> bobjBones, Set<String> dynamicBones)
+    {
+        String parent = getParentBoneName(bone, groupsById, bobjBones);
+
+        if (parent == null || !dynamicBones.contains(parent))
+        {
+            return 0F;
+        }
+
+        PhysBoneState parentState = getPhysState(physStates, parent);
+
+        return parentState == null ? 0F : parentState.yaw;
+    }
+
+    /**
+     * Get dynamic pitch rotation from parent bone in the physics chain.
+     */
+    private static float getChainParentDynamicPitch(String bone, Map<String, PhysBoneState> physStates, Map<String, ModelGroup> groupsById, Map<String, BOBJBone> bobjBones, Set<String> dynamicBones)
+    {
+        String parent = getParentBoneName(bone, groupsById, bobjBones);
+
+        if (parent == null || !dynamicBones.contains(parent))
+        {
+            return 0F;
+        }
+
+        PhysBoneState parentState = getPhysState(physStates, parent);
+
+        return parentState == null ? 0F : parentState.pitch;
     }
 
     public static void apply(IModel model, Map<String, PhysBoneState> physStates)
@@ -179,6 +463,7 @@ public class PhysBoneRuntime
                 {
                     group.current.rotate.y += state.yaw;
                     group.current.rotate.x += state.pitch;
+                    group.current.rotate.z += state.roll;
                 }
             }
         }
@@ -192,6 +477,7 @@ public class PhysBoneRuntime
                 {
                     bone.transform.rotate.y += MathUtils.toRad(state.yaw);
                     bone.transform.rotate.x += MathUtils.toRad(state.pitch);
+                    bone.transform.rotate.z += MathUtils.toRad(state.roll);
                 }
             }
         }
@@ -349,13 +635,18 @@ public class PhysBoneRuntime
         return null;
     }
 
-    private static Vector3f getParentPoseGravity(IEntity entity, IModel model, String bone, Map<String, ModelGroup> groupsById, Map<String, BOBJBone> bobjBones)
+    private static Vector3f getParentPoseGravity(IEntity entity, IModel model, String bone, Map<String, ModelGroup> groupsById, Map<String, BOBJBone> bobjBones, Vector3f gravityDir, boolean localForce)
     {
+        if (localForce)
+        {
+            return new Vector3f(gravityDir).normalize();
+        }
+
         String parent = getParentBoneName(bone, groupsById, bobjBones);
 
         if (parent == null || parent.isEmpty())
         {
-            return new Vector3f(0F, -1F, 0F);
+            return new Vector3f(gravityDir).normalize();
         }
 
         Matrix3f rotation = getPoseRotationMatrix(entity, parent, groupsById, bobjBones);
@@ -367,11 +658,11 @@ public class PhysBoneRuntime
 
         if (rotation == null)
         {
-            return new Vector3f(0F, -1F, 0F);
+            return new Vector3f(gravityDir).normalize();
         }
 
         Matrix3f inverseRotation = new Matrix3f(rotation).transpose();
-        Vector3f localGravity = inverseRotation.transform(new Vector3f(0F, -1F, 0F)).normalize();
+        Vector3f localGravity = inverseRotation.transform(new Vector3f(gravityDir)).normalize();
 
         return localGravity;
     }
@@ -728,7 +1019,7 @@ public class PhysBoneRuntime
         return MathHelper.clamp(radius, min, max);
     }
 
-    private static void solveCollision(IEntity entity, IModel model, String bone, PhysBoneState state, float prevYaw, float prevPitch, Map<String, PhysBoneState> physStates, Map<String, ModelGroup> groupsById, Map<String, BOBJBone> bobjBones, List<CollisionSphere> collisionSpheres)
+    private static void solveCollision(IEntity entity, IModel model, String bone, PhysBoneState state, float prevYaw, float prevPitch, Map<String, PhysBoneState> physStates, Map<String, ModelGroup> groupsById, Map<String, BOBJBone> bobjBones, List<CollisionSphere> collisionSpheres, float collisionRadius)
     {
         String parent = getParentBoneName(bone, groupsById, bobjBones);
 
@@ -737,8 +1028,8 @@ public class PhysBoneRuntime
             return;
         }
 
-        boolean prevCollides = collides(entity, model, bone, parent, prevYaw, prevPitch, physStates, groupsById, bobjBones, collisionSpheres);
-        boolean currentCollides = collides(entity, model, bone, parent, state.yaw, state.pitch, physStates, groupsById, bobjBones, collisionSpheres);
+        boolean prevCollides = collides(entity, model, bone, parent, prevYaw, prevPitch, physStates, groupsById, bobjBones, collisionSpheres, collisionRadius);
+        boolean currentCollides = collides(entity, model, bone, parent, state.yaw, state.pitch, physStates, groupsById, bobjBones, collisionSpheres, collisionRadius);
 
         if (!currentCollides)
         {
@@ -756,7 +1047,7 @@ public class PhysBoneRuntime
                 resolvedYaw *= 0.55F;
                 resolvedPitch *= 0.55F;
 
-                if (!collides(entity, model, bone, parent, resolvedYaw, resolvedPitch, physStates, groupsById, bobjBones, collisionSpheres))
+                if (!collides(entity, model, bone, parent, resolvedYaw, resolvedPitch, physStates, groupsById, bobjBones, collisionSpheres, collisionRadius))
                 {
                     solved = true;
                     break;
@@ -786,7 +1077,7 @@ public class PhysBoneRuntime
             float yaw = MathHelper.lerp(mid, prevYaw, state.yaw);
             float pitch = MathHelper.lerp(mid, prevPitch, state.pitch);
 
-            if (collides(entity, model, bone, parent, yaw, pitch, physStates, groupsById, bobjBones, collisionSpheres))
+            if (collides(entity, model, bone, parent, yaw, pitch, physStates, groupsById, bobjBones, collisionSpheres, collisionRadius))
             {
                 high = mid;
             }
@@ -802,7 +1093,7 @@ public class PhysBoneRuntime
         state.pitchVelocity *= 0.35F;
     }
 
-    private static boolean collides(IEntity entity, IModel model, String bone, String parent, float yaw, float pitch, Map<String, PhysBoneState> physStates, Map<String, ModelGroup> groupsById, Map<String, BOBJBone> bobjBones, List<CollisionSphere> collisionSpheres)
+    private static boolean collides(IEntity entity, IModel model, String bone, String parent, float yaw, float pitch, Map<String, PhysBoneState> physStates, Map<String, ModelGroup> groupsById, Map<String, BOBJBone> bobjBones, List<CollisionSphere> collisionSpheres, float collisionRadius)
     {
         Vector3f parentPivot = getBonePivotTransformed(model, parent, physStates, groupsById, bobjBones, null, 0F, 0F);
         Vector3f tip = getBonePivotTransformed(model, bone, physStates, groupsById, bobjBones, bone, yaw, pitch);
@@ -815,8 +1106,9 @@ public class PhysBoneRuntime
         for (CollisionSphere sphere : collisionSpheres)
         {
             Vector3f center = getBonePivotTransformed(model, sphere.anchorBone, physStates, groupsById, bobjBones, bone, yaw, pitch);
+            float totalRadius = sphere.radius + Math.max(0.01F, collisionRadius);
 
-            if (center != null && tip.distanceSquared(center) < sphere.radius * sphere.radius)
+            if (center != null && tip.distanceSquared(center) < totalRadius * totalRadius)
             {
                 return true;
             }
@@ -831,7 +1123,7 @@ public class PhysBoneRuntime
 
         Vec3d worldParent = toWorldSpace(entity, parentPivot);
         Vec3d worldTip = toWorldSpace(entity, tip);
-        float thickness = Math.max(0.06F, parentPivot.distance(tip) / 72F);
+        float thickness = Math.max(0.01F, collisionRadius);
 
         return hasEnvironmentCollision(world, worldParent, worldTip, thickness);
     }

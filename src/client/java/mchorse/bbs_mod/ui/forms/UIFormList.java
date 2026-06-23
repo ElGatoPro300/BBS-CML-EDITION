@@ -230,9 +230,43 @@ public class UIFormList extends UIElement
         this.search.clickItself();
     }
 
+    private UIFormCategory findMatchingCategory(UIFormCategory other)
+    {
+        if (other == null)
+        {
+            return null;
+        }
+
+        for (UIFormCategory category : this.categories)
+        {
+            if (other.category instanceof ModelFormCategory.Folder otherFolder && category.category instanceof ModelFormCategory.Folder thisFolder)
+            {
+                if (Objects.equals(otherFolder.path, thisFolder.path))
+                {
+                    return category;
+                }
+            }
+            else
+            {
+                String otherTitle = other.category.getProcessedTitle();
+                String thisTitle = category.category.getProcessedTitle();
+
+                if (Objects.equals(otherTitle, thisTitle))
+                {
+                    return category;
+                }
+            }
+        }
+
+        return null;
+    }
+
     public void setupForms(FormCategories forms)
     {
         this.closeCategoryPopup();
+
+        UIFormCategory oldExpanded = this.expandedCategory;
+
         this.categories.clear();
         this.forms.removeAll();
         List<FormCategory> allCategories = new ArrayList<>(forms.getAllCategories());
@@ -255,6 +289,27 @@ public class UIFormList extends UIElement
         this.categories.get(this.categories.size() - 1).marginBottom(40);
         this.syncModelFolderNavigationState();
         this.hiddenCategoryPreviews.retainAll(this.getAvailableCategoryPreviewKeys());
+
+        UIFormCategory matched = this.findMatchingCategory(oldExpanded);
+
+        if (matched != null)
+        {
+            this.expandedCategory = matched;
+
+            if (matched.category instanceof ModelFormCategory.Folder folder)
+            {
+                this.activeExpandedFolder = folder;
+            }
+            else
+            {
+                this.activeExpandedFolder = null;
+            }
+        }
+        else
+        {
+            this.categoryCards.collapseExpandedCategoryInstantly();
+        }
+
         this.applySearchNow(this.appliedSearchQuery);
         this.categoryCardsView.scroll.scrollTo(0);
         this.resize();
@@ -1165,7 +1220,7 @@ public class UIFormList extends UIElement
 
     private boolean isFavoritesFeatureEnabled()
     {
-        return this.palette instanceof UIFormPalette formPalette && formPalette.isImmersive();
+        return this.palette instanceof UIFormPalette formPalette && (formPalette.isImmersive() || formPalette.hasFavorites());
     }
 
     private void applyFavoritesLayout(boolean enabled)
@@ -2435,6 +2490,15 @@ public class UIFormList extends UIElement
             this.invalidateCache();
         }
 
+        public void collapseExpandedCategoryInstantly()
+        {
+            this.targetExpansion = 0F;
+            this.expansionTransition = 0F;
+            UIFormList.this.expandedCategory = null;
+            UIFormList.this.activeExpandedFolder = null;
+            this.invalidateCache();
+        }
+
         private void navigateFolder(ModelFormCategory.Folder targetFolder, boolean goingDeeper)
         {
             if (BBSSettings.editorSimplifyAnimations != null && BBSSettings.editorSimplifyAnimations.get())
@@ -2488,18 +2552,18 @@ public class UIFormList extends UIElement
 
             if (this.expansionTransition < this.targetExpansion)
             {
-                this.expansionTransition = Math.min(this.targetExpansion, this.expansionTransition + delta * 5F);
+                this.expansionTransition = Math.min(this.targetExpansion, this.expansionTransition + delta * 4F);
                 this.invalidateCache();
             }
             else if (this.expansionTransition > this.targetExpansion)
             {
-                this.expansionTransition = Math.max(this.targetExpansion, this.expansionTransition - delta * 5F);
+                this.expansionTransition = Math.max(this.targetExpansion, this.expansionTransition - delta * 4F);
                 this.invalidateCache();
             }
 
             if (this.folderTransition < 1F)
             {
-                this.folderTransition = Math.min(1F, this.folderTransition + delta * 5F);
+                this.folderTransition = Math.min(1F, this.folderTransition + delta * 4F);
                 this.invalidateCache();
             }
 
@@ -2509,6 +2573,13 @@ public class UIFormList extends UIElement
                 UIFormList.this.activeExpandedFolder = null;
                 this.invalidateCache();
             }
+        }
+
+        private float easeOutCubic(float t)
+        {
+            float f = t - 1F;
+
+            return f * f * f + 1F;
         }
 
 
@@ -2958,13 +3029,16 @@ public class UIFormList extends UIElement
             /* Render old items sliding out during a folder transition */
             if (this.folderTransition < 1F && !this.oldExpandedItems.isEmpty())
             {
-                this.renderExpandedItems(context, this.oldExpandedItems, this.oldExpandedPerRow, gridY, 1F - this.folderTransition, -this.transitionDirection);
+                float easedFolder = this.easeOutCubic(this.folderTransition);
+
+                this.renderExpandedItems(context, this.oldExpandedItems, this.oldExpandedPerRow, gridY, 1F - easedFolder, -this.transitionDirection);
             }
 
             /* Render current items (sliding in if folder transition is active) */
             if (!this.expandedItems.isEmpty())
             {
-                float newAlpha = this.folderTransition;
+                float easedFolder = this.easeOutCubic(this.folderTransition);
+                float newAlpha = easedFolder;
                 int slideDirection = this.folderTransition < 1F ? this.transitionDirection : 0;
 
                 this.renderExpandedItems(context, this.expandedItems, expandedPerRow, gridY, newAlpha, slideDirection);
@@ -2984,6 +3058,120 @@ public class UIFormList extends UIElement
             this.renderExpandedDragOverlay(context, expandedPerRow, gridY);
 
             context.batcher.unclip(context);
+
+            float animT = this.expansionTransition < 1F ? this.expansionTransition : this.folderTransition;
+
+            if (animT > 0F && animT < 1F)
+            {
+                this.renderAnimatingPreviews(context);
+            }
+        }
+
+        private void renderAnimatingPreviews(UIContext context)
+        {
+            if (UIFormList.this.expandedCategory == null)
+            {
+                return;
+            }
+
+            CategoryCell cell = null;
+
+            for (CategoryCell c : this.cardCells)
+            {
+                if (c.category == UIFormList.this.expandedCategory)
+                {
+                    cell = c;
+                    break;
+                }
+            }
+
+            if (cell == null)
+            {
+                return;
+            }
+
+            List<Form> categoryForms = UIFormList.this.expandedCategory.getForms();
+            int shown = Math.min(4, categoryForms.size());
+
+            if (shown <= 0)
+            {
+                return;
+            }
+
+            int previewAreaX = cell.x + CATEGORY_PREVIEW_PADDING;
+            int previewAreaY = cell.y + 20;
+            int previewAreaW = CATEGORY_CARD_WIDTH - CATEGORY_PREVIEW_PADDING * 2;
+            int previewAreaH = CATEGORY_CARD_HEIGHT - 28;
+            int cellW = (previewAreaW - CATEGORY_PREVIEW_GAP * (CATEGORY_PREVIEW_COLUMNS - 1)) / CATEGORY_PREVIEW_COLUMNS;
+            int cellH = (previewAreaH - CATEGORY_PREVIEW_GAP * (CATEGORY_PREVIEW_ROWS - 1)) / CATEGORY_PREVIEW_ROWS;
+
+            int gridY = this.expandedPanelY + EXPANDED_HEADER_HEIGHT + CATEGORY_CARD_GAP;
+            int expandedPerRow = Math.max(1, (this.expandedPanelW - CATEGORY_CARD_GAP * 2) / (EXPANDED_CELL_WIDTH + CATEGORY_CARD_GAP));
+            float animT = this.expansionTransition < 1F ? this.expansionTransition : this.folderTransition;
+            float t = this.easeOutCubic(animT);
+
+            for (int i = 0; i < shown; i++)
+            {
+                Form form = categoryForms.get(i);
+                int itemIdx = -1;
+
+                for (int j = 0; j < this.expandedItems.size(); j++)
+                {
+                    if (this.expandedItems.get(j).form == form)
+                    {
+                        itemIdx = j;
+                        break;
+                    }
+                }
+
+                if (itemIdx == -1)
+                {
+                    continue;
+                }
+
+                int col = itemIdx % expandedPerRow;
+                int row = itemIdx / expandedPerRow;
+                int cx = this.expandedPanelX + CATEGORY_CARD_GAP + col * (EXPANDED_CELL_WIDTH + CATEGORY_CARD_GAP);
+                int cy = gridY + row * (EXPANDED_CELL_HEIGHT + CATEGORY_CARD_GAP);
+
+                int px = previewAreaX + (i % CATEGORY_PREVIEW_COLUMNS) * (cellW + CATEGORY_PREVIEW_GAP);
+                int py = previewAreaY + (i / CATEGORY_PREVIEW_COLUMNS) * (cellH + CATEGORY_PREVIEW_GAP);
+
+                int renderX = (int) (px + (cx - px) * t);
+                int renderY = (int) (py + (cy - py) * t);
+                int renderW = (int) (cellW + (EXPANDED_CELL_WIDTH - cellW) * t);
+                int renderH = (int) (cellH + (EXPANDED_CELL_HEIGHT - cellH) * t);
+
+                float alpha = 1F;
+                int bgAlpha = (int) (alpha * 0x22) << 24;
+                int outlineAlpha = (int) (alpha * 0x80) << 24;
+                boolean selected = UIFormList.this.expandedCategory.selected == form;
+
+                if (selected)
+                {
+                    float blink = 0.6F + 0.15F * (float) Math.sin(System.currentTimeMillis() * 0.005D);
+                    int selAlpha = (int) (alpha * blink * 255) << 24;
+                    context.batcher.box(renderX, renderY, renderX + renderW, renderY + renderH, selAlpha | (BBSSettings.primaryColor.get() & Colors.RGB));
+                    context.batcher.outline(renderX, renderY, renderX + renderW, renderY + renderH, selAlpha | (BBSSettings.primaryColor.get() & Colors.RGB), 2);
+                }
+                else
+                {
+                    context.batcher.box(renderX, renderY, renderX + renderW, renderY + renderH, bgAlpha);
+                    context.batcher.outline(renderX, renderY, renderX + renderW, renderY + renderH, outlineAlpha);
+                }
+
+                context.batcher.clip(renderX, renderY, renderW, renderH, context);
+                FormUtilsClient.renderUI(form, context, renderX, renderY, renderX + renderW, renderY + renderH);
+                context.batcher.unclip(context);
+
+                FavoriteMarker marker = UIFormList.this.getFavoriteMarker(form);
+
+                if (marker != null)
+                {
+                    context.batcher.outline(renderX, renderY, renderX + renderW, renderY + renderH, marker.color, 1);
+                    context.batcher.icon(marker.icon, Colors.WHITE, renderX + renderW - 3, renderY + 2, 1F, 0F);
+                }
+            }
         }
 
         private void renderExpandedItems(UIContext context, List<ExpandedItem> items, int perRow, int gridY, float alpha, int slideDir)
@@ -2993,7 +3181,7 @@ public class UIFormList extends UIElement
                 return;
             }
 
-            int slideOffset = (int) ((1F - alpha) * this.expandedPanelW * 0.3F) * slideDir;
+            int slideOffset = (int) ((1F - alpha) * this.expandedPanelW) * slideDir;
 
             if (this.dragFormIndex >= items.size())
             {
@@ -3023,14 +3211,29 @@ public class UIFormList extends UIElement
                 }
             }
 
+            float animT = this.expansionTransition < 1F ? this.expansionTransition : this.folderTransition;
+
             for (int idx = 0; idx < items.size(); idx++)
             {
+                ExpandedItem item = items.get(idx);
+
+                if (item.form != null && UIFormList.this.expandedCategory != null && animT < 1F)
+                {
+                    List<Form> categoryForms = UIFormList.this.expandedCategory.getForms();
+                    int previewIdx = categoryForms.indexOf(item.form);
+
+                    if (previewIdx >= 0 && previewIdx < 4)
+                    {
+                        continue;
+                    }
+                }
+
                 int col = idx % perRow;
                 int row = idx / perRow;
                 int cx = this.expandedPanelX + CATEGORY_CARD_GAP + col * (EXPANDED_CELL_WIDTH + CATEGORY_CARD_GAP) + slideOffset;
                 int cy = gridY + row * (EXPANDED_CELL_HEIGHT + CATEGORY_CARD_GAP);
 
-                this.renderExpandedItem(context, items.get(idx), cx, cy, idx == hoverIdx, alpha);
+                this.renderExpandedItem(context, item, cx, cy, idx == hoverIdx, alpha);
             }
         }
 
@@ -3043,7 +3246,8 @@ public class UIFormList extends UIElement
 
             if (selected)
             {
-                int selAlpha = (int) (alpha * 0x80) << 24;
+                float blink = 0.6F + 0.15F * (float) Math.sin(System.currentTimeMillis() * 0.005D);
+                int selAlpha = (int) (alpha * blink * 255) << 24;
                 context.batcher.box(cx, cy, cx + EXPANDED_CELL_WIDTH, cy + EXPANDED_CELL_HEIGHT, selAlpha | (BBSSettings.primaryColor.get() & Colors.RGB));
                 context.batcher.outline(cx, cy, cx + EXPANDED_CELL_WIDTH, cy + EXPANDED_CELL_HEIGHT, selAlpha | (BBSSettings.primaryColor.get() & Colors.RGB), 2);
             }
@@ -3255,7 +3459,7 @@ public class UIFormList extends UIElement
                         int gridHeight = Math.max(20, expandedRows * (EXPANDED_CELL_HEIGHT + CATEGORY_CARD_GAP));
                         int fullPanelH = EXPANDED_HEADER_HEIGHT + gridHeight + CATEGORY_CARD_GAP * 2;
 
-                        this.expandedPanelH = (int) (fullPanelH * this.expansionTransition);
+                        this.expandedPanelH = (int) (fullPanelH * this.easeOutCubic(this.expansionTransition));
                         currentY += this.expandedPanelH + CATEGORY_CARD_GAP;
                     }
                 }
@@ -3367,14 +3571,37 @@ public class UIFormList extends UIElement
         {
             List<Form> forms = this.previewCache.getOrDefault(category, category.getForms());
             boolean previewsVisible = UIFormList.this.isCategoryPreviewVisible(category);
+            boolean isOpen = UIFormList.this.expandedCategory == category;
             UIFormCategory selectedCategory = UIFormList.this.getSelectedCategory();
-            boolean selected = selectedCategory == category;
+            boolean containsSelected = selectedCategory == category;
             boolean userCategory = category.category instanceof UserFormCategory;
             boolean movableCategory = UIFormList.this.isMovableCategory(category);
             boolean hoverMoveHandle = UIFormList.this.userCategoryOrderUnlocked && movableCategory && context.mouseX >= x && context.mouseX < x + CATEGORY_CARD_WIDTH && context.mouseY >= y && context.mouseY < y + CATEGORY_CARD_HEIGHT;
-            int baseColor = selected ? (Colors.A50 | BBSSettings.primaryColor.get()) : Colors.A25;
-            int outlineColor = selected ? (Colors.A100 | BBSSettings.primaryColor.get()) : Colors.A100;
+            int baseColor = Colors.A25;
+            int outlineColor = Colors.A100;
             int titleColor = userCategory ? (Colors.LIGHTEST_GRAY | Colors.A100) : Colors.WHITE;
+
+            if (isOpen || containsSelected)
+            {
+                int primary = BBSSettings.primaryColor.get() & Colors.RGB;
+
+                if (containsSelected)
+                {
+                    /* Pulsating highlight */
+                    float blink = 0.6F + 0.15F * (float) Math.sin(System.currentTimeMillis() * 0.005D);
+                    int fillAlpha = (int) (blink * 0.5D * 255) << 24;
+                    int lineAlpha = (int) (blink * 1.0D * 255) << 24;
+
+                    baseColor = fillAlpha | primary;
+                    outlineColor = lineAlpha | primary;
+                }
+                else
+                {
+                    /* Solid open highlight */
+                    baseColor = Colors.A50 | primary;
+                    outlineColor = Colors.A100 | primary;
+                }
+            }
 
             context.batcher.box(x, y, x + CATEGORY_CARD_WIDTH, y + CATEGORY_CARD_HEIGHT, baseColor);
             context.batcher.outline(x, y, x + CATEGORY_CARD_WIDTH, y + CATEGORY_CARD_HEIGHT, outlineColor);
@@ -3398,37 +3625,41 @@ public class UIFormList extends UIElement
                 int cellH = (previewAreaH - CATEGORY_PREVIEW_GAP * (CATEGORY_PREVIEW_ROWS - 1)) / CATEGORY_PREVIEW_ROWS;
                 int maxPreview = CATEGORY_PREVIEW_COLUMNS * CATEGORY_PREVIEW_ROWS;
                 int shown = Math.min(maxPreview, forms.size());
+                float animT = this.expansionTransition < 1F ? this.expansionTransition : this.folderTransition;
 
-                for (int i = 0; i < shown; i++)
+                if (!(category == UIFormList.this.expandedCategory && animT > 0F))
                 {
-                    int px = previewAreaX + (i % CATEGORY_PREVIEW_COLUMNS) * (cellW + CATEGORY_PREVIEW_GAP);
-                    int py = previewAreaY + (i / CATEGORY_PREVIEW_COLUMNS) * (cellH + CATEGORY_PREVIEW_GAP);
-                    FavoriteMarker marker = UIFormList.this.getFavoriteMarker(forms.get(i));
-
-                    context.batcher.box(px, py, px + cellW, py + cellH, Colors.A25);
-                    context.batcher.clip(px, py, cellW, cellH, context);
-                    FormUtilsClient.renderUI(forms.get(i), context, px, py, px + cellW, py + cellH);
-                    context.batcher.unclip(context);
-
-                    if (marker != null)
+                    for (int i = 0; i < shown; i++)
                     {
-                        context.batcher.outline(px, py, px + cellW, py + cellH, marker.color);
+                        int px = previewAreaX + (i % CATEGORY_PREVIEW_COLUMNS) * (cellW + CATEGORY_PREVIEW_GAP);
+                        int py = previewAreaY + (i / CATEGORY_PREVIEW_COLUMNS) * (cellH + CATEGORY_PREVIEW_GAP);
+                        FavoriteMarker marker = UIFormList.this.getFavoriteMarker(forms.get(i));
+
+                        context.batcher.box(px, py, px + cellW, py + cellH, Colors.A25);
+                        context.batcher.clip(px, py, cellW, cellH, context);
+                        FormUtilsClient.renderUI(forms.get(i), context, px, py, px + cellW, py + cellH);
+                        context.batcher.unclip(context);
+
+                        if (marker != null)
+                        {
+                            context.batcher.outline(px, py, px + cellW, py + cellH, marker.color);
+                        }
+                        else
+                        {
+                            context.batcher.outline(px, py, px + cellW, py + cellH, Colors.A50);
+                        }
                     }
-                    else
+
+                    if (forms.size() > maxPreview)
                     {
-                        context.batcher.outline(px, py, px + cellW, py + cellH, Colors.A50);
+                        String count = "+" + (forms.size() - maxPreview);
+                        int width = context.batcher.getFont().getWidth(count) + 6;
+                        int badgeX = x + CATEGORY_CARD_WIDTH - width - 6;
+                        int badgeY = y + CATEGORY_CARD_HEIGHT - 16;
+
+                        context.batcher.box(badgeX, badgeY, badgeX + width, badgeY + 12, Colors.A100 | 0x1a1a1a);
+                        context.batcher.textShadow(count, badgeX + 3, badgeY + 2);
                     }
-                }
-
-                if (forms.size() > maxPreview)
-                {
-                    String count = "+" + (forms.size() - maxPreview);
-                    int width = context.batcher.getFont().getWidth(count) + 6;
-                    int badgeX = x + CATEGORY_CARD_WIDTH - width - 6;
-                    int badgeY = y + CATEGORY_CARD_HEIGHT - 16;
-
-                    context.batcher.box(badgeX, badgeY, badgeX + width, badgeY + 12, Colors.A100 | 0x1a1a1a);
-                    context.batcher.textShadow(count, badgeX + 3, badgeY + 2);
                 }
             }
             else
@@ -3672,8 +3903,10 @@ public class UIFormList extends UIElement
 
                 if (selected)
                 {
-                    context.batcher.box(cx, cy, cx + POPUP_CELL_WIDTH, cy + POPUP_CELL_HEIGHT, Colors.A50 | BBSSettings.primaryColor.get());
-                    context.batcher.outline(cx, cy, cx + POPUP_CELL_WIDTH, cy + POPUP_CELL_HEIGHT, Colors.A50 | BBSSettings.primaryColor.get(), 2);
+                    float blink = 0.6F + 0.15F * (float) Math.sin(System.currentTimeMillis() * 0.005D);
+                    int selAlpha = (int) (blink * 255) << 24;
+                    context.batcher.box(cx, cy, cx + POPUP_CELL_WIDTH, cy + POPUP_CELL_HEIGHT, selAlpha | (BBSSettings.primaryColor.get() & Colors.RGB));
+                    context.batcher.outline(cx, cy, cx + POPUP_CELL_WIDTH, cy + POPUP_CELL_HEIGHT, selAlpha | (BBSSettings.primaryColor.get() & Colors.RGB), 2);
                 }
                 else
                 {
