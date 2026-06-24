@@ -1717,7 +1717,7 @@ public class UIReplayList extends UIList<Replay> {
         });
 
         if (!editing) {
-            palette.immersive();
+            palette.favorites();
 
             if (!palette.list.hasFavoriteCategory(LAST_PICK_FAVORITE_CATEGORY_ID))
             {
