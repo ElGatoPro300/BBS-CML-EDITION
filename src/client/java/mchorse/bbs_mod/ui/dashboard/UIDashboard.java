@@ -26,6 +26,7 @@ import mchorse.bbs_mod.ui.dashboard.utils.UIOrbitCameraKeys;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.UIRenderingContext;
+import mchorse.bbs_mod.ui.framework.elements.IUIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIMessageOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
@@ -56,6 +57,7 @@ import net.minecraft.util.math.Vec3d;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class UIDashboard extends UIBaseMenu
@@ -336,11 +338,11 @@ public class UIDashboard extends UIBaseMenu
 
     public void setPanel(UIDashboardPanel panel)
     {
-        for (mchorse.bbs_mod.ui.framework.elements.IUIElement element : new java.util.ArrayList<>(this.overlay.getChildren()))
+        for (IUIElement element : new ArrayList<>(this.overlay.getChildren()))
         {
-            if (element instanceof mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay)
+            if (element instanceof UIOverlay)
             {
-                ((mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay) element).closeItself();
+                ((UIOverlay) element).closeItself();
             }
         }
 

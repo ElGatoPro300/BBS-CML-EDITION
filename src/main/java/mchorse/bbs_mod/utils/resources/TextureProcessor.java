@@ -4,6 +4,7 @@ import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.colors.Colors;
 
+import java.io.FileNotFoundException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,7 +31,7 @@ public class TextureProcessor
 
                 images.add(pixels);
             }
-            catch (java.io.FileNotFoundException e)
+            catch (FileNotFoundException e)
             {
                 images.add(null);
             }

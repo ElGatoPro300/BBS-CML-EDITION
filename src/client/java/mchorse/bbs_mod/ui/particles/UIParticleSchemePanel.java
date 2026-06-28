@@ -268,7 +268,7 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
 
         this.homeParticlesMosaic = new UIParticleMosaicGrid((id) -> {
             DataPath path = this.homeParticlesMosaic.findPath(id);
-            this.handleHomeParticlesSelection(java.util.Collections.singletonList(path != null ? path : new DataPath(id)));
+            this.handleHomeParticlesSelection(Collections.singletonList(path != null ? path : new DataPath(id)));
         }, (id) -> {
             DataPath clickedPath = this.homeParticlesMosaic.findPath(id);
             if (clickedPath != null && clickedPath.folder) {
