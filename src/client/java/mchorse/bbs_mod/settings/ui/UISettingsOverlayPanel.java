@@ -142,6 +142,7 @@ public class UISettingsOverlayPanel extends UIOverlayPanel
             case "multiskin": return Icons.PLAYER;
             case "video": return Icons.VIDEO_CAMERA;
             case "editor": return Icons.CAMERA;
+            case "replays": return Icons.POSE;
             case "recording": return Icons.PROPERTIES;
             case "model_blocks": return Icons.BLOCK;
             case "entity_selectors": return Icons.VISIBLE;

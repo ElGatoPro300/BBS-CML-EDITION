@@ -492,9 +492,9 @@ public class UIKeys
     public static final IKey CONFIG_EDITOR_TICKS_MODE = L10n.lang("bbs.config.editor.ticks");
     public static final IKey CONFIG_EDITOR_SECONDS_MODE = L10n.lang("bbs.config.editor.seconds");
     public static final IKey CONFIG_EDITOR_FRAMES_MODE = L10n.lang("bbs.config.editor.frames");
-    public static final IKey CONFIG_GENERAL_COMPACTED_OPTIONS_DEFAULT = L10n.lang("bbs.config.general.compacted_options.default");
-    public static final IKey CONFIG_GENERAL_COMPACTED_OPTIONS_SEPARATED = L10n.lang("bbs.config.general.compacted_options.separated");
-    public static final IKey CONFIG_GENERAL_COMPACTED_OPTIONS_COMPACTED = L10n.lang("bbs.config.general.compacted_options.compacted");
+    public static final IKey CONFIG_GENERAL_COMPACTED_OPTIONS_DEFAULT = L10n.lang("bbs.config.replays.compacted_options.default");
+    public static final IKey CONFIG_GENERAL_COMPACTED_OPTIONS_SEPARATED = L10n.lang("bbs.config.replays.compacted_options.separated");
+    public static final IKey CONFIG_GENERAL_COMPACTED_OPTIONS_COMPACTED = L10n.lang("bbs.config.replays.compacted_options.compacted");
     public static final IKey CONFIG_EDITOR_TICKS = L10n.lang("bbs.config.editor.ticks");
     public static final IKey CONFIG_EDITOR_SECONDS = L10n.lang("bbs.config.editor.seconds");
     public static final IKey CONFIG_EDITOR_FRAMES = L10n.lang("bbs.config.editor.frames");
