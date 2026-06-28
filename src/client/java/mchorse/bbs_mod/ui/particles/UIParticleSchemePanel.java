@@ -121,6 +121,9 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
     private long homeLastClickTime;
     private boolean showingHomePage = true;
 
+    private UIParticleMosaicGrid homeParticlesMosaic;
+    private UIIcon homeViewToggle;
+
 
 
     public static class ParticleDocumentTab
@@ -262,6 +265,34 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
 
         this.homeParticlesSearch = new UISearchList<>(this.homeParticlesList).label(UIKeys.GENERAL_SEARCH);
         this.homeParticlesSearch.list.background();
+
+        this.homeParticlesMosaic = new UIParticleMosaicGrid((id) -> {
+            this.handleHomeParticlesSelection(java.util.Collections.singletonList(new DataPath(id)));
+        }, (id) -> {
+            if (id.endsWith("/")) {
+                this.homeParticlesList.goTo(new DataPath(id));
+                this.requestNames();
+            } else if (id.equals("..")) {
+                this.homeParticlesList.goTo(this.homeParticlesList.getPath().getParent());
+                this.requestNames();
+            } else {
+                this.openParticleInDocumentTabs(id);
+            }
+        });
+
+        boolean mosaic = BBSSettings.lastViewMosaic.get();
+
+        this.homeParticlesMosaic.setVisible(mosaic);
+        this.homeParticlesList.setVisible(!mosaic);
+
+        Consumer<String> oldCallback = this.homeParticlesSearch.search.callback;
+        this.homeParticlesSearch.search.callback = (str) -> {
+            if (oldCallback != null) oldCallback.accept(str);
+            this.homeParticlesMosaic.filter(str);
+        };
+
+        this.homeViewToggle = new UIIcon(mosaic ? Icons.LIST : Icons.GALLERY, (b) -> this.toggleMosaicView());
+        this.homeViewToggle.tooltip(mosaic ? UIKeys.MODELS_HOME_VIEW_LIST : UIKeys.MODELS_HOME_VIEW_MOSAIC, Direction.LEFT);
 
         this.homeCreateParticle = this.createHomeButton(UIKeys.PARTICLES_CRUD_ADD, Icons.ADD, (b) ->
         {
@@ -425,7 +456,10 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
 
         this.homeActionsPanel.add(this.homeCreateParticle, spacing, this.homeDuplicateCurrent, this.homeRenameCurrent, this.homeDeleteCurrent);
         this.homeParticlesSearch.relative(this.homePage).x(0.35F).y(UIHomePanel.HOME_BANNER_HEIGHT + 20).w(0.65F).h(1F, -(UIHomePanel.HOME_BANNER_HEIGHT + 20 + 44));
-        this.homePage.add(new UIRenderable(this::renderHomeBackground), this.homeActionsPanel, this.homeParticlesSearch, this.panelSwitcher);
+        this.homeParticlesSearch.search.w(1F, -25);
+        this.homeParticlesMosaic.relative(this.homeParticlesSearch).x(0).y(20).w(1F).h(1F, -20);
+        this.homeViewToggle.relative(this.homeParticlesSearch).x(1F, -22).y(0).w(20).h(20);
+        this.homePage.add(new UIRenderable(this::renderHomeBackground), this.homeActionsPanel, this.homeParticlesSearch, this.homeParticlesMosaic, this.homeViewToggle, this.panelSwitcher);
 
         this.editor.add(this.mainView, this.homePage);
 
@@ -465,10 +499,42 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
         this.homeDeleteCurrent.setEnabled(hasSelected);
     }
 
+    private void toggleMosaicView()
+    {
+        boolean isMosaic = !this.homeParticlesMosaic.isVisible();
+
+        this.homeParticlesMosaic.setVisible(isMosaic);
+        this.homeParticlesList.setVisible(!isMosaic);
+        this.homeViewToggle.both(isMosaic ? Icons.LIST : Icons.GALLERY);
+        this.homeViewToggle.tooltip(isMosaic ? UIKeys.MODELS_HOME_VIEW_LIST : UIKeys.MODELS_HOME_VIEW_MOSAIC, Direction.LEFT);
+
+        BBSSettings.lastViewMosaic.set(isMosaic);
+
+        if (isMosaic)
+        {
+            this.homeParticlesMosaic.resize();
+        }
+    }
+
     private String getSelectedHomeParticleId()
     {
-        DataPath selected = this.homeParticlesList == null ? null : this.homeParticlesList.getCurrentFirst();
-        return selected != null && !selected.folder ? selected.toString() : null;
+        String selected = null;
+        if (this.homeParticlesMosaic != null && this.homeParticlesMosaic.isVisible())
+        {
+            selected = this.homeParticlesMosaic.selectedId;
+        }
+        else
+        {
+            DataPath path = this.homeParticlesList == null ? null : this.homeParticlesList.getCurrentFirst();
+            selected = path == null ? null : path.toString();
+        }
+
+        if (selected == null || selected.endsWith("/") || selected.equals(".."))
+        {
+            return null;
+        }
+
+        return selected;
     }
 
     private void addFolderFromHome()
@@ -864,6 +930,10 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
             this.homeParticlesList.fill(names);
             this.homeParticlesList.setCurrentFile(current);
         }
+        if (this.homeParticlesMosaic != null)
+        {
+            this.homeParticlesMosaic.fill(names, current);
+        }
         this.updateHomeButtonsState();
     }
 
@@ -1056,6 +1126,176 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
         if (home != null)
         {
             home.renderCardAndBanners(context, this.homePage, dividerX, UIKeys.PARTICLES_HOME_LIST.get());
+        }
+    }
+
+    public class UIParticleMosaicGrid extends UIScrollView
+    {
+        private static final int CARD_SIZE = 100;
+        private static final int CARD_GAP = 6;
+        private static final int CARD_LABEL_H = 16;
+
+        private final Consumer<String> selectCallback;
+        private final Consumer<String> doubleClickCallback;
+
+        private final List<DataPath> particlePaths = new ArrayList<>();
+        public String selectedId;
+        private String lastClickedId;
+        private long lastClickTime;
+        private int lastCols = -1;
+        private boolean rebuilding = false;
+
+        public UIParticleMosaicGrid(Consumer<String> selectCallback, Consumer<String> doubleClickCallback)
+        {
+            super();
+            this.selectCallback = selectCallback;
+            this.doubleClickCallback = doubleClickCallback;
+            this.scroll.scrollSpeed = 20;
+        }
+
+        public void fill(Collection<String> names, String selectedId)
+        {
+            this.selectedId = selectedId;
+            this.lastCols = -1;
+            this.filter("");
+        }
+
+        public void filter(String query)
+        {
+            this.particlePaths.clear();
+            
+            for (DataPath path : UIParticleSchemePanel.this.homeParticlesList.getFilteredList())
+            {
+                this.particlePaths.add(path);
+            }
+            
+            this.buildCards();
+            
+            if (this.hasParent())
+            {
+                this.resize();
+            }
+        }
+
+        private void buildCards()
+        {
+            this.removeAll();
+            if (this.particlePaths.isEmpty()) return;
+
+            int effectiveW = this.area.w > 0 ? this.area.w : 500;
+            int cols = Math.max(1, (effectiveW - CARD_GAP) / (CARD_SIZE + CARD_GAP));
+
+            for (int i = 0; i < this.particlePaths.size(); i++)
+            {
+                final DataPath path = this.particlePaths.get(i);
+                final String id = path.toString();
+                final int col = i % cols;
+                final int row = i / cols;
+
+                int cx = CARD_GAP + col * (CARD_SIZE + CARD_GAP);
+                int cy = CARD_GAP + row * (CARD_SIZE + CARD_GAP + CARD_LABEL_H);
+
+                UIElement card = new UIElement()
+                {
+                    @Override
+                    public boolean subMouseClicked(UIContext context)
+                    {
+                        if (this.area.isInside(context))
+                        {
+                            UIParticleMosaicGrid.this.onCardClicked(id);
+                            return true;
+                        }
+                        return false;
+                    }
+
+                    @Override
+                    public void render(UIContext context)
+                    {
+                        boolean selected = id.equals(UIParticleMosaicGrid.this.selectedId);
+                        int border = selected ? BBSSettings.primaryColor.get() : Colors.setA(Colors.WHITE, 0.1F);
+                        int bg = selected ? Colors.setA(BBSSettings.primaryColor.get(), 0.1F) : Colors.setA(0, 0.2F);
+                        
+                        context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), bg);
+                        context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), border);
+
+                        super.render(context);
+
+                        boolean isFolder = path.folder;
+                        boolean isParent = id.equals("..");
+                        
+                        /* Render icon in center */
+                        int iconX = this.area.mx();
+                        int iconY = this.area.y + CARD_SIZE / 2;
+                        Icon icon = isFolder || isParent ? Icons.FOLDER : Icons.PARTICLE;
+                        
+                        context.batcher.getContext().getMatrices().push();
+                        context.batcher.getContext().getMatrices().translate(iconX, iconY, 0);
+                        context.batcher.getContext().getMatrices().scale(2F, 2F, 1F);
+                        context.batcher.getContext().getMatrices().translate(-iconX, -iconY, 0);
+                        
+                        context.batcher.icon(icon, iconX, iconY, 0.5F, 0.5F);
+                        
+                        context.batcher.getContext().getMatrices().pop();
+
+                        String label = isParent ? "../" : path.getLast();
+                        int maxW = this.area.w - 4;
+                        if (context.batcher.getFont().getWidth(label) > maxW)
+                        {
+                            while (label.length() > 1 && context.batcher.getFont().getWidth(label + "...") > maxW)
+                            {
+                                label = label.substring(0, label.length() - 1);
+                            }
+                            label = label + "...";
+                        }
+                        context.batcher.textShadow(label, this.area.x + 2, this.area.y + CARD_SIZE + 2);
+                    }
+                };
+
+                card.relative(this).x(cx).y(cy).w(CARD_SIZE).h(CARD_SIZE + CARD_LABEL_H);
+                this.add(card);
+            }
+
+            int rows = (this.particlePaths.size() + cols - 1) / cols;
+            int totalH = CARD_GAP + rows * (CARD_SIZE + CARD_LABEL_H + CARD_GAP);
+            this.scroll.scrollSize = totalH;
+            this.scroll.clamp();
+        }
+
+        private void onCardClicked(String id)
+        {
+            long now = System.currentTimeMillis();
+            boolean sameAsPrev = id.equals(this.lastClickedId);
+            boolean doubleClick = sameAsPrev && now - this.lastClickTime <= 300L;
+
+            this.lastClickedId = id;
+            this.lastClickTime = now;
+            this.selectedId = id;
+
+            if (this.selectCallback != null)
+            {
+                this.selectCallback.accept(id);
+            }
+
+            if (doubleClick && this.doubleClickCallback != null)
+            {
+                this.doubleClickCallback.accept(id);
+            }
+        }
+
+        @Override
+        public void resize()
+        {
+            super.resize();
+            int effectiveW = this.area.w > 0 ? this.area.w : 500;
+            int cols = Math.max(1, (effectiveW - CARD_GAP) / (CARD_SIZE + CARD_GAP));
+            if (cols != this.lastCols && !this.rebuilding)
+            {
+                this.rebuilding = true;
+                this.buildCards();
+                this.rebuilding = false;
+                this.lastCols = cols;
+                super.resize();
+            }
         }
     }
 }

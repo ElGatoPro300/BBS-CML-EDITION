@@ -536,7 +536,13 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.homeFilmsMosaic = new UIFilmMosaicGrid((id) -> {
             this.handleHomeFilmsSelection(Collections.singletonList(new DataPath(id)));
         }, (id) -> {
-            if (!id.endsWith("/") && !id.equals(PARENT_FOLDER_ENTRY)) {
+            if (id.endsWith("/")) {
+                this.homeFilmsList.goTo(new DataPath(id));
+                this.requestNames();
+            } else if (id.equals(PARENT_FOLDER_ENTRY)) {
+                this.homeFilmsList.goTo(this.homeFilmsList.getPath().getParent());
+                this.requestNames();
+            } else {
                 this.openFilmInDocumentTabs(id);
             }
         });
@@ -4800,18 +4806,23 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     private String getSelectedHomeFilmId()
     {
+        String selected = null;
         if (this.homeFilmsMosaic != null && this.homeFilmsMosaic.isVisible())
         {
-            return this.homeFilmsMosaic.selectedId;
+            selected = this.homeFilmsMosaic.selectedId;
         }
-        DataPath selected = this.homeFilmsList.getCurrentFirst();
+        else
+        {
+            DataPath path = this.homeFilmsList.getCurrentFirst();
+            selected = path == null ? null : path.toString();
+        }
 
-        if (selected == null || selected.folder)
+        if (selected == null || selected.endsWith("/") || selected.equals(PARENT_FOLDER_ENTRY))
         {
             return null;
         }
 
-        return selected.toString();
+        return selected;
     }
 
     private void toggleMosaicView()
@@ -4919,7 +4930,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     private void updateHomeButtonsState()
     {
-        boolean hasSelectedFilm = this.homeFilmsList.getCurrentFirst() != null;
+        boolean hasSelectedFilm = this.getSelectedHomeFilmId() != null;
         boolean enableIcons = !this.showingHomePage;
 
         if (this.homeDuplicateCurrent != null)
@@ -5863,31 +5874,17 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         public void fill(Collection<String> names, String selectedId)
         {
-            this.allFilmIds.clear();
-            for (String name : names)
-            {
-                if (!name.endsWith("/"))
-                {
-                    this.allFilmIds.add(name);
-                }
-            }
             this.selectedId = selectedId;
             this.lastCols = -1;
-            
             this.filter("");
         }
 
         public void filter(String query)
         {
             this.filmIds.clear();
-            String lowerQuery = query == null ? "" : query.toLowerCase();
-            
-            for (String id : this.allFilmIds)
+            for (DataPath path : UIFilmPanel.this.homeFilmsList.getFilteredList())
             {
-                if (id.toLowerCase().contains(lowerQuery))
-                {
-                    this.filmIds.add(id);
-                }
+                this.filmIds.add(path.toString());
             }
             
             this.buildCards();
@@ -5940,7 +5937,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
                         super.render(context);
 
-                        Texture thumbnail = UIFilmPanel.this.getThumbnail(id);
+                        boolean isFolder = id.endsWith("/") || id.equals(PARENT_FOLDER_ENTRY);
+                        Texture thumbnail = isFolder ? null : UIFilmPanel.this.getThumbnail(id);
                         if (thumbnail != null)
                         {
                             int w = CARD_SIZE - 4;
@@ -5957,21 +5955,22 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                         }
                         else
                         {
-                            /* Render film icon in center */
+                            /* Render film or folder icon in center */
                             int iconX = this.area.mx();
                             int iconY = this.area.y + CARD_SIZE / 2;
+                            Icon icon = isFolder ? Icons.FOLDER : Icons.FILM;
                             
                             context.batcher.getContext().getMatrices().push();
                             context.batcher.getContext().getMatrices().translate(iconX, iconY, 0);
                             context.batcher.getContext().getMatrices().scale(2F, 2F, 1F);
                             context.batcher.getContext().getMatrices().translate(-iconX, -iconY, 0);
                             
-                            context.batcher.icon(Icons.FILM, iconX, iconY, 0.5F, 0.5F);
+                            context.batcher.icon(icon, iconX, iconY, 0.5F, 0.5F);
                             
                             context.batcher.getContext().getMatrices().pop();
                         }
 
-                        String label = new DataPath(id).getLast();
+                        String label = id.equals(PARENT_FOLDER_ENTRY) ? "../" : new DataPath(id).getLast();
                         int maxW = this.area.w - 4;
                         if (context.batcher.getFont().getWidth(label) > maxW)
                         {
