@@ -19,6 +19,7 @@ import mchorse.bbs_mod.ui.framework.elements.input.list.UISearchList;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIText;
+import mchorse.bbs_mod.ui.framework.elements.utils.UILoader;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
@@ -774,50 +775,7 @@ public class UINewsPanel extends UISidebarDashboardPanel
 
             if (texture == null)
             {
-                long frame = System.currentTimeMillis() / 200L;
-                int index = (int) (frame % 3L);
-                float cx = this.area.mx();
-                float cy = this.area.my() - 12;
-                float scale = 2.25F;
-                Icon icon;
-
-                if (index == 0)
-                {
-                    icon = Icons.LOADING_BBS_1;
-                }
-                else if (index == 1)
-                {
-                    icon = Icons.LOADING_BBS_2;
-                }
-                else
-                {
-                    icon = Icons.LOADING_BBS_3;
-                }
-
-                float iw = icon.w * scale;
-                float ih = icon.h * scale;
-
-                Texture atlas = BBSModClient.getTextures().getTexture(icon.texture);
-                context.batcher.texturedBox(
-                    atlas,
-                    Colors.WHITE,
-                    cx - iw / 2F,
-                    cy - ih / 2F,
-                    iw,
-                    ih,
-                    icon.x,
-                    icon.y,
-                    icon.x + icon.w,
-                    icon.y + icon.h,
-                    icon.textureW,
-                    icon.textureH
-                );
-
-                String loading = UIKeys.NEWS_IMAGE_LOADING.get();
-                int lw = context.batcher.getFont().getWidth(loading);
-
-                context.batcher.textShadow(loading, cx - lw / 2F, cy + ih / 2F + 4, Colors.LIGHTER_GRAY);
-
+                UILoader.draw(context, this.area.mx(), this.area.my() - 12, 2.25F, UIKeys.NEWS_IMAGE_LOADING);
                 return;
             }
 
