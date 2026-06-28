@@ -534,14 +534,17 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.homeFilmsSearch.list.background();
 
         this.homeFilmsMosaic = new UIFilmMosaicGrid((id) -> {
-            this.handleHomeFilmsSelection(Collections.singletonList(new DataPath(id)));
+            DataPath path = this.homeFilmsMosaic.findPath(id);
+            this.handleHomeFilmsSelection(Collections.singletonList(path != null ? path : new DataPath(id)));
         }, (id) -> {
-            if (id.endsWith("/")) {
-                this.homeFilmsList.goTo(new DataPath(id));
-                this.requestNames();
-            } else if (id.equals(PARENT_FOLDER_ENTRY)) {
-                this.homeFilmsList.goTo(this.homeFilmsList.getPath().getParent());
-                this.requestNames();
+            DataPath clickedPath = this.homeFilmsMosaic.findPath(id);
+            if (clickedPath != null && clickedPath.folder) {
+                if (clickedPath.getLast().equals("..")) {
+                    this.homeFilmsList.goTo(this.homeFilmsList.getPath().getParent());
+                } else {
+                    this.homeFilmsList.goTo(clickedPath);
+                }
+                this.homeFilmsMosaic.filter("");
             } else {
                 this.openFilmInDocumentTabs(id);
             }
@@ -3906,11 +3909,16 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     {
         super.fillNames(names);
 
+        DataPath currentPath = this.homeFilmsList.getPath().copy();
         DataPath selected = this.homeFilmsList.getCurrentFirst();
         String current = selected != null && !selected.folder ? selected.toString() : null;
 
         this.homeFilmsList.fill(names);
-        this.homeFilmsList.setCurrentFile(current);
+        this.homeFilmsList.goTo(currentPath);
+        if (current != null)
+        {
+            this.homeFilmsList.setCurrentFile(current);
+        }
         if (this.homeFilmsMosaic != null)
         {
             this.homeFilmsMosaic.fill(names, current);
@@ -4817,7 +4825,19 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             selected = path == null ? null : path.toString();
         }
 
-        if (selected == null || selected.endsWith("/") || selected.equals(PARENT_FOLDER_ENTRY))
+        if (selected == null)
+        {
+            return null;
+        }
+
+        /* Check if the selected ID corresponds to a folder */
+        DataPath selectedPath = this.homeFilmsMosaic != null ? this.homeFilmsMosaic.findPath(selected) : null;
+        if (selectedPath == null)
+        {
+            DataPath path = this.homeFilmsList.getCurrentFirst();
+            selectedPath = path;
+        }
+        if (selectedPath != null && selectedPath.folder)
         {
             return null;
         }
@@ -4838,7 +4858,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         if (isMosaic)
         {
-            this.homeFilmsMosaic.resize();
+            this.homeFilmsMosaic.filter("");
         }
     }
 
@@ -5856,8 +5876,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         private final Consumer<String> selectCallback;
         private final Consumer<String> doubleClickCallback;
 
-        private final List<String> allFilmIds = new ArrayList<>();
-        private final List<String> filmIds = new ArrayList<>();
+        private final List<DataPath> filmPaths = new ArrayList<>();
         public String selectedId;
         private String lastClickedId;
         private long lastClickTime;
@@ -5881,10 +5900,10 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         public void filter(String query)
         {
-            this.filmIds.clear();
+            this.filmPaths.clear();
             for (DataPath path : UIFilmPanel.this.homeFilmsList.getFilteredList())
             {
-                this.filmIds.add(path.toString());
+                this.filmPaths.add(path);
             }
             
             this.buildCards();
@@ -5895,17 +5914,30 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             }
         }
 
+        public DataPath findPath(String id)
+        {
+            for (DataPath path : this.filmPaths)
+            {
+                if (path.toString().equals(id))
+                {
+                    return path;
+                }
+            }
+            return null;
+        }
+
         private void buildCards()
         {
             this.removeAll();
-            if (this.filmIds.isEmpty()) return;
+            if (this.filmPaths.isEmpty()) return;
 
             int effectiveW = this.area.w > 0 ? this.area.w : 500;
             int cols = Math.max(1, (effectiveW - CARD_GAP) / (CARD_SIZE + CARD_GAP));
 
-            for (int i = 0; i < this.filmIds.size(); i++)
+            for (int i = 0; i < this.filmPaths.size(); i++)
             {
-                final String id = this.filmIds.get(i);
+                final DataPath path = this.filmPaths.get(i);
+                final String id = path.toString();
                 final int col = i % cols;
                 final int row = i / cols;
 
@@ -5937,7 +5969,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
                         super.render(context);
 
-                        boolean isFolder = id.endsWith("/") || id.equals(PARENT_FOLDER_ENTRY);
+                        boolean isFolder = path.folder;
                         Texture thumbnail = isFolder ? null : UIFilmPanel.this.getThumbnail(id);
                         if (thumbnail != null)
                         {
@@ -5970,7 +6002,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                             context.batcher.getContext().getMatrices().pop();
                         }
 
-                        String label = id.equals(PARENT_FOLDER_ENTRY) ? "../" : new DataPath(id).getLast();
+                        String label = path.getLast().equals("..") ? "../" : path.getLast();
                         int maxW = this.area.w - 4;
                         if (context.batcher.getFont().getWidth(label) > maxW)
                         {
@@ -5988,7 +6020,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                 this.add(card);
             }
 
-            int rows = (this.filmIds.size() + cols - 1) / cols;
+            int rows = (this.filmPaths.size() + cols - 1) / cols;
             int totalH = CARD_GAP + rows * (CARD_SIZE + CARD_LABEL_H + CARD_GAP);
             this.scroll.scrollSize = totalH;
             this.scroll.clamp();
@@ -6020,7 +6052,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         {
             int effectiveW = this.area.w > 0 ? this.area.w : 500;
             int cols = Math.max(1, (effectiveW - CARD_GAP) / (CARD_SIZE + CARD_GAP));
-            if (!this.filmIds.isEmpty() && !this.rebuilding)
+            if (!this.filmPaths.isEmpty() && !this.rebuilding)
             {
                 if (cols != this.lastCols)
                 {
@@ -6030,7 +6062,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                     this.rebuilding = false;
                 }
 
-                int rows = (this.filmIds.size() + cols - 1) / cols;
+                int rows = (this.filmPaths.size() + cols - 1) / cols;
                 int totalH = CARD_GAP + rows * (CARD_SIZE + CARD_LABEL_H + CARD_GAP);
                 this.scroll.scrollSize = totalH;
             }

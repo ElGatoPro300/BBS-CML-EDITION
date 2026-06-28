@@ -267,14 +267,17 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
         this.homeParticlesSearch.list.background();
 
         this.homeParticlesMosaic = new UIParticleMosaicGrid((id) -> {
-            this.handleHomeParticlesSelection(java.util.Collections.singletonList(new DataPath(id)));
+            DataPath path = this.homeParticlesMosaic.findPath(id);
+            this.handleHomeParticlesSelection(java.util.Collections.singletonList(path != null ? path : new DataPath(id)));
         }, (id) -> {
-            if (id.endsWith("/")) {
-                this.homeParticlesList.goTo(new DataPath(id));
-                this.requestNames();
-            } else if (id.equals("..")) {
-                this.homeParticlesList.goTo(this.homeParticlesList.getPath().getParent());
-                this.requestNames();
+            DataPath clickedPath = this.homeParticlesMosaic.findPath(id);
+            if (clickedPath != null && clickedPath.folder) {
+                if (clickedPath.getLast().equals("..")) {
+                    this.homeParticlesList.goTo(this.homeParticlesList.getPath().getParent());
+                } else {
+                    this.homeParticlesList.goTo(clickedPath);
+                }
+                this.homeParticlesMosaic.filter("");
             } else {
                 this.openParticleInDocumentTabs(id);
             }
@@ -512,7 +515,7 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
 
         if (isMosaic)
         {
-            this.homeParticlesMosaic.resize();
+            this.homeParticlesMosaic.filter("");
         }
     }
 
@@ -529,7 +532,19 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
             selected = path == null ? null : path.toString();
         }
 
-        if (selected == null || selected.endsWith("/") || selected.equals(".."))
+        if (selected == null)
+        {
+            return null;
+        }
+
+        /* Check if the selected ID corresponds to a folder */
+        DataPath selectedPath = this.homeParticlesMosaic != null ? this.homeParticlesMosaic.findPath(selected) : null;
+        if (selectedPath == null)
+        {
+            DataPath path = this.homeParticlesList != null ? this.homeParticlesList.getCurrentFirst() : null;
+            selectedPath = path;
+        }
+        if (selectedPath != null && selectedPath.folder)
         {
             return null;
         }
@@ -922,13 +937,18 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
     {
         super.fillNames(names);
 
+        DataPath currentPath = this.homeParticlesList != null ? this.homeParticlesList.getPath().copy() : DataPath.EMPTY.copy();
         DataPath selected = this.homeParticlesList != null ? this.homeParticlesList.getCurrentFirst() : null;
         String current = selected != null && !selected.folder ? selected.toString() : null;
 
         if (this.homeParticlesList != null)
         {
             this.homeParticlesList.fill(names);
-            this.homeParticlesList.setCurrentFile(current);
+            this.homeParticlesList.goTo(currentPath);
+            if (current != null)
+            {
+                this.homeParticlesList.setCurrentFile(current);
+            }
         }
         if (this.homeParticlesMosaic != null)
         {
@@ -1175,6 +1195,18 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
             {
                 this.resize();
             }
+        }
+
+        public DataPath findPath(String id)
+        {
+            for (DataPath path : this.particlePaths)
+            {
+                if (path.toString().equals(id))
+                {
+                    return path;
+                }
+            }
+            return null;
         }
 
         private void buildCards()
