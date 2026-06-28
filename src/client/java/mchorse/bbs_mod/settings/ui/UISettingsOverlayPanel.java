@@ -32,6 +32,7 @@ public class UISettingsOverlayPanel extends UIOverlayPanel
 {
     private static final int SIDEBAR_WIDTH = 180;
 
+    public UIElement sidebarContainer;
     public UIScrollView sidebar;
     public UIElement panel;
     public UIScrollView options;
@@ -49,8 +50,15 @@ public class UISettingsOverlayPanel extends UIOverlayPanel
         this.resizable();
         this.content.w(1F);
 
+        this.sidebarContainer = new UIElement();
+        this.sidebarContainer.relative(this.content).x(0).y(0).w(SIDEBAR_WIDTH).h(1F);
+
+        this.search = new UITextbox(100, (str) -> this.refresh());
+        this.search.placeholder(UIKeys.GENERAL_SEARCH);
+        this.search.relative(this.sidebarContainer).x(6).y(6).w(1F, -12).h(20);
+
         this.sidebar = new UIScrollView(ScrollDirection.VERTICAL);
-        this.sidebar.relative(this.content).x(0).y(0).w(SIDEBAR_WIDTH).h(1F);
+        this.sidebar.relative(this.sidebarContainer).x(0).y(32).w(1F).h(1F, -32);
         this.sidebar.column(2).vertical().stretch().scroll().padding(6);
 
         this.panel = new UIElement();
@@ -61,12 +69,9 @@ public class UISettingsOverlayPanel extends UIOverlayPanel
         this.options.relative(this.panel).x(6).y(6).w(1F, -12).h(1F, -12);
         this.options.column(8).scroll().vertical().stretch().padding(10).height(20);
 
-        this.search = new UITextbox(100, (str) -> this.refresh());
-        this.search.placeholder(UIKeys.GENERAL_SEARCH);
-        this.search.h(20);
-
         this.panel.add(this.options);
-        this.content.add(this.sidebar, this.panel);
+        this.sidebarContainer.add(this.search, this.sidebar);
+        this.content.add(this.sidebarContainer, this.panel);
 
         this.rebuildTabs();
         this.markContainer();
@@ -173,6 +178,11 @@ public class UISettingsOverlayPanel extends UIOverlayPanel
             this.currentTab.selected = true;
         }
 
+        if (this.search != null)
+        {
+            this.search.setText("");
+        }
+
         this.refresh();
     }
 
@@ -194,6 +204,11 @@ public class UISettingsOverlayPanel extends UIOverlayPanel
             this.currentTab.selected = true;
         }
 
+        if (this.search != null)
+        {
+            this.search.setText("");
+        }
+
         this.refresh();
     }
 
@@ -205,7 +220,6 @@ public class UISettingsOverlayPanel extends UIOverlayPanel
         }
 
         this.options.removeAll();
-        this.options.add(this.search.marginBottom(10));
 
         boolean first = true;
         String query = this.search.getText().trim().toLowerCase();
@@ -217,7 +231,7 @@ public class UISettingsOverlayPanel extends UIOverlayPanel
                 continue;
             }
 
-            if (this.selectedCategoryId != null && !category.getId().equals(this.selectedCategoryId))
+            if (query.isEmpty() && this.selectedCategoryId != null && !category.getId().equals(this.selectedCategoryId))
             {
                 continue;
             }
@@ -359,8 +373,8 @@ public class UISettingsOverlayPanel extends UIOverlayPanel
         context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.y + headerH, 0xFF2A2A35, 1);
 
         // Left sidebar
-        context.batcher.box(this.sidebar.area.x, this.sidebar.area.y, this.sidebar.area.ex(), this.sidebar.area.ey(), 0xFF111115);
-        context.batcher.outline(this.sidebar.area.x, this.sidebar.area.y, this.sidebar.area.ex(), this.sidebar.area.ey(), 0xFF22222A, 1);
+        context.batcher.box(this.sidebarContainer.area.x, this.sidebarContainer.area.y, this.sidebarContainer.area.ex(), this.sidebarContainer.area.ey(), 0xFF111115);
+        context.batcher.outline(this.sidebarContainer.area.x, this.sidebarContainer.area.y, this.sidebarContainer.area.ex(), this.sidebarContainer.area.ey(), 0xFF22222A, 1);
 
         // Resize handles
         int resizeColor = Colors.GRAY;
