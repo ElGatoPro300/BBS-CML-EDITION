@@ -181,7 +181,20 @@ public class UIDashboard extends UIBaseMenu
 
     private void cyclePanels()
     {
-        List<UIDashboardPanel> panels = this.panels.panels;
+        if (this.isDocumentPanel(this.panels.panel))
+        {
+            int direction = Window.isShiftPressed() ? -1 : 1;
+            this.documentTabsBar.cycle(direction);
+            UIUtils.playClick();
+            return;
+        }
+
+        List<UIDashboardPanel> panels = this.panels.getVisiblePanels();
+
+        if (panels.isEmpty())
+        {
+            return;
+        }
 
         int direction = Window.isShiftPressed() ? -1 : 1;
         int index = panels.indexOf(this.panels.panel);
@@ -323,6 +336,14 @@ public class UIDashboard extends UIBaseMenu
 
     public void setPanel(UIDashboardPanel panel)
     {
+        for (mchorse.bbs_mod.ui.framework.elements.IUIElement element : new java.util.ArrayList<>(this.overlay.getChildren()))
+        {
+            if (element instanceof mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay)
+            {
+                ((mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay) element).closeItself();
+            }
+        }
+
         this.panels.setPanel(panel);
     }
 

@@ -231,6 +231,19 @@ public class UIDocumentTabsBar extends UIControlBar
         this.activate(0);
     }
 
+    public void cycle(int direction)
+    {
+        if (this.documentTabs.isEmpty())
+        {
+            return;
+        }
+
+        int size = this.documentTabs.size();
+        int newIndex = (this.activeTab + direction + size) % size;
+
+        this.activate(newIndex);
+    }
+
     public DocumentTab getActiveDocumentTab()
     {
         if (this.activeTab < 0 || this.activeTab >= this.documentTabs.size()) return null;

@@ -78,11 +78,6 @@ public abstract class UIDataDashboardPanel <T extends ValueGroup> extends UICRUD
     public void showHomeView()
     {
         this.fill(null);
-
-        if (!this.overlay.hasParent())
-        {
-            UIOverlay.addOverlay(this.getContext(), this.overlay, 260, 0.9F);
-        }
     }
 
     public void requestData(String id)
