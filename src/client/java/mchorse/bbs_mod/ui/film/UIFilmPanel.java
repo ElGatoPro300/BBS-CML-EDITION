@@ -3961,7 +3961,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     @Override
     public void showHomeView()
     {
-        this.fill(null);
+        super.showHomeView();
     }
 
     @Override

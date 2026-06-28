@@ -830,7 +830,7 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
     @Override
     public void showHomeView()
     {
-        this.fill(null);
+        super.showHomeView();
     }
 
     @Override

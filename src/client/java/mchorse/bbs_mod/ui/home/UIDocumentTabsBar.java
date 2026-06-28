@@ -184,7 +184,33 @@ public class UIDocumentTabsBar extends UIControlBar
                 current.homeType = type;
                 this.activate(this.activeTab);
                 this.rebuild();
+                return;
             }
+        }
+
+        int homeIndex = -1;
+        for (int i = 0; i < this.documentTabs.size(); i++)
+        {
+            if (this.documentTabs.get(i).isHome)
+            {
+                homeIndex = i;
+                break;
+            }
+        }
+
+        if (homeIndex >= 0)
+        {
+            DocumentTab homeTab = this.documentTabs.get(homeIndex);
+            homeTab.homeType = type;
+            this.activate(homeIndex);
+        }
+        else
+        {
+            DocumentTab homeTab = DocumentTab.home();
+            homeTab.homeType = type;
+            this.documentTabs.add(0, homeTab);
+            this.rebuild();
+            this.activate(0);
         }
     }
 
