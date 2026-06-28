@@ -33,7 +33,7 @@ import java.util.function.Consumer;
 public class UICurveClip extends UIClip<CurveClip>
 {
     private static final String CHROMA_SKY_ADD_ID = "__chroma_sky__";
-    private static final IKey CHROMA_SKY_TITLE = L10n.lang("bbs.ui.camera.panels.curves.chroma_sky");
+    private static final IKey CHROMA_SKY_TITLE = UIKeys.CAMERA_PANELS_CURVES_CHROMA_SKY;
 
     public UIKeyframeEditor keyframes;
     public UIButton edit;

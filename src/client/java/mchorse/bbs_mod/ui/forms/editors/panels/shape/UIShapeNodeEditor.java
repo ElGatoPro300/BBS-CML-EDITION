@@ -325,50 +325,50 @@ public class UIShapeNodeEditor extends UIElement
     {
         /* Input — green */
         ContextMenuManager inputSub = new ContextMenuManager();
-        inputSub.action(Icons.MAXIMIZE, L10n.lang("bbs.ui.raw.value"),      Colors.POSITIVE, () -> this.addNode("value"));
-        inputSub.action(Icons.MATERIAL, L10n.lang("bbs.ui.raw.color"),      Colors.POSITIVE, () -> this.addNode("color"));
-        inputSub.action(Icons.TIME,     L10n.lang("bbs.ui.raw.time"),       Colors.POSITIVE, () -> this.addNode("time"));
-        inputSub.action(Icons.ALL_DIRECTIONS, L10n.lang("bbs.ui.raw.coordinate"), Colors.POSITIVE, () -> this.addNode("coordinate"));
-        inputSub.action(Icons.IMAGE,    L10n.lang("bbs.ui.raw.texture"),    Colors.POSITIVE, () -> this.addNode("texture"));
-        menu.action(Icons.DOWNLOAD, L10n.lang("bbs.ui.raw.input"), Colors.POSITIVE, () -> context.replaceContextMenu(inputSub.create()));
+        inputSub.action(Icons.MAXIMIZE, UIKeys.RAW_VALUE,      Colors.POSITIVE, () -> this.addNode("value"));
+        inputSub.action(Icons.MATERIAL, UIKeys.RAW_COLOR,      Colors.POSITIVE, () -> this.addNode("color"));
+        inputSub.action(Icons.TIME,     UIKeys.RAW_TIME,       Colors.POSITIVE, () -> this.addNode("time"));
+        inputSub.action(Icons.ALL_DIRECTIONS, UIKeys.RAW_COORDINATE, Colors.POSITIVE, () -> this.addNode("coordinate"));
+        inputSub.action(Icons.IMAGE,    UIKeys.RAW_TEXTURE,    Colors.POSITIVE, () -> this.addNode("texture"));
+        menu.action(Icons.DOWNLOAD, UIKeys.RAW_INPUT, Colors.POSITIVE, () -> context.replaceContextMenu(inputSub.create()));
 
         /* Math — blue */
         ContextMenuManager mathSub = new ContextMenuManager();
-        mathSub.action(Icons.GEAR,   L10n.lang("bbs.ui.raw.math"),       Colors.ACTIVE, () -> this.addNode("math"));
-        mathSub.action(Icons.ALL_DIRECTIONS, L10n.lang("bbs.ui.raw.vector_math"), Colors.ACTIVE, () -> this.addNode("vector_math"));
-        mathSub.action(Icons.GEAR,   L10n.lang("bbs.ui.raw.remap"),      Colors.ACTIVE, () -> this.addNode("remap"));
-        mathSub.action(Icons.GEAR,   L10n.lang("bbs.ui.raw.clamp"),      Colors.ACTIVE, () -> this.addNode("clamp"));
-        mathSub.action(Icons.GEAR,   L10n.lang("bbs.ui.raw.smoothstep"), Colors.ACTIVE, () -> this.addNode("smoothstep"));
-        mathSub.action(Icons.REFRESH, L10n.lang("bbs.ui.raw.invert"),    Colors.ACTIVE, () -> this.addNode("invert"));
-        menu.action(Icons.GEAR, L10n.lang("bbs.ui.raw.math"), Colors.ACTIVE, () -> context.replaceContextMenu(mathSub.create()));
+        mathSub.action(Icons.GEAR,   UIKeys.RAW_MATH,       Colors.ACTIVE, () -> this.addNode("math"));
+        mathSub.action(Icons.ALL_DIRECTIONS, UIKeys.RAW_VECTOR_MATH, Colors.ACTIVE, () -> this.addNode("vector_math"));
+        mathSub.action(Icons.GEAR,   UIKeys.RAW_REMAP,      Colors.ACTIVE, () -> this.addNode("remap"));
+        mathSub.action(Icons.GEAR,   UIKeys.RAW_CLAMP,      Colors.ACTIVE, () -> this.addNode("clamp"));
+        mathSub.action(Icons.GEAR,   UIKeys.RAW_SMOOTHSTEP, Colors.ACTIVE, () -> this.addNode("smoothstep"));
+        mathSub.action(Icons.REFRESH, UIKeys.RAW_INVERT,    Colors.ACTIVE, () -> this.addNode("invert"));
+        menu.action(Icons.GEAR, UIKeys.RAW_MATH, Colors.ACTIVE, () -> context.replaceContextMenu(mathSub.create()));
 
         /* Color — orange */
         ContextMenuManager colorSub = new ContextMenuManager();
-        colorSub.action(Icons.REFRESH, L10n.lang("bbs.ui.raw.mix_color"),     Colors.ORANGE, () -> this.addNode("mix_color"));
-        colorSub.action(Icons.FILTER,  L10n.lang("bbs.ui.raw.split_color"),   Colors.ORANGE, () -> this.addNode("split_color"));
-        colorSub.action(Icons.FILTER,  L10n.lang("bbs.ui.raw.combine_color"), Colors.ORANGE, () -> this.addNode("combine_color"));
-        menu.action(Icons.MATERIAL, L10n.lang("bbs.ui.raw.color"), Colors.ORANGE, () -> context.replaceContextMenu(colorSub.create()));
+        colorSub.action(Icons.REFRESH, UIKeys.RAW_MIX_COLOR,     Colors.ORANGE, () -> this.addNode("mix_color"));
+        colorSub.action(Icons.FILTER,  UIKeys.RAW_SPLIT_COLOR,   Colors.ORANGE, () -> this.addNode("split_color"));
+        colorSub.action(Icons.FILTER,  UIKeys.RAW_COMBINE_COLOR, Colors.ORANGE, () -> this.addNode("combine_color"));
+        menu.action(Icons.MATERIAL, UIKeys.RAW_COLOR, Colors.ORANGE, () -> context.replaceContextMenu(colorSub.create()));
 
         /* Noise — yellow */
         ContextMenuManager noiseSub = new ContextMenuManager();
-        noiseSub.action(Icons.SOUND, L10n.lang("bbs.ui.raw.perlin_noise"), Colors.INACTIVE, () -> this.addNode("noise"));
-        noiseSub.action(Icons.SOUND, L10n.lang("bbs.ui.raw.voronoi"),      Colors.INACTIVE, () -> this.addNode("voronoi"));
-        noiseSub.action(Icons.SOUND, L10n.lang("bbs.ui.raw.flow_noise"),   Colors.INACTIVE, () -> this.addNode("flow_noise"));
-        menu.action(Icons.SOUND, L10n.lang("bbs.ui.raw.noise"), Colors.INACTIVE, () -> context.replaceContextMenu(noiseSub.create()));
+        noiseSub.action(Icons.SOUND, UIKeys.RAW_PERLIN_NOISE, Colors.INACTIVE, () -> this.addNode("noise"));
+        noiseSub.action(Icons.SOUND, UIKeys.RAW_VORONOI,      Colors.INACTIVE, () -> this.addNode("voronoi"));
+        noiseSub.action(Icons.SOUND, UIKeys.RAW_FLOW_NOISE,   Colors.INACTIVE, () -> this.addNode("flow_noise"));
+        menu.action(Icons.SOUND, UIKeys.RAW_NOISE, Colors.INACTIVE, () -> context.replaceContextMenu(noiseSub.create()));
 
         /* Utility — no color */
         ContextMenuManager utilitySub = new ContextMenuManager();
-        utilitySub.action(Icons.GEAR,   L10n.lang("bbs.ui.raw.trigger"), () -> this.addNode("trigger"));
-        utilitySub.action(Icons.UPLOAD, L10n.lang("bbs.ui.raw.bump"),    () -> this.addNode("bump"));
-        utilitySub.action(Icons.EDIT,   L10n.lang("bbs.ui.raw.comment"), () -> this.addNode("comment"));
-        menu.action(Icons.MORE, L10n.lang("bbs.ui.raw.utility"), () -> context.replaceContextMenu(utilitySub.create()));
+        utilitySub.action(Icons.GEAR,   UIKeys.RAW_TRIGGER, () -> this.addNode("trigger"));
+        utilitySub.action(Icons.UPLOAD, UIKeys.RAW_BUMP,    () -> this.addNode("bump"));
+        utilitySub.action(Icons.EDIT,   UIKeys.RAW_COMMENT, () -> this.addNode("comment"));
+        menu.action(Icons.MORE, UIKeys.RAW_UTILITY, () -> context.replaceContextMenu(utilitySub.create()));
 
         /* Output / integration — red */
         ContextMenuManager outputSub = new ContextMenuManager();
-        outputSub.action(Icons.DOWNLOAD, L10n.lang("bbs.ui.raw.output"),         Colors.NEGATIVE, () -> this.addNode("output"));
-        outputSub.action(Icons.GLOBE,    L10n.lang("bbs.ui.raw.iris_shader"),    Colors.NEGATIVE, () -> this.addNode("iris_shader"));
-        outputSub.action(Icons.VISIBLE,  L10n.lang("bbs.ui.raw.iris_attribute"), Colors.NEGATIVE, () -> this.addNode("iris_attribute"));
-        menu.action(Icons.UPLOAD, L10n.lang("bbs.ui.raw.output"), Colors.NEGATIVE, () -> context.replaceContextMenu(outputSub.create()));
+        outputSub.action(Icons.DOWNLOAD, UIKeys.RAW_OUTPUT,         Colors.NEGATIVE, () -> this.addNode("output"));
+        outputSub.action(Icons.GLOBE,    UIKeys.RAW_IRIS_SHADER,    Colors.NEGATIVE, () -> this.addNode("iris_shader"));
+        outputSub.action(Icons.VISIBLE,  UIKeys.RAW_IRIS_ATTRIBUTE, Colors.NEGATIVE, () -> this.addNode("iris_attribute"));
+        menu.action(Icons.UPLOAD, UIKeys.RAW_OUTPUT, Colors.NEGATIVE, () -> context.replaceContextMenu(outputSub.create()));
     }
 
     /* ======================================================================
@@ -563,17 +563,17 @@ public class UIShapeNodeEditor extends UIElement
 
         if (!this.selection.isEmpty())
         {
-            menu.action(Icons.COPY, L10n.lang("bbs.ui.raw.copy"), Colors.POSITIVE, () -> this.copyNodes());
+            menu.action(Icons.COPY, UIKeys.RAW_COPY, Colors.POSITIVE, () -> this.copyNodes());
         }
 
         if (clipboard != null)
         {
-            menu.action(Icons.PASTE, L10n.lang("bbs.ui.raw.paste"), Colors.INACTIVE, () -> this.pasteNodes(this.lastMouseX, this.lastMouseY));
+            menu.action(Icons.PASTE, UIKeys.RAW_PASTE, Colors.INACTIVE, () -> this.pasteNodes(this.lastMouseX, this.lastMouseY));
         }
 
         ContextMenuManager addSub = new ContextMenuManager();
         this.populateAddMenu(context, addSub);
-        menu.action(Icons.ADD, L10n.lang("bbs.ui.raw.add_node"), Colors.ACTIVE, () -> context.replaceContextMenu(addSub.create()));
+        menu.action(Icons.ADD, UIKeys.RAW_ADD_NODE, Colors.ACTIVE, () -> context.replaceContextMenu(addSub.create()));
 
         context.replaceContextMenu(menu.create());
     }
@@ -588,32 +588,32 @@ public class UIShapeNodeEditor extends UIElement
             MathNode math = (MathNode) node;
             ContextMenuManager op = new ContextMenuManager();
 
-            op.action(Icons.ADD,    L10n.lang("bbs.ui.raw.add"),    () -> math.operation = 0);
-            op.action(Icons.REMOVE, L10n.lang("bbs.ui.raw.sub"),    () -> math.operation = 1);
-            op.action(Icons.CLOSE,  L10n.lang("bbs.ui.raw.mul"),    () -> math.operation = 2);
-            op.action(Icons.MAXIMIZE, L10n.lang("bbs.ui.raw.div"),  () -> math.operation = 3);
-            op.action(Icons.REFRESH, L10n.lang("bbs.ui.raw.mod"),   () -> math.operation = 4);
-            op.action(Icons.DOWNLOAD, L10n.lang("bbs.ui.raw.min"),  () -> math.operation = 5);
-            op.action(Icons.UPLOAD,  L10n.lang("bbs.ui.raw.max"),   () -> math.operation = 6);
-            op.action(Icons.MORE,    L10n.lang("bbs.ui.raw.pow"),   () -> math.operation = 7);
-            op.action(Icons.EDIT,    L10n.lang("bbs.ui.raw.custom"), () ->
+            op.action(Icons.ADD,    UIKeys.RAW_ADD,    () -> math.operation = 0);
+            op.action(Icons.REMOVE, UIKeys.RAW_SUB,    () -> math.operation = 1);
+            op.action(Icons.CLOSE,  UIKeys.RAW_MUL,    () -> math.operation = 2);
+            op.action(Icons.MAXIMIZE, UIKeys.RAW_DIV,  () -> math.operation = 3);
+            op.action(Icons.REFRESH, UIKeys.RAW_MOD,   () -> math.operation = 4);
+            op.action(Icons.DOWNLOAD, UIKeys.RAW_MIN,  () -> math.operation = 5);
+            op.action(Icons.UPLOAD,  UIKeys.RAW_MAX,   () -> math.operation = 6);
+            op.action(Icons.MORE,    UIKeys.RAW_POW,   () -> math.operation = 7);
+            op.action(Icons.EDIT,    UIKeys.RAW_CUSTOM, () ->
             {
                 math.operation = 8;
                 UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
-                    L10n.lang("bbs.ui.raw.edit_expression"), L10n.lang("bbs.ui.raw.enter_molang_expression"),
+                    UIKeys.RAW_EDIT_EXPRESSION, UIKeys.RAW_ENTER_MOLANG_EXPRESSION,
                     (s) -> math.setExpression(s));
                 panel.text.setText(math.expression);
                 UIOverlay.addOverlay(context, panel);
             });
 
-            menu.action(Icons.GEAR, L10n.lang("bbs.ui.raw.operation"), Colors.INACTIVE, () -> context.replaceContextMenu(op.create()));
+            menu.action(Icons.GEAR, UIKeys.RAW_OPERATION, Colors.INACTIVE, () -> context.replaceContextMenu(op.create()));
 
             if (math.operation == 8)
             {
-                menu.action(Icons.EDIT, L10n.lang("bbs.ui.raw.edit_expression"), Colors.ACTIVE, () ->
+                menu.action(Icons.EDIT, UIKeys.RAW_EDIT_EXPRESSION, Colors.ACTIVE, () ->
                 {
                     UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
-                        L10n.lang("bbs.ui.raw.edit_expression"), L10n.lang("bbs.ui.raw.enter_molang_expression"),
+                        UIKeys.RAW_EDIT_EXPRESSION, UIKeys.RAW_ENTER_MOLANG_EXPRESSION,
                         (s) -> math.setExpression(s));
                     panel.text.setText(math.expression);
                     UIOverlay.addOverlay(context, panel);
@@ -635,15 +635,15 @@ public class UIShapeNodeEditor extends UIElement
                 op.action(Icons.GEAR, IKey.raw(names[i]), () -> math.operation = idx);
             }
 
-            menu.action(Icons.GEAR, L10n.lang("bbs.ui.raw.operation"), Colors.INACTIVE, () -> context.replaceContextMenu(op.create()));
+            menu.action(Icons.GEAR, UIKeys.RAW_OPERATION, Colors.INACTIVE, () -> context.replaceContextMenu(op.create()));
         }
         else if (node instanceof ValueNode)
         {
             ValueNode vn = (ValueNode) node;
-            menu.action(Icons.EDIT, L10n.lang("bbs.ui.raw.edit_value"), Colors.ACTIVE, () ->
+            menu.action(Icons.EDIT, UIKeys.RAW_EDIT_VALUE, Colors.ACTIVE, () ->
             {
                 UINumberOverlayPanel panel = new UINumberOverlayPanel(
-                    L10n.lang("bbs.ui.raw.edit_value"), L10n.lang("bbs.ui.raw.enter_a_new_value"),
+                    UIKeys.RAW_EDIT_VALUE, UIKeys.RAW_ENTER_A_NEW_VALUE,
                     (v) -> vn.value = v.floatValue());
                 panel.value.setValue((double) vn.value);
                 UIOverlay.addOverlay(context, panel);
@@ -652,9 +652,9 @@ public class UIShapeNodeEditor extends UIElement
         else if (node instanceof ColorNode)
         {
             ColorNode cn = (ColorNode) node;
-            menu.action(Icons.MATERIAL, L10n.lang("bbs.ui.raw.edit_color"), Colors.ACTIVE, () ->
+            menu.action(Icons.MATERIAL, UIKeys.RAW_EDIT_COLOR, Colors.ACTIVE, () ->
             {
-                UIColorOverlayPanel panel = new UIColorOverlayPanel(L10n.lang("bbs.ui.raw.edit_color"), (c) -> cn.color.set(c));
+                UIColorOverlayPanel panel = new UIColorOverlayPanel(UIKeys.RAW_EDIT_COLOR, (c) -> cn.color.set(c));
                 panel.picker.editAlpha = true;
                 panel.picker.setColor(cn.color.getARGBColor());
                 UIOverlay.addOverlay(context, panel, 250, 160);
@@ -663,7 +663,7 @@ public class UIShapeNodeEditor extends UIElement
         else if (node instanceof TextureNode)
         {
             TextureNode tn = (TextureNode) node;
-            menu.action(Icons.IMAGE, L10n.lang("bbs.ui.raw.pick_texture"), Colors.ACTIVE, () ->
+            menu.action(Icons.IMAGE, UIKeys.RAW_PICK_TEXTURE, Colors.ACTIVE, () ->
                 UITexturePicker.open(context, tn.texture, (l) -> tn.texture = l));
         }
         else if (node instanceof InvertNode)
@@ -671,18 +671,18 @@ public class UIShapeNodeEditor extends UIElement
             InvertNode inv = (InvertNode) node;
             ContextMenuManager modeMenu = new ContextMenuManager();
 
-            modeMenu.action(Icons.GEAR, L10n.lang("bbs.ui.raw.scalar_1_value"), () -> inv.mode = 0);
-            modeMenu.action(Icons.MATERIAL, L10n.lang("bbs.ui.raw.color_invert_rgb"), Colors.INACTIVE, () -> inv.mode = 1);
+            modeMenu.action(Icons.GEAR, UIKeys.RAW_SCALAR_1_VALUE, () -> inv.mode = 0);
+            modeMenu.action(Icons.MATERIAL, UIKeys.RAW_COLOR_INVERT_RGB, Colors.INACTIVE, () -> inv.mode = 1);
 
-            menu.action(Icons.GEAR, L10n.lang("bbs.ui.raw.mode"), Colors.INACTIVE, () -> context.replaceContextMenu(modeMenu.create()));
+            menu.action(Icons.GEAR, UIKeys.RAW_MODE, Colors.INACTIVE, () -> context.replaceContextMenu(modeMenu.create()));
         }
         else if (node instanceof NoiseNode)
         {
             NoiseNode nn = (NoiseNode) node;
-            menu.action(Icons.EDIT, L10n.lang("bbs.ui.raw.edit_seed"), Colors.ACTIVE, () ->
+            menu.action(Icons.EDIT, UIKeys.RAW_EDIT_SEED, Colors.ACTIVE, () ->
             {
                 UINumberOverlayPanel panel = new UINumberOverlayPanel(
-                    L10n.lang("bbs.ui.raw.noise_seed"), L10n.lang("bbs.ui.raw.enter_integer_seed"),
+                    UIKeys.RAW_NOISE_SEED, UIKeys.RAW_ENTER_INTEGER_SEED,
                     (v) -> nn.seed = v.intValue());
                 panel.value.setValue(nn.seed);
                 UIOverlay.addOverlay(context, panel);
@@ -691,10 +691,10 @@ public class UIShapeNodeEditor extends UIElement
         else if (node instanceof VoronoiNode)
         {
             VoronoiNode vn = (VoronoiNode) node;
-            menu.action(Icons.EDIT, L10n.lang("bbs.ui.raw.edit_seed"), Colors.ACTIVE, () ->
+            menu.action(Icons.EDIT, UIKeys.RAW_EDIT_SEED, Colors.ACTIVE, () ->
             {
                 UINumberOverlayPanel panel = new UINumberOverlayPanel(
-                    L10n.lang("bbs.ui.raw.voronoi_seed"), L10n.lang("bbs.ui.raw.enter_integer_seed"),
+                    UIKeys.RAW_VORONOI_SEED, UIKeys.RAW_ENTER_INTEGER_SEED,
                     (v) -> vn.seed = v.intValue());
                 panel.value.setValue(vn.seed);
                 UIOverlay.addOverlay(context, panel);
@@ -703,10 +703,10 @@ public class UIShapeNodeEditor extends UIElement
         else if (node instanceof FlowNoiseNode)
         {
             FlowNoiseNode fn = (FlowNoiseNode) node;
-            menu.action(Icons.EDIT, L10n.lang("bbs.ui.raw.edit_seed"), Colors.ACTIVE, () ->
+            menu.action(Icons.EDIT, UIKeys.RAW_EDIT_SEED, Colors.ACTIVE, () ->
             {
                 UINumberOverlayPanel panel = new UINumberOverlayPanel(
-                    L10n.lang("bbs.ui.raw.flow_noise_seed"), L10n.lang("bbs.ui.raw.enter_integer_seed"),
+                    UIKeys.RAW_FLOW_NOISE_SEED, UIKeys.RAW_ENTER_INTEGER_SEED,
                     (v) -> fn.seed = v.intValue());
                 panel.value.setValue(fn.seed);
                 UIOverlay.addOverlay(context, panel);
@@ -717,28 +717,28 @@ public class UIShapeNodeEditor extends UIElement
             TriggerNode tn = (TriggerNode) node;
             ContextMenuManager modeMenu = new ContextMenuManager();
 
-            modeMenu.action(Icons.GEAR, L10n.lang("bbs.ui.raw.greater"),   () -> tn.mode = 0);
-            modeMenu.action(Icons.GEAR, L10n.lang("bbs.ui.raw.less"),      () -> tn.mode = 1);
-            modeMenu.action(Icons.GEAR, L10n.lang("bbs.ui.raw.equal"),     () -> tn.mode = 2);
-            modeMenu.action(Icons.GEAR, L10n.lang("bbs.ui.raw.not_equal"), () -> tn.mode = 3);
-            modeMenu.action(Icons.GEAR, L10n.lang("bbs.ui.raw.pulse"),     () -> tn.mode = 4);
+            modeMenu.action(Icons.GEAR, UIKeys.RAW_GREATER,   () -> tn.mode = 0);
+            modeMenu.action(Icons.GEAR, UIKeys.RAW_LESS,      () -> tn.mode = 1);
+            modeMenu.action(Icons.GEAR, UIKeys.RAW_EQUAL,     () -> tn.mode = 2);
+            modeMenu.action(Icons.GEAR, UIKeys.RAW_NOT_EQUAL, () -> tn.mode = 3);
+            modeMenu.action(Icons.GEAR, UIKeys.RAW_PULSE,     () -> tn.mode = 4);
 
-            menu.action(Icons.GEAR, L10n.lang("bbs.ui.raw.mode"), Colors.INACTIVE, () -> context.replaceContextMenu(modeMenu.create()));
+            menu.action(Icons.GEAR, UIKeys.RAW_MODE, Colors.INACTIVE, () -> context.replaceContextMenu(modeMenu.create()));
         }
         else if (node instanceof CommentNode)
         {
             CommentNode cn = (CommentNode) node;
-            menu.action(Icons.EDIT, L10n.lang("bbs.ui.raw.edit_title"), Colors.ACTIVE, () ->
+            menu.action(Icons.EDIT, UIKeys.RAW_EDIT_TITLE, Colors.ACTIVE, () ->
             {
                 UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
-                    L10n.lang("bbs.ui.raw.edit_title"), L10n.lang("bbs.ui.raw.enter_title"), (s) -> cn.title = s);
+                    UIKeys.RAW_EDIT_TITLE, UIKeys.RAW_ENTER_TITLE, (s) -> cn.title = s);
                 panel.text.setText(cn.title);
                 UIOverlay.addOverlay(context, panel);
             });
-            menu.action(Icons.EDIT, L10n.lang("bbs.ui.raw.edit_comment"), Colors.ACTIVE, () ->
+            menu.action(Icons.EDIT, UIKeys.RAW_EDIT_COMMENT, Colors.ACTIVE, () ->
             {
                 UITextareaOverlayPanel panel = new UITextareaOverlayPanel(
-                    L10n.lang("bbs.ui.raw.edit_comment"), L10n.lang("bbs.ui.raw.enter_comment"), (s) -> cn.comment = s);
+                    UIKeys.RAW_EDIT_COMMENT, UIKeys.RAW_ENTER_COMMENT, (s) -> cn.comment = s);
                 panel.text.setText(cn.comment);
                 UIOverlay.addOverlay(context, panel);
             });
@@ -746,10 +746,10 @@ public class UIShapeNodeEditor extends UIElement
         else if (node instanceof IrisShaderNode)
         {
             IrisShaderNode sn = (IrisShaderNode) node;
-            menu.action(Icons.EDIT, L10n.lang("bbs.ui.raw.edit_uniform"), Colors.ACTIVE, () ->
+            menu.action(Icons.EDIT, UIKeys.RAW_EDIT_UNIFORM, Colors.ACTIVE, () ->
             {
                 UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
-                    L10n.lang("bbs.ui.raw.edit_uniform"), L10n.lang("bbs.ui.raw.enter_uniform_name"), (s) -> sn.uniform = s);
+                    UIKeys.RAW_EDIT_UNIFORM, UIKeys.RAW_ENTER_UNIFORM_NAME, (s) -> sn.uniform = s);
                 panel.text.setText(sn.uniform);
                 UIOverlay.addOverlay(context, panel);
             });
@@ -776,12 +776,12 @@ public class UIShapeNodeEditor extends UIElement
 
         if (!this.selection.isEmpty())
         {
-            menu.action(Icons.COPY, L10n.lang("bbs.ui.raw.copy"), Colors.POSITIVE, () -> this.copyNodes());
+            menu.action(Icons.COPY, UIKeys.RAW_COPY, Colors.POSITIVE, () -> this.copyNodes());
         }
 
         if (clipboard != null)
         {
-            menu.action(Icons.PASTE, L10n.lang("bbs.ui.raw.paste"), Colors.INACTIVE, () -> this.pasteNodes(this.lastMouseX, this.lastMouseY));
+            menu.action(Icons.PASTE, UIKeys.RAW_PASTE, Colors.INACTIVE, () -> this.pasteNodes(this.lastMouseX, this.lastMouseY));
         }
 
         context.replaceContextMenu(menu.create());

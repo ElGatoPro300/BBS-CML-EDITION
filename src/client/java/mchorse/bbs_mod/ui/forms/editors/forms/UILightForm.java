@@ -1,5 +1,7 @@
 package mchorse.bbs_mod.ui.forms.editors.forms;
 
+import mchorse.bbs_mod.ui.UIKeys;
+
 import mchorse.bbs_mod.forms.forms.LightForm;
 import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
@@ -14,8 +16,7 @@ public class UILightForm extends UIForm<LightForm>
 
         this.defaultPanel = new UILightFormPanel(this);
 
-        this.registerPanel(this.defaultPanel, L10n.lang("bbs.ui.raw.light"), Icons.LIGHT);
+        this.registerPanel(this.defaultPanel, UIKeys.RAW_LIGHT, Icons.LIGHT);
         this.registerDefaultPanels();
     }
 }
-

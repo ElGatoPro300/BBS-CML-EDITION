@@ -658,7 +658,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         UIHomePanel home = this.dashboard.getPanel(UIHomePanel.class);
         if (home != null)
         {
-            home.renderCardAndBanners(context, this.homePage, dividerX, L10n.lang("bbs.ui.models.home.list").get());
+            home.renderCardAndBanners(context, this.homePage, dividerX, UIKeys.MODELS_HOME_LIST.get());
         }
     }
 

@@ -640,19 +640,19 @@ public class UIPresetsGridOverlayPanel extends UIOverlayPanel
             }
 
             this.indicatorTransform = new PresetIndicator(Colors.GREEN, Colors.A100 + Colors.GREEN);
-            this.indicatorTransform.tooltip(L10n.lang("bbs.ui.presets_grid.indicator.transform"), Direction.TOP);
+            this.indicatorTransform.tooltip(UIKeys.PRESETS_GRID_INDICATOR_TRANSFORM, Direction.TOP);
             this.indicatorTransform.relative(this);
             this.indicatorTransform.setVisible(false);
             this.add(this.indicatorTransform);
 
             this.indicatorPose = new PresetIndicator(Colors.RED, Colors.A100 + Colors.RED);
-            this.indicatorPose.tooltip(L10n.lang("bbs.ui.presets_grid.indicator.pose"), Direction.TOP);
+            this.indicatorPose.tooltip(UIKeys.PRESETS_GRID_INDICATOR_POSE, Direction.TOP);
             this.indicatorPose.relative(this);
             this.indicatorPose.setVisible(false);
             this.add(this.indicatorPose);
 
             this.indicatorPoseToLimbs = new PresetIndicator(Colors.RED, Colors.WHITE);
-            this.indicatorPoseToLimbs.tooltip(L10n.lang("bbs.ui.presets_grid.indicator.pose_to_limbs"), Direction.TOP);
+            this.indicatorPoseToLimbs.tooltip(UIKeys.PRESETS_GRID_INDICATOR_POSE_TO_LIMBS, Direction.TOP);
             this.indicatorPoseToLimbs.relative(this);
             this.indicatorPoseToLimbs.setVisible(false);
             this.add(this.indicatorPoseToLimbs);

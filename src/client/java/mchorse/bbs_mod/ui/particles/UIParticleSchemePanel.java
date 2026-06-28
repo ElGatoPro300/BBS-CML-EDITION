@@ -1055,7 +1055,7 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
         UIHomePanel home = this.dashboard.getPanel(UIHomePanel.class);
         if (home != null)
         {
-            home.renderCardAndBanners(context, this.homePage, dividerX, L10n.lang("bbs.ui.particles.home.list").get());
+            home.renderCardAndBanners(context, this.homePage, dividerX, UIKeys.PARTICLES_HOME_LIST.get());
         }
     }
 }
