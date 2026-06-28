@@ -30,10 +30,20 @@ public class TextureProcessor
 
                 images.add(pixels);
             }
+            catch (java.io.FileNotFoundException e)
+            {
+                images.add(null);
+            }
             catch (Exception e)
             {
-                e.printStackTrace();
+                System.err.println("Error processing texture child: " + child.path + " (" + e.getMessage() + ")");
+                images.add(null);
             }
+        }
+
+        if (w <= 0 || h <= 0)
+        {
+            return null;
         }
 
         Pixels output = Pixels.fromSize(w, h);
@@ -41,6 +51,12 @@ public class TextureProcessor
         for (int i = 0; i < multi.children.size(); i++)
         {
             Pixels pixels = images.get(i);
+
+            if (pixels == null)
+            {
+                continue;
+            }
+
             FilteredLink filter = multi.children.get(i);
             int iw = pixels.width;
             int ih = pixels.height;
