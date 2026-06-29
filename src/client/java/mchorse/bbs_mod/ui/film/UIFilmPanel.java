@@ -2296,6 +2296,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     /* Open the undo/redo history overlay (now reached from the menu bar's Edit menu). */
     public void openUndoHistory()
     {
+        if (this.undoHandler == null)
+        {
+            return;
+        }
+
         UIOverlay.addOverlay(this.getContext(), new UIUndoHistoryOverlay(this).resizable().minSize(300, 220), 300, 0.6F);
     }
 
