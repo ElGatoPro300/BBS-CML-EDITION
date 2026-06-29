@@ -148,6 +148,11 @@ public class ModelManager implements IWatchDogListener
         return null;
     }
 
+    public boolean isLoading(String id)
+    {
+        return this.loader.isLoading(id);
+    }
+
     public ModelInstance loadModel(String id)
     {
         ModelInstance model = null;

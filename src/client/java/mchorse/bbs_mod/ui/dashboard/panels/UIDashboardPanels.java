@@ -155,6 +155,21 @@ public class UIDashboardPanels extends UIElement
         this.panels.add(panel);
     }
 
+    public List<UIDashboardPanel> getVisiblePanels()
+    {
+        List<UIDashboardPanel> visible = new ArrayList<>();
+
+        for (UIDashboardPanel p : this.panels)
+        {
+            if (this.panelButtonsMap.containsKey(p))
+            {
+                visible.add(p);
+            }
+        }
+
+        return visible;
+    }
+
     private void renderActiveHighlight(UIContext context)
     {
         if (this.panel == null) return;

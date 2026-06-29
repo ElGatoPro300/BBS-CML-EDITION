@@ -268,17 +268,17 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
         this.homeViewToggle = new UIIcon(mosaic ? Icons.LIST : Icons.GALLERY, (b) -> this.toggleMosaicView());
         this.homeViewToggle.tooltip(mosaic ? UIKeys.MODELS_HOME_VIEW_LIST : UIKeys.MODELS_HOME_VIEW_MOSAIC, Direction.LEFT);
 
-        this.homeOpenFolder = this.createHomeButton(L10n.lang("bbs.ui.audio.crud.open_folder"), Icons.FOLDER, (b) ->
+        this.homeOpenFolder = this.createHomeButton(UIKeys.AUDIO_CRUD_OPEN_FOLDER, Icons.FOLDER, (b) ->
         {
             UIUtils.openFolder(new File(BBSMod.getAssetsFolder(), "audio"));
         });
 
-        this.homeRefreshList = this.createHomeButton(L10n.lang("bbs.ui.audio.crud.refresh"), Icons.REFRESH, (b) ->
+        this.homeRefreshList = this.createHomeButton(UIKeys.AUDIO_CRUD_REFRESH, Icons.REFRESH, (b) ->
         {
             this.requestNames();
         });
 
-        this.homeRenameCurrent = this.createHomeButton(L10n.lang("bbs.ui.audio.crud.rename"), Icons.EDIT, (b) ->
+        this.homeRenameCurrent = this.createHomeButton(UIKeys.AUDIO_CRUD_RENAME, Icons.EDIT, (b) ->
         {
             String selected = this.getSelectedHomeAudio();
 
@@ -288,7 +288,7 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
             }
 
             UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
-                L10n.lang("bbs.ui.audio.crud.rename"),
+                UIKeys.AUDIO_CRUD_RENAME,
                 IKey.raw(""),
                 (str) ->
                 {
@@ -303,7 +303,7 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
 
                     if (newFile.exists())
                     {
-                        this.getContext().notifyError(L10n.lang("bbs.ui.raw.file_already_exists"));
+                        this.getContext().notifyError(UIKeys.RAW_FILE_ALREADY_EXISTS);
                         return;
                     }
 
@@ -337,7 +337,7 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
             UIOverlay.addOverlay(this.getContext(), panel);
         });
 
-        this.homeDeleteCurrent = this.createHomeButton(L10n.lang("bbs.ui.audio.crud.remove"), Icons.REMOVE, (b) ->
+        this.homeDeleteCurrent = this.createHomeButton(UIKeys.AUDIO_CRUD_REMOVE, Icons.REMOVE, (b) ->
         {
             String selected = this.getSelectedHomeAudio();
 
@@ -347,7 +347,7 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
             }
 
             UIConfirmOverlayPanel panel = new UIConfirmOverlayPanel(
-                L10n.lang("bbs.ui.audio.crud.remove"),
+                UIKeys.AUDIO_CRUD_REMOVE,
                 UIKeys.PANELS_MODALS_REMOVE,
                 (bool) ->
                 {
@@ -1171,7 +1171,7 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
         UIHomePanel home = this.dashboard.getPanel(UIHomePanel.class);
         if (home != null)
         {
-            home.renderCardAndBanners(context, this.homePage, dividerX, L10n.lang("bbs.ui.audio.home.list").get());
+            home.renderCardAndBanners(context, this.homePage, dividerX, UIKeys.AUDIO_HOME_LIST.get());
         }
     }
 

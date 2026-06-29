@@ -184,7 +184,33 @@ public class UIDocumentTabsBar extends UIControlBar
                 current.homeType = type;
                 this.activate(this.activeTab);
                 this.rebuild();
+                return;
             }
+        }
+
+        int homeIndex = -1;
+        for (int i = 0; i < this.documentTabs.size(); i++)
+        {
+            if (this.documentTabs.get(i).isHome)
+            {
+                homeIndex = i;
+                break;
+            }
+        }
+
+        if (homeIndex >= 0)
+        {
+            DocumentTab homeTab = this.documentTabs.get(homeIndex);
+            homeTab.homeType = type;
+            this.activate(homeIndex);
+        }
+        else
+        {
+            DocumentTab homeTab = DocumentTab.home();
+            homeTab.homeType = type;
+            this.documentTabs.add(0, homeTab);
+            this.rebuild();
+            this.activate(0);
         }
     }
 
@@ -203,6 +229,19 @@ public class UIDocumentTabsBar extends UIControlBar
         this.documentTabs.add(0, DocumentTab.home());
         this.rebuild();
         this.activate(0);
+    }
+
+    public void cycle(int direction)
+    {
+        if (this.documentTabs.isEmpty())
+        {
+            return;
+        }
+
+        int size = this.documentTabs.size();
+        int newIndex = (this.activeTab + direction + size) % size;
+
+        this.activate(newIndex);
     }
 
     public DocumentTab getActiveDocumentTab()
@@ -395,7 +434,7 @@ public class UIDocumentTabsBar extends UIControlBar
 
     private IKey titleOf(DocumentTab tab)
     {
-        if (tab.isHome) return L10n.lang("bbs.ui.raw.home");
+        if (tab.isHome) return UIKeys.RAW_HOME;
         if (tab.type == ContentType.GRAPH) return UIKeys.GRAPH_TOOLTIP;
         if (tab.id != null) return IKey.raw(new DataPath(tab.id).getLast());
         if (tab.type == ContentType.FILMS) return UIKeys.FILM_TITLE;

@@ -292,9 +292,9 @@ public class UIOverlayPanel extends UIElement
             transition = ((UIOverlay) parent).getOpenTransition();
         }
 
-        if (transition < 0.999F)
+        if (transition < 1.0F)
         {
-            float scale = 0.92F + 0.08F * transition;
+            float scale = Math.max(0.01F, transition);
             float cx = this.area.mx();
             float cy = this.area.my();
 
@@ -308,7 +308,7 @@ public class UIOverlayPanel extends UIElement
 
         super.render(context);
 
-        if (transition < 0.999F)
+        if (transition < 1.0F)
         {
             context.render.batcher.getContext().getMatrices().popMatrix();
         }

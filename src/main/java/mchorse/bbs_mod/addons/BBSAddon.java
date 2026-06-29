@@ -3,6 +3,7 @@ package mchorse.bbs_mod.addons;
 import mchorse.bbs_mod.events.BBSAddonMod;
 import mchorse.bbs_mod.events.Subscribe;
 import mchorse.bbs_mod.events.register.RegisterActionClipsEvent;
+import mchorse.bbs_mod.events.register.RegisterBBSSettingsEvent;
 import mchorse.bbs_mod.events.register.RegisterCameraClipsEvent;
 import mchorse.bbs_mod.events.register.RegisterEntityCaptureHandlersEvent;
 import mchorse.bbs_mod.events.register.RegisterFormsEvent;
@@ -49,6 +50,12 @@ public abstract class BBSAddon implements BBSAddonMod
         this.registerSourcePacks(event);
     }
 
+    @Subscribe
+    public void onRegisterBBSSettings(RegisterBBSSettingsEvent event)
+    {
+        this.registerBBSSettings(event);
+    }
+
     protected void registerForms(RegisterFormsEvent event)
     {}
 
@@ -71,6 +78,9 @@ public abstract class BBSAddon implements BBSAddonMod
     {}
 
     protected void registerSourcePacks(RegisterSourcePacksEvent event)
+    {}
+
+    protected void registerBBSSettings(RegisterBBSSettingsEvent event)
     {}
 
     @Subscribe

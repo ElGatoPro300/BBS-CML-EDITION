@@ -53,7 +53,7 @@ public class UIPlayerInventoryPanel extends UIOverlayPanel
 
     public UIPlayerInventoryPanel(Consumer<ItemStack> callback)
     {
-        super(L10n.lang("bbs.ui.inventory.title"));
+        super(UIKeys.INVENTORY_TITLE);
 
         this.callback = callback;
 
@@ -70,12 +70,12 @@ public class UIPlayerInventoryPanel extends UIOverlayPanel
 
         int cursorY = PADDING_Y;
 
-        UILabel emptyTitle = sectionTitle(L10n.lang("bbs.ui.inventory.selection").get());
+        UILabel emptyTitle = sectionTitle(UIKeys.INVENTORY_SELECTION.get());
         centerHorizontally(emptyTitle, TITLE_HEIGHT, cursorY);
         this.content.add(emptyTitle);
         cursorY += TITLE_HEIGHT + 4;
 
-        UIButton clear = new UIButton(L10n.lang("bbs.ui.inventory.empty"), (b) ->
+        UIButton clear = new UIButton(UIKeys.INVENTORY_EMPTY, (b) ->
         {
             if (this.callback != null)
             {
@@ -110,7 +110,7 @@ public class UIPlayerInventoryPanel extends UIOverlayPanel
         this.content.add(new UIEquipmentSlot(EquipmentSlot.OFFHAND).relative(this.content).x(equipmentStartX + SLOT_SPACING * 4).y(cursorY).w(SLOT_SIZE).h(SLOT_SIZE));
         cursorY += SLOT_SIZE + SECTION_GAP_Y;
 
-        UILabel hotbarTitle = sectionTitle(L10n.lang("bbs.ui.inventory.hotbar").get());
+        UILabel hotbarTitle = sectionTitle(UIKeys.INVENTORY_HOTBAR.get());
         centerHorizontally(hotbarTitle, TITLE_HEIGHT, cursorY);
         this.content.add(hotbarTitle);
         cursorY += TITLE_HEIGHT + 4;
@@ -120,7 +120,7 @@ public class UIPlayerInventoryPanel extends UIOverlayPanel
 
         cursorY += SECTION_GAP_Y;
 
-        UILabel mainTitle = sectionTitle(L10n.lang("bbs.ui.inventory.full").get());
+        UILabel mainTitle = sectionTitle(UIKeys.INVENTORY_FULL.get());
         centerHorizontally(mainTitle, TITLE_HEIGHT, cursorY);
         this.content.add(mainTitle);
         cursorY += TITLE_HEIGHT + 4;

@@ -1390,6 +1390,11 @@ public class UIClips extends UIElement
 
     private void dragClips(int mouseX, int mouseY)
     {
+        if (this.grabbedClips.isEmpty() || this.grabbedData.isEmpty())
+        {
+            return;
+        }
+
         List<Clip> others = Window.isAltPressed() ? Collections.emptyList() : this.otherClips;
         int dx = this.fromGraphX(mouseX) - this.fromGraphX(this.initialX);
         int dy = this.fromLayerY(mouseY) - this.fromLayerY(this.initialY);

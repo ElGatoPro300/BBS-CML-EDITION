@@ -61,7 +61,7 @@ public class UIRepositoryFolderPickerOverlayPanel extends UIOverlayPanel
         this.toolbar.relative(this.content).x(0).y(0).w(1F).h(TOOLBAR_H);
 
         this.backButton = new UIIcon(Icons.ARROW_LEFT, (b) -> this.navigateUp());
-        this.backButton.tooltip(L10n.lang("bbs.ui.raw.back"), Direction.BOTTOM);
+        this.backButton.tooltip(UIKeys.RAW_BACK, Direction.BOTTOM);
         this.backButton.relative(this.toolbar).x(4).y(4).w(20).h(20);
 
         this.breadcrumb = new UIElement()

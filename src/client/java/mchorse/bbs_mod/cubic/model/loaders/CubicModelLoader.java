@@ -47,33 +47,62 @@ public class CubicModelLoader implements IModelLoader
     @Override
     public ModelInstance load(String id, ModelManager models, Link model, Collection<Link> links, MapType config)
     {
-        Link modelBBS = IModelLoader.getLink(model.combine("model.bbs.json"), links, ".bbs.json");
+        Link modelBBS = null;
+
+        for (Link l : links)
+        {
+            if (l.path.endsWith(".bbs.json"))
+            {
+                modelBBS = l;
+                break;
+            }
+        }
+
+        boolean hasOBJ = false;
+
+        for (Link l : links)
+        {
+            if (l.path.endsWith(".obj"))
+            {
+                hasOBJ = true;
+                break;
+            }
+        }
+
+        if (modelBBS == null && !hasOBJ)
+        {
+            return null;
+        }
+
         Link modelTexture = IModelLoader.getLink(model.combine("model.png"), links, ".png");
         ModelInstance newModel = new ModelInstance(id, null, new Animations(models.parser), modelTexture);
         Map<String, MeshesOBJ> compile = this.tryLoadingOBJMeshes(models, model, IModelLoader.getLinks(links, ".obj"));
         Model theModel = null;
 
-        try (InputStream stream = models.provider.getAsset(modelBBS))
+        if (modelBBS != null)
         {
-            CubicLoader loader = new CubicLoader();
-            CubicLoader.LoadingInfo info = loader.load(models.parser, stream, modelBBS.path);
-
-            if (info.model != null)
+            try (InputStream stream = models.provider.getAsset(modelBBS))
             {
-                theModel = info.model;
-            }
+                CubicLoader loader = new CubicLoader();
+                CubicLoader.LoadingInfo info = loader.load(models.parser, stream, modelBBS.path);
 
-            if (info.animations != null)
-            {
-                for (Animation animation : info.animations.getAll())
+                if (info.model != null)
                 {
-                    newModel.animations.add(animation);
+                    theModel = info.model;
+                }
+
+                if (info.animations != null)
+                {
+                    for (Animation animation : info.animations.getAll())
+                    {
+                        newModel.animations.add(animation);
+                    }
                 }
             }
-        }
-        catch (Exception e)
-        {
-            System.err.println("Failed to load BBS file: " + modelBBS);
+            catch (Exception e)
+            {
+                System.err.println("Failed to load BBS file: " + modelBBS);
+            }
         }
 
         /* Construct the model from compiled data */

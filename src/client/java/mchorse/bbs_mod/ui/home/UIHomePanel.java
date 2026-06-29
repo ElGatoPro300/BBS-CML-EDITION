@@ -129,8 +129,8 @@ public class UIHomePanel extends UIDashboardPanel
 
         this.homeActionsPanel = new UIElement();
 
-        this.homeOpenButton = this.createHomeButton(L10n.lang("bbs.ui.raw.open"), Icons.FOLDER, (b) ->
-            UIOverlay.addOverlay(this.getContext(), new UIOpenAssetOverlayPanel(L10n.lang("bbs.ui.raw.open_asset"), this.dashboard), 520, 320));
+        this.homeOpenButton = this.createHomeButton(UIKeys.RAW_OPEN, Icons.FOLDER, (b) ->
+            UIOverlay.addOverlay(this.getContext(), new UIOpenAssetOverlayPanel(UIKeys.RAW_OPEN_ASSET, this.dashboard), 520, 320));
 
         this.homeCreateFilm = this.createHomeButton(UIKeys.FILM_TITLE, Icons.FILM, (b) -> this.createNewAsset(ContentType.FILMS));
         this.homeCreateModel = this.createHomeButton(UIKeys.MODELS_TITLE, Icons.PLAYER, (b) -> this.createNewAsset(ContentType.MODELS));
@@ -235,7 +235,7 @@ public class UIHomePanel extends UIDashboardPanel
                 context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xFF1A1A22);
                 context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xFF2A2A35, 1);
                 
-                context.batcher.textShadow(L10n.lang("bbs.ui.raw.new").get(), this.area.x + 4, this.area.y + 6);
+                context.batcher.textShadow(UIKeys.RAW_NEW.get(), this.area.x + 4, this.area.y + 6);
                 
                 super.render(context);
             }
@@ -798,7 +798,7 @@ public class UIHomePanel extends UIDashboardPanel
 
         RenderLayers.debugFilledBox().draw(builder.end());
 
-        this.renderCardAndBanners(context, this.homePage, dividerX, L10n.lang("bbs.ui.film.home.list").get());
+        this.renderCardAndBanners(context, this.homePage, dividerX, UIKeys.FILM_HOME_LIST.get());
     }
 
     public void renderCardAndBanners(UIContext context, UIElement customHomePage, int dividerX, String listTitle)
@@ -893,7 +893,7 @@ public class UIHomePanel extends UIDashboardPanel
         context.batcher.box(pageX, splitY + 20, dividerX, pageY + pageH, 0xFF111115);
         context.batcher.box(dividerX - 1, splitY + 20, dividerX, pageY + pageH, 0xFF22222A);
 
-        context.batcher.textShadow(L10n.lang("bbs.ui.film.home.actions").get(), pageX + 4, splitY + 6);
+        context.batcher.textShadow(UIKeys.FILM_HOME_ACTIONS.get(), pageX + 4, splitY + 6);
         context.batcher.textShadow(listTitle, dividerX + 4, splitY + 6);
     }
 

@@ -26,6 +26,7 @@ import mchorse.bbs_mod.ui.dashboard.utils.UIOrbitCameraKeys;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.UIRenderingContext;
+import mchorse.bbs_mod.ui.framework.elements.IUIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIMessageOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
@@ -59,6 +60,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 
 import org.lwjgl.opengl.GL11;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class UIDashboard extends UIBaseMenu
@@ -184,7 +186,20 @@ public class UIDashboard extends UIBaseMenu
 
     private void cyclePanels()
     {
-        List<UIDashboardPanel> panels = this.panels.panels;
+        if (this.isDocumentPanel(this.panels.panel))
+        {
+            int direction = Window.isShiftPressed() ? -1 : 1;
+            this.documentTabsBar.cycle(direction);
+            UIUtils.playClick();
+            return;
+        }
+
+        List<UIDashboardPanel> panels = this.panels.getVisiblePanels();
+
+        if (panels.isEmpty())
+        {
+            return;
+        }
 
         int direction = Window.isShiftPressed() ? -1 : 1;
         int index = panels.indexOf(this.panels.panel);
@@ -288,7 +303,7 @@ public class UIDashboard extends UIBaseMenu
 
     protected void registerPanels()
     {
-        this.panels.registerPinnedPanel(new UIHomePanel(this), L10n.lang("bbs.ui.raw.home"), Icons.SERVER);
+        this.panels.registerPinnedPanel(new UIHomePanel(this), UIKeys.RAW_HOME, Icons.SERVER);
         this.panels.registerPanel(new UIMorphingPanel(this), UIKeys.MORPHING_TITLE, Icons.MORPH);
         this.panels.registerPanel(new UIModelBlockPanel(this), UIKeys.MODEL_BLOCKS_TITLE, Icons.BLOCK);
         this.panels.registerPanel(new UITriggerBlockPanel(this), TriggerKeys.TITLE, Icons.TRIGGER);
@@ -307,7 +322,7 @@ public class UIDashboard extends UIBaseMenu
 
         if (FabricLoader.getInstance().isDevelopmentEnvironment())
         {
-            this.panels.registerPanel(new UIDebugPanel(this), L10n.lang("bbs.ui.raw.sandbox"), Icons.CODE);
+            this.panels.registerPanel(new UIDebugPanel(this), UIKeys.RAW_SANDBOX, Icons.CODE);
         }
 
         this.setPanel(this.getPanel(UIHomePanel.class));
@@ -326,6 +341,14 @@ public class UIDashboard extends UIBaseMenu
 
     public void setPanel(UIDashboardPanel panel)
     {
+        for (IUIElement element : new ArrayList<>(this.overlay.getChildren()))
+        {
+            if (element instanceof UIOverlay)
+            {
+                ((UIOverlay) element).closeItself();
+            }
+        }
+
         this.panels.setPanel(panel);
     }
 
