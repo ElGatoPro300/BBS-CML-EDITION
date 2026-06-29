@@ -27,6 +27,11 @@ public class UIClipsPanel extends UIElement implements IUIClipsDelegate
 
     private UIClip panel;
 
+    public UIClip getClipPanel()
+    {
+        return this.panel;
+    }
+
     private UIElement target;
 
     public UIClipsPanel(UIFilmPanel panel, IFactory<Clip, ClipFactoryData> factory)

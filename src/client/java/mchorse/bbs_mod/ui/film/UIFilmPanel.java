@@ -125,6 +125,7 @@ import org.lwjgl.opengl.GL11;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -4062,6 +4063,17 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         double actionShift = this.actionEditor.clips.scale.getShift();
         double actionZoom = this.actionEditor.clips.scale.getZoom();
 
+        List<Integer> cameraSelection = new ArrayList<>(this.cameraEditor.clips.getSelection());
+        List<Integer> actionSelection = new ArrayList<>(this.actionEditor.clips.getSelection());
+
+        Clip cameraSelectedClip = this.cameraEditor.getClip();
+        Clip actionSelectedClip = this.actionEditor.getClip();
+        int cameraSelectedIdx = cameraSelectedClip == null ? -1 : this.cameraEditor.clips.getClips().getIndex(cameraSelectedClip);
+        int actionSelectedIdx = actionSelectedClip == null ? -1 : this.actionEditor.clips.getClips().getIndex(actionSelectedClip);
+
+        boolean hasCameraEmbed = this.cameraEditor.clips.hasEmbeddedView();
+        boolean hasActionEmbed = this.actionEditor.clips.hasEmbeddedView();
+
         this.runner.setWork(this.data.camera);
         this.cameraEditor.setClips(this.data.camera);
 
@@ -4082,6 +4094,54 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         this.restoreClipsView(this.cameraEditor, cameraScroll, cameraShift, cameraZoom);
         this.restoreClipsView(this.actionEditor, actionScroll, actionShift, actionZoom);
+
+        if (this.cameraEditor.clips.getClips() != null)
+        {
+            this.cameraEditor.clips.setSelection(cameraSelection);
+            if (cameraSelectedIdx >= 0 && cameraSelectedIdx < this.cameraEditor.clips.getClips().get().size())
+            {
+                Clip newClip = this.cameraEditor.clips.getClips().get(cameraSelectedIdx);
+                this.cameraEditor.pickClip(newClip);
+                if (hasCameraEmbed && this.cameraEditor.getClipPanel() != null)
+                {
+                    try
+                    {
+                        Field editField = this.cameraEditor.getClipPanel().getClass().getField("edit");
+                        UIButton editButton = (UIButton) editField.get(this.cameraEditor.getClipPanel());
+                        if (editButton != null)
+                        {
+                            editButton.clickItself();
+                        }
+                    }
+                    catch (Exception e)
+                    {}
+                }
+            }
+        }
+
+        if (this.actionEditor.clips.getClips() != null)
+        {
+            this.actionEditor.clips.setSelection(actionSelection);
+            if (actionSelectedIdx >= 0 && actionSelectedIdx < this.actionEditor.clips.getClips().get().size())
+            {
+                Clip newClip = this.actionEditor.clips.getClips().get(actionSelectedIdx);
+                this.actionEditor.pickClip(newClip);
+                if (hasActionEmbed && this.actionEditor.getClipPanel() != null)
+                {
+                    try
+                    {
+                        Field editField = this.actionEditor.getClipPanel().getClass().getField("edit");
+                        UIButton editButton = (UIButton) editField.get(this.actionEditor.getClipPanel());
+                        if (editButton != null)
+                        {
+                            editButton.clickItself();
+                        }
+                    }
+                    catch (Exception e)
+                    {}
+                }
+            }
+        }
     }
 
     private void restoreClipsView(UIClipsPanel panel, double scroll, double shift, double zoom)
