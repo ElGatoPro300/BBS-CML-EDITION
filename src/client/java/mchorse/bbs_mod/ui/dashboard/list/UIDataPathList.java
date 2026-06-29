@@ -124,7 +124,7 @@ public class UIDataPathList extends UIList<DataPath>
         this.goTo(DataPath.EMPTY);
     }
 
-    private void goTo(DataPath path)
+    public void goTo(DataPath path)
     {
         this.path.copy(path);
         this.previousPath = null;

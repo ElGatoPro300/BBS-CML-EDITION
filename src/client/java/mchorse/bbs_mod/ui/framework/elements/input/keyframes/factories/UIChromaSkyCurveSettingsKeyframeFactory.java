@@ -3,6 +3,7 @@ package mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories;
 import mchorse.bbs_mod.camera.clips.misc.ChromaSkyCurveSettings;
 import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
+import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
 import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
@@ -12,12 +13,12 @@ import mchorse.bbs_mod.utils.keyframes.Keyframe;
 
 public class UIChromaSkyCurveSettingsKeyframeFactory extends UIKeyframeFactory<ChromaSkyCurveSettings>
 {
-    private static final IKey TITLE = L10n.lang("bbs.config.chroma_sky.title");
-    private static final IKey ENABLED = L10n.lang("bbs.config.chroma_sky.enabled");
-    private static final IKey COLOR = L10n.lang("bbs.config.chroma_sky.color");
-    private static final IKey TERRAIN = L10n.lang("bbs.config.chroma_sky.terrain");
-    private static final IKey CLOUDS = L10n.lang("bbs.config.chroma_sky.clouds");
-    private static final IKey BILLBOARD = L10n.lang("bbs.config.chroma_sky.billboard");
+    private static final IKey TITLE = UIKeys.CONFIG_CHROMA_SKY_TITLE;
+    private static final IKey ENABLED = UIKeys.CONFIG_CHROMA_SKY_ENABLED;
+    private static final IKey COLOR = UIKeys.CONFIG_CHROMA_SKY_COLOR;
+    private static final IKey TERRAIN = UIKeys.CONFIG_CHROMA_SKY_TERRAIN;
+    private static final IKey CLOUDS = UIKeys.CONFIG_CHROMA_SKY_CLOUDS;
+    private static final IKey BILLBOARD = UIKeys.CONFIG_CHROMA_SKY_BILLBOARD;
 
     private UIToggle enabled;
     private UIColor color;

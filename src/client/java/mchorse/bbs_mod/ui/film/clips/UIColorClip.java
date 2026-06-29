@@ -94,23 +94,23 @@ public class UIColorClip extends UIClip<ColorClip>
 
         view.removeAllSheets();
 
-        this.addGroup(view, "overlay", L10n.lang("bbs.ui.color_clip.overlay"), COLOR_OVERLAY,
+        this.addGroup(view, "overlay", UIKeys.COLOR_CLIP_OVERLAY, COLOR_OVERLAY,
             new KeyframeChannel[] {this.clip.overlayAlpha},
             new int[] {COLOR_OVERLAY});
 
-        this.addGroup(view, "grade", L10n.lang("bbs.ui.color_clip.grade"), COLOR_GRADE,
+        this.addGroup(view, "grade", UIKeys.COLOR_CLIP_GRADE, COLOR_GRADE,
             new KeyframeChannel[] {this.clip.saturation, this.clip.hue, this.clip.brightness, this.clip.contrast},
             new int[] {Colors.YELLOW, Colors.MAGENTA, Colors.WHITE & 0xffffff, Colors.CYAN});
 
-        this.addGroup(view, "lift", L10n.lang("bbs.ui.color_clip.lift"), COLOR_LIFT,
+        this.addGroup(view, "lift", UIKeys.COLOR_CLIP_LIFT, COLOR_LIFT,
             new KeyframeChannel[] {this.clip.liftR, this.clip.liftG, this.clip.liftB},
             new int[] {Colors.RED, Colors.GREEN, Colors.BLUE});
 
-        this.addGroup(view, "gamma", L10n.lang("bbs.ui.color_clip.gamma"), COLOR_GAMMA,
+        this.addGroup(view, "gamma", UIKeys.COLOR_CLIP_GAMMA, COLOR_GAMMA,
             new KeyframeChannel[] {this.clip.gammaR, this.clip.gammaG, this.clip.gammaB},
             new int[] {Colors.RED, Colors.GREEN, Colors.BLUE});
 
-        this.addGroup(view, "gain", L10n.lang("bbs.ui.color_clip.gain"), COLOR_GAIN,
+        this.addGroup(view, "gain", UIKeys.COLOR_CLIP_GAIN, COLOR_GAIN,
             new KeyframeChannel[] {this.clip.gainR, this.clip.gainG, this.clip.gainB},
             new int[] {Colors.RED, Colors.GREEN, Colors.BLUE});
 

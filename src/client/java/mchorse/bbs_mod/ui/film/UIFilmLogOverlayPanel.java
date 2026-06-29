@@ -3,6 +3,7 @@ package mchorse.bbs_mod.ui.film;
 import mchorse.bbs_mod.film.Film;
 import mchorse.bbs_mod.film.FilmContributor;
 import mchorse.bbs_mod.l10n.L10n;
+import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIScrollView;
@@ -25,7 +26,7 @@ public class UIFilmLogOverlayPanel extends UIOverlayPanel
 
     public UIFilmLogOverlayPanel(UIFilmPanel filmPanel)
     {
-        super(L10n.lang("bbs.ui.film.log_title"));
+        super(UIKeys.FILM_LOG_TITLE);
 
         this.filmPanel = filmPanel;
         this.resizable();
@@ -52,7 +53,7 @@ public class UIFilmLogOverlayPanel extends UIOverlayPanel
                     y += 14;
 
                     String timeStr = UIFilmLogOverlayPanel.formatTime(film.totalTimeWorked.get());
-                    String label = L10n.lang("bbs.ui.film.total_time").format(timeStr).get();
+                    String label = UIKeys.FILM_TOTAL_TIME.format(timeStr).get();
                     context.batcher.textShadow(label, x, y, 0xAAFFFFFF);
 
                     super.render(context);
@@ -71,7 +72,7 @@ public class UIFilmLogOverlayPanel extends UIOverlayPanel
                     int x = this.area.x + 6;
                     int y = this.area.y + 4;
 
-                    context.batcher.textShadow(L10n.lang("bbs.ui.film.contributors").get().toUpperCase(), x, y, 0x88FFFFFF);
+                    context.batcher.textShadow(UIKeys.FILM_CONTRIBUTORS.get().toUpperCase(), x, y, 0x88FFFFFF);
                     super.render(context);
                 }
             };
@@ -87,7 +88,7 @@ public class UIFilmLogOverlayPanel extends UIOverlayPanel
                     @Override
                     public void render(UIContext context)
                     {
-                        context.batcher.textShadow(L10n.lang("bbs.ui.film.no_contributors").get(), this.area.x + 10, this.area.y + 4, Colors.GRAY);
+                        context.batcher.textShadow(UIKeys.FILM_NO_CONTRIBUTORS.get(), this.area.x + 10, this.area.y + 4, Colors.GRAY);
                         super.render(context);
                     }
                 };

@@ -35,7 +35,7 @@ public class UIPanelSwitcher extends UIElement
         UISwitcherButton models = new UISwitcherButton(Icons.PLAYER, () -> this.dashboard.getPanels().panel instanceof UIModelPanel, (b) -> this.dashboard.documentTabsBar.switchHomeType(ContentType.MODELS));
         UISwitcherButton audios = new UISwitcherButton(Icons.SOUND, () -> this.dashboard.getPanels().panel instanceof UIAudioEditorPanel, (b) -> this.dashboard.documentTabsBar.switchHomeType(ContentType.SOUNDS));
 
-        home.tooltip(L10n.lang("bbs.ui.raw.home"), Direction.TOP);
+        home.tooltip(UIKeys.RAW_HOME, Direction.TOP);
         films.tooltip(UIKeys.FILM_TITLE, Direction.TOP);
         particles.tooltip(UIKeys.PANELS_PARTICLES, Direction.TOP);
         models.tooltip(UIKeys.MODELS_TITLE, Direction.TOP);

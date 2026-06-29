@@ -184,20 +184,28 @@ public class Gizmo
 
     private void drawBox(BufferBuilder builder, MatrixStack stack, float x1, float y1, float z1, float x2, float y2, float z2, float r, float g, float b)
     {
-        Draw.fillBox(builder, stack, Math.min(x1, x2), Math.min(y1, y2), Math.min(z1, z2), Math.max(x1, x2), Math.max(y1, y2), Math.max(z1, z2), r, g, b);
+        this.drawBox(builder, stack, x1, y1, z1, x2, y2, z2, r, g, b, 1.0F);
+    }
+
+    private void drawBox(BufferBuilder builder, MatrixStack stack, float x1, float y1, float z1, float x2, float y2, float z2, float r, float g, float b, float a)
+    {
+        Draw.fillBox(builder, stack, Math.min(x1, x2), Math.min(y1, y2), Math.min(z1, z2), Math.max(x1, x2), Math.max(y1, y2), Math.max(z1, z2), r, g, b, a);
     }
 
     private void drawAxes(MatrixStack stack, float axisSize, float axisOffset, float outlineSize, float outlineOffset)
     {
-        float scale = BBSSettings.axesScale.get();
-
-        axisSize *= scale;
-        axisOffset *= scale;
-        outlineSize *= scale;
-        outlineOffset *= scale;
-
         Matrix4f inv = new Matrix4f(stack.peek().getPositionMatrix()).invert();
         Vector4f camPos = new Vector4f(0, 0, 0, 1).mul(inv);
+        double dist = Math.sqrt(camPos.x * camPos.x + camPos.y * camPos.y + camPos.z * camPos.z);
+        float axesScale = BBSSettings.axesScale == null ? 1F : BBSSettings.axesScale.get();
+        float scale = (float) (1.4F * Math.max(0.5D, dist * 0.12D) * axesScale);
+
+        axisSize = 0.30F * scale;
+        axisOffset = 0.012F * scale;
+        float planeInner = 0.08F * scale;
+        float planeOuter = 0.20F * scale;
+        float offset = 0.001F * scale;
+
         float sx = camPos.x >= 0 ? 1F : -1F;
         float sy = camPos.y >= 0 ? 1F : -1F;
         float sz = camPos.z >= 0 ? 1F : -1F;
@@ -235,75 +243,117 @@ public class Gizmo
 
             if (activeZ)
             {
-                Draw.arc3D(builder, stack, Axis.Z, radius, thicknessRing + outlinePad, 0F, 0F, 0F);
-                Draw.arc3D(builder, stack, Axis.Z, radius, thicknessRing, 0F, 0F, 1F);
+                float[] color = (this.index == STENCIL_Z) ? new float[] { 1.0F, 1.0F, 0.0F } : new float[] { 0.15F, 0.35F, 1.0F };
+                Draw.arc3D(builder, stack, Axis.Z, radius, thicknessRing, color[0], color[1], color[2]);
             }
 
             if (activeX)
             {
-                Draw.arc3D(builder, stack, Axis.X, radius, thicknessRing + outlinePad, 0F, 0F, 0F);
-                Draw.arc3D(builder, stack, Axis.X, radius, thicknessRing, 1F, 0F, 0F);
+                float[] color = (this.index == STENCIL_X) ? new float[] { 1.0F, 1.0F, 0.0F } : new float[] { 1.0F, 0.15F, 0.15F };
+                Draw.arc3D(builder, stack, Axis.X, radius, thicknessRing, color[0], color[1], color[2]);
             }
 
             if (activeY)
             {
-                Draw.arc3D(builder, stack, Axis.Y, radius, thicknessRing + outlinePad, 0F, 0F, 0F);
-                Draw.arc3D(builder, stack, Axis.Y, radius, thicknessRing, 0F, 1F, 0F);
+                float[] color = (this.index == STENCIL_Y) ? new float[] { 1.0F, 1.0F, 0.0F } : new float[] { 0.15F, 1.0F, 0.15F };
+                Draw.arc3D(builder, stack, Axis.Y, radius, thicknessRing, color[0], color[1], color[2]);
             }
 
             if (activeFree)
             {
-                this.drawBox(builder, stack, -outlineOffset, -outlineOffset, -outlineOffset, outlineOffset, outlineOffset, outlineOffset, 0F, 0F, 0F);
-                this.drawBox(builder, stack, -axisOffset, -axisOffset, -axisOffset, axisOffset, axisOffset, axisOffset, 1F, 1F, 1F);
+                float[] color = (this.index == STENCIL_FREE) ? new float[] { 1.0F, 1.0F, 0.0F } : new float[] { 1.0F, 1.0F, 1.0F };
+                this.drawBox(builder, stack, -axisOffset, -axisOffset, -axisOffset, axisOffset, axisOffset, axisOffset, color[0], color[1], color[2], 1.0F);
             }
         }
-        else
+        else if (this.mode == Mode.SCALE)
         {
-            if (activeX) this.drawBox(builder, stack, 0, -outlineOffset, -outlineOffset, outlineSize * sx, outlineOffset, outlineOffset, 0F, 0F, 0F);
-            if (activeY) this.drawBox(builder, stack, -outlineOffset, 0, -outlineOffset, outlineOffset, outlineSize * sy, outlineOffset, 0F, 0F, 0F);
-            if (activeZ) this.drawBox(builder, stack, -outlineOffset, -outlineOffset, 0, outlineOffset, outlineOffset, outlineSize * sz, 0F, 0F, 0F);
-            if (activeFree) this.drawBox(builder, stack, -outlineOffset, -outlineOffset, -outlineOffset, outlineOffset, outlineOffset, outlineOffset, 0F, 0F, 0F);
+            float[] xCol = (this.index == STENCIL_X) ? new float[] { 1.0F, 1.0F, 0.0F } : new float[] { 1.0F, 0.15F, 0.15F };
+            float[] yCol = (this.index == STENCIL_Y) ? new float[] { 1.0F, 1.0F, 0.0F } : new float[] { 0.15F, 1.0F, 0.15F };
+            float[] zCol = (this.index == STENCIL_Z) ? new float[] { 1.0F, 1.0F, 0.0F } : new float[] { 0.15F, 0.35F, 1.0F };
+            float[] freeCol = (this.index == STENCIL_FREE) ? new float[] { 1.0F, 1.0F, 0.0F } : new float[] { 1.0F, 1.0F, 1.0F };
 
-            if (this.mode == Mode.SCALE)
+            if (activeX)
             {
-                float scaleStart = axisSize + axisOffset / 2F - outlineOffset / 2F;
-                float scaleEnd = axisSize + axisOffset / 2F + outlineOffset / 2F;
-                float offset = axisOffset * 2.75F;
-
-                if (activeX) this.drawBox(builder, stack, scaleStart * sx, -offset, -offset, scaleEnd * sx, offset, offset, 0F, 0F, 0F);
-                if (activeY) this.drawBox(builder, stack, -offset, scaleStart * sy, -offset, offset, scaleEnd * sy, offset, 0F, 0F, 0F);
-                if (activeZ) this.drawBox(builder, stack, -offset, -offset, scaleStart * sz, offset, offset, scaleEnd * sz, 0F, 0F, 0F);
+                this.drawBox(builder, stack, 0, -axisOffset, -axisOffset, axisSize * sx, axisOffset, axisOffset, xCol[0], xCol[1], xCol[2], 1.0F);
+            }
+            if (activeY)
+            {
+                this.drawBox(builder, stack, -axisOffset, 0, -axisOffset, axisOffset, axisSize * sy, axisOffset, yCol[0], yCol[1], yCol[2], 1.0F);
+            }
+            if (activeZ)
+            {
+                this.drawBox(builder, stack, -axisOffset, -axisOffset, 0, axisOffset, axisOffset, axisSize * sz, zCol[0], zCol[1], zCol[2], 1.0F);
+            }
+            if (activeFree)
+            {
+                this.drawBox(builder, stack, -axisOffset, -axisOffset, -axisOffset, axisOffset, axisOffset, axisOffset, freeCol[0], freeCol[1], freeCol[2], 1.0F);
             }
 
-            if (activeX) this.drawBox(builder, stack, 0, -axisOffset, -axisOffset, axisSize * sx, axisOffset, axisOffset, 1F, 0F, 0F);
-            if (activeY) this.drawBox(builder, stack, -axisOffset, 0, -axisOffset, axisOffset, axisSize * sy, axisOffset, 0F, 1F, 0F);
-            if (activeZ) this.drawBox(builder, stack, -axisOffset, -axisOffset, 0, axisOffset, axisOffset, axisSize * sz, 0F, 0F, 1F);
-            if (activeFree) this.drawBox(builder, stack, -axisOffset, -axisOffset, -axisOffset, axisOffset, axisOffset, axisOffset, 1F, 1F, 1F);
-
-            if (this.mode == Mode.TRANSLATE)
+            float half = axisOffset * 2.0F;
+            if (activeX)
             {
-                float planeInner = axisSize * 0.25F;
-                float planeOuter = axisSize * 0.65F;
-                float offset = 0.001F;
+                this.drawBox(builder, stack, axisSize * sx - half, -half, -half, axisSize * sx + half, half, half, xCol[0], xCol[1], xCol[2], 1.0F);
+            }
+            if (activeY)
+            {
+                this.drawBox(builder, stack, -half, axisSize * sy - half, -half, half, axisSize * sy + half, half, yCol[0], yCol[1], yCol[2], 1.0F);
+            }
+            if (activeZ)
+            {
+                this.drawBox(builder, stack, -half, -half, axisSize * sz - half, half, half, axisSize * sz + half, zCol[0], zCol[1], zCol[2], 1.0F);
+            }
+        }
+        else // TRANSLATE
+        {
+            float[] xCol = (this.index == STENCIL_X) ? new float[] { 1.0F, 1.0F, 0.0F } : new float[] { 1.0F, 0.15F, 0.15F };
+            float[] yCol = (this.index == STENCIL_Y) ? new float[] { 1.0F, 1.0F, 0.0F } : new float[] { 0.15F, 1.0F, 0.15F };
+            float[] zCol = (this.index == STENCIL_Z) ? new float[] { 1.0F, 1.0F, 0.0F } : new float[] { 0.15F, 0.35F, 1.0F };
 
-                this.drawTranslatePlanes(builder, stack, planeInner, planeOuter, offset, sx, sy, sz, activeXZ, activeXY, activeZY);
+            float[] xzCol = (this.index == STENCIL_XZ) ? new float[] { 1.0F, 1.0F, 0.0F } : new float[] { 0.15F, 1.0F, 0.6F };
+            float[] xyCol = (this.index == STENCIL_XY) ? new float[] { 1.0F, 1.0F, 0.0F } : new float[] { 0.6F, 0.15F, 1.0F };
+            float[] zyCol = (this.index == STENCIL_ZY) ? new float[] { 1.0F, 1.0F, 0.0F } : new float[] { 1.0F, 0.4F, 0.15F };
+
+            float[] freeCol = (this.index == STENCIL_FREE) ? new float[] { 1.0F, 1.0F, 0.0F } : new float[] { 1.0F, 1.0F, 1.0F };
+
+            if (activeX)
+            {
+                this.drawBox(builder, stack, 0, -axisOffset, -axisOffset, axisSize * sx, axisOffset, axisOffset, xCol[0], xCol[1], xCol[2], 1.0F);
+            }
+            if (activeY)
+            {
+                this.drawBox(builder, stack, -axisOffset, 0, -axisOffset, axisOffset, axisSize * sy, axisOffset, yCol[0], yCol[1], yCol[2], 1.0F);
+            }
+            if (activeZ)
+            {
+                this.drawBox(builder, stack, -axisOffset, -axisOffset, 0, axisOffset, axisOffset, axisSize * sz, zCol[0], zCol[1], zCol[2], 1.0F);
             }
 
-            if (this.mode == Mode.SCALE)
+            if (activeXZ)
             {
-                float scaleEnd = axisSize + axisOffset;
+                this.drawBox(builder, stack, planeInner * sx, -offset, planeInner * sz, planeOuter * sx, offset, planeOuter * sz, xzCol[0], xzCol[1], xzCol[2], 0.4F);
+            }
+            if (activeXY)
+            {
+                this.drawBox(builder, stack, planeInner * sx, planeInner * sy, -offset, planeOuter * sx, planeOuter * sy, offset, xyCol[0], xyCol[1], xyCol[2], 0.4F);
+            }
+            if (activeZY)
+            {
+                this.drawBox(builder, stack, -offset, planeInner * sy, planeInner * sz, offset, planeOuter * sy, planeOuter * sz, zyCol[0], zyCol[1], zyCol[2], 0.4F);
+            }
 
-                if (activeX) this.drawBox(builder, stack, axisSize * sx, -axisOffset * 2F, -axisOffset * 2F, scaleEnd * sx, axisOffset * 2F, axisOffset * 2F, 1F, 0F, 0F);
-                if (activeY) this.drawBox(builder, stack, -axisOffset * 2F, axisSize * sy, -axisOffset * 2F, axisOffset * 2F, scaleEnd * sy, axisOffset * 2F, 0F, 1F, 0F);
-                if (activeZ) this.drawBox(builder, stack, -axisOffset * 2F, -axisOffset * 2F, axisSize * sz, axisOffset * 2F, axisOffset * 2F, scaleEnd * sz, 0F, 0F, 1F);
+            if (activeFree)
+            {
+                this.drawBox(builder, stack, -axisOffset, -axisOffset, -axisOffset, axisOffset, axisOffset, axisOffset, freeCol[0], freeCol[1], freeCol[2], 1.0F);
             }
         }
 
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
         RenderSystem.depthFunc(GL11.GL_ALWAYS);
+        RenderSystem.depthMask(false);
 
         BufferRenderer.drawWithGlobalProgram(builder.end());
 
+        RenderSystem.depthMask(true);
         RenderSystem.depthFunc(GL11.GL_LEQUAL);
     }
 
@@ -320,13 +370,18 @@ public class Gizmo
 
     private void drawAxes(MatrixStack stack, StencilMap map, float axisSize, float axisOffset)
     {
-        float scale = BBSSettings.axesScale.get();
-
-        axisSize *= scale;
-        axisOffset *= scale;
-
         Matrix4f inv = new Matrix4f(stack.peek().getPositionMatrix()).invert();
         Vector4f camPos = new Vector4f(0, 0, 0, 1).mul(inv);
+        double dist = Math.sqrt(camPos.x * camPos.x + camPos.y * camPos.y + camPos.z * camPos.z);
+        float axesScale = BBSSettings.axesScale == null ? 1F : BBSSettings.axesScale.get();
+        float scale = (float) (1.4F * Math.max(0.5D, dist * 0.12D) * axesScale);
+
+        axisSize = 0.30F * scale;
+        axisOffset = 0.012F * scale;
+        float planeInner = 0.08F * scale;
+        float planeOuter = 0.20F * scale;
+        float offset = 0.001F * scale;
+
         float sx = camPos.x >= 0 ? 1F : -1F;
         float sy = camPos.y >= 0 ? 1F : -1F;
         float sz = camPos.z >= 0 ? 1F : -1F;
@@ -358,56 +413,40 @@ public class Gizmo
             Draw.arc3D(builder, stack, Axis.X, radius, thicknessRing + outlinePad, STENCIL_X / 255F, 0F, 0F);
             Draw.arc3D(builder, stack, Axis.Y, radius, thicknessRing + outlinePad, STENCIL_Y / 255F, 0F, 0F);
 
-            this.drawBox(builder, stack, -axisOffset, -axisOffset, -axisOffset, axisOffset, axisOffset, axisOffset, STENCIL_FREE / 255F, 0F, 0F);
+            this.drawBox(builder, stack, -axisOffset, -axisOffset, -axisOffset, axisOffset, axisOffset, axisOffset, STENCIL_FREE / 255F, 0F, 0F, 1.0F);
         }
-        else
+        else if (this.mode == Mode.SCALE)
         {
-            this.drawBox(builder, stack, 0, -axisOffset, -axisOffset, axisSize * sx, axisOffset, axisOffset, STENCIL_X / 255F, 0F, 0F);
-            this.drawBox(builder, stack, -axisOffset, 0, -axisOffset, axisOffset, axisSize * sy, axisOffset, STENCIL_Y / 255F, 0F, 0F);
-            this.drawBox(builder, stack, -axisOffset, -axisOffset, 0, axisOffset, axisOffset, axisSize * sz, STENCIL_Z / 255F, 0F, 0F);
-            this.drawBox(builder, stack, -axisOffset, -axisOffset, -axisOffset, axisOffset, axisOffset, axisOffset, STENCIL_FREE / 255F, 0F, 0F);
+            this.drawBox(builder, stack, 0, -axisOffset, -axisOffset, axisSize * sx, axisOffset, axisOffset, STENCIL_X / 255F, 0F, 0F, 1.0F);
+            this.drawBox(builder, stack, -axisOffset, 0, -axisOffset, axisOffset, axisSize * sy, axisOffset, STENCIL_Y / 255F, 0F, 0F, 1.0F);
+            this.drawBox(builder, stack, -axisOffset, -axisOffset, 0, axisOffset, axisOffset, axisSize * sz, STENCIL_Z / 255F, 0F, 0F, 1.0F);
+            this.drawBox(builder, stack, -axisOffset, -axisOffset, -axisOffset, axisOffset, axisOffset, axisOffset, STENCIL_FREE / 255F, 0F, 0F, 1.0F);
 
-            if (this.mode == Mode.SCALE)
-            {
-                float scaleEnd = axisSize + axisOffset;
+            float half = axisOffset * 2.0F;
+            this.drawBox(builder, stack, axisSize * sx - half, -half, -half, axisSize * sx + half, half, half, STENCIL_X / 255F, 0F, 0F, 1.0F);
+            this.drawBox(builder, stack, -half, axisSize * sy - half, -half, half, axisSize * sy + half, half, STENCIL_Y / 255F, 0F, 0F, 1.0F);
+            this.drawBox(builder, stack, -half, -half, axisSize * sz - half, half, half, axisSize * sz + half, STENCIL_Z / 255F, 0F, 0F, 1.0F);
+        }
+        else // TRANSLATE
+        {
+            this.drawBox(builder, stack, 0, -axisOffset, -axisOffset, axisSize * sx, axisOffset, axisOffset, STENCIL_X / 255F, 0F, 0F, 1.0F);
+            this.drawBox(builder, stack, -axisOffset, 0, -axisOffset, axisOffset, axisSize * sy, axisOffset, STENCIL_Y / 255F, 0F, 0F, 1.0F);
+            this.drawBox(builder, stack, -axisOffset, -axisOffset, 0, axisOffset, axisOffset, axisSize * sz, STENCIL_Z / 255F, 0F, 0F, 1.0F);
 
-                this.drawBox(builder, stack, axisSize * sx, -axisOffset * 2F, -axisOffset * 2F, scaleEnd * sx, axisOffset * 2F, axisOffset * 2F, STENCIL_X / 255F, 0F, 0F);
-                this.drawBox(builder, stack, -axisOffset * 2F, axisSize * sy, -axisOffset * 2F, axisOffset * 2F, scaleEnd * sy, axisOffset * 2F, STENCIL_Y / 255F, 0F, 0F);
-                this.drawBox(builder, stack, -axisOffset * 2F, -axisOffset * 2F, axisSize * sz, axisOffset * 2F, axisOffset * 2F, scaleEnd * sz, STENCIL_Z / 255F, 0F, 0F);
-            }
+            this.drawBox(builder, stack, planeInner * sx, -offset, planeInner * sz, planeOuter * sx, offset, planeOuter * sz, STENCIL_XZ / 255F, 0F, 0F, 1.0F);
+            this.drawBox(builder, stack, planeInner * sx, planeInner * sy, -offset, planeOuter * sx, planeOuter * sy, offset, STENCIL_XY / 255F, 0F, 0F, 1.0F);
+            this.drawBox(builder, stack, -offset, planeInner * sy, planeInner * sz, offset, planeOuter * sy, planeOuter * sz, STENCIL_ZY / 255F, 0F, 0F, 1.0F);
 
-            if (this.mode == Mode.TRANSLATE)
-            {
-                float planeInner = axisSize * 0.25F;
-                float offset = 0.001F;
-                float planeOuter = axisSize * 0.65F;
-
-                this.drawTranslateStencilPlanes(builder, stack, planeInner, planeOuter, offset, sx, sy, sz);
-            }
+            this.drawBox(builder, stack, -axisOffset, -axisOffset, -axisOffset, axisOffset, axisOffset, axisOffset, STENCIL_FREE / 255F, 0F, 0F, 1.0F);
         }
 
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
         RenderSystem.disableDepthTest();
+        RenderSystem.depthMask(false);
 
         BufferRenderer.drawWithGlobalProgram(builder.end());
-    }
 
-    private void drawTranslatePlanes(BufferBuilder builder, MatrixStack stack, float planeInner, float planeOuter, float offset, float sx, float sy, float sz, boolean activeXZ, boolean activeXY, boolean activeZY)
-    {
-        if (activeXZ) this.drawBox(builder, stack, planeInner * sx, -offset, planeInner * sz, planeOuter * sx, offset, planeOuter * sz, 0F, 1F, 0F);
-        if (activeXY) this.drawBox(builder, stack, planeInner * sx, planeInner * sy, -offset, planeOuter * sx, planeOuter * sy, offset, 0F, 0F, 1F);
-        if (activeZY) this.drawBox(builder, stack, -offset, planeInner * sy, planeInner * sz, offset, planeOuter * sy, planeOuter * sz, 1F, 0F, 0F);
-    }
-
-    private void drawTranslateStencilPlanes(BufferBuilder builder, MatrixStack stack, float planeInner, float planeOuter, float offset, float sx, float sy, float sz)
-    {
-        float xz = STENCIL_XZ / 255F;
-        float xy = STENCIL_XY / 255F;
-        float zy = STENCIL_ZY / 255F;
-
-        this.drawBox(builder, stack, planeInner * sx, -offset, planeInner * sz, planeOuter * sx, offset, planeOuter * sz, xz, 0F, 0F);
-        this.drawBox(builder, stack, planeInner * sx, planeInner * sy, -offset, planeOuter * sx, planeOuter * sy, offset, xy, 0F, 0F);
-        this.drawBox(builder, stack, -offset, planeInner * sy, planeInner * sz, offset, planeOuter * sy, planeOuter * sz, zy, 0F, 0F);
+        RenderSystem.depthMask(true);
     }
 
     public static enum Mode
