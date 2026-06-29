@@ -124,7 +124,7 @@ public class UIFormList extends UIElement
     private final List<UIIconTabButton> customCategoryTabs = new ArrayList<>();
     private final Map<UIIconTabButton, String> customCategoryTabIds = new HashMap<>();
     private String activeFavoriteCategoryId;
-    private boolean favoritesUiVisible;
+    private boolean favoritesUiVisible = true;
     private String syncedFavoriteCategoriesData = "";
     private final Set<String> syncedFavoriteModels = new HashSet<>();
     private Consumer<String> favoriteCategoryChanged;
@@ -1220,7 +1220,7 @@ public class UIFormList extends UIElement
 
     private boolean isFavoritesFeatureEnabled()
     {
-        return this.palette instanceof UIFormPalette formPalette && (formPalette.isImmersive() || formPalette.hasFavorites());
+        return false;
     }
 
     private void applyFavoritesLayout(boolean enabled)
