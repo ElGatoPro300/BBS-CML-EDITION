@@ -232,12 +232,17 @@ public class UIPropTransform extends UITransform
 
     public void setTransform(Transform transform)
     {
+        this.transform = transform;
+
         if (transform == null)
         {
+            this.fillT(0F, 0F, 0F);
+            this.fillS(1F, 1F, 1F);
+            this.fillR(0F, 0F, 0F);
+            this.fillR2(0F, 0F, 0F);
+            this.fillP(0F, 0F, 0F);
             return;
         }
-
-        this.transform = transform;
 
         float minScale = Math.min(transform.scale.x, Math.min(transform.scale.y, transform.scale.z));
         float maxScale = Math.max(transform.scale.x, Math.max(transform.scale.y, transform.scale.z));

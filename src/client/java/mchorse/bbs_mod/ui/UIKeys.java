@@ -1490,7 +1490,7 @@ public class UIKeys
     public static final IKey WELCOME_READY = L10n.lang("bbs.welcome.ready");
     public static final IKey WELCOME_YES = L10n.lang("bbs.welcome.yes");
     public static final IKey WELCOME_NO = L10n.lang("bbs.welcome.no");
-    public static final IKey WELCOME_ALPHA_WARNING = L10n.lang("bbs.welcome.alpha_warning");
+    public static final IKey WELCOME_BETA_WARNING = L10n.lang("bbs.welcome.beta_warning");
     public static final IKey WELCOME_DOWNGRADE_WARNING = L10n.lang("bbs.welcome.downgrade_warning");
     public static final IKey WELCOME_ACCEPT = L10n.lang("bbs.welcome.accept");
     public static final IKey WELCOME_EXIT = L10n.lang("bbs.welcome.exit");
