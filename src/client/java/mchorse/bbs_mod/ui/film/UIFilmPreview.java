@@ -236,7 +236,11 @@ public class UIFilmPreview extends UIElement
             menu.action(Icons.FOLDER, UIKeys.CAMERA_TOOLTIPS_OPEN_SCREENSHOTS, () -> UIUtils.openFolder(BBSModClient.getScreenshotRecorder().getScreenshots()));
 
             menu.action(Icons.FILM, UIKeys.CAMERA_TOOLTIPS_OPEN_VIDEOS, () -> this.panel.recorder.openMovies());
-            menu.action(Icons.GEAR, UIKeys.CAMERA_TOOLTIPS_OPEN_VIDEO_SETTINGS, () -> UIOverlay.addOverlay(this.getContext(), new UIVideoSettingsOverlayPanel(BBSSettings.videoSettings)));
+            menu.action(Icons.GEAR, UIKeys.CAMERA_TOOLTIPS_OPEN_VIDEO_SETTINGS, () ->
+            {
+                UIOverlay.addOverlay(this.getContext(), this.panel.dashboard.settingsPanel, 580, 340);
+                this.panel.dashboard.settingsPanel.selectCategory("video");
+            });
 
             menu.action(Icons.SOUND, UIKeys.FILM_RENDER_AUDIO, this::renderAudio);
             menu.action(Icons.REFRESH, UIKeys.FILM_RESET_REPLAYS, this.panel.recorder.resetReplays, () ->

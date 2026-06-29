@@ -1,5 +1,6 @@
 package mchorse.bbs_mod;
 
+import mchorse.bbs_mod.events.register.RegisterBBSSettingsEvent;
 import mchorse.bbs_mod.settings.SettingsBuilder;
 import mchorse.bbs_mod.settings.values.core.ValueLink;
 import mchorse.bbs_mod.settings.values.core.ValueString;
@@ -229,6 +230,7 @@ public class BBSSettings
         clickSound = builder.getBoolean("click_sound", false);
         pickLimbTexture = builder.getBoolean("pick_limb_texture", true);
         morphingAutoMorph = builder.getBoolean("auto_morph", false);
+        editorSimplifyAnimations = builder.getBoolean("simplify_animations", false);
         favoriteColors = new ValueColors("favorite_colors");
         favoriteModelForms = new ValueStringKeys("favorite_model_forms");
         favoriteFormCategoriesData = builder.getString("favorite_form_categories_data", "");
@@ -302,8 +304,6 @@ public class BBSSettings
         editorRewind = builder.getBoolean("rewind", true);
         editorHorizontalClipEditor = builder.getBoolean("horizontal_clip_editor", true);
         editorMinutesBackup = builder.getBoolean("minutes_backup", true);
-
-        replayContextOptions = builder.getInt("compacted_options", 0, 0, 2);
         editorDockGuideColor = builder.getInt("dock_guide_color", 0x57CCFF).color();
         editorDockGuideOpacity = builder.getFloat("dock_guide_opacity", 0.5F, 0F, 1F);
         defaultInterpolation = builder.getInt("default_interpolation", 0);
@@ -312,33 +312,36 @@ public class BBSSettings
         editorSafeMargins = builder.getBoolean("safe_margins", false);
         editorFlightFreeLook = builder.getBoolean("flight_free_look", false);
         editorClipTypeLabels = builder.getBoolean("clip_type_labels", false);
-        editorReplaySprintParticles = builder.getBoolean("replay_sprint_particles", false);
         editorCameraPreviewPlayerSync = builder.getBoolean("camera_preview_player_sync", false);
-        editorReplayStepSound = builder.getBoolean("replay_step_sound", false);
-        editorSimplifyAnimations = builder.getBoolean("simplify_animations", false);
         editorMuteRenderAudioClips = builder.getBoolean("mute_render_audio_clips", false);
         editorTimeMode = builder.getInt("time_mode", 0, 0, 2);
         editorImportMode = builder.getInt("import_mode", 0, 0, 1);
+        realtimeKeyframes = builder.getBoolean("realtime_keyframes", false);
+        autoKeyframes = builder.getBoolean("auto_keyframes", true);
+        usingInMemoryClipboard = builder.getBoolean("using_in_memory_clipboard", false);
+
+
+        builder.category("replays");
+        replayContextOptions = builder.getInt("compacted_options", 0, 0, 2);
+        editorReplaySprintParticles = builder.getBoolean("replay_sprint_particles", false);
+        editorReplayStepSound = builder.getBoolean("replay_step_sound", false);
+        replayMarkedBonesOnly = builder.getBoolean("replay_marked_bones_only", false);
+        editorReplayEditorTitleLimit = builder.getInt("replay_editor_title_limit", 12, 0, 64);
+        replayFpBobbingIntensity = builder.getFloat("replay_fp_bobbing_intensity", 0.25F, 0F, 2F);
+        replayFpBobbingFrequency = builder.getFloat("replay_fp_bobbing_frequency", 0.25F, 0F, 3F);
         editorAnchoredReplaysPanel = builder.getBoolean("anchored_replays_panel", true);
         editorAnchoredReplaysPanelHeight = builder.getInt("anchored_replays_panel_height", 170, 70, 2000);
         editorAnchoredReplaysPanelHeight.invisible();
         editorReplayHud = builder.getBoolean("replay_hud", false);
         editorReplayHudPosition = builder.getInt("replay_hud_position", 0, 0, 3);
         editorReplayHudDisplayName = builder.getBoolean("replay_hud_display_name", true);
-        realtimeKeyframes = builder.getBoolean("realtime_keyframes", false);
-        autoKeyframes = builder.getBoolean("auto_keyframes", true);
         poseBonesFilterMarked = builder.getBoolean("pose_bones_filter_marked", false);
         poseBonesFilterMarked.invisible();
-        replayMarkedBonesOnly = builder.getBoolean("replay_marked_bones_only", false);
-        editorReplayEditorTitleLimit = builder.getInt("replay_editor_title_limit", 12, 0, 64);
         presetsGridPanel = builder.getBoolean("presets_grid_panel", false);
         presetsGridTrackers = builder.getBoolean("presets_grid_trackers", true);
         presetsGridTrackers.invisible();
         presetsGridCellSize = builder.getInt("presets_grid_cell_size", 1, 0, 3);
         presetsGridCellSize.invisible();
-        replayFpBobbingIntensity = builder.getFloat("replay_fp_bobbing_intensity", 0.25F, 0F, 2F);
-        replayFpBobbingFrequency = builder.getFloat("replay_fp_bobbing_frequency", 0.25F, 0F, 3F);
-        usingInMemoryClipboard = builder.getBoolean("using_in_memory_clipboard", false);
 
         builder.category("recording");
         recordingCountdown = builder.getFloat("countdown", 1.5F, 0F, 30F);
@@ -384,5 +387,7 @@ public class BBSSettings
         builder.category("cdn");
         cdnUrl = builder.getString("url", "");
         cdnToken = builder.getString("token", "");
+
+        BBSMod.events.post(new RegisterBBSSettingsEvent(builder));
     }
 }

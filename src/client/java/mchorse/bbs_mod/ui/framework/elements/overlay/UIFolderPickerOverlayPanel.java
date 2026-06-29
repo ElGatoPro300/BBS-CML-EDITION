@@ -104,7 +104,7 @@ public class UIFolderPickerOverlayPanel extends UIOverlayPanel
         {
             UIOverlay.addOverlay(this.getContext(),
                 new UIMessageOverlayPanel(UIKeys.GENERAL_ERROR,
-                    L10n.lang("bbs.ui.folder_picker.error_invalid_folder")));
+                    UIKeys.FOLDER_PICKER_ERROR_INVALID_FOLDER));
         }
     }
     

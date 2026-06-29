@@ -153,11 +153,11 @@ public class UIPoseEditor extends UIElement
         {
             String selectedCategory = this.categories.getCurrentFirst();
 
-            menu.action(Icons.ADD, L10n.lang("bbs.ui.forms.categories.context.add_category"), () ->
+            menu.action(Icons.ADD, UIKeys.FORMS_CATEGORIES_CONTEXT_ADD_CATEGORY, () ->
             {
                 UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
-                    L10n.lang("bbs.ui.pose.categories.manage_title"),
-                    L10n.lang("bbs.ui.pose.categories.manage_category_name"),
+                    UIKeys.POSE_CATEGORIES_MANAGE_TITLE,
+                    UIKeys.POSE_CATEGORIES_MANAGE_CATEGORY_NAME,
                     (str) ->
                     {
                         if (str != null && !str.isEmpty())
@@ -172,11 +172,11 @@ public class UIPoseEditor extends UIElement
 
             if (selectedCategory != null && !selectedCategory.isEmpty())
             {
-                menu.action(Icons.EDIT, L10n.lang("bbs.ui.forms.categories.context.rename_category"), () ->
+                menu.action(Icons.EDIT, UIKeys.FORMS_CATEGORIES_CONTEXT_RENAME_CATEGORY, () ->
                 {
                     UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
-                        L10n.lang("bbs.ui.pose.categories.manage_title"),
-                        L10n.lang("bbs.ui.pose.categories.manage_new_name"),
+                        UIKeys.POSE_CATEGORIES_MANAGE_TITLE,
+                        UIKeys.POSE_CATEGORIES_MANAGE_NEW_NAME,
                         (str) ->
                         {
                             if (str != null && !str.isEmpty())
@@ -189,14 +189,14 @@ public class UIPoseEditor extends UIElement
                     UIOverlay.addOverlay(this.getContext(), panel);
                 });
 
-                menu.action(Icons.TRASH, L10n.lang("bbs.ui.forms.categories.context.remove_category"), Colors.RED, () ->
+                menu.action(Icons.TRASH, UIKeys.FORMS_CATEGORIES_CONTEXT_REMOVE_CATEGORY, Colors.RED, () ->
                 {
                     this.boneCategories.removeCategory(this.group, selectedCategory);
                     this.refreshCategories();
                 });
 
                 /* Ver huesos que pertenecen a la categoría seleccionada */
-                menu.action(Icons.LIST, L10n.lang("bbs.ui.pose.categories.context.view_bones"), () ->
+                menu.action(Icons.LIST, UIKeys.POSE_CATEGORIES_CONTEXT_VIEW_BONES, () ->
                 {
                     String group = this.group;
                     List<String> bones = this.boneCategories.getBones(group, selectedCategory);
@@ -207,8 +207,8 @@ public class UIPoseEditor extends UIElement
                     for (String g : bones) { list.add(g); }
 
                     UIConfirmOverlayPanel panel = new UIConfirmOverlayPanel(
-                        L10n.lang("bbs.ui.pose.categories.view_bones_title"),
-                        L10n.lang("bbs.ui.pose.categories.view_bones_description"),
+                        UIKeys.POSE_CATEGORIES_VIEW_BONES_TITLE,
+                        UIKeys.POSE_CATEGORIES_VIEW_BONES_DESCRIPTION,
                         (confirm) ->
                         {
                             if (confirm)
@@ -230,7 +230,7 @@ public class UIPoseEditor extends UIElement
                     /* Click derecho para eliminar el hueso de la categoría */
                     list.context((ctx) ->
                     {
-                        ctx.action(Icons.TRASH, L10n.lang("bbs.ui.pose.categories.context.remove_bone"), Colors.RED, () ->
+                        ctx.action(Icons.TRASH, UIKeys.POSE_CATEGORIES_CONTEXT_REMOVE_BONE, Colors.RED, () ->
                         {
                             int idx = list.getIndex();
                             String bone = CollectionUtils.getSafe(bones, idx);
@@ -252,11 +252,11 @@ public class UIPoseEditor extends UIElement
                 String selectedBone = this.groups.list.getCurrentFirst();
                 if (selectedBone != null && !selectedBone.isEmpty())
                 {
-                    menu.action(Icons.ADD, L10n.lang("bbs.ui.pose.categories.context.add_selected_bone"), () ->
+                    menu.action(Icons.ADD, UIKeys.POSE_CATEGORIES_CONTEXT_ADD_SELECTED_BONE, () ->
                     {
                         this.boneCategories.addBone(this.group, selectedCategory, selectedBone);
                     });
-                    menu.action(Icons.REMOVE, L10n.lang("bbs.ui.pose.categories.context.remove_selected_bone"), () ->
+                    menu.action(Icons.REMOVE, UIKeys.POSE_CATEGORIES_CONTEXT_REMOVE_SELECTED_BONE, () ->
                     {
                         this.boneCategories.removeBone(this.group, selectedCategory, selectedBone);
                     });
@@ -291,7 +291,7 @@ public class UIPoseEditor extends UIElement
                 if (this.onChange != null) this.onChange.run();
             });
 
-            menu.action(Icons.DOWNLOAD, L10n.lang("bbs.ui.pose.categories.context.apply_category"), () ->
+            menu.action(Icons.DOWNLOAD, UIKeys.POSE_CATEGORIES_CONTEXT_APPLY_CATEGORY, () ->
             {
                 this.applyCategory((p) -> this.setFix(p, (float) this.fix.getValue()));
                 if (this.onChange != null) this.onChange.run();
@@ -343,7 +343,7 @@ public class UIPoseEditor extends UIElement
                 this.applyChildren((p) -> this.setTexture(p, chosen));
                 if (this.onChange != null) this.onChange.run();
             });
-            menu.action(Icons.DOWNLOAD, L10n.lang("bbs.ui.pose.categories.context.apply_category"), () ->
+            menu.action(Icons.DOWNLOAD, UIKeys.POSE_CATEGORIES_CONTEXT_APPLY_CATEGORY, () ->
             {
                 PoseTransform t = (PoseTransform) this.transform.getTransform();
                 Link chosen = t != null ? t.texture : null;
@@ -392,7 +392,7 @@ public class UIPoseEditor extends UIElement
                 this.applyChildren((p) -> this.setColor(p, this.color.picker.color.getARGBColor()));
                 if (this.onChange != null) this.onChange.run();
             });
-            menu.action(Icons.DOWNLOAD, L10n.lang("bbs.ui.pose.categories.context.apply_category"), () ->
+            menu.action(Icons.DOWNLOAD, UIKeys.POSE_CATEGORIES_CONTEXT_APPLY_CATEGORY, () ->
             {
                 this.applyCategory((p) -> this.setColor(p, this.color.picker.color.getARGBColor()));
                 if (this.onChange != null) this.onChange.run();
@@ -422,7 +422,7 @@ public class UIPoseEditor extends UIElement
                 this.applyChildren((p) -> this.setLighting(p, this.lighting.getValue()));
                 if (this.onChange != null) this.onChange.run();
             });
-            menu.action(Icons.DOWNLOAD, L10n.lang("bbs.ui.pose.categories.context.apply_category"), () ->
+            menu.action(Icons.DOWNLOAD, UIKeys.POSE_CATEGORIES_CONTEXT_APPLY_CATEGORY, () ->
             {
                 this.applyCategory((p) -> this.setLighting(p, this.lighting.getValue()));
                 if (this.onChange != null) this.onChange.run();
@@ -1300,8 +1300,8 @@ public class UIPoseEditor extends UIElement
                 return;
             }
 
-            String line1 = L10n.lang("bbs.ui.pose.bones.empty_line1").get();
-            String line2 = L10n.lang("bbs.ui.pose.bones.empty_line2").get();
+            String line1 = UIKeys.POSE_BONES_EMPTY_LINE1.get();
+            String line2 = UIKeys.POSE_BONES_EMPTY_LINE2.get();
             int lineHeight = context.batcher.getFont().getHeight() + 4;
             int totalHeight = lineHeight * 2 - 4;
             int y = this.area.my() - totalHeight / 2;

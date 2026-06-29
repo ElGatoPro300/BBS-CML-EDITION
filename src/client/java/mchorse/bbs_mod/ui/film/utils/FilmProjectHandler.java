@@ -15,6 +15,7 @@ import mchorse.bbs_mod.settings.values.base.BaseValueGroup;
 import mchorse.bbs_mod.settings.values.core.ValueForm;
 import mchorse.bbs_mod.settings.values.core.ValueLink;
 import mchorse.bbs_mod.settings.values.core.ValueString;
+import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.utils.manager.storage.CompressedDataStorage;
@@ -108,13 +109,13 @@ public class FilmProjectHandler
                 }
             }
 
-            filmPanel.getContext().notifySuccess(L10n.lang("bbs.ui.film.export_success").format(destZip.getName()));
+            filmPanel.getContext().notifySuccess(UIKeys.FILM_EXPORT_SUCCESS.format(destZip.getName()));
             UIUtils.openFolder(exportFolder);
         }
         catch (Exception e)
         {
             e.printStackTrace();
-            filmPanel.getContext().notifyError(L10n.lang("bbs.ui.film.export_error").format(e.getMessage()));
+            filmPanel.getContext().notifyError(UIKeys.FILM_EXPORT_ERROR.format(e.getMessage()));
         }
     }
 
@@ -241,7 +242,7 @@ public class FilmProjectHandler
                 if (filmEntry == null)
                 {
                     MinecraftClient.getInstance().execute(() ->
-                        filmPanel.getContext().notifyError(L10n.lang("bbs.ui.film.import_error_invalid"))
+                        filmPanel.getContext().notifyError(UIKeys.FILM_IMPORT_ERROR_INVALID)
                     );
 
                     return;
@@ -325,14 +326,14 @@ public class FilmProjectHandler
             MinecraftClient.getInstance().execute(() ->
             {
                 filmPanel.requestNames();
-                filmPanel.getContext().notifySuccess(L10n.lang("bbs.ui.film.import_success").format(projectName));
+                filmPanel.getContext().notifySuccess(UIKeys.FILM_IMPORT_SUCCESS.format(projectName));
             });
         }
         catch (Exception e)
         {
             e.printStackTrace();
             MinecraftClient.getInstance().execute(() ->
-                filmPanel.getContext().notifyError(L10n.lang("bbs.ui.film.import_error").format(e.getMessage()))
+                filmPanel.getContext().notifyError(UIKeys.FILM_IMPORT_ERROR.format(e.getMessage()))
             );
         }
     }

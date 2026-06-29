@@ -66,13 +66,13 @@ public class UIMainMenuBar extends UIElement
         brand.w(25).marginLeft(6);
 
         this.add(brand);
-        this.add(new UIMenuButton(L10n.lang("bbs.ui.raw.file"), this, this::buildFileMenu));
-        this.add(new UIMenuButton(L10n.lang("bbs.ui.raw.edit"), this, this::buildEditMenu));
-        this.add(new UIMenuButton(L10n.lang("bbs.ui.raw.tools"), this, this::buildToolsMenu));
+        this.add(new UIMenuButton(UIKeys.RAW_FILE, this, this::buildFileMenu));
+        this.add(new UIMenuButton(UIKeys.RAW_EDIT, this, this::buildEditMenu));
+        this.add(new UIMenuButton(UIKeys.RAW_TOOLS, this, this::buildToolsMenu));
         /* Window menu is always visible; its content adapts to the active panel
            (currently only the Model Editor populates it). */
-        this.add(new UIMenuButton(L10n.lang("bbs.ui.raw.window"), this, this::buildWindowMenu));
-        this.add(new UIMenuButton(L10n.lang("bbs.ui.raw.help"), this, this::buildHelpMenu));
+        this.add(new UIMenuButton(UIKeys.RAW_WINDOW, this, this::buildWindowMenu));
+        this.add(new UIMenuButton(UIKeys.RAW_HELP, this, this::buildHelpMenu));
 
         this.row(2).preferred(999);
     }
@@ -131,13 +131,13 @@ public class UIMainMenuBar extends UIElement
 
     private void buildFileMenu(ContextMenuManager menu)
     {
-        menu.action(Icons.ADD, L10n.lang("bbs.ui.raw.new"), () -> this.openNewSubmenu());
-        menu.action(Icons.FOLDER, L10n.lang("bbs.ui.raw.open"), () -> this.openOpenPopup());
-        menu.action(Icons.TIME, L10n.lang("bbs.ui.raw.recent"), () -> this.openRecentSubmenu());
+        menu.action(Icons.ADD, UIKeys.RAW_NEW, () -> this.openNewSubmenu());
+        menu.action(Icons.FOLDER, UIKeys.RAW_OPEN, () -> this.openOpenPopup());
+        menu.action(Icons.TIME, UIKeys.RAW_RECENT, () -> this.openRecentSubmenu());
 
         if (this.dashboard.panels.panel instanceof UIFilmPanel filmPanel && filmPanel.getData() != null)
         {
-            menu.action(Icons.UPLOAD, L10n.lang("bbs.ui.film.export_project"), () -> FilmProjectHandler.exportProject(filmPanel));
+            menu.action(Icons.UPLOAD, UIKeys.FILM_EXPORT_PROJECT, () -> FilmProjectHandler.exportProject(filmPanel));
         }
 
         menu.action(Icons.SETTINGS, UIKeys.CONFIG_TITLE, () -> UIOverlay.addOverlay(this.getContext(), this.dashboard.settingsPanel, 580, 340));
@@ -170,7 +170,7 @@ public class UIMainMenuBar extends UIElement
         {
             filmPanel.addToolMenuActions(menu);
 
-            menu.action(Icons.TIME, L10n.lang("bbs.ui.film.log_tools"), () -> {
+            menu.action(Icons.TIME, UIKeys.FILM_LOG_TOOLS, () -> {
                 UIOverlay.addOverlay(this.getContext(), new UIFilmLogOverlayPanel(filmPanel), 280, 240);
             });
         }
@@ -178,7 +178,7 @@ public class UIMainMenuBar extends UIElement
 
     private void buildHelpMenu(ContextMenuManager menu)
     {
-        menu.action(Icons.HELP, L10n.lang("bbs.ui.raw.about"), () -> UIOverlay.addOverlay(this.getContext(), new UIAboutOverlayPanel(L10n.lang("bbs.ui.raw.about"), this.dashboard), 560, 440));
+        menu.action(Icons.HELP, UIKeys.RAW_ABOUT, () -> UIOverlay.addOverlay(this.getContext(), new UIAboutOverlayPanel(UIKeys.RAW_ABOUT, this.dashboard), 560, 440));
     }
 
     private void buildWindowMenu(ContextMenuManager menu)
@@ -197,7 +197,7 @@ public class UIMainMenuBar extends UIElement
             {
                 panel.setRightVisible(!panel.isRightVisible());
             });
-            menu.action(Icons.REFRESH, L10n.lang("bbs.ui.dashboard.menu.reset_layout"), panel::resetLayout);
+            menu.action(Icons.REFRESH, UIKeys.DASHBOARD_MENU_RESET_LAYOUT, panel::resetLayout);
         }
         else if (this.dashboard.panels.panel instanceof UITriggerBlockPanel trigger)
         {
@@ -226,7 +226,7 @@ public class UIMainMenuBar extends UIElement
             }
 
             menu.action(new ContextSeparatorAction());
-            menu.action(Icons.REFRESH, L10n.lang("bbs.ui.dashboard.menu.reset_layout"), film::resetLayout);
+            menu.action(Icons.REFRESH, UIKeys.DASHBOARD_MENU_RESET_LAYOUT, film::resetLayout);
             menu.action(film.isLayoutLocked() ? Icons.LOCKED : Icons.UNLOCKED, film.isLayoutLocked() ? UIKeys.FILM_LAYOUT_UNLOCK : UIKeys.FILM_LAYOUT_LOCK, film::toggleLayoutLockFromMenu);
             menu.action(Icons.SAVED, UIKeys.FILM_LAYOUT_PRESETS, () ->
             {
@@ -238,7 +238,7 @@ public class UIMainMenuBar extends UIElement
         }
         else
         {
-            menu.action(Icons.NONE, L10n.lang("bbs.ui.dashboard.menu.no_windows"), () -> {});
+            menu.action(Icons.NONE, UIKeys.DASHBOARD_MENU_NO_WINDOWS, () -> {});
         }
     }
 
@@ -262,7 +262,7 @@ public class UIMainMenuBar extends UIElement
         {
             if (RecentAssetsTracker.RECENT.isEmpty())
             {
-                menu.action(Icons.NONE, L10n.lang("bbs.ui.raw.no_recent_assets"), () -> {});
+                menu.action(Icons.NONE, UIKeys.RAW_NO_RECENT_ASSETS, () -> {});
                 return;
             }
 
@@ -310,7 +310,7 @@ public class UIMainMenuBar extends UIElement
 
     private void openOpenPopup()
     {
-        UIOverlay.addOverlay(this.getContext(), new UIOpenAssetOverlayPanel(L10n.lang("bbs.ui.raw.open_asset"), this.dashboard), 520, 320);
+        UIOverlay.addOverlay(this.getContext(), new UIOpenAssetOverlayPanel(UIKeys.RAW_OPEN_ASSET, this.dashboard), 520, 320);
     }
 
     private void triggerKey(KeyCombo combo)

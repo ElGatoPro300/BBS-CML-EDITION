@@ -1290,7 +1290,7 @@ public class UIReplaysEditor extends UIElement
                 boolean worldExpanded = !this.collapsedModelTracks.getOrDefault(worldKey, false);
                 UIKeyframeSheet worldHeader = UIKeyframeSheet.groupHeader(
                     "__group__" + worldKey,
-                    L10n.lang("bbs.ui.film.replay.world"),
+                    UIKeys.FILM_REPLAY_WORLD,
                     Colors.LIGHTEST_GRAY & Colors.RGB,
                     worldKey,
                     worldExpanded,
@@ -1307,7 +1307,7 @@ public class UIReplaysEditor extends UIElement
                 boolean modelPropsExpanded = !this.collapsedModelTracks.getOrDefault(modelPropsKey, false);
                 UIKeyframeSheet modelPropsHeader = UIKeyframeSheet.groupHeader(
                     "__group__" + modelPropsKey,
-                    L10n.lang("bbs.ui.film.replay.model"),
+                    UIKeys.FILM_REPLAY_MODEL,
                     Colors.LIGHTEST_GRAY & Colors.RGB,
                     modelPropsKey,
                     modelPropsExpanded,

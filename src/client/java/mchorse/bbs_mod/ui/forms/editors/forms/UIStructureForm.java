@@ -3,6 +3,7 @@ package mchorse.bbs_mod.ui.forms.editors.forms;
 import mchorse.bbs_mod.forms.forms.StructureForm;
 import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
+import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.forms.editors.panels.UIStructureFormPanel;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 
@@ -15,7 +16,7 @@ public class UIStructureForm extends UIForm<StructureForm>
         this.defaultPanel = new UIStructureFormPanel(this);
 
         /* Usar el icono de árbol para estructuras */
-        this.registerPanel(this.defaultPanel, L10n.lang("bbs.ui.raw.structure"), Icons.TREE);
+        this.registerPanel(this.defaultPanel, UIKeys.RAW_STRUCTURE, Icons.TREE);
         this.registerDefaultPanels();
     }
 }

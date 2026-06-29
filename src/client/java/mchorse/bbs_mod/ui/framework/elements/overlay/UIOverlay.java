@@ -220,7 +220,7 @@ public class UIOverlay extends UIElement
                 /* Fast start on first frame */
                 this.openTransition = 0.01F;
             }
-            this.openTransition += (target - this.openTransition) * 0.2F;
+            this.openTransition += (target - this.openTransition) * 0.25F;
         }
 
         if (this.closing && this.openTransition <= 0.01F)
