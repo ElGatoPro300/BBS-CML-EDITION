@@ -8,11 +8,14 @@ import mchorse.bbs_mod.settings.Settings;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.settings.values.core.ValueGroup;
 import mchorse.bbs_mod.settings.values.numeric.ValueInt;
+import mchorse.bbs_mod.settings.values.ui.ValueVideoSettings;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.UIContext;
+import mchorse.bbs_mod.ui.framework.elements.IUIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIScrollView;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIClickable;
+import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.input.text.UITextbox;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
@@ -186,6 +189,23 @@ public class UISettingsOverlayPanel extends UIOverlayPanel
         this.refresh();
     }
 
+    public void selectCategory(String categoryId)
+    {
+        for (IUIElement element : this.sidebar.getChildren())
+        {
+            if (element instanceof UISettingsTab)
+            {
+                UISettingsTab tab = (UISettingsTab) element;
+
+                if (categoryId.equals(tab.categoryId))
+                {
+                    this.selectCategory(categoryId, tab);
+                    break;
+                }
+            }
+        }
+    }
+
     public void selectKeybinds(UISettingsTab tab)
     {
         this.settings = BBSMod.getSettings().modules.get("keybinds");
@@ -245,9 +265,62 @@ public class UISettingsOverlayPanel extends UIOverlayPanel
             );
 
             UILabel label = UI.label(L10n.lang(catTitleKey)).labelAnchor(0, 1).color(0xff000000 | BBSSettings.primaryColor.get()).background(() -> 0xFF1A1A22);
-            List<UIElement> options = new ArrayList<>();
-
             label.tooltip(L10n.lang(catTooltipKey), Direction.BOTTOM);
+
+            if (category.getId().equals("video"))
+            {
+                label.h(20);
+
+                UIIcon flip = new UIIcon(Icons.REFRESH, (b) ->
+                {
+                    ValueVideoSettings videoSettings = BBSSettings.videoSettings;
+                    int w = videoSettings.width.get();
+                    int h = videoSettings.height.get();
+                    videoSettings.width.set(h);
+                    videoSettings.height.set(w);
+                });
+                flip.tooltip(IKey.raw("Intercambiar resolución"), Direction.LEFT);
+                flip.relative(label).x(1F, -40).y(0).w(20).h(20);
+
+                UIIcon presets = new UIIcon(Icons.FILM, (b) ->
+                {
+                    this.getContext().replaceContextMenu((menu) ->
+                    {
+                        ValueVideoSettings videoSettings = BBSSettings.videoSettings;
+                        menu.action(Icons.FILM, UIKeys.VIDEO_SETTINGS_PRESETS_720p, () ->
+                        {
+                            videoSettings.width.set(1280);
+                            videoSettings.height.set(720);
+                        });
+                        menu.action(Icons.FILM, UIKeys.VIDEO_SETTINGS_PRESETS_1080P, () ->
+                        {
+                            videoSettings.width.set(1920);
+                            videoSettings.height.set(1080);
+                        });
+                        menu.action(Icons.FILM, UIKeys.VIDEO_SETTINGS_PRESETS_SHORTS_1080P, () ->
+                        {
+                            videoSettings.width.set(1080);
+                            videoSettings.height.set(1920);
+                        });
+                        menu.action(Icons.FILM, UIKeys.VIDEO_SETTINGS_PRESETS_1440P, () ->
+                        {
+                            videoSettings.width.set(2560);
+                            videoSettings.height.set(1440);
+                        });
+                        menu.action(Icons.FILM, UIKeys.VIDEO_SETTINGS_PRESETS_4K, () ->
+                        {
+                            videoSettings.width.set(3840);
+                            videoSettings.height.set(2160);
+                        });
+                    });
+                });
+                presets.tooltip(UIKeys.GENERAL_PRESETS, Direction.LEFT);
+                presets.relative(label).x(1F, -20).y(0).w(20).h(20);
+
+                label.add(flip, presets);
+            }
+
+            List<UIElement> options = new ArrayList<>();
 
             for (BaseValue value : category.getAll())
             {

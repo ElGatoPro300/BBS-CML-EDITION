@@ -10,6 +10,8 @@ import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 
+import java.util.List;
+
 public abstract class UICRUDDashboardPanel extends UISidebarDashboardPanel
 {
     public UIIcon openOverlay;
@@ -32,7 +34,7 @@ public abstract class UICRUDDashboardPanel extends UISidebarDashboardPanel
         {
             if (this.getContext() != null)
             {
-                java.util.List<UIOpenAssetOverlayPanel> overlays = this.getContext().menu.overlay.getChildren(UIOpenAssetOverlayPanel.class);
+                List<UIOpenAssetOverlayPanel> overlays = this.getContext().menu.overlay.getChildren(UIOpenAssetOverlayPanel.class);
 
                 if (!overlays.isEmpty())
                 {
