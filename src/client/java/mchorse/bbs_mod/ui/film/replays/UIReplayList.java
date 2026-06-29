@@ -282,10 +282,10 @@ public class UIReplayList extends UIList<Replay> {
     private void openCopyKeyframesMenu() {
         this.getContext().replaceContextMenu((sub) -> {
             sub.autoKeys();
-            sub.action(Icons.POSE, L10n.lang("bbs.ui.film.replay.copy_poses"), () -> this.copyKeyframesFiltered(KeyframeFactories.POSE));
-            sub.action(Icons.ALL_DIRECTIONS, L10n.lang("bbs.ui.film.replay.copy_transforms"), () -> this.copyKeyframesFiltered(KeyframeFactories.TRANSFORM));
-            sub.action(Icons.IMAGE, L10n.lang("bbs.ui.film.replay.copy_texture"), () -> this.copyKeyframesByPropertySuffixes("texture"));
-            sub.action(Icons.STRUCTURE, L10n.lang("bbs.ui.film.replay.copy_model"), () -> this.copyKeyframesByPropertySuffixes("model"));
+            sub.action(Icons.POSE, UIKeys.FILM_REPLAY_COPY_POSES, () -> this.copyKeyframesFiltered(KeyframeFactories.POSE));
+            sub.action(Icons.ALL_DIRECTIONS, UIKeys.FILM_REPLAY_COPY_TRANSFORMS, () -> this.copyKeyframesFiltered(KeyframeFactories.TRANSFORM));
+            sub.action(Icons.IMAGE, UIKeys.FILM_REPLAY_COPY_TEXTURE, () -> this.copyKeyframesByPropertySuffixes("texture"));
+            sub.action(Icons.STRUCTURE, UIKeys.FILM_REPLAY_COPY_MODEL, () -> this.copyKeyframesByPropertySuffixes("model"));
         });
     }
 
@@ -1979,7 +1979,7 @@ public class UIReplayList extends UIList<Replay> {
                     }
                 });
 
-        UILabel folderCount = UI.label(L10n.lang("bbs.ui.film.replay.selected").format(0)).background();
+        UILabel folderCount = UI.label(UIKeys.FILM_REPLAY_SELECTED.format(0)).background();
         UIStringList folderList = new UIStringList((l) -> {
         });
         folderList.background().h(60);
@@ -2072,7 +2072,7 @@ public class UIReplayList extends UIList<Replay> {
             if (skinsFolder == null || !skinsFolder.exists() || !skinsFolder.isDirectory()) {
                 UIOverlay.addOverlay(this.getContext(),
                         new UIMessageOverlayPanel(UIKeys.GENERAL_ERROR,
-                                L10n.lang("bbs.ui.film.replay.error_not_directory")));
+                                UIKeys.FILM_REPLAY_ERROR_NOT_DIRECTORY));
                 return;
             }
 
@@ -2090,7 +2090,7 @@ public class UIReplayList extends UIList<Replay> {
         if (skinFiles.isEmpty()) {
             UIOverlay.addOverlay(this.getContext(),
                     new UIMessageOverlayPanel(UIKeys.GENERAL_ERROR,
-                            L10n.lang("bbs.ui.film.replay.error_no_png")));
+                            UIKeys.FILM_REPLAY_ERROR_NO_PNG));
             return;
         }
 
@@ -2156,7 +2156,7 @@ public class UIReplayList extends UIList<Replay> {
         if (successCount == 0) {
             UIOverlay.addOverlay(this.getContext(),
                     new UIMessageOverlayPanel(UIKeys.GENERAL_ERROR,
-                            L10n.lang("bbs.ui.film.replay.error_skins_folder_assets")));
+                            UIKeys.FILM_REPLAY_ERROR_SKINS_FOLDER_ASSETS));
         }
     }
 
@@ -2173,13 +2173,13 @@ public class UIReplayList extends UIList<Replay> {
         folderList.clear();
 
         if (folders == null || folders.isEmpty()) {
-            folderCount.label = L10n.lang("bbs.ui.film.replay.selected").format(0);
+            folderCount.label = UIKeys.FILM_REPLAY_SELECTED.format(0);
             folderList.add("<none>");
             removeButton.setEnabled(false);
             return;
         }
 
-        folderCount.label = L10n.lang("bbs.ui.film.replay.selected").format(folders.size());
+        folderCount.label = UIKeys.FILM_REPLAY_SELECTED.format(folders.size());
         removeButton.setEnabled(true);
 
         for (File folder : folders) {

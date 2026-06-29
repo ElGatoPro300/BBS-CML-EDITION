@@ -28,6 +28,7 @@ import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.settings.values.core.ValuePose;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
+import mchorse.bbs_mod.ui.framework.elements.utils.UILoader;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.StringUtils;
@@ -358,6 +359,16 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
             DiffuseLighting.disableGuiDepthLighting();
             RenderSystem.depthFunc(GL11.GL_ALWAYS);
+        }
+        else
+        {
+            String modelId = this.form.model.get();
+            if (modelId != null && BBSModClient.getModels().isLoading(modelId))
+            {
+                float cx = x1 + (x2 - x1) / 2.0F;
+                float cy = y1 + (y2 - y1) / 2.0F;
+                UILoader.draw(context, cx, cy, 1.25F, null);
+            }
         }
     }
 

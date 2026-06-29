@@ -72,9 +72,9 @@ public class UIChalkboard extends UIElement
 
         this.keys().register(Keys.DELETE, this::clear).active(() -> this.isChalkEnabled);
         this.keys().register(new KeyCombo("", UIKeys.PANELS_KEYS_TOGGLE_CHALKBOARD, GLFW.GLFW_KEY_F10), this::toggleChalk);
-        this.keys().register(new KeyCombo("undo", L10n.lang("bbs.ui.raw.undo"), GLFW.GLFW_KEY_Z, GLFW.GLFW_KEY_LEFT_CONTROL), this::undo).active(() -> this.isChalkEnabled);
-        this.keys().register(new KeyCombo("redo", L10n.lang("bbs.ui.raw.redo"), GLFW.GLFW_KEY_Y, GLFW.GLFW_KEY_LEFT_CONTROL), this::redo).active(() -> this.isChalkEnabled);
-        this.keys().register(new KeyCombo("line_mode", L10n.lang("bbs.ui.raw.line_mode"), GLFW.GLFW_KEY_L), () -> this.lineMode = !this.lineMode).active(() -> this.isChalkEnabled);
+        this.keys().register(new KeyCombo("undo", UIKeys.RAW_UNDO, GLFW.GLFW_KEY_Z, GLFW.GLFW_KEY_LEFT_CONTROL), this::undo).active(() -> this.isChalkEnabled);
+        this.keys().register(new KeyCombo("redo", UIKeys.RAW_REDO, GLFW.GLFW_KEY_Y, GLFW.GLFW_KEY_LEFT_CONTROL), this::redo).active(() -> this.isChalkEnabled);
+        this.keys().register(new KeyCombo("line_mode", UIKeys.RAW_LINE_MODE, GLFW.GLFW_KEY_L), () -> this.lineMode = !this.lineMode).active(() -> this.isChalkEnabled);
     }
 
     private void clear()

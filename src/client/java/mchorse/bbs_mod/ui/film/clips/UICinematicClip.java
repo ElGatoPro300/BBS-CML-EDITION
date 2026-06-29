@@ -82,7 +82,7 @@ public class UICinematicClip extends UIClip<CinematicClip>
 
         UIKeyframeSheet header = UIKeyframeSheet.groupHeader(
             "__cinematic__" + key,
-            L10n.lang("bbs.ui.camera.clips.bbs:cinematic"),
+            UIKeys.CAMERA_CLIPS_BBS_CINEMATIC,
             COLOR_GRADE,
             key,
             expanded,
@@ -100,7 +100,7 @@ public class UICinematicClip extends UIClip<CinematicClip>
         {
             UIKeyframeSheet shAberration = new UIKeyframeSheet(
                 "aberration",
-                L10n.lang("bbs.ui.camera.clips.channel.aberration"),
+                UIKeys.CAMERA_CLIPS_CHANNEL_ABERRATION,
                 Colors.RED,
                 false,
                 this.clip.aberration,
@@ -112,7 +112,7 @@ public class UICinematicClip extends UIClip<CinematicClip>
 
             UIKeyframeSheet shVHS = new UIKeyframeSheet(
                 "vhs",
-                L10n.lang("bbs.ui.camera.clips.channel.vhs"),
+                UIKeys.CAMERA_CLIPS_CHANNEL_VHS,
                 Colors.GREEN,
                 false,
                 this.clip.vhs,
@@ -124,7 +124,7 @@ public class UICinematicClip extends UIClip<CinematicClip>
 
             UIKeyframeSheet shLensDistortion = new UIKeyframeSheet(
                 "lensDistortion",
-                L10n.lang("bbs.ui.camera.clips.channel.lens_distortion"),
+                UIKeys.CAMERA_CLIPS_CHANNEL_LENS_DISTORTION,
                 Colors.BLUE,
                 false,
                 this.clip.lensDistortion,
@@ -136,7 +136,7 @@ public class UICinematicClip extends UIClip<CinematicClip>
 
             UIKeyframeSheet shVintage = new UIKeyframeSheet(
                 "vintage",
-                L10n.lang("bbs.ui.camera.clips.channel.vintage"),
+                UIKeys.CAMERA_CLIPS_CHANNEL_VINTAGE,
                 Colors.YELLOW,
                 false,
                 this.clip.vintage,
@@ -148,7 +148,7 @@ public class UICinematicClip extends UIClip<CinematicClip>
 
             UIKeyframeSheet shRadialBlur = new UIKeyframeSheet(
                 "radialBlur",
-                L10n.lang("bbs.ui.camera.clips.channel.radial_blur"),
+                UIKeys.CAMERA_CLIPS_CHANNEL_RADIAL_BLUR,
                 Colors.CYAN,
                 false,
                 this.clip.radialBlur,
@@ -160,7 +160,7 @@ public class UICinematicClip extends UIClip<CinematicClip>
 
             UIKeyframeSheet shRain = new UIKeyframeSheet(
                 "rain",
-                L10n.lang("bbs.ui.camera.clips.channel.rain"),
+                UIKeys.CAMERA_CLIPS_CHANNEL_RAIN,
                 0xff5577ff,
                 false,
                 this.clip.rain,
@@ -172,7 +172,7 @@ public class UICinematicClip extends UIClip<CinematicClip>
 
             UIKeyframeSheet shDust = new UIKeyframeSheet(
                 "dust",
-                L10n.lang("bbs.ui.camera.clips.channel.dust"),
+                UIKeys.CAMERA_CLIPS_CHANNEL_DUST,
                 0xffcccccc,
                 false,
                 this.clip.dust,
@@ -184,7 +184,7 @@ public class UICinematicClip extends UIClip<CinematicClip>
 
             UIKeyframeSheet shLightLeak = new UIKeyframeSheet(
                 "lightLeak",
-                L10n.lang("bbs.ui.camera.clips.channel.light_leak"),
+                UIKeys.CAMERA_CLIPS_CHANNEL_LIGHT_LEAK,
                 0xffffa033,
                 false,
                 this.clip.lightLeak,

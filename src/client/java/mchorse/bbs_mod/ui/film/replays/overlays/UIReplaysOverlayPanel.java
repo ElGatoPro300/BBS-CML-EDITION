@@ -119,7 +119,8 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
         {
             this.replays.openFormEditor(this.replays.getCurrent().get(0).form, editing, this.pickEdit::setForm);
         });
-        this.pickEdit.keybinds();
+        this.keys().register(Keys.FORMS_PICK, () -> this.pickEdit.pick.clickItself()).inside();
+        this.keys().register(Keys.FORMS_EDIT, () -> this.pickEdit.edit.clickItself()).inside();
         this.pickEdit.pick.tooltip(UIKeys.SCENE_REPLAYS_CONTEXT_PICK_FORM);
         this.pickEdit.edit.tooltip(UIKeys.SCENE_REPLAYS_CONTEXT_EDIT_FORM);
         this.enabled = new UIToggle(UIKeys.CAMERA_PANELS_ENABLED, (b) ->
