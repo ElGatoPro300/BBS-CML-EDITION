@@ -440,9 +440,8 @@ public class Gizmo
         GlStateManager._disableDepthTest();
 
         RenderLayers.debugFilledBox().draw(builder.end());
-    }
 
-        RenderSystem.depthMask(true);
+        GlStateManager._depthMask(true);
     }
 
     public static enum Mode
