@@ -194,7 +194,7 @@ public class Gizmo
 
     private void drawAxes(MatrixStack stack, float axisSize, float axisOffset, float outlineSize, float outlineOffset)
     {
-        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
+        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
         Matrix4f inv = new Matrix4f(stack.peek().getPositionMatrix()).invert();
         Vector4f camPos = new Vector4f(0, 0, 0, 1).mul(inv);
         double dist = Math.sqrt(camPos.x * camPos.x + camPos.y * camPos.y + camPos.z * camPos.z);
@@ -367,7 +367,7 @@ public class Gizmo
 
     private void drawAxes(MatrixStack stack, StencilMap map, float axisSize, float axisOffset)
     {
-        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
+        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
         Matrix4f inv = new Matrix4f(stack.peek().getPositionMatrix()).invert();
         Vector4f camPos = new Vector4f(0, 0, 0, 1).mul(inv);
         double dist = Math.sqrt(camPos.x * camPos.x + camPos.y * camPos.y + camPos.z * camPos.z);
