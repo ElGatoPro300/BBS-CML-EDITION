@@ -254,9 +254,9 @@ public class UIHomePanel extends UIDashboardPanel
         );
 
         this.homePage.relative(this).x(0.5F, -250).y(0).w(500).h(1F);
-        this.homeActionsPanel.relative(this.homePage).x(0).y(HOME_BANNER_HEIGHT + 20).w(0.35F).h(1F, -(HOME_BANNER_HEIGHT + 20 + 44)).column(0).vertical().stretch();
+        this.homeActionsPanel.relative(this.homePage).x(0).y(HOME_BANNER_HEIGHT + 20).w(0.35F).h(1F, -(HOME_BANNER_HEIGHT + 20 + 10)).column(0).vertical().stretch();
         this.panelSwitcher.relative(this.homePage).x(0.5F, -87).y(1F, -32).w(175).h(24);
-        this.homeRecentSearch.relative(this.homePage).x(0.35F).y(HOME_BANNER_HEIGHT + 20).w(0.65F).h(1F, -(HOME_BANNER_HEIGHT + 20 + 44));
+        this.homeRecentSearch.relative(this.homePage).x(0.35F).y(HOME_BANNER_HEIGHT + 20).w(0.65F).h(1F, -(HOME_BANNER_HEIGHT + 20 + 10));
         this.homeRecentSearch.search.w(1F, -25);
         this.homeMosaic.relative(this.homeRecentSearch).x(0).y(20).w(1F).h(1F, -20);
         this.homeViewToggle.relative(this.homeRecentSearch).x(1F, -22).y(0).w(20).h(20);
