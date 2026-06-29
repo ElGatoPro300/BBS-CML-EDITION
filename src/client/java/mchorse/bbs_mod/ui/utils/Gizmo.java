@@ -198,7 +198,7 @@ public class Gizmo
         Vector4f camPos = new Vector4f(0, 0, 0, 1).mul(inv);
         double dist = Math.sqrt(camPos.x * camPos.x + camPos.y * camPos.y + camPos.z * camPos.z);
         float axesScale = BBSSettings.axesScale == null ? 1F : BBSSettings.axesScale.get();
-        float scale = (float) (0.4F * Math.max(0.5D, dist * 0.12D) * axesScale);
+        float scale = (float) (1.4F * Math.max(0.5D, dist * 0.12D) * axesScale);
 
         axisSize = 0.30F * scale;
         axisOffset = 0.012F * scale;
@@ -349,9 +349,11 @@ public class Gizmo
 
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
         RenderSystem.depthFunc(GL11.GL_ALWAYS);
+        RenderSystem.depthMask(false);
 
         BufferRenderer.drawWithGlobalProgram(builder.end());
 
+        RenderSystem.depthMask(true);
         RenderSystem.depthFunc(GL11.GL_LEQUAL);
     }
 
@@ -372,7 +374,7 @@ public class Gizmo
         Vector4f camPos = new Vector4f(0, 0, 0, 1).mul(inv);
         double dist = Math.sqrt(camPos.x * camPos.x + camPos.y * camPos.y + camPos.z * camPos.z);
         float axesScale = BBSSettings.axesScale == null ? 1F : BBSSettings.axesScale.get();
-        float scale = (float) (0.4F * Math.max(0.5D, dist * 0.12D) * axesScale);
+        float scale = (float) (1.4F * Math.max(0.5D, dist * 0.12D) * axesScale);
 
         axisSize = 0.30F * scale;
         axisOffset = 0.012F * scale;
@@ -440,8 +442,11 @@ public class Gizmo
 
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
         RenderSystem.disableDepthTest();
+        RenderSystem.depthMask(false);
 
         BufferRenderer.drawWithGlobalProgram(builder.end());
+
+        RenderSystem.depthMask(true);
     }
 
     public static enum Mode
