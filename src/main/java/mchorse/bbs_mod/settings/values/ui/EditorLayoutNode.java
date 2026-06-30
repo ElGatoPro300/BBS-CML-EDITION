@@ -69,6 +69,32 @@ public abstract class EditorLayoutNode
         );
     }
 
+    /**
+     * Default particle layout: the section-group tabs stacked across the top, with the bottom split
+     * between the preview (left) and the MoLang editor (right).
+     */
+    public static EditorLayoutNode defaultParticleLayout()
+    {
+        List<EditorLayoutNode> tabs = new ArrayList<>();
+
+        tabs.add(new PanelNode("general"));
+        tabs.add(new PanelNode("emitter"));
+        tabs.add(new PanelNode("particle"));
+        tabs.add(new PanelNode("appearance"));
+
+        return new SplitterNode(
+            false,
+            0.22446808F,
+            new TabbedNode(tabs, 0),
+            new SplitterNode(
+                true,
+                0.7408994F,
+                new PanelNode("preview"),
+                new PanelNode("molang")
+            )
+        );
+    }
+
     public static EditorLayoutNode copyWithRemovedLeaf(EditorLayoutNode root, String panelId)
     {
         if (root == null || panelId == null || panelId.isEmpty())
@@ -137,6 +163,68 @@ public abstract class EditorLayoutNode
 
         EditorLayoutNode rebuilt = model.toRoot();
         return rebuilt == null ? root : rebuilt;
+    }
+
+    public static EditorLayoutNode copyWithStackActivePanel(EditorLayoutNode root, String panelId, String activePanelId)
+    {
+        if (root == null || panelId == null || activePanelId == null)
+        {
+            return root;
+        }
+
+        if (root instanceof TabbedNode)
+        {
+            TabbedNode tabbed = (TabbedNode) root;
+
+            int panelIndex = -1;
+            int activeIndex = -1;
+
+            for (int i = 0; i < tabbed.tabs.size(); i++)
+            {
+                EditorLayoutNode tab = tabbed.tabs.get(i);
+                if (tab instanceof PanelNode)
+                {
+                    String id = ((PanelNode) tab).getPanelId();
+                    if (id.equals(panelId))
+                    {
+                        panelIndex = i;
+                    }
+                    if (id.equals(activePanelId))
+                    {
+                        activeIndex = i;
+                    }
+                }
+            }
+
+            if (panelIndex != -1 && activeIndex != -1)
+            {
+                if (tabbed.activeTab == activeIndex)
+                {
+                    return root;
+                }
+
+                return new TabbedNode(tabbed.tabs, activeIndex);
+            }
+        }
+
+        if (root instanceof SplitterNode)
+        {
+            SplitterNode splitter = (SplitterNode) root;
+
+            EditorLayoutNode first = copyWithStackActivePanel(splitter.first, panelId, activePanelId);
+            if (first != splitter.first)
+            {
+                return new SplitterNode(splitter.horizontal, splitter.ratio, first, splitter.second);
+            }
+
+            EditorLayoutNode second = copyWithStackActivePanel(splitter.second, panelId, activePanelId);
+            if (second != splitter.second)
+            {
+                return new SplitterNode(splitter.horizontal, splitter.ratio, splitter.first, second);
+            }
+        }
+
+        return root;
     }
 
     public static void collectSplitters(EditorLayoutNode node, List<SplitterNode> out)
