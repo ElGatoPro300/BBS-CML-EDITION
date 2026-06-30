@@ -763,7 +763,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
             {
                 boolean shaders = BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld();
                 RenderLayer fluidLayer = shaders
-                    ? RenderLayers.getEntityBlockLayer(entry.state, false)
+                    ? RenderLayers.getEntityBlockLayer(entry.state)
                     : RenderLayers.getFluidLayer(entry.state.getFluidState());
                 VertexConsumer fluidVc = consumers.getBuffer(fluidLayer);
                 if (recolor != null)
@@ -908,7 +908,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
             {
                 boolean shaders = BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld();
                 RenderLayer fluidLayer = shaders
-                    ? RenderLayers.getEntityBlockLayer(entry.state, false)
+                    ? RenderLayers.getEntityBlockLayer(entry.state)
                     : RenderLayers.getFluidLayer(entry.state.getFluidState());
                 VertexConsumer fluidVc = consumers.getBuffer(fluidLayer);
                 if (recolor != null)
