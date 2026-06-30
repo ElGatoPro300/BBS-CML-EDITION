@@ -12,6 +12,7 @@ import mchorse.bbs_mod.settings.values.core.ValueGroup;
 import mchorse.bbs_mod.settings.values.numeric.ValueInt;
 import mchorse.bbs_mod.settings.values.ui.ValueVideoSettings;
 import mchorse.bbs_mod.ui.UIKeys;
+import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanels;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.IUIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
@@ -492,7 +493,11 @@ public class UISettingsOverlayPanel extends UIOverlayPanel
 
             if (this.selected)
             {
-                context.batcher.box(this.area.x + 2, this.area.y, this.area.x + 5, this.area.ey(), 0xFF1976D2);
+                UIDashboardPanels.renderHighlight(context.batcher, this.area, Direction.LEFT);
+            }
+            else if (this.hover)
+            {
+                this.area.render(context.batcher, Colors.setA(Colors.WHITE, 0.1F));
             }
 
             int textX = this.area.x + 8;
