@@ -2199,7 +2199,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     public boolean isWindowPanelVisible(String panelId)
     {
-        return panelId != null && !this.hiddenPanels.contains(panelId);
+        if (panelId == null)
+        {
+            return false;
+        }
+        return this.floatingPanels.contains(panelId) || this.hasPanelInLayout(BBSSettings.editorLayoutSettings.getFilmLayoutRoot(), panelId);
     }
 
     public void setWindowPanelVisible(String panelId, boolean visible)
