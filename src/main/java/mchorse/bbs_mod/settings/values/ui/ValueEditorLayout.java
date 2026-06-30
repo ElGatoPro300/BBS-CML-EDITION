@@ -7,6 +7,7 @@ import mchorse.bbs_mod.utils.MathUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 
 public class ValueEditorLayout extends BaseValue
 {
@@ -26,6 +27,8 @@ public class ValueEditorLayout extends BaseValue
     private float mainSizeV = 0.66F;
     private float editorSizeH = 0.5F;
     private float editorSizeV = 0.5F;
+    private EditorLayoutNode particleLayoutRoot = EditorLayoutNode.defaultParticleLayout();
+    private final List<EditorLayoutNode.SplitterNode> particleSplitters = new ArrayList<>();
     private float stateEditorSizeH = 0.7F;
     private float stateEditorSizeV = 0.25F;
     private boolean middleLayoutInverted;
@@ -41,6 +44,7 @@ public class ValueEditorLayout extends BaseValue
     {
         super(id);
         this.rebuildFilmSplitters();
+        this.rebuildParticleSplitters();
     }
 
     public EditorLayoutNode getFilmLayoutRoot()
@@ -377,6 +381,42 @@ public class ValueEditorLayout extends BaseValue
         return this.horizontalLayoutInverted;
     }
 
+    /* Particle editor layout (separate tree from the film editors). */
+
+    public EditorLayoutNode getParticleLayoutRoot()
+    {
+        return this.particleLayoutRoot;
+    }
+
+    public void setParticleLayoutRoot(EditorLayoutNode root)
+    {
+        BaseValue.edit(this, (v) ->
+        {
+            this.particleLayoutRoot = root == null ? EditorLayoutNode.defaultParticleLayout() : root;
+            this.rebuildParticleSplitters();
+        });
+    }
+
+    public List<EditorLayoutNode.SplitterNode> getParticleSplitters()
+    {
+        return this.particleSplitters;
+    }
+
+    public List<EditorLayoutNode.SplitterNode> getParticleSplittersForWrite()
+    {
+        return this.particleSplitters;
+    }
+
+    public void setParticleSplitterRatio(int index, float ratio)
+    {
+        if (index < 0 || index >= this.particleSplitters.size())
+        {
+            return;
+        }
+        int i = index;
+        BaseValue.edit(this, (v) -> this.particleSplitters.get(i).setRatio(MathUtils.clamp(ratio, 0.05F, 0.95F)));
+    }
+
     @Override
     public BaseType toData()
     {
@@ -398,6 +438,7 @@ public class ValueEditorLayout extends BaseValue
         data.putBool("vertical_layout_inverted", this.verticalLayoutInverted);
         data.putBool("horizontal_layout_inverted", this.horizontalLayoutInverted);
         data.put("film_layout", this.filmLayoutRoot.toData());
+        data.put("particle_layout", this.particleLayoutRoot.toData());
         /* data.putFloat("new_film_sidebar_size", this.newFilmSidebarSize);
         data.putFloat("new_film_main_size_h", this.newFilmMainSizeH);
         data.putInt("film_layout_mode", this.filmLayoutMode); */
@@ -445,6 +486,16 @@ public class ValueEditorLayout extends BaseValue
                 this.filmLayoutRoot = this.buildFilmLayoutFromLegacyState();
             }
             this.rebuildFilmSplitters();
+
+            if (map.has("particle_layout"))
+            {
+                this.particleLayoutRoot = EditorLayoutNode.fromData(map.get("particle_layout"));
+            }
+            else
+            {
+                this.particleLayoutRoot = EditorLayoutNode.defaultParticleLayout();
+            }
+            this.rebuildParticleSplitters();
             /* this.newFilmSidebarSize = map.getFloat("new_film_sidebar_size", 0.25F);
             this.newFilmMainSizeH = map.getFloat("new_film_main_size_h", 0.5F);
             this.filmLayoutMode = map.getInt("film_layout_mode", 0); */
@@ -471,5 +522,16 @@ public class ValueEditorLayout extends BaseValue
         }
 
         return layout;
+    }
+
+    private void rebuildParticleSplitters()
+    {
+        if (this.particleLayoutRoot == null)
+        {
+            this.particleLayoutRoot = EditorLayoutNode.defaultParticleLayout();
+        }
+
+        this.particleSplitters.clear();
+        EditorLayoutNode.collectSplitters(this.particleLayoutRoot, this.particleSplitters);
     }
 }
