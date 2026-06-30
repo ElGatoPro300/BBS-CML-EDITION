@@ -149,6 +149,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 {
     private RunnerCameraController runner;
     private boolean lastRunning;
+    private boolean clearingSelections;
     private final Position position = new Position(0, 0, 0, 0, 0);
     private final Position lastPosition = new Position(0, 0, 0, 0, 0);
 
@@ -309,7 +310,15 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.editArea = new UIElement();
         this.cameraEditArea = new UIElement();
         this.actionEditArea = new UIElement();
-        this.unifiedEditArea = new UIElement();
+        this.unifiedEditArea = new UIElement()
+        {
+            @Override
+            public void add(IUIElement element)
+            {
+                this.removeAll();
+                super.add(element);
+            }
+        };
         this.preview = event.createPreview(this);
 
         this.draggableMain = new UIDraggable((context) ->
@@ -1927,8 +1936,42 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         return false;
     }
 
+    public void clearSelectionsExcept(String timelineId)
+    {
+        if (this.clearingSelections)
+        {
+            return;
+        }
+
+        if (this.shouldRedirectProperties())
+        {
+            this.clearingSelections = true;
+            try
+            {
+                if (!"cameraTimeline".equals(timelineId) && this.cameraEditor != null && this.cameraEditor.clips != null)
+                {
+                    this.cameraEditor.clips.pickClip(null);
+                }
+                if (!"actionTimeline".equals(timelineId) && this.actionEditor != null && this.actionEditor.clips != null)
+                {
+                    this.actionEditor.clips.pickClip(null);
+                }
+                if (!"replayTimeline".equals(timelineId) && this.replayEditor != null)
+                {
+                    this.replayEditor.clearSelection();
+                }
+            }
+            finally
+            {
+                this.clearingSelections = false;
+            }
+        }
+    }
+
     public void focusLinkedPropertiesTab(String panelId)
     {
+        this.clearSelectionsExcept(panelId);
+
         String linkedPanelId = this.getLinkedPropertiesPanelId(panelId);
 
         if (linkedPanelId == null)
