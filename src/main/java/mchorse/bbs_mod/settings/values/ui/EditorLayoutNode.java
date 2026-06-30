@@ -77,20 +77,21 @@ public abstract class EditorLayoutNode
     {
         List<EditorLayoutNode> tabs = new ArrayList<>();
 
-        tabs.add(new PanelNode("sectionsGeneral"));
-        tabs.add(new PanelNode("sectionsAppearance"));
-        tabs.add(new PanelNode("sectionsLifetime"));
-        tabs.add(new PanelNode("sectionsExpiration"));
-        tabs.add(new PanelNode("sectionsRate"));
-        tabs.add(new PanelNode("sectionsShape"));
-        tabs.add(new PanelNode("sectionsMotion"));
-        tabs.add(new PanelNode("sectionsLighting"));
+        tabs.add(new PanelNode("general"));
+        tabs.add(new PanelNode("emitter"));
+        tabs.add(new PanelNode("particle"));
+        tabs.add(new PanelNode("appearance"));
 
         return new SplitterNode(
             false,
-            0.22F,
+            0.22446808F,
             new TabbedNode(tabs, 0),
-            new PanelNode("preview")
+            new SplitterNode(
+                true,
+                0.7408994F,
+                new PanelNode("preview"),
+                new PanelNode("molang")
+            )
         );
     }
 
