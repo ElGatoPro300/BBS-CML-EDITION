@@ -232,6 +232,11 @@ public class UIPropTransform extends UITransform
 
     public void setTransform(Transform transform)
     {
+        if (this.getContext() != null)
+        {
+            this.getContext().unfocus();
+        }
+
         if (transform == null)
         {
             return;
