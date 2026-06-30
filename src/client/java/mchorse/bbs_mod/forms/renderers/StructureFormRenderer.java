@@ -749,12 +749,16 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
 
             if (!entry.state.getFluidState().isEmpty())
             {
-                VertexConsumer fluidVc = consumers.getBuffer(RenderLayers.getFluidLayer(entry.state.getFluidState()));
+                boolean shaders = BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld();
+                RenderLayer fluidLayer = shaders
+                    ? RenderLayers.getEntityBlockLayer(entry.state, false)
+                    : RenderLayers.getFluidLayer(entry.state.getFluidState());
+                VertexConsumer fluidVc = consumers.getBuffer(fluidLayer);
                 if (recolor != null)
                 {
                     fluidVc = recolor.apply(fluidVc);
                 }
-                fluidVc = new TransformingVertexConsumer(fluidVc, stack.peek(), entry.pos);
+                fluidVc = new TransformingVertexConsumer(fluidVc, stack.peek(), entry.pos, shaders);
                 MinecraftClient.getInstance().getBlockRenderManager().renderFluid(entry.pos, info.view, fluidVc, entry.state, entry.state.getFluidState());
             }
             if (entry.state.getRenderType() != BlockRenderType.INVISIBLE)
@@ -886,12 +890,16 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
 
             if (!entry.state.getFluidState().isEmpty())
             {
-                VertexConsumer fluidVc = consumers.getBuffer(RenderLayers.getFluidLayer(entry.state.getFluidState()));
+                boolean shaders = BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld();
+                RenderLayer fluidLayer = shaders
+                    ? RenderLayers.getEntityBlockLayer(entry.state, false)
+                    : RenderLayers.getFluidLayer(entry.state.getFluidState());
+                VertexConsumer fluidVc = consumers.getBuffer(fluidLayer);
                 if (recolor != null)
                 {
                     fluidVc = recolor.apply(fluidVc);
                 }
-                fluidVc = new TransformingVertexConsumer(fluidVc, stack.peek(), entry.pos);
+                fluidVc = new TransformingVertexConsumer(fluidVc, stack.peek(), entry.pos, shaders);
                 MinecraftClient.getInstance().getBlockRenderManager().renderFluid(entry.pos, info.view, fluidVc, entry.state, entry.state.getFluidState());
             }
             if (entry.state.getRenderType() != BlockRenderType.INVISIBLE)
@@ -1690,13 +1698,15 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
         private final Matrix4f positionMatrix;
         private final Matrix3f normalMatrix;
         private final BlockPos offset;
+        private final boolean injectOverlay;
 
-        public TransformingVertexConsumer(VertexConsumer parent, MatrixStack.Entry entry, BlockPos offset)
+        public TransformingVertexConsumer(VertexConsumer parent, MatrixStack.Entry entry, BlockPos offset, boolean injectOverlay)
         {
             this.parent = parent;
             this.positionMatrix = new Matrix4f(entry.getPositionMatrix());
             this.normalMatrix = new Matrix3f(entry.getNormalMatrix());
             this.offset = offset;
+            this.injectOverlay = injectOverlay;
         }
 
         @Override
@@ -1738,6 +1748,10 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
         @Override
         public VertexConsumer light(int u, int v)
         {
+            if (this.injectOverlay)
+            {
+                this.parent.overlay(0, 10);
+            }
             this.parent.light(u, v);
             return this;
         }
