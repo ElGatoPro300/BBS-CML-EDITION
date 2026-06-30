@@ -780,6 +780,10 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
 
                 if (be != null)
                 {
+                    if (entry.nbt != null)
+                    {
+                        be.readNbt(entry.nbt);
+                    }
                     /* Associate real world so renderer can query light and effects */
                     if (MinecraftClient.getInstance().world != null)
                     {
@@ -1063,6 +1067,10 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
 
             if (be != null)
             {
+                if (entry.nbt != null)
+                {
+                    be.readNbt(entry.nbt);
+                }
                 BlockEntityRenderer<?> renderer;
                 int skyLight;
                 int blockLight;
@@ -1548,7 +1556,8 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
                         continue;
                     }
 
-                    BlockEntry blockEntry = new BlockEntry(state, pos);
+                    NbtCompound nbt = be.contains("nbt", NbtElement.COMPOUND_TYPE) ? be.getCompound("nbt") : null;
+                    BlockEntry blockEntry = new BlockEntry(state, pos, nbt);
 
                     this.blocks.add(blockEntry);
 
@@ -1684,11 +1693,13 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
     {
         final BlockState state;
         final BlockPos pos;
+        final NbtCompound nbt;
 
-        BlockEntry(BlockState state, BlockPos pos)
+        BlockEntry(BlockState state, BlockPos pos, NbtCompound nbt)
         {
             this.state = state;
             this.pos = pos;
+            this.nbt = nbt;
         }
     }
 
