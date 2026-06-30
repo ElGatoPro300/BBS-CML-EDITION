@@ -8,6 +8,7 @@ import mchorse.bbs_mod.settings.values.IValueNotifier;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.UIContext;
+import mchorse.bbs_mod.ui.framework.elements.IFocusedUIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
 import mchorse.bbs_mod.ui.utils.Gizmo;
@@ -232,9 +233,25 @@ public class UIPropTransform extends UITransform
 
     public void setTransform(Transform transform)
     {
-        if (this.getContext() != null)
+        UIContext context = this.getContext();
+        IFocusedUIElement focused = null;
+
+        if (context != null && context.activeElement != null)
         {
-            this.getContext().unfocus();
+            IFocusedUIElement active = context.activeElement;
+            if (active == this.tx || active == this.ty || active == this.tz ||
+                active == this.sx || active == this.sy || active == this.sz ||
+                active == this.rx || active == this.ry || active == this.rz ||
+                active == this.r2x || active == this.r2y || active == this.r2z ||
+                active == this.px || active == this.py || active == this.pz)
+            {
+                focused = active;
+            }
+        }
+
+        if (context != null)
+        {
+            context.unfocus();
         }
 
         if (transform == null)
@@ -262,6 +279,11 @@ public class UIPropTransform extends UITransform
         this.fillR(MathUtils.toDeg(transform.rotate.x), MathUtils.toDeg(transform.rotate.y), MathUtils.toDeg(transform.rotate.z));
         this.fillR2(MathUtils.toDeg(transform.rotate2.x), MathUtils.toDeg(transform.rotate2.y), MathUtils.toDeg(transform.rotate2.z));
         this.fillP(transform.pivot.x, transform.pivot.y, transform.pivot.z);
+
+        if (focused != null && context != null)
+        {
+            context.focus(focused);
+        }
     }
 
     public void setGizmoRayProvider(IGizmoRayProvider provider)
