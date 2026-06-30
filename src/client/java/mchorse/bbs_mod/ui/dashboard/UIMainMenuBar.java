@@ -81,6 +81,7 @@ public class UIMainMenuBar extends UIElement
     public void render(UIContext context)
     {
         context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xFF141418);
+        context.batcher.box(this.area.x, this.area.ey() - 1, this.area.ex(), this.area.ey(), 0xFF2A2A35);
 
         super.render(context);
     }

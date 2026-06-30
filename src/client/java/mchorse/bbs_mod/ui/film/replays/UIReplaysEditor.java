@@ -2761,4 +2761,13 @@ public class UIReplaysEditor extends UIElement
         data.putInt("replay", index);
         data.put("selection", DataStorageUtils.intListToData(this.replays.replays.getCurrentIndices()));
     }
+
+    public void clearSelection()
+    {
+        if (this.keyframeEditor != null && this.keyframeEditor.view != null)
+        {
+            this.keyframeEditor.view.getGraph().clearSelection();
+            this.keyframeEditor.view.getGraph().pickSelected();
+        }
+    }
 }

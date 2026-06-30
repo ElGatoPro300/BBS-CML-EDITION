@@ -30,7 +30,7 @@ public class BBSSettings
     public static ValueInt primaryColor;
     public static ValueBoolean enableTrackpadIncrements;
     public static ValueBoolean enableTrackpadScrolling;
-    public static ValueBoolean welcomePanelAcceptedAlpha1;
+    public static ValueBoolean welcomePanelAcceptedBeta1;
     public static ValueBoolean hideSettingDescriptions;
     public static ValueFloat userIntefaceScale;
     public static ValueInt tooltipStyle;
@@ -218,8 +218,8 @@ public class BBSSettings
         enableTrackpadIncrements = builder.getBoolean("trackpad_increments", true);
         enableTrackpadScrolling = builder.getBoolean("trackpad_scrolling", true);
         hideSettingDescriptions = builder.getBoolean("hide_setting_descriptions", false);
-        welcomePanelAcceptedAlpha1 = builder.getBoolean("welcome_panel_accepted_alpha1", false);
-        welcomePanelAcceptedAlpha1.invisible();
+        welcomePanelAcceptedBeta1 = builder.getBoolean("welcome_panel_accepted_beta1", false);
+        welcomePanelAcceptedBeta1.invisible();
         userIntefaceScale = builder.getFloat("ui_scale", 2F, 0F, 4F);
         tooltipStyle = builder.getInt("tooltip_style", 1);
         fov = builder.getFloat("fov", 40, 0, 180);

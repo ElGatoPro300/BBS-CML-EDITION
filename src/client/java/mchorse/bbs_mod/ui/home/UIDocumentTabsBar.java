@@ -373,12 +373,7 @@ public class UIDocumentTabsBar extends UIControlBar
     {
         if (tab.isHome)
         {
-            if (tab.homeType == null) return this.dashboard.getPanel(UIHomePanel.class);
-            if (tab.homeType == ContentType.FILMS) return this.dashboard.getPanel(UIFilmPanel.class);
-            if (tab.homeType == ContentType.MODELS) return this.dashboard.getPanel(UIModelPanel.class);
-            if (tab.homeType == ContentType.PARTICLES) return this.dashboard.getPanel(UIParticleSchemePanel.class);
-
-            return this.dashboard.getPanel(UIAudioEditorPanel.class);
+            return this.dashboard.getPanel(UIHomePanel.class);
         }
         if (tab.type == ContentType.FILMS) return this.dashboard.getPanel(UIFilmPanel.class);
         if (tab.type == ContentType.MODELS) return this.dashboard.getPanel(UIModelPanel.class);
