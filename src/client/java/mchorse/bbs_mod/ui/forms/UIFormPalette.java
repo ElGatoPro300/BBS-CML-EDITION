@@ -76,14 +76,14 @@ public class UIFormPalette extends UIElement implements IUIFormList
 
         this.keys().register(Keys.FORMS_EDIT, () ->
         {
-            if (!this.editor.isEditing())
+            if (!this.editor.isEditing() && (this.getContext() == null || !this.getContext().isFocused()))
             {
                 this.toggleEditor();
             }
         });
         this.keys().register(Keys.FORMS_EDIT_ALT, () ->
         {
-            if (!this.editor.isEditing())
+            if (!this.editor.isEditing() && (this.getContext() == null || !this.getContext().isFocused()))
             {
                 this.toggleEditor();
             }

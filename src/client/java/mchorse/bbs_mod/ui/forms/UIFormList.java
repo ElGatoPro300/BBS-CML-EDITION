@@ -3286,7 +3286,7 @@ public class UIFormList extends UIElement
             int bgAlpha = (int) (alpha * 0x22) << 24;
             int outlineAlpha = (int) (alpha * 0x80) << 24;
             int textAlpha = (int) (alpha * 255) << 24;
-            boolean selected = item.form != null && UIFormList.this.expandedCategory.selected == item.form;
+            boolean selected = item.form != null && UIFormList.this.getSelected() == item.form;
 
             if (selected)
             {
