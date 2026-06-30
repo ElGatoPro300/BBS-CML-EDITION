@@ -291,6 +291,9 @@ public class UIKeys
     public static final IKey FILM_NO_CAMERA_TITLE = L10n.lang("bbs.ui.film.no_camera-title");
     public static final IKey FILM_OPEN_ACTION_EDITOR = L10n.lang("bbs.ui.film.open_action_editor");
     public static final IKey FILM_OPEN_CAMERA_EDITOR = L10n.lang("bbs.ui.film.open_camera_editor");
+    public static final IKey FILM_CAMERA_TIMELINE = L10n.lang("bbs.ui.film.camera_timeline");
+    public static final IKey FILM_REPLAY_TIMELINE = L10n.lang("bbs.ui.film.replay_timeline");
+    public static final IKey FILM_ACTION_TIMELINE = L10n.lang("bbs.ui.film.action_timeline");
     public static final IKey FILM_GIZMO_MOVE = L10n.lang("bbs.ui.film.gizmo.move");
     public static final IKey FILM_GIZMO_SCALE = L10n.lang("bbs.ui.film.gizmo.scale");
     public static final IKey FILM_GIZMO_ROTATE = L10n.lang("bbs.ui.film.gizmo.rotate");
@@ -1550,6 +1553,8 @@ public class UIKeys
     public static final IKey FILM_WORKSPACE_ACTION = L10n.lang("bbs.ui.film.workspace.action");
     public static final IKey FILM_WORKSPACE_CAMERA = L10n.lang("bbs.ui.film.workspace.camera");
     public static final IKey FILM_WORKSPACE_CAMERA_PROPERTIES = L10n.lang("bbs.ui.film.workspace.camera_properties");
+    public static final IKey FILM_WORKSPACE_ACTION_PROPERTIES = L10n.lang("bbs.ui.film.workspace.action_properties");
+    public static final IKey FILM_WORKSPACE_UNIFIED_PROPERTIES = L10n.lang("bbs.ui.film.workspace.unified_properties");
     public static final IKey FILM_WORKSPACE_REPLAY = L10n.lang("bbs.ui.film.workspace.replay");
     public static final IKey FOLDER_PICKER_ERROR_INVALID_FOLDER = L10n.lang("bbs.ui.folder_picker.error_invalid_folder");
     public static final IKey INVENTORY_EMPTY = L10n.lang("bbs.ui.inventory.empty");
