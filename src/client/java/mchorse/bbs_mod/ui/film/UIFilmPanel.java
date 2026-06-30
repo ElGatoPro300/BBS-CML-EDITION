@@ -4502,53 +4502,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         if (BBSSettings.editorLayoutSettings.isLayoutLocked()) UIDashboardPanels.renderHighlightHorizontal(context.batcher, this.layoutLock.area);
     }
 
-    private void renderTopBarActions(UIContext context)
-    {
-        if (this.topBarActions == null || !this.topBarActions.isVisible())
-        {
-            return;
-        }
-
-        this.renderTopBarButton(context, this.openCameraEditor, this.cameraEditor.isVisible());
-        this.renderTopBarButton(context, this.openReplayEditor, this.replayEditor.isVisible());
-        this.renderTopBarButton(context, this.openActionEditor, this.actionEditor.isVisible());
-        this.renderTopBarSeparator(context);
-        this.renderTopBarButton(context, this.openFilmMenu, false);
-    }
-
-    private void renderTopBarButton(UIContext context, UIIcon button, boolean active)
-    {
-        if (button == null || !button.isVisible())
-        {
-            return;
-        }
-
-        Area area = button.area;
-        boolean hover = area.isInside(context.mouseX, context.mouseY);
-
-        if (active)
-        {
-            UIDashboardPanels.renderHighlight(context.batcher, area, Direction.BOTTOM);
-        }
-        else if (hover)
-        {
-            context.batcher.box(area.x, area.y, area.ex(), area.ey(), BBSSettings.color(BBSSettings.raisedSurface(), Colors.A25));
-        }
-    }
-
-    private void renderTopBarSeparator(UIContext context)
-    {
-        if (this.topBarSeparator == null || !this.topBarSeparator.isVisible())
-        {
-            return;
-        }
-
-        Area area = this.topBarSeparator.area;
-        int x = area.mx();
-
-        context.batcher.box(x, area.y + 3, x + 1, area.ey() - 3, BBSSettings.dividerColor());
-    }
-
     /**
      * Draw everything on the screen
      */

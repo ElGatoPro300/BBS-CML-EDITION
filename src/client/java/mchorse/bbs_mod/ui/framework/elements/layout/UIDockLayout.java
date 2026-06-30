@@ -394,9 +394,15 @@ public class UIDockLayout extends UIElement
         {
             out.add(((EditorLayoutNode.PanelNode) node).getPanelId());
         }
-        else if (node instanceof EditorLayoutNode.StackNode)
+        else if (node instanceof EditorLayoutNode.TabbedNode)
         {
-            out.addAll(((EditorLayoutNode.StackNode) node).getPanelIds());
+            for (EditorLayoutNode tab : ((EditorLayoutNode.TabbedNode) node).tabs)
+            {
+                if (tab instanceof EditorLayoutNode.PanelNode)
+                {
+                    out.add(((EditorLayoutNode.PanelNode) tab).getPanelId());
+                }
+            }
         }
         else if (node instanceof EditorLayoutNode.SplitterNode)
         {
@@ -819,10 +825,27 @@ public class UIDockLayout extends UIElement
             return;
         }
 
-        if (node instanceof EditorLayoutNode.StackNode)
+        if (node instanceof EditorLayoutNode.TabbedNode)
         {
-            EditorLayoutNode.StackNode stack = (EditorLayoutNode.StackNode) node;
-            out.add(new DockStackInfo(new ArrayList<>(stack.getPanelIds()), stack.getActivePanelId(), x, y, w, h));
+            EditorLayoutNode.TabbedNode tabbed = (EditorLayoutNode.TabbedNode) node;
+            List<String> ids = new ArrayList<>();
+            for (EditorLayoutNode tab : tabbed.tabs)
+            {
+                if (tab instanceof EditorLayoutNode.PanelNode)
+                {
+                    ids.add(((EditorLayoutNode.PanelNode) tab).getPanelId());
+                }
+            }
+            String activePanelId = "";
+            if (tabbed.activeTab >= 0 && tabbed.activeTab < tabbed.tabs.size())
+            {
+                EditorLayoutNode activeNode = tabbed.tabs.get(tabbed.activeTab);
+                if (activeNode instanceof EditorLayoutNode.PanelNode)
+                {
+                    activePanelId = ((EditorLayoutNode.PanelNode) activeNode).getPanelId();
+                }
+            }
+            out.add(new DockStackInfo(ids, activePanelId, x, y, w, h));
 
             return;
         }
@@ -1047,7 +1070,7 @@ public class UIDockLayout extends UIElement
     {
         EditorLayoutNode root = this.layoutRoot();
         EditorLayoutNode newRoot = zone == DROP_ZONE_CENTER
-            ? EditorLayoutNode.copyWithInsertStackAt(root, targetId, dragId)
+            ? EditorLayoutNode.copyWithDockedLeaf(root, targetId, dragId)
             : EditorLayoutNode.copyWithInsertSplitAt(root, targetId, dragId, zone);
 
         if (newRoot != null && newRoot != root)

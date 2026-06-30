@@ -136,6 +136,9 @@ public class BBSSettings
        asset overlay. Persisted globally so toggling it anywhere takes effect
        everywhere. */
     public static ValueBoolean lastViewMosaic;
+    public static ValueBoolean coloredBackground;
+    public static ValueFloat backgroundBrightness;
+    public static ValueBoolean interfaceShadows;
 
     public static ValueString entitySelectorsPropertyWhitelist;
 
@@ -180,6 +183,157 @@ public class BBSSettings
         return primaryColor.get() | alpha;
     }
 
+    public static boolean hasColoredBackground()
+    {
+        return coloredBackground == null || coloredBackground.get();
+    }
+
+    public static boolean isLightTheme()
+    {
+        return tooltipStyle != null && tooltipStyle.get() == 0;
+    }
+
+    public static float getBackgroundBrightness()
+    {
+        return backgroundBrightness == null ? 1F : backgroundBrightness.get();
+    }
+
+    private static int withAlpha(int color, int alpha)
+    {
+        return (color & Colors.RGB) | alpha;
+    }
+
+    private static int applyBackgroundBrightness(int color)
+    {
+        float brightness = MathUtils.clamp(getBackgroundBrightness(), 0.5F, 1.5F);
+
+        if (Math.abs(brightness - 1F) < 0.001F)
+        {
+            return color;
+        }
+
+        int a = color & 0xff000000;
+        int r = (color >> 16) & 0xff;
+        int g = (color >> 8) & 0xff;
+        int b = color & 0xff;
+
+        if (brightness < 1F)
+        {
+            r = Math.round(r * brightness);
+            g = Math.round(g * brightness);
+            b = Math.round(b * brightness);
+        }
+        else
+        {
+            float factor = brightness - 1F;
+
+            r += Math.round((255 - r) * factor);
+            g += Math.round((255 - g) * factor);
+            b += Math.round((255 - b) * factor);
+        }
+
+        r = MathUtils.clamp(r, 0, 255);
+        g = MathUtils.clamp(g, 0, 255);
+        b = MathUtils.clamp(b, 0, 255);
+
+        return a | (r << 16) | (g << 8) | b;
+    }
+
+    private static int getThemeChromeSurface()
+    {
+        return applyBackgroundBrightness(isLightTheme() ? 0xffe6e9ef : 0xff111316);
+    }
+
+    private static int getThemeBaseSurface()
+    {
+        return applyBackgroundBrightness(isLightTheme() ? 0xfff1f4f8 : 0xff171a1f);
+    }
+
+    private static int getThemeRaisedSurface()
+    {
+        return applyBackgroundBrightness(isLightTheme() ? 0xfff8fafd : 0xff1d2127);
+    }
+
+    private static int getThemeDeepSurface()
+    {
+        return applyBackgroundBrightness(isLightTheme() ? 0xffdee4ed : 0xff0f1217);
+    }
+
+    private static int getThemeDividerColor()
+    {
+        return isLightTheme() ? 0xffc2cbd8 : 0xff30353d;
+    }
+
+    public static int chromeSurface()
+    {
+        return getThemeChromeSurface();
+    }
+
+    public static int baseSurface()
+    {
+        return getThemeBaseSurface();
+    }
+
+    public static int raisedSurface()
+    {
+        return getThemeRaisedSurface();
+    }
+
+    public static int deepSurface()
+    {
+        return getThemeDeepSurface();
+    }
+
+    public static int dividerColor()
+    {
+        return getThemeDividerColor();
+    }
+
+    public static int color(int color, int alpha)
+    {
+        return withAlpha(color, alpha);
+    }
+
+    public static int backgroundTint(int alpha)
+    {
+        return hasColoredBackground() ? primaryColor(alpha) : 0;
+    }
+
+    public static int accentOverlay(int alpha)
+    {
+        return primaryColor(alpha);
+    }
+
+    public static int panelBackground(float tint)
+    {
+        return tint <= 0.08F ? deepSurface() : tint <= 0.16F ? baseSurface() : raisedSurface();
+    }
+
+    public static int panelBackground(int alpha)
+    {
+        return color(baseSurface(), alpha);
+    }
+
+    public static int panelOverlay(int alpha)
+    {
+        return hasColoredBackground() ? accentOverlay(alpha) : color(dividerColor(), alpha);
+    }
+
+    public static int panelChromeColor()
+    {
+        return chromeSurface();
+    }
+
+    public static int panelShadowOpaqueColor()
+    {
+        return Colors.A25 | primaryColor.get();
+    }
+
+    public static int panelShadowTransparentColor()
+    {
+        return Colors.setA(primaryColor.get(), 0F);
+    }
+
     public static int getDefaultDuration()
     {
         return duration == null ? 30 : duration.get();
@@ -222,6 +376,9 @@ public class BBSSettings
         welcomePanelAcceptedBeta1.invisible();
         userIntefaceScale = builder.getFloat("ui_scale", 2F, 0F, 4F);
         tooltipStyle = builder.getInt("tooltip_style", 1);
+        coloredBackground = builder.getBoolean("colored_background", true);
+        backgroundBrightness = builder.getFloat("background_brightness", 1F, 0.5F, 1.5F);
+        interfaceShadows = builder.getBoolean("interface_shadows", true);
         fov = builder.getFloat("fov", 40, 0, 180);
         hsvColorPicker = builder.getBoolean("hsv_color_picker", true);
         forceQwerty = builder.getBoolean("force_qwerty", false);

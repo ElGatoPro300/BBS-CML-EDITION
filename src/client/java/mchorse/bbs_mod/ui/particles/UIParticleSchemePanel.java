@@ -38,13 +38,10 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIConfirmOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
-<<<<<<< HEAD
 import mchorse.bbs_mod.ui.framework.elements.utils.UIRenderable;
 import mchorse.bbs_mod.ui.home.UIHomePanel;
 import mchorse.bbs_mod.ui.utils.presets.UICopyPasteController;
 import mchorse.bbs_mod.utils.presets.PresetManager;
-=======
->>>>>>> 2c0376cb4 (Add layout system to particle editor, pt. 2)
 import mchorse.bbs_mod.ui.particles.sections.UIParticleSchemeAppearanceSection;
 import mchorse.bbs_mod.ui.particles.sections.UIParticleSchemeCollisionSection;
 import mchorse.bbs_mod.ui.particles.sections.UIParticleSchemeCurvesSection;
@@ -106,20 +103,12 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
 
     public UITextEditor textEditor;
     public UIParticleSchemeRenderer renderer;
-<<<<<<< HEAD
-    public UIScrollView sectionsView;
 
-=======
->>>>>>> 2c0376cb4 (Add layout system to particle editor, pt. 2)
     public UIScrollView generalView;
     public UIScrollView emitterView;
     public UIScrollView particleView;
     public UIScrollView appearanceView;
-<<<<<<< HEAD
 
-    public UIElement sectionsPanel;
-=======
->>>>>>> 2c0376cb4 (Add layout system to particle editor, pt. 2)
     public UIDockLayout dock;
 
     public List<UIParticleSchemeSection> sections = new ArrayList<>();
@@ -200,21 +189,11 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
         this.dock.addPanel("molang", this.textEditor, Icons.CODE);
         this.dock.addPanel("preview", this.renderer, Icons.VIDEO_CAMERA);
         this.dock.mount();
-<<<<<<< HEAD
         this.mainView.add(this.dock);
 
         UIIcon close = new UIIcon(Icons.CLOSE, (b) -> this.editMoLang(null, null, null));
         close.relative(this.textEditor).x(1F, -20);
         this.textEditor.add(close);
-
-=======
-        this.editor.add(this.dock);
-
-        this.selectionPanel = new UIParticleSelectionPanel(this);
-        this.selectionPanel.relative(this).y(UIDataTabs.TABS_HEIGHT_PX).wTo(this.iconBar.area).h(1F, -UIDataTabs.TABS_HEIGHT_PX);
-        this.add(this.selectionPanel);
-
->>>>>>> 2c0376cb4 (Add layout system to particle editor, pt. 2)
         this.overlay.namesList.setFileIcon(Icons.PARTICLE);
 
         UIIcon restart = new UIIcon(Icons.TRASH, (b) ->
@@ -1069,78 +1048,7 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
         view.add(section);
     }
 
-    public void restartEmitter()
-    {
-        if (this.data != null)
-        {
-            this.renderer.setScheme(this.data);
-        }
-    }
 
-    private MapType getLayoutPresetData()
-    {
-        MapType data = new MapType();
-
-        data.put("particle_layout", this.dock.getLayoutRoot().toData());
-
-        return data;
-    }
-
-    private void applyLayoutFromPreset(MapType data, int mouseX, int mouseY)
-    {
-        BaseType layoutData = data.get("particle_layout");
-
-        if (layoutData == null)
-        {
-            return;
-        }
-
-        this.dock.applyLayoutRoot(EditorLayoutNode.fromData(layoutData));
-    }
-
-    private ILayoutSource createLayoutSource()
-    {
-        ValueEditorLayout layout = BBSSettings.editorLayoutSettings;
-
-        return new ILayoutSource()
-        {
-            @Override
-            public BaseValue value()
-            {
-                return layout;
-            }
-
-            @Override
-            public EditorLayoutNode getRoot()
-            {
-                return layout.getParticleLayoutRoot();
-            }
-
-            @Override
-            public void setRoot(EditorLayoutNode root)
-            {
-                layout.setParticleLayoutRoot(root);
-            }
-
-            @Override
-            public List<EditorLayoutNode.SplitterNode> getSplitters()
-            {
-                return layout.getParticleSplitters();
-            }
-
-            @Override
-            public List<EditorLayoutNode.SplitterNode> getSplittersForWrite()
-            {
-                return layout.getParticleSplittersForWrite();
-            }
-
-            @Override
-            public EditorLayoutNode getDefault()
-            {
-                return EditorLayoutNode.defaultParticleLayout();
-            }
-        };
-    }
 
     @Override
     public void fill(ParticleScheme data)
@@ -1154,7 +1062,6 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
     public void showHomeView()
     {
         super.showHomeView();
-    }
     }
 
     @Override
@@ -1278,7 +1185,6 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
         {
             this.iconBar.area.render(context.batcher, Colors.A50);
             context.batcher.gradientHBox(this.iconBar.area.x - 6, this.iconBar.area.y, this.iconBar.area.x, this.iconBar.area.ey(), 0, 0x29000000);
-        }
         }
     }
 

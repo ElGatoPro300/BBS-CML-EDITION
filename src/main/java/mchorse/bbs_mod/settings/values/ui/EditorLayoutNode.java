@@ -164,6 +164,68 @@ public abstract class EditorLayoutNode
         return rebuilt == null ? root : rebuilt;
     }
 
+    public static EditorLayoutNode copyWithStackActivePanel(EditorLayoutNode root, String panelId, String activePanelId)
+    {
+        if (root == null || panelId == null || activePanelId == null)
+        {
+            return root;
+        }
+
+        if (root instanceof TabbedNode)
+        {
+            TabbedNode tabbed = (TabbedNode) root;
+
+            int panelIndex = -1;
+            int activeIndex = -1;
+
+            for (int i = 0; i < tabbed.tabs.size(); i++)
+            {
+                EditorLayoutNode tab = tabbed.tabs.get(i);
+                if (tab instanceof PanelNode)
+                {
+                    String id = ((PanelNode) tab).getPanelId();
+                    if (id.equals(panelId))
+                    {
+                        panelIndex = i;
+                    }
+                    if (id.equals(activePanelId))
+                    {
+                        activeIndex = i;
+                    }
+                }
+            }
+
+            if (panelIndex != -1 && activeIndex != -1)
+            {
+                if (tabbed.activeTab == activeIndex)
+                {
+                    return root;
+                }
+
+                return new TabbedNode(tabbed.tabs, activeIndex);
+            }
+        }
+
+        if (root instanceof SplitterNode)
+        {
+            SplitterNode splitter = (SplitterNode) root;
+
+            EditorLayoutNode first = copyWithStackActivePanel(splitter.first, panelId, activePanelId);
+            if (first != splitter.first)
+            {
+                return new SplitterNode(splitter.horizontal, splitter.ratio, first, splitter.second);
+            }
+
+            EditorLayoutNode second = copyWithStackActivePanel(splitter.second, panelId, activePanelId);
+            if (second != splitter.second)
+            {
+                return new SplitterNode(splitter.horizontal, splitter.ratio, splitter.first, second);
+            }
+        }
+
+        return root;
+    }
+
     public static void collectSplitters(EditorLayoutNode node, List<SplitterNode> out)
     {
         if (node == null)

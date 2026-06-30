@@ -165,9 +165,5 @@ public class UIParticleSchemeRenderer extends UIModelRenderer
         }
     }
 
-    @Override
-    public void render(UIContext context)
-    {
-        super.render(context);
-    }
+
 }
