@@ -8,6 +8,7 @@ import mchorse.bbs_mod.settings.values.IValueNotifier;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.UIContext;
+import mchorse.bbs_mod.ui.framework.elements.IFocusedUIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
 import mchorse.bbs_mod.ui.utils.Gizmo;
@@ -232,22 +233,33 @@ public class UIPropTransform extends UITransform
 
     public void setTransform(Transform transform)
     {
-        if (this.getContext() != null)
+        UIContext context = this.getContext();
+        IFocusedUIElement focused = null;
+
+        if (context != null && context.activeElement != null)
         {
-            this.getContext().unfocus();
+            IFocusedUIElement active = context.activeElement;
+            if (active == this.tx || active == this.ty || active == this.tz ||
+                active == this.sx || active == this.sy || active == this.sz ||
+                active == this.rx || active == this.ry || active == this.rz ||
+                active == this.r2x || active == this.r2y || active == this.r2z ||
+                active == this.px || active == this.py || active == this.pz)
+            {
+                focused = active;
+            }
         }
 
-        this.transform = transform;
+        if (context != null)
+        {
+            context.unfocus();
+        }
 
         if (transform == null)
         {
-            this.fillT(0F, 0F, 0F);
-            this.fillS(1F, 1F, 1F);
-            this.fillR(0F, 0F, 0F);
-            this.fillR2(0F, 0F, 0F);
-            this.fillP(0F, 0F, 0F);
             return;
         }
+
+        this.transform = transform;
 
         float minScale = Math.min(transform.scale.x, Math.min(transform.scale.y, transform.scale.z));
         float maxScale = Math.max(transform.scale.x, Math.max(transform.scale.y, transform.scale.z));
@@ -267,6 +279,11 @@ public class UIPropTransform extends UITransform
         this.fillR(MathUtils.toDeg(transform.rotate.x), MathUtils.toDeg(transform.rotate.y), MathUtils.toDeg(transform.rotate.z));
         this.fillR2(MathUtils.toDeg(transform.rotate2.x), MathUtils.toDeg(transform.rotate2.y), MathUtils.toDeg(transform.rotate2.z));
         this.fillP(transform.pivot.x, transform.pivot.y, transform.pivot.z);
+
+        if (focused != null && context != null)
+        {
+            context.focus(focused);
+        }
     }
 
     public void setGizmoRayProvider(IGizmoRayProvider provider)
