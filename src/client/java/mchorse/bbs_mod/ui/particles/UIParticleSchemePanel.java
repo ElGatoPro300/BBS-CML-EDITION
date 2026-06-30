@@ -449,7 +449,7 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
         this.updateHomeButtonsState();
 
         this.homePage.relative(this.editor).x(0.5F, -250).y(0).w(500).h(1F);
-        this.homeActionsPanel.relative(this.homePage).x(0).y(UIHomePanel.HOME_BANNER_HEIGHT + 20).w(0.35F).h(1F, -(UIHomePanel.HOME_BANNER_HEIGHT + 20 + 44)).column(0).vertical().stretch();
+        this.homeActionsPanel.relative(this.homePage).x(0).y(UIHomePanel.HOME_BANNER_HEIGHT + 20).w(0.35F).h(1F, -(UIHomePanel.HOME_BANNER_HEIGHT + 20 + 10)).column(0).vertical().stretch();
         
         this.panelSwitcher = new UIPanelSwitcher(this.dashboard);
         this.panelSwitcher.relative(this.homePage).x(0.5F, -87).y(1F, -32).w(175).h(24);
@@ -458,7 +458,7 @@ public class UIParticleSchemePanel extends UIDataDashboardPanel<ParticleScheme>
         spacing.h(8);
 
         this.homeActionsPanel.add(this.homeCreateParticle, spacing, this.homeDuplicateCurrent, this.homeRenameCurrent, this.homeDeleteCurrent);
-        this.homeParticlesSearch.relative(this.homePage).x(0.35F).y(UIHomePanel.HOME_BANNER_HEIGHT + 20).w(0.65F).h(1F, -(UIHomePanel.HOME_BANNER_HEIGHT + 20 + 44));
+        this.homeParticlesSearch.relative(this.homePage).x(0.35F).y(UIHomePanel.HOME_BANNER_HEIGHT + 20).w(0.65F).h(1F, -(UIHomePanel.HOME_BANNER_HEIGHT + 20 + 10));
         this.homeParticlesSearch.search.w(1F, -25);
         this.homeParticlesMosaic.relative(this.homeParticlesSearch).x(0).y(20).w(1F).h(1F, -20);
         this.homeViewToggle.relative(this.homeParticlesSearch).x(1F, -22).y(0).w(20).h(20);

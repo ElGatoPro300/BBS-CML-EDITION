@@ -221,6 +221,8 @@ public class UIFileLinkList extends UIList<UIFileLinkList.FileLink>
                     return true;
                 }
             }
+
+            return true;
         }
 
         return super.subMouseClicked(context);

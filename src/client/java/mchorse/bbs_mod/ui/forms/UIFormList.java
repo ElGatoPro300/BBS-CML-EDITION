@@ -17,6 +17,7 @@ import mchorse.bbs_mod.forms.forms.ModelForm;
 import mchorse.bbs_mod.forms.forms.ParticleForm;
 import mchorse.bbs_mod.forms.sections.UserFormSection;
 import mchorse.bbs_mod.l10n.keys.IKey;
+import mchorse.bbs_mod.l10n.keys.LangKey;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.forms.categories.UIFormCategory;
@@ -130,7 +131,7 @@ public class UIFormList extends UIElement
     private final List<UIIconTabButton> customCategoryTabs = new ArrayList<>();
     private final Map<UIIconTabButton, String> customCategoryTabIds = new HashMap<>();
     private String activeFavoriteCategoryId;
-    private boolean favoritesUiVisible;
+    private boolean favoritesUiVisible = true;
     private String syncedFavoriteCategoriesData = "";
     private final Set<String> syncedFavoriteModels = new HashSet<>();
     private Consumer<String> favoriteCategoryChanged;
@@ -1226,7 +1227,7 @@ public class UIFormList extends UIElement
 
     private boolean isFavoritesFeatureEnabled()
     {
-        return this.palette instanceof UIFormPalette formPalette && (formPalette.isImmersive() || formPalette.hasFavorites());
+        return false;
     }
 
     private void applyFavoritesLayout(boolean enabled)
@@ -2600,7 +2601,7 @@ public class UIFormList extends UIElement
                 return false;
             }
 
-            if (UIFormList.this.expandedCategory != null)
+            if (UIFormList.this.expandedCategory != null || !UIFormList.this.appliedSearchQuery.isEmpty())
             {
                 if (context.mouseX >= this.expandedPanelX && context.mouseX < this.expandedPanelX + this.expandedPanelW
                     && context.mouseY >= this.expandedPanelY && context.mouseY < this.expandedPanelY + this.expandedPanelH)
@@ -2744,27 +2745,59 @@ public class UIFormList extends UIElement
                     }
                     else if (item.form != null)
                     {
-                        if (UIFormList.this.expandedCategory.category instanceof UserFormCategory)
+                        UIFormCategory activeCategory = UIFormList.this.expandedCategory;
+                        if (activeCategory == null)
                         {
-                            this.dragFormIndex = index;
-                            this.dragFormStart = System.currentTimeMillis();
-                            this.draggingForm = false;
+                            for (UIFormCategory cat : UIFormList.this.categories)
+                            {
+                                if (cat.category.getForms().contains(item.form))
+                                {
+                                    activeCategory = cat;
+                                    break;
+                                }
+                            }
                         }
 
-                        UIFormList.this.expandedCategory.select(item.form, true);
+                        if (activeCategory != null)
+                        {
+                            if (activeCategory.category instanceof UserFormCategory)
+                            {
+                                this.dragFormIndex = index;
+                                this.dragFormStart = System.currentTimeMillis();
+                                this.draggingForm = false;
+                            }
+
+                            activeCategory.select(item.form, true);
+                        }
                     }
                 }
                 else if (context.mouseButton == 1)
                 {
                     if (item.form != null)
                     {
-                        UIFormList.this.expandedCategory.select(item.form, true);
-
-                        UIContextMenu menu = UIFormList.this.expandedCategory.createContextMenu(context);
-
-                        if (menu != null && !menu.isEmpty())
+                        UIFormCategory activeCategory = UIFormList.this.expandedCategory;
+                        if (activeCategory == null)
                         {
-                            context.setContextMenu(menu);
+                            for (UIFormCategory cat : UIFormList.this.categories)
+                            {
+                                if (cat.category.getForms().contains(item.form))
+                                {
+                                    activeCategory = cat;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (activeCategory != null)
+                        {
+                            activeCategory.select(item.form, true);
+
+                            UIContextMenu menu = activeCategory.createContextMenu(context);
+
+                            if (menu != null && !menu.isEmpty())
+                            {
+                                context.setContextMenu(menu);
+                            }
                         }
                     }
                 }
@@ -2924,7 +2957,7 @@ public class UIFormList extends UIElement
                 }
             }
 
-            if (this.cardCells.isEmpty())
+            if (this.cardCells.isEmpty() && UIFormList.this.appliedSearchQuery.isEmpty())
             {
                 return;
             }
@@ -2969,7 +3002,7 @@ public class UIFormList extends UIElement
                 this.renderCategoryCard(context, cell.category, cell.x, cell.y);
             }
 
-            if (UIFormList.this.expandedCategory != null)
+            if (UIFormList.this.expandedCategory != null || !UIFormList.this.appliedSearchQuery.isEmpty())
             {
                 this.renderExpandedPanel(context);
             }
@@ -3013,23 +3046,34 @@ public class UIFormList extends UIElement
             context.batcher.box(this.expandedPanelX, this.expandedPanelY, this.expandedPanelX + this.expandedPanelW, this.expandedPanelY + this.expandedPanelH, Colors.A50 | 0x111111);
             context.batcher.outline(this.expandedPanelX, this.expandedPanelY, this.expandedPanelX + this.expandedPanelW, this.expandedPanelY + this.expandedPanelH, Colors.A50 | BBSSettings.primaryColor.get());
 
-            boolean hasBackArrow = UIFormList.this.activeExpandedFolder != null && UIFormList.this.activeExpandedFolder != UIFormList.this.expandedCategory.category;
+            boolean hasBackArrow = false;
+            String folderTitle;
 
-            if (hasBackArrow)
+            if (!UIFormList.this.appliedSearchQuery.isEmpty())
             {
-                boolean hoverBack = context.mouseX >= this.expandedPanelX + 4 && context.mouseX < this.expandedPanelX + 24
-                    && context.mouseY >= this.expandedPanelY + 4 && context.mouseY < this.expandedPanelY + 24;
+                folderTitle = UIKeys.FORMS_LIST_SEARCH.get() + " (" + this.expandedItems.size() + ")";
+            }
+            else
+            {
+                hasBackArrow = UIFormList.this.activeExpandedFolder != null && UIFormList.this.activeExpandedFolder != UIFormList.this.expandedCategory.category;
 
-                if (hoverBack)
+                if (hasBackArrow)
                 {
-                    context.batcher.box(this.expandedPanelX + 4, this.expandedPanelY + 4, this.expandedPanelX + 24, this.expandedPanelY + 24, Colors.A25);
-                    context.batcher.outline(this.expandedPanelX + 4, this.expandedPanelY + 4, this.expandedPanelX + 24, this.expandedPanelY + 24, Colors.A50);
+                    boolean hoverBack = context.mouseX >= this.expandedPanelX + 4 && context.mouseX < this.expandedPanelX + 24
+                        && context.mouseY >= this.expandedPanelY + 4 && context.mouseY < this.expandedPanelY + 24;
+
+                    if (hoverBack)
+                    {
+                        context.batcher.box(this.expandedPanelX + 4, this.expandedPanelY + 4, this.expandedPanelX + 24, this.expandedPanelY + 24, Colors.A25);
+                        context.batcher.outline(this.expandedPanelX + 4, this.expandedPanelY + 4, this.expandedPanelX + 24, this.expandedPanelY + 24, Colors.A50);
+                    }
+
+                    context.batcher.icon(Icons.ARROW_LEFT, Colors.WHITE, this.expandedPanelX + 14, this.expandedPanelY + 14, 0.5F, 0.5F);
                 }
 
-                context.batcher.icon(Icons.ARROW_LEFT, Colors.WHITE, this.expandedPanelX + 14, this.expandedPanelY + 14, 0.5F, 0.5F);
+                folderTitle = UIFormList.this.activeExpandedFolder != null ? UIFormList.this.activeExpandedFolder.getProcessedTitle() : UIFormList.this.expandedCategory.category.getProcessedTitle();
             }
 
-            String folderTitle = UIFormList.this.activeExpandedFolder != null ? UIFormList.this.activeExpandedFolder.getProcessedTitle() : UIFormList.this.expandedCategory.category.getProcessedTitle();
             context.batcher.textShadow(folderTitle, this.expandedPanelX + (hasBackArrow ? 30 : 10), this.expandedPanelY + 8, Colors.WHITE);
 
             int gridY = this.expandedPanelY + EXPANDED_HEADER_HEIGHT + CATEGORY_CARD_GAP;
@@ -3251,7 +3295,7 @@ public class UIFormList extends UIElement
             int bgAlpha = (int) (alpha * 0x22) << 24;
             int outlineAlpha = (int) (alpha * 0x80) << 24;
             int textAlpha = (int) (alpha * 255) << 24;
-            boolean selected = item.form != null && UIFormList.this.expandedCategory.selected == item.form;
+            boolean selected = item.form != null && UIFormList.this.getSelected() == item.form;
 
             if (selected)
             {
@@ -3365,6 +3409,34 @@ public class UIFormList extends UIElement
             this.cardCells.clear();
             this.groupDividers.clear();
             this.previewCache.clear();
+
+            if (!UIFormList.this.appliedSearchQuery.isEmpty())
+            {
+                this.expandedItems.clear();
+                for (UIFormCategory category : UIFormList.this.categories)
+                {
+                    List<Form> forms = category.getForms();
+                    for (Form form : forms)
+                    {
+                        this.expandedItems.add(new ExpandedItem(form));
+                    }
+                }
+
+                int expandedPerRow = Math.max(1, (this.area.w - CATEGORY_CARD_GAP * 2) / (EXPANDED_CELL_WIDTH + CATEGORY_CARD_GAP));
+                int itemCount = this.expandedItems.size();
+                int expandedRows = (itemCount + expandedPerRow - 1) / expandedPerRow;
+                this.expandedPanelH = Math.max(20, expandedRows * (EXPANDED_CELL_HEIGHT + CATEGORY_CARD_GAP)) + EXPANDED_HEADER_HEIGHT + CATEGORY_CARD_GAP * 2;
+                this.contentHeight = this.expandedPanelH + CATEGORY_CARD_GAP * 2;
+
+                this.expandedPanelX = this.area.x + CATEGORY_CARD_GAP;
+                this.expandedPanelY = this.area.y + CATEGORY_CARD_GAP;
+                this.expandedPanelW = this.area.w - CATEGORY_CARD_GAP * 2;
+                this.expansionTransition = 1F;
+                this.targetExpansion = 1F;
+                this.folderTransition = 1F;
+                this.dirty = false;
+                return;
+            }
 
             Map<CardGroup, List<UIFormCategory>> groups = new LinkedHashMap<>();
 
@@ -3524,14 +3596,28 @@ public class UIFormList extends UIElement
 
         private boolean isBbsCategory(UIFormCategory category)
         {
+            if (category.category.title instanceof LangKey langKey)
+            {
+                String key = langKey.key;
+                if ("bbs.ui.forms.categories.extra".equals(key) ||
+                    "bbs.ui.forms.categories.mobs_animals".equals(key) ||
+                    "bbs.ui.forms.categories.mobs_neutral".equals(key) ||
+                    "bbs.ui.forms.categories.mobs_hostile".equals(key) ||
+                    "bbs.ui.forms.categories.mobs_misc".equals(key))
+                {
+                    return true;
+                }
+            }
+
             String title = this.normalize(category.category.getProcessedTitle());
 
-            if (title.equals("miscelaneo"))
+            if (title.equals("miscelaneo") || title.equals("miscellaneous"))
             {
                 return true;
             }
 
-            return title.equals("mobs (animales)") || title.equals("mobs (neutrales)") || title.equals("mobs (hostiles)") || title.equals("mobs (miscelaneos)") || title.equals("mobs (misceláneos)");
+            return title.equals("mobs (animales)") || title.equals("mobs (neutrales)") || title.equals("mobs (hostiles)") || title.equals("mobs (miscelaneos)") || title.equals("mobs (misceláneos)") ||
+                   title.equals("mobs (animals)") || title.equals("mobs (neutral)") || title.equals("mobs (hostile)") || title.equals("mobs (miscellaneous)");
         }
 
         private String normalize(String value)

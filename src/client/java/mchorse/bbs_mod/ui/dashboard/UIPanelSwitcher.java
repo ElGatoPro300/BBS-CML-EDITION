@@ -43,6 +43,7 @@ public class UIPanelSwitcher extends UIElement
 
         this.add(home, films, particles, models, audios);
         this.row(0).resize();
+        this.setVisible(false);
     }
 
     private static class UISwitcherButton extends UIClickable<UISwitcherButton>

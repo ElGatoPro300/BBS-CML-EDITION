@@ -936,18 +936,7 @@ public class BBSModClient implements ClientModInitializer
 
     private void keyOpenReplays()
     {
-        UIDashboard dashboard = getDashboard();
-
-        UIScreen.open(dashboard);
-
-        if (dashboard.getPanels().panel instanceof UIFilmPanel panel && panel.getData() != null)
-        {
-            panel.preview.openReplays();
-        }
-        else
-        {
-            dashboard.setPanel(dashboard.getPanel(UIFilmPanel.class));
-        }
+        UIScreen.open(getDashboard());
     }
 
     private void keyOpenQuickReplays()

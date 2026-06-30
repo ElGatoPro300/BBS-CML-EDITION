@@ -26,7 +26,7 @@ import org.lwjgl.glfw.GLFW;
 
 public class UIWelcomePanel extends UIElement {
     private enum PopupState {
-        WELCOME, ALPHA_WARNING, DOWNGRADE_WARNING
+        WELCOME, BETA_WARNING, DOWNGRADE_WARNING
     }
 
     private PopupState state = PopupState.WELCOME;
@@ -45,13 +45,13 @@ public class UIWelcomePanel extends UIElement {
         this.keyboardPropagation = EventPropagation.BLOCK;
 
         this.buttonYes = new UIButton(UIKeys.WELCOME_YES, (b) -> {
-            this.setPopupState(PopupState.ALPHA_WARNING);
+            this.setPopupState(PopupState.BETA_WARNING);
         });
         this.buttonNo = new UIButton(UIKeys.WELCOME_NO, (b) -> {
             this.setPopupState(PopupState.DOWNGRADE_WARNING);
         });
         this.buttonAccept = new UIButton(UIKeys.WELCOME_ACCEPT, (b) -> {
-            this.acceptAlpha();
+            this.acceptBeta();
         });
         this.buttonExit = new UIButton(UIKeys.WELCOME_EXIT, (b) -> {
             this.exitGame();
@@ -69,12 +69,12 @@ public class UIWelcomePanel extends UIElement {
         this.buttonYes.setVisible(isWelcome);
         this.buttonNo.setVisible(isWelcome);
 
-        this.buttonAccept.setVisible(state == PopupState.ALPHA_WARNING);
+        this.buttonAccept.setVisible(state == PopupState.BETA_WARNING);
         this.buttonExit.setVisible(state == PopupState.DOWNGRADE_WARNING);
     }
 
-    private void acceptAlpha() {
-        BBSSettings.welcomePanelAcceptedAlpha1.set(true);
+    private void acceptBeta() {
+        BBSSettings.welcomePanelAcceptedBeta1.set(true);
         this.removeFromParent();
     }
 
@@ -232,7 +232,7 @@ public class UIWelcomePanel extends UIElement {
             float popupX = this.area.mx() - popupW / 2.0F;
             float popupY = this.area.my() - popupH / 2.0F + slideOffset;
 
-            if (this.state == PopupState.ALPHA_WARNING) {
+            if (this.state == PopupState.BETA_WARNING) {
                 this.buttonAccept.y(0F, (int) (popupY + popupH - 35));
                 this.buttonAccept.resize();
             } else if (this.state == PopupState.DOWNGRADE_WARNING) {
@@ -259,8 +259,8 @@ public class UIWelcomePanel extends UIElement {
             float textY = iconY + iconSize + 12;
             int textWidth = (int) popupW - 30;
 
-            if (this.state == PopupState.ALPHA_WARNING) {
-                String warningText = UIKeys.WELCOME_ALPHA_WARNING.get();
+            if (this.state == PopupState.BETA_WARNING) {
+                String warningText = UIKeys.WELCOME_BETA_WARNING.get();
                 context.batcher.wallText(warningText, (int) (popupX + 15), (int) textY, Colors.WHITE, textWidth, 11,
                         0.5F, 0.0F);
             } else if (this.state == PopupState.DOWNGRADE_WARNING) {
