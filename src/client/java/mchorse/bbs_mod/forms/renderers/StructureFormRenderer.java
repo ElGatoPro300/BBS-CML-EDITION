@@ -783,7 +783,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
                 {
                     if (entry.nbt != null)
                     {
-                        be.readNbt(entry.nbt);
+                        be.readNbt(entry.nbt, MinecraftClient.getInstance().world.getRegistryManager());
                     }
                     /* Associate real world so renderer can query light and effects */
                     if (MinecraftClient.getInstance().world != null)
@@ -1070,7 +1070,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
             {
                 if (entry.nbt != null)
                 {
-                    be.readNbt(entry.nbt);
+                    be.readNbt(entry.nbt, MinecraftClient.getInstance().world.getRegistryManager());
                 }
                 BlockEntityRenderer<?> renderer;
                 int skyLight;
@@ -1716,11 +1716,11 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
         }
 
         @Override
-        public VertexConsumer vertex(double x, double y, double z)
+        public VertexConsumer vertex(float x, float y, float z)
         {
-            float nx = (float) x - this.offset.getX();
-            float ny = (float) y - this.offset.getY();
-            float nz = (float) z - this.offset.getZ();
+            float nx = x - this.offset.getX();
+            float ny = y - this.offset.getY();
+            float nz = z - this.offset.getZ();
 
             float tx = this.positionMatrix.m00() * nx + this.positionMatrix.m10() * ny + this.positionMatrix.m20() * nz + this.positionMatrix.m30();
             float ty = this.positionMatrix.m01() * nx + this.positionMatrix.m11() * ny + this.positionMatrix.m21() * nz + this.positionMatrix.m31();
@@ -1771,24 +1771,6 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
 
             this.parent.normal(tx, ty, tz);
             return this;
-        }
-
-        @Override
-        public void next()
-        {
-            this.parent.next();
-        }
-
-        @Override
-        public void fixedColor(int red, int green, int blue, int alpha)
-        {
-            this.parent.fixedColor(red, green, blue, alpha);
-        }
-
-        @Override
-        public void unfixColor()
-        {
-            this.parent.unfixColor();
         }
     }
 }
