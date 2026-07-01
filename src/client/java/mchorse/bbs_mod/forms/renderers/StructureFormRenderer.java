@@ -48,6 +48,7 @@ import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.TexturedRenderLayers;
 import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.VertexConsumerProvider;
+import net.minecraft.client.render.block.entity.BlockEntityRenderManager;
 import net.minecraft.client.render.block.entity.BlockEntityRenderer;
 import net.minecraft.client.texture.SpriteAtlasTexture;
 import net.minecraft.client.util.BufferAllocator;
@@ -742,9 +743,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
             if (!entry.state.getFluidState().isEmpty())
             {
                 boolean shaders = BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld();
-                RenderLayer fluidLayer = shaders
-                    ? RenderLayers.getEntityBlockLayer(entry.state)
-                    : RenderLayers.getFluidLayer(entry.state.getFluidState());
+                RenderLayer fluidLayer = RenderLayers.translucentMovingBlock();
                 VertexConsumer fluidVc = consumers.getBuffer(fluidLayer);
                 if (recolor != null)
                 {
@@ -755,7 +754,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
             }
             if (entry.state.getRenderType() != BlockRenderType.INVISIBLE)
             {
-                MinecraftClient.getInstance().getBlockRenderManager().renderBlock(entry.state, entry.pos, info.view, stack, vc, true, Random.create());
+                MinecraftClient.getInstance().getBlockRenderManager().renderBlock(entry.state, entry.pos, info.view, stack, vc, true, null);
             }
 
             /* Render blocks with entity (chests, beds, signs, skulls, etc.) */
@@ -774,7 +773,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
                 {
                     if (entry.nbt != null)
                     {
-                        be.readNbt(entry.nbt, MinecraftClient.getInstance().world.getRegistryManager());
+                        /* TODO: 1.21.11 NBT loading API changed — skipped for now */
                     }
                     /* Associate real world so renderer can query light and effects */
                     if (MinecraftClient.getInstance().world != null)
@@ -853,9 +852,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
             if (!entry.state.getFluidState().isEmpty())
             {
                 boolean shaders = BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld();
-                RenderLayer fluidLayer = shaders
-                    ? RenderLayers.getEntityBlockLayer(entry.state)
-                    : RenderLayers.getFluidLayer(entry.state.getFluidState());
+                RenderLayer fluidLayer = RenderLayers.translucentMovingBlock();
                 VertexConsumer fluidVc = consumers.getBuffer(fluidLayer);
                 if (recolor != null)
                 {
@@ -866,7 +863,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
             }
             if (entry.state.getRenderType() != BlockRenderType.INVISIBLE)
             {
-                MinecraftClient.getInstance().getBlockRenderManager().renderBlock(entry.state, entry.pos, info.view, stack, vc, true, Random.create());
+                MinecraftClient.getInstance().getBlockRenderManager().renderBlock(entry.state, entry.pos, info.view, stack, vc, true, null);
             }
             stack.pop();
         }
@@ -1007,7 +1004,6 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
     private void renderBlockEntitiesOnly(FormRenderingContext context, MatrixStack stack, VertexConsumerProvider consumers, int light, int overlay)
     {
         RenderInfo info = this.calculateRenderInfo(context, false);
-        BlockEntityRenderDispatcher beDispatcher = MinecraftClient.getInstance().getBlockEntityRenderDispatcher();
 
         for (BlockEntry entry : this.blockEntitiesList)
         {
@@ -1027,9 +1023,9 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
             {
                 if (entry.nbt != null)
                 {
-                    be.readNbt(entry.nbt, MinecraftClient.getInstance().world.getRegistryManager());
+                    /* TODO: 1.21.11 NBT loading API changed — skipped for now */
                 }
-                BlockEntityRenderer<?> renderer;
+                BlockEntityRenderer<?, ?> renderer;
                 int skyLight;
                 int blockLight;
                 int beLight;
@@ -1039,7 +1035,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
                     be.setWorld(MinecraftClient.getInstance().world);
                 }
 
-                renderer = beDispatcher.get(be);
+                renderer = MinecraftClient.getInstance().getBlockEntityRenderDispatcher().get(be);
                 
                 skyLight = info.view.getLightLevel(LightType.SKY, entry.pos);
                 blockLight = info.view.getLightLevel(LightType.BLOCK, entry.pos);
@@ -1058,7 +1054,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
 
                     try
                     {
-                        raw.render(be, 0F, stack, beProvider, beLight, overlay);
+                        /* TODO: 1.21.11 BE rendering uses state-based API -- skipped for now */
                     }
                     finally
                     {
@@ -1517,13 +1513,13 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
                 {
                     BlockState state = paletteStates.get(stateIndex);
 
-                    if (state == null || state.isAir())
-                    {
-                        continue;
-                    }
+        if (state == null || state.isAir())
+        {
+            continue;
+        }
 
-                    NbtCompound nbt = be.contains("nbt", NbtElement.COMPOUND_TYPE) ? be.getCompound("nbt") : null;
-                    BlockEntry blockEntry = new BlockEntry(state, pos, nbt);
+        NbtCompound nbt = be.getCompound("nbt").orElse(null);
+        BlockEntry blockEntry = new BlockEntry(state, pos, nbt);
 
                     this.blocks.add(blockEntry);
 
@@ -1687,6 +1683,12 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
         }
 
         @Override
+        public VertexConsumer lineWidth(float width)
+        {
+            return this.parent.lineWidth(width);
+        }
+
+        @Override
         public VertexConsumer vertex(float x, float y, float z)
         {
             float nx = x - this.offset.getX();
@@ -1705,6 +1707,13 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
         public VertexConsumer color(int red, int green, int blue, int alpha)
         {
             this.parent.color(red, green, blue, alpha);
+            return this;
+        }
+
+        @Override
+        public VertexConsumer color(int color)
+        {
+            this.parent.color(color);
             return this;
         }
 

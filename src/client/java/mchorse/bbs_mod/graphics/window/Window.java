@@ -170,7 +170,7 @@ public class Window
 
     public static void setStandardCursor(int shape)
     {
-        long window = getWindow();
+        long window = getWindow().getHandle();
 
         if (GLFW.glfwGetInputMode(window, GLFW.GLFW_CURSOR) == GLFW.GLFW_CURSOR_DISABLED)
         {
