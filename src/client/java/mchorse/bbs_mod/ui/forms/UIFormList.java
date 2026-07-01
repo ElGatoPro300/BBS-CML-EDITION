@@ -2542,13 +2542,6 @@ public class UIFormList extends UIElement
                     this.invalidateCache();
                 }
 
-                if (this.expansionTransition == 0F && this.targetExpansion == 0F && UIFormList.this.expandedCategory != null)
-                {
-                    UIFormList.this.expandedCategory = null;
-                    UIFormList.this.activeExpandedFolder = null;
-                    this.invalidateCache();
-                }
-
                 return;
             }
 
