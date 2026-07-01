@@ -386,7 +386,7 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
         this.updateHomeButtonsState();
 
         this.homePage.relative(this.editor).x(0.5F, -250).y(0).w(500).h(1F);
-        this.homeActionsPanel.relative(this.homePage).x(0).y(UIHomePanel.HOME_BANNER_HEIGHT + 20).w(0.35F).h(1F, -(UIHomePanel.HOME_BANNER_HEIGHT + 20 + 44)).column(0).vertical().stretch();
+        this.homeActionsPanel.relative(this.homePage).x(0).y(UIHomePanel.HOME_BANNER_HEIGHT + 20).w(0.35F).h(1F, -(UIHomePanel.HOME_BANNER_HEIGHT + 20 + 10)).column(0).vertical().stretch();
         
         this.panelSwitcher = new UIPanelSwitcher(this.dashboard);
         this.panelSwitcher.relative(this.homePage).x(0.5F, -87).y(1F, -32).w(175).h(24);
@@ -395,7 +395,7 @@ public class UIAudioEditorPanel extends UISidebarDashboardPanel
         spacing.h(8);
 
         this.homeActionsPanel.add(this.homeOpenFolder, this.homeRefreshList, spacing, this.homeRenameCurrent, this.homeDeleteCurrent);
-        this.homeAudiosSearch.relative(this.homePage).x(0.35F).y(UIHomePanel.HOME_BANNER_HEIGHT + 20).w(0.65F).h(1F, -(UIHomePanel.HOME_BANNER_HEIGHT + 20 + 44));
+        this.homeAudiosSearch.relative(this.homePage).x(0.35F).y(UIHomePanel.HOME_BANNER_HEIGHT + 20).w(0.65F).h(1F, -(UIHomePanel.HOME_BANNER_HEIGHT + 20 + 10));
         this.homeAudiosSearch.search.w(1F, -25);
         this.homeAudiosMosaic.relative(this.homeAudiosSearch).x(0).y(20).w(1F).h(1F, -20);
         this.homeViewToggle.relative(this.homeAudiosSearch).x(1F, -22).y(0).w(20).h(20);

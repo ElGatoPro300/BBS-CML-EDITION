@@ -124,7 +124,7 @@ public class UIDashboard extends UIBaseMenu
         this.getRoot().add(this.orbitKeysUI);
         this.getRoot().add(this.chalkboard);
 
-        if (!BBSSettings.welcomePanelAcceptedAlpha1.get())
+        if (!BBSSettings.welcomePanelAcceptedBeta1.get())
         {
             UIWelcomePanel welcome = new UIWelcomePanel();
             welcome.full(this.getRoot());

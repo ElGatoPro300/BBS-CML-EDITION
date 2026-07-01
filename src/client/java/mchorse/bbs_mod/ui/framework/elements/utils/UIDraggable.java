@@ -1,6 +1,5 @@
 package mchorse.bbs_mod.ui.framework.elements.utils;
 
-import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.utils.Scroll;
@@ -21,11 +20,15 @@ public class UIDraggable extends UIElement
     private Runnable dragEndCallback;
     private boolean dragging;
     private boolean hover;
+    private boolean referenceX = true;
+    private boolean referenceY = true;
+    private int hoverCursor = GLFW.GLFW_HAND_CURSOR;
+    private int dragCursor = GLFW.GLFW_HAND_CURSOR;
+    private Supplier<Boolean> enabled = () -> true;
 
     private int mouseX;
     private int mouseY;
     private Vector2i referenceMouse;
-    private boolean dragUpdated;
 
     private int threshold;
     private boolean thresholdMet;
@@ -56,6 +59,14 @@ public class UIDraggable extends UIElement
         return this;
     }
 
+    public UIDraggable referenceAxis(boolean x, boolean y)
+    {
+        this.referenceX = x;
+        this.referenceY = y;
+
+        return this;
+    }
+
     public UIDraggable dragEnd(Runnable callback)
     {
         this.dragEndCallback = callback;
@@ -63,12 +74,43 @@ public class UIDraggable extends UIElement
         return this;
     }
 
-    /* Movement threshold (in pixels) before the drag callback starts firing.
-       Lets short clicks on the handle be treated as no-op instead of triggering
-       a single-frame drag (e.g. unintentionally undocking a panel). */
+    public UIDraggable cursor(int cursor)
+    {
+        this.hoverCursor = cursor;
+
+        return this;
+    }
+
+    public UIDraggable dragCursor(int cursor)
+    {
+        this.dragCursor = cursor;
+
+        return this;
+    }
+
+    public UIDraggable cursors(int hoverCursor, int dragCursor)
+    {
+        this.hoverCursor = hoverCursor;
+        this.dragCursor = dragCursor;
+
+        return this;
+    }
+
     public UIDraggable threshold(int threshold)
     {
         this.threshold = threshold;
+
+        return this;
+    }
+
+    /**
+     * Gate interactivity: when the supplier returns {@code false} the draggable is inert &mdash; it
+     * neither claims clicks nor requests a hover/drag cursor, so the area behaves as if the handle
+     * weren't there. Defaults to always enabled.
+     */
+    public UIDraggable enabled(Supplier<Boolean> enabled)
+    {
+        this.enabled = enabled != null ? enabled : () -> true;
 
         return this;
     }
@@ -78,9 +120,6 @@ public class UIDraggable extends UIElement
         return this.dragging;
     }
 
-    /* True only once the mouse has moved past the configured threshold (or
-       immediately if no threshold was set). Useful for distinguishing a real
-       drag from a stationary click on the handle. */
     public boolean isActivelyDragging()
     {
         return this.dragging && this.thresholdMet;
@@ -97,7 +136,6 @@ public class UIDraggable extends UIElement
 
                 if (Math.abs(dx) < this.threshold && Math.abs(dy) < this.threshold)
                 {
-                    this.dragUpdated = true;
                     return;
                 }
 
@@ -109,22 +147,28 @@ public class UIDraggable extends UIElement
 
             if (this.referenceMouse != null)
             {
-                context.mouseX = this.referenceMouse.x + (mouseX - this.mouseX);
-                context.mouseY = this.referenceMouse.y + (mouseY - this.mouseY);
+                if (this.referenceX)
+                {
+                    context.mouseX = this.referenceMouse.x + (mouseX - this.mouseX);
+                }
+
+                if (this.referenceY)
+                {
+                    context.mouseY = this.referenceMouse.y + (mouseY - this.mouseY);
+                }
             }
 
             this.callback.accept(context);
 
             context.mouseX = mouseX;
             context.mouseY = mouseY;
-            this.dragUpdated = true;
         }
     }
 
     @Override
     protected boolean subMouseClicked(UIContext context)
     {
-        if (this.area.isInside(context) && context.mouseButton == 0)
+        if (this.enabled.get() && this.area.isInside(context) && context.mouseButton == 0)
         {
             this.mouseX = context.mouseX;
             this.mouseY = context.mouseY;
@@ -164,26 +208,16 @@ public class UIDraggable extends UIElement
     {
         super.render(context);
 
-        /* Safety net for missed mouse-release events (which do happen in this editor): once the
-           left button is no longer held, force the drag to end. Without this the "dragging" flag
-           stays stuck true and the handle re-grabs its target on the very next click — e.g. a
-           freshly docked panel undocking itself and snapping to the cursor. The normal release
-           path (subMouseReleased) runs before this each frame, so this only fires when that
-           event was genuinely dropped. */
-        if (this.dragging && !Window.isMouseButtonPressed(GLFW.GLFW_MOUSE_BUTTON_LEFT))
+        if (this.enabled.get())
         {
-            boolean fireEnd = this.thresholdMet;
-
-            this.dragging = false;
-            this.thresholdMet = false;
-            this.dragUpdated = false;
-
-            if (fireEnd && this.dragEndCallback != null)
+            if (this.dragging)
             {
-                this.dragEndCallback.run();
+                context.requestCursor(this.dragCursor);
             }
-
-            return;
+            else if (this.area.isInside(context))
+            {
+                context.requestCursor(this.hoverCursor);
+            }
         }
 
         if (!this.hover || this.area.isInside(context) || this.dragging)
@@ -198,10 +232,6 @@ public class UIDraggable extends UIElement
             }
         }
 
-        if (this.dragging && this.callback != null && !this.dragUpdated)
-        {
-            this.updateDrag(context);
-        }
-        this.dragUpdated = false;
+        this.updateDrag(context);
     }
 }

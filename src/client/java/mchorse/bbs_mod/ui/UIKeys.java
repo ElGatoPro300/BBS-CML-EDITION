@@ -5,6 +5,8 @@ import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.l10n.keys.KeyCollection;
 import mchorse.bbs_mod.particles.ParticleCurveType;
+import mchorse.bbs_mod.particles.components.appearance.BillboardDirection;
+import mchorse.bbs_mod.particles.components.appearance.CameraFacing;
 import mchorse.bbs_mod.utils.EnumUtils;
 import mchorse.bbs_mod.utils.interps.Interpolations;
 
@@ -291,6 +293,9 @@ public class UIKeys
     public static final IKey FILM_NO_CAMERA_TITLE = L10n.lang("bbs.ui.film.no_camera-title");
     public static final IKey FILM_OPEN_ACTION_EDITOR = L10n.lang("bbs.ui.film.open_action_editor");
     public static final IKey FILM_OPEN_CAMERA_EDITOR = L10n.lang("bbs.ui.film.open_camera_editor");
+    public static final IKey FILM_CAMERA_TIMELINE = L10n.lang("bbs.ui.film.camera_timeline");
+    public static final IKey FILM_REPLAY_TIMELINE = L10n.lang("bbs.ui.film.replay_timeline");
+    public static final IKey FILM_ACTION_TIMELINE = L10n.lang("bbs.ui.film.action_timeline");
     public static final IKey FILM_GIZMO_MOVE = L10n.lang("bbs.ui.film.gizmo.move");
     public static final IKey FILM_GIZMO_SCALE = L10n.lang("bbs.ui.film.gizmo.scale");
     public static final IKey FILM_GIZMO_ROTATE = L10n.lang("bbs.ui.film.gizmo.rotate");
@@ -407,6 +412,7 @@ public class UIKeys
     public static final IKey FILM_LAYOUT_LOCK = L10n.lang("bbs.ui.film.layout.lock");
     public static final IKey FILM_LAYOUT_UNLOCK = L10n.lang("bbs.ui.film.layout.unlock");
     public static final IKey FILM_LAYOUT_PRESETS = L10n.lang("bbs.ui.film.layout.presets");
+    public static final IKey FILM_LAYOUT_RESET = L10n.lang("bbs.ui.film.layout_reset");
     public static final IKey FILM_LAYOUT_ANCHORED_REPLAYS = L10n.lang("bbs.ui.film.layout.anchored_replays");
     public static final IKey FILM_VIDEO_RECORDING = L10n.lang("bbs.ui.film.video_recording");
     public static final IKey FORMS_CATEGORIES_ADD_CATEGORY_DESCRIPTION = L10n.lang("bbs.ui.forms.categories.add_category-description");
@@ -1224,6 +1230,9 @@ public class UIKeys
     public static final IKey SNOWSTORM_EXPIRATION_MAX_TOOLTIP = L10n.lang("bbs.ui.snowstorm.expiration.max_tooltip");
     public static final IKey SNOWSTORM_EXPIRATION_TITLE = L10n.lang("bbs.ui.snowstorm.expiration.title");
     public static final IKey SNOWSTORM_EXPRESSION = L10n.lang("bbs.ui.snowstorm.expression");
+    public static final IKey SNOWSTORM_GENERAL_DIRECTION = L10n.lang("bbs.ui.snowstorm.general.direction");
+    public static final IKey SNOWSTORM_GENERAL_DIRECTION_THRESHOLD = L10n.lang("bbs.ui.snowstorm.general.direction_threshold");
+    public static final IKey SNOWSTORM_GENERAL_FACING = L10n.lang("bbs.ui.snowstorm.general.facing");
     public static final IKey SNOWSTORM_GENERAL_IDENTIFIER = L10n.lang("bbs.ui.snowstorm.general.identifier");
     public static final IKey SNOWSTORM_GENERAL_PARTICLES_ALPHA = L10n.lang("bbs.ui.snowstorm.general.particles_alpha");
     public static final IKey SNOWSTORM_GENERAL_PARTICLES_BLEND = L10n.lang("bbs.ui.snowstorm.general.particles_blend");
@@ -1490,7 +1499,7 @@ public class UIKeys
     public static final IKey WELCOME_READY = L10n.lang("bbs.welcome.ready");
     public static final IKey WELCOME_YES = L10n.lang("bbs.welcome.yes");
     public static final IKey WELCOME_NO = L10n.lang("bbs.welcome.no");
-    public static final IKey WELCOME_ALPHA_WARNING = L10n.lang("bbs.welcome.alpha_warning");
+    public static final IKey WELCOME_BETA_WARNING = L10n.lang("bbs.welcome.beta_warning");
     public static final IKey WELCOME_DOWNGRADE_WARNING = L10n.lang("bbs.welcome.downgrade_warning");
     public static final IKey WELCOME_ACCEPT = L10n.lang("bbs.welcome.accept");
     public static final IKey WELCOME_EXIT = L10n.lang("bbs.welcome.exit");
@@ -1550,6 +1559,8 @@ public class UIKeys
     public static final IKey FILM_WORKSPACE_ACTION = L10n.lang("bbs.ui.film.workspace.action");
     public static final IKey FILM_WORKSPACE_CAMERA = L10n.lang("bbs.ui.film.workspace.camera");
     public static final IKey FILM_WORKSPACE_CAMERA_PROPERTIES = L10n.lang("bbs.ui.film.workspace.camera_properties");
+    public static final IKey FILM_WORKSPACE_ACTION_PROPERTIES = L10n.lang("bbs.ui.film.workspace.action_properties");
+    public static final IKey FILM_WORKSPACE_UNIFIED_PROPERTIES = L10n.lang("bbs.ui.film.workspace.unified_properties");
     public static final IKey FILM_WORKSPACE_REPLAY = L10n.lang("bbs.ui.film.workspace.replay");
     public static final IKey FOLDER_PICKER_ERROR_INVALID_FOLDER = L10n.lang("bbs.ui.folder_picker.error_invalid_folder");
     public static final IKey INVENTORY_EMPTY = L10n.lang("bbs.ui.inventory.empty");
@@ -1745,6 +1756,10 @@ public class UIKeys
         .load(BBSMod.getFactoryCameraClips().getStringKeys())
         .load(BBSMod.getFactoryActionClips().getStringKeys());
 
+    public static final KeyCollection C_BILLBOARD_DIRECTION = new KeyCollection("bbs.ui.snowstorm.general.direction.^")
+        .load(EnumUtils.getKeys(BillboardDirection.class, (c) -> c.id));
+    public static final KeyCollection C_CAMERA_FACING = new KeyCollection("bbs.ui.snowstorm.general.facing.^")
+        .load(EnumUtils.getKeys(CameraFacing.class, (c) -> c.id));
     public static final KeyCollection C_CURVE_TYPE = new KeyCollection("bbs.ui.snowstorm.curves.types.^")
         .load(EnumUtils.getKeys(ParticleCurveType.class, (c) -> c.id));
     public static final KeyCollection C_INTERPOLATION = new KeyCollection("interpolations.^")
