@@ -16,6 +16,7 @@ import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
 
 import org.joml.Vector2i;
+
 import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
