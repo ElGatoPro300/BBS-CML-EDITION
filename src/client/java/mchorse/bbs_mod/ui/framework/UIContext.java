@@ -281,15 +281,8 @@ public class UIContext implements IViewportStack
     {
         this.updateScroll();
 
-        this.batcher.flush();
-
-        this.batcher.getContext().getMatrices().push();
-        this.batcher.getContext().getMatrices().translate(0F, 0F, 300F);
-
         this.tooltip.render(this);
         this.notifications.render(this);
-
-        this.batcher.getContext().getMatrices().pop();
     }
 
     public void requestCursor(int shape)
