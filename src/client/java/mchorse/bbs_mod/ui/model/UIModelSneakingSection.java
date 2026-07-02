@@ -5,7 +5,9 @@ import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
-import mchorse.bbs_mod.ui.utils.UI;
+import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
+import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
+import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.presets.UIDataContextMenu;
 import mchorse.bbs_mod.utils.pose.PoseManager;
 
@@ -17,9 +19,7 @@ public class UIModelSneakingSection extends UIModelSection
     {
         super(editor);
 
-        this.title.label = UIKeys.MODELS_SNEAKING_TITLE;
-
-        this.menu = new UIButton(UIKeys.MODELS_PICK_SNEAKING_POSE, (b) ->
+        this.menu = new UIButton(IKey.constant("Pick a sneaking pose..."), (b) ->
             {
                 if (this.config == null)
                 {

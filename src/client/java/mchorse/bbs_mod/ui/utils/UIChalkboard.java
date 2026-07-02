@@ -2,7 +2,6 @@ package mchorse.bbs_mod.ui.utils;
 
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.graphics.texture.Texture;
-import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
@@ -72,9 +71,9 @@ public class UIChalkboard extends UIElement
 
         this.keys().register(Keys.DELETE, this::clear).active(() -> this.isChalkEnabled);
         this.keys().register(new KeyCombo("", UIKeys.PANELS_KEYS_TOGGLE_CHALKBOARD, GLFW.GLFW_KEY_F10), this::toggleChalk);
-        this.keys().register(new KeyCombo("undo", L10n.lang("bbs.ui.raw.undo"), GLFW.GLFW_KEY_Z, GLFW.GLFW_KEY_LEFT_CONTROL), this::undo).active(() -> this.isChalkEnabled);
-        this.keys().register(new KeyCombo("redo", L10n.lang("bbs.ui.raw.redo"), GLFW.GLFW_KEY_Y, GLFW.GLFW_KEY_LEFT_CONTROL), this::redo).active(() -> this.isChalkEnabled);
-        this.keys().register(new KeyCombo("line_mode", L10n.lang("bbs.ui.raw.line_mode"), GLFW.GLFW_KEY_L), () -> this.lineMode = !this.lineMode).active(() -> this.isChalkEnabled);
+        this.keys().register(new KeyCombo("undo", IKey.raw("Undo"), GLFW.GLFW_KEY_Z, GLFW.GLFW_KEY_LEFT_CONTROL), this::undo).active(() -> this.isChalkEnabled);
+        this.keys().register(new KeyCombo("redo", IKey.raw("Redo"), GLFW.GLFW_KEY_Y, GLFW.GLFW_KEY_LEFT_CONTROL), this::redo).active(() -> this.isChalkEnabled);
+        this.keys().register(new KeyCombo("line_mode", IKey.raw("Line Mode"), GLFW.GLFW_KEY_L), () -> this.lineMode = !this.lineMode).active(() -> this.isChalkEnabled);
     }
 
     private void clear()
@@ -207,7 +206,7 @@ public class UIChalkboard extends UIElement
 
     private void finishLine(UIContext context)
     {
-        int scale = Math.round(BBSSettings.userIntefaceScale.get());
+        int scale = BBSSettings.userIntefaceScale.get();
         int x = context.mouseX;
         int y = context.mouseY;
         
@@ -283,7 +282,7 @@ public class UIChalkboard extends UIElement
         this.undo.clear();
         this.redo.clear();
 
-        int scale = Math.round(BBSSettings.userIntefaceScale.get());
+        int scale = BBSSettings.userIntefaceScale.get();
 
         this.pixels = Pixels.fromSize(this.area.w * scale, this.area.h * scale);
         this.updateTexture();
@@ -329,7 +328,7 @@ public class UIChalkboard extends UIElement
             return;
         }
 
-        int scale = Math.round(BBSSettings.userIntefaceScale.get());
+        int scale = BBSSettings.userIntefaceScale.get();
         int x = context.mouseX;
         int y = context.mouseY;
 

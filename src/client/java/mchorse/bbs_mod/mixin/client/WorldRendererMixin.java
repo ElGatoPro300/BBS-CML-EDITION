@@ -1,5 +1,6 @@
 package mchorse.bbs_mod.mixin.client;
 
+import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.utils.colors.Color;
 
@@ -32,9 +33,9 @@ public class WorldRendererMixin
     @Inject(method = "renderSky(Lnet/minecraft/client/util/math/MatrixStack;Lorg/joml/Matrix4f;FLnet/minecraft/client/render/Camera;ZLjava/lang/Runnable;)V", at = @At("HEAD"), cancellable = true)
     public void onRenderSky(CallbackInfo info)
     {
-        if (BBSRendering.isChromaSkyEnabled())
+        if (BBSSettings.chromaSkyEnabled.get())
         {
-            Color color = Color.rgb(BBSRendering.getChromaSkyColor());
+            Color color = Color.rgb(BBSSettings.chromaSkyColor.get());
 
             GL11.glClearColor(color.r, color.g, color.b, 1F);
             GL11.glClear(GL11.GL_COLOR_BUFFER_BIT);
@@ -47,7 +48,7 @@ public class WorldRendererMixin
     @Inject(method = "renderLayer", at = @At("HEAD"), cancellable = true)
     public void onRenderLayer(RenderLayer renderLayer, MatrixStack matrices, double cameraX, double cameraY, double cameraZ, Matrix4f positionMatrix, CallbackInfo info)
     {
-        if (BBSRendering.isChromaSkyEnabled() && !BBSRendering.isChromaSkyTerrain())
+        if (BBSSettings.chromaSkyEnabled.get() && !BBSSettings.chromaSkyTerrain.get())
         {
             BBSRendering.onRenderChunkLayer(matrices);
 

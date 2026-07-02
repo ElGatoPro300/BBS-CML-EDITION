@@ -513,7 +513,7 @@ public class UISoundOverlayPanel extends UIStringOverlayPanel
 
     private boolean isMediaFoldersEnhancementsEnabled()
     {
-        return true;
+        return BBSSettings.mediaFoldersEnhancements != null && BBSSettings.mediaFoldersEnhancements.get();
     }
 
     private List<String> getCurrentFolderEntries()

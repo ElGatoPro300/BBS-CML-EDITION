@@ -2,7 +2,6 @@ package mchorse.bbs_mod.ui.framework.elements.buttons;
 
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
-import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Colors;
 
 import java.util.function.Consumer;
@@ -117,12 +116,6 @@ public class UIIcon extends UIClickable<UIIcon>
     {
         Icon icon = this.getIcon();
         int color;
-
-        if (this.isEnabled() && (icon == Icons.REMOVE || icon == Icons.TRASH))
-        {
-            context.batcher.box(this.area.x, this.area.y, this.area.x + 2, this.area.ey(), Colors.A100 | Colors.RED);
-            context.batcher.gradientHBox(this.area.x + 2, this.area.y, this.area.ex(), this.area.ey(), Colors.A25 | Colors.RED, Colors.RED);
-        }
         
         if (this.isEnabled())
         {

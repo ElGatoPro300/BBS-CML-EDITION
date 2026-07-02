@@ -149,7 +149,7 @@ public class BBSCommands
                         {
                             for (ServerPlayerEntity player : ctx.getSource().getWorld().getPlayers())
                             {
-                                if (player.getBlockPos().getSquaredDistance(pos) <= (Math.pow(BBSSettings.modelBlockAnimationStateDistance.get(), 2)))
+                                if (player.getBlockPos().getSquaredDistance(pos) <= 64F)
                                 {
                                     ServerNetwork.sendModelBlockState(player, pos, animationState);
                                 }

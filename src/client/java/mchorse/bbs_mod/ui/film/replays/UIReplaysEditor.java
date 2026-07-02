@@ -29,7 +29,6 @@ import mchorse.bbs_mod.forms.forms.ModelForm;
 import mchorse.bbs_mod.forms.forms.StructureForm;
 import mchorse.bbs_mod.forms.renderers.ModelFormRenderer;
 import mchorse.bbs_mod.graphics.window.Window;
-import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.math.molang.expressions.MolangExpression;
 import mchorse.bbs_mod.resources.Link;
@@ -47,7 +46,6 @@ import mchorse.bbs_mod.ui.film.replays.overlays.UIReplaysOverlayPanel;
 import mchorse.bbs_mod.ui.film.utils.keyframes.UIFilmKeyframes;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
-import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeEditor;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeSheet;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframes;
@@ -89,9 +87,7 @@ import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.world.World;
 
-import org.joml.Matrix4f;
 import org.joml.Vector3d;
-import org.joml.Vector3f;
 
 import org.lwjgl.glfw.GLFW;
 
@@ -196,11 +192,9 @@ public class UIReplaysEditor extends UIElement
         COLORS.put("count", Colors.GREEN);
 
         COLORS.put("settings", Colors.MAGENTA);
-        COLORS.put("block_state", 0xffffda85);
-        COLORS.put("breaking", 0xff90ffe3);
+        COLORS.put("block_state", Colors.ACTIVE);
         COLORS.put("item_stack", Colors.ORANGE);
         COLORS.put("modelTransform", Colors.YELLOW);
-        COLORS.put("same_animation_when_dropped", Colors.MAGENTA);
         COLORS.put("enabled", Colors.WHITE & Colors.RGB);
         COLORS.put("level", Colors.YELLOW);
         COLORS.put("emit_light", Colors.YELLOW);
@@ -248,10 +242,8 @@ public class UIReplaysEditor extends UIElement
 
         ICONS.put("settings", Icons.GEAR);
         ICONS.put("block_state", Icons.BLOCK);
-        ICONS.put("breaking", Icons.PICKAXE);
         ICONS.put("item_stack", Icons.LIMB);
         ICONS.put("modelTransform", Icons.ALL_DIRECTIONS);
-        ICONS.put("same_animation_when_dropped", Icons.POSE);
         ICONS.put("enabled", Icons.VISIBLE);
         ICONS.put("level", Icons.LIGHT);
         ICONS.put("emit_light", Icons.LIGHT);
@@ -794,13 +786,6 @@ public class UIReplaysEditor extends UIElement
             this.replays.replays.setList(replays);
             this.setReplay(replays.isEmpty() ? null : replays.get(index));
         }
-        else
-        {
-            this.replays.replays.setList(new ArrayList<>());
-            this.setReplay(null, false, false);
-        }
-
-        this.filmPanel.syncAnchoredReplaysPanelWithFilm();
     }
 
     public Replay getReplay()
@@ -824,74 +809,14 @@ public class UIReplaysEditor extends UIElement
             this.filmPanel.getController().orbit.reset();
         }
 
-        this.replays.syncReplaySelection(replay, select);
-        this.filmPanel.syncAnchoredReplaysPanelSelection(replay, select);
+        this.replays.setReplay(replay);
         this.filmPanel.actionEditor.setClips(replay == null ? null : replay.actions);
-        this.initializeCollapsedGroupsForReplay(replay);
         this.updateChannelsList();
-    }
 
-    private void initializeCollapsedGroupsForReplay(Replay replay)
-    {
-        if (replay == null || replay.uuid == null)
+        if (select)
         {
-            return;
-        }
-
-        String replayId = replay.uuid.get();
-        replayId = replayId == null ? "" : replayId;
-
-        String initKey = replayId + ":__collapsed_init__";
-
-        /* Initialize only once per replay, then preserve user folding choices. */
-        if (this.collapsedModelTracks.containsKey(initKey))
-        {
-            return;
-        }
-
-        Form form = replay.form.get();
-
-        if (form == null)
-        {
-            return;
-        }
-
-        Form rootForm = FormUtils.getRoot(form);
-        String rootPath = FormUtils.getPath(rootForm);
-
-        this.collapsedModelTracks.put(replayId + ":" + rootPath, false);
-        this.collapsedModelTracks.put(replayId + ":__model__", false);
-        this.collapsedModelTracks.put(replayId + ":__world__", true);
-
-        List<String> childPaths = new ArrayList<>();
-
-        this.collectChildFormPaths(rootForm, "", childPaths);
-
-        for (String path : childPaths)
-        {
-            this.collapsedModelTracks.put(replayId + ":" + path, true);
-        }
-
-        this.collapsedModelTracks.put(initKey, true);
-    }
-
-    private void collectChildFormPaths(Form form, String parentPath, List<String> out)
-    {
-        List<BodyPart> parts = form.parts.getAllTyped();
-
-        for (int i = 0; i < parts.size(); i++)
-        {
-            Form child = parts.get(i).getForm();
-
-            if (child == null)
-            {
-                continue;
-            }
-
-            String path = parentPath.isEmpty() ? String.valueOf(i) : parentPath + "/" + i;
-
-            out.add(path);
-            this.collectChildFormPaths(child, path, out);
+            this.replays.replays.ensureVisible(replay);
+            this.replays.replays.setCurrentScroll(replay);
         }
     }
 
@@ -908,7 +833,7 @@ public class UIReplaysEditor extends UIElement
     }
 
     private static final List<String> WORLD_CHANNELS = Arrays.asList("x", "y", "z", "vX", "vY", "vZ", "yaw", "pitch", "headYaw", "bodyYaw", "grounded", "damage", "fall", "sneaking", "sprinting", "item_main_hand", "item_off_hand", "item_head", "item_chest", "item_legs", "item_feet", "selected_slot", "stick_lx", "stick_ly", "stick_rx", "stick_ry", "trigger_l", "trigger_r", "extra1_x", "extra1_y", "extra2_x", "extra2_y", "shadow_size", "shadow_opacity");
-    private static final List<String> MODEL_PROPERTIES = Arrays.asList("visible", "lighting", "transform", "transform_overlay", "pose", "pose_overlay", "anchor", "color", "texture", "pbr_normal_intensity", "pbr_specular_intensity", "model", "actions", "shape_keys", "block_state", "item_stack", "modelTransform", "same_animation_when_dropped", "settings", "paused", "frequency", "count", "structure_file", "biome_id", "emit_light", "light_intensity", "structure_light", "enabled", "level", "effect");
+    private static final List<String> MODEL_PROPERTIES = Arrays.asList("visible", "lighting", "transform", "transform_overlay", "pose", "pose_overlay", "anchor", "color", "texture", "pbr_normal_intensity", "pbr_specular_intensity", "model", "actions", "shape_keys", "block_state", "item_stack", "modelTransform", "settings", "paused", "frequency", "count", "structure_file", "biome_id", "emit_light", "light_intensity", "structure_light", "enabled", "level", "effect");
 
     public void updateChannelsList()
     {
@@ -930,8 +855,6 @@ public class UIReplaysEditor extends UIElement
         {
             return;
         }
-
-        this.initializeCollapsedGroupsForReplay(this.replay);
 
         /* Replay keyframes */
         List<UIKeyframeSheet> sheets = new ArrayList<>();
@@ -1290,7 +1213,7 @@ public class UIReplaysEditor extends UIElement
                 boolean worldExpanded = !this.collapsedModelTracks.getOrDefault(worldKey, false);
                 UIKeyframeSheet worldHeader = UIKeyframeSheet.groupHeader(
                     "__group__" + worldKey,
-                    L10n.lang("bbs.ui.film.replay.world"),
+                    IKey.constant("World"),
                     Colors.LIGHTEST_GRAY & Colors.RGB,
                     worldKey,
                     worldExpanded,
@@ -1307,7 +1230,7 @@ public class UIReplaysEditor extends UIElement
                 boolean modelPropsExpanded = !this.collapsedModelTracks.getOrDefault(modelPropsKey, false);
                 UIKeyframeSheet modelPropsHeader = UIKeyframeSheet.groupHeader(
                     "__group__" + modelPropsKey,
-                    L10n.lang("bbs.ui.film.replay.model"),
+                    IKey.constant("Model"),
                     Colors.LIGHTEST_GRAY & Colors.RGB,
                     modelPropsKey,
                     modelPropsExpanded,
@@ -1491,20 +1414,12 @@ public class UIReplaysEditor extends UIElement
         if (!sheets.isEmpty())
         {
             this.lastPickedKeyframe = null;
-            this.keyframeEditor = new UIKeyframeEditor((consumer) ->
+            this.keyframeEditor = new UIKeyframeEditor((consumer) -> new UIFilmKeyframes(this.filmPanel.cameraEditor, (keyframe) ->
             {
-                UIFilmKeyframes keyframes = new UIFilmKeyframes(this.filmPanel.cameraEditor, (keyframe) ->
-                {
-                    this.cleanupUntouchedAutomaticKeyframe(this.lastPickedKeyframe, keyframe);
-                    this.lastPickedKeyframe = keyframe;
-                    this.filmPanel.focusLinkedPropertiesTab("replayTimeline");
-                    consumer.accept(keyframe);
-                }).absolute();
-
-                keyframes.setPresetsPreview(new UIReplayPresetPreview(this::getReplay));
-
-                return keyframes;
-            }).target(this.filmPanel.editArea);
+                this.cleanupUntouchedAutomaticKeyframe(this.lastPickedKeyframe, keyframe);
+                this.lastPickedKeyframe = keyframe;
+                consumer.accept(keyframe);
+            }).absolute()).target(this.filmPanel.editArea);
             this.keyframeEditor.full(this);
             this.keyframeEditor.setUndoId("replay_keyframe_editor");
 
@@ -2556,70 +2471,7 @@ public class UIReplaysEditor extends UIElement
                         this.filmPanel.showPanel(this);
                     }
 
-                    UIPropTransform editableTransform = UIReplaysEditorUtils.getEditableTransform(this.keyframeEditor);
-                    if (editableTransform != null)
-                    {
-                        final Area finalArea = area;
-                        editableTransform.setGizmoRayProvider(new UIPropTransform.IGizmoRayProvider()
-                        {
-                            @Override
-                            public boolean getMouseRay(UIContext context, int mouseX, int mouseY, Vector3d rayOrigin, Vector3f rayDirection)
-                            {
-                                if (finalArea.w <= 0 || finalArea.h <= 0)
-                                {
-                                    return false;
-                                }
-
-                                Camera camera = UIReplaysEditor.this.filmPanel.getCamera();
-                                if (camera == null)
-                                {
-                                    return false;
-                                }
-
-                                Vector3f direction = CameraUtils.getMouseDirection(
-                                    camera.projection,
-                                    camera.view,
-                                    mouseX,
-                                    mouseY,
-                                    finalArea.x,
-                                    finalArea.y,
-                                    finalArea.w,
-                                    finalArea.h
-                                );
-
-                                if (direction.lengthSquared() <= 1.0E-12F)
-                                {
-                                    return false;
-                                }
-
-                                rayDirection.set(direction).normalize();
-                                rayOrigin.set(0, 0, 0);
-
-                                return true;
-                            }
-
-                            @Override
-                            public boolean getGizmoMatrix(Matrix4f matrix)
-                            {
-                                if (!Gizmo.INSTANCE.hasGizmoMatrix)
-                                {
-                                    return false;
-                                }
-
-                                Camera camera = UIReplaysEditor.this.filmPanel.getCamera();
-                                if (camera == null)
-                                {
-                                    return false;
-                                }
-
-                                matrix.set(new Matrix4f(camera.view).invert().mul(Gizmo.INSTANCE.lastGizmoMatrix));
-
-                                return true;
-                            }
-                        });
-                    }
-
-                    if (Gizmo.INSTANCE.start(stencil.getIndex(), context.mouseX, context.mouseY, editableTransform))
+                    if (Gizmo.INSTANCE.start(stencil.getIndex(), context.mouseX, context.mouseY, UIReplaysEditorUtils.getEditableTransform(this.keyframeEditor)))
                     {
                         return true;
                     }
@@ -2738,17 +2590,6 @@ public class UIReplaysEditor extends UIElement
         currentIndices.clear();
         currentIndices.addAll(selection);
         this.replays.replays.update();
-    }
-
-    @Override
-    public void setVisible(boolean visible)
-    {
-        super.setVisible(visible);
-
-        if (this.keyframeEditor != null)
-        {
-            this.keyframeEditor.setVisible(visible);
-        }
     }
 
     @Override

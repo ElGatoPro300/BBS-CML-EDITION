@@ -15,7 +15,7 @@ public class UIFormEditorList extends UIFormList
         super(palette);
 
         this.edit.removeFromParent();
-        this.mouseEventPropagataion(EventPropagation.BLOCK_INSIDE).keyboardEventPropagataion(EventPropagation.PASS).markContainer();
+        this.eventPropagataion(EventPropagation.BLOCK_INSIDE).markContainer();
     }
 
     @Override
@@ -24,11 +24,9 @@ public class UIFormEditorList extends UIFormList
         if (context.isPressed(GLFW.GLFW_KEY_ESCAPE))
         {
             this.palette.exit();
-
-            return true;
         }
 
-        return super.subKeyPressed(context);
+        return true;
     }
 
     @Override

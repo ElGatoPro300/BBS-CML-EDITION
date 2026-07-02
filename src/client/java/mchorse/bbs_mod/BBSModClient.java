@@ -79,11 +79,11 @@ import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UIKeyfram
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.shapes.KeyframeShapeRenderers;
 import mchorse.bbs_mod.ui.model_blocks.UIModelBlockEditorMenu;
 import mchorse.bbs_mod.ui.morphing.UIMorphingPanel;
+import mchorse.bbs_mod.ui.utils.cml.CMLSettings;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.keys.KeyCombo;
 import mchorse.bbs_mod.ui.utils.keys.KeybindSettings;
 import mchorse.bbs_mod.utils.MathUtils;
-import mchorse.bbs_mod.utils.RecentAssetsTracker;
 import mchorse.bbs_mod.utils.ScreenshotRecorder;
 import mchorse.bbs_mod.utils.VideoRecorder;
 import mchorse.bbs_mod.utils.colors.Color;
@@ -287,28 +287,14 @@ public class BBSModClient implements ClientModInitializer
 
     public static int getGUIScale()
     {
-        float scale = BBSSettings.userIntefaceScale.get();
+        int scale = BBSSettings.userIntefaceScale.get();
 
-        if (scale <= 0F)
+        if (scale == 0)
         {
             return MinecraftClient.getInstance().options.getGuiScale().getValue();
         }
 
-        /* Minecraft's GUI scale option is integer-only, so round to the nearest whole step. The
-           exact (possibly fractional) value is applied via the window scale-factor override
-           (see WindowMixin / getUIScaleFactor). */
-        return Math.max(1, Math.round(scale));
-    }
-
-    /**
-     * The exact (possibly fractional) BBS UI scale, e.g. 1.6. Returns 0 when set to "auto" so the
-     * window keeps Minecraft's computed integer scale.
-     */
-    public static double getUIScaleFactor()
-    {
-        float scale = BBSSettings.userIntefaceScale.get();
-
-        return scale <= 0F ? 0D : scale;
+        return scale;
     }
 
     public static float getOriginalFramebufferScale()
@@ -469,8 +455,6 @@ public class BBSModClient implements ClientModInitializer
         selectors.read();
         films = new Films();
 
-        RecentAssetsTracker.load();
-
         BBSResources.init();
 
         URLRepository repository = new URLRepository(new File(parentFile, "url_cache"));
@@ -481,6 +465,7 @@ public class BBSModClient implements ClientModInitializer
         KeybindSettings.registerClasses();
 
         BBSMod.setupConfig(Icons.KEY_CAP, "keybinds", new File(BBSMod.getSettingsFolder(), "keybinds.json"), KeybindSettings::register);
+        BBSMod.setupConfig(Icons.SETTINGS, "cml", new File(BBSMod.getSettingsFolder(), "cml.json"), CMLSettings::register);
 
         BBSMod.events.post(new RegisterClientSettingsEvent());
 
@@ -497,18 +482,6 @@ public class BBSModClient implements ClientModInitializer
         BBSSettings.tooltipStyle.modes(
             UIKeys.ENGINE_TOOLTIP_STYLE_LIGHT,
             UIKeys.ENGINE_TOOLTIP_STYLE_DARK
-        );
-
-        BBSSettings.replayContextOptions.modes(
-            UIKeys.CONFIG_GENERAL_COMPACTED_OPTIONS_DEFAULT,
-            UIKeys.CONFIG_GENERAL_COMPACTED_OPTIONS_SEPARATED,
-            UIKeys.CONFIG_GENERAL_COMPACTED_OPTIONS_COMPACTED
-        );
-
-        BBSSettings.editorTimeMode.modes(
-            UIKeys.CONFIG_EDITOR_TICKS_MODE,
-            UIKeys.CONFIG_EDITOR_SECONDS_MODE,
-            UIKeys.CONFIG_EDITOR_FRAMES_MODE
         );
 
         BBSSettings.keystrokeMode.modes(
@@ -550,14 +523,14 @@ public class BBSModClient implements ClientModInitializer
                 BBSRendering.renderCoolStuff(context);
             }
 
-            if (BBSRendering.isChromaSkyEnabled())
+            if (BBSSettings.chromaSkyEnabled.get())
             {
-                float d = BBSRendering.getChromaSkyBillboard();
+                float d = BBSSettings.chromaSkyBillboard.get();
 
                 if (d > 0)
                 {
                     MatrixStack stack = context.matrixStack();
-                    Color color = Colors.COLOR.set(BBSRendering.getChromaSkyColor());
+                    Color color = Colors.COLOR.set(BBSSettings.chromaSkyColor.get());
 
                     stack.push();
 
@@ -599,11 +572,6 @@ public class BBSModClient implements ClientModInitializer
             {
                 videoRecorder.recordFrame();
             }
-        });
-
-        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) ->
-        {
-            RecentAssetsTracker.load();
         });
 
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) ->

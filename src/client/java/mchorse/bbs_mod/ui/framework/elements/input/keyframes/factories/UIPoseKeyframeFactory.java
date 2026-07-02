@@ -204,20 +204,10 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
             return this.boneCategories.getBones(this.getPoseGroupKey(), category);
         }
 
-        public List<String> getLiveMirrorBonesForReplayEditor()
-        {
-            return this.getLiveMirrorBones();
-        }
-
-        public boolean shouldInvertLiveMirrorRotationZForReplayEditor(List<String> targets)
-        {
-            return this.shouldInvertLiveMirrorRotationZ(targets);
-        }
-
         @Override
         protected UIPropTransform createTransformEditor()
         {
-            return new UIPoseTransforms().enableHotkeys().translationScale(16F);
+            return new UIPoseTransforms().enableHotkeys();
         }
 
         @Override
@@ -363,12 +353,6 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
             String selectedCategory = categoriesEnabled && this.editor.categories != null ? this.editor.categories.getCurrentFirst() : null;
             if (selectedCategory == null || selectedCategory.isEmpty())
             {
-                List<String> liveMirror = this.editor.getLiveMirrorBonesForReplayEditor();
-                if (!liveMirror.isEmpty())
-                {
-                    return liveMirror;
-                }
-
                 String currentBone = this.editor.getCurrentBone();
 
                 if (currentBone == null || currentBone.isEmpty())
@@ -500,18 +484,14 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
             float dx = MathUtils.toRad((float) x) - transform.rotate.x;
             float dy = MathUtils.toRad((float) y) - transform.rotate.y;
             float dz = MathUtils.toRad((float) z) - transform.rotate.z;
-            List<String> targets = this.targets();
-            boolean invertAxes = this.editor.shouldInvertLiveMirrorRotationZForReplayEditor(targets);
-            String sourceBone = this.editor.getCurrentBone();
 
-            for (String key : targets)
+            for (String key : this.targets())
             {
                 UIPoseFactoryEditor.apply(this.editor.editor, this.editor.keyframe, key, (poseT) ->
                 {
-                    boolean mirroredBone = invertAxes && !key.equals(sourceBone);
-                    poseT.rotate.x += mirroredBone ? -dx : dx;
-                    poseT.rotate.y += mirroredBone ? -dy : dy;
-                    poseT.rotate.z += mirroredBone ? -dz : dz;
+                    poseT.rotate.x += dx;
+                    poseT.rotate.y += dy;
+                    poseT.rotate.z += dz;
                 });
             }
         }
@@ -525,18 +505,14 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
             float dx = MathUtils.toRad((float) x) - transform.rotate2.x;
             float dy = MathUtils.toRad((float) y) - transform.rotate2.y;
             float dz = MathUtils.toRad((float) z) - transform.rotate2.z;
-            List<String> targets = this.targets();
-            boolean invertAxes = this.editor.shouldInvertLiveMirrorRotationZForReplayEditor(targets);
-            String sourceBone = this.editor.getCurrentBone();
 
-            for (String key : targets)
+            for (String key : this.targets())
             {
                 UIPoseFactoryEditor.apply(this.editor.editor, this.editor.keyframe, key, (poseT) ->
                 {
-                    boolean mirroredBone = invertAxes && !key.equals(sourceBone);
-                    poseT.rotate2.x += mirroredBone ? -dx : dx;
-                    poseT.rotate2.y += mirroredBone ? -dy : dy;
-                    poseT.rotate2.z += mirroredBone ? -dz : dz;
+                    poseT.rotate2.x += dx;
+                    poseT.rotate2.y += dy;
+                    poseT.rotate2.z += dz;
                 });
             }
         }

@@ -104,7 +104,10 @@ public class UIScreen extends Screen implements IFileDropListener
 
         this.menu.onClose(null);
 
-        MinecraftClient.getInstance().options.hudHidden = false;
+        if (this.menu.canHideHUD())
+        {
+            MinecraftClient.getInstance().options.hudHidden = false;
+        }
     }
 
     @Override
@@ -119,7 +122,10 @@ public class UIScreen extends Screen implements IFileDropListener
 
         this.menu.onOpen(null);
 
-        MinecraftClient.getInstance().options.hudHidden = this.menu.canHideHUD();
+        if (this.menu.canHideHUD())
+        {
+            MinecraftClient.getInstance().options.hudHidden = true;
+        }
     }
 
     @Override
@@ -194,7 +200,6 @@ public class UIScreen extends Screen implements IFileDropListener
         this.menu.context.setTransition(this.client.getTickDelta());
         this.menu.renderMenu(this.context, mouseX, mouseY);
         this.menu.context.render.executeRunnables();
-        this.client.options.hudHidden = this.menu.canHideHUD();
     }
 
     @Override

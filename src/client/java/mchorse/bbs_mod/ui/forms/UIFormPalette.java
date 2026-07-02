@@ -71,7 +71,7 @@ public class UIFormPalette extends UIElement implements IUIFormList
 
         this.add(this.list, this.editor);
 
-        this.mouseEventPropagataion(EventPropagation.BLOCK_INSIDE).keyboardEventPropagataion(EventPropagation.PASS).markContainer();
+        this.eventPropagataion(EventPropagation.BLOCK_INSIDE).markContainer();
 
         this.keys().register(Keys.FORMS_EDIT, () ->
         {
@@ -80,15 +80,6 @@ public class UIFormPalette extends UIElement implements IUIFormList
                 this.toggleEditor();
             }
         });
-        this.keys().register(Keys.FORMS_EDIT_ALT, () ->
-        {
-            if (!this.editor.isEditing())
-            {
-                this.toggleEditor();
-            }
-        });
-        this.keys().register(Keys.FORMS_FOCUS, () -> this.list.focusSearch());
-        this.keys().ignoreFocus();
     }
 
     public void noBackground()
@@ -153,24 +144,22 @@ public class UIFormPalette extends UIElement implements IUIFormList
     @Override
     public void toggleEditor()
     {
-        this.list.closeOpenedCategoryPopup();
         this.events.emit(new UIToggleEditorEvent(this, !this.editor.isEditing()));
 
         if (!this.editor.isEditing())
         {
-            UIFormCategory selected = this.list.getSelectedCategory();
-            Form form = selected == null ? null : selected.selected;
+            Form form = this.list.getSelected();
 
             if (this.editor.edit(form))
             {
-                this.lastSelected = selected;
+                this.lastSelected = this.list.getSelectedCategory();
             }
         }
         else
         {
             Form form = this.editor.finish();
 
-            if (this.canModify && this.lastSelected != null && this.lastSelected.category != null && this.lastSelected.category.canModify(form))
+            if (this.canModify && this.lastSelected.category.canModify(form))
             {
                 int index = this.lastSelected.category.getForms().indexOf(this.lastSelected.selected);
 
@@ -224,7 +213,7 @@ public class UIFormPalette extends UIElement implements IUIFormList
             }
         }
 
-        return super.subKeyPressed(context);
+        return false;
     }
 
     @Override

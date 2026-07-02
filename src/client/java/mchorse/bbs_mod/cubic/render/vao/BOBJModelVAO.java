@@ -16,6 +16,7 @@ import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
+import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL30;
 
@@ -197,8 +198,8 @@ public class BOBJModelVAO
             boolean allowBone = true;
             if (stencilMap != null && stencilMap.allowedBones != null && lightBone >= 0)
             {
-                BOBJBone bone = this.getBoneByIndex(lightBone);
-                allowBone = bone != null && stencilMap.allowedBones.contains(bone.name);
+                String boneName = this.armature.orderedBones.get(lightBone).name;
+                allowBone = stencilMap.allowedBones.contains(boneName);
             }
 
             if (stencilMap != null)
@@ -279,19 +280,6 @@ public class BOBJModelVAO
         }
 
         return bone;
-    }
-
-    private BOBJBone getBoneByIndex(int index)
-    {
-        for (BOBJBone bone : this.armature.orderedBones)
-        {
-            if (bone.index == index)
-            {
-                return bone;
-            }
-        }
-
-        return null;
     }
 
     private void drawTriangles(IntPredicate predicate)

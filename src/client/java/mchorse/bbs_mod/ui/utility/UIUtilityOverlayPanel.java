@@ -5,12 +5,10 @@ import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSResources;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.client.BBSShaders;
-import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.L10nUtils;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanels;
-import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIScrollView;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
@@ -187,10 +185,7 @@ public class UIUtilityOverlayPanel extends UIOverlayPanel
         this.view.add(UI.column(UI.label(UIKeys.UTILITY_RESIZE_WINDOW), UI.row(this.width, this.height)).marginBottom(8));
         this.view.add(UI.label(UIKeys.UTILITY_LANG_LABEL), UI.row(analyze, compile), langEditor.marginBottom(8));
         this.view.add(UI.label(UIKeys.UTILITY_AUDIO), openAudioEditor.marginBottom(8));
-        UIButton clearThumbnailCache = new UIButton(UIKeys.UTILITY_CLEAR_THUMBNAIL_CACHE, (b) -> this.clearThumbnailCache());
-
-        this.view.add(UI.label(L10n.lang("bbs.ui.raw.cache")), clearThumbnailCache.marginBottom(8));
-        this.view.add(UI.label(L10n.lang("bbs.ui.raw.cdn")), UI.row(cdnDownload, cdnUpload));
+        this.view.add(UI.label(IKey.raw("CDN")), UI.row(cdnDownload, cdnUpload));
         this.content.add(this.view);
     }
 
@@ -209,21 +204,6 @@ public class UIUtilityOverlayPanel extends UIOverlayPanel
         {
             MinecraftClient.getInstance().player.networkHandler.sendCommand(command);
         }
-    }
-
-    private void clearThumbnailCache()
-    {
-        for (UIDashboardPanels child : this.getContext().menu.getRoot().getChildren(UIDashboardPanels.class))
-        {
-            UIFilmPanel filmPanel = child.getPanel(UIFilmPanel.class);
-
-            if (filmPanel != null)
-            {
-                filmPanel.clearThumbnailCache();
-            }
-        }
-
-        this.print("Cleared thumbnail cache!");
     }
 
     private void openFolder(File gameFolder)
