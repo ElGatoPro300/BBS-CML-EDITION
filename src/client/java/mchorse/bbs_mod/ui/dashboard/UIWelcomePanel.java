@@ -17,10 +17,14 @@ import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Colors;
 
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.network.PlayerListEntry;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.Identifier;
+
+import org.joml.Matrix3x2fStack;
 
 import org.lwjgl.glfw.GLFW;
 
@@ -121,8 +125,8 @@ public class UIWelcomePanel extends UIElement {
 
     private void drawPlayerHead(DrawContext drawContext, Identifier skinTexture, int x, int y, int size)
     {
-        drawContext.drawTexture(RenderLayer::getGuiTextured, skinTexture, x, y, 8F, 8F, size, size, 8, 8, 64, 64);
-        drawContext.drawTexture(RenderLayer::getGuiTextured, skinTexture, x, y, 40F, 8F, size, size, 8, 8, 64, 64);
+        drawContext.drawTexture(RenderPipelines.GUI_TEXTURED, skinTexture, x, y, 8F, 8F, size, size, 8, 8, 64, 64);
+        drawContext.drawTexture(RenderPipelines.GUI_TEXTURED, skinTexture, x, y, 40F, 8F, size, size, 8, 8, 64, 64);
     }
 
     @Override
@@ -164,11 +168,14 @@ public class UIWelcomePanel extends UIElement {
             }
 
             MinecraftClient mc = MinecraftClient.getInstance();
-            String username = mc.player != null ? mc.player.getGameProfile().getName() : mc.getSession().getUsername();
+            String username = mc.player != null ? mc.player.getGameProfile().name() : mc.getSession().getUsername();
             Identifier skinTexture = null;
             if (mc.player != null) {
                 try {
-                    skinTexture = mc.getSkinProvider().getSkinTextures(mc.player.getGameProfile()).texture();
+                    PlayerListEntry entry = mc.getNetworkHandler().getPlayerListEntry(mc.player.getUuid());
+                    if (entry != null) {
+                        skinTexture = entry.getSkinTextures().body().texturePath();
+                    }
                 } catch (Exception e) {
                 }
             }
@@ -190,9 +197,9 @@ public class UIWelcomePanel extends UIElement {
             float drawX = (realX / scale) - (totalW / 2.0F);
             float drawY = greetRealY / scale;
 
-            MatrixStack matrices = context.batcher.getContext().getMatrices();
-            matrices.push();
-            matrices.scale(scale, scale, 1.0F);
+            Matrix3x2fStack matrices = context.batcher.getContext().getMatrices();
+            matrices.pushMatrix();
+            matrices.scale(scale, scale);
 
             context.batcher.textShadow(welcomePart1, drawX, drawY, Colors.setA(Colors.WHITE, textAlpha));
             float headX = drawX + w1;
@@ -208,7 +215,7 @@ public class UIWelcomePanel extends UIElement {
             context.batcher.textShadow(welcomePart2, headX + headSize + gapText, drawY,
                     Colors.setA(Colors.WHITE, textAlpha));
 
-            matrices.pop();
+            matrices.popMatrix();
 
             float readyScale = 1.4F;
             String readyText = UIKeys.WELCOME_READY.get();
@@ -218,10 +225,10 @@ public class UIWelcomePanel extends UIElement {
             float readyDrawX = (realX / readyScale) - (readyW / 2.0F);
             float readyDrawY = readyRealY / readyScale;
 
-            matrices.push();
-            matrices.scale(readyScale, readyScale, 1.0F);
+            matrices.pushMatrix();
+            matrices.scale(readyScale, readyScale);
             context.batcher.textShadow(readyText, readyDrawX, readyDrawY, Colors.setA(Colors.WHITE, textAlpha));
-            matrices.pop();
+            matrices.popMatrix();
         } else {
             float popupProgress = Math.min((System.currentTimeMillis() - this.popupStartTime) / 400.0F, 1.0F);
             float easeProgress = 1.0F - (1.0F - popupProgress) * (1.0F - popupProgress);

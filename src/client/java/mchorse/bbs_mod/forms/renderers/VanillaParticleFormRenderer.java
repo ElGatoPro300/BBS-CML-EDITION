@@ -77,6 +77,7 @@ public class VanillaParticleFormRenderer extends FormRenderer<VanillaParticleFor
         super.render3D(context);
 
         Matrix4f positionMatrix;
+        Vector3f translation;
 
         if (context.type == FormRenderType.PREVIEW)
         {
@@ -85,19 +86,19 @@ public class VanillaParticleFormRenderer extends FormRenderer<VanillaParticleFor
             positionMatrix = new Matrix4f().rotation(realCamera.getRotation());
             positionMatrix.mul(context.stack.peek().getPositionMatrix());
 
-            Vector3f translation = positionMatrix.getTranslation(new Vector3f());
+            translation = positionMatrix.getTranslation(new Vector3f());
 
             this.pos.set(
-                translation.x + (float) realCamera.getPos().x,
-                translation.y + (float) realCamera.getPos().y,
-                translation.z + (float) realCamera.getPos().z
+                translation.x + (float) realCamera.getCameraPos().x,
+                translation.y + (float) realCamera.getCameraPos().y,
+                translation.z + (float) realCamera.getCameraPos().z
             );
         }
         else
         {
             positionMatrix = new Matrix4f(context.stack.peek().getPositionMatrix());
 
-            Vector3f translation = positionMatrix.getTranslation(new Vector3f());
+            translation = positionMatrix.getTranslation(new Vector3f());
 
             this.pos.set(
                 translation.x + context.camera.position.x,
@@ -220,7 +221,7 @@ public class VanillaParticleFormRenderer extends FormRenderer<VanillaParticleFor
                     double y = this.pos.y + temp3f.y;
                     double z = this.pos.z + temp3f.z;
 
-                    world.addParticle(effect, x, y, z, v.x, v.y, v.z);
+                    world.addParticleClient(effect, x, y, z, v.x, v.y, v.z);
                 }
 
                 this.tick = frequency;
