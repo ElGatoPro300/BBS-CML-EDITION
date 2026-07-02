@@ -4,6 +4,8 @@ import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.utils.Pair;
 
+import net.irisshaders.iris.uniforms.custom.cached.CachedUniform;
+
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -12,8 +14,6 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import net.irisshaders.iris.uniforms.custom.cached.CachedUniform;
 
 public class ShaderCurves
 {
@@ -27,6 +27,17 @@ public class ShaderCurves
     public static final String WEATHER = "weather";
 
     public static final String UNIFORM_IDENTIFIER = "bbs_";
+
+    private static final Pattern CASE_LABEL_PATTERN = Pattern.compile("\\bcase\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*:");
+    private static final Pattern ARRAY_DIM_PATTERN = Pattern.compile("\\[\\s*([A-Za-z_][A-Za-z0-9_]*)\\s*\\]");
+    private static final Pattern LOCAL_SIZE_PATTERN = Pattern.compile("\\blocal_size_[xyz]\\s*=\\s*([A-Za-z_][A-Za-z0-9_]*)");
+
+    private static final Pattern CONST_DECL_PATTERN = Pattern.compile(
+        "\\bconst\\b\\s+[A-Za-z_]\\w*(?:\\s*\\[[^\\]]*\\])?\\s+" +
+        "([A-Za-z_]\\w*)(?:\\s*\\[[^\\]]*\\])?\\s*=\\s*([^;]*?);",
+        Pattern.DOTALL
+    );
+    private static final Pattern IDENTIFIER_PATTERN = Pattern.compile("\\b([A-Za-z_][A-Za-z0-9_]*)\\b");
 
     static
     {
@@ -51,13 +62,15 @@ public class ShaderCurves
             return source;
         }
 
-        Map<String, ShaderVariable> variables = parseVariables(source);
+        String stripped = stripComments(source);
+        Map<String, ShaderVariable> variables = parseVariables(stripped);
 
         if (!variables.isEmpty())
         {
-            removeIrrelevantVariables(source, variables);
+            removeIrrelevantVariables(stripped, variables);
+            removeConstantContextVariables(stripped, variables);
 
-            source = replaceMacroReferences(source, variables);
+            source = replaceMacroReferences(source, stripped, variables);
             source = removeConstFromRelevantVariables(source);
             source = insertUniforms(source, variables);
 
@@ -70,12 +83,81 @@ public class ShaderCurves
         return source;
     }
 
+    /**
+     * Returns a copy of the given GLSL source where every {@code //} line
+     * comment and {@code /* ... *\/} block comment is replaced by spaces.
+     */
+    private static String stripComments(String source)
+    {
+        char[] out = source.toCharArray();
+        int n = out.length;
+        int i = 0;
+
+        while (i < n)
+        {
+            char c = out[i];
+
+            if (c == '/' && i + 1 < n)
+            {
+                char d = out[i + 1];
+
+                if (d == '/')
+                {
+                    out[i] = ' ';
+                    out[i + 1] = ' ';
+                    i += 2;
+
+                    while (i < n && out[i] != '\n')
+                    {
+                        out[i] = ' ';
+                        i++;
+                    }
+
+                    continue;
+                }
+                else if (d == '*')
+                {
+                    out[i] = ' ';
+                    out[i + 1] = ' ';
+                    i += 2;
+
+                    while (i < n)
+                    {
+                        if (i + 1 < n && out[i] == '*' && out[i + 1] == '/')
+                        {
+                            out[i] = ' ';
+                            out[i + 1] = ' ';
+                            i += 2;
+                            break;
+                        }
+
+                        if (out[i] != '\n')
+                        {
+                            out[i] = ' ';
+                        }
+
+                        i++;
+                    }
+
+                    continue;
+                }
+            }
+
+            i++;
+        }
+
+        return new String(out);
+    }
+
     private static void removeIrrelevantVariables(String source, Map<String, ShaderVariable> variables)
     {
         /* Remove irrelevant variables */
         List<String> filter = BBSRendering.getShadersSliderOptions();
 
-        variables.values().removeIf((v) -> !filter.contains(v.name));
+        if (!filter.isEmpty())
+        {
+            variables.values().removeIf((v) -> !filter.contains(v.name));
+        }
 
         for (String prohibitedVariable : prohibitedVariables)
         {
@@ -133,10 +215,95 @@ public class ShaderCurves
         }
     }
 
+    /**
+     * Drop candidate variables that appear in GLSL contexts which require a
+     * compile-time constant expression (e.g. array sizes)
+     */
+    private static void removeConstantContextVariables(String stripped, Map<String, ShaderVariable> variables)
+    {
+        if (variables.isEmpty())
+        {
+            return;
+        }
+
+        Set<String> contextual = collectConstantContextIdentifiers(stripped);
+
+        if (contextual.isEmpty())
+        {
+            return;
+        }
+
+        variables.keySet().removeAll(contextual);
+    }
+
+    private static Set<String> collectConstantContextIdentifiers(String stripped)
+    {
+        Set<String> result = new HashSet<>();
+
+        Matcher matcher = CASE_LABEL_PATTERN.matcher(stripped);
+
+        while (matcher.find())
+        {
+            result.add(matcher.group(1));
+        }
+
+        matcher = ARRAY_DIM_PATTERN.matcher(stripped);
+
+        while (matcher.find())
+        {
+            result.add(matcher.group(1));
+        }
+
+        matcher = LOCAL_SIZE_PATTERN.matcher(stripped);
+
+        while (matcher.find())
+        {
+            result.add(matcher.group(1));
+        }
+
+        boolean changed = true;
+        int safety = 32;
+
+        while (changed && safety-- > 0)
+        {
+            changed = false;
+
+            Matcher decl = CONST_DECL_PATTERN.matcher(stripped);
+
+            while (decl.find())
+            {
+                String name = decl.group(1);
+
+                if (!result.contains(name))
+                {
+                    continue;
+                }
+
+                String initializer = decl.group(2);
+                Matcher ids = IDENTIFIER_PATTERN.matcher(initializer);
+
+                while (ids.find())
+                {
+                    if (result.add(ids.group(1)))
+                    {
+                        changed = true;
+                    }
+                }
+            }
+        }
+
+        return result;
+    }
+
     private static Map<String, ShaderVariable> parseVariables(String source)
     {
         Map<String, ShaderVariable> variables = new HashMap<>();
-        Pattern definePattern = Pattern.compile("^\\s*(?!//)\\s*#define +([\\w_]+) +([\\d.]+) *// *(\\[|OptionAnnotatedSource)");
+        // Accept integers, decimals with optional leading zero (e.g., .5), and scientific notation (e.g., 1e-3)
+        Pattern definePattern = Pattern.compile(
+            "^\\s*(?!//)\\s*#define\\s+([A-Za-z_][A-Za-z0-9_]*)\\s+(" +
+            "(?:[-+]?\\d*\\.\\d+(?:[eE][-+]?\\d+)?|[-+]?\\d+(?:[eE][-+]?\\d+)?)" +
+            ")\\b.*$"
+        );
         int index = 0;
 
         while ((index = source.indexOf("#define", index)) != -1)
@@ -168,7 +335,7 @@ public class ShaderCurves
         return variables;
     }
 
-    private static String replaceMacroReferences(String source, Map<String, ShaderVariable> variables)
+    private static String replaceMacroReferences(String source, String stripped, Map<String, ShaderVariable> variables)
     {
         StringBuilder out = new StringBuilder(source.length());
         int length = source.length();
@@ -177,7 +344,7 @@ public class ShaderCurves
 
         while (i < length)
         {
-            char c = source.charAt(i);
+            char c = stripped.charAt(i);
 
             if (c == '#') macro = true;
             if (c == '\n') macro = false;
@@ -187,12 +354,12 @@ public class ShaderCurves
                 int start = i;
                 int j = i + 1;
 
-                while (j < length && isIdentifierPart(source.charAt(j)))
+                while (j < length && isIdentifierPart(stripped.charAt(j)))
                 {
                     j++;
                 }
 
-                String identifier = source.substring(start, j);
+                String identifier = stripped.substring(start, j);
                 String replacement = variables.containsKey(identifier) ? UNIFORM_IDENTIFIER  + identifier : identifier;
 
                 out.append(replacement);
@@ -201,7 +368,7 @@ public class ShaderCurves
             }
             else
             {
-                out.append(c);
+                out.append(source.charAt(i));
 
                 i++;
             }
@@ -256,34 +423,61 @@ public class ShaderCurves
     {
         Set<String> deconst = new HashSet<>();
         StringBuilder builder = new StringBuilder();
+        String stripped = stripComments(source);
         int index = 0;
         int lastIndex = 0;
 
-        while ((index = source.indexOf("const ", index + 1)) != -1)
+        while (true)
         {
-            int semicolon = source.indexOf(';', index);
+            int searchFrom = Math.max(index + 1, lastIndex);
 
-            if (semicolon >= 0)
+            if (searchFrom >= stripped.length())
             {
-                String substr = source.substring(index, semicolon);
+                break;
+            }
 
-                if (substr.indexOf('{') == -1 && function.apply(substr))
+            index = stripped.indexOf("const ", searchFrom);
+
+            if (index < 0)
+            {
+                break;
+            }
+
+            int semicolon = stripped.indexOf(';', index);
+
+            if (semicolon < 0)
+            {
+                break;
+            }
+
+            String substr = stripped.substring(index, semicolon);
+
+            if (substr.indexOf('{') == -1 && function.apply(substr))
+            {
+                builder.append(source, lastIndex, index);
+                builder.append(source, index + 6, semicolon);
+
+                int equals = substr.indexOf('=');
+
+                if (equals >= 0)
                 {
-                    builder.append(source, lastIndex, index);
-                    builder.append(source, index + 6, semicolon);
-
-                    int equals = substr.indexOf('=');
                     String sub = substr.substring(0, equals).trim();
+                    int spaceIdx = sub.lastIndexOf(' ');
 
-                    equals = sub.lastIndexOf(' ');
-                    sub = sub.substring(equals).trim();
+                    if (spaceIdx >= 0)
+                    {
+                        sub = sub.substring(spaceIdx).trim();
 
-                    deconst.add(sub);
+                        if (!sub.isEmpty())
+                        {
+                            deconst.add(sub);
+                        }
+                    }
                 }
-                else
-                {
-                    builder.append(source, lastIndex, semicolon);
-                }
+            }
+            else
+            {
+                builder.append(source, lastIndex, semicolon);
             }
 
             lastIndex = semicolon;
