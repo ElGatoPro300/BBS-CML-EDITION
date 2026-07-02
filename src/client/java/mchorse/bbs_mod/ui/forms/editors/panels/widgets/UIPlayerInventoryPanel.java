@@ -226,14 +226,10 @@ public class UIPlayerInventoryPanel extends UIOverlayPanel
 
                 Vector3f light0 = new Vector3f(0.85F, 0.85F, -1.0F).normalize();
                 Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1.0F).normalize();
-                RenderSystem.setupGui3DDiffuseLighting(light0, light1);
+                MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.ITEMS_3D);
 
                 context.batcher.getContext().drawItem(stack, itemX, itemY);
-                context.batcher.getContext().drawItemInSlot(context.batcher.getFont().getRenderer(), stack, itemX, itemY);
-
-                context.batcher.getContext().draw();
-
-                DiffuseLighting.disableGuiDepthLighting();
+                context.batcher.getContext().drawStackOverlay(context.batcher.getFont().getRenderer(), stack, itemX, itemY);
 
                 if (hovered)
                 {
@@ -308,14 +304,10 @@ public class UIPlayerInventoryPanel extends UIOverlayPanel
 
                 Vector3f light0 = new Vector3f(0.85F, 0.85F, -1.0F).normalize();
                 Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1.0F).normalize();
-                RenderSystem.setupGui3DDiffuseLighting(light0, light1);
+                MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.ITEMS_3D);
 
                 context.batcher.getContext().drawItem(stack, itemX, itemY);
-                context.batcher.getContext().drawItemInSlot(context.batcher.getFont().getRenderer(), stack, itemX, itemY);
-
-                context.batcher.getContext().draw();
-
-                DiffuseLighting.disableGuiDepthLighting();
+                context.batcher.getContext().drawStackOverlay(context.batcher.getFont().getRenderer(), stack, itemX, itemY);
 
                 if (hovered)
                 {

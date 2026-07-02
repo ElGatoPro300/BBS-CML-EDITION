@@ -7,17 +7,18 @@ import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.utils.Axis;
 
 import net.minecraft.client.render.BufferBuilder;
-import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
+import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
 
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
 
+import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.VertexFormat;
 
 import org.lwjgl.opengl.GL11;
 
@@ -344,14 +345,14 @@ public class Gizmo
             }
         }
 
-        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
-        RenderSystem.depthFunc(GL11.GL_ALWAYS);
-        RenderSystem.depthMask(false);
+        // RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
+        /* shader binding handled by RenderLayer in 1.21.11 */
+        GlStateManager._depthFunc(GL11.GL_ALWAYS);
 
-        BufferRenderer.drawWithGlobalProgram(builder.end());
+        RenderLayers.debugFilledBox().draw(builder.end());
 
-        RenderSystem.depthMask(true);
-        RenderSystem.depthFunc(GL11.GL_LEQUAL);
+
+        GlStateManager._depthFunc(GL11.GL_LEQUAL);
     }
 
     public void renderStencil(MatrixStack stack, StencilMap map)
@@ -434,13 +435,13 @@ public class Gizmo
             this.drawBox(builder, stack, -axisOffset, -axisOffset, -axisOffset, axisOffset, axisOffset, axisOffset, STENCIL_FREE / 255F, 0F, 0F, 1.0F);
         }
 
-        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
-        RenderSystem.disableDepthTest();
-        RenderSystem.depthMask(false);
+        // RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
+        /* shader binding handled by RenderLayer in 1.21.11 */
+        GlStateManager._disableDepthTest();
 
-        BufferRenderer.drawWithGlobalProgram(builder.end());
+        RenderLayers.debugFilledBox().draw(builder.end());
 
-        RenderSystem.depthMask(true);
+        GlStateManager._depthMask(true);
     }
 
     public static enum Mode

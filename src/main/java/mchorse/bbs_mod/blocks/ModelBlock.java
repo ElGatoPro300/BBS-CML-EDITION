@@ -17,6 +17,7 @@ import net.minecraft.block.entity.BlockEntityType;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.component.type.BlockStateComponent;
 import net.minecraft.component.type.NbtComponent;
+import net.minecraft.entity.TypedEntityData;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.fluid.FluidState;
 import net.minecraft.fluid.Fluids;
@@ -48,6 +49,7 @@ public class ModelBlock extends Block implements BlockEntityProvider, Waterlogga
 {
     public static final IntProperty LIGHT_LEVEL = IntProperty.of("light_level", 0, 15);
 
+    @SuppressWarnings("unchecked")
     public static <E extends BlockEntity, A extends BlockEntity> BlockEntityTicker<A> validateTicker(BlockEntityType<A> givenType, BlockEntityType<E> expectedType, BlockEntityTicker<? super E> ticker)
     {
         return expectedType == givenType ? (BlockEntityTicker<A>) ticker : null;
@@ -77,21 +79,21 @@ public class ModelBlock extends Block implements BlockEntityProvider, Waterlogga
     }
 
     @Override
-    public ItemStack getPickStack(WorldView world, BlockPos pos, BlockState state)
+    public ItemStack getPickStack(WorldView world, BlockPos pos, BlockState state, boolean includeData)
     {
         BlockEntity entity = world.getBlockEntity(pos);
 
         if (entity instanceof ModelBlockEntity modelBlock)
         {
             ItemStack stack = new ItemStack(this);
-            stack.set(DataComponentTypes.BLOCK_ENTITY_DATA, NbtComponent.of(modelBlock.createNbtWithId(world.getRegistryManager())));
+            stack.set(DataComponentTypes.BLOCK_ENTITY_DATA, TypedEntityData.create(BBSMod.MODEL_BLOCK_ENTITY, modelBlock.createNbt(world.getRegistryManager())));
             
             stack.set(DataComponentTypes.BLOCK_STATE, new BlockStateComponent(Map.of("light_level", String.valueOf(modelBlock.getProperties().getLightLevel()))));
 
             return stack;
         }
 
-        return super.getPickStack(world, pos, state);
+        return super.getPickStack(world, pos, state, includeData);
     }
 
     @Override
@@ -100,8 +102,7 @@ public class ModelBlock extends Block implements BlockEntityProvider, Waterlogga
         return BlockRenderType.INVISIBLE;
     }
 
-    @Override
-    public boolean isTransparent(BlockState state, BlockView world, BlockPos pos)
+    protected boolean isTransparent(BlockState state, BlockView world, BlockPos pos)
     {
         return true;
     }
@@ -196,12 +197,12 @@ public class ModelBlock extends Block implements BlockEntityProvider, Waterlogga
     @Override
     public void afterBreak(World world, PlayerEntity player, BlockPos pos, BlockState state, BlockEntity be, ItemStack tool)
     {
-        if (!world.isClient && !player.getAbilities().creativeMode)
+        if (!world.isClient() && !player.getAbilities().creativeMode)
         {
             if (be instanceof ModelBlockEntity model)
             {
                 ItemStack stack = new ItemStack(this);
-                stack.set(DataComponentTypes.BLOCK_ENTITY_DATA, NbtComponent.of(model.createNbtWithId(world.getRegistryManager())));
+                stack.set(DataComponentTypes.BLOCK_ENTITY_DATA, TypedEntityData.create(BBSMod.MODEL_BLOCK_ENTITY, model.createNbt(world.getRegistryManager())));
                 
                 stack.set(DataComponentTypes.BLOCK_STATE, new BlockStateComponent(Map.of("light_level", String.valueOf(model.getProperties().getLightLevel()))));
 

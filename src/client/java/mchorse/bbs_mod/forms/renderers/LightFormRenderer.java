@@ -27,7 +27,7 @@ public class LightFormRenderer extends FormRenderer<LightForm>
     @Override
     protected void renderInUI(UIContext context, int x1, int y1, int x2, int y2)
     {
-        context.batcher.getContext().draw();
+        context.batcher.flush();
 
         int level = Math.max(0, Math.min(15, this.form.level.get()));
         ItemStack stack = this.stack.copy();
@@ -43,7 +43,7 @@ public class LightFormRenderer extends FormRenderer<LightForm>
         }
 
         CustomVertexConsumerProvider consumers = FormUtilsClient.getProvider();
-        MatrixStack matrices = context.batcher.getContext().getMatrices();
+        MatrixStack matrices = new MatrixStack();
 
         float cellW = x2 - x1;
         float cellH = y2 - y1;
@@ -57,7 +57,7 @@ public class LightFormRenderer extends FormRenderer<LightForm>
 
         consumers.setUI(true);
         context.batcher.getContext().drawItem(stack, -8, -8);
-        context.batcher.getContext().drawItemInSlot(context.batcher.getFont().getRenderer(), stack, -8, -8);
+        context.batcher.getContext().drawStackOverlay(context.batcher.getFont().getRenderer(), stack, -8, -8);
         consumers.setUI(false);
         matrices.pop();
     }

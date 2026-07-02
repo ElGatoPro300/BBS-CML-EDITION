@@ -434,7 +434,8 @@ public class ColorGradeRenderer
             tempTex.setFilter(GL11.GL_LINEAR);
         }
 
-        fb.beginWrite(false);
+        /* Bind the current draw framebuffer for reading so glCopyTexSubImage2D gets the rendered scene */
+        GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, 0);
         tempTex.bind();
 
         if (tempTex.width != fbW || tempTex.height != fbH)

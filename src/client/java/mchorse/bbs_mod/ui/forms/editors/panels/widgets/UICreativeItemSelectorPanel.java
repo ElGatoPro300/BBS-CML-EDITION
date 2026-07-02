@@ -193,7 +193,7 @@ public class UICreativeItemSelectorPanel extends UIOverlayPanel
 
         ItemStack normalized = stack.copy();
         normalized.setCount(1);
-        String encoded = ItemStack.CODEC.encodeStart(NbtOps.INSTANCE, normalized).result().map(NbtElement::asString).orElse("{}");
+        String encoded = ItemStack.CODEC.encodeStart(NbtOps.INSTANCE, normalized).result().flatMap(NbtElement::asString).orElse("{}");
         String key = Registries.ITEM.getId(stack.getItem()) + "|" + encoded;
 
         if (visited.add(key))
@@ -380,14 +380,10 @@ public class UICreativeItemSelectorPanel extends UIOverlayPanel
 
                     Vector3f light0 = new Vector3f(0.85F, 0.85F, -1.0F).normalize();
                     Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1.0F).normalize();
-                    RenderSystem.setupGui3DDiffuseLighting(light0, light1);
+                    MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.ITEMS_3D);
 
                     context.batcher.getContext().drawItem(stack, x + ITEM_RENDER_OFFSET, y + ITEM_RENDER_OFFSET);
-                    context.batcher.getContext().drawItemInSlot(context.batcher.getFont().getRenderer(), stack, x + ITEM_RENDER_OFFSET, y + ITEM_RENDER_OFFSET);
-
-                    context.batcher.getContext().draw();
-
-                    DiffuseLighting.disableGuiDepthLighting();
+                    context.batcher.getContext().drawStackOverlay(context.batcher.getFont().getRenderer(), stack, x + ITEM_RENDER_OFFSET, y + ITEM_RENDER_OFFSET);
 
                     if (hover)
                     {
@@ -482,14 +478,10 @@ public class UICreativeItemSelectorPanel extends UIOverlayPanel
                 {
                     Vector3f light0 = new Vector3f(0.85F, 0.85F, -1.0F).normalize();
                     Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1.0F).normalize();
-                    RenderSystem.setupGui3DDiffuseLighting(light0, light1);
+                    MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.ITEMS_3D);
 
                     context.batcher.getContext().drawItem(stack, x + ITEM_RENDER_OFFSET, y + ITEM_RENDER_OFFSET);
-                    context.batcher.getContext().drawItemInSlot(context.batcher.getFont().getRenderer(), stack, x + ITEM_RENDER_OFFSET, y + ITEM_RENDER_OFFSET);
-
-                    context.batcher.getContext().draw();
-
-                    DiffuseLighting.disableGuiDepthLighting();
+                    context.batcher.getContext().drawStackOverlay(context.batcher.getFont().getRenderer(), stack, x + ITEM_RENDER_OFFSET, y + ITEM_RENDER_OFFSET);
                 }
 
                 if (hover)

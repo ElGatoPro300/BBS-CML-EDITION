@@ -19,6 +19,8 @@ import mchorse.bbs_mod.utils.interps.Lerps;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
+import net.minecraft.client.render.DiffuseLighting;
+import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.entity.LivingEntityRenderer;
 import net.minecraft.client.util.math.MatrixStack;
@@ -27,6 +29,7 @@ import net.minecraft.util.math.RotationAxis;
 
 import org.joml.Vector3f;
 
+import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 
 public class MorphRenderer
@@ -66,14 +69,14 @@ public class MorphRenderer
         {
             if (canRender(playerForm))
             {
-                RenderSystem.enableDepthTest();
+                GlStateManager._enableDepthTest();
 
                 Vector3f a = new Vector3f(0.85F, 0.85F, -1F).normalize();
                 Vector3f b = new Vector3f(-0.85F, 0.85F, 1F).normalize();
-                RenderSystem.setupLevelDiffuseLighting(a, b);
+                MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.LEVEL);
 
-                float bodyYaw = Lerps.lerp(player.prevBodyYaw, player.bodyYaw, g);
-                int overlay = LivingEntityRenderer.getOverlay(player, 0F);
+                float bodyYaw = Lerps.lerp(player.lastBodyYaw, player.bodyYaw, g);
+                int overlay = OverlayTexture.DEFAULT_UV;
 
                 matrixStack.push();
                 matrixStack.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-bodyYaw));
@@ -84,7 +87,7 @@ public class MorphRenderer
 
                 matrixStack.pop();
 
-                RenderSystem.disableDepthTest();
+                GlStateManager._disableDepthTest();
             }
 
             return true;
@@ -136,9 +139,9 @@ public class MorphRenderer
 
         if (form != null)
         {
-            RenderSystem.enableDepthTest();
+            GlStateManager._enableDepthTest();
 
-            float bodyYaw = Lerps.lerp(livingEntity.prevBodyYaw, livingEntity.bodyYaw, g);
+            float bodyYaw = Lerps.lerp(livingEntity.lastBodyYaw, livingEntity.bodyYaw, g);
 
             matrixStack.push();
             matrixStack.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-bodyYaw));
@@ -149,7 +152,7 @@ public class MorphRenderer
 
             matrixStack.pop();
 
-            RenderSystem.disableDepthTest();
+            GlStateManager._disableDepthTest();
 
             return true;
         }
