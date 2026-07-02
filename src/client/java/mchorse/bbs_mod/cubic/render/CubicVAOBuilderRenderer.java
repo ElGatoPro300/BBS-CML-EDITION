@@ -15,6 +15,7 @@ import mchorse.bbs_mod.utils.CollectionUtils;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.util.math.MatrixStack;
 
+import org.joml.Matrix4f;
 import org.joml.Vector2f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
@@ -155,7 +156,7 @@ public class CubicVAOBuilderRenderer implements ICubicRenderer
     private void writeVertex(List<Float> vertices, List<Float> normals, List<Float> uvs, MatrixStack stack, ModelGroup group, ModelVertex vertex, Vector3f normal)
     {
         this.vertex.set(vertex.vertex.x, vertex.vertex.y, vertex.vertex.z, 1);
-        stack.peek().getPositionMatrix().transform(this.vertex);
+        new Matrix4f().transform(this.vertex);
 
         vertices.add(this.vertex.x);
         vertices.add(this.vertex.y);

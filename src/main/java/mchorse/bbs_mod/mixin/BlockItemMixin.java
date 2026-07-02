@@ -7,6 +7,7 @@ import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.component.type.NbtComponent;
+import net.minecraft.entity.TypedEntityData;
 import net.minecraft.item.BlockItem;
 import net.minecraft.item.ItemPlacementContext;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -37,15 +38,15 @@ public class BlockItemMixin
                 clip.z.set(pos.getZ());
                 clip.state.set(placedState);
 
-                NbtComponent stackBlockEntityData = context.getStack().get(DataComponentTypes.BLOCK_ENTITY_DATA);
+                TypedEntityData<?> stackBlockEntityData = context.getStack().get(DataComponentTypes.BLOCK_ENTITY_DATA);
 
                 if (stackBlockEntityData != null)
                 {
-                    clip.blockEntityNbt.set(stackBlockEntityData.getNbt().copy().toString());
+                    clip.blockEntityNbt.set(stackBlockEntityData.copyNbtWithoutId().toString());
                 }
                 else if (blockEntity != null)
                 {
-                    clip.blockEntityNbt.set(blockEntity.createNbtWithId(context.getWorld().getRegistryManager()).toString());
+                    clip.blockEntityNbt.set(blockEntity.createNbtWithIdentifyingData(context.getWorld().getRegistryManager()).toString());
                 }
 
                 return clip;
