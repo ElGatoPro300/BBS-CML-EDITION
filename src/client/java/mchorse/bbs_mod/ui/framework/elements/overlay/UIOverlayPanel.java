@@ -48,13 +48,13 @@ public class UIOverlayPanel extends UIElement
     {
         super();
 
-        this.title = UI.label(title).color(Colors.WHITE);
+        this.title = UI.label(title);
         this.close = new UIIcon(Icons.CLOSE, (b) -> this.close());
         this.close.tooltip(UIKeys.GENERAL_CLOSE, Direction.LEFT);
         this.content = new UIElement();
         this.icons = new UIElement();
 
-        this.title.labelAnchor(0.5F, 0.5F).relative(this).xy(0.5F, 0).anchor(0.5F, 0).w(0.8F).h(20);
+        this.title.labelAnchor(0, 0.5F).relative(this).xy(6, 0).w(0.6F).h(20);
         this.icons.relative(this).x(1F, -20).y(0).w(20).h(1F).column(0).stretch();
         this.content.relative(this).xy(0, 20).w(1F, -20).h(1F, -20);
 
@@ -284,48 +284,19 @@ public class UIOverlayPanel extends UIElement
             this.lastY = context.mouseY;
         }
 
-        float transition = 1.0F;
-        UIElement parent = this.getParent();
-
-        if (parent instanceof UIOverlay)
-        {
-            transition = ((UIOverlay) parent).getOpenTransition();
-        }
-
-        if (transition < 1.0F)
-        {
-            float scale = Math.max(0.01F, transition);
-            float cx = this.area.mx();
-            float cy = this.area.my();
-
-            context.render.batcher.getContext().getMatrices().pushMatrix();
-            context.render.batcher.getContext().getMatrices().translate(cx, cy);
-            context.render.batcher.getContext().getMatrices().scale(scale, scale);
-            context.render.batcher.getContext().getMatrices().translate(-cx, -cy);
-        }
-
         this.renderBackground(context);
 
         super.render(context);
-
-        if (transition < 1.0F)
-        {
-            context.render.batcher.getContext().getMatrices().popMatrix();
-        }
     }
 
     protected void renderBackground(UIContext context)
     {
-        context.batcher.dropShadow(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 10, 0x44000000, 0x00000000);
+        int color = BBSSettings.primaryColor.get();
 
-        // Main background
-        context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xFF141418);
-        context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xFF2A2A35, 1);
+        context.batcher.dropShadow(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 10, Colors.A25 | color, color);
+        this.area.render(context.batcher, Colors.mulRGB(color | Colors.A100, 0.1F));
 
-        // Header Row
-        int headerH = 20;
-        context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.y + headerH, 0xFF1A1A22);
-        context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.y + headerH, 0xFF2A2A35, 1);
+        this.icons.area.render(context.batcher, Colors.CONTROL_BAR);
 
         if (this.close.area.isInside(context))
         {

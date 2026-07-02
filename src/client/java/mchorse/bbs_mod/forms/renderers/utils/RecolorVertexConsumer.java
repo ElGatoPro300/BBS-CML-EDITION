@@ -4,8 +4,6 @@ import mchorse.bbs_mod.utils.colors.Color;
 
 import net.minecraft.client.render.VertexConsumer;
 
-import org.joml.Matrix4f;
-
 public class RecolorVertexConsumer implements VertexConsumer
 {
     public static Color newColor;
@@ -19,16 +17,13 @@ public class RecolorVertexConsumer implements VertexConsumer
         this.color = color;
     }
 
-    public VertexConsumer vertex(float x, float y, float z)
+    @Override
+    public VertexConsumer vertex(double x, double y, double z)
     {
         return this.consumer.vertex(x, y, z);
     }
 
-    public VertexConsumer vertex(Matrix4f matrix, float x, float y, float z)
-    {
-        return this.consumer.vertex(matrix, x, y, z);
-    }
-
+    @Override
     public VertexConsumer color(int red, int green, int blue, int alpha)
     {
         red = (int) (this.color.r * red);
@@ -40,35 +35,44 @@ public class RecolorVertexConsumer implements VertexConsumer
     }
 
     @Override
-    public VertexConsumer color(int argb)
-    {
-        return this.consumer.color(argb);
-    }
-
     public VertexConsumer texture(float u, float v)
     {
         return this.consumer.texture(u, v);
     }
 
+    @Override
     public VertexConsumer overlay(int u, int v)
     {
         return this.consumer.overlay(u, v);
     }
 
+    @Override
     public VertexConsumer light(int u, int v)
     {
         return this.consumer.light(u, v);
     }
 
+    @Override
     public VertexConsumer normal(float x, float y, float z)
     {
         return this.consumer.normal(x, y, z);
     }
 
     @Override
-    public VertexConsumer lineWidth(float width)
+    public void next()
     {
-        return this.consumer.lineWidth(width);
+        this.consumer.next();
     }
 
+    @Override
+    public void fixedColor(int red, int green, int blue, int alpha)
+    {
+        this.consumer.fixedColor(red, green, blue, alpha);
+    }
+
+    @Override
+    public void unfixColor()
+    {
+        this.consumer.unfixColor();
+    }
 }

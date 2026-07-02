@@ -6,13 +6,10 @@ import mchorse.bbs_mod.forms.forms.LightForm;
 import mchorse.bbs_mod.ui.framework.UIContext;
 
 import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.component.type.BlockStateComponent;
 import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NbtCompound;
 import net.minecraft.registry.Registries;
 import net.minecraft.util.Identifier;
-
-import java.util.Map;
 
 public class LightFormRenderer extends FormRenderer<LightForm>
 {
@@ -21,20 +18,24 @@ public class LightFormRenderer extends FormRenderer<LightForm>
     public LightFormRenderer(LightForm form)
     {
         super(form);
-        this.stack = new ItemStack(Registries.ITEM.get(Identifier.of("minecraft", "light")));
+        this.stack = new ItemStack(Registries.ITEM.get(new Identifier("minecraft", "light")));
     }
 
     @Override
     protected void renderInUI(UIContext context, int x1, int y1, int x2, int y2)
     {
-        context.batcher.flush();
+        context.batcher.getContext().draw();
 
         int level = Math.max(0, Math.min(15, this.form.level.get()));
         ItemStack stack = this.stack.copy();
 
         if (!stack.isEmpty())
         {
-            stack.set(DataComponentTypes.BLOCK_STATE, new BlockStateComponent(Map.of("level", Integer.toString(level))));
+            NbtCompound nbt = stack.getOrCreateNbt();
+            NbtCompound stateTag = nbt.getCompound("BlockStateTag");
+
+            stateTag.putString("level", Integer.toString(level));
+            nbt.put("BlockStateTag", stateTag);
         }
 
         if (stack.isEmpty())
@@ -43,7 +44,7 @@ public class LightFormRenderer extends FormRenderer<LightForm>
         }
 
         CustomVertexConsumerProvider consumers = FormUtilsClient.getProvider();
-        MatrixStack matrices = new MatrixStack();
+        MatrixStack matrices = context.batcher.getContext().getMatrices();
 
         float cellW = x2 - x1;
         float cellH = y2 - y1;
@@ -57,7 +58,7 @@ public class LightFormRenderer extends FormRenderer<LightForm>
 
         consumers.setUI(true);
         context.batcher.getContext().drawItem(stack, -8, -8);
-        context.batcher.getContext().drawStackOverlay(context.batcher.getFont().getRenderer(), stack, -8, -8);
+        context.batcher.getContext().drawItemInSlot(context.batcher.getFont().getRenderer(), stack, -8, -8);
         consumers.setUI(false);
         matrices.pop();
     }

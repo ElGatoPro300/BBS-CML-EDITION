@@ -28,6 +28,7 @@ public class MiModelLoader implements IModelLoader
     @Override
     public ModelInstance load(String id, ModelManager models, Link model, Collection<Link> links, MapType config)
     {
+        System.out.println("[MiModelLoader] Loading model: " + id);
         Link miLink = null;
 
         for (Link l : links)
@@ -53,8 +54,11 @@ public class MiModelLoader implements IModelLoader
 
         if (miLink == null)
         {
+            System.err.println("[MiModelLoader] No .mimodel file found in links for: " + id);
             return null;
         }
+
+        System.out.println("[MiModelLoader] Found .mimodel file: " + miLink.toString());
 
         try (InputStream stream = models.provider.getAsset(miLink))
         {

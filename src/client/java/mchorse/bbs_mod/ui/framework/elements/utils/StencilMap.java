@@ -1,7 +1,6 @@
 package mchorse.bbs_mod.ui.framework.elements.utils;
 
 import mchorse.bbs_mod.forms.forms.Form;
-import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.utils.Pair;
 
@@ -62,16 +61,6 @@ public class StencilMap
         else
         {
             this.indexMap.put(this.objectIndex, new Pair<>(form, ""));
-        }
-    }
-
-    public void addPicking(int index, Form form, String bone)
-    {
-        this.indexMap.put(index, new Pair<>(form, bone));
-
-        if (this.increment)
-        {
-            this.objectIndex = Math.max(this.objectIndex, index + 1);
         }
     }
 

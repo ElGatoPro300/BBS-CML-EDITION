@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.ui.framework;
 
 import mchorse.bbs_mod.BBSModClient;
+import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.importers.IImportPathProvider;
 import mchorse.bbs_mod.importers.ImporterContext;
 import mchorse.bbs_mod.importers.Importers;
@@ -10,15 +11,11 @@ import mchorse.bbs_mod.ui.utils.IFileDropListener;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.utils.FFMpegUtils;
 
-import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.Click;
 import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.render.state.GuiRenderState;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.input.CharInput;
-import net.minecraft.client.input.KeyInput;
 import net.minecraft.text.Text;
 
 import org.lwjgl.glfw.GLFW;
@@ -59,7 +56,7 @@ public class UIScreen extends Screen implements IFileDropListener
         MinecraftClient mc = MinecraftClient.getInstance();
 
         this.menu = menu;
-        this.context = new UIRenderingContext(new DrawContext(mc, new GuiRenderState(), 0, 0));
+        this.context = new UIRenderingContext(new DrawContext(mc, mc.getBufferBuilders().getEntityVertexConsumers()));
 
         this.menu.context.setup(this.context);
     }
@@ -79,10 +76,10 @@ public class UIScreen extends Screen implements IFileDropListener
         this.menu.renderInWorld(context);
     }
 
-    /* @Override */
+    @Override
     public void filesDragged(List<Path> paths)
     {
-        /* super.filesDragged(paths); */
+        super.filesDragged(paths);
 
         String[] filePaths = new String[paths.size()];
         int i = 0;
@@ -107,7 +104,10 @@ public class UIScreen extends Screen implements IFileDropListener
 
         this.menu.onClose(null);
 
-        MinecraftClient.getInstance().options.hudHidden = false;
+        if (this.menu.canHideHUD())
+        {
+            MinecraftClient.getInstance().options.hudHidden = false;
+        }
     }
 
     @Override
@@ -122,7 +122,10 @@ public class UIScreen extends Screen implements IFileDropListener
 
         this.menu.onOpen(null);
 
-        MinecraftClient.getInstance().options.hudHidden = this.menu.canHideHUD();
+        if (this.menu.canHideHUD())
+        {
+            MinecraftClient.getInstance().options.hudHidden = true;
+        }
     }
 
     @Override
@@ -140,17 +143,17 @@ public class UIScreen extends Screen implements IFileDropListener
     }
 
     @Override
-    public void resize(int width, int height)
+    public void resize(MinecraftClient client, int width, int height)
     {
-        super.resize(width, height);
+        super.resize(client, width, height);
 
         this.menu.resize(width, height);
     }
 
     @Override
-    public boolean mouseClicked(Click click, boolean doubleClick)
+    public boolean mouseClicked(double mouseX, double mouseY, int button)
     {
-        return this.menu.mouseClicked((int) click.x(), (int) click.y(), click.button());
+        return this.menu.mouseClicked((int) mouseX, (int) mouseY, button);
     }
 
     @Override
@@ -160,27 +163,27 @@ public class UIScreen extends Screen implements IFileDropListener
     }
 
     @Override
-    public boolean mouseReleased(Click click)
+    public boolean mouseReleased(double mouseX, double mouseY, int button)
     {
-        return this.menu.mouseReleased((int) click.x(), (int) click.y(), click.button());
+        return this.menu.mouseReleased((int) mouseX, (int) mouseY, button);
     }
 
     @Override
-    public boolean keyPressed(KeyInput input)
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers)
     {
-        return this.menu.handleKey(input.key(), input.scancode(), GLFW.GLFW_PRESS, input.modifiers());
+        return this.menu.handleKey(keyCode, scanCode, BBSRendering.lastAction, modifiers);
     }
 
     @Override
-    public boolean keyReleased(KeyInput input)
+    public boolean keyReleased(int keyCode, int scanCode, int modifiers)
     {
-        return this.menu.handleKey(input.key(), input.scancode(), GLFW.GLFW_RELEASE, input.modifiers());
+        return this.menu.handleKey(keyCode, scanCode, GLFW.GLFW_RELEASE, modifiers);
     }
 
     @Override
-    public boolean charTyped(CharInput input)
+    public boolean charTyped(char chr, int modifiers)
     {
-        this.menu.handleTextInput((char) input.codepoint());
+        this.menu.handleTextInput(chr);
 
         return true;
     }
@@ -194,12 +197,9 @@ public class UIScreen extends Screen implements IFileDropListener
     {
         super.render(context, mouseX, mouseY, delta);
 
-        this.context = new UIRenderingContext(context);
-        this.menu.context.setup(this.context);
-        this.menu.context.setTransition(MinecraftClient.getInstance().getRenderTickCounter().getTickProgress(false));
+        this.menu.context.setTransition(this.client.getTickDelta());
         this.menu.renderMenu(this.context, mouseX, mouseY);
         this.menu.context.render.executeRunnables();
-        this.client.options.hudHidden = this.menu.canHideHUD();
     }
 
     @Override

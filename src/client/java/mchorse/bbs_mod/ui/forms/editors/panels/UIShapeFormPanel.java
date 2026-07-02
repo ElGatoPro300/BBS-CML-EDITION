@@ -1,7 +1,6 @@
 package mchorse.bbs_mod.ui.forms.editors.panels;
 
 import mchorse.bbs_mod.forms.forms.ShapeForm;
-import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.forms.editors.forms.UIForm;
@@ -52,7 +51,7 @@ public class UIShapeFormPanel extends UIFormPanel<ShapeForm>
 
         /* Geometry */
         this.toggleNodeEditor = new UIIcon(Icons.GRAPH, (b) -> this.nodeEditor.toggleVisible());
-        this.toggleNodeEditor.tooltip(UIKeys.RAW_TOGGLE_NODE_EDITOR);
+        this.toggleNodeEditor.tooltip(IKey.raw("Toggle Node Editor"));
 
         this.type = new UICirculate((b) -> this.form.type.set(ShapeForm.ShapeType.values()[b.getValue()]));
         for (ShapeForm.ShapeType type : ShapeForm.ShapeType.values())
@@ -97,11 +96,11 @@ public class UIShapeFormPanel extends UIFormPanel<ShapeForm>
         this.textureScrollY = new UITrackpad((value) -> this.form.textureScrollY.set(value.floatValue()));
         this.textureScrollY.tooltip(UIKeys.FORMS_EDITORS_SHAPE_TEXTURE_SCROLL_Y);
         
-        this.lighting = new UIToggle(UIKeys.RAW_ADDITIVE, (b) -> this.form.lighting.set(b.getValue()));
-        this.lighting.tooltip(UIKeys.RAW_ENABLES_ADDITIVE_BLENDING_GLOWING);
+        this.lighting = new UIToggle(IKey.raw("Additive"), (b) -> this.form.lighting.set(b.getValue()));
+        this.lighting.tooltip(IKey.raw("Enables additive blending (glowing)"));
 
         /* Particles */
-        this.particles = new UIToggle(UIKeys.RAW_PARTICLES, (b) ->
+        this.particles = new UIToggle(IKey.raw("Particles"), (b) ->
         {
             this.form.particles.set(b.getValue());
             this.updateParticleVisibility();
@@ -114,18 +113,18 @@ public class UIShapeFormPanel extends UIFormPanel<ShapeForm>
         }
 
         this.particleScale = new UITrackpad((value) -> this.form.particleScale.set(value.floatValue()));
-        this.particleScale.tooltip(UIKeys.RAW_PARTICLE_SCALE);
+        this.particleScale.tooltip(IKey.raw("Particle Scale"));
 
         this.particleDensity = new UITrackpad((value) -> this.form.particleDensity.set(value.floatValue()));
-        this.particleDensity.tooltip(UIKeys.RAW_PARTICLE_DENSITY);
+        this.particleDensity.tooltip(IKey.raw("Particle Density"));
 
         this.particleSize = new UITrackpad((value) -> this.form.particleSize.set(value.floatValue()));
-        this.particleSize.tooltip(UIKeys.RAW_PARTICLE_SIZE);
+        this.particleSize.tooltip(IKey.raw("Particle Size"));
 
         /* Layout */
         this.options.add(UI.label(UIKeys.FORMS_EDITORS_SHAPE_GEOMETRY).marginTop(8), UI.row(this.type, this.toggleNodeEditor), UI.row(this.sizeX, this.sizeY, this.sizeZ), this.subdivisions);
         this.options.add(UI.label(UIKeys.FORMS_EDITORS_SHAPE_APPEARANCE).marginTop(8), this.pickTexture, this.color, this.textureScale, UI.row(this.textureScrollX, this.textureScrollY), this.lighting);
-        this.options.add(UI.label(UIKeys.RAW_PARTICLES).marginTop(8), this.particles, this.particleType, this.particleScale, this.particleDensity, this.particleSize);
+        this.options.add(UI.label(IKey.raw("Particles")).marginTop(8), this.particles, this.particleType, this.particleScale, this.particleDensity, this.particleSize);
     }
 
     private void updateParticleVisibility()

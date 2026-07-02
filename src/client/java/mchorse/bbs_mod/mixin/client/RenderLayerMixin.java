@@ -2,7 +2,10 @@ package mchorse.bbs_mod.mixin.client;
 
 import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
 
+import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.RenderLayer;
+
+import com.mojang.blaze3d.systems.VertexSorter;
 
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -12,12 +15,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(RenderLayer.class)
 public class RenderLayerMixin
 {
-    @Inject(method = "startDrawing", at = @At("TAIL"))
-    public void onStartDrawing(CallbackInfo info)
+    @Inject(method = "draw", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/render/RenderLayer;startDrawing()V", ordinal = 0, shift = At.Shift.AFTER))
+    public void onDraw(BufferBuilder buffer, VertexSorter sorter, CallbackInfo info)
     {
-        if ((Object) this instanceof RenderLayer)
-        {
-            CustomVertexConsumerProvider.drawLayer((RenderLayer) (Object) this);
-        }
+        CustomVertexConsumerProvider.drawLayer((RenderLayer) (Object) this);
     }
 }

@@ -5,25 +5,26 @@ import mchorse.bbs_mod.graphics.Draw;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.VertexConsumerProvider;
+import net.minecraft.client.render.block.entity.BlockEntityRenderer;
 import net.minecraft.client.render.block.entity.BlockEntityRendererFactory;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.Box;
 
 import org.joml.Vector3f;
 
-import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 
 import java.util.HashSet;
 import java.util.Set;
 
-public class TriggerBlockEntityRenderer
+public class TriggerBlockEntityRenderer implements BlockEntityRenderer<TriggerBlockEntity>
 {
     public static final Set<TriggerBlockEntity> capturedTriggerBlocks = new HashSet<>();
 
     public TriggerBlockEntityRenderer(BlockEntityRendererFactory.Context ctx)
     {}
 
+    @Override
     public void render(TriggerBlockEntity entity, float tickDelta, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, int overlay)
     {
         capturedTriggerBlocks.add(entity);
@@ -43,9 +44,9 @@ public class TriggerBlockEntityRenderer
                 Box box = entity.getRegionBoxRelative();
 
                 /* Render white debug box for region triggers */
-                GlStateManager._disableDepthTest();
+                RenderSystem.disableDepthTest();
                 Draw.renderBox(matrices, box.minX, box.minY, box.minZ, box.maxX - box.minX, box.maxY - box.minY, box.maxZ - box.minZ, 1F, 1F, 1F, 0.5F);
-                GlStateManager._enableDepthTest();
+                RenderSystem.enableDepthTest();
             }
         }
     }

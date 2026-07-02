@@ -27,11 +27,6 @@ public class Keybind
         this.callback = callback;
     }
 
-    public KeyCombo getCombo()
-    {
-        return this.combo;
-    }
-
     public Keybind inside()
     {
         this.inside = true;

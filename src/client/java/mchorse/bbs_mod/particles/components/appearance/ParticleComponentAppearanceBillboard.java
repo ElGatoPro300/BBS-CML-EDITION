@@ -17,6 +17,7 @@ import mchorse.bbs_mod.utils.joml.Vectors;
 
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.LightmapTextureManager;
+import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.render.WorldRenderer;
 import net.minecraft.util.math.BlockPos;
@@ -26,20 +27,12 @@ import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
-import com.mojang.blaze3d.vertex.VertexFormat;
-
 public class ParticleComponentAppearanceBillboard extends ParticleComponentBase implements IComponentParticleRender
 {
     /* Options */
     public MolangExpression sizeW = MolangParser.ZERO;
     public MolangExpression sizeH = MolangParser.ZERO;
     public CameraFacing facing = CameraFacing.LOOKAT_XYZ;
-
-    /* Direction source for the direction_x/y/z facing modes */
-    public BillboardDirection directionMode = BillboardDirection.DERIVE_FROM_VELOCITY;
-    public float minSpeedThreshold = 0.01F;
-    public MolangExpression[] customDirection = {MolangParser.ZERO, MolangParser.ZERO, MolangParser.ZERO};
-
     public int textureWidth = 128;
     public int textureHeight = 128;
     public MolangExpression uvX = MolangParser.ZERO;
@@ -76,9 +69,6 @@ public class ParticleComponentAppearanceBillboard extends ParticleComponentBase 
     };
     private Vector3f vector = new Vector3f();
     private Vector3f n = new Vector3f();
-
-    /* Reusable scratch for resolving the direction_x/y/z facing vector (avoids per-particle allocations) */
-    private Vector3f bDir = new Vector3f();
 
     public ParticleComponentAppearanceBillboard()
     {}
@@ -163,31 +153,6 @@ public class ParticleComponentAppearanceBillboard extends ParticleComponentBase 
         data.put("size", size);
         data.putString("facing_camera_mode", this.facing.id);
         data.put("uv", uv);
-
-        /* Direction source for direction_x/y/z facing modes (only written when non-default) */
-        if (this.directionMode == BillboardDirection.CUSTOM_DIRECTION || this.minSpeedThreshold != 0.01F)
-        {
-            MapType direction = new MapType();
-
-            direction.putString("mode", this.directionMode.id);
-
-            if (this.directionMode == BillboardDirection.CUSTOM_DIRECTION)
-            {
-                ListType custom = new ListType();
-
-                custom.add(this.customDirection[0].toData());
-                custom.add(this.customDirection[1].toData());
-                custom.add(this.customDirection[2].toData());
-
-                direction.put("custom_direction", custom);
-            }
-            else
-            {
-                direction.putFloat("min_speed_threshold", this.minSpeedThreshold);
-            }
-
-            data.put("direction", direction);
-        }
     }
 
     @Override
@@ -221,37 +186,7 @@ public class ParticleComponentAppearanceBillboard extends ParticleComponentBase 
             this.parseUv(map.getMap("uv"), parser);
         }
 
-        if (map.has("direction", BaseType.TYPE_MAP))
-        {
-            this.parseDirection(map.getMap("direction"), parser);
-        }
-
         return super.fromData(map, parser);
-    }
-
-    private void parseDirection(MapType data, MolangParser parser) throws MolangException
-    {
-        if (data.has("mode"))
-        {
-            this.directionMode = BillboardDirection.fromString(data.getString("mode"));
-        }
-
-        if (data.has("min_speed_threshold"))
-        {
-            this.minSpeedThreshold = data.getFloat("min_speed_threshold");
-        }
-
-        if (data.has("custom_direction", BaseType.TYPE_LIST))
-        {
-            ListType custom = data.getList("custom_direction");
-
-            if (custom.size() >= 3)
-            {
-                this.customDirection[0] = parser.parseDataSilently(custom.get(0));
-                this.customDirection[1] = parser.parseDataSilently(custom.get(1));
-                this.customDirection[2] = parser.parseDataSilently(custom.get(2));
-            }
-        }
     }
 
     private void parseUv(MapType data, MolangParser parser) throws MolangException
@@ -411,44 +346,6 @@ public class ParticleComponentAppearanceBillboard extends ParticleComponentBase 
             this.rotation.rotateY(entityYaw / 180 * (float) Math.PI);
             this.transform.mul(this.rotation);
         }
-        else if (this.facing == CameraFacing.DIRECTION_X || this.facing == CameraFacing.DIRECTION_Y || this.facing == CameraFacing.DIRECTION_Z)
-        {
-            /* Orient purely from the particle's direction vector (no camera), matching Snowstorm. */
-            this.updateFacingDirection(emitter, particle, staticSpace);
-
-            float nx = particle.facingDirection.x;
-            float ny = particle.facingDirection.y;
-            float nz = particle.facingDirection.z;
-
-            /* Straight up/down degenerate handling, matching Snowstorm/Wintersky. */
-            if (ny == 1F)
-            {
-                ny = -1F;
-            }
-            else if (ny == -1F)
-            {
-                ny = 1F;
-                nz = -1.0E-5F;
-            }
-
-            float yaw = (float) Math.atan2(nx, nz);
-            float pitch = (float) Math.atan2(ny, Math.sqrt(nx * nx + nz * nz));
-            float halfPi = (float) (Math.PI / 2D);
-
-            /* THREE "YXZ" Euler order => Ry * Rx * Rz; the per-particle spin (rotateZ below) adds to Z. */
-            if (this.facing == CameraFacing.DIRECTION_X)
-            {
-                this.transform.rotateY(yaw - halfPi).rotateZ(pitch);
-            }
-            else if (this.facing == CameraFacing.DIRECTION_Y)
-            {
-                this.transform.rotateY(yaw - (float) Math.PI).rotateX(pitch - halfPi);
-            }
-            else
-            {
-                this.transform.rotateY(yaw).rotateX(-pitch);
-            }
-        }
 
         if (format != VertexFormats.POSITION_TEXTURE_COLOR_LIGHT)
         {
@@ -466,43 +363,6 @@ public class ParticleComponentAppearanceBillboard extends ParticleComponentBase 
         this.transform.setTranslation(new Vector3f((float) px, (float) py, (float) pz));
 
         this.build(builder, format, matrix, particle, overlay);
-    }
-
-    /**
-     * Update the particle's stored facing direction for the direction_x/y/z modes. Either a custom
-     * MoLang vector, or the particle's motion (derive_from_velocity). Like Snowstorm, when the speed
-     * is below the threshold the previous direction is kept (the stored value is left untouched).
-     */
-    private void updateFacingDirection(ParticleEmitter emitter, Particle particle, boolean staticSpace)
-    {
-        if (this.directionMode == BillboardDirection.CUSTOM_DIRECTION)
-        {
-            particle.facingDirection.set((float) this.customDirection[0].get(), (float) this.customDirection[1].get(), (float) this.customDirection[2].get());
-
-            if (particle.facingDirection.lengthSquared() > 1.0E-8F)
-            {
-                particle.facingDirection.normalize();
-            }
-
-            return;
-        }
-
-        this.bDir.set(
-            (float) (particle.position.x - particle.prevPosition.x),
-            (float) (particle.position.y - particle.prevPosition.y),
-            (float) (particle.position.z - particle.prevPosition.z)
-        );
-
-        if (staticSpace)
-        {
-            emitter.rotation.transform(this.bDir);
-        }
-
-        /* bDir is the per-tick delta; ×20 converts to blocks/second to compare against the threshold. */
-        if (this.bDir.lengthSquared() > 1.0E-8F && this.bDir.length() * 20F >= this.minSpeedThreshold)
-        {
-            particle.facingDirection.set(this.bDir).normalize();
-        }
     }
 
     private void build(BufferBuilder builder, VertexFormat format, Matrix4f matrix, Particle particle, int overlay)
@@ -533,14 +393,8 @@ public class ParticleComponentAppearanceBillboard extends ParticleComponentBase 
             builder.vertex(matrix, vertex.x, vertex.y, vertex.z)
                 .texture(u, v)
                 .color(particle.r, particle.g, particle.b, particle.a)
-                .light(this.light);
-        }
-        else if (format == VertexFormats.POSITION_TEXTURE_COLOR)
-        {
-            /* VertexFormats.POSITION_TEXTURE_COLOR */
-            builder.vertex(matrix, vertex.x, vertex.y, vertex.z)
-                .texture(u, v)
-                .color(particle.r, particle.g, particle.b, particle.a);
+                .light(this.light)
+                .next();
         }
         else
         {
@@ -550,7 +404,8 @@ public class ParticleComponentAppearanceBillboard extends ParticleComponentBase 
                 .texture(u, v)
                 .overlay(overlay)
                 .light(this.light)
-                .normal(this.n.x, this.n.y, this.n.z);
+                .normal(this.n.x, this.n.y, this.n.z)
+                .next();
         }
     }
 
@@ -602,7 +457,7 @@ public class ParticleComponentAppearanceBillboard extends ParticleComponentBase 
         builder.vertex(matrix, vertex.x, vertex.y, 0F)
             .texture(u, v)
             .color(particle.r, particle.g, particle.b, particle.a)
-            .light(this.light);
+            .next();
     }
 
     public void calculateUVs(Particle particle, ParticleEmitter emitter, float transition)

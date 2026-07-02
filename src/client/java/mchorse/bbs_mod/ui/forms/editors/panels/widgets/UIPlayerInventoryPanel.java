@@ -14,14 +14,9 @@ import mchorse.bbs_mod.utils.colors.Colors;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.client.render.DiffuseLighting;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.player.PlayerInventory;
 import net.minecraft.item.ItemStack;
-
-import org.joml.Vector3f;
-
-import com.mojang.blaze3d.systems.RenderSystem;
 
 import java.util.function.Consumer;
 
@@ -53,7 +48,7 @@ public class UIPlayerInventoryPanel extends UIOverlayPanel
 
     public UIPlayerInventoryPanel(Consumer<ItemStack> callback)
     {
-        super(UIKeys.INVENTORY_TITLE);
+        super(L10n.lang("bbs.ui.inventory.title"));
 
         this.callback = callback;
 
@@ -70,12 +65,12 @@ public class UIPlayerInventoryPanel extends UIOverlayPanel
 
         int cursorY = PADDING_Y;
 
-        UILabel emptyTitle = sectionTitle(UIKeys.INVENTORY_SELECTION.get());
+        UILabel emptyTitle = sectionTitle(L10n.lang("bbs.ui.inventory.selection").get());
         centerHorizontally(emptyTitle, TITLE_HEIGHT, cursorY);
         this.content.add(emptyTitle);
         cursorY += TITLE_HEIGHT + 4;
 
-        UIButton clear = new UIButton(UIKeys.INVENTORY_EMPTY, (b) ->
+        UIButton clear = new UIButton(L10n.lang("bbs.ui.inventory.empty"), (b) ->
         {
             if (this.callback != null)
             {
@@ -110,7 +105,7 @@ public class UIPlayerInventoryPanel extends UIOverlayPanel
         this.content.add(new UIEquipmentSlot(EquipmentSlot.OFFHAND).relative(this.content).x(equipmentStartX + SLOT_SPACING * 4).y(cursorY).w(SLOT_SIZE).h(SLOT_SIZE));
         cursorY += SLOT_SIZE + SECTION_GAP_Y;
 
-        UILabel hotbarTitle = sectionTitle(UIKeys.INVENTORY_HOTBAR.get());
+        UILabel hotbarTitle = sectionTitle(L10n.lang("bbs.ui.inventory.hotbar").get());
         centerHorizontally(hotbarTitle, TITLE_HEIGHT, cursorY);
         this.content.add(hotbarTitle);
         cursorY += TITLE_HEIGHT + 4;
@@ -120,7 +115,7 @@ public class UIPlayerInventoryPanel extends UIOverlayPanel
 
         cursorY += SECTION_GAP_Y;
 
-        UILabel mainTitle = sectionTitle(UIKeys.INVENTORY_FULL.get());
+        UILabel mainTitle = sectionTitle(L10n.lang("bbs.ui.inventory.full").get());
         centerHorizontally(mainTitle, TITLE_HEIGHT, cursorY);
         this.content.add(mainTitle);
         cursorY += TITLE_HEIGHT + 4;
@@ -223,13 +218,8 @@ public class UIPlayerInventoryPanel extends UIOverlayPanel
             {
                 int itemX = this.area.x + 1;
                 int itemY = this.area.y + 1;
-
-                Vector3f light0 = new Vector3f(0.85F, 0.85F, -1.0F).normalize();
-                Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1.0F).normalize();
-                MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.ITEMS_3D);
-
                 context.batcher.getContext().drawItem(stack, itemX, itemY);
-                context.batcher.getContext().drawStackOverlay(context.batcher.getFont().getRenderer(), stack, itemX, itemY);
+                context.batcher.getContext().drawItemInSlot(context.batcher.getFont().getRenderer(), stack, itemX, itemY);
 
                 if (hovered)
                 {
@@ -302,12 +292,8 @@ public class UIPlayerInventoryPanel extends UIOverlayPanel
                 int itemX = this.area.x + 1;
                 int itemY = this.area.y + 1;
 
-                Vector3f light0 = new Vector3f(0.85F, 0.85F, -1.0F).normalize();
-                Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1.0F).normalize();
-                MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.ITEMS_3D);
-
                 context.batcher.getContext().drawItem(stack, itemX, itemY);
-                context.batcher.getContext().drawStackOverlay(context.batcher.getFont().getRenderer(), stack, itemX, itemY);
+                context.batcher.getContext().drawItemInSlot(context.batcher.getFont().getRenderer(), stack, itemX, itemY);
 
                 if (hovered)
                 {

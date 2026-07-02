@@ -8,20 +8,18 @@ import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.utils.MathUtils;
-import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.Quad;
 import mchorse.bbs_mod.utils.colors.Color;
 
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.render.BufferBuilder;
+import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
-import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexConsumer;
+import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
-import net.minecraft.client.util.BufferAllocator;
 import net.minecraft.client.util.math.MatrixStack;
 
 import org.joml.Matrix3f;
@@ -29,12 +27,8 @@ import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
-import com.mojang.blaze3d.opengl.GlStateManager;
-import com.mojang.blaze3d.pipeline.RenderPipeline;
-import com.mojang.blaze3d.systems.ProjectionType;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.systems.VertexSorter;
-import com.mojang.blaze3d.vertex.VertexFormat;
 
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
@@ -42,7 +36,6 @@ import org.lwjgl.opengl.GL30;
 import org.lwjgl.system.MemoryStack;
 
 import java.nio.IntBuffer;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 public class FramebufferFormRenderer extends FormRenderer<FramebufferForm>
@@ -98,13 +91,16 @@ public class FramebufferFormRenderer extends FormRenderer<FramebufferForm>
         int h = MathUtils.clamp(this.form.height.get(), 2, 4096);
         int prevDraw = GL30.glGetInteger(GL30.GL_DRAW_FRAMEBUFFER_BINDING);
         int prevRead = GL30.glGetInteger(GL30.GL_READ_FRAMEBUFFER_BINDING);
-        Matrix4f projectionMatrix = new Matrix4f();
+        Vector3f light0 = RenderSystem.shaderLightDirections[0];
+        Vector3f light1 = RenderSystem.shaderLightDirections[1];
+        Matrix4f projectionMatrix = new Matrix4f(RenderSystem.getProjectionMatrix());
 
         GL30.glCullFace(GL30.GL_FRONT);
-        /* shader light/projection state is pipeline-managed in 1.21.11 */
-        RenderSystem.getModelViewStack().pushMatrix();
-        RenderSystem.getModelViewStack().identity();
-        MatrixStackUtils.applyModelViewMatrix();
+        RenderSystem.setShaderLights(new Vector3f(0F, 0F, 1F), new Vector3f(0F, 0F, 1F));
+        RenderSystem.setProjectionMatrix(new Matrix4f().setOrtho(-1F, 1F, 1F, -1F, -500F, 500F), VertexSorter.BY_Z);
+        RenderSystem.getModelViewStack().push();
+        RenderSystem.getModelViewStack().peek().getPositionMatrix().identity();
+        RenderSystem.getModelViewStack().peek().getNormalMatrix().identity();
 
         framebuffer.apply();
 
@@ -127,20 +123,19 @@ public class FramebufferFormRenderer extends FormRenderer<FramebufferForm>
         GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, prevRead);
         GL30.glViewport(0, 0, width, height);
 
-        /* shader light/projection state is pipeline-managed in 1.21.11 */
-        RenderSystem.getModelViewStack().popMatrix();
-        MatrixStackUtils.applyModelViewMatrix();
-        /* projection restore is pipeline-managed in 1.21.11 */
+        RenderSystem.setShaderLights(light0, light1);
+        RenderSystem.getModelViewStack().pop();
+        RenderSystem.setProjectionMatrix(projectionMatrix, VertexSorter.BY_Z);
         GL30.glCullFace(GL30.GL_BACK);
 
         boolean shading = !context.isPicking();
-        VertexFormat format = shading ? VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL : VertexFormats.POSITION_TEXTURE_COLOR;
-        RenderPipeline shaderKey = shading ? RenderPipelines.ENTITY_TRANSLUCENT : RenderPipelines.GUI_TEXTURED;
+        VertexFormat format = shading ? VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL : VertexFormats.POSITION_TEXTURE_LIGHT_COLOR;
+        Supplier<ShaderProgram> shader = shading ? GameRenderer::getRenderTypeEntityTranslucentProgram : GameRenderer::getPositionTexLightmapColorProgram;
 
-        this.renderModel(framebuffer.getMainTexture(), format, shaderKey, context.stack, context.overlay, context.light, context.color, context.getTransition());
+        this.renderModel(framebuffer.getMainTexture(), format, shader, context.stack, context.overlay, context.light, context.color, context.getTransition());
     }
 
-    private void renderModel(Texture texture, VertexFormat format, RenderPipeline shader, MatrixStack matrices, int overlay, int light, int overlayColor, float transition)
+    private void renderModel(Texture texture, VertexFormat format, Supplier<ShaderProgram> shader, MatrixStack matrices, int overlay, int light, int overlayColor, float transition)
     {
         float w = texture.width;
         float h = texture.height;
@@ -173,67 +168,60 @@ public class FramebufferFormRenderer extends FormRenderer<FramebufferForm>
         this.renderQuad(format, texture, shader, matrices, overlay, light, overlayColor, transition);
     }
 
-    private void renderQuad(VertexFormat format, Texture texture, RenderPipeline shader, MatrixStack matrices, int overlay, int light, int overlayColor, float transition)
+    private void renderQuad(VertexFormat format, Texture texture, Supplier<ShaderProgram> shader, MatrixStack matrices, int overlay, int light, int overlayColor, float transition)
     {
-        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, format);
+        BufferBuilder builder = Tessellator.getInstance().getBuffer();
         Color color = Color.white();
-        MatrixStack.Entry entry = matrices.peek();
-        Matrix4f matrix = entry.getPositionMatrix();
+        Matrix4f matrix = matrices.peek().getPositionMatrix();
+        Matrix3f normal = matrices.peek().getNormalMatrix();
 
         color.mul(overlayColor);
 
         GameRenderer gameRenderer = MinecraftClient.getInstance().gameRenderer;
-        if (format == VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL)
-        {
-            /* lightmap/overlay state handled by renderer in 1.21.11 */
-        }
+
+        gameRenderer.getLightmapTextureManager().enable();
+        gameRenderer.getOverlayTexture().setupOverlayColor();
 
         BBSModClient.getTextures().bindTexture(texture);
-        /* shader binding handled by render pipeline */
+        RenderSystem.setShader(shader);
 
         texture.bind();
         texture.setFilterMipmap(false, false);
+        builder.begin(VertexFormat.DrawMode.TRIANGLES, format);
 
         /* Front */
-        this.fill(format, builder, matrix, quad.p3.x, quad.p3.y, color, uvQuad.p3.x, uvQuad.p3.y, overlay, light, entry, 1F);
-        this.fill(format, builder, matrix, quad.p2.x, quad.p2.y, color, uvQuad.p2.x, uvQuad.p2.y, overlay, light, entry, 1F);
-        this.fill(format, builder, matrix, quad.p1.x, quad.p1.y, color, uvQuad.p1.x, uvQuad.p1.y, overlay, light, entry, 1F);
+        this.fill(format, builder, matrix, quad.p3.x, quad.p3.y, color, uvQuad.p3.x, uvQuad.p3.y, overlay, light, normal, 1F).next();
+        this.fill(format, builder, matrix, quad.p2.x, quad.p2.y, color, uvQuad.p2.x, uvQuad.p2.y, overlay, light, normal, 1F).next();
+        this.fill(format, builder, matrix, quad.p1.x, quad.p1.y, color, uvQuad.p1.x, uvQuad.p1.y, overlay, light, normal, 1F).next();
 
-        this.fill(format, builder, matrix, quad.p3.x, quad.p3.y, color, uvQuad.p3.x, uvQuad.p3.y, overlay, light, entry, 1F);
-        this.fill(format, builder, matrix, quad.p4.x, quad.p4.y, color, uvQuad.p4.x, uvQuad.p4.y, overlay, light, entry, 1F);
-        this.fill(format, builder, matrix, quad.p2.x, quad.p2.y, color, uvQuad.p2.x, uvQuad.p2.y, overlay, light, entry, 1F);
+        this.fill(format, builder, matrix, quad.p3.x, quad.p3.y, color, uvQuad.p3.x, uvQuad.p3.y, overlay, light, normal, 1F).next();
+        this.fill(format, builder, matrix, quad.p4.x, quad.p4.y, color, uvQuad.p4.x, uvQuad.p4.y, overlay, light, normal, 1F).next();
+        this.fill(format, builder, matrix, quad.p2.x, quad.p2.y, color, uvQuad.p2.x, uvQuad.p2.y, overlay, light, normal, 1F).next();
 
         /* Back */
-        this.fill(format, builder, matrix, quad.p1.x, quad.p1.y, color, uvQuad.p1.x, uvQuad.p1.y, overlay, light, entry, -1F);
-        this.fill(format, builder, matrix, quad.p2.x, quad.p2.y, color, uvQuad.p2.x, uvQuad.p2.y, overlay, light, entry, -1F);
-        this.fill(format, builder, matrix, quad.p3.x, quad.p3.y, color, uvQuad.p3.x, uvQuad.p3.y, overlay, light, entry, -1F);
+        this.fill(format, builder, matrix, quad.p1.x, quad.p1.y, color, uvQuad.p1.x, uvQuad.p1.y, overlay, light, normal, -1F).next();
+        this.fill(format, builder, matrix, quad.p2.x, quad.p2.y, color, uvQuad.p2.x, uvQuad.p2.y, overlay, light, normal, -1F).next();
+        this.fill(format, builder, matrix, quad.p3.x, quad.p3.y, color, uvQuad.p3.x, uvQuad.p3.y, overlay, light, normal, -1F).next();
 
-        this.fill(format, builder, matrix, quad.p2.x, quad.p2.y, color, uvQuad.p2.x, uvQuad.p2.y, overlay, light, entry, -1F);
-        this.fill(format, builder, matrix, quad.p4.x, quad.p4.y, color, uvQuad.p4.x, uvQuad.p4.y, overlay, light, entry, -1F);
-        this.fill(format, builder, matrix, quad.p3.x, quad.p3.y, color, uvQuad.p3.x, uvQuad.p3.y, overlay, light, entry, -1F);
+        this.fill(format, builder, matrix, quad.p2.x, quad.p2.y, color, uvQuad.p2.x, uvQuad.p2.y, overlay, light, normal, -1F).next();
+        this.fill(format, builder, matrix, quad.p4.x, quad.p4.y, color, uvQuad.p4.x, uvQuad.p4.y, overlay, light, normal, -1F).next();
+        this.fill(format, builder, matrix, quad.p3.x, quad.p3.y, color, uvQuad.p3.x, uvQuad.p3.y, overlay, light, normal, -1F).next();
 
-        GlStateManager._blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
-        GlStateManager._enableBlend();
-        RenderLayers.debugFilledBox().draw(builder.end());
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.enableBlend();
+        BufferRenderer.drawWithGlobalProgram(builder.end());
 
-        if (format == VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL)
-        {
-            /* lightmap/overlay state handled by renderer in 1.21.11 */
-        }
+        gameRenderer.getLightmapTextureManager().disable();
+        gameRenderer.getOverlayTexture().teardownOverlayColor();
     }
 
-    private VertexConsumer fill(VertexFormat format, VertexConsumer consumer, Matrix4f matrix, float x, float y, Color color, float u, float v, int overlay, int light, MatrixStack.Entry entry, float nz)
+    private VertexConsumer fill(VertexFormat format, VertexConsumer consumer, Matrix4f matrix, float x, float y, Color color, float u, float v, int overlay, int light, Matrix3f normal, float nz)
     {
         if (format == VertexFormats.POSITION_TEXTURE_LIGHT_COLOR)
         {
             return consumer.vertex(matrix, x, y, 0F).texture(u, v).light(light).color(color.r, color.g, color.b, color.a);
         }
 
-        if (format == VertexFormats.POSITION_TEXTURE_COLOR)
-        {
-            return consumer.vertex(matrix, x, y, 0F).texture(u, v).color(color.r, color.g, color.b, color.a);
-        }
-
-        return consumer.vertex(matrix, x, y, 0F).color(color.r, color.g, color.b, color.a).texture(u, v).overlay(overlay).light(light).normal(entry, 0F, 0F, nz);
+        return consumer.vertex(matrix, x, y, 0F).color(color.r, color.g, color.b, color.a).texture(u, v).overlay(overlay).light(light).normal(normal, 0F, 0F, nz);
     }
 }

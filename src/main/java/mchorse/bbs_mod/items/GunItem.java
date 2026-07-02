@@ -8,9 +8,9 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
+import net.minecraft.util.TypedActionResult;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 
@@ -24,7 +24,7 @@ public class GunItem extends Item
     }
 
     @Override
-    public ActionResult use(World world, PlayerEntity user, Hand hand)
+    public TypedActionResult<ItemStack> use(World world, PlayerEntity user, Hand hand)
     {
         Entity owner = actor == null ? user : actor;
         ItemStack stack = user.getStackInHand(hand);
@@ -44,10 +44,10 @@ public class GunItem extends Item
                 owner.setVelocity(rotationVector);
             }
 
-            return ActionResult.SUCCESS;
+            return new TypedActionResult<>(ActionResult.SUCCESS, stack);
         }
 
-        if (!world.isClient())
+        if (!world.isClient)
         {
             /* Shoot projectiles */
             int projectiles = Math.max(properties.projectiles, 1);
@@ -69,14 +69,11 @@ public class GunItem extends Item
 
             if (!properties.cmdFiring.isEmpty())
             {
-                if (world.getServer() != null && world instanceof ServerWorld serverWorld)
-                {
-                    world.getServer().getCommandManager().parseAndExecute(owner.getCommandSource(serverWorld), properties.cmdFiring);
-                }
+                owner.getServer().getCommandManager().executeWithPrefix(owner.getCommandSource(), properties.cmdFiring);
             }
         }
 
-        return ActionResult.PASS;
+        return new TypedActionResult<>(ActionResult.PASS, stack);
     }
 
     private GunProperties getProperties(ItemStack stack)

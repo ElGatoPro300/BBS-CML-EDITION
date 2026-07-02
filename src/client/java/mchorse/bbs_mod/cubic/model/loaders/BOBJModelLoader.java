@@ -35,22 +35,7 @@ public class BOBJModelLoader implements IModelLoader
     @Override
     public ModelInstance load(String id, ModelManager models, Link model, Collection<Link> links, MapType config)
     {
-        Link modelBOBJ = null;
-
-        for (Link l : links)
-        {
-            if (l.path.endsWith(".bobj"))
-            {
-                modelBOBJ = l;
-                break;
-            }
-        }
-
-        if (modelBOBJ == null)
-        {
-            return null;
-        }
-
+        Link modelBOBJ = IModelLoader.getLink(model.combine("model.bobj"), links, ".bobj");
         Link modelTexture = IModelLoader.getLink(model.combine("model.png"), links, ".png");
 
         try (InputStream stream = models.provider.getAsset(modelBOBJ))

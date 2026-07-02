@@ -19,26 +19,26 @@ public class CubicAxisRenderer implements ICubicRenderer
         stack.push();
         stack.translate(group.current.pivot.x / 16, group.current.pivot.y / 16, group.current.pivot.z / 16);
 
-        Matrix4f matrix = new Matrix4f();
+        Matrix4f matrix = stack.peek().getPositionMatrix();
         float f = 0.1F;
 
         matrix.transform(this.vector.set(0, 0, 0, 1));
-        builder.vertex(matrix, this.vector.x, this.vector.y, this.vector.z).color(1, 0, 0, 1);
+        builder.vertex(matrix, this.vector.x, this.vector.y, this.vector.z).color(1, 0, 0, 1).next();
 
         matrix.transform(this.vector.set(f, 0, 0, 1));
-        builder.vertex(matrix, this.vector.x, this.vector.y, this.vector.z).color(1, 0, 0, 1);
+        builder.vertex(matrix, this.vector.x, this.vector.y, this.vector.z).color(1, 0, 0, 1).next();
 
         matrix.transform(this.vector.set(0, 0, 0, 1));
-        builder.vertex(matrix, this.vector.x, this.vector.y, this.vector.z).color(0, 1, 0, 1);
+        builder.vertex(matrix, this.vector.x, this.vector.y, this.vector.z).color(0, 1, 0, 1).next();
 
         matrix.transform(this.vector.set(0, f, 0, 1));
-        builder.vertex(matrix, this.vector.x, this.vector.y, this.vector.z).color(0, 1, 0, 1);
+        builder.vertex(matrix, this.vector.x, this.vector.y, this.vector.z).color(0, 1, 0, 1).next();
 
         matrix.transform(this.vector.set(0, 0, 0, 1));
-        builder.vertex(matrix, this.vector.x, this.vector.y, this.vector.z).color(0, 0, 1, 1);
+        builder.vertex(matrix, this.vector.x, this.vector.y, this.vector.z).color(0, 0, 1, 1).next();
 
         matrix.transform(this.vector.set(0, 0, f, 1));
-        builder.vertex(matrix, this.vector.x, this.vector.y, this.vector.z).color(0, 0, 1, 1);
+        builder.vertex(matrix, this.vector.x, this.vector.y, this.vector.z).color(0, 0, 1, 1).next();
 
         stack.pop();
 

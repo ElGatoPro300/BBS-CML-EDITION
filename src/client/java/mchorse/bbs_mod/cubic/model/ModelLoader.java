@@ -7,15 +7,14 @@ public class ModelLoader implements Runnable
 {
     private ModelManager manager;
     private Thread thread;
-    private final Queue<String> queue = new LinkedList<>();
-    private volatile String current;
+    private Queue<String> queue = new LinkedList<>();
 
     public ModelLoader(ModelManager manager)
     {
         this.manager = manager;
     }
 
-    public synchronized void add(String key)
+    public void add(String key)
     {
         this.queue.offer(key);
 
@@ -26,29 +25,12 @@ public class ModelLoader implements Runnable
         }
     }
 
-    public synchronized boolean isLoading(String key)
-    {
-        return this.queue.contains(key) || (this.current != null && this.current.equals(key));
-    }
-
     @Override
     public void run()
     {
-        while (true)
+        while (!this.queue.isEmpty())
         {
-            String model;
-
-            synchronized (this)
-            {
-                if (this.queue.isEmpty())
-                {
-                    this.thread = null;
-                    break;
-                }
-
-                model = this.queue.poll();
-                this.current = model;
-            }
+            String model = this.queue.poll();
 
             try
             {
@@ -58,13 +40,8 @@ public class ModelLoader implements Runnable
             {
                 e.printStackTrace();
             }
-            finally
-            {
-                synchronized (this)
-                {
-                    this.current = null;
-                }
-            }
         }
+
+        this.thread = null;
     }
 }

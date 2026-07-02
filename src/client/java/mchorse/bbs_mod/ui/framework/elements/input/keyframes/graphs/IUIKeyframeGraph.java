@@ -19,11 +19,6 @@ public interface IUIKeyframeGraph
     public static final int TOP_MARGIN = 15;
     public static final int SIDEBAR_WIDTH = 140;
 
-    public default int getSidebarWidth()
-    {
-        return SIDEBAR_WIDTH;
-    }
-
     public void resetView();
 
     public UIKeyframeSheet getLastSheet();

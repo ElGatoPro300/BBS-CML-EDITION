@@ -7,7 +7,6 @@ import mchorse.bbs_mod.data.DataToString;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
-import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
@@ -41,7 +40,6 @@ import mchorse.bbs_mod.utils.pose.PoseTransform;
 import mchorse.bbs_mod.utils.pose.Transform;
 import mchorse.bbs_mod.utils.resources.LinkUtils;
 
-import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 
 import java.io.File;
@@ -81,15 +79,11 @@ public class UIPoseEditor extends UIElement
     protected Map<String, String> flippedParts;
     /** Proveedor opcional para obtener la textura base del modelo cuando no hay override por hueso. */
     protected Supplier<Link> defaultTextureSupplier;
-    /** Proveedor opcional del form a renderizar en la preview 3D del selector de texturas. */
-    protected Supplier<Form> texturePreviewFormSupplier;
     /** Gestor de categorías de huesos (por grupo de pose). */
     protected BoneCategoriesManager boneCategories = new BoneCategoriesManager();
     private final List<String> allBones = new ArrayList<>();
     private final Set<String> markedBones = new HashSet<>();
     private boolean showOnlyMarked;
-    private boolean invertLiveMirrorZ;
-    private UIIcon invertLiveMirrorZButton;
     private UIIcon showOnlyMarkedButton;
     private String currentBone;
 
@@ -98,43 +92,18 @@ public class UIPoseEditor extends UIElement
         this.extra = new UIElement();
         this.extra.column().vertical().stretch();
 
-        this.groupsList = new MarkableBoneList((l) ->
-        {
-            this.pickBone(l.get(0));
-        });
-        this.groupsList.multi();
+        this.groupsList = new MarkableBoneList((l) -> this.pickBone(l.get(0)));
         this.groups = new UISearchList<>(this.groupsList);
         this.groups.label(UIKeys.GENERAL_SEARCH);
         this.groups.h(UIStringList.DEFAULT_HEIGHT * 8 + 12); // 20px search box + list height
         this.groups.list.background();
         this.groups.list.scroll.cancelScrolling();
-        this.groups.search.w(1F, -40);
-        this.invertLiveMirrorZ = false;
-        this.invertLiveMirrorZButton = new UIIcon(Icons.CONVERT, (b) -> this.toggleInvertLiveMirrorZ())
-        {
-            @Override
-            protected void renderSkin(UIContext context)
-            {
-                if (this.isActive())
-                {
-                    this.area.render(context.batcher, BBSSettings.primaryColor(Colors.A100));
-                }
-
-                super.renderSkin(context);
-            }
-        };
-        this.invertLiveMirrorZButton.iconColor(Colors.LIGHTEST_GRAY);
-        this.invertLiveMirrorZButton.hoverColor(Colors.WHITE);
-        this.invertLiveMirrorZButton.activeColor(Colors.WHITE);
-        this.invertLiveMirrorZButton.active(this.invertLiveMirrorZ);
-        this.invertLiveMirrorZButton.tooltip(UIKeys.POSE_BONES_LIVE_MIRROR_INVERT_Z_TOOLTIP);
-        this.invertLiveMirrorZButton.relative(this.groups).x(1F, -40).y(0).w(20).h(20);
+        this.groups.search.w(1F, -20);
         this.showOnlyMarkedButton = new UIIcon(() -> this.showOnlyMarked ? Icons.VISIBLE : Icons.FILTER, (b) -> this.toggleShowOnlyMarked());
         this.showOnlyMarked = BBSSettings.poseBonesFilterMarked != null && BBSSettings.poseBonesFilterMarked.get();
         this.showOnlyMarkedButton.active(this.showOnlyMarked);
         this.showOnlyMarkedButton.tooltip(UIKeys.POSE_BONES_FILTER_MARKED_TOOLTIP);
         this.showOnlyMarkedButton.relative(this.groups).x(1F, -20).y(0).w(20).h(20);
-        this.groups.add(this.invertLiveMirrorZButton);
         this.groups.add(this.showOnlyMarkedButton);
         this.groups.list.context(() ->
         {
@@ -154,11 +123,11 @@ public class UIPoseEditor extends UIElement
         {
             String selectedCategory = this.categories.getCurrentFirst();
 
-            menu.action(Icons.ADD, UIKeys.FORMS_CATEGORIES_CONTEXT_ADD_CATEGORY, () ->
+            menu.action(Icons.ADD, L10n.lang("bbs.ui.forms.categories.context.add_category"), () ->
             {
                 UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
-                    UIKeys.POSE_CATEGORIES_MANAGE_TITLE,
-                    UIKeys.POSE_CATEGORIES_MANAGE_CATEGORY_NAME,
+                    L10n.lang("bbs.ui.pose.categories.manage_title"),
+                    L10n.lang("bbs.ui.pose.categories.manage_category_name"),
                     (str) ->
                     {
                         if (str != null && !str.isEmpty())
@@ -173,11 +142,11 @@ public class UIPoseEditor extends UIElement
 
             if (selectedCategory != null && !selectedCategory.isEmpty())
             {
-                menu.action(Icons.EDIT, UIKeys.FORMS_CATEGORIES_CONTEXT_RENAME_CATEGORY, () ->
+                menu.action(Icons.EDIT, L10n.lang("bbs.ui.forms.categories.context.rename_category"), () ->
                 {
                     UIPromptOverlayPanel panel = new UIPromptOverlayPanel(
-                        UIKeys.POSE_CATEGORIES_MANAGE_TITLE,
-                        UIKeys.POSE_CATEGORIES_MANAGE_NEW_NAME,
+                        L10n.lang("bbs.ui.pose.categories.manage_title"),
+                        L10n.lang("bbs.ui.pose.categories.manage_new_name"),
                         (str) ->
                         {
                             if (str != null && !str.isEmpty())
@@ -190,14 +159,14 @@ public class UIPoseEditor extends UIElement
                     UIOverlay.addOverlay(this.getContext(), panel);
                 });
 
-                menu.action(Icons.TRASH, UIKeys.FORMS_CATEGORIES_CONTEXT_REMOVE_CATEGORY, Colors.RED, () ->
+                menu.action(Icons.TRASH, L10n.lang("bbs.ui.forms.categories.context.remove_category"), Colors.RED, () ->
                 {
                     this.boneCategories.removeCategory(this.group, selectedCategory);
                     this.refreshCategories();
                 });
 
                 /* Ver huesos que pertenecen a la categoría seleccionada */
-                menu.action(Icons.LIST, UIKeys.POSE_CATEGORIES_CONTEXT_VIEW_BONES, () ->
+                menu.action(Icons.LIST, L10n.lang("bbs.ui.pose.categories.context.view_bones"), () ->
                 {
                     String group = this.group;
                     List<String> bones = this.boneCategories.getBones(group, selectedCategory);
@@ -208,8 +177,8 @@ public class UIPoseEditor extends UIElement
                     for (String g : bones) { list.add(g); }
 
                     UIConfirmOverlayPanel panel = new UIConfirmOverlayPanel(
-                        UIKeys.POSE_CATEGORIES_VIEW_BONES_TITLE,
-                        UIKeys.POSE_CATEGORIES_VIEW_BONES_DESCRIPTION,
+                        L10n.lang("bbs.ui.pose.categories.view_bones_title"),
+                        L10n.lang("bbs.ui.pose.categories.view_bones_description"),
                         (confirm) ->
                         {
                             if (confirm)
@@ -231,7 +200,7 @@ public class UIPoseEditor extends UIElement
                     /* Click derecho para eliminar el hueso de la categoría */
                     list.context((ctx) ->
                     {
-                        ctx.action(Icons.TRASH, UIKeys.POSE_CATEGORIES_CONTEXT_REMOVE_BONE, Colors.RED, () ->
+                        ctx.action(Icons.TRASH, IKey.constant("Eliminar hueso"), Colors.RED, () ->
                         {
                             int idx = list.getIndex();
                             String bone = CollectionUtils.getSafe(bones, idx);
@@ -253,11 +222,11 @@ public class UIPoseEditor extends UIElement
                 String selectedBone = this.groups.list.getCurrentFirst();
                 if (selectedBone != null && !selectedBone.isEmpty())
                 {
-                    menu.action(Icons.ADD, UIKeys.POSE_CATEGORIES_CONTEXT_ADD_SELECTED_BONE, () ->
+                    menu.action(Icons.ADD, IKey.constant("Añadir hueso seleccionado"), () ->
                     {
                         this.boneCategories.addBone(this.group, selectedCategory, selectedBone);
                     });
-                    menu.action(Icons.REMOVE, UIKeys.POSE_CATEGORIES_CONTEXT_REMOVE_SELECTED_BONE, () ->
+                    menu.action(Icons.REMOVE, IKey.constant("Quitar hueso seleccionado"), () ->
                     {
                         this.boneCategories.removeBone(this.group, selectedCategory, selectedBone);
                     });
@@ -273,8 +242,6 @@ public class UIPoseEditor extends UIElement
             {
                 this.applyCategory((p) -> this.setFix(p, v.floatValue()));
             }
-            else if (this.applyLiveMirror((p) -> this.setFix(p, v.floatValue())))
-            {}
             else if (this.transform.getTransform() instanceof PoseTransform poseTransform)
             {
                 this.setFix(poseTransform, v.floatValue());
@@ -292,7 +259,7 @@ public class UIPoseEditor extends UIElement
                 if (this.onChange != null) this.onChange.run();
             });
 
-            menu.action(Icons.DOWNLOAD, UIKeys.POSE_CATEGORIES_CONTEXT_APPLY_CATEGORY, () ->
+            menu.action(Icons.DOWNLOAD, IKey.constant("Aplicar a categoría"), () ->
             {
                 this.applyCategory((p) -> this.setFix(p, (float) this.fix.getValue()));
                 if (this.onChange != null) this.onChange.run();
@@ -313,15 +280,13 @@ public class UIPoseEditor extends UIElement
                 current = this.defaultTextureSupplier.get();
             }
 
-            UITexturePicker picker = UITexturePicker.open(this.getContext(), current, (l) ->
+            UITexturePicker.open(this.getContext(), current, (l) ->
             {
                 String selectedCategory = this.categories != null ? this.categories.getCurrentFirst() : null;
                 if (selectedCategory != null && !selectedCategory.isEmpty())
                 {
                     this.applyCategory((p) -> this.setTexture(p, l));
                 }
-                else if (this.applyLiveMirror((p) -> this.setTexture(p, l)))
-                {}
                 else if (this.transform.getTransform() instanceof PoseTransform pt)
                 {
                     this.setTexture(pt, l);
@@ -329,11 +294,6 @@ public class UIPoseEditor extends UIElement
 
                 if (this.onChange != null) this.onChange.run();
             });
-
-            if (picker != null)
-            {
-                picker.withFormPreview(this.texturePreviewFormSupplier);
-            }
         });
         this.pickTexture.context((menu) ->
         {
@@ -344,7 +304,7 @@ public class UIPoseEditor extends UIElement
                 this.applyChildren((p) -> this.setTexture(p, chosen));
                 if (this.onChange != null) this.onChange.run();
             });
-            menu.action(Icons.DOWNLOAD, UIKeys.POSE_CATEGORIES_CONTEXT_APPLY_CATEGORY, () ->
+            menu.action(Icons.DOWNLOAD, IKey.constant("Aplicar a categoría"), () ->
             {
                 PoseTransform t = (PoseTransform) this.transform.getTransform();
                 Link chosen = t != null ? t.texture : null;
@@ -354,18 +314,11 @@ public class UIPoseEditor extends UIElement
 
             menu.action(Icons.CLOSE, UIKeys.GENERAL_NONE, () ->
             {
-                if (this.applyLiveMirror((p) -> this.setTexture(p, null)))
+                PoseTransform t = (PoseTransform) this.transform.getTransform();
+                if (t != null)
                 {
+                    this.setTexture(t, null);
                     if (this.onChange != null) this.onChange.run();
-                }
-                else
-                {
-                    PoseTransform t = (PoseTransform) this.transform.getTransform();
-                    if (t != null)
-                    {
-                        this.setTexture(t, null);
-                        if (this.onChange != null) this.onChange.run();
-                    }
                 }
             });
         });
@@ -376,8 +329,6 @@ public class UIPoseEditor extends UIElement
             {
                 this.applyCategory((p) -> this.setColor(p, c));
             }
-            else if (this.applyLiveMirror((p) -> this.setColor(p, c)))
-            {}
             else if (this.transform.getTransform() instanceof PoseTransform poseTransform)
             {
                 this.setColor(poseTransform, c);
@@ -393,7 +344,7 @@ public class UIPoseEditor extends UIElement
                 this.applyChildren((p) -> this.setColor(p, this.color.picker.color.getARGBColor()));
                 if (this.onChange != null) this.onChange.run();
             });
-            menu.action(Icons.DOWNLOAD, UIKeys.POSE_CATEGORIES_CONTEXT_APPLY_CATEGORY, () ->
+            menu.action(Icons.DOWNLOAD, IKey.constant("Aplicar a categoría"), () ->
             {
                 this.applyCategory((p) -> this.setColor(p, this.color.picker.color.getARGBColor()));
                 if (this.onChange != null) this.onChange.run();
@@ -406,8 +357,6 @@ public class UIPoseEditor extends UIElement
             {
                 this.applyCategory((p) -> this.setLighting(p, b.getValue()));
             }
-            else if (this.applyLiveMirror((p) -> this.setLighting(p, b.getValue())))
-            {}
             else if (this.transform.getTransform() instanceof PoseTransform poseTransform)
             {
                 this.setLighting(poseTransform, b.getValue());
@@ -423,7 +372,7 @@ public class UIPoseEditor extends UIElement
                 this.applyChildren((p) -> this.setLighting(p, this.lighting.getValue()));
                 if (this.onChange != null) this.onChange.run();
             });
-            menu.action(Icons.DOWNLOAD, UIKeys.POSE_CATEGORIES_CONTEXT_APPLY_CATEGORY, () ->
+            menu.action(Icons.DOWNLOAD, IKey.constant("Aplicar a categoría"), () ->
             {
                 this.applyCategory((p) -> this.setLighting(p, this.lighting.getValue()));
                 if (this.onChange != null) this.onChange.run();
@@ -469,13 +418,6 @@ public class UIPoseEditor extends UIElement
     public UIPoseEditor setDefaultTextureSupplier(Supplier<Link> supplier)
     {
         this.defaultTextureSupplier = supplier;
-
-        return this;
-    }
-
-    public UIPoseEditor setTexturePreviewFormSupplier(Supplier<Form> supplier)
-    {
-        this.texturePreviewFormSupplier = supplier;
 
         return this;
     }
@@ -581,6 +523,7 @@ public class UIPoseEditor extends UIElement
             this.markedBones.retainAll(this.allBones);
             this.saveMarkedBonesCache();
         }
+
         this.fix.setVisible(!groups.isEmpty());
         this.color.setVisible(!groups.isEmpty());
         this.transform.setVisible(!groups.isEmpty());
@@ -642,7 +585,7 @@ public class UIPoseEditor extends UIElement
 
     protected UIPropTransform createTransformEditor()
     {
-        return new CategoryPropTransform(this).enableHotkeys().translationScale(16F);
+        return new CategoryPropTransform(this).enableHotkeys();
     }
 
     /* Transformaciones aplicables por categoría */
@@ -661,12 +604,6 @@ public class UIPoseEditor extends UIElement
             String selectedCategory = (categoriesEnabled && this.editor.categories != null) ? this.editor.categories.getCurrentFirst() : null;
             if (selectedCategory == null || selectedCategory.isEmpty())
             {
-                List<String> liveMirror = this.editor.getLiveMirrorBones();
-                if (!liveMirror.isEmpty())
-                {
-                    return liveMirror;
-                }
-
                 String current = this.editor.groups.list.getCurrentFirst();
                 return current == null ? Collections.emptyList() : Collections.singletonList(current);
             }
@@ -744,19 +681,15 @@ public class UIPoseEditor extends UIElement
             float dx = MathUtils.toRad((float) x) - transform.rotate.x;
             float dy = MathUtils.toRad((float) y) - transform.rotate.y;
             float dz = MathUtils.toRad((float) z) - transform.rotate.z;
-            List<String> targets = this.targets();
-            boolean invertAxes = this.editor.shouldInvertLiveMirrorRotationZ(targets);
-            String sourceBone = this.editor.getCurrentBone();
 
-            for (String key : targets)
+            for (String key : this.targets())
             {
                 PoseTransform t = this.editor.pose.get(key);
                 if (t != null)
                 {
-                    boolean mirroredBone = invertAxes && !key.equals(sourceBone);
-                    t.rotate.x += mirroredBone ? -dx : dx;
-                    t.rotate.y += mirroredBone ? -dy : dy;
-                    t.rotate.z += mirroredBone ? -dz : dz;
+                    t.rotate.x += dx;
+                    t.rotate.y += dy;
+                    t.rotate.z += dz;
                 }
             }
             this.postCallback();
@@ -776,19 +709,15 @@ public class UIPoseEditor extends UIElement
             float dx = MathUtils.toRad((float) x) - transform.rotate2.x;
             float dy = MathUtils.toRad((float) y) - transform.rotate2.y;
             float dz = MathUtils.toRad((float) z) - transform.rotate2.z;
-            List<String> targets = this.targets();
-            boolean invertAxes = this.editor.shouldInvertLiveMirrorRotationZ(targets);
-            String sourceBone = this.editor.getCurrentBone();
 
-            for (String key : targets)
+            for (String key : this.targets())
             {
                 PoseTransform t = this.editor.pose.get(key);
                 if (t != null)
                 {
-                    boolean mirroredBone = invertAxes && !key.equals(sourceBone);
-                    t.rotate2.x += mirroredBone ? -dx : dx;
-                    t.rotate2.y += mirroredBone ? -dy : dy;
-                    t.rotate2.z += mirroredBone ? -dz : dz;
+                    t.rotate2.x += dx;
+                    t.rotate2.y += dy;
+                    t.rotate2.z += dz;
                 }
             }
             this.postCallback();
@@ -856,6 +785,7 @@ public class UIPoseEditor extends UIElement
     protected void pickBone(String bone)
     {
         this.currentBone = bone;
+
         if (this.pickCallback != null)
         {
             this.pickCallback.accept(bone);
@@ -962,12 +892,6 @@ public class UIPoseEditor extends UIElement
         this.applyMarkedFilter(false, current, scroll);
     }
 
-    private void toggleInvertLiveMirrorZ()
-    {
-        this.invertLiveMirrorZ = !this.invertLiveMirrorZ;
-        this.invertLiveMirrorZButton.active(this.invertLiveMirrorZ);
-    }
-
     private void toggleBoneMarked(String bone)
     {
         if (bone == null || bone.isEmpty())
@@ -1051,47 +975,6 @@ public class UIPoseEditor extends UIElement
         }
 
         return marked;
-    }
-
-    protected List<String> getLiveMirrorBones()
-    {
-        if (this.groups == null)
-        {
-            return Collections.emptyList();
-        }
-
-        List<String> bones = this.groups.list.getCurrent();
-        return bones.size() < 2 ? Collections.emptyList() : new ArrayList<>(bones);
-    }
-
-    protected boolean shouldInvertLiveMirrorRotationZ(List<String> targets)
-    {
-        return this.invertLiveMirrorZ && targets != null && targets.size() >= 2;
-    }
-
-    private boolean applyLiveMirror(Consumer<PoseTransform> consumer)
-    {
-        if (this.pose == null || consumer == null)
-        {
-            return false;
-        }
-
-        List<String> bones = this.getLiveMirrorBones();
-        if (bones.isEmpty())
-        {
-            return false;
-        }
-
-        for (String bone : bones)
-        {
-            PoseTransform transform = this.pose.get(bone);
-            if (transform != null)
-            {
-                consumer.accept(transform);
-            }
-        }
-
-        return true;
     }
 
     private void loadMarkedBonesCache()
@@ -1301,8 +1184,8 @@ public class UIPoseEditor extends UIElement
                 return;
             }
 
-            String line1 = UIKeys.POSE_BONES_EMPTY_LINE1.get();
-            String line2 = UIKeys.POSE_BONES_EMPTY_LINE2.get();
+            String line1 = L10n.lang("bbs.ui.pose.bones.empty_line1").get();
+            String line2 = L10n.lang("bbs.ui.pose.bones.empty_line2").get();
             int lineHeight = context.batcher.getFont().getHeight() + 4;
             int totalHeight = lineHeight * 2 - 4;
             int y = this.area.my() - totalHeight / 2;
@@ -1321,7 +1204,7 @@ public class UIPoseEditor extends UIElement
             context.batcher.textShadow(line2, x2, y, color);
             int iconX = x2 + line2TextWidth + iconSpacing;
             int iconY = y + (context.batcher.getFont().getHeight() - iconSize) / 2;
-            GlStateManager._enableBlend();
+            RenderSystem.enableBlend();
             context.batcher.icon(Icons.VISIBLE, color, iconX, iconY);
             context.batcher.unclip(context);
         }
@@ -1334,7 +1217,7 @@ public class UIPoseEditor extends UIElement
             boolean marked = UIPoseEditor.this.markedBones.contains(element);
             int iconColor = marked ? Colors.WHITE : Colors.setA(Colors.WHITE, 0.35F);
 
-            GlStateManager._enableBlend();
+            RenderSystem.enableBlend();
             context.batcher.icon(Icons.CHECKMARK, iconColor, iconX, iconY);
 
             int textX = x + 22;
@@ -1375,25 +1258,6 @@ public class UIPoseEditor extends UIElement
                 if (Window.isShiftPressed())
                 {
                     UIPoseEditor.this.toggleBoneMarked(element);
-                    return true;
-                }
-            }
-
-            if (Window.isShiftPressed())
-            {
-                int index = this.list.indexOf(element);
-
-                if (this.exists(index))
-                {
-                    this.toggleIndex(index);
-
-                    if (this.current.isEmpty())
-                    {
-                        this.addIndex(index);
-                    }
-
-                    UIPoseEditor.this.pickBone(element);
-
                     return true;
                 }
             }
