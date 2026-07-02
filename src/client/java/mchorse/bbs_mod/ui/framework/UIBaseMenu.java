@@ -228,6 +228,7 @@ public abstract class UIBaseMenu
 
         this.context.resetMatrix();
         this.context.setMouse(mouseX, mouseY);
+        this.context.resetCursor();
 
         this.preRenderMenu(context);
 
@@ -246,6 +247,8 @@ public abstract class UIBaseMenu
         {
             inputRenderer.render(this, mouseX, mouseY);
         }
+
+        this.context.applyCursor();
 
         RenderSystem.depthFunc(GL11.GL_LEQUAL);
     }

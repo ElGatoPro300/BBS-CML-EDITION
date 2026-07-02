@@ -26,6 +26,8 @@ import net.minecraft.util.Hand;
 
 import org.joml.Matrix4f;
 
+import org.lwjgl.opengl.GL11;
+
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Supplier;
@@ -58,7 +60,13 @@ public abstract class FormRenderer <T extends Form>
 
     public final void renderUI(UIContext context, int x1, int y1, int x2, int y2)
     {
+        context.batcher.flush();
+        GL11.glClear(GL11.GL_DEPTH_BUFFER_BIT);
+
         this.renderInUI(context, x1, y1, x2, y2);
+
+        context.batcher.flush();
+        GL11.glClear(GL11.GL_DEPTH_BUFFER_BIT);
 
         FontRenderer font = context.batcher.getFont();
         String name = this.form.name.get();

@@ -39,12 +39,14 @@ import mchorse.bbs_mod.utils.interps.Interpolations;
 
 import java.io.File;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 public class UIValueMap
 {
@@ -54,11 +56,11 @@ public class UIValueMap
     {
         register(ValueBoolean.class, (value, ui) ->
         {
-            UIToggle toggle = UIValueFactory.booleanUI(value, null);
+            UIToggle toggle = UIValueFactory.booleanUINoLabel(value, null);
 
-            toggle.resetFlex();
+            toggle.w(18);
 
-            return Arrays.asList(toggle);
+            return Arrays.asList(UIValueFactory.column(toggle, value));
         });
 
         register(ValueDouble.class, (value, ui) ->
@@ -81,7 +83,7 @@ public class UIValueMap
 
         register(ValueInt.class, (value, ui) ->
         {
-            if (value == BBSSettings.defaultInterpolation)
+            if (value == BBSSettings.defaultInterpolation || value == BBSSettings.defaultPathInterpolation)
             {
                 List<IKey> labels = value.getLabels();
                 int currentIndex = value.get();
@@ -183,7 +185,18 @@ public class UIValueMap
 
         register(ValueLanguage.class, (value, ui) ->
         {
-            UIButton button = new UIButton(UIKeys.LANGUAGE_PICK, (b) ->
+            Supplier<IKey> getLangLabel = () -> {
+                for (Label<String> label : BBSModClient.getL10n().getSupportedLanguageLabels())
+                {
+                    if (label.value.equals(value.get()))
+                    {
+                        return label.title;
+                    }
+                }
+                return UIKeys.LANGUAGE_PICK;
+            };
+
+            UIButton button = new UIButton(getLangLabel.get(), (b) ->
             {
                 List<Label<String>> labels = BBSModClient.getL10n().getSupportedLanguageLabels();
                 UILabelOverlayPanel<String> panel = new UILabelOverlayPanel<>(UIKeys.LANGUAGE_PICK_TITLE, labels, (str) -> value.set(str.value));
@@ -192,7 +205,9 @@ public class UIValueMap
                 UIOverlay.addOverlay(ui.getContext(), panel);
             });
 
-            button.w(90);
+            value.postCallback((changed, flag) -> button.label = getLangLabel.get());
+
+            button.w(150);
 
             UIText credits = new UIText().text(UIKeys.LANGUAGE_CREDITS).updates();
 
@@ -261,13 +276,92 @@ public class UIValueMap
 
         register(ValueVideoSettings.class, (value, ui) ->
         {
-            UIButton button = new UIButton(UIKeys.VIDEO_SETTINGS_EDIT, (b) ->
-            {
-                UIOverlay.addOverlay(ui.getContext(), new UIVideoSettingsOverlayPanel(value));
-            });
+            List<UIElement> list = new ArrayList<>();
 
-            return Arrays.asList(button);
+            UITextbox arguments = UIValueFactory.stringUI(value.arguments, null);
+            arguments.w(180);
+            list.add(customColumn(arguments, UIKeys.VIDEO_SETTINGS_ARGS, IKey.raw("")));
+
+            UITextbox argumentsAudio = UIValueFactory.stringUI(value.argumentsAudio, null);
+            argumentsAudio.w(180);
+            list.add(customColumn(argumentsAudio, UIKeys.VIDEO_SETTINGS_AUDIO_ARGS, IKey.raw("")));
+
+            UIToggle audio = new UIToggle(UIKeys.VIDEO_SETTINGS_AUDIO, value.audio.get(), (b) ->
+            {
+                value.audio.set(b.getValue());
+            });
+            audio.tooltip(UIKeys.VIDEO_SETTINGS_AUDIO_TOOLTIP);
+            audio.w(1F).h(20);
+            list.add(audio);
+
+            UIToggle audioEnvironment = new UIToggle(UIKeys.VIDEO_SETTINGS_AUDIO_ENVIRONMENT, value.audioEnvironment.get(), (b) ->
+            {
+                value.audioEnvironment.set(b.getValue());
+            });
+            audioEnvironment.tooltip(UIKeys.VIDEO_SETTINGS_AUDIO_ENVIRONMENT_TOOLTIP);
+            audioEnvironment.w(1F).h(20);
+            list.add(audioEnvironment);
+
+            UITrackpad width = UIValueFactory.intUI(value.width, null);
+            value.width.postCallback((changed, flag) -> width.setValue(value.width.get()));
+            width.w(90);
+            list.add(customColumn(width, UIKeys.VIDEO_SETTINGS_WIDTH, IKey.raw("")));
+
+            UITrackpad height = UIValueFactory.intUI(value.height, null);
+            value.height.postCallback((changed, flag) -> height.setValue(value.height.get()));
+            height.w(90);
+            list.add(customColumn(height, UIKeys.VIDEO_SETTINGS_HEIGHT, IKey.raw("")));
+
+            UITrackpad frameRate = UIValueFactory.intUI(value.frameRate, null);
+            frameRate.w(90);
+            list.add(customColumn(frameRate, UIKeys.VIDEO_SETTINGS_FRAME_RATE, IKey.raw("")));
+
+            UITrackpad motionBlur = UIValueFactory.intUI(value.motionBlur, null);
+            motionBlur.w(90);
+            list.add(customColumn(motionBlur, UIKeys.VIDEO_SETTINGS_MOTION_BLUR, UIKeys.VIDEO_SETTINGS_MOTION_BLUR_TOOLTIP));
+
+            UITrackpad heldFrames = UIValueFactory.intUI(value.heldFrames, null);
+            heldFrames.w(90);
+            list.add(customColumn(heldFrames, UIKeys.VIDEO_SETTINGS_HELD_FRAMES, UIKeys.VIDEO_SETTINGS_HELD_FRAMES_TOOLTIP));
+
+            UITextbox path = UIValueFactory.stringUI(value.path, null);
+            path.w(140);
+            list.add(customColumn(path, UIKeys.VIDEO_SETTINGS_PATH, IKey.raw("")));
+
+            return list;
         });
+    }
+
+    private static UIElement customColumn(UIElement control, IKey label, IKey tooltip)
+    {
+        UIElement element = new UIElement();
+        control.removeTooltip();
+
+        String comment = tooltip.get();
+        boolean hasComment = !comment.isEmpty()
+            && !comment.startsWith("bbs.settings.")
+            && !comment.startsWith("cml.settings.")
+            && (BBSSettings.hideSettingDescriptions == null || !BBSSettings.hideSettingDescriptions.get());
+
+        if (hasComment)
+        {
+            UILabel titleLabel = UI.label(label, 0).labelAnchor(0, 0.5F);
+            titleLabel.relative(element).w(1F).h(11);
+            UIText desc = new UIText(tooltip)
+                .color(0xFF777788, true);
+            desc.relative(element).w(1F);
+
+            element.column(3).vertical().padding(0).height(0);
+            element.add(titleLabel, desc.marginTop(1), control.marginTop(2));
+        }
+        else
+        {
+            element.row(0).preferred(0).height(20);
+            element.add(UI.label(label, 0).labelAnchor(0, 0.5F), control);
+            control.marginTop(0);
+        }
+
+        return element;
     }
 
     public static <T extends BaseValue> void register(Class<T> clazz, IUIValueFactory<T> factory)

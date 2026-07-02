@@ -25,6 +25,7 @@ import mchorse.bbs_mod.utils.joml.Vectors;
 import net.minecraft.block.AttachedStemBlock;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockEntityProvider;
+import net.minecraft.block.BlockRenderType;
 import net.minecraft.block.BlockState;
 import net.minecraft.block.Blocks;
 import net.minecraft.block.GrassBlock;
@@ -64,6 +65,7 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.random.Random;
 import net.minecraft.world.LightType;
 
+import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -745,7 +747,24 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
                 vc = recolor.apply(vc);
             }
 
-            MinecraftClient.getInstance().getBlockRenderManager().renderBlock(entry.state, entry.pos, info.view, stack, vc, true, Random.create());
+            if (!entry.state.getFluidState().isEmpty())
+            {
+                boolean shaders = BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld();
+                RenderLayer fluidLayer = shaders
+                    ? RenderLayers.getEntityBlockLayer(entry.state, false)
+                    : RenderLayers.getFluidLayer(entry.state.getFluidState());
+                VertexConsumer fluidVc = consumers.getBuffer(fluidLayer);
+                if (recolor != null)
+                {
+                    fluidVc = recolor.apply(fluidVc);
+                }
+                fluidVc = new TransformingVertexConsumer(fluidVc, stack.peek(), entry.pos, shaders);
+                MinecraftClient.getInstance().getBlockRenderManager().renderFluid(entry.pos, info.view, fluidVc, entry.state, entry.state.getFluidState());
+            }
+            if (entry.state.getRenderType() != BlockRenderType.INVISIBLE)
+            {
+                MinecraftClient.getInstance().getBlockRenderManager().renderBlock(entry.state, entry.pos, info.view, stack, vc, true, Random.create());
+            }
 
             /* Render blocks with entity (chests, beds, signs, skulls, etc.) */
             block = entry.state.getBlock();
@@ -761,6 +780,10 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
 
                 if (be != null)
                 {
+                    if (entry.nbt != null)
+                    {
+                        be.readNbt(entry.nbt);
+                    }
                     /* Associate real world so renderer can query light and effects */
                     if (MinecraftClient.getInstance().world != null)
                     {
@@ -869,7 +892,24 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
                 vc = recolor.apply(vc);
             }
 
-            MinecraftClient.getInstance().getBlockRenderManager().renderBlock(entry.state, entry.pos, info.view, stack, vc, true, Random.create());
+            if (!entry.state.getFluidState().isEmpty())
+            {
+                boolean shaders = BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld();
+                RenderLayer fluidLayer = shaders
+                    ? RenderLayers.getEntityBlockLayer(entry.state, false)
+                    : RenderLayers.getFluidLayer(entry.state.getFluidState());
+                VertexConsumer fluidVc = consumers.getBuffer(fluidLayer);
+                if (recolor != null)
+                {
+                    fluidVc = recolor.apply(fluidVc);
+                }
+                fluidVc = new TransformingVertexConsumer(fluidVc, stack.peek(), entry.pos, shaders);
+                MinecraftClient.getInstance().getBlockRenderManager().renderFluid(entry.pos, info.view, fluidVc, entry.state, entry.state.getFluidState());
+            }
+            if (entry.state.getRenderType() != BlockRenderType.INVISIBLE)
+            {
+                MinecraftClient.getInstance().getBlockRenderManager().renderBlock(entry.state, entry.pos, info.view, stack, vc, true, Random.create());
+            }
             stack.pop();
         }
 
@@ -1027,6 +1067,10 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
 
             if (be != null)
             {
+                if (entry.nbt != null)
+                {
+                    be.readNbt(entry.nbt);
+                }
                 BlockEntityRenderer<?> renderer;
                 int skyLight;
                 int blockLight;
@@ -1512,7 +1556,8 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
                         continue;
                     }
 
-                    BlockEntry blockEntry = new BlockEntry(state, pos);
+                    NbtCompound nbt = be.contains("nbt", NbtElement.COMPOUND_TYPE) ? be.getCompound("nbt") : null;
+                    BlockEntry blockEntry = new BlockEntry(state, pos, nbt);
 
                     this.blocks.add(blockEntry);
 
@@ -1648,11 +1693,107 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
     {
         final BlockState state;
         final BlockPos pos;
+        final NbtCompound nbt;
 
-        BlockEntry(BlockState state, BlockPos pos)
+        BlockEntry(BlockState state, BlockPos pos, NbtCompound nbt)
         {
             this.state = state;
             this.pos = pos;
+            this.nbt = nbt;
+        }
+    }
+
+    private static class TransformingVertexConsumer implements VertexConsumer
+    {
+        private final VertexConsumer parent;
+        private final Matrix4f positionMatrix;
+        private final Matrix3f normalMatrix;
+        private final BlockPos offset;
+        private final boolean injectOverlay;
+
+        public TransformingVertexConsumer(VertexConsumer parent, MatrixStack.Entry entry, BlockPos offset, boolean injectOverlay)
+        {
+            this.parent = parent;
+            this.positionMatrix = new Matrix4f(entry.getPositionMatrix());
+            this.normalMatrix = new Matrix3f(entry.getNormalMatrix());
+            this.offset = offset;
+            this.injectOverlay = injectOverlay;
+        }
+
+        @Override
+        public VertexConsumer vertex(double x, double y, double z)
+        {
+            float nx = (float) x - this.offset.getX();
+            float ny = (float) y - this.offset.getY();
+            float nz = (float) z - this.offset.getZ();
+
+            float tx = this.positionMatrix.m00() * nx + this.positionMatrix.m10() * ny + this.positionMatrix.m20() * nz + this.positionMatrix.m30();
+            float ty = this.positionMatrix.m01() * nx + this.positionMatrix.m11() * ny + this.positionMatrix.m21() * nz + this.positionMatrix.m31();
+            float tz = this.positionMatrix.m02() * nx + this.positionMatrix.m12() * ny + this.positionMatrix.m22() * nz + this.positionMatrix.m32();
+
+            this.parent.vertex(tx, ty, tz);
+            return this;
+        }
+
+        @Override
+        public VertexConsumer color(int red, int green, int blue, int alpha)
+        {
+            this.parent.color(red, green, blue, alpha);
+            return this;
+        }
+
+        @Override
+        public VertexConsumer texture(float u, float v)
+        {
+            this.parent.texture(u, v);
+            return this;
+        }
+
+        @Override
+        public VertexConsumer overlay(int u, int v)
+        {
+            this.parent.overlay(u, v);
+            return this;
+        }
+
+        @Override
+        public VertexConsumer light(int u, int v)
+        {
+            if (this.injectOverlay)
+            {
+                this.parent.overlay(0, 10);
+            }
+            this.parent.light(u, v);
+            return this;
+        }
+
+        @Override
+        public VertexConsumer normal(float x, float y, float z)
+        {
+            float tx = this.normalMatrix.m00() * x + this.normalMatrix.m10() * y + this.normalMatrix.m20() * z;
+            float ty = this.normalMatrix.m01() * x + this.normalMatrix.m11() * y + this.normalMatrix.m21() * z;
+            float tz = this.normalMatrix.m02() * x + this.normalMatrix.m12() * y + this.normalMatrix.m22() * z;
+
+            this.parent.normal(tx, ty, tz);
+            return this;
+        }
+
+        @Override
+        public void next()
+        {
+            this.parent.next();
+        }
+
+        @Override
+        public void fixedColor(int red, int green, int blue, int alpha)
+        {
+            this.parent.fixedColor(red, green, blue, alpha);
+        }
+
+        @Override
+        public void unfixColor()
+        {
+            this.parent.unfixColor();
         }
     }
 }
