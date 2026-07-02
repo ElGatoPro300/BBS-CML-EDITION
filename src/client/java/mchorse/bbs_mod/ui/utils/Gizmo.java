@@ -6,19 +6,19 @@ import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.utils.Axis;
 
+import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.BufferBuilder;
+import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
-import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.render.Tessellator;
+import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
 
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
 
-import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.VertexFormat;
 
 import org.lwjgl.opengl.GL11;
 
@@ -298,14 +298,12 @@ public class Gizmo
             }
         }
 
-        // RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
-        /* shader binding handled by RenderLayer in 1.21.11 */
-        GlStateManager._depthFunc(GL11.GL_ALWAYS);
+        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
+        RenderSystem.depthFunc(GL11.GL_ALWAYS);
 
-        RenderLayers.debugFilledBox().draw(builder.end());
+        BufferRenderer.drawWithGlobalProgram(builder.end());
 
-
-        GlStateManager._depthFunc(GL11.GL_LEQUAL);
+        RenderSystem.depthFunc(GL11.GL_LEQUAL);
     }
 
     public void renderStencil(MatrixStack stack, StencilMap map)
@@ -385,11 +383,10 @@ public class Gizmo
             }
         }
 
-        // RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
-        /* shader binding handled by RenderLayer in 1.21.11 */
-        GlStateManager._disableDepthTest();
+        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
+        RenderSystem.disableDepthTest();
 
-        RenderLayers.debugFilledBox().draw(builder.end());
+        BufferRenderer.drawWithGlobalProgram(builder.end());
     }
 
     private void drawTranslatePlanes(BufferBuilder builder, MatrixStack stack, float planeInner, float planeOuter, float offset, float sx, float sy, float sz, boolean activeXZ, boolean activeXY, boolean activeZY)

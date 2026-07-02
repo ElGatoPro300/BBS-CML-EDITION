@@ -2,7 +2,6 @@ package mchorse.bbs_mod.ui.utils;
 
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.graphics.texture.Texture;
-import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.ui.Keys;
@@ -212,7 +211,7 @@ public class UIChalkboard extends UIElement
         int x = context.mouseX;
         int y = context.mouseY;
         
-        if (Window.isKeyPressed(GLFW.GLFW_KEY_LEFT_SHIFT) || Window.isKeyPressed(GLFW.GLFW_KEY_RIGHT_SHIFT))
+        if (Screen.hasShiftDown())
         {
             Vector2i snapped = this.snap(this.startX, this.startY, x, y);
             
@@ -352,7 +351,7 @@ public class UIChalkboard extends UIElement
                 int ex = x;
                 int ey = y;
 
-                if (Window.isKeyPressed(GLFW.GLFW_KEY_LEFT_SHIFT) || Window.isKeyPressed(GLFW.GLFW_KEY_RIGHT_SHIFT))
+                if (Screen.hasShiftDown())
                 {
                     Vector2i snapped = this.snap(this.startX, this.startY, ex, ey);
 
