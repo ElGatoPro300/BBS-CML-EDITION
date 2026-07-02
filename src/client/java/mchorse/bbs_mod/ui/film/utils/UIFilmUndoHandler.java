@@ -1,7 +1,6 @@
 package mchorse.bbs_mod.ui.film.utils;
 
 import mchorse.bbs_mod.BBSMod;
-import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.network.ClientNetwork;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.settings.values.core.ValueGroup;
@@ -15,8 +14,6 @@ import mchorse.bbs_mod.utils.undo.CompoundUndo;
 import mchorse.bbs_mod.utils.undo.IUndo;
 
 import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
 import java.util.Set;
 
 public class UIFilmUndoHandler extends UIFormUndoHandler
@@ -102,12 +99,20 @@ public class UIFilmUndoHandler extends UIFormUndoHandler
     @Override
     public void handlePreValues(BaseValue baseValue, int flag)
     {
-        if (this.isUndoing)
+        if (this.isUndoing || this.isFilmMetadata(baseValue))
         {
             return;
         }
 
         super.handlePreValues(baseValue, flag);
+    }
+
+    @Override
+    public void submitUndo()
+    {
+        this.cachedValues.keySet().removeIf(this::isFilmMetadata);
+
+        super.submitUndo();
     }
 
     @Override
@@ -143,6 +148,13 @@ public class UIFilmUndoHandler extends UIFormUndoHandler
         }
     }
 
+    private boolean isFilmMetadata(BaseValue value)
+    {
+        String path = value.getPath().toString();
+
+        return path.endsWith("/totalTimeWorked") || path.endsWith("/contributors") || path.contains("/contributors/");
+    }
+
     private boolean isReplayActions(BaseValue value)
     {
         String path = value.getPath().toString();
@@ -151,9 +163,11 @@ public class UIFilmUndoHandler extends UIFormUndoHandler
             path.endsWith("/replays") ||
             path.contains("/keyframes/") ||
             path.contains("/properties/") ||
+            path.endsWith("/drop_items_on_death") ||
             path.endsWith("/actor") ||
             path.endsWith("/enabled") ||
             path.endsWith("/form") ||
+            path.endsWith("/inventory") ||
             path.contains("/drop_velocity_")
         ) {
             return true;

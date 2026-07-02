@@ -2,32 +2,45 @@ package mchorse.bbs_mod.forms.renderers;
 
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.client.BBSShaders;
+import mchorse.bbs_mod.client.MobTextureOverride;
 import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.ITickable;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.forms.MobForm;
-import mchorse.bbs_mod.mixin.LimbAnimatorAccessor;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.PlayerUtils;
 import mchorse.bbs_mod.utils.joml.Vectors;
+import mchorse.bbs_mod.bridge.IEntityRenderState;
 import mchorse.bbs_mod.utils.pose.Pose;
+import mchorse.bbs_mod.utils.pose.PoseTransform;
 import mchorse.bbs_mod.utils.pose.Transform;
 
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.model.ModelPart;
 import net.minecraft.client.network.OtherClientPlayerEntity;
+import net.minecraft.client.render.Camera;
+import net.minecraft.client.render.DiffuseLighting;
 import net.minecraft.client.render.LightmapTextureManager;
+import net.minecraft.client.render.command.OrderedRenderCommandQueue;
+import net.minecraft.client.render.command.OrderedRenderCommandQueueImpl;
+import net.minecraft.client.render.entity.EntityRenderManager;
+import net.minecraft.client.render.entity.EntityRenderer;
 import net.minecraft.client.render.entity.LivingEntityRenderer;
 import net.minecraft.client.render.entity.model.EntityModel;
+import net.minecraft.client.render.entity.state.EntityRenderState;
+import net.minecraft.client.render.entity.state.LivingEntityRenderState;
+import net.minecraft.client.render.state.CameraRenderState;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityPose;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.LivingEntity;
+import net.minecraft.entity.SpawnReason;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.StringNbtReader;
 import net.minecraft.registry.Registries;
@@ -36,8 +49,10 @@ import net.minecraft.util.Identifier;
 import net.minecraft.util.math.RotationAxis;
 
 import org.joml.Matrix4f;
+import org.joml.Vector3f;
 
 import com.mojang.authlib.GameProfile;
+import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.brigadier.StringReader;
 
@@ -80,6 +95,105 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
     public static Pose getCurrentPoseOverlay()
     {
         return currentPoseOverlay;
+    }
+
+    public static void onSetAngles(LivingEntityRenderState state, MatrixStack matrixStack, OrderedRenderCommandQueue queue, CameraRenderState cameraRenderState)
+    {
+        Entity entity = ((IEntityRenderState) state).bbs$getEntity();
+
+        if (!(entity instanceof LivingEntity livingEntity))
+        {
+            return;
+        }
+
+        Pose pose = currentPose;
+        Pose poseOverlay = currentPoseOverlay;
+
+        if (pose != null)
+        {
+            pose = pose.copy();
+
+            for (Map.Entry<String, PoseTransform> transformEntry : poseOverlay.transforms.entrySet())
+            {
+                PoseTransform poseTransform = pose.get(transformEntry.getKey());
+                PoseTransform value = transformEntry.getValue();
+
+                if (value.fix != 0)
+                {
+                    poseTransform.translate.lerp(value.translate, value.fix);
+                    poseTransform.scale.lerp(value.scale, value.fix);
+                    poseTransform.rotate.lerp(value.rotate, value.fix);
+                    poseTransform.rotate2.lerp(value.rotate2, value.fix);
+                }
+                else
+                {
+                    poseTransform.translate.add(value.translate);
+                    poseTransform.scale.add(value.scale).sub(1, 1, 1);
+                    poseTransform.rotate.add(value.rotate);
+                    poseTransform.rotate2.add(value.rotate2);
+                }
+            }
+
+            Map<String, ModelPart> partsMap = parts.get(livingEntity.getClass());
+
+            if (partsMap != null)
+            {
+                for (Map.Entry<String, ModelPart> entry : partsMap.entrySet())
+                {
+                    String key = entry.getKey();
+                    ModelPart value = entry.getValue();
+                    PoseTransform poseTransform = pose.transforms.get(key);
+
+                    if (poseTransform != null)
+                    {
+                        Transform transform = new Transform();
+
+                        transform.translate.x = value.originX;
+                        transform.translate.y = value.originY;
+                        transform.translate.z = value.originZ;
+                        transform.rotate.x = value.pitch;
+                        transform.rotate.y = value.yaw;
+                        transform.rotate.z = value.roll;
+                        transform.scale.x = value.xScale;
+                        transform.scale.y = value.yScale;
+                        transform.scale.z = value.zScale;
+
+                        value.originX += poseTransform.translate.x;
+                        value.originY += poseTransform.translate.y;
+                        value.originZ += poseTransform.translate.z;
+                        value.pitch += poseTransform.rotate.x;
+                        value.yaw += poseTransform.rotate.y;
+                        value.roll += poseTransform.rotate.z;
+                        value.xScale += poseTransform.scale.x - 1F;
+                        value.yScale += poseTransform.scale.y - 1F;
+                        value.zScale += poseTransform.scale.z - 1F;
+
+                        cache.put(value, transform);
+                    }
+                }
+            }
+        }
+    }
+
+    public static void onRenderEnd(LivingEntityRenderState state, MatrixStack matrixStack, OrderedRenderCommandQueue queue, CameraRenderState cameraRenderState)
+    {
+        for (Map.Entry<ModelPart, Transform> entry : cache.entrySet())
+        {
+            Transform transform = entry.getValue();
+            ModelPart value = entry.getKey();
+
+            value.originX = transform.translate.x;
+            value.originY = transform.translate.y;
+            value.originZ = transform.translate.z;
+            value.pitch = transform.rotate.x;
+            value.yaw = transform.rotate.y;
+            value.roll = transform.rotate.z;
+            value.xScale = transform.scale.x;
+            value.yScale = transform.scale.y;
+            value.zScale = transform.scale.z;
+        }
+
+        cache.clear();
     }
 
     public static Map<Class, Map<String, ModelPart>> getParts()
@@ -186,25 +300,15 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
         NbtCompound compound = new NbtCompound();
 
-        try
-        {
-            compound = (new StringNbtReader(new StringReader(nbt))).parseCompound();
-        }
-        catch (Exception e)
-        {}
-
-        this.entity = Registries.ENTITY_TYPE.get(new Identifier(id)).create(MinecraftClient.getInstance().world);
+        this.entity = Registries.ENTITY_TYPE.get(Identifier.of(id)).create(MinecraftClient.getInstance().world, SpawnReason.COMMAND);
 
         if (this.entity == null && this.form.isPlayer())
         {
-            this.entity = new OtherClientPlayerEntity(MinecraftClient.getInstance().world, slim ? SLIM : WIDE);
-            this.entity.getDataTracker().set(PlayerUtils.ProtectedAccess.getModelParts(), (byte) 0b1111111);
+            this.entity = null;
         }
 
         if (this.entity != null)
         {
-            compound.putString("id", id);
-            this.entity.readNbt(compound);
             this.entity.noClip = true;
         }
     }
@@ -216,7 +320,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
         if (this.entity != null)
         {
-            MatrixStack stack = context.batcher.getContext().getMatrices();
+            MatrixStack stack = new MatrixStack();
 
             stack.push();
 
@@ -252,8 +356,36 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
                 }
             });
 
+            Vector3f light0 = new Vector3f(0.85F, 0.85F, -1F).normalize();
+            Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1F).normalize();
+            MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.LEVEL);
+
             consumers.setUI(true);
-            MinecraftClient.getInstance().getEntityRenderDispatcher().render(this.entity, 0D, 0D, 0D, 0F, context.getTransition(), stack, consumers, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE);
+            MobTextureOverride.begin(this.form.texture.get());
+            try
+            {
+                EntityRenderManager manager = MinecraftClient.getInstance().getEntityRenderDispatcher();
+                EntityRenderer renderer = manager.getRenderer(this.entity);
+
+                if (renderer != null)
+                {
+                    EntityRenderState state = manager.getAndUpdateRenderState(this.entity, context.getTransition());
+                    Camera camera = MinecraftClient.getInstance().gameRenderer.getCamera();
+                    CameraRenderState cameraState = new CameraRenderState();
+
+                    cameraState.blockPos = camera.getBlockPos();
+                    cameraState.pos = camera.getCameraPos();
+                    cameraState.entityPos = camera.getCameraPos();
+                    cameraState.orientation = camera.getRotation();
+                    cameraState.initialized = true;
+
+                    renderer.render(state, stack, new OrderedRenderCommandQueueImpl(), cameraState);
+                }
+            }
+            finally
+            {
+                MobTextureOverride.end();
+            }
             consumers.draw();
             consumers.setUI(false);
 
@@ -261,7 +393,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
             stack.pop();
 
-            RenderSystem.depthFunc(GL11.GL_ALWAYS);
+            GlStateManager._depthFunc(GL11.GL_ALWAYS);
         }
     }
 
@@ -284,7 +416,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
                     {
                         this.bindTexture();
                         this.setupTarget(context, BBSShaders.getPickerModelsProgram());
-                        RenderSystem.setShader(BBSShaders::getPickerModelsProgram);
+                        // RenderSystem.setShader(BBSShaders.getPickerModelsProgram());
 
                         first.bool = true;
                     }
@@ -312,18 +444,71 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
                 context.stack.multiply(RotationAxis.POSITIVE_Y.rotation(MathUtils.PI));
             }
 
-            if (this.entity instanceof LivingEntity entity)
-            {
-                int u = context.overlay & '\uffff';
-                int v = context.overlay >> 16 & '\uffff';
+            if (this.entity instanceof LivingEntity livingMorph) 
+{
+    LivingEntity player = MinecraftClient.getInstance().player;
+    LivingEntity source = (context.entity instanceof LivingEntity) ? (LivingEntity)context.entity : null;
 
-                entity.hurtTime = v != 10 ? 100 : 0;
+    // 1. LIVE GAMEPLAY: We know this works perfectly. 
+    // If you are playing, exactly mimic your player's countdown.
+    if (player != null && source == player && player.hurtTime > 0) {
+        livingMorph.hurtTime = player.hurtTime;
+        livingMorph.maxHurtTime = player.maxHurtTime;
+    } 
+    // 2. REPLAYS & NPCs: Use the Red Flash, but let it count down naturally!
+    else {
+        int v = context.overlay >> 16 & '\uffff';
+        if (v != 10 && v != 0) {
+            // ONLY start the animation if it isn't already playing.
+            // This prevents the stutter/spasm!
+            if (livingMorph.hurtTime == 0) {
+                livingMorph.hurtTime = 10;
+                livingMorph.maxHurtTime = 10;
             }
+        }
+        // Notice we DO NOT force hurtTime = 0 here anymore. 
+        // We let the entity's natural tick() count it down smoothly.
+    }
+
+    // 3. Keep the limbs synced so running/walking looks correct
+    /*
+    if (source != null) {
+        if (livingMorph.limbAnimator instanceof LimbAnimatorAccessor a && 
+            source.limbAnimator instanceof LimbAnimatorAccessor b) {
+            a.setPos(b.getPos());
+            a.setSpeed(b.getSpeed());
+        }
+    }
+    */
+}
 
             currentPose = this.form.pose.get();
             currentPoseOverlay = this.form.poseOverlay.get();
+            MobTextureOverride.begin(this.form.texture.get());
+            try
+            {
+                EntityRenderManager manager = MinecraftClient.getInstance().getEntityRenderDispatcher();
+                EntityRenderer renderer = manager.getRenderer(this.entity);
 
-            MinecraftClient.getInstance().getEntityRenderDispatcher().render(this.entity, 0D, 0D, 0D, 0F, context.getTransition(), context.stack, consumers, light);
+                if (renderer != null)
+                {
+                    EntityRenderState state = manager.getAndUpdateRenderState(this.entity, context.getTransition());
+                    Camera camera = MinecraftClient.getInstance().gameRenderer.getCamera();
+                    CameraRenderState cameraState = new CameraRenderState();
+
+                    cameraState.blockPos = camera.getBlockPos();
+                    cameraState.pos = camera.getCameraPos();
+                    cameraState.entityPos = camera.getCameraPos();
+                    cameraState.orientation = camera.getRotation();
+                    cameraState.initialized = true;
+
+                    renderer.render(state, context.stack, new OrderedRenderCommandQueueImpl(), cameraState);
+                }
+            }
+            finally
+            {
+                MobTextureOverride.end();
+            }
 
             currentPose = currentPoseOverlay = null;
 
@@ -332,7 +517,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
             context.stack.pop();
 
-            RenderSystem.enableDepthTest();
+            GlStateManager._enableDepthTest();
         }
     }
 
@@ -343,23 +528,21 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
         if (this.entity != null)
         {
-            this.entity.tick();
+            // Only tick if it's safe - skip player entities when not connected
+            if (!(this.entity instanceof OtherClientPlayerEntity) || MinecraftClient.getInstance().getNetworkHandler() != null)
+            {
+                this.entity.tick();
+            }
 
-            this.entity.prevPitch = this.prevPitch;
-            this.entity.prevYaw = 0F;
+            this.entity.lastPitch = this.prevPitch;
+            this.entity.lastYaw = 0F;
 
             if (this.entity instanceof LivingEntity livingEntity)
             {
-                livingEntity.prevHeadYaw = this.prevYawHead;
-                livingEntity.prevBodyYaw = 0F;
+                livingEntity.lastHeadYaw = this.prevYawHead;
+                livingEntity.lastBodyYaw = 0F;
 
-                /* Limb swing is so ugly */
-                if (livingEntity.limbAnimator instanceof LimbAnimatorAccessor a && entity.getLimbAnimator() instanceof LimbAnimatorAccessor b)
-                {
-                    a.setPrevSpeed(b.getPrevSpeed());
-                    a.setSpeed(b.getSpeed());
-                    a.setPos(b.getPos());
-                }
+                /* Limb animation internals changed in 1.21.11; keep default animator behavior. */
 
                 /* Arm swing */
                 float handSwingProgress = entity.getHandSwingProgress(0F);
@@ -387,12 +570,15 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
             this.entity.setSneaking(entity.isSneaking());
             this.entity.setSprinting(entity.isSprinting());
             this.entity.setPose(entity.isSneaking() ? EntityPose.CROUCHING : EntityPose.STANDING);
-            this.entity.equipStack(EquipmentSlot.MAINHAND, entity.getEquipmentStack(EquipmentSlot.MAINHAND));
-            this.entity.equipStack(EquipmentSlot.OFFHAND, entity.getEquipmentStack(EquipmentSlot.OFFHAND));
-            this.entity.equipStack(EquipmentSlot.HEAD, entity.getEquipmentStack(EquipmentSlot.HEAD));
-            this.entity.equipStack(EquipmentSlot.CHEST, entity.getEquipmentStack(EquipmentSlot.CHEST));
-            this.entity.equipStack(EquipmentSlot.LEGS, entity.getEquipmentStack(EquipmentSlot.LEGS));
-            this.entity.equipStack(EquipmentSlot.FEET, entity.getEquipmentStack(EquipmentSlot.FEET));
+            if (this.entity instanceof LivingEntity living)
+            {
+                living.equipStack(EquipmentSlot.MAINHAND, entity.getEquipmentStack(EquipmentSlot.MAINHAND));
+                living.equipStack(EquipmentSlot.OFFHAND, entity.getEquipmentStack(EquipmentSlot.OFFHAND));
+                living.equipStack(EquipmentSlot.HEAD, entity.getEquipmentStack(EquipmentSlot.HEAD));
+                living.equipStack(EquipmentSlot.CHEST, entity.getEquipmentStack(EquipmentSlot.CHEST));
+                living.equipStack(EquipmentSlot.LEGS, entity.getEquipmentStack(EquipmentSlot.LEGS));
+                living.equipStack(EquipmentSlot.FEET, entity.getEquipmentStack(EquipmentSlot.FEET));
+            }
             this.entity.age = entity.getAge();
             this.entity.noClip = true;
 

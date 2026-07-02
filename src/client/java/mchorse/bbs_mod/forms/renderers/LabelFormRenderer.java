@@ -15,18 +15,21 @@ import mchorse.bbs_mod.utils.joml.Vectors;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
+import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.render.BufferBuilder;
-import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
+import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
+import net.minecraft.client.util.BufferAllocator;
 import net.minecraft.client.util.math.MatrixStack;
 
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
+import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.VertexFormat;
 
 import java.awt.Font;
 import java.util.List;
@@ -39,12 +42,12 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
         Matrix4f matrix4f = stack.peek().getPositionMatrix();
 
         /* 1 - BR, 2 - BL, 3 - TL, 4 - TR */
-        builder.vertex(matrix4f, x1, y1, z1).color(r, g, b, a).texture(0F, 0F).next();
-        builder.vertex(matrix4f, x2, y2, z2).color(r, g, b, a).texture(0F, 0F).next();
-        builder.vertex(matrix4f, x3, y3, z3).color(r, g, b, a).texture(0F, 0F).next();
-        builder.vertex(matrix4f, x1, y1, z1).color(r, g, b, a).texture(0F, 0F).next();
-        builder.vertex(matrix4f, x3, y3, z3).color(r, g, b, a).texture(0F, 0F).next();
-        builder.vertex(matrix4f, x4, y4, z4).color(r, g, b, a).texture(0F, 0F).next();
+        builder.vertex(matrix4f, x1, y1, z1).color(r, g, b, a);
+        builder.vertex(matrix4f, x2, y2, z2).color(r, g, b, a);
+        builder.vertex(matrix4f, x3, y3, z3).color(r, g, b, a);
+        builder.vertex(matrix4f, x1, y1, z1).color(r, g, b, a);
+        builder.vertex(matrix4f, x3, y3, z3).color(r, g, b, a);
+        builder.vertex(matrix4f, x4, y4, z4).color(r, g, b, a);
     }
 
     public LabelFormRenderer(LabelForm form)
@@ -80,7 +83,7 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
         if (this.form.billboard.get())
         {
             Matrix4f modelMatrix = context.stack.peek().getPositionMatrix();
-            Vector3f scale = Vectors.TEMP_3F;
+            Vector3f scale = new Vector3f();
 
             modelMatrix.getScale(scale);
 
@@ -88,9 +91,15 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
             modelMatrix.m10(0).m11(1).m12(0);
             modelMatrix.m20(0).m21(0).m22(1);
 
+            if (!context.modelRenderer && !context.isPicking())
+            {
+                modelMatrix.mul(context.camera.view);
+            }
+
             modelMatrix.scale(scale);
 
             context.stack.peek().getNormalMatrix().identity();
+            context.stack.peek().getNormalMatrix().scale(1F / scale.x, 1F / scale.y, 1F / scale.z);
         }
 
         TextRenderer renderer = MinecraftClient.getInstance().textRenderer;
@@ -109,14 +118,14 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
 
         MatrixStackUtils.scaleStack(context.stack, scale, -scale, scale);
 
-        RenderSystem.disableCull();
+        GlStateManager._disableCull();
 
         if (context.isPicking())
         {
             CustomVertexConsumerProvider.hijackVertexFormat((layer) ->
             {
                 this.setupTarget(context, BBSShaders.getPickerModelsProgram());
-                RenderSystem.setShader(BBSShaders::getPickerModelsProgram);
+                //RenderSystem.setShader(BBSShaders.getPickerModelsProgram());
             });
 
             light = 0;
@@ -133,8 +142,8 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
 
         CustomVertexConsumerProvider.clearRunnables();
 
-        RenderSystem.enableDepthTest();
-        RenderSystem.enableCull();
+        GlStateManager._enableDepthTest();
+        GlStateManager._enableCull();
 
         context.stack.pop();
     }
@@ -303,7 +312,7 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
             );
         }
 
-        RenderSystem.enableDepthTest();
+        GlStateManager._enableDepthTest();
 
         consumers.draw();
 
@@ -462,7 +471,7 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
             y += lineHeight;
         }
 
-        RenderSystem.enableDepthTest();
+        GlStateManager._enableDepthTest();
 
         consumers.draw();
 
@@ -484,9 +493,7 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
         context.stack.push();
         context.stack.translate(0, 0, -0.2F);
 
-        BufferBuilder builder = Tessellator.getInstance().getBuffer();
-
-        builder.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR_TEXTURE);
+        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
 
         fillQuad(
             builder, context.stack,
@@ -497,10 +504,10 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
             color.r, color.g, color.b, color.a
         );
 
-        RenderSystem.enableBlend();
-        RenderSystem.enableDepthTest();
-        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
-        BufferRenderer.drawWithGlobalProgram(builder.end());
+        // RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
+        GlStateManager._enableBlend();
+        GlStateManager._enableDepthTest();
+        RenderLayers.debugFilledBox().draw(builder.end());
         context.stack.pop();
     }
 }

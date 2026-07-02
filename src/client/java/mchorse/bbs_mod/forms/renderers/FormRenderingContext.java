@@ -8,6 +8,8 @@ import mchorse.bbs_mod.utils.MathUtils;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.util.math.MatrixStack;
 
+import org.joml.Matrix4f;
+
 public class FormRenderingContext
 {
     public FormRenderType type;
@@ -21,6 +23,10 @@ public class FormRenderingContext
     public boolean ui;
     public int color;
     public boolean modelRenderer;
+    public boolean relative;
+    public boolean isShadowPass;
+    public Matrix4f viewMatrix;
+    public boolean renderEquipment;
 
     public FormRenderingContext()
     {}
@@ -36,6 +42,10 @@ public class FormRenderingContext
         this.stencilMap = null;
         this.ui = false;
         this.color = 0xffffffff;
+        this.relative = false;
+        this.isShadowPass = false;
+        this.viewMatrix = null;
+        this.renderEquipment = true;
 
         return this;
     }
@@ -50,7 +60,7 @@ public class FormRenderingContext
 
     public FormRenderingContext camera(net.minecraft.client.render.Camera camera)
     {
-        this.camera.position.set(camera.getPos().x, camera.getPos().y, camera.getPos().z);
+        this.camera.position.set(camera.getCameraPos().x, camera.getCameraPos().y, camera.getCameraPos().z);
         this.camera.rotation.set(MathUtils.toRad(-camera.getPitch()), MathUtils.toRad(camera.getYaw()), 0F);
         this.camera.fov = MathUtils.toRad(MinecraftClient.getInstance().options.getFov().getValue());
         this.camera.view.identity().rotate(camera.getRotation());
@@ -82,6 +92,13 @@ public class FormRenderingContext
     public FormRenderingContext modelRenderer()
     {
         this.modelRenderer = true;
+
+        return this;
+    }
+
+    public FormRenderingContext equipment(boolean renderEquipment)
+    {
+        this.renderEquipment = renderEquipment;
 
         return this;
     }

@@ -1,12 +1,15 @@
 package mchorse.bbs_mod.film;
 
 import mchorse.bbs_mod.BBSModClient;
+import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.camera.clips.CameraClipContext;
 import mchorse.bbs_mod.camera.clips.misc.AudioClientClip;
 import mchorse.bbs_mod.camera.data.Position;
 import mchorse.bbs_mod.utils.clips.Clip;
 
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
+
+import net.minecraft.client.MinecraftClient;
 
 import java.util.List;
 import java.util.Map;
@@ -73,7 +76,7 @@ public class WorldFilmController extends BaseFilmController
         }
 
         this.context.clipData.clear();
-        this.context.setup(tick, context.tickDelta());
+        this.context.setup(tick, MinecraftClient.getInstance().getRenderTickCounter().getTickProgress(false));
 
         for (Clip clip : clips)
         {
@@ -81,6 +84,11 @@ public class WorldFilmController extends BaseFilmController
         }
 
         this.context.currentLayer = 0;
+
+        if (BBSSettings.recordingCameraPreview.get())
+        {
+            Recorder.renderCameraPreviewTimeline(this.context.clips, tick, MinecraftClient.getInstance().getRenderTickCounter().getTickProgress(false), this.duration, this.position, MinecraftClient.getInstance().gameRenderer.getCamera(), context.matrices());
+        }
 
         AudioClientClip.manageSounds(this.context);
     }

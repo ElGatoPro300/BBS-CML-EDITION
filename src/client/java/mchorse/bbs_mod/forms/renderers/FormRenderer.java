@@ -1,5 +1,6 @@
 package mchorse.bbs_mod.forms.renderers;
 
+import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.entities.IEntity;
@@ -9,6 +10,7 @@ import mchorse.bbs_mod.forms.renderers.utils.MatrixCache;
 import mchorse.bbs_mod.settings.values.core.ValueTransform;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
+import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.keys.KeyCodes;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
@@ -17,6 +19,7 @@ import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.interps.Lerps;
 import mchorse.bbs_mod.utils.pose.Transform;
 
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.GlUniform;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
@@ -26,6 +29,12 @@ import net.minecraft.util.Hand;
 
 import org.joml.Matrix4f;
 
+import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.systems.RenderSystem;
+
+import org.lwjgl.opengl.GL11;
+
+import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.List;
 import java.util.function.Supplier;
@@ -58,7 +67,63 @@ public abstract class FormRenderer <T extends Form>
 
     public final void renderUI(UIContext context, int x1, int y1, int x2, int y2)
     {
+        context.batcher.flush();
+        GL11.glClear(GL11.GL_DEPTH_BUFFER_BIT);
+
+        /* Set up absolute/global coordinates for scissoring */
+        boolean scissored = false;
+        Area viewport = context.getViewport();
+
+        if (viewport != null)
+        {
+            MinecraftClient mc = MinecraftClient.getInstance();
+
+            float rx = (float) Math.round(mc.getWindow().getWidth() / (double) context.menu.width);
+            float ry = (float) Math.round(mc.getWindow().getHeight() / (double) context.menu.height);
+            float size = BBSModClient.getOriginalFramebufferScale();
+
+            int cellX = context.globalX(x1);
+            int cellY = context.globalY(y1);
+            int cellW = x2 - x1;
+            int cellH = y2 - y1;
+
+            int viewportX = context.globalX(viewport.x);
+            int viewportY = context.globalY(viewport.y);
+
+            int ix = Math.max(cellX, viewportX);
+            int iy = Math.max(cellY, viewportY);
+            int iw = Math.min(cellX + cellW, viewportX + viewport.w) - ix;
+            int ih = Math.min(cellY + cellH, viewportY + viewport.h) - iy;
+
+            if (iw > 0 && ih > 0)
+            {
+                int vx = (int) (ix * rx);
+                int vy = (int) (mc.getWindow().getHeight() - (iy + ih) * ry);
+                int vw = (int) (iw * rx);
+                int vh = (int) (ih * ry);
+
+                GlStateManager._enableScissorTest();
+                GlStateManager._scissorBox((int) (vx * size), (int) (vy * size), (int) (vw * size), (int) (vh * size));
+                scissored = true;
+            }
+            else
+            {
+                /* Completely out of bounds, set a 0-size scissor box */
+                GlStateManager._enableScissorTest();
+                GlStateManager._scissorBox(0, 0, 0, 0);
+                scissored = true;
+            }
+        }
+
         this.renderInUI(context, x1, y1, x2, y2);
+
+        context.batcher.flush();
+        GL11.glClear(GL11.GL_DEPTH_BUFFER_BIT);
+
+        if (scissored)
+        {
+            GlStateManager._disableScissorTest();
+        }
 
         FontRenderer font = context.batcher.getFont();
         String name = this.form.name.get();
@@ -184,9 +249,16 @@ public abstract class FormRenderer <T extends Form>
     {
         if (context.isPicking())
         {
-            this.setupTarget(context, picking.get());
+            ShaderProgram program = picking.get();
 
-            return picking;
+            if (program == null)
+            {
+                return normal;
+            }
+
+            this.setupTarget(context, program);
+
+            return () -> program;
         }
 
         return normal;
@@ -194,14 +266,42 @@ public abstract class FormRenderer <T extends Form>
 
     protected void setupTarget(FormRenderingContext context, ShaderProgram program)
     {
+        if (program == null)
+        {
+            return;
+        }
+
+        bindShaderProgram(program);
+
         GlUniform target = program.getUniform("Target");
 
         if (target != null)
         {
             int pickingIndex = context.getPickingIndex();
 
-            target.set(pickingIndex);
+            /* no-op uniform */ // target.set(pickingIndex);
         }
+    }
+
+    private static void bindShaderProgram(ShaderProgram program)
+    {
+        try
+        {
+            Method setShader = RenderSystem.class.getMethod("setShader", Supplier.class);
+            setShader.invoke(null, (Supplier<ShaderProgram>) () -> program);
+
+            return;
+        }
+        catch (Exception ignored)
+        {}
+
+        try
+        {
+            Method setShaderProgram = RenderSystem.class.getMethod("setShaderProgram", ShaderProgram.class);
+            setShaderProgram.invoke(null, program);
+        }
+        catch (Exception ignored)
+        {}
     }
 
     protected void updateStencilMap(FormRenderingContext context)
@@ -256,12 +356,12 @@ public abstract class FormRenderer <T extends Form>
 
         stack.push();
         this.applyTransforms(stack, true, transition);
-        oo.set(stack.peek().getPositionMatrix());
+        oo.set(new Matrix4f());
         stack.pop();
 
         stack.push();
         this.applyTransforms(stack, false, transition);
-        mm.set(stack.peek().getPositionMatrix());
+        mm.set(new Matrix4f());
 
         matrices.put(prefix, mm, oo);
 

@@ -7,6 +7,7 @@ import mchorse.bbs_mod.forms.forms.ShapeForm;
 import mchorse.bbs_mod.forms.forms.shape.ShapeGraphEvaluator;
 import mchorse.bbs_mod.forms.forms.shape.nodes.IrisAttributeNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.IrisShaderNode;
+import mchorse.bbs_mod.forms.forms.shape.nodes.TextureNode;
 import mchorse.bbs_mod.particles.ParticleScheme;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.framework.UIContext;
@@ -16,14 +17,15 @@ import mchorse.bbs_mod.utils.iris.ShaderCurves;
 import mchorse.bbs_mod.utils.math.Noise;
 
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.render.BufferBuilder;
-import net.minecraft.client.render.BufferRenderer;
+import net.minecraft.client.render.DiffuseLighting;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
+import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.RotationAxis;
@@ -32,7 +34,10 @@ import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
+import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.VertexFormat;
 
 import org.lwjgl.opengl.GL11;
 
@@ -53,14 +58,14 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
     @Override
     protected void renderInUI(UIContext context, int x1, int y1, int x2, int y2)
     {
-        MatrixStack stack = context.batcher.getContext().getMatrices();
+        MatrixStack stack = new MatrixStack();
         int scale = (y2 - y1) / 2;
 
         stack.push();
         stack.translate((x2 + x1) / 2, (y2 + y1) / 2, 40);
         MatrixStackUtils.scaleStack(stack, scale, scale, scale);
 
-        // Simple rotation for UI preview
+        /* Simple rotation for UI preview */
         stack.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(context.getTransition() * 2));
         stack.multiply(RotationAxis.POSITIVE_X.rotationDegrees(20));
 
@@ -69,7 +74,11 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
         stack.peek().getNormalMatrix().getScale(normalScale);
         stack.peek().getNormalMatrix().scale(1F / normalScale.x, -1F / normalScale.y, 1F / normalScale.z);
 
-        this.renderShape(stack, GameRenderer::getRenderTypeEntityTranslucentProgram, OverlayTexture.DEFAULT_UV, LightmapTextureManager.MAX_LIGHT_COORDINATE);
+        MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.LEVEL);
+
+        this.renderShape(stack, RenderPipelines.ENTITY_TRANSLUCENT, OverlayTexture.DEFAULT_UV, LightmapTextureManager.MAX_LIGHT_COORDINATE);
+
+
 
         stack.pop();
     }
@@ -77,14 +86,12 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
     @Override
     protected void render3D(FormRenderingContext context)
     {
-        Supplier<ShaderProgram> shader = BBSRendering.isIrisShadersEnabled()
-            ? GameRenderer::getRenderTypeEntityTranslucentCullProgram
-            : GameRenderer::getRenderTypeEntityTranslucentProgram;
+        RenderPipeline shader = RenderPipelines.ENTITY_TRANSLUCENT;
 
         this.renderShape(context.stack, shader, context.overlay, context.light);
     }
 
-    private void renderShape(MatrixStack stack, Supplier<ShaderProgram> shader, int overlay, int light)
+    private void renderShape(MatrixStack stack, RenderPipeline shader, int overlay, int light)
     {
         this.evaluator = new ShapeGraphEvaluator(this.form.graph.get());
         
@@ -105,29 +112,34 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
             }
         }
 
-        RenderSystem.setShader(shader);
-        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
-        RenderSystem.enableBlend();
+        /* shader binding handled by RenderLayer in 1.21.11 */
+        /* shader color state handled by pipeline in 1.21.11 */
+        GlStateManager._enableBlend();
         
         if (this.form.lighting.get())
         {
-            RenderSystem.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
+            GlStateManager._blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE, GL11.GL_SRC_ALPHA, GL11.GL_ONE);
         }
         else
         {
-            RenderSystem.defaultBlendFunc();
+            GlStateManager._blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
         }
         
-        RenderSystem.disableCull();
-        RenderSystem.enableDepthTest();
+        GlStateManager._disableCull();
+        GlStateManager._enableDepthTest();
 
         GameRenderer gameRenderer = MinecraftClient.getInstance().gameRenderer;
-        gameRenderer.getLightmapTextureManager().enable();
-        gameRenderer.getOverlayTexture().setupOverlayColor();
 
-        // Bind texture if available
+        // Bind texture — material node overrides the form's static texture
         Link texture = this.form.texture.get();
-        
+
+        TextureNode matNode = this.evaluator.getMaterialNode();
+
+        if (matNode != null && matNode.texture != null)
+        {
+            texture = matNode.texture;
+        }
+
         if (texture != null)
         {
             BBSModClient.getTextures().bindTexture(texture);
@@ -181,9 +193,7 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
 
         // Draw Geometry based on Type
         Tessellator tessellator = Tessellator.getInstance();
-        BufferBuilder builder = tessellator.getBuffer();
-        
-        builder.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL);
+        BufferBuilder builder = tessellator.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL);
         
         ShapeForm.ShapeType type = this.form.type.get();
         
@@ -208,15 +218,13 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
             this.renderCylinder(builder, stack, true, c, overlay, light);
         }
         
-        BufferRenderer.drawWithGlobalProgram(builder.end());
+        RenderLayers.debugFilledBox().draw(builder.end());
         
         stack.pop();
         
-        gameRenderer.getLightmapTextureManager().disable();
-        gameRenderer.getOverlayTexture().teardownOverlayColor();
         
-        RenderSystem.disableBlend();
-        RenderSystem.defaultBlendFunc();
+        GlStateManager._disableBlend();
+        GlStateManager._blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
     }
 
     private void renderVolumeParticles(BufferBuilder builder, MatrixStack stack, ShapeForm.ShapeType type, Color c, int overlay, int light)
@@ -379,16 +387,16 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
         }
         
         // Quad 1
-        builder.vertex(matrix, x - hs, y - hs, z - hs).color(c.r, c.g, c.b, c.a).texture(0, 0).overlay(overlay).light(light).normal(normalMatrix, 0, 1, 0).next();
-        builder.vertex(matrix, x + hs, y - hs, z + hs).color(c.r, c.g, c.b, c.a).texture(1, 0).overlay(overlay).light(light).normal(normalMatrix, 0, 1, 0).next();
-        builder.vertex(matrix, x + hs, y + hs, z + hs).color(c.r, c.g, c.b, c.a).texture(1, 1).overlay(overlay).light(light).normal(normalMatrix, 0, 1, 0).next();
-        builder.vertex(matrix, x - hs, y + hs, z - hs).color(c.r, c.g, c.b, c.a).texture(0, 1).overlay(overlay).light(light).normal(normalMatrix, 0, 1, 0).next();
+        this.vertex(builder, matrix, normalMatrix, x - hs, y - hs, z - hs, 0, 0, 0, 1, 0, c, overlay, light);
+        this.vertex(builder, matrix, normalMatrix, x + hs, y - hs, z + hs, 1, 0, 0, 1, 0, c, overlay, light);
+        this.vertex(builder, matrix, normalMatrix, x + hs, y + hs, z + hs, 1, 1, 0, 1, 0, c, overlay, light);
+        this.vertex(builder, matrix, normalMatrix, x - hs, y + hs, z - hs, 0, 1, 0, 1, 0, c, overlay, light);
         
         // Quad 2
-        builder.vertex(matrix, x - hs, y - hs, z + hs).color(c.r, c.g, c.b, c.a).texture(0, 0).overlay(overlay).light(light).normal(normalMatrix, 0, 1, 0).next();
-        builder.vertex(matrix, x + hs, y - hs, z - hs).color(c.r, c.g, c.b, c.a).texture(1, 0).overlay(overlay).light(light).normal(normalMatrix, 0, 1, 0).next();
-        builder.vertex(matrix, x + hs, y + hs, z - hs).color(c.r, c.g, c.b, c.a).texture(1, 1).overlay(overlay).light(light).normal(normalMatrix, 0, 1, 0).next();
-        builder.vertex(matrix, x - hs, y + hs, z + hs).color(c.r, c.g, c.b, c.a).texture(0, 1).overlay(overlay).light(light).normal(normalMatrix, 0, 1, 0).next();
+        this.vertex(builder, matrix, normalMatrix, x - hs, y - hs, z + hs, 0, 0, 0, 1, 0, c, overlay, light);
+        this.vertex(builder, matrix, normalMatrix, x + hs, y - hs, z - hs, 1, 0, 0, 1, 0, c, overlay, light);
+        this.vertex(builder, matrix, normalMatrix, x + hs, y + hs, z - hs, 1, 1, 0, 1, 0, c, overlay, light);
+        this.vertex(builder, matrix, normalMatrix, x - hs, y + hs, z + hs, 0, 1, 0, 1, 0, c, overlay, light);
     }
     
     private void renderBlockParticle(BufferBuilder builder, Matrix4f matrix, Matrix3f normal, float x, float y, float z, float size, Color c, int overlay, int light)
@@ -406,40 +414,40 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
         }
         
         // Front
-        builder.vertex(matrix, x - hs, y - hs, z + hs).color(c.r, c.g, c.b, c.a).texture(0, 1).overlay(overlay).light(light).normal(normal, 0, 0, 1).next();
-        builder.vertex(matrix, x + hs, y - hs, z + hs).color(c.r, c.g, c.b, c.a).texture(1, 1).overlay(overlay).light(light).normal(normal, 0, 0, 1).next();
-        builder.vertex(matrix, x + hs, y + hs, z + hs).color(c.r, c.g, c.b, c.a).texture(1, 0).overlay(overlay).light(light).normal(normal, 0, 0, 1).next();
-        builder.vertex(matrix, x - hs, y + hs, z + hs).color(c.r, c.g, c.b, c.a).texture(0, 0).overlay(overlay).light(light).normal(normal, 0, 0, 1).next();
+        this.vertex(builder, matrix, normal, x - hs, y - hs, z + hs, 0, 1, 0, 0, 1, c, overlay, light);
+        this.vertex(builder, matrix, normal, x + hs, y - hs, z + hs, 1, 1, 0, 0, 1, c, overlay, light);
+        this.vertex(builder, matrix, normal, x + hs, y + hs, z + hs, 1, 0, 0, 0, 1, c, overlay, light);
+        this.vertex(builder, matrix, normal, x - hs, y + hs, z + hs, 0, 0, 0, 0, 1, c, overlay, light);
         
         // Back
-        builder.vertex(matrix, x + hs, y - hs, z - hs).color(c.r, c.g, c.b, c.a).texture(0, 1).overlay(overlay).light(light).normal(normal, 0, 0, -1).next();
-        builder.vertex(matrix, x - hs, y - hs, z - hs).color(c.r, c.g, c.b, c.a).texture(1, 1).overlay(overlay).light(light).normal(normal, 0, 0, -1).next();
-        builder.vertex(matrix, x - hs, y + hs, z - hs).color(c.r, c.g, c.b, c.a).texture(1, 0).overlay(overlay).light(light).normal(normal, 0, 0, -1).next();
-        builder.vertex(matrix, x + hs, y + hs, z - hs).color(c.r, c.g, c.b, c.a).texture(0, 0).overlay(overlay).light(light).normal(normal, 0, 0, -1).next();
+        this.vertex(builder, matrix, normal, x + hs, y - hs, z - hs, 0, 1, 0, 0, -1, c, overlay, light);
+        this.vertex(builder, matrix, normal, x - hs, y - hs, z - hs, 1, 1, 0, 0, -1, c, overlay, light);
+        this.vertex(builder, matrix, normal, x - hs, y + hs, z - hs, 1, 0, 0, 0, -1, c, overlay, light);
+        this.vertex(builder, matrix, normal, x + hs, y + hs, z - hs, 0, 0, 0, 0, -1, c, overlay, light);
         
         // Top
-        builder.vertex(matrix, x - hs, y + hs, z + hs).color(c.r, c.g, c.b, c.a).texture(0, 1).overlay(overlay).light(light).normal(normal, 0, 1, 0).next();
-        builder.vertex(matrix, x + hs, y + hs, z + hs).color(c.r, c.g, c.b, c.a).texture(1, 1).overlay(overlay).light(light).normal(normal, 0, 1, 0).next();
-        builder.vertex(matrix, x + hs, y + hs, z - hs).color(c.r, c.g, c.b, c.a).texture(1, 0).overlay(overlay).light(light).normal(normal, 0, 1, 0).next();
-        builder.vertex(matrix, x - hs, y + hs, z - hs).color(c.r, c.g, c.b, c.a).texture(0, 0).overlay(overlay).light(light).normal(normal, 0, 1, 0).next();
+        this.vertex(builder, matrix, normal, x - hs, y + hs, z + hs, 0, 1, 0, 1, 0, c, overlay, light);
+        this.vertex(builder, matrix, normal, x + hs, y + hs, z + hs, 1, 1, 0, 1, 0, c, overlay, light);
+        this.vertex(builder, matrix, normal, x + hs, y + hs, z - hs, 1, 0, 0, 1, 0, c, overlay, light);
+        this.vertex(builder, matrix, normal, x - hs, y + hs, z - hs, 0, 0, 0, 1, 0, c, overlay, light);
         
         // Bottom
-        builder.vertex(matrix, x - hs, y - hs, z - hs).color(c.r, c.g, c.b, c.a).texture(0, 1).overlay(overlay).light(light).normal(normal, 0, -1, 0).next();
-        builder.vertex(matrix, x + hs, y - hs, z - hs).color(c.r, c.g, c.b, c.a).texture(1, 1).overlay(overlay).light(light).normal(normal, 0, -1, 0).next();
-        builder.vertex(matrix, x + hs, y - hs, z + hs).color(c.r, c.g, c.b, c.a).texture(1, 0).overlay(overlay).light(light).normal(normal, 0, -1, 0).next();
-        builder.vertex(matrix, x - hs, y - hs, z + hs).color(c.r, c.g, c.b, c.a).texture(0, 0).overlay(overlay).light(light).normal(normal, 0, -1, 0).next();
+        this.vertex(builder, matrix, normal, x - hs, y - hs, z - hs, 0, 1, 0, -1, 0, c, overlay, light);
+        this.vertex(builder, matrix, normal, x + hs, y - hs, z - hs, 1, 1, 0, -1, 0, c, overlay, light);
+        this.vertex(builder, matrix, normal, x + hs, y - hs, z + hs, 1, 0, 0, -1, 0, c, overlay, light);
+        this.vertex(builder, matrix, normal, x - hs, y - hs, z + hs, 0, 0, 0, -1, 0, c, overlay, light);
         
         // Right
-        builder.vertex(matrix, x + hs, y - hs, z + hs).color(c.r, c.g, c.b, c.a).texture(0, 1).overlay(overlay).light(light).normal(normal, 1, 0, 0).next();
-        builder.vertex(matrix, x + hs, y - hs, z - hs).color(c.r, c.g, c.b, c.a).texture(1, 1).overlay(overlay).light(light).normal(normal, 1, 0, 0).next();
-        builder.vertex(matrix, x + hs, y + hs, z - hs).color(c.r, c.g, c.b, c.a).texture(1, 0).overlay(overlay).light(light).normal(normal, 1, 0, 0).next();
-        builder.vertex(matrix, x + hs, y + hs, z + hs).color(c.r, c.g, c.b, c.a).texture(0, 0).overlay(overlay).light(light).normal(normal, 1, 0, 0).next();
+        this.vertex(builder, matrix, normal, x + hs, y - hs, z + hs, 0, 1, 1, 0, 0, c, overlay, light);
+        this.vertex(builder, matrix, normal, x + hs, y - hs, z - hs, 1, 1, 1, 0, 0, c, overlay, light);
+        this.vertex(builder, matrix, normal, x + hs, y + hs, z - hs, 1, 0, 1, 0, 0, c, overlay, light);
+        this.vertex(builder, matrix, normal, x + hs, y + hs, z + hs, 0, 0, 1, 0, 0, c, overlay, light);
         
         // Left
-        builder.vertex(matrix, x - hs, y - hs, z - hs).color(c.r, c.g, c.b, c.a).texture(0, 1).overlay(overlay).light(light).normal(normal, -1, 0, 0).next();
-        builder.vertex(matrix, x - hs, y - hs, z + hs).color(c.r, c.g, c.b, c.a).texture(1, 1).overlay(overlay).light(light).normal(normal, -1, 0, 0).next();
-        builder.vertex(matrix, x - hs, y + hs, z + hs).color(c.r, c.g, c.b, c.a).texture(1, 0).overlay(overlay).light(light).normal(normal, -1, 0, 0).next();
-        builder.vertex(matrix, x - hs, y + hs, z - hs).color(c.r, c.g, c.b, c.a).texture(0, 0).overlay(overlay).light(light).normal(normal, -1, 0, 0).next();
+        this.vertex(builder, matrix, normal, x - hs, y - hs, z - hs, 0, 1, -1, 0, 0, c, overlay, light);
+        this.vertex(builder, matrix, normal, x - hs, y - hs, z + hs, 1, 1, -1, 0, 0, c, overlay, light);
+        this.vertex(builder, matrix, normal, x - hs, y + hs, z + hs, 1, 0, -1, 0, 0, c, overlay, light);
+        this.vertex(builder, matrix, normal, x - hs, y + hs, z - hs, 0, 0, -1, 0, 0, c, overlay, light);
     }
 
     private void renderSphereParticle(BufferBuilder builder, Matrix4f matrix, Matrix3f normalMatrix, float x, float y, float z, float size, Color c, int overlay, int light)
@@ -482,10 +490,10 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
                 float v0 = (float) i / subdivisions;
                 float v1 = (float) (i + 1) / subdivisions;
                 
-                builder.vertex(matrix, x + x0 * zr0 * radius, y + z0 * radius, z + y0 * zr0 * radius).color(c.r, c.g, c.b, c.a).texture(u0, v0).overlay(overlay).light(light).normal(normalMatrix, x0 * zr0, z0, y0 * zr0).next();
-                builder.vertex(matrix, x + x0 * zr1 * radius, y + z1 * radius, z + y0 * zr1 * radius).color(c.r, c.g, c.b, c.a).texture(u0, v1).overlay(overlay).light(light).normal(normalMatrix, x0 * zr1, z1, y0 * zr1).next();
-                builder.vertex(matrix, x + x1 * zr1 * radius, y + z1 * radius, z + y1 * zr1 * radius).color(c.r, c.g, c.b, c.a).texture(u1, v1).overlay(overlay).light(light).normal(normalMatrix, x1 * zr1, z1, y1 * zr1).next();
-                builder.vertex(matrix, x + x1 * zr0 * radius, y + z0 * radius, z + y1 * zr0 * radius).color(c.r, c.g, c.b, c.a).texture(u1, v0).overlay(overlay).light(light).normal(normalMatrix, x1 * zr0, z0, y1 * zr0).next();
+                this.vertex(builder, matrix, normalMatrix, x + x0 * zr0 * radius, y + z0 * radius, z + y0 * zr0 * radius, u0, v0, x0 * zr0, z0, y0 * zr0, c, overlay, light);
+                this.vertex(builder, matrix, normalMatrix, x + x0 * zr1 * radius, y + z1 * radius, z + y0 * zr1 * radius, u0, v1, x0 * zr1, z1, y0 * zr1, c, overlay, light);
+                this.vertex(builder, matrix, normalMatrix, x + x1 * zr1 * radius, y + z1 * radius, z + y1 * zr1 * radius, u1, v1, x1 * zr1, z1, y1 * zr1, c, overlay, light);
+                this.vertex(builder, matrix, normalMatrix, x + x1 * zr0 * radius, y + z0 * radius, z + y1 * zr0 * radius, u1, v0, x1 * zr0, z0, y1 * zr0, c, overlay, light);
             }
         }
     }
@@ -528,10 +536,10 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
         float y4 = y + uy;
         float z4 = z - rz + uz;
         
-        builder.vertex(matrix, x1, y1, z1).color(c.r, c.g, c.b, c.a).texture(0, 0).overlay(overlay).light(light).normal(normalMatrix, 0, 1, 0).next();
-        builder.vertex(matrix, x2, y2, z2).color(c.r, c.g, c.b, c.a).texture(1, 0).overlay(overlay).light(light).normal(normalMatrix, 0, 1, 0).next();
-        builder.vertex(matrix, x3, y3, z3).color(c.r, c.g, c.b, c.a).texture(1, 1).overlay(overlay).light(light).normal(normalMatrix, 0, 1, 0).next();
-        builder.vertex(matrix, x4, y4, z4).color(c.r, c.g, c.b, c.a).texture(0, 1).overlay(overlay).light(light).normal(normalMatrix, 0, 1, 0).next();
+        this.vertex(builder, matrix, normalMatrix, x1, y1, z1, 0, 0, 0, 1, 0, c, overlay, light);
+        this.vertex(builder, matrix, normalMatrix, x2, y2, z2, 1, 0, 0, 1, 0, c, overlay, light);
+        this.vertex(builder, matrix, normalMatrix, x3, y3, z3, 1, 1, 0, 1, 0, c, overlay, light);
+        this.vertex(builder, matrix, normalMatrix, x4, y4, z4, 0, 1, 0, 1, 0, c, overlay, light);
     }
 
     private void renderBox(BufferBuilder builder, MatrixStack stack, Color c, int overlay, int light)
@@ -765,12 +773,15 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
             z += nz * disp;
         }
 
+        Vector3f normal = new Vector3f(nx, ny, nz);
+        
+        normal.mul(normalMatrix);
+
         builder.vertex(matrix, x, y, z)
                .color(c.r, c.g, c.b, c.a)
                .texture(u, v)
                .overlay(overlay)
                .light(light)
-               .normal(normalMatrix, nx, ny, nz)
-               .next();
+               .normal(normal.x, normal.y, normal.z);
     }
 }

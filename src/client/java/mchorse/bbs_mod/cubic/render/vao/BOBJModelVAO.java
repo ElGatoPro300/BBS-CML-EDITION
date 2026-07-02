@@ -10,13 +10,17 @@ import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.utils.joml.Matrices;
 
 import net.minecraft.client.gl.ShaderProgram;
+import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.util.math.MatrixStack;
 
 import org.joml.Matrix4f;
+import org.joml.Matrix4fStack;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
-import org.lwjgl.opengl.GL11;
+import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.systems.RenderSystem;
+
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL30;
 
@@ -100,8 +104,10 @@ public class BOBJModelVAO
         GL30.glBufferData(GL30.GL_ARRAY_BUFFER, this.tmpTangents, GL30.GL_STATIC_DRAW);
         GL30.glVertexAttribPointer(Attributes.TANGENTS, 4, GL30.GL_FLOAT, false, 0, 0);
 
-        GL30.glBindBuffer(GL30.GL_ARRAY_BUFFER, this.texCoordBuffer);
-        GL30.glBufferData(GL30.GL_ARRAY_BUFFER, this.data.texData, GL30.GL_STATIC_DRAW);
+        float[] midTexCoords = ModelVAOData.calculateMidTexCoords(this.data.texData);
+
+        GL30.glBindBuffer(GL30.GL_ARRAY_BUFFER, this.midTextureBuffer);
+        GL30.glBufferData(GL30.GL_ARRAY_BUFFER, midTexCoords, GL30.GL_STATIC_DRAW);
         GL30.glVertexAttribPointer(Attributes.MID_TEXTURE_UV, 2, GL30.GL_FLOAT, false, 0, 0);
 
         GL30.glBindBuffer(GL30.GL_ARRAY_BUFFER, 0);
@@ -198,8 +204,8 @@ public class BOBJModelVAO
             boolean allowBone = true;
             if (stencilMap != null && stencilMap.allowedBones != null && lightBone >= 0)
             {
-                String boneName = this.armature.orderedBones.get(lightBone).name;
-                allowBone = stencilMap.allowedBones.contains(boneName);
+                BOBJBone bone = this.getBoneByIndex(lightBone);
+                allowBone = bone != null && stencilMap.allowedBones.contains(bone.name);
             }
 
             if (stencilMap != null)
@@ -282,6 +288,19 @@ public class BOBJModelVAO
         return bone;
     }
 
+    private BOBJBone getBoneByIndex(int index)
+    {
+        for (BOBJBone bone : this.armature.orderedBones)
+        {
+            if (bone.index == index)
+            {
+                return bone;
+            }
+        }
+
+        return null;
+    }
+
     private void drawTriangles(IntPredicate predicate)
     {
         int start = -1;
@@ -318,9 +337,14 @@ public class BOBJModelVAO
         int currentVAO = GL30.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
         int currentElementArrayBuffer = GL30.glGetInteger(GL30.GL_ELEMENT_ARRAY_BUFFER_BINDING);
 
-        ModelVAORenderer.setupUniforms(stack, shader);
+        Matrix4fStack modelViewStack = RenderSystem.getModelViewStack();
+        modelViewStack.pushMatrix();
+        modelViewStack.mul(stack.peek().getPositionMatrix());
 
-        shader.bind();
+        if (shader != null)
+        {
+            /* shader binding handled by RenderLayer in 1.21.11 */
+        }
 
         GL30.glBindVertexArray(this.vao);
 
@@ -377,7 +401,7 @@ public class BOBJModelVAO
         if (hasShaders) GL30.glDisableVertexAttribArray(Attributes.TANGENTS);
         if (hasShaders) GL30.glDisableVertexAttribArray(Attributes.MID_TEXTURE_UV);
 
-        shader.unbind();
+        modelViewStack.popMatrix();
 
         GL30.glBindVertexArray(currentVAO);
         GL30.glBindBuffer(GL30.GL_ELEMENT_ARRAY_BUFFER, currentElementArrayBuffer);

@@ -53,18 +53,16 @@ public class IrisTextureWrapper extends AbstractTexture
         this.pbrMapType = pbrMapType;
     }
 
-    @Override
     public void load(ResourceManager manager) throws IOException
     {}
 
-    @Override
     public int getGlId()
     {
         Texture texture = BBSModClient.getTextures().getTexture(this.texture, GL11.GL_NEAREST, true);
 
         if (texture == null || texture == BBSModClient.getTextures().getError())
         {
-            return this.fallback == null ? -1 : this.fallback.getGlId();
+            return -1;
         }
 
         if (this.index >= 0 && texture.getParent() != null)
@@ -103,7 +101,6 @@ public class IrisTextureWrapper extends AbstractTexture
         return texture.id;
     }
 
-    @Override
     public void close()
     {
         BBSModClient.getTextures().delete(this.texture);

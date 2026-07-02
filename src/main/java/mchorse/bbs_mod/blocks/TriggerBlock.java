@@ -12,12 +12,14 @@ import net.minecraft.block.ShapeContext;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.BlockEntityTicker;
 import net.minecraft.block.entity.BlockEntityType;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.NbtComponent;
+import net.minecraft.entity.TypedEntityData;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.ActionResult;
-import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.shape.VoxelShape;
@@ -38,22 +40,19 @@ public class TriggerBlock extends Block implements BlockEntityProvider
     }
 
     @Override
-    public ItemStack getPickStack(WorldView world, BlockPos pos, BlockState state)
+    public ItemStack getPickStack(WorldView world, BlockPos pos, BlockState state, boolean includeData)
     {
         BlockEntity entity = world.getBlockEntity(pos);
 
         if (entity instanceof TriggerBlockEntity triggerBlock)
         {
             ItemStack stack = new ItemStack(this);
-            NbtCompound compound = new NbtCompound();
-
-            compound.put("BlockEntityTag", triggerBlock.createNbtWithId());
-            stack.setNbt(compound);
+            stack.set(DataComponentTypes.BLOCK_ENTITY_DATA, TypedEntityData.create(BBSMod.TRIGGER_BLOCK_ENTITY, triggerBlock.createNbt(world.getRegistryManager())));
 
             return stack;
         }
 
-        return super.getPickStack(world, pos, state);
+        return super.getPickStack(world, pos, state, includeData);
     }
 
     @Override
@@ -68,7 +67,6 @@ public class TriggerBlock extends Block implements BlockEntityProvider
         return 1.0F;
     }
 
-    @Override
     public boolean isTransparent(BlockState state, BlockView world, BlockPos pos)
     {
         return true;
@@ -84,7 +82,7 @@ public class TriggerBlock extends Block implements BlockEntityProvider
     @Override
     public void onBlockBreakStart(BlockState state, World world, BlockPos pos, PlayerEntity player)
     {
-        if (!world.isClient && player instanceof ServerPlayerEntity serverPlayer && !player.isCreative())
+        if (!world.isClient() && player instanceof ServerPlayerEntity serverPlayer && !player.isCreative())
         {
             BlockEntity be = world.getBlockEntity(pos);
 
@@ -98,11 +96,11 @@ public class TriggerBlock extends Block implements BlockEntityProvider
     }
 
     @Override
-    public ActionResult onUse(BlockState state, World world, BlockPos pos, PlayerEntity player, Hand hand, BlockHitResult hit)
+    public ActionResult onUse(BlockState state, World world, BlockPos pos, PlayerEntity player, BlockHitResult hit)
     {
-        if (hand == Hand.MAIN_HAND)
+        if (player.getMainHandStack().isEmpty())
         {
-            if (!world.isClient && player instanceof ServerPlayerEntity serverPlayer)
+            if (!world.isClient() && player instanceof ServerPlayerEntity serverPlayer)
             {
                 if (!player.isCreative() || (player.isCreative() && player.isSneaking()))
                 {
@@ -126,7 +124,7 @@ public class TriggerBlock extends Block implements BlockEntityProvider
             return ActionResult.SUCCESS;
         }
 
-        return super.onUse(state, world, pos, player, hand, hit);
+        return super.onUse(state, world, pos, player, hit);
     }
 
     @Override
@@ -178,6 +176,7 @@ public class TriggerBlock extends Block implements BlockEntityProvider
         return VoxelShapes.fullCube();
     }
 
+    @SuppressWarnings("unchecked")
     @Nullable
     @Override
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(World world, BlockState state, BlockEntityType<T> type)

@@ -20,10 +20,12 @@ import mchorse.bbs_mod.utils.clips.Clip;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.network.ClientPlayerEntity;
 
+import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 
 import java.util.ArrayList;
@@ -143,6 +145,55 @@ public class Films
     public Recorder getRecorder()
     {
         return this.recorder;
+    }
+
+    public FirstPersonBobbingSample getFirstPersonBobbingSample(float tickDelta)
+    {
+        ClientPlayerEntity player = MinecraftClient.getInstance().player;
+
+        if (player == null)
+        {
+            return null;
+        }
+
+        for (BaseFilmController controller : this.controllers)
+        {
+            if (controller == null || controller.film == null)
+            {
+                continue;
+            }
+
+            Map<String, Integer> actors = this.actors.get(controller.film.getId());
+
+            if (actors == null || actors.isEmpty())
+            {
+                continue;
+            }
+
+            for (Replay replay : controller.film.replays.getList())
+            {
+                if (replay == null || !replay.enabled.get() || !replay.fp.get())
+                {
+                    continue;
+                }
+
+                Integer actorId = actors.get(replay.getId());
+
+                if (actorId == null || actorId != player.getId())
+                {
+                    continue;
+                }
+
+                float tick = replay.getTick(controller.getTick()) + tickDelta;
+                float vX = replay.keyframes.vX.interpolate(tick).floatValue();
+                float vZ = replay.keyframes.vZ.interpolate(tick).floatValue();
+                boolean grounded = replay.keyframes.grounded.interpolate(tick) > 0D;
+
+                return new FirstPersonBobbingSample(vX, vZ, grounded, controller.paused);
+            }
+        }
+
+        return null;
     }
 
     public void startRecording(Film film, int replayId, int tick)
@@ -274,7 +325,7 @@ public class Films
 
     public void render(WorldRenderContext context)
     {
-        RenderSystem.enableDepthTest();
+        GlStateManager._enableDepthTest();
 
         for (BaseFilmController controller : this.controllers)
         {
@@ -286,7 +337,7 @@ public class Films
             this.recorder.render(context);
         }
 
-        RenderSystem.disableDepthTest();
+        GlStateManager._disableDepthTest();
     }
 
     public void renderHud(Batcher2D batcher2D, float tickDelta)
@@ -332,5 +383,21 @@ public class Films
         controllers.clear();
 
         recorder = null;
+    }
+
+    public static class FirstPersonBobbingSample
+    {
+        public final float vX;
+        public final float vZ;
+        public final boolean grounded;
+        public final boolean paused;
+
+        public FirstPersonBobbingSample(float vX, float vZ, boolean grounded, boolean paused)
+        {
+            this.vX = vX;
+            this.vZ = vZ;
+            this.grounded = grounded;
+            this.paused = paused;
+        }
     }
 }

@@ -1,5 +1,6 @@
 package mchorse.bbs_mod;
 
+import mchorse.bbs_mod.events.register.RegisterBBSSettingsEvent;
 import mchorse.bbs_mod.settings.SettingsBuilder;
 import mchorse.bbs_mod.settings.values.core.ValueLink;
 import mchorse.bbs_mod.settings.values.core.ValueString;
@@ -22,24 +23,30 @@ import java.util.List;
 public class BBSSettings
 {
     public static ValueColors favoriteColors;
+    public static ValueStringKeys favoriteModelForms;
+    public static ValueString favoriteFormCategoriesData;
     public static ValueStringKeys disabledSheets;
     public static ValueLanguage language;
     public static ValueInt primaryColor;
     public static ValueBoolean enableTrackpadIncrements;
     public static ValueBoolean enableTrackpadScrolling;
-    public static ValueInt userIntefaceScale;
+    public static ValueBoolean welcomePanelAcceptedBeta1;
+    public static ValueBoolean hideSettingDescriptions;
+    public static ValueFloat userIntefaceScale;
     public static ValueInt tooltipStyle;
     public static ValueFloat fov;
     public static ValueBoolean hsvColorPicker;
     public static ValueBoolean forceQwerty;
     public static ValueBoolean freezeModels;
     public static ValueFloat axesScale;
+    public static ValueFloat axesThickness;
     public static ValueBoolean uniformScale;
     public static ValueBoolean clickSound;
     public static ValueBoolean disablePivotTransform;
     public static ValueBoolean gizmos;
     public static ValueBoolean gizmoYAxisHorizontal;
     public static ValueInt defaultInterpolation;
+    public static ValueInt defaultPathInterpolation;
 
     public static ValueBoolean enableCursorRendering;
     public static ValueBoolean enableMouseButtonRendering;
@@ -88,18 +95,23 @@ public class BBSSettings
     public static ValueBoolean editorClipPreview;
     public static ValueBoolean editorClipTypeLabels;
     public static ValueBoolean editorReplaySprintParticles;
+    public static ValueBoolean editorCameraPreviewPlayerSync;
+    public static ValueInt editorDockGuideColor;
+    public static ValueFloat editorDockGuideOpacity;
     public static ValueBoolean editorReplayStepSound;
+    public static ValueBoolean editorSimplifyAnimations;
     public static ValueBoolean editorMuteRenderAudioClips;
     public static ValueInt editorTimeMode;
+    public static ValueInt editorImportMode;
     public static ValueInt editorReplayEditorTitleLimit;
+    public static ValueBoolean editorAnchoredReplaysPanel;
+    public static ValueInt editorAnchoredReplaysPanelHeight;
     public static ValueBoolean editorReplayHud;
     public static ValueInt editorReplayHudPosition;
     public static ValueBoolean editorReplayHudDisplayName;
     public static ValueInt editorCommandWidth;
     public static ValueInt editorCommandHeight;
     public static ValueBoolean editorCommandAutoWrap;
-    public static ValueBoolean modelFormsHierarchy;
-    public static ValueBoolean mediaFoldersEnhancements;
     public static ValueInt replayContextOptions;
     public static ValueBoolean editorRewind;
     public static ValueBoolean editorHorizontalClipEditor;
@@ -111,10 +123,22 @@ public class BBSSettings
     public static ValueBoolean recordingOverlays;
     public static ValueInt recordingPoseTransformOverlays;
     public static ValueBoolean recordingCameraPreview;
+    public static ValueInt recordingCameraPreviewFutureCount;
 
     public static ValueBoolean renderAllModelBlocks;
     public static ValueBoolean clickModelBlocks;
     public static ValueBoolean modelBlockCategoriesPanelEnabled;
+    public static ValueFloat modelBlockAnimationStateDistance;
+    public static ValueString modelBlockPanelLayout;
+    public static ValueString triggerBlockPanelLayout;
+
+    /* Shared "mosaic vs list" view preference for the home pages and the open
+       asset overlay. Persisted globally so toggling it anywhere takes effect
+       everywhere. */
+    public static ValueBoolean lastViewMosaic;
+    public static ValueBoolean coloredBackground;
+    public static ValueFloat backgroundBrightness;
+    public static ValueBoolean interfaceShadows;
 
     public static ValueString entitySelectorsPropertyWhitelist;
 
@@ -132,11 +156,22 @@ public class BBSSettings
     public static ValueBoolean autoKeyframes;
     public static ValueBoolean poseBonesFilterMarked;
     public static ValueBoolean replayMarkedBonesOnly;
+    public static ValueBoolean presetsGridPanel;
+    public static ValueBoolean presetsGridTrackers;
+    public static ValueInt presetsGridCellSize;
+    public static ValueFloat replayFpBobbingIntensity;
+    public static ValueFloat replayFpBobbingFrequency;
     public static ValueBoolean pickLimbTexture;
     public static ValueBoolean fluidRealisticModelInteraction;
 
+    public static ValueLink textureDefaultPath;
+    public static ValueInt texturePickerItemSize;
+
     public static ValueString cdnUrl;
     public static ValueString cdnToken;
+    public static ValueBoolean morphingAutoMorph;
+
+    public static ValueBoolean usingInMemoryClipboard;
 
     public static int primaryColor()
     {
@@ -146,6 +181,157 @@ public class BBSSettings
     public static int primaryColor(int alpha)
     {
         return primaryColor.get() | alpha;
+    }
+
+    public static boolean hasColoredBackground()
+    {
+        return coloredBackground == null || coloredBackground.get();
+    }
+
+    public static boolean isLightTheme()
+    {
+        return tooltipStyle != null && tooltipStyle.get() == 0;
+    }
+
+    public static float getBackgroundBrightness()
+    {
+        return backgroundBrightness == null ? 1F : backgroundBrightness.get();
+    }
+
+    private static int withAlpha(int color, int alpha)
+    {
+        return (color & Colors.RGB) | alpha;
+    }
+
+    private static int applyBackgroundBrightness(int color)
+    {
+        float brightness = MathUtils.clamp(getBackgroundBrightness(), 0.5F, 1.5F);
+
+        if (Math.abs(brightness - 1F) < 0.001F)
+        {
+            return color;
+        }
+
+        int a = color & 0xff000000;
+        int r = (color >> 16) & 0xff;
+        int g = (color >> 8) & 0xff;
+        int b = color & 0xff;
+
+        if (brightness < 1F)
+        {
+            r = Math.round(r * brightness);
+            g = Math.round(g * brightness);
+            b = Math.round(b * brightness);
+        }
+        else
+        {
+            float factor = brightness - 1F;
+
+            r += Math.round((255 - r) * factor);
+            g += Math.round((255 - g) * factor);
+            b += Math.round((255 - b) * factor);
+        }
+
+        r = MathUtils.clamp(r, 0, 255);
+        g = MathUtils.clamp(g, 0, 255);
+        b = MathUtils.clamp(b, 0, 255);
+
+        return a | (r << 16) | (g << 8) | b;
+    }
+
+    private static int getThemeChromeSurface()
+    {
+        return applyBackgroundBrightness(isLightTheme() ? 0xffe6e9ef : 0xff111316);
+    }
+
+    private static int getThemeBaseSurface()
+    {
+        return applyBackgroundBrightness(isLightTheme() ? 0xfff1f4f8 : 0xff171a1f);
+    }
+
+    private static int getThemeRaisedSurface()
+    {
+        return applyBackgroundBrightness(isLightTheme() ? 0xfff8fafd : 0xff1d2127);
+    }
+
+    private static int getThemeDeepSurface()
+    {
+        return applyBackgroundBrightness(isLightTheme() ? 0xffdee4ed : 0xff0f1217);
+    }
+
+    private static int getThemeDividerColor()
+    {
+        return isLightTheme() ? 0xffc2cbd8 : 0xff30353d;
+    }
+
+    public static int chromeSurface()
+    {
+        return getThemeChromeSurface();
+    }
+
+    public static int baseSurface()
+    {
+        return getThemeBaseSurface();
+    }
+
+    public static int raisedSurface()
+    {
+        return getThemeRaisedSurface();
+    }
+
+    public static int deepSurface()
+    {
+        return getThemeDeepSurface();
+    }
+
+    public static int dividerColor()
+    {
+        return getThemeDividerColor();
+    }
+
+    public static int color(int color, int alpha)
+    {
+        return withAlpha(color, alpha);
+    }
+
+    public static int backgroundTint(int alpha)
+    {
+        return hasColoredBackground() ? primaryColor(alpha) : 0;
+    }
+
+    public static int accentOverlay(int alpha)
+    {
+        return primaryColor(alpha);
+    }
+
+    public static int panelBackground(float tint)
+    {
+        return tint <= 0.08F ? deepSurface() : tint <= 0.16F ? baseSurface() : raisedSurface();
+    }
+
+    public static int panelBackground(int alpha)
+    {
+        return color(baseSurface(), alpha);
+    }
+
+    public static int panelOverlay(int alpha)
+    {
+        return hasColoredBackground() ? accentOverlay(alpha) : color(dividerColor(), alpha);
+    }
+
+    public static int panelChromeColor()
+    {
+        return chromeSurface();
+    }
+
+    public static int panelShadowOpaqueColor()
+    {
+        return Colors.A25 | primaryColor.get();
+    }
+
+    public static int panelShadowTransparentColor()
+    {
+        return Colors.setA(primaryColor.get(), 0F);
     }
 
     public static int getDefaultDuration()
@@ -185,21 +371,41 @@ public class BBSSettings
         primaryColor = builder.getInt("primary_color", Colors.ACTIVE).color();
         enableTrackpadIncrements = builder.getBoolean("trackpad_increments", true);
         enableTrackpadScrolling = builder.getBoolean("trackpad_scrolling", true);
-        userIntefaceScale = builder.getInt("ui_scale", 2, 0, 4);
+        hideSettingDescriptions = builder.getBoolean("hide_setting_descriptions", false);
+        welcomePanelAcceptedBeta1 = builder.getBoolean("welcome_panel_accepted_beta1", false);
+        welcomePanelAcceptedBeta1.invisible();
+        userIntefaceScale = builder.getFloat("ui_scale", 2F, 0F, 4F);
         tooltipStyle = builder.getInt("tooltip_style", 1);
+        coloredBackground = builder.getBoolean("colored_background", true);
+        backgroundBrightness = builder.getFloat("background_brightness", 1F, 0.5F, 1.5F);
+        interfaceShadows = builder.getBoolean("interface_shadows", true);
         fov = builder.getFloat("fov", 40, 0, 180);
         hsvColorPicker = builder.getBoolean("hsv_color_picker", true);
         forceQwerty = builder.getBoolean("force_qwerty", false);
         freezeModels = builder.getBoolean("freeze_models", false);
-        axesScale = builder.getFloat("axes_scale", 1F, 0F, 2F);
         uniformScale = builder.getBoolean("uniform_scale", false);
         clickSound = builder.getBoolean("click_sound", false);
-        gizmos = builder.getBoolean("gizmos", true);
+        pickLimbTexture = builder.getBoolean("pick_limb_texture", true);
+        morphingAutoMorph = builder.getBoolean("auto_morph", false);
+        editorSimplifyAnimations = builder.getBoolean("simplify_animations", false);
         favoriteColors = new ValueColors("favorite_colors");
+        favoriteModelForms = new ValueStringKeys("favorite_model_forms");
+        favoriteFormCategoriesData = builder.getString("favorite_form_categories_data", "");
+        favoriteFormCategoriesData.invisible();
         disabledSheets = new ValueStringKeys("disabled_sheets");
         disabledSheets.set(defaultFilters);
         builder.register(favoriteColors);
+        builder.register(favoriteModelForms);
         builder.register(disabledSheets);
+        textureDefaultPath = builder.getRL("texture_default_path", null);
+        texturePickerItemSize = builder.getInt("texture_picker_item_size", 16, 16, 220);
+
+        builder.category("axes");
+        gizmos = builder.getBoolean("gizmos", true);
+        axesScale = builder.getFloat("axes_scale", 1F, 0F, 10F);
+        axesThickness = builder.getFloat("axes_thickness", 1F, 0.25F, 3F);
+        disablePivotTransform = builder.getBoolean("disable_pivot_transform", false);
+        gizmoYAxisHorizontal = builder.getBoolean("gizmo_y_axis_horizontal", true);
 
         builder.category("tutorials");
         enableCursorRendering = builder.getBoolean("cursor", false);
@@ -255,6 +461,44 @@ public class BBSSettings
         editorRewind = builder.getBoolean("rewind", true);
         editorHorizontalClipEditor = builder.getBoolean("horizontal_clip_editor", true);
         editorMinutesBackup = builder.getBoolean("minutes_backup", true);
+        editorDockGuideColor = builder.getInt("dock_guide_color", 0x57CCFF).color();
+        editorDockGuideOpacity = builder.getFloat("dock_guide_opacity", 0.5F, 0F, 1F);
+        defaultInterpolation = builder.getInt("default_interpolation", 0);
+        defaultPathInterpolation = builder.getInt("default_path_interpolation", 34);
+        editorSafeMarginsColor = builder.getInt("safe_margins_color", 0xcccc0000).colorAlpha();
+        editorSafeMargins = builder.getBoolean("safe_margins", false);
+        editorFlightFreeLook = builder.getBoolean("flight_free_look", false);
+        editorClipTypeLabels = builder.getBoolean("clip_type_labels", false);
+        editorCameraPreviewPlayerSync = builder.getBoolean("camera_preview_player_sync", false);
+        editorMuteRenderAudioClips = builder.getBoolean("mute_render_audio_clips", false);
+        editorTimeMode = builder.getInt("time_mode", 0, 0, 2);
+        editorImportMode = builder.getInt("import_mode", 0, 0, 1);
+        realtimeKeyframes = builder.getBoolean("realtime_keyframes", false);
+        autoKeyframes = builder.getBoolean("auto_keyframes", true);
+        usingInMemoryClipboard = builder.getBoolean("using_in_memory_clipboard", false);
+
+
+        builder.category("replays");
+        replayContextOptions = builder.getInt("compacted_options", 0, 0, 2);
+        editorReplaySprintParticles = builder.getBoolean("replay_sprint_particles", false);
+        editorReplayStepSound = builder.getBoolean("replay_step_sound", false);
+        replayMarkedBonesOnly = builder.getBoolean("replay_marked_bones_only", false);
+        editorReplayEditorTitleLimit = builder.getInt("replay_editor_title_limit", 12, 0, 64);
+        replayFpBobbingIntensity = builder.getFloat("replay_fp_bobbing_intensity", 0.25F, 0F, 2F);
+        replayFpBobbingFrequency = builder.getFloat("replay_fp_bobbing_frequency", 0.25F, 0F, 3F);
+        editorAnchoredReplaysPanel = builder.getBoolean("anchored_replays_panel", true);
+        editorAnchoredReplaysPanelHeight = builder.getInt("anchored_replays_panel_height", 170, 70, 2000);
+        editorAnchoredReplaysPanelHeight.invisible();
+        editorReplayHud = builder.getBoolean("replay_hud", false);
+        editorReplayHudPosition = builder.getInt("replay_hud_position", 0, 0, 3);
+        editorReplayHudDisplayName = builder.getBoolean("replay_hud_display_name", true);
+        poseBonesFilterMarked = builder.getBoolean("pose_bones_filter_marked", false);
+        poseBonesFilterMarked.invisible();
+        presetsGridPanel = builder.getBoolean("presets_grid_panel", false);
+        presetsGridTrackers = builder.getBoolean("presets_grid_trackers", true);
+        presetsGridTrackers.invisible();
+        presetsGridCellSize = builder.getInt("presets_grid_cell_size", 1, 0, 3);
+        presetsGridCellSize.invisible();
 
         builder.category("recording");
         recordingCountdown = builder.getFloat("countdown", 1.5F, 0F, 30F);
@@ -262,10 +506,20 @@ public class BBSSettings
         recordingOverlays = builder.getBoolean("overlays", true);
         recordingPoseTransformOverlays = builder.getInt("pose_transform_overlays", 0, 0, 42);
         recordingCameraPreview = builder.getBoolean("camera_preview", true);
+        recordingCameraPreviewFutureCount = builder.getInt("camera_preview_future_count", 3, 1, 8);
 
         builder.category("model_blocks");
         renderAllModelBlocks = builder.getBoolean("render_all", true);
         clickModelBlocks = builder.getBoolean("click", true);
+        modelBlockAnimationStateDistance = builder.getFloat("distance", 64F);
+        modelBlockCategoriesPanelEnabled = builder.getBoolean("categories_panel_enabled", false);
+        modelPbrPanelControls = builder.getBoolean("model_pbr_panel_controls", false);
+        modelBlockPanelLayout = builder.getString("panel_layout", "");
+        modelBlockPanelLayout.invisible();
+        triggerBlockPanelLayout = builder.getString("trigger_panel_layout", "");
+        triggerBlockPanelLayout.invisible();
+        lastViewMosaic = builder.getBoolean("last_view_mosaic", true);
+        lastViewMosaic.invisible();
 
         builder.category("entity_selectors");
         entitySelectorsPropertyWhitelist = builder.getString("whitelist", "CustomName,Name");
@@ -277,6 +531,7 @@ public class BBSSettings
         shaderCurvesEnabled = builder.getBoolean("enabled", true);
 
         builder.category("fluid_simulation");
+        fluidRealisticModelInteraction = builder.getBoolean("realistic_model_interaction", false);
 
         builder.category("audio");
         audioWaveformVisible = builder.getBoolean("waveform_visible", true);
@@ -286,9 +541,10 @@ public class BBSSettings
         audioWaveformFilename = builder.getBoolean("waveform_filename", false);
         audioWaveformTime = builder.getBoolean("waveform_time", false);
 
-
         builder.category("cdn");
         cdnUrl = builder.getString("url", "");
         cdnToken = builder.getString("token", "");
+
+        BBSMod.events.post(new RegisterBBSSettingsEvent(builder));
     }
 }

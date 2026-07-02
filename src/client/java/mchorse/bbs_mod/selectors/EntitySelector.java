@@ -6,6 +6,7 @@ import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.utils.StringUtils;
 
+import net.minecraft.command.argument.NbtCompoundArgumentType;
 import net.minecraft.entity.LivingEntity;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.NbtElement;
@@ -45,7 +46,7 @@ public class EntitySelector implements IMapSerializable
 
         if (this.nbt != null)
         {
-            NbtCompound entityCompound = mcEntity.writeNbt(new NbtCompound());
+            NbtCompound entityCompound = new NbtCompound();
 
             if (!this.compare(this.nbt, entityCompound))
             {
@@ -90,13 +91,13 @@ public class EntitySelector implements IMapSerializable
 
         if (data.has("enabled")) this.enabled = data.getBool("enabled");
         if (data.has("form")) this.form = FormUtils.fromData(data.getMap("form"));
-        if (data.has("entity")) this.entity = new Identifier(data.getString("entity"));
+        if (data.has("entity")) this.entity = Identifier.of(data.getString("entity"));
         if (data.has("name")) this.name = data.getString("name");
         if (data.has("nbt"))
         {
             try
             {
-                this.nbt = (new StringNbtReader(new StringReader(data.getString("nbt")))).parseCompound();
+                this.nbt = NbtCompoundArgumentType.nbtCompound().parse(new StringReader(data.getString("nbt")));
             }
             catch (CommandSyntaxException e)
             {

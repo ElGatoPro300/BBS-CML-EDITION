@@ -2,14 +2,16 @@ package mchorse.bbs_mod.blocks.entities;
 
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.blocks.ModelBlock;
-import mchorse.bbs_mod.data.DataStorageUtils;
+import mchorse.bbs_mod.data.DataToString;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.events.ModelBlockEntityUpdateCallback;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.entities.StubEntity;
+import mchorse.bbs_mod.forms.forms.BillboardForm;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.forms.LightForm;
+import mchorse.bbs_mod.resources.Link;
 
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
@@ -18,6 +20,9 @@ import net.minecraft.nbt.NbtCompound;
 import net.minecraft.network.listener.ClientPlayPacketListener;
 import net.minecraft.network.packet.Packet;
 import net.minecraft.network.packet.s2c.play.BlockEntityUpdateS2CPacket;
+import net.minecraft.registry.RegistryWrapper.WrapperLookup;
+import net.minecraft.storage.ReadView;
+import net.minecraft.storage.WriteView;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 
@@ -150,7 +155,7 @@ public class ModelBlockEntity extends BlockEntity
 
         blockEntity.entity.update();
         blockEntity.properties.update(blockEntity.entity);
-        if (!world.isClient)
+            if (!world.isClient())
         {
             int target = blockEntity.properties.getLightLevel();
             Form form = blockEntity.properties.getForm();
@@ -193,34 +198,36 @@ public class ModelBlockEntity extends BlockEntity
     }
 
     @Override
-    public NbtCompound toInitialChunkDataNbt()
+    public NbtCompound toInitialChunkDataNbt(WrapperLookup registryLookup)
     {
-        return createNbt();
+        return this.createNbt(registryLookup);
     }
 
     @Override
-    protected void writeNbt(NbtCompound nbt)
+    protected void writeData(WriteView view)
     {
-        super.writeNbt(nbt);
+        super.writeData(view);
 
         MapType data = this.properties.toData();
 
-        DataStorageUtils.writeToNbtCompound(nbt, "Properties", data);
+        view.putString("Properties", DataToString.toString(data));
     }
 
     @Override
-    public void readNbt(NbtCompound nbt)
+    protected void readData(ReadView view)
     {
-        super.readNbt(nbt);
+        super.readData(view);
 
-        BaseType baseType = DataStorageUtils.readFromNbtCompound(nbt, "Properties");
+        view.getOptionalString("Properties").ifPresent((serialized) -> {
+            BaseType baseType = DataToString.fromString(serialized);
 
-        if (baseType instanceof MapType mapType)
-        {
-            this.properties.fromData(mapType);
-        }
+            if (baseType instanceof MapType mapType)
+            {
+                this.properties.fromData(mapType);
+            }
+        });
         /* Ensure block state reflects stored light level when chunk/block is loaded */
-        if (this.world != null && !this.world.isClient)
+        if (this.world != null && !this.world.isClient())
         {
             try
             {
@@ -243,18 +250,18 @@ public class ModelBlockEntity extends BlockEntity
 
         BlockPos pos = this.getPos();
         BlockState blockState = world.getBlockState(pos);
-
-        try
-        {
-            int level = this.properties.getLightLevel();
-
-            world.setBlockState(pos, blockState.with(ModelBlock.LIGHT_LEVEL, level), Block.NOTIFY_LISTENERS);
-        }
-        catch (Exception e)
-        {
-            world.updateListeners(pos, blockState, blockState, Block.NOTIFY_LISTENERS);
-        }
+        int level = this.properties.getLightLevel();
+        BlockState newState = blockState.with(ModelBlock.LIGHT_LEVEL, level);
 
         world.markDirty(pos);
+
+        if (blockState != newState)
+        {
+            world.setBlockState(pos, newState, Block.NOTIFY_LISTENERS);
+        }
+        else
+        {
+            world.updateListeners(pos, blockState, newState, Block.NOTIFY_LISTENERS);
+        }
     }
 }
