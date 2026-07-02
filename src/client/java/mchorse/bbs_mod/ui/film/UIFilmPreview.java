@@ -38,7 +38,6 @@ import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.keys.KeyCodes;
 import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.FFMpegUtils;
-import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.ScreenshotRecorder;
 import mchorse.bbs_mod.utils.StringUtils;
 import mchorse.bbs_mod.utils.clips.Clip;
@@ -385,7 +384,7 @@ public class UIFilmPreview extends UIElement
         {
             /* Render global video clips (overlays) */
             VideoRenderer.renderClips(
-                new MatrixStack(),
+                context.batcher.getContext().getMatrices(),
                 context.batcher,
                 this.panel.getData().camera.getClips(this.panel.getCursor()),
                 this.panel.getCursor(),
@@ -518,15 +517,16 @@ public class UIFilmPreview extends UIElement
 
         stack.pushMatrix();
 
+        stack.mul(context.batcher.getContext().getMatrices().peek().getPositionMatrix());
         stack.translate(area.x + 16, area.ey() - 12, 0F);
         stack.rotate(RotationAxis.NEGATIVE_X.rotationDegrees(mcCamera.getPitch()));
         stack.rotate(RotationAxis.POSITIVE_Y.rotationDegrees(mcCamera.getYaw()));
         stack.scale(-1F, -1F, -1F);
-        MatrixStackUtils.applyModelViewMatrix();
-        /* crosshair rendering is managed by vanilla pipeline */
+        RenderSystem.applyModelViewMatrix();
+        RenderSystem.renderCrosshair(10);
 
         stack.popMatrix();
-        MatrixStackUtils.applyModelViewMatrix();
+        RenderSystem.applyModelViewMatrix();
     }
 
     public void cancelCapture()

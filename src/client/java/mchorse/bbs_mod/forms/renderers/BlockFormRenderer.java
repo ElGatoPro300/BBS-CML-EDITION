@@ -19,15 +19,15 @@ import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.render.OverlayVertexConsumer;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.VertexConsumer;
+import net.minecraft.client.render.block.entity.BlockEntityRenderDispatcher;
 import net.minecraft.client.render.block.entity.BlockEntityRenderer;
-import net.minecraft.client.render.model.ModelBaker;
+import net.minecraft.client.render.model.ModelLoader;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.BlockPos;
 
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
-import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 
 public class BlockFormRenderer extends FormRenderer<BlockForm>
@@ -42,10 +42,10 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
     @Override
     public void renderInUI(UIContext context, int x1, int y1, int x2, int y2)
     {
-        context.batcher.flush();
+        context.batcher.getContext().draw();
 
         CustomVertexConsumerProvider consumers = FormUtilsClient.getProvider();
-        MatrixStack matrices = new MatrixStack();
+        MatrixStack matrices = context.batcher.getContext().getMatrices();
 
         Matrix4f uiMatrix = ModelFormRenderer.getUIMatrix(context, x1, y1, x2, y2);
 
@@ -59,7 +59,9 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
 
         Color set = this.form.color.get();
 
-        MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.LEVEL);
+        Vector3f light0 = new Vector3f(0.85F, 0.85F, -1F).normalize();
+        Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1F).normalize();
+        RenderSystem.setupLevelDiffuseLighting(light0, light1);
 
         consumers.setSubstitute(BBSRendering.getColorConsumer(set));
         consumers.setUI(true);
@@ -69,7 +71,7 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
         int breakingLevel = this.form.breaking.get();
         if (breakingLevel > 0 && breakingLevel <= 10)
         {
-            RenderLayer crackingLayer = ModelBaker.BLOCK_DESTRUCTION_RENDER_LAYERS.get(breakingLevel - 1);
+            RenderLayer crackingLayer = ModelLoader.BLOCK_DESTRUCTION_RENDER_LAYERS.get(breakingLevel - 1);
             VertexConsumer delegateConsumer = consumers.getBuffer(crackingLayer);
             VertexConsumer crackingConsumer = new OverlayVertexConsumer(delegateConsumer, matrices.peek(), 1.0F);
             consumers.setSubstitute((vertexConsumer) -> crackingConsumer);
@@ -79,6 +81,8 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
         consumers.draw();
         consumers.setUI(false);
         consumers.setSubstitute(null);
+
+        DiffuseLighting.disableGuiDepthLighting();
 
         matrices.pop();
     }
@@ -97,14 +101,14 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
             CustomVertexConsumerProvider.hijackVertexFormat((layer) ->
             {
                 this.setupTarget(context, BBSShaders.getPickerModelsProgram());
-                // RenderSystem.setShader(BBSShaders.getPickerModelsProgram());
+                RenderSystem.setShader(BBSShaders::getPickerModelsProgram);
             });
 
             light = 0;
         }
         else
         {
-            CustomVertexConsumerProvider.hijackVertexFormat((l) -> GlStateManager._enableBlend());
+            CustomVertexConsumerProvider.hijackVertexFormat((l) -> RenderSystem.enableBlend());
         }
 
         Color set = this.form.color.get();
@@ -123,7 +127,7 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
         int breakingLevel = this.form.breaking.get();
         if (!context.isPicking() && breakingLevel > 0 && breakingLevel <= 10)
         {
-            RenderLayer crackingLayer = ModelBaker.BLOCK_DESTRUCTION_RENDER_LAYERS.get(breakingLevel - 1);
+            RenderLayer crackingLayer = ModelLoader.BLOCK_DESTRUCTION_RENDER_LAYERS.get(breakingLevel - 1);
             VertexConsumer delegateConsumer = consumers.getBuffer(crackingLayer);
             VertexConsumer crackingConsumer = new OverlayVertexConsumer(delegateConsumer, context.stack.peek(), 1.0F);
             consumers.setSubstitute((vertexConsumer) -> crackingConsumer);
@@ -137,7 +141,7 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
 
         context.stack.pop();
 
-        GlStateManager._enableDepthTest();
+        RenderSystem.enableDepthTest();
     }
 
     private void renderBlockEntity(MatrixStack stack, CustomVertexConsumerProvider consumers, int light, int overlay)
@@ -160,6 +164,17 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
             blockEntity.setWorld(client.world);
         }
 
-        // TODO 1.21.11: migrate to BlockEntityRenderer<T, S> state/queue rendering API.
+        BlockEntityRenderDispatcher dispatcher = client.getBlockEntityRenderDispatcher();
+        BlockEntityRenderer<?> renderer = dispatcher.get(blockEntity);
+
+        if (renderer == null)
+        {
+            return;
+        }
+
+        @SuppressWarnings({"rawtypes", "unchecked"})
+        BlockEntityRenderer raw = (BlockEntityRenderer) renderer;
+
+        raw.render(blockEntity, 0F, stack, consumers, light, overlay);
     }
 }

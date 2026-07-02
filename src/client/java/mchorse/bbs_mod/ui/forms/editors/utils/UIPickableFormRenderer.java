@@ -33,7 +33,7 @@ import org.joml.Matrix4f;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 
-import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 
 import org.lwjgl.opengl.GL11;
@@ -120,7 +120,7 @@ public class UIPickableFormRenderer extends UIFormRenderer
         this.formEditor.preFormRender(context, this.form);
 
         FormRenderingContext formContext = new FormRenderingContext()
-            .set(FormRenderType.PREVIEW, this.target == null ? this.entity : this.target, new MatrixStack(), LightmapTextureManager.pack(15, 15), OverlayTexture.DEFAULT_UV, context.getTransition())
+            .set(FormRenderType.PREVIEW, this.target == null ? this.entity : this.target, context.batcher.getContext().getMatrices(), LightmapTextureManager.pack(15, 15), OverlayTexture.DEFAULT_UV, context.getTransition())
             .camera(this.camera)
             .modelRenderer()
             .equipment(false);
@@ -145,7 +145,7 @@ public class UIPickableFormRenderer extends UIFormRenderer
             FormUtilsClient.render(this.form, formContext.stencilMap(this.stencilMap));
 
             Matrix4f matrix = this.formEditor.getOrigin(context.getTransition());
-            MatrixStack stack = new MatrixStack();
+            MatrixStack stack = context.batcher.getContext().getMatrices();
 
             stack.push();
 
@@ -154,17 +154,16 @@ public class UIPickableFormRenderer extends UIFormRenderer
                 MatrixStackUtils.multiply(stack, matrix);
             }
 
-            Gizmo.INSTANCE.renderStencil(new MatrixStack(), this.stencilMap);
-            GlStateManager._disableCull();
+            RenderSystem.disableCull();
             Gizmo.INSTANCE.renderStencil(stack, this.stencilMap);
-            GlStateManager._enableCull();
+            RenderSystem.enableCull();
 
             stack.pop();
 
             this.stencil.pickGUI(context, this.area);
             this.stencil.unbind(this.stencilMap);
 
-            MinecraftClient.getInstance().getFramebuffer();
+            MinecraftClient.getInstance().getFramebuffer().beginWrite(true);
 
             GlStateManager._enableScissorTest();
         }
@@ -179,18 +178,20 @@ public class UIPickableFormRenderer extends UIFormRenderer
 
     private void prepareGizmoRenderState()
     {
-        GlStateManager._depthMask(true);
-        GlStateManager._colorMask(true, true, true, true);
-        GlStateManager._enableDepthTest();
-        GlStateManager._depthFunc(GL11.GL_LEQUAL);
-        GlStateManager._disableBlend();
-        GlStateManager._disableCull();
+        RenderSystem.depthMask(true);
+        RenderSystem.colorMask(true, true, true, true);
+        RenderSystem.enableDepthTest();
+        RenderSystem.depthFunc(GL11.GL_LEQUAL);
+        RenderSystem.disableBlend();
+        RenderSystem.disableCull();
+        RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
     }
 
     private void renderAxes(UIContext context)
     {
         Matrix4f matrix = this.formEditor.getOrigin(context.getTransition());
-        MatrixStack stack = new MatrixStack();
+        MatrixStack stack = context.batcher.getContext().getMatrices();
+        this.hasGizmoMatrix = true;
 
         stack.push();
 
@@ -207,14 +208,11 @@ public class UIPickableFormRenderer extends UIFormRenderer
         /* Draw axes */
         if (UIBaseMenu.renderAxes)
         {
-            GlStateManager._disableDepthTest();
+            RenderSystem.disableCull();
+            RenderSystem.disableDepthTest();
             Gizmo.INSTANCE.render(stack);
-            GlStateManager._enableDepthTest();
-            GlStateManager._disableCull();
-            GlStateManager._disableDepthTest();
-            Gizmo.INSTANCE.render(stack);
-            GlStateManager._enableDepthTest();
-            GlStateManager._enableCull();
+            RenderSystem.enableDepthTest();
+            RenderSystem.enableCull();
         }
 
         stack.pop();
@@ -284,10 +282,10 @@ public class UIPickableFormRenderer extends UIFormRenderer
 
         /* Draw look vector */
         final float thickness = 0.01F;
-        Draw.renderBox(new MatrixStack(), -thickness, -thickness + eyeHeight, -thickness, thickness, thickness, 2F, 1F, 0F, 0F);
+        Draw.renderBox(context.batcher.getContext().getMatrices(), -thickness, -thickness + eyeHeight, -thickness, thickness, thickness, 2F, 1F, 0F, 0F);
 
         /* Draw hitbox */
-        Draw.renderBox(new MatrixStack(), -hitboxW / 2, 0, -hitboxW / 2, hitboxW, hitboxH, hitboxW);
+        Draw.renderBox(context.batcher.getContext().getMatrices(), -hitboxW / 2, 0, -hitboxW / 2, hitboxW, hitboxH, hitboxW);
     }
 
     @Override
@@ -329,11 +327,11 @@ public class UIPickableFormRenderer extends UIFormRenderer
 
         if (target != null)
         {
-            /* no-op uniform */ // target.set(index);
+            target.set(index);
         }
 
-        GlStateManager._enableBlend();
-        context.batcher.texturedBox(BBSShaders.getPickerPreviewProgram(), texture.id, Colors.WHITE, this.area.x, this.area.y, this.area.w, this.area.h, 0, h, w, 0, w, h);
+        RenderSystem.enableBlend();
+        context.batcher.texturedBox(BBSShaders::getPickerPreviewProgram, texture.id, Colors.WHITE, this.area.x, this.area.y, this.area.w, this.area.h, 0, h, w, 0, w, h);
 
         if (pair != null && pair.a != null)
         {

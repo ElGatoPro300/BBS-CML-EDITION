@@ -13,10 +13,11 @@ import mchorse.bbs_mod.utils.MatrixStackUtils;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.BufferBuilder;
+import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.DiffuseLighting;
 import net.minecraft.client.render.GameRenderer;
-import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.render.Tessellator;
+import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.BufferAllocator;
 import net.minecraft.client.util.math.MatrixStack;
@@ -28,11 +29,8 @@ import org.joml.Matrix4f;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 
-import com.mojang.blaze3d.opengl.GlStateManager;
-import com.mojang.blaze3d.systems.ProjectionType;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.systems.VertexSorter;
-import com.mojang.blaze3d.vertex.VertexFormat;
 
 import org.lwjgl.opengl.GL11;
 
@@ -213,19 +211,19 @@ public abstract class UIModelRenderer extends UIElement
      */
     private void renderModel(UIContext context)
     {
-        GlStateManager._enableDepthTest();
-        GlStateManager._enableCull();
-        GlStateManager._depthFunc(GL11.GL_LEQUAL);
+        RenderSystem.enableDepthTest();
+        RenderSystem.enableCull();
+        RenderSystem.depthFunc(GL11.GL_LEQUAL);
 
         this.setupPosition();
         this.setupViewport(context);
 
-        MatrixStack stack = new MatrixStack();
+        MatrixStack stack = context.render.batcher.getContext().getMatrices();
 
         /* Cache the global stuff */
         MatrixStackUtils.cacheMatrices();
 
-        /* projection matrix state managed by 1.21.11 renderer */
+        RenderSystem.setProjectionMatrix(this.camera.projection, VertexSorter.BY_Z);
 
         /* Rendering begins... */
         stack.push();
@@ -236,7 +234,7 @@ public abstract class UIModelRenderer extends UIElement
         Vector3f a = new Vector3f(0F, 0.85F, -1F).normalize();
         Vector3f b = new Vector3f(0F, 0.85F, 1F).normalize();
         
-        MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.LEVEL);
+        RenderSystem.setupLevelDiffuseLighting(a, b);
 
         if (this.grid)
         {
@@ -245,19 +243,20 @@ public abstract class UIModelRenderer extends UIElement
 
         this.renderUserModel(context);
 
+        DiffuseLighting.disableGuiDepthLighting();
 
         stack.pop();
 
         /* Return back to orthographic projection */
         MinecraftClient mc = MinecraftClient.getInstance();
 
-        GlStateManager._viewport(0, 0, mc.getWindow().getFramebufferWidth(), mc.getWindow().getFramebufferHeight());
+        RenderSystem.viewport(0, 0, mc.getWindow().getFramebufferWidth(), mc.getWindow().getFramebufferHeight());
         MatrixStackUtils.restoreMatrices();
         context.resetMatrix();
 
-        GlStateManager._depthFunc(GL11.GL_ALWAYS);
-        GlStateManager._disableDepthTest();
-        GlStateManager._disableCull();
+        RenderSystem.depthFunc(GL11.GL_ALWAYS);
+        RenderSystem.disableDepthTest();
+        RenderSystem.disableCull();
 
         this.processInputs(context);
     }
@@ -339,7 +338,7 @@ public abstract class UIModelRenderer extends UIElement
         int vw = (int) (this.area.w * rx);
         int vh = (int) (this.area.h * ry);
 
-        GlStateManager._viewport((int) (vx * size), (int) (vy * size), (int) (vw * size), (int) (vh * size));
+        RenderSystem.viewport((int) (vx * size), (int) (vy * size), (int) (vw * size), (int) (vh * size));
         this.camera.updatePerspectiveProjection(vw, vh);
         this.camera.updateView();
     }
@@ -355,10 +354,10 @@ public abstract class UIModelRenderer extends UIElement
      */
     protected void renderGrid(UIContext context)
     {
-        Matrix4f matrix4f = new Matrix4f();
+        Matrix4f matrix4f = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
         BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
 
-        // RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
+        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
 
         for (int x = 0; x <= 10; x ++)
         {
@@ -388,6 +387,6 @@ public abstract class UIModelRenderer extends UIElement
             }
         }
 
-        RenderLayers.lines().draw(builder.end());
+        BufferRenderer.drawWithGlobalProgram(builder.end());
     }
 }

@@ -43,11 +43,12 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.GlUniform;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.render.BufferBuilder;
+import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
-import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.render.Tessellator;
+import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.RotationAxis;
@@ -56,12 +57,9 @@ import org.joml.Matrix4f;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 
-import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.VertexFormat;
 import com.mojang.logging.LogUtils;
-
-import org.lwjgl.opengl.GL11;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -249,7 +247,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
         this.updateModel();
         
         FormRenderingContext formContext = new FormRenderingContext()
-            .set(FormRenderType.PREVIEW, this.entity, new MatrixStack(), LightmapTextureManager.pack(15, 15), OverlayTexture.DEFAULT_UV, context.getTransition())
+            .set(FormRenderType.PREVIEW, this.entity, context.batcher.getContext().getMatrices(), LightmapTextureManager.pack(15, 15), OverlayTexture.DEFAULT_UV, context.getTransition())
             .camera(this.camera)
             .modelRenderer();
 
@@ -291,14 +289,14 @@ public class UIModelEditorRenderer extends UIModelRenderer
             {
                 this.lastGizmoMatrix.set(gizmoMatrix);
                 this.hasGizmoMatrix = true;
-                MatrixStack stack = new MatrixStack();
+                MatrixStack stack = context.batcher.getContext().getMatrices();
 
                 stack.push();
                 MatrixStackUtils.multiply(stack, gizmoMatrix);
 
-                GlStateManager._disableDepthTest();
+                RenderSystem.disableDepthTest();
                 Gizmo.INSTANCE.render(stack);
-                GlStateManager._enableDepthTest();
+                RenderSystem.enableDepthTest();
 
                 stack.pop();
             }
@@ -321,14 +319,14 @@ public class UIModelEditorRenderer extends UIModelRenderer
 
             if (gizmoMatrix != null)
             {
-                MatrixStack stack = new MatrixStack();
+                MatrixStack stack = context.batcher.getContext().getMatrices();
 
                 stack.push();
                 MatrixStackUtils.multiply(stack, gizmoMatrix);
 
-                GL11.glDisable(GL11.GL_DEPTH_TEST);
+                RenderSystem.disableDepthTest();
                 Gizmo.INSTANCE.renderStencil(stack, this.stencilMap);
-                GL11.glEnable(GL11.GL_DEPTH_TEST);
+                RenderSystem.enableDepthTest();
 
                 stack.pop();
             }
@@ -336,7 +334,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
             this.stencil.pickGUI(context, this.area);
             this.stencil.unbind(this.stencilMap);
 
-            MinecraftClient.getInstance().getFramebuffer();
+            MinecraftClient.getInstance().getFramebuffer().beginWrite(true);
 
             GlStateManager._enableScissorTest();
         }
@@ -410,7 +408,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
         }
 
         Matrix4f cubeMatrix = this.getCubePivotMatrix(cache);
-         Matrix4f uiMatrix = new Matrix4f();
+        Matrix4f uiMatrix = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
 
         if (cubeMatrix == null)
         {
@@ -431,7 +429,8 @@ public class UIModelEditorRenderer extends UIModelRenderer
         }
 
         Tessellator tessellator = Tessellator.getInstance();
-        GlStateManager._enableBlend();
+        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
+        RenderSystem.enableBlend();
         BufferBuilder builder = tessellator.begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
 
         for (ModelQuad quad : this.selectedCube.quads)
@@ -455,7 +454,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
             }
         }
 
-        RenderLayers.debugFilledBox().draw(builder.end());
+        BufferRenderer.drawWithGlobalProgram(builder.end());
     }
 
     private Matrix4f getCubePivotMatrix(MatrixCache cache)
@@ -567,7 +566,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
             return;
         }
 
-         Matrix4f uiMatrix = new Matrix4f();
+        Matrix4f uiMatrix = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
 
         /* ---- target crosshair ---- */
         Vector3f targetWorld = new Vector3f(this.activeIKChain.target.get());
@@ -593,8 +592,9 @@ public class UIModelEditorRenderer extends UIModelRenderer
         gizmoMat.rotateY(MathUtils.PI);
 
         BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
-        GlStateManager._enableBlend();
-        GlStateManager._disableDepthTest();
+        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
+        RenderSystem.enableBlend();
+        RenderSystem.disableDepthTest();
 
         /* --- magenta crosshair at target --- */
         float cs = 0.12F * 16F;   /* crosshair arm length in render units */
@@ -670,10 +670,10 @@ public class UIModelEditorRenderer extends UIModelRenderer
             }
         }
 
-        RenderLayers.debugFilledBox().draw(builder.end());
+        BufferRenderer.drawWithGlobalProgram(builder.end());
 
-        GlStateManager._enableDepthTest();
-        GlStateManager._disableBlend();
+        RenderSystem.enableDepthTest();
+        RenderSystem.disableBlend();
     }
 
 
@@ -709,11 +709,11 @@ public class UIModelEditorRenderer extends UIModelRenderer
 
         if (target != null)
         {
-            index = this.stencil.getIndex();
+            target.set(index);
         }
 
-        GlStateManager._enableBlend();
-        context.batcher.texturedBox(BBSShaders.getPickerPreviewProgram(), texture.id, Colors.WHITE, this.area.x, this.area.y, this.area.w, this.area.h, 0, h, w, 0, w, h);
+        RenderSystem.enableBlend();
+        context.batcher.texturedBox(BBSShaders::getPickerPreviewProgram, texture.id, Colors.WHITE, this.area.x, this.area.y, this.area.w, this.area.h, 0, h, w, 0, w, h);
 
         Pair<Form, String> pair = this.stencil.getPicked();
 

@@ -14,12 +14,8 @@ import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.util.math.MatrixStack;
 
 import org.joml.Matrix4f;
-import org.joml.Matrix4fStack;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
-
-import com.mojang.blaze3d.opengl.GlStateManager;
-import com.mojang.blaze3d.systems.RenderSystem;
 
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL30;
@@ -104,10 +100,8 @@ public class BOBJModelVAO
         GL30.glBufferData(GL30.GL_ARRAY_BUFFER, this.tmpTangents, GL30.GL_STATIC_DRAW);
         GL30.glVertexAttribPointer(Attributes.TANGENTS, 4, GL30.GL_FLOAT, false, 0, 0);
 
-        float[] midTexCoords = ModelVAOData.calculateMidTexCoords(this.data.texData);
-
-        GL30.glBindBuffer(GL30.GL_ARRAY_BUFFER, this.midTextureBuffer);
-        GL30.glBufferData(GL30.GL_ARRAY_BUFFER, midTexCoords, GL30.GL_STATIC_DRAW);
+        GL30.glBindBuffer(GL30.GL_ARRAY_BUFFER, this.texCoordBuffer);
+        GL30.glBufferData(GL30.GL_ARRAY_BUFFER, this.data.texData, GL30.GL_STATIC_DRAW);
         GL30.glVertexAttribPointer(Attributes.MID_TEXTURE_UV, 2, GL30.GL_FLOAT, false, 0, 0);
 
         GL30.glBindBuffer(GL30.GL_ARRAY_BUFFER, 0);
@@ -337,14 +331,9 @@ public class BOBJModelVAO
         int currentVAO = GL30.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
         int currentElementArrayBuffer = GL30.glGetInteger(GL30.GL_ELEMENT_ARRAY_BUFFER_BINDING);
 
-        Matrix4fStack modelViewStack = RenderSystem.getModelViewStack();
-        modelViewStack.pushMatrix();
-        modelViewStack.mul(stack.peek().getPositionMatrix());
+        ModelVAORenderer.setupUniforms(stack, shader);
 
-        if (shader != null)
-        {
-            /* shader binding handled by RenderLayer in 1.21.11 */
-        }
+        shader.bind();
 
         GL30.glBindVertexArray(this.vao);
 
@@ -401,7 +390,7 @@ public class BOBJModelVAO
         if (hasShaders) GL30.glDisableVertexAttribArray(Attributes.TANGENTS);
         if (hasShaders) GL30.glDisableVertexAttribArray(Attributes.MID_TEXTURE_UV);
 
-        modelViewStack.popMatrix();
+        shader.unbind();
 
         GL30.glBindVertexArray(currentVAO);
         GL30.glBindBuffer(GL30.GL_ELEMENT_ARRAY_BUFFER, currentElementArrayBuffer);

@@ -25,7 +25,6 @@ import net.minecraft.item.ItemStack;
 
 import org.joml.Vector3f;
 
-import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 
 import org.lwjgl.opengl.GL11;
@@ -219,23 +218,27 @@ public class UIItemStack extends UIElement
 
         if (this.stack != null && !this.stack.isEmpty())
         {
-            MatrixStack matrices = new MatrixStack();
+            MatrixStack matrices = context.batcher.getContext().getMatrices();
             CustomVertexConsumerProvider consumers = FormUtilsClient.getProvider();
 
             matrices.push();
-            GlStateManager._disableDepthTest();
+            RenderSystem.disableDepthTest();
             consumers.setUI(true);
 
             Vector3f light0 = new Vector3f(0.85F, 0.85F, -1.0F).normalize();
             Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1.0F).normalize();
-            MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.ITEMS_3D);
+            RenderSystem.setupGui3DDiffuseLighting(light0, light1);
 
             context.batcher.getContext().drawItem(this.stack, stackCenterX - 8, this.area.my() - 8);
-            context.batcher.getContext().drawStackOverlay(context.batcher.getFont().getRenderer(), this.stack, stackCenterX - 8, this.area.my() - 8);
+            context.batcher.getContext().drawItemInSlot(context.batcher.getFont().getRenderer(), this.stack, stackCenterX - 8, this.area.my() - 8);
+
+            context.batcher.getContext().draw();
+
+            DiffuseLighting.disableGuiDepthLighting();
 
             consumers.setUI(false);
-            GlStateManager._enableDepthTest();
-            GlStateManager._depthFunc(GL11.GL_ALWAYS);
+            RenderSystem.enableDepthTest();
+            RenderSystem.depthFunc(GL11.GL_ALWAYS);
             matrices.pop();
         }
 

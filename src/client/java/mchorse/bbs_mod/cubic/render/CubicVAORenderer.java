@@ -18,8 +18,6 @@ import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
 
-import org.joml.Matrix4f;
-
 public class CubicVAORenderer extends CubicCubeRenderer
 {
     private ShaderProgram program;

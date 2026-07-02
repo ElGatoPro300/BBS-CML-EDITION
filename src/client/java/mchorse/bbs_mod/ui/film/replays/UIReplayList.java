@@ -78,7 +78,6 @@ import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
-import net.minecraft.world.Heightmap;
 import net.minecraft.world.World;
 
 import org.joml.Vector3d;
@@ -1151,7 +1150,7 @@ public class UIReplayList extends UIList<Replay> {
     }
 
     private Double getTerrainY(World world, double x, double z) {
-        int top = world.getTopY(Heightmap.Type.WORLD_SURFACE, (int) x, (int) z);
+        int top = world.getTopY();
         int bottom = world.getBottomY();
         double distance = Math.max(0D, top - bottom + 2D);
         Vec3d start = new Vec3d(x, top + 1D, z);
@@ -2571,9 +2570,9 @@ public class UIReplayList extends UIList<Replay> {
 
             Vector3f a = new Vector3f(0.85F, 0.85F, -1F).normalize();
             Vector3f b = new Vector3f(-0.85F, 0.85F, 1F).normalize();
-            MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.LEVEL);
+            RenderSystem.setupLevelDiffuseLighting(a, b);
             FormUtilsClient.renderUI(form, context, x, y, x + 40, y + 40);
-            
+            DiffuseLighting.disableGuiDepthLighting();
 
             context.batcher.unclip(context);
 

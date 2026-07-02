@@ -42,16 +42,15 @@ import mchorse.bbs_mod.utils.resources.Pixels;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.BufferBuilder;
-import net.minecraft.client.render.RenderLayers;
+import net.minecraft.client.render.BufferRenderer;
+import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.Tessellator;
+import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 
-import org.joml.Matrix3x2fStack;
 import org.joml.Matrix4f;
 
-import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.VertexFormat;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -635,7 +634,7 @@ public class UIHomePanel extends UIDashboardPanel
 
                     if (pixels != null)
                     {
-                        MinecraftClient.getInstance().execute(() ->
+                        RenderSystem.recordRenderCall(() ->
                         {
                             Texture texture = Texture.textureFromPixels(pixels, GL11.GL_LINEAR);
 
@@ -705,17 +704,10 @@ public class UIHomePanel extends UIDashboardPanel
         int segments = 40;
         float segW = editorW / (float) segments;
 
-        Matrix3x2fStack m = context.batcher.getContext().getMatrices();
-        Matrix4f matrix4f = new Matrix4f();
-        matrix4f.m00(m.m00());
-        matrix4f.m01(m.m01());
-        matrix4f.m10(m.m10());
-        matrix4f.m11(m.m11());
-        matrix4f.m30(m.m20());
-        matrix4f.m31(m.m21());
+        Matrix4f matrix4f = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
 
-        GlStateManager._enableBlend();
-        /* RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR); */
+        RenderSystem.enableBlend();
+        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
         BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
 
         float[] yBot1 = new float[segments + 1];
@@ -796,7 +788,7 @@ public class UIHomePanel extends UIDashboardPanel
             builder.vertex(matrix4f, x2, yMid2[i + 1], 0).color(cMid2[i + 1]);
         }
 
-        RenderLayers.debugFilledBox().draw(builder.end());
+        BufferRenderer.drawWithGlobalProgram(builder.end());
 
         this.renderCardAndBanners(context, this.homePage, dividerX, UIKeys.FILM_HOME_LIST.get());
     }
@@ -916,8 +908,8 @@ public class UIHomePanel extends UIDashboardPanel
 
         if (alpha > 0.001F)
         {
-            GlStateManager._enableBlend();
-            GlStateManager._blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+            RenderSystem.enableBlend();
+            RenderSystem.defaultBlendFunc();
             context.batcher.texturedBox(texture, Colors.setA(Colors.WHITE, alpha), tx, ty, tw, th, 0, 0, texture.width, texture.height);
         }
 
@@ -1149,12 +1141,12 @@ public class UIHomePanel extends UIDashboardPanel
                     int iconX = this.area.mx();
                     int iconY = this.area.y + CARD_SIZE / 2;
 
-                    context.batcher.getContext().getMatrices().pushMatrix();
-                    context.batcher.getContext().getMatrices().translate(iconX, iconY);
-                    context.batcher.getContext().getMatrices().scale(2F, 2F);
-                    context.batcher.getContext().getMatrices().translate(-iconX, -iconY);
+                    context.batcher.getContext().getMatrices().push();
+                    context.batcher.getContext().getMatrices().translate(iconX, iconY, 0);
+                    context.batcher.getContext().getMatrices().scale(2F, 2F, 1F);
+                    context.batcher.getContext().getMatrices().translate(-iconX, -iconY, 0);
                     context.batcher.icon(icon, iconX, iconY, 0.5F, 0.5F);
-                    context.batcher.getContext().getMatrices().popMatrix();
+                    context.batcher.getContext().getMatrices().pop();
                 }
             };
 
