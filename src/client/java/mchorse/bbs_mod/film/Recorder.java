@@ -21,19 +21,19 @@ import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.PlayerUtils;
 import mchorse.bbs_mod.utils.clips.Clip;
 import mchorse.bbs_mod.utils.clips.Clips;
-import mchorse.bbs_mod.utils.joml.Matrices;
-import mchorse.bbs_mod.utils.joml.Vectors;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
 
-import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.render.BufferBuilder;
+import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.GameRenderer;
-import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.render.Tessellator;
+import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.BufferAllocator;
 import net.minecraft.client.util.math.MatrixStack;
@@ -43,9 +43,7 @@ import org.joml.Quaternionf;
 import org.joml.Vector3d;
 import org.joml.Vector4f;
 
-import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.VertexFormat;
 
 public class Recorder extends WorldFilmController
 {
@@ -76,12 +74,9 @@ public class Recorder extends WorldFilmController
             return;
         }
 
-        Vector4f vector = Vectors.TEMP_4F;
-        Matrix4f matrix = Matrices.TEMP_4F;
-        float x = (float) (position.point.x - camera.getCameraPos().x);
-        float y = (float) (position.point.y - camera.getCameraPos().y);
-        float z = (float) (position.point.z - camera.getCameraPos().z);
-
+        float x = (float) (position.point.x - camera.getPos().x);
+        float y = (float) (position.point.y - camera.getPos().y);
+        float z = (float) (position.point.z - camera.getPos().z);
         float fov = MathUtils.toRad(position.angle.fov);
         float aspect = BBSRendering.getVideoWidth() / (float) BBSRendering.getVideoHeight();
         float distance = 5.5F;
@@ -144,7 +139,7 @@ public class Recorder extends WorldFilmController
 
         BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
 
-        /* shader binding handled by RenderLayer in 1.21.11 */
+        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
 
         fillPreviewSegment(builder, stack, x, y, z, x + topRight.x, y + topRight.y, z + topRight.z, thickness, r, g, b, a);
         fillPreviewSegment(builder, stack, x, y, z, x + topLeft.x, y + topLeft.y, z + topLeft.z, thickness, r, g, b, a);
@@ -161,7 +156,8 @@ public class Recorder extends WorldFilmController
             fillPreviewSegment(builder, stack, x, y, z, x + forward.x, y + forward.y, z + forward.z, thickness * 1.35F, 0F, 0.5F, 1F, 1F);
         }
 
-        RenderLayers.debugFilledBox().draw(builder.end());
+        BufferRenderer.drawWithGlobalProgram(builder.end());
+        RenderSystem.enableDepthTest();
     }
 
     public static boolean sampleCameraPosition(Clips clips, int tick, float transition, Position output)
@@ -496,7 +492,7 @@ public class Recorder extends WorldFilmController
     {
         super.render(context);
 
-        renderCameraPreview(this.position, MinecraftClient.getInstance().gameRenderer.getCamera(), context.matrices());
+        renderCameraPreview(this.position, context.camera(), context.matrixStack());
     }
 
     @Override

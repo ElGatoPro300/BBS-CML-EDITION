@@ -11,7 +11,6 @@ import mchorse.bbs_mod.ui.framework.elements.input.text.UITextbox;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlayPanel;
 import mchorse.bbs_mod.ui.utils.UI;
 
-import net.minecraft.command.argument.NbtCompoundArgumentType;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
@@ -78,13 +77,13 @@ public class UIItemStackOverlayPanel extends UIOverlayPanel
         {
             try
             {
-                NbtCompound nbtCompound = StringNbtReader.readCompound(v);
+                NbtCompound nbtCompound = new StringNbtReader(new StringReader(v)).parseCompound();
                 RegistryWrapper.WrapperLookup registries = BBSMod.getRegistryManager();
                 RegistryOps<NbtElement> ops = registries != null ? RegistryOps.of(NbtOps.INSTANCE, registries) : null;
 
                 ItemStack itemStack = registries != null
                     ? ItemStack.CODEC.parse(ops, nbtCompound).result().orElse(ItemStack.EMPTY)
-                    : ItemStack.CODEC.parse(NbtOps.INSTANCE, nbtCompound).result().orElse(ItemStack.EMPTY);
+                    : ItemStack.fromNbtOrEmpty(null, nbtCompound);
 
                 this.pickItemStack(itemStack);
                 this.itemList.list.setCurrentScroll(Registries.ITEM.getId(this.stack.getItem()).toString());
@@ -121,11 +120,11 @@ public class UIItemStackOverlayPanel extends UIOverlayPanel
 
         if (registries != null)
         {
-            nbtString = ItemStack.CODEC.encodeStart(ops, this.stack).result().map(NbtElement::toString).orElse("{}");
+            nbtString = ItemStack.CODEC.encodeStart(ops, this.stack).result().map(NbtElement::asString).orElse("{}");
         }
         else
         {
-            nbtString = ItemStack.CODEC.encodeStart(NbtOps.INSTANCE, this.stack).result().map(NbtElement::toString).orElse("{}");
+            nbtString = ItemStack.CODEC.encodeStart(NbtOps.INSTANCE, this.stack).result().map(NbtElement::asString).orElse("{}");
         }
 
         this.nbt.setText(nbtString);
