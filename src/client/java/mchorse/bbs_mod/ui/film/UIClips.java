@@ -879,11 +879,6 @@ public class UIClips extends UIElement
 
     public void addSelected(Clip clip)
     {
-        if (clip == null || this.clips == null)
-        {
-            return;
-        }
-
         int index = this.clips.getIndex(clip);
 
         if (index >= 0)

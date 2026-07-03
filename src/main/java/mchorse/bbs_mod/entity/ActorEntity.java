@@ -26,8 +26,6 @@ import net.minecraft.registry.RegistryOps;
 import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
-import net.minecraft.storage.ReadView;
-import net.minecraft.storage.WriteView;
 import net.minecraft.util.Arm;
 import net.minecraft.util.math.Box;
 import net.minecraft.world.World;
@@ -115,7 +113,7 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
         this.runtimeInventoryInitialized = true;
     }
 
-    public MCEntity getFormEntity()
+    public MCEntity getEntity()
     {
         return this.entity;
     }
@@ -139,7 +137,7 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
 
         this.form = form;
 
-        if (!this.getEntityWorld().isClient())
+        if (!this.getWorld().isClient())
         {
             if (lastForm != null) lastForm.onDemorph(this);
             if (form != null) form.onMorph(this);
@@ -149,7 +147,7 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
     }
 
     @Override
-    public boolean isCollidable(Entity other)
+    public boolean isCollidable()
     {
         return this.form != null && this.form.hitbox.get();
     }
@@ -191,11 +189,13 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
         return distance < (d * 256D) * (d * 256D);
     }
 
+    @Override
     public Iterable<ItemStack> getHandItems()
     {
         return List.of(this.getEquippedStack(EquipmentSlot.MAINHAND), this.getEquippedStack(EquipmentSlot.OFFHAND));
     }
 
+    @Override
     public Iterable<ItemStack> getArmorItems()
     {
         return List.of(this.getEquippedStack(EquipmentSlot.FEET), this.getEquippedStack(EquipmentSlot.LEGS), this.getEquippedStack(EquipmentSlot.CHEST), this.getEquippedStack(EquipmentSlot.HEAD));
@@ -232,7 +232,7 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
             this.form.update(this.entity);
         }
 
-        if (this.getEntityWorld().isClient())
+        if (this.getWorld().isClient)
         {
             return;
         }
@@ -245,7 +245,7 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
 
         /* Pickup items */
         Box box = this.getBoundingBox().expand(1D, 0.5D, 1D);
-        List<Entity> list = this.getEntityWorld().getOtherEntities(this, box, (entity) -> true);
+        List<Entity> list = this.getWorld().getOtherEntities(this, box);
 
         for (Entity entity : list)
         {
@@ -260,7 +260,7 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
                     this.pickedUpEntityIds.add(entityId);
                     this.addToRuntimeInventory(itemStack.copy());
                     
-                    ((ServerWorld) this.getEntityWorld()).getChunkManager().sendToOtherNearbyPlayers(entity, new ItemPickupAnimationS2CPacket(entity.getId(), this.getId(), i));
+                    ((ServerWorld) this.getWorld()).getChunkManager().sendToOtherNearbyPlayers(entity, new ItemPickupAnimationS2CPacket(entity.getId(), this.getId(), i));
                     entity.discard();
                 }
             }
@@ -380,12 +380,12 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
 
 
 
-    @Override
+        @Override
     public void onDeath(DamageSource damageSource)
     {
         super.onDeath(damageSource);
         
-        if (!this.getEntityWorld().isClient() && !this.replayItemsDropped && this.replay != null && this.film != null && this.replay.dropItemsOnDeath.get())
+        if (!this.getWorld().isClient() && !this.replayItemsDropped && this.replay != null && this.film != null && this.replay.dropItemsOnDeath.get())
         {
             this.dropReplayItems();
             this.replayItemsDropped = true;
@@ -489,7 +489,7 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
         
         // Create item entity at actor's position
         ItemEntity itemEntity = new ItemEntity(
-            this.getEntityWorld(),
+            this.getWorld(),
             this.getX(),
             this.getY() + 0.5,
             this.getZ(),
@@ -514,7 +514,7 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
         itemEntity.setVelocity(velocityX, velocityY, velocityZ);
         itemEntity.setToDefaultPickupDelay();
         
-        this.getEntityWorld().spawnEntity(itemEntity);
+        this.getWorld().spawnEntity(itemEntity);
     }
 
 
@@ -538,34 +538,59 @@ public class ActorEntity extends LivingEntity implements IEntityFormProvider
     }
 
     @Override
-    protected void readCustomData(ReadView view)
+    public void readCustomDataFromNbt(NbtCompound nbt)
     {
-        super.readCustomData(view);
+        super.readCustomDataFromNbt(nbt);
 
-        this.despawn = view.getBoolean("despawn", this.despawn);
+        this.despawn = nbt.getBoolean("despawn");
 
-        for (EquipmentSlot slot : EquipmentSlot.values())
+        if (nbt.contains("Equipment", 10))
         {
-            ItemStack stack = view.read("Equipment_" + slot.getName(), ItemStack.CODEC).orElse(ItemStack.EMPTY);
+            NbtCompound equipmentNbt = nbt.getCompound("Equipment");
+            RegistryWrapper.WrapperLookup registries = this.getWorld() != null ? this.getWorld().getRegistryManager() : BBSMod.getRegistryManager();
 
-            this.equipment.put(slot, stack);
+            for (EquipmentSlot slot : EquipmentSlot.values())
+            {
+                if (equipmentNbt.contains(slot.getName(), 10))
+                {
+                    NbtCompound itemNbt = equipmentNbt.getCompound(slot.getName());
+                    ItemStack stack = registries != null
+                        ? ItemStack.CODEC.parse(RegistryOps.of(NbtOps.INSTANCE, registries), itemNbt).result().orElse(ItemStack.EMPTY)
+                        : ItemStack.fromNbtOrEmpty(null, itemNbt);
+
+                    this.equipment.put(slot, stack);
+                }
+            }
         }
     }
 
     @Override
-    protected void writeCustomData(WriteView view)
+    public void writeCustomDataToNbt(NbtCompound nbt)
     {
-        super.writeCustomData(view);
+        super.writeCustomDataToNbt(nbt);
 
-        view.putBoolean("despawn", this.despawn);
+        nbt.putBoolean("despawn", true);
+
+        NbtCompound equipmentNbt = new NbtCompound();
+        RegistryWrapper.WrapperLookup registries = this.getWorld() != null ? this.getWorld().getRegistryManager() : BBSMod.getRegistryManager();
 
         for (Map.Entry<EquipmentSlot, ItemStack> entry : this.equipment.entrySet())
         {
             if (!entry.getValue().isEmpty())
             {
-                view.put("Equipment_" + entry.getKey().getName(), ItemStack.CODEC, entry.getValue());
+                ItemStack stack = entry.getValue();
+                NbtElement itemNbt = registries != null
+                    ? ItemStack.CODEC.encodeStart(RegistryOps.of(NbtOps.INSTANCE, registries), stack).result().orElse(null)
+                    : ItemStack.CODEC.encodeStart(NbtOps.INSTANCE, stack).result().orElse(null);
+
+                if (itemNbt instanceof NbtCompound compound)
+                {
+                    equipmentNbt.put(entry.getKey().getName(), compound);
+                }
             }
         }
+
+        nbt.put("Equipment", equipmentNbt);
     }
 
     protected int getPermissionLevel()
