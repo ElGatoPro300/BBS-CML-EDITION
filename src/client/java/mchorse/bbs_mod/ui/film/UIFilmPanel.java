@@ -443,7 +443,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         });
 
         /* Editors */
-        this.cameraEditor = new UIClipsPanel(this, BBSMod.getFactoryCameraClips());
+        this.cameraEditor = new UIClipsPanel(this, BBSMod.getFactoryCameraClips(), true);
 
         this.cameraEditor.clips.context((menu) ->
         {
@@ -451,7 +451,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         });
 
         this.replayEditor = event.createReplayEditor(this);
-        this.actionEditor = new UIClipsPanel(this, BBSMod.getFactoryActionClips());
+        this.actionEditor = new UIClipsPanel(this, BBSMod.getFactoryActionClips(), false);
         this.anchoredReplaysPanel = new UIReplaysOverlayPanel(this, (replay) -> this.replayEditor.setReplay(replay, false, true));
         this.anchoredReplaysPanel.setDocked(true);
         this.anchoredReplaysPanel.setVisible(false);

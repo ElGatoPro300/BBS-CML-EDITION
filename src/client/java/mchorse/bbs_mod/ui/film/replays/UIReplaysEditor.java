@@ -44,6 +44,9 @@ import mchorse.bbs_mod.ui.film.replays.overlays.UIAnimationToPoseOverlayPanel;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIKeyframeSheetFilterOverlayPanel;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIRenameSheetOverlayPanel;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIReplaysOverlayPanel;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbar;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarRegistry;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarSettings;
 import mchorse.bbs_mod.ui.film.utils.keyframes.UIFilmKeyframes;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
@@ -132,6 +135,9 @@ public class UIReplaysEditor extends UIElement
 
     /* Keyframes */
     public UIKeyframeEditor keyframeEditor;
+
+    /* Toolbar (added by the timeline toolbar feature; purely additive) */
+    public TimelineToolbar toolbar;
 
     /* Clips */
     private UIFilmPanel filmPanel;
@@ -773,6 +779,11 @@ public class UIReplaysEditor extends UIElement
     {
         this.filmPanel = filmPanel;
         this.replays = new UIReplaysOverlayPanel(filmPanel, (replay) -> this.setReplay(replay, false, true));
+
+        this.toolbar = new TimelineToolbar();
+        this.toolbar.setSections(TimelineToolbarRegistry.forReplays(true));
+        this.toolbar.relative(this).x(0).y(1F, -TimelineToolbarSettings.TOOLBAR_HEIGHT).w(1F);
+        this.add(this.toolbar);
 
         this.markContainer();
     }
@@ -1505,7 +1516,7 @@ public class UIReplaysEditor extends UIElement
 
                 return keyframes;
             }).target(this.filmPanel.editArea);
-            this.keyframeEditor.full(this);
+            this.keyframeEditor.relative(this).x(0).y(0).w(1F).h(1F, -TimelineToolbarSettings.TOOLBAR_HEIGHT);
             this.keyframeEditor.setUndoId("replay_keyframe_editor");
 
             /* Reset */

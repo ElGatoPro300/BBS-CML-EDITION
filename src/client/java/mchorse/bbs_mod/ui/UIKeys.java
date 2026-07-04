@@ -1408,6 +1408,16 @@ public class UIKeys
     public static final IKey TEXTURE_PICK_BONE_TEXTURE = L10n.lang("bbs.ui.texture.pick.bone.texture");
     public static final IKey TEXTURE_URL_ERROR_FFMPEG = L10n.lang("bbs.ui.texture.url_error_ffmpeg");
     public static final IKey TEXTURE_URL_ERROR_HTTP = L10n.lang("bbs.ui.texture.url_error_http");
+    public static final IKey TIMELINE_TOOLBAR_ACTOR = L10n.lang("bbs.ui.timeline_toolbar.actor");
+    public static final IKey TIMELINE_TOOLBAR_ADD = L10n.lang("bbs.ui.timeline_toolbar.add");
+    public static final IKey TIMELINE_TOOLBAR_DISABLED_VIEWPORT_HIDDEN = L10n.lang("bbs.ui.timeline_toolbar.disabled.viewport_hidden");
+    public static final IKey TIMELINE_TOOLBAR_EDIT = L10n.lang("bbs.ui.timeline_toolbar.edit");
+    public static final IKey TIMELINE_TOOLBAR_HISTORY = L10n.lang("bbs.ui.timeline_toolbar.history");
+    public static final IKey TIMELINE_TOOLBAR_KEYFRAMES = L10n.lang("bbs.ui.timeline_toolbar.keyframes");
+    public static final IKey TIMELINE_TOOLBAR_SELECT = L10n.lang("bbs.ui.timeline_toolbar.select");
+    public static final IKey TIMELINE_TOOLBAR_TRACKS = L10n.lang("bbs.ui.timeline_toolbar.tracks");
+    public static final IKey TIMELINE_TOOLBAR_TRANSFORM = L10n.lang("bbs.ui.timeline_toolbar.transform");
+    public static final IKey TIMELINE_TOOLBAR_TRANSPORT = L10n.lang("bbs.ui.timeline_toolbar.transport");
     public static final IKey TRACKPAD_GLOBAL_AMPLIFIER = L10n.lang("bbs.ui.trackpad.global_amplifier");
     public static final IKey TRANSFORMS_CONTEXT_COPY = L10n.lang("bbs.ui.transforms.context.copy");
     public static final IKey TRANSFORMS_CONTEXT_PASTE = L10n.lang("bbs.ui.transforms.context.paste");

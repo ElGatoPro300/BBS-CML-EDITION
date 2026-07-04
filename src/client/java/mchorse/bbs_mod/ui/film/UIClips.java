@@ -112,6 +112,15 @@ public class UIClips extends UIElement
     private UIElement embedded;
     private boolean embeddedStackedLayout;
 
+    /**
+     * Optional listener notified whenever {@link #embedView(UIElement)} runs.
+     * Receives the new embedded element (may be {@code null}). Added for the
+     * timeline toolbar system so it can swap its section hierarchy when a
+     * keyframe editor is opened inside a clip timeline. Purely additive: when
+     * unset, this class behaves exactly as before.
+     */
+    private Consumer<UIElement> embedViewListener;
+
     private Vector3i addPreview;
     private int layers;
 
@@ -1014,6 +1023,16 @@ public class UIClips extends UIElement
         return this.embedded != null;
     }
 
+    public UIElement getEmbeddedView()
+    {
+        return this.embedded;
+    }
+
+    public void setEmbedViewListener(Consumer<UIElement> listener)
+    {
+        this.embedViewListener = listener;
+    }
+
     public void embedView(UIElement element)
     {
         this.embeddedClose.removeFromParent();
@@ -1044,6 +1063,11 @@ public class UIClips extends UIElement
 
             this.embedded.resize();
             this.embeddedClose.resize();
+        }
+
+        if (this.embedViewListener != null)
+        {
+            this.embedViewListener.accept(this.embedded);
         }
     }
 

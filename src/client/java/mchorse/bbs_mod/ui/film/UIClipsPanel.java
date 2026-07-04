@@ -9,8 +9,12 @@ import mchorse.bbs_mod.film.Film;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.settings.values.numeric.ValueInt;
 import mchorse.bbs_mod.ui.film.clips.UIClip;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbar;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarRegistry;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarSettings;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
+import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeEditor;
 import mchorse.bbs_mod.utils.DataPath;
 import mchorse.bbs_mod.utils.clips.Clip;
 import mchorse.bbs_mod.utils.clips.Clips;
@@ -24,6 +28,13 @@ public class UIClipsPanel extends UIElement implements IUIClipsDelegate
 {
     public UIClips clips;
     public UIFilmPanel filmPanel;
+    public TimelineToolbar toolbar;
+
+    /**
+     * Whether this clip panel drives the camera timeline (as opposed to the
+     * action timeline). Used by the toolbar to pick which hierarchy to display.
+     */
+    private final boolean isCameraTimeline;
 
     private UIClip panel;
 
@@ -34,12 +45,52 @@ public class UIClipsPanel extends UIElement implements IUIClipsDelegate
 
     private UIElement target;
 
-    public UIClipsPanel(UIFilmPanel panel, IFactory<Clip, ClipFactoryData> factory)
+    public UIClipsPanel(UIFilmPanel panel, IFactory<Clip, ClipFactoryData> factory, boolean isCameraTimeline)
     {
         this.filmPanel = panel;
+        this.isCameraTimeline = isCameraTimeline;
         this.clips = new UIClips(this, factory);
 
-        this.add(this.clips.full(this));
+        this.clips.relative(this).w(1F).h(1F, -TimelineToolbarSettings.TOOLBAR_HEIGHT);
+        this.add(this.clips);
+
+        this.toolbar = new TimelineToolbar();
+        this.toolbar.relative(this).x(0).y(1F, -TimelineToolbarSettings.TOOLBAR_HEIGHT).w(1F);
+        this.applyDefaultToolbarSections();
+        this.add(this.toolbar);
+
+        this.clips.setEmbedViewListener(this::onEmbedViewChanged);
+    }
+
+    /**
+     * Convenience constructor used by legacy call sites; defaults to the
+     * camera hierarchy when {@code isCameraTimeline} is unspecified.
+     */
+    public UIClipsPanel(UIFilmPanel panel, IFactory<Clip, ClipFactoryData> factory)
+    {
+        this(panel, factory, true);
+    }
+
+    private void applyDefaultToolbarSections()
+    {
+        this.toolbar.setSections(this.isCameraTimeline
+            ? TimelineToolbarRegistry.forClipsCamera()
+            : TimelineToolbarRegistry.forClipsAction());
+    }
+
+    private void onEmbedViewChanged(UIElement embed)
+    {
+        if (embed instanceof UIKeyframeEditor)
+        {
+            /* When a keyframe editor takes over the clip area, swap the toolbar
+             * to the keyframe hierarchy (without the "Actor" section, which is
+             * only relevant to the standalone replay editor). */
+            this.toolbar.setSections(TimelineToolbarRegistry.forReplays(false));
+        }
+        else
+        {
+            this.applyDefaultToolbarSections();
+        }
     }
 
     public UIClipsPanel target(UIElement target)

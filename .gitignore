@@ -51,3 +51,6 @@ open-source/
 #some
 
 translation_workspace/
+
+#cursor rules
+.cursor/rules/PROJECT-STRUCTURE.mdc
