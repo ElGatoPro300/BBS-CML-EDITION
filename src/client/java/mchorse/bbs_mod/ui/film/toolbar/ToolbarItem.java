@@ -166,6 +166,16 @@ public class ToolbarItem
         return !this.children.isEmpty();
     }
 
+    /**
+     * Submenu rows that also trigger a primary action on click (wired
+     * {@link #runnable} in Phase 2, or {@link #keyCombo} as the default
+     * shortcut shown on the parent row).
+     */
+    public boolean hasDefaultAction()
+    {
+        return this.runnable != null || this.keyCombo != null;
+    }
+
     public boolean isEnabled()
     {
         return this.enabled == null || this.enabled.getAsBoolean();

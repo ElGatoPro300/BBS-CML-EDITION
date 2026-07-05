@@ -74,6 +74,13 @@ public class ToolbarMenu extends UIElement
      */
     private ToolbarMenu openChild;
 
+    /**
+     * When {@code true} on the chain root, the entire popup chain is removed
+     * at the start of the next {@link #render(UIContext)} pass. Deferring
+     * avoids mutating the overlay child list during {@code mouseClicked}.
+     */
+    private boolean pendingCloseChain;
+
     /* Constructor */
 
     public ToolbarMenu(TimelineToolbar toolbar, ToolbarMenu parentMenu, List<ToolbarItem> items)
@@ -182,17 +189,42 @@ public class ToolbarMenu extends UIElement
 
     public void closeChain()
     {
-        this.closeChild();
+        this.getChainRoot().pendingCloseChain = true;
+    }
 
-        ToolbarMenu p = this.parentMenu;
+    private ToolbarMenu getChainRoot()
+    {
+        ToolbarMenu root = this;
 
-        while (p != null)
+        while (root.parentMenu != null)
         {
-            p.closeChild();
-            p = p.parentMenu;
+            root = root.parentMenu;
         }
 
-        this.removeFromParent();
+        return root;
+    }
+
+    private void processPendingCloseChain()
+    {
+        if (!this.pendingCloseChain)
+        {
+            return;
+        }
+
+        this.pendingCloseChain = false;
+
+        ToolbarMenu current = this;
+
+        while (current != null)
+        {
+            ToolbarMenu next = current.openChild;
+
+            current.openChild = null;
+            current.openChildIndex = -1;
+            current.removeFromParent();
+            current = next;
+        }
+
         this.toolbar.notifyChainClosed();
     }
 
@@ -347,6 +379,18 @@ public class ToolbarMenu extends UIElement
     @Override
     public void render(UIContext context)
     {
+        ToolbarMenu root = this.getChainRoot();
+
+        if (root.pendingCloseChain)
+        {
+            if (this == root)
+            {
+                root.processPendingCloseChain();
+            }
+
+            return;
+        }
+
         this.renderBackground(context);
         this.updateHover(context);
         this.renderItems(context);
@@ -686,6 +730,10 @@ public class ToolbarMenu extends UIElement
                 if (item.runnable != null)
                 {
                     item.runnable.run();
+                }
+
+                if (item.hasDefaultAction())
+                {
                     this.closeChain();
                 }
 
