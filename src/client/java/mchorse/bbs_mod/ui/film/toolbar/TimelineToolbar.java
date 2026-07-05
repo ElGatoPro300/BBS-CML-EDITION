@@ -47,7 +47,10 @@ public class TimelineToolbar extends UIElement
         super();
 
         this.h(TimelineToolbarSettings.TOOLBAR_HEIGHT);
-        this.eventPropagataion(EventPropagation.BLOCK_INSIDE);
+        /* Block mouse events inside the bar (clicks should not pass through to
+         * the timeline) but let keyboard events propagate so Escape can still
+         * close the editor when the cursor is over the toolbar. */
+        this.mouseEventPropagataion(EventPropagation.BLOCK_INSIDE);
     }
 
     /* API */
