@@ -334,6 +334,7 @@ public class ToolbarMenu extends UIElement
 
         super.render(context);
 
+        this.renderDisabledReasonTooltip(context);
         this.checkDismissByDistance(context);
     }
 
@@ -493,21 +494,42 @@ public class ToolbarMenu extends UIElement
                 enabled ? TimelineToolbarSettings.MENU_ARROW_FG
                     : TimelineToolbarSettings.MENU_ITEM_DISABLED_FG, false);
         }
+    }
 
-        if (!enabled && hover)
+    /**
+     * Draw the disabled-reason card after all rows so it is not covered by
+     * labels/icons of items rendered later in the same popup.
+     */
+    private void renderDisabledReasonTooltip(UIContext context)
+    {
+        if (!this.area.isInside(context))
         {
-            IKey reason = item.getDisabledReason();
-
-            if (reason != null)
-            {
-                String txt = reason.get();
-                int tx = context.mouseX + 8;
-                int ty = context.mouseY + 12;
-
-                context.batcher.textCard(txt, tx, ty,
-                    TimelineToolbarSettings.MENU_ITEM_DISABLED_REASON_FG, Colors.A75);
-            }
+            return;
         }
+
+        int hoveredIndex = this.getRowIndexAt(context.mouseY);
+
+        if (hoveredIndex < 0)
+        {
+            return;
+        }
+
+        ToolbarItem item = this.items.get(hoveredIndex);
+
+        if (item.separator || item.isEnabled())
+        {
+            return;
+        }
+
+        IKey reason = item.getDisabledReason();
+
+        if (reason == null)
+        {
+            return;
+        }
+
+        context.drawForegroundTextCard(reason.get(), context.mouseX + 8, context.mouseY + 12,
+            TimelineToolbarSettings.MENU_ITEM_DISABLED_REASON_FG, Colors.A75);
     }
 
     private void checkDismissByDistance(UIContext context)
