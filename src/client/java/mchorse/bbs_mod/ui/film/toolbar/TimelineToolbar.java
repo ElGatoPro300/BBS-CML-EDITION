@@ -145,10 +145,25 @@ public class TimelineToolbar extends UIElement
     {
         this.layoutSections();
         this.renderBar(context);
-        this.renderSections(context);
+
+        int hovered = this.getSectionIndexAt(context.mouseX, context.mouseY);
+
+        this.renderSections(context, hovered);
         this.updateHoverSwitch(context);
 
         super.render(context);
+
+        /* Queue after super.render(): UIElement.render() calls resetTooltip()
+         * when the mouse is inside this bar (BLOCK_INSIDE), which would wipe a
+         * card queued earlier in the same pass. */
+        if (hovered >= 0 && this.openMenu == null)
+        {
+            ToolbarSection section = this.sections.get(hovered);
+            String text = section.label.get();
+
+            context.drawForegroundTextCard(text, context.mouseX + 8, context.mouseY + 12,
+                Colors.WHITE, Colors.A75);
+        }
     }
 
     private void renderBar(UIContext context)
@@ -159,12 +174,8 @@ public class TimelineToolbar extends UIElement
             TimelineToolbarSettings.TOOLBAR_BORDER);
     }
 
-    private void renderSections(UIContext context)
+    private void renderSections(UIContext context, int hovered)
     {
-        int mx = context.mouseX;
-        int my = context.mouseY;
-        int hovered = this.getSectionIndexAt(mx, my);
-
         for (int i = 0; i < this.sections.size(); i++)
         {
             ToolbarSection section = this.sections.get(i);
@@ -173,19 +184,6 @@ public class TimelineToolbar extends UIElement
             boolean isHover = hovered == i;
 
             this.renderSection(context, section, a, isHover, isOpen);
-        }
-
-        /* Render the tooltip after the buttons so it isn't overdrawn. Only
-         * show when no menu chain is open (mimics menu bars where tooltips
-         * hide once a menu is being navigated). */
-        if (hovered >= 0 && this.openMenu == null)
-        {
-            ToolbarSection section = this.sections.get(hovered);
-            String text = section.label.get();
-            int tx = mx + 8;
-            int ty = my + 12;
-
-            context.batcher.textCard(text, tx, ty, Colors.WHITE, Colors.A75);
         }
     }
 

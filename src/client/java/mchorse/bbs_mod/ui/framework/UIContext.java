@@ -39,6 +39,16 @@ public class UIContext implements IViewportStack
     public IFocusedUIElement activeElement;
     public UIContextMenu contextMenu;
 
+    /**
+     * Optional text card deferred to {@link #postRender()} so it draws above the
+     * full UI tree (e.g. timeline toolbar section tooltips).
+     */
+    private String foregroundTextCard;
+    private int foregroundTextCardX;
+    private int foregroundTextCardY;
+    private int foregroundTextCardColor;
+    private int foregroundTextCardBackground;
+
     /* Mouse states */
     public int mouseX;
     public int mouseY;
@@ -132,6 +142,7 @@ public class UIContext implements IViewportStack
     {
         this.viewportStack.reset();
         this.resetTooltip();
+        this.foregroundTextCard = null;
     }
 
     public void resetTooltip()
@@ -142,6 +153,24 @@ public class UIContext implements IViewportStack
         {
             this.unfocus();
         }
+    }
+
+    /**
+     * Queue a {@link Batcher2D#textCard} to be drawn during {@link #postRender()},
+     * after the main UI tree. Coordinates must be in screen/menu space.
+     */
+    public void drawForegroundTextCard(String text, int screenX, int screenY, int color, int background)
+    {
+        if (text == null || text.isEmpty())
+        {
+            return;
+        }
+
+        this.foregroundTextCard = text;
+        this.foregroundTextCardX = screenX;
+        this.foregroundTextCardY = screenY;
+        this.foregroundTextCardColor = color;
+        this.foregroundTextCardBackground = background;
     }
 
     public void markUpdateScroll()
@@ -283,6 +312,19 @@ public class UIContext implements IViewportStack
 
         this.tooltip.render(this);
         this.notifications.render(this);
+        this.renderForegroundTextCard();
+    }
+
+    private void renderForegroundTextCard()
+    {
+        if (this.foregroundTextCard == null)
+        {
+            return;
+        }
+
+        this.batcher.textCard(this.foregroundTextCard, this.foregroundTextCardX, this.foregroundTextCardY,
+            this.foregroundTextCardColor, this.foregroundTextCardBackground);
+        this.foregroundTextCard = null;
     }
 
     public void requestCursor(int shape)
