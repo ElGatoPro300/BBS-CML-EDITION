@@ -808,6 +808,8 @@ public class UIKeys
     public static final IKey KEYFRAMES_CONTEXT_ADJUST_VALUES_LEFT = L10n.lang("bbs.ui.keyframes.context.adjust_values_left");
     public static final IKey KEYFRAMES_CONTEXT_ADJUST_VALUES_RIGHT = L10n.lang("bbs.ui.keyframes.context.adjust_values_right");
     public static final IKey KEYFRAMES_CONTEXT_COPY = L10n.lang("bbs.ui.keyframes.context.copy");
+    public static final IKey KEYFRAMES_CONTEXT_CUT = L10n.lang("bbs.ui.keyframes.context.cut");
+    public static final IKey KEYFRAMES_CONTEXT_DUPLICATE_AT_CURSOR = L10n.lang("bbs.ui.keyframes.context.duplicate_at_cursor");
     public static final IKey KEYFRAMES_CONTEXT_EDIT_TRACK = L10n.lang("bbs.ui.keyframes.context.edit_track");
     public static final IKey KEYFRAMES_CONTEXT_EXIT_TRACK = L10n.lang("bbs.ui.keyframes.context.exit_track");
     public static final IKey KEYFRAMES_CONTEXT_INTERPOLATION = L10n.lang("bbs.ui.keyframes.context.interpolation");
@@ -815,8 +817,11 @@ public class UIKeys
     public static final IKey KEYFRAMES_CONTEXT_INTERPOLATION_BEZIER = L10n.lang("bbs.ui.keyframes.context.interpolation.bezier");
     public static final IKey KEYFRAMES_CONTEXT_INTERPOLATION_HERMITE = L10n.lang("bbs.ui.keyframes.context.interpolation.hermite");
     public static final IKey KEYFRAMES_CONTEXT_INTERPOLATION_STEP = L10n.lang("bbs.ui.keyframes.context.interpolation.step");
+    public static final IKey KEYFRAMES_CONTEXT_INSERT_AT_CURSOR = L10n.lang("bbs.ui.keyframes.context.insert_at_cursor");
     public static final IKey KEYFRAMES_CONTEXT_MAXIMIZE = L10n.lang("bbs.ui.keyframes.context.maximize");
     public static final IKey KEYFRAMES_CONTEXT_PASTE = L10n.lang("bbs.ui.keyframes.context.paste");
+    public static final IKey KEYFRAMES_CONTEXT_PASTE_AT_CURSOR = L10n.lang("bbs.ui.keyframes.context.paste_at_cursor");
+    public static final IKey KEYFRAMES_CONTEXT_PASTE_AT_TIMELINE = L10n.lang("bbs.ui.keyframes.context.paste_at_timeline");
     public static final IKey KEYFRAMES_CONTEXT_REMOVE = L10n.lang("bbs.ui.keyframes.context.remove");
     public static final IKey KEYFRAMES_CONTEXT_ROUND = L10n.lang("bbs.ui.keyframes.context.round");
     public static final IKey KEYFRAMES_CONTEXT_SELECT_ALL = L10n.lang("bbs.ui.keyframes.context.select_all");
@@ -825,6 +830,7 @@ public class UIKeys
     public static final IKey KEYFRAMES_FORCED_DURATION = L10n.lang("bbs.ui.keyframes.forced_duration");
     public static final IKey KEYFRAMES_KEYS_CATEGORY = L10n.lang("bbs.ui.keyframes.keys.category");
     public static final IKey KEYFRAMES_KEYS_SCALE_TIME = L10n.lang("bbs.ui.keyframes.keys.scale_time");
+    public static final IKey KEYFRAMES_KEYS_SELECT_COLUMN = L10n.lang("bbs.ui.keyframes.keys.select_column");
     public static final IKey KEYFRAMES_KEYS_SELECT_LEFT = L10n.lang("bbs.ui.keyframes.keys.select_left");
     public static final IKey KEYFRAMES_KEYS_SELECT_NEXT = L10n.lang("bbs.ui.keyframes.keys.select_next");
     public static final IKey KEYFRAMES_KEYS_SELECT_PREV = L10n.lang("bbs.ui.keyframes.keys.select_prev");

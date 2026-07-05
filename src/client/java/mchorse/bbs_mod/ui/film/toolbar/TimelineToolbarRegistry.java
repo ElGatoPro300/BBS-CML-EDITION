@@ -244,8 +244,14 @@ public final class TimelineToolbarRegistry
     {
         ToolbarSection s = new ToolbarSection(UIKeys.TIMELINE_TOOLBAR_ADD, Icons.ADD);
 
-        s.add(ToolbarItem.action(UIKeys.KEYFRAMES_CONTEXT_INTERPOLATION)
-            .icon(Icons.CURVES));
+        s.add(ToolbarItem.action(UIKeys.KEYFRAMES_CONTEXT_INSERT_AT_CURSOR)
+            .icon(Icons.ADD));
+        s.add(ToolbarItem.action(UIKeys.KEYFRAMES_CONTEXT_DUPLICATE_AT_CURSOR)
+            .icon(Icons.COPY));
+        s.add(ToolbarItem.separator());
+        s.add(ToolbarItem.action(UIKeys.GENERAL_PRESETS)
+            .icon(Icons.MORE)
+            .shortcut(Keys.PRESETS));
 
         return s;
     }
@@ -257,15 +263,21 @@ public final class TimelineToolbarRegistry
         s.add(ToolbarItem.action(UIKeys.KEYFRAMES_CONTEXT_COPY)
             .icon(Icons.COPY)
             .shortcut(Keys.COPY));
-        s.add(ToolbarItem.action(UIKeys.KEYFRAMES_CONTEXT_PASTE)
-            .icon(Icons.PASTE)
-            .shortcut(Keys.PASTE));
+        s.add(ToolbarItem.action(UIKeys.KEYFRAMES_CONTEXT_CUT)
+            .icon(Icons.CUT)
+            .shortcut(Keys.CUT));
+        s.add(ToolbarItem.submenu(UIKeys.KEYFRAMES_CONTEXT_PASTE,
+            ToolbarItem.action(UIKeys.KEYFRAMES_CONTEXT_PASTE_AT_CURSOR)
+                .icon(Icons.PASTE),
+            ToolbarItem.action(UIKeys.KEYFRAMES_CONTEXT_PASTE_AT_TIMELINE)
+                .icon(Icons.PASTE)
+        ).icon(Icons.PASTE).shortcut(Keys.PASTE));
         s.add(ToolbarItem.separator());
         s.add(ToolbarItem.action(UIKeys.KEYFRAMES_CONTEXT_MAXIMIZE)
             .icon(Icons.MAXIMIZE)
             .shortcut(Keys.KEYFRAMES_MAXIMIZE));
-        s.add(ToolbarItem.action(UIKeys.KEYFRAMES_CONTEXT_ROUND));
-        s.add(ToolbarItem.action(UIKeys.KEYFRAMES_CONTEXT_SIMPLIFY));
+        s.add(ToolbarItem.action(UIKeys.KEYFRAMES_CONTEXT_ROUND)
+            .icon(Icons.OUTLINE_SPHERE));
         s.add(ToolbarItem.separator());
         s.add(ToolbarItem.action(UIKeys.KEYFRAMES_CONTEXT_REMOVE)
             .icon(Icons.TRASH)
@@ -291,6 +303,9 @@ public final class TimelineToolbarRegistry
             .shortcut(Keys.KEYFRAMES_SELECT_PREV));
         s.add(ToolbarItem.action(UIKeys.KEYFRAMES_KEYS_SELECT_NEXT)
             .shortcut(Keys.KEYFRAMES_SELECT_NEXT));
+        s.add(ToolbarItem.separator());
+        s.add(ToolbarItem.action(UIKeys.KEYFRAMES_KEYS_SELECT_COLUMN)
+            .icon(Icons.FULLSCREEN));
 
         return s;
     }
@@ -302,6 +317,16 @@ public final class TimelineToolbarRegistry
         s.add(ToolbarItem.action(UIKeys.KEYFRAMES_KEYS_TOGGLE_INTERP)
             .icon(Icons.CURVES)
             .shortcut(Keys.KEYFRAMES_INTERP));
+        s.add(ToolbarItem.submenu(UIKeys.KEYFRAMES_CONTEXT_INTERPOLATION,
+            ToolbarItem.action(UIKeys.KEYFRAMES_CONTEXT_INTERPOLATION_LINEAR)
+                .icon(Icons.INTERP_LINEAR),
+            ToolbarItem.action(UIKeys.KEYFRAMES_CONTEXT_INTERPOLATION_BEZIER)
+                .icon(Icons.ARC),
+            ToolbarItem.action(UIKeys.KEYFRAMES_CONTEXT_INTERPOLATION_HERMITE)
+                .icon(Icons.CURVES),
+            ToolbarItem.action(UIKeys.KEYFRAMES_CONTEXT_INTERPOLATION_STEP)
+                .icon(Icons.INTERP_STEP)
+        ).icon(Icons.CURVES));
         s.add(ToolbarItem.action(UIKeys.KEYFRAMES_KEYS_SCALE_TIME)
             .icon(Icons.SCALE)
             .shortcut(Keys.KEYFRAMES_SCALE_TIME));
@@ -310,8 +335,12 @@ public final class TimelineToolbarRegistry
             .shortcut(Keys.KEYFRAMES_STACK_KEYFRAMES));
         s.add(ToolbarItem.action(UIKeys.KEYFRAMES_CONTEXT_SPREAD)
             .shortcut(Keys.KEYFRAMES_SPREAD));
-        s.add(ToolbarItem.action(UIKeys.KEYFRAMES_CONTEXT_ADJUST_VALUES)
-            .shortcut(Keys.KEYFRAMES_ADJUST_VALUES));
+        s.add(ToolbarItem.submenu(UIKeys.KEYFRAMES_CONTEXT_ADJUST_VALUES,
+            ToolbarItem.action(UIKeys.KEYFRAMES_CONTEXT_ADJUST_VALUES_LEFT)
+                .icon(Icons.ARROW_LEFT),
+            ToolbarItem.action(UIKeys.KEYFRAMES_CONTEXT_ADJUST_VALUES_RIGHT)
+                .icon(Icons.ARROW_RIGHT)
+        ).icon(Icons.SEARCH).shortcut(Keys.KEYFRAMES_ADJUST_VALUES));
 
         return s;
     }
@@ -320,6 +349,16 @@ public final class TimelineToolbarRegistry
     {
         ToolbarSection s = new ToolbarSection(UIKeys.TIMELINE_TOOLBAR_TRACKS, Icons.LAYOUT);
 
+        s.add(ToolbarItem.action(UIKeys.FILM_REPLAY_RENAME_SHEET)
+            .icon(Icons.FONT));
+        s.add(ToolbarItem.action(UIKeys.FILM_REPLAY_FILTER_SHEETS)
+            .icon(Icons.FILTER));
+        s.add(ToolbarItem.separator());
+        s.add(ToolbarItem.action(UIKeys.FILM_REPLAY_CONTEXT_ANIMATION_TO_KEYFRAMES)
+            .icon(Icons.POSE));
+        s.add(ToolbarItem.action(UIKeys.FILM_REPLAY_CONTEXT_POSE_TO_LIMBS)
+            .icon(Icons.CONVERT));
+        s.add(ToolbarItem.separator());
         s.add(ToolbarItem.action(UIKeys.KEYFRAMES_CONTEXT_EDIT_TRACK)
             .icon(Icons.EDIT));
         s.add(ToolbarItem.action(UIKeys.KEYFRAMES_CONTEXT_EXIT_TRACK)
@@ -332,10 +371,12 @@ public final class TimelineToolbarRegistry
     {
         ToolbarSection s = new ToolbarSection(UIKeys.TIMELINE_TOOLBAR_ACTOR, Icons.PLAYER);
 
-        /* Placeholder: only actor-related quick actions can be wired in Phase
-         * 2. The section is present so the layout is representative. */
-        s.add(ToolbarItem.action(UIKeys.TIMELINE_TOOLBAR_ACTOR)
-            .icon(Icons.PLAYER)
+        s.add(ToolbarItem.action(UIKeys.FILM_REPLAY_CONTEXT_ADD)
+            .icon(Icons.ADD)
+            .enabledIf(() -> false)
+            .disabledReason(() -> UIKeys.TIMELINE_TOOLBAR_DISABLED_VIEWPORT_HIDDEN));
+        s.add(ToolbarItem.action(UIKeys.FILM_REPLAY_CONTEXT_MOVE_HERE)
+            .icon(Icons.POINTER)
             .enabledIf(() -> false)
             .disabledReason(() -> UIKeys.TIMELINE_TOOLBAR_DISABLED_VIEWPORT_HIDDEN));
 
