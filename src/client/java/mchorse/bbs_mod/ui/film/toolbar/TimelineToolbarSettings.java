@@ -98,6 +98,13 @@ public class TimelineToolbarSettings
      */
     public static final int MENU_GAP = 1;
 
+    /**
+     * Extra hit-test padding for the invisible corridor between a submenu row
+     * and its child popup so moving the cursor across {@link #MENU_GAP} does
+     * not dismiss the submenu prematurely.
+     */
+    public static final int SUBMENU_BRIDGE_PADDING = 6;
+
     /* Interaction */
 
     /**

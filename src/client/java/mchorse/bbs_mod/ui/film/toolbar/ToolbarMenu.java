@@ -225,7 +225,10 @@ public class ToolbarMenu extends UIElement
             current = next;
         }
 
-        this.toolbar.notifyChainClosed();
+        if (this.toolbar.isActiveRootMenu(this))
+        {
+            this.toolbar.notifyChainClosed();
+        }
     }
 
     public void closeChild()
@@ -415,7 +418,9 @@ public class ToolbarMenu extends UIElement
     {
         if (!this.area.isInside(context))
         {
-            if (this.openChild != null && this.openChild.isChainAt(context.mouseX, context.mouseY))
+            if (this.openChild != null
+                && (this.openChild.isChainAt(context.mouseX, context.mouseY)
+                    || this.isPointerInOpenChildBridge(context.mouseX, context.mouseY)))
             {
                 return;
             }
@@ -475,6 +480,52 @@ public class ToolbarMenu extends UIElement
 
         this.openChildIndex = index;
         this.openChild = child;
+    }
+
+    /**
+     * Hit-test corridor between the anchored submenu row and its child popup,
+     * including {@link TimelineToolbarSettings#MENU_GAP} and padding.
+     */
+    private boolean isPointerInOpenChildBridge(int x, int y)
+    {
+        if (this.openChild == null || this.openChildIndex < 0)
+        {
+            return false;
+        }
+
+        Area row = this.getRowArea(this.openChildIndex);
+
+        if (row == null)
+        {
+            return false;
+        }
+
+        Area child = this.openChild.area;
+        int pad = TimelineToolbarSettings.SUBMENU_BRIDGE_PADDING;
+        int bridgeX1;
+        int bridgeX2;
+
+        if (this.openChild.isOpenedToLeft())
+        {
+            bridgeX1 = child.ex() - pad;
+            bridgeX2 = row.x + pad;
+        }
+        else
+        {
+            bridgeX1 = row.ex() - pad;
+            bridgeX2 = child.x + pad;
+        }
+
+        int bridgeY1 = Math.min(row.y, child.y) - pad;
+        int bridgeY2 = Math.max(row.ey(), child.ey()) + pad;
+
+        if (bridgeX2 <= bridgeX1)
+        {
+            bridgeX1 = Math.min(row.x, child.x) - pad;
+            bridgeX2 = Math.max(row.ex(), child.ex()) + pad;
+        }
+
+        return x >= bridgeX1 && x < bridgeX2 && y >= bridgeY1 && y < bridgeY2;
     }
 
     private void renderItems(UIContext context)

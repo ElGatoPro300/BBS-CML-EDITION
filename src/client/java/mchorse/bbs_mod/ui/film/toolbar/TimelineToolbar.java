@@ -8,7 +8,6 @@ import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.utils.colors.Colors;
 
 import java.util.ArrayList;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -114,6 +113,16 @@ public class TimelineToolbar extends UIElement
     {
         this.openMenu = null;
         this.openIndex = -1;
+    }
+
+    /**
+     * Whether {@code menu} is still the root popup tracked by this toolbar.
+     * Used when deferred closes run so replacing a menu via hover-switch does
+     * not clear the newly opened section.
+     */
+    public boolean isActiveRootMenu(ToolbarMenu menu)
+    {
+        return this.openMenu == menu;
     }
 
     public void closeOpenMenu()
