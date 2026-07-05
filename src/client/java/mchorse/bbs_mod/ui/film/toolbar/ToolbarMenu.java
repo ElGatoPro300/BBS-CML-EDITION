@@ -377,6 +377,51 @@ public class ToolbarMenu extends UIElement
         return null;
     }
 
+    /**
+     * When a child submenu popup overlaps its parent's anchor row (e.g. opened
+     * to the left), clicks on that row must stay with the parent semantics:
+     * pure containers are a no-op and must not close the chain.
+     */
+    private boolean isClickOnParentPureSubmenuAnchor(UIContext context)
+    {
+        if (this.parentMenu == null || this.parentMenu.openChildIndex < 0)
+        {
+            return false;
+        }
+
+        Area row = this.parentMenu.getRowArea(this.parentMenu.openChildIndex);
+
+        if (row == null || !row.isInside(context))
+        {
+            return false;
+        }
+
+        ToolbarItem item = this.parentMenu.items.get(this.parentMenu.openChildIndex);
+
+        return item.isPureSubmenuContainer();
+    }
+
+    /**
+     * Whether {@code (x, y)} lies inside any popup of this toolbar menu chain
+     * (root section menu plus open nested submenus).
+     */
+    private boolean isClickWithinMenuChain(int x, int y)
+    {
+        ToolbarMenu current = this.getChainRoot();
+
+        while (current != null)
+        {
+            if (current.area.isInside(x, y))
+            {
+                return true;
+            }
+
+            current = current.openChild;
+        }
+
+        return false;
+    }
+
     /* Rendering */
 
     @Override
@@ -752,6 +797,13 @@ public class ToolbarMenu extends UIElement
                 return false;
             }
 
+            /* A nested submenu must not treat clicks on the parent popup (e.g.
+             * the anchored Interpolation row) as an outside dismiss. */
+            if (this.isClickWithinMenuChain(context.mouseX, context.mouseY))
+            {
+                return false;
+            }
+
             /* Click outside chain: close everything and let it propagate to
              * whatever is below (so the existing right-click context menu can
              * still open normally). */
@@ -767,6 +819,11 @@ public class ToolbarMenu extends UIElement
             return true;
         }
 
+        if (this.isClickOnParentPureSubmenuAnchor(context))
+        {
+            return true;
+        }
+
         ToolbarItem item = this.items.get(index);
 
         if (item.separator || !item.isEnabled())
@@ -778,13 +835,14 @@ public class ToolbarMenu extends UIElement
         {
             if (item.hasChildren())
             {
-                if (item.runnable != null)
-                {
-                    item.runnable.run();
-                }
-
+                /* Pure containers (e.g. Interpolation): hover-only, click is a no-op. */
                 if (item.hasDefaultAction())
                 {
+                    if (item.runnable != null)
+                    {
+                        item.runnable.run();
+                    }
+
                     this.closeChain();
                 }
 
@@ -797,8 +855,7 @@ public class ToolbarMenu extends UIElement
             }
             else
             {
-                /* Phase 1: no handler wired yet; close the chain so the user
-                 * gets feedback that the click was received. */
+                /* Leaf action (e.g. Linear, Bezier): close even when not wired yet. */
                 this.closeChain();
             }
         }

@@ -176,6 +176,15 @@ public class ToolbarItem
         return this.runnable != null || this.keyCombo != null;
     }
 
+    /**
+     * Submenu row that only groups child actions (hover opens the submenu)
+     * without a default shortcut/action on the parent row itself.
+     */
+    public boolean isPureSubmenuContainer()
+    {
+        return this.hasChildren() && !this.hasDefaultAction();
+    }
+
     public boolean isEnabled()
     {
         return this.enabled == null || this.enabled.getAsBoolean();
