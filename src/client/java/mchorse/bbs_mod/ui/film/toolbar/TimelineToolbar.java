@@ -8,6 +8,7 @@ import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.utils.colors.Colors;
 
 import java.util.ArrayList;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -246,6 +247,10 @@ public class TimelineToolbar extends UIElement
         {
             this.openMenu.closeChain();
         }
+        else
+        {
+            this.purgeOrphanMenus(context);
+        }
 
         ToolbarSection section = this.sections.get(index);
 
@@ -260,6 +265,23 @@ public class TimelineToolbar extends UIElement
 
         this.openIndex = index;
         this.openMenu = menu;
+    }
+
+    /**
+     * Removes stray popup elements that lost sync with {@link #openMenu}
+     * (e.g. after a pinned submenu click before hover-only behaviour).
+     */
+    private void purgeOrphanMenus(UIContext context)
+    {
+        for (ToolbarMenu menu : context.menu.overlay.getChildren(ToolbarMenu.class, new ArrayList<>(), true))
+        {
+            if (menu.toolbar == this)
+            {
+                menu.removeFromParent();
+            }
+        }
+
+        this.notifyChainClosed();
     }
 
     /* Input */

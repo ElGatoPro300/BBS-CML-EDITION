@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.ui.framework;
 
 import mchorse.bbs_mod.ui.Keys;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarPointerBlock;
 import mchorse.bbs_mod.ui.framework.elements.IUIElement;
 import mchorse.bbs_mod.ui.framework.elements.IViewport;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
@@ -235,6 +236,7 @@ public abstract class UIBaseMenu
         if (this.root.isVisible())
         {
             this.context.reset();
+            TimelineToolbarPointerBlock.prepare(this.context);
             this.context.pushViewport(this.viewport);
 
             this.root.render(this.context);

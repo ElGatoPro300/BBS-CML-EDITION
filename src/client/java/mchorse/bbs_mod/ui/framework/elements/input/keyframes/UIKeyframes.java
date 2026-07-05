@@ -10,6 +10,7 @@ import mchorse.bbs_mod.math.Operation;
 import mchorse.bbs_mod.settings.values.IValueListener;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarPointerBlock;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.graphs.IUIKeyframeGraph;
@@ -1102,7 +1103,7 @@ public class UIKeyframes extends UIElement
             return true;
         }
 
-        if (this.area.isInside(context))
+        if (this.area.isInside(context) && !TimelineToolbarPointerBlock.blocksPointer(context))
         {
             this.lastX = this.originalX = context.mouseX;
             this.lastY = this.originalY = context.mouseY;
@@ -1246,7 +1247,8 @@ public class UIKeyframes extends UIElement
             return true;
         }
 
-        if (this.area.isInside(context) && !this.navigating && !this.scaling)
+        if (this.area.isInside(context) && !this.navigating && !this.scaling
+            && !TimelineToolbarPointerBlock.blocksPointer(context))
         {
             this.currentGraph.mouseScrolled(context);
 

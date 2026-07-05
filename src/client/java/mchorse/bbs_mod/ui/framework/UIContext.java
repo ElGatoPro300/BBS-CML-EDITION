@@ -23,6 +23,7 @@ import mchorse.bbs_mod.utils.colors.Colors;
 
 import org.lwjgl.glfw.GLFW;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -48,6 +49,12 @@ public class UIContext implements IViewportStack
     private int foregroundTextCardY;
     private int foregroundTextCardColor;
     private int foregroundTextCardBackground;
+
+    /**
+     * Screen-space rectangles of open {@link mchorse.bbs_mod.ui.film.toolbar.ToolbarMenu}
+     * popups, populated each frame before the main UI tree renders.
+     */
+    private final List<Area> timelineToolbarMenuAreas = new ArrayList<>();
 
     /* Mouse states */
     public int mouseX;
@@ -143,6 +150,7 @@ public class UIContext implements IViewportStack
         this.viewportStack.reset();
         this.resetTooltip();
         this.foregroundTextCard = null;
+        this.timelineToolbarMenuAreas.clear();
     }
 
     public void resetTooltip()
@@ -171,6 +179,24 @@ public class UIContext implements IViewportStack
         this.foregroundTextCardY = screenY;
         this.foregroundTextCardColor = color;
         this.foregroundTextCardBackground = background;
+    }
+
+    public void registerTimelineToolbarMenuArea(Area area)
+    {
+        this.timelineToolbarMenuAreas.add(area);
+    }
+
+    public boolean isPointerOverTimelineToolbarMenu(int x, int y)
+    {
+        for (Area area : this.timelineToolbarMenuAreas)
+        {
+            if (area.isInside(x, y))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public void markUpdateScroll()

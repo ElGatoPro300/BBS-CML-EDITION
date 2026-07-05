@@ -19,6 +19,7 @@ import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.clips.renderer.IUIClipRenderer;
 import mchorse.bbs_mod.ui.film.clips.renderer.UIClipRenderers;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarPointerBlock;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
@@ -1105,7 +1106,7 @@ public class UIClips extends UIElement
             return true;
         }
 
-        if (this.area.isInside(context) && !this.hasEmbeddedView())
+        if (this.area.isInside(context) && !this.hasEmbeddedView() && !TimelineToolbarPointerBlock.blocksPointer(context))
         {
             int mouseX = context.mouseX;
             int mouseY = context.mouseY;
@@ -1279,7 +1280,8 @@ public class UIClips extends UIElement
     @Override
     public boolean subMouseScrolled(UIContext context)
     {
-        if (this.area.isInside(context) && !this.scrolling && !this.hasEmbeddedView())
+        if (this.area.isInside(context) && !this.scrolling && !this.hasEmbeddedView()
+            && !TimelineToolbarPointerBlock.blocksPointer(context))
         {
             if (context.mouseWheelHorizontal != 0D)
             {
@@ -1357,9 +1359,13 @@ public class UIClips extends UIElement
 
         if (this.clips != null && !this.hasEmbeddedView())
         {
-            this.vertical.drag(context);
-            this.handleInput(context.mouseX, context.mouseY);
-            this.handleScrolling(context.mouseX, context.mouseY);
+            if (!TimelineToolbarPointerBlock.blocksPointer(context))
+            {
+                this.vertical.drag(context);
+                this.handleInput(context.mouseX, context.mouseY);
+                this.handleScrolling(context.mouseX, context.mouseY);
+            }
+
             this.renderCameraWork(context);
         }
 
@@ -1709,7 +1715,9 @@ public class UIClips extends UIElement
 
             renderer.renderClip(context, this, clip, clipArea, selected, this.delegate.getClip() == clip);
 
-            int clipHandle = this.getClipHandle(clip, context, h);
+            int clipHandle = TimelineToolbarPointerBlock.blocksPointer(context)
+                ? -1
+                : this.getClipHandle(clip, context, h);
             int color = this.grabMode != 0 ? Colors.WHITE : Colors.A50;
 
             if (clipHandle == 1 || (selected && this.grabMode == 1))

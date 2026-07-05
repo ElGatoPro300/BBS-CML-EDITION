@@ -208,6 +208,25 @@ public class ToolbarMenu extends UIElement
         this.openChildIndex = -1;
     }
 
+    /**
+     * Registers this popup and any open child submenus on the context so
+     * timelines underneath can ignore pointer hover while menus are open.
+     */
+    public void collectChainAreas(UIContext context)
+    {
+        context.registerTimelineToolbarMenuArea(this.area);
+
+        if (this.openChild != null)
+        {
+            this.openChild.collectChainAreas(context);
+        }
+    }
+
+    public boolean isChainAt(int x, int y)
+    {
+        return this.chainContainsPoint(x, y);
+    }
+
     /* Layout */
 
     private void computeLayout(FontRenderer font)
@@ -352,6 +371,16 @@ public class ToolbarMenu extends UIElement
     {
         if (!this.area.isInside(context))
         {
+            if (this.openChild != null && this.openChild.isChainAt(context.mouseX, context.mouseY))
+            {
+                return;
+            }
+
+            if (this.openChildIndex != -1)
+            {
+                this.closeChild();
+            }
+
             return;
         }
 
@@ -359,6 +388,11 @@ public class ToolbarMenu extends UIElement
 
         if (hoveredIndex < 0)
         {
+            if (this.openChildIndex != -1)
+            {
+                this.closeChild();
+            }
+
             return;
         }
 
@@ -366,6 +400,11 @@ public class ToolbarMenu extends UIElement
 
         if (item.separator)
         {
+            if (this.openChildIndex != -1)
+            {
+                this.closeChild();
+            }
+
             return;
         }
 
@@ -378,7 +417,6 @@ public class ToolbarMenu extends UIElement
         }
         else if (this.openChildIndex != -1)
         {
-            /* Hovering a leaf row while a submenu was open: close the submenu. */
             this.closeChild();
         }
     }
@@ -413,9 +451,8 @@ public class ToolbarMenu extends UIElement
             {
                 boolean hover = this.area.x <= context.mouseX && context.mouseX < this.area.ex()
                     && context.mouseY >= y && context.mouseY < y + h;
-                boolean submenuAnchor = this.openChildIndex == i;
 
-                this.renderRow(context, font, item, y, h, hover, submenuAnchor);
+                this.renderRow(context, font, item, i, y, h, hover);
             }
 
             y += h;
@@ -431,8 +468,8 @@ public class ToolbarMenu extends UIElement
         context.batcher.box(x1, midY, x2, midY + 1, TimelineToolbarSettings.MENU_BORDER);
     }
 
-    private void renderRow(UIContext context, FontRenderer font, ToolbarItem item, int y, int h,
-        boolean hover, boolean submenuAnchor)
+    private void renderRow(UIContext context, FontRenderer font, ToolbarItem item, int index, int y, int h,
+        boolean hover)
     {
         boolean enabled = item.isEnabled();
         int labelColor = enabled ? TimelineToolbarSettings.MENU_ITEM_FG
@@ -445,7 +482,7 @@ public class ToolbarMenu extends UIElement
         int rowX1 = this.area.x;
         int rowX2 = this.area.ex();
 
-        if ((hover || submenuAnchor) && enabled)
+        if (hover && enabled)
         {
             context.batcher.box(rowX1, y, rowX2, y + h, TimelineToolbarSettings.MENU_ITEM_HOVER);
         }
@@ -484,7 +521,8 @@ public class ToolbarMenu extends UIElement
 
         if (item.hasChildren())
         {
-            String arrow = submenuAnchor && this.openChild != null && this.openChild.isOpenedToLeft()
+            boolean submenuOpen = this.openChildIndex == index && this.openChild != null;
+            String arrow = submenuOpen && this.openChild.isOpenedToLeft()
                 ? "<"
                 : ">";
             int arrowX = rowX1 + this.arrowColumn;
@@ -645,14 +683,13 @@ public class ToolbarMenu extends UIElement
         {
             if (item.hasChildren())
             {
-                if (this.openChildIndex == index)
+                if (item.runnable != null)
                 {
-                    this.closeChild();
+                    item.runnable.run();
+                    this.closeChain();
                 }
-                else
-                {
-                    this.openSubmenu(context, index, item);
-                }
+
+                return true;
             }
             else if (item.runnable != null)
             {

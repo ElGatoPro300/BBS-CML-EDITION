@@ -5,6 +5,7 @@ import mchorse.bbs_mod.camera.utils.TimeUtils;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.ui.UIKeys;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarPointerBlock;
 import mchorse.bbs_mod.ui.forms.editors.utils.UIStructureOverlayPanel;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeSheet;
@@ -633,7 +634,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
         }
 
         /* Render where the keyframe will be duplicated or added */
-        if (!area.isInside(context))
+        if (!area.isInside(context) || TimelineToolbarPointerBlock.blocksPointer(context))
         {
             return;
         }
@@ -798,7 +799,8 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
             UIKeyframeSheet sheet = this.sheets.get(i);
             List keyframes = sheet.channel.getKeyframes();
 
-            boolean hover = area.isInside(context) && context.mouseY >= y && context.mouseY < y + this.trackHeight;
+            boolean hover = !TimelineToolbarPointerBlock.blocksPointer(context)
+                && area.isInside(context) && context.mouseY >= y && context.mouseY < y + this.trackHeight;
             int my = y + (int) this.trackHeight / 2;
             int cc = Colors.setA(sheet.color, hover ? 0.8F : 0.35F);
             int startX = area.x + this.sidebarWidth;
