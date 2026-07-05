@@ -612,6 +612,13 @@ public class ToolbarMenu extends UIElement
     {
         if (!this.area.isInside(context))
         {
+            /* Let the toolbar handle section-button clicks (toggle / switch)
+             * instead of treating them as outside dismiss. */
+            if (this.toolbar.isToolbarSectionAt(context.mouseX, context.mouseY))
+            {
+                return false;
+            }
+
             /* Click outside chain: close everything and let it propagate to
              * whatever is below (so the existing right-click context menu can
              * still open normally). */

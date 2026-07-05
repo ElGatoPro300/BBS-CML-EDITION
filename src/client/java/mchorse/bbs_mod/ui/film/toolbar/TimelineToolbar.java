@@ -80,6 +80,35 @@ public class TimelineToolbar extends UIElement
         return this.openMenu != null;
     }
 
+    public int getOpenIndex()
+    {
+        return this.openIndex;
+    }
+
+    /**
+     * Returns the section index under the given screen coordinates, or
+     * {@code -1} if the point is not over a section button.
+     */
+    public int getSectionIndexAt(int mouseX, int mouseY)
+    {
+        this.layoutSections();
+
+        for (int i = 0; i < this.sectionAreas.size(); i++)
+        {
+            if (this.sectionAreas.get(i).isInside(mouseX, mouseY))
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    public boolean isToolbarSectionAt(int mouseX, int mouseY)
+    {
+        return this.getSectionIndexAt(mouseX, mouseY) >= 0;
+    }
+
     public void notifyChainClosed()
     {
         this.openMenu = null;
@@ -125,19 +154,6 @@ public class TimelineToolbar extends UIElement
         }
     }
 
-    private int getSectionIndexAt(int mouseX, int mouseY)
-    {
-        for (int i = 0; i < this.sectionAreas.size(); i++)
-        {
-            if (this.sectionAreas.get(i).isInside(mouseX, mouseY))
-            {
-                return i;
-            }
-        }
-
-        return -1;
-    }
-
     /* Rendering */
 
     @Override
@@ -156,7 +172,7 @@ public class TimelineToolbar extends UIElement
         /* Queue after super.render(): UIElement.render() calls resetTooltip()
          * when the mouse is inside this bar (BLOCK_INSIDE), which would wipe a
          * card queued earlier in the same pass. */
-        if (hovered >= 0 && this.openMenu == null)
+        if (hovered >= 0)
         {
             ToolbarSection section = this.sections.get(hovered);
             String text = section.label.get();
@@ -265,7 +281,7 @@ public class TimelineToolbar extends UIElement
 
         if (context.mouseButton == 0)
         {
-            if (this.openIndex == index)
+            if (this.openMenu != null && this.openIndex == index)
             {
                 this.closeOpenMenu();
             }
