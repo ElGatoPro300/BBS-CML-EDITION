@@ -1054,6 +1054,79 @@ public class UIClips extends UIElement
         this.toggleEnabled();
     }
 
+    public void toolbarCopy()
+    {
+        if (this.copyPasteController.copy())
+        {
+            UIUtils.playClick();
+        }
+    }
+
+    public void toolbarCut()
+    {
+        if (this.delegate.getClip() == null)
+        {
+            this.getContext().notifyError(UIKeys.GENERAL_CUT_EMPTY);
+
+            return;
+        }
+
+        if (this.copyPasteController.copy())
+        {
+            this.removeSelected();
+            UIUtils.playClick();
+            this.getContext().notifyInfo(UIKeys.GENERAL_CUT);
+        }
+    }
+
+    public void toolbarRemoveSelected()
+    {
+        this.removeSelected();
+    }
+
+    public void toolbarCutClipAtCursor()
+    {
+        this.cut();
+    }
+
+    public void toolbarShiftToCursor()
+    {
+        this.shiftToCursor();
+    }
+
+    public void toolbarShiftDurationToCursor()
+    {
+        this.shiftDurationToCursor();
+    }
+
+    public void toolbarFadeIn()
+    {
+        Clip clip = this.delegate.getClip();
+        int tick = Math.max(0, this.delegate.getCursor() - clip.tick.get());
+
+        clip.envelope.fadeIn.set((float) tick);
+        this.delegate.fillData();
+    }
+
+    public void toolbarFadeOut()
+    {
+        Clip clip = this.delegate.getClip();
+        int tick = Math.max(0, clip.tick.get() + clip.duration.get() - this.delegate.getCursor());
+
+        clip.envelope.fadeOut.set((float) tick);
+        this.delegate.fillData();
+    }
+
+    public void toolbarSelectBefore()
+    {
+        this.selectBefore();
+    }
+
+    public void toolbarSelectAfter()
+    {
+        this.selectAfter();
+    }
+
     public UIElement getEmbeddedView()
     {
         return this.embedded;

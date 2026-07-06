@@ -633,6 +633,153 @@ public class UIKeyframes extends UIElement
         return !this.scaling;
     }
 
+    public boolean hasSelectedKeyframes()
+    {
+        for (UIKeyframeSheet sheet : this.getGraph().getSheets())
+        {
+            if (!sheet.selection.getSelected().isEmpty())
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public boolean canSpreadSelectedKeyframes()
+    {
+        if (!this.isModifyingKeyframes())
+        {
+            return false;
+        }
+
+        for (UIKeyframeSheet sheet : this.getGraph().getSheets())
+        {
+            if (sheet.selection.getSelected().size() >= 2)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public boolean canAdjustSelectedValues()
+    {
+        if (!this.isModifyingKeyframes())
+        {
+            return false;
+        }
+
+        for (UIKeyframeSheet sheet : this.getGraph().getSheets())
+        {
+            List<Keyframe> selected = sheet.selection.getSelected();
+
+            if (selected.size() >= 2 && KeyframeFactories.isNumeric(sheet.channel.getFactory()))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public void toolbarCopy()
+    {
+        if (this.copyPasteController.copy())
+        {
+            UIUtils.playClick();
+        }
+    }
+
+    public void toolbarCut()
+    {
+        if (this.currentGraph.getSelected() == null)
+        {
+            this.getContext().notifyError(UIKeys.GENERAL_CUT_EMPTY);
+
+            return;
+        }
+
+        if (this.copyPasteController.copy())
+        {
+            this.currentGraph.removeSelected();
+            UIUtils.playClick();
+            this.getContext().notifyInfo(UIKeys.GENERAL_CUT);
+        }
+    }
+
+    public void toolbarRemoveSelected()
+    {
+        this.currentGraph.removeSelected();
+    }
+
+    public void toolbarRoundSelectedTicks()
+    {
+        for (UIKeyframeSheet sheet : this.getGraph().getSheets())
+        {
+            List<Keyframe> selected = sheet.selection.getSelected();
+
+            if (selected.isEmpty())
+            {
+                continue;
+            }
+
+            sheet.channel.preNotify();
+
+            for (Keyframe kf : selected)
+            {
+                kf.setTick(Math.round(kf.getTick()), false);
+            }
+
+            sheet.channel.postNotify();
+        }
+    }
+
+    public void toolbarSpreadKeyframes()
+    {
+        this.spreadKeyframes();
+    }
+
+    public void toolbarApplyInterpolation(IInterp interp)
+    {
+        this.setInterpolation(interp);
+    }
+
+    public void toolbarAdjustValues(boolean last)
+    {
+        this.adjustValues(last);
+    }
+
+    public void toolbarSelectLeft()
+    {
+        UIContext context = this.getContext();
+
+        this.selectAfter(context.mouseX, context.mouseY, -1);
+    }
+
+    public void toolbarSelectRight()
+    {
+        UIContext context = this.getContext();
+
+        this.selectAfter(context.mouseX, context.mouseY, 1);
+    }
+
+    public void toolbarSelectSame()
+    {
+        this.selectSame();
+    }
+
+    public void toolbarSelectPrevKeyframe()
+    {
+        this.selectNextKeyframe(-1);
+    }
+
+    public void toolbarSelectNextKeyframe()
+    {
+        this.selectNextKeyframe(1);
+    }
+
     public void editSheet(UIKeyframeSheet sheet)
     {
         if (sheet == null)
