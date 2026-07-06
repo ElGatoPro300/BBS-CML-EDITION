@@ -624,6 +624,15 @@ public class UIKeyframes extends UIElement
         return this.currentGraph != this.dopeSheet;
     }
 
+    /**
+     * Whether keyframe editing shortcuts / toolbar actions are allowed.
+     * Blocked while scaling keyframes in time ({@code V} mode).
+     */
+    public boolean isModifyingKeyframes()
+    {
+        return !this.scaling;
+    }
+
     public void editSheet(UIKeyframeSheet sheet)
     {
         if (sheet == null)

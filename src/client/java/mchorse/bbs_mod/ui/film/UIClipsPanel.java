@@ -12,6 +12,7 @@ import mchorse.bbs_mod.ui.film.clips.UIClip;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbar;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarRegistry;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarSettings;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarWiring;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeEditor;
@@ -76,16 +77,18 @@ public class UIClipsPanel extends UIElement implements IUIClipsDelegate
         this.toolbar.setSections(this.isCameraTimeline
             ? TimelineToolbarRegistry.forClipsCamera()
             : TimelineToolbarRegistry.forClipsAction());
+        TimelineToolbarWiring.wireClipsToolbar(this);
     }
 
     private void onEmbedViewChanged(UIElement embed)
     {
-        if (embed instanceof UIKeyframeEditor)
+        if (embed instanceof UIKeyframeEditor editor)
         {
             /* When a keyframe editor takes over the clip area, swap the toolbar
              * to the keyframe hierarchy (without the "Actor" section, which is
              * only relevant to the standalone replay editor). */
             this.toolbar.setSections(TimelineToolbarRegistry.forReplays(false));
+            TimelineToolbarWiring.wireKeyframesToolbar(this.filmPanel, editor.view, this.toolbar);
         }
         else
         {

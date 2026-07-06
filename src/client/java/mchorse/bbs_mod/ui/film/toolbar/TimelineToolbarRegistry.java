@@ -10,8 +10,8 @@ import java.util.List;
 /**
  * Static definitions of the toolbar hierarchies for each of the three
  * timelines. Phase 1 only wires the section tree with icons, labels and
- * keyboard shortcuts; the actual runnables are left {@code null} on purpose
- * and will be plugged in during Phase 2.
+ * keyboard shortcuts. {@link TimelineToolbarWiring} plugs runnables and
+ * enabled conditions in during Phase 2.
  *
  * <p>All lists are returned as fresh copies so integration code can mount the
  * toolbar directly without worrying about shared mutable state.</p>

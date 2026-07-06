@@ -47,6 +47,7 @@ import mchorse.bbs_mod.ui.film.replays.overlays.UIReplaysOverlayPanel;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbar;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarRegistry;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarSettings;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarWiring;
 import mchorse.bbs_mod.ui.film.utils.keyframes.UIFilmKeyframes;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
@@ -782,10 +783,16 @@ public class UIReplaysEditor extends UIElement
 
         this.toolbar = new TimelineToolbar();
         this.toolbar.setSections(TimelineToolbarRegistry.forReplays(true));
+        TimelineToolbarWiring.wireReplaysToolbar(this);
         this.toolbar.relative(this).x(0).y(1F, -TimelineToolbarSettings.TOOLBAR_HEIGHT).w(1F);
         this.add(this.toolbar);
 
         this.markContainer();
+    }
+
+    public UIFilmPanel getFilmPanel()
+    {
+        return this.filmPanel;
     }
 
     public void setFilm(Film film)

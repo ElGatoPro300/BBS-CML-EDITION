@@ -239,7 +239,7 @@ public class UIClips extends UIElement
             }
         });
 
-        Supplier<Boolean> canUseKeybinds = () -> this.delegate.canUseKeybinds() && !this.hasEmbeddedView();
+        Supplier<Boolean> canUseKeybinds = () -> this.canUseToolbarKeybinds();
         Supplier<Boolean> canUseKeybindsSelected = () -> this.delegate.getClip() != null && canUseKeybinds.get();
 
         this.keys().register(Keys.KEYFRAMES_MAXIMIZE, this::resetView).inside().category(KEYS_CATEGORY);
@@ -1022,6 +1022,36 @@ public class UIClips extends UIElement
     public boolean hasEmbeddedView()
     {
         return this.embedded != null;
+    }
+
+    /**
+     * Whether clip-timeline keybinds (and toolbar clip actions) are allowed.
+     * Disabled while a keyframe editor is embedded on top of the timeline.
+     */
+    public boolean canUseToolbarKeybinds()
+    {
+        return this.delegate.canUseKeybinds() && !this.hasEmbeddedView();
+    }
+
+    public Clip getDelegateClip()
+    {
+        return this.delegate.getClip();
+    }
+
+    /**
+     * Toolbar action: clear the current clip selection.
+     */
+    public void toolbarDeselectAll()
+    {
+        this.pickClip(null);
+    }
+
+    /**
+     * Toolbar action: toggle the enabled flag on all selected clips.
+     */
+    public void toolbarToggleEnabled()
+    {
+        this.toggleEnabled();
     }
 
     public UIElement getEmbeddedView()
