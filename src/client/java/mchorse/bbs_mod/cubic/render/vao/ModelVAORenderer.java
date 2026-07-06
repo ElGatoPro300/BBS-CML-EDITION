@@ -262,20 +262,6 @@ public class ModelVAORenderer
             paintOverlayUniform.set(paintOverlayPass ? 1F : 0F);
         }
 
-        GlUniform paintUniform = shader.getUniform("PaintColor");
-
-        if (paintUniform != null)
-        {
-            paintUniform.set(paintR, paintG, paintB, paintStrength);
-        }
-
-        GlUniform paintOverlayUniform = shader.getUniform("PaintOverlay");
-
-        if (paintOverlayUniform != null)
-        {
-            paintOverlayUniform.set(paintOverlayPass ? 1F : 0F);
-        }
-
         if (shader.fogStart != null)
         {
             shader.fogStart.set(RenderSystem.getShaderFogStart());
