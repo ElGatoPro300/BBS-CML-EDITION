@@ -24,7 +24,7 @@ public final class TimelineToolbarRegistry
     {
         List<ToolbarSection> sections = new ArrayList<>();
 
-        sections.add(transportSection(true));
+        sections.add(transportSection(true, true));
         sections.add(addSectionCamera());
         sections.add(editSectionClips(true));
         sections.add(selectSectionClips());
@@ -38,7 +38,7 @@ public final class TimelineToolbarRegistry
     {
         List<ToolbarSection> sections = new ArrayList<>();
 
-        sections.add(transportSection(false));
+        sections.add(transportSection(false, true));
         sections.add(addSectionAction());
         sections.add(editSectionClips(false));
         sections.add(selectSectionClips());
@@ -48,13 +48,13 @@ public final class TimelineToolbarRegistry
         return sections;
     }
 
-    /* Replay / keyframe timeline */
+    /* Replay / keyframe timeline (no loop submenu: `[` / `]` are keyframe prev/next) */
 
     public static List<ToolbarSection> forReplays(boolean showActor)
     {
         List<ToolbarSection> sections = new ArrayList<>();
 
-        sections.add(transportSection(true));
+        sections.add(transportSection(true, false));
         sections.add(addSectionKeyframes());
         sections.add(editSectionKeyframes());
         sections.add(selectSectionKeyframes());
@@ -73,7 +73,7 @@ public final class TimelineToolbarRegistry
 
     /* Sections shared across timelines */
 
-    private static ToolbarSection transportSection(boolean isCamera)
+    private static ToolbarSection transportSection(boolean includeClipNavigation, boolean includeLooping)
     {
         ToolbarSection s = new ToolbarSection(UIKeys.TIMELINE_TOOLBAR_TRANSPORT, Icons.PLAY);
 
@@ -94,7 +94,7 @@ public final class TimelineToolbarRegistry
             .icon(Icons.SHIFT_BACKWARD)
             .shortcut(Keys.JUMP_BACKWARD));
 
-        if (isCamera)
+        if (includeClipNavigation)
         {
             s.add(ToolbarItem.separator());
             s.add(ToolbarItem.action(UIKeys.CAMERA_EDITOR_KEYS_EDITOR_NEXT_CLIP)
@@ -105,17 +105,20 @@ public final class TimelineToolbarRegistry
                 .shortcut(Keys.PREV_CLIP));
         }
 
-        s.add(ToolbarItem.separator());
-        s.add(ToolbarItem.submenu(UIKeys.CAMERA_EDITOR_KEYS_MODES_LOOPING,
-            ToolbarItem.action(UIKeys.CAMERA_EDITOR_KEYS_LOOPING_SET_MIN)
-                .icon(Icons.IN)
-                .shortcut(Keys.LOOPING_SET_MIN),
-            ToolbarItem.action(UIKeys.CAMERA_EDITOR_KEYS_LOOPING_SET_MAX)
-                .icon(Icons.OUT)
-                .shortcut(Keys.LOOPING_SET_MAX),
-            ToolbarItem.action(UIKeys.CAMERA_EDITOR_KEYS_MODES_LOOPING)
-                .shortcut(Keys.LOOPING)
-        ).icon(Icons.REVERSE));
+        if (includeLooping)
+        {
+            s.add(ToolbarItem.separator());
+            s.add(ToolbarItem.submenu(UIKeys.CAMERA_EDITOR_KEYS_MODES_LOOPING,
+                ToolbarItem.action(UIKeys.CAMERA_EDITOR_KEYS_LOOPING_SET_MIN)
+                    .icon(Icons.IN)
+                    .shortcut(Keys.LOOPING_SET_MIN),
+                ToolbarItem.action(UIKeys.CAMERA_EDITOR_KEYS_LOOPING_SET_MAX)
+                    .icon(Icons.OUT)
+                    .shortcut(Keys.LOOPING_SET_MAX),
+                ToolbarItem.action(UIKeys.CAMERA_EDITOR_KEYS_MODES_LOOPING)
+                    .shortcut(Keys.LOOPING)
+            ).icon(Icons.REVERSE));
+        }
 
         return s;
     }
