@@ -27,6 +27,11 @@ public final class TimelineToolbarPointerBlock
 
     public static boolean blocksPointer(UIContext context)
     {
+        if (context.isTimelineToolbarConsumePointer())
+        {
+            return true;
+        }
+
         return context.isPointerOverTimelineToolbarMenu(context.mouseX, context.mouseY);
     }
 

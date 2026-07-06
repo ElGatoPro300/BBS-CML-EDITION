@@ -116,6 +116,7 @@ public abstract class UIBaseMenu
         if (this.root.isEnabled())
         {
             this.context.pushViewport(this.viewport);
+            TimelineToolbarPointerBlock.prepare(this.context);
 
             IUIElement element = this.root.mouseClicked(this.context);
 
@@ -156,6 +157,7 @@ public abstract class UIBaseMenu
         if (this.root.isEnabled())
         {
             this.context.pushViewport(this.viewport);
+            TimelineToolbarPointerBlock.prepare(this.context);
 
             IUIElement element = this.root.mouseReleased(this.context);
 

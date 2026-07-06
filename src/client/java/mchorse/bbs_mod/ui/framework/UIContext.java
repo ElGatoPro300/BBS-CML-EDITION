@@ -56,6 +56,12 @@ public class UIContext implements IViewportStack
      */
     private final List<Area> timelineToolbarMenuAreas = new ArrayList<>();
 
+    /**
+     * When {@code true}, timeline elements must ignore pointer input for this
+     * frame (e.g. after a toolbar menu item consumed a click).
+     */
+    private boolean timelineToolbarConsumePointer;
+
     /* Mouse states */
     public int mouseX;
     public int mouseY;
@@ -151,6 +157,7 @@ public class UIContext implements IViewportStack
         this.resetTooltip();
         this.foregroundTextCard = null;
         this.timelineToolbarMenuAreas.clear();
+        this.timelineToolbarConsumePointer = false;
     }
 
     public void resetTooltip()
@@ -197,6 +204,16 @@ public class UIContext implements IViewportStack
         }
 
         return false;
+    }
+
+    public void setTimelineToolbarConsumePointer(boolean consume)
+    {
+        this.timelineToolbarConsumePointer = consume;
+    }
+
+    public boolean isTimelineToolbarConsumePointer()
+    {
+        return this.timelineToolbarConsumePointer;
     }
 
     public void markUpdateScroll()

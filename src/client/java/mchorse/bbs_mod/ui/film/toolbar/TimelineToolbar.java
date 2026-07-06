@@ -320,6 +320,8 @@ public class TimelineToolbar extends UIElement
             {
                 this.openSection(context, index);
             }
+
+            context.setTimelineToolbarConsumePointer(true);
         }
 
         return true;

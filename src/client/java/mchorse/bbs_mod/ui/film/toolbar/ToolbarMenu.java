@@ -812,6 +812,9 @@ public class ToolbarMenu extends UIElement
             return false;
         }
 
+        /* Clicks on any toolbar popup row must not reach the timeline underneath. */
+        context.setTimelineToolbarConsumePointer(true);
+
         int index = this.getRowIndexAt(context.mouseY);
 
         if (index < 0)

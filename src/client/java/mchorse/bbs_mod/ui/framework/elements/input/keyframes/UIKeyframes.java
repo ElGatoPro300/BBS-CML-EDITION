@@ -11,6 +11,7 @@ import mchorse.bbs_mod.settings.values.IValueListener;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarPointerBlock;
+import mchorse.bbs_mod.ui.film.utils.keyframes.UIFilmKeyframes;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.graphs.IUIKeyframeGraph;
@@ -753,16 +754,37 @@ public class UIKeyframes extends UIElement
 
     public void toolbarSelectLeft()
     {
-        UIContext context = this.getContext();
-
-        this.selectAfter(context.mouseX, context.mouseY, -1);
+        this.selectRelativeToTimelineCursor(-1);
     }
 
     public void toolbarSelectRight()
     {
-        UIContext context = this.getContext();
+        this.selectRelativeToTimelineCursor(1);
+    }
 
-        this.selectAfter(context.mouseX, context.mouseY, 1);
+    /**
+     * Select keyframes left/right of the film cursor tick (not the mouse
+     * position), matching timeline behaviour when invoked from the toolbar.
+     */
+    private void selectRelativeToTimelineCursor(int direction)
+    {
+        int graphX;
+        int mouseY;
+
+        if (this instanceof UIFilmKeyframes filmKeyframes)
+        {
+            graphX = this.toGraphX(filmKeyframes.getOffset());
+            mouseY = this.area.my();
+        }
+        else
+        {
+            UIContext context = this.getContext();
+
+            graphX = context.mouseX;
+            mouseY = context.mouseY;
+        }
+
+        this.selectAfter(graphX, mouseY, direction);
     }
 
     public void toolbarSelectSame()
