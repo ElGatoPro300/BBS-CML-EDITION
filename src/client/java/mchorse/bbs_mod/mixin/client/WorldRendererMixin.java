@@ -65,7 +65,7 @@ public class WorldRendererMixin
     }
 
     @Inject(method = "setupFrustum", at = @At("HEAD"))
-    public void onSetupFrustum(Vec3d vec3d, Matrix4f matrix4f, Matrix4f positionMatrix, CallbackInfo info)
+    public void onSetupFrustum(MatrixStack matrices, Vec3d vec3d, Matrix4f matrix4f, CallbackInfo info)
     {
         BBSRendering.camera.set(matrix4f);
     }
