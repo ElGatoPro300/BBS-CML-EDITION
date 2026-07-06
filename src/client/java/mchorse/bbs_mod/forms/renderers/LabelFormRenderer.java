@@ -129,6 +129,14 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
 
             light = 0;
         }
+        else
+        {
+            CustomVertexConsumerProvider.hijackVertexFormat((layer) ->
+            {
+                RenderSystem.enableBlend();
+                RenderSystem.defaultBlendFunc();
+            });
+        }
 
         if (this.form.max.get() <= 10)
         {
@@ -140,6 +148,7 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
         }
 
         CustomVertexConsumerProvider.clearRunnables();
+        RenderSystem.defaultBlendFunc();
 
         RenderSystem.enableDepthTest();
         RenderSystem.enableCull();
@@ -238,7 +247,9 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
         int y = (int) (-h * this.form.anchorY.get());
 
         Color shadowColor = this.form.shadowColor.get().copy();
-        Color color = this.form.color.get().copy();
+        Color color = new Color().set(context.color, true);
+
+        color.mul(this.form.color.get());
 
         shadowColor.a *= this.nametagAlpha;
         color.a *= this.nametagAlpha;
@@ -247,7 +258,6 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
         color.a *= opacity;
         shadowColor.a *= opacity;
 
-        color.mul(context.color);
         shadowColor.mul(context.color);
 
         this.renderTextShadow(context, consumers, renderer, customFont, content, x, y, letterSpacing, light, shadowColor);
@@ -376,13 +386,14 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
         int shadowY = y;
 
         Color shadowColor = this.form.shadowColor.get().copy();
-        Color color = this.form.color.get().copy();
+        Color color = new Color().set(context.color, true);
+
+        color.mul(this.form.color.get());
         
         float opacity = this.form.opacity.get();
         color.a *= opacity;
         shadowColor.a *= opacity;
 
-        color.mul(context.color);
         shadowColor.mul(context.color);
         shadowColor.a *= this.nametagAlpha;
         

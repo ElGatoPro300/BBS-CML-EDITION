@@ -247,14 +247,19 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
             palette.editor.renderer.full(dashboard.getRoot());
             palette.editor.renderer.setTarget(this.modelBlock.getEntity());
             palette.editor.renderer.setRenderForm(() -> !toggleRendering);
-            palette.getEvents().register(UIToggleEditorEvent.class, (e) -> {
-                if (e.editing) {
+            palette.getEvents().register(UIToggleEditorEvent.class, (e) ->
+            {
+                if (e.editing)
+                {
                     this.addCameraController(palette);
-                } else {
+                }
+                else
+                {
                     this.removeCameraController();
                 }
             });
-            palette.getEvents().register(UIRemovedEvent.class, (e) -> {
+            palette.getEvents().register(UIRemovedEvent.class, (e) ->
+            {
                 /* resize() recomputes every card's visibility from scratch. */
                 this.resize();
             });
@@ -1559,6 +1564,7 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
     public void open() {
         super.open();
 
+        BBSRendering.ensureMainFramebuffer();
         this.updateList();
 
         if (this.modelBlock != null && this.modelBlock.isRemoved()) {
@@ -1962,6 +1968,10 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
     public void renderInWorld(WorldRenderContext context) {
         super.renderInWorld(context);
 
+        if (context.matrixStack() == null) {
+            return;
+        }
+
         Camera camera = context.camera();
         Vec3d pos = camera.getPos();
 
@@ -1969,34 +1979,10 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         double x = mc.mouse.getX();
         double y = mc.mouse.getY();
 
-        MatrixStack matrixStack = context.matrixStack();
-        Matrix4f positionMatrix = matrixStack != null ? matrixStack.peek().getPositionMatrix() : RenderSystem.getModelViewMatrix();
-        Matrix4f projectionMatrix = RenderSystem.getProjectionMatrix();
-
-        float m11 = projectionMatrix.m11();
-        float tanHalfFov = 1.0f / m11;
-        float aspect = m11 / projectionMatrix.m00();
-
-        float ndcX = ((float) x / mc.getWindow().getWidth()) * 2.0f - 1.0f;
-        float ndcY = -(((float) y / mc.getWindow().getHeight()) * 2.0f - 1.0f);
-
-        float f = MathUtils.toRad(camera.getPitch());
-        float g = MathUtils.toRad(-camera.getYaw());
-        float h = (float) Math.cos(g);
-        float i = (float) Math.sin(g);
-        float j = (float) Math.cos(f);
-        float k = (float) Math.sin(f);
-        Vector3f forward = new Vector3f(i * j, -k, h * j);
-        Vector3f upWorld = new Vector3f(0F, 1F, 0F);
-        Vector3f right = new Vector3f(forward).cross(upWorld).normalize();
-        Vector3f upCam = new Vector3f(right).cross(forward).normalize();
-
-        Vector3f direction = new Vector3f(forward)
-            .add(new Vector3f(right).mul(ndcX * tanHalfFov * aspect))
-            .add(new Vector3f(upCam).mul(ndcY * tanHalfFov))
-            .normalize();
-
-        this.mouseDirection.set(direction);
+        this.mouseDirection.set(CameraUtils.getMouseDirection(
+                RenderSystem.getProjectionMatrix(),
+                context.matrixStack().peek().getPositionMatrix(),
+                (int) x, (int) y, 0, 0, mc.getWindow().getWidth(), mc.getWindow().getHeight()));
         this.hovered = this.getClosestObject(new Vector3d(pos.x, pos.y, pos.z), this.mouseDirection);
 
         RenderSystem.enableDepthTest();
@@ -2019,64 +2005,28 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
             }
         }
 
-        RenderSystem.disableDepthTest();
+        RenderSystem.enableDepthTest();
     }
 
     private ModelBlockEntity getClosestObject(Vector3d finalPosition, Vector3f mouseDirection) {
         ModelBlockEntity closest = null;
-        double closestDist = Double.MAX_VALUE;
 
-        for (ModelBlockEntity object : this.modelBlocks.getList())
-        {
-            BlockPos pos = object.getPos();
-            Vector3d relOrigin = new Vector3d(finalPosition).sub(pos.getX(), pos.getY(), pos.getZ());
+        for (ModelBlockEntity object : this.modelBlocks.getList()) {
+            AABB aabb = this.getHitbox(object);
 
-            Matrix4f transform = object.getProperties().getTransform().createMatrix();
-            Matrix4f invTransform = new Matrix4f(transform).invert();
-
-            Vector4f origin4 = new Vector4f((float) relOrigin.x, (float) relOrigin.y, (float) relOrigin.z, 1.0F);
-            Vector4f dir4 = new Vector4f(mouseDirection.x, mouseDirection.y, mouseDirection.z, 0.0F);
-
-            /* Since the hitbox in the renderInWorld method is not transformed, we shouldn't
-             * transform the ray either. This was causing the selection to fail when the
-             * model block had a transformation. */
-
-            Vector3d localOrigin = new Vector3d(origin4.x, origin4.y, origin4.z);
-            Vector3f localDir = new Vector3f(dir4.x, dir4.y, dir4.z);
-
-            AABB unitBox = new AABB(0, 0, 0, 1, 1, 1);
-            Vector2d farNear = new Vector2d();
-
-            if (unitBox.intersectsRay(localOrigin, localDir, farNear))
-            {
-                double t = farNear.x;
-
-                if (t < 0)
-                {
-                    if (farNear.y < 0)
-                    {
-                        continue;
-                    }
-
-                    t = farNear.y;
-                }
-
-                Vector3f hitLocal = new Vector3f(localDir).mul((float) t).add(new Vector3f((float) localOrigin.x, (float) localOrigin.y, (float) localOrigin.z));
-                Vector4f hitRel = new Vector4f(hitLocal, 1.0F);
-
-                transform.transform(hitRel);
-
-                Vector3d hitWorld = new Vector3d(hitRel.x, hitRel.y, hitRel.z).add(pos.getX(), pos.getY(), pos.getZ());
-                double dist = finalPosition.distanceSquared(hitWorld);
-
-                if (dist < closestDist)
-                {
-                    closestDist = dist;
+            if (aabb.intersectsRay(finalPosition, mouseDirection)) {
+                if (closest == null) {
                     closest = object;
+                } else {
+                    AABB aabb2 = this.getHitbox(closest);
+
+                    if (finalPosition.distanceSquared(aabb.x, aabb.y, aabb.z) < finalPosition.distanceSquared(aabb2.x,
+                            aabb2.y, aabb2.z)) {
+                        closest = object;
+                    }
                 }
             }
         }
-
         return closest;
     }
 

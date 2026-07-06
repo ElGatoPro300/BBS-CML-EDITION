@@ -8,6 +8,7 @@ import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.utils.colors.Colors;
 
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.gl.ShaderProgramKey;
 import net.minecraft.client.gl.ShaderProgramKeys;
@@ -19,6 +20,7 @@ import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.BufferAllocator;
+import net.minecraft.client.util.math.MatrixStack;
 
 import org.joml.Matrix4f;
 
@@ -32,21 +34,39 @@ import java.util.function.Supplier;
 public class Batcher2D
 {
     private static FontRenderer fontRenderer = new FontRenderer();
+    private static FontRenderer vanillaFontRenderer = new FontRenderer();
 
     private DrawContext context;
     private FontRenderer font;
 
     public static FontRenderer getDefaultTextRenderer()
     {
-        fontRenderer.setRenderer(MinecraftClient.getInstance().textRenderer);
+        /* Lazily (re)load the user-selected .ttf font when configured, then draw the whole UI with it.
+           Falls back to Minecraft's default font when no custom font is set or it failed to load. */
+        CustomFontManager.ensureLoaded();
+
+        TextRenderer custom = CustomFontManager.getCustomRenderer();
+
+        fontRenderer.setRenderer(custom != null ? custom : MinecraftClient.getInstance().textRenderer);
 
         return fontRenderer;
+    }
+
+    /**
+     * Minecraft's default font — used for subtitles and other in-world HUD that must not follow the
+     * custom BBS UI font setting.
+     */
+    public static FontRenderer getVanillaTextRenderer()
+    {
+        vanillaFontRenderer.setRenderer(MinecraftClient.getInstance().textRenderer);
+
+        return vanillaFontRenderer;
     }
 
     public Batcher2D(DrawContext context)
     {
         this.context = context;
-        this.font = getDefaultTextRenderer();
+        this.font = Batcher2D.getDefaultTextRenderer();
     }
 
     public DrawContext getContext()
@@ -120,6 +140,7 @@ public class Batcher2D
 
         RenderSystem.enableBlend();
         RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
+        this.flushDraw();
         BufferRenderer.drawWithGlobalProgram(builder.end());
     }
 
@@ -537,6 +558,11 @@ public class Batcher2D
         this.text(label, x, y, color, false);
     }
 
+    public void flushDraw()
+    {
+        this.context.draw();
+    }
+
     public void text(String label, float x, float y)
     {
         this.text(label, x, y, Colors.WHITE, false);
@@ -554,7 +580,34 @@ public class Batcher2D
 
     public void text(String label, float x, float y, int color, boolean shadow)
     {
-        this.context.drawText(this.font.getRenderer(), label, (int) x, (int) y, color, shadow);
+        float scale = CustomFontManager.hasCustomFont() ? 1F : CustomFontManager.getFontScale();
+
+        if (scale != 1F)
+        {
+            MatrixStack matrices = this.context.getMatrices();
+
+            matrices.push();
+            matrices.translate(x, y, 0F);
+            matrices.scale(scale, scale, 1F);
+            this.context.drawText(this.font.getRenderer(), label, 0, 0, color, shadow);
+            matrices.pop();
+        }
+        else
+        {
+            this.context.drawText(this.font.getRenderer(), label, (int) x, (int) y, color, shadow);
+        }
+
+        this.context.draw();
+
+        RenderSystem.depthFunc(GL11.GL_ALWAYS);
+    }
+
+    /**
+     * Draw text with an explicit renderer (e.g. vanilla Minecraft font for subtitles).
+     */
+    public void text(FontRenderer font, String label, float x, float y, int color, boolean shadow)
+    {
+        this.context.drawText(font.getRenderer(), label, (int) x, (int) y, color, shadow);
         this.context.draw();
 
         RenderSystem.depthFunc(GL11.GL_ALWAYS);
@@ -614,14 +667,19 @@ public class Batcher2D
 
     public void textCard(String text, float x, float y, int color, int background, float offset, boolean shadow)
     {
+        this.textCard(this.font, text, x, y, color, background, offset, shadow);
+    }
+
+    public void textCard(FontRenderer font, String text, float x, float y, int color, int background, float offset, boolean shadow)
+    {
         int a = background >> 24 & 0xff;
 
         if (a != 0)
         {
-            this.box(x - offset, y - offset, x + this.font.getWidth(text) + offset - 1, y + this.font.getHeight() + offset, background);
+            this.box(x - offset, y - offset, x + font.getWidth(text) + offset - 1, y + font.getHeight() + offset, background);
         }
 
-        this.text(text, x, y, color, shadow);
+        this.text(font, text, x, y, color, shadow);
     }
 
     public void flush()

@@ -44,6 +44,7 @@ import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIRenderable;
 import mchorse.bbs_mod.ui.home.UIHomePanel;
 import mchorse.bbs_mod.ui.model.UIModelIKPanel;
+import mchorse.bbs_mod.ui.model.UIModelUIStyles;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.UIUtils;
@@ -85,7 +86,7 @@ import java.util.function.Consumer;
 
 import org.slf4j.Logger;
 
-public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
+public class UIModelPanel extends UIDataDashboardPanel<ModelConfig> implements IUIModelPanelHost
 {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final GeckoAnimationValidator GECKO_VALIDATOR = new GeckoAnimationValidator();
@@ -145,7 +146,16 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         this.renderer = new UIModelEditorRenderer();
         this.renderer.relative(this).wTo(this.iconBar.getFlex()).h(1F);
         this.renderer.setCallback(this::pickBone);
-        
+
+        UIRenderable viewportBackground = new UIRenderable((context) ->
+        {
+            if (this.renderer.area.w > 0 && this.renderer.area.h > 0)
+            {
+                context.batcher.box(this.renderer.area.x, this.renderer.area.y, this.renderer.area.ex(), this.renderer.area.ey(), UIModelUIStyles.FORM_VIEWPORT_BACKGROUND);
+            }
+        });
+
+        this.prepend(viewportBackground);
         this.prepend(this.renderer);
 
         this.homePage = new UIElement()
@@ -393,6 +403,10 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         this.mainView.relative(this.editor).y(0).w(1F).h(1F);
 
         this.editor.add(this.mainView, this.homePage);
+        this.iconBar.prepend(new UIRenderable((context) ->
+        {
+            context.batcher.box(this.iconBar.area.x, this.iconBar.area.y, this.iconBar.area.ex(), this.iconBar.area.ey(), UIModelUIStyles.STRIP_BACKGROUND);
+        }));
         this.iconBar.prepend(new UIRenderable(this::renderIcons));
 
         /* Model Settings Panel */
@@ -404,10 +418,24 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
         this.sectionsView.relative(this.modelSettingsPanel).y(0).w(200).h(1F);
         
         this.rightView = UI.scrollView(20, 10);
-        this.rightView.scroll.cancelScrolling().opposite().scrollSpeed *= 3;
+        this.rightView.scroll.cancelScrolling().scrollSpeed *= 3;
         this.rightView.relative(this.modelSettingsPanel).x(1F, -200).y(0).w(200).h(1F);
         
         this.modelSettingsPanel.add(this.sectionsView, this.rightView);
+
+        this.editor.prepend(new UIRenderable((context) ->
+        {
+            if (UIModelPanel.this.showingHomePage)
+            {
+                return;
+            }
+
+            if (UIModelPanel.this.modelSettingsPanel.isVisible() && UIModelPanel.this.modelSettingsPanel.getParent() == UIModelPanel.this.mainView)
+            {
+                context.batcher.box(UIModelPanel.this.sectionsView.area.x, UIModelPanel.this.sectionsView.area.y, UIModelPanel.this.sectionsView.area.ex(), UIModelPanel.this.sectionsView.area.ey(), UIModelUIStyles.PANEL_BACKGROUND);
+                context.batcher.box(UIModelPanel.this.rightView.area.x, UIModelPanel.this.rightView.area.y, UIModelPanel.this.rightView.area.ex(), UIModelPanel.this.rightView.area.ey(), UIModelUIStyles.PANEL_BACKGROUND);
+            }
+        }));
 
         this.physBonesPanel = new UIModelPhysBonePanel(this);
 
@@ -1584,6 +1612,8 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
 
     private void pickBone(String bone)
     {
+        this.renderer.setSelectedBone(bone);
+
         for (UIModelSection section : this.sections)
         {
             section.deselect();
@@ -1686,10 +1716,6 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
     @Override
     public void render(UIContext context)
     {
-        int color = BBSSettings.primaryColor.get();
-
-        this.area.render(context.batcher, Colors.mulRGB(color | Colors.A100, 0.2F));
-
         super.render(context);
     }
 
@@ -1705,5 +1731,70 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
     public void close()
     {}
 
+    @Override
+    public UIElement getMainView()
+    {
+        return this.mainView;
+    }
 
+    @Override
+    public UIModelEditorRenderer getModelRenderer()
+    {
+        return this.renderer;
+    }
+
+    @Override
+    public void setWorkspacePanel(UIElement panel)
+    {
+        this.setPanel(panel);
+    }
+
+    @Override
+    public ModelConfig getModelConfig()
+    {
+        return this.data;
+    }
+
+    @Override
+    public void openTransformEditor(UIDashboardPanel panel)
+    {
+        this.dashboard.getPanels().setPanel(panel);
+    }
+
+    @Override
+    public void returnFromSubEditor()
+    {
+        this.renderer.dirty();
+        this.dashboard.getPanels().setPanel(this);
+    }
+
+    @Override
+    public List<UIModelSection> getSections()
+    {
+        return this.sections;
+    }
+
+    @Override
+    public UIDashboard getDashboard()
+    {
+        return this.dashboard;
+    }
+
+    @Override
+    public UIModelPanel getModelPanel()
+    {
+        return this;
+    }
+
+    @Override
+    public String getSelectedBone()
+    {
+        return this.renderer.getSelectedBone();
+    }
+
+    @Override
+    public void setSelectedBone(String bone)
+    {
+        this.pickBone(bone);
+    }
 }

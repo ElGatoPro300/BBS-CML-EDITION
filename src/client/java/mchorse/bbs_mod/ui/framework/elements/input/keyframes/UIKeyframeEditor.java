@@ -6,9 +6,12 @@ import mchorse.bbs_mod.data.DataStorageUtils;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
+import mchorse.bbs_mod.forms.forms.utils.Anchor;
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.ui.framework.UIContext;
+import mchorse.bbs_mod.ui.framework.elements.IUIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
+import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UIAnchorKeyframeFactory;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UIKeyframeFactory;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UIPoseKeyframeFactory;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UITransformKeyframeFactory;
@@ -20,6 +23,7 @@ import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -240,7 +244,26 @@ public class UIKeyframeEditor extends UIElement
     public void render(UIContext context)
     {
         this.updateSidePanelResizerState();
-        super.render(context);
+
+        if (this.view.isVisible())
+        {
+            this.view.render(context);
+
+            if (this.overlayPanel)
+            {
+                context.batcher.flushDraw();
+            }
+        }
+
+        List<IUIElement> snapshot = new ArrayList<>(this.getChildren());
+
+        for (IUIElement element : snapshot)
+        {
+            if (element != this.view && element.isVisible() && element.canBeRendered(context.getViewport()))
+            {
+                element.render(context);
+            }
+        }
     }
 
     private void renderOverlayPanelBackground(UIContext context)
@@ -361,7 +384,7 @@ public class UIKeyframeEditor extends UIElement
         String bone = null;
         boolean local = false;
 
-        if (editor instanceof UIPoseKeyframeFactory || editor instanceof UITransformKeyframeFactory)
+        if (editor instanceof UIPoseKeyframeFactory || editor instanceof UITransformKeyframeFactory || editor instanceof UIAnchorKeyframeFactory)
         {
             UIKeyframeSheet sheet = this.getSheet(editor.getKeyframe());
 
@@ -425,6 +448,14 @@ public class UIKeyframeEditor extends UIElement
                         local = transform.transform.isLocal();
                     }
                 }
+                else if (propertyId.equals("anchor") && editor instanceof UIAnchorKeyframeFactory anchorFactory)
+                {
+                    int lastSlash = sheet.id.lastIndexOf('/');
+
+                    bone = lastSlash >= 0 ? sheet.id.substring(0, lastSlash) : "";
+
+                    local = anchorFactory.transform.isLocal();
+                }
             }
         }
 
@@ -434,6 +465,28 @@ public class UIKeyframeEditor extends UIElement
         }
 
         return null;
+    }
+
+    public boolean isFormAnchorTrack()
+    {
+        if (!(this.editor instanceof UIAnchorKeyframeFactory))
+        {
+            return false;
+        }
+
+        UIKeyframeSheet sheet = this.getSheet(this.editor.getKeyframe());
+
+        return sheet != null && sheet.property != null && "anchor".equals(sheet.id);
+    }
+
+    public boolean getAnchorLocal()
+    {
+        if (this.editor instanceof UIAnchorKeyframeFactory factory)
+        {
+            return factory.transform.isLocal();
+        }
+
+        return false;
     }
 
     @Override

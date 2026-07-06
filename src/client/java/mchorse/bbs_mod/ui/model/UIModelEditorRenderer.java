@@ -1,7 +1,9 @@
 package mchorse.bbs_mod.ui.model;
 
 import mchorse.bbs_mod.BBSModClient;
+import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.bobj.BOBJBone;
+import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.cubic.animation.ActionsConfig;
@@ -12,11 +14,13 @@ import mchorse.bbs_mod.cubic.data.model.ModelCube;
 import mchorse.bbs_mod.cubic.data.model.ModelGroup;
 import mchorse.bbs_mod.cubic.data.model.ModelQuad;
 import mchorse.bbs_mod.cubic.data.model.ModelVertex;
+import mchorse.bbs_mod.cubic.model.ArmorSlot;
 import mchorse.bbs_mod.cubic.model.IKChainConfig;
 import mchorse.bbs_mod.cubic.model.ModelConfig;
 import mchorse.bbs_mod.cubic.render.CubicCubeRenderer;
 import mchorse.bbs_mod.cubic.render.ICubicRenderer;
 import mchorse.bbs_mod.data.types.MapType;
+import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.forms.ModelForm;
@@ -37,12 +41,13 @@ import mchorse.bbs_mod.ui.utils.StencilFormFramebuffer;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.Pair;
+import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.colors.Colors;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.GlUniform;
 import net.minecraft.client.gl.ShaderProgram;
-import net.minecraft.client.gl.ShaderProgramKeys;
+
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
@@ -51,7 +56,10 @@ import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
+import net.minecraft.client.render.model.json.ModelTransformationMode;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.entity.EquipmentSlot;
+import net.minecraft.item.ItemStack;
 import net.minecraft.util.math.RotationAxis;
 
 import org.joml.Matrix4f;
@@ -63,6 +71,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.logging.LogUtils;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -80,6 +89,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
     private ModelFormRenderer renderer;
     private ModelConfig config;
     private Consumer<String> callback;
+    private boolean pickingEnabled = true;
     private String selectedBone;
     private ModelCube selectedCube;
     private boolean dirty = true;
@@ -95,6 +105,11 @@ public class UIModelEditorRenderer extends UIModelRenderer
     private String lastModelId;
     private final Matrix4f lastGizmoMatrix = new Matrix4f();
     private boolean hasGizmoMatrix;
+
+    private ArmorSlot fpHandPreviewSlot;
+    private boolean fpHandPreviewMainHand;
+    private final Map<ModelGroup, Boolean> savedGroupVisibility = new HashMap<>();
+    private int savedPreviewDistance = -1;
 
 
     public UIModelEditorRenderer()
@@ -135,6 +150,16 @@ public class UIModelEditorRenderer extends UIModelRenderer
     {
         this.callback = callback;
     }
+
+    public void setPickingEnabled(boolean pickingEnabled)
+    {
+        this.pickingEnabled = pickingEnabled;
+
+        if (!pickingEnabled)
+        {
+            this.stencil.clearPicking();
+        }
+    }
     
     public void dirty()
     {
@@ -174,6 +199,156 @@ public class UIModelEditorRenderer extends UIModelRenderer
         this.dirty();
     }
 
+    public void beginFpHandPreview(ArmorSlot slot, boolean mainHand)
+    {
+        this.fpHandPreviewSlot = slot;
+        this.fpHandPreviewMainHand = mainHand;
+
+        if (this.savedPreviewDistance < 0)
+        {
+            this.savedPreviewDistance = (int) this.distance.getX();
+        }
+
+        this.distance.setX(10);
+
+        ClientPlayerEntity player = MinecraftClient.getInstance().player;
+
+        if (player != null)
+        {
+            this.entity.setEquipmentStack(EquipmentSlot.MAINHAND, player.getMainHandStack());
+            this.entity.setEquipmentStack(EquipmentSlot.OFFHAND, player.getOffHandStack());
+        }
+
+        this.dirty();
+    }
+
+    public void endFpHandPreview()
+    {
+        this.fpHandPreviewSlot = null;
+        this.restoreGroupVisibility();
+
+        if (this.savedPreviewDistance >= 0)
+        {
+            this.distance.setX(this.savedPreviewDistance);
+            this.savedPreviewDistance = -1;
+        }
+
+        this.dirty();
+    }
+
+    private void applyFpHandGroupVisibility(ModelInstance model, String groupId)
+    {
+        this.savedGroupVisibility.clear();
+
+        for (ModelGroup group : model.getModel().getAllGroups())
+        {
+            this.savedGroupVisibility.put(group, group.visible);
+            group.visible = this.isGroupOrDescendant(group, groupId);
+        }
+    }
+
+    private void restoreGroupVisibility()
+    {
+        for (Map.Entry<ModelGroup, Boolean> entry : this.savedGroupVisibility.entrySet())
+        {
+            entry.getKey().visible = entry.getValue();
+        }
+
+        this.savedGroupVisibility.clear();
+    }
+
+    private boolean isGroupOrDescendant(ModelGroup group, String groupId)
+    {
+        ModelGroup current = group;
+
+        while (current != null)
+        {
+            if (current.id.equals(groupId))
+            {
+                return true;
+            }
+
+            current = current.parent;
+        }
+
+        return false;
+    }
+
+    private void renderFpHandItem(UIContext context, MatrixCache matrixCache, MatrixStack stack)
+    {
+        String groupId = this.fpHandPreviewSlot.group.get();
+
+        if (groupId.isEmpty())
+        {
+            return;
+        }
+
+        MatrixCacheEntry entry = matrixCache.get(groupId);
+
+        if (entry == null)
+        {
+            return;
+        }
+
+        Matrix4f matrix = entry.matrix();
+
+        if (matrix == null)
+        {
+            matrix = entry.origin();
+        }
+
+        if (matrix == null)
+        {
+            return;
+        }
+
+        ClientPlayerEntity player = MinecraftClient.getInstance().player;
+
+        if (player == null)
+        {
+            return;
+        }
+
+        ItemStack itemStack = this.fpHandPreviewMainHand ? player.getMainHandStack() : player.getOffHandStack();
+
+        if (itemStack == null || itemStack.isEmpty())
+        {
+            return;
+        }
+
+        ModelTransformationMode mode = this.fpHandPreviewMainHand
+            ? ModelTransformationMode.FIRST_PERSON_RIGHT_HAND
+            : ModelTransformationMode.FIRST_PERSON_LEFT_HAND;
+        int light = LightmapTextureManager.pack(15, 15);
+        CustomVertexConsumerProvider consumers = FormUtilsClient.getProvider();
+
+        stack.push();
+        MatrixStackUtils.multiply(stack, matrix);
+        stack.multiply(RotationAxis.POSITIVE_X.rotationDegrees(90F));
+        stack.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(180F));
+        MatrixStackUtils.applyTransform(stack, this.fpHandPreviewSlot.transform);
+
+        consumers.setSubstitute(BBSRendering.getColorConsumer(new Color().set(Colors.WHITE)));
+        MinecraftClient.getInstance().getItemRenderer().renderItem(
+            null,
+            itemStack,
+            mode,
+            mode == ModelTransformationMode.FIRST_PERSON_LEFT_HAND,
+            stack,
+            consumers,
+            this.entity.getWorld(),
+            light,
+            OverlayTexture.DEFAULT_UV,
+            0
+        );
+        consumers.draw();
+        consumers.setSubstitute(null);
+        CustomVertexConsumerProvider.clearRunnables();
+        stack.pop();
+
+        RenderSystem.enableDepthTest();
+    }
+
     private void ensureFramebuffer()
     {
         this.stencil.setup(Link.bbs("stencil_form"));
@@ -191,6 +366,11 @@ public class UIModelEditorRenderer extends UIModelRenderer
     @Override
     public boolean subMouseClicked(UIContext context)
     {
+        if (!this.pickingEnabled)
+        {
+            return super.subMouseClicked(context);
+        }
+
         if (this.stencil.hasPicked())
         {
             Pair<Form, String> picked = this.stencil.getPicked();
@@ -246,9 +426,22 @@ public class UIModelEditorRenderer extends UIModelRenderer
     protected void renderUserModel(UIContext context)
     {
         this.updateModel();
-        
+
+        ModelInstance model = this.getModel();
+        boolean fpHandPreview = this.fpHandPreviewSlot != null && model != null;
+        String fpGroupId = fpHandPreview ? this.fpHandPreviewSlot.group.get() : null;
+        MatrixStack stack = context.batcher.getContext().getMatrices();
+
+        if (fpHandPreview && fpGroupId != null && !fpGroupId.isEmpty())
+        {
+            this.applyFpHandGroupVisibility(model, fpGroupId);
+            stack.push();
+            stack.multiply(RotationAxis.POSITIVE_Y.rotation(MathUtils.PI));
+            MatrixStackUtils.applyTransform(stack, this.fpHandPreviewSlot.transform);
+        }
+
         FormRenderingContext formContext = new FormRenderingContext()
-            .set(FormRenderType.PREVIEW, this.entity, context.batcher.getContext().getMatrices(), LightmapTextureManager.pack(15, 15), OverlayTexture.DEFAULT_UV, context.getTransition())
+            .set(FormRenderType.PREVIEW, this.entity, stack, LightmapTextureManager.pack(15, 15), OverlayTexture.DEFAULT_UV, context.getTransition())
             .camera(this.camera)
             .modelRenderer();
 
@@ -256,6 +449,10 @@ public class UIModelEditorRenderer extends UIModelRenderer
         MatrixCache matrixCache = this.renderer.collectMatrices(this.entity, context.getTransition());
         this.renderSelectedCubeVisualizer(context, matrixCache);
 
+        if (fpHandPreview && fpGroupId != null && !fpGroupId.isEmpty())
+        {
+            this.renderFpHandItem(context, matrixCache, stack);
+        }
 
         this.renderIKGizmo(context, matrixCache);
 
@@ -290,7 +487,6 @@ public class UIModelEditorRenderer extends UIModelRenderer
             {
                 this.lastGizmoMatrix.set(gizmoMatrix);
                 this.hasGizmoMatrix = true;
-                MatrixStack stack = context.batcher.getContext().getMatrices();
 
                 stack.push();
                 MatrixStackUtils.multiply(stack, gizmoMatrix);
@@ -303,25 +499,33 @@ public class UIModelEditorRenderer extends UIModelRenderer
             }
         }
 
-        if (this.area.isInside(context))
+        if (this.area.isInside(context) && this.pickingEnabled)
         {
             if (this.stencil.getFramebuffer() == null)
             {
                 this.ensureFramebuffer();
             }
+            else
+            {
+                this.stencil.resizeGUI(this.area.w, this.area.h);
+            }
+
+            Texture fboTexture = this.stencil.getFramebuffer().getMainTexture();
+            int fboW = fboTexture.width;
+            int fboH = fboTexture.height;
 
             GlStateManager._disableScissorTest();
 
             this.stencilMap.setup();
             this.stencil.apply();
 
+            this.beginStencilViewport(fboW, fboH);
+            this.setupViewport(context);
+
             this.renderer.render(formContext.stencilMap(this.stencilMap));
-            
 
             if (gizmoMatrix != null)
             {
-                MatrixStack stack = context.batcher.getContext().getMatrices();
-
                 stack.push();
                 MatrixStackUtils.multiply(stack, gizmoMatrix);
 
@@ -335,6 +539,8 @@ public class UIModelEditorRenderer extends UIModelRenderer
             this.stencil.pickGUI(context, this.area);
             this.stencil.unbind(this.stencilMap);
 
+            this.endStencilViewport();
+
             MinecraftClient.getInstance().getFramebuffer().beginWrite(true);
 
             GlStateManager._enableScissorTest();
@@ -343,6 +549,14 @@ public class UIModelEditorRenderer extends UIModelRenderer
         {
             this.stencil.clearPicking();
         }
+
+        if (fpHandPreview && fpGroupId != null && !fpGroupId.isEmpty())
+        {
+            stack.pop();
+            this.restoreGroupVisibility();
+        }
+
+        this.setupViewport(context);
     }
 
     private void prepareGizmoDrag(UIPropTransform transform)
@@ -365,8 +579,8 @@ public class UIModelEditorRenderer extends UIModelRenderer
                 Vector3f direction = UIModelEditorRenderer.this.camera.getMouseDirection(
                     mouseX,
                     mouseY,
-                    UIModelEditorRenderer.this.area.x,
-                    UIModelEditorRenderer.this.area.y,
+                    context.globalX(UIModelEditorRenderer.this.area.x),
+                    context.globalY(UIModelEditorRenderer.this.area.y),
                     UIModelEditorRenderer.this.area.w,
                     UIModelEditorRenderer.this.area.h
                 );
@@ -378,9 +592,9 @@ public class UIModelEditorRenderer extends UIModelRenderer
 
                 rayDirection.set(direction).normalize();
                 rayOrigin.set(
-                    UIModelEditorRenderer.this.camera.position.x - UIModelEditorRenderer.this.pos.x,
-                    UIModelEditorRenderer.this.camera.position.y - UIModelEditorRenderer.this.pos.y,
-                    UIModelEditorRenderer.this.camera.position.z - UIModelEditorRenderer.this.pos.z
+                    UIModelEditorRenderer.this.camera.position.x,
+                    UIModelEditorRenderer.this.camera.position.y,
+                    UIModelEditorRenderer.this.camera.position.z
                 );
 
                 return true;
@@ -695,7 +909,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
     {
         super.render(context);
 
-        if (!this.stencil.hasPicked())
+        if (!this.pickingEnabled || !this.stencil.hasPicked())
         {
             return;
         }
@@ -711,6 +925,14 @@ public class UIModelEditorRenderer extends UIModelRenderer
         if (target != null)
         {
             target.set(index);
+        }
+
+        GlUniform boneHighlight = previewProgram.getUniform("BoneHighlight");
+
+        if (boneHighlight != null)
+        {
+            Colors.COLOR.set(BBSSettings.modelEditorHoverHighlight());
+            boneHighlight.set(Colors.COLOR.r, Colors.COLOR.g, Colors.COLOR.b, Colors.COLOR.a);
         }
 
         RenderSystem.enableBlend();
