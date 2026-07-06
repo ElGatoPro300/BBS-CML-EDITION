@@ -13,6 +13,7 @@ import mchorse.bbs_mod.forms.states.AnimationStates;
 import mchorse.bbs_mod.forms.states.StatePlayer;
 import mchorse.bbs_mod.forms.values.ValueAnchor;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
+import mchorse.bbs_mod.settings.values.core.ValueColor;
 import mchorse.bbs_mod.settings.values.core.ValueGroup;
 import mchorse.bbs_mod.settings.values.core.ValueString;
 import mchorse.bbs_mod.settings.values.core.ValueTransform;
@@ -20,6 +21,7 @@ import mchorse.bbs_mod.settings.values.numeric.ValueBoolean;
 import mchorse.bbs_mod.settings.values.numeric.ValueFloat;
 import mchorse.bbs_mod.settings.values.numeric.ValueInt;
 import mchorse.bbs_mod.utils.StringUtils;
+import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.pose.Transform;
 
 import net.minecraft.entity.LivingEntity;
@@ -41,6 +43,9 @@ public abstract class Form extends ValueGroup
     public final ValueFloat uiScale = new ValueFloat("uiScale", 1F);
     public final ValueAnchor anchor = new ValueAnchor("anchor", new Anchor());
     public final ValueBoolean shaderShadow = new ValueBoolean("shaderShadow", true);
+
+    /* FS-style paint overlay: paintColor fully overrides the texture RGB, its alpha channel is the paint opacity (0 = off, 1 = full paint) */
+    public final ValueColor paintColor = new ValueColor("paint_color", new Color().set(1F, 1F, 1F, 0F));
 
     public final List<ValueTransform> additionalTransforms = new ArrayList<>();
 
@@ -75,7 +80,6 @@ public abstract class Form extends ValueGroup
         this.name.invisible();
         this.uiScale.invisible();
         this.shaderShadow.invisible();
-
         this.add(this.visible);
         this.add(this.animatable);
         this.add(this.trackName);
@@ -95,6 +99,7 @@ public abstract class Form extends ValueGroup
         this.add(this.uiScale);
         this.add(this.anchor);
         this.add(this.shaderShadow);
+        this.add(this.paintColor);
 
         this.hitbox.invisible();
         this.hitboxWidth.invisible();

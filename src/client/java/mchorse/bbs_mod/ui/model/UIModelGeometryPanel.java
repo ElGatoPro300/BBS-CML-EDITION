@@ -54,7 +54,7 @@ import java.util.function.Consumer;
 
 public class UIModelGeometryPanel extends UIElement
 {
-    private final UIModelPanel parent;
+    private final IUIModelPanelHost parent;
     private final UIList<GeometryEntry> hierarchyList;
     private final UISearchList<GeometryEntry> hierarchySearch;
     private final UILabel selectedBoneLabel;
@@ -95,10 +95,10 @@ public class UIModelGeometryPanel extends UIElement
     private boolean cubeMirrorValue;
     private boolean filling;
 
-    public UIModelGeometryPanel(UIModelPanel parent)
+    public UIModelGeometryPanel(IUIModelPanelHost parent)
     {
         this.parent = parent;
-        this.relative(parent.mainView).w(1F).h(1F);
+        this.relative(parent.getMainView()).w(1F).h(1F);
 
         int sideMargin = 10;
         int leftWidth = 260;
@@ -468,7 +468,7 @@ public class UIModelGeometryPanel extends UIElement
         this.selectedGroup = null;
         this.selectedCube = null;
         this.hierarchyList.clear();
-        this.parent.renderer.setSelectedCube(null);
+        this.parent.getModelRenderer().setSelectedCube(null);
 
         if (this.config == null)
         {
@@ -478,13 +478,13 @@ public class UIModelGeometryPanel extends UIElement
             return;
         }
 
-        this.instance = this.parent.renderer.getPreviewModelInstance();
+        this.instance = this.parent.getModelRenderer().getPreviewModelInstance();
 
         if (this.instance == null)
         {
             this.instance = BBSModClient.getModels().loadModel(this.config.getId());
-            this.parent.renderer.invalidatePreviewModel();
-            this.instance = this.parent.renderer.getPreviewModelInstance();
+            this.parent.getModelRenderer().invalidatePreviewModel();
+            this.instance = this.parent.getModelRenderer().getPreviewModelInstance();
         }
 
         if (this.instance == null || !(this.instance.model instanceof Model model))
@@ -551,7 +551,7 @@ public class UIModelGeometryPanel extends UIElement
 
                 if (this.selectedGroup != null)
                 {
-                    this.parent.renderer.setSelectedBone(this.selectedGroup.id);
+                    this.parent.getModelRenderer().setSelectedBone(this.selectedGroup.id);
 
                     if (entry.type == GeometryEntryType.CUBE && entry.cubeIndex >= 0 && entry.cubeIndex < this.selectedGroup.cubes.size())
                     {
@@ -561,11 +561,11 @@ public class UIModelGeometryPanel extends UIElement
             }
         }
 
-        this.parent.renderer.setSelectedCube(this.selectedCube);
+        this.parent.getModelRenderer().setSelectedCube(this.selectedCube);
 
-        if (this.parent.mainView.getChildren().contains(this))
+        if (this.parent.getMainView().getChildren().contains(this))
         {
-            this.parent.renderer.transform = this.gizmoTransform;
+            this.parent.getModelRenderer().transform = this.gizmoTransform;
         }
 
         this.fillControls();
@@ -1161,7 +1161,7 @@ public class UIModelGeometryPanel extends UIElement
         {
             this.selectedGroup = null;
             this.selectedCube = null;
-            this.parent.renderer.setSelectedCube(null);
+            this.parent.getModelRenderer().setSelectedCube(null);
             this.fillControls();
             this.fillCubeControls();
         }
@@ -1582,9 +1582,9 @@ public class UIModelGeometryPanel extends UIElement
         {
             IOUtils.writeText(file, DataToString.toString(map, true));
             BBSModClient.getModels().loadModel(this.config.getId());
-            this.parent.renderer.invalidatePreviewModel();
-            this.parent.renderer.setModel(this.config.getId());
-            this.parent.renderer.setConfig(this.config);
+            this.parent.getModelRenderer().invalidatePreviewModel();
+            this.parent.getModelRenderer().setModel(this.config.getId());
+            this.parent.getModelRenderer().setConfig(this.config);
             this.reloadModelData();
         }
         catch (Exception e)

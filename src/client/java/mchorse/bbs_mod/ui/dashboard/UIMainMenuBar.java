@@ -72,6 +72,7 @@ public class UIMainMenuBar extends UIElement
         /* Window menu is always visible; its content adapts to the active panel
            (currently only the Model Editor populates it). */
         this.add(new UIMenuButton(UIKeys.RAW_WINDOW, this, this::buildWindowMenu));
+
         this.add(new UIMenuButton(UIKeys.RAW_HELP, this, this::buildHelpMenu));
 
         this.row(2).preferred(999);
@@ -160,6 +161,8 @@ public class UIMainMenuBar extends UIElement
     {
         menu.action(Icons.PROPERTIES, UIKeys.SELECTORS_TITLE, () ->
             UIOverlay.addOverlayRight(this.getContext(), new UISelectorsOverlayPanel(), 240));
+        menu.action(Icons.BLOCK, UIKeys.WORLD_PROPERTIES, () ->
+            UIOverlay.addOverlay(this.getContext(), new UIWorldPropertiesOverlayPanel(), 240, 200));
         menu.action(Icons.GRAPH, UIKeys.GRAPH_TOOLTIP, () -> {
             if (this.dashboard.documentTabsBar != null)
             {

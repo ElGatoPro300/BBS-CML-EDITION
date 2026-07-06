@@ -15,6 +15,7 @@ import mchorse.bbs_mod.settings.values.ui.ValueStringKeys;
 import mchorse.bbs_mod.settings.values.ui.ValueVideoSettings;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
+import mchorse.bbs_mod.utils.keyframes.KeyframeShape;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -28,11 +29,18 @@ public class BBSSettings
     public static ValueStringKeys disabledSheets;
     public static ValueLanguage language;
     public static ValueInt primaryColor;
+    public static ValueInt modelEditorHoverColor;
+    public static ValueFloat modelEditorHoverOpacity;
+
+    private static int appliedModelEditorHoverColor = Colors.ACTIVE;
+    private static float appliedModelEditorHoverOpacity = 0.5F;
     public static ValueBoolean enableTrackpadIncrements;
     public static ValueBoolean enableTrackpadScrolling;
     public static ValueBoolean welcomePanelAcceptedBeta1;
     public static ValueBoolean hideSettingDescriptions;
     public static ValueFloat userIntefaceScale;
+    public static ValueString uiFont;
+    public static ValueFloat uiFontSize;
     public static ValueInt tooltipStyle;
     public static ValueFloat fov;
     public static ValueBoolean hsvColorPicker;
@@ -46,7 +54,10 @@ public class BBSSettings
     public static ValueBoolean gizmos;
     public static ValueBoolean gizmoYAxisHorizontal;
     public static ValueInt defaultInterpolation;
+    public static ValueInt defaultModelInterpolation;
     public static ValueInt defaultPathInterpolation;
+    public static ValueInt defaultCameraKeyframeInterpolation;
+    public static ValueInt defaultKeyframeShape;
 
     public static ValueBoolean enableCursorRendering;
     public static ValueBoolean enableMouseButtonRendering;
@@ -181,6 +192,68 @@ public class BBSSettings
     public static int primaryColor(int alpha)
     {
         return primaryColor.get() | alpha;
+    }
+
+    public static int modelEditorHoverColor(float alpha)
+    {
+        return Colors.setA(modelEditorHoverColor.get(), alpha);
+    }
+
+    public static void syncAppliedAppearance()
+    {
+        if (modelEditorHoverColor != null)
+        {
+            appliedModelEditorHoverColor = modelEditorHoverColor.get();
+        }
+
+        appliedModelEditorHoverOpacity = modelEditorHoverOpacity == null ? 0.5F : modelEditorHoverOpacity.get();
+    }
+
+    public static int modelEditorHoverHighlight()
+    {
+        return Colors.setA(appliedModelEditorHoverColor, appliedModelEditorHoverOpacity);
+    }
+
+    public static int getUIScaleStep()
+    {
+        float factor = userIntefaceScale == null ? 2F : userIntefaceScale.get();
+
+        if (factor <= 0F)
+        {
+            return 3;
+        }
+
+        if (factor < 1.25F)
+        {
+            return 1;
+        }
+
+        if (factor < 1.75F)
+        {
+            return 2;
+        }
+
+        return 3;
+    }
+
+    public static float getUIScaleFactorFromStep(int step)
+    {
+        return switch (Math.max(1, Math.min(3, step)))
+        {
+            case 1 -> 1F;
+            case 2 -> 1.5F;
+            default -> 2F;
+        };
+    }
+
+    public static float getUIScaleFactor()
+    {
+        if (userIntefaceScale == null || userIntefaceScale.get() <= 0F)
+        {
+            return 0F;
+        }
+
+        return getUIScaleFactorFromStep(getUIScaleStep());
     }
 
     public static boolean hasColoredBackground()
@@ -369,12 +442,16 @@ public class BBSSettings
         builder.category("appearance");
         builder.register(language = new ValueLanguage("language"));
         primaryColor = builder.getInt("primary_color", Colors.ACTIVE).color();
+        modelEditorHoverColor = builder.getInt("model_editor_hover_color", Colors.ACTIVE).color();
+        modelEditorHoverOpacity = builder.getFloat("model_editor_hover_opacity", 0.5F, 0F, 1F);
         enableTrackpadIncrements = builder.getBoolean("trackpad_increments", true);
         enableTrackpadScrolling = builder.getBoolean("trackpad_scrolling", true);
         hideSettingDescriptions = builder.getBoolean("hide_setting_descriptions", false);
         welcomePanelAcceptedBeta1 = builder.getBoolean("welcome_panel_accepted_beta1", false);
         welcomePanelAcceptedBeta1.invisible();
         userIntefaceScale = builder.getFloat("ui_scale", 2F, 0F, 4F);
+        uiFont = builder.getString("ui_font", "");
+        uiFontSize = builder.getFloat("ui_font_size", 1F, 0.25F, 4F);
         tooltipStyle = builder.getInt("tooltip_style", 1);
         coloredBackground = builder.getBoolean("colored_background", true);
         backgroundBrightness = builder.getFloat("background_brightness", 1F, 0.5F, 1.5F);
@@ -402,7 +479,7 @@ public class BBSSettings
 
         builder.category("axes");
         gizmos = builder.getBoolean("gizmos", true);
-        axesScale = builder.getFloat("axes_scale", 1F, 0F, 10F);
+        axesScale = builder.getFloat("axes_scale", 1F, 0F, 100F);
         axesThickness = builder.getFloat("axes_thickness", 1F, 0.25F, 3F);
         disablePivotTransform = builder.getBoolean("disable_pivot_transform", false);
         gizmoYAxisHorizontal = builder.getBoolean("gizmo_y_axis_horizontal", true);
@@ -464,7 +541,10 @@ public class BBSSettings
         editorDockGuideColor = builder.getInt("dock_guide_color", 0x57CCFF).color();
         editorDockGuideOpacity = builder.getFloat("dock_guide_opacity", 0.5F, 0F, 1F);
         defaultInterpolation = builder.getInt("default_interpolation", 0);
+        defaultModelInterpolation = builder.getInt("default_model_interpolation", 0);
         defaultPathInterpolation = builder.getInt("default_path_interpolation", 34);
+        defaultCameraKeyframeInterpolation = builder.getInt("default_camera_keyframe_interpolation", 0);
+        defaultKeyframeShape = builder.getInt("default_keyframe_shape", 0, 0, KeyframeShape.values().length - 1);
         editorSafeMarginsColor = builder.getInt("safe_margins_color", 0xcccc0000).colorAlpha();
         editorSafeMargins = builder.getBoolean("safe_margins", false);
         editorFlightFreeLook = builder.getBoolean("flight_free_look", false);
@@ -546,5 +626,6 @@ public class BBSSettings
         cdnToken = builder.getString("token", "");
 
         BBSMod.events.post(new RegisterBBSSettingsEvent(builder));
+        syncAppliedAppearance();
     }
 }

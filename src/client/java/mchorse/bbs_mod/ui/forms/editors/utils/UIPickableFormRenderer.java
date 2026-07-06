@@ -1,5 +1,6 @@
 package mchorse.bbs_mod.ui.forms.editors.utils;
 
+import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.entities.IEntity;
@@ -99,6 +100,11 @@ public class UIPickableFormRenderer extends UIFormRenderer
     @Override
     public boolean subMouseClicked(UIContext context)
     {
+        if (this.formEditor.modelSettingsEditor != null && this.formEditor.modelSettingsEditor.isVisible())
+        {
+            return false;
+        }
+
         if (this.formEditor.clickViewport(context, this.stencil))
         {
             return true;
@@ -111,6 +117,11 @@ public class UIPickableFormRenderer extends UIFormRenderer
     protected void renderUserModel(UIContext context)
     {
         if (this.form == null)
+        {
+            return;
+        }
+
+        if (this.renderForm != null && !this.renderForm.get())
         {
             return;
         }
@@ -133,12 +144,28 @@ public class UIPickableFormRenderer extends UIFormRenderer
             }
         }
 
-        if (this.area.isInside(context))
+        if (this.area.w > 0 && this.area.h > 0)
         {
+            if (this.stencil.getFramebuffer() == null)
+            {
+                this.ensureFramebuffer();
+            }
+            else
+            {
+                this.stencil.resizeGUI(this.area.w, this.area.h);
+            }
+
+            Texture fboTexture = this.stencil.getFramebuffer().getMainTexture();
+            int fboW = fboTexture.width;
+            int fboH = fboTexture.height;
+
             GlStateManager._disableScissorTest();
 
             this.stencilMap.setup();
             this.stencil.apply();
+
+            this.beginStencilViewport(fboW, fboH);
+            this.setupViewport(context);
 
             FormUtilsClient.render(this.form, formContext.stencilMap(this.stencilMap));
 
@@ -158,18 +185,25 @@ public class UIPickableFormRenderer extends UIFormRenderer
 
             stack.pop();
 
-            this.stencil.pickGUI(context, this.area);
+            if (this.area.isInside(context))
+            {
+                this.stencil.pickGUI(context, this.area);
+            }
+            else
+            {
+                this.stencil.clearPicking();
+            }
+
             this.stencil.unbind(this.stencilMap);
+
+            this.endStencilViewport();
 
             MinecraftClient.getInstance().getFramebuffer().beginWrite(true);
 
             GlStateManager._enableScissorTest();
         }
-        else
-        {
-            this.stencil.clearPicking();
-        }
 
+        this.setupViewport(context);
         this.prepareGizmoRenderState();
         this.renderAxes(context);
     }
@@ -236,8 +270,8 @@ public class UIPickableFormRenderer extends UIFormRenderer
                 Vector3f direction = UIPickableFormRenderer.this.camera.getMouseDirection(
                     mouseX,
                     mouseY,
-                    UIPickableFormRenderer.this.area.x,
-                    UIPickableFormRenderer.this.area.y,
+                    context.globalX(UIPickableFormRenderer.this.area.x),
+                    context.globalY(UIPickableFormRenderer.this.area.y),
                     UIPickableFormRenderer.this.area.w,
                     UIPickableFormRenderer.this.area.h
                 );
@@ -249,9 +283,9 @@ public class UIPickableFormRenderer extends UIFormRenderer
 
                 rayDirection.set(direction).normalize();
                 rayOrigin.set(
-                    UIPickableFormRenderer.this.camera.position.x - UIPickableFormRenderer.this.pos.x,
-                    UIPickableFormRenderer.this.camera.position.y - UIPickableFormRenderer.this.pos.y,
-                    UIPickableFormRenderer.this.camera.position.z - UIPickableFormRenderer.this.pos.z
+                    UIPickableFormRenderer.this.camera.position.x,
+                    UIPickableFormRenderer.this.camera.position.y,
+                    UIPickableFormRenderer.this.camera.position.z
                 );
 
                 return true;
@@ -319,6 +353,14 @@ public class UIPickableFormRenderer extends UIFormRenderer
         if (target != null)
         {
             target.set(index);
+        }
+
+        GlUniform boneHighlight = previewProgram.getUniform("BoneHighlight");
+
+        if (boneHighlight != null)
+        {
+            Colors.COLOR.set(BBSSettings.modelEditorHoverHighlight());
+            boneHighlight.set(Colors.COLOR.r, Colors.COLOR.g, Colors.COLOR.b, Colors.COLOR.a);
         }
 
         RenderSystem.enableBlend();

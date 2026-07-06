@@ -22,6 +22,7 @@ import mchorse.bbs_mod.utils.interps.Lerps;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 import mchorse.bbs_mod.utils.keyframes.KeyframeSegment;
+import mchorse.bbs_mod.utils.keyframes.KeyframeShape;
 import mchorse.bbs_mod.utils.keyframes.factories.IKeyframeFactory;
 
 import net.minecraft.client.render.BufferBuilder;
@@ -529,8 +530,30 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
     {
         int x = this.keyframes.toGraphX(tick);
         float a = (float) Math.sin(context.getTickTransition() / 2D) * 0.1F + 0.5F;
+        int c = Colors.setA(color, a);
+        KeyframeShape shape = KeyframeShape.SQUARE;
 
-        context.batcher.box(x - 3, y - 3, x + 3, y + 3, Colors.setA(color, a));
+        if (BBSSettings.defaultKeyframeShape != null)
+        {
+            int idx = BBSSettings.defaultKeyframeShape.get();
+            KeyframeShape[] values = KeyframeShape.values();
+
+            if (idx >= 0 && idx < values.length)
+            {
+                shape = values[idx];
+            }
+        }
+
+        Keyframe preview = new Keyframe("preview", sheet.channel.getFactory());
+
+        preview.setShape(shape);
+
+        Matrix4f matrix = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
+        BufferBuilder builder = Tessellator.getInstance().getBuffer();
+        builder.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
+
+        UIKeyframeDopeSheet.renderShape(preview, context, builder, matrix, x, y, 3, c);
+        BufferRenderer.drawWithGlobalProgram(builder.end());
     }
 
     /**

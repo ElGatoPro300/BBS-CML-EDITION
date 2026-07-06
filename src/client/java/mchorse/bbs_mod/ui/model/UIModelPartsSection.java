@@ -30,7 +30,7 @@ public class UIModelPartsSection extends UIModelSection
     public UIColor color;
     public UIPoseEditor poseEditor;
 
-    public UIModelPartsSection(UIModelPanel editor)
+    public UIModelPartsSection(IUIModelPanelHost editor)
     {
         super(editor);
         
@@ -68,9 +68,9 @@ public class UIModelPartsSection extends UIModelSection
         this.poseEditor.onChange = this.editor::dirty;
         this.poseEditor.pickCallback = (bone) ->
         {
-            this.editor.renderer.setSelectedBone(bone);
+            this.editor.setSelectedBone(bone);
 
-            for (UIModelSection section : this.editor.sections)
+            for (UIModelSection section : this.editor.getSections())
             {
                 if (section != this)
                 {

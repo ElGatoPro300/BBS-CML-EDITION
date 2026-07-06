@@ -4,11 +4,37 @@ uniform sampler2D Sampler0;
 
 uniform vec4 ColorModulator;
 uniform int Target;
+uniform vec4 BoneHighlight;
 
 in vec2 texCoord0;
 in vec4 vertexColor;
 
 out vec4 fragColor;
+
+vec4 gizmoPreviewColor(int index)
+{
+    if (index == 1)
+    {
+        return vec4(1.0, 0.0, 0.0, 0.75);
+    }
+
+    if (index == 2)
+    {
+        return vec4(0.0, 1.0, 0.0, 0.75);
+    }
+
+    if (index == 3)
+    {
+        return vec4(0.0, 0.0, 1.0, 0.75);
+    }
+
+    if (index >= 7)
+    {
+        return BoneHighlight;
+    }
+
+    return vec4(1.0, 1.0, 1.0, 0.5);
+}
 
 void main()
 {
@@ -23,14 +49,7 @@ void main()
 
     if (totalIndex == Target)
     {
-        if (Target >= 7)
-        {
-            color = vec4(0.0, 0.5, 1.0, 0.5);
-        }
-        else
-        {
-            color = vec4(1.0, 1.0, 1.0, 0.5);
-        }
+        color = gizmoPreviewColor(Target);
     }
     else
     {

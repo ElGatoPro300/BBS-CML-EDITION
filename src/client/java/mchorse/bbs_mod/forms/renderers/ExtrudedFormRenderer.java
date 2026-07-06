@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.forms.renderers;
 
 import mchorse.bbs_mod.BBSModClient;
+import mchorse.bbs_mod.camera.Camera;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.cubic.render.vao.ModelVAO;
@@ -61,7 +62,11 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
         this.renderModel(BBSShaders::getModel,
             stack,
             OverlayTexture.DEFAULT_UV, LightmapTextureManager.MAX_LIGHT_COORDINATE, Colors.WHITE,
-            context.getTransition()
+            context.getTransition(),
+            null,
+            true,
+            false,
+            false
         );
         RenderSystem.depthFunc(GL11.GL_ALWAYS);
 
@@ -84,10 +89,10 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
             shading ? BBSShaders::getPickerBillboardProgram : BBSShaders::getPickerBillboardNoShadingProgram
         );
 
-        this.renderModel(shader, context.stack, context.overlay, context.light, context.color, context.getTransition());
+        this.renderModel(shader, context.stack, context.overlay, context.light, context.color, context.getTransition(), context.camera, false, context.modelRenderer || context.isPicking(), !context.isPicking());
     }
 
-    private void renderModel(Supplier<ShaderProgram> shader, MatrixStack matrices, int overlay, int light, int overlayColor, float transition)
+    private void renderModel(Supplier<ShaderProgram> shader, MatrixStack matrices, int overlay, int light, int overlayColor, float transition, Camera camera, boolean invertY, boolean modelRenderer, boolean allowPaintPass)
     {
         Link texture = this.form.texture.get();
         ModelVAO data = BBSModClient.getTextures().getExtruder().get(texture);
@@ -114,6 +119,8 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
             GameRenderer gameRenderer = MinecraftClient.getInstance().gameRenderer;
             Color formColor = this.form.color.get();
 
+            color.mul(formColor);
+
             BBSModClient.getTextures().bindTexture(texture);
 
             RenderSystem.enableBlend();
@@ -122,8 +129,36 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
             gameRenderer.getLightmapTextureManager().enable();
             gameRenderer.getOverlayTexture().setupOverlayColor();
 
-            ModelVAORenderer.render(shader.get(), data, matrices, color.r * formColor.r, color.g * formColor.g, color.b * formColor.b, color.a * formColor.a, light, overlay);
+            Color paint = this.form.paintColor.get();
+            ModelVAORenderer.setPaint(paint.r, paint.g, paint.b, paint.a);
 
+            try
+            {
+                ModelVAORenderer.render(shader.get(), data, matrices, color.r, color.g, color.b, color.a, light, overlay);
+
+                if (allowPaintPass
+                    && paint.a > 0F
+                    && BBSRendering.isIrisShadersEnabled()
+                    && BBSRendering.isRenderingWorld())
+                {
+                    ModelVAORenderer.beginPaintOverlayPass();
+
+                    try
+                    {
+                        ModelVAORenderer.render(BBSShaders.getModel(), data, matrices, 1F, 1F, 1F, 1F, light, overlay);
+                    }
+                    finally
+                    {
+                        ModelVAORenderer.endPaintOverlayPass();
+                    }
+                }
+            }
+            finally
+            {
+                ModelVAORenderer.clearPaint();
+            }
+
+            RenderSystem.defaultBlendFunc();
             RenderSystem.disableBlend();
 
             gameRenderer.getLightmapTextureManager().disable();

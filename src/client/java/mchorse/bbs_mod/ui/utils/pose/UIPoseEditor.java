@@ -70,6 +70,7 @@ public class UIPoseEditor extends UIElement
     public UITrackpad fix;
     public UIButton pickTexture;
     public UIColor color;
+    public UIColor paintColor;
     public UIToggle lighting;
     public UIPropTransform transform;
     public Runnable onChange;
@@ -385,6 +386,7 @@ public class UIPoseEditor extends UIElement
             if (this.onChange != null) this.onChange.run();
         });
         this.color.withAlpha();
+        this.color.tooltip(UIKeys.RAW_COLOR);
         this.color.context((menu) ->
         {
             menu.action(Icons.DOWNLOAD, UIKeys.POSE_CONTEXT_APPLY, () ->
@@ -395,6 +397,37 @@ public class UIPoseEditor extends UIElement
             menu.action(Icons.DOWNLOAD, UIKeys.POSE_CATEGORIES_CONTEXT_APPLY_CATEGORY, () ->
             {
                 this.applyCategory((p) -> this.setColor(p, this.color.picker.color.getARGBColor()));
+                if (this.onChange != null) this.onChange.run();
+            });
+        });
+        this.paintColor = new UIColor((c) ->
+        {
+            String selectedCategory = this.categories != null ? this.categories.getCurrentFirst() : null;
+            if (selectedCategory != null && !selectedCategory.isEmpty())
+            {
+                this.applyCategory((p) -> this.setPaintColor(p, c));
+            }
+            else if (this.applyLiveMirror((p) -> this.setPaintColor(p, c)))
+            {}
+            else if (this.transform.getTransform() instanceof PoseTransform poseTransform)
+            {
+                this.setPaintColor(poseTransform, c);
+            }
+
+            if (this.onChange != null) this.onChange.run();
+        });
+        this.paintColor.withAlpha();
+        this.paintColor.tooltip(UIKeys.FORMS_EDITORS_PAINT_COLOR);
+        this.paintColor.context((menu) ->
+        {
+            menu.action(Icons.DOWNLOAD, UIKeys.POSE_CONTEXT_APPLY, () ->
+            {
+                this.applyChildren((p) -> this.setPaintColor(p, this.paintColor.picker.color.getARGBColor()));
+                if (this.onChange != null) this.onChange.run();
+            });
+            menu.action(Icons.DOWNLOAD, UIKeys.POSE_CATEGORIES_CONTEXT_APPLY_CATEGORY, () ->
+            {
+                this.applyCategory((p) -> this.setPaintColor(p, this.paintColor.picker.color.getARGBColor()));
                 if (this.onChange != null) this.onChange.run();
             });
         });
@@ -458,7 +491,7 @@ public class UIPoseEditor extends UIElement
             this.add(this.pickTexture);
         }
 
-        this.add(UI.row(this.color, this.lighting), this.transform);
+        this.add(this.transform, UI.row(this.color, this.paintColor), UI.row(this.lighting));
     }
 
     /**
@@ -582,6 +615,7 @@ public class UIPoseEditor extends UIElement
         }
         this.fix.setVisible(!groups.isEmpty());
         this.color.setVisible(!groups.isEmpty());
+        this.paintColor.setVisible(!groups.isEmpty());
         this.transform.setVisible(!groups.isEmpty());
 
         boolean persistedFilter = BBSSettings.poseBonesFilterMarked != null && BBSSettings.poseBonesFilterMarked.get();
@@ -836,11 +870,13 @@ public class UIPoseEditor extends UIElement
 
         this.fix.setVisible(true);
         this.color.setVisible(true);
+        this.paintColor.setVisible(true);
         this.lighting.setVisible(true);
         this.pickTexture.setVisible(BBSSettings.pickLimbTexture != null && BBSSettings.pickLimbTexture.get());
 
         this.fix.setEnabled(isPoseTransform);
         this.color.setEnabled(isPoseTransform);
+        this.paintColor.setEnabled(isPoseTransform);
         this.lighting.setEnabled(isPoseTransform);
         this.pickTexture.setEnabled(isPoseTransform);
 
@@ -864,11 +900,13 @@ public class UIPoseEditor extends UIElement
 
         this.fix.setVisible(true);
         this.color.setVisible(true);
+        this.paintColor.setVisible(true);
         this.lighting.setVisible(true);
         this.pickTexture.setVisible(BBSSettings.pickLimbTexture != null && BBSSettings.pickLimbTexture.get());
 
         this.fix.setEnabled(true);
         this.color.setEnabled(true);
+        this.paintColor.setEnabled(true);
         this.lighting.setEnabled(true);
         this.pickTexture.setEnabled(true);
 
@@ -878,6 +916,7 @@ public class UIPoseEditor extends UIElement
         {
             this.fix.setValue(poseTransform.fix);
             this.color.setColor(poseTransform.color.getARGBColor());
+            this.paintColor.setColor(poseTransform.paintColor.getARGBColor());
             this.lighting.setValue(poseTransform.lighting == 0F);
             this.transform.setTransform(poseTransform);
         }
@@ -885,6 +924,7 @@ public class UIPoseEditor extends UIElement
         {
             this.fix.setValue(0F);
             this.color.setColor(Colors.WHITE);
+            this.paintColor.setColor(0x00FFFFFF);
             this.lighting.setValue(false);
             this.transform.setTransform(null);
         }
@@ -898,6 +938,11 @@ public class UIPoseEditor extends UIElement
     protected void setColor(PoseTransform transform, int value)
     {
         transform.color.set(value);
+    }
+
+    protected void setPaintColor(PoseTransform transform, int value)
+    {
+        transform.paintColor.set(value);
     }
 
     protected void setLighting(PoseTransform poseTransform, boolean value)

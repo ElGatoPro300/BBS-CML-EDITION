@@ -47,7 +47,7 @@ public class WorldRendererMixin
     @Inject(method = "renderLayer", at = @At("HEAD"), cancellable = true)
     public void onRenderLayer(RenderLayer renderLayer, MatrixStack matrices, double cameraX, double cameraY, double cameraZ, Matrix4f positionMatrix, CallbackInfo info)
     {
-        if (BBSRendering.isChromaSkyEnabled() && !BBSRendering.isChromaSkyTerrain())
+        if (BBSRendering.shouldHideChromaTerrain())
         {
             BBSRendering.onRenderChunkLayer(matrices);
 
@@ -62,6 +62,12 @@ public class WorldRendererMixin
         {
             BBSRendering.onRenderChunkLayer(stack);
         }
+    }
+
+    @Inject(method = "setupFrustum", at = @At("HEAD"))
+    public void onSetupFrustum(MatrixStack matrices, Vec3d vec3d, Matrix4f matrix4f, CallbackInfo info)
+    {
+        BBSRendering.camera.set(matrix4f);
     }
 
     @Inject(at = @At("RETURN"), method = "loadEntityOutlinePostProcessor")
