@@ -2,14 +2,17 @@ package mchorse.bbs_mod.ui.film.toolbar;
 
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.camera.clips.ClipFactoryData;
+import mchorse.bbs_mod.film.Film;
+import mchorse.bbs_mod.film.replays.Replay;
+import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.UIClips;
 import mchorse.bbs_mod.ui.film.UIClipsPanel;
-import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.film.replays.UIReplaysEditor;
+import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframes;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.keys.KeyCombo;
@@ -20,6 +23,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
 
 /**
  * Phase 2 wiring for timeline toolbar actions. Handlers mirror the existing
@@ -45,6 +49,8 @@ public final class TimelineToolbarWiring
         wireClipsEditSelection(clips, toolbar);
         wireClipsTransform(clips, toolbar);
         wireClipsOverlays(panel);
+        wireClipsAddSubmenus(panel);
+        wireClipsAddModes(clips, toolbar);
     }
 
     /* Keyframe toolbar (embedded in clip panel or replay editor) */
@@ -52,6 +58,7 @@ public final class TimelineToolbarWiring
     public static void wireKeyframesToolbar(UIFilmPanel filmPanel, UIKeyframes keyframes, TimelineToolbar toolbar)
     {
         wireTransportAndHistory(filmPanel, toolbar);
+        wireKeyframesAdd(keyframes, toolbar);
         wireKeyframesInstant(keyframes, toolbar);
         wireKeyframesEditSelection(keyframes, toolbar);
         wireKeyframesSelect(keyframes, toolbar);
@@ -63,6 +70,7 @@ public final class TimelineToolbarWiring
     public static void wireReplaysToolbar(UIReplaysEditor editor)
     {
         wireTransportAndHistory(editor.getFilmPanel(), editor.toolbar);
+        wireKeyframesAdd(editor, editor.toolbar);
         wireKeyframesInstant(editor, editor.toolbar);
         wireKeyframesEditSelection(editor, editor.toolbar);
         wireKeyframesSelect(editor, editor.toolbar);
@@ -71,6 +79,7 @@ public final class TimelineToolbarWiring
         wireKeyframesOverlays(editor);
         wireKeyframesEditTrack(editor);
         wireTracksOverlays(editor);
+        wireActorSection(editor);
     }
 
     /* Shared transport + undo/redo */
@@ -96,6 +105,8 @@ public final class TimelineToolbarWiring
             BBSSettings.editorLoop.set(!BBSSettings.editorLoop.get());
             filmPanel.getContext().notifyInfo(UIKeys.CAMERA_EDITOR_KEYS_LOOPING_TOGGLE_NOTIFICATION);
         }, editorActive);
+        bindShortcut(toolbar, Keys.LOOPING_SET_MIN, () -> filmPanel.cameraEditor.clips.setLoopMin(), editorActive);
+        bindShortcut(toolbar, Keys.LOOPING_SET_MAX, () -> filmPanel.cameraEditor.clips.setLoopMax(), editorActive);
         bindShortcut(toolbar, Keys.UNDO, filmPanel::undo, filmLoaded);
         bindShortcut(toolbar, Keys.REDO, filmPanel::redo, filmLoaded);
     }
@@ -217,7 +228,143 @@ public final class TimelineToolbarWiring
         });
     }
 
+    private static void wireClipsAddSubmenus(UIClipsPanel panel)
+    {
+        UIClips clips = panel.clips;
+        TimelineToolbar toolbar = panel.toolbar;
+        BooleanSupplier canUse = () -> clips.canUseToolbarKeybinds();
+
+        if (panel.isCameraTimeline())
+        {
+            wireClipTypeGroups(clips, toolbar, TimelineClipTypeGroups.forCamera(clips.getFactory()), canUse);
+            wireReplayImportSubmenu(clips, toolbar, canUse);
+            bindLabel(toolbar, UIKeys.CAMERA_TIMELINE_CONTEXT_RECORD_MICROPHONE, clips::toolbarRecordMicrophone,
+                canUse);
+        }
+        else
+        {
+            wireClipTypeGroups(clips, toolbar, TimelineClipTypeGroups.forAction(clips.getFactory()), canUse);
+        }
+    }
+
+    private static void wireClipsAddModes(UIClips clips, TimelineToolbar toolbar)
+    {
+        BooleanSupplier canUse = () -> clips.canUseToolbarKeybinds();
+        BooleanSupplier hasDelegateClip = () -> clips.getDelegateClip() != null && canUse.getAsBoolean();
+
+        bindShortcut(toolbar, Keys.ADD_AT_CURSOR, clips::toolbarShowAddsAtCursor, canUse);
+        bindShortcut(toolbar, Keys.ADD_AT_TICK, clips::toolbarShowAddsAtTick, canUse);
+        bindShortcut(toolbar, Keys.ADD_ON_TOP, clips::toolbarShowAddsOnTop, hasDelegateClip);
+    }
+
+    private static void wireClipTypeGroups(UIClips clips, TimelineToolbar toolbar,
+        List<TimelineClipTypeGroups.ClipGroup> groups, BooleanSupplier canUse)
+    {
+        for (TimelineClipTypeGroups.ClipGroup group : groups)
+        {
+            ToolbarItem container = findLabelInSections(toolbar.getSections(), group.label);
+
+            if (container == null)
+            {
+                continue;
+            }
+
+            container.children.clear();
+
+            for (Link type : group.types)
+            {
+                Link targetType = type;
+                ClipFactoryData data = clips.getFactory().getData(targetType);
+
+                container.children.add(ToolbarItem.action(
+                        UIKeys.CAMERA_TIMELINE_CONTEXT_ADD_CLIP_TYPE.format(UIKeys.C_CLIP.get(targetType)))
+                    .icon(data.icon)
+                    .run(() -> clips.toolbarAddClipType(targetType))
+                    .enabledIf(canUse));
+            }
+
+            container.enabledIf(canUse);
+        }
+    }
+
+    private static void wireReplayImportSubmenu(UIClips clips, TimelineToolbar toolbar, BooleanSupplier canUse)
+    {
+        ToolbarItem container = findLabelInSections(toolbar.getSections(),
+            UIKeys.CAMERA_TIMELINE_CONTEXT_FROM_PLAYER_RECORDING);
+
+        if (container == null)
+        {
+            return;
+        }
+
+        container.children.clear();
+
+        Film film = clips.getFilm();
+
+        if (film == null)
+        {
+            container.enabledIf(() -> false);
+
+            return;
+        }
+
+        for (Replay replay : film.replays.getList())
+        {
+            Replay targetReplay = replay;
+            Form form = replay.form.get();
+            IKey label = IKey.constant(form == null ? "-" : form.getFormIdOrName());
+
+            container.children.add(ToolbarItem.action(label)
+                .icon(Icons.EDITOR)
+                .run(() -> clips.toolbarImportReplay(targetReplay))
+                .enabledIf(canUse));
+        }
+
+        container.enabledIf(() -> canUse.getAsBoolean() && !film.replays.getList().isEmpty());
+    }
+
     /* Keyframe timeline overlays / submenus (Phase 2c) */
+
+    private static void wireKeyframesAdd(UIKeyframes keyframes, TimelineToolbar toolbar)
+    {
+        BooleanSupplier canModify = keyframes::isModifyingKeyframes;
+        BooleanSupplier hasSelected = () -> canModify.getAsBoolean() && keyframes.hasSelectedKeyframes();
+
+        bindLabel(toolbar, UIKeys.KEYFRAMES_CONTEXT_INSERT_AT_CURSOR, keyframes::toolbarInsertAtCursor, canModify);
+        bindLabel(toolbar, UIKeys.KEYFRAMES_CONTEXT_DUPLICATE_AT_CURSOR, keyframes::toolbarDuplicateAtCursor, hasSelected);
+        bindLabel(toolbar, UIKeys.KEYFRAMES_KEYS_SELECT_COLUMN, keyframes::toolbarSelectColumn, canModify);
+    }
+
+    private static void wireKeyframesAdd(UIReplaysEditor editor, TimelineToolbar toolbar)
+    {
+        BooleanSupplier hasEditor = () -> editor.keyframeEditor != null;
+        BooleanSupplier canModify = () -> hasEditor.getAsBoolean()
+            && editor.keyframeEditor.view.isModifyingKeyframes();
+        BooleanSupplier hasSelected = () -> canModify.getAsBoolean()
+            && editor.keyframeEditor.view.hasSelectedKeyframes();
+
+        bindLabel(toolbar, UIKeys.KEYFRAMES_CONTEXT_INSERT_AT_CURSOR, () ->
+        {
+            if (editor.keyframeEditor != null)
+            {
+                editor.keyframeEditor.view.toolbarInsertAtCursor();
+            }
+        }, canModify);
+        bindLabel(toolbar, UIKeys.KEYFRAMES_CONTEXT_DUPLICATE_AT_CURSOR, () ->
+        {
+            if (editor.keyframeEditor != null)
+            {
+                editor.keyframeEditor.view.toolbarDuplicateAtCursor();
+            }
+        }, hasSelected);
+        bindLabel(toolbar, UIKeys.KEYFRAMES_KEYS_SELECT_COLUMN, () ->
+        {
+            if (editor.keyframeEditor != null)
+            {
+                editor.keyframeEditor.view.toolbarSelectColumn();
+            }
+        }, canModify);
+    }
 
     private static void wireKeyframesOverlays(UIKeyframes keyframes, TimelineToolbar toolbar)
     {
@@ -301,6 +448,39 @@ public final class TimelineToolbarWiring
             () -> TimelineTrackEligibility.hasAnimationToPoseTrack(editor));
         bindLabel(toolbar, UIKeys.FILM_REPLAY_CONTEXT_POSE_TO_LIMBS, editor::toolbarPoseToLimbs,
             () -> TimelineTrackEligibility.hasPoseToLimbsTrack(editor));
+    }
+
+    private static void wireActorSection(UIReplaysEditor editor)
+    {
+        TimelineToolbar toolbar = editor.toolbar;
+        UIFilmPanel filmPanel = editor.getFilmPanel();
+        BooleanSupplier viewportAvailable = () -> TimelineViewportEligibility.isViewportAvailable(filmPanel);
+        BooleanSupplier canAdd = viewportAvailable;
+        BooleanSupplier canMove = () -> viewportAvailable.getAsBoolean()
+            && TimelineViewportEligibility.canMoveReplay(editor);
+        Supplier<IKey> viewportHiddenReason = () -> viewportAvailable.getAsBoolean()
+            ? null
+            : UIKeys.TIMELINE_TOOLBAR_DISABLED_VIEWPORT_HIDDEN;
+
+        bindActorAction(toolbar, UIKeys.FILM_REPLAY_CONTEXT_ADD, editor::toolbarAddReplayAtViewport,
+            canAdd, viewportHiddenReason);
+        bindActorAction(toolbar, UIKeys.FILM_REPLAY_CONTEXT_MOVE_HERE, editor::toolbarMoveReplayAtViewport,
+            canMove, viewportHiddenReason);
+    }
+
+    private static void bindActorAction(TimelineToolbar toolbar, IKey label, Runnable runnable,
+        BooleanSupplier enabled, Supplier<IKey> disabledReason)
+    {
+        ToolbarItem item = findLabelInSections(toolbar.getSections(), label);
+
+        if (item == null)
+        {
+            return;
+        }
+
+        item.run(runnable);
+        item.enabledIf(enabled);
+        item.disabledReason(disabledReason);
     }
 
     /* Keyframe timeline instant actions */
@@ -456,12 +636,17 @@ public final class TimelineToolbarWiring
             () -> keyframes.toolbarAdjustValues(false), canAdjust);
         bindLabel(toolbar, UIKeys.KEYFRAMES_CONTEXT_ADJUST_VALUES_RIGHT,
             () -> keyframes.toolbarAdjustValues(true), canAdjust);
+        bindShortcut(toolbar, Keys.KEYFRAMES_SCALE_TIME, keyframes::toolbarScaleTime, () -> keyframes.isModifyingKeyframes());
+        bindShortcut(toolbar, Keys.KEYFRAMES_STACK_KEYFRAMES, keyframes::toolbarStackKeyframes,
+            () -> keyframes.isModifyingKeyframes());
+        bindShortcut(toolbar, Keys.KEYFRAMES_INTERP, keyframes::toolbarToggleInterpolation, hasSelected);
     }
 
     private static void wireKeyframesGraphSelection(UIReplaysEditor editor, TimelineToolbar toolbar)
     {
-        BooleanSupplier hasSelected = () -> editor.keyframeEditor != null
-            && editor.keyframeEditor.view.isModifyingKeyframes()
+        BooleanSupplier canModify = () -> editor.keyframeEditor != null
+            && editor.keyframeEditor.view.isModifyingKeyframes();
+        BooleanSupplier hasSelected = () -> canModify.getAsBoolean()
             && editor.keyframeEditor.view.hasSelectedKeyframes();
         BooleanSupplier canSpread = () -> editor.keyframeEditor != null
             && editor.keyframeEditor.view.canSpreadSelectedKeyframes();
@@ -517,6 +702,27 @@ public final class TimelineToolbarWiring
                 editor.keyframeEditor.view.toolbarAdjustValues(true);
             }
         }, canAdjust);
+        bindShortcut(toolbar, Keys.KEYFRAMES_SCALE_TIME, () ->
+        {
+            if (editor.keyframeEditor != null)
+            {
+                editor.keyframeEditor.view.toolbarScaleTime();
+            }
+        }, canModify);
+        bindShortcut(toolbar, Keys.KEYFRAMES_STACK_KEYFRAMES, () ->
+        {
+            if (editor.keyframeEditor != null)
+            {
+                editor.keyframeEditor.view.toolbarStackKeyframes();
+            }
+        }, canModify);
+        bindShortcut(toolbar, Keys.KEYFRAMES_INTERP, () ->
+        {
+            if (editor.keyframeEditor != null)
+            {
+                editor.keyframeEditor.view.toolbarToggleInterpolation();
+            }
+        }, hasSelected);
     }
 
     private static void wireTracksInstant(UIKeyframes keyframes, TimelineToolbar toolbar)

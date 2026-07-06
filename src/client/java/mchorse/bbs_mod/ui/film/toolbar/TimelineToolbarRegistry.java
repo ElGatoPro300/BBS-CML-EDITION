@@ -153,10 +153,15 @@ public final class TimelineToolbarRegistry
             .icon(Icons.ADD)
             .shortcut(Keys.ADD_ON_TOP));
         s.add(ToolbarItem.separator());
+        s.add(ToolbarItem.submenu(UIKeys.CAMERA_TIMELINE_CLIPS_TABS_CAMERA).icon(Icons.CAMERA));
+        s.add(ToolbarItem.submenu(UIKeys.CAMERA_TIMELINE_CLIPS_TABS_RESOURCE).icon(Icons.FOLDER));
+        s.add(ToolbarItem.submenu(UIKeys.CAMERA_TIMELINE_CLIPS_TABS_SCREEN).icon(Icons.CONSOLE));
+        s.add(ToolbarItem.submenu(UIKeys.CAMERA_TIMELINE_CLIPS_TABS_ANCHOR).icon(Icons.ORBIT));
+        s.add(ToolbarItem.submenu(UIKeys.CAMERA_TIMELINE_CLIPS_TABS_EXTRAS).icon(Icons.MORE));
+        s.add(ToolbarItem.separator());
+        s.add(ToolbarItem.submenu(UIKeys.CAMERA_TIMELINE_CONTEXT_FROM_PLAYER_RECORDING).icon(Icons.PLAYER));
         s.add(ToolbarItem.action(UIKeys.CAMERA_TIMELINE_CONTEXT_RECORD_MICROPHONE)
             .icon(Icons.SOUND));
-        s.add(ToolbarItem.action(UIKeys.CAMERA_TIMELINE_CONTEXT_FROM_PLAYER_RECORDING)
-            .icon(Icons.PLAYER));
 
         return s;
     }
@@ -171,6 +176,11 @@ public final class TimelineToolbarRegistry
         s.add(ToolbarItem.action(UIKeys.CAMERA_TIMELINE_CONTEXT_ADD_AT_TICK)
             .icon(Icons.ADD)
             .shortcut(Keys.ADD_AT_TICK));
+        s.add(ToolbarItem.separator());
+        s.add(ToolbarItem.submenu(UIKeys.ACTION_TIMELINE_CLIPS_TABS_BLOCKS).icon(Icons.BLOCK));
+        s.add(ToolbarItem.submenu(UIKeys.ACTION_TIMELINE_CLIPS_TABS_ITEMS).icon(Icons.POINTER));
+        s.add(ToolbarItem.submenu(UIKeys.ACTION_TIMELINE_CLIPS_TABS_COMBAT).icon(Icons.DROP));
+        s.add(ToolbarItem.submenu(UIKeys.ACTION_TIMELINE_CLIPS_TABS_OTHER).icon(Icons.MORE));
 
         return s;
     }
@@ -380,13 +390,9 @@ public final class TimelineToolbarRegistry
         ToolbarSection s = new ToolbarSection(UIKeys.TIMELINE_TOOLBAR_ACTOR, Icons.PLAYER);
 
         s.add(ToolbarItem.action(UIKeys.FILM_REPLAY_CONTEXT_ADD)
-            .icon(Icons.ADD)
-            .enabledIf(() -> false)
-            .disabledReason(() -> UIKeys.TIMELINE_TOOLBAR_DISABLED_VIEWPORT_HIDDEN));
+            .icon(Icons.ADD));
         s.add(ToolbarItem.action(UIKeys.FILM_REPLAY_CONTEXT_MOVE_HERE)
-            .icon(Icons.POINTER)
-            .enabledIf(() -> false)
-            .disabledReason(() -> UIKeys.TIMELINE_TOOLBAR_DISABLED_VIEWPORT_HIDDEN));
+            .icon(Icons.POINTER));
 
         return s;
     }

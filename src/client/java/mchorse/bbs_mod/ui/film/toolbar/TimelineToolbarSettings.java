@@ -135,6 +135,17 @@ public class TimelineToolbarSettings
     public static final float INTERACTION_TRACK_PULSE_MAX_ALPHA = 0.5F;
 
     /**
+     * Maximum alpha of the pulsing clip placement preview (0 to 1).
+     */
+    public static final float INTERACTION_CLIP_PULSE_MAX_ALPHA = 1F;
+
+    /**
+     * Width of the pulsing primary-color edge fade drawn inside the 3D
+     * viewport during viewport interaction modes.
+     */
+    public static final int INTERACTION_VIEWPORT_EDGE_SIZE = 48;
+
+    /**
      * Margin from the bottom-left of the timeline area to the hint card
      * (sits just above the toolbar).
      */

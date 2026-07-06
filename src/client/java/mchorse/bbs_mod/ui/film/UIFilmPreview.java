@@ -337,10 +337,26 @@ public class UIFilmPreview extends UIElement
 
         if (area.isInside(context))
         {
+            if (this.panel.replayEditor.handleViewportInteractionMouse(context, area))
+            {
+                return true;
+            }
+
             return this.panel.replayEditor.clickViewport(context, area);
         }
 
         return super.subMouseClicked(context);
+    }
+
+    @Override
+    protected boolean subKeyPressed(UIContext context)
+    {
+        if (this.panel.replayEditor.handleViewportInteractionKey(context))
+        {
+            return true;
+        }
+
+        return super.subKeyPressed(context);
     }
 
     @Override
@@ -365,6 +381,11 @@ public class UIFilmPreview extends UIElement
         if (texture != null)
         {
             context.batcher.texturedBox(texture.id, Colors.WHITE, area.x, area.y, area.w, area.h, 0, texture.height, texture.width, 0, texture.width, texture.height);
+        }
+
+        if (this.panel.replayEditor.isViewportInteractionActive())
+        {
+            this.panel.replayEditor.renderViewportInteraction(context, area);
         }
 
         if (this.pendingThumbnail != null)

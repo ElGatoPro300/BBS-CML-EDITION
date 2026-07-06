@@ -1425,6 +1425,15 @@ public class UIKeys
     public static final IKey TIMELINE_TOOLBAR_TRANSFORM = L10n.lang("bbs.ui.timeline_toolbar.transform");
     public static final IKey TIMELINE_TOOLBAR_TRANSPORT = L10n.lang("bbs.ui.timeline_toolbar.transport");
     public static final IKey TIMELINE_INTERACTION_PICK_TRACK = L10n.lang("bbs.ui.timeline_toolbar.interaction.pick_track");
+    public static final IKey TIMELINE_INTERACTION_PLACE_CLIP = L10n.lang("bbs.ui.timeline_toolbar.interaction.place_clip");
+    public static final IKey TIMELINE_INTERACTION_PLACE_REPLAY = L10n.lang("bbs.ui.timeline_toolbar.interaction.place_replay");
+    public static final IKey TIMELINE_INTERACTION_PLACE_MICROPHONE = L10n.lang("bbs.ui.timeline_toolbar.interaction.place_microphone");
+    public static final IKey TIMELINE_INTERACTION_VIEWPORT_ADD = L10n.lang("bbs.ui.timeline_toolbar.interaction.viewport_add");
+    public static final IKey TIMELINE_INTERACTION_VIEWPORT_MOVE = L10n.lang("bbs.ui.timeline_toolbar.interaction.viewport_move");
+    public static final IKey ACTION_TIMELINE_CLIPS_TABS_BLOCKS = L10n.lang("bbs.ui.action.clips.tabs.blocks");
+    public static final IKey ACTION_TIMELINE_CLIPS_TABS_ITEMS = L10n.lang("bbs.ui.action.clips.tabs.items");
+    public static final IKey ACTION_TIMELINE_CLIPS_TABS_COMBAT = L10n.lang("bbs.ui.action.clips.tabs.combat");
+    public static final IKey ACTION_TIMELINE_CLIPS_TABS_OTHER = L10n.lang("bbs.ui.action.clips.tabs.other");
     public static final IKey TRACKPAD_GLOBAL_AMPLIFIER = L10n.lang("bbs.ui.trackpad.global_amplifier");
     public static final IKey TRANSFORMS_CONTEXT_COPY = L10n.lang("bbs.ui.transforms.context.copy");
     public static final IKey TRANSFORMS_CONTEXT_PASTE = L10n.lang("bbs.ui.transforms.context.paste");

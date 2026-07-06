@@ -49,6 +49,8 @@ import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarRegistry;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarSettings;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarWiring;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineTrackEligibility;
+import mchorse.bbs_mod.ui.film.toolbar.UIViewportInteraction;
+import mchorse.bbs_mod.ui.film.toolbar.ViewportInteractionState;
 import mchorse.bbs_mod.ui.film.utils.keyframes.UIFilmKeyframes;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
@@ -140,6 +142,8 @@ public class UIReplaysEditor extends UIElement
 
     /* Toolbar (added by the timeline toolbar feature; purely additive) */
     public TimelineToolbar toolbar;
+
+    private final UIViewportInteraction viewportInteraction = new UIViewportInteraction();
 
     /* Clips */
     private UIFilmPanel filmPanel;
@@ -794,10 +798,98 @@ public class UIReplaysEditor extends UIElement
 
     private void cancelToolbarInteraction()
     {
+        this.viewportInteraction.cancel();
+
         if (this.keyframeEditor != null)
         {
             this.keyframeEditor.view.cancelTrackInteraction();
         }
+    }
+
+    public boolean isViewportInteractionActive()
+    {
+        return this.viewportInteraction.isActive();
+    }
+
+    public void renderViewportInteraction(UIContext context, Area viewport)
+    {
+        this.viewportInteraction.renderOverlay(context, viewport);
+    }
+
+    public boolean handleViewportInteractionMouse(UIContext context, Area viewport)
+    {
+        return this.viewportInteraction.handleMouseClicked(context, viewport,
+            () -> this.rayTraceViewportBlock(context, viewport));
+    }
+
+    public boolean handleViewportInteractionKey(UIContext context)
+    {
+        return this.viewportInteraction.handleKeyPressed(context);
+    }
+
+    public void toolbarAddReplayAtViewport()
+    {
+        this.viewportInteraction.enter(new ViewportInteractionState(
+            UIKeys.TIMELINE_INTERACTION_VIEWPORT_ADD,
+            this::confirmAddReplayAtViewport));
+    }
+
+    public void toolbarMoveReplayAtViewport()
+    {
+        this.viewportInteraction.enter(new ViewportInteractionState(
+            UIKeys.TIMELINE_INTERACTION_VIEWPORT_MOVE,
+            this::confirmMoveReplayAtViewport));
+    }
+
+    private void confirmAddReplayAtViewport(Vector3d position)
+    {
+        Camera camera = this.filmPanel.getCamera();
+        float pitch = 0F;
+        float yaw = MathUtils.toDeg(camera.rotation.y);
+
+        this.replays.replays.addReplay(position, pitch, yaw);
+    }
+
+    private void confirmMoveReplayAtViewport(Vector3d position)
+    {
+        this.moveReplay(position.x, position.y, position.z);
+    }
+
+    private Vector3d rayTraceViewportBlock(UIContext context, Area area)
+    {
+        World world = MinecraftClient.getInstance().world;
+        Camera camera = this.filmPanel.getCamera();
+
+        BlockHitResult blockHitResult = RayTracing.rayTrace(
+            world,
+            RayTracing.fromVector3d(camera.position),
+            RayTracing.fromVector3f(CameraUtils.getMouseDirection(
+                camera.projection, camera.view, context.mouseX, context.mouseY,
+                area.x, area.y, area.w, area.h)),
+            256F
+        );
+
+        if (blockHitResult.getType() == HitResult.Type.MISS)
+        {
+            return null;
+        }
+
+        Vector3d vec = new Vector3d(
+            blockHitResult.getPos().x,
+            blockHitResult.getPos().y,
+            blockHitResult.getPos().z
+        );
+
+        if (Window.isShiftPressed())
+        {
+            vec = new Vector3d(
+                Math.floor(vec.x) + 0.5D,
+                Math.round(vec.y),
+                Math.floor(vec.z) + 0.5D
+            );
+        }
+
+        return vec;
     }
 
     public UIFilmPanel getFilmPanel()
@@ -2760,27 +2852,15 @@ public class UIReplaysEditor extends UIElement
                 }
             }
         }
-        else if (context.mouseButton == 1 && this.isVisible())
+        else if (context.mouseButton == 1 && this.isVisible() && !this.viewportInteraction.isActive())
         {
             World world = MinecraftClient.getInstance().world;
             Camera camera = this.filmPanel.getCamera();
 
-            BlockHitResult blockHitResult = RayTracing.rayTrace(
-                world,
-                RayTracing.fromVector3d(camera.position),
-                RayTracing.fromVector3f(CameraUtils.getMouseDirection(camera.projection, camera.view, context.mouseX, context.mouseY, area.x, area.y, area.w, area.h)),
-                256F
-            );
+            Vector3d vec = this.rayTraceViewportBlock(context, area);
 
-            if (blockHitResult.getType() != HitResult.Type.MISS)
+            if (vec != null)
             {
-                Vector3d vec = new Vector3d(blockHitResult.getPos().x, blockHitResult.getPos().y, blockHitResult.getPos().z);
-
-                if (Window.isShiftPressed())
-                {
-                    vec = new Vector3d(Math.floor(vec.x) + 0.5D, Math.round(vec.y), Math.floor(vec.z) + 0.5D);
-                }
-
                 final Vector3d finalVec = vec;
 
                 context.replaceContextMenu((menu) ->
@@ -2788,15 +2868,18 @@ public class UIReplaysEditor extends UIElement
                     float pitch = 0F;
                     float yaw = MathUtils.toDeg(camera.rotation.y);
 
-                    menu.action(Icons.ADD, UIKeys.FILM_REPLAY_CONTEXT_ADD, () -> this.replays.replays.addReplay(finalVec, pitch, yaw));
-                    menu.action(Icons.POINTER, UIKeys.FILM_REPLAY_CONTEXT_MOVE_HERE, () -> this.moveReplay(finalVec.x, finalVec.y, finalVec.z));
+                    menu.action(Icons.ADD, UIKeys.FILM_REPLAY_CONTEXT_ADD,
+                        () -> this.replays.replays.addReplay(finalVec, pitch, yaw));
+                    menu.action(Icons.POINTER, UIKeys.FILM_REPLAY_CONTEXT_MOVE_HERE,
+                        () -> this.moveReplay(finalVec.x, finalVec.y, finalVec.z));
                 });
 
                 return true;
             }
         }
 
-        if (area.isInside(context) && this.filmPanel.getController().orbit.enabled)
+        if (area.isInside(context) && this.filmPanel.getController().orbit.enabled
+            && !this.viewportInteraction.isActive())
         {
             this.filmPanel.getController().orbit.start(context);
 

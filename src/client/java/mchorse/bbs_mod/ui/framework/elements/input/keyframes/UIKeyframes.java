@@ -17,6 +17,7 @@ import mchorse.bbs_mod.ui.film.toolbar.UIInteractionModeOverlay;
 import mchorse.bbs_mod.ui.film.utils.keyframes.UIFilmKeyframes;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
+import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeEditor;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.graphs.IUIKeyframeGraph;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.graphs.KeyframeType;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.graphs.UIKeyframeDopeSheet;
@@ -852,6 +853,79 @@ public class UIKeyframes extends UIElement
             this.copyPasteController.openPresets(context, anchorX, anchorY);
             UIUtils.playClick();
         }
+    }
+
+    public void toolbarInsertAtCursor()
+    {
+        if (!this.isModifyingKeyframes())
+        {
+            return;
+        }
+
+        this.currentGraph.addKeyframe(this.getToolbarPasteGraphX(), this.getToolbarPasteMouseY());
+    }
+
+    public void toolbarDuplicateAtCursor()
+    {
+        if (!this.isModifyingKeyframes())
+        {
+            return;
+        }
+
+        if (this.currentGraph.getSelected() == null)
+        {
+            this.getContext().notifyError(UIKeys.GENERAL_CUT_EMPTY);
+
+            return;
+        }
+
+        int tick = (int) Math.round(this.fromGraphX(this.getToolbarPasteGraphX()));
+
+        this.pasteKeyframes(this.parseKeyframes(this.serializeKeyframes()), tick, this.getToolbarPasteMouseY());
+    }
+
+    public void toolbarSelectColumn()
+    {
+        if (!this.isModifyingKeyframes())
+        {
+            return;
+        }
+
+        this.currentGraph.selectByX(this.getToolbarPasteGraphX());
+    }
+
+    public void toolbarToggleInterpolation()
+    {
+        if (!this.isModifyingKeyframes() || this.currentGraph.getSelected() == null)
+        {
+            return;
+        }
+
+        UIElement parent = this.getParent();
+
+        while (parent != null)
+        {
+            if (parent instanceof UIKeyframeEditor keyframeEditor && keyframeEditor.editor != null)
+            {
+                keyframeEditor.editor.interp.clickItself();
+
+                return;
+            }
+
+            parent = parent.getParent();
+        }
+
+        this.interpolationMenu();
+    }
+
+    public void toolbarScaleTime()
+    {
+        this.scaleTime();
+    }
+
+    public void toolbarStackKeyframes()
+    {
+        this.stackKeyframes(false);
     }
 
     public void toolbarEditTrack()

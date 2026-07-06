@@ -106,6 +106,8 @@ public class UIClipsPanel extends UIElement implements IUIClipsDelegate
 
     private void cancelToolbarInteraction()
     {
+        this.clips.cancelClipPlacement();
+
         UIElement embed = this.clips.getEmbeddedView();
 
         if (embed instanceof UIKeyframeEditor editor)

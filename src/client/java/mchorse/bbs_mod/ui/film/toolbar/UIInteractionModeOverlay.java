@@ -4,10 +4,7 @@ import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeSheet;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframes;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.graphs.UIKeyframeDopeSheet;
-import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
 import mchorse.bbs_mod.ui.utils.Area;
-import mchorse.bbs_mod.utils.MathUtils;
-import mchorse.bbs_mod.utils.colors.Colors;
 
 import org.lwjgl.glfw.GLFW;
 
@@ -45,11 +42,7 @@ public class UIInteractionModeOverlay
      */
     public static float getTrackPulseAlpha()
     {
-        float t = (System.currentTimeMillis() % TimelineToolbarSettings.INTERACTION_TRACK_PULSE_PERIOD_MS)
-            / (float) TimelineToolbarSettings.INTERACTION_TRACK_PULSE_PERIOD_MS;
-        float wave = 0.5F + 0.5F * (float) Math.sin(t * (float) (Math.PI * 2D));
-
-        return MathUtils.clamp(wave * TimelineToolbarSettings.INTERACTION_TRACK_PULSE_MAX_ALPHA, 0F,
+        return TimelineInteractionHints.getPulseAlpha(
             TimelineToolbarSettings.INTERACTION_TRACK_PULSE_MAX_ALPHA);
     }
 
@@ -118,20 +111,7 @@ public class UIInteractionModeOverlay
             return;
         }
 
-        FontRenderer font = context.batcher.getFont();
-        String text = this.state.hint.get();
-        int padding = TimelineToolbarSettings.INTERACTION_HINT_PADDING;
-        int textW = font.getWidth(text);
-        int textH = font.getHeight();
-        int cardW = textW + padding * 2;
-        int cardH = textH + padding;
-        int x = area.x + TimelineToolbarSettings.INTERACTION_HINT_MARGIN;
-        int y = area.ey() - cardH - TimelineToolbarSettings.INTERACTION_HINT_MARGIN;
-
-        context.batcher.box(x, y, x + cardW, y + cardH, TimelineToolbarSettings.INTERACTION_HINT_BACKGROUND);
-        context.batcher.outline(x, y, x + cardW, y + cardH, TimelineToolbarSettings.INTERACTION_HINT_BORDER);
-        context.batcher.text(text, x + padding, y + padding / 2 + 1, TimelineToolbarSettings.INTERACTION_HINT_FG,
-            false);
+        TimelineInteractionHints.renderHint(context, area, this.state.hint);
     }
 
     public boolean hasAnyEligibleTrack(UIKeyframes keyframes)
