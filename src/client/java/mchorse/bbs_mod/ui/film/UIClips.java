@@ -1127,6 +1127,41 @@ public class UIClips extends UIElement
         this.selectAfter();
     }
 
+    public void toolbarPaste()
+    {
+        UIContext context = this.getContext();
+        int pasteX = this.toGraphX(this.delegate.getCursor());
+        int pasteY = this.area.my() + this.area.h / 2;
+
+        if (this.copyPasteController.paste(pasteX, pasteY))
+        {
+            UIUtils.playClick();
+        }
+    }
+
+    public void toolbarOpenPresets()
+    {
+        UIContext context = this.getContext();
+        int anchorX = this.toGraphX(this.delegate.getCursor());
+        int anchorY = this.area.my() + this.area.h / 2;
+
+        if (this.copyPasteController.canPreviewPresets())
+        {
+            this.copyPasteController.openPresets(context, anchorX, anchorY);
+            UIUtils.playClick();
+        }
+    }
+
+    public void toolbarReorganize()
+    {
+        this.clips.sortLayers();
+    }
+
+    public void toolbarConvertTo(Link type)
+    {
+        this.convertTo(type);
+    }
+
     public UIElement getEmbeddedView()
     {
         return this.embedded;

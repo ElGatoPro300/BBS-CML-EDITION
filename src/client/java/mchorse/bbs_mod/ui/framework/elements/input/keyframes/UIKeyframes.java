@@ -802,6 +802,83 @@ public class UIKeyframes extends UIElement
         this.selectNextKeyframe(1);
     }
 
+    public void toolbarPaste()
+    {
+        if (this.copyPasteController.paste(this.getToolbarPasteGraphX(), this.getToolbarPasteMouseY()))
+        {
+            UIUtils.playClick();
+        }
+    }
+
+    public void toolbarPasteAtCursor()
+    {
+        UIContext context = this.getContext();
+        int pasteX = this.area.isInside(context) ? context.mouseX : this.getToolbarPasteGraphX();
+
+        if (this.copyPasteController.paste(pasteX, this.getToolbarPasteMouseY()))
+        {
+            UIUtils.playClick();
+        }
+    }
+
+    public void toolbarPasteAtTimeline()
+    {
+        this.toolbarPaste();
+    }
+
+    public void toolbarOpenPresets()
+    {
+        UIContext context = this.getContext();
+        int anchorX = this.getToolbarPasteGraphX();
+        int anchorY = this.getToolbarPasteMouseY();
+
+        if (this.copyPasteController.canPreviewPresets())
+        {
+            this.copyPasteController.openPresets(context, anchorX, anchorY);
+            UIUtils.playClick();
+        }
+    }
+
+    public void toolbarEditTrack()
+    {
+        if (!this.canToolbarEditTrack())
+        {
+            return;
+        }
+
+        UIKeyframeSheet sheet = this.dopeSheet.getSheet(this.getToolbarPasteMouseY());
+
+        this.editSheet(sheet);
+    }
+
+    public boolean canToolbarEditTrack()
+    {
+        if (this.single || this.isEditing() || !this.isModifyingKeyframes())
+        {
+            return false;
+        }
+
+        UIKeyframeSheet sheet = this.dopeSheet.getSheet(this.getToolbarPasteMouseY());
+
+        return sheet != null && !sheet.groupHeader
+            && KeyframeFactories.isNumeric(sheet.channel.getFactory());
+    }
+
+    private int getToolbarPasteGraphX()
+    {
+        if (this instanceof UIFilmKeyframes filmKeyframes)
+        {
+            return this.toGraphX(filmKeyframes.getOffset());
+        }
+
+        return this.toGraphX(0);
+    }
+
+    private int getToolbarPasteMouseY()
+    {
+        return this.area.my() + this.area.h / 2;
+    }
+
     public void editSheet(UIKeyframeSheet sheet)
     {
         if (sheet == null)

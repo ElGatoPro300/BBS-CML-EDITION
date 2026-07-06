@@ -188,6 +188,9 @@ public final class TimelineToolbarRegistry
         s.add(ToolbarItem.action(UIKeys.CAMERA_TIMELINE_CONTEXT_PASTE)
             .icon(Icons.PASTE)
             .shortcut(Keys.PASTE));
+        s.add(ToolbarItem.action(UIKeys.GENERAL_PRESETS)
+            .icon(Icons.MORE)
+            .shortcut(Keys.PRESETS));
         s.add(ToolbarItem.separator());
         s.add(ToolbarItem.action(UIKeys.CAMERA_TIMELINE_CONTEXT_CUT)
             .icon(Icons.CUT)
@@ -202,8 +205,10 @@ public final class TimelineToolbarRegistry
         if (isCamera)
         {
             s.add(ToolbarItem.separator());
-            s.add(ToolbarItem.action(UIKeys.CAMERA_TIMELINE_CONTEXT_CONVERT));
-            s.add(ToolbarItem.action(UIKeys.CAMERA_TIMELINE_CONTEXT_REORGANIZE));
+            s.add(ToolbarItem.submenu(UIKeys.CAMERA_TIMELINE_CONTEXT_CONVERT)
+                .icon(Icons.REFRESH));
+            s.add(ToolbarItem.action(UIKeys.CAMERA_TIMELINE_CONTEXT_REORGANIZE)
+                .icon(Icons.EXCHANGE));
         }
 
         s.add(ToolbarItem.separator());

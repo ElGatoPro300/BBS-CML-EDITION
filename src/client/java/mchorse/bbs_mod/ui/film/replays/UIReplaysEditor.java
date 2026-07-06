@@ -795,6 +795,113 @@ public class UIReplaysEditor extends UIElement
         return this.filmPanel;
     }
 
+    public void toolbarRenameSheet()
+    {
+        if (this.keyframeEditor == null)
+        {
+            return;
+        }
+
+        UIKeyframes view = this.keyframeEditor.view;
+        UIKeyframeSheet clickedSheet = view.getGraph().getSheet(view.area.my() + view.area.h / 2);
+
+        if (clickedSheet == null || clickedSheet.groupHeader)
+        {
+            return;
+        }
+
+        UIRenameSheetOverlayPanel panel = new UIRenameSheetOverlayPanel(
+            UIKeys.FILM_REPLAY_RENAME_SHEET_TITLE,
+            UIKeys.FILM_REPLAY_RENAME_SHEET_MESSAGE,
+            this.replay,
+            clickedSheet.id,
+            (str, color) ->
+            {
+                this.replay.setCustomSheetTitle(clickedSheet.id, str);
+                this.replay.setSheetColor(clickedSheet.id, color);
+                this.updateChannelsList();
+            }
+        );
+
+        panel.text.setText(clickedSheet.title.get());
+        UIOverlay.addOverlay(this.getContext(), panel, 300, 0.25F);
+    }
+
+    public void toolbarFilterSheets()
+    {
+        if (this.keyframeEditor == null)
+        {
+            return;
+        }
+
+        UIKeyframeSheetFilterOverlayPanel panel = new UIKeyframeSheetFilterOverlayPanel(BBSSettings.disabledSheets.get(), this.keys);
+
+        UIOverlay.addOverlay(this.getContext(), panel, 240, 0.9F);
+
+        panel.onClose((e) ->
+        {
+            this.updateChannelsList();
+            BBSSettings.disabledSheets.set(BBSSettings.disabledSheets.get());
+        });
+    }
+
+    public void toolbarAnimationToKeyframes()
+    {
+        if (this.keyframeEditor == null)
+        {
+            return;
+        }
+
+        UIKeyframeSheet sheet = this.getToolbarPoseSheet();
+
+        if (sheet == null)
+        {
+            return;
+        }
+
+        Form form = sheet.property != null ? FormUtils.getForm(sheet.property) : this.replay.form.get();
+
+        if (form instanceof ModelForm modelForm)
+        {
+            this.animationToPoses(modelForm, sheet);
+        }
+    }
+
+    public void toolbarPoseToLimbs()
+    {
+        if (this.keyframeEditor == null)
+        {
+            return;
+        }
+
+        UIKeyframeSheet sheet = this.getToolbarPoseSheet();
+
+        if (sheet != null)
+        {
+            this.convertToLimbs(sheet);
+        }
+    }
+
+    public UIKeyframeSheet getToolbarPoseSheet()
+    {
+        UIKeyframes view = this.keyframeEditor.view;
+        UIKeyframeSheet sheet = view.getGraph().getSheet(view.area.my() + view.area.h / 2);
+
+        if (sheet == null || sheet.channel.getFactory() != KeyframeFactories.POSE)
+        {
+            return null;
+        }
+
+        String trackName = StringUtils.fileName(sheet.id);
+
+        if (!trackName.equals("pose") && !trackName.startsWith("pose_overlay"))
+        {
+            return null;
+        }
+
+        return sheet;
+    }
+
     public void setFilm(Film film)
     {
         this.film = film;

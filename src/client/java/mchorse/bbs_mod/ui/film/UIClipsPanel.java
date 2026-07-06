@@ -37,6 +37,11 @@ public class UIClipsPanel extends UIElement implements IUIClipsDelegate
      */
     private final boolean isCameraTimeline;
 
+    public boolean isCameraTimeline()
+    {
+        return this.isCameraTimeline;
+    }
+
     private UIClip panel;
 
     public UIClip getClipPanel()
