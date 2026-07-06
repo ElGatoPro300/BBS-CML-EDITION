@@ -10,20 +10,20 @@ import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
+import mchorse.bbs_mod.ui.film.replays.UIReplaysEditorUtils;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
+import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
+import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeSheet;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframes;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
-import mchorse.bbs_mod.utils.Pair;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
-
-import org.joml.Matrix4f;
+import mchorse.bbs_mod.utils.pose.Transform;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Consumer;
 
 import io.netty.util.collection.IntObjectMap;
@@ -34,6 +34,7 @@ public class UIAnchorKeyframeFactory extends UIKeyframeFactory<Anchor>
     private UIButton attachment;
     private UIToggle translate;
     private UIToggle scale;
+    public UIPropTransform transform;
 
     public static void displayActors(UIContext context, IntObjectMap<IEntity> entities, int value, Consumer<Integer> callback)
     {
@@ -45,44 +46,22 @@ public class UIAnchorKeyframeFactory extends UIKeyframeFactory<Anchor>
         {
             menu.action(Icons.CLOSE, UIKeys.GENERAL_NONE, Colors.NEGATIVE, () -> callback.accept(-1));
 
-            if (replays != null)
+            for (int i = 0; i < entities.size(); i++)
             {
-                for (int i = 0; i < replays.size(); i++)
+                final int actor = i;
+                IEntity entity = entities.get(i);
+
+                if (entity == null)
                 {
-                    final int actor = i;
-                    IEntity entity = entities.get(i);
-
-                    if (entity == null)
-                    {
-                        continue;
-                    }
-
-                    Replay replay = replays.get(i);
-                    Form form = entity.getForm();
-                    String stringLabel = i + (replay != null ? " - " + replay.getName() : (form == null ? "" : " - " + form.getFormIdOrName()));
-                    IKey label = IKey.constant(stringLabel);
-
-                    menu.action(Icons.CLOSE, label, actor == value, () -> callback.accept(actor));
+                    continue;
                 }
-            }
-            else
-            {
-                for (int i = 0; i < entities.size(); i++)
-                {
-                    final int actor = i;
-                    IEntity entity = entities.get(i);
 
-                    if (entity == null)
-                    {
-                        continue;
-                    }
+                Replay replay = replays == null ? null : replays.get(i);
+                Form form = entity.getForm();
+                String stringLabel = i + (replay != null ? " - " + replay.getName() : (form == null ? "" : " - " + form.getFormIdOrName()));
+                IKey label = IKey.constant(stringLabel);
 
-                    Form form = entity.getForm();
-                    String stringLabel = i + (form == null ? "" : " - " + form.getFormIdOrName());
-                    IKey label = IKey.constant(stringLabel);
-
-                    menu.action(Icons.CLOSE, label, actor == value, () -> callback.accept(actor));
-                }
+                menu.action(Icons.CLOSE, label, actor == value, () -> callback.accept(actor));
             }
         });
     }
@@ -99,45 +78,18 @@ public class UIAnchorKeyframeFactory extends UIKeyframeFactory<Anchor>
         Form form = entity.getForm();
         List<String> attachments = new ArrayList<>(FormUtilsClient.getRenderer(form).collectMatrices(entity, 0F).keySet());
 
-        for (int i = attachments.size() - 1; i >= 0; i--)
-        {
-            String name = attachments.get(i);
-            if (name.endsWith("#origin"))
-            {
-                attachments.remove(i);
-            }
-        }
-
         attachments.sort(String::compareToIgnoreCase);
 
-        boolean fallbackToBones = attachments.isEmpty() || (attachments.size() == 1 && attachments.get(0).isEmpty());
-
-        if (fallbackToBones)
-        {
-            List<String> bones = FormUtilsClient.getRenderer(form).getBones();
-
-            if (bones.isEmpty())
-            {
-                return;
-            }
-
-            attachments = new ArrayList<>(bones);
-        }
-
-        /* Collect labels (substitute track names) */
         List<String> labels = new ArrayList<>(attachments);
 
-        if (!fallbackToBones)
+        for (int i = 0; i < labels.size(); i++)
         {
-            for (int i = 0; i < labels.size(); i++)
-            {
-                String label = labels.get(i);
-                Form path = FormUtils.getForm(form, label);
+            String label = labels.get(i);
+            Form path = FormUtils.getForm(form, label);
 
-                if (path != null)
-                {
-                    labels.set(i, path.getTrackName(label));
-                }
+            if (path != null)
+            {
+                labels.set(i, path.getTrackName(label));
             }
         }
 
@@ -146,18 +98,14 @@ public class UIAnchorKeyframeFactory extends UIKeyframeFactory<Anchor>
             return;
         }
 
-        String normalized = value == null ? null : value.replace("#origin", "");
-        final List<String> attachmentsFinal = attachments;
-        final List<String> labelsFinal = labels;
-
         panel.getContext().replaceContextMenu((menu) ->
         {
-            for (int i = 0; i < attachmentsFinal.size(); i++)
+            for (int i = 0; i < attachments.size(); i++)
             {
-                String attachment = attachmentsFinal.get(i);
-                String label = labelsFinal.get(i);
+                String attachment = attachments.get(i);
+                String label = labels.get(i);
 
-                menu.action(Icons.LIMB, IKey.constant(label), attachment.equals(normalized), () -> consumer.accept(attachment));
+                menu.action(Icons.LIMB, IKey.constant(label), attachment.equals(value), () -> consumer.accept(attachment));
             }
         });
     }
@@ -175,8 +123,12 @@ public class UIAnchorKeyframeFactory extends UIKeyframeFactory<Anchor>
         this.translate.setValue(keyframe.getValue().translate);
         this.scale = new UIToggle(UIKeys.TRANSFORMS_SCALE, (b) -> this.setScale(b.getValue()));
         this.scale.setValue(keyframe.getValue().scale);
+        this.transform = new UIAnchorTransforms(this);
+        this.transform.enableHotkeys();
+        this.transform.setTransform(keyframe.getValue().transform);
+        this.transform.setLocalMode(true);
 
-        this.scroll.add(this.actor, this.attachment, this.translate, this.scale);
+        this.scroll.add(this.actor, this.attachment, this.translate, this.scale, this.transform);
     }
 
     private void displayActors()
@@ -209,5 +161,33 @@ public class UIAnchorKeyframeFactory extends UIKeyframeFactory<Anchor>
     private UIFilmPanel getPanel()
     {
         return this.getParent(UIFilmPanel.class);
+    }
+
+    public static class UIAnchorTransforms extends UIKeyframePropTransform
+    {
+        private final UIAnchorKeyframeFactory editor;
+
+        public UIAnchorTransforms(UIAnchorKeyframeFactory editor)
+        {
+            this.editor = editor;
+        }
+
+        @Override
+        protected void applyToSelection(Consumer<Transform> consumer)
+        {
+            UIAnchorTransforms.apply(this.editor.editor, this.editor.keyframe, consumer);
+        }
+
+        public static void apply(UIKeyframes editor, Keyframe<?> keyframe, Consumer<Transform> consumer)
+        {
+            UIReplaysEditorUtils.forEachSelectedKeyframe(editor, keyframe, (selected) ->
+            {
+                Anchor anchor = (Anchor) selected.getValue();
+
+                selected.preNotify();
+                consumer.accept(anchor.transform);
+                selected.postNotify();
+            });
+        }
     }
 }

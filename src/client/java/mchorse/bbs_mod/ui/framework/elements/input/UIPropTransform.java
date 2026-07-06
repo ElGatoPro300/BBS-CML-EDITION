@@ -166,6 +166,14 @@ public class UIPropTransform extends UITransform
         return this.local;
     }
 
+    public void setLocalMode(boolean local)
+    {
+        if (this.local != local)
+        {
+            this.toggleLocal();
+        }
+    }
+
     private void toggleLocal()
     {
         this.local = !this.local;
@@ -709,8 +717,8 @@ public class UIPropTransform extends UITransform
 
                         if (this.mode == 2 && this.freeRotation)
                         {
-                            vector3f.x -= factor * dy;
-                            vector3f.y += factor * dx;
+                            vector3f.x += factor * dy;
+                            vector3f.y -= factor * dx;
                         }
                         else if (this.mode == 0 && this.secondaryAxis != null)
                         {
@@ -1083,7 +1091,7 @@ public class UIPropTransform extends UITransform
             float angle = (float) Math.toDegrees(Math.atan2(sin, cos));
 
             Vector3f value = new Vector3f(this.getValue()).mul(180F / MathUtils.PI);
-            this.addAxisDelta(value, this.axis, angle);
+            this.addAxisDelta(value, this.axis, -angle);
 
             if (this.local && BBSSettings.gizmos.get())
             {

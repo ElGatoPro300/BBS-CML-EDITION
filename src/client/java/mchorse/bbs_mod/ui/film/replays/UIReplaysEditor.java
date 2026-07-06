@@ -173,6 +173,7 @@ public class UIReplaysEditor extends UIElement
         COLORS.put("transform", Colors.GREEN);
         COLORS.put("transform_overlay", 0xaaff00);
         COLORS.put("color", Colors.INACTIVE);
+        COLORS.put("paint_color", Colors.INACTIVE);
         COLORS.put("lighting", Colors.YELLOW);
         COLORS.put("structure_light", Colors.YELLOW);
         COLORS.put("shape_keys", Colors.PINK);
@@ -225,6 +226,7 @@ public class UIReplaysEditor extends UIElement
         ICONS.put("pose", Icons.POSE);
         ICONS.put("transform", Icons.ALL_DIRECTIONS);
         ICONS.put("color", Icons.BUCKET);
+        ICONS.put("paint_color", Icons.BUCKET);
         ICONS.put("lighting", Icons.LIGHT);
         ICONS.put("structure_light", Icons.LIGHT);
         ICONS.put("actions", Icons.CONVERT);
@@ -908,7 +910,68 @@ public class UIReplaysEditor extends UIElement
     }
 
     private static final List<String> WORLD_CHANNELS = Arrays.asList("x", "y", "z", "vX", "vY", "vZ", "yaw", "pitch", "headYaw", "bodyYaw", "grounded", "damage", "fall", "sneaking", "sprinting", "item_main_hand", "item_off_hand", "item_head", "item_chest", "item_legs", "item_feet", "selected_slot", "stick_lx", "stick_ly", "stick_rx", "stick_ry", "trigger_l", "trigger_r", "extra1_x", "extra1_y", "extra2_x", "extra2_y", "shadow_size", "shadow_opacity");
-    private static final List<String> MODEL_PROPERTIES = Arrays.asList("visible", "lighting", "transform", "transform_overlay", "pose", "pose_overlay", "anchor", "color", "texture", "pbr_normal_intensity", "pbr_specular_intensity", "model", "actions", "shape_keys", "block_state", "item_stack", "modelTransform", "same_animation_when_dropped", "settings", "paused", "frequency", "count", "structure_file", "biome_id", "emit_light", "light_intensity", "structure_light", "enabled", "level", "effect");
+    private static final List<String> MODEL_PROPERTIES = Arrays.asList("visible", "lighting", "transform", "transform_overlay", "pose", "pose_overlay", "anchor", "color", "paint_color", "texture", "pbr_normal_intensity", "pbr_specular_intensity", "model", "actions", "shape_keys", "block_state", "item_stack", "modelTransform", "same_animation_when_dropped", "settings", "paused", "frequency", "count", "structure_file", "biome_id", "emit_light", "light_intensity", "structure_light", "enabled", "level", "effect");
+
+    /**
+     * Human-readable timeline track names for internal property ids (overlays, paint color, etc.).
+     */
+    private static IKey resolvePropertyTrackTitle(String trackName)
+    {
+        if (trackName.equals("paint_color"))
+        {
+            return UIKeys.FORMS_EDITORS_PAINT_COLOR;
+        }
+
+        if (trackName.equals("pose_overlay"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_POSE_OVERLAY;
+        }
+
+        if (trackName.startsWith("pose_overlay"))
+        {
+            String suffix = trackName.substring("pose_overlay".length());
+
+            if (suffix.isEmpty())
+            {
+                return UIKeys.FILM_REPLAY_TRACK_POSE_OVERLAY;
+            }
+
+            try
+            {
+                return UIKeys.FILM_REPLAY_TRACK_POSE_OVERLAY_N.format(Integer.parseInt(suffix) + 1);
+            }
+            catch (Exception e)
+            {
+                return UIKeys.FILM_REPLAY_TRACK_POSE_OVERLAY;
+            }
+        }
+
+        if (trackName.equals("transform_overlay"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_TRANSFORM_OVERLAY;
+        }
+
+        if (trackName.startsWith("transform_overlay"))
+        {
+            String suffix = trackName.substring("transform_overlay".length());
+
+            if (suffix.isEmpty())
+            {
+                return UIKeys.FILM_REPLAY_TRACK_TRANSFORM_OVERLAY;
+            }
+
+            try
+            {
+                return UIKeys.FILM_REPLAY_TRACK_TRANSFORM_OVERLAY_N.format(Integer.parseInt(suffix) + 1);
+            }
+            catch (Exception e)
+            {
+                return UIKeys.FILM_REPLAY_TRACK_TRANSFORM_OVERLAY;
+            }
+        }
+
+        return null;
+    }
 
     public void updateChannelsList()
     {
@@ -1076,10 +1139,11 @@ public class UIReplaysEditor extends UIElement
                 if (name.equals("biome_id")) return 33;
                 if (name.equals("structure_light")) return 34;
                 if (name.equals("color")) return 35;
-                if (name.equals("texture")) return 36;
-                if (name.equals("pbr_normal_intensity")) return 37;
-                if (name.equals("pbr_specular_intensity")) return 38;
-                if (name.equals("model")) return 39;
+                if (name.equals("paint_color")) return 36;
+                if (name.equals("texture")) return 37;
+                if (name.equals("pbr_normal_intensity")) return 38;
+                if (name.equals("pbr_specular_intensity")) return 39;
+                if (name.equals("model")) return 40;
 
                 return 500;
             };
@@ -1672,20 +1736,37 @@ public class UIReplaysEditor extends UIElement
     {
         sheet.level = level;
         String customTitle = this.replay.getCustomSheetTitle(sheet.id);
+        int colon = sheet.id.indexOf(':');
+        String trackName = StringUtils.fileName(sheet.id);
 
         /* Reset title in case it was changed by originalKeyframeUI mode */
-        if ((customTitle == null || customTitle.isEmpty()) && sheet.property != null)
+        if ((customTitle == null || customTitle.isEmpty()))
         {
-            Form trackForm = FormUtils.getForm(sheet.property);
-
-            if (trackForm != null)
+            if (colon != -1)
             {
-                sheet.title = IKey.constant(trackForm.getTrackName(sheet.channel.getId()));
+                /* Bone/part limb tracks: show the real bone name (Head, Body, …), not a generic overlay label. */
+                sheet.title = IKey.constant(sheet.id.substring(colon + 1));
+            }
+            else
+            {
+                IKey propertyTitle = resolvePropertyTrackTitle(trackName);
+
+                if (propertyTitle != null)
+                {
+                    sheet.title = propertyTitle;
+                }
+                else
+                {
+                    Form trackForm = FormUtils.getForm(sheet.property);
+
+                    if (trackForm != null)
+                    {
+                        sheet.title = IKey.constant(trackForm.getTrackName(sheet.channel.getId()));
+                    }
+                }
             }
         }
 
-        int colon = sheet.id.indexOf(':');
-        String trackName = StringUtils.fileName(sheet.id);
         String scopeKey = groupKey == null || groupKey.isEmpty() ? this.replay.uuid.get() + ":__model__" : groupKey;
         String textureParentKey = scopeKey + ":texture";
         boolean isPbrTrack = trackName.equals("pbr_normal_intensity") || trackName.equals("pbr_specular_intensity");

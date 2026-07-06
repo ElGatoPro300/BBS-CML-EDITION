@@ -55,6 +55,14 @@ public class UIModelPoseEditor extends UIPoseEditor
     }
 
     @Override
+    protected void setPaintColor(PoseTransform transform, int value)
+    {
+        this.valuePose.preNotify(IValueListener.FLAG_UNMERGEABLE);
+        super.setPaintColor(transform, value);
+        this.valuePose.postNotify(IValueListener.FLAG_UNMERGEABLE);
+    }
+
+    @Override
     protected void setLighting(PoseTransform transform, boolean value)
     {
         this.valuePose.preNotify(IValueListener.FLAG_UNMERGEABLE);

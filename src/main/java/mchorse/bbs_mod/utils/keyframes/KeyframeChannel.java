@@ -8,6 +8,7 @@ import mchorse.bbs_mod.settings.values.core.ValueList;
 import mchorse.bbs_mod.utils.CollectionUtils;
 import mchorse.bbs_mod.utils.interps.IInterp;
 import mchorse.bbs_mod.utils.interps.Interpolations;
+import mchorse.bbs_mod.utils.keyframes.KeyframeShape;
 import mchorse.bbs_mod.utils.keyframes.factories.IKeyframeFactory;
 import mchorse.bbs_mod.utils.keyframes.factories.KeyframeFactories;
 
@@ -25,6 +26,9 @@ public class KeyframeChannel <T> extends ValueList<Keyframe<T>>
 {
     private IKeyframeFactory<T> factory;
 
+    /* When true, newly created keyframes use the "default model interpolation" setting instead of the "default world interpolation" one */
+    private boolean model;
+
     public KeyframeChannel(String id, IKeyframeFactory<T> factory)
     {
         super(id);
@@ -35,6 +39,56 @@ public class KeyframeChannel <T> extends ValueList<Keyframe<T>>
     public IKeyframeFactory<T> getFactory()
     {
         return this.factory;
+    }
+
+    public boolean isModel()
+    {
+        return this.model;
+    }
+
+    public KeyframeChannel<T> setModel(boolean model)
+    {
+        this.model = model;
+
+        return this;
+    }
+
+    private void applyDefaultShape(Keyframe<T> kf)
+    {
+        if (BBSSettings.defaultKeyframeShape == null)
+        {
+            return;
+        }
+
+        int idx = BBSSettings.defaultKeyframeShape.get();
+        KeyframeShape[] shapes = KeyframeShape.values();
+
+        if (idx >= 0 && idx < shapes.length)
+        {
+            kf.setShape(shapes[idx]);
+        }
+    }
+
+    private void applyDefaultInterpolation(Keyframe<T> kf)
+    {
+        if ((this.model ? BBSSettings.defaultModelInterpolation : BBSSettings.defaultInterpolation) == null)
+        {
+            return;
+        }
+
+        int idx = (this.model ? BBSSettings.defaultModelInterpolation : BBSSettings.defaultInterpolation).get();
+        int i = 0;
+
+        for (Map.Entry<String, IInterp> e : Interpolations.MAP.entrySet())
+        {
+            if (i == idx)
+            {
+                kf.getInterpolation().setInterp(e.getValue());
+                break;
+            }
+
+            i++;
+        }
     }
 
     /* Read only */
@@ -264,21 +318,8 @@ public class KeyframeChannel <T> extends ValueList<Keyframe<T>>
             if (tick < prev.getTick())
             {
                 Keyframe<T> kf = new Keyframe<>("", this.factory, tick, value);
-                if (BBSSettings.defaultInterpolation != null)
-                {
-                    int idx = BBSSettings.defaultInterpolation.get();
-                    int i = 0;
-                    for (Map.Entry<String, IInterp> e : Interpolations.MAP.entrySet())
-                    {
-                        if (i == idx)
-                        {
-                            kf.getInterpolation().setInterp(e.getValue());
-                            break;
-                        }
-
-                        i++;
-                    }
-                }
+                this.applyDefaultInterpolation(kf);
+                this.applyDefaultShape(kf);
 
                 this.add(0, kf);
                 this.sort();
@@ -313,21 +354,8 @@ public class KeyframeChannel <T> extends ValueList<Keyframe<T>>
 
         Keyframe<T> kf = new Keyframe<T>("", this.factory, tick, value);
 
-        if (BBSSettings.defaultInterpolation != null)
-        {
-            int idx = BBSSettings.defaultInterpolation.get();
-            int i = 0;
-            for (Map.Entry<String, IInterp> e : Interpolations.MAP.entrySet())
-            {
-                if (i == idx)
-                {
-                    kf.getInterpolation().setInterp(e.getValue());
-                    break;
-                }
-
-                i++;
-            }
-        }
+        this.applyDefaultInterpolation(kf);
+        this.applyDefaultShape(kf);
 
         this.add(index, kf);
         this.sort();
@@ -394,21 +422,8 @@ public class KeyframeChannel <T> extends ValueList<Keyframe<T>>
     {
         Keyframe<T> kf = new Keyframe<>(id, this.factory);
 
-        if (BBSSettings.defaultInterpolation != null)
-        {
-            int idx = BBSSettings.defaultInterpolation.get();
-            int i = 0;
-            for (Map.Entry<String, IInterp> e : Interpolations.MAP.entrySet())
-            {
-                if (i == idx)
-                {
-                    kf.getInterpolation().setInterp(e.getValue());
-                    break;
-                }
-
-                i++;
-            }
-        }
+        this.applyDefaultInterpolation(kf);
+        this.applyDefaultShape(kf);
 
         return kf;
     }

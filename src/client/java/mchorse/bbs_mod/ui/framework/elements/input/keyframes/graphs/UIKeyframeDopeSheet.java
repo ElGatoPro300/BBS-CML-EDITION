@@ -763,8 +763,29 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
         int x = this.keyframes.toGraphX(tick);
         int y = this.getDopeSheetY(sheet) + (int) this.trackHeight / 2;
         float a = (float) Math.sin(context.getTickTransition() / 2D) * 0.1F + 0.5F;
+        int c = Colors.setA(color, a);
+        KeyframeShape shape = KeyframeShape.SQUARE;
 
-        context.batcher.box(x - 3, y - 3, x + 3, y + 3, Colors.setA(color, a));
+        if (BBSSettings.defaultKeyframeShape != null)
+        {
+            int idx = BBSSettings.defaultKeyframeShape.get();
+            KeyframeShape[] values = KeyframeShape.values();
+
+            if (idx >= 0 && idx < values.length)
+            {
+                shape = values[idx];
+            }
+        }
+
+        Keyframe preview = new Keyframe("preview", sheet.channel.getFactory());
+
+        preview.setShape(shape);
+
+        Matrix4f matrix = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
+        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
+
+        renderShape(preview, context, builder, matrix, x, y, 3, c);
+        BufferRenderer.drawWithGlobalProgram(builder.end());
     }
 
     /**

@@ -3,6 +3,7 @@ package mchorse.bbs_mod.ui.triggers;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.blocks.entities.TriggerBlockEntity;
 import mchorse.bbs_mod.camera.CameraUtils;
+import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.client.renderer.TriggerBlockEntityRenderer;
 import mchorse.bbs_mod.graphics.Draw;
 import mchorse.bbs_mod.l10n.keys.IKey;
@@ -1022,6 +1023,8 @@ public class UITriggerBlockPanel extends UIDashboardPanel implements IFlightSupp
     public void open()
     {
         super.open();
+
+        BBSRendering.ensureMainFramebuffer();
         this.updateList();
     }
 
@@ -1047,6 +1050,11 @@ public class UITriggerBlockPanel extends UIDashboardPanel implements IFlightSupp
         super.renderInWorld(context);
 
         this.hovered = null;
+
+        if (context.matrixStack() == null)
+        {
+            return;
+        }
 
         MinecraftClient mc = MinecraftClient.getInstance();
         Camera camera = mc.gameRenderer.getCamera();
@@ -1089,7 +1097,7 @@ public class UITriggerBlockPanel extends UIDashboardPanel implements IFlightSupp
 
         context.matrixStack().pop();
 
-        RenderSystem.disableDepthTest();
+        RenderSystem.enableDepthTest();
         RenderSystem.disableBlend();
     }
 

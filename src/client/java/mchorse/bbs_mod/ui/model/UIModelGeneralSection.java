@@ -23,7 +23,7 @@ public class UIModelGeneralSection extends UIModelSection
     public UITrackpad scaleY;
     public UITrackpad scaleZ;
 
-    public UIModelGeneralSection(UIModelPanel editor)
+    public UIModelGeneralSection(IUIModelPanelHost editor)
     {
         super(editor);
 

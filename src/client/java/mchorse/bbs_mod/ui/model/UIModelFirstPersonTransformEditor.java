@@ -14,7 +14,6 @@ import mchorse.bbs_mod.morphing.Morph;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel;
 import mchorse.bbs_mod.ui.framework.UIContext;
-import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UISearchList;
@@ -31,7 +30,7 @@ import org.lwjgl.glfw.GLFW;
 
 public class UIModelFirstPersonTransformEditor extends UIDashboardPanel
 {
-    public UIModelPanel parent;
+    public IUIModelPanelHost host;
     public ModelConfig config;
 
     public UIPropTransform transform;
@@ -45,11 +44,11 @@ public class UIModelFirstPersonTransformEditor extends UIDashboardPanel
     private boolean changed;
     private ModelInstance cachedModel;
 
-    public UIModelFirstPersonTransformEditor(UIModelPanel parent, ModelConfig config)
+    public UIModelFirstPersonTransformEditor(IUIModelPanelHost host, ModelConfig config)
     {
-        super(parent.dashboard);
+        super(host.getDashboard());
 
-        this.parent = parent;
+        this.host = host;
         this.config = config;
 
         this.handsLabel = UI.label(UIKeys.MODELS_HANDS).background(() -> Colors.A50 | BBSSettings.primaryColor.get());
@@ -76,15 +75,15 @@ public class UIModelFirstPersonTransformEditor extends UIDashboardPanel
         this.transform = new UIPropTransform();
         this.transform.callbacks(null, () ->
         {
-            this.parent.dirty();
+            this.host.dirty();
             this.syncModel();
         });
         this.transform.relative(this).x(1F, -200).y(0.5F, 10).w(190).h(70);
 
         this.back = new UIIcon(Icons.CLOSE, (b) ->
         {
-            this.parent.renderer.dirty();
-            this.dashboard.setPanel(this.parent);
+            this.host.getModelRenderer().dirty();
+            this.host.returnFromSubEditor();
         });
         this.back.relative(this).x(1F, -26).y(6);
 
@@ -92,7 +91,7 @@ public class UIModelFirstPersonTransformEditor extends UIDashboardPanel
         this.handsLabel.relative(this.handsSearch).y(-12).w(1F).h(12);
 
         this.add(this.transform, this.handsSearch, this.handsLabel, this.back);
-        
+
         this.setSlot(this.config.fpMain);
     }
 
@@ -160,8 +159,8 @@ public class UIModelFirstPersonTransformEditor extends UIDashboardPanel
     {
         if (context.getKeyCode() == GLFW.GLFW_KEY_ESCAPE)
         {
-            this.parent.renderer.dirty();
-            this.dashboard.setPanel(this.parent);
+            this.host.getModelRenderer().dirty();
+            this.host.returnFromSubEditor();
             return true;
         }
 
@@ -202,7 +201,7 @@ public class UIModelFirstPersonTransformEditor extends UIDashboardPanel
     {
         super.disappear();
 
-        this.parent.forceSave();
+        this.host.forceSave();
         this.restore();
 
         MinecraftClient.getInstance().options.hudHidden = true;
@@ -220,7 +219,7 @@ public class UIModelFirstPersonTransformEditor extends UIDashboardPanel
     @Override
     public UIDashboardPanel getMainPanel()
     {
-        return this.parent;
+        return this.host.getModelPanel() != null ? this.host.getModelPanel() : this;
     }
 
     private void restore()

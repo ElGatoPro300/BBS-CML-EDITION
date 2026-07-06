@@ -28,6 +28,7 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
     public UIPropTransform transform;
     public UITrackpad fix;
     public UIColor color;
+    public UIColor paintColor;
     public UIToggle lighting;
 
     public UITransformKeyframeFactory(Keyframe<Transform> keyframe, UIKeyframes editor)
@@ -56,6 +57,14 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
                 UIPoseTransforms.applyPoseTransform(this.editor, this.keyframe, (poseT) -> poseT.color.set(c));
             });
             this.color.withAlpha();
+            this.color.tooltip(UIKeys.RAW_COLOR);
+
+            this.paintColor = new UIColor((c) ->
+            {
+                UIPoseTransforms.applyPoseTransform(this.editor, this.keyframe, (poseT) -> poseT.paintColor.set(c));
+            });
+            this.paintColor.withAlpha();
+            this.paintColor.tooltip(UIKeys.FORMS_EDITORS_PAINT_COLOR);
 
             this.lighting = new UIToggle(UIKeys.FORMS_EDITORS_GENERAL_LIGHTING, (b) ->
             {
@@ -67,13 +76,19 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
 
             this.fix.setValue(poseTransform.fix);
             this.color.setColor(poseTransform.color.getARGBColor());
+            this.paintColor.setColor(poseTransform.paintColor.getARGBColor());
             this.lighting.setValue(poseTransform.lighting <= 0F);
 
             this.scroll.add(UI.label(UIKeys.POSE_CONTEXT_FIX));
-            this.scroll.add(UI.row(this.fix, this.color, this.lighting));
+            this.scroll.add(this.fix);
+            this.scroll.add(this.transform);
+            this.scroll.add(UI.row(this.color, this.paintColor));
+            this.scroll.add(this.lighting);
         }
-
-        this.scroll.add(this.transform);
+        else
+        {
+            this.scroll.add(this.transform);
+        }
     }
 
     private PoseTransform getPoseTransform(Keyframe<Transform> keyframe)
