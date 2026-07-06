@@ -62,6 +62,7 @@ public class UIClipsPanel extends UIElement implements IUIClipsDelegate
 
         this.toolbar = new TimelineToolbar();
         this.toolbar.relative(this).x(0).y(1F, -TimelineToolbarSettings.TOOLBAR_HEIGHT).w(1F);
+        this.toolbar.setInteractionCancelListener(this::cancelToolbarInteraction);
         this.applyDefaultToolbarSections();
         this.add(this.toolbar);
 
@@ -87,6 +88,8 @@ public class UIClipsPanel extends UIElement implements IUIClipsDelegate
 
     private void onEmbedViewChanged(UIElement embed)
     {
+        this.cancelToolbarInteraction();
+
         if (embed instanceof UIKeyframeEditor editor)
         {
             /* When a keyframe editor takes over the clip area, swap the toolbar
@@ -98,6 +101,16 @@ public class UIClipsPanel extends UIElement implements IUIClipsDelegate
         else
         {
             this.applyDefaultToolbarSections();
+        }
+    }
+
+    private void cancelToolbarInteraction()
+    {
+        UIElement embed = this.clips.getEmbeddedView();
+
+        if (embed instanceof UIKeyframeEditor editor)
+        {
+            editor.view.cancelTrackInteraction();
         }
     }
 

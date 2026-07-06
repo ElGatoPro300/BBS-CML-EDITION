@@ -2066,6 +2066,7 @@
     "bbs.ui.timeline_toolbar.tracks": "Tracks",
     "bbs.ui.timeline_toolbar.transform": "Transform",
     "bbs.ui.timeline_toolbar.transport": "Transport",
+    "bbs.ui.timeline_toolbar.interaction.pick_track": "Click on a track",
     "bbs.ui.trackpad.global_amplifier": "Updated amplitude, new factor is %.2f",
     "bbs.ui.transforms.context.copy": "Copy transformations",
     "bbs.ui.transforms.context.invert": "Invert transformations",

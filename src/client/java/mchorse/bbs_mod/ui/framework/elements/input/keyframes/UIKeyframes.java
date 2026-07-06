@@ -10,7 +10,10 @@ import mchorse.bbs_mod.math.Operation;
 import mchorse.bbs_mod.settings.values.IValueListener;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineInteractionState;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarPointerBlock;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineTrackEligibility;
+import mchorse.bbs_mod.ui.film.toolbar.UIInteractionModeOverlay;
 import mchorse.bbs_mod.ui.film.utils.keyframes.UIFilmKeyframes;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
@@ -51,6 +54,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 public class UIKeyframes extends UIElement
@@ -95,6 +99,7 @@ public class UIKeyframes extends UIElement
 
     private UICopyPasteController copyPasteController;
     private UIDraggable sidebarResizer;
+    private final UIInteractionModeOverlay interactionOverlay = new UIInteractionModeOverlay();
 
     public UIKeyframes(Consumer<Keyframe> callback)
     {
@@ -113,6 +118,11 @@ public class UIKeyframes extends UIElement
         /* Context menu items */
         this.context((menu) ->
         {
+            if (this.interactionOverlay.isActive())
+            {
+                return;
+            }
+
             UIContext context = this.getContext();
             int mouseX = context.mouseX;
             int mouseY = context.mouseY;
@@ -288,6 +298,11 @@ public class UIKeyframes extends UIElement
         this.single = true;
 
         return this;
+    }
+
+    public boolean isSingleSheet()
+    {
+        return this.single;
     }
 
     private void adjustValues()
@@ -841,27 +856,59 @@ public class UIKeyframes extends UIElement
 
     public void toolbarEditTrack()
     {
-        if (!this.canToolbarEditTrack())
-        {
-            return;
-        }
+        this.enterTrackInteraction(
+            UIKeys.TIMELINE_INTERACTION_PICK_TRACK,
+            sheet -> TimelineTrackEligibility.canEditTrack(this, sheet),
+            this::confirmEditTrack);
+    }
 
-        UIKeyframeSheet sheet = this.dopeSheet.getSheet(this.getToolbarPasteMouseY());
-
+    public void confirmEditTrack(UIKeyframeSheet sheet)
+    {
         this.editSheet(sheet);
     }
 
     public boolean canToolbarEditTrack()
     {
-        if (this.single || this.isEditing() || !this.isModifyingKeyframes())
+        return this.isModifyingKeyframes() && TimelineTrackEligibility.hasEditableTrack(this);
+    }
+
+    public void enterTrackInteraction(IKey hint, Predicate<UIKeyframeSheet> eligible,
+        Consumer<UIKeyframeSheet> onConfirm)
+    {
+        this.interactionOverlay.enter(new TimelineInteractionState(hint, eligible, onConfirm));
+    }
+
+    public void cancelTrackInteraction()
+    {
+        this.interactionOverlay.cancel();
+    }
+
+    public boolean isTrackInteractionActive()
+    {
+        return this.interactionOverlay.isActive();
+    }
+
+    public boolean isTrackInteractionEligible(UIKeyframeSheet sheet)
+    {
+        return this.interactionOverlay.isSheetEligible(sheet);
+    }
+
+    public boolean anyTrackMatches(Predicate<UIKeyframeSheet> predicate)
+    {
+        if (!(this.currentGraph instanceof UIKeyframeDopeSheet))
         {
             return false;
         }
 
-        UIKeyframeSheet sheet = this.dopeSheet.getSheet(this.getToolbarPasteMouseY());
+        for (UIKeyframeSheet sheet : this.dopeSheet.getSheets())
+        {
+            if (predicate.test(sheet))
+            {
+                return true;
+            }
+        }
 
-        return sheet != null && !sheet.groupHeader
-            && KeyframeFactories.isNumeric(sheet.channel.getFactory());
+        return false;
     }
 
     private int getToolbarPasteGraphX()
@@ -1339,6 +1386,11 @@ public class UIKeyframes extends UIElement
     @Override
     protected boolean subMouseClicked(UIContext context)
     {
+        if (this.interactionOverlay.handleMouseClicked(this, context))
+        {
+            return true;
+        }
+
         if (this.currentGraph.mouseClicked(context))
         {
             return true;
@@ -1495,6 +1547,11 @@ public class UIKeyframes extends UIElement
     @Override
     protected boolean subMouseScrolled(UIContext context)
     {
+        if (this.interactionOverlay.isActive() && this.area.isInside(context))
+        {
+            return true;
+        }
+
         if (this.area.isInside(context) && this.stacking)
         {
             this.stackOffset = (float) Math.max(0.05F, this.stackOffset + Math.copySign(Window.isShiftPressed() ? 0.05F : 1, context.mouseWheel));
@@ -1516,6 +1573,11 @@ public class UIKeyframes extends UIElement
     @Override
     protected boolean subKeyPressed(UIContext context)
     {
+        if (this.interactionOverlay.handleKeyPressed(context))
+        {
+            return true;
+        }
+
         if (this.currentGraph != this.dopeSheet && context.isPressed(GLFW.GLFW_KEY_ESCAPE) && !this.single)
         {
             this.editSheet(null);
@@ -1567,6 +1629,8 @@ public class UIKeyframes extends UIElement
         this.currentGraph.postRender(context);
 
         context.batcher.unclip(context);
+
+        this.interactionOverlay.renderHint(context, this.area);
     }
 
     /**

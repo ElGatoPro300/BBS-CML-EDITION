@@ -48,6 +48,7 @@ import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbar;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarRegistry;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarSettings;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarWiring;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineTrackEligibility;
 import mchorse.bbs_mod.ui.film.utils.keyframes.UIFilmKeyframes;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
@@ -785,9 +786,18 @@ public class UIReplaysEditor extends UIElement
         this.toolbar.setSections(TimelineToolbarRegistry.forReplays(true));
         TimelineToolbarWiring.wireReplaysToolbar(this);
         this.toolbar.relative(this).x(0).y(1F, -TimelineToolbarSettings.TOOLBAR_HEIGHT).w(1F);
+        this.toolbar.setInteractionCancelListener(this::cancelToolbarInteraction);
         this.add(this.toolbar);
 
         this.markContainer();
+    }
+
+    private void cancelToolbarInteraction()
+    {
+        if (this.keyframeEditor != null)
+        {
+            this.keyframeEditor.view.cancelTrackInteraction();
+        }
     }
 
     public UIFilmPanel getFilmPanel()
@@ -802,14 +812,14 @@ public class UIReplaysEditor extends UIElement
             return;
         }
 
-        UIKeyframes view = this.keyframeEditor.view;
-        UIKeyframeSheet clickedSheet = view.getGraph().getSheet(view.area.my() + view.area.h / 2);
+        this.keyframeEditor.view.enterTrackInteraction(
+            UIKeys.TIMELINE_INTERACTION_PICK_TRACK,
+            TimelineTrackEligibility::canRename,
+            this::confirmRenameSheet);
+    }
 
-        if (clickedSheet == null || clickedSheet.groupHeader)
-        {
-            return;
-        }
-
+    private void confirmRenameSheet(UIKeyframeSheet clickedSheet)
+    {
         UIRenameSheetOverlayPanel panel = new UIRenameSheetOverlayPanel(
             UIKeys.FILM_REPLAY_RENAME_SHEET_TITLE,
             UIKeys.FILM_REPLAY_RENAME_SHEET_MESSAGE,
@@ -852,13 +862,14 @@ public class UIReplaysEditor extends UIElement
             return;
         }
 
-        UIKeyframeSheet sheet = this.getToolbarPoseSheet();
+        this.keyframeEditor.view.enterTrackInteraction(
+            UIKeys.TIMELINE_INTERACTION_PICK_TRACK,
+            sheet -> TimelineTrackEligibility.canAnimationToPose(this, sheet),
+            this::confirmAnimationToKeyframes);
+    }
 
-        if (sheet == null)
-        {
-            return;
-        }
-
+    private void confirmAnimationToKeyframes(UIKeyframeSheet sheet)
+    {
         Form form = sheet.property != null ? FormUtils.getForm(sheet.property) : this.replay.form.get();
 
         if (form instanceof ModelForm modelForm)
@@ -874,32 +885,15 @@ public class UIReplaysEditor extends UIElement
             return;
         }
 
-        UIKeyframeSheet sheet = this.getToolbarPoseSheet();
-
-        if (sheet != null)
-        {
-            this.convertToLimbs(sheet);
-        }
+        this.keyframeEditor.view.enterTrackInteraction(
+            UIKeys.TIMELINE_INTERACTION_PICK_TRACK,
+            sheet -> TimelineTrackEligibility.canPoseToLimbs(this, sheet),
+            this::confirmPoseToLimbs);
     }
 
-    public UIKeyframeSheet getToolbarPoseSheet()
+    private void confirmPoseToLimbs(UIKeyframeSheet sheet)
     {
-        UIKeyframes view = this.keyframeEditor.view;
-        UIKeyframeSheet sheet = view.getGraph().getSheet(view.area.my() + view.area.h / 2);
-
-        if (sheet == null || sheet.channel.getFactory() != KeyframeFactories.POSE)
-        {
-            return null;
-        }
-
-        String trackName = StringUtils.fileName(sheet.id);
-
-        if (!trackName.equals("pose") && !trackName.startsWith("pose_overlay"))
-        {
-            return null;
-        }
-
-        return sheet;
+        this.convertToLimbs(sheet);
     }
 
     public void setFilm(Film film)

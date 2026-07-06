@@ -40,6 +40,12 @@ public class TimelineToolbar extends UIElement
      */
     private ToolbarMenu openMenu;
 
+    /**
+     * Invoked when the toolbar hierarchy changes or a section is opened,
+     * so an active timeline interaction mode can be cancelled.
+     */
+    private Runnable interactionCancelListener;
+
     /* Constructor */
 
     public TimelineToolbar()
@@ -57,6 +63,7 @@ public class TimelineToolbar extends UIElement
 
     public TimelineToolbar setSections(List<ToolbarSection> newSections)
     {
+        this.notifyInteractionCancel();
         this.closeOpenMenu();
         this.sections.clear();
         this.sections.addAll(newSections);
@@ -130,6 +137,19 @@ public class TimelineToolbar extends UIElement
         if (this.openMenu != null)
         {
             this.openMenu.closeChain();
+        }
+    }
+
+    public void setInteractionCancelListener(Runnable listener)
+    {
+        this.interactionCancelListener = listener;
+    }
+
+    private void notifyInteractionCancel()
+    {
+        if (this.interactionCancelListener != null)
+        {
+            this.interactionCancelListener.run();
         }
     }
 
@@ -252,6 +272,8 @@ public class TimelineToolbar extends UIElement
 
     private void openSection(UIContext context, int index)
     {
+        this.notifyInteractionCancel();
+
         if (this.openMenu != null)
         {
             this.openMenu.closeChain();

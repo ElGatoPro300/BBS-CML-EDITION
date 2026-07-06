@@ -5,6 +5,8 @@ import mchorse.bbs_mod.camera.utils.TimeUtils;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.ui.UIKeys;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineTrackEligibility;
+import mchorse.bbs_mod.ui.film.toolbar.UIInteractionModeOverlay;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarPointerBlock;
 import mchorse.bbs_mod.ui.forms.editors.utils.UIStructureOverlayPanel;
 import mchorse.bbs_mod.ui.framework.UIContext;
@@ -848,6 +850,14 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
                 context.batcher.unclip(context);
 
                 continue;
+            }
+
+            if (this.keyframes.isTrackInteractionActive() && this.keyframes.isTrackInteractionEligible(sheet))
+            {
+                float alpha = UIInteractionModeOverlay.getTrackPulseAlpha();
+                int pulseColor = Colors.setA(sheet.color, alpha);
+
+                context.batcher.box(startX, y, endX, (float) (y + this.trackHeight), pulseColor);
             }
 
             /* Render track bars (horizontal lines) */

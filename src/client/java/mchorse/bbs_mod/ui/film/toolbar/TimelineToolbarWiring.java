@@ -2,7 +2,6 @@ package mchorse.bbs_mod.ui.film.toolbar;
 
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.camera.clips.ClipFactoryData;
-import mchorse.bbs_mod.forms.forms.ModelForm;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.Keys;
@@ -11,13 +10,11 @@ import mchorse.bbs_mod.ui.film.UIClips;
 import mchorse.bbs_mod.ui.film.UIClipsPanel;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.film.replays.UIReplaysEditor;
-import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeSheet;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframes;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.keys.KeyCombo;
 import mchorse.bbs_mod.utils.clips.Clip;
 import mchorse.bbs_mod.utils.interps.Interpolations;
-import mchorse.bbs_mod.utils.keyframes.factories.KeyframeFactories;
 
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -72,6 +69,7 @@ public final class TimelineToolbarWiring
         wireKeyframesGraphSelection(editor, editor.toolbar);
         wireTracksInstant(editor, editor.toolbar);
         wireKeyframesOverlays(editor);
+        wireKeyframesEditTrack(editor);
         wireTracksOverlays(editor);
     }
 
@@ -275,30 +273,34 @@ public final class TimelineToolbarWiring
             keyframes::canToolbarEditTrack);
     }
 
+    private static void wireKeyframesEditTrack(UIReplaysEditor editor)
+    {
+        TimelineToolbar toolbar = editor.toolbar;
+        BooleanSupplier canEdit = () -> editor.keyframeEditor != null
+            && editor.keyframeEditor.view.canToolbarEditTrack();
+
+        bindLabel(toolbar, UIKeys.KEYFRAMES_CONTEXT_EDIT_TRACK, () ->
+        {
+            if (editor.keyframeEditor != null)
+            {
+                editor.keyframeEditor.view.toolbarEditTrack();
+            }
+        }, canEdit);
+    }
+
     private static void wireTracksOverlays(UIReplaysEditor editor)
     {
         TimelineToolbar toolbar = editor.toolbar;
         BooleanSupplier hasEditor = () -> editor.keyframeEditor != null;
-        BooleanSupplier hasPoseSheet = () -> hasEditor.getAsBoolean() && editor.getToolbarPoseSheet() != null;
-        BooleanSupplier canRename = () ->
-        {
-            if (!hasEditor.getAsBoolean())
-            {
-                return false;
-            }
-
-            UIKeyframes view = editor.keyframeEditor.view;
-            UIKeyframeSheet sheet = view.getGraph().getSheet(view.area.my() + view.area.h / 2);
-
-            return sheet != null && !sheet.groupHeader;
-        };
+        BooleanSupplier canRename = () -> hasEditor.getAsBoolean()
+            && TimelineTrackEligibility.hasRenameableTrack(editor.keyframeEditor.view);
 
         bindLabel(toolbar, UIKeys.FILM_REPLAY_RENAME_SHEET, editor::toolbarRenameSheet, canRename);
         bindLabel(toolbar, UIKeys.FILM_REPLAY_FILTER_SHEETS, editor::toolbarFilterSheets, hasEditor);
         bindLabel(toolbar, UIKeys.FILM_REPLAY_CONTEXT_ANIMATION_TO_KEYFRAMES, editor::toolbarAnimationToKeyframes,
-            () -> hasPoseSheet.getAsBoolean() && editor.getReplay() != null
-                && editor.getReplay().form.get() instanceof ModelForm);
-        bindLabel(toolbar, UIKeys.FILM_REPLAY_CONTEXT_POSE_TO_LIMBS, editor::toolbarPoseToLimbs, hasPoseSheet);
+            () -> TimelineTrackEligibility.hasAnimationToPoseTrack(editor));
+        bindLabel(toolbar, UIKeys.FILM_REPLAY_CONTEXT_POSE_TO_LIMBS, editor::toolbarPoseToLimbs,
+            () -> TimelineTrackEligibility.hasPoseToLimbsTrack(editor));
     }
 
     /* Keyframe timeline instant actions */

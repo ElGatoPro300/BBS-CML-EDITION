@@ -121,6 +121,33 @@ public class TimelineToolbarSettings
      */
     public static final long SUBMENU_HOVER_OPEN_DELAY_MS = 120L;
 
+    /* Interaction modes (track pick, future tick pick) */
+
+    /**
+     * Period of one pulse cycle for eligible track highlights during an
+     * interaction mode.
+     */
+    public static final long INTERACTION_TRACK_PULSE_PERIOD_MS = 1200L;
+
+    /**
+     * Maximum alpha of the pulsing track background (0 = transparent).
+     */
+    public static final float INTERACTION_TRACK_PULSE_MAX_ALPHA = 0.5F;
+
+    /**
+     * Margin from the bottom-left of the timeline area to the hint card
+     * (sits just above the toolbar).
+     */
+    public static final int INTERACTION_HINT_MARGIN = 6;
+
+    public static final int INTERACTION_HINT_PADDING = 6;
+
+    public static final int INTERACTION_HINT_BACKGROUND = Colors.A75 | 0x1a1a1e;
+
+    public static final int INTERACTION_HINT_BORDER = Colors.A50 | Colors.WHITE;
+
+    public static final int INTERACTION_HINT_FG = Colors.WHITE;
+
     /* Colors */
 
     /**
