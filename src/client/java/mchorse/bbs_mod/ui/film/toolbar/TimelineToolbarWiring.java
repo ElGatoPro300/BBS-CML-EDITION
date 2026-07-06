@@ -93,8 +93,9 @@ public final class TimelineToolbarWiring
     private static void wireClipsEditInstant(UIClips clips, TimelineToolbar toolbar)
     {
         BooleanSupplier canUse = () -> clips.canUseToolbarKeybinds();
+        BooleanSupplier hasSelection = () -> canUse.getAsBoolean() && !clips.getSelection().isEmpty();
 
-        bindShortcut(toolbar, Keys.CLIP_ENABLE, clips::toolbarToggleEnabled, canUse);
+        bindShortcut(toolbar, Keys.CLIP_ENABLE, clips::toolbarToggleEnabled, hasSelection);
     }
 
     /* Keyframe timeline instant actions */
