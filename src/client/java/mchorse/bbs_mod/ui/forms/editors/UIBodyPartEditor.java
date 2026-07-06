@@ -55,7 +55,13 @@ public class UIBodyPartEditor extends UIScrollView
 
         this.useTarget = new UIToggle(UIKeys.FORMS_EDITOR_USE_TARGET, (b) ->
         {
-            this.part.useTarget.set(b.getValue());
+            for (UIForms.FormEntry entry : this.editor.formsList.getCurrent())
+            {
+                if (entry.part != null)
+                {
+                    entry.part.useTarget.set(b.getValue());
+                }
+            }
         });
 
         this.bone = new UIStringList((l) -> this.part.bone.set(l.get(0)));

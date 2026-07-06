@@ -11,6 +11,7 @@ import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.forms.editors.forms.UIForm;
 import mchorse.bbs_mod.ui.forms.editors.panels.widgets.UIModelPoseEditor;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
+import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
 import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
 import mchorse.bbs_mod.ui.framework.elements.input.UITexturePicker;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
@@ -25,6 +26,7 @@ import java.util.Set;
 public class UIModelFormPanel extends UIFormPanel<ModelForm>
 {
     public UIColor color;
+    public UIColor paintColor;
     public UIModelPoseEditor poseEditor;
     public UIShapeKeys shapeKeys;
     public UITrackpad pbrNormalIntensity;
@@ -64,6 +66,9 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
         });
         this.color = new UIColor((c) -> this.form.color.set(new Color().set(c))).withAlpha();
         this.color.direction(Direction.LEFT);
+        this.paintColor = new UIColor((c) -> this.form.paintColor.set(new Color().set(c))).withAlpha();
+        this.paintColor.direction(Direction.LEFT);
+        this.paintColor.tooltip(UIKeys.FORMS_EDITORS_PAINT_COLOR);
         this.poseEditor = new UIModelPoseEditor();
         this.poseEditor.setDefaultTextureSupplier(() ->
         {
@@ -110,7 +115,7 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
             this.options.add(this.pbrNormalIntensity, this.pbrSpecularIntensity);
         }
 
-        this.options.add(this.color, this.poseEditor);
+        this.options.add(this.color, this.paintColor, this.poseEditor);
     }
 
     private void pickGroup(String group)
@@ -136,6 +141,7 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
         this.pbrNormalIntensity.setValue(form.pbrNormalIntensity.get());
         this.pbrSpecularIntensity.setValue(form.pbrSpecularIntensity.get());
         this.color.setColor(form.color.get().getARGBColor());
+        this.paintColor.setColor(form.paintColor.get().getARGBColor());
 
         this.shapeKeys.removeFromParent();
 

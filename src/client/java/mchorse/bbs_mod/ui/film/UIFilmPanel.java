@@ -50,6 +50,8 @@ import mchorse.bbs_mod.ui.dashboard.panels.overlay.UICRUDOverlayPanel;
 import mchorse.bbs_mod.ui.dashboard.panels.overlay.UIDataOverlayPanel;
 import mchorse.bbs_mod.ui.dashboard.utils.IUIOrbitKeysHandler;
 import mchorse.bbs_mod.ui.film.audio.UIAudioRecorder;
+import mchorse.bbs_mod.ui.film.clips.UIClip;
+import mchorse.bbs_mod.ui.film.clips.UIKeyframeClip;
 import mchorse.bbs_mod.ui.film.controller.UIFilmController;
 import mchorse.bbs_mod.ui.film.replays.UIReplaysEditor;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIReplaysOverlayPanel;
@@ -68,6 +70,7 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIMessageOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UINumberOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
+import mchorse.bbs_mod.ui.framework.elements.utils.EventPropagation;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIDraggable;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIRenderable;
 import mchorse.bbs_mod.ui.home.UIHomePanel;
@@ -464,6 +467,14 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.panelById.put("actionEditArea", this.actionEditArea);
         this.panelById.put("unifiedEditArea", this.unifiedEditArea);
         this.panelById.put(ANCHORED_REPLAYS_PANEL_ID, this.anchoredReplaysPanel);
+
+        /* Every window is an opaque hit target: a click inside a panel's area must
+           never fall through to widgets of another panel stacked beneath it. */
+        for (UIElement panelElement : this.panelById.values())
+        {
+            panelElement.mouseEventPropagataion(EventPropagation.BLOCK_INSIDE);
+        }
+
         this.updateTargets();
         this.homePage = new UIElement()
         {
@@ -799,6 +810,24 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             this.showPanel(MathUtils.cycler(this.getPanelIndex() + (Window.isShiftPressed() ? -1 : 1), this.panels));
             UIUtils.playClick();
         }).active(active).category(editor);
+
+        /* E over the camera timeline: open the keyframe editor of the selected clip */
+        this.keys().register(Keys.FORMS_EDIT, () ->
+        {
+            UIClip clipPanel = this.cameraEditor.getClipPanel();
+
+            if (clipPanel instanceof UIKeyframeClip keyframeClip)
+            {
+                keyframeClip.edit.clickItself();
+            }
+        }).active(() ->
+        {
+            UIContext context = this.getContext();
+
+            return this.data != null && !this.isFlying() && context != null
+                && this.cameraEditor.clips.area.isInside(context)
+                && this.cameraEditor.getClipPanel() instanceof UIKeyframeClip;
+        }).label(UIKeys.CAMERA_PANELS_EDIT_KEYFRAMES).category(editor);
 
         this.toolMenuActions = (menu) ->
         {
@@ -1515,6 +1544,15 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.draggingPanelId = null;
         this.dropTargetPanelId = null;
         this.dropTargetZone = DROP_ZONE_CENTER;
+
+        /* Drop any stale drag latch on the header handles. A handle is hidden the
+           moment its panel is torn out into a floating window, so it never receives
+           the mouse release that would normally reset it — and a stale dragging flag
+           would re-float the panel one frame after it docks. */
+        for (UIDraggable handle : this.dragHandlesById.values())
+        {
+            handle.resetDrag();
+        }
 
         /* Also drop the floating drag/resize pointers and the mouse-hold latch. Otherwise a
            window that was being undocked (which sets activeDraggingFloatingPanelId via

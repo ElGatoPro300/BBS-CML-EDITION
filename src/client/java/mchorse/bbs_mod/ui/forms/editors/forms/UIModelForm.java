@@ -56,4 +56,16 @@ public class UIModelForm extends UIForm<ModelForm>
 
         return this.getOrigin(transition, StringUtils.combinePaths(path, poseEditor.groups.list.getCurrentFirst()), poseEditor.transform.isLocal());
     }
+
+    public Matrix4f getOriginForPoseEditor(float transition, UIPoseEditor poseEditor)
+    {
+        if (poseEditor == null)
+        {
+            return this.getOrigin(transition);
+        }
+
+        String path = FormUtils.getPath(this.form);
+
+        return this.getOrigin(transition, StringUtils.combinePaths(path, poseEditor.groups.list.getCurrentFirst()), poseEditor.transform.isLocal());
+    }
 }

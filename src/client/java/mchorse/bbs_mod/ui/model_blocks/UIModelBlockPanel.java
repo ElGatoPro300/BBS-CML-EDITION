@@ -243,14 +243,19 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
             palette.editor.renderer.full(dashboard.getRoot());
             palette.editor.renderer.setTarget(this.modelBlock.getEntity());
             palette.editor.renderer.setRenderForm(() -> !toggleRendering);
-            palette.getEvents().register(UIToggleEditorEvent.class, (e) -> {
-                if (e.editing) {
+            palette.getEvents().register(UIToggleEditorEvent.class, (e) ->
+            {
+                if (e.editing)
+                {
                     this.addCameraController(palette);
-                } else {
+                }
+                else
+                {
                     this.removeCameraController();
                 }
             });
-            palette.getEvents().register(UIRemovedEvent.class, (e) -> {
+            palette.getEvents().register(UIRemovedEvent.class, (e) ->
+            {
                 /* resize() recomputes every card's visibility from scratch. */
                 this.resize();
             });
@@ -1555,6 +1560,7 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
     public void open() {
         super.open();
 
+        BBSRendering.ensureMainFramebuffer();
         this.updateList();
 
         if (this.modelBlock != null && this.modelBlock.isRemoved()) {
@@ -1958,6 +1964,10 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
     public void renderInWorld(WorldRenderContext context) {
         super.renderInWorld(context);
 
+        if (context.matrixStack() == null) {
+            return;
+        }
+
         Camera camera = context.camera();
         Vec3d pos = camera.getPos();
 
@@ -1991,7 +2001,7 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
             }
         }
 
-        RenderSystem.disableDepthTest();
+        RenderSystem.enableDepthTest();
     }
 
     private ModelBlockEntity getClosestObject(Vector3d finalPosition, Vector3f mouseDirection) {

@@ -126,17 +126,40 @@ public class UIActionList extends UIList<ContextAction>
 
                 this.setIndex(index);
 
-                if (this.callback != null)
-                {
-                    this.callback.accept(this.getCurrent());
-
-                    return true;
-                }
+                return true;
             }
 
             return true;
         }
 
         return super.subMouseClicked(context);
+    }
+
+    @Override
+    public boolean subMouseReleased(UIContext context)
+    {
+        if (this.area.isInside(context) && context.mouseButton == 0)
+        {
+            int index = this.getIndexAt(context.mouseY);
+
+            if (this.exists(index))
+            {
+                ContextAction action = this.list.get(index);
+
+                if (!(action instanceof ContextSeparatorAction) && !(action instanceof ContextCategoryAction))
+                {
+                    this.setIndex(index);
+
+                    if (this.callback != null)
+                    {
+                        this.callback.accept(this.getCurrent());
+
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return super.subMouseReleased(context);
     }
 }

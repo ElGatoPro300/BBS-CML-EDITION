@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.film;
 
 import mchorse.bbs_mod.BBSSettings;
+import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.client.renderer.ModelBlockEntityRenderer;
 import mchorse.bbs_mod.entity.ActorEntity;
 import mchorse.bbs_mod.film.replays.Replay;
@@ -194,11 +195,11 @@ public abstract class BaseFilmController
 
                     if (context.map == null)
                     {
-                        Gizmo.INSTANCE.render(stack);
+                        BaseFilmController.renderGizmo(stack, null);
                     }
                     else
                     {
-                        Gizmo.INSTANCE.renderStencil(stack, context.map);
+                        BaseFilmController.renderGizmo(stack, context.map);
                     }
 
                     RenderSystem.enableDepthTest();
@@ -237,6 +238,22 @@ public abstract class BaseFilmController
         }
 
         RenderSystem.enableDepthTest();
+    }
+
+    private static void renderGizmo(MatrixStack stack, StencilMap stencilMap)
+    {
+        if (BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld())
+        {
+            Gizmo.INSTANCE.deferRender(new Matrix4f(stack.peek().getPositionMatrix()), stencilMap != null, stencilMap);
+        }
+        else if (stencilMap == null)
+        {
+            Gizmo.INSTANCE.render(stack);
+        }
+        else
+        {
+            Gizmo.INSTANCE.renderStencil(stack, stencilMap);
+        }
     }
 
     private static void renderAxes(String bone, boolean local, StencilMap stencilMap, Form form, IEntity entity, float transition, MatrixStack stack)
@@ -279,11 +296,11 @@ public abstract class BaseFilmController
 
             if (stencilMap == null)
             {
-                Gizmo.INSTANCE.render(stack);
+                BaseFilmController.renderGizmo(stack, null);
             }
             else
             {
-                Gizmo.INSTANCE.renderStencil(stack, stencilMap);
+                BaseFilmController.renderGizmo(stack, stencilMap);
             }
 
             RenderSystem.enableDepthTest();
@@ -307,6 +324,8 @@ public abstract class BaseFilmController
         {
             Matrix4f matrix = getEntityMatrix(entities, cx, cy, cz, same ? value : value.previous, defaultMatrix, transition, i);
 
+            matrix = applyAnchorTransform(matrix, same ? value : value.previous);
+
             if (matrix != defaultMatrix)
             {
                 result.a = matrix;
@@ -318,6 +337,9 @@ public abstract class BaseFilmController
             Matrix4f matrix = getEntityMatrix(entities, cx, cy, cz, value, defaultMatrix, transition, i);
             Matrix4f lastMatrix = getEntityMatrix(entities, cx, cy, cz, value.previous, defaultMatrix, transition, i);
 
+            matrix = applyAnchorTransform(matrix, value);
+            lastMatrix = applyAnchorTransform(lastMatrix, value.previous);
+
             result.a = value.x >= 1F ? matrix : Matrices.lerp(lastMatrix, matrix, value.x);
 
             if (value.isFadeOut()) result.b = value.x;
@@ -326,6 +348,16 @@ public abstract class BaseFilmController
         }
 
         return result;
+    }
+
+    private static Matrix4f applyAnchorTransform(Matrix4f matrix, Anchor anchor)
+    {
+        if (matrix == null || anchor == null || anchor.transform.isDefault())
+        {
+            return matrix;
+        }
+
+        return matrix.mul(anchor.transform.createMatrix());
     }
 
     public static Matrix4f getEntityMatrix(IntObjectMap<IEntity> entities, double cameraX, double cameraY, double cameraZ, Anchor anchor, Matrix4f defaultMatrix, float transition, int i)

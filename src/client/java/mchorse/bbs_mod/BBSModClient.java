@@ -67,9 +67,13 @@ import mchorse.bbs_mod.resources.packs.URLRepository;
 import mchorse.bbs_mod.resources.packs.URLSourcePack;
 import mchorse.bbs_mod.resources.packs.URLTextureErrorCallback;
 import mchorse.bbs_mod.selectors.EntitySelectors;
+import mchorse.bbs_mod.settings.Settings;
+import mchorse.bbs_mod.settings.ui.UISettingsOverlayPanel;
 import mchorse.bbs_mod.settings.ui.UIValueMap;
+import mchorse.bbs_mod.settings.values.IValueListener;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.UIDashboard;
+import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIQuickReplayOverlayPanel;
 import mchorse.bbs_mod.ui.forms.editors.UIFormEditor;
@@ -77,8 +81,10 @@ import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.UIScreen;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UIKeyframeFactory;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.shapes.KeyframeShapeRenderers;
+import mchorse.bbs_mod.ui.model.UIModelPanel;
 import mchorse.bbs_mod.ui.model_blocks.UIModelBlockEditorMenu;
 import mchorse.bbs_mod.ui.morphing.UIMorphingPanel;
+import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.keys.KeyCombo;
 import mchorse.bbs_mod.ui.utils.keys.KeybindSettings;
@@ -287,16 +293,13 @@ public class BBSModClient implements ClientModInitializer
 
     public static int getGUIScale()
     {
-        float scale = BBSSettings.userIntefaceScale.get();
+        float scale = BBSSettings.getUIScaleFactor();
 
         if (scale <= 0F)
         {
             return MinecraftClient.getInstance().options.getGuiScale().getValue();
         }
 
-        /* Minecraft's GUI scale option is integer-only, so round to the nearest whole step. The
-           exact (possibly fractional) value is applied via the window scale-factor override
-           (see WindowMixin / getUIScaleFactor). */
         return Math.max(1, Math.round(scale));
     }
 
@@ -306,9 +309,7 @@ public class BBSModClient implements ClientModInitializer
      */
     public static double getUIScaleFactor()
     {
-        float scale = BBSSettings.userIntefaceScale.get();
-
-        return scale <= 0F ? 0D : scale;
+        return BBSSettings.getUIScaleFactor();
     }
 
     public static float getOriginalFramebufferScale()
@@ -494,6 +495,17 @@ public class BBSModClient implements ClientModInitializer
             }
         });
 
+        IValueListener refreshModelHover = (v, f) ->
+        {
+            if (!UISettingsOverlayPanel.isDeferringLiveSettings())
+            {
+                BBSSettings.syncAppliedAppearance();
+                refreshModelEditorHover();
+            }
+        };
+        BBSSettings.modelEditorHoverColor.postCallback(refreshModelHover);
+        BBSSettings.modelEditorHoverOpacity.postCallback(refreshModelHover);
+
         BBSSettings.tooltipStyle.modes(
             UIKeys.ENGINE_TOOLTIP_STYLE_LIGHT,
             UIKeys.ENGINE_TOOLTIP_STYLE_DARK
@@ -595,6 +607,14 @@ public class BBSModClient implements ClientModInitializer
 
         WorldRenderEvents.LAST.register((context) ->
         {
+            if (Gizmo.INSTANCE.hasDeferred())
+            {
+                RenderSystem.enableDepthTest();
+                RenderSystem.depthMask(false);
+                Gizmo.INSTANCE.renderDeferred(context.matrixStack());
+                RenderSystem.depthMask(true);
+            }
+
             if (videoRecorder.isRecording() && BBSRendering.canRender)
             {
                 videoRecorder.recordFrame();
@@ -987,6 +1007,59 @@ public class BBSModClient implements ClientModInitializer
         if (panel != null)
         {
             panel.replayEditor.teleport();
+        }
+    }
+
+    public static void reloadFromSettings()
+    {
+        BBSSettings.syncAppliedAppearance();
+        refreshModelEditorHover();
+
+        for (Settings settings : BBSMod.getSettings().modules.values())
+        {
+            settings.save();
+        }
+
+        reloadLanguage(getLanguageKey());
+
+        UIDashboard dashboard = getDashboard();
+
+        if (dashboard != null)
+        {
+            UIFilmPanel filmPanel = dashboard.getPanel(UIFilmPanel.class);
+
+            if (filmPanel != null)
+            {
+                filmPanel.fillData();
+            }
+        }
+
+        MinecraftClient mc = MinecraftClient.getInstance();
+        UIBaseMenu menu = UIScreen.getCurrentMenu();
+
+        if (menu != null && mc != null)
+        {
+            int desiredScale = getGUIScale();
+            mc.options.getGuiScale().setValue(desiredScale);
+            mc.onResolutionChanged();
+            menu.resize(mc.getWindow().getScaledWidth(), mc.getWindow().getScaledHeight());
+        }
+    }
+
+    private static void refreshModelEditorHover()
+    {
+        UIDashboard dashboard = getDashboard();
+
+        if (dashboard == null)
+        {
+            return;
+        }
+
+        UIDashboardPanel panel = dashboard.getPanels().panel;
+
+        if (panel instanceof UIModelPanel modelPanel)
+        {
+            modelPanel.renderer.dirty();
         }
     }
 

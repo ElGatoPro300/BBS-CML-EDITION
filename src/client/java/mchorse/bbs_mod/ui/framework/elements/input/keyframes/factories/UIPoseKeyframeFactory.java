@@ -103,7 +103,13 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
 
         if (this.getFlex().getW() > 240)
         {
-            UIElement left = UI.column(UI.label(UIKeys.POSE_CONTEXT_FIX), this.poseEditor.fix, UI.row(this.poseEditor.color, this.poseEditor.lighting), this.poseEditor.transform);
+            UIElement left = UI.column(
+                UI.label(UIKeys.POSE_CONTEXT_FIX),
+                this.poseEditor.fix,
+                this.poseEditor.transform,
+                UI.row(this.poseEditor.color, this.poseEditor.paintColor),
+                this.poseEditor.lighting
+            );
 
             this.poseEditor.pickTexture.w(1F);
             UIElement groupsRow = categoriesEnabled ? UI.row(this.poseEditor.groups, this.poseEditor.categories) : UI.row(this.poseEditor.groups);
@@ -124,8 +130,9 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
                 this.poseEditor.pickTexture,
                 UI.label(UIKeys.POSE_CONTEXT_FIX),
                 this.poseEditor.fix,
-                UI.row(this.poseEditor.color, this.poseEditor.lighting),
-                this.poseEditor.transform
+                this.poseEditor.transform,
+                UI.row(this.poseEditor.color, this.poseEditor.paintColor),
+                this.poseEditor.lighting
             );
         }
 
@@ -258,6 +265,12 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
         protected void setColor(PoseTransform transform, int value)
         {
             apply(this.editor, this.keyframe, this.getGroup(transform), (poseT) -> poseT.color.set(value));
+        }
+
+        @Override
+        protected void setPaintColor(PoseTransform transform, int value)
+        {
+            apply(this.editor, this.keyframe, this.getGroup(transform), (poseT) -> poseT.paintColor.set(value));
         }
 
         @Override

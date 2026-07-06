@@ -21,6 +21,7 @@ import mchorse.bbs_mod.settings.ui.UIVideoSettingsOverlayPanel;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanels;
+import mchorse.bbs_mod.ui.film.controller.UIGizmoSizeContextMenu;
 import mchorse.bbs_mod.ui.film.controller.UIOnionSkinContextMenu;
 import mchorse.bbs_mod.ui.film.utils.UICameraUtils;
 import mchorse.bbs_mod.ui.framework.UIContext;
@@ -78,6 +79,7 @@ public class UIFilmPreview extends UIElement
     public UIIcon gizmoMove;
     public UIIcon gizmoScale;
     public UIIcon gizmoRotate;
+    public UIIcon gizmoSize;
     public UIIcon onionSkin;
     public UIIcon plause;
     public UIIcon teleport;
@@ -102,8 +104,14 @@ public class UIFilmPreview extends UIElement
         this.gizmoScale = this.createGizmoButton(Icons.SCALE, Gizmo.Mode.SCALE, UIKeys.FILM_GIZMO_SCALE);
         this.gizmoRotate = this.createGizmoButton(Icons.ARC, Gizmo.Mode.ROTATE, UIKeys.FILM_GIZMO_ROTATE);
 
-        this.gizmos = UI.row(0, this.gizmoMove, this.gizmoScale, this.gizmoRotate);
-        this.gizmos.relative(this).x(4).y(4).wh(64, 20);
+        /* Gizmo size popup: opens a small trackpad menu bound to BBSSettings.axesScale. */
+        this.gizmoSize = new UIIcon(Icons.MAXIMIZE, (b) ->
+            this.getContext().replaceContextMenu(new UIGizmoSizeContextMenu())
+        );
+        this.gizmoSize.tooltip(UIKeys.FILM_GIZMO_SIZE);
+
+        this.gizmos = UI.row(0, this.gizmoMove, this.gizmoScale, this.gizmoRotate, this.gizmoSize);
+        this.gizmos.relative(this).x(4).y(4).wh(84, 20);
         this.add(this.gizmos);
 
         /* Preview buttons */
