@@ -137,6 +137,7 @@ public class UIClipPlacementInteraction
     public static void renderPulsingOutline(UIContext context, int x, int y, int ex, int ey)
     {
         float alpha = TimelineInteractionHints.getPulseAlpha(
+            TimelineToolbarSettings.INTERACTION_CLIP_PULSE_MIN_ALPHA,
             TimelineToolbarSettings.INTERACTION_CLIP_PULSE_MAX_ALPHA);
         int outline = Colors.setA(Colors.WHITE, alpha);
         int fill = Colors.setA(Colors.WHITE, alpha * 0.2F);

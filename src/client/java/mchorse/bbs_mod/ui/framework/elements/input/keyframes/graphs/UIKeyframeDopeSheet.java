@@ -925,7 +925,9 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
 
             if (this.keyframes.isTrackInteractionActive() && this.keyframes.isTrackInteractionEligible(sheet))
             {
-                float alpha = UIInteractionModeOverlay.getTrackPulseAlpha();
+                float alpha = hover
+                    ? UIInteractionModeOverlay.getHoveredTrackPulseAlpha()
+                    : UIInteractionModeOverlay.getEligibleTrackAlpha();
                 int pulseColor = Colors.setA(sheet.color, alpha);
 
                 context.batcher.box(startX, y, endX, (float) (y + this.trackHeight), pulseColor);

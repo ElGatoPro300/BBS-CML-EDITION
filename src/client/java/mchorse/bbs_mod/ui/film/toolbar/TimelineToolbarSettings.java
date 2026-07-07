@@ -124,20 +124,44 @@ public class TimelineToolbarSettings
     /* Interaction modes (track pick, future tick pick) */
 
     /**
-     * Period of one pulse cycle for eligible track highlights during an
-     * interaction mode.
+     * Period of one pulse cycle for interaction highlights (tracks, clips,
+     * viewport edge).
      */
     public static final long INTERACTION_TRACK_PULSE_PERIOD_MS = 1200L;
 
     /**
-     * Maximum alpha of the pulsing track background (0 = transparent).
+     * Minimum alpha of the pulsing clip / viewport placement preview (0 to 1).
      */
-    public static final float INTERACTION_TRACK_PULSE_MAX_ALPHA = 0.5F;
+    public static final float INTERACTION_CLIP_PULSE_MIN_ALPHA = 0.1F;
 
     /**
-     * Maximum alpha of the pulsing clip placement preview (0 to 1).
+     * Maximum alpha of the pulsing clip / viewport placement preview (0 to 1).
      */
     public static final float INTERACTION_CLIP_PULSE_MAX_ALPHA = 1F;
+
+    /**
+     * Minimum alpha of the pulsing highlight on eligible tracks when the
+     * cursor is not over that row.
+     */
+    public static final float INTERACTION_TRACK_ELIGIBLE_PULSE_MIN_ALPHA = 0F;
+
+    /**
+     * Maximum alpha of the pulsing highlight on eligible tracks when the
+     * cursor is not over that row.
+     */
+    public static final float INTERACTION_TRACK_ELIGIBLE_PULSE_MAX_ALPHA = 0.25F;
+
+    /**
+     * Minimum alpha of the pulsing highlight on the track row under the
+     * cursor during track-pick interaction.
+     */
+    public static final float INTERACTION_TRACK_HOVER_PULSE_MIN_ALPHA = 0.1F;
+
+    /**
+     * Maximum alpha of the pulsing highlight on the track row under the
+     * cursor during track-pick interaction.
+     */
+    public static final float INTERACTION_TRACK_HOVER_PULSE_MAX_ALPHA = 0.5F;
 
     /**
      * Width of the pulsing primary-color edge fade drawn inside the 3D

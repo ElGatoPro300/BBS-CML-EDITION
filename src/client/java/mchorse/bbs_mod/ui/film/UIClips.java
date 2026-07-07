@@ -2121,7 +2121,7 @@ public class UIClips extends UIElement
 
         if (this.addPreview != null)
         {
-            this.renderPreviewBox(context, h, this.addPreview, false);
+            this.renderPreviewBox(context, h, this.addPreview, true);
         }
     }
 

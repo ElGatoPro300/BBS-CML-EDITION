@@ -502,7 +502,7 @@ public class ToolbarMenu extends UIElement
             return;
         }
 
-        if (item.hasChildren() && item.isEnabled())
+        if (item.hasChildren())
         {
             if (this.openChildIndex != hoveredIndex)
             {
@@ -622,7 +622,7 @@ public class ToolbarMenu extends UIElement
         int rowX1 = this.area.x;
         int rowX2 = this.area.ex();
 
-        if (hover && enabled)
+        if (hover && (enabled || item.hasChildren()))
         {
             context.batcher.box(rowX1, y, rowX2, y + h, TimelineToolbarSettings.MENU_ITEM_HOVER);
         }

@@ -11,13 +11,18 @@ import mchorse.bbs_mod.utils.MathUtils;
  */
 public final class TimelineInteractionHints
 {
-    public static float getPulseAlpha(float maxAlpha)
+    public static float getPulseAlpha(float minAlpha, float maxAlpha)
     {
         float t = (System.currentTimeMillis() % TimelineToolbarSettings.INTERACTION_TRACK_PULSE_PERIOD_MS)
             / (float) TimelineToolbarSettings.INTERACTION_TRACK_PULSE_PERIOD_MS;
         float wave = 0.5F + 0.5F * (float) Math.sin(t * (float) (Math.PI * 2D));
 
-        return MathUtils.clamp(wave * maxAlpha, 0F, maxAlpha);
+        return MathUtils.clamp(minAlpha + wave * (maxAlpha - minAlpha), minAlpha, maxAlpha);
+    }
+
+    public static float getPulseAlpha(float maxAlpha)
+    {
+        return getPulseAlpha(0F, maxAlpha);
     }
 
     public static void renderHint(UIContext context, Area area, IKey hint)

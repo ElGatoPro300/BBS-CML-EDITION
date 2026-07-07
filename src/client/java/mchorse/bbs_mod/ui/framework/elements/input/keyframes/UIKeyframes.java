@@ -671,6 +671,30 @@ public class UIKeyframes extends UIElement
         return false;
     }
 
+    /**
+     * Whether selected keyframes span more than one track (Alt+click column-style
+     * duplicate: horizontal placement only, same tracks).
+     */
+    public boolean hasMultiTrackKeyframeSelection()
+    {
+        int sheetsWithSelection = 0;
+
+        for (UIKeyframeSheet sheet : this.getGraph().getSheets())
+        {
+            if (!sheet.selection.getSelected().isEmpty())
+            {
+                sheetsWithSelection++;
+
+                if (sheetsWithSelection > 1)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
     public boolean canSpreadSelectedKeyframes()
     {
         if (!this.isModifyingKeyframes())
@@ -964,7 +988,26 @@ public class UIKeyframes extends UIElement
 
     public void toolbarEnterDuplicateAtPlayhead()
     {
+        if (!this.isModifyingKeyframes())
+        {
+            return;
+        }
+
+        if (!this.hasSelectedKeyframes())
+        {
+            this.getContext().notifyError(UIKeys.GENERAL_CUT_EMPTY);
+
+            return;
+        }
+
         int tick = this instanceof UIFilmKeyframes filmKeyframes ? filmKeyframes.getOffset() : 0;
+
+        if (this.hasMultiTrackKeyframeSelection())
+        {
+            this.duplicateSelectedKeyframes(tick, this.getToolbarPasteMouseY());
+
+            return;
+        }
 
         this.enterKeyframeDuplicate(KeyframeDuplicateInteractionState.atPlayhead(
             UIKeys.TIMELINE_INTERACTION_DUPLICATE_TIMELINE, tick));

@@ -111,6 +111,7 @@ public class UIViewportInteraction
     public static void renderEdgeFade(UIContext context, Area viewport)
     {
         float alpha = TimelineInteractionHints.getPulseAlpha(
+            TimelineToolbarSettings.INTERACTION_CLIP_PULSE_MIN_ALPHA,
             TimelineToolbarSettings.INTERACTION_CLIP_PULSE_MAX_ALPHA);
         int primary = BBSSettings.primaryColor.get();
         int edge = Colors.setA(primary, alpha);

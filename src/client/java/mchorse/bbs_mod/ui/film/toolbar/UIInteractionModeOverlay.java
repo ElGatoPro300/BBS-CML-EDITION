@@ -40,10 +40,18 @@ public class UIInteractionModeOverlay
     /**
      * Pulsing alpha for eligible track backgrounds (0 to max, smooth sine).
      */
-    public static float getTrackPulseAlpha()
+    public static float getHoveredTrackPulseAlpha()
     {
         return TimelineInteractionHints.getPulseAlpha(
-            TimelineToolbarSettings.INTERACTION_TRACK_PULSE_MAX_ALPHA);
+            TimelineToolbarSettings.INTERACTION_TRACK_HOVER_PULSE_MIN_ALPHA,
+            TimelineToolbarSettings.INTERACTION_TRACK_HOVER_PULSE_MAX_ALPHA);
+    }
+
+    public static float getEligibleTrackAlpha()
+    {
+        return TimelineInteractionHints.getPulseAlpha(
+            TimelineToolbarSettings.INTERACTION_TRACK_ELIGIBLE_PULSE_MIN_ALPHA,
+            TimelineToolbarSettings.INTERACTION_TRACK_ELIGIBLE_PULSE_MAX_ALPHA);
     }
 
     /**
