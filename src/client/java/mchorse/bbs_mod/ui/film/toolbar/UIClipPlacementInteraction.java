@@ -72,7 +72,7 @@ public class UIClipPlacementInteraction
             return false;
         }
 
-        if (context.mouseButton == 2)
+        if (context.mouseButton == 1)
         {
             this.cancel(clips);
 
@@ -81,7 +81,7 @@ public class UIClipPlacementInteraction
 
         if (context.mouseButton != 0)
         {
-            return context.mouseButton != 1;
+            return false;
         }
 
         if (!clips.getVerticalArea().isInside(context))

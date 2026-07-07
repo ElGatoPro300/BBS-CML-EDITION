@@ -19,6 +19,7 @@ import mchorse.bbs_mod.ui.film.toolbar.KeyframeInsertInteractionState;
 import mchorse.bbs_mod.ui.film.utils.keyframes.UIFilmKeyframes;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
+import mchorse.bbs_mod.ui.framework.elements.context.UIContextMenu;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeEditor;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.graphs.IUIKeyframeGraph;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.graphs.KeyframeType;
@@ -883,6 +884,17 @@ public class UIKeyframes extends UIElement
         this.insertInteraction.cancel();
     }
 
+    @Override
+    public UIContextMenu createContextMenu(UIContext context)
+    {
+        if (this.interactionOverlay.isActive() || this.insertInteraction.isActive())
+        {
+            return null;
+        }
+
+        return super.createContextMenu(context);
+    }
+
     public boolean isKeyframeInsertActive()
     {
         return this.insertInteraction.isActive();
@@ -1489,6 +1501,13 @@ public class UIKeyframes extends UIElement
     @Override
     protected boolean subMouseClicked(UIContext context)
     {
+        boolean interactionActive = this.insertInteraction.isActive() || this.interactionOverlay.isActive();
+
+        if (interactionActive && this.currentGraph.mouseClicked(context))
+        {
+            return true;
+        }
+
         if (this.insertInteraction.handleMouseClicked(this, context))
         {
             return true;
@@ -1655,13 +1674,10 @@ public class UIKeyframes extends UIElement
     @Override
     protected boolean subMouseScrolled(UIContext context)
     {
-        if (this.insertInteraction.isActive() && this.area.isInside(context))
+        if ((this.insertInteraction.isActive() || this.interactionOverlay.isActive()) && this.area.isInside(context))
         {
-            return true;
-        }
+            this.currentGraph.mouseScrolled(context);
 
-        if (this.interactionOverlay.isActive() && this.area.isInside(context))
-        {
             return true;
         }
 

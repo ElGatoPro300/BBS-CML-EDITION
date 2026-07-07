@@ -26,6 +26,7 @@ import mchorse.bbs_mod.ui.film.toolbar.UIClipPlacementInteraction;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarPointerBlock;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
+import mchorse.bbs_mod.ui.framework.elements.context.UIContextMenu;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.context.UISimpleContextMenu;
@@ -1216,6 +1217,17 @@ public class UIClips extends UIElement
         return this.clipPlacement.isActive();
     }
 
+    @Override
+    public UIContextMenu createContextMenu(UIContext context)
+    {
+        if (this.clipPlacement.isActive())
+        {
+            return null;
+        }
+
+        return super.createContextMenu(context);
+    }
+
     public Area getVerticalArea()
     {
         return this.vertical.area;
@@ -1365,12 +1377,24 @@ public class UIClips extends UIElement
     @Override
     protected boolean subMouseClicked(UIContext context)
     {
-        if (this.clipPlacement.handleMouseClicked(this, context))
+        if (this.clipPlacement.isActive())
+        {
+            if (this.vertical.mouseClicked(context))
+            {
+                return true;
+            }
+
+            if (this.clipPlacement.handleMouseClicked(this, context))
+            {
+                return true;
+            }
+        }
+        else if (this.clipPlacement.handleMouseClicked(this, context))
         {
             return true;
         }
 
-        if (this.vertical.mouseClicked(context))
+        if (!this.clipPlacement.isActive() && this.vertical.mouseClicked(context))
         {
             return true;
         }

@@ -45,9 +45,14 @@ public class KeyCodes
 
     public static String getName(int keyCode)
     {
-        if (keyCode == 0)
+        if (keyCode >= 0 && keyCode <= 2)
         {
-            return "N/A";
+            switch (keyCode)
+            {
+                case 0: return "Click";
+                case 1: return "RMB";
+                case 2: return "MMB";
+            }
         }
 
         if (keyCode < 0)

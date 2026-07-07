@@ -56,16 +56,21 @@ public class UIInteractionModeOverlay
             return false;
         }
 
-        if (context.mouseButton == 2)
+        if (context.mouseButton == 1)
         {
             this.cancel();
 
             return true;
         }
 
-        if (context.mouseButton != 0 || !keyframes.area.isInside(context))
+        if (context.mouseButton != 0)
         {
-            return context.mouseButton != 1;
+            return false;
+        }
+
+        if (!keyframes.area.isInside(context))
+        {
+            return true;
         }
 
         if (!(keyframes.getGraph() instanceof UIKeyframeDopeSheet dopeSheet))

@@ -49,7 +49,7 @@ public class UIViewportInteraction
             return false;
         }
 
-        if (context.mouseButton == 2)
+        if (context.mouseButton == 1)
         {
             this.cancel();
 
@@ -58,7 +58,7 @@ public class UIViewportInteraction
 
         if (context.mouseButton != 0)
         {
-            return context.mouseButton != 1;
+            return false;
         }
 
         if (!viewport.isInside(context))
