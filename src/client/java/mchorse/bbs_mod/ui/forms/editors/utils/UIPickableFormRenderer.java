@@ -3,11 +3,9 @@ package mchorse.bbs_mod.ui.forms.editors.utils;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.forms.FormUtilsClient;
-import mchorse.bbs_mod.forms.ITickable;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.renderers.FormRenderType;
-import mchorse.bbs_mod.forms.renderers.FormRenderer;
 import mchorse.bbs_mod.forms.renderers.FormRenderingContext;
 import mchorse.bbs_mod.graphics.Draw;
 import mchorse.bbs_mod.graphics.texture.Texture;
@@ -19,9 +17,6 @@ import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.ui.utils.StencilFormFramebuffer;
-import mchorse.bbs_mod.ui.utils.gizmo.GizmoController;
-import mchorse.bbs_mod.ui.utils.gizmo.GizmoRayFrame;
-import mchorse.bbs_mod.ui.utils.gizmo.GizmoSurface;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.Pair;
 import mchorse.bbs_mod.utils.colors.Colors;
@@ -34,6 +29,8 @@ import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.util.math.MatrixStack;
 
 import org.joml.Matrix4f;
+import org.joml.Vector3d;
+import org.joml.Vector3f;
 
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -42,7 +39,7 @@ import org.lwjgl.opengl.GL11;
 
 import java.util.function.Supplier;
 
-public class UIPickableFormRenderer extends UIFormRenderer implements GizmoSurface
+public class UIPickableFormRenderer extends UIFormRenderer
 {
     public UIFormEditor formEditor;
 
@@ -52,8 +49,6 @@ public class UIPickableFormRenderer extends UIFormRenderer implements GizmoSurfa
     private StencilMap stencilMap = new StencilMap();
     private final Matrix4f lastGizmoMatrix = new Matrix4f();
     private boolean hasGizmoMatrix;
-
-    private final GizmoController gizmoController = new GizmoController(this);
 
     private IEntity target;
     private Supplier<Boolean> renderForm;
@@ -71,17 +66,6 @@ public class UIPickableFormRenderer extends UIFormRenderer implements GizmoSurfa
     public StencilFormFramebuffer getStencil()
     {
         return this.stencil;
-    }
-
-    @Override
-    public StencilFormFramebuffer getGizmoStencil()
-    {
-        return this.stencil;
-    }
-
-    public GizmoController getGizmoController()
-    {
-        return this.gizmoController;
     }
 
     public void setRenderForm(Supplier<Boolean> renderForm)
@@ -211,7 +195,6 @@ public class UIPickableFormRenderer extends UIFormRenderer implements GizmoSurfa
             }
 
             this.stencil.unbind(this.stencilMap);
-            this.gizmoController.updateHover();
 
             this.endStencilViewport();
 
@@ -267,7 +250,6 @@ public class UIPickableFormRenderer extends UIFormRenderer implements GizmoSurfa
         stack.pop();
     }
 
-    @Override
     public void prepareGizmoDrag(UIPropTransform transform)
     {
         if (transform == null)
@@ -275,11 +257,53 @@ public class UIPickableFormRenderer extends UIFormRenderer implements GizmoSurfa
             return;
         }
 
-        transform.setGizmoRayProvider(GizmoRayFrame.fromCamera(
-            this.camera,
-            this.area,
-            () -> this.hasGizmoMatrix ? this.lastGizmoMatrix : null
-        ));
+        transform.setGizmoRayProvider(new UIPropTransform.IGizmoRayProvider()
+        {
+            @Override
+            public boolean getMouseRay(UIContext context, int mouseX, int mouseY, Vector3d rayOrigin, Vector3f rayDirection)
+            {
+                if (UIPickableFormRenderer.this.area.w <= 0 || UIPickableFormRenderer.this.area.h <= 0)
+                {
+                    return false;
+                }
+
+                Vector3f direction = UIPickableFormRenderer.this.camera.getMouseDirection(
+                    mouseX,
+                    mouseY,
+                    context.globalX(UIPickableFormRenderer.this.area.x),
+                    context.globalY(UIPickableFormRenderer.this.area.y),
+                    UIPickableFormRenderer.this.area.w,
+                    UIPickableFormRenderer.this.area.h
+                );
+
+                if (direction.lengthSquared() <= 1.0E-12F)
+                {
+                    return false;
+                }
+
+                rayDirection.set(direction).normalize();
+                rayOrigin.set(
+                    UIPickableFormRenderer.this.camera.position.x,
+                    UIPickableFormRenderer.this.camera.position.y,
+                    UIPickableFormRenderer.this.camera.position.z
+                );
+
+                return true;
+            }
+
+            @Override
+            public boolean getGizmoMatrix(Matrix4f matrix)
+            {
+                if (!UIPickableFormRenderer.this.hasGizmoMatrix)
+                {
+                    return false;
+                }
+
+                matrix.set(UIPickableFormRenderer.this.lastGizmoMatrix);
+
+                return true;
+            }
+        });
     }
 
     private void renderFormHitbox(UIContext context)
@@ -304,13 +328,6 @@ public class UIPickableFormRenderer extends UIFormRenderer implements GizmoSurfa
         if (this.update && this.target != null)
         {
             this.form.update(this.entity);
-
-            FormRenderer renderer = FormUtilsClient.getRenderer(this.form);
-
-            if (renderer instanceof ITickable tickable)
-            {
-                tickable.tick(this.entity);
-            }
         }
     }
 

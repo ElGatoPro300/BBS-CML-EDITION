@@ -106,23 +106,6 @@ public class UIDocumentTabsBar extends UIControlBar
         this.activate(this.documentTabs.size() - 1);
     }
 
-    public boolean activateIfOpen(ContentType type, String id)
-    {
-        int existing = this.find(type, id);
-
-        if (existing < 0)
-        {
-            return false;
-        }
-
-        if (existing != this.activeTab)
-        {
-            this.activate(existing);
-        }
-
-        return true;
-    }
-
     public void closeTab(ContentType type, String id)
     {
         int index = this.find(type, id);

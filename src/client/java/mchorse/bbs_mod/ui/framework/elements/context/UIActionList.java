@@ -13,8 +13,6 @@ public class UIActionList extends UIList<ContextAction>
 {
     private static final int SEPARATOR_HEIGHT = 8;
 
-    private boolean pressed;
-
     public UIActionList(Consumer<List<ContextAction>> callback)
     {
         super(callback);
@@ -115,8 +113,6 @@ public class UIActionList extends UIList<ContextAction>
 
         if (this.area.isInside(context) && context.mouseButton == 0)
         {
-            this.pressed = true;
-
             int index = this.getIndexAt(context.mouseY);
 
             if (this.exists(index))
@@ -142,15 +138,7 @@ public class UIActionList extends UIList<ContextAction>
     @Override
     public boolean subMouseReleased(UIContext context)
     {
-        /* Only pick an action when this list also received the matching mouse press.
-           Mouse releases are broadcast to the whole element tree, so without this check
-           a release that started on another element (e.g. a category tab button which
-           repositions the menu under the cursor) would trigger the hovered action. */
-        boolean pressed = this.pressed;
-
-        this.pressed = false;
-
-        if (pressed && this.area.isInside(context) && context.mouseButton == 0)
+        if (this.area.isInside(context) && context.mouseButton == 0)
         {
             int index = this.getIndexAt(context.mouseY);
 

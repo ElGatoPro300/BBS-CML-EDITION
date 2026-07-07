@@ -111,7 +111,6 @@ import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
-import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.Vec3d;
 
 import org.joml.Matrix4f;
@@ -4393,17 +4392,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         return this.dashboard.orbitUI.canControl();
     }
 
-    /**
-     * Confines left/right/middle click-drag camera rotate/roll/FOV to the preview panel (the
-     * 3D viewport, including its overlay buttons), so it can never be triggered by clicking
-     * elsewhere in the editor (menu bar, timelines, properties, etc.).
-     */
-    @Override
-    public Area getFlightViewportArea()
-    {
-        return this.preview.area;
-    }
-
     public void toggleFlight()
     {
         this.setFlight(!this.isFlying());
@@ -4859,15 +4847,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         if (!BBSRendering.isIrisShadowPass())
         {
             this.lastProjection.set(RenderSystem.getProjectionMatrix());
-            MatrixStack ms = context.matrixStack();
-            if (ms != null)
-            {
-                this.lastView.set(ms.peek().getPositionMatrix());
-            }
-            else
-            {
-                this.lastView.set(RenderSystem.getModelViewMatrix());
-            }
+            this.lastView.set(context.matrixStack().peek().getPositionMatrix());
         }
 
         this.controller.renderFrame(context);
@@ -5520,11 +5500,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         float segW = editorW / (float) segments;
         
         Matrix4f matrix4f = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
-        Tessellator tessellator = Tessellator.getInstance();
-        BufferBuilder builder = tessellator.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
+        BufferBuilder builder = Tessellator.getInstance().getBuffer();
         
         RenderSystem.enableBlend();
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
+        builder.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
         
         float[] yBot1 = new float[segments + 1];
         float[] yMid1 = new float[segments + 1];
@@ -5574,37 +5554,33 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         
         int colTop = Colors.setA(primary, 0.0F);
         int colBot = Colors.setA(primary, 0.0F);
-        float yTop1 = editorY + editorH * 0.05F;
-        float yTop2 = editorY + editorH * 0.15F;
+        float yTop1f = editorY + editorH * 0.05F;
+        float yTop2f = editorY + editorH * 0.15F;
         
         for (int i = 0; i < segments; i++)
         {
             float x1 = editorX + i * segW;
             float x2 = editorX + (i + 1) * segW;
             
-            // Layer 1 - Upper Quad (yTop1 -> yMid1)
-            builder.vertex(matrix4f, x1, yTop1, 0).color(colTop);
-            builder.vertex(matrix4f, x1, yMid1[i], 0).color(cMid1[i]);
-            builder.vertex(matrix4f, x2, yMid1[i+1], 0).color(cMid1[i+1]);
-            builder.vertex(matrix4f, x2, yTop1, 0).color(colTop);
+            builder.vertex(matrix4f, x1, yTop1f, 0).color(colTop).next();
+            builder.vertex(matrix4f, x1, yMid1[i], 0).color(cMid1[i]).next();
+            builder.vertex(matrix4f, x2, yMid1[i + 1], 0).color(cMid1[i + 1]).next();
+            builder.vertex(matrix4f, x2, yTop1f, 0).color(colTop).next();
             
-            // Layer 1 - Lower Quad (yMid1 -> yBot1)
-            builder.vertex(matrix4f, x1, yMid1[i], 0).color(cMid1[i]);
-            builder.vertex(matrix4f, x1, yBot1[i], 0).color(colBot);
-            builder.vertex(matrix4f, x2, yBot1[i+1], 0).color(colBot);
-            builder.vertex(matrix4f, x2, yMid1[i+1], 0).color(cMid1[i+1]);
+            builder.vertex(matrix4f, x1, yMid1[i], 0).color(cMid1[i]).next();
+            builder.vertex(matrix4f, x1, yBot1[i], 0).color(colBot).next();
+            builder.vertex(matrix4f, x2, yBot1[i + 1], 0).color(colBot).next();
+            builder.vertex(matrix4f, x2, yMid1[i + 1], 0).color(cMid1[i + 1]).next();
             
-            // Layer 2 - Upper Quad (yTop2 -> yMid2)
-            builder.vertex(matrix4f, x1, yTop2, 0).color(colTop);
-            builder.vertex(matrix4f, x1, yMid2[i], 0).color(cMid2[i]);
-            builder.vertex(matrix4f, x2, yMid2[i+1], 0).color(cMid2[i+1]);
-            builder.vertex(matrix4f, x2, yTop2, 0).color(colTop);
+            builder.vertex(matrix4f, x1, yTop2f, 0).color(colTop).next();
+            builder.vertex(matrix4f, x1, yMid2[i], 0).color(cMid2[i]).next();
+            builder.vertex(matrix4f, x2, yMid2[i + 1], 0).color(cMid2[i + 1]).next();
+            builder.vertex(matrix4f, x2, yTop2f, 0).color(colTop).next();
             
-            // Layer 2 - Lower Quad (yMid2 -> yBot2)
-            builder.vertex(matrix4f, x1, yMid2[i], 0).color(cMid2[i]);
-            builder.vertex(matrix4f, x1, yBot2[i], 0).color(colBot);
-            builder.vertex(matrix4f, x2, yBot2[i+1], 0).color(colBot);
-            builder.vertex(matrix4f, x2, yMid2[i+1], 0).color(cMid2[i+1]);
+            builder.vertex(matrix4f, x1, yMid2[i], 0).color(cMid2[i]).next();
+            builder.vertex(matrix4f, x1, yBot2[i], 0).color(colBot).next();
+            builder.vertex(matrix4f, x2, yBot2[i + 1], 0).color(colBot).next();
+            builder.vertex(matrix4f, x2, yMid2[i + 1], 0).color(cMid2[i + 1]).next();
         }
         
         BufferRenderer.drawWithGlobalProgram(builder.end());
@@ -6308,40 +6284,13 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     /* Custom floating windows logic */
 
-    /**
-     * Outcome of {@link #handleFloatingPanelClicks}, distinguishing a fully consumed click
-     * (window chrome, or content inside a floating panel) from one that must still reach the
-     * dashboard-level free camera-orbit controller (left/right/middle click-drag rotate, roll
-     * and FOV over the 3D viewport, matching stock BBS behaviour) versus a click that didn't
-     * land on any floating panel at all.
-     */
-    private enum FloatingClickResult
-    {
-        NOT_HANDLED,
-        CONSUMED,
-        VIEWPORT_PASSTHROUGH
-    }
-
     @Override
     protected IUIElement childrenMouseClicked(UIContext context)
     {
-        FloatingClickResult result = this.handleFloatingPanelClicks(context);
-
-        if (result == FloatingClickResult.CONSUMED)
+        if (this.handleFloatingPanelClicks(context))
         {
             return this;
         }
-
-        /* Deliberately skip super.childrenMouseClicked(): falling through to the normal
-           z-order sibling iteration would let the click leak onto whichever docked panel sits
-           behind the floating viewport window (the exact bug that was just fixed). Returning
-           null here instead lets it bubble past this whole editor, all the way up to the
-           dashboard root where the camera-orbit controller lives. */
-        if (result == FloatingClickResult.VIEWPORT_PASSTHROUGH)
-        {
-            return null;
-        }
-
         return super.childrenMouseClicked(context);
     }
 
@@ -6514,11 +6463,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.setupEditorFlex(true);
     }
 
-    private FloatingClickResult handleFloatingPanelClicks(UIContext context)
+    private boolean handleFloatingPanelClicks(UIContext context)
     {
         if (this.showingHomePage)
         {
-            return FloatingClickResult.NOT_HANDLED;
+            return false;
         }
 
         List<IUIElement> children = this.editor.getChildren();
@@ -6575,7 +6524,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                                 this.draggingPanelId = panelId;
                             }
                         }
-                        return FloatingClickResult.CONSUMED;
+                        return true;
                     }
 
                     // Click in Bottom-Right Resize Handle (only if NOT collapsed)
@@ -6591,7 +6540,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                             {
                                 this.activeResizingFloatingPanelId = panelId;
                             }
-                            return FloatingClickResult.CONSUMED;
+                            return true;
                         }
                     }
 
@@ -6599,33 +6548,12 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                     if (context.mouseX >= x && context.mouseX <= x + w && context.mouseY >= y && context.mouseY <= y + h)
                     {
                         this.safeBringToFront(panelId);
-
-                        /* Route the click to this floating window's contents first, so it
-                           can't fall through to docked panels behind the window (e.g.
-                           selecting a clip in a floating Camera Timeline must not also press
-                           a button in the Camera Properties panel below). */
-                        IUIElement consumer = child.isEnabled() ? child.mouseClicked(context) : null;
-
-                        if (consumer != null)
-                        {
-                            return FloatingClickResult.CONSUMED;
-                        }
-
-                        /* Nothing inside the floating window wanted this click. For the 3D
-                           viewport specifically, let it bubble up to the dashboard's free
-                           camera-orbit controller instead of swallowing it, so left/right/
-                           middle click-drag can still rotate/roll the camera and change FOV
-                           while the mouse is over the viewport, exactly like stock BBS. Any
-                           other floating panel keeps swallowing the click. */
-                        return "preview".equals(panelId)
-                            ? FloatingClickResult.VIEWPORT_PASSTHROUGH
-                            : FloatingClickResult.CONSUMED;
                     }
                 }
             }
         }
 
-        return FloatingClickResult.NOT_HANDLED;
+        return false;
     }
 
     private void renderFloatingPanelWindows(UIContext context)

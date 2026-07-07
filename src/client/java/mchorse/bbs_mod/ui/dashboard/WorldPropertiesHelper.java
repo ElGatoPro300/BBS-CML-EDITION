@@ -4,7 +4,6 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.entity.Entity;
-import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.world.ServerWorld;
@@ -19,11 +18,6 @@ import java.util.function.IntConsumer;
 public class WorldPropertiesHelper
 {
     private static volatile long clientTimeOverride = -1L;
-
-    /** Gamma override (1.0 = vanilla 100%, 15.0 = 1500% full-bright), read by
-     *  {@code SimpleOptionMixin} so it can exceed the vanilla 0..1 slider range. Negative
-     *  means "no override" (vanilla setting applies). */
-    private static volatile double gammaOverride = -1D;
 
     private WorldPropertiesHelper()
     {}
@@ -50,42 +44,6 @@ public class WorldPropertiesHelper
     public static void clearClientTimeOverride()
     {
         clientTimeOverride = -1L;
-    }
-
-    public static void setGammaPercent(double percent)
-    {
-        gammaOverride = Math.max(0D, percent) / 100D;
-    }
-
-    public static Double getGammaOverride()
-    {
-        return gammaOverride >= 0D ? gammaOverride : null;
-    }
-
-    public static double getGammaPercent()
-    {
-        if (gammaOverride >= 0D)
-        {
-            return gammaOverride * 100D;
-        }
-
-        MinecraftClient mc = MinecraftClient.getInstance();
-
-        return mc.options == null ? 100D : mc.options.getGamma().getValue() * 100D;
-    }
-
-    public static void setNightVision(boolean enabled)
-    {
-        executeCommand(enabled
-            ? "effect give @a minecraft:night_vision infinite 1 true"
-            : "effect clear @a minecraft:night_vision");
-    }
-
-    public static boolean hasNightVision()
-    {
-        ClientPlayerEntity player = MinecraftClient.getInstance().player;
-
-        return player != null && player.hasStatusEffect(StatusEffects.NIGHT_VISION);
     }
 
     public static void setTimeOfDay(long time)
@@ -194,12 +152,6 @@ public class WorldPropertiesHelper
         {
             callback.accept(-1);
         }
-    }
-
-    /** Runs any command silently, through the integrated server when available. */
-    public static void executeCommand(String command)
-    {
-        executeWeatherCommand(command);
     }
 
     private static void executeWeatherCommand(String command)

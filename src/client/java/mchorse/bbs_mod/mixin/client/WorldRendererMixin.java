@@ -29,7 +29,7 @@ public class WorldRendererMixin
     @Shadow
     public Framebuffer entityOutlinesFramebuffer;
 
-    @Inject(method = "renderSky(Lorg/joml/Matrix4f;Lorg/joml/Matrix4f;FLnet/minecraft/client/render/Camera;ZLjava/lang/Runnable;)V", at = @At("HEAD"), cancellable = true, require = 0)
+    @Inject(method = "renderSky(Lnet/minecraft/client/util/math/MatrixStack;Lorg/joml/Matrix4f;FLnet/minecraft/client/render/Camera;ZLjava/lang/Runnable;)V", at = @At("HEAD"), cancellable = true)
     public void onRenderSky(CallbackInfo info)
     {
         if (BBSRendering.isChromaSkyEnabled())
@@ -45,27 +45,27 @@ public class WorldRendererMixin
     }
 
     @Inject(method = "renderLayer", at = @At("HEAD"), cancellable = true)
-    public void onRenderLayer(RenderLayer renderLayer, double cameraX, double cameraY, double cameraZ, Matrix4f positionMatrix, Matrix4f projectionMatrix, CallbackInfo info)
+    public void onRenderLayer(RenderLayer renderLayer, MatrixStack matrices, double cameraX, double cameraY, double cameraZ, Matrix4f positionMatrix, CallbackInfo info)
     {
         if (BBSRendering.shouldHideChromaTerrain())
         {
-            BBSRendering.onRenderChunkLayer(positionMatrix, projectionMatrix);
+            BBSRendering.onRenderChunkLayer(matrices);
 
             info.cancel();
         }
     }
 
     @Inject(method = "renderLayer", at = @At("TAIL"))
-    public void onRenderChunkLayer(RenderLayer layer, double cameraX, double cameraY, double cameraZ, Matrix4f positionMatrix, Matrix4f projectionMatrix, CallbackInfo info)
+    public void onRenderChunkLayer(RenderLayer layer, MatrixStack stack, double x, double y, double z, Matrix4f positionMatrix, CallbackInfo info)
     {
         if (layer == RenderLayer.getSolid())
         {
-            BBSRendering.onRenderChunkLayer(positionMatrix, projectionMatrix);
+            BBSRendering.onRenderChunkLayer(stack);
         }
     }
 
     @Inject(method = "setupFrustum", at = @At("HEAD"))
-    public void onSetupFrustum(Vec3d vec3d, Matrix4f matrix4f, Matrix4f positionMatrix, CallbackInfo info)
+    public void onSetupFrustum(MatrixStack matrices, Vec3d vec3d, Matrix4f matrix4f, CallbackInfo info)
     {
         BBSRendering.camera.set(matrix4f);
     }

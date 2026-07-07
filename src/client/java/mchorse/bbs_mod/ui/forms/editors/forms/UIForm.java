@@ -63,7 +63,7 @@ public abstract class UIForm <T extends Form> extends UIPanelBase<UIFormPanel<T>
         return this.getOrigin(transition, FormUtils.getPath(this.form), this.generalPanel != null && this.generalPanel.transform.isLocal());
     }
 
-    public Matrix4f getOrigin(float transition, String path, boolean local)
+    protected Matrix4f getOrigin(float transition, String path, boolean local)
     {
         if (path == null)
         {

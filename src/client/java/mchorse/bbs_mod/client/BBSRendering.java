@@ -63,8 +63,6 @@ import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.util.Window;
 import net.minecraft.client.util.math.MatrixStack;
 
-import net.irisshaders.iris.uniforms.custom.cached.CachedUniform;
-
 import org.joml.Matrix4f;
 
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -79,6 +77,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
+
+import net.irisshaders.iris.uniforms.custom.cached.CachedUniform;
 
 public class BBSRendering
 {
@@ -369,13 +369,13 @@ public class BBSRendering
     public static void onWorldRenderBegin()
     {
         MinecraftClient mc = MinecraftClient.getInstance();
-        BBSModClient.getFilms().startRenderFrame(mc.getRenderTickCounter().getTickDelta(false));
+        BBSModClient.getFilms().startRenderFrame(mc.getTickDelta());
 
         UIBaseMenu menu = UIScreen.getCurrentMenu();
 
         if (menu != null)
         {
-            menu.startRenderFrame(mc.getRenderTickCounter().getTickDelta(false));
+            menu.startRenderFrame(mc.getTickDelta());
         }
 
         RenderSystem.depthFunc(GL11.GL_LEQUAL);
@@ -511,26 +511,9 @@ public class BBSRendering
         MinecraftClient mc = MinecraftClient.getInstance();
 
         worldRenderContext.prepare(
-            mc.worldRenderer, mc.getRenderTickCounter(), false,
+            mc.worldRenderer, stack, mc.getTickDelta(), mc.getRenderTime(), false,
             mc.gameRenderer.getCamera(), mc.gameRenderer, mc.gameRenderer.getLightmapTextureManager(),
-            RenderSystem.getProjectionMatrix(), RenderSystem.getModelViewMatrix(), mc.getBufferBuilders().getEntityVertexConsumers(), mc.getProfiler(), false, mc.world
-        );
-
-        if (!isIrisShadersEnabled())
-        {
-            renderCoolStuff(worldRenderContext);
-        }
-    }
-
-    public static void onRenderChunkLayer(Matrix4f positionMatrix, Matrix4f projectionMatrix)
-    {
-        WorldRenderContextImpl worldRenderContext = new WorldRenderContextImpl();
-        MinecraftClient mc = MinecraftClient.getInstance();
-
-        worldRenderContext.prepare(
-            mc.worldRenderer, mc.getRenderTickCounter(), false,
-            mc.gameRenderer.getCamera(), mc.gameRenderer, mc.gameRenderer.getLightmapTextureManager(),
-            positionMatrix, projectionMatrix, mc.getBufferBuilders().getEntityVertexConsumers(), mc.getProfiler(), false, mc.world
+            RenderSystem.getProjectionMatrix(), mc.getBufferBuilders().getEntityVertexConsumers(), null, false, mc.world
         );
 
         if (isIrisShadersEnabled())
@@ -541,13 +524,6 @@ public class BBSRendering
             {
                 return;
             }
-
-            /* WorldRenderContextImpl.prepare() leaves the matrix stack null; supply one
-             * built from the terrain position matrix so renderInWorld can use it. */
-            MatrixStack matrices = new MatrixStack();
-
-            MatrixStackUtils.multiply(matrices, positionMatrix);
-            worldRenderContext.setMatrixStack(matrices);
 
             renderCoolStuff(worldRenderContext);
         }

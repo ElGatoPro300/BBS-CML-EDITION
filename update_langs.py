@@ -70,9 +70,9 @@ new_keys_kr = {
 }
 
 # Vietnamese (vi_vn)
-new_keys_vi = {
-    "bbs.example": "Dán các khóa dịch vào đây, trong trường hợp này là Tiếng Việt."
-}
+# new_keys_vi = {
+#    "bbs.example": "Dán các khóa dịch vào đây, trong trường hợp này là Tiếng Việt."
+# } Diobede I'll translate it. :angry:
 
 # Ukrainian (uk_ua)
 new_keys_uk = {

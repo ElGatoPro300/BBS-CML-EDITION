@@ -7,7 +7,6 @@ import mchorse.bbs_mod.importers.ImporterContext;
 import mchorse.bbs_mod.importers.Importers;
 import mchorse.bbs_mod.importers.types.IImporter;
 import mchorse.bbs_mod.ui.UIKeys;
-import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.ui.utils.IFileDropListener;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.utils.FFMpegUtils;
@@ -18,8 +17,6 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.Text;
-
-import com.mojang.blaze3d.systems.RenderSystem;
 
 import org.lwjgl.glfw.GLFW;
 
@@ -57,8 +54,6 @@ public class UIScreen extends Screen implements IFileDropListener
         super(title);
 
         MinecraftClient mc = MinecraftClient.getInstance();
-
-        this.client = mc;
 
         this.menu = menu;
         this.context = new UIRenderingContext(new DrawContext(mc, mc.getBufferBuilders().getEntityVertexConsumers()));
@@ -196,7 +191,7 @@ public class UIScreen extends Screen implements IFileDropListener
     {
         super.render(context, mouseX, mouseY, delta);
 
-        this.menu.context.setTransition(this.client.getRenderTickCounter().getTickDelta(false));
+        this.menu.context.setTransition(this.client.getTickDelta());
         this.menu.renderMenu(this.context, mouseX, mouseY);
         this.menu.context.render.executeRunnables();
         this.client.options.hudHidden = this.menu.canHideHUD();

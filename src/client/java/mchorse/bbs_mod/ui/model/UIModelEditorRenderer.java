@@ -38,9 +38,6 @@ import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIModelRenderer;
 import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.ui.utils.StencilFormFramebuffer;
-import mchorse.bbs_mod.ui.utils.gizmo.GizmoController;
-import mchorse.bbs_mod.ui.utils.gizmo.GizmoRayFrame;
-import mchorse.bbs_mod.ui.utils.gizmo.GizmoSurface;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.Pair;
@@ -66,6 +63,7 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.util.math.RotationAxis;
 
 import org.joml.Matrix4f;
+import org.joml.Vector3d;
 import org.joml.Vector3f;
 
 import com.mojang.blaze3d.platform.GlStateManager;
@@ -81,13 +79,11 @@ import java.util.function.Consumer;
 
 import org.slf4j.Logger;
 
-public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurface
+public class UIModelEditorRenderer extends UIModelRenderer
 {
     private static final Logger LOGGER = LogUtils.getLogger();
 
     public UIPropTransform transform;
-
-    private final GizmoController gizmoController = new GizmoController(this);
 
     private ModelForm form = new ModelForm();
     private ModelFormRenderer renderer;
@@ -375,19 +371,28 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
             return super.subMouseClicked(context);
         }
 
-        if (this.gizmoController.tryStartHandleDrag(context, this.transform))
-        {
-            return true;
-        }
-
         if (this.stencil.hasPicked())
         {
             Pair<Form, String> picked = this.stencil.getPicked();
 
-            if (picked != null && picked.a != null && this.callback != null)
+            if (picked != null)
             {
-                this.callback.accept(picked.b);
-                return true;
+                if (picked.a == null)
+                {
+                    int index = this.stencil.getIndex();
+                    
+                    if (index >= Gizmo.STENCIL_X && index <= Gizmo.STENCIL_FREE)
+                    {
+                        this.prepareGizmoDrag(this.transform);
+                        Gizmo.INSTANCE.start(index, context.mouseX, context.mouseY, this.transform);
+                        return true;
+                    }
+                }
+                else if (this.callback != null)
+                {
+                    this.callback.accept(picked.b);
+                    return true;
+                }
             }
         }
 
@@ -397,15 +402,9 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
     @Override
     public boolean subMouseReleased(UIContext context)
     {
-        this.gizmoController.stop();
-
+        Gizmo.INSTANCE.stop();
+        
         return super.subMouseReleased(context);
-    }
-
-    @Override
-    public StencilFormFramebuffer getGizmoStencil()
-    {
-        return this.stencil;
     }
 
     public void setSelectedBone(String bone)
@@ -539,7 +538,6 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
 
             this.stencil.pickGUI(context, this.area);
             this.stencil.unbind(this.stencilMap);
-            this.gizmoController.updateHover();
 
             this.endStencilViewport();
 
@@ -550,7 +548,6 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
         else
         {
             this.stencil.clearPicking();
-            this.gizmoController.updateHover();
         }
 
         if (fpHandPreview && fpGroupId != null && !fpGroupId.isEmpty())
@@ -562,19 +559,60 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
         this.setupViewport(context);
     }
 
-    @Override
-    public void prepareGizmoDrag(UIPropTransform transform)
+    private void prepareGizmoDrag(UIPropTransform transform)
     {
         if (transform == null)
         {
             return;
         }
 
-        transform.setGizmoRayProvider(GizmoRayFrame.fromCamera(
-            this.camera,
-            this.area,
-            () -> this.hasGizmoMatrix ? this.lastGizmoMatrix : null
-        ));
+        transform.setGizmoRayProvider(new UIPropTransform.IGizmoRayProvider()
+        {
+            @Override
+            public boolean getMouseRay(UIContext context, int mouseX, int mouseY, Vector3d rayOrigin, Vector3f rayDirection)
+            {
+                if (UIModelEditorRenderer.this.area.w <= 0 || UIModelEditorRenderer.this.area.h <= 0)
+                {
+                    return false;
+                }
+
+                Vector3f direction = UIModelEditorRenderer.this.camera.getMouseDirection(
+                    mouseX,
+                    mouseY,
+                    context.globalX(UIModelEditorRenderer.this.area.x),
+                    context.globalY(UIModelEditorRenderer.this.area.y),
+                    UIModelEditorRenderer.this.area.w,
+                    UIModelEditorRenderer.this.area.h
+                );
+
+                if (direction.lengthSquared() <= 1.0E-12F)
+                {
+                    return false;
+                }
+
+                rayDirection.set(direction).normalize();
+                rayOrigin.set(
+                    UIModelEditorRenderer.this.camera.position.x,
+                    UIModelEditorRenderer.this.camera.position.y,
+                    UIModelEditorRenderer.this.camera.position.z
+                );
+
+                return true;
+            }
+
+            @Override
+            public boolean getGizmoMatrix(Matrix4f matrix)
+            {
+                if (!UIModelEditorRenderer.this.hasGizmoMatrix)
+                {
+                    return false;
+                }
+
+                matrix.set(UIModelEditorRenderer.this.lastGizmoMatrix);
+
+                return true;
+            }
+        });
     }
 
     private void renderSelectedCubeVisualizer(UIContext context, MatrixCache cache)
@@ -605,10 +643,11 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
             return;
         }
 
-        Tessellator tessellator = Tessellator.getInstance();
+        BufferBuilder builder = Tessellator.getInstance().getBuffer();
+
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
         RenderSystem.enableBlend();
-        BufferBuilder builder = tessellator.begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
+        builder.begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
 
         for (ModelQuad quad : this.selectedCube.quads)
         {
@@ -717,8 +756,8 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
 
     private void line(BufferBuilder builder, Matrix4f matrix, Vector3f a, Vector3f b, float r, float g, float bl, float alpha)
     {
-        builder.vertex(matrix, a.x, a.y, a.z).color(r, g, bl, alpha);
-        builder.vertex(matrix, b.x, b.y, b.z).color(r, g, bl, alpha);
+        builder.vertex(matrix, a.x, a.y, a.z).color(r, g, bl, alpha).next();
+        builder.vertex(matrix, b.x, b.y, b.z).color(r, g, bl, alpha).next();
     }
 
     private void cross(BufferBuilder builder, Matrix4f matrix, Vector3f p, float size, float r, float g, float b, float a)
@@ -768,10 +807,12 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
         /* Flip Z to match the renderer's Y-rotation PI applied in getCubePivotMatrix */
         gizmoMat.rotateY(MathUtils.PI);
 
-        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
+        BufferBuilder builder = Tessellator.getInstance().getBuffer();
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
         RenderSystem.enableBlend();
         RenderSystem.disableDepthTest();
+
+        builder.begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
 
         /* --- magenta crosshair at target --- */
         float cs = 0.12F * 16F;   /* crosshair arm length in render units */

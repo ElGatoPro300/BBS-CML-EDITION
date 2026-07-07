@@ -62,8 +62,6 @@ import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.ui.utils.Scale;
 import mchorse.bbs_mod.ui.utils.StencilFormFramebuffer;
 import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
-import mchorse.bbs_mod.ui.utils.gizmo.GizmoController;
-import mchorse.bbs_mod.ui.utils.gizmo.GizmoSurface;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.pose.UIPoseEditor;
@@ -112,7 +110,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.ToIntFunction;
 
-public class UIReplaysEditor extends UIElement implements GizmoSurface
+public class UIReplaysEditor extends UIElement
 {
     private static final Map<String, Integer> COLORS = new HashMap<>();
     private static final Map<String, Icon> ICONS = new HashMap<>();
@@ -137,9 +135,6 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
 
     /* Clips */
     private UIFilmPanel filmPanel;
-
-    private final GizmoController gizmoController = new GizmoController(this);
-    private Area gizmoDragArea;
     private Film film;
     private Replay replay;
     private Set<String> keys = new LinkedHashSet<>();
@@ -2643,10 +2638,69 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
                     }
 
                     UIPropTransform editableTransform = UIReplaysEditorUtils.getEditableTransform(this.keyframeEditor);
+                    if (editableTransform != null)
+                    {
+                        final Area finalArea = area;
+                        editableTransform.setGizmoRayProvider(new UIPropTransform.IGizmoRayProvider()
+                        {
+                            @Override
+                            public boolean getMouseRay(UIContext context, int mouseX, int mouseY, Vector3d rayOrigin, Vector3f rayDirection)
+                            {
+                                if (finalArea.w <= 0 || finalArea.h <= 0)
+                                {
+                                    return false;
+                                }
 
-                    this.gizmoDragArea = area;
+                                Camera camera = UIReplaysEditor.this.filmPanel.getCamera();
+                                if (camera == null)
+                                {
+                                    return false;
+                                }
 
-                    if (this.gizmoController.tryStartHandleDrag(context, editableTransform))
+                                Vector3f direction = CameraUtils.getMouseDirection(
+                                    camera.projection,
+                                    camera.view,
+                                    mouseX,
+                                    mouseY,
+                                    finalArea.x,
+                                    finalArea.y,
+                                    finalArea.w,
+                                    finalArea.h
+                                );
+
+                                if (direction.lengthSquared() <= 1.0E-12F)
+                                {
+                                    return false;
+                                }
+
+                                rayDirection.set(direction).normalize();
+                                rayOrigin.set(0, 0, 0);
+
+                                return true;
+                            }
+
+                            @Override
+                            public boolean getGizmoMatrix(Matrix4f matrix)
+                            {
+                                if (!Gizmo.INSTANCE.hasGizmoMatrix)
+                                {
+                                    return false;
+                                }
+
+                                Camera camera = UIReplaysEditor.this.filmPanel.getCamera();
+                                if (camera == null)
+                                {
+                                    return false;
+                                }
+
+                                matrix.set(new Matrix4f(camera.view).invert().mul(Gizmo.INSTANCE.lastGizmoMatrix));
+
+                                return true;
+                            }
+                        });
+                    }
+
+                    if (Gizmo.INSTANCE.start(stencil.getIndex(), context.mouseX, context.mouseY, editableTransform))
                     {
                         return true;
                     }
@@ -2676,7 +2730,7 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
             BlockHitResult blockHitResult = RayTracing.rayTrace(
                 world,
                 RayTracing.fromVector3d(camera.position),
-                RayTracing.fromVector3f(camera.getMouseDirectionFov(context.mouseX, context.mouseY, area.x, area.y, area.w, area.h)),
+                RayTracing.fromVector3f(CameraUtils.getMouseDirection(camera.projection, camera.view, context.mouseX, context.mouseY, area.x, area.y, area.w, area.h)),
                 256F
             );
 
@@ -2712,88 +2766,6 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
         }
 
         return false;
-    }
-
-    @Override
-    public StencilFormFramebuffer getGizmoStencil()
-    {
-        return this.filmPanel.getController().getStencil();
-    }
-
-    public void updateGizmoHover()
-    {
-        this.gizmoController.updateHover();
-    }
-
-    @Override
-    public void prepareGizmoDrag(UIPropTransform transform)
-    {
-        if (transform == null || this.gizmoDragArea == null)
-        {
-            return;
-        }
-
-        final Area finalArea = this.gizmoDragArea;
-
-        transform.setGizmoRayProvider(new UIPropTransform.IGizmoRayProvider()
-        {
-            @Override
-            public boolean getMouseRay(UIContext context, int mouseX, int mouseY, Vector3d rayOrigin, Vector3f rayDirection)
-            {
-                if (finalArea.w <= 0 || finalArea.h <= 0)
-                {
-                    return false;
-                }
-
-                Camera camera = UIReplaysEditor.this.filmPanel.getCamera();
-
-                if (camera == null)
-                {
-                    return false;
-                }
-
-                Vector3f direction = CameraUtils.getMouseDirection(
-                    camera.projection,
-                    camera.view,
-                    mouseX,
-                    mouseY,
-                    finalArea.x,
-                    finalArea.y,
-                    finalArea.w,
-                    finalArea.h
-                );
-
-                if (direction.lengthSquared() <= 1.0E-12F)
-                {
-                    return false;
-                }
-
-                rayDirection.set(direction).normalize();
-                rayOrigin.set(0, 0, 0);
-
-                return true;
-            }
-
-            @Override
-            public boolean getGizmoMatrix(Matrix4f matrix)
-            {
-                if (!Gizmo.INSTANCE.hasGizmoMatrix)
-                {
-                    return false;
-                }
-
-                Camera camera = UIReplaysEditor.this.filmPanel.getCamera();
-
-                if (camera == null)
-                {
-                    return false;
-                }
-
-                matrix.set(new Matrix4f(camera.view).invert().mul(Gizmo.INSTANCE.lastGizmoMatrix));
-
-                return true;
-            }
-        });
     }
 
     public void close()
