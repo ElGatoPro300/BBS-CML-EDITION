@@ -591,6 +591,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
         this.renderGrid(context);
         context.batcher.clip(this.keyframes.area.x, this.keyframes.area.y + RULER_HEIGHT, this.keyframes.area.w, this.keyframes.area.h - RULER_HEIGHT, context);
         this.renderGraph(context);
+        this.keyframes.renderKeyframeInsertPreviews(context);
         context.batcher.unclip(context);
     }
 
@@ -683,7 +684,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
                 }
             }
         }
-        else if (Window.isCtrlPressed())
+        else if (Window.isCtrlPressed() && !this.keyframes.isKeyframeInsertActive())
         {
             UIKeyframeSheet sheet = this.getSheet(context.mouseY);
 
@@ -758,6 +759,20 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
                 }
             }
         }
+    }
+
+    public boolean isTrackRowVisible(UIKeyframeSheet sheet)
+    {
+        int y = this.getDopeSheetY(sheet);
+        int top = this.keyframes.area.y + RULER_HEIGHT;
+        int bottom = this.keyframes.area.ey();
+
+        return y + (int) this.trackHeight > top && y < bottom;
+    }
+
+    public void renderPreviewKeyframeAt(UIContext context, UIKeyframeSheet sheet, float tick, int color)
+    {
+        this.renderPreviewKeyframe(context, sheet, tick, color);
     }
 
     private void renderPreviewKeyframe(UIContext context, UIKeyframeSheet sheet, double tick, int color)

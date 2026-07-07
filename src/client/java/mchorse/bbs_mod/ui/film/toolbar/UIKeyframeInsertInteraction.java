@@ -193,36 +193,23 @@ public class UIKeyframeInsertInteraction
             return;
         }
 
-        float alpha = TimelineInteractionHints.getPulseAlpha(
-            TimelineToolbarSettings.INTERACTION_CLIP_PULSE_MAX_ALPHA);
-        int color = Colors.setA(Colors.WHITE, alpha);
-
         if (this.state.column)
         {
             for (Pair<UIKeyframeSheet, Float> preview : this.columnPreviews)
             {
-                this.renderPreviewMarker(context, dopeSheet, keyframes, preview.a, preview.b, color);
+                if (!dopeSheet.isTrackRowVisible(preview.a))
+                {
+                    continue;
+                }
+
+                dopeSheet.renderPreviewKeyframeAt(context, preview.a, preview.b, Colors.WHITE);
             }
         }
-        else if (this.individualSheet != null && this.individualTick >= 0F)
+        else if (this.individualSheet != null && this.individualTick >= 0F
+            && dopeSheet.isTrackRowVisible(this.individualSheet))
         {
-            this.renderPreviewMarker(context, dopeSheet, keyframes, this.individualSheet, this.individualTick, color);
+            dopeSheet.renderPreviewKeyframeAt(context, this.individualSheet, this.individualTick, Colors.WHITE);
         }
-    }
-
-    private void renderPreviewMarker(UIContext context, UIKeyframeDopeSheet dopeSheet, UIKeyframes keyframes,
-        UIKeyframeSheet sheet, float tick, int color)
-    {
-        int x = keyframes.toGraphX(tick);
-        int y = dopeSheet.getDopeSheetY(sheet) + (int) dopeSheet.getTrackHeight() / 2;
-
-        context.batcher.box(x - 4, y - 4, x + 4, y + 4, Colors.setA(color, alphaFill(color)));
-        context.batcher.outline(x - 4, y - 4, x + 4, y + 4, color);
-    }
-
-    private static float alphaFill(int color)
-    {
-        return Colors.getA(color) * 0.2F;
     }
 
     public void renderHint(UIContext context, Area area)

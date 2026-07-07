@@ -888,6 +888,11 @@ public class UIKeyframes extends UIElement
         return this.insertInteraction.isActive();
     }
 
+    public void renderKeyframeInsertPreviews(UIContext context)
+    {
+        this.insertInteraction.renderPreviews(this, context);
+    }
+
     public void toolbarDuplicateAtCursor()
     {
         if (!this.isModifyingKeyframes())
@@ -1743,7 +1748,6 @@ public class UIKeyframes extends UIElement
 
         context.batcher.unclip(context);
 
-        this.insertInteraction.renderPreviews(this, context);
         this.insertInteraction.renderHint(context, this.area);
         this.interactionOverlay.renderHint(context, this.area);
     }
