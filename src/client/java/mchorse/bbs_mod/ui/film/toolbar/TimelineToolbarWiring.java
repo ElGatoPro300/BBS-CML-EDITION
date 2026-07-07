@@ -6,6 +6,7 @@ import mchorse.bbs_mod.film.Film;
 import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.l10n.keys.IKey;
+import mchorse.bbs_mod.l10n.keys.LangKey;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
@@ -363,6 +364,23 @@ public final class TimelineToolbarWiring
         bindInsertChild(parent, UIKeys.KEYFRAMES_DUPLICATE_AT_TIMELINE, enterAtPlayhead, hasSelected);
     }
 
+    private static void wirePasteSubmenu(TimelineToolbar toolbar, BooleanSupplier canPaste,
+        Runnable pasteAtTimeline, Runnable pasteAtCursor)
+    {
+        ToolbarItem parent = findLabelInSections(toolbar.getSections(), UIKeys.KEYFRAMES_CONTEXT_PASTE);
+
+        if (parent == null)
+        {
+            return;
+        }
+
+        parent.run(pasteAtTimeline);
+        parent.enabledIf(canPaste);
+
+        bindInsertChild(parent, UIKeys.KEYFRAMES_CONTEXT_PASTE_AT_CURSOR, pasteAtCursor, canPaste);
+        bindInsertChild(parent, UIKeys.KEYFRAMES_CONTEXT_PASTE_AT_TIMELINE, pasteAtTimeline, canPaste);
+    }
+
     private static void bindInsertChild(ToolbarItem parent, IKey label, Runnable runnable,
         BooleanSupplier enabled)
     {
@@ -373,7 +391,7 @@ public final class TimelineToolbarWiring
                 continue;
             }
 
-            if (child.label == label)
+            if (child.label == label || labelsMatch(child.label, label))
             {
                 apply(child, runnable, enabled);
 
@@ -468,10 +486,10 @@ public final class TimelineToolbarWiring
     private static void wireKeyframesOverlays(UIKeyframes keyframes, TimelineToolbar toolbar)
     {
         BooleanSupplier canModify = keyframes::isModifyingKeyframes;
+        BooleanSupplier canPaste = () -> canModify.getAsBoolean() && keyframes.canToolbarPaste();
 
-        bindShortcut(toolbar, Keys.PASTE, keyframes::toolbarPaste, canModify);
-        bindLabel(toolbar, UIKeys.KEYFRAMES_CONTEXT_PASTE_AT_CURSOR, keyframes::toolbarPasteAtCursor, canModify);
-        bindLabel(toolbar, UIKeys.KEYFRAMES_CONTEXT_PASTE_AT_TIMELINE, keyframes::toolbarPasteAtTimeline, canModify);
+        bindShortcut(toolbar, Keys.PASTE, keyframes::toolbarPaste, canPaste);
+        wirePasteSubmenu(toolbar, canPaste, keyframes::toolbarPasteAtTimeline, keyframes::toolbarPasteAtCursor);
         bindShortcut(toolbar, Keys.PRESETS, keyframes::toolbarOpenPresets, canModify);
         wireKeyframesEditTrack(keyframes, toolbar);
     }
@@ -482,6 +500,16 @@ public final class TimelineToolbarWiring
         BooleanSupplier hasEditor = () -> editor.keyframeEditor != null;
         BooleanSupplier canModify = () -> hasEditor.getAsBoolean()
             && editor.keyframeEditor.view.isModifyingKeyframes();
+        BooleanSupplier canPaste = () ->
+        {
+            if (editor.keyframeEditor == null)
+            {
+                return false;
+            }
+
+            return editor.keyframeEditor.view.isModifyingKeyframes()
+                && editor.keyframeEditor.view.canToolbarPaste();
+        };
 
         bindShortcut(toolbar, Keys.PASTE, () ->
         {
@@ -489,21 +517,22 @@ public final class TimelineToolbarWiring
             {
                 editor.keyframeEditor.view.toolbarPaste();
             }
-        }, canModify);
-        bindLabel(toolbar, UIKeys.KEYFRAMES_CONTEXT_PASTE_AT_CURSOR, () ->
-        {
-            if (editor.keyframeEditor != null)
+        }, canPaste);
+        wirePasteSubmenu(toolbar, canPaste,
+            () ->
             {
-                editor.keyframeEditor.view.toolbarPasteAtCursor();
-            }
-        }, canModify);
-        bindLabel(toolbar, UIKeys.KEYFRAMES_CONTEXT_PASTE_AT_TIMELINE, () ->
-        {
-            if (editor.keyframeEditor != null)
+                if (editor.keyframeEditor != null)
+                {
+                    editor.keyframeEditor.view.toolbarPasteAtTimeline();
+                }
+            },
+            () ->
             {
-                editor.keyframeEditor.view.toolbarPasteAtTimeline();
-            }
-        }, canModify);
+                if (editor.keyframeEditor != null)
+                {
+                    editor.keyframeEditor.view.toolbarPasteAtCursor();
+                }
+            });
         bindShortcut(toolbar, Keys.PRESETS, () ->
         {
             if (editor.keyframeEditor != null)
@@ -937,7 +966,7 @@ public final class TimelineToolbarWiring
                 continue;
             }
 
-            if (item.label == label)
+            if (item.label == label || labelsMatch(item.label, label))
             {
                 return item;
             }
@@ -954,6 +983,21 @@ public final class TimelineToolbarWiring
         }
 
         return null;
+    }
+
+    private static boolean labelsMatch(IKey a, IKey b)
+    {
+        if (a == b)
+        {
+            return true;
+        }
+
+        if (a instanceof LangKey langA && b instanceof LangKey langB)
+        {
+            return langA.key != null && langA.key.equals(langB.key);
+        }
+
+        return false;
     }
 
     private TimelineToolbarWiring()

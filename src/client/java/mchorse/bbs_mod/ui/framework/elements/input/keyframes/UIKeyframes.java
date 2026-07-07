@@ -850,6 +850,11 @@ public class UIKeyframes extends UIElement
         this.selectNextKeyframe(1);
     }
 
+    public boolean canToolbarPaste()
+    {
+        return this.copyPasteController.canPaste();
+    }
+
     public void toolbarPaste()
     {
         if (this.copyPasteController.paste(this.getToolbarPasteGraphX(), this.getToolbarPasteMouseY()))
@@ -861,9 +866,26 @@ public class UIKeyframes extends UIElement
     public void toolbarPasteAtCursor()
     {
         UIContext context = this.getContext();
-        int pasteX = this.area.isInside(context) ? context.mouseX : this.getToolbarPasteGraphX();
+        int pasteX;
+        int pasteY;
 
-        if (this.copyPasteController.paste(pasteX, this.getToolbarPasteMouseY()))
+        if (this.area.isInside(context))
+        {
+            pasteX = context.mouseX;
+            pasteY = context.mouseY;
+        }
+        else if (this.area.isInside(this.lastX, this.lastY))
+        {
+            pasteX = this.lastX;
+            pasteY = this.lastY;
+        }
+        else
+        {
+            pasteX = this.getToolbarPasteGraphX();
+            pasteY = this.getToolbarPasteMouseY();
+        }
+
+        if (this.copyPasteController.paste(pasteX, pasteY))
         {
             UIUtils.playClick();
         }
