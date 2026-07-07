@@ -23,6 +23,8 @@ import mchorse.bbs_mod.ui.film.clips.renderer.IUIClipRenderer;
 import mchorse.bbs_mod.ui.film.clips.renderer.UIClipRenderers;
 import mchorse.bbs_mod.ui.film.toolbar.ClipPlacementInteractionState;
 import mchorse.bbs_mod.ui.film.toolbar.UIClipPlacementInteraction;
+import mchorse.bbs_mod.ui.film.toolbar.LoopMarkerInteractionState;
+import mchorse.bbs_mod.ui.film.toolbar.UILoopMarkerInteraction;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarPointerBlock;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
@@ -130,6 +132,7 @@ public class UIClips extends UIElement
     private Vector3i addPreview;
     private Vector3i placementPreview;
     private final UIClipPlacementInteraction clipPlacement = new UIClipPlacementInteraction();
+    private final UILoopMarkerInteraction loopMarkerInteraction = new UILoopMarkerInteraction();
     private int layers;
 
     private UIClipRenderers renderers = new UIClipRenderers();
@@ -215,7 +218,7 @@ public class UIClips extends UIElement
 
         this.context((menu) ->
         {
-            if (this.clipPlacement.isActive())
+            if (this.clipPlacement.isActive() || this.loopMarkerInteraction.isActive())
             {
                 return;
             }
@@ -385,7 +388,7 @@ public class UIClips extends UIElement
 
     private void enterAddClipPlacement(int lockedTick, IKey hint)
     {
-        this.enterClipPlacement(hint, BBSSettings.getDefaultDuration(), lockedTick,
+        this.enterClipPlacement(hint, BBSSettings.getDefaultDuration(), lockedTick, -1,
             (tick, layer, duration) -> this.showAddClips(this.getContext(), new Vector3i(tick, layer, duration)));
     }
 
@@ -393,6 +396,11 @@ public class UIClips extends UIElement
     {
         Clip clip = this.delegate.getClip();
         UIContext context = this.getContext();
+
+        if (clip == null)
+        {
+            return;
+        }
 
         this.showAddClips(context, this.checkSize(clip.tick.get(), clip.layer.get() + 1, clip.duration.get()));
     }
@@ -993,12 +1001,48 @@ public class UIClips extends UIElement
 
     public void setLoopMin()
     {
-        this.loopMin = this.delegate.getCursor();
+        this.setLoopMinAt(this.delegate.getCursor());
     }
 
     public void setLoopMax()
     {
-        this.loopMax = this.delegate.getCursor();
+        this.setLoopMaxAt(this.delegate.getCursor());
+    }
+
+    public void setLoopMinAt(int tick)
+    {
+        this.loopMin = tick;
+        this.verifyLoopMinMax();
+    }
+
+    public void setLoopMaxAt(int tick)
+    {
+        this.loopMax = tick;
+        this.verifyLoopMinMax();
+    }
+
+    public void toolbarEnterLoopMin()
+    {
+        if (!this.canUseToolbarKeybinds())
+        {
+            return;
+        }
+
+        this.cancelToolbarInteraction();
+        this.loopMarkerInteraction.enter(new LoopMarkerInteractionState(true,
+            UIKeys.TIMELINE_INTERACTION_LOOP_SET_MIN));
+    }
+
+    public void toolbarEnterLoopMax()
+    {
+        if (!this.canUseToolbarKeybinds())
+        {
+            return;
+        }
+
+        this.cancelToolbarInteraction();
+        this.loopMarkerInteraction.enter(new LoopMarkerInteractionState(false,
+            UIKeys.TIMELINE_INTERACTION_LOOP_SET_MAX));
     }
 
     private void verifyLoopMinMax()
@@ -1172,7 +1216,7 @@ public class UIClips extends UIElement
 
     public void toolbarAddClipType(Link type)
     {
-        this.enterClipPlacement(UIKeys.TIMELINE_INTERACTION_PLACE_CLIP, BBSSettings.getDefaultDuration(), -1,
+        this.enterClipPlacement(UIKeys.TIMELINE_INTERACTION_PLACE_CLIP, BBSSettings.getDefaultDuration(), -1, -1,
             (tick, layer, duration) -> this.addClip(type, tick, layer, duration));
     }
 
@@ -1180,7 +1224,7 @@ public class UIClips extends UIElement
     {
         int duration = this.computeReplayClipDuration(replay);
 
-        this.enterClipPlacement(UIKeys.TIMELINE_INTERACTION_PLACE_REPLAY, duration, -1,
+        this.enterClipPlacement(UIKeys.TIMELINE_INTERACTION_PLACE_REPLAY, duration, -1, -1,
             (tick, layer, ignored) ->
             {
                 KeyframeClip clip = this.createKeyframeClipFromReplay(replay);
@@ -1201,10 +1245,11 @@ public class UIClips extends UIElement
         UIAudioRecorder.promptThenPlace(filmPanel, this);
     }
 
-    public void enterClipPlacement(IKey hint, int duration, int lockedTick,
+    public void enterClipPlacement(IKey hint, int duration, int lockedTick, int lockedLayer,
         ClipPlacementInteractionState.IClipPlacementConfirm onConfirm)
     {
-        this.clipPlacement.enter(new ClipPlacementInteractionState(hint, duration, lockedTick, onConfirm));
+        this.loopMarkerInteraction.cancel();
+        this.clipPlacement.enter(new ClipPlacementInteractionState(hint, duration, lockedTick, lockedLayer, onConfirm));
     }
 
     public void cancelClipPlacement()
@@ -1212,15 +1257,26 @@ public class UIClips extends UIElement
         this.clipPlacement.cancel(this);
     }
 
+    public void cancelToolbarInteraction()
+    {
+        this.clipPlacement.cancel(this);
+        this.loopMarkerInteraction.cancel();
+    }
+
     public boolean isClipPlacementActive()
     {
         return this.clipPlacement.isActive();
     }
 
+    public boolean isLoopMarkerInteractionActive()
+    {
+        return this.loopMarkerInteraction.isActive();
+    }
+
     @Override
     public UIContextMenu createContextMenu(UIContext context)
     {
-        if (this.clipPlacement.isActive())
+        if (this.clipPlacement.isActive() || this.loopMarkerInteraction.isActive())
         {
             return null;
         }
@@ -1377,6 +1433,23 @@ public class UIClips extends UIElement
     @Override
     protected boolean subMouseClicked(UIContext context)
     {
+        if (this.loopMarkerInteraction.isActive())
+        {
+            if (this.vertical.mouseClicked(context))
+            {
+                return true;
+            }
+
+            if (this.loopMarkerInteraction.handleMouseClicked(this, context))
+            {
+                return true;
+            }
+        }
+        else if (this.loopMarkerInteraction.handleMouseClicked(this, context))
+        {
+            return true;
+        }
+
         if (this.clipPlacement.isActive())
         {
             if (this.vertical.mouseClicked(context))
@@ -1394,7 +1467,7 @@ public class UIClips extends UIElement
             return true;
         }
 
-        if (!this.clipPlacement.isActive() && this.vertical.mouseClicked(context))
+        if (!this.clipPlacement.isActive() && !this.loopMarkerInteraction.isActive() && this.vertical.mouseClicked(context))
         {
             return true;
         }
@@ -1634,6 +1707,11 @@ public class UIClips extends UIElement
     @Override
     protected boolean subKeyPressed(UIContext context)
     {
+        if (this.loopMarkerInteraction.handleKeyPressed(context))
+        {
+            return true;
+        }
+
         if (this.clipPlacement.handleKeyPressed(this, context))
         {
             return true;
@@ -1667,7 +1745,10 @@ public class UIClips extends UIElement
             this.renderCameraWork(context);
         }
 
+        this.loopMarkerInteraction.updatePreview(this, context);
         this.clipPlacement.updatePreview(this, context);
+        this.loopMarkerInteraction.renderTickPulse(this, context);
+        this.loopMarkerInteraction.renderHint(context, this.area);
         this.clipPlacement.renderHint(context, this.area);
 
         super.render(context);

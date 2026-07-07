@@ -107,8 +107,8 @@ public final class TimelineToolbarWiring
             BBSSettings.editorLoop.set(!BBSSettings.editorLoop.get());
             filmPanel.getContext().notifyInfo(UIKeys.CAMERA_EDITOR_KEYS_LOOPING_TOGGLE_NOTIFICATION);
         }, editorActive);
-        bindShortcut(toolbar, Keys.LOOPING_SET_MIN, () -> filmPanel.cameraEditor.clips.setLoopMin(), editorActive);
-        bindShortcut(toolbar, Keys.LOOPING_SET_MAX, () -> filmPanel.cameraEditor.clips.setLoopMax(), editorActive);
+        bindShortcut(toolbar, Keys.LOOPING_SET_MIN, () -> filmPanel.cameraEditor.clips.toolbarEnterLoopMin(), editorActive);
+        bindShortcut(toolbar, Keys.LOOPING_SET_MAX, () -> filmPanel.cameraEditor.clips.toolbarEnterLoopMax(), editorActive);
         bindShortcut(toolbar, Keys.UNDO, filmPanel::undo, filmLoaded);
         bindShortcut(toolbar, Keys.REDO, filmPanel::redo, filmLoaded);
     }
@@ -347,6 +347,32 @@ public final class TimelineToolbarWiring
         bindInsertChild(parent, UIKeys.KEYFRAMES_INSERT_SINGLE_AT_CURSOR, enterSingleAtCursor, canModify);
     }
 
+    private static void applyColumnInsertDisabledReason(TimelineToolbar toolbar, Supplier<IKey> reason)
+    {
+        ToolbarItem parent = findLabelInSections(toolbar.getSections(), UIKeys.FILM_CONTROLLER_KEYS_INSERT_FRAME);
+
+        if (parent == null)
+        {
+            return;
+        }
+
+        for (ToolbarItem child : parent.children)
+        {
+            if (child.separator)
+            {
+                continue;
+            }
+
+            if (child.label == UIKeys.KEYFRAMES_INSERT_AT_TIMELINE
+                || child.label == UIKeys.KEYFRAMES_INSERT_AT_CURSOR
+                || labelsMatch(child.label, UIKeys.KEYFRAMES_INSERT_AT_TIMELINE)
+                || labelsMatch(child.label, UIKeys.KEYFRAMES_INSERT_AT_CURSOR))
+            {
+                child.disabledReason(reason);
+            }
+        }
+    }
+
     private static void wireDuplicateSubmenu(TimelineToolbar toolbar, BooleanSupplier hasSelected,
         Runnable enterAtCursor, Runnable enterAtPlayhead)
     {
@@ -405,6 +431,7 @@ public final class TimelineToolbarWiring
         BooleanSupplier canModify = keyframes::isModifyingKeyframes;
         BooleanSupplier hasSelected = () -> canModify.getAsBoolean() && keyframes.hasSelectedKeyframes();
         BooleanSupplier canColumnInsert = () -> false;
+        Supplier<IKey> columnInsertDisabledReason = () -> UIKeys.TIMELINE_TOOLBAR_DISABLED_COLUMN_INSERT_REPLAY_ONLY;
 
         wireInsertKeyframeSubmenu(toolbar, canModify, canColumnInsert,
             () -> {},
@@ -422,6 +449,7 @@ public final class TimelineToolbarWiring
                 UIKeys.TIMELINE_INTERACTION_INSERT_KEYFRAME_SINGLE_CURSOR,
                 keyframes::toolbarInsertIndividual)));
 
+        applyColumnInsertDisabledReason(toolbar, columnInsertDisabledReason);
         ToolbarItem parent = findLabelInSections(toolbar.getSections(), UIKeys.FILM_CONTROLLER_KEYS_INSERT_FRAME);
 
         if (parent != null)

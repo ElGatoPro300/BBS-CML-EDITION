@@ -52,6 +52,26 @@ public class UIKeyframeInsertInteraction
         this.individualTick = -1F;
     }
 
+    public float getPreviewTick()
+    {
+        if (this.state == null)
+        {
+            return -1F;
+        }
+
+        if (this.state.column && !this.columnPreviews.isEmpty())
+        {
+            return this.columnPreviews.get(0).b;
+        }
+
+        if (!this.state.column && this.individualTick >= 0F)
+        {
+            return this.individualTick;
+        }
+
+        return -1F;
+    }
+
     public void updatePreview(UIKeyframes keyframes, UIContext context)
     {
         this.columnPreviews.clear();

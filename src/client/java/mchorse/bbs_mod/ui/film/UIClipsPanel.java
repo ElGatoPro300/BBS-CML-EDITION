@@ -106,7 +106,7 @@ public class UIClipsPanel extends UIElement implements IUIClipsDelegate
 
     private void cancelToolbarInteraction()
     {
-        this.clips.cancelClipPlacement();
+        this.clips.cancelToolbarInteraction();
 
         UIElement embed = this.clips.getEmbeddedView();
 

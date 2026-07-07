@@ -5,6 +5,7 @@ import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.utils.MathUtils;
+import mchorse.bbs_mod.utils.colors.Colors;
 
 /**
  * Shared hint card and pulse animation helpers for timeline interaction modes.
@@ -23,6 +24,17 @@ public final class TimelineInteractionHints
     public static float getPulseAlpha(float maxAlpha)
     {
         return getPulseAlpha(0F, maxAlpha);
+    }
+
+    public static void renderPulsingTickColumn(UIContext context, int x, int y, int ey)
+    {
+        float alpha = getPulseAlpha(
+            TimelineToolbarSettings.INTERACTION_TICK_PULSE_MIN_ALPHA,
+            TimelineToolbarSettings.INTERACTION_TICK_PULSE_MAX_ALPHA);
+        int color = Colors.setA(Colors.WHITE, alpha);
+        int w = TimelineToolbarSettings.INTERACTION_TICK_COLUMN_WIDTH;
+
+        context.batcher.box(x, y, x + w, ey, color);
     }
 
     public static void renderHint(UIContext context, Area area, IKey hint)

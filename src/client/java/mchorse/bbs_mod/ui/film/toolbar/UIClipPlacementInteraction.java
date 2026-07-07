@@ -50,7 +50,9 @@ public class UIClipPlacementInteraction
         int tick = this.state.lockedTick >= 0
             ? this.state.lockedTick
             : clips.fromGraphX(context.mouseX);
-        int layer = clips.fromLayerY(context.mouseY);
+        int layer = this.state.lockedLayer >= 0
+            ? this.state.lockedLayer
+            : clips.fromLayerY(context.mouseY);
 
         if (layer < 0)
         {
@@ -144,5 +146,10 @@ public class UIClipPlacementInteraction
 
         context.batcher.box(x, y, ex, ey, fill);
         context.batcher.outline(x, y, ex, ey, outline);
+    }
+
+    public static void renderPulsingTickColumn(UIContext context, int x, int y, int ey)
+    {
+        TimelineInteractionHints.renderPulsingTickColumn(context, x, y, ey);
     }
 }

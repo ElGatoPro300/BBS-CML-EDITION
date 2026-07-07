@@ -1424,6 +1424,7 @@ public class UIKeys
     public static final IKey TIMELINE_TOOLBAR_ACTOR = L10n.lang("bbs.ui.timeline_toolbar.actor");
     public static final IKey TIMELINE_TOOLBAR_ADD = L10n.lang("bbs.ui.timeline_toolbar.add");
     public static final IKey TIMELINE_TOOLBAR_DISABLED_VIEWPORT_HIDDEN = L10n.lang("bbs.ui.timeline_toolbar.disabled.viewport_hidden");
+    public static final IKey TIMELINE_TOOLBAR_DISABLED_COLUMN_INSERT_REPLAY_ONLY = L10n.lang("bbs.ui.timeline_toolbar.disabled.column_insert_replay_only");
     public static final IKey TIMELINE_TOOLBAR_EDIT = L10n.lang("bbs.ui.timeline_toolbar.edit");
     public static final IKey TIMELINE_TOOLBAR_HISTORY = L10n.lang("bbs.ui.timeline_toolbar.history");
     public static final IKey TIMELINE_TOOLBAR_KEYFRAMES = L10n.lang("bbs.ui.timeline_toolbar.keyframes");
@@ -1441,6 +1442,10 @@ public class UIKeys
     public static final IKey TIMELINE_INTERACTION_DUPLICATE_TIMELINE = L10n.lang("bbs.ui.timeline_toolbar.interaction.duplicate_timeline");
     public static final IKey TIMELINE_INTERACTION_PASTE_CURSOR = L10n.lang("bbs.ui.timeline_toolbar.interaction.paste_cursor");
     public static final IKey TIMELINE_INTERACTION_PASTE_TIMELINE = L10n.lang("bbs.ui.timeline_toolbar.interaction.paste_timeline");
+    public static final IKey TIMELINE_INTERACTION_LOOP_SET_MIN = L10n.lang("bbs.ui.timeline_toolbar.interaction.loop_set_min");
+    public static final IKey TIMELINE_INTERACTION_LOOP_SET_MAX = L10n.lang("bbs.ui.timeline_toolbar.interaction.loop_set_max");
+    public static final IKey TIMELINE_INTERACTION_SCALE_TIME = L10n.lang("bbs.ui.timeline_toolbar.interaction.scale_time");
+    public static final IKey TIMELINE_INTERACTION_STACK_KEYFRAMES = L10n.lang("bbs.ui.timeline_toolbar.interaction.stack_keyframes");
     public static final IKey TIMELINE_INTERACTION_PLACE_CLIP = L10n.lang("bbs.ui.timeline_toolbar.interaction.place_clip");
     public static final IKey TIMELINE_INTERACTION_PLACE_REPLAY = L10n.lang("bbs.ui.timeline_toolbar.interaction.place_replay");
     public static final IKey TIMELINE_INTERACTION_PLACE_MICROPHONE = L10n.lang("bbs.ui.timeline_toolbar.interaction.place_microphone");

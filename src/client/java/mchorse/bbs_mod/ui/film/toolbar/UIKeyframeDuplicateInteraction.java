@@ -37,6 +37,11 @@ public class UIKeyframeDuplicateInteraction
         this.canConfirm = false;
     }
 
+    public float getAnchorTick()
+    {
+        return this.anchorTick;
+    }
+
     public void updatePreview(UIKeyframes keyframes, UIContext context)
     {
         this.anchorTick = -1F;

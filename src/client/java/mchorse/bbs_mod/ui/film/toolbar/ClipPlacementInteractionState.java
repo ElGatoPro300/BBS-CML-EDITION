@@ -13,16 +13,21 @@ public final class ClipPlacementInteractionState
      * layer follows the cursor vertically.
      */
     public final int lockedTick;
+    /**
+     * When {@code >= 0}, the preview layer is fixed to this value.
+     */
+    public final int lockedLayer;
     public final IKey hint;
     public final int duration;
     public final IClipPlacementConfirm onConfirm;
 
-    public ClipPlacementInteractionState(IKey hint, int duration, int lockedTick,
+    public ClipPlacementInteractionState(IKey hint, int duration, int lockedTick, int lockedLayer,
         IClipPlacementConfirm onConfirm)
     {
         this.hint = hint;
         this.duration = duration;
         this.lockedTick = lockedTick;
+        this.lockedLayer = lockedLayer;
         this.onConfirm = onConfirm;
     }
 

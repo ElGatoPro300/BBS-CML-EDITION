@@ -10,6 +10,7 @@ import mchorse.bbs_mod.math.Operation;
 import mchorse.bbs_mod.settings.values.IValueListener;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineInteractionHints;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineInteractionState;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarPointerBlock;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineTrackEligibility;
@@ -130,7 +131,8 @@ public class UIKeyframes extends UIElement
         this.context((menu) ->
         {
             if (this.interactionOverlay.isActive() || this.insertInteraction.isActive()
-                || this.duplicateInteraction.isActive() || this.pasteInteraction.isActive())
+                || this.duplicateInteraction.isActive() || this.pasteInteraction.isActive()
+                || this.scaling || this.stacking)
             {
                 return;
             }
@@ -948,7 +950,8 @@ public class UIKeyframes extends UIElement
     public UIContextMenu createContextMenu(UIContext context)
     {
         if (this.interactionOverlay.isActive() || this.insertInteraction.isActive()
-            || this.duplicateInteraction.isActive() || this.pasteInteraction.isActive())
+            || this.duplicateInteraction.isActive() || this.pasteInteraction.isActive()
+            || this.scaling || this.stacking)
         {
             return null;
         }
@@ -1133,11 +1136,13 @@ public class UIKeyframes extends UIElement
 
     public void toolbarScaleTime()
     {
+        this.cancelTrackInteraction();
         this.scaleTime();
     }
 
     public void toolbarStackKeyframes()
     {
+        this.cancelTrackInteraction();
         this.stackKeyframes(false);
     }
 
@@ -1174,6 +1179,60 @@ public class UIKeyframes extends UIElement
         this.insertInteraction.cancel();
         this.duplicateInteraction.cancel();
         this.pasteInteraction.cancel();
+        this.scaling = false;
+
+        if (this.stacking)
+        {
+            this.stackKeyframes(true);
+        }
+    }
+
+    private static final int DOPE_SHEET_RULER_HEIGHT = 16;
+
+    public void renderInteractionTickPulse(UIContext context)
+    {
+        float tick = this.getInteractionPreviewTick();
+
+        if (tick < 0F)
+        {
+            return;
+        }
+
+        int x = this.toGraphX(tick);
+
+        TimelineInteractionHints.renderPulsingTickColumn(context, x, this.area.y + DOPE_SHEET_RULER_HEIGHT, this.area.ey());
+    }
+
+    private float getInteractionPreviewTick()
+    {
+        if (this.insertInteraction.isActive())
+        {
+            return this.insertInteraction.getPreviewTick();
+        }
+
+        if (this.duplicateInteraction.isActive())
+        {
+            return this.duplicateInteraction.getAnchorTick();
+        }
+
+        if (this.pasteInteraction.isActive())
+        {
+            return this.pasteInteraction.getAnchorTick();
+        }
+
+        return -1F;
+    }
+
+    public void renderTransformModeHints(UIContext context)
+    {
+        if (this.scaling)
+        {
+            TimelineInteractionHints.renderHint(context, this.area, UIKeys.TIMELINE_INTERACTION_SCALE_TIME);
+        }
+        else if (this.stacking)
+        {
+            TimelineInteractionHints.renderHint(context, this.area, UIKeys.TIMELINE_INTERACTION_STACK_KEYFRAMES);
+        }
     }
 
     public boolean isTrackInteractionActive()
@@ -1968,6 +2027,7 @@ public class UIKeyframes extends UIElement
         this.duplicateInteraction.renderHint(context, this.area);
         this.insertInteraction.renderHint(context, this.area);
         this.interactionOverlay.renderHint(context, this.area);
+        this.renderTransformModeHints(context);
     }
 
     /**

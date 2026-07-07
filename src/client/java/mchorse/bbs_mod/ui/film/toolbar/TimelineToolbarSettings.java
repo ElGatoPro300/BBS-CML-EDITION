@@ -164,6 +164,21 @@ public class TimelineToolbarSettings
     public static final float INTERACTION_TRACK_HOVER_PULSE_MAX_ALPHA = 0.5F;
 
     /**
+     * Minimum alpha of the pulsing tick column during tick-pick interactions.
+     */
+    public static final float INTERACTION_TICK_PULSE_MIN_ALPHA = 0F;
+
+    /**
+     * Maximum alpha of the pulsing tick column during tick-pick interactions.
+     */
+    public static final float INTERACTION_TICK_PULSE_MAX_ALPHA = 1F;
+
+    /**
+     * Width in pixels of the pulsing tick column outline.
+     */
+    public static final int INTERACTION_TICK_COLUMN_WIDTH = 1;
+
+    /**
      * Width of the pulsing primary-color edge fade drawn inside the 3D
      * viewport during viewport interaction modes.
      */
