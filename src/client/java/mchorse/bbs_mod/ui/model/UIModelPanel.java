@@ -114,6 +114,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig> implements I
     private final List<ModelDocumentTab> modelDocumentTabs = new ArrayList<>();
     private int activeModelDocumentTab = -1;
     private boolean showingHomePage = true;
+    private boolean pickingBone;
 
     public UIElement modelSettingsPanel;
     public UIModelPhysBonePanel physBonesPanel;
@@ -1612,23 +1613,40 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig> implements I
 
     private void pickBone(String bone)
     {
-        this.renderer.setSelectedBone(bone);
-
-        for (UIModelSection section : this.sections)
+        /* UIModelPartsSection.selectBone() -> UIPoseEditor.selectBone() -> pickCallback ->
+           setSelectedBone() re-enters this method with the same bone, which would otherwise
+           recurse forever and overflow the stack. */
+        if (this.pickingBone)
         {
-            section.deselect();
-            section.onBoneSelected(bone);
-
-            if (section instanceof UIModelPartsSection)
-            {
-                ((UIModelPartsSection) section).selectBone(bone);
-                this.setRight(((UIModelPartsSection) section).poseEditor);
-            }
+            return;
         }
 
-        if (this.ikPanel.hasParent())
+        this.pickingBone = true;
+
+        try
         {
-            this.ikPanel.onBoneSelected(bone);
+            this.renderer.setSelectedBone(bone);
+
+            for (UIModelSection section : this.sections)
+            {
+                section.deselect();
+                section.onBoneSelected(bone);
+
+                if (section instanceof UIModelPartsSection)
+                {
+                    ((UIModelPartsSection) section).selectBone(bone);
+                    this.setRight(((UIModelPartsSection) section).poseEditor);
+                }
+            }
+
+            if (this.ikPanel.hasParent())
+            {
+                this.ikPanel.onBoneSelected(bone);
+            }
+        }
+        finally
+        {
+            this.pickingBone = false;
         }
     }
     

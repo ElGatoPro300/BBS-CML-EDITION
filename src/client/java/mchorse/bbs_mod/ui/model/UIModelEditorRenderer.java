@@ -38,6 +38,9 @@ import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIModelRenderer;
 import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.ui.utils.StencilFormFramebuffer;
+import mchorse.bbs_mod.ui.utils.gizmo.GizmoController;
+import mchorse.bbs_mod.ui.utils.gizmo.GizmoRayFrame;
+import mchorse.bbs_mod.ui.utils.gizmo.GizmoSurface;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.Pair;
@@ -63,7 +66,6 @@ import net.minecraft.item.ItemStack;
 import net.minecraft.util.math.RotationAxis;
 
 import org.joml.Matrix4f;
-import org.joml.Vector3d;
 import org.joml.Vector3f;
 
 import com.mojang.blaze3d.platform.GlStateManager;
@@ -79,11 +81,13 @@ import java.util.function.Consumer;
 
 import org.slf4j.Logger;
 
-public class UIModelEditorRenderer extends UIModelRenderer
+public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurface
 {
     private static final Logger LOGGER = LogUtils.getLogger();
 
     public UIPropTransform transform;
+
+    private final GizmoController gizmoController = new GizmoController(this);
 
     private ModelForm form = new ModelForm();
     private ModelFormRenderer renderer;
@@ -371,28 +375,19 @@ public class UIModelEditorRenderer extends UIModelRenderer
             return super.subMouseClicked(context);
         }
 
+        if (this.gizmoController.tryStartHandleDrag(context, this.transform))
+        {
+            return true;
+        }
+
         if (this.stencil.hasPicked())
         {
             Pair<Form, String> picked = this.stencil.getPicked();
 
-            if (picked != null)
+            if (picked != null && picked.a != null && this.callback != null)
             {
-                if (picked.a == null)
-                {
-                    int index = this.stencil.getIndex();
-                    
-                    if (index >= Gizmo.STENCIL_X && index <= Gizmo.STENCIL_FREE)
-                    {
-                        this.prepareGizmoDrag(this.transform);
-                        Gizmo.INSTANCE.start(index, context.mouseX, context.mouseY, this.transform);
-                        return true;
-                    }
-                }
-                else if (this.callback != null)
-                {
-                    this.callback.accept(picked.b);
-                    return true;
-                }
+                this.callback.accept(picked.b);
+                return true;
             }
         }
 
@@ -402,9 +397,15 @@ public class UIModelEditorRenderer extends UIModelRenderer
     @Override
     public boolean subMouseReleased(UIContext context)
     {
-        Gizmo.INSTANCE.stop();
-        
+        this.gizmoController.stop();
+
         return super.subMouseReleased(context);
+    }
+
+    @Override
+    public StencilFormFramebuffer getGizmoStencil()
+    {
+        return this.stencil;
     }
 
     public void setSelectedBone(String bone)
@@ -538,6 +539,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
 
             this.stencil.pickGUI(context, this.area);
             this.stencil.unbind(this.stencilMap);
+            this.gizmoController.updateHover();
 
             this.endStencilViewport();
 
@@ -548,6 +550,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
         else
         {
             this.stencil.clearPicking();
+            this.gizmoController.updateHover();
         }
 
         if (fpHandPreview && fpGroupId != null && !fpGroupId.isEmpty())
@@ -559,60 +562,19 @@ public class UIModelEditorRenderer extends UIModelRenderer
         this.setupViewport(context);
     }
 
-    private void prepareGizmoDrag(UIPropTransform transform)
+    @Override
+    public void prepareGizmoDrag(UIPropTransform transform)
     {
         if (transform == null)
         {
             return;
         }
 
-        transform.setGizmoRayProvider(new UIPropTransform.IGizmoRayProvider()
-        {
-            @Override
-            public boolean getMouseRay(UIContext context, int mouseX, int mouseY, Vector3d rayOrigin, Vector3f rayDirection)
-            {
-                if (UIModelEditorRenderer.this.area.w <= 0 || UIModelEditorRenderer.this.area.h <= 0)
-                {
-                    return false;
-                }
-
-                Vector3f direction = UIModelEditorRenderer.this.camera.getMouseDirection(
-                    mouseX,
-                    mouseY,
-                    context.globalX(UIModelEditorRenderer.this.area.x),
-                    context.globalY(UIModelEditorRenderer.this.area.y),
-                    UIModelEditorRenderer.this.area.w,
-                    UIModelEditorRenderer.this.area.h
-                );
-
-                if (direction.lengthSquared() <= 1.0E-12F)
-                {
-                    return false;
-                }
-
-                rayDirection.set(direction).normalize();
-                rayOrigin.set(
-                    UIModelEditorRenderer.this.camera.position.x,
-                    UIModelEditorRenderer.this.camera.position.y,
-                    UIModelEditorRenderer.this.camera.position.z
-                );
-
-                return true;
-            }
-
-            @Override
-            public boolean getGizmoMatrix(Matrix4f matrix)
-            {
-                if (!UIModelEditorRenderer.this.hasGizmoMatrix)
-                {
-                    return false;
-                }
-
-                matrix.set(UIModelEditorRenderer.this.lastGizmoMatrix);
-
-                return true;
-            }
-        });
+        transform.setGizmoRayProvider(GizmoRayFrame.fromCamera(
+            this.camera,
+            this.area,
+            () -> this.hasGizmoMatrix ? this.lastGizmoMatrix : null
+        ));
     }
 
     private void renderSelectedCubeVisualizer(UIContext context, MatrixCache cache)

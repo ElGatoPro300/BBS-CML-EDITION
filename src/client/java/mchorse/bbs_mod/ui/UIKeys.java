@@ -302,7 +302,10 @@ public class UIKeys
     public static final IKey FILM_GIZMO_MOVE = L10n.lang("bbs.ui.film.gizmo.move");
     public static final IKey FILM_GIZMO_SCALE = L10n.lang("bbs.ui.film.gizmo.scale");
     public static final IKey FILM_GIZMO_ROTATE = L10n.lang("bbs.ui.film.gizmo.rotate");
+    public static final IKey FILM_GIZMO_COMBINED = L10n.lang("bbs.ui.film.gizmo.combined");
     public static final IKey FILM_GIZMO_SIZE = L10n.lang("bbs.ui.film.gizmo.size");
+    public static final IKey FILM_GIZMO_BODY_PART = L10n.lang("bbs.ui.film.gizmo.body_part");
+    public static final IKey FILM_GIZMO_TRANSFORM = L10n.lang("bbs.ui.film.gizmo.transform");
     public static final IKey FILM_OPEN_HISTORY = L10n.lang("bbs.ui.film.open_history");
     public static final IKey FILM_OPEN_REPLAY_EDITOR = L10n.lang("bbs.ui.film.open_replay_editor");
     public static final IKey FILM_OPEN_SCREEN_EDITOR = L10n.lang("bbs.ui.film.open_screen_editor");
@@ -1492,6 +1495,12 @@ public class UIKeys
     public static final IKey WORLD_TIME_NOON = L10n.lang("bbs.ui.world.time.noon");
     public static final IKey WORLD_TIME_NIGHT = L10n.lang("bbs.ui.world.time.night");
     public static final IKey WORLD_TIME_MIDNIGHT = L10n.lang("bbs.ui.world.time.midnight");
+    public static final IKey WORLD_SECTION_GAMMA = L10n.lang("bbs.ui.world.section.gamma");
+    public static final IKey WORLD_GAMMA_LABEL = L10n.lang("bbs.ui.world.gamma.label");
+    public static final IKey WORLD_GAMMA_NORMAL = L10n.lang("bbs.ui.world.gamma.normal");
+    public static final IKey WORLD_GAMMA_SEMI = L10n.lang("bbs.ui.world.gamma.semi");
+    public static final IKey WORLD_GAMMA_FULL = L10n.lang("bbs.ui.world.gamma.full");
+    public static final IKey WORLD_GAMMA_NIGHT_VISION = L10n.lang("bbs.ui.world.gamma.night_vision");
     public static final IKey WORLD_WEATHER_CLEAR = L10n.lang("bbs.ui.world.weather.clear");
     public static final IKey WORLD_WEATHER_RAIN = L10n.lang("bbs.ui.world.weather.rain");
     public static final IKey WORLD_WEATHER_THUNDER = L10n.lang("bbs.ui.world.weather.thunder");

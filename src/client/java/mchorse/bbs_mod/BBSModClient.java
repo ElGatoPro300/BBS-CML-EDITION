@@ -1058,6 +1058,31 @@ public class BBSModClient implements ClientModInitializer
         }
     }
 
+    /** Reapplies the BBS UI scale to the currently open menu immediately (e.g. while a settings
+     *  slider is being dragged), without the heavier work {@link #reloadFromSettings()} does
+     *  (saving settings to disk, reloading language, etc). */
+    public static void applyUIScaleLive()
+    {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        UIBaseMenu menu = UIScreen.getCurrentMenu();
+
+        if (menu != null && mc != null)
+        {
+            mc.options.getGuiScale().setValue(getGUIScale());
+            mc.onResolutionChanged();
+            menu.resize(mc.getWindow().getScaledWidth(), mc.getWindow().getScaledHeight());
+        }
+    }
+
+    /** Applies the model editor hover color/opacity immediately (settings live-preview),
+     *  refreshing both the applied snapshot the renderers read and the model editor's
+     *  cached geometry highlight. */
+    public static void applyModelEditorHoverLive()
+    {
+        BBSSettings.syncAppliedAppearance();
+        refreshModelEditorHover();
+    }
+
     private static void refreshModelEditorHover()
     {
         UIDashboard dashboard = getDashboard();

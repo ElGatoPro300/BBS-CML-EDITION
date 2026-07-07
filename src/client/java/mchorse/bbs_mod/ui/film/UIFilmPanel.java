@@ -4393,6 +4393,17 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         return this.dashboard.orbitUI.canControl();
     }
 
+    /**
+     * Confines left/right/middle click-drag camera rotate/roll/FOV to the preview panel (the
+     * 3D viewport, including its overlay buttons), so it can never be triggered by clicking
+     * elsewhere in the editor (menu bar, timelines, properties, etc.).
+     */
+    @Override
+    public Area getFlightViewportArea()
+    {
+        return this.preview.area;
+    }
+
     public void toggleFlight()
     {
         this.setFlight(!this.isFlying());
@@ -6297,13 +6308,40 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     /* Custom floating windows logic */
 
+    /**
+     * Outcome of {@link #handleFloatingPanelClicks}, distinguishing a fully consumed click
+     * (window chrome, or content inside a floating panel) from one that must still reach the
+     * dashboard-level free camera-orbit controller (left/right/middle click-drag rotate, roll
+     * and FOV over the 3D viewport, matching stock BBS behaviour) versus a click that didn't
+     * land on any floating panel at all.
+     */
+    private enum FloatingClickResult
+    {
+        NOT_HANDLED,
+        CONSUMED,
+        VIEWPORT_PASSTHROUGH
+    }
+
     @Override
     protected IUIElement childrenMouseClicked(UIContext context)
     {
-        if (this.handleFloatingPanelClicks(context))
+        FloatingClickResult result = this.handleFloatingPanelClicks(context);
+
+        if (result == FloatingClickResult.CONSUMED)
         {
             return this;
         }
+
+        /* Deliberately skip super.childrenMouseClicked(): falling through to the normal
+           z-order sibling iteration would let the click leak onto whichever docked panel sits
+           behind the floating viewport window (the exact bug that was just fixed). Returning
+           null here instead lets it bubble past this whole editor, all the way up to the
+           dashboard root where the camera-orbit controller lives. */
+        if (result == FloatingClickResult.VIEWPORT_PASSTHROUGH)
+        {
+            return null;
+        }
+
         return super.childrenMouseClicked(context);
     }
 
@@ -6476,11 +6514,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.setupEditorFlex(true);
     }
 
-    private boolean handleFloatingPanelClicks(UIContext context)
+    private FloatingClickResult handleFloatingPanelClicks(UIContext context)
     {
         if (this.showingHomePage)
         {
-            return false;
+            return FloatingClickResult.NOT_HANDLED;
         }
 
         List<IUIElement> children = this.editor.getChildren();
@@ -6537,7 +6575,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                                 this.draggingPanelId = panelId;
                             }
                         }
-                        return true;
+                        return FloatingClickResult.CONSUMED;
                     }
 
                     // Click in Bottom-Right Resize Handle (only if NOT collapsed)
@@ -6553,7 +6591,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                             {
                                 this.activeResizingFloatingPanelId = panelId;
                             }
-                            return true;
+                            return FloatingClickResult.CONSUMED;
                         }
                     }
 
@@ -6561,12 +6599,33 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                     if (context.mouseX >= x && context.mouseX <= x + w && context.mouseY >= y && context.mouseY <= y + h)
                     {
                         this.safeBringToFront(panelId);
+
+                        /* Route the click to this floating window's contents first, so it
+                           can't fall through to docked panels behind the window (e.g.
+                           selecting a clip in a floating Camera Timeline must not also press
+                           a button in the Camera Properties panel below). */
+                        IUIElement consumer = child.isEnabled() ? child.mouseClicked(context) : null;
+
+                        if (consumer != null)
+                        {
+                            return FloatingClickResult.CONSUMED;
+                        }
+
+                        /* Nothing inside the floating window wanted this click. For the 3D
+                           viewport specifically, let it bubble up to the dashboard's free
+                           camera-orbit controller instead of swallowing it, so left/right/
+                           middle click-drag can still rotate/roll the camera and change FOV
+                           while the mouse is over the viewport, exactly like stock BBS. Any
+                           other floating panel keeps swallowing the click. */
+                        return "preview".equals(panelId)
+                            ? FloatingClickResult.VIEWPORT_PASSTHROUGH
+                            : FloatingClickResult.CONSUMED;
                     }
                 }
             }
         }
 
-        return false;
+        return FloatingClickResult.NOT_HANDLED;
     }
 
     private void renderFloatingPanelWindows(UIContext context)

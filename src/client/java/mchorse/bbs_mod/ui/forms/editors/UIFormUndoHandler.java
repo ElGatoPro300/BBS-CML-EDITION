@@ -26,6 +26,11 @@ public class UIFormUndoHandler
     protected boolean cacheMarkLastUndoNoMerging;
     protected MapType uiData;
 
+    /** True while an undo/redo is being applied. Value changes made by the application itself
+     *  must not be cached as *new* undo steps, otherwise every Ctrl+Z pushes a fresh entry on
+     *  top of the stack and undo just oscillates between the last two values. */
+    protected boolean applyingUndo;
+
     protected Timer undoTimer = new Timer(1000);
 
     protected UIElement uiElement;
@@ -82,6 +87,38 @@ public class UIFormUndoHandler
         return this.undoManager;
     }
 
+    public boolean applyUndo(ValueGroup target)
+    {
+        this.applyingUndo = true;
+
+        try
+        {
+            return this.undoManager.undo(target);
+        }
+        finally
+        {
+            this.applyingUndo = false;
+            this.cachedValues.clear();
+            this.uiData = null;
+        }
+    }
+
+    public boolean applyRedo(ValueGroup target)
+    {
+        this.applyingUndo = true;
+
+        try
+        {
+            return this.undoManager.redo(target);
+        }
+        finally
+        {
+            this.applyingUndo = false;
+            this.cachedValues.clear();
+            this.uiData = null;
+        }
+    }
+
     public void reset()
     {
         this.undoManager = new UndoManager<>(100);
@@ -114,6 +151,11 @@ public class UIFormUndoHandler
 
     public void handlePreValues(BaseValue baseValue, int flag)
     {
+        if (this.applyingUndo)
+        {
+            return;
+        }
+
         if (this.uiData == null && this.uiElement.getRoot() != null)
         {
             UIElement root = this.uiElement.getRoot();
