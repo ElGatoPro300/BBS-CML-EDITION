@@ -407,40 +407,40 @@ public class UIClips extends UIElement
 
     private Vector3i checkSize(int tick, int layer, int duration)
     {
+        int start = tick;
+        int end = tick + duration;
+
         for (Clip clip : this.clips.get())
         {
-            if (clip.layer.get() == layer)
+            if (clip.layer.get() != layer)
             {
-                int l1 = clip.tick.get();
-                int r1 = l1 + clip.duration.get();
-                int l2 = tick;
-                int r2 = l2 + duration;
-
-                if (MathUtils.isInside(l1, r1, l2, r2))
-                {
-                    if (l1 < r2 && r2 <= r1)
-                    {
-                        int diff = r2 - l1;
-
-                        duration -= diff;
-                    }
-                    else if (l2 < r1 && r1 <= r2)
-                    {
-                        int diff = r1 - l2;
-
-                        tick = r1;
-                        duration -= diff;
-                    }
-                }
+                continue;
             }
+
+            int clipStart = clip.tick.get();
+            int clipEnd = clipStart + clip.duration.get();
+
+            if (end <= clipStart || start >= clipEnd)
+            {
+                continue;
+            }
+
+            if (start >= clipStart)
+            {
+                return null;
+            }
+
+            end = Math.min(end, clipStart);
         }
+
+        duration = end - start;
 
         if (duration <= 0)
         {
             return null;
         }
 
-        return new Vector3i(tick, layer, duration);
+        return new Vector3i(start, layer, duration);
     }
 
     private void showAddClips(UIContext context, Vector3i preview)
