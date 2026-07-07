@@ -364,9 +364,7 @@ public class UIClips extends UIElement
 
     private void showAddsAtCursor()
     {
-        UIContext context = this.getContext();
-
-        this.showAddsAtCursor(context, context.mouseX, context.mouseY);
+        this.enterAddClipPlacement(-1, UIKeys.TIMELINE_INTERACTION_PICK_ADD_AT_CURSOR);
     }
 
     private void showAddsAtCursor(UIContext context, int mouseX, int mouseY)
@@ -376,14 +374,18 @@ public class UIClips extends UIElement
 
     private void showAddsAtTick()
     {
-        UIContext context = this.getContext();
-
-        this.showAddsAtTick(context, context.mouseX, context.mouseY);
+        this.enterAddClipPlacement(this.delegate.getCursor(), UIKeys.TIMELINE_INTERACTION_PICK_ADD_AT_TICK);
     }
 
     private void showAddsAtTick(UIContext context, int mouseX, int mouseY)
     {
         this.showAddClips(context, this.checkSize(this.delegate.getCursor(), this.fromLayerY(mouseY), BBSSettings.getDefaultDuration()));
+    }
+
+    private void enterAddClipPlacement(int lockedTick, IKey hint)
+    {
+        this.enterClipPlacement(hint, BBSSettings.getDefaultDuration(), lockedTick,
+            (tick, layer, duration) -> this.showAddClips(this.getContext(), new Vector3i(tick, layer, duration)));
     }
 
     private void showAddsOnTop()
@@ -1169,7 +1171,7 @@ public class UIClips extends UIElement
 
     public void toolbarAddClipType(Link type)
     {
-        this.enterClipPlacement(UIKeys.TIMELINE_INTERACTION_PLACE_CLIP, BBSSettings.getDefaultDuration(),
+        this.enterClipPlacement(UIKeys.TIMELINE_INTERACTION_PLACE_CLIP, BBSSettings.getDefaultDuration(), -1,
             (tick, layer, duration) -> this.addClip(type, tick, layer, duration));
     }
 
@@ -1177,7 +1179,7 @@ public class UIClips extends UIElement
     {
         int duration = this.computeReplayClipDuration(replay);
 
-        this.enterClipPlacement(UIKeys.TIMELINE_INTERACTION_PLACE_REPLAY, duration,
+        this.enterClipPlacement(UIKeys.TIMELINE_INTERACTION_PLACE_REPLAY, duration, -1,
             (tick, layer, ignored) ->
             {
                 KeyframeClip clip = this.createKeyframeClipFromReplay(replay);
@@ -1198,9 +1200,10 @@ public class UIClips extends UIElement
         UIAudioRecorder.promptThenPlace(filmPanel, this);
     }
 
-    public void enterClipPlacement(IKey hint, int duration, ClipPlacementInteractionState.IClipPlacementConfirm onConfirm)
+    public void enterClipPlacement(IKey hint, int duration, int lockedTick,
+        ClipPlacementInteractionState.IClipPlacementConfirm onConfirm)
     {
-        this.clipPlacement.enter(new ClipPlacementInteractionState(hint, duration, onConfirm));
+        this.clipPlacement.enter(new ClipPlacementInteractionState(hint, duration, lockedTick, onConfirm));
     }
 
     public void cancelClipPlacement()

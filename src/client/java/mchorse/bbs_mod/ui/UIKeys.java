@@ -1425,6 +1425,8 @@ public class UIKeys
     public static final IKey TIMELINE_TOOLBAR_TRANSFORM = L10n.lang("bbs.ui.timeline_toolbar.transform");
     public static final IKey TIMELINE_TOOLBAR_TRANSPORT = L10n.lang("bbs.ui.timeline_toolbar.transport");
     public static final IKey TIMELINE_INTERACTION_PICK_TRACK = L10n.lang("bbs.ui.timeline_toolbar.interaction.pick_track");
+    public static final IKey TIMELINE_INTERACTION_PICK_ADD_AT_CURSOR = L10n.lang("bbs.ui.timeline_toolbar.interaction.pick_add_at_cursor");
+    public static final IKey TIMELINE_INTERACTION_PICK_ADD_AT_TICK = L10n.lang("bbs.ui.timeline_toolbar.interaction.pick_add_at_tick");
     public static final IKey TIMELINE_INTERACTION_PLACE_CLIP = L10n.lang("bbs.ui.timeline_toolbar.interaction.place_clip");
     public static final IKey TIMELINE_INTERACTION_PLACE_REPLAY = L10n.lang("bbs.ui.timeline_toolbar.interaction.place_replay");
     public static final IKey TIMELINE_INTERACTION_PLACE_MICROPHONE = L10n.lang("bbs.ui.timeline_toolbar.interaction.place_microphone");

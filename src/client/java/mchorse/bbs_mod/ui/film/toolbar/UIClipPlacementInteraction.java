@@ -47,7 +47,9 @@ public class UIClipPlacementInteraction
             return;
         }
 
-        int tick = clips.fromGraphX(context.mouseX);
+        int tick = this.state.lockedTick >= 0
+            ? this.state.lockedTick
+            : clips.fromGraphX(context.mouseX);
         int layer = clips.fromLayerY(context.mouseY);
 
         if (layer < 0)

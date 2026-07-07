@@ -2067,6 +2067,8 @@
     "bbs.ui.timeline_toolbar.transform": "Transform",
     "bbs.ui.timeline_toolbar.transport": "Transport",
     "bbs.ui.timeline_toolbar.interaction.pick_track": "Click on a track",
+    "bbs.ui.timeline_toolbar.interaction.pick_add_at_cursor": "Click to choose where to add a clip",
+    "bbs.ui.timeline_toolbar.interaction.pick_add_at_tick": "Click to choose a layer at the current tick",
     "bbs.ui.timeline_toolbar.interaction.place_clip": "Click to place clip",
     "bbs.ui.timeline_toolbar.interaction.place_replay": "Click to place replay clip",
     "bbs.ui.timeline_toolbar.interaction.place_microphone": "Click to place microphone recording",
