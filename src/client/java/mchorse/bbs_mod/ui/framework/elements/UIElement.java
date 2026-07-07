@@ -1108,6 +1108,7 @@ public class UIElement implements IUIElement, IUndoElement
         context.mouseButton = mouseButton;
 
         this.mouseClicked(context);
+        this.mouseReleased(context);
 
         context.mouseX = mouseX;
         context.mouseY = mouseY;
