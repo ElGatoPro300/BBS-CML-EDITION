@@ -2081,6 +2081,7 @@
     "bbs.ui.timeline_toolbar.interaction.insert_keyframe_single_cursor": "Click to insert a keyframe",
     "bbs.ui.timeline_toolbar.interaction.duplicate_cursor": "Click to duplicate keyframe(s)",
     "bbs.ui.timeline_toolbar.interaction.duplicate_timeline": "Click to duplicate keyframe(s) at playhead",
+    "bbs.ui.timeline_toolbar.interaction.paste_cursor": "Click to paste keyframe(s)",
     "bbs.ui.timeline_toolbar.interaction.place_clip": "Click to place clip",
     "bbs.ui.timeline_toolbar.interaction.place_replay": "Click to place replay clip",
     "bbs.ui.timeline_toolbar.interaction.place_microphone": "Click to place microphone recording",

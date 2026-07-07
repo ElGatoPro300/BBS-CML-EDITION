@@ -43,6 +43,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class UIKeyframeDopeSheet implements IUIKeyframeGraph
 {
@@ -593,6 +594,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
         this.renderGraph(context);
         this.keyframes.renderKeyframeInsertPreviews(context);
         this.keyframes.renderKeyframeDuplicatePreviews(context);
+        this.keyframes.renderKeyframePastePreviews(context);
         context.batcher.unclip(context);
     }
 
@@ -701,7 +703,8 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
                 this.renderPreviewKeyframe(context, sheet, tick, Colors.WHITE);
             }
         }
-        else if (Window.isAltPressed() && !Window.isShiftPressed() && !this.keyframes.isKeyframeDuplicateActive())
+        else if (Window.isAltPressed() && !Window.isShiftPressed() && !this.keyframes.isKeyframeDuplicateActive()
+            && !this.keyframes.isKeyframePasteActive())
         {
             float anchor = (float) Math.round(this.keyframes.fromGraphX(context.mouseX));
 
@@ -812,6 +815,120 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
             UIKeyframeSheet hovered = this.getSheet(targetMouseY);
 
             return hovered != null && current.channel.getFactory() == hovered.channel.getFactory();
+        }
+
+        return true;
+    }
+
+    /**
+     * Yellow paste previews (toolbar paste-at-cursor interaction).
+     */
+    public void renderPastePreviews(UIContext context, float anchorTick, int targetMouseY,
+        Map<String, UIKeyframes.PastedKeyframes> keyframes)
+    {
+        if (keyframes.isEmpty())
+        {
+            return;
+        }
+
+        int anchor = Math.round(anchorTick);
+
+        if (keyframes.size() == 1)
+        {
+            UIKeyframes.PastedKeyframes pasted = keyframes.values().iterator().next();
+
+            if (pasted.keyframes.isEmpty())
+            {
+                return;
+            }
+
+            UIKeyframeSheet hovered = this.getSheet(targetMouseY);
+
+            if (hovered == null || hovered.channel.getFactory() != pasted.factory)
+            {
+                return;
+            }
+
+            if (!this.isTrackRowVisible(hovered))
+            {
+                return;
+            }
+
+            float first = pasted.keyframes.get(0).getTick();
+
+            for (Keyframe keyframe : pasted.keyframes)
+            {
+                this.renderPreviewKeyframe(context, hovered, anchor + (keyframe.getTick() - first), Colors.YELLOW);
+            }
+        }
+        else
+        {
+            float min = Float.MAX_VALUE;
+
+            for (Map.Entry<String, UIKeyframes.PastedKeyframes> entry : keyframes.entrySet())
+            {
+                if (entry.getValue().keyframes.isEmpty())
+                {
+                    continue;
+                }
+
+                entry.getValue().keyframes.sort((a, b) -> Float.compare(a.getTick(), b.getTick()));
+
+                min = Math.min(min, entry.getValue().keyframes.get(0).getTick());
+            }
+
+            for (Map.Entry<String, UIKeyframes.PastedKeyframes> entry : keyframes.entrySet())
+            {
+                if (entry.getValue().keyframes.isEmpty())
+                {
+                    continue;
+                }
+
+                float entryMin = entry.getValue().keyframes.get(0).getTick();
+
+                for (UIKeyframeSheet sheet : this.getSheets())
+                {
+                    if (!sheet.id.equals(entry.getKey()))
+                    {
+                        continue;
+                    }
+
+                    if (!this.isTrackRowVisible(sheet))
+                    {
+                        continue;
+                    }
+
+                    float d = min == Float.MAX_VALUE ? 0F : entryMin - min;
+
+                    for (Keyframe keyframe : entry.getValue().keyframes)
+                    {
+                        this.renderPreviewKeyframe(context, sheet, anchor + (keyframe.getTick() - entryMin) + d, Colors.YELLOW);
+                    }
+                }
+            }
+        }
+    }
+
+    public boolean canPastePreview(float anchorTick, int targetMouseY,
+        Map<String, UIKeyframes.PastedKeyframes> keyframes)
+    {
+        if (keyframes.isEmpty())
+        {
+            return false;
+        }
+
+        if (keyframes.size() == 1)
+        {
+            UIKeyframes.PastedKeyframes pasted = keyframes.values().iterator().next();
+
+            if (pasted.keyframes.isEmpty())
+            {
+                return false;
+            }
+
+            UIKeyframeSheet hovered = this.getSheet(targetMouseY);
+
+            return hovered != null && hovered.channel.getFactory() == pasted.factory;
         }
 
         return true;

@@ -489,7 +489,7 @@ public final class TimelineToolbarWiring
         BooleanSupplier canPaste = () -> canModify.getAsBoolean() && keyframes.canToolbarPaste();
 
         bindShortcut(toolbar, Keys.PASTE, keyframes::toolbarPaste, canPaste);
-        wirePasteSubmenu(toolbar, canPaste, keyframes::toolbarPasteAtTimeline, keyframes::toolbarPasteAtCursor);
+        wirePasteSubmenu(toolbar, canPaste, keyframes::toolbarPasteAtTimeline, keyframes::toolbarEnterPasteAtCursor);
         bindShortcut(toolbar, Keys.PRESETS, keyframes::toolbarOpenPresets, canModify);
         wireKeyframesEditTrack(keyframes, toolbar);
     }
@@ -530,7 +530,7 @@ public final class TimelineToolbarWiring
             {
                 if (editor.keyframeEditor != null)
                 {
-                    editor.keyframeEditor.view.toolbarPasteAtCursor();
+                    editor.keyframeEditor.view.toolbarEnterPasteAtCursor();
                 }
             });
         bindShortcut(toolbar, Keys.PRESETS, () ->
