@@ -346,6 +346,23 @@ public final class TimelineToolbarWiring
         bindInsertChild(parent, UIKeys.KEYFRAMES_INSERT_SINGLE_AT_CURSOR, enterSingleAtCursor, canModify);
     }
 
+    private static void wireDuplicateSubmenu(TimelineToolbar toolbar, BooleanSupplier hasSelected,
+        Runnable enterAtCursor, Runnable enterAtPlayhead)
+    {
+        ToolbarItem parent = findLabelInSections(toolbar.getSections(), UIKeys.KEYFRAMES_DUPLICATE);
+
+        if (parent == null)
+        {
+            return;
+        }
+
+        parent.run(enterAtCursor);
+        parent.enabledIf(hasSelected);
+
+        bindInsertChild(parent, UIKeys.KEYFRAMES_DUPLICATE_AT_CURSOR, enterAtCursor, hasSelected);
+        bindInsertChild(parent, UIKeys.KEYFRAMES_DUPLICATE_AT_TIMELINE, enterAtPlayhead, hasSelected);
+    }
+
     private static void bindInsertChild(ToolbarItem parent, IKey label, Runnable runnable,
         BooleanSupplier enabled)
     {
@@ -402,8 +419,11 @@ public final class TimelineToolbarWiring
             });
         }
 
-        bindLabel(toolbar, UIKeys.KEYFRAMES_CONTEXT_DUPLICATE_AT_CURSOR, keyframes::toolbarDuplicateAtCursor, hasSelected);
         bindLabel(toolbar, UIKeys.KEYFRAMES_KEYS_SELECT_COLUMN, keyframes::toolbarSelectColumn, canModify);
+
+        wireDuplicateSubmenu(toolbar, hasSelected,
+            keyframes::toolbarEnterDuplicateAtCursor,
+            keyframes::toolbarEnterDuplicateAtPlayhead);
     }
 
     private static void wireKeyframesAdd(UIReplaysEditor editor, TimelineToolbar toolbar)
@@ -421,13 +441,21 @@ public final class TimelineToolbarWiring
             editor::toolbarEnterInsertSingleAtTimeline,
             editor::toolbarEnterInsertSingleAtCursor);
 
-        bindLabel(toolbar, UIKeys.KEYFRAMES_CONTEXT_DUPLICATE_AT_CURSOR, () ->
-        {
-            if (editor.keyframeEditor != null)
+        wireDuplicateSubmenu(toolbar, hasSelected,
+            () ->
             {
-                editor.keyframeEditor.view.toolbarDuplicateAtCursor();
-            }
-        }, hasSelected);
+                if (editor.keyframeEditor != null)
+                {
+                    editor.keyframeEditor.view.toolbarEnterDuplicateAtCursor();
+                }
+            },
+            () ->
+            {
+                if (editor.keyframeEditor != null)
+                {
+                    editor.keyframeEditor.view.toolbarEnterDuplicateAtPlayhead();
+                }
+            });
         bindLabel(toolbar, UIKeys.KEYFRAMES_KEYS_SELECT_COLUMN, () ->
         {
             if (editor.keyframeEditor != null)

@@ -592,6 +592,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
         context.batcher.clip(this.keyframes.area.x, this.keyframes.area.y + RULER_HEIGHT, this.keyframes.area.w, this.keyframes.area.h - RULER_HEIGHT, context);
         this.renderGraph(context);
         this.keyframes.renderKeyframeInsertPreviews(context);
+        this.keyframes.renderKeyframeDuplicatePreviews(context);
         context.batcher.unclip(context);
     }
 
@@ -700,65 +701,120 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
                 this.renderPreviewKeyframe(context, sheet, tick, Colors.WHITE);
             }
         }
-        else if (Window.isAltPressed() && !Window.isShiftPressed())
+        else if (Window.isAltPressed() && !Window.isShiftPressed() && !this.keyframes.isKeyframeDuplicateActive())
         {
-            List<UIKeyframeSheet> sheets = new ArrayList<>();
+            float anchor = (float) Math.round(this.keyframes.fromGraphX(context.mouseX));
 
-            for (UIKeyframeSheet sheet : this.getSheets())
+            this.renderDuplicatePreviews(context, anchor, context.mouseY);
+        }
+    }
+
+    /**
+     * Yellow duplicate previews (Alt+hover and toolbar duplicate interaction).
+     */
+    public void renderDuplicatePreviews(UIContext context, float anchorTick, int targetMouseY)
+    {
+        List<UIKeyframeSheet> sheets = new ArrayList<>();
+
+        for (UIKeyframeSheet sheet : this.getSheets())
+        {
+            if (sheet.selection.hasAny())
             {
-                if (sheet.selection.hasAny())
+                sheets.add(sheet);
+            }
+        }
+
+        if (sheets.isEmpty())
+        {
+            return;
+        }
+
+        int anchor = Math.round(anchorTick);
+
+        if (sheets.size() == 1)
+        {
+            UIKeyframeSheet current = sheets.get(0);
+            UIKeyframeSheet hovered = this.getSheet(targetMouseY);
+
+            if (hovered == null || current.channel.getFactory() != hovered.channel.getFactory())
+            {
+                return;
+            }
+
+            if (!this.isTrackRowVisible(hovered))
+            {
+                return;
+            }
+
+            List<Keyframe> selected = current.selection.getSelected();
+
+            for (int i = 0; i < selected.size(); i++)
+            {
+                Keyframe first = selected.get(0);
+                Keyframe keyframe = selected.get(i);
+
+                this.renderPreviewKeyframe(context, hovered, anchor + (keyframe.getTick() - first.getTick()), Colors.YELLOW);
+            }
+        }
+        else
+        {
+            float min = Float.MAX_VALUE;
+
+            for (UIKeyframeSheet sheet : sheets)
+            {
+                List<Keyframe> selected = sheet.selection.getSelected();
+
+                for (Keyframe keyframe : selected)
                 {
-                    sheets.add(sheet);
+                    min = Math.min(min, keyframe.getTick());
                 }
             }
 
-            if (sheets.size() == 1)
+            for (UIKeyframeSheet sheet : sheets)
             {
-                UIKeyframeSheet current = sheets.get(0);
-                UIKeyframeSheet hovered = this.getSheet(context.mouseY);
-
-                if (hovered == null || current.channel.getFactory() != hovered.channel.getFactory())
+                if (!this.isTrackRowVisible(sheet))
                 {
-                    return;
+                    continue;
                 }
 
-                List<Keyframe> selected = current.selection.getSelected();
+                List<Keyframe> selected = sheet.selection.getSelected();
 
                 for (int i = 0; i < selected.size(); i++)
                 {
-                    Keyframe first = selected.get(0);
                     Keyframe keyframe = selected.get(i);
 
-                    this.renderPreviewKeyframe(context, hovered, Math.round(this.keyframes.fromGraphX(context.mouseX)) + (keyframe.getTick() - first.getTick()), Colors.YELLOW);
-                }
-            }
-            else
-            {
-                float min = Float.MAX_VALUE;
-
-                for (UIKeyframeSheet sheet : sheets)
-                {
-                    List<Keyframe> selected = sheet.selection.getSelected();
-
-                    for (Keyframe keyframe : selected)
-                    {
-                        min = Math.min(min, keyframe.getTick());
-                    }
-                }
-
-                for (UIKeyframeSheet sheet : sheets)
-                {
-                    List<Keyframe> selected = sheet.selection.getSelected();
-
-                    for (int i = 0; i < selected.size(); i++)
-                    {
-                        Keyframe keyframe = selected.get(i);
-
-                        this.renderPreviewKeyframe(context, sheet, Math.round(this.keyframes.fromGraphX(context.mouseX)) + (keyframe.getTick() - min), Colors.YELLOW);
-                    }
+                    this.renderPreviewKeyframe(context, sheet, anchor + (keyframe.getTick() - min), Colors.YELLOW);
                 }
             }
         }
+    }
+
+    public boolean canDuplicatePreview(float anchorTick, int targetMouseY)
+    {
+        List<UIKeyframeSheet> sheets = new ArrayList<>();
+
+        for (UIKeyframeSheet sheet : this.getSheets())
+        {
+            if (sheet.selection.hasAny())
+            {
+                sheets.add(sheet);
+            }
+        }
+
+        if (sheets.isEmpty())
+        {
+            return false;
+        }
+
+        if (sheets.size() == 1)
+        {
+            UIKeyframeSheet current = sheets.get(0);
+            UIKeyframeSheet hovered = this.getSheet(targetMouseY);
+
+            return hovered != null && current.channel.getFactory() == hovered.channel.getFactory();
+        }
+
+        return true;
     }
 
     public boolean isTrackRowVisible(UIKeyframeSheet sheet)

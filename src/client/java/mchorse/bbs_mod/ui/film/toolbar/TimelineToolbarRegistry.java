@@ -277,8 +277,15 @@ public final class TimelineToolbarRegistry
         ).icon(Icons.ADD).shortcut(Keys.FILM_CONTROLLER_INSERT_FRAME);
 
         s.add(insertKeyframe);
-        s.add(ToolbarItem.action(UIKeys.KEYFRAMES_CONTEXT_DUPLICATE_AT_CURSOR)
-            .icon(Icons.COPY));
+        ToolbarItem duplicateKeyframes = ToolbarItem.submenu(UIKeys.KEYFRAMES_DUPLICATE,
+            ToolbarItem.action(UIKeys.KEYFRAMES_DUPLICATE_AT_CURSOR)
+                .icon(Icons.CURSOR)
+                .shortcut(Keys.KEYFRAMES_DUPLICATE),
+            ToolbarItem.action(UIKeys.KEYFRAMES_DUPLICATE_AT_TIMELINE)
+                .icon(Icons.ADD)
+        ).icon(Icons.COPY).shortcut(Keys.KEYFRAMES_DUPLICATE);
+
+        s.add(duplicateKeyframes);
         s.add(ToolbarItem.separator());
         s.add(ToolbarItem.action(UIKeys.GENERAL_PRESETS)
             .icon(Icons.MORE)

@@ -16,6 +16,8 @@ import mchorse.bbs_mod.ui.film.toolbar.TimelineTrackEligibility;
 import mchorse.bbs_mod.ui.film.toolbar.UIInteractionModeOverlay;
 import mchorse.bbs_mod.ui.film.toolbar.UIKeyframeInsertInteraction;
 import mchorse.bbs_mod.ui.film.toolbar.KeyframeInsertInteractionState;
+import mchorse.bbs_mod.ui.film.toolbar.KeyframeDuplicateInteractionState;
+import mchorse.bbs_mod.ui.film.toolbar.UIKeyframeDuplicateInteraction;
 import mchorse.bbs_mod.ui.film.utils.keyframes.UIFilmKeyframes;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
@@ -105,6 +107,7 @@ public class UIKeyframes extends UIElement
     private UIDraggable sidebarResizer;
     private final UIInteractionModeOverlay interactionOverlay = new UIInteractionModeOverlay();
     private final UIKeyframeInsertInteraction insertInteraction = new UIKeyframeInsertInteraction();
+    private final UIKeyframeDuplicateInteraction duplicateInteraction = new UIKeyframeDuplicateInteraction();
 
     public UIKeyframes(Consumer<Keyframe> callback)
     {
@@ -123,7 +126,8 @@ public class UIKeyframes extends UIElement
         /* Context menu items */
         this.context((menu) ->
         {
-            if (this.interactionOverlay.isActive() || this.insertInteraction.isActive())
+            if (this.interactionOverlay.isActive() || this.insertInteraction.isActive()
+                || this.duplicateInteraction.isActive())
             {
                 return;
             }
@@ -876,6 +880,8 @@ public class UIKeyframes extends UIElement
 
     public void enterKeyframeInsert(KeyframeInsertInteractionState state)
     {
+        this.duplicateInteraction.cancel();
+        this.interactionOverlay.cancel();
         this.insertInteraction.enter(state);
     }
 
@@ -887,7 +893,8 @@ public class UIKeyframes extends UIElement
     @Override
     public UIContextMenu createContextMenu(UIContext context)
     {
-        if (this.interactionOverlay.isActive() || this.insertInteraction.isActive())
+        if (this.interactionOverlay.isActive() || this.insertInteraction.isActive()
+            || this.duplicateInteraction.isActive())
         {
             return null;
         }
@@ -905,23 +912,67 @@ public class UIKeyframes extends UIElement
         this.insertInteraction.renderPreviews(this, context);
     }
 
-    public void toolbarDuplicateAtCursor()
+    public boolean isKeyframeDuplicateActive()
+    {
+        return this.duplicateInteraction.isActive();
+    }
+
+    public void enterKeyframeDuplicate(KeyframeDuplicateInteractionState state)
     {
         if (!this.isModifyingKeyframes())
         {
             return;
         }
 
-        if (this.currentGraph.getSelected() == null)
+        if (!this.hasSelectedKeyframes())
         {
             this.getContext().notifyError(UIKeys.GENERAL_CUT_EMPTY);
 
             return;
         }
 
-        int tick = (int) Math.round(this.fromGraphX(this.getToolbarPasteGraphX()));
+        this.insertInteraction.cancel();
+        this.interactionOverlay.cancel();
+        this.duplicateInteraction.enter(state);
+    }
 
-        this.pasteKeyframes(this.parseKeyframes(this.serializeKeyframes()), tick, this.getToolbarPasteMouseY());
+    public void cancelKeyframeDuplicate()
+    {
+        this.duplicateInteraction.cancel();
+    }
+
+    public void renderKeyframeDuplicatePreviews(UIContext context)
+    {
+        this.duplicateInteraction.renderPreviews(this, context);
+    }
+
+    public void duplicateSelectedKeyframes(float tick, int mouseY)
+    {
+        if (!this.hasSelectedKeyframes())
+        {
+            return;
+        }
+
+        this.pasteKeyframes(this.parseKeyframes(this.serializeKeyframes()), tick, mouseY);
+    }
+
+    public void toolbarEnterDuplicateAtCursor()
+    {
+        this.enterKeyframeDuplicate(KeyframeDuplicateInteractionState.atCursor(
+            UIKeys.TIMELINE_INTERACTION_DUPLICATE_CURSOR));
+    }
+
+    public void toolbarEnterDuplicateAtPlayhead()
+    {
+        int tick = this instanceof UIFilmKeyframes filmKeyframes ? filmKeyframes.getOffset() : 0;
+
+        this.enterKeyframeDuplicate(KeyframeDuplicateInteractionState.atPlayhead(
+            UIKeys.TIMELINE_INTERACTION_DUPLICATE_TIMELINE, tick));
+    }
+
+    public void toolbarDuplicateAtCursor()
+    {
+        this.toolbarEnterDuplicateAtCursor();
     }
 
     public void toolbarSelectColumn()
@@ -989,6 +1040,8 @@ public class UIKeyframes extends UIElement
     public void enterTrackInteraction(IKey hint, Predicate<UIKeyframeSheet> eligible,
         Consumer<UIKeyframeSheet> onConfirm)
     {
+        this.insertInteraction.cancel();
+        this.duplicateInteraction.cancel();
         this.interactionOverlay.enter(new TimelineInteractionState(hint, eligible, onConfirm));
     }
 
@@ -996,6 +1049,7 @@ public class UIKeyframes extends UIElement
     {
         this.interactionOverlay.cancel();
         this.insertInteraction.cancel();
+        this.duplicateInteraction.cancel();
     }
 
     public boolean isTrackInteractionActive()
@@ -1501,9 +1555,15 @@ public class UIKeyframes extends UIElement
     @Override
     protected boolean subMouseClicked(UIContext context)
     {
-        boolean interactionActive = this.insertInteraction.isActive() || this.interactionOverlay.isActive();
+        boolean interactionActive = this.insertInteraction.isActive() || this.interactionOverlay.isActive()
+            || this.duplicateInteraction.isActive();
 
         if (interactionActive && this.currentGraph.mouseClicked(context))
+        {
+            return true;
+        }
+
+        if (this.duplicateInteraction.handleMouseClicked(this, context))
         {
             return true;
         }
@@ -1674,7 +1734,8 @@ public class UIKeyframes extends UIElement
     @Override
     protected boolean subMouseScrolled(UIContext context)
     {
-        if ((this.insertInteraction.isActive() || this.interactionOverlay.isActive()) && this.area.isInside(context))
+        if ((this.insertInteraction.isActive() || this.interactionOverlay.isActive()
+            || this.duplicateInteraction.isActive()) && this.area.isInside(context))
         {
             this.currentGraph.mouseScrolled(context);
 
@@ -1702,6 +1763,11 @@ public class UIKeyframes extends UIElement
     @Override
     protected boolean subKeyPressed(UIContext context)
     {
+        if (this.duplicateInteraction.handleKeyPressed(context))
+        {
+            return true;
+        }
+
         if (this.insertInteraction.handleKeyPressed(context))
         {
             return true;
@@ -1764,6 +1830,7 @@ public class UIKeyframes extends UIElement
 
         context.batcher.unclip(context);
 
+        this.duplicateInteraction.renderHint(context, this.area);
         this.insertInteraction.renderHint(context, this.area);
         this.interactionOverlay.renderHint(context, this.area);
     }
@@ -1818,6 +1885,7 @@ public class UIKeyframes extends UIElement
         this.lastX = mouseX;
         this.lastY = mouseY;
 
+        this.duplicateInteraction.updatePreview(this, context);
         this.insertInteraction.updatePreview(this, context);
     }
 
