@@ -70,6 +70,7 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 
 import org.joml.Matrix4f;
+import org.joml.Matrix4fStack;
 import org.joml.Quaternionf;
 import org.joml.Vector2d;
 import org.joml.Vector2i;
@@ -79,6 +80,7 @@ import org.joml.Vector4f;
 
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.systems.VertexSorter;
 
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
@@ -210,6 +212,8 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
     private final Matrix4f gizmoWorldMatrix = new Matrix4f();
     private final Vector3d gizmoCameraPosition = new Vector3d();
     private boolean hasGizmo;
+    private final Matrix4f capturedGizmoMatrix = new Matrix4f();
+    private final Matrix4f capturedProjection = new Matrix4f();
 
     private Set<ModelBlockEntity> toSave = new HashSet<>();
 
@@ -2010,6 +2014,58 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
                         border);
             }
         }
+
+        if (BBSRendering.isIrisShadersEnabled() && this.hasGizmo && this.modelBlock != null && !this.isEditing(this.modelBlock))
+        {
+            MinecraftClient mc = MinecraftClient.getInstance();
+            int previousFbo = GL11.glGetInteger(GL30.GL_DRAW_FRAMEBUFFER_BINDING);
+            int[] previousViewport = new int[4];
+
+            GL11.glGetIntegerv(GL11.GL_VIEWPORT, previousViewport);
+
+            this.gizmoStencil.setup(Link.bbs("stencil_model_block"));
+
+            Texture texture = this.gizmoStencil.getFramebuffer().getMainTexture();
+            int w = mc.getWindow().getWidth();
+            int h = mc.getWindow().getHeight();
+
+            if (texture.width != w || texture.height != h) {
+                this.gizmoStencil.resize(w, h);
+            }
+
+            this.gizmoStencilMap.setup();
+            this.gizmoStencil.apply();
+
+            MatrixStack stencilStack = new MatrixStack();
+            stencilStack.push();
+            stencilStack.peek().getPositionMatrix().set(this.capturedGizmoMatrix);
+            stencilStack.peek().getNormalMatrix().identity();
+
+            Matrix4f prevProjection = new Matrix4f(RenderSystem.getProjectionMatrix());
+            RenderSystem.setProjectionMatrix(this.capturedProjection, VertexSorter.BY_Z);
+
+            Matrix4fStack mvStack = RenderSystem.getModelViewStack();
+            mvStack.pushMatrix();
+            mvStack.identity();
+            RenderSystem.applyModelViewMatrix();
+
+            Gizmo.INSTANCE.renderStencil(stencilStack, this.gizmoStencilMap);
+
+            mvStack.popMatrix();
+            RenderSystem.applyModelViewMatrix();
+
+            RenderSystem.setProjectionMatrix(prevProjection, VertexSorter.BY_Z);
+
+            int mouseX = (int) mc.mouse.getX();
+            int mouseY = (int) mc.mouse.getY();
+
+            this.gizmoStencil.pick(mouseX, h - mouseY);
+            this.gizmoStencil.unbind(this.gizmoStencilMap);
+            this.gizmoController.updateHover();
+
+            GlStateManager._glBindFramebuffer(GL30.GL_FRAMEBUFFER, previousFbo);
+            GlStateManager._viewport(previousViewport[0], previousViewport[1], previousViewport[2], previousViewport[3]);
+        }
     }
 
     @Override
@@ -2110,42 +2166,52 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
          * on top in both cases (same approach as the film editor's in-world gizmos). */
         Gizmo.INSTANCE.deferRender(new Matrix4f(stack.peek().getPositionMatrix()), false, null);
 
-        /* Pick pass: gizmo handles only, into this panel's own offscreen stencil framebuffer
-         * (draw order is irrelevant offscreen). Whatever framebuffer was bound - vanilla's or
-         * Iris' - is restored afterwards so the world render continues untouched. */
-        int previousFbo = GL11.glGetInteger(GL30.GL_DRAW_FRAMEBUFFER_BINDING);
-        int[] previousViewport = new int[4];
-
-        GL11.glGetIntegerv(GL11.GL_VIEWPORT, previousViewport);
-
-        this.gizmoStencil.setup(Link.bbs("stencil_model_block"));
-
-        Texture texture = this.gizmoStencil.getFramebuffer().getMainTexture();
-        int w = mc.getWindow().getWidth();
-        int h = mc.getWindow().getHeight();
-
-        if (texture.width != w || texture.height != h) {
-            this.gizmoStencil.resize(w, h);
+        if (BBSRendering.isIrisShadersEnabled())
+        {
+            this.capturedGizmoMatrix.set(stack.peek().getPositionMatrix());
+            this.capturedProjection.set(RenderSystem.getProjectionMatrix());
         }
+        else
+        {
+            /* Pick pass: gizmo handles only, into this panel's own offscreen stencil framebuffer
+             * (draw order is irrelevant offscreen). Whatever framebuffer was bound - vanilla's or
+             * Iris' - is restored afterwards so the world render continues untouched. */
+            int previousFbo = GL11.glGetInteger(GL30.GL_DRAW_FRAMEBUFFER_BINDING);
+            int[] previousViewport = new int[4];
 
-        this.gizmoStencilMap.setup();
-        this.gizmoStencil.apply();
+            GL11.glGetIntegerv(GL11.GL_VIEWPORT, previousViewport);
 
-        Gizmo.INSTANCE.renderStencil(stack, this.gizmoStencilMap);
+            this.gizmoStencil.setup(Link.bbs("stencil_model_block"));
 
-        int mouseX = (int) mc.mouse.getX();
-        int mouseY = (int) mc.mouse.getY();
+            Texture texture = this.gizmoStencil.getFramebuffer().getMainTexture();
+            int w = mc.getWindow().getWidth();
+            int h = mc.getWindow().getHeight();
 
-        this.gizmoStencil.pick(mouseX, h - mouseY);
-        this.gizmoStencil.unbind(this.gizmoStencilMap);
-        this.gizmoController.updateHover();
+            if (texture.width != w || texture.height != h) {
+                this.gizmoStencil.resize(w, h);
+            }
 
-        GlStateManager._glBindFramebuffer(GL30.GL_FRAMEBUFFER, previousFbo);
-        GlStateManager._viewport(previousViewport[0], previousViewport[1], previousViewport[2], previousViewport[3]);
+            this.gizmoStencilMap.setup();
+            this.gizmoStencil.apply();
+
+            Gizmo.INSTANCE.renderStencil(stack, this.gizmoStencilMap);
+
+            int mouseX = (int) mc.mouse.getX();
+            int mouseY = (int) mc.mouse.getY();
+
+            this.gizmoStencil.pick(mouseX, h - mouseY);
+            this.gizmoStencil.unbind(this.gizmoStencilMap);
+            this.gizmoController.updateHover();
+
+            GlStateManager._glBindFramebuffer(GL30.GL_FRAMEBUFFER, previousFbo);
+            GlStateManager._viewport(previousViewport[0], previousViewport[1], previousViewport[2], previousViewport[3]);
+        }
 
         RenderSystem.enableDepthTest();
         stack.pop();
     }
+
+
 
     @Override
     public StencilFormFramebuffer getGizmoStencil() {
