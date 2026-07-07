@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.ui.utils;
 
 import mchorse.bbs_mod.BBSSettings;
+import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.graphics.Draw;
 import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
@@ -16,11 +17,13 @@ import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
 
 import org.joml.Matrix4f;
+import org.joml.Matrix4fStack;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.systems.VertexSorter;
 
 import org.lwjgl.opengl.GL11;
 
@@ -550,7 +553,23 @@ public class Gizmo
         RenderSystem.depthFunc(GL11.GL_ALWAYS);
         RenderSystem.depthMask(false);
 
+        Matrix4fStack mvStack = RenderSystem.getModelViewStack();
+        boolean resetModelView = BBSRendering.isIrisShadersEnabled();
+
+        if (resetModelView)
+        {
+            mvStack.pushMatrix();
+            mvStack.identity();
+            RenderSystem.applyModelViewMatrix();
+        }
+
         BufferRenderer.drawWithGlobalProgram(builder.end());
+
+        if (resetModelView)
+        {
+            mvStack.popMatrix();
+            RenderSystem.applyModelViewMatrix();
+        }
 
         RenderSystem.depthMask(true);
         RenderSystem.depthFunc(GL11.GL_LEQUAL);
@@ -588,7 +607,23 @@ public class Gizmo
         RenderSystem.disableDepthTest();
         RenderSystem.depthMask(false);
 
+        Matrix4fStack mvStack = RenderSystem.getModelViewStack();
+        boolean resetModelView = BBSRendering.isIrisShadersEnabled();
+
+        if (resetModelView)
+        {
+            mvStack.pushMatrix();
+            mvStack.identity();
+            RenderSystem.applyModelViewMatrix();
+        }
+
         BufferRenderer.drawWithGlobalProgram(builder.end());
+
+        if (resetModelView)
+        {
+            mvStack.popMatrix();
+            RenderSystem.applyModelViewMatrix();
+        }
 
         RenderSystem.depthMask(true);
         RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
