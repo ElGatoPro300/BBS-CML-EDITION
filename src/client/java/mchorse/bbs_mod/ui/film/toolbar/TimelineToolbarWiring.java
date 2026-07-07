@@ -374,7 +374,7 @@ public final class TimelineToolbarWiring
             return;
         }
 
-        parent.run(pasteAtTimeline);
+        parent.run(pasteAtCursor);
         parent.enabledIf(canPaste);
 
         bindInsertChild(parent, UIKeys.KEYFRAMES_CONTEXT_PASTE_AT_CURSOR, pasteAtCursor, canPaste);
