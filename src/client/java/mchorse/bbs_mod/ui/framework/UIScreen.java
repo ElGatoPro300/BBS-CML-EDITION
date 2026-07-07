@@ -7,6 +7,7 @@ import mchorse.bbs_mod.importers.ImporterContext;
 import mchorse.bbs_mod.importers.Importers;
 import mchorse.bbs_mod.importers.types.IImporter;
 import mchorse.bbs_mod.ui.UIKeys;
+import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.ui.utils.IFileDropListener;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.utils.FFMpegUtils;
@@ -17,6 +18,8 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.Text;
+
+import com.mojang.blaze3d.systems.RenderSystem;
 
 import org.lwjgl.glfw.GLFW;
 
