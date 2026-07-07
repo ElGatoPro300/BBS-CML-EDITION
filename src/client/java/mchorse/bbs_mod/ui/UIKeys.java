@@ -1440,6 +1440,7 @@ public class UIKeys
     public static final IKey TIMELINE_INTERACTION_DUPLICATE_CURSOR = L10n.lang("bbs.ui.timeline_toolbar.interaction.duplicate_cursor");
     public static final IKey TIMELINE_INTERACTION_DUPLICATE_TIMELINE = L10n.lang("bbs.ui.timeline_toolbar.interaction.duplicate_timeline");
     public static final IKey TIMELINE_INTERACTION_PASTE_CURSOR = L10n.lang("bbs.ui.timeline_toolbar.interaction.paste_cursor");
+    public static final IKey TIMELINE_INTERACTION_PASTE_TIMELINE = L10n.lang("bbs.ui.timeline_toolbar.interaction.paste_timeline");
     public static final IKey TIMELINE_INTERACTION_PLACE_CLIP = L10n.lang("bbs.ui.timeline_toolbar.interaction.place_clip");
     public static final IKey TIMELINE_INTERACTION_PLACE_REPLAY = L10n.lang("bbs.ui.timeline_toolbar.interaction.place_replay");
     public static final IKey TIMELINE_INTERACTION_PLACE_MICROPHONE = L10n.lang("bbs.ui.timeline_toolbar.interaction.place_microphone");

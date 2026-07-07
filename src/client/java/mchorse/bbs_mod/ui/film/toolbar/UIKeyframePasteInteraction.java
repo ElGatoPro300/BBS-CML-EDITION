@@ -74,6 +74,11 @@ public class UIKeyframePasteInteraction
 
     private float resolveAnchorTick(UIKeyframes keyframes, UIContext context)
     {
+        if (this.state.lockedTick >= 0)
+        {
+            return this.state.lockedTick;
+        }
+
         if (!keyframes.area.isInside(context))
         {
             return -1F;

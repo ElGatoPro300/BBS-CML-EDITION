@@ -873,12 +873,34 @@ public class UIKeyframes extends UIElement
 
     public void toolbarEnterPasteAtCursor()
     {
-        this.enterKeyframePaste(UIKeys.TIMELINE_INTERACTION_PASTE_CURSOR);
+        this.enterKeyframePaste(KeyframePasteInteractionState.atCursor(
+            UIKeys.TIMELINE_INTERACTION_PASTE_CURSOR));
     }
 
     public void toolbarPasteAtTimeline()
     {
-        this.toolbarPaste();
+        this.toolbarEnterPasteAtTimeline();
+    }
+
+    public void toolbarEnterPasteAtTimeline()
+    {
+        if (!this.isModifyingKeyframes() || !this.canToolbarPaste())
+        {
+            return;
+        }
+
+        int tick = this instanceof UIFilmKeyframes filmKeyframes ? filmKeyframes.getOffset() : 0;
+        Map<String, PastedKeyframes> clipboard = this.getClipboardKeyframes();
+
+        if (clipboard.size() > 1)
+        {
+            this.pasteClipboardAt(tick, this.getToolbarPasteMouseY());
+
+            return;
+        }
+
+        this.enterKeyframePaste(KeyframePasteInteractionState.atPlayhead(
+            UIKeys.TIMELINE_INTERACTION_PASTE_TIMELINE, tick));
     }
 
     public void toolbarOpenPresets()
@@ -984,9 +1006,9 @@ public class UIKeyframes extends UIElement
         return this.pasteInteraction.isActive();
     }
 
-    public void enterKeyframePaste(IKey hint)
+    public void enterKeyframePaste(KeyframePasteInteractionState state)
     {
-        if (!this.canToolbarPaste())
+        if (!this.isModifyingKeyframes() || !this.canToolbarPaste())
         {
             return;
         }
@@ -994,7 +1016,7 @@ public class UIKeyframes extends UIElement
         this.insertInteraction.cancel();
         this.duplicateInteraction.cancel();
         this.interactionOverlay.cancel();
-        this.pasteInteraction.enter(new KeyframePasteInteractionState(hint));
+        this.pasteInteraction.enter(state);
     }
 
     public void cancelKeyframePaste()
