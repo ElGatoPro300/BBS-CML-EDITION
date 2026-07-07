@@ -1528,6 +1528,7 @@ public class UIFilmController extends UIElement
 
         this.stencil.pick(x, y);
         this.stencil.unbind(this.stencilMap);
+        this.panel.replayEditor.updateGizmoHover();
 
         MinecraftClient.getInstance().getFramebuffer().beginWrite(true);
     }

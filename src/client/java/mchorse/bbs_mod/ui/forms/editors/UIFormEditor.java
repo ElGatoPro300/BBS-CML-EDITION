@@ -67,6 +67,7 @@ import mchorse.bbs_mod.ui.utils.StencilFormFramebuffer;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
+import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.pose.UIPoseEditor;
 import mchorse.bbs_mod.ui.utils.presets.UICopyPasteController;
@@ -75,10 +76,13 @@ import mchorse.bbs_mod.utils.CollectionUtils;
 import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.Pair;
+import mchorse.bbs_mod.utils.StringUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.presets.PresetManager;
 
 import org.joml.Matrix4f;
+import org.joml.Vector3f;
+import org.joml.Vector4f;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -125,6 +129,19 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
     public UIIcon toggleSidebar;
     public UIIcon openStateEditor;
     public UIIcon openModelEditor;
+
+    /* Gizmo mode toolbar (mirrors the film viewport's transform-mode buttons, plus a toggle
+     * that routes gizmo drags into the selected body part's transform instead of the bone pose) */
+    public UIElement gizmoToolbar;
+    public UIIcon gizmoBodyPart;
+    public UIIcon gizmoTransform;
+    public UIIcon gizmoMove;
+    public UIIcon gizmoScale;
+    public UIIcon gizmoRotate;
+    public UIIcon gizmoCombined;
+
+    private boolean gizmoTargetsBodyPart;
+    private boolean gizmoTargetsTransform;
 
     public Form form;
 
@@ -295,8 +312,64 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
 
         draggable.relative(this.forms).x(1F).y(0.5F).w(6).h(40).anchor(0.5F, 0.5F);
 
+        /* Gizmo mode toolbar */
+        this.gizmoBodyPart = new UIIcon(Icons.LIMB, (b) ->
+        {
+            this.gizmoTargetsBodyPart = !this.gizmoTargetsBodyPart;
+
+            if (this.gizmoTargetsBodyPart)
+            {
+                this.gizmoTargetsTransform = false;
+            }
+
+            UIUtils.playClick();
+        });
+        this.gizmoBodyPart.tooltip(UIKeys.FILM_GIZMO_BODY_PART);
+        this.gizmoBodyPart.activeBackground(Colors.A50 | Colors.BLUE);
+        this.gizmoTransform = new UIIcon(Icons.POSE, (b) ->
+        {
+            this.gizmoTargetsTransform = !this.gizmoTargetsTransform;
+
+            if (this.gizmoTargetsTransform)
+            {
+                this.gizmoTargetsBodyPart = false;
+
+                if (this.editor != null)
+                {
+                    /* Opens the General panel (the one holding the form's transform numbers)
+                     * so the values the gizmo is about to drive are immediately visible. */
+                    this.editor.getEditableTransform();
+                }
+            }
+
+            UIUtils.playClick();
+        });
+        this.gizmoTransform.tooltip(UIKeys.FILM_GIZMO_TRANSFORM);
+        this.gizmoTransform.activeBackground(Colors.A50 | Colors.BLUE);
+        this.gizmoMove = this.createGizmoModeButton(Icons.ALL_DIRECTIONS, Gizmo.Mode.TRANSLATE, UIKeys.FILM_GIZMO_MOVE);
+        this.gizmoScale = this.createGizmoModeButton(Icons.SCALE, Gizmo.Mode.SCALE, UIKeys.FILM_GIZMO_SCALE);
+        this.gizmoRotate = this.createGizmoModeButton(Icons.ARC, Gizmo.Mode.ROTATE, UIKeys.FILM_GIZMO_ROTATE);
+        this.gizmoCombined = this.createGizmoModeButton(Icons.SHAPES, Gizmo.Mode.COMBINED, UIKeys.FILM_GIZMO_COMBINED);
+
+        UIRenderable toolbarBackground = new UIRenderable((context) ->
+        {
+            this.gizmoToolbar.area.render(context.batcher, Colors.A75);
+
+            Gizmo.Mode gizmoMode = Gizmo.INSTANCE.getMode();
+
+            this.gizmoBodyPart.active(this.gizmoTargetsBodyPart);
+            this.gizmoTransform.active(this.gizmoTargetsTransform);
+            this.gizmoMove.active(gizmoMode == Gizmo.Mode.TRANSLATE);
+            this.gizmoScale.active(gizmoMode == Gizmo.Mode.SCALE);
+            this.gizmoRotate.active(gizmoMode == Gizmo.Mode.ROTATE);
+            this.gizmoCombined.active(gizmoMode == Gizmo.Mode.COMBINED);
+        });
+
+        this.gizmoToolbar = UI.row(0, this.gizmoBodyPart, this.gizmoTransform, this.gizmoMove, this.gizmoScale, this.gizmoRotate, this.gizmoCombined);
+        this.gizmoToolbar.relative(this).x(0.5F).y(4).wh(120, 20).anchorX(0.5F);
+
         this.forms.add(background, this.formsList, this.bodyPartEditor, draggable);
-        this.formEditor.add(this.forms);
+        this.formEditor.add(this.forms, toolbarBackground, this.gizmoToolbar);
         this.statesEditor.add(backgroundStates, this.openStates, this.plause, this.shiftDuration, this.statesKeyframes);
         this.add(this.renderer, this.formEditor, this.statesEditor, this.modelSettingsEditor, this.icons);
 
@@ -342,10 +415,9 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
 
             if (pair != null)
             {
-                UIPropTransform editableTransform = this.editor.getEditableTransform();
-                this.renderer.prepareGizmoDrag(editableTransform);
+                UIPropTransform editableTransform = this.getGizmoDragTransform();
 
-                if (Gizmo.INSTANCE.start(stencil.getIndex(), context.mouseX, context.mouseY, editableTransform))
+                if (this.renderer.getGizmoController().tryStartHandleDrag(context, editableTransform))
                 {
                     return true;
                 }
@@ -357,6 +429,122 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
         }
 
         return false;
+    }
+
+    /** Which transform the gizmo should drag: the selected body part's transform when the
+     *  toolbar's body-part toggle is on (and a body part is selected), the form's own general
+     *  transform when the toolbar's transform toggle is on, the form/bone pose transform
+     *  otherwise. */
+    private UIPropTransform getGizmoDragTransform()
+    {
+        if (this.gizmoTargetsBodyPart && this.bodyPartEditor != null && this.bodyPartEditor.getPart() != null)
+        {
+            return this.bodyPartEditor.transform;
+        }
+
+        if (this.gizmoTargetsTransform && this.editor != null)
+        {
+            return this.editor.getEditableTransform();
+        }
+
+        if (this.modelSettingsEditor != null && this.modelSettingsEditor.isVisible())
+        {
+            UIPoseEditor poseEditor = this.modelSettingsEditor.getPoseEditor();
+
+            if (poseEditor != null)
+            {
+                return poseEditor.transform;
+            }
+        }
+
+        return this.editor == null ? null : this.editor.getEditableTransform();
+    }
+
+    /** Finds the world matrix of the selected body part's attach point (its bone's matrix,
+     *  the part's own transform, and its own form root all composed together), i.e. exactly
+     *  the point the part rotates/scales around - so the gizmo lands where the part is actually
+     *  attached (e.g. on another model's head) instead of wherever the pose bone gizmo happens
+     *  to be. Returns null if it can't be resolved, so the caller can fall back. */
+    private Matrix4f getBodyPartOrigin(float transition)
+    {
+        BodyPart part = this.bodyPartEditor == null ? null : this.bodyPartEditor.getPart();
+        BodyPartManager manager = part == null ? null : part.getManager();
+        Form owner = manager == null ? null : manager.getOwner();
+
+        if (owner == null || this.editor == null)
+        {
+            return null;
+        }
+
+        int index = owner.parts.getAllTyped().indexOf(part);
+
+        if (index < 0)
+        {
+            return null;
+        }
+
+        String path = StringUtils.combinePaths(FormUtils.getPath(owner), String.valueOf(index));
+
+        return normalizeOriginBasis(this.editor.getOrigin(transition, path, this.bodyPartEditor.transform.isLocal()));
+    }
+
+    /** Strips scale/skew/mirroring out of a gizmo origin matrix, leaving only position and a
+     *  right-handed unit-length rotation basis. Body part attach matrices carry the model
+     *  chain's scale (and .bobj armatures can carry mirrored axes); feeding those raw into the
+     *  gizmo distorts its rings into ellipses and skews the drag math - the rotation sweep arc
+     *  runs ahead of the mouse and clicking a ring can kick the value by a large arbitrary
+     *  amount. */
+    private static Matrix4f normalizeOriginBasis(Matrix4f matrix)
+    {
+        if (matrix == null)
+        {
+            return null;
+        }
+
+        Vector3f x = new Vector3f();
+        Vector3f y = new Vector3f();
+        Vector3f z = new Vector3f();
+
+        matrix.getColumn(0, x);
+        matrix.getColumn(1, y);
+        matrix.getColumn(2, z);
+
+        if (x.lengthSquared() < 1.0E-12F || y.lengthSquared() < 1.0E-12F)
+        {
+            return matrix;
+        }
+
+        x.normalize();
+        y.normalize();
+
+        /* Rebuild Z (and re-square Y) from a cross product so the basis is orthogonal and
+         * always right-handed, even if the source matrix was mirrored. */
+        z.set(x).cross(y).normalize();
+        y.set(z).cross(x).normalize();
+
+        Matrix4f result = new Matrix4f(matrix);
+
+        result.setColumn(0, new Vector4f(x, 0F));
+        result.setColumn(1, new Vector4f(y, 0F));
+        result.setColumn(2, new Vector4f(z, 0F));
+
+        return result;
+    }
+
+    /* Build a single gizmo transform-mode button that selects its mode and highlights while
+       that mode is active (same behavior as the film viewport's buttons). */
+    private UIIcon createGizmoModeButton(Icon icon, Gizmo.Mode mode, IKey tooltip)
+    {
+        UIIcon button = new UIIcon(icon, (b) ->
+        {
+            Gizmo.INSTANCE.setMode(mode);
+            UIUtils.playClick();
+        });
+
+        button.tooltip(tooltip);
+        button.activeBackground(Colors.A50 | Colors.BLUE);
+
+        return button;
     }
 
     public void pickFormFromRenderer(Pair<Form, String> pair)
@@ -798,12 +986,12 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
 
     public void undo()
     {
-        if (this.form != null && this.undoHandler.getUndoManager().undo(this.form)) UIUtils.playClick();
+        if (this.form != null && this.undoHandler.applyUndo(this.form)) UIUtils.playClick();
     }
 
     public void redo()
     {
-        if (this.form != null && this.undoHandler.getUndoManager().redo(this.form)) UIUtils.playClick();
+        if (this.form != null && this.undoHandler.applyRedo(this.form)) UIUtils.playClick();
     }
 
     public void refreshFormList()
@@ -983,6 +1171,24 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
 
     public Matrix4f getOrigin(float transition)
     {
+        if (this.gizmoTargetsBodyPart && this.bodyPartEditor != null && this.bodyPartEditor.getPart() != null)
+        {
+            Matrix4f bodyPartOrigin = this.getBodyPartOrigin(transition);
+
+            if (bodyPartOrigin != null)
+            {
+                return bodyPartOrigin;
+            }
+        }
+
+        if (this.gizmoTargetsTransform && this.editor != null && this.editor.form != null)
+        {
+            /* "#origin" makes UIForm.getOrigin() return the form's own pivot (entry.origin()),
+             * i.e. the point its own transform rotates/scales around, ignoring any pose bone -
+             * exactly the model's bottom/pivot the transform panel's numbers apply to. */
+            return this.editor.getOrigin(transition, FormUtils.getPath(this.editor.form) + "#origin", false);
+        }
+
         if (this.modelSettingsEditor != null && this.modelSettingsEditor.isVisible())
         {
             UIPoseEditor poseEditor = this.modelSettingsEditor.getPoseEditor();

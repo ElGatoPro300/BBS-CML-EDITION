@@ -181,6 +181,121 @@ public class Draw
     }
 
     /**
+     * Draws a solid cone (with a capped base) between two points, used for the tapered
+     * arrow tips on gizmo translate handles. The base circle is perpendicular to the
+     * apex-to-base direction, so it works for any axis without extra stack rotation.
+     */
+    public static void cone(BufferBuilder builder, MatrixStack stack, float apexX, float apexY, float apexZ, float baseX, float baseY, float baseZ, float radius, int segments, float r, float g, float b, float a)
+    {
+        Matrix4f mat = stack.peek().getPositionMatrix();
+
+        float dx = baseX - apexX;
+        float dy = baseY - apexY;
+        float dz = baseZ - apexZ;
+        float len = (float) Math.sqrt(dx * dx + dy * dy + dz * dz);
+
+        if (len < 1.0E-6F)
+        {
+            return;
+        }
+
+        dx /= len;
+        dy /= len;
+        dz /= len;
+
+        float upx = 0F;
+        float upy = 1F;
+        float upz = 0F;
+
+        if (Math.abs(dy) > 0.99F)
+        {
+            upx = 1F;
+            upy = 0F;
+            upz = 0F;
+        }
+
+        float rx = dy * upz - dz * upy;
+        float ry = dz * upx - dx * upz;
+        float rz = dx * upy - dy * upx;
+        float rl = (float) Math.sqrt(rx * rx + ry * ry + rz * rz);
+
+        rx /= rl;
+        ry /= rl;
+        rz /= rl;
+
+        float ux = ry * dz - rz * dy;
+        float uy = rz * dx - rx * dz;
+        float uz = rx * dy - ry * dx;
+
+        for (int i = 0; i < segments; i++)
+        {
+            double a1 = Math.PI * 2D * i / segments;
+            double a2 = Math.PI * 2D * (i + 1) / segments;
+
+            float x1 = baseX + (float) (rx * Math.cos(a1) + ux * Math.sin(a1)) * radius;
+            float y1 = baseY + (float) (ry * Math.cos(a1) + uy * Math.sin(a1)) * radius;
+            float z1 = baseZ + (float) (rz * Math.cos(a1) + uz * Math.sin(a1)) * radius;
+
+            float x2 = baseX + (float) (rx * Math.cos(a2) + ux * Math.sin(a2)) * radius;
+            float y2 = baseY + (float) (ry * Math.cos(a2) + uy * Math.sin(a2)) * radius;
+            float z2 = baseZ + (float) (rz * Math.cos(a2) + uz * Math.sin(a2)) * radius;
+
+            builder.vertex(mat, apexX, apexY, apexZ).color(r, g, b, a);
+            builder.vertex(mat, x1, y1, z1).color(r, g, b, a);
+            builder.vertex(mat, x2, y2, z2).color(r, g, b, a);
+
+            builder.vertex(mat, x1, y1, z1).color(r, g, b, a);
+            builder.vertex(mat, baseX, baseY, baseZ).color(r, g, b, a);
+            builder.vertex(mat, x2, y2, z2).color(r, g, b, a);
+        }
+    }
+
+    /**
+     * Draws a standard UV sphere centered at the local origin, used for the invisible
+     * free-rotate trackball hit volume (and its stencil id encoding).
+     */
+    public static void sphere(BufferBuilder builder, MatrixStack stack, float radius, int rings, int sectors, float r, float g, float b, float a)
+    {
+        Matrix4f mat = stack.peek().getPositionMatrix();
+
+        for (int i = 0; i < rings; i++)
+        {
+            double v1 = Math.PI * i / rings;
+            double v2 = Math.PI * (i + 1) / rings;
+
+            for (int j = 0; j < sectors; j++)
+            {
+                double u1 = Math.PI * 2D * j / sectors;
+                double u2 = Math.PI * 2D * (j + 1) / sectors;
+
+                float x11 = (float) (Math.sin(v1) * Math.cos(u1) * radius);
+                float y11 = (float) (Math.cos(v1) * radius);
+                float z11 = (float) (Math.sin(v1) * Math.sin(u1) * radius);
+
+                float x12 = (float) (Math.sin(v2) * Math.cos(u1) * radius);
+                float y12 = (float) (Math.cos(v2) * radius);
+                float z12 = (float) (Math.sin(v2) * Math.sin(u1) * radius);
+
+                float x21 = (float) (Math.sin(v1) * Math.cos(u2) * radius);
+                float y21 = y11;
+                float z21 = (float) (Math.sin(v1) * Math.sin(u2) * radius);
+
+                float x22 = (float) (Math.sin(v2) * Math.cos(u2) * radius);
+                float y22 = y12;
+                float z22 = (float) (Math.sin(v2) * Math.sin(u2) * radius);
+
+                builder.vertex(mat, x11, y11, z11).color(r, g, b, a);
+                builder.vertex(mat, x12, y12, z12).color(r, g, b, a);
+                builder.vertex(mat, x22, y22, z22).color(r, g, b, a);
+
+                builder.vertex(mat, x11, y11, z11).color(r, g, b, a);
+                builder.vertex(mat, x22, y22, z22).color(r, g, b, a);
+                builder.vertex(mat, x21, y21, z21).color(r, g, b, a);
+            }
+        }
+    }
+
+    /**
      * Based on ElGatoPro300's code from BBS mod CML edition
      */
     public static void arc3D(BufferBuilder builder, MatrixStack stack, Axis axis, float radius, float thickness, float r, float g, float b, float startDeg, float sweepDeg)

@@ -83,9 +83,18 @@ public class UIValueMap
         {
             if (value == BBSSettings.userIntefaceScale)
             {
-                UITrackpad trackpad = new UITrackpad((v) -> value.set(BBSSettings.getUIScaleFactorFromStep(v.intValue())));
-                trackpad.integer().limit(1, 3).w(90);
-                trackpad.setValue(BBSSettings.getUIScaleStep());
+                UITrackpad trackpad = UIValueFactory.floatUI(value, (v) -> BBSModClient.applyUIScaleLive());
+
+                trackpad.limit(0.1F, 4F).w(90);
+
+                return Arrays.asList(UIValueFactory.column(trackpad, value));
+            }
+
+            if (value == BBSSettings.modelEditorHoverOpacity)
+            {
+                UITrackpad trackpad = UIValueFactory.floatUI(value, (v) -> BBSModClient.applyModelEditorHoverLive());
+
+                trackpad.w(90);
 
                 return Arrays.asList(UIValueFactory.column(trackpad, value));
             }
@@ -213,7 +222,11 @@ public class UIValueMap
 
             if (value.getSubtype() == ValueInt.Subtype.COLOR || value.getSubtype() == ValueInt.Subtype.COLOR_ALPHA)
             {
-                UIColor color = UIValueFactory.colorUI(value, null);
+                /* Hover highlight color should take effect the moment it's changed, without
+                 * requiring Apply/reload (the renderer reads the "applied" snapshot). */
+                UIColor color = value == BBSSettings.modelEditorHoverColor
+                    ? UIValueFactory.colorUI(value, (c) -> BBSModClient.applyModelEditorHoverLive())
+                    : UIValueFactory.colorUI(value, null);
 
                 color.w(90);
 
