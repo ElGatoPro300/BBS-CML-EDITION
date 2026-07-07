@@ -13,6 +13,7 @@ import mchorse.bbs_mod.ui.film.UIClips;
 import mchorse.bbs_mod.ui.film.UIClipsPanel;
 import mchorse.bbs_mod.ui.film.replays.UIReplaysEditor;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
+import mchorse.bbs_mod.ui.film.utils.keyframes.UIFilmKeyframes;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframes;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.keys.KeyCombo;
@@ -325,12 +326,82 @@ public final class TimelineToolbarWiring
 
     /* Keyframe timeline overlays / submenus (Phase 2c) */
 
+    private static void wireInsertKeyframeSubmenu(TimelineToolbar toolbar, BooleanSupplier canModify,
+        BooleanSupplier canColumnInsert, Runnable insertAtTimeline, Runnable enterColumnAtCursor,
+        Runnable enterSingleAtTimeline, Runnable enterSingleAtCursor)
+    {
+        ToolbarItem parent = findLabelInSections(toolbar.getSections(), UIKeys.FILM_CONTROLLER_KEYS_INSERT_FRAME);
+
+        if (parent == null)
+        {
+            return;
+        }
+
+        parent.run(insertAtTimeline);
+        parent.enabledIf(canModify);
+
+        bindInsertChild(parent, UIKeys.KEYFRAMES_INSERT_AT_TIMELINE, insertAtTimeline, canColumnInsert);
+        bindInsertChild(parent, UIKeys.KEYFRAMES_INSERT_AT_CURSOR, enterColumnAtCursor, canColumnInsert);
+        bindInsertChild(parent, UIKeys.KEYFRAMES_INSERT_SINGLE_AT_TIMELINE, enterSingleAtTimeline, canModify);
+        bindInsertChild(parent, UIKeys.KEYFRAMES_INSERT_SINGLE_AT_CURSOR, enterSingleAtCursor, canModify);
+    }
+
+    private static void bindInsertChild(ToolbarItem parent, IKey label, Runnable runnable,
+        BooleanSupplier enabled)
+    {
+        for (ToolbarItem child : parent.children)
+        {
+            if (child.separator)
+            {
+                continue;
+            }
+
+            if (child.label == label)
+            {
+                apply(child, runnable, enabled);
+
+                return;
+            }
+        }
+    }
+
     private static void wireKeyframesAdd(UIKeyframes keyframes, TimelineToolbar toolbar)
     {
         BooleanSupplier canModify = keyframes::isModifyingKeyframes;
         BooleanSupplier hasSelected = () -> canModify.getAsBoolean() && keyframes.hasSelectedKeyframes();
+        BooleanSupplier canColumnInsert = () -> false;
 
-        bindLabel(toolbar, UIKeys.KEYFRAMES_CONTEXT_INSERT_AT_CURSOR, keyframes::toolbarInsertAtCursor, canModify);
+        wireInsertKeyframeSubmenu(toolbar, canModify, canColumnInsert,
+            () -> {},
+            () -> {},
+            () ->
+            {
+                int tick = keyframes instanceof UIFilmKeyframes filmKeyframes ? filmKeyframes.getOffset() : 0;
+
+                keyframes.enterKeyframeInsert(KeyframeInsertInteractionState.individualAtPlayhead(
+                    UIKeys.TIMELINE_INTERACTION_INSERT_KEYFRAME_SINGLE_TIMELINE,
+                    tick,
+                    keyframes::toolbarInsertIndividual));
+            },
+            () -> keyframes.enterKeyframeInsert(KeyframeInsertInteractionState.individualAtCursor(
+                UIKeys.TIMELINE_INTERACTION_INSERT_KEYFRAME_SINGLE_CURSOR,
+                keyframes::toolbarInsertIndividual)));
+
+        ToolbarItem parent = findLabelInSections(toolbar.getSections(), UIKeys.FILM_CONTROLLER_KEYS_INSERT_FRAME);
+
+        if (parent != null)
+        {
+            parent.run(() ->
+            {
+                int tick = keyframes instanceof UIFilmKeyframes filmKeyframes ? filmKeyframes.getOffset() : 0;
+
+                keyframes.enterKeyframeInsert(KeyframeInsertInteractionState.individualAtPlayhead(
+                    UIKeys.TIMELINE_INTERACTION_INSERT_KEYFRAME_SINGLE_TIMELINE,
+                    tick,
+                    keyframes::toolbarInsertIndividual));
+            });
+        }
+
         bindLabel(toolbar, UIKeys.KEYFRAMES_CONTEXT_DUPLICATE_AT_CURSOR, keyframes::toolbarDuplicateAtCursor, hasSelected);
         bindLabel(toolbar, UIKeys.KEYFRAMES_KEYS_SELECT_COLUMN, keyframes::toolbarSelectColumn, canModify);
     }
@@ -340,16 +411,16 @@ public final class TimelineToolbarWiring
         BooleanSupplier hasEditor = () -> editor.keyframeEditor != null;
         BooleanSupplier canModify = () -> hasEditor.getAsBoolean()
             && editor.keyframeEditor.view.isModifyingKeyframes();
+        BooleanSupplier canColumnInsert = editor::canToolbarInsertKeyframeColumn;
         BooleanSupplier hasSelected = () -> canModify.getAsBoolean()
             && editor.keyframeEditor.view.hasSelectedKeyframes();
 
-        bindLabel(toolbar, UIKeys.KEYFRAMES_CONTEXT_INSERT_AT_CURSOR, () ->
-        {
-            if (editor.keyframeEditor != null)
-            {
-                editor.keyframeEditor.view.toolbarInsertAtCursor();
-            }
-        }, canModify);
+        wireInsertKeyframeSubmenu(toolbar, canModify, canColumnInsert,
+            editor::toolbarInsertKeyframeAtTimeline,
+            editor::toolbarEnterInsertColumnAtCursor,
+            editor::toolbarEnterInsertSingleAtTimeline,
+            editor::toolbarEnterInsertSingleAtCursor);
+
         bindLabel(toolbar, UIKeys.KEYFRAMES_CONTEXT_DUPLICATE_AT_CURSOR, () ->
         {
             if (editor.keyframeEditor != null)

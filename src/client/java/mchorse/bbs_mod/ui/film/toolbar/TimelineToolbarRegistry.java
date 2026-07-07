@@ -262,8 +262,21 @@ public final class TimelineToolbarRegistry
     {
         ToolbarSection s = new ToolbarSection(UIKeys.TIMELINE_TOOLBAR_ADD, Icons.ADD);
 
-        s.add(ToolbarItem.action(UIKeys.KEYFRAMES_CONTEXT_INSERT_AT_CURSOR)
-            .icon(Icons.ADD));
+        ToolbarItem insertKeyframe = ToolbarItem.submenu(UIKeys.FILM_CONTROLLER_KEYS_INSERT_FRAME,
+            ToolbarItem.action(UIKeys.KEYFRAMES_INSERT_AT_TIMELINE)
+                .icon(Icons.ADD)
+                .shortcut(Keys.FILM_CONTROLLER_INSERT_FRAME),
+            ToolbarItem.action(UIKeys.KEYFRAMES_INSERT_AT_CURSOR)
+                .icon(Icons.CURSOR),
+            ToolbarItem.separator(),
+            ToolbarItem.action(UIKeys.KEYFRAMES_INSERT_SINGLE_AT_TIMELINE)
+                .icon(Icons.ADD),
+            ToolbarItem.action(UIKeys.KEYFRAMES_INSERT_SINGLE_AT_CURSOR)
+                .icon(Icons.POINTER)
+                .shortcut(Keys.KEYFRAMES_INSERT_INDIVIDUAL)
+        ).icon(Icons.ADD).shortcut(Keys.FILM_CONTROLLER_INSERT_FRAME);
+
+        s.add(insertKeyframe);
         s.add(ToolbarItem.action(UIKeys.KEYFRAMES_CONTEXT_DUPLICATE_AT_CURSOR)
             .icon(Icons.COPY));
         s.add(ToolbarItem.separator());

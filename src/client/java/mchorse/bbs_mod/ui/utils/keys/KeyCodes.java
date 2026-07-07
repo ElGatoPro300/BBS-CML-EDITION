@@ -161,6 +161,11 @@ public class KeyCodes
                 return "F" + (keyCode - 289);
             }
 
+            if (keyCode == 0)
+            {
+                return "Click";
+            }
+
             name = "Key " + keyCode;
         }
 

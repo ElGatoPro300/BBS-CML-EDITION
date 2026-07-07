@@ -14,6 +14,8 @@ import mchorse.bbs_mod.ui.film.toolbar.TimelineInteractionState;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarPointerBlock;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineTrackEligibility;
 import mchorse.bbs_mod.ui.film.toolbar.UIInteractionModeOverlay;
+import mchorse.bbs_mod.ui.film.toolbar.UIKeyframeInsertInteraction;
+import mchorse.bbs_mod.ui.film.toolbar.KeyframeInsertInteractionState;
 import mchorse.bbs_mod.ui.film.utils.keyframes.UIFilmKeyframes;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
@@ -101,6 +103,7 @@ public class UIKeyframes extends UIElement
     private UICopyPasteController copyPasteController;
     private UIDraggable sidebarResizer;
     private final UIInteractionModeOverlay interactionOverlay = new UIInteractionModeOverlay();
+    private final UIKeyframeInsertInteraction insertInteraction = new UIKeyframeInsertInteraction();
 
     public UIKeyframes(Consumer<Keyframe> callback)
     {
@@ -119,7 +122,7 @@ public class UIKeyframes extends UIElement
         /* Context menu items */
         this.context((menu) ->
         {
-            if (this.interactionOverlay.isActive())
+            if (this.interactionOverlay.isActive() || this.insertInteraction.isActive())
             {
                 return;
             }
@@ -855,14 +858,34 @@ public class UIKeyframes extends UIElement
         }
     }
 
-    public void toolbarInsertAtCursor()
+    public void toolbarInsertIndividual(UIKeyframeSheet sheet, float tick)
     {
-        if (!this.isModifyingKeyframes())
+        if (!this.isModifyingKeyframes() || sheet == null || sheet.groupHeader)
         {
             return;
         }
 
-        this.currentGraph.addKeyframe(this.getToolbarPasteGraphX(), this.getToolbarPasteMouseY());
+        Keyframe keyframe = this.currentGraph.addKeyframe(sheet, tick, null);
+
+        if (keyframe != null)
+        {
+            this.currentGraph.selectKeyframe(keyframe);
+        }
+    }
+
+    public void enterKeyframeInsert(KeyframeInsertInteractionState state)
+    {
+        this.insertInteraction.enter(state);
+    }
+
+    public void cancelKeyframeInsert()
+    {
+        this.insertInteraction.cancel();
+    }
+
+    public boolean isKeyframeInsertActive()
+    {
+        return this.insertInteraction.isActive();
     }
 
     public void toolbarDuplicateAtCursor()
@@ -955,6 +978,7 @@ public class UIKeyframes extends UIElement
     public void cancelTrackInteraction()
     {
         this.interactionOverlay.cancel();
+        this.insertInteraction.cancel();
     }
 
     public boolean isTrackInteractionActive()
@@ -1460,6 +1484,11 @@ public class UIKeyframes extends UIElement
     @Override
     protected boolean subMouseClicked(UIContext context)
     {
+        if (this.insertInteraction.handleMouseClicked(this, context))
+        {
+            return true;
+        }
+
         if (this.interactionOverlay.handleMouseClicked(this, context))
         {
             return true;
@@ -1621,6 +1650,11 @@ public class UIKeyframes extends UIElement
     @Override
     protected boolean subMouseScrolled(UIContext context)
     {
+        if (this.insertInteraction.isActive() && this.area.isInside(context))
+        {
+            return true;
+        }
+
         if (this.interactionOverlay.isActive() && this.area.isInside(context))
         {
             return true;
@@ -1647,6 +1681,11 @@ public class UIKeyframes extends UIElement
     @Override
     protected boolean subKeyPressed(UIContext context)
     {
+        if (this.insertInteraction.handleKeyPressed(context))
+        {
+            return true;
+        }
+
         if (this.interactionOverlay.handleKeyPressed(context))
         {
             return true;
@@ -1704,6 +1743,8 @@ public class UIKeyframes extends UIElement
 
         context.batcher.unclip(context);
 
+        this.insertInteraction.renderPreviews(this, context);
+        this.insertInteraction.renderHint(context, this.area);
         this.interactionOverlay.renderHint(context, this.area);
     }
 
@@ -1756,6 +1797,8 @@ public class UIKeyframes extends UIElement
 
         this.lastX = mouseX;
         this.lastY = mouseY;
+
+        this.insertInteraction.updatePreview(this, context);
     }
 
     protected void moveNoKeyframes(UIContext context)

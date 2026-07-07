@@ -44,6 +44,7 @@ import mchorse.bbs_mod.ui.film.replays.overlays.UIAnimationToPoseOverlayPanel;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIKeyframeSheetFilterOverlayPanel;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIRenameSheetOverlayPanel;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIReplaysOverlayPanel;
+import mchorse.bbs_mod.ui.film.toolbar.KeyframeInsertInteractionState;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbar;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarRegistry;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarSettings;
@@ -68,6 +69,7 @@ import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.ui.utils.Scale;
 import mchorse.bbs_mod.ui.utils.StencilFormFramebuffer;
+import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
@@ -1116,6 +1118,84 @@ public class UIReplaysEditor extends UIElement
             this.replay.keyframes.y.insert(cursor, y);
             this.replay.keyframes.z.insert(cursor, z);
         }
+    }
+
+    public void insertKeyframeColumn(int tick)
+    {
+        Replay replay = this.getReplay();
+        IEntity entity = this.filmPanel.getController().getCurrentEntity();
+
+        if (replay == null || entity == null)
+        {
+            return;
+        }
+
+        List<String> groups = Arrays.asList(ReplayKeyframes.GROUP_POSITION, ReplayKeyframes.GROUP_ROTATION);
+
+        BaseValue.edit(replay.keyframes, (keyframes) ->
+        {
+            keyframes.record(tick, entity, groups);
+        });
+    }
+
+    public void toolbarInsertKeyframeAtTimeline()
+    {
+        if (this.keyframeEditor == null)
+        {
+            return;
+        }
+
+        this.insertKeyframeColumn(this.filmPanel.getCursor());
+        UIUtils.playClick();
+    }
+
+    public void toolbarEnterInsertColumnAtCursor()
+    {
+        if (this.keyframeEditor == null)
+        {
+            return;
+        }
+
+        this.keyframeEditor.view.enterKeyframeInsert(KeyframeInsertInteractionState.columnAtCursor(
+            UIKeys.TIMELINE_INTERACTION_INSERT_KEYFRAME_COLUMN_CURSOR,
+            this::insertKeyframeColumn));
+    }
+
+    public void toolbarEnterInsertSingleAtTimeline()
+    {
+        if (this.keyframeEditor == null)
+        {
+            return;
+        }
+
+        int tick = this.filmPanel.getCursor();
+
+        this.keyframeEditor.view.enterKeyframeInsert(KeyframeInsertInteractionState.individualAtPlayhead(
+            UIKeys.TIMELINE_INTERACTION_INSERT_KEYFRAME_SINGLE_TIMELINE,
+            tick,
+            (sheet, keyframeTick) -> this.keyframeEditor.view.toolbarInsertIndividual(sheet, keyframeTick)));
+    }
+
+    public void toolbarEnterInsertSingleAtCursor()
+    {
+        if (this.keyframeEditor == null)
+        {
+            return;
+        }
+
+        this.keyframeEditor.view.enterKeyframeInsert(KeyframeInsertInteractionState.individualAtCursor(
+            UIKeys.TIMELINE_INTERACTION_INSERT_KEYFRAME_SINGLE_CURSOR,
+            (sheet, keyframeTick) -> this.keyframeEditor.view.toolbarInsertIndividual(sheet, keyframeTick)));
+    }
+
+    public boolean canToolbarInsertKeyframeColumn()
+    {
+        return this.keyframeEditor != null
+            && this.keyframeEditor.view.isModifyingKeyframes()
+            && this.keyframeEditor.view instanceof UIFilmKeyframes filmKeyframes
+            && filmKeyframes.isReplayWorldEditor()
+            && this.getReplay() != null
+            && this.filmPanel.getController().getCurrentEntity() != null;
     }
 
     private static final List<String> WORLD_CHANNELS = Arrays.asList("x", "y", "z", "vX", "vY", "vZ", "yaw", "pitch", "headYaw", "bodyYaw", "grounded", "damage", "fall", "sneaking", "sprinting", "item_main_hand", "item_off_hand", "item_head", "item_chest", "item_legs", "item_feet", "selected_slot", "stick_lx", "stick_ly", "stick_rx", "stick_ry", "trigger_l", "trigger_r", "extra1_x", "extra1_y", "extra2_x", "extra2_y", "shadow_size", "shadow_opacity");
