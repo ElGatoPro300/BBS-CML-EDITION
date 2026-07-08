@@ -403,6 +403,8 @@ public class UIClipsPanel extends UIElement implements IUIClipsDelegate
 
         this.clips.setSelection(selection);
         this.pickClip(selection.isEmpty() ? null : this.clips.getClips().get(selection.get(selection.size() - 1)));
+
+        this.applyEmbeddedUndo(data);
     }
 
     @Override
@@ -414,5 +416,59 @@ public class UIClipsPanel extends UIElement implements IUIClipsDelegate
         data.putDouble("x_min", this.clips.scale.getMinValue());
         data.putDouble("x_max", this.clips.scale.getMaxValue());
         data.putDouble("scroll", this.clips.vertical.getScroll());
+        data.putBool("embedded_stacked", this.clips.isEmbeddedStackedLayout());
+
+        UIElement embedded = this.clips.getEmbeddedView();
+
+        if (embedded instanceof UIKeyframeEditor editor)
+        {
+            MapType embeddedState = new MapType();
+
+            editor.collectUndoData(embeddedState);
+            data.putString("embedded_id", editor.getUndoId());
+            data.put("embedded_state", embeddedState);
+        }
+    }
+
+    /**
+     * Symmetric embedded keyframe editor restore (approach B): undo closes the overlay
+     * when the snapshot had no embedded editor; redo reopens it from {@code embedded_id}.
+     */
+    private void applyEmbeddedUndo(MapType data)
+    {
+        String embeddedId = data.getString("embedded_id");
+
+        if (embeddedId.isEmpty())
+        {
+            this.embedView(null);
+
+            return;
+        }
+
+        if (this.panel == null)
+        {
+            this.embedView(null);
+
+            return;
+        }
+
+        UIKeyframeEditor editor = this.panel.resolveEmbeddableEditor(embeddedId);
+
+        if (editor == null)
+        {
+            this.embedView(null);
+
+            return;
+        }
+
+        this.clips.setEmbeddedStackedLayout(data.getBool("embedded_stacked"));
+        this.embedView(editor);
+
+        MapType embeddedState = data.getMap("embedded_state");
+
+        if (embeddedState != null)
+        {
+            editor.applyUndoData(embeddedState);
+        }
     }
 }

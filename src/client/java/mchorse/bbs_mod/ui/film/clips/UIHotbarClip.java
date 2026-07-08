@@ -64,26 +64,9 @@ public class UIHotbarClip extends UIClip<HotbarClip>
     }
 
     @Override
-    public void applyUndoData(MapType data)
+    protected UIKeyframeEditor resolveClipEmbeddableEditor(String undoId)
     {
-        super.applyUndoData(data);
-
-        if ("hotbar".equals(data.getString("embed")))
-        {
-            this.editor.embedView(this.keyframes);
-            this.keyframes.view.resetView();
-        }
-    }
-
-    @Override
-    public void collectUndoData(MapType data)
-    {
-        super.collectUndoData(data);
-
-        if (this.keyframes.hasParent())
-        {
-            data.putString("embed", "hotbar");
-        }
+        return undoId.equals(this.keyframes.getUndoId()) ? this.keyframes : null;
     }
 
     private IKey getTrackTitle(String id)

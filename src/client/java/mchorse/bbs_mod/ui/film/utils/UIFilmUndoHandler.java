@@ -4,6 +4,7 @@ import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.network.ClientNetwork;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.settings.values.core.ValueGroup;
+import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.film.utils.undo.ValueChangeUndo;
 import mchorse.bbs_mod.ui.forms.editors.UIFormUndoHandler;
@@ -79,10 +80,20 @@ public class UIFilmUndoHandler extends UIFormUndoHandler
             if (anotherUndo instanceof ValueChangeUndo)
             {
                 ValueChangeUndo change = (ValueChangeUndo) anotherUndo;
-                UIElement root = this.uiElement.getRoot();
-                if (root != null)
+                MapType uiData = change.getUIData(redo);
+
+                if (this.uiElement instanceof UIFilmPanel panel)
                 {
-                    root.applyAllUndoData(change.getUIData(redo));
+                    panel.applyFilmUndoData(uiData);
+                }
+                else
+                {
+                    UIElement root = this.uiElement.getRoot();
+
+                    if (root != null)
+                    {
+                        root.applyAllUndoData(uiData);
+                    }
                 }
             }
         }

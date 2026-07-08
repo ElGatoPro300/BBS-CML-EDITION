@@ -4941,6 +4941,15 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         return this.controller.orbit.keyPressed(context, this.preview.area);
     }
 
+    /**
+     * Restores film editor UI from an undo/redo snapshot (panel, cursor, timelines,
+     * embedded keyframe editors, scroll/zoom/viewport).
+     */
+    public void applyFilmUndoData(MapType data)
+    {
+        this.applyAllUndoData(data);
+    }
+
     @Override
     public void applyUndoData(MapType data)
     {

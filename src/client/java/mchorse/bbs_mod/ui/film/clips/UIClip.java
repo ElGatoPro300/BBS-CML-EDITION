@@ -60,6 +60,7 @@ import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIScrollView;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
+import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeEditor;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
 import mchorse.bbs_mod.ui.framework.elements.input.text.UITextbox;
 import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
@@ -259,28 +260,23 @@ public abstract class UIClip <T extends Clip> extends UIElement
         super.render(context);
     }
 
-    @Override
-    public void applyUndoData(MapType data)
+    /**
+     * Resolves an embeddable keyframe editor owned by this clip panel.
+     * Used by {@link mchorse.bbs_mod.ui.film.UIClipsPanel} for symmetric undo/redo.
+     */
+    public UIKeyframeEditor resolveEmbeddableEditor(String undoId)
     {
-        super.applyUndoData(data);
-
-        if (data.getString("embed").equals("envelope"))
+        if (this.envelope != null && undoId.equals(this.envelope.channel.getUndoId()))
         {
-            this.editor.embedView(this.envelope.channel);
-            this.envelope.channel.view.editSheet(this.envelope.channel.view.getGraph().getSheets().get(0));
-            this.envelope.channel.view.resetView();
+            return this.envelope.channel;
         }
+
+        return this.resolveClipEmbeddableEditor(undoId);
     }
 
-    @Override
-    public void collectUndoData(MapType data)
+    protected UIKeyframeEditor resolveClipEmbeddableEditor(String undoId)
     {
-        super.collectUndoData(data);
-
-        if (this.envelope.channel.hasParent())
-        {
-            data.putString("embed", "envelope");
-        }
+        return null;
     }
 
     public static interface IUIClipFactory <T extends Clip>

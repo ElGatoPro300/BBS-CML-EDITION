@@ -1388,6 +1388,22 @@ public class UIClips extends UIElement
         return this.embedded;
     }
 
+    public boolean isEmbeddedStackedLayout()
+    {
+        return this.embeddedStackedLayout;
+    }
+
+    public void setEmbeddedStackedLayout(boolean stacked)
+    {
+        this.embeddedStackedLayout = stacked;
+
+        if (this.embedded instanceof UIKeyframeEditor keyframeEditor)
+        {
+            keyframeEditor.setStackedLayout(this.embeddedStackedLayout);
+            this.embeddedLayout.active(this.embeddedStackedLayout);
+        }
+    }
+
     public void setEmbedViewListener(Consumer<UIElement> listener)
     {
         this.embedViewListener = listener;
