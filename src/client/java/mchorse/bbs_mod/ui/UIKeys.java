@@ -614,6 +614,7 @@ public class UIKeys
     public static final IKey FORMS_EDITORS_STRUCTURE_PICK_BIOME = L10n.lang("bbs.ui.forms.editors.structure.pick_biome");
     public static final IKey FORMS_EDITORS_STRUCTURE_LIGHT = L10n.lang("bbs.ui.forms.editors.structure.light");
     public static final IKey FORMS_EDITORS_STRUCTURE_LIGHT_INTENSITY_LABEL = L10n.lang("bbs.ui.forms.editors.structure.light_intensity");
+    public static final IKey FORMS_EDITORS_STRUCTURE_FLUID = L10n.lang("bbs.ui.forms.editors.structure.fluid");
     public static final IKey FORMS_EDITORS_SHAPE_TITLE = L10n.lang("bbs.ui.forms.editors.shape.title");
     public static final IKey FORMS_EDITORS_SHAPE_TYPE = L10n.lang("bbs.ui.forms.editors.shape.type");
     public static final IKey FORMS_EDITORS_SHAPE_GEOMETRY = L10n.lang("bbs.ui.forms.editors.shape.geometry");
