@@ -1,7 +1,7 @@
 package mchorse.bbs_mod.ui.forms.editors;
 
-import mchorse.bbs_mod.BBSClient;
 import mchorse.bbs_mod.BBSModClient;
+import mchorse.bbs_mod.BBSClient;
 import mchorse.bbs_mod.cubic.model.ModelConfig;
 import mchorse.bbs_mod.cubic.model.ModelManager;
 import mchorse.bbs_mod.cubic.model.ModelRepository;
@@ -16,7 +16,9 @@ import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIScrollView;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
+import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIRenderable;
+import mchorse.bbs_mod.ui.forms.editors.panels.UIGeneralFormPanel;
 import mchorse.bbs_mod.ui.model.IUIModelPanelHost;
 import mchorse.bbs_mod.ui.model.UIModelArmorSection;
 import mchorse.bbs_mod.ui.model.UIModelEditorRenderer;
@@ -32,12 +34,12 @@ import mchorse.bbs_mod.ui.model.UIModelPartsSection;
 import mchorse.bbs_mod.ui.model.UIModelPhysBonePanel;
 import mchorse.bbs_mod.ui.model.UIModelSection;
 import mchorse.bbs_mod.ui.model.UIModelSneakingSection;
-import mchorse.bbs_mod.ui.model.UIModelUIStyles;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.pose.UIPoseEditor;
 import mchorse.bbs_mod.utils.Direction;
+import mchorse.bbs_mod.ui.model.UIModelUIStyles;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -73,6 +75,7 @@ public class UIFormModelEditor extends UIElement implements IUIModelPanelHost
     private boolean inTransformEditor;
     private UIDashboardPanel embeddedPanel;
     private UIDashboardPanel dashboardPanelBeforeTransform;
+    private boolean formTransformGizmoMode;
 
     public UIFormModelEditor(UIFormEditor parent)
     {
@@ -225,6 +228,7 @@ public class UIFormModelEditor extends UIElement implements IUIModelPanelHost
 
     public void close()
     {
+        this.exitFormTransformGizmoMode();
         this.returnFromSubEditor();
 
         if (this.dirty && this.config != null)
@@ -294,8 +298,15 @@ public class UIFormModelEditor extends UIElement implements IUIModelPanelHost
 
         if (poseEditor != null)
         {
-            this.setRight(poseEditor);
-            this.renderer.transform = poseEditor.transform;
+            if (this.formTransformGizmoMode)
+            {
+                this.syncFormTransformGizmo();
+            }
+            else
+            {
+                this.setRight(poseEditor);
+                this.assignGizmoTransform(poseEditor.transform, false);
+            }
         }
 
         this.sectionsView.resize();
@@ -409,17 +420,24 @@ public class UIFormModelEditor extends UIElement implements IUIModelPanelHost
 
         if (panel == this.modelSettingsPanel)
         {
-            UIPoseEditor poseEditor = this.getPoseEditor();
-
-            if (poseEditor != null)
+            if (this.formTransformGizmoMode)
             {
-                this.setRight(poseEditor);
-                this.renderer.transform = poseEditor.transform;
+                this.syncFormTransformGizmo();
+            }
+            else
+            {
+                UIPoseEditor poseEditor = this.getPoseEditor();
+
+                if (poseEditor != null)
+                {
+                    this.setRight(poseEditor);
+                    this.assignGizmoTransform(poseEditor.transform, false);
+                }
             }
         }
         else if (panel == this.geometryPanel)
         {
-            this.renderer.transform = this.geometryPanel.getGizmoTransformEditor();
+            this.assignGizmoTransform(this.geometryPanel.getGizmoTransformEditor(), false);
         }
 
         for (int i = 0; i < this.panelButtons.size(); i++)
@@ -567,6 +585,11 @@ public class UIFormModelEditor extends UIElement implements IUIModelPanelHost
         this.selectedBone = bone;
         this.renderer.setSelectedBone(bone);
 
+        if (this.formTransformGizmoMode)
+        {
+            return;
+        }
+
         for (UIModelSection section : this.sections)
         {
             section.deselect();
@@ -630,5 +653,114 @@ public class UIFormModelEditor extends UIElement implements IUIModelPanelHost
     public UIModelPanel getModelPanel()
     {
         return null;
+    }
+
+    public boolean isFormTransformGizmoMode()
+    {
+        return this.formTransformGizmoMode;
+    }
+
+    public void enterFormTransformGizmoMode()
+    {
+        if (this.parent == null || this.parent.editor == null || this.parent.editor.generalPanel == null)
+        {
+            return;
+        }
+
+        this.formTransformGizmoMode = true;
+        this.setWorkspacePanel(this.modelSettingsPanel);
+
+        UIGeneralFormPanel general = this.parent.editor.generalPanel;
+
+        general.transform.setTransform(this.parent.editor.form.transform.get());
+        general.transform.removeFromParent();
+        this.setRight(general.transform);
+
+        for (UIModelSection section : this.sections)
+        {
+            if (section instanceof UIModelGeneralSection)
+            {
+                section.fields.setVisible(true);
+            }
+        }
+
+        this.sectionsView.scroll.setScroll(0);
+        this.sectionsView.resize();
+        this.syncFormTransformGizmo();
+    }
+
+    public void onGeneralSectionOpened()
+    {
+        if (this.parent != null)
+        {
+            this.parent.enableFormTransformGizmo();
+        }
+    }
+
+    public void onPoseSectionOpened()
+    {
+        if (this.parent != null)
+        {
+            this.parent.disableFormTransformGizmo();
+        }
+    }
+
+    public void exitFormTransformGizmoMode()
+    {
+        if (!this.formTransformGizmoMode)
+        {
+            return;
+        }
+
+        this.formTransformGizmoMode = false;
+        this.renderer.setFormTransformGizmoOrigin(null);
+        this.restoreFormTransformWidget();
+
+        UIPoseEditor poseEditor = this.getPoseEditor();
+
+        if (poseEditor != null && this.modelSettingsPanel.getParent() == this.mainView)
+        {
+            this.setRight(poseEditor);
+            this.assignGizmoTransform(poseEditor.transform, false);
+        }
+    }
+
+    private void assignGizmoTransform(UIPropTransform transform, boolean formTransform)
+    {
+        this.renderer.setFormTransformGizmoDrag(formTransform);
+        this.renderer.transform = transform;
+    }
+
+    private void syncFormTransformGizmo()
+    {
+        if (!this.formTransformGizmoMode || this.parent == null || this.parent.editor == null || this.parent.editor.generalPanel == null)
+        {
+            return;
+        }
+
+        UIPropTransform formTransform = this.parent.editor.generalPanel.transform;
+
+        formTransform.setTransform(this.parent.editor.form.transform.get());
+        this.assignGizmoTransform(formTransform, true);
+        this.renderer.setFormTransformGizmoOrigin(this.parent::getOrigin);
+    }
+
+    private void restoreFormTransformWidget()
+    {
+        if (this.parent == null || this.parent.editor == null || this.parent.editor.generalPanel == null)
+        {
+            return;
+        }
+
+        UIGeneralFormPanel general = this.parent.editor.generalPanel;
+
+        if (general.transform.getParent() == general.options)
+        {
+            return;
+        }
+
+        general.transform.removeFromParent();
+        general.options.add(general.transform.marginTop(8));
+        general.options.resize();
     }
 }

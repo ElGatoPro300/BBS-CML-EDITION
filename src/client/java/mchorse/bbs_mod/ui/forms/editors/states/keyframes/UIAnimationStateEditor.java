@@ -28,6 +28,7 @@ import mchorse.bbs_mod.ui.film.replays.UIReplaysEditorUtils;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIAnimationToPoseOverlayPanel;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIKeyframeSheetFilterOverlayPanel;
 import mchorse.bbs_mod.ui.forms.editors.UIFormEditor;
+import mchorse.bbs_mod.ui.forms.editors.utils.UIPickableFormRenderer;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
@@ -39,6 +40,7 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIDraggable;
 import mchorse.bbs_mod.ui.utils.StencilFormFramebuffer;
 import mchorse.bbs_mod.ui.utils.gizmo.GizmoController;
+import mchorse.bbs_mod.ui.utils.gizmo.GizmoRayFrame;
 import mchorse.bbs_mod.ui.utils.gizmo.GizmoSurface;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.Pair;
@@ -378,9 +380,36 @@ public class UIAnimationStateEditor extends UIElement implements GizmoSurface
     @Override
     public void prepareGizmoDrag(UIPropTransform transform)
     {
-        /* No dedicated ray provider here: the shared transform returned by
-         * UIReplaysEditorUtils.getEditableTransform already has its ray provider
-         * installed by whichever editor last prepared it, matching prior behavior. */
+        if (transform == null || this.editor == null || this.editor.renderer == null)
+        {
+            return;
+        }
+
+        UIPickableFormRenderer renderer = this.editor.renderer;
+        UIAnimationStateEditor self = this;
+
+        transform.setGizmoRayProvider(GizmoRayFrame.fromCamera(
+            renderer.camera,
+            renderer.area,
+            () ->
+            {
+                UIContext context = self.getContext();
+
+                if (context == null)
+                {
+                    return null;
+                }
+
+                Matrix4f origin = self.getOrigin(context.getTransition());
+
+                if (origin == null || origin == Matrices.EMPTY_4F)
+                {
+                    return null;
+                }
+
+                return origin;
+            }
+        ));
     }
 
     public void pickForm(Form form, String bone)

@@ -14,8 +14,8 @@ import mchorse.bbs_mod.settings.values.ui.ValueOnionSkin;
 import mchorse.bbs_mod.settings.values.ui.ValueStringKeys;
 import mchorse.bbs_mod.settings.values.ui.ValueVideoSettings;
 import mchorse.bbs_mod.utils.MathUtils;
-import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.keyframes.KeyframeShape;
+import mchorse.bbs_mod.utils.colors.Colors;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -53,12 +53,14 @@ public class BBSSettings
     public static ValueFloat gizmoGuideLength;
     public static ValueFloat gizmoGuideThickness;
     public static ValueFloat gizmoGuideOpacity;
+    public static ValueInt gizmoTranslateSpeed;
     public static ValueBoolean uniformScale;
     public static ValueBoolean clickSound;
     public static ValueBoolean disablePivotTransform;
     public static ValueBoolean gizmos;
     public static ValueBoolean gizmoYAxisHorizontal;
     public static ValueBoolean gizmoTrackball;
+    public static ValueInt gizmoTrackballScale;
     public static ValueInt defaultInterpolation;
     public static ValueInt defaultModelInterpolation;
     public static ValueInt defaultPathInterpolation;
@@ -463,6 +465,7 @@ public class BBSSettings
         disablePivotTransform = builder.getBoolean("disable_pivot_transform", false);
         gizmoYAxisHorizontal = builder.getBoolean("gizmo_y_axis_horizontal", true);
         gizmoTrackball = builder.getBoolean("gizmo_trackball", true);
+        gizmoTrackballScale = builder.getInt("gizmo_trackball_scale", 1, 1, 5);
         /* 0 = Translate, 1 = Scale, 2 = Rotate, 3 = Combined; see Gizmo.Mode (ordinal order matches). */
         gizmoDefaultMode = builder.getInt("gizmo_default_mode", 0, 0, 3);
         /* Faint guide line(s) shown along the dragged axis/plane: length (multiplier),
@@ -470,6 +473,7 @@ public class BBSSettings
         gizmoGuideLength = builder.getFloat("gizmo_guide_length", 2F, 0.1F, 10F);
         gizmoGuideThickness = builder.getFloat("gizmo_guide_thickness", 1F, 0.1F, 10F);
         gizmoGuideOpacity = builder.getFloat("gizmo_guide_opacity", 0.35F, 0.05F, 1F);
+        gizmoTranslateSpeed = builder.getInt("gizmo_translate_speed", 5, 1, 20);
 
         builder.category("tutorials");
         enableCursorRendering = builder.getBoolean("cursor", false);

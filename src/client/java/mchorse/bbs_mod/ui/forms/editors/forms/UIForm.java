@@ -42,6 +42,17 @@ public abstract class UIForm <T extends Form> extends UIPanelBase<UIFormPanel<T>
         this.keys().register(Keys.FILM_CONTROLLER_CYCLE_EDITORS, this::cyclePanels);
     }
 
+    @Override
+    public void setPanel(UIFormPanel<T> panel)
+    {
+        super.setPanel(panel);
+
+        if (panel == this.generalPanel && this.editor != null)
+        {
+            this.editor.enableFormTransformGizmoFromGeneralPanel();
+        }
+    }
+
     public UIPropTransform getEditableTransform()
     {
         this.setPanel(this.generalPanel);

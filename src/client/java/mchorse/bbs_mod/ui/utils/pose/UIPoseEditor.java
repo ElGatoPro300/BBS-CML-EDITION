@@ -462,7 +462,13 @@ public class UIPoseEditor extends UIElement
             });
         });
         this.transform = this.createTransformEditor();
-        this.transform.setModel();
+
+        if (this.useModelGizmoDrag())
+        {
+            this.transform.setModel();
+            this.transform.invertModelPoseTrackballXYZ();
+        }
+
         this.transform.callbacks(null, () ->
         {
             if (this.onChange != null)
@@ -673,9 +679,20 @@ public class UIPoseEditor extends UIElement
 
     /* Subclass overridable methods */
 
+  /** Film/replay pose editors keep the legacy model-space drag inversions; form model pose matches model block. */
+    protected boolean useModelGizmoDrag()
+    {
+        return true;
+    }
+
+    protected float getGizmoTranslationScale()
+    {
+        return 16F;
+    }
+
     protected UIPropTransform createTransformEditor()
     {
-        return new CategoryPropTransform(this).enableHotkeys().translationScale(16F);
+        return new CategoryPropTransform(this).enableHotkeys().translationScale(this.getGizmoTranslationScale());
     }
 
     /* Transformaciones aplicables por categoría */

@@ -200,6 +200,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     public final Matrix4f lastView = new Matrix4f();
     public final Matrix4f lastProjection = new Matrix4f();
+    public final Matrix4f lastGizmoMatrix = new Matrix4f();
+    public boolean hasLastGizmoMatrix;
 
     private Timer flightEditTime = new Timer(100);
 
@@ -1987,7 +1989,9 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             this.clearingSelections = true;
             try
             {
-                if (!"cameraTimeline".equals(timelineId) && this.cameraEditor != null && this.cameraEditor.clips != null)
+                /* Replay timeline interaction should not drop the camera clip selection; users
+                 * often keep a camera clip selected while editing replay keyframes in unified layout. */
+                if (!"cameraTimeline".equals(timelineId) && !"replayTimeline".equals(timelineId) && this.cameraEditor != null && this.cameraEditor.clips != null)
                 {
                     this.cameraEditor.clips.pickClip(null);
                 }
@@ -4871,6 +4875,20 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         }
 
         this.controller.renderFrame(context);
+        this.cacheGizmoMatrix();
+    }
+
+    private void cacheGizmoMatrix()
+    {
+        if (Gizmo.INSTANCE.hasGizmoMatrix)
+        {
+            this.lastGizmoMatrix.set(Gizmo.INSTANCE.lastGizmoMatrix);
+            this.hasLastGizmoMatrix = true;
+        }
+        else
+        {
+            this.hasLastGizmoMatrix = false;
+        }
     }
 
     /* IUICameraWorkDelegate implementation */

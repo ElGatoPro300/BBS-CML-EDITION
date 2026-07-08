@@ -53,6 +53,7 @@ public class ParticleEmitter
     public World world;
     public boolean lit;
     public boolean modelRenderer;
+    public boolean worldVertices;
 
     public boolean running = true;
     private Particle uiParticle;
@@ -521,7 +522,9 @@ public class ParticleEmitter
             RenderSystem.enableBlend();
             RenderSystem.defaultBlendFunc();
             RenderSystem.disableCull();
+
             BufferRenderer.drawWithGlobalProgram(builder.end());
+
             RenderSystem.enableCull();
             RenderSystem.disableBlend();
         }

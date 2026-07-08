@@ -43,7 +43,8 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
 
         if (isPoseLimbTrack(sheet))
         {
-            this.transform.translationScale(16F);
+            this.transform.translationScale(2.5F);
+            this.transform.poseLimbGizmoTuning();
             this.fix = new UITrackpad((v) ->
             {
                 UIPoseTransforms.applyPoseTransform(this.editor, this.keyframe, (poseT) -> poseT.fix = MathUtils.clamp(v.floatValue(), 0F, 1F));
@@ -87,6 +88,7 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
         }
         else
         {
+            this.transform.translationScale(1F / 3F);
             this.scroll.add(this.transform);
         }
     }
@@ -112,7 +114,7 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
         return poseTransform;
     }
 
-    private static boolean isPoseLimbTrack(UIKeyframeSheet sheet)
+    public static boolean isPoseLimbTrack(UIKeyframeSheet sheet)
     {
         if (sheet == null)
         {

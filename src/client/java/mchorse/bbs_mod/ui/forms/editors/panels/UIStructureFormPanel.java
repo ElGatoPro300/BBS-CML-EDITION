@@ -43,6 +43,9 @@ public class UIStructureFormPanel extends UIFormPanel<StructureForm>
     public UIColor color;
     public UIToggle toggleLight;
     public UITrackpad lightIntensity;
+    public UITrackpad scaleX;
+    public UITrackpad scaleY;
+    public UITrackpad scaleZ;
     /* Pivot controls removed per request; structure pivots automatically */
 
     public UIStructureFormPanel(UIForm editor)
@@ -59,6 +62,13 @@ public class UIStructureFormPanel extends UIFormPanel<StructureForm>
                 .integer()
                 .limit(1D, 15D);
 
+        this.scaleX = new UITrackpad((v) -> this.form.scaleX.set(v.floatValue())).limit(0.01D, 100D);
+        this.scaleX.tooltip(UIKeys.FORMS_EDITORS_STRUCTURE_SCALE_X);
+        this.scaleY = new UITrackpad((v) -> this.form.scaleY.set(v.floatValue())).limit(0.01D, 100D);
+        this.scaleY.tooltip(UIKeys.FORMS_EDITORS_STRUCTURE_SCALE_Y);
+        this.scaleZ = new UITrackpad((v) -> this.form.scaleZ.set(v.floatValue())).limit(0.01D, 100D);
+        this.scaleZ.tooltip(UIKeys.FORMS_EDITORS_STRUCTURE_SCALE_Z);
+
         // Pivot UI removed; calculate center moved to Transform panel
 
         /* Quitar etiquetas; mostrar solo los controles */
@@ -67,6 +77,8 @@ public class UIStructureFormPanel extends UIFormPanel<StructureForm>
         this.options.add(this.pickBiome);
         this.options.add(this.toggleLight);
         this.options.add(UI.label(UIKeys.FORMS_EDITORS_STRUCTURE_LIGHT_INTENSITY_LABEL).marginTop(6), this.lightIntensity);
+        this.options.add(UI.label(UIKeys.FORMS_EDITORS_STRUCTURE_SIZE).marginTop(10));
+        this.options.add(UI.row(this.scaleX, this.scaleY, this.scaleZ));
 
         // Pivot controls removed
     }
@@ -172,6 +184,9 @@ public class UIStructureFormPanel extends UIFormPanel<StructureForm>
 
         this.toggleLight.setValue(enabled);
         this.lightIntensity.setValue((double) intensity);
+        this.scaleX.setValue((double) form.scaleX.get());
+        this.scaleY.setValue((double) form.scaleY.get());
+        this.scaleZ.setValue((double) form.scaleZ.get());
         // Pivot controls removed
     }
 }

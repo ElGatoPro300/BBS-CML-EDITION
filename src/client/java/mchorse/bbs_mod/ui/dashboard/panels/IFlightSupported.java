@@ -1,6 +1,5 @@
 package mchorse.bbs_mod.ui.dashboard.panels;
 
-import mchorse.bbs_mod.ui.dashboard.utils.UIOrbitCamera;
 import mchorse.bbs_mod.ui.utils.Area;
 
 public interface IFlightSupported
@@ -12,7 +11,7 @@ public interface IFlightSupported
 
     /**
      * Screen area within which left/right/middle click-drag may start rotating, rolling or
-     * changing the FOV of the free camera (see {@link UIOrbitCamera}).
+     * changing the FOV of the free camera (see {@link mchorse.bbs_mod.ui.dashboard.utils.UIOrbitCamera}).
      *
      * Returning {@code null} (the default) leaves flight control unrestricted, i.e. any
      * otherwise-unhandled click anywhere on screen may start it. Panels with a dedicated 3D

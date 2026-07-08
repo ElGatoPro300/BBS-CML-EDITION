@@ -8,7 +8,6 @@ import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.utils.colors.Colors;
 
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.render.BufferBuilder;
@@ -43,7 +42,7 @@ public class Batcher2D
            Falls back to Minecraft's default font when no custom font is set or it failed to load. */
         CustomFontManager.ensureLoaded();
 
-        TextRenderer custom = CustomFontManager.getCustomRenderer();
+        net.minecraft.client.font.TextRenderer custom = CustomFontManager.getCustomRenderer();
 
         fontRenderer.setRenderer(custom != null ? custom : MinecraftClient.getInstance().textRenderer);
 

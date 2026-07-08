@@ -9,27 +9,24 @@ import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
 import mchorse.bbs_mod.ui.utils.UI;
 
 /**
- * Small pop-up menu that exposes the viewport gizmo size (backed by {@link BBSSettings#axesScale}).
- *
- * The size is edited through a regular trackpad: drag steps by 0.5, Alt steps by 0.1, Shift by 5.
- * The value is persisted in the config the moment it changes because {@link BBSSettings#axesScale}
- * is a saved setting.
+ * Small pop-up menu for {@link BBSSettings#gizmoTranslateSpeed}: how fast objects move when
+ * dragging gizmo translate handles.
  */
-public class UIGizmoSizeContextMenu extends UIContextMenu
+public class UIGizmoTranslateSpeedContextMenu extends UIContextMenu
 {
-    public UITrackpad size;
+    public UITrackpad speed;
 
     private UIElement column;
 
-    public UIGizmoSizeContextMenu()
+    public UIGizmoTranslateSpeedContextMenu()
     {
-        this.size = new UITrackpad((v) -> BBSSettings.axesScale.set(v.floatValue()));
-        this.size.limit(BBSSettings.axesScale).increment(0.5D).values(0.5D, 0.1D, 5D);
-        this.size.setValue(BBSSettings.axesScale.get());
+        this.speed = new UITrackpad((v) -> BBSSettings.gizmoTranslateSpeed.set(v.intValue()));
+        this.speed.limit(BBSSettings.gizmoTranslateSpeed).integer().increment(1D).values(1D, 1D, 5D);
+        this.speed.setValue(BBSSettings.gizmoTranslateSpeed.get());
 
         this.column = UI.column(5, 10,
-            UI.label(UIKeys.FILM_GIZMO_SIZE),
-            this.size
+            UI.label(UIKeys.FILM_GIZMO_TRANSLATE_SPEED),
+            this.speed
         );
         this.column.relative(this).w(140);
 

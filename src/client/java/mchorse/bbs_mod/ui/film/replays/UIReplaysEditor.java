@@ -10,6 +10,7 @@ import mchorse.bbs_mod.camera.CameraUtils;
 import mchorse.bbs_mod.camera.clips.ClipFactoryData;
 import mchorse.bbs_mod.camera.clips.misc.AudioClip;
 import mchorse.bbs_mod.camera.utils.TimeUtils;
+import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.cubic.IModel;
 import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.cubic.data.animation.Animation;
@@ -180,6 +181,10 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
         COLORS.put("color", Colors.INACTIVE);
         COLORS.put("paint_color", Colors.INACTIVE);
         COLORS.put("lighting", Colors.YELLOW);
+        COLORS.put("render_depth", Colors.CYAN);
+        COLORS.put("look_at", 0x007f70);
+        COLORS.put("illusion", Colors.DEEP_PINK);
+        COLORS.put("illusion_transform", 0xdd66ff);
         COLORS.put("structure_light", Colors.YELLOW);
         COLORS.put("shape_keys", Colors.PINK);
         COLORS.put("actions", Colors.MAGENTA);
@@ -233,6 +238,10 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
         ICONS.put("color", Icons.BUCKET);
         ICONS.put("paint_color", Icons.BUCKET);
         ICONS.put("lighting", Icons.LIGHT);
+        ICONS.put("render_depth", Icons.SHIFT_TO);
+        ICONS.put("look_at", Icons.VISIBLE);
+        ICONS.put("illusion", Icons.POSE);
+        ICONS.put("illusion_transform", Icons.ALL_DIRECTIONS);
         ICONS.put("structure_light", Icons.LIGHT);
         ICONS.put("actions", Icons.CONVERT);
         ICONS.put("shape_keys", Icons.HEART_ALT);
@@ -915,7 +924,7 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
     }
 
     private static final List<String> WORLD_CHANNELS = Arrays.asList("x", "y", "z", "vX", "vY", "vZ", "yaw", "pitch", "headYaw", "bodyYaw", "grounded", "damage", "fall", "sneaking", "sprinting", "item_main_hand", "item_off_hand", "item_head", "item_chest", "item_legs", "item_feet", "selected_slot", "stick_lx", "stick_ly", "stick_rx", "stick_ry", "trigger_l", "trigger_r", "extra1_x", "extra1_y", "extra2_x", "extra2_y", "shadow_size", "shadow_opacity");
-    private static final List<String> MODEL_PROPERTIES = Arrays.asList("visible", "lighting", "transform", "transform_overlay", "pose", "pose_overlay", "anchor", "color", "paint_color", "texture", "pbr_normal_intensity", "pbr_specular_intensity", "model", "actions", "shape_keys", "block_state", "item_stack", "modelTransform", "same_animation_when_dropped", "settings", "paused", "frequency", "count", "structure_file", "biome_id", "emit_light", "light_intensity", "structure_light", "enabled", "level", "effect");
+    private static final List<String> MODEL_PROPERTIES = Arrays.asList("visible", "lighting", "render_depth", "transform", "transform_overlay", "pose", "pose_overlay", "anchor", "look_at", "illusion", "illusion_transform", "color", "paint_color", "texture", "pbr_normal_intensity", "pbr_specular_intensity", "model", "actions", "shape_keys", "block_state", "item_stack", "modelTransform", "same_animation_when_dropped", "settings", "paused", "frequency", "count", "structure_file", "biome_id", "emit_light", "light_intensity", "structure_light", "enabled", "level", "effect");
 
     /**
      * Human-readable timeline track names for internal property ids (overlays, paint color, etc.).
@@ -925,6 +934,26 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
         if (trackName.equals("paint_color"))
         {
             return UIKeys.FORMS_EDITORS_PAINT_COLOR;
+        }
+
+        if (trackName.equals("render_depth"))
+        {
+            return UIKeys.FORMS_EDITORS_GENERAL_RENDER_DEPTH;
+        }
+
+        if (trackName.equals("look_at"))
+        {
+            return UIKeys.FORMS_EDITORS_GENERAL_LOOK_AT;
+        }
+
+        if (trackName.equals("illusion"))
+        {
+            return UIKeys.FORMS_EDITORS_GENERAL_ILLUSION;
+        }
+
+        if (trackName.equals("illusion_transform"))
+        {
+            return UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_TRANSFORM;
         }
 
         if (trackName.equals("pose_overlay"))
@@ -1118,6 +1147,7 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
 
                 if (name.equals("visible")) return 0;
                 if (name.equals("lighting")) return 1;
+                if (name.equals("render_depth")) return 2;
 
                 if (name.equals("transform")) return 10;
                 if (name.startsWith("transform_overlay"))
@@ -1139,6 +1169,9 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
                 if (name.indexOf(':') != -1) return 29;
 
                 if (name.equals("anchor")) return 30;
+                if (name.equals("look_at")) return 30;
+                if (name.equals("illusion")) return 30;
+                if (name.equals("illusion_transform")) return 30;
                 if (name.equals("structure_file")) return 31;
                 if (name.equals("pivot")) return 32;
                 if (name.equals("biome_id")) return 33;
@@ -2733,67 +2766,12 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
             return;
         }
 
-        final Area finalArea = this.gizmoDragArea;
+        FilmPoseGizmoDrag.prepare(this.filmPanel, this.gizmoDragArea, transform);
+    }
 
-        transform.setGizmoRayProvider(new UIPropTransform.IGizmoRayProvider()
-        {
-            @Override
-            public boolean getMouseRay(UIContext context, int mouseX, int mouseY, Vector3d rayOrigin, Vector3f rayDirection)
-            {
-                if (finalArea.w <= 0 || finalArea.h <= 0)
-                {
-                    return false;
-                }
-
-                Camera camera = UIReplaysEditor.this.filmPanel.getCamera();
-
-                if (camera == null)
-                {
-                    return false;
-                }
-
-                Vector3f direction = CameraUtils.getMouseDirection(
-                    camera.projection,
-                    camera.view,
-                    mouseX,
-                    mouseY,
-                    finalArea.x,
-                    finalArea.y,
-                    finalArea.w,
-                    finalArea.h
-                );
-
-                if (direction.lengthSquared() <= 1.0E-12F)
-                {
-                    return false;
-                }
-
-                rayDirection.set(direction).normalize();
-                rayOrigin.set(0, 0, 0);
-
-                return true;
-            }
-
-            @Override
-            public boolean getGizmoMatrix(Matrix4f matrix)
-            {
-                if (!Gizmo.INSTANCE.hasGizmoMatrix)
-                {
-                    return false;
-                }
-
-                Camera camera = UIReplaysEditor.this.filmPanel.getCamera();
-
-                if (camera == null)
-                {
-                    return false;
-                }
-
-                matrix.set(new Matrix4f(camera.view).invert().mul(Gizmo.INSTANCE.lastGizmoMatrix));
-
-                return true;
-            }
-        });
+    public void stopGizmoDrag()
+    {
+        this.gizmoController.stop();
     }
 
     public void close()

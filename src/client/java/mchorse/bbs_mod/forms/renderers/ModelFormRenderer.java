@@ -4,6 +4,7 @@ import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.client.BBSShaders;
+import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.client.renderer.entity.ActorEntityRenderer;
 import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.cubic.animation.ActionsConfig;
@@ -82,6 +83,9 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
     private int lastAge = -1;
 
     private IEntity entity = new StubEntity();
+
+    /* Transient additive pose applied by the film "Look at" constraint */
+    private Pose lookAtPose;
 
     @Override
     protected void applyTransforms(MatrixStack stack, boolean origin, float transition)
@@ -174,7 +178,22 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             this.applyPose(pose, newPose.get());
         }
 
+        if (this.lookAtPose != null)
+        {
+            this.applyPose(pose, this.lookAtPose);
+        }
+
         return pose;
+    }
+
+    /**
+     * Sets a transient additive pose used by the film controller's "Look at"
+     * constraint (per bone lock weights). It's set right before rendering an
+     * entity and cleared right after, so it never gets serialized.
+     */
+    public void setLookAtPose(Pose pose)
+    {
+        this.lookAtPose = pose;
     }
 
     private void applyPose(Pose targetPose, Pose pose)
@@ -243,10 +262,15 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         ModelInstance model = this.getModel();
         ActionsConfig actionsConfig = this.resolveActionsConfig(model);
 
-        if (model == null || this.lastModel == model)
+        if (model == null)
+        {
+            return;
+        }
+
+        if (this.lastModel == model && this.animator != null)
         {
             /* Update the config */
-            if (this.animator != null && !Objects.equals(actionsConfig, this.lastConfigs))
+            if (!Objects.equals(actionsConfig, this.lastConfigs))
             {
                 this.animator.setup(model, actionsConfig, true);
 
@@ -848,18 +872,17 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
     @Override
     public void tick(IEntity entity)
     {
-        this.ensureAnimator(0F);
-
         int age = entity.getAge();
+
+        if (this.lastAge != -1 && age != this.lastAge + 1)
+        {
+            this.resetAnimator();
+        }
+
+        this.ensureAnimator(0F);
 
         if (this.animator != null)
         {
-            if (this.lastAge != -1 && age != this.lastAge + 1)
-            {
-                this.resetAnimator();
-                this.ensureAnimator(0F);
-            }
-
             this.animator.update(entity);
         }
 
