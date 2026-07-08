@@ -247,7 +247,7 @@ public class UIElement implements IUIElement, IUndoElement
             consumer.accept(clazz.cast(this));
         }
 
-        for (IUIElement element : this.getChildren())
+        for (IUIElement element : new ArrayList<>(this.getChildren()))
         {
             if (clazz.isAssignableFrom(element.getClass()))
             {

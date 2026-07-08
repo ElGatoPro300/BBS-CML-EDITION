@@ -100,6 +100,11 @@ public class UIDashboard extends UIBaseMenu
             if (this.panels.panel instanceof IFlightSupported panel)
             {
                 this.orbit.setFovRoll(panel.supportsRollFOVControl());
+                this.orbitUI.setViewportArea(panel::getFlightViewportArea);
+            }
+            else
+            {
+                this.orbitUI.setViewportArea(null);
             }
 
             this.copyCurrentEntityCamera();

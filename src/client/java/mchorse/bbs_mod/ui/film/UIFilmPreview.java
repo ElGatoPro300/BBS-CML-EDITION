@@ -79,6 +79,7 @@ public class UIFilmPreview extends UIElement
     public UIIcon gizmoMove;
     public UIIcon gizmoScale;
     public UIIcon gizmoRotate;
+    public UIIcon gizmoCombined;
     public UIIcon gizmoSize;
     public UIIcon onionSkin;
     public UIIcon plause;
@@ -103,6 +104,7 @@ public class UIFilmPreview extends UIElement
         this.gizmoMove = this.createGizmoButton(Icons.ALL_DIRECTIONS, Gizmo.Mode.TRANSLATE, UIKeys.FILM_GIZMO_MOVE);
         this.gizmoScale = this.createGizmoButton(Icons.SCALE, Gizmo.Mode.SCALE, UIKeys.FILM_GIZMO_SCALE);
         this.gizmoRotate = this.createGizmoButton(Icons.ARC, Gizmo.Mode.ROTATE, UIKeys.FILM_GIZMO_ROTATE);
+        this.gizmoCombined = this.createGizmoButton(Icons.SHAPES, Gizmo.Mode.COMBINED, UIKeys.FILM_GIZMO_COMBINED);
 
         /* Gizmo size popup: opens a small trackpad menu bound to BBSSettings.axesScale. */
         this.gizmoSize = new UIIcon(Icons.MAXIMIZE, (b) ->
@@ -110,9 +112,15 @@ public class UIFilmPreview extends UIElement
         );
         this.gizmoSize.tooltip(UIKeys.FILM_GIZMO_SIZE);
 
-        this.gizmos = UI.row(0, this.gizmoMove, this.gizmoScale, this.gizmoRotate, this.gizmoSize);
-        this.gizmos.relative(this).x(4).y(4).wh(84, 20);
+        this.gizmos = UI.row(0, this.gizmoMove, this.gizmoScale, this.gizmoRotate, this.gizmoCombined, this.gizmoSize);
+        this.gizmos.relative(this).x(4).y(4).wh(104, 20);
         this.add(this.gizmos);
+
+        this.keys().register(Keys.TRANSFORMATIONS_COMBINED, () ->
+        {
+            Gizmo.INSTANCE.setMode(Gizmo.Mode.COMBINED);
+            UIUtils.playClick();
+        });
 
         /* Preview buttons */
         this.onionSkin = new UIIcon(Icons.ONION_SKIN, (b) -> this.openOnionSkin());
@@ -278,6 +286,7 @@ public class UIFilmPreview extends UIElement
         });
 
         button.tooltip(tooltip);
+        button.activeBackground(Colors.A50 | Colors.BLUE);
 
         return button;
     }
@@ -345,6 +354,28 @@ public class UIFilmPreview extends UIElement
 
         if (area.isInside(context))
         {
+            /* In flight mode, viewport clicks drive the camera directly (left = look around,
+             * right = roll, middle = FOV). This has to be started here rather than left to the
+             * dashboard's orbit element, because this panel uses BLOCK_INSIDE mouse propagation
+             * (to stop clicks falling through into stacked panels), which would otherwise
+             * consume the click before the orbit camera ever saw it. */
+            if (this.panel.isFlying())
+            {
+                if (!BBSSettings.editorFlightFreeLook.get())
+                {
+                    int button = this.panel.dashboard.orbitUI.orbit.canStart(context);
+
+                    if (button >= 0)
+                    {
+                        this.panel.dashboard.orbitUI.orbit.start(button, context.mouseX, context.mouseY);
+
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
             return this.panel.replayEditor.clickViewport(context, area);
         }
 
@@ -360,6 +391,7 @@ public class UIFilmPreview extends UIElement
         this.gizmoMove.active(mode == Gizmo.Mode.TRANSLATE);
         this.gizmoScale.active(mode == Gizmo.Mode.SCALE);
         this.gizmoRotate.active(mode == Gizmo.Mode.ROTATE);
+        this.gizmoCombined.active(mode == Gizmo.Mode.COMBINED);
 
         Texture texture = BBSRendering.getTexture();
         Area area = this.getViewport();

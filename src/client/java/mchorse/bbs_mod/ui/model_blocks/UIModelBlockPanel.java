@@ -10,9 +10,11 @@ import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.graphics.Draw;
+import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.network.ClientNetwork;
+import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.UIDashboard;
@@ -33,11 +35,16 @@ import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
+import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIDraggable;
 import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
 import mchorse.bbs_mod.ui.model_blocks.camera.ImmersiveModelBlockCameraController;
+import mchorse.bbs_mod.ui.utils.Gizmo;
+import mchorse.bbs_mod.ui.utils.StencilFormFramebuffer;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.UIUtils;
+import mchorse.bbs_mod.ui.utils.gizmo.GizmoController;
+import mchorse.bbs_mod.ui.utils.gizmo.GizmoSurface;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.AABB;
@@ -55,17 +62,26 @@ import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
+import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 
 import org.joml.Matrix4f;
+import org.joml.Matrix4fStack;
+import org.joml.Quaternionf;
+import org.joml.Vector2d;
 import org.joml.Vector2i;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 
+import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.systems.VertexSorter;
+
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL30;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -75,7 +91,7 @@ import java.util.TreeSet;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSupported {
+public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSupported, GizmoSurface {
     public static boolean toggleRendering;
 
     /*
@@ -182,6 +198,20 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
     private ModelBlockEntity modelBlock;
     private ModelBlockEntity hovered;
     private Vector3f mouseDirection = new Vector3f();
+
+    /*
+     * Real (pickable/draggable) gizmo shown at the edited model block. It renders in world
+     * space during renderInWorld, picks through its own stencil framebuffer, and drags the
+     * same UIPropTransform that backs the Transforms card, so the numbers update live.
+     */
+    private StencilFormFramebuffer gizmoStencil = new StencilFormFramebuffer();
+    private StencilMap gizmoStencilMap = new StencilMap();
+    private GizmoController gizmoController = new GizmoController(this);
+    private final Matrix4f gizmoWorldMatrix = new Matrix4f();
+    private final Vector3d gizmoCameraPosition = new Vector3d();
+    private boolean hasGizmo;
+    private final Matrix4f capturedGizmoMatrix = new Matrix4f();
+    private final Matrix4f capturedProjection = new Matrix4f();
 
     private Set<ModelBlockEntity> toSave = new HashSet<>();
 
@@ -1820,11 +1850,35 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
             return true;
         }
 
+        if (context.mouseButton == 0 && this.gizmoController.tryStartHandleDrag(context, this.transform)) {
+            return true;
+        }
+
         if (this.hovered != null && context.mouseButton == 0 && BBSSettings.clickModelBlocks.get()) {
             this.fill(this.hovered, true);
         }
 
+        /* Nothing in this panel claimed the click (no gizmo handle, no block under the
+         * cursor): start the shared orbit camera drag directly instead of letting the click
+         * fall through, since this panel sits on top of the dashboard's orbitUI in the click
+         * dispatch order and would otherwise silently eat the click without it ever reaching
+         * the camera (same fix as the film viewport's flight-mode click handling). */
+        int button = this.dashboard.orbitUI.orbit.canStart(context);
+
+        if (button >= 0) {
+            this.dashboard.orbitUI.orbit.start(button, context.mouseX, context.mouseY);
+
+            return true;
+        }
+
         return false;
+    }
+
+    @Override
+    public boolean subMouseReleased(UIContext context) {
+        this.gizmoController.stop();
+
+        return super.subMouseReleased(context);
     }
 
     @Override
@@ -1958,6 +2012,59 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
                         border);
             }
         }
+
+        if (BBSRendering.isIrisShadersEnabled() && this.hasGizmo && this.modelBlock != null && !this.isEditing(this.modelBlock))
+        {
+            MinecraftClient mc = MinecraftClient.getInstance();
+            int previousFbo = GL11.glGetInteger(GL30.GL_DRAW_FRAMEBUFFER_BINDING);
+            int[] previousViewport = new int[4];
+
+            GL11.glGetIntegerv(GL11.GL_VIEWPORT, previousViewport);
+
+            this.gizmoStencil.setup(Link.bbs("stencil_model_block"));
+
+            Texture texture = this.gizmoStencil.getFramebuffer().getMainTexture();
+            int w = mc.getWindow().getWidth();
+            int h = mc.getWindow().getHeight();
+
+            if (texture.width != w || texture.height != h) {
+                this.gizmoStencil.resize(w, h);
+            }
+
+            this.gizmoStencilMap.setup();
+            this.gizmoStencil.apply();
+
+            MatrixStack stencilStack = new MatrixStack();
+            stencilStack.push();
+            stencilStack.peek().getPositionMatrix().set(this.capturedGizmoMatrix);
+            stencilStack.peek().getNormalMatrix().identity();
+
+            Matrix4f prevProjection = new Matrix4f(RenderSystem.getProjectionMatrix());
+            RenderSystem.setProjectionMatrix(this.capturedProjection, VertexSorter.BY_Z);
+
+            MatrixStack mvStack = RenderSystem.getModelViewStack();
+            mvStack.push();
+            mvStack.peek().getPositionMatrix().identity();
+            mvStack.peek().getNormalMatrix().identity();
+            RenderSystem.applyModelViewMatrix();
+
+            Gizmo.INSTANCE.renderStencil(stencilStack, this.gizmoStencilMap);
+
+            mvStack.pop();
+            RenderSystem.applyModelViewMatrix();
+
+            RenderSystem.setProjectionMatrix(prevProjection, VertexSorter.BY_Z);
+
+            int mouseX = (int) mc.mouse.getX();
+            int mouseY = (int) mc.mouse.getY();
+
+            this.gizmoStencil.pick(mouseX, h - mouseY);
+            this.gizmoStencil.unbind(this.gizmoStencilMap);
+            this.gizmoController.updateHover();
+
+            GlStateManager._glBindFramebuffer(GL30.GL_FRAMEBUFFER, previousFbo);
+            GlStateManager._viewport(previousViewport[0], previousViewport[1], previousViewport[2], previousViewport[3]);
+        }
     }
 
     @Override
@@ -1975,9 +2082,16 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         double x = mc.mouse.getX();
         double y = mc.mouse.getY();
 
+        /* The view matrix is rebuilt from the camera's own rotation instead of using the world
+         * render matrix stack top: that stack isn't guaranteed to hold the camera rotation
+         * (and doesn't in 1.21.1), which used to skew this ray - the gizmo dragged with an
+         * inverted/stuttering rotation and a way-too-fast Z axis while stencil-based hover
+         * (which doesn't use this ray) kept working fine. */
+        Matrix4f view = new Matrix4f().rotation(camera.getRotation().conjugate(new Quaternionf()));
+
         this.mouseDirection.set(CameraUtils.getMouseDirection(
                 RenderSystem.getProjectionMatrix(),
-                context.matrixStack().peek().getPositionMatrix(),
+                view,
                 (int) x, (int) y, 0, 0, mc.getWindow().getWidth(), mc.getWindow().getHeight()));
         this.hovered = this.getClosestObject(new Vector3d(pos.x, pos.y, pos.z), this.mouseDirection);
 
@@ -2001,7 +2115,138 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
             }
         }
 
+        this.renderGizmo(context, pos);
+
         RenderSystem.enableDepthTest();
+    }
+
+    /** Renders the interactive gizmo at the edited model block (colored pass + pick pass). */
+    private void renderGizmo(WorldRenderContext context, Vec3d cameraPos) {
+        this.hasGizmo = false;
+
+        /* Don't draw/pick this panel's own gizmo while the block's nested form/model editor is
+         * open on top - that editor has its own gizmo (rendered in its own viewport), and
+         * showing both at once would double up and fight over the same drag. */
+        if (this.modelBlock == null || context.matrixStack() == null || this.isEditing(this.modelBlock)) {
+            this.gizmoStencil.clearPicking();
+            this.gizmoController.updateHover();
+
+            return;
+        }
+
+        Transform blockTransform = this.modelBlock.getProperties().getTransform();
+        BlockPos blockPos = this.modelBlock.getPos();
+        double px = blockPos.getX() + 0.5D + blockTransform.translate.x;
+        double py = blockPos.getY() + blockTransform.translate.y;
+        double pz = blockPos.getZ() + 0.5D + blockTransform.translate.z;
+
+        this.gizmoWorldMatrix.identity().translate((float) px, (float) py, (float) pz);
+
+        /* In local mode the ring/axis directions should follow the block's own rotated
+         * orientation (same as every other gizmo surface), not stay world-axis-aligned. */
+        if (this.transform != null && this.transform.isLocal())
+        {
+            this.gizmoWorldMatrix.mul(new Matrix4f(blockTransform.createRotationMatrix()));
+        }
+
+        this.gizmoCameraPosition.set(cameraPos.x, cameraPos.y, cameraPos.z);
+        this.hasGizmo = true;
+
+        MatrixStack stack = context.matrixStack();
+        MinecraftClient mc = MinecraftClient.getInstance();
+
+        stack.push();
+        stack.translate(px - cameraPos.x, py - cameraPos.y, pz - cameraPos.z);
+
+        /* The colored pass is always deferred to WorldRenderEvents.LAST: the model block's own
+         * model (a block entity) renders after this event, so drawing here would leave the
+         * gizmo partially hidden behind the model, and with Iris shaders the immediate draw
+         * gets consumed/displaced by the shader passes. Rendering at LAST puts the gizmo fully
+         * on top in both cases (same approach as the film editor's in-world gizmos). */
+        Gizmo.INSTANCE.deferRender(new Matrix4f(stack.peek().getPositionMatrix()), false, null);
+
+        if (BBSRendering.isIrisShadersEnabled())
+        {
+            this.capturedGizmoMatrix.set(stack.peek().getPositionMatrix());
+            this.capturedProjection.set(RenderSystem.getProjectionMatrix());
+        }
+        else
+        {
+            /* Pick pass: gizmo handles only, into this panel's own offscreen stencil framebuffer
+             * (draw order is irrelevant offscreen). Whatever framebuffer was bound - vanilla's or
+             * Iris' - is restored afterwards so the world render continues untouched. */
+            int previousFbo = GL11.glGetInteger(GL30.GL_DRAW_FRAMEBUFFER_BINDING);
+            int[] previousViewport = new int[4];
+
+            GL11.glGetIntegerv(GL11.GL_VIEWPORT, previousViewport);
+
+            this.gizmoStencil.setup(Link.bbs("stencil_model_block"));
+
+            Texture texture = this.gizmoStencil.getFramebuffer().getMainTexture();
+            int w = mc.getWindow().getWidth();
+            int h = mc.getWindow().getHeight();
+
+            if (texture.width != w || texture.height != h) {
+                this.gizmoStencil.resize(w, h);
+            }
+
+            this.gizmoStencilMap.setup();
+            this.gizmoStencil.apply();
+
+            Gizmo.INSTANCE.renderStencil(stack, this.gizmoStencilMap);
+
+            int mouseX = (int) mc.mouse.getX();
+            int mouseY = (int) mc.mouse.getY();
+
+            this.gizmoStencil.pick(mouseX, h - mouseY);
+            this.gizmoStencil.unbind(this.gizmoStencilMap);
+            this.gizmoController.updateHover();
+
+            GlStateManager._glBindFramebuffer(GL30.GL_FRAMEBUFFER, previousFbo);
+            GlStateManager._viewport(previousViewport[0], previousViewport[1], previousViewport[2], previousViewport[3]);
+        }
+
+        RenderSystem.enableDepthTest();
+        stack.pop();
+    }
+
+
+
+    @Override
+    public StencilFormFramebuffer getGizmoStencil() {
+        return this.gizmoStencil;
+    }
+
+    @Override
+    public void prepareGizmoDrag(UIPropTransform transform) {
+        if (transform == null) {
+            return;
+        }
+
+        transform.setGizmoRayProvider(new UIPropTransform.IGizmoRayProvider() {
+            @Override
+            public boolean getMouseRay(UIContext context, int mouseX, int mouseY, Vector3d rayOrigin, Vector3f rayDirection) {
+                if (!UIModelBlockPanel.this.hasGizmo || UIModelBlockPanel.this.mouseDirection.lengthSquared() <= 1.0E-12F) {
+                    return false;
+                }
+
+                rayDirection.set(UIModelBlockPanel.this.mouseDirection).normalize();
+                rayOrigin.set(UIModelBlockPanel.this.gizmoCameraPosition);
+
+                return true;
+            }
+
+            @Override
+            public boolean getGizmoMatrix(Matrix4f matrix) {
+                if (!UIModelBlockPanel.this.hasGizmo) {
+                    return false;
+                }
+
+                matrix.set(UIModelBlockPanel.this.gizmoWorldMatrix);
+
+                return true;
+            }
+        });
     }
 
     private ModelBlockEntity getClosestObject(Vector3d finalPosition, Vector3f mouseDirection) {
@@ -2083,6 +2328,15 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
             }
         }
         return false;
+    }
+
+    /** Unlike {@link #isEditing(ModelBlockEntity)} (which also requires the nested form
+     *  palette to be open), this only asks "is this the block currently selected in this
+     *  panel" - i.e. the one the real interactive gizmo is drawn for - regardless of whether
+     *  its nested form editor happens to be open. Used to suppress the old decorative/
+     *  non-interactive axes for the selected block so they don't overlap the real gizmo. */
+    public boolean isSelectedForGizmo(ModelBlockEntity entity) {
+        return this.modelBlock == entity;
     }
 
     private float getCardWeight(int i) {
