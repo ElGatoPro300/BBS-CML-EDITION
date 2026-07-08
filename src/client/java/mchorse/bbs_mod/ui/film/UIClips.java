@@ -408,39 +408,66 @@ public class UIClips extends UIElement
     private Vector3i checkSize(int tick, int layer, int duration)
     {
         int start = tick;
-        int end = tick + duration;
+        int remaining = duration;
 
-        for (Clip clip : this.clips.get())
+        while (remaining > 0)
         {
-            if (clip.layer.get() != layer)
+            boolean advanced = false;
+
+            for (Clip clip : this.clips.get())
+            {
+                if (clip.layer.get() != layer)
+                {
+                    continue;
+                }
+
+                int clipStart = clip.tick.get();
+                int clipEnd = clipStart + clip.duration.get();
+                int end = start + remaining;
+
+                if (end <= clipStart || start >= clipEnd)
+                {
+                    continue;
+                }
+
+                if (start >= clipStart && start < clipEnd)
+                {
+                    int overflow = end - clipEnd;
+
+                    if (overflow <= 0)
+                    {
+                        return null;
+                    }
+
+                    /* Place only the portion that extends past the obstacle's end. */
+                    start = clipEnd;
+                    remaining = overflow;
+                    advanced = true;
+                    break;
+                }
+
+                if (start < clipStart && end > clipStart)
+                {
+                    remaining = clipStart - start;
+
+                    if (remaining <= 0)
+                    {
+                        return null;
+                    }
+
+                    return new Vector3i(start, layer, remaining);
+                }
+            }
+
+            if (advanced)
             {
                 continue;
             }
 
-            int clipStart = clip.tick.get();
-            int clipEnd = clipStart + clip.duration.get();
-
-            if (end <= clipStart || start >= clipEnd)
-            {
-                continue;
-            }
-
-            if (start >= clipStart)
-            {
-                return null;
-            }
-
-            end = Math.min(end, clipStart);
+            return new Vector3i(start, layer, remaining);
         }
 
-        duration = end - start;
-
-        if (duration <= 0)
-        {
-            return null;
-        }
-
-        return new Vector3i(start, layer, duration);
+        return null;
     }
 
     private void showAddClips(UIContext context, Vector3i preview)
