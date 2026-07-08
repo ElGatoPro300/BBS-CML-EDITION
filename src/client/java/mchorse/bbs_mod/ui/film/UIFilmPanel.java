@@ -4950,6 +4950,38 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.applyAllUndoData(data);
     }
 
+    public MapType collectFilmUndoSnapshot()
+    {
+        UIElement root = this.getRoot();
+
+        if (root == null)
+        {
+            return new MapType();
+        }
+
+        return (MapType) root.collectAllUndoData().copy();
+    }
+
+    public boolean hasEmbeddedClipView()
+    {
+        return this.cameraEditor.clips.hasEmbeddedView() || this.actionEditor.clips.hasEmbeddedView();
+    }
+
+    public String getEmbeddedClipEditorUndoId()
+    {
+        if (this.cameraEditor.clips.hasEmbeddedView())
+        {
+            return this.cameraEditor.getUndoId();
+        }
+
+        if (this.actionEditor.clips.hasEmbeddedView())
+        {
+            return this.actionEditor.getUndoId();
+        }
+
+        return "";
+    }
+
     @Override
     public void applyUndoData(MapType data)
     {

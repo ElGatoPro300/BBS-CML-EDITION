@@ -13,6 +13,7 @@ import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbar;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarRegistry;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarSettings;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarWiring;
+import mchorse.bbs_mod.ui.film.utils.UIFilmUndoHandler;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeEditor;
@@ -341,7 +342,36 @@ public class UIClipsPanel extends UIElement implements IUIClipsDelegate
             context.closeContextMenu();
         }
 
+        UIElement current = this.clips.getEmbeddedView();
+        UIFilmUndoHandler undoHandler = this.filmPanel.getUndoHandler();
+        MapType uiBefore = null;
+        boolean closing = current != null && element == null;
+        boolean switching = current != null && element != null && current != element;
+        boolean recordUndo = undoHandler != null
+            && !undoHandler.isUndoing()
+            && (closing || switching);
+
+        if (recordUndo)
+        {
+            uiBefore = this.collectUIViewSnapshot();
+        }
+
         this.clips.embedView(element);
+
+        if (undoHandler != null && !undoHandler.isUndoing())
+        {
+            undoHandler.clearUIDataSnapshot();
+        }
+
+        if (recordUndo)
+        {
+            undoHandler.pushUIViewUndo(uiBefore, this.collectUIViewSnapshot());
+        }
+    }
+
+    private MapType collectUIViewSnapshot()
+    {
+        return this.filmPanel.collectFilmUndoSnapshot();
     }
 
     @Override

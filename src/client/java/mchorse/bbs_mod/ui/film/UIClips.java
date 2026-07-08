@@ -178,7 +178,7 @@ public class UIClips extends UIElement
         this.delegate = delegate;
         this.factory = factory;
 
-        this.embeddedClose = new UIIcon(Icons.CLOSE, (b) -> this.embedView(null))
+        this.embeddedClose = new UIIcon(Icons.CLOSE, (b) -> this.delegate.embedView(null))
         {
             @Override
             protected void renderSkin(UIContext context)
@@ -1762,7 +1762,7 @@ public class UIClips extends UIElement
 
         if (this.embedded != null && context.isPressed(GLFW.GLFW_KEY_ESCAPE))
         {
-            this.embedView(null);
+            this.delegate.embedView(null);
             UIUtils.playClick();
 
             return true;

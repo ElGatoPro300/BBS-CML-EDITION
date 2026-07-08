@@ -6,6 +6,7 @@ import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.settings.values.core.ValueGroup;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
+import mchorse.bbs_mod.ui.film.utils.undo.UIViewUndo;
 import mchorse.bbs_mod.ui.film.utils.undo.ValueChangeUndo;
 import mchorse.bbs_mod.ui.forms.editors.UIFormUndoHandler;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
@@ -28,13 +29,32 @@ public class UIFilmUndoHandler extends UIFormUndoHandler
         super(panel);
     }
 
+    public boolean isUndoing()
+    {
+        return this.isUndoing;
+    }
+
+    /**
+     * Records a UI-only undo step (embedded view navigation, scroll, selection, etc.)
+     * so it is not bundled with the next data change undo.
+     */
+    public void pushUIViewUndo(MapType uiBefore, MapType uiAfter)
+    {
+        if (this.isUndoing || uiBefore == null || uiAfter == null)
+        {
+            return;
+        }
+
+        this.undoManager.pushUndo(new UIViewUndo((MapType) uiBefore.copy(), (MapType) uiAfter.copy()).noMerging());
+    }
+
     public boolean undo(ValueGroup context)
     {
         this.isUndoing = true;
 
         try
         {
-            return this.undoManager.undo(context);
+            return this.undoManager.undoNext(context, (undo) -> this.shouldDeferEmbeddedUndo(undo, false));
         }
         finally
         {
@@ -48,7 +68,7 @@ public class UIFilmUndoHandler extends UIFormUndoHandler
 
         try
         {
-            return this.undoManager.redo(context);
+            return this.undoManager.redoNext(context, (undo) -> this.shouldDeferEmbeddedUndo(undo, true));
         }
         finally
         {
@@ -77,13 +97,13 @@ public class UIFilmUndoHandler extends UIFormUndoHandler
                 anotherUndo = ((CompoundUndo<ValueGroup>) anotherUndo).getFirst(ValueChangeUndo.class);
             }
 
-            if (anotherUndo instanceof ValueChangeUndo)
-            {
-                ValueChangeUndo change = (ValueChangeUndo) anotherUndo;
-                MapType uiData = change.getUIData(redo);
+            MapType uiData = this.resolveUndoUIData(anotherUndo, redo);
 
+            if (uiData != null)
+            {
                 if (this.uiElement instanceof UIFilmPanel panel)
                 {
+                    uiData = this.preserveEmbeddedContext(uiData, panel, anotherUndo, redo);
                     panel.applyFilmUndoData(uiData);
                 }
                 else
@@ -202,5 +222,112 @@ public class UIFilmUndoHandler extends UIFormUndoHandler
         }
 
         return false;
+    }
+
+    private MapType resolveUndoUIData(IUndo<ValueGroup> undo, boolean redo)
+    {
+        if (undo instanceof UIViewUndo viewUndo)
+        {
+            return viewUndo.getUIData(redo);
+        }
+        else if (undo instanceof ValueChangeUndo change)
+        {
+            return change.getUIData(redo);
+        }
+
+        return null;
+    }
+
+    /**
+     * While an embedded clip editor is open, keep it open when undoing/redoing data
+     * changes whose snapshots were captured without embedded context.
+     */
+    private MapType preserveEmbeddedContext(MapType uiData, UIFilmPanel panel, IUndo<ValueGroup> undo, boolean redo)
+    {
+        if (!(undo instanceof ValueChangeUndo) || !panel.hasEmbeddedClipView())
+        {
+            return uiData;
+        }
+
+        String editorId = panel.getEmbeddedClipEditorUndoId();
+
+        if (editorId.isEmpty())
+        {
+            return uiData;
+        }
+
+        MapType editorData = uiData.getMap(editorId);
+
+        if (editorData != null && !editorData.getString("embedded_id").isEmpty())
+        {
+            return uiData;
+        }
+
+        MapType reference = panel.collectFilmUndoSnapshot();
+        MapType referenceEditor = reference.getMap(editorId);
+
+        if (referenceEditor == null || referenceEditor.getString("embedded_id").isEmpty())
+        {
+            return uiData;
+        }
+
+        MapType merged = (MapType) uiData.copy();
+        MapType mergedEditor = merged.getMap(editorId);
+
+        if (mergedEditor == null)
+        {
+            mergedEditor = new MapType();
+            merged.put(editorId, mergedEditor);
+        }
+
+        MapType embeddedState = referenceEditor.getMap("embedded_state");
+
+        mergedEditor.putString("embedded_id", referenceEditor.getString("embedded_id"));
+        mergedEditor.putBool("embedded_stacked", referenceEditor.getBool("embedded_stacked"));
+
+        if (embeddedState != null)
+        {
+            mergedEditor.put("embedded_state", embeddedState.copy());
+        }
+
+        return merged;
+    }
+
+    /**
+     * Skip legacy "enter embedded view" UI steps while already inside an embedded editor,
+     * so data undos can be processed first.
+     */
+    private boolean shouldDeferEmbeddedUndo(IUndo<ValueGroup> undo, boolean redo)
+    {
+        if (!(this.uiElement instanceof UIFilmPanel panel))
+        {
+            return false;
+        }
+
+        if (!(undo instanceof UIViewUndo viewUndo))
+        {
+            return false;
+        }
+
+        if (!panel.hasEmbeddedClipView())
+        {
+            return false;
+        }
+
+        MapType uiData = viewUndo.getUIData(!redo);
+
+        return uiData != null && !this.hasEmbeddedClipView(uiData);
+    }
+
+    private boolean hasEmbeddedClipView(MapType uiData)
+    {
+        return this.hasEmbeddedClipView(uiData, "camera_editor") || this.hasEmbeddedClipView(uiData, "action_editor");
+    }
+
+    private boolean hasEmbeddedClipView(MapType uiData, String editorId)
+    {
+        MapType editorData = uiData.getMap(editorId);
+
+        return editorData != null && !editorData.getString("embedded_id").isEmpty();
     }
 }
