@@ -816,8 +816,7 @@ public final class TimelineToolbarWiring
         bindLabel(toolbar, UIKeys.KEYFRAMES_CONTEXT_ADJUST_VALUES_RIGHT,
             () -> keyframes.toolbarAdjustValues(true), canAdjust);
         bindShortcut(toolbar, Keys.KEYFRAMES_SCALE_TIME, keyframes::toolbarScaleTime, () -> keyframes.isModifyingKeyframes());
-        bindShortcut(toolbar, Keys.KEYFRAMES_STACK_KEYFRAMES, keyframes::toolbarStackKeyframes,
-            () -> keyframes.isModifyingKeyframes());
+        bindShortcut(toolbar, Keys.KEYFRAMES_STACK_KEYFRAMES, keyframes::toolbarStackKeyframes, hasSelected);
         bindShortcut(toolbar, Keys.KEYFRAMES_INTERP, keyframes::toolbarToggleInterpolation, hasSelected);
     }
 
@@ -894,7 +893,7 @@ public final class TimelineToolbarWiring
             {
                 editor.keyframeEditor.view.toolbarStackKeyframes();
             }
-        }, canModify);
+        }, hasSelected);
         bindShortcut(toolbar, Keys.KEYFRAMES_INTERP, () ->
         {
             if (editor.keyframeEditor != null)

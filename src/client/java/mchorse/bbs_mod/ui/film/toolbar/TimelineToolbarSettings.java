@@ -198,6 +198,13 @@ public class TimelineToolbarSettings
 
     public static final int INTERACTION_HINT_FG = Colors.WHITE;
 
+    /**
+     * When {@code true}, timeline keyboard shortcuts also show toolbar-style
+     * interaction hints while transform modes (stack, scale time, etc.) are
+     * active. Toolbar menu clicks always show hints regardless of this flag.
+     */
+    public static boolean SHORTCUTS_USE_INTERACTION_HINTS = false;
+
     /* Colors */
 
     /**

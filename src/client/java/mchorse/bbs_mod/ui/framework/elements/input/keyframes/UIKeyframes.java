@@ -13,6 +13,7 @@ import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineInteractionHints;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineInteractionState;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarPointerBlock;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarSettings;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineTrackEligibility;
 import mchorse.bbs_mod.ui.film.toolbar.UIInteractionModeOverlay;
 import mchorse.bbs_mod.ui.film.toolbar.UIKeyframeInsertInteraction;
@@ -81,11 +82,13 @@ public class UIKeyframes extends UIElement
     private int dragging = -1;
     private Pair<Keyframe, KeyframeType> draggingData;
     private boolean scaling;
+    private boolean scalingShowInteractionHints;
     private float scalingAnchor;
     private Map<Keyframe, Float> scaleTicks = new HashMap<>();
     private boolean single;
 
     private boolean stacking;
+    private boolean stackingShowInteractionHints;
     private float stackOffset;
 
     private int lastX;
@@ -139,7 +142,7 @@ public class UIKeyframes extends UIElement
             if (this.interactionOverlay.isActive() || this.insertInteraction.isActive()
                 || this.duplicateInteraction.isActive() || this.pasteInteraction.isActive()
                 || this.selectNeighborInteraction.isActive() || this.selectSameInteraction.isActive()
-                || this.scaling || this.stacking)
+                || this.isTransformInteractionBlockingContext())
             {
                 return;
             }
@@ -273,8 +276,8 @@ public class UIKeyframes extends UIElement
             this.selectAfter(context.mouseX, context.mouseY, 1);
         }).category(category).active(canModify);
         this.keys().register(Keys.KEYFRAMES_SELECT_SAME, this::selectSame).inside().category(category).active(canModify);
-        this.keys().register(Keys.KEYFRAMES_SCALE_TIME, this::scaleTime).inside().category(category);
-        this.keys().register(Keys.KEYFRAMES_STACK_KEYFRAMES, () -> this.stackKeyframes(false)).inside().category(category);
+        this.keys().register(Keys.KEYFRAMES_SCALE_TIME, () -> this.scaleTime(TimelineToolbarSettings.SHORTCUTS_USE_INTERACTION_HINTS)).inside().category(category);
+        this.keys().register(Keys.KEYFRAMES_STACK_KEYFRAMES, () -> this.stackKeyframes(false, TimelineToolbarSettings.SHORTCUTS_USE_INTERACTION_HINTS)).inside().category(category).active(this::hasSelectedKeyframes);
         this.keys().register(Keys.KEYFRAMES_SELECT_PREV, () -> this.selectNextKeyframe(-1)).inside().category(category);
         this.keys().register(Keys.KEYFRAMES_SELECT_NEXT, () -> this.selectNextKeyframe(1)).inside().category(category);
         this.keys().register(Keys.KEYFRAMES_SPREAD, this::spreadKeyframes).category(category);
@@ -496,11 +499,12 @@ public class UIKeyframes extends UIElement
         }
     }
 
-    private void scaleTime()
+    private void scaleTime(boolean showInteractionHints)
     {
         if (this.scaling)
         {
             this.scaling = false;
+            this.scalingShowInteractionHints = false;
 
             return;
         }
@@ -508,6 +512,7 @@ public class UIKeyframes extends UIElement
         UIContext context = this.getContext();
 
         this.scaling = true;
+        this.scalingShowInteractionHints = showInteractionHints;
         this.scaleTicks.clear();
         this.scalingAnchor = Integer.MAX_VALUE;
         this.originalX = context.mouseX;
@@ -523,11 +528,12 @@ public class UIKeyframes extends UIElement
         }
     }
 
-    private void stackKeyframes(boolean cancel)
+    private void stackKeyframes(boolean cancel, boolean showInteractionHints)
     {
         if (this.stacking)
         {
             this.stacking = false;
+            this.stackingShowInteractionHints = false;
 
             if (!cancel)
             {
@@ -582,8 +588,20 @@ public class UIKeyframes extends UIElement
             return;
         }
 
+        if (!this.hasSelectedKeyframes())
+        {
+            return;
+        }
+
         this.stacking = true;
+        this.stackingShowInteractionHints = showInteractionHints;
         this.stackOffset = 1;
+    }
+
+    private boolean isTransformInteractionBlockingContext()
+    {
+        return (this.scaling && this.scalingShowInteractionHints)
+            || (this.stacking && this.stackingShowInteractionHints);
     }
 
     public boolean isStacking()
@@ -1060,7 +1078,7 @@ public class UIKeyframes extends UIElement
         if (this.interactionOverlay.isActive() || this.insertInteraction.isActive()
             || this.duplicateInteraction.isActive() || this.pasteInteraction.isActive()
             || this.selectNeighborInteraction.isActive() || this.selectSameInteraction.isActive()
-            || this.scaling || this.stacking)
+            || this.isTransformInteractionBlockingContext())
         {
             return null;
         }
@@ -1255,13 +1273,18 @@ public class UIKeyframes extends UIElement
     public void toolbarScaleTime()
     {
         this.cancelTrackInteraction();
-        this.scaleTime();
+        this.scaleTime(true);
     }
 
     public void toolbarStackKeyframes()
     {
+        if (!this.hasSelectedKeyframes())
+        {
+            return;
+        }
+
         this.cancelTrackInteraction();
-        this.stackKeyframes(false);
+        this.stackKeyframes(false, true);
     }
 
     public void toolbarEditTrack()
@@ -1302,10 +1325,11 @@ public class UIKeyframes extends UIElement
         this.selectNeighborInteraction.cancel();
         this.selectSameInteraction.cancel();
         this.scaling = false;
+        this.scalingShowInteractionHints = false;
 
         if (this.stacking)
         {
-            this.stackKeyframes(true);
+            this.stackKeyframes(true, false);
         }
     }
 
@@ -1352,11 +1376,11 @@ public class UIKeyframes extends UIElement
 
     public void renderTransformModeHints(UIContext context)
     {
-        if (this.scaling)
+        if (this.scaling && this.scalingShowInteractionHints)
         {
             TimelineInteractionHints.renderHint(context, this.area, UIKeys.TIMELINE_INTERACTION_SCALE_TIME);
         }
-        else if (this.stacking)
+        else if (this.stacking && this.stackingShowInteractionHints)
         {
             TimelineInteractionHints.renderHint(context, this.area, UIKeys.TIMELINE_INTERACTION_STACK_KEYFRAMES);
         }
@@ -1912,13 +1936,14 @@ public class UIKeyframes extends UIElement
         if (this.scaling)
         {
             this.scaling = false;
+            this.scalingShowInteractionHints = false;
 
             return true;
         }
 
         if (this.stacking)
         {
-            this.stackKeyframes(context.mouseButton == 1);
+            this.stackKeyframes(context.mouseButton == 1, this.stackingShowInteractionHints);
 
             return true;
         }
@@ -2131,10 +2156,11 @@ public class UIKeyframes extends UIElement
         {
             /* Reset scaling */
             this.scaling = false;
+            this.scalingShowInteractionHints = false;
 
             if (this.stacking)
             {
-                this.stackKeyframes(true);
+                this.stackKeyframes(true, this.stackingShowInteractionHints);
             }
 
             for (Map.Entry<Keyframe, Float> entry : this.scaleTicks.entrySet())
