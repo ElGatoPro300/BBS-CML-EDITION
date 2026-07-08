@@ -596,6 +596,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
         this.keyframes.renderKeyframeInsertPreviews(context);
         this.keyframes.renderKeyframeDuplicatePreviews(context);
         this.keyframes.renderKeyframePastePreviews(context);
+        this.keyframes.renderKeyframeSelectSamePreview(context);
         this.keyframes.renderInteractionTickPulse(context);
         context.batcher.unclip(context);
     }

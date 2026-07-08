@@ -726,9 +726,26 @@ public final class TimelineToolbarWiring
 
         bindShortcut(toolbar, Keys.KEYFRAMES_SELECT_LEFT, keyframes::toolbarSelectLeft, canModify);
         bindShortcut(toolbar, Keys.KEYFRAMES_SELECT_RIGHT, keyframes::toolbarSelectRight, canModify);
-        bindShortcut(toolbar, Keys.KEYFRAMES_SELECT_SAME, keyframes::toolbarSelectSame, canModify);
+        wireSelectSameSubmenu(toolbar, canModify, keyframes::toolbarSelectSame, keyframes::toolbarSelectSameCurrentTrack);
         bindShortcut(toolbar, Keys.KEYFRAMES_SELECT_PREV, keyframes::toolbarSelectPrevKeyframe, canModify);
         bindShortcut(toolbar, Keys.KEYFRAMES_SELECT_NEXT, keyframes::toolbarSelectNextKeyframe, canModify);
+    }
+
+    private static void wireSelectSameSubmenu(TimelineToolbar toolbar, BooleanSupplier canModify,
+        Runnable selectSameAll, Runnable selectSameTrack)
+    {
+        ToolbarItem parent = findLabelInSections(toolbar.getSections(), UIKeys.KEYFRAMES_KEYS_SELECT_SAME);
+
+        if (parent == null)
+        {
+            return;
+        }
+
+        parent.run(selectSameAll);
+        parent.enabledIf(canModify);
+
+        bindInsertChild(parent, UIKeys.KEYFRAMES_KEYS_SELECT_SAME_ALL, selectSameAll, canModify);
+        bindInsertChild(parent, UIKeys.KEYFRAMES_KEYS_SELECT_SAME_TRACK, selectSameTrack, canModify);
     }
 
     private static void wireKeyframesSelect(UIReplaysEditor editor, TimelineToolbar toolbar)
@@ -750,13 +767,19 @@ public final class TimelineToolbarWiring
                 editor.keyframeEditor.view.toolbarSelectRight();
             }
         }, canModify);
-        bindShortcut(toolbar, Keys.KEYFRAMES_SELECT_SAME, () ->
+        wireSelectSameSubmenu(toolbar, canModify, () ->
         {
             if (editor.keyframeEditor != null)
             {
                 editor.keyframeEditor.view.toolbarSelectSame();
             }
-        }, canModify);
+        }, () ->
+        {
+            if (editor.keyframeEditor != null)
+            {
+                editor.keyframeEditor.view.toolbarSelectSameCurrentTrack();
+            }
+        });
         bindShortcut(toolbar, Keys.KEYFRAMES_SELECT_PREV, () ->
         {
             if (editor.keyframeEditor != null)

@@ -22,7 +22,9 @@ import mchorse.bbs_mod.ui.film.toolbar.UIKeyframeDuplicateInteraction;
 import mchorse.bbs_mod.ui.film.toolbar.KeyframePasteInteractionState;
 import mchorse.bbs_mod.ui.film.toolbar.UIKeyframePasteInteraction;
 import mchorse.bbs_mod.ui.film.toolbar.KeyframeSelectNeighborInteractionState;
+import mchorse.bbs_mod.ui.film.toolbar.KeyframeSelectSameInteractionState;
 import mchorse.bbs_mod.ui.film.toolbar.UIKeyframeSelectNeighborInteraction;
+import mchorse.bbs_mod.ui.film.toolbar.UIKeyframeSelectSameInteraction;
 import mchorse.bbs_mod.ui.film.utils.keyframes.UIFilmKeyframes;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
@@ -115,6 +117,7 @@ public class UIKeyframes extends UIElement
     private final UIKeyframeDuplicateInteraction duplicateInteraction = new UIKeyframeDuplicateInteraction();
     private final UIKeyframePasteInteraction pasteInteraction = new UIKeyframePasteInteraction();
     private final UIKeyframeSelectNeighborInteraction selectNeighborInteraction = new UIKeyframeSelectNeighborInteraction();
+    private final UIKeyframeSelectSameInteraction selectSameInteraction = new UIKeyframeSelectSameInteraction();
 
     public UIKeyframes(Consumer<Keyframe> callback)
     {
@@ -135,7 +138,7 @@ public class UIKeyframes extends UIElement
         {
             if (this.interactionOverlay.isActive() || this.insertInteraction.isActive()
                 || this.duplicateInteraction.isActive() || this.pasteInteraction.isActive()
-                || this.selectNeighborInteraction.isActive()
+                || this.selectNeighborInteraction.isActive() || this.selectSameInteraction.isActive()
                 || this.scaling || this.stacking)
             {
                 return;
@@ -489,27 +492,7 @@ public class UIKeyframes extends UIElement
 
         if (keyframe != null)
         {
-            if (!Window.isShiftPressed())
-            {
-                this.currentGraph.clearSelection();
-            }
-
-            for (UIKeyframeSheet sheet : this.currentGraph.getSheets())
-            {
-                List<Keyframe> list = sheet.channel.getList();
-
-                for (int i = 0; i < list.size(); i++)
-                {
-                    Keyframe kf = list.get(i);
-
-                    if (kf.getFactory().compare(keyframe.a.getValue(), kf.getValue()))
-                    {
-                        sheet.selection.add(i);
-                    }
-                }
-            }
-
-            this.currentGraph.pickSelected();
+            this.selectSameValue(keyframe.a, this.currentGraph.getSheet(context.mouseY), false);
         }
     }
 
@@ -858,7 +841,71 @@ public class UIKeyframes extends UIElement
 
     public void toolbarSelectSame()
     {
-        this.selectSame();
+        this.enterSelectSameInteraction(false);
+    }
+
+    public void toolbarSelectSameCurrentTrack()
+    {
+        this.enterSelectSameInteraction(true);
+    }
+
+    public void enterSelectSameInteraction(boolean currentTrackOnly)
+    {
+        if (!this.isModifyingKeyframes())
+        {
+            return;
+        }
+
+        IKey hint = currentTrackOnly
+            ? UIKeys.TIMELINE_INTERACTION_SELECT_SAME_TRACK
+            : UIKeys.TIMELINE_INTERACTION_SELECT_SAME_ALL;
+
+        this.insertInteraction.cancel();
+        this.duplicateInteraction.cancel();
+        this.pasteInteraction.cancel();
+        this.selectNeighborInteraction.cancel();
+        this.interactionOverlay.cancel();
+        this.selectSameInteraction.enter(new KeyframeSelectSameInteractionState(hint, currentTrackOnly));
+    }
+
+    public boolean isSelectSameInteractionActive()
+    {
+        return this.selectSameInteraction.isActive();
+    }
+
+    public void selectSameValue(Keyframe target, UIKeyframeSheet pickedSheet, boolean currentTrackOnly)
+    {
+        if (target == null)
+        {
+            return;
+        }
+
+        if (!Window.isShiftPressed())
+        {
+            this.currentGraph.clearSelection();
+        }
+
+        for (UIKeyframeSheet sheet : this.currentGraph.getSheets())
+        {
+            if (currentTrackOnly && sheet != pickedSheet)
+            {
+                continue;
+            }
+
+            List<Keyframe> list = sheet.channel.getList();
+
+            for (int i = 0; i < list.size(); i++)
+            {
+                Keyframe kf = list.get(i);
+
+                if (kf.getFactory().compare(target.getValue(), kf.getValue()))
+                {
+                    sheet.selection.add(i);
+                }
+            }
+        }
+
+        this.currentGraph.pickSelected();
     }
 
     public void toolbarSelectPrevKeyframe()
@@ -899,6 +946,7 @@ public class UIKeyframes extends UIElement
         this.insertInteraction.cancel();
         this.duplicateInteraction.cancel();
         this.pasteInteraction.cancel();
+        this.selectSameInteraction.cancel();
         this.interactionOverlay.cancel();
         this.selectNeighborInteraction.enter(new KeyframeSelectNeighborInteractionState(hint, direction));
     }
@@ -996,6 +1044,7 @@ public class UIKeyframes extends UIElement
         this.duplicateInteraction.cancel();
         this.pasteInteraction.cancel();
         this.selectNeighborInteraction.cancel();
+        this.selectSameInteraction.cancel();
         this.interactionOverlay.cancel();
         this.insertInteraction.enter(state);
     }
@@ -1010,7 +1059,7 @@ public class UIKeyframes extends UIElement
     {
         if (this.interactionOverlay.isActive() || this.insertInteraction.isActive()
             || this.duplicateInteraction.isActive() || this.pasteInteraction.isActive()
-            || this.selectNeighborInteraction.isActive()
+            || this.selectNeighborInteraction.isActive() || this.selectSameInteraction.isActive()
             || this.scaling || this.stacking)
         {
             return null;
@@ -1052,6 +1101,7 @@ public class UIKeyframes extends UIElement
         this.interactionOverlay.cancel();
         this.pasteInteraction.cancel();
         this.selectNeighborInteraction.cancel();
+        this.selectSameInteraction.cancel();
         this.duplicateInteraction.enter(state);
     }
 
@@ -1081,6 +1131,7 @@ public class UIKeyframes extends UIElement
         this.duplicateInteraction.cancel();
         this.interactionOverlay.cancel();
         this.selectNeighborInteraction.cancel();
+        this.selectSameInteraction.cancel();
         this.pasteInteraction.enter(state);
     }
 
@@ -1092,6 +1143,11 @@ public class UIKeyframes extends UIElement
     public void renderKeyframePastePreviews(UIContext context)
     {
         this.pasteInteraction.renderPreviews(this, context);
+    }
+
+    public void renderKeyframeSelectSamePreview(UIContext context)
+    {
+        this.selectSameInteraction.renderPreview(this, context);
     }
 
     public Map<String, PastedKeyframes> getClipboardKeyframes()
@@ -1233,6 +1289,7 @@ public class UIKeyframes extends UIElement
         this.duplicateInteraction.cancel();
         this.pasteInteraction.cancel();
         this.selectNeighborInteraction.cancel();
+        this.selectSameInteraction.cancel();
         this.interactionOverlay.enter(new TimelineInteractionState(hint, eligible, onConfirm));
     }
 
@@ -1243,6 +1300,7 @@ public class UIKeyframes extends UIElement
         this.duplicateInteraction.cancel();
         this.pasteInteraction.cancel();
         this.selectNeighborInteraction.cancel();
+        this.selectSameInteraction.cancel();
         this.scaling = false;
 
         if (this.stacking)
@@ -1809,9 +1867,14 @@ public class UIKeyframes extends UIElement
     {
         boolean interactionActive = this.insertInteraction.isActive() || this.interactionOverlay.isActive()
             || this.duplicateInteraction.isActive() || this.pasteInteraction.isActive()
-            || this.selectNeighborInteraction.isActive();
+            || this.selectNeighborInteraction.isActive() || this.selectSameInteraction.isActive();
 
         if (interactionActive && this.currentGraph.mouseClicked(context))
+        {
+            return true;
+        }
+
+        if (this.selectSameInteraction.handleMouseClicked(this, context))
         {
             return true;
         }
@@ -1999,7 +2062,7 @@ public class UIKeyframes extends UIElement
     {
         if ((this.insertInteraction.isActive() || this.interactionOverlay.isActive()
             || this.duplicateInteraction.isActive() || this.pasteInteraction.isActive()
-            || this.selectNeighborInteraction.isActive()) && this.area.isInside(context))
+            || this.selectNeighborInteraction.isActive() || this.selectSameInteraction.isActive()) && this.area.isInside(context))
         {
             this.currentGraph.mouseScrolled(context);
 
@@ -2027,6 +2090,11 @@ public class UIKeyframes extends UIElement
     @Override
     protected boolean subKeyPressed(UIContext context)
     {
+        if (this.selectSameInteraction.handleKeyPressed(context))
+        {
+            return true;
+        }
+
         if (this.selectNeighborInteraction.handleKeyPressed(context))
         {
             return true;
@@ -2104,6 +2172,7 @@ public class UIKeyframes extends UIElement
 
         context.batcher.unclip(context);
 
+        this.selectSameInteraction.renderHint(context, this.area);
         this.selectNeighborInteraction.renderHint(context, this.area);
         this.pasteInteraction.renderHint(context, this.area);
         this.duplicateInteraction.renderHint(context, this.area);
@@ -2162,6 +2231,7 @@ public class UIKeyframes extends UIElement
         this.lastX = mouseX;
         this.lastY = mouseY;
 
+        this.selectSameInteraction.updatePreview(this, context);
         this.selectNeighborInteraction.updatePreview(this, context);
         this.pasteInteraction.updatePreview(this, context);
         this.duplicateInteraction.updatePreview(this, context);

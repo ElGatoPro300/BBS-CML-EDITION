@@ -843,6 +843,8 @@ public class UIKeys
     public static final IKey KEYFRAMES_KEYS_SELECT_PREV = L10n.lang("bbs.ui.keyframes.keys.select_prev");
     public static final IKey KEYFRAMES_KEYS_SELECT_RIGHT = L10n.lang("bbs.ui.keyframes.keys.select_right");
     public static final IKey KEYFRAMES_KEYS_SELECT_SAME = L10n.lang("bbs.ui.keyframes.keys.select_same");
+    public static final IKey KEYFRAMES_KEYS_SELECT_SAME_ALL = L10n.lang("bbs.ui.keyframes.keys.select_same_all");
+    public static final IKey KEYFRAMES_KEYS_SELECT_SAME_TRACK = L10n.lang("bbs.ui.keyframes.keys.select_same_track");
     public static final IKey KEYFRAMES_KEYS_STACK_KEYFRAMES = L10n.lang("bbs.ui.keyframes.keys.stack_keyframes");
     public static final IKey KEYFRAMES_KEYS_TOGGLE_INTERP = L10n.lang("bbs.ui.keyframes.keys.toggle_interp");
     public static final IKey KEYFRAMES_LEFT_HANDLE = L10n.lang("bbs.ui.keyframes.left_handle");
@@ -1448,6 +1450,8 @@ public class UIKeys
     public static final IKey TIMELINE_INTERACTION_STACK_KEYFRAMES = L10n.lang("bbs.ui.timeline_toolbar.interaction.stack_keyframes");
     public static final IKey TIMELINE_INTERACTION_SELECT_PREV_KEYFRAME = L10n.lang("bbs.ui.timeline_toolbar.interaction.select_prev_keyframe");
     public static final IKey TIMELINE_INTERACTION_SELECT_NEXT_KEYFRAME = L10n.lang("bbs.ui.timeline_toolbar.interaction.select_next_keyframe");
+    public static final IKey TIMELINE_INTERACTION_SELECT_SAME_ALL = L10n.lang("bbs.ui.timeline_toolbar.interaction.select_same_all");
+    public static final IKey TIMELINE_INTERACTION_SELECT_SAME_TRACK = L10n.lang("bbs.ui.timeline_toolbar.interaction.select_same_track");
     public static final IKey TIMELINE_INTERACTION_PLACE_CLIP = L10n.lang("bbs.ui.timeline_toolbar.interaction.place_clip");
     public static final IKey TIMELINE_INTERACTION_PLACE_REPLAY = L10n.lang("bbs.ui.timeline_toolbar.interaction.place_replay");
     public static final IKey TIMELINE_INTERACTION_PLACE_MICROPHONE = L10n.lang("bbs.ui.timeline_toolbar.interaction.place_microphone");

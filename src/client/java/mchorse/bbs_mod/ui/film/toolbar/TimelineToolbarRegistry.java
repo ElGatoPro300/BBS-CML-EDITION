@@ -335,8 +335,11 @@ public final class TimelineToolbarRegistry
             .shortcut(Keys.KEYFRAMES_SELECT_LEFT));
         s.add(ToolbarItem.action(UIKeys.KEYFRAMES_KEYS_SELECT_RIGHT)
             .shortcut(Keys.KEYFRAMES_SELECT_RIGHT));
-        s.add(ToolbarItem.action(UIKeys.KEYFRAMES_KEYS_SELECT_SAME)
-            .shortcut(Keys.KEYFRAMES_SELECT_SAME));
+        s.add(ToolbarItem.submenu(UIKeys.KEYFRAMES_KEYS_SELECT_SAME,
+            ToolbarItem.action(UIKeys.KEYFRAMES_KEYS_SELECT_SAME_ALL)
+                .shortcut(Keys.KEYFRAMES_SELECT_SAME),
+            ToolbarItem.action(UIKeys.KEYFRAMES_KEYS_SELECT_SAME_TRACK)
+        ).shortcut(Keys.KEYFRAMES_SELECT_SAME));
         s.add(ToolbarItem.action(UIKeys.KEYFRAMES_KEYS_SELECT_PREV)
             .shortcut(Keys.KEYFRAMES_SELECT_PREV));
         s.add(ToolbarItem.action(UIKeys.KEYFRAMES_KEYS_SELECT_NEXT)
