@@ -499,6 +499,23 @@ public class UIKeyframes extends UIElement
         }
     }
 
+    private void cancelScalingMode()
+    {
+        for (Map.Entry<Keyframe, Float> entry : this.scaleTicks.entrySet())
+        {
+            entry.getKey().setTick(entry.getValue(), true);
+        }
+
+        this.scaling = false;
+        this.scalingShowInteractionHints = false;
+    }
+
+    private void confirmScalingMode()
+    {
+        this.scaling = false;
+        this.scalingShowInteractionHints = false;
+    }
+
     private void scaleTime(boolean showInteractionHints)
     {
         if (this.scaling)
@@ -1324,8 +1341,11 @@ public class UIKeyframes extends UIElement
         this.pasteInteraction.cancel();
         this.selectNeighborInteraction.cancel();
         this.selectSameInteraction.cancel();
-        this.scaling = false;
-        this.scalingShowInteractionHints = false;
+
+        if (this.scaling)
+        {
+            this.cancelScalingMode();
+        }
 
         if (this.stacking)
         {
@@ -1935,8 +1955,14 @@ public class UIKeyframes extends UIElement
 
         if (this.scaling)
         {
-            this.scaling = false;
-            this.scalingShowInteractionHints = false;
+            if (context.mouseButton == 1 && this.scalingShowInteractionHints)
+            {
+                this.cancelScalingMode();
+            }
+            else if (context.mouseButton != 1 || !this.scalingShowInteractionHints)
+            {
+                this.confirmScalingMode();
+            }
 
             return true;
         }
@@ -2154,18 +2180,14 @@ public class UIKeyframes extends UIElement
 
         if ((this.scaling || this.stacking) && context.isPressed(GLFW.GLFW_KEY_ESCAPE))
         {
-            /* Reset scaling */
-            this.scaling = false;
-            this.scalingShowInteractionHints = false;
+            if (this.scaling)
+            {
+                this.cancelScalingMode();
+            }
 
             if (this.stacking)
             {
                 this.stackKeyframes(true, this.stackingShowInteractionHints);
-            }
-
-            for (Map.Entry<Keyframe, Float> entry : this.scaleTicks.entrySet())
-            {
-                entry.getKey().setTick(entry.getValue(), true);
             }
 
             return true;

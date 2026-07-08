@@ -54,3 +54,4 @@ translation_workspace/
 
 #cursor rules
 .cursor/rules/PROJECT-STRUCTURE.mdc
+.cursor/plans/shortcut-interaction-mode.plan.md
