@@ -2088,6 +2088,8 @@
     "bbs.ui.timeline_toolbar.interaction.loop_set_max": "Click to set loop Out",
     "bbs.ui.timeline_toolbar.interaction.scale_time": "Drag horizontally to scale selected keyframes in time",
     "bbs.ui.timeline_toolbar.interaction.stack_keyframes": "Click or scroll to stack selected keyframes",
+    "bbs.ui.timeline_toolbar.interaction.select_prev_keyframe": "Click on a track to select the previous keyframe",
+    "bbs.ui.timeline_toolbar.interaction.select_next_keyframe": "Click on a track to select the next keyframe",
     "bbs.ui.timeline_toolbar.interaction.place_clip": "Click to place clip",
     "bbs.ui.timeline_toolbar.interaction.place_replay": "Click to place replay clip",
     "bbs.ui.timeline_toolbar.interaction.place_microphone": "Click to place microphone recording",

@@ -7,6 +7,7 @@ import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineTrackEligibility;
 import mchorse.bbs_mod.ui.film.toolbar.UIInteractionModeOverlay;
+import mchorse.bbs_mod.ui.film.toolbar.UIKeyframeSelectNeighborInteraction;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarPointerBlock;
 import mchorse.bbs_mod.ui.forms.editors.utils.UIStructureOverlayPanel;
 import mchorse.bbs_mod.ui.framework.UIContext;
@@ -1047,6 +1048,13 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
                     ? UIInteractionModeOverlay.getHoveredTrackPulseAlpha()
                     : UIInteractionModeOverlay.getEligibleTrackAlpha();
                 int pulseColor = Colors.setA(sheet.color, alpha);
+
+                context.batcher.box(startX, y, endX, (float) (y + this.trackHeight), pulseColor);
+            }
+            else if (this.keyframes.isSelectNeighborInteractionActive()
+                && sheet == this.keyframes.getSelectNeighborHoverSheet())
+            {
+                int pulseColor = Colors.setA(sheet.color, UIKeyframeSelectNeighborInteraction.getTrackPulseAlpha());
 
                 context.batcher.box(startX, y, endX, (float) (y + this.trackHeight), pulseColor);
             }
