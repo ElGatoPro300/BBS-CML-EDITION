@@ -1763,6 +1763,14 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
             float ty = this.normalMatrix.m01() * x + this.normalMatrix.m11() * y + this.normalMatrix.m21() * z;
             float tz = this.normalMatrix.m02() * x + this.normalMatrix.m12() * y + this.normalMatrix.m22() * z;
 
+            /* Entity layers (used with shaders) require overlay to be set.
+               The fluid renderer never calls overlay(), so inject it here
+               before normal() finalizes the vertex. */
+            if (this.fixOverlay)
+            {
+                this.parent.overlay(0, 10);
+            }
+
             this.parent.normal(tx, ty, tz);
             return this;
         }
