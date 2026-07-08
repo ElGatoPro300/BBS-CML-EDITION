@@ -59,7 +59,7 @@ public class UIStructureFormPanel extends UIFormPanel<StructureForm>
         this.lightIntensity = new UITrackpad((v) -> this.setLightIntensity(v.intValue()))
                 .integer()
                 .limit(1D, 15D);
-        this.toggleFluid = new UIToggle(UIKeys.FORMS_EDITORS_STRUCTURE_FLUID, true, (t) -> this.form.renderFluid.set(t.getValue()));
+        this.toggleFluid = new UIToggle(UIKeys.FORMS_EDITORS_STRUCTURE_FLUID, false, (t) -> this.form.renderFluid.set(t.getValue()));
 
         // Pivot UI removed; calculate center moved to Transform panel
 
@@ -68,8 +68,8 @@ public class UIStructureFormPanel extends UIFormPanel<StructureForm>
         this.options.add(this.pickStructure);
         this.options.add(this.pickBiome);
         this.options.add(this.toggleLight);
-        this.options.add(UI.label(UIKeys.FORMS_EDITORS_STRUCTURE_LIGHT_INTENSITY_LABEL).marginTop(6), this.lightIntensity);
         this.options.add(this.toggleFluid);
+        this.options.add(UI.label(UIKeys.FORMS_EDITORS_STRUCTURE_LIGHT_INTENSITY_LABEL).marginTop(6), this.lightIntensity);
 
         // Pivot controls removed
     }
