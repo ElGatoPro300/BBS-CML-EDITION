@@ -77,6 +77,11 @@ public class UndoManager<T>
         return this.position;
     }
 
+    public void setPosition(int position)
+    {
+        this.position = position;
+    }
+
     public int getTotalUndos()
     {
         return this.undos.size();

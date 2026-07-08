@@ -10,12 +10,14 @@ import mchorse.bbs_mod.ui.film.utils.undo.UIViewUndo;
 import mchorse.bbs_mod.ui.film.utils.undo.ValueChangeUndo;
 import mchorse.bbs_mod.ui.forms.editors.UIFormUndoHandler;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
+import mchorse.bbs_mod.utils.DataPath;
 import mchorse.bbs_mod.utils.Timer;
 import mchorse.bbs_mod.utils.clips.Clips;
 import mchorse.bbs_mod.utils.undo.CompoundUndo;
 import mchorse.bbs_mod.utils.undo.IUndo;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 public class UIFilmUndoHandler extends UIFormUndoHandler
@@ -23,6 +25,13 @@ public class UIFilmUndoHandler extends UIFormUndoHandler
     private Timer actionsTimer = new Timer(100);
     private Set<BaseValue> syncData = new HashSet<>();
     private boolean isUndoing;
+
+    /**
+     * When an undo/redo would change both the embedded view and film data, the view
+     * transition is applied first and the data change waits for the next key press.
+     */
+    private IUndo<ValueGroup> pendingSplitUndo;
+    private int pendingSplitIndex = -1;
 
     public UIFilmUndoHandler(UIFilmPanel panel)
     {
@@ -54,7 +63,38 @@ public class UIFilmUndoHandler extends UIFormUndoHandler
 
         try
         {
-            return this.undoManager.undoNext(context, (undo) -> this.shouldDeferEmbeddedUndo(undo, false));
+            if (this.pendingSplitUndo != null)
+            {
+                return this.completeSplitUndo(context);
+            }
+
+            List<IUndo<ValueGroup>> undos = this.undoManager.getUndos();
+            int index = this.undoManager.getCurrentUndoIndex();
+
+            while (index >= 0)
+            {
+                IUndo<ValueGroup> undo = undos.get(index);
+
+                if (this.shouldDeferEmbeddedUndo(undo, false))
+                {
+                    index -= 1;
+
+                    continue;
+                }
+
+                if (this.tryBeginSplitUndo(context, undo, index))
+                {
+                    return true;
+                }
+
+                undo.undo(context);
+                this.undoManager.setPosition(index - 1);
+                this.handleFilmUndos(undo, false);
+
+                return true;
+            }
+
+            return false;
         }
         finally
         {
@@ -68,7 +108,38 @@ public class UIFilmUndoHandler extends UIFormUndoHandler
 
         try
         {
-            return this.undoManager.redoNext(context, (undo) -> this.shouldDeferEmbeddedUndo(undo, true));
+            if (this.pendingSplitUndo != null)
+            {
+                return this.completeSplitRedo(context);
+            }
+
+            List<IUndo<ValueGroup>> undos = this.undoManager.getUndos();
+            int index = this.undoManager.getCurrentUndoIndex() + 1;
+
+            while (index < undos.size())
+            {
+                IUndo<ValueGroup> undo = undos.get(index);
+
+                if (this.shouldDeferEmbeddedUndo(undo, true))
+                {
+                    index += 1;
+
+                    continue;
+                }
+
+                if (this.tryBeginSplitRedo(context, undo, index))
+                {
+                    return true;
+                }
+
+                undo.redo(context);
+                this.undoManager.setPosition(index);
+                this.handleFilmUndos(undo, true);
+
+                return true;
+            }
+
+            return false;
         }
         finally
         {
@@ -81,6 +152,8 @@ public class UIFilmUndoHandler extends UIFormUndoHandler
     {
         super.reset();
 
+        this.pendingSplitUndo = null;
+        this.pendingSplitIndex = -1;
         this.undoManager.setCallback(this::handleFilmUndos);
     }
 
@@ -90,20 +163,14 @@ public class UIFilmUndoHandler extends UIFormUndoHandler
 
         try
         {
-            IUndo<ValueGroup> anotherUndo = undo;
-
-            if (anotherUndo instanceof CompoundUndo)
-            {
-                anotherUndo = ((CompoundUndo<ValueGroup>) anotherUndo).getFirst(ValueChangeUndo.class);
-            }
-
-            MapType uiData = this.resolveUndoUIData(anotherUndo, redo);
+            IUndo<ValueGroup> resolved = this.resolveUndoForUI(undo);
+            MapType uiData = this.resolveUndoUIData(resolved, redo);
 
             if (uiData != null)
             {
                 if (this.uiElement instanceof UIFilmPanel panel)
                 {
-                    uiData = this.preserveEmbeddedContext(uiData, panel, anotherUndo, redo);
+                    uiData = this.preserveEmbeddedContext(uiData, panel, resolved, redo);
                     panel.applyFilmUndoData(uiData);
                 }
                 else
@@ -141,6 +208,8 @@ public class UIFilmUndoHandler extends UIFormUndoHandler
     @Override
     public void submitUndo()
     {
+        this.pendingSplitUndo = null;
+        this.pendingSplitIndex = -1;
         this.cachedValues.keySet().removeIf(this::isFilmMetadata);
 
         super.submitUndo();
@@ -177,6 +246,123 @@ public class UIFilmUndoHandler extends UIFormUndoHandler
 
             this.syncData.clear();
         }
+    }
+
+    private boolean completeSplitUndo(ValueGroup context)
+    {
+        IUndo<ValueGroup> undo = this.pendingSplitUndo;
+        int index = this.pendingSplitIndex;
+
+        this.pendingSplitUndo = null;
+        this.pendingSplitIndex = -1;
+
+        undo.undo(context);
+        this.undoManager.setPosition(index - 1);
+        this.handleFilmUndos(undo, false);
+
+        return true;
+    }
+
+    private boolean completeSplitRedo(ValueGroup context)
+    {
+        IUndo<ValueGroup> undo = this.pendingSplitUndo;
+        int index = this.pendingSplitIndex;
+
+        this.pendingSplitUndo = null;
+        this.pendingSplitIndex = -1;
+
+        undo.redo(context);
+        this.undoManager.setPosition(index);
+        this.handleFilmUndos(undo, true);
+
+        return true;
+    }
+
+    private boolean tryBeginSplitUndo(ValueGroup context, IUndo<ValueGroup> undo, int index)
+    {
+        if (!this.needsViewDataSplit(undo, false))
+        {
+            return false;
+        }
+
+        this.applySplitViewTransition(undo, false);
+        this.pendingSplitUndo = undo;
+        this.pendingSplitIndex = index;
+
+        return true;
+    }
+
+    private boolean tryBeginSplitRedo(ValueGroup context, IUndo<ValueGroup> undo, int index)
+    {
+        if (!this.needsViewDataSplit(undo, true))
+        {
+            return false;
+        }
+
+        this.applySplitViewTransition(undo, true);
+        this.pendingSplitUndo = undo;
+        this.pendingSplitIndex = index;
+
+        return true;
+    }
+
+    /**
+     * A data undo/redo also changes embedded-view state — split it into view first, data second.
+     */
+    private boolean needsViewDataSplit(IUndo<ValueGroup> undo, boolean redo)
+    {
+        if (!(this.uiElement instanceof UIFilmPanel panel))
+        {
+            return false;
+        }
+
+        IUndo<ValueGroup> resolved = this.resolveUndoForUI(undo);
+
+        if (!(resolved instanceof ValueChangeUndo))
+        {
+            return false;
+        }
+
+        MapType uiData = this.resolveUndoUIData(resolved, redo);
+
+        if (uiData == null)
+        {
+            return false;
+        }
+
+        boolean snapshotEmbedded = this.hasEmbeddedClipView(uiData);
+        boolean currentEmbedded = panel.hasEmbeddedClipView();
+
+        return snapshotEmbedded != currentEmbedded;
+    }
+
+    private void applySplitViewTransition(IUndo<ValueGroup> undo, boolean redo)
+    {
+        if (this.uiElement instanceof UIFilmPanel panel)
+        {
+            IUndo<ValueGroup> resolved = this.resolveUndoForUI(undo);
+            MapType uiData = this.resolveUndoUIData(resolved, redo);
+
+            if (uiData != null)
+            {
+                panel.applyFilmUndoData(uiData);
+            }
+        }
+    }
+
+    private IUndo<ValueGroup> resolveUndoForUI(IUndo<ValueGroup> undo)
+    {
+        if (undo instanceof CompoundUndo)
+        {
+            IUndo<ValueGroup> resolved = ((CompoundUndo<ValueGroup>) undo).getFirst(ValueChangeUndo.class);
+
+            if (resolved != null)
+            {
+                return resolved;
+            }
+        }
+
+        return undo;
     }
 
     private boolean isFilmMetadata(BaseValue value)
@@ -239,12 +425,13 @@ public class UIFilmUndoHandler extends UIFormUndoHandler
     }
 
     /**
-     * While an embedded clip editor is open, keep it open when undoing/redoing data
-     * changes whose snapshots were captured without embedded context.
+     * While inside an embedded clip editor, only keep the view open for data undos that
+     * belong to embedded content (keyframes, envelopes, etc.) whose snapshots were captured
+     * without embedded context.
      */
     private MapType preserveEmbeddedContext(MapType uiData, UIFilmPanel panel, IUndo<ValueGroup> undo, boolean redo)
     {
-        if (!(undo instanceof ValueChangeUndo) || !panel.hasEmbeddedClipView())
+        if (!(undo instanceof ValueChangeUndo change) || !panel.hasEmbeddedClipView())
         {
             return uiData;
         }
@@ -259,6 +446,11 @@ public class UIFilmUndoHandler extends UIFormUndoHandler
         MapType editorData = uiData.getMap(editorId);
 
         if (editorData != null && !editorData.getString("embedded_id").isEmpty())
+        {
+            return uiData;
+        }
+
+        if (!this.isEmbeddedContentChange(change.getName()))
         {
             return uiData;
         }
@@ -291,6 +483,33 @@ public class UIFilmUndoHandler extends UIFormUndoHandler
         }
 
         return merged;
+    }
+
+    private boolean isEmbeddedContentChange(DataPath path)
+    {
+        String pathString = path.toString();
+
+        if (pathString.contains("/keyframes/"))
+        {
+            return true;
+        }
+
+        if (pathString.contains("/envelope/") || pathString.contains("/envelopes/"))
+        {
+            return true;
+        }
+
+        if (pathString.contains("/curves/") || pathString.contains("/curve/"))
+        {
+            return true;
+        }
+
+        if (pathString.contains("/remap/") || pathString.contains("/remapper/"))
+        {
+            return true;
+        }
+
+        return false;
     }
 
     /**
