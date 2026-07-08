@@ -1071,7 +1071,8 @@ public class UIKeyframes extends UIElement
             return;
         }
 
-        Keyframe keyframe = this.currentGraph.addKeyframe(sheet, tick, null);
+        int index = sheet.channel.insertInterpolated(tick);
+        Keyframe keyframe = sheet.channel.get(index);
 
         if (keyframe != null)
         {

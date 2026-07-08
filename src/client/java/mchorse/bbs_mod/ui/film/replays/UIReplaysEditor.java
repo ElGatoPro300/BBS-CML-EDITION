@@ -1138,6 +1138,23 @@ public class UIReplaysEditor extends UIElement
         });
     }
 
+    public void insertKeyframeColumnInterpolated(int tick)
+    {
+        Replay replay = this.getReplay();
+
+        if (replay == null)
+        {
+            return;
+        }
+
+        List<String> groups = Arrays.asList(ReplayKeyframes.GROUP_POSITION, ReplayKeyframes.GROUP_ROTATION);
+
+        BaseValue.edit(replay.keyframes, (keyframes) ->
+        {
+            keyframes.insertInterpolated(tick, groups);
+        });
+    }
+
     public void toolbarInsertKeyframeAtTimeline()
     {
         if (this.keyframeEditor == null)
@@ -1158,7 +1175,7 @@ public class UIReplaysEditor extends UIElement
 
         this.keyframeEditor.view.enterKeyframeInsert(KeyframeInsertInteractionState.columnAtCursor(
             UIKeys.TIMELINE_INTERACTION_INSERT_KEYFRAME_COLUMN_CURSOR,
-            this::insertKeyframeColumn));
+            this::insertKeyframeColumnInterpolated));
     }
 
     public void toolbarEnterInsertSingleAtTimeline()
