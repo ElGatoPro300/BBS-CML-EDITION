@@ -1376,11 +1376,6 @@ public class UIKeyframes extends UIElement
 
     private float getInteractionPreviewTick()
     {
-        if (this.insertInteraction.isActive())
-        {
-            return this.insertInteraction.getPreviewTick();
-        }
-
         if (this.duplicateInteraction.isActive())
         {
             return this.duplicateInteraction.getAnchorTick();
