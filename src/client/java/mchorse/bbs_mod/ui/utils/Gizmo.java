@@ -531,7 +531,8 @@ public class Gizmo
         }
 
         float scale = this.computeScale(stack);
-        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
+        BufferBuilder builder = Tessellator.getInstance().getBuffer();
+        builder.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
 
         if (this.mode == Mode.ROTATE) this.drawRotate(builder, stack, scale, thickness, false, null);
         else if (this.mode == Mode.SCALE) this.drawScale(builder, stack, scale, thickness, false, null);
@@ -553,13 +554,14 @@ public class Gizmo
         RenderSystem.depthFunc(GL11.GL_ALWAYS);
         RenderSystem.depthMask(false);
 
-        Matrix4fStack mvStack = RenderSystem.getModelViewStack();
+        MatrixStack mvStack = RenderSystem.getModelViewStack();
         boolean resetModelView = BBSRendering.isIrisShadersEnabled();
 
         if (resetModelView)
         {
-            mvStack.pushMatrix();
-            mvStack.identity();
+            mvStack.push();
+            mvStack.peek().getPositionMatrix().identity();
+            mvStack.peek().getNormalMatrix().identity();
             RenderSystem.applyModelViewMatrix();
         }
 
@@ -567,7 +569,7 @@ public class Gizmo
 
         if (resetModelView)
         {
-            mvStack.popMatrix();
+            mvStack.pop();
             RenderSystem.applyModelViewMatrix();
         }
 
@@ -595,7 +597,8 @@ public class Gizmo
          * fatter (or thinner) than the visible handles. */
         thickness *= BBSSettings.gizmoHitbox == null ? 1F : BBSSettings.gizmoHitbox.get();
 
-        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
+        BufferBuilder builder = Tessellator.getInstance().getBuffer();
+        builder.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
 
         if (this.mode == Mode.ROTATE) this.drawRotate(builder, stack, scale, thickness, true, map);
         else if (this.mode == Mode.SCALE) this.drawScale(builder, stack, scale, thickness, true, map);
@@ -607,13 +610,14 @@ public class Gizmo
         RenderSystem.disableDepthTest();
         RenderSystem.depthMask(false);
 
-        Matrix4fStack mvStack = RenderSystem.getModelViewStack();
+        MatrixStack mvStack = RenderSystem.getModelViewStack();
         boolean resetModelView = BBSRendering.isIrisShadersEnabled();
 
         if (resetModelView)
         {
-            mvStack.pushMatrix();
-            mvStack.identity();
+            mvStack.push();
+            mvStack.peek().getPositionMatrix().identity();
+            mvStack.peek().getNormalMatrix().identity();
             RenderSystem.applyModelViewMatrix();
         }
 
@@ -621,7 +625,7 @@ public class Gizmo
 
         if (resetModelView)
         {
-            mvStack.popMatrix();
+            mvStack.pop();
             RenderSystem.applyModelViewMatrix();
         }
 

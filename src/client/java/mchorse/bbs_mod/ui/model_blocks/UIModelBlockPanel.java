@@ -62,6 +62,7 @@ import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
+import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
@@ -2041,14 +2042,15 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
             Matrix4f prevProjection = new Matrix4f(RenderSystem.getProjectionMatrix());
             RenderSystem.setProjectionMatrix(this.capturedProjection, VertexSorter.BY_Z);
 
-            Matrix4fStack mvStack = RenderSystem.getModelViewStack();
-            mvStack.pushMatrix();
-            mvStack.identity();
+            MatrixStack mvStack = RenderSystem.getModelViewStack();
+            mvStack.push();
+            mvStack.peek().getPositionMatrix().identity();
+            mvStack.peek().getNormalMatrix().identity();
             RenderSystem.applyModelViewMatrix();
 
             Gizmo.INSTANCE.renderStencil(stencilStack, this.gizmoStencilMap);
 
-            mvStack.popMatrix();
+            mvStack.pop();
             RenderSystem.applyModelViewMatrix();
 
             RenderSystem.setProjectionMatrix(prevProjection, VertexSorter.BY_Z);
