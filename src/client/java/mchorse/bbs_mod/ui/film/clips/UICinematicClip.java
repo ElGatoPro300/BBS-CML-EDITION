@@ -199,7 +199,7 @@ public class UICinematicClip extends UIClip<CinematicClip>
     }
 
     @Override
-    protected UIKeyframeEditor resolveClipEmbeddableEditor(String undoId)
+    protected UIKeyframeEditor resolveClipEmbeddableView(String undoId)
     {
         return undoId.equals(this.keyframes.getUndoId()) ? this.keyframes : null;
     }

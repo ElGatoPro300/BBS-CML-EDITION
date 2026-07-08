@@ -64,7 +64,7 @@ public class UIRemapperClip extends UIClip<RemapperClip>
     }
 
     @Override
-    protected UIKeyframeEditor resolveClipEmbeddableEditor(String undoId)
+    protected UIKeyframeEditor resolveClipEmbeddableView(String undoId)
     {
         return undoId.equals(this.keyframes.getUndoId()) ? this.keyframes : null;
     }

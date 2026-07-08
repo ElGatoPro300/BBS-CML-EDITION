@@ -261,20 +261,20 @@ public abstract class UIClip <T extends Clip> extends UIElement
     }
 
     /**
-     * Resolves an embeddable keyframe editor owned by this clip panel.
+     * Resolves an embeddable view owned by this clip panel (keyframe editor, node graph, etc.).
      * Used by {@link mchorse.bbs_mod.ui.film.UIClipsPanel} for symmetric undo/redo.
      */
-    public UIKeyframeEditor resolveEmbeddableEditor(String undoId)
+    public UIElement resolveEmbeddableView(String undoId)
     {
         if (this.envelope != null && undoId.equals(this.envelope.channel.getUndoId()))
         {
             return this.envelope.channel;
         }
 
-        return this.resolveClipEmbeddableEditor(undoId);
+        return this.resolveClipEmbeddableView(undoId);
     }
 
-    protected UIKeyframeEditor resolveClipEmbeddableEditor(String undoId)
+    protected UIElement resolveClipEmbeddableView(String undoId)
     {
         return null;
     }

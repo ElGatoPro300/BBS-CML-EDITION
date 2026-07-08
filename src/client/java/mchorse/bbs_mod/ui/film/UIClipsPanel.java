@@ -20,6 +20,7 @@ import mchorse.bbs_mod.utils.DataPath;
 import mchorse.bbs_mod.utils.clips.Clip;
 import mchorse.bbs_mod.utils.clips.Clips;
 import mchorse.bbs_mod.utils.factory.IFactory;
+import mchorse.bbs_mod.utils.undo.IUndoElement;
 
 import java.util.List;
 import java.util.Map;
@@ -420,19 +421,24 @@ public class UIClipsPanel extends UIElement implements IUIClipsDelegate
 
         UIElement embedded = this.clips.getEmbeddedView();
 
-        if (embedded instanceof UIKeyframeEditor editor)
+        if (embedded instanceof IUndoElement)
         {
-            MapType embeddedState = new MapType();
+            IUndoElement undoElement = (IUndoElement) embedded;
 
-            editor.collectUndoData(embeddedState);
-            data.putString("embedded_id", editor.getUndoId());
-            data.put("embedded_state", embeddedState);
+            if (!undoElement.getUndoId().isEmpty())
+            {
+                MapType embeddedState = new MapType();
+
+                undoElement.collectUndoData(embeddedState);
+                data.putString("embedded_id", undoElement.getUndoId());
+                data.put("embedded_state", embeddedState);
+            }
         }
     }
 
     /**
-     * Symmetric embedded keyframe editor restore (approach B): undo closes the overlay
-     * when the snapshot had no embedded editor; redo reopens it from {@code embedded_id}.
+     * Symmetric embedded view restore (approach B): undo closes the overlay when the snapshot
+     * had no embedded view; redo reopens it from {@code embedded_id}.
      */
     private void applyEmbeddedUndo(MapType data)
     {
@@ -452,23 +458,31 @@ public class UIClipsPanel extends UIElement implements IUIClipsDelegate
             return;
         }
 
-        UIKeyframeEditor editor = this.panel.resolveEmbeddableEditor(embeddedId);
+        UIElement view = this.panel.resolveEmbeddableView(embeddedId);
 
-        if (editor == null)
+        if (view == null)
         {
             this.embedView(null);
 
             return;
         }
 
-        this.clips.setEmbeddedStackedLayout(data.getBool("embedded_stacked"));
-        this.embedView(editor);
-
-        MapType embeddedState = data.getMap("embedded_state");
-
-        if (embeddedState != null)
+        if (view instanceof UIKeyframeEditor)
         {
-            editor.applyUndoData(embeddedState);
+            this.clips.setEmbeddedStackedLayout(data.getBool("embedded_stacked"));
+        }
+
+        this.embedView(view);
+
+        if (view instanceof IUndoElement)
+        {
+            IUndoElement undoElement = (IUndoElement) view;
+            MapType embeddedState = data.getMap("embedded_state");
+
+            if (embeddedState != null)
+            {
+                undoElement.applyUndoData(embeddedState);
+            }
         }
     }
 }

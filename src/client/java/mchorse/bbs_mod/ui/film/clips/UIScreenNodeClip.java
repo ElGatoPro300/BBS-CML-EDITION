@@ -24,6 +24,7 @@ public class UIScreenNodeClip extends UIClip<ScreenNodeClip>
 
         this.nodeEditor = new UIScreenNodeEditor();
         this.nodeEditor.setGraph(this.clip.graph.get());
+        this.nodeEditor.setUndoId("screen_node_editor");
 
         this.edit = new UIButton(UIKeys.GENERAL_EDIT, (b) ->
         {
@@ -46,5 +47,11 @@ public class UIScreenNodeClip extends UIClip<ScreenNodeClip>
         super.fillData();
 
         this.nodeEditor.setGraph(this.clip.graph.get());
+    }
+
+    @Override
+    protected UIScreenNodeEditor resolveClipEmbeddableView(String undoId)
+    {
+        return undoId.equals(this.nodeEditor.getUndoId()) ? this.nodeEditor : null;
     }
 }
