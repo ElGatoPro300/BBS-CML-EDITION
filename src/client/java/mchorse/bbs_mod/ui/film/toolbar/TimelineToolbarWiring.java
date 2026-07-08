@@ -811,6 +811,7 @@ public final class TimelineToolbarWiring
         bindLabel(toolbar, UIKeys.KEYFRAMES_CONTEXT_INTERPOLATION_STEP,
             () -> keyframes.toolbarApplyInterpolation(Interpolations.STEP), hasSelected);
         bindShortcut(toolbar, Keys.KEYFRAMES_SPREAD, keyframes::toolbarSpreadKeyframes, canSpread);
+        bindShortcut(toolbar, Keys.KEYFRAMES_ADJUST_VALUES, keyframes::toolbarShowAdjustValuesMenu, hasSelected);
         bindLabel(toolbar, UIKeys.KEYFRAMES_CONTEXT_ADJUST_VALUES_LEFT,
             () -> keyframes.toolbarAdjustValues(false), canAdjust);
         bindLabel(toolbar, UIKeys.KEYFRAMES_CONTEXT_ADJUST_VALUES_RIGHT,
@@ -866,6 +867,13 @@ public final class TimelineToolbarWiring
                 editor.keyframeEditor.view.toolbarSpreadKeyframes();
             }
         }, canSpread);
+        bindShortcut(toolbar, Keys.KEYFRAMES_ADJUST_VALUES, () ->
+        {
+            if (editor.keyframeEditor != null)
+            {
+                editor.keyframeEditor.view.toolbarShowAdjustValuesMenu();
+            }
+        }, hasSelected);
         bindLabel(toolbar, UIKeys.KEYFRAMES_CONTEXT_ADJUST_VALUES_LEFT, () ->
         {
             if (editor.keyframeEditor != null)

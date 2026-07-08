@@ -839,6 +839,11 @@ public class UIKeyframes extends UIElement
         this.adjustValues(last);
     }
 
+    public void toolbarShowAdjustValuesMenu()
+    {
+        this.adjustValues();
+    }
+
     public void toolbarSelectLeft()
     {
         this.selectRelativeToTimelineCursor(-1);
