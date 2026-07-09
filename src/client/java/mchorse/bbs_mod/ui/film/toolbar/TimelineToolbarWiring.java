@@ -628,9 +628,9 @@ public final class TimelineToolbarWiring
             ? null
             : UIKeys.TIMELINE_TOOLBAR_DISABLED_VIEWPORT_HIDDEN;
 
-        bindActorAction(toolbar, UIKeys.FILM_REPLAY_CONTEXT_ADD, editor::toolbarAddReplayAtViewport,
+        bindActorAction(toolbar, UIKeys.TIMELINE_TOOLBAR_ADD_REPLAY_AT_CURSOR, editor::toolbarAddReplayAtViewport,
             canAdd, viewportHiddenReason);
-        bindActorAction(toolbar, UIKeys.FILM_REPLAY_CONTEXT_MOVE_HERE, editor::toolbarMoveReplayAtViewport,
+        bindActorAction(toolbar, UIKeys.FILM_CONTROLLER_KEYS_MOVE_REPLAY_TO_CURSOR, editor::toolbarMoveReplayAtViewport,
             canMove, viewportHiddenReason);
     }
 

@@ -1425,6 +1425,7 @@ public class UIKeys
     public static final IKey TEXTURE_URL_ERROR_HTTP = L10n.lang("bbs.ui.texture.url_error_http");
     public static final IKey TIMELINE_TOOLBAR_ACTOR = L10n.lang("bbs.ui.timeline_toolbar.actor");
     public static final IKey TIMELINE_TOOLBAR_ADD = L10n.lang("bbs.ui.timeline_toolbar.add");
+    public static final IKey TIMELINE_TOOLBAR_ADD_REPLAY_AT_CURSOR = L10n.lang("bbs.ui.timeline_toolbar.add_replay_at_cursor");
     public static final IKey TIMELINE_TOOLBAR_DISABLED_VIEWPORT_HIDDEN = L10n.lang("bbs.ui.timeline_toolbar.disabled.viewport_hidden");
     public static final IKey TIMELINE_TOOLBAR_DISABLED_COLUMN_INSERT_REPLAY_ONLY = L10n.lang("bbs.ui.timeline_toolbar.disabled.column_insert_replay_only");
     public static final IKey TIMELINE_TOOLBAR_EDIT = L10n.lang("bbs.ui.timeline_toolbar.edit");

@@ -2067,6 +2067,7 @@
     "bbs.ui.textures.viewer.context.copy_hex": "Copy current pixel as hexadecimal",
     "bbs.ui.timeline_toolbar.actor": "Actor",
     "bbs.ui.timeline_toolbar.add": "Add",
+    "bbs.ui.timeline_toolbar.add_replay_at_cursor": "Add a replay at cursor",
     "bbs.ui.timeline_toolbar.disabled.viewport_hidden": "Disabled: the 3D viewport is hidden or collapsed",
     "bbs.ui.timeline_toolbar.disabled.column_insert_replay_only": "Disabled: column insert is only available in the replay editor",
     "bbs.ui.timeline_toolbar.edit": "Edit",

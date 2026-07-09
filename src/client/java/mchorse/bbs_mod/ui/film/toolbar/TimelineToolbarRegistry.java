@@ -424,10 +424,11 @@ public final class TimelineToolbarRegistry
     {
         ToolbarSection s = new ToolbarSection(UIKeys.TIMELINE_TOOLBAR_ACTOR, Icons.PLAYER);
 
-        s.add(ToolbarItem.action(UIKeys.FILM_REPLAY_CONTEXT_ADD)
+        s.add(ToolbarItem.action(UIKeys.TIMELINE_TOOLBAR_ADD_REPLAY_AT_CURSOR)
             .icon(Icons.ADD));
-        s.add(ToolbarItem.action(UIKeys.FILM_REPLAY_CONTEXT_MOVE_HERE)
-            .icon(Icons.POINTER));
+        s.add(ToolbarItem.action(UIKeys.FILM_CONTROLLER_KEYS_MOVE_REPLAY_TO_CURSOR)
+            .icon(Icons.POINTER)
+            .shortcut(Keys.FILM_CONTROLLER_MOVE_REPLAY_TO_CURSOR));
 
         return s;
     }
