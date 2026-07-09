@@ -7,9 +7,10 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * A root entry in a timeline toolbar. Rendered as an icon-only button; hovering
- * displays a text tooltip with the localized label, clicking opens a popup with
- * the section's items.
+ * A root entry in a timeline toolbar. Rendered as an icon with an optional
+ * inline label (when horizontal space allows). Collapsed sections fall back to
+ * icon-only with a hover tooltip. Clicking opens a popup with the section's
+ * items.
  */
 public class ToolbarSection
 {

@@ -20,15 +20,20 @@ public class TimelineToolbarSettings
     public static final int TOOLBAR_HEIGHT = 32;
 
     /**
-     * Horizontal margin between two root sections in the toolbar.
+     * Horizontal gap between root section buttons. Matches the viewport 3D icon
+     * bar ({@code UI.row(0, ...)}).
      */
-    public static final int TOOLBAR_SECTION_SPACING = 2;
+    public static final int TOOLBAR_SECTION_SPACING = 0;
 
     /**
-     * Width of a root section button (icon-only, square with the toolbar
-     * height).
+     * Icon size for root section buttons. Matches {@link mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon}.
      */
-    public static final int TOOLBAR_SECTION_WIDTH = 28;
+    public static final int SECTION_ICON_SIZE = 20;
+
+    /**
+     * Gap between the section icon and its visible label text.
+     */
+    public static final int SECTION_LABEL_PADDING = 4;
 
     /**
      * Horizontal padding inside the toolbar bar itself (left/right insets).
