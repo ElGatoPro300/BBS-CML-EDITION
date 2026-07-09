@@ -78,6 +78,7 @@ public final class TimelineToolbarRegistry
         List<ToolbarSection> sections = new ArrayList<>();
 
         sections.add(screenNodeAddSection());
+        sections.add(screenNodeEditSection());
         sections.add(historySection());
 
         return sections;
@@ -442,6 +443,24 @@ public final class TimelineToolbarRegistry
     {
         /* Children are populated from {@link UIScreenNodeEditor#populateToolbarAddItems}. */
         return new ToolbarSection(UIKeys.TIMELINE_TOOLBAR_ADD, Icons.ADD);
+    }
+
+    private static ToolbarSection screenNodeEditSection()
+    {
+        ToolbarSection s = new ToolbarSection(UIKeys.TIMELINE_TOOLBAR_EDIT, Icons.EDIT);
+
+        s.add(ToolbarItem.action(UIKeys.GENERAL_REMOVE)
+            .icon(Icons.TRASH)
+            .shortcut(Keys.DELETE)
+            .destructive());
+        s.add(ToolbarItem.action(UIKeys.GENERAL_COPY)
+            .icon(Icons.COPY)
+            .shortcut(Keys.COPY));
+        s.add(ToolbarItem.action(UIKeys.GENERAL_PASTE)
+            .icon(Icons.PASTE)
+            .shortcut(Keys.PASTE));
+
+        return s;
     }
 
     /* Constructor */

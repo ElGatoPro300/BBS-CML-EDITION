@@ -506,6 +506,40 @@ public class UIShapeNodeEditor extends UIElement
         if (clipboard != null) this.pasteData(clipboard, mx, my);
     }
 
+    public boolean hasToolbarNodeSelection()
+    {
+        return !this.selection.isEmpty();
+    }
+
+    public boolean hasToolbarClipboard()
+    {
+        return clipboard != null;
+    }
+
+    public void toolbarRemoveSelectedNodes()
+    {
+        if (!this.selection.isEmpty())
+        {
+            this.removeSelection();
+        }
+    }
+
+    public void toolbarCopyNodes()
+    {
+        if (!this.selection.isEmpty())
+        {
+            this.copyNodes();
+        }
+    }
+
+    public void toolbarPasteNodes()
+    {
+        if (clipboard != null)
+        {
+            this.pasteNodes(this.lastMouseX, this.lastMouseY);
+        }
+    }
+
     /* ======================================================================
      * Node management helpers
      * ====================================================================== */

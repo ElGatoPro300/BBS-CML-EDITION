@@ -63,8 +63,9 @@ public final class TimelineToolbarWiring
 
     public static void wireScreenNodeToolbar(UIFilmPanel filmPanel, UIScreenNodeEditor editor, TimelineToolbar toolbar)
     {
-        wireScreenNodeHistory(filmPanel, toolbar);
         wireScreenNodeAdd(editor, toolbar);
+        wireScreenNodeEdit(editor, toolbar);
+        wireScreenNodeHistory(filmPanel, toolbar);
     }
 
     public static void wireKeyframesToolbar(UIFilmPanel filmPanel, UIKeyframes keyframes, TimelineToolbar toolbar)
@@ -942,6 +943,16 @@ public final class TimelineToolbarWiring
                 editor.keyframeEditor.view.editSheet(null);
             }
         }, () -> editor.keyframeEditor != null && editor.keyframeEditor.view.isEditing());
+    }
+
+    private static void wireScreenNodeEdit(UIScreenNodeEditor editor, TimelineToolbar toolbar)
+    {
+        BooleanSupplier hasNodeSelection = editor::hasToolbarNodeSelection;
+        BooleanSupplier hasClipboard = editor::hasToolbarClipboard;
+
+        bindShortcut(toolbar, Keys.DELETE, editor::toolbarRemoveSelectedNodes, hasNodeSelection);
+        bindShortcut(toolbar, Keys.COPY, editor::toolbarCopyNodes, hasNodeSelection);
+        bindShortcut(toolbar, Keys.PASTE, editor::toolbarPasteNodes, hasClipboard);
     }
 
     private static void wireScreenNodeHistory(UIFilmPanel filmPanel, TimelineToolbar toolbar)
