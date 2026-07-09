@@ -104,6 +104,8 @@ public class TimelineToolbarSettings
      */
     public static final int MENU_WIDTH_PADDING = 8;
 
+    public static final int MENU_SCREEN_MARGIN = 8;
+
     /**
      * Vertical gap between a section button and its popup (or between a
      * parent submenu row and its child popup on overlap).

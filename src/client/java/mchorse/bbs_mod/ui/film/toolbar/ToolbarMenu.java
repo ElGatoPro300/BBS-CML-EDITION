@@ -1,11 +1,15 @@
 package mchorse.bbs_mod.ui.film.toolbar;
 
+import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.utils.EventPropagation;
 import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
 import mchorse.bbs_mod.ui.utils.Area;
+import mchorse.bbs_mod.ui.utils.Scroll;
+import mchorse.bbs_mod.ui.utils.ScrollDirection;
+import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
 
 import org.lwjgl.glfw.GLFW;
@@ -81,6 +85,23 @@ public class ToolbarMenu extends UIElement
      */
     private boolean pendingCloseChain;
 
+    /**
+     * Natural (unclamped) popup size before fitting to the screen.
+     */
+    private int contentWidth;
+
+    private int contentHeight;
+
+    /**
+     * Inner rectangle used for clipping and scrolling item rows (excludes
+     * scrollbar gutters).
+     */
+    private final Area viewportArea = new Area();
+
+    private final Scroll verticalScroll;
+
+    private final Scroll horizontalScroll;
+
     /* Constructor */
 
     public ToolbarMenu(TimelineToolbar toolbar, ToolbarMenu parentMenu, List<ToolbarItem> items)
@@ -90,6 +111,11 @@ public class ToolbarMenu extends UIElement
         this.toolbar = toolbar;
         this.parentMenu = parentMenu;
         this.items = items;
+
+        this.verticalScroll = new Scroll(this.viewportArea, 0, ScrollDirection.VERTICAL);
+        this.verticalScroll.cancelScrollEdge = true;
+        this.horizontalScroll = new Scroll(this.viewportArea, 0, ScrollDirection.HORIZONTAL);
+        this.horizontalScroll.cancelScrollEdge = true;
 
         this.eventPropagataion(EventPropagation.BLOCK_INSIDE);
     }
@@ -105,33 +131,20 @@ public class ToolbarMenu extends UIElement
     {
         this.computeLayout(context.batcher.getFont());
 
-        int screenW = context.menu.width;
+        int margin = TimelineToolbarSettings.MENU_SCREEN_MARGIN;
         int screenH = context.menu.height;
-
-        int w = this.area.w;
-        int h = this.area.h;
-
-        int x = anchor.x;
-        int preferredY = anchor.y - TimelineToolbarSettings.MENU_GAP - h;
         int y;
 
-        if (preferredY >= 0)
+        if (anchor.y - TimelineToolbarSettings.MENU_GAP - this.contentHeight >= margin)
         {
-            y = preferredY;
+            y = anchor.y - TimelineToolbarSettings.MENU_GAP - this.contentHeight;
         }
         else
         {
-            /* Not enough space above: fall back to below the toolbar. */
             y = anchor.ey() + TimelineToolbarSettings.MENU_GAP;
         }
 
-        if (x + w > screenW) x = screenW - w;
-        if (x < 0) x = 0;
-        if (y + h > screenH) y = screenH - h;
-        if (y < 0) y = 0;
-
-        this.area.setPos(x, y);
-        this.area.setSize(w, h);
+        this.finalizeOpen(context, anchor.x, y);
     }
 
     /**
@@ -142,44 +155,36 @@ public class ToolbarMenu extends UIElement
     {
         this.computeLayout(context.batcher.getFont());
 
+        int margin = TimelineToolbarSettings.MENU_SCREEN_MARGIN;
         int screenW = context.menu.width;
-        int screenH = context.menu.height;
-
-        int w = this.area.w;
-        int h = this.area.h;
+        int maxInnerW = screenW - margin * 2;
+        int wEst = Math.min(this.contentWidth, maxInnerW);
 
         int preferredX = rowRect.ex() + TimelineToolbarSettings.MENU_GAP;
         int x;
 
-        if (preferredX + w <= screenW)
+        if (preferredX + wEst <= screenW - margin)
         {
             x = preferredX;
             this.openedToLeft = false;
         }
         else
         {
-            int leftX = rowRect.x - TimelineToolbarSettings.MENU_GAP - w;
+            int leftX = rowRect.x - TimelineToolbarSettings.MENU_GAP - wEst;
 
-            if (leftX >= 0)
+            if (leftX >= margin)
             {
                 x = leftX;
                 this.openedToLeft = true;
             }
             else
             {
-                /* Neither side fits: clamp to the right edge of the screen. */
-                x = Math.max(0, screenW - w);
+                x = Math.max(margin, screenW - wEst - margin);
                 this.openedToLeft = false;
             }
         }
 
-        int y = rowRect.y;
-
-        if (y + h > screenH) y = screenH - h;
-        if (y < 0) y = 0;
-
-        this.area.setPos(x, y);
-        this.area.setSize(w, h);
+        this.finalizeOpen(context, x, rowRect.y);
     }
 
     public boolean isOpenedToLeft()
@@ -321,7 +326,75 @@ public class ToolbarMenu extends UIElement
 
         totalHeight += 4;
 
-        this.area.setSize(totalWidth, totalHeight);
+        this.contentWidth = totalWidth;
+        this.contentHeight = totalHeight;
+    }
+
+    /**
+     * Clamps the popup to the screen, reserves scrollbar gutters when content
+     * overflows, and resets scroll offsets.
+     */
+    private void finalizeOpen(UIContext context, int x, int y)
+    {
+        int margin = TimelineToolbarSettings.MENU_SCREEN_MARGIN;
+        int screenW = context.menu.width;
+        int screenH = context.menu.height;
+        int sb = BBSSettings.scrollbarWidth.get();
+
+        int maxInnerW = screenW - margin * 2;
+        int maxInnerH = screenH - margin * 2;
+
+        int innerW = Math.min(this.contentWidth, maxInnerW);
+        int innerH = Math.min(this.contentHeight, maxInnerH);
+
+        boolean needV = this.contentHeight > innerH;
+
+        if (needV)
+        {
+            maxInnerW -= sb;
+        }
+
+        innerW = Math.min(this.contentWidth, maxInnerW);
+        boolean needH = this.contentWidth > innerW;
+
+        if (needH)
+        {
+            maxInnerH -= sb;
+            innerH = Math.min(this.contentHeight, maxInnerH);
+            needV = this.contentHeight > innerH;
+        }
+
+        if (needV && this.contentWidth > innerW)
+        {
+            innerW = Math.min(this.contentWidth, screenW - margin * 2 - sb);
+            needH = this.contentWidth > innerW;
+        }
+
+        int popupW = innerW + (needV ? sb : 0);
+        int popupH = innerH + (needH ? sb : 0);
+
+        x = MathUtils.clamp(x, margin, Math.max(margin, screenW - popupW - margin));
+        y = MathUtils.clamp(y, margin, Math.max(margin, screenH - popupH - margin));
+
+        this.area.set(x, y, popupW, popupH);
+        this.viewportArea.set(x, y, innerW, innerH);
+
+        this.verticalScroll.setScroll(0);
+        this.horizontalScroll.setScroll(0);
+        this.verticalScroll.scrollSize = this.contentHeight;
+        this.horizontalScroll.scrollSize = this.contentWidth;
+        this.verticalScroll.clamp();
+        this.horizontalScroll.clamp();
+    }
+
+    private int getScrollX()
+    {
+        return this.viewportArea.x - (int) this.horizontalScroll.getScroll();
+    }
+
+    private int getContentYStart()
+    {
+        return this.viewportArea.y + 4 - (int) this.verticalScroll.getScroll();
     }
 
     private int getItemHeight(ToolbarItem item)
@@ -334,9 +407,14 @@ public class ToolbarMenu extends UIElement
         return TimelineToolbarSettings.MENU_ITEM_HEIGHT;
     }
 
-    private int getRowIndexAt(int mouseY)
+    private int getRowIndexAt(int mouseX, int mouseY)
     {
-        int y = this.area.y + 4;
+        if (!this.viewportArea.isInside(mouseX, mouseY))
+        {
+            return -1;
+        }
+
+        int y = this.getContentYStart();
 
         for (int i = 0; i < this.items.size(); i++)
         {
@@ -356,7 +434,7 @@ public class ToolbarMenu extends UIElement
 
     private Area getRowArea(int index)
     {
-        int y = this.area.y + 4;
+        int y = this.getContentYStart();
 
         for (int i = 0; i < this.items.size(); i++)
         {
@@ -366,8 +444,9 @@ public class ToolbarMenu extends UIElement
             if (i == index)
             {
                 Area a = new Area();
-                a.setPos(this.area.x, y);
-                a.setSize(this.area.w, h);
+
+                a.set(this.getScrollX(), y, this.contentWidth, h);
+
                 return a;
             }
 
@@ -440,8 +519,16 @@ public class ToolbarMenu extends UIElement
         }
 
         this.renderBackground(context);
+        this.verticalScroll.drag(context.mouseX, context.mouseY);
+        this.horizontalScroll.drag(context.mouseX, context.mouseY);
         this.updateHover(context);
+
+        context.batcher.clip(this.viewportArea, context);
         this.renderItems(context);
+        context.batcher.unclip(context);
+
+        this.verticalScroll.renderScrollbar(context.batcher);
+        this.horizontalScroll.renderScrollbar(context.batcher);
 
         super.render(context);
 
@@ -480,7 +567,7 @@ public class ToolbarMenu extends UIElement
             return;
         }
 
-        int hoveredIndex = this.getRowIndexAt(context.mouseY);
+        int hoveredIndex = this.getRowIndexAt(context.mouseX, context.mouseY);
 
         if (hoveredIndex < 0)
         {
@@ -578,12 +665,21 @@ public class ToolbarMenu extends UIElement
     private void renderItems(UIContext context)
     {
         FontRenderer font = context.batcher.getFont();
-        int y = this.area.y + 4;
+        int y = this.getContentYStart();
+        int clipTop = this.viewportArea.y;
+        int clipBottom = this.viewportArea.ey();
 
         for (int i = 0; i < this.items.size(); i++)
         {
             ToolbarItem item = this.items.get(i);
             int h = this.getItemHeight(item);
+
+            if (y + h < clipTop || y >= clipBottom)
+            {
+                y += h;
+
+                continue;
+            }
 
             if (item.separator)
             {
@@ -591,7 +687,7 @@ public class ToolbarMenu extends UIElement
             }
             else
             {
-                boolean hover = this.area.x <= context.mouseX && context.mouseX < this.area.ex()
+                boolean hover = this.viewportArea.isInside(context.mouseX, context.mouseY)
                     && context.mouseY >= y && context.mouseY < y + h;
 
                 this.renderRow(context, font, item, i, y, h, hover);
@@ -604,8 +700,8 @@ public class ToolbarMenu extends UIElement
     private void renderSeparator(UIContext context, int y, int h)
     {
         int midY = y + h / 2;
-        int x1 = this.area.x + 6;
-        int x2 = this.area.ex() - 6;
+        int x1 = this.getScrollX() + 6;
+        int x2 = this.getScrollX() + this.contentWidth - 6;
 
         context.batcher.box(x1, midY, x2, midY + 1, TimelineToolbarSettings.getMenuBorder());
     }
@@ -621,8 +717,8 @@ public class ToolbarMenu extends UIElement
         int iconColor = enabled ? TimelineToolbarSettings.MENU_ITEM_FG
             : TimelineToolbarSettings.MENU_ITEM_DISABLED_FG;
 
-        int rowX1 = this.area.x;
-        int rowX2 = this.area.ex();
+        int rowX1 = this.getScrollX();
+        int rowX2 = rowX1 + this.contentWidth;
 
         if (hover && (enabled || item.hasChildren()))
         {
@@ -693,7 +789,7 @@ public class ToolbarMenu extends UIElement
             return;
         }
 
-        int hoveredIndex = this.getRowIndexAt(context.mouseY);
+        int hoveredIndex = this.getRowIndexAt(context.mouseX, context.mouseY);
 
         if (hoveredIndex < 0)
         {
@@ -796,6 +892,17 @@ public class ToolbarMenu extends UIElement
     @Override
     protected boolean subMouseClicked(UIContext context)
     {
+        if (this.area.isInside(context))
+        {
+            if (this.verticalScroll.mouseClicked(context.mouseX, context.mouseY)
+                || this.horizontalScroll.mouseClicked(context.mouseX, context.mouseY))
+            {
+                context.setTimelineToolbarConsumePointer(true);
+
+                return true;
+            }
+        }
+
         if (!this.area.isInside(context))
         {
             /* Let the toolbar handle section-button clicks (toggle / switch)
@@ -823,7 +930,7 @@ public class ToolbarMenu extends UIElement
         /* Clicks on any toolbar popup row must not reach the timeline underneath. */
         context.setTimelineToolbarConsumePointer(true);
 
-        int index = this.getRowIndexAt(context.mouseY);
+        int index = this.getRowIndexAt(context.mouseX, context.mouseY);
 
         if (index < 0)
         {
@@ -878,6 +985,34 @@ public class ToolbarMenu extends UIElement
         }
 
         return true;
+    }
+
+    @Override
+    protected boolean subMouseReleased(UIContext context)
+    {
+        this.verticalScroll.mouseReleased(context.mouseX, context.mouseY);
+        this.horizontalScroll.mouseReleased(context.mouseX, context.mouseY);
+
+        return super.subMouseReleased(context);
+    }
+
+    @Override
+    protected boolean subMouseScrolled(UIContext context)
+    {
+        if (!this.area.isInside(context))
+        {
+            return false;
+        }
+
+        if (this.verticalScroll.mouseScroll(context)
+            || this.horizontalScroll.mouseScroll(context))
+        {
+            context.setTimelineToolbarConsumePointer(true);
+
+            return true;
+        }
+
+        return super.subMouseScrolled(context);
     }
 
     @Override
