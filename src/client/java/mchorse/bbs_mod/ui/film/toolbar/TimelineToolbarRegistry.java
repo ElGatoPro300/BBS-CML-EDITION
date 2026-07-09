@@ -242,7 +242,7 @@ public final class TimelineToolbarRegistry
 
         s.add(ToolbarItem.separator());
         s.add(ToolbarItem.action(UIKeys.CAMERA_TIMELINE_CONTEXT_REMOVE_CLIPS)
-            .icon(Icons.TRASH)
+            .icon(Icons.REMOVE)
             .shortcut(Keys.DELETE)
             .destructive());
 
@@ -337,7 +337,7 @@ public final class TimelineToolbarRegistry
             .icon(Icons.OUTLINE_SPHERE));
         s.add(ToolbarItem.separator());
         s.add(ToolbarItem.action(UIKeys.KEYFRAMES_CONTEXT_REMOVE)
-            .icon(Icons.TRASH)
+            .icon(Icons.REMOVE)
             .shortcut(Keys.DELETE)
             .destructive());
 
@@ -451,7 +451,7 @@ public final class TimelineToolbarRegistry
         ToolbarSection s = new ToolbarSection(UIKeys.TIMELINE_TOOLBAR_EDIT, Icons.EDIT);
 
         s.add(ToolbarItem.action(UIKeys.GENERAL_REMOVE)
-            .icon(Icons.TRASH)
+            .icon(Icons.REMOVE)
             .shortcut(Keys.DELETE)
             .destructive());
         s.add(ToolbarItem.action(UIKeys.GENERAL_COPY)
