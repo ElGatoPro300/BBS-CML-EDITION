@@ -17,6 +17,8 @@ import mchorse.bbs_mod.forms.forms.utils.Anchor;
 import mchorse.bbs_mod.forms.forms.utils.Illusion;
 import mchorse.bbs_mod.forms.forms.utils.LookAt;
 import mchorse.bbs_mod.forms.forms.utils.LookAtBone;
+import mchorse.bbs_mod.forms.values.ValueIllusion;
+import mchorse.bbs_mod.settings.values.core.ValueTransform;
 import mchorse.bbs_mod.forms.renderers.FormRenderType;
 import mchorse.bbs_mod.forms.renderers.FormRenderingContext;
 import mchorse.bbs_mod.forms.renderers.ModelFormRenderer;
@@ -313,26 +315,106 @@ public abstract class BaseFilmController
      */
     private static void renderIllusions(FilmControllerContext context, Form form, FormRenderingContext formContext, MatrixStack stack)
     {
-        Illusion illusion = form.illusion.get();
-        int count = illusion == null ? 0 : illusion.count;
-
-        if (count <= 0 || context.isShadowPass)
+        if (context.isShadowPass)
         {
             return;
         }
 
-        List<Vector3f> directions = getIllusionDirections(illusion.directions);
-        float strength = Math.max(illusion.opacity, 0F);
+        List<Illusion> layers = collectIllusionLayers(form);
+        boolean hasIllusions = false;
 
-        int dirCount = directions.size();
-        int maxRank = (count + dirCount - 1) / dirCount;
+        for (Illusion layer : layers)
+        {
+            if (layer != null && layer.count > 0)
+            {
+                hasIllusions = true;
+
+                break;
+            }
+        }
+
+        if (!hasIllusions)
+        {
+            return;
+        }
+
+        Transform illusionTransform = createIllusionTransform(form);
         int baseColor = formContext.color;
         int baseLight = formContext.light;
-        int textureCount = illusion.textures.size();
         Link baseTexture = form instanceof ModelForm modelForm ? modelForm.texture.get() : null;
-        boolean delayed = illusion.delayEnabled && illusion.delay > 0F && context.replay != null && !Float.isNaN(context.propertyTick);
         AABB hitbox = context.entity.getPickingHitbox();
         float height = (float) hitbox.h;
+
+        for (int layer = 0; layer < layers.size(); layer++)
+        {
+            Illusion illusion = layers.get(layer);
+
+            if (illusion == null || illusion.count <= 0)
+            {
+                continue;
+            }
+
+            renderIllusionLayer(context, form, formContext, stack, illusion, illusionTransform, hitbox, height, layer, baseColor, baseLight);
+        }
+
+        if (baseTexture != null && form instanceof ModelForm modelForm)
+        {
+            modelForm.texture.set(baseTexture);
+        }
+
+        formContext.color(baseColor);
+        formContext.light = baseLight;
+    }
+
+    private static List<Illusion> collectIllusionLayers(Form form)
+    {
+        List<Illusion> layers = new ArrayList<>();
+
+        layers.add(form.illusion.get());
+        layers.add(form.illusionOverlay.get());
+
+        for (ValueIllusion overlay : form.additionalIllusions)
+        {
+            layers.add(overlay.get());
+        }
+
+        return layers;
+    }
+
+    private static Transform createIllusionTransform(Form form)
+    {
+        Transform transform = new Transform();
+
+        transform.copy(form.illusionTransform.get());
+        applyIllusionTransformOverlay(transform, form.illusionTransformOverlay.get());
+
+        for (ValueTransform overlay : form.additionalIllusionTransforms)
+        {
+            applyIllusionTransformOverlay(transform, overlay.get());
+        }
+
+        return transform;
+    }
+
+    private static void applyIllusionTransformOverlay(Transform transform, Transform overlay)
+    {
+        transform.translate.add(overlay.translate);
+        transform.scale.add(overlay.scale).sub(1F, 1F, 1F);
+        transform.rotate.add(overlay.rotate);
+        transform.rotate2.add(overlay.rotate2);
+        transform.pivot.add(overlay.pivot);
+    }
+
+    private static void renderIllusionLayer(FilmControllerContext context, Form form, FormRenderingContext formContext, MatrixStack stack, Illusion illusion, Transform illusionTransform, AABB hitbox, float height, int layerIndex, int baseColor, int baseLight)
+    {
+        List<Vector3f> directions = getIllusionDirections(illusion.directions);
+        float strength = Math.max(illusion.opacity, 0F);
+        int count = illusion.count;
+        int dirCount = directions.size();
+        int maxRank = (count + dirCount - 1) / dirCount;
+        int textureCount = illusion.textures.size();
+        boolean delayed = illusion.delayEnabled && illusion.delay > 0F && context.replay != null && !Float.isNaN(context.propertyTick);
+        int liftKeyBase = layerIndex * 10000;
 
         for (int i = 0; i < count; i++)
         {
@@ -349,7 +431,6 @@ public abstract class BaseFilmController
                 continue;
             }
 
-            /* Staggered animation: this illusion sees the film as it was delay * (i + 1) ticks ago */
             if (delayed)
             {
                 float delayedTick = Math.max(context.propertyTick - illusion.delay * (i + 1), 0F);
@@ -362,23 +443,21 @@ public abstract class BaseFilmController
 
             if (illusion.real && !formContext.relative)
             {
-                lift = getIllusionLift(context.entity, dir, distance, i, formContext.transition);
+                lift = getIllusionLift(context.entity, dir, distance, liftKeyBase + i, formContext.transition);
             }
 
             if (textureCount > 0 && form instanceof ModelForm modelForm)
             {
                 int index = illusion.randomTextures
-                    ? (int) Math.floorMod((i + 1L) * 2654435761L, textureCount)
+                    ? (int) Math.floorMod((i + 1L) * 2654435761L + layerIndex, textureCount)
                     : i % textureCount;
 
                 modelForm.texture.set(illusion.textures.get(index));
             }
 
-            /* Extra illusion transform, optionally applied gradually from the first illusion to the last */
-            Transform illusionTransform = form.illusionTransform.get();
             Transform partial = null;
 
-            if (illusionTransform != null && !illusionTransform.isDefault())
+            if (!illusionTransform.isDefault())
             {
                 float factor = illusion.gradual ? (count == 1 ? 1F : i / (float) (count - 1)) : 1F;
 
@@ -393,8 +472,6 @@ public abstract class BaseFilmController
             float x = dir.x * distance;
             float y = dir.y * distance + lift;
             float z = dir.z * distance;
-
-            /* Disintegration: from the last illusion to the first, the model fades away into streaks */
             float distortFactor = illusion.distort <= 0F ? 0F : MathUtils.clamp(illusion.distort * (i + 1) / count, 0F, 1F);
             float mainAlpha = alpha * (1F - distortFactor);
 
@@ -420,7 +497,7 @@ public abstract class BaseFilmController
                 float streakAlpha = alpha * (1F - distortFactor);
                 int a = Math.round(((baseColor >>> 24) & 0xFF) * Math.min(streakAlpha + 0.2F * (1F - distortFactor), 1F));
 
-                renderIllusionStreaks(form, formContext, stack, x, y, z, partial, (a << 24) | rgb, distortFactor, i, height);
+                renderIllusionStreaks(form, formContext, stack, x, y, z, partial, (a << 24) | rgb, distortFactor, liftKeyBase + i, height);
             }
 
             formContext.light = baseLight;
@@ -431,14 +508,6 @@ public abstract class BaseFilmController
             context.replay.properties.resetProperties(form);
             context.replay.properties.applyProperties(form, context.propertyTick);
         }
-
-        if (textureCount > 0 && form instanceof ModelForm modelForm)
-        {
-            modelForm.texture.set(baseTexture);
-        }
-
-        formContext.color(baseColor);
-        formContext.light = baseLight;
     }
 
     private static float getIllusionDistance(Illusion illusion, AABB hitbox, Vector3f dir, int rank, int maxRank)

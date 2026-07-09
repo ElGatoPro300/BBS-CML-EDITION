@@ -61,12 +61,16 @@ public abstract class Form extends ValueGroup
     /* Illusions: purely visual duplicates of this form that spread away from it in
      * the picked directions (no extra entities, so they're cheap to render) */
     public final ValueIllusion illusion = new ValueIllusion("illusion", new Illusion());
+    public final ValueIllusion illusionOverlay = new ValueIllusion("illusion_overlay", new Illusion());
 
     /* Extra transform that gets applied only to the illusions (optionally gradually
      * from the first illusion to the last one, see Illusion.gradual) */
     public final ValueTransform illusionTransform = new ValueTransform("illusion_transform", new Transform());
+    public final ValueTransform illusionTransformOverlay = new ValueTransform("illusion_transform_overlay", new Transform());
 
     public final List<ValueTransform> additionalTransforms = new ArrayList<>();
+    public final List<ValueIllusion> additionalIllusions = new ArrayList<>();
+    public final List<ValueTransform> additionalIllusionTransforms = new ArrayList<>();
 
     /* Hitbox properties */
     public final ValueBoolean hitbox = new ValueBoolean("hitbox", false);
@@ -127,7 +131,26 @@ public abstract class Form extends ValueGroup
         this.add(this.paintColor);
 
         this.add(this.illusion);
+        this.add(this.illusionOverlay);
+
+        for (int i = 0; i < BBSSettings.recordingPoseTransformOverlays.get(); i++)
+        {
+            ValueIllusion valueIllusion = new ValueIllusion("illusion_overlay" + i, new Illusion());
+
+            this.additionalIllusions.add(valueIllusion);
+            this.add(valueIllusion);
+        }
+
         this.add(this.illusionTransform);
+        this.add(this.illusionTransformOverlay);
+
+        for (int i = 0; i < BBSSettings.recordingPoseTransformOverlays.get(); i++)
+        {
+            ValueTransform valueTransform = new ValueTransform("illusion_transform_overlay" + i, new Transform());
+
+            this.additionalIllusionTransforms.add(valueTransform);
+            this.add(valueTransform);
+        }
 
         this.hitbox.invisible();
         this.hitboxWidth.invisible();
