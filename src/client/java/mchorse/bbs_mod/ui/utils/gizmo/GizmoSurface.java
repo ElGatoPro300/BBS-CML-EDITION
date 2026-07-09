@@ -1,10 +1,11 @@
 package mchorse.bbs_mod.ui.utils.gizmo;
 
 import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
+import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.ui.utils.StencilFormFramebuffer;
 
 /**
- * CML-native contract for anything that renders a pickable {@link mchorse.bbs_mod.ui.utils.Gizmo}
+ * CML-native contract for anything that renders a pickable {@link Gizmo}
  * into its own stencil-picking pass. Implemented by the Model, Form, Film/Replays and Animation
  * State editors so a single {@link GizmoController} can drive the pick -> hover -> drag lifecycle
  * for all of them instead of every editor re-implementing that bookkeeping by hand.

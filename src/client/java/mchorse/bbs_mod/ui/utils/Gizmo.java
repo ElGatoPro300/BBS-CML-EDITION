@@ -5,11 +5,14 @@ import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.graphics.Draw;
 import mchorse.bbs_mod.ui.framework.UIContext;
-import mchorse.bbs_mod.ui.utils.Area;
-import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
+import mchorse.bbs_mod.ui.framework.elements.utils.UIModelRenderer;
+import mchorse.bbs_mod.ui.utils.Area;
+import mchorse.bbs_mod.ui.utils.gizmo.GizmoController;
 import mchorse.bbs_mod.utils.Axis;
+import mchorse.bbs_mod.utils.MatrixStackUtils;
+
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.BufferRenderer;
@@ -41,7 +44,7 @@ import java.util.Map;
  * Owns the addon-facing handle registry, the deferred (Iris) render queue, and the
  * translate/scale/rotate/combined/trackball handle table used by every 3D viewport
  * in the editor (Model, Form, Film replays, Animation state). Individual viewports
- * feed their picking/hover/drag lifecycle through {@link mchorse.bbs_mod.ui.utils.gizmo.GizmoController}
+ * feed their picking/hover/drag lifecycle through {@link GizmoController}
  * instead of talking to this class directly, but this class remains a singleton so
  * addons registered through {@link #register(int, IGizmoHandler)} keep working unchanged.
  */
@@ -151,7 +154,7 @@ public class Gizmo
     private float lastSy = 1F;
     private float lastSz = 1F;
 
-    /** Orbit-camera zoom multiplier from {@link mchorse.bbs_mod.ui.framework.elements.utils.UIModelRenderer}; 1 outside model viewports. */
+    /** Orbit-camera zoom multiplier from {@link UIModelRenderer}; 1 outside model viewports. */
     private float viewportZoomScale = 1F;
 
     /* Direction from the gizmo origin toward the camera in gizmo-local space, refreshed
@@ -229,7 +232,7 @@ public class Gizmo
     }
 
     /** Continuously-updated (not just while dragging) handle hover state, fed by
-     *  {@link mchorse.bbs_mod.ui.utils.gizmo.GizmoController} every frame so the render
+     *  {@link GizmoController} every frame so the render
      *  pass can brighten a handle the mouse is over before the user commits to a drag. */
     public int getHoveredIndex()
     {

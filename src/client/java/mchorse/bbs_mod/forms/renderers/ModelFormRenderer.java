@@ -4,7 +4,6 @@ import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.client.BBSShaders;
-import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.client.renderer.entity.ActorEntityRenderer;
 import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.cubic.animation.ActionsConfig;

@@ -96,7 +96,7 @@ public class BBSRendering
 
     /**
      * Iris world rendering multiplies the terrain {@code positionMatrix} into the
-     * {@link net.minecraft.client.util.math.MatrixStack} before entity transforms.
+     * {@link MatrixStack} before entity transforms.
      * {@link Matrix4f#getTranslation()} on that product no longer equals the
      * camera-relative entity offset, so callers that rebuild world space from
      * translation + camera position must strip the terrain matrix first.

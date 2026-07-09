@@ -13,6 +13,7 @@ import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UIPoseKey
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UITransformKeyframeFactory;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.Gizmo;
+import mchorse.bbs_mod.ui.utils.gizmo.GizmoRayFrame;
 
 import org.joml.Matrix4f;
 import org.joml.Vector3d;
@@ -22,7 +23,7 @@ import org.joml.Vector4f;
 /**
  * Film pose gizmo drag frame. Axis rings / translate / scale handles use view-space rays plus
  * the captured pass matrix. The trackball sphere uses the same world-space mouse ray as the
- * model editor ({@link mchorse.bbs_mod.ui.utils.gizmo.GizmoRayFrame}) for screen-basis rotation.
+ * model editor ({@link GizmoRayFrame}) for screen-basis rotation.
  */
 public final class FilmPoseGizmoDrag
 {
