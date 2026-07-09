@@ -206,7 +206,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private Timer flightEditTime = new Timer(100);
 
     private List<UIElement> panels = new ArrayList<>();
-    private UIElement secretPlay;
+    private UIFilmFullscreenPlaybackBar fullscreenPlaybackBar;
 
     private boolean newFilm;
     private final Map<String, UIElement> panelById = new LinkedHashMap<>();
@@ -916,8 +916,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.panels.add(this.replayEditor);
         this.panels.add(this.actionEditor);
 
-        this.secretPlay = new UIElement();
-        this.secretPlay.keys().register(Keys.PLAUSE, () -> this.preview.plause.clickItself()).active(() -> !this.isFlying() && !this.canBeSeen() && this.data != null).category(editor);
+        this.fullscreenPlaybackBar = new UIFilmFullscreenPlaybackBar(this);
+        this.fullscreenPlaybackBar.keys().register(Keys.PLAUSE, () -> this.preview.plause.clickItself()).active(() -> this.fullscreenPlaybackBar.isKeybindActive()).category(editor);
 
         this.setUndoId("film_panel");
         this.cameraEditor.setUndoId("camera_editor");
@@ -3937,7 +3937,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             this.updateFilmDocumentView();
         }
 
-        this.getContext().menu.getRoot().add(this.secretPlay);
+        this.fullscreenPlaybackBar.attachToRoot();
     }
 
     @Override
@@ -3980,7 +3980,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.getCameraController().remove(this.runner);
 
         this.disableContext();
-        this.secretPlay.removeFromParent();
+        this.fullscreenPlaybackBar.removeFromParent();
     }
 
     private void disableContext()
