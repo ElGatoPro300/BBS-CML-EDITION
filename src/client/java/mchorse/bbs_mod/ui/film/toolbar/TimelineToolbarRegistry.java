@@ -3,6 +3,7 @@ package mchorse.bbs_mod.ui.film.toolbar;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
+import mchorse.bbs_mod.utils.colors.Colors;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -455,10 +456,12 @@ public final class TimelineToolbarRegistry
             .destructive());
         s.add(ToolbarItem.action(UIKeys.GENERAL_COPY)
             .icon(Icons.COPY)
-            .shortcut(Keys.COPY));
+            .shortcut(Keys.COPY)
+            .accentColor(Colors.POSITIVE));
         s.add(ToolbarItem.action(UIKeys.GENERAL_PASTE)
             .icon(Icons.PASTE)
-            .shortcut(Keys.PASTE));
+            .shortcut(Keys.PASTE)
+            .accentColor(Colors.INACTIVE));
 
         return s;
     }
