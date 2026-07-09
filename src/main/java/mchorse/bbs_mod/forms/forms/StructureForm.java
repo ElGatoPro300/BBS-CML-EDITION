@@ -33,6 +33,8 @@ public class StructureForm extends Form
     public final ValueStructureLightSettings structureLight = new ValueStructureLightSettings("structure_light", new StructureLightSettings(false, 15));
     /** Aplica el tinte global también a Block Entities (cofres, carteles, etc.) */
     public final ValueBoolean tintBlockEntities = new ValueBoolean("tint_block_entities", false);
+    /** Alterna el renderizado de fluidos (agua/lava) en la estructura */
+    public final ValueBoolean renderFluid = new ValueBoolean("render_fluid", false);
     /** Pivote manual en coordenadas de bloque (permite decimales) */
     public final ValueFloat pivotX = new ValueFloat("pivot_x", 0f);
     public final ValueFloat pivotY = new ValueFloat("pivot_y", 0f);
@@ -61,6 +63,10 @@ public class StructureForm extends Form
         this.pivotX.invisible();
         this.pivotY.invisible();
         this.pivotZ.invisible();
+
+        /* Ocultar del timeline */
+        this.renderFluid.invisible();
+        this.add(this.renderFluid);
 
         this.add(this.pivotX);
         this.add(this.pivotY);
