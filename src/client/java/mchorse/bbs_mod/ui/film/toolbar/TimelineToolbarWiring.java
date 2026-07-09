@@ -1,5 +1,6 @@
 package mchorse.bbs_mod.ui.film.toolbar;
 
+import mchorse.bbs_mod.actions.ActionState;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.camera.clips.ClipFactoryData;
 import mchorse.bbs_mod.film.Film;
@@ -46,7 +47,7 @@ public final class TimelineToolbarWiring
         UIClips clips = panel.clips;
         TimelineToolbar toolbar = panel.toolbar;
 
-        wireTransportAndHistory(filmPanel, toolbar);
+        wireReplayAndHistory(filmPanel, toolbar);
         wireClipsSelection(clips, toolbar);
         wireClipsEditInstant(clips, toolbar);
         wireClipsEditSelection(clips, toolbar);
@@ -68,7 +69,7 @@ public final class TimelineToolbarWiring
 
     public static void wireKeyframesToolbar(UIFilmPanel filmPanel, UIKeyframes keyframes, TimelineToolbar toolbar)
     {
-        wireTransportAndHistory(filmPanel, toolbar);
+        wireReplayAndHistory(filmPanel, toolbar);
         wireKeyframesAdd(keyframes, toolbar);
         wireKeyframesInstant(keyframes, toolbar);
         wireKeyframesEditSelection(keyframes, toolbar);
@@ -80,7 +81,7 @@ public final class TimelineToolbarWiring
 
     public static void wireReplaysToolbar(UIReplaysEditor editor)
     {
-        wireTransportAndHistory(editor.getFilmPanel(), editor.toolbar);
+        wireReplayAndHistory(editor.getFilmPanel(), editor.toolbar);
         wireKeyframesAdd(editor, editor.toolbar);
         wireKeyframesInstant(editor, editor.toolbar);
         wireKeyframesEditSelection(editor, editor.toolbar);
@@ -93,9 +94,9 @@ public final class TimelineToolbarWiring
         wireActorSection(editor);
     }
 
-    /* Shared transport + undo/redo */
+    /* Shared replay + undo/redo */
 
-    private static void wireTransportAndHistory(UIFilmPanel filmPanel, TimelineToolbar toolbar)
+    private static void wireReplayAndHistory(UIFilmPanel filmPanel, TimelineToolbar toolbar)
     {
         BooleanSupplier editorActive = () -> filmPanel.getData() != null && !filmPanel.isFlying();
         BooleanSupplier filmLoaded = () -> filmPanel.getData() != null;
@@ -118,6 +119,11 @@ public final class TimelineToolbarWiring
         }, editorActive);
         bindShortcut(toolbar, Keys.LOOPING_SET_MIN, () -> filmPanel.cameraEditor.clips.toolbarEnterLoopMin(), editorActive);
         bindShortcut(toolbar, Keys.LOOPING_SET_MAX, () -> filmPanel.cameraEditor.clips.toolbarEnterLoopMax(), editorActive);
+        bindShortcut(toolbar, Keys.FILM_CONTROLLER_RESTART_ACTIONS, () ->
+        {
+            filmPanel.notifyServer(ActionState.RESTART);
+            filmPanel.getController().createEntities();
+        }, filmLoaded);
         bindShortcut(toolbar, Keys.UNDO, filmPanel::undo, filmLoaded);
         bindShortcut(toolbar, Keys.REDO, filmPanel::redo, filmLoaded);
     }

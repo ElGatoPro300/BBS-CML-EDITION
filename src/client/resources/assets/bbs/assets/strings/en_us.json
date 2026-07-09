@@ -2077,7 +2077,7 @@
     "bbs.ui.timeline_toolbar.tracks": "Tracks",
     "bbs.ui.timeline_toolbar.edit_track": "Edit track",
     "bbs.ui.timeline_toolbar.transform": "Transform",
-    "bbs.ui.timeline_toolbar.transport": "Transport",
+    "bbs.ui.timeline_toolbar.replay": "Replay",
     "bbs.ui.timeline_toolbar.interaction.pick_track": "Click on a track",
     "bbs.ui.timeline_toolbar.interaction.pick_add_at_cursor": "Click to choose where to add a clip",
     "bbs.ui.timeline_toolbar.interaction.pick_add_at_tick": "Click to choose a layer at the current tick",

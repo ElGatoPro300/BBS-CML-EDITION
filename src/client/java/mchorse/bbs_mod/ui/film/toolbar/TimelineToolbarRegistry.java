@@ -24,7 +24,7 @@ public final class TimelineToolbarRegistry
     {
         List<ToolbarSection> sections = new ArrayList<>();
 
-        sections.add(transportSection(true, true));
+        sections.add(replaySection(true, true));
         sections.add(addSectionCamera());
         sections.add(editSectionClips(true));
         sections.add(selectSectionClips());
@@ -38,7 +38,7 @@ public final class TimelineToolbarRegistry
     {
         List<ToolbarSection> sections = new ArrayList<>();
 
-        sections.add(transportSection(false, true));
+        sections.add(replaySection(false, true));
         sections.add(addSectionAction());
         sections.add(editSectionClips(false));
         sections.add(selectSectionClips());
@@ -54,7 +54,7 @@ public final class TimelineToolbarRegistry
     {
         List<ToolbarSection> sections = new ArrayList<>();
 
-        sections.add(transportSection(true, false));
+        sections.add(replaySection(true, false));
         sections.add(addSectionKeyframes());
         sections.add(editSectionKeyframes());
         sections.add(selectSectionKeyframes());
@@ -85,9 +85,9 @@ public final class TimelineToolbarRegistry
 
     /* Sections shared across timelines */
 
-    private static ToolbarSection transportSection(boolean includeClipNavigation, boolean includeLooping)
+    private static ToolbarSection replaySection(boolean includeClipNavigation, boolean includeLooping)
     {
-        ToolbarSection s = new ToolbarSection(UIKeys.TIMELINE_TOOLBAR_TRANSPORT, Icons.PLAY);
+        ToolbarSection s = new ToolbarSection(UIKeys.TIMELINE_TOOLBAR_REPLAY, Icons.PLAY);
 
         s.add(ToolbarItem.action(UIKeys.CAMERA_EDITOR_KEYS_EDITOR_PLAUSE)
             .icon(Icons.PLAY)
@@ -131,6 +131,11 @@ public final class TimelineToolbarRegistry
                     .shortcut(Keys.LOOPING)
             ).icon(Icons.REVERSE));
         }
+
+        s.add(ToolbarItem.separator());
+        s.add(ToolbarItem.action(UIKeys.FILM_CONTROLLER_KEYS_RESTART_ACTIONS)
+            .icon(Icons.REFRESH)
+            .shortcut(Keys.FILM_CONTROLLER_RESTART_ACTIONS));
 
         return s;
     }

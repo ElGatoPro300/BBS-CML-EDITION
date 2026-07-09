@@ -2222,5 +2222,6 @@
     "studio.ui.utility.title": "Panel de utilidades",
 
     "bbs.ui.timeline_toolbar.edit_track": "Editar pista",
-    "bbs.ui.timeline_toolbar.add_replay_at_cursor": "Añadir una reproducción en el cursor"
+    "bbs.ui.timeline_toolbar.add_replay_at_cursor": "Añadir una reproducción en el cursor",
+    "bbs.ui.timeline_toolbar.replay": "Reproducción"
 }
