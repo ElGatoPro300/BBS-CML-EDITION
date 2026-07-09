@@ -457,6 +457,27 @@ public class ToolbarMenu extends UIElement
     }
 
     /**
+     * Whether {@code (x, y)} lies inside any open descendant submenu of this
+     * popup. Used when submenus overlap their parent after viewport clamping.
+     */
+    private boolean isPointerOverDescendantMenu(int x, int y)
+    {
+        ToolbarMenu descendant = this.openChild;
+
+        while (descendant != null)
+        {
+            if (descendant.area.isInside(x, y))
+            {
+                return true;
+            }
+
+            descendant = descendant.openChild;
+        }
+
+        return false;
+    }
+
+    /**
      * When a child submenu popup overlaps its parent's anchor row (e.g. opened
      * to the left), clicks on that row must stay with the parent semantics:
      * pure containers are a no-op and must not close the chain.
@@ -550,11 +571,14 @@ public class ToolbarMenu extends UIElement
 
     private void updateHover(UIContext context)
     {
+        int mx = context.mouseX;
+        int my = context.mouseY;
+
         if (!this.area.isInside(context))
         {
             if (this.openChild != null
-                && (this.openChild.isChainAt(context.mouseX, context.mouseY)
-                    || this.isPointerInOpenChildBridge(context.mouseX, context.mouseY)))
+                && (this.openChild.isChainAt(mx, my)
+                    || this.isPointerInOpenChildBridge(mx, my)))
             {
                 return;
             }
@@ -567,7 +591,12 @@ public class ToolbarMenu extends UIElement
             return;
         }
 
-        int hoveredIndex = this.getRowIndexAt(context.mouseX, context.mouseY);
+        if (this.isPointerOverDescendantMenu(mx, my))
+        {
+            return;
+        }
+
+        int hoveredIndex = this.getRowIndexAt(mx, my);
 
         if (hoveredIndex < 0)
         {
@@ -668,6 +697,7 @@ public class ToolbarMenu extends UIElement
         int y = this.getContentYStart();
         int clipTop = this.viewportArea.y;
         int clipBottom = this.viewportArea.ey();
+        boolean pointerOnDescendant = this.isPointerOverDescendantMenu(context.mouseX, context.mouseY);
 
         for (int i = 0; i < this.items.size(); i++)
         {
@@ -687,7 +717,8 @@ public class ToolbarMenu extends UIElement
             }
             else
             {
-                boolean hover = this.viewportArea.isInside(context.mouseX, context.mouseY)
+                boolean hover = !pointerOnDescendant
+                    && this.viewportArea.isInside(context.mouseX, context.mouseY)
                     && context.mouseY >= y && context.mouseY < y + h;
 
                 this.renderRow(context, font, item, i, y, h, hover);
@@ -784,7 +815,8 @@ public class ToolbarMenu extends UIElement
      */
     private void renderDisabledReasonTooltip(UIContext context)
     {
-        if (!this.area.isInside(context))
+        if (!this.area.isInside(context)
+            || this.isPointerOverDescendantMenu(context.mouseX, context.mouseY))
         {
             return;
         }
@@ -929,6 +961,11 @@ public class ToolbarMenu extends UIElement
 
         /* Clicks on any toolbar popup row must not reach the timeline underneath. */
         context.setTimelineToolbarConsumePointer(true);
+
+        if (this.isPointerOverDescendantMenu(context.mouseX, context.mouseY))
+        {
+            return true;
+        }
 
         int index = this.getRowIndexAt(context.mouseX, context.mouseY);
 
