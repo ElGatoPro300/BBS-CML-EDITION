@@ -14,6 +14,7 @@ import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.pose.Transform;
 
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gl.GlUniform;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.util.math.MatrixStack;
@@ -76,7 +77,7 @@ public class UISubtitleRenderer
         Texture texture = framebuffer.getMainTexture();
         Matrix4f ortho = new Matrix4f().ortho(0, width, height, 0, -100, 100);
         FontRenderer font = Batcher2D.getVanillaTextRenderer();
-        net.minecraft.client.font.TextRenderer vanilla = MinecraftClient.getInstance().textRenderer;
+        TextRenderer vanilla = MinecraftClient.getInstance().textRenderer;
 
         RenderSystem.depthFunc(GL11.GL_ALWAYS);
         RenderSystem.disableCull();

@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.ui.utils.gizmo;
 
 import mchorse.bbs_mod.camera.Camera;
+import mchorse.bbs_mod.ui.film.replays.FilmPoseGizmoDrag;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.ui.utils.Area;
@@ -103,7 +104,7 @@ public final class GizmoRayFrame
     /**
      * Film pose view-ring / axis-handle drag for editors that capture a model-space gizmo matrix.
      * Premultiplies {@code camera.view} so view-space rays line up with
-     * {@link mchorse.bbs_mod.ui.film.replays.FilmPoseGizmoDrag} handle math.
+     * {@link FilmPoseGizmoDrag} handle math.
      */
     public static UIPropTransform.IGizmoRayProvider fromFilmPoseStyle(Camera camera, Area area, Supplier<Matrix4f> gizmoMatrix)
     {
@@ -123,7 +124,7 @@ public final class GizmoRayFrame
     /**
      * Matches the film replay gizmo ray split: the free-rotate trackball sphere uses a
      * world-space camera ray, while axis rings, the view ring, translate and scale handles
-     * use a view-space ray through the origin (see {@link mchorse.bbs_mod.ui.film.replays.FilmPoseGizmoDrag}).
+     * use a view-space ray through the origin (see {@link FilmPoseGizmoDrag}).
      */
     public static UIPropTransform.IGizmoRayProvider fromFilmStyle(Camera camera, Area area, Supplier<Matrix4f> gizmoMatrix)
     {

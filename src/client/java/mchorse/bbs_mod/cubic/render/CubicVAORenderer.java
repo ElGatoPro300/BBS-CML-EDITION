@@ -12,13 +12,13 @@ import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.interps.Lerps;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
+
+import com.mojang.blaze3d.systems.RenderSystem;
 
 public class CubicVAORenderer extends CubicCubeRenderer
 {

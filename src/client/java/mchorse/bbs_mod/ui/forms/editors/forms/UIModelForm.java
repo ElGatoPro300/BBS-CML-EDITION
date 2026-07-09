@@ -11,6 +11,7 @@ import mchorse.bbs_mod.ui.forms.editors.panels.UIActionsFormPanel;
 import mchorse.bbs_mod.ui.forms.editors.panels.UIFormPanel;
 import mchorse.bbs_mod.ui.forms.editors.panels.UIModelFormPanel;
 import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
+import mchorse.bbs_mod.ui.model_blocks.UIModelBlockPanel;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.pose.UIPoseEditor;
 import mchorse.bbs_mod.utils.StringUtils;
@@ -81,7 +82,7 @@ public class UIModelForm extends UIForm<ModelForm>
     }
 
     /**
-     * Pose gizmo basis matches {@link mchorse.bbs_mod.ui.model_blocks.UIModelBlockPanel}:
+     * Pose gizmo basis matches {@link UIModelBlockPanel}:
      * bone pivot in world space, plus the edited pose rotation in local mode only.
      */
     @Override

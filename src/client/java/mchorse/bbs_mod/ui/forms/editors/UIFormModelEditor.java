@@ -1,7 +1,7 @@
 package mchorse.bbs_mod.ui.forms.editors;
 
-import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSClient;
+import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.cubic.model.ModelConfig;
 import mchorse.bbs_mod.cubic.model.ModelManager;
 import mchorse.bbs_mod.cubic.model.ModelRepository;
@@ -12,13 +12,13 @@ import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.UIDashboard;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanels;
+import mchorse.bbs_mod.ui.forms.editors.panels.UIGeneralFormPanel;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIScrollView;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIRenderable;
-import mchorse.bbs_mod.ui.forms.editors.panels.UIGeneralFormPanel;
 import mchorse.bbs_mod.ui.model.IUIModelPanelHost;
 import mchorse.bbs_mod.ui.model.UIModelArmorSection;
 import mchorse.bbs_mod.ui.model.UIModelEditorRenderer;
@@ -34,12 +34,12 @@ import mchorse.bbs_mod.ui.model.UIModelPartsSection;
 import mchorse.bbs_mod.ui.model.UIModelPhysBonePanel;
 import mchorse.bbs_mod.ui.model.UIModelSection;
 import mchorse.bbs_mod.ui.model.UIModelSneakingSection;
+import mchorse.bbs_mod.ui.model.UIModelUIStyles;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.pose.UIPoseEditor;
 import mchorse.bbs_mod.utils.Direction;
-import mchorse.bbs_mod.ui.model.UIModelUIStyles;
 
 import java.io.File;
 import java.util.ArrayList;

@@ -1,6 +1,8 @@
 package mchorse.bbs_mod.ui.utils.gizmo;
 
+import mchorse.bbs_mod.film.BaseFilmController;
 import mchorse.bbs_mod.forms.renderers.utils.MatrixCacheEntry;
+import mchorse.bbs_mod.ui.model_blocks.UIModelBlockPanel;
 import mchorse.bbs_mod.utils.pose.Transform;
 
 import org.joml.Matrix4f;
@@ -8,7 +10,7 @@ import org.joml.Vector3f;
 
 /**
  * Shared gizmo-basis helpers used to keep drag math aligned with
- * {@link mchorse.bbs_mod.ui.model_blocks.UIModelBlockPanel}'s world-space gizmo frame.
+ * {@link UIModelBlockPanel}'s world-space gizmo frame.
  */
 public final class GizmoMatrixUtils
 {
@@ -16,7 +18,7 @@ public final class GizmoMatrixUtils
     {}
 
     /**
-     * Bone gizmo basis for film pose keyframes ({@link mchorse.bbs_mod.film.BaseFilmController#renderAxes}).
+     * Bone gizmo basis for film pose keyframes ({@link BaseFilmController#renderAxes}).
      * Non-local mode uses the bone pivot matrix; local mode keeps the posed rotation with pivot translation.
      */
     public static Matrix4f resolveFilmPoseBoneMatrix(MatrixCacheEntry entry, boolean local)
