@@ -943,11 +943,198 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
     /**
      * Human-readable timeline track names for internal property ids (overlays, paint color, etc.).
      */
+    private static IKey resolveWorldChannelTrackTitle(String trackName)
+    {
+        if (trackName.equals("x"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_X;
+        }
+
+        if (trackName.equals("y"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_Y;
+        }
+
+        if (trackName.equals("z"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_Z;
+        }
+
+        if (trackName.equals("vX"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_VX;
+        }
+
+        if (trackName.equals("vY"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_VY;
+        }
+
+        if (trackName.equals("vZ"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_VZ;
+        }
+
+        if (trackName.equals("yaw"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_YAW;
+        }
+
+        if (trackName.equals("pitch"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_PITCH;
+        }
+
+        if (trackName.equals("headYaw"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_HEAD_YAW;
+        }
+
+        if (trackName.equals("bodyYaw"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_BODY_YAW;
+        }
+
+        if (trackName.equals("grounded"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_GROUNDED;
+        }
+
+        if (trackName.equals("damage"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_DAMAGE;
+        }
+
+        if (trackName.equals("fall"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_FALL;
+        }
+
+        if (trackName.equals("sneaking"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_SNEAKING;
+        }
+
+        if (trackName.equals("sprinting"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_SPRINTING;
+        }
+
+        if (trackName.equals("item_main_hand"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_ITEM_MAIN_HAND;
+        }
+
+        if (trackName.equals("item_off_hand"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_ITEM_OFF_HAND;
+        }
+
+        if (trackName.equals("item_head"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_ITEM_HEAD;
+        }
+
+        if (trackName.equals("item_chest"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_ITEM_CHEST;
+        }
+
+        if (trackName.equals("item_legs"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_ITEM_LEGS;
+        }
+
+        if (trackName.equals("item_feet"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_ITEM_FEET;
+        }
+
+        if (trackName.equals("selected_slot"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_SELECTED_SLOT;
+        }
+
+        if (trackName.equals("stick_lx"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_STICK_LX;
+        }
+
+        if (trackName.equals("stick_ly"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_STICK_LY;
+        }
+
+        if (trackName.equals("stick_rx"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_STICK_RX;
+        }
+
+        if (trackName.equals("stick_ry"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_STICK_RY;
+        }
+
+        if (trackName.equals("trigger_l"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_TRIGGER_L;
+        }
+
+        if (trackName.equals("trigger_r"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_TRIGGER_R;
+        }
+
+        if (trackName.equals("extra1_x"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_EXTRA1_X;
+        }
+
+        if (trackName.equals("extra1_y"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_EXTRA1_Y;
+        }
+
+        if (trackName.equals("extra2_x"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_EXTRA2_X;
+        }
+
+        if (trackName.equals("extra2_y"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_EXTRA2_Y;
+        }
+
+        if (trackName.equals("shadow_size"))
+        {
+            return UIKeys.FILM_REPLAY_SHADOW_SIZE;
+        }
+
+        if (trackName.equals("shadow_opacity"))
+        {
+            return UIKeys.FILM_REPLAY_SHADOW_OPACITY;
+        }
+
+        return null;
+    }
+
     private static IKey resolvePropertyTrackTitle(String trackName)
     {
+        IKey worldTitle = resolveWorldChannelTrackTitle(trackName);
+
+        if (worldTitle != null)
+        {
+            return worldTitle;
+        }
+
         if (trackName.equals("paint_color"))
         {
             return UIKeys.FORMS_EDITORS_PAINT_COLOR;
+        }
+
+        if (trackName.equals("color"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_COLOR;
         }
 
         if (trackName.equals("render_depth"))
@@ -1066,7 +1253,64 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
             }
         }
 
+        if (trackName.equals("visible"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_VISIBLE;
+        }
+
+        if (trackName.equals("lighting"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_LIGHTING;
+        }
+
+        if (trackName.equals("transform"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_TRANSFORM;
+        }
+
+        if (trackName.equals("anchor"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_ANCHOR;
+        }
+
+        if (trackName.equals("texture"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_TEXTURE;
+        }
+
+        if (trackName.equals("model"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_MODEL;
+        }
+
+        if (trackName.equals("actions"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_ACTIONS;
+        }
+
+        if (trackName.equals("shape_keys"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_SHAPE_KEYS;
+        }
+
+        if (trackName.equals("item_stack"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_ITEM_STACK;
+        }
+
+        if (trackName.equals("pose"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_POSE;
+        }
+
         return null;
+    }
+
+    public static IKey resolveTrackTitle(String trackName)
+    {
+        IKey title = resolvePropertyTrackTitle(trackName);
+
+        return title != null ? title : IKey.constant(trackName);
     }
 
     public void updateChannelsList()
@@ -1125,9 +1369,13 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
                 int baseColor = getColor(key);
                 int sheetColor = customColor != null ? customColor : baseColor;
 
+                IKey resolvedTitle = resolvePropertyTrackTitle(key);
+
                 UIKeyframeSheet sheet = customTitle != null && !customTitle.isEmpty()
                     ? new UIKeyframeSheet(key, IKey.constant(customTitle), sheetColor, false, channel, null)
-                    : new UIKeyframeSheet(sheetColor, false, channel, null);
+                    : resolvedTitle != null
+                        ? new UIKeyframeSheet(key, resolvedTitle, sheetColor, false, channel, null)
+                        : new UIKeyframeSheet(sheetColor, false, channel, null);
 
                 sheets.add(sheet.icon(ICONS.get(key)));
             }

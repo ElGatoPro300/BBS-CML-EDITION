@@ -29,6 +29,7 @@ import mchorse.bbs_mod.ui.framework.elements.input.text.UITextbox;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIFontPickerOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UILabelOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
+import mchorse.bbs_mod.text.RtlFontManager;
 import mchorse.bbs_mod.ui.framework.elements.utils.CustomFontManager;
 import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIText;
@@ -106,6 +107,15 @@ public class UIValueMap
             if (value == BBSSettings.uiFontSize)
             {
                 trackpad.w(90);
+
+                value.postCallback((changed, flag) ->
+                {
+                    if (!UISettingsOverlayPanel.isDeferringLiveSettings())
+                    {
+                        CustomFontManager.invalidate();
+                        RtlFontManager.invalidate();
+                    }
+                });
 
                 return Arrays.asList(UIValueFactory.column(trackpad, value));
             }
@@ -314,9 +324,19 @@ public class UIValueMap
                     value.set("");
                     textbox.setText("");
                     CustomFontManager.invalidate();
+                    RtlFontManager.invalidate();
                 });
 
                 browse.tooltip(UIKeys.SETTINGS_FONT_BROWSE);
+
+                value.postCallback((changed, flag) ->
+                {
+                    if (!UISettingsOverlayPanel.isDeferringLiveSettings())
+                    {
+                        CustomFontManager.invalidate();
+                        RtlFontManager.invalidate();
+                    }
+                });
 
                 return Arrays.asList(UIValueFactory.column(textbox, value), UI.row(4, browse, reset));
             }
@@ -430,6 +450,7 @@ public class UIValueMap
             value.set(full);
             textbox.setText(full);
             CustomFontManager.invalidate();
+            RtlFontManager.invalidate();
         }), 320, 240);
     }
 

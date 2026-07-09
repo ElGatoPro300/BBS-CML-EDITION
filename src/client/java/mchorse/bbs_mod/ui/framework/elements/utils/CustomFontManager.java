@@ -30,6 +30,8 @@ public class CustomFontManager
 {
     private static final Identifier FONT_ID = Identifier.of("bbs", "custom_ui_font");
 
+    private static final Identifier BUNDLED_FONT_ID = Identifier.of("bbs", "rtl_ui_font");
+
     private static TextRenderer customRenderer;
 
     private static FontStorage fontStorage;
@@ -37,6 +39,12 @@ public class CustomFontManager
     private static String attemptedPath;
 
     private static float attemptedSize;
+
+    private static String bundledFontId;
+
+    private static TextRenderer bundledRenderer;
+
+    private static FontStorage bundledFontStorage;
 
     public static float getFontScale()
     {
@@ -50,10 +58,20 @@ public class CustomFontManager
 
     public static TextRenderer getCustomRenderer()
     {
-        return customRenderer;
+        if (customRenderer != null)
+        {
+            return customRenderer;
+        }
+
+        return bundledRenderer;
     }
 
     public static boolean hasCustomFont()
+    {
+        return customRenderer != null || bundledRenderer != null;
+    }
+
+    public static boolean hasUserCustomFont()
     {
         return customRenderer != null;
     }
@@ -73,10 +91,71 @@ public class CustomFontManager
         applyPath(BBSSettings.uiFont == null ? "" : BBSSettings.uiFont.get(), size);
     }
 
+    public static String getConfiguredFontPath()
+    {
+        if (BBSSettings.uiFont == null)
+        {
+            return "";
+        }
+
+        return BBSSettings.uiFont.get().trim();
+    }
+
+    public static byte[] readConfiguredFontBytes()
+    {
+        String path = getConfiguredFontPath();
+
+        if (path.isEmpty())
+        {
+            return null;
+        }
+
+        File file = new File(path);
+
+        if (!file.isFile())
+        {
+            return null;
+        }
+
+        try
+        {
+            return Files.readAllBytes(file.toPath());
+        }
+        catch (Throwable t)
+        {
+            t.printStackTrace();
+
+            return null;
+        }
+    }
+
     public static void invalidate()
     {
         attemptedPath = null;
         attemptedSize = -1F;
+    }
+
+    public static void invalidateBundledFont()
+    {
+        bundledFontId = null;
+        disposeBundledFont();
+    }
+
+    public static void loadBundledFont(byte[] bytes, String sourceId)
+    {
+        if (sourceId != null && sourceId.equals(bundledFontId) && bundledRenderer != null)
+        {
+            return;
+        }
+
+        bundledFontId = sourceId;
+
+        loadFontBytes(bytes, BUNDLED_FONT_ID, (storage, renderer) ->
+        {
+            disposeBundledFont();
+            bundledFontStorage = storage;
+            bundledRenderer = renderer;
+        });
     }
 
     private static void applyPath(String path, float size)
@@ -109,13 +188,37 @@ public class CustomFontManager
             return;
         }
 
+        try
+        {
+            byte[] bytes = Files.readAllBytes(file.toPath());
+
+            loadFontBytes(bytes, FONT_ID, (storage, renderer) ->
+            {
+                disposeFont();
+                fontStorage = storage;
+                customRenderer = renderer;
+            });
+        }
+        catch (Throwable t)
+        {
+            t.printStackTrace();
+            disposeFont();
+            customRenderer = null;
+        }
+    }
+
+    private interface FontLoadCallback
+    {
+        void accept(FontStorage storage, TextRenderer renderer);
+    }
+
+    private static void loadFontBytes(byte[] bytes, Identifier fontId, FontLoadCallback callback)
+    {
         ByteBuffer buffer = null;
         boolean ownedByFont = false;
 
         try
         {
-            byte[] bytes = Files.readAllBytes(file.toPath());
-
             buffer = MemoryUtil.memAlloc(bytes.length);
             buffer.put(bytes);
             buffer.flip();
@@ -142,16 +245,13 @@ public class CustomFontManager
 
             ownedByFont = true;
 
-            FontStorage storage = new FontStorage(MinecraftClient.getInstance().getTextureManager(), FONT_ID);
+            FontStorage storage = new FontStorage(MinecraftClient.getInstance().getTextureManager(), fontId);
 
             storage.setFonts(List.of(new Font.FontFilterPair(font, FontFilterType.FilterMap.NO_FILTER)), Set.of());
 
             TextRenderer renderer = new TextRenderer((id) -> storage, false);
 
-            disposeFont();
-
-            fontStorage = storage;
-            customRenderer = renderer;
+            callback.accept(storage, renderer);
         }
         catch (Throwable t)
         {
@@ -161,9 +261,6 @@ public class CustomFontManager
             {
                 MemoryUtil.memFree(buffer);
             }
-
-            disposeFont();
-            customRenderer = null;
         }
     }
 
@@ -180,5 +277,22 @@ public class CustomFontManager
 
             fontStorage = null;
         }
+    }
+
+    private static void disposeBundledFont()
+    {
+        if (bundledFontStorage != null)
+        {
+            try
+            {
+                bundledFontStorage.close();
+            }
+            catch (Exception e)
+            {}
+
+            bundledFontStorage = null;
+        }
+
+        bundledRenderer = null;
     }
 }

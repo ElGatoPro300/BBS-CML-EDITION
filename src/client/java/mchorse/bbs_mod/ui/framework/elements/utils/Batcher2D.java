@@ -2,6 +2,9 @@ package mchorse.bbs_mod.ui.framework.elements.utils;
 
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.graphics.texture.Texture;
+import mchorse.bbs_mod.text.RtlAwtTextRenderer;
+import mchorse.bbs_mod.text.RtlFontManager;
+import mchorse.bbs_mod.text.RtlTextEngine;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
@@ -42,6 +45,7 @@ public class Batcher2D
         /* Lazily (re)load the user-selected .ttf font when configured, then draw the whole UI with it.
            Falls back to Minecraft's default font when no custom font is set or it failed to load. */
         CustomFontManager.ensureLoaded();
+        RtlFontManager.ensureLoaded();
 
         TextRenderer custom = CustomFontManager.getCustomRenderer();
 
@@ -553,6 +557,17 @@ public class Batcher2D
 
     public void text(String label, float x, float y, int color, boolean shadow)
     {
+        if (RtlTextEngine.isActive())
+        {
+            RtlFontManager.ensureLoaded();
+
+            if (RtlAwtTextRenderer.draw(this, label, x, y, color, shadow))
+            {
+                return;
+            }
+        }
+
+        String prepared = this.font.prepare(label);
         float scale = CustomFontManager.hasCustomFont() ? 1F : CustomFontManager.getFontScale();
 
         if (scale != 1F)
@@ -562,12 +577,12 @@ public class Batcher2D
             matrices.push();
             matrices.translate(x, y, 0F);
             matrices.scale(scale, scale, 1F);
-            this.context.drawText(this.font.getRenderer(), label, 0, 0, color, shadow);
+            this.context.drawText(this.font.getRenderer(), prepared, 0, 0, color, shadow);
             matrices.pop();
         }
         else
         {
-            this.context.drawText(this.font.getRenderer(), label, (int) x, (int) y, color, shadow);
+            this.context.drawText(this.font.getRenderer(), prepared, (int) x, (int) y, color, shadow);
         }
 
         this.context.draw();
@@ -580,7 +595,17 @@ public class Batcher2D
      */
     public void text(FontRenderer font, String label, float x, float y, int color, boolean shadow)
     {
-        this.context.drawText(font.getRenderer(), label, (int) x, (int) y, color, shadow);
+        if (RtlTextEngine.isActive())
+        {
+            RtlFontManager.ensureLoaded();
+
+            if (RtlAwtTextRenderer.draw(this, label, x, y, color, shadow))
+            {
+                return;
+            }
+        }
+
+        this.context.drawText(font.getRenderer(), font.prepare(label), (int) x, (int) y, color, shadow);
         this.context.draw();
 
         RenderSystem.depthFunc(GL11.GL_ALWAYS);

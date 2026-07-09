@@ -753,7 +753,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
                 vc = recolor.apply(vc);
             }
 
-            if (!entry.state.getFluidState().isEmpty())
+            if (this.form.renderFluid.get() && !entry.state.getFluidState().isEmpty())
             {
                 boolean shaders = BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld();
                 RenderLayer fluidLayer = shaders
@@ -898,7 +898,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
                 vc = recolor.apply(vc);
             }
 
-            if (!entry.state.getFluidState().isEmpty())
+            if (this.form.renderFluid.get() && !entry.state.getFluidState().isEmpty())
             {
                 boolean shaders = BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld();
                 RenderLayer fluidLayer = shaders
