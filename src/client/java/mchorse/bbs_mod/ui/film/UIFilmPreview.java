@@ -108,9 +108,9 @@ public class UIFilmPreview extends UIElement
 
         /* Preview buttons */
         this.onionSkin = new UIIcon(Icons.ONION_SKIN, (b) -> this.openOnionSkin());
-        this.onionSkin.tooltip(UIKeys.FILM_CONTROLLER_ONION_SKIN_TITLE);
+        this.onionSkin.tooltip(UIKeys.FILM_CONTROLLER_ONION_SKIN_TITLE, Keys.FILM_CONTROLLER_TOGGLE_ONION_SKIN);
         this.plause = new UIIcon(() -> this.panel.isRunning() ? Icons.PAUSE : Icons.PLAY, (b) -> this.panel.togglePlayback());
-        this.plause.tooltip(UIKeys.CAMERA_EDITOR_KEYS_EDITOR_PLAUSE);
+        this.plause.tooltip(UIKeys.CAMERA_EDITOR_KEYS_EDITOR_PLAUSE, Keys.PLAUSE);
         this.plause.context((menu) ->
         {
             menu.action(Icons.PLAY, UIKeys.CAMERA_EDITOR_KEYS_EDITOR_PLAY_FILM, () ->
@@ -169,13 +169,13 @@ public class UIFilmPreview extends UIElement
             }
         });
         this.flight = new UIIcon(Icons.PLANE, (b) -> this.panel.toggleFlight());
-        this.flight.tooltip(UIKeys.CAMERA_EDITOR_KEYS_MODES_FLIGHT);
+        this.flight.tooltip(UIKeys.CAMERA_EDITOR_KEYS_MODES_FLIGHT, Keys.FLIGHT);
         this.control = new UIIcon(Icons.POSE, (b) -> this.panel.getController().toggleControl());
-        this.control.tooltip(UIKeys.FILM_CONTROLLER_KEYS_TOGGLE_CONTROL);
+        this.control.tooltip(UIKeys.FILM_CONTROLLER_KEYS_TOGGLE_CONTROL, Keys.FILM_CONTROLLER_TOGGLE_CONTROL);
         this.perspective = new UIIcon(this.panel.getController()::getOrbitModeIcon, (b) -> this.panel.getController().toggleOrbitMode());
-        this.perspective.tooltip(UIKeys.FILM_CONTROLLER_KEYS_CHANGE_CAMERA_MODE);
+        this.perspective.tooltip(UIKeys.FILM_CONTROLLER_KEYS_CHANGE_CAMERA_MODE, Keys.FILM_CONTROLLER_TOGGLE_ORBIT_MODE);
         this.recordReplay = new UIIcon(Icons.SPHERE, (b) -> this.panel.getController().pickRecording());
-        this.recordReplay.tooltip(UIKeys.FILM_REPLAY_RECORD);
+        this.recordReplay.tooltip(UIKeys.FILM_REPLAY_RECORD, Keys.FILM_CONTROLLER_START_RECORDING);
         this.recordReplay.context((menu) ->
         {
             menu.action(Icons.DOWNLOAD, UIKeys.FILM_CONTROLLER_KEYS_TOGGLE_INSTANT_KEYFRAMES, this.panel.getController().isInstantKeyframes(), () ->

@@ -11,6 +11,8 @@ import mchorse.bbs_mod.ui.framework.elements.events.UIRemovedEvent;
 import mchorse.bbs_mod.ui.framework.elements.utils.EventPropagation;
 import mchorse.bbs_mod.ui.framework.tooltips.ITooltip;
 import mchorse.bbs_mod.ui.framework.tooltips.LabelTooltip;
+import mchorse.bbs_mod.ui.framework.tooltips.ShortcutLabelTooltip;
+import mchorse.bbs_mod.ui.utils.keys.KeyCombo;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
@@ -471,6 +473,16 @@ public class UIElement implements IUIElement, IUndoElement
     public UIElement tooltip(IKey label, int width, Direction direction)
     {
         return this.tooltip(new LabelTooltip(label, width, direction));
+    }
+
+    public UIElement tooltip(IKey label, KeyCombo shortcut)
+    {
+        return this.tooltip(label, shortcut, Direction.BOTTOM);
+    }
+
+    public UIElement tooltip(IKey label, KeyCombo shortcut, Direction direction)
+    {
+        return this.tooltip(new ShortcutLabelTooltip(label, shortcut, direction));
     }
 
     public UIElement noCulling()

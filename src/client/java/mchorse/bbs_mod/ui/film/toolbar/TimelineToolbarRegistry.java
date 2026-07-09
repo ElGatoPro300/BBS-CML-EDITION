@@ -71,6 +71,18 @@ public final class TimelineToolbarRegistry
         return sections;
     }
 
+    /* Screen node graph editor (embedded in Screen Node clip) */
+
+    public static List<ToolbarSection> forScreenNodeGraph()
+    {
+        List<ToolbarSection> sections = new ArrayList<>();
+
+        sections.add(screenNodeAddSection());
+        sections.add(historySection());
+
+        return sections;
+    }
+
     /* Sections shared across timelines */
 
     private static ToolbarSection transportSection(boolean includeClipNavigation, boolean includeLooping)
@@ -418,6 +430,12 @@ public final class TimelineToolbarRegistry
             .icon(Icons.POINTER));
 
         return s;
+    }
+
+    private static ToolbarSection screenNodeAddSection()
+    {
+        /* Children are populated from {@link UIScreenNodeEditor#populateToolbarAddItems}. */
+        return new ToolbarSection(UIKeys.TIMELINE_TOOLBAR_ADD, Icons.ADD);
     }
 
     /* Constructor */

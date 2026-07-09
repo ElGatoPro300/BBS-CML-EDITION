@@ -12,6 +12,7 @@ import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.UIClips;
 import mchorse.bbs_mod.ui.film.UIClipsPanel;
+import mchorse.bbs_mod.ui.film.clips.UIScreenNodeEditor;
 import mchorse.bbs_mod.ui.film.replays.UIReplaysEditor;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.film.utils.keyframes.UIFilmKeyframes;
@@ -56,6 +57,14 @@ public final class TimelineToolbarWiring
     }
 
     /* Keyframe toolbar (embedded in clip panel or replay editor) */
+
+    /* Screen node graph toolbar (embedded in Screen Node clip) */
+
+    public static void wireScreenNodeToolbar(UIFilmPanel filmPanel, UIScreenNodeEditor editor, TimelineToolbar toolbar)
+    {
+        wireScreenNodeHistory(filmPanel, toolbar);
+        wireScreenNodeAdd(editor, toolbar);
+    }
 
     public static void wireKeyframesToolbar(UIFilmPanel filmPanel, UIKeyframes keyframes, TimelineToolbar toolbar)
     {
@@ -929,6 +938,27 @@ public final class TimelineToolbarWiring
         }, () -> editor.keyframeEditor != null && editor.keyframeEditor.view.isEditing());
     }
 
+    private static void wireScreenNodeHistory(UIFilmPanel filmPanel, TimelineToolbar toolbar)
+    {
+        BooleanSupplier filmLoaded = () -> filmPanel.getData() != null;
+
+        bindShortcut(toolbar, Keys.UNDO, filmPanel::undo, filmLoaded);
+        bindShortcut(toolbar, Keys.REDO, filmPanel::redo, filmLoaded);
+    }
+
+    private static void wireScreenNodeAdd(UIScreenNodeEditor editor, TimelineToolbar toolbar)
+    {
+        ToolbarSection addSection = findSection(toolbar.getSections(), UIKeys.TIMELINE_TOOLBAR_ADD);
+
+        if (addSection == null)
+        {
+            return;
+        }
+
+        addSection.items.clear();
+        editor.populateToolbarAddItems(addSection.items);
+    }
+
     /* Item lookup + binding helpers */
 
     private static void bindShortcut(TimelineToolbar toolbar, KeyCombo combo, Runnable runnable,
@@ -995,6 +1025,19 @@ public final class TimelineToolbarWiring
                 {
                     return nested;
                 }
+            }
+        }
+
+        return null;
+    }
+
+    private static ToolbarSection findSection(List<ToolbarSection> sections, IKey label)
+    {
+        for (ToolbarSection section : sections)
+        {
+            if (section.label == label || labelsMatch(section.label, label))
+            {
+                return section;
             }
         }
 

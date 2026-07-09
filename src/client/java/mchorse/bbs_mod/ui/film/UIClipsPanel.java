@@ -9,6 +9,7 @@ import mchorse.bbs_mod.film.Film;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.settings.values.numeric.ValueInt;
 import mchorse.bbs_mod.ui.film.clips.UIClip;
+import mchorse.bbs_mod.ui.film.clips.UIScreenNodeEditor;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbar;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarRegistry;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarSettings;
@@ -99,6 +100,11 @@ public class UIClipsPanel extends UIElement implements IUIClipsDelegate
              * only relevant to the standalone replay editor). */
             this.toolbar.setSections(TimelineToolbarRegistry.forReplays(false));
             TimelineToolbarWiring.wireKeyframesToolbar(this.filmPanel, editor.view, this.toolbar);
+        }
+        else if (embed instanceof UIScreenNodeEditor editor)
+        {
+            this.toolbar.setSections(TimelineToolbarRegistry.forScreenNodeGraph());
+            TimelineToolbarWiring.wireScreenNodeToolbar(this.filmPanel, editor, this.toolbar);
         }
         else
         {
