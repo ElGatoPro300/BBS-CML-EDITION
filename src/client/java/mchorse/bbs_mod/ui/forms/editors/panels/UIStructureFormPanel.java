@@ -43,13 +43,10 @@ public class UIStructureFormPanel extends UIFormPanel<StructureForm>
     public UIColor color;
     public UIToggle toggleLight;
     public UITrackpad lightIntensity;
-<<<<<<< HEAD
     public UITrackpad scaleX;
     public UITrackpad scaleY;
     public UITrackpad scaleZ;
-=======
     public UIToggle toggleFluid;
->>>>>>> 6d35e8c5ef89c94b259e5e5f9ac266b55f5c2565
     /* Pivot controls removed per request; structure pivots automatically */
 
     public UIStructureFormPanel(UIForm editor)
@@ -190,13 +187,10 @@ public class UIStructureFormPanel extends UIFormPanel<StructureForm>
 
         this.toggleLight.setValue(enabled);
         this.lightIntensity.setValue((double) intensity);
-<<<<<<< HEAD
         this.scaleX.setValue((double) form.scaleX.get());
         this.scaleY.setValue((double) form.scaleY.get());
         this.scaleZ.setValue((double) form.scaleZ.get());
-=======
         this.toggleFluid.setValue(form.renderFluid.get());
->>>>>>> 6d35e8c5ef89c94b259e5e5f9ac266b55f5c2565
         // Pivot controls removed
     }
 }

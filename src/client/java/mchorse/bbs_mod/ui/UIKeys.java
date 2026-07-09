@@ -659,14 +659,11 @@ public class UIKeys
     public static final IKey FORMS_EDITORS_STRUCTURE_PICK_BIOME = L10n.lang("bbs.ui.forms.editors.structure.pick_biome");
     public static final IKey FORMS_EDITORS_STRUCTURE_LIGHT = L10n.lang("bbs.ui.forms.editors.structure.light");
     public static final IKey FORMS_EDITORS_STRUCTURE_LIGHT_INTENSITY_LABEL = L10n.lang("bbs.ui.forms.editors.structure.light_intensity");
-<<<<<<< HEAD
     public static final IKey FORMS_EDITORS_STRUCTURE_SIZE = L10n.lang("bbs.ui.forms.editors.structure.size");
     public static final IKey FORMS_EDITORS_STRUCTURE_SCALE_X = L10n.lang("bbs.ui.forms.editors.structure.scale_x");
     public static final IKey FORMS_EDITORS_STRUCTURE_SCALE_Y = L10n.lang("bbs.ui.forms.editors.structure.scale_y");
     public static final IKey FORMS_EDITORS_STRUCTURE_SCALE_Z = L10n.lang("bbs.ui.forms.editors.structure.scale_z");
-=======
     public static final IKey FORMS_EDITORS_STRUCTURE_FLUID = L10n.lang("bbs.ui.forms.editors.structure.fluid");
->>>>>>> 6d35e8c5ef89c94b259e5e5f9ac266b55f5c2565
     public static final IKey FORMS_EDITORS_SHAPE_TITLE = L10n.lang("bbs.ui.forms.editors.shape.title");
     public static final IKey FORMS_EDITORS_SHAPE_TYPE = L10n.lang("bbs.ui.forms.editors.shape.type");
     public static final IKey FORMS_EDITORS_SHAPE_GEOMETRY = L10n.lang("bbs.ui.forms.editors.shape.geometry");
