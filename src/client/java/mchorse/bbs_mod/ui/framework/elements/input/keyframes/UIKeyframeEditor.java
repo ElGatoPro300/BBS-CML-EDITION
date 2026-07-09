@@ -448,6 +448,17 @@ public class UIKeyframeEditor extends UIElement
                         local = transform.transform.isLocal();
                     }
                 }
+                else if (propertyId.equals("illusion_transform") || propertyId.startsWith("illusion_transform_overlay"))
+                {
+                    int lastSlash = sheet.id.lastIndexOf('/');
+
+                    bone = lastSlash >= 0 ? sheet.id.substring(0, lastSlash) : "";
+
+                    if (editor instanceof UITransformKeyframeFactory transform)
+                    {
+                        local = transform.transform.isLocal();
+                    }
+                }
                 else if (propertyId.equals("anchor") && editor instanceof UIAnchorKeyframeFactory anchorFactory)
                 {
                     int lastSlash = sheet.id.lastIndexOf('/');

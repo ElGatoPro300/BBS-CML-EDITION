@@ -43,13 +43,9 @@ public class UIStructureFormPanel extends UIFormPanel<StructureForm>
     public UIColor color;
     public UIToggle toggleLight;
     public UITrackpad lightIntensity;
-<<<<<<< HEAD
     public UITrackpad scaleX;
     public UITrackpad scaleY;
     public UITrackpad scaleZ;
-=======
-    public UIToggle toggleFluid;
->>>>>>> 6d35e8c5ef89c94b259e5e5f9ac266b55f5c2565
     /* Pivot controls removed per request; structure pivots automatically */
 
     public UIStructureFormPanel(UIForm editor)
@@ -65,7 +61,6 @@ public class UIStructureFormPanel extends UIFormPanel<StructureForm>
         this.lightIntensity = new UITrackpad((v) -> this.setLightIntensity(v.intValue()))
                 .integer()
                 .limit(1D, 15D);
-        this.toggleFluid = new UIToggle(UIKeys.FORMS_EDITORS_STRUCTURE_FLUID, false, (t) -> this.form.renderFluid.set(t.getValue()));
 
         this.scaleX = new UITrackpad((v) -> this.form.scaleX.set(v.floatValue())).limit(0.01D, 100D);
         this.scaleX.tooltip(UIKeys.FORMS_EDITORS_STRUCTURE_SCALE_X);
@@ -81,7 +76,6 @@ public class UIStructureFormPanel extends UIFormPanel<StructureForm>
         this.options.add(this.pickStructure);
         this.options.add(this.pickBiome);
         this.options.add(this.toggleLight);
-        this.options.add(this.toggleFluid);
         this.options.add(UI.label(UIKeys.FORMS_EDITORS_STRUCTURE_LIGHT_INTENSITY_LABEL).marginTop(6), this.lightIntensity);
         this.options.add(UI.label(UIKeys.FORMS_EDITORS_STRUCTURE_SIZE).marginTop(10));
         this.options.add(UI.row(this.scaleX, this.scaleY, this.scaleZ));
@@ -190,13 +184,9 @@ public class UIStructureFormPanel extends UIFormPanel<StructureForm>
 
         this.toggleLight.setValue(enabled);
         this.lightIntensity.setValue((double) intensity);
-<<<<<<< HEAD
         this.scaleX.setValue((double) form.scaleX.get());
         this.scaleY.setValue((double) form.scaleY.get());
         this.scaleZ.setValue((double) form.scaleZ.get());
-=======
-        this.toggleFluid.setValue(form.renderFluid.get());
->>>>>>> 6d35e8c5ef89c94b259e5e5f9ac266b55f5c2565
         // Pivot controls removed
     }
 }

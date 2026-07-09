@@ -322,7 +322,6 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
         /* Gizmo mode toolbar */
         this.gizmoBodyPart = new UIIcon(Icons.LIMB, (b) ->
         {
-            this.closeModelEditorIfOpen();
             this.gizmoTargetsBodyPart = !this.gizmoTargetsBodyPart;
 
             if (this.gizmoTargetsBodyPart)
@@ -363,8 +362,6 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
 
         this.gizmoVisualSize = new UIIcon(Icons.MAXIMIZE, (b) ->
         {
-            this.closeModelEditorIfOpen();
-
             if (this.getContext() != null)
             {
                 this.getContext().replaceContextMenu(new UIGizmoSizeContextMenu());
@@ -374,8 +371,6 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
 
         this.gizmoTranslateSpeed = new UIIcon(Icons.FORWARD, (b) ->
         {
-            this.closeModelEditorIfOpen();
-
             if (this.getContext() != null)
             {
                 this.getContext().replaceContextMenu(new UIGizmoTranslateSpeedContextMenu());
@@ -636,7 +631,6 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
     {
         UIIcon button = new UIIcon(icon, (b) ->
         {
-            this.closeModelEditorIfOpen();
             Gizmo.INSTANCE.setMode(mode);
             UIUtils.playClick();
         });

@@ -181,7 +181,7 @@ public class UIFormModelEditor extends UIElement implements IUIModelPanelHost
                 {
                     UIIcon button = this.panelButtons.get(i);
 
-                    UIDashboardPanels.renderHighlightHorizontal(context.batcher, button.area);
+                    UIDashboardPanels.renderHighlight(context.batcher, button.area);
                 }
             }
         }
@@ -224,6 +224,13 @@ public class UIFormModelEditor extends UIElement implements IUIModelPanelHost
         this.loadConfig(form.model.get());
         this.setWorkspacePanel(this.modelSettingsPanel);
         this.resize();
+    }
+
+    @Override
+    public void resize()
+    {
+        super.resize();
+        this.renderer.resize();
     }
 
     public void close()
@@ -639,14 +646,6 @@ public class UIFormModelEditor extends UIElement implements IUIModelPanelHost
     public UIDashboard getDashboard()
     {
         return BBSModClient.getDashboard();
-    }
-
-    @Override
-    public void resize()
-    {
-        super.resize();
-
-        this.renderer.resize();
     }
 
     @Override
