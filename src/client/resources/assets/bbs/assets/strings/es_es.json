@@ -2219,5 +2219,7 @@
     "studio.ui.utility.reload_terrain": "Terreno",
     "studio.ui.utility.reload_textures": "Texturas",
     "studio.ui.utility.resize": "Cambiar tamaño de ventana",
-    "studio.ui.utility.title": "Panel de utilidades"
+    "studio.ui.utility.title": "Panel de utilidades",
+
+    "bbs.ui.timeline_toolbar.edit_track": "Editar pista"
 }

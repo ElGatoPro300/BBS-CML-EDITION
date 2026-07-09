@@ -400,7 +400,7 @@ public final class TimelineToolbarRegistry
         s.add(ToolbarItem.action(UIKeys.FILM_REPLAY_CONTEXT_POSE_TO_LIMBS)
             .icon(Icons.CONVERT));
         s.add(ToolbarItem.separator());
-        s.add(ToolbarItem.action(UIKeys.KEYFRAMES_CONTEXT_EDIT_TRACK)
+        s.add(ToolbarItem.action(UIKeys.TIMELINE_TOOLBAR_EDIT_TRACK)
             .icon(Icons.EDIT));
         s.add(ToolbarItem.action(UIKeys.KEYFRAMES_CONTEXT_EXIT_TRACK)
             .icon(Icons.CLOSE));

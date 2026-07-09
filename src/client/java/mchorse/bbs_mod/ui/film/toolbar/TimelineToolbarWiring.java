@@ -573,7 +573,7 @@ public final class TimelineToolbarWiring
 
     private static void wireKeyframesEditTrack(UIKeyframes keyframes, TimelineToolbar toolbar)
     {
-        bindLabel(toolbar, UIKeys.KEYFRAMES_CONTEXT_EDIT_TRACK, keyframes::toolbarEditTrack,
+        bindLabel(toolbar, UIKeys.TIMELINE_TOOLBAR_EDIT_TRACK, keyframes::toolbarEditTrack,
             keyframes::canToolbarEditTrack);
     }
 
@@ -583,7 +583,7 @@ public final class TimelineToolbarWiring
         BooleanSupplier canEdit = () -> editor.keyframeEditor != null
             && editor.keyframeEditor.view.canToolbarEditTrack();
 
-        bindLabel(toolbar, UIKeys.KEYFRAMES_CONTEXT_EDIT_TRACK, () ->
+        bindLabel(toolbar, UIKeys.TIMELINE_TOOLBAR_EDIT_TRACK, () ->
         {
             if (editor.keyframeEditor != null)
             {

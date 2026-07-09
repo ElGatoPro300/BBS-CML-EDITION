@@ -2074,6 +2074,7 @@
     "bbs.ui.timeline_toolbar.keyframes": "Keyframes",
     "bbs.ui.timeline_toolbar.select": "Select",
     "bbs.ui.timeline_toolbar.tracks": "Tracks",
+    "bbs.ui.timeline_toolbar.edit_track": "Edit track",
     "bbs.ui.timeline_toolbar.transform": "Transform",
     "bbs.ui.timeline_toolbar.transport": "Transport",
     "bbs.ui.timeline_toolbar.interaction.pick_track": "Click on a track",

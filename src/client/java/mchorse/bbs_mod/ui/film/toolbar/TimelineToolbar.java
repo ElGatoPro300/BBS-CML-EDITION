@@ -202,11 +202,25 @@ public class TimelineToolbar extends UIElement
         int x = this.area.x + TimelineToolbarSettings.TOOLBAR_PADDING;
         int y = this.area.y;
         int h = this.area.h;
+        int maxX = this.area.ex() - TimelineToolbarSettings.TOOLBAR_PADDING;
 
         for (int i = 0; i < size; i++)
         {
             int w = this.getSectionWidth(font, i, this.sectionShowLabel[i]);
             Area a = this.sectionAreas.get(i);
+
+            if (x >= maxX)
+            {
+                a.setPos(x, y);
+                a.setSize(0, h);
+
+                continue;
+            }
+
+            if (x + w > maxX)
+            {
+                w = maxX - x;
+            }
 
             a.setPos(x, y);
             a.setSize(w, h);
@@ -263,9 +277,14 @@ public class TimelineToolbar extends UIElement
         this.layoutSections(font);
         this.renderBar(context);
 
+        context.batcher.clip(this.area, context);
+
         int hovered = this.getSectionIndexAt(context.mouseX, context.mouseY);
 
         this.renderSections(context, font, hovered);
+
+        context.batcher.unclip(context);
+
         this.updateHoverSwitch(context);
 
         super.render(context);
@@ -296,8 +315,14 @@ public class TimelineToolbar extends UIElement
     {
         for (int i = 0; i < this.sections.size(); i++)
         {
-            ToolbarSection section = this.sections.get(i);
             Area a = this.sectionAreas.get(i);
+
+            if (a.w <= 0)
+            {
+                continue;
+            }
+
+            ToolbarSection section = this.sections.get(i);
             boolean isOpen = this.openIndex == i;
             boolean isHover = hovered == i;
             boolean showLabel = this.sectionShowLabel[i];
@@ -332,8 +357,12 @@ public class TimelineToolbar extends UIElement
             String text = section.label.get();
             int labelX = a.x + iconSize + TimelineToolbarSettings.SECTION_LABEL_PADDING;
             int labelY = a.y + (a.h - font.getHeight()) / 2 + 1;
+            int labelMaxX = a.ex() - TimelineToolbarSettings.SECTION_LABEL_TRAILING_PADDING;
 
-            context.batcher.text(text, labelX, labelY, Colors.WHITE, false);
+            if (labelX < labelMaxX)
+            {
+                context.batcher.text(text, labelX, labelY, Colors.WHITE, false);
+            }
         }
     }
 
