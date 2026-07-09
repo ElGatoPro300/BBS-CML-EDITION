@@ -249,7 +249,8 @@ public class TimelineToolbar extends UIElement
 
         return TimelineToolbarSettings.SECTION_ICON_SIZE
             + TimelineToolbarSettings.SECTION_LABEL_PADDING
-            + font.getWidth(text);
+            + font.getWidth(text)
+            + TimelineToolbarSettings.SECTION_LABEL_TRAILING_PADDING;
     }
 
     /* Rendering */

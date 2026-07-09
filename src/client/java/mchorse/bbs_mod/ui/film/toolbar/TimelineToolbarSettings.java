@@ -15,9 +15,9 @@ public class TimelineToolbarSettings
 
     /**
      * Height in pixels of the toolbar itself (anchored to the bottom of a
-     * timeline panel).
+     * timeline panel). Matches the viewport 3D icon bar ({@code UIIcon} is 20px tall).
      */
-    public static final int TOOLBAR_HEIGHT = 32;
+    public static final int TOOLBAR_HEIGHT = 20;
 
     /**
      * Horizontal gap between root section buttons. Matches the viewport 3D icon
@@ -34,6 +34,11 @@ public class TimelineToolbarSettings
      * Gap between the section icon and its visible label text.
      */
     public static final int SECTION_LABEL_PADDING = 4;
+
+    /**
+     * Padding after the label text, before the section hit-area edge.
+     */
+    public static final int SECTION_LABEL_TRAILING_PADDING = 4;
 
     /**
      * Horizontal padding inside the toolbar bar itself (left/right insets).
