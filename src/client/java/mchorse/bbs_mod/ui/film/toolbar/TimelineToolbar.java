@@ -280,8 +280,9 @@ public class TimelineToolbar extends UIElement
         context.batcher.clip(this.area, context);
 
         int hovered = this.getSectionIndexAt(context.mouseX, context.mouseY);
+        boolean suppressSectionHover = this.openMenu != null && this.isPointerOverOpenMenu(context);
 
-        this.renderSections(context, font, hovered);
+        this.renderSections(context, font, hovered, suppressSectionHover);
 
         context.batcher.unclip(context);
 
@@ -293,7 +294,7 @@ public class TimelineToolbar extends UIElement
          * when the mouse is inside this bar (BLOCK_INSIDE), which would wipe a
          * card queued earlier in the same pass. Only show the hover card when
          * the section label is collapsed (icon-only mode). */
-        if (hovered >= 0 && !this.sectionShowLabel[hovered])
+        if (hovered >= 0 && !this.sectionShowLabel[hovered] && !suppressSectionHover)
         {
             ToolbarSection section = this.sections.get(hovered);
             String text = section.label.get();
@@ -311,7 +312,7 @@ public class TimelineToolbar extends UIElement
             TimelineToolbarSettings.TOOLBAR_BORDER);
     }
 
-    private void renderSections(UIContext context, FontRenderer font, int hovered)
+    private void renderSections(UIContext context, FontRenderer font, int hovered, boolean suppressHover)
     {
         for (int i = 0; i < this.sections.size(); i++)
         {
@@ -324,7 +325,7 @@ public class TimelineToolbar extends UIElement
 
             ToolbarSection section = this.sections.get(i);
             boolean isOpen = this.openIndex == i;
-            boolean isHover = hovered == i;
+            boolean isHover = hovered == i && !suppressHover;
             boolean showLabel = this.sectionShowLabel[i];
 
             this.renderSection(context, font, section, a, isHover, isOpen, showLabel);
@@ -366,9 +367,39 @@ public class TimelineToolbar extends UIElement
         }
     }
 
-    private void updateHoverSwitch(UIContext context)
+    private boolean isPointerOverOpenMenu(UIContext context)
     {
         if (this.openMenu == null)
+        {
+            return false;
+        }
+
+        return this.openMenu.isChainAt(context.mouseX, context.mouseY);
+    }
+
+    /**
+     * While a popup chain is open, section switching on hover is only allowed
+     * when the cursor is on the toolbar bar itself — not when it moves over an
+     * open menu/submenu (including overlap in small windows).
+     */
+    private boolean shouldAllowSectionHoverSwitch(UIContext context)
+    {
+        if (this.openMenu == null)
+        {
+            return false;
+        }
+
+        if (this.isPointerOverOpenMenu(context))
+        {
+            return false;
+        }
+
+        return this.area.isInside(context.mouseX, context.mouseY);
+    }
+
+    private void updateHoverSwitch(UIContext context)
+    {
+        if (!this.shouldAllowSectionHoverSwitch(context))
         {
             return;
         }
