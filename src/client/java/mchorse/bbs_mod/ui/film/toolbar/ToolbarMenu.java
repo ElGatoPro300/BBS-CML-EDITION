@@ -451,12 +451,14 @@ public class ToolbarMenu extends UIElement
 
     private void renderBackground(UIContext context)
     {
-        context.batcher.dropShadow(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 8,
-            Colors.A25, Colors.A100);
+        context.batcher.dropShadow(this.area.x, this.area.y, this.area.ex(), this.area.ey(),
+            TimelineToolbarSettings.MENU_SHADOW_OFFSET,
+            TimelineToolbarSettings.getMenuShadowInner(),
+            TimelineToolbarSettings.getMenuShadowOuter());
         context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(),
-            TimelineToolbarSettings.MENU_BACKGROUND);
+            TimelineToolbarSettings.getMenuBackground());
         context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(),
-            TimelineToolbarSettings.MENU_BORDER);
+            TimelineToolbarSettings.getMenuBorder());
     }
 
     private void updateHover(UIContext context)
@@ -605,7 +607,7 @@ public class ToolbarMenu extends UIElement
         int x1 = this.area.x + 6;
         int x2 = this.area.ex() - 6;
 
-        context.batcher.box(x1, midY, x2, midY + 1, TimelineToolbarSettings.MENU_BORDER);
+        context.batcher.box(x1, midY, x2, midY + 1, TimelineToolbarSettings.getMenuBorder());
     }
 
     private void renderRow(UIContext context, FontRenderer font, ToolbarItem item, int index, int y, int h,
@@ -632,6 +634,12 @@ public class ToolbarMenu extends UIElement
             /* Vertical red bar on the left, same visual as UIIcon for REMOVE/TRASH. */
             context.batcher.box(rowX1, y, rowX1 + 2, y + h, Colors.A100 | Colors.RED);
             context.batcher.gradientHBox(rowX1 + 2, y, rowX1 + 20, y + h, Colors.A25 | Colors.RED, 0);
+        }
+        else if (item.accentColor != 0)
+        {
+            /* Vertical color bar on the left, same visual as ColorfulContextAction. */
+            context.batcher.box(rowX1, y, rowX1 + 2, y + h, Colors.A100 | item.accentColor);
+            context.batcher.gradientHBox(rowX1 + 2, y, rowX1 + 20, y + h, Colors.A25 | item.accentColor, 0);
         }
 
         int iconSlotX = rowX1 + TimelineToolbarSettings.MENU_ITEM_PADDING_LEFT;

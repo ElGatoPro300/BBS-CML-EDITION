@@ -281,6 +281,7 @@ public final class TimelineToolbarWiring
                 container.children.add(ToolbarItem.action(
                         UIKeys.CAMERA_TIMELINE_CONTEXT_ADD_CLIP_TYPE.format(UIKeys.C_CLIP.get(targetType)))
                     .icon(data.icon)
+                    .accentColor(data.color)
                     .run(() -> clips.toolbarAddClipType(targetType))
                     .enabledIf(canUse));
             }

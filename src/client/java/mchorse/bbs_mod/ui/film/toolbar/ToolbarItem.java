@@ -78,6 +78,12 @@ public class ToolbarItem
     public boolean destructive;
 
     /**
+     * When non-zero, draws a vertical color bar on the left of the row (same
+     * visual as {@link mchorse.bbs_mod.ui.utils.context.ColorfulContextAction}).
+     */
+    public int accentColor;
+
+    /**
      * When present, this row expands into a submenu on hover / click.
      */
     public final List<ToolbarItem> children = new ArrayList<>();
@@ -127,6 +133,13 @@ public class ToolbarItem
     public ToolbarItem destructive()
     {
         this.destructive = true;
+
+        return this;
+    }
+
+    public ToolbarItem accentColor(int color)
+    {
+        this.accentColor = color & 0xffffff;
 
         return this;
     }

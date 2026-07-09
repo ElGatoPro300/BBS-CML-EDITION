@@ -1,5 +1,7 @@
 package mchorse.bbs_mod.ui.film.toolbar;
 
+import mchorse.bbs_mod.BBSSettings;
+import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.colors.Colors;
 
 /**
@@ -228,14 +230,45 @@ public class TimelineToolbarSettings
     public static final int SECTION_OPEN_COLOR = Colors.A75 | 0x4488ff;
 
     /**
-     * Background color of a popup menu.
+     * Background color of a popup menu. Same opaque black as context menus and
+     * {@link mchorse.bbs_mod.ui.framework.tooltips.styles.DarkTooltipStyle}
+     * ({@link Colors#A100}), before optional primary tint.
      */
-    public static final int MENU_BACKGROUND = 0xf01e1e22;
+    public static final int MENU_BACKGROUND_BASE = Colors.A100; /* old value:0xff1e1e22 */
 
     /**
-     * Border color of a popup menu.
+     * How much of the UI primary color is mixed into {@link #MENU_BACKGROUND_BASE}
+     * (0 = pure black, 1 = full primary).
      */
-    public static final int MENU_BORDER = 0xff3a3a42;
+    public static float MENU_BACKGROUND_PRIMARY_MIX = 0F;
+
+    /**
+     * Opacity of the menu panel background (0 = fully transparent, 1 = opaque).
+     * Adjust this value to change menu transparency.
+     */
+    public static float MENU_BACKGROUND_ALPHA = 0.88F;
+
+    /**
+     * Pixel spread of the primary-color glow around popup menus. Matches
+     * {@link mchorse.bbs_mod.ui.framework.tooltips.styles.DarkTooltipStyle}.
+     */
+    public static final int MENU_SHADOW_OFFSET = 6;
+
+    /**
+     * Base border tone before primary tint (former {@code MENU_BORDER} gray).
+     */
+    public static final int MENU_BORDER_BASE = 0xff3a3a42;
+
+    /**
+     * How much of the UI primary color is mixed into {@link #MENU_BORDER_BASE}
+     * (0 = base only, 1 = full primary).
+     */
+    public static float MENU_BORDER_PRIMARY_MIX = 0.8F;
+
+    /**
+     * Opacity of menu borders and separator lines (0 = fully transparent, 1 = opaque).
+     */
+    public static float MENU_BORDER_ALPHA = 1F;
 
     /**
      * Hover tint applied to a menu row.
@@ -268,6 +301,36 @@ public class TimelineToolbarSettings
      * Color of the trailing arrow for submenus (enabled state).
      */
     public static final int MENU_ARROW_FG = 0xffcccccc;
+
+    public static int getMenuBackground()
+    {
+        Color color = new Color();
+
+        Colors.interpolate(color, MENU_BACKGROUND_BASE, BBSSettings.primaryColor.get() | Colors.A100,
+            MENU_BACKGROUND_PRIMARY_MIX);
+
+        return Colors.setA(color.getARGBColor(), MENU_BACKGROUND_ALPHA);
+    }
+
+    public static int getMenuShadowInner()
+    {
+        return Colors.A25 + BBSSettings.primaryColor.get();
+    }
+
+    public static int getMenuShadowOuter()
+    {
+        return BBSSettings.primaryColor.get();
+    }
+
+    public static int getMenuBorder()
+    {
+        Color color = new Color();
+
+        Colors.interpolate(color, MENU_BORDER_BASE, BBSSettings.primaryColor.get() | Colors.A100,
+            MENU_BORDER_PRIMARY_MIX);
+
+        return Colors.setA(color.getARGBColor(), MENU_BORDER_ALPHA);
+    }
 
     /* Constructor */
 
