@@ -659,14 +659,10 @@ public class UIKeys
     public static final IKey FORMS_EDITORS_STRUCTURE_PICK_BIOME = L10n.lang("bbs.ui.forms.editors.structure.pick_biome");
     public static final IKey FORMS_EDITORS_STRUCTURE_LIGHT = L10n.lang("bbs.ui.forms.editors.structure.light");
     public static final IKey FORMS_EDITORS_STRUCTURE_LIGHT_INTENSITY_LABEL = L10n.lang("bbs.ui.forms.editors.structure.light_intensity");
-<<<<<<< HEAD
     public static final IKey FORMS_EDITORS_STRUCTURE_SIZE = L10n.lang("bbs.ui.forms.editors.structure.size");
     public static final IKey FORMS_EDITORS_STRUCTURE_SCALE_X = L10n.lang("bbs.ui.forms.editors.structure.scale_x");
     public static final IKey FORMS_EDITORS_STRUCTURE_SCALE_Y = L10n.lang("bbs.ui.forms.editors.structure.scale_y");
     public static final IKey FORMS_EDITORS_STRUCTURE_SCALE_Z = L10n.lang("bbs.ui.forms.editors.structure.scale_z");
-=======
-    public static final IKey FORMS_EDITORS_STRUCTURE_FLUID = L10n.lang("bbs.ui.forms.editors.structure.fluid");
->>>>>>> 6d35e8c5ef89c94b259e5e5f9ac266b55f5c2565
     public static final IKey FORMS_EDITORS_SHAPE_TITLE = L10n.lang("bbs.ui.forms.editors.shape.title");
     public static final IKey FORMS_EDITORS_SHAPE_TYPE = L10n.lang("bbs.ui.forms.editors.shape.type");
     public static final IKey FORMS_EDITORS_SHAPE_GEOMETRY = L10n.lang("bbs.ui.forms.editors.shape.geometry");
@@ -705,6 +701,10 @@ public class UIKeys
     public static final IKey FILM_REPLAY_TRACK_POSE_OVERLAY_N = L10n.lang("bbs.ui.film.replay.track.pose_overlay_n");
     public static final IKey FILM_REPLAY_TRACK_TRANSFORM_OVERLAY = L10n.lang("bbs.ui.film.replay.track.transform_overlay");
     public static final IKey FILM_REPLAY_TRACK_TRANSFORM_OVERLAY_N = L10n.lang("bbs.ui.film.replay.track.transform_overlay_n");
+    public static final IKey FILM_REPLAY_TRACK_ILLUSION_OVERLAY = L10n.lang("bbs.ui.film.replay.track.illusion_overlay");
+    public static final IKey FILM_REPLAY_TRACK_ILLUSION_OVERLAY_N = L10n.lang("bbs.ui.film.replay.track.illusion_overlay_n");
+    public static final IKey FILM_REPLAY_TRACK_ILLUSION_TRANSFORM_OVERLAY = L10n.lang("bbs.ui.film.replay.track.illusion_transform_overlay");
+    public static final IKey FILM_REPLAY_TRACK_ILLUSION_TRANSFORM_OVERLAY_N = L10n.lang("bbs.ui.film.replay.track.illusion_transform_overlay_n");
     public static final IKey FORMS_EDITOR_PICK_FORM = L10n.lang("bbs.ui.forms.editor.pick_form");
     public static final IKey FORMS_EDITOR_SLIM = L10n.lang("bbs.ui.forms.editor.slim");
     public static final IKey FORMS_EDITOR_SLIM_TOOLTIP = L10n.lang("bbs.ui.forms.editor.slim-tooltip");

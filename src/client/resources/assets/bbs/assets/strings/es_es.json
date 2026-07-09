@@ -1073,7 +1073,6 @@
     "bbs.ui.forms.editors.shape.type.capsule": "Cápsula",
     "bbs.ui.forms.editors.shape.type.cylinder": "Cilindro",
     "bbs.ui.forms.editors.shape.type.sphere": "Esfera",
-    "bbs.ui.forms.editors.structure.fluid": "Fluido",
     "bbs.ui.forms.editors.structure.light": "Luz",
     "bbs.ui.forms.editors.structure.light_intensity": "Intensidad de luz (1-15)",
     "bbs.ui.forms.editors.structure.pick_biome": "Seleccionar bioma...",

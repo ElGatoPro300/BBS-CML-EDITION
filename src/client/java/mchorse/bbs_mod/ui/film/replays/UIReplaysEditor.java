@@ -184,7 +184,9 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
         COLORS.put("render_depth", Colors.CYAN);
         COLORS.put("look_at", 0x007f70);
         COLORS.put("illusion", Colors.DEEP_PINK);
+        COLORS.put("illusion_overlay", 0xff66aa);
         COLORS.put("illusion_transform", 0xdd66ff);
+        COLORS.put("illusion_transform_overlay", 0xcc88ff);
         COLORS.put("structure_light", Colors.YELLOW);
         COLORS.put("shape_keys", Colors.PINK);
         COLORS.put("actions", Colors.MAGENTA);
@@ -599,6 +601,16 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
             return Icons.ALL_DIRECTIONS;
         }
 
+        if (topLevel.startsWith("illusion_overlay"))
+        {
+            return Icons.POSE;
+        }
+
+        if (topLevel.startsWith("illusion_transform_overlay"))
+        {
+            return Icons.ALL_DIRECTIONS;
+        }
+
         return ICONS.getOrDefault(topLevel, Icons.NONE);
     }
 
@@ -623,6 +635,8 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
 
         if (topLevel.startsWith("pose_overlay")) return COLORS.get("pose_overlay");
         if (topLevel.startsWith("transform_overlay")) return COLORS.get("transform_overlay");
+        if (topLevel.startsWith("illusion_overlay")) return COLORS.get("illusion_overlay");
+        if (topLevel.startsWith("illusion_transform_overlay")) return COLORS.get("illusion_transform_overlay");
 
         return COLORS.getOrDefault(topLevel, Colors.ACTIVE);
     }
@@ -956,6 +970,54 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
             return UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_TRANSFORM;
         }
 
+        if (trackName.equals("illusion_overlay"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_ILLUSION_OVERLAY;
+        }
+
+        if (trackName.startsWith("illusion_overlay"))
+        {
+            String suffix = trackName.substring("illusion_overlay".length());
+
+            if (suffix.isEmpty())
+            {
+                return UIKeys.FILM_REPLAY_TRACK_ILLUSION_OVERLAY;
+            }
+
+            try
+            {
+                return UIKeys.FILM_REPLAY_TRACK_ILLUSION_OVERLAY_N.format(Integer.parseInt(suffix) + 1);
+            }
+            catch (Exception e)
+            {
+                return UIKeys.FILM_REPLAY_TRACK_ILLUSION_OVERLAY;
+            }
+        }
+
+        if (trackName.equals("illusion_transform_overlay"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_ILLUSION_TRANSFORM_OVERLAY;
+        }
+
+        if (trackName.startsWith("illusion_transform_overlay"))
+        {
+            String suffix = trackName.substring("illusion_transform_overlay".length());
+
+            if (suffix.isEmpty())
+            {
+                return UIKeys.FILM_REPLAY_TRACK_ILLUSION_TRANSFORM_OVERLAY;
+            }
+
+            try
+            {
+                return UIKeys.FILM_REPLAY_TRACK_ILLUSION_TRANSFORM_OVERLAY_N.format(Integer.parseInt(suffix) + 1);
+            }
+            catch (Exception e)
+            {
+                return UIKeys.FILM_REPLAY_TRACK_ILLUSION_TRANSFORM_OVERLAY;
+            }
+        }
+
         if (trackName.equals("pose_overlay"))
         {
             return UIKeys.FILM_REPLAY_TRACK_POSE_OVERLAY;
@@ -1169,19 +1231,33 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
                 if (name.indexOf(':') != -1) return 29;
 
                 if (name.equals("anchor")) return 30;
-                if (name.equals("look_at")) return 30;
-                if (name.equals("illusion")) return 30;
-                if (name.equals("illusion_transform")) return 30;
-                if (name.equals("structure_file")) return 31;
-                if (name.equals("pivot")) return 32;
-                if (name.equals("biome_id")) return 33;
-                if (name.equals("structure_light")) return 34;
-                if (name.equals("color")) return 35;
-                if (name.equals("paint_color")) return 36;
-                if (name.equals("texture")) return 37;
-                if (name.equals("pbr_normal_intensity")) return 38;
-                if (name.equals("pbr_specular_intensity")) return 39;
-                if (name.equals("model")) return 40;
+                if (name.equals("look_at")) return 31;
+                if (name.equals("illusion")) return 32;
+                if (name.equals("illusion_overlay")) return 33;
+                if (name.startsWith("illusion_overlay") && name.length() > "illusion_overlay".length())
+                {
+                    String suffix = name.substring("illusion_overlay".length());
+
+                    try { return 34 + Integer.parseInt(suffix); } catch (Exception e) { return 49; }
+                }
+                if (name.equals("illusion_transform")) return 50;
+                if (name.equals("illusion_transform_overlay")) return 51;
+                if (name.startsWith("illusion_transform_overlay") && name.length() > "illusion_transform_overlay".length())
+                {
+                    String suffix = name.substring("illusion_transform_overlay".length());
+
+                    try { return 52 + Integer.parseInt(suffix); } catch (Exception e) { return 69; }
+                }
+                if (name.equals("structure_file")) return 60;
+                if (name.equals("pivot")) return 61;
+                if (name.equals("biome_id")) return 62;
+                if (name.equals("structure_light")) return 63;
+                if (name.equals("color")) return 64;
+                if (name.equals("paint_color")) return 65;
+                if (name.equals("texture")) return 66;
+                if (name.equals("pbr_normal_intensity")) return 67;
+                if (name.equals("pbr_specular_intensity")) return 68;
+                if (name.equals("model")) return 69;
 
                 return 500;
             };
@@ -1444,7 +1520,7 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
                             worldTracks.add(sheet);
                         }
                     }
-                    else if (MODEL_PROPERTIES.contains(sheet.id) || sheet.id.startsWith("pose") || sheet.id.startsWith("transform_overlay"))
+                    else if (MODEL_PROPERTIES.contains(sheet.id) || sheet.id.startsWith("pose") || sheet.id.startsWith("transform_overlay") || sheet.id.startsWith("illusion_overlay") || sheet.id.startsWith("illusion_transform_overlay"))
                     {
                         if (!this.collapsedModelTracks.getOrDefault(modelPropsKey, false))
                         {
@@ -1807,6 +1883,8 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
 
         String scopeKey = groupKey == null || groupKey.isEmpty() ? this.replay.uuid.get() + ":__model__" : groupKey;
         String textureParentKey = scopeKey + ":texture";
+        String illusionParentKey = scopeKey + ":illusion";
+        String illusionTransformParentKey = scopeKey + ":illusion_transform";
         boolean isPbrTrack = trackName.equals("pbr_normal_intensity") || trackName.equals("pbr_specular_intensity");
 
         if (isPbrTrack)
@@ -1896,6 +1974,52 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
         {
             before.add(sheet);
         }
+        else if (trackName.equals("illusion"))
+        {
+            boolean expanded = !this.collapsedModelTracks.getOrDefault(illusionParentKey, true);
+
+            sheet.expanded = expanded;
+            sheet.toggleExpanded = () ->
+            {
+                this.collapsedModelTracks.put(illusionParentKey, !this.collapsedModelTracks.getOrDefault(illusionParentKey, true));
+                this.updateChannelsList();
+            };
+
+            after.add(sheet);
+        }
+        else if (this.isIllusionOverlayTrack(trackName))
+        {
+            if (this.collapsedModelTracks.getOrDefault(illusionParentKey, true))
+            {
+                return;
+            }
+
+            sheet.level += 1;
+            after.add(sheet);
+        }
+        else if (trackName.equals("illusion_transform"))
+        {
+            boolean expanded = !this.collapsedModelTracks.getOrDefault(illusionTransformParentKey, true);
+
+            sheet.expanded = expanded;
+            sheet.toggleExpanded = () ->
+            {
+                this.collapsedModelTracks.put(illusionTransformParentKey, !this.collapsedModelTracks.getOrDefault(illusionTransformParentKey, true));
+                this.updateChannelsList();
+            };
+
+            after.add(sheet);
+        }
+        else if (this.isIllusionTransformOverlayTrack(trackName))
+        {
+            if (this.collapsedModelTracks.getOrDefault(illusionTransformParentKey, true))
+            {
+                return;
+            }
+
+            sheet.level += 1;
+            after.add(sheet);
+        }
         else
         {
             this.addTrackByPriority(trackName, before, after, sheet);
@@ -1905,6 +2029,26 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
         {
             sheet.title = IKey.constant(customTitle);
         }
+    }
+
+    private boolean isIllusionOverlayTrack(String trackName)
+    {
+        if (trackName.equals("illusion_overlay"))
+        {
+            return true;
+        }
+
+        return trackName.startsWith("illusion_overlay") && trackName.length() > "illusion_overlay".length();
+    }
+
+    private boolean isIllusionTransformOverlayTrack(String trackName)
+    {
+        if (trackName.equals("illusion_transform_overlay"))
+        {
+            return true;
+        }
+
+        return trackName.startsWith("illusion_transform_overlay") && trackName.length() > "illusion_transform_overlay".length();
     }
 
     private void addTrackByPriority(String trackName, List<UIKeyframeSheet> before, List<UIKeyframeSheet> after, UIKeyframeSheet sheet)
