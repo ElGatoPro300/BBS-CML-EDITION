@@ -70,6 +70,8 @@ public final class TimelineToolbarDockLayout
                     break;
             }
         }
+
+        host.resize();
     }
 
     public static TimelineToolbarDock findDockFor(UIElement element)

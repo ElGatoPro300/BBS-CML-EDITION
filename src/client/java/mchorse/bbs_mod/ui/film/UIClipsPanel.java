@@ -157,6 +157,11 @@ public class UIClipsPanel extends UIElement implements IUIClipsDelegate
     @Override
     public void setVisible(boolean visible)
     {
+        if (!visible)
+        {
+            this.toolbar.cancelDockDrag();
+        }
+
         super.setVisible(visible);
 
         if (this.panel != null)

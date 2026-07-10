@@ -46,6 +46,7 @@ import mchorse.bbs_mod.ui.film.replays.overlays.UIRenameSheetOverlayPanel;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIReplaysOverlayPanel;
 import mchorse.bbs_mod.ui.film.toolbar.KeyframeInsertInteractionState;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbar;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarDock;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarDockLayout;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarRegistry;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarWiring;
@@ -801,8 +802,10 @@ public class UIReplaysEditor extends UIElement
 
     private void applyToolbarDockLayout()
     {
-        TimelineToolbarDockLayout.setup(this, this.toolbar, TimelineToolbarDockLayout.PANEL_REPLAY,
-            this.keyframeEditor);
+        TimelineToolbarDock dock = BBSSettings.timelineToolbarDocks.getDock(TimelineToolbarDockLayout.PANEL_REPLAY);
+
+        this.toolbar.configureDockHost(this, TimelineToolbarDockLayout.PANEL_REPLAY, this::applyToolbarDockLayout);
+        TimelineToolbarDockLayout.apply(this, this.toolbar, dock, this.keyframeEditor);
     }
 
     private void cancelToolbarInteraction()
@@ -3049,6 +3052,11 @@ public class UIReplaysEditor extends UIElement
     @Override
     public void setVisible(boolean visible)
     {
+        if (!visible)
+        {
+            this.toolbar.cancelDockDrag();
+        }
+
         super.setVisible(visible);
 
         if (this.keyframeEditor != null)

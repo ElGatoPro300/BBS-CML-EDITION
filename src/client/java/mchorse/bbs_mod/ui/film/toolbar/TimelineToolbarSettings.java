@@ -51,6 +51,24 @@ public class TimelineToolbarSettings
     public static final int DRAG_HANDLE_SIZE = 12;
 
     /**
+     * Gap between the drag separator and the drag handle icon.
+     */
+    public static final int DRAG_HANDLE_SEPARATOR_GAP = 4;
+
+    /**
+     * Thickness of the separator line before the drag handle.
+     */
+    public static final int DRAG_HANDLE_SEPARATOR_SIZE = 1;
+
+    /**
+     * Total width/height reserved at the end of the toolbar for separator + handle.
+     */
+    public static int getDragHandleReserved()
+    {
+        return DRAG_HANDLE_SEPARATOR_GAP + DRAG_HANDLE_SEPARATOR_SIZE + DRAG_HANDLE_SIZE;
+    }
+
+    /**
      * Thickness of the toolbar strip for any dock edge (matches {@link #TOOLBAR_HEIGHT}).
      */
     public static int getThickness(TimelineToolbarDock dock)
