@@ -48,6 +48,11 @@ public class UIKeyframeSelectNeighborInteraction
         this.hoverSheet = null;
     }
 
+    public KeyframeSelectNeighborInteractionState getState()
+    {
+        return this.state;
+    }
+
     public void updatePreview(UIKeyframes keyframes, UIContext context)
     {
         this.hoverSheet = null;

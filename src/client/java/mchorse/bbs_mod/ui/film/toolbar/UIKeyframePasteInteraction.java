@@ -39,6 +39,11 @@ public class UIKeyframePasteInteraction
         this.canConfirm = false;
     }
 
+    public KeyframePasteInteractionState getState()
+    {
+        return this.state;
+    }
+
     public float getAnchorTick()
     {
         return this.anchorTick;

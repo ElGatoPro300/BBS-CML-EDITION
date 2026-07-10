@@ -28,6 +28,20 @@ public final class TimelineTrackEligibility
             return false;
         }
 
+        return canPickEditTrack(sheet);
+    }
+
+    /**
+     * Track eligibility during pick-track interaction (does not capture the
+     * {@link UIKeyframes} instance, so it stays valid after editor rebuilds).
+     */
+    public static boolean canPickEditTrack(UIKeyframeSheet sheet)
+    {
+        if (sheet == null || sheet.groupHeader)
+        {
+            return false;
+        }
+
         return KeyframeFactories.isNumeric(sheet.channel.getFactory());
     }
 

@@ -424,6 +424,67 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
 
     /* Input handling */
 
+    /**
+     * Handles expand/collapse clicks on track group headers and nested limb rows
+     * in the sidebar without triggering dope-sheet keyframe input.
+     *
+     * @return {@code true} when a toggle was performed
+     */
+    public boolean tryHandleSidebarToggleClick(UIContext context)
+    {
+        if (context.mouseButton != 0 || !this.keyframes.area.isInside(context))
+        {
+            return false;
+        }
+
+        UIKeyframeSheet sheet = this.getSheet(context.mouseY);
+
+        if (sheet == null)
+        {
+            return false;
+        }
+
+        FontRenderer font = context.batcher.getFont();
+        String title = this.getEffectiveSidebarTitle(sheet);
+        String displayTitle = this.getSidebarTitle(title);
+        Icon arrow = sheet.groupHeader
+            ? this.getGroupArrow(sheet)
+            : (sheet.toggleExpanded != null ? (sheet.expanded ? Icons.UNCOLLAPSED : Icons.COLLAPSED) : null);
+
+        int left = this.keyframes.area.x + sheet.level * LEVEL_INDENT - this.sidebarScroll;
+
+        if (sheet.groupHeader && !this.isWorldOrModelGroup(sheet) && !this.isFormGroup(sheet))
+        {
+            left += 4;
+        }
+
+        int iconWidth = 2 + (arrow != null ? arrow.w + 4 : 0);
+        int clickableWidth = Math.min(this.sidebarWidth - sheet.level * LEVEL_INDENT, iconWidth + font.getWidth(displayTitle) + 6);
+
+        clickableWidth = Math.max(0, clickableWidth);
+
+        if (context.mouseX < left || context.mouseX > left + clickableWidth)
+        {
+            return false;
+        }
+
+        if (sheet.groupHeader && sheet.toggleGroup != null)
+        {
+            sheet.toggleGroup.run();
+
+            return true;
+        }
+
+        if (!sheet.groupHeader && sheet.toggleExpanded != null)
+        {
+            sheet.toggleExpanded.run();
+
+            return true;
+        }
+
+        return false;
+    }
+
     @Override
     public boolean mouseClicked(UIContext context)
     {
@@ -432,42 +493,9 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
             return true;
         }
 
-        if (context.mouseButton == 0 && this.keyframes.area.isInside(context))
+        if (this.tryHandleSidebarToggleClick(context))
         {
-            UIKeyframeSheet sheet = this.getSheet(context.mouseY);
-
-            if (sheet != null)
-            {
-                FontRenderer font = context.batcher.getFont();
-                String title = this.getEffectiveSidebarTitle(sheet);
-                String displayTitle = this.getSidebarTitle(title);
-                Icon arrow = sheet.groupHeader
-                    ? this.getGroupArrow(sheet)
-                    : (sheet.toggleExpanded != null ? (sheet.expanded ? Icons.UNCOLLAPSED : Icons.COLLAPSED) : null);
-
-                int left = this.keyframes.area.x + sheet.level * LEVEL_INDENT - this.sidebarScroll;
-                if (sheet.groupHeader && !this.isWorldOrModelGroup(sheet) && !this.isFormGroup(sheet))
-                {
-                    left += 4;
-                }
-                int iconWidth = 2 + (arrow != null ? arrow.w + 4 : 0);
-                int clickableWidth = Math.min(this.sidebarWidth - sheet.level * LEVEL_INDENT, iconWidth + font.getWidth(displayTitle) + 6);
-                clickableWidth = Math.max(0, clickableWidth);
-
-                if (context.mouseX >= left && context.mouseX <= left + clickableWidth)
-                {
-                    if (sheet.groupHeader && sheet.toggleGroup != null)
-                    {
-                        sheet.toggleGroup.run();
-                        return true;
-                    }
-                    else if (!sheet.groupHeader && sheet.toggleExpanded != null)
-                    {
-                        sheet.toggleExpanded.run();
-                        return true;
-                    }
-                }
-            }
+            return true;
         }
 
         return this.dopeSheet.mouseClicked(context);

@@ -33,6 +33,11 @@ public class UIInteractionModeOverlay
         this.state = null;
     }
 
+    public TimelineInteractionState getState()
+    {
+        return this.state;
+    }
+
     public boolean isSheetEligible(UIKeyframeSheet sheet)
     {
         return this.state != null && sheet != null && this.state.eligible.test(sheet);

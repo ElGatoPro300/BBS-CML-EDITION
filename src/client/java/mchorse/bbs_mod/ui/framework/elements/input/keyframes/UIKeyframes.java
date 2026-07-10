@@ -900,12 +900,22 @@ public class UIKeyframes extends UIElement
             ? UIKeys.TIMELINE_INTERACTION_SELECT_SAME_TRACK
             : UIKeys.TIMELINE_INTERACTION_SELECT_SAME_ALL;
 
+        this.enterSelectSameInteraction(new KeyframeSelectSameInteractionState(hint, currentTrackOnly));
+    }
+
+    public void enterSelectSameInteraction(KeyframeSelectSameInteractionState state)
+    {
+        if (state == null || !this.isModifyingKeyframes())
+        {
+            return;
+        }
+
         this.insertInteraction.cancel();
         this.duplicateInteraction.cancel();
         this.pasteInteraction.cancel();
         this.selectNeighborInteraction.cancel();
         this.interactionOverlay.cancel();
-        this.selectSameInteraction.enter(new KeyframeSelectSameInteractionState(hint, currentTrackOnly));
+        this.selectSameInteraction.enter(state);
     }
 
     public boolean isSelectSameInteractionActive()
@@ -983,12 +993,22 @@ public class UIKeyframes extends UIElement
             ? UIKeys.TIMELINE_INTERACTION_SELECT_PREV_KEYFRAME
             : UIKeys.TIMELINE_INTERACTION_SELECT_NEXT_KEYFRAME;
 
+        this.enterSelectNeighborInteraction(new KeyframeSelectNeighborInteractionState(hint, direction));
+    }
+
+    public void enterSelectNeighborInteraction(KeyframeSelectNeighborInteractionState state)
+    {
+        if (state == null || !this.isModifyingKeyframes())
+        {
+            return;
+        }
+
         this.insertInteraction.cancel();
         this.duplicateInteraction.cancel();
         this.pasteInteraction.cancel();
         this.selectSameInteraction.cancel();
         this.interactionOverlay.cancel();
-        this.selectNeighborInteraction.enter(new KeyframeSelectNeighborInteractionState(hint, direction));
+        this.selectNeighborInteraction.enter(state);
     }
 
     public boolean isSelectNeighborInteractionActive()
@@ -1314,7 +1334,7 @@ public class UIKeyframes extends UIElement
     {
         this.enterTrackInteraction(
             UIKeys.TIMELINE_INTERACTION_PICK_TRACK,
-            sheet -> TimelineTrackEligibility.canEditTrack(this, sheet),
+            TimelineTrackEligibility::canPickEditTrack,
             this::confirmEditTrack);
     }
 
@@ -1356,6 +1376,78 @@ public class UIKeyframes extends UIElement
         if (this.stacking)
         {
             this.stackKeyframes(true, false);
+        }
+    }
+
+    /**
+     * @return {@code true} when timeline interaction modes should consume clicks
+     * instead of normal keyframe editing
+     */
+    private boolean isInteractionModeConsumingClicks()
+    {
+        return this.interactionOverlay.isActive()
+            || this.insertInteraction.isActive()
+            || this.duplicateInteraction.isActive()
+            || this.pasteInteraction.isActive()
+            || this.selectNeighborInteraction.isActive()
+            || this.selectSameInteraction.isActive()
+            || (this.scaling && this.scalingShowInteractionHints)
+            || (this.stacking && this.stackingShowInteractionHints);
+    }
+
+    public TimelineInteractionState getTrackInteractionState()
+    {
+        return this.interactionOverlay.isActive() ? this.interactionOverlay.getState() : null;
+    }
+
+    public KeyframeInsertInteractionState getInsertInteractionState()
+    {
+        return this.insertInteraction.isActive() ? this.insertInteraction.getState() : null;
+    }
+
+    public KeyframeDuplicateInteractionState getDuplicateInteractionState()
+    {
+        return this.duplicateInteraction.isActive() ? this.duplicateInteraction.getState() : null;
+    }
+
+    public KeyframePasteInteractionState getPasteInteractionState()
+    {
+        return this.pasteInteraction.isActive() ? this.pasteInteraction.getState() : null;
+    }
+
+    public KeyframeSelectNeighborInteractionState getSelectNeighborInteractionState()
+    {
+        return this.selectNeighborInteraction.isActive() ? this.selectNeighborInteraction.getState() : null;
+    }
+
+    public KeyframeSelectSameInteractionState getSelectSameInteractionState()
+    {
+        return this.selectSameInteraction.isActive() ? this.selectSameInteraction.getState() : null;
+    }
+
+    public boolean isScalingWithInteractionHints()
+    {
+        return this.scaling && this.scalingShowInteractionHints;
+    }
+
+    public boolean isStackingWithInteractionHints()
+    {
+        return this.stacking && this.stackingShowInteractionHints;
+    }
+
+    public void restoreScalingInteractionHints()
+    {
+        if (!this.scaling)
+        {
+            this.scaleTime(true);
+        }
+    }
+
+    public void restoreStackingInteractionHints()
+    {
+        if (!this.stacking)
+        {
+            this.stackKeyframes(false, true);
         }
     }
 
@@ -1910,11 +2002,9 @@ public class UIKeyframes extends UIElement
     @Override
     protected boolean subMouseClicked(UIContext context)
     {
-        boolean interactionActive = this.insertInteraction.isActive() || this.interactionOverlay.isActive()
-            || this.duplicateInteraction.isActive() || this.pasteInteraction.isActive()
-            || this.selectNeighborInteraction.isActive() || this.selectSameInteraction.isActive();
-
-        if (interactionActive && this.currentGraph.mouseClicked(context))
+        if (this.isInteractionModeConsumingClicks()
+            && this.currentGraph instanceof UIKeyframeDopeSheet dopeSheet
+            && dopeSheet.tryHandleSidebarToggleClick(context))
         {
             return true;
         }

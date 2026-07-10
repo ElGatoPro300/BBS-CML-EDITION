@@ -50,6 +50,7 @@ import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarDock;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarDockLayout;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarRegistry;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarWiring;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineInteractionSnapshot;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineTrackEligibility;
 import mchorse.bbs_mod.ui.film.toolbar.UIViewportInteraction;
 import mchorse.bbs_mod.ui.film.toolbar.ViewportInteractionState;
@@ -1236,12 +1237,13 @@ public class UIReplaysEditor extends UIElement
     public void updateChannelsList()
     {
         UIKeyframes lastEditor = null;
+        TimelineInteractionSnapshot interactionSnapshot = null;
 
         if (this.keyframeEditor != null)
         {
-            this.keyframeEditor.removeFromParent();
-
             lastEditor = this.keyframeEditor.view;
+            interactionSnapshot = TimelineInteractionSnapshot.capture(lastEditor);
+            this.keyframeEditor.removeFromParent();
         }
 
         if (this.replay == null)
@@ -1913,6 +1915,11 @@ public class UIReplaysEditor extends UIElement
 
             this.add(this.keyframeEditor);
             this.applyToolbarDockLayout();
+
+            if (interactionSnapshot != null && !interactionSnapshot.isEmpty())
+            {
+                interactionSnapshot.restore(this.keyframeEditor.view);
+            }
         }
 
         this.resize();

@@ -53,6 +53,11 @@ public class UIKeyframeInsertInteraction
         this.individualTick = -1F;
     }
 
+    public KeyframeInsertInteractionState getState()
+    {
+        return this.state;
+    }
+
     public void updatePreview(UIKeyframes keyframes, UIContext context)
     {
         this.columnPreviews.clear();

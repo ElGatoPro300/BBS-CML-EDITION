@@ -53,6 +53,11 @@ public class UIKeyframeSelectSameInteraction
         this.hoverSheet = null;
     }
 
+    public KeyframeSelectSameInteractionState getState()
+    {
+        return this.state;
+    }
+
     public void updatePreview(UIKeyframes keyframes, UIContext context)
     {
         this.hoverKeyframe = null;

@@ -38,6 +38,11 @@ public class UIKeyframeDuplicateInteraction
         this.canConfirm = false;
     }
 
+    public KeyframeDuplicateInteractionState getState()
+    {
+        return this.state;
+    }
+
     public float getAnchorTick()
     {
         return this.anchorTick;
