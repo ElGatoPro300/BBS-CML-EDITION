@@ -308,7 +308,9 @@ public class ModelBlockEntityRenderer implements BlockEntityRenderer<ModelBlockE
     {
         if (UIScreen.getCurrentMenu() instanceof UIDashboard dashboard)
         {
-            return dashboard.getPanels().panel instanceof UIModelBlockPanel modelBlockPanel;
+            /* The block currently being edited gets the real interactive gizmo (drawn by
+             * UIModelBlockPanel), so the decorative axes would just overlap it. */
+            return dashboard.getPanels().panel instanceof UIModelBlockPanel modelBlockPanel && !modelBlockPanel.isSelectedForGizmo(entity);
         }
 
         return false;

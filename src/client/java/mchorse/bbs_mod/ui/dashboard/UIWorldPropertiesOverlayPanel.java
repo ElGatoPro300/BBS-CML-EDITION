@@ -42,10 +42,14 @@ public class UIWorldPropertiesOverlayPanel extends UIOverlayPanel
     private UIToggle mobSpawning;
     private UIButton killMobs;
     private UIElement mobsContent;
+    private UITrackpad gamma;
+    private UIToggle nightVision;
+    private UIElement gammaContent;
 
     private boolean timeExpanded = false;
     private boolean weatherExpanded = false;
     private boolean mobsExpanded = false;
+    private boolean gammaExpanded = false;
 
     private int pendingTime = -1;
     private int lastSentTime = -1;
@@ -127,6 +131,24 @@ public class UIWorldPropertiesOverlayPanel extends UIOverlayPanel
         };
 
         this.mobsContent = UI.column(5, 0, this.mobSpawning, this.killMobs);
+
+        this.gamma = new UITrackpad((v) -> WorldPropertiesHelper.setGammaPercent(v));
+        this.gamma.limit(0D, 1500D, true).increment(50D).values(10D, 1D, 100D);
+        this.gamma.setValue(WorldPropertiesHelper.getGammaPercent());
+
+        UIButton gammaNormal = new UIButton(UIKeys.WORLD_GAMMA_NORMAL, (b) -> this.setGamma(100D));
+        UIButton gammaSemi = new UIButton(UIKeys.WORLD_GAMMA_SEMI, (b) -> this.setGamma(750D));
+        UIButton gammaFull = new UIButton(UIKeys.WORLD_GAMMA_FULL, (b) -> this.setGamma(1500D));
+
+        this.nightVision = new UIToggle(UIKeys.WORLD_GAMMA_NIGHT_VISION, this.hasNightVision(), (b) ->
+            WorldPropertiesHelper.setNightVision(b.getValue()));
+
+        this.gammaContent = UI.column(5, 0,
+            UI.label(UIKeys.WORLD_GAMMA_LABEL),
+            this.gamma,
+            UI.row(4, gammaNormal, gammaSemi, gammaFull),
+            this.nightVision
+        );
 
         this.scroll = new UIScrollView();
         this.scroll.relative(this.content).w(1F).h(1F);
@@ -234,6 +256,17 @@ public class UIWorldPropertiesOverlayPanel extends UIOverlayPanel
         if (this.mobsExpanded)
         {
             this.scroll.add(this.mobsContent);
+        }
+
+        this.scroll.add(this.header(UIKeys.WORLD_SECTION_GAMMA, this.gammaExpanded, () ->
+        {
+            this.gammaExpanded = !this.gammaExpanded;
+            this.rebuild();
+        }));
+
+        if (this.gammaExpanded)
+        {
+            this.scroll.add(this.gammaContent);
         }
 
         if (this.scroll.hasParent())

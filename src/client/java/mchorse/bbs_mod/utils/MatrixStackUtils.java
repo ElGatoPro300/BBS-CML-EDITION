@@ -4,6 +4,7 @@ import mchorse.bbs_mod.graphics.InverseView;
 import mchorse.bbs_mod.utils.joml.Vectors;
 import mchorse.bbs_mod.utils.pose.Transform;
 
+
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.RotationAxis;
 
@@ -20,6 +21,28 @@ public class MatrixStackUtils
     private static Matrix3f billboardView = new Matrix3f();
 
     private static Matrix3f oldInverse = new Matrix3f();
+    private static final Quaternionf tempQuaternion = new Quaternionf();
+
+    /**
+     * 1.20.4 exposed this on {@link RenderSystem}; 1.21.1 removed it. Rebuild the
+     * camera's inverse view-rotation matrix from the active game camera quaternion.
+     */
+    public static Matrix4f getInverseViewRotationMatrix()
+    {
+        Camera camera = MinecraftClient.getInstance().gameRenderer.getCamera();
+
+        return new Matrix4f().rotation(camera.getRotation().conjugate(MatrixStackUtils.tempQuaternion));
+    }
+
+    /**
+     * View rotation matrix paired with {@link #getInverseViewRotationMatrix()}.
+     */
+    public static Matrix4f getViewRotationMatrix()
+    {
+        Camera camera = MinecraftClient.getInstance().gameRenderer.getCamera();
+
+        return new Matrix4f().rotation(camera.getRotation());
+    }
 
     public static void scaleStack(MatrixStack stack, float x, float y, float z)
     {
@@ -73,6 +96,21 @@ public class MatrixStackUtils
         Matrix4fStack renderStack = RenderSystem.getModelViewStack();
 
         renderStack.popMatrix();
+    }
+
+    public static void pushIdentityModelView()
+    {
+        Matrix4fStack mvStack = RenderSystem.getModelViewStack();
+
+        mvStack.pushMatrix();
+        mvStack.identity();
+    }
+
+    public static void popModelView()
+    {
+        Matrix4fStack mvStack = RenderSystem.getModelViewStack();
+
+        mvStack.popMatrix();
     }
 
     public static void applyTransform(MatrixStack stack, Transform transform)

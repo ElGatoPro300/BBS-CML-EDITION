@@ -78,6 +78,11 @@ public class UIBodyPartEditor extends UIScrollView
         this.scroll.cancelScrolling();
     }
 
+    public BodyPart getPart()
+    {
+        return this.part;
+    }
+
     public void setPart(BodyPart part, Form form)
     {
         this.part = part;

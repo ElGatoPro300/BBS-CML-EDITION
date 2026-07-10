@@ -195,6 +195,19 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
             ((UIPoseTransforms) this.transform).setKeyframe(this);
         }
 
+        @Override
+        protected boolean useModelGizmoDrag()
+        {
+            /* Film pose uses FilmPoseGizmoDrag axis sign correction instead of setModel(). */
+            return false;
+        }
+
+        @Override
+        protected float getGizmoTranslationScale()
+        {
+            return 2.5F;
+        }
+
         private String getGroup(PoseTransform transform)
         {
             return CollectionUtils.getKey(this.getPose().transforms, transform);
@@ -224,7 +237,7 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
         @Override
         protected UIPropTransform createTransformEditor()
         {
-            return new UIPoseTransforms().enableHotkeys().translationScale(16F);
+            return new UIPoseTransforms().enableHotkeys().translationScale(2.5F);
         }
 
         @Override

@@ -134,6 +134,8 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
 
         /* Do not exceed user defined scale; only reduce if necessary */
         finalScale = this.form.uiScale.get() * Math.min(1F, auto);
+        float structScaleUI = Math.max(Math.max(this.form.scaleX.get(), this.form.scaleY.get()), this.form.scaleZ.get());
+        finalScale *= structScaleUI;
         matrices.scale(finalScale, finalScale, finalScale);
 
         matrices.peek().getNormalMatrix().getScale(Vectors.EMPTY_3F);
@@ -182,6 +184,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
 
         try
         {
+
             if (context.isPicking())
             {
                 /* 1.21.11 render: structure picking loses pixel accuracy, same as BlockFormRenderer/
@@ -410,6 +413,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
                 tint = this.form.color.get();
                 recolor = BBSRendering.getColorConsumer(tint);
 
+
                 if (recolor != null)
                 {
                     vc = recolor.apply(vc);
@@ -433,6 +437,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
                     this.renderBlockModel(entry.state, entry.pos, info.view, stack, vc);
                 }
             }
+
             finally
             {
                 stack.pop();
@@ -756,15 +761,15 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
         private final Matrix4f positionMatrix;
         private final Matrix3f normalMatrix;
         private final BlockPos offset;
-        private final boolean injectOverlay;
+        private final boolean fixOverlay;
 
-        public TransformingVertexConsumer(VertexConsumer parent, MatrixStack.Entry entry, BlockPos offset, boolean injectOverlay)
+        public TransformingVertexConsumer(VertexConsumer parent, MatrixStack.Entry entry, BlockPos offset, boolean fixOverlay)
         {
             this.parent = parent;
             this.positionMatrix = new Matrix4f(entry.getPositionMatrix());
             this.normalMatrix = new Matrix3f(entry.getNormalMatrix());
             this.offset = offset;
-            this.injectOverlay = injectOverlay;
+            this.fixOverlay = fixOverlay;
         }
 
         @Override
@@ -813,17 +818,13 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
         @Override
         public VertexConsumer overlay(int u, int v)
         {
-            this.parent.overlay(u, v);
+            this.parent.overlay(this.fixOverlay ? 0 : u, this.fixOverlay ? 10 : v);
             return this;
         }
 
         @Override
         public VertexConsumer light(int u, int v)
         {
-            if (this.injectOverlay)
-            {
-                this.parent.overlay(0, 10);
-            }
             this.parent.light(u, v);
             return this;
         }
@@ -834,6 +835,14 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
             float tx = this.normalMatrix.m00() * x + this.normalMatrix.m10() * y + this.normalMatrix.m20() * z;
             float ty = this.normalMatrix.m01() * x + this.normalMatrix.m11() * y + this.normalMatrix.m21() * z;
             float tz = this.normalMatrix.m02() * x + this.normalMatrix.m12() * y + this.normalMatrix.m22() * z;
+
+            /* Entity layers (used with shaders) require overlay to be set.
+               The fluid renderer never calls overlay(), so inject it here
+               before normal() finalizes the vertex. */
+            if (this.fixOverlay)
+            {
+                this.parent.overlay(0, 10);
+            }
 
             this.parent.normal(tx, ty, tz);
             return this;

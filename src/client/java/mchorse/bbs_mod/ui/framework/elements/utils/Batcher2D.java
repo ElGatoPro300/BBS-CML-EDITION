@@ -6,6 +6,9 @@ import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.graphics.GuiQuadMesh;
 import mchorse.bbs_mod.graphics.texture.AdoptedTexture;
 import mchorse.bbs_mod.graphics.texture.Texture;
+import mchorse.bbs_mod.text.RtlAwtTextRenderer;
+import mchorse.bbs_mod.text.RtlFontManager;
+import mchorse.bbs_mod.text.RtlTextEngine;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
@@ -117,6 +120,7 @@ public class Batcher2D
         /* Lazily (re)load the user-selected .ttf font when configured, then draw the whole UI with it.
            Falls back to Minecraft's default font when no custom font is set or it failed to load. */
         CustomFontManager.ensureLoaded();
+        RtlFontManager.ensureLoaded();
 
         TextRenderer custom = CustomFontManager.getCustomRenderer();
 

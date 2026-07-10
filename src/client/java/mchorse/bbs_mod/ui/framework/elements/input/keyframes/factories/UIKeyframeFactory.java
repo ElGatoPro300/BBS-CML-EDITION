@@ -47,6 +47,8 @@ public abstract class UIKeyframeFactory <T> extends UIElement
     static
     {
         register(KeyframeFactories.ANCHOR, UIAnchorKeyframeFactory::new);
+        register(KeyframeFactories.LOOK_AT, UILookAtKeyframeFactory::new);
+        register(KeyframeFactories.ILLUSION, UIIllusionKeyframeFactory::new);
         register(KeyframeFactories.BOOLEAN, UIBooleanKeyframeFactory::new);
         register(KeyframeFactories.COLOR, UIColorKeyframeFactory::new);
         register(KeyframeFactories.FLOAT, UIFloatKeyframeFactory::new);

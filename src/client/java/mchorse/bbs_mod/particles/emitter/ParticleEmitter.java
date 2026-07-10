@@ -55,6 +55,7 @@ public class ParticleEmitter
     public World world;
     public boolean lit;
     public boolean modelRenderer;
+    public boolean worldVertices;
 
     public boolean running = true;
     private Particle uiParticle;

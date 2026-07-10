@@ -38,6 +38,7 @@ import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.film.replays.UIRecordOverlayPanel;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIReplaysOverlayPanel;
+import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
@@ -47,6 +48,7 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.ui.utils.Area;
+import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.ui.utils.StencilFormFramebuffer;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
@@ -152,6 +154,7 @@ public class UIFilmController extends UIElement
     private boolean paused;
 
     private WorldRenderContext worldRenderContext;
+    private final Matrix4f gizmoInterfaceMatrix = new Matrix4f();
 
     public UIFilmController(UIFilmPanel panel)
     {
@@ -1130,6 +1133,34 @@ public class UIFilmController extends UIElement
             }
         }
 
+        if (this.canShowGizmo())
+        {
+            if (this.panel.hasLastGizmoMatrix)
+            {
+                if (BBSRendering.isIrisShadersEnabled())
+                {
+                    Gizmo.INSTANCE.lastGizmoMatrix.set(this.panel.lastGizmoMatrix);
+                    Gizmo.INSTANCE.hasGizmoMatrix = true;
+                    Gizmo.INSTANCE.renderInterface(context, this.panel.lastProjection, this.panel.preview.getViewport());
+                }
+                else
+                {
+                    /* Without shaders the world pass does not bake BBSRendering.camera into
+                     * the captured matrix; premultiply it here so the UI draw matches the
+                     * shader path (same adjustment as renderPickingPreview). */
+                    this.gizmoInterfaceMatrix.set(BBSRendering.camera);
+                    this.gizmoInterfaceMatrix.mul(this.panel.lastGizmoMatrix);
+                    Gizmo.INSTANCE.lastGizmoMatrix.set(this.gizmoInterfaceMatrix);
+                    Gizmo.INSTANCE.hasGizmoMatrix = true;
+                    Gizmo.INSTANCE.renderInterface(context, this.panel.lastProjection, this.panel.preview.getViewport());
+                }
+            }
+        }
+        else if (!Gizmo.INSTANCE.isDragging())
+        {
+            this.panel.hasLastGizmoMatrix = false;
+        }
+
         this.renderPickingPreview(context, area);
 
         this.orbit.handleOrbiting(context);
@@ -1432,6 +1463,11 @@ public class UIFilmController extends UIElement
         return keyframeEditor != null ? keyframeEditor.getBone() : null;
     }
 
+    private boolean canShowGizmo()
+    {
+        return UIBaseMenu.renderAxes && !this.recording && this.getBone() != null;
+    }
+
     private void renderStencil(WorldRenderContext renderContext, UIContext context, boolean altPressed)
     {
         if (this.panel.getData() == null)
@@ -1523,6 +1559,7 @@ public class UIFilmController extends UIElement
 
         this.stencil.pick(x, y);
         this.stencil.unbind(this.stencilMap);
+        this.panel.replayEditor.updateGizmoHover();
 
         /* MinecraftClient.getInstance().getFramebuffer().beginWrite(true); */
     }

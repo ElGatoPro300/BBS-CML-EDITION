@@ -49,7 +49,7 @@ public class UIRepositoryFolderPickerOverlayPanel extends UIOverlayPanel
 
     public UIRepositoryFolderPickerOverlayPanel(ContentType type, String initialFolder, Consumer<String> callback)
     {
-        super(IKey.constant("Select Folder"));
+        super(UIKeys.CREATE_ASSET_SELECT_FOLDER);
         this.title.color(Colors.WHITE);
         this.resizable();
 

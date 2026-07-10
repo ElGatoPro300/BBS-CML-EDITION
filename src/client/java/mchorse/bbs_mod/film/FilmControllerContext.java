@@ -26,6 +26,7 @@ public class FilmControllerContext
     public IntObjectMap<IEntity> entities;
     public IEntity entity;
     public Replay replay;
+    public Film film;
     public Camera camera;
     public MatrixStack stack;
     public VertexConsumerProvider consumers;
@@ -35,6 +36,10 @@ public class FilmControllerContext
     public int color;
     public float shadowRadius;
     public float shadowOpacity;
+
+    /* Tick (with sub-tick transition) at which the replay's form properties were applied
+     * this frame; NaN when the render path doesn't know it (illusion delay needs it) */
+    public float propertyTick = Float.NaN;
 
     public String bone;
     public boolean local;
@@ -53,6 +58,8 @@ public class FilmControllerContext
 
     private void reset()
     {
+        this.film = null;
+        this.propertyTick = Float.NaN;
         this.map = null;
         this.shadowRadius = 0F;
         this.shadowOpacity = 1F;
@@ -97,6 +104,20 @@ public class FilmControllerContext
         this.stack = stack;
         this.consumers = consumers;
         this.transition = transition;
+
+        return this;
+    }
+
+    public FilmControllerContext film(Film film)
+    {
+        this.film = film;
+
+        return this;
+    }
+
+    public FilmControllerContext propertyTick(float propertyTick)
+    {
+        this.propertyTick = propertyTick;
 
         return this;
     }
