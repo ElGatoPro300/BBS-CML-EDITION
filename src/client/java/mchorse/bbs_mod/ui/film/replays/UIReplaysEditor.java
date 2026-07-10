@@ -823,9 +823,14 @@ public class UIReplaysEditor extends UIElement
         return this.viewportInteraction.isActive();
     }
 
-    public void renderViewportInteraction(UIContext context, Area viewport, int bottomReserve)
+    public void renderViewportInteraction(UIContext context, Area viewport)
     {
-        this.viewportInteraction.renderOverlay(context, viewport, bottomReserve);
+        this.viewportInteraction.renderOverlay(context, viewport);
+    }
+
+    public void renderViewportInteractionHint(UIContext context, Area viewport, int bottomReserve)
+    {
+        this.viewportInteraction.renderHint(context, viewport, bottomReserve);
     }
 
     public boolean handleViewportInteractionMouse(UIContext context, Area viewport)

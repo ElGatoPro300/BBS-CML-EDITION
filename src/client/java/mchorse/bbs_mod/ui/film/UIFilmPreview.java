@@ -402,7 +402,7 @@ public class UIFilmPreview extends UIElement
 
         if (this.panel.replayEditor.isViewportInteractionActive())
         {
-            this.panel.replayEditor.renderViewportInteraction(context, area, this.getViewportHintBottomReserve(area));
+            this.panel.replayEditor.renderViewportInteraction(context, area);
         }
 
         if (this.pendingThumbnail != null)
@@ -545,6 +545,12 @@ public class UIFilmPreview extends UIElement
         context.batcher.clip(this.area, context);
         super.render(context);
         context.batcher.unclip(context);
+
+        if (this.panel.replayEditor.isViewportInteractionActive())
+        {
+            this.panel.replayEditor.renderViewportInteractionHint(context, area,
+                this.getViewportHintBottomReserve(area));
+        }
     }
 
     private void renderCursor(UIContext context)

@@ -228,6 +228,25 @@ public class UIContext implements IViewportStack
         return false;
     }
 
+    /**
+     * @return {@code true} when at least one timeline toolbar popup is open this frame
+     */
+    public boolean hasOpenTimelineToolbarMenus()
+    {
+        return !this.timelineToolbarMenuAreas.isEmpty();
+    }
+
+    /**
+     * @return {@code true} when interaction hint cards may use the post-render
+     * foreground layer (above viewport chrome). When {@code false}, hints must
+     * be drawn during normal panel rendering so toolbar menus and context menus
+     * on the overlay stay on top.
+     */
+    public boolean shouldDeferInteractionHintToForeground()
+    {
+        return !this.hasOpenTimelineToolbarMenus() && !this.hasContextMenu();
+    }
+
     public void setTimelineToolbarConsumePointer(boolean consume)
     {
         this.timelineToolbarConsumePointer = consume;
@@ -383,8 +402,10 @@ public class UIContext implements IViewportStack
 
     private void renderForegroundInteractionHint()
     {
-        if (this.foregroundInteractionHint == null)
+        if (this.foregroundInteractionHint == null || !this.shouldDeferInteractionHintToForeground())
         {
+            this.foregroundInteractionHint = null;
+
             return;
         }
 

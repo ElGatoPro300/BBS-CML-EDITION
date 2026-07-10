@@ -75,9 +75,12 @@ public final class TimelineInteractionHints
     }
 
     /**
-     * Viewport interaction hint: always bottom-left of the preview area, drawn in
-     * {@link UIContext#postRender()} so it stays above the 3D viewport chrome
-     * (gizmo bar, icon row).
+     * Viewport interaction hint: always bottom-left of the preview area.
+     * <p>
+     * When no overlay popup is open, the card is deferred to
+     * {@link UIContext#postRender()} so it draws above the 3D viewport chrome.
+     * While a toolbar menu or context menu is open, it is drawn during panel
+     * rendering so those popups stay on top.
      */
     public static void renderViewportHint(UIContext context, Area viewport, IKey hint, int bottomReserve)
     {
@@ -88,7 +91,14 @@ public final class TimelineInteractionHints
 
         HintCard card = layoutHint(context.batcher.getFont(), viewport, null, bottomReserve, hint.get());
 
-        context.drawForegroundInteractionHint(card);
+        if (context.shouldDeferInteractionHintToForeground())
+        {
+            context.drawForegroundInteractionHint(card);
+        }
+        else
+        {
+            drawHintCard(context.batcher, card);
+        }
     }
 
     public static void renderHint(UIContext context, Area area, IKey hint, TimelineToolbarDock dock)

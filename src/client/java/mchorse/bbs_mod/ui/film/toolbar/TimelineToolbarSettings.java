@@ -278,7 +278,7 @@ public class TimelineToolbarSettings
      */
     public static boolean INTERACTION_HINT_DRAW_BORDER = false;
 
-    public static final int INTERACTION_HINT_BACKGROUND = Colors.A75 | 0x1a1a1e;
+    public static final int INTERACTION_HINT_BACKGROUND = Colors.A90 | 0x1a1a1e;
 
     public static final int INTERACTION_HINT_BORDER = Colors.A50 | Colors.WHITE;
 

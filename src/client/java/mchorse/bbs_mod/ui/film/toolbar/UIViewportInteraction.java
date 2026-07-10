@@ -97,7 +97,7 @@ public class UIViewportInteraction
         return false;
     }
 
-    public void renderOverlay(UIContext context, Area viewport, int bottomReserve)
+    public void renderOverlay(UIContext context, Area viewport)
     {
         if (this.state == null)
         {
@@ -105,6 +105,15 @@ public class UIViewportInteraction
         }
 
         renderEdgeFade(context, viewport);
+    }
+
+    public void renderHint(UIContext context, Area viewport, int bottomReserve)
+    {
+        if (this.state == null)
+        {
+            return;
+        }
+
         TimelineInteractionHints.renderViewportHint(context, viewport, this.state.hint, bottomReserve);
     }
 
