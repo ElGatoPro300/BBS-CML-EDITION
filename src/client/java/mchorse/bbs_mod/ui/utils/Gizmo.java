@@ -30,7 +30,7 @@ import org.joml.Vector3f;
 import org.joml.Vector4f;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.systems.VertexSorter;
+import com.mojang.blaze3d.systems.ProjectionType;
 
 import org.lwjgl.opengl.GL11;
 
@@ -557,7 +557,7 @@ public class Gizmo
         context.batcher.flush();
 
         MatrixStackUtils.cacheMatrices();
-        RenderSystem.setProjectionMatrix(projection, VertexSorter.BY_Z);
+        RenderSystem.setProjectionMatrix(projection, ProjectionType.ORTHOGRAPHIC);
 
         float rx = (float) Math.round(mc.getWindow().getWidth() / (double) context.menu.width);
         float ry = (float) Math.round(mc.getWindow().getHeight() / (double) context.menu.height);
@@ -604,7 +604,7 @@ public class Gizmo
         MinecraftClient mc = MinecraftClient.getInstance();
 
         MatrixStackUtils.cacheMatrices();
-        RenderSystem.setProjectionMatrix(projection, VertexSorter.BY_Z);
+        RenderSystem.setProjectionMatrix(projection, ProjectionType.ORTHOGRAPHIC);
 
         float rx = (float) Math.round(mc.getWindow().getWidth() / (double) context.menu.width);
         float ry = (float) Math.round(mc.getWindow().getHeight() / (double) context.menu.height);
@@ -660,7 +660,7 @@ public class Gizmo
                  * longer carries the same projection matrix as RenderLayer#getSolid(), where
                  * the gizmo transform was captured. Re-binding the saved projection keeps the
                  * deferred draw aligned with the hitbox/stencil pass on the ground. */
-                RenderSystem.setProjectionMatrix(deferred.projection, VertexSorter.BY_Z);
+                RenderSystem.setProjectionMatrix(deferred.projection, ProjectionType.ORTHOGRAPHIC);
             }
 
             stack.push();
@@ -687,15 +687,13 @@ public class Gizmo
 
         if (iris)
         {
-            RenderSystem.setProjectionMatrix(savedProjection, VertexSorter.BY_Z);
+            RenderSystem.setProjectionMatrix(savedProjection, ProjectionType.ORTHOGRAPHIC);
 
             Matrix4fStack mvStack = RenderSystem.getModelViewStack();
 
             mvStack.pushMatrix();
             mvStack.set(savedModelView);
-            RenderSystem.applyModelViewMatrix();
             mvStack.popMatrix();
-            RenderSystem.applyModelViewMatrix();
         }
 
         this.deferredGizmos.clear();
@@ -831,7 +829,7 @@ public class Gizmo
         else if (this.mode == Mode.COMBINED) this.drawCombined(builder, stack, scale, thickness, true, map);
         else this.drawTranslate(builder, stack, scale, thickness, true, map);
 
-        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
+        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
         RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
         RenderSystem.disableDepthTest();
         RenderSystem.depthMask(false);

@@ -98,7 +98,6 @@ public class MatrixStackUtils
 
         mvStack.pushMatrix();
         mvStack.identity();
-        RenderSystem.applyModelViewMatrix();
     }
 
     public static void popModelView()
@@ -106,7 +105,6 @@ public class MatrixStackUtils
         Matrix4fStack mvStack = RenderSystem.getModelViewStack();
 
         mvStack.popMatrix();
-        RenderSystem.applyModelViewMatrix();
     }
 
     public static void applyTransform(MatrixStack stack, Transform transform)

@@ -12,6 +12,8 @@ import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.joml.Vectors;
 
+import com.mojang.blaze3d.systems.RenderSystem;
+
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.gl.ShaderProgramKeys;
@@ -157,8 +159,8 @@ public class ParticleFormRenderer extends FormRenderer<ParticleForm> implements 
             {
                 boolean shadersEnabled = BBSRendering.isIrisShadersEnabled();
 
-                VertexFormat format = billboard ? VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL : VertexFormats.POSITION_TEXTURE_COLOR_LIGHT;
-                Supplier<ShaderProgram> shader = billboard
+                VertexFormat format = true ? VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL : VertexFormats.POSITION_TEXTURE_COLOR_LIGHT;
+                Supplier<ShaderProgram> shader = true
                     ? this.getShader(
                         context,
                         () ->
