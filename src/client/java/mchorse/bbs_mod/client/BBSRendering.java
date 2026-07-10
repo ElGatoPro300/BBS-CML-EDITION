@@ -59,6 +59,7 @@ import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.render.state.GuiRenderState;
 import net.minecraft.client.option.CloudRenderMode;
 import net.minecraft.client.render.VertexConsumer;
+import net.minecraft.client.texture.GlTexture;
 import net.minecraft.client.util.Window;
 import net.minecraft.client.util.math.MatrixStack;
 
@@ -72,6 +73,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
+import org.lwjgl.opengl.GL30;
 
 import java.io.File;
 import java.util.Collections;
@@ -109,6 +111,10 @@ public class BBSRendering
     private static Framebuffer framebuffer;
     private static Framebuffer clientFramebuffer;
     private static Texture texture;
+
+    /** Private read FBO used to snapshot our framebuffer's colour attachment into {@link #texture}. */
+    private static int captureReadFramebuffer = -1;
+
     private static CloudRenderMode cachedCloudRenderMode;
     private static boolean cloudsForced;
 
@@ -481,18 +487,47 @@ public class BBSRendering
 
     public static void onRenderBeforeScreen()
     {
-        int activeTexture = GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE);
-        /* 1.21.11: RenderSystem.getShaderTexture removed */
-        // int lastTexture = RenderSystem.getShaderTexture(0);
-        Texture texture = getTexture();
+        /* Snapshot only when we actually redirected the world into our framebuffer this frame (film panel
+         * open / recording). Outside that, mc.framebuffer was never swapped, so our framebuffer holds nothing
+         * worth copying and the snapshot would just waste a per-frame GPU copy. */
+        if (customSize)
+        {
+            Texture texture = getTexture();
+            int w = framebuffer.textureWidth;
+            int h = framebuffer.textureHeight;
 
-        GlStateManager._activeTexture(GL13.GL_TEXTURE0);
-        GlStateManager._bindTexture(texture.id);
-        texture.setSize(framebuffer.textureWidth, framebuffer.textureHeight);
-        GL11.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0, framebuffer.textureWidth, framebuffer.textureHeight);
-        /* 1.21.11: RenderSystem.getShaderTexture removed */
-        GlStateManager._bindTexture(0);
-        GlStateManager._activeTexture(activeTexture);
+            /* Snapshot the world that just rendered into our reassigned WindowFramebuffer into the BBS texture
+             * that the film preview blits and the VideoRecorder reads back.
+             *
+             * 1.21.11: Framebuffer.beginWrite() was removed, so glCopyTexSubImage2D no longer has our framebuffer
+             * bound as the GL read target (it would copy the desktop/window instead). Bind the colour attachment
+             * to our own read FBO first, then glCopyTexSubImage2D into the (RGB8) snapshot — this also drops the
+             * framebuffer's non-opaque sky alpha so the preview stays opaque. */
+            if (texture.width != w || texture.height != h)
+            {
+                texture.bind();
+                texture.setSize(w, h);
+                texture.unbind();
+            }
+
+            if (captureReadFramebuffer == -1)
+            {
+                captureReadFramebuffer = GL30.glGenFramebuffers();
+            }
+
+            int previousRead = GL11.glGetInteger(GL30.GL_READ_FRAMEBUFFER_BINDING);
+            int sourceId = ((GlTexture) framebuffer.getColorAttachment()).getGlId();
+
+            GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, captureReadFramebuffer);
+            GL30.glFramebufferTexture2D(GL30.GL_READ_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, sourceId, 0);
+            GL30.glReadBuffer(GL30.GL_COLOR_ATTACHMENT0);
+
+            texture.bind();
+            GL11.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0, w, h);
+            texture.unbind();
+
+            GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, previousRead);
+        }
 
         toggleFramebuffer(false);
     }

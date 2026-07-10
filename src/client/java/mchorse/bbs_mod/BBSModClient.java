@@ -673,12 +673,21 @@ public class BBSModClient implements ClientModInitializer
             while (keyRecordReplay.wasPressed()) this.keyRecordReplay();
             while (keyRecordVideo.wasPressed())
             {
-                Window window = mc.getWindow();
-                int width = Math.max(window.getWidth(), 2);
-                int height = Math.max(window.getHeight(), 2);
+                int width = BBSRendering.getVideoWidth();
+                int height = BBSRendering.getVideoHeight();
 
-                if (width % 2 == 1) width -= width % 2;
-                if (height % 2 == 1) height -= height % 2;
+                if (width % 2 == 1)
+                {
+                    width -= 1;
+                }
+
+                if (height % 2 == 1)
+                {
+                    height -= 1;
+                }
+
+                width = Math.max(width, 2);
+                height = Math.max(height, 2);
 
                 videoRecorder.toggleRecording(BBSRendering.getTexture().id, width, height);
                 BBSRendering.setCustomSize(videoRecorder.isRecording(), width, height);
