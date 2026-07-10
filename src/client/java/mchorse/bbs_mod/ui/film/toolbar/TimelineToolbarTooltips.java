@@ -13,7 +13,7 @@ public final class TimelineToolbarTooltips
      * Default {@link mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D#textCard}
      * background/text padding.
      */
-    private static final float TEXT_CARD_OFFSET = 3F;
+    private static final int TEXT_CARD_PADDING = 3;
 
     public static void drawForeground(UIContext context, String text, int mouseX, int mouseY, int color,
         int background)
@@ -37,46 +37,72 @@ public final class TimelineToolbarTooltips
         int margin = TimelineToolbarSettings.MENU_SCREEN_MARGIN;
         int textW = font.getWidth(text);
         int textH = font.getHeight();
-        int padding = (int) TEXT_CARD_OFFSET;
-
-        int x = mouseX + offsetX;
-        int y = mouseY + offsetY;
         int screenW = context.menu.width;
         int screenH = context.menu.height;
 
-        if (x + textW + padding > screenW - margin)
-        {
-            /* Flip horizontally: card ends at the cursor instead of starting there. */
-            x = mouseX - offsetX - textW;
-        }
+        /* Anchor below-right of the cursor hotspot (the pointer tip). */
+        int x = mouseX + offsetX;
+        int y = mouseY + offsetY;
 
-        if (y + textH + padding > screenH - margin)
-        {
-            /* Flip vertically: card ends at the cursor instead of starting there. */
-            y = mouseY - offsetY - textH;
-        }
-
-        if (x - padding < margin)
-        {
-            x = margin + padding;
-        }
-
-        if (x + textW + padding > screenW - margin)
-        {
-            x = screenW - margin - textW - padding;
-        }
-
-        if (y - padding < margin)
-        {
-            y = margin + padding;
-        }
-
-        if (y + textH + padding > screenH - margin)
-        {
-            y = screenH - margin - textH - padding;
-        }
+        x = shiftIntoHorizontalBounds(x, textW, margin, screenW);
+        y = shiftIntoVerticalBounds(y, textH, margin, screenH);
 
         return new int[] {x, y};
+    }
+
+    private static int getCardRight(int x, int textW)
+    {
+        return x + textW + TEXT_CARD_PADDING - 1;
+    }
+
+    private static int getCardBottom(int y, int textH)
+    {
+        return y + textH + TEXT_CARD_PADDING;
+    }
+
+    /**
+     * Slides the card the minimum amount needed to stay on screen while keeping
+     * the default below-right anchor. Avoids mirroring to the opposite side of
+     * the cursor, which doubles the perceived gap (~2x offset).
+     */
+    private static int shiftIntoHorizontalBounds(int x, int textW, int margin, int screenW)
+    {
+        int pad = TEXT_CARD_PADDING;
+        int cardRight = getCardRight(x, textW);
+
+        if (cardRight > screenW - margin)
+        {
+            x -= cardRight - (screenW - margin);
+        }
+
+        int cardLeft = x - pad;
+
+        if (cardLeft < margin)
+        {
+            x += margin - cardLeft;
+        }
+
+        return x;
+    }
+
+    private static int shiftIntoVerticalBounds(int y, int textH, int margin, int screenH)
+    {
+        int pad = TEXT_CARD_PADDING;
+        int cardBottom = getCardBottom(y, textH);
+
+        if (cardBottom > screenH - margin)
+        {
+            y -= cardBottom - (screenH - margin);
+        }
+
+        int cardTop = y - pad;
+
+        if (cardTop < margin)
+        {
+            y += margin - cardTop;
+        }
+
+        return y;
     }
 
     private TimelineToolbarTooltips()
