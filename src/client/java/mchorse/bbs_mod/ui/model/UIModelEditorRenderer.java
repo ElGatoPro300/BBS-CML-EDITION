@@ -25,6 +25,7 @@ import mchorse.bbs_mod.forms.renderers.FormRenderingContext;
 import mchorse.bbs_mod.forms.renderers.ModelFormRenderer;
 import mchorse.bbs_mod.forms.renderers.utils.MatrixCache;
 import mchorse.bbs_mod.forms.renderers.utils.MatrixCacheEntry;
+import mchorse.bbs_mod.graphics.Draw;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
@@ -42,14 +43,11 @@ import mchorse.bbs_mod.utils.colors.Colors;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.GlUniform;
 import net.minecraft.client.gl.ShaderProgram;
-import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.BufferBuilder;
-import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.RotationAxis;
@@ -58,15 +56,20 @@ import org.joml.Matrix4f;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 
-import com.mojang.blaze3d.platform.GlStateManager;
+import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import com.mojang.logging.LogUtils;
+
+import org.lwjgl.opengl.GL11;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 import org.slf4j.Logger;
 
@@ -248,7 +251,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
         this.updateModel();
         
         FormRenderingContext formContext = new FormRenderingContext()
-            .set(FormRenderType.PREVIEW, this.entity, context.batcher.getContext().getMatrices(), LightmapTextureManager.pack(15, 15), OverlayTexture.DEFAULT_UV, context.getTransition())
+            .set(FormRenderType.PREVIEW, this.entity, new MatrixStack(), LightmapTextureManager.pack(15, 15), OverlayTexture.DEFAULT_UV, context.getTransition())
             .camera(this.camera)
             .modelRenderer();
 
@@ -290,14 +293,14 @@ public class UIModelEditorRenderer extends UIModelRenderer
             {
                 this.lastGizmoMatrix.set(gizmoMatrix);
                 this.hasGizmoMatrix = true;
-                MatrixStack stack = context.batcher.getContext().getMatrices();
+                MatrixStack stack = new MatrixStack();
 
                 stack.push();
                 MatrixStackUtils.multiply(stack, gizmoMatrix);
 
-                RenderSystem.disableDepthTest();
+                /* TODO 1.21.11: RenderSystem.disableDepthTest removed */
                 Gizmo.INSTANCE.render(stack);
-                RenderSystem.enableDepthTest();
+                /* TODO 1.21.11: RenderSystem.enableDepthTest removed */
 
                 stack.pop();
             }
@@ -320,14 +323,14 @@ public class UIModelEditorRenderer extends UIModelRenderer
 
             if (gizmoMatrix != null)
             {
-                MatrixStack stack = context.batcher.getContext().getMatrices();
+                MatrixStack stack = new MatrixStack();
 
                 stack.push();
                 MatrixStackUtils.multiply(stack, gizmoMatrix);
 
-                RenderSystem.disableDepthTest();
+                /* TODO 1.21.11: RenderSystem.disableDepthTest removed */
                 Gizmo.INSTANCE.renderStencil(stack, this.stencilMap);
-                RenderSystem.enableDepthTest();
+                /* TODO 1.21.11: RenderSystem.enableDepthTest removed */
 
                 stack.pop();
             }
@@ -335,7 +338,8 @@ public class UIModelEditorRenderer extends UIModelRenderer
             this.stencil.pickGUI(context, this.area);
             this.stencil.unbind(this.stencilMap);
 
-            MinecraftClient.getInstance().getFramebuffer().beginWrite(true);
+            /* TODO 1.21.11: Framebuffer.beginWrite removed */
+            /* MinecraftClient.getInstance().getFramebuffer().beginWrite(); */
 
             GlStateManager._enableScissorTest();
         }
@@ -409,7 +413,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
         }
 
         Matrix4f cubeMatrix = this.getCubePivotMatrix(cache);
-        Matrix4f uiMatrix = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
+        Matrix4f uiMatrix = new Matrix4f();
 
         if (cubeMatrix == null)
         {
@@ -430,8 +434,6 @@ public class UIModelEditorRenderer extends UIModelRenderer
         }
 
         Tessellator tessellator = Tessellator.getInstance();
-        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
-        RenderSystem.enableBlend();
         BufferBuilder builder = tessellator.begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
 
         for (ModelQuad quad : this.selectedCube.quads)
@@ -455,7 +457,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
             }
         }
 
-        BufferRenderer.drawWithGlobalProgram(builder.end());
+        Draw.flush(builder, Draw.getPositionColorLinesLayer());
     }
 
     private Matrix4f getCubePivotMatrix(MatrixCache cache)
@@ -567,7 +569,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
             return;
         }
 
-        Matrix4f uiMatrix = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
+        Matrix4f uiMatrix = new Matrix4f();
 
         /* ---- target crosshair ---- */
         Vector3f targetWorld = new Vector3f(this.activeIKChain.target.get());
@@ -593,9 +595,6 @@ public class UIModelEditorRenderer extends UIModelRenderer
         gizmoMat.rotateY(MathUtils.PI);
 
         BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
-        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
-        RenderSystem.enableBlend();
-        RenderSystem.disableDepthTest();
 
         /* --- magenta crosshair at target --- */
         float cs = 0.12F * 16F;   /* crosshair arm length in render units */
@@ -671,10 +670,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
             }
         }
 
-        BufferRenderer.drawWithGlobalProgram(builder.end());
-
-        RenderSystem.enableDepthTest();
-        RenderSystem.disableBlend();
+        Draw.flush(builder, Draw.getPositionColorNoDepthLayer());
     }
 
 
@@ -705,16 +701,19 @@ public class UIModelEditorRenderer extends UIModelRenderer
         int w = texture.width;
         int h = texture.height;
 
-        ShaderProgram previewProgram = BBSShaders.getPickerPreviewProgram();
-        GlUniform target = previewProgram.getUniform("Target");
-
-        if (target != null)
+        /* TODO 1.21.11: ShaderProgram replaced by RenderPipeline */
+        ShaderProgram previewProgram = (ShaderProgram)(Object) BBSShaders.getPickerPreviewProgram();
+        if (previewProgram != null)
         {
-            target.set(index);
+            GlUniform target = previewProgram.getUniform("Target");
+            if (target != null)
+            {
+                /* TODO 1.21.11: target.set(index) removed */
+            }
         }
 
-        RenderSystem.enableBlend();
-        context.batcher.texturedBox(BBSShaders.getPickerPreviewProgram(), texture.id, Colors.WHITE, this.area.x, this.area.y, this.area.w, this.area.h, 0, h, w, 0, w, h);
+        /* TODO 1.21.11: RenderSystem.enableBlend removed */
+        context.batcher.texturedBox((Supplier<RenderPipeline>)(Object) BBSShaders.getPickerPreviewProgram(), texture.id, Colors.WHITE, this.area.x, this.area.y, this.area.w, this.area.h, 0, h, w, 0, w, h);
 
         Pair<Form, String> pair = this.stencil.getPicked();
 

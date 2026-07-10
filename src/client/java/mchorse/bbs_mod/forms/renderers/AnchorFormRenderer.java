@@ -49,10 +49,10 @@ public class AnchorFormRenderer extends FormRenderer<AnchorForm>
         }
         else
         {
-            MatrixStack stack = context.batcher.getContext().getMatrices();
+            MatrixStack stack = new MatrixStack();
             Matrix4f uiMatrix = ModelFormRenderer.getUIMatrix(context, x1, y1, x2, y2);
 
-            RenderSystem.depthFunc(GL11.GL_LEQUAL);
+            //RenderSystem.depthFunc(GL11.GL_LEQUAL);
             stack.push();
 
             this.applyTransforms(uiMatrix, context.getTransition());
@@ -64,16 +64,16 @@ public class AnchorFormRenderer extends FormRenderer<AnchorForm>
 
             Vector3f light0 = new Vector3f(0.85F, 0.85F, -1F).normalize();
             Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1F).normalize();
-            RenderSystem.setupLevelDiffuseLighting(light0, light1);
+            //RenderSystem.setupLevelDiffuseLighting(light0, light1);
 
             this.renderBodyParts(new FormRenderingContext()
                 .set(FormRenderType.ENTITY, this.entity, stack, LightmapTextureManager.pack(15, 15), OverlayTexture.DEFAULT_UV, context.getTransition())
                 .inUI());
 
-            DiffuseLighting.disableGuiDepthLighting();
+            //DiffuseLighting.disableGuiDepthLighting();
 
             stack.pop();
-            RenderSystem.depthFunc(GL11.GL_ALWAYS);
+            //RenderSystem.depthFunc(GL11.GL_ALWAYS);
         }
     }
 }

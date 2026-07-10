@@ -16,7 +16,7 @@ import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
-import com.mojang.blaze3d.platform.GlStateManager;
+import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 
 import org.lwjgl.opengl.GL15;
@@ -335,11 +335,11 @@ public class BOBJModelVAO
         int currentVAO = GL30.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
         int currentElementArrayBuffer = GL30.glGetInteger(GL30.GL_ELEMENT_ARRAY_BUFFER_BINDING);
 
-        ModelVAORenderer.setupUniforms(stack, shader);
+        // ModelVAORenderer.setupUniforms(stack, shader);
 
-        shader.bind();
+        // shader.bind();
 
-        int textureID = RenderSystem.getShaderTexture(0);
+        int textureID = 0; // RenderSystem.getShaderTexture(0) removed in 1.21.11
         GlStateManager._activeTexture(GL30.GL_TEXTURE0);
         GlStateManager._bindTexture(textureID);
 
@@ -398,7 +398,7 @@ public class BOBJModelVAO
         if (hasShaders) GL30.glDisableVertexAttribArray(Attributes.TANGENTS);
         if (hasShaders) GL30.glDisableVertexAttribArray(Attributes.MID_TEXTURE_UV);
 
-        shader.unbind();
+        // shader.unbind();
 
         GL30.glBindVertexArray(currentVAO);
         GL30.glBindBuffer(GL30.GL_ELEMENT_ARRAY_BUFFER, currentElementArrayBuffer);

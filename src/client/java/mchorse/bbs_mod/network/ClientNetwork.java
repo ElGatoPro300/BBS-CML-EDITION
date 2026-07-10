@@ -313,7 +313,8 @@ public class ClientNetwork
 
         client.execute(() ->
         {
-            client.player.setClientPermissionLevel(cheats ? 4 : 0);
+            /* 1.21.11: setClientPermissionLevel removed */
+            // client.player.setClientPermissionLevel(cheats ? 4 : 0);
         });
     }
 
@@ -446,7 +447,7 @@ public class ClientNetwork
 
         client.execute(() ->
         {
-            client.player.getInventory().selectedSlot = slot;
+            client.player.getInventory().setSelectedSlot(slot);
         });
     }
 

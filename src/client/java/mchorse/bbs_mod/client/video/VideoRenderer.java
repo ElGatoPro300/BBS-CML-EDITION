@@ -10,7 +10,6 @@ import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.utils.clips.Clip;
 
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.*;
 import net.minecraft.client.util.math.MatrixStack;
 
@@ -422,33 +421,33 @@ public class VideoRenderer
                 return;
             }
 
-            RenderSystem.setShader(ShaderProgramKeys.POSITION_TEX);
-            RenderSystem.setShaderTexture(0, texture);
-            RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, opacity);
-            RenderSystem.enableBlend();
-            RenderSystem.defaultBlendFunc();
-            RenderSystem.disableDepthTest();
-            RenderSystem.depthMask(false);
-            RenderSystem.disableCull();
-
-            Tessellator tessellator = Tessellator.getInstance();
-            BufferBuilder buffer = tessellator.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_TEXTURE);
-            Matrix4f matrix = stack.peek().getPositionMatrix();
-
-            /* Desplazar por recorte de izquierda/arriba para mantener el contenido en su lugar. */
-            int drawX = x + Math.round(absW * left) * wSign;
-            int drawY = y + Math.round(absH * top) * hSign;
-
-            buffer.vertex(matrix, drawX, drawY + drawH, 0).texture(u0, v1);
-            buffer.vertex(matrix, drawX + drawW, drawY + drawH, 0).texture(u1, v1);
-            buffer.vertex(matrix, drawX + drawW, drawY, 0).texture(u1, v0);
-            buffer.vertex(matrix, drawX, drawY, 0).texture(u0, v0);
-            BufferRenderer.drawWithGlobalProgram(buffer.end());
-            
-            RenderSystem.enableCull();
-            RenderSystem.depthMask(true);
-            RenderSystem.enableDepthTest();
-            RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+            /* 1.21.11: immediate-mode rendering API removed; replaced by RenderPipeline-based drawing */
+            // RenderSystem.setShader(ShaderProgramKeys.POSITION_TEX);
+            // RenderSystem.setShaderTexture(0, texture);
+            // RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, opacity);
+            // RenderSystem.enableBlend();
+            // RenderSystem.defaultBlendFunc();
+            // RenderSystem.disableDepthTest();
+            // RenderSystem.depthMask(false);
+            // RenderSystem.disableCull();
+            // 
+            // Tessellator tessellator = Tessellator.getInstance();
+            // BufferBuilder buffer = tessellator.begin(DrawMode.QUADS, VertexFormats.POSITION_TEXTURE);
+            // Matrix4f matrix = stack.peek().getPositionMatrix();
+            // 
+            // int drawX = x + Math.round(absW * left) * wSign;
+            // int drawY = y + Math.round(absH * top) * hSign;
+            // 
+            // buffer.vertex(matrix, drawX, drawY + drawH, 0).texture(u0, v1);
+            // buffer.vertex(matrix, drawX + drawW, drawY + drawH, 0).texture(u1, v1);
+            // buffer.vertex(matrix, drawX + drawW, drawY, 0).texture(u1, v0);
+            // buffer.vertex(matrix, drawX, drawY, 0).texture(u0, v0);
+            // BufferRenderer.drawWithGlobalProgram(buffer.end());
+            // 
+            // RenderSystem.enableCull();
+            // RenderSystem.depthMask(true);
+            // RenderSystem.enableDepthTest();
+            // RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
         }
     }
 

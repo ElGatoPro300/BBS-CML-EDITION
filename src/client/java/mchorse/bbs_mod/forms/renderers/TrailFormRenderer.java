@@ -11,13 +11,10 @@ import mchorse.bbs_mod.graphics.Draw;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.ui.framework.UIContext;
 
-import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.*;
 import net.minecraft.client.render.BufferBuilder;
-import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
 
@@ -27,6 +24,7 @@ import org.joml.Vector3f;
 import org.joml.Vector4f;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.VertexFormat;
 
 import java.util.ArrayDeque;
 import java.util.HashMap;
@@ -87,10 +85,10 @@ public class TrailFormRenderer extends FormRenderer<TrailForm> implements ITicka
             Draw.fillBox(builder, stack, -axisOffset, -1F, -axisOffset, axisOffset, 1F, axisOffset, 0, 1, 0);
 
 
-            RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
-            RenderSystem.disableDepthTest();
-            BufferRenderer.drawWithGlobalProgram(builder.end());
-            RenderSystem.enableDepthTest();
+            // RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
+            // RenderSystem.disableDepthTest();
+            // BufferRenderer.drawWithGlobalProgram(builder.end());
+            // RenderSystem.enableDepthTest();
 
             return;
         }
@@ -211,11 +209,11 @@ public class TrailFormRenderer extends FormRenderer<TrailForm> implements ITicka
         }
 
 
-        RenderSystem.setShader(ShaderProgramKeys.POSITION_TEX);
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
-        BufferRenderer.drawWithGlobalProgram(builder.end());
-        RenderSystem.enableDepthTest();
+        // RenderSystem.setShader(ShaderProgramKeys.POSITION_TEX);
+        // RenderSystem.enableBlend();
+        // RenderSystem.defaultBlendFunc();
+        // BufferRenderer.drawWithGlobalProgram(builder.end());
+        // RenderSystem.enableDepthTest();
 
 
         stack.pop();

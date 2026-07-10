@@ -14,9 +14,7 @@ import mchorse.bbs_mod.utils.joml.Vectors;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.ShaderProgram;
-import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.GameRenderer;
-import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.world.World;
@@ -26,6 +24,7 @@ import org.joml.Vector3d;
 import org.joml.Vector3f;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.VertexFormat;
 
 import java.util.function.Supplier;
 
@@ -92,7 +91,7 @@ public class ParticleFormRenderer extends FormRenderer<ParticleForm> implements 
 
         if (emitter != null)
         {
-            MatrixStack stack = context.batcher.getContext().getMatrices();
+            MatrixStack stack = new MatrixStack();
             int scale = (y2 - y1) / 2;
 
             stack.push();
@@ -172,8 +171,8 @@ public class ParticleFormRenderer extends FormRenderer<ParticleForm> implements 
 
             GameRenderer gameRenderer = MinecraftClient.getInstance().gameRenderer;
 
-            gameRenderer.getLightmapTextureManager().enable();
-            gameRenderer.getOverlayTexture().setupOverlayColor();
+            // gameRenderer.getLightmapTextureManager().enable();
+            // gameRenderer.getOverlayTexture().setupOverlayColor();
 
             context.stack.push();
             context.stack.loadIdentity();
@@ -181,7 +180,8 @@ public class ParticleFormRenderer extends FormRenderer<ParticleForm> implements 
             emitter.lastGlobal.set(translation);
             emitter.rotation.set(modelMatrix);
             emitter.modelRenderer = context.modelRenderer;
-            
+
+            /* TODO(1.21.11): RenderSystem.setShader/getShader, ShaderProgram, ShaderProgramKeys removed — needs update
             if (!BBSRendering.isIrisShadowPass())
             {
                 boolean shadersEnabled = BBSRendering.isIrisShadersEnabled();
@@ -210,11 +210,12 @@ public class ParticleFormRenderer extends FormRenderer<ParticleForm> implements 
 
                 emitter.render(format, shader, context.stack, context.overlay, context.getTransition());
             }
+            */
 
             context.stack.pop();
 
-            gameRenderer.getLightmapTextureManager().disable();
-            gameRenderer.getOverlayTexture().teardownOverlayColor();
+            // gameRenderer.getLightmapTextureManager().disable();
+            // gameRenderer.getOverlayTexture().teardownOverlayColor();
         }
     }
 

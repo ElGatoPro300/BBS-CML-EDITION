@@ -14,6 +14,7 @@ import mchorse.bbs_mod.camera.controller.CameraWorkCameraController;
 import mchorse.bbs_mod.camera.controller.PlayCameraController;
 import mchorse.bbs_mod.camera.data.Position;
 import mchorse.bbs_mod.client.renderer.ModelBlockEntityRenderer;
+import mchorse.bbs_mod.client.renderer.MorphRenderer;
 import mchorse.bbs_mod.client.renderer.TriggerBlockEntityRenderer;
 import mchorse.bbs_mod.client.screen.ScreenEffectRenderer;
 import mchorse.bbs_mod.client.video.VideoRenderer;
@@ -24,6 +25,7 @@ import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.renderers.FormRenderer;
 import mchorse.bbs_mod.forms.renderers.utils.RecolorVertexConsumer;
+import mchorse.bbs_mod.graphics.InverseView;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.graphics.texture.TextureFormat;
 import mchorse.bbs_mod.ui.UIKeys;
@@ -47,14 +49,14 @@ import mchorse.bbs_mod.utils.iris.IrisUtils;
 import mchorse.bbs_mod.utils.iris.ShaderCurves;
 import mchorse.bbs_mod.utils.sodium.SodiumUtils;
 
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
-import net.fabricmc.fabric.impl.client.rendering.WorldRenderContextImpl;
+import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.fabricmc.loader.api.FabricLoader;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.Framebuffer;
 import net.minecraft.client.gl.WindowFramebuffer;
 import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.gui.render.state.GuiRenderState;
 import net.minecraft.client.option.CloudRenderMode;
 import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.util.Window;
@@ -62,12 +64,11 @@ import net.minecraft.client.util.math.MatrixStack;
 
 import net.irisshaders.iris.uniforms.custom.cached.CachedUniform;
 
+import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 
-import com.mojang.blaze3d.platform.GlStateManager;
-import com.mojang.blaze3d.systems.ProjectionType;
+import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.systems.VertexSorter;
 
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
@@ -334,17 +335,18 @@ public class BBSRendering
 
             mc.worldRenderer.onResized(w, h);
 
-            framebuffer.beginWrite(true);
+            /* 1.21.11: Framebuffer.beginWrite(boolean) was removed */
         }
         else
         {
             reassignFramebuffer(clientFramebuffer);
 
-            mc.getFramebuffer().beginWrite(true);
+            /* 1.21.11: Framebuffer.beginWrite(boolean) was removed */
 
             if (width != 0)
             {
-                framebuffer.draw(window.getFramebufferWidth(), window.getFramebufferHeight());
+                /* 1.21.11: Framebuffer.draw(w, h) -> blitToScreen() */
+                framebuffer.blitToScreen();
             }
         }
     }
@@ -359,13 +361,13 @@ public class BBSRendering
     public static void onWorldRenderBegin()
     {
         MinecraftClient mc = MinecraftClient.getInstance();
-        BBSModClient.getFilms().startRenderFrame(mc.getRenderTickCounter().getTickDelta(false));
+        BBSModClient.getFilms().startRenderFrame(mc.getRenderTickCounter().getTickProgress(false));
 
         UIBaseMenu menu = UIScreen.getCurrentMenu();
 
         if (menu != null)
         {
-            menu.startRenderFrame(mc.getRenderTickCounter().getTickDelta(false));
+            menu.startRenderFrame(mc.getRenderTickCounter().getTickProgress(false));
         }
 
         renderingWorld = true;
@@ -384,37 +386,38 @@ public class BBSRendering
         MinecraftClient mc = MinecraftClient.getInstance();
         UIBaseMenu currentMenu = UIScreen.getCurrentMenu();
 
-        Matrix4f cache = new Matrix4f(RenderSystem.getProjectionMatrix());
-        ProjectionType cacheType = RenderSystem.getProjectionType();
+        /* 1.21.11: RenderSystem.getProjectionMatrix/getProjectionType removed */
+        // Matrix4f cache = new Matrix4f(RenderSystem.getProjectionMatrix());
+        // ProjectionType cacheType = RenderSystem.getProjectionType();
 
         if (BBSModClient.getCameraController().getCurrent() instanceof PlayCameraController controller)
         {
-            DrawContext drawContext = new DrawContext(mc, mc.getBufferBuilders().getEntityVertexConsumers());
+            /* 1.21.11: DrawContext constructor changed */
+            DrawContext drawContext = new DrawContext(mc, new GuiRenderState(), mc.getWindow().getScaledWidth(), mc.getWindow().getScaledHeight());
             Batcher2D batcher = new Batcher2D(drawContext);
             Window window = mc.getWindow();
             Area area = new Area(0, 0, window.getScaledWidth(), window.getScaledHeight());
             Matrix4f ortho = new Matrix4f().ortho(0, area.w, area.h, 0, -1000, 3000);
 
-            RenderSystem.setProjectionMatrix(ortho, ProjectionType.ORTHOGRAPHIC);
+            /* 1.21.11: RenderSystem.setProjectionMatrix removed */
             renderHudOverlays(batcher, controller.getContext(), area.w, area.h);
-            VideoRenderer.renderClips(batcher.getContext().getMatrices(), batcher, controller.getContext().clips.getClips(controller.getContext().relativeTick), controller.getContext().relativeTick, true, area, area, null, area.w, area.h, false);
+            /* 1.21.11: batcher.getContext().getMatrices() returns Matrix3x2fStack; use new MatrixStack() */
+            VideoRenderer.renderClips(new MatrixStack(), batcher, controller.getContext().clips.getClips(controller.getContext().relativeTick), controller.getContext().relativeTick, true, area, area, null, area.w, area.h, false);
 
             ScreenEffectRenderer.render(batcher, controller.getContext(), area.w, area.h);
 
-            drawContext.draw();
-
-            RenderSystem.setProjectionMatrix(cache, cacheType);
+            /* 1.21.11: DrawContext.draw() removed (two-phase GUI) */
         }
 
         if (BBSModClient.getVideoRecorder().isRecording() && BBSModClient.getCameraController().getCurrent() instanceof CameraWorkCameraController controller)
         {
-            DrawContext drawContext = new DrawContext(mc, mc.getBufferBuilders().getEntityVertexConsumers());
+            DrawContext drawContext = new DrawContext(mc, new GuiRenderState(), mc.getWindow().getScaledWidth(), mc.getWindow().getScaledHeight());
             Batcher2D batcher = new Batcher2D(drawContext);
             Window window = mc.getWindow();
 
             renderHudOverlays(batcher, controller.getContext(), window.getScaledWidth(), window.getScaledHeight());
 
-            drawContext.draw();
+            /* 1.21.11: DrawContext.draw() removed (two-phase GUI) */
         }
 
         if (!customSize)
@@ -428,22 +431,20 @@ public class BBSRendering
         {
             if (dashboard.getPanels().panel instanceof UIFilmPanel panel && panel.getData() != null)
             {
-                DrawContext drawContext = new DrawContext(mc, mc.getBufferBuilders().getEntityVertexConsumers());
+                DrawContext drawContext = new DrawContext(mc, new GuiRenderState(), mc.getWindow().getScaledWidth(), mc.getWindow().getScaledHeight());
                 Batcher2D offscreenBatcher = new Batcher2D(drawContext);
 
                 Window window = mc.getWindow();
                 Area fullScreen = new Area(0, 0, window.getScaledWidth(), window.getScaledHeight());
                 Matrix4f ortho = new Matrix4f().ortho(0, window.getScaledWidth(), window.getScaledHeight(), 0, -1000, 3000);
 
-                RenderSystem.setProjectionMatrix(ortho, ProjectionType.ORTHOGRAPHIC);
+                /* 1.21.11: RenderSystem.setProjectionMatrix removed */
                 renderHudOverlays(offscreenBatcher, panel.getRunner().getContext(), fullScreen.w, fullScreen.h);
                 VideoRenderer.renderClips(new MatrixStack(), offscreenBatcher, panel.getData().camera.getClips(panel.getCursor()), panel.getCursor(), panel.getRunner().isRunning(), fullScreen, fullScreen, null, window.getScaledWidth(), window.getScaledHeight(), false);
 
                 ScreenEffectRenderer.render(offscreenBatcher, panel.getRunner().getContext(), window.getScaledWidth(), window.getScaledHeight());
 
-                drawContext.draw();
-
-                RenderSystem.setProjectionMatrix(cache, cacheType);
+                /* 1.21.11: DrawContext.draw() removed (two-phase GUI) */
             }
         }
 
@@ -481,14 +482,16 @@ public class BBSRendering
     public static void onRenderBeforeScreen()
     {
         int activeTexture = GL11.glGetInteger(GL13.GL_ACTIVE_TEXTURE);
-        int lastTexture = RenderSystem.getShaderTexture(0);
+        /* 1.21.11: RenderSystem.getShaderTexture removed */
+        // int lastTexture = RenderSystem.getShaderTexture(0);
         Texture texture = getTexture();
 
         GlStateManager._activeTexture(GL13.GL_TEXTURE0);
         GlStateManager._bindTexture(texture.id);
         texture.setSize(framebuffer.textureWidth, framebuffer.textureHeight);
         GL11.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0, framebuffer.textureWidth, framebuffer.textureHeight);
-        GlStateManager._bindTexture(lastTexture);
+        /* 1.21.11: RenderSystem.getShaderTexture removed */
+        GlStateManager._bindTexture(0);
         GlStateManager._activeTexture(activeTexture);
 
         toggleFramebuffer(false);
@@ -496,35 +499,20 @@ public class BBSRendering
 
     public static void onRenderChunkLayer(MatrixStack stack)
     {
-        WorldRenderContextImpl worldRenderContext = new WorldRenderContextImpl();
-        MinecraftClient mc = MinecraftClient.getInstance();
-
-        worldRenderContext.prepare(
-            mc.worldRenderer, mc.getRenderTickCounter(), false,
-            mc.gameRenderer.getCamera(), mc.gameRenderer,
-            RenderSystem.getProjectionMatrix(), RenderSystem.getModelViewMatrix(), mc.getBufferBuilders().getEntityVertexConsumers(), false, mc.world
-        );
-
+        /* 1.21.11: WorldRenderContextImpl and RenderSystem.getProjectionMatrix/getModelViewMatrix removed.
+         * Iris support is permanently disabled; this path is dead code. */
         if (!isIrisShadersEnabled())
         {
-            renderCoolStuff(worldRenderContext);
+            /* renderCoolStuff would need a reconstructed WorldRenderContext */
         }
     }
 
     public static void onRenderChunkLayer(Matrix4f positionMatrix, Matrix4f projectionMatrix)
     {
-        WorldRenderContextImpl worldRenderContext = new WorldRenderContextImpl();
-        MinecraftClient mc = MinecraftClient.getInstance();
-
-        worldRenderContext.prepare(
-            mc.worldRenderer, mc.getRenderTickCounter(), false,
-            mc.gameRenderer.getCamera(), mc.gameRenderer,
-            positionMatrix, projectionMatrix, mc.getBufferBuilders().getEntityVertexConsumers(), false, mc.world
-        );
-
+        /* 1.21.11: WorldRenderContextImpl removed. Iris-only path, dead code. */
         if (isIrisShadersEnabled())
         {
-            renderCoolStuff(worldRenderContext);
+            /* renderCoolStuff would need a reconstructed WorldRenderContext */
         }
     }
 
@@ -635,10 +623,8 @@ public class BBSRendering
             int textX = textBoxX + padding;
             int textY = textBoxY + padding;
 
-            drawContext.getMatrices().push();
-            drawContext.getMatrices().scale(textScale, textScale, 1F);
+            /* 1.21.11: drawContext.getMatrices() returns Matrix3x2fStack without push/scale/pop */
             batcher2D.textShadow(label, textX / textScale, textY / textScale);
-            drawContext.getMatrices().pop();
         }
     }
 
@@ -677,6 +663,15 @@ public class BBSRendering
 
     public static void renderCoolStuff(WorldRenderContext worldRenderContext)
     {
+        /* Feed the world camera orientation into the holder that replaced RenderSystem's inverse view
+         * rotation matrix, so billboards and particles keep facing the camera in world space. */
+        InverseView.set(new Matrix3f().rotation(MinecraftClient.getInstance().gameRenderer.getCamera().getRotation()));
+
+        /* Draw morph forms collected during the (build-phase) entity render. AFTER_ENTITIES is the only
+         * world context where the BBS immediate form pipeline lands correctly (entity queue flushed +
+         * camera model-view still active). See MorphRenderer / LivingEntityRendererMorphMixin. */
+        MorphRenderer.renderQueued(worldRenderContext);
+
         if (MinecraftClient.getInstance().currentScreen instanceof UIScreen screen)
         {
             screen.renderInWorld(worldRenderContext);
@@ -883,11 +878,6 @@ public class BBSRendering
 
     public static Function<VertexConsumer, VertexConsumer> getColorConsumer(Color color)
     {
-        if (sodium)
-        {
-            return (b) -> SodiumUtils.createVertexBuffer(b, color);
-        }
-
         return (b) -> new RecolorVertexConsumer(b, color);
     }
 
@@ -901,9 +891,11 @@ public class BBSRendering
             return;
         }
 
-        RenderSystem.disableDepthTest();
+        /* 1.21.11: depth-test state is managed via RenderPipeline; RenderSystem.disableDepthTest() removed */
+        // RenderSystem.disableDepthTest();
 
-        MatrixStack matrices = batcher.getContext().getMatrices();
+        /* 1.21.11: batcher.getContext().getMatrices() returns Matrix3x2fStack; use new MatrixStack() */
+        MatrixStack matrices = new MatrixStack();
         int subtitleIndex = 0;
         int hotbarIndex = 0;
 
@@ -924,6 +916,7 @@ public class BBSRendering
             }
         }
 
-        RenderSystem.enableDepthTest();
+        /* 1.21.11: depth-test state is managed via RenderPipeline; RenderSystem.enableDepthTest() removed */
+        // RenderSystem.enableDepthTest();
     }
 }

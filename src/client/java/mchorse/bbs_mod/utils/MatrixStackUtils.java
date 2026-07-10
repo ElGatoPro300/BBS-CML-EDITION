@@ -1,27 +1,24 @@
 package mchorse.bbs_mod.utils;
 
+import mchorse.bbs_mod.graphics.InverseView;
 import mchorse.bbs_mod.utils.joml.Vectors;
 import mchorse.bbs_mod.utils.pose.Transform;
 
-import net.minecraft.client.gl.GlUniform;
-import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.RotationAxis;
 
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fStack;
+import org.joml.Vector3f;
 
-import com.mojang.blaze3d.systems.ProjectionType;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.systems.VertexSorter;
 
 public class MatrixStackUtils
 {
     private static Matrix3f normal = new Matrix3f();
+    private static Matrix3f billboardView = new Matrix3f();
 
-    private static Matrix4f oldProjection = new Matrix4f();
-    private static Matrix4f oldMV = new Matrix4f();
     private static Matrix3f oldInverse = new Matrix3f();
 
     public static void scaleStack(MatrixStack stack, float x, float y, float z)
@@ -30,41 +27,52 @@ public class MatrixStackUtils
         stack.peek().getNormalMatrix().scale(x < 0F ? -1F : 1F, y < 0F ? -1F : 1F, z < 0F ? -1F : 1F);
     }
 
+    /**
+     * Orient the matrix stack's top so that geometry drawn on the local XY plane always faces the
+     * camera (billboarding). The form's own scale and translation are preserved; its rotation is
+     * intentionally discarded — that's the point of a billboard.
+     */
+    public static void billboard(MatrixStack stack)
+    {
+        Matrix4f position = stack.peek().getPositionMatrix();
+        Vector3f scale = Vectors.TEMP_3F;
+
+        position.getScale(scale);
+
+        RenderSystem.getModelViewMatrix().get3x3(billboardView);
+        billboardView.invert();
+
+        position.m00(billboardView.m00()).m01(billboardView.m01()).m02(billboardView.m02());
+        position.m10(billboardView.m10()).m11(billboardView.m11()).m12(billboardView.m12());
+        position.m20(billboardView.m20()).m21(billboardView.m21()).m22(billboardView.m22());
+
+        position.scale(scale);
+
+        stack.peek().getNormalMatrix().identity();
+    }
+
     public static void cacheMatrices()
     {
         /* Cache the global stuff */
-        oldProjection.set(RenderSystem.getProjectionMatrix());
-        oldMV.set(RenderSystem.getModelViewMatrix());
-        oldInverse.set(new Matrix3f(RenderSystem.getModelViewMatrix()));
+        oldInverse.set(InverseView.get());
 
-        Matrix4fStack mvStack = RenderSystem.getModelViewStack();
-        mvStack.identity();
-        applyModelViewMatrix();
+        RenderSystem.backupProjectionMatrix();
+
+        Matrix4fStack renderStack = RenderSystem.getModelViewStack();
+
+        renderStack.pushMatrix();
+        renderStack.identity();
     }
 
     public static void restoreMatrices()
     {
         /* Return back to orthographic projection */
-        RenderSystem.setProjectionMatrix(oldProjection, ProjectionType.ORTHOGRAPHIC);
+        RenderSystem.restoreProjectionMatrix();
+        InverseView.set(oldInverse);
 
-        Matrix4fStack mvStack = RenderSystem.getModelViewStack();
-        mvStack.set(oldMV);
-        applyModelViewMatrix();
-    }
+        Matrix4fStack renderStack = RenderSystem.getModelViewStack();
 
-    public static void applyModelViewMatrix()
-    {
-        ShaderProgram program = RenderSystem.getShader();
-
-        if (program != null)
-        {
-            GlUniform uniform = program.getUniform("ModelViewMat");
-
-            if (uniform != null)
-            {
-                uniform.set(RenderSystem.getModelViewStack());
-            }
-        }
+        renderStack.popMatrix();
     }
 
     public static void applyTransform(MatrixStack stack, Transform transform)

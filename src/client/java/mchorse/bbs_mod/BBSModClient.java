@@ -84,7 +84,6 @@ import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.keys.KeyCombo;
 import mchorse.bbs_mod.ui.utils.keys.KeybindSettings;
 import mchorse.bbs_mod.utils.MathUtils;
-import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.RecentAssetsTracker;
 import mchorse.bbs_mod.utils.ScreenshotRecorder;
 import mchorse.bbs_mod.utils.VideoRecorder;
@@ -101,7 +100,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.rendering.v1.BlockEntityRendererRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.EntityRendererRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderEvents;
+import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents;
 import net.fabricmc.fabric.api.event.player.AttackBlockCallback;
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
 import net.fabricmc.fabric.api.resource.SimpleSynchronousResourceReloadListener;
@@ -112,14 +111,10 @@ import net.fabricmc.loader.api.metadata.ModMetadata;
 import net.fabricmc.loader.api.metadata.Person;
 
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.option.KeyBinding;
 import net.minecraft.client.render.BufferBuilder;
-import net.minecraft.client.render.BufferRenderer;
-import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.render.block.entity.BlockEntityRendererFactories;
 import net.minecraft.client.render.item.model.special.SpecialModelTypes;
@@ -136,10 +131,7 @@ import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
 import net.minecraft.util.Identifier;
 
-import org.joml.Matrix4f;
-import org.joml.Matrix4fStack;
-
-import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.VertexFormat;
 import com.mojang.serialization.MapCodec;
 
 import org.lwjgl.glfw.GLFW;
@@ -187,6 +179,8 @@ public class BBSModClient implements ClientModInitializer
     private static KeyBinding keyTeleport;
     private static KeyBinding keyZoom;
     private static KeyBinding keyToggleReplayHud;
+
+    private static final KeyBinding.Category KEY_CATEGORY = KeyBinding.Category.create(Identifier.of(BBSMod.MOD_ID, "main"));
 
     private static UIDashboard dashboard;
 
@@ -579,7 +573,7 @@ public class BBSModClient implements ClientModInitializer
 
                 if (d > 0)
                 {
-                    MatrixStack stack = context.matrixStack();
+                    MatrixStack stack = context.matrices();
                     Color color = Colors.COLOR.set(BBSRendering.getChromaSkyColor());
 
                     stack.push();
@@ -590,7 +584,6 @@ public class BBSModClient implements ClientModInitializer
                     peek.getNormalMatrix().identity();
                     stack.translate(0F, 0F, -d);
 
-                    RenderSystem.enableDepthTest();
                     BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
 
                     float fov = MinecraftClient.getInstance().options.getFov().getValue();
@@ -604,26 +597,14 @@ public class BBSModClient implements ClientModInitializer
                         color.r, color.g, color.b, 1F
                     );
 
-                    RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
-
-                    Matrix4fStack mvStack = RenderSystem.getModelViewStack();
-                    mvStack.pushMatrix();
-                    mvStack.identity();
-                    MatrixStackUtils.applyModelViewMatrix();
-
-                    BufferRenderer.drawWithGlobalProgram(builder.end());
-
-                    mvStack.popMatrix();
-                    MatrixStackUtils.applyModelViewMatrix();
-
-                    RenderSystem.disableDepthTest();
+                    Draw.flush(builder, Draw.getPositionColorLayer());
 
                     stack.pop();
                 }
             }
         });
 
-        WorldRenderEvents.LAST.register((context) ->
+        WorldRenderEvents.END_MAIN.register((context) ->
         {
             if (videoRecorder.isRecording() && BBSRendering.canRender)
             {
@@ -736,13 +717,13 @@ public class BBSModClient implements ClientModInitializer
             }
         });
 
-        HudRenderCallback.EVENT.register((drawContext, tickCounter) ->
+        HudRenderCallback.EVENT.register((drawContext, tickDelta) ->
         {
-            BBSRendering.renderHud(drawContext, tickCounter.getTickDelta(false));
+            BBSRendering.renderHud(drawContext, tickDelta.getTickProgress(false));
 
             if (gunZoom != null)
             {
-                gunZoom.update(keyZoom.isPressed(), tickCounter.getLastFrameDuration());
+                gunZoom.update(keyZoom.isPressed(), MinecraftClient.getInstance().getRenderTickCounter().getDynamicDeltaTicks());
 
                 if (gunZoom.canBeRemoved())
                 {
@@ -851,7 +832,7 @@ public class BBSModClient implements ClientModInitializer
             "key." + BBSMod.MOD_ID + "." + id,
             InputUtil.Type.KEYSYM,
             key,
-            "category." + BBSMod.MOD_ID + ".main"
+            KEY_CATEGORY
         ));
     }
 
@@ -861,7 +842,7 @@ public class BBSModClient implements ClientModInitializer
             "key." + BBSMod.MOD_ID + "." + id,
             InputUtil.Type.MOUSE,
             button,
-            "category." + BBSMod.MOD_ID + ".main"
+            KEY_CATEGORY
         ));
     }
 
