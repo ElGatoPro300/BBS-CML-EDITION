@@ -126,6 +126,24 @@ public class TimelineToolbar extends UIElement
             this.dockOverlay = new UIRenderable(this::renderDockDragOverlay);
             host.add(this.dockOverlay);
         }
+
+        this.ensureDockOverlayOnTop();
+    }
+
+    /**
+     * Keeps the drag preview overlay above timeline content. Required because
+     * hosts such as {@link mchorse.bbs_mod.ui.film.replays.UIReplaysEditor}
+     * add their keyframe editor after the overlay is first registered.
+     */
+    public void ensureDockOverlayOnTop()
+    {
+        if (this.dockOverlay == null || this.hostPanel == null)
+        {
+            return;
+        }
+
+        this.hostPanel.remove(this.dockOverlay);
+        this.hostPanel.add(this.dockOverlay);
     }
 
     public boolean isDockDragging()
@@ -438,6 +456,7 @@ public class TimelineToolbar extends UIElement
     private void startDockDrag(UIContext context)
     {
         this.closeOpenMenu();
+        this.ensureDockOverlayOnTop();
         this.dockDragging = true;
         this.dragMouseX = context.mouseX;
         this.dragMouseY = context.mouseY;

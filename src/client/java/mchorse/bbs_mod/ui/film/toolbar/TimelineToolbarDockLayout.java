@@ -71,6 +71,7 @@ public final class TimelineToolbarDockLayout
             }
         }
 
+        toolbar.ensureDockOverlayOnTop();
         host.resize();
     }
 
