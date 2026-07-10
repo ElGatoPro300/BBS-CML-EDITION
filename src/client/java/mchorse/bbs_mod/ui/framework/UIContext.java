@@ -55,9 +55,7 @@ public class UIContext implements IViewportStack
      * Optional interaction hint card deferred to {@link #postRender()} (same
      * styling as timeline interaction hints, including primary glow and border).
      */
-    private String foregroundInteractionHint;
-    private int foregroundInteractionHintX;
-    private int foregroundInteractionHintY;
+    private TimelineInteractionHints.HintCard foregroundInteractionHint;
 
     /**
      * Screen-space rectangles of open {@link mchorse.bbs_mod.ui.film.toolbar.ToolbarMenu}
@@ -202,16 +200,14 @@ public class UIContext implements IViewportStack
      * Queue an interaction hint card to be drawn during {@link #postRender()},
      * after the main UI tree. Coordinates must be in screen/menu space.
      */
-    public void drawForegroundInteractionHint(String text, int cardX, int cardY)
+    public void drawForegroundInteractionHint(TimelineInteractionHints.HintCard hint)
     {
-        if (text == null || text.isEmpty())
+        if (hint == null || hint.lines.isEmpty())
         {
             return;
         }
 
-        this.foregroundInteractionHint = text;
-        this.foregroundInteractionHintX = cardX;
-        this.foregroundInteractionHintY = cardY;
+        this.foregroundInteractionHint = hint;
     }
 
     public void registerTimelineToolbarMenuArea(Area area)
@@ -392,8 +388,7 @@ public class UIContext implements IViewportStack
             return;
         }
 
-        TimelineInteractionHints.drawHintCard(this.batcher, this.foregroundInteractionHintX,
-            this.foregroundInteractionHintY, this.foregroundInteractionHint);
+        TimelineInteractionHints.drawHintCard(this.batcher, this.foregroundInteractionHint);
         this.foregroundInteractionHint = null;
     }
 

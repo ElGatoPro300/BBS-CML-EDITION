@@ -262,6 +262,22 @@ public class TimelineToolbarSettings
      */
     public static final int INTERACTION_HINT_PADDING_Y = 4;
 
+    /**
+     * Pixels trimmed from the bottom of the hint card so text sits visually
+     * centered (Minecraft font metrics leave extra space below glyphs).
+     */
+    public static final int INTERACTION_HINT_BOTTOM_TRIM = 1;
+
+    /**
+     * Downward offset applied to hint text within the card.
+     */
+    public static final int INTERACTION_HINT_TEXT_Y_OFFSET = 0;
+
+    /**
+     * When {@code false}, hint cards omit the white outline (temporary toggle).
+     */
+    public static boolean INTERACTION_HINT_DRAW_BORDER = false;
+
     public static final int INTERACTION_HINT_BACKGROUND = Colors.A75 | 0x1a1a1e;
 
     public static final int INTERACTION_HINT_BORDER = Colors.A50 | Colors.WHITE;
