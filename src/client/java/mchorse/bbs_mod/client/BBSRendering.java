@@ -30,6 +30,7 @@ import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.graphics.texture.TextureFormat;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.UIDashboard;
+import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.film.UIHotbarRenderer;
 import mchorse.bbs_mod.ui.film.UISubtitleRenderer;
@@ -38,8 +39,10 @@ import mchorse.bbs_mod.ui.framework.UIRenderingContext;
 import mchorse.bbs_mod.ui.framework.UIScreen;
 import mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D;
 import mchorse.bbs_mod.ui.utils.Area;
+import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.MathUtils;
+import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.VideoRecorder;
 import mchorse.bbs_mod.utils.clips.Clip;
 import mchorse.bbs_mod.utils.clips.ClipContext;
@@ -208,8 +211,24 @@ public class BBSRendering
 
         if (!customSize)
         {
+            ensureMainFramebuffer();
             resizeExtraFramebuffers();
         }
+    }
+
+    /**
+     * Model/trigger block panels render directly to the main framebuffer. If a film
+     * session left {@link #toggleFramebuffer} enabled, the world keeps drawing offscreen
+     * and only the cleared sky color is visible behind the UI.
+     */
+    public static void ensureMainFramebuffer()
+    {
+        if (!toggleFramebuffer)
+        {
+            return;
+        }
+
+        toggleFramebuffer(false);
     }
 
     public static Texture getTexture()
@@ -345,7 +364,7 @@ public class BBSRendering
         }
         else
         {
-            reassignFramebuffer(clientFramebuffer);
+            Framebuffer target = clientFramebuffer != null ? clientFramebuffer : mc.getFramebuffer();
 
             /* 1.21.11: Framebuffer.beginWrite(boolean) was removed */
 
@@ -376,11 +395,18 @@ public class BBSRendering
             menu.startRenderFrame(mc.getRenderTickCounter().getTickProgress(false));
         }
 
+        RenderSystem.depthFunc(GL11.GL_LEQUAL);
+        RenderSystem.enableDepthTest();
+        RenderSystem.depthMask(true);
+        GL11.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
+
         renderingWorld = true;
         updateCloudRenderMode(mc);
 
         if (!customSize)
         {
+            ensureMainFramebuffer();
+
             return;
         }
 
@@ -844,6 +870,34 @@ public class BBSRendering
         return null;
     }
 
+    public static boolean isImmersiveWorldPanel()
+    {
+        UIBaseMenu menu = UIScreen.getCurrentMenu();
+
+        if (!(menu instanceof UIDashboard dashboard))
+        {
+            return false;
+        }
+
+        UIDashboardPanel panel = dashboard.getPanels().panel;
+
+        return panel != null && !panel.needsBackground();
+    }
+
+    /**
+     * Chroma sky can hide terrain for film export, but model/trigger block editors must
+     * always show the live world behind their UI cards.
+     */
+    public static boolean shouldHideChromaTerrain()
+    {
+        if (!isChromaSkyEnabled() || isChromaSkyTerrain())
+        {
+            return false;
+        }
+
+        return !isImmersiveWorldPanel();
+    }
+
     public static boolean isChromaSkyEnabled()
     {
         ChromaSkyCurveSettings settings = getChromaSkySettings();
@@ -914,6 +968,22 @@ public class BBSRendering
     public static Function<VertexConsumer, VertexConsumer> getColorConsumer(Color color)
     {
         return (b) -> new RecolorVertexConsumer(b, color);
+    }
+
+    public static Function<VertexConsumer, VertexConsumer> getColorConsumer(Color color, Color paintColor)
+    {
+        if (paintColor == null || paintColor.a <= 0F)
+        {
+            return getColorConsumer(color);
+        }
+
+        if (sodium)
+        {
+            /* The Sodium consumer path only multiplies the vertex color; paint blending is applied on the vanilla consumer */
+            return (b) -> SodiumUtils.createVertexBuffer(b, color);
+        }
+
+        return (b) -> new RecolorVertexConsumer(b, color, paintColor);
     }
 
     private static void renderHudOverlays(Batcher2D batcher, ClipContext context, int width, int height)

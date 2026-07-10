@@ -5,6 +5,7 @@ import mchorse.bbs_mod.graphics.Draw;
 import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.utils.Axis;
+import mchorse.bbs_mod.utils.MatrixStackUtils;
 
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.GameRenderer;
@@ -22,11 +23,27 @@ import com.mojang.blaze3d.vertex.VertexFormat;
 
 import org.lwjgl.opengl.GL11;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class Gizmo
 {
+    private static final class DeferredGizmo
+    {
+        private final Matrix4f matrix;
+        private final boolean stencil;
+        private final StencilMap stencilMap;
+
+        private DeferredGizmo(Matrix4f matrix, boolean stencil, StencilMap stencilMap)
+        {
+            this.matrix = matrix;
+            this.stencil = stencil;
+            this.stencilMap = stencilMap;
+        }
+    }
+
     public interface IGizmoHandler
     {
         public void start(Gizmo gizmo, int index, int mouseX, int mouseY, UIPropTransform transform);
@@ -51,6 +68,7 @@ public class Gizmo
 
     private UIPropTransform currentTransform;
     private Map<Integer, IGizmoHandler> handlers = new HashMap<>();
+    private final List<DeferredGizmo> deferredGizmos = new ArrayList<>();
 
     private float lastSx = 1F;
     private float lastSy = 1F;
@@ -164,6 +182,43 @@ public class Gizmo
         }
 
         this.currentTransform = null;
+    }
+
+    public void deferRender(Matrix4f matrix, boolean stencil, StencilMap stencilMap)
+    {
+        this.deferredGizmos.add(new DeferredGizmo(new Matrix4f(matrix), stencil, stencilMap));
+    }
+
+    public boolean hasDeferred()
+    {
+        return !this.deferredGizmos.isEmpty();
+    }
+
+    public void clearDeferred()
+    {
+        this.deferredGizmos.clear();
+    }
+
+    public void renderDeferred(MatrixStack stack)
+    {
+        for (DeferredGizmo deferred : this.deferredGizmos)
+        {
+            stack.push();
+            MatrixStackUtils.multiply(stack, deferred.matrix);
+
+            if (deferred.stencil && deferred.stencilMap != null)
+            {
+                this.renderStencil(stack, deferred.stencilMap);
+            }
+            else
+            {
+                this.render(stack);
+            }
+
+            stack.pop();
+        }
+
+        this.deferredGizmos.clear();
     }
 
     public void render(MatrixStack stack)

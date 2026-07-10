@@ -309,6 +309,6 @@ public class TriggerBlockEntity extends BlockEntity
     @Override
     public NbtCompound toInitialChunkDataNbt(RegistryWrapper.WrapperLookup registryLookup)
     {
-        return this.createNbt(registryLookup);
+        return this.createNbtWithId(registryLookup);
     }
 }

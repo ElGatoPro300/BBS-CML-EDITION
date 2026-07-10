@@ -17,6 +17,7 @@ import net.minecraft.item.ItemDisplayContext;
 public class UIItemFormPanel extends UIFormPanel<ItemForm>
 {
     public UIColor color;
+    public UIColor paintColor;
     public UIButton modelTransform;
     public UIToggle sameAnimationWhenDropped;
     public UIItemStack itemStackEditor;
@@ -26,6 +27,8 @@ public class UIItemFormPanel extends UIFormPanel<ItemForm>
         super(editor);
 
         this.color = new UIColor((c) -> this.form.color.set(Color.rgba(c))).withAlpha();
+        this.paintColor = new UIColor((c) -> this.form.paintColor.set(Color.rgba(c))).withAlpha();
+        this.paintColor.tooltip(UIKeys.FORMS_EDITORS_PAINT_COLOR);
         this.modelTransform = new UIButton(IKey.EMPTY, (b) ->
         {
             this.getContext().replaceContextMenu((menu) ->
@@ -48,7 +51,7 @@ public class UIItemFormPanel extends UIFormPanel<ItemForm>
         this.sameAnimationWhenDropped.tooltip(UIKeys.FORMS_EDITORS_ITEM_SAME_ANIMATION_WHEN_DROPPED_TOOLTIP);
         this.itemStackEditor = new UIItemStack((itemStack) -> this.form.stack.set(itemStack.copy()));
 
-        this.options.add(this.color, UI.label(UIKeys.FORMS_EDITORS_ITEM_TRANSFORMS), this.modelTransform, this.sameAnimationWhenDropped, this.itemStackEditor);
+        this.options.add(this.color, this.paintColor, UI.label(UIKeys.FORMS_EDITORS_ITEM_TRANSFORMS), this.modelTransform, this.sameAnimationWhenDropped, this.itemStackEditor);
     }
 
     private void setModelTransform(ItemDisplayContext value)
@@ -64,6 +67,7 @@ public class UIItemFormPanel extends UIFormPanel<ItemForm>
         super.startEdit(form);
 
         this.color.setColor(form.color.get().getARGBColor());
+        this.paintColor.setColor(form.paintColor.get().getARGBColor());
         this.modelTransform.label = IKey.constant(form.modelTransform.get().asString());
         this.sameAnimationWhenDropped.setValue(form.sameAnimationWhenDropped.get());
         this.itemStackEditor.setStack(form.stack.get());

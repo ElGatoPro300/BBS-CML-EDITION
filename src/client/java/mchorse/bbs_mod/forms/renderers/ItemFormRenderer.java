@@ -58,7 +58,8 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
 
         MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.ENTITY_IN_UI);
 
-        Color set = this.form.color.get();
+        Color set = Color.white();
+        set.mul(this.form.color.get());
 
         consumers.setSubstitute(BBSRendering.getColorConsumer(set));
         consumers.setUI(true);
@@ -94,10 +95,8 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
             light = 0;
         }
 
-        Color set = this.form.color.get();
-
         BlockFormRenderer.color.set(context.color);
-        BlockFormRenderer.color.mul(set);
+        BlockFormRenderer.color.mul(this.form.color.get());
 
         consumers.setSubstitute(BBSRendering.getColorConsumer(BlockFormRenderer.color));
 
@@ -108,6 +107,7 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
         consumers.setSubstitute(null);
 
         CustomVertexConsumerProvider.clearRunnables();
+        RenderSystem.defaultBlendFunc();
 
         context.stack.pop();
     }

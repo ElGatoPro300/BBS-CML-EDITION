@@ -60,6 +60,7 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
             context.getTransition(),
             null,
             true,
+            false,
             false
         );
         GlStateManager._depthFunc(GL11.GL_ALWAYS);
@@ -123,6 +124,8 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
 
             Color color = Colors.COLOR.set(overlayColor, true);
             Color formColor = this.form.color.get();
+
+            color.mul(formColor);
 
             BBSModClient.getTextures().bindTexture(texture);
 

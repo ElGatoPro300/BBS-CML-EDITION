@@ -19,6 +19,9 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.opengl.GL11;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Base class for GUI screens using this framework
  */
@@ -251,6 +254,7 @@ public abstract class UIBaseMenu
             this.context.pushViewport(this.viewport);
 
             this.root.render(this.context);
+            this.context.batcher.flushDraw();
 
             this.context.popViewport();
             this.context.postRender();
@@ -301,6 +305,25 @@ public abstract class UIBaseMenu
         public void unapply(IViewportStack stack)
         {
             stack.popViewport();
+        }
+        @Override
+        public void render(UIContext context)
+        {
+            List<IUIElement> snapshot = new ArrayList<>(this.getChildren());
+
+            for (IUIElement element : snapshot)
+            {
+                if (element.isVisible() && element.canBeRendered(context.getViewport()))
+                {
+                    element.render(context);
+
+                    /* Commit DrawContext text before the overlay layer so modal panels cover background labels */
+                    if (element == this.context.menu.main)
+                    {
+                        context.batcher.flushDraw();
+                    }
+                }
+            }
         }
     }
 }

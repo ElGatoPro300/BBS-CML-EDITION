@@ -87,11 +87,31 @@ public abstract class UIModelRenderer extends UIElement
     private final Vector3f lightDirA = new Vector3f();
     private final Vector3f lightDirB = new Vector3f();
 
+    protected boolean stencilViewport;
+    protected int stencilViewportW;
+    protected int stencilViewportH;
+
     public UIModelRenderer()
     {
         super();
 
         this.reset();
+    }
+
+    /**
+     * When rendering the stencil pick pass into an FBO, the GL viewport must be {@code 0,0,fboW,fboH}
+     * instead of window-relative coordinates so pick pixels align with the on-screen gizmo.
+     */
+    protected void beginStencilViewport(int fboW, int fboH)
+    {
+        this.stencilViewport = true;
+        this.stencilViewportW = fboW;
+        this.stencilViewportH = fboH;
+    }
+
+    protected void endStencilViewport()
+    {
+        this.stencilViewport = false;
     }
 
     public void setTransform(Matrix4f transform)
@@ -372,7 +392,7 @@ public abstract class UIModelRenderer extends UIElement
     {
         Vector3d vector = new Vector3d();
         Vector3d origin = new Vector3d(this.cachedCamera.position).sub(this.cachedPos);
-        Vector3d destination = new Vector3d(this.cachedCamera.getMouseDirection(context.mouseX, context.mouseY, this.area.x, this.area.y, this.area.w, this.area.h)).mul(this.distance.getValue() * 2).add(origin);
+        Vector3d destination = new Vector3d(this.cachedCamera.getMouseDirection(context.mouseX, context.mouseY, context.globalX(this.area.x), context.globalY(this.area.y), this.area.w, this.area.h)).mul(this.distance.getValue() * 2).add(origin);
         Intersectiond.intersectLineSegmentPlane(origin.x, origin.y, origin.z, destination.x, destination.y, destination.z, this.plane.x, this.plane.y, this.plane.z, 0, vector);
 
         return vector;

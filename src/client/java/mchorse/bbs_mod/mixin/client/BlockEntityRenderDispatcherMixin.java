@@ -20,7 +20,7 @@ public class BlockEntityRenderDispatcherMixin
     @Inject(method = "render(Lnet/minecraft/client/render/block/entity/BlockEntityRenderer;Lnet/minecraft/block/entity/BlockEntity;FLnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/render/VertexConsumerProvider;)V", at = @At("HEAD"), cancellable = true)
     private static void onRenderMain(CallbackInfo info)
     {
-        if (BBSSettings.chromaSkyEnabled.get() && !BBSSettings.chromaSkyTerrain.get())
+        if (BBSRendering.shouldHideChromaTerrain())
         {
             info.cancel();
         }
@@ -29,7 +29,7 @@ public class BlockEntityRenderDispatcherMixin
     @Inject(method = "render(Lnet/minecraft/block/entity/BlockEntity;FLnet/minecraft/client/util/math/MatrixStack;Lnet/minecraft/client/render/VertexConsumerProvider;)V", at = @At("HEAD"), cancellable = true)
     private void onRenderToo(CallbackInfo info)
     {
-        if (BBSSettings.chromaSkyEnabled.get() && !BBSSettings.chromaSkyTerrain.get())
+        if (BBSRendering.shouldHideChromaTerrain())
         {
             info.cancel();
         }
@@ -38,7 +38,7 @@ public class BlockEntityRenderDispatcherMixin
     @Inject(method = "renderEntity", at = @At("HEAD"), cancellable = true)
     public void onRenderEntity(CallbackInfoReturnable<Boolean> info)
     {
-        if (BBSSettings.chromaSkyEnabled.get() && !BBSSettings.chromaSkyTerrain.get())
+        if (BBSRendering.shouldHideChromaTerrain())
         {
             info.setReturnValue(false);
         }

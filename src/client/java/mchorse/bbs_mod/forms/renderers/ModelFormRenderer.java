@@ -194,11 +194,13 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             if (value.fix != 0)
             {
                 poseTransform.color.lerp(value.color, value.fix);
+                poseTransform.paintColor.lerp(value.paintColor, value.fix);
                 poseTransform.lighting = Lerps.lerp(poseTransform.lighting, value.lighting, value.fix);
             }
             else
             {
                 poseTransform.color.mul(value.color);
+                poseTransform.paintColor.lerp(value.paintColor, value.paintColor.a);
                 poseTransform.lighting += value.lighting;
             }
 
@@ -309,7 +311,9 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
             Link link = this.form.texture.get();
             Link texture = link == null ? model.texture : link;
-            Color color = this.form.color.get();
+            Color color = Color.white();
+
+            color.mul(this.form.color.get());
             float scale = this.form.uiScale.get() * model.uiScale;
 
             model.model.resetPose();
@@ -387,6 +391,15 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         Link defaultTexture = link == null ? model.texture : link;
         this.applyPBRTextureIntensity();
 
+        Color paint = this.form.paintColor.get();
+        ModelVAORenderer.setPaint(paint.r, paint.g, paint.b, paint.a);
+
+        boolean irisWorld = BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld();
+        boolean paintOverlay = stencilMap == null
+            && model.isVAORendered()
+            && irisWorld
+            && this.hasAnyPaint(model);
+
         try
         {
             model.render(newStack, color, light, overlay, stencilMap, this.form.shapeKeys.get(), defaultTexture);
@@ -394,6 +407,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         finally
         {
             this.clearPBRTextureIntensity();
+            ModelVAORenderer.clearPaint();
         }
 
         GlStateManager._disableBlend();
@@ -418,6 +432,32 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
             this.resetPostEquipmentRenderState();
         }
+    }
+
+
+    /**
+     * Whether the whole-form paint or any bone (model group) paint is currently active, which decides if
+     * the shader-pack paint overlay pass is worth running.
+     */
+    private boolean hasAnyPaint(ModelInstance model)
+    {
+        if (this.form.paintColor.get().a > 0F)
+        {
+            return true;
+        }
+
+        if (model != null && model.getModel() != null)
+        {
+            for (ModelGroup group : model.getModel().getAllGroups())
+            {
+                if (group.paintColor != null && group.paintColor.a > 0F)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     private void resetPostEquipmentRenderState()
@@ -473,7 +513,9 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
             Link link = this.form.texture.get();
             Link texture = link == null ? model.texture : link;
-            Color color = this.form.color.get().copy();
+            Color color = Color.white();
+
+            color.mul(this.form.color.get());
 
             for (ModelGroup group : model.getModel().getAllGroups())
             {
@@ -534,9 +576,9 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         {
             Link link = this.form.texture.get();
             Link texture = link == null ? model.texture : link;
-            Color color = this.form.color.get().copy();
+            Color color = new Color().set(context.color, true);
 
-            color.mul(context.color);
+            color.mul(this.form.color.get());
             model.model.resetPose();
 
             this.animator.applyActions(context.entity, model, context.getTransition());

@@ -87,12 +87,16 @@ public class FontRenderer
 
     public int getWidth(String string)
     {
-        return this.renderer.getWidth(string);
+        float scale = CustomFontManager.hasCustomFont() ? 1F : CustomFontManager.getFontScale();
+
+        return Math.round(this.renderer.getWidth(string) * scale);
     }
 
     public int getHeight()
     {
-        return this.renderer.fontHeight - 2;
+        float scale = CustomFontManager.hasCustomFont() ? 1F : CustomFontManager.getFontScale();
+
+        return Math.max(1, Math.round((this.renderer.fontHeight - 2) * scale));
     }
 
     public List<String> wrap(String string, int width)
