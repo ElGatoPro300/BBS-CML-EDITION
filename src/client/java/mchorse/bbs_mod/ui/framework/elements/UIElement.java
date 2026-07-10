@@ -247,7 +247,10 @@ public class UIElement implements IUIElement, IUndoElement
             consumer.accept(clazz.cast(this));
         }
 
-        for (IUIElement element : this.getChildren())
+        /* Snapshot the children before iterating: applying undo data can add/remove/replace
+         * elements (e.g. rebuilding a list panel) as a side effect of visiting them, which would
+         * otherwise throw a ConcurrentModificationException on the live list mid-traversal. */
+        for (IUIElement element : new ArrayList<>(this.getChildren()))
         {
             if (clazz.isAssignableFrom(element.getClass()))
             {
@@ -1108,6 +1111,10 @@ public class UIElement implements IUIElement, IUndoElement
         context.mouseButton = mouseButton;
 
         this.mouseClicked(context);
+
+        /* Complete the simulated click with a release, since clickable elements fire
+           their callback on mouse release (and only when they received the press). */
+        this.mouseReleased(context);
 
         context.mouseX = mouseX;
         context.mouseY = mouseY;

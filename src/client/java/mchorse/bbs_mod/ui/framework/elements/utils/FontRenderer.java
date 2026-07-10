@@ -1,5 +1,9 @@
 package mchorse.bbs_mod.ui.framework.elements.utils;
 
+import mchorse.bbs_mod.text.RtlAwtTextRenderer;
+import mchorse.bbs_mod.text.RtlFontManager;
+import mchorse.bbs_mod.text.RtlTextEngine;
+
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
@@ -87,6 +91,16 @@ public class FontRenderer
 
     public int getWidth(String string)
     {
+        if (RtlTextEngine.isActive())
+        {
+            RtlFontManager.ensureLoaded();
+
+            if (RtlAwtTextRenderer.isReady())
+            {
+                return RtlAwtTextRenderer.getWidth(string);
+            }
+        }
+
         float scale = CustomFontManager.hasCustomFont() ? 1F : CustomFontManager.getFontScale();
 
         return Math.round(this.renderer.getWidth(string) * scale);
@@ -94,6 +108,16 @@ public class FontRenderer
 
     public int getHeight()
     {
+        if (RtlTextEngine.isActive())
+        {
+            RtlFontManager.ensureLoaded();
+
+            if (RtlAwtTextRenderer.isReady())
+            {
+                return RtlAwtTextRenderer.getHeight();
+            }
+        }
+
         float scale = CustomFontManager.hasCustomFont() ? 1F : CustomFontManager.getFontScale();
 
         return Math.max(1, Math.round((this.renderer.fontHeight - 2) * scale));
@@ -101,6 +125,16 @@ public class FontRenderer
 
     public List<String> wrap(String string, int width)
     {
+        if (RtlTextEngine.isActive())
+        {
+            RtlFontManager.ensureLoaded();
+
+            if (RtlAwtTextRenderer.isReady())
+            {
+                return RtlAwtTextRenderer.wrap(string, width);
+            }
+        }
+
         return wrap(this.renderer, string, width);
     }
 
@@ -114,6 +148,34 @@ public class FontRenderer
         if (str.isEmpty())
         {
             return str;
+        }
+
+        if (RtlTextEngine.isActive())
+        {
+            RtlFontManager.ensureLoaded();
+
+            if (RtlAwtTextRenderer.isReady())
+            {
+                int w = RtlAwtTextRenderer.getWidth(str);
+
+                if (w < width)
+                {
+                    return str;
+                }
+
+                int sw = RtlAwtTextRenderer.getWidth(suffix);
+                int i = str.length() - 1;
+
+                while (w + sw >= width && i > 0)
+                {
+                    w -= RtlAwtTextRenderer.getWidth(String.valueOf(str.charAt(i)));
+                    i -= 1;
+                }
+
+                str = str.substring(0, i);
+
+                return str.isEmpty() ? str : str + suffix;
+            }
         }
 
         int w = this.renderer.getWidth(str);
@@ -135,6 +197,21 @@ public class FontRenderer
         str = str.substring(0, i);
 
         return str.isEmpty() ? str : str + suffix;
+    }
+
+    public String prepare(String string)
+    {
+        if (RtlTextEngine.isActive())
+        {
+            RtlFontManager.ensureLoaded();
+
+            if (!RtlAwtTextRenderer.isReady())
+            {
+                return RtlTextEngine.prepare(string);
+            }
+        }
+
+        return string;
     }
 
     private static class StyleHolder

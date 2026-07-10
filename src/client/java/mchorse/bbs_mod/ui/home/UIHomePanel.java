@@ -342,6 +342,14 @@ public class UIHomePanel extends UIDashboardPanel
         this.homeMosaic.setSelected(entry.id, entry.type);
         this.homeRecentList.setCurrentScroll(this.encodeRecentKey(entry));
         this.updateHomeButtonsState();
+
+        if (this.dashboard.documentTabsBar != null)
+        {
+            /* The tabs bar identifies audio by null type; translate SOUNDS accordingly */
+            ContentType tabsType = (entry.type == ContentType.SOUNDS) ? null : entry.type;
+
+            this.dashboard.documentTabsBar.activateIfOpen(tabsType, entry.id);
+        }
     }
 
     private void openRecent(RecentAssetsTracker.Entry entry)

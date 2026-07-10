@@ -48,11 +48,19 @@ public class BBSSettings
     public static ValueBoolean freezeModels;
     public static ValueFloat axesScale;
     public static ValueFloat axesThickness;
+    public static ValueFloat gizmoHitbox;
+    public static ValueInt gizmoDefaultMode;
+    public static ValueFloat gizmoGuideLength;
+    public static ValueFloat gizmoGuideThickness;
+    public static ValueFloat gizmoGuideOpacity;
+    public static ValueInt gizmoTranslateSpeed;
     public static ValueBoolean uniformScale;
     public static ValueBoolean clickSound;
     public static ValueBoolean disablePivotTransform;
     public static ValueBoolean gizmos;
     public static ValueBoolean gizmoYAxisHorizontal;
+    public static ValueBoolean gizmoTrackball;
+    public static ValueInt gizmoTrackballScale;
     public static ValueInt defaultInterpolation;
     public static ValueInt defaultModelInterpolation;
     public static ValueInt defaultPathInterpolation;
@@ -214,38 +222,8 @@ public class BBSSettings
         return Colors.setA(appliedModelEditorHoverColor, appliedModelEditorHoverOpacity);
     }
 
-    public static int getUIScaleStep()
-    {
-        float factor = userIntefaceScale == null ? 2F : userIntefaceScale.get();
-
-        if (factor <= 0F)
-        {
-            return 3;
-        }
-
-        if (factor < 1.25F)
-        {
-            return 1;
-        }
-
-        if (factor < 1.75F)
-        {
-            return 2;
-        }
-
-        return 3;
-    }
-
-    public static float getUIScaleFactorFromStep(int step)
-    {
-        return switch (Math.max(1, Math.min(3, step)))
-        {
-            case 1 -> 1F;
-            case 2 -> 1.5F;
-            default -> 2F;
-        };
-    }
-
+    /** The raw setting value is used directly as the UI scale multiplier (2 = 100%, i.e. the
+     *  previous default look), instead of being quantized into discrete steps. */
     public static float getUIScaleFactor()
     {
         if (userIntefaceScale == null || userIntefaceScale.get() <= 0F)
@@ -253,7 +231,7 @@ public class BBSSettings
             return 0F;
         }
 
-        return getUIScaleFactorFromStep(getUIScaleStep());
+        return userIntefaceScale.get();
     }
 
     public static boolean hasColoredBackground()
@@ -449,7 +427,7 @@ public class BBSSettings
         hideSettingDescriptions = builder.getBoolean("hide_setting_descriptions", false);
         welcomePanelAcceptedBeta1 = builder.getBoolean("welcome_panel_accepted_beta1", false);
         welcomePanelAcceptedBeta1.invisible();
-        userIntefaceScale = builder.getFloat("ui_scale", 2F, 0F, 4F);
+        userIntefaceScale = builder.getFloat("ui_scale", 2F, 0.1F, 4F);
         uiFont = builder.getString("ui_font", "");
         uiFontSize = builder.getFloat("ui_font_size", 1F, 0.25F, 4F);
         tooltipStyle = builder.getInt("tooltip_style", 1);
@@ -479,10 +457,23 @@ public class BBSSettings
 
         builder.category("axes");
         gizmos = builder.getBoolean("gizmos", true);
-        axesScale = builder.getFloat("axes_scale", 1F, 0F, 100F);
-        axesThickness = builder.getFloat("axes_thickness", 1F, 0.25F, 3F);
+        axesScale = builder.getFloat("axes_scale", 1.5F, 0F, 100F);
+        axesThickness = builder.getFloat("axes_thickness", 0.7F, 0.25F, 3F);
+        /* Multiplier applied only to the invisible picking pass, so the clickable area can be
+         * fatter than the visible handles (or thinner) independently of axes_thickness. */
+        gizmoHitbox = builder.getFloat("gizmo_hitbox", 1.5F, 0.25F, 5F);
         disablePivotTransform = builder.getBoolean("disable_pivot_transform", false);
         gizmoYAxisHorizontal = builder.getBoolean("gizmo_y_axis_horizontal", true);
+        gizmoTrackball = builder.getBoolean("gizmo_trackball", true);
+        gizmoTrackballScale = builder.getInt("gizmo_trackball_scale", 1, 1, 5);
+        /* 0 = Translate, 1 = Scale, 2 = Rotate, 3 = Combined; see Gizmo.Mode (ordinal order matches). */
+        gizmoDefaultMode = builder.getInt("gizmo_default_mode", 0, 0, 3);
+        /* Faint guide line(s) shown along the dragged axis/plane: length (multiplier),
+         * thickness (multiplier) and opacity (0..1). */
+        gizmoGuideLength = builder.getFloat("gizmo_guide_length", 2F, 0.1F, 10F);
+        gizmoGuideThickness = builder.getFloat("gizmo_guide_thickness", 1F, 0.1F, 10F);
+        gizmoGuideOpacity = builder.getFloat("gizmo_guide_opacity", 0.35F, 0.05F, 1F);
+        gizmoTranslateSpeed = builder.getInt("gizmo_translate_speed", 5, 1, 20);
 
         builder.category("tutorials");
         enableCursorRendering = builder.getBoolean("cursor", false);

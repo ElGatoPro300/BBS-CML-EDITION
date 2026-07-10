@@ -5,12 +5,15 @@ import mchorse.bbs_mod.utils.pose.Transform;
 
 import net.minecraft.client.gl.GlUniform;
 import net.minecraft.client.gl.ShaderProgram;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.render.Camera;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.RotationAxis;
 
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fStack;
+import org.joml.Quaternionf;
 
 import com.mojang.blaze3d.systems.ProjectionType;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -23,6 +26,28 @@ public class MatrixStackUtils
     private static Matrix4f oldProjection = new Matrix4f();
     private static Matrix4f oldMV = new Matrix4f();
     private static Matrix3f oldInverse = new Matrix3f();
+    private static final Quaternionf tempQuaternion = new Quaternionf();
+
+    /**
+     * 1.20.4 exposed this on {@link RenderSystem}; 1.21.1 removed it. Rebuild the
+     * camera's inverse view-rotation matrix from the active game camera quaternion.
+     */
+    public static Matrix4f getInverseViewRotationMatrix()
+    {
+        Camera camera = MinecraftClient.getInstance().gameRenderer.getCamera();
+
+        return new Matrix4f().rotation(camera.getRotation().conjugate(MatrixStackUtils.tempQuaternion));
+    }
+
+    /**
+     * View rotation matrix paired with {@link #getInverseViewRotationMatrix()}.
+     */
+    public static Matrix4f getViewRotationMatrix()
+    {
+        Camera camera = MinecraftClient.getInstance().gameRenderer.getCamera();
+
+        return new Matrix4f().rotation(camera.getRotation());
+    }
 
     public static void scaleStack(MatrixStack stack, float x, float y, float z)
     {
@@ -65,6 +90,23 @@ public class MatrixStackUtils
                 uniform.set(RenderSystem.getModelViewStack());
             }
         }
+    }
+
+    public static void pushIdentityModelView()
+    {
+        Matrix4fStack mvStack = RenderSystem.getModelViewStack();
+
+        mvStack.pushMatrix();
+        mvStack.identity();
+        RenderSystem.applyModelViewMatrix();
+    }
+
+    public static void popModelView()
+    {
+        Matrix4fStack mvStack = RenderSystem.getModelViewStack();
+
+        mvStack.popMatrix();
+        RenderSystem.applyModelViewMatrix();
     }
 
     public static void applyTransform(MatrixStack stack, Transform transform)

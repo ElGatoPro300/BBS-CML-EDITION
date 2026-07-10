@@ -1,13 +1,20 @@
 package mchorse.bbs_mod.ui.utils;
 
+import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
+import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.graphics.Draw;
+import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
+import mchorse.bbs_mod.ui.framework.elements.utils.UIModelRenderer;
+import mchorse.bbs_mod.ui.utils.Area;
+import mchorse.bbs_mod.ui.utils.gizmo.GizmoController;
 import mchorse.bbs_mod.utils.Axis;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 
 import net.minecraft.client.gl.ShaderProgramKeys;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
@@ -17,9 +24,13 @@ import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
 
 import org.joml.Matrix4f;
+import org.joml.Matrix4fStack;
+import org.joml.Quaternionf;
+import org.joml.Vector3f;
 import org.joml.Vector4f;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.systems.VertexSorter;
 
 import org.lwjgl.opengl.GL11;
 
@@ -28,17 +39,29 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * CML-native gizmo core.
+ *
+ * Owns the addon-facing handle registry, the deferred (Iris) render queue, and the
+ * translate/scale/rotate/combined/trackball handle table used by every 3D viewport
+ * in the editor (Model, Form, Film replays, Animation state). Individual viewports
+ * feed their picking/hover/drag lifecycle through {@link GizmoController}
+ * instead of talking to this class directly, but this class remains a singleton so
+ * addons registered through {@link #register(int, IGizmoHandler)} keep working unchanged.
+ */
 public class Gizmo
 {
     private static final class DeferredGizmo
     {
         private final Matrix4f matrix;
+        private final Matrix4f projection;
         private final boolean stencil;
         private final StencilMap stencilMap;
 
         private DeferredGizmo(Matrix4f matrix, boolean stencil, StencilMap stencilMap)
         {
             this.matrix = matrix;
+            this.projection = new Matrix4f(RenderSystem.getProjectionMatrix());
             this.stencil = stencil;
             this.stencilMap = stencilMap;
         }
@@ -49,6 +72,8 @@ public class Gizmo
         public void start(Gizmo gizmo, int index, int mouseX, int mouseY, UIPropTransform transform);
     }
 
+    /* Solo-mode handle ids (translate/scale/rotate), unchanged since the original
+     * implementation. Any precompiled addon referencing these constants keeps working. */
     public final static int STENCIL_X = 1;
     public final static int STENCIL_Y = 2;
     public final static int STENCIL_Z = 3;
@@ -57,11 +82,67 @@ public class Gizmo
     public final static int STENCIL_ZY = 6;
     public final static int STENCIL_FREE = 7;
 
+    /* Combined-mode-only handle ids: scale and rotate need distinct ids from the
+     * move bars/planes above so translate + scale + rotate can be picked simultaneously. */
+    public final static int STENCIL_SCALE_X = 8;
+    public final static int STENCIL_SCALE_Y = 9;
+    public final static int STENCIL_SCALE_Z = 10;
+    public final static int STENCIL_ROTATE_X = 11;
+    public final static int STENCIL_ROTATE_Y = 12;
+    public final static int STENCIL_ROTATE_Z = 13;
+
+    /* Free-rotate trackball hit sphere, available in solo Rotate and Combined mode. */
+    public final static int STENCIL_TRACKBALL = 14;
+
+    /* Reserved for a future screen-space translate handle. Not drawn or picked yet. */
+    public final static int STENCIL_SCREEN = 15;
+
+    /* Camera-facing view/arcball ring, drawn in Combined mode. */
+    public final static int STENCIL_VIEW = 16;
+
+    public final static int STENCIL_HANDLE_MAX = STENCIL_VIEW;
+
+    private static final float[] COLOR_ACTIVE = { 1.00F, 0.80F, 0.25F };
+    private static final float[] COLOR_X_IDLE = { 0.80F, 0.28F, 0.28F };
+    private static final float[] COLOR_X_HOVER = { 1.00F, 0.35F, 0.35F };
+    private static final float[] COLOR_Y_IDLE = { 0.30F, 0.75F, 0.35F };
+    private static final float[] COLOR_Y_HOVER = { 0.40F, 1.00F, 0.45F };
+    private static final float[] COLOR_Z_IDLE = { 0.28F, 0.50F, 0.95F };
+    private static final float[] COLOR_Z_HOVER = { 0.35F, 0.62F, 1.00F };
+    /* Plane handle colors are a vivid blend of their two constituent axis colors
+     * (X = red, Y = green, Z = blue), so e.g. the XY plane reads as a saturated
+     * yellow (red + green) rather than an arbitrary unrelated hue. */
+    private static final float[] COLOR_XZ_IDLE = { 0.85F, 0.25F, 0.85F };
+    private static final float[] COLOR_XZ_HOVER = { 1.00F, 0.35F, 1.00F };
+    private static final float[] COLOR_XY_IDLE = { 0.85F, 0.80F, 0.20F };
+    private static final float[] COLOR_XY_HOVER = { 1.00F, 0.95F, 0.25F };
+    private static final float[] COLOR_ZY_IDLE = { 0.20F, 0.75F, 0.80F };
+    private static final float[] COLOR_ZY_HOVER = { 0.30F, 0.90F, 0.95F };
+    private static final float[] COLOR_FREE_IDLE = { 1.00F, 1.00F, 1.00F };
+    private static final float[] COLOR_VIEW_IDLE = { 0.80F, 0.80F, 0.80F };
+    private static final float[] COLOR_VIEW_HOVER = { 1.00F, 1.00F, 1.00F };
+
+    private static final float PLANE_ALPHA_IDLE = 0.25F;
+    private static final float PLANE_ALPHA_HOVER = 0.45F;
+    private static final float PLANE_ALPHA_ACTIVE = 0.85F;
+
+    /* Relative sizing so the rotate rings visibly enclose the move arrows and scale cubes
+     * (largest to smallest: rotate rings > scale cubes > move arrows), matching a Blender-style
+     * combined gizmo cage rather than three same-size handle sets stacked on top of each other. */
+    private static final float COMBINED_MOVE_SCALE = 0.85F;
+    private static final float COMBINED_ROTATE_SCALE = 1.6F;
+    private static final float COMBINED_SCALE_HANDLE_SCALE = 1.0F;
+
     public final static Gizmo INSTANCE = new Gizmo();
 
     private Mode mode = Mode.TRANSLATE;
+    /* BBSSettings.gizmoDefaultMode can't be read at class-init time (settings aren't loaded
+     * from disk yet), so the configured starting mode is applied lazily the first time the
+     * gizmo actually renders instead. */
+    private boolean appliedDefaultMode = false;
 
     private int index = -1;
+    private int hoveredIndex = -1;
 
     public final Matrix4f lastGizmoMatrix = new Matrix4f();
     public boolean hasGizmoMatrix;
@@ -74,6 +155,36 @@ public class Gizmo
     private float lastSy = 1F;
     private float lastSz = 1F;
 
+    /** Orbit-camera zoom multiplier from {@link UIModelRenderer}; 1 outside model viewports. */
+    private float viewportZoomScale = 1F;
+
+    /* Direction from the gizmo origin toward the camera in gizmo-local space, refreshed
+     * every frame by computeScale(). Used to billboard the view/arcball ring. */
+    private final Vector3f lastCamDir = new Vector3f(0F, 1F, 0F);
+
+    /* Visual state of the in-progress rotation sweep: which ring is being rotated, at what
+     * angle (in the ring's arc3D u-parameterization) the drag started, and how far it has
+     * swept since. Purely cosmetic; fed by UIPropTransform's ring drag. */
+    private boolean arcActive;
+    /** True when the active sweep belongs to the camera-facing view ring instead of an
+     *  axis ring; its angles are measured in the billboarded ring's own space. */
+    private boolean arcView;
+    private Axis arcAxis = Axis.Y;
+    private float arcStartU;
+    private float arcLastU;
+    private float arcSweep;
+    /** When true the sweep fan is drawn in the gizmo orientation captured at drag start
+     *  instead of the live (rotating) matrix, so local-mode drags keep a fixed origin. */
+    private boolean arcFrozenOrientation;
+    private final Matrix4f arcFrozenMatrix = new Matrix4f();
+    private boolean arcFrozenViewRing;
+    private final Vector3f arcFrozenCamDir = new Vector3f(0F, 1F, 0F);
+
+    /* Yellow progress segment drawn while a translate/scale handle is being dragged. */
+    private boolean dragProgressActive;
+    private final Vector3f dragProgressStart = new Vector3f();
+    private final Vector3f dragProgressEnd = new Vector3f();
+
     private Gizmo()
     {}
 
@@ -82,14 +193,29 @@ public class Gizmo
         this.handlers.put(index, handler);
     }
 
+    public static boolean isHandleIndex(int index)
+    {
+        return index >= STENCIL_X && index <= STENCIL_HANDLE_MAX;
+    }
+
     public boolean isDragging()
     {
         return this.index != -1;
     }
 
+    public int getActiveHandle()
+    {
+        return this.index;
+    }
+
     public Mode getMode()
     {
         return this.mode;
+    }
+
+    public void setViewportZoomScale(float viewportZoomScale)
+    {
+        this.viewportZoomScale = viewportZoomScale;
     }
 
     public boolean setMode(Mode mode)
@@ -104,6 +230,19 @@ public class Gizmo
         this.mode = mode;
 
         return !same;
+    }
+
+    /** Continuously-updated (not just while dragging) handle hover state, fed by
+     *  {@link GizmoController} every frame so the render
+     *  pass can brighten a handle the mouse is over before the user commits to a drag. */
+    public int getHoveredIndex()
+    {
+        return this.hoveredIndex;
+    }
+
+    public void setHoveredIndex(int hoveredIndex)
+    {
+        this.hoveredIndex = hoveredIndex;
     }
 
     public boolean start(int index, int mouseX, int mouseY, UIPropTransform transform)
@@ -121,60 +260,79 @@ public class Gizmo
             return true;
         }
 
-        if (index >= STENCIL_X && index <= STENCIL_FREE)
+        if (!isHandleIndex(index))
         {
-            this.index = index;
-
-            this.currentTransform = transform;
-
-            if (transform != null)
-            {
-                if (this.index == STENCIL_X)
-                {
-                    transform.enableMode(this.mode.ordinal(), Axis.X);
-                }
-                else if (this.index == STENCIL_Y)
-                {
-                    transform.enableMode(this.mode.ordinal(), Axis.Y);
-                }
-                else if (this.index == STENCIL_Z)
-                {
-                    transform.enableMode(this.mode.ordinal(), Axis.Z);
-                }
-                else if (this.index == STENCIL_XY)
-                {
-                    transform.enablePlaneMode(this.mode.ordinal(), Axis.X, Axis.Y);
-                }
-                else if (this.index == STENCIL_XZ)
-                {
-                    transform.enablePlaneMode(this.mode.ordinal(), Axis.X, Axis.Z);
-                }
-                else if (this.index == STENCIL_ZY)
-                {
-                    transform.enablePlaneMode(this.mode.ordinal(), Axis.Z, Axis.Y);
-                }
-                else if (this.index == STENCIL_FREE)
-                {
-                    if (this.mode == Mode.TRANSLATE)
-                    {
-                        transform.enableFreeTranslation(this.mode.ordinal());
-                    }
-                    else if (this.mode == Mode.ROTATE)
-                    {
-                        transform.enableFreeRotation(this.mode.ordinal(), Axis.X);
-                    }
-                }
-            }
-
-            return true;
+            return false;
         }
 
-        return false;
+        this.index = index;
+        this.currentTransform = transform;
+
+        if (transform != null)
+        {
+            if (this.mode == Mode.COMBINED)
+            {
+                this.startCombined(index, transform);
+            }
+            else
+            {
+                this.startSolo(index, transform);
+            }
+        }
+
+        return true;
+    }
+
+    private void startSolo(int index, UIPropTransform transform)
+    {
+        int mode = this.mode.ordinal();
+
+        if (index == STENCIL_X) transform.enableMode(mode, Axis.X);
+        else if (index == STENCIL_Y) transform.enableMode(mode, Axis.Y);
+        else if (index == STENCIL_Z) transform.enableMode(mode, Axis.Z);
+        else if (index == STENCIL_XY) transform.enablePlaneMode(mode, Axis.X, Axis.Y);
+        else if (index == STENCIL_XZ) transform.enablePlaneMode(mode, Axis.X, Axis.Z);
+        else if (index == STENCIL_ZY) transform.enablePlaneMode(mode, Axis.Z, Axis.Y);
+        else if (index == STENCIL_TRACKBALL) transform.enableTrackballRotate(Mode.ROTATE.ordinal());
+        else if (index == STENCIL_FREE)
+        {
+            if (this.mode == Mode.TRANSLATE) transform.enableFreeTranslation(mode);
+            else if (this.mode == Mode.ROTATE) transform.enableFreeRotation(mode, Axis.X);
+            else if (this.mode == Mode.SCALE) transform.enableUniformScale(mode);
+        }
+    }
+
+    /** Same handle dispatch as {@link #startSolo(int, UIPropTransform)}, but routed through
+     *  the *KeepGizmoMode variants so grabbing e.g. a scale cube while in Combined mode
+     *  doesn't flip the whole gizmo back to solo Scale mode. */
+    private void startCombined(int index, UIPropTransform transform)
+    {
+        int move = Mode.TRANSLATE.ordinal();
+        int scale = Mode.SCALE.ordinal();
+        int rotate = Mode.ROTATE.ordinal();
+
+        if (index == STENCIL_X) transform.enableModeKeepGizmoMode(move, Axis.X);
+        else if (index == STENCIL_Y) transform.enableModeKeepGizmoMode(move, Axis.Y);
+        else if (index == STENCIL_Z) transform.enableModeKeepGizmoMode(move, Axis.Z);
+        else if (index == STENCIL_XY) transform.enablePlaneModeKeepGizmoMode(move, Axis.X, Axis.Y);
+        else if (index == STENCIL_XZ) transform.enablePlaneModeKeepGizmoMode(move, Axis.X, Axis.Z);
+        else if (index == STENCIL_ZY) transform.enablePlaneModeKeepGizmoMode(move, Axis.Z, Axis.Y);
+        else if (index == STENCIL_FREE) transform.enableFreeTranslation(move);
+        else if (index == STENCIL_SCALE_X) transform.enableModeKeepGizmoMode(scale, Axis.X);
+        else if (index == STENCIL_SCALE_Y) transform.enableModeKeepGizmoMode(scale, Axis.Y);
+        else if (index == STENCIL_SCALE_Z) transform.enableModeKeepGizmoMode(scale, Axis.Z);
+        else if (index == STENCIL_ROTATE_X) transform.enableModeKeepGizmoMode(rotate, Axis.X);
+        else if (index == STENCIL_ROTATE_Y) transform.enableModeKeepGizmoMode(rotate, Axis.Y);
+        else if (index == STENCIL_ROTATE_Z) transform.enableModeKeepGizmoMode(rotate, Axis.Z);
+        else if (index == STENCIL_TRACKBALL) transform.enableTrackballRotate(rotate);
+        else if (index == STENCIL_VIEW) transform.enableViewRotate(rotate);
     }
 
     public void stop()
     {
         this.index = -1;
+        this.arcActive = false;
+        this.clearDragProgress();
 
         if (this.currentTransform != null)
         {
@@ -184,9 +342,287 @@ public class Gizmo
         this.currentTransform = null;
     }
 
+    public void setDragProgress(Vector3f start, Vector3f end)
+    {
+        this.dragProgressStart.set(start);
+        this.dragProgressEnd.set(end);
+        this.dragProgressActive = true;
+    }
+
+    public void clearDragProgress()
+    {
+        this.dragProgressActive = false;
+    }
+
+    /** Camera-facing flip sign (+1/-1) applied to handles on the given axis, so drag logic
+     *  can be radial ("away from center") instead of tied to the positive axis direction. */
+    public float getFlipSign(Axis axis)
+    {
+        if (axis == Axis.X) return this.lastSx;
+        if (axis == Axis.Y) return this.lastSy;
+
+        return this.lastSz;
+    }
+
+    /* ---- rotation sweep arc (visual only) ---- */
+
+    public void startRotationArc(Vector3f local)
+    {
+        if (this.index == STENCIL_VIEW)
+        {
+            this.arcView = true;
+            this.arcStartU = this.viewRingAngle(local);
+            this.arcLastU = this.arcStartU;
+            this.arcSweep = 0F;
+            this.arcActive = true;
+
+            return;
+        }
+
+        Axis axis = this.ringAxisFromIndex();
+
+        if (axis == null)
+        {
+            this.arcActive = false;
+
+            return;
+        }
+
+        this.arcView = false;
+        this.arcAxis = axis;
+        this.arcStartU = this.ringAngle(axis, local);
+        this.arcLastU = this.arcStartU;
+        this.arcSweep = 0F;
+        this.arcActive = true;
+    }
+
+    /** Re-baselines the per-frame arc delta after a cursor teleport (window edge wrap,
+     * mouse leaving the window, etc.) without clearing the accumulated {@link #arcSweep}. */
+    public void reanchorRotationArc(Vector3f local)
+    {
+        if (!this.arcActive)
+        {
+            this.startRotationArc(local);
+
+            return;
+        }
+
+        this.arcLastU = this.arcView ? this.viewRingAngle(local) : this.ringAngle(this.arcAxis, local);
+    }
+
+    public void updateRotationArc(Vector3f local)
+    {
+        if (!this.arcActive)
+        {
+            return;
+        }
+
+        float u = this.arcView ? this.viewRingAngle(local) : this.ringAngle(this.arcAxis, local);
+        float delta = u - this.arcLastU;
+
+        while (delta > 180F) delta -= 360F;
+        while (delta < -180F) delta += 360F;
+
+        this.arcSweep += delta;
+        this.arcLastU = u;
+    }
+
+    /** Accumulates sweep from the rotation delta already applied to the value (used in
+     *  local-mode drags where the gizmo matrix rotates and geometric arc tracking would
+     *  drift or run too fast). */
+    public void addRotationSweep(float deltaDegrees)
+    {
+        if (!this.arcActive)
+        {
+            return;
+        }
+
+        this.arcSweep += deltaDegrees;
+    }
+
+    /** Pins the sweep fan to the gizmo matrix at drag start so only its length grows. */
+    public void setRotationArcFrozen(Matrix4f matrix, boolean viewRing)
+    {
+        this.arcFrozenOrientation = true;
+        this.arcFrozenMatrix.set(matrix);
+        this.arcFrozenViewRing = viewRing;
+
+        if (viewRing)
+        {
+            this.arcFrozenCamDir.set(this.lastCamDir);
+        }
+    }
+
+    public void clearRotationArc()
+    {
+        this.arcActive = false;
+        this.arcView = false;
+        this.arcSweep = 0F;
+        this.arcFrozenOrientation = false;
+        this.arcFrozenViewRing = false;
+    }
+
+    public boolean hasRotationArc()
+    {
+        return this.arcActive;
+    }
+
+    public float getRotationSweep()
+    {
+        return this.arcSweep;
+    }
+
+    private Axis ringAxisFromIndex()
+    {
+        if (this.index == STENCIL_X || this.index == STENCIL_ROTATE_X) return Axis.X;
+        if (this.index == STENCIL_Y || this.index == STENCIL_ROTATE_Y) return Axis.Y;
+        if (this.index == STENCIL_Z || this.index == STENCIL_ROTATE_Z) return Axis.Z;
+
+        return null;
+    }
+
+    /** Angle (degrees) of a gizmo-local point in the given ring's {@link Draw#arc3D}
+     *  u-parameterization, so the sweep fan lines up with the grab point exactly. */
+    private float ringAngle(Axis axis, Vector3f local)
+    {
+        double u;
+
+        if (axis == Axis.X) u = Math.atan2(local.z, local.y);
+        else if (axis == Axis.Y) u = Math.atan2(local.z, local.x);
+        else u = Math.atan2(-local.y, local.x);
+
+        return (float) Math.toDegrees(u);
+    }
+
+    /** Same as {@link #ringAngle(Axis, Vector3f)} but for the camera-facing view ring: the
+     *  gizmo-local point is rotated back into the billboarded ring's space (where the ring is
+     *  a plain Y ring) before measuring the angle. */
+    private float viewRingAngle(Vector3f local)
+    {
+        Quaternionf toRing = new Quaternionf().rotationTo(0F, 1F, 0F, this.lastCamDir.x, this.lastCamDir.y, this.lastCamDir.z).conjugate();
+        Vector3f ringLocal = new Vector3f(local);
+
+        toRing.transform(ringLocal);
+
+        return this.ringAngle(Axis.Y, ringLocal);
+    }
+
+    /** During a drag only the grabbed handle stays visible in the colored pass; everything
+     *  else is hidden until release so the user can see the model unobstructed. */
+    private boolean showHandle(int handleId)
+    {
+        return this.index == -1 || this.index == handleId;
+    }
+
     public void deferRender(Matrix4f matrix, boolean stencil, StencilMap stencilMap)
     {
         this.deferredGizmos.add(new DeferredGizmo(new Matrix4f(matrix), stencil, stencilMap));
+    }
+
+    /**
+     * Record the gizmo's model-view during the world pass without drawing. The
+     * colored visual is composited later in {@link #renderInterface} so Iris
+     * shader packs cannot displace it from the on-ground hitbox.
+     */
+    public void captureVisual(MatrixStack stack)
+    {
+        if (BBSRendering.isIrisShadowPass())
+        {
+            return;
+        }
+
+        this.lastGizmoMatrix.set(stack.peek().getPositionMatrix());
+        this.hasGizmoMatrix = true;
+    }
+
+    public void clearVisual()
+    {
+        this.hasGizmoMatrix = false;
+    }
+
+    /**
+     * Draw the captured gizmo visual in the UI pass with the same projection and
+     * viewport rect as the film/model preview that rendered the world this frame.
+     */
+    public void renderInterface(UIContext context, Matrix4f projection, Area area)
+    {
+        if (BBSRendering.isIrisShadowPass() || !this.hasGizmoMatrix
+            || context == null || projection == null || area == null)
+        {
+            return;
+        }
+
+        MinecraftClient mc = MinecraftClient.getInstance();
+
+        context.batcher.flush();
+
+        MatrixStackUtils.cacheMatrices();
+        RenderSystem.setProjectionMatrix(projection, VertexSorter.BY_Z);
+
+        float rx = (float) Math.round(mc.getWindow().getWidth() / (double) context.menu.width);
+        float ry = (float) Math.round(mc.getWindow().getHeight() / (double) context.menu.height);
+        float size = BBSModClient.getOriginalFramebufferScale();
+        int vx = (int) (area.x * rx);
+        int vy = (int) (mc.getWindow().getHeight() - (area.y + area.h) * ry);
+        int vw = (int) (area.w * rx);
+        int vh = (int) (area.h * ry);
+
+        RenderSystem.viewport((int) (vx * size), (int) (vy * size), (int) (vw * size), (int) (vh * size));
+
+        MatrixStack stack = new MatrixStack();
+
+        MatrixStackUtils.multiply(stack, this.lastGizmoMatrix);
+
+        RenderSystem.disableDepthTest();
+        RenderSystem.depthMask(false);
+        this.render(stack);
+        RenderSystem.depthMask(true);
+        RenderSystem.enableDepthTest();
+
+        RenderSystem.viewport(0, 0, mc.getWindow().getFramebufferWidth(), mc.getWindow().getFramebufferHeight());
+        MatrixStackUtils.restoreMatrices();
+        RenderSystem.depthFunc(GL11.GL_ALWAYS);
+    }
+
+    /**
+     * Stencil pick pass counterpart to {@link #renderInterface}: identical viewport,
+     * projection and captured matrix so handle ids line up with the drawn visual.
+     */
+    public void renderStencilInterface(UIContext context, Matrix4f projection, Area area, StencilMap map)
+    {
+        if (BBSRendering.isIrisShadowPass() || !this.hasGizmoMatrix
+            || context == null || projection == null || area == null || map == null)
+        {
+            return;
+        }
+
+        if (!BBSSettings.gizmos.get())
+        {
+            return;
+        }
+
+        MinecraftClient mc = MinecraftClient.getInstance();
+
+        MatrixStackUtils.cacheMatrices();
+        RenderSystem.setProjectionMatrix(projection, VertexSorter.BY_Z);
+
+        float rx = (float) Math.round(mc.getWindow().getWidth() / (double) context.menu.width);
+        float ry = (float) Math.round(mc.getWindow().getHeight() / (double) context.menu.height);
+        float size = BBSModClient.getOriginalFramebufferScale();
+        int vx = (int) (area.x * rx);
+        int vy = (int) (mc.getWindow().getHeight() - (area.y + area.h) * ry);
+        int vw = (int) (area.w * rx);
+        int vh = (int) (area.h * ry);
+
+        RenderSystem.viewport((int) (vx * size), (int) (vy * size), (int) (vw * size), (int) (vh * size));
+
+        MatrixStack stack = new MatrixStack();
+
+        MatrixStackUtils.multiply(stack, this.lastGizmoMatrix);
+        this.renderStencil(stack, map);
+
+        RenderSystem.viewport(0, 0, mc.getWindow().getFramebufferWidth(), mc.getWindow().getFramebufferHeight());
+        MatrixStackUtils.restoreMatrices();
     }
 
     public boolean hasDeferred()
@@ -201,10 +637,41 @@ public class Gizmo
 
     public void renderDeferred(MatrixStack stack)
     {
+        if (this.deferredGizmos.isEmpty())
+        {
+            return;
+        }
+
+        boolean iris = BBSRendering.isIrisShadersEnabled();
+        Matrix4f savedProjection = new Matrix4f();
+        Matrix4f savedModelView = new Matrix4f();
+
+        if (iris)
+        {
+            savedProjection.set(RenderSystem.getProjectionMatrix());
+            savedModelView.set(RenderSystem.getModelViewMatrix());
+        }
+
         for (DeferredGizmo deferred : this.deferredGizmos)
         {
+            if (iris)
+            {
+                /* WorldRenderEvents.LAST runs after Iris' own compositing passes and no
+                 * longer carries the same projection matrix as RenderLayer#getSolid(), where
+                 * the gizmo transform was captured. Re-binding the saved projection keeps the
+                 * deferred draw aligned with the hitbox/stencil pass on the ground. */
+                RenderSystem.setProjectionMatrix(deferred.projection, VertexSorter.BY_Z);
+            }
+
             stack.push();
-            MatrixStackUtils.multiply(stack, deferred.matrix);
+
+            /* The saved matrix is the FULL camera-relative transform captured when the gizmo
+             * was deferred, so it must replace the stack top rather than be multiplied onto
+             * it: at WorldRenderEvents.LAST the stack is not guaranteed to be identity
+             * (notably with Iris shader packs), and composing the two shifted the gizmo to a
+             * wrong position whenever shaders were enabled. */
+            stack.peek().getPositionMatrix().set(deferred.matrix);
+            stack.peek().getNormalMatrix().identity();
 
             if (deferred.stencil && deferred.stencilMap != null)
             {
@@ -218,8 +685,68 @@ public class Gizmo
             stack.pop();
         }
 
+        if (iris)
+        {
+            RenderSystem.setProjectionMatrix(savedProjection, VertexSorter.BY_Z);
+
+            Matrix4fStack mvStack = RenderSystem.getModelViewStack();
+
+            mvStack.pushMatrix();
+            mvStack.set(savedModelView);
+            RenderSystem.applyModelViewMatrix();
+            mvStack.popMatrix();
+            RenderSystem.applyModelViewMatrix();
+        }
+
         this.deferredGizmos.clear();
     }
+
+    /* ---- shared per-frame scale/orientation bookkeeping ---- */
+
+    private float computeScale(MatrixStack stack)
+    {
+        if (!this.appliedDefaultMode)
+        {
+            this.appliedDefaultMode = true;
+
+            if (BBSSettings.gizmoDefaultMode != null)
+            {
+                Mode[] modes = Mode.values();
+                int def = BBSSettings.gizmoDefaultMode.get();
+
+                if (def >= 0 && def < modes.length)
+                {
+                    this.mode = modes[def];
+                }
+            }
+        }
+
+        Matrix4f inv = new Matrix4f(stack.peek().getPositionMatrix()).invert();
+        Vector4f camPos = new Vector4f(0, 0, 0, 1).mul(inv);
+        double dist = Math.sqrt(camPos.x * camPos.x + camPos.y * camPos.y + camPos.z * camPos.z);
+        float axesScale = BBSSettings.axesScale == null ? 1F : BBSSettings.axesScale.get();
+
+        this.updateFlipSigns(camPos.x, camPos.y, camPos.z);
+
+        if (dist > 1.0E-6D)
+        {
+            this.lastCamDir.set((float) (camPos.x / dist), (float) (camPos.y / dist), (float) (camPos.z / dist));
+        }
+
+        return (float) (1.4F * Math.max(0.5D, dist * 0.12D) * axesScale * this.viewportZoomScale);
+    }
+
+    private void updateFlipSigns(float camX, float camY, float camZ)
+    {
+        if (this.index == -1)
+        {
+            this.lastSx = camX >= 0 ? 1F : -1F;
+            this.lastSy = camY >= 0 ? 1F : -1F;
+            this.lastSz = camZ >= 0 ? 1F : -1F;
+        }
+    }
+
+    /* ---- visual (colored) render pass ---- */
 
     public void render(MatrixStack stack)
     {
@@ -228,279 +755,554 @@ public class Gizmo
 
         float thickness = BBSSettings.axesThickness == null ? 1F : BBSSettings.axesThickness.get();
 
-        if (BBSSettings.gizmos.get())
-        {
-            this.drawAxes(stack, 0.25F, 0.015F * thickness, 0.26F, 0.025F * thickness);
-        }
-        else
+        if (!BBSSettings.gizmos.get())
         {
             Draw.coolerAxes(stack, 0.25F, 0.015F * thickness, 0.26F, 0.025F * thickness);
+            return;
         }
-    }
 
-    private void drawBox(BufferBuilder builder, MatrixStack stack, float x1, float y1, float z1, float x2, float y2, float z2, float r, float g, float b)
-    {
-        this.drawBox(builder, stack, x1, y1, z1, x2, y2, z2, r, g, b, 1.0F);
-    }
-
-    private void drawBox(BufferBuilder builder, MatrixStack stack, float x1, float y1, float z1, float x2, float y2, float z2, float r, float g, float b, float a)
-    {
-        Draw.fillBox(builder, stack, Math.min(x1, x2), Math.min(y1, y2), Math.min(z1, z2), Math.max(x1, x2), Math.max(y1, y2), Math.max(z1, z2), r, g, b, a);
-    }
-
-    private void drawAxes(MatrixStack stack, float axisSize, float axisOffset, float outlineSize, float outlineOffset)
-    {
+        float scale = this.computeScale(stack);
         BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
-        Matrix4f inv = new Matrix4f(stack.peek().getPositionMatrix()).invert();
-        Vector4f camPos = new Vector4f(0, 0, 0, 1).mul(inv);
-        double dist = Math.sqrt(camPos.x * camPos.x + camPos.y * camPos.y + camPos.z * camPos.z);
-        float axesScale = BBSSettings.axesScale == null ? 1F : BBSSettings.axesScale.get();
-        float scale = (float) (1.4F * Math.max(0.5D, dist * 0.12D) * axesScale);
 
-        axisSize = 0.30F * scale;
-        axisOffset = 0.012F * scale;
-        float planeInner = 0.08F * scale;
-        float planeOuter = 0.20F * scale;
-        float offset = 0.001F * scale;
+        if (this.mode == Mode.ROTATE) this.drawRotate(builder, stack, scale, thickness, false, null);
+        else if (this.mode == Mode.SCALE) this.drawScale(builder, stack, scale, thickness, false, null);
+        else if (this.mode == Mode.COMBINED) this.drawCombined(builder, stack, scale, thickness, false, null);
+        else this.drawTranslate(builder, stack, scale, thickness, false, null);
 
-        float sx = camPos.x >= 0 ? 1F : -1F;
-        float sy = camPos.y >= 0 ? 1F : -1F;
-        float sz = camPos.z >= 0 ? 1F : -1F;
+        this.drawActiveGuide(builder, stack, scale, thickness);
+        this.drawDragProgress(builder, stack, scale, thickness);
 
-        if (this.index == -1)
-        {
-            this.lastSx = sx;
-            this.lastSy = sy;
-            this.lastSz = sz;
-        }
-        else
-        {
-            sx = this.lastSx;
-            sy = this.lastSy;
-            sz = this.lastSz;
-        }
-
-        boolean activeX = this.index == -1 || this.index == STENCIL_X;
-        boolean activeY = this.index == -1 || this.index == STENCIL_Y;
-        boolean activeZ = this.index == -1 || this.index == STENCIL_Z;
-        boolean activeXZ = this.index == -1 || this.index == STENCIL_XZ;
-        boolean activeXY = this.index == -1 || this.index == STENCIL_XY;
-        boolean activeZY = this.index == -1 || this.index == STENCIL_ZY;
-        boolean activeFree = this.index == -1 || this.index == STENCIL_FREE;
-
-        if (this.mode == Mode.ROTATE)
-        {
-            float outlinePad = 0.015F * scale * (BBSSettings.axesThickness == null ? 1F : BBSSettings.axesThickness.get());
-            float radius = 0.22F * scale;
-            float thicknessRing = 0.025F * scale * (BBSSettings.axesThickness == null ? 1F : BBSSettings.axesThickness.get());
-
-            if (activeZ)
-            {
-                float[] color = (this.index == STENCIL_Z) ? new float[] { 1.0F, 1.0F, 0.0F } : new float[] { 0.15F, 0.35F, 1.0F };
-                Draw.arc3D(builder, stack, Axis.Z, radius, thicknessRing, color[0], color[1], color[2]);
-            }
-
-            if (activeX)
-            {
-                float[] color = (this.index == STENCIL_X) ? new float[] { 1.0F, 1.0F, 0.0F } : new float[] { 1.0F, 0.15F, 0.15F };
-                Draw.arc3D(builder, stack, Axis.X, radius, thicknessRing, color[0], color[1], color[2]);
-            }
-
-            if (activeY)
-            {
-                float[] color = (this.index == STENCIL_Y) ? new float[] { 1.0F, 1.0F, 0.0F } : new float[] { 0.15F, 1.0F, 0.15F };
-                Draw.arc3D(builder, stack, Axis.Y, radius, thicknessRing, color[0], color[1], color[2]);
-            }
-
-            if (activeFree)
-            {
-                float[] color = (this.index == STENCIL_FREE) ? new float[] { 1.0F, 1.0F, 0.0F } : new float[] { 1.0F, 1.0F, 1.0F };
-                this.drawBox(builder, stack, -axisOffset, -axisOffset, -axisOffset, axisOffset, axisOffset, axisOffset, color[0], color[1], color[2], 1.0F);
-            }
-        }
-        else if (this.mode == Mode.SCALE)
-        {
-            float[] xCol = (this.index == STENCIL_X) ? new float[] { 1.0F, 1.0F, 0.0F } : new float[] { 1.0F, 0.15F, 0.15F };
-            float[] yCol = (this.index == STENCIL_Y) ? new float[] { 1.0F, 1.0F, 0.0F } : new float[] { 0.15F, 1.0F, 0.15F };
-            float[] zCol = (this.index == STENCIL_Z) ? new float[] { 1.0F, 1.0F, 0.0F } : new float[] { 0.15F, 0.35F, 1.0F };
-            float[] freeCol = (this.index == STENCIL_FREE) ? new float[] { 1.0F, 1.0F, 0.0F } : new float[] { 1.0F, 1.0F, 1.0F };
-
-            if (activeX)
-            {
-                this.drawBox(builder, stack, 0, -axisOffset, -axisOffset, axisSize * sx, axisOffset, axisOffset, xCol[0], xCol[1], xCol[2], 1.0F);
-            }
-            if (activeY)
-            {
-                this.drawBox(builder, stack, -axisOffset, 0, -axisOffset, axisOffset, axisSize * sy, axisOffset, yCol[0], yCol[1], yCol[2], 1.0F);
-            }
-            if (activeZ)
-            {
-                this.drawBox(builder, stack, -axisOffset, -axisOffset, 0, axisOffset, axisOffset, axisSize * sz, zCol[0], zCol[1], zCol[2], 1.0F);
-            }
-            if (activeFree)
-            {
-                this.drawBox(builder, stack, -axisOffset, -axisOffset, -axisOffset, axisOffset, axisOffset, axisOffset, freeCol[0], freeCol[1], freeCol[2], 1.0F);
-            }
-
-            float half = axisOffset * 2.0F;
-            if (activeX)
-            {
-                this.drawBox(builder, stack, axisSize * sx - half, -half, -half, axisSize * sx + half, half, half, xCol[0], xCol[1], xCol[2], 1.0F);
-            }
-            if (activeY)
-            {
-                this.drawBox(builder, stack, -half, axisSize * sy - half, -half, half, axisSize * sy + half, half, yCol[0], yCol[1], yCol[2], 1.0F);
-            }
-            if (activeZ)
-            {
-                this.drawBox(builder, stack, -half, -half, axisSize * sz - half, half, half, axisSize * sz + half, zCol[0], zCol[1], zCol[2], 1.0F);
-            }
-        }
-        else // TRANSLATE
-        {
-            float[] xCol = (this.index == STENCIL_X) ? new float[] { 1.0F, 1.0F, 0.0F } : new float[] { 1.0F, 0.15F, 0.15F };
-            float[] yCol = (this.index == STENCIL_Y) ? new float[] { 1.0F, 1.0F, 0.0F } : new float[] { 0.15F, 1.0F, 0.15F };
-            float[] zCol = (this.index == STENCIL_Z) ? new float[] { 1.0F, 1.0F, 0.0F } : new float[] { 0.15F, 0.35F, 1.0F };
-
-            float[] xzCol = (this.index == STENCIL_XZ) ? new float[] { 1.0F, 1.0F, 0.0F } : new float[] { 0.15F, 1.0F, 0.6F };
-            float[] xyCol = (this.index == STENCIL_XY) ? new float[] { 1.0F, 1.0F, 0.0F } : new float[] { 0.6F, 0.15F, 1.0F };
-            float[] zyCol = (this.index == STENCIL_ZY) ? new float[] { 1.0F, 1.0F, 0.0F } : new float[] { 1.0F, 0.4F, 0.15F };
-
-            float[] freeCol = (this.index == STENCIL_FREE) ? new float[] { 1.0F, 1.0F, 0.0F } : new float[] { 1.0F, 1.0F, 1.0F };
-
-            if (activeX)
-            {
-                this.drawBox(builder, stack, 0, -axisOffset, -axisOffset, axisSize * sx, axisOffset, axisOffset, xCol[0], xCol[1], xCol[2], 1.0F);
-            }
-            if (activeY)
-            {
-                this.drawBox(builder, stack, -axisOffset, 0, -axisOffset, axisOffset, axisSize * sy, axisOffset, yCol[0], yCol[1], yCol[2], 1.0F);
-            }
-            if (activeZ)
-            {
-                this.drawBox(builder, stack, -axisOffset, -axisOffset, 0, axisOffset, axisOffset, axisSize * sz, zCol[0], zCol[1], zCol[2], 1.0F);
-            }
-
-            if (activeXZ)
-            {
-                this.drawBox(builder, stack, planeInner * sx, -offset, planeInner * sz, planeOuter * sx, offset, planeOuter * sz, xzCol[0], xzCol[1], xzCol[2], 0.4F);
-            }
-            if (activeXY)
-            {
-                this.drawBox(builder, stack, planeInner * sx, planeInner * sy, -offset, planeOuter * sx, planeOuter * sy, offset, xyCol[0], xyCol[1], xyCol[2], 0.4F);
-            }
-            if (activeZY)
-            {
-                this.drawBox(builder, stack, -offset, planeInner * sy, planeInner * sz, offset, planeOuter * sy, planeOuter * sz, zyCol[0], zyCol[1], zyCol[2], 0.4F);
-            }
-
-            if (activeFree)
-            {
-                this.drawBox(builder, stack, -axisOffset, -axisOffset, -axisOffset, axisOffset, axisOffset, axisOffset, freeCol[0], freeCol[1], freeCol[2], 1.0F);
-            }
-        }
-
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
         RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
         RenderSystem.depthFunc(GL11.GL_ALWAYS);
+        /* Explicitly reset the shader color multiplier: a shader pack's own compositing pass
+         * (run just before WorldRenderEvents.LAST, which is when a shader pack is active and
+         * this call is reached via renderDeferred()) can leave it at something other than
+         * opaque white, which would otherwise silently tint every gizmo vertex color to black/
+         * invisible even though the draw call itself succeeds. */
+        RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
+        RenderSystem.disableDepthTest();
         RenderSystem.depthMask(false);
+
+        if (BBSRendering.isIrisShadersEnabled())
+        {
+            /* Vertex positions already include the full gizmo transform; Iris leaves a
+             * stale terrain model-view on the global stack at WorldRenderEvents.LAST. */
+            MatrixStackUtils.pushIdentityModelView();
+        }
 
         BufferRenderer.drawWithGlobalProgram(builder.end());
 
+        if (BBSRendering.isIrisShadersEnabled())
+        {
+            MatrixStackUtils.popModelView();
+        }
+
         RenderSystem.depthMask(true);
+        RenderSystem.enableDepthTest();
         RenderSystem.depthFunc(GL11.GL_LEQUAL);
+        RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
     }
+
+    /* ---- stencil (id-encoded) render pass ---- */
 
     public void renderStencil(MatrixStack stack, StencilMap map)
     {
         this.lastGizmoMatrix.set(stack.peek().getPositionMatrix());
         this.hasGizmoMatrix = true;
 
-        if (BBSSettings.gizmos.get())
+        if (!BBSSettings.gizmos.get())
         {
-            this.drawAxes(stack, map, 0.25F, 0.015F);
+            return;
         }
+
+        float scale = this.computeScale(stack);
+        float thickness = BBSSettings.axesThickness == null ? 1F : BBSSettings.axesThickness.get();
+
+        /* The pick pass gets its own thickness multiplier so the clickable area can be made
+         * fatter (or thinner) than the visible handles. */
+        thickness *= BBSSettings.gizmoHitbox == null ? 1F : BBSSettings.gizmoHitbox.get();
+
+        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
+
+        if (this.mode == Mode.ROTATE) this.drawRotate(builder, stack, scale, thickness, true, map);
+        else if (this.mode == Mode.SCALE) this.drawScale(builder, stack, scale, thickness, true, map);
+        else if (this.mode == Mode.COMBINED) this.drawCombined(builder, stack, scale, thickness, true, map);
+        else this.drawTranslate(builder, stack, scale, thickness, true, map);
+
+        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
+        RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
+        RenderSystem.disableDepthTest();
+        RenderSystem.depthMask(false);
+
+        if (BBSRendering.isIrisShadersEnabled())
+        {
+            MatrixStackUtils.pushIdentityModelView();
+        }
+
+        BufferRenderer.drawWithGlobalProgram(builder.end());
+
+        if (BBSRendering.isIrisShadersEnabled())
+        {
+            MatrixStackUtils.popModelView();
+        }
+
+        RenderSystem.depthMask(true);
+        RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
     }
 
-    private void drawAxes(MatrixStack stack, StencilMap map, float axisSize, float axisOffset)
-    {
-        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
-        Matrix4f inv = new Matrix4f(stack.peek().getPositionMatrix()).invert();
-        Vector4f camPos = new Vector4f(0, 0, 0, 1).mul(inv);
-        double dist = Math.sqrt(camPos.x * camPos.x + camPos.y * camPos.y + camPos.z * camPos.z);
-        float axesScale = BBSSettings.axesScale == null ? 1F : BBSSettings.axesScale.get();
-        float scale = (float) (1.4F * Math.max(0.5D, dist * 0.12D) * axesScale);
+    /* ---- color helpers ---- */
 
-        axisSize = 0.30F * scale;
-        axisOffset = 0.012F * scale;
+    private float[] pickColor(int handleId, float[] idle, float[] hover)
+    {
+        if (this.index == handleId) return COLOR_ACTIVE;
+        if (this.index == -1 && this.hoveredIndex == handleId) return hover;
+
+        return idle;
+    }
+
+    private float pickPlaneAlpha(int handleId)
+    {
+        if (this.index == handleId) return PLANE_ALPHA_ACTIVE;
+        if (this.index == -1 && this.hoveredIndex == handleId) return PLANE_ALPHA_HOVER;
+
+        return PLANE_ALPHA_IDLE;
+    }
+
+    private float[] stencilColor(int handleId)
+    {
+        return new float[] { handleId / 255F, 0F, 0F };
+    }
+
+    private void box(BufferBuilder builder, MatrixStack stack, float x1, float y1, float z1, float x2, float y2, float z2, float[] color, float a)
+    {
+        Draw.fillBox(builder, stack, Math.min(x1, x2), Math.min(y1, y2), Math.min(z1, z2), Math.max(x1, x2), Math.max(y1, y2), Math.max(z1, z2), color[0], color[1], color[2], a);
+    }
+
+    /* ---- translate handles (bars with cone tips + move planes + screen-move cube) ---- */
+
+    private void drawTranslate(BufferBuilder builder, MatrixStack stack, float scale, float thickness, boolean stencil, StencilMap map)
+    {
+        float axisSize = 0.30F * scale;
+        float axisOffset = 0.012F * scale * thickness;
         float planeInner = 0.08F * scale;
         float planeOuter = 0.20F * scale;
         float offset = 0.001F * scale;
 
-        float sx = camPos.x >= 0 ? 1F : -1F;
-        float sy = camPos.y >= 0 ? 1F : -1F;
-        float sz = camPos.z >= 0 ? 1F : -1F;
+        this.drawMoveBars(builder, stack, axisSize, axisOffset, stencil, map);
+        this.drawMovePlanes(builder, stack, planeInner, planeOuter, offset, stencil, map);
+        this.drawScreenCube(builder, stack, axisOffset, stencil, map);
+    }
 
-        if (this.index == -1)
+    private void drawMoveBars(BufferBuilder builder, MatrixStack stack, float axisSize, float axisOffset, boolean stencil, StencilMap map)
+    {
+        float[] xCol = stencil ? this.stencilColor(STENCIL_X) : this.pickColor(STENCIL_X, COLOR_X_IDLE, COLOR_X_HOVER);
+        float[] yCol = stencil ? this.stencilColor(STENCIL_Y) : this.pickColor(STENCIL_Y, COLOR_Y_IDLE, COLOR_Y_HOVER);
+        float[] zCol = stencil ? this.stencilColor(STENCIL_Z) : this.pickColor(STENCIL_Z, COLOR_Z_IDLE, COLOR_Z_HOVER);
+        float tipRadius = axisOffset * 2.4F;
+        float tipLength = axisOffset * 6F;
+
+        if (this.showHandle(STENCIL_X))
         {
-            this.lastSx = sx;
-            this.lastSy = sy;
-            this.lastSz = sz;
+            this.box(builder, stack, 0, -axisOffset, -axisOffset, axisSize * this.lastSx, axisOffset, axisOffset, xCol, 1F);
+            /* Apex is the far/outward point of the arrow, base is the wide disc that meets the bar. */
+            Draw.cone(builder, stack, (axisSize + tipLength) * this.lastSx, 0, 0, axisSize * this.lastSx, 0, 0, tipRadius, 10, xCol[0], xCol[1], xCol[2], 1F);
+        }
+
+        if (this.showHandle(STENCIL_Y))
+        {
+            this.box(builder, stack, -axisOffset, 0, -axisOffset, axisOffset, axisSize * this.lastSy, axisOffset, yCol, 1F);
+            Draw.cone(builder, stack, 0, (axisSize + tipLength) * this.lastSy, 0, 0, axisSize * this.lastSy, 0, tipRadius, 10, yCol[0], yCol[1], yCol[2], 1F);
+        }
+
+        if (this.showHandle(STENCIL_Z))
+        {
+            this.box(builder, stack, -axisOffset, -axisOffset, 0, axisOffset, axisOffset, axisSize * this.lastSz, zCol, 1F);
+            Draw.cone(builder, stack, 0, 0, (axisSize + tipLength) * this.lastSz, 0, 0, axisSize * this.lastSz, tipRadius, 10, zCol[0], zCol[1], zCol[2], 1F);
+        }
+    }
+
+    private void drawMovePlanes(BufferBuilder builder, MatrixStack stack, float planeInner, float planeOuter, float offset, boolean stencil, StencilMap map)
+    {
+        float xzAlpha = stencil ? 1F : this.pickPlaneAlpha(STENCIL_XZ);
+        float xyAlpha = stencil ? 1F : this.pickPlaneAlpha(STENCIL_XY);
+        float zyAlpha = stencil ? 1F : this.pickPlaneAlpha(STENCIL_ZY);
+
+        float[] xzCol = stencil ? this.stencilColor(STENCIL_XZ) : COLOR_XZ_IDLE;
+        float[] xyCol = stencil ? this.stencilColor(STENCIL_XY) : COLOR_XY_IDLE;
+        float[] zyCol = stencil ? this.stencilColor(STENCIL_ZY) : COLOR_ZY_IDLE;
+
+        if (!stencil && this.index == -1 && this.hoveredIndex == STENCIL_XZ) xzCol = COLOR_XZ_HOVER;
+        if (!stencil && this.index == -1 && this.hoveredIndex == STENCIL_XY) xyCol = COLOR_XY_HOVER;
+        if (!stencil && this.index == -1 && this.hoveredIndex == STENCIL_ZY) zyCol = COLOR_ZY_HOVER;
+        if (!stencil && this.index == STENCIL_XZ) xzCol = COLOR_ACTIVE;
+        if (!stencil && this.index == STENCIL_XY) xyCol = COLOR_ACTIVE;
+        if (!stencil && this.index == STENCIL_ZY) zyCol = COLOR_ACTIVE;
+
+        if (this.showHandle(STENCIL_XZ))
+        {
+            this.box(builder, stack, planeInner * this.lastSx, -offset, planeInner * this.lastSz, planeOuter * this.lastSx, offset, planeOuter * this.lastSz, xzCol, xzAlpha);
+        }
+
+        if (this.showHandle(STENCIL_XY))
+        {
+            this.box(builder, stack, planeInner * this.lastSx, planeInner * this.lastSy, -offset, planeOuter * this.lastSx, planeOuter * this.lastSy, offset, xyCol, xyAlpha);
+        }
+
+        if (this.showHandle(STENCIL_ZY))
+        {
+            this.box(builder, stack, -offset, planeInner * this.lastSy, planeInner * this.lastSz, offset, planeOuter * this.lastSy, planeOuter * this.lastSz, zyCol, zyAlpha);
+        }
+    }
+
+    private void drawScreenCube(BufferBuilder builder, MatrixStack stack, float axisOffset, boolean stencil, StencilMap map)
+    {
+        if (!this.showHandle(STENCIL_FREE))
+        {
+            return;
+        }
+
+        float[] color = stencil ? this.stencilColor(STENCIL_FREE) : this.pickColor(STENCIL_FREE, COLOR_FREE_IDLE, COLOR_FREE_IDLE);
+
+        this.box(builder, stack, -axisOffset, -axisOffset, -axisOffset, axisOffset, axisOffset, axisOffset, color, 1F);
+    }
+
+    /* ---- scale handles (bars with cube tips, unchanged shape from the original design) ---- */
+
+    private void drawScale(BufferBuilder builder, MatrixStack stack, float scale, float thickness, boolean stencil, StencilMap map)
+    {
+        float axisOffset = 0.012F * scale * thickness;
+        float axisSize = 0.30F * scale;
+
+        float[] xCol = stencil ? this.stencilColor(STENCIL_X) : this.pickColor(STENCIL_X, COLOR_X_IDLE, COLOR_X_HOVER);
+        float[] yCol = stencil ? this.stencilColor(STENCIL_Y) : this.pickColor(STENCIL_Y, COLOR_Y_IDLE, COLOR_Y_HOVER);
+        float[] zCol = stencil ? this.stencilColor(STENCIL_Z) : this.pickColor(STENCIL_Z, COLOR_Z_IDLE, COLOR_Z_HOVER);
+        float[] freeCol = stencil ? this.stencilColor(STENCIL_FREE) : this.pickColor(STENCIL_FREE, COLOR_FREE_IDLE, COLOR_FREE_IDLE);
+
+        float half = axisOffset * 2F;
+
+        if (this.showHandle(STENCIL_X))
+        {
+            this.box(builder, stack, 0, -axisOffset, -axisOffset, axisSize * this.lastSx, axisOffset, axisOffset, xCol, 1F);
+            this.box(builder, stack, axisSize * this.lastSx - half, -half, -half, axisSize * this.lastSx + half, half, half, xCol, 1F);
+        }
+
+        if (this.showHandle(STENCIL_Y))
+        {
+            this.box(builder, stack, -axisOffset, 0, -axisOffset, axisOffset, axisSize * this.lastSy, axisOffset, yCol, 1F);
+            this.box(builder, stack, -half, axisSize * this.lastSy - half, -half, half, axisSize * this.lastSy + half, half, yCol, 1F);
+        }
+
+        if (this.showHandle(STENCIL_Z))
+        {
+            this.box(builder, stack, -axisOffset, -axisOffset, 0, axisOffset, axisOffset, axisSize * this.lastSz, zCol, 1F);
+            this.box(builder, stack, -half, -half, axisSize * this.lastSz - half, half, half, axisSize * this.lastSz + half, zCol, 1F);
+        }
+
+        if (this.showHandle(STENCIL_FREE))
+        {
+            this.box(builder, stack, -axisOffset, -axisOffset, -axisOffset, axisOffset, axisOffset, axisOffset, freeCol, 1F);
+        }
+    }
+
+    /* ---- rotate handles (rings + trackball) ---- */
+
+    private void drawRotate(BufferBuilder builder, MatrixStack stack, float scale, float thickness, boolean stencil, StencilMap map)
+    {
+        float radius = 0.22F * scale;
+        float ringThickness = 0.020F * scale * thickness;
+
+        /* Trackball goes first in the stencil pass so the rings (drawn later, with depth
+         * testing off) win the pick wherever they overlap the sphere. */
+        this.drawTrackball(builder, stack, this.trackballRadius(radius, 0.62F), stencil, map);
+        this.drawRings(builder, stack, radius, ringThickness, STENCIL_X, STENCIL_Y, STENCIL_Z, stencil);
+    }
+
+    /** Shared ring drawing for solo Rotate mode and Combined mode (they only differ in the
+     *  stencil ids their rings pick as). Also draws the sweep fan on the active ring. */
+    private void drawRings(BufferBuilder builder, MatrixStack stack, float radius, float ringThickness, int idX, int idY, int idZ, boolean stencil)
+    {
+        float[] xCol = stencil ? this.stencilColor(idX) : this.pickColor(idX, COLOR_X_IDLE, COLOR_X_HOVER);
+        float[] yCol = stencil ? this.stencilColor(idY) : this.pickColor(idY, COLOR_Y_IDLE, COLOR_Y_HOVER);
+        float[] zCol = stencil ? this.stencilColor(idZ) : this.pickColor(idZ, COLOR_Z_IDLE, COLOR_Z_HOVER);
+
+        if (this.showHandle(idZ)) Draw.arc3D(builder, stack, Axis.Z, radius, ringThickness, zCol[0], zCol[1], zCol[2]);
+        if (this.showHandle(idX)) Draw.arc3D(builder, stack, Axis.X, radius, ringThickness, xCol[0], xCol[1], xCol[2]);
+        if (this.showHandle(idY)) Draw.arc3D(builder, stack, Axis.Y, radius, ringThickness, yCol[0], yCol[1], yCol[2]);
+
+        /* Swept-angle fan on the ring being dragged, drawn slightly smaller so it reads as a
+         * pie inside the ring rather than covering it. */
+        if (!stencil && this.arcActive && !this.arcView && (this.index == idX || this.index == idY || this.index == idZ))
+        {
+            this.drawRotationSweepArc(builder, stack, this.arcAxis, radius * 0.85F, ringThickness * 1.5F, false);
+        }
+    }
+
+    /** Free-rotate hit sphere. Idle it's invisible in the colored pass (the stencil-driven
+     *  hover overlay already communicates hover); while actively dragged it's drawn as a
+     *  translucent highlight sphere so the user sees what they grabbed. */
+    private float trackballRadius(float gizmoRadius, float modeFactor)
+    {
+        int setting = BBSSettings.gizmoTrackballScale == null ? 1 : BBSSettings.gizmoTrackballScale.get();
+
+        /* Setting 1 = half the legacy trackball size; each step scales linearly up to 5× that. */
+        return gizmoRadius * modeFactor * 0.5F * setting;
+    }
+
+    private void drawTrackball(BufferBuilder builder, MatrixStack stack, float radius, boolean stencil, StencilMap map)
+    {
+        if (!BBSSettings.gizmoTrackball.get())
+        {
+            return;
+        }
+
+        if (!this.showHandle(STENCIL_TRACKBALL))
+        {
+            return;
+        }
+
+        if (stencil)
+        {
+            float[] color = this.stencilColor(STENCIL_TRACKBALL);
+
+            Draw.sphere(builder, stack, radius, 10, 16, color[0], color[1], color[2], 1F);
+        }
+        else if (this.index == STENCIL_TRACKBALL)
+        {
+            Draw.sphere(builder, stack, radius, 10, 16, COLOR_ACTIVE[0], COLOR_ACTIVE[1], COLOR_ACTIVE[2], 0.4F);
+        }
+    }
+
+    /** Camera-facing arcball ring, slightly larger than the axis rings. Dragging it rotates
+     *  the object around the view axis, following the mouse around the ring. */
+    private void drawViewRing(BufferBuilder builder, MatrixStack stack, float radius, float ringThickness, boolean stencil, StencilMap map)
+    {
+        if (!this.showHandle(STENCIL_VIEW))
+        {
+            return;
+        }
+
+        float[] color = stencil ? this.stencilColor(STENCIL_VIEW) : this.pickColor(STENCIL_VIEW, COLOR_VIEW_IDLE, COLOR_VIEW_HOVER);
+
+        stack.push();
+        stack.multiply(new Quaternionf().rotationTo(0F, 1F, 0F, this.lastCamDir.x, this.lastCamDir.y, this.lastCamDir.z));
+        Draw.arc3D(builder, stack, Axis.Y, radius, ringThickness, color[0], color[1], color[2]);
+
+        /* Same swept-angle fan the axis rings get, drawn slightly inside the view ring. */
+        if (!stencil && this.arcActive && this.arcView && this.index == STENCIL_VIEW)
+        {
+            this.drawRotationSweepArc(builder, stack, Axis.Y, radius * 0.9F, ringThickness * 1.5F, true);
+        }
+
+        stack.pop();
+    }
+
+    private void drawRotationSweepArc(BufferBuilder builder, MatrixStack stack, Axis axis, float radius, float thickness, boolean viewRing)
+    {
+        if (Math.abs(this.arcSweep) <= 0.01F)
+        {
+            return;
+        }
+
+        if (this.arcFrozenOrientation)
+        {
+            MatrixStack arcStack = new MatrixStack();
+
+            MatrixStackUtils.multiply(arcStack, this.arcFrozenMatrix);
+
+            if (viewRing && this.arcFrozenViewRing)
+            {
+                arcStack.multiply(new Quaternionf().rotationTo(0F, 1F, 0F, this.arcFrozenCamDir.x, this.arcFrozenCamDir.y, this.arcFrozenCamDir.z));
+            }
+
+            Draw.arc3D(builder, arcStack, axis, radius, thickness, COLOR_ACTIVE[0], COLOR_ACTIVE[1], COLOR_ACTIVE[2], this.arcStartU, this.arcSweep);
         }
         else
         {
-            sx = this.lastSx;
-            sy = this.lastSy;
-            sz = this.lastSz;
+            Draw.arc3D(builder, stack, axis, radius, thickness, COLOR_ACTIVE[0], COLOR_ACTIVE[1], COLOR_ACTIVE[2], this.arcStartU, this.arcSweep);
         }
+    }
 
-        if (this.mode == Mode.ROTATE)
+    /** Faint "infinite" line through the gizmo origin along the axis being dragged: the
+     *  movement direction for translate/scale, or the rotation axis for the rings. */
+    private void drawActiveGuide(BufferBuilder builder, MatrixStack stack, float scale, float thickness)
+    {
+        /* Plane drags show both of the plane's axes as a "+" cross so the user sees the two
+         * directions the object can move in; single-axis drags show just their own line. */
+        if (this.index == STENCIL_XY)
         {
-            float outlinePad = 0.015F * scale * (BBSSettings.axesThickness == null ? 1F : BBSSettings.axesThickness.get());
-            float radius = 0.22F * scale;
-            float thicknessRing = 0.025F * scale * (BBSSettings.axesThickness == null ? 1F : BBSSettings.axesThickness.get());
+            this.drawGuideLine(builder, stack, scale, thickness, Axis.X, COLOR_X_HOVER);
+            this.drawGuideLine(builder, stack, scale, thickness, Axis.Y, COLOR_Y_HOVER);
 
-            Draw.arc3D(builder, stack, Axis.Z, radius, thicknessRing + outlinePad, STENCIL_Z / 255F, 0F, 0F);
-            Draw.arc3D(builder, stack, Axis.X, radius, thicknessRing + outlinePad, STENCIL_X / 255F, 0F, 0F);
-            Draw.arc3D(builder, stack, Axis.Y, radius, thicknessRing + outlinePad, STENCIL_Y / 255F, 0F, 0F);
-
-            this.drawBox(builder, stack, -axisOffset, -axisOffset, -axisOffset, axisOffset, axisOffset, axisOffset, STENCIL_FREE / 255F, 0F, 0F, 1.0F);
+            return;
         }
-        else if (this.mode == Mode.SCALE)
+        else if (this.index == STENCIL_XZ)
         {
-            this.drawBox(builder, stack, 0, -axisOffset, -axisOffset, axisSize * sx, axisOffset, axisOffset, STENCIL_X / 255F, 0F, 0F, 1.0F);
-            this.drawBox(builder, stack, -axisOffset, 0, -axisOffset, axisOffset, axisSize * sy, axisOffset, STENCIL_Y / 255F, 0F, 0F, 1.0F);
-            this.drawBox(builder, stack, -axisOffset, -axisOffset, 0, axisOffset, axisOffset, axisSize * sz, STENCIL_Z / 255F, 0F, 0F, 1.0F);
-            this.drawBox(builder, stack, -axisOffset, -axisOffset, -axisOffset, axisOffset, axisOffset, axisOffset, STENCIL_FREE / 255F, 0F, 0F, 1.0F);
+            this.drawGuideLine(builder, stack, scale, thickness, Axis.X, COLOR_X_HOVER);
+            this.drawGuideLine(builder, stack, scale, thickness, Axis.Z, COLOR_Z_HOVER);
 
-            float half = axisOffset * 2.0F;
-            this.drawBox(builder, stack, axisSize * sx - half, -half, -half, axisSize * sx + half, half, half, STENCIL_X / 255F, 0F, 0F, 1.0F);
-            this.drawBox(builder, stack, -half, axisSize * sy - half, -half, half, axisSize * sy + half, half, STENCIL_Y / 255F, 0F, 0F, 1.0F);
-            this.drawBox(builder, stack, -half, -half, axisSize * sz - half, half, half, axisSize * sz + half, STENCIL_Z / 255F, 0F, 0F, 1.0F);
+            return;
         }
-        else // TRANSLATE
+        else if (this.index == STENCIL_ZY)
         {
-            this.drawBox(builder, stack, 0, -axisOffset, -axisOffset, axisSize * sx, axisOffset, axisOffset, STENCIL_X / 255F, 0F, 0F, 1.0F);
-            this.drawBox(builder, stack, -axisOffset, 0, -axisOffset, axisOffset, axisSize * sy, axisOffset, STENCIL_Y / 255F, 0F, 0F, 1.0F);
-            this.drawBox(builder, stack, -axisOffset, -axisOffset, 0, axisOffset, axisOffset, axisSize * sz, STENCIL_Z / 255F, 0F, 0F, 1.0F);
+            this.drawGuideLine(builder, stack, scale, thickness, Axis.Z, COLOR_Z_HOVER);
+            this.drawGuideLine(builder, stack, scale, thickness, Axis.Y, COLOR_Y_HOVER);
 
-            this.drawBox(builder, stack, planeInner * sx, -offset, planeInner * sz, planeOuter * sx, offset, planeOuter * sz, STENCIL_XZ / 255F, 0F, 0F, 1.0F);
-            this.drawBox(builder, stack, planeInner * sx, planeInner * sy, -offset, planeOuter * sx, planeOuter * sy, offset, STENCIL_XY / 255F, 0F, 0F, 1.0F);
-            this.drawBox(builder, stack, -offset, planeInner * sy, planeInner * sz, offset, planeOuter * sy, planeOuter * sz, STENCIL_ZY / 255F, 0F, 0F, 1.0F);
-
-            this.drawBox(builder, stack, -axisOffset, -axisOffset, -axisOffset, axisOffset, axisOffset, axisOffset, STENCIL_FREE / 255F, 0F, 0F, 1.0F);
+            return;
         }
 
-        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
-        RenderSystem.disableDepthTest();
-        RenderSystem.depthMask(false);
+        Axis axis = null;
+        float[] color = null;
 
-        BufferRenderer.drawWithGlobalProgram(builder.end());
+        if (this.index == STENCIL_X || this.index == STENCIL_SCALE_X || this.index == STENCIL_ROTATE_X)
+        {
+            axis = Axis.X;
+            color = COLOR_X_HOVER;
+        }
+        else if (this.index == STENCIL_Y || this.index == STENCIL_SCALE_Y || this.index == STENCIL_ROTATE_Y)
+        {
+            axis = Axis.Y;
+            color = COLOR_Y_HOVER;
+        }
+        else if (this.index == STENCIL_Z || this.index == STENCIL_SCALE_Z || this.index == STENCIL_ROTATE_Z)
+        {
+            axis = Axis.Z;
+            color = COLOR_Z_HOVER;
+        }
 
-        RenderSystem.depthMask(true);
+        if (axis == null)
+        {
+            return;
+        }
+
+        this.drawGuideLine(builder, stack, scale, thickness, axis, color);
+    }
+
+    /** One faint guide line along an axis, sized/tinted by the guide line settings. The
+     *  settings are read defensively (with hardcoded fallbacks) because this can run during a
+     *  world render frame, before/without the settings registry being fully initialized. */
+    private void drawGuideLine(BufferBuilder builder, MatrixStack stack, float scale, float thickness, Axis axis, float[] color)
+    {
+        float lengthSetting = BBSSettings.gizmoGuideLength == null ? 2F : BBSSettings.gizmoGuideLength.get();
+        float thicknessSetting = BBSSettings.gizmoGuideThickness == null ? 1F : BBSSettings.gizmoGuideThickness.get();
+        float alpha = BBSSettings.gizmoGuideOpacity == null ? 0.35F : BBSSettings.gizmoGuideOpacity.get();
+
+        float length = 10F * scale * lengthSetting;
+        float t = 0.0025F * scale * thickness * thicknessSetting;
+
+        if (axis == Axis.X) this.box(builder, stack, -length, -t, -t, length, t, t, color, alpha);
+        else if (axis == Axis.Y) this.box(builder, stack, -t, -length, -t, t, length, t, color, alpha);
+        else this.box(builder, stack, -t, -t, -length, t, t, length, color, alpha);
+    }
+
+    /** Thick yellow segment from the drag grab point to the current mouse position. */
+    private void drawDragProgress(BufferBuilder builder, MatrixStack stack, float scale, float thickness)
+    {
+        if (!this.dragProgressActive || !this.isScaleDragIndex())
+        {
+            return;
+        }
+
+        float dx = this.dragProgressEnd.x - this.dragProgressStart.x;
+        float dy = this.dragProgressEnd.y - this.dragProgressStart.y;
+        float dz = this.dragProgressEnd.z - this.dragProgressStart.z;
+
+        if (dx * dx + dy * dy + dz * dz < 1.0E-10F)
+        {
+            return;
+        }
+
+        float thicknessSetting = BBSSettings.gizmoGuideThickness == null ? 1F : BBSSettings.gizmoGuideThickness.get();
+        float alpha = BBSSettings.gizmoGuideOpacity == null ? 0.9F : Math.min(1F, BBSSettings.gizmoGuideOpacity.get() + 0.5F);
+        float t = 0.006F * scale * thickness * thicknessSetting;
+
+        Draw.fillBoxTo(
+            builder, stack,
+            this.dragProgressStart.x, this.dragProgressStart.y, this.dragProgressStart.z,
+            this.dragProgressEnd.x, this.dragProgressEnd.y, this.dragProgressEnd.z,
+            t,
+            COLOR_ACTIVE[0], COLOR_ACTIVE[1], COLOR_ACTIVE[2], alpha
+        );
+    }
+
+    private boolean isScaleDragIndex()
+    {
+        if (this.index == -1)
+        {
+            return false;
+        }
+
+        if (this.index == STENCIL_SCALE_X || this.index == STENCIL_SCALE_Y || this.index == STENCIL_SCALE_Z)
+        {
+            return true;
+        }
+
+        if (this.mode == Mode.SCALE && (this.index == STENCIL_X || this.index == STENCIL_Y || this.index == STENCIL_Z || this.index == STENCIL_FREE))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    /* ---- combined mode (move + scale + rotate + trackball nested together) ---- */
+
+    private void drawCombined(BufferBuilder builder, MatrixStack stack, float scale, float thickness, boolean stencil, StencilMap map)
+    {
+        float moveScale = scale * COMBINED_MOVE_SCALE;
+        float axisSize = 0.30F * moveScale;
+        float axisOffset = 0.012F * moveScale * thickness;
+        float planeInner = 0.08F * moveScale;
+        float planeOuter = 0.20F * moveScale;
+        float offset = 0.001F * moveScale;
+        float rotateRadius = 0.22F * scale * COMBINED_ROTATE_SCALE;
+        float ringThickness = 0.016F * scale * thickness;
+
+        /* Stencil draw order = pick priority (later wins): the trackball sphere goes first so
+         * every axis, plane, cube and ring that overlaps it on screen stays clickable. */
+        this.drawTrackball(builder, stack, this.trackballRadius(rotateRadius, 0.55F), stencil, map);
+
+        this.drawMoveBars(builder, stack, axisSize, axisOffset, stencil, map);
+        this.drawMovePlanes(builder, stack, planeInner, planeOuter, offset, stencil, map);
+        this.drawScreenCube(builder, stack, axisOffset, stencil, map);
+
+        this.drawCombinedScaleHandles(builder, stack, scale, thickness, stencil, map);
+        this.drawRings(builder, stack, rotateRadius, ringThickness, STENCIL_ROTATE_X, STENCIL_ROTATE_Y, STENCIL_ROTATE_Z, stencil);
+        this.drawViewRing(builder, stack, rotateRadius * 1.12F, ringThickness, stencil, map);
+    }
+
+    /** Positioned just outside the rotate rings' radius (rather than nested among the move
+     *  arrows) so the layout reads, from the outside in, as rotate rings (outermost) -> scale
+     *  cubes -> move arrows (innermost), matching the reference "cage" arrangement. */
+    private void drawCombinedScaleHandles(BufferBuilder builder, MatrixStack stack, float scale, float thickness, boolean stencil, StencilMap map)
+    {
+        float rotateRadius = 0.22F * scale * COMBINED_ROTATE_SCALE;
+        float axisSize = rotateRadius * 1.15F;
+        float half = 0.02F * scale * COMBINED_SCALE_HANDLE_SCALE;
+
+        float[] xCol = stencil ? this.stencilColor(STENCIL_SCALE_X) : this.pickColor(STENCIL_SCALE_X, COLOR_X_IDLE, COLOR_X_HOVER);
+        float[] yCol = stencil ? this.stencilColor(STENCIL_SCALE_Y) : this.pickColor(STENCIL_SCALE_Y, COLOR_Y_IDLE, COLOR_Y_HOVER);
+        float[] zCol = stencil ? this.stencilColor(STENCIL_SCALE_Z) : this.pickColor(STENCIL_SCALE_Z, COLOR_Z_IDLE, COLOR_Z_HOVER);
+
+        if (this.showHandle(STENCIL_SCALE_X))
+        {
+            this.box(builder, stack, axisSize * this.lastSx - half, -half, -half, axisSize * this.lastSx + half, half, half, xCol, 1F);
+        }
+
+        if (this.showHandle(STENCIL_SCALE_Y))
+        {
+            this.box(builder, stack, -half, axisSize * this.lastSy - half, -half, half, axisSize * this.lastSy + half, half, yCol, 1F);
+        }
+
+        if (this.showHandle(STENCIL_SCALE_Z))
+        {
+            this.box(builder, stack, -half, -half, axisSize * this.lastSz - half, half, half, axisSize * this.lastSz + half, zCol, 1F);
+        }
     }
 
     public static enum Mode
     {
-        TRANSLATE, SCALE, ROTATE;
+        TRANSLATE, SCALE, ROTATE, COMBINED;
     }
 }

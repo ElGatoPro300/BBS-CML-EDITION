@@ -53,7 +53,11 @@ public abstract class UIClickable <T> extends UIElement
     @Override
     public boolean subMouseReleased(UIContext context)
     {
-        if (this.isAllowed(context.mouseButton) && this.area.isInside(context))
+        /* Only fire when this element also received the matching mouse press. Mouse
+           releases are broadcast to the whole element tree (to reliably end drags), so
+           without this check a button would trigger even when the press was consumed
+           by an element rendered on top of it (e.g. a floating panel window). */
+        if (this.pressed && this.isAllowed(context.mouseButton) && this.area.isInside(context))
         {
             UIUtils.playClick();
             this.click(context.mouseButton);

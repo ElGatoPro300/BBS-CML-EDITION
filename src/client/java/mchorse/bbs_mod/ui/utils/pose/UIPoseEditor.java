@@ -106,7 +106,7 @@ public class UIPoseEditor extends UIElement
         this.groups = new UISearchList<>(this.groupsList);
         this.groups.label(UIKeys.GENERAL_SEARCH);
         this.groups.h(UIStringList.DEFAULT_HEIGHT * 8 + 12); // 20px search box + list height
-        this.groups.list.background();
+        this.groups.list.background(0xFF141418);
         this.groups.list.scroll.cancelScrolling();
         this.groups.search.w(1F, -40);
         this.invertLiveMirrorZ = false;
@@ -147,8 +147,16 @@ public class UIPoseEditor extends UIElement
             return menu;
         });
         /* Lista de categorías a la derecha */
-        this.categories = new UIStringList((l) -> {});
-        this.categories.background().h(UIStringList.DEFAULT_HEIGHT * 8 - 8);
+        this.categories = new UIStringList((l) -> {})
+        {
+            @Override
+            public void render(UIContext context)
+            {
+                super.render(context);
+                context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xFF3C3C3C);
+            }
+        };
+        this.categories.background(0xFF141418).h(UIStringList.DEFAULT_HEIGHT * 8 - 8);
         this.categories.scroll.cancelScrolling();
         this.categories.context((menu) ->
         {
@@ -462,7 +470,13 @@ public class UIPoseEditor extends UIElement
             });
         });
         this.transform = this.createTransformEditor();
-        this.transform.setModel();
+
+        if (this.useModelGizmoDrag())
+        {
+            this.transform.setModel();
+            this.transform.invertModelPoseTrackballXYZ();
+        }
+
         this.transform.callbacks(null, () ->
         {
             if (this.onChange != null)
@@ -673,9 +687,20 @@ public class UIPoseEditor extends UIElement
 
     /* Subclass overridable methods */
 
+  /** Film/replay pose editors keep the legacy model-space drag inversions; form model pose matches model block. */
+    protected boolean useModelGizmoDrag()
+    {
+        return true;
+    }
+
+    protected float getGizmoTranslationScale()
+    {
+        return 16F;
+    }
+
     protected UIPropTransform createTransformEditor()
     {
-        return new CategoryPropTransform(this).enableHotkeys().translationScale(16F);
+        return new CategoryPropTransform(this).enableHotkeys().translationScale(this.getGizmoTranslationScale());
     }
 
     /* Transformaciones aplicables por categoría */
@@ -1339,6 +1364,7 @@ public class UIPoseEditor extends UIElement
         public void render(UIContext context)
         {
             super.render(context);
+            context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xFF3C3C3C);
 
             if (!UIPoseEditor.this.showOnlyMarked || !UIPoseEditor.this.markedBones.isEmpty())
             {
