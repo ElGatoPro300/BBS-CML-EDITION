@@ -21,6 +21,7 @@ import mchorse.bbs_mod.utils.pose.Transform;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.GlUniform;
+import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.util.math.MatrixStack;
@@ -28,7 +29,7 @@ import net.minecraft.util.Hand;
 
 import org.joml.Matrix4f;
 
-import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 
 import org.lwjgl.opengl.GL11;
@@ -243,41 +244,41 @@ public abstract class FormRenderer <T extends Form>
         transform.pivot.add(overlay.pivot);
     }
 
-    // protected Supplier<ShaderProgram> getShader(FormRenderingContext context, Supplier<ShaderProgram> normal, Supplier<ShaderProgram> picking)
-    // {
-    //     if (context.isPicking())
-    //     {
-    //         // ShaderProgram program = picking.get();
-    // 
-    //         if (program == null)
-    //         {
-    //             return normal;
-    //         }
-    // 
-    //         this.setupTarget(context, program);
-    // 
-    //         return () -> program;
-    //     }
-    // 
-    //     return normal;
-    // }
+    protected Supplier<ShaderProgram> getShader(FormRenderingContext context, Supplier<ShaderProgram> normal, Supplier<ShaderProgram> picking)
+    {
+        if (context.isPicking())
+        {
+            ShaderProgram program = picking.get();
 
-    // protected void setupTarget(FormRenderingContext context, ShaderProgram program)
-    // {
-    //     if (program == null)
-    //     {
-    //         return;
-    //     }
-    // 
-    //     GlUniform target = program.getUniform("Target");
-    // 
-    //     if (target != null)
-    //     {
-    //         int pickingIndex = context.getPickingIndex();
-    // 
-    //         target.set(pickingIndex);
-    //     }
-    // }
+            if (program == null)
+            {
+                return normal;
+            }
+
+            this.setupTarget(context, program);
+
+            return () -> program;
+        }
+
+        return normal;
+    }
+
+    protected void setupTarget(FormRenderingContext context, ShaderProgram program)
+    {
+        if (program == null)
+        {
+            return;
+        }
+
+        GlUniform target = program.getUniform("Target");
+
+        if (target != null)
+        {
+            int pickingIndex = context.getPickingIndex();
+
+            target.set(pickingIndex);
+        }
+    }
 
     protected void updateStencilMap(FormRenderingContext context)
     {

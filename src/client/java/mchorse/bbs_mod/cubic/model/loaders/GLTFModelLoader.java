@@ -127,11 +127,21 @@ public class GLTFModelLoader implements IModelLoader
                         {
                             Link embeddedLink = new Link(gltfLink.source, gltfLink.path + "/embedded_texture.png");
                             
-                            Texture texture = Texture.textureFromPixels(pixels, GL11.GL_NEAREST);
-
-                            // Register to TextureManager manually
-                            BBSModClient.getTextures().textures.put(embeddedLink, texture);
-                            System.out.println("GLTFModelLoader: Loaded embedded texture for " + id);
+                            RenderSystem.recordRenderCall(() -> 
+                            {
+                                try
+                                {
+                                    Texture texture = Texture.textureFromPixels(pixels, GL11.GL_NEAREST);
+                                    
+                                    // Register to TextureManager manually
+                                    BBSModClient.getTextures().textures.put(embeddedLink, texture);
+                                    System.out.println("GLTFModelLoader: Loaded embedded texture for " + id);
+                                }
+                                catch (Exception e)
+                                {
+                                    e.printStackTrace();
+                                }
+                            });
                             
                             textureLink = embeddedLink;
                         }

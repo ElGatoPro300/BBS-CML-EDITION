@@ -40,15 +40,18 @@ import mchorse.bbs_mod.utils.pose.PoseTransform;
 import mchorse.bbs_mod.utils.resources.LinkUtils;
 
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gl.ShaderProgram;
+import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.render.DiffuseLighting;
+import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.EquipmentSlot;
-import net.minecraft.item.ItemDisplayContext;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
+import net.minecraft.item.ModelTransformationMode;
 import net.minecraft.util.Hand;
 import net.minecraft.util.math.RotationAxis;
 
@@ -307,7 +310,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
         if (this.animator != null && model != null)
         {
-            MatrixStack stack = new MatrixStack();
+            MatrixStack stack = context.batcher.getContext().getMatrices();
 
             stack.push();
 
@@ -331,13 +334,12 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             this.applyPBRTextureIntensity();
             BBSModClient.getTextures().bindTexture(texture);
             this.clearPBRTextureIntensity();
-            // RenderSystem.depthFunc(GL11.GL_LEQUAL);
+            RenderSystem.depthFunc(GL11.GL_LEQUAL);
 
             Vector3f light0 = new Vector3f(0.85F, 0.85F, -1F).normalize();
             Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1F).normalize();
-            // RenderSystem.setupLevelDiffuseLighting(light0, light1);
+            RenderSystem.setupLevelDiffuseLighting(light0, light1);
 
-            /* TODO(1.21.11): ShaderProgram removed — mainShader needs update
             Supplier<ShaderProgram> mainShader = (BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld()) || !model.isVAORendered()
                 ? () ->
                 {
@@ -347,7 +349,6 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                 : BBSShaders::getModel;
 
             this.renderModel(this.entity, mainShader, stack, model, LightmapTextureManager.pack(15, 15), OverlayTexture.DEFAULT_UV, color, true, null, context.getTransition(), true);
-            */
 
             /* Render body parts */
             stack.push();
@@ -361,8 +362,9 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             stack.pop();
             stack.pop();
 
-            // DiffuseLighting.disableGuiDepthLighting();
-            // RenderSystem.depthFunc(GL11.GL_ALWAYS);
+            DiffuseLighting.disableGuiDepthLighting();
+            RenderSystem.depthFunc(GL11.GL_ALWAYS);
+            RenderSystem.setShader(ShaderProgramKeys.POSITION_TEX_COLOR);
         }
         else
         {
@@ -376,68 +378,82 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         }
     }
 
-    // 1.21.11: renderModel body disabled (ShaderProgram removed, API changes)
-    // private void renderModel(IEntity target, Supplier<ShaderProgram> program, MatrixStack stack, ModelInstance model, int light, int overlay, Color color, boolean ui, StencilMap stencilMap, float transition, boolean renderEquipment)
-    // {
-    //     if (!model.culling)
-    //     {
-    //         RenderSystem.disableCull();
-    //     }
-    //     // RenderSystem.enableBlend();
-    //     RenderSystem.defaultBlendFunc();
-    //     RenderSystem.enableDepthTest();
-    //     GameRenderer gameRenderer = MinecraftClient.getInstance().gameRenderer;
-    //     gameRenderer.getLightmapTextureManager().enable();
-    //     gameRenderer.getOverlayTexture().setupOverlayColor();
-    //     MatrixStack newStack = new MatrixStack();
-    //     MatrixStackUtils.multiply(newStack, stack.peek().getPositionMatrix());
-    //     newStack.peek().getNormalMatrix().set(stack.peek().getNormalMatrix());
-    //     if (ui)
-    //     {
-    //         newStack.peek().getNormalMatrix().getScale(Vectors.EMPTY_3F);
-    //         newStack.peek().getNormalMatrix().scale(1F / Vectors.EMPTY_3F.x, -1F / Vectors.EMPTY_3F.y, 1F / Vectors.EMPTY_3F.z);
-    //     }
-    //     // Pass form-level texture so VAO renderer can respect it
-    //     Link link = this.form.texture.get();
-    //     Link defaultTexture = link == null ? model.texture : link;
-    //     this.applyPBRTextureIntensity();
-    //     try
-    //     {
-    //         model.render(newStack, program, color, light, overlay, stencilMap, this.form.shapeKeys.get(), defaultTexture);
-    //     }
-    //     finally
-    //     {
-    //         this.clearPBRTextureIntensity();
-    //     }
-    //     gameRenderer.getLightmapTextureManager().disable();
-    //     gameRenderer.getOverlayTexture().teardownOverlayColor();
-    //     if (!model.culling)
-    //     {
-    //         RenderSystem.enableCull();
-    //     }
-    //     this.captureMatrices(model);
-    //     if (stencilMap == null && renderEquipment)
-    //     {
-    //         this.renderItems(target, model, stack, EquipmentSlot.MAINHAND, ItemDisplayContext.THIRD_PERSON_RIGHT_HAND, model.itemsMain, model.itemsMainTransform, color, overlay, light);
-    //         this.renderItems(target, model, stack, EquipmentSlot.OFFHAND, ItemDisplayContext.THIRD_PERSON_LEFT_HAND, model.itemsOff, model.itemsOffTransform, color, overlay, light);
-    //         for (Map.Entry<ArmorType, ArmorSlot> entry : model.armorSlots.entrySet())
-    //         {
-    //             this.renderArmor(target, stack, entry.getKey(), entry.getValue(), color, overlay, light);
-    //         }
-    //         this.resetPostEquipmentRenderState();
-    //     }
-    // }
+    private void renderModel(IEntity target, Supplier<ShaderProgram> program, MatrixStack stack, ModelInstance model, int light, int overlay, Color color, boolean ui, StencilMap stencilMap, float transition, boolean renderEquipment)
+    {
+        if (!model.culling)
+        {
+            RenderSystem.disableCull();
+        }
+
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.enableDepthTest();
+        GameRenderer gameRenderer = MinecraftClient.getInstance().gameRenderer;
+
+        gameRenderer.getLightmapTextureManager().enable();
+        gameRenderer.getOverlayTexture().setupOverlayColor();
+
+        MatrixStack newStack = new MatrixStack();
+
+        MatrixStackUtils.multiply(newStack, stack.peek().getPositionMatrix());
+        newStack.peek().getNormalMatrix().set(stack.peek().getNormalMatrix());
+
+        if (ui)
+        {
+            newStack.peek().getNormalMatrix().getScale(Vectors.EMPTY_3F);
+            newStack.peek().getNormalMatrix().scale(1F / Vectors.EMPTY_3F.x, -1F / Vectors.EMPTY_3F.y, 1F / Vectors.EMPTY_3F.z);
+        }
+
+        /* Pass form-level texture so VAO renderer can respect it */
+        Link link = this.form.texture.get();
+        Link defaultTexture = link == null ? model.texture : link;
+        this.applyPBRTextureIntensity();
+
+        try
+        {
+            model.render(newStack, program, color, light, overlay, stencilMap, this.form.shapeKeys.get(), defaultTexture);
+        }
+        finally
+        {
+            this.clearPBRTextureIntensity();
+        }
+
+        gameRenderer.getLightmapTextureManager().disable();
+        gameRenderer.getOverlayTexture().teardownOverlayColor();
+        RenderSystem.disableBlend();
+
+        if (!model.culling)
+        {
+            RenderSystem.enableCull();
+        }
+
+        /* Render items */
+        this.captureMatrices(model);
+
+        if (stencilMap == null && renderEquipment)
+        {
+            this.renderItems(target, model, stack, EquipmentSlot.MAINHAND, ModelTransformationMode.THIRD_PERSON_RIGHT_HAND, model.itemsMain, model.itemsMainTransform, color, overlay, light);
+            this.renderItems(target, model, stack, EquipmentSlot.OFFHAND, ModelTransformationMode.THIRD_PERSON_LEFT_HAND, model.itemsOff, model.itemsOffTransform, color, overlay, light);
+
+            for (Map.Entry<ArmorType, ArmorSlot> entry : model.armorSlots.entrySet())
+            {
+                this.renderArmor(target, stack, entry.getKey(), entry.getValue(), color, overlay, light);
+            }
+
+            this.resetPostEquipmentRenderState();
+        }
+    }
 
     private void resetPostEquipmentRenderState()
     {
-        // RenderSystem.depthMask(true);
-        // RenderSystem.colorMask(true, true, true, true);
-        // RenderSystem.enableDepthTest();
-        // RenderSystem.depthFunc(GL11.GL_LEQUAL);
-        // // RenderSystem.disableBlend();
-        // RenderSystem.defaultBlendFunc();
-        // RenderSystem.enableCull();
-        // RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
+        RenderSystem.depthMask(true);
+        RenderSystem.colorMask(true, true, true, true);
+        RenderSystem.enableDepthTest();
+        RenderSystem.depthFunc(GL11.GL_LEQUAL);
+        RenderSystem.disableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.enableCull();
+        RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
     }
 
     private void renderArmor(IEntity target, MatrixStack stack, ArmorType type, ArmorSlot armorSlot, Color color, int overlay, int light)
@@ -453,21 +469,21 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             MatrixStackUtils.applyTransform(stack, armorSlot.transform);
             stack.multiply(RotationAxis.POSITIVE_X.rotationDegrees(180F));
 
-            // CustomVertexConsumerProvider.hijackVertexFormat((l) -> RenderSystem.enableBlend());
+            CustomVertexConsumerProvider.hijackVertexFormat((l) -> RenderSystem.enableBlend());
 
-            // ActorEntityRenderer.armorRenderer.renderArmorSlot(stack, consumers, target, type.slot, type, light);
+            ActorEntityRenderer.armorRenderer.renderArmorSlot(stack, consumers, target, type.slot, type, light);
             consumers.draw();
 
             CustomVertexConsumerProvider.clearRunnables();
 
             stack.pop();
 
-            // RenderSystem.enableBlend();
-            // RenderSystem.enableDepthTest();
+            RenderSystem.enableBlend();
+            RenderSystem.enableDepthTest();
         }
     }
 
-    private void renderItems(IEntity target, ModelInstance model, MatrixStack stack, EquipmentSlot slot, ItemDisplayContext mode, List<ArmorSlot> items, ArmorSlot globalTransform, Color color, int overlay, int light)
+    private void renderItems(IEntity target, ModelInstance model, MatrixStack stack, EquipmentSlot slot, ModelTransformationMode mode, List<ArmorSlot> items, ArmorSlot globalTransform, Color color, int overlay, int light)
     {
         ItemStack itemStack = target.getEquipmentStack(slot);
 
@@ -497,7 +513,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
                 MatrixStackUtils.applyTransform(stack, armorSlot.transform);
 
-                // CustomVertexConsumerProvider.hijackVertexFormat((l) -> RenderSystem.enableBlend());
+                CustomVertexConsumerProvider.hijackVertexFormat((l) -> RenderSystem.enableBlend());
 
                 consumers.setSubstitute(BBSRendering.getColorConsumer(color));
 
@@ -508,12 +524,12 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                 {
                     stack.push();
                     stack.scale(0F, 0F, 0F);
-                    // MinecraftClient.getInstance().getItemRenderer().renderItem(null, new ItemStack(Items.OAK_BUTTON), mode, mode == ItemDisplayContext.THIRD_PERSON_LEFT_HAND, stack, consumers, target.getWorld(), light, overlay, 0);
+                    MinecraftClient.getInstance().getItemRenderer().renderItem(null, new ItemStack(Items.OAK_BUTTON), mode, mode == ModelTransformationMode.THIRD_PERSON_LEFT_HAND, stack, consumers, target.getWorld(), light, overlay, 0);
                     consumers.draw();
                     stack.pop();
                 }
 
-                // MinecraftClient.getInstance().getItemRenderer().renderItem(null, itemStack, mode, mode == ItemDisplayContext.THIRD_PERSON_LEFT_HAND, stack, consumers, target.getWorld(), light, overlay, 0);
+                MinecraftClient.getInstance().getItemRenderer().renderItem(null, itemStack, mode, mode == ModelTransformationMode.THIRD_PERSON_LEFT_HAND, stack, consumers, target.getWorld(), light, overlay, 0);
                 consumers.draw();
                 consumers.setSubstitute(null);
 
@@ -521,7 +537,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
                 stack.pop();
 
-                // RenderSystem.enableDepthTest();
+                RenderSystem.enableDepthTest();
             }
         }
     }
@@ -529,7 +545,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
     @Override
     public boolean renderArm(MatrixStack matrices, int light, AbstractClientPlayerEntity player, Hand hand)
     {
-        this.ensureAnimator(MinecraftClient.getInstance().getRenderTickCounter().getTickProgress(true));
+        this.ensureAnimator(MinecraftClient.getInstance().getRenderTickCounter().getTickDelta(true));
         ModelInstance model = this.getModel();
 
         if (this.animator != null && model != null)
@@ -575,7 +591,6 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             BBSModClient.getTextures().bindTexture(texture);
             this.clearPBRTextureIntensity();
 
-            /* TODO(1.21.11): ShaderProgram removed — mainShader needs update
             Supplier<ShaderProgram> mainShader = (BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld()) || !model.isVAORendered()
                 ? () ->
                 {
@@ -585,10 +600,9 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                 : BBSShaders::getModel;
 
             RenderSystem.enableDepthTest();
-            // RenderSystem.enableBlend();
+            RenderSystem.enableBlend();
 
             this.renderModel(this.entity, mainShader, matrices, model, light, OverlayTexture.DEFAULT_UV, color, false, null, 0F, true);
-            */
 
             for (ModelGroup group : model.getModel().getAllGroups())
             {
@@ -631,7 +645,6 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                 this.clearPBRTextureIntensity();
             }
 
-            /* TODO(1.21.11): ShaderProgram removed — shader needs update
             Supplier<ShaderProgram> mainShader = (BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld()) || !model.isVAORendered()
                 ? () ->
                 {
@@ -642,7 +655,6 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             Supplier<ShaderProgram> shader = this.getShader(context, mainShader, BBSShaders::getPickerModelsProgram);
 
             this.renderModel(context.entity, shader, context.stack, model, context.light, context.overlay, color, false, context.stencilMap, context.getTransition(), context.renderEquipment);
-            */
         }
     }
 

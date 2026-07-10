@@ -18,12 +18,16 @@ import mchorse.bbs_mod.utils.math.Noise;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.ShaderProgram;
+import net.minecraft.client.gl.ShaderProgramKey;
+import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.BufferBuilder;
+import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.DiffuseLighting;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.render.Tessellator;
+import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.RotationAxis;
@@ -33,7 +37,6 @@ import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.VertexFormat;
 
 import org.lwjgl.opengl.GL11;
 
@@ -54,7 +57,7 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
     @Override
     protected void renderInUI(UIContext context, int x1, int y1, int x2, int y2)
     {
-        MatrixStack stack = new MatrixStack();
+        MatrixStack stack = context.batcher.getContext().getMatrices();
         int scale = (y2 - y1) / 2;
 
         stack.push();
@@ -72,8 +75,11 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
 
         Vector3f light0 = new Vector3f(0.85F, 0.85F, -1F).normalize();
         Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1F).normalize();
-        // RenderSystem.setupLevelDiffuseLighting(light0, light1);
-        // DiffuseLighting.disableGuiDepthLighting();
+        RenderSystem.setupLevelDiffuseLighting(light0, light1);
+
+        this.renderShape(stack, ShaderProgramKeys.RENDERTYPE_ENTITY_TRANSLUCENT, OverlayTexture.DEFAULT_UV, LightmapTextureManager.MAX_LIGHT_COORDINATE);
+
+        DiffuseLighting.disableGuiDepthLighting();
 
         stack.pop();
     }
@@ -81,7 +87,149 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
     @Override
     protected void render3D(FormRenderingContext context)
     {
-        /* 1.21.11: renderShape disabled (ShaderProgram removed, API changes) */
+        ShaderProgramKey shader = ShaderProgramKeys.RENDERTYPE_ENTITY_TRANSLUCENT;
+
+        this.renderShape(context.stack, shader, context.overlay, context.light);
+    }
+
+    private void renderShape(MatrixStack stack, ShaderProgramKey shader, int overlay, int light)
+    {
+        this.evaluator = new ShapeGraphEvaluator(this.form.graph.get());
+        
+        this.time = (System.currentTimeMillis() % 200000) / 1000F;
+
+        if (!this.evaluator.irisNodes.isEmpty() && BBSRendering.isIrisShadersEnabled())
+        {
+            for (IrisShaderNode node : this.evaluator.irisNodes)
+            {
+                if (node.uniform.isEmpty()) continue;
+
+                ShaderCurves.ShaderVariable variable = ShaderCurves.variableMap.get(node.uniform);
+
+                if (variable != null)
+                {
+                    variable.value = (float) this.evaluator.evaluateInput(node.id, 0, 0, 0, 0, this.time);
+                }
+            }
+        }
+
+        RenderSystem.setShader(shader);
+        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+        RenderSystem.enableBlend();
+        
+        if (this.form.lighting.get())
+        {
+            RenderSystem.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
+        }
+        else
+        {
+            RenderSystem.defaultBlendFunc();
+        }
+        
+        RenderSystem.disableCull();
+        RenderSystem.enableDepthTest();
+
+        GameRenderer gameRenderer = MinecraftClient.getInstance().gameRenderer;
+        gameRenderer.getLightmapTextureManager().enable();
+        gameRenderer.getOverlayTexture().setupOverlayColor();
+
+        // Bind texture — material node overrides the form's static texture
+        Link texture = this.form.texture.get();
+
+        TextureNode matNode = this.evaluator.getMaterialNode();
+
+        if (matNode != null && matNode.texture != null)
+        {
+            texture = matNode.texture;
+        }
+
+        if (texture != null)
+        {
+            BBSModClient.getTextures().bindTexture(texture);
+        }
+        else
+        {
+            BBSModClient.getTextures().bindTexture(ParticleScheme.DEFAULT_TEXTURE);
+        }
+
+        Color finalColor = new Color(this.form.color.get().r, this.form.color.get().g, this.form.color.get().b, this.form.color.get().a);
+
+        if (!this.evaluator.irisAttributeNodes.isEmpty())
+        {
+            int blockLight = (light >> 4) & 0xF;
+            int skyLight = (light >> 20) & 0xF;
+            int overlayU = overlay & 0xFFFF;
+            int overlayV = (overlay >> 16) & 0xFFFF;
+
+            for (IrisAttributeNode node : this.evaluator.irisAttributeNodes)
+            {
+                double val = this.evaluator.evaluateInput(node.id, 0, 0, 0, 0, this.time);
+
+                switch (node.attribute)
+                {
+                    case COLOR_R: finalColor.r = (float) val; break;
+                    case COLOR_G: finalColor.g = (float) val; break;
+                    case COLOR_B: finalColor.b = (float) val; break;
+                    case COLOR_A: finalColor.a = (float) val; break;
+                    case LIGHT_BLOCK: blockLight = (int) val; break;
+                    case LIGHT_SKY: skyLight = (int) val; break;
+                    case OVERLAY_U: overlayU = (int) val; break;
+                    case OVERLAY_V: overlayV = (int) val; break;
+                }
+            }
+
+            blockLight = Math.max(0, Math.min(15, blockLight));
+            skyLight = Math.max(0, Math.min(15, skyLight));
+
+            light = (blockLight << 4) | (skyLight << 20);
+            overlay = overlayU | (overlayV << 16);
+        }
+
+        // Apply Color
+        Color c = finalColor;
+        // RenderSystem.setShaderColor is not enough for VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL
+        // We need to pass color per vertex
+
+        // Transform
+        stack.push();
+        stack.scale(this.form.sizeX.get(), this.form.sizeY.get(), this.form.sizeZ.get());
+
+        // Draw Geometry based on Type
+        Tessellator tessellator = Tessellator.getInstance();
+        BufferBuilder builder = tessellator.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL);
+        
+        ShapeForm.ShapeType type = this.form.type.get();
+        
+        if (this.form.particles.get())
+        {
+            this.renderVolumeParticles(builder, stack, type, c, overlay, light);
+        }
+        else if (type == ShapeForm.ShapeType.BOX)
+        {
+            this.renderBox(builder, stack, c, overlay, light);
+        }
+        else if (type == ShapeForm.ShapeType.SPHERE)
+        {
+            this.renderSphere(builder, stack, c, overlay, light);
+        }
+        else if (type == ShapeForm.ShapeType.CYLINDER)
+        {
+            this.renderCylinder(builder, stack, false, c, overlay, light);
+        }
+        else if (type == ShapeForm.ShapeType.CAPSULE)
+        {
+            this.renderCylinder(builder, stack, true, c, overlay, light);
+        }
+        
+        BufferRenderer.drawWithGlobalProgram(builder.end());
+        
+        stack.pop();
+        
+        gameRenderer.getLightmapTextureManager().disable();
+        gameRenderer.getOverlayTexture().teardownOverlayColor();
+        
+        RenderSystem.disableBlend();
+        RenderSystem.defaultBlendFunc();
     }
 
     private void renderVolumeParticles(BufferBuilder builder, MatrixStack stack, ShapeForm.ShapeType type, Color c, int overlay, int light)

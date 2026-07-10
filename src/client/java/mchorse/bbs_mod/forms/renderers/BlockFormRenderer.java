@@ -10,14 +10,20 @@ import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.joml.Vectors;
 
+import net.minecraft.block.BlockEntityProvider;
+import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.render.DiffuseLighting;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.render.OverlayVertexConsumer;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.VertexConsumer;
+import net.minecraft.client.render.block.entity.BlockEntityRenderDispatcher;
+import net.minecraft.client.render.block.entity.BlockEntityRenderer;
 import net.minecraft.client.render.model.ModelBaker;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.util.math.BlockPos;
 
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
@@ -36,10 +42,10 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
     @Override
     public void renderInUI(UIContext context, int x1, int y1, int x2, int y2)
     {
-        //context.batcher.getContext().draw();
+        context.batcher.getContext().draw();
 
         CustomVertexConsumerProvider consumers = FormUtilsClient.getProvider();
-        MatrixStack matrices = new MatrixStack();
+        MatrixStack matrices = context.batcher.getContext().getMatrices();
 
         Matrix4f uiMatrix = ModelFormRenderer.getUIMatrix(context, x1, y1, x2, y2);
 
@@ -55,11 +61,12 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
 
         Vector3f light0 = new Vector3f(0.85F, 0.85F, -1F).normalize();
         Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1F).normalize();
-        //RenderSystem.setupLevelDiffuseLighting(light0, light1);
+        RenderSystem.setupLevelDiffuseLighting(light0, light1);
 
         consumers.setSubstitute(BBSRendering.getColorConsumer(set));
         consumers.setUI(true);
         MinecraftClient.getInstance().getBlockRenderManager().renderBlockAsEntity(this.form.blockState.get(), matrices, consumers, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, OverlayTexture.DEFAULT_UV);
+        this.renderBlockEntity(matrices, consumers, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, OverlayTexture.DEFAULT_UV);
 
         int breakingLevel = this.form.breaking.get();
         if (breakingLevel > 0 && breakingLevel <= 10)
@@ -75,7 +82,7 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
         consumers.setUI(false);
         consumers.setSubstitute(null);
 
-        //DiffuseLighting.disableGuiDepthLighting();
+        DiffuseLighting.disableGuiDepthLighting();
 
         matrices.pop();
     }
@@ -91,19 +98,17 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
 
         if (context.isPicking())
         {
-            /* TODO(1.21.11): setupTarget and RenderSystem.setShader removed
             CustomVertexConsumerProvider.hijackVertexFormat((layer) ->
             {
                 this.setupTarget(context, BBSShaders.getPickerModelsProgram());
                 RenderSystem.setShader(BBSShaders.getPickerModelsProgram());
             });
-            */
 
             light = 0;
         }
         else
         {
-            //CustomVertexConsumerProvider.hijackVertexFormat((l) -> RenderSystem.enableBlend());
+            CustomVertexConsumerProvider.hijackVertexFormat((l) -> RenderSystem.enableBlend());
         }
 
         Color set = this.form.color.get();
@@ -113,6 +118,11 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
 
         consumers.setSubstitute(BBSRendering.getColorConsumer(set));
         MinecraftClient.getInstance().getBlockRenderManager().renderBlockAsEntity(this.form.blockState.get(), context.stack, consumers, light, context.overlay);
+
+        if (!context.isPicking())
+        {
+            this.renderBlockEntity(context.stack, consumers, light, context.overlay);
+        }
 
         int breakingLevel = this.form.breaking.get();
         if (!context.isPicking() && breakingLevel > 0 && breakingLevel <= 10)
@@ -131,10 +141,40 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
 
         context.stack.pop();
 
-        //RenderSystem.enableDepthTest();
+        RenderSystem.enableDepthTest();
     }
 
-    /* BlockEntity rendering removed for 1.21.11 — BlockEntityRenderer.render() now requires
-     * BlockEntityRenderState, OrderedRenderCommandQueue, and CameraRenderState. These are only
-     * available during vanilla world rendering, not in the form's isolated context. */
+    private void renderBlockEntity(MatrixStack stack, CustomVertexConsumerProvider consumers, int light, int overlay)
+    {
+        if (!(this.form.blockState.get().getBlock() instanceof BlockEntityProvider provider))
+        {
+            return;
+        }
+
+        MinecraftClient client = MinecraftClient.getInstance();
+        BlockEntity blockEntity = provider.createBlockEntity(BlockPos.ORIGIN, this.form.blockState.get());
+
+        if (blockEntity == null)
+        {
+            return;
+        }
+
+        if (client.world != null)
+        {
+            blockEntity.setWorld(client.world);
+        }
+
+        BlockEntityRenderDispatcher dispatcher = client.getBlockEntityRenderDispatcher();
+        BlockEntityRenderer<?> renderer = dispatcher.get(blockEntity);
+
+        if (renderer == null)
+        {
+            return;
+        }
+
+        @SuppressWarnings({"rawtypes", "unchecked"})
+        BlockEntityRenderer raw = (BlockEntityRenderer) renderer;
+
+        raw.render(blockEntity, 0F, stack, consumers, light, overlay);
+    }
 }

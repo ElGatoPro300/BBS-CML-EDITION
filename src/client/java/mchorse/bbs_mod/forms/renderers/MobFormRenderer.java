@@ -44,6 +44,7 @@ import org.joml.Vector3f;
 
 import com.mojang.authlib.GameProfile;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.brigadier.StringReader;
 
 import org.lwjgl.opengl.GL11;
 
@@ -192,8 +193,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
         try
         {
-            /* 1.21.5: new StringNbtReader(StringReader).parseCompound() -> StringNbtReader.readCompound(String). */
-            compound = StringNbtReader.readCompound(nbt);
+            compound = (new StringNbtReader(new StringReader(nbt))).parseCompound();
         }
         catch (Exception e)
         {}
@@ -209,7 +209,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
         if (this.entity != null)
         {
             compound.putString("id", id);
-            // this.entity.readNbt(compound);
+            this.entity.readNbt(compound);
             this.entity.noClip = true;
         }
     }
@@ -221,7 +221,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
         if (this.entity != null)
         {
-            MatrixStack stack = new MatrixStack();
+            MatrixStack stack = context.batcher.getContext().getMatrices();
 
             stack.push();
 
@@ -259,13 +259,13 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
             Vector3f light0 = new Vector3f(0.85F, 0.85F, -1F).normalize();
             Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1F).normalize();
-            // RenderSystem.setupLevelDiffuseLighting(light0, light1);
+            RenderSystem.setupLevelDiffuseLighting(light0, light1);
 
             consumers.setUI(true);
             MobTextureOverride.begin(this.form.texture.get());
             try
             {
-                // MinecraftClient.getInstance().getEntityRenderDispatcher().render(this.entity, 0D, 0D, 0D, 0F, stack, consumers, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE);
+                MinecraftClient.getInstance().getEntityRenderDispatcher().render(this.entity, 0D, 0D, 0D, 0F, stack, consumers, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE);
             }
             finally
             {
@@ -276,11 +276,11 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
             CustomVertexConsumerProvider.clearRunnables();
 
-            // DiffuseLighting.disableGuiDepthLighting();
+            DiffuseLighting.disableGuiDepthLighting();
 
             stack.pop();
 
-            // RenderSystem.depthFunc(GL11.GL_ALWAYS);
+            RenderSystem.depthFunc(GL11.GL_ALWAYS);
         }
     }
 
@@ -302,8 +302,8 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
                     if (!first.bool)
                     {
                         this.bindTexture();
-                        // this.setupTarget(context, BBSShaders.getPickerModelsProgram());
-                        // RenderSystem.setShader(BBSShaders.getPickerModelsProgram());
+                        this.setupTarget(context, BBSShaders.getPickerModelsProgram());
+                        RenderSystem.setShader(BBSShaders.getPickerModelsProgram());
 
                         first.bool = true;
                     }
@@ -372,7 +372,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
             MobTextureOverride.begin(this.form.texture.get());
             try
             {
-                // MinecraftClient.getInstance().getEntityRenderDispatcher().render(this.entity, 0D, 0D, 0D, 0F, context.stack, consumers, light);
+                MinecraftClient.getInstance().getEntityRenderDispatcher().render(this.entity, 0D, 0D, 0D, 0F, context.stack, consumers, light);
             }
             finally
             {
@@ -386,7 +386,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
             context.stack.pop();
 
-            // RenderSystem.enableDepthTest();
+            RenderSystem.enableDepthTest();
         }
     }
 
@@ -403,13 +403,13 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
                 this.entity.tick();
             }
 
-            // this.entity.prevPitch = this.prevPitch;
-            // this.entity.prevYaw = 0F;
+            this.entity.prevPitch = this.prevPitch;
+            this.entity.prevYaw = 0F;
 
             if (this.entity instanceof LivingEntity livingEntity)
             {
-                // livingEntity.prevHeadYaw = this.prevYawHead;
-                // livingEntity.prevBodyYaw = 0F;
+                livingEntity.prevHeadYaw = this.prevYawHead;
+                livingEntity.prevBodyYaw = 0F;
 
                 /* Limb swing is so ugly */
                 if (livingEntity.limbAnimator instanceof LimbAnimatorAccessor a && entity.getLimbAnimator() instanceof LimbAnimatorAccessor b)

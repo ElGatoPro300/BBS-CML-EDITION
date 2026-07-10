@@ -15,9 +15,12 @@ import mchorse.bbs_mod.utils.joml.Vectors;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
+import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.BufferBuilder;
+import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.Tessellator;
+import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.BufferAllocator;
 import net.minecraft.client.util.math.MatrixStack;
@@ -26,7 +29,6 @@ import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.VertexFormat;
 
 import java.awt.Font;
 import java.util.List;
@@ -115,14 +117,14 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
 
         MatrixStackUtils.scaleStack(context.stack, scale, -scale, scale);
 
-        /* RenderSystem.disableCull(); */
+        RenderSystem.disableCull();
 
         if (context.isPicking())
         {
             CustomVertexConsumerProvider.hijackVertexFormat((layer) ->
             {
-                /* this.setupTarget(context, BBSShaders.getPickerModelsProgram());
-                RenderSystem.setShader(BBSShaders.getPickerModelsProgram()); */
+                this.setupTarget(context, BBSShaders.getPickerModelsProgram());
+                RenderSystem.setShader(BBSShaders.getPickerModelsProgram());
             });
 
             light = 0;
@@ -139,8 +141,8 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
 
         CustomVertexConsumerProvider.clearRunnables();
 
-        //RenderSystem.enableDepthTest();
-        //RenderSystem.enableCull();
+        RenderSystem.enableDepthTest();
+        RenderSystem.enableCull();
 
         context.stack.pop();
     }
@@ -309,7 +311,7 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
             );
         }
 
-        //RenderSystem.enableDepthTest();
+        RenderSystem.enableDepthTest();
 
         consumers.draw();
 
@@ -468,7 +470,7 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
             y += lineHeight;
         }
 
-        //RenderSystem.enableDepthTest();
+        RenderSystem.enableDepthTest();
 
         consumers.draw();
 
@@ -501,10 +503,10 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
             color.r, color.g, color.b, color.a
         );
 
-        //RenderSystem.enableBlend();
-        //RenderSystem.enableDepthTest();
-        //RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
-        //BufferRenderer.drawWithGlobalProgram(builder.end());
+        RenderSystem.enableBlend();
+        RenderSystem.enableDepthTest();
+        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
+        BufferRenderer.drawWithGlobalProgram(builder.end());
         context.stack.pop();
     }
 }
