@@ -3,6 +3,7 @@ package mchorse.bbs_mod.ui.framework.elements.input.keyframes.graphs;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.camera.utils.TimeUtils;
 import mchorse.bbs_mod.data.types.MapType;
+import mchorse.bbs_mod.graphics.Draw;
 import mchorse.bbs_mod.graphics.line.LineBuilder;
 import mchorse.bbs_mod.graphics.line.SolidColorLineRenderer;
 import mchorse.bbs_mod.graphics.window.Window;
@@ -28,8 +29,10 @@ import mchorse.bbs_mod.utils.keyframes.factories.IKeyframeFactory;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexFormats;
+import net.minecraft.client.util.math.MatrixStack;
 
 import org.joml.Matrix3x2fc;
+import org.joml.Matrix4f;
 
 import com.mojang.blaze3d.vertex.VertexFormat;
 
@@ -545,11 +548,11 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
 
         preview.setShape(shape);
 
-        Matrix4f matrix = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
+        Matrix3x2fc matrix = context.batcher.getContext().getMatrices();
         BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
 
         UIKeyframeDopeSheet.renderShape(preview, context, builder, matrix, x, y, 3, c);
-        BufferRenderer.drawWithGlobalProgram(builder.end());
+        Draw.flush(builder, Draw.getPositionColorLayer());
     }
 
     /**

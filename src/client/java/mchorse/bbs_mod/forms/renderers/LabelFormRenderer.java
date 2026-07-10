@@ -28,6 +28,8 @@ import org.joml.Vector3f;
 import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.vertex.VertexFormat;
 
+import org.lwjgl.opengl.GL11;
+
 import java.awt.Font;
 import java.util.List;
 
@@ -135,8 +137,8 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
         {
             CustomVertexConsumerProvider.hijackVertexFormat((layer) ->
             {
-                RenderSystem.enableBlend();
-                RenderSystem.defaultBlendFunc();
+                GlStateManager._enableBlend();
+                GlStateManager._blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
             });
         }
 

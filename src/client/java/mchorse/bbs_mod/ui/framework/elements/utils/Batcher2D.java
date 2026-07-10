@@ -12,6 +12,7 @@ import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.utils.colors.Colors;
 
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.ScreenRect;
@@ -545,7 +546,6 @@ public class Batcher2D
 
     public void flushDraw()
     {
-        this.context.draw();
     }
 
     public void text(String label, float x, float y)
@@ -650,8 +650,25 @@ public class Batcher2D
             }
 
             this.box(x - offset, y - offset, x + this.font.getWidth(text) + offset - 1, y + this.font.getHeight() + offset, background);
+        }
 
         this.text(font, text, x, y, color, shadow);
+    }
+
+    public void text(FontRenderer font, String label, float x, float y, int color, boolean shadow)
+    {
+        if (BBSSettings.isLightTheme())
+        {
+            shadow = false;
+            color = darkenWhite(color);
+        }
+
+        if (Colors.getA(color) <= 0F)
+        {
+            color = Colors.opaque(color);
+        }
+
+        this.context.drawText(font.getRenderer(), label, (int) x, (int) y, color, shadow);
     }
 
     public void flush()

@@ -16,6 +16,103 @@ import com.mojang.blaze3d.vertex.VertexFormat;
 
 public class ModelVAORenderer
 {
+    /* Paint overlay state. Used by CubicVAORenderer and ModelFormRenderer */
+    private static float baseR;
+    private static float baseG;
+    private static float baseB;
+    private static float baseStrength;
+
+    private static float paintR;
+    private static float paintG;
+    private static float paintB;
+    private static float paintStrength;
+
+    private static boolean paintPass;
+    private static boolean paintOverlayPass;
+
+    public static void beginPaintPass()
+    {
+        paintPass = true;
+    }
+
+    public static void endPaintPass()
+    {
+        paintPass = false;
+    }
+
+    public static boolean isPaintOverlayPass()
+    {
+        return paintOverlayPass;
+    }
+
+    public static boolean isPaintPass()
+    {
+        return paintPass;
+    }
+
+    public static float getBasePaintR()
+    {
+        return baseR;
+    }
+
+    public static float getBasePaintG()
+    {
+        return baseG;
+    }
+
+    public static float getBasePaintB()
+    {
+        return baseB;
+    }
+
+    public static float getBasePaintStrength()
+    {
+        return baseStrength;
+    }
+
+    public static void setPaint(float r, float g, float b, float strength)
+    {
+        baseR = r;
+        baseG = g;
+        baseB = b;
+        baseStrength = strength;
+
+        paintR = r;
+        paintG = g;
+        paintB = b;
+        paintStrength = strength;
+    }
+
+    public static void setGroupPaint(float r, float g, float b, float strength)
+    {
+        if (strength > 0F)
+        {
+            paintR = r;
+            paintG = g;
+            paintB = b;
+            paintStrength = strength;
+        }
+        else
+        {
+            paintR = baseR;
+            paintG = baseG;
+            paintB = baseB;
+            paintStrength = baseStrength;
+        }
+    }
+
+    public static void clearPaint()
+    {
+        baseR = 0F;
+        baseG = 0F;
+        baseB = 0F;
+        baseStrength = 0F;
+
+        paintR = 0F;
+        paintG = 0F;
+        paintB = 0F;
+        paintStrength = 0F;
+    }
     /**
      * Draw an {@link IModelVAO} through the immediate model RenderLayer. The 1.21.11 rewrite removed
      * ShaderProgram.bind()/unbind() and the imperative uniform/sampler/fog/light setup; the built-in

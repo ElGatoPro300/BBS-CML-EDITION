@@ -137,6 +137,7 @@ import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
 import net.minecraft.util.Identifier;
 
+import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import com.mojang.serialization.MapCodec;
 
@@ -623,10 +624,10 @@ public class BBSModClient implements ClientModInitializer
         {
             if (Gizmo.INSTANCE.hasDeferred())
             {
-                RenderSystem.enableDepthTest();
-                RenderSystem.depthMask(false);
-                Gizmo.INSTANCE.renderDeferred(context.matrixStack());
-                RenderSystem.depthMask(true);
+                GlStateManager._enableDepthTest();
+                GlStateManager._depthMask(false);
+                Gizmo.INSTANCE.renderDeferred(context.matrices());
+                GlStateManager._depthMask(true);
             }
 
             if (videoRecorder.isRecording() && BBSRendering.canRender)

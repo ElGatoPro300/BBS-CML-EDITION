@@ -3,6 +3,7 @@ package mchorse.bbs_mod.ui.framework.elements.input.keyframes.graphs;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.camera.utils.TimeUtils;
 import mchorse.bbs_mod.data.types.MapType;
+import mchorse.bbs_mod.graphics.Draw;
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.forms.editors.utils.UIStructureOverlayPanel;
@@ -30,6 +31,7 @@ import mchorse.bbs_mod.utils.keyframes.KeyframeShape;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexFormats;
+import net.minecraft.client.util.math.MatrixStack;
 
 import org.joml.Matrix3x2fc;
 
@@ -777,11 +779,11 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
 
         preview.setShape(shape);
 
-        Matrix4f matrix = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
+        Matrix3x2fc matrix = context.batcher.getContext().getMatrices();
         BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
 
         renderShape(preview, context, builder, matrix, x, y, 3, c);
-        BufferRenderer.drawWithGlobalProgram(builder.end());
+        Draw.flush(builder, Draw.getPositionColorLayer());
     }
 
     /**

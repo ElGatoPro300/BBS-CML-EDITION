@@ -60,7 +60,6 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
             context.getTransition(),
             null,
             true,
-            false,
             false
         );
         GlStateManager._depthFunc(GL11.GL_ALWAYS);

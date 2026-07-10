@@ -26,7 +26,10 @@ import net.minecraft.world.World;
 
 import org.joml.Matrix4f;
 
+import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.logging.LogUtils;
+
+import org.lwjgl.opengl.GL11;
 
 import org.slf4j.Logger;
 
@@ -107,7 +110,7 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
         consumers.setSubstitute(null);
 
         CustomVertexConsumerProvider.clearRunnables();
-        RenderSystem.defaultBlendFunc();
+        GlStateManager._blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
 
         context.stack.pop();
     }

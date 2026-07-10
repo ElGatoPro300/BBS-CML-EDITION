@@ -1051,7 +1051,9 @@ public class UITriggerBlockPanel extends UIDashboardPanel implements IFlightSupp
 
         this.hovered = null;
 
-        if (context.matrixStack() == null)
+        /* TODO 1.21.11: WorldRenderContext.matrixStack() renamed to matrices() */
+        /* if (context.matrices() == null) */
+        if (false)
         {
             return;
         }

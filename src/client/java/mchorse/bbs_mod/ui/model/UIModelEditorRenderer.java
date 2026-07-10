@@ -47,15 +47,21 @@ import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.colors.Colors;
 
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.item.ItemModelManager;
+import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexFormats;
-import net.minecraft.item.ModelTransformationMode;
+import net.minecraft.client.render.command.BatchingRenderCommandQueue;
+import net.minecraft.client.render.command.OrderedRenderCommandQueueImpl;
+import net.minecraft.client.render.item.ItemRenderState;
+import net.minecraft.client.render.item.ItemRenderer;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.EquipmentSlot;
+import net.minecraft.item.ItemDisplayContext;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.math.RotationAxis;
 
@@ -316,9 +322,9 @@ public class UIModelEditorRenderer extends UIModelRenderer
             return;
         }
 
-        ModelTransformationMode mode = this.fpHandPreviewMainHand
-            ? ModelTransformationMode.FIRST_PERSON_RIGHT_HAND
-            : ModelTransformationMode.FIRST_PERSON_LEFT_HAND;
+        ItemDisplayContext mode = this.fpHandPreviewMainHand
+            ? ItemDisplayContext.FIRST_PERSON_RIGHT_HAND
+            : ItemDisplayContext.FIRST_PERSON_LEFT_HAND;
         int light = LightmapTextureManager.pack(15, 15);
         CustomVertexConsumerProvider consumers = FormUtilsClient.getProvider();
 
@@ -329,24 +335,43 @@ public class UIModelEditorRenderer extends UIModelRenderer
         MatrixStackUtils.applyTransform(stack, this.fpHandPreviewSlot.transform);
 
         consumers.setSubstitute(BBSRendering.getColorConsumer(new Color().set(Colors.WHITE)));
-        MinecraftClient.getInstance().getItemRenderer().renderItem(
-            null,
-            itemStack,
-            mode,
-            mode == ModelTransformationMode.FIRST_PERSON_LEFT_HAND,
-            stack,
-            consumers,
-            this.entity.getWorld(),
-            light,
-            OverlayTexture.DEFAULT_UV,
-            0
-        );
+
+        ItemModelManager modelManager = MinecraftClient.getInstance().getItemModelManager();
+        ItemRenderState renderState = new ItemRenderState();
+
+        modelManager.clearAndUpdate(renderState, itemStack, mode, this.entity.getWorld(), null, 0);
+
+        OrderedRenderCommandQueueImpl queue = new OrderedRenderCommandQueueImpl();
+
+        renderState.render(stack, queue, light, OverlayTexture.DEFAULT_UV, 0);
+
+        for (BatchingRenderCommandQueue batch : queue.getBatchingQueues().values())
+        {
+            for (OrderedRenderCommandQueueImpl.ItemCommand command : batch.getItemCommands())
+            {
+                stack.push();
+                stack.peek().copy(command.positionMatrix());
+                ItemRenderer.renderItem(
+                    command.displayContext(),
+                    stack,
+                    consumers,
+                    command.lightCoords(),
+                    command.overlayCoords(),
+                    command.tintLayers(),
+                    command.quads(),
+                    command.renderLayer(),
+                    command.glintType()
+                );
+                stack.pop();
+            }
+        }
+
         consumers.draw();
         consumers.setSubstitute(null);
         CustomVertexConsumerProvider.clearRunnables();
         stack.pop();
 
-        RenderSystem.enableDepthTest();
+        GlStateManager._enableDepthTest();
     }
 
     private void ensureFramebuffer()
@@ -430,7 +455,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
         ModelInstance model = this.getModel();
         boolean fpHandPreview = this.fpHandPreviewSlot != null && model != null;
         String fpGroupId = fpHandPreview ? this.fpHandPreviewSlot.group.get() : null;
-        MatrixStack stack = context.batcher.getContext().getMatrices();
+        MatrixStack stack = new MatrixStack();
 
         if (fpHandPreview && fpGroupId != null && !fpGroupId.isEmpty())
         {
@@ -487,16 +512,16 @@ public class UIModelEditorRenderer extends UIModelRenderer
             {
                 this.lastGizmoMatrix.set(gizmoMatrix);
                 this.hasGizmoMatrix = true;
-                MatrixStack stack = new MatrixStack();
+                MatrixStack gizmoStack = new MatrixStack();
 
-                stack.push();
-                MatrixStackUtils.multiply(stack, gizmoMatrix);
+                gizmoStack.push();
+                MatrixStackUtils.multiply(gizmoStack, gizmoMatrix);
 
                 /* TODO 1.21.11: RenderSystem.disableDepthTest removed */
-                Gizmo.INSTANCE.render(stack);
+                Gizmo.INSTANCE.render(gizmoStack);
                 /* TODO 1.21.11: RenderSystem.enableDepthTest removed */
 
-                stack.pop();
+                gizmoStack.pop();
             }
         }
 
@@ -527,16 +552,16 @@ public class UIModelEditorRenderer extends UIModelRenderer
 
             if (gizmoMatrix != null)
             {
-                MatrixStack stack = new MatrixStack();
+                MatrixStack gizmoStack = new MatrixStack();
 
-                stack.push();
-                MatrixStackUtils.multiply(stack, gizmoMatrix);
+                gizmoStack.push();
+                MatrixStackUtils.multiply(gizmoStack, gizmoMatrix);
 
                 /* TODO 1.21.11: RenderSystem.disableDepthTest removed */
-                Gizmo.INSTANCE.renderStencil(stack, this.stencilMap);
+                Gizmo.INSTANCE.renderStencil(gizmoStack, this.stencilMap);
                 /* TODO 1.21.11: RenderSystem.enableDepthTest removed */
 
-                stack.pop();
+                gizmoStack.pop();
             }
 
             this.stencil.pickGUI(context, this.area);

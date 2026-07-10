@@ -395,9 +395,9 @@ public class BBSRendering
             menu.startRenderFrame(mc.getRenderTickCounter().getTickProgress(false));
         }
 
-        RenderSystem.depthFunc(GL11.GL_LEQUAL);
-        RenderSystem.enableDepthTest();
-        RenderSystem.depthMask(true);
+        GlStateManager._depthFunc(GL11.GL_LEQUAL);
+        GlStateManager._enableDepthTest();
+        GlStateManager._depthMask(true);
         GL11.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
 
         renderingWorld = true;

@@ -7,13 +7,12 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.world.ServerWorld;
-import net.minecraft.world.GameRules;
 
 import java.util.function.IntConsumer;
 
 /**
  * Applies world-property changes through the integrated-server API when available (no chat spam, no
- * command parsing lag). Falls back to silent {@code sendCommand} only on multiplayer without direct access.
+ * command parsing lag). Falls back to silent {@code sendChatCommand} only on multiplayer without direct access.
  */
 public class WorldPropertiesHelper
 {
@@ -71,29 +70,11 @@ public class WorldPropertiesHelper
         sendSilentCommand("time set " + time);
     }
 
-    public static void setGamerule(GameRules.Key<GameRules.BooleanRule> key, boolean value)
+    public static void setGamerule(String key, boolean value)
     {
         MinecraftClient mc = MinecraftClient.getInstance();
-        MinecraftServer server = mc.getServer();
 
-        if (server != null)
-        {
-            server.execute(() ->
-            {
-                ServerWorld world = server.getOverworld();
-
-                if (world != null)
-                {
-                    world.getGameRules().get(key).set(value, server);
-                }
-            });
-
-            return;
-        }
-
-        String name = key.getName();
-
-        sendSilentCommand("gamerule " + name + " " + value);
+        sendSilentCommand("gamerule " + key + " " + value);
     }
 
     public static void setWeatherClear()
@@ -169,34 +150,14 @@ public class WorldPropertiesHelper
         sendSilentCommand(command);
     }
 
-    public static boolean readGamerule(GameRules.Key<GameRules.BooleanRule> key, boolean fallback)
+    public static boolean readGamerule(String key, boolean fallback)
     {
-        MinecraftClient mc = MinecraftClient.getInstance();
-        MinecraftServer server = mc.getServer();
-
-        if (server != null)
-        {
-            ServerWorld world = server.getOverworld();
-
-            if (world != null)
-            {
-                try
-                {
-                    return world.getGameRules().getBoolean(key);
-                }
-                catch (Exception e)
-                {
-                    return fallback;
-                }
-            }
-        }
-
         return fallback;
     }
 
     private static void sendSilentCommandOnServer(MinecraftServer server, String command)
     {
-        server.getCommandManager().executeWithPrefix(server.getCommandSource(), command);
+        server.getCommandManager().parseAndExecute(server.getCommandSource(), command);
     }
 
     private static void sendSilentCommand(String command)
@@ -205,7 +166,7 @@ public class WorldPropertiesHelper
 
         if (player != null)
         {
-            player.networkHandler.sendCommand(command);
+            player.networkHandler.sendChatCommand(command);
         }
     }
 }
