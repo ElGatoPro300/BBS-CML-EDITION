@@ -95,6 +95,18 @@ public class TimelineToolbar extends UIElement
 
     private int dragMouseY;
 
+    private boolean sectionsPointerDown;
+
+    private boolean sectionsScrolling;
+
+    private int sectionsPointerDownX;
+
+    private int sectionsPointerDownY;
+
+    private double sectionsScrollDragStart;
+
+    private int sectionsPendingSectionIndex = -1;
+
     /* Constructor */
 
     public TimelineToolbar()
@@ -127,6 +139,7 @@ public class TimelineToolbar extends UIElement
         if (this.dock != dock)
         {
             this.sectionsScroll.setScroll(0D);
+            this.cancelSectionsPointer();
         }
 
         this.dock = dock;
@@ -174,6 +187,93 @@ public class TimelineToolbar extends UIElement
         this.hoverDock = null;
     }
 
+    private void cancelSectionsPointer()
+    {
+        this.sectionsPointerDown = false;
+        this.sectionsScrolling = false;
+        this.sectionsPendingSectionIndex = -1;
+    }
+
+    private boolean canDragScrollSections()
+    {
+        return this.sectionsScroll.hasScrollbar();
+    }
+
+    private boolean isSectionsDragScrollTarget(int mouseX, int mouseY)
+    {
+        return this.sectionsViewportArea.isInside(mouseX, mouseY)
+            && !this.dragHandleArea.isInside(mouseX, mouseY)
+            && !this.dragSeparatorArea.isInside(mouseX, mouseY);
+    }
+
+    private void startSectionsPointer(UIContext context)
+    {
+        this.sectionsPointerDown = true;
+        this.sectionsScrolling = false;
+        this.sectionsPointerDownX = context.mouseX;
+        this.sectionsPointerDownY = context.mouseY;
+        this.sectionsScrollDragStart = this.sectionsScroll.getScroll();
+        this.sectionsPendingSectionIndex = this.getSectionIndexAt(context.mouseX, context.mouseY);
+    }
+
+    private void updateSectionsScrollDrag(UIContext context)
+    {
+        if (!this.sectionsPointerDown)
+        {
+            return;
+        }
+
+        if (!Window.isMouseButtonPressed(GLFW.GLFW_MOUSE_BUTTON_LEFT))
+        {
+            this.finishSectionsPointer(context);
+
+            return;
+        }
+
+        int axisDelta = this.dock.isHorizontal()
+            ? context.mouseX - this.sectionsPointerDownX
+            : context.mouseY - this.sectionsPointerDownY;
+
+        if (!this.sectionsScrolling)
+        {
+            if (Math.abs(axisDelta) <= TimelineToolbarSettings.SECTIONS_SCROLL_DRAG_THRESHOLD)
+            {
+                return;
+            }
+
+            this.sectionsScrolling = true;
+        }
+
+        this.sectionsScroll.setScroll(this.sectionsScrollDragStart - axisDelta);
+        context.requestCursor(GLFW.GLFW_HAND_CURSOR);
+    }
+
+    private void finishSectionsPointer(UIContext context)
+    {
+        if (!this.sectionsPointerDown)
+        {
+            return;
+        }
+
+        if (!this.sectionsScrolling && this.sectionsPendingSectionIndex >= 0)
+        {
+            int index = this.sectionsPendingSectionIndex;
+
+            if (this.openMenu != null && this.openIndex == index)
+            {
+                this.closeOpenMenu();
+            }
+            else
+            {
+                this.openSection(context, index);
+            }
+
+            context.setTimelineToolbarConsumePointer(true);
+        }
+
+        this.cancelSectionsPointer();
+    }
+
     public TimelineToolbar setSections(List<ToolbarSection> newSections)
     {
         this.notifyInteractionCancel();
@@ -189,6 +289,8 @@ public class TimelineToolbar extends UIElement
         }
 
         this.sectionsScroll.setScroll(0D);
+
+        this.cancelSectionsPointer();
 
         return this;
     }
@@ -531,6 +633,7 @@ public class TimelineToolbar extends UIElement
 
     private void startDockDrag(UIContext context)
     {
+        this.cancelSectionsPointer();
         this.closeOpenMenu();
         this.ensureDockOverlayOnTop();
         this.dockDragging = true;
@@ -749,7 +852,10 @@ public class TimelineToolbar extends UIElement
 
         FontRenderer font = context.batcher.getFont();
 
+        this.updateSectionsScrollDrag(context);
+        this.sectionsScroll.drag(context.mouseX, context.mouseY);
         this.layoutSections(font);
+
         this.renderBar(context);
         this.renderDragSeparator(context);
         this.renderDragHandle(context);
@@ -763,7 +869,6 @@ public class TimelineToolbar extends UIElement
 
         context.batcher.unclip(context);
 
-        this.sectionsScroll.drag(context.mouseX, context.mouseY);
         this.sectionsScroll.renderScrollbar(context.batcher);
 
         this.updateHoverSwitch(context);
@@ -775,7 +880,7 @@ public class TimelineToolbar extends UIElement
          * when the mouse is inside this bar (BLOCK_INSIDE), which would wipe a
          * card queued earlier in the same pass. Only show the hover card when
          * the section label is collapsed (icon-only mode). */
-        if (hovered >= 0 && !this.sectionShowLabel[hovered] && !suppressSectionHover)
+        if (hovered >= 0 && !this.sectionShowLabel[hovered] && !suppressSectionHover && !this.sectionsScrolling)
         {
             ToolbarSection section = this.sections.get(hovered);
             String text = section.label.get();
@@ -936,6 +1041,11 @@ public class TimelineToolbar extends UIElement
 
     private void updateHoverSwitch(UIContext context)
     {
+        if (this.sectionsPointerDown || this.sectionsScrolling)
+        {
+            return;
+        }
+
         if (!this.shouldAllowSectionHoverSwitch(context))
         {
             return;
@@ -1022,6 +1132,15 @@ public class TimelineToolbar extends UIElement
             return true;
         }
 
+        if (context.mouseButton == 0 && this.canDragScrollSections()
+            && this.isSectionsDragScrollTarget(context.mouseX, context.mouseY))
+        {
+            this.startSectionsPointer(context);
+            context.setTimelineToolbarConsumePointer(true);
+
+            return true;
+        }
+
         int index = this.getSectionIndexAt(context.mouseX, context.mouseY);
 
         if (index < 0)
@@ -1079,7 +1198,12 @@ public class TimelineToolbar extends UIElement
     @Override
     protected boolean subMouseReleased(UIContext context)
     {
-        this.sectionsScroll.mouseReleased(context.mouseX, context.mouseY);
+        if (this.sectionsPointerDown && context.mouseButton == 0)
+        {
+            this.finishSectionsPointer(context);
+
+            return true;
+        }
 
         if (this.dockDragging)
         {

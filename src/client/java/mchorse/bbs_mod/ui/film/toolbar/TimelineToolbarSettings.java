@@ -69,6 +69,12 @@ public class TimelineToolbarSettings
     }
 
     /**
+     * Pointer movement on the scroll axis (in pixels) required before a held
+     * press in the section area is treated as drag-scrolling instead of a click.
+     */
+    public static final int SECTIONS_SCROLL_DRAG_THRESHOLD = 2;
+
+    /**
      * Thickness of the toolbar strip for any dock edge (matches {@link #TOOLBAR_HEIGHT}).
      */
     public static int getThickness(TimelineToolbarDock dock)
