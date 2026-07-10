@@ -3,6 +3,7 @@ package mchorse.bbs_mod.ui.model;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.bobj.BOBJBone;
 import mchorse.bbs_mod.client.BBSShaders;
+import mchorse.bbs_mod.client.render.picker.BBSPickerRenderer;
 import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.cubic.animation.ActionsConfig;
 import mchorse.bbs_mod.cubic.animation.IAnimator;
@@ -41,8 +42,6 @@ import mchorse.bbs_mod.utils.Pair;
 import mchorse.bbs_mod.utils.colors.Colors;
 
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gl.GlUniform;
-import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.LightmapTextureManager;
@@ -57,7 +56,6 @@ import org.joml.Vector3d;
 import org.joml.Vector3f;
 
 import com.mojang.blaze3d.opengl.GlStateManager;
-import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.VertexFormat;
 import com.mojang.logging.LogUtils;
@@ -69,7 +67,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 
 import org.slf4j.Logger;
 
@@ -701,19 +698,13 @@ public class UIModelEditorRenderer extends UIModelRenderer
         int w = texture.width;
         int h = texture.height;
 
-        /* TODO 1.21.11: ShaderProgram replaced by RenderPipeline */
-        ShaderProgram previewProgram = (ShaderProgram)(Object) BBSShaders.getPickerPreviewProgram();
-        if (previewProgram != null)
-        {
-            GlUniform target = previewProgram.getUniform("Target");
-            if (target != null)
-            {
-                /* TODO 1.21.11: target.set(index) removed */
-            }
-        }
+        /* The picker_preview pipeline reads its picking index from the BBSPicker std140 UBO,
+         * uploaded per draw by BBSPickerRenderer. This replaces the removed
+         * previewProgram.getUniform("Target").set(index) call. */
+        BBSPickerRenderer.setTarget(index);
 
-        /* TODO 1.21.11: RenderSystem.enableBlend removed */
-        context.batcher.texturedBox((Supplier<RenderPipeline>)(Object) BBSShaders.getPickerPreviewProgram(), texture.id, Colors.WHITE, this.area.x, this.area.y, this.area.w, this.area.h, 0, h, w, 0, w, h);
+        GlStateManager._enableBlend();
+        context.batcher.texturedBox(BBSShaders::getPickerPreviewProgram, texture.id, Colors.WHITE, this.area.x, this.area.y, this.area.w, this.area.h, 0, h, w, 0, w, h);
 
         Pair<Form, String> pair = this.stencil.getPicked();
 

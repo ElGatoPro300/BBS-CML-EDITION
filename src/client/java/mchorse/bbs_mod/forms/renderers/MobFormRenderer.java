@@ -1,7 +1,7 @@
 package mchorse.bbs_mod.forms.renderers;
 
+import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSModClient;
-import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.client.MobTextureOverride;
 import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
 import mchorse.bbs_mod.forms.FormUtilsClient;
@@ -19,11 +19,9 @@ import mchorse.bbs_mod.utils.pose.Pose;
 import mchorse.bbs_mod.utils.pose.Transform;
 
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.model.ModelPart;
 import net.minecraft.client.network.OtherClientPlayerEntity;
 import net.minecraft.client.render.DiffuseLighting;
-import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.entity.LivingEntityRenderer;
 import net.minecraft.client.render.entity.model.EntityModel;
 import net.minecraft.client.util.math.MatrixStack;
@@ -35,16 +33,17 @@ import net.minecraft.entity.SpawnReason;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.nbt.StringNbtReader;
 import net.minecraft.registry.Registries;
+import net.minecraft.registry.RegistryWrapper;
+import net.minecraft.storage.NbtReadView;
+import net.minecraft.util.ErrorReporter;
 import net.minecraft.util.Hand;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.RotationAxis;
 
 import org.joml.Matrix4f;
-import org.joml.Vector3f;
 
 import com.mojang.authlib.GameProfile;
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.brigadier.StringReader;
+import com.mojang.blaze3d.opengl.GlStateManager;
 
 import org.lwjgl.opengl.GL11;
 
@@ -193,7 +192,9 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
         try
         {
-            compound = (new StringNbtReader(new StringReader(nbt))).parseCompound();
+            /* StringNbtReader's constructor is private in 1.21.11 and it lost parseCompound(); the direct
+             * replacement is the static readCompound(String) helper. */
+            compound = StringNbtReader.readCompound(nbt);
         }
         catch (Exception e)
         {}
@@ -209,7 +210,14 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
         if (this.entity != null)
         {
             compound.putString("id", id);
-            this.entity.readNbt(compound);
+
+            /* Entity#readNbt(NbtCompound) was replaced by readData(ReadView); NbtReadView.create(...) is the
+             * bridge from a plain NbtCompound to that view (mirrors Morph#loadEntity's NbtWriteView usage). */
+            RegistryWrapper.WrapperLookup registries = MinecraftClient.getInstance().world != null
+                ? MinecraftClient.getInstance().world.getRegistryManager()
+                : BBSMod.getRegistryManager();
+
+            this.entity.readData(NbtReadView.create(ErrorReporter.EMPTY, registries, compound));
             this.entity.noClip = true;
         }
     }
@@ -221,7 +229,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
         if (this.entity != null)
         {
-            MatrixStack stack = context.batcher.getContext().getMatrices();
+            MatrixStack stack = new MatrixStack();
 
             stack.push();
 
@@ -257,15 +265,19 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
                 }
             });
 
-            Vector3f light0 = new Vector3f(0.85F, 0.85F, -1F).normalize();
-            Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1F).normalize();
-            RenderSystem.setupLevelDiffuseLighting(light0, light1);
+            MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.ENTITY_IN_UI);
 
             consumers.setUI(true);
             MobTextureOverride.begin(this.form.texture.get());
             try
             {
-                MinecraftClient.getInstance().getEntityRenderDispatcher().render(this.entity, 0D, 0D, 0D, 0F, stack, consumers, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE);
+                /* EntityRenderDispatcher was renamed to EntityRenderManager and its render(...) was completely
+                 * overhauled: it now needs a pre-computed EntityRenderState (from
+                 * getAndUpdateRenderState(entity, tickDelta)) and an OrderedRenderCommandQueue whose commands are
+                 * only actually drawn later by dedicated command renderers driven from the main world render
+                 * pass — there is no more synchronous "draw this entity right now into my own
+                 * VertexConsumerProvider" call to reach for. Bridging a standalone mob preview into that batched
+                 * pipeline is a substantial separate port, so mob forms intentionally render nothing for now. */
             }
             finally
             {
@@ -276,11 +288,11 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
             CustomVertexConsumerProvider.clearRunnables();
 
-            DiffuseLighting.disableGuiDepthLighting();
+            MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.LEVEL);
 
             stack.pop();
 
-            RenderSystem.depthFunc(GL11.GL_ALWAYS);
+            GlStateManager._depthFunc(GL11.GL_ALWAYS);
         }
     }
 
@@ -302,8 +314,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
                     if (!first.bool)
                     {
                         this.bindTexture();
-                        this.setupTarget(context, BBSShaders.getPickerModelsProgram());
-                        RenderSystem.setShader(BBSShaders.getPickerModelsProgram());
+                        this.setupTarget(context, null);
 
                         first.bool = true;
                     }
@@ -372,7 +383,9 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
             MobTextureOverride.begin(this.form.texture.get());
             try
             {
-                MinecraftClient.getInstance().getEntityRenderDispatcher().render(this.entity, 0D, 0D, 0D, 0F, context.stack, consumers, light);
+                /* See renderInUI: EntityRenderManager#render(...) now needs a pre-computed EntityRenderState and
+                 * an OrderedRenderCommandQueue flushed from the main world render pass, so this mob is
+                 * intentionally not drawn for now (see the longer explanation there). */
             }
             finally
             {
@@ -386,7 +399,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
             context.stack.pop();
 
-            RenderSystem.enableDepthTest();
+            GlStateManager._enableDepthTest();
         }
     }
 
@@ -403,13 +416,15 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
                 this.entity.tick();
             }
 
-            this.entity.prevPitch = this.prevPitch;
-            this.entity.prevYaw = 0F;
+            /* prevPitch/prevYaw/prevHeadYaw/prevBodyYaw were renamed to lastPitch/lastYaw/lastHeadYaw/
+             * lastBodyYaw in 1.21.11. */
+            this.entity.lastPitch = this.prevPitch;
+            this.entity.lastYaw = 0F;
 
             if (this.entity instanceof LivingEntity livingEntity)
             {
-                livingEntity.prevHeadYaw = this.prevYawHead;
-                livingEntity.prevBodyYaw = 0F;
+                livingEntity.lastHeadYaw = this.prevYawHead;
+                livingEntity.lastBodyYaw = 0F;
 
                 /* Limb swing is so ugly */
                 if (livingEntity.limbAnimator instanceof LimbAnimatorAccessor a && entity.getLimbAnimator() instanceof LimbAnimatorAccessor b)

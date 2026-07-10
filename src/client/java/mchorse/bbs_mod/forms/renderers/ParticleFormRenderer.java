@@ -6,28 +6,28 @@ import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.forms.ITickable;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.forms.ParticleForm;
+import mchorse.bbs_mod.graphics.texture.AdoptedTexture;
+import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.particles.ParticleScheme;
 import mchorse.bbs_mod.particles.emitter.ParticleEmitter;
+import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.joml.Vectors;
 
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gl.ShaderProgram;
-import net.minecraft.client.gl.ShaderProgramKeys;
-import net.minecraft.client.render.GameRenderer;
-import net.minecraft.client.render.VertexFormat;
+import net.minecraft.client.render.RenderLayer;
+import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.util.Identifier;
 import net.minecraft.world.World;
 
 import org.joml.Matrix4f;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-
-import java.util.function.Supplier;
+import com.mojang.blaze3d.vertex.VertexFormat;
 
 public class ParticleFormRenderer extends FormRenderer<ParticleForm> implements ITickable
 {
@@ -92,7 +92,7 @@ public class ParticleFormRenderer extends FormRenderer<ParticleForm> implements 
 
         if (emitter != null)
         {
-            MatrixStack stack = context.batcher.getContext().getMatrices();
+            MatrixStack stack = new MatrixStack();
             int scale = (y2 - y1) / 2;
 
             stack.push();
@@ -170,11 +170,6 @@ public class ParticleFormRenderer extends FormRenderer<ParticleForm> implements 
                 translation.add(context.camera.position.x, context.camera.position.y, context.camera.position.z);
             }
 
-            GameRenderer gameRenderer = MinecraftClient.getInstance().gameRenderer;
-
-            gameRenderer.getLightmapTextureManager().enable();
-            gameRenderer.getOverlayTexture().setupOverlayColor();
-
             context.stack.push();
             context.stack.loadIdentity();
 
@@ -184,38 +179,33 @@ public class ParticleFormRenderer extends FormRenderer<ParticleForm> implements 
             
             if (!BBSRendering.isIrisShadowPass())
             {
-                boolean shadersEnabled = BBSRendering.isIrisShadersEnabled();
-                boolean billboard = shadersEnabled;
-
+                boolean billboard = BBSRendering.isIrisShadersEnabled();
                 VertexFormat format = billboard ? VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL : VertexFormats.POSITION_TEXTURE_COLOR_LIGHT;
-                Supplier<ShaderProgram> shader = billboard
-                    ? this.getShader(
-                        context,
-                        () ->
-                        {
-                            RenderSystem.setShader(ShaderProgramKeys.RENDERTYPE_ENTITY_TRANSLUCENT);
-                            return RenderSystem.getShader();
-                        },
-                        BBSShaders::getPickerBillboardProgram
-                    )
-                    : this.getShader(
-                        context,
-                        () ->
-                        {
-                            RenderSystem.setShader(ShaderProgramKeys.PARTICLE);
-                            return RenderSystem.getShader();
-                        },
-                        BBSShaders::getPickerParticlesProgram
-                    );
+                RenderLayer layer = billboard ? RenderLayers.entityTranslucent(this.getParticleTextureId()) : BBSShaders.getParticlesLayer();
 
-                emitter.render(format, shader, context.stack, context.overlay, context.getTransition());
+                if (context.isPicking())
+                {
+                    /* 1.21.11 render: ParticleEmitter#render only exposes a RenderLayer sink (see
+                     * .port_1.21.11_notes.md #5/#6) with no way to intercept its BuiltBuffer and hand it to
+                     * BBSPickerRenderer, so per-particle picking loses pixel accuracy the same way block/label
+                     * picking does elsewhere in this pass — setupTarget still records the index for whatever
+                     * else consults it, but the particles still draw through their normal RenderLayer. */
+                    this.setupTarget(context, null);
+                }
+
+                emitter.render(format, layer, context.stack, context.overlay, context.getTransition());
             }
 
             context.stack.pop();
-
-            gameRenderer.getLightmapTextureManager().disable();
-            gameRenderer.getOverlayTexture().teardownOverlayColor();
         }
+    }
+
+    private Identifier getParticleTextureId()
+    {
+        Link textureLink = this.emitter.texture != null ? this.emitter.texture : this.emitter.scheme.texture;
+        Texture texture = BBSModClient.getTextures().getTexture(textureLink);
+
+        return AdoptedTexture.identifier(texture);
     }
 
     private void updateTexture(float transition)

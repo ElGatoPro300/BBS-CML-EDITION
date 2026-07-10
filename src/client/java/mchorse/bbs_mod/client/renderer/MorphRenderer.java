@@ -203,13 +203,19 @@ public class MorphRenderer
             Matrix4f target = BaseFilmController.getMatrixForRenderWithRotation(queued.entity, cx, cy, cz, queued.tickDelta);
 
             stack.push();
-            MatrixStackUtils.multiply(stack, target);
 
-            FormUtilsClient.render(queued.form, new FormRenderingContext()
-                .set(FormRenderType.ENTITY, queued.entity, stack, queued.light, queued.overlay, queued.tickDelta)
-                .camera(camera));
+            try
+            {
+                MatrixStackUtils.multiply(stack, target);
 
-            stack.pop();
+                FormUtilsClient.render(queued.form, new FormRenderingContext()
+                    .set(FormRenderType.ENTITY, queued.entity, stack, queued.light, queued.overlay, queued.tickDelta)
+                    .camera(camera));
+            }
+            finally
+            {
+                stack.pop();
+            }
         }
 
         QUEUE.clear();

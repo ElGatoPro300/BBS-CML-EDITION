@@ -1,130 +1,75 @@
 package mchorse.bbs_mod.cubic.render.vao;
 
-import mchorse.bbs_mod.client.BBSRendering;
+import mchorse.bbs_mod.client.BBSShaders;
 
-import net.minecraft.client.render.VertexFormat;
-import net.minecraft.client.render.VertexFormats;
+import net.minecraft.client.render.BufferBuilder;
+import net.minecraft.client.util.math.MatrixStack;
 
-import org.lwjgl.opengl.GL30;
+import org.joml.Matrix3f;
+import org.joml.Matrix4f;
+import org.joml.Vector3f;
+import org.joml.Vector4f;
 
+/**
+ * Static (non-skinned) triangle mesh used by cubic Models (VAO path) and extruded forms.
+ *
+ * <p>The 1.21.11 GPU pipeline rewrite removed the raw-GL VAO + ShaderProgram.bind()/unbind() draw this
+ * class used to hold (there is no supported way to bind a raw GL vertex array against the new
+ * RenderPipeline/RenderPass abstraction). The geometry is now kept on the CPU and emitted into a
+ * BufferBuilder per draw ({@link #writeImmediate}), exactly like the cubic immediate path, then drawn
+ * through {@link BBSShaders#getModelLayer()} by {@link ModelVAORenderer}.</p>
+ */
 public class ModelVAO implements IModelVAO
 {
-    private int vao;
-    private int vao2;
-    private int count;
+    private final ModelVAOData data;
 
     public ModelVAO(ModelVAOData data)
     {
-        int currentVAO = GL30.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
-
-        this.upload(data);
-
-        GL30.glBindVertexArray(currentVAO);
+        this.data = data;
     }
 
+    /**
+     * Previously freed the raw-GL VAOs. Geometry now lives on the CPU, so there is nothing to free.
+     */
     public void delete()
+    {}
+
+    /**
+     * Bake the stack position/normal matrices into each vertex CPU-side and write the triangles into
+     * {@code builder} (format POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL). Color/overlay/light are
+     * constant per draw (matching the old {@code glVertexAttrib4f}/{@code glVertexAttribI2i} defaults).
+     */
+    public void writeImmediate(BufferBuilder builder, MatrixStack stack, float r, float g, float b, float a, int light, int overlay)
     {
-        GL30.glDeleteVertexArrays(this.vao);
-        GL30.glDeleteVertexArrays(this.vao2);
-    }
+        Matrix4f position = stack.peek().getPositionMatrix();
+        Matrix3f normalMatrix = stack.peek().getNormalMatrix();
 
-    public void upload(ModelVAOData data)
-    {
-        this.vao = GL30.glGenVertexArrays();
-        this.vao2 = GL30.glGenVertexArrays();
+        float[] vertices = this.data.vertices();
+        float[] normals = this.data.normals();
+        float[] texCoords = this.data.texCoords();
 
-        GL30.glBindVertexArray(this.vao);
+        Vector4f vertex = new Vector4f();
+        Vector3f normal = new Vector3f();
 
-        int vertexBuffer = GL30.glGenBuffers();
-        int normalBuffer = GL30.glGenBuffers();
-        int tangentsBuffer = GL30.glGenBuffers();
-        int texCoordBuffer = GL30.glGenBuffers();
-        int midTexCoordBuffer = GL30.glGenBuffers();
+        int lu = light & 0xffff;
+        int lv = light >> 16 & 0xffff;
 
-        GL30.glBindBuffer(GL30.GL_ARRAY_BUFFER, vertexBuffer);
-        GL30.glBufferData(GL30.GL_ARRAY_BUFFER, data.vertices(), GL30.GL_STATIC_DRAW);
-        GL30.glVertexAttribPointer(Attributes.POSITION, 3, GL30.GL_FLOAT, false, 0, 0);
+        int count = vertices.length / 3;
 
-        GL30.glBindBuffer(GL30.GL_ARRAY_BUFFER, normalBuffer);
-        GL30.glBufferData(GL30.GL_ARRAY_BUFFER, data.normals(), GL30.GL_STATIC_DRAW);
-        GL30.glVertexAttribPointer(Attributes.NORMAL, 3, GL30.GL_FLOAT, false, 0, 0);
-
-        GL30.glBindBuffer(GL30.GL_ARRAY_BUFFER, texCoordBuffer);
-        GL30.glBufferData(GL30.GL_ARRAY_BUFFER, data.texCoords(), GL30.GL_STATIC_DRAW);
-        GL30.glVertexAttribPointer(Attributes.TEXTURE_UV, 2, GL30.GL_FLOAT, false, 0, 0);
-
-        GL30.glBindBuffer(GL30.GL_ARRAY_BUFFER, tangentsBuffer);
-        GL30.glBufferData(GL30.GL_ARRAY_BUFFER, data.tangents(), GL30.GL_STATIC_DRAW);
-        GL30.glVertexAttribPointer(Attributes.TANGENTS, 4, GL30.GL_FLOAT, false, 0, 0);
-
-        GL30.glBindBuffer(GL30.GL_ARRAY_BUFFER, midTexCoordBuffer);
-        GL30.glBufferData(GL30.GL_ARRAY_BUFFER, data.midTexCoords(), GL30.GL_STATIC_DRAW);
-        GL30.glVertexAttribPointer(Attributes.MID_TEXTURE_UV, 2, GL30.GL_FLOAT, false, 0, 0);
-
-        GL30.glEnableVertexAttribArray(Attributes.POSITION);
-        GL30.glEnableVertexAttribArray(Attributes.TEXTURE_UV);
-        GL30.glEnableVertexAttribArray(Attributes.NORMAL);
-
-        GL30.glDisableVertexAttribArray(Attributes.COLOR);
-        GL30.glDisableVertexAttribArray(Attributes.OVERLAY_UV);
-        GL30.glDisableVertexAttribArray(Attributes.LIGHTMAP_UV);
-        GL30.glDisableVertexAttribArray(Attributes.TANGENTS);
-        GL30.glDisableVertexAttribArray(Attributes.MID_TEXTURE_UV);
-
-        /* VertexFormats.POSITION_TEXTURE_LIGHT_COLOR */
-        GL30.glBindVertexArray(this.vao2);
-
-        GL30.glBindBuffer(GL30.GL_ARRAY_BUFFER, vertexBuffer);
-        GL30.glVertexAttribPointer(0, 3, GL30.GL_FLOAT, false, 0, 0);
-
-        GL30.glBindBuffer(GL30.GL_ARRAY_BUFFER, texCoordBuffer);
-        GL30.glVertexAttribPointer(1, 2, GL30.GL_FLOAT, false, 0, 0);
-
-        GL30.glEnableVertexAttribArray(0);
-        GL30.glEnableVertexAttribArray(1);
-        GL30.glDisableVertexAttribArray(2);
-        GL30.glDisableVertexAttribArray(3);
-
-        this.count = data.vertices().length / 3;
-    }
-
-    @Override
-    public void render(VertexFormat format, float r, float g, float b, float a, int light, int overlay)
-    {
-        boolean hasShaders = isShadersEnabled();
-        int vao = hasShaders || format == VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL ? this.vao : this.vao2;
-
-        GL30.glBindVertexArray(vao);
-
-        if (vao == this.vao)
+        for (int i = 0; i < count; i++)
         {
-            /* Explicitly disable these attributes to ensure constant values are used */
-            GL30.glDisableVertexAttribArray(Attributes.COLOR);
-            GL30.glDisableVertexAttribArray(Attributes.LIGHTMAP_UV);
-            GL30.glDisableVertexAttribArray(Attributes.OVERLAY_UV);
+            vertex.set(vertices[i * 3], vertices[i * 3 + 1], vertices[i * 3 + 2], 1F);
+            position.transform(vertex);
 
-            GL30.glVertexAttrib4f(Attributes.COLOR, r, g, b, a);
-            GL30.glVertexAttribI2i(Attributes.OVERLAY_UV, overlay & '\uffff', overlay >> 16 & '\uffff');
-            GL30.glVertexAttribI2i(Attributes.LIGHTMAP_UV, light & '\uffff', light >> 16 & '\uffff');
+            normal.set(normals[i * 3], normals[i * 3 + 1], normals[i * 3 + 2]);
+            normalMatrix.transform(normal);
+
+            builder.vertex(vertex.x, vertex.y, vertex.z)
+                .color(r, g, b, a)
+                .texture(texCoords[i * 2], texCoords[i * 2 + 1])
+                .overlay(overlay)
+                .light(lu, lv)
+                .normal(normal.x, normal.y, normal.z);
         }
-        else
-        {
-            GL30.glVertexAttribI2i(2, light & '\uffff', light >> 16 & '\uffff');
-            GL30.glVertexAttrib4f(3, r, g, b, a);
-        }
-
-        if (hasShaders) GL30.glEnableVertexAttribArray(Attributes.MID_TEXTURE_UV);
-        else GL30.glDisableVertexAttribArray(Attributes.MID_TEXTURE_UV);
-
-        if (hasShaders) GL30.glEnableVertexAttribArray(Attributes.TANGENTS);
-        else GL30.glDisableVertexAttribArray(Attributes.TANGENTS);
-
-        GL30.glDrawArrays(GL30.GL_TRIANGLES, 0, this.count);
-        GL30.glBindVertexArray(0);
-    }
-
-    public static boolean isShadersEnabled()
-    {
-        return BBSRendering.isIrisShadersEnabled();
     }
 }

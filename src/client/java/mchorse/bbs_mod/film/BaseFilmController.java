@@ -184,60 +184,71 @@ public abstract class BaseFilmController
 
         stack.push();
 
-        if (relative)
+        try
         {
-            if (!context.isShadowPass)
+            if (relative)
             {
-                stack.peek().getPositionMatrix().identity();
-                stack.peek().getNormalMatrix().identity();
-            }
-
-            if (context.map == null)
-            {
-                stack.multiply(camera.getRotation());
-            }
-        }
-
-        MatrixStackUtils.multiply(stack, target);
-        FormUtilsClient.render(form, formContext);
-
-        if (UIBaseMenu.renderAxes)
-        {
-            if (context.bone != null && !context.local)
-            {
-                Form root = FormUtils.getRoot(form);
-                MatrixCache map = FormUtilsClient.getRenderer(root).collectMatrices(entity, transition);
-                MatrixCacheEntry entry = map.get(context.bone);
-
-                Matrix4f matrix = entry.origin();
-
-                if (matrix == null)
+                if (!context.isShadowPass)
                 {
-                    matrix = entry.matrix();
+                    stack.peek().getPositionMatrix().identity();
+                    stack.peek().getNormalMatrix().identity();
                 }
 
-                if (matrix != null)
+                if (context.map == null)
                 {
-                    stack.push();
-                    MatrixStackUtils.multiply(stack, matrix);
-
-                    if (context.map == null)
-                    {
-                        Gizmo.INSTANCE.render(stack);
-                    }
-                    else
-                    {
-                        Gizmo.INSTANCE.renderStencil(stack, context.map);
-                    }
-
-                    stack.pop();
+                    stack.multiply(camera.getRotation());
                 }
             }
-            if (context.bone != null) renderAxes(context.bone, context.local, context.map, form, entity, transition, stack);
-            if (context.bone2 != null && context.map == null) renderAxes(context.bone2, context.local2, context.map, form, entity, transition, stack);
-        }
 
-        stack.pop();
+            MatrixStackUtils.multiply(stack, target);
+            FormUtilsClient.render(form, formContext);
+
+            if (UIBaseMenu.renderAxes)
+            {
+                if (context.bone != null && !context.local)
+                {
+                    Form root = FormUtils.getRoot(form);
+                    MatrixCache map = FormUtilsClient.getRenderer(root).collectMatrices(entity, transition);
+                    MatrixCacheEntry entry = map.get(context.bone);
+
+                    Matrix4f matrix = entry.origin();
+
+                    if (matrix == null)
+                    {
+                        matrix = entry.matrix();
+                    }
+
+                    if (matrix != null)
+                    {
+                        stack.push();
+
+                        try
+                        {
+                            MatrixStackUtils.multiply(stack, matrix);
+
+                            if (context.map == null)
+                            {
+                                Gizmo.INSTANCE.render(stack);
+                            }
+                            else
+                            {
+                                Gizmo.INSTANCE.renderStencil(stack, context.map);
+                            }
+                        }
+                        finally
+                        {
+                            stack.pop();
+                        }
+                    }
+                }
+                if (context.bone != null) renderAxes(context.bone, context.local, context.map, form, entity, transition, stack);
+                if (context.bone2 != null && context.map == null) renderAxes(context.bone2, context.local2, context.map, form, entity, transition, stack);
+            }
+        }
+        finally
+        {
+            stack.pop();
+        }
 
         if (!relative && context.map == null && opacity > 0F && context.shadowRadius > 0F && form.visible.get())
         {
@@ -989,15 +1000,19 @@ public abstract class BaseFilmController
 
             filmContext.stack.push();
 
-            if (!this.applyGroupProperties(replay, filmContext))
+            try
+            {
+                if (!this.applyGroupProperties(replay, filmContext))
+                {
+                    return;
+                }
+
+                renderEntity(filmContext);
+            }
+            finally
             {
                 filmContext.stack.pop();
-                return;
             }
-
-            renderEntity(filmContext);
-
-            filmContext.stack.pop();
         }
     }
 

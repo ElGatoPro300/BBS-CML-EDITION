@@ -52,11 +52,11 @@ import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.joml.Matrices;
 
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.DiffuseLighting;
 
 import org.joml.Matrix3f;
 import org.joml.Matrix3x2fStack;
-import org.joml.Vector3f;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 
@@ -2423,18 +2423,11 @@ public class UIFormList extends UIElement
             this.setSelected(selected);
         }
 
-        Vector3f a = new Vector3f(0.85F, 0.85F, -1F).normalize();
-        Vector3f b = new Vector3f(-0.85F, 0.85F, 1F).normalize();
-
-        /* TODO(1.21.11): setupLevelDiffuseLighting removed
-        RenderSystem.setupLevelDiffuseLighting(a, b);
-        */
+        MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.ENTITY_IN_UI);
 
         super.render(context);
 
-        /* TODO(1.21.11): disableGuiDepthLighting removed
-        DiffuseLighting.disableGuiDepthLighting();
-        */
+        MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.LEVEL);
 
     }
 
