@@ -23,6 +23,7 @@ import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanels;
 import mchorse.bbs_mod.ui.film.controller.UIOnionSkinContextMenu;
 import mchorse.bbs_mod.ui.film.utils.UICameraUtils;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarSettings;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
@@ -330,6 +331,22 @@ public class UIFilmPreview extends UIElement
         return area;
     }
 
+    /**
+     * Extra bottom offset so viewport hints sit above the preview icon row when it
+     * overlaps the letterboxed viewport.
+     */
+    private int getViewportHintBottomReserve(Area viewport)
+    {
+        Area icons = this.icons.area;
+
+        if (icons.ey() <= viewport.y || icons.y >= viewport.ey())
+        {
+            return 0;
+        }
+
+        return icons.h + TimelineToolbarSettings.INTERACTION_HINT_MARGIN;
+    }
+
     @Override
     protected boolean subMouseClicked(UIContext context)
     {
@@ -385,7 +402,7 @@ public class UIFilmPreview extends UIElement
 
         if (this.panel.replayEditor.isViewportInteractionActive())
         {
-            this.panel.replayEditor.renderViewportInteraction(context, area);
+            this.panel.replayEditor.renderViewportInteraction(context, area, this.getViewportHintBottomReserve(area));
         }
 
         if (this.pendingThumbnail != null)

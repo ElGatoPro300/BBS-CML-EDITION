@@ -43,6 +43,36 @@ public final class TimelineInteractionHints
         renderHint(context, area, hint, TimelineToolbarDockLayout.findDockFor(source));
     }
 
+    /**
+     * Viewport interaction hint: always bottom-left of the preview area, drawn in
+     * {@link UIContext#postRender()} so it stays above the 3D viewport chrome
+     * (gizmo bar, icon row).
+     */
+    public static void renderViewportHint(UIContext context, Area viewport, IKey hint, int bottomReserve)
+    {
+        if (hint == null)
+        {
+            return;
+        }
+
+        FontRenderer font = context.batcher.getFont();
+        String text = hint.get();
+        int padding = TimelineToolbarSettings.INTERACTION_HINT_PADDING;
+        int textW = font.getWidth(text);
+        int textH = font.getHeight();
+        int cardH = textH + padding;
+        int margin = TimelineToolbarSettings.INTERACTION_HINT_MARGIN;
+        int cardX = viewport.x + margin;
+        int cardY = viewport.ey() - cardH - margin - bottomReserve;
+
+        context.drawForegroundTextCard(
+            text,
+            cardX + padding,
+            cardY + padding / 2 + 1,
+            TimelineToolbarSettings.INTERACTION_HINT_FG,
+            TimelineToolbarSettings.INTERACTION_HINT_BACKGROUND);
+    }
+
     public static void renderHint(UIContext context, Area area, IKey hint, TimelineToolbarDock dock)
     {
         if (hint == null)
