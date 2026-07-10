@@ -3,6 +3,7 @@ package mchorse.bbs_mod.ui.film.toolbar;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
+import mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D;
 import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.utils.MathUtils;
@@ -55,22 +56,10 @@ public final class TimelineInteractionHints
             return;
         }
 
-        FontRenderer font = context.batcher.getFont();
         String text = hint.get();
-        int padding = TimelineToolbarSettings.INTERACTION_HINT_PADDING;
-        int textW = font.getWidth(text);
-        int textH = font.getHeight();
-        int cardH = textH + padding;
-        int margin = TimelineToolbarSettings.INTERACTION_HINT_MARGIN;
-        int cardX = viewport.x + margin;
-        int cardY = viewport.ey() - cardH - margin - bottomReserve;
+        int[] card = computeHintCardPosition(viewport, bottomReserve, text, context.batcher.getFont());
 
-        context.drawForegroundTextCard(
-            text,
-            cardX + padding,
-            cardY + padding / 2 + 1,
-            TimelineToolbarSettings.INTERACTION_HINT_FG,
-            TimelineToolbarSettings.INTERACTION_HINT_BACKGROUND);
+        context.drawForegroundInteractionHint(text, card[0], card[1]);
     }
 
     public static void renderHint(UIContext context, Area area, IKey hint, TimelineToolbarDock dock)
@@ -80,16 +69,75 @@ public final class TimelineInteractionHints
             return;
         }
 
-        FontRenderer font = context.batcher.getFont();
         String text = hint.get();
-        int padding = TimelineToolbarSettings.INTERACTION_HINT_PADDING;
+        int[] card = computeHintCardPosition(area, dock, text, context.batcher.getFont());
+
+        drawHintCard(context.batcher, card[0], card[1], text);
+    }
+
+    /**
+     * Draw a full interaction hint card (primary glow, background, white border,
+     * centered text). Used directly and from {@link UIContext#postRender()}.
+     */
+    public static void drawHintCard(Batcher2D batcher, int cardX, int cardY, String text)
+    {
+        FontRenderer font = batcher.getFont();
+        int[] size = measureHintCard(font, text);
+        int cardW = size[0];
+        int cardH = size[1];
+        int cardEx = cardX + cardW;
+        int cardEy = cardY + cardH;
+        int textX = cardX + TimelineToolbarSettings.INTERACTION_HINT_PADDING_X;
+        int textY = cardY + computeHintTextY(font, cardH);
+
+        batcher.dropShadow(
+            cardX,
+            cardY,
+            cardEx,
+            cardEy,
+            TimelineToolbarSettings.MENU_SHADOW_OFFSET,
+            TimelineToolbarSettings.getMenuShadowInner(),
+            TimelineToolbarSettings.getMenuShadowOuter());
+        batcher.box(cardX, cardY, cardEx, cardEy, TimelineToolbarSettings.INTERACTION_HINT_BACKGROUND);
+        batcher.outline(cardX, cardY, cardEx, cardEy, TimelineToolbarSettings.INTERACTION_HINT_BORDER);
+        batcher.text(text, textX, textY, TimelineToolbarSettings.INTERACTION_HINT_FG, false);
+    }
+
+    public static int[] measureHintCard(FontRenderer font, String text)
+    {
         int textW = font.getWidth(text);
-        int textH = font.getHeight();
-        int cardW = textW + padding * 2;
-        int cardH = textH + padding;
+        int fontHeight = font.getRenderer().fontHeight;
+        int cardW = textW + TimelineToolbarSettings.INTERACTION_HINT_PADDING_X * 2;
+        int cardH = fontHeight + TimelineToolbarSettings.INTERACTION_HINT_PADDING_Y * 2;
+
+        return new int[] {cardW, cardH};
+    }
+
+    private static int computeHintTextY(FontRenderer font, int cardH)
+    {
+        int fontHeight = font.getRenderer().fontHeight;
+
+        return (cardH - fontHeight) / 2;
+    }
+
+    private static int[] computeHintCardPosition(Area viewport, int bottomReserve, String text, FontRenderer font)
+    {
+        int[] size = measureHintCard(font, text);
         int margin = TimelineToolbarSettings.INTERACTION_HINT_MARGIN;
-        int x;
-        int y;
+        int cardX = viewport.x + margin;
+        int cardY = viewport.ey() - size[1] - margin - bottomReserve;
+
+        return new int[] {cardX, cardY};
+    }
+
+    private static int[] computeHintCardPosition(Area area, TimelineToolbarDock dock, String text, FontRenderer font)
+    {
+        int[] size = measureHintCard(font, text);
+        int margin = TimelineToolbarSettings.INTERACTION_HINT_MARGIN;
+        int cardW = size[0];
+        int cardH = size[1];
+        int cardX;
+        int cardY;
 
         if (dock == null)
         {
@@ -99,28 +147,25 @@ public final class TimelineInteractionHints
         switch (dock)
         {
             case TOP:
-                x = area.x + margin;
-                y = area.y + margin;
+                cardX = area.x + margin;
+                cardY = area.y + margin;
                 break;
             case LEFT:
-                x = area.x + margin;
-                y = area.ey() - cardH - margin;
+                cardX = area.x + margin;
+                cardY = area.ey() - cardH - margin;
                 break;
             case RIGHT:
-                x = area.ex() - cardW - margin;
-                y = area.ey() - cardH - margin;
+                cardX = area.ex() - cardW - margin;
+                cardY = area.ey() - cardH - margin;
                 break;
             case BOTTOM:
             default:
-                x = area.x + margin;
-                y = area.ey() - cardH - margin;
+                cardX = area.x + margin;
+                cardY = area.ey() - cardH - margin;
                 break;
         }
 
-        context.batcher.box(x, y, x + cardW, y + cardH, TimelineToolbarSettings.INTERACTION_HINT_BACKGROUND);
-        context.batcher.outline(x, y, x + cardW, y + cardH, TimelineToolbarSettings.INTERACTION_HINT_BORDER);
-        context.batcher.text(text, x + padding, y + padding / 2 + 1, TimelineToolbarSettings.INTERACTION_HINT_FG,
-            false);
+        return new int[] {cardX, cardY};
     }
 
     private TimelineInteractionHints()

@@ -252,7 +252,15 @@ public class TimelineToolbarSettings
      */
     public static final int INTERACTION_HINT_MARGIN = 6;
 
-    public static final int INTERACTION_HINT_PADDING = 6;
+    /**
+     * Horizontal inset between hint text and card edges.
+     */
+    public static final int INTERACTION_HINT_PADDING_X = 4;
+
+    /**
+     * Vertical inset between hint text and card edges.
+     */
+    public static final int INTERACTION_HINT_PADDING_Y = 4;
 
     public static final int INTERACTION_HINT_BACKGROUND = Colors.A75 | 0x1a1a1e;
 

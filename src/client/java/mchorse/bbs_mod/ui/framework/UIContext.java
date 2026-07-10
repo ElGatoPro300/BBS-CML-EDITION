@@ -2,6 +2,7 @@ package mchorse.bbs_mod.ui.framework;
 
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.l10n.keys.IKey;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineInteractionHints;
 import mchorse.bbs_mod.ui.framework.elements.IFocusedUIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIScrollView;
@@ -49,6 +50,14 @@ public class UIContext implements IViewportStack
     private int foregroundTextCardY;
     private int foregroundTextCardColor;
     private int foregroundTextCardBackground;
+
+    /**
+     * Optional interaction hint card deferred to {@link #postRender()} (same
+     * styling as timeline interaction hints, including primary glow and border).
+     */
+    private String foregroundInteractionHint;
+    private int foregroundInteractionHintX;
+    private int foregroundInteractionHintY;
 
     /**
      * Screen-space rectangles of open {@link mchorse.bbs_mod.ui.film.toolbar.ToolbarMenu}
@@ -156,6 +165,7 @@ public class UIContext implements IViewportStack
         this.viewportStack.reset();
         this.resetTooltip();
         this.foregroundTextCard = null;
+        this.foregroundInteractionHint = null;
         this.timelineToolbarMenuAreas.clear();
         this.timelineToolbarConsumePointer = false;
     }
@@ -186,6 +196,22 @@ public class UIContext implements IViewportStack
         this.foregroundTextCardY = screenY;
         this.foregroundTextCardColor = color;
         this.foregroundTextCardBackground = background;
+    }
+
+    /**
+     * Queue an interaction hint card to be drawn during {@link #postRender()},
+     * after the main UI tree. Coordinates must be in screen/menu space.
+     */
+    public void drawForegroundInteractionHint(String text, int cardX, int cardY)
+    {
+        if (text == null || text.isEmpty())
+        {
+            return;
+        }
+
+        this.foregroundInteractionHint = text;
+        this.foregroundInteractionHintX = cardX;
+        this.foregroundInteractionHintY = cardY;
     }
 
     public void registerTimelineToolbarMenuArea(Area area)
@@ -356,6 +382,19 @@ public class UIContext implements IViewportStack
         this.tooltip.render(this);
         this.notifications.render(this);
         this.renderForegroundTextCard();
+        this.renderForegroundInteractionHint();
+    }
+
+    private void renderForegroundInteractionHint()
+    {
+        if (this.foregroundInteractionHint == null)
+        {
+            return;
+        }
+
+        TimelineInteractionHints.drawHintCard(this.batcher, this.foregroundInteractionHintX,
+            this.foregroundInteractionHintY, this.foregroundInteractionHint);
+        this.foregroundInteractionHint = null;
     }
 
     private void renderForegroundTextCard()
