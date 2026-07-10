@@ -16,7 +16,7 @@ public final class TimelineToolbarTooltips
     private static final int TEXT_CARD_PADDING = 3;
 
     public static void drawForeground(UIContext context, String text, int mouseX, int mouseY, int color,
-        int background)
+        int background, TimelineToolbarDock dock, boolean anchorLeftOfCursor)
     {
         if (text == null || text.isEmpty())
         {
@@ -24,25 +24,35 @@ public final class TimelineToolbarTooltips
         }
 
         FontRenderer font = context.batcher.getFont();
-        int[] pos = computeTextPosition(context, font, text, mouseX, mouseY);
+        int[] pos = computeTextPosition(context, font, text, mouseX, mouseY, dock, anchorLeftOfCursor);
 
         context.drawForegroundTextCard(text, pos[0], pos[1], color, background);
     }
 
     public static int[] computeTextPosition(UIContext context, FontRenderer font, String text, int mouseX,
-        int mouseY)
+        int mouseY, TimelineToolbarDock dock, boolean anchorLeftOfCursor)
     {
         int offsetX = TimelineToolbarSettings.TOOLTIP_CURSOR_OFFSET_X;
+        int offsetXLeft = TimelineToolbarSettings.TOOLTIP_CURSOR_OFFSET_X_LEFT;
         int offsetY = TimelineToolbarSettings.TOOLTIP_CURSOR_OFFSET_Y;
         int margin = TimelineToolbarSettings.MENU_SCREEN_MARGIN;
         int textW = font.getWidth(text);
         int textH = font.getHeight();
         int screenW = context.menu.width;
         int screenH = context.menu.height;
-
-        /* Anchor below-right of the cursor hotspot (the pointer tip). */
-        int x = mouseX + offsetX;
+        int x;
         int y = mouseY + offsetY;
+
+        if (dock == TimelineToolbarDock.LEFT && anchorLeftOfCursor)
+        {
+            /* Below-left of the cursor so the card opens away from open menus on the right. */
+            x = mouseX - offsetXLeft - textW;
+        }
+        else
+        {
+            /* Below-right of the cursor hotspot (the pointer tip). */
+            x = mouseX + offsetX;
+        }
 
         x = shiftIntoHorizontalBounds(x, textW, margin, screenW);
         y = shiftIntoVerticalBounds(y, textH, margin, screenH);

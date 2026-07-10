@@ -931,7 +931,7 @@ public class ToolbarMenu extends UIElement
         }
 
         TimelineToolbarTooltips.drawForeground(context, reason.get(), context.mouseX, context.mouseY,
-            TimelineToolbarSettings.MENU_ITEM_DISABLED_REASON_FG, Colors.A75);
+            TimelineToolbarSettings.MENU_ITEM_DISABLED_REASON_FG, Colors.A75, this.toolbar.getDock(), true);
     }
 
     private void checkDismissByDistance(UIContext context)

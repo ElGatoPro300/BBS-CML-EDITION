@@ -88,6 +88,13 @@ public class TimelineToolbarSettings
     public static final int TOOLTIP_CURSOR_OFFSET_X = 8;
 
     /**
+     * Horizontal gap between the cursor and a hover card anchored to the left
+     * (left-docked toolbar while a menu is open). Lower values pull the card
+     * closer to the pointer.
+     */
+    public static final int TOOLTIP_CURSOR_OFFSET_X_LEFT = 2;
+
+    /**
      * Default vertical offset from the cursor when a hover card starts below the
      * pointer. Flipped when the card would leave the screen.
      */
