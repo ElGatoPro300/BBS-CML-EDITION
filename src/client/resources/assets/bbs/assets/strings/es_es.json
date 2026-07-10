@@ -2223,5 +2223,6 @@
 
     "bbs.ui.timeline_toolbar.edit_track": "Editar pista",
     "bbs.ui.timeline_toolbar.add_replay_at_cursor": "Añadir una reproducción en el cursor",
-    "bbs.ui.timeline_toolbar.replay": "Reproducción"
+    "bbs.ui.timeline_toolbar.replay": "Reproducción",
+    "bbs.ui.timeline_toolbar.drag": "Arrastrar para reposicionar la barra de herramientas"
 }

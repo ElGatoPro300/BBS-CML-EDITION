@@ -11,8 +11,8 @@ import mchorse.bbs_mod.settings.values.numeric.ValueInt;
 import mchorse.bbs_mod.ui.film.clips.UIClip;
 import mchorse.bbs_mod.ui.film.clips.UIScreenNodeEditor;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbar;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarDockLayout;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarRegistry;
-import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarSettings;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarWiring;
 import mchorse.bbs_mod.ui.film.utils.UIFilmUndoHandler;
 import mchorse.bbs_mod.ui.framework.UIContext;
@@ -60,16 +60,28 @@ public class UIClipsPanel extends UIElement implements IUIClipsDelegate
         this.isCameraTimeline = isCameraTimeline;
         this.clips = new UIClips(this, factory);
 
-        this.clips.relative(this).w(1F).h(1F, -TimelineToolbarSettings.TOOLBAR_HEIGHT);
         this.add(this.clips);
 
         this.toolbar = new TimelineToolbar();
-        this.toolbar.relative(this).x(0).y(1F, -TimelineToolbarSettings.TOOLBAR_HEIGHT).w(1F);
         this.toolbar.setInteractionCancelListener(this::cancelToolbarInteraction);
         this.applyDefaultToolbarSections();
         this.add(this.toolbar);
 
+        this.applyToolbarDockLayout();
+
         this.clips.setEmbedViewListener(this::onEmbedViewChanged);
+    }
+
+    private String getToolbarPanelId()
+    {
+        return this.isCameraTimeline
+            ? TimelineToolbarDockLayout.PANEL_CAMERA
+            : TimelineToolbarDockLayout.PANEL_ACTION;
+    }
+
+    private void applyToolbarDockLayout()
+    {
+        TimelineToolbarDockLayout.setup(this, this.toolbar, this.getToolbarPanelId(), this.clips);
     }
 
     /**

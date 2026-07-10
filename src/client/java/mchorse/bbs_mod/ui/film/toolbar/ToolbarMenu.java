@@ -148,6 +148,54 @@ public class ToolbarMenu extends UIElement
     }
 
     /**
+     * Positions this popup below the anchor (used when the toolbar is docked to
+     * the top edge). Falls back to opening above when there is not enough space.
+     */
+    public void openBelow(UIContext context, Area anchor)
+    {
+        this.computeLayout(context.batcher.getFont());
+
+        int margin = TimelineToolbarSettings.MENU_SCREEN_MARGIN;
+        int screenH = context.menu.height;
+        int y;
+
+        if (anchor.ey() + TimelineToolbarSettings.MENU_GAP + this.contentHeight <= screenH - margin)
+        {
+            y = anchor.ey() + TimelineToolbarSettings.MENU_GAP;
+        }
+        else
+        {
+            y = anchor.y - TimelineToolbarSettings.MENU_GAP - this.contentHeight;
+        }
+
+        this.finalizeOpen(context, anchor.x, y);
+    }
+
+    /**
+     * Opens a root popup relative to a toolbar section, accounting for which
+     * edge the toolbar is docked to.
+     */
+    public void openFromToolbar(UIContext context, Area anchor, TimelineToolbarDock dock)
+    {
+        switch (dock)
+        {
+            case TOP:
+                this.openBelow(context, anchor);
+                break;
+            case LEFT:
+                this.openBesides(context, anchor);
+                break;
+            case RIGHT:
+                this.openBesidesLeft(context, anchor);
+                break;
+            case BOTTOM:
+            default:
+                this.openAbove(context, anchor);
+                break;
+        }
+    }
+
+    /**
      * Positions this popup as a child submenu of another popup, defaulting to
      * the right side of the parent row and flipping left when needed.
      */
@@ -181,6 +229,46 @@ public class ToolbarMenu extends UIElement
             {
                 x = Math.max(margin, screenW - wEst - margin);
                 this.openedToLeft = false;
+            }
+        }
+
+        this.finalizeOpen(context, x, rowRect.y);
+    }
+
+    /**
+     * Positions this popup to the left of the anchor (used when the toolbar is
+     * docked to the right edge). Falls back to the right side when needed.
+     */
+    public void openBesidesLeft(UIContext context, Area rowRect)
+    {
+        this.computeLayout(context.batcher.getFont());
+
+        int margin = TimelineToolbarSettings.MENU_SCREEN_MARGIN;
+        int screenW = context.menu.width;
+        int maxInnerW = screenW - margin * 2;
+        int wEst = Math.min(this.contentWidth, maxInnerW);
+
+        int preferredX = rowRect.x - TimelineToolbarSettings.MENU_GAP - wEst;
+        int x;
+
+        if (preferredX >= margin)
+        {
+            x = preferredX;
+            this.openedToLeft = true;
+        }
+        else
+        {
+            int rightX = rowRect.ex() + TimelineToolbarSettings.MENU_GAP;
+
+            if (rightX + wEst <= screenW - margin)
+            {
+                x = rightX;
+                this.openedToLeft = false;
+            }
+            else
+            {
+                x = Math.max(margin, screenW - wEst - margin);
+                this.openedToLeft = true;
             }
         }
 

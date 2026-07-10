@@ -3,6 +3,7 @@ package mchorse.bbs_mod.ui.film.toolbar;
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.ui.framework.UIContext;
+import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeSheet;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframes;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.graphs.UIKeyframeDopeSheet;
@@ -212,13 +213,13 @@ public class UIKeyframeInsertInteraction
         }
     }
 
-    public void renderHint(UIContext context, Area area)
+    public void renderHint(UIContext context, Area area, UIElement source)
     {
         if (this.state == null)
         {
             return;
         }
 
-        TimelineInteractionHints.renderHint(context, area, this.state.hint);
+        TimelineInteractionHints.renderHint(context, area, this.state.hint, source);
     }
 }

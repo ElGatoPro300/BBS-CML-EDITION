@@ -1791,8 +1791,8 @@ public class UIClips extends UIElement
         this.loopMarkerInteraction.updatePreview(this, context);
         this.clipPlacement.updatePreview(this, context);
         this.loopMarkerInteraction.renderTickPulse(this, context);
-        this.loopMarkerInteraction.renderHint(context, this.area);
-        this.clipPlacement.renderHint(context, this.area);
+        this.loopMarkerInteraction.renderHint(context, this.area, this);
+        this.clipPlacement.renderHint(context, this.area, this);
 
         super.render(context);
     }

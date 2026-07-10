@@ -2,6 +2,7 @@ package mchorse.bbs_mod.ui.film.toolbar;
 
 import mchorse.bbs_mod.ui.film.UIClips;
 import mchorse.bbs_mod.ui.framework.UIContext;
+import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.utils.colors.Colors;
 
@@ -126,14 +127,14 @@ public class UIClipPlacementInteraction
         return false;
     }
 
-    public void renderHint(UIContext context, Area area)
+    public void renderHint(UIContext context, Area area, UIElement source)
     {
         if (this.state == null)
         {
             return;
         }
 
-        TimelineInteractionHints.renderHint(context, area, this.state.hint);
+        TimelineInteractionHints.renderHint(context, area, this.state.hint, source);
     }
 
     public static void renderPulsingOutline(UIContext context, int x, int y, int ex, int ey)

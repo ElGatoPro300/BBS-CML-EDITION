@@ -1399,11 +1399,11 @@ public class UIKeyframes extends UIElement
     {
         if (this.scaling && this.scalingShowInteractionHints)
         {
-            TimelineInteractionHints.renderHint(context, this.area, UIKeys.TIMELINE_INTERACTION_SCALE_TIME);
+            TimelineInteractionHints.renderHint(context, this.area, UIKeys.TIMELINE_INTERACTION_SCALE_TIME, this);
         }
         else if (this.stacking && this.stackingShowInteractionHints)
         {
-            TimelineInteractionHints.renderHint(context, this.area, UIKeys.TIMELINE_INTERACTION_STACK_KEYFRAMES);
+            TimelineInteractionHints.renderHint(context, this.area, UIKeys.TIMELINE_INTERACTION_STACK_KEYFRAMES, this);
         }
     }
 
@@ -2221,12 +2221,12 @@ public class UIKeyframes extends UIElement
 
         context.batcher.unclip(context);
 
-        this.selectSameInteraction.renderHint(context, this.area);
-        this.selectNeighborInteraction.renderHint(context, this.area);
-        this.pasteInteraction.renderHint(context, this.area);
-        this.duplicateInteraction.renderHint(context, this.area);
-        this.insertInteraction.renderHint(context, this.area);
-        this.interactionOverlay.renderHint(context, this.area);
+        this.selectSameInteraction.renderHint(context, this.area, this);
+        this.selectNeighborInteraction.renderHint(context, this.area, this);
+        this.pasteInteraction.renderHint(context, this.area, this);
+        this.duplicateInteraction.renderHint(context, this.area, this);
+        this.insertInteraction.renderHint(context, this.area, this);
+        this.interactionOverlay.renderHint(context, this.area, this);
         this.renderTransformModeHints(context);
     }
 

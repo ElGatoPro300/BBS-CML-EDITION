@@ -1,22 +1,28 @@
 package mchorse.bbs_mod.ui.film.toolbar;
 
+import mchorse.bbs_mod.BBSSettings;
+import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.utils.EventPropagation;
 import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
+import mchorse.bbs_mod.ui.framework.elements.utils.UIRenderable;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
+import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Colors;
+
+import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * The toolbar bar itself. Displays a horizontal row of section buttons
- * anchored to the bottom of a timeline panel. Each section shows an icon and,
- * when space allows, its label to the right; otherwise the label collapses
- * into a hover tooltip (rightmost sections first). Clicking a section opens its
- * popup ({@link ToolbarMenu}) on the global UI overlay.
+ * The toolbar bar itself. Displays a row or column of section buttons
+ * anchored to an edge of a timeline panel. Each section shows an icon and,
+ * when space allows, its label; otherwise the label collapses into a hover
+ * tooltip. Clicking a section opens its popup ({@link ToolbarMenu}) on the
+ * global UI overlay.
  *
  * <p>Also coordinates open/close state so hovering across sections while one
  * is open switches to the hovered section without needing an extra click
@@ -55,6 +61,26 @@ public class TimelineToolbar extends UIElement
      */
     private Runnable interactionCancelListener;
 
+    private TimelineToolbarDock dock = TimelineToolbarDock.BOTTOM;
+
+    private UIElement hostPanel;
+
+    private String panelId;
+
+    private Runnable dockChangeListener;
+
+    private final Area dragHandleArea = new Area();
+
+    private UIRenderable dockOverlay;
+
+    private boolean dockDragging;
+
+    private TimelineToolbarDock hoverDock;
+
+    private int dragMouseX;
+
+    private int dragMouseY;
+
     /* Constructor */
 
     public TimelineToolbar()
@@ -69,6 +95,34 @@ public class TimelineToolbar extends UIElement
     }
 
     /* API */
+
+    public TimelineToolbarDock getDock()
+    {
+        return this.dock;
+    }
+
+    public void setDock(TimelineToolbarDock dock)
+    {
+        if (dock == null)
+        {
+            dock = TimelineToolbarDock.BOTTOM;
+        }
+
+        this.dock = dock;
+    }
+
+    public void configureDockHost(UIElement host, String panelId, Runnable dockChangeListener)
+    {
+        this.hostPanel = host;
+        this.panelId = panelId;
+        this.dockChangeListener = dockChangeListener;
+
+        if (this.dockOverlay == null && host != null)
+        {
+            this.dockOverlay = new UIRenderable(this::renderDockDragOverlay);
+            host.add(this.dockOverlay);
+        }
+    }
 
     public TimelineToolbar setSections(List<ToolbarSection> newSections)
     {
@@ -165,6 +219,20 @@ public class TimelineToolbar extends UIElement
 
     private void layoutSections(FontRenderer font)
     {
+        if (this.dock.isHorizontal())
+        {
+            this.layoutSectionsHorizontal(font);
+        }
+        else
+        {
+            this.layoutSectionsVertical(font);
+        }
+
+        this.layoutDragHandle();
+    }
+
+    private void layoutSectionsHorizontal(FontRenderer font)
+    {
         int size = this.sections.size();
 
         if (this.sectionAreas.size() != size)
@@ -187,7 +255,8 @@ public class TimelineToolbar extends UIElement
             this.sectionShowLabel[i] = true;
         }
 
-        int available = this.area.w - TimelineToolbarSettings.TOOLBAR_PADDING * 2;
+        int available = this.area.w - TimelineToolbarSettings.TOOLBAR_PADDING * 2
+            - TimelineToolbarSettings.DRAG_HANDLE_SIZE;
         int total = this.computeSectionsWidth(font, this.sectionShowLabel);
 
         for (int i = size - 1; i >= 0 && total > available; i--)
@@ -202,7 +271,8 @@ public class TimelineToolbar extends UIElement
         int x = this.area.x + TimelineToolbarSettings.TOOLBAR_PADDING;
         int y = this.area.y;
         int h = this.area.h;
-        int maxX = this.area.ex() - TimelineToolbarSettings.TOOLBAR_PADDING;
+        int maxX = this.area.ex() - TimelineToolbarSettings.TOOLBAR_PADDING
+            - TimelineToolbarSettings.DRAG_HANDLE_SIZE;
 
         for (int i = 0; i < size; i++)
         {
@@ -231,6 +301,81 @@ public class TimelineToolbar extends UIElement
             {
                 x += TimelineToolbarSettings.TOOLBAR_SECTION_SPACING;
             }
+        }
+    }
+
+    private void layoutSectionsVertical(FontRenderer font)
+    {
+        int size = this.sections.size();
+
+        if (this.sectionAreas.size() != size)
+        {
+            this.sectionAreas.clear();
+
+            for (int i = 0; i < size; i++)
+            {
+                this.sectionAreas.add(new Area());
+            }
+        }
+
+        if (this.sectionShowLabel.length != size)
+        {
+            this.sectionShowLabel = new boolean[size];
+        }
+
+        for (int i = 0; i < size; i++)
+        {
+            this.sectionShowLabel[i] = false;
+        }
+
+        int x = this.area.x + (this.area.w - TimelineToolbarSettings.SECTION_ICON_SIZE) / 2;
+        int y = this.area.y + TimelineToolbarSettings.TOOLBAR_PADDING;
+        int w = TimelineToolbarSettings.SECTION_ICON_SIZE;
+        int maxY = this.area.ey() - TimelineToolbarSettings.TOOLBAR_PADDING
+            - TimelineToolbarSettings.DRAG_HANDLE_SIZE;
+
+        for (int i = 0; i < size; i++)
+        {
+            int h = TimelineToolbarSettings.SECTION_ICON_SIZE;
+            Area a = this.sectionAreas.get(i);
+
+            if (y + h > maxY)
+            {
+                a.setPos(x, y);
+                a.setSize(0, 0);
+
+                continue;
+            }
+
+            a.setPos(x, y);
+            a.setSize(w, h);
+
+            y += h;
+
+            if (i < size - 1)
+            {
+                y += TimelineToolbarSettings.TOOLBAR_SECTION_SPACING;
+            }
+        }
+    }
+
+    private void layoutDragHandle()
+    {
+        int handle = TimelineToolbarSettings.DRAG_HANDLE_SIZE;
+
+        if (this.dock.isHorizontal())
+        {
+            int x = this.area.ex() - TimelineToolbarSettings.TOOLBAR_PADDING - handle;
+            int y = this.area.y + (this.area.h - handle) / 2;
+
+            this.dragHandleArea.set(x, y, handle, handle);
+        }
+        else
+        {
+            int x = this.area.x + (this.area.w - handle) / 2;
+            int y = this.area.ey() - TimelineToolbarSettings.TOOLBAR_PADDING - handle;
+
+            this.dragHandleArea.set(x, y, handle, handle);
         }
     }
 
@@ -267,6 +412,182 @@ public class TimelineToolbar extends UIElement
             + TimelineToolbarSettings.SECTION_LABEL_TRAILING_PADDING;
     }
 
+    /* Dock drag */
+
+    private void startDockDrag(UIContext context)
+    {
+        this.closeOpenMenu();
+        this.dockDragging = true;
+        this.dragMouseX = context.mouseX;
+        this.dragMouseY = context.mouseY;
+        this.hoverDock = this.computeNearestDropDock(context.mouseX, context.mouseY);
+    }
+
+    private void updateDockDrag(UIContext context)
+    {
+        if (!this.dockDragging)
+        {
+            return;
+        }
+
+        this.hoverDock = this.computeNearestDropDock(context.mouseX, context.mouseY);
+        context.requestCursor(GLFW.GLFW_HAND_CURSOR);
+    }
+
+    private void finishDockDrag(UIContext context)
+    {
+        if (!this.dockDragging)
+        {
+            return;
+        }
+
+        TimelineToolbarDock target = this.computeNearestDropDock(context.mouseX, context.mouseY);
+
+        this.dockDragging = false;
+        this.hoverDock = null;
+
+        if (target != null && target != this.dock)
+        {
+            this.applyDock(target);
+        }
+    }
+
+    private void applyDock(TimelineToolbarDock dock)
+    {
+        this.setDock(dock);
+
+        if (this.panelId != null)
+        {
+            BBSSettings.timelineToolbarDocks.setDock(this.panelId, dock);
+        }
+
+        if (this.dockChangeListener != null)
+        {
+            this.dockChangeListener.run();
+        }
+    }
+
+    private TimelineToolbarDock computeNearestDropDock(int mouseX, int mouseY)
+    {
+        if (this.hostPanel == null)
+        {
+            return null;
+        }
+
+        Area host = this.hostPanel.area;
+        TimelineToolbarDock nearest = null;
+        double nearestDist = Double.MAX_VALUE;
+
+        for (TimelineToolbarDock candidate : TimelineToolbarDock.values())
+        {
+            if (candidate == this.dock)
+            {
+                continue;
+            }
+
+            Area zone = this.getDropZoneRect(host, candidate);
+
+            if (zone.isInside(mouseX, mouseY))
+            {
+                return candidate;
+            }
+
+            double dist = this.distanceToRect(mouseX, mouseY, zone);
+
+            if (dist < nearestDist)
+            {
+                nearestDist = dist;
+                nearest = candidate;
+            }
+        }
+
+        return nearest;
+    }
+
+    private Area getDropZoneRect(Area host, TimelineToolbarDock dock)
+    {
+        int thickness = TimelineToolbarSettings.getThickness(dock);
+        Area zone = new Area();
+
+        switch (dock)
+        {
+            case TOP:
+                zone.set(host.x, host.y, host.w, thickness);
+                break;
+            case BOTTOM:
+                zone.set(host.x, host.ey() - thickness, host.w, thickness);
+                break;
+            case LEFT:
+                zone.set(host.x, host.y, thickness, host.h);
+                break;
+            case RIGHT:
+                zone.set(host.ex() - thickness, host.y, thickness, host.h);
+                break;
+        }
+
+        return zone;
+    }
+
+    private double distanceToRect(int x, int y, Area rect)
+    {
+        int dx = 0;
+
+        if (x < rect.x)
+        {
+            dx = rect.x - x;
+        }
+        else if (x > rect.ex())
+        {
+            dx = x - rect.ex();
+        }
+
+        int dy = 0;
+
+        if (y < rect.y)
+        {
+            dy = rect.y - y;
+        }
+        else if (y > rect.ey())
+        {
+            dy = y - rect.ey();
+        }
+
+        return Math.sqrt((double) dx * dx + (double) dy * dy);
+    }
+
+    private void renderDockDragOverlay(UIContext context)
+    {
+        if (!this.dockDragging || this.hostPanel == null)
+        {
+            return;
+        }
+
+        Area host = this.hostPanel.area;
+        int border = BBSSettings.primaryColor(Colors.A50);
+        int fill = BBSSettings.primaryColor(Colors.A25);
+        int highlightFill = BBSSettings.primaryColor(Colors.A75);
+        int t = TimelineToolbarSettings.DOCK_PREVIEW_BORDER;
+
+        for (TimelineToolbarDock candidate : TimelineToolbarDock.values())
+        {
+            if (candidate == this.dock)
+            {
+                continue;
+            }
+
+            Area zone = this.getDropZoneRect(host, candidate);
+            boolean highlight = candidate == this.hoverDock;
+            int zoneFill = highlight ? highlightFill : fill;
+            int zoneBorder = highlight ? BBSSettings.primaryColor(Colors.A100) : border;
+
+            context.batcher.box(zone.x, zone.y, zone.ex(), zone.ey(), zoneFill);
+            context.batcher.box(zone.x, zone.y, zone.ex(), zone.y + t, zoneBorder);
+            context.batcher.box(zone.x, zone.ey() - t, zone.ex(), zone.ey(), zoneBorder);
+            context.batcher.box(zone.x, zone.y, zone.x + t, zone.ey(), zoneBorder);
+            context.batcher.box(zone.ex() - t, zone.y, zone.ex(), zone.ey(), zoneBorder);
+        }
+    }
+
     /* Rendering */
 
     @Override
@@ -276,6 +597,7 @@ public class TimelineToolbar extends UIElement
 
         this.layoutSections(font);
         this.renderBar(context);
+        this.renderDragHandle(context);
 
         context.batcher.clip(this.area, context);
 
@@ -287,6 +609,7 @@ public class TimelineToolbar extends UIElement
         context.batcher.unclip(context);
 
         this.updateHoverSwitch(context);
+        this.updateDockDrag(context);
 
         super.render(context);
 
@@ -302,14 +625,57 @@ public class TimelineToolbar extends UIElement
             context.drawForegroundTextCard(text, context.mouseX + 8, context.mouseY + 12,
                 Colors.WHITE, Colors.A75);
         }
+        else if (this.dragHandleArea.isInside(context.mouseX, context.mouseY) && !this.dockDragging)
+        {
+            context.drawForegroundTextCard(UIKeys.TIMELINE_TOOLBAR_DRAG.get(), context.mouseX + 8,
+                context.mouseY + 12, Colors.WHITE, Colors.A75);
+        }
     }
 
     private void renderBar(UIContext context)
     {
         context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(),
             TimelineToolbarSettings.TOOLBAR_BACKGROUND);
-        context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.y + 1,
-            TimelineToolbarSettings.TOOLBAR_BORDER);
+
+        switch (this.dock)
+        {
+            case TOP:
+                context.batcher.box(this.area.x, this.area.ey() - 1, this.area.ex(), this.area.ey(),
+                    TimelineToolbarSettings.TOOLBAR_BORDER);
+                break;
+            case BOTTOM:
+                context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.y + 1,
+                    TimelineToolbarSettings.TOOLBAR_BORDER);
+                break;
+            case LEFT:
+                context.batcher.box(this.area.ex() - 1, this.area.y, this.area.ex(), this.area.ey(),
+                    TimelineToolbarSettings.TOOLBAR_BORDER);
+                break;
+            case RIGHT:
+                context.batcher.box(this.area.x, this.area.y, this.area.x + 1, this.area.ey(),
+                    TimelineToolbarSettings.TOOLBAR_BORDER);
+                break;
+        }
+    }
+
+    private void renderDragHandle(UIContext context)
+    {
+        if (this.dragHandleArea.w <= 0)
+        {
+            return;
+        }
+
+        Area a = this.dragHandleArea;
+        boolean hover = a.isInside(context.mouseX, context.mouseY) || this.dockDragging;
+
+        if (hover)
+        {
+            context.batcher.box(a.x, a.y, a.ex(), a.ey(), TimelineToolbarSettings.SECTION_HOVER_COLOR);
+        }
+
+        Icon icon = Icons.MAIN_HANDLE;
+
+        context.batcher.icon(icon, Colors.WHITE, a.mx(), a.my(), 0.5F, 0.5F);
     }
 
     private void renderSections(UIContext context, FontRenderer font, int hovered, boolean suppressHover)
@@ -350,7 +716,10 @@ public class TimelineToolbar extends UIElement
 
         if (icon != null)
         {
-            context.batcher.icon(icon, Colors.WHITE, a.x + iconSize / 2F, iconY + iconSize / 2F, 0.5F, 0.5F);
+            float iconX = showLabel ? a.x + iconSize / 2F : a.mx();
+            float iconYCenter = iconY + iconSize / 2F;
+
+            context.batcher.icon(icon, Colors.WHITE, iconX, iconYCenter, 0.5F, 0.5F);
         }
 
         if (showLabel)
@@ -436,7 +805,7 @@ public class TimelineToolbar extends UIElement
 
         ToolbarMenu menu = new ToolbarMenu(this, null, section.items);
         context.menu.overlay.add(menu);
-        menu.openAbove(context, this.sectionAreas.get(index));
+        menu.openFromToolbar(context, this.sectionAreas.get(index), this.dock);
 
         this.openIndex = index;
         this.openMenu = menu;
@@ -471,6 +840,14 @@ public class TimelineToolbar extends UIElement
 
         this.layoutSections(context.batcher.getFont());
 
+        if (this.dragHandleArea.isInside(context.mouseX, context.mouseY) && context.mouseButton == 0)
+        {
+            this.startDockDrag(context);
+            context.setTimelineToolbarConsumePointer(true);
+
+            return true;
+        }
+
         int index = this.getSectionIndexAt(context.mouseX, context.mouseY);
 
         if (index < 0)
@@ -493,5 +870,18 @@ public class TimelineToolbar extends UIElement
         }
 
         return true;
+    }
+
+    @Override
+    protected boolean subMouseReleased(UIContext context)
+    {
+        if (this.dockDragging)
+        {
+            this.finishDockDrag(context);
+
+            return true;
+        }
+
+        return super.subMouseReleased(context);
     }
 }

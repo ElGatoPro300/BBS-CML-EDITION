@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.ui.film.toolbar;
 
 import mchorse.bbs_mod.ui.framework.UIContext;
+import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeSheet;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframes;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.graphs.KeyframeType;
@@ -145,13 +146,13 @@ public class UIKeyframeSelectSameInteraction
         dopeSheet.renderPreviewKeyframeAt(context, this.hoverSheet, (float) this.hoverKeyframe.getTick(), Colors.ACTIVE | Colors.A100);
     }
 
-    public void renderHint(UIContext context, Area area)
+    public void renderHint(UIContext context, Area area, UIElement source)
     {
         if (this.state == null)
         {
             return;
         }
 
-        TimelineInteractionHints.renderHint(context, area, this.state.hint);
+        TimelineInteractionHints.renderHint(context, area, this.state.hint, source);
     }
 }

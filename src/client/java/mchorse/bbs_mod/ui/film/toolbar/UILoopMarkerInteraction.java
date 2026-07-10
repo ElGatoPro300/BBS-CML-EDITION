@@ -2,6 +2,7 @@ package mchorse.bbs_mod.ui.film.toolbar;
 
 import mchorse.bbs_mod.ui.film.UIClips;
 import mchorse.bbs_mod.ui.framework.UIContext;
+import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.utils.Area;
 
 import org.lwjgl.glfw.GLFW;
@@ -125,13 +126,13 @@ public class UILoopMarkerInteraction
         TimelineInteractionHints.renderPulsingTickColumn(context, x, area.y, area.ey());
     }
 
-    public void renderHint(UIContext context, Area area)
+    public void renderHint(UIContext context, Area area, UIElement source)
     {
         if (this.state == null)
         {
             return;
         }
 
-        TimelineInteractionHints.renderHint(context, area, this.state.hint);
+        TimelineInteractionHints.renderHint(context, area, this.state.hint, source);
     }
 }

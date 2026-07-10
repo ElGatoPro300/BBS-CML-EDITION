@@ -2,6 +2,7 @@ package mchorse.bbs_mod.ui.film.toolbar;
 
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.ui.framework.UIContext;
+import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.utils.MathUtils;
@@ -37,7 +38,12 @@ public final class TimelineInteractionHints
         context.batcher.box(x, y, x + w, ey, color);
     }
 
-    public static void renderHint(UIContext context, Area area, IKey hint)
+    public static void renderHint(UIContext context, Area area, IKey hint, UIElement source)
+    {
+        renderHint(context, area, hint, TimelineToolbarDockLayout.findDockFor(source));
+    }
+
+    public static void renderHint(UIContext context, Area area, IKey hint, TimelineToolbarDock dock)
     {
         if (hint == null)
         {
@@ -51,8 +57,35 @@ public final class TimelineInteractionHints
         int textH = font.getHeight();
         int cardW = textW + padding * 2;
         int cardH = textH + padding;
-        int x = area.x + TimelineToolbarSettings.INTERACTION_HINT_MARGIN;
-        int y = area.ey() - cardH - TimelineToolbarSettings.INTERACTION_HINT_MARGIN;
+        int margin = TimelineToolbarSettings.INTERACTION_HINT_MARGIN;
+        int x;
+        int y;
+
+        if (dock == null)
+        {
+            dock = TimelineToolbarDock.BOTTOM;
+        }
+
+        switch (dock)
+        {
+            case TOP:
+                x = area.x + margin;
+                y = area.y + margin;
+                break;
+            case LEFT:
+                x = area.x + margin;
+                y = area.ey() - cardH - margin;
+                break;
+            case RIGHT:
+                x = area.ex() - cardW - margin;
+                y = area.ey() - cardH - margin;
+                break;
+            case BOTTOM:
+            default:
+                x = area.x + margin;
+                y = area.ey() - cardH - margin;
+                break;
+        }
 
         context.batcher.box(x, y, x + cardW, y + cardH, TimelineToolbarSettings.INTERACTION_HINT_BACKGROUND);
         context.batcher.outline(x, y, x + cardW, y + cardH, TimelineToolbarSettings.INTERACTION_HINT_BORDER);

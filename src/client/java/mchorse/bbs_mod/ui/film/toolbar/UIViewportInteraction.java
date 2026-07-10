@@ -3,6 +3,7 @@ package mchorse.bbs_mod.ui.film.toolbar;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.ui.framework.UIContext;
+import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.utils.colors.Colors;
 
@@ -97,7 +98,7 @@ public class UIViewportInteraction
         return false;
     }
 
-    public void renderOverlay(UIContext context, Area viewport)
+    public void renderOverlay(UIContext context, Area viewport, UIElement source)
     {
         if (this.state == null)
         {
@@ -105,7 +106,7 @@ public class UIViewportInteraction
         }
 
         renderEdgeFade(context, viewport);
-        TimelineInteractionHints.renderHint(context, viewport, this.state.hint);
+        TimelineInteractionHints.renderHint(context, viewport, this.state.hint, source);
     }
 
     public static void renderEdgeFade(UIContext context, Area viewport)

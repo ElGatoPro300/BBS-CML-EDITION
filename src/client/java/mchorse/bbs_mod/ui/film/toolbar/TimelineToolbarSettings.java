@@ -45,6 +45,24 @@ public class TimelineToolbarSettings
      */
     public static final int TOOLBAR_PADDING = 4;
 
+    /**
+     * Width/height of the drag handle at the end of the toolbar.
+     */
+    public static final int DRAG_HANDLE_SIZE = 12;
+
+    /**
+     * Thickness of the toolbar strip for any dock edge (matches {@link #TOOLBAR_HEIGHT}).
+     */
+    public static int getThickness(TimelineToolbarDock dock)
+    {
+        return TOOLBAR_HEIGHT;
+    }
+
+    /**
+     * Border width for dock preview rectangles during toolbar drag.
+     */
+    public static final int DOCK_PREVIEW_BORDER = 2;
+
     /* Menu popup layout */
 
     /**

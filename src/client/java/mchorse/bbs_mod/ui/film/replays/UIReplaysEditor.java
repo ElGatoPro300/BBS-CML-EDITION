@@ -46,8 +46,8 @@ import mchorse.bbs_mod.ui.film.replays.overlays.UIRenameSheetOverlayPanel;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIReplaysOverlayPanel;
 import mchorse.bbs_mod.ui.film.toolbar.KeyframeInsertInteractionState;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbar;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarDockLayout;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarRegistry;
-import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarSettings;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarWiring;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineTrackEligibility;
 import mchorse.bbs_mod.ui.film.toolbar.UIViewportInteraction;
@@ -791,11 +791,18 @@ public class UIReplaysEditor extends UIElement
         this.toolbar = new TimelineToolbar();
         this.toolbar.setSections(TimelineToolbarRegistry.forReplays(true));
         TimelineToolbarWiring.wireReplaysToolbar(this);
-        this.toolbar.relative(this).x(0).y(1F, -TimelineToolbarSettings.TOOLBAR_HEIGHT).w(1F);
         this.toolbar.setInteractionCancelListener(this::cancelToolbarInteraction);
         this.add(this.toolbar);
 
+        this.applyToolbarDockLayout();
+
         this.markContainer();
+    }
+
+    private void applyToolbarDockLayout()
+    {
+        TimelineToolbarDockLayout.setup(this, this.toolbar, TimelineToolbarDockLayout.PANEL_REPLAY,
+            this.keyframeEditor);
     }
 
     private void cancelToolbarInteraction()
@@ -815,7 +822,7 @@ public class UIReplaysEditor extends UIElement
 
     public void renderViewportInteraction(UIContext context, Area viewport)
     {
-        this.viewportInteraction.renderOverlay(context, viewport);
+        this.viewportInteraction.renderOverlay(context, viewport, this);
     }
 
     public boolean handleViewportInteractionMouse(UIContext context, Area viewport)
@@ -1813,7 +1820,6 @@ public class UIReplaysEditor extends UIElement
 
                 return keyframes;
             }).target(this.filmPanel.editArea);
-            this.keyframeEditor.relative(this).x(0).y(0).w(1F).h(1F, -TimelineToolbarSettings.TOOLBAR_HEIGHT);
             this.keyframeEditor.setUndoId("replay_keyframe_editor");
 
             /* Reset */
@@ -1898,6 +1904,7 @@ public class UIReplaysEditor extends UIElement
             }
 
             this.add(this.keyframeEditor);
+            this.applyToolbarDockLayout();
         }
 
         this.resize();
