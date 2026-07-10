@@ -504,29 +504,9 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
             stack.push();
             MatrixStackUtils.multiply(stack, gizmoMatrix);
 
-            RenderSystem.disableDepthTest();
             Gizmo.INSTANCE.render(stack);
-            RenderSystem.enableDepthTest();
 
-                    gizmoMatrix = matrix;
-                }
-            }
-
-            if (gizmoMatrix != null)
-            {
-                this.lastGizmoMatrix.set(gizmoMatrix);
-                this.hasGizmoMatrix = true;
-                MatrixStack gizmoStack = new MatrixStack();
-
-                gizmoStack.push();
-                MatrixStackUtils.multiply(gizmoStack, gizmoMatrix);
-
-                /* TODO 1.21.11: RenderSystem.disableDepthTest removed */
-                Gizmo.INSTANCE.render(gizmoStack);
-                /* TODO 1.21.11: RenderSystem.enableDepthTest removed */
-
-                gizmoStack.pop();
-            }
+            stack.pop();
         }
 
         if (this.area.isInside(context) && this.pickingEnabled)

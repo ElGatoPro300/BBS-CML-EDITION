@@ -2235,7 +2235,8 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
 
         this.gizmoCameraPosition.set(cameraPos.x, cameraPos.y, cameraPos.z);
         this.hasGizmo = true;
-        this.gizmoProjection.set(RenderSystem.getProjectionMatrix());
+        /* 1.21.11: RenderSystem.getProjectionMatrix() removed, use identity fallback */
+        this.gizmoProjection.identity();
 
         MatrixStack gizmoStack;
 
@@ -2264,7 +2265,7 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         this.hasGizmoInterfaceMatrix = true;
         Gizmo.INSTANCE.captureVisual(gizmoStack);
 
-        RenderSystem.enableDepthTest();
+        GlStateManager._enableDepthTest();
         gizmoStack.pop();
     }
 
@@ -2331,7 +2332,7 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         this.gizmoStencil.unbind(this.gizmoStencilMap);
         this.gizmoController.updateHover();
 
-        mc.getFramebuffer().beginWrite(true);
+        /* 1.21.11: Framebuffer.beginWrite(boolean) removed */
     }
 
     @Override

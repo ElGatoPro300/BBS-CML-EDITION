@@ -136,11 +136,11 @@ public class UIWorldPropertiesOverlayPanel extends UIOverlayPanel
         this.gamma.limit(0D, 1500D, true).increment(50D).values(10D, 1D, 100D);
         this.gamma.setValue(WorldPropertiesHelper.getGammaPercent());
 
-        UIButton gammaNormal = new UIButton(UIKeys.WORLD_GAMMA_NORMAL, (b) -> this.setGamma(100D));
-        UIButton gammaSemi = new UIButton(UIKeys.WORLD_GAMMA_SEMI, (b) -> this.setGamma(750D));
-        UIButton gammaFull = new UIButton(UIKeys.WORLD_GAMMA_FULL, (b) -> this.setGamma(1500D));
+        UIButton gammaNormal = new UIButton(UIKeys.WORLD_GAMMA_NORMAL, (b) -> { this.gamma.setValue(100D); WorldPropertiesHelper.setGammaPercent(100D); });
+        UIButton gammaSemi = new UIButton(UIKeys.WORLD_GAMMA_SEMI, (b) -> { this.gamma.setValue(750D); WorldPropertiesHelper.setGammaPercent(750D); });
+        UIButton gammaFull = new UIButton(UIKeys.WORLD_GAMMA_FULL, (b) -> { this.gamma.setValue(1500D); WorldPropertiesHelper.setGammaPercent(1500D); });
 
-        this.nightVision = new UIToggle(UIKeys.WORLD_GAMMA_NIGHT_VISION, this.hasNightVision(), (b) ->
+        this.nightVision = new UIToggle(UIKeys.WORLD_GAMMA_NIGHT_VISION, WorldPropertiesHelper.hasNightVision(), (b) ->
             WorldPropertiesHelper.setNightVision(b.getValue()));
 
         this.gammaContent = UI.column(5, 0,
