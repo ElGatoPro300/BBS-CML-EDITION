@@ -9,6 +9,8 @@ import mchorse.bbs_mod.ui.framework.elements.utils.EventPropagation;
 import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIRenderable;
 import mchorse.bbs_mod.ui.utils.Area;
+import mchorse.bbs_mod.ui.utils.Scroll;
+import mchorse.bbs_mod.ui.utils.ScrollDirection;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Colors;
@@ -75,6 +77,14 @@ public class TimelineToolbar extends UIElement
 
     private final Area dragSeparatorArea = new Area();
 
+    /**
+     * Clip and scroll bounds for section buttons. Excludes the drag separator
+     * and handle, which always stay visible at the end of the toolbar.
+     */
+    private final Area sectionsViewportArea = new Area();
+
+    private final Scroll sectionsScroll;
+
     private UIRenderable dockOverlay;
 
     private boolean dockDragging;
@@ -92,6 +102,8 @@ public class TimelineToolbar extends UIElement
         super();
 
         this.h(TimelineToolbarSettings.TOOLBAR_HEIGHT);
+        this.sectionsScroll = new Scroll(this.sectionsViewportArea, 0, ScrollDirection.HORIZONTAL);
+        this.sectionsScroll.noScrollbar();
         /* Block mouse events inside the bar (clicks should not pass through to
          * the timeline) but let keyboard events propagate so Escape can still
          * close the editor when the cursor is over the toolbar. */
@@ -110,6 +122,11 @@ public class TimelineToolbar extends UIElement
         if (dock == null)
         {
             dock = TimelineToolbarDock.BOTTOM;
+        }
+
+        if (this.dock != dock)
+        {
+            this.sectionsScroll.setScroll(0D);
         }
 
         this.dock = dock;
@@ -171,6 +188,8 @@ public class TimelineToolbar extends UIElement
             this.sectionAreas.add(new Area());
         }
 
+        this.sectionsScroll.setScroll(0D);
+
         return this;
     }
 
@@ -195,9 +214,21 @@ public class TimelineToolbar extends UIElement
      */
     public int getSectionIndexAt(int mouseX, int mouseY)
     {
+        if (!this.sectionsViewportArea.isInside(mouseX, mouseY))
+        {
+            return -1;
+        }
+
         for (int i = 0; i < this.sectionAreas.size(); i++)
         {
-            if (this.sectionAreas.get(i).isInside(mouseX, mouseY))
+            Area section = this.sectionAreas.get(i);
+
+            if (section.w <= 0 || section.h <= 0)
+            {
+                continue;
+            }
+
+            if (section.isInside(mouseX, mouseY))
             {
                 return i;
             }
@@ -289,7 +320,8 @@ public class TimelineToolbar extends UIElement
         }
 
         int reserved = TimelineToolbarSettings.getDragHandleReserved();
-        int available = this.area.w - TimelineToolbarSettings.TOOLBAR_PADDING * 2 - reserved;
+        int padding = TimelineToolbarSettings.TOOLBAR_PADDING;
+        int available = this.area.w - padding * 2 - reserved;
         int total = this.computeSectionsWidth(font, this.sectionShowLabel);
 
         for (int i = size - 1; i >= 0 && total > available; i--)
@@ -301,28 +333,21 @@ public class TimelineToolbar extends UIElement
             }
         }
 
-        int x = this.area.x + TimelineToolbarSettings.TOOLBAR_PADDING;
-        int y = this.area.y;
-        int h = this.area.h;
-        int maxX = this.area.ex() - TimelineToolbarSettings.TOOLBAR_PADDING - reserved;
+        this.sectionsViewportArea.set(this.area.x + padding, this.area.y, available, this.area.h);
+
+        this.sectionsScroll.direction = ScrollDirection.HORIZONTAL;
+        this.sectionsScroll.scrollSize = total;
+        this.sectionsScroll.clamp();
+
+        int scroll = (int) Math.round(this.sectionsScroll.getScroll());
+        int x = this.sectionsViewportArea.x - scroll;
+        int y = this.sectionsViewportArea.y;
+        int h = this.sectionsViewportArea.h;
 
         for (int i = 0; i < size; i++)
         {
             int w = this.getSectionWidth(font, i, this.sectionShowLabel[i]);
             Area a = this.sectionAreas.get(i);
-
-            if (x >= maxX)
-            {
-                a.setPos(x, y);
-                a.setSize(0, h);
-
-                continue;
-            }
-
-            if (x + w > maxX)
-            {
-                w = maxX - x;
-            }
 
             a.setPos(x, y);
             a.setSize(w, h);
@@ -360,24 +385,27 @@ public class TimelineToolbar extends UIElement
             this.sectionShowLabel[i] = false;
         }
 
-        int x = this.area.x + (this.area.w - TimelineToolbarSettings.SECTION_ICON_SIZE) / 2;
-        int y = this.area.y + TimelineToolbarSettings.TOOLBAR_PADDING;
+        int padding = TimelineToolbarSettings.TOOLBAR_PADDING;
+        int reserved = TimelineToolbarSettings.getDragHandleReserved();
         int w = TimelineToolbarSettings.SECTION_ICON_SIZE;
-        int maxY = this.area.ey() - TimelineToolbarSettings.TOOLBAR_PADDING
-            - TimelineToolbarSettings.getDragHandleReserved();
+        int x = this.area.x + (this.area.w - w) / 2;
+        int viewportY = this.area.y + padding;
+        int viewportH = this.area.h - padding * 2 - reserved;
+        int total = this.computeSectionsHeight(size);
+
+        this.sectionsViewportArea.set(x, viewportY, w, viewportH);
+
+        this.sectionsScroll.direction = ScrollDirection.VERTICAL;
+        this.sectionsScroll.scrollSize = total;
+        this.sectionsScroll.clamp();
+
+        int scroll = (int) Math.round(this.sectionsScroll.getScroll());
+        int y = this.sectionsViewportArea.y - scroll;
 
         for (int i = 0; i < size; i++)
         {
             int h = TimelineToolbarSettings.SECTION_ICON_SIZE;
             Area a = this.sectionAreas.get(i);
-
-            if (y + h > maxY)
-            {
-                a.setPos(x, y);
-                a.setSize(0, 0);
-
-                continue;
-            }
 
             a.setPos(x, y);
             a.setSize(w, h);
@@ -434,6 +462,54 @@ public class TimelineToolbar extends UIElement
         }
 
         return total;
+    }
+
+    private int computeSectionsHeight(int size)
+    {
+        if (size <= 0)
+        {
+            return 0;
+        }
+
+        return size * TimelineToolbarSettings.SECTION_ICON_SIZE
+            + (size - 1) * TimelineToolbarSettings.TOOLBAR_SECTION_SPACING;
+    }
+
+    private void scrollSectionIntoView(FontRenderer font, int index)
+    {
+        if (index < 0 || index >= this.sections.size() || !this.sectionsScroll.hasScrollbar())
+        {
+            return;
+        }
+
+        if (this.dock.isHorizontal())
+        {
+            int contentX = 0;
+
+            for (int i = 0; i < index; i++)
+            {
+                contentX += this.getSectionWidth(font, i, this.sectionShowLabel[i]);
+
+                if (i < this.sections.size() - 1)
+                {
+                    contentX += TimelineToolbarSettings.TOOLBAR_SECTION_SPACING;
+                }
+            }
+
+            int w = this.getSectionWidth(font, index, this.sectionShowLabel[index]);
+
+            this.sectionsScroll.scrollIntoView(contentX, w, 0);
+        }
+        else
+        {
+            int contentY = index * (TimelineToolbarSettings.SECTION_ICON_SIZE
+                + TimelineToolbarSettings.TOOLBAR_SECTION_SPACING);
+            int h = TimelineToolbarSettings.SECTION_ICON_SIZE;
+
+            this.sectionsScroll.scrollIntoView(contentY, h, 0);
+        }
+
+        this.sectionsScroll.updateTarget();
     }
 
     private int getSectionWidth(FontRenderer font, int index, boolean showLabel)
@@ -678,7 +754,7 @@ public class TimelineToolbar extends UIElement
         this.renderDragSeparator(context);
         this.renderDragHandle(context);
 
-        context.batcher.clip(this.area, context);
+        context.batcher.clip(this.sectionsViewportArea, context);
 
         int hovered = this.getSectionIndexAt(context.mouseX, context.mouseY);
         boolean suppressSectionHover = this.openMenu != null && this.isPointerOverOpenMenu(context);
@@ -686,6 +762,9 @@ public class TimelineToolbar extends UIElement
         this.renderSections(context, font, hovered, suppressSectionHover);
 
         context.batcher.unclip(context);
+
+        this.sectionsScroll.drag(context.mouseX, context.mouseY);
+        this.sectionsScroll.renderScrollbar(context.batcher);
 
         this.updateHoverSwitch(context);
         this.updateDockDrag(context);
@@ -876,6 +955,12 @@ public class TimelineToolbar extends UIElement
     {
         this.notifyInteractionCancel();
 
+        FontRenderer font = context.batcher.getFont();
+
+        this.layoutSections(font);
+        this.scrollSectionIntoView(font, index);
+        this.layoutSections(font);
+
         if (this.openMenu != null)
         {
             this.openMenu.closeChain();
@@ -962,8 +1047,40 @@ public class TimelineToolbar extends UIElement
     }
 
     @Override
+    protected boolean subMouseScrolled(UIContext context)
+    {
+        if (!this.area.isInside(context))
+        {
+            return false;
+        }
+
+        this.layoutSections(context.batcher.getFont());
+
+        if (!this.sectionsScroll.hasScrollbar())
+        {
+            return false;
+        }
+
+        if (!this.sectionsViewportArea.isInside(context.mouseX, context.mouseY))
+        {
+            return false;
+        }
+
+        if (this.sectionsScroll.mouseScroll(context))
+        {
+            this.layoutSections(context.batcher.getFont());
+
+            return true;
+        }
+
+        return false;
+    }
+
+    @Override
     protected boolean subMouseReleased(UIContext context)
     {
+        this.sectionsScroll.mouseReleased(context.mouseX, context.mouseY);
+
         if (this.dockDragging)
         {
             this.finishDockDrag(context);
