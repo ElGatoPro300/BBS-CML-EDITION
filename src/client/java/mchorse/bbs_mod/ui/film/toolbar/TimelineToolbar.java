@@ -701,13 +701,13 @@ public class TimelineToolbar extends UIElement
             ToolbarSection section = this.sections.get(hovered);
             String text = section.label.get();
 
-            context.drawForegroundTextCard(text, context.mouseX + 8, context.mouseY + 12,
+            TimelineToolbarTooltips.drawForeground(context, text, context.mouseX, context.mouseY,
                 Colors.WHITE, Colors.A75);
         }
         else if (this.dragHandleArea.isInside(context.mouseX, context.mouseY) && !this.dockDragging)
         {
-            context.drawForegroundTextCard(UIKeys.TIMELINE_TOOLBAR_DRAG.get(), context.mouseX + 8,
-                context.mouseY + 12, Colors.WHITE, Colors.A75);
+            TimelineToolbarTooltips.drawForeground(context, UIKeys.TIMELINE_TOOLBAR_DRAG.get(),
+                context.mouseX, context.mouseY, Colors.WHITE, Colors.A75);
         }
     }
 

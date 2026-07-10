@@ -81,6 +81,18 @@ public class TimelineToolbarSettings
      */
     public static final int DOCK_PREVIEW_BORDER = 2;
 
+    /**
+     * Default horizontal offset from the cursor when a hover card starts to the
+     * right/below the pointer. Flipped when the card would leave the screen.
+     */
+    public static final int TOOLTIP_CURSOR_OFFSET_X = 8;
+
+    /**
+     * Default vertical offset from the cursor when a hover card starts below the
+     * pointer. Flipped when the card would leave the screen.
+     */
+    public static final int TOOLTIP_CURSOR_OFFSET_Y = 12;
+
     /* Menu popup layout */
 
     /**

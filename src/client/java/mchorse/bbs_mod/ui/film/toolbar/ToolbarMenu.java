@@ -930,7 +930,7 @@ public class ToolbarMenu extends UIElement
             return;
         }
 
-        context.drawForegroundTextCard(reason.get(), context.mouseX + 8, context.mouseY + 12,
+        TimelineToolbarTooltips.drawForeground(context, reason.get(), context.mouseX, context.mouseY,
             TimelineToolbarSettings.MENU_ITEM_DISABLED_REASON_FG, Colors.A75);
     }
 
