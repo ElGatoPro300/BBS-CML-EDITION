@@ -63,7 +63,7 @@ public class WorldRendererMixin
         }
     }
 
-    @Inject(method = "renderLayer", at = @At("TAIL"))
+    @Inject(method = "renderLayer", at = @At("TAIL"), require = 0)
     public void onRenderChunkLayer(RenderLayer layer, double cameraX, double cameraY, double cameraZ, Matrix4f positionMatrix, Matrix4f projectionMatrix, CallbackInfo info)
     {
         /* TODO 1.21.11: RenderLayer.getSolid() removed — re-port later */
