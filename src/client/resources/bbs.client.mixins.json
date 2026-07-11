@@ -1,7 +1,7 @@
 {
     "required": true,
     "package": "mchorse.bbs_mod.mixin.client",
-    "compatibilityLevel": "JAVA_21",
+    "compatibilityLevel": "JAVA_17",
     "client": [
         "CameraMixin",
         "GameRendererMixin",
@@ -21,9 +21,10 @@
         "KeyboardMixin",
         "ResourceReloadLoggerMixin",
         "RenderLayerMixin",
-        "RenderLayerTextureOverrideMixin",
         "ClientWorldPropertiesMixin",
+        "sodium.SodiumBufferBuilderAccessor",
         "sodium.ColorAttributeMixin",
+        "iris.EntityVertexMixin",
         "KeyboardInputMixin",
         "EntityRendererMixin",
         "ClientPlayerEntityAccessor",
@@ -40,7 +41,6 @@
         "WorldMixin",
         "LivingEntityRendererInvoker",
         "EntityRenderDispatcherMixin",
-        "iris.ShadowRendererMixin",
         "audio.SoundEngineMixin"
     ],
     "injectors": {
