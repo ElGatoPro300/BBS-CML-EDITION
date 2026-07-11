@@ -1110,7 +1110,16 @@ public class BBSModClient implements ClientModInitializer
     {
         if (key.isEmpty())
         {
-            key = MinecraftClient.getInstance().options.language;
+            MinecraftClient client = MinecraftClient.getInstance();
+
+            if (client != null && client.options != null && client.options.language != null && !client.options.language.isEmpty())
+            {
+                key = client.options.language;
+            }
+            else
+            {
+                key = L10n.DEFAULT_LANGUAGE;
+            }
         }
 
         return key;
