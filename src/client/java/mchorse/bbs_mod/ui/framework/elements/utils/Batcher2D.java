@@ -205,6 +205,24 @@ public class Batcher2D
         builder.vertex(matrix4f, x + w, y, 0).color(color2);
     }
 
+    /**
+     * Draws a QUADS batch started with {@link VertexFormats#POSITION_COLOR}.
+     * Skips drawing when no vertices were added (calling {@code end()} on an empty
+     * builder crashes the client).
+     */
+    public static void drawPositionColorQuads(BufferBuilder builder, boolean hasVertices)
+    {
+        if (!hasVertices)
+        {
+            return;
+        }
+
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
+        BufferRenderer.drawWithGlobalProgram(builder.end());
+    }
+
     public void dropShadow(int left, int top, int right, int bottom, int offset, int opaque, int shadow)
     {
         left -= offset;

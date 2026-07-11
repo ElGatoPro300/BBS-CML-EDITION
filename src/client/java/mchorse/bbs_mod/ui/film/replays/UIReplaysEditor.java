@@ -192,6 +192,18 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
         COLORS.put("shadow_opacity", Colors.ORANGE);
         COLORS.put("riding", Colors.ORANGE);
         COLORS.put("ridden", Colors.BLUE);
+        COLORS.put("death_time", Colors.RED);
+        COLORS.put("using_item", Colors.ORANGE);
+        COLORS.put("item_use_time", Colors.YELLOW);
+        COLORS.put("fire", Colors.RED);
+        COLORS.put("particles", Colors.MAGENTA);
+        COLORS.put("active_hand", Colors.CYAN);
+        COLORS.put("grounded", Colors.GREEN);
+        COLORS.put("damage", Colors.RED);
+        COLORS.put("fall", Colors.ORANGE);
+        COLORS.put("sneaking", Colors.INACTIVE);
+        COLORS.put("sprinting", Colors.WHITE & Colors.RGB);
+        COLORS.put("selected_slot", Colors.YELLOW);
 
         COLORS.put("visible", Colors.WHITE & Colors.RGB);
         COLORS.put("render", Colors.WHITE & Colors.RGB);
@@ -282,6 +294,19 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
         ICONS.put("extra2_x", Icons.CURVES);
         ICONS.put("shadow_size", Icons.SCALE);
         ICONS.put("shadow_opacity", Icons.VISIBLE);
+        ICONS.put("death_time", Icons.SKULL);
+        ICONS.put("using_item", Icons.MAIN_HAND);
+        ICONS.put("item_use_time", Icons.STOPWATCH);
+        ICONS.put("fire", Icons.PARTICLE);
+        ICONS.put("particles", Icons.PARTICLE);
+        ICONS.put("active_hand", Icons.SECONDARY_HAND);
+        ICONS.put("riding", Icons.LIMB);
+        ICONS.put("grounded", Icons.BLOCK);
+        ICONS.put("damage", Icons.HEART);
+        ICONS.put("fall", Icons.ARROW_DOWN);
+        ICONS.put("sneaking", Icons.SHIFT_TO);
+        ICONS.put("sprinting", Icons.FORWARD);
+        ICONS.put("selected_slot", Icons.CHEST);
         ICONS.put("item_main_hand", Icons.LIMB);
 
         ICONS.put("user1", Icons.PARTICLE);
