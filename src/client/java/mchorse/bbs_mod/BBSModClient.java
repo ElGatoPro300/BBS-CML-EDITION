@@ -77,6 +77,7 @@ import mchorse.bbs_mod.ui.dashboard.UIDashboard;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIQuickReplayOverlayPanel;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarDockSync;
 import mchorse.bbs_mod.ui.forms.editors.UIFormEditor;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.UIScreen;
@@ -513,6 +514,8 @@ public class BBSModClient implements ClientModInitializer
         };
         BBSSettings.modelEditorHoverColor.postCallback(refreshModelHover);
         BBSSettings.modelEditorHoverOpacity.postCallback(refreshModelHover);
+
+        BBSSettings.editorTimelineToolbar.postCallback((v, f) -> TimelineToolbarDockSync.applySettingsChange());
 
         BBSSettings.tooltipStyle.modes(
             UIKeys.ENGINE_TOOLTIP_STYLE_LIGHT,
@@ -1107,7 +1110,16 @@ public class BBSModClient implements ClientModInitializer
     {
         if (key.isEmpty())
         {
-            key = MinecraftClient.getInstance().options.language;
+            MinecraftClient client = MinecraftClient.getInstance();
+
+            if (client != null && client.options != null && client.options.language != null && !client.options.language.isEmpty())
+            {
+                key = client.options.language;
+            }
+            else
+            {
+                key = L10n.DEFAULT_LANGUAGE;
+            }
         }
 
         return key;

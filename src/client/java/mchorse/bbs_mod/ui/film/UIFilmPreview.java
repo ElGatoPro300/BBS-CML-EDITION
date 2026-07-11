@@ -25,6 +25,7 @@ import mchorse.bbs_mod.ui.film.controller.UIGizmoSizeContextMenu;
 import mchorse.bbs_mod.ui.film.controller.UIGizmoTranslateSpeedContextMenu;
 import mchorse.bbs_mod.ui.film.controller.UIOnionSkinContextMenu;
 import mchorse.bbs_mod.ui.film.utils.UICameraUtils;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarSettings;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
@@ -131,9 +132,9 @@ public class UIFilmPreview extends UIElement
 
         /* Preview buttons */
         this.onionSkin = new UIIcon(Icons.ONION_SKIN, (b) -> this.openOnionSkin());
-        this.onionSkin.tooltip(UIKeys.FILM_CONTROLLER_ONION_SKIN_TITLE);
+        this.onionSkin.tooltip(UIKeys.FILM_CONTROLLER_ONION_SKIN_TITLE, Keys.FILM_CONTROLLER_TOGGLE_ONION_SKIN);
         this.plause = new UIIcon(() -> this.panel.isRunning() ? Icons.PAUSE : Icons.PLAY, (b) -> this.panel.togglePlayback());
-        this.plause.tooltip(UIKeys.CAMERA_EDITOR_KEYS_EDITOR_PLAUSE);
+        this.plause.tooltip(UIKeys.CAMERA_EDITOR_KEYS_EDITOR_PLAUSE, Keys.PLAUSE);
         this.plause.context((menu) ->
         {
             menu.action(Icons.PLAY, UIKeys.CAMERA_EDITOR_KEYS_EDITOR_PLAY_FILM, () ->
@@ -192,13 +193,13 @@ public class UIFilmPreview extends UIElement
             }
         });
         this.flight = new UIIcon(Icons.PLANE, (b) -> this.panel.toggleFlight());
-        this.flight.tooltip(UIKeys.CAMERA_EDITOR_KEYS_MODES_FLIGHT);
+        this.flight.tooltip(UIKeys.CAMERA_EDITOR_KEYS_MODES_FLIGHT, Keys.FLIGHT);
         this.control = new UIIcon(Icons.POSE, (b) -> this.panel.getController().toggleControl());
-        this.control.tooltip(UIKeys.FILM_CONTROLLER_KEYS_TOGGLE_CONTROL);
+        this.control.tooltip(UIKeys.FILM_CONTROLLER_KEYS_TOGGLE_CONTROL, Keys.FILM_CONTROLLER_TOGGLE_CONTROL);
         this.perspective = new UIIcon(this.panel.getController()::getOrbitModeIcon, (b) -> this.panel.getController().toggleOrbitMode());
-        this.perspective.tooltip(UIKeys.FILM_CONTROLLER_KEYS_CHANGE_CAMERA_MODE);
+        this.perspective.tooltip(UIKeys.FILM_CONTROLLER_KEYS_CHANGE_CAMERA_MODE, Keys.FILM_CONTROLLER_TOGGLE_ORBIT_MODE);
         this.recordReplay = new UIIcon(Icons.SPHERE, (b) -> this.panel.getController().pickRecording());
-        this.recordReplay.tooltip(UIKeys.FILM_REPLAY_RECORD);
+        this.recordReplay.tooltip(UIKeys.FILM_REPLAY_RECORD, Keys.FILM_CONTROLLER_START_RECORDING);
         this.recordReplay.context((menu) ->
         {
             menu.action(Icons.DOWNLOAD, UIKeys.FILM_CONTROLLER_KEYS_TOGGLE_INSTANT_KEYFRAMES, this.panel.getController().isInstantKeyframes(), () ->
@@ -354,6 +355,22 @@ public class UIFilmPreview extends UIElement
         return area;
     }
 
+    /**
+     * Extra bottom offset so viewport hints sit above the preview icon row when it
+     * overlaps the letterboxed viewport.
+     */
+    private int getViewportHintBottomReserve(Area viewport)
+    {
+        Area icons = this.icons.area;
+
+        if (icons.ey() <= viewport.y || icons.y >= viewport.ey())
+        {
+            return 0;
+        }
+
+        return icons.h + TimelineToolbarSettings.INTERACTION_HINT_MARGIN;
+    }
+
     @Override
     protected boolean subMouseClicked(UIContext context)
     {
@@ -383,6 +400,11 @@ public class UIFilmPreview extends UIElement
                 return false;
             }
 
+            if (this.panel.replayEditor.handleViewportInteractionMouse(context, area))
+            {
+                return true;
+            }
+
             return this.panel.replayEditor.clickViewport(context, area);
         }
 
@@ -398,6 +420,17 @@ public class UIFilmPreview extends UIElement
         }
 
         return super.subMouseReleased(context);
+    }
+
+    @Override
+    protected boolean subKeyPressed(UIContext context)
+    {
+        if (this.panel.replayEditor.handleViewportInteractionKey(context))
+        {
+            return true;
+        }
+
+        return super.subKeyPressed(context);
     }
 
     @Override
@@ -423,6 +456,11 @@ public class UIFilmPreview extends UIElement
         if (texture != null)
         {
             context.batcher.texturedBox(texture.id, Colors.WHITE, area.x, area.y, area.w, area.h, 0, texture.height, texture.width, 0, texture.width, texture.height);
+        }
+
+        if (this.panel.replayEditor.isViewportInteractionActive())
+        {
+            this.panel.replayEditor.renderViewportInteraction(context, area);
         }
 
         if (this.pendingThumbnail != null)
@@ -565,6 +603,12 @@ public class UIFilmPreview extends UIElement
         context.batcher.clip(this.area, context);
         super.render(context);
         context.batcher.unclip(context);
+
+        if (this.panel.replayEditor.isViewportInteractionActive())
+        {
+            this.panel.replayEditor.renderViewportInteractionHint(context, area,
+                this.getViewportHintBottomReserve(area));
+        }
     }
 
     private void renderCursor(UIContext context)

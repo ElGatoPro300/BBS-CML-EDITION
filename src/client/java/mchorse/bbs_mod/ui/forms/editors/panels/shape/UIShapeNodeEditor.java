@@ -2,6 +2,7 @@ package mchorse.bbs_mod.ui.forms.editors.panels.shape;
 
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.data.types.BaseType;
+import mchorse.bbs_mod.data.types.IntType;
 import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.forms.forms.shape.INodeGraph;
@@ -503,6 +504,40 @@ public class UIShapeNodeEditor extends UIElement
     private void pasteNodes(int mx, int my)
     {
         if (clipboard != null) this.pasteData(clipboard, mx, my);
+    }
+
+    public boolean hasToolbarNodeSelection()
+    {
+        return !this.selection.isEmpty();
+    }
+
+    public boolean hasToolbarClipboard()
+    {
+        return clipboard != null;
+    }
+
+    public void toolbarRemoveSelectedNodes()
+    {
+        if (!this.selection.isEmpty())
+        {
+            this.removeSelection();
+        }
+    }
+
+    public void toolbarCopyNodes()
+    {
+        if (!this.selection.isEmpty())
+        {
+            this.copyNodes();
+        }
+    }
+
+    public void toolbarPasteNodes()
+    {
+        if (clipboard != null)
+        {
+            this.pasteNodes(this.lastMouseX, this.lastMouseY);
+        }
     }
 
     /* ======================================================================
@@ -1657,5 +1692,89 @@ public class UIShapeNodeEditor extends UIElement
         }
 
         return null;
+    }
+
+    @Override
+    public void collectUndoData(MapType data)
+    {
+        super.collectUndoData(data);
+
+        data.putFloat("scale", this.scale);
+        data.putFloat("translate_x", this.translateX);
+        data.putFloat("translate_y", this.translateY);
+
+        ListType nodeIds = new ListType();
+
+        for (ShapeNode node : this.selection)
+        {
+            nodeIds.add(new IntType(node.id));
+        }
+
+        data.put("node_selection", nodeIds);
+
+        ListType connections = new ListType();
+
+        for (ShapeConnection connection : this.selectedConnections)
+        {
+            MapType connectionData = new MapType();
+
+            connection.toData(connectionData);
+            connections.add(connectionData);
+        }
+
+        data.put("connection_selection", connections);
+    }
+
+    @Override
+    public void applyUndoData(MapType data)
+    {
+        super.applyUndoData(data);
+
+        this.scale = data.getFloat("scale", 1F);
+        this.translateX = data.getFloat("translate_x");
+        this.translateY = data.getFloat("translate_y");
+
+        this.selection.clear();
+        this.selectedConnections.clear();
+
+        if (this.graph == null)
+        {
+            return;
+        }
+
+        for (BaseType type : data.getList("node_selection"))
+        {
+            ShapeNode node = this.findNode(type.asNumeric().intValue());
+
+            if (node != null)
+            {
+                this.selection.add(node);
+            }
+        }
+
+        for (BaseType type : data.getList("connection_selection"))
+        {
+            ShapeConnection stored = new ShapeConnection();
+
+            stored.fromData(type.asMap());
+
+            for (ShapeConnection connection : this.graph.getConnections())
+            {
+                if (this.connectionMatches(connection, stored))
+                {
+                    this.selectedConnections.add(connection);
+
+                    break;
+                }
+            }
+        }
+    }
+
+    private boolean connectionMatches(ShapeConnection a, ShapeConnection b)
+    {
+        return a.outputNodeId == b.outputNodeId
+            && a.outputIndex == b.outputIndex
+            && a.inputNodeId == b.inputNodeId
+            && a.inputIndex == b.inputIndex;
     }
 }
