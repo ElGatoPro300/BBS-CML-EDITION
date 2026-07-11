@@ -195,6 +195,9 @@ public final class TimelineToolbarRegistry
         s.add(ToolbarItem.action(UIKeys.CAMERA_TIMELINE_CONTEXT_ADD_AT_TICK)
             .icon(Icons.ADD)
             .shortcut(Keys.ADD_AT_TICK));
+        s.add(ToolbarItem.action(UIKeys.CAMERA_TIMELINE_CONTEXT_ADD_ON_TOP)
+            .icon(Icons.ADD)
+            .shortcut(Keys.ADD_ON_TOP));
         s.add(ToolbarItem.separator());
         s.add(ToolbarItem.submenu(UIKeys.ACTION_TIMELINE_CLIPS_TABS_BLOCKS).icon(Icons.BLOCK));
         s.add(ToolbarItem.submenu(UIKeys.ACTION_TIMELINE_CLIPS_TABS_ITEMS).icon(Icons.POINTER));
