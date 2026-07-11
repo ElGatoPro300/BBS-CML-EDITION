@@ -42,7 +42,6 @@ import mchorse.bbs_mod.utils.colors.Colors;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.GlUniform;
 import net.minecraft.client.gl.ShaderProgram;
-import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
@@ -430,7 +429,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
         }
 
         Tessellator tessellator = Tessellator.getInstance();
-        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
+        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
         RenderSystem.enableBlend();
         BufferBuilder builder = tessellator.begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
 
@@ -593,7 +592,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
         gizmoMat.rotateY(MathUtils.PI);
 
         BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
-        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
+        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
         RenderSystem.enableBlend();
         RenderSystem.disableDepthTest();
 
@@ -714,7 +713,7 @@ public class UIModelEditorRenderer extends UIModelRenderer
         }
 
         RenderSystem.enableBlend();
-        context.batcher.texturedBox(BBSShaders.getPickerPreviewProgram(), texture.id, Colors.WHITE, this.area.x, this.area.y, this.area.w, this.area.h, 0, h, w, 0, w, h);
+        context.batcher.texturedBox(BBSShaders::getPickerPreviewProgram, texture.id, Colors.WHITE, this.area.x, this.area.y, this.area.w, this.area.h, 0, h, w, 0, w, h);
 
         Pair<Form, String> pair = this.stencil.getPicked();
 
