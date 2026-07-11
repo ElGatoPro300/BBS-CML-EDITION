@@ -52,11 +52,8 @@ import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.AABB;
 import mchorse.bbs_mod.utils.Direction;
-<<<<<<< HEAD
-=======
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
->>>>>>> master
 import mchorse.bbs_mod.utils.PlayerUtils;
 import mchorse.bbs_mod.utils.RayTracing;
 import mchorse.bbs_mod.utils.colors.Colors;
@@ -85,6 +82,7 @@ import org.joml.Vector3f;
 
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.systems.VertexSorter;
 
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.opengl.GL11;
@@ -2087,7 +2085,6 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
                         border);
             }
         }
-<<<<<<< HEAD
 
         if (BBSRendering.isIrisShadersEnabled() && this.hasGizmo && this.modelBlock != null && !this.isEditing(this.modelBlock))
         {
@@ -2112,11 +2109,11 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
 
             MatrixStack stencilStack = new MatrixStack();
             stencilStack.push();
-            stencilStack.peek().getPositionMatrix().set(this.capturedGizmoMatrix);
+            stencilStack.peek().getPositionMatrix().set(this.gizmoWorldMatrix);
             stencilStack.peek().getNormalMatrix().identity();
 
             Matrix4f prevProjection = new Matrix4f(RenderSystem.getProjectionMatrix());
-            RenderSystem.setProjectionMatrix(this.capturedProjection, VertexSorter.BY_Z);
+            RenderSystem.setProjectionMatrix(this.gizmoProjection, VertexSorter.BY_Z);
 
             MatrixStack mvStack = RenderSystem.getModelViewStack();
             mvStack.push();
@@ -2141,8 +2138,6 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
             GlStateManager._glBindFramebuffer(GL30.GL_FRAMEBUFFER, previousFbo);
             GlStateManager._viewport(previousViewport[0], previousViewport[1], previousViewport[2], previousViewport[3]);
         }
-=======
->>>>>>> master
     }
 
     @Override

@@ -1517,12 +1517,7 @@ public class UIFilmController extends UIElement
 
                 BaseFilmController.renderEntity(FilmControllerContext.instance
                     .setup(this.getEntities(), entry.getValue(), replay, renderContext)
-<<<<<<< HEAD
                     .transition(isPlaying ? renderContext.tickDelta() : 0)
-=======
-                    .film(this.panel.getData())
-                    .transition(isPlaying ? renderContext.tickCounter().getTickDelta(false) : 0)
->>>>>>> master
                     .stencil(this.stencilMap)
                     .relative(replay.relative.get()));
             }
@@ -1557,12 +1552,7 @@ public class UIFilmController extends UIElement
 
                 BaseFilmController.renderEntity(FilmControllerContext.instance
                     .setup(this.getEntities(), entity, replay, renderContext)
-<<<<<<< HEAD
                     .transition(isPlaying ? renderContext.tickDelta() : 0)
-=======
-                    .film(this.panel.getData())
-                    .transition(isPlaying ? renderContext.tickCounter().getTickDelta(false) : 0)
->>>>>>> master
                     .stencil(this.stencilMap)
                     .relative(replay.relative.get())
                     .bone(bone == null ? null : bone.a, bone != null && bone.b));

@@ -36,6 +36,7 @@ public class FilmControllerContext
     /* Tick (with sub-tick transition) at which the replay's form properties were applied
      * this frame; NaN when the render path doesn't know it (illusion delay needs it) */
     public float propertyTick = Float.NaN;
+    public boolean isShadowPass;
 
     public String bone;
     public boolean local;
@@ -54,6 +55,7 @@ public class FilmControllerContext
     {
         this.film = null;
         this.propertyTick = Float.NaN;
+        this.isShadowPass = false;
         this.map = null;
         this.shadowRadius = 0F;
         this.shadowOpacity = 1F;
@@ -105,6 +107,13 @@ public class FilmControllerContext
     public FilmControllerContext propertyTick(float propertyTick)
     {
         this.propertyTick = propertyTick;
+
+        return this;
+    }
+
+    public FilmControllerContext isShadowPass(boolean isShadowPass)
+    {
+        this.isShadowPass = isShadowPass;
 
         return this;
     }

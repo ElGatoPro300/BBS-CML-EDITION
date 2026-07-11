@@ -10,11 +10,8 @@ import net.minecraft.util.math.RotationAxis;
 
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
-<<<<<<< HEAD
-=======
 import org.joml.Matrix4fStack;
 import org.joml.Quaternionf;
->>>>>>> master
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.systems.VertexSorter;
@@ -87,18 +84,19 @@ public class MatrixStackUtils
 
     public static void pushIdentityModelView()
     {
-        Matrix4fStack mvStack = RenderSystem.getModelViewStack();
+        MatrixStack mvStack = RenderSystem.getModelViewStack();
 
-        mvStack.pushMatrix();
-        mvStack.identity();
+        mvStack.push();
+        mvStack.peek().getPositionMatrix().identity();
+        mvStack.peek().getNormalMatrix().identity();
         RenderSystem.applyModelViewMatrix();
     }
 
     public static void popModelView()
     {
-        Matrix4fStack mvStack = RenderSystem.getModelViewStack();
+        MatrixStack mvStack = RenderSystem.getModelViewStack();
 
-        mvStack.popMatrix();
+        mvStack.pop();
         RenderSystem.applyModelViewMatrix();
     }
 

@@ -20,6 +20,8 @@ import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.world.World;
 
+import com.mojang.blaze3d.systems.RenderSystem;
+
 import org.joml.Matrix4f;
 import org.joml.Vector3d;
 import org.joml.Vector3f;

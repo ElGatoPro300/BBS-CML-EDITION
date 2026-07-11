@@ -51,11 +51,8 @@ public class ParticleEmitter
     public LivingEntity target;
     public World world;
     public boolean lit;
-<<<<<<< HEAD
-=======
     public boolean modelRenderer;
     public boolean worldVertices;
->>>>>>> master
 
     public boolean running = true;
     private Particle uiParticle;

@@ -688,12 +688,12 @@ public class Gizmo
         {
             RenderSystem.setProjectionMatrix(savedProjection, VertexSorter.BY_Z);
 
-            Matrix4fStack mvStack = RenderSystem.getModelViewStack();
+            MatrixStack mvStack = RenderSystem.getModelViewStack();
 
-            mvStack.pushMatrix();
-            mvStack.set(savedModelView);
+            mvStack.push();
+            mvStack.peek().getPositionMatrix().set(savedModelView);
             RenderSystem.applyModelViewMatrix();
-            mvStack.popMatrix();
+            mvStack.pop();
             RenderSystem.applyModelViewMatrix();
         }
 
@@ -784,7 +784,6 @@ public class Gizmo
         RenderSystem.disableDepthTest();
         RenderSystem.depthMask(false);
 
-<<<<<<< HEAD
         MatrixStack mvStack = RenderSystem.getModelViewStack();
         boolean resetModelView = BBSRendering.isIrisShadersEnabled();
 
@@ -794,25 +793,14 @@ public class Gizmo
             mvStack.peek().getPositionMatrix().identity();
             mvStack.peek().getNormalMatrix().identity();
             RenderSystem.applyModelViewMatrix();
-=======
-        if (BBSRendering.isIrisShadersEnabled())
-        {
-            /* Vertex positions already include the full gizmo transform; Iris leaves a
-             * stale terrain model-view on the global stack at WorldRenderEvents.LAST. */
-            MatrixStackUtils.pushIdentityModelView();
->>>>>>> master
         }
 
         BufferRenderer.drawWithGlobalProgram(builder.end());
 
-        if (BBSRendering.isIrisShadersEnabled())
+        if (resetModelView)
         {
-<<<<<<< HEAD
             mvStack.pop();
             RenderSystem.applyModelViewMatrix();
-=======
-            MatrixStackUtils.popModelView();
->>>>>>> master
         }
 
         RenderSystem.depthMask(true);
@@ -853,7 +841,6 @@ public class Gizmo
         RenderSystem.disableDepthTest();
         RenderSystem.depthMask(false);
 
-<<<<<<< HEAD
         MatrixStack mvStack = RenderSystem.getModelViewStack();
         boolean resetModelView = BBSRendering.isIrisShadersEnabled();
 
@@ -863,23 +850,14 @@ public class Gizmo
             mvStack.peek().getPositionMatrix().identity();
             mvStack.peek().getNormalMatrix().identity();
             RenderSystem.applyModelViewMatrix();
-=======
-        if (BBSRendering.isIrisShadersEnabled())
-        {
-            MatrixStackUtils.pushIdentityModelView();
->>>>>>> master
         }
 
         BufferRenderer.drawWithGlobalProgram(builder.end());
 
-        if (BBSRendering.isIrisShadersEnabled())
+        if (resetModelView)
         {
-<<<<<<< HEAD
             mvStack.pop();
             RenderSystem.applyModelViewMatrix();
-=======
-            MatrixStackUtils.popModelView();
->>>>>>> master
         }
 
         RenderSystem.depthMask(true);
