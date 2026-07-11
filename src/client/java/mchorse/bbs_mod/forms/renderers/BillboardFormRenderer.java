@@ -172,11 +172,21 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
     private void renderQuad(VertexFormat format, Texture texture, Supplier<ShaderProgram> shader, MatrixStack matrices, int overlay, int light, int overlayColor, float transition)
     {
         BufferBuilder builder = Tessellator.getInstance().getBuffer();
-        Color color = this.form.color.get().copy();
+        Color color = new Color().set(overlayColor, true);
         Matrix4f matrix = matrices.peek().getPositionMatrix();
         Matrix3f normal = matrices.peek().getNormalMatrix();
 
-        color.mul(overlayColor);
+        color.mul(this.form.color.get());
+
+        /* Paint overlay stage: blend RGB toward the paint color by its alpha (paint opacity), keeping the form opacity */
+        Color paint = this.form.paintColor.get();
+
+        if (paint.a > 0F)
+        {
+            color.r = color.r + (paint.r - color.r) * paint.a;
+            color.g = color.g + (paint.g - color.g) * paint.a;
+            color.b = color.b + (paint.b - color.b) * paint.a;
+        }
 
         if (this.form.billboard.get())
         {
@@ -224,8 +234,9 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
         this.fill(format, builder, matrix, quad.p4.x, quad.p4.y, color, uvQuad.p4.x, uvQuad.p4.y, overlay, light, normal, -1F).next();
         this.fill(format, builder, matrix, quad.p3.x, quad.p3.y, color, uvQuad.p3.x, uvQuad.p3.y, overlay, light, normal, -1F).next();
 
-        RenderSystem.defaultBlendFunc();
         RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+
         BufferRenderer.drawWithGlobalProgram(builder.end());
 
         texture.setFilterMipmap(false, false);

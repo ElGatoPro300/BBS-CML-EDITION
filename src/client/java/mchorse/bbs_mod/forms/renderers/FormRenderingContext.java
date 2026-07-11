@@ -22,6 +22,8 @@ public class FormRenderingContext
     public int color;
     public boolean modelRenderer;
     public boolean renderEquipment;
+    public boolean relative;
+    public boolean isShadowPass;
 
     public FormRenderingContext()
     {}

@@ -73,7 +73,7 @@ public class UIModelIKPanel extends UIElement
     private final UILabel      chainNameLabel;
 
     /* ---- state ---- */
-    private final UIModelPanel editor;
+    private final IUIModelPanelHost editor;
     private ModelConfig        config;
     private IKChainConfig      selected;
     private List<String>       boneNames = new ArrayList<>();
@@ -82,12 +82,12 @@ public class UIModelIKPanel extends UIElement
      * Constructor
      * ==================================================================== */
 
-    public UIModelIKPanel(UIModelPanel editor)
+    public UIModelIKPanel(IUIModelPanelHost editor)
     {
         this.editor = editor;
 
         /* This element fills mainView entirely (same as UIModelGeometryPanel) */
-        this.relative(editor.mainView).w(1F).h(1F);
+        this.relative(editor.getMainView()).w(1F).h(1F);
 
         /* ----------------------------------------------------------------
          * LEFT side: chain list
@@ -198,7 +198,7 @@ public class UIModelIKPanel extends UIElement
             {
                 this.selected.enabled.set(b.getValue());
                 this.editor.dirty();
-                this.editor.renderer.setActiveIKChain(b.getValue() ? this.selected : null);
+                this.editor.getModelRenderer().setActiveIKChain(b.getValue() ? this.selected : null);
             }
         });
         this.enabledToggle.tooltip(UIKeys.MODELS_IK_ENABLED_TOOLTIP);
@@ -332,7 +332,7 @@ public class UIModelIKPanel extends UIElement
         this.chainNameLabel.setVisible(visible);
 
         /* Show/hide gizmo in renderer */
-        this.editor.renderer.setActiveIKChain(visible ? this.selected : null);
+        this.editor.getModelRenderer().setActiveIKChain(visible ? this.selected : null);
     }
 
     private void updateTipLabel()
@@ -471,7 +471,7 @@ public class UIModelIKPanel extends UIElement
         this.boneNames.clear();
 
         /* Clear gizmo when switching config */
-        this.editor.renderer.setActiveIKChain(null);
+        this.editor.getModelRenderer().setActiveIKChain(null);
 
         if (config != null)
         {

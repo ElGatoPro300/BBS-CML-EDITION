@@ -69,6 +69,7 @@ public class FormProperties extends ValueGroup
             {
                 KeyframeChannel channel = new KeyframeChannel(key, KeyframeFactories.TRANSFORM);
 
+                channel.setModel(true);
                 this.properties.put(key, channel);
                 this.add(channel);
 
@@ -88,6 +89,7 @@ public class FormProperties extends ValueGroup
             String key = FormUtils.getPropertyPath(property);
             KeyframeChannel channel = new KeyframeChannel(key, keyframeFactoryValue.getFactory());
 
+            channel.setModel(true);
             this.properties.put(key, channel);
             this.add(channel);
 
@@ -196,6 +198,10 @@ public class FormProperties extends ValueGroup
                             poseTransform.color.g = Lerps.lerp(poseTransform.color.g, sourcePose.color.g, blend);
                             poseTransform.color.b = Lerps.lerp(poseTransform.color.b, sourcePose.color.b, blend);
                             poseTransform.color.a = Lerps.lerp(poseTransform.color.a, sourcePose.color.a, blend);
+                            poseTransform.paintColor.r = Lerps.lerp(poseTransform.paintColor.r, sourcePose.paintColor.r, blend);
+                            poseTransform.paintColor.g = Lerps.lerp(poseTransform.paintColor.g, sourcePose.paintColor.g, blend);
+                            poseTransform.paintColor.b = Lerps.lerp(poseTransform.paintColor.b, sourcePose.paintColor.b, blend);
+                            poseTransform.paintColor.a = Lerps.lerp(poseTransform.paintColor.a, sourcePose.paintColor.a, blend);
                             poseTransform.lighting = Lerps.lerp(poseTransform.lighting, sourcePose.lighting, blend);
 
                             if (sourcePose.texture != null && blend >= 0.5F)
@@ -207,6 +213,7 @@ public class FormProperties extends ValueGroup
                         {
                             poseTransform.fix = sourcePose.fix;
                             poseTransform.color.copy(sourcePose.color);
+                            poseTransform.paintColor.copy(sourcePose.paintColor);
                             poseTransform.lighting = sourcePose.lighting;
                             poseTransform.texture = LinkUtils.copy(sourcePose.texture);
                         }
@@ -323,12 +330,15 @@ public class FormProperties extends ValueGroup
 
             KeyframeChannel property = new KeyframeChannel(key, null);
 
+            property.setModel(true);
             property.fromData(mapType);
 
             /* Patch 1.1.1 changes to lighting property */
             if (key.endsWith("lighting") && property.getFactory() == KeyframeFactories.BOOLEAN)
             {
                 KeyframeChannel newProperty = new KeyframeChannel(key, KeyframeFactories.FLOAT);
+
+                newProperty.setModel(true);
 
                 for (Object keyframe : property.getKeyframes())
                 {
@@ -364,6 +374,7 @@ public class FormProperties extends ValueGroup
 
                 if (mergedAny == null)
                 {
+                    merged.setModel(true);
                     this.properties.put("structure_light", merged);
                     this.add(merged);
                 }
