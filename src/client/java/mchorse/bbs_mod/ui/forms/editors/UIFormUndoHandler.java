@@ -126,6 +126,16 @@ public class UIFormUndoHandler
     }
 
     /**
+     * Clears the cached UI snapshot used for the next data undo. Call when navigation
+     * changes (e.g. opening/closing an embedded editor) so the next edit captures
+     * fresh UI context.
+     */
+    public void clearUIDataSnapshot()
+    {
+        this.uiData = null;
+    }
+
+    /**
      * Handle undo/redo. This method primarily updates the UI state, according to
      * the undo/redo changes were done.
      */

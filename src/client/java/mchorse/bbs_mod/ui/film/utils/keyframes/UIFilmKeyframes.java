@@ -29,6 +29,11 @@ public class UIFilmKeyframes extends UIKeyframes
         return this;
     }
 
+    public boolean isReplayWorldEditor()
+    {
+        return this.absolute;
+    }
+
     public long getClipOffset()
     {
         if (this.absolute)
