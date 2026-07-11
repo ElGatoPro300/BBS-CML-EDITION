@@ -1020,6 +1020,22 @@ public class UITriggerBlockPanel extends UIDashboardPanel implements IFlightSupp
     @Override public boolean supportsRollFOVControl() { return false; }
 
     @Override
+    public void appear()
+    {
+        super.appear();
+
+        this.dashboard.orbitKeysUI.setEnabled(() -> true);
+    }
+
+    @Override
+    public void disappear()
+    {
+        super.disappear();
+
+        this.dashboard.orbitKeysUI.setEnabled(null);
+    }
+
+    @Override
     public void open()
     {
         super.open();
@@ -1207,6 +1223,15 @@ public class UITriggerBlockPanel extends UIDashboardPanel implements IFlightSupp
         if (this.hovered != null && context.mouseButton == 0)
         {
             this.fill(this.hovered, true);
+            return true;
+        }
+
+        int button = this.dashboard.orbitUI.orbit.canStart(context);
+
+        if (button >= 0)
+        {
+            this.dashboard.orbitUI.orbit.start(button, context.mouseX, context.mouseY);
+
             return true;
         }
 
