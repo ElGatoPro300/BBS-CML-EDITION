@@ -6,6 +6,7 @@ import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.graphics.line.LineBuilder;
 import mchorse.bbs_mod.graphics.line.SolidColorLineRenderer;
 import mchorse.bbs_mod.graphics.window.Window;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarPointerBlock;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeSheet;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframes;
@@ -455,7 +456,7 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
         }
 
         /* Render where the keyframe will be duplicated or added */
-        if (!area.isInside(context))
+        if (!area.isInside(context) || TimelineToolbarPointerBlock.blocksPointer(context))
         {
             return;
         }
@@ -682,7 +683,8 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
                 forcedIndex += 1;
             }
 
-            boolean isPointHover = this.isNear(this.keyframes.toGraphX(frame.getTick()), y, context.mouseX, context.mouseY);
+            boolean isPointHover = !TimelineToolbarPointerBlock.blocksPointer(context)
+                && this.isNear(this.keyframes.toGraphX(frame.getTick()), y, context.mouseX, context.mouseY);
             boolean toRemove = Window.isCtrlPressed() && isPointHover;
 
             if (this.keyframes.isSelecting())
@@ -755,12 +757,6 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
-
-        if (keyframes.isEmpty())
-        {
-            return;
-        }
-
         BufferRenderer.drawWithGlobalProgram(builder.end());
     }
 

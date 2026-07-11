@@ -55,6 +55,7 @@ import mchorse.bbs_mod.ui.film.clips.UIKeyframeClip;
 import mchorse.bbs_mod.ui.film.controller.UIFilmController;
 import mchorse.bbs_mod.ui.film.replays.UIReplaysEditor;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIReplaysOverlayPanel;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarDockSync;
 import mchorse.bbs_mod.ui.film.utils.UIFilmUndoHandler;
 import mchorse.bbs_mod.ui.film.utils.undo.UIUndoHistoryOverlay;
 import mchorse.bbs_mod.ui.framework.UIContext;
@@ -448,7 +449,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         });
 
         /* Editors */
-        this.cameraEditor = new UIClipsPanel(this, BBSMod.getFactoryCameraClips());
+        this.cameraEditor = new UIClipsPanel(this, BBSMod.getFactoryCameraClips(), true);
 
         this.cameraEditor.clips.context((menu) ->
         {
@@ -456,7 +457,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         });
 
         this.replayEditor = event.createReplayEditor(this);
-        this.actionEditor = new UIClipsPanel(this, BBSMod.getFactoryActionClips());
+        this.actionEditor = new UIClipsPanel(this, BBSMod.getFactoryActionClips(), false);
         this.anchoredReplaysPanel = new UIReplaysOverlayPanel(this, (replay) -> this.replayEditor.setReplay(replay, false, true));
         this.anchoredReplaysPanel.setDocked(true);
         this.anchoredReplaysPanel.setVisible(false);
@@ -2556,6 +2557,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.collapsedDockedPanels.clear();
         this.hiddenPanels.clear();
         layout.setFilmLayoutRoot(this.addAnchoredReplaysPanelToRoot(EditorLayoutNode.defaultFilmLayout()));
+        BBSSettings.timelineToolbarDocks.resetToDefaults();
+        TimelineToolbarDockSync.refreshFilmPanel(this);
         this.setupEditorFlex(true);
     }
 
@@ -3633,6 +3636,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             }
         }
 
+        BBSSettings.timelineToolbarDocks.writePreset(data);
+
         return data;
     }
 
@@ -3686,6 +3691,10 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         {
             BBSSettings.videoSettings.motionBlur.set(data.getInt("video_motion_blur"));
         }
+
+        BBSSettings.timelineToolbarDocks.applyPreset(data);
+        TimelineToolbarDockSync.refreshFilmPanel(this);
+        this.setupEditorFlex(true);
     }
 
     private boolean hasAnchoredReplaysPanelPresetState(MapType data)
@@ -5006,6 +5015,47 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     public boolean handleKeyPressed(UIContext context)
     {
         return this.controller.orbit.keyPressed(context, this.preview.area);
+    }
+
+    /**
+     * Restores film editor UI from an undo/redo snapshot (panel, cursor, timelines,
+     * embedded keyframe editors, scroll/zoom/viewport).
+     */
+    public void applyFilmUndoData(MapType data)
+    {
+        this.applyAllUndoData(data);
+    }
+
+    public MapType collectFilmUndoSnapshot()
+    {
+        UIElement root = this.getRoot();
+
+        if (root == null)
+        {
+            return new MapType();
+        }
+
+        return (MapType) root.collectAllUndoData().copy();
+    }
+
+    public boolean hasEmbeddedClipView()
+    {
+        return this.cameraEditor.clips.hasEmbeddedView() || this.actionEditor.clips.hasEmbeddedView();
+    }
+
+    public String getEmbeddedClipEditorUndoId()
+    {
+        if (this.cameraEditor.clips.hasEmbeddedView())
+        {
+            return this.cameraEditor.getUndoId();
+        }
+
+        if (this.actionEditor.clips.hasEmbeddedView())
+        {
+            return this.actionEditor.getUndoId();
+        }
+
+        return "";
     }
 
     @Override

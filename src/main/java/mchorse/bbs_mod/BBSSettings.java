@@ -9,6 +9,7 @@ import mchorse.bbs_mod.settings.values.numeric.ValueFloat;
 import mchorse.bbs_mod.settings.values.numeric.ValueInt;
 import mchorse.bbs_mod.settings.values.ui.ValueColors;
 import mchorse.bbs_mod.settings.values.ui.ValueEditorLayout;
+import mchorse.bbs_mod.settings.values.ui.ValueTimelineToolbarDocks;
 import mchorse.bbs_mod.settings.values.ui.ValueLanguage;
 import mchorse.bbs_mod.settings.values.ui.ValueOnionSkin;
 import mchorse.bbs_mod.settings.values.ui.ValueStringKeys;
@@ -109,6 +110,7 @@ public class BBSSettings
     public static ValueBoolean editorHorizontalFlight;
     public static ValueBoolean editorFlightFreeLook;
     public static ValueEditorLayout editorLayoutSettings;
+    public static ValueTimelineToolbarDocks timelineToolbarDocks;
     public static ValueOnionSkin editorOnionSkin;
     public static ValueBoolean editorSnapToMarkers;
     public static ValueBoolean editorClipPreview;
@@ -135,6 +137,7 @@ public class BBSSettings
     public static ValueBoolean editorRewind;
     public static ValueBoolean editorHorizontalClipEditor;
     public static ValueBoolean editorMinutesBackup;
+    public static ValueBoolean editorTimelineToolbar;
     public static ValueBoolean modelPbrPanelControls;
 
     public static ValueFloat recordingCountdown;
@@ -523,6 +526,7 @@ public class BBSSettings
         editorPeriodicSave = builder.getInt("periodic_save", 60, 0, 3600);
         editorHorizontalFlight = builder.getBoolean("horizontal_flight", false);
         builder.register(editorLayoutSettings = new ValueEditorLayout("layout"));
+        builder.register(timelineToolbarDocks = new ValueTimelineToolbarDocks("timeline_toolbar_docks"));
         builder.register(editorOnionSkin = new ValueOnionSkin("onion_skin"));
         editorSnapToMarkers = builder.getBoolean("snap_to_markers", false);
         editorClipPreview = builder.getBoolean("clip_preview", true);
@@ -548,6 +552,8 @@ public class BBSSettings
         autoKeyframes = builder.getBoolean("auto_keyframes", true);
         usingInMemoryClipboard = builder.getBoolean("using_in_memory_clipboard", false);
 
+        builder.category("timeline_toolbar");
+        editorTimelineToolbar = builder.getBoolean("enabled", true);
 
         builder.category("replays");
         replayContextOptions = builder.getInt("compacted_options", 0, 0, 2);
