@@ -345,7 +345,8 @@ public class UIFilmPreview extends UIElement
         Camera camera = new Camera();
 
         camera.copy(this.panel.getWorldCamera());
-        camera.updatePerspectiveProjection(width, height);
+        camera.updatePerspectiveProjection(BBSRendering.getVideoWidth(), BBSRendering.getVideoHeight());
+        camera.updateView();
 
         Vector2i size = Vectors.resize(width / (float) height, w, h);
         Area area = new Area();
