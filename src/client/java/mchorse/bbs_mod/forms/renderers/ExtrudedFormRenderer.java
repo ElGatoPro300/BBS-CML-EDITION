@@ -16,6 +16,7 @@ import mchorse.bbs_mod.utils.joml.Vectors;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.ShaderProgram;
+import net.minecraft.client.render.DiffuseLighting;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
@@ -58,6 +59,10 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
         stack.peek().getNormalMatrix().getScale(Vectors.EMPTY_3F);
         stack.peek().getNormalMatrix().scale(1F / Vectors.EMPTY_3F.x, -1F / Vectors.EMPTY_3F.y, 1F / Vectors.EMPTY_3F.z);
 
+        Vector3f light0 = new Vector3f(0.85F, 0.85F, -1F).normalize();
+        Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1F).normalize();
+        RenderSystem.setupLevelDiffuseLighting(light0, light1);
+
         RenderSystem.depthFunc(GL11.GL_LEQUAL);
         this.renderModel(BBSShaders::getModel,
             stack,
@@ -69,6 +74,8 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
             false
         );
         RenderSystem.depthFunc(GL11.GL_ALWAYS);
+
+        DiffuseLighting.disableGuiDepthLighting();
 
         stack.pop();
     }
@@ -83,9 +90,9 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
             shading = true;
         }
 
-        VertexFormat format = shading ? VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL : VertexFormats.POSITION_TEXTURE_LIGHT_COLOR;
+        VertexFormat format = shading ? VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL : VertexFormats.POSITION_TEXTURE_COLOR;
         Supplier<ShaderProgram> shader = this.getShader(context,
-            shading ? GameRenderer::getRenderTypeEntityTranslucentProgram : GameRenderer::getPositionTexLightmapColorProgram,
+            shading ? GameRenderer::getRenderTypeEntityTranslucentProgram : GameRenderer::getPositionTexColorProgram,
             shading ? BBSShaders::getPickerBillboardProgram : BBSShaders::getPickerBillboardNoShadingProgram
         );
 
@@ -102,17 +109,28 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
             if (this.form.billboard.get())
             {
                 Matrix4f modelMatrix = matrices.peek().getPositionMatrix();
-                Vector3f scale = Vectors.TEMP_3F;
+                Vector3f scale = new Vector3f();
 
                 modelMatrix.getScale(scale);
+
+                if (invertY)
+                {
+                    scale.y = -scale.y;
+                }
 
                 modelMatrix.m00(1).m01(0).m02(0);
                 modelMatrix.m10(0).m11(1).m12(0);
                 modelMatrix.m20(0).m21(0).m22(1);
 
+                if (camera != null && !modelRenderer)
+                {
+                    modelMatrix.mul(camera.view);
+                }
+
                 modelMatrix.scale(scale);
 
                 matrices.peek().getNormalMatrix().identity();
+                matrices.peek().getNormalMatrix().scale(1F / scale.x, 1F / scale.y, 1F / scale.z);
             }
 
             Color color = Colors.COLOR.set(overlayColor, true);
