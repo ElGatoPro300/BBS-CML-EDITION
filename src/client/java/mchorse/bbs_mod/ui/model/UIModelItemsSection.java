@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 
 public class UIModelItemsSection extends UIModelSection
 {
-    public UIModelItemsSection(IUIModelPanelHost editor)
+    public UIModelItemsSection(UIModelPanel editor)
     {
         super(editor);
 
@@ -36,10 +36,7 @@ public class UIModelItemsSection extends UIModelSection
             new UIButton(UIKeys.MODELS_ITEMS_MAIN, (b) -> this.openContextMenu(this.config.itemsMain)),
             new UIButton(UIKeys.MODELS_ITEMS_OFF, (b) -> this.openContextMenu(this.config.itemsOff))
         ));
-        this.fields.add(new UIButton(UIKeys.MODELS_HANDS_EDIT, (b) ->
-        {
-            this.editor.openTransformEditor(new UIModelItemsTransformEditor(this.editor, this.config));
-        }));
+        this.fields.add(new UIButton(UIKeys.MODELS_HANDS_EDIT, (b) -> this.editor.dashboard.setPanel(new UIModelItemsTransformEditor(this.editor, this.config))));
     }
 
     @Override

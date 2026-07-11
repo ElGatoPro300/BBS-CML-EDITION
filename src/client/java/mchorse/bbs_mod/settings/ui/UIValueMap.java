@@ -13,7 +13,6 @@ import mchorse.bbs_mod.settings.values.numeric.ValueFloat;
 import mchorse.bbs_mod.settings.values.numeric.ValueInt;
 import mchorse.bbs_mod.settings.values.ui.ValueLanguage;
 import mchorse.bbs_mod.settings.values.ui.ValueVideoSettings;
-import mchorse.bbs_mod.text.RtlFontManager;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
@@ -24,13 +23,9 @@ import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
 import mchorse.bbs_mod.ui.framework.elements.input.UIKeybind;
 import mchorse.bbs_mod.ui.framework.elements.input.UITexturePicker;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
-import mchorse.bbs_mod.ui.framework.elements.input.keyframes.shapes.IKeyframeShapeRenderer;
-import mchorse.bbs_mod.ui.framework.elements.input.keyframes.shapes.KeyframeShapeRenderers;
 import mchorse.bbs_mod.ui.framework.elements.input.text.UITextbox;
-import mchorse.bbs_mod.ui.framework.elements.overlay.UIFontPickerOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UILabelOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
-import mchorse.bbs_mod.ui.framework.elements.utils.CustomFontManager;
 import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIText;
 import mchorse.bbs_mod.ui.utils.Label;
@@ -41,9 +36,6 @@ import mchorse.bbs_mod.utils.OS;
 import mchorse.bbs_mod.utils.interps.IInterp;
 import mchorse.bbs_mod.utils.interps.Interpolation;
 import mchorse.bbs_mod.utils.interps.Interpolations;
-import mchorse.bbs_mod.utils.keyframes.KeyframeShape;
-
-import net.minecraft.client.MinecraftClient;
 
 import java.io.File;
 import java.nio.file.Path;
@@ -82,86 +74,16 @@ public class UIValueMap
 
         register(ValueFloat.class, (value, ui) ->
         {
-            if (value == BBSSettings.userIntefaceScale)
-            {
-                UITrackpad trackpad = UIValueFactory.floatUI(value, (v) -> BBSModClient.applyUIScaleLive());
-
-                trackpad.limit(0.1F, 4F).w(90);
-
-                return Arrays.asList(UIValueFactory.column(trackpad, value));
-            }
-
-            if (value == BBSSettings.modelEditorHoverOpacity)
-            {
-                UITrackpad trackpad = UIValueFactory.floatUI(value, (v) -> BBSModClient.applyModelEditorHoverLive());
-
-                trackpad.w(90);
-
-                return Arrays.asList(UIValueFactory.column(trackpad, value));
-            }
-
             UITrackpad trackpad = UIValueFactory.floatUI(value, null);
 
             trackpad.w(90);
-
-            if (value == BBSSettings.uiFontSize)
-            {
-                trackpad.w(90);
-
-                value.postCallback((changed, flag) ->
-                {
-                    if (!UISettingsOverlayPanel.isDeferringLiveSettings())
-                    {
-                        CustomFontManager.invalidate();
-                        RtlFontManager.invalidate();
-                    }
-                });
-
-                return Arrays.asList(UIValueFactory.column(trackpad, value));
-            }
 
             return Arrays.asList(UIValueFactory.column(trackpad, value));
         });
 
         register(ValueInt.class, (value, ui) ->
         {
-            if (value == BBSSettings.defaultKeyframeShape)
-            {
-                KeyframeShape currentShape = KeyframeShape.SQUARE;
-                int currentIndex = value.get();
-                KeyframeShape[] shapes = KeyframeShape.values();
-
-                if (currentIndex >= 0 && currentIndex < shapes.length)
-                {
-                    currentShape = shapes[currentIndex];
-                }
-
-                IKeyframeShapeRenderer currentRenderer = KeyframeShapeRenderers.SHAPES.get(currentShape);
-                UIButton button = new UIButton(currentRenderer.getLabel(), (b) ->
-                {
-                    ui.getContext().replaceContextMenu((menu) ->
-                    {
-                        int selected = value.get();
-
-                        for (KeyframeShape shape : KeyframeShape.values())
-                        {
-                            IKeyframeShapeRenderer shapeRenderer = KeyframeShapeRenderers.SHAPES.get(shape);
-
-                            menu.action(shapeRenderer.getIcon(), shapeRenderer.getLabel(), shape.ordinal() == selected, () ->
-                            {
-                                value.set(shape.ordinal());
-                                b.label = shapeRenderer.getLabel();
-                            });
-                        }
-                    });
-                });
-
-                button.w(90);
-
-                return Arrays.asList(UIValueFactory.column(button, value));
-            }
-
-            if (value == BBSSettings.defaultInterpolation || value == BBSSettings.defaultModelInterpolation || value == BBSSettings.defaultPathInterpolation || value == BBSSettings.defaultCameraKeyframeInterpolation)
+            if (value == BBSSettings.defaultInterpolation || value == BBSSettings.defaultPathInterpolation)
             {
                 List<IKey> labels = value.getLabels();
                 int currentIndex = value.get();
@@ -232,11 +154,7 @@ public class UIValueMap
 
             if (value.getSubtype() == ValueInt.Subtype.COLOR || value.getSubtype() == ValueInt.Subtype.COLOR_ALPHA)
             {
-                /* Hover highlight color should take effect the moment it's changed, without
-                 * requiring Apply/reload (the renderer reads the "applied" snapshot). */
-                UIColor color = value == BBSSettings.modelEditorHoverColor
-                    ? UIValueFactory.colorUI(value, (c) -> BBSModClient.applyModelEditorHoverLive())
-                    : UIValueFactory.colorUI(value, null);
+                UIColor color = UIValueFactory.colorUI(value, null);
 
                 color.w(90);
 
@@ -313,33 +231,6 @@ public class UIValueMap
             UITextbox textbox = UIValueFactory.stringUI(value, null);
 
             textbox.w(90);
-
-            if (value == BBSSettings.uiFont)
-            {
-                textbox.w(150);
-
-                UIButton browse = new UIButton(UIKeys.SETTINGS_FONT_BROWSE, (b) -> pickFontFile(value, textbox));
-                UIButton reset = new UIButton(UIKeys.SETTINGS_FONT_RESET, (b) ->
-                {
-                    value.set("");
-                    textbox.setText("");
-                    CustomFontManager.invalidate();
-                    RtlFontManager.invalidate();
-                });
-
-                browse.tooltip(UIKeys.SETTINGS_FONT_BROWSE);
-
-                value.postCallback((changed, flag) ->
-                {
-                    if (!UISettingsOverlayPanel.isDeferringLiveSettings())
-                    {
-                        CustomFontManager.invalidate();
-                        RtlFontManager.invalidate();
-                    }
-                });
-
-                return Arrays.asList(UIValueFactory.column(textbox, value), UI.row(4, browse, reset));
-            }
 
             if (value == BBSSettings.videoEncoderPath && OS.CURRENT == OS.WINDOWS)
             {
@@ -439,19 +330,6 @@ public class UIValueMap
 
             return list;
         });
-    }
-
-    private static void pickFontFile(ValueString value, UITextbox textbox)
-    {
-        UIOverlay.addOverlay(textbox.getContext(), new UIFontPickerOverlayPanel((file) ->
-        {
-            String full = file.getAbsolutePath();
-
-            value.set(full);
-            textbox.setText(full);
-            CustomFontManager.invalidate();
-            RtlFontManager.invalidate();
-        }), 320, 240);
     }
 
     private static UIElement customColumn(UIElement control, IKey label, IKey tooltip)

@@ -27,7 +27,6 @@ public class ModelGroup implements IMapSerializable
 
     public float lighting = 0F;
     public Color color = new Color().set(1F, 1F, 1F);
-    public Color paintColor = new Color().set(1F, 1F, 1F, 0F);
     public Link textureOverride;
     public Transform initial = new Transform();
     public Transform current = new Transform();
@@ -41,7 +40,6 @@ public class ModelGroup implements IMapSerializable
     {
         this.lighting = 0F;
         this.color.set(1F, 1F, 1F);
-        this.paintColor.set(1F, 1F, 1F, 0F);
         this.textureOverride = null;
         this.current.copy(this.initial);
     }
@@ -58,7 +56,6 @@ public class ModelGroup implements IMapSerializable
         
         group.lighting = this.lighting;
         group.color.copy(this.color);
-        group.paintColor.copy(this.paintColor);
         if (this.textureOverride != null) group.textureOverride = LinkUtils.copy(this.textureOverride);
         
         group.initial.copy(this.initial);

@@ -21,8 +21,6 @@ import mchorse.bbs_mod.settings.ui.UIVideoSettingsOverlayPanel;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanels;
-import mchorse.bbs_mod.ui.film.controller.UIGizmoSizeContextMenu;
-import mchorse.bbs_mod.ui.film.controller.UIGizmoTranslateSpeedContextMenu;
 import mchorse.bbs_mod.ui.film.controller.UIOnionSkinContextMenu;
 import mchorse.bbs_mod.ui.film.utils.UICameraUtils;
 import mchorse.bbs_mod.ui.framework.UIContext;
@@ -82,9 +80,6 @@ public class UIFilmPreview extends UIElement
     public UIIcon gizmoMove;
     public UIIcon gizmoScale;
     public UIIcon gizmoRotate;
-    public UIIcon gizmoCombined;
-    public UIIcon gizmoSize;
-    public UIIcon gizmoTranslateSpeed;
     public UIIcon onionSkin;
     public UIIcon plause;
     public UIIcon teleport;
@@ -108,28 +103,10 @@ public class UIFilmPreview extends UIElement
         this.gizmoMove = this.createGizmoButton(Icons.ALL_DIRECTIONS, Gizmo.Mode.TRANSLATE, UIKeys.FILM_GIZMO_MOVE);
         this.gizmoScale = this.createGizmoButton(Icons.SCALE, Gizmo.Mode.SCALE, UIKeys.FILM_GIZMO_SCALE);
         this.gizmoRotate = this.createGizmoButton(Icons.ARC, Gizmo.Mode.ROTATE, UIKeys.FILM_GIZMO_ROTATE);
-        this.gizmoCombined = this.createGizmoButton(Icons.SHAPES, Gizmo.Mode.COMBINED, UIKeys.FILM_GIZMO_COMBINED);
 
-        /* Gizmo size popup: opens a small trackpad menu bound to BBSSettings.axesScale. */
-        this.gizmoSize = new UIIcon(Icons.MAXIMIZE, (b) ->
-            this.getContext().replaceContextMenu(new UIGizmoSizeContextMenu())
-        );
-        this.gizmoSize.tooltip(UIKeys.FILM_GIZMO_SIZE);
-
-        this.gizmoTranslateSpeed = new UIIcon(Icons.FORWARD, (b) ->
-            this.getContext().replaceContextMenu(new UIGizmoTranslateSpeedContextMenu())
-        );
-        this.gizmoTranslateSpeed.tooltip(UIKeys.FILM_GIZMO_TRANSLATE_SPEED);
-
-        this.gizmos = UI.column(0, this.gizmoMove, this.gizmoScale, this.gizmoRotate, this.gizmoCombined, this.gizmoSize, this.gizmoTranslateSpeed);
-        this.gizmos.relative(this).x(4).y(4).w(20).h(120);
+        this.gizmos = UI.row(0, this.gizmoMove, this.gizmoScale, this.gizmoRotate);
+        this.gizmos.relative(this).x(4).y(4).wh(64, 20);
         this.add(this.gizmos);
-
-        this.keys().register(Keys.TRANSFORMATIONS_COMBINED, () ->
-        {
-            Gizmo.INSTANCE.setMode(Gizmo.Mode.COMBINED);
-            UIUtils.playClick();
-        });
 
         /* Preview buttons */
         this.onionSkin = new UIIcon(Icons.ONION_SKIN, (b) -> this.openOnionSkin());
@@ -295,7 +272,6 @@ public class UIFilmPreview extends UIElement
         });
 
         button.tooltip(tooltip);
-        button.activeBackground(Colors.A50 | Colors.BLUE);
 
         return button;
     }
@@ -363,43 +339,10 @@ public class UIFilmPreview extends UIElement
 
         if (area.isInside(context))
         {
-            /* In flight mode, viewport clicks drive the camera directly (left = look around,
-             * right = roll, middle = FOV). This has to be started here rather than left to the
-             * dashboard's orbit element, because this panel uses BLOCK_INSIDE mouse propagation
-             * (to stop clicks falling through into stacked panels), which would otherwise
-             * consume the click before the orbit camera ever saw it. */
-            if (this.panel.isFlying())
-            {
-                if (!BBSSettings.editorFlightFreeLook.get())
-                {
-                    int button = this.panel.dashboard.orbitUI.orbit.canStart(context);
-
-                    if (button >= 0)
-                    {
-                        this.panel.dashboard.orbitUI.orbit.start(button, context.mouseX, context.mouseY);
-
-                        return true;
-                    }
-                }
-
-                return false;
-            }
-
             return this.panel.replayEditor.clickViewport(context, area);
         }
 
         return super.subMouseClicked(context);
-    }
-
-    @Override
-    protected boolean subMouseReleased(UIContext context)
-    {
-        if (!this.panel.isFlying())
-        {
-            this.panel.replayEditor.stopGizmoDrag();
-        }
-
-        return super.subMouseReleased(context);
     }
 
     @Override
@@ -411,7 +354,6 @@ public class UIFilmPreview extends UIElement
         this.gizmoMove.active(mode == Gizmo.Mode.TRANSLATE);
         this.gizmoScale.active(mode == Gizmo.Mode.SCALE);
         this.gizmoRotate.active(mode == Gizmo.Mode.ROTATE);
-        this.gizmoCombined.active(mode == Gizmo.Mode.COMBINED);
 
         Texture texture = BBSRendering.getTexture();
         Area area = this.getViewport();
@@ -443,7 +385,7 @@ public class UIFilmPreview extends UIElement
         {
             /* Render global video clips (overlays) */
             VideoRenderer.renderClips(
-                context.batcher.getContext().getMatrices(),
+                new MatrixStack(),
                 context.batcher,
                 this.panel.getData().camera.getClips(this.panel.getCursor()),
                 this.panel.getCursor(),
@@ -576,13 +518,12 @@ public class UIFilmPreview extends UIElement
 
         stack.pushMatrix();
 
-        stack.mul(context.batcher.getContext().getMatrices().peek().getPositionMatrix());
         stack.translate(area.x + 16, area.ey() - 12, 0F);
         stack.rotate(RotationAxis.NEGATIVE_X.rotationDegrees(mcCamera.getPitch()));
         stack.rotate(RotationAxis.POSITIVE_Y.rotationDegrees(mcCamera.getYaw()));
         stack.scale(-1F, -1F, -1F);
         MatrixStackUtils.applyModelViewMatrix();
-        RenderSystem.renderCrosshair(10);
+        /* crosshair rendering is managed by vanilla pipeline */
 
         stack.popMatrix();
         MatrixStackUtils.applyModelViewMatrix();

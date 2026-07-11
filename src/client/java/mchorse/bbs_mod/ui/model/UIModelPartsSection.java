@@ -8,7 +8,6 @@ import mchorse.bbs_mod.cubic.model.ModelConfig;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.UIKeys;
-import mchorse.bbs_mod.ui.forms.editors.UIFormModelEditor;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
@@ -31,7 +30,7 @@ public class UIModelPartsSection extends UIModelSection
     public UIColor color;
     public UIPoseEditor poseEditor;
 
-    public UIModelPartsSection(IUIModelPanelHost editor)
+    public UIModelPartsSection(UIModelPanel editor)
     {
         super(editor);
         
@@ -69,9 +68,9 @@ public class UIModelPartsSection extends UIModelSection
         this.poseEditor.onChange = this.editor::dirty;
         this.poseEditor.pickCallback = (bone) ->
         {
-            this.editor.setSelectedBone(bone);
+            this.editor.renderer.setSelectedBone(bone);
 
-            for (UIModelSection section : this.editor.getSections())
+            for (UIModelSection section : this.editor.sections)
             {
                 if (section != this)
                 {
@@ -95,13 +94,8 @@ public class UIModelPartsSection extends UIModelSection
         if (this.title.area.isInside(context) && context.mouseButton == 0)
         {
             this.editor.setRight(this.poseEditor);
-
-            if (this.editor instanceof UIFormModelEditor formModelEditor)
-            {
-                formModelEditor.onPoseSectionOpened();
-            }
         }
-
+        
         return super.subMouseClicked(context);
     }
 

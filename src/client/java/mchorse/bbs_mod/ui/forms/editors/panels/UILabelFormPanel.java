@@ -35,7 +35,6 @@ public class UILabelFormPanel extends UIFormPanel<LabelForm>
     public UIToggle billboard;
     public UIToggle nametag;
     public UIColor color;
-    public UIColor paintColor;
     public UITrackpad max;
     public UITrackpad anchorX;
     public UITrackpad anchorY;
@@ -86,8 +85,6 @@ public class UILabelFormPanel extends UIFormPanel<LabelForm>
         this.nametag = new UIToggle(UIKeys.FORMS_EDITORS_LABEL_NAMETAG, (b) -> this.form.nametag.set(b.getValue()));
         this.nametag.tooltip(UIKeys.FORMS_EDITORS_LABEL_NAMETAG_HINT);
         this.color = new UIColor((c) -> this.form.color.set(Color.rgba(c))).withAlpha();
-        this.paintColor = new UIColor((c) -> this.form.paintColor.set(Color.rgba(c))).withAlpha();
-        this.paintColor.tooltip(UIKeys.FORMS_EDITORS_PAINT_COLOR);
         this.max = new UITrackpad((value) -> this.form.max.set(value.intValue()));
         this.max.limit(-1, Integer.MAX_VALUE, true).increment(10);
         this.anchorX = new UITrackpad((value) -> this.form.anchorX.set(value.floatValue()));
@@ -195,7 +192,7 @@ public class UILabelFormPanel extends UIFormPanel<LabelForm>
             this.gradientOffset.setValue(0.5F);
         });
 
-        this.options.add(UI.label(UIKeys.FORMS_EDITORS_LABEL_LABEL), this.text, this.billboard, this.nametag, this.color, this.paintColor, this.max);
+        this.options.add(UI.label(UIKeys.FORMS_EDITORS_LABEL_LABEL), this.text, this.billboard, this.nametag, this.color, this.max);
 
         this.options.add(UI.label(UIKeys.FORMS_EDITORS_LABEL_ANCHOR).marginTop(8), UI.row(this.anchorX, this.anchorY), this.anchorLines);
         this.options.add(UI.label(UIKeys.FORMS_EDITORS_LABEL_SHADOW_OFFSET).marginTop(8), this.shadowX, this.shadowY);
@@ -271,7 +268,6 @@ public class UILabelFormPanel extends UIFormPanel<LabelForm>
         this.billboard.setValue(form.billboard.get());
         this.nametag.setValue(form.nametag.get());
         this.color.setColor(form.color.get().getARGBColor());
-        this.paintColor.setColor(form.paintColor.get().getARGBColor());
         this.max.setValue(form.max.get());
         this.anchorX.setValue(form.anchorX.get());
         this.anchorY.setValue(form.anchorY.get());

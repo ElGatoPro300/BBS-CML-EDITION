@@ -2,6 +2,7 @@ package mchorse.bbs_mod.utils;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.RenderLayer;
+import net.minecraft.client.render.TexturedRenderLayers;
 import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.texture.NativeImage;
@@ -128,12 +129,10 @@ public class TextureFont
         ImageIO.write(image, "png", baos);
         NativeImage nativeImage = NativeImage.read(new ByteArrayInputStream(baos.toByteArray()));
         
-        RenderSystem.recordRenderCall(() -> {
-            this.texture = new NativeImageBackedTexture(nativeImage);
-            String name = "bbs_font_" + font.hashCode();
-            this.textureId = Identifier.of("bbs_mod", name.toLowerCase());
-            MinecraftClient.getInstance().getTextureManager().registerTexture(this.textureId, this.texture);
-        });
+        this.texture = new NativeImageBackedTexture(() -> "bbs_font", nativeImage);
+        String name = "bbs_font_" + font.hashCode();
+        this.textureId = Identifier.of("bbs_mod", name.toLowerCase());
+        MinecraftClient.getInstance().getTextureManager().registerTexture(this.textureId, this.texture);
     }
 
     public int getWidth(String text)
@@ -217,7 +216,7 @@ public class TextureFont
     {
         if (this.textureId == null) return;
 
-        VertexConsumer consumer = consumers.getBuffer(RenderLayer.getText(this.textureId));
+        VertexConsumer consumer = consumers.getBuffer(TexturedRenderLayers.getEntityCutout());
         float scale = 0.25f; /* Scale down because we generated at 64px */
         
         float r1 = (color >> 16 & 255) / 255.0F;

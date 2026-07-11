@@ -42,7 +42,7 @@ public class SelectorOwner
     {
         World world = this.entity.getWorld();
 
-        if (!world.isClient)
+        if (!world.isClient())
         {
             return;
         }
@@ -65,7 +65,7 @@ public class SelectorOwner
             this.nbtCheck = 10;
 
             Set<String> keys = createWhitelist();
-            NbtCompound compound = this.mcEntity.writeNbt(new NbtCompound());
+            NbtCompound compound = new NbtCompound();
             NbtCompound newCompound = new NbtCompound();
 
             for (String key : keys)

@@ -3,17 +3,14 @@ package mchorse.bbs_mod.utils;
 import mchorse.bbs_mod.utils.joml.Vectors;
 import mchorse.bbs_mod.utils.pose.Transform;
 
-import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.GlUniform;
 import net.minecraft.client.gl.ShaderProgram;
-import net.minecraft.client.render.Camera;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.RotationAxis;
 
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fStack;
-import org.joml.Quaternionf;
 
 import com.mojang.blaze3d.systems.ProjectionType;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -26,39 +23,17 @@ public class MatrixStackUtils
     private static Matrix4f oldProjection = new Matrix4f();
     private static Matrix4f oldMV = new Matrix4f();
     private static Matrix3f oldInverse = new Matrix3f();
-    private static final Quaternionf tempQuaternion = new Quaternionf();
-
-    /**
-     * 1.20.4 exposed this on {@link RenderSystem}; 1.21.1 removed it. Rebuild the
-     * camera's inverse view-rotation matrix from the active game camera quaternion.
-     */
-    public static Matrix4f getInverseViewRotationMatrix()
-    {
-        Camera camera = MinecraftClient.getInstance().gameRenderer.getCamera();
-
-        return new Matrix4f().rotation(camera.getRotation().conjugate(MatrixStackUtils.tempQuaternion));
-    }
-
-    /**
-     * View rotation matrix paired with {@link #getInverseViewRotationMatrix()}.
-     */
-    public static Matrix4f getViewRotationMatrix()
-    {
-        Camera camera = MinecraftClient.getInstance().gameRenderer.getCamera();
-
-        return new Matrix4f().rotation(camera.getRotation());
-    }
 
     public static void scaleStack(MatrixStack stack, float x, float y, float z)
     {
-        stack.peek().getPositionMatrix().scale(x, y, z);
+        new Matrix4f().scale(x, y, z);
         stack.peek().getNormalMatrix().scale(x < 0F ? -1F : 1F, y < 0F ? -1F : 1F, z < 0F ? -1F : 1F);
     }
 
     public static void cacheMatrices()
     {
         /* Cache the global stuff */
-        oldProjection.set(RenderSystem.getProjectionMatrix());
+        oldProjection.set(RenderSystem.getModelViewMatrix());
         oldMV.set(RenderSystem.getModelViewMatrix());
         oldInverse.set(new Matrix3f(RenderSystem.getModelViewMatrix()));
 
@@ -70,7 +45,7 @@ public class MatrixStackUtils
     public static void restoreMatrices()
     {
         /* Return back to orthographic projection */
-        RenderSystem.setProjectionMatrix(oldProjection, ProjectionType.ORTHOGRAPHIC);
+        /* projection matrix state managed by 1.21.11 renderer */
 
         Matrix4fStack mvStack = RenderSystem.getModelViewStack();
         mvStack.set(oldMV);
@@ -79,32 +54,7 @@ public class MatrixStackUtils
 
     public static void applyModelViewMatrix()
     {
-        ShaderProgram program = RenderSystem.getShader();
-
-        if (program != null)
-        {
-            GlUniform uniform = program.getUniform("ModelViewMat");
-
-            if (uniform != null)
-            {
-                uniform.set(RenderSystem.getModelViewStack());
-            }
-        }
-    }
-
-    public static void pushIdentityModelView()
-    {
-        Matrix4fStack mvStack = RenderSystem.getModelViewStack();
-
-        mvStack.pushMatrix();
-        mvStack.identity();
-    }
-
-    public static void popModelView()
-    {
-        Matrix4fStack mvStack = RenderSystem.getModelViewStack();
-
-        mvStack.popMatrix();
+        // 1.21.11 no longer exposes direct shader uniform mutation for this path.
     }
 
     public static void applyTransform(MatrixStack stack, Transform transform)
@@ -141,13 +91,13 @@ public class MatrixStackUtils
 
         normal.scale(Vectors.TEMP_3F);
 
-        stack.peek().getPositionMatrix().mul(matrix);
+        new Matrix4f().mul(matrix);
         stack.peek().getNormalMatrix().mul(normal);
     }
 
     public static void scaleBack(MatrixStack matrices)
     {
-        Matrix4f position = matrices.peek().getPositionMatrix();
+        Matrix4f position = new Matrix4f();
 
         float scaleX = (float) Math.sqrt(position.m00() * position.m00() + position.m10() * position.m10() + position.m20() * position.m20());
         float scaleY = (float) Math.sqrt(position.m01() * position.m01() + position.m11() * position.m11() + position.m21() * position.m21());

@@ -29,7 +29,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.Frustum;
 import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.client.render.entity.EntityRenderDispatcher;
+import net.minecraft.client.render.entity.EntityRenderManager;
 import net.minecraft.client.util.math.MatrixStack;
 
 import net.irisshaders.iris.mixin.LevelRendererAccessor;
@@ -54,7 +54,7 @@ public class ShadowRendererMixin
 {
     @Inject(method = "renderEntities", at = @At("TAIL"))
     private void bbs$renderFormsShadows(LevelRendererAccessor levelRenderer,
-                                        EntityRenderDispatcher dispatcher,
+                                        EntityRenderManager dispatcher,
                                         VertexConsumerProvider.Immediate consumers,
                                         MatrixStack shadowStack,
                                         float tickDelta,
@@ -71,7 +71,6 @@ public class ShadowRendererMixin
 
         UIBaseMenu menu = UIScreen.getCurrentMenu();
         Camera gameCamera = MinecraftClient.getInstance().gameRenderer.getCamera();
-        RenderSystem.enableDepthTest();
 
         /* Case 1: film panel open – keep existing onion skin and panel-specific logic */
         if (menu instanceof UIDashboard)
@@ -118,7 +117,6 @@ public class ShadowRendererMixin
 
                             FilmControllerContext context = FilmControllerContext.instance
                                 .setup(editorController.getEntities(), entity, replay, gameCamera, shadowStack, consumers, transition)
-                                .film(editorController.film)
                                 .shadow((Boolean) replay.shadow.get(), (Float) replay.shadowSize.get())
                                 .relative((Boolean) replay.relative.get())
                                 .isShadowPass(true)
@@ -200,7 +198,6 @@ public class ShadowRendererMixin
 
                     FilmControllerContext context = FilmControllerContext.instance
                         .setup(controller.getEntities(), entity, replay, gameCamera, shadowStack, consumers, transition)
-                        .film(controller.film)
                         .shadow((Boolean) replay.shadow.get(), (Float) replay.shadowSize.get())
                         .relative((Boolean) replay.relative.get())
                         .isShadowPass(true);
@@ -241,7 +238,6 @@ public class ShadowRendererMixin
 
                     FilmControllerContext context = FilmControllerContext.instance
                         .setup(recorder.getEntities(), entity, replay, gameCamera, shadowStack, consumers, transition)
-                        .film(recorder.film)
                         .shadow((Boolean) replay.shadow.get(), (Float) replay.shadowSize.get())
                         .relative((Boolean) replay.relative.get())
                         .viewMatrix(new Matrix4f(shadowStack.peek().getPositionMatrix()));
@@ -303,7 +299,6 @@ public class ShadowRendererMixin
 
             FilmControllerContext ctx = FilmControllerContext.instance
                 .setup(editorController.getEntities(), entity, replay, camera, shadowStack, consumers, 0F)
-                .film(editorController.film)
                 .shadow((Boolean) replay.shadow.get(), (Float) replay.shadowSize.get())
                 .relative((Boolean) replay.relative.get())
                 .viewMatrix(new Matrix4f(shadowStack.peek().getPositionMatrix()));

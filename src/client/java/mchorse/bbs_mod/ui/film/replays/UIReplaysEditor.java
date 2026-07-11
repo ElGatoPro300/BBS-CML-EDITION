@@ -10,7 +10,6 @@ import mchorse.bbs_mod.camera.CameraUtils;
 import mchorse.bbs_mod.camera.clips.ClipFactoryData;
 import mchorse.bbs_mod.camera.clips.misc.AudioClip;
 import mchorse.bbs_mod.camera.utils.TimeUtils;
-import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.cubic.IModel;
 import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.cubic.data.animation.Animation;
@@ -63,8 +62,6 @@ import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.ui.utils.Scale;
 import mchorse.bbs_mod.ui.utils.StencilFormFramebuffer;
 import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
-import mchorse.bbs_mod.ui.utils.gizmo.GizmoController;
-import mchorse.bbs_mod.ui.utils.gizmo.GizmoSurface;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.pose.UIPoseEditor;
@@ -113,7 +110,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.ToIntFunction;
 
-public class UIReplaysEditor extends UIElement implements GizmoSurface
+public class UIReplaysEditor extends UIElement
 {
     private static final Map<String, Integer> COLORS = new HashMap<>();
     private static final Map<String, Icon> ICONS = new HashMap<>();
@@ -138,9 +135,6 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
 
     /* Clips */
     private UIFilmPanel filmPanel;
-
-    private final GizmoController gizmoController = new GizmoController(this);
-    private Area gizmoDragArea;
     private Film film;
     private Replay replay;
     private Set<String> keys = new LinkedHashSet<>();
@@ -179,14 +173,7 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
         COLORS.put("transform", Colors.GREEN);
         COLORS.put("transform_overlay", 0xaaff00);
         COLORS.put("color", Colors.INACTIVE);
-        COLORS.put("paint_color", Colors.INACTIVE);
         COLORS.put("lighting", Colors.YELLOW);
-        COLORS.put("render_depth", Colors.CYAN);
-        COLORS.put("look_at", 0x007f70);
-        COLORS.put("illusion", Colors.DEEP_PINK);
-        COLORS.put("illusion_overlay", 0xff66aa);
-        COLORS.put("illusion_transform", 0xdd66ff);
-        COLORS.put("illusion_transform_overlay", 0xcc88ff);
         COLORS.put("structure_light", Colors.YELLOW);
         COLORS.put("shape_keys", Colors.PINK);
         COLORS.put("actions", Colors.MAGENTA);
@@ -238,12 +225,7 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
         ICONS.put("pose", Icons.POSE);
         ICONS.put("transform", Icons.ALL_DIRECTIONS);
         ICONS.put("color", Icons.BUCKET);
-        ICONS.put("paint_color", Icons.BUCKET);
         ICONS.put("lighting", Icons.LIGHT);
-        ICONS.put("render_depth", Icons.SHIFT_TO);
-        ICONS.put("look_at", Icons.VISIBLE);
-        ICONS.put("illusion", Icons.POSE);
-        ICONS.put("illusion_transform", Icons.ALL_DIRECTIONS);
         ICONS.put("structure_light", Icons.LIGHT);
         ICONS.put("actions", Icons.CONVERT);
         ICONS.put("shape_keys", Icons.HEART_ALT);
@@ -601,16 +583,6 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
             return Icons.ALL_DIRECTIONS;
         }
 
-        if (topLevel.startsWith("illusion_overlay"))
-        {
-            return Icons.POSE;
-        }
-
-        if (topLevel.startsWith("illusion_transform_overlay"))
-        {
-            return Icons.ALL_DIRECTIONS;
-        }
-
         return ICONS.getOrDefault(topLevel, Icons.NONE);
     }
 
@@ -635,8 +607,6 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
 
         if (topLevel.startsWith("pose_overlay")) return COLORS.get("pose_overlay");
         if (topLevel.startsWith("transform_overlay")) return COLORS.get("transform_overlay");
-        if (topLevel.startsWith("illusion_overlay")) return COLORS.get("illusion_overlay");
-        if (topLevel.startsWith("illusion_transform_overlay")) return COLORS.get("illusion_transform_overlay");
 
         return COLORS.getOrDefault(topLevel, Colors.ACTIVE);
     }
@@ -938,380 +908,7 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
     }
 
     private static final List<String> WORLD_CHANNELS = Arrays.asList("x", "y", "z", "vX", "vY", "vZ", "yaw", "pitch", "headYaw", "bodyYaw", "grounded", "damage", "fall", "sneaking", "sprinting", "item_main_hand", "item_off_hand", "item_head", "item_chest", "item_legs", "item_feet", "selected_slot", "stick_lx", "stick_ly", "stick_rx", "stick_ry", "trigger_l", "trigger_r", "extra1_x", "extra1_y", "extra2_x", "extra2_y", "shadow_size", "shadow_opacity");
-    private static final List<String> MODEL_PROPERTIES = Arrays.asList("visible", "lighting", "render_depth", "transform", "transform_overlay", "pose", "pose_overlay", "anchor", "look_at", "illusion", "illusion_transform", "color", "paint_color", "texture", "pbr_normal_intensity", "pbr_specular_intensity", "model", "actions", "shape_keys", "block_state", "item_stack", "modelTransform", "same_animation_when_dropped", "settings", "paused", "frequency", "count", "structure_file", "biome_id", "emit_light", "light_intensity", "structure_light", "enabled", "level", "effect");
-
-    /**
-     * Human-readable timeline track names for internal property ids (overlays, paint color, etc.).
-     */
-    private static IKey resolveWorldChannelTrackTitle(String trackName)
-    {
-        if (trackName.equals("x"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_X;
-        }
-
-        if (trackName.equals("y"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_Y;
-        }
-
-        if (trackName.equals("z"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_Z;
-        }
-
-        if (trackName.equals("vX"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_VX;
-        }
-
-        if (trackName.equals("vY"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_VY;
-        }
-
-        if (trackName.equals("vZ"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_VZ;
-        }
-
-        if (trackName.equals("yaw"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_YAW;
-        }
-
-        if (trackName.equals("pitch"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_PITCH;
-        }
-
-        if (trackName.equals("headYaw"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_HEAD_YAW;
-        }
-
-        if (trackName.equals("bodyYaw"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_BODY_YAW;
-        }
-
-        if (trackName.equals("grounded"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_GROUNDED;
-        }
-
-        if (trackName.equals("damage"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_DAMAGE;
-        }
-
-        if (trackName.equals("fall"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_FALL;
-        }
-
-        if (trackName.equals("sneaking"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_SNEAKING;
-        }
-
-        if (trackName.equals("sprinting"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_SPRINTING;
-        }
-
-        if (trackName.equals("item_main_hand"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_ITEM_MAIN_HAND;
-        }
-
-        if (trackName.equals("item_off_hand"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_ITEM_OFF_HAND;
-        }
-
-        if (trackName.equals("item_head"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_ITEM_HEAD;
-        }
-
-        if (trackName.equals("item_chest"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_ITEM_CHEST;
-        }
-
-        if (trackName.equals("item_legs"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_ITEM_LEGS;
-        }
-
-        if (trackName.equals("item_feet"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_ITEM_FEET;
-        }
-
-        if (trackName.equals("selected_slot"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_SELECTED_SLOT;
-        }
-
-        if (trackName.equals("stick_lx"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_STICK_LX;
-        }
-
-        if (trackName.equals("stick_ly"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_STICK_LY;
-        }
-
-        if (trackName.equals("stick_rx"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_STICK_RX;
-        }
-
-        if (trackName.equals("stick_ry"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_STICK_RY;
-        }
-
-        if (trackName.equals("trigger_l"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_TRIGGER_L;
-        }
-
-        if (trackName.equals("trigger_r"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_TRIGGER_R;
-        }
-
-        if (trackName.equals("extra1_x"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_EXTRA1_X;
-        }
-
-        if (trackName.equals("extra1_y"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_EXTRA1_Y;
-        }
-
-        if (trackName.equals("extra2_x"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_EXTRA2_X;
-        }
-
-        if (trackName.equals("extra2_y"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_EXTRA2_Y;
-        }
-
-        if (trackName.equals("shadow_size"))
-        {
-            return UIKeys.FILM_REPLAY_SHADOW_SIZE;
-        }
-
-        if (trackName.equals("shadow_opacity"))
-        {
-            return UIKeys.FILM_REPLAY_SHADOW_OPACITY;
-        }
-
-        return null;
-    }
-
-    private static IKey resolvePropertyTrackTitle(String trackName)
-    {
-        IKey worldTitle = resolveWorldChannelTrackTitle(trackName);
-
-        if (worldTitle != null)
-        {
-            return worldTitle;
-        }
-
-        if (trackName.equals("paint_color"))
-        {
-            return UIKeys.FORMS_EDITORS_PAINT_COLOR;
-        }
-
-        if (trackName.equals("color"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_COLOR;
-        }
-
-        if (trackName.equals("render_depth"))
-        {
-            return UIKeys.FORMS_EDITORS_GENERAL_RENDER_DEPTH;
-        }
-
-        if (trackName.equals("look_at"))
-        {
-            return UIKeys.FORMS_EDITORS_GENERAL_LOOK_AT;
-        }
-
-        if (trackName.equals("illusion"))
-        {
-            return UIKeys.FORMS_EDITORS_GENERAL_ILLUSION;
-        }
-
-        if (trackName.equals("illusion_transform"))
-        {
-            return UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_TRANSFORM;
-        }
-
-        if (trackName.equals("illusion_overlay"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_ILLUSION_OVERLAY;
-        }
-
-        if (trackName.startsWith("illusion_overlay"))
-        {
-            String suffix = trackName.substring("illusion_overlay".length());
-
-            if (suffix.isEmpty())
-            {
-                return UIKeys.FILM_REPLAY_TRACK_ILLUSION_OVERLAY;
-            }
-
-            try
-            {
-                return UIKeys.FILM_REPLAY_TRACK_ILLUSION_OVERLAY_N.format(Integer.parseInt(suffix) + 1);
-            }
-            catch (Exception e)
-            {
-                return UIKeys.FILM_REPLAY_TRACK_ILLUSION_OVERLAY;
-            }
-        }
-
-        if (trackName.equals("illusion_transform_overlay"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_ILLUSION_TRANSFORM_OVERLAY;
-        }
-
-        if (trackName.startsWith("illusion_transform_overlay"))
-        {
-            String suffix = trackName.substring("illusion_transform_overlay".length());
-
-            if (suffix.isEmpty())
-            {
-                return UIKeys.FILM_REPLAY_TRACK_ILLUSION_TRANSFORM_OVERLAY;
-            }
-
-            try
-            {
-                return UIKeys.FILM_REPLAY_TRACK_ILLUSION_TRANSFORM_OVERLAY_N.format(Integer.parseInt(suffix) + 1);
-            }
-            catch (Exception e)
-            {
-                return UIKeys.FILM_REPLAY_TRACK_ILLUSION_TRANSFORM_OVERLAY;
-            }
-        }
-
-        if (trackName.equals("pose_overlay"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_POSE_OVERLAY;
-        }
-
-        if (trackName.startsWith("pose_overlay"))
-        {
-            String suffix = trackName.substring("pose_overlay".length());
-
-            if (suffix.isEmpty())
-            {
-                return UIKeys.FILM_REPLAY_TRACK_POSE_OVERLAY;
-            }
-
-            try
-            {
-                return UIKeys.FILM_REPLAY_TRACK_POSE_OVERLAY_N.format(Integer.parseInt(suffix) + 1);
-            }
-            catch (Exception e)
-            {
-                return UIKeys.FILM_REPLAY_TRACK_POSE_OVERLAY;
-            }
-        }
-
-        if (trackName.equals("transform_overlay"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_TRANSFORM_OVERLAY;
-        }
-
-        if (trackName.startsWith("transform_overlay"))
-        {
-            String suffix = trackName.substring("transform_overlay".length());
-
-            if (suffix.isEmpty())
-            {
-                return UIKeys.FILM_REPLAY_TRACK_TRANSFORM_OVERLAY;
-            }
-
-            try
-            {
-                return UIKeys.FILM_REPLAY_TRACK_TRANSFORM_OVERLAY_N.format(Integer.parseInt(suffix) + 1);
-            }
-            catch (Exception e)
-            {
-                return UIKeys.FILM_REPLAY_TRACK_TRANSFORM_OVERLAY;
-            }
-        }
-
-        if (trackName.equals("visible"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_VISIBLE;
-        }
-
-        if (trackName.equals("lighting"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_LIGHTING;
-        }
-
-        if (trackName.equals("transform"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_TRANSFORM;
-        }
-
-        if (trackName.equals("anchor"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_ANCHOR;
-        }
-
-        if (trackName.equals("texture"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_TEXTURE;
-        }
-
-        if (trackName.equals("model"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_MODEL;
-        }
-
-        if (trackName.equals("actions"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_ACTIONS;
-        }
-
-        if (trackName.equals("shape_keys"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_SHAPE_KEYS;
-        }
-
-        if (trackName.equals("item_stack"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_ITEM_STACK;
-        }
-
-        if (trackName.equals("pose"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_POSE;
-        }
-
-        return null;
-    }
-
-    public static IKey resolveTrackTitle(String trackName)
-    {
-        IKey title = resolvePropertyTrackTitle(trackName);
-
-        return title != null ? title : IKey.constant(trackName);
-    }
+    private static final List<String> MODEL_PROPERTIES = Arrays.asList("visible", "lighting", "transform", "transform_overlay", "pose", "pose_overlay", "anchor", "color", "texture", "pbr_normal_intensity", "pbr_specular_intensity", "model", "actions", "shape_keys", "block_state", "item_stack", "modelTransform", "same_animation_when_dropped", "settings", "paused", "frequency", "count", "structure_file", "biome_id", "emit_light", "light_intensity", "structure_light", "enabled", "level", "effect");
 
     public void updateChannelsList()
     {
@@ -1369,13 +966,9 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
                 int baseColor = getColor(key);
                 int sheetColor = customColor != null ? customColor : baseColor;
 
-                IKey resolvedTitle = resolvePropertyTrackTitle(key);
-
                 UIKeyframeSheet sheet = customTitle != null && !customTitle.isEmpty()
                     ? new UIKeyframeSheet(key, IKey.constant(customTitle), sheetColor, false, channel, null)
-                    : resolvedTitle != null
-                        ? new UIKeyframeSheet(key, resolvedTitle, sheetColor, false, channel, null)
-                        : new UIKeyframeSheet(sheetColor, false, channel, null);
+                    : new UIKeyframeSheet(sheetColor, false, channel, null);
 
                 sheets.add(sheet.icon(ICONS.get(key)));
             }
@@ -1457,7 +1050,6 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
 
                 if (name.equals("visible")) return 0;
                 if (name.equals("lighting")) return 1;
-                if (name.equals("render_depth")) return 2;
 
                 if (name.equals("transform")) return 10;
                 if (name.startsWith("transform_overlay"))
@@ -1479,33 +1071,15 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
                 if (name.indexOf(':') != -1) return 29;
 
                 if (name.equals("anchor")) return 30;
-                if (name.equals("look_at")) return 31;
-                if (name.equals("illusion")) return 32;
-                if (name.equals("illusion_overlay")) return 33;
-                if (name.startsWith("illusion_overlay") && name.length() > "illusion_overlay".length())
-                {
-                    String suffix = name.substring("illusion_overlay".length());
-
-                    try { return 34 + Integer.parseInt(suffix); } catch (Exception e) { return 49; }
-                }
-                if (name.equals("illusion_transform")) return 50;
-                if (name.equals("illusion_transform_overlay")) return 51;
-                if (name.startsWith("illusion_transform_overlay") && name.length() > "illusion_transform_overlay".length())
-                {
-                    String suffix = name.substring("illusion_transform_overlay".length());
-
-                    try { return 52 + Integer.parseInt(suffix); } catch (Exception e) { return 69; }
-                }
-                if (name.equals("structure_file")) return 60;
-                if (name.equals("pivot")) return 61;
-                if (name.equals("biome_id")) return 62;
-                if (name.equals("structure_light")) return 63;
-                if (name.equals("color")) return 64;
-                if (name.equals("paint_color")) return 65;
-                if (name.equals("texture")) return 66;
-                if (name.equals("pbr_normal_intensity")) return 67;
-                if (name.equals("pbr_specular_intensity")) return 68;
-                if (name.equals("model")) return 69;
+                if (name.equals("structure_file")) return 31;
+                if (name.equals("pivot")) return 32;
+                if (name.equals("biome_id")) return 33;
+                if (name.equals("structure_light")) return 34;
+                if (name.equals("color")) return 35;
+                if (name.equals("texture")) return 36;
+                if (name.equals("pbr_normal_intensity")) return 37;
+                if (name.equals("pbr_specular_intensity")) return 38;
+                if (name.equals("model")) return 39;
 
                 return 500;
             };
@@ -1768,7 +1342,7 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
                             worldTracks.add(sheet);
                         }
                     }
-                    else if (MODEL_PROPERTIES.contains(sheet.id) || sheet.id.startsWith("pose") || sheet.id.startsWith("transform_overlay") || sheet.id.startsWith("illusion_overlay") || sheet.id.startsWith("illusion_transform_overlay"))
+                    else if (MODEL_PROPERTIES.contains(sheet.id) || sheet.id.startsWith("pose") || sheet.id.startsWith("transform_overlay"))
                     {
                         if (!this.collapsedModelTracks.getOrDefault(modelPropsKey, false))
                         {
@@ -2098,41 +1672,22 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
     {
         sheet.level = level;
         String customTitle = this.replay.getCustomSheetTitle(sheet.id);
-        int colon = sheet.id.indexOf(':');
-        String trackName = StringUtils.fileName(sheet.id);
 
         /* Reset title in case it was changed by originalKeyframeUI mode */
-        if ((customTitle == null || customTitle.isEmpty()))
+        if ((customTitle == null || customTitle.isEmpty()) && sheet.property != null)
         {
-            if (colon != -1)
-            {
-                /* Bone/part limb tracks: show the real bone name (Head, Body, …), not a generic overlay label. */
-                sheet.title = IKey.constant(sheet.id.substring(colon + 1));
-            }
-            else
-            {
-                IKey propertyTitle = resolvePropertyTrackTitle(trackName);
+            Form trackForm = FormUtils.getForm(sheet.property);
 
-                if (propertyTitle != null)
-                {
-                    sheet.title = propertyTitle;
-                }
-                else
-                {
-                    Form trackForm = FormUtils.getForm(sheet.property);
-
-                    if (trackForm != null)
-                    {
-                        sheet.title = IKey.constant(trackForm.getTrackName(sheet.channel.getId()));
-                    }
-                }
+            if (trackForm != null)
+            {
+                sheet.title = IKey.constant(trackForm.getTrackName(sheet.channel.getId()));
             }
         }
 
+        int colon = sheet.id.indexOf(':');
+        String trackName = StringUtils.fileName(sheet.id);
         String scopeKey = groupKey == null || groupKey.isEmpty() ? this.replay.uuid.get() + ":__model__" : groupKey;
         String textureParentKey = scopeKey + ":texture";
-        String illusionParentKey = scopeKey + ":illusion";
-        String illusionTransformParentKey = scopeKey + ":illusion_transform";
         boolean isPbrTrack = trackName.equals("pbr_normal_intensity") || trackName.equals("pbr_specular_intensity");
 
         if (isPbrTrack)
@@ -2222,52 +1777,6 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
         {
             before.add(sheet);
         }
-        else if (trackName.equals("illusion"))
-        {
-            boolean expanded = !this.collapsedModelTracks.getOrDefault(illusionParentKey, true);
-
-            sheet.expanded = expanded;
-            sheet.toggleExpanded = () ->
-            {
-                this.collapsedModelTracks.put(illusionParentKey, !this.collapsedModelTracks.getOrDefault(illusionParentKey, true));
-                this.updateChannelsList();
-            };
-
-            after.add(sheet);
-        }
-        else if (this.isIllusionOverlayTrack(trackName))
-        {
-            if (this.collapsedModelTracks.getOrDefault(illusionParentKey, true))
-            {
-                return;
-            }
-
-            sheet.level += 1;
-            after.add(sheet);
-        }
-        else if (trackName.equals("illusion_transform"))
-        {
-            boolean expanded = !this.collapsedModelTracks.getOrDefault(illusionTransformParentKey, true);
-
-            sheet.expanded = expanded;
-            sheet.toggleExpanded = () ->
-            {
-                this.collapsedModelTracks.put(illusionTransformParentKey, !this.collapsedModelTracks.getOrDefault(illusionTransformParentKey, true));
-                this.updateChannelsList();
-            };
-
-            after.add(sheet);
-        }
-        else if (this.isIllusionTransformOverlayTrack(trackName))
-        {
-            if (this.collapsedModelTracks.getOrDefault(illusionTransformParentKey, true))
-            {
-                return;
-            }
-
-            sheet.level += 1;
-            after.add(sheet);
-        }
         else
         {
             this.addTrackByPriority(trackName, before, after, sheet);
@@ -2277,26 +1786,6 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
         {
             sheet.title = IKey.constant(customTitle);
         }
-    }
-
-    private boolean isIllusionOverlayTrack(String trackName)
-    {
-        if (trackName.equals("illusion_overlay"))
-        {
-            return true;
-        }
-
-        return trackName.startsWith("illusion_overlay") && trackName.length() > "illusion_overlay".length();
-    }
-
-    private boolean isIllusionTransformOverlayTrack(String trackName)
-    {
-        if (trackName.equals("illusion_transform_overlay"))
-        {
-            return true;
-        }
-
-        return trackName.startsWith("illusion_transform_overlay") && trackName.length() > "illusion_transform_overlay".length();
     }
 
     private void addTrackByPriority(String trackName, List<UIKeyframeSheet> before, List<UIKeyframeSheet> after, UIKeyframeSheet sheet)
@@ -3068,10 +2557,69 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
                     }
 
                     UIPropTransform editableTransform = UIReplaysEditorUtils.getEditableTransform(this.keyframeEditor);
+                    if (editableTransform != null)
+                    {
+                        final Area finalArea = area;
+                        editableTransform.setGizmoRayProvider(new UIPropTransform.IGizmoRayProvider()
+                        {
+                            @Override
+                            public boolean getMouseRay(UIContext context, int mouseX, int mouseY, Vector3d rayOrigin, Vector3f rayDirection)
+                            {
+                                if (finalArea.w <= 0 || finalArea.h <= 0)
+                                {
+                                    return false;
+                                }
 
-                    this.gizmoDragArea = area;
+                                Camera camera = UIReplaysEditor.this.filmPanel.getCamera();
+                                if (camera == null)
+                                {
+                                    return false;
+                                }
 
-                    if (this.gizmoController.tryStartHandleDrag(context, editableTransform))
+                                Vector3f direction = CameraUtils.getMouseDirection(
+                                    camera.projection,
+                                    camera.view,
+                                    mouseX,
+                                    mouseY,
+                                    finalArea.x,
+                                    finalArea.y,
+                                    finalArea.w,
+                                    finalArea.h
+                                );
+
+                                if (direction.lengthSquared() <= 1.0E-12F)
+                                {
+                                    return false;
+                                }
+
+                                rayDirection.set(direction).normalize();
+                                rayOrigin.set(0, 0, 0);
+
+                                return true;
+                            }
+
+                            @Override
+                            public boolean getGizmoMatrix(Matrix4f matrix)
+                            {
+                                if (!Gizmo.INSTANCE.hasGizmoMatrix)
+                                {
+                                    return false;
+                                }
+
+                                Camera camera = UIReplaysEditor.this.filmPanel.getCamera();
+                                if (camera == null)
+                                {
+                                    return false;
+                                }
+
+                                matrix.set(new Matrix4f(camera.view).invert().mul(Gizmo.INSTANCE.lastGizmoMatrix));
+
+                                return true;
+                            }
+                        });
+                    }
+
+                    if (Gizmo.INSTANCE.start(stencil.getIndex(), context.mouseX, context.mouseY, editableTransform))
                     {
                         return true;
                     }
@@ -3137,33 +2685,6 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
         }
 
         return false;
-    }
-
-    @Override
-    public StencilFormFramebuffer getGizmoStencil()
-    {
-        return this.filmPanel.getController().getStencil();
-    }
-
-    public void updateGizmoHover()
-    {
-        this.gizmoController.updateHover();
-    }
-
-    @Override
-    public void prepareGizmoDrag(UIPropTransform transform)
-    {
-        if (transform == null || this.gizmoDragArea == null)
-        {
-            return;
-        }
-
-        FilmPoseGizmoDrag.prepare(this.filmPanel, this.gizmoDragArea, transform);
-    }
-
-    public void stopGizmoDrag()
-    {
-        this.gizmoController.stop();
     }
 
     public void close()

@@ -22,7 +22,6 @@
         "InGameHudMixin",
         "KeyboardMixin",
         "ResourceReloadLoggerMixin",
-        "RenderLayerMixin",
         "RenderLayerTextureOverrideMixin",
         "ClientWorldPropertiesMixin",
         "sodium.ColorAttributeMixin",

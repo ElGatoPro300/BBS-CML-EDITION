@@ -117,7 +117,6 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
     private boolean pixelEditorEnabled = true;
     private boolean multiSkinEnabled = true;
     private Supplier<Form> formPreviewSupplier;
-    private Supplier<List<Link>> highlighted;
     private static final int FORM_PREVIEW_WIDTH = 150;
     private static final int LIST_ITEM_SIZE_SMALL = 16;
     private static final int TAB_WIDTH_FILES = 88;
@@ -478,18 +477,6 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
 
         this.fill(null);
         this.markContainer().eventPropagataion(EventPropagation.BLOCK);
-    }
-
-    /**
-     * Supplies extra links that should be rendered with the selection highlight in
-     * the file list (used by multi-texture picking, e.g. illusion textures, so all
-     * the Shift + clicked textures show up as selected).
-     */
-    public UITexturePicker highlighted(Supplier<List<Link>> highlighted)
-    {
-        this.highlighted = highlighted;
-
-        return this;
     }
 
     public UITexturePicker withFormPreview(Supplier<Form> supplier)
@@ -1401,25 +1388,6 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
             }
 
             this.picker.scroll.setScroll(scroll);
-        }
-
-        /* Highlight the multi-picked textures (e.g. illusion textures) as selected */
-        if (this.highlighted != null)
-        {
-            List<Link> links = this.highlighted.get();
-            List<UIFileLinkList.FileLink> files = this.picker.getList();
-
-            this.picker.deselect();
-
-            for (int i = 0; i < files.size(); i++)
-            {
-                UIFileLinkList.FileLink file = files.get(i);
-
-                if (!file.folder && links.contains(file.link))
-                {
-                    this.picker.addIndex(i);
-                }
-            }
         }
 
         /* Draw the background */

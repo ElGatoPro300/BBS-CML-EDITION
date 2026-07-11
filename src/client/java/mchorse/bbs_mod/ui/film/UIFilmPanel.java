@@ -50,8 +50,6 @@ import mchorse.bbs_mod.ui.dashboard.panels.overlay.UICRUDOverlayPanel;
 import mchorse.bbs_mod.ui.dashboard.panels.overlay.UIDataOverlayPanel;
 import mchorse.bbs_mod.ui.dashboard.utils.IUIOrbitKeysHandler;
 import mchorse.bbs_mod.ui.film.audio.UIAudioRecorder;
-import mchorse.bbs_mod.ui.film.clips.UIClip;
-import mchorse.bbs_mod.ui.film.clips.UIKeyframeClip;
 import mchorse.bbs_mod.ui.film.controller.UIFilmController;
 import mchorse.bbs_mod.ui.film.replays.UIReplaysEditor;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIReplaysOverlayPanel;
@@ -70,7 +68,6 @@ import mchorse.bbs_mod.ui.framework.elements.overlay.UIMessageOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UINumberOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
-import mchorse.bbs_mod.ui.framework.elements.utils.EventPropagation;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIDraggable;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIRenderable;
 import mchorse.bbs_mod.ui.home.UIHomePanel;
@@ -101,16 +98,14 @@ import mchorse.bbs_mod.utils.keyframes.KeyframeSegment;
 import mchorse.bbs_mod.utils.presets.PresetManager;
 import mchorse.bbs_mod.utils.resources.Pixels;
 
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.render.BufferBuilder;
-import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
+import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.util.math.Vec3d;
@@ -119,7 +114,9 @@ import org.joml.Matrix4f;
 import org.joml.Vector2i;
 import org.joml.Vector3d;
 
+import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.VertexFormat;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -201,13 +198,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     public final Matrix4f lastView = new Matrix4f();
     public final Matrix4f lastProjection = new Matrix4f();
-    public final Matrix4f lastGizmoMatrix = new Matrix4f();
-    public boolean hasLastGizmoMatrix;
 
     private Timer flightEditTime = new Timer(100);
 
     private List<UIElement> panels = new ArrayList<>();
-    private UIFilmFullscreenPlaybackBar fullscreenPlaybackBar;
+    private UIElement secretPlay;
 
     private boolean newFilm;
     private final Map<String, UIElement> panelById = new LinkedHashMap<>();
@@ -471,14 +466,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.panelById.put("actionEditArea", this.actionEditArea);
         this.panelById.put("unifiedEditArea", this.unifiedEditArea);
         this.panelById.put(ANCHORED_REPLAYS_PANEL_ID, this.anchoredReplaysPanel);
-
-        /* Every window is an opaque hit target: a click inside a panel's area must
-           never fall through to widgets of another panel stacked beneath it. */
-        for (UIElement panelElement : this.panelById.values())
-        {
-            panelElement.mouseEventPropagataion(EventPropagation.BLOCK_INSIDE);
-        }
-
         this.updateTargets();
         this.homePage = new UIElement()
         {
@@ -815,24 +802,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             UIUtils.playClick();
         }).active(active).category(editor);
 
-        /* E over the camera timeline: open the keyframe editor of the selected clip */
-        this.keys().register(Keys.FORMS_EDIT, () ->
-        {
-            UIClip clipPanel = this.cameraEditor.getClipPanel();
-
-            if (clipPanel instanceof UIKeyframeClip keyframeClip)
-            {
-                keyframeClip.edit.clickItself();
-            }
-        }).active(() ->
-        {
-            UIContext context = this.getContext();
-
-            return this.data != null && !this.isFlying() && context != null
-                && this.cameraEditor.clips.area.isInside(context)
-                && this.cameraEditor.getClipPanel() instanceof UIKeyframeClip;
-        }).label(UIKeys.CAMERA_PANELS_EDIT_KEYFRAMES).category(editor);
-
         this.toolMenuActions = (menu) ->
         {
             if (this.data == null)
@@ -917,8 +886,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.panels.add(this.replayEditor);
         this.panels.add(this.actionEditor);
 
-        this.fullscreenPlaybackBar = new UIFilmFullscreenPlaybackBar(this);
-        this.fullscreenPlaybackBar.keys().register(Keys.PLAUSE, () -> this.preview.plause.clickItself()).active(() -> this.fullscreenPlaybackBar.isKeybindActive()).category(editor);
+        this.secretPlay = new UIElement();
+        this.secretPlay.keys().register(Keys.PLAUSE, () -> this.preview.plause.clickItself()).active(() -> !this.isFlying() && !this.canBeSeen() && this.data != null).category(editor);
 
         this.setUndoId("film_panel");
         this.cameraEditor.setUndoId("camera_editor");
@@ -1549,15 +1518,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.dropTargetPanelId = null;
         this.dropTargetZone = DROP_ZONE_CENTER;
 
-        /* Drop any stale drag latch on the header handles. A handle is hidden the
-           moment its panel is torn out into a floating window, so it never receives
-           the mouse release that would normally reset it — and a stale dragging flag
-           would re-float the panel one frame after it docks. */
-        for (UIDraggable handle : this.dragHandlesById.values())
-        {
-            handle.resetDrag();
-        }
-
         /* Also drop the floating drag/resize pointers and the mouse-hold latch. Otherwise a
            window that was being undocked (which sets activeDraggingFloatingPanelId via
            ensurePanelFloatingForDrag) keeps following the cursor every frame in the update
@@ -1990,9 +1950,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             this.clearingSelections = true;
             try
             {
-                /* Replay timeline interaction should not drop the camera clip selection; users
-                 * often keep a camera clip selected while editing replay keyframes in unified layout. */
-                if (!"cameraTimeline".equals(timelineId) && !"replayTimeline".equals(timelineId) && this.cameraEditor != null && this.cameraEditor.clips != null)
+                if (!"cameraTimeline".equals(timelineId) && this.cameraEditor != null && this.cameraEditor.clips != null)
                 {
                     this.cameraEditor.clips.pickClip(null);
                 }
@@ -3938,7 +3896,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             this.updateFilmDocumentView();
         }
 
-        this.fullscreenPlaybackBar.attachToRoot();
+        this.getContext().menu.getRoot().add(this.secretPlay);
     }
 
     @Override
@@ -3981,7 +3939,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.getCameraController().remove(this.runner);
 
         this.disableContext();
-        this.fullscreenPlaybackBar.removeFromParent();
+        this.secretPlay.removeFromParent();
     }
 
     private void disableContext()
@@ -4398,17 +4356,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         return this.dashboard.orbitUI.canControl();
     }
 
-    /**
-     * Confines left/right/middle click-drag camera rotate/roll/FOV to the preview panel (the
-     * 3D viewport, including its overlay buttons), so it can never be triggered by clicking
-     * elsewhere in the editor (menu bar, timelines, properties, etc.).
-     */
-    @Override
-    public Area getFlightViewportArea()
-    {
-        return this.preview.area;
-    }
-
     public void toggleFlight()
     {
         this.setFlight(!this.isFlying());
@@ -4499,7 +4446,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         if (player != null)
         {
-            String name = player.getGameProfile().getName();
+            String name = player.getGameProfile().name();
             FilmContributor contributor = null;
 
             for (FilmContributor c : this.data.contributors.getList())
@@ -4643,7 +4590,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         if (this.entered)
         {
             ClientPlayerEntity player = MinecraftClient.getInstance().player;
-            Vec3d pos = player.getPos();
+            Vec3d pos = new Vec3d(player.getX(), player.getY(), player.getZ());
             Vector3d cameraPos = this.camera.position;
             double distance = cameraPos.distance(pos.x, pos.y, pos.z);
             int value = MinecraftClient.getInstance().options.getViewDistance().getValue();
@@ -4863,8 +4810,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         if (!BBSRendering.isIrisShadowPass())
         {
-            this.lastProjection.set(RenderSystem.getProjectionMatrix());
-            MatrixStack ms = context.matrixStack();
+            this.lastProjection.set(RenderSystem.getModelViewMatrix());
+            MatrixStack ms = context.matrices();
             if (ms != null)
             {
                 this.lastView.set(ms.peek().getPositionMatrix());
@@ -4876,20 +4823,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         }
 
         this.controller.renderFrame(context);
-        this.cacheGizmoMatrix();
-    }
-
-    private void cacheGizmoMatrix()
-    {
-        if (Gizmo.INSTANCE.hasGizmoMatrix)
-        {
-            this.lastGizmoMatrix.set(Gizmo.INSTANCE.lastGizmoMatrix);
-            this.hasLastGizmoMatrix = true;
-        }
-        else
-        {
-            this.hasLastGizmoMatrix = false;
-        }
     }
 
     /* IUICameraWorkDelegate implementation */
@@ -5538,12 +5471,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         int segments = 40;
         float segW = editorW / (float) segments;
         
-        Matrix4f matrix4f = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
+        Matrix4f matrix4f = new Matrix4f();
         Tessellator tessellator = Tessellator.getInstance();
         BufferBuilder builder = tessellator.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
         
-        RenderSystem.enableBlend();
-        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
+        GlStateManager._enableBlend();
         
         float[] yBot1 = new float[segments + 1];
         float[] yMid1 = new float[segments + 1];
@@ -5626,7 +5558,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             builder.vertex(matrix4f, x2, yMid2[i+1], 0).color(cMid2[i+1]);
         }
         
-        BufferRenderer.drawWithGlobalProgram(builder.end());
+        RenderLayers.debugFilledBox().draw(builder.end());
 
         UIHomePanel home = this.dashboard.getPanel(UIHomePanel.class);
         if (home != null)
@@ -6247,14 +6179,14 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                             int iconY = this.area.y + CARD_SIZE / 2;
                             Icon icon = isFolder ? Icons.FOLDER : Icons.FILM;
                             
-                            context.batcher.getContext().getMatrices().push();
-                            context.batcher.getContext().getMatrices().translate(iconX, iconY, 0);
-                            context.batcher.getContext().getMatrices().scale(2F, 2F, 1F);
-                            context.batcher.getContext().getMatrices().translate(-iconX, -iconY, 0);
+                            context.batcher.getContext().getMatrices().pushMatrix();
+                            context.batcher.getContext().getMatrices().translate(iconX, iconY);
+                            context.batcher.getContext().getMatrices().scale(2F, 2F);
+                            context.batcher.getContext().getMatrices().translate(-iconX, -iconY);
                             
                             context.batcher.icon(icon, iconX, iconY, 0.5F, 0.5F);
                             
-                            context.batcher.getContext().getMatrices().pop();
+                            context.batcher.getContext().getMatrices().popMatrix();
                         }
 
                         String label = path.getLast().equals("..") ? "../" : path.getLast();
@@ -6327,40 +6259,13 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     /* Custom floating windows logic */
 
-    /**
-     * Outcome of {@link #handleFloatingPanelClicks}, distinguishing a fully consumed click
-     * (window chrome, or content inside a floating panel) from one that must still reach the
-     * dashboard-level free camera-orbit controller (left/right/middle click-drag rotate, roll
-     * and FOV over the 3D viewport, matching stock BBS behaviour) versus a click that didn't
-     * land on any floating panel at all.
-     */
-    private enum FloatingClickResult
-    {
-        NOT_HANDLED,
-        CONSUMED,
-        VIEWPORT_PASSTHROUGH
-    }
-
     @Override
     protected IUIElement childrenMouseClicked(UIContext context)
     {
-        FloatingClickResult result = this.handleFloatingPanelClicks(context);
-
-        if (result == FloatingClickResult.CONSUMED)
+        if (this.handleFloatingPanelClicks(context))
         {
             return this;
         }
-
-        /* Deliberately skip super.childrenMouseClicked(): falling through to the normal
-           z-order sibling iteration would let the click leak onto whichever docked panel sits
-           behind the floating viewport window (the exact bug that was just fixed). Returning
-           null here instead lets it bubble past this whole editor, all the way up to the
-           dashboard root where the camera-orbit controller lives. */
-        if (result == FloatingClickResult.VIEWPORT_PASSTHROUGH)
-        {
-            return null;
-        }
-
         return super.childrenMouseClicked(context);
     }
 
@@ -6533,11 +6438,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.setupEditorFlex(true);
     }
 
-    private FloatingClickResult handleFloatingPanelClicks(UIContext context)
+    private boolean handleFloatingPanelClicks(UIContext context)
     {
         if (this.showingHomePage)
         {
-            return FloatingClickResult.NOT_HANDLED;
+            return false;
         }
 
         List<IUIElement> children = this.editor.getChildren();
@@ -6594,7 +6499,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                                 this.draggingPanelId = panelId;
                             }
                         }
-                        return FloatingClickResult.CONSUMED;
+                        return true;
                     }
 
                     // Click in Bottom-Right Resize Handle (only if NOT collapsed)
@@ -6610,7 +6515,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                             {
                                 this.activeResizingFloatingPanelId = panelId;
                             }
-                            return FloatingClickResult.CONSUMED;
+                            return true;
                         }
                     }
 
@@ -6618,33 +6523,12 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                     if (context.mouseX >= x && context.mouseX <= x + w && context.mouseY >= y && context.mouseY <= y + h)
                     {
                         this.safeBringToFront(panelId);
-
-                        /* Route the click to this floating window's contents first, so it
-                           can't fall through to docked panels behind the window (e.g.
-                           selecting a clip in a floating Camera Timeline must not also press
-                           a button in the Camera Properties panel below). */
-                        IUIElement consumer = child.isEnabled() ? child.mouseClicked(context) : null;
-
-                        if (consumer != null)
-                        {
-                            return FloatingClickResult.CONSUMED;
-                        }
-
-                        /* Nothing inside the floating window wanted this click. For the 3D
-                           viewport specifically, let it bubble up to the dashboard's free
-                           camera-orbit controller instead of swallowing it, so left/right/
-                           middle click-drag can still rotate/roll the camera and change FOV
-                           while the mouse is over the viewport, exactly like stock BBS. Any
-                           other floating panel keeps swallowing the click. */
-                        return "preview".equals(panelId)
-                            ? FloatingClickResult.VIEWPORT_PASSTHROUGH
-                            : FloatingClickResult.CONSUMED;
                     }
                 }
             }
         }
 
-        return FloatingClickResult.NOT_HANDLED;
+        return false;
     }
 
     private void renderFloatingPanelWindows(UIContext context)

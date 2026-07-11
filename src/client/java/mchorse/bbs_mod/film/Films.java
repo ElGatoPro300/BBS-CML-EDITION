@@ -14,18 +14,18 @@ import mchorse.bbs_mod.network.ClientNetwork;
 import mchorse.bbs_mod.ui.ContentType;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D;
-import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.CollectionUtils;
 import mchorse.bbs_mod.utils.clips.Clip;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 
+import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 
 import java.util.ArrayList;
@@ -325,9 +325,7 @@ public class Films
 
     public void render(WorldRenderContext context)
     {
-        Gizmo.INSTANCE.clearVisual();
-
-        RenderSystem.enableDepthTest();
+        GlStateManager._enableDepthTest();
 
         for (BaseFilmController controller : this.controllers)
         {
@@ -339,7 +337,7 @@ public class Films
             this.recorder.render(context);
         }
 
-        RenderSystem.disableDepthTest();
+        GlStateManager._disableDepthTest();
     }
 
     public void renderHud(Batcher2D batcher2D, float tickDelta)

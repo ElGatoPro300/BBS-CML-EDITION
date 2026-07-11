@@ -80,13 +80,8 @@ public class ModelRepository implements IRepository<ModelConfig>
     @Override
     public void save(String id, MapType data)
     {
-        this.saveConfigOnly(id, data);
-        this.manager.loadModel(id);
-    }
-
-    public void saveConfigOnly(String id, MapType data)
-    {
         this.manager.saveConfig(id, data);
+        this.manager.loadModel(id);
     }
 
     @Override

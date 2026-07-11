@@ -150,7 +150,6 @@ public class Model implements IMapSerializable, IModel
 
             group.lighting = transform.lighting;
             group.color.copy(transform.color);
-            group.paintColor.copy(transform.paintColor);
             Link texture = transform.texture;
             group.textureOverride = texture != null ? LinkUtils.copy(texture) : null;
             group.current.translate.add(transform.translate);

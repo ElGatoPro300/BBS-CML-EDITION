@@ -96,27 +96,14 @@ public class StencilFormFramebuffer
 
     public void pickGUI(UIContext context, Area area)
     {
-        this.pickGUI(context, area, BBSModClient.getGUIScale(), BBSModClient.getGUIScale());
-    }
-
-    public void pickGUI(UIContext context, Area area, float scaleX, float scaleY)
-    {
-        int localX = context.mouseX - context.globalX(area.x);
-        int localY = context.mouseY - context.globalY(area.y);
-
-        if (localX < 0 || localY < 0 || localX >= area.w || localY >= area.h)
-        {
-            this.index = 0;
-
-            return;
-        }
-
-        this.pick(Math.round(localX * scaleX), Math.round((area.h - localY) * scaleY));
+        this.pickGUI(context.mouseX - area.x, area.h - context.mouseY + area.y);
     }
 
     public void pickGUI(int x, int y)
     {
-        this.pick(x * BBSModClient.getGUIScale(), y * BBSModClient.getGUIScale());
+        int scale = BBSModClient.getGUIScale();
+
+        this.pick(x * scale, y * scale);
     }
 
     public void pick(int x, int y)
