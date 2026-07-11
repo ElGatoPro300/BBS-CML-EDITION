@@ -71,6 +71,7 @@ import mchorse.bbs_mod.settings.Settings;
 import mchorse.bbs_mod.settings.ui.UISettingsOverlayPanel;
 import mchorse.bbs_mod.settings.ui.UIValueMap;
 import mchorse.bbs_mod.settings.values.IValueListener;
+import mchorse.bbs_mod.text.RtlFontManager;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.UIDashboard;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel;
@@ -81,6 +82,7 @@ import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.UIScreen;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UIKeyframeFactory;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.shapes.KeyframeShapeRenderers;
+import mchorse.bbs_mod.ui.framework.elements.utils.CustomFontManager;
 import mchorse.bbs_mod.ui.model.UIModelPanel;
 import mchorse.bbs_mod.ui.model_blocks.UIModelBlockEditorMenu;
 import mchorse.bbs_mod.ui.morphing.UIMorphingPanel;
@@ -438,6 +440,7 @@ public class BBSModClient implements ClientModInitializer
         l10n = new L10n();
         l10n.register((lang) -> Collections.singletonList(Link.assets("strings/" + lang + ".json")));
         l10n.reload();
+        RtlFontManager.ensureLoaded();
 
         BBSMod.events.post(new RegisterL10nEvent(l10n));
 
@@ -485,7 +488,12 @@ public class BBSModClient implements ClientModInitializer
 
         BBSMod.events.post(new RegisterClientSettingsEvent());
 
-        BBSSettings.language.postCallback((v, f) -> reloadLanguage(getLanguageKey()));
+        BBSSettings.language.postCallback((v, f) ->
+        {
+            RtlFontManager.invalidate();
+            reloadLanguage(getLanguageKey());
+            RtlFontManager.ensureLoaded();
+        });
 
         BBSSettings.editorTimeMode.postCallback((v, f) ->
         {
@@ -1014,6 +1022,8 @@ public class BBSModClient implements ClientModInitializer
     {
         BBSSettings.syncAppliedAppearance();
         refreshModelEditorHover();
+        CustomFontManager.invalidate();
+        RtlFontManager.invalidate();
 
         for (Settings settings : BBSMod.getSettings().modules.values())
         {
@@ -1106,5 +1116,6 @@ public class BBSModClient implements ClientModInitializer
     public static void reloadLanguage(String language)
     {
         l10n.reload(language, BBSMod.getProvider());
+        RtlFontManager.ensureLoaded();
     }
 }

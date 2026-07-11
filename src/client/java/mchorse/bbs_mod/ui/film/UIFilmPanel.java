@@ -199,11 +199,13 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     public final Matrix4f lastView = new Matrix4f();
     public final Matrix4f lastProjection = new Matrix4f();
+    public final Matrix4f lastGizmoMatrix = new Matrix4f();
+    public boolean hasLastGizmoMatrix;
 
     private Timer flightEditTime = new Timer(100);
 
     private List<UIElement> panels = new ArrayList<>();
-    private UIElement secretPlay;
+    private UIFilmFullscreenPlaybackBar fullscreenPlaybackBar;
 
     private boolean newFilm;
     private final Map<String, UIElement> panelById = new LinkedHashMap<>();
@@ -913,8 +915,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.panels.add(this.replayEditor);
         this.panels.add(this.actionEditor);
 
-        this.secretPlay = new UIElement();
-        this.secretPlay.keys().register(Keys.PLAUSE, () -> this.preview.plause.clickItself()).active(() -> !this.isFlying() && !this.canBeSeen() && this.data != null).category(editor);
+        this.fullscreenPlaybackBar = new UIFilmFullscreenPlaybackBar(this);
+        this.fullscreenPlaybackBar.keys().register(Keys.PLAUSE, () -> this.preview.plause.clickItself()).active(() -> this.fullscreenPlaybackBar.isKeybindActive()).category(editor);
 
         this.setUndoId("film_panel");
         this.cameraEditor.setUndoId("camera_editor");
@@ -1986,7 +1988,9 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             this.clearingSelections = true;
             try
             {
-                if (!"cameraTimeline".equals(timelineId) && this.cameraEditor != null && this.cameraEditor.clips != null)
+                /* Replay timeline interaction should not drop the camera clip selection; users
+                 * often keep a camera clip selected while editing replay keyframes in unified layout. */
+                if (!"cameraTimeline".equals(timelineId) && !"replayTimeline".equals(timelineId) && this.cameraEditor != null && this.cameraEditor.clips != null)
                 {
                     this.cameraEditor.clips.pickClip(null);
                 }
@@ -3932,7 +3936,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             this.updateFilmDocumentView();
         }
 
-        this.getContext().menu.getRoot().add(this.secretPlay);
+        this.fullscreenPlaybackBar.attachToRoot();
     }
 
     @Override
@@ -3975,7 +3979,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.getCameraController().remove(this.runner);
 
         this.disableContext();
-        this.secretPlay.removeFromParent();
+        this.fullscreenPlaybackBar.removeFromParent();
     }
 
     private void disableContext()
@@ -4862,6 +4866,20 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         }
 
         this.controller.renderFrame(context);
+        this.cacheGizmoMatrix();
+    }
+
+    private void cacheGizmoMatrix()
+    {
+        if (Gizmo.INSTANCE.hasGizmoMatrix)
+        {
+            this.lastGizmoMatrix.set(Gizmo.INSTANCE.lastGizmoMatrix);
+            this.hasLastGizmoMatrix = true;
+        }
+        else
+        {
+            this.hasLastGizmoMatrix = false;
+        }
     }
 
     /* IUICameraWorkDelegate implementation */

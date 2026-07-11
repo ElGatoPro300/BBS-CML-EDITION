@@ -11,9 +11,9 @@ import mchorse.bbs_mod.ui.utils.UI;
 /**
  * Small pop-up menu that exposes the viewport gizmo size (backed by {@link BBSSettings#axesScale}).
  *
- * The size is edited through a regular trackpad, so dragging changes the value; holding Shift while
- * dragging uses the "strong" step (5) and the +/- arrows step by 1. The value is persisted in the
- * config the moment it changes because {@link BBSSettings#axesScale} is a saved setting.
+ * The size is edited through a regular trackpad: drag steps by 0.5, Alt steps by 0.1, Shift by 5.
+ * The value is persisted in the config the moment it changes because {@link BBSSettings#axesScale}
+ * is a saved setting.
  */
 public class UIGizmoSizeContextMenu extends UIContextMenu
 {
@@ -24,7 +24,7 @@ public class UIGizmoSizeContextMenu extends UIContextMenu
     public UIGizmoSizeContextMenu()
     {
         this.size = new UITrackpad((v) -> BBSSettings.axesScale.set(v.floatValue()));
-        this.size.limit(BBSSettings.axesScale).increment(1D).values(1D, 0.2D, 5D);
+        this.size.limit(BBSSettings.axesScale).increment(0.5D).values(0.5D, 0.1D, 5D);
         this.size.setValue(BBSSettings.axesScale.get());
 
         this.column = UI.column(5, 10,

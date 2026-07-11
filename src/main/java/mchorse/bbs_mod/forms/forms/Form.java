@@ -8,10 +8,14 @@ import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.ITickable;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.forms.utils.Anchor;
+import mchorse.bbs_mod.forms.forms.utils.Illusion;
+import mchorse.bbs_mod.forms.forms.utils.LookAt;
 import mchorse.bbs_mod.forms.states.AnimationState;
 import mchorse.bbs_mod.forms.states.AnimationStates;
 import mchorse.bbs_mod.forms.states.StatePlayer;
 import mchorse.bbs_mod.forms.values.ValueAnchor;
+import mchorse.bbs_mod.forms.values.ValueIllusion;
+import mchorse.bbs_mod.forms.values.ValueLookAt;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.settings.values.core.ValueColor;
 import mchorse.bbs_mod.settings.values.core.ValueGroup;
@@ -37,17 +41,36 @@ public abstract class Form extends ValueGroup
     public final ValueBoolean animatable = new ValueBoolean("animatable", true);
     public final ValueString trackName = new ValueString("track_name", "");
     public final ValueFloat lighting = new ValueFloat("lighting", 1F);
+
+    /* Mine-imator style render depth: forms with a lower value are drawn earlier, so a
+     * semi-transparent form with lower render depth occludes forms behind it that have a
+     * higher render depth (they fail the depth test instead of blending through). */
+    public final ValueFloat renderDepth = new ValueFloat("render_depth", 0F);
+    public final ValueBoolean renderDepthEnabled = new ValueBoolean("render_depth_enabled", true);
     public final ValueString name = new ValueString("name", "");
     public final ValueTransform transform = new ValueTransform("transform", new Transform());
     public final ValueTransform transformOverlay = new ValueTransform("transform_overlay", new Transform());
     public final ValueFloat uiScale = new ValueFloat("uiScale", 1F);
     public final ValueAnchor anchor = new ValueAnchor("anchor", new Anchor());
+    public final ValueLookAt lookAt = new ValueLookAt("look_at", new LookAt());
     public final ValueBoolean shaderShadow = new ValueBoolean("shaderShadow", true);
 
     /* FS-style paint overlay: paintColor fully overrides the texture RGB, its alpha channel is the paint opacity (0 = off, 1 = full paint) */
     public final ValueColor paintColor = new ValueColor("paint_color", new Color().set(1F, 1F, 1F, 0F));
 
+    /* Illusions: purely visual duplicates of this form that spread away from it in
+     * the picked directions (no extra entities, so they're cheap to render) */
+    public final ValueIllusion illusion = new ValueIllusion("illusion", new Illusion());
+    public final ValueIllusion illusionOverlay = new ValueIllusion("illusion_overlay", new Illusion());
+
+    /* Extra transform that gets applied only to the illusions (optionally gradually
+     * from the first illusion to the last one, see Illusion.gradual) */
+    public final ValueTransform illusionTransform = new ValueTransform("illusion_transform", new Transform());
+    public final ValueTransform illusionTransformOverlay = new ValueTransform("illusion_transform_overlay", new Transform());
+
     public final List<ValueTransform> additionalTransforms = new ArrayList<>();
+    public final List<ValueIllusion> additionalIllusions = new ArrayList<>();
+    public final List<ValueTransform> additionalIllusionTransforms = new ArrayList<>();
 
     /* Hitbox properties */
     public final ValueBoolean hitbox = new ValueBoolean("hitbox", false);
@@ -84,6 +107,11 @@ public abstract class Form extends ValueGroup
         this.add(this.animatable);
         this.add(this.trackName);
         this.add(this.lighting);
+        this.add(this.renderDepth);
+
+        /* The toggle isn't keyframable, so it shouldn't show up as a timeline track. */
+        this.renderDepthEnabled.invisible();
+        this.add(this.renderDepthEnabled);
         this.add(this.name);
         this.add(this.transform);
         this.add(this.transformOverlay);
@@ -98,8 +126,31 @@ public abstract class Form extends ValueGroup
 
         this.add(this.uiScale);
         this.add(this.anchor);
+        this.add(this.lookAt);
         this.add(this.shaderShadow);
         this.add(this.paintColor);
+
+        this.add(this.illusion);
+        this.add(this.illusionOverlay);
+
+        for (int i = 0; i < BBSSettings.recordingPoseTransformOverlays.get(); i++)
+        {
+            ValueIllusion valueIllusion = new ValueIllusion("illusion_overlay" + i, new Illusion());
+
+            this.additionalIllusions.add(valueIllusion);
+            this.add(valueIllusion);
+        }
+
+        this.add(this.illusionTransform);
+        this.add(this.illusionTransformOverlay);
+
+        for (int i = 0; i < BBSSettings.recordingPoseTransformOverlays.get(); i++)
+        {
+            ValueTransform valueTransform = new ValueTransform("illusion_transform_overlay" + i, new Transform());
+
+            this.additionalIllusionTransforms.add(valueTransform);
+            this.add(valueTransform);
+        }
 
         this.hitbox.invisible();
         this.hitboxWidth.invisible();

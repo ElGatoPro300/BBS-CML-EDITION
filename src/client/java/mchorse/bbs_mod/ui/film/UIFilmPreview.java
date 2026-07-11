@@ -22,6 +22,7 @@ import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanels;
 import mchorse.bbs_mod.ui.film.controller.UIGizmoSizeContextMenu;
+import mchorse.bbs_mod.ui.film.controller.UIGizmoTranslateSpeedContextMenu;
 import mchorse.bbs_mod.ui.film.controller.UIOnionSkinContextMenu;
 import mchorse.bbs_mod.ui.film.utils.UICameraUtils;
 import mchorse.bbs_mod.ui.framework.UIContext;
@@ -81,6 +82,7 @@ public class UIFilmPreview extends UIElement
     public UIIcon gizmoRotate;
     public UIIcon gizmoCombined;
     public UIIcon gizmoSize;
+    public UIIcon gizmoTranslateSpeed;
     public UIIcon onionSkin;
     public UIIcon plause;
     public UIIcon teleport;
@@ -112,8 +114,13 @@ public class UIFilmPreview extends UIElement
         );
         this.gizmoSize.tooltip(UIKeys.FILM_GIZMO_SIZE);
 
-        this.gizmos = UI.row(0, this.gizmoMove, this.gizmoScale, this.gizmoRotate, this.gizmoCombined, this.gizmoSize);
-        this.gizmos.relative(this).x(4).y(4).wh(104, 20);
+        this.gizmoTranslateSpeed = new UIIcon(Icons.FORWARD, (b) ->
+            this.getContext().replaceContextMenu(new UIGizmoTranslateSpeedContextMenu())
+        );
+        this.gizmoTranslateSpeed.tooltip(UIKeys.FILM_GIZMO_TRANSLATE_SPEED);
+
+        this.gizmos = UI.column(0, this.gizmoMove, this.gizmoScale, this.gizmoRotate, this.gizmoCombined, this.gizmoSize, this.gizmoTranslateSpeed);
+        this.gizmos.relative(this).x(4).y(4).w(20).h(120);
         this.add(this.gizmos);
 
         this.keys().register(Keys.TRANSFORMATIONS_COMBINED, () ->
@@ -380,6 +387,17 @@ public class UIFilmPreview extends UIElement
         }
 
         return super.subMouseClicked(context);
+    }
+
+    @Override
+    protected boolean subMouseReleased(UIContext context)
+    {
+        if (!this.panel.isFlying())
+        {
+            this.panel.replayEditor.stopGizmoDrag();
+        }
+
+        return super.subMouseReleased(context);
     }
 
     @Override

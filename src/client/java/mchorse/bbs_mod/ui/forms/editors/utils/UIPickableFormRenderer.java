@@ -87,6 +87,19 @@ public class UIPickableFormRenderer extends UIFormRenderer implements GizmoSurfa
         this.renderForm = renderForm;
     }
 
+    private boolean isPreviewVisible()
+    {
+        return this.renderForm == null || this.renderForm.get();
+    }
+
+    private void clearGizmoPickState()
+    {
+        this.stencil.clearPicking();
+        this.gizmoController.updateHover();
+        this.hasGizmoMatrix = false;
+        Gizmo.INSTANCE.setHoveredIndex(-1);
+    }
+
     public IEntity getTargetEntity()
     {
         return this.target == null ? this.entity : this.target;
@@ -135,8 +148,10 @@ public class UIPickableFormRenderer extends UIFormRenderer implements GizmoSurfa
             return;
         }
 
-        if (this.renderForm != null && !this.renderForm.get())
+        if (!this.isPreviewVisible())
         {
+            this.clearGizmoPickState();
+
             return;
         }
 
@@ -148,14 +163,11 @@ public class UIPickableFormRenderer extends UIFormRenderer implements GizmoSurfa
             .modelRenderer()
             .equipment(false);
 
-        if (this.renderForm == null || this.renderForm.get())
-        {
-            FormUtilsClient.render(this.form, formContext);
+        FormUtilsClient.render(this.form, formContext);
 
-            if (this.form.hitbox.get())
-            {
-                this.renderFormHitbox(context);
-            }
+        if (this.form.hitbox.get())
+        {
+            this.renderFormHitbox(context);
         }
 
         if (this.area.w > 0 && this.area.h > 0)
@@ -310,7 +322,7 @@ public class UIPickableFormRenderer extends UIFormRenderer implements GizmoSurfa
     {
         super.render(context);
 
-        if (!this.stencil.hasPicked())
+        if (!this.isPreviewVisible() || !this.stencil.hasPicked())
         {
             return;
         }
@@ -356,7 +368,7 @@ public class UIPickableFormRenderer extends UIFormRenderer implements GizmoSurfa
     @Override
     protected void renderGrid(UIContext context)
     {
-        if (this.renderForm == null || this.renderForm.get())
+        if (this.isPreviewVisible())
         {
             super.renderGrid(context);
         }

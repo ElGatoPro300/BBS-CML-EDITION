@@ -6,6 +6,8 @@ import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.settings.values.core.ValueGroup;
+import mchorse.bbs_mod.text.RtlAwtTextRenderer;
+import mchorse.bbs_mod.text.RtlTextEngine;
 import mchorse.bbs_mod.ui.ContentType;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
@@ -368,7 +370,9 @@ public class UIMainMenuBar extends UIElement
 
             try
             {
-                int textWidth = MinecraftClient.getInstance().textRenderer.getWidth(label.get());
+                int textWidth = RtlAwtTextRenderer.isReady() && RtlTextEngine.isActive()
+                    ? RtlAwtTextRenderer.getWidth(label.get())
+                    : MinecraftClient.getInstance().textRenderer.getWidth(label.get());
                 this.w(textWidth + 10);
             }
             catch (Exception e)
@@ -382,7 +386,9 @@ public class UIMainMenuBar extends UIElement
         {
             try
             {
-                int textWidth = MinecraftClient.getInstance().textRenderer.getWidth(this.label.get());
+                int textWidth = RtlAwtTextRenderer.isReady() && RtlTextEngine.isActive()
+                    ? RtlAwtTextRenderer.getWidth(this.label.get())
+                    : MinecraftClient.getInstance().textRenderer.getWidth(this.label.get());
                 this.w(textWidth + 10);
             }
             catch (Exception e)

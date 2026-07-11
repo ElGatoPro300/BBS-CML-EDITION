@@ -205,6 +205,8 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
 
         /* Do not exceed user defined scale; only reduce if necessary */
         finalScale = this.form.uiScale.get() * Math.min(1F, auto);
+        float structScaleUI = Math.max(Math.max(this.form.scaleX.get(), this.form.scaleY.get()), this.form.scaleZ.get());
+        finalScale *= structScaleUI;
         matrices.scale(finalScale, finalScale, finalScale);
 
         matrices.peek().getNormalMatrix().getScale(Vectors.EMPTY_3F);
@@ -346,6 +348,9 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
         this.ensureLoaded();
 
         context.stack.push();
+
+        /* Apply structure scale */
+        context.stack.scale(this.form.scaleX.get(), this.form.scaleY.get(), this.form.scaleZ.get());
 
         boolean optimize = true;
         boolean picking = context.isPicking();

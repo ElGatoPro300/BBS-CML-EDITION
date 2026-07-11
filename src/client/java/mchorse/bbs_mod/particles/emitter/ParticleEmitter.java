@@ -51,6 +51,8 @@ public class ParticleEmitter
     public LivingEntity target;
     public World world;
     public boolean lit;
+    public boolean modelRenderer;
+    public boolean worldVertices;
 
     public boolean running = true;
     private Particle uiParticle;
@@ -514,7 +516,9 @@ public class ParticleEmitter
             RenderSystem.setShader(program);
             RenderSystem.disableBlend();
             RenderSystem.disableCull();
+
             BufferRenderer.drawWithGlobalProgram(builder.end());
+
             RenderSystem.enableCull();
         }
 
