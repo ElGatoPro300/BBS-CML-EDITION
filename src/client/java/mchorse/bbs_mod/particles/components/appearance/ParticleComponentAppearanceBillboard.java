@@ -384,9 +384,12 @@ public class ParticleComponentAppearanceBillboard extends ParticleComponentBase 
             entityPitch = (float) (-(Math.atan2(dY, horizontalDistance) * (180D / Math.PI))) + 180;
         }
 
-        px -= emitter.cX;
-        py -= emitter.cY;
-        pz -= emitter.cZ;
+        if (!emitter.worldVertices)
+        {
+            px -= emitter.cX;
+            py -= emitter.cY;
+            pz -= emitter.cZ;
+        }
 
         /* Calculate the geometry for billboards using cool matrix math */
         this.vertices[0].set(-this.w / 2, -this.h / 2, 0, 1);

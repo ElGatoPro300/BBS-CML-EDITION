@@ -24,7 +24,9 @@ import mchorse.bbs_mod.ui.forms.UIFormPalette;
 import mchorse.bbs_mod.ui.forms.UINestedEdit;
 import mchorse.bbs_mod.ui.forms.UIToggleEditorEvent;
 import mchorse.bbs_mod.ui.forms.editors.panels.widgets.UIItemStack;
+import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.UIContext;
+import mchorse.bbs_mod.ui.framework.elements.IUIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIScrollView;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
@@ -39,6 +41,7 @@ import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIDraggable;
 import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
 import mchorse.bbs_mod.ui.model_blocks.camera.ImmersiveModelBlockCameraController;
+import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.ui.utils.StencilFormFramebuffer;
 import mchorse.bbs_mod.ui.utils.UI;
@@ -49,6 +52,11 @@ import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.AABB;
 import mchorse.bbs_mod.utils.Direction;
+<<<<<<< HEAD
+=======
+import mchorse.bbs_mod.utils.MathUtils;
+import mchorse.bbs_mod.utils.MatrixStackUtils;
+>>>>>>> master
 import mchorse.bbs_mod.utils.PlayerUtils;
 import mchorse.bbs_mod.utils.RayTracing;
 import mchorse.bbs_mod.utils.colors.Colors;
@@ -69,7 +77,6 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Vec3d;
 
 import org.joml.Matrix4f;
-import org.joml.Matrix4fStack;
 import org.joml.Quaternionf;
 import org.joml.Vector2d;
 import org.joml.Vector2i;
@@ -78,8 +85,8 @@ import org.joml.Vector3f;
 
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.systems.VertexSorter;
 
+import org.lwjgl.glfw.GLFW;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
 
@@ -208,10 +215,11 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
     private StencilMap gizmoStencilMap = new StencilMap();
     private GizmoController gizmoController = new GizmoController(this);
     private final Matrix4f gizmoWorldMatrix = new Matrix4f();
+    private final Matrix4f gizmoProjection = new Matrix4f();
+    private final Matrix4f gizmoInterfaceMatrix = new Matrix4f();
     private final Vector3d gizmoCameraPosition = new Vector3d();
     private boolean hasGizmo;
-    private final Matrix4f capturedGizmoMatrix = new Matrix4f();
-    private final Matrix4f capturedProjection = new Matrix4f();
+    private boolean hasGizmoInterfaceMatrix;
 
     private Set<ModelBlockEntity> toSave = new HashSet<>();
 
@@ -1541,6 +1549,8 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
 
     @Override
     public void disappear() {
+        this.dismissFormPaletteSilently();
+
         super.disappear();
 
         this.keyDude.removeFromParent();
@@ -1549,6 +1559,32 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         if (this.cameraController != null) {
             BBSModClient.getCameraController().remove(this.cameraController);
         }
+    }
+
+    /**
+     * Fully closes the nested form palette (edit mode, model editor, camera controller)
+     * and restores the normal model block cards. Used when leaving this panel so the
+     * edit session does not linger in memory and reopen unexpectedly later.
+     */
+    public void dismissFormPaletteSilently()
+    {
+        List<UIFormPalette> palettes = this.getChildren(UIFormPalette.class);
+
+        if (palettes.isEmpty())
+        {
+            return;
+        }
+
+        UIFormPalette palette = palettes.get(0);
+
+        if (palette.editor.isEditing())
+        {
+            palette.toggleEditor();
+        }
+
+        this.removeCameraController();
+        palette.removeFromParent();
+        this.resize();
     }
 
     public ModelBlockEntity getModelBlock() {
@@ -1602,6 +1638,7 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
     public void close() {
         super.close();
 
+        this.dismissFormPaletteSilently();
         this.removeCameraController();
         this.saveLayout();
 
@@ -1882,12 +1919,50 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
     }
 
     @Override
-    protected boolean subKeyPressed(UIContext context) {
-        return super.subKeyPressed(context);
+    protected IUIElement childrenKeyPressed(UIContext context)
+    {
+        if (context.isPressed(GLFW.GLFW_KEY_ESCAPE) && !this.getChildren(UIFormPalette.class).isEmpty())
+        {
+            /* Body-part form picker (UIFormEditorList) and the nested palette editor must
+             * handle Esc first — e.g. close the picker and stay in form edit mode. */
+            IUIElement handled = super.childrenKeyPressed(context);
+
+            if (handled != null)
+            {
+                return handled;
+            }
+
+            this.dismissFormPaletteSilently();
+
+            return this;
+        }
+
+        return super.childrenKeyPressed(context);
     }
 
     @Override
     public void render(UIContext context) {
+        if (BBSRendering.isIrisShadersEnabled())
+        {
+            this.renderGizmoStencilInterface(context);
+
+            if (this.hasGizmo && this.hasGizmoInterfaceMatrix)
+            {
+                this.applyGizmoCaptureToSingleton();
+                this.gizmoController.renderGizmo(context, this.gizmoProjection, this.getGizmoArea());
+            }
+        }
+        else
+        {
+            this.renderGizmoStencilInterface(context);
+
+            if (this.hasGizmo && this.hasGizmoInterfaceMatrix)
+            {
+                this.applyGizmoCaptureToSingleton();
+                this.gizmoController.renderGizmo(context, this.gizmoProjection, this.getGizmoArea());
+            }
+        }
+
         /*
          * Capture pre-drag layout once per drag, before updateDrag fires the
          * callback that undocks the card and rearranges its column.
@@ -2012,6 +2087,7 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
                         border);
             }
         }
+<<<<<<< HEAD
 
         if (BBSRendering.isIrisShadersEnabled() && this.hasGizmo && this.modelBlock != null && !this.isEditing(this.modelBlock))
         {
@@ -2065,14 +2141,28 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
             GlStateManager._glBindFramebuffer(GL30.GL_FRAMEBUFFER, previousFbo);
             GlStateManager._viewport(previousViewport[0], previousViewport[1], previousViewport[2], previousViewport[3]);
         }
+=======
+>>>>>>> master
     }
 
     @Override
     public void renderInWorld(WorldRenderContext context) {
         super.renderInWorld(context);
 
-        if (context.matrixStack() == null) {
-            return;
+        MatrixStack matrices = context.matrixStack();
+        boolean shaderPath = BBSRendering.isIrisShadersEnabled();
+
+        if (shaderPath)
+        {
+            if (matrices == null)
+            {
+                return;
+            }
+        }
+        else
+        {
+            /* AFTER_ENTITIES has no reliable stack; draw block overlays in absolute world space. */
+            matrices = new MatrixStack();
         }
 
         Camera camera = context.camera();
@@ -2101,33 +2191,102 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
             BlockPos blockPos = entity.getPos();
 
             if (!this.isEditing(entity)) {
-                context.matrixStack().push();
-                context.matrixStack().translate(blockPos.getX() - pos.x, blockPos.getY() - pos.y,
-                        blockPos.getZ() - pos.z);
+                matrices.push();
 
-                if (this.hovered == entity || entity == this.modelBlock) {
-                    Draw.renderBox(context.matrixStack(), 0D, 0D, 0D, 1D, 1D, 1D, 0, 0.5F, 1F);
-                } else {
-                    Draw.renderBox(context.matrixStack(), 0D, 0D, 0D, 1D, 1D, 1D);
+                if (shaderPath)
+                {
+                    matrices.translate(blockPos.getX() - pos.x, blockPos.getY() - pos.y,
+                            blockPos.getZ() - pos.z);
+
+                    if (this.hovered == entity || entity == this.modelBlock) {
+                        Draw.renderBox(matrices, 0D, 0D, 0D, 1D, 1D, 1D, 0, 0.5F, 1F);
+                    } else {
+                        Draw.renderBox(matrices, 0D, 0D, 0D, 1D, 1D, 1D);
+                    }
+                }
+                else
+                {
+                    matrices.translate(-pos.x, -pos.y, -pos.z);
+
+                    if (this.hovered == entity || entity == this.modelBlock) {
+                        Draw.renderBox(matrices, blockPos.getX(), blockPos.getY(), blockPos.getZ(), 1D, 1D, 1D, 0, 0.5F, 1F);
+                    } else {
+                        Draw.renderBox(matrices, blockPos.getX(), blockPos.getY(), blockPos.getZ(), 1D, 1D, 1D);
+                    }
                 }
 
-                context.matrixStack().pop();
+                matrices.pop();
             }
         }
 
-        this.renderGizmo(context, pos);
+        this.renderSelectedHitbox(matrices, pos, shaderPath);
+        this.renderGizmo(context, pos, matrices);
 
         RenderSystem.enableDepthTest();
     }
 
-    /** Renders the interactive gizmo at the edited model block (colored pass + pick pass). */
-    private void renderGizmo(WorldRenderContext context, Vec3d cameraPos) {
+    /** Draws the selected block's form hitbox wireframe in world space. */
+    private void renderSelectedHitbox(MatrixStack matrices, Vec3d cameraPos, boolean shaderPath)
+    {
+        if (this.modelBlock == null || this.isEditing(this.modelBlock))
+        {
+            return;
+        }
+
+        ModelProperties properties = this.modelBlock.getProperties();
+
+        if (!properties.isHitbox())
+        {
+            return;
+        }
+
+        Form form = properties.getForm();
+
+        if (form == null || !form.hitbox.get())
+        {
+            return;
+        }
+
+        float hitboxW = form.hitboxWidth.get();
+        float hitboxH = form.hitboxHeight.get();
+
+        if (hitboxW <= 0F || hitboxH <= 0F)
+        {
+            return;
+        }
+
+        Transform blockTransform = properties.getTransform();
+        BlockPos blockPos = this.modelBlock.getPos();
+
+        matrices.push();
+
+        if (shaderPath)
+        {
+            matrices.translate(blockPos.getX() - cameraPos.x + 0.5D, blockPos.getY() - cameraPos.y,
+                    blockPos.getZ() - cameraPos.z + 0.5D);
+            MatrixStackUtils.applyTransform(matrices, blockTransform);
+        }
+        else
+        {
+            matrices.translate(-cameraPos.x, -cameraPos.y, -cameraPos.z);
+            matrices.translate(blockPos.getX() + 0.5D, blockPos.getY(), blockPos.getZ() + 0.5D);
+            MatrixStackUtils.applyTransform(matrices, blockTransform);
+        }
+
+        Draw.renderBox(matrices, -hitboxW / 2D, 0D, -hitboxW / 2D, hitboxW, hitboxH, hitboxW, 0F, 0.5F, 1F);
+        matrices.pop();
+    }
+
+    /** Renders the interactive gizmo at the edited model block. */
+    private void renderGizmo(WorldRenderContext context, Vec3d cameraPos, MatrixStack stack) {
         this.hasGizmo = false;
+        this.hasGizmoInterfaceMatrix = false;
 
         /* Don't draw/pick this panel's own gizmo while the block's nested form/model editor is
          * open on top - that editor has its own gizmo (rendered in its own viewport), and
          * showing both at once would double up and fight over the same drag. */
-        if (this.modelBlock == null || context.matrixStack() == null || this.isEditing(this.modelBlock)) {
+        if (this.modelBlock == null || this.isEditing(this.modelBlock))
+        {
             this.gizmoStencil.clearPicking();
             this.gizmoController.updateHover();
 
@@ -2151,66 +2310,104 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
 
         this.gizmoCameraPosition.set(cameraPos.x, cameraPos.y, cameraPos.z);
         this.hasGizmo = true;
+        this.gizmoProjection.set(RenderSystem.getProjectionMatrix());
 
-        MatrixStack stack = context.matrixStack();
-        MinecraftClient mc = MinecraftClient.getInstance();
-
-        stack.push();
-        stack.translate(px - cameraPos.x, py - cameraPos.y, pz - cameraPos.z);
-
-        /* The colored pass is always deferred to WorldRenderEvents.LAST: the model block's own
-         * model (a block entity) renders after this event, so drawing here would leave the
-         * gizmo partially hidden behind the model, and with Iris shaders the immediate draw
-         * gets consumed/displaced by the shader passes. Rendering at LAST puts the gizmo fully
-         * on top in both cases (same approach as the film editor's in-world gizmos). */
-        Gizmo.INSTANCE.deferRender(new Matrix4f(stack.peek().getPositionMatrix()), false, null);
+        MatrixStack gizmoStack;
 
         if (BBSRendering.isIrisShadersEnabled())
         {
-            this.capturedGizmoMatrix.set(stack.peek().getPositionMatrix());
-            this.capturedProjection.set(RenderSystem.getProjectionMatrix());
+            /* Films#render clears Gizmo#hasGizmoMatrix after this pass, so keep a local
+             * copy for the deferred UI draw + stencil pick. */
+            gizmoStack = stack;
         }
         else
         {
-            /* Pick pass: gizmo handles only, into this panel's own offscreen stencil framebuffer
-             * (draw order is irrelevant offscreen). Whatever framebuffer was bound - vanilla's or
-             * Iris' - is restored afterwards so the world render continues untouched. */
-            int previousFbo = GL11.glGetInteger(GL30.GL_DRAW_FRAMEBUFFER_BINDING);
-            int[] previousViewport = new int[4];
-
-            GL11.glGetIntegerv(GL11.GL_VIEWPORT, previousViewport);
-
-            this.gizmoStencil.setup(Link.bbs("stencil_model_block"));
-
-            Texture texture = this.gizmoStencil.getFramebuffer().getMainTexture();
-            int w = mc.getWindow().getWidth();
-            int h = mc.getWindow().getHeight();
-
-            if (texture.width != w || texture.height != h) {
-                this.gizmoStencil.resize(w, h);
-            }
-
-            this.gizmoStencilMap.setup();
-            this.gizmoStencil.apply();
-
-            Gizmo.INSTANCE.renderStencil(stack, this.gizmoStencilMap);
-
-            int mouseX = (int) mc.mouse.getX();
-            int mouseY = (int) mc.mouse.getY();
-
-            this.gizmoStencil.pick(mouseX, h - mouseY);
-            this.gizmoStencil.unbind(this.gizmoStencilMap);
-            this.gizmoController.updateHover();
-
-            GlStateManager._glBindFramebuffer(GL30.GL_FRAMEBUFFER, previousFbo);
-            GlStateManager._viewport(previousViewport[0], previousViewport[1], previousViewport[2], previousViewport[3]);
+            /* Without shaders the world stack is unreliable; capture only the camera-relative
+             * block transform and premultiply BBSRendering.camera in applyGizmoCaptureToSingleton. */
+            gizmoStack = new MatrixStack();
         }
 
+        gizmoStack.push();
+        gizmoStack.translate(px - cameraPos.x, py - cameraPos.y, pz - cameraPos.z);
+
+        if (this.transform != null && this.transform.isLocal())
+        {
+            MatrixStackUtils.multiply(gizmoStack, new Matrix4f(blockTransform.createRotationMatrix()));
+        }
+
+        this.gizmoInterfaceMatrix.set(gizmoStack.peek().getPositionMatrix());
+        this.hasGizmoInterfaceMatrix = true;
+        Gizmo.INSTANCE.captureVisual(gizmoStack);
+
         RenderSystem.enableDepthTest();
-        stack.pop();
+        gizmoStack.pop();
     }
 
+    /**
+     * The screen region the gizmo renders into: the full menu viewport. The model
+     * block gizmo is drawn onto the full-screen world view, not this panel's card
+     * area (which is shorter than the screen because of the taskbar).
+     */
+    private Area getGizmoArea()
+    {
+        UIContext context = this.getContext();
 
+        return context != null ? context.menu.viewport : this.area;
+    }
+
+    private void applyGizmoCaptureToSingleton()
+    {
+        if (BBSRendering.isIrisShadersEnabled())
+        {
+            Gizmo.INSTANCE.lastGizmoMatrix.set(this.gizmoInterfaceMatrix);
+        }
+        else
+        {
+            /* Without shaders the world pass does not bake BBSRendering.camera into the
+             * captured matrix; premultiply it here so the UI draw matches the shader path. */
+            Gizmo.INSTANCE.lastGizmoMatrix.set(BBSRendering.camera);
+            Gizmo.INSTANCE.lastGizmoMatrix.mul(this.gizmoInterfaceMatrix);
+        }
+
+        Gizmo.INSTANCE.hasGizmoMatrix = true;
+    }
+
+    private void renderGizmoStencilInterface(UIContext context)
+    {
+        if (!this.hasGizmo || !this.hasGizmoInterfaceMatrix)
+        {
+            this.gizmoStencil.clearPicking();
+            this.gizmoController.updateHover();
+
+            return;
+        }
+
+        MinecraftClient mc = MinecraftClient.getInstance();
+
+        this.gizmoStencil.setup(Link.bbs("stencil_model_block"));
+
+        int w = mc.getWindow().getWidth();
+        int h = mc.getWindow().getHeight();
+        Texture texture = this.gizmoStencil.getFramebuffer().getMainTexture();
+
+        if (texture.width != w || texture.height != h)
+        {
+            this.gizmoStencil.resize(w, h);
+        }
+
+        this.gizmoStencilMap.setup();
+        context.batcher.flush();
+        this.gizmoStencil.apply();
+
+        this.applyGizmoCaptureToSingleton();
+        Gizmo.INSTANCE.renderStencilInterface(context, this.gizmoProjection, this.getGizmoArea(), this.gizmoStencilMap);
+
+        this.gizmoStencil.pick((int) mc.mouse.getX(), (int) (h - mc.mouse.getY()));
+        this.gizmoStencil.unbind(this.gizmoStencilMap);
+        this.gizmoController.updateHover();
+
+        mc.getFramebuffer().beginWrite(true);
+    }
 
     @Override
     public StencilFormFramebuffer getGizmoStencil() {

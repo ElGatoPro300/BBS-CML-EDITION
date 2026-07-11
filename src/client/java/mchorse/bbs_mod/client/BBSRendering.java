@@ -94,6 +94,26 @@ public class BBSRendering
 
     public static final Matrix4f camera = new Matrix4f();
 
+    /**
+     * Iris world rendering multiplies the terrain {@code positionMatrix} into the
+     * {@link MatrixStack} before entity transforms.
+     * {@link Matrix4f#getTranslation()} on that product no longer equals the
+     * camera-relative entity offset, so callers that rebuild world space from
+     * translation + camera position must strip the terrain matrix first.
+     */
+    public static Matrix4f stripTerrainPositionMatrix(Matrix4f composed)
+    {
+        Matrix4f inverse = new Matrix4f(camera);
+
+        inverse.invert();
+
+        Matrix4f entity = new Matrix4f();
+
+        inverse.mul(composed, entity);
+
+        return entity;
+    }
+
     private static boolean customSize;
     private static boolean iris;
     private static boolean sodium;

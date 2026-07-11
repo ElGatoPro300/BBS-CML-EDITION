@@ -39,6 +39,7 @@ import mchorse.bbs_mod.ui.framework.elements.utils.UIModelRenderer;
 import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.ui.utils.StencilFormFramebuffer;
 import mchorse.bbs_mod.ui.utils.gizmo.GizmoController;
+import mchorse.bbs_mod.ui.utils.gizmo.GizmoMatrixUtils;
 import mchorse.bbs_mod.ui.utils.gizmo.GizmoRayFrame;
 import mchorse.bbs_mod.ui.utils.gizmo.GizmoSurface;
 import mchorse.bbs_mod.utils.MathUtils;
@@ -78,6 +79,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 import org.slf4j.Logger;
 
@@ -98,6 +100,8 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
     private ModelCube selectedCube;
     private boolean dirty = true;
 
+    private Function<Float, Matrix4f> formTransformGizmoOrigin;
+
     /* ---- IK gizmo state ---- */
     /** The currently active IK chain config — set by UIModelIKPanel. null = no IK gizmo. */
     private IKChainConfig activeIKChain;
@@ -109,6 +113,9 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
     private String lastModelId;
     private final Matrix4f lastGizmoMatrix = new Matrix4f();
     private boolean hasGizmoMatrix;
+
+    /** When true, trackball drag matches the film replay transform keyframe path. */
+    private boolean formTransformGizmoDrag;
 
     private ArmorSlot fpHandPreviewSlot;
     private boolean fpHandPreviewMainHand;
@@ -408,6 +415,11 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
         return this.stencil;
     }
 
+    public void setFormTransformGizmoOrigin(Function<Float, Matrix4f> origin)
+    {
+        this.formTransformGizmoOrigin = origin;
+    }
+
     public void setSelectedBone(String bone)
     {
         this.selectedBone = bone;
@@ -457,47 +469,21 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
 
         this.renderIKGizmo(context, matrixCache);
 
-        /* Render Axes */
-        Matrix4f gizmoMatrix = null;
-        this.hasGizmoMatrix = false;
+        Matrix4f gizmoMatrix = this.resolveGizmoMatrix(context, matrixCache);
+        this.hasGizmoMatrix = gizmoMatrix != null;
 
-        if (UIBaseMenu.renderAxes && this.selectedBone != null && !this.selectedBone.isEmpty())
+        if (gizmoMatrix != null)
         {
-            if (this.selectedCube != null)
-            {
-                gizmoMatrix = this.getCubePivotMatrix(matrixCache);
-            }
-            else
-            {
-                MatrixCacheEntry entry = matrixCache.get(this.selectedBone);
+            this.lastGizmoMatrix.set(gizmoMatrix);
 
-                if (entry != null)
-                {
-                    Matrix4f matrix = entry.matrix();
+            stack.push();
+            MatrixStackUtils.multiply(stack, gizmoMatrix);
 
-                    if (matrix == null)
-                    {
-                        matrix = entry.origin();
-                    }
+            RenderSystem.disableDepthTest();
+            Gizmo.INSTANCE.render(stack);
+            RenderSystem.enableDepthTest();
 
-                    gizmoMatrix = matrix;
-                }
-            }
-
-            if (gizmoMatrix != null)
-            {
-                this.lastGizmoMatrix.set(gizmoMatrix);
-                this.hasGizmoMatrix = true;
-
-                stack.push();
-                MatrixStackUtils.multiply(stack, gizmoMatrix);
-
-                RenderSystem.disableDepthTest();
-                Gizmo.INSTANCE.render(stack);
-                RenderSystem.enableDepthTest();
-
-                stack.pop();
-            }
+            stack.pop();
         }
 
         if (this.area.isInside(context) && this.pickingEnabled)
@@ -562,6 +548,46 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
         this.setupViewport(context);
     }
 
+    private Matrix4f resolveGizmoMatrix(UIContext context, MatrixCache matrixCache)
+    {
+        Matrix4f gizmoMatrix = null;
+
+        if (this.formTransformGizmoOrigin != null)
+        {
+            gizmoMatrix = this.formTransformGizmoOrigin.apply(context.getTransition());
+        }
+        else if (UIBaseMenu.renderAxes && this.selectedBone != null && !this.selectedBone.isEmpty())
+        {
+            if (this.selectedCube != null)
+            {
+                gizmoMatrix = this.getCubePivotMatrix(matrixCache);
+            }
+            else
+            {
+                MatrixCacheEntry entry = matrixCache.get(this.selectedBone);
+
+                if (entry != null)
+                {
+                    boolean local = this.transform != null && this.transform.isLocal();
+
+                    gizmoMatrix = GizmoMatrixUtils.resolveFilmPoseBoneMatrix(entry, local);
+                }
+            }
+        }
+
+        if (gizmoMatrix == null)
+        {
+            return null;
+        }
+
+        return new Matrix4f(gizmoMatrix);
+    }
+
+    public void setFormTransformGizmoDrag(boolean formTransformGizmoDrag)
+    {
+        this.formTransformGizmoDrag = formTransformGizmoDrag;
+    }
+
     @Override
     public void prepareGizmoDrag(UIPropTransform transform)
     {
@@ -570,7 +596,32 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
             return;
         }
 
-        transform.setGizmoRayProvider(GizmoRayFrame.fromCamera(
+        if (this.formTransformGizmoDrag)
+        {
+            /* General transform: same trackball / view-ring tuning as model-editor pose. */
+            transform.setInvertGizmoViewRing(false);
+            transform.setInvertGizmoTrackball(false);
+            transform.clearTrackballEulerInverts();
+            transform.invertModelPoseTrackballXZ();
+        }
+        else
+        {
+            /* Pose trackball: same ray path as General transform; no X/Z euler sign flips. */
+            transform.setInvertGizmoViewRing(false);
+            transform.setInvertGizmoTrackball(false);
+            transform.clearTrackballEulerInverts();
+            transform.setFilmMatchPoseTrackball(true);
+            transform.setGizmoRayProvider(GizmoRayFrame.fromFilmStyle(
+                this.camera,
+                this.area,
+                () -> this.hasGizmoMatrix ? this.lastGizmoMatrix : null
+            ));
+
+            return;
+        }
+
+        transform.setFilmMatchPoseTrackball(true);
+        transform.setGizmoRayProvider(GizmoRayFrame.fromFilmStyle(
             this.camera,
             this.area,
             () -> this.hasGizmoMatrix ? this.lastGizmoMatrix : null

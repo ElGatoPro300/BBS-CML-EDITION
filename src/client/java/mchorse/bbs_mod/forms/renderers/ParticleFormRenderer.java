@@ -24,8 +24,6 @@ import org.joml.Matrix4f;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-
 import java.util.function.Supplier;
 
 public class ParticleFormRenderer extends FormRenderer<ParticleForm> implements ITickable

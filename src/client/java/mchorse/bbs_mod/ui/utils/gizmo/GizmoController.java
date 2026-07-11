@@ -2,8 +2,11 @@ package mchorse.bbs_mod.ui.utils.gizmo;
 
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
+import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.ui.utils.StencilFormFramebuffer;
+
+import org.joml.Matrix4f;
 
 /**
  * Reusable pick -> hover -> drag lifecycle for a single {@link GizmoSurface}, replacing the
@@ -53,6 +56,11 @@ public class GizmoController
     /** Feeds the current stencil pick into the gizmo's continuous hover highlight. Safe to call
      *  every frame regardless of whether a drag is active; call from the surface's render pass
      *  right after its stencil pick is resolved for the frame. */
+    public void renderGizmo(UIContext context, Matrix4f projection, Area area)
+    {
+        Gizmo.INSTANCE.renderInterface(context, projection, area);
+    }
+
     public void updateHover()
     {
         StencilFormFramebuffer stencil = this.surface.getGizmoStencil();

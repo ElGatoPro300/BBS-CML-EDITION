@@ -148,6 +148,8 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig> implements I
         this.renderer.relative(this).wTo(this.iconBar.getFlex()).h(1F);
         this.renderer.setCallback(this::pickBone);
 
+        this.editor.resetFlex().relative(this).w(1F).h(1F);
+
         UIRenderable viewportBackground = new UIRenderable((context) ->
         {
             if (this.renderer.area.w > 0 && this.renderer.area.h > 0)
@@ -406,6 +408,11 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig> implements I
         this.editor.add(this.mainView, this.homePage);
         this.iconBar.prepend(new UIRenderable((context) ->
         {
+            if (!this.iconBar.isVisible())
+            {
+                return;
+            }
+
             context.batcher.box(this.iconBar.area.x, this.iconBar.area.y, this.iconBar.area.ex(), this.iconBar.area.ey(), UIModelUIStyles.STRIP_BACKGROUND);
         }));
         this.iconBar.prepend(new UIRenderable(this::renderIcons));
@@ -433,8 +440,10 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig> implements I
 
             if (UIModelPanel.this.modelSettingsPanel.isVisible() && UIModelPanel.this.modelSettingsPanel.getParent() == UIModelPanel.this.mainView)
             {
-                context.batcher.box(UIModelPanel.this.sectionsView.area.x, UIModelPanel.this.sectionsView.area.y, UIModelPanel.this.sectionsView.area.ex(), UIModelPanel.this.sectionsView.area.ey(), UIModelUIStyles.PANEL_BACKGROUND);
-                context.batcher.box(UIModelPanel.this.rightView.area.x, UIModelPanel.this.rightView.area.y, UIModelPanel.this.rightView.area.ex(), UIModelPanel.this.rightView.area.ey(), UIModelUIStyles.PANEL_BACKGROUND);
+                context.batcher.box(UIModelPanel.this.sectionsView.area.x, UIModelPanel.this.sectionsView.area.y, UIModelPanel.this.sectionsView.area.ex(), UIModelPanel.this.sectionsView.area.ey(), 0xFF111115);
+                context.batcher.outline(UIModelPanel.this.sectionsView.area.x - 1, UIModelPanel.this.sectionsView.area.y - 1, UIModelPanel.this.sectionsView.area.ex() + 1, UIModelPanel.this.sectionsView.area.ey() + 1, 0xFF5A5A5A);
+                context.batcher.box(UIModelPanel.this.rightView.area.x, UIModelPanel.this.rightView.area.y, UIModelPanel.this.rightView.area.ex(), UIModelPanel.this.rightView.area.ey(), 0xFF111115);
+                context.batcher.outline(UIModelPanel.this.rightView.area.x - 1, UIModelPanel.this.rightView.area.y - 1, UIModelPanel.this.rightView.area.ex() + 1, UIModelPanel.this.rightView.area.ey() + 1, 0xFF5A5A5A);
             }
         }));
 
@@ -490,7 +499,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig> implements I
 
                     if (child instanceof UIIcon)
                     {
-                        UIDashboardPanels.renderHighlightHorizontal(context.batcher, ((UIIcon) child).area);
+                        UIDashboardPanels.renderHighlight(context.batcher, ((UIIcon) child).area);
                     }
                 }
             }
@@ -1741,7 +1750,6 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig> implements I
     public void resize()
     {
         super.resize();
-
         this.renderer.resize();
     }
 
