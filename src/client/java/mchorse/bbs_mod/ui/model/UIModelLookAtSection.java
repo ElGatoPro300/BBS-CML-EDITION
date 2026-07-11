@@ -41,7 +41,7 @@ public class UIModelLookAtSection extends UIModelSection
 
     private String selectedBone;
 
-    public UIModelLookAtSection(UIModelPanel editor)
+    public UIModelLookAtSection(IUIModelPanelHost editor)
     {
         super(editor);
 

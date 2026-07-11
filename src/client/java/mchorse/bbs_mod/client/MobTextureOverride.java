@@ -57,7 +57,7 @@ public class MobTextureOverride
         try (InputStream stream = BBSMod.getProvider().getAsset(link))
         {
             NativeImage image = NativeImage.read(stream);
-            NativeImageBackedTexture texture = new NativeImageBackedTexture(() -> "mob_texture_override", image);
+            NativeImageBackedTexture texture = new NativeImageBackedTexture(image);
             String key = "mob_override_" + Integer.toUnsignedString(link.toString().hashCode());
             Identifier id = Identifier.of("bbs", key);
 

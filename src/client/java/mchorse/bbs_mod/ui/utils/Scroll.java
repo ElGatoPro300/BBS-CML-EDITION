@@ -9,7 +9,6 @@ import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.interps.Lerps;
 
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.util.Util;
 
 import org.lwjgl.glfw.GLFW;
 
@@ -84,9 +83,9 @@ public class Scroll
 
         batcher.dropShadow(x1, y1, x2, y2, 5, color, Colors.setA(color, 0F));
 
-        batcher.box(x1, y1, x2, y2, 0xffeeeeee);
-        batcher.box(x1 + 1, y1 + 1, x2, y2, 0xff666666);
-        batcher.box(x1 + 1, y1 + 1, x2 - 1, y2 - 1, 0xffaaaaaa);
+        batcher.box(x1, y1, x2, y2, 0xFF2A2A2A);
+        batcher.box(x1 + 1, y1 + 1, x2, y2, 0xFF1A1A1A);
+        batcher.box(x1 + 1, y1 + 1, x2 - 1, y2 - 1, 0xFF333333);
 
         int dx = x2 - x1;
         int dy = y2 - y1;
@@ -416,7 +415,7 @@ public class Scroll
 
         if (isInside)
         {
-            if (System.getProperty("os.name", "").toLowerCase().contains("mac"))
+            if (MinecraftClient.IS_SYSTEM_MAC)
             {
                 this.scrollBy(scroll * BBSSettings.scrollingSensitivity.get());
             }
@@ -460,7 +459,7 @@ public class Scroll
 
         if (BBSSettings.scrollingSmoothness.get())
         {
-            float delta = MinecraftClient.getInstance().getRenderTickCounter().getDynamicDeltaTicks();
+            float delta = MinecraftClient.getInstance().getRenderTickCounter().getLastFrameDuration();
 
             /* The higher the FPS, the smaller the lerp factor is,
              * the lower the FPS, the bigger the factor is */

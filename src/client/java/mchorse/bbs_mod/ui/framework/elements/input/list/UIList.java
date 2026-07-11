@@ -586,9 +586,10 @@ public abstract class UIList <T> extends UIElement
                     this.handleSwap(this.dragging, index);
                 }
             }
-
-            this.dragging = -1;
         }
+
+        /* Always clear any in-progress drag on release so a picked-up row can never stay floating */
+        this.dragging = -1;
 
         this.scroll.mouseReleased(context);
 

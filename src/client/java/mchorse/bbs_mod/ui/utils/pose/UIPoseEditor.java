@@ -41,7 +41,6 @@ import mchorse.bbs_mod.utils.pose.PoseTransform;
 import mchorse.bbs_mod.utils.pose.Transform;
 import mchorse.bbs_mod.utils.resources.LinkUtils;
 
-import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 
 import java.io.File;
@@ -71,6 +70,7 @@ public class UIPoseEditor extends UIElement
     public UITrackpad fix;
     public UIButton pickTexture;
     public UIColor color;
+    public UIColor paintColor;
     public UIToggle lighting;
     public UIPropTransform transform;
     public Runnable onChange;
@@ -106,7 +106,7 @@ public class UIPoseEditor extends UIElement
         this.groups = new UISearchList<>(this.groupsList);
         this.groups.label(UIKeys.GENERAL_SEARCH);
         this.groups.h(UIStringList.DEFAULT_HEIGHT * 8 + 12); // 20px search box + list height
-        this.groups.list.background();
+        this.groups.list.background(0xFF141418);
         this.groups.list.scroll.cancelScrolling();
         this.groups.search.w(1F, -40);
         this.invertLiveMirrorZ = false;
@@ -147,8 +147,16 @@ public class UIPoseEditor extends UIElement
             return menu;
         });
         /* Lista de categorías a la derecha */
-        this.categories = new UIStringList((l) -> {});
-        this.categories.background().h(UIStringList.DEFAULT_HEIGHT * 8 - 8);
+        this.categories = new UIStringList((l) -> {})
+        {
+            @Override
+            public void render(UIContext context)
+            {
+                super.render(context);
+                context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xFF3C3C3C);
+            }
+        };
+        this.categories.background(0xFF141418).h(UIStringList.DEFAULT_HEIGHT * 8 - 8);
         this.categories.scroll.cancelScrolling();
         this.categories.context((menu) ->
         {
@@ -386,6 +394,7 @@ public class UIPoseEditor extends UIElement
             if (this.onChange != null) this.onChange.run();
         });
         this.color.withAlpha();
+        this.color.tooltip(UIKeys.RAW_COLOR);
         this.color.context((menu) ->
         {
             menu.action(Icons.DOWNLOAD, UIKeys.POSE_CONTEXT_APPLY, () ->
@@ -396,6 +405,37 @@ public class UIPoseEditor extends UIElement
             menu.action(Icons.DOWNLOAD, UIKeys.POSE_CATEGORIES_CONTEXT_APPLY_CATEGORY, () ->
             {
                 this.applyCategory((p) -> this.setColor(p, this.color.picker.color.getARGBColor()));
+                if (this.onChange != null) this.onChange.run();
+            });
+        });
+        this.paintColor = new UIColor((c) ->
+        {
+            String selectedCategory = this.categories != null ? this.categories.getCurrentFirst() : null;
+            if (selectedCategory != null && !selectedCategory.isEmpty())
+            {
+                this.applyCategory((p) -> this.setPaintColor(p, c));
+            }
+            else if (this.applyLiveMirror((p) -> this.setPaintColor(p, c)))
+            {}
+            else if (this.transform.getTransform() instanceof PoseTransform poseTransform)
+            {
+                this.setPaintColor(poseTransform, c);
+            }
+
+            if (this.onChange != null) this.onChange.run();
+        });
+        this.paintColor.withAlpha();
+        this.paintColor.tooltip(UIKeys.FORMS_EDITORS_PAINT_COLOR);
+        this.paintColor.context((menu) ->
+        {
+            menu.action(Icons.DOWNLOAD, UIKeys.POSE_CONTEXT_APPLY, () ->
+            {
+                this.applyChildren((p) -> this.setPaintColor(p, this.paintColor.picker.color.getARGBColor()));
+                if (this.onChange != null) this.onChange.run();
+            });
+            menu.action(Icons.DOWNLOAD, UIKeys.POSE_CATEGORIES_CONTEXT_APPLY_CATEGORY, () ->
+            {
+                this.applyCategory((p) -> this.setPaintColor(p, this.paintColor.picker.color.getARGBColor()));
                 if (this.onChange != null) this.onChange.run();
             });
         });
@@ -430,7 +470,13 @@ public class UIPoseEditor extends UIElement
             });
         });
         this.transform = this.createTransformEditor();
-        this.transform.setModel();
+
+        if (this.useModelGizmoDrag())
+        {
+            this.transform.setModel();
+            this.transform.invertModelPoseTrackballXYZ();
+        }
+
         this.transform.callbacks(null, () ->
         {
             if (this.onChange != null)
@@ -459,7 +505,7 @@ public class UIPoseEditor extends UIElement
             this.add(this.pickTexture);
         }
 
-        this.add(UI.row(this.color, this.lighting), this.transform);
+        this.add(this.transform, UI.row(this.color, this.paintColor), UI.row(this.lighting));
     }
 
     /**
@@ -583,6 +629,7 @@ public class UIPoseEditor extends UIElement
         }
         this.fix.setVisible(!groups.isEmpty());
         this.color.setVisible(!groups.isEmpty());
+        this.paintColor.setVisible(!groups.isEmpty());
         this.transform.setVisible(!groups.isEmpty());
 
         boolean persistedFilter = BBSSettings.poseBonesFilterMarked != null && BBSSettings.poseBonesFilterMarked.get();
@@ -640,9 +687,20 @@ public class UIPoseEditor extends UIElement
 
     /* Subclass overridable methods */
 
+  /** Film/replay pose editors keep the legacy model-space drag inversions; form model pose matches model block. */
+    protected boolean useModelGizmoDrag()
+    {
+        return true;
+    }
+
+    protected float getGizmoTranslationScale()
+    {
+        return 16F;
+    }
+
     protected UIPropTransform createTransformEditor()
     {
-        return new CategoryPropTransform(this).enableHotkeys().translationScale(16F);
+        return new CategoryPropTransform(this).enableHotkeys().translationScale(this.getGizmoTranslationScale());
     }
 
     /* Transformaciones aplicables por categoría */
@@ -837,11 +895,13 @@ public class UIPoseEditor extends UIElement
 
         this.fix.setVisible(true);
         this.color.setVisible(true);
+        this.paintColor.setVisible(true);
         this.lighting.setVisible(true);
         this.pickTexture.setVisible(BBSSettings.pickLimbTexture != null && BBSSettings.pickLimbTexture.get());
 
         this.fix.setEnabled(isPoseTransform);
         this.color.setEnabled(isPoseTransform);
+        this.paintColor.setEnabled(isPoseTransform);
         this.lighting.setEnabled(isPoseTransform);
         this.pickTexture.setEnabled(isPoseTransform);
 
@@ -865,11 +925,13 @@ public class UIPoseEditor extends UIElement
 
         this.fix.setVisible(true);
         this.color.setVisible(true);
+        this.paintColor.setVisible(true);
         this.lighting.setVisible(true);
         this.pickTexture.setVisible(BBSSettings.pickLimbTexture != null && BBSSettings.pickLimbTexture.get());
 
         this.fix.setEnabled(true);
         this.color.setEnabled(true);
+        this.paintColor.setEnabled(true);
         this.lighting.setEnabled(true);
         this.pickTexture.setEnabled(true);
 
@@ -879,6 +941,7 @@ public class UIPoseEditor extends UIElement
         {
             this.fix.setValue(poseTransform.fix);
             this.color.setColor(poseTransform.color.getARGBColor());
+            this.paintColor.setColor(poseTransform.paintColor.getARGBColor());
             this.lighting.setValue(poseTransform.lighting == 0F);
             this.transform.setTransform(poseTransform);
         }
@@ -886,6 +949,7 @@ public class UIPoseEditor extends UIElement
         {
             this.fix.setValue(0F);
             this.color.setColor(Colors.WHITE);
+            this.paintColor.setColor(0x00FFFFFF);
             this.lighting.setValue(false);
             this.transform.setTransform(null);
         }
@@ -899,6 +963,11 @@ public class UIPoseEditor extends UIElement
     protected void setColor(PoseTransform transform, int value)
     {
         transform.color.set(value);
+    }
+
+    protected void setPaintColor(PoseTransform transform, int value)
+    {
+        transform.paintColor.set(value);
     }
 
     protected void setLighting(PoseTransform poseTransform, boolean value)
@@ -1295,6 +1364,7 @@ public class UIPoseEditor extends UIElement
         public void render(UIContext context)
         {
             super.render(context);
+            context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xFF3C3C3C);
 
             if (!UIPoseEditor.this.showOnlyMarked || !UIPoseEditor.this.markedBones.isEmpty())
             {
@@ -1321,7 +1391,7 @@ public class UIPoseEditor extends UIElement
             context.batcher.textShadow(line2, x2, y, color);
             int iconX = x2 + line2TextWidth + iconSpacing;
             int iconY = y + (context.batcher.getFont().getHeight() - iconSize) / 2;
-            GlStateManager._enableBlend();
+            RenderSystem.enableBlend();
             context.batcher.icon(Icons.VISIBLE, color, iconX, iconY);
             context.batcher.unclip(context);
         }
@@ -1334,7 +1404,7 @@ public class UIPoseEditor extends UIElement
             boolean marked = UIPoseEditor.this.markedBones.contains(element);
             int iconColor = marked ? Colors.WHITE : Colors.setA(Colors.WHITE, 0.35F);
 
-            GlStateManager._enableBlend();
+            RenderSystem.enableBlend();
             context.batcher.icon(Icons.CHECKMARK, iconColor, iconX, iconY);
 
             int textX = x + 22;

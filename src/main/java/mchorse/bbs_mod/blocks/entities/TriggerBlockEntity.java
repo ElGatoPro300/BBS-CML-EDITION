@@ -3,8 +3,6 @@ package mchorse.bbs_mod.blocks.entities;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.blocks.entities.ModelBlockEntity;
 import mchorse.bbs_mod.data.DataStorageUtils;
-import mchorse.bbs_mod.data.DataToString;
-import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.events.TriggerBlockEntityUpdateCallback;
 import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.forms.Form;
@@ -24,8 +22,6 @@ import net.minecraft.network.packet.Packet;
 import net.minecraft.network.packet.s2c.play.BlockEntityUpdateS2CPacket;
 import net.minecraft.registry.RegistryWrapper;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.storage.ReadView;
-import net.minecraft.storage.WriteView;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.Box;
 import net.minecraft.world.World;
@@ -123,7 +119,7 @@ public class TriggerBlockEntity extends BlockEntity
                 {
                     try
                     {
-                        player.getCommandSource().getServer().getCommandManager().parseAndExecute(player.getCommandSource(), cmd);
+                        player.getServer().getCommandManager().executeWithPrefix(player.getCommandSource().withLevel(2), cmd);
                     }
                     catch (Exception e)
                     {
@@ -147,7 +143,7 @@ public class TriggerBlockEntity extends BlockEntity
                 
                 BlockPos pos = new BlockPos(x, y, z);
                 
-                if (this.world.isPosLoaded(pos))
+                if (this.world.isChunkLoaded(pos))
                 {
                     BlockEntity be = this.world.getBlockEntity(pos);
                     
@@ -174,7 +170,7 @@ public class TriggerBlockEntity extends BlockEntity
     
     public static void tick(World world, BlockPos pos, BlockState state, TriggerBlockEntity blockEntity)
     {
-        if (!world.isClient() && blockEntity.region.get())
+        if (!world.isClient && blockEntity.region.get())
         {
             blockEntity.tickRegion();
         }
@@ -258,77 +254,44 @@ public class TriggerBlockEntity extends BlockEntity
     }
 
     @Override
-    protected void readData(ReadView view)
+    public void readNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registryLookup)
     {
-        super.readData(view);
+        super.readNbt(nbt, registryLookup);
         
-        view.getOptionalString("Left").ifPresent((value) -> {
-            BaseType type = DataToString.fromString(value);
-
-            if (type != null) this.left.fromData(type);
-        });
-        view.getOptionalString("Right").ifPresent((value) -> {
-            BaseType type = DataToString.fromString(value);
-
-            if (type != null) this.right.fromData(type);
-        });
-        view.getOptionalString("Enter").ifPresent((value) -> {
-            BaseType type = DataToString.fromString(value);
-
-            if (type != null) this.enter.fromData(type);
-        });
-        view.getOptionalString("Exit").ifPresent((value) -> {
-            BaseType type = DataToString.fromString(value);
-
-            if (type != null) this.exit.fromData(type);
-        });
-        view.getOptionalString("WhileIn").ifPresent((value) -> {
-            BaseType type = DataToString.fromString(value);
-
-            if (type != null) this.whileIn.fromData(type);
-        });
-        this.regionDelay.set(view.getInt("RegionDelay", this.regionDelay.get()));
-        this.collidable.set(view.getBoolean("Collidable", this.collidable.get()));
-        this.region.set(view.getBoolean("Region", this.region.get()));
-        view.getOptionalString("Pos1").ifPresent((value) -> {
-            BaseType type = DataToString.fromString(value);
-
-            if (type != null) this.pos1.fromData(type);
-        });
-        view.getOptionalString("Pos2").ifPresent((value) -> {
-            BaseType type = DataToString.fromString(value);
-
-            if (type != null) this.pos2.fromData(type);
-        });
-        view.getOptionalString("RegionOffset").ifPresent((value) -> {
-            BaseType type = DataToString.fromString(value);
-
-            if (type != null) this.regionOffset.fromData(type);
-        });
-        view.getOptionalString("RegionSize").ifPresent((value) -> {
-            BaseType type = DataToString.fromString(value);
-
-            if (type != null) this.regionSize.fromData(type);
-        });
+        if (nbt.contains("Left")) this.left.fromData(DataStorageUtils.fromNbt(nbt.get("Left")));
+        if (nbt.contains("Right")) this.right.fromData(DataStorageUtils.fromNbt(nbt.get("Right")));
+        if (nbt.contains("Enter")) this.enter.fromData(DataStorageUtils.fromNbt(nbt.get("Enter")));
+        if (nbt.contains("Exit")) this.exit.fromData(DataStorageUtils.fromNbt(nbt.get("Exit")));
+        if (nbt.contains("WhileIn")) this.whileIn.fromData(DataStorageUtils.fromNbt(nbt.get("WhileIn")));
+        if (nbt.contains("RegionDelay")) this.regionDelay.set(nbt.getInt("RegionDelay"));
+        if (nbt.contains("Collidable")) this.collidable.set(nbt.getBoolean("Collidable"));
+        if (nbt.contains("Region")) this.region.set(nbt.getBoolean("Region"));
+        if (nbt.contains("Pos1")) this.pos1.fromData(DataStorageUtils.fromNbt(nbt.get("Pos1")));
+        if (nbt.contains("Pos2")) this.pos2.fromData(DataStorageUtils.fromNbt(nbt.get("Pos2")));
+        if (nbt.contains("RegionOffset")) this.regionOffset.fromData(DataStorageUtils.fromNbt(nbt.get("RegionOffset")));
+        if (nbt.contains("RegionSize")) this.regionSize.fromData(DataStorageUtils.fromNbt(nbt.get("RegionSize")));
     }
 
     @Override
-    protected void writeData(WriteView view)
+    public void writeNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registryLookup)
     {
-        super.writeData(view);
-        
-        view.putString("Left", DataToString.toString(this.left.toData()));
-        view.putString("Right", DataToString.toString(this.right.toData()));
-        view.putString("Enter", DataToString.toString(this.enter.toData()));
-        view.putString("Exit", DataToString.toString(this.exit.toData()));
-        view.putString("WhileIn", DataToString.toString(this.whileIn.toData()));
-        view.putInt("RegionDelay", this.regionDelay.get());
-        view.putBoolean("Collidable", this.collidable.get());
-        view.putBoolean("Region", this.region.get());
-        view.putString("Pos1", DataToString.toString(this.pos1.toData()));
-        view.putString("Pos2", DataToString.toString(this.pos2.toData()));
-        view.putString("RegionOffset", DataToString.toString(this.regionOffset.toData()));
-        view.putString("RegionSize", DataToString.toString(this.regionSize.toData()));
+        super.writeNbt(nbt, registryLookup);
+
+        /* Route every value through the null-safe helper: ValueList.toData() returns
+         * null when the list is empty (the default state of a freshly placed block),
+         * and NbtCompound.put with a null element corrupts the chunk save. */
+        DataStorageUtils.writeToNbtCompound(nbt, "Left", this.left.toData());
+        DataStorageUtils.writeToNbtCompound(nbt, "Right", this.right.toData());
+        DataStorageUtils.writeToNbtCompound(nbt, "Enter", this.enter.toData());
+        DataStorageUtils.writeToNbtCompound(nbt, "Exit", this.exit.toData());
+        DataStorageUtils.writeToNbtCompound(nbt, "WhileIn", this.whileIn.toData());
+        nbt.putInt("RegionDelay", this.regionDelay.get());
+        nbt.putBoolean("Collidable", this.collidable.get());
+        nbt.putBoolean("Region", this.region.get());
+        DataStorageUtils.writeToNbtCompound(nbt, "Pos1", this.pos1.toData());
+        DataStorageUtils.writeToNbtCompound(nbt, "Pos2", this.pos2.toData());
+        DataStorageUtils.writeToNbtCompound(nbt, "RegionOffset", this.regionOffset.toData());
+        DataStorageUtils.writeToNbtCompound(nbt, "RegionSize", this.regionSize.toData());
     }
 
     @Nullable
@@ -341,6 +304,6 @@ public class TriggerBlockEntity extends BlockEntity
     @Override
     public NbtCompound toInitialChunkDataNbt(RegistryWrapper.WrapperLookup registryLookup)
     {
-        return this.createNbt(registryLookup);
+        return this.createNbtWithId(registryLookup);
     }
 }

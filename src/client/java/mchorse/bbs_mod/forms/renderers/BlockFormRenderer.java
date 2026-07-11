@@ -19,6 +19,7 @@ import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.render.OverlayVertexConsumer;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.VertexConsumer;
+import net.minecraft.client.render.block.entity.BlockEntityRenderDispatcher;
 import net.minecraft.client.render.block.entity.BlockEntityRenderer;
 import net.minecraft.client.render.model.ModelBaker;
 import net.minecraft.client.util.math.MatrixStack;
@@ -27,7 +28,6 @@ import net.minecraft.util.math.BlockPos;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
-import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 
 public class BlockFormRenderer extends FormRenderer<BlockForm>
@@ -42,10 +42,10 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
     @Override
     public void renderInUI(UIContext context, int x1, int y1, int x2, int y2)
     {
-        context.batcher.flush();
+        context.batcher.getContext().draw();
 
         CustomVertexConsumerProvider consumers = FormUtilsClient.getProvider();
-        MatrixStack matrices = new MatrixStack();
+        MatrixStack matrices = context.batcher.getContext().getMatrices();
 
         Matrix4f uiMatrix = ModelFormRenderer.getUIMatrix(context, x1, y1, x2, y2);
 
@@ -57,9 +57,12 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
         matrices.peek().getNormalMatrix().getScale(Vectors.EMPTY_3F);
         matrices.peek().getNormalMatrix().scale(1F / Vectors.EMPTY_3F.x, -1F / Vectors.EMPTY_3F.y, 1F / Vectors.EMPTY_3F.z);
 
-        Color set = this.form.color.get();
+        Color set = Color.white();
+        set.mul(this.form.color.get());
 
-        MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.LEVEL);
+        Vector3f light0 = new Vector3f(0.85F, 0.85F, -1F).normalize();
+        Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1F).normalize();
+        RenderSystem.setupLevelDiffuseLighting(light0, light1);
 
         consumers.setSubstitute(BBSRendering.getColorConsumer(set));
         consumers.setUI(true);
@@ -80,6 +83,8 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
         consumers.setUI(false);
         consumers.setSubstitute(null);
 
+        DiffuseLighting.disableGuiDepthLighting();
+
         matrices.pop();
     }
 
@@ -97,22 +102,24 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
             CustomVertexConsumerProvider.hijackVertexFormat((layer) ->
             {
                 this.setupTarget(context, BBSShaders.getPickerModelsProgram());
-                // RenderSystem.setShader(BBSShaders.getPickerModelsProgram());
+                RenderSystem.setShader(BBSShaders.getPickerModelsProgram());
             });
 
             light = 0;
         }
         else
         {
-            CustomVertexConsumerProvider.hijackVertexFormat((l) -> GlStateManager._enableBlend());
+            CustomVertexConsumerProvider.hijackVertexFormat((l) ->
+            {
+                RenderSystem.enableBlend();
+                RenderSystem.defaultBlendFunc();
+            });
         }
 
-        Color set = this.form.color.get();
-
         color.set(context.color);
-        color.mul(set);
+        color.mul(this.form.color.get());
 
-        consumers.setSubstitute(BBSRendering.getColorConsumer(set));
+        consumers.setSubstitute(BBSRendering.getColorConsumer(color, this.form.paintColor.get()));
         MinecraftClient.getInstance().getBlockRenderManager().renderBlockAsEntity(this.form.blockState.get(), context.stack, consumers, light, context.overlay);
 
         if (!context.isPicking())
@@ -134,10 +141,11 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
         consumers.setSubstitute(null);
 
         CustomVertexConsumerProvider.clearRunnables();
+        RenderSystem.defaultBlendFunc();
 
         context.stack.pop();
 
-        GlStateManager._enableDepthTest();
+        RenderSystem.enableDepthTest();
     }
 
     private void renderBlockEntity(MatrixStack stack, CustomVertexConsumerProvider consumers, int light, int overlay)
@@ -160,6 +168,17 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
             blockEntity.setWorld(client.world);
         }
 
-        // TODO 1.21.11: migrate to BlockEntityRenderer<T, S> state/queue rendering API.
+        BlockEntityRenderDispatcher dispatcher = client.getBlockEntityRenderDispatcher();
+        BlockEntityRenderer<?> renderer = dispatcher.get(blockEntity);
+
+        if (renderer == null)
+        {
+            return;
+        }
+
+        @SuppressWarnings({"rawtypes", "unchecked"})
+        BlockEntityRenderer raw = (BlockEntityRenderer) renderer;
+
+        raw.render(blockEntity, 0F, stack, consumers, light, overlay);
     }
 }

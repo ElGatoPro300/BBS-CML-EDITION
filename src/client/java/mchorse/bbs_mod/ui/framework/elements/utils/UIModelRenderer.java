@@ -7,16 +7,19 @@ import mchorse.bbs_mod.forms.entities.StubEntity;
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
+import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.utils.Factor;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.BufferBuilder;
+import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.DiffuseLighting;
 import net.minecraft.client.render.GameRenderer;
-import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.render.Tessellator;
+import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.BufferAllocator;
 import net.minecraft.client.util.math.MatrixStack;
@@ -28,11 +31,9 @@ import org.joml.Matrix4f;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 
-import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.ProjectionType;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.systems.VertexSorter;
-import com.mojang.blaze3d.vertex.VertexFormat;
 
 import org.lwjgl.opengl.GL11;
 
@@ -43,6 +44,8 @@ import org.lwjgl.opengl.GL11;
  */
 public abstract class UIModelRenderer extends UIElement
 {
+    private static final double DEFAULT_VIEWPORT_DISTANCE = 2.25D;
+
     private static Vector3d vec = new Vector3d();
     private static Matrix3d mat = new Matrix3d();
 
@@ -67,11 +70,31 @@ public abstract class UIModelRenderer extends UIElement
     private long tick;
     private Matrix4f transform = new Matrix4f();
 
+    private boolean stencilViewport;
+    private int stencilViewportW;
+    private int stencilViewportH;
+
     public UIModelRenderer()
     {
         super();
 
         this.reset();
+    }
+
+    /**
+     * When rendering the stencil pick pass into an FBO, the GL viewport must be {@code 0,0,fboW,fboH}
+     * instead of window-relative coordinates so pick pixels align with the on-screen gizmo.
+     */
+    protected void beginStencilViewport(int fboW, int fboH)
+    {
+        this.stencilViewport = true;
+        this.stencilViewportW = fboW;
+        this.stencilViewportH = fboH;
+    }
+
+    protected void endStencilViewport()
+    {
+        this.stencilViewport = false;
     }
 
     public void setTransform(Matrix4f transform)
@@ -110,6 +133,17 @@ public abstract class UIModelRenderer extends UIElement
         this.setDistance(15);
         this.setPosition(0, 1, 0);
         this.setRotation(0, 0);
+    }
+
+    /**
+     * Scales the viewport gizmo with orbit zoom ({@link #distance}): 1 at the default zoom,
+     * down to 0.5 when zoomed all the way in, growing proportionally when zooming out.
+     */
+    protected float getViewportGizmoZoomScale()
+    {
+        double current = this.distance.getValue();
+
+        return (float) Math.max(0.5D, current / DEFAULT_VIEWPORT_DISTANCE);
     }
 
     public boolean isDragging()
@@ -213,19 +247,19 @@ public abstract class UIModelRenderer extends UIElement
      */
     private void renderModel(UIContext context)
     {
-        GlStateManager._enableDepthTest();
-        GlStateManager._enableCull();
-        GlStateManager._depthFunc(GL11.GL_LEQUAL);
+        RenderSystem.enableDepthTest();
+        RenderSystem.enableCull();
+        RenderSystem.depthFunc(GL11.GL_LEQUAL);
 
         this.setupPosition();
         this.setupViewport(context);
 
-        MatrixStack stack = new MatrixStack();
+        MatrixStack stack = context.render.batcher.getContext().getMatrices();
 
         /* Cache the global stuff */
         MatrixStackUtils.cacheMatrices();
 
-        /* projection matrix state managed by 1.21.11 renderer */
+        RenderSystem.setProjectionMatrix(this.camera.projection, ProjectionType.ORTHOGRAPHIC);
 
         /* Rendering begins... */
         stack.push();
@@ -236,28 +270,39 @@ public abstract class UIModelRenderer extends UIElement
         Vector3f a = new Vector3f(0F, 0.85F, -1F).normalize();
         Vector3f b = new Vector3f(0F, 0.85F, 1F).normalize();
         
-        MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.LEVEL);
+        RenderSystem.setupLevelDiffuseLighting(a, b);
 
         if (this.grid)
         {
             this.renderGrid(context);
         }
 
-        this.renderUserModel(context);
+        Gizmo.INSTANCE.setViewportZoomScale(this.getViewportGizmoZoomScale());
 
+        try
+        {
+            this.renderUserModel(context);
+        }
+        finally
+        {
+            Gizmo.INSTANCE.setViewportZoomScale(1F);
+        }
+
+        DiffuseLighting.disableGuiDepthLighting();
 
         stack.pop();
 
         /* Return back to orthographic projection */
         MinecraftClient mc = MinecraftClient.getInstance();
 
-        GlStateManager._viewport(0, 0, mc.getWindow().getFramebufferWidth(), mc.getWindow().getFramebufferHeight());
+        RenderSystem.viewport(0, 0, mc.getWindow().getFramebufferWidth(), mc.getWindow().getFramebufferHeight());
         MatrixStackUtils.restoreMatrices();
         context.resetMatrix();
 
-        GlStateManager._depthFunc(GL11.GL_ALWAYS);
-        GlStateManager._disableDepthTest();
-        GlStateManager._disableCull();
+        RenderSystem.depthFunc(GL11.GL_LEQUAL);
+        RenderSystem.enableDepthTest();
+        RenderSystem.depthMask(true);
+        RenderSystem.setShader(ShaderProgramKeys.POSITION_TEX_COLOR);
 
         this.processInputs(context);
     }
@@ -310,7 +355,7 @@ public abstract class UIModelRenderer extends UIElement
     {
         Vector3d vector = new Vector3d();
         Vector3d origin = new Vector3d(this.cachedCamera.position).sub(this.cachedPos);
-        Vector3d destination = new Vector3d(this.cachedCamera.getMouseDirection(context.mouseX, context.mouseY, this.area.x, this.area.y, this.area.w, this.area.h)).mul(this.distance.getValue() * 2).add(origin);
+        Vector3d destination = new Vector3d(this.cachedCamera.getMouseDirection(context.mouseX, context.mouseY, context.globalX(this.area.x), context.globalY(this.area.y), this.area.w, this.area.h)).mul(this.distance.getValue() * 2).add(origin);
         Intersectiond.intersectLineSegmentPlane(origin.x, origin.y, origin.z, destination.x, destination.y, destination.z, this.plane.x, this.plane.y, this.plane.z, 0, vector);
 
         return vector;
@@ -330,16 +375,27 @@ public abstract class UIModelRenderer extends UIElement
 
         MinecraftClient mc = MinecraftClient.getInstance();
 
-        float rx = (float) Math.round(mc.getWindow().getWidth() / (double) context.menu.width);
-        float ry = (float) Math.round(mc.getWindow().getHeight() / (double) context.menu.height);
+        if (this.stencilViewport)
+        {
+            RenderSystem.viewport(0, 0, this.stencilViewportW, this.stencilViewportH);
+            this.camera.updatePerspectiveProjection(this.stencilViewportW, this.stencilViewportH);
+            this.camera.updateView();
+
+            return;
+        }
+
+        /* Exact physical-to-logical ratio (the UI scale factor). Rounding this snapped fractional scales
+           like 1.5 up to 2, which offset the viewport and misaligned model/morph previews. */
+        float rx = (float) (mc.getWindow().getWidth() / (double) context.menu.width);
+        float ry = (float) (mc.getWindow().getHeight() / (double) context.menu.height);
         float size = BBSModClient.getOriginalFramebufferScale();
 
-        int vx = (int) (this.area.x * rx);
-        int vy = (int) (mc.getWindow().getHeight() - (this.area.y + this.area.h) * ry);
+        int vx = (int) (context.globalX(this.area.x) * rx);
+        int vy = (int) (mc.getWindow().getHeight() - (context.globalY(this.area.y) + this.area.h) * ry);
         int vw = (int) (this.area.w * rx);
         int vh = (int) (this.area.h * ry);
 
-        GlStateManager._viewport((int) (vx * size), (int) (vy * size), (int) (vw * size), (int) (vh * size));
+        RenderSystem.viewport((int) (vx * size), (int) (vy * size), (int) (vw * size), (int) (vh * size));
         this.camera.updatePerspectiveProjection(vw, vh);
         this.camera.updateView();
     }
@@ -355,10 +411,10 @@ public abstract class UIModelRenderer extends UIElement
      */
     protected void renderGrid(UIContext context)
     {
-        Matrix4f matrix4f = new Matrix4f();
+        Matrix4f matrix4f = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
         BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
 
-        // RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
+        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
 
         for (int x = 0; x <= 10; x ++)
         {
@@ -388,6 +444,6 @@ public abstract class UIModelRenderer extends UIElement
             }
         }
 
-        RenderLayers.lines().draw(builder.end());
+        BufferRenderer.drawWithGlobalProgram(builder.end());
     }
 }

@@ -13,12 +13,13 @@ import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.interps.Lerps;
 
 import net.minecraft.client.gl.ShaderProgram;
+import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
 
-import org.joml.Matrix4f;
+import com.mojang.blaze3d.systems.RenderSystem;
 
 public class CubicVAORenderer extends CubicCubeRenderer
 {
@@ -47,23 +48,81 @@ public class CubicVAORenderer extends CubicCubeRenderer
 
         if (modelVAO != null && group.visible)
         {
-            if (group.textureOverride != null)
+            float r;
+            float g;
+            float b;
+            float a;
+
+            if (ModelVAORenderer.isPaintPass())
             {
-                BBSModClient.getTextures().bindTexture(group.textureOverride);
-            }
-            else if (this.defaultTexture != null)
-            {
-                BBSModClient.getTextures().bindTexture(this.defaultTexture);
+                float pr;
+                float pg;
+                float pb;
+                float pa;
+
+                if (group.paintColor.a > 0F)
+                {
+                    pr = group.paintColor.r;
+                    pg = group.paintColor.g;
+                    pb = group.paintColor.b;
+                    pa = group.paintColor.a;
+                }
+                else
+                {
+                    pr = ModelVAORenderer.getBasePaintR();
+                    pg = ModelVAORenderer.getBasePaintG();
+                    pb = ModelVAORenderer.getBasePaintB();
+                    pa = ModelVAORenderer.getBasePaintStrength();
+                }
+
+                if (pa <= 0F)
+                {
+                    return false;
+                }
+
+                ModelVAORenderer.setGroupPaint(group.paintColor.r, group.paintColor.g, group.paintColor.b, group.paintColor.a);
+
+                if (group.textureOverride != null)
+                {
+                    BBSModClient.getTextures().bindTexture(group.textureOverride);
+                }
+                else if (this.defaultTexture != null)
+                {
+                    BBSModClient.getTextures().bindTexture(this.defaultTexture);
+                }
+                else
+                {
+                    BBSModClient.getTextures().bindTexture(this.model.texture);
+                }
+
+                r = pr;
+                g = pg;
+                b = pb;
+                a = ModelVAORenderer.isPaintOverlayPass() ? this.a : this.a * pa;
             }
             else
             {
-                BBSModClient.getTextures().bindTexture(this.model.texture);
+                if (group.textureOverride != null)
+                {
+                    BBSModClient.getTextures().bindTexture(group.textureOverride);
+                }
+                else if (this.defaultTexture != null)
+                {
+                    BBSModClient.getTextures().bindTexture(this.defaultTexture);
+                }
+                else
+                {
+                    BBSModClient.getTextures().bindTexture(this.model.texture);
+                }
+
+                r = this.r * group.color.r;
+                g = this.g * group.color.g;
+                b = this.b * group.color.b;
+                a = this.a * group.color.a;
+
+                ModelVAORenderer.setGroupPaint(group.paintColor.r, group.paintColor.g, group.paintColor.b, group.paintColor.a);
             }
 
-            float r = this.r * group.color.r;
-            float g = this.g * group.color.g;
-            float b = this.b * group.color.b;
-            float a = this.a * group.color.a;
             int light = this.light;
 
             if (this.stencilMap != null)

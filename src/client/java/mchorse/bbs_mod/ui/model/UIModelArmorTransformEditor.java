@@ -46,7 +46,7 @@ public class UIModelArmorTransformEditor extends UIDashboardPanel
     private static final ItemStack LEGGINGS = new ItemStack(Items.DIAMOND_LEGGINGS);
     private static final ItemStack BOOTS = new ItemStack(Items.DIAMOND_BOOTS);
 
-    public UIModelPanel parent;
+    public IUIModelPanelHost host;
     public ModelConfig config;
 
     public UIPropTransform transform;
@@ -64,11 +64,11 @@ public class UIModelArmorTransformEditor extends UIDashboardPanel
     private boolean changed;
     private ModelInstance cachedModel;
 
-    public UIModelArmorTransformEditor(UIModelPanel parent, ModelConfig config)
+    public UIModelArmorTransformEditor(IUIModelPanelHost host, ModelConfig config)
     {
-        super(parent.dashboard);
+        super(host.getDashboard());
 
-        this.parent = parent;
+        this.host = host;
         this.config = config;
 
         ClientPlayerEntity player = MinecraftClient.getInstance().player;
@@ -81,7 +81,7 @@ public class UIModelArmorTransformEditor extends UIDashboardPanel
         this.uiOrbitCamera.orbit = orbit;
 
         this.orbitCameraController = new OrbitCameraController(this.uiOrbitCamera.orbit);
-        this.orbitCameraController.camera.position.set(player.getX(), player.getY() + 1D, player.getZ());
+        this.orbitCameraController.camera.position.set(player.getPos().x, player.getPos().y + 1D, player.getPos().z);
         this.orbitCameraController.camera.rotation.set(0, MathUtils.toRad(player.bodyYaw), 0);
 
         this.armorLabel = UI.label(UIKeys.MODELS_ARMOR).background(() -> Colors.A50 | BBSSettings.primaryColor.get());
@@ -120,12 +120,11 @@ public class UIModelArmorTransformEditor extends UIDashboardPanel
         });
         this.transform.relative(this).x(1F, -200).y(0.5F, 10).w(190).h(70);
 
-        this.back = new UIIcon(Icons.CLOSE, (b) ->
+        this.back = UIModelTransformEditorSupport.createBackButton(this.host, this, () ->
         {
-            this.parent.renderer.dirty();
-            this.dashboard.setPanel(this.parent);
+            this.host.getModelRenderer().dirty();
+            this.host.returnFromSubEditor();
         });
-        this.back.relative(this).x(1F, -26).y(6);
 
         this.armorSearch.relative(this.transform).x(0.5F).y(0F, -5).w(1F).h(80).anchor(0.5F, 1F);
         this.armorLabel.relative(this.armorSearch).y(-12).w(1F).h(12);
@@ -188,7 +187,7 @@ public class UIModelArmorTransformEditor extends UIDashboardPanel
     @Override
     public UIDashboardPanel getMainPanel()
     {
-        return this.parent;
+        return this.host.getModelPanel() != null ? this.host.getModelPanel() : this;
     }
 
     @Override
@@ -207,8 +206,8 @@ public class UIModelArmorTransformEditor extends UIDashboardPanel
     {
         if (context.getKeyCode() == GLFW.GLFW_KEY_ESCAPE)
         {
-            this.parent.renderer.dirty();
-            this.dashboard.setPanel(this.parent);
+            this.host.getModelRenderer().dirty();
+            this.host.returnFromSubEditor();
             return true;
         }
 
@@ -230,7 +229,7 @@ public class UIModelArmorTransformEditor extends UIDashboardPanel
         BBSModClient.getCameraController().remove(this.dashboard.camera);
         BBSModClient.getCameraController().add(this.orbitCameraController);
 
-        this.orbitCameraController.camera.position.set(player.getX(), player.getY() + 1D, player.getZ());
+        this.orbitCameraController.camera.position.set(player.getPos().x, player.getPos().y + 1D, player.getPos().z);
         this.orbitCameraController.camera.rotation.set(0, MathUtils.toRad(player.bodyYaw), 0);
         ((OrbitDistanceCamera) this.uiOrbitCamera.orbit).distance.setX(14);
 
@@ -270,7 +269,7 @@ public class UIModelArmorTransformEditor extends UIDashboardPanel
             morph.entity.setEquipmentStack(EquipmentSlot.FEET, ItemStack.EMPTY);
         }
 
-        this.parent.forceSave();
+        this.host.forceSave();
         this.restore();
 
         MinecraftClient.getInstance().options.hudHidden = true;

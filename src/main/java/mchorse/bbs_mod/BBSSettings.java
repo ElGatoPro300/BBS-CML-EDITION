@@ -15,6 +15,7 @@ import mchorse.bbs_mod.settings.values.ui.ValueStringKeys;
 import mchorse.bbs_mod.settings.values.ui.ValueVideoSettings;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
+import mchorse.bbs_mod.utils.keyframes.KeyframeShape;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -28,11 +29,18 @@ public class BBSSettings
     public static ValueStringKeys disabledSheets;
     public static ValueLanguage language;
     public static ValueInt primaryColor;
+    public static ValueInt modelEditorHoverColor;
+    public static ValueFloat modelEditorHoverOpacity;
+
+    private static int appliedModelEditorHoverColor = Colors.ACTIVE;
+    private static float appliedModelEditorHoverOpacity = 0.5F;
     public static ValueBoolean enableTrackpadIncrements;
     public static ValueBoolean enableTrackpadScrolling;
     public static ValueBoolean welcomePanelAcceptedBeta1;
     public static ValueBoolean hideSettingDescriptions;
     public static ValueFloat userIntefaceScale;
+    public static ValueString uiFont;
+    public static ValueFloat uiFontSize;
     public static ValueInt tooltipStyle;
     public static ValueFloat fov;
     public static ValueBoolean hsvColorPicker;
@@ -40,13 +48,24 @@ public class BBSSettings
     public static ValueBoolean freezeModels;
     public static ValueFloat axesScale;
     public static ValueFloat axesThickness;
+    public static ValueFloat gizmoHitbox;
+    public static ValueInt gizmoDefaultMode;
+    public static ValueFloat gizmoGuideLength;
+    public static ValueFloat gizmoGuideThickness;
+    public static ValueFloat gizmoGuideOpacity;
+    public static ValueInt gizmoTranslateSpeed;
     public static ValueBoolean uniformScale;
     public static ValueBoolean clickSound;
     public static ValueBoolean disablePivotTransform;
     public static ValueBoolean gizmos;
     public static ValueBoolean gizmoYAxisHorizontal;
+    public static ValueBoolean gizmoTrackball;
+    public static ValueInt gizmoTrackballScale;
     public static ValueInt defaultInterpolation;
+    public static ValueInt defaultModelInterpolation;
     public static ValueInt defaultPathInterpolation;
+    public static ValueInt defaultCameraKeyframeInterpolation;
+    public static ValueInt defaultKeyframeShape;
 
     public static ValueBoolean enableCursorRendering;
     public static ValueBoolean enableMouseButtonRendering;
@@ -181,6 +200,38 @@ public class BBSSettings
     public static int primaryColor(int alpha)
     {
         return primaryColor.get() | alpha;
+    }
+
+    public static int modelEditorHoverColor(float alpha)
+    {
+        return Colors.setA(modelEditorHoverColor.get(), alpha);
+    }
+
+    public static void syncAppliedAppearance()
+    {
+        if (modelEditorHoverColor != null)
+        {
+            appliedModelEditorHoverColor = modelEditorHoverColor.get();
+        }
+
+        appliedModelEditorHoverOpacity = modelEditorHoverOpacity == null ? 0.5F : modelEditorHoverOpacity.get();
+    }
+
+    public static int modelEditorHoverHighlight()
+    {
+        return Colors.setA(appliedModelEditorHoverColor, appliedModelEditorHoverOpacity);
+    }
+
+    /** The raw setting value is used directly as the UI scale multiplier (2 = 100%, i.e. the
+     *  previous default look), instead of being quantized into discrete steps. */
+    public static float getUIScaleFactor()
+    {
+        if (userIntefaceScale == null || userIntefaceScale.get() <= 0F)
+        {
+            return 0F;
+        }
+
+        return userIntefaceScale.get();
     }
 
     public static boolean hasColoredBackground()
@@ -369,12 +420,16 @@ public class BBSSettings
         builder.category("appearance");
         builder.register(language = new ValueLanguage("language"));
         primaryColor = builder.getInt("primary_color", Colors.ACTIVE).color();
+        modelEditorHoverColor = builder.getInt("model_editor_hover_color", Colors.ACTIVE).color();
+        modelEditorHoverOpacity = builder.getFloat("model_editor_hover_opacity", 0.5F, 0F, 1F);
         enableTrackpadIncrements = builder.getBoolean("trackpad_increments", true);
         enableTrackpadScrolling = builder.getBoolean("trackpad_scrolling", true);
         hideSettingDescriptions = builder.getBoolean("hide_setting_descriptions", false);
         welcomePanelAcceptedBeta1 = builder.getBoolean("welcome_panel_accepted_beta1", false);
         welcomePanelAcceptedBeta1.invisible();
-        userIntefaceScale = builder.getFloat("ui_scale", 2F, 0F, 4F);
+        userIntefaceScale = builder.getFloat("ui_scale", 2F, 0.1F, 4F);
+        uiFont = builder.getString("ui_font", "");
+        uiFontSize = builder.getFloat("ui_font_size", 1F, 0.25F, 4F);
         tooltipStyle = builder.getInt("tooltip_style", 1);
         coloredBackground = builder.getBoolean("colored_background", true);
         backgroundBrightness = builder.getFloat("background_brightness", 1F, 0.5F, 1.5F);
@@ -402,10 +457,23 @@ public class BBSSettings
 
         builder.category("axes");
         gizmos = builder.getBoolean("gizmos", true);
-        axesScale = builder.getFloat("axes_scale", 1F, 0F, 10F);
-        axesThickness = builder.getFloat("axes_thickness", 1F, 0.25F, 3F);
+        axesScale = builder.getFloat("axes_scale", 1.5F, 0F, 100F);
+        axesThickness = builder.getFloat("axes_thickness", 0.7F, 0.25F, 3F);
+        /* Multiplier applied only to the invisible picking pass, so the clickable area can be
+         * fatter than the visible handles (or thinner) independently of axes_thickness. */
+        gizmoHitbox = builder.getFloat("gizmo_hitbox", 1.5F, 0.25F, 5F);
         disablePivotTransform = builder.getBoolean("disable_pivot_transform", false);
         gizmoYAxisHorizontal = builder.getBoolean("gizmo_y_axis_horizontal", true);
+        gizmoTrackball = builder.getBoolean("gizmo_trackball", true);
+        gizmoTrackballScale = builder.getInt("gizmo_trackball_scale", 1, 1, 5);
+        /* 0 = Translate, 1 = Scale, 2 = Rotate, 3 = Combined; see Gizmo.Mode (ordinal order matches). */
+        gizmoDefaultMode = builder.getInt("gizmo_default_mode", 0, 0, 3);
+        /* Faint guide line(s) shown along the dragged axis/plane: length (multiplier),
+         * thickness (multiplier) and opacity (0..1). */
+        gizmoGuideLength = builder.getFloat("gizmo_guide_length", 2F, 0.1F, 10F);
+        gizmoGuideThickness = builder.getFloat("gizmo_guide_thickness", 1F, 0.1F, 10F);
+        gizmoGuideOpacity = builder.getFloat("gizmo_guide_opacity", 0.35F, 0.05F, 1F);
+        gizmoTranslateSpeed = builder.getInt("gizmo_translate_speed", 5, 1, 20);
 
         builder.category("tutorials");
         enableCursorRendering = builder.getBoolean("cursor", false);
@@ -464,7 +532,10 @@ public class BBSSettings
         editorDockGuideColor = builder.getInt("dock_guide_color", 0x57CCFF).color();
         editorDockGuideOpacity = builder.getFloat("dock_guide_opacity", 0.5F, 0F, 1F);
         defaultInterpolation = builder.getInt("default_interpolation", 0);
+        defaultModelInterpolation = builder.getInt("default_model_interpolation", 0);
         defaultPathInterpolation = builder.getInt("default_path_interpolation", 34);
+        defaultCameraKeyframeInterpolation = builder.getInt("default_camera_keyframe_interpolation", 0);
+        defaultKeyframeShape = builder.getInt("default_keyframe_shape", 0, 0, KeyframeShape.values().length - 1);
         editorSafeMarginsColor = builder.getInt("safe_margins_color", 0xcccc0000).colorAlpha();
         editorSafeMargins = builder.getBoolean("safe_margins", false);
         editorFlightFreeLook = builder.getBoolean("flight_free_look", false);
@@ -546,5 +617,6 @@ public class BBSSettings
         cdnToken = builder.getString("token", "");
 
         BBSMod.events.post(new RegisterBBSSettingsEvent(builder));
+        syncAppliedAppearance();
     }
 }

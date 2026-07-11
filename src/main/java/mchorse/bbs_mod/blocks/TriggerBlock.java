@@ -14,12 +14,12 @@ import net.minecraft.block.entity.BlockEntityTicker;
 import net.minecraft.block.entity.BlockEntityType;
 import net.minecraft.component.DataComponentTypes;
 import net.minecraft.component.type.NbtComponent;
-import net.minecraft.entity.TypedEntityData;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NbtCompound;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.ActionResult;
+import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.shape.VoxelShape;
@@ -47,7 +47,7 @@ public class TriggerBlock extends Block implements BlockEntityProvider
         if (entity instanceof TriggerBlockEntity triggerBlock)
         {
             ItemStack stack = new ItemStack(this);
-            stack.set(DataComponentTypes.BLOCK_ENTITY_DATA, TypedEntityData.create(BBSMod.TRIGGER_BLOCK_ENTITY, triggerBlock.createNbt(world.getRegistryManager())));
+            stack.set(DataComponentTypes.BLOCK_ENTITY_DATA, NbtComponent.of(triggerBlock.createNbtWithId(world.getRegistryManager())));
 
             return stack;
         }
@@ -82,7 +82,7 @@ public class TriggerBlock extends Block implements BlockEntityProvider
     @Override
     public void onBlockBreakStart(BlockState state, World world, BlockPos pos, PlayerEntity player)
     {
-        if (!world.isClient() && player instanceof ServerPlayerEntity serverPlayer && !player.isCreative())
+        if (!world.isClient && player instanceof ServerPlayerEntity serverPlayer && !player.isCreative())
         {
             BlockEntity be = world.getBlockEntity(pos);
 
@@ -100,7 +100,7 @@ public class TriggerBlock extends Block implements BlockEntityProvider
     {
         if (player.getMainHandStack().isEmpty())
         {
-            if (!world.isClient() && player instanceof ServerPlayerEntity serverPlayer)
+            if (!world.isClient && player instanceof ServerPlayerEntity serverPlayer)
             {
                 if (!player.isCreative() || (player.isCreative() && player.isSneaking()))
                 {
@@ -136,47 +136,65 @@ public class TriggerBlock extends Block implements BlockEntityProvider
     @Override
     public VoxelShape getCollisionShape(BlockState state, BlockView world, BlockPos pos, ShapeContext context)
     {
-        BlockEntity be = world.getBlockEntity(pos);
-
-        if (be instanceof TriggerBlockEntity)
+        try
         {
-            TriggerBlockEntity trigger = (TriggerBlockEntity) be;
+            BlockEntity be = world.getBlockEntity(pos);
 
-            if (!trigger.collidable.get())
+            if (be instanceof TriggerBlockEntity trigger)
             {
-                return VoxelShapes.empty();
+                if (!trigger.collidable.get())
+                {
+                    return VoxelShapes.empty();
+                }
+
+                return this.getShape(world, pos);
             }
-            
-            return this.getShape(world, pos);
+        }
+        catch (Exception e)
+        {
         }
 
-        return super.getCollisionShape(state, world, pos, context);
+        /* Never fall back to a solid full cube for a non-solid block: an exception or
+         * a missing block entity here must not eject the player through the world. */
+        return VoxelShapes.empty();
     }
 
     private VoxelShape getShape(BlockView world, BlockPos pos)
     {
-        BlockEntity be = world.getBlockEntity(pos);
-
-        if (be instanceof TriggerBlockEntity)
+        try
         {
-            TriggerBlockEntity trigger = (TriggerBlockEntity) be;
-            Vector3f min = trigger.pos1.get();
-            Vector3f max = trigger.pos2.get();
+            BlockEntity be = world.getBlockEntity(pos);
 
-            double minX = Math.min(min.x, max.x);
-            double minY = Math.min(min.y, max.y);
-            double minZ = Math.min(min.z, max.z);
-            double maxX = Math.max(min.x, max.x);
-            double maxY = Math.max(min.y, max.y);
-            double maxZ = Math.max(min.z, max.z);
+            if (be instanceof TriggerBlockEntity trigger)
+            {
+                Vector3f min = trigger.pos1.get();
+                Vector3f max = trigger.pos2.get();
 
-            return VoxelShapes.cuboid(minX, minY, minZ, maxX, maxY, maxZ);
+                if (min == null || max == null)
+                {
+                    return VoxelShapes.empty();
+                }
+
+                double minX = Math.max(0D, Math.min(min.x, max.x));
+                double minY = Math.max(0D, Math.min(min.y, max.y));
+                double minZ = Math.max(0D, Math.min(min.z, max.z));
+                double maxX = Math.min(1D, Math.max(min.x, max.x));
+                double maxY = Math.min(1D, Math.max(min.y, max.y));
+                double maxZ = Math.min(1D, Math.max(min.z, max.z));
+
+                if (minX < maxX && minY < maxY && minZ < maxZ)
+                {
+                    return VoxelShapes.cuboid(minX, minY, minZ, maxX, maxY, maxZ);
+                }
+            }
+        }
+        catch (Exception e)
+        {
         }
 
-        return VoxelShapes.fullCube();
+        return VoxelShapes.empty();
     }
 
-    @SuppressWarnings("unchecked")
     @Nullable
     @Override
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(World world, BlockState state, BlockEntityType<T> type)

@@ -29,15 +29,10 @@ import mchorse.bbs_mod.utils.pose.Transform;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
-import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.render.WorldRenderer;
 import net.minecraft.client.render.block.entity.BlockEntityRenderer;
 import net.minecraft.client.render.block.entity.BlockEntityRendererFactory;
-import net.minecraft.client.render.block.entity.state.BlockEntityRenderState;
-import net.minecraft.client.render.command.ModelCommandRenderer;
-import net.minecraft.client.render.command.OrderedRenderCommandQueue;
-import net.minecraft.client.render.state.CameraRenderState;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.util.math.BlockPos;
@@ -46,43 +41,10 @@ import net.minecraft.util.math.Vec3d;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
-import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 
-public class ModelBlockEntityRenderer implements BlockEntityRenderer<ModelBlockEntity, ModelBlockEntityRenderer.RenderState>
+public class ModelBlockEntityRenderer implements BlockEntityRenderer<ModelBlockEntity>
 {
-    public static class RenderState extends BlockEntityRenderState
-    {
-        public ModelBlockEntity entity;
-        public float tickDelta;
-        public int light;
-        public int overlay;
-    }
-
-    @Override
-    public RenderState createRenderState()
-    {
-        return new RenderState();
-    }
-
-    @Override
-    public void updateRenderState(ModelBlockEntity blockEntity, RenderState state, float tickProgress, Vec3d cameraPos, ModelCommandRenderer.CrumblingOverlayCommand crumbling)
-    {
-        state.entity = blockEntity;
-        state.tickDelta = tickProgress;
-        state.light = WorldRenderer.getLightmapCoordinates(blockEntity.getWorld(), blockEntity.getPos());
-        state.overlay = OverlayTexture.DEFAULT_UV;
-    }
-
-    @Override
-    public void render(RenderState state, MatrixStack matrices, OrderedRenderCommandQueue queue, CameraRenderState cameraState)
-    {
-        if (state.entity != null)
-        {
-            this.render(state.entity, state.tickDelta, matrices, null, state.light, state.overlay);
-        }
-    }
-
     private static ActorEntity entity;
 
     public static void renderShadow(VertexConsumerProvider provider, MatrixStack matrices, float tickDelta, double x, double y, double z, float tx, float ty, float tz)
@@ -94,7 +56,7 @@ public class ModelBlockEntityRenderer implements BlockEntityRenderer<ModelBlockE
     {
         ClientWorld world = MinecraftClient.getInstance().world;
 
-        if (entity == null || entity.getEntityWorld() != world)
+        if (entity == null || entity.getWorld() != world)
         {
             entity = new ActorEntity(BBSMod.ACTOR_ENTITY, world);
         }
@@ -103,8 +65,11 @@ public class ModelBlockEntityRenderer implements BlockEntityRenderer<ModelBlockE
         entity.lastRenderX = x;
         entity.lastRenderY = y;
         entity.lastRenderZ = z;
+        entity.prevX = x;
+        entity.prevY = y;
+        entity.prevZ = z;
 
-        double distance = MinecraftClient.getInstance().getEntityRenderDispatcher().getSquaredDistanceToCamera(entity);
+        double distance = MinecraftClient.getInstance().getEntityRenderDispatcher().getSquaredDistanceToCamera(x, y, z);
 
         opacity = (float) ((1D - distance / 256D) * opacity);
 
@@ -136,11 +101,13 @@ public class ModelBlockEntityRenderer implements BlockEntityRenderer<ModelBlockE
     public ModelBlockEntityRenderer(BlockEntityRendererFactory.Context ctx)
     {}
 
+    @Override
     public boolean rendersOutsideBoundingBox(ModelBlockEntity blockEntity)
     {
         return blockEntity.getProperties().isGlobal();
     }
 
+    @Override
     public void render(ModelBlockEntity entity, float tickDelta, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light, int overlay)
     {
         MinecraftClient mc = MinecraftClient.getInstance();
@@ -178,11 +145,11 @@ public class ModelBlockEntityRenderer implements BlockEntityRenderer<ModelBlockE
             int lightAbove = WorldRenderer.getLightmapCoordinates(entity.getWorld(), pos.add((int) transform.translate.x, (int) transform.translate.y, (int) transform.translate.z));
             Camera camera = mc.gameRenderer.getCamera();
 
-            GlStateManager._enableDepthTest();
+            RenderSystem.enableDepthTest();
             FormUtilsClient.render(properties.getForm(), new FormRenderingContext()
                 .set(FormRenderType.MODEL_BLOCK, entity.getEntity(), matrices, lightAbove, overlay, tickDelta)
                 .camera(camera));
-            GlStateManager._disableDepthTest();
+            RenderSystem.disableDepthTest();
 
             if (this.canRenderAxes(entity) && UIBaseMenu.renderAxes)
             {
@@ -195,7 +162,7 @@ public class ModelBlockEntityRenderer implements BlockEntityRenderer<ModelBlockE
             matrices.pop();
         }
 
-        GlStateManager._disableDepthTest();
+        RenderSystem.disableDepthTest();
 
         if (mc.getDebugHud().shouldShowDebugHud())
         {
@@ -228,7 +195,7 @@ public class ModelBlockEntityRenderer implements BlockEntityRenderer<ModelBlockE
         Camera camera = mc.gameRenderer.getCamera();
         Vec3d position = !mc.options.getPerspective().isFirstPerson() && mc.player != null
             ? mc.player.getCameraPosVec(tickDelta)
-            : camera.getCameraPos();
+            : camera.getPos();
 
         BlockPos pos = entity.getPos();
         double x = pos.getX() + 0.5D + transform.translate.x;
@@ -311,6 +278,7 @@ public class ModelBlockEntityRenderer implements BlockEntityRenderer<ModelBlockE
         return finalTransform;
     }
 
+    @Override
     public int getRenderDistance()
     {
         return 512;
@@ -320,7 +288,9 @@ public class ModelBlockEntityRenderer implements BlockEntityRenderer<ModelBlockE
     {
         if (UIScreen.getCurrentMenu() instanceof UIDashboard dashboard)
         {
-            return dashboard.getPanels().panel instanceof UIModelBlockPanel modelBlockPanel;
+            /* The block currently being edited gets the real interactive gizmo (drawn by
+             * UIModelBlockPanel), so the decorative axes would just overlap it. */
+            return dashboard.getPanels().panel instanceof UIModelBlockPanel modelBlockPanel && !modelBlockPanel.isSelectedForGizmo(entity);
         }
 
         return false;

@@ -6,6 +6,8 @@ import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.settings.values.core.ValueGroup;
+import mchorse.bbs_mod.text.RtlAwtTextRenderer;
+import mchorse.bbs_mod.text.RtlTextEngine;
 import mchorse.bbs_mod.ui.ContentType;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
@@ -72,6 +74,7 @@ public class UIMainMenuBar extends UIElement
         /* Window menu is always visible; its content adapts to the active panel
            (currently only the Model Editor populates it). */
         this.add(new UIMenuButton(UIKeys.RAW_WINDOW, this, this::buildWindowMenu));
+
         this.add(new UIMenuButton(UIKeys.RAW_HELP, this, this::buildHelpMenu));
 
         this.row(2).preferred(999);
@@ -160,6 +163,8 @@ public class UIMainMenuBar extends UIElement
     {
         menu.action(Icons.PROPERTIES, UIKeys.SELECTORS_TITLE, () ->
             UIOverlay.addOverlayRight(this.getContext(), new UISelectorsOverlayPanel(), 240));
+        menu.action(Icons.BLOCK, UIKeys.WORLD_PROPERTIES, () ->
+            UIOverlay.addOverlay(this.getContext(), new UIWorldPropertiesOverlayPanel(), 240, 200));
         menu.action(Icons.GRAPH, UIKeys.GRAPH_TOOLTIP, () -> {
             if (this.dashboard.documentTabsBar != null)
             {
@@ -365,7 +370,9 @@ public class UIMainMenuBar extends UIElement
 
             try
             {
-                int textWidth = MinecraftClient.getInstance().textRenderer.getWidth(label.get());
+                int textWidth = RtlAwtTextRenderer.isReady() && RtlTextEngine.isActive()
+                    ? RtlAwtTextRenderer.getWidth(label.get())
+                    : MinecraftClient.getInstance().textRenderer.getWidth(label.get());
                 this.w(textWidth + 10);
             }
             catch (Exception e)
@@ -379,7 +386,9 @@ public class UIMainMenuBar extends UIElement
         {
             try
             {
-                int textWidth = MinecraftClient.getInstance().textRenderer.getWidth(this.label.get());
+                int textWidth = RtlAwtTextRenderer.isReady() && RtlTextEngine.isActive()
+                    ? RtlAwtTextRenderer.getWidth(this.label.get())
+                    : MinecraftClient.getInstance().textRenderer.getWidth(this.label.get());
                 this.w(textWidth + 10);
             }
             catch (Exception e)

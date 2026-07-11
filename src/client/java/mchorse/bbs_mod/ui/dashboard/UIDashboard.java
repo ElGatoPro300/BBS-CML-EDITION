@@ -47,7 +47,7 @@ import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
 
-import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.fabricmc.loader.api.FabricLoader;
 
 import net.minecraft.client.MinecraftClient;
@@ -55,10 +55,7 @@ import net.minecraft.client.option.Perspective;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.math.Vec3d;
 
-import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
-
-import org.lwjgl.opengl.GL11;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -103,6 +100,11 @@ public class UIDashboard extends UIBaseMenu
             if (this.panels.panel instanceof IFlightSupported panel)
             {
                 this.orbit.setFovRoll(panel.supportsRollFOVControl());
+                this.orbitUI.setViewportArea(panel::getFlightViewportArea);
+            }
+            else
+            {
+                this.orbitUI.setViewportArea(null);
             }
 
             this.copyCurrentEntityCamera();
@@ -217,6 +219,11 @@ public class UIDashboard extends UIBaseMenu
     @Override
     public boolean canPause()
     {
+        if (UIWorldPropertiesOverlayPanel.isOpen())
+        {
+            return false;
+        }
+
         return this.panels.panel != null && this.panels.panel.canPause();
     }
 
@@ -398,8 +405,8 @@ public class UIDashboard extends UIBaseMenu
         Link background = BBSSettings.backgroundImage.get();
         int color = BBSSettings.backgroundColor.get();
 
-        GlStateManager._enableBlend();
-        GlStateManager._blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
 
         if (background == null)
         {

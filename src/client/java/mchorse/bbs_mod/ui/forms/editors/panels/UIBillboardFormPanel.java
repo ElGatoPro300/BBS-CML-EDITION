@@ -24,6 +24,7 @@ public class UIBillboardFormPanel extends UIFormPanel<BillboardForm>
     public UIButton openCrop;
     public UIToggle resizeCrop;
     public UIColor color;
+    public UIColor paintColor;
 
     public UITrackpad offsetX;
     public UITrackpad offsetY;
@@ -48,6 +49,8 @@ public class UIBillboardFormPanel extends UIFormPanel<BillboardForm>
         });
         this.resizeCrop = new UIToggle(UIKeys.FORMS_EDITORS_BILLBOARD_RESIZE_CROP, false, (b) -> this.form.resizeCrop.set(b.getValue()));
         this.color = new UIColor((value) -> this.form.color.set(Color.rgba(value))).direction(Direction.LEFT).withAlpha();
+        this.paintColor = new UIColor((value) -> this.form.paintColor.set(Color.rgba(value))).direction(Direction.LEFT).withAlpha();
+        this.paintColor.tooltip(UIKeys.FORMS_EDITORS_PAINT_COLOR);
 
         this.offsetX = new UITrackpad((value) -> this.form.offsetX.set(value.floatValue()));
         this.offsetX.tooltip(UIKeys.FORMS_EDITORS_BILLBOARD_OFFSET_X);
@@ -58,7 +61,7 @@ public class UIBillboardFormPanel extends UIFormPanel<BillboardForm>
 
         this.shading = new UIToggle(UIKeys.FORMS_EDITORS_BILLBOARD_SHADING, false, (b) -> this.form.shading.set(b.getValue()));
 
-        this.options.add(this.pick, this.color, this.billboard, this.linear, this.mipmap);
+        this.options.add(this.pick, this.color, this.paintColor, this.billboard, this.linear, this.mipmap);
         this.options.add(UI.label(UIKeys.FORMS_EDITORS_BILLBOARD_CROP).marginTop(8), this.openCrop, this.resizeCrop);
         this.options.add(UI.label(UIKeys.FORMS_EDITORS_BILLBOARD_UV_SHIFT).marginTop(8), UI.row(this.offsetX, this.offsetY), this.rotation, this.shading);
     }
@@ -74,6 +77,7 @@ public class UIBillboardFormPanel extends UIFormPanel<BillboardForm>
 
         this.resizeCrop.setValue(form.resizeCrop.get());
         this.color.setColor(form.color.get().getARGBColor());
+        this.paintColor.setColor(form.paintColor.get().getARGBColor());
 
         this.offsetX.setValue(form.offsetX.get());
         this.offsetY.setValue(form.offsetY.get());

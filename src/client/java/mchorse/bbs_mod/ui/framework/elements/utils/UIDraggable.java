@@ -125,6 +125,17 @@ public class UIDraggable extends UIElement
         return this.dragging && this.thresholdMet;
     }
 
+    /**
+     * Forcefully drop the drag latch. Needed when the handle gets hidden mid drag
+     * (e.g. its panel was torn out into a floating window), because a hidden
+     * element never receives the mouse release that would normally reset it.
+     */
+    public void resetDrag()
+    {
+        this.dragging = false;
+        this.thresholdMet = false;
+    }
+
     public void updateDrag(UIContext context)
     {
         if (this.dragging && this.callback != null)
