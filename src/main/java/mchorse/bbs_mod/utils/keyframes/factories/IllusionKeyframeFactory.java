@@ -52,14 +52,6 @@ public class IllusionKeyframeFactory implements IKeyframeFactory<Illusion>
             illusion.delay = interpolation.interpolate(a.delay, b.delay, x);
             illusion.distort = interpolation.interpolate(a.distort, b.distort, x);
             illusion.glow = interpolation.interpolate(a.glow, b.glow, x);
-            illusion.distortUniform = a.distortUniform;
-            illusion.distortInvert = a.distortInvert;
-            illusion.opacityUniform = a.opacityUniform;
-            illusion.glowUniform = a.glowUniform;
-            illusion.glowInvert = a.glowInvert;
-            illusion.gradual = a.gradual;
-            illusion.gradualInvert = a.gradualInvert;
-            illusion.transform.lerp(a.transform, a.transform, b.transform, b.transform, interpolation, x);
         }
 
         return illusion;

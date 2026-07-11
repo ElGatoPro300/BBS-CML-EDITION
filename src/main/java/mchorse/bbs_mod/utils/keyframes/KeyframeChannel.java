@@ -41,11 +41,6 @@ public class KeyframeChannel <T> extends ValueList<Keyframe<T>>
         return this.factory;
     }
 
-    public void setFactory(IKeyframeFactory<T> factory)
-    {
-        this.factory = factory;
-    }
-
     public boolean isModel()
     {
         return this.model;

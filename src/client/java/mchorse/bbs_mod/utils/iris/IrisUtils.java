@@ -7,7 +7,6 @@ import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.utils.CollectionUtils;
 import mchorse.bbs_mod.utils.DataPath;
 
-import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.texture.AbstractTexture;
 
 import net.irisshaders.iris.Iris;
@@ -444,18 +443,6 @@ public class IrisUtils
     public static boolean isShaderPackEnabled()
     {
         return IrisApi.getInstance().isShaderPackInUse();
-    }
-
-    public static void toggleShaders()
-    {
-        try
-        {
-            Iris.toggleShaders(MinecraftClient.getInstance(), !IrisUtils.isShaderPackEnabled());
-        }
-        catch (Exception e)
-        {
-            e.printStackTrace();
-        }
     }
 
     public static boolean isShadowPass()

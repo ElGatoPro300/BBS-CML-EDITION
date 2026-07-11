@@ -15,7 +15,6 @@ public class GeckoAnimationContext
     public float verticalSpeed;
     public boolean onGround;
     public boolean sneaking;
-    public boolean riding;
     public boolean sprinting;
     public boolean swimming;
     public boolean fallFlying;

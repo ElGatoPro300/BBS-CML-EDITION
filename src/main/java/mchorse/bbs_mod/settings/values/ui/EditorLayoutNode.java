@@ -227,81 +227,6 @@ public abstract class EditorLayoutNode
         return root;
     }
 
-    public static EditorLayoutNode copyWithReorderedTabs(EditorLayoutNode root, String panelId, int fromIndex, int toIndex)
-    {
-        if (root == null || panelId == null || fromIndex == toIndex)
-        {
-            return root;
-        }
-
-        if (root instanceof TabbedNode)
-        {
-            TabbedNode tabbed = (TabbedNode) root;
-            boolean contains = false;
-
-            for (EditorLayoutNode tab : tabbed.tabs)
-            {
-                if (tab instanceof PanelNode && ((PanelNode) tab).getPanelId().equals(panelId))
-                {
-                    contains = true;
-                    break;
-                }
-            }
-
-            if (contains)
-            {
-                if (fromIndex < 0 || fromIndex >= tabbed.tabs.size() || toIndex < 0 || toIndex >= tabbed.tabs.size())
-                {
-                    return root;
-                }
-
-                List<EditorLayoutNode> newTabs = new ArrayList<>(tabbed.tabs);
-                EditorLayoutNode moved = tabbed.tabs.get(fromIndex);
-
-                newTabs.remove(fromIndex);
-                newTabs.add(toIndex, moved);
-
-                int newActiveTab = tabbed.activeTab;
-
-                if (tabbed.activeTab == fromIndex)
-                {
-                    newActiveTab = toIndex;
-                }
-                else if (fromIndex < tabbed.activeTab && toIndex >= tabbed.activeTab)
-                {
-                    newActiveTab = tabbed.activeTab - 1;
-                }
-                else if (fromIndex > tabbed.activeTab && toIndex <= tabbed.activeTab)
-                {
-                    newActiveTab = tabbed.activeTab + 1;
-                }
-
-                return new TabbedNode(newTabs, newActiveTab);
-            }
-        }
-
-        if (root instanceof SplitterNode)
-        {
-            SplitterNode splitter = (SplitterNode) root;
-
-            EditorLayoutNode first = copyWithReorderedTabs(splitter.first, panelId, fromIndex, toIndex);
-
-            if (first != splitter.first)
-            {
-                return new SplitterNode(splitter.horizontal, splitter.ratio, first, splitter.second);
-            }
-
-            EditorLayoutNode second = copyWithReorderedTabs(splitter.second, panelId, fromIndex, toIndex);
-
-            if (second != splitter.second)
-            {
-                return new SplitterNode(splitter.horizontal, splitter.ratio, splitter.first, second);
-            }
-        }
-
-        return root;
-    }
-
     public static void collectSplitters(EditorLayoutNode node, List<SplitterNode> out)
     {
         if (node == null)
@@ -315,7 +240,6 @@ public abstract class EditorLayoutNode
         while (!stack.isEmpty())
         {
             EditorLayoutNode current = stack.pop();
-
             if (current instanceof SplitterNode)
             {
                 SplitterNode splitter = (SplitterNode) current;
@@ -326,11 +250,9 @@ public abstract class EditorLayoutNode
             else if (current instanceof TabbedNode)
             {
                 TabbedNode tabbed = (TabbedNode) current;
-
-                if (!tabbed.tabs.isEmpty())
+                for (int i = tabbed.tabs.size() - 1; i >= 0; i--)
                 {
-                    int active = Math.max(0, Math.min(tabbed.activeTab, tabbed.tabs.size() - 1));
-                    stack.push(tabbed.tabs.get(active));
+                    stack.push(tabbed.tabs.get(i));
                 }
             }
         }
@@ -832,22 +754,6 @@ public abstract class EditorLayoutNode
             {
                 BoundsCursor cursor = stack.pop();
                 ModelNode node = this.nodes.get(cursor.index);
-
-                if (node.type == ModelNodeType.TABBED)
-                {
-                    if (node.tabs.size() > 0 && node.activeTab >= 0 && node.activeTab < node.tabs.size())
-                    {
-                        stack.push(new BoundsCursor(node.tabs.get(node.activeTab), cursor.x, cursor.y, cursor.w, cursor.h));
-                    }
-
-                    continue;
-                }
-
-                if (node.type == ModelNodeType.PANEL)
-                {
-                    continue;
-                }
-
                 if (node.type != ModelNodeType.SPLITTER)
                 {
                     continue;

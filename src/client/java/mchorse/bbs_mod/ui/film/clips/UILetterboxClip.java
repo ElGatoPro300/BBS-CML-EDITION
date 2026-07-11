@@ -2,7 +2,6 @@ package mchorse.bbs_mod.ui.film.clips;
 
 import mchorse.bbs_mod.camera.clips.screen.LetterboxClip;
 import mchorse.bbs_mod.data.types.MapType;
-import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.IUIClipsDelegate;
@@ -10,25 +9,13 @@ import mchorse.bbs_mod.ui.film.replays.UIReplaysEditor;
 import mchorse.bbs_mod.ui.film.utils.keyframes.UIFilmKeyframes;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
-import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeEditor;
-import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeSheet;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.utils.clips.Clips;
-import mchorse.bbs_mod.utils.colors.Colors;
-import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
-
-import net.minecraft.util.math.MathHelper;
 
 public class UILetterboxClip extends UIClip<LetterboxClip>
 {
     public UIColor color;
-    public UITrackpad rotation;
-    public UITrackpad zoom;
-    public UITrackpad width;
-    public UITrackpad height;
-    public UITrackpad offsetX;
-    public UITrackpad offsetY;
     public UIButton edit;
     public UIKeyframeEditor keyframes;
 
@@ -44,17 +31,16 @@ public class UILetterboxClip extends UIClip<LetterboxClip>
 
         this.color = new UIColor((c) -> this.editor.editMultiple(this.clip.color, (value) ->
         {
-            value.set(Colors.setA(c, 1F));
+            value.set(c);
         }));
 
-        this.rotation = this.createChannelTrackpad(this.clip.rotation, -45, 45, UIKeys.SCREEN_PANELS_LETTERBOX_ROTATION);
-        this.zoom = this.createChannelTrackpad(this.clip.zoom, 0.1F, 10F, UIKeys.SCREEN_PANELS_LETTERBOX_ZOOM);
-        this.width = this.createChannelTrackpad(this.clip.width, UIKeys.SCREEN_PANELS_LETTERBOX_WIDTH);
-        this.height = this.createChannelTrackpad(this.clip.height, UIKeys.SCREEN_PANELS_LETTERBOX_HEIGHT);
-        this.offsetX = this.createChannelTrackpad(this.clip.offsetX, -1F, 1F, UIKeys.SCREEN_PANELS_LETTERBOX_OFFSET_X);
-        this.offsetY = this.createChannelTrackpad(this.clip.offsetY, -1F, 1F, UIKeys.SCREEN_PANELS_LETTERBOX_OFFSET_Y);
-
-        this.keyframes = this.createKeyframeEditor("letterbox_keyframes");
+        this.keyframes = new UIKeyframeEditor((consumer) -> new UIFilmKeyframes(this.editor, consumer));
+        this.keyframes.view.backgroundRenderer((context) ->
+        {
+            UIReplaysEditor.renderBackground(context, this.keyframes.view, (Clips) this.clip.getParent(), this.clip.tick.get(), this.clip);
+        });
+        this.keyframes.view.duration(() -> this.clip.duration.get());
+        this.keyframes.setUndoId("letterbox_keyframes");
 
         this.edit = new UIButton(UIKeys.GENERAL_EDIT, (b) ->
         {
@@ -65,66 +51,12 @@ public class UILetterboxClip extends UIClip<LetterboxClip>
         this.edit.keys().register(Keys.FORMS_EDIT, () -> this.edit.clickItself());
     }
 
-    private UITrackpad createChannelTrackpad(KeyframeChannel<Double> channel, IKey tooltip)
-    {
-        UITrackpad trackpad = new UITrackpad((v) ->
-        {
-            int tick = this.getClipTick();
-
-            channel.insert(tick, v.doubleValue());
-            this.fillData();
-        });
-
-        trackpad.tooltip(tooltip);
-
-        return trackpad;
-    }
-
-    private UITrackpad createChannelTrackpad(KeyframeChannel<Double> channel, float min, float max, IKey tooltip)
-    {
-        UITrackpad trackpad = this.createChannelTrackpad(channel, tooltip);
-
-        trackpad.limit(min, max);
-
-        return trackpad;
-    }
-
-    private UIKeyframeEditor createKeyframeEditor(String undoId)
-    {
-        UIKeyframeEditor editor = new UIKeyframeEditor((consumer) -> new UIFilmKeyframes(this.editor, consumer));
-
-        editor.view.backgroundRenderer((context) ->
-        {
-            UIReplaysEditor.renderBackground(context, editor.view, (Clips) this.clip.getParent(), this.clip.tick.get(), this.clip);
-        });
-        editor.view.duration(() -> this.clip.duration.get());
-        editor.setUndoId(undoId);
-
-        return editor;
-    }
-
-    private int getClipTick()
-    {
-        return MathHelper.clamp(this.editor.getCursor() - this.clip.tick.get(), 0, this.clip.duration.get());
-    }
-
     @Override
     protected void registerPanels()
     {
         super.registerPanels();
 
         this.panels.add(UI.column(UIClip.label(UIKeys.SCREEN_PANELS_LETTERBOX_COLOR), this.color).marginTop(6));
-        this.panels.add(UI.column(
-            UIClip.label(UIKeys.SCREEN_PANELS_LETTERBOX_TILT),
-            this.rotation,
-            this.zoom,
-            this.width,
-            this.height
-        ).marginTop(6));
-        this.panels.add(UI.column(
-            UIClip.label(UIKeys.SCREEN_PANELS_LETTERBOX_OFFSET),
-            UI.row(this.offsetX, this.offsetY)
-        ).marginTop(6));
         this.panels.add(UI.column(UIClip.label(UIKeys.SCREEN_PANELS_KEYFRAMES), this.edit).marginTop(6));
     }
 
@@ -133,51 +65,8 @@ public class UILetterboxClip extends UIClip<LetterboxClip>
     {
         super.fillData();
 
-        this.color.setColor(Colors.setA(this.clip.color.get(), 1F));
-        this.rotation.setValue(this.getChannelValue(this.clip.rotation, 0D));
-        this.zoom.setValue(this.getChannelValue(this.clip.zoom, 1D));
-        this.width.setValue(this.getChannelValue(this.clip.width, 1D));
-        this.height.setValue(this.getChannelValue(this.clip.height, this.getChannelValue(this.clip.size, 0.4D)));
-        this.offsetX.setValue(this.getChannelValue(this.clip.offsetX, 0D));
-        this.offsetY.setValue(this.getChannelValue(this.clip.offsetY, 0D));
-
+        this.color.setColor(this.clip.color.get());
         this.keyframes.setChannels(this.clip.channels);
-
-        this.updateTrackTitles(this.keyframes);
-    }
-
-    private double getChannelValue(KeyframeChannel<Double> channel, double fallback)
-    {
-        int tick = this.getClipTick();
-
-        if (channel.isEmpty())
-        {
-            return fallback;
-        }
-
-        return channel.interpolate(tick);
-    }
-
-    private void updateTrackTitles(UIKeyframeEditor editor)
-    {
-        for (UIKeyframeSheet sheet : editor.view.getGraph().getSheets())
-        {
-            sheet.title = this.getTrackTitle(sheet.id);
-        }
-    }
-
-    private IKey getTrackTitle(String id)
-    {
-        return switch (id)
-        {
-            case "height" -> UIKeys.SCREEN_PANELS_LETTERBOX_HEIGHT;
-            case "size" -> UIKeys.SCREEN_PANELS_LETTERBOX_HEIGHT;
-            case "width" -> UIKeys.SCREEN_PANELS_LETTERBOX_WIDTH;
-            case "smoothness" -> UIKeys.SCREEN_PANELS_LETTERBOX_SMOOTHNESS;
-            case "rotation" -> UIKeys.SCREEN_PANELS_LETTERBOX_ROTATION;
-            case "zoom" -> UIKeys.SCREEN_PANELS_LETTERBOX_ZOOM;
-            default -> IKey.constant(id);
-        };
     }
 
     @Override

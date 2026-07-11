@@ -5,7 +5,6 @@ import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.forms.BodyPart;
 import mchorse.bbs_mod.forms.forms.Form;
-import mchorse.bbs_mod.film.FormRenderDepth;
 import mchorse.bbs_mod.forms.renderers.utils.MatrixCache;
 import mchorse.bbs_mod.settings.values.core.ValueTransform;
 import mchorse.bbs_mod.ui.framework.UIContext;
@@ -29,9 +28,7 @@ import org.joml.Matrix4f;
 
 import org.lwjgl.opengl.GL11;
 
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.function.Supplier;
 
@@ -110,53 +107,20 @@ public abstract class FormRenderer <T extends Form>
             return;
         }
 
-        if (!this.form.render.get())
+        this.form.applyStates(context.transition);
+
+        int light = context.light;
+        boolean visible = this.form.visible.get();
+
+        if (!visible)
         {
             return;
         }
 
-        this.form.applyStates(context.transition);
-
-        int light = context.light;
-        int savedColor = context.color;
         boolean isPicking = context.stencilMap != null;
 
-        if (!isPicking && context.renderDepthFrame != null && context.type == FormRenderType.ENTITY && context.entity != null)
-        {
-            Form sourceForm = FormRenderDepth.getSourceForm(context.renderDepthFrame.sourceRootForm, this.form);
-            double distanceSq = FormRenderDepth.getEntityDistanceSq(context.entity, context.camera, context.getTransition());
-            float renderDepthFade = FormRenderDepth.getFade(this.form, sourceForm, distanceSq, context.renderDepthFrame.occluders);
-
-            if (renderDepthFade <= 0F)
-            {
-                this.form.unapplyStates();
-
-                return;
-            }
-
-            if (renderDepthFade < 1F)
-            {
-                int alpha = Math.round(((savedColor >>> 24) & 0xFF) * renderDepthFade);
-
-                context.color = (alpha << 24) | (savedColor & Colors.RGB);
-            }
-        }
-
-        if (!this.form.visible.get() && !isPicking)
-        {
-            context.color = Colors.setA(context.color, 0F);
-        }
-
         context.stack.push();
-        if (context.world != null)
-        {
-            context.world.push();
-        }
         this.applyTransforms(context.stack, false, context.getTransition());
-        if (context.world != null)
-        {
-            this.applyTransforms(context.world, false, context.getTransition());
-        }
 
         float lf = 1F - MathUtils.clamp(this.form.lighting.get(), 0F, 1F);
         int u = context.light & '\uffff';
@@ -175,13 +139,8 @@ public abstract class FormRenderer <T extends Form>
         this.renderBodyParts(context);
 
         context.stack.pop();
-        if (context.world != null)
-        {
-            context.world.pop();
-        }
 
         context.light = light;
-        context.color = savedColor;
 
         this.form.unapplyStates();
     }
@@ -275,38 +234,10 @@ public abstract class FormRenderer <T extends Form>
 
     public void renderBodyParts(FormRenderingContext context)
     {
-        for (BodyPart part : this.getSortedBodyParts(context))
+        for (BodyPart part : this.form.parts.getAllTyped())
         {
             this.renderBodyPart(part, context);
         }
-    }
-
-    protected List<BodyPart> getSortedBodyParts(FormRenderingContext context)
-    {
-        List<BodyPart> parts = new ArrayList<>(this.form.parts.getAllTyped());
-
-        if (context.renderDepthFrame == null)
-        {
-            return parts;
-        }
-
-        Form sourceRoot = context.renderDepthFrame.sourceRootForm;
-
-        parts.sort(Comparator.comparingDouble(part ->
-        {
-            Form child = part.getForm();
-
-            if (child == null)
-            {
-                return 0D;
-            }
-
-            Double depth = FormRenderDepth.getEnabledDepth(child, FormRenderDepth.getSourceForm(sourceRoot, child));
-
-            return depth == null ? 0D : depth;
-        }));
-
-        return parts;
     }
 
     protected void renderBodyPart(BodyPart part, FormRenderingContext context)
@@ -318,23 +249,11 @@ public abstract class FormRenderer <T extends Form>
         if (part.getForm() != null)
         {
             context.stack.push();
-            if (context.world != null)
-            {
-                context.world.push();
-            }
             MatrixStackUtils.applyTransform(context.stack, part.transform.get());
-            if (context.world != null)
-            {
-                MatrixStackUtils.applyTransform(context.world, part.transform.get());
-            }
 
             FormUtilsClient.render(part.getForm(), context);
 
             context.stack.pop();
-            if (context.world != null)
-            {
-                context.world.pop();
-            }
         }
 
         context.entity = oldEntity;

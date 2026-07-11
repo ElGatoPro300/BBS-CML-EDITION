@@ -1,7 +1,6 @@
 package mchorse.bbs_mod.ui.framework;
 
 import mchorse.bbs_mod.BBSModClient;
-import mchorse.bbs_mod.discord.DiscordPresenceManager;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.importers.IImportPathProvider;
 import mchorse.bbs_mod.importers.ImporterContext;
@@ -106,7 +105,6 @@ public class UIScreen extends Screen implements IFileDropListener
         super.removed();
 
         this.menu.onClose(null);
-        DiscordPresenceManager.INSTANCE.onBbsUiClosed();
 
         MinecraftClient.getInstance().options.hudHidden = false;
     }
@@ -122,7 +120,6 @@ public class UIScreen extends Screen implements IFileDropListener
         super.onDisplayed();
 
         this.menu.onOpen(null);
-        DiscordPresenceManager.INSTANCE.onBbsUiOpened(this.menu);
 
         MinecraftClient.getInstance().options.hudHidden = this.menu.canHideHUD();
     }

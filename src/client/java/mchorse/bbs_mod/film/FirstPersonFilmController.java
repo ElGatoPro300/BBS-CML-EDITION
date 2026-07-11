@@ -13,13 +13,13 @@ public class FirstPersonFilmController extends WorldFilmController
     }
 
     @Override
-    protected void renderEntity(WorldRenderContext context, Replay replay, IEntity entity, int index)
+    protected void renderEntity(WorldRenderContext context, Replay replay, IEntity entity)
     {
         if (replay.fp.get())
         {
             return;
         }
 
-        super.renderEntity(context, replay, entity, index);
+        super.renderEntity(context, replay, entity);
     }
 }

@@ -103,10 +103,7 @@ public abstract class UIDataDashboardPanel <T extends ValueGroup> extends UICRUD
 
         if (data != null && this.dashboard != null && this.dashboard.documentTabsBar != null)
         {
-            if (!this.dashboard.documentTabsBar.matchesActiveAsset(this.getType(), data.getId()))
-            {
-                this.dashboard.documentTabsBar.addOrActivate(this.getType(), data.getId());
-            }
+            this.dashboard.documentTabsBar.addOrActivate(this.getType(), data.getId());
         }
     }
 

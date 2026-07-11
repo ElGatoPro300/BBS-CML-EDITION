@@ -5,6 +5,7 @@ import mchorse.bbs_mod.ui.forms.editors.forms.UIForm;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIScrollView;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIDraggable;
+import mchorse.bbs_mod.ui.framework.elements.utils.UIRenderable;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.utils.MathUtils;
 
@@ -41,6 +42,18 @@ public abstract class UIFormPanel <T extends Form> extends UIElement
 
         this.draggable.relative(this.options).x(0F).y(0.5F).w(6).h(40).anchor(0.5F, 0.5F);
 
+        UIRenderable background = new UIRenderable((context) ->
+        {
+            int x = this.options.area.x;
+            int y = this.options.area.y;
+            int ex = this.options.area.ex();
+            int ey = this.options.area.ey();
+
+            context.batcher.box(x, y, ex, ey, 0xFF111115);
+            context.batcher.outline(x - 1, y - 1, ex + 1, ey + 1, 0xFF5A5A5A);
+        });
+
+        this.prepend(background);
         this.add(this.options, this.draggable);
     }
 

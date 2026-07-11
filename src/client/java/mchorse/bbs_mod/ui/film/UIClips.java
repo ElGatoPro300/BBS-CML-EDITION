@@ -2445,7 +2445,6 @@ public class UIClips extends UIElement
             List<Link> screenGroup = List.of(
                 Link.bbs("subtitle"),
                 Link.bbs("hotbar"),
-                Link.bbs("image"),
                 Link.bbs("color"),
                 Link.bbs("cinematic"),
                 Link.bbs("vignette"),

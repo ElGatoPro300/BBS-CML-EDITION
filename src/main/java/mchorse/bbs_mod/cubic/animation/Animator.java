@@ -31,8 +31,6 @@ public class Animator implements IAnimator
     public ActionPlayback sprinting;
     public ActionPlayback crouching;
     public ActionPlayback crouchingIdle;
-    public ActionPlayback riding;
-    public ActionPlayback ridingIdle;
     public ActionPlayback dying;
     public ActionPlayback falling;
 
@@ -68,7 +66,7 @@ public class Animator implements IAnimator
     public List<String> getActions()
     {
         return Arrays.asList(
-            "idle", "running", "sprinting", "crouching", "crouching_idle", "riding", "riding_idle", "dying", "falling",
+            "idle", "running", "sprinting", "crouching", "crouching_idle", "dying", "falling",
             "swipe", "jump", "hurt", "land", "shoot", "consume", "base_pre", "base_post"
         );
     }
@@ -84,8 +82,6 @@ public class Animator implements IAnimator
         this.sprinting = this.createAction(this.sprinting, actions.getConfig("sprinting"), true);
         this.crouching = this.createAction(this.crouching, actions.getConfig("crouching"), true);
         this.crouchingIdle = this.createAction(this.crouchingIdle, actions.getConfig("crouching_idle"), true);
-        this.riding = this.createAction(this.riding, actions.getConfig("riding"), true);
-        this.ridingIdle = this.createAction(this.ridingIdle, actions.getConfig("riding_idle"), true);
         this.dying = this.createAction(this.dying, actions.getConfig("dying"), false);
         this.falling = this.createAction(this.falling, actions.getConfig("falling"), true);
 
@@ -254,39 +250,7 @@ public class Animator implements IAnimator
         }
         else
         {
-            if (target.isRiding() || target.isSitting())
-            {
-                IEntity mount = target.getMountTarget();
-                boolean mountMoves = false;
-
-                if (mount != null)
-                {
-                    double mdx = mount.getX() - mount.getPrevX();
-                    double mdz = mount.getZ() - mount.getPrevZ();
-
-                    mountMoves = Math.abs(mdx) > threshold || Math.abs(mdz) > threshold;
-                }
-
-                ActionPlayback ridingAction = !mountMoves && this.ridingIdle != null ? this.ridingIdle : this.riding;
-
-                if (ridingAction != null)
-                {
-                    this.setActiveAction(ridingAction);
-                }
-                else if (!mountMoves && this.crouchingIdle != null)
-                {
-                    this.setActiveAction(this.crouchingIdle);
-                }
-                else if (this.crouching != null)
-                {
-                    this.setActiveAction(this.crouching);
-                }
-                else
-                {
-                    this.setActiveAction(this.idle);
-                }
-            }
-            else if (target.isSneaking())
+            if (target.isSneaking())
             {
                 this.setActiveAction(!moves ? this.crouchingIdle : this.crouching);
             }

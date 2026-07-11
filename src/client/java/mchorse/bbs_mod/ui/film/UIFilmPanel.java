@@ -12,17 +12,12 @@ import mchorse.bbs_mod.camera.controller.CameraController;
 import mchorse.bbs_mod.camera.controller.RunnerCameraController;
 import mchorse.bbs_mod.camera.data.Position;
 import mchorse.bbs_mod.client.BBSRendering;
-import mchorse.bbs_mod.client.CrossWorldFilmLoader;
-import mchorse.bbs_mod.client.CrossWorldFilmScanner;
-import mchorse.bbs_mod.client.FilmLaunchHelper;
-import mchorse.bbs_mod.client.WorldLaunchHelper;
 import mchorse.bbs_mod.client.renderer.MorphRenderer;
 import mchorse.bbs_mod.client.video.VideoRenderer;
 import mchorse.bbs_mod.data.DataToString;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.events.register.RegisterFilmEditorFactoriesEvent;
-import mchorse.bbs_mod.film.CrossWorldFilmEntry;
 import mchorse.bbs_mod.film.Film;
 import mchorse.bbs_mod.film.FilmContributor;
 import mchorse.bbs_mod.film.Recorder;
@@ -59,7 +54,6 @@ import mchorse.bbs_mod.ui.film.clips.UIClip;
 import mchorse.bbs_mod.ui.film.clips.UIKeyframeClip;
 import mchorse.bbs_mod.ui.film.controller.UIFilmController;
 import mchorse.bbs_mod.ui.film.replays.UIReplaysEditor;
-import mchorse.bbs_mod.ui.film.replays.overlays.UIReplayPropertiesPanel;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIReplaysOverlayPanel;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarDockSync;
 import mchorse.bbs_mod.ui.film.utils.UIFilmUndoHandler;
@@ -85,7 +79,6 @@ import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.ui.utils.UIDataUtils;
 import mchorse.bbs_mod.ui.utils.UIUtils;
-import mchorse.bbs_mod.ui.utility.UIUtilityOverlayPanel;
 import mchorse.bbs_mod.ui.utils.context.ContextAction;
 import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
@@ -183,7 +176,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     public UIReplaysEditor replayEditor;
     public UIClipsPanel actionEditor;
     public UIReplaysOverlayPanel anchoredReplaysPanel;
-    public UIReplayPropertiesPanel anchoredReplaysPropertiesPanel;
 
     /* Icon bar buttons */
     public UIIcon toggleHorizontal;
@@ -233,11 +225,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private final List<Runnable> postUpdateActions = new ArrayList<>();
     private int lastDragMouseX;
     private int lastDragMouseY;
-    private boolean tabReordering;
-    private String tabReorderPanelId;
-    private int tabReorderCurrentIndex;
-    private EditorLayoutNode.TabbedNode tabReorderTabbedNode;
-    private UITabBar tabReorderTabBar;
     private static final int HOME_BANNER_HEIGHT = 108;
     private static final float DRAG_HANDLE_HEIGHT_NORM = 0.02F;
     private static final float DRAG_HANDLE_TOP_OFFSET_NORM = 0.01F;
@@ -256,7 +243,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private static final float DROP_EDGE_MARGIN = 0.2F;
     private static final int EDITOR_MIN_SIZE_FOR_PX_HANDLES = 10;
     private static final String ANCHORED_REPLAYS_PANEL_ID = "replaysPanel";
-    private static final String ANCHORED_REPLAYS_PROPERTIES_PANEL_ID = "replaysPropertiesPanel";
     private static final String PRESET_REPLAYS_PANEL_ENABLED = "replays_panel_enabled";
     private static final String PRESET_REPLAYS_PANEL_FLOATING = "replays_panel_floating";
     private static final String PRESET_REPLAYS_PANEL_X = "replays_panel_x";
@@ -297,18 +283,12 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private UIButton homeDeleteCurrent;
     private String homeLastClickedFilmId;
     private long homeLastClickTime;
-    private final Map<String, CrossWorldFilmEntry> crossWorldFilmEntries = new HashMap<>();
-    private final Map<String, String> crossWorldWorldLabels = new HashMap<>();
-    private CrossWorldFilmEntry crossWorldPendingJoin;
-    private String loadedFilmTabKey;
-    private boolean crossWorldScanning;
     private final List<FilmDocumentTab> filmDocumentTabs = new ArrayList<>();
     private int activeFilmDocumentTab = -1;
     private boolean showingHomePage = true;
 
     private boolean shouldCaptureThumbnail;
     private final Map<String, Texture> thumbnails = new HashMap<>();
-    private final Set<String> missingThumbnailIds = new HashSet<>();
 
     /* View mode is persisted globally — see BBSSettings.lastViewMosaic. */
     private static boolean lastShowingHomePage = true;
@@ -482,8 +462,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.anchoredReplaysPanel = new UIReplaysOverlayPanel(this, (replay) -> this.replayEditor.setReplay(replay, false, true));
         this.anchoredReplaysPanel.setDocked(true);
         this.anchoredReplaysPanel.setVisible(false);
-        this.anchoredReplaysPropertiesPanel = new UIReplayPropertiesPanel(this.anchoredReplaysPanel);
-        this.anchoredReplaysPropertiesPanel.setVisible(false);
         this.panelById.put("cameraTimeline", this.cameraEditor);
         this.panelById.put("replayTimeline", this.replayEditor);
         this.panelById.put("actionTimeline", this.actionEditor);
@@ -493,7 +471,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.panelById.put("actionEditArea", this.actionEditArea);
         this.panelById.put("unifiedEditArea", this.unifiedEditArea);
         this.panelById.put(ANCHORED_REPLAYS_PANEL_ID, this.anchoredReplaysPanel);
-        this.panelById.put(ANCHORED_REPLAYS_PROPERTIES_PANEL_ID, this.anchoredReplaysPropertiesPanel);
 
         /* Every window is an opaque hit target: a click inside a panel's area must
            never fall through to widgets of another panel stacked beneath it. */
@@ -515,27 +492,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             }
         };
         this.homeActionsPanel = new UIElement();
-        this.homeFilmsList = new UIDataPathList((list) -> this.handleHomeFilmsSelection(list))
-        {
-            @Override
-            protected String elementToString(UIContext context, int i, DataPath element)
-            {
-                if (UIFilmPanel.this.isAllWorldsBrowseMode())
-                {
-                    if (element.folder && element.size() == 1 && !"..".equals(element.getLast()))
-                    {
-                        String label = UIFilmPanel.this.crossWorldWorldLabels.get(element.getLast());
-
-                        if (label != null)
-                        {
-                            return label + "/";
-                        }
-                    }
-                }
-
-                return super.elementToString(context, i, element);
-            }
-        };
+        this.homeFilmsList = new UIDataPathList((list) -> this.handleHomeFilmsSelection(list));
         this.homeFilmsList.setFileIcon(Icons.FILM);
         this.homeFilmsList.context((menu) ->
         {
@@ -608,11 +565,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.homeFilmsSearch = new UISearchList<>(this.homeFilmsList).label(UIKeys.GENERAL_SEARCH);
         this.homeFilmsSearch.list.background();
 
-        this.homeFilmsMosaic = new UIFilmMosaicGrid(
-            this.homeFilmsList,
-            this::getThumbnail,
-            (path) -> path.getLast().equals("..") ? "../" : path.getLast(),
-            (id) -> {
+        this.homeFilmsMosaic = new UIFilmMosaicGrid((id) -> {
             DataPath path = this.homeFilmsMosaic.findPath(id);
             this.handleHomeFilmsSelection(Collections.singletonList(path != null ? path : new DataPath(id)));
         }, (id) -> {
@@ -801,23 +754,19 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         /* Setup elements. The editor switches (camera/replay/action/screen) now live in the
            workspace tab bar at the top instead of this side icon bar. */
         this.workspaceTabs.relative(this).x(0).y(0).w(1F).h(WORKSPACE_TAB_BAR_HEIGHT);
-        this.workspaceTabs.setVisible(false);
 
         this.bottomIcons = new UIElement();
-        this.bottomIcons.row(0);
-        this.bottomIcons.add(this.toggleHorizontal, this.layoutLock, this.layoutPresets);
-        this.bottomIcons.relative(this).x(1F, -8).y(1F, -28).anchor(1F, 1F).h(20);
         this.bottomIcons.setVisible(false);
         this.iconBar.relative(this).x(1F, -20).y(0).w(20).h(1F).column(0).stretch();
         this.homePage.relative(this.editor).x(0.5F, -250).y(0).w(500).h(1F);
-
+        this.homeActionsPanel.relative(this.homePage).x(0).y(HOME_BANNER_HEIGHT + 20).w(0.35F).h(1F, -(HOME_BANNER_HEIGHT + 20 + 10)).column(0).vertical().stretch();
+        
         this.panelSwitcher = new UIPanelSwitcher(this.dashboard);
         this.panelSwitcher.relative(this.homePage).x(0.5F, -87).y(1F, -32).w(175).h(24);
 
         UIElement spacing = new UIElement();
         spacing.h(8);
 
-        this.homeActionsPanel.relative(this.homePage).x(0).y(HOME_BANNER_HEIGHT + 20).w(0.35F).h(1F, -(HOME_BANNER_HEIGHT + 20 + 10)).column(0).vertical().stretch();
         this.homeActionsPanel.add(this.homeCreateFilm, spacing, this.homeDuplicateCurrent, this.homeRenameCurrent, this.homeDeleteCurrent);
         this.homeFilmsSearch.relative(this.homePage).x(0.35F).y(HOME_BANNER_HEIGHT + 20).w(0.65F).h(1F, -(HOME_BANNER_HEIGHT + 20 + 10));
         this.homeFilmsSearch.search.w(1F, -25);
@@ -825,7 +774,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.homeViewToggle.relative(this.homeFilmsSearch).x(1F, -22).y(0).w(20).h(20);
         this.homePage.add(new UIRenderable(this::renderHomeBanner), this.homeActionsPanel, this.homeFilmsSearch, this.homeFilmsMosaic, this.homeViewToggle, this.panelSwitcher);
 
-        this.editor.add(this.cameraEditor, this.replayEditor, this.actionEditor, this.editArea, this.cameraEditArea, this.actionEditArea, this.unifiedEditArea, this.preview, this.anchoredReplaysPanel, this.anchoredReplaysPropertiesPanel, this.homePage, new UIRenderable(this::renderDockedPanelHeaders), new UIRenderable(this::renderIcons), new UIRenderable(this::renderDropZoneHighlight), new UIRenderable(this::renderFloatingPanelWindows));
+        this.editor.add(this.cameraEditor, this.replayEditor, this.actionEditor, this.editArea, this.cameraEditArea, this.actionEditArea, this.unifiedEditArea, this.preview, this.anchoredReplaysPanel, this.homePage, new UIRenderable(this::renderDockedPanelHeaders), new UIRenderable(this::renderIcons), new UIRenderable(this::renderDropZoneHighlight), new UIRenderable(this::renderFloatingPanelWindows));
         for (String id : this.panelById.keySet())
         {
             UIDraggable handle = this.createPanelDragHandle(id);
@@ -833,7 +782,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             this.editor.add(handle);
         }
         this.editor.add(this.draggableMain, this.draggableEditor);
-        this.add(this.controller, this.bottomIcons, this.workspaceTabs);
+        this.add(this.controller, this.bottomIcons);
         this.overlay.namesList.setFileIcon(Icons.FILM);
         this.createHomeDocumentTab(true);
 
@@ -883,20 +832,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                 && this.cameraEditor.clips.area.isInside(context)
                 && this.cameraEditor.getClipPanel() instanceof UIKeyframeClip;
         }).label(UIKeys.CAMERA_PANELS_EDIT_KEYFRAMES).category(editor);
-
-        /* F6 utility panel: separate element so it stays reachable while editing a film */
-        UIElement utilityPanelKeys = new UIElement().noCulling();
-
-        utilityPanelKeys.keys().ignoreFocus().register(Keys.OPEN_UTILITY_PANEL, () ->
-        {
-            if (UIOverlay.has(this.getContext()))
-            {
-                return;
-            }
-
-            UIOverlay.addOverlay(this.getContext(), new UIUtilityOverlayPanel(UIKeys.UTILITY_TITLE, null), 240, 230);
-        }).active(() -> this.data != null && !this.showingHomePage).category(UIKeys.DASHBOARD_CATEGORY);
-        this.add(utilityPanelKeys);
 
         this.toolMenuActions = (menu) ->
         {
@@ -1108,26 +1043,14 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         this.updateTargets();
 
-        EditorLayoutNode migratedRoot = this.migrateReplaysPropertiesPanel(root);
-
-        if (migratedRoot != root)
-        {
-            layout.setFilmLayoutRoot(migratedRoot);
-            root = migratedRoot;
-        }
-
-        layout.syncFilmSplittersFromRoot(root);
-
         this.resetDynamicLayoutElements(recreateTabs);
         List<EditorLayoutNode.SplitterNode> splitters = layout.getFilmSplitters();
 
-        if (fast && !layout.isLayoutLocked() && resize && splitters.size() == this.splitterHandles.size() && splitters.size() == this.splitterHandleInfos.size())
+        if (fast && !layout.isLayoutLocked() && resize && splitters.size() == this.splitterHandles.size())
         {
             this.updateEditorFlexBoundsOnly(layout, root);
-            this.syncReplaysPropertiesLayoutMode();
             this.resize();
             this.resize();
-
             return;
         }
 
@@ -1176,7 +1099,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         }
         
         this.setupTabBars(root, bounds, recreateTabs);
-        this.syncReplaysPropertiesLayoutMode();
 
         if (resize)
         {
@@ -1301,9 +1223,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             {
                 bar.removeFromParent();
             }
-
             this.tabBars.clear();
-            this.editor.getChildren().removeIf(child -> child instanceof UITabBar);
         }
         for (UIElement panel : this.panelById.values())
         {
@@ -1341,26 +1261,15 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         }
         this.splitterHandles.clear();
 
-        layout.syncFilmSplittersFromRoot(root);
-        splitters = layout.getFilmSplitters();
-
         this.splitterHandleInfos.clear();
         EditorLayoutNode.computeSplitterHandles(root, 0F, 0F, 1F, 1F, this.splitterHandleInfos);
 
-        int handleCount = Math.min(splitters.size(), this.splitterHandleInfos.size());
-
-        for (int i = 0; i < handleCount; i++)
+        for (int i = 0; i < splitters.size(); i++)
         {
             final int index = i;
             UIDraggable handle = new UIDraggable((context) ->
             {
-                if (index >= layout.getFilmSplitters().size() || index >= this.splitterHandleInfos.size())
-                {
-                    return;
-                }
-
                 float ratio = this.getSplitterRatioFromMouse(index, context.mouseX, context.mouseY);
-
                 if (ratio >= 0F)
                 {
                     layout.setFilmSplitterRatio(index, ratio);
@@ -1656,235 +1565,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.activeDraggingFloatingPanelId = null;
         this.activeResizingFloatingPanelId = null;
         this.mouseHeldPanelId = null;
-        this.clearTabReorderState();
-    }
-
-    private void clearTabReorderState()
-    {
-        this.tabReordering = false;
-        this.tabReorderPanelId = null;
-        this.tabReorderCurrentIndex = 0;
-        this.tabReorderTabbedNode = null;
-        this.tabReorderTabBar = null;
-    }
-
-    private boolean isInsideTabBarArea(UITabBar tabBar, int mouseX, int mouseY)
-    {
-        return tabBar != null && tabBar.isVisible() && tabBar.area.isInside(mouseX, mouseY);
-    }
-
-    private UITabBar findTabBarForPanel(String panelId)
-    {
-        for (UITabBar tabBar : this.tabBars)
-        {
-            if (tabBar.containsPanel(panelId))
-            {
-                return tabBar;
-            }
-        }
-
-        return null;
-    }
-
-    private int getTabIndexAtMouse(UITabBar tabBar, int mouseX)
-    {
-        if (tabBar == null)
-        {
-            return -1;
-        }
-
-        UITab lastTab = null;
-
-        for (IUIElement child : tabBar.getChildren())
-        {
-            if (child instanceof UITab)
-            {
-                UITab tab = (UITab) child;
-                int mid = tab.area.x + tab.area.w / 2;
-
-                if (mouseX < mid)
-                {
-                    return tab.index;
-                }
-
-                lastTab = tab;
-            }
-        }
-
-        return lastTab == null ? -1 : lastTab.index;
-    }
-
-    private void updateTabReorder(int mouseX, int mouseY)
-    {
-        if (this.tabReorderPanelId == null)
-        {
-            return;
-        }
-
-        UITabBar tabBar = this.findTabBarForPanel(this.tabReorderPanelId);
-
-        if (tabBar == null)
-        {
-            return;
-        }
-
-        this.tabReorderTabBar = tabBar;
-
-        int targetIndex = this.getTabIndexAtMouse(tabBar, mouseX);
-
-        if (targetIndex < 0 || targetIndex == this.tabReorderCurrentIndex)
-        {
-            return;
-        }
-
-        EditorLayoutNode root = BBSSettings.editorLayoutSettings.getFilmLayoutRoot();
-        EditorLayoutNode newRoot = EditorLayoutNode.copyWithReorderedTabs(root, this.tabReorderPanelId, this.tabReorderCurrentIndex, targetIndex);
-
-        if (newRoot == root)
-        {
-            return;
-        }
-
-        this.tabReorderCurrentIndex = targetIndex;
-        BBSSettings.editorLayoutSettings.setFilmLayoutRoot(newRoot);
-        this.tabReorderTabbedNode = this.findTabbedNodeContaining(newRoot, this.tabReorderPanelId);
-        this.setupEditorFlex(true, false, true);
-        this.tabReorderTabBar = this.findTabBarForPanel(this.tabReorderPanelId);
-    }
-
-    private void startTabReorderFromFloat(String panelId, int mouseX, int mouseY)
-    {
-        UITabBar tabBar = this.tabReorderTabBar != null ? this.tabReorderTabBar : this.findTabBarForPanel(panelId);
-
-        if (tabBar != null)
-        {
-            for (IUIElement child : tabBar.getChildren())
-            {
-                if (child instanceof UITab)
-                {
-                    UITab tab = (UITab) child;
-
-                    if (tab.getPanelId().equals(panelId))
-                    {
-                        this.dragOffsetX = mouseX - tab.area.x;
-                        this.dragOffsetY = mouseY - tab.area.y;
-                        break;
-                    }
-                }
-            }
-        }
-
-        this.clearTabReorderState();
-        this.startPanelDrag(panelId);
-        this.ensurePanelFloatingForDrag(panelId, mouseX, mouseY);
-        this.updateDropTargetFromMouse(mouseX, mouseY);
-    }
-
-    private boolean isPanelHeaderDragActive()
-    {
-        if (this.activeDraggingFloatingPanelId != null)
-        {
-            return true;
-        }
-
-        for (UIDraggable handle : this.dragHandlesById.values())
-        {
-            if (handle.isActivelyDragging())
-            {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private boolean isPanelHeaderDragClick(String panelId, int mouseX, int mouseY)
-    {
-        if (this.floatingPanels.contains(panelId))
-        {
-            Vector2i pos = this.floatingPanelPositions.get(panelId);
-            Vector2i size = this.floatingPanelSizes.get(panelId);
-
-            if (pos == null || size == null)
-            {
-                return false;
-            }
-
-            int x = this.editor.area.x + pos.x;
-            int y = this.editor.area.y + pos.y;
-            int w = size.x;
-
-            return mouseX >= x && mouseX <= x + w && mouseY >= y && mouseY < y + PANEL_HEADER_HEIGHT;
-        }
-
-        UIElement panel = this.panelById.get(panelId);
-
-        if (panel == null || !panel.isVisible())
-        {
-            return false;
-        }
-
-        /* Docked panel widgets live below the card/tab title bar. */
-        return mouseY < panel.area.y;
-    }
-
-    private void clearStalePanelDragOnContentClick(UIContext context)
-    {
-        if (context.mouseButton != 0 || BBSSettings.editorLayoutSettings.isLayoutLocked() || this.isPanelHeaderDragActive())
-        {
-            return;
-        }
-
-        for (Map.Entry<String, UIElement> entry : this.panelById.entrySet())
-        {
-            String panelId = entry.getKey();
-            UIElement el = entry.getValue();
-
-            if (!el.isVisible() || this.hiddenPanels.contains(panelId))
-            {
-                continue;
-            }
-
-            if (this.isPanelHeaderDragClick(panelId, context.mouseX, context.mouseY))
-            {
-                continue;
-            }
-
-            if (this.floatingPanels.contains(panelId))
-            {
-                Vector2i pos = this.floatingPanelPositions.get(panelId);
-                Vector2i size = this.floatingPanelSizes.get(panelId);
-
-                if (pos == null || size == null)
-                {
-                    continue;
-                }
-
-                int x = this.editor.area.x + pos.x;
-                int y = this.editor.area.y + pos.y;
-                int w = size.x;
-                int h = this.collapsedFloatingPanels.contains(panelId) ? PANEL_HEADER_HEIGHT : size.y;
-
-                if (context.mouseX >= x && context.mouseX <= x + w && context.mouseY >= y && context.mouseY <= y + h)
-                {
-                    if (this.activeDraggingFloatingPanelId != null || this.mouseHeldPanelId != null || this.draggingPanelId != null)
-                    {
-                        this.clearPanelDragState();
-                    }
-
-                    return;
-                }
-            }
-            else if (el.area.isInside(context))
-            {
-                if (this.mouseHeldPanelId != null || this.draggingPanelId != null)
-                {
-                    this.clearPanelDragState();
-                }
-
-                return;
-            }
-        }
     }
 
     private void setDropIntent(DropIntent intent)
@@ -1978,11 +1658,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
                 if (this.area.isInside(context) && context.mouseButton == 0)
                 {
-                    if (!UIFilmPanel.this.isPanelHeaderDragClick(panelId, context.mouseX, context.mouseY))
-                    {
-                        return false;
-                    }
-
                     UIFilmPanel.this.dragOffsetX = context.mouseX - this.area.x;
                     UIFilmPanel.this.dragOffsetY = context.mouseY - this.area.y;
                 }
@@ -2008,9 +1683,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             this.clearPanelDragState();
         });
 
-        handle.threshold(4).hoverOnly()
-            .enabled(() -> !BBSSettings.editorLayoutSettings.isLayoutLocked())
-            .rendering((context) -> this.renderPanelDragHandle(context, handle));
+        handle.threshold(4).hoverOnly().rendering((context) -> this.renderPanelDragHandle(context, handle));
 
         return handle;
     }
@@ -2367,14 +2040,9 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             return "cameraEditArea";
         }
 
-        if ("replayTimeline".equals(panelId))
+        if ("replayTimeline".equals(panelId) || "actionTimeline".equals(panelId))
         {
             return "editArea";
-        }
-
-        if ("actionTimeline".equals(panelId))
-        {
-            return "actionEditArea";
         }
 
         return null;
@@ -2504,7 +2172,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             case "replayEditor": return UIKeys.FILM_OPEN_REPLAY_EDITOR;
             case "actionEditor": return UIKeys.FILM_OPEN_ACTION_EDITOR;
             case ANCHORED_REPLAYS_PANEL_ID: return UIKeys.FILM_REPLAY_TITLE;
-            case ANCHORED_REPLAYS_PROPERTIES_PANEL_ID: return UIKeys.FILM_REPLAY_SECTION_GENERAL;
             case "editArea": return UIKeys.RAW_PROPERTIES;
             case "cameraEditArea": return UIKeys.FILM_WORKSPACE_CAMERA_PROPERTIES;
             case "actionEditArea": return UIKeys.FILM_WORKSPACE_ACTION_PROPERTIES;
@@ -2527,7 +2194,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             case "replayEditor": return Icons.SCENE;
             case "actionEditor": return Icons.ACTION;
             case ANCHORED_REPLAYS_PANEL_ID: return Icons.EDITOR;
-            case ANCHORED_REPLAYS_PROPERTIES_PANEL_ID: return Icons.EDIT;
             case "editArea": return Icons.EDIT;
             case "cameraEditArea": return Icons.EDIT;
             case "actionEditArea": return Icons.EDIT;
@@ -2544,7 +2210,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     public String[] getWindowPanelIds()
     {
-        return new String[] {"cameraTimeline", "replayTimeline", "actionTimeline", "preview", "editArea", "cameraEditArea", "actionEditArea", "unifiedEditArea", ANCHORED_REPLAYS_PANEL_ID, ANCHORED_REPLAYS_PROPERTIES_PANEL_ID};
+        return new String[] {"cameraTimeline", "replayTimeline", "actionTimeline", "preview", "editArea", "cameraEditArea", "actionEditArea", "unifiedEditArea", ANCHORED_REPLAYS_PANEL_ID};
     }
 
     public IKey getWindowPanelTitle(String panelId)
@@ -3708,50 +3374,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         return false;
     }
 
-    private EditorLayoutNode createAnchoredReplaysColumn()
-    {
-        return new EditorLayoutNode.SplitterNode(
-            true,
-            0.65F,
-            new EditorLayoutNode.PanelNode(ANCHORED_REPLAYS_PANEL_ID),
-            new EditorLayoutNode.PanelNode(ANCHORED_REPLAYS_PROPERTIES_PANEL_ID)
-        );
-    }
-
-    private EditorLayoutNode migrateReplaysPropertiesPanel(EditorLayoutNode root)
-    {
-        if (root == null || !this.hasPanelInLayout(root, ANCHORED_REPLAYS_PANEL_ID) || this.hasPanelInLayout(root, ANCHORED_REPLAYS_PROPERTIES_PANEL_ID))
-        {
-            return root;
-        }
-
-        return EditorLayoutNode.copyWithReplacedLeaf(root, ANCHORED_REPLAYS_PANEL_ID, this.createAnchoredReplaysColumn());
-    }
-
-    private boolean isReplaysPropertiesPanelActive()
-    {
-        EditorLayoutNode root = BBSSettings.editorLayoutSettings.getFilmLayoutRoot();
-
-        return this.floatingPanels.contains(ANCHORED_REPLAYS_PROPERTIES_PANEL_ID) || this.hasPanelInLayout(root, ANCHORED_REPLAYS_PROPERTIES_PANEL_ID);
-    }
-
-    private void syncReplaysPropertiesLayoutMode()
-    {
-        if (this.anchoredReplaysPanel == null)
-        {
-            return;
-        }
-
-        boolean external = this.isReplaysPropertiesPanelActive();
-
-        if (this.floatingPanels.contains(ANCHORED_REPLAYS_PANEL_ID) && !this.floatingPanels.contains(ANCHORED_REPLAYS_PROPERTIES_PANEL_ID))
-        {
-            external = false;
-        }
-
-        this.anchoredReplaysPanel.setPropertiesExternal(external);
-    }
-
     private void setAnchoredReplaysPanelEnabled(boolean enabled)
     {
         ValueEditorLayout layout = BBSSettings.editorLayoutSettings;
@@ -3764,23 +3386,15 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             {
                 layout.setFilmLayoutRoot(this.addAnchoredReplaysPanelToRoot(baseRoot));
             }
-            else if (!this.floatingPanels.contains(ANCHORED_REPLAYS_PROPERTIES_PANEL_ID) && !this.hasPanelInLayout(layout.getFilmLayoutRoot(), ANCHORED_REPLAYS_PROPERTIES_PANEL_ID) && this.hasPanelInLayout(layout.getFilmLayoutRoot(), ANCHORED_REPLAYS_PANEL_ID))
-            {
-                layout.setFilmLayoutRoot(this.migrateReplaysPropertiesPanel(layout.getFilmLayoutRoot()));
-            }
         }
         else
         {
             this.floatingPanels.remove(ANCHORED_REPLAYS_PANEL_ID);
-            this.floatingPanels.remove(ANCHORED_REPLAYS_PROPERTIES_PANEL_ID);
             this.collapsedFloatingPanels.remove(ANCHORED_REPLAYS_PANEL_ID);
-            this.collapsedFloatingPanels.remove(ANCHORED_REPLAYS_PROPERTIES_PANEL_ID);
             this.floatingPanelPositions.remove(ANCHORED_REPLAYS_PANEL_ID);
-            this.floatingPanelPositions.remove(ANCHORED_REPLAYS_PROPERTIES_PANEL_ID);
             this.floatingPanelSizes.remove(ANCHORED_REPLAYS_PANEL_ID);
-            this.floatingPanelSizes.remove(ANCHORED_REPLAYS_PROPERTIES_PANEL_ID);
 
-            if (this.hasPanelInLayout(root, ANCHORED_REPLAYS_PANEL_ID) || this.hasPanelInLayout(root, ANCHORED_REPLAYS_PROPERTIES_PANEL_ID))
+            if (this.hasPanelInLayout(root, ANCHORED_REPLAYS_PANEL_ID))
             {
                 layout.setFilmLayoutRoot(baseRoot);
             }
@@ -3793,19 +3407,12 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     private EditorLayoutNode removeAnchoredReplaysPanelFromRoot(EditorLayoutNode root)
     {
-        if (root == null)
+        if (root == null || !this.hasPanelInLayout(root, ANCHORED_REPLAYS_PANEL_ID))
         {
             return root;
         }
 
-        EditorLayoutNode withoutProperties = EditorLayoutNode.copyWithRemovedLeaf(root, ANCHORED_REPLAYS_PROPERTIES_PANEL_ID);
-
-        if (!this.hasPanelInLayout(withoutProperties, ANCHORED_REPLAYS_PANEL_ID))
-        {
-            return withoutProperties;
-        }
-
-        return EditorLayoutNode.copyWithRemovedLeaf(withoutProperties, ANCHORED_REPLAYS_PANEL_ID);
+        return EditorLayoutNode.copyWithRemovedLeaf(root, ANCHORED_REPLAYS_PANEL_ID);
     }
 
     private EditorLayoutNode addAnchoredReplaysPanelToRoot(EditorLayoutNode root)
@@ -3817,14 +3424,13 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             return baseRoot;
         }
 
-        EditorLayoutNode replaysColumn = this.createAnchoredReplaysColumn();
         EditorLayoutNode inserted = EditorLayoutNode.copyWithReplacedLeaf(
             baseRoot,
             "editArea",
             new EditorLayoutNode.SplitterNode(
                 false,
                 0.38F,
-                replaysColumn,
+                new EditorLayoutNode.PanelNode(ANCHORED_REPLAYS_PANEL_ID),
                 new EditorLayoutNode.PanelNode("editArea")
             )
         );
@@ -3832,11 +3438,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         if (inserted == baseRoot)
         {
             inserted = EditorLayoutNode.copyWithInsertSplitAt(baseRoot, "editArea", ANCHORED_REPLAYS_PANEL_ID, EditorLayoutNode.EDGE_LEFT);
-
-            if (inserted != baseRoot)
-            {
-                inserted = this.migrateReplaysPropertiesPanel(inserted);
-            }
         }
 
         return inserted;
@@ -4199,11 +3800,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             return new Vector2i(360, 420);
         }
 
-        if (panelId.equals(ANCHORED_REPLAYS_PROPERTIES_PANEL_ID))
-        {
-            return new Vector2i(280, 220);
-        }
-
         if (panelId.equals("editArea"))
         {
             return new Vector2i(300, 400);
@@ -4310,13 +3906,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                             channel.copyOver(entry.getValue(), 0);
                         }
                     }
-
-                    BaseValue poseValue = rp.properties.get("pose");
-
-                    if (poseValue instanceof KeyframeChannel<?> poseChannel)
-                    {
-                        poseChannel.simplify();
-                    }
                 }
 
                 rp.inventory.fromData(recorder.inventory.toData());
@@ -4363,8 +3952,9 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     @Override
     public void close()
     {
-        this.requestThumbnailCapture();
         this.save();
+        this.shouldCaptureThumbnail = false;
+        this.preview.cancelCapture();
         lastShowingHomePage = this.showingHomePage;
 
         super.close();
@@ -4457,38 +4047,18 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         return home != null ? home : this;
     }
 
-    public void openFilmTab(String tabId)
-    {
-        if (tabId == null || tabId.trim().isEmpty())
-        {
-            return;
-        }
-
-        this.requestThumbnailCapture();
-        this.save();
-        this.openFilmInDocumentTabs(tabId);
-    }
-
     @Override
     public void pickData(String id)
     {
-        this.openFilmTab(id);
+        this.save();
+        this.openFilmInDocumentTabs(id);
         RecentAssetsTracker.add(this.getType(), id);
     }
 
     @Override
-    public void save()
+    public void requestNames()
     {
-        this.requestThumbnailCapture();
-        super.save();
-    }
-
-    public void requestThumbnailCapture()
-    {
-        if (this.data != null && !this.showingHomePage && this.preview != null && this.preview.isVisible())
-        {
-            this.shouldCaptureThumbnail = true;
-        }
+        UIDataUtils.requestNames(this.getType(), this::fillNames);
     }
 
     @Override
@@ -4510,8 +4080,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         {
             this.homeFilmsMosaic.fill(names, current);
         }
-
-        this.missingThumbnailIds.clear();
         this.updateHomeButtonsState();
     }
 
@@ -4553,25 +4121,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         super.fill(data);
         this.editor.setVisible(true);
 
-        if (!this.isAllWorldsBrowseMode())
-        {
-            if (this.crossWorldPendingJoin == null
-                || WorldLaunchHelper.isCurrentWorld(MinecraftClient.getInstance(), this.crossWorldPendingJoin.worldFolder))
-            {
-                if (this.crossWorldPendingJoin != null && data != null)
-                {
-                    this.closeCrossWorldFilmTab(data.getId());
-
-                    if (this.dashboard != null && this.dashboard.documentTabsBar != null)
-                    {
-                        this.dashboard.documentTabsBar.closeCrossWorldFilmTabs(data.getId());
-                    }
-                }
-
-                this.crossWorldPendingJoin = null;
-            }
-        }
-
         if (data != null)
         {
             this.notifyServer(ActionState.RESTART);
@@ -4583,18 +4132,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     @Override
     public void showHomeView()
     {
-        this.requestThumbnailCapture();
-
-        for (int i = 0; i < this.filmDocumentTabs.size(); i++)
-        {
-            if (this.filmDocumentTabs.get(i).home)
-            {
-                this.activateFilmDocumentTab(i, false);
-
-                return;
-            }
-        }
-
         super.showHomeView();
     }
 
@@ -4694,72 +4231,71 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         boolean hasActionEmbed = this.actionEditor.clips.hasEmbeddedView();
 
         this.runner.setWork(this.data.camera);
-
-        /* Undo mutates the same Clips instances; setClips() clears selection and closes editors. */
-        boolean cameraRebound = this.cameraEditor.clips.getClips() != this.data.camera;
-
-        if (cameraRebound)
-        {
-            this.cameraEditor.setClips(this.data.camera);
-        }
-
-        this.replayEditor.syncFilmForUndo(this.data);
+        this.cameraEditor.setClips(this.data.camera);
 
         Replay replay = this.replayEditor.getReplay();
-        Clips actionClips = replay == null ? null : replay.actions;
-        boolean actionRebound = this.actionEditor.clips.getClips() != actionClips;
 
-        if (actionRebound)
+        if (replay != null && !this.data.replays.getList().contains(replay))
         {
-            this.actionEditor.setClips(actionClips);
+            replay = null;
         }
 
+        this.replayEditor.setFilm(this.data);
+        this.replayEditor.setReplay(replay, true, false);
+        this.actionEditor.setClips(replay == null ? null : replay.actions);
         this.fillData();
         this.controller.createEntities();
         this.syncAnchoredReplaysPanelWithFilm();
+        this.resize();
 
-        if (cameraRebound)
+        this.restoreClipsView(this.cameraEditor, cameraScroll, cameraShift, cameraZoom);
+        this.restoreClipsView(this.actionEditor, actionScroll, actionShift, actionZoom);
+
+        if (this.cameraEditor.clips.getClips() != null)
         {
-            this.restoreClipsView(this.cameraEditor, cameraScroll, cameraShift, cameraZoom);
-            this.restoreClipSelectionAfterUndo(this.cameraEditor, cameraSelection, cameraSelectedIdx, hasCameraEmbed);
-        }
-
-        if (actionRebound)
-        {
-            this.restoreClipsView(this.actionEditor, actionScroll, actionShift, actionZoom);
-            this.restoreClipSelectionAfterUndo(this.actionEditor, actionSelection, actionSelectedIdx, hasActionEmbed);
-        }
-    }
-
-    private void restoreClipSelectionAfterUndo(UIClipsPanel panel, List<Integer> selection, int selectedIdx, boolean hasEmbed)
-    {
-        if (panel.clips.getClips() == null)
-        {
-            return;
-        }
-
-        panel.clips.setSelection(selection);
-
-        if (selectedIdx >= 0 && selectedIdx < panel.clips.getClips().get().size())
-        {
-            Clip newClip = panel.clips.getClips().get(selectedIdx);
-
-            panel.pickClip(newClip);
-
-            if (hasEmbed && panel.getClipPanel() != null)
+            this.cameraEditor.clips.setSelection(cameraSelection);
+            if (cameraSelectedIdx >= 0 && cameraSelectedIdx < this.cameraEditor.clips.getClips().get().size())
             {
-                try
+                Clip newClip = this.cameraEditor.clips.getClips().get(cameraSelectedIdx);
+                this.cameraEditor.pickClip(newClip);
+                if (hasCameraEmbed && this.cameraEditor.getClipPanel() != null)
                 {
-                    Field editField = panel.getClipPanel().getClass().getField("edit");
-                    UIButton editButton = (UIButton) editField.get(panel.getClipPanel());
-
-                    if (editButton != null)
+                    try
                     {
-                        editButton.clickItself();
+                        Field editField = this.cameraEditor.getClipPanel().getClass().getField("edit");
+                        UIButton editButton = (UIButton) editField.get(this.cameraEditor.getClipPanel());
+                        if (editButton != null)
+                        {
+                            editButton.clickItself();
+                        }
                     }
+                    catch (Exception e)
+                    {}
                 }
-                catch (Exception e)
-                {}
+            }
+        }
+
+        if (this.actionEditor.clips.getClips() != null)
+        {
+            this.actionEditor.clips.setSelection(actionSelection);
+            if (actionSelectedIdx >= 0 && actionSelectedIdx < this.actionEditor.clips.getClips().get().size())
+            {
+                Clip newClip = this.actionEditor.clips.getClips().get(actionSelectedIdx);
+                this.actionEditor.pickClip(newClip);
+                if (hasActionEmbed && this.actionEditor.getClipPanel() != null)
+                {
+                    try
+                    {
+                        Field editField = this.actionEditor.getClipPanel().getClass().getField("edit");
+                        UIButton editButton = (UIButton) editField.get(this.actionEditor.getClipPanel());
+                        if (editButton != null)
+                        {
+                            editButton.clickItself();
+                        }
+                    }
+                    catch (Exception e)
+                    {}
+                }
             }
         }
     }
@@ -4779,61 +4315,14 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     public File getThumbnailFile(String id)
     {
-        if (id == null || id.isEmpty())
-        {
-            return null;
-        }
-
-        File worldFolder = BBSMod.getWorldFolder();
-
-        if (worldFolder != null)
-        {
-            return new File(worldFolder, "config/bbs/thumbnails/films/" + id + ".png");
-        }
-
         return new File(BBS.getGameFolder(), "config/bbs/thumbnails/films/" + id + ".png");
-    }
-
-    private String resolveThumbnailId(String listPath)
-    {
-        if (listPath == null || listPath.isEmpty())
-        {
-            return listPath;
-        }
-
-        CrossWorldFilmEntry entry = this.crossWorldFilmEntries.get(listPath);
-
-        if (entry != null && !entry.filmId.endsWith("/"))
-        {
-            return entry.filmId;
-        }
-
-        if (this.isAllWorldsBrowseMode())
-        {
-            int slash = listPath.indexOf('/');
-
-            if (slash > 0)
-            {
-                String worldFolder = listPath.substring(0, slash);
-
-                if (this.crossWorldWorldLabels.containsKey(worldFolder))
-                {
-                    return listPath.substring(slash + 1);
-                }
-            }
-        }
-
-        return listPath;
     }
 
     public void deleteThumbnail(String id)
     {
-        String thumbnailId = this.resolveThumbnailId(id);
+        this.thumbnails.remove(id);
 
-        this.thumbnails.remove(thumbnailId);
-        this.missingThumbnailIds.remove(thumbnailId);
-
-        File file = this.getThumbnailFile(thumbnailId);
+        File file = this.getThumbnailFile(id);
 
         if (file.exists())
         {
@@ -4844,12 +4333,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     public void clearThumbnailCache()
     {
         this.thumbnails.clear();
-        this.missingThumbnailIds.clear();
 
-        File worldFolder = BBSMod.getWorldFolder();
-        File folder = worldFolder != null
-            ? new File(worldFolder, "config/bbs/thumbnails/films")
-            : new File(BBS.getGameFolder(), "config/bbs/thumbnails/films");
+        File folder = new File(BBS.getGameFolder(), "config/bbs/thumbnails/films");
 
         this.deleteFolder(folder);
     }
@@ -4881,25 +4366,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         folder.delete();
     }
 
-    public Texture getThumbnail(String listPath)
+    public Texture getThumbnail(String id)
     {
-        String id = this.resolveThumbnailId(listPath);
-
-        if (id == null || id.isEmpty() || id.endsWith("/"))
+        if (this.thumbnails.containsKey(id))
         {
-            return null;
-        }
-
-        Texture cached = this.thumbnails.get(id);
-
-        if (cached != null)
-        {
-            return cached;
-        }
-
-        if (this.missingThumbnailIds.contains(id))
-        {
-            return null;
+            return this.thumbnails.get(id);
         }
 
         File file = this.getThumbnailFile(id);
@@ -4915,7 +4386,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                     Texture texture = Texture.textureFromPixels(pixels, GL11.GL_LINEAR);
 
                     this.thumbnails.put(id, texture);
-                    this.missingThumbnailIds.remove(id);
 
                     return texture;
                 }
@@ -4926,7 +4396,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             }
         }
 
-        this.missingThumbnailIds.add(id);
+        this.thumbnails.put(id, null);
 
         return null;
     }
@@ -4959,19 +4429,9 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     {
         if (!this.isRunning() || !flight)
         {
-            if (flight && this.controller.getPovMode() == UIFilmController.CAMERA_MODE_ORBIT)
-            {
-                this.controller.orbit.syncFromCamera(this.getCamera(), 0F);
-            }
-
             this.runner.setManual(flight ? this.position : null);
             this.dashboard.orbitUI.setControl(flight);
             this.updateFreeFlightMouseCapture(flight);
-
-            if (!flight && this.controller.getPovMode() == UIFilmController.CAMERA_MODE_ORBIT)
-            {
-                this.controller.orbit.stop();
-            }
 
             /* Marking the latest undo as unmergeable */
             if (this.undoHandler != null && !flight)
@@ -5113,6 +4573,18 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     {
         super.render(context);
 
+        if (this.shouldCaptureThumbnail && this.data != null)
+        {
+            File output = this.getThumbnailFile(this.data.getId());
+            output.getParentFile().mkdirs();
+            this.preview.captureThumbnail(output);
+            this.shouldCaptureThumbnail = false;
+            
+            // Clear cache for this film so it reloads the new thumbnail
+            Texture texture = this.thumbnails.remove(this.data.getId());
+            if (texture != null) texture.delete();
+        }
+
         if (this.data != null)
         {
             /*
@@ -5134,18 +4606,12 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             */
         }
 
-        int savedMouseX = context.mouseX;
-        int savedMouseY = context.mouseY;
-
         if (this.controller.isControlling())
         {
             context.mouseX = context.mouseY = -1;
         }
 
         this.controller.orbit.update(context);
-
-        context.mouseX = savedMouseX;
-        context.mouseY = savedMouseY;
 
         if (this.undoHandler != null)
         {
@@ -5185,46 +4651,17 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         if (this.entered)
         {
             ClientPlayerEntity player = MinecraftClient.getInstance().player;
+            Vec3d pos = player.getPos();
+            Vector3d cameraPos = this.camera.position;
+            double distance = cameraPos.distance(pos.x, pos.y, pos.z);
+            int value = MinecraftClient.getInstance().options.getViewDistance().getValue();
 
-            if (player != null)
+            if (distance > value * 12)
             {
-                Vec3d pos = player.getPos();
-                Vector3d cameraPos = this.camera.position;
-                double distance = cameraPos.distance(pos.x, pos.y, pos.z);
-                int value = MinecraftClient.getInstance().options.getViewDistance().getValue();
-
-                if (distance > value * 12)
-                {
-                    this.getContext().notifyError(UIKeys.FILM_TELEPORT_DESCRIPTION);
-                }
+                this.getContext().notifyError(UIKeys.FILM_TELEPORT_DESCRIPTION);
             }
 
             this.entered = false;
-        }
-
-        if (this.shouldCaptureThumbnail && this.data != null && this.preview.isVisible())
-        {
-            File output = this.getThumbnailFile(this.data.getId());
-
-            if (output != null)
-            {
-                output.getParentFile().mkdirs();
-                String filmId = this.data.getId();
-
-                this.preview.captureThumbnailNow(output, () ->
-                {
-                    Texture texture = this.thumbnails.remove(filmId);
-
-                    if (texture != null)
-                    {
-                        texture.delete();
-                    }
-
-                    this.missingThumbnailIds.remove(filmId);
-                });
-            }
-
-            this.shouldCaptureThumbnail = false;
         }
     }
 
@@ -5253,39 +4690,23 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         /* Animate flight mode */
         if (this.dashboard.orbitUI.canControl())
         {
-            boolean orbitFlight = this.controller.getPovMode() == UIFilmController.CAMERA_MODE_ORBIT;
-
             if (BBSSettings.editorFlightFreeLook.get())
             {
-                if (orbitFlight)
-                {
-                    this.updateFreeFlightLookFromRawCursor(true);
-                }
-                else
-                {
-                    this.updateFreeFlightLookFromRawCursor(false);
-                }
+                this.updateFreeFlightLookFromRawCursor();
             }
             else if (this.resetFreeFlightLookDrag || this.freeFlightLookPrimed)
             {
                 this.resetFreeFlightLookDrag = false;
                 this.freeFlightLookPrimed = false;
-
-                if (!orbitFlight)
-                {
-                    this.dashboard.orbitUI.orbit.release();
-                }
+                this.dashboard.orbitUI.orbit.release();
             }
 
-            if (!orbitFlight)
-            {
-                this.dashboard.orbit.apply(this.position);
-            }
+            this.dashboard.orbit.apply(this.position);
 
             Position current = new Position(this.getCamera());
             boolean check = this.flightEditTime.check();
 
-            if (this.cameraEditor.getClip() != null && this.cameraEditor.isVisible() && !this.controller.isFreeCameraMode())
+            if (this.cameraEditor.getClip() != null && this.cameraEditor.isVisible() && this.controller.getPovMode() != UIFilmController.CAMERA_MODE_FREE)
             {
                 if (!this.lastPosition.equals(current) && check)
                 {
@@ -5366,7 +4787,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         mchorse.bbs_mod.graphics.window.Window.moveCursor(window.getWidth() / 2, window.getHeight() / 2);
     }
 
-    private void updateFreeFlightLookFromRawCursor(boolean orbitFlight)
+    private void updateFreeFlightLookFromRawCursor()
     {
         net.minecraft.client.util.Window window = MinecraftClient.getInstance().getWindow();
 
@@ -5389,11 +4810,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
             this.resetFreeFlightLookDrag = false;
             this.freeFlightLookPrimed = true;
-
-            if (!orbitFlight)
-            {
-                this.dashboard.orbitUI.orbit.release();
-            }
+            this.dashboard.orbitUI.orbit.release();
 
             return;
         }
@@ -5406,18 +4823,10 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         if (dx != 0 || dy != 0)
         {
-            float angleSpeed = this.dashboard.orbit.getAngleSpeed();
+            float angleSpeed = this.dashboard.orbitUI.orbit.getAngleSpeed();
 
-            if (orbitFlight)
-            {
-                this.controller.orbit.rotation.x += dy * angleSpeed;
-                this.controller.orbit.rotation.y += dx * angleSpeed;
-            }
-            else
-            {
-                this.dashboard.orbitUI.orbit.rotation.x += dy * angleSpeed;
-                this.dashboard.orbitUI.orbit.rotation.y += dx * angleSpeed;
-            }
+            this.dashboard.orbitUI.orbit.rotation.x += dy * angleSpeed;
+            this.dashboard.orbitUI.orbit.rotation.y += dx * angleSpeed;
         }
     }
 
@@ -5428,18 +4837,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         {
             int step = (int) Math.copySign(1, context.mouseWheel);
 
-            if (this.isFlying())
-            {
-                this.dashboard.orbitUI.orbit.scroll(step);
-            }
-            else if (this.controller.getPovMode() == UIFilmController.CAMERA_MODE_ORBIT)
-            {
-                this.controller.orbit.scroll(step);
-            }
-            else
-            {
-                this.dashboard.orbitUI.orbit.scroll(step);
-            }
+            this.dashboard.orbitUI.orbit.scroll(step);
 
             /* Consume scroll so other sections won't react */
             context.mouseWheel = 0D;
@@ -5815,217 +5213,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         UIOverlay.addOverlay(this.getContext(), panel);
     }
 
-    @Override
-    public void requestNames()
-    {
-        if (this.isAllWorldsBrowseMode())
-        {
-            this.refreshAllWorldsFilms();
-
-            return;
-        }
-
-        UIDataUtils.requestNames(this.getType(), this::fillNames);
-    }
-
-    public boolean isAllWorldsBrowseMode()
-    {
-        return false;
-    }
-
-    private IKey getHomeListTitle()
-    {
-        if (this.isAllWorldsBrowseMode())
-        {
-            return UIKeys.FILM_HOME_WORLDS;
-        }
-
-        return UIKeys.FILM_HOME_LIST;
-    }
-
-    private void refreshAllWorldsFilms()
-    {
-        if (this.crossWorldScanning)
-        {
-            return;
-        }
-
-        this.crossWorldScanning = true;
-
-        CrossWorldFilmScanner.scanAsync().whenComplete((entries, error) ->
-        {
-            MinecraftClient.getInstance().execute(() ->
-            {
-                this.crossWorldScanning = false;
-                this.crossWorldFilmEntries.clear();
-                this.crossWorldWorldLabels.clear();
-
-                if (error != null || entries == null)
-                {
-                    if (error != null)
-                    {
-                        error.printStackTrace();
-                    }
-
-                    this.fillNames(Collections.emptyList());
-
-                    return;
-                }
-
-                List<String> paths = new ArrayList<>();
-
-                for (CrossWorldFilmEntry entry : entries)
-                {
-                    String path = entry.worldFolder + "/" + entry.filmId;
-
-                    paths.add(path);
-                    this.crossWorldFilmEntries.put(path, entry);
-                    this.crossWorldWorldLabels.put(entry.worldFolder, entry.worldLabel);
-                }
-
-                this.fillNames(paths);
-            });
-        });
-    }
-
-    public boolean isFilmTabLoaded(String tabId)
-    {
-        return tabId != null && tabId.equals(this.loadedFilmTabKey);
-    }
-
-    public CrossWorldFilmEntry resolveCrossWorldEntryForTab(String tabId)
-    {
-        return this.resolveCrossWorldEntryFromTab(tabId);
-    }
-
-    private boolean shouldSetPendingJoin(CrossWorldFilmEntry entry)
-    {
-        if (entry == null)
-        {
-            return false;
-        }
-
-        MinecraftClient client = MinecraftClient.getInstance();
-
-        if (client.world != null && client.player != null)
-        {
-            return false;
-        }
-
-        return !WorldLaunchHelper.isCurrentWorld(client, entry.worldFolder);
-    }
-
-    private CrossWorldFilmEntry resolveCrossWorldEntryFromTab(String tabId)
-    {
-        CrossWorldFilmEntry decoded = CrossWorldFilmEntry.decodeKey(tabId);
-
-        if (decoded != null)
-        {
-            String label = this.crossWorldWorldLabels.get(decoded.worldFolder);
-
-            if (label != null)
-            {
-                return new CrossWorldFilmEntry(decoded.worldFolder, label, decoded.filmId);
-            }
-
-            return decoded;
-        }
-
-        return this.crossWorldFilmEntries.get(tabId);
-    }
-
-    private void requestCrossWorldFilmData(CrossWorldFilmEntry entry)
-    {
-        if (entry == null || entry.filmId.endsWith("/"))
-        {
-            return;
-        }
-
-        CrossWorldFilmLoader.load(entry.worldFolder, entry.filmId, (film) -> this.fill(film));
-    }
-
-    public boolean canShowJoinWorld()
-    {
-        if (this.crossWorldPendingJoin == null || this.crossWorldPendingJoin.filmId.endsWith("/"))
-        {
-            return false;
-        }
-
-        if (this.data == null)
-        {
-            return false;
-        }
-
-        MinecraftClient client = MinecraftClient.getInstance();
-
-        if (client.world != null && client.player != null)
-        {
-            return false;
-        }
-
-        return !WorldLaunchHelper.isCurrentWorld(client, this.crossWorldPendingJoin.worldFolder);
-    }
-
-    public void openCrossWorldFilm(CrossWorldFilmEntry entry)
-    {
-        if (entry == null || entry.filmId.endsWith("/"))
-        {
-            return;
-        }
-
-        this.crossWorldPendingJoin = this.shouldSetPendingJoin(entry) ? entry : null;
-        this.crossWorldFilmEntries.put(entry.encodeKey(), entry);
-        this.crossWorldWorldLabels.put(entry.worldFolder, entry.worldLabel);
-
-        if (this.dashboard != null && this.dashboard.documentTabsBar != null)
-        {
-            this.dashboard.documentTabsBar.addOrActivate(ContentType.FILMS, entry.encodeKey());
-        }
-        else
-        {
-            this.openFilmInDocumentTabs(entry.encodeKey());
-        }
-    }
-
-    public void joinPendingWorld()
-    {
-        if (this.crossWorldPendingJoin != null)
-        {
-            FilmLaunchHelper.launch(this.crossWorldPendingJoin);
-            this.crossWorldPendingJoin = null;
-        }
-    }
-
-    public void clearCrossWorldPendingJoin()
-    {
-        this.crossWorldPendingJoin = null;
-    }
-
-    public void closeCrossWorldFilmTab(String filmId)
-    {
-        if (filmId == null || filmId.isEmpty())
-        {
-            return;
-        }
-
-        for (int i = this.filmDocumentTabs.size() - 1; i >= 0; i--)
-        {
-            FilmDocumentTab tab = this.filmDocumentTabs.get(i);
-
-            if (tab.home || tab.filmId == null)
-            {
-                continue;
-            }
-
-            CrossWorldFilmEntry decoded = CrossWorldFilmEntry.decodeKey(tab.filmId);
-
-            if (decoded != null && filmId.equals(decoded.filmId))
-            {
-                this.removeFilmDocumentTab(i);
-            }
-        }
-    }
-
     private void handleHomeFilmsSelection(List<DataPath> list)
     {
         String selected = this.getSelectedHomeFilmId();
@@ -6038,16 +5225,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             return;
         }
 
-        if (this.isAllWorldsBrowseMode())
-        {
-            CrossWorldFilmEntry entry = this.crossWorldFilmEntries.get(selected);
-
-            if (entry != null && !entry.filmId.endsWith("/"))
-            {
-                this.crossWorldPendingJoin = this.shouldSetPendingJoin(entry) ? entry : null;
-            }
-        }
-
         long now = System.currentTimeMillis();
         boolean sameAsPrevious = selected.equals(this.homeLastClickedFilmId);
         boolean doubleClick = sameAsPrevious && now - this.homeLastClickTime <= 300L;
@@ -6055,28 +5232,9 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.homeLastClickedFilmId = selected;
         this.homeLastClickTime = now;
 
-        boolean alreadyOpen = this.findTabByFilmId(selected) >= 0
-            || (this.dashboard != null && this.dashboard.documentTabsBar != null
-                && this.dashboard.documentTabsBar.isOpen(ContentType.FILMS, selected));
-
-        if (doubleClick || alreadyOpen)
+        if (doubleClick)
         {
-            if (this.isAllWorldsBrowseMode())
-            {
-                CrossWorldFilmEntry entry = this.crossWorldFilmEntries.get(selected);
-
-                if (entry != null && !entry.filmId.endsWith("/"))
-                {
-                    this.crossWorldPendingJoin = this.shouldSetPendingJoin(entry) ? entry : null;
-                    this.crossWorldFilmEntries.put(entry.encodeKey(), entry);
-                    this.crossWorldWorldLabels.put(entry.worldFolder, entry.worldLabel);
-                    this.openFilmInDocumentTabs(entry.encodeKey());
-                }
-            }
-            else
-            {
-                this.openFilmInDocumentTabs(selected);
-            }
+            this.openFilmInDocumentTabs(selected);
         }
     }
 
@@ -6262,24 +5420,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         }
         else
         {
-            CrossWorldFilmEntry crossWorldEntry = this.resolveCrossWorldEntryFromTab(tab.filmId);
-
-            if (crossWorldEntry != null)
+            if (loadFilm || this.data == null || this.data.getId() == null || !this.data.getId().equals(tab.filmId))
             {
-                this.crossWorldPendingJoin = this.shouldSetPendingJoin(crossWorldEntry) ? crossWorldEntry : null;
-
-                if (loadFilm || !tab.filmId.equals(this.loadedFilmTabKey))
-                {
-                    this.requestCrossWorldFilmData(crossWorldEntry);
-                }
-                else
-                {
-                    this.updateFilmDocumentView();
-                }
-            }
-            else if (loadFilm || !tab.filmId.equals(this.loadedFilmTabKey))
-            {
-                this.crossWorldPendingJoin = null;
                 this.requestData(tab.filmId);
             }
             else
@@ -6289,7 +5431,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         }
 
         this.rebuildFilmDocumentTabs();
-        this.loadedFilmTabKey = tab.home ? null : tab.filmId;
     }
 
     private void removeFilmDocumentTab(int index)
@@ -6365,12 +5506,9 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.draggableMain.setVisible(visible);
         this.draggableEditor.setVisible(visible);
 
-        if (!visible)
+        for (UIDraggable handle : this.dragHandlesById.values())
         {
-            for (UIDraggable handle : this.dragHandlesById.values())
-            {
-                handle.setVisible(false);
-            }
+            handle.setVisible(visible && !BBSSettings.editorLayoutSettings.isLayoutLocked());
         }
 
         for (UIDraggable handle : this.splitterHandles)
@@ -6415,11 +5553,10 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         if (home)
         {
             this.editor.resetFlex().relative(this).w(1F).h(1F);
-            this.crossWorldPendingJoin = null;
         }
         else
         {
-            this.editor.resetFlex().relative(this).w(1F).h(1F);
+            this.editor.resetFlex().relative(this).x(0).y(0).w(1F).h(1F);
             this.setupEditorFlex(true, false, false);
         }
         this.resize();
@@ -6543,7 +5680,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         UIHomePanel home = this.dashboard.getPanel(UIHomePanel.class);
         if (home != null)
         {
-            home.renderCardAndBanners(context, this.homePage, dividerX, this.getHomeListTitle().get(), true);
+            home.renderCardAndBanners(context, this.homePage, dividerX, UIKeys.FILM_HOME_LIST.get());
         }
     }
 
@@ -6807,7 +5944,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                         case "replayEditor": nameKey = UIKeys.FILM_OPEN_REPLAY_EDITOR; break;
                         case "actionEditor": nameKey = UIKeys.FILM_OPEN_ACTION_EDITOR; break;
                         case ANCHORED_REPLAYS_PANEL_ID: nameKey = UIKeys.FILM_REPLAY_TITLE; break;
-                        case ANCHORED_REPLAYS_PROPERTIES_PANEL_ID: nameKey = UIKeys.FILM_REPLAY_SECTION_GENERAL; break;
                         case "editArea": nameKey = UIKeys.RAW_PROPERTIES; break;
                         case "cameraEditArea": nameKey = UIKeys.FILM_WORKSPACE_CAMERA_PROPERTIES; break;
                         case "actionEditArea": nameKey = UIKeys.FILM_WORKSPACE_ACTION_PROPERTIES; break;
@@ -6829,24 +5965,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         private void clampScroll()
         {
             this.scroll = MathUtils.clamp(this.scroll, 0, Math.max(0, this.totalWidth - this.area.w));
-        }
-
-        public boolean containsPanel(String panelId)
-        {
-            for (EditorLayoutNode tab : this.tabbedNode.tabs)
-            {
-                if (tab instanceof EditorLayoutNode.PanelNode && ((EditorLayoutNode.PanelNode) tab).getPanelId().equals(panelId))
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        public EditorLayoutNode.TabbedNode getTabbedNode()
-        {
-            return this.tabbedNode;
         }
 
         public UIElement getActivePanel()
@@ -6907,12 +6025,13 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     private static class UITab extends UIElement
     {
-        private static final int DRAG_THRESHOLD = 5;
-
         private UIFilmPanel panel;
         private EditorLayoutNode.TabbedNode tabbedNode;
         private int index;
         private String panelId;
+        private boolean mouseHeld;
+        private int clickX, clickY;
+        private static final int DRAG_THRESHOLD = 5;
 
         public UITab(UIFilmPanel panel, EditorLayoutNode.TabbedNode tabbedNode, int index, String panelId)
         {
@@ -6922,77 +6041,33 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             this.panelId = panelId;
         }
 
-        public String getPanelId()
-        {
-            return this.panelId;
-        }
-
-        private UITabBar getTabBar()
-        {
-            IUIElement parent = this.getParent();
-
-            if (parent instanceof UITabBar)
-            {
-                return (UITabBar) parent;
-            }
-
-            return null;
-        }
-
         @Override
         public void render(UIContext context)
         {
-            if (this.panel.tabReordering && this.panel.tabReorderPanelId != null && this.panel.tabReorderPanelId.equals(this.panelId))
-            {
-                UITabBar tabBar = this.panel.tabReorderTabBar != null ? this.panel.tabReorderTabBar : this.getTabBar();
-
-                if (!this.panel.isInsideTabBarArea(tabBar, context.mouseX, context.mouseY))
-                {
-                    this.panel.startTabReorderFromFloat(this.panelId, context.mouseX, context.mouseY);
-                }
-                else
-                {
-                    this.panel.updateTabReorder(context.mouseX, context.mouseY);
-                }
-            }
-            else if (this.panel.mouseHeldPanelId != null && this.panel.mouseHeldPanelId.equals(this.panelId) && this.panel.draggingPanelId == null)
+            /* Detect drag initiation: if mouse is held and moved far enough, start panel drag */
+            if (this.panel.mouseHeldPanelId != null && this.panel.mouseHeldPanelId.equals(this.panelId) && this.panel.draggingPanelId == null)
             {
                 int dx = context.mouseX - this.panel.clickX;
                 int dy = context.mouseY - this.panel.clickY;
-
                 if (dx * dx + dy * dy > DRAG_THRESHOLD * DRAG_THRESHOLD)
                 {
-                    UITabBar tabBar = this.getTabBar();
-                    ValueEditorLayout layout = BBSSettings.editorLayoutSettings;
-
-                    if (tabBar != null && this.panel.isInsideTabBarArea(tabBar, context.mouseX, context.mouseY) && !layout.isLayoutLocked())
-                    {
-                        this.panel.mouseHeldPanelId = null;
-                        this.panel.tabReordering = true;
-                        this.panel.tabReorderPanelId = this.panelId;
-                        this.panel.tabReorderCurrentIndex = this.index;
-                        this.panel.tabReorderTabbedNode = this.tabbedNode;
-                        this.panel.tabReorderTabBar = tabBar;
-                    }
-                    else
-                    {
-                        this.panel.mouseHeldPanelId = null;
-                        this.panel.dragOffsetX = context.mouseX - this.area.x;
-                        this.panel.dragOffsetY = context.mouseY - this.area.y;
-                        this.panel.startPanelDrag(this.panelId);
-                        this.panel.ensurePanelFloatingForDrag(this.panelId, context.mouseX, context.mouseY);
-                        this.panel.updateDropTargetFromMouse(context.mouseX, context.mouseY);
-                    }
+                    this.panel.mouseHeldPanelId = null;
+                    this.panel.dragOffsetX = context.mouseX - this.area.x;
+                    this.panel.dragOffsetY = context.mouseY - this.area.y;
+                    this.panel.startPanelDrag(this.panelId);
+                    /* Tear the tab out into a floating window immediately (same path as the docked
+                       drag handle), so undocking it from the group turns it into a free-floating
+                       window that follows the cursor and can be re-docked or left floating. */
+                    this.panel.ensurePanelFloatingForDrag(this.panelId, context.mouseX, context.mouseY);
+                    this.panel.updateDropTargetFromMouse(context.mouseX, context.mouseY);
                 }
             }
 
             if (this.panel.draggingPanelId != null && this.panel.draggingPanelId.equals(this.panelId))
             {
-                this.panel.lastDragMouseX = context.mouseX;
-                this.panel.lastDragMouseY = context.mouseY;
                 this.panel.updateDropTargetFromMouse(context.mouseX, context.mouseY);
             }
-
+            
             boolean active = this.tabbedNode.activeTab == this.index;
             boolean hovered = this.getParent() != null && this.getParent().area.isInside(context) && this.area.isInside(context);
             if (active)
@@ -7017,7 +6092,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             else if (this.panelId.equals("replayEditor")) { icon = Icons.SCENE; name = UIKeys.FILM_OPEN_REPLAY_EDITOR; }
             else if (this.panelId.equals("actionEditor")) { icon = Icons.ACTION; name = UIKeys.FILM_OPEN_ACTION_EDITOR; }
             else if (this.panelId.equals(ANCHORED_REPLAYS_PANEL_ID)) { icon = Icons.EDITOR; name = UIKeys.FILM_REPLAY_TITLE; }
-            else if (this.panelId.equals(ANCHORED_REPLAYS_PROPERTIES_PANEL_ID)) { icon = Icons.EDIT; name = UIKeys.FILM_REPLAY_SECTION_GENERAL; }
             else if (this.panelId.equals("editArea")) { icon = Icons.EDIT; name = UIKeys.RAW_PROPERTIES; }
             else if (this.panelId.equals("cameraEditArea")) { icon = Icons.EDIT; name = UIKeys.FILM_WORKSPACE_CAMERA_PROPERTIES; }
             else if (this.panelId.equals("actionEditArea")) { icon = Icons.EDIT; name = UIKeys.FILM_WORKSPACE_ACTION_PROPERTIES; }
@@ -7056,16 +6130,16 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                 this.tabbedNode.activeTab = this.index;
                 this.panel.syncLinkedPropertiesTab(this.panelId);
                 ValueEditorLayout layout = BBSSettings.editorLayoutSettings;
-                layout.setFilmLayoutRoot(layout.getFilmLayoutRoot());
+                layout.setFilmLayoutRoot(layout.getFilmLayoutRoot()); // trigger save
                 this.panel.setupEditorFlex(true, false, true);
 
+                /* Track click position for drag detection */
                 if (!layout.isLayoutLocked())
                 {
                     this.panel.mouseHeldPanelId = this.panelId;
                     this.panel.clickX = context.mouseX;
                     this.panel.clickY = context.mouseY;
                 }
-
                 return true;
             }
             return false;
@@ -7074,45 +6148,229 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         @Override
         protected boolean subMouseReleased(UIContext context)
         {
-            if (this.panel.tabReordering && this.panel.tabReorderPanelId != null && this.panel.tabReorderPanelId.equals(this.panelId))
-            {
-                ValueEditorLayout layout = BBSSettings.editorLayoutSettings;
-
-                layout.setFilmLayoutRoot(layout.getFilmLayoutRoot());
-                this.panel.clearTabReorderState();
-
-                return true;
-            }
-
             if (this.panel.mouseHeldPanelId != null && this.panel.mouseHeldPanelId.equals(this.panelId))
             {
                 this.panel.mouseHeldPanelId = null;
             }
 
-            if (super.subMouseReleased(context))
-            {
-                return true;
-            }
-
+            if (super.subMouseReleased(context)) return true;
+            
             if (this.panel.draggingPanelId != null && this.panel.draggingPanelId.equals(this.panelId))
             {
                 DropIntent intent = new DropIntent(this.panel.dropTargetPanelId, this.panel.dropTargetZone);
-
                 if (!this.panel.canApplyDropIntent(this.panel.draggingPanelId, intent))
                 {
-                    this.panel.floatPanel(this.panel.draggingPanelId, this.panel.lastDragMouseX - 100, this.panel.lastDragMouseY - 10);
                     this.panel.clearPanelDragState();
-
                     return true;
                 }
 
                 this.panel.applyPanelDropResult(this.panel.draggingPanelId, intent.targetId, intent.zone);
                 this.panel.clearPanelDragState();
-
                 return true;
             }
-
             return false;
+        }
+    }
+    public class UIFilmMosaicGrid extends UIScrollView
+    {
+        private static final int CARD_SIZE = 100;
+        private static final int CARD_GAP = 6;
+        private static final int CARD_LABEL_H = 16;
+
+        private final Consumer<String> selectCallback;
+        private final Consumer<String> doubleClickCallback;
+
+        private final List<DataPath> filmPaths = new ArrayList<>();
+        public String selectedId;
+        private String lastClickedId;
+        private long lastClickTime;
+        private int lastCols = -1;
+        private boolean rebuilding = false;
+
+        public UIFilmMosaicGrid(Consumer<String> selectCallback, Consumer<String> doubleClickCallback)
+        {
+            super();
+            this.selectCallback = selectCallback;
+            this.doubleClickCallback = doubleClickCallback;
+            this.scroll.scrollSpeed = 20;
+        }
+
+        public void fill(Collection<String> names, String selectedId)
+        {
+            this.selectedId = selectedId;
+            this.lastCols = -1;
+            this.filter("");
+        }
+
+        public void filter(String query)
+        {
+            this.filmPaths.clear();
+            for (DataPath path : UIFilmPanel.this.homeFilmsList.getFilteredList())
+            {
+                this.filmPaths.add(path);
+            }
+            
+            this.buildCards();
+            
+            if (this.hasParent())
+            {
+                this.resize();
+            }
+        }
+
+        public DataPath findPath(String id)
+        {
+            for (DataPath path : this.filmPaths)
+            {
+                if (path.toString().equals(id))
+                {
+                    return path;
+                }
+            }
+            return null;
+        }
+
+        private void buildCards()
+        {
+            this.removeAll();
+            if (this.filmPaths.isEmpty()) return;
+
+            int effectiveW = this.area.w > 0 ? this.area.w : 500;
+            int cols = Math.max(1, (effectiveW - CARD_GAP) / (CARD_SIZE + CARD_GAP));
+
+            for (int i = 0; i < this.filmPaths.size(); i++)
+            {
+                final DataPath path = this.filmPaths.get(i);
+                final String id = path.toString();
+                final int col = i % cols;
+                final int row = i / cols;
+
+                int cx = CARD_GAP + col * (CARD_SIZE + CARD_GAP);
+                int cy = CARD_GAP + row * (CARD_SIZE + CARD_GAP + CARD_LABEL_H);
+
+                UIElement card = new UIElement()
+                {
+                    @Override
+                    public boolean subMouseClicked(UIContext context)
+                    {
+                        if (this.area.isInside(context))
+                        {
+                            UIFilmMosaicGrid.this.onCardClicked(id);
+                            return true;
+                        }
+                        return false;
+                    }
+
+                    @Override
+                    public void render(UIContext context)
+                    {
+                        boolean selected = id.equals(UIFilmMosaicGrid.this.selectedId);
+                        int border = selected ? BBSSettings.primaryColor.get() : Colors.setA(Colors.WHITE, 0.1F);
+                        int bg = selected ? Colors.setA(BBSSettings.primaryColor.get(), 0.1F) : Colors.setA(0, 0.2F);
+                        
+                        context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), bg);
+                        context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), border);
+
+                        super.render(context);
+
+                        boolean isFolder = path.folder;
+                        Texture thumbnail = isFolder ? null : UIFilmPanel.this.getThumbnail(id);
+                        if (thumbnail != null)
+                        {
+                            int w = CARD_SIZE - 4;
+                            int h = (int) (w * (thumbnail.height / (float) thumbnail.width));
+                            if (h > CARD_SIZE - 4)
+                            {
+                                h = CARD_SIZE - 4;
+                                w = (int) (h * (thumbnail.width / (float) thumbnail.height));
+                            }
+                            int x = this.area.x + 2 + (CARD_SIZE - 4 - w) / 2;
+                            int y = this.area.y + 2 + (CARD_SIZE - 4 - h) / 2;
+
+                            context.batcher.fullTexturedBox(thumbnail, x, y, w, h);
+                        }
+                        else
+                        {
+                            /* Render film or folder icon in center */
+                            int iconX = this.area.mx();
+                            int iconY = this.area.y + CARD_SIZE / 2;
+                            Icon icon = isFolder ? Icons.FOLDER : Icons.FILM;
+                            
+                            context.batcher.getContext().getMatrices().push();
+                            context.batcher.getContext().getMatrices().translate(iconX, iconY, 0);
+                            context.batcher.getContext().getMatrices().scale(2F, 2F, 1F);
+                            context.batcher.getContext().getMatrices().translate(-iconX, -iconY, 0);
+                            
+                            context.batcher.icon(icon, iconX, iconY, 0.5F, 0.5F);
+                            
+                            context.batcher.getContext().getMatrices().pop();
+                        }
+
+                        String label = path.getLast().equals("..") ? "../" : path.getLast();
+                        int maxW = this.area.w - 4;
+                        if (context.batcher.getFont().getWidth(label) > maxW)
+                        {
+                            while (label.length() > 1 && context.batcher.getFont().getWidth(label + "...") > maxW)
+                            {
+                                label = label.substring(0, label.length() - 1);
+                            }
+                            label = label + "...";
+                        }
+                        context.batcher.textShadow(label, this.area.x + 2, this.area.y + CARD_SIZE + 2);
+                    }
+                };
+
+                card.relative(this).x(cx).y(cy).w(CARD_SIZE).h(CARD_SIZE + CARD_LABEL_H);
+                this.add(card);
+            }
+
+            int rows = (this.filmPaths.size() + cols - 1) / cols;
+            int totalH = CARD_GAP + rows * (CARD_SIZE + CARD_LABEL_H + CARD_GAP);
+            this.scroll.scrollSize = totalH;
+            this.scroll.clamp();
+        }
+
+        private void onCardClicked(String id)
+        {
+            long now = System.currentTimeMillis();
+            boolean sameAsPrev = id.equals(this.lastClickedId);
+            boolean doubleClick = sameAsPrev && now - this.lastClickTime <= 300L;
+
+            this.lastClickedId = id;
+            this.lastClickTime = now;
+            this.selectedId = id;
+
+            if (this.selectCallback != null)
+            {
+                this.selectCallback.accept(id);
+            }
+
+            if (doubleClick && this.doubleClickCallback != null)
+            {
+                this.doubleClickCallback.accept(id);
+            }
+        }
+
+        @Override
+        public void resize()
+        {
+            int effectiveW = this.area.w > 0 ? this.area.w : 500;
+            int cols = Math.max(1, (effectiveW - CARD_GAP) / (CARD_SIZE + CARD_GAP));
+            if (!this.filmPaths.isEmpty() && !this.rebuilding)
+            {
+                if (cols != this.lastCols)
+                {
+                    this.lastCols = cols;
+                    this.rebuilding = true;
+                    this.buildCards();
+                    this.rebuilding = false;
+                }
+
+                int rows = (this.filmPaths.size() + cols - 1) / cols;
+                int totalH = CARD_GAP + rows * (CARD_SIZE + CARD_LABEL_H + CARD_GAP);
+                this.scroll.scrollSize = totalH;
+            }
+            super.resize();
         }
     }
 
@@ -7135,8 +6393,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     @Override
     protected IUIElement childrenMouseClicked(UIContext context)
     {
-        this.clearStalePanelDragOnContentClick(context);
-
         FloatingClickResult result = this.handleFloatingPanelClicks(context);
 
         if (result == FloatingClickResult.CONSUMED)
@@ -7151,27 +6407,10 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
            dashboard root where the camera-orbit controller lives. */
         if (result == FloatingClickResult.VIEWPORT_PASSTHROUGH)
         {
-            Area viewport = this.preview.getViewport();
-
-            if (viewport.isInside(context))
-            {
-                if (this.controller.tryPickHoveredReplay(context))
-                {
-                    return this;
-                }
-
-                if (this.replayEditor.clickViewport(context, viewport))
-                {
-                    return this;
-                }
-            }
-
             return null;
         }
 
-        IUIElement clicked = super.childrenMouseClicked(context);
-
-        return clicked;
+        return super.childrenMouseClicked(context);
     }
 
     @Override

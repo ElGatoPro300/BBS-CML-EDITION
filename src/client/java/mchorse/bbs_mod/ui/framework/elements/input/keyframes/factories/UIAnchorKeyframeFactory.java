@@ -72,21 +72,6 @@ public class UIAnchorKeyframeFactory extends UIKeyframeFactory<Anchor>
 
     public static void displayAttachments(UIFilmPanel panel, int index, String value, Consumer<String> consumer)
     {
-        if (panel == null)
-        {
-            return;
-        }
-
-        displayAttachments(panel.getContext(), panel, index, value, consumer);
-    }
-
-    public static void displayAttachments(UIContext context, UIFilmPanel panel, int index, String value, Consumer<String> consumer)
-    {
-        if (context == null || panel == null)
-        {
-            return;
-        }
-
         IEntity entity = panel.getController().getEntities().get(index);
 
         if (entity == null || entity.getForm() == null)
@@ -117,7 +102,7 @@ public class UIAnchorKeyframeFactory extends UIKeyframeFactory<Anchor>
             return;
         }
 
-        context.replaceContextMenu((menu) ->
+        panel.getContext().replaceContextMenu((menu) ->
         {
             for (int i = 0; i < attachments.size(); i++)
             {

@@ -1,7 +1,5 @@
 package mchorse.bbs_mod.ui.model;
 
-import mchorse.bbs_mod.cubic.ModelInstance;
-import mchorse.bbs_mod.cubic.animation.ProceduralDefaults;
 import mchorse.bbs_mod.cubic.model.ModelConfig;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.ui.UIKeys;
@@ -38,17 +36,6 @@ public class UIModelGeneralSection extends UIModelSection
             if (this.config != null)
             {
                 this.config.procedural.set(b.getValue());
-
-                if (b.getValue())
-                {
-                    ModelInstance preview = this.editor.getModelRenderer().getPreviewModelInstance();
-
-                    if (preview != null && preview.model != null)
-                    {
-                        ProceduralDefaults.ensureForConfig(this.config, preview.model);
-                    }
-                }
-
                 this.editor.dirty();
             }
         });
