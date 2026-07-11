@@ -121,6 +121,7 @@ public class BOBJModel implements IModel
             bone.lighting = transform.lighting;
             bone.color.copy(transform.color);
             bone.texture = transform.texture;
+            bone.textureBlend = transform.textureBlend;
             bone.transform.translate.add(transform.translate);
             bone.transform.scale.add(transform.scale).sub(1, 1, 1);
             bone.transform.rotate.add(transform.rotate);

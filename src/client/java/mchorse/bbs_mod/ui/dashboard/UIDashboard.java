@@ -3,6 +3,7 @@ package mchorse.bbs_mod.ui.dashboard;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
+import mchorse.bbs_mod.discord.DiscordPresenceManager;
 import mchorse.bbs_mod.camera.Camera;
 import mchorse.bbs_mod.camera.OrbitCamera;
 import mchorse.bbs_mod.camera.controller.OrbitCameraController;
@@ -24,6 +25,7 @@ import mchorse.bbs_mod.ui.dashboard.utils.UIGraphPanel;
 import mchorse.bbs_mod.ui.dashboard.utils.UIOrbitCamera;
 import mchorse.bbs_mod.ui.dashboard.utils.UIOrbitCameraKeys;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
+import mchorse.bbs_mod.ui.film.UIWorldFilmsBrowserPanel;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.UIRenderingContext;
 import mchorse.bbs_mod.ui.framework.elements.IUIElement;
@@ -109,9 +111,13 @@ public class UIDashboard extends UIBaseMenu
 
             this.copyCurrentEntityCamera();
             this.updateTabsBarVisibility(e.panel);
+            this.menuBar.updateForPanel(e.panel);
+            this.panels.updateTaskBarForPanel(e.panel);
+            DiscordPresenceManager.INSTANCE.updateFromMenu(this);
         });
         this.panels.relative(this.main).y(20 + UIDocumentTabsBar.HEIGHT).w(1F).h(1F, -(20 + UIDocumentTabsBar.HEIGHT));
         this.registerPanels();
+        this.panels.registerWorldFilmsButton(this);
 
         BBSMod.events.post(new RegisterDashboardPanelsEvent(this));
 
@@ -321,6 +327,7 @@ public class UIDashboard extends UIBaseMenu
         UINewsPanel.attachIcon(newsButton);
 
         /* Editor panels — reachable only through the unified document tab bar, not via dashboard buttons */
+        this.panels.registerHiddenPanel(new UIWorldFilmsBrowserPanel(this));
         this.panels.registerHiddenPanel(new UIFilmPanel(this));
         this.panels.registerHiddenPanel(new UIModelPanel(this));
         this.panels.registerHiddenPanel(new UIParticleSchemePanel(this));

@@ -6,12 +6,12 @@ import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
+import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UIAnchorKeyframeFactory;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UISearchList;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UIStringList;
-import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Colors;
 
@@ -23,9 +23,7 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
- * Pose editor style "Look at" editor: a searchable bone list (like the pose menu),
- * and for the selected bone a lock toggle, a lock strength slider (0-100%, 0 by
- * default), a target model picker and a target attachment picker.
+ * "Look at" editor: bone list and per-bone lock settings (like the pose menu layout).
  */
 public class UILookAtEditor extends UIElement
 {
@@ -38,6 +36,7 @@ public class UILookAtEditor extends UIElement
 
     private Supplier<LookAt> getter;
     private Consumer<Consumer<LookAt>> editor;
+    private Supplier<UIFilmPanel> filmPanelSupplier;
     private String currentBone;
 
     public UILookAtEditor()
@@ -45,18 +44,10 @@ public class UILookAtEditor extends UIElement
         this.translate = new UIToggle(UIKeys.GENERIC_KEYFRAMES_LOOK_AT_TRANSLATE, (b) -> this.edit((lookAt) -> lookAt.translate = b.getValue()));
         this.translate.tooltip(UIKeys.GENERIC_KEYFRAMES_LOOK_AT_TRANSLATE_TOOLTIP);
 
-        this.bones = new UISearchList<>(new LookAtBoneList((l) -> this.pickBone(l.get(0)))
-        {
-            @Override
-            public void render(UIContext context)
-            {
-                super.render(context);
-                context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xFF3C3C3C);
-            }
-        });
+        this.bones = new UISearchList<>(new LookAtBoneList((l) -> this.pickBone(l.get(0))));
         this.bones.label(UIKeys.GENERAL_SEARCH);
         this.bones.h(UIStringList.DEFAULT_HEIGHT * 8 + 12);
-        this.bones.list.background(0xFF141418);
+        this.bones.list.background();
         this.bones.list.scroll.cancelScrolling();
 
         this.enabled = new UIToggle(UIKeys.GENERIC_KEYFRAMES_LOOK_AT_ENABLED, (b) -> this.editBone((bone) -> bone.enabled = b.getValue()));
@@ -67,18 +58,71 @@ public class UILookAtEditor extends UIElement
         this.pickAttachment = new UIButton(UIKeys.GENERIC_KEYFRAMES_ANCHOR_PICK_ATTACHMENT, (b) -> this.displayAttachments());
         this.pickAttachment.tooltip(UIKeys.GENERIC_KEYFRAMES_LOOK_AT_ATTACHMENT_TOOLTIP);
 
+        this.pickTarget.w(1F);
+        this.pickAttachment.w(1F);
+
         this.column().vertical().stretch();
-        this.add(this.translate);
-        this.add(UI.label(UIKeys.GENERIC_KEYFRAMES_LOOK_AT_BONES).tooltip(UIKeys.GENERIC_KEYFRAMES_LOOK_AT_BONES_TOOLTIP), this.bones);
-        this.add(this.enabled);
-        this.add(UI.label(UIKeys.GENERIC_KEYFRAMES_LOOK_AT_BLEND), this.blend);
-        this.add(this.pickTarget, this.pickAttachment);
+        this.w(1F);
+        this.resize();
+    }
+
+    public void layout(int width)
+    {
+        this.removeAll();
+
+        if (width > 240)
+        {
+            UIElement left = UI.column(
+                this.translate,
+                this.enabled,
+                UI.label(UIKeys.GENERIC_KEYFRAMES_LOOK_AT_BLEND),
+                this.blend,
+                this.pickTarget,
+                this.pickAttachment
+            ).w(1F);
+
+            UIElement right = UI.column(
+                UI.label(UIKeys.GENERIC_KEYFRAMES_LOOK_AT_BONES),
+                this.bones
+            ).w(1F);
+
+            this.add(UI.row(left, right).w(1F));
+        }
+        else
+        {
+            this.add(
+                UI.label(UIKeys.GENERIC_KEYFRAMES_LOOK_AT_BONES),
+                this.bones,
+                this.translate,
+                this.enabled,
+                UI.label(UIKeys.GENERIC_KEYFRAMES_LOOK_AT_BLEND),
+                this.blend,
+                this.pickTarget,
+                this.pickAttachment
+            );
+        }
+    }
+
+    @Override
+    public void resize()
+    {
+        int width = this.area.w > 0 ? this.area.w : this.getFlex().getW();
+
+        this.layout(width);
+        super.resize();
     }
 
     public UILookAtEditor callbacks(Supplier<LookAt> getter, Consumer<Consumer<LookAt>> editor)
     {
         this.getter = getter;
         this.editor = editor;
+
+        return this;
+    }
+
+    public UILookAtEditor filmPanel(Supplier<UIFilmPanel> filmPanelSupplier)
+    {
+        this.filmPanelSupplier = filmPanelSupplier;
 
         return this;
     }
@@ -101,6 +145,17 @@ public class UILookAtEditor extends UIElement
             this.bones.list.setIndex(-1);
             this.pickBone(null);
         }
+    }
+
+    public void selectBone(String bone)
+    {
+        if (bone == null || bone.isEmpty())
+        {
+            return;
+        }
+
+        this.bones.list.setCurrentScroll(bone);
+        this.pickBone(bone);
     }
 
     /**
@@ -171,32 +226,83 @@ public class UILookAtEditor extends UIElement
 
     private UIFilmPanel getFilmPanel()
     {
-        UIFilmPanel panel = this.getParent(UIFilmPanel.class);
-
-        if (panel != null)
+        if (this.filmPanelSupplier != null)
         {
-            return panel;
+            UIFilmPanel panel = this.filmPanelSupplier.get();
+
+            if (panel != null)
+            {
+                return panel;
+            }
         }
 
-        UIContext context = this.getContext();
-        List<UIFilmPanel> children = context.menu.main.getChildren(UIFilmPanel.class);
+        UIElement element = this;
 
-        return children.isEmpty() ? null : children.get(0);
+        while (element != null)
+        {
+            if (element instanceof UIFilmPanel panel)
+            {
+                return panel;
+            }
+
+            element = element.getParent();
+        }
+
+        UIContext context = this.getMenuContext();
+
+        if (context != null && context.menu != null)
+        {
+            List<UIFilmPanel> children = context.menu.main.getChildren(UIFilmPanel.class);
+
+            if (!children.isEmpty())
+            {
+                return children.get(0);
+            }
+        }
+
+        return null;
+    }
+
+    private UIContext getMenuContext()
+    {
+        UIContext context = this.pickTarget.getContext();
+
+        if (context != null)
+        {
+            return context;
+        }
+
+        return this.pickAttachment.getContext();
     }
 
     private void displayActors()
     {
-        UIFilmPanel panel = this.getFilmPanel();
-
-        if (panel == null || this.currentBone == null)
+        if (this.currentBone == null)
         {
             return;
         }
 
+        UIFilmPanel panel = this.getFilmPanel();
         LookAtBone bone = this.getBone(this.currentBone);
         int current = bone == null ? LookAt.NO_TARGET : bone.replay;
+        UIContext context = this.getMenuContext();
 
-        UIAnchorKeyframeFactory.displayActors(this.getContext(), panel.getController().getEntities(), current, (actor) -> this.editBone((b) -> b.replay = actor));
+        if (panel != null && context != null)
+        {
+            UIAnchorKeyframeFactory.displayActors(context, panel.getController().getEntities(), current, (actor) -> this.editBone((b) -> b.replay = actor));
+
+            return;
+        }
+
+        if (context == null)
+        {
+            return;
+        }
+
+        context.replaceContextMenu((menu) ->
+        {
+            menu.action(Icons.CLOSE, UIKeys.GENERAL_NONE, Colors.NEGATIVE, () -> this.editBone((b) -> b.replay = LookAt.NO_TARGET));
+        });
     }
 
     private void displayAttachments()
@@ -215,7 +321,7 @@ public class UILookAtEditor extends UIElement
             return;
         }
 
-        UIAnchorKeyframeFactory.displayAttachments(panel, bone.replay, bone.attachment, (attachment) -> this.editBone((b) -> b.attachment = attachment));
+        UIAnchorKeyframeFactory.displayAttachments(this.getMenuContext(), panel, bone.replay, bone.attachment, (attachment) -> this.editBone((b) -> b.attachment = attachment));
     }
 
     /**

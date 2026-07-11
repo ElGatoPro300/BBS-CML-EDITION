@@ -2099,15 +2099,6 @@ public class UIKeyframes extends UIElement
 
         if (keyframe != null)
         {
-            /* When zoomed out, the pixel grab radius may cover many ticks; only remove
-             * the hit keyframe if it sits on the tick a new keyframe would be placed at */
-            if (!Window.isShiftPressed() && keyframe.a.getTick() != Math.round(this.fromGraphX(context.mouseX)))
-            {
-                this.currentGraph.addKeyframe(context.mouseX, context.mouseY);
-
-                return;
-            }
-
             this.currentGraph.removeKeyframe(keyframe.a);
         }
         else

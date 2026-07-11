@@ -1,6 +1,8 @@
 package mchorse.bbs_mod.ui.forms.editors.panels;
 
 import mchorse.bbs_mod.forms.forms.BlockForm;
+import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
+import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.forms.editors.forms.UIForm;
 import mchorse.bbs_mod.ui.forms.editors.panels.widgets.UIBlockStateEditor;
@@ -16,6 +18,9 @@ public class UIBlockFormPanel extends UIFormPanel<BlockForm>
 {
     public UIColor color;
     public UIColor paintColor;
+    public UITrackpad paintIntensity;
+    public UIColor glowingColor;
+    public UITrackpad glowIntensity;
     public UIBlockStateEditor stateEditor;
     public UITrackpad breaking;
 
@@ -24,13 +29,64 @@ public class UIBlockFormPanel extends UIFormPanel<BlockForm>
         super(editor);
 
         this.color = new UIColor((c) -> this.form.color.set(Color.rgba(c))).withAlpha();
-        this.paintColor = new UIColor((c) -> this.form.paintColor.set(Color.rgba(c))).withAlpha();
+        this.paintColor = new UIColor((c) ->
+        {
+            Color color = Color.rgba(c);
+
+            color.a = 1F;
+            this.form.paintColor.set(color);
+
+            PaintSettings settings = this.form.paintSettings.get().copy();
+
+            settings.r = color.r;
+            settings.g = color.g;
+            settings.b = color.b;
+            this.form.paintSettings.set(settings);
+        });
         this.paintColor.tooltip(UIKeys.FORMS_EDITORS_PAINT_COLOR);
+        this.paintIntensity = new UITrackpad((value) ->
+        {
+            PaintSettings settings = this.form.paintSettings.get().copy();
+
+            settings.intensity = value.floatValue();
+            this.form.paintSettings.set(settings);
+
+            Color legacy = this.form.paintColor.get().copy();
+
+            legacy.a = value.floatValue();
+            this.form.paintColor.set(legacy);
+        });
+        this.paintIntensity.increment(0.05D).values(0.1D, 0.05D, 0.2D);
+        this.paintIntensity.tooltip(UIKeys.FORMS_EDITORS_PAINT_INTENSITY);
+        this.glowingColor = new UIColor((c) ->
+        {
+            Color color = Color.rgba(c);
+
+            color.a = 1F;
+            this.form.glowingColor.set(color);
+
+            GlowSettings settings = this.form.glowSettings.get().copy();
+
+            settings.r = color.r;
+            settings.g = color.g;
+            settings.b = color.b;
+            this.form.glowSettings.set(settings);
+        });
+        this.glowingColor.tooltip(UIKeys.FORMS_EDITORS_GLOW);
+        this.glowIntensity = new UITrackpad((value) ->
+        {
+            GlowSettings settings = this.form.glowSettings.get().copy();
+
+            settings.intensity = value.floatValue();
+            this.form.glowSettings.set(settings);
+        });
+        this.glowIntensity.increment(0.05D).values(0.1D, 0.05D, 0.2D);
+        this.glowIntensity.tooltip(UIKeys.FORMS_EDITORS_GLOW_INTENSITY);
         this.stateEditor = new UIBlockStateEditor((blockState) -> this.form.blockState.set(blockState));
         this.breaking = new UITrackpad((v) -> this.form.breaking.set(v.intValue())).integer().limit(0, 10);
         this.breaking.tooltip(UIKeys.FORMS_EDITORS_BLOCK_BREAKING);
 
-        this.options.add(this.color, this.paintColor, this.stateEditor);
+        this.options.add(this.color, this.paintColor, this.paintIntensity, this.glowingColor, this.glowIntensity, this.stateEditor);
         this.options.add(UI.label(UIKeys.FORMS_EDITORS_BLOCK_BREAKING).marginTop(6), this.breaking);
     }
 
@@ -42,7 +98,19 @@ public class UIBlockFormPanel extends UIFormPanel<BlockForm>
         BlockState blockState = this.form.blockState.get();
 
         this.color.setColor(form.color.get().getARGBColor());
-        this.paintColor.setColor(form.paintColor.get().getARGBColor());
+        PaintSettings paint = form.paintSettings.get();
+        Color paintDisplay = new Color();
+
+        paint.resolveColor(form.paintColor.get(), paintDisplay);
+        this.paintColor.setColor(paintDisplay.getRGBColor());
+        this.paintIntensity.setValue(paint.intensity);
+        GlowSettings glow = form.glowSettings.get();
+        Color glowDisplay = new Color();
+
+        glow.resolveColor(form.glowingColor.get(), glowDisplay);
+        this.glowingColor.setColor(glowDisplay.getRGBColor());
+
+        this.glowIntensity.setValue(glow.intensity);
         this.stateEditor.setBlockState(blockState);
         this.breaking.setValue(form.breaking.get());
     }

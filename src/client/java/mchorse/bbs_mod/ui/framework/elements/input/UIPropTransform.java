@@ -78,6 +78,10 @@ public class UIPropTransform extends UITransform
     private boolean invertGizmoViewRingTuning;
     private boolean invertGizmoTrackball;
     private boolean filmMatchPoseTrackball;
+    /* Film pose keyframe trackball: arcball on a gizmo-local unit sphere via view-space rays
+     * (same space as the axis rings). Screen-delta trackball does not work there. */
+    private boolean filmArcballTrackball;
+    private boolean invertFilmArcballDragY;
     private boolean invertFilmPoseGizmoAxes;
     private boolean local;
     private boolean freeRotation;
@@ -115,7 +119,11 @@ public class UIPropTransform extends UITransform
     private float scaleProgressLength;
     private int dragAnchorX;
     private int dragAnchorY;
+    private int rayDragMouseX;
+    private int rayDragMouseY;
     private final Vector3f rayGizmoOrigin = new Vector3f();
+    private final Vector3f rayLastSpherePoint = new Vector3f();
+    private boolean raySphereDragInitialized;
     private double rayLastAxisValue;
     private final Vector3d planeOrigin = new Vector3d();
     private final Vector3d planeNormal = new Vector3d();
@@ -247,10 +255,34 @@ public class UIPropTransform extends UITransform
         return this;
     }
 
+    /** Film pose arcball: flip decomposed Y euler only so vertical drag matches the viewport. */
+    public UIPropTransform invertModelPoseTrackballY()
+    {
+        this.invertTrackballRotationY = true;
+
+        return this;
+    }
+
+    /** Film pose arcball: flip decomposed Z euler so horizontal drag matches the viewport. */
+    public UIPropTransform invertModelPoseTrackballZ()
+    {
+        this.invertTrackballRotationZ = true;
+
+        return this;
+    }
+
     /** Model-editor General transform trackball: flip drag rotation direction to match mouse. */
     public UIPropTransform invertModelEditorTrackball()
     {
         this.invertGizmoTrackball = true;
+
+        return this;
+    }
+
+    /** Film pose arcball sphere: mirror gizmo-local Y on the unit sphere so vertical drag is inverted. */
+    public UIPropTransform invertFilmArcballDragY()
+    {
+        this.invertFilmArcballDragY = true;
 
         return this;
     }
@@ -309,7 +341,12 @@ public class UIPropTransform extends UITransform
         this.filmMatchPoseTrackball = filmMatchPoseTrackball;
     }
 
-    /** Film replay pose gizmo: flip translate / axis-ring drag on every axis. */
+    public void setFilmArcballTrackball(boolean filmArcballTrackball)
+    {
+        this.filmArcballTrackball = filmArcballTrackball;
+    }
+
+    /** Film replay pose gizmo: flip translate on X/Y and the Y rotation ring only (not Z / X/Z rings). */
     public void setInvertFilmPoseGizmoAxes(boolean invertFilmPoseGizmoAxes)
     {
         this.invertFilmPoseGizmoAxes = invertFilmPoseGizmoAxes;
@@ -327,7 +364,7 @@ public class UIPropTransform extends UITransform
 
     private boolean shouldInvertTranslate(Axis axis)
     {
-        if (this.invertFilmPoseGizmoAxes)
+        if (this.invertFilmPoseGizmoAxes && (axis == Axis.X || axis == Axis.Y))
         {
             return true;
         }
@@ -337,7 +374,7 @@ public class UIPropTransform extends UITransform
 
     private boolean shouldInvertRotationRing(Axis axis)
     {
-        if (this.invertFilmPoseGizmoAxes)
+        if (this.invertFilmPoseGizmoAxes && axis == Axis.Y)
         {
             return true;
         }
@@ -559,10 +596,35 @@ public class UIPropTransform extends UITransform
 
     private void beginDragAnchor(UIContext context)
     {
-        this.dragAnchorX = context.mouseX;
-        this.dragAnchorY = context.mouseY;
+        this.syncDragMouseFromContext(context);
+        this.dragAnchorX = this.resolveDragMouseX(context);
+        this.dragAnchorY = this.resolveDragMouseY(context);
+        this.lastX = this.dragAnchorX;
+        this.lastY = this.dragAnchorY;
         this.screenDragProgressEnd.zero();
         this.scaleProgressLength = 0F;
+    }
+
+    private void syncDragMouseFromContext(UIContext context)
+    {
+        if (this.gizmoRayProvider == null || context == null)
+        {
+            return;
+        }
+
+        GLFW.glfwGetCursorPos(Window.getWindow(), CURSOR_X, CURSOR_Y);
+
+        MinecraftClient mc = MinecraftClient.getInstance();
+        double fx = Math.ceil(mc.getWindow().getWidth() / (double) context.menu.width);
+        double fy = Math.ceil(mc.getWindow().getHeight() / (double) context.menu.height);
+
+        this.updateRayDragMouse(fx, fy);
+    }
+
+    private boolean hasDragPointerMoved(UIContext context)
+    {
+        return this.resolveDragMouseX(context) != this.dragAnchorX
+            || this.resolveDragMouseY(context) != this.dragAnchorY;
     }
 
     public void enableMode(int mode, Axis axis)
@@ -594,8 +656,6 @@ public class UIPropTransform extends UITransform
             this.axis = axis == null ? Axis.X : axis;
             this.secondaryAxis = null;
             this.freeRotation = false;
-            this.lastX = context.mouseX;
-            this.lastY = context.mouseY;
             this.beginDragAnchor(context);
         }
 
@@ -610,6 +670,7 @@ public class UIPropTransform extends UITransform
             context.menu.overlay.add(this.handler);
         }
 
+        this.syncDragMouseFromContext(context);
         this.initializeRayDrag(context);
     }
 
@@ -630,8 +691,6 @@ public class UIPropTransform extends UITransform
         this.axis = primary == null ? Axis.X : primary;
         this.secondaryAxis = secondary;
         this.freeRotation = false;
-        this.lastX = context.mouseX;
-        this.lastY = context.mouseY;
         this.beginDragAnchor(context);
 
         this.editing = true;
@@ -645,6 +704,7 @@ public class UIPropTransform extends UITransform
             context.menu.overlay.add(this.handler);
         }
 
+        this.syncDragMouseFromContext(context);
         this.initializeRayDrag(context);
     }
 
@@ -673,8 +733,6 @@ public class UIPropTransform extends UITransform
         {
             this.axis = Axis.X;
             this.secondaryAxis = null;
-            this.lastX = context.mouseX;
-            this.lastY = context.mouseY;
             this.freeRotation = true;
             this.beginDragAnchor(context);
         }
@@ -690,6 +748,7 @@ public class UIPropTransform extends UITransform
             context.menu.overlay.add(this.handler);
         }
 
+        this.syncDragMouseFromContext(context);
         this.initializeRayDrag(context);
     }
 
@@ -706,8 +765,6 @@ public class UIPropTransform extends UITransform
         this.secondaryAxis = null;
         this.freeRotation = false;
         this.freeTranslation = true;
-        this.lastX = context.mouseX;
-        this.lastY = context.mouseY;
         this.beginDragAnchor(context);
 
         this.editing = true;
@@ -721,6 +778,7 @@ public class UIPropTransform extends UITransform
             context.menu.overlay.add(this.handler);
         }
 
+        this.syncDragMouseFromContext(context);
         this.initializeRayDrag(context);
     }
 
@@ -741,8 +799,6 @@ public class UIPropTransform extends UITransform
         this.freeRotation = false;
         this.trackball = false;
         this.uniformScale = true;
-        this.lastX = context.mouseX;
-        this.lastY = context.mouseY;
         this.beginDragAnchor(context);
 
         this.editing = true;
@@ -788,8 +844,6 @@ public class UIPropTransform extends UITransform
             this.secondaryAxis = null;
             this.freeRotation = false;
             this.trackball = false;
-            this.lastX = context.mouseX;
-            this.lastY = context.mouseY;
             this.beginDragAnchor(context);
         }
 
@@ -804,6 +858,7 @@ public class UIPropTransform extends UITransform
             context.menu.overlay.add(this.handler);
         }
 
+        this.syncDragMouseFromContext(context);
         this.initializeRayDrag(context);
     }
 
@@ -824,8 +879,6 @@ public class UIPropTransform extends UITransform
         this.secondaryAxis = secondary;
         this.freeRotation = false;
         this.trackball = false;
-        this.lastX = context.mouseX;
-        this.lastY = context.mouseY;
         this.beginDragAnchor(context);
 
         this.editing = true;
@@ -839,6 +892,7 @@ public class UIPropTransform extends UITransform
             context.menu.overlay.add(this.handler);
         }
 
+        this.syncDragMouseFromContext(context);
         this.initializeRayDrag(context);
     }
 
@@ -867,8 +921,6 @@ public class UIPropTransform extends UITransform
             this.secondaryAxis = null;
 
             this.restore(true);
-            this.lastX = context.mouseX;
-            this.lastY = context.mouseY;
             this.beginDragAnchor(context);
         }
         else
@@ -877,13 +929,13 @@ public class UIPropTransform extends UITransform
             this.secondaryAxis = null;
             this.freeRotation = false;
             this.trackball = true;
-            this.lastX = context.mouseX;
-            this.lastY = context.mouseY;
+            this.beginDragAnchor(context);
         }
 
         this.editing = true;
         this.mode = mode;
         this.rayDragInitialized = false;
+        this.raySphereDragInitialized = false;
 
         this.cache.copy(this.transform);
 
@@ -916,8 +968,7 @@ public class UIPropTransform extends UITransform
         this.trackball = false;
         this.uniformScale = false;
         this.viewRing = true;
-        this.lastX = context.mouseX;
-        this.lastY = context.mouseY;
+        this.beginDragAnchor(context);
 
         this.editing = true;
         this.mode = mode;
@@ -931,6 +982,7 @@ public class UIPropTransform extends UITransform
         }
 
         this.initializeTrackball();
+        this.syncDragMouseFromContext(context);
         this.initializeRayDrag(context);
     }
 
@@ -950,6 +1002,12 @@ public class UIPropTransform extends UITransform
 
     private Vector3f getTrackballRotationValue()
     {
+        /* Film pose arcball writes to rotate (same channel as the axis rings). */
+        if (this.filmArcballTrackball)
+        {
+            return this.transform.rotate;
+        }
+
         if (this.usesTrackballRotate2())
         {
             return this.transform.rotate2;
@@ -965,7 +1023,11 @@ public class UIPropTransform extends UITransform
 
     private void applyTrackballRotation(float ex, float ey, float ez)
     {
-        if (this.usesTrackballRotate2())
+        if (this.filmArcballTrackball)
+        {
+            this.setR(null, ex, ey, ez);
+        }
+        else if (this.usesTrackballRotate2())
         {
             this.setR2(null, ex, ey, ez);
         }
@@ -1032,8 +1094,11 @@ public class UIPropTransform extends UITransform
         this.invertGizmoTrackball = false;
         this.invertGizmoViewRing = false;
         this.filmMatchPoseTrackball = false;
+        this.filmArcballTrackball = false;
+        this.invertFilmArcballDragY = false;
         this.invertFilmPoseGizmoAxes = false;
         this.rayDragInitialized = false;
+        this.raySphereDragInitialized = false;
 
         Gizmo.INSTANCE.clearRotationArc();
         Gizmo.INSTANCE.clearDragProgress();
@@ -1197,6 +1262,9 @@ public class UIPropTransform extends UITransform
         double rawY = CURSOR_Y[0];
         double fx = Math.ceil(w / (double) context.menu.width);
         double fy = Math.ceil(h / (double) context.menu.height);
+
+        this.updateRayDragMouse(fx, fy);
+
         int border = 5;
         int borderPadding = border + 1;
         boolean wrapped = false;
@@ -1234,18 +1302,30 @@ public class UIPropTransform extends UITransform
             Window.moveCursor(cursorX, cursorY);
             this.checker.mark();
             this.requestRayDragReanchor();
+
+            if (this.filmArcballTrackball && this.trackball)
+            {
+                this.raySphereDragInitialized = false;
+            }
         }
         else
         {
-            int mouseDx = context.mouseX - this.lastX;
-            int mouseDy = context.mouseY - this.lastY;
+            int dragMouseX = this.resolveDragMouseX(context);
+            int dragMouseY = this.resolveDragMouseY(context);
+            int mouseDx = dragMouseX - this.lastX;
+            int mouseDy = dragMouseY - this.lastY;
 
             if (this.shouldReanchorMouseDrag(context, mouseDx, mouseDy))
             {
-                this.lastX = context.mouseX;
-                this.lastY = context.mouseY;
+                this.lastX = dragMouseX;
+                this.lastY = dragMouseY;
                 this.requestRayDragReanchor();
                 this.checker.mark();
+
+                if (this.filmArcballTrackball && this.trackball)
+                {
+                    this.raySphereDragInitialized = false;
+                }
             }
             else
             {
@@ -1263,10 +1343,10 @@ public class UIPropTransform extends UITransform
                     && !this.uniformScale
                     && !(this.mode == 2 && this.freeRotation);
 
-                if (!handledByRayDrag && !rayDriven)
+                if (!handledByRayDrag && !rayDriven && !(this.trackball && this.filmArcballTrackball))
                 {
-                    int dx = context.mouseX - this.lastX;
-                    int dy = context.mouseY - this.lastY;
+                    int dx = dragMouseX - this.lastX;
+                    int dy = dragMouseY - this.lastY;
                     Vector3f vector = this.getValue();
                     boolean all = this.uniformScale || (this.mode == 1 && Window.isCtrlPressed());
                     UITrackpad reference = this.mode == 0 ? this.tx : (this.mode == 1 ? this.sx : this.rx);
@@ -1421,10 +1501,36 @@ public class UIPropTransform extends UITransform
 
                 this.setTransform(this.transform);
 
-                this.lastX = context.mouseX;
-                this.lastY = context.mouseY;
+                this.lastX = dragMouseX;
+                this.lastY = dragMouseY;
             }
         }
+    }
+
+    private void updateRayDragMouse(double fx, double fy)
+    {
+        this.rayDragMouseX = (int) Math.round(CURSOR_X[0] / fx);
+        this.rayDragMouseY = (int) Math.round(CURSOR_Y[0] / fy);
+    }
+
+    private int resolveDragMouseX(UIContext context)
+    {
+        if (this.gizmoRayProvider != null)
+        {
+            return this.rayDragMouseX;
+        }
+
+        return context.mouseX;
+    }
+
+    private int resolveDragMouseY(UIContext context)
+    {
+        if (this.gizmoRayProvider != null)
+        {
+            return this.rayDragMouseY;
+        }
+
+        return context.mouseY;
     }
 
     private boolean initializeRayDrag(UIContext context)
@@ -1456,7 +1562,7 @@ public class UIPropTransform extends UITransform
             return false;
         }
 
-        if (!this.gizmoRayProvider.getMouseRay(context, context.mouseX, context.mouseY, this.rayOrigin, this.rayDirection))
+        if (!this.gizmoRayProvider.getMouseRay(context, this.resolveDragMouseX(context), this.resolveDragMouseY(context), this.rayOrigin, this.rayDirection))
         {
             this.rayDragInitialized = false;
             return false;
@@ -1620,7 +1726,7 @@ public class UIPropTransform extends UITransform
             return;
         }
 
-        if (context == null || !this.gizmoRayProvider.getMouseRay(context, context.mouseX, context.mouseY, this.rayOrigin, this.rayDirection))
+        if (context == null || !this.gizmoRayProvider.getMouseRay(context, this.resolveDragMouseX(context), this.resolveDragMouseY(context), this.rayOrigin, this.rayDirection))
         {
             return;
         }
@@ -1736,7 +1842,7 @@ public class UIPropTransform extends UITransform
             return true;
         }
 
-        if (!this.gizmoRayProvider.getMouseRay(context, context.mouseX, context.mouseY, this.rayOrigin, this.rayDirection))
+        if (!this.gizmoRayProvider.getMouseRay(context, this.resolveDragMouseX(context), this.resolveDragMouseY(context), this.rayOrigin, this.rayDirection))
         {
             return false;
         }
@@ -1744,6 +1850,11 @@ public class UIPropTransform extends UITransform
         if (this.viewRing)
         {
             return this.applyViewRingDrag();
+        }
+
+        if (this.mode == 0 && !this.hasDragPointerMoved(context))
+        {
+            return true;
         }
 
         if (this.mode == 0)
@@ -2100,8 +2211,13 @@ public class UIPropTransform extends UITransform
      */
     private boolean applyTrackballDrag(UIContext context)
     {
-        int dx = context.mouseX - this.lastX;
-        int dy = context.mouseY - this.lastY;
+        if (this.filmArcballTrackball)
+        {
+            return this.applyFilmArcballTrackballDrag(context);
+        }
+
+        int dx = this.resolveDragMouseX(context) - this.lastX;
+        int dy = this.resolveDragMouseY(context) - this.lastY;
 
         if (dx != 0 || dy != 0)
         {
@@ -2161,6 +2277,190 @@ public class UIPropTransform extends UITransform
     }
 
     /**
+     * Film pose trackball: arcball drag on a unit sphere in gizmo-local space, driven by the
+     * same view-space rays and captured pass matrix as the axis / view rings.
+     */
+    private boolean applyFilmArcballTrackballDrag(UIContext context)
+    {
+        if (this.gizmoRayProvider == null || context == null || !Gizmo.INSTANCE.isDragging())
+        {
+            return false;
+        }
+
+        if (!this.gizmoRayProvider.getGizmoMatrix(this.rayGizmoMatrix))
+        {
+            return true;
+        }
+
+        if (!this.gizmoRayProvider.getMouseRay(context, this.resolveDragMouseX(context), this.resolveDragMouseY(context), this.rayOrigin, this.rayDirection))
+        {
+            return true;
+        }
+
+        Vector3f current = new Vector3f();
+
+        if (!this.intersectRayUnitSphereGizmoLocal(current))
+        {
+            return true;
+        }
+
+        if (this.invertFilmArcballDragY)
+        {
+            current.y = -current.y;
+        }
+
+        if (!this.raySphereDragInitialized)
+        {
+            this.rayLastSpherePoint.set(current);
+            this.raySphereDragInitialized = true;
+
+            return true;
+        }
+
+        Vector3f from = new Vector3f(this.rayLastSpherePoint);
+        Vector3f to = new Vector3f(current);
+        Vector3f axis = new Vector3f(from).cross(to);
+        float sin = axis.length();
+        float cos = from.dot(to);
+
+        if (sin <= 1.0E-7F && cos >= 0.999999F)
+        {
+            this.rayLastSpherePoint.set(current);
+
+            return true;
+        }
+
+        if (!this.normalizeSafe(axis))
+        {
+            return true;
+        }
+
+        float angleRad = (float) Math.atan2(sin, cos);
+
+        if (this.invertGizmoTrackball)
+        {
+            angleRad = -angleRad;
+        }
+
+        if (Math.abs(angleRad) > MAX_RING_ANGLE_JUMP_RAD)
+        {
+            this.raySphereDragInitialized = false;
+
+            return true;
+        }
+
+        Quaternionf delta = new Quaternionf().fromAxisAngleRad(axis.x, axis.y, axis.z, angleRad);
+
+        this.trackballAccum.premul(delta);
+
+        Quaternionf finalRotation = new Quaternionf(this.trackballStart).premul(this.trackballAccum);
+        Vector3f euler = new Vector3f();
+
+        this.eulerZYXFromQuaternion(finalRotation, euler);
+
+        float ex = MathUtils.toDeg(euler.x);
+        float ey = MathUtils.toDeg(euler.y);
+        float ez = MathUtils.toDeg(euler.z);
+
+        this.finishTrackballEulerRotation(ex, ey, ez);
+
+        this.rayLastSpherePoint.set(current);
+
+        return true;
+    }
+
+    private boolean intersectRayUnitSphereGizmoLocal(Vector3f out)
+    {
+        Matrix4f inverse = new Matrix4f(this.rayGizmoMatrix).invert();
+        Vector4f localOrigin4 = new Vector4f((float) this.rayOrigin.x, (float) this.rayOrigin.y, (float) this.rayOrigin.z, 1F).mul(inverse);
+        Vector4f localDir4 = new Vector4f(this.rayDirection.x, this.rayDirection.y, this.rayDirection.z, 0F).mul(inverse);
+
+        float ox = localOrigin4.x;
+        float oy = localOrigin4.y;
+        float oz = localOrigin4.z;
+        float dx = localDir4.x;
+        float dy = localDir4.y;
+        float dz = localDir4.z;
+        float dirLenSq = dx * dx + dy * dy + dz * dz;
+
+        if (dirLenSq <= 1.0E-12F)
+        {
+            return false;
+        }
+
+        float invLen = (float) (1D / Math.sqrt(dirLenSq));
+
+        dx *= invLen;
+        dy *= invLen;
+        dz *= invLen;
+
+        float radius = 1F;
+        float b = 2F * (ox * dx + oy * dy + oz * dz);
+        float c = ox * ox + oy * oy + oz * oz - radius * radius;
+        float disc = b * b - 4F * c;
+
+        if (disc < 0F)
+        {
+            return this.projectArcballMissOntoUnitSphere(ox, oy, oz, dx, dy, dz, out);
+        }
+
+        float sqrtDisc = (float) Math.sqrt(disc);
+        float t = (-b - sqrtDisc) * 0.5F;
+
+        if (t <= 1.0E-6F)
+        {
+            t = (-b + sqrtDisc) * 0.5F;
+        }
+
+        if (t <= 1.0E-6F)
+        {
+            return false;
+        }
+
+        out.set(ox + dx * t, oy + dy * t, oz + dz * t);
+        this.normalizeSafe(out);
+
+        return true;
+    }
+
+    /**
+     * GLU-style arcball projection when the view ray misses the unit sphere (for example the
+     * cursor left the viewport but drag should keep rotating).
+     */
+    private boolean projectArcballMissOntoUnitSphere(float ox, float oy, float oz, float dx, float dy, float dz, Vector3f out)
+    {
+        float t = -(ox * dx + oy * dy + oz * dz);
+        float px = ox + dx * t;
+        float py = oy + dy * t;
+        float d = (float) Math.sqrt(px * px + py * py);
+        float z;
+
+        if (d < 1F / 1.4142135F)
+        {
+            z = (float) Math.sqrt(Math.max(0F, 1F - d * d));
+        }
+        else
+        {
+            z = 0.5F / Math.max(d, 1.0E-6F);
+        }
+
+        if (d <= 1.0E-6F)
+        {
+            out.set(0F, 0F, 1F);
+        }
+        else
+        {
+            float scale = (float) Math.sqrt(Math.max(0F, 1F - z * z)) / d;
+
+            out.set(px * scale, py * scale, z);
+        }
+
+        this.normalizeSafe(out);
+
+        return true;
+    }
+
+    /**
      * Decomposes a unit quaternion into Euler angles (radians) matching the Rz * Ry * Rx
      * composition order used by {@link Transform#createRotationMatrix()} (and by
      * {@link #initializeTrackball()} above), using the standard closed-form quaternion-to-matrix
@@ -2198,9 +2498,12 @@ public class UIPropTransform extends UITransform
         Vector3d originC = new Vector3d();
         Vector3f dirC = new Vector3f();
 
-        if (!this.gizmoRayProvider.getMouseRay(context, context.mouseX, context.mouseY, originA, dirA)) return false;
-        if (!this.gizmoRayProvider.getMouseRay(context, context.mouseX + 1, context.mouseY, originB, dirB)) return false;
-        if (!this.gizmoRayProvider.getMouseRay(context, context.mouseX, context.mouseY + 1, originC, dirC)) return false;
+        int dragMouseX = this.resolveDragMouseX(context);
+        int dragMouseY = this.resolveDragMouseY(context);
+
+        if (!this.gizmoRayProvider.getMouseRay(context, dragMouseX, dragMouseY, originA, dirA)) return false;
+        if (!this.gizmoRayProvider.getMouseRay(context, dragMouseX + 1, dragMouseY, originB, dirB)) return false;
+        if (!this.gizmoRayProvider.getMouseRay(context, dragMouseX, dragMouseY + 1, originC, dirC)) return false;
 
         right.set(dirB).sub(dirA);
         up.set(dirC).sub(dirA);
@@ -2267,6 +2570,7 @@ public class UIPropTransform extends UITransform
     {
         this.rayDragReanchor = true;
         this.rayDragInitialized = false;
+        this.raySphereDragInitialized = false;
     }
 
     private boolean shouldReanchorMouseDrag(UIContext context, int dx, int dy)

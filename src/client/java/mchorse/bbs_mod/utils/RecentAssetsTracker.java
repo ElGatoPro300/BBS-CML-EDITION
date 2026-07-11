@@ -5,7 +5,11 @@ import mchorse.bbs_mod.data.storage.DataStorage;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
+import mchorse.bbs_mod.film.CrossWorldFilmEntry;
 import mchorse.bbs_mod.ui.ContentType;
+
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.world.level.storage.LevelStorage;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -22,7 +26,7 @@ public class RecentAssetsTracker
 
     public static void add(ContentType type, String id)
     {
-        if (type == null || id == null || id.isEmpty())
+        if (type == null || id == null || id.isEmpty() || RecentAssetsTracker.shouldSkipTracking(type, id))
         {
             return;
         }
@@ -35,6 +39,53 @@ public class RecentAssetsTracker
         }
 
         save();
+    }
+
+    public static boolean shouldExcludeFromRecent(ContentType type, String id)
+    {
+        if (type != ContentType.FILMS || id == null || id.isEmpty())
+        {
+            return false;
+        }
+
+        if (CrossWorldFilmEntry.decodeKey(id) != null)
+        {
+            return true;
+        }
+
+        MinecraftClient client = MinecraftClient.getInstance();
+
+        if (client != null && client.getLevelStorage() != null)
+        {
+            for (LevelStorage.LevelSave save : client.getLevelStorage().getLevelList().levels())
+            {
+                String root = save.getRootPath();
+
+                if (id.equals(root) || id.startsWith(root + "/"))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    public static boolean shouldSkipTracking(ContentType type, String id)
+    {
+        if (RecentAssetsTracker.shouldExcludeFromRecent(type, id))
+        {
+            return true;
+        }
+
+        if (type != ContentType.FILMS)
+        {
+            return false;
+        }
+
+        MinecraftClient client = MinecraftClient.getInstance();
+
+        return client == null || client.world == null || client.player == null;
     }
 
     public static void remove(ContentType type, String id)
@@ -80,13 +131,15 @@ public class RecentAssetsTracker
                         String id = map.getString("id");
 
                         ContentType contentType = ContentType.fromId(typeId);
-                        if (contentType != null)
+                        if (contentType != null && !RecentAssetsTracker.shouldExcludeFromRecent(contentType, id))
                         {
                             RECENT.add(new Entry(contentType, id));
                         }
                     }
                 }
             }
+
+            RecentAssetsTracker.save();
         }
         catch (Exception e)
         {

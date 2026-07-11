@@ -76,13 +76,14 @@ public class UIFormModelEditor extends UIElement implements IUIModelPanelHost
     private UIDashboardPanel embeddedPanel;
     private UIDashboardPanel dashboardPanelBeforeTransform;
     private boolean formTransformGizmoMode;
+    private boolean pickingBone;
 
     public UIFormModelEditor(UIFormEditor parent)
     {
         this.parent = parent;
 
         this.renderer = new UIModelEditorRenderer();
-        this.renderer.full(this);
+        this.renderer.relative(this).x(UIModelUIStyles.STRIP_WIDTH + 200).w(1F, -(UIModelUIStyles.STRIP_WIDTH + 400)).h(1F);
         this.renderer.setCallback(this::pickBone);
 
         this.mainView = new UIElement();
@@ -147,10 +148,8 @@ public class UIFormModelEditor extends UIElement implements IUIModelPanelHost
                 return;
             }
 
-            context.batcher.box(this.sectionsView.area.x, this.sectionsView.area.y, this.sectionsView.area.ex(), this.sectionsView.area.ey(), 0xFF111115);
-            context.batcher.outline(this.sectionsView.area.x - 1, this.sectionsView.area.y - 1, this.sectionsView.area.ex() + 1, this.sectionsView.area.ey() + 1, 0xFF5A5A5A);
-            context.batcher.box(this.rightView.area.x, this.rightView.area.y, this.rightView.area.ex(), this.rightView.area.ey(), 0xFF111115);
-            context.batcher.outline(this.rightView.area.x - 1, this.rightView.area.y - 1, this.rightView.area.ex() + 1, this.rightView.area.ey() + 1, 0xFF5A5A5A);
+            context.batcher.box(this.sectionsView.area.x, this.sectionsView.area.y, this.sectionsView.area.ex(), this.sectionsView.area.ey(), UIModelUIStyles.FORM_PANEL_BACKGROUND);
+            context.batcher.box(this.rightView.area.x, this.rightView.area.y, this.rightView.area.ex(), this.rightView.area.ey(), UIModelUIStyles.FORM_PANEL_BACKGROUND);
         });
 
         UIRenderable viewportBackground = new UIRenderable((context) ->
@@ -170,7 +169,9 @@ public class UIFormModelEditor extends UIElement implements IUIModelPanelHost
 
         UIRenderable iconHighlight = new UIRenderable(this::renderPanelIcons);
 
-        this.add(backgroundStrip, viewportBackground, panelBackgrounds, iconHighlight, this.renderer, this.mainView, this.iconBar);
+        this.add(backgroundStrip, viewportBackground, panelBackgrounds, iconHighlight, this.mainView, this.iconBar);
+        /* Center viewport only — side panels stay clickable; last child = first for picks (see UIModelPanel). */
+        this.add(this.renderer);
     }
 
     private void renderPanelIcons(UIContext context)
@@ -393,7 +394,33 @@ public class UIFormModelEditor extends UIElement implements IUIModelPanelHost
 
     private void pickBone(String bone)
     {
-        this.setSelectedBone(bone);
+        /* UIModelPartsSection.selectBone() -> UIPoseEditor.selectBone() -> pickCallback ->
+           setSelectedBone() would otherwise re-enter this path with the same bone. */
+        if (this.pickingBone)
+        {
+            return;
+        }
+
+        this.pickingBone = true;
+
+        try
+        {
+            if (this.formTransformGizmoMode)
+            {
+                this.exitFormTransformGizmoMode();
+
+                if (this.parent != null)
+                {
+                    this.parent.disableFormTransformGizmo();
+                }
+            }
+
+            this.setSelectedBone(bone);
+        }
+        finally
+        {
+            this.pickingBone = false;
+        }
     }
 
     private void saveIfDirty()
