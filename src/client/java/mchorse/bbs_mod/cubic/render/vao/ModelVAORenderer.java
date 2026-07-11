@@ -6,6 +6,11 @@ import mchorse.bbs_mod.client.render.picker.BBSPickerRenderer;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.BuiltBuffer;
 import net.minecraft.client.render.Tessellator;
+import mchorse.bbs_mod.client.BBSRendering;
+
+import net.minecraft.client.gl.GlUniform;
+import net.minecraft.client.gl.ShaderProgram;
+import net.minecraft.client.render.Fog;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.texture.NativeImage;
 import net.minecraft.client.texture.NativeImageBackedTexture;

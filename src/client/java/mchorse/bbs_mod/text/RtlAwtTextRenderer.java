@@ -14,6 +14,10 @@ import com.mojang.blaze3d.opengl.GlStateManager;
 
 import org.lwjgl.opengl.GL11;
 
+import com.mojang.blaze3d.systems.RenderSystem;
+
+import org.lwjgl.opengl.GL11;
+
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Graphics2D;
@@ -32,6 +36,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+
+import javax.imageio.ImageIO;
 
 /**
  * Renders Persian/Arabic UI text with Java2D {@link TextLayout}, which applies

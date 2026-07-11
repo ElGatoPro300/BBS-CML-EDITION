@@ -30,6 +30,8 @@ import org.joml.Vector3f;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.VertexFormat;
 
+import java.util.function.Supplier;
+
 public class ParticleFormRenderer extends FormRenderer<ParticleForm> implements ITickable
 {
     public static long lastUpdate = 0L;
