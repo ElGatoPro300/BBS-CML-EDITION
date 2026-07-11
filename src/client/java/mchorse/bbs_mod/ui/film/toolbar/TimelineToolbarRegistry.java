@@ -375,7 +375,7 @@ public final class TimelineToolbarRegistry
 
     private static ToolbarSection keyframesSection()
     {
-        ToolbarSection s = new ToolbarSection(UIKeys.TIMELINE_TOOLBAR_KEYFRAMES, Icons.GRAPH);
+        ToolbarSection s = new ToolbarSection(UIKeys.TIMELINE_TOOLBAR_KEYFRAMES, Icons.MAIN_HANDLE);
 
         s.add(ToolbarItem.action(UIKeys.KEYFRAMES_KEYS_TOGGLE_INTERP)
             .icon(Icons.CURVES)
