@@ -45,6 +45,16 @@ import mchorse.bbs_mod.ui.film.replays.overlays.UIAnimationToPoseOverlayPanel;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIKeyframeSheetFilterOverlayPanel;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIRenameSheetOverlayPanel;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIReplaysOverlayPanel;
+import mchorse.bbs_mod.ui.film.toolbar.KeyframeInsertInteractionState;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbar;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarDock;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarDockLayout;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarRegistry;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarWiring;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineInteractionSnapshot;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineTrackEligibility;
+import mchorse.bbs_mod.ui.film.toolbar.UIViewportInteraction;
+import mchorse.bbs_mod.ui.film.toolbar.ViewportInteractionState;
 import mchorse.bbs_mod.ui.film.utils.keyframes.UIFilmKeyframes;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
@@ -62,6 +72,7 @@ import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.ui.utils.Scale;
 import mchorse.bbs_mod.ui.utils.StencilFormFramebuffer;
+import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
 import mchorse.bbs_mod.ui.utils.gizmo.GizmoController;
 import mchorse.bbs_mod.ui.utils.gizmo.GizmoSurface;
@@ -135,6 +146,11 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
 
     /* Keyframes */
     public UIKeyframeEditor keyframeEditor;
+
+    /* Toolbar (added by the timeline toolbar feature; purely additive) */
+    public TimelineToolbar toolbar;
+
+    private final UIViewportInteraction viewportInteraction = new UIViewportInteraction();
 
     /* Clips */
     private UIFilmPanel filmPanel;
@@ -804,7 +820,220 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
         this.filmPanel = filmPanel;
         this.replays = new UIReplaysOverlayPanel(filmPanel, (replay) -> this.setReplay(replay, false, true));
 
+        this.toolbar = new TimelineToolbar();
+        this.toolbar.setSections(TimelineToolbarRegistry.forReplays(true));
+        TimelineToolbarWiring.wireReplaysToolbar(this);
+        this.toolbar.setInteractionCancelListener(this::cancelToolbarInteraction);
+        this.add(this.toolbar);
+
+        this.applyToolbarDockLayout();
+
         this.markContainer();
+    }
+
+    public void applyToolbarDockLayout()
+    {
+        TimelineToolbarDock dock = BBSSettings.timelineToolbarDocks.getDock(TimelineToolbarDockLayout.PANEL_REPLAY);
+
+        this.toolbar.configureDockHost(this, TimelineToolbarDockLayout.PANEL_REPLAY, this::applyToolbarDockLayout);
+        TimelineToolbarDockLayout.apply(this, this.toolbar, dock, this.keyframeEditor);
+    }
+
+    private void cancelToolbarInteraction()
+    {
+        this.viewportInteraction.cancel();
+
+        if (this.keyframeEditor != null)
+        {
+            this.keyframeEditor.view.cancelTrackInteraction();
+        }
+    }
+
+    public boolean isViewportInteractionActive()
+    {
+        return this.viewportInteraction.isActive();
+    }
+
+    public void renderViewportInteraction(UIContext context, Area viewport)
+    {
+        this.viewportInteraction.renderOverlay(context, viewport);
+    }
+
+    public void renderViewportInteractionHint(UIContext context, Area viewport, int bottomReserve)
+    {
+        this.viewportInteraction.renderHint(context, viewport, bottomReserve);
+    }
+
+    public boolean handleViewportInteractionMouse(UIContext context, Area viewport)
+    {
+        return this.viewportInteraction.handleMouseClicked(context, viewport,
+            () -> this.rayTraceViewportBlock(context, viewport));
+    }
+
+    public boolean handleViewportInteractionKey(UIContext context)
+    {
+        return this.viewportInteraction.handleKeyPressed(context);
+    }
+
+    public void toolbarAddReplayAtViewport()
+    {
+        this.viewportInteraction.enter(new ViewportInteractionState(
+            UIKeys.TIMELINE_INTERACTION_VIEWPORT_ADD,
+            this::confirmAddReplayAtViewport));
+    }
+
+    public void toolbarMoveReplayAtViewport()
+    {
+        this.viewportInteraction.enter(new ViewportInteractionState(
+            UIKeys.TIMELINE_INTERACTION_VIEWPORT_MOVE,
+            this::confirmMoveReplayAtViewport));
+    }
+
+    private void confirmAddReplayAtViewport(Vector3d position)
+    {
+        Camera camera = this.filmPanel.getCamera();
+        float pitch = 0F;
+        float yaw = MathUtils.toDeg(camera.rotation.y);
+
+        this.replays.replays.addReplay(position, pitch, yaw);
+    }
+
+    private void confirmMoveReplayAtViewport(Vector3d position)
+    {
+        this.moveReplay(position.x, position.y, position.z);
+    }
+
+    private Vector3d rayTraceViewportBlock(UIContext context, Area area)
+    {
+        World world = MinecraftClient.getInstance().world;
+        Camera camera = this.filmPanel.getCamera();
+
+        BlockHitResult blockHitResult = RayTracing.rayTrace(
+            world,
+            RayTracing.fromVector3d(camera.position),
+            RayTracing.fromVector3f(CameraUtils.getMouseDirection(
+                camera.projection, camera.view, context.mouseX, context.mouseY,
+                area.x, area.y, area.w, area.h)),
+            256F
+        );
+
+        if (blockHitResult.getType() == HitResult.Type.MISS)
+        {
+            return null;
+        }
+
+        Vector3d vec = new Vector3d(
+            blockHitResult.getPos().x,
+            blockHitResult.getPos().y,
+            blockHitResult.getPos().z
+        );
+
+        if (Window.isShiftPressed())
+        {
+            vec = new Vector3d(
+                Math.floor(vec.x) + 0.5D,
+                Math.round(vec.y),
+                Math.floor(vec.z) + 0.5D
+            );
+        }
+
+        return vec;
+    }
+
+    public UIFilmPanel getFilmPanel()
+    {
+        return this.filmPanel;
+    }
+
+    public void toolbarRenameSheet()
+    {
+        if (this.keyframeEditor == null)
+        {
+            return;
+        }
+
+        this.keyframeEditor.view.enterTrackInteraction(
+            UIKeys.TIMELINE_INTERACTION_PICK_TRACK,
+            TimelineTrackEligibility::canRename,
+            this::confirmRenameSheet);
+    }
+
+    private void confirmRenameSheet(UIKeyframeSheet clickedSheet)
+    {
+        UIRenameSheetOverlayPanel panel = new UIRenameSheetOverlayPanel(
+            UIKeys.FILM_REPLAY_RENAME_SHEET_TITLE,
+            UIKeys.FILM_REPLAY_RENAME_SHEET_MESSAGE,
+            this.replay,
+            clickedSheet.id,
+            (str, color) ->
+            {
+                this.replay.setCustomSheetTitle(clickedSheet.id, str);
+                this.replay.setSheetColor(clickedSheet.id, color);
+                this.updateChannelsList();
+            }
+        );
+
+        panel.text.setText(clickedSheet.title.get());
+        UIOverlay.addOverlay(this.getContext(), panel, 300, 0.25F);
+    }
+
+    public void toolbarFilterSheets()
+    {
+        if (this.keyframeEditor == null)
+        {
+            return;
+        }
+
+        UIKeyframeSheetFilterOverlayPanel panel = new UIKeyframeSheetFilterOverlayPanel(BBSSettings.disabledSheets.get(), this.keys);
+
+        UIOverlay.addOverlay(this.getContext(), panel, 240, 0.9F);
+
+        panel.onClose((e) ->
+        {
+            this.updateChannelsList();
+            BBSSettings.disabledSheets.set(BBSSettings.disabledSheets.get());
+        });
+    }
+
+    public void toolbarAnimationToKeyframes()
+    {
+        if (this.keyframeEditor == null)
+        {
+            return;
+        }
+
+        this.keyframeEditor.view.enterTrackInteraction(
+            UIKeys.TIMELINE_INTERACTION_PICK_TRACK,
+            sheet -> TimelineTrackEligibility.canAnimationToPose(this, sheet),
+            this::confirmAnimationToKeyframes);
+    }
+
+    private void confirmAnimationToKeyframes(UIKeyframeSheet sheet)
+    {
+        Form form = sheet.property != null ? FormUtils.getForm(sheet.property) : this.replay.form.get();
+
+        if (form instanceof ModelForm modelForm)
+        {
+            this.animationToPoses(modelForm, sheet);
+        }
+    }
+
+    public void toolbarPoseToLimbs()
+    {
+        if (this.keyframeEditor == null)
+        {
+            return;
+        }
+
+        this.keyframeEditor.view.enterTrackInteraction(
+            UIKeys.TIMELINE_INTERACTION_PICK_TRACK,
+            sheet -> TimelineTrackEligibility.canPoseToLimbs(this, sheet),
+            this::confirmPoseToLimbs);
+    }
+
+    private void confirmPoseToLimbs(UIKeyframeSheet sheet)
+    {
+        this.convertToLimbs(sheet);
     }
 
     public void setFilm(Film film)
@@ -935,6 +1164,101 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
             this.replay.keyframes.y.insert(cursor, y);
             this.replay.keyframes.z.insert(cursor, z);
         }
+    }
+
+    public void insertKeyframeColumn(int tick)
+    {
+        Replay replay = this.getReplay();
+        IEntity entity = this.filmPanel.getController().getCurrentEntity();
+
+        if (replay == null || entity == null)
+        {
+            return;
+        }
+
+        List<String> groups = Arrays.asList(ReplayKeyframes.GROUP_POSITION, ReplayKeyframes.GROUP_ROTATION);
+
+        BaseValue.edit(replay.keyframes, (keyframes) ->
+        {
+            keyframes.record(tick, entity, groups);
+        });
+    }
+
+    public void insertKeyframeColumnInterpolated(int tick)
+    {
+        Replay replay = this.getReplay();
+
+        if (replay == null)
+        {
+            return;
+        }
+
+        List<String> groups = Arrays.asList(ReplayKeyframes.GROUP_POSITION, ReplayKeyframes.GROUP_ROTATION);
+
+        BaseValue.edit(replay.keyframes, (keyframes) ->
+        {
+            keyframes.insertInterpolated(tick, groups);
+        });
+    }
+
+    public void toolbarInsertKeyframeAtTimeline()
+    {
+        if (this.keyframeEditor == null)
+        {
+            return;
+        }
+
+        this.insertKeyframeColumn(this.filmPanel.getCursor());
+        UIUtils.playClick();
+    }
+
+    public void toolbarEnterInsertColumnAtCursor()
+    {
+        if (this.keyframeEditor == null)
+        {
+            return;
+        }
+
+        this.keyframeEditor.view.enterKeyframeInsert(KeyframeInsertInteractionState.columnAtCursor(
+            UIKeys.TIMELINE_INTERACTION_INSERT_KEYFRAME_COLUMN_CURSOR,
+            this::insertKeyframeColumnInterpolated));
+    }
+
+    public void toolbarEnterInsertSingleAtTimeline()
+    {
+        if (this.keyframeEditor == null)
+        {
+            return;
+        }
+
+        int tick = this.filmPanel.getCursor();
+
+        this.keyframeEditor.view.enterKeyframeInsert(KeyframeInsertInteractionState.individualAtPlayhead(
+            UIKeys.TIMELINE_INTERACTION_INSERT_KEYFRAME_SINGLE_TIMELINE,
+            tick,
+            (sheet, keyframeTick) -> this.keyframeEditor.view.toolbarInsertIndividual(sheet, keyframeTick)));
+    }
+
+    public void toolbarEnterInsertSingleAtCursor()
+    {
+        if (this.keyframeEditor == null)
+        {
+            return;
+        }
+
+        this.keyframeEditor.view.enterKeyframeInsert(KeyframeInsertInteractionState.individualAtCursor(
+            UIKeys.TIMELINE_INTERACTION_INSERT_KEYFRAME_SINGLE_CURSOR,
+            (sheet, keyframeTick) -> this.keyframeEditor.view.toolbarInsertIndividual(sheet, keyframeTick)));
+    }
+
+    public boolean canToolbarInsertKeyframeColumn()
+    {
+        return this.keyframeEditor != null
+            && this.keyframeEditor.view.isModifyingKeyframes()
+            && this.keyframeEditor.view instanceof UIFilmKeyframes filmKeyframes
+            && filmKeyframes.isReplayWorldEditor()
+            && this.getReplay() != null
+            && this.filmPanel.getController().getCurrentEntity() != null;
     }
 
     private static final List<String> WORLD_CHANNELS = Arrays.asList("x", "y", "z", "vX", "vY", "vZ", "yaw", "pitch", "headYaw", "bodyYaw", "grounded", "damage", "fall", "sneaking", "sprinting", "item_main_hand", "item_off_hand", "item_head", "item_chest", "item_legs", "item_feet", "selected_slot", "stick_lx", "stick_ly", "stick_rx", "stick_ry", "trigger_l", "trigger_r", "extra1_x", "extra1_y", "extra2_x", "extra2_y", "shadow_size", "shadow_opacity");
@@ -1316,12 +1640,13 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
     public void updateChannelsList()
     {
         UIKeyframes lastEditor = null;
+        TimelineInteractionSnapshot interactionSnapshot = null;
 
         if (this.keyframeEditor != null)
         {
-            this.keyframeEditor.removeFromParent();
-
             lastEditor = this.keyframeEditor.view;
+            interactionSnapshot = TimelineInteractionSnapshot.capture(lastEditor);
+            this.keyframeEditor.removeFromParent();
         }
 
         if (this.replay == null)
@@ -1931,7 +2256,6 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
 
                 return keyframes;
             }).target(this.filmPanel.editArea);
-            this.keyframeEditor.full(this);
             this.keyframeEditor.setUndoId("replay_keyframe_editor");
 
             /* Reset */
@@ -2016,6 +2340,12 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
             }
 
             this.add(this.keyframeEditor);
+            this.applyToolbarDockLayout();
+
+            if (interactionSnapshot != null && !interactionSnapshot.isEmpty())
+            {
+                interactionSnapshot.restore(this.keyframeEditor.view);
+            }
         }
 
         this.resize();
@@ -3093,27 +3423,14 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
                 }
             }
         }
-        else if (context.mouseButton == 1 && this.isVisible())
+        else if (context.mouseButton == 1 && this.isVisible() && !this.viewportInteraction.isActive())
         {
-            World world = MinecraftClient.getInstance().world;
             Camera camera = this.filmPanel.getCamera();
 
-            BlockHitResult blockHitResult = RayTracing.rayTrace(
-                world,
-                RayTracing.fromVector3d(camera.position),
-                RayTracing.fromVector3f(camera.getMouseDirectionFov(context.mouseX, context.mouseY, area.x, area.y, area.w, area.h)),
-                256F
-            );
+            Vector3d vec = this.rayTraceViewportBlock(context, area);
 
-            if (blockHitResult.getType() != HitResult.Type.MISS)
+            if (vec != null)
             {
-                Vector3d vec = new Vector3d(blockHitResult.getPos().x, blockHitResult.getPos().y, blockHitResult.getPos().z);
-
-                if (Window.isShiftPressed())
-                {
-                    vec = new Vector3d(Math.floor(vec.x) + 0.5D, Math.round(vec.y), Math.floor(vec.z) + 0.5D);
-                }
-
                 final Vector3d finalVec = vec;
 
                 context.replaceContextMenu((menu) ->
@@ -3121,15 +3438,18 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
                     float pitch = 0F;
                     float yaw = MathUtils.toDeg(camera.rotation.y);
 
-                    menu.action(Icons.ADD, UIKeys.FILM_REPLAY_CONTEXT_ADD, () -> this.replays.replays.addReplay(finalVec, pitch, yaw));
-                    menu.action(Icons.POINTER, UIKeys.FILM_REPLAY_CONTEXT_MOVE_HERE, () -> this.moveReplay(finalVec.x, finalVec.y, finalVec.z));
+                    menu.action(Icons.ADD, UIKeys.FILM_REPLAY_CONTEXT_ADD,
+                        () -> this.replays.replays.addReplay(finalVec, pitch, yaw));
+                    menu.action(Icons.POINTER, UIKeys.FILM_REPLAY_CONTEXT_MOVE_HERE,
+                        () -> this.moveReplay(finalVec.x, finalVec.y, finalVec.z));
                 });
 
                 return true;
             }
         }
 
-        if (area.isInside(context) && this.filmPanel.getController().orbit.enabled)
+        if (area.isInside(context) && this.filmPanel.getController().orbit.enabled
+            && !this.viewportInteraction.isActive())
         {
             this.filmPanel.getController().orbit.start(context);
 
@@ -3222,6 +3542,11 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
     @Override
     public void setVisible(boolean visible)
     {
+        if (!visible)
+        {
+            this.toolbar.cancelDockDrag();
+        }
+
         super.setVisible(visible);
 
         if (this.keyframeEditor != null)
