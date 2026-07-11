@@ -24,6 +24,29 @@ public final class TimelineToolbarDockLayout
 
     public static void apply(UIElement host, TimelineToolbar toolbar, TimelineToolbarDock dock, UIElement... contents)
     {
+        if (!TimelineToolbarSettings.isEnabled())
+        {
+            toolbar.closeOpenMenu();
+            toolbar.cancelDockDrag();
+            toolbar.setVisible(false);
+
+            for (UIElement content : contents)
+            {
+                if (content == null)
+                {
+                    continue;
+                }
+
+                content.resetFlex().relative(host);
+                content.x(0).y(0).w(1F).h(1F);
+            }
+
+            host.resize();
+
+            return;
+        }
+
+        toolbar.setVisible(true);
         toolbar.setDock(dock);
 
         int thickness = TimelineToolbarSettings.getThickness(dock);

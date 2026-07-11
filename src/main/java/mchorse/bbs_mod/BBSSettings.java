@@ -118,6 +118,7 @@ public class BBSSettings
     public static ValueBoolean editorRewind;
     public static ValueBoolean editorHorizontalClipEditor;
     public static ValueBoolean editorMinutesBackup;
+    public static ValueBoolean editorTimelineToolbar;
     public static ValueBoolean modelPbrPanelControls;
 
     public static ValueFloat recordingCountdown;
@@ -480,6 +481,8 @@ public class BBSSettings
         autoKeyframes = builder.getBoolean("auto_keyframes", true);
         usingInMemoryClipboard = builder.getBoolean("using_in_memory_clipboard", false);
 
+        builder.category("timeline_toolbar");
+        editorTimelineToolbar = builder.getBoolean("enabled", true);
 
         builder.category("replays");
         replayContextOptions = builder.getInt("compacted_options", 0, 0, 2);

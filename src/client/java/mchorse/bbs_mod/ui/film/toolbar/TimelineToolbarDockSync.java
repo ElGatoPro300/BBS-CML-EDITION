@@ -1,6 +1,8 @@
 package mchorse.bbs_mod.ui.film.toolbar;
 
 import mchorse.bbs_mod.BBSSettings;
+import mchorse.bbs_mod.BBSModClient;
+import mchorse.bbs_mod.ui.dashboard.UIDashboard;
 import mchorse.bbs_mod.ui.film.UIClipsPanel;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.film.replays.UIReplaysEditor;
@@ -62,6 +64,33 @@ public final class TimelineToolbarDockSync
         refreshReplayEditor(film.replayEditor);
         refreshClipsPanel(film.cameraEditor);
         refreshClipsPanel(film.actionEditor);
+    }
+
+    public static void applySettingsChange()
+    {
+        UIFilmPanel film = findOpenFilmPanel();
+
+        if (film != null)
+        {
+            refreshFilmPanel(film);
+        }
+    }
+
+    public static UIFilmPanel findOpenFilmPanel()
+    {
+        UIDashboard dashboard = BBSModClient.getDashboard();
+
+        if (dashboard == null || dashboard.getPanels() == null)
+        {
+            return null;
+        }
+
+        if (dashboard.getPanels().panel instanceof UIFilmPanel film)
+        {
+            return film;
+        }
+
+        return null;
     }
 
     private static void refreshReplayEditor(UIReplaysEditor editor)

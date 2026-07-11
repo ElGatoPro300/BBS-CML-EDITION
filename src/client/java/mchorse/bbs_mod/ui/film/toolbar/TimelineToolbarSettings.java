@@ -11,6 +11,15 @@ import mchorse.bbs_mod.utils.colors.Colors;
  */
 public class TimelineToolbarSettings
 {
+    /**
+     * Whether timeline toolbars are shown in the film editor. Keyboard shortcuts
+     * remain active when toolbars are hidden.
+     */
+    public static boolean isEnabled()
+    {
+        return BBSSettings.editorTimelineToolbar == null || BBSSettings.editorTimelineToolbar.get();
+    }
+
     /* Layout */
 
     /**
