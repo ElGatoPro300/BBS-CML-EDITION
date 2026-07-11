@@ -118,7 +118,8 @@ public class TimelineToolbar extends UIElement
         this.sectionsScroll.noScrollbar();
         /* Block mouse events inside the bar (clicks should not pass through to
          * the timeline) but let keyboard events propagate so Escape can still
-         * close the editor when the cursor is over the toolbar. */
+         * close the editor when the cursor is over the toolbar (unless a dock
+         * drag is in progress — see {@link #subKeyPressed}). */
         this.mouseEventPropagataion(EventPropagation.BLOCK_INSIDE);
     }
 
@@ -185,6 +186,33 @@ public class TimelineToolbar extends UIElement
     {
         this.dockDragging = false;
         this.hoverDock = null;
+    }
+
+    /**
+     * Cancels an in-progress dock drag when Escape is pressed. Used from
+     * {@link mchorse.bbs_mod.ui.framework.UIBaseMenu} so the editor is not
+     * closed while repositioning a toolbar.
+     *
+     * @return {@code true} when a dock drag was active and was cancelled
+     */
+    public static boolean cancelDockDragIfEscape(UIContext context)
+    {
+        if (!context.isPressed(GLFW.GLFW_KEY_ESCAPE))
+        {
+            return false;
+        }
+
+        for (TimelineToolbar toolbar : context.menu.getRoot().getChildren(TimelineToolbar.class, new ArrayList<>(), true))
+        {
+            if (toolbar.isDockDragging())
+            {
+                toolbar.cancelDockDrag();
+
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void cancelSectionsPointer()
@@ -1166,6 +1194,19 @@ public class TimelineToolbar extends UIElement
         }
 
         return true;
+    }
+
+    @Override
+    protected boolean subKeyPressed(UIContext context)
+    {
+        if (this.dockDragging && context.isPressed(GLFW.GLFW_KEY_ESCAPE))
+        {
+            this.cancelDockDrag();
+
+            return true;
+        }
+
+        return super.subKeyPressed(context);
     }
 
     @Override

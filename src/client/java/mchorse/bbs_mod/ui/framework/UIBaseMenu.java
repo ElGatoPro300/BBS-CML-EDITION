@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.ui.framework;
 
 import mchorse.bbs_mod.ui.Keys;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbar;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarPointerBlock;
 import mchorse.bbs_mod.ui.framework.elements.IUIElement;
 import mchorse.bbs_mod.ui.framework.elements.IViewport;
@@ -189,6 +190,11 @@ public abstract class UIBaseMenu
 
         if (this.context.isPressed(GLFW.GLFW_KEY_ESCAPE))
         {
+            if (TimelineToolbar.cancelDockDragIfEscape(this.context))
+            {
+                return true;
+            }
+
             this.closeMenu();
 
             return true;
