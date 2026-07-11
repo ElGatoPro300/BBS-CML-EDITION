@@ -24,6 +24,18 @@ public class GeckoAnimationBlendService
         boolean jumping = !context.onGround && context.verticalSpeed > 0.02F;
         boolean falling = !context.onGround && context.verticalSpeed < -0.02F;
 
+        if (context.riding)
+        {
+            targets.put(GeckoAnimationState.IDLE, 1F);
+
+            if (attacking)
+            {
+                targets.put(GeckoAnimationState.ATTACK, 1F);
+            }
+
+            return targets;
+        }
+
         if (context.swimming)
         {
             targets.put(GeckoAnimationState.SWIM, 1F);

@@ -10,6 +10,7 @@
     "block.bbs.chroma_black": "کروماکی مشکی",
     "block.bbs.chroma_white": "کروماکی سفید",
     "item.bbs.gun": "تفنگ BBS",
+    "item.bbs.mob_killer": "قاتل ماب",
     "itemGroup.bbs.main": "ماد BBS",
 
     "key.bbs.item_editor": "ویرایشگر آیتم",
@@ -32,5 +33,8 @@
     "gamerule.bbsEditing": "اجازه ویرایش BBS",
     "command.getskin.success": "اسکین روی همه بازیکنا اعمال شد",
     "command.getskin.error": "خطا: %s",
-    "command.getskin.downloading": "در حال دانلود اسکین..."
+    "command.getskin.downloading": "در حال دانلود اسکین...",
+
+    "bbs.ui.forms.editors.general.look_at": "نگاه",
+    "bbs.ui.forms.editors.general.illusion": "توهم"
 }

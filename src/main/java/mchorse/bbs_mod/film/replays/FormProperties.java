@@ -4,14 +4,18 @@ import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.forms.Form;
-import mchorse.bbs_mod.forms.forms.ModelForm;
+import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
+import mchorse.bbs_mod.forms.forms.utils.Illusion;
+import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.forms.forms.utils.StructureLightSettings;
+import mchorse.bbs_mod.forms.forms.utils.TextureBlend;
 import mchorse.bbs_mod.settings.values.base.BaseKeyframeFactoryValue;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.settings.values.base.BaseValueBasic;
 import mchorse.bbs_mod.settings.values.core.ValueGroup;
 import mchorse.bbs_mod.settings.values.core.ValuePose;
 import mchorse.bbs_mod.utils.MathUtils;
+import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.interps.Interpolations;
 import mchorse.bbs_mod.utils.interps.Lerps;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
@@ -23,6 +27,7 @@ import mchorse.bbs_mod.utils.pose.Pose;
 import mchorse.bbs_mod.utils.pose.PoseTransform;
 import mchorse.bbs_mod.utils.pose.Transform;
 import mchorse.bbs_mod.utils.resources.LinkUtils;
+import mchorse.bbs_mod.resources.Link;
 
 import java.util.HashMap;
 import java.util.Iterator;
@@ -84,16 +89,21 @@ public class FormProperties extends ValueGroup
 
     public KeyframeChannel create(BaseValue property)
     {
-        if (property.isVisible() && property instanceof BaseKeyframeFactoryValue<?> keyframeFactoryValue)
+        if (property instanceof BaseKeyframeFactoryValue<?> keyframeFactoryValue)
         {
             String key = FormUtils.getPropertyPath(property);
-            KeyframeChannel channel = new KeyframeChannel(key, keyframeFactoryValue.getFactory());
+            boolean allowed = property.isVisible() || "render".equals(key);
 
-            channel.setModel(true);
-            this.properties.put(key, channel);
-            this.add(channel);
+            if (allowed)
+            {
+                KeyframeChannel channel = new KeyframeChannel(key, keyframeFactoryValue.getFactory());
 
-            return channel;
+                channel.setModel(true);
+                this.properties.put(key, channel);
+                this.add(channel);
+
+                return channel;
+            }
         }
 
         return null;
@@ -202,7 +212,15 @@ public class FormProperties extends ValueGroup
                             poseTransform.paintColor.g = Lerps.lerp(poseTransform.paintColor.g, sourcePose.paintColor.g, blend);
                             poseTransform.paintColor.b = Lerps.lerp(poseTransform.paintColor.b, sourcePose.paintColor.b, blend);
                             poseTransform.paintColor.a = Lerps.lerp(poseTransform.paintColor.a, sourcePose.paintColor.a, blend);
+                            poseTransform.glowingColor.r = Lerps.lerp(poseTransform.glowingColor.r, sourcePose.glowingColor.r, blend);
+                            poseTransform.glowingColor.g = Lerps.lerp(poseTransform.glowingColor.g, sourcePose.glowingColor.g, blend);
+                            poseTransform.glowingColor.b = Lerps.lerp(poseTransform.glowingColor.b, sourcePose.glowingColor.b, blend);
+                            poseTransform.glowingColor.a = 1F;
+                            poseTransform.glowIntensity = Lerps.lerp(poseTransform.glowIntensity, sourcePose.glowIntensity, blend);
+                            poseTransform.glowRadius = Lerps.lerp(poseTransform.glowRadius, sourcePose.glowRadius, blend);
                             poseTransform.lighting = Lerps.lerp(poseTransform.lighting, sourcePose.lighting, blend);
+                            poseTransform.shaderShadow = PaintSettings.resolveAutoShaderShadowForPoseAlpha(poseTransform.paintColor.a);
+                            poseTransform.textureBlend = Lerps.lerp(poseTransform.textureBlend, sourcePose.textureBlend, blend);
 
                             if (sourcePose.texture != null && blend >= 0.5F)
                             {
@@ -214,8 +232,14 @@ public class FormProperties extends ValueGroup
                             poseTransform.fix = sourcePose.fix;
                             poseTransform.color.copy(sourcePose.color);
                             poseTransform.paintColor.copy(sourcePose.paintColor);
+                            poseTransform.glowingColor.copy(sourcePose.glowingColor);
+                            poseTransform.glowingColor.a = 1F;
+                            poseTransform.glowIntensity = sourcePose.glowIntensity;
+                            poseTransform.glowRadius = sourcePose.glowRadius;
                             poseTransform.lighting = sourcePose.lighting;
+                            poseTransform.shaderShadow = PaintSettings.resolveAutoShaderShadowForPoseAlpha(poseTransform.paintColor.a);
                             poseTransform.texture = LinkUtils.copy(sourcePose.texture);
+                            poseTransform.textureBlend = sourcePose.textureBlend;
                         }
                     }
                 }
@@ -231,10 +255,30 @@ public class FormProperties extends ValueGroup
             return;
         }
 
+        if ("render".equals(id) && value.getFactory() == KeyframeFactories.BOOLEAN)
+        {
+            @SuppressWarnings("unchecked")
+            KeyframeChannel<Boolean> render = (KeyframeChannel<Boolean>) value;
+
+            this.applyRenderProperty(tick, property, render);
+
+            return;
+        }
+
         KeyframeSegment segment = value.find(tick);
 
         if (segment != null)
         {
+            if ("texture".equals(id))
+            {
+                this.applyTextureBlend(form, segment);
+            }
+
+            if (id.startsWith("illusion"))
+            {
+                this.applyIllusionTextureBlend(form, segment);
+            }
+
             if (blend < 1F)
             {
                 IKeyframeFactory factory = value.getFactory();
@@ -251,8 +295,106 @@ public class FormProperties extends ValueGroup
         }
         else
         {
+            if ("texture".equals(id))
+            {
+                form.textureBlend = null;
+            }
+
+            if (id.startsWith("illusion"))
+            {
+                form.illusionTextureBlend = null;
+            }
+
             property.setRuntimeValue(null);
         }
+    }
+
+    private void applyRenderProperty(float tick, BaseValueBasic property, KeyframeChannel<Boolean> channel)
+    {
+        if (channel.isEmpty())
+        {
+            property.setRuntimeValue(null);
+
+            return;
+        }
+
+        Keyframe<Boolean> first = channel.get(0);
+
+        if (first != null && tick < first.getTick())
+        {
+            property.setRuntimeValue(null);
+
+            return;
+        }
+
+        property.setRuntimeValue(channel.interpolate(tick, true));
+    }
+
+    private void applyTextureBlend(Form form, KeyframeSegment segment)
+    {
+        if (segment.a.isBend() && !segment.isSame())
+        {
+            float blendFactor = getSegmentBlendFactor(segment);
+            Link from = LinkUtils.copy((Link) segment.a.getValue());
+            Link to = LinkUtils.copy((Link) segment.b.getValue());
+
+            if (form.textureBlend == null)
+            {
+                form.textureBlend = new TextureBlend();
+            }
+
+            form.textureBlend.from = from;
+            form.textureBlend.to = to;
+            form.textureBlend.blend = blendFactor;
+        }
+        else
+        {
+            form.textureBlend = null;
+        }
+    }
+
+    private void applyIllusionTextureBlend(Form form, KeyframeSegment segment)
+    {
+        if (segment.a.isBend() && !segment.isSame())
+        {
+            Illusion fromIllusion = (Illusion) segment.a.getValue();
+            Illusion toIllusion = (Illusion) segment.b.getValue();
+            Link from = this.getIllusionPrimaryTexture(fromIllusion);
+            Link to = this.getIllusionPrimaryTexture(toIllusion);
+
+            if (from != null && to != null && !from.equals(to))
+            {
+                float blendFactor = getSegmentBlendFactor(segment);
+
+                if (form.illusionTextureBlend == null)
+                {
+                    form.illusionTextureBlend = new TextureBlend();
+                }
+
+                form.illusionTextureBlend.from = LinkUtils.copy(from);
+                form.illusionTextureBlend.to = LinkUtils.copy(to);
+                form.illusionTextureBlend.blend = blendFactor;
+
+                return;
+            }
+        }
+
+        form.illusionTextureBlend = null;
+    }
+
+    private Link getIllusionPrimaryTexture(Illusion illusion)
+    {
+        if (illusion == null || illusion.textures.isEmpty())
+        {
+            return null;
+        }
+
+        return illusion.textures.get(0);
+    }
+
+    private static float getSegmentBlendFactor(KeyframeSegment segment)
+    {
+        return (float) segment.a.getInterpolation().interpolate(0D, 1D, segment.x);
     }
 
     public void resetProperties(Form form)
@@ -261,6 +403,9 @@ public class FormProperties extends ValueGroup
         {
             return;
         }
+
+        form.textureBlend = null;
+        form.illusionTextureBlend = null;
 
         for (KeyframeChannel value : this.properties.values())
         {
@@ -419,6 +564,221 @@ public class FormProperties extends ValueGroup
             }
         }
         catch (Throwable ignored) {}
+
+        /* Migration: rename glow_settings -> glow, merge glowing_color, synthesize from glow_intensity */
+        try
+        {
+            KeyframeChannel<?> renamed = this.properties.remove("glow_settings");
+
+            if (renamed != null)
+            {
+                KeyframeChannel<?> mergedAny = this.properties.get("glow");
+                @SuppressWarnings("unchecked")
+                KeyframeChannel<GlowSettings> merged = mergedAny != null
+                    ? (KeyframeChannel<GlowSettings>) mergedAny
+                    : new KeyframeChannel<>("glow", KeyframeFactories.GLOW_SETTINGS);
+
+                if (mergedAny == null)
+                {
+                    merged.setModel(true);
+                    this.properties.put("glow", merged);
+                    this.add(merged);
+                }
+
+                for (Object kfObj : renamed.getKeyframes())
+                {
+                    Keyframe<?> kf = (Keyframe<?>) kfObj;
+                    Object v = kf.getValue();
+
+                    if (v instanceof GlowSettings settings)
+                    {
+                        merged.insert(kf.getTick(), settings.copy());
+                    }
+                }
+
+                this.remove(renamed);
+            }
+
+            KeyframeChannel<?> glowingColorChannel = this.properties.remove("glowing_color");
+
+            if (glowingColorChannel != null)
+            {
+                KeyframeChannel<?> mergedAny = this.properties.get("glow");
+                @SuppressWarnings("unchecked")
+                KeyframeChannel<GlowSettings> merged = mergedAny != null
+                    ? (KeyframeChannel<GlowSettings>) mergedAny
+                    : new KeyframeChannel<>("glow", KeyframeFactories.GLOW_SETTINGS);
+
+                if (mergedAny == null)
+                {
+                    merged.setModel(true);
+                    this.properties.put("glow", merged);
+                    this.add(merged);
+                }
+
+                for (Object kfObj : glowingColorChannel.getKeyframes())
+                {
+                    Keyframe<?> kf = (Keyframe<?>) kfObj;
+                    float t = kf.getTick();
+                    GlowSettings settings = this.getGlowSettingsAt(merged, t);
+                    Object v = kf.getValue();
+
+                    if (v instanceof Color color)
+                    {
+                        settings.r = color.r;
+                        settings.g = color.g;
+                        settings.b = color.b;
+                    }
+
+                    merged.insert(t, settings);
+                }
+
+                this.remove(glowingColorChannel);
+            }
+
+            KeyframeChannel<?> legacyGlow = this.properties.get("glow_intensity");
+
+            if (legacyGlow != null)
+            {
+                KeyframeChannel<?> mergedAny = this.properties.get("glow");
+                @SuppressWarnings("unchecked")
+                KeyframeChannel<GlowSettings> merged = mergedAny != null
+                    ? (KeyframeChannel<GlowSettings>) mergedAny
+                    : new KeyframeChannel<>("glow", KeyframeFactories.GLOW_SETTINGS);
+
+                if (mergedAny == null)
+                {
+                    merged.setModel(true);
+                    this.properties.put("glow", merged);
+                    this.add(merged);
+                }
+
+                for (Object kfObj : legacyGlow.getKeyframes())
+                {
+                    Keyframe<?> kf = (Keyframe<?>) kfObj;
+                    float t = kf.getTick();
+                    float intensity = 0F;
+                    Object v = kf.getValue();
+
+                    if (v instanceof Number n)
+                    {
+                        intensity = n.floatValue();
+                    }
+
+                    GlowSettings settings = this.getGlowSettingsAt(merged, t);
+
+                    settings.intensity = intensity;
+                    merged.insert(t, settings);
+                }
+            }
+        }
+        catch (Throwable ignored) {}
+
+        /* Migration: paint_color -> paint (PaintSettings) */
+        try
+        {
+            KeyframeChannel<?> paintColorChannel = this.properties.remove("paint_color");
+
+            if (paintColorChannel != null)
+            {
+                KeyframeChannel<?> mergedAny = this.properties.get("paint");
+                @SuppressWarnings("unchecked")
+                KeyframeChannel<PaintSettings> merged = mergedAny != null
+                    ? (KeyframeChannel<PaintSettings>) mergedAny
+                    : new KeyframeChannel<>("paint", KeyframeFactories.PAINT_SETTINGS);
+
+                if (mergedAny == null)
+                {
+                    merged.setModel(true);
+                    this.properties.put("paint", merged);
+                    this.add(merged);
+                }
+
+                for (Object kfObj : paintColorChannel.getKeyframes())
+                {
+                    Keyframe<?> kf = (Keyframe<?>) kfObj;
+                    float t = kf.getTick();
+                    PaintSettings settings = this.getPaintSettingsAt(merged, t);
+                    Object v = kf.getValue();
+
+                    if (v instanceof Color color)
+                    {
+                        settings.r = color.r;
+                        settings.g = color.g;
+                        settings.b = color.b;
+                        settings.intensity = color.a;
+                    }
+
+                    merged.insert(t, settings);
+                }
+
+                this.remove(paintColorChannel);
+            }
+        }
+        catch (Throwable ignored) {}
+
+        /* Migration: copy legacy visible render-gating keyframes into render while keeping visible */
+        try
+        {
+            KeyframeChannel<?> legacyVisible = this.properties.get("visible");
+            KeyframeChannel<?> renderChannel = this.properties.get("render");
+
+            if (renderChannel == null && legacyVisible != null && legacyVisible.getFactory() == KeyframeFactories.BOOLEAN && !legacyVisible.isEmpty())
+            {
+                KeyframeChannel<Boolean> render = new KeyframeChannel<>("render", KeyframeFactories.BOOLEAN);
+
+                render.setModel(true);
+
+                for (Object kfObj : legacyVisible.getKeyframes())
+                {
+                    Keyframe<?> kf = (Keyframe<?>) kfObj;
+
+                    render.insert(kf.getTick(), (Boolean) kf.getValue());
+                }
+
+                this.properties.put("render", render);
+                this.add(render);
+            }
+        }
+        catch (Throwable ignored) {}
+    }
+
+    private PaintSettings getPaintSettingsAt(KeyframeChannel<PaintSettings> channel, float tick)
+    {
+        KeyframeSegment segment = channel.find(tick);
+        PaintSettings settings;
+
+        if (segment != null)
+        {
+            Object interpolated = segment.createInterpolated();
+
+            settings = interpolated instanceof PaintSettings paint ? paint.copy() : new PaintSettings();
+        }
+        else
+        {
+            settings = new PaintSettings();
+        }
+
+        return settings;
+    }
+
+    private GlowSettings getGlowSettingsAt(KeyframeChannel<GlowSettings> channel, float tick)
+    {
+        KeyframeSegment segment = channel.find(tick);
+        GlowSettings settings;
+
+        if (segment != null)
+        {
+            Object interpolated = segment.createInterpolated();
+
+            settings = interpolated instanceof GlowSettings glow ? glow.copy() : new GlowSettings();
+        }
+        else
+        {
+            settings = new GlowSettings();
+        }
+
+        return settings;
     }
 
     @Override

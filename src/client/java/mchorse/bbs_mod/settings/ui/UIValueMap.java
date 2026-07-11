@@ -17,6 +17,7 @@ import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UICirculate;
+import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
 import mchorse.bbs_mod.ui.framework.elements.context.UIInterpolationContextMenu;
 import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
@@ -35,9 +36,12 @@ import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIText;
 import mchorse.bbs_mod.ui.utils.Label;
 import mchorse.bbs_mod.ui.utils.UI;
+import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.FFMpegUtils;
+import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.OS;
+import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.interps.IInterp;
 import mchorse.bbs_mod.utils.interps.Interpolation;
 import mchorse.bbs_mod.utils.interps.Interpolations;
@@ -64,6 +68,15 @@ public class UIValueMap
     {
         register(ValueBoolean.class, (value, ui) ->
         {
+            if (value == BBSSettings.modelEditorAltHoverMultipleColors)
+            {
+                UIToggle toggle = UIValueFactory.booleanUINoLabel(value, (t) -> BBSModClient.applyModelEditorHoverLive());
+
+                toggle.w(18);
+
+                return Arrays.asList(UIValueFactory.column(toggle, value));
+            }
+
             UIToggle toggle = UIValueFactory.booleanUINoLabel(value, null);
 
             toggle.w(18);
@@ -94,6 +107,24 @@ public class UIValueMap
             if (value == BBSSettings.modelEditorHoverOpacity)
             {
                 UITrackpad trackpad = UIValueFactory.floatUI(value, (v) -> BBSModClient.applyModelEditorHoverLive());
+
+                trackpad.w(90);
+
+                return Arrays.asList(UIValueFactory.column(trackpad, value));
+            }
+
+            if (value == BBSSettings.modelEditorAltHoverOpacity)
+            {
+                UITrackpad trackpad = UIValueFactory.floatUI(value, (v) -> BBSModClient.applyModelEditorHoverLive());
+
+                trackpad.w(90);
+
+                return Arrays.asList(UIValueFactory.column(trackpad, value));
+            }
+
+            if (value == BBSSettings.keyframePreviewOpacity)
+            {
+                UITrackpad trackpad = UIValueFactory.floatUI(value, null);
 
                 trackpad.w(90);
 
@@ -159,6 +190,61 @@ public class UIValueMap
                 button.w(90);
 
                 return Arrays.asList(UIValueFactory.column(button, value));
+            }
+
+            if (value == BBSSettings.gizmoDefaultMode)
+            {
+                UIIcon translate = new UIIcon(Icons.ALL_DIRECTIONS, (b) ->
+                {
+                    value.set(0);
+                    UIUtils.playClick();
+                });
+                UIIcon scale = new UIIcon(Icons.SCALE, (b) ->
+                {
+                    value.set(1);
+                    UIUtils.playClick();
+                });
+                UIIcon rotate = new UIIcon(Icons.ARC, (b) ->
+                {
+                    value.set(2);
+                    UIUtils.playClick();
+                });
+                UIIcon combined = new UIIcon(Icons.SHAPES, (b) ->
+                {
+                    value.set(3);
+                    UIUtils.playClick();
+                });
+
+                translate.tooltip(UIKeys.FILM_GIZMO_MOVE);
+                scale.tooltip(UIKeys.FILM_GIZMO_SCALE);
+                rotate.tooltip(UIKeys.FILM_GIZMO_ROTATE);
+                combined.tooltip(UIKeys.FILM_GIZMO_COMBINED);
+
+                int activeBg = Colors.A50 | Colors.BLUE;
+
+                translate.activeBackground(activeBg);
+                scale.activeBackground(activeBg);
+                rotate.activeBackground(activeBg);
+                combined.activeBackground(activeBg);
+
+                Runnable syncActive = () ->
+                {
+                    int mode = MathUtils.clamp(value.get(), 0, 3);
+
+                    translate.active(mode == 0);
+                    scale.active(mode == 1);
+                    rotate.active(mode == 2);
+                    combined.active(mode == 3);
+                };
+
+                value.postCallback((changed, flag) -> syncActive.run());
+                syncActive.run();
+
+                UIElement row = UI.row(2, translate, scale, rotate, combined);
+
+                row.w(90);
+
+                return Arrays.asList(UIValueFactory.column(row, value));
             }
 
             if (value == BBSSettings.defaultInterpolation || value == BBSSettings.defaultModelInterpolation || value == BBSSettings.defaultPathInterpolation || value == BBSSettings.defaultCameraKeyframeInterpolation)
@@ -234,7 +320,7 @@ public class UIValueMap
             {
                 /* Hover highlight color should take effect the moment it's changed, without
                  * requiring Apply/reload (the renderer reads the "applied" snapshot). */
-                UIColor color = value == BBSSettings.modelEditorHoverColor
+                UIColor color = value == BBSSettings.modelEditorHoverColor || value == BBSSettings.modelEditorAltHoverColor
                     ? UIValueFactory.colorUI(value, (c) -> BBSModClient.applyModelEditorHoverLive())
                     : UIValueFactory.colorUI(value, null);
 
@@ -414,12 +500,24 @@ public class UIValueMap
             UITrackpad width = UIValueFactory.intUI(value.width, null);
             value.width.postCallback((changed, flag) -> width.setValue(value.width.get()));
             width.w(90);
-            list.add(customColumn(width, UIKeys.VIDEO_SETTINGS_WIDTH, IKey.raw("")));
+            width.tooltip(UIKeys.VIDEO_SETTINGS_WIDTH);
 
             UITrackpad height = UIValueFactory.intUI(value.height, null);
             value.height.postCallback((changed, flag) -> height.setValue(value.height.get()));
             height.w(90);
-            list.add(customColumn(height, UIKeys.VIDEO_SETTINGS_HEIGHT, IKey.raw("")));
+            height.tooltip(UIKeys.VIDEO_SETTINGS_HEIGHT);
+
+            UIIcon swapResolution = new UIIcon(Icons.EXCHANGE, (b) ->
+            {
+                int w = value.width.get();
+                int h = value.height.get();
+
+                value.width.set(h);
+                value.height.set(w);
+            });
+            swapResolution.tooltip(UIKeys.VIDEO_SETTINGS_SWAP_RESOLUTION);
+
+            list.add(customColumn(UI.row(width, swapResolution, height), UIKeys.VIDEO_SETTINGS_RESOLUTION, IKey.raw("")));
 
             UITrackpad frameRate = UIValueFactory.intUI(value.frameRate, null);
             frameRate.w(90);

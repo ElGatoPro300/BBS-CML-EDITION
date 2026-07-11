@@ -10,3 +10,5 @@ accessible field net/minecraft/client/MinecraftClient framebuffer Lnet/minecraft
 mutable field net/minecraft/client/MinecraftClient framebuffer Lnet/minecraft/client/gl/Framebuffer;
 
 accessible method net/minecraft/block/entity/BlockEntity readNbt (Lnet/minecraft/nbt/NbtCompound;Lnet/minecraft/registry/RegistryWrapper$WrapperLookup;)V
+
+accessible method net/minecraft/entity/LivingEntity setLivingFlag (IZ)V
