@@ -53,6 +53,7 @@ import mchorse.bbs_mod.ui.film.audio.UIAudioRecorder;
 import mchorse.bbs_mod.ui.film.controller.UIFilmController;
 import mchorse.bbs_mod.ui.film.replays.UIReplaysEditor;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIReplaysOverlayPanel;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarDockSync;
 import mchorse.bbs_mod.ui.film.utils.UIFilmUndoHandler;
 import mchorse.bbs_mod.ui.film.utils.undo.UIUndoHistoryOverlay;
 import mchorse.bbs_mod.ui.framework.UIContext;
@@ -2514,6 +2515,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.collapsedDockedPanels.clear();
         this.hiddenPanels.clear();
         layout.setFilmLayoutRoot(this.addAnchoredReplaysPanelToRoot(EditorLayoutNode.defaultFilmLayout()));
+        BBSSettings.timelineToolbarDocks.resetToDefaults();
+        TimelineToolbarDockSync.refreshFilmPanel(this);
         this.setupEditorFlex(true);
     }
 
@@ -3591,6 +3594,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             }
         }
 
+        BBSSettings.timelineToolbarDocks.writePreset(data);
+
         return data;
     }
 
@@ -3644,6 +3649,10 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         {
             BBSSettings.videoSettings.motionBlur.set(data.getInt("video_motion_blur"));
         }
+
+        BBSSettings.timelineToolbarDocks.applyPreset(data);
+        TimelineToolbarDockSync.refreshFilmPanel(this);
+        this.setupEditorFlex(true);
     }
 
     private boolean hasAnchoredReplaysPanelPresetState(MapType data)

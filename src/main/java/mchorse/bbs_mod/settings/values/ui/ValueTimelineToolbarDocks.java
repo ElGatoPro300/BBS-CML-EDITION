@@ -9,10 +9,13 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Persists per-timeline toolbar dock positions (camera, action, replay panels).
+ * Persists per-timeline toolbar dock positions (camera, action, replay and
+ * screen-node graph view).
  */
 public class ValueTimelineToolbarDocks extends BaseValue
 {
+    public static final String PRESET_KEY = "timeline_toolbar_docks";
+
     private final Map<String, String> docks = new LinkedHashMap<>();
 
     public ValueTimelineToolbarDocks(String id)
@@ -33,6 +36,36 @@ public class ValueTimelineToolbarDocks extends BaseValue
         }
 
         BaseValue.edit(this, (v) -> this.docks.put(panelId, dock.toId()));
+    }
+
+    public void resetToDefaults()
+    {
+        BaseValue.edit(this, (v) -> this.docks.clear());
+    }
+
+    public void applyPreset(MapType data)
+    {
+        if (data == null || !data.has(PRESET_KEY))
+        {
+            return;
+        }
+
+        BaseType docksData = data.get(PRESET_KEY);
+
+        if (docksData != null && docksData.isMap())
+        {
+            this.fromData(docksData);
+        }
+    }
+
+    public void writePreset(MapType data)
+    {
+        if (data == null)
+        {
+            return;
+        }
+
+        data.put(PRESET_KEY, this.toData());
     }
 
     @Override
@@ -64,7 +97,9 @@ public class ValueTimelineToolbarDocks extends BaseValue
 
             if (value.isString())
             {
-                this.docks.put(key, value.asString());
+                String panelId = "screenNodeTimeline".equals(key) ? "screenNodeView" : key;
+
+                this.docks.put(panelId, value.asString());
             }
         }
     }

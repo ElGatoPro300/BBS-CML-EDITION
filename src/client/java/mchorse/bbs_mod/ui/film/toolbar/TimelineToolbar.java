@@ -677,13 +677,15 @@ public class TimelineToolbar extends UIElement
 
         if (this.panelId != null)
         {
-            BBSSettings.timelineToolbarDocks.setDock(this.panelId, dock);
+            TimelineToolbarDockSync.setDock(this.panelId, dock);
         }
 
         if (this.dockChangeListener != null)
         {
             this.dockChangeListener.run();
         }
+
+        TimelineToolbarDockSync.refreshLinkedToolbars(this.hostPanel, this.panelId);
     }
 
     private TimelineToolbarDock computeNearestDropDock(int mouseX, int mouseY)

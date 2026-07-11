@@ -12,6 +12,7 @@ public final class TimelineToolbarDockLayout
     public static final String PANEL_CAMERA = "cameraTimeline";
     public static final String PANEL_ACTION = "actionTimeline";
     public static final String PANEL_REPLAY = "replayTimeline";
+    public static final String PANEL_SCREEN_NODE_VIEW = "screenNodeView";
 
     public static void setup(UIElement host, TimelineToolbar toolbar, String panelId, UIElement... contents)
     {

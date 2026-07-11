@@ -801,7 +801,7 @@ public class UIReplaysEditor extends UIElement
         this.markContainer();
     }
 
-    private void applyToolbarDockLayout()
+    public void applyToolbarDockLayout()
     {
         TimelineToolbarDock dock = BBSSettings.timelineToolbarDocks.getDock(TimelineToolbarDockLayout.PANEL_REPLAY);
 

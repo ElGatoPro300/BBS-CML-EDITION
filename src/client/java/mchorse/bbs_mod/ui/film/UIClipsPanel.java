@@ -3,6 +3,7 @@ package mchorse.bbs_mod.ui.film;
 import mchorse.bbs_mod.camera.Camera;
 import mchorse.bbs_mod.camera.clips.ClipFactoryData;
 import mchorse.bbs_mod.camera.data.Position;
+import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.data.DataStorageUtils;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.film.Film;
@@ -11,6 +12,7 @@ import mchorse.bbs_mod.settings.values.numeric.ValueInt;
 import mchorse.bbs_mod.ui.film.clips.UIClip;
 import mchorse.bbs_mod.ui.film.clips.UIScreenNodeEditor;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbar;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarDock;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarDockLayout;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarRegistry;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarWiring;
@@ -79,9 +81,30 @@ public class UIClipsPanel extends UIElement implements IUIClipsDelegate
             : TimelineToolbarDockLayout.PANEL_ACTION;
     }
 
-    private void applyToolbarDockLayout()
+    public String getToolbarStoragePanelId()
     {
-        TimelineToolbarDockLayout.setup(this, this.toolbar, this.getToolbarPanelId(), this.clips);
+        UIElement embed = this.clips.getEmbeddedView();
+
+        if (embed instanceof UIKeyframeEditor)
+        {
+            return TimelineToolbarDockLayout.PANEL_REPLAY;
+        }
+
+        if (embed instanceof UIScreenNodeEditor)
+        {
+            return TimelineToolbarDockLayout.PANEL_SCREEN_NODE_VIEW;
+        }
+
+        return this.getToolbarPanelId();
+    }
+
+    public void applyToolbarDockLayout()
+    {
+        String panelId = this.getToolbarStoragePanelId();
+        TimelineToolbarDock dock = BBSSettings.timelineToolbarDocks.getDock(panelId);
+
+        this.toolbar.configureDockHost(this, panelId, this::applyToolbarDockLayout);
+        TimelineToolbarDockLayout.apply(this, this.toolbar, dock, this.clips);
     }
 
     /**
@@ -122,6 +145,8 @@ public class UIClipsPanel extends UIElement implements IUIClipsDelegate
         {
             this.applyDefaultToolbarSections();
         }
+
+        this.applyToolbarDockLayout();
     }
 
     private void cancelToolbarInteraction()
