@@ -11,9 +11,6 @@ import mchorse.bbs_mod.ui.framework.elements.utils.CustomFontManager;
 import net.minecraft.client.MinecraftClient;
 
 import com.mojang.blaze3d.opengl.GlStateManager;
-
-import org.lwjgl.opengl.GL11;
-
 import com.mojang.blaze3d.systems.RenderSystem;
 
 import org.lwjgl.opengl.GL11;
