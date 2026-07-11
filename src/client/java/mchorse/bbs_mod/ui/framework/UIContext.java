@@ -8,6 +8,8 @@ import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIScrollView;
 import mchorse.bbs_mod.ui.framework.elements.context.UIContextMenu;
 import mchorse.bbs_mod.ui.framework.elements.input.UIKeybinds;
+import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
+import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D;
 import mchorse.bbs_mod.ui.framework.elements.utils.IViewportStack;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIViewportStack;
@@ -239,12 +241,36 @@ public class UIContext implements IViewportStack
     /**
      * @return {@code true} when interaction hint cards may use the post-render
      * foreground layer (above viewport chrome). When {@code false}, hints must
-     * be drawn during normal panel rendering so toolbar menus and context menus
-     * on the overlay stay on top.
+     * be drawn during normal panel rendering so toolbar menus, context menus, and
+     * modal overlay panels (e.g. settings) stay on top.
      */
     public boolean shouldDeferInteractionHintToForeground()
     {
-        return !this.hasOpenTimelineToolbarMenus() && !this.hasContextMenu();
+        return !this.hasOpenTimelineToolbarMenus() && !this.hasContextMenu() && !this.hasOverlayPanel();
+    }
+
+    /**
+     * @return {@code true} when a modal {@link UIOverlayPanel} (e.g. settings) is open
+     */
+    public boolean hasOverlayPanel()
+    {
+        return UIOverlay.has(this);
+    }
+
+    /**
+     * @return {@code true} when the given screen point lies over a visible overlay panel
+     */
+    public boolean isPointerOverOverlayPanel(int x, int y)
+    {
+        for (UIOverlayPanel panel : this.menu.getRoot().getChildren(UIOverlayPanel.class))
+        {
+            if (panel.canBeSeen() && panel.area.isInside(x, y))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     public void setTimelineToolbarConsumePointer(boolean consume)
@@ -415,8 +441,11 @@ public class UIContext implements IViewportStack
 
     private void renderForegroundTextCard()
     {
-        if (this.foregroundTextCard == null)
+        if (this.foregroundTextCard == null
+            || this.isPointerOverOverlayPanel(this.mouseX, this.mouseY))
         {
+            this.foregroundTextCard = null;
+
             return;
         }
 

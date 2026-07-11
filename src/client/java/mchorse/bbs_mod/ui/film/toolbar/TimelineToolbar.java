@@ -865,7 +865,8 @@ public class TimelineToolbar extends UIElement
         context.batcher.clip(this.sectionsViewportArea, context);
 
         int hovered = this.getSectionIndexAt(context.mouseX, context.mouseY);
-        boolean suppressSectionHover = this.openMenu != null && this.isPointerOverOpenMenu(context);
+        boolean suppressSectionHover = context.isPointerOverOverlayPanel(context.mouseX, context.mouseY)
+            || (this.openMenu != null && this.isPointerOverOpenMenu(context));
 
         this.renderSections(context, font, hovered, suppressSectionHover);
 
