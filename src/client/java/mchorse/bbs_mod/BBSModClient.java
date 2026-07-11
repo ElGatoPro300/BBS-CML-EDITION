@@ -10,6 +10,8 @@ import mchorse.bbs_mod.camera.clips.misc.CurveClientClip;
 import mchorse.bbs_mod.camera.clips.misc.TrackerClientClip;
 import mchorse.bbs_mod.camera.controller.CameraController;
 import mchorse.bbs_mod.client.BBSRendering;
+import mchorse.bbs_mod.client.PendingFilmLaunch;
+import mchorse.bbs_mod.discord.DiscordPresenceManager;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.client.renderer.ModelBlockEntityRenderer;
 import mchorse.bbs_mod.client.renderer.TriggerBlockEntityRenderer;
@@ -18,6 +20,7 @@ import mchorse.bbs_mod.client.renderer.entity.GunProjectileEntityRenderer;
 import mchorse.bbs_mod.client.renderer.item.GunItemRenderer;
 import mchorse.bbs_mod.client.renderer.item.ModelBlockItemRenderer;
 import mchorse.bbs_mod.cubic.model.ModelManager;
+import mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer;
 import mchorse.bbs_mod.events.BBSAddonMod;
 import mchorse.bbs_mod.events.register.RegisterClientSettingsEvent;
 import mchorse.bbs_mod.events.register.RegisterDashboardPanelsEvent;
@@ -77,6 +80,7 @@ import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.UIDashboard;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
+import mchorse.bbs_mod.ui.film.replays.UIMobCaptureRecordOverlayPanel;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIQuickReplayOverlayPanel;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarDockSync;
 import mchorse.bbs_mod.ui.forms.editors.UIFormEditor;
@@ -445,7 +449,6 @@ public class BBSModClient implements ClientModInitializer
         l10n = new L10n();
         l10n.register((lang) -> Collections.singletonList(Link.assets("strings/" + lang + ".json")));
         l10n.reload();
-        RtlFontManager.ensureLoaded();
 
         BBSMod.events.post(new RegisterL10nEvent(l10n));
 
@@ -508,6 +511,9 @@ public class BBSModClient implements ClientModInitializer
             }
         });
 
+        BBSSettings.discordPresence.postCallback((v, f) -> DiscordPresenceManager.INSTANCE.onSettingsChanged());
+        BBSSettings.discordApplicationId.postCallback((v, f) -> DiscordPresenceManager.INSTANCE.onSettingsChanged());
+
         IValueListener refreshModelHover = (v, f) ->
         {
             if (!UISettingsOverlayPanel.isDeferringLiveSettings())
@@ -518,6 +524,10 @@ public class BBSModClient implements ClientModInitializer
         };
         BBSSettings.modelEditorHoverColor.postCallback(refreshModelHover);
         BBSSettings.modelEditorHoverOpacity.postCallback(refreshModelHover);
+        BBSSettings.modelEditorAltHoverColor.postCallback(refreshModelHover);
+        BBSSettings.modelEditorAltHoverOpacity.postCallback(refreshModelHover);
+        BBSSettings.modelEditorAltHoverMultipleColors.postCallback(refreshModelHover);
+        BBSSettings.favoriteColors.postCallback(refreshModelHover);
 
         BBSSettings.editorTimelineToolbar.postCallback((v, f) -> TimelineToolbarDockSync.applySettingsChange());
 
@@ -553,7 +563,7 @@ public class BBSModClient implements ClientModInitializer
         BBSMod.getFactoryCameraClips()
             .register(Link.bbs("audio"), AudioClientClip.class, new ClipFactoryData(Icons.SOUND, 0xffc825))
             .register(Link.bbs("tracker"), TrackerClientClip.class, new ClipFactoryData(Icons.USER, 0x4cedfc))
-            .register(Link.bbs("curve"), CurveClientClip.class, new ClipFactoryData(Icons.ARC, 0xff1493));
+            .register(Link.bbs("curve"), CurveClientClip.class, new ClipFactoryData(Icons.ARC, 0xff775f));
 
         /* Keybinds */
         keyDashboard = this.createKey("dashboard", GLFW.GLFW_KEY_0);
@@ -646,6 +656,7 @@ public class BBSModClient implements ClientModInitializer
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) ->
         {
             RecentAssetsTracker.load();
+            PendingFilmLaunch.onJoin();
         });
 
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) ->
@@ -686,6 +697,10 @@ public class BBSModClient implements ClientModInitializer
             {
                 screen.update();
             }
+
+            DiscordPresenceManager.INSTANCE.tick();
+
+            PendingFilmLaunch.tick(mc);
 
             cameraController.update();
 
@@ -764,11 +779,18 @@ public class BBSModClient implements ClientModInitializer
             }
         });
 
-        ClientLifecycleEvents.CLIENT_STOPPING.register((e) -> BBSResources.stopWatchdog());
+        ClientLifecycleEvents.CLIENT_STOPPING.register((e) ->
+        {
+            DiscordPresenceManager.INSTANCE.shutdown();
+            BBSResources.stopWatchdog();
+        });
         ClientLifecycleEvents.CLIENT_STARTED.register((e) ->
         {
+            DiscordPresenceManager.INSTANCE.init();
+            DiscordPresenceManager.INSTANCE.onClientStarted();
             BBSRendering.setupFramebuffer();
             provider.register(new MinecraftSourcePack());
+            RtlFontManager.ensureLoaded();
 
             Window window = MinecraftClient.getInstance().getWindow();
 
@@ -931,16 +953,40 @@ public class BBSModClient implements ClientModInitializer
                 }
 
                 panel.applyRecordedKeyframes(recorder, panel.getData());
+                panel.replayEditor.replays.replays.buildVisualList();
+                panel.replayEditor.updateChannelsList();
+                panel.save();
             }
             else
             {
-                Replay replay = panel.replayEditor.getReplay();
-                int index = panel.getData().replays.getList().indexOf(replay);
-
-                if (index >= 0)
+                if (UIMobCaptureRecordOverlayPanel.isOpened())
                 {
-                    getFilms().startRecording(panel.getData(), index, 0);
+                    return;
                 }
+
+                UIMobCaptureRecordOverlayPanel.openInGame((setup) ->
+                {
+                    UIFilmPanel filmPanel = dashboard.getPanel(UIFilmPanel.class);
+
+                    if (filmPanel == null || filmPanel.getData() == null)
+                    {
+                        return;
+                    }
+
+                    Replay replay = filmPanel.replayEditor.getReplay();
+
+                    if (replay == null)
+                    {
+                        replay = getSelectedReplay();
+                    }
+
+                    int index = filmPanel.getData().replays.getList().indexOf(replay);
+
+                    if (index >= 0)
+                    {
+                        getFilms().startRecording(filmPanel.getData(), index, 0);
+                    }
+                });
             }
         }
     }
@@ -1120,7 +1166,7 @@ public class BBSModClient implements ClientModInitializer
 
     public static String getLanguageKey(String key)
     {
-        if (key.isEmpty())
+        if (key == null || key.isEmpty())
         {
             MinecraftClient client = MinecraftClient.getInstance();
 

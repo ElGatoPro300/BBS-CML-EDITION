@@ -41,6 +41,8 @@ public class StructureForm extends Form
     public final ValueFloat scaleX = new ValueFloat("scale_x", 1f);
     public final ValueFloat scaleY = new ValueFloat("scale_y", 1f);
     public final ValueFloat scaleZ = new ValueFloat("scale_z", 1f);
+    /** Whether to render fluids (water/lava) contained in the structure */
+    public final ValueBoolean renderFluid = new ValueBoolean("render_fluid", true);
 
     public StructureForm()
     {
