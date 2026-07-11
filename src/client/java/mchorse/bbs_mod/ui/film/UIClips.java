@@ -313,21 +313,6 @@ public class UIClips extends UIElement
         return this.factory;
     }
 
-    public String getClipDisplayName(Clip clip)
-    {
-        if (!clip.title.get().isEmpty())
-        {
-            return clip.title.get();
-        }
-        /* TODO(1.21.11): BBSSettings.editorClipAutoName field missing — needs to be ported
-        if (!BBSSettings.editorClipAutoName.get())
-        {
-            return "";
-        }
-        */
-        return this.renderers.get(clip).getDefaultLabel(this, clip);
-    }
-
     /* Tools */
 
     private void showAdds(int mouseX, int mouseY)
@@ -894,6 +879,11 @@ public class UIClips extends UIElement
 
     public void addSelected(Clip clip)
     {
+        if (clip == null || this.clips == null)
+        {
+            return;
+        }
+
         int index = this.clips.getIndex(clip);
 
         if (index >= 0)

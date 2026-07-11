@@ -14,10 +14,12 @@ import mchorse.bbs_mod.utils.Axis;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.BufferBuilder;
-import net.minecraft.client.render.RawProjectionMatrix;
-import net.minecraft.client.render.RenderLayers;
+import net.minecraft.client.render.BufferRenderer;
+import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.Tessellator;
+import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
 
@@ -27,10 +29,8 @@ import org.joml.Quaternionf;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
-import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.systems.ProjectionType;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.VertexFormat;
 
 import org.lwjgl.opengl.GL11;
 
@@ -61,7 +61,7 @@ public class Gizmo
         private DeferredGizmo(Matrix4f matrix, boolean stencil, StencilMap stencilMap)
         {
             this.matrix = matrix;
-            this.projection = new Matrix4f();
+            this.projection = new Matrix4f(RenderSystem.getProjectionMatrix());
             this.stencil = stencil;
             this.stencilMap = stencilMap;
         }
@@ -557,7 +557,7 @@ public class Gizmo
         context.batcher.flush();
 
         MatrixStackUtils.cacheMatrices();
-        RenderSystem.setProjectionMatrix(new RawProjectionMatrix("gizmo_interface").set(projection), ProjectionType.ORTHOGRAPHIC);
+        RenderSystem.setProjectionMatrix(projection, ProjectionType.ORTHOGRAPHIC);
 
         float rx = (float) Math.round(mc.getWindow().getWidth() / (double) context.menu.width);
         float ry = (float) Math.round(mc.getWindow().getHeight() / (double) context.menu.height);
@@ -567,20 +567,21 @@ public class Gizmo
         int vw = (int) (area.w * rx);
         int vh = (int) (area.h * ry);
 
-        GlStateManager._viewport((int) (vx * size), (int) (vy * size), (int) (vw * size), (int) (vh * size));
+        RenderSystem.viewport((int) (vx * size), (int) (vy * size), (int) (vw * size), (int) (vh * size));
 
         MatrixStack stack = new MatrixStack();
 
         MatrixStackUtils.multiply(stack, this.lastGizmoMatrix);
 
-        GlStateManager._disableDepthTest();
-        GlStateManager._depthMask(false);
+        RenderSystem.disableDepthTest();
+        RenderSystem.depthMask(false);
         this.render(stack);
-        GlStateManager._depthMask(true);
-        GlStateManager._enableDepthTest();
+        RenderSystem.depthMask(true);
+        RenderSystem.enableDepthTest();
 
-        GlStateManager._viewport(0, 0, mc.getWindow().getFramebufferWidth(), mc.getWindow().getFramebufferHeight());
+        RenderSystem.viewport(0, 0, mc.getWindow().getFramebufferWidth(), mc.getWindow().getFramebufferHeight());
         MatrixStackUtils.restoreMatrices();
+        RenderSystem.depthFunc(GL11.GL_ALWAYS);
     }
 
     /**
@@ -603,7 +604,7 @@ public class Gizmo
         MinecraftClient mc = MinecraftClient.getInstance();
 
         MatrixStackUtils.cacheMatrices();
-        RenderSystem.setProjectionMatrix(new RawProjectionMatrix("gizmo_stencil").set(projection), ProjectionType.ORTHOGRAPHIC);
+        RenderSystem.setProjectionMatrix(projection, ProjectionType.ORTHOGRAPHIC);
 
         float rx = (float) Math.round(mc.getWindow().getWidth() / (double) context.menu.width);
         float ry = (float) Math.round(mc.getWindow().getHeight() / (double) context.menu.height);
@@ -613,14 +614,14 @@ public class Gizmo
         int vw = (int) (area.w * rx);
         int vh = (int) (area.h * ry);
 
-        GlStateManager._viewport((int) (vx * size), (int) (vy * size), (int) (vw * size), (int) (vh * size));
+        RenderSystem.viewport((int) (vx * size), (int) (vy * size), (int) (vw * size), (int) (vh * size));
 
         MatrixStack stack = new MatrixStack();
 
         MatrixStackUtils.multiply(stack, this.lastGizmoMatrix);
         this.renderStencil(stack, map);
 
-        GlStateManager._viewport(0, 0, mc.getWindow().getFramebufferWidth(), mc.getWindow().getFramebufferHeight());
+        RenderSystem.viewport(0, 0, mc.getWindow().getFramebufferWidth(), mc.getWindow().getFramebufferHeight());
         MatrixStackUtils.restoreMatrices();
     }
 
@@ -641,10 +642,34 @@ public class Gizmo
             return;
         }
 
+        boolean iris = BBSRendering.isIrisShadersEnabled();
+        Matrix4f savedProjection = new Matrix4f();
+        Matrix4f savedModelView = new Matrix4f();
+
+        if (iris)
+        {
+            savedProjection.set(RenderSystem.getProjectionMatrix());
+            savedModelView.set(RenderSystem.getModelViewMatrix());
+        }
+
         for (DeferredGizmo deferred : this.deferredGizmos)
         {
+            if (iris)
+            {
+                /* WorldRenderEvents.LAST runs after Iris' own compositing passes and no
+                 * longer carries the same projection matrix as RenderLayer#getSolid(), where
+                 * the gizmo transform was captured. Re-binding the saved projection keeps the
+                 * deferred draw aligned with the hitbox/stencil pass on the ground. */
+                RenderSystem.setProjectionMatrix(deferred.projection, ProjectionType.ORTHOGRAPHIC);
+            }
+
             stack.push();
 
+            /* The saved matrix is the FULL camera-relative transform captured when the gizmo
+             * was deferred, so it must replace the stack top rather than be multiplied onto
+             * it: at WorldRenderEvents.LAST the stack is not guaranteed to be identity
+             * (notably with Iris shader packs), and composing the two shifted the gizmo to a
+             * wrong position whenever shaders were enabled. */
             stack.peek().getPositionMatrix().set(deferred.matrix);
             stack.peek().getNormalMatrix().identity();
 
@@ -658,6 +683,17 @@ public class Gizmo
             }
 
             stack.pop();
+        }
+
+        if (iris)
+        {
+            RenderSystem.setProjectionMatrix(savedProjection, ProjectionType.ORTHOGRAPHIC);
+
+            Matrix4fStack mvStack = RenderSystem.getModelViewStack();
+
+            mvStack.pushMatrix();
+            mvStack.set(savedModelView);
+            mvStack.popMatrix();
         }
 
         this.deferredGizmos.clear();
@@ -734,14 +770,37 @@ public class Gizmo
         this.drawActiveGuide(builder, stack, scale, thickness);
         this.drawDragProgress(builder, stack, scale, thickness);
 
-        // RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
-        /* shader binding handled by RenderLayer in 1.21.11 */
-        GlStateManager._depthFunc(GL11.GL_ALWAYS);
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
+        RenderSystem.depthFunc(GL11.GL_ALWAYS);
+        /* Explicitly reset the shader color multiplier: a shader pack's own compositing pass
+         * (run just before WorldRenderEvents.LAST, which is when a shader pack is active and
+         * this call is reached via renderDeferred()) can leave it at something other than
+         * opaque white, which would otherwise silently tint every gizmo vertex color to black/
+         * invisible even though the draw call itself succeeds. */
+        RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
+        RenderSystem.disableDepthTest();
+        RenderSystem.depthMask(false);
 
-        RenderLayers.debugFilledBox().draw(builder.end());
+        if (BBSRendering.isIrisShadersEnabled())
+        {
+            /* Vertex positions already include the full gizmo transform; Iris leaves a
+             * stale terrain model-view on the global stack at WorldRenderEvents.LAST. */
+            MatrixStackUtils.pushIdentityModelView();
+        }
 
+        BufferRenderer.drawWithGlobalProgram(builder.end());
 
-        GlStateManager._depthFunc(GL11.GL_LEQUAL);
+        if (BBSRendering.isIrisShadersEnabled())
+        {
+            MatrixStackUtils.popModelView();
+        }
+
+        RenderSystem.depthMask(true);
+        RenderSystem.enableDepthTest();
+        RenderSystem.depthFunc(GL11.GL_LEQUAL);
+        RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
     }
 
     /* ---- stencil (id-encoded) render pass ---- */
@@ -770,23 +829,25 @@ public class Gizmo
         else if (this.mode == Mode.COMBINED) this.drawCombined(builder, stack, scale, thickness, true, map);
         else this.drawTranslate(builder, stack, scale, thickness, true, map);
 
-        GlStateManager._depthFunc(GL11.GL_ALWAYS);
-        GlStateManager._depthMask(false);
+        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
+        RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
+        RenderSystem.disableDepthTest();
+        RenderSystem.depthMask(false);
 
         if (BBSRendering.isIrisShadersEnabled())
         {
             MatrixStackUtils.pushIdentityModelView();
         }
 
-        RenderLayers.debugFilledBox().draw(builder.end());
+        BufferRenderer.drawWithGlobalProgram(builder.end());
 
         if (BBSRendering.isIrisShadersEnabled())
         {
             MatrixStackUtils.popModelView();
         }
 
-        GlStateManager._depthMask(true);
-        GlStateManager._depthFunc(GL11.GL_LEQUAL);
+        RenderSystem.depthMask(true);
+        RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
     }
 
     /* ---- color helpers ---- */
@@ -1065,6 +1126,8 @@ public class Gizmo
      *  movement direction for translate/scale, or the rotation axis for the rings. */
     private void drawActiveGuide(BufferBuilder builder, MatrixStack stack, float scale, float thickness)
     {
+        /* Plane drags show both of the plane's axes as a "+" cross so the user sees the two
+         * directions the object can move in; single-axis drags show just their own line. */
         if (this.index == STENCIL_XY)
         {
             this.drawGuideLine(builder, stack, scale, thickness, Axis.X, COLOR_X_HOVER);
@@ -1086,27 +1149,135 @@ public class Gizmo
 
             return;
         }
+
+        Axis axis = null;
+        float[] color = null;
+
+        if (this.index == STENCIL_X || this.index == STENCIL_SCALE_X || this.index == STENCIL_ROTATE_X)
+        {
+            axis = Axis.X;
+            color = COLOR_X_HOVER;
+        }
+        else if (this.index == STENCIL_Y || this.index == STENCIL_SCALE_Y || this.index == STENCIL_ROTATE_Y)
+        {
+            axis = Axis.Y;
+            color = COLOR_Y_HOVER;
+        }
+        else if (this.index == STENCIL_Z || this.index == STENCIL_SCALE_Z || this.index == STENCIL_ROTATE_Z)
+        {
+            axis = Axis.Z;
+            color = COLOR_Z_HOVER;
+        }
+
+        if (axis == null)
+        {
+            return;
+        }
+
+        this.drawGuideLine(builder, stack, scale, thickness, axis, color);
     }
+
+    /** One faint guide line along an axis, sized/tinted by the guide line settings. The
+     *  settings are read defensively (with hardcoded fallbacks) because this can run during a
+     *  world render frame, before/without the settings registry being fully initialized. */
+    private void drawGuideLine(BufferBuilder builder, MatrixStack stack, float scale, float thickness, Axis axis, float[] color)
+    {
+        float lengthSetting = BBSSettings.gizmoGuideLength == null ? 2F : BBSSettings.gizmoGuideLength.get();
+        float thicknessSetting = BBSSettings.gizmoGuideThickness == null ? 1F : BBSSettings.gizmoGuideThickness.get();
+        float alpha = BBSSettings.gizmoGuideOpacity == null ? 0.35F : BBSSettings.gizmoGuideOpacity.get();
+
+        float length = 10F * scale * lengthSetting;
+        float t = 0.0025F * scale * thickness * thicknessSetting;
+
+        if (axis == Axis.X) this.box(builder, stack, -length, -t, -t, length, t, t, color, alpha);
+        else if (axis == Axis.Y) this.box(builder, stack, -t, -length, -t, t, length, t, color, alpha);
+        else this.box(builder, stack, -t, -t, -length, t, t, length, color, alpha);
+    }
+
+    /** Thick yellow segment from the drag grab point to the current mouse position. */
+    private void drawDragProgress(BufferBuilder builder, MatrixStack stack, float scale, float thickness)
+    {
+        if (!this.dragProgressActive || !this.isScaleDragIndex())
+        {
+            return;
+        }
+
+        float dx = this.dragProgressEnd.x - this.dragProgressStart.x;
+        float dy = this.dragProgressEnd.y - this.dragProgressStart.y;
+        float dz = this.dragProgressEnd.z - this.dragProgressStart.z;
+
+        if (dx * dx + dy * dy + dz * dz < 1.0E-10F)
+        {
+            return;
+        }
+
+        float thicknessSetting = BBSSettings.gizmoGuideThickness == null ? 1F : BBSSettings.gizmoGuideThickness.get();
+        float alpha = BBSSettings.gizmoGuideOpacity == null ? 0.9F : Math.min(1F, BBSSettings.gizmoGuideOpacity.get() + 0.5F);
+        float t = 0.006F * scale * thickness * thicknessSetting;
+
+        Draw.fillBoxTo(
+            builder, stack,
+            this.dragProgressStart.x, this.dragProgressStart.y, this.dragProgressStart.z,
+            this.dragProgressEnd.x, this.dragProgressEnd.y, this.dragProgressEnd.z,
+            t,
+            COLOR_ACTIVE[0], COLOR_ACTIVE[1], COLOR_ACTIVE[2], alpha
+        );
+    }
+
+    private boolean isScaleDragIndex()
+    {
+        if (this.index == -1)
+        {
+            return false;
+        }
+
+        if (this.index == STENCIL_SCALE_X || this.index == STENCIL_SCALE_Y || this.index == STENCIL_SCALE_Z)
+        {
+            return true;
+        }
+
+        if (this.mode == Mode.SCALE && (this.index == STENCIL_X || this.index == STENCIL_Y || this.index == STENCIL_Z || this.index == STENCIL_FREE))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    /* ---- combined mode (move + scale + rotate + trackball nested together) ---- */
 
     private void drawCombined(BufferBuilder builder, MatrixStack stack, float scale, float thickness, boolean stencil, StencilMap map)
     {
         float moveScale = scale * COMBINED_MOVE_SCALE;
-        float scaScale = scale * COMBINED_SCALE_HANDLE_SCALE;
-        float rotScale = scale * COMBINED_ROTATE_SCALE;
-
         float axisSize = 0.30F * moveScale;
         float axisOffset = 0.012F * moveScale * thickness;
         float planeInner = 0.08F * moveScale;
         float planeOuter = 0.20F * moveScale;
         float offset = 0.001F * moveScale;
+        float rotateRadius = 0.22F * scale * COMBINED_ROTATE_SCALE;
+        float ringThickness = 0.016F * scale * thickness;
+
+        /* Stencil draw order = pick priority (later wins): the trackball sphere goes first so
+         * every axis, plane, cube and ring that overlaps it on screen stays clickable. */
+        this.drawTrackball(builder, stack, this.trackballRadius(rotateRadius, 0.55F), stencil, map);
 
         this.drawMoveBars(builder, stack, axisSize, axisOffset, stencil, map);
         this.drawMovePlanes(builder, stack, planeInner, planeOuter, offset, stencil, map);
         this.drawScreenCube(builder, stack, axisOffset, stencil, map);
 
-        float scaOffset = 0.012F * scaScale * thickness;
-        float scaSize = 0.30F * scaScale;
-        float half = scaOffset * 2F;
+        this.drawCombinedScaleHandles(builder, stack, scale, thickness, stencil, map);
+        this.drawRings(builder, stack, rotateRadius, ringThickness, STENCIL_ROTATE_X, STENCIL_ROTATE_Y, STENCIL_ROTATE_Z, stencil);
+        this.drawViewRing(builder, stack, rotateRadius * 1.12F, ringThickness, stencil, map);
+    }
+
+    /** Positioned just outside the rotate rings' radius (rather than nested among the move
+     *  arrows) so the layout reads, from the outside in, as rotate rings (outermost) -> scale
+     *  cubes -> move arrows (innermost), matching the reference "cage" arrangement. */
+    private void drawCombinedScaleHandles(BufferBuilder builder, MatrixStack stack, float scale, float thickness, boolean stencil, StencilMap map)
+    {
+        float rotateRadius = 0.22F * scale * COMBINED_ROTATE_SCALE;
+        float axisSize = rotateRadius * 1.15F;
+        float half = 0.02F * scale * COMBINED_SCALE_HANDLE_SCALE;
 
         float[] xCol = stencil ? this.stencilColor(STENCIL_SCALE_X) : this.pickColor(STENCIL_SCALE_X, COLOR_X_IDLE, COLOR_X_HOVER);
         float[] yCol = stencil ? this.stencilColor(STENCIL_SCALE_Y) : this.pickColor(STENCIL_SCALE_Y, COLOR_Y_IDLE, COLOR_Y_HOVER);
@@ -1114,65 +1285,18 @@ public class Gizmo
 
         if (this.showHandle(STENCIL_SCALE_X))
         {
-            this.box(builder, stack, 0, -scaOffset, -scaOffset, scaSize * this.lastSx, scaOffset, scaOffset, xCol, 1F);
-            this.box(builder, stack, scaSize * this.lastSx - half, -half, -half, scaSize * this.lastSx + half, half, half, xCol, 1F);
+            this.box(builder, stack, axisSize * this.lastSx - half, -half, -half, axisSize * this.lastSx + half, half, half, xCol, 1F);
         }
 
         if (this.showHandle(STENCIL_SCALE_Y))
         {
-            this.box(builder, stack, -scaOffset, 0, -scaOffset, scaOffset, scaSize * this.lastSy, scaOffset, yCol, 1F);
-            this.box(builder, stack, -half, scaSize * this.lastSy - half, -half, half, scaSize * this.lastSy + half, half, yCol, 1F);
+            this.box(builder, stack, -half, axisSize * this.lastSy - half, -half, half, axisSize * this.lastSy + half, half, yCol, 1F);
         }
 
         if (this.showHandle(STENCIL_SCALE_Z))
         {
-            this.box(builder, stack, -scaOffset, -scaOffset, 0, scaOffset, scaOffset, scaSize * this.lastSz, zCol, 1F);
-            this.box(builder, stack, -half, -half, scaSize * this.lastSz - half, half, half, scaSize * this.lastSz + half, zCol, 1F);
+            this.box(builder, stack, -half, -half, axisSize * this.lastSz - half, half, half, axisSize * this.lastSz + half, zCol, 1F);
         }
-
-        float radius = 0.22F * rotScale;
-        float ringThickness = 0.020F * rotScale * thickness;
-
-        this.drawTrackball(builder, stack, this.trackballRadius(radius, 0.62F), stencil, map);
-        this.drawRings(builder, stack, radius, ringThickness, STENCIL_ROTATE_X, STENCIL_ROTATE_Y, STENCIL_ROTATE_Z, stencil);
-        this.drawViewRing(builder, stack, radius * 1.1F, ringThickness, stencil, map);
-    }
-
-    private void drawDragProgress(BufferBuilder builder, MatrixStack stack, float scale, float thickness)
-    {
-        if (!this.dragProgressActive)
-        {
-            return;
-        }
-
-        float r = 0.010F * scale * thickness;
-
-        Draw.fillBox(builder, stack,
-            Math.min(this.dragProgressStart.x, this.dragProgressEnd.x) - r,
-            Math.min(this.dragProgressStart.y, this.dragProgressEnd.y) - r,
-            Math.min(this.dragProgressStart.z, this.dragProgressEnd.z) - r,
-            Math.max(this.dragProgressStart.x, this.dragProgressEnd.x) + r,
-            Math.max(this.dragProgressStart.y, this.dragProgressEnd.y) + r,
-            Math.max(this.dragProgressStart.z, this.dragProgressEnd.z) + r,
-            1F, 0.85F, 0.15F, 1F);
-    }
-
-    private void drawGuideLine(BufferBuilder builder, MatrixStack stack, float scale, float thickness, Axis axis, float[] color)
-    {
-        float len = 3F * scale;
-        float r = 0.004F * scale * thickness;
-
-        float sx = 0F, sy = 0F, sz = 0F;
-        float ex = 0F, ey = 0F, ez = 0F;
-
-        if (axis == Axis.X) { sx = -len * this.lastSx; ex = len * this.lastSx; }
-        else if (axis == Axis.Y) { sy = -len * this.lastSy; ey = len * this.lastSy; }
-        else if (axis == Axis.Z) { sz = -len * this.lastSz; ez = len * this.lastSz; }
-
-        this.box(builder, stack,
-            Math.min(sx, ex) - r, Math.min(sy, ey) - r, Math.min(sz, ez) - r,
-            Math.max(sx, ex) + r, Math.max(sy, ey) + r, Math.max(sz, ez) + r,
-            color, 0.3F);
     }
 
     public static enum Mode

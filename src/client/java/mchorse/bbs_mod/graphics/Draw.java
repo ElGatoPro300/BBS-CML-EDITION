@@ -1,117 +1,31 @@
 package mchorse.bbs_mod.graphics;
 
-import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.camera.data.Angle;
 import mchorse.bbs_mod.utils.Axis;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 
-import net.minecraft.client.gl.RenderPipelines;
+import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.BufferBuilder;
-import net.minecraft.client.render.BuiltBuffer;
+import net.minecraft.client.render.BufferRenderer;
+import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.RenderLayer;
-import net.minecraft.client.render.RenderSetup;
+import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.render.Tessellator;
+import net.minecraft.client.render.VertexConsumer;
+import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
+import net.minecraft.client.util.BufferAllocator;
 import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.util.Identifier;
 import net.minecraft.util.math.RotationAxis;
 
 import org.joml.Matrix4f;
 
-import com.mojang.blaze3d.pipeline.BlendFunction;
-import com.mojang.blaze3d.pipeline.RenderPipeline;
-import com.mojang.blaze3d.platform.DepthTestFunction;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.VertexFormat;
 
 public class Draw
 {
-    private static final BlendFunction BLEND = BlendFunction.TRANSLUCENT;
-
-    private static final RenderPipeline POSITION_COLOR_TRIS = RenderPipelines.register(
-        RenderPipeline.builder(RenderPipelines.POSITION_COLOR_SNIPPET)
-            .withLocation(Identifier.of(BBSMod.MOD_ID, "pipeline/draw_position_color"))
-            .withVertexFormat(VertexFormats.POSITION_COLOR, VertexFormat.DrawMode.TRIANGLES)
-            .withBlend(BLEND)
-            .withDepthTestFunction(DepthTestFunction.LEQUAL_DEPTH_TEST)
-            .withCull(false)
-            .build()
-    );
-
-    private static final RenderPipeline POSITION_COLOR_TRIS_NO_DEPTH = RenderPipelines.register(
-        RenderPipeline.builder(RenderPipelines.POSITION_COLOR_SNIPPET)
-            .withLocation(Identifier.of(BBSMod.MOD_ID, "pipeline/draw_position_color_no_depth"))
-            .withVertexFormat(VertexFormats.POSITION_COLOR, VertexFormat.DrawMode.TRIANGLES)
-            .withBlend(BLEND)
-            .withDepthTestFunction(DepthTestFunction.NO_DEPTH_TEST)
-            .withCull(false)
-            .build()
-    );
-
-    private static final RenderPipeline POSITION_COLOR_LINES = RenderPipelines.register(
-        RenderPipeline.builder(RenderPipelines.POSITION_COLOR_SNIPPET)
-            .withLocation(Identifier.of(BBSMod.MOD_ID, "pipeline/draw_position_color_lines"))
-            .withVertexFormat(VertexFormats.POSITION_COLOR, VertexFormat.DrawMode.DEBUG_LINES)
-            .withBlend(BLEND)
-            .withDepthTestFunction(DepthTestFunction.LEQUAL_DEPTH_TEST)
-            .withCull(false)
-            .build()
-    );
-
-    private static RenderLayer positionColorLayer;
-    private static RenderLayer positionColorNoDepthLayer;
-    private static RenderLayer positionColorLinesLayer;
-
-    public static RenderLayer getPositionColorLayer()
-    {
-        if (positionColorLayer == null)
-        {
-            positionColorLayer = RenderLayer.of(BBSMod.MOD_ID + "_draw_position_color",
-                RenderSetup.builder(POSITION_COLOR_TRIS).translucent().build());
-        }
-
-        return positionColorLayer;
-    }
-
-    public static RenderLayer getPositionColorNoDepthLayer()
-    {
-        if (positionColorNoDepthLayer == null)
-        {
-            positionColorNoDepthLayer = RenderLayer.of(BBSMod.MOD_ID + "_draw_position_color_no_depth",
-                RenderSetup.builder(POSITION_COLOR_TRIS_NO_DEPTH).translucent().build());
-        }
-
-        return positionColorNoDepthLayer;
-    }
-
-    public static RenderLayer getPositionColorLinesLayer()
-    {
-        if (positionColorLinesLayer == null)
-        {
-            positionColorLinesLayer = RenderLayer.of(BBSMod.MOD_ID + "_draw_position_color_lines",
-                RenderSetup.builder(POSITION_COLOR_LINES).translucent().build());
-        }
-
-        return positionColorLinesLayer;
-    }
-
-    public static void flushLines(BufferBuilder builder)
-    {
-        flush(builder, getPositionColorLinesLayer());
-    }
-
-    public static void flush(BufferBuilder builder, RenderLayer layer)
-    {
-        BuiltBuffer built = builder.endNullable();
-
-        if (built != null)
-        {
-            layer.draw(built);
-        }
-    }
-
     public static void renderBox(MatrixStack stack, double x, double y, double z, double w, double h, double d)
     {
         renderBox(stack, x, y, z, w, h, d, 1, 1, 1);
@@ -132,6 +46,7 @@ public class Draw
         float t = 1 / 96F + (float) (Math.sqrt(w * w + h + h + d + d) / 2000);
 
         BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
+        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
 
         /* Pillars: fillBox(builder, -t, -t, -t, t, t, t, r, g, b, a); */
         fillBox(builder, stack, -t, -t, -t, t, t + fh, t, r, g, b, a);
@@ -151,41 +66,7 @@ public class Draw
         fillBox(builder, stack, -t, -t, -t, t, t, t + fd, r, g, b, a);
         fillBox(builder, stack, -t + fw, -t, -t, t + fw, t, t + fd, r, g, b, a);
 
-        flush(builder, getPositionColorLayer());
-
-        stack.pop();
-    }
-
-    public static void renderBoxNoDepth(MatrixStack stack, double x, double y, double z, double w, double h, double d, float r, float g, float b, float a)
-    {
-        stack.push();
-        stack.translate(x, y, z);
-        float fw = (float) w;
-        float fh = (float) h;
-        float fd = (float) d;
-        float t = 1 / 96F + (float) (Math.sqrt(w * w + h + h + d + d) / 2000);
-
-        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
-
-        /* Pillars: fillBox(builder, -t, -t, -t, t, t, t, r, g, b, a); */
-        fillBox(builder, stack, -t, -t, -t, t, t + fh, t, r, g, b, a);
-        fillBox(builder, stack, -t + fw, -t, -t, t + fw, t + fh, t, r, g, b, a);
-        fillBox(builder, stack, -t, -t, -t + fd, t, t + fh, t + fd, r, g, b, a);
-        fillBox(builder, stack, -t + fw, -t, -t + fd, t + fw, t + fh, t + fd, r, g, b, a);
-
-        /* Top */
-        fillBox(builder, stack, -t, -t + fh, -t, t + fw, t + fh, t, r, g, b, a);
-        fillBox(builder, stack, -t, -t + fh, -t + fd, t + fw, t + fh, t + fd, r, g, b, a);
-        fillBox(builder, stack, -t, -t + fh, -t, t, t + fh, t + fd, r, g, b, a);
-        fillBox(builder, stack, -t + fw, -t + fh, -t, t + fw, t + fh, t + fd, r, g, b, a);
-
-        /* Bottom */
-        fillBox(builder, stack, -t, -t, -t, t + fw, t, t, r, g, b, a);
-        fillBox(builder, stack, -t, -t, -t + fd, t + fw, t, t + fd, r, g, b, a);
-        fillBox(builder, stack, -t, -t, -t, t, t, t + fd, r, g, b, a);
-        fillBox(builder, stack, -t + fw, -t, -t, t + fw, t, t + fd, r, g, b, a);
-
-        flush(builder, getPositionColorNoDepthLayer());
+        BufferRenderer.drawWithGlobalProgram(builder.end());
 
         stack.pop();
     }
@@ -275,11 +156,6 @@ public class Draw
         fillQuad(builder, stack, x1, y1, z2, x2, y1, z2, x2, y2, z2, x1, y2, z2, r, g, b, a);
     }
 
-    public static void coolerAxes(MatrixStack stack, float axisSize, float axisOffset)
-    {
-        coolerAxes(stack, axisSize, axisOffset, axisSize * 1.02F, axisOffset * 1.5F);
-    }
-
     public static void coolerAxes(MatrixStack stack, float axisSize, float axisOffset, float outlineSize, float outlineOffset)
     {
         float scale = BBSSettings.axesScale.get();
@@ -301,7 +177,10 @@ public class Draw
         fillBox(builder, stack, -axisOffset, -axisOffset, 0, axisOffset, axisOffset, axisSize, 0, 0, 1);
         fillBox(builder, stack, -axisOffset, -axisOffset, -axisOffset, axisOffset, axisOffset, axisOffset, 1, 1, 1);
 
-        flush(builder, getPositionColorNoDepthLayer());
+        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
+        RenderSystem.disableDepthTest();
+
+        BufferRenderer.drawWithGlobalProgram(builder.end());
     }
 
     public static void arc3D(BufferBuilder builder, MatrixStack stack, Axis axis, float radius, float thickness, float r, float g, float b)

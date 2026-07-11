@@ -2,12 +2,8 @@ package mchorse.bbs_mod.ui.framework.elements.utils;
 
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.camera.Camera;
-import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.entities.StubEntity;
-import mchorse.bbs_mod.graphics.Draw;
-import mchorse.bbs_mod.graphics.InverseView;
-import mchorse.bbs_mod.graphics.ModelPreviewRenderer;
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
@@ -15,13 +11,17 @@ import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.utils.Factor;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
-import mchorse.bbs_mod.utils.colors.Colors;
 
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.BufferBuilder;
+import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.DiffuseLighting;
+import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.Tessellator;
+import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
+import net.minecraft.client.util.BufferAllocator;
 import net.minecraft.client.util.math.MatrixStack;
 
 import org.joml.Intersectiond;
@@ -31,15 +31,11 @@ import org.joml.Matrix4f;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 
-import com.mojang.blaze3d.buffers.GpuBuffer;
-import com.mojang.blaze3d.buffers.GpuBufferSlice;
-import com.mojang.blaze3d.buffers.Std140Builder;
+import com.mojang.blaze3d.systems.ProjectionType;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.VertexFormat;
+import com.mojang.blaze3d.systems.VertexSorter;
 
-import org.lwjgl.system.MemoryStack;
-
-import java.nio.ByteBuffer;
+import org.lwjgl.opengl.GL11;
 
 /**
  * Model renderer GUI element
@@ -74,25 +70,9 @@ public abstract class UIModelRenderer extends UIElement
     private long tick;
     private Matrix4f transform = new Matrix4f();
 
-    private final ModelPreviewRenderer preview = new ModelPreviewRenderer();
-    protected int viewportW;
-    protected int viewportH;
-
-    private int previewGlId = -1;
-    private int previewVw;
-    private int previewVh;
-
-    private static final Vector3f LIGHT_A = new Vector3f(0F, 0.85F, -1F).normalize();
-    private static final Vector3f LIGHT_B = new Vector3f(0F, 0.85F, 1F).normalize();
-
-    private GpuBuffer lightsBuffer;
-    private GpuBufferSlice lights;
-    private final Vector3f lightDirA = new Vector3f();
-    private final Vector3f lightDirB = new Vector3f();
-
-    protected boolean stencilViewport;
-    protected int stencilViewportW;
-    protected int stencilViewportH;
+    private boolean stencilViewport;
+    private int stencilViewportW;
+    private int stencilViewportH;
 
     public UIModelRenderer()
     {
@@ -262,100 +242,69 @@ public abstract class UIModelRenderer extends UIElement
         this.entity.setAge(this.timer);
     }
 
-    public void renderModelToTexture(UIContext context)
+    /**
+     * Draw currently edited model
+     */
+    private void renderModel(UIContext context)
     {
+        RenderSystem.enableDepthTest();
+        RenderSystem.enableCull();
+        RenderSystem.depthFunc(GL11.GL_LEQUAL);
+
         this.setupPosition();
         this.setupViewport(context);
 
-        InverseView.set(new Matrix3f(this.camera.view).invert());
+        MatrixStack stack = context.render.batcher.getContext().getMatrices();
 
-        int vw = this.viewportW;
-        int vh = this.viewportH;
+        /* Cache the global stuff */
+        MatrixStackUtils.cacheMatrices();
 
-        this.previewGlId = -1;
+        RenderSystem.setProjectionMatrix(this.camera.projection, ProjectionType.ORTHOGRAPHIC);
 
-        if (vw > 0 && vh > 0)
-        {
-            ModelPreviewRenderer.ACTIVE = true;
-            this.preview.begin(vw, vh, this.camera.projection);
-
-            RenderSystem.setShaderLights(this.editorLights());
-
-            try
-            {
-                if (this.grid)
-                {
-                    this.renderGrid(context);
-                }
-
-                this.renderUserModel(context);
-            }
-            catch (Exception e)
-            {
-
-            }
-            finally
-            {
-                this.preview.end();
-                ModelPreviewRenderer.ACTIVE = false;
-                ModelPreviewRenderer.TEXTURE = null;
-            }
-
-            this.previewGlId = this.preview.getColorGlId();
-            this.previewVw = vw;
-            this.previewVh = vh;
-        }
-    }
-
-    private void renderModel(UIContext context)
-    {
-        if (this.previewGlId >= 0 && this.previewVw > 0 && this.previewVh > 0)
-        {
-            context.batcher.newRootLayer();
-            context.batcher.texturedBox(this.previewGlId, Colors.WHITE,
-                this.area.x, this.area.y, this.area.w, this.area.h,
-                0, this.previewVh, this.previewVw, 0, this.previewVw, this.previewVh);
-            context.batcher.newRootLayer();
-        }
-
-        this.processInputs(context);
-    }
-
-    protected MatrixStack createCameraStack()
-    {
-        MatrixStack stack = new MatrixStack();
-
+        /* Rendering begins... */
+        stack.push();
         MatrixStackUtils.multiply(stack, this.camera.view);
         stack.translate(-this.camera.position.x, -this.camera.position.y, -this.camera.position.z);
         MatrixStackUtils.multiply(stack, this.transform);
 
-        return stack;
-    }
+        Vector3f a = new Vector3f(0F, 0.85F, -1F).normalize();
+        Vector3f b = new Vector3f(0F, 0.85F, 1F).normalize();
+        
+        RenderSystem.setupLevelDiffuseLighting(a, b);
 
-    private GpuBufferSlice editorLights()
-    {
-        this.lightDirA.set(LIGHT_A);
-        this.lightDirB.set(LIGHT_B);
-
-        try (MemoryStack stack = MemoryStack.stackPush())
+        if (this.grid)
         {
-            ByteBuffer data = Std140Builder.onStack(stack, DiffuseLighting.UBO_SIZE)
-                .putVec3(this.lightDirA)
-                .putVec3(this.lightDirB)
-                .get();
-
-            if (this.lightsBuffer == null)
-            {
-                this.lightsBuffer = RenderSystem.getDevice().createBuffer(() -> "BBS editor preview lights UBO", 136, data);
-                this.lights = this.lightsBuffer.slice(0, DiffuseLighting.UBO_SIZE);
-            }
-            else
-            {
-                RenderSystem.getDevice().createCommandEncoder().writeToBuffer(this.lights, data);
-            }
+            this.renderGrid(context);
         }
 
-        return this.lights;
+        Gizmo.INSTANCE.setViewportZoomScale(this.getViewportGizmoZoomScale());
+
+        try
+        {
+            this.renderUserModel(context);
+        }
+        finally
+        {
+            Gizmo.INSTANCE.setViewportZoomScale(1F);
+        }
+
+        DiffuseLighting.disableGuiDepthLighting();
+
+        stack.pop();
+
+        /* Return back to orthographic projection */
+        MinecraftClient mc = MinecraftClient.getInstance();
+
+        RenderSystem.viewport(0, 0, mc.getWindow().getFramebufferWidth(), mc.getWindow().getFramebufferHeight());
+        MatrixStackUtils.restoreMatrices();
+        context.resetMatrix();
+
+        RenderSystem.depthFunc(GL11.GL_LEQUAL);
+        RenderSystem.enableDepthTest();
+        RenderSystem.depthMask(true);
+        RenderSystem.setShader(ShaderProgramKeys.POSITION_TEX_COLOR);
+
+        this.processInputs(context);
     }
 
     protected void processInputs(UIContext context)
@@ -422,33 +371,31 @@ public abstract class UIModelRenderer extends UIElement
 
     protected void setupViewport(UIContext context)
     {
+        GL11.glClear(GL11.GL_DEPTH_BUFFER_BIT);
+
         MinecraftClient mc = MinecraftClient.getInstance();
 
-        boolean prevRenderingWorld = BBSRendering.renderingWorld;
-        BBSRendering.renderingWorld = false;
-
-        int vw;
-        int vh;
-
-        try
+        if (this.stencilViewport)
         {
-            float rx = (float) Math.round(mc.getWindow().getWidth() / (double) context.menu.width);
-            float ry = (float) Math.round(mc.getWindow().getHeight() / (double) context.menu.height);
+            RenderSystem.viewport(0, 0, this.stencilViewportW, this.stencilViewportH);
+            this.camera.updatePerspectiveProjection(this.stencilViewportW, this.stencilViewportH);
+            this.camera.updateView();
 
-            int vx = (int) (this.area.x * rx);
-            int vy = (int) (mc.getWindow().getHeight() - (this.area.y + this.area.h) * ry);
-
-            vw = (int) (this.area.w * rx);
-            vh = (int) (this.area.h * ry);
-        }
-        finally
-        {
-            BBSRendering.renderingWorld = prevRenderingWorld;
+            return;
         }
 
-        this.viewportW = vw;
-        this.viewportH = vh;
+        /* Exact physical-to-logical ratio (the UI scale factor). Rounding this snapped fractional scales
+           like 1.5 up to 2, which offset the viewport and misaligned model/morph previews. */
+        float rx = (float) (mc.getWindow().getWidth() / (double) context.menu.width);
+        float ry = (float) (mc.getWindow().getHeight() / (double) context.menu.height);
+        float size = BBSModClient.getOriginalFramebufferScale();
 
+        int vx = (int) (context.globalX(this.area.x) * rx);
+        int vy = (int) (mc.getWindow().getHeight() - (context.globalY(this.area.y) + this.area.h) * ry);
+        int vw = (int) (this.area.w * rx);
+        int vh = (int) (this.area.h * ry);
+
+        RenderSystem.viewport((int) (vx * size), (int) (vy * size), (int) (vw * size), (int) (vh * size));
         this.camera.updatePerspectiveProjection(vw, vh);
         this.camera.updateView();
     }
@@ -464,9 +411,10 @@ public abstract class UIModelRenderer extends UIElement
      */
     protected void renderGrid(UIContext context)
     {
-        Matrix4f matrix4f = this.createCameraStack().peek().getPositionMatrix();
-
+        Matrix4f matrix4f = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
         BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
+
+        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
 
         for (int x = 0; x <= 10; x ++)
         {
@@ -496,6 +444,6 @@ public abstract class UIModelRenderer extends UIElement
             }
         }
 
-        Draw.flushLines(builder);
+        BufferRenderer.drawWithGlobalProgram(builder.end());
     }
 }

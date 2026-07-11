@@ -1,45 +1,35 @@
 package mchorse.bbs_mod.forms.renderers;
 
 import mchorse.bbs_mod.client.BBSRendering;
+import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.forms.ItemForm;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.colors.Color;
+import mchorse.bbs_mod.utils.joml.Vectors;
 
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.item.ItemModelManager;
 import net.minecraft.client.render.DiffuseLighting;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
-import net.minecraft.client.render.command.BatchingRenderCommandQueue;
-import net.minecraft.client.render.command.OrderedRenderCommandQueueImpl;
-import net.minecraft.client.render.item.ItemRenderState;
-import net.minecraft.client.render.item.ItemRenderer;
 import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.item.ItemDisplayContext;
-import net.minecraft.item.ItemStack;
+import net.minecraft.item.ModelTransformationMode;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.RotationAxis;
-import net.minecraft.world.World;
 
 import org.joml.Matrix4f;
+import org.joml.Vector3f;
 
-import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.logging.LogUtils;
-
-import org.lwjgl.opengl.GL11;
 
 import org.slf4j.Logger;
 
 public class ItemFormRenderer extends FormRenderer<ItemForm>
 {
     private static final Logger LOGGER = LogUtils.getLogger();
-
-    /* Reused per render to avoid per-frame allocation; the form renderers run single-threaded on the
-     * client render thread (same assumption as BlockFormRenderer.color). clearAndUpdate() wipes it first. */
-    private static final ItemRenderState renderState = new ItemRenderState();
 
     public ItemFormRenderer(ItemForm form)
     {
@@ -49,29 +39,35 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
     @Override
     public void renderInUI(UIContext context, int x1, int y1, int x2, int y2)
     {
-        context.batcher.getContext().drawDeferredElements();
+        context.batcher.getContext().draw();
 
         CustomVertexConsumerProvider consumers = FormUtilsClient.getProvider();
-        MatrixStack matrices = new MatrixStack();
+        MatrixStack matrices = context.batcher.getContext().getMatrices();
+
         Matrix4f uiMatrix = ModelFormRenderer.getUIMatrix(context, x1, y1, x2, y2);
 
         matrices.push();
         MatrixStackUtils.multiply(matrices, uiMatrix);
         matrices.scale(this.form.uiScale.get(), this.form.uiScale.get(), this.form.uiScale.get());
 
-        MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.ENTITY_IN_UI);
+        matrices.peek().getNormalMatrix().getScale(Vectors.EMPTY_3F);
+        matrices.peek().getNormalMatrix().scale(1F / Vectors.EMPTY_3F.x, -1F / Vectors.EMPTY_3F.y, 1F / Vectors.EMPTY_3F.z);
 
         Color set = Color.white();
         set.mul(this.form.color.get());
 
+        Vector3f light0 = new Vector3f(0.85F, 0.85F, -1F).normalize();
+        Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1F).normalize();
+        RenderSystem.setupLevelDiffuseLighting(light0, light1);
+
         consumers.setSubstitute(BBSRendering.getColorConsumer(set));
         consumers.setUI(true);
-        renderItem(this.form.stack.get(), this.form.modelTransform.get(), matrices, consumers, MinecraftClient.getInstance().world, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, OverlayTexture.DEFAULT_UV);
+        MinecraftClient.getInstance().getItemRenderer().renderItem(this.form.stack.get(), this.form.modelTransform.get(), LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, OverlayTexture.DEFAULT_UV, matrices, consumers, MinecraftClient.getInstance().world, 0);
         consumers.draw();
         consumers.setUI(false);
         consumers.setSubstitute(null);
 
-        MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.LEVEL);
+        DiffuseLighting.disableGuiDepthLighting();
 
         matrices.pop();
     }
@@ -79,81 +75,48 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
     @Override
     protected void render3D(FormRenderingContext context)
     {
-        boolean isDropped = context.type == FormRenderType.ITEM;
-        boolean useDroppedMode = this.shouldUseDroppedMode(isDropped);
-        ItemDisplayContext mode = this.getRenderMode(useDroppedMode);
         CustomVertexConsumerProvider consumers = FormUtilsClient.getProvider();
         int light = context.light;
+        boolean isDropped = context.type == FormRenderType.ITEM;
+        boolean useDroppedMode = this.shouldUseDroppedMode(isDropped);
+        ModelTransformationMode mode = this.getRenderMode(useDroppedMode);
 
         context.stack.push();
         this.applyDroppedAnimation(context, useDroppedMode);
 
         if (context.isPicking())
         {
-            /* TODO(1.21.11 render): RenderSystem.setShader and ShaderProgram-based setupTarget were
-             * removed in 1.21.5. The picker_models pipeline must be bound via its RenderLayer and the
-             * per-object Target uniform supplied through the pipeline's UBO/DynamicUniforms. */
-            this.setupTarget(context, null);
+            CustomVertexConsumerProvider.hijackVertexFormat((layer) ->
+            {
+                this.setupTarget(context, BBSShaders.getPickerModelsProgram());
+                RenderSystem.setShader(BBSShaders.getPickerModelsProgram());
+            });
 
             light = 0;
+        }
+        else
+        {
+            CustomVertexConsumerProvider.hijackVertexFormat((l) ->
+            {
+                RenderSystem.enableBlend();
+                RenderSystem.defaultBlendFunc();
+            });
         }
 
         BlockFormRenderer.color.set(context.color);
         BlockFormRenderer.color.mul(this.form.color.get());
 
-        consumers.setSubstitute(BBSRendering.getColorConsumer(BlockFormRenderer.color));
-
-        World world = context.entity == null ? null : context.entity.getWorld();
-
-        renderItem(this.form.stack.get(), mode, context.stack, consumers, world, light, context.overlay);
+        consumers.setSubstitute(BBSRendering.getColorConsumer(BlockFormRenderer.color, this.form.paintColor.get()));
+        MinecraftClient.getInstance().getItemRenderer().renderItem(this.form.stack.get(), mode, light, context.overlay, context.stack, consumers, context.entity.getWorld(), 0);
         consumers.draw();
         consumers.setSubstitute(null);
 
         CustomVertexConsumerProvider.clearRunnables();
-        GlStateManager._blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+        RenderSystem.defaultBlendFunc();
 
         context.stack.pop();
-    }
 
-    /**
-     * Faithful 1.21.11 replacement for the removed high-level {@code ItemRenderer.renderItem(ItemStack, ...,
-     * VertexConsumerProvider, ...)} overload used by the 1.21.1 renderer.
-     */
-    private static void renderItem(ItemStack stack, ItemDisplayContext displayContext, MatrixStack matrices, CustomVertexConsumerProvider consumers, World world, int light, int overlay)
-    {
-        if (stack == null || stack.isEmpty())
-        {
-            return;
-        }
-
-        ItemModelManager modelManager = MinecraftClient.getInstance().getItemModelManager();
-
-        modelManager.clearAndUpdate(renderState, stack, displayContext, world, null, 0);
-
-        OrderedRenderCommandQueueImpl queue = new OrderedRenderCommandQueueImpl();
-
-        renderState.render(matrices, queue, light, overlay, 0);
-
-        for (BatchingRenderCommandQueue batch : queue.getBatchingQueues().values())
-        {
-            for (OrderedRenderCommandQueueImpl.ItemCommand command : batch.getItemCommands())
-            {
-                matrices.push();
-                matrices.peek().copy(command.positionMatrix());
-                ItemRenderer.renderItem(
-                    command.displayContext(),
-                    matrices,
-                    consumers,
-                    command.lightCoords(),
-                    command.overlayCoords(),
-                    command.tintLayers(),
-                    command.quads(),
-                    command.renderLayer(),
-                    command.glintType()
-                );
-                matrices.pop();
-            }
-        }
+        RenderSystem.enableDepthTest();
     }
 
     private boolean shouldUseDroppedMode(boolean isDropped)
@@ -161,7 +124,7 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
         return isDropped || this.form.sameAnimationWhenDropped.get();
     }
 
-    private ItemDisplayContext getRenderMode(boolean useDroppedMode)
+    private ModelTransformationMode getRenderMode(boolean useDroppedMode)
     {
         if (useDroppedMode)
         {
@@ -174,7 +137,7 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
                 LOGGER.debug("Dropped context for form {} using GROUND transform", this.form.getFormId());
             }
 
-            return ItemDisplayContext.GROUND;
+            return ModelTransformationMode.GROUND;
         }
 
         return this.form.modelTransform.get();

@@ -27,13 +27,15 @@ import mchorse.bbs_mod.utils.Pair;
 import mchorse.bbs_mod.utils.colors.Colors;
 
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gl.GlUniform;
+import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.util.math.MatrixStack;
 
 import org.joml.Matrix4f;
 
-import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 
 import org.lwjgl.opengl.GL11;
@@ -158,7 +160,7 @@ public class UIPickableFormRenderer extends UIFormRenderer implements GizmoSurfa
         this.formEditor.preFormRender(context, this.form);
 
         FormRenderingContext formContext = new FormRenderingContext()
-            .set(FormRenderType.PREVIEW, this.target == null ? this.entity : this.target, new MatrixStack(), LightmapTextureManager.pack(15, 15), OverlayTexture.DEFAULT_UV, context.getTransition())
+            .set(FormRenderType.PREVIEW, this.target == null ? this.entity : this.target, context.batcher.getContext().getMatrices(), LightmapTextureManager.pack(15, 15), OverlayTexture.DEFAULT_UV, context.getTransition())
             .camera(this.camera)
             .modelRenderer()
             .equipment(false);
@@ -196,7 +198,7 @@ public class UIPickableFormRenderer extends UIFormRenderer implements GizmoSurfa
             FormUtilsClient.render(this.form, formContext.stencilMap(this.stencilMap));
 
             Matrix4f matrix = this.formEditor.getOrigin(context.getTransition());
-            MatrixStack stack = new MatrixStack();
+            MatrixStack stack = context.batcher.getContext().getMatrices();
 
             stack.push();
 
@@ -205,10 +207,9 @@ public class UIPickableFormRenderer extends UIFormRenderer implements GizmoSurfa
                 MatrixStackUtils.multiply(stack, matrix);
             }
 
-            Gizmo.INSTANCE.renderStencil(new MatrixStack(), this.stencilMap);
-            GlStateManager._disableCull();
+            RenderSystem.disableCull();
             Gizmo.INSTANCE.renderStencil(stack, this.stencilMap);
-            GlStateManager._enableCull();
+            RenderSystem.enableCull();
 
             stack.pop();
 
@@ -224,7 +225,9 @@ public class UIPickableFormRenderer extends UIFormRenderer implements GizmoSurfa
             this.stencil.unbind(this.stencilMap);
             this.gizmoController.updateHover();
 
-            MinecraftClient.getInstance().getFramebuffer();
+            this.endStencilViewport();
+
+            MinecraftClient.getInstance().getFramebuffer().beginWrite(true);
 
             GlStateManager._enableScissorTest();
         }
@@ -236,18 +239,20 @@ public class UIPickableFormRenderer extends UIFormRenderer implements GizmoSurfa
 
     private void prepareGizmoRenderState()
     {
-        GlStateManager._depthMask(true);
-        GlStateManager._colorMask(true, true, true, true);
-        GlStateManager._enableDepthTest();
-        GlStateManager._depthFunc(GL11.GL_LEQUAL);
-        GlStateManager._disableBlend();
-        GlStateManager._disableCull();
+        RenderSystem.depthMask(true);
+        RenderSystem.colorMask(true, true, true, true);
+        RenderSystem.enableDepthTest();
+        RenderSystem.depthFunc(GL11.GL_LEQUAL);
+        RenderSystem.disableBlend();
+        RenderSystem.disableCull();
+        RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
     }
 
     private void renderAxes(UIContext context)
     {
         Matrix4f matrix = this.formEditor.getOrigin(context.getTransition());
-        MatrixStack stack = new MatrixStack();
+        MatrixStack stack = context.batcher.getContext().getMatrices();
+        this.hasGizmoMatrix = true;
 
         stack.push();
 
@@ -264,14 +269,11 @@ public class UIPickableFormRenderer extends UIFormRenderer implements GizmoSurfa
         /* Draw axes */
         if (UIBaseMenu.renderAxes)
         {
-            GlStateManager._disableDepthTest();
+            RenderSystem.disableCull();
+            RenderSystem.disableDepthTest();
             Gizmo.INSTANCE.render(stack);
-            GlStateManager._enableDepthTest();
-            GlStateManager._disableCull();
-            GlStateManager._disableDepthTest();
-            Gizmo.INSTANCE.render(stack);
-            GlStateManager._enableDepthTest();
-            GlStateManager._enableCull();
+            RenderSystem.enableDepthTest();
+            RenderSystem.enableCull();
         }
 
         stack.pop();
@@ -300,10 +302,10 @@ public class UIPickableFormRenderer extends UIFormRenderer implements GizmoSurfa
 
         /* Draw look vector */
         final float thickness = 0.01F;
-        Draw.renderBox(new MatrixStack(), -thickness, -thickness + eyeHeight, -thickness, thickness, thickness, 2F, 1F, 0F, 0F);
+        Draw.renderBox(context.batcher.getContext().getMatrices(), -thickness, -thickness + eyeHeight, -thickness, thickness, thickness, 2F, 1F, 0F, 0F);
 
         /* Draw hitbox */
-        Draw.renderBox(new MatrixStack(), -hitboxW / 2, 0, -hitboxW / 2, hitboxW, hitboxH, hitboxW);
+        Draw.renderBox(context.batcher.getContext().getMatrices(), -hitboxW / 2, 0, -hitboxW / 2, hitboxW, hitboxH, hitboxW);
     }
 
     @Override
@@ -340,18 +342,24 @@ public class UIPickableFormRenderer extends UIFormRenderer implements GizmoSurfa
         int w = texture.width;
         int h = texture.height;
 
-        /* TODO(1.21.11): RenderPipeline replaces ShaderProgram — uniform access removed
         ShaderProgram previewProgram = BBSShaders.getPickerPreviewProgram();
         GlUniform target = previewProgram.getUniform("Target");
 
         if (target != null)
         {
-            // target.set(index);
+            target.set(index);
         }
-        */
 
-        GlStateManager._enableBlend();
-        context.batcher.texturedBox(BBSShaders::getPickerPreviewProgram, texture.id, Colors.WHITE, this.area.x, this.area.y, this.area.w, this.area.h, 0, h, w, 0, w, h);
+        GlUniform boneHighlight = previewProgram.getUniform("BoneHighlight");
+
+        if (boneHighlight != null)
+        {
+            Colors.COLOR.set(BBSSettings.modelEditorHoverHighlight());
+            boneHighlight.set(Colors.COLOR.r, Colors.COLOR.g, Colors.COLOR.b, Colors.COLOR.a);
+        }
+
+        RenderSystem.enableBlend();
+        context.batcher.texturedBox(BBSShaders.getPickerPreviewProgram(), texture.id, Colors.WHITE, this.area.x, this.area.y, this.area.w, this.area.h, 0, h, w, 0, w, h);
 
         if (pair != null && pair.a != null)
         {

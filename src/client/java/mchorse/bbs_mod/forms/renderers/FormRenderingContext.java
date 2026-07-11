@@ -60,7 +60,11 @@ public class FormRenderingContext
 
     public FormRenderingContext camera(net.minecraft.client.render.Camera camera)
     {
-        /* 1.21.11: getPos()/getPosition() API changed; body disabled for now */
+        this.camera.position.set(camera.getPos().x, camera.getPos().y, camera.getPos().z);
+        this.camera.rotation.set(MathUtils.toRad(-camera.getPitch()), MathUtils.toRad(camera.getYaw()), 0F);
+        this.camera.fov = MathUtils.toRad(MinecraftClient.getInstance().options.getFov().getValue());
+        this.camera.view.identity().rotate(camera.getRotation());
+
         return this;
     }
 
