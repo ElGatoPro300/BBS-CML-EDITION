@@ -4,7 +4,9 @@ import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.camera.Camera;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.client.BBSShaders;
+import mchorse.bbs_mod.client.render.picker.BBSPickerRenderer;
 import mchorse.bbs_mod.forms.forms.BillboardForm;
+import mchorse.bbs_mod.graphics.texture.AdoptedTexture;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.framework.UIContext;
@@ -13,32 +15,28 @@ import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.Quad;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.colors.Colors;
-import mchorse.bbs_mod.utils.joml.Vectors;
 
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gl.ShaderProgram;
-import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.BufferBuilder;
-import net.minecraft.client.render.BufferRenderer;
+import net.minecraft.client.render.BuiltBuffer;
 import net.minecraft.client.render.DiffuseLighting;
-import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
+import net.minecraft.client.render.RenderLayer;
+import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexConsumer;
-import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
-import net.minecraft.client.util.BufferAllocator;
 import net.minecraft.client.util.math.MatrixStack;
 
-import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
+import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.systems.RenderSystem;
-
-import java.util.function.Supplier;
+import com.mojang.blaze3d.vertex.VertexFormat;
 
 public class BillboardFormRenderer extends FormRenderer<BillboardForm>
 {
@@ -55,7 +53,7 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
     @Override
     public void renderInUI(UIContext context, int x1, int y1, int x2, int y2)
     {
-        MatrixStack stack = context.batcher.getContext().getMatrices();
+        MatrixStack stack = new MatrixStack();
 
         stack.push();
 
@@ -67,17 +65,9 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
         stack.scale(1.5F, 1.5F, 1.5F);
         stack.scale(this.form.uiScale.get(), this.form.uiScale.get(), this.form.uiScale.get());
 
-        Vector3f light0 = new Vector3f(0.85F, 0.85F, -1F).normalize();
-        Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1F).normalize();
-        RenderSystem.setupLevelDiffuseLighting(light0, light1);
+        MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.ENTITY_IN_UI);
 
-        VertexFormat format = VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL;
-
-        this.renderModel(format, () ->
-            {
-                RenderSystem.setShader(ShaderProgramKeys.RENDERTYPE_ENTITY_TRANSLUCENT);
-                return RenderSystem.getShader();
-            },
+        this.renderModel(VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL, false,
             stack,
             OverlayTexture.DEFAULT_UV, LightmapTextureManager.MAX_LIGHT_COORDINATE, Colors.WHITE,
             context.getTransition(),
@@ -86,7 +76,7 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
             false
         );
 
-        DiffuseLighting.disableGuiDepthLighting();
+        MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.LEVEL);
 
         stack.pop();
     }
@@ -101,27 +91,30 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
             shading = true;
         }
 
-        VertexFormat format = shading ? VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL : VertexFormats.POSITION_TEXTURE_COLOR;
-        Supplier<ShaderProgram> shader = this.getShader(
-            context,
-            shading
-                ? () ->
-                {
-                    RenderSystem.setShader(ShaderProgramKeys.RENDERTYPE_ENTITY_TRANSLUCENT);
-                    return RenderSystem.getShader();
-                }
-                : () ->
-                {
-                    RenderSystem.setShader(ShaderProgramKeys.POSITION_TEX_COLOR);
-                    return RenderSystem.getShader();
-                },
-            shading ? BBSShaders::getPickerBillboardProgram : BBSShaders::getPickerBillboardNoShadingProgram
-        );
+        boolean picking = context.isPicking();
+        VertexFormat format;
 
-        this.renderModel(format, shader, context.stack, context.overlay, context.light, context.color, context.getTransition(), context.camera, false, context.modelRenderer || context.isPicking());
+        if (shading)
+        {
+            format = VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL;
+        }
+        else
+        {
+            /* The picker_billboard_no_shading pipeline was registered against POSITION_TEXTURE_LIGHT_COLOR
+             * (see .port_1.21.11_notes.md table in section 5), which differs from the plain
+             * POSITION_TEXTURE_COLOR format used for the normal (non-picking) flat quad. */
+            format = picking ? VertexFormats.POSITION_TEXTURE_LIGHT_COLOR : VertexFormats.POSITION_TEXTURE_COLOR;
+        }
+
+        if (picking)
+        {
+            this.setupTarget(context, null);
+        }
+
+        this.renderModel(format, picking, context.stack, context.overlay, context.light, context.color, context.getTransition(), context.camera, false, context.modelRenderer || context.isPicking());
     }
 
-    private void renderModel(VertexFormat format, Supplier<ShaderProgram> shader, MatrixStack matrices, int overlay, int light, int overlayColor, float transition, Camera camera, boolean invertY, boolean modelRenderer)
+    private void renderModel(VertexFormat format, boolean picking, MatrixStack matrices, int overlay, int light, int overlayColor, float transition, Camera camera, boolean invertY, boolean modelRenderer)
     {
         Link t = this.form.texture.get();
 
@@ -194,10 +187,10 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
             uvQuad.transform(matrix);
         }
 
-        this.renderQuad(format, texture, shader, matrices, overlay, light, overlayColor, transition, camera, invertY, modelRenderer);
+        this.renderQuad(format, texture, picking, matrices, overlay, light, overlayColor, transition, camera, invertY, modelRenderer);
     }
 
-    private void renderQuad(VertexFormat format, Texture texture, Supplier<ShaderProgram> shader, MatrixStack matrices, int overlay, int light, int overlayColor, float transition, Camera camera, boolean invertY, boolean modelRenderer)
+    private void renderQuad(VertexFormat format, Texture texture, boolean picking, MatrixStack matrices, int overlay, int light, int overlayColor, float transition, Camera camera, boolean invertY, boolean modelRenderer)
     {
         BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, format);
         Color color = new Color().set(overlayColor, true);
@@ -243,18 +236,7 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
             matrices.peek().getNormalMatrix().scale(1F / scale.x, 1F / scale.y, 1F / scale.z);
         }
 
-        GameRenderer gameRenderer = MinecraftClient.getInstance().gameRenderer;
-        if (format == VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL)
-        {
-            gameRenderer.getLightmapTextureManager().enable();
-            gameRenderer.getOverlayTexture().setupOverlayColor();
-        }
         BBSModClient.getTextures().bindTexture(texture);
-        ShaderProgram program = shader.get();
-        if (program != null)
-        {
-            RenderSystem.setShader(program);
-        }
 
         texture.bind();
         texture.setFilterMipmap(this.form.linear.get(), this.form.mipmap.get());
@@ -277,17 +259,31 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
         this.fill(format, builder, matrix, quad.p4.x, quad.p4.y, color, uvQuad.p4.x, uvQuad.p4.y, overlay, light, entry, -1F);
         this.fill(format, builder, matrix, quad.p3.x, quad.p3.y, color, uvQuad.p3.x, uvQuad.p3.y, overlay, light, entry, -1F);
 
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
+        GlStateManager._enableBlend();
 
-        BufferRenderer.drawWithGlobalProgram(builder.end());
+        BuiltBuffer built = builder.endNullable();
+
+        if (built != null)
+        {
+            if (picking)
+            {
+                RenderPipeline pipeline = format == VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL
+                    ? BBSShaders.getPickerBillboardProgram()
+                    : BBSShaders.getPickerBillboardNoShadingProgram();
+
+                BBSPickerRenderer.draw(pipeline, built, RenderSystem.getModelViewMatrix());
+            }
+            else
+            {
+                RenderLayer layer = format == VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL
+                    ? RenderLayers.entityTranslucent(AdoptedTexture.identifier(texture))
+                    : BBSShaders.getMultilinkLayer();
+
+                layer.draw(built);
+            }
+        }
 
         texture.setFilterMipmap(false, false);
-        if (format == VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL)
-        {
-            gameRenderer.getLightmapTextureManager().disable();
-            gameRenderer.getOverlayTexture().teardownOverlayColor();
-        }
     }
 
     private VertexConsumer fill(VertexFormat format, VertexConsumer consumer, Matrix4f matrix, float x, float y, Color color, float u, float v, int overlay, int light, MatrixStack.Entry entry, float nz)

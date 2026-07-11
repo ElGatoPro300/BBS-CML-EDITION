@@ -1,5 +1,6 @@
 package mchorse.bbs_mod.utils.colors;
 
+import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.StringUtils;
 import mchorse.bbs_mod.utils.interps.Lerps;
 
@@ -42,6 +43,41 @@ public class Colors
     public static final int CURSOR = 0xff57f52a;
 
     public static final Color COLOR = new Color();
+
+    public static int opaque(int color)
+    {
+        return A100 | (color & RGB);
+    }
+
+    public static int lerp(int a, int b, float x)
+    {
+        x = MathUtils.clamp(x, 0F, 1F);
+
+        Color aColor = new Color().set(a);
+        Color bColor = new Color().set(b);
+
+        return COLOR.set(
+            Lerps.lerp(aColor.r, bColor.r, x),
+            Lerps.lerp(aColor.g, bColor.g, x),
+            Lerps.lerp(aColor.b, bColor.b, x),
+            Lerps.lerp(aColor.a, bColor.a, x)
+        ).getARGBColor();
+    }
+
+    public static float getR(int color)
+    {
+        return ((color >> 16) & 0xff) / 255F;
+    }
+
+    public static float getG(int color)
+    {
+        return ((color >> 8) & 0xff) / 255F;
+    }
+
+    public static float getB(int color)
+    {
+        return (color & 0xff) / 255F;
+    }
 
     public static int mulRGB(int color, float factor)
     {

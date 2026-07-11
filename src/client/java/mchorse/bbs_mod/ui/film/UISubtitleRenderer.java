@@ -17,12 +17,12 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gl.GlUniform;
 import net.minecraft.client.gl.ShaderProgram;
-import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.util.math.MatrixStack;
 
 import org.joml.Matrix4f;
 
-import com.mojang.blaze3d.platform.GlStateManager;
+import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.systems.ProjectionType;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.systems.VertexSorter;
@@ -61,7 +61,7 @@ public class UISubtitleRenderer
             return;
         }
 
-        ShaderProgram program = BBSShaders.getSubtitlesProgram();
+        ShaderProgram program = (ShaderProgram)(Object) BBSShaders.getSubtitlesProgram();
         GlUniform blur = program.getUniform("Blur");
         GlUniform textureSize = program.getUniform("TextureSize");
         Supplier<ShaderProgram> supplier = () -> program;
@@ -70,7 +70,7 @@ public class UISubtitleRenderer
         int width = fb.textureWidth;
         int height = fb.textureHeight;
 
-        Matrix4f cache = new Matrix4f(RenderSystem.getProjectionMatrix());
+        /* TODO 1.21.11: Matrix4f cache = new Matrix4f(RenderSystem.getProjectionMatrix()); */
 
         width /= 2;
         height /= 2;
@@ -81,8 +81,8 @@ public class UISubtitleRenderer
         FontRenderer font = Batcher2D.getVanillaTextRenderer();
         TextRenderer vanilla = MinecraftClient.getInstance().textRenderer;
 
-        RenderSystem.depthFunc(GL11.GL_ALWAYS);
-        RenderSystem.disableCull();
+        /* TODO 1.21.11: RenderSystem.depthFunc(GL11.GL_ALWAYS); */
+        /* TODO 1.21.11: RenderSystem.disableCull(); */
 
         for (Subtitle subtitle : subtitles)
         {
@@ -113,7 +113,7 @@ public class UISubtitleRenderer
             int fw = (int) ((w + 10) * scale);
             int fh = (int) ((h + 10) * scale);
 
-            RenderSystem.setProjectionMatrix(new Matrix4f().ortho(0, w + 10, 0, h + 10, -100, 100), ProjectionType.ORTHOGRAPHIC);
+            /* TODO 1.21.11: RenderSystem.setProjectionMatrix(new Matrix4f().ortho(0, w + 10, 0, h + 10, -100, 100), ProjectionType.ORTHOGRAPHIC); */
 
             framebuffer.resize(fw, fh);
             framebuffer.applyClear();
@@ -144,9 +144,9 @@ public class UISubtitleRenderer
             }
 
             /* Render the texture */
-            fb.beginWrite(true);
+            /* TODO 1.21.11: fb.beginWrite(true); */
 
-            RenderSystem.setProjectionMatrix(ortho, ProjectionType.ORTHOGRAPHIC);
+            /* TODO 1.21.11: RenderSystem.setProjectionMatrix(ortho, ProjectionType.ORTHOGRAPHIC); */
 
             Transform transform = new Transform();
 
@@ -158,27 +158,28 @@ public class UISubtitleRenderer
 
             if (blur != null)
             {
-                blur.set(subtitle.shadow, subtitle.shadowOpaque ? 1F : 0F);
+                /* TODO 1.21.11: blur.set(subtitle.shadow, subtitle.shadowOpaque ? 1F : 0F); */
             }
 
             if (textureSize != null)
             {
-                textureSize.set((float) texture.width, (float) texture.height);
+                /* TODO 1.21.11: textureSize.set((float) texture.width, (float) texture.height); */
             }
 
-            RenderSystem.enableBlend();
-            RenderSystem.blendFuncSeparate(GlStateManager.SrcFactor.SRC_ALPHA, GlStateManager.DstFactor.ONE_MINUS_SRC_ALPHA, GlStateManager.SrcFactor.ONE, GlStateManager.DstFactor.ONE_MINUS_SRC_ALPHA);
+            /* TODO 1.21.11: RenderSystem.enableBlend(); */
+            /* TODO 1.21.11: RenderSystem.blendFuncSeparate(GlStateManager.SrcFactor.SRC_ALPHA, GlStateManager.DstFactor.ONE_MINUS_SRC_ALPHA, GlStateManager.SrcFactor.ONE, GlStateManager.DstFactor.ONE_MINUS_SRC_ALPHA); */
 
-            batcher.texturedBox(program, texture.id, Colors.setA(Colors.WHITE, alpha), -fw * subtitle.anchorX, -fh * subtitle.anchorY, texture.width, texture.height, 0, 0, texture.width, texture.height, texture.width, texture.height);
+            batcher.texturedBox((Supplier<RenderPipeline>)(Object) program, texture.id, Colors.setA(Colors.WHITE, alpha), -fw * subtitle.anchorX, -fh * subtitle.anchorY, texture.width, texture.height, 0, 0, texture.width, texture.height, texture.width, texture.height);
 
             stack.pop();
         }
 
-        RenderSystem.setProjectionMatrix(cache, ProjectionType.ORTHOGRAPHIC);
-        RenderSystem.enableCull();
-        RenderSystem.depthFunc(GL11.GL_LEQUAL);
-        RenderSystem.defaultBlendFunc();
-        RenderSystem.setShader(ShaderProgramKeys.POSITION_TEX_COLOR);
+        /* TODO 1.21.11: RenderSystem.setProjectionMatrix(cache, ProjectionType.ORTHOGRAPHIC); */
+        /* TODO 1.21.11: RenderSystem methods removed */
+        GlStateManager._enableCull();
+        GlStateManager._depthFunc(GL11.GL_LEQUAL);
+        /* TODO 1.21.11: RenderSystem.defaultBlendFunc removed */
+        /* TODO 1.21.11: RenderSystem.setShader removed */
     }
 
     public static void renderSubtitle(MatrixStack stack, Batcher2D batcher, Subtitle subtitle)

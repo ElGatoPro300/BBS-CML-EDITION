@@ -1,7 +1,6 @@
 package mchorse.bbs_mod.forms.renderers;
 
 import mchorse.bbs_mod.client.BBSRendering;
-import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.forms.BlockForm;
@@ -10,8 +9,6 @@ import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.joml.Vectors;
 
-import net.minecraft.block.BlockEntityProvider;
-import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.DiffuseLighting;
 import net.minecraft.client.render.LightmapTextureManager;
@@ -19,16 +16,12 @@ import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.render.OverlayVertexConsumer;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.VertexConsumer;
-import net.minecraft.client.render.block.entity.BlockEntityRenderDispatcher;
-import net.minecraft.client.render.block.entity.BlockEntityRenderer;
 import net.minecraft.client.render.model.ModelBaker;
 import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.util.math.BlockPos;
 
 import org.joml.Matrix4f;
-import org.joml.Vector3f;
 
-import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.opengl.GlStateManager;
 
 public class BlockFormRenderer extends FormRenderer<BlockForm>
 {
@@ -42,10 +35,10 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
     @Override
     public void renderInUI(UIContext context, int x1, int y1, int x2, int y2)
     {
-        context.batcher.getContext().draw();
+        context.batcher.getContext().drawDeferredElements();
 
         CustomVertexConsumerProvider consumers = FormUtilsClient.getProvider();
-        MatrixStack matrices = context.batcher.getContext().getMatrices();
+        MatrixStack matrices = new MatrixStack();
 
         Matrix4f uiMatrix = ModelFormRenderer.getUIMatrix(context, x1, y1, x2, y2);
 
@@ -60,9 +53,7 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
         Color set = Color.white();
         set.mul(this.form.color.get());
 
-        Vector3f light0 = new Vector3f(0.85F, 0.85F, -1F).normalize();
-        Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1F).normalize();
-        RenderSystem.setupLevelDiffuseLighting(light0, light1);
+        MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.ENTITY_IN_UI);
 
         consumers.setSubstitute(BBSRendering.getColorConsumer(set));
         consumers.setUI(true);
@@ -83,7 +74,7 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
         consumers.setUI(false);
         consumers.setSubstitute(null);
 
-        DiffuseLighting.disableGuiDepthLighting();
+        MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.LEVEL);
 
         matrices.pop();
     }
@@ -99,21 +90,15 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
 
         if (context.isPicking())
         {
-            CustomVertexConsumerProvider.hijackVertexFormat((layer) ->
-            {
-                this.setupTarget(context, BBSShaders.getPickerModelsProgram());
-                RenderSystem.setShader(BBSShaders.getPickerModelsProgram());
-            });
+            /* 1.21.11 render: block model faces are drawn through whichever vanilla RenderLayer the block model
+             * declares (via CustomVertexConsumerProvider -> renderBlockAsEntity), each bound to its own baked
+             * RenderPipeline; there is no more "last bound shader wins" hack to force those faces through our
+             * picker pipeline instead (see .port_1.21.11_notes.md #5/#6). Block form picking is therefore not
+             * pixel-accurate anymore — this.setupTarget still records the picking index for whatever else
+             * consults it, but the block itself renders through its normal layer. */
+            this.setupTarget(context, null);
 
             light = 0;
-        }
-        else
-        {
-            CustomVertexConsumerProvider.hijackVertexFormat((l) ->
-            {
-                RenderSystem.enableBlend();
-                RenderSystem.defaultBlendFunc();
-            });
         }
 
         color.set(context.color);
@@ -140,45 +125,22 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
         consumers.draw();
         consumers.setSubstitute(null);
 
-        CustomVertexConsumerProvider.clearRunnables();
-        RenderSystem.defaultBlendFunc();
 
         context.stack.pop();
 
-        RenderSystem.enableDepthTest();
+        GlStateManager._enableDepthTest();
     }
 
+    /**
+     * Renders the block-entity part of blocks that have one (chests, signs, etc.) on top of the base block
+     * model. 1.21.11 changed {@code BlockEntityRenderer#render} to
+     * {@code render(RenderState, MatrixStack, OrderedRenderCommandQueue, CameraRenderState)} — it now needs a
+     * render state built via {@code createRenderState()}/{@code updateRenderState(...)} plus a
+     * {@code CameraRenderState} that only exists inside the main world render loop, so this detached form
+     * preview has nothing to hand it. Faithfully reproducing that is out of scope for this migration pass; the
+     * base block model (see {@code renderBlockAsEntity} above, unaffected by this change) still renders fine,
+     * this only skips the extra block-entity decoration layer.
+     */
     private void renderBlockEntity(MatrixStack stack, CustomVertexConsumerProvider consumers, int light, int overlay)
-    {
-        if (!(this.form.blockState.get().getBlock() instanceof BlockEntityProvider provider))
-        {
-            return;
-        }
-
-        MinecraftClient client = MinecraftClient.getInstance();
-        BlockEntity blockEntity = provider.createBlockEntity(BlockPos.ORIGIN, this.form.blockState.get());
-
-        if (blockEntity == null)
-        {
-            return;
-        }
-
-        if (client.world != null)
-        {
-            blockEntity.setWorld(client.world);
-        }
-
-        BlockEntityRenderDispatcher dispatcher = client.getBlockEntityRenderDispatcher();
-        BlockEntityRenderer<?> renderer = dispatcher.get(blockEntity);
-
-        if (renderer == null)
-        {
-            return;
-        }
-
-        @SuppressWarnings({"rawtypes", "unchecked"})
-        BlockEntityRenderer raw = (BlockEntityRenderer) renderer;
-
-        raw.render(blockEntity, 0F, stack, consumers, light, overlay);
-    }
+    {}
 }

@@ -1,6 +1,5 @@
 package mchorse.bbs_mod.forms.renderers;
 
-import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.forms.LabelForm;
@@ -11,30 +10,37 @@ import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.StringUtils;
 import mchorse.bbs_mod.utils.TextureFont;
 import mchorse.bbs_mod.utils.colors.Color;
-import mchorse.bbs_mod.utils.joml.Vectors;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.gl.ShaderProgramKeys;
+import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.render.BufferBuilder;
-import net.minecraft.client.render.BufferRenderer;
-import net.minecraft.client.render.GameRenderer;
+import net.minecraft.client.render.BuiltBuffer;
+import net.minecraft.client.render.RenderLayer;
+import net.minecraft.client.render.RenderSetup;
 import net.minecraft.client.render.Tessellator;
-import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
-import net.minecraft.client.util.BufferAllocator;
 import net.minecraft.client.util.math.MatrixStack;
 
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
-import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.vertex.VertexFormat;
+
+import org.lwjgl.opengl.GL11;
 
 import java.awt.Font;
 import java.util.List;
 
 public class LabelFormRenderer extends FormRenderer<LabelForm>
 {
+    /* Vanilla RenderLayer lost its static factories in 1.21.11 (see .port_1.21.11_notes.md #5); there is no
+     * built-in translucent flat-color RenderLayer to reuse for the label's background quad, so this wraps the
+     * vanilla RenderPipelines.DEBUG_FILLED_BOX pipeline (POSITION_COLOR, translucent, depth-tested) in our own
+     * RenderLayer, mirroring BBSShaders#layer(). */
+    private static RenderLayer backgroundLayer;
+
     private float nametagAlpha = 1F;
     public static void fillQuad(BufferBuilder builder, MatrixStack stack, float x1, float y1, float z1, float x2, float y2, float z2, float x3, float y3, float z3, float x4, float y4, float z4, float r, float g, float b, float a)
     {
@@ -117,15 +123,13 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
 
         MatrixStackUtils.scaleStack(context.stack, scale, -scale, scale);
 
-        RenderSystem.disableCull();
+        GlStateManager._disableCull();
 
         if (context.isPicking())
         {
-            CustomVertexConsumerProvider.hijackVertexFormat((layer) ->
-            {
-                this.setupTarget(context, BBSShaders.getPickerModelsProgram());
-                RenderSystem.setShader(BBSShaders.getPickerModelsProgram());
-            });
+            /* Text/label picking loses pixel accuracy here too, see .port_1.21.11_notes.md #6/#9 — the target
+             * index is still recorded for whatever else consults it. */
+            this.setupTarget(context, null);
 
             light = 0;
         }
@@ -133,8 +137,8 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
         {
             CustomVertexConsumerProvider.hijackVertexFormat((layer) ->
             {
-                RenderSystem.enableBlend();
-                RenderSystem.defaultBlendFunc();
+                GlStateManager._enableBlend();
+                GlStateManager._blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
             });
         }
 
@@ -147,11 +151,8 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
             this.renderLimitedString(context, consumers, renderer, light);
         }
 
-        CustomVertexConsumerProvider.clearRunnables();
-        RenderSystem.defaultBlendFunc();
-
-        RenderSystem.enableDepthTest();
-        RenderSystem.enableCull();
+        GlStateManager._enableDepthTest();
+        GlStateManager._enableCull();
 
         context.stack.pop();
     }
@@ -321,7 +322,7 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
             );
         }
 
-        RenderSystem.enableDepthTest();
+        GlStateManager._enableDepthTest();
 
         consumers.draw();
 
@@ -481,11 +482,25 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
             y += lineHeight;
         }
 
-        RenderSystem.enableDepthTest();
+        GlStateManager._enableDepthTest();
 
         consumers.draw();
 
         this.renderShadow(context, x, shadowY, w, totalHeight);
+    }
+
+    private static RenderLayer getBackgroundLayer()
+    {
+        if (backgroundLayer == null)
+        {
+            RenderSetup.Builder setup = RenderSetup.builder(RenderPipelines.DEBUG_FILLED_BOX)
+                .expectedBufferSize(RenderLayer.field_64008)
+                .translucent();
+
+            backgroundLayer = RenderLayer.of("bbs_label_background", setup.build());
+        }
+
+        return backgroundLayer;
     }
 
     private void renderShadow(FormRenderingContext context, int x, int y, int w, int h)
@@ -514,10 +529,16 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
             color.r, color.g, color.b, color.a
         );
 
-        RenderSystem.enableBlend();
-        RenderSystem.enableDepthTest();
-        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
-        BufferRenderer.drawWithGlobalProgram(builder.end());
+        GlStateManager._enableBlend();
+        GlStateManager._enableDepthTest();
+
+        BuiltBuffer built = builder.endNullable();
+
+        if (built != null)
+        {
+            LabelFormRenderer.getBackgroundLayer().draw(built);
+        }
+
         context.stack.pop();
     }
 }
