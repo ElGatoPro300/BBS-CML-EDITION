@@ -1,39 +1,35 @@
 package mchorse.bbs_mod.forms.renderers;
 
 import mchorse.bbs_mod.BBSModClient;
+import mchorse.bbs_mod.client.BBSShaders;
+import mchorse.bbs_mod.client.render.picker.BBSPickerRenderer;
 import mchorse.bbs_mod.forms.forms.FramebufferForm;
 import mchorse.bbs_mod.graphics.Framebuffer;
 import mchorse.bbs_mod.graphics.Renderbuffer;
+import mchorse.bbs_mod.graphics.texture.AdoptedTexture;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.utils.MathUtils;
-import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.Quad;
 import mchorse.bbs_mod.utils.colors.Color;
 
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gl.ShaderProgram;
-import net.minecraft.client.gl.ShaderProgramKey;
-import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.BufferBuilder;
-import net.minecraft.client.render.BufferRenderer;
-import net.minecraft.client.render.GameRenderer;
+import net.minecraft.client.render.BuiltBuffer;
+import net.minecraft.client.render.RenderLayer;
+import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexConsumer;
-import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
-import net.minecraft.client.util.BufferAllocator;
 import net.minecraft.client.util.math.MatrixStack;
 
-import org.joml.Matrix3f;
 import org.joml.Matrix4f;
-import org.joml.Vector3f;
 import org.joml.Vector4f;
 
-import com.mojang.blaze3d.systems.ProjectionType;
+import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.pipeline.RenderPipeline;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.systems.VertexSorter;
+import com.mojang.blaze3d.vertex.VertexFormat;
 
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
@@ -41,14 +37,14 @@ import org.lwjgl.opengl.GL30;
 import org.lwjgl.system.MemoryStack;
 
 import java.nio.IntBuffer;
-import java.util.function.Consumer;
-import java.util.function.Supplier;
 
 public class FramebufferFormRenderer extends FormRenderer<FramebufferForm>
 {
     private static final Quad quad = new Quad();
     private static final Quad uvQuad = new Quad();
-    private static final Link framebufferKey = Link.bbs("framebuffer_form");
+
+    /* Nested framebuffer forms must each render into their own framebuffer */
+    private static int depth;
 
     public FramebufferFormRenderer(FramebufferForm form)
     {
@@ -62,7 +58,7 @@ public class FramebufferFormRenderer extends FormRenderer<FramebufferForm>
     @Override
     public void renderBodyParts(FormRenderingContext context)
     {
-        Framebuffer framebuffer = BBSModClient.getFramebuffers().getFramebuffer(framebufferKey, (f) ->
+        Framebuffer framebuffer = BBSModClient.getFramebuffers().getFramebuffer(Link.bbs("framebuffer_form_" + depth), (f) ->
         {
             Texture texture = new Texture();
 
@@ -97,16 +93,15 @@ public class FramebufferFormRenderer extends FormRenderer<FramebufferForm>
         int h = MathUtils.clamp(this.form.height.get(), 2, 4096);
         int prevDraw = GL30.glGetInteger(GL30.GL_DRAW_FRAMEBUFFER_BINDING);
         int prevRead = GL30.glGetInteger(GL30.GL_READ_FRAMEBUFFER_BINDING);
-        Vector3f light0 = RenderSystem.shaderLightDirections[0];
-        Vector3f light1 = RenderSystem.shaderLightDirections[1];
-        Matrix4f projectionMatrix = new Matrix4f(RenderSystem.getProjectionMatrix());
 
+        /* TODO(1.21.11 render): RenderSystem.shaderLightDirections / setShaderLights(Vector3f,Vector3f) /
+         * getProjectionMatrix / setProjectionMatrix / getModelViewStack were removed by the 1.21.5 GPU
+         * pipeline rewrite (lighting is now a GpuBufferSlice, projection lives in RenderSystem's dynamic
+         * uniforms). The original code saved the two shader light directions + projection matrix, switched
+         * to a flat front-facing light and an ortho projection while rendering the inner forms into the
+         * framebuffer, then restored them below. Re-implement once the framebuffer render path is rebuilt
+         * on the new pipeline foundation. */
         GL30.glCullFace(GL30.GL_FRONT);
-        RenderSystem.setShaderLights(new Vector3f(0F, 0F, 1F), new Vector3f(0F, 0F, 1F));
-        RenderSystem.setProjectionMatrix(new Matrix4f().setOrtho(-1F, 1F, 1F, -1F, -500F, 500F), ProjectionType.ORTHOGRAPHIC);
-        RenderSystem.getModelViewStack().pushMatrix();
-        RenderSystem.getModelViewStack().identity();
-        MatrixStackUtils.applyModelViewMatrix();
 
         framebuffer.apply();
 
@@ -118,31 +113,42 @@ public class FramebufferFormRenderer extends FormRenderer<FramebufferForm>
         framebuffer.clear();
 
         context.stack.push();
-        context.stack.peek().getPositionMatrix().identity();
-        context.stack.peek().getNormalMatrix().identity();
 
-        super.renderBodyParts(context);
+        try
+        {
+            context.stack.peek().getPositionMatrix().identity();
+            context.stack.peek().getNormalMatrix().identity();
 
-        context.stack.pop();
+            depth += 1;
+
+            try
+            {
+                super.renderBodyParts(context);
+            }
+            finally
+            {
+                depth -= 1;
+            }
+        }
+        finally
+        {
+            context.stack.pop();
+        }
 
         GL30.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, prevDraw);
         GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, prevRead);
         GL30.glViewport(0, 0, width, height);
 
-        RenderSystem.setShaderLights(light0, light1);
-        RenderSystem.getModelViewStack().popMatrix();
-        MatrixStackUtils.applyModelViewMatrix();
-        RenderSystem.setProjectionMatrix(projectionMatrix, ProjectionType.ORTHOGRAPHIC);
         GL30.glCullFace(GL30.GL_BACK);
 
-        boolean shading = !context.isPicking();
-        VertexFormat format = shading ? VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL : VertexFormats.POSITION_TEXTURE_COLOR;
-        ShaderProgramKey shaderKey = shading ? ShaderProgramKeys.RENDERTYPE_ENTITY_TRANSLUCENT : ShaderProgramKeys.POSITION_TEX_COLOR;
+        boolean picking = context.isPicking();
+        boolean shading = !picking;
+        VertexFormat format = shading ? VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL : VertexFormats.POSITION_TEXTURE_LIGHT_COLOR;
 
-        this.renderModel(framebuffer.getMainTexture(), format, shaderKey, context.stack, context.overlay, context.light, context.color, context.getTransition());
+        this.renderModel(framebuffer.getMainTexture(), format, picking, context.stack, context.overlay, context.light, context.color, context.getTransition());
     }
 
-    private void renderModel(Texture texture, VertexFormat format, ShaderProgramKey shader, MatrixStack matrices, int overlay, int light, int overlayColor, float transition)
+    private void renderModel(Texture texture, VertexFormat format, boolean picking, MatrixStack matrices, int overlay, int light, int overlayColor, float transition)
     {
         float w = texture.width;
         float h = texture.height;
@@ -172,30 +178,23 @@ public class FramebufferFormRenderer extends FormRenderer<FramebufferForm>
         quad.p3.set(TLx, BRy, 0);
         quad.p4.set(BRx, BRy, 0);
 
-        this.renderQuad(format, texture, shader, matrices, overlay, light, overlayColor, transition);
+        this.renderQuad(format, texture, picking, matrices, overlay, light, overlayColor, transition);
     }
 
-    private void renderQuad(VertexFormat format, Texture texture, ShaderProgramKey shader, MatrixStack matrices, int overlay, int light, int overlayColor, float transition)
+    private void renderQuad(VertexFormat format, Texture texture, boolean picking, MatrixStack matrices, int overlay, int light, int overlayColor, float transition)
     {
-        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, format);
         Color color = Color.white();
+        Matrix4f matrix = matrices.peek().getPositionMatrix();
         MatrixStack.Entry entry = matrices.peek();
-        Matrix4f matrix = entry.getPositionMatrix();
 
         color.mul(overlayColor);
 
-        GameRenderer gameRenderer = MinecraftClient.getInstance().gameRenderer;
-        if (format == VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL)
-        {
-            gameRenderer.getLightmapTextureManager().enable();
-            gameRenderer.getOverlayTexture().setupOverlayColor();
-        }
-
         BBSModClient.getTextures().bindTexture(texture);
-        RenderSystem.setShader(shader);
 
         texture.bind();
         texture.setFilterMipmap(false, false);
+
+        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, format);
 
         /* Front */
         this.fill(format, builder, matrix, quad.p3.x, quad.p3.y, color, uvQuad.p3.x, uvQuad.p3.y, overlay, light, entry, 1F);
@@ -215,15 +214,31 @@ public class FramebufferFormRenderer extends FormRenderer<FramebufferForm>
         this.fill(format, builder, matrix, quad.p4.x, quad.p4.y, color, uvQuad.p4.x, uvQuad.p4.y, overlay, light, entry, -1F);
         this.fill(format, builder, matrix, quad.p3.x, quad.p3.y, color, uvQuad.p3.x, uvQuad.p3.y, overlay, light, entry, -1F);
 
-        RenderSystem.defaultBlendFunc();
-        RenderSystem.enableBlend();
-        BufferRenderer.drawWithGlobalProgram(builder.end());
+        GlStateManager._enableBlend();
 
-        if (format == VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL)
+        BuiltBuffer built = builder.endNullable();
+
+        if (built != null)
         {
-            gameRenderer.getLightmapTextureManager().disable();
-            gameRenderer.getOverlayTexture().teardownOverlayColor();
+            if (picking)
+            {
+                RenderPipeline pipeline = format == VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL
+                    ? BBSShaders.getPickerBillboardProgram()
+                    : BBSShaders.getPickerBillboardNoShadingProgram();
+
+                BBSPickerRenderer.draw(pipeline, built, RenderSystem.getModelViewMatrix());
+            }
+            else
+            {
+                RenderLayer layer = format == VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL
+                    ? RenderLayers.entityTranslucent(AdoptedTexture.identifier(texture))
+                    : BBSShaders.getMultilinkLayer();
+
+                layer.draw(built);
+            }
         }
+
+        texture.setFilterMipmap(false, false);
     }
 
     private VertexConsumer fill(VertexFormat format, VertexConsumer consumer, Matrix4f matrix, float x, float y, Color color, float u, float v, int overlay, int light, MatrixStack.Entry entry, float nz)
@@ -231,11 +246,6 @@ public class FramebufferFormRenderer extends FormRenderer<FramebufferForm>
         if (format == VertexFormats.POSITION_TEXTURE_LIGHT_COLOR)
         {
             return consumer.vertex(matrix, x, y, 0F).texture(u, v).light(light).color(color.r, color.g, color.b, color.a);
-        }
-
-        if (format == VertexFormats.POSITION_TEXTURE_COLOR)
-        {
-            return consumer.vertex(matrix, x, y, 0F).texture(u, v).color(color.r, color.g, color.b, color.a);
         }
 
         return consumer.vertex(matrix, x, y, 0F).color(color.r, color.g, color.b, color.a).texture(u, v).overlay(overlay).light(light).normal(entry, 0F, 0F, nz);

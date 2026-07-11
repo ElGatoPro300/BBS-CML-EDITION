@@ -13,7 +13,6 @@ import mchorse.bbs_mod.utils.colors.Colors;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.network.PlayerListEntry;
-import net.minecraft.client.render.RenderLayer;
 import net.minecraft.util.Identifier;
 
 import com.mojang.authlib.GameProfile;
@@ -158,17 +157,18 @@ public class UIFilmLogOverlayPanel extends UIOverlayPanel
             {
                 GameProfile profile = null;
 
-                if (mc.getNetworkHandler() != null)
-                {
-                    for (PlayerListEntry entry : mc.getNetworkHandler().getPlayerList())
-                    {
-                        if (entry.getProfile().getName().equalsIgnoreCase(this.contributor.name.get()))
-                        {
-                            profile = entry.getProfile();
-                            break;
-                        }
-                    }
-                }
+                /* TODO 1.21.11: PlayerListEntry.getProfile() removed */
+                // if (mc.getNetworkHandler() != null)
+                // {
+                //     for (PlayerListEntry entry : mc.getNetworkHandler().getPlayerList())
+                //     {
+                //         if (entry.getProfile().getName().equalsIgnoreCase(this.contributor.name.get()))
+                //         {
+                //             profile = entry.getProfile();
+                //             break;
+                //         }
+                //     }
+                // }
 
                 if (profile == null)
                 {
@@ -176,7 +176,8 @@ public class UIFilmLogOverlayPanel extends UIOverlayPanel
                     profile = new GameProfile(uuid, this.contributor.name.get());
                 }
 
-                this.skinTexture = mc.getSkinProvider().getSkinTextures(profile).texture();
+                /* TODO 1.21.11: skin provider API changed */
+                // this.skinTexture = mc.getSkinProvider().getSkinTextures(profile).texture();
             }
             catch (Exception e)
             {}
@@ -186,8 +187,7 @@ public class UIFilmLogOverlayPanel extends UIOverlayPanel
 
         private void drawPlayerHead(DrawContext drawContext, Identifier texture, int x, int y, int size)
         {
-            drawContext.drawTexture(RenderLayer::getGuiTextured, texture, x, y, 8F, 8F, size, size, 8, 8, 64, 64);
-            drawContext.drawTexture(RenderLayer::getGuiTextured, texture, x, y, 40F, 8F, size, size, 8, 8, 64, 64);
+            /* TODO 1.21.11: RenderLayer::getGuiTextured removed */
         }
 
         @Override

@@ -12,8 +12,6 @@ import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.interps.Lerps;
 
-import net.minecraft.client.gl.ShaderProgram;
-import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.VertexFormats;
@@ -23,15 +21,13 @@ import com.mojang.blaze3d.systems.RenderSystem;
 
 public class CubicVAORenderer extends CubicCubeRenderer
 {
-    private ShaderProgram program;
     private ModelInstance model;
     private Link defaultTexture;
 
-    public CubicVAORenderer(ShaderProgram program, ModelInstance model, int light, int overlay, StencilMap stencilMap, ShapeKeys shapeKeys, Link defaultTexture)
+    public CubicVAORenderer(ModelInstance model, int light, int overlay, StencilMap stencilMap, ShapeKeys shapeKeys, Link defaultTexture)
     {
         super(light, overlay, stencilMap, shapeKeys);
 
-        this.program = program;
         this.model = model;
         this.defaultTexture = defaultTexture;
     }
@@ -137,7 +133,14 @@ public class CubicVAORenderer extends CubicCubeRenderer
                 light = u | v << 16;
             }
 
-            ModelVAORenderer.render(this.program, modelVAO, stack, r, g, b, a, light, this.overlay);
+            if (this.stencilMap != null)
+            {
+                ModelVAORenderer.renderPicking(modelVAO, stack, r, g, b, a, light, this.overlay);
+            }
+            else
+            {
+                ModelVAORenderer.render(modelVAO, stack, r, g, b, a, light, this.overlay);
+            }
         }
 
         return false;

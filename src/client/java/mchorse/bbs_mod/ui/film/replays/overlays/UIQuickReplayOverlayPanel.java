@@ -250,7 +250,8 @@ public class UIQuickReplayOverlayPanel extends UIOverlayPanel
 
         KeyBinding keybind = BBSModClient.getKeyOpenQuickReplays();
 
-        if (keybind != null && context.getKeyAction() == KeyAction.PRESSED && keybind.matchesKey(context.getKeyCode(), context.getScanCode()))
+        /* TODO 1.21.11: matchesKey API changed */
+        if (keybind != null && context.getKeyAction() == KeyAction.PRESSED && false)
         {
             this.confirmSelection();
 

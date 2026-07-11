@@ -6,6 +6,7 @@ import mchorse.bbs_mod.utils.colors.Color;
 import net.minecraft.client.gl.Framebuffer;
 import net.minecraft.client.option.CloudRenderMode;
 import net.minecraft.client.render.FrameGraphBuilder;
+import net.minecraft.client.render.Frustum;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.WorldRenderer;
 import net.minecraft.client.util.math.MatrixStack;
@@ -47,7 +48,11 @@ public class WorldRendererMixin
         }
     }
 
-    @Inject(method = "renderLayer", at = @At("HEAD"), cancellable = true)
+    /* TODO(1.21.11 render): WorldRenderer#renderLayer was removed by the FrameGraphBuilder/
+     * OrderedRenderCommandQueue terrain rewrite (per-RenderLayer submission is now handled through
+     * renderBlockLayers/SectionRenderState with no simple cancellation point). require = 0 keeps this
+     * injector inert instead of crashing until the chroma-sky-terrain occlusion is re-ported. */
+    @Inject(method = "renderLayer", at = @At("HEAD"), cancellable = true, require = 0)
     public void onRenderLayer(RenderLayer renderLayer, double cameraX, double cameraY, double cameraZ, Matrix4f positionMatrix, Matrix4f projectionMatrix, CallbackInfo info)
     {
         if (BBSRendering.shouldHideChromaTerrain())
@@ -58,19 +63,20 @@ public class WorldRendererMixin
         }
     }
 
-    @Inject(method = "renderLayer", at = @At("TAIL"))
+    @Inject(method = "renderLayer", at = @At("TAIL"), require = 0)
     public void onRenderChunkLayer(RenderLayer layer, double cameraX, double cameraY, double cameraZ, Matrix4f positionMatrix, Matrix4f projectionMatrix, CallbackInfo info)
     {
-        if (layer == RenderLayer.getSolid())
+        /* TODO 1.21.11: RenderLayer.getSolid() removed — re-port later */
+        if (false)
         {
             BBSRendering.onRenderChunkLayer(positionMatrix, projectionMatrix);
         }
     }
 
     @Inject(method = "setupFrustum", at = @At("HEAD"))
-    public void onSetupFrustum(Vec3d vec3d, Matrix4f matrix4f, Matrix4f positionMatrix, CallbackInfo info)
+    public void onSetupFrustum(Matrix4f posMatrix, Matrix4f projMatrix, Vec3d pos, CallbackInfoReturnable<Frustum> info)
     {
-        BBSRendering.camera.set(matrix4f);
+        BBSRendering.camera.set(posMatrix);
     }
 
     @Inject(at = @At("RETURN"), method = "loadEntityOutlinePostProcessor")

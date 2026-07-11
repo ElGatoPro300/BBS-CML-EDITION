@@ -2,6 +2,7 @@ package mchorse.bbs_mod.forms.renderers;
 
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.client.BBSRendering;
+import mchorse.bbs_mod.client.render.picker.BBSPickerRenderer;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.forms.BodyPart;
@@ -20,7 +21,6 @@ import mchorse.bbs_mod.utils.interps.Lerps;
 import mchorse.bbs_mod.utils.pose.Transform;
 
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gl.GlUniform;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.network.AbstractClientPlayerEntity;
 import net.minecraft.client.render.LightmapTextureManager;
@@ -29,7 +29,6 @@ import net.minecraft.util.Hand;
 
 import org.joml.Matrix4f;
 
-import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 
 import org.lwjgl.opengl.GL11;
@@ -101,15 +100,13 @@ public abstract class FormRenderer <T extends Form>
                 int vw = (int) (iw * rx);
                 int vh = (int) (ih * ry);
 
-                GlStateManager._enableScissorTest();
-                GlStateManager._scissorBox((int) (vx * size), (int) (vy * size), (int) (vw * size), (int) (vh * size));
+                RenderSystem.enableScissorForRenderTypeDraws((int) (vx * size), (int) (vy * size), (int) (vw * size), (int) (vh * size));
                 scissored = true;
             }
             else
             {
                 /* Completely out of bounds, set a 0-size scissor box */
-                GlStateManager._enableScissorTest();
-                GlStateManager._scissorBox(0, 0, 0, 0);
+                RenderSystem.enableScissorForRenderTypeDraws(0, 0, 0, 0);
                 scissored = true;
             }
         }
@@ -121,7 +118,7 @@ public abstract class FormRenderer <T extends Form>
 
         if (scissored)
         {
-            GlStateManager._disableScissorTest();
+            RenderSystem.disableScissorForRenderTypeDraws();
         }
 
         FontRenderer font = context.batcher.getFont();
@@ -176,25 +173,31 @@ public abstract class FormRenderer <T extends Form>
         boolean isPicking = context.stencilMap != null;
 
         context.stack.push();
-        this.applyTransforms(context.stack, false, context.getTransition());
 
-        float lf = 1F - MathUtils.clamp(this.form.lighting.get(), 0F, 1F);
-        int u = context.light & '\uffff';
-        int v = context.light >> 16 & '\uffff';
-
-        u = (int) Lerps.lerp(u, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, lf);
-        context.light = u | v << 16;
-
-        this.render3D(context);
-
-        if (isPicking)
+        try
         {
-            this.updateStencilMap(context);
+            this.applyTransforms(context.stack, false, context.getTransition());
+
+            float lf = 1F - MathUtils.clamp(this.form.lighting.get(), 0F, 1F);
+            int u = context.light & '\uffff';
+            int v = context.light >> 16 & '\uffff';
+
+            u = (int) Lerps.lerp(u, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, lf);
+            context.light = u | v << 16;
+
+            this.render3D(context);
+
+            if (isPicking)
+            {
+                this.updateStencilMap(context);
+            }
+
+            this.renderBodyParts(context);
         }
-
-        this.renderBodyParts(context);
-
-        context.stack.pop();
+        finally
+        {
+            context.stack.pop();
+        }
 
         context.light = light;
 
@@ -265,19 +268,11 @@ public abstract class FormRenderer <T extends Form>
 
     protected void setupTarget(FormRenderingContext context, ShaderProgram program)
     {
-        if (program == null)
-        {
-            return;
-        }
-
-        GlUniform target = program.getUniform("Target");
-
-        if (target != null)
-        {
-            int pickingIndex = context.getPickingIndex();
-
-            target.set(pickingIndex);
-        }
+        /* 1.21.11 render: the loose `uniform int Target` the picker shaders used is now the BBSPicker
+         * std140 UBO, uploaded per picker draw by BBSPickerRenderer. Record the active picking index
+         * here — the faithful equivalent of the removed program.getUniform("Target").set(pickingIndex).
+         * The ShaderProgram param is now vestigial (picker programs are RenderPipelines). */
+        BBSPickerRenderer.setTarget(context.getPickingIndex());
     }
 
     protected void updateStencilMap(FormRenderingContext context)
@@ -305,11 +300,17 @@ public abstract class FormRenderer <T extends Form>
         if (part.getForm() != null)
         {
             context.stack.push();
-            MatrixStackUtils.applyTransform(context.stack, part.transform.get());
 
-            FormUtilsClient.render(part.getForm(), context);
+            try
+            {
+                MatrixStackUtils.applyTransform(context.stack, part.transform.get());
 
-            context.stack.pop();
+                FormUtilsClient.render(part.getForm(), context);
+            }
+            finally
+            {
+                context.stack.pop();
+            }
         }
 
         context.entity = oldEntity;

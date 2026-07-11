@@ -43,6 +43,7 @@ public class EntitySelector implements IMapSerializable
 
         Text displayName = mcEntity.getDisplayName();
 
+        /* TODO(1.21.11): Entity.writeNbt(NbtCompound) removed
         if (this.nbt != null)
         {
             NbtCompound entityCompound = mcEntity.writeNbt(new NbtCompound());
@@ -52,6 +53,7 @@ public class EntitySelector implements IMapSerializable
                 return false;
             }
         }
+        */
 
         if (displayName != null && !this.name.isEmpty())
         {
@@ -96,7 +98,7 @@ public class EntitySelector implements IMapSerializable
         {
             try
             {
-                this.nbt = (new StringNbtReader(new StringReader(data.getString("nbt")))).parseCompound();
+                this.nbt = StringNbtReader.readCompound(data.getString("nbt"));
             }
             catch (CommandSyntaxException e)
             {
