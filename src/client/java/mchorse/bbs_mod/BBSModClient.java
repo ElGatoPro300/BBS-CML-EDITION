@@ -534,6 +534,16 @@ public class BBSModClient implements ClientModInitializer
         BBSSettings.modelEditorAltHoverMultipleColors.postCallback(refreshModelHover);
         BBSSettings.favoriteColors.postCallback(refreshModelHover);
 
+HEAD
+        BBSSettings.editorTimelineToolbar.postCallback((v, f) -> TimelineToolbarDockSync.applySettingsChange());
+
+        BBSSettings.editorSeparateReplayPropertiesPanel.postCallback((v, f) ->
+        {
+            if (dashboard != null && dashboard.getPanels().panel instanceof UIFilmPanel panel)
+            {
+                panel.applySeparateReplayPropertiesPanelSetting();
+            }
+        });
         BBSSettings.tooltipStyle.modes(
             UIKeys.ENGINE_TOOLTIP_STYLE_LIGHT,
             UIKeys.ENGINE_TOOLTIP_STYLE_DARK

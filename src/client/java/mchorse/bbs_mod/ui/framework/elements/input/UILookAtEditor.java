@@ -44,10 +44,18 @@ public class UILookAtEditor extends UIElement
         this.translate = new UIToggle(UIKeys.GENERIC_KEYFRAMES_LOOK_AT_TRANSLATE, (b) -> this.edit((lookAt) -> lookAt.translate = b.getValue()));
         this.translate.tooltip(UIKeys.GENERIC_KEYFRAMES_LOOK_AT_TRANSLATE_TOOLTIP);
 
-        this.bones = new UISearchList<>(new LookAtBoneList((l) -> this.pickBone(l.get(0))));
+        this.bones = new UISearchList<>(new LookAtBoneList((l) -> this.pickBone(l.get(0)))
+        {
+            @Override
+            public void render(UIContext context)
+            {
+                super.render(context);
+                context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xFF3C3C3C);
+            }
+        });
         this.bones.label(UIKeys.GENERAL_SEARCH);
         this.bones.h(UIStringList.DEFAULT_HEIGHT * 8 + 12);
-        this.bones.list.background();
+        this.bones.list.background(0xFF141418);
         this.bones.list.scroll.cancelScrolling();
 
         this.enabled = new UIToggle(UIKeys.GENERIC_KEYFRAMES_LOOK_AT_ENABLED, (b) -> this.editBone((bone) -> bone.enabled = b.getValue()));

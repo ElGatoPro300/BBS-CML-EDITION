@@ -289,6 +289,8 @@
     "bbs.config.replay_editor.tooltip": "Opciones del editor de replays",
     "bbs.config.replays.anchored_replays_panel": "Panel de reproducciones ancladas",
     "bbs.config.replays.anchored_replays_panel-comment": "Muestra las reproducciones de actores en un panel anclado en la parte inferior de la pantalla",
+    "bbs.config.replays.separate_replay_properties_panel": "Panel de propiedades de reproducción separado",
+    "bbs.config.replays.separate_replay_properties_panel-comment": "Si está activado, las propiedades de reproducción (General) aparecen en su propia ventana. Si está desactivado, se muestran dentro del panel Reproducciones y General desaparece del menú Ventanas",
     "bbs.config.replays.compacted_options": "Opciones compactadas",
     "bbs.config.replays.compacted_options-comment": "Controla cómo se agrupan las opciones del menú contextual de replays",
     "bbs.config.replays.compacted_options.compacted": "Compactado",

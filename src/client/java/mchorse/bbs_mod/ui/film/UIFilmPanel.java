@@ -2567,7 +2567,55 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     public String[] getWindowPanelIds()
     {
-        return new String[] {"cameraTimeline", "replayTimeline", "actionTimeline", "preview", "editArea", "cameraEditArea", "actionEditArea", "unifiedEditArea", ANCHORED_REPLAYS_PANEL_ID, ANCHORED_REPLAYS_PROPERTIES_PANEL_ID};
+        if (this.isSeparateReplayPropertiesPanelEnabled())
+        {
+            return new String[] {"cameraTimeline", "replayTimeline", "actionTimeline", "preview", "editArea", "cameraEditArea", "actionEditArea", "unifiedEditArea", ANCHORED_REPLAYS_PANEL_ID, ANCHORED_REPLAYS_PROPERTIES_PANEL_ID};
+        }
+
+        return new String[] {"cameraTimeline", "replayTimeline", "actionTimeline", "preview", "editArea", "cameraEditArea", "actionEditArea", "unifiedEditArea", ANCHORED_REPLAYS_PANEL_ID};
+    }
+
+    public void applySeparateReplayPropertiesPanelSetting()
+    {
+        ValueEditorLayout layout = BBSSettings.editorLayoutSettings;
+        EditorLayoutNode root = layout.getFilmLayoutRoot();
+        EditorLayoutNode next = root;
+
+        if (!this.isSeparateReplayPropertiesPanelEnabled())
+        {
+            this.floatingPanels.remove(ANCHORED_REPLAYS_PROPERTIES_PANEL_ID);
+            this.collapsedFloatingPanels.remove(ANCHORED_REPLAYS_PROPERTIES_PANEL_ID);
+            this.hiddenPanels.remove(ANCHORED_REPLAYS_PROPERTIES_PANEL_ID);
+            this.floatingPanelPositions.remove(ANCHORED_REPLAYS_PROPERTIES_PANEL_ID);
+            this.floatingPanelSizes.remove(ANCHORED_REPLAYS_PROPERTIES_PANEL_ID);
+
+            if (root != null && this.hasPanelInLayout(root, ANCHORED_REPLAYS_PROPERTIES_PANEL_ID))
+            {
+                next = EditorLayoutNode.copyWithRemovedLeaf(root, ANCHORED_REPLAYS_PROPERTIES_PANEL_ID);
+            }
+
+            if (this.anchoredReplaysPropertiesPanel != null)
+            {
+                this.anchoredReplaysPropertiesPanel.setVisible(false);
+            }
+        }
+        else if (root != null && this.hasPanelInLayout(root, ANCHORED_REPLAYS_PANEL_ID) && !this.hasPanelInLayout(root, ANCHORED_REPLAYS_PROPERTIES_PANEL_ID))
+        {
+            next = this.migrateReplaysPropertiesPanel(root);
+        }
+
+        if (next != root)
+        {
+            layout.setFilmLayoutRoot(next);
+        }
+
+        this.syncReplaysPropertiesLayoutMode();
+        this.setupEditorFlex(true);
+    }
+
+    private boolean isSeparateReplayPropertiesPanelEnabled()
+    {
+        return BBSSettings.editorSeparateReplayPropertiesPanel == null || BBSSettings.editorSeparateReplayPropertiesPanel.get();
     }
 
     public IKey getWindowPanelTitle(String panelId)
@@ -3739,8 +3787,28 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         );
     }
 
+    private EditorLayoutNode createAnchoredReplaysPanelNode()
+    {
+        if (this.isSeparateReplayPropertiesPanelEnabled())
+        {
+            return this.createAnchoredReplaysColumn();
+        }
+
+        return new EditorLayoutNode.PanelNode(ANCHORED_REPLAYS_PANEL_ID);
+    }
+
     private EditorLayoutNode migrateReplaysPropertiesPanel(EditorLayoutNode root)
     {
+        if (!this.isSeparateReplayPropertiesPanelEnabled())
+        {
+            if (root != null && this.hasPanelInLayout(root, ANCHORED_REPLAYS_PROPERTIES_PANEL_ID))
+            {
+                return EditorLayoutNode.copyWithRemovedLeaf(root, ANCHORED_REPLAYS_PROPERTIES_PANEL_ID);
+            }
+
+            return root;
+        }
+
         if (root == null || !this.hasPanelInLayout(root, ANCHORED_REPLAYS_PANEL_ID) || this.hasPanelInLayout(root, ANCHORED_REPLAYS_PROPERTIES_PANEL_ID))
         {
             return root;
@@ -3751,6 +3819,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     private boolean isReplaysPropertiesPanelActive()
     {
+        if (!this.isSeparateReplayPropertiesPanelEnabled())
+        {
+            return false;
+        }
+
         EditorLayoutNode root = BBSSettings.editorLayoutSettings.getFilmLayoutRoot();
 
         return this.floatingPanels.contains(ANCHORED_REPLAYS_PROPERTIES_PANEL_ID) || this.hasPanelInLayout(root, ANCHORED_REPLAYS_PROPERTIES_PANEL_ID);
@@ -3785,7 +3858,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             {
                 layout.setFilmLayoutRoot(this.addAnchoredReplaysPanelToRoot(baseRoot));
             }
-            else if (!this.floatingPanels.contains(ANCHORED_REPLAYS_PROPERTIES_PANEL_ID) && !this.hasPanelInLayout(layout.getFilmLayoutRoot(), ANCHORED_REPLAYS_PROPERTIES_PANEL_ID) && this.hasPanelInLayout(layout.getFilmLayoutRoot(), ANCHORED_REPLAYS_PANEL_ID))
+            else if (!this.floatingPanels.contains(ANCHORED_REPLAYS_PROPERTIES_PANEL_ID) && !this.hasPanelInLayout(layout.getFilmLayoutRoot(), ANCHORED_REPLAYS_PROPERTIES_PANEL_ID) && this.hasPanelInLayout(layout.getFilmLayoutRoot(), ANCHORED_REPLAYS_PANEL_ID) && this.isSeparateReplayPropertiesPanelEnabled())
             {
                 layout.setFilmLayoutRoot(this.migrateReplaysPropertiesPanel(layout.getFilmLayoutRoot()));
             }
@@ -3838,7 +3911,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             return baseRoot;
         }
 
-        EditorLayoutNode replaysColumn = this.createAnchoredReplaysColumn();
+        EditorLayoutNode replaysColumn = this.createAnchoredReplaysPanelNode();
         EditorLayoutNode inserted = EditorLayoutNode.copyWithReplacedLeaf(
             baseRoot,
             "editArea",

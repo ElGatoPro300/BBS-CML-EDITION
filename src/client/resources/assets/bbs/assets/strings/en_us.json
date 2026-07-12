@@ -307,6 +307,8 @@
     "bbs.config.replay_editor.tooltip": "Options for replay editor settings",
     "bbs.config.replays.anchored_replays_panel": "Anchored replays panel",
     "bbs.config.replays.anchored_replays_panel-comment": "Show actor replays in a panel anchored at the bottom of the screen",
+    "bbs.config.replays.separate_replay_properties_panel": "Separate replay properties panel",
+    "bbs.config.replays.separate_replay_properties_panel-comment": "When enabled, replay properties (General) appear as their own window. When disabled, they are shown inside the Replays panel and General is hidden from the Windows menu",
     "bbs.config.replays.compacted_options": "Compacted options",
     "bbs.config.replays.compacted_options-comment": "Controls how replay context options are grouped",
     "bbs.config.replays.compacted_options.compacted": "Compacted",
