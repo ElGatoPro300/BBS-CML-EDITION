@@ -50,22 +50,18 @@ public class RecolorVertexConsumer implements VertexConsumer
         if (this.paintColor != null && Math.abs(this.paintColor.a) > 0F)
         {
             float pa = this.paintColor.a;
-            float lum = (red * 0.2126F + green * 0.7152F + blue * 0.0722F) / 255F;
-            int paintR = (int) (this.paintColor.r * lum * 255F);
-            int paintG = (int) (this.paintColor.g * lum * 255F);
-            int paintB = (int) (this.paintColor.b * lum * 255F);
 
             if (pa >= 1F)
             {
-                red = paintR;
-                green = paintG;
-                blue = paintB;
+                red = (int) (this.paintColor.r * 255F);
+                green = (int) (this.paintColor.g * 255F);
+                blue = (int) (this.paintColor.b * 255F);
             }
             else if (pa > 0F)
             {
-                red = (int) (red + (paintR - red) * pa);
-                green = (int) (green + (paintG - green) * pa);
-                blue = (int) (blue + (paintB - blue) * pa);
+                red = (int) (red + (this.paintColor.r * 255F - red) * pa);
+                green = (int) (green + (this.paintColor.g * 255F - green) * pa);
+                blue = (int) (blue + (this.paintColor.b * 255F - blue) * pa);
             }
             else
             {

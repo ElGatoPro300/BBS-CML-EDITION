@@ -5,7 +5,6 @@ import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.forms.BlockForm;
-import mchorse.bbs_mod.forms.forms.utils.FormWrapPaint;
 import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.forms.renderers.utils.FormColorBlend;
 import mchorse.bbs_mod.ui.framework.UIContext;
@@ -131,7 +130,6 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
 
         paintSettings.resolveColor(legacyPaint, resolvedPaint);
         resolvedPaint.a = paintSettings.resolveIntensity(legacyPaint);
-        FormWrapPaint.mergeFormWrapIntoPaint(resolvedPaint, this.form, paintSettings, legacyPaint);
 
         consumers.setSubstitute(BBSRendering.getColorConsumer(color, resolvedPaint));
         MinecraftClient.getInstance().getBlockRenderManager().renderBlockAsEntity(this.form.blockState.get(), context.stack, consumers, light, context.overlay);

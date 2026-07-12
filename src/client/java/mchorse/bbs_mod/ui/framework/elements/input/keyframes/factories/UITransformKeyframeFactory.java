@@ -63,14 +63,6 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
             });
             this.color.withAlpha();
             this.color.tooltip(UIKeys.RAW_COLOR);
-            this.color.picker.setWrapColorChangeCallback((c) ->
-            {
-                UIPoseTransforms.applyPoseTransform(this.editor, this.keyframe, (poseT) -> poseT.colorWrap.set(c));
-            });
-            this.color.picker.setWrapOpacityChangeCallback((opacity) ->
-            {
-                UIPoseTransforms.applyPoseTransform(this.editor, this.keyframe, (poseT) -> poseT.colorWrapOpacity = opacity);
-            });
 
             this.paintColor = new UIColor((c) ->
             {
@@ -108,7 +100,6 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
 
             this.fix.setValue(poseTransform.fix);
             this.color.setColor(poseTransform.color.getARGBColor());
-            this.color.syncWrap(poseTransform.colorWrap.getRGBColor(), poseTransform.colorWrapOpacity);
             this.paintColor.setColor(poseTransform.paintColor.getRGBColor());
             this.paintIntensity.setValue(poseTransform.paintColor.a);
             this.glowingColor.setColor(poseTransform.glowingColor.getRGBColor());

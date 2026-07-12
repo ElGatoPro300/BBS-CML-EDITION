@@ -19,8 +19,6 @@ public class PoseTransform extends Transform
 
     public float fix;
     public final Color color = new Color().set(Colors.WHITE);
-    public final Color colorWrap = new Color().set(Colors.WHITE);
-    public float colorWrapOpacity;
     public final Color paintColor = new Color().set(1F, 1F, 1F, 0F);
     public final Color glowingColor = new Color().set(1F, 1F, 1F, 1F);
     public float glowIntensity;
@@ -37,8 +35,6 @@ public class PoseTransform extends Transform
 
         this.fix = 0F;
         this.color.set(Colors.WHITE);
-        this.colorWrap.set(Colors.WHITE);
-        this.colorWrapOpacity = 0F;
         this.paintColor.set(1F, 1F, 1F, 0F);
         this.glowingColor.set(1F, 1F, 1F, 1F);
         this.glowIntensity = 0F;
@@ -60,12 +56,6 @@ public class PoseTransform extends Transform
             this.color.g = Lerps.lerp(this.color.g, pose.color.g, a);
             this.color.b = Lerps.lerp(this.color.b, pose.color.b, a);
             this.color.a = Lerps.lerp(this.color.a, pose.color.a, a);
-
-            this.colorWrap.r = Lerps.lerp(this.colorWrap.r, pose.colorWrap.r, a);
-            this.colorWrap.g = Lerps.lerp(this.colorWrap.g, pose.colorWrap.g, a);
-            this.colorWrap.b = Lerps.lerp(this.colorWrap.b, pose.colorWrap.b, a);
-            this.colorWrap.a = Lerps.lerp(this.colorWrap.a, pose.colorWrap.a, a);
-            this.colorWrapOpacity = Lerps.lerp(this.colorWrapOpacity, pose.colorWrapOpacity, a);
 
             this.paintColor.r = Lerps.lerp(this.paintColor.r, pose.paintColor.r, a);
             this.paintColor.g = Lerps.lerp(this.paintColor.g, pose.paintColor.g, a);
@@ -107,15 +97,6 @@ public class PoseTransform extends Transform
                 (float) MathUtils.clamp(interp.interpolate(IInterp.context.set(preA1.color.b, a1.color.b, b1.color.b, postB1.color.b, x)), 0F, 1F),
                 (float) MathUtils.clamp(interp.interpolate(IInterp.context.set(preA1.color.a, a1.color.a, b1.color.a, postB1.color.a, x)), 0F, 1F)
             );
-
-            this.colorWrap.set(
-                (float) MathUtils.clamp(interp.interpolate(IInterp.context.set(preA1.colorWrap.r, a1.colorWrap.r, b1.colorWrap.r, postB1.colorWrap.r, x)), 0F, 1F),
-                (float) MathUtils.clamp(interp.interpolate(IInterp.context.set(preA1.colorWrap.g, a1.colorWrap.g, b1.colorWrap.g, postB1.colorWrap.g, x)), 0F, 1F),
-                (float) MathUtils.clamp(interp.interpolate(IInterp.context.set(preA1.colorWrap.b, a1.colorWrap.b, b1.colorWrap.b, postB1.colorWrap.b, x)), 0F, 1F),
-                (float) MathUtils.clamp(interp.interpolate(IInterp.context.set(preA1.colorWrap.a, a1.colorWrap.a, b1.colorWrap.a, postB1.colorWrap.a, x)), 0F, 1F)
-            );
-
-            this.colorWrapOpacity = (float) interp.interpolate(IInterp.context.set(preA1.colorWrapOpacity, a1.colorWrapOpacity, b1.colorWrapOpacity, postB1.colorWrapOpacity, x));
 
             this.paintColor.set(
                 (float) MathUtils.clamp(interp.interpolate(IInterp.context.set(preA1.paintColor.r, a1.paintColor.r, b1.paintColor.r, postB1.paintColor.r, x)), 0F, 1F),
@@ -167,15 +148,6 @@ public class PoseTransform extends Transform
                 MathUtils.clamp(this.interpolate(preA1.color.a, a1.color.a, b1.color.a, postB1.color.a, x, interp, args, preA == a, postB == b, w0, w1, w2, w3), 0F, 1F)
             );
 
-            this.colorWrap.set(
-                MathUtils.clamp(this.interpolate(preA1.colorWrap.r, a1.colorWrap.r, b1.colorWrap.r, postB1.colorWrap.r, x, interp, args, preA == a, postB == b, w0, w1, w2, w3), 0F, 1F),
-                MathUtils.clamp(this.interpolate(preA1.colorWrap.g, a1.colorWrap.g, b1.colorWrap.g, postB1.colorWrap.g, x, interp, args, preA == a, postB == b, w0, w1, w2, w3), 0F, 1F),
-                MathUtils.clamp(this.interpolate(preA1.colorWrap.b, a1.colorWrap.b, b1.colorWrap.b, postB1.colorWrap.b, x, interp, args, preA == a, postB == b, w0, w1, w2, w3), 0F, 1F),
-                MathUtils.clamp(this.interpolate(preA1.colorWrap.a, a1.colorWrap.a, b1.colorWrap.a, postB1.colorWrap.a, x, interp, args, preA == a, postB == b, w0, w1, w2, w3), 0F, 1F)
-            );
-
-            this.colorWrapOpacity = this.interpolate(preA1.colorWrapOpacity, a1.colorWrapOpacity, b1.colorWrapOpacity, postB1.colorWrapOpacity, x, interp, args, preA == a, postB == b, w0, w1, w2, w3);
-
             this.paintColor.set(
                 MathUtils.clamp(this.interpolate(preA1.paintColor.r, a1.paintColor.r, b1.paintColor.r, postB1.paintColor.r, x, interp, args, preA == a, postB == b, w0, w1, w2, w3), 0F, 1F),
                 MathUtils.clamp(this.interpolate(preA1.paintColor.g, a1.paintColor.g, b1.paintColor.g, postB1.paintColor.g, x, interp, args, preA == a, postB == b, w0, w1, w2, w3), 0F, 1F),
@@ -225,8 +197,6 @@ public class PoseTransform extends Transform
         {
             result = result && this.fix == poseTransform.fix;
             result = result && this.color.equals(poseTransform.color);
-            result = result && this.colorWrap.equals(poseTransform.colorWrap);
-            result = result && this.colorWrapOpacity == poseTransform.colorWrapOpacity;
             result = result && this.paintColor.equals(poseTransform.paintColor);
             result = result && this.glowingColor.equals(poseTransform.glowingColor);
             result = result && this.glowIntensity == poseTransform.glowIntensity;
@@ -257,8 +227,6 @@ public class PoseTransform extends Transform
         {
             this.fix = poseTransform.fix;
             this.color.copy(poseTransform.color);
-            this.colorWrap.copy(poseTransform.colorWrap);
-            this.colorWrapOpacity = poseTransform.colorWrapOpacity;
             this.paintColor.copy(poseTransform.paintColor);
             this.glowingColor.copy(poseTransform.glowingColor);
             this.glowingColor.a = 1F;
@@ -280,17 +248,6 @@ public class PoseTransform extends Transform
 
         data.putFloat("fix", this.fix);
         data.putInt("color", this.color.getARGBColor());
-
-        if (this.colorWrapOpacity > 0F || this.colorWrap.getRGBColor() != Colors.WHITE)
-        {
-            data.putInt("wrap_color", this.colorWrap.getRGBColor());
-        }
-
-        if (this.colorWrapOpacity > 0F)
-        {
-            data.putFloat("wrap_opacity", this.colorWrapOpacity);
-        }
-
         data.putInt("paint_color", this.paintColor.getARGBColor());
         data.putInt("glowing_color", this.glowingColor.getRGBColor());
         data.putFloat("glow_intensity", this.glowIntensity);
@@ -317,8 +274,6 @@ public class PoseTransform extends Transform
 
         this.fix = data.getFloat("fix");
         this.color.set(data.getInt("color", Colors.WHITE));
-        this.colorWrap.set(data.getInt("wrap_color", Colors.WHITE));
-        this.colorWrapOpacity = data.getFloat("wrap_opacity", 0F);
         this.paintColor.set(data.getInt("paint_color", 0x00FFFFFF));
         int glowArgb = data.getInt("glowing_color", 0xFFFFFF);
 

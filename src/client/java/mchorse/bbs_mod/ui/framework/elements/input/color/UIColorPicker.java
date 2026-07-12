@@ -5,7 +5,6 @@ import mchorse.bbs_mod.settings.values.ui.ValueColors;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
-import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
 import mchorse.bbs_mod.ui.framework.elements.input.text.UITextbox;
 import mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D;
 import mchorse.bbs_mod.ui.framework.elements.utils.EventPropagation;
@@ -42,45 +41,25 @@ public class UIColorPicker extends UIElement
     public static final int COLOR_PICKER_TOP = 30;
     public static final int COLOR_PICKER_GAP = 4;
     public static final int COLOR_PICKER_BAR_WIDTH = 14;
-    public static final int PRIMARY_INPUT_TOP = 5;
-    public static final int PRIMARY_INPUT_HEIGHT = 20;
-    public static final int WRAP_HEADER_HEIGHT = 14;
-    public static final int WRAP_INPUT_HEIGHT = 20;
-    public static final int WRAP_OPACITY_HEIGHT = 16;
-    public static final int SECTION_GAP = 5;
 
     public static ValueColors recentColors = new ValueColors("recent");
 
     public Color color = new Color();
-    public Color wrapColor = new Color().set(Colors.WHITE);
-    public float wrapOpacity;
     public Consumer<Integer> callback;
-    public Consumer<Integer> wrapColorChangeCallback;
-    public Consumer<Float> wrapOpacityChangeCallback;
 
     public UITextbox input;
-    public UITextbox wrapInput;
-    public UITrackpad wrapOpacityInput;
     public UIColorPalette recent;
     public UIColorPalette favorite;
 
     public boolean editAlpha;
-    public boolean wrapSectionEnabled = true;
-    public boolean wrapExpanded = false;
 
     public Area red = new Area();
     public Area green = new Area();
     public Area blue = new Area();
     public Area alpha = new Area();
-    public Area wrapHeader = new Area();
-    public Area wrapSwatch = new Area();
 
     protected int dragging = -1;
     protected Color hsv = new Color();
-    protected UIColorPicker nestedWrapPicker;
-
-    private int storedFavoriteH;
-    private int storedRecentH;
 
     public static void renderAlphaPreviewQuad(Batcher2D batcher, int x1, int y1, int x2, int y2, Color color)
     {
@@ -112,20 +91,6 @@ public class UIColorPicker extends UIElement
             this.callback();
         });
         this.input.context((menu) -> menu.action(Icons.FAVORITE, UIKeys.COLOR_CONTEXT_FAVORITES_ADD, () -> this.addToFavorites(this.color)));
-
-        this.wrapInput = new UITextbox(7, (string) ->
-        {
-            this.setWrapColor(Colors.parse(string), true);
-        });
-        this.wrapInput.setVisible(false);
-
-        this.wrapOpacityInput = new UITrackpad((value) ->
-        {
-            this.setWrapOpacity(value.floatValue(), true);
-        });
-        this.wrapOpacityInput.limit(0D, 1D).increment(0.01D).values(0.1D, 0.01D, 0.05D);
-        this.wrapOpacityInput.tooltip(UIKeys.COLOR_WRAP_OPACITY);
-        this.wrapOpacityInput.setVisible(false);
 
         this.recent = new UIColorPalette((color) ->
         {
@@ -159,15 +124,11 @@ public class UIColorPicker extends UIElement
             }
         });
 
-        this.input.relative(this).set(5, PRIMARY_INPUT_TOP, 0, PRIMARY_INPUT_HEIGHT).w(1, -35);
-        this.wrapInput.relative(this).w(1, -35).h(WRAP_INPUT_HEIGHT);
-        this.wrapOpacityInput.relative(this).h(WRAP_OPACITY_HEIGHT).w(1, -10);
-        this.favorite.relative(this).w(1F, -10);
-        this.recent.relative(this).w(1F, -10);
+        this.input.relative(this).set(5, 5, 0, 20).w(1, -35);
+        this.favorite.relative(this).xy(5, COLOR_PICKER_TOP + COLOR_PICKER_SIZE + 10).w(1F, -10);
+        this.recent.relative(this.favorite).w(1F);
 
-        this.add(this.input, this.wrapInput, this.wrapOpacityInput, this.favorite, this.recent);
-
-        this.eventPropagataion(EventPropagation.BLOCK_INSIDE).add(this.input, this.wrapInput, this.wrapOpacityInput, this.favorite, this.recent);
+        this.eventPropagataion(EventPropagation.BLOCK_INSIDE).add(this.input, this.favorite, this.recent);
     }
 
     public UIColorPicker editAlpha()
@@ -176,100 +137,6 @@ public class UIColorPicker extends UIElement
         this.input.textbox.setLength(9);
 
         return this;
-    }
-
-    public UIColorPicker withoutWrapSection()
-    {
-        this.wrapSectionEnabled = false;
-
-        return this;
-    }
-
-    public void setWrapColorChangeCallback(Consumer<Integer> wrapColorChangeCallback)
-    {
-        this.wrapColorChangeCallback = wrapColorChangeCallback;
-    }
-
-    public void setWrapOpacityChangeCallback(Consumer<Float> wrapOpacityChangeCallback)
-    {
-        this.wrapOpacityChangeCallback = wrapOpacityChangeCallback;
-    }
-
-    public void setWrapColor(int color, boolean notify)
-    {
-        this.wrapColor.set(color, false);
-        this.updateWrapField();
-
-        if (notify)
-        {
-            this.notifyWrapColorChange();
-        }
-    }
-
-    public void setWrapOpacity(float opacity, boolean notify)
-    {
-        this.wrapOpacity = MathUtils.clamp(opacity, 0F, 1F);
-        this.wrapOpacityInput.setValue(this.wrapOpacity);
-
-        if (notify)
-        {
-            this.notifyWrapOpacityChange();
-        }
-    }
-
-    protected void notifyWrapColorChange()
-    {
-        if (this.wrapColorChangeCallback != null)
-        {
-            this.wrapColorChangeCallback.accept(this.wrapColor.getRGBColor());
-        }
-    }
-
-    protected void notifyWrapOpacityChange()
-    {
-        if (this.wrapOpacityChangeCallback != null)
-        {
-            this.wrapOpacityChangeCallback.accept(this.wrapOpacity);
-        }
-    }
-
-    public void updateWrapField()
-    {
-        this.wrapInput.setText(this.wrapColor.stringify(false));
-    }
-
-    protected int getWrapBlockHeight()
-    {
-        if (!this.wrapSectionEnabled)
-        {
-            return 0;
-        }
-
-        int height = WRAP_HEADER_HEIGHT;
-
-        if (this.wrapExpanded)
-        {
-            height += SECTION_GAP + WRAP_INPUT_HEIGHT + SECTION_GAP + WRAP_OPACITY_HEIGHT;
-        }
-
-        return height;
-    }
-
-    protected int getWrapSectionTop()
-    {
-        return COLOR_PICKER_TOP + COLOR_PICKER_SIZE + SECTION_GAP;
-    }
-
-    protected int getPalettesTop()
-    {
-        int top = this.getWrapSectionTop();
-
-        if (this.wrapSectionEnabled)
-        {
-            top += this.getWrapBlockHeight() + SECTION_GAP;
-        }
-
-        return top;
     }
 
     public void updateField()
@@ -308,7 +175,6 @@ public class UIColorPicker extends UIElement
     {
         this.xy(x, y);
         this.setupSize();
-        this.resize();
     }
 
     private void setupSize()
@@ -316,10 +182,7 @@ public class UIColorPicker extends UIElement
         int width = 10 + COLOR_PICKER_SIZE + COLOR_PICKER_GAP + COLOR_PICKER_BAR_WIDTH + (this.editAlpha ? COLOR_PICKER_GAP + COLOR_PICKER_BAR_WIDTH : 0);
         int recent = this.recent.colors.isEmpty() ? 0 : this.recent.getHeight(width - 10);
         int favorite = this.favorite.colors.isEmpty() ? 0 : this.favorite.getHeight(width - 10);
-        int base = this.getPalettesTop() + 10;
-
-        this.storedFavoriteH = favorite;
-        this.storedRecentH = recent;
+        int base = COLOR_PICKER_TOP + COLOR_PICKER_SIZE + 10;
 
         this.w(width);
         base += favorite > 0 ? favorite + 15 : 0;
@@ -328,73 +191,15 @@ public class UIColorPicker extends UIElement
         this.h(base);
         this.favorite.h(favorite);
         this.recent.h(recent);
-    }
+        this.favorite.y(COLOR_PICKER_TOP + COLOR_PICKER_SIZE + 10);
 
-    private void toggleWrapSection()
-    {
-        this.wrapExpanded = !this.wrapExpanded;
-        this.wrapInput.setVisible(this.wrapExpanded);
-        this.wrapOpacityInput.setVisible(this.wrapExpanded);
-        this.updateWrapField();
-        this.wrapOpacityInput.setValue(this.wrapOpacity);
-        this.setupSize();
-        this.resize();
-    }
-
-    private void openNestedWrapPicker(UIContext context)
-    {
-        if (this.nestedWrapPicker == null)
+        if (favorite > 0)
         {
-            this.nestedWrapPicker = new UIColorPicker((color) ->
-            {
-                this.setWrapColor(color, true);
-            }).withoutWrapSection();
+            this.recent.y(1F, 15);
         }
-
-        if (this.nestedWrapPicker.hasParent())
+        else
         {
-            this.nestedWrapPicker.removeFromParent();
-
-            return;
-        }
-
-        UIElement parent = this.getParent();
-
-        if (parent == null)
-        {
-            return;
-        }
-
-        parent.add(this.nestedWrapPicker);
-        this.nestedWrapPicker.setColor(this.wrapColor.getRGBColor());
-        this.nestedWrapPicker.setup(context.globalX(this.wrapSwatch.ex() + 4), context.globalY(this.wrapSwatch.y));
-        this.nestedWrapPicker.bounds(context.menu.main, 2);
-        this.nestedWrapPicker.resize();
-    }
-
-    private void renderWrapSection(UIContext context)
-    {
-        if (!this.wrapSectionEnabled)
-        {
-            return;
-        }
-
-        int arrowX = this.wrapHeader.x + 2;
-        int arrowY = this.wrapHeader.my();
-
-        context.batcher.icon(this.wrapExpanded ? Icons.DOWNLOAD : Icons.UPLOAD, arrowX, arrowY);
-        context.batcher.text(UIKeys.COLOR_WRAP.get(), this.wrapHeader.x + 14, this.wrapHeader.y + 3);
-
-        if (this.wrapExpanded)
-        {
-            int opacityLabelY = this.wrapOpacityInput.area.y - 10;
-
-            context.batcher.text(UIKeys.COLOR_WRAP_OPACITY.get(), this.wrapOpacityInput.area.x, opacityLabelY, Colors.GRAY);
-
-            int swatchHover = this.wrapSwatch.isInside(context) ? Colors.A50 : Colors.A25;
-
-            context.batcher.box(this.wrapSwatch.x, this.wrapSwatch.y, this.wrapSwatch.ex(), this.wrapSwatch.ey(), this.wrapColor.getARGBColor());
-            context.batcher.outline(this.wrapSwatch.x, this.wrapSwatch.y, this.wrapSwatch.ex(), this.wrapSwatch.ey(), swatchHover);
+            this.recent.y(0);
         }
     }
 
@@ -426,28 +231,6 @@ public class UIColorPicker extends UIElement
     @Override
     public void resize()
     {
-        if (this.wrapSectionEnabled && this.wrapExpanded)
-        {
-            int bodyY = this.getWrapSectionTop() + WRAP_HEADER_HEIGHT + SECTION_GAP;
-            int opacityY = bodyY + WRAP_INPUT_HEIGHT + SECTION_GAP;
-
-            this.wrapInput.set(5, bodyY, 0, WRAP_INPUT_HEIGHT).w(1, -35);
-            this.wrapOpacityInput.set(5, opacityY, 0, WRAP_OPACITY_HEIGHT).w(1, -10);
-        }
-
-        int palettesTop = this.getPalettesTop();
-
-        this.favorite.xy(5, palettesTop);
-
-        if (this.storedFavoriteH > 0)
-        {
-            this.recent.xy(5, palettesTop + this.storedFavoriteH + 15);
-        }
-        else
-        {
-            this.recent.xy(5, palettesTop);
-        }
-
         super.resize();
 
         int x = this.area.x + 5;
@@ -469,49 +252,11 @@ public class UIColorPicker extends UIElement
         {
             this.alpha.set(0, 0, 0, 0);
         }
-
-        if (this.wrapSectionEnabled)
-        {
-            int headerY = this.getWrapSectionTop();
-            int headerWidth = this.area.w - 10;
-
-            this.wrapHeader.set(this.area.x + 5, this.area.y + headerY, headerWidth, WRAP_HEADER_HEIGHT);
-
-            if (this.wrapExpanded)
-            {
-                int bodyY = headerY + WRAP_HEADER_HEIGHT + SECTION_GAP;
-
-                this.wrapSwatch.set(this.area.ex() - 25, this.area.y + bodyY, 20, WRAP_INPUT_HEIGHT);
-            }
-            else
-            {
-                this.wrapSwatch.set(0, 0, 0, 0);
-            }
-        }
-        else
-        {
-            this.wrapHeader.set(0, 0, 0, 0);
-            this.wrapSwatch.set(0, 0, 0, 0);
-        }
     }
 
     @Override
     public boolean subMouseClicked(UIContext context)
     {
-        if (this.wrapSectionEnabled && this.wrapHeader.isInside(context) && context.mouseButton == 0)
-        {
-            this.toggleWrapSection();
-
-            return true;
-        }
-
-        if (this.wrapSectionEnabled && this.wrapExpanded && this.wrapSwatch.isInside(context) && context.mouseButton == 0)
-        {
-            this.openNestedWrapPicker(context);
-
-            return true;
-        }
-
         if (this.red.isInside(context))
         {
             this.dragging = 1;
@@ -531,7 +276,7 @@ public class UIColorPicker extends UIElement
             return true;
         }
 
-        if (!this.area.isInside(context) && (this.nestedWrapPicker == null || !this.nestedWrapPicker.hasParent()))
+        if (!this.area.isInside(context))
         {
             this.removeFromParent();
             this.addToRecent();
@@ -553,13 +298,6 @@ public class UIColorPicker extends UIElement
     {
         if (context.isPressed(GLFW.GLFW_KEY_ESCAPE))
         {
-            if (this.nestedWrapPicker != null && this.nestedWrapPicker.hasParent())
-            {
-                this.nestedWrapPicker.removeFromParent();
-
-                return true;
-            }
-
             this.removeFromParent();
             this.addToRecent();
 
@@ -598,9 +336,9 @@ public class UIColorPicker extends UIElement
         }
 
         this.area.render(context.batcher, Colors.LIGHTEST_GRAY);
-        this.renderRect(context.batcher, this.area.ex() - 25, this.area.y + PRIMARY_INPUT_TOP, this.area.ex() - 5, this.area.y + PRIMARY_INPUT_TOP + PRIMARY_INPUT_HEIGHT);
+        this.renderRect(context.batcher, this.area.ex() - 25, this.area.y + 5, this.area.ex() - 5, this.area.y + 25);
 
-        context.batcher.outline(this.area.ex() - 25, this.area.y + PRIMARY_INPUT_TOP, this.area.ex() - 5, this.area.y + PRIMARY_INPUT_TOP + PRIMARY_INPUT_HEIGHT, Colors.A25);
+        context.batcher.outline(this.area.ex() - 25, this.area.y + 5, this.area.ex() - 5, this.area.y + 25, Colors.A25);
 
         Color temp = new Color();
         Colors.HSVtoRGB(temp, this.hsv.r, 1F, 1F);
@@ -655,8 +393,6 @@ public class UIColorPicker extends UIElement
         {
             context.batcher.text(UIKeys.COLOR_RECENT.get(), this.recent.area.x, this.recent.area.y - 10, Colors.GRAY);
         }
-
-        this.renderWrapSection(context);
 
         super.render(context);
     }

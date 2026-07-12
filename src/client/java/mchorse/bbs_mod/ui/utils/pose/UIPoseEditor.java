@@ -456,8 +456,6 @@ public class UIPoseEditor extends UIElement
                 if (this.onChange != null) this.onChange.run();
             });
         });
-        this.color.picker.setWrapColorChangeCallback(this::applyWrapColorChange);
-        this.color.picker.setWrapOpacityChangeCallback(this::applyWrapOpacityChange);
         this.paintColor = new UIColor((c) ->
         {
             String selectedCategory = this.categories != null ? this.categories.getCurrentFirst() : null;
@@ -1132,7 +1130,6 @@ public class UIPoseEditor extends UIElement
         {
             this.fix.setValue(poseTransform.fix);
             this.color.setColor(poseTransform.color.getARGBColor());
-            this.color.syncWrap(poseTransform.colorWrap.getRGBColor(), poseTransform.colorWrapOpacity);
             this.paintColor.setColor(poseTransform.paintColor.getRGBColor());
             this.paintIntensity.setValue(poseTransform.paintColor.a);
             this.glowingColor.setColor(poseTransform.glowingColor.getRGBColor());
@@ -1145,7 +1142,6 @@ public class UIPoseEditor extends UIElement
         {
             this.fix.setValue(0F);
             this.color.setColor(Colors.WHITE);
-            this.color.syncWrap(Colors.WHITE, 0F);
             this.paintColor.setColor(0xFFFFFF);
             this.paintIntensity.setValue(0F);
             this.glowingColor.setColor(0xFFFFFF);
@@ -1164,58 +1160,6 @@ public class UIPoseEditor extends UIElement
     protected void setColor(PoseTransform transform, int value)
     {
         transform.color.set(value);
-    }
-
-    protected void setWrapColor(PoseTransform transform, int value)
-    {
-        transform.colorWrap.set(value);
-    }
-
-    protected void setWrapOpacity(PoseTransform transform, float value)
-    {
-        transform.colorWrapOpacity = MathUtils.clamp(value, 0F, 1F);
-    }
-
-    private void applyWrapColorChange(int color)
-    {
-        String selectedCategory = this.categories != null ? this.categories.getCurrentFirst() : null;
-
-        if (selectedCategory != null && !selectedCategory.isEmpty())
-        {
-            this.applyCategory((p) -> this.setWrapColor(p, color));
-        }
-        else if (this.applyLiveMirror((p) -> this.setWrapColor(p, color)))
-        {}
-        else if (this.transform.getTransform() instanceof PoseTransform poseTransform)
-        {
-            this.setWrapColor(poseTransform, color);
-        }
-
-        if (this.onChange != null)
-        {
-            this.onChange.run();
-        }
-    }
-
-    private void applyWrapOpacityChange(float opacity)
-    {
-        String selectedCategory = this.categories != null ? this.categories.getCurrentFirst() : null;
-
-        if (selectedCategory != null && !selectedCategory.isEmpty())
-        {
-            this.applyCategory((p) -> this.setWrapOpacity(p, opacity));
-        }
-        else if (this.applyLiveMirror((p) -> this.setWrapOpacity(p, opacity)))
-        {}
-        else if (this.transform.getTransform() instanceof PoseTransform poseTransform)
-        {
-            this.setWrapOpacity(poseTransform, opacity);
-        }
-
-        if (this.onChange != null)
-        {
-            this.onChange.run();
-        }
     }
 
     protected void setPaintColor(PoseTransform transform, int value)

@@ -7,7 +7,6 @@ import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.entities.StubEntity;
 import mchorse.bbs_mod.forms.forms.ItemForm;
-import mchorse.bbs_mod.forms.forms.utils.FormWrapPaint;
 import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.forms.renderers.utils.FormColorBlend;
 import mchorse.bbs_mod.ui.framework.UIContext;
@@ -122,7 +121,6 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
 
         paintSettings.resolveColor(legacyPaint, resolvedPaint);
         resolvedPaint.a = paintSettings.resolveIntensity(legacyPaint);
-        FormWrapPaint.mergeFormWrapIntoPaint(resolvedPaint, this.form, paintSettings, legacyPaint);
 
         consumers.setSubstitute(BBSRendering.getColorConsumer(BlockFormRenderer.color, resolvedPaint));
 

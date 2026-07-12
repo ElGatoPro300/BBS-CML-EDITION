@@ -194,9 +194,6 @@ public class UIFluidFormPanel extends UIFormPanel<FluidForm>
     {
         super.startEdit(form);
 
-        this.bindColorWrap(this.color);
-        this.syncColorWrap(this.color);
-
         this.presets.setValue(0);
         this.mode.setValue(form.mode.get().ordinal());
         

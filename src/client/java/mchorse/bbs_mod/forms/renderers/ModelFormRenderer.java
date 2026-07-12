@@ -27,7 +27,6 @@ import mchorse.bbs_mod.forms.forms.BodyPart;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.forms.ModelForm;
 import mchorse.bbs_mod.film.FormRenderDepth;
-import mchorse.bbs_mod.forms.forms.utils.FormWrapPaint;
 import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
 import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.forms.forms.utils.TextureBlend;
@@ -497,9 +496,11 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         Color legacyPaint = this.form.paintColor.get();
         Color paintColor = new Color();
 
-        FormWrapPaint.mergeFormWrapIntoPaint(paintColor, this.form, paint, legacyPaint);
+        paint.resolveColor(legacyPaint, paintColor);
 
-        float paintStrength = paintColor.a;
+        float paintStrength = paint.resolveIntensity(legacyPaint);
+
+        paintColor.a = paintStrength;
         GlowSettings glow = this.form.glowSettings.get();
         Color legacyGlow = this.form.glowingColor.get();
         Color glowColor = new Color();
@@ -905,11 +906,6 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
      */
     private boolean hasAnyPaint(ModelInstance model)
     {
-        if (FormWrapPaint.hasFormWrap(this.form))
-        {
-            return true;
-        }
-
         PaintSettings paint = this.form.paintSettings.get();
         Color legacyPaint = this.form.paintColor.get();
 
@@ -923,11 +919,6 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             for (ModelGroup group : model.getModel().getAllGroups())
             {
                 if (group.paintColor != null && group.paintColor.a != 0F)
-                {
-                    return true;
-                }
-
-                if (FormWrapPaint.hasGroupWrap(group))
                 {
                     return true;
                 }

@@ -1,19 +1,14 @@
 package mchorse.bbs_mod.ui.framework.elements.input;
 
-import mchorse.bbs_mod.settings.values.core.ValueColor;
-import mchorse.bbs_mod.settings.values.numeric.ValueFloat;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.input.color.UIColorPicker;
 import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
 import mchorse.bbs_mod.utils.Direction;
-import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.colors.Colors;
 
 import java.util.function.Consumer;
-import java.util.function.DoubleSupplier;
-import java.util.function.IntSupplier;
 
 /**
  * Color GUI element
@@ -72,24 +67,6 @@ public class UIColor extends UIElement
         this.label = false;
 
         return this;
-    }
-
-    public void bindWrap(ValueColor wrapColor, ValueFloat wrapOpacity)
-    {
-        this.picker.setWrapColorChangeCallback((color) -> wrapColor.set(Color.rgba(color)));
-        this.picker.setWrapOpacityChangeCallback(wrapOpacity::set);
-    }
-
-    public void bindWrap(IntSupplier colorGetter, Consumer<Integer> colorSetter, DoubleSupplier opacityGetter, Consumer<Float> opacitySetter)
-    {
-        this.picker.setWrapColorChangeCallback((color) -> colorSetter.accept(color));
-        this.picker.setWrapOpacityChangeCallback((opacity) -> opacitySetter.accept(opacity));
-    }
-
-    public void syncWrap(int wrapColor, float wrapOpacity)
-    {
-        this.picker.setWrapColor(wrapColor, false);
-        this.picker.setWrapOpacity(wrapOpacity, false);
     }
 
     public void setColor(int color)

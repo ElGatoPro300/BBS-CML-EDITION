@@ -262,9 +262,6 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
     {
         super.startEdit(form);
 
-        this.bindColorWrap(this.color);
-        this.syncColorWrap(this.color);
-
         ModelInstance model = ModelFormRenderer.getModel(this.form);
         String poseGroup = model == null ? this.form.model.get() : model.poseGroup;
         if (poseGroup == null || poseGroup.isEmpty())

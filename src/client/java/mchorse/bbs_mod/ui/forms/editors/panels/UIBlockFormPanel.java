@@ -95,9 +95,6 @@ public class UIBlockFormPanel extends UIFormPanel<BlockForm>
     {
         super.startEdit(form);
 
-        this.bindColorWrap(this.color);
-        this.syncColorWrap(this.color);
-
         BlockState blockState = this.form.blockState.get();
 
         this.color.setColor(form.color.get().getARGBColor());

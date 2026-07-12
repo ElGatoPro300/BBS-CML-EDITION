@@ -323,9 +323,6 @@ public class UILabelFormPanel extends UIFormPanel<LabelForm>
     {
         super.startEdit(form);
 
-        this.bindColorWrap(this.color);
-        this.syncColorWrap(this.color);
-
         this.text.setText(form.text.get());
         this.billboard.setValue(form.billboard.get());
         this.nametag.setValue(form.nametag.get());
