@@ -29,11 +29,6 @@ public class UIFilmKeyframes extends UIKeyframes
         return this;
     }
 
-    public boolean isReplayWorldEditor()
-    {
-        return this.absolute;
-    }
-
     public long getClipOffset()
     {
         if (this.absolute)
@@ -57,6 +52,12 @@ public class UIFilmKeyframes extends UIKeyframes
         }
 
         return (int) (this.editor.getCursor() - this.getClipOffset());
+    }
+
+    @Override
+    protected float getPlayheadTick()
+    {
+        return this.getOffset();
     }
 
     @Override

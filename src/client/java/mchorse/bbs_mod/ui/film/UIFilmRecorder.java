@@ -77,7 +77,20 @@ public class UIFilmRecorder extends UIElement
 
     public void startRecording(int duration, Texture texture)
     {
-        this.startRecording(duration, texture.id, texture.width, texture.height);
+        int w = BBSRendering.getVideoWidth();
+        int h = BBSRendering.getVideoHeight();
+
+        if (w % 2 == 1)
+        {
+            w -= 1;
+        }
+
+        if (h % 2 == 1)
+        {
+            h -= 1;
+        }
+
+        this.startRecording(duration, texture.id, w, h);
     }
 
     public void startRecording(int duration, int id, int w, int h)
@@ -133,8 +146,18 @@ public class UIFilmRecorder extends UIElement
         this.end = looping && min != max ? Math.max(min, max) : duration;
         this.warmupTicks = warmup;
         this.pendingId = texture.id;
-        this.pendingW = texture.width;
-        this.pendingH = texture.height;
+        this.pendingW = BBSRendering.getVideoWidth();
+        this.pendingH = BBSRendering.getVideoHeight();
+
+        if (this.pendingW % 2 == 1)
+        {
+            this.pendingW -= 1;
+        }
+
+        if (this.pendingH % 2 == 1)
+        {
+            this.pendingH -= 1;
+        }
 
         this.editor.setCursor(looping ? Math.min(min, max) : 0);
         this.editor.notifyServer(ActionState.RESTART);
@@ -164,9 +187,21 @@ public class UIFilmRecorder extends UIElement
             {
                 Clips camera = this.editor.getData().camera;
                 List<AudioClip> audioClips = camera.getClips(AudioClip.class);
+                boolean keepSeparate = BBSSettings.videoSettings.audioSeparateFile.get();
+                File file;
 
-                String name = StringUtils.createTimestampFilename() + ".wav";
-                File file = new File(BBSRendering.getVideoFolder(), name);
+                if (keepSeparate)
+                {
+                    String name = StringUtils.createTimestampFilename() + ".wav";
+
+                    file = new File(BBSRendering.getVideoFolder(), name);
+                }
+                else
+                {
+                    file = File.createTempFile("bbs_film_audio_", ".wav");
+                    file.deleteOnExit();
+                }
+
                 Vector2i range = BBSSettings.editorLoop.get() ? this.editor.getLoopingRange() : new Vector2i();
 
                 if (AudioRenderer.renderAudio(file, audioClips, camera.calculateDuration(), 48000, TimeUtils.toSeconds(range.x), TimeUtils.toSeconds(range.y)))

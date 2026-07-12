@@ -140,6 +140,11 @@ public class SoundManager implements IWatchDogListener
 
     public SoundBuffer get(Link link, boolean includeWaveform)
     {
+        if (link == null)
+        {
+            return null;
+        }
+
         if (!this.buffers.containsKey(link))
         {
             return this.load(link, includeWaveform);

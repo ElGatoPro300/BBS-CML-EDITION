@@ -6,14 +6,12 @@ import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D;
 import mchorse.bbs_mod.ui.framework.elements.utils.CustomFontManager;
 
+import com.mojang.blaze3d.systems.RenderSystem;
+
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.texture.NativeImage;
 import net.minecraft.client.texture.NativeImageBackedTexture;
 import net.minecraft.util.Identifier;
-
-import com.mojang.blaze3d.systems.RenderSystem;
-
-import org.lwjgl.opengl.GL11;
 
 import java.awt.Color;
 import java.awt.Font;
@@ -32,6 +30,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+
+import org.lwjgl.opengl.GL11;
 
 import javax.imageio.ImageIO;
 
@@ -341,7 +341,7 @@ public final class RtlAwtTextRenderer
 
         batcher.texturedBox(glId, 0xFFFFFFFF, x, y, cached.displayWidth, cached.displayHeight, 0F, 0F, cached.textureWidth, cached.textureHeight, cached.textureWidth, cached.textureHeight);
         batcher.flush();
-        RenderSystem.depthFunc(GL11.GL_ALWAYS);
+        RenderSystem.depthFunc(org.lwjgl.opengl.GL11.GL_ALWAYS);
 
         return true;
     }
@@ -461,7 +461,7 @@ public final class RtlAwtTextRenderer
     private static AttributedString buildAttributedString(String text, Color defaultColor)
     {
         StringBuilder plain = new StringBuilder(text.length());
-        List<ColorRange> ranges = new ArrayList<>();
+        java.util.List<ColorRange> ranges = new java.util.ArrayList<>();
         Color current = defaultColor;
         int rangeStart = 0;
 

@@ -7,9 +7,12 @@ import mchorse.bbs_mod.cubic.data.model.ModelGroup;
 import mchorse.bbs_mod.cubic.data.model.ModelMesh;
 import mchorse.bbs_mod.cubic.data.model.ModelQuad;
 import mchorse.bbs_mod.cubic.data.model.ModelVertex;
+import mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer;
+import mchorse.bbs_mod.forms.renderers.utils.FormColorBlend;
 import mchorse.bbs_mod.obj.shapes.ShapeKeys;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.utils.MathUtils;
+import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.interps.Lerps;
 
 import net.minecraft.client.render.BufferBuilder;
@@ -37,6 +40,9 @@ public class CubicCubeRenderer implements ICubicRenderer
     private final static Vector2f u1 = new Vector2f();
     private final static Vector2f u2 = new Vector2f();
     private final static Vector2f u3 = new Vector2f();
+
+    private final static Vector3f edge1 = new Vector3f();
+    private final static Vector3f edge2 = new Vector3f();
 
     private static Matrix4f modelM = new Matrix4f();
     private static Matrix3f normalM = new Matrix3f();
@@ -119,6 +125,19 @@ public class CubicCubeRenderer implements ICubicRenderer
     @Override
     public boolean renderGroup(BufferBuilder builder, MatrixStack stack, ModelGroup group, Model model)
     {
+        ModelVAORenderer.setGroupPaint(
+            this.resolveEffectivePaintR(group),
+            this.resolveEffectivePaintG(group),
+            this.resolveEffectivePaintB(group),
+            this.resolveEffectivePaintStrength(group)
+        );
+        ModelVAORenderer.setGroupGlowing(
+            this.resolveEffectiveGlowR(group),
+            this.resolveEffectiveGlowG(group),
+            this.resolveEffectiveGlowB(group),
+            this.resolveEffectiveGlowStrength(group)
+        );
+
         for (ModelCube cube : group.cubes)
         {
             this.renderCube(builder, stack, group, cube);
@@ -181,6 +200,16 @@ public class CubicCubeRenderer implements ICubicRenderer
             u2.set(baseData.uvs.get(i * 3 + 1));
             u3.set(baseData.uvs.get(i * 3 + 2));
 
+            Vector3f baseFaceNormal = new Vector3f();
+
+            this.recomputeFaceNormal(
+                baseFaceNormal,
+                baseData.vertices.get(i * 3),
+                baseData.vertices.get(i * 3 + 1),
+                baseData.vertices.get(i * 3 + 2),
+                null
+            );
+
             /* Apply shape keys */
             for (Map.Entry<String, Float> entry : this.shapeKeys.shapeKeys.entrySet())
             {
@@ -204,24 +233,51 @@ public class CubicCubeRenderer implements ICubicRenderer
                 }
             }
 
-            /* Write vertices */
-            this.normal.set(n1.x, n1.y, n1.z);
+            this.recomputeFaceNormal(this.normal, v1, v2, v3, baseFaceNormal);
+
+            if (this.normal.lengthSquared() < 0.0001F)
+            {
+                continue;
+            }
+
             stack.peek().getNormalMatrix().transform(this.normal);
             this.modelVertex.set(v1, u1, model);
             this.writeVertex(builder, stack, group, this.modelVertex, this.normal);
 
-            this.normal.set(n2.x, n2.y, n2.z);
-            stack.peek().getNormalMatrix().transform(this.normal);
             this.modelVertex.set(v2, u2, model);
             this.writeVertex(builder, stack, group, this.modelVertex, this.normal);
 
-            this.normal.set(n3.x, n3.y, n3.z);
-            stack.peek().getNormalMatrix().transform(this.normal);
             this.modelVertex.set(v3, u3, model);
             this.writeVertex(builder, stack, group, this.modelVertex, this.normal);
         }
 
         stack.pop();
+    }
+
+    private void recomputeFaceNormal(Vector3f out, Vector3f a, Vector3f b, Vector3f c, Vector3f reference)
+    {
+        edge1.set(b).sub(a);
+        edge2.set(c).sub(a);
+        out.set(edge1).cross(edge2);
+
+        float lenSq = out.lengthSquared();
+
+        if (lenSq < 0.0001F)
+        {
+            if (reference != null && reference.lengthSquared() > 0.0001F)
+            {
+                out.set(reference);
+            }
+
+            return;
+        }
+
+        out.mul(1F / (float) Math.sqrt(lenSq));
+
+        if (reference != null && reference.lengthSquared() > 0.0001F && out.dot(reference) < 0F)
+        {
+            out.negate();
+        }
     }
 
     private void relativeShift(Vector3f temp, Vector3f initial, Vector3f current, float x)
@@ -242,8 +298,33 @@ public class CubicCubeRenderer implements ICubicRenderer
         this.vertex.set(vertex.vertex.x, vertex.vertex.y, vertex.vertex.z, 1);
         stack.peek().getPositionMatrix().transform(this.vertex);
 
+        float r = this.r * group.color.r;
+        float g = this.g * group.color.g;
+        float b = this.b * group.color.b;
+        float a = this.a * group.color.a;
+        float effectiveGlowStrength = this.resolveEffectiveGlowStrength(group);
+
+        /* Shape-key models always use BBS shader emission; CPU brighten only mimics flat paint. */
+        if (effectiveGlowStrength != 0F && !this.skipsCpuGlowFallback())
+        {
+            Color groupColor = new Color().set(r, g, b, a);
+            Color glowColor = new Color().set(
+                this.resolveEffectiveGlowR(group),
+                this.resolveEffectiveGlowG(group),
+                this.resolveEffectiveGlowB(group),
+                1F
+            );
+
+            FormColorBlend.blendBrighten(groupColor, glowColor, effectiveGlowStrength);
+
+            r = groupColor.r;
+            g = groupColor.g;
+            b = groupColor.b;
+            a = groupColor.a;
+        }
+
         builder.vertex(this.vertex.x, this.vertex.y, this.vertex.z)
-            .color(this.r * group.color.r, this.g * group.color.g, this.b * group.color.b, this.a * group.color.a)
+            .color(r, g, b, a)
             .texture(vertex.uv.x, vertex.uv.y)
             .overlay(this.overlay);
 
@@ -253,12 +334,116 @@ public class CubicCubeRenderer implements ICubicRenderer
         }
         else
         {
-            int u = (int) Lerps.lerp(this.light & '\uffff', LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, MathUtils.clamp(group.lighting, 0F, 1F));
-            int v = this.light >> 16 & '\uffff';
+            int groupLight = this.light;
+
+            if (effectiveGlowStrength != 0F && !this.skipsCpuGlowFallback() && !ModelVAORenderer.isPaintOverlayPass())
+            {
+                float glowLightT = MathUtils.clamp(Math.abs(effectiveGlowStrength), 0F, 1F);
+                int baseU = groupLight & '\uffff';
+                int u = (int) Lerps.lerp(baseU, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, glowLightT);
+                int v = groupLight >> 16 & '\uffff';
+
+                groupLight = u | v << 16;
+            }
+
+            int u = (int) Lerps.lerp(groupLight & '\uffff', LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, MathUtils.clamp(group.lighting, 0F, 1F));
+            int v = groupLight >> 16 & '\uffff';
 
             builder.light(u, v);
         }
 
         builder.normal(normal.x, normal.y, normal.z);
+    }
+
+    protected boolean skipsCpuGlowFallback()
+    {
+        return ModelVAORenderer.isGlowingUniformActive()
+            || ModelVAORenderer.isGlowDeferredToOverlay()
+            || ModelVAORenderer.isEmissionOnlyPass();
+    }
+
+    protected float resolveEffectiveGlowStrength(ModelGroup group)
+    {
+        if (ModelVAORenderer.isGlowDeferredToOverlay())
+        {
+            return 0F;
+        }
+
+        if (group.glowIntensity != 0F)
+        {
+            return group.glowIntensity;
+        }
+
+        return ModelVAORenderer.getBaseGlowingStrength();
+    }
+
+    protected float resolveEffectiveGlowR(ModelGroup group)
+    {
+        if (group.glowIntensity != 0F)
+        {
+            return group.glowingColor.r;
+        }
+
+        return ModelVAORenderer.getBaseGlowingR();
+    }
+
+    protected float resolveEffectiveGlowG(ModelGroup group)
+    {
+        if (group.glowIntensity != 0F)
+        {
+            return group.glowingColor.g;
+        }
+
+        return ModelVAORenderer.getBaseGlowingG();
+    }
+
+    protected float resolveEffectiveGlowB(ModelGroup group)
+    {
+        if (group.glowIntensity != 0F)
+        {
+            return group.glowingColor.b;
+        }
+
+        return ModelVAORenderer.getBaseGlowingB();
+    }
+
+    protected float resolveEffectivePaintStrength(ModelGroup group)
+    {
+        if (group.paintColor.a != 0F)
+        {
+            return group.paintColor.a;
+        }
+
+        return ModelVAORenderer.getBasePaintStrength();
+    }
+
+    protected float resolveEffectivePaintR(ModelGroup group)
+    {
+        if (group.paintColor.a != 0F)
+        {
+            return group.paintColor.r;
+        }
+
+        return ModelVAORenderer.getBasePaintR();
+    }
+
+    protected float resolveEffectivePaintG(ModelGroup group)
+    {
+        if (group.paintColor.a != 0F)
+        {
+            return group.paintColor.g;
+        }
+
+        return ModelVAORenderer.getBasePaintG();
+    }
+
+    protected float resolveEffectivePaintB(ModelGroup group)
+    {
+        if (group.paintColor.a != 0F)
+        {
+            return group.paintColor.b;
+        }
+
+        return ModelVAORenderer.getBasePaintB();
     }
 }

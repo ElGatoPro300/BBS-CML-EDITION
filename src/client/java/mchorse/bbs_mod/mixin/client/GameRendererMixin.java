@@ -152,9 +152,16 @@ public class GameRendererMixin
         }
     }
 
-    @Inject(at = @At("HEAD"), method = "renderWorld")
+    @Inject(at = @At("HEAD"), method = "renderWorld", cancellable = true)
     private void onWorldRenderBegin(CallbackInfo callbackInfo)
     {
+        if (BBSRendering.shouldSkipWorldRender())
+        {
+            callbackInfo.cancel();
+
+            return;
+        }
+
         BBSRendering.onWorldRenderBegin();
     }
 

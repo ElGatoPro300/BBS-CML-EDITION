@@ -144,6 +144,7 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
     public UIIcon gizmoScale;
     public UIIcon gizmoRotate;
     public UIIcon gizmoCombined;
+    public UIIcon gizmoTop;
     public UIIcon gizmoVisualSize;
     public UIIcon gizmoTranslateSpeed;
 
@@ -383,6 +384,7 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
         this.gizmoScale = this.createGizmoModeButton(Icons.SCALE, Gizmo.Mode.SCALE, UIKeys.FILM_GIZMO_SCALE);
         this.gizmoRotate = this.createGizmoModeButton(Icons.ARC, Gizmo.Mode.ROTATE, UIKeys.FILM_GIZMO_ROTATE);
         this.gizmoCombined = this.createGizmoModeButton(Icons.SHAPES, Gizmo.Mode.COMBINED, UIKeys.FILM_GIZMO_COMBINED);
+        this.gizmoTop = this.createGizmoModeButton(Icons.SPHERE, Gizmo.Mode.TOP, UIKeys.FILM_GIZMO_TOP);
 
         this.gizmoVisualSize = new UIIcon(Icons.MAXIMIZE, (b) ->
         {
@@ -414,10 +416,11 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
             this.gizmoScale.active(gizmoMode == Gizmo.Mode.SCALE);
             this.gizmoRotate.active(gizmoMode == Gizmo.Mode.ROTATE);
             this.gizmoCombined.active(gizmoMode == Gizmo.Mode.COMBINED);
+            this.gizmoTop.active(gizmoMode == Gizmo.Mode.TOP);
         });
 
-        this.gizmoToolbar = UI.row(0, this.gizmoBodyPart, this.gizmoTransform, this.gizmoMove, this.gizmoScale, this.gizmoRotate, this.gizmoCombined, this.gizmoVisualSize, this.gizmoTranslateSpeed);
-        this.gizmoToolbar.relative(this).x(0.5F).y(4).wh(160, 20).anchorX(0.5F);
+        this.gizmoToolbar = UI.row(0, this.gizmoBodyPart, this.gizmoTransform, this.gizmoMove, this.gizmoScale, this.gizmoRotate, this.gizmoCombined, this.gizmoTop, this.gizmoVisualSize, this.gizmoTranslateSpeed);
+        this.gizmoToolbar.relative(this).x(0.5F).y(4).wh(180, 20).anchorX(0.5F);
 
         this.forms.add(background, this.formsList, this.bodyPartEditor, draggable);
         this.formEditor.add(this.forms);

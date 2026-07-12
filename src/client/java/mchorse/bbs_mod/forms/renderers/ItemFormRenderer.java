@@ -30,13 +30,14 @@ import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.logging.LogUtils;
-
-import org.slf4j.Logger;
 
 public class ItemFormRenderer extends FormRenderer<ItemForm>
 {
-    private static final Logger LOGGER = LogUtils.getLogger();
+    private static final Vector3f UI_LIGHT_A = new Vector3f(0.85F, 0.85F, -1F).normalize();
+    private static final Vector3f UI_LIGHT_B = new Vector3f(-0.85F, 0.85F, 1F).normalize();
+
+    private final Color resolvedPaint = new Color();
+    private StubEntity itemUseStub;
 
     public ItemFormRenderer(ItemForm form)
     {
@@ -64,8 +65,8 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
         set.mul(this.form.color.get());
         FormColorBlend.blendFormGlowBrighten(set, this.form.glowSettings.get(), this.form.glowingColor.get());
 
-        Vector3f light0 = new Vector3f(0.85F, 0.85F, -1F).normalize();
-        Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1F).normalize();
+        Vector3f light0 = ItemFormRenderer.UI_LIGHT_A;
+        Vector3f light1 = ItemFormRenderer.UI_LIGHT_B;
         RenderSystem.setupLevelDiffuseLighting(light0, light1);
 
         consumers.setSubstitute(BBSRendering.getColorConsumer(set));
@@ -83,6 +84,13 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
     @Override
     protected void render3D(FormRenderingContext context)
     {
+        ItemStack itemStack = this.form.stack.get();
+
+        if (itemStack == null || itemStack.isEmpty())
+        {
+            return;
+        }
+
         CustomVertexConsumerProvider consumers = FormUtilsClient.getProvider();
         int light = context.light;
         boolean isDropped = context.type == FormRenderType.ITEM;
@@ -117,26 +125,27 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
 
         PaintSettings paintSettings = this.form.paintSettings.get();
         Color legacyPaint = this.form.paintColor.get();
-        Color resolvedPaint = new Color();
 
-        paintSettings.resolveColor(legacyPaint, resolvedPaint);
-        resolvedPaint.a = paintSettings.resolveIntensity(legacyPaint);
+        paintSettings.resolveColor(legacyPaint, this.resolvedPaint);
+        this.resolvedPaint.a = paintSettings.resolveIntensity(legacyPaint);
 
-        consumers.setSubstitute(BBSRendering.getColorConsumer(BlockFormRenderer.color, resolvedPaint));
+        consumers.setSubstitute(BBSRendering.getColorConsumer(BlockFormRenderer.color, this.resolvedPaint));
 
-        ItemStack itemStack = this.form.stack.get();
         double usingItemValue = this.form.usingItem.get();
         double itemUseTimeValue = this.form.itemUseTime.get();
         LivingEntity itemEntity = null;
 
         if (usingItemValue > 0D || itemUseTimeValue > 0D)
         {
-            StubEntity stub = new StubEntity(context.entity.getWorld());
+            if (this.itemUseStub == null || this.itemUseStub.getWorld() != context.entity.getWorld())
+            {
+                this.itemUseStub = new StubEntity(context.entity.getWorld());
+            }
 
-            stub.setUsingItem(usingItemValue > 0D);
-            stub.setItemUseTimeLeft((int) itemUseTimeValue);
-            stub.setEquipmentStack(EquipmentSlot.MAINHAND, itemStack);
-            itemEntity = ItemUseRenderState.prepareProxy(context.entity.getWorld(), stub, EquipmentSlot.MAINHAND, itemStack);
+            this.itemUseStub.setUsingItem(usingItemValue > 0D);
+            this.itemUseStub.setItemUseTimeLeft((int) itemUseTimeValue);
+            this.itemUseStub.setEquipmentStack(EquipmentSlot.MAINHAND, itemStack);
+            itemEntity = ItemUseRenderState.prepareProxy(context.entity.getWorld(), this.itemUseStub, EquipmentSlot.MAINHAND, itemStack);
         }
 
         MinecraftClient.getInstance().getItemRenderer().renderItem(itemEntity, itemStack, mode, mode == ModelTransformationMode.THIRD_PERSON_LEFT_HAND, context.stack, consumers, context.entity.getWorld(), light, context.overlay, 0);
@@ -160,15 +169,6 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
     {
         if (useDroppedMode)
         {
-            if (this.form.sameAnimationWhenDropped.get())
-            {
-                LOGGER.debug("Forced dropped animation for form {} using GROUND transform", this.form.getFormId());
-            }
-            else
-            {
-                LOGGER.debug("Dropped context for form {} using GROUND transform", this.form.getFormId());
-            }
-
             return ModelTransformationMode.GROUND;
         }
 

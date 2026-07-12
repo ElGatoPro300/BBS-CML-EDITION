@@ -213,6 +213,8 @@ public class UIUtilityOverlayPanel extends UIOverlayPanel
 
     private void clearThumbnailCache()
     {
+        mchorse.bbs_mod.forms.FormUIPreviewCache.clear();
+
         for (UIDashboardPanels child : this.getContext().menu.getRoot().getChildren(UIDashboardPanels.class))
         {
             UIFilmPanel filmPanel = child.getPanel(UIFilmPanel.class);

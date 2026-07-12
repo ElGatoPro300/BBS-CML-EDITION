@@ -8,6 +8,9 @@ import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeSheet;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframes;
+import mchorse.bbs_mod.ui.framework.elements.input.keyframes.graphs.IUIKeyframeGraph;
+import mchorse.bbs_mod.ui.utils.UIUtils;
+import mchorse.bbs_mod.utils.keyframes.KeyframeSegment;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.utils.Axis;
 import mchorse.bbs_mod.utils.MathUtils;
@@ -181,6 +184,54 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
         String propertyId = StringUtils.fileName(propertyPath);
 
         return propertyId.equals("pose") || propertyId.startsWith("pose_overlay");
+    }
+
+    public static void keyframeOpenPoseLimbs(UIKeyframes editor, float tick, boolean defaults)
+    {
+        IUIKeyframeGraph graph = editor.getGraph();
+        boolean any = false;
+
+        for (UIKeyframeSheet sheet : graph.getSheets())
+        {
+            if (sheet.groupHeader || !isPoseLimbTrack(sheet))
+            {
+                continue;
+            }
+
+            Object value = null;
+
+            if (defaults)
+            {
+                value = new PoseTransform();
+            }
+            else
+            {
+                KeyframeSegment segment = sheet.channel.find(tick);
+
+                if (segment != null)
+                {
+                    value = segment.createInterpolated();
+                }
+                else if (sheet.property != null)
+                {
+                    value = sheet.channel.getFactory().copy(sheet.property.get());
+                }
+                else
+                {
+                    value = new PoseTransform();
+                }
+            }
+
+            sheet.channel.preNotify();
+            sheet.channel.insert(tick, value);
+            sheet.channel.postNotify();
+            any = true;
+        }
+
+        if (any)
+        {
+            UIUtils.playClick();
+        }
     }
 
     public UIPropTransform getTransform()

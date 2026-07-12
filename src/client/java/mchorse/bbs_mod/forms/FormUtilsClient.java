@@ -136,6 +136,14 @@ public class FormUtilsClient
         }
     }
 
+    /**
+     * Cached variant of {@link #renderUI} for list thumbnails and HUD overlays.
+     */
+    public static void renderUICached(Form form, UIContext context, int x1, int y1, int x2, int y2)
+    {
+        FormUIPreviewCache.render(form, context, x1, y1, x2, y2);
+    }
+
     public static void render(Form form, FormRenderingContext context)
     {
         FormRenderer renderer = getRenderer(form);

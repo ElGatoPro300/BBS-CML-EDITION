@@ -31,6 +31,12 @@ public class UIAnimationStateKeyframes extends UIKeyframes
     }
 
     @Override
+    protected float getPlayheadTick()
+    {
+        return this.getOffset();
+    }
+
+    @Override
     protected void selectNextKeyframe(int direction)
     {
         super.selectNextKeyframe(direction);

@@ -25,10 +25,14 @@ import mchorse.bbs_mod.events.register.RegisterFilmEditorFactoriesEvent;
 import mchorse.bbs_mod.film.CrossWorldFilmEntry;
 import mchorse.bbs_mod.film.Film;
 import mchorse.bbs_mod.film.FilmContributor;
+import mchorse.bbs_mod.film.MobCemPoseCapture;
 import mchorse.bbs_mod.film.Recorder;
 import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.forms.FormUtils;
+import mchorse.bbs_mod.forms.forms.BodyPart;
 import mchorse.bbs_mod.forms.forms.Form;
+import mchorse.bbs_mod.forms.forms.ModelForm;
+import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.l10n.L10n;
@@ -61,7 +65,6 @@ import mchorse.bbs_mod.ui.film.controller.UIFilmController;
 import mchorse.bbs_mod.ui.film.replays.UIReplaysEditor;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIReplayPropertiesPanel;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIReplaysOverlayPanel;
-import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarDockSync;
 import mchorse.bbs_mod.ui.film.utils.UIFilmUndoHandler;
 import mchorse.bbs_mod.ui.film.utils.undo.UIUndoHistoryOverlay;
 import mchorse.bbs_mod.ui.framework.UIContext;
@@ -100,6 +103,7 @@ import mchorse.bbs_mod.utils.RecentAssetsTracker;
 import mchorse.bbs_mod.utils.Timer;
 import mchorse.bbs_mod.utils.clips.Clip;
 import mchorse.bbs_mod.utils.clips.Clips;
+import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.interps.Interpolations;
 import mchorse.bbs_mod.utils.joml.Vectors;
@@ -300,13 +304,28 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private final Map<String, CrossWorldFilmEntry> crossWorldFilmEntries = new HashMap<>();
     private final Map<String, String> crossWorldWorldLabels = new HashMap<>();
     private CrossWorldFilmEntry crossWorldPendingJoin;
+    private CrossWorldFilmEntry viewingCrossWorldEntry;
     private String loadedFilmTabKey;
     private boolean crossWorldScanning;
     private final List<FilmDocumentTab> filmDocumentTabs = new ArrayList<>();
     private int activeFilmDocumentTab = -1;
     private boolean showingHomePage = true;
+    private int lastViewportRenderW = -1;
+    private int lastViewportRenderH = -1;
+
+    private static final int AURORA_SEGMENTS = 40;
+    private final float[] auroraYBot1 = new float[UIFilmPanel.AURORA_SEGMENTS + 1];
+    private final float[] auroraYMid1 = new float[UIFilmPanel.AURORA_SEGMENTS + 1];
+    private final int[] auroraCMid1 = new int[UIFilmPanel.AURORA_SEGMENTS + 1];
+    private final float[] auroraYBot2 = new float[UIFilmPanel.AURORA_SEGMENTS + 1];
+    private final float[] auroraYMid2 = new float[UIFilmPanel.AURORA_SEGMENTS + 1];
+    private final int[] auroraCMid2 = new int[UIFilmPanel.AURORA_SEGMENTS + 1];
 
     private boolean shouldCaptureThumbnail;
+    private boolean forceThumbnailOverwrite;
+    private String pendingThumbnailFilmId;
+    private String scheduledThumbnailFilmId;
+    private final Timer thumbnailCaptureTimer = new Timer(3000L);
     private final Map<String, Texture> thumbnails = new HashMap<>();
     private final Set<String> missingThumbnailIds = new HashSet<>();
 
@@ -470,7 +489,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         });
 
         /* Editors */
-        this.cameraEditor = new UIClipsPanel(this, BBSMod.getFactoryCameraClips(), true);
+        this.cameraEditor = new UIClipsPanel(this, BBSMod.getFactoryCameraClips());
 
         this.cameraEditor.clips.context((menu) ->
         {
@@ -478,7 +497,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         });
 
         this.replayEditor = event.createReplayEditor(this);
-        this.actionEditor = new UIClipsPanel(this, BBSMod.getFactoryActionClips(), false);
+        this.actionEditor = new UIClipsPanel(this, BBSMod.getFactoryActionClips());
         this.anchoredReplaysPanel = new UIReplaysOverlayPanel(this, (replay) -> this.replayEditor.setReplay(replay, false, true));
         this.anchoredReplaysPanel.setDocked(true);
         this.anchoredReplaysPanel.setVisible(false);
@@ -854,7 +873,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.keys().register(Keys.LOOPING, () ->
         {
             BBSSettings.editorLoop.set(!BBSSettings.editorLoop.get());
-            this.getContext().notifyInfo(UIKeys.CAMERA_EDITOR_KEYS_LOOPING_TOGGLE_NOTIFICATION);
+
+            if (this.dashboard != null)
+            {
+                this.dashboard.menuBar.syncLoopButton();
+            }
         }).active(active).category(looping);
         this.keys().register(Keys.LOOPING_SET_MIN, () -> this.cameraEditor.clips.setLoopMin()).active(active).category(looping);
         this.keys().register(Keys.LOOPING_SET_MAX, () -> this.cameraEditor.clips.setLoopMax()).active(active).category(looping);
@@ -2940,8 +2963,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.collapsedDockedPanels.clear();
         this.hiddenPanels.clear();
         layout.setFilmLayoutRoot(this.addAnchoredReplaysPanelToRoot(EditorLayoutNode.defaultFilmLayout()));
-        BBSSettings.timelineToolbarDocks.resetToDefaults();
-        TimelineToolbarDockSync.refreshFilmPanel(this);
         this.setupEditorFlex(true);
     }
 
@@ -4109,8 +4130,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             }
         }
 
-        BBSSettings.timelineToolbarDocks.writePreset(data);
-
         return data;
     }
 
@@ -4164,10 +4183,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         {
             BBSSettings.videoSettings.motionBlur.set(data.getInt("video_motion_blur"));
         }
-
-        BBSSettings.timelineToolbarDocks.applyPreset(data);
-        TimelineToolbarDockSync.refreshFilmPanel(this);
-        this.setupEditorFlex(true);
     }
 
     private boolean hasAnchoredReplaysPanelPresetState(MapType data)
@@ -4306,6 +4321,9 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     @Override
     public void resize()
     {
+        this.lastViewportRenderW = -1;
+        this.lastViewportRenderH = -1;
+
         super.resize();
 
         if (this.showingHomePage)
@@ -4401,19 +4419,93 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         }
     }
 
+    /**
+     * Offscreen world rendering (export resolution via {@link BBSRendering#setCustomSize(boolean)})
+     * is only needed while the 3D preview viewport is visible. Keeping it enabled on the film
+     * home page or when the preview is hidden forces a full extra world pass every frame.
+     */
+    public boolean needsViewportRender()
+    {
+        return this.data != null && !this.showingHomePage && this.preview != null && this.preview.isVisible();
+    }
+
+    @Override
+    public boolean needsWorldRender()
+    {
+        return this.needsViewportRender();
+    }
+
+    public boolean isShowingHomePage()
+    {
+        return this.showingHomePage;
+    }
+
+    private void syncViewportRenderMode()
+    {
+        boolean needsViewport = this.needsViewportRender();
+
+        this.syncRunnerCamera(needsViewport);
+
+        if (needsViewport)
+        {
+            /* Always render at the configured export resolution. Preview layout is handled
+             * separately in UIFilmPreview.getViewport() (decoupled from BBSRendering size). */
+            int renderW = BBSSettings.videoSettings.width.get();
+            int renderH = BBSSettings.videoSettings.height.get();
+
+            if (renderW % 2 == 1)
+            {
+                renderW -= 1;
+            }
+
+            if (renderH % 2 == 1)
+            {
+                renderH -= 1;
+            }
+
+            if (!BBSRendering.isCustomSize() || this.lastViewportRenderW != renderW || this.lastViewportRenderH != renderH)
+            {
+                BBSRendering.setCustomSize(true, renderW, renderH);
+                this.lastViewportRenderW = renderW;
+                this.lastViewportRenderH = renderH;
+            }
+        }
+        else if (BBSRendering.isCustomSize())
+        {
+            BBSRendering.setCustomSize(false);
+            this.lastViewportRenderW = -1;
+            this.lastViewportRenderH = -1;
+        }
+
+        MorphRenderer.hidePlayer = needsViewport;
+    }
+
+    private void syncRunnerCamera(boolean needsViewport)
+    {
+        CameraController cameraController = this.getCameraController();
+
+        if (needsViewport)
+        {
+            if (!cameraController.has(this.runner))
+            {
+                cameraController.add(this.runner);
+            }
+        }
+        else if (cameraController.has(this.runner))
+        {
+            cameraController.remove(this.runner);
+        }
+    }
+
     @Override
     public void appear()
     {
         super.appear();
 
-        BBSRendering.setCustomSize(true);
-        MorphRenderer.hidePlayer = true;
-
-        CameraController cameraController = this.getCameraController();
+        this.syncViewportRenderMode();
 
         this.fillData();
         this.setFlight(false);
-        cameraController.add(this.runner);
 
         /* Clear the re-entrancy guard before refreshing the view. updateFilmDocumentView() bails
            out early while performingLayout is true; if a prior layout pass left it set, returning
@@ -4436,7 +4528,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     @Override
     public void close()
     {
-        this.requestThumbnailCapture();
         this.save();
         lastShowingHomePage = this.showingHomePage;
 
@@ -4507,7 +4598,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     @Override
     public boolean canHideHUD()
     {
-        return !this.showingHomePage;
+        return true;
     }
 
     @Override
@@ -4537,7 +4628,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             return;
         }
 
-        this.requestThumbnailCapture();
         this.save();
         this.openFilmInDocumentTabs(tabId);
     }
@@ -4550,18 +4640,179 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     }
 
     @Override
+    public void requestData(String id)
+    {
+        this.viewingCrossWorldEntry = null;
+        super.requestData(id);
+    }
+
+    private boolean isViewingCrossWorldFilm()
+    {
+        return this.viewingCrossWorldEntry != null;
+    }
+
+    @Override
     public void save()
     {
-        this.requestThumbnailCapture();
+        if (this.isViewingCrossWorldFilm())
+        {
+            return;
+        }
+
         super.save();
     }
 
     public void requestThumbnailCapture()
     {
-        if (this.data != null && !this.showingHomePage && this.preview != null && this.preview.isVisible())
+        if (this.data != null)
         {
-            this.shouldCaptureThumbnail = true;
+            this.requestThumbnailCaptureFor(this.data.getId());
         }
+    }
+
+    public void setFilmThumbnailFromViewport()
+    {
+        if (this.isViewingCrossWorldFilm() || this.data == null || this.showingHomePage || this.preview == null || !this.preview.isVisible())
+        {
+            return;
+        }
+
+        String filmId = this.data.getId();
+
+        if (filmId == null || filmId.isEmpty())
+        {
+            return;
+        }
+
+        this.thumbnailCaptureTimer.reset();
+        this.scheduledThumbnailFilmId = null;
+        this.shouldCaptureThumbnail = true;
+        this.pendingThumbnailFilmId = filmId;
+        this.forceThumbnailOverwrite = true;
+    }
+
+    private void scheduleInitialThumbnailCapture(String filmId)
+    {
+        if (filmId == null || filmId.isEmpty())
+        {
+            return;
+        }
+
+        File thumb = this.getThumbnailFile(filmId);
+
+        if (thumb != null && thumb.exists())
+        {
+            return;
+        }
+
+        this.scheduledThumbnailFilmId = filmId;
+        this.thumbnailCaptureTimer.mark(3000L);
+    }
+
+    private boolean canCaptureThumbnail(String filmId)
+    {
+        if (this.isViewingCrossWorldFilm())
+        {
+            return false;
+        }
+
+        if (filmId == null || filmId.isEmpty() || this.data == null || !filmId.equals(this.data.getId()))
+        {
+            return false;
+        }
+
+        File thumb = this.getThumbnailFile(filmId);
+
+        if (thumb != null && thumb.exists())
+        {
+            return false;
+        }
+
+        return !this.showingHomePage && this.preview != null && this.preview.isVisible();
+    }
+
+    private void requestThumbnailCaptureFor(String filmId)
+    {
+        if (!this.canCaptureThumbnail(filmId))
+        {
+            return;
+        }
+
+        this.shouldCaptureThumbnail = true;
+        this.pendingThumbnailFilmId = filmId;
+    }
+
+    private void flushThumbnailCapture()
+    {
+        MinecraftClient client = MinecraftClient.getInstance();
+
+        if (!client.isOnThread())
+        {
+            client.execute(this::flushThumbnailCaptureOnRenderThread);
+
+            return;
+        }
+
+        this.flushThumbnailCaptureOnRenderThread();
+    }
+
+    private void flushThumbnailCaptureOnRenderThread()
+    {
+        if (!this.shouldCaptureThumbnail || this.preview == null || !this.preview.isVisible())
+        {
+            return;
+        }
+
+        String filmId = this.pendingThumbnailFilmId;
+
+        if (filmId == null || filmId.isEmpty())
+        {
+            this.shouldCaptureThumbnail = false;
+
+            return;
+        }
+
+        File output = this.getThumbnailFile(filmId);
+        boolean overwrite = this.forceThumbnailOverwrite;
+
+        if (output == null || (output.exists() && !overwrite))
+        {
+            this.shouldCaptureThumbnail = false;
+            this.pendingThumbnailFilmId = null;
+            this.forceThumbnailOverwrite = false;
+
+            return;
+        }
+
+        output.getParentFile().mkdirs();
+
+        this.preview.captureThumbnailNow(output, () ->
+        {
+            String cacheKey = output.getAbsolutePath();
+            Texture texture = this.thumbnails.remove(cacheKey);
+
+            if (texture != null)
+            {
+                texture.delete();
+            }
+
+            this.missingThumbnailIds.remove(cacheKey);
+            this.reloadThumbnailIntoCache(filmId, output, cacheKey);
+
+            if (this.showingHomePage && this.homeFilmsMosaic != null && this.homeFilmsMosaic.isVisible())
+            {
+                this.homeFilmsMosaic.filter("");
+            }
+
+            if (overwrite && this.getContext() != null)
+            {
+                this.getContext().notifySuccess(UIKeys.FILM_SET_THUMBNAIL_SUCCESS);
+            }
+        });
+
+        this.shouldCaptureThumbnail = false;
+        this.pendingThumbnailFilmId = null;
+        this.forceThumbnailOverwrite = false;
     }
 
     @Override
@@ -4626,6 +4877,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         super.fill(data);
         this.editor.setVisible(true);
 
+        if (data == null)
+        {
+            this.viewingCrossWorldEntry = null;
+        }
+
         if (!this.isAllWorldsBrowseMode())
         {
             if (this.crossWorldPendingJoin == null
@@ -4642,6 +4898,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                 }
 
                 this.crossWorldPendingJoin = null;
+                this.viewingCrossWorldEntry = null;
             }
         }
 
@@ -4650,25 +4907,39 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             this.notifyServer(ActionState.RESTART);
         }
 
+        this.syncCrossWorldDocumentTab(data);
         this.syncActiveDocumentTabWithData(data);
+
+        if (this.isViewingCrossWorldFilm())
+        {
+            this.saveIcon.setEnabled(false);
+        }
     }
 
     @Override
     public void showHomeView()
     {
-        this.requestThumbnailCapture();
-
         for (int i = 0; i < this.filmDocumentTabs.size(); i++)
         {
             if (this.filmDocumentTabs.get(i).home)
             {
                 this.activateFilmDocumentTab(i, false);
+                this.refreshHomeFilmsMosaic();
 
                 return;
             }
         }
 
         super.showHomeView();
+        this.refreshHomeFilmsMosaic();
+    }
+
+    private void refreshHomeFilmsMosaic()
+    {
+        if (this.homeFilmsMosaic != null && this.homeFilmsMosaic.isVisible())
+        {
+            this.homeFilmsMosaic.filter("");
+        }
     }
 
     @Override
@@ -4689,12 +4960,14 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         {
             this.undoHandler = null;
             BBSModClient.setSelectedReplay(null);
+            this.thumbnailCaptureTimer.reset();
+            this.scheduledThumbnailFilmId = null;
         }
 
         this.toggleHorizontal.setEnabled(data != null);
         this.layoutLock.setEnabled(data != null);
         this.layoutPresets.setEnabled(data != null);
-        this.duplicateFilm.setEnabled(data != null);
+        this.duplicateFilm.setEnabled(data != null && !this.isViewingCrossWorldFilm());
 
         this.actionEditor.setClips(null);
         this.runner.setWork(data == null ? null : data.camera);
@@ -4702,8 +4975,13 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.replayEditor.setFilm(data);
         this.cameraEditor.pickClip(null);
 
+        if (data != null)
+        {
+            this.prepareFilmReplays(data);
+        }
+
         this.fillData();
-        this.controller.createEntities();
+        this.controller.createEntitiesNow();
 
         if (this.newFilm)
         {
@@ -4711,6 +4989,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
             this.cameraEditor.clips.setSelected(main);
             this.cameraEditor.pickClip(main);
+            this.scheduleInitialThumbnailCapture(this.data.getId());
         }
 
         this.entered = data != null;
@@ -4788,7 +5067,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         }
 
         this.fillData();
-        this.controller.createEntities();
+        this.controller.createEntitiesNow();
         this.syncAnchoredReplaysPanelWithFilm();
 
         if (cameraRebound)
@@ -4846,25 +5125,138 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     @Override
     public void forceSave()
     {
+        if (this.isViewingCrossWorldFilm())
+        {
+            return;
+        }
+
         super.forceSave();
-        this.shouldCaptureThumbnail = true;
     }
 
-    public File getThumbnailFile(String id)
+    private void prepareFilmReplays(Film film)
     {
-        if (id == null || id.isEmpty())
+        for (Replay replay : film.replays.getList())
+        {
+            MobCemPoseCapture.syncReplay(replay);
+            this.preloadFormModels(replay.form.get());
+        }
+    }
+
+    private void preloadFormModels(Form form)
+    {
+        if (form == null)
+        {
+            return;
+        }
+
+        if (form instanceof ModelForm modelForm)
+        {
+            String modelId = modelForm.model.get();
+
+            if (modelId != null && !modelId.isEmpty())
+            {
+                ModelInstance instance = BBSModClient.getModels().getModel(modelId);
+
+                if (instance == null && !BBSModClient.getModels().isLoading(modelId))
+                {
+                    BBSModClient.getModels().loadModel(modelId);
+                }
+            }
+        }
+
+        for (BodyPart part : form.parts.getAllTyped())
+        {
+            this.preloadFormModels(part.getForm());
+        }
+    }
+
+    public File getThumbnailFile(String listPath)
+    {
+        if (listPath == null || listPath.isEmpty())
         {
             return null;
+        }
+
+        CrossWorldFilmEntry entry = this.resolveThumbnailEntry(listPath);
+        String filmId = entry != null ? entry.filmId : this.resolveThumbnailId(listPath);
+
+        if (filmId == null || filmId.isEmpty() || filmId.endsWith("/"))
+        {
+            return null;
+        }
+
+        if (entry != null)
+        {
+            File crossWorldFile = CrossWorldFilmLoader.getFilmFile(entry.worldFolder, filmId);
+
+            if (crossWorldFile != null)
+            {
+                File worldRoot = crossWorldFile.getParentFile().getParentFile().getParentFile();
+                File worldThumbnail = new File(worldRoot, "config/bbs/thumbnails/films/" + filmId + ".png");
+
+                if (worldThumbnail.exists())
+                {
+                    return worldThumbnail;
+                }
+            }
+        }
+        else
+        {
+            File worldFolder = BBSMod.getWorldFolder();
+
+            if (worldFolder != null)
+            {
+                File worldThumbnail = new File(worldFolder, "config/bbs/thumbnails/films/" + filmId + ".png");
+
+                if (worldThumbnail.exists())
+                {
+                    return worldThumbnail;
+                }
+            }
+        }
+
+        return new File(BBS.getGameFolder(), "config/bbs/thumbnails/films/" + filmId + ".png");
+    }
+
+    private CrossWorldFilmEntry resolveThumbnailEntry(String listPath)
+    {
+        CrossWorldFilmEntry decoded = CrossWorldFilmEntry.decodeKey(listPath);
+
+        if (decoded != null)
+        {
+            return decoded;
+        }
+
+        if (listPath == null || listPath.isEmpty() || !listPath.contains("/"))
+        {
+            return null;
+        }
+
+        return this.crossWorldFilmEntries.get(listPath);
+    }
+
+    private String encodeThumbnailCacheKey(String listPath)
+    {
+        if (listPath == null || listPath.isEmpty())
+        {
+            return listPath;
+        }
+
+        CrossWorldFilmEntry entry = this.resolveThumbnailEntry(listPath);
+
+        if (entry != null)
+        {
+            return entry.encodeKey();
         }
 
         File worldFolder = BBSMod.getWorldFolder();
 
         if (worldFolder != null)
         {
-            return new File(worldFolder, "config/bbs/thumbnails/films/" + id + ".png");
+            return worldFolder.getAbsolutePath() + "\0" + this.resolveThumbnailId(listPath);
         }
 
-        return new File(BBS.getGameFolder(), "config/bbs/thumbnails/films/" + id + ".png");
+        return this.resolveThumbnailId(listPath);
     }
 
     private String resolveThumbnailId(String listPath)
@@ -4874,7 +5266,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             return listPath;
         }
 
-        CrossWorldFilmEntry entry = this.crossWorldFilmEntries.get(listPath);
+        CrossWorldFilmEntry entry = this.resolveThumbnailEntry(listPath);
 
         if (entry != null && !entry.filmId.endsWith("/"))
         {
@@ -4899,16 +5291,56 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         return listPath;
     }
 
+    private void reloadThumbnailIntoCache(String listPath, File file, String cacheKey)
+    {
+        if (file == null || !file.exists() || cacheKey == null)
+        {
+            return;
+        }
+
+        String expectedId = this.resolveThumbnailId(listPath);
+
+        if (expectedId == null || !file.getName().equals(expectedId + ".png"))
+        {
+            return;
+        }
+
+        try (FileInputStream stream = new FileInputStream(file))
+        {
+            Pixels pixels = Pixels.fromPNGStream(stream);
+
+            if (pixels != null)
+            {
+                if (!this.isThumbnailPixelsValid(pixels))
+                {
+                    pixels.delete();
+
+                    return;
+                }
+
+                Texture texture = Texture.textureFromPixels(pixels, GL11.GL_LINEAR);
+
+                this.thumbnails.put(cacheKey, texture);
+            }
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+    }
+
     public void deleteThumbnail(String id)
     {
-        String thumbnailId = this.resolveThumbnailId(id);
+        File file = this.resolveThumbnailFile(id);
 
-        this.thumbnails.remove(thumbnailId);
-        this.missingThumbnailIds.remove(thumbnailId);
+        if (file != null)
+        {
+            this.thumbnails.remove(file.getAbsolutePath());
+        }
 
-        File file = this.getThumbnailFile(thumbnailId);
+        this.missingThumbnailIds.remove(this.encodeThumbnailCacheKey(id));
 
-        if (file.exists())
+        if (file != null && file.exists())
         {
             file.delete();
         }
@@ -4956,52 +5388,140 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     public Texture getThumbnail(String listPath)
     {
-        String id = this.resolveThumbnailId(listPath);
-
-        if (id == null || id.isEmpty() || id.endsWith("/"))
+        if (listPath == null || listPath.isEmpty() || listPath.endsWith("/"))
         {
             return null;
         }
 
-        Texture cached = this.thumbnails.get(id);
+        File file = this.resolveThumbnailFile(listPath);
+
+        if (file == null || !file.exists())
+        {
+            this.missingThumbnailIds.add(this.encodeThumbnailCacheKey(listPath));
+
+            return null;
+        }
+
+        String cacheKey = file.getAbsolutePath();
+        Texture cached = this.thumbnails.get(cacheKey);
 
         if (cached != null)
         {
             return cached;
         }
 
-        if (this.missingThumbnailIds.contains(id))
+        if (this.missingThumbnailIds.contains(cacheKey))
         {
             return null;
         }
 
-        File file = this.getThumbnailFile(id);
-
-        if (file.exists())
+        try (FileInputStream stream = new FileInputStream(file))
         {
-            try (FileInputStream stream = new FileInputStream(file))
-            {
-                Pixels pixels = Pixels.fromPNGStream(stream);
+            Pixels pixels = Pixels.fromPNGStream(stream);
 
-                if (pixels != null)
+            if (pixels != null)
+            {
+                if (!this.isThumbnailPixelsValid(pixels))
                 {
-                    Texture texture = Texture.textureFromPixels(pixels, GL11.GL_LINEAR);
+                    pixels.delete();
+                    file.delete();
+                    this.missingThumbnailIds.add(cacheKey);
 
-                    this.thumbnails.put(id, texture);
-                    this.missingThumbnailIds.remove(id);
-
-                    return texture;
+                    return null;
                 }
+
+                Texture texture = Texture.textureFromPixels(pixels, GL11.GL_LINEAR);
+
+                this.thumbnails.put(cacheKey, texture);
+                this.missingThumbnailIds.remove(cacheKey);
+
+                return texture;
             }
-            catch (Exception e)
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+
+        this.missingThumbnailIds.add(cacheKey);
+
+        return null;
+    }
+
+    private File resolveThumbnailFile(String listPath)
+    {
+        File file = this.getThumbnailFile(listPath);
+
+        if (file != null && file.exists())
+        {
+            String expectedId = this.resolveThumbnailId(listPath);
+
+            if (expectedId != null && file.getName().equals(expectedId + ".png"))
             {
-                e.printStackTrace();
+                return file;
             }
         }
 
-        this.missingThumbnailIds.add(id);
+        String fallbackId = this.resolveThumbnailId(listPath);
 
-        return null;
+        if (fallbackId == null || fallbackId.isEmpty())
+        {
+            return null;
+        }
+
+        File worldFolder = BBSMod.getWorldFolder();
+
+        if (worldFolder != null)
+        {
+            File worldThumbnail = new File(worldFolder, "config/bbs/thumbnails/films/" + fallbackId + ".png");
+
+            if (worldThumbnail.exists())
+            {
+                return worldThumbnail;
+            }
+        }
+
+        File fallback = new File(BBS.getGameFolder(), "config/bbs/thumbnails/films/" + fallbackId + ".png");
+
+        if (fallback.exists())
+        {
+            return fallback;
+        }
+
+        return file;
+    }
+
+    private boolean isThumbnailPixelsValid(Pixels pixels)
+    {
+        if (pixels == null || pixels.width < 2 || pixels.height < 2)
+        {
+            return false;
+        }
+
+        int bright = 0;
+        int samples = 64;
+        int stepX = Math.max(1, pixels.width / 8);
+        int stepY = Math.max(1, pixels.height / 8);
+
+        for (int y = 0; y < pixels.height; y += stepY)
+        {
+            for (int x = 0; x < pixels.width; x += stepX)
+            {
+                Color color = pixels.getColor(x, y);
+
+                if (color != null && color.r + color.g + color.b > 0.05F)
+                {
+                    bright++;
+                }
+
+                if (bright >= 3)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     public boolean isFlying()
@@ -5010,14 +5530,25 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     }
 
     /**
-     * Confines left/right/middle click-drag camera rotate/roll/FOV to the preview panel (the
-     * 3D viewport, including its overlay buttons), so it can never be triggered by clicking
-     * elsewhere in the editor (menu bar, timelines, properties, etc.).
+     * Confines left/right/middle click-drag camera rotate/roll/FOV to the Minecraft render
+     * viewport so flight control can't be triggered from the menu bar or side panels.
      */
     @Override
     public Area getFlightViewportArea()
     {
-        return this.preview.area;
+        return this.getFlightViewportGlobalArea();
+    }
+
+    private Area getFlightViewportGlobalArea()
+    {
+        Area viewport = this.preview.getViewport();
+
+        return new Area(
+            this.area.x + this.preview.area.x + viewport.x,
+            this.area.y + this.preview.area.y + viewport.y,
+            viewport.w,
+            viewport.h
+        );
     }
 
     public void toggleFlight()
@@ -5092,9 +5623,10 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     @Override
     public void update()
     {
+        this.syncViewportRenderMode();
         this.controller.update();
 
-        if (BBSSettings.editorCameraPreviewPlayerSync.get() && this.data != null && this.controller.getPovMode() == UIFilmController.CAMERA_MODE_CAMERA)
+        if (BBSSettings.editorCameraPreviewPlayerSync.get() && this.needsViewportRender() && this.controller.getPovMode() == UIFilmController.CAMERA_MODE_CAMERA)
         {
             this.teleportToCamera();
         }
@@ -5150,6 +5682,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     {
         super.renderPanelBackground(context);
 
+        if (!this.needsViewportRender())
+        {
+            return;
+        }
+
         Texture texture = BBSRendering.getTexture();
 
         if (texture != null)
@@ -5166,8 +5703,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
             context.batcher.texturedBox(texture.id, Colors.WHITE, area.x, area.y, area.w, area.h, 0, texture.height, texture.width, 0, texture.width, texture.height);
         }
-
-        this.updateLogic(context);
     }
 
     @Override
@@ -5210,22 +5745,25 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         int savedMouseX = context.mouseX;
         int savedMouseY = context.mouseY;
 
-        if (this.controller.isControlling())
+        if (!this.showingHomePage)
         {
-            context.mouseX = context.mouseY = -1;
+            if (this.controller.isControlling())
+            {
+                context.mouseX = context.mouseY = -1;
+            }
+
+            this.controller.orbit.update(context);
+
+            context.mouseX = savedMouseX;
+            context.mouseY = savedMouseY;
+
+            this.updateLogic(context);
         }
-
-        this.controller.orbit.update(context);
-
-        context.mouseX = savedMouseX;
-        context.mouseY = savedMouseY;
 
         if (this.undoHandler != null)
         {
             this.undoHandler.submitUndo();
         }
-
-        this.updateLogic(context);
 
         this.updateActiveFloatingPanelDrag(context);
         this.updateActiveFloatingPanelResize(context);
@@ -5257,47 +5795,17 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         if (this.entered)
         {
-            ClientPlayerEntity player = MinecraftClient.getInstance().player;
-
-            if (player != null)
+            if (this.dashboard != null)
             {
-                Vec3d pos = player.getPos();
-                Vector3d cameraPos = this.camera.position;
-                double distance = cameraPos.distance(pos.x, pos.y, pos.z);
-                int value = MinecraftClient.getInstance().options.getViewDistance().getValue();
-
-                if (distance > value * 12)
-                {
-                    this.getContext().notifyError(UIKeys.FILM_TELEPORT_DESCRIPTION);
-                }
+                this.dashboard.menuBar.checkFarFromFilmWarning(this);
             }
 
             this.entered = false;
         }
 
-        if (this.shouldCaptureThumbnail && this.data != null && this.preview.isVisible())
+        if (this.shouldCaptureThumbnail)
         {
-            File output = this.getThumbnailFile(this.data.getId());
-
-            if (output != null)
-            {
-                output.getParentFile().mkdirs();
-                String filmId = this.data.getId();
-
-                this.preview.captureThumbnailNow(output, () ->
-                {
-                    Texture texture = this.thumbnails.remove(filmId);
-
-                    if (texture != null)
-                    {
-                        texture.delete();
-                    }
-
-                    this.missingThumbnailIds.remove(filmId);
-                });
-            }
-
-            this.shouldCaptureThumbnail = false;
+            this.flushThumbnailCaptureOnRenderThread();
         }
     }
 
@@ -5307,6 +5815,12 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
      */
     private void updateLogic(UIContext context)
     {
+        if (this.thumbnailCaptureTimer.checkReset() && this.scheduledThumbnailFilmId != null)
+        {
+            this.requestThumbnailCaptureFor(this.scheduledThumbnailFilmId);
+            this.scheduledThumbnailFilmId = null;
+        }
+
         Clip clip = this.cameraEditor.getClip();
 
         /* Loop fixture */
@@ -5536,12 +6050,22 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     {
         super.startRenderFrame(tickDelta);
 
+        if (!this.needsViewportRender())
+        {
+            return;
+        }
+
         this.controller.startRenderFrame(tickDelta);
     }
 
     @Override
     public void renderInWorld(WorldRenderContext context)
     {
+        if (!this.needsViewportRender())
+        {
+            return;
+        }
+
         super.renderInWorld(context);
 
         if (!BBSRendering.isIrisShadowPass())
@@ -5670,6 +6194,28 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         double z = cameraPos.z;
 
         PlayerUtils.teleport(x, y, z, MathUtils.toDeg(camera.rotation.y) - 180F, MathUtils.toDeg(camera.rotation.x));
+
+        if (this.dashboard != null)
+        {
+            this.dashboard.menuBar.dismissFarFromFilmWarning();
+        }
+    }
+
+    public boolean isPlayerFarFromFilm()
+    {
+        ClientPlayerEntity player = MinecraftClient.getInstance().player;
+
+        if (player == null || this.getData() == null)
+        {
+            return false;
+        }
+
+        Vec3d pos = player.getPos();
+        Vector3d cameraPos = this.camera.position;
+        double distance = cameraPos.distance(pos.x, pos.y, pos.z);
+        int value = MinecraftClient.getInstance().options.getViewDistance().getValue();
+
+        return distance > value * 12;
     }
 
     public boolean checkShowNoCamera()
@@ -5699,47 +6245,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     public boolean handleKeyPressed(UIContext context)
     {
         return this.controller.orbit.keyPressed(context, this.preview.area);
-    }
-
-    /**
-     * Restores film editor UI from an undo/redo snapshot (panel, cursor, timelines,
-     * embedded keyframe editors, scroll/zoom/viewport).
-     */
-    public void applyFilmUndoData(MapType data)
-    {
-        this.applyAllUndoData(data);
-    }
-
-    public MapType collectFilmUndoSnapshot()
-    {
-        UIElement root = this.getRoot();
-
-        if (root == null)
-        {
-            return new MapType();
-        }
-
-        return (MapType) root.collectAllUndoData().copy();
-    }
-
-    public boolean hasEmbeddedClipView()
-    {
-        return this.cameraEditor.clips.hasEmbeddedView() || this.actionEditor.clips.hasEmbeddedView();
-    }
-
-    public String getEmbeddedClipEditorUndoId()
-    {
-        if (this.cameraEditor.clips.hasEmbeddedView())
-        {
-            return this.cameraEditor.getUndoId();
-        }
-
-        if (this.actionEditor.clips.hasEmbeddedView())
-        {
-            return this.actionEditor.getUndoId();
-        }
-
-        return "";
     }
 
     @Override
@@ -6014,6 +6519,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             return;
         }
 
+        this.viewingCrossWorldEntry = entry;
         CrossWorldFilmLoader.load(entry.worldFolder, entry.filmId, (film) -> this.fill(film));
     }
 
@@ -6353,6 +6859,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             else if (loadFilm || !tab.filmId.equals(this.loadedFilmTabKey))
             {
                 this.crossWorldPendingJoin = null;
+                this.viewingCrossWorldEntry = null;
                 this.requestData(tab.filmId);
             }
             else
@@ -6402,13 +6909,34 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         /* No-op: the legacy tab bar UI was removed; the unified UIDocumentTabsBar at the dashboard level replaces it. */
     }
 
+    private void syncCrossWorldDocumentTab(Film data)
+    {
+        if (data == null || this.viewingCrossWorldEntry == null || this.dashboard == null || this.dashboard.documentTabsBar == null)
+        {
+            return;
+        }
+
+        String key = this.viewingCrossWorldEntry.encodeKey();
+
+        if (this.dashboard.documentTabsBar.isOpen(ContentType.FILMS, data.getId())
+            && !this.dashboard.documentTabsBar.isOpen(ContentType.FILMS, key))
+        {
+            this.dashboard.documentTabsBar.closeTab(ContentType.FILMS, data.getId());
+            this.dashboard.documentTabsBar.addOrActivate(ContentType.FILMS, key);
+        }
+    }
+
     private void syncActiveDocumentTabWithData(Film data)
     {
         if (data != null)
         {
+            String tabId = this.isViewingCrossWorldFilm()
+                ? this.viewingCrossWorldEntry.encodeKey()
+                : data.getId();
+
             if (this.activeFilmDocumentTab < 0 || this.activeFilmDocumentTab >= this.filmDocumentTabs.size())
             {
-                this.filmDocumentTabs.add(new FilmDocumentTab(false, data.getId()));
+                this.filmDocumentTabs.add(new FilmDocumentTab(false, tabId));
                 this.activeFilmDocumentTab = this.filmDocumentTabs.size() - 1;
             }
             else
@@ -6416,7 +6944,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                 FilmDocumentTab tab = this.filmDocumentTabs.get(this.activeFilmDocumentTab);
 
                 tab.home = false;
-                tab.filmId = data.getId();
+                tab.filmId = tabId;
             }
         }
 
@@ -6496,9 +7024,9 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             this.setupEditorFlex(true, false, false);
         }
         this.resize();
-        TimelineToolbarDockSync.refreshFilmPanel(this);
 
         this.performingLayout = false;
+        this.syncViewportRenderMode();
     }
 
     private void renderHomeBanner(UIContext context)
@@ -6521,24 +7049,23 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         // Render Animated Aurora Effect
         int primary = BBSSettings.primaryColor.get();
         float tick = context.getTickTransition() * 0.015F;
-        int segments = 40;
+        int segments = UIFilmPanel.AURORA_SEGMENTS;
         float segW = editorW / (float) segments;
-        
+
         Matrix4f matrix4f = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
         Tessellator tessellator = Tessellator.getInstance();
         BufferBuilder builder = tessellator.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
-        
+
         RenderSystem.enableBlend();
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
-        
-        float[] yBot1 = new float[segments + 1];
-        float[] yMid1 = new float[segments + 1];
-        int[] cMid1 = new int[segments + 1];
-        
-        float[] yBot2 = new float[segments + 1];
-        float[] yMid2 = new float[segments + 1];
-        int[] cMid2 = new int[segments + 1];
-        
+
+        float[] yBot1 = this.auroraYBot1;
+        float[] yMid1 = this.auroraYMid1;
+        int[] cMid1 = this.auroraCMid1;
+        float[] yBot2 = this.auroraYBot2;
+        float[] yMid2 = this.auroraYMid2;
+        int[] cMid2 = this.auroraCMid2;
+
         for (int i = 0; i <= segments; i++)
         {
             float nx = (float) i / segments;

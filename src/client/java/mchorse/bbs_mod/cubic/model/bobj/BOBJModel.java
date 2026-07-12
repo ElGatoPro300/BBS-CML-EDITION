@@ -13,6 +13,7 @@ import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.utils.pose.Pose;
 import mchorse.bbs_mod.utils.pose.PoseTransform;
 import mchorse.bbs_mod.utils.pose.Transform;
+import mchorse.bbs_mod.utils.resources.LinkUtils;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -120,8 +121,9 @@ public class BOBJModel implements IModel
 
             bone.lighting = transform.lighting;
             bone.color.copy(transform.color);
-            bone.texture = transform.texture;
+            bone.texture = transform.texture != null ? LinkUtils.copy(transform.texture) : null;
             bone.textureBlend = transform.textureBlend;
+            bone.textureBlendTo = transform.textureBlendTo != null ? LinkUtils.copy(transform.textureBlendTo) : null;
             bone.transform.translate.add(transform.translate);
             bone.transform.scale.add(transform.scale).sub(1, 1, 1);
             bone.transform.rotate.add(transform.rotate);

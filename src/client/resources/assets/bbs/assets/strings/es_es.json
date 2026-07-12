@@ -233,11 +233,6 @@
     "bbs.config.editor.tooltip": "Opciones de configuración que se utilizan dentro del editor de cámara",
     "bbs.config.editor.using_in_memory_clipboard": "Usar portapapeles en memoria",
     "bbs.config.editor.using_in_memory_clipboard-comment": "Cuando está habilitado, los datos de los clips copiados no se guardarán en el portapapeles global del sistema",
-    "bbs.config.timeline_toolbar.title": "Barras de herramientas de las líneas de tiempo",
-    "bbs.config.timeline_toolbar.tooltip": "Mostrar u ocultar las barras de herramientas en las líneas de tiempo del editor de películas",
-    "bbs.config.timeline_toolbar.warning": "Ocultar las barras de herramientas de las líneas de tiempo elimina el acceso a algunas acciones que solo están disponibles en esos menús. Los atajos de teclado seguirán funcionando donde estén asignados.",
-    "bbs.config.timeline_toolbar.enabled": "Mostrar barras de herramientas en las líneas de tiempo",
-    "bbs.config.timeline_toolbar.enabled-comment": "Muestra la barra de herramientas en los timelines de cámara, acciones y replays (y en vistas embebidas de keyframes o de gráficos de nodos de pantalla)",
     "bbs.config.entity_selectors.title": "Selectores de entidades",
     "bbs.config.entity_selectors.tooltip": "Opciones relacionadas con los selectores de entidades",
     "bbs.config.entity_selectors.whitelist": "Lista blanca",
@@ -2407,10 +2402,5 @@
     "studio.ui.utility.reload_terrain": "Terreno",
     "studio.ui.utility.reload_textures": "Texturas",
     "studio.ui.utility.resize": "Cambiar tamaño de ventana",
-    "studio.ui.utility.title": "Panel de utilidades",
-
-    "bbs.ui.timeline_toolbar.edit_track": "Editar pista",
-    "bbs.ui.timeline_toolbar.add_replay_at_cursor": "Añadir una reproducción en el cursor",
-    "bbs.ui.timeline_toolbar.replay": "Reproducción",
-    "bbs.ui.timeline_toolbar.drag": "Arrastrar para reposicionar la barra de herramientas"
+    "studio.ui.utility.title": "Panel de utilidades"
 }

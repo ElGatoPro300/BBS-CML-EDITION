@@ -11,6 +11,9 @@ uniform vec4 FogColor;
 uniform float TextureBlendFactor;
 uniform float TextureBlendActive;
 
+/* 1 = additive emission overlay pass for shape-key models (glow only, no lit base). */
+uniform float EmissionOnly;
+
 /* rgb = paint color, a = paint strength (0 = off, 1 = full override). PaintOverlay = 1 during Iris second pass. */
 uniform vec4 PaintColor;
 uniform vec4 GlowingColor;
@@ -44,12 +47,10 @@ void main()
 
     /* Shader-pack paint overlay pass: alpha-blend paint RGB over the Iris first pass.
        Matches the no-shader mix: final = mix(litTextureRgb, paintRgb, paintStrength). */
-    if (PaintOverlay > 0.5)
+    /* Glow-only Iris overlays keep PaintOverlay set for depth/blend state but must fall through to the
+       normal emission path when no paint strength is active. */
+    if (PaintOverlay > 0.5 && abs(PaintColor.a) >= 0.001)
     {
-        if (abs(PaintColor.a) < 0.001)
-        {
-            discard;
-        }
 
         if (texSample.a < 0.1)
         {
@@ -74,6 +75,32 @@ void main()
     if (texSample.a < 0.1)
     {
         discard;
+    }
+
+    /* Shape-key additive glow pass: output pure emission masked by texture alpha. */
+    if (EmissionOnly > 0.5)
+    {
+        float strength = abs(GlowingColor.a);
+
+        if (strength < 0.001)
+        {
+            discard;
+        }
+
+        float modelAlpha = texSample.a * rawVertexColor.a * ColorModulator.a;
+
+        if (modelAlpha < 0.001)
+        {
+            discard;
+        }
+
+        vec3 glowRgb = GlowingColor.rgb;
+        /* Higher multiplier + floor so low intensities (0.05-0.35) read as emissive bloom, not flat paint. */
+        vec3 emit = glowRgb * (strength * 24.0 + 0.35);
+
+        fragColor = linear_fog(vec4(emit, modelAlpha), vertexDistance, FogStart, FogEnd, FogColor);
+
+        return;
     }
 
     /* Paint strength must not change geometry alpha; only texture + vertex tint define opacity. */

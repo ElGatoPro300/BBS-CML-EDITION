@@ -102,18 +102,7 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
 
         boolean categoriesEnabled = BBSSettings.modelBlockCategoriesPanelEnabled != null && BBSSettings.modelBlockCategoriesPanelEnabled.get();
         boolean pickLimbTexture = BBSSettings.pickLimbTexture != null && BBSSettings.pickLimbTexture.get();
-        UIElement textureRow;
-
-        this.poseEditor.textureBend.minW(UIPoseEditor.TEXTURE_BEND_MIN_WIDTH);
-
-        if (pickLimbTexture)
-        {
-            textureRow = UI.row(this.poseEditor.pickTexture, this.poseEditor.textureBend);
-        }
-        else
-        {
-            textureRow = this.poseEditor.pickTexture;
-        }
+        UIElement textureRow = pickLimbTexture ? this.poseEditor.pickTexture : null;
 
         if (this.getFlex().getW() > 240)
         {
@@ -130,19 +119,31 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
             UIElement groupsRow = categoriesEnabled ? UI.row(this.poseEditor.groups, this.poseEditor.categories) : UI.row(this.poseEditor.groups);
             UIElement right = UI.column(
                 UI.label(UIKeys.FORMS_EDITOR_BONE),
-                groupsRow,
-                textureRow
+                groupsRow
             );
+
+            if (textureRow != null)
+            {
+                right.add(textureRow);
+            }
 
             this.poseEditor.add(UI.row(left, right));
         }
         else
         {
             UIElement groupsRow = categoriesEnabled ? UI.row(this.poseEditor.groups, this.poseEditor.categories) : UI.row(this.poseEditor.groups);
-            this.poseEditor.add(
+            UIElement column = UI.column(
                 UI.label(UIKeys.FORMS_EDITOR_BONE),
-                groupsRow,
-                textureRow,
+                groupsRow
+            );
+
+            if (textureRow != null)
+            {
+                column.add(textureRow);
+            }
+
+            this.poseEditor.add(
+                column,
                 UI.label(UIKeys.POSE_CONTEXT_FIX),
                 this.poseEditor.fix,
                 this.poseEditor.transform,

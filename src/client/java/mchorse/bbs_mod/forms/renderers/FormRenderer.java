@@ -317,6 +317,8 @@ public abstract class FormRenderer <T extends Form>
 
         if (part.getForm() != null)
         {
+            context.bodyPartDepth += 1;
+
             context.stack.push();
             if (context.world != null)
             {
@@ -335,6 +337,8 @@ public abstract class FormRenderer <T extends Form>
             {
                 context.world.pop();
             }
+
+            context.bodyPartDepth -= 1;
         }
 
         context.entity = oldEntity;

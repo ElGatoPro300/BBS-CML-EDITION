@@ -7,15 +7,35 @@ import mchorse.bbs_mod.settings.values.base.BaseValueBasic;
 
 public class ValueForm extends BaseValueBasic<Form>
 {
+    private transient int revision = 0;
+
     public ValueForm(String id)
     {
         super(id, null);
+    }
+
+    public int getRevision()
+    {
+        return this.revision;
+    }
+
+    private void bumpRevision()
+    {
+        this.revision += 1;
     }
 
     @Override
     public BaseType toData()
     {
         return this.value == null ? null : FormUtils.toData(this.value);
+    }
+
+    @Override
+    public void set(Form value, int flag)
+    {
+        super.set(value, flag);
+
+        this.bumpRevision();
     }
 
     @Override
@@ -29,5 +49,7 @@ public class ValueForm extends BaseValueBasic<Form>
         {
             this.value = null;
         }
+
+        this.bumpRevision();
     }
 }

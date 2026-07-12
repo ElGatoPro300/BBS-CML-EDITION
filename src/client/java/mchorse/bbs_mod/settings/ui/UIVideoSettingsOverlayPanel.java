@@ -21,6 +21,7 @@ public class UIVideoSettingsOverlayPanel extends UIOverlayPanel
     private UITextbox argumentsAudio;
     private UIToggle audio;
     private UIToggle audioEnvironment;
+    private UIToggle audioSeparateFile;
     private UIIcon flip;
     private UITrackpad width;
     private UITrackpad height;
@@ -55,6 +56,8 @@ public class UIVideoSettingsOverlayPanel extends UIOverlayPanel
                 this.audioEnvironment.setValue(false);
                 this.filling = false;
             }
+
+            this.audioSeparateFile.setEnabled(checked || this.value.audioEnvironment.get());
         });
         this.audio.tooltip(UIKeys.VIDEO_SETTINGS_AUDIO_TOOLTIP);
         this.audioEnvironment = new UIToggle(UIKeys.VIDEO_SETTINGS_AUDIO_ENVIRONMENT, (b) ->
@@ -75,8 +78,20 @@ public class UIVideoSettingsOverlayPanel extends UIOverlayPanel
                 this.audio.setValue(false);
                 this.filling = false;
             }
+
+            this.audioSeparateFile.setEnabled(checked || this.value.audio.get());
         });
         this.audioEnvironment.tooltip(UIKeys.VIDEO_SETTINGS_AUDIO_ENVIRONMENT_TOOLTIP);
+        this.audioSeparateFile = new UIToggle(UIKeys.VIDEO_SETTINGS_AUDIO_SEPARATE_FILE, (b) ->
+        {
+            if (this.filling)
+            {
+                return;
+            }
+
+            this.value.audioSeparateFile.set(b.getValue());
+        });
+        this.audioSeparateFile.tooltip(UIKeys.VIDEO_SETTINGS_AUDIO_SEPARATE_FILE_TOOLTIP);
         this.flip = new UIIcon(Icons.EXCHANGE, (b) ->
         {
             int w = this.value.width.get();
@@ -108,7 +123,7 @@ public class UIVideoSettingsOverlayPanel extends UIOverlayPanel
             UI.label(UIKeys.VIDEO_SETTINGS_ARGS),
             this.arguments,
             UI.label(UIKeys.VIDEO_SETTINGS_AUDIO_ARGS),
-            this.argumentsAudio, this.audio, this.audioEnvironment,
+            this.argumentsAudio, this.audio, this.audioEnvironment, this.audioSeparateFile,
             UI.label(UIKeys.VIDEO_SETTINGS_RESOLUTION).marginTop(6),
             UI.row(this.width, this.flip, this.height),
             UI.label(UIKeys.VIDEO_SETTINGS_FRAME_RATE).marginTop(6),
@@ -161,6 +176,10 @@ public class UIVideoSettingsOverlayPanel extends UIOverlayPanel
         this.argumentsAudio.setText(this.value.argumentsAudio.get());
         this.audio.setValue(this.value.audio.get());
         this.audioEnvironment.setValue(this.value.audioEnvironment.get());
+        this.audioSeparateFile.setValue(this.value.audioSeparateFile.get());
+        boolean hasAudioExport = this.value.audio.get() || this.value.audioEnvironment.get();
+
+        this.audioSeparateFile.setEnabled(hasAudioExport);
         this.width.setValue(this.value.width.get());
         this.height.setValue(this.value.height.get());
         this.frameRate.setValue(this.value.frameRate.get());

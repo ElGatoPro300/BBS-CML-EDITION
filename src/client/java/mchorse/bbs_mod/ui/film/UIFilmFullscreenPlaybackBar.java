@@ -15,7 +15,6 @@ import mchorse.bbs_mod.utils.interps.Lerps;
 import mchorse.bbs_mod.utils.joml.Vectors;
 
 import org.joml.Vector2i;
-
 import org.lwjgl.glfw.GLFW;
 
 public class UIFilmFullscreenPlaybackBar extends UIElement
