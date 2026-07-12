@@ -84,6 +84,7 @@ import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.film.replays.UIMobCaptureRecordOverlayPanel;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIQuickReplayOverlayPanel;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarDockSync;
 import mchorse.bbs_mod.ui.forms.editors.UIFormEditor;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.UIScreen;
@@ -534,7 +535,6 @@ public class BBSModClient implements ClientModInitializer
         BBSSettings.modelEditorAltHoverMultipleColors.postCallback(refreshModelHover);
         BBSSettings.favoriteColors.postCallback(refreshModelHover);
 
-HEAD
         BBSSettings.editorTimelineToolbar.postCallback((v, f) -> TimelineToolbarDockSync.applySettingsChange());
 
         BBSSettings.editorSeparateReplayPropertiesPanel.postCallback((v, f) ->
