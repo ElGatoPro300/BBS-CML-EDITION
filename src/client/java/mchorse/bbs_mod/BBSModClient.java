@@ -72,23 +72,23 @@ import mchorse.bbs_mod.resources.packs.URLSourcePack;
 import mchorse.bbs_mod.resources.packs.URLTextureErrorCallback;
 import mchorse.bbs_mod.selectors.EntitySelectors;
 import mchorse.bbs_mod.settings.Settings;
+import mchorse.bbs_mod.text.RtlFontManager;
+import mchorse.bbs_mod.ui.framework.elements.utils.CustomFontManager;
 import mchorse.bbs_mod.settings.ui.UISettingsOverlayPanel;
 import mchorse.bbs_mod.settings.ui.UIValueMap;
 import mchorse.bbs_mod.settings.values.IValueListener;
-import mchorse.bbs_mod.text.RtlFontManager;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.UIDashboard;
+import mchorse.bbs_mod.ui.dashboard.WorldPropertiesHelper;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.film.replays.UIMobCaptureRecordOverlayPanel;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIQuickReplayOverlayPanel;
-import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarDockSync;
 import mchorse.bbs_mod.ui.forms.editors.UIFormEditor;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.UIScreen;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UIKeyframeFactory;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.shapes.KeyframeShapeRenderers;
-import mchorse.bbs_mod.ui.framework.elements.utils.CustomFontManager;
 import mchorse.bbs_mod.ui.model.UIModelPanel;
 import mchorse.bbs_mod.ui.model_blocks.UIModelBlockEditorMenu;
 import mchorse.bbs_mod.ui.morphing.UIMorphingPanel;
@@ -514,6 +514,11 @@ public class BBSModClient implements ClientModInitializer
         BBSSettings.discordPresence.postCallback((v, f) -> DiscordPresenceManager.INSTANCE.onSettingsChanged());
         BBSSettings.discordApplicationId.postCallback((v, f) -> DiscordPresenceManager.INSTANCE.onSettingsChanged());
 
+        if (BBSSettings.worldGammaPercent != null)
+        {
+            WorldPropertiesHelper.setGammaPercent(BBSSettings.worldGammaPercent.get());
+        }
+
         IValueListener refreshModelHover = (v, f) ->
         {
             if (!UISettingsOverlayPanel.isDeferringLiveSettings())
@@ -528,8 +533,6 @@ public class BBSModClient implements ClientModInitializer
         BBSSettings.modelEditorAltHoverOpacity.postCallback(refreshModelHover);
         BBSSettings.modelEditorAltHoverMultipleColors.postCallback(refreshModelHover);
         BBSSettings.favoriteColors.postCallback(refreshModelHover);
-
-        BBSSettings.editorTimelineToolbar.postCallback((v, f) -> TimelineToolbarDockSync.applySettingsChange());
 
         BBSSettings.tooltipStyle.modes(
             UIKeys.ENGINE_TOOLTIP_STYLE_LIGHT,
@@ -1170,14 +1173,12 @@ public class BBSModClient implements ClientModInitializer
         {
             MinecraftClient client = MinecraftClient.getInstance();
 
-            if (client != null && client.options != null && client.options.language != null && !client.options.language.isEmpty())
+            if (client == null || client.options == null)
             {
-                key = client.options.language;
+                return "";
             }
-            else
-            {
-                key = L10n.DEFAULT_LANGUAGE;
-            }
+
+            key = client.options.language;
         }
 
         return key;

@@ -3,7 +3,10 @@ package mchorse.bbs_mod.forms.renderers;
 import mchorse.bbs_mod.camera.Camera;
 import mchorse.bbs_mod.film.FormRenderDepth;
 import mchorse.bbs_mod.forms.entities.IEntity;
+import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
+import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.forms.forms.utils.TextureBlend;
+import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.utils.MathUtils;
@@ -42,6 +45,22 @@ public class FormRenderingContext
     /** Overrides texture crossfade for this render pass only. */
     public TextureBlend textureBlendOverride;
 
+    /** True while rendering a form attached as a body part. */
+    public boolean bodyPartRender;
+
+    /** Nested body-part depth for deferred overlay matrix selection. */
+    public int bodyPartDepth;
+
+    /** Parent glow copied in when a body part has useTarget enabled. */
+    public GlowSettings inheritedGlowSettings;
+
+    public Color inheritedLegacyGlow;
+
+    /** Parent paint copied in when a body part has useTarget enabled. */
+    public PaintSettings inheritedPaintSettings;
+
+    public Color inheritedLegacyPaint;
+
     public FormRenderingContext()
     {}
 
@@ -64,6 +83,12 @@ public class FormRenderingContext
         this.renderDepthFrame = null;
         this.textureOverride = null;
         this.textureBlendOverride = null;
+        this.bodyPartRender = false;
+        this.bodyPartDepth = 0;
+        this.inheritedGlowSettings = null;
+        this.inheritedLegacyGlow = null;
+        this.inheritedPaintSettings = null;
+        this.inheritedLegacyPaint = null;
 
         if (entity != null && (this.type == FormRenderType.ENTITY || this.type == FormRenderType.MODEL_BLOCK))
         {

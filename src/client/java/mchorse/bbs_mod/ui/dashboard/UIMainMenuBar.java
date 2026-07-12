@@ -6,10 +6,10 @@ import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.settings.values.core.ValueGroup;
-import mchorse.bbs_mod.text.RtlAwtTextRenderer;
-import mchorse.bbs_mod.text.RtlTextEngine;
 import mchorse.bbs_mod.ui.ContentType;
 import mchorse.bbs_mod.ui.Keys;
+import mchorse.bbs_mod.text.RtlAwtTextRenderer;
+import mchorse.bbs_mod.text.RtlTextEngine;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDataDashboardPanel;
@@ -23,7 +23,11 @@ import mchorse.bbs_mod.ui.film.utils.FilmProjectHandler;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
+import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UICreateAssetOverlayPanel;
+import mchorse.bbs_mod.utils.Direction;
+import mchorse.bbs_mod.utils.Timer;
+import mchorse.bbs_mod.utils.interps.Interpolations;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIPromptOverlayPanel;
 import mchorse.bbs_mod.ui.model_blocks.UIModelBlockPanel;
@@ -49,6 +53,15 @@ public class UIMainMenuBar extends UIElement
     UIMenuButton activeButton = null;
     private UIMenuButton toolsMenu;
     private UIMenuActionButton worldButton;
+
+    private UIMenuBarSaveButton saveButton;
+    private UIMenuBarLoopButton loopButton;
+    private UIMenuBarWarningButton farFromFilmButton;
+
+    private Timer saveFlashTimer = new Timer(0L);
+    private Timer farFromFilmTimer = new Timer(0L);
+    private boolean farFromFilmActive;
+    private boolean preSaveBlinkTriggered;
 
     public UIMainMenuBar(UIDashboard dashboard)
     {
@@ -83,7 +96,162 @@ public class UIMainMenuBar extends UIElement
         this.worldButton = new UIMenuActionButton(UIKeys.RAW_WORLD, this::openWorldProperties);
         this.add(this.worldButton);
 
-        this.row(2).preferred(999);
+        UIElement spacer = new UIElement();
+
+        this.add(spacer);
+
+        this.saveButton = new UIMenuBarSaveButton(this);
+        this.saveButton.tooltip(UIKeys.GENERAL_SAVE, Direction.BOTTOM);
+        this.loopButton = new UIMenuBarLoopButton(this);
+        this.loopButton.tooltip(UIKeys.CAMERA_EDITOR_KEYS_MODES_LOOPING, Direction.BOTTOM);
+        this.farFromFilmButton = new UIMenuBarWarningButton(this);
+        this.farFromFilmButton.tooltip(UIKeys.FILM_TELEPORT_DESCRIPTION, Direction.BOTTOM);
+        this.farFromFilmButton.setVisible(false);
+
+        UIElement rightInset = new UIElement();
+
+        rightInset.w(12);
+
+        this.add(this.farFromFilmButton, this.loopButton, this.saveButton, rightInset);
+        this.row(2).preferred(7);
+    }
+
+    private static final long SAVE_FLASH_HOLD = 3000L;
+    private static final long SAVE_FLASH_FADE = 800L;
+    private static final long SAVE_FLASH_DURATION = SAVE_FLASH_HOLD + SAVE_FLASH_FADE;
+
+    public boolean isSaveButtonVisible()
+    {
+        return this.saveButton != null && this.saveButton.isVisible();
+    }
+
+    public void onProjectSaved(boolean autoSave)
+    {
+        if (this.saveButton == null)
+        {
+            return;
+        }
+
+        this.saveFlashTimer.mark(SAVE_FLASH_DURATION);
+        this.preSaveBlinkTriggered = false;
+        this.saveButton.both(Icons.SAVED);
+    }
+
+    public void checkFarFromFilmWarning(UIFilmPanel filmPanel)
+    {
+        if (filmPanel.isPlayerFarFromFilm())
+        {
+            this.farFromFilmActive = true;
+            this.farFromFilmTimer.mark(5000L);
+            this.farFromFilmButton.setVisible(true);
+        }
+    }
+
+    public void dismissFarFromFilmWarning()
+    {
+        this.farFromFilmActive = false;
+        this.farFromFilmTimer.reset();
+        this.farFromFilmButton.setVisible(false);
+    }
+
+    public void syncLoopButton()
+    {
+        if (this.loopButton != null)
+        {
+            this.loopButton.syncState();
+        }
+    }
+
+    private UIDataDashboardPanel<?> getDataPanel()
+    {
+        UIDashboardPanel panel = this.dashboard.panels.panel;
+
+        if (panel instanceof UIDataDashboardPanel<?> dataPanel)
+        {
+            return dataPanel;
+        }
+
+        return null;
+    }
+
+    private void updateToolbarButtons()
+    {
+        UIDataDashboardPanel<?> dataPanel = this.getDataPanel();
+        boolean hasData = dataPanel != null && dataPanel.getData() != null;
+
+        this.saveButton.setEnabled(hasData);
+        this.saveButton.setVisible(dataPanel != null);
+
+        boolean filmPanel = this.dashboard.panels.panel instanceof UIFilmPanel;
+
+        this.loopButton.setVisible(filmPanel && hasData);
+        this.loopButton.syncState();
+
+        if (this.farFromFilmActive && this.farFromFilmTimer.check())
+        {
+            this.dismissFarFromFilmWarning();
+        }
+
+        if (this.farFromFilmActive && filmPanel && !((UIFilmPanel) this.dashboard.panels.panel).isPlayerFarFromFilm())
+        {
+            this.dismissFarFromFilmWarning();
+        }
+
+        this.updatePreSaveBlink(dataPanel);
+    }
+
+    private void updatePreSaveBlink(UIDataDashboardPanel<?> dataPanel)
+    {
+        if (dataPanel == null || dataPanel.getData() == null || BBSSettings.editorPeriodicSave.get() <= 0)
+        {
+            this.preSaveBlinkTriggered = false;
+
+            return;
+        }
+
+        long remaining = dataPanel.getSavingTimer().getRemaining();
+
+        if (remaining > 0L && remaining <= 2500L)
+        {
+            this.preSaveBlinkTriggered = true;
+        }
+        else if (remaining <= 0L && !this.preSaveBlinkTriggered)
+        {
+            this.preSaveBlinkTriggered = false;
+        }
+    }
+
+    private float getSaveIconAlpha()
+    {
+        return 1F;
+    }
+
+    private float getSaveFlashAlpha()
+    {
+        if (!this.saveFlashTimer.enabled)
+        {
+            return 0F;
+        }
+
+        long remaining = this.saveFlashTimer.getRemaining();
+
+        if (remaining <= 0L)
+        {
+            this.saveFlashTimer.reset();
+
+            return 0F;
+        }
+
+        long elapsed = SAVE_FLASH_DURATION - remaining;
+
+        if (elapsed < SAVE_FLASH_HOLD)
+        {
+            return 0.95F;
+        }
+
+        float fadeProgress = (elapsed - SAVE_FLASH_HOLD) / (float) SAVE_FLASH_FADE;
+
+        return Interpolations.EXP_OUT.interpolate(0.95F, 0F, Math.min(1F, fadeProgress));
     }
 
     public void updateForPanel(UIDashboardPanel panel)
@@ -99,11 +267,15 @@ public class UIMainMenuBar extends UIElement
         {
             this.worldButton.setVisible(!stripped);
         }
+
+        this.dismissFarFromFilmWarning();
     }
 
     @Override
     public void render(UIContext context)
     {
+        this.updateToolbarButtons();
+
         context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xFF141418);
         context.batcher.box(this.area.x, this.area.ey() - 1, this.area.ex(), this.area.ey(), 0xFF2A2A35);
 
@@ -111,7 +283,7 @@ public class UIMainMenuBar extends UIElement
     }
 
     /* ------------------------------------------------------------------ */
-    /* Menu open/close                                                       */
+    /* Menu open/close (render moved above)                                  */
     /* ------------------------------------------------------------------ */
 
     void toggleMenu(UIMenuButton button, Consumer<ContextMenuManager> consumer)
@@ -382,6 +554,112 @@ public class UIMainMenuBar extends UIElement
     /* ------------------------------------------------------------------ */
     /* Menu button                                                           */
     /* ------------------------------------------------------------------ */
+
+    private class UIMenuBarSaveButton extends UIIcon
+    {
+        private final UIMainMenuBar bar;
+
+        public UIMenuBarSaveButton(UIMainMenuBar bar)
+        {
+            super(Icons.SAVED, (b) ->
+            {
+                UIDataDashboardPanel<?> panel = bar.getDataPanel();
+
+                if (panel != null)
+                {
+                    panel.save();
+                    bar.onProjectSaved(false);
+                }
+            });
+
+            this.bar = bar;
+            this.iconColor = Colors.WHITE;
+            this.wh(20, 20);
+            this.marginRight(4);
+        }
+
+        @Override
+        protected void renderSkin(UIContext context)
+        {
+            float flash = this.bar.getSaveFlashAlpha();
+
+            if (flash > 0F)
+            {
+                int green = Colors.setA(0xFF1B5E20, flash);
+
+                context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), green);
+            }
+
+            int color = Colors.setA(this.iconColor, this.bar.getSaveIconAlpha());
+
+            context.batcher.icon(this.getIcon(), color, this.area.mx(), this.area.my(), 0.5F, 0.5F);
+        }
+    }
+
+    private class UIMenuBarLoopButton extends UIIcon
+    {
+        private final UIMainMenuBar bar;
+
+        public UIMenuBarLoopButton(UIMainMenuBar bar)
+        {
+            super(Icons.REFRESH, (b) ->
+            {
+                BBSSettings.editorLoop.set(!BBSSettings.editorLoop.get());
+                bar.syncLoopButton();
+            });
+
+            this.bar = bar;
+            this.iconColor = Colors.WHITE;
+            this.activeBackground(Colors.A50 | Colors.BLUE);
+            this.wh(20, 20);
+            this.marginRight(4);
+            this.syncState();
+        }
+
+        public void syncState()
+        {
+            boolean enabled = BBSSettings.editorLoop.get();
+
+            this.iconColor = Colors.WHITE;
+            this.active(enabled);
+        }
+    }
+
+    private class UIMenuBarWarningButton extends UIIcon
+    {
+        private final UIMainMenuBar bar;
+
+        public UIMenuBarWarningButton(UIMainMenuBar bar)
+        {
+            super(Icons.WARNING, (b) ->
+            {
+                UIDashboardPanel panel = bar.dashboard.panels.panel;
+
+                if (panel instanceof UIFilmPanel filmPanel)
+                {
+                    filmPanel.teleportToCamera();
+                }
+            });
+
+            this.bar = bar;
+            this.iconColor = Colors.A100 | Colors.RED;
+            this.wh(20, 20);
+            this.marginRight(4);
+        }
+
+        @Override
+        protected void renderSkin(UIContext context)
+        {
+            float blink = 0.45F + 0.55F * (float) Math.abs(Math.sin(System.currentTimeMillis() * 0.008D));
+            int background = Colors.setA(0xFF5C1010, blink * 0.85F);
+
+            context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), background);
+
+            int color = Colors.setA(this.iconColor, blink);
+
+            context.batcher.icon(this.getIcon(), color, this.area.mx(), this.area.my(), 0.5F, 0.5F);
+        }
+    }
 
     public static class UIMenuActionButton extends UIButton
     {

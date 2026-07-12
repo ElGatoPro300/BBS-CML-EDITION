@@ -157,11 +157,13 @@ public class UIHomePanel extends UIDashboardPanel
 
             RecentAssetsTracker.Entry entry = this.decodeRecentKey(key);
 
-            this.handleRecentSelection(entry);
-
             if (doubleClick)
             {
                 this.openRecent(entry);
+            }
+            else
+            {
+                this.handleRecentSelectOnly(entry);
             }
         })
         {
@@ -203,7 +205,7 @@ public class UIHomePanel extends UIDashboardPanel
 
         boolean mosaic = BBSSettings.lastViewMosaic.get();
 
-        this.homeMosaic = new UIRecentMosaicGrid(this, this::handleRecentSelection, this::openRecent);
+        this.homeMosaic = new UIRecentMosaicGrid(this, this::handleRecentSelectOnly, this::openRecent);
         this.homeMosaic.setVisible(mosaic);
         this.homeRecentList.setVisible(!mosaic);
 
@@ -324,7 +326,8 @@ public class UIHomePanel extends UIDashboardPanel
 
         for (RecentAssetsTracker.Entry entry : RecentAssetsTracker.RECENT)
         {
-            if (!RecentAssetsTracker.shouldExcludeFromRecent(entry.type, entry.id))
+            if (!RecentAssetsTracker.shouldExcludeFromRecent(entry.type, entry.id)
+                && RecentAssetsTracker.existsInCurrentWorld(entry.type, entry.id))
             {
                 recent.add(entry);
             }
@@ -342,7 +345,7 @@ public class UIHomePanel extends UIDashboardPanel
         this.homeMosaic.fill(recent, this.selectedId, this.selectedType);
     }
 
-    private void handleRecentSelection(RecentAssetsTracker.Entry entry)
+    private void handleRecentSelectOnly(RecentAssetsTracker.Entry entry)
     {
         if (entry == null) return;
 
@@ -351,14 +354,6 @@ public class UIHomePanel extends UIDashboardPanel
         this.homeMosaic.setSelected(entry.id, entry.type);
         this.homeRecentList.setCurrentScroll(this.encodeRecentKey(entry));
         this.updateHomeButtonsState();
-
-        if (this.dashboard.documentTabsBar != null)
-        {
-            /* The tabs bar identifies audio by null type; translate SOUNDS accordingly */
-            ContentType tabsType = (entry.type == ContentType.SOUNDS) ? null : entry.type;
-
-            this.dashboard.documentTabsBar.activateIfOpen(tabsType, entry.id);
-        }
     }
 
     private void openRecent(RecentAssetsTracker.Entry entry)

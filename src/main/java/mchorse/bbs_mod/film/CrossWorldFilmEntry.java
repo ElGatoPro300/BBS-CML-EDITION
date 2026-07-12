@@ -5,12 +5,19 @@ public class CrossWorldFilmEntry
     public final String worldFolder;
     public final String worldLabel;
     public final String filmId;
+    public final long lastPlayed;
 
     public CrossWorldFilmEntry(String worldFolder, String worldLabel, String filmId)
+    {
+        this(worldFolder, worldLabel, filmId, 0L);
+    }
+
+    public CrossWorldFilmEntry(String worldFolder, String worldLabel, String filmId, long lastPlayed)
     {
         this.worldFolder = worldFolder;
         this.worldLabel = worldLabel;
         this.filmId = filmId;
+        this.lastPlayed = lastPlayed;
     }
 
     public String encodeKey()

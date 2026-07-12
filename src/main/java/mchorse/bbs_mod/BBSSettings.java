@@ -5,11 +5,11 @@ import mchorse.bbs_mod.settings.SettingsBuilder;
 import mchorse.bbs_mod.settings.values.core.ValueLink;
 import mchorse.bbs_mod.settings.values.core.ValueString;
 import mchorse.bbs_mod.settings.values.numeric.ValueBoolean;
+import mchorse.bbs_mod.settings.values.numeric.ValueDouble;
 import mchorse.bbs_mod.settings.values.numeric.ValueFloat;
 import mchorse.bbs_mod.settings.values.numeric.ValueInt;
 import mchorse.bbs_mod.settings.values.ui.ValueColors;
 import mchorse.bbs_mod.settings.values.ui.ValueEditorLayout;
-import mchorse.bbs_mod.settings.values.ui.ValueTimelineToolbarDocks;
 import mchorse.bbs_mod.settings.values.ui.ValueLanguage;
 import mchorse.bbs_mod.settings.values.ui.ValueOnionSkin;
 import mchorse.bbs_mod.settings.values.ui.ValueStringKeys;
@@ -129,7 +129,6 @@ public class BBSSettings
     public static ValueBoolean editorOrbitNoAnimation;
     public static ValueFloat editorOrbitTransitionDuration;
     public static ValueEditorLayout editorLayoutSettings;
-    public static ValueTimelineToolbarDocks timelineToolbarDocks;
     public static ValueOnionSkin editorOnionSkin;
     public static ValueBoolean editorSnapToMarkers;
     public static ValueBoolean editorClipPreview;
@@ -156,7 +155,6 @@ public class BBSSettings
     public static ValueBoolean editorRewind;
     public static ValueBoolean editorHorizontalClipEditor;
     public static ValueBoolean editorMinutesBackup;
-    public static ValueBoolean editorTimelineToolbar;
     public static ValueBoolean modelPbrPanelControls;
 
     public static ValueFloat recordingCountdown;
@@ -181,6 +179,7 @@ public class BBSSettings
     public static ValueBoolean lastViewMosaic;
     public static ValueBoolean coloredBackground;
     public static ValueFloat backgroundBrightness;
+    public static ValueDouble worldGammaPercent;
     public static ValueBoolean interfaceShadows;
 
     public static ValueString entitySelectorsPropertyWhitelist;
@@ -498,6 +497,7 @@ public class BBSSettings
         tooltipStyle = builder.getInt("tooltip_style", 1);
         coloredBackground = builder.getBoolean("colored_background", true);
         backgroundBrightness = builder.getFloat("background_brightness", 1F, 0.5F, 1.5F);
+        worldGammaPercent = builder.getDouble("world_gamma_percent", 100D, 0D, 1500D);
         interfaceShadows = builder.getBoolean("interface_shadows", true);
         fov = builder.getFloat("fov", 40, 0, 180);
         hsvColorPicker = builder.getBoolean("hsv_color_picker", true);
@@ -533,8 +533,8 @@ public class BBSSettings
         gizmoYAxisHorizontal = builder.getBoolean("gizmo_y_axis_horizontal", true);
         gizmoTrackball = builder.getBoolean("gizmo_trackball", true);
         gizmoTrackballScale = builder.getInt("gizmo_trackball_scale", 1, 1, 5);
-        /* 0 = Translate, 1 = Scale, 2 = Rotate, 3 = Combined; see Gizmo.Mode (ordinal order matches). */
-        gizmoDefaultMode = builder.getInt("gizmo_default_mode", 0, 0, 3);
+        /* 0 = Translate, 1 = Scale, 2 = Rotate, 3 = Combined, 4 = Trackball only; see Gizmo.Mode (ordinal order matches). */
+        gizmoDefaultMode = builder.getInt("gizmo_default_mode", 0, 0, 4);
         /* Faint guide line(s) shown along the dragged axis/plane: length (multiplier),
          * thickness (multiplier) and opacity (0..1). */
         gizmoGuideLength = builder.getFloat("gizmo_guide_length", 2F, 0.1F, 10F);
@@ -591,7 +591,6 @@ public class BBSSettings
         editorPeriodicSave = builder.getInt("periodic_save", 60, 0, 3600);
         editorHorizontalFlight = builder.getBoolean("horizontal_flight", false);
         builder.register(editorLayoutSettings = new ValueEditorLayout("layout"));
-        builder.register(timelineToolbarDocks = new ValueTimelineToolbarDocks("timeline_toolbar_docks"));
         builder.register(editorOnionSkin = new ValueOnionSkin("onion_skin"));
         editorSnapToMarkers = builder.getBoolean("snap_to_markers", false);
         editorClipPreview = builder.getBoolean("clip_preview", true);
@@ -621,9 +620,6 @@ public class BBSSettings
         realtimeKeyframes = builder.getBoolean("realtime_keyframes", false);
         autoKeyframes = builder.getBoolean("auto_keyframes", true);
         usingInMemoryClipboard = builder.getBoolean("using_in_memory_clipboard", false);
-
-        builder.category("timeline_toolbar");
-        editorTimelineToolbar = builder.getBoolean("enabled", true);
 
         builder.category("replays");
         replayContextOptions = builder.getInt("compacted_options", 0, 0, 2);

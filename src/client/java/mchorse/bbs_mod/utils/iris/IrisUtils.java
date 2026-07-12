@@ -12,6 +12,7 @@ import net.minecraft.client.texture.AbstractTexture;
 
 import net.irisshaders.iris.Iris;
 import net.irisshaders.iris.api.v0.IrisApi;
+import net.irisshaders.iris.gui.screen.ShaderPackScreen;
 import net.irisshaders.iris.gl.uniform.UniformUpdateFrequency;
 import net.irisshaders.iris.shaderpack.LanguageMap;
 import net.irisshaders.iris.shaderpack.ShaderPack;
@@ -451,6 +452,20 @@ public class IrisUtils
         try
         {
             Iris.toggleShaders(MinecraftClient.getInstance(), !IrisUtils.isShaderPackEnabled());
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+    }
+
+    public static void openShaderPackScreen()
+    {
+        try
+        {
+            MinecraftClient client = MinecraftClient.getInstance();
+
+            client.execute(() -> client.setScreen(new ShaderPackScreen(client.currentScreen)));
         }
         catch (Exception e)
         {

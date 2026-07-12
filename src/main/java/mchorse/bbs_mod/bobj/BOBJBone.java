@@ -20,6 +20,7 @@ public class BOBJBone
     public float lighting;
     public final Color color = new Color(1, 1, 1, 1);
     public Link texture;
+    public Link textureBlendTo;
     public float textureBlend = 1F;
 
     /**
@@ -110,6 +111,7 @@ public class BOBJBone
         bone.lighting = this.lighting;
         bone.color.copy(this.color);
         bone.texture = this.texture;
+        bone.textureBlendTo = this.textureBlendTo;
         bone.textureBlend = this.textureBlend;
         bone.mat.set(this.mat);
         bone.originMat.set(this.originMat);
@@ -122,5 +124,10 @@ public class BOBJBone
     public void reset()
     {
         this.transform.identity();
+        this.lighting = 0F;
+        this.color.set(1F, 1F, 1F, 1F);
+        this.texture = null;
+        this.textureBlend = 1F;
+        this.textureBlendTo = null;
     }
 }

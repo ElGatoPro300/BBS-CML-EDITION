@@ -23,6 +23,9 @@ import java.util.function.Consumer;
 
 public class UIForms extends UIList<UIForms.FormEntry>
 {
+    private static final Vector3f UI_LIGHT_A = new Vector3f(0.85F, 0.85F, -1F).normalize();
+    private static final Vector3f UI_LIGHT_B = new Vector3f(-0.85F, 0.85F, 1F).normalize();
+
     private Form rootForm;
     private Runnable reorderCallback;
 
@@ -351,8 +354,8 @@ public class UIForms extends UIList<UIForms.FormEntry>
 
             y -= 10;
 
-            Vector3f a = new Vector3f(0.85F, 0.85F, -1F).normalize();
-            Vector3f b = new Vector3f(-0.85F, 0.85F, 1F).normalize();
+            Vector3f a = UIForms.UI_LIGHT_A;
+            Vector3f b = UIForms.UI_LIGHT_B;
             RenderSystem.setupLevelDiffuseLighting(a, b);
             FormUtilsClient.renderUI(form, context, x, y, x + 40, y + 40);
             DiffuseLighting.disableGuiDepthLighting();

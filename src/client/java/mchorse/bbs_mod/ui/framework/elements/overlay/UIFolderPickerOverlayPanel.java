@@ -5,6 +5,7 @@ import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.UIKeys;
+import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UIFileLinkList;
@@ -12,6 +13,8 @@ import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
+
+import org.lwjgl.glfw.GLFW;
 
 import java.io.File;
 import java.util.function.Consumer;
@@ -124,6 +127,27 @@ public class UIFolderPickerOverlayPanel extends UIOverlayPanel
         this.openFolder.setEnabled(folder != null && folder.isDirectory());
     }
     
+    @Override
+    public boolean subMouseClicked(UIContext context)
+    {
+        if (context.mouseButton == GLFW.GLFW_MOUSE_BUTTON_4)
+        {
+            if (this.picker.navigateBack())
+            {
+                return true;
+            }
+        }
+        else if (context.mouseButton == GLFW.GLFW_MOUSE_BUTTON_5)
+        {
+            if (this.picker.navigateForward())
+            {
+                return true;
+            }
+        }
+
+        return super.subMouseClicked(context);
+    }
+
     @Override
     public void resize()
     {

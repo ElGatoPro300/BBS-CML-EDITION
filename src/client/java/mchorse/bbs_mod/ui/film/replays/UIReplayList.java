@@ -34,6 +34,8 @@ import mchorse.bbs_mod.settings.values.core.ValueForm;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanels;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
+import mchorse.bbs_mod.ui.film.controller.FilmEditorController;
+import mchorse.bbs_mod.ui.film.controller.UIFilmController;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIReplaysOverlayPanel;
 import mchorse.bbs_mod.ui.forms.UIFormPalette;
 import mchorse.bbs_mod.ui.framework.UIContext;
@@ -107,6 +109,9 @@ import java.util.function.Consumer;
  */
 public class UIReplayList extends UIList<Replay> {
     public static final List<BiConsumer<UIReplayList, ContextMenuManager>> extensions = new ArrayList<>();
+
+    static final Vector3f LIGHT_A = new Vector3f(0.85F, 0.85F, -1F).normalize();
+    static final Vector3f LIGHT_B = new Vector3f(-0.85F, 0.85F, 1F).normalize();
 
     private static String LAST_PROCESS = "v";
     private static String LAST_PICK_FAVORITE_CATEGORY_ID = null;
@@ -1945,7 +1950,7 @@ public class UIReplayList extends UIList<Replay> {
     }
 
     private void updateFilmEditor() {
-        this.panel.getController().createEntities();
+        this.panel.getController().createEntitiesNow();
         this.panel.replayEditor.updateChannelsList();
     }
 
@@ -2587,9 +2592,12 @@ public class UIReplayList extends UIList<Replay> {
             textX = folderX + 16;
         }
 
-        if (element.enabled.get()) {
+        if (this.isReplayListItemActive(element))
+        {
             super.renderElementPart(context, element, i, textX, y, hover, selected);
-        } else {
+        }
+        else
+        {
             context.batcher.textShadow(this.elementToString(context, i, element), textX + 4,
                     y + (this.scroll.scrollItemSize - context.batcher.getFont().getHeight()) / 2,
                     hover ? Colors.mulRGB(Colors.HIGHLIGHT, 0.75F) : Colors.GRAY);
@@ -2604,9 +2612,7 @@ public class UIReplayList extends UIList<Replay> {
 
             y -= 10;
 
-            Vector3f a = new Vector3f(0.85F, 0.85F, -1F).normalize();
-            Vector3f b = new Vector3f(-0.85F, 0.85F, 1F).normalize();
-            RenderSystem.setupLevelDiffuseLighting(a, b);
+            RenderSystem.setupLevelDiffuseLighting(UIReplayList.LIGHT_A, UIReplayList.LIGHT_B);
             FormUtilsClient.renderUI(form, context, x, y, x + 40, y + 40);
             DiffuseLighting.disableGuiDepthLighting();
 
@@ -2616,6 +2622,21 @@ public class UIReplayList extends UIList<Replay> {
                 context.batcher.outlinedIcon(Icons.ARROW_UP, x, y + 20, 0.5F, 0.5F);
             }
         }
+    }
+
+    private boolean isReplayListItemActive(Replay replay)
+    {
+        UIFilmController controller = this.panel.getController();
+        FilmEditorController editor = controller == null ? null : controller.editorController;
+
+        if (editor != null)
+        {
+            int tick = replay.getTick(this.panel.getCursor());
+
+            return editor.isReplayVisible(replay, tick);
+        }
+
+        return replay.enabled.get();
     }
 
     private void addGroup() {

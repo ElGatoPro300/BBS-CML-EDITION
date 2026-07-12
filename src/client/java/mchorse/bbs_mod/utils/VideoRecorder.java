@@ -480,6 +480,8 @@ public class VideoRecorder
             this.mergeAudioTrack(this.findOutputVideo(), mixed);
         }
 
+        this.cleanupIntermediateAudioFiles();
+
         this.recording = false;
         this.filmAudioFile = null;
         this.movieName = null;
@@ -491,6 +493,50 @@ public class VideoRecorder
         UIUtils.playClick(0.5F);
 
         this.serverTicks = this.lastServerTicks = 0;
+    }
+
+    private void cleanupIntermediateAudioFiles()
+    {
+        if (BBSSettings.videoSettings.audioSeparateFile.get())
+        {
+            return;
+        }
+
+        this.deleteQuietly(this.filmAudioFile);
+        this.deleteQuietly(this.ambientAudioFile);
+
+        if (this.exportFolder == null || this.movieName == null)
+        {
+            return;
+        }
+
+        this.deleteQuietly(this.exportFolder.resolve(this.movieName + "_mix.wav").toFile());
+        this.deleteQuietly(this.exportFolder.resolve(this.movieName + "_ambient.wav").toFile());
+
+        String[] extensions = new String[] {"mp4", "mkv", "mov", "webm", "avi"};
+
+        for (String extension : extensions)
+        {
+            this.deleteQuietly(this.exportFolder.resolve(this.movieName + "_noaudio." + extension).toFile());
+            this.deleteQuietly(this.exportFolder.resolve(this.movieName + "_ambient." + extension).toFile());
+        }
+    }
+
+    private void deleteQuietly(File file)
+    {
+        if (file == null || !file.exists())
+        {
+            return;
+        }
+
+        try
+        {
+            file.delete();
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
     }
 
     /**

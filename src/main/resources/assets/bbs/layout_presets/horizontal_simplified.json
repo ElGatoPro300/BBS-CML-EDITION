@@ -105,11 +105,5 @@
             ],
             "type": "tabbed"
         }
-    },
-    "timeline_toolbar_docks": {
-        "replayTimeline": "left",
-        "cameraTimeline": "left",
-        "actionTimeline": "left",
-        "screenNodeView": "left"
     }
 }

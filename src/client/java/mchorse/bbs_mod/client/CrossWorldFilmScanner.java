@@ -8,6 +8,7 @@ import net.minecraft.world.level.storage.LevelSummary;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,36 +26,50 @@ public class CrossWorldFilmScanner
 
         return storage.loadSummaries(levelList).thenApply((summaries) ->
         {
-            Map<String, String> labels = new HashMap<>();
+            List<LevelSummary> sortedSummaries = new ArrayList<>(summaries);
 
-            for (LevelSummary summary : summaries)
+            sortedSummaries.sort(Comparator.comparingLong(LevelSummary::getLastPlayed).reversed());
+
+            Map<String, LevelStorage.LevelSave> saves = new HashMap<>();
+
+            for (LevelStorage.LevelSave save : levelList.levels())
             {
-                labels.put(summary.getName(), summary.getDisplayName());
+                saves.put(save.getRootPath(), save);
             }
 
             List<CrossWorldFilmEntry> entries = new ArrayList<>();
 
-            for (LevelStorage.LevelSave save : levelList.levels())
+            for (LevelSummary summary : sortedSummaries)
             {
-                String worldFolder = save.getRootPath();
-                String worldLabel = labels.getOrDefault(worldFolder, worldFolder);
-                File filmsFolder = save.path().resolve("bbs/films").toFile();
+                String worldFolder = summary.getName();
+                String worldLabel = summary.getDisplayName();
+                long lastPlayed = summary.getLastPlayed();
+                LevelStorage.LevelSave save = saves.get(worldFolder);
 
-                if (!filmsFolder.isDirectory())
+                if (save == null)
                 {
                     continue;
                 }
 
-                CrossWorldFilmScanner.collectFilms(entries, worldFolder, worldLabel, filmsFolder, "");
-            }
+                File filmsFolder = save.path().resolve("bbs/films").toFile();
+                int beforeCount = entries.size();
 
-            entries.sort((a, b) -> a.getDisplayLabel().compareToIgnoreCase(b.getDisplayLabel()));
+                if (filmsFolder.isDirectory())
+                {
+                    CrossWorldFilmScanner.collectFilms(entries, worldFolder, worldLabel, lastPlayed, filmsFolder, "");
+                }
+
+                if (entries.size() == beforeCount)
+                {
+                    entries.add(new CrossWorldFilmEntry(worldFolder, worldLabel, "", lastPlayed));
+                }
+            }
 
             return entries;
         });
     }
 
-    private static void collectFilms(List<CrossWorldFilmEntry> entries, String worldFolder, String worldLabel, File folder, String prefix)
+    private static void collectFilms(List<CrossWorldFilmEntry> entries, String worldFolder, String worldLabel, long lastPlayed, File folder, String prefix)
     {
         File[] children = folder.listFiles();
 
@@ -71,7 +86,7 @@ public class CrossWorldFilmScanner
             {
                 String filmId = prefix + name.substring(0, name.length() - FILMS_EXTENSION.length());
 
-                entries.add(new CrossWorldFilmEntry(worldFolder, worldLabel, filmId));
+                entries.add(new CrossWorldFilmEntry(worldFolder, worldLabel, filmId, lastPlayed));
             }
             else if (child.isDirectory() && !name.startsWith("_"))
             {
@@ -80,11 +95,11 @@ public class CrossWorldFilmScanner
 
                 if (nested == null || nested.length == 0)
                 {
-                    entries.add(new CrossWorldFilmEntry(worldFolder, worldLabel, nestedPrefix));
+                    entries.add(new CrossWorldFilmEntry(worldFolder, worldLabel, nestedPrefix, lastPlayed));
                 }
                 else
                 {
-                    CrossWorldFilmScanner.collectFilms(entries, worldFolder, worldLabel, child, nestedPrefix);
+                    CrossWorldFilmScanner.collectFilms(entries, worldFolder, worldLabel, lastPlayed, child, nestedPrefix);
                 }
             }
         }

@@ -113,11 +113,5 @@
                 "type": "panel"
             }
         }
-    },
-    "timeline_toolbar_docks": {
-        "replayTimeline": "bottom",
-        "cameraTimeline": "left",
-        "actionTimeline": "right",
-        "screenNodeView": "left"
     }
 }

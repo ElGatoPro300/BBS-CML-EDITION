@@ -34,6 +34,33 @@ public class CrossWorldFilmLoader
         return null;
     }
 
+    public static File getWorldIconFile(String worldFolder)
+    {
+        if (worldFolder == null || worldFolder.isEmpty())
+        {
+            return null;
+        }
+
+        MinecraftClient client = MinecraftClient.getInstance();
+
+        for (LevelStorage.LevelSave save : client.getLevelStorage().getLevelList().levels())
+        {
+            if (save.getRootPath().equals(worldFolder))
+            {
+                File icon = save.path().resolve("icon.png").toFile();
+
+                if (icon.isFile())
+                {
+                    return icon;
+                }
+
+                return null;
+            }
+        }
+
+        return null;
+    }
+
     public static void load(String worldFolder, String filmId, Consumer<Film> consumer)
     {
         File file = CrossWorldFilmLoader.getFilmFile(worldFolder, filmId);

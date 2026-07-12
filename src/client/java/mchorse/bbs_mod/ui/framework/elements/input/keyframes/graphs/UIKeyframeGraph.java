@@ -6,12 +6,10 @@ import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.graphics.line.LineBuilder;
 import mchorse.bbs_mod.graphics.line.SolidColorLineRenderer;
 import mchorse.bbs_mod.graphics.window.Window;
-import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarPointerBlock;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeSheet;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframes;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.shapes.IKeyframeShapeRenderer;
-import mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.Scale;
 import mchorse.bbs_mod.ui.utils.ScrollDirection;
@@ -471,8 +469,7 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
     {
         Area area = this.keyframes.area;
 
-        /* Render where the keyframe will be duplicated or added */
-        if (!area.isInside(context) || TimelineToolbarPointerBlock.blocksPointer(context))
+        if (!area.isInside(context))
         {
             return;
         }
@@ -692,14 +689,8 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
 
         lineBuilder.render(context.batcher, SolidColorLineRenderer.get(Colors.COLOR.set(Colors.setA(sheet.color, 1F))));
 
-        if (keyframes.isEmpty())
-        {
-            return;
-        }
-
         /* Render track bars (horizontal lines) */
         BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
-        boolean hasQuads = false;
 
         /* Draw keyframe handles (outer) */
         int forcedIndex = 0;
@@ -722,13 +713,11 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
                 context.batcher.fillRect(builder, matrix, x1, y1 - 2, 1, 5, color, color, color, color);
                 context.batcher.fillRect(builder, matrix, x2, y1 - 2, 1, 5, color, color, color, color);
                 context.batcher.fillRect(builder, matrix, x1 + 1, y1, x2 - x1, 1, color, color, color, color);
-                hasQuads = true;
 
                 forcedIndex += 1;
             }
 
-            boolean isPointHover = !TimelineToolbarPointerBlock.blocksPointer(context)
-                && this.isNear(
+            boolean isPointHover = this.isNear(
                 this.keyframes.toGraphX(frame.getTick()),
                 y,
                 context.mouseX,
@@ -753,7 +742,6 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
             int offset = toRemove ? 4 : 3;
 
             UIKeyframeDopeSheet.renderShape(frame, context, builder, matrix, x1, y, offset, c);
-            hasQuads = true;
 
             if (frame.getInterpolation().getInterp() == Interpolations.BEZIER)
             {
@@ -785,7 +773,6 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
             IKeyframeShapeRenderer shapeResult = UIKeyframeDopeSheet.renderShape(frame, context, builder, matrix, mx, y, 2, mc);
 
             shapeResult.renderKeyframeBackground(context, builder, matrix, mx, y, 2, mc);
-            hasQuads = true;
 
             if (frame.getInterpolation().getInterp() == Interpolations.BEZIER)
             {
@@ -806,7 +793,16 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
             }
         }
 
-        Batcher2D.drawPositionColorQuads(builder, hasQuads);
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
+
+        if (keyframes.isEmpty())
+        {
+            return;
+        }
+
+        BufferRenderer.drawWithGlobalProgram(builder.end());
     }
 
     @Override

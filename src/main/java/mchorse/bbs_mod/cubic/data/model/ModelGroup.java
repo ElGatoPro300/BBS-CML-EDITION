@@ -34,6 +34,7 @@ public class ModelGroup implements IMapSerializable
     public float glowRadius;
     public float shaderShadow = PaintSettings.SHADER_SHADOW_DEFAULT;
     public Link textureOverride;
+    public Link textureBlendTo;
     public float textureBlend = 1F;
     public Transform initial = new Transform();
     public Transform current = new Transform();
@@ -53,6 +54,7 @@ public class ModelGroup implements IMapSerializable
         this.glowRadius = 0F;
         this.shaderShadow = PaintSettings.SHADER_SHADOW_DEFAULT;
         this.textureOverride = null;
+        this.textureBlendTo = null;
         this.textureBlend = 1F;
         this.current.copy(this.initial);
     }
@@ -75,6 +77,7 @@ public class ModelGroup implements IMapSerializable
         group.glowRadius = this.glowRadius;
         group.shaderShadow = this.shaderShadow;
         if (this.textureOverride != null) group.textureOverride = LinkUtils.copy(this.textureOverride);
+        if (this.textureBlendTo != null) group.textureBlendTo = LinkUtils.copy(this.textureBlendTo);
         group.textureBlend = this.textureBlend;
         
         group.initial.copy(this.initial);

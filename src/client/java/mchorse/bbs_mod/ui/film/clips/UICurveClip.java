@@ -182,8 +182,25 @@ public class UICurveClip extends UIClip<CurveClip>
     }
 
     @Override
-    protected UIKeyframeEditor resolveClipEmbeddableView(String undoId)
+    public void applyUndoData(MapType data)
     {
-        return undoId.equals(this.keyframes.getUndoId()) ? this.keyframes : null;
+        if (data.getString("embed").equals("curve"))
+        {
+            this.editor.embedView(this.keyframes);
+            this.keyframes.view.resetView();
+        }
+
+        super.applyUndoData(data);
+    }
+
+    @Override
+    public void collectUndoData(MapType data)
+    {
+        if (this.keyframes.hasParent())
+        {
+            data.putString("embed", "curve");
+        }
+
+        super.collectUndoData(data);
     }
 }

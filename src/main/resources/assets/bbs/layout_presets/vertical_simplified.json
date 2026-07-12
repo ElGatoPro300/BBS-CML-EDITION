@@ -105,11 +105,5 @@
             "id": "preview",
             "type": "panel"
         }
-    },
-    "timeline_toolbar_docks": {
-        "replayTimeline": "bottom",
-        "cameraTimeline": "bottom",
-        "actionTimeline": "bottom",
-        "screenNodeView": "bottom"
     }
 }
