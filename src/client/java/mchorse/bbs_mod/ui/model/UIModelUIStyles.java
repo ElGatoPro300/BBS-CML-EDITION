@@ -7,15 +7,15 @@ public final class UIModelUIStyles
 {
     public static final int STRIP_WIDTH = 20;
     public static final int STRIP_BACKGROUND = Colors.A75;
-    public static final int PANEL_BACKGROUND = Colors.A75;
-    public static final int VIEWPORT_BACKGROUND = Colors.A90;
+    public static final int PANEL_BACKGROUND = 0xFF111115;
+    public static final int VIEWPORT_BACKGROUND = 0xFF111115;
 
     /** Darkest: left icon strip in the embedded form model editor */
     public static final int FORM_STRIP_BACKGROUND = 0xFF000000;
     /** Lighter than the icon strip, darker than the viewport center */
-    public static final int FORM_PANEL_BACKGROUND = 0xCC000000;
+    public static final int FORM_PANEL_BACKGROUND = 0xFF111115;
     /** Lightest: model preview area between the side panels */
-    public static final int FORM_VIEWPORT_BACKGROUND = 0xDD000000;
+    public static final int FORM_VIEWPORT_BACKGROUND = 0xFF111115;
 
     public static void renderWorkspaceSidePanels(UIContext context, int x, int y, int ey, int areaW, int sideMargin, int leftWidth, int rightWidth)
     {
