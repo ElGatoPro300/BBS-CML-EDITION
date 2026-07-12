@@ -653,6 +653,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
         this.renderGrid(context);
         context.batcher.clip(this.keyframes.area.x, this.keyframes.area.y + RULER_HEIGHT, this.keyframes.area.w, this.keyframes.area.h - RULER_HEIGHT, context);
         this.renderGraph(context);
+        this.renderPreviewKeyframes(context);
         this.keyframes.renderKeyframeInsertPreviews(context);
         this.keyframes.renderKeyframeDuplicatePreviews(context);
         this.keyframes.renderKeyframePastePreviews(context);
