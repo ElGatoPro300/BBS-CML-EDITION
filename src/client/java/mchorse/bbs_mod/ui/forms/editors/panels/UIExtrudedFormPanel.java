@@ -32,7 +32,6 @@ public class UIExtrudedFormPanel extends UIFormPanel<ExtrudedForm>
             UITexturePicker.open(this.getContext(), this.form.texture.get(), (l) -> this.form.texture.set(l));
         });
         this.color = new UIColor((c) -> this.form.color.set(Color.rgba(c)));
-        this.color.bindSecondary(this.form.colorSecondary);
         this.color.withAlpha();
         this.paintColor = new UIColor((c) ->
         {
@@ -99,7 +98,6 @@ public class UIExtrudedFormPanel extends UIFormPanel<ExtrudedForm>
         super.startEdit(form);
 
         this.color.setColor(form.color.get().getARGBColor());
-        this.color.syncSecondary(this.form.colorSecondary);
         PaintSettings paint = form.paintSettings.get();
         Color paintDisplay = new Color();
 

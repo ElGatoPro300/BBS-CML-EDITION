@@ -54,7 +54,6 @@ public class UIBillboardFormPanel extends UIFormPanel<BillboardForm>
         });
         this.resizeCrop = new UIToggle(UIKeys.FORMS_EDITORS_BILLBOARD_RESIZE_CROP, false, (b) -> this.form.resizeCrop.set(b.getValue()));
         this.color = new UIColor((value) -> this.form.color.set(Color.rgba(value))).direction(Direction.LEFT).withAlpha();
-        this.color.bindSecondary(this.form.colorSecondary);
         this.paintColor = new UIColor((value) ->
         {
             Color color = Color.rgba(value);
@@ -134,7 +133,6 @@ public class UIBillboardFormPanel extends UIFormPanel<BillboardForm>
 
         this.resizeCrop.setValue(form.resizeCrop.get());
         this.color.setColor(form.color.get().getARGBColor());
-        this.color.syncSecondary(this.form.colorSecondary);
         PaintSettings paint = form.paintSettings.get();
         Color paintDisplay = new Color();
 

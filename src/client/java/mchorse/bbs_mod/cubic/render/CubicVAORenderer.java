@@ -12,7 +12,6 @@ import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.colors.Color;
-import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.interps.Lerps;
 
 import net.minecraft.client.gl.ShaderProgram;
@@ -60,6 +59,7 @@ public class CubicVAORenderer extends CubicCubeRenderer
             float effectivePaintR = this.resolveEffectivePaintR(group);
             float effectivePaintG = this.resolveEffectivePaintG(group);
             float effectivePaintB = this.resolveEffectivePaintB(group);
+
             if (effectivePaintStrength > 0F && !this.groupHasPaintableTexture(group))
             {
                 if (ModelVAORenderer.isPaintPass() && effectiveGlowStrength == 0F)

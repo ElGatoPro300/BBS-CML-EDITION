@@ -244,9 +244,6 @@ public class Colors
     private static final Color HSV_SCRATCH_D = new Color();
     private static final Color HSV_RGB_OUT = new Color();
 
-    /* Below this saturation the picker treats the color as achromatic (no hue bleed). */
-    private static final float PICKER_SATURATION_SNAP = 0.004F;
-
     /**
      * Returns the hue endpoint for long-path interpolation around the spectrum
      * (red → orange → yellow → green → cyan → blue → magenta → red).
@@ -350,115 +347,5 @@ public class Colors
         out.a = MathUtils.clamp((float) interpolation.interpolate(IInterp.context.set(preA.a, a.a, b.a, postB.a, x)), 0F, 1F);
 
         return out;
-    }
-
-    public static boolean isPickerDefaultSecondary(Color secondary)
-    {
-        return secondary.r <= 0.001F && secondary.g <= 0.001F && secondary.b <= 0.001F;
-    }
-
-    /**
-     * Returns how strongly the primary color should be treated as a "solid"
-     * secondary color (range 0..1). 0 = no solid effect (vertex multiply only),
-     * 1 = fully solid secondary color applied via lit paint.
-     *
-     * Uses the picker's vertical value axis (bottom = 1) so the transition
-     * matches what the user sees in the color square.
-     */
-    public static float computeSolidStrength(Color primary, Color secondary)
-    {
-        if (Colors.isPickerDefaultSecondary(secondary))
-        {
-            return 0F;
-        }
-
-        Colors.pickerHSVFromRGB(Colors.HSV_SCRATCH_A, primary, secondary);
-
-        return MathUtils.clamp(1F - Colors.HSV_SCRATCH_A.b, 0F, 1F);
-    }
-
-    public static void pickerColorFromHSV(Color out, Color secondary, float h, float s, float v)
-    {
-        /* Left edge / near-neutral: achromatic multiply only; secondary solid is applied via paint. */
-        if (s <= Colors.PICKER_SATURATION_SNAP)
-        {
-            out.r = v;
-            out.g = v;
-            out.b = v;
-
-            return;
-        }
-
-        if (Colors.isPickerDefaultSecondary(secondary))
-        {
-            Colors.HSVtoRGB(out, h, s, v);
-
-            return;
-        }
-
-        Colors.HSVtoRGB(Colors.HSV_SCRATCH_A, h, 1F, 1F);
-
-        float mixR = Lerps.lerp(1F, Colors.HSV_SCRATCH_A.r, s);
-        float mixG = Lerps.lerp(1F, Colors.HSV_SCRATCH_A.g, s);
-        float mixB = Lerps.lerp(1F, Colors.HSV_SCRATCH_A.b, s);
-
-        out.r = Lerps.lerp(secondary.r, mixR, v);
-        out.g = Lerps.lerp(secondary.g, mixG, v);
-        out.b = Lerps.lerp(secondary.b, mixB, v);
-    }
-
-    public static void pickerHSVFromRGB(Color hsv, Color rgb, Color secondary)
-    {
-        Colors.RGBtoHSV(hsv, rgb.r, rgb.g, rgb.b);
-
-        if (hsv.g <= Colors.PICKER_SATURATION_SNAP)
-        {
-            hsv.r = 0F;
-            hsv.g = 0F;
-
-            return;
-        }
-
-        if (Colors.isPickerDefaultSecondary(secondary))
-        {
-            return;
-        }
-
-        float hue = hsv.r;
-        float bestSaturation = hsv.g;
-        float bestValue = hsv.b;
-        float bestError = Float.MAX_VALUE;
-
-        Colors.HSVtoRGB(Colors.HSV_SCRATCH_A, hue, 1F, 1F);
-
-        for (int si = 0; si <= 50; si++)
-        {
-            float saturation = si / 50F;
-            float mixR = Lerps.lerp(1F, Colors.HSV_SCRATCH_A.r, saturation);
-            float mixG = Lerps.lerp(1F, Colors.HSV_SCRATCH_A.g, saturation);
-            float mixB = Lerps.lerp(1F, Colors.HSV_SCRATCH_A.b, saturation);
-
-            for (int vi = 0; vi <= 50; vi++)
-            {
-                float value = vi / 50F;
-                float r = Lerps.lerp(secondary.r, mixR, value);
-                float g = Lerps.lerp(secondary.g, mixG, value);
-                float b = Lerps.lerp(secondary.b, mixB, value);
-                float dr = r - rgb.r;
-                float dg = g - rgb.g;
-                float db = b - rgb.b;
-                float error = dr * dr + dg * dg + db * db;
-
-                if (error < bestError)
-                {
-                    bestError = error;
-                    bestSaturation = saturation;
-                    bestValue = value;
-                }
-            }
-        }
-
-        hsv.g = bestSaturation;
-        hsv.b = bestValue;
     }
 }

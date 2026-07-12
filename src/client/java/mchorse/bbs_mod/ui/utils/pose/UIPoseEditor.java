@@ -435,18 +435,6 @@ public class UIPoseEditor extends UIElement
         });
         this.color.withAlpha();
         this.color.tooltip(UIKeys.RAW_COLOR);
-        this.color.picker.setSecondaryChangeCallback((c) ->
-        {
-            if (this.transform.getTransform() instanceof PoseTransform poseTransform)
-            {
-                poseTransform.colorSecondary.set(c);
-
-                if (this.onChange != null)
-                {
-                    this.onChange.run();
-                }
-            }
-        });
         this.color.context((menu) ->
         {
             menu.action(Icons.DOWNLOAD, UIKeys.POSE_CONTEXT_APPLY, () ->
@@ -1134,7 +1122,6 @@ public class UIPoseEditor extends UIElement
         {
             this.fix.setValue(poseTransform.fix);
             this.color.setColor(poseTransform.color.getARGBColor());
-            this.color.syncSecondary(poseTransform.colorSecondary.getRGBColor());
             this.paintColor.setColor(poseTransform.paintColor.getRGBColor());
             this.paintIntensity.setValue(poseTransform.paintColor.a);
             this.glowingColor.setColor(poseTransform.glowingColor.getRGBColor());

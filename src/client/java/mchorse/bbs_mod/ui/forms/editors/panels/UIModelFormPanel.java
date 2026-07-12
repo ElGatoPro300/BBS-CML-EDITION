@@ -76,7 +76,6 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
             UIOverlay.addOverlay(this.getContext(), list);
         });
         this.color = new UIColor((c) -> this.form.color.set(new Color().set(c))).withAlpha();
-        this.color.bindSecondary(this.form.colorSecondary);
         this.color.direction(Direction.LEFT);
         this.color.context((menu) -> menu.action(Icons.COLOR, UIKeys.KEYFRAMES_RESET_COLOR, this::resetMainColor));
         this.paintColor = new UIColor((c) ->
@@ -276,7 +275,6 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
         this.pbrNormalIntensity.setValue(form.pbrNormalIntensity.get());
         this.pbrSpecularIntensity.setValue(form.pbrSpecularIntensity.get());
         this.color.setColor(form.color.get().getARGBColor());
-        this.color.syncSecondary(form.colorSecondary);
         PaintSettings paint = form.paintSettings.get();
         Color paintDisplay = new Color();
 

@@ -28,7 +28,6 @@ public class ModelGroup implements IMapSerializable
 
     public float lighting = 0F;
     public Color color = new Color().set(1F, 1F, 1F);
-    public Color colorSecondary = new Color().set(0F, 0F, 0F, 1F);
     public Color paintColor = new Color().set(1F, 1F, 1F, 0F);
     public Color glowingColor = new Color().set(1F, 1F, 1F, 1F);
     public float glowIntensity;
@@ -48,7 +47,6 @@ public class ModelGroup implements IMapSerializable
     {
         this.lighting = 0F;
         this.color.set(1F, 1F, 1F);
-        this.colorSecondary.set(0F, 0F, 0F, 1F);
         this.paintColor.set(1F, 1F, 1F, 0F);
         this.glowingColor.set(1F, 1F, 1F, 1F);
         this.glowIntensity = 0F;
@@ -71,7 +69,6 @@ public class ModelGroup implements IMapSerializable
         
         group.lighting = this.lighting;
         group.color.copy(this.color);
-        group.colorSecondary.copy(this.colorSecondary);
         group.paintColor.copy(this.paintColor);
         group.glowingColor.copy(this.glowingColor);
         group.glowIntensity = this.glowIntensity;

@@ -20,6 +20,7 @@ import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
+import net.minecraft.client.util.BufferAllocator;
 
 import org.joml.Matrix4f;
 
@@ -37,45 +38,28 @@ import java.util.function.Consumer;
 public class UIColorPicker extends UIElement
 {
     public static final int COLOR_PICKER_SIZE = 120;
+    public static final int COLOR_PICKER_TOP = 30;
     public static final int COLOR_PICKER_GAP = 4;
     public static final int COLOR_PICKER_BAR_WIDTH = 14;
-    public static final int PRIMARY_INPUT_TOP = 5;
-    public static final int PRIMARY_INPUT_HEIGHT = 20;
-    public static final int SECONDARY_HEADER_HEIGHT = 14;
-    public static final int SECONDARY_BODY_HEIGHT = 20;
-    public static final int SECTION_GAP = 5;
-    public static final int COLOR_PICKER_TOP = PRIMARY_INPUT_TOP + PRIMARY_INPUT_HEIGHT + SECTION_GAP;
 
     public static ValueColors recentColors = new ValueColors("recent");
 
     public Color color = new Color();
-    public Color secondaryColor = new Color().set(0F, 0F, 0F, 1F);
     public Consumer<Integer> callback;
-    public Consumer<Integer> secondaryChangeCallback;
 
     public UITextbox input;
-    public UITextbox secondaryInput;
     public UIColorPalette recent;
     public UIColorPalette favorite;
 
     public boolean editAlpha;
-    public boolean secondarySectionEnabled = true;
-    public boolean secondaryExpanded = false;
 
     public Area red = new Area();
     public Area green = new Area();
     public Area blue = new Area();
     public Area alpha = new Area();
-    public Area secondaryHeader = new Area();
-    public Area secondarySwatch = new Area();
 
     protected int dragging = -1;
     protected Color hsv = new Color();
-    protected UIColorPicker nestedSecondaryPicker;
-
-    /* Cached palette heights set in setupSize() so resize() can use them before super.resize() runs. */
-    private int storedFavoriteH;
-    private int storedRecentH;
 
     public static void renderAlphaPreviewQuad(Batcher2D batcher, int x1, int y1, int x2, int y2, Color color)
     {
@@ -107,11 +91,6 @@ public class UIColorPicker extends UIElement
             this.callback();
         });
         this.input.context((menu) -> menu.action(Icons.FAVORITE, UIKeys.COLOR_CONTEXT_FAVORITES_ADD, () -> this.addToFavorites(this.color)));
-
-        this.secondaryInput = new UITextbox(7, (string) ->
-        {
-            this.setSecondaryColor(Colors.parse(string), true);
-        });
 
         this.recent = new UIColorPalette((color) ->
         {
@@ -145,15 +124,11 @@ public class UIColorPicker extends UIElement
             }
         });
 
-        this.input.relative(this).set(5, PRIMARY_INPUT_TOP, 0, PRIMARY_INPUT_HEIGHT).w(1, -35);
-        this.secondaryInput.relative(this).w(1, -35).h(SECONDARY_BODY_HEIGHT);
-        this.favorite.relative(this).w(1F, -10);
-        this.recent.relative(this).w(1F, -10);
+        this.input.relative(this).set(5, 5, 0, 20).w(1, -35);
+        this.favorite.relative(this).xy(5, COLOR_PICKER_TOP + COLOR_PICKER_SIZE + 10).w(1F, -10);
+        this.recent.relative(this.favorite).w(1F);
 
-        this.add(this.input, this.secondaryInput, this.favorite, this.recent);
-        this.secondaryInput.setVisible(false);
-
-        this.eventPropagataion(EventPropagation.BLOCK_INSIDE).add(this.input, this.secondaryInput, this.favorite, this.recent);
+        this.eventPropagataion(EventPropagation.BLOCK_INSIDE).add(this.input, this.favorite, this.recent);
     }
 
     public UIColorPicker editAlpha()
@@ -162,82 +137,6 @@ public class UIColorPicker extends UIElement
         this.input.textbox.setLength(9);
 
         return this;
-    }
-
-    public UIColorPicker withoutSecondarySection()
-    {
-        this.secondarySectionEnabled = false;
-
-        return this;
-    }
-
-    public void setSecondaryChangeCallback(Consumer<Integer> secondaryChangeCallback)
-    {
-        this.secondaryChangeCallback = secondaryChangeCallback;
-    }
-
-    public void setSecondaryColor(int color, boolean notify)
-    {
-        this.secondaryColor.set(color, false);
-        this.updateSecondaryField();
-        Colors.pickerHSVFromRGB(this.hsv, this.color, this.secondaryColor);
-
-        if (notify)
-        {
-            this.notifySecondaryChange();
-        }
-    }
-
-    protected void notifySecondaryChange()
-    {
-        if (this.secondaryChangeCallback != null)
-        {
-            this.secondaryChangeCallback.accept(this.secondaryColor.getRGBColor());
-        }
-    }
-
-    public void updateSecondaryField()
-    {
-        this.secondaryInput.setText(this.secondaryColor.stringify(false));
-    }
-
-    protected int getSecondaryBlockHeight()
-    {
-        if (!this.secondarySectionEnabled)
-        {
-            return 0;
-        }
-
-        int height = SECONDARY_HEADER_HEIGHT;
-
-        if (this.secondaryExpanded)
-        {
-            height += SECTION_GAP + SECONDARY_BODY_HEIGHT;
-        }
-
-        return height;
-    }
-
-    protected int getColorSquareTop()
-    {
-        return PRIMARY_INPUT_TOP + PRIMARY_INPUT_HEIGHT + SECTION_GAP;
-    }
-
-    protected int getSecondarySectionTop()
-    {
-        return this.getColorSquareTop() + COLOR_PICKER_SIZE + SECTION_GAP;
-    }
-
-    protected int getPalettesTop()
-    {
-        int top = this.getSecondarySectionTop();
-
-        if (this.secondarySectionEnabled)
-        {
-            top += this.getSecondaryBlockHeight() + SECTION_GAP;
-        }
-
-        return top;
     }
 
     public void updateField()
@@ -268,7 +167,7 @@ public class UIColorPicker extends UIElement
     public void setValue(int color)
     {
         this.color.set(color, this.editAlpha);
-        Colors.pickerHSVFromRGB(this.hsv, this.color, this.secondaryColor);
+        Colors.RGBtoHSV(this.hsv, this.color.r, this.color.g, this.color.b);
         this.hsv.a = this.color.a;
     }
 
@@ -276,7 +175,6 @@ public class UIColorPicker extends UIElement
     {
         this.xy(x, y);
         this.setupSize();
-        this.resize();
     }
 
     private void setupSize()
@@ -284,10 +182,7 @@ public class UIColorPicker extends UIElement
         int width = 10 + COLOR_PICKER_SIZE + COLOR_PICKER_GAP + COLOR_PICKER_BAR_WIDTH + (this.editAlpha ? COLOR_PICKER_GAP + COLOR_PICKER_BAR_WIDTH : 0);
         int recent = this.recent.colors.isEmpty() ? 0 : this.recent.getHeight(width - 10);
         int favorite = this.favorite.colors.isEmpty() ? 0 : this.favorite.getHeight(width - 10);
-        int base = this.getPalettesTop() + 10;
-
-        this.storedFavoriteH = favorite;
-        this.storedRecentH = recent;
+        int base = COLOR_PICKER_TOP + COLOR_PICKER_SIZE + 10;
 
         this.w(width);
         base += favorite > 0 ? favorite + 15 : 0;
@@ -296,6 +191,16 @@ public class UIColorPicker extends UIElement
         this.h(base);
         this.favorite.h(favorite);
         this.recent.h(recent);
+        this.favorite.y(COLOR_PICKER_TOP + COLOR_PICKER_SIZE + 10);
+
+        if (favorite > 0)
+        {
+            this.recent.y(1F, 15);
+        }
+        else
+        {
+            this.recent.y(0);
+        }
     }
 
     /* Managing recent and favorite colors */
@@ -308,6 +213,7 @@ public class UIColorPicker extends UIElement
     private void addToFavorites(Color color)
     {
         BBSSettings.favoriteColors.addColor(color);
+
         this.setupSize();
         this.resize();
     }
@@ -315,48 +221,9 @@ public class UIColorPicker extends UIElement
     private void removeFromFavorites(int index)
     {
         BBSSettings.favoriteColors.remove(index);
+
         this.setupSize();
         this.resize();
-    }
-
-    private void toggleSecondarySection()
-    {
-        this.secondaryExpanded = !this.secondaryExpanded;
-        this.secondaryInput.setVisible(this.secondaryExpanded);
-        this.updateSecondaryField();
-        this.setupSize();
-        this.resize();
-    }
-
-    private void openNestedSecondaryPicker(UIContext context)
-    {
-        if (this.nestedSecondaryPicker == null)
-        {
-            this.nestedSecondaryPicker = new UIColorPicker((color) ->
-            {
-                this.setSecondaryColor(color, true);
-            }).withoutSecondarySection();
-        }
-
-        if (this.nestedSecondaryPicker.hasParent())
-        {
-            this.nestedSecondaryPicker.removeFromParent();
-
-            return;
-        }
-
-        UIElement parent = this.getParent();
-
-        if (parent == null)
-        {
-            return;
-        }
-
-        parent.add(this.nestedSecondaryPicker);
-        this.nestedSecondaryPicker.setColor(this.secondaryColor.getRGBColor());
-        this.nestedSecondaryPicker.setup(context.globalX(this.secondarySwatch.ex() + 4), context.globalY(this.secondarySwatch.y));
-        this.nestedSecondaryPicker.bounds(context.menu.main, 2);
-        this.nestedSecondaryPicker.resize();
     }
 
     /* GuiElement overrides */
@@ -364,36 +231,10 @@ public class UIColorPicker extends UIElement
     @Override
     public void resize()
     {
-        /* Step 1: update children flex values BEFORE super.resize() so they are applied correctly. */
-
-        /* Position secondary input when the section is expanded */
-        if (this.secondarySectionEnabled && this.secondaryExpanded)
-        {
-            int bodyY = this.getSecondarySectionTop() + SECONDARY_HEADER_HEIGHT + SECTION_GAP;
-
-            this.secondaryInput.set(5, bodyY, 0, SECONDARY_BODY_HEIGHT).w(1, -35);
-        }
-
-        /* Position palette elements using heights stored by the last setupSize() call */
-        int palettesTop = this.getPalettesTop();
-
-        this.favorite.xy(5, palettesTop);
-
-        if (this.storedFavoriteH > 0)
-        {
-            this.recent.xy(5, palettesTop + this.storedFavoriteH + 15);
-        }
-        else
-        {
-            this.recent.xy(5, palettesTop);
-        }
-
-        /* Step 2: let the framework apply all flex values to actual pixel areas */
         super.resize();
 
-        /* Step 3: compute manual areas that depend on this.area being finalised */
         int x = this.area.x + 5;
-        int y = this.area.y + this.getColorSquareTop();
+        int y = this.area.y + COLOR_PICKER_TOP;
         int width = this.area.w - 10;
         int alphaSpace = this.editAlpha ? COLOR_PICKER_BAR_WIDTH + COLOR_PICKER_GAP : 0;
         int maxSquareWidth = width - COLOR_PICKER_BAR_WIDTH - COLOR_PICKER_GAP - alphaSpace;
@@ -411,49 +252,11 @@ public class UIColorPicker extends UIElement
         {
             this.alpha.set(0, 0, 0, 0);
         }
-
-        if (this.secondarySectionEnabled)
-        {
-            int headerY = this.getSecondarySectionTop();
-            int headerWidth = this.area.w - 10;
-
-            this.secondaryHeader.set(this.area.x + 5, this.area.y + headerY, headerWidth, SECONDARY_HEADER_HEIGHT);
-
-            if (this.secondaryExpanded)
-            {
-                int bodyY = headerY + SECONDARY_HEADER_HEIGHT + SECTION_GAP;
-
-                this.secondarySwatch.set(this.area.ex() - 25, this.area.y + bodyY, 20, SECONDARY_BODY_HEIGHT);
-            }
-            else
-            {
-                this.secondarySwatch.set(0, 0, 0, 0);
-            }
-        }
-        else
-        {
-            this.secondaryHeader.set(0, 0, 0, 0);
-            this.secondarySwatch.set(0, 0, 0, 0);
-        }
     }
 
     @Override
     public boolean subMouseClicked(UIContext context)
     {
-        if (this.secondarySectionEnabled && this.secondaryHeader.isInside(context) && context.mouseButton == 0)
-        {
-            this.toggleSecondarySection();
-
-            return true;
-        }
-
-        if (this.secondarySectionEnabled && this.secondaryExpanded && this.secondarySwatch.isInside(context) && context.mouseButton == 0)
-        {
-            this.openNestedSecondaryPicker(context);
-
-            return true;
-        }
-
         if (this.red.isInside(context))
         {
             this.dragging = 1;
@@ -473,7 +276,7 @@ public class UIColorPicker extends UIElement
             return true;
         }
 
-        if (!this.area.isInside(context) && (this.nestedSecondaryPicker == null || !this.nestedSecondaryPicker.hasParent()))
+        if (!this.area.isInside(context))
         {
             this.removeFromParent();
             this.addToRecent();
@@ -495,13 +298,6 @@ public class UIColorPicker extends UIElement
     {
         if (context.isPressed(GLFW.GLFW_KEY_ESCAPE))
         {
-            if (this.nestedSecondaryPicker != null && this.nestedSecondaryPicker.hasParent())
-            {
-                this.nestedSecondaryPicker.removeFromParent();
-
-                return true;
-            }
-
             this.removeFromParent();
             this.addToRecent();
 
@@ -534,21 +330,21 @@ public class UIColorPicker extends UIElement
                 this.hsv.a = alpha;
             }
 
-            Colors.pickerColorFromHSV(this.color, this.secondaryColor, this.hsv.r, this.hsv.g, this.hsv.b);
+            Colors.HSVtoRGB(this.color, this.hsv.r, this.hsv.g, this.hsv.b);
             this.color.a = this.hsv.a;
             this.updateColor();
         }
 
         this.area.render(context.batcher, Colors.LIGHTEST_GRAY);
-        this.renderRect(context.batcher, this.area.ex() - 25, this.area.y + PRIMARY_INPUT_TOP, this.area.ex() - 5, this.area.y + PRIMARY_INPUT_TOP + PRIMARY_INPUT_HEIGHT);
+        this.renderRect(context.batcher, this.area.ex() - 25, this.area.y + 5, this.area.ex() - 5, this.area.y + 25);
 
-        context.batcher.outline(this.area.ex() - 25, this.area.y + PRIMARY_INPUT_TOP, this.area.ex() - 5, this.area.y + PRIMARY_INPUT_TOP + PRIMARY_INPUT_HEIGHT, Colors.A25);
+        context.batcher.outline(this.area.ex() - 25, this.area.y + 5, this.area.ex() - 5, this.area.y + 25, Colors.A25);
 
         Color temp = new Color();
         Colors.HSVtoRGB(temp, this.hsv.r, 1F, 1F);
         context.batcher.box(this.red.x, this.red.y, this.red.ex(), this.red.ey(), temp.getARGBColor());
         context.batcher.gradientHBox(this.red.x, this.red.y, this.red.ex(), this.red.ey(), Colors.WHITE, Colors.setA(Colors.WHITE, 0F));
-        context.batcher.gradientVBox(this.red.x, this.red.y, this.red.ex(), this.red.ey(), 0, this.secondaryColor.getARGBColor());
+        context.batcher.gradientVBox(this.red.x, this.red.y, this.red.ex(), this.red.ey(), 0, 0xff000000);
 
         for (int i = 0; i < 6; i++)
         {
@@ -588,11 +384,6 @@ public class UIColorPicker extends UIElement
             this.renderMarker(context.batcher, this.alpha.mx(), this.alpha.y + (int) (this.alpha.h * (1F - this.hsv.a)));
         }
 
-        if (this.secondarySectionEnabled)
-        {
-            this.renderSecondarySection(context);
-        }
-
         if (!this.favorite.colors.isEmpty())
         {
             context.batcher.text(UIKeys.COLOR_FAVORITE.get(), this.favorite.area.x, this.favorite.area.y - 10, Colors.GRAY);
@@ -604,31 +395,6 @@ public class UIColorPicker extends UIElement
         }
 
         super.render(context);
-    }
-
-    protected void renderSecondarySection(UIContext context)
-    {
-        boolean headerHover = this.secondaryHeader.isInside(context);
-        int headerBackground = Colors.setA(BBSSettings.primaryColor.get(), headerHover ? 0.5F : 0.3F);
-        int textHeight = context.batcher.getFont().getHeight();
-
-        context.batcher.box(this.secondaryHeader.x, this.secondaryHeader.y, this.secondaryHeader.ex(), this.secondaryHeader.ey(), headerBackground);
-        context.batcher.icon(this.secondaryExpanded ? Icons.ARROW_DOWN : Icons.ARROW_RIGHT, Colors.WHITE, this.secondaryHeader.x + 4, this.secondaryHeader.my(), 0F, 0.5F);
-        context.batcher.textShadow(UIKeys.COLOR_SECONDARY.get(), this.secondaryHeader.x + 18, this.secondaryHeader.my() - textHeight / 2, Colors.WHITE);
-
-        if (this.secondaryExpanded)
-        {
-            context.batcher.box(this.secondarySwatch.x, this.secondarySwatch.y, this.secondarySwatch.ex(), this.secondarySwatch.ey(), this.secondaryColor.getARGBColor());
-
-            if (this.secondarySwatch.isInside(context))
-            {
-                context.batcher.outline(this.secondarySwatch.x, this.secondarySwatch.y, this.secondarySwatch.ex(), this.secondarySwatch.ey(), Colors.WHITE);
-            }
-            else
-            {
-                context.batcher.outline(this.secondarySwatch.x, this.secondarySwatch.y, this.secondarySwatch.ex(), this.secondarySwatch.ey(), Colors.A25);
-            }
-        }
     }
 
     public void renderRect(Batcher2D batcher, int x1, int y1, int x2, int y2)

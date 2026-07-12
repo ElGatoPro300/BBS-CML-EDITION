@@ -263,7 +263,6 @@ public class UIKeys
     public static final IKey COLOR_CONTEXT_FAVORITES_REMOVE = L10n.lang("bbs.ui.color.context.favorites.remove");
     public static final IKey COLOR_FAVORITE = L10n.lang("bbs.ui.color.favorite");
     public static final IKey COLOR_RECENT = L10n.lang("bbs.ui.color.recent");
-    public static final IKey COLOR_SECONDARY = L10n.lang("bbs.ui.color.secondary");
     public static final IKey CONFIG_TITLE = L10n.lang("bbs.ui.config.title");
     public static final IKey CONFIG_APPLY = L10n.lang("bbs.ui.config.apply");
     public static final IKey CONFIG_CANCEL = L10n.lang("bbs.ui.config.cancel");

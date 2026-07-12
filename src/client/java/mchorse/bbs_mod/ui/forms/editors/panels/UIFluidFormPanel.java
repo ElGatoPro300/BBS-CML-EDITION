@@ -82,7 +82,6 @@ public class UIFluidFormPanel extends UIFormPanel<FluidForm>
         this.debug.tooltip(UIKeys.FLUID_DEBUG);
 
         this.color = new UIColor((c) -> this.form.color.set(Color.rgba(c))).direction(Direction.LEFT).withAlpha();
-        this.color.bindSecondary(this.form.colorSecondary);
         
         this.opacity = new UITrackpad((v) -> this.form.opacity.set(v.floatValue()));
         this.opacity.tooltip(UIKeys.FLUID_OPACITY);
@@ -206,7 +205,6 @@ public class UIFluidFormPanel extends UIFormPanel<FluidForm>
         this.smoothShading.setValue(form.smoothShading.get());
         this.debug.setValue(form.debug.get());
         this.color.setColor(form.color.get().getARGBColor());
-        this.color.syncSecondary(this.form.colorSecondary);
         this.opacity.setValue(form.opacity.get());
         
         this.sizeX.setValue(form.sizeX.get());

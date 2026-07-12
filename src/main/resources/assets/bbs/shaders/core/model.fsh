@@ -64,8 +64,7 @@ void main()
             discard;
         }
 
-        /* Paint should be lit by the environment, not flat/glowing. */
-        vec4 color = vec4(PaintColor.rgb * lightMapColor.rgb, outAlpha);
+        vec4 color = vec4(PaintColor.rgb, outAlpha);
 
         fragColor = linear_fog(color, vertexDistance, FogStart, FogEnd, FogColor);
 
@@ -88,11 +87,10 @@ void main()
 
     color.rgb *= lightMapColor.rgb;
 
-    /* Paint replaces the lit texture toward a lit solid color; both sides share the same lighting so
-       shadows are preserved. strength 1 = solid secondary color with environmental lighting. */
+    /* Paint replaces the lit texture toward a flat paint color; strength 1 = no skin/texture visible. */
     if (PaintColor.a > 0.001)
     {
-        color.rgb = mix(color.rgb, PaintColor.rgb * lightMapColor.rgb, paintStrength);
+        color.rgb = mix(color.rgb, PaintColor.rgb, paintStrength);
     }
     else if (PaintColor.a < -0.001)
     {
