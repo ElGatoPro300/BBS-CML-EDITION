@@ -19,6 +19,7 @@ public class PoseTransform extends Transform
 
     public float fix;
     public final Color color = new Color().set(Colors.WHITE);
+    public final Color colorSecondary = new Color().set(0F, 0F, 0F, 1F);
     public final Color paintColor = new Color().set(1F, 1F, 1F, 0F);
     public final Color glowingColor = new Color().set(1F, 1F, 1F, 1F);
     public float glowIntensity;
@@ -35,6 +36,7 @@ public class PoseTransform extends Transform
 
         this.fix = 0F;
         this.color.set(Colors.WHITE);
+        this.colorSecondary.set(0F, 0F, 0F, 1F);
         this.paintColor.set(1F, 1F, 1F, 0F);
         this.glowingColor.set(1F, 1F, 1F, 1F);
         this.glowIntensity = 0F;
@@ -227,6 +229,7 @@ public class PoseTransform extends Transform
         {
             this.fix = poseTransform.fix;
             this.color.copy(poseTransform.color);
+            this.colorSecondary.copy(poseTransform.colorSecondary);
             this.paintColor.copy(poseTransform.paintColor);
             this.glowingColor.copy(poseTransform.glowingColor);
             this.glowingColor.a = 1F;
@@ -248,6 +251,12 @@ public class PoseTransform extends Transform
 
         data.putFloat("fix", this.fix);
         data.putInt("color", this.color.getARGBColor());
+
+        if (!Colors.isPickerDefaultSecondary(this.colorSecondary))
+        {
+            data.putInt("color_secondary", this.colorSecondary.getRGBColor());
+        }
+
         data.putInt("paint_color", this.paintColor.getARGBColor());
         data.putInt("glowing_color", this.glowingColor.getRGBColor());
         data.putFloat("glow_intensity", this.glowIntensity);
@@ -274,6 +283,14 @@ public class PoseTransform extends Transform
 
         this.fix = data.getFloat("fix");
         this.color.set(data.getInt("color", Colors.WHITE));
+        this.colorSecondary.set(0F, 0F, 0F, 1F);
+
+        if (data.has("color_secondary"))
+        {
+            this.colorSecondary.set(data.getInt("color_secondary"));
+            this.colorSecondary.a = 1F;
+        }
+
         this.paintColor.set(data.getInt("paint_color", 0x00FFFFFF));
         int glowArgb = data.getInt("glowing_color", 0xFFFFFF);
 

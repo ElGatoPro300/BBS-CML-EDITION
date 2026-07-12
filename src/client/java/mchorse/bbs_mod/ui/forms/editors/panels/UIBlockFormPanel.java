@@ -29,6 +29,7 @@ public class UIBlockFormPanel extends UIFormPanel<BlockForm>
         super(editor);
 
         this.color = new UIColor((c) -> this.form.color.set(Color.rgba(c))).withAlpha();
+        this.color.bindSecondary(this.form.colorSecondary);
         this.paintColor = new UIColor((c) ->
         {
             Color color = Color.rgba(c);
@@ -98,6 +99,7 @@ public class UIBlockFormPanel extends UIFormPanel<BlockForm>
         BlockState blockState = this.form.blockState.get();
 
         this.color.setColor(form.color.get().getARGBColor());
+        this.color.syncSecondary(this.form.colorSecondary);
         PaintSettings paint = form.paintSettings.get();
         Color paintDisplay = new Color();
 

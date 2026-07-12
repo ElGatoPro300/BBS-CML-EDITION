@@ -87,6 +87,7 @@ public class UIShapeFormPanel extends UIFormPanel<ShapeForm>
         });
         
         this.color = new UIColor((value) -> this.form.color.set(Color.rgba(value))).direction(Direction.LEFT).withAlpha();
+        this.color.bindSecondary(this.form.colorSecondary);
         
         this.textureScale = new UITrackpad((value) -> this.form.textureScale.set(value.floatValue()));
         this.textureScale.tooltip(UIKeys.FORMS_EDITORS_SHAPE_TEXTURE_SCALE);
@@ -166,6 +167,7 @@ public class UIShapeFormPanel extends UIFormPanel<ShapeForm>
         this.subdivisions.setValue(form.subdivisions.get());
 
         this.color.setColor(form.color.get().getARGBColor());
+        this.color.syncSecondary(this.form.colorSecondary);
         this.textureScale.setValue(form.textureScale.get());
         this.textureScrollX.setValue(form.textureScrollX.get());
         this.textureScrollY.setValue(form.textureScrollY.get());

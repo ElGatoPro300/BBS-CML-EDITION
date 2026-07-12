@@ -5,7 +5,9 @@ import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.input.color.UIColorPicker;
 import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
+import mchorse.bbs_mod.settings.values.core.ValueColor;
 import mchorse.bbs_mod.utils.Direction;
+import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.colors.Colors;
 
 import java.util.function.Consumer;
@@ -72,6 +74,32 @@ public class UIColor extends UIElement
     public void setColor(int color)
     {
         this.picker.setColor(color);
+    }
+
+    public UIColor bindSecondary(ValueColor secondary)
+    {
+        this.picker.setSecondaryColor(secondary.get().getRGBColor(), false);
+        this.picker.setSecondaryChangeCallback((integer) -> secondary.set(Color.rgba(integer)));
+
+        return this;
+    }
+
+    public void syncSecondary(ValueColor secondary)
+    {
+        this.picker.setSecondaryColor(secondary.get().getRGBColor(), false);
+    }
+
+    public UIColor bindSecondary(java.util.function.IntSupplier getter, Consumer<Integer> setter)
+    {
+        this.picker.setSecondaryColor(getter.getAsInt(), false);
+        this.picker.setSecondaryChangeCallback(setter);
+
+        return this;
+    }
+
+    public void syncSecondary(int color)
+    {
+        this.picker.setSecondaryColor(color, false);
     }
 
     @Override

@@ -26,6 +26,11 @@ public class RecolorVertexConsumer implements VertexConsumer
         this.paintColor = paintColor;
     }
 
+    public RecolorVertexConsumer(VertexConsumer consumer, Color color, Color paintColor, boolean ignoredLegacyParam)
+    {
+        this(consumer, color, paintColor);
+    }
+
     @Override
     public VertexConsumer vertex(float x, float y, float z)
     {

@@ -1043,28 +1043,30 @@ public class BBSRendering
 
     public static Function<VertexConsumer, VertexConsumer> getColorConsumer(Color color)
     {
-        if (sodium)
-        {
-            return (b) -> SodiumUtils.createVertexBuffer(b, color);
-        }
-
-        return (b) -> new RecolorVertexConsumer(b, color);
+        return getColorConsumer(color, null);
     }
 
     public static Function<VertexConsumer, VertexConsumer> getColorConsumer(Color color, Color paintColor)
     {
-        if (paintColor == null || paintColor.a == 0F)
+        final Color finalColor = color;
+        final Color finalPaint = paintColor;
+
+        if (finalPaint == null || finalPaint.a == 0F)
         {
-            return getColorConsumer(color);
+            if (sodium)
+            {
+                return (b) -> SodiumUtils.createVertexBuffer(b, finalColor);
+            }
+
+            return (b) -> new RecolorVertexConsumer(b, finalColor);
         }
 
         if (sodium)
         {
-            /* The Sodium consumer path only multiplies the vertex color; paint blending is applied on the vanilla consumer */
-            return (b) -> SodiumUtils.createVertexBuffer(b, color);
+            return (b) -> SodiumUtils.createVertexBuffer(b, finalColor);
         }
 
-        return (b) -> new RecolorVertexConsumer(b, color, paintColor);
+        return (b) -> new RecolorVertexConsumer(b, finalColor, finalPaint);
     }
 
     private static void renderHudOverlays(Batcher2D batcher, ClipContext context, int width, int height)

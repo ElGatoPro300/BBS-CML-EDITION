@@ -786,6 +786,7 @@
     "bbs.ui.color.context.favorites.remove": "Remove from favorites",
     "bbs.ui.color.favorite": "Favorite colors",
     "bbs.ui.color.recent": "Recent colors",
+    "bbs.ui.color.secondary": "Secondary color",
     "bbs.ui.color_clip.cinematic": "Cinematic Effects",
     "bbs.ui.color_clip.gain": "Gain",
     "bbs.ui.color_clip.gamma": "Gamma",

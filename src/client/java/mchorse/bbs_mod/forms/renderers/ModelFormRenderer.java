@@ -43,6 +43,7 @@ import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.StringUtils;
 import mchorse.bbs_mod.utils.colors.Color;
+import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.interps.Lerps;
 import mchorse.bbs_mod.utils.joml.Vectors;
 import mchorse.bbs_mod.utils.pose.Pose;
@@ -366,7 +367,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             Link texture = link == null ? model.texture : link;
             Color color = Color.white();
 
-            color.mul(this.form.color.get());
+            this.mulFormColor(color, this.form.color.get(), this.form.colorSecondary.get());
 
             float scale = this.form.uiScale.get() * model.uiScale;
 
@@ -501,6 +502,18 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         float paintStrength = paint.resolveIntensity(legacyPaint);
 
         paintColor.a = paintStrength;
+
+        /* When no explicit paint is set and the picker is near the secondary color (bottom of
+           picker), use the secondary color as a lit solid paint. solidStrength = 0 at top,
+           1 at bottom; the shader mixes lit-texture with lit-paint so shadows are preserved. */
+        float solidStrength = Colors.computeSolidStrength(this.form.color.get(), this.form.colorSecondary.get());
+
+        if (solidStrength > 0.001F && paintStrength == 0F && !this.hasAnyPaint(model))
+        {
+            paintColor.copy(this.form.colorSecondary.get());
+            paintColor.a = solidStrength;
+        }
+
         GlowSettings glow = this.form.glowSettings.get();
         Color legacyGlow = this.form.glowingColor.get();
         Color glowColor = new Color();
@@ -510,7 +523,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         ModelVAORenderer.setGlow(glow, glowColor.r, glowColor.g, glowColor.b, legacyGlow);
 
         boolean irisWorldPaintDeferral = BBSRendering.isIrisWorldPaintDeferral();
-        boolean paintActive = this.hasAnyPaint(model);
+        boolean paintActive = this.hasAnyPaint(model) || solidStrength > 0.001F;
         boolean bbsModelShader = this.usesBbsModelShader(model);
         boolean hasGlow = this.hasAnyGlow(model);
         boolean syncedGlow = hasGlow && glow.resolveSync();
@@ -554,7 +567,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             }
             else if (paintActive)
             {
-                ModelVAORenderer.setPaint(paintColor.r, paintColor.g, paintColor.b, paintStrength);
+                ModelVAORenderer.setPaint(paintColor.r, paintColor.g, paintColor.b, paintColor.a);
             }
             else
             {
@@ -928,6 +941,27 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         return false;
     }
 
+    /**
+     * Multiplies target by formColor, blending toward white as solidStrength increases so the
+     * vertex multiply does not double-tint when the lit paint is already handling the color.
+     */
+    private void mulFormColor(Color target, Color formColor, Color secondary)
+    {
+        float strength = Colors.computeSolidStrength(formColor, secondary);
+
+        if (strength > 0.001F)
+        {
+            target.r *= formColor.r + (1F - formColor.r) * strength;
+            target.g *= formColor.g + (1F - formColor.g) * strength;
+            target.b *= formColor.b + (1F - formColor.b) * strength;
+            target.a *= formColor.a;
+        }
+        else
+        {
+            target.mul(formColor);
+        }
+    }
+
     private void resetPostEquipmentRenderState()
     {
         RenderSystem.depthMask(true);
@@ -1051,7 +1085,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             Link texture = link == null ? model.texture : link;
             Color color = Color.white();
 
-            color.mul(this.form.color.get());
+            this.mulFormColor(color, this.form.color.get(), this.form.colorSecondary.get());
 
             for (ModelGroup group : model.getModel().getAllGroups())
             {
@@ -1122,7 +1156,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
             Color color = new Color().set(context.color, true);
 
-            color.mul(this.form.color.get());
+            this.mulFormColor(color, this.form.color.get(), this.form.colorSecondary.get());
             model.model.resetPose();
 
             this.animator.applyActions(context.entity, model, context.getTransition());
@@ -1175,7 +1209,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
         Color color = new Color().set(context.color, true);
 
-        color.mul(this.form.color.get());
+        this.mulFormColor(color, this.form.color.get(), this.form.colorSecondary.get());
 
         if (texture != null)
         {
