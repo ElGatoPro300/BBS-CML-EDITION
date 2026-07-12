@@ -97,6 +97,9 @@ public class UIExtrudedFormPanel extends UIFormPanel<ExtrudedForm>
     {
         super.startEdit(form);
 
+        this.bindColorWrap(this.color);
+        this.syncColorWrap(this.color);
+
         this.color.setColor(form.color.get().getARGBColor());
         PaintSettings paint = form.paintSettings.get();
         Color paintDisplay = new Color();

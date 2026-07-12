@@ -6,6 +6,7 @@ import mchorse.bbs_mod.cubic.data.model.Model;
 import mchorse.bbs_mod.cubic.data.model.ModelGroup;
 import mchorse.bbs_mod.cubic.render.vao.ModelVAO;
 import mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer;
+import mchorse.bbs_mod.forms.forms.utils.FormWrapPaint;
 import mchorse.bbs_mod.forms.renderers.utils.FormColorBlend;
 import mchorse.bbs_mod.obj.shapes.ShapeKeys;
 import mchorse.bbs_mod.resources.Link;
@@ -229,6 +230,11 @@ public class CubicVAORenderer extends CubicCubeRenderer
             return group.paintColor.a;
         }
 
+        if (FormWrapPaint.hasGroupWrap(group))
+        {
+            return group.colorWrapOpacity;
+        }
+
         return ModelVAORenderer.getBasePaintStrength();
     }
 
@@ -237,6 +243,11 @@ public class CubicVAORenderer extends CubicCubeRenderer
         if (group.paintColor.a != 0F)
         {
             return group.paintColor.r;
+        }
+
+        if (FormWrapPaint.hasGroupWrap(group))
+        {
+            return group.colorWrap.r;
         }
 
         return ModelVAORenderer.getBasePaintR();
@@ -249,6 +260,11 @@ public class CubicVAORenderer extends CubicCubeRenderer
             return group.paintColor.g;
         }
 
+        if (FormWrapPaint.hasGroupWrap(group))
+        {
+            return group.colorWrap.g;
+        }
+
         return ModelVAORenderer.getBasePaintG();
     }
 
@@ -257,6 +273,11 @@ public class CubicVAORenderer extends CubicCubeRenderer
         if (group.paintColor.a != 0F)
         {
             return group.paintColor.b;
+        }
+
+        if (FormWrapPaint.hasGroupWrap(group))
+        {
+            return group.colorWrap.b;
         }
 
         return ModelVAORenderer.getBasePaintB();

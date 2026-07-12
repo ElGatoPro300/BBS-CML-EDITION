@@ -151,6 +151,8 @@ public class Model implements IMapSerializable, IModel
 
             group.lighting = transform.lighting;
             group.color.copy(transform.color);
+            group.colorWrap.copy(transform.colorWrap);
+            group.colorWrapOpacity = transform.colorWrapOpacity;
             group.paintColor.copy(transform.paintColor);
             group.glowingColor.copy(transform.glowingColor);
             group.glowIntensity = transform.glowIntensity;

@@ -155,6 +155,9 @@ public class UIShapeFormPanel extends UIFormPanel<ShapeForm>
     {
         super.startEdit(form);
 
+        this.bindColorWrap(this.color);
+        this.syncColorWrap(this.color);
+
         this.nodeEditor.setVisible(true);
         this.nodeEditor.setGraph(form.graph.get());
         this.nodeEditor.setValue(form.graph);

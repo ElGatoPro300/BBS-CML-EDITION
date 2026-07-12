@@ -3,6 +3,7 @@ package mchorse.bbs_mod.ui.forms.editors.panels;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.ui.forms.editors.forms.UIForm;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
+import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
 import mchorse.bbs_mod.ui.framework.elements.UIScrollView;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIDraggable;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIRenderable;
@@ -60,6 +61,16 @@ public abstract class UIFormPanel <T extends Form> extends UIElement
     public void startEdit(T form)
     {
         this.form = form;
+    }
+
+    protected void bindColorWrap(UIColor picker)
+    {
+        picker.bindWrap(this.form.wrap_color, this.form.wrap_opacity);
+    }
+
+    protected void syncColorWrap(UIColor picker)
+    {
+        picker.syncWrap(this.form.wrap_color.get().getRGBColor(), this.form.wrap_opacity.get());
     }
 
     public void finishEdit()

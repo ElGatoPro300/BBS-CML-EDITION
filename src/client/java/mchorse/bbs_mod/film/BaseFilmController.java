@@ -1878,15 +1878,18 @@ public abstract class BaseFilmController
 
             float delta = this.getTransition(entity, transition);
             int tick = replay.getTick(this.getTick());
+            float propertyTick = tick + delta;
+            Form sourceForm = replay.form.get();
 
             /* Apply property */
             Form form1 = entity.getForm();
+            this.syncLiveEditorFormWrap(replay, sourceForm, form1, propertyTick);
             replay.properties.resetProperties(form1);
-            replay.properties.applyProperties(form1, tick + delta);
+            replay.properties.applyProperties(form1, propertyTick);
 
             if (MobCemPoseCapture.isActive(replay))
             {
-                MobCemPoseCapture.applyPlaybackPose(replay, form1, entity, tick + delta);
+                MobCemPoseCapture.applyPlaybackPose(replay, form1, entity, propertyTick);
             }
 
             Map<String, Integer> actors = this.getActors();
@@ -1902,8 +1905,10 @@ public abstract class BaseFilmController
                     if (anEntity instanceof ActorEntity actor)
                     {
                         Form form = actor.getForm();
+
+                        this.syncLiveEditorFormWrap(replay, sourceForm, form, propertyTick);
                         replay.properties.resetProperties(form);
-                        replay.properties.applyProperties(form, tick + delta);
+                        replay.properties.applyProperties(form, propertyTick);
                     }
                     else if (anEntity instanceof PlayerEntity player)
                     {
@@ -1912,8 +1917,10 @@ public abstract class BaseFilmController
                         if (morph != null)
                         {
                             Form form = morph.getForm();
+
+                            this.syncLiveEditorFormWrap(replay, sourceForm, form, propertyTick);
                             replay.properties.resetProperties(form);
-                            replay.properties.applyProperties(form, tick + delta);
+                            replay.properties.applyProperties(form, propertyTick);
                         }
 
                         float yawHead = replay.keyframes.headYaw.interpolate(tick + delta).floatValue();
@@ -1937,6 +1944,62 @@ public abstract class BaseFilmController
     protected float getTransition(IEntity entity, float transition)
     {
         return this.paused ? 0F : transition;
+    }
+
+    /**
+     * Copy wrap fields from the replay's source form into the entity's form copy so live
+     * editor changes appear in-world without recreating entities (same pattern as render depth).
+     */
+    private void syncLiveEditorFormWrap(Replay replay, Form source, Form target, float tick)
+    {
+        if (source == null || target == null)
+        {
+            return;
+        }
+
+        target.wrap_color.set(source.wrap_color.get());
+        target.wrap_opacity.set(source.wrap_opacity.get());
+
+        if (source instanceof ModelForm sourceModel && target instanceof ModelForm targetModel)
+        {
+            this.syncLiveEditorPoseWrap(replay, sourceModel, targetModel, tick);
+        }
+    }
+
+    private void syncLiveEditorPoseWrap(Replay replay, ModelForm source, ModelForm target, float tick)
+    {
+        Pose sourcePose = source.pose.get();
+
+        for (String bone : sourcePose.transforms.keySet())
+        {
+            if (this.hasPoseBoneKeyframeAt(replay, bone, tick))
+            {
+                continue;
+            }
+
+            PoseTransform src = sourcePose.get(bone);
+            PoseTransform dst = target.pose.get().get(bone);
+
+            if (src == null || dst == null)
+            {
+                continue;
+            }
+
+            dst.colorWrap.copy(src.colorWrap);
+            dst.colorWrapOpacity = src.colorWrapOpacity;
+        }
+    }
+
+    private boolean hasPoseBoneKeyframeAt(Replay replay, String bone, float tick)
+    {
+        BaseValue channel = replay.properties.get("pose:" + bone);
+
+        if (!(channel instanceof KeyframeChannel<?> poseChannel))
+        {
+            return false;
+        }
+
+        return poseChannel.find(tick) != null;
     }
 
     protected boolean canUpdate(int i, Replay replay, IEntity entity, UpdateMode updateMode)

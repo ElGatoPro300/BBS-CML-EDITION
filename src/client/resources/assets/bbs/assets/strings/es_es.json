@@ -736,6 +736,8 @@
     "bbs.ui.color.context.favorites.remove": "Quitar de favoritos",
     "bbs.ui.color.favorite": "Colores favoritos",
     "bbs.ui.color.recent": "Colores recientes",
+    "bbs.ui.color.wrap": "Color envoltura",
+    "bbs.ui.color.wrap_opacity": "Opacidad envoltura",
     "bbs.ui.color_clip.cinematic": "Efectos Cinemáticos",
     "bbs.ui.color_clip.gain": "Ganancia",
     "bbs.ui.color_clip.gamma": "Gamma",

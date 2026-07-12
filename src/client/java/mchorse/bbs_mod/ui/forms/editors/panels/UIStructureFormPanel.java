@@ -179,6 +179,9 @@ public class UIStructureFormPanel extends UIFormPanel<StructureForm>
     {
         super.startEdit(form);
 
+        this.bindColorWrap(this.color);
+        this.syncColorWrap(this.color);
+
         this.structureFile.setText(form.structureFile.get());
         this.color.setColor(form.color.get().getARGBColor());
         StructureLightSettings s = form.structureLight.get();

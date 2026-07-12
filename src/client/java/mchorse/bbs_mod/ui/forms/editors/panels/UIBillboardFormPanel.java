@@ -127,6 +127,9 @@ public class UIBillboardFormPanel extends UIFormPanel<BillboardForm>
     {
         super.startEdit(form);
 
+        this.bindColorWrap(this.color);
+        this.syncColorWrap(this.color);
+
         this.billboard.setValue(form.billboard.get());
         this.linear.setValue(form.linear.get());
         this.mipmap.setValue(form.mipmap.get());

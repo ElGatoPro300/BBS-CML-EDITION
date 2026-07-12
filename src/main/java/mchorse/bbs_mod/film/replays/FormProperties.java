@@ -221,6 +221,11 @@ public class FormProperties extends ValueGroup
                             poseTransform.lighting = Lerps.lerp(poseTransform.lighting, sourcePose.lighting, blend);
                             poseTransform.shaderShadow = PaintSettings.resolveAutoShaderShadowForPoseAlpha(poseTransform.paintColor.a);
                             poseTransform.textureBlend = Lerps.lerp(poseTransform.textureBlend, sourcePose.textureBlend, blend);
+                            poseTransform.colorWrap.r = Lerps.lerp(poseTransform.colorWrap.r, sourcePose.colorWrap.r, blend);
+                            poseTransform.colorWrap.g = Lerps.lerp(poseTransform.colorWrap.g, sourcePose.colorWrap.g, blend);
+                            poseTransform.colorWrap.b = Lerps.lerp(poseTransform.colorWrap.b, sourcePose.colorWrap.b, blend);
+                            poseTransform.colorWrap.a = Lerps.lerp(poseTransform.colorWrap.a, sourcePose.colorWrap.a, blend);
+                            poseTransform.colorWrapOpacity = Lerps.lerp(poseTransform.colorWrapOpacity, sourcePose.colorWrapOpacity, blend);
 
                             if (sourcePose.texture != null && blend >= 0.5F)
                             {
@@ -240,6 +245,8 @@ public class FormProperties extends ValueGroup
                             poseTransform.shaderShadow = PaintSettings.resolveAutoShaderShadowForPoseAlpha(poseTransform.paintColor.a);
                             poseTransform.texture = LinkUtils.copy(sourcePose.texture);
                             poseTransform.textureBlend = sourcePose.textureBlend;
+                            poseTransform.colorWrap.copy(sourcePose.colorWrap);
+                            poseTransform.colorWrapOpacity = sourcePose.colorWrapOpacity;
                         }
                     }
                 }
