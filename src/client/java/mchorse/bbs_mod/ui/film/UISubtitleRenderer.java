@@ -8,10 +8,8 @@ import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D;
 import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
-import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.StringUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
-import mchorse.bbs_mod.utils.pose.Transform;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
@@ -148,13 +146,8 @@ public class UISubtitleRenderer
 
             /* TODO 1.21.11: RenderSystem.setProjectionMatrix(ortho, ProjectionType.ORTHOGRAPHIC); */
 
-            Transform transform = new Transform();
-
-            transform.lerp(subtitle.transform, 1F - subtitle.factor);
-
             stack.push();
             stack.translate(x, y, 0);
-            MatrixStackUtils.applyTransform(stack, transform);
 
             if (blur != null)
             {

@@ -1,7 +1,6 @@
 package mchorse.bbs_mod.ui.forms.editors.utils;
 
 import mchorse.bbs_mod.BBSSettings;
-import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.ITickable;
 import mchorse.bbs_mod.forms.entities.IEntity;

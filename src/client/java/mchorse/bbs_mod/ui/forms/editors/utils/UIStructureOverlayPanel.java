@@ -72,6 +72,9 @@ public class UIStructureOverlayPanel extends UIStringOverlayPanel
     {
         super(UIKeys.GENERAL_SEARCH, getAllStructureFiles(), null);
 
+        this.resizable();
+        this.minSize(280, 200);
+
         this.context = context;
         this.originalCallback = callback;
         this.likeManager = new StructureLikeManager();

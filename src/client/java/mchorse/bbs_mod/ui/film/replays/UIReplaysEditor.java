@@ -41,10 +41,21 @@ import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.UIClipsPanel;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.film.clips.renderer.IUIClipRenderer;
+import mchorse.bbs_mod.ui.film.controller.UIFilmController;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIAnimationToPoseOverlayPanel;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIKeyframeSheetFilterOverlayPanel;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIRenameSheetOverlayPanel;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIReplaysOverlayPanel;
+import mchorse.bbs_mod.ui.film.toolbar.KeyframeInsertInteractionState;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineInteractionSnapshot;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbar;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarDock;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarDockLayout;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarRegistry;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarWiring;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineTrackEligibility;
+import mchorse.bbs_mod.ui.film.toolbar.UIViewportInteraction;
+import mchorse.bbs_mod.ui.film.toolbar.ViewportInteractionState;
 import mchorse.bbs_mod.ui.film.utils.keyframes.UIFilmKeyframes;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
@@ -52,6 +63,7 @@ import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeEditor;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeSheet;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframes;
+import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UILookAtKeyframeFactory;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UIPoseKeyframeFactory;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.graphs.IUIKeyframeGraph;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.graphs.UIKeyframeDopeSheet;
@@ -62,6 +74,7 @@ import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.ui.utils.Scale;
 import mchorse.bbs_mod.ui.utils.StencilFormFramebuffer;
+import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
 import mchorse.bbs_mod.ui.utils.gizmo.GizmoController;
 import mchorse.bbs_mod.ui.utils.gizmo.GizmoSurface;
@@ -136,6 +149,11 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
     /* Keyframes */
     public UIKeyframeEditor keyframeEditor;
 
+    /* Toolbar (added by the timeline toolbar feature; purely additive) */
+    public TimelineToolbar toolbar;
+
+    private final UIViewportInteraction viewportInteraction = new UIViewportInteraction();
+
     /* Clips */
     private UIFilmPanel filmPanel;
 
@@ -172,14 +190,19 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
         COLORS.put("extra2_y", Colors.GREEN);
         COLORS.put("shadow_size", Colors.MAGENTA);
         COLORS.put("shadow_opacity", Colors.ORANGE);
+        COLORS.put("riding", Colors.ORANGE);
+        COLORS.put("ridden", Colors.BLUE);
 
         COLORS.put("visible", Colors.WHITE & Colors.RGB);
+        COLORS.put("render", Colors.WHITE & Colors.RGB);
         COLORS.put("pose", Colors.RED);
         COLORS.put("pose_overlay", Colors.ORANGE);
         COLORS.put("transform", Colors.GREEN);
         COLORS.put("transform_overlay", 0xaaff00);
         COLORS.put("color", Colors.INACTIVE);
         COLORS.put("paint_color", Colors.INACTIVE);
+        COLORS.put("paint", Colors.INACTIVE);
+        COLORS.put("glow", Colors.YELLOW);
         COLORS.put("lighting", Colors.YELLOW);
         COLORS.put("render_depth", Colors.CYAN);
         COLORS.put("look_at", 0x007f70);
@@ -234,11 +257,14 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
         ICONS.put("bodyYaw", Icons.Y);
 
         ICONS.put("visible", Icons.VISIBLE);
+        ICONS.put("render", Icons.PLAY);
         ICONS.put("texture", Icons.MATERIAL);
         ICONS.put("pose", Icons.POSE);
         ICONS.put("transform", Icons.ALL_DIRECTIONS);
         ICONS.put("color", Icons.BUCKET);
         ICONS.put("paint_color", Icons.BUCKET);
+        ICONS.put("paint", Icons.BUCKET);
+        ICONS.put("glow", Icons.LIGHT);
         ICONS.put("lighting", Icons.LIGHT);
         ICONS.put("render_depth", Icons.SHIFT_TO);
         ICONS.put("look_at", Icons.VISIBLE);
@@ -611,7 +637,24 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
             return Icons.ALL_DIRECTIONS;
         }
 
+        if (topLevel.equals("riding") || topLevel.equals("sitting") || topLevel.equals("ridden"))
+        {
+            return Icons.NONE;
+        }
+
         return ICONS.getOrDefault(topLevel, Icons.NONE);
+    }
+
+    private static UIKeyframeSheet withTrackIcon(UIKeyframeSheet sheet, String key)
+    {
+        Icon icon = getIcon(key);
+
+        if (icon != null)
+        {
+            sheet.icon(icon);
+        }
+
+        return sheet;
     }
 
     public static int getColor(String key)
@@ -804,10 +847,228 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
         this.filmPanel = filmPanel;
         this.replays = new UIReplaysOverlayPanel(filmPanel, (replay) -> this.setReplay(replay, false, true));
 
+        this.toolbar = new TimelineToolbar();
+        this.toolbar.setSections(TimelineToolbarRegistry.forReplays(true));
+        TimelineToolbarWiring.wireReplaysToolbar(this);
+        this.toolbar.setInteractionCancelListener(this::cancelToolbarInteraction);
+        this.add(this.toolbar);
+
+        this.applyToolbarDockLayout();
+
         this.markContainer();
     }
 
+    public void applyToolbarDockLayout()
+    {
+        TimelineToolbarDock dock = BBSSettings.timelineToolbarDocks.getDock(TimelineToolbarDockLayout.PANEL_REPLAY);
+
+        this.toolbar.configureDockHost(this, TimelineToolbarDockLayout.PANEL_REPLAY, this::applyToolbarDockLayout);
+        TimelineToolbarDockLayout.apply(this, this.toolbar, dock, this.keyframeEditor);
+    }
+
+    private void cancelToolbarInteraction()
+    {
+        this.viewportInteraction.cancel();
+
+        if (this.keyframeEditor != null)
+        {
+            this.keyframeEditor.view.cancelTrackInteraction();
+        }
+    }
+
+    public boolean isViewportInteractionActive()
+    {
+        return this.viewportInteraction.isActive();
+    }
+
+    public void renderViewportInteraction(UIContext context, Area viewport)
+    {
+        this.viewportInteraction.renderOverlay(context, viewport);
+    }
+
+    public void renderViewportInteractionHint(UIContext context, Area viewport, int bottomReserve)
+    {
+        this.viewportInteraction.renderHint(context, viewport, bottomReserve);
+    }
+
+    public boolean handleViewportInteractionMouse(UIContext context, Area viewport)
+    {
+        return this.viewportInteraction.handleMouseClicked(context, viewport,
+            () -> this.rayTraceViewportBlock(context, viewport));
+    }
+
+    public boolean handleViewportInteractionKey(UIContext context)
+    {
+        return this.viewportInteraction.handleKeyPressed(context);
+    }
+
+    public void toolbarAddReplayAtViewport()
+    {
+        this.viewportInteraction.enter(new ViewportInteractionState(
+            UIKeys.TIMELINE_INTERACTION_VIEWPORT_ADD,
+            this::confirmAddReplayAtViewport));
+    }
+
+    public void toolbarMoveReplayAtViewport()
+    {
+        this.viewportInteraction.enter(new ViewportInteractionState(
+            UIKeys.TIMELINE_INTERACTION_VIEWPORT_MOVE,
+            this::confirmMoveReplayAtViewport));
+    }
+
+    private void confirmAddReplayAtViewport(Vector3d position)
+    {
+        Camera camera = this.filmPanel.getCamera();
+        float pitch = 0F;
+        float yaw = MathUtils.toDeg(camera.rotation.y);
+
+        this.replays.replays.addReplay(position, pitch, yaw);
+    }
+
+    private void confirmMoveReplayAtViewport(Vector3d position)
+    {
+        this.moveReplay(position.x, position.y, position.z);
+    }
+
+    private Vector3d rayTraceViewportBlock(UIContext context, Area area)
+    {
+        World world = MinecraftClient.getInstance().world;
+        Camera camera = this.filmPanel.getCamera();
+
+        BlockHitResult blockHitResult = RayTracing.rayTrace(
+            world,
+            RayTracing.fromVector3d(camera.position),
+            RayTracing.fromVector3f(CameraUtils.getMouseDirection(
+                camera.projection, camera.view, context.mouseX, context.mouseY,
+                area.x, area.y, area.w, area.h)),
+            256F
+        );
+
+        if (blockHitResult.getType() == HitResult.Type.MISS)
+        {
+            return null;
+        }
+
+        Vector3d vec = new Vector3d(
+            blockHitResult.getPos().x,
+            blockHitResult.getPos().y,
+            blockHitResult.getPos().z
+        );
+
+        if (Window.isShiftPressed())
+        {
+            vec = new Vector3d(
+                Math.floor(vec.x) + 0.5D,
+                Math.round(vec.y),
+                Math.floor(vec.z) + 0.5D
+            );
+        }
+
+        return vec;
+    }
+
+    public UIFilmPanel getFilmPanel()
+    {
+        return this.filmPanel;
+    }
+
+    public void toolbarRenameSheet()
+    {
+        if (this.keyframeEditor == null)
+        {
+            return;
+        }
+
+        this.keyframeEditor.view.enterTrackInteraction(
+            UIKeys.TIMELINE_INTERACTION_PICK_TRACK,
+            TimelineTrackEligibility::canRename,
+            this::confirmRenameSheet);
+    }
+
+    private void confirmRenameSheet(UIKeyframeSheet clickedSheet)
+    {
+        UIRenameSheetOverlayPanel panel = new UIRenameSheetOverlayPanel(
+            UIKeys.FILM_REPLAY_RENAME_SHEET_TITLE,
+            UIKeys.FILM_REPLAY_RENAME_SHEET_MESSAGE,
+            this.replay,
+            clickedSheet.id,
+            (str, color) ->
+            {
+                this.replay.setCustomSheetTitle(clickedSheet.id, str);
+                this.replay.setSheetColor(clickedSheet.id, color);
+                this.updateChannelsList();
+            }
+        );
+
+        panel.text.setText(clickedSheet.title.get());
+        UIOverlay.addOverlay(this.getContext(), panel, 300, 0.25F);
+    }
+
+    public void toolbarFilterSheets()
+    {
+        if (this.keyframeEditor == null)
+        {
+            return;
+        }
+
+        UIKeyframeSheetFilterOverlayPanel panel = new UIKeyframeSheetFilterOverlayPanel(BBSSettings.disabledSheets.get(), this.keys);
+
+        UIOverlay.addOverlay(this.getContext(), panel, 240, 0.9F);
+
+        panel.onClose((e) ->
+        {
+            this.updateChannelsList();
+            BBSSettings.disabledSheets.set(BBSSettings.disabledSheets.get());
+        });
+    }
+
+    public void toolbarAnimationToKeyframes()
+    {
+        if (this.keyframeEditor == null)
+        {
+            return;
+        }
+
+        this.keyframeEditor.view.enterTrackInteraction(
+            UIKeys.TIMELINE_INTERACTION_PICK_TRACK,
+            sheet -> TimelineTrackEligibility.canAnimationToPose(this, sheet),
+            this::confirmAnimationToKeyframes);
+    }
+
+    private void confirmAnimationToKeyframes(UIKeyframeSheet sheet)
+    {
+        Form form = sheet.property != null ? FormUtils.getForm(sheet.property) : this.replay.form.get();
+
+        if (form instanceof ModelForm modelForm)
+        {
+            this.animationToPoses(modelForm, sheet);
+        }
+    }
+
+    public void toolbarPoseToLimbs()
+    {
+        if (this.keyframeEditor == null)
+        {
+            return;
+        }
+
+        this.keyframeEditor.view.enterTrackInteraction(
+            UIKeys.TIMELINE_INTERACTION_PICK_TRACK,
+            sheet -> TimelineTrackEligibility.canPoseToLimbs(this, sheet),
+            this::confirmPoseToLimbs);
+    }
+
+    private void confirmPoseToLimbs(UIKeyframeSheet sheet)
+    {
+        this.convertToLimbs(sheet);
+    }
+
     public void setFilm(Film film)
+    {
+        this.setFilm(film, true);
+    }
+
+    public void setFilm(Film film, boolean resetOrbit)
     {
         this.film = film;
 
@@ -822,7 +1083,7 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
             }
 
             this.replays.replays.setList(replays);
-            this.setReplay(replays.isEmpty() ? null : replays.get(index));
+            this.setReplay(replays.isEmpty() ? null : replays.get(index), true, resetOrbit);
         }
         else
         {
@@ -831,6 +1092,40 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
         }
 
         this.filmPanel.syncAnchoredReplaysPanelWithFilm();
+    }
+
+    /**
+     * Light-weight film sync for undo/redo: updates the replay list widget without rebuilding
+     * the keyframe editor or resetting orbit camera. {@link #applyUndoData} already restored
+     * replay index and keyframe selection before {@link UIFilmPanel#refreshAfterUndo()} runs.
+     */
+    public void syncFilmForUndo(Film film)
+    {
+        this.film = film;
+
+        if (film == null)
+        {
+            this.replays.replays.setList(new ArrayList<>());
+
+            return;
+        }
+
+        this.replays.replays.setList(film.replays.getList());
+        this.replays.replays.update();
+
+        Replay replay = this.replay;
+
+        if (replay != null && !film.replays.getList().contains(replay))
+        {
+            this.setReplay(film.replays.getList().isEmpty() ? null : film.replays.getList().get(0), true, false);
+        }
+        else if (replay != null)
+        {
+            this.filmPanel.actionEditor.setClips(replay.actions);
+            BBSModClient.setSelectedReplay(replay);
+            this.replays.syncReplaySelection(replay, true);
+            this.filmPanel.syncAnchoredReplaysPanelSelection(replay, true);
+        }
     }
 
     public Replay getReplay()
@@ -845,11 +1140,29 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
 
     public void setReplay(Replay replay, boolean select, boolean resetOrbit)
     {
+        Camera fromCamera = null;
+        Vector3f oldAnchor = null;
+        boolean orbitPick = resetOrbit
+            && replay != null
+            && this.filmPanel.getController().getPovMode() == UIFilmController.CAMERA_MODE_ORBIT
+            && this.filmPanel.getController().orbit.enabled;
+
+        if (orbitPick)
+        {
+            fromCamera = new Camera();
+            fromCamera.copy(this.filmPanel.getCamera());
+            oldAnchor = this.filmPanel.getController().orbit.getAnchorPoint(0F);
+        }
+
         this.replay = replay;
 
         BBSModClient.setSelectedReplay(replay);
 
-        if (resetOrbit)
+        if (orbitPick)
+        {
+            this.filmPanel.getController().orbit.pickTarget(replay, fromCamera, oldAnchor, 0F);
+        }
+        else if (resetOrbit)
         {
             this.filmPanel.getController().orbit.reset();
         }
@@ -937,8 +1250,109 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
         }
     }
 
-    private static final List<String> WORLD_CHANNELS = Arrays.asList("x", "y", "z", "vX", "vY", "vZ", "yaw", "pitch", "headYaw", "bodyYaw", "grounded", "damage", "fall", "sneaking", "sprinting", "item_main_hand", "item_off_hand", "item_head", "item_chest", "item_legs", "item_feet", "selected_slot", "stick_lx", "stick_ly", "stick_rx", "stick_ry", "trigger_l", "trigger_r", "extra1_x", "extra1_y", "extra2_x", "extra2_y", "shadow_size", "shadow_opacity");
-    private static final List<String> MODEL_PROPERTIES = Arrays.asList("visible", "lighting", "render_depth", "transform", "transform_overlay", "pose", "pose_overlay", "anchor", "look_at", "illusion", "illusion_transform", "color", "paint_color", "texture", "pbr_normal_intensity", "pbr_specular_intensity", "model", "actions", "shape_keys", "block_state", "item_stack", "modelTransform", "same_animation_when_dropped", "settings", "paused", "frequency", "count", "structure_file", "biome_id", "emit_light", "light_intensity", "structure_light", "enabled", "level", "effect");
+    public void insertKeyframeColumn(int tick)
+    {
+        Replay replay = this.getReplay();
+        IEntity entity = this.filmPanel.getController().getCurrentEntity();
+
+        if (replay == null || entity == null)
+        {
+            return;
+        }
+
+        List<String> groups = Arrays.asList(ReplayKeyframes.GROUP_POSITION, ReplayKeyframes.GROUP_ROTATION);
+
+        BaseValue.edit(replay.keyframes, (keyframes) ->
+        {
+            keyframes.record(tick, entity, groups);
+        });
+    }
+
+    public void insertKeyframeColumnInterpolated(int tick)
+    {
+        Replay replay = this.getReplay();
+
+        if (replay == null)
+        {
+            return;
+        }
+
+        List<String> groups = Arrays.asList(ReplayKeyframes.GROUP_POSITION, ReplayKeyframes.GROUP_ROTATION);
+
+        BaseValue.edit(replay.keyframes, (keyframes) ->
+        {
+            keyframes.insertInterpolated(tick, groups);
+        });
+    }
+
+    public void toolbarInsertKeyframeAtTimeline()
+    {
+        if (this.keyframeEditor == null)
+        {
+            return;
+        }
+
+        this.insertKeyframeColumn(this.filmPanel.getCursor());
+        UIUtils.playClick();
+    }
+
+    public void toolbarEnterInsertColumnAtCursor()
+    {
+        if (this.keyframeEditor == null)
+        {
+            return;
+        }
+
+        this.keyframeEditor.view.enterKeyframeInsert(KeyframeInsertInteractionState.columnAtCursor(
+            UIKeys.TIMELINE_INTERACTION_INSERT_KEYFRAME_COLUMN_CURSOR,
+            this::insertKeyframeColumnInterpolated));
+    }
+
+    public void toolbarEnterInsertSingleAtTimeline()
+    {
+        if (this.keyframeEditor == null)
+        {
+            return;
+        }
+
+        int tick = this.filmPanel.getCursor();
+
+        this.keyframeEditor.view.enterKeyframeInsert(KeyframeInsertInteractionState.individualAtPlayhead(
+            UIKeys.TIMELINE_INTERACTION_INSERT_KEYFRAME_SINGLE_TIMELINE,
+            tick,
+            (sheet, keyframeTick) -> this.keyframeEditor.view.toolbarInsertIndividual(sheet, keyframeTick)));
+    }
+
+    public void toolbarEnterInsertSingleAtCursor()
+    {
+        if (this.keyframeEditor == null)
+        {
+            return;
+        }
+
+        this.keyframeEditor.view.enterKeyframeInsert(KeyframeInsertInteractionState.individualAtCursor(
+            UIKeys.TIMELINE_INTERACTION_INSERT_KEYFRAME_SINGLE_CURSOR,
+            (sheet, keyframeTick) -> this.keyframeEditor.view.toolbarInsertIndividual(sheet, keyframeTick)));
+    }
+
+    public boolean canToolbarInsertKeyframeColumn()
+    {
+        return this.keyframeEditor != null
+            && this.keyframeEditor.view.isModifyingKeyframes()
+            && this.keyframeEditor.view instanceof UIFilmKeyframes filmKeyframes
+            && filmKeyframes.isReplayWorldEditor()
+            && this.getReplay() != null
+            && this.filmPanel.getController().getCurrentEntity() != null;
+    }
+
+    private static final List<String> WORLD_CHANNELS = Arrays.asList("x", "y", "z", "vX", "vY", "vZ", "yaw", "pitch", "headYaw", "bodyYaw", "grounded", "damage", "death_time", "using_item", "item_use_time", "fire", "particles", "active_hand", "fall", "sneaking", "riding", "sprinting", "item_main_hand", "item_off_hand", "item_head", "item_chest", "item_legs", "item_feet", "selected_slot", "stick_lx", "stick_ly", "stick_rx", "stick_ry", "trigger_l", "trigger_r", "extra1_x", "extra1_y", "extra2_x", "extra2_y", "shadow_size", "shadow_opacity");
+    private static final List<String> MODEL_PROPERTIES = Arrays.asList("visible", "render", "lighting", "render_depth", "transform", "transform_overlay", "pose", "pose_overlay", "anchor", "look_at", "illusion", "illusion_transform", "color", "paint", "paint_color", "glow", "texture", "pbr_normal_intensity", "pbr_specular_intensity", "model", "actions", "shape_keys", "block_state", "item_stack", "modelTransform", "same_animation_when_dropped", "settings", "paused", "frequency", "count", "structure_file", "biome_id", "emit_light", "light_intensity", "structure_light", "enabled", "level", "effect");
+    private static final Set<String> HIDDEN_MODEL_PROPERTIES = Set.of("glowing_color", "glow_settings", "glow_intensity", "paint_color");
+
+    private static boolean isFormItemUseTimeTrack(UIKeyframeSheet sheet)
+    {
+        return sheet != null && "item_use_time".equals(sheet.id) && sheet.property != null;
+    }
 
     /**
      * Human-readable timeline track names for internal property ids (overlays, paint color, etc.).
@@ -1005,6 +1419,36 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
             return UIKeys.FILM_REPLAY_TRACK_DAMAGE;
         }
 
+        if (trackName.equals("death_time"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_DEATH_TIME;
+        }
+
+        if (trackName.equals("using_item"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_USING_ITEM;
+        }
+
+        if (trackName.equals("item_use_time"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_ITEM_USE_TIME;
+        }
+
+        if (trackName.equals("fire"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_FIRE;
+        }
+
+        if (trackName.equals("particles"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_PARTICLES;
+        }
+
+        if (trackName.equals("active_hand"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_ACTIVE_HAND;
+        }
+
         if (trackName.equals("fall"))
         {
             return UIKeys.FILM_REPLAY_TRACK_FALL;
@@ -1053,6 +1497,16 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
         if (trackName.equals("selected_slot"))
         {
             return UIKeys.FILM_REPLAY_TRACK_SELECTED_SLOT;
+        }
+
+        if (trackName.equals("riding"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_RIDING;
+        }
+
+        if (trackName.equals("ridden"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_RIDDEN;
         }
 
         if (trackName.equals("stick_lx"))
@@ -1127,9 +1581,14 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
             return worldTitle;
         }
 
-        if (trackName.equals("paint_color"))
+        if (trackName.equals("paint_color") || trackName.equals("paint"))
         {
             return UIKeys.FORMS_EDITORS_PAINT_COLOR;
+        }
+
+        if (trackName.equals("glow") || trackName.equals("glow_settings"))
+        {
+            return UIKeys.FORMS_EDITORS_GLOW;
         }
 
         if (trackName.equals("color"))
@@ -1150,11 +1609,6 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
         if (trackName.equals("illusion"))
         {
             return UIKeys.FORMS_EDITORS_GENERAL_ILLUSION;
-        }
-
-        if (trackName.equals("illusion_transform"))
-        {
-            return UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_TRANSFORM;
         }
 
         if (trackName.equals("illusion_overlay"))
@@ -1178,30 +1632,6 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
             catch (Exception e)
             {
                 return UIKeys.FILM_REPLAY_TRACK_ILLUSION_OVERLAY;
-            }
-        }
-
-        if (trackName.equals("illusion_transform_overlay"))
-        {
-            return UIKeys.FILM_REPLAY_TRACK_ILLUSION_TRANSFORM_OVERLAY;
-        }
-
-        if (trackName.startsWith("illusion_transform_overlay"))
-        {
-            String suffix = trackName.substring("illusion_transform_overlay".length());
-
-            if (suffix.isEmpty())
-            {
-                return UIKeys.FILM_REPLAY_TRACK_ILLUSION_TRANSFORM_OVERLAY;
-            }
-
-            try
-            {
-                return UIKeys.FILM_REPLAY_TRACK_ILLUSION_TRANSFORM_OVERLAY_N.format(Integer.parseInt(suffix) + 1);
-            }
-            catch (Exception e)
-            {
-                return UIKeys.FILM_REPLAY_TRACK_ILLUSION_TRANSFORM_OVERLAY;
             }
         }
 
@@ -1256,6 +1686,11 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
         if (trackName.equals("visible"))
         {
             return UIKeys.FILM_REPLAY_TRACK_VISIBLE;
+        }
+
+        if (trackName.equals("render"))
+        {
+            return UIKeys.FILM_REPLAY_TRACK_RENDER;
         }
 
         if (trackName.equals("lighting"))
@@ -1316,12 +1751,13 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
     public void updateChannelsList()
     {
         UIKeyframes lastEditor = null;
+        TimelineInteractionSnapshot interactionSnapshot = null;
 
         if (this.keyframeEditor != null)
         {
-            this.keyframeEditor.removeFromParent();
-
             lastEditor = this.keyframeEditor.view;
+            interactionSnapshot = TimelineInteractionSnapshot.capture(lastEditor);
+            this.keyframeEditor.removeFromParent();
         }
 
         if (this.replay == null)
@@ -1341,8 +1777,21 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
 
         if (this.replay.isGroup.get())
         {
-            /* Add only visible, color and transform properties for groups */
-            String[] properties = {"visible", "color", "transform"};
+            List<String> properties = new ArrayList<>();
+
+            properties.add("visible");
+            properties.add("render");
+            properties.add("color");
+            properties.add("transform");
+            properties.add("transform_overlay");
+
+            for (int i = 0; i < BBSSettings.recordingPoseTransformOverlays.get(); i++)
+            {
+                properties.add("transform_overlay" + i);
+            }
+
+            properties.add("paint");
+            properties.add("glow");
 
             for (String key : properties)
             {
@@ -1353,7 +1802,7 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
                     BaseValueBasic formProperty = FormUtils.getProperty(DUMMY_FORM, key);
                     UIKeyframeSheet sheet = new UIKeyframeSheet(getColor(key), false, property, formProperty);
 
-                    sheets.add(sheet.icon(getIcon(key)));
+                    sheets.add(withTrackIcon(sheet, key));
                 }
             }
         }
@@ -1377,11 +1826,15 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
                         ? new UIKeyframeSheet(key, resolvedTitle, sheetColor, false, channel, null)
                         : new UIKeyframeSheet(sheetColor, false, channel, null);
 
-                sheets.add(sheet.icon(ICONS.get(key)));
+                sheets.add(withTrackIcon(sheet, key));
             }
 
             /* Form properties */
             Set<String> propertyPaths = new LinkedHashSet<>(FormUtils.collectPropertyPaths(this.replay.form.get()));
+
+            /* render is invisible in the form editor but still keyframable in replays */
+            propertyPaths.add("render");
+
             for (String key : this.replay.properties.properties.keySet())
             {
                 if (this.isCompatiblePropertyPath(this.replay.form.get(), key))
@@ -1395,7 +1848,7 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
             for (String key : propertyPaths)
             {
                 /* Ocultar/omitir la pista tint_block_entities y huesos de item */
-                if (key.endsWith("tint_block_entities") || key.endsWith("_item"))
+                if (this.isHiddenModelProperty(key))
                 {
                     continue;
                 }
@@ -1423,7 +1876,7 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
                         ? new UIKeyframeSheet(key, IKey.constant(customTitle), sheetColor, false, property, formProperty)
                         : new UIKeyframeSheet(key, IKey.constant(title), sheetColor, false, property, formProperty);
 
-                    sheets.add(sheet.icon(getIcon(key)));
+                    sheets.add(withTrackIcon(sheet, key));
                 }
             }
         }
@@ -1456,8 +1909,9 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
                 }
 
                 if (name.equals("visible")) return 0;
-                if (name.equals("lighting")) return 1;
-                if (name.equals("render_depth")) return 2;
+                if (name.equals("render")) return 1;
+                if (name.equals("lighting")) return 2;
+                if (name.equals("render_depth")) return 3;
 
                 if (name.equals("transform")) return 10;
                 if (name.startsWith("transform_overlay"))
@@ -1488,24 +1942,23 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
 
                     try { return 34 + Integer.parseInt(suffix); } catch (Exception e) { return 49; }
                 }
-                if (name.equals("illusion_transform")) return 50;
-                if (name.equals("illusion_transform_overlay")) return 51;
-                if (name.startsWith("illusion_transform_overlay") && name.length() > "illusion_transform_overlay".length())
-                {
-                    String suffix = name.substring("illusion_transform_overlay".length());
-
-                    try { return 52 + Integer.parseInt(suffix); } catch (Exception e) { return 69; }
-                }
                 if (name.equals("structure_file")) return 60;
                 if (name.equals("pivot")) return 61;
                 if (name.equals("biome_id")) return 62;
                 if (name.equals("structure_light")) return 63;
                 if (name.equals("color")) return 64;
-                if (name.equals("paint_color")) return 65;
-                if (name.equals("texture")) return 66;
-                if (name.equals("pbr_normal_intensity")) return 67;
-                if (name.equals("pbr_specular_intensity")) return 68;
-                if (name.equals("model")) return 69;
+                if (name.equals("paint_color") || name.equals("paint")) return 65;
+                if (name.equals("glow") || name.equals("glow_settings")) return 66;
+                if (name.equals("texture")) return 68;
+                if (name.equals("pbr_normal_intensity")) return 69;
+                if (name.equals("pbr_specular_intensity")) return 70;
+                if (name.equals("model")) return 71;
+                if (name.equals("item_stack")) return 72;
+
+                if (name.equals("item_use_time") && sheet.property != null)
+                {
+                    return 73;
+                }
 
                 return 500;
             };
@@ -1760,7 +2213,7 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
 
                 for (UIKeyframeSheet sheet : sheets)
                 {
-                    if (WORLD_CHANNELS.contains(sheet.id))
+                    if (WORLD_CHANNELS.contains(sheet.id) && !isFormItemUseTimeTrack(sheet))
                     {
                         if (!this.collapsedModelTracks.getOrDefault(worldKey, false))
                         {
@@ -1768,7 +2221,7 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
                             worldTracks.add(sheet);
                         }
                     }
-                    else if (MODEL_PROPERTIES.contains(sheet.id) || sheet.id.startsWith("pose") || sheet.id.startsWith("transform_overlay") || sheet.id.startsWith("illusion_overlay") || sheet.id.startsWith("illusion_transform_overlay"))
+                    else if (MODEL_PROPERTIES.contains(sheet.id) || isFormItemUseTimeTrack(sheet) || sheet.id.startsWith("pose") || sheet.id.startsWith("transform_overlay") || sheet.id.startsWith("illusion_overlay"))
                     {
                         if (!this.collapsedModelTracks.getOrDefault(modelPropsKey, false))
                         {
@@ -1931,7 +2384,6 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
 
                 return keyframes;
             }).target(this.filmPanel.editArea);
-            this.keyframeEditor.full(this);
             this.keyframeEditor.setUndoId("replay_keyframe_editor");
 
             /* Reset */
@@ -2016,6 +2468,12 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
             }
 
             this.add(this.keyframeEditor);
+            this.applyToolbarDockLayout();
+
+            if (interactionSnapshot != null && !interactionSnapshot.isEmpty())
+            {
+                interactionSnapshot.restore(this.keyframeEditor.view);
+            }
         }
 
         this.resize();
@@ -2024,6 +2482,29 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
         {
             this.keyframeEditor.view.resetView();
         }
+    }
+
+    private static boolean isHiddenModelProperty(String key)
+    {
+        if (key == null || key.isEmpty())
+        {
+            return false;
+        }
+
+        int colon = key.indexOf(':');
+        String path = colon == -1 ? key : key.substring(0, colon);
+        int slash = path.lastIndexOf('/');
+        String name = slash == -1 ? path : path.substring(slash + 1);
+
+        if ("using_item".equals(name) || "item_use_time".equals(name))
+        {
+            return false;
+        }
+
+        return path.endsWith("tint_block_entities")
+            || path.endsWith("_item")
+            || HIDDEN_MODEL_PROPERTIES.contains(name)
+            || name.startsWith("illusion_transform");
     }
 
     private boolean isCompatiblePropertyPath(Form rootForm, String key)
@@ -2131,8 +2612,8 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
 
         String scopeKey = groupKey == null || groupKey.isEmpty() ? this.replay.uuid.get() + ":__model__" : groupKey;
         String textureParentKey = scopeKey + ":texture";
+        String itemStackParentKey = scopeKey + ":item_stack";
         String illusionParentKey = scopeKey + ":illusion";
-        String illusionTransformParentKey = scopeKey + ":illusion_transform";
         boolean isPbrTrack = trackName.equals("pbr_normal_intensity") || trackName.equals("pbr_specular_intensity");
 
         if (isPbrTrack)
@@ -2218,6 +2699,35 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
 
             this.addTrackByPriority(trackName, before, after, sheet);
         }
+        else if (trackName.equals("item_stack"))
+        {
+            boolean expanded = !this.collapsedModelTracks.getOrDefault(itemStackParentKey, true);
+
+            sheet.expanded = expanded;
+            sheet.toggleExpanded = () ->
+            {
+                this.collapsedModelTracks.put(itemStackParentKey, !this.collapsedModelTracks.getOrDefault(itemStackParentKey, true));
+                this.updateChannelsList();
+            };
+
+            this.addTrackByPriority(trackName, before, after, sheet);
+        }
+        else if (isFormItemUseTimeTrack(sheet))
+        {
+            if (this.collapsedModelTracks.getOrDefault(itemStackParentKey, true))
+            {
+                return;
+            }
+
+            sheet.level += 1;
+
+            if (customTitle == null || customTitle.isEmpty())
+            {
+                sheet.title = UIKeys.FILM_REPLAY_TRACK_ITEM_USE_TIME_LABEL;
+            }
+
+            after.add(sheet);
+        }
         else if (trackName.startsWith("transform_overlay") || trackName.equals("transform"))
         {
             before.add(sheet);
@@ -2238,29 +2748,6 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
         else if (this.isIllusionOverlayTrack(trackName))
         {
             if (this.collapsedModelTracks.getOrDefault(illusionParentKey, true))
-            {
-                return;
-            }
-
-            sheet.level += 1;
-            after.add(sheet);
-        }
-        else if (trackName.equals("illusion_transform"))
-        {
-            boolean expanded = !this.collapsedModelTracks.getOrDefault(illusionTransformParentKey, true);
-
-            sheet.expanded = expanded;
-            sheet.toggleExpanded = () ->
-            {
-                this.collapsedModelTracks.put(illusionTransformParentKey, !this.collapsedModelTracks.getOrDefault(illusionTransformParentKey, true));
-                this.updateChannelsList();
-            };
-
-            after.add(sheet);
-        }
-        else if (this.isIllusionTransformOverlayTrack(trackName))
-        {
-            if (this.collapsedModelTracks.getOrDefault(illusionTransformParentKey, true))
             {
                 return;
             }
@@ -2289,22 +2776,12 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
         return trackName.startsWith("illusion_overlay") && trackName.length() > "illusion_overlay".length();
     }
 
-    private boolean isIllusionTransformOverlayTrack(String trackName)
-    {
-        if (trackName.equals("illusion_transform_overlay"))
-        {
-            return true;
-        }
-
-        return trackName.startsWith("illusion_transform_overlay") && trackName.length() > "illusion_transform_overlay".length();
-    }
-
     private void addTrackByPriority(String trackName, List<UIKeyframeSheet> before, List<UIKeyframeSheet> after, UIKeyframeSheet sheet)
     {
         int poseIndex = MODEL_PROPERTIES.indexOf("pose");
         int currentIndex = MODEL_PROPERTIES.indexOf(trackName);
 
-        if (WORLD_CHANNELS.contains(trackName))
+        if (WORLD_CHANNELS.contains(trackName) && !isFormItemUseTimeTrack(sheet))
         {
             before.add(sheet);
 
@@ -2664,6 +3141,11 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
         sheet.selection.add(insert);
     }
 
+    private boolean isBonePickProperty(String propertyId)
+    {
+        return propertyId.equals("pose") || propertyId.startsWith("pose_overlay") || propertyId.equals("look_at");
+    }
+
     public void pickForm(Form form, String bone)
     {
         if (this.keyframeEditor == null || bone.isEmpty())
@@ -2687,7 +3169,7 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
                 String pathWithProperty = colon != -1 ? sheetId.substring(0, colon) : sheetId;
                 String propertyId = StringUtils.fileName(pathWithProperty);
 
-                if (StringUtils.parentPath(pathWithProperty).equals(formPath) && (propertyId.equals("pose") || propertyId.startsWith("pose_overlay")))
+                if (StringUtils.parentPath(pathWithProperty).equals(formPath) && this.isBonePickProperty(propertyId))
                 {
                     propertyPath = pathWithProperty;
                 }
@@ -2705,7 +3187,7 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
                 String pathWithProperty = colon != -1 ? sheetId.substring(0, colon) : sheetId;
                 String propertyId = StringUtils.fileName(pathWithProperty);
 
-                if (StringUtils.parentPath(pathWithProperty).equals(formPath) && (propertyId.equals("pose") || propertyId.startsWith("pose_overlay")))
+                if (StringUtils.parentPath(pathWithProperty).equals(formPath) && this.isBonePickProperty(propertyId))
                 {
                     propertyPath = pathWithProperty;
                 }
@@ -2716,8 +3198,10 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
         {
             String activeOverlayPath = null;
             String posePath = null;
+            String lookAtPath = null;
             double minPoseDist = Double.MAX_VALUE;
             double minOverlayDist = Double.MAX_VALUE;
+            double minLookAtDist = Double.MAX_VALUE;
             int currentTick = this.filmPanel.getCursor();
 
             for (UIKeyframeSheet sheet : graph.getSheets())
@@ -2762,6 +3246,20 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
                             }
                         }
                     }
+                    else if (propertyId.equals("look_at"))
+                    {
+                        lookAtPath = pathWithProperty;
+
+                        if (!sheet.channel.isEmpty())
+                        {
+                            KeyframeSegment segment = sheet.channel.find(currentTick);
+
+                            if (segment != null)
+                            {
+                                minLookAtDist = Math.abs(segment.getClosest().getTick() - currentTick);
+                            }
+                        }
+                    }
                 }
             }
 
@@ -2769,15 +3267,30 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
             {
                 propertyPath = activeOverlayPath;
             }
+            else if (lookAtPath != null && minLookAtDist <= minPoseDist && this.keyframeEditor.editor instanceof UILookAtKeyframeFactory)
+            {
+                propertyPath = lookAtPath;
+            }
             else if (posePath != null)
             {
                 propertyPath = posePath;
+            }
+            else if (lookAtPath != null)
+            {
+                propertyPath = lookAtPath;
             }
         }
 
         if (propertyPath == null)
         {
-            propertyPath = StringUtils.combinePaths(formPath, "pose");
+            if (this.keyframeEditor.editor instanceof UILookAtKeyframeFactory)
+            {
+                propertyPath = StringUtils.combinePaths(formPath, "look_at");
+            }
+            else
+            {
+                propertyPath = StringUtils.combinePaths(formPath, "pose");
+            }
         }
 
         this.pickProperty(bone, propertyPath, false);
@@ -2900,10 +3413,25 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
 
             if (this.keyframeEditor.editor instanceof UIPoseKeyframeFactory poseFactory)
             {
-                poseFactory.poseEditor.selectBone(bone);
+                if (Window.isCtrlPressed())
+                {
+                    poseFactory.poseEditor.addBoneToSelection(bone);
+                }
+                else
+                {
+                    poseFactory.poseEditor.selectBone(bone);
+                }
+            }
+            else if (this.keyframeEditor.editor instanceof UILookAtKeyframeFactory lookAtFactory)
+            {
+                lookAtFactory.lookAtEditor.selectBone(bone);
             }
 
             this.filmPanel.setCursor((int) closest.getTick());
+        }
+        else if (this.keyframeEditor.editor instanceof UILookAtKeyframeFactory lookAtFactory)
+        {
+            lookAtFactory.lookAtEditor.selectBone(bone);
         }
     }
 
@@ -3034,6 +3562,16 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
             return false;
         }
 
+        if (this.filmPanel.getController().tryPickHoveredReplay(context))
+        {
+            return true;
+        }
+
+        if (Window.isAltPressed() && context.mouseButton == 0)
+        {
+            return false;
+        }
+
         StencilFormFramebuffer stencil = this.filmPanel.getController().getStencil();
 
         if (stencil.hasPicked())
@@ -3078,8 +3616,7 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
 
                     if (context.mouseButton == 0)
                     {
-                        if (Window.isCtrlPressed()) offerAdjacent(this.getContext(), pair.a, pair.b, (bone) -> this.pickForm(pair.a, bone));
-                        else if (Window.isShiftPressed()) offerHierarchy(this.getContext(), pair.a, pair.b, (bone) -> this.pickForm(pair.a, bone));
+                        if (Window.isShiftPressed()) offerHierarchy(this.getContext(), pair.a, pair.b, (bone) -> this.pickForm(pair.a, bone));
                         else this.pickForm(pair.a, pair.b);
 
                         return true;
@@ -3093,27 +3630,14 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
                 }
             }
         }
-        else if (context.mouseButton == 1 && this.isVisible())
+        else if (context.mouseButton == 1 && this.isVisible() && !this.viewportInteraction.isActive())
         {
-            World world = MinecraftClient.getInstance().world;
             Camera camera = this.filmPanel.getCamera();
 
-            BlockHitResult blockHitResult = RayTracing.rayTrace(
-                world,
-                RayTracing.fromVector3d(camera.position),
-                RayTracing.fromVector3f(camera.getMouseDirectionFov(context.mouseX, context.mouseY, area.x, area.y, area.w, area.h)),
-                256F
-            );
+            Vector3d vec = this.rayTraceViewportBlock(context, area);
 
-            if (blockHitResult.getType() != HitResult.Type.MISS)
+            if (vec != null)
             {
-                Vector3d vec = new Vector3d(blockHitResult.getPos().x, blockHitResult.getPos().y, blockHitResult.getPos().z);
-
-                if (Window.isShiftPressed())
-                {
-                    vec = new Vector3d(Math.floor(vec.x) + 0.5D, Math.round(vec.y), Math.floor(vec.z) + 0.5D);
-                }
-
                 final Vector3d finalVec = vec;
 
                 context.replaceContextMenu((menu) ->
@@ -3121,19 +3645,54 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
                     float pitch = 0F;
                     float yaw = MathUtils.toDeg(camera.rotation.y);
 
-                    menu.action(Icons.ADD, UIKeys.FILM_REPLAY_CONTEXT_ADD, () -> this.replays.replays.addReplay(finalVec, pitch, yaw));
-                    menu.action(Icons.POINTER, UIKeys.FILM_REPLAY_CONTEXT_MOVE_HERE, () -> this.moveReplay(finalVec.x, finalVec.y, finalVec.z));
+                    menu.action(Icons.ADD, UIKeys.FILM_REPLAY_CONTEXT_ADD,
+                        () -> this.replays.replays.addReplay(finalVec, pitch, yaw));
+                    menu.action(Icons.POINTER, UIKeys.FILM_REPLAY_CONTEXT_MOVE_HERE,
+                        () -> this.moveReplay(finalVec.x, finalVec.y, finalVec.z));
                 });
 
                 return true;
             }
         }
 
-        if (area.isInside(context) && this.filmPanel.getController().orbit.enabled)
+        if (stencil.hasPicked() && context.mouseButton == 2 && Window.isAltPressed()
+            && this.filmPanel.getController().getPovMode() == UIFilmController.CAMERA_MODE_ORBIT
+            && this.filmPanel.getController().orbit.enabled
+            && !this.filmPanel.getController().orbit.isAnimating()
+            && !this.viewportInteraction.isActive())
         {
-            this.filmPanel.getController().orbit.start(context);
+            int stencilIndex = stencil.getIndex() - Gizmo.STENCIL_HANDLE_MAX - 1;
+            List<Replay> replays = this.filmPanel.getData().replays.getList();
 
-            return true;
+            if (stencilIndex >= 0 && stencilIndex < replays.size())
+            {
+                Replay replay = replays.get(stencilIndex);
+
+                if (!this.isVisible())
+                {
+                    this.filmPanel.showPanel(this);
+                }
+
+                this.setReplay(replay, true, true);
+
+                return true;
+            }
+        }
+
+        if (area.isInside(context)
+            && this.filmPanel.isFlying()
+            && this.filmPanel.getController().getPovMode() == UIFilmController.CAMERA_MODE_ORBIT
+            && this.filmPanel.getController().orbit.enabled
+            && !this.filmPanel.getController().orbit.isAnimating())
+        {
+            int button = this.filmPanel.getController().orbit.canStart(context);
+
+            if (button >= 0)
+            {
+                this.filmPanel.getController().orbit.start(context);
+
+                return true;
+            }
         }
 
         return false;
@@ -3211,8 +3770,12 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
 
         List<Integer> selection = DataStorageUtils.intListFromData(data.getList("selection"));
         List<Integer> currentIndices = this.replays.replays.getCurrentIndices();
+        Replay replay = CollectionUtils.getSafe(this.film.replays.getList(), data.getInt("replay"));
 
-        this.setReplay(CollectionUtils.getSafe(this.film.replays.getList(), data.getInt("replay")), true, false);
+        if (this.replay != replay)
+        {
+            this.setReplay(replay, true, false);
+        }
 
         currentIndices.clear();
         currentIndices.addAll(selection);
@@ -3222,6 +3785,11 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
     @Override
     public void setVisible(boolean visible)
     {
+        if (!visible)
+        {
+            this.toolbar.cancelDockDrag();
+        }
+
         super.setVisible(visible);
 
         if (this.keyframeEditor != null)

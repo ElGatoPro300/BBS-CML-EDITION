@@ -5,6 +5,7 @@ import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.graphics.GuiQuadMesh;
 import mchorse.bbs_mod.graphics.texture.AdoptedTexture;
+import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.text.RtlAwtTextRenderer;
 import mchorse.bbs_mod.text.RtlFontManager;

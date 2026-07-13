@@ -1,9 +1,11 @@
 package mchorse.bbs_mod.cubic.render.vao;
 
+import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.client.render.picker.BBSPickerRenderer;
 
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.GlUniform;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.render.BufferBuilder;
@@ -29,9 +31,12 @@ public class ModelVAORenderer
     private static float paintG;
     private static float paintB;
     private static float paintStrength;
-
+    /* When true, the model is being drawn as a shader-pack paint overlay pass. Groups still sample their
+     * real skin texture so transparent UV regions are discarded; only textured pixels receive paint. */
     private static boolean paintPass;
     private static boolean paintOverlayPass;
+    private static boolean paintOverlaySynced;
+
 
     public static void beginPaintPass()
     {
@@ -43,9 +48,15 @@ public class ModelVAORenderer
         paintPass = false;
     }
 
+
     public static boolean isPaintOverlayPass()
     {
         return paintOverlayPass;
+    }
+
+    public static boolean isPaintOverlaySynced()
+    {
+        return paintOverlaySynced;
     }
 
     public static boolean isPaintPass()
@@ -104,6 +115,79 @@ public class ModelVAORenderer
         }
     }
 
+    public static void setGlow(GlowSettings settings, float colorR, float colorG, float colorB)
+    {
+        setGlow(settings, colorR, colorG, colorB, null);
+    }
+
+    public static void setGlow(GlowSettings settings, float colorR, float colorG, float colorB, Color legacyColor)
+    {
+        float strength = settings.resolveIntensity(legacyColor);
+
+        baseGlowR = colorR;
+        baseGlowG = colorG;
+        baseGlowB = colorB;
+        baseGlowStrength = strength;
+
+        glowR = colorR;
+        glowG = colorG;
+        glowB = colorB;
+        glowStrength = strength;
+    }
+
+    public static void setGlowing(float r, float g, float b, float strength, float radius)
+    {
+        GlowSettings settings = new GlowSettings(strength, radius);
+
+        setGlow(settings, r, g, b);
+    }
+
+    public static void setGroupGlowing(float r, float g, float b, float strength)
+    {
+        glowR = r;
+        glowG = g;
+        glowB = b;
+        glowStrength = strength;
+    }
+
+    public static void clearGlowing()
+    {
+        baseGlowR = 0F;
+        baseGlowG = 0F;
+        baseGlowB = 0F;
+        baseGlowStrength = 0F;
+
+        glowR = 0F;
+        glowG = 0F;
+        glowB = 0F;
+        glowStrength = 0F;
+    }
+
+    public static boolean isGlowingUniformActive()
+    {
+        return glowingUniformActive;
+    }
+
+    public static float getBaseGlowingStrength()
+    {
+        return baseGlowStrength;
+    }
+
+    public static float getBaseGlowingR()
+    {
+        return baseGlowR;
+    }
+
+    public static float getBaseGlowingG()
+    {
+        return baseGlowG;
+    }
+
+    public static float getBaseGlowingB()
+    {
+        return baseGlowB;
+    }
+
     public static void clearPaint()
     {
         baseR = 0F;
@@ -155,5 +239,22 @@ public class ModelVAORenderer
         modelVAO.writeImmediate(builder, stack, r, g, b, a, light, overlay);
 
         return builder.endNullable();
+    }
+    private static void setModelViewUniform(MatrixStack stack, ShaderProgram shader)
+    {
+        Matrix4f modelView;
+
+        if (paintOverlayPass)
+        {
+            /* Overlay stack already carries the full terrain + entity transform captured at enqueue;
+             * RenderSystem model-view is identity during overlay draws. */
+            modelView = new Matrix4f(stack.peek().getPositionMatrix());
+        }
+        else
+        {
+            modelView = new Matrix4f(RenderSystem.getModelViewMatrix()).mul(stack.peek().getPositionMatrix());
+        }
+
+        shader.modelViewMat.set(modelView);
     }
 }

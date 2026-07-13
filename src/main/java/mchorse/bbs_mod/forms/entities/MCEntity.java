@@ -24,6 +24,10 @@ public class MCEntity implements IEntity
 
     private float[] extraVariables = new float[10];
     private float[] prevExtraVariables = new float[10];
+    private boolean particlesEnabled = true;
+    private IEntity mountTarget;
+    private IEntity riderTarget;
+    private boolean sitting;
 
     public MCEntity(Entity mcEntity)
     {
@@ -193,6 +197,98 @@ public class MCEntity implements IEntity
         {
             living.hurtTime = hurtTimer;
         }
+    }
+
+    @Override
+    public int getDeathTime()
+    {
+        if (this.mcEntity instanceof LivingEntity living)
+        {
+            return living.deathTime;
+        }
+
+        return 0;
+    }
+
+    @Override
+    public void setDeathTime(int deathTime)
+    {
+        if (this.mcEntity instanceof LivingEntity living)
+        {
+            living.deathTime = deathTime;
+        }
+    }
+
+    @Override
+    public boolean isUsingItem()
+    {
+        if (this.mcEntity instanceof LivingEntity living)
+        {
+            return living.isUsingItem();
+        }
+
+        return false;
+    }
+
+    @Override
+    public void setUsingItem(boolean usingItem)
+    {
+    }
+
+    @Override
+    public int getItemUseTimeLeft()
+    {
+        if (this.mcEntity instanceof LivingEntity living)
+        {
+            return living.getItemUseTimeLeft();
+        }
+
+        return 0;
+    }
+
+    @Override
+    public void setItemUseTimeLeft(int itemUseTimeLeft)
+    {
+    }
+
+    @Override
+    public int getFireTicks()
+    {
+        return this.mcEntity.getFireTicks();
+    }
+
+    @Override
+    public void setFireTicks(int fireTicks)
+    {
+        this.mcEntity.setFireTicks(fireTicks);
+    }
+
+    @Override
+    public boolean isParticlesEnabled()
+    {
+        return this.particlesEnabled;
+    }
+
+    @Override
+    public void setParticlesEnabled(boolean particlesEnabled)
+    {
+        this.particlesEnabled = particlesEnabled;
+    }
+
+    @Override
+    public Hand getActiveHand()
+    {
+        if (this.mcEntity instanceof LivingEntity living && living.isUsingItem())
+        {
+            return living.getActiveHand();
+        }
+
+        return Hand.MAIN_HAND;
+    }
+
+    @Override
+    public void setActiveHand(Hand hand)
+    {
     }
 
     @Override
@@ -496,7 +592,48 @@ public class MCEntity implements IEntity
     @Override
     public EntityPose getEntityPose()
     {
+        if ((this.mountTarget != null || this.sitting) && this.mcEntity.getPose() == EntityPose.STANDING)
+        {
+            return EntityPose.SITTING;
+        }
+
         return this.mcEntity.getPose();
+    }
+
+    @Override
+    public IEntity getMountTarget()
+    {
+        return this.mountTarget;
+    }
+
+    @Override
+    public void setMountTarget(IEntity mountTarget)
+    {
+        this.mountTarget = mountTarget;
+    }
+
+    @Override
+    public boolean isSitting()
+    {
+        return this.sitting;
+    }
+
+    @Override
+    public void setSitting(boolean sitting)
+    {
+        this.sitting = sitting;
+    }
+
+    @Override
+    public IEntity getRiderTarget()
+    {
+        return this.riderTarget;
+    }
+
+    @Override
+    public void setRiderTarget(IEntity riderTarget)
+    {
+        this.riderTarget = riderTarget;
     }
 
     @Override

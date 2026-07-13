@@ -22,7 +22,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.world.ClientWorld;
 
 /**
- * World Properties overlay (Tools menu). Collapsible Time, Weather, and Mobs sections. Toggle states
+ * World Properties overlay (World menu bar button). Collapsible Time, Weather, and Mobs sections. Toggle states
  * are read from the integrated server's gamerules when the panel opens. Time-slider updates use the
  * same client-side sun override as the Sun Rotation curve for smooth dragging, with throttled server sync.
  */

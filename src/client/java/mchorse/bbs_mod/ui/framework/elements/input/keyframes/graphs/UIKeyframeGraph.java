@@ -7,6 +7,7 @@ import mchorse.bbs_mod.graphics.Draw;
 import mchorse.bbs_mod.graphics.line.LineBuilder;
 import mchorse.bbs_mod.graphics.line.SolidColorLineRenderer;
 import mchorse.bbs_mod.graphics.window.Window;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarPointerBlock;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeSheet;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframes;
@@ -74,7 +75,12 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
      */
     private boolean isNear(double x, double y, int mouseX, int mouseY)
     {
-        return Math.pow(mouseX - x, 2) + Math.pow(mouseY - y, 2) < 25D;
+        return this.isNear(x, y, mouseX, mouseY, UIKeyframeDopeSheet.DEFAULT_HIT_RADIUS_SQ);
+    }
+
+    private boolean isNear(double x, double y, int mouseX, int mouseY, double radiusSq)
+    {
+        return Math.pow(mouseX - x, 2) + Math.pow(mouseY - y, 2) < radiusSq;
     }
 
     public void resetViewY(UIKeyframeSheet current)
@@ -210,6 +216,9 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
     public Pair<Keyframe, KeyframeType> findKeyframe(int mouseX, int mouseY)
     {
         List keyframes = this.sheet.channel.getKeyframes();
+        double radiusSq = Window.isCtrlPressed()
+            ? UIKeyframeDopeSheet.REMOVE_HIT_RADIUS_SQ
+            : UIKeyframeDopeSheet.DEFAULT_HIT_RADIUS_SQ;
 
         for (int i = 0; i < keyframes.size(); i++)
         {
@@ -217,7 +226,7 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
             int x = this.keyframes.toGraphX(keyframe.getTick());
             int y = this.toGraphY(keyframe.getFactory().getY(keyframe.getValue()));
 
-            if (this.isNear(x, y, mouseX, mouseY))
+            if (this.isNear(x, y, mouseX, mouseY, radiusSq))
             {
                 return new Pair<>(keyframe, KeyframeType.REGULAR);
             }
@@ -225,7 +234,7 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
             int lx = this.keyframes.toGraphX(keyframe.getTick() - keyframe.lx);
             int ly = this.toGraphY(keyframe.getFactory().getY(keyframe.getValue()) + keyframe.ly);
 
-            if (this.isNear(lx, ly, mouseX, mouseY))
+            if (this.isNear(lx, ly, mouseX, mouseY, radiusSq))
             {
                 return new Pair<>(keyframe, KeyframeType.LEFT_HANDLE);
             }
@@ -233,7 +242,7 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
             int rx = this.keyframes.toGraphX(keyframe.getTick() + keyframe.rx);
             int ry = this.toGraphY(keyframe.getFactory().getY(keyframe.getValue()) + keyframe.ry);
 
-            if (this.isNear(rx, ry, mouseX, mouseY))
+            if (this.isNear(rx, ry, mouseX, mouseY, radiusSq))
             {
                 return new Pair<>(keyframe, KeyframeType.RIGHT_HANDLE);
             }
@@ -391,6 +400,7 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
         this.renderGrid(context);
         context.batcher.clip(this.keyframes.area.x, this.keyframes.area.y + RULER_HEIGHT, this.keyframes.area.w, this.keyframes.area.h - RULER_HEIGHT, context);
         this.renderGraph(context);
+        this.renderPreviewKeyframes(context);
         context.batcher.unclip(context);
     }
 
@@ -453,9 +463,14 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
             context.batcher.box(area.x, y, area.ex(), y + 1, 0x24ffffff);
             context.batcher.text(String.valueOf(min + j * mult), area.x + 4, y + 4);
         }
+    }
+
+    private void renderPreviewKeyframes(UIContext context)
+    {
+        Area area = this.keyframes.area;
 
         /* Render where the keyframe will be duplicated or added */
-        if (!area.isInside(context))
+        if (!area.isInside(context) || TimelineToolbarPointerBlock.blocksPointer(context))
         {
             return;
         }
@@ -529,8 +544,29 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
     protected void renderPreviewKeyframe(UIContext context, UIKeyframeSheet sheet, double tick, int y, int color)
     {
         int x = this.keyframes.toGraphX(tick);
-        float a = (float) Math.sin(context.getTickTransition() / 2D) * 0.1F + 0.5F;
-        int c = Colors.setA(color, a);
+        Area area = this.keyframes.area;
+
+        if (x < area.x || x > area.ex() || y < area.y || y > area.ey())
+        {
+            return;
+        }
+
+        int c;
+
+        if (color == Colors.WHITE)
+        {
+            float baseOpacity = BBSSettings.keyframePreviewOpacity == null ? 0.75F : BBSSettings.keyframePreviewOpacity.get();
+            float a = (float) Math.sin(context.getTickTransition() / 2D) * 0.1F + baseOpacity;
+
+            c = BBSSettings.keyframePreviewHighlight(a);
+        }
+        else
+        {
+            float a = (float) Math.sin(context.getTickTransition() / 2D) * 0.15F + 0.85F;
+
+            c = Colors.setA(color, a);
+        }
+
         KeyframeShape shape = KeyframeShape.SQUARE;
 
         if (BBSSettings.defaultKeyframeShape != null)
@@ -551,6 +587,8 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
         Matrix3x2fc matrix = context.batcher.getContext().getMatrices();
         BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
 
+        RenderSystem.enableBlend();
+        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
         UIKeyframeDopeSheet.renderShape(preview, context, builder, matrix, x, y, 3, c);
         Draw.flush(builder, Draw.getPositionColorLayer());
     }
@@ -680,7 +718,14 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
                 forcedIndex += 1;
             }
 
-            boolean isPointHover = this.isNear(this.keyframes.toGraphX(frame.getTick()), y, context.mouseX, context.mouseY);
+            boolean isPointHover = !TimelineToolbarPointerBlock.blocksPointer(context)
+                && this.isNear(
+                    this.keyframes.toGraphX(frame.getTick()),
+                    y,
+                    context.mouseX,
+                    context.mouseY,
+                    Window.isCtrlPressed() ? UIKeyframeDopeSheet.REMOVE_HIT_RADIUS_SQ : UIKeyframeDopeSheet.DEFAULT_HIT_RADIUS_SQ
+                );
             boolean toRemove = Window.isCtrlPressed() && isPointHover;
 
             if (this.keyframes.isSelecting())

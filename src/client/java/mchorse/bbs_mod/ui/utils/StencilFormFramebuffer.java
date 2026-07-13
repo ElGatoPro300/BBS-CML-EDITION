@@ -230,6 +230,7 @@ public class StencilFormFramebuffer
         return this.index > 0;
     }
 
+
     private void releaseGpuTargets()
     {
         if (this.colorView != null)

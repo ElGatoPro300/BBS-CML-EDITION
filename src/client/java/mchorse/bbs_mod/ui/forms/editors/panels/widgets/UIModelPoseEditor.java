@@ -87,4 +87,12 @@ public class UIModelPoseEditor extends UIPoseEditor
         super.setLighting(transform, value);
         this.valuePose.postNotify(IValueListener.FLAG_UNMERGEABLE);
     }
+
+    @Override
+    protected void setTextureBlend(PoseTransform transform, float value)
+    {
+        this.valuePose.preNotify(IValueListener.FLAG_UNMERGEABLE);
+        super.setTextureBlend(transform, value);
+        this.valuePose.postNotify(IValueListener.FLAG_UNMERGEABLE);
+    }
 }

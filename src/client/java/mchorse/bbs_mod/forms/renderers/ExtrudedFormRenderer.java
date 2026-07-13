@@ -5,6 +5,11 @@ import mchorse.bbs_mod.camera.Camera;
 import mchorse.bbs_mod.cubic.render.vao.ModelVAO;
 import mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer;
 import mchorse.bbs_mod.forms.forms.ExtrudedForm;
+import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
+import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
+import mchorse.bbs_mod.forms.forms.utils.TextureBlend;
+import mchorse.bbs_mod.forms.renderers.utils.FormColorBlend;
+import mchorse.bbs_mod.forms.renderers.utils.FormTextureBlendRenderer;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
@@ -18,6 +23,7 @@ import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.util.math.MatrixStack;
 
+import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
@@ -126,7 +132,42 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
 
             color.mul(formColor);
 
-            BBSModClient.getTextures().bindTexture(texture);
+            GlowSettings glow = this.form.glowSettings.get();
+            Color legacyGlow = this.form.glowingColor.get();
+            boolean hasGlow = glow.resolveIntensity(legacyGlow) != 0F;
+            Color resolvedGlow = new Color();
+
+            glow.resolveColor(legacyGlow, resolvedGlow);
+
+            PaintSettings paint = this.form.paintSettings.get();
+            Color legacyPaint = this.form.paintColor.get();
+            Color paintColor = new Color();
+
+            paint.resolveColor(legacyPaint, paintColor);
+
+            float paintStrength = paint.resolveIntensity(legacyPaint);
+
+            paintColor.a = paintStrength;
+
+            boolean irisWorldPaintDeferral = BBSRendering.isIrisWorldPaintDeferral();
+            boolean paintActive = paintStrength != 0F;
+            boolean deferPaintToOverlay = irisWorldPaintDeferral && paintActive;
+            Supplier<ShaderProgram> renderShader = shader;
+            boolean bbsModelShader = !BBSRendering.isIrisWorldModelPass();
+            boolean syncedGlow = hasGlow && glow.resolveSync();
+            boolean shaderOverlay = irisWorldPaintDeferral && syncedGlow && !paintActive;
+            boolean deferGlowWithPaint = deferPaintToOverlay && syncedGlow;
+            boolean deferGlowToOverlay = shaderOverlay;
+
+            if (!bbsModelShader && !shaderOverlay && !deferPaintToOverlay)
+            {
+                FormColorBlend.blendFormGlowBrighten(color, glow, legacyGlow);
+            }
+
+            if (paintActive)
+            {
+                this.form.shaderShadow.setRuntimeValue(paint.effectiveShaderShadow(legacyPaint) > 0.001F);
+            }
 
             GlStateManager._enableBlend();
 

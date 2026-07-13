@@ -2,6 +2,7 @@ package mchorse.bbs_mod.mixin.client;
 
 import mchorse.bbs_mod.bridge.IEntityRenderState;
 import mchorse.bbs_mod.forms.renderers.MobFormRenderer;
+import mchorse.bbs_mod.utils.interps.Lerps;
 import mchorse.bbs_mod.utils.pose.Pose;
 import mchorse.bbs_mod.utils.pose.PoseTransform;
 import mchorse.bbs_mod.utils.pose.Transform;
@@ -10,6 +11,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.model.ModelPart;
 import net.minecraft.client.render.command.OrderedRenderCommandQueue;
 import net.minecraft.client.render.entity.LivingEntityRenderer;
+import net.minecraft.client.render.entity.model.EntityModel;
 import net.minecraft.client.render.entity.state.LivingEntityRenderState;
 import net.minecraft.client.render.state.CameraRenderState;
 import net.minecraft.client.util.math.MatrixStack;
@@ -20,6 +22,7 @@ import net.minecraft.world.World;
 import java.util.Map;
 
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -65,7 +68,7 @@ public abstract class LivingEntityRendererMixin
                 }
             }
 
-            Map<String, ModelPart> parts = MobFormRenderer.getParts().get(livingEntity.getClass());
+            Map<String, ModelPart> parts = MobFormRenderer.resolveModelParts(this.model, livingEntity.getClass());
 
             if (parts != null)
             {
@@ -75,9 +78,10 @@ public abstract class LivingEntityRendererMixin
                     ModelPart value = entry.getValue();
                     PoseTransform poseTransform = pose.transforms.get(key);
 
-                    if (poseTransform != null)
+                    if (poseTransform != null && poseTransform.fix > 0F)
                     {
                         Transform transform = new Transform();
+                        float fix = poseTransform.fix;
 
                         transform.translate.x = value.originX;
                         transform.translate.y = value.originY;

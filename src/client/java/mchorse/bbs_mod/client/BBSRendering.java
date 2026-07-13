@@ -8,6 +8,8 @@ import mchorse.bbs_mod.camera.clips.misc.ChromaSkyCurveSettings;
 import mchorse.bbs_mod.camera.clips.misc.CurveClip;
 import mchorse.bbs_mod.camera.clips.misc.HotbarClip;
 import mchorse.bbs_mod.camera.clips.misc.HotbarState;
+import mchorse.bbs_mod.camera.clips.misc.ImageClip;
+import mchorse.bbs_mod.camera.clips.misc.ImageOverlay;
 import mchorse.bbs_mod.camera.clips.misc.Subtitle;
 import mchorse.bbs_mod.camera.clips.misc.SubtitleClip;
 import mchorse.bbs_mod.camera.controller.CameraWorkCameraController;
@@ -18,6 +20,7 @@ import mchorse.bbs_mod.client.renderer.MorphRenderer;
 import mchorse.bbs_mod.client.renderer.TriggerBlockEntityRenderer;
 import mchorse.bbs_mod.client.screen.ScreenEffectRenderer;
 import mchorse.bbs_mod.client.video.VideoRenderer;
+import mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer;
 import mchorse.bbs_mod.events.ModelBlockEntityUpdateCallback;
 import mchorse.bbs_mod.events.TriggerBlockEntityUpdateCallback;
 import mchorse.bbs_mod.film.replays.Replay;
@@ -33,6 +36,7 @@ import mchorse.bbs_mod.ui.dashboard.UIDashboard;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.film.UIHotbarRenderer;
+import mchorse.bbs_mod.ui.film.UIImageRenderer;
 import mchorse.bbs_mod.ui.film.UISubtitleRenderer;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.UIRenderingContext;
@@ -96,6 +100,7 @@ public class BBSRendering
     public static boolean canRender;
 
     public static boolean renderingWorld;
+    private static boolean irisChunkLayerPass;
     public static int lastAction;
 
     public static final Matrix4f camera = new Matrix4f();
@@ -205,6 +210,18 @@ public class BBSRendering
     public static boolean canReplaceFramebuffer()
     {
         return customSize && renderingWorld;
+    }
+
+    /**
+     * Ensures paint overlays draw into the same framebuffer as the film viewport world pass.
+     */
+    public static void ensurePaintOverlayTargetFramebuffer()
+    {
+        if (toggleFramebuffer && framebuffer != null)
+        {
+            framebuffer.beginWrite(true);
+            reassignFramebuffer(framebuffer);
+        }
     }
 
     public static boolean isCustomSize()
@@ -388,7 +405,10 @@ public class BBSRendering
 
             /* 1.21.11: Framebuffer.beginWrite(boolean) was removed */
 
-            if (width != 0)
+            int fbW = window.getFramebufferWidth();
+            int fbH = window.getFramebufferHeight();
+
+            if (width != 0 || customSize)
             {
                 /* 1.21.11: Framebuffer.draw(w, h) -> blitToScreen() */
                 framebuffer.blitToScreen();
@@ -422,6 +442,7 @@ public class BBSRendering
 
         renderingWorld = true;
         updateCloudRenderMode(mc);
+        ModelVAORenderer.clearPaintOverlayQueue();
 
         if (!customSize)
         {
@@ -435,6 +456,8 @@ public class BBSRendering
 
     public static void onWorldRenderEnd()
     {
+        ModelVAORenderer.flushPaintOverlayQueue();
+
         MinecraftClient mc = MinecraftClient.getInstance();
         UIBaseMenu currentMenu = UIScreen.getCurrentMenu();
 
@@ -574,6 +597,7 @@ public class BBSRendering
 
             GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, previousRead);
         }
+
 
         toggleFramebuffer(false);
     }
@@ -771,6 +795,45 @@ public class BBSRendering
         return renderingWorld;
     }
 
+    public static boolean isIrisChunkLayerPass()
+    {
+        return irisChunkLayerPass;
+    }
+
+    /**
+     * Any Iris world draw (chunk-layer film/editor pass or entity/gbuffer pass). VAO models
+     * must use the vanilla translucent program for the base pass so Iris can composite them;
+     * the custom BBS model shader is only used for deferred paint/glow overlays.
+     */
+    public static boolean isIrisWorldModelPass()
+    {
+        return isIrisShadersEnabled() && isRenderingWorld();
+    }
+
+    /**
+     * Iris entity/gbuffer pass (not the chunk-layer film/editor hook). Used to decide whether
+     * paint overlays run immediately or are queued for {@code WorldRenderEvents.LAST}.
+     */
+    public static boolean isIrisDeferredModelPass()
+    {
+        return isIrisWorldModelPass() && !isIrisChunkLayerPass();
+    }
+
+    /**
+     * When true, VAO model paint must not be applied in the base pass; use the BBS model
+     * shader overlay ({@link ModelVAORenderer#submitPaintOverlay})
+     * so paint matches the no-shader path under an active Iris shader pack.
+     */
+    public static boolean isIrisWorldPaintDeferral()
+    {
+        return isIrisWorldModelPass();
+    }
+
+    public static boolean isIrisLoaded()
+    {
+        return iris;
+    }
+
     public static boolean isIrisShadersEnabled()
     {
         if (!iris)
@@ -779,6 +842,16 @@ public class BBSRendering
         }
 
         return IrisUtils.isShaderPackEnabled();
+    }
+
+    public static void toggleShaders()
+    {
+        if (!iris)
+        {
+            return;
+        }
+
+        IrisUtils.toggleShaders();
     }
 
     public static boolean isIrisShadowPass()
@@ -992,7 +1065,7 @@ public class BBSRendering
 
     public static Function<VertexConsumer, VertexConsumer> getColorConsumer(Color color, Color paintColor)
     {
-        if (paintColor == null || paintColor.a <= 0F)
+        if (paintColor == null || paintColor.a == 0F)
         {
             return getColorConsumer(color);
         }
@@ -1010,8 +1083,9 @@ public class BBSRendering
     {
         List<Subtitle> subtitles = SubtitleClip.getSubtitles(context);
         List<HotbarState> hotbars = HotbarClip.getHotbars(context);
+        List<ImageOverlay> images = ImageClip.getImages(context);
 
-        if (subtitles.isEmpty() && hotbars.isEmpty())
+        if (subtitles.isEmpty() && hotbars.isEmpty() && images.isEmpty())
         {
             return;
         }
@@ -1023,21 +1097,28 @@ public class BBSRendering
         MatrixStack matrices = new MatrixStack();
         int subtitleIndex = 0;
         int hotbarIndex = 0;
+        int imageIndex = 0;
 
-        while (subtitleIndex < subtitles.size() || hotbarIndex < hotbars.size())
+        while (subtitleIndex < subtitles.size() || hotbarIndex < hotbars.size() || imageIndex < images.size())
         {
-            boolean renderSubtitle = hotbarIndex >= hotbars.size()
-                || subtitleIndex < subtitles.size() && subtitles.get(subtitleIndex).renderOrder < hotbars.get(hotbarIndex).renderOrder;
+            int subtitleOrder = subtitleIndex < subtitles.size() ? subtitles.get(subtitleIndex).renderOrder : Integer.MAX_VALUE;
+            int hotbarOrder = hotbarIndex < hotbars.size() ? hotbars.get(hotbarIndex).renderOrder : Integer.MAX_VALUE;
+            int imageOrder = imageIndex < images.size() ? images.get(imageIndex).renderOrder : Integer.MAX_VALUE;
 
-            if (renderSubtitle)
+            if (subtitleOrder <= hotbarOrder && subtitleOrder <= imageOrder)
             {
                 UISubtitleRenderer.renderSubtitle(matrices, batcher, subtitles.get(subtitleIndex));
                 subtitleIndex += 1;
             }
-            else
+            else if (hotbarOrder <= imageOrder)
             {
                 UIHotbarRenderer.renderHotbar(matrices, batcher, hotbars.get(hotbarIndex), 0, 0, width, height);
                 hotbarIndex += 1;
+            }
+            else
+            {
+                UIImageRenderer.renderImage(matrices, batcher, images.get(imageIndex));
+                imageIndex += 1;
             }
         }
 

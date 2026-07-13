@@ -106,6 +106,8 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
 
     public Consumer<Link> callback;
 
+    public boolean notifyingCallbackClose;
+
     public MultiLink multiLink;
     public FilteredLink currentFiltered;
     public Link current;
@@ -638,7 +640,9 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
                 this.multiLink.recalculateId();
             }
 
+            this.notifyingCallbackClose = true;
             this.callback.accept(this.multiLink != null ? this.multiLink : this.current);
+            this.notifyingCallbackClose = false;
         }
     }
 

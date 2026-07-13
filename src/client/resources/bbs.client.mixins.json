@@ -3,9 +3,12 @@
     "package": "mchorse.bbs_mod.mixin.client",
     "compatibilityLevel": "JAVA_21",
     "client": [
+        "ClientWorldMixin",
+        "ClientPlayerInteractionManagerMixin",
         "CameraMixin",
         "GameRendererMixin",
         "MouseMixin",
+
         "PlayerEntityRendererMixin",
         "RenderTickCounterMixin",
         "IntegratedServerMixin",
@@ -29,6 +32,8 @@
         "LivingEntityRendererMorphMixin",
         "LivingEntityRendererInvoker",
         "ClientPlayerEntityAccessor",
+        "LivingEntityItemAccessor",
+        "FireworkRocketEntityAccessor",
         "iris.IrisRenderingPipelineAccessor",
         "iris.CustomUniformsBuilderMixin",
         "iris.CustomUniformsAccessor",

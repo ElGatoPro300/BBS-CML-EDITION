@@ -1,9 +1,13 @@
 package mchorse.bbs_mod.forms.renderers;
 
 import mchorse.bbs_mod.client.BBSRendering;
+
 import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
 import mchorse.bbs_mod.forms.FormUtilsClient;
+import mchorse.bbs_mod.forms.entities.StubEntity;
 import mchorse.bbs_mod.forms.forms.ItemForm;
+import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
+import mchorse.bbs_mod.forms.renderers.utils.FormColorBlend;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.colors.Color;
@@ -63,6 +67,7 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
 
         Color set = Color.white();
         set.mul(this.form.color.get());
+        FormColorBlend.blendFormGlowBrighten(set, this.form.glowSettings.get(), this.form.glowingColor.get());
 
         consumers.setSubstitute(BBSRendering.getColorConsumer(set));
         consumers.setUI(true);
@@ -100,6 +105,7 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
 
         BlockFormRenderer.color.set(context.color);
         BlockFormRenderer.color.mul(this.form.color.get());
+        FormColorBlend.blendFormGlowBrighten(BlockFormRenderer.color, this.form.glowSettings.get(), this.form.glowingColor.get());
 
         consumers.setSubstitute(BBSRendering.getColorConsumer(BlockFormRenderer.color));
 

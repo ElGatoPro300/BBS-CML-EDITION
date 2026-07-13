@@ -2,6 +2,7 @@ package mchorse.bbs_mod.ui.framework;
 
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.client.BBSRendering;
+import mchorse.bbs_mod.discord.DiscordPresenceManager;
 import mchorse.bbs_mod.importers.IImportPathProvider;
 import mchorse.bbs_mod.importers.ImporterContext;
 import mchorse.bbs_mod.importers.Importers;
@@ -130,6 +131,7 @@ public class UIScreen extends Screen implements IFileDropListener
         super.removed();
 
         this.menu.onClose(null);
+        DiscordPresenceManager.INSTANCE.onBbsUiClosed();
 
         if (this.menu.canHideHUD())
         {
@@ -148,6 +150,7 @@ public class UIScreen extends Screen implements IFileDropListener
         super.onDisplayed();
 
         this.menu.onOpen(null);
+        DiscordPresenceManager.INSTANCE.onBbsUiOpened(this.menu);
 
         if (this.menu.canHideHUD())
         {

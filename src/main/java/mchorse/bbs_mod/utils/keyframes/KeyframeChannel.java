@@ -41,6 +41,11 @@ public class KeyframeChannel <T> extends ValueList<Keyframe<T>>
         return this.factory;
     }
 
+    public void setFactory(IKeyframeFactory<T> factory)
+    {
+        this.factory = factory;
+    }
+
     public boolean isModel()
     {
         return this.model;
@@ -354,6 +359,42 @@ public class KeyframeChannel <T> extends ValueList<Keyframe<T>>
         this.add(index, kf);
         this.sort();
         this.postNotify();
+
+        return index;
+    }
+
+    /**
+     * Insert a keyframe at {@code tick} with the channel value interpolated at
+     * that tick (not the current runtime / entity state).
+     */
+    public int insertInterpolated(float tick)
+    {
+        KeyframeSegment<T> segment = this.find(tick);
+        T value;
+
+        if (segment != null)
+        {
+            value = this.factory.copy(segment.createInterpolated());
+        }
+        else
+        {
+            T interpolated = this.interpolate(tick);
+
+            value = interpolated != null ? this.factory.copy(interpolated) : this.factory.createEmpty();
+        }
+
+        int index = this.insert(tick, value);
+
+        if (segment != null)
+        {
+            Keyframe<T> keyframe = this.get(index);
+
+            if (keyframe != null)
+            {
+                keyframe.getInterpolation().copy(segment.a.getInterpolation());
+                keyframe.copyOverExtra(segment.a);
+            }
+        }
 
         return index;
     }

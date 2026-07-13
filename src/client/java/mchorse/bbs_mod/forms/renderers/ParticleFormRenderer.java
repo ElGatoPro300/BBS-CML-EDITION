@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.forms.renderers;
 
 import mchorse.bbs_mod.BBSModClient;
+import mchorse.bbs_mod.camera.Camera;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.forms.ITickable;
@@ -12,6 +13,7 @@ import mchorse.bbs_mod.particles.ParticleScheme;
 import mchorse.bbs_mod.particles.emitter.ParticleEmitter;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.framework.UIContext;
+import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.joml.Vectors;
 
@@ -131,10 +133,13 @@ public class ParticleFormRenderer extends FormRenderer<ParticleForm> implements 
 
             this.updateTexture(context.getTransition());
 
+            boolean irisWorld = BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld();
             Matrix4f stackMatrix = new Matrix4f(context.stack.peek().getPositionMatrix());
 
-            if (BBSRendering.isIrisShadersEnabled() && !context.modelRenderer && context.entity != null)
+            if (irisWorld && !context.relative && !context.modelRenderer)
             {
+                /* Iris bakes the terrain matrix into the stack; strip it before
+                 * rebuilding the camera-relative transform (same as MorphFireRenderer). */
                 stackMatrix = BBSRendering.stripTerrainPositionMatrix(stackMatrix);
             }
 
@@ -143,7 +148,22 @@ public class ParticleFormRenderer extends FormRenderer<ParticleForm> implements 
             matrix.mul(stackMatrix);
 
             Vector3d translation = new Vector3d(matrix.getTranslation(Vectors.TEMP_3F));
-            translation.add(context.camera.position.x, context.camera.position.y, context.camera.position.z);
+
+            if (!context.modelRenderer)
+            {
+                if (irisWorld)
+                {
+                    /* Keep emitter origin and billboard camera subtraction on the same
+                     * game camera Iris uses for the terrain position matrix. */
+                    net.minecraft.client.render.Camera gameCamera = MinecraftClient.getInstance().gameRenderer.getCamera();
+
+                    translation.add(gameCamera.getPos().x, gameCamera.getPos().y, gameCamera.getPos().z);
+                }
+                else
+                {
+                    translation.add(context.camera.position.x, context.camera.position.y, context.camera.position.z);
+                }
+            }
 
             context.stack.push();
             context.stack.loadIdentity();
@@ -152,6 +172,7 @@ public class ParticleFormRenderer extends FormRenderer<ParticleForm> implements 
             emitter.lastGlobal.set(translation);
             emitter.rotation.set(matrix);
             emitter.modelRenderer = context.modelRenderer;
+            emitter.worldVertices = false;
 
             if (!BBSRendering.isIrisShadowPass())
             {
