@@ -18,6 +18,7 @@ public interface EntityRendererDispatcherInvoker
     public static void bbs$renderShadow(MatrixStack matrices, VertexConsumerProvider vertexConsumers, Entity entity, float opacity, float tickDelta, WorldView world, float radius)
     {} */
 
-    @Invoker("renderFire")
-    void bbs$renderFire(MatrixStack matrices, VertexConsumerProvider vertexConsumers, Entity entity, Quaternionf rotation);
+    /* TODO 1.21.4: renderFire removed from EntityRenderDispatcher */
+    // @Invoker("renderFire")
+    // void bbs$renderFire(MatrixStack matrices, VertexConsumerProvider vertexConsumers, Entity entity, Quaternionf rotation);
 }
