@@ -1176,7 +1176,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             this.applyDragHandleBoundsFromMap(bounds);
         }
         
-        this.setupTabBars(visibleRoot, bounds, recreateTabs);
+        this.setupTabBars(root, visibleRoot, bounds, recreateTabs);
         this.syncReplaysPropertiesLayoutMode();
 
         if (resize)
@@ -1593,10 +1593,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     private void updateEditorFlexBoundsOnly(ValueEditorLayout layout, EditorLayoutNode root)
     {
+        EditorLayoutNode visibleRoot = this.createVisibleDockedLayoutRoot(root);
         Map<String, float[]> bounds = this.computePanelBounds(root);
 
         List<EditorLayoutNode.TabbedNode> tabbedNodes = new ArrayList<>();
-        EditorLayoutNode.collectTabbedNodes(root, tabbedNodes);
+        EditorLayoutNode.collectTabbedNodes(visibleRoot, tabbedNodes);
         Set<String> multiTabPanels = new HashSet<>();
         for (EditorLayoutNode.TabbedNode tabbed : tabbedNodes)
         {
@@ -1614,11 +1615,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         this.applyPanelBoundsFromMap(bounds, multiTabPanels);
         this.splitterHandleInfos.clear();
-        EditorLayoutNode.computeSplitterHandles(root, 0F, 0F, 1F, 1F, this.splitterHandleInfos);
+        EditorLayoutNode.computeSplitterHandles(visibleRoot, 0F, 0F, 1F, 1F, this.splitterHandleInfos);
         this.syncSplitterHandleBounds();
         this.applyDragHandleBoundsFromMap(bounds);
         
-        this.setupTabBars(root, bounds, false);
+        this.setupTabBars(root, visibleRoot, bounds, false);
 
         /* Re-stack the editor from back to front. Child order is both the draw order and the
            (reversed) hit order, so this is what guarantees floating windows always sit on top of
@@ -6611,73 +6612,143 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     private final List<UITabBar> tabBars = new ArrayList<>();
 
-    private void setupTabBars(EditorLayoutNode root, Map<String, float[]> bounds, boolean recreate)
+    private EditorLayoutNode.TabbedNode resolveLayoutTabbedNode(EditorLayoutNode layoutRoot, EditorLayoutNode.TabbedNode visibleTabbed)
     {
-        List<EditorLayoutNode.TabbedNode> tabbedNodes = new ArrayList<>();
-        EditorLayoutNode.collectTabbedNodes(root, tabbedNodes);
-        
-        int tabBarIndex = 0;
-        for (int i = 0; i < tabbedNodes.size(); i++)
+        if (layoutRoot == null || visibleTabbed == null)
         {
-            EditorLayoutNode.TabbedNode tabbed = tabbedNodes.get(i);
-            if (tabbed.tabs.size() < 2) continue;
+            return null;
+        }
 
-            int safeActiveTab = Math.max(0, Math.min(tabbed.tabs.size() - 1, tabbed.activeTab));
-            EditorLayoutNode activeNode = tabbed.tabs.get(safeActiveTab);
-
-            /* If the active tab was hidden (via Window menu), promote the first non-hidden
-               tab to active so the tab group doesn't render empty (and so we still have
-               stable bounds to place the tab strip). */
-            if (activeNode instanceof EditorLayoutNode.PanelNode)
+        for (EditorLayoutNode tab : visibleTabbed.tabs)
+        {
+            if (tab instanceof EditorLayoutNode.PanelNode)
             {
-                String activeId = ((EditorLayoutNode.PanelNode) activeNode).getPanelId();
+                String panelId = ((EditorLayoutNode.PanelNode) tab).getPanelId();
+                EditorLayoutNode.TabbedNode real = this.findTabbedNodeContaining(layoutRoot, panelId);
 
-                if (this.hiddenPanels.contains(activeId))
+                if (real != null)
                 {
-                    for (int t = 0; t < tabbed.tabs.size(); t++)
+                    return real;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private void promoteActiveTabIfHidden(EditorLayoutNode.TabbedNode tabbed)
+    {
+        if (tabbed == null || tabbed.tabs.isEmpty())
+        {
+            return;
+        }
+
+        int safeActiveTab = Math.max(0, Math.min(tabbed.tabs.size() - 1, tabbed.activeTab));
+        EditorLayoutNode activeNode = tabbed.tabs.get(safeActiveTab);
+
+        /* If the active tab was hidden (via Window menu), promote the first non-hidden
+           tab to active so the tab group doesn't render empty (and so we still have
+           stable bounds to place the tab strip). */
+        if (activeNode instanceof EditorLayoutNode.PanelNode)
+        {
+            String activeId = ((EditorLayoutNode.PanelNode) activeNode).getPanelId();
+
+            if (this.hiddenPanels.contains(activeId))
+            {
+                for (int t = 0; t < tabbed.tabs.size(); t++)
+                {
+                    EditorLayoutNode candidate = tabbed.tabs.get(t);
+
+                    if (candidate instanceof EditorLayoutNode.PanelNode)
                     {
-                        EditorLayoutNode candidate = tabbed.tabs.get(t);
+                        String id = ((EditorLayoutNode.PanelNode) candidate).getPanelId();
 
-                        if (candidate instanceof EditorLayoutNode.PanelNode)
+                        if (!this.hiddenPanels.contains(id))
                         {
-                            String id = ((EditorLayoutNode.PanelNode) candidate).getPanelId();
+                            tabbed.activeTab = t;
 
-                            if (!this.hiddenPanels.contains(id))
-                            {
-                                tabbed.activeTab = t;
-                                safeActiveTab = t;
-                                activeNode = candidate;
-
-                                break;
-                            }
+                            break;
                         }
                     }
                 }
             }
-            
+        }
+    }
+
+    private UITabBar findTabBarForGroup(String anchorPanelId)
+    {
+        if (anchorPanelId == null)
+        {
+            return null;
+        }
+
+        for (UITabBar bar : this.tabBars)
+        {
+            if (bar.containsPanel(anchorPanelId))
+            {
+                return bar;
+            }
+        }
+
+        return null;
+    }
+
+    private void setupTabBars(EditorLayoutNode layoutRoot, EditorLayoutNode visibleRoot, Map<String, float[]> bounds, boolean recreate)
+    {
+        List<EditorLayoutNode.TabbedNode> tabbedNodes = new ArrayList<>();
+        EditorLayoutNode.collectTabbedNodes(visibleRoot, tabbedNodes);
+
+        Set<UITabBar> usedTabBars = new HashSet<>();
+
+        for (int i = 0; i < tabbedNodes.size(); i++)
+        {
+            EditorLayoutNode.TabbedNode visibleTabbed = tabbedNodes.get(i);
+
+            if (visibleTabbed.tabs.size() < 2)
+            {
+                continue;
+            }
+
+            EditorLayoutNode.TabbedNode tabbed = this.resolveLayoutTabbedNode(layoutRoot, visibleTabbed);
+
+            if (tabbed == null)
+            {
+                continue;
+            }
+
+            this.promoteActiveTabIfHidden(tabbed);
+
+            int safeActiveTab = Math.max(0, Math.min(tabbed.tabs.size() - 1, tabbed.activeTab));
+            EditorLayoutNode activeNode = tabbed.tabs.get(safeActiveTab);
+
             if (activeNode instanceof EditorLayoutNode.PanelNode)
             {
                 String activeId = ((EditorLayoutNode.PanelNode) activeNode).getPanelId();
                 float[] b = bounds.get(activeId);
+
                 if (b != null)
                 {
                     UITabBar tabBar;
+
                     if (recreate)
                     {
                         tabBar = new UITabBar(this, tabbed);
                         this.tabBars.add(tabBar);
                         this.editor.add(tabBar);
                     }
-                    else if (tabBarIndex < this.tabBars.size())
-                    {
-                        tabBar = this.tabBars.get(tabBarIndex);
-                    }
                     else
                     {
-                        continue;
+                        tabBar = this.findTabBarForGroup(activeId);
+
+                        if (tabBar == null)
+                        {
+                            continue;
+                        }
+
+                        tabBar.rebindTabbedNode(tabbed);
                     }
-                    
-                    tabBarIndex++;
+
+                    usedTabBars.add(tabBar);
 
                     boolean locked = BBSSettings.editorLayoutSettings.isLayoutLocked();
                     /* Tab strips stay visible when the layout is locked so docked panels can still
@@ -6693,17 +6764,23 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                         {
                             String panelId = ((EditorLayoutNode.PanelNode) tab).getPanelId();
                             UIElement el = this.panelById.get(panelId);
+
                             if (el != null)
                             {
                                 el.relative(this.editor).x(b[0], 3).y(b[1], headerInset + 3).w(b[2], -6).h(b[3], -headerInset - 6);
                                 boolean isActive = tab == activeNode && !this.hiddenPanels.contains(panelId);
                                 el.setVisible(isActive);
-                                
+
                                 UIDraggable handle = this.dragHandlesById.get(panelId);
-                                if (handle != null) handle.setVisible(isActive && !BBSSettings.editorLayoutSettings.isLayoutLocked() && !this.usesPanelInternalDragHandle(panelId));
+
+                                if (handle != null)
+                                {
+                                    handle.setVisible(isActive && !BBSSettings.editorLayoutSettings.isLayoutLocked() && !this.usesPanelInternalDragHandle(panelId));
+                                }
                             }
-                            
+
                             UIDraggable handle = this.dragHandlesById.get(panelId);
+
                             if (handle != null)
                             {
                                 if (locked)
@@ -6714,6 +6791,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                                 {
                                     boolean visibleHandle = tab == activeNode && !this.hiddenPanels.contains(panelId) && !this.usesPanelInternalDragHandle(panelId);
                                     handle.setVisible(visibleHandle);
+
                                     if (visibleHandle)
                                     {
                                         handle.relative(this.editor).x(b[0], 3).y(b[1], 3).w(b[2], -6).h(0F, PANEL_HEADER_HEIGHT);
@@ -6723,6 +6801,14 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                         }
                     }
                 }
+            }
+        }
+
+        for (UITabBar bar : this.tabBars)
+        {
+            if (!usedTabBars.contains(bar))
+            {
+                bar.setVisible(false);
             }
         }
     }
@@ -6941,6 +7027,31 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             return this.tabbedNode;
         }
 
+        public void rebindTabbedNode(EditorLayoutNode.TabbedNode tabbedNode)
+        {
+            this.tabbedNode = tabbedNode;
+
+            for (IUIElement child : this.getChildren())
+            {
+                if (child instanceof UITab)
+                {
+                    UITab tab = (UITab) child;
+
+                    for (int i = 0; i < tabbedNode.tabs.size(); i++)
+                    {
+                        EditorLayoutNode layoutTab = tabbedNode.tabs.get(i);
+
+                        if (layoutTab instanceof EditorLayoutNode.PanelNode && ((EditorLayoutNode.PanelNode) layoutTab).getPanelId().equals(tab.panelId))
+                        {
+                            tab.rebind(tabbedNode, i);
+
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
         public UIElement getActivePanel()
         {
             int safeActiveTab = Math.max(0, Math.min(this.tabbedNode.tabs.size() - 1, this.tabbedNode.activeTab));
@@ -7017,6 +7128,12 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         public String getPanelId()
         {
             return this.panelId;
+        }
+
+        public void rebind(EditorLayoutNode.TabbedNode tabbedNode, int index)
+        {
+            this.tabbedNode = tabbedNode;
+            this.index = index;
         }
 
         private UITabBar getTabBar()
