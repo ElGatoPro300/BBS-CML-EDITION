@@ -6424,6 +6424,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             this.setupEditorFlex(true, false, false);
         }
         this.resize();
+        TimelineToolbarDockSync.refreshFilmPanel(this);
 
         this.performingLayout = false;
     }

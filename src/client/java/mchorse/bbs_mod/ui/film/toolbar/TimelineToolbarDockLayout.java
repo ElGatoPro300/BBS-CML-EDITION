@@ -24,6 +24,11 @@ public final class TimelineToolbarDockLayout
 
     public static void apply(UIElement host, TimelineToolbar toolbar, TimelineToolbarDock dock, UIElement... contents)
     {
+        apply(host, toolbar, dock, 0, contents);
+    }
+
+    public static void apply(UIElement host, TimelineToolbar toolbar, TimelineToolbarDock dock, int extraRightInset, UIElement... contents)
+    {
         if (!TimelineToolbarSettings.isEnabled())
         {
             toolbar.closeOpenMenu();
@@ -38,7 +43,7 @@ public final class TimelineToolbarDockLayout
                 }
 
                 content.resetFlex().relative(host);
-                content.x(0).y(0).w(1F).h(1F);
+                content.x(0).y(0).w(1F, -extraRightInset).h(1F);
             }
 
             host.resize();
@@ -81,16 +86,16 @@ public final class TimelineToolbarDockLayout
             switch (dock)
             {
                 case TOP:
-                    content.x(0).y(thickness).w(1F).h(1F, -thickness);
+                    content.x(0).y(thickness).w(1F, -extraRightInset).h(1F, -thickness);
                     break;
                 case BOTTOM:
-                    content.x(0).y(0).w(1F).h(1F, -thickness);
+                    content.x(0).y(0).w(1F, -extraRightInset).h(1F, -thickness);
                     break;
                 case LEFT:
-                    content.x(thickness).y(0).w(1F, -thickness).h(1F);
+                    content.x(thickness).y(0).w(1F, -thickness - extraRightInset).h(1F);
                     break;
                 case RIGHT:
-                    content.x(0).y(0).w(1F, -thickness).h(1F);
+                    content.x(0).y(0).w(1F, -thickness - extraRightInset).h(1F);
                     break;
             }
         }
