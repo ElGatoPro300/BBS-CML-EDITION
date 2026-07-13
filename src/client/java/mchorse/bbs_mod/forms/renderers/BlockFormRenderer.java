@@ -5,6 +5,8 @@ import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.forms.BlockForm;
+import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
+import mchorse.bbs_mod.forms.renderers.utils.FormColorBlend;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.colors.Color;
@@ -56,7 +58,9 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
         matrices.peek().getNormalMatrix().scale(1F / Vectors.EMPTY_3F.x, -1F / Vectors.EMPTY_3F.y, 1F / Vectors.EMPTY_3F.z);
 
         Color set = Color.white();
+
         set.mul(this.form.color.get());
+        FormColorBlend.blendFormGlowBrighten(set, this.form.glowSettings.get(), this.form.glowingColor.get());
 
         consumers.setSubstitute(BBSRendering.getColorConsumer(set));
         consumers.setUI(true);
@@ -110,8 +114,16 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
 
         color.set(context.color);
         color.mul(this.form.color.get());
+        FormColorBlend.blendFormGlowBrighten(color, this.form.glowSettings.get(), this.form.glowingColor.get());
 
-        consumers.setSubstitute(BBSRendering.getColorConsumer(color, this.form.paintColor.get()));
+        PaintSettings paintSettings = this.form.paintSettings.get();
+        Color legacyPaint = this.form.paintColor.get();
+        Color resolvedPaint = new Color();
+
+        paintSettings.resolveColor(legacyPaint, resolvedPaint);
+        resolvedPaint.a = paintSettings.resolveIntensity(legacyPaint);
+
+        consumers.setSubstitute(BBSRendering.getColorConsumer(color, resolvedPaint));
         MinecraftClient.getInstance().getBlockRenderManager().renderBlockAsEntity(this.form.blockState.get(), context.stack, consumers, light, context.overlay);
 
         if (!context.isPicking())

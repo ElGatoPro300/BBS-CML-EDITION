@@ -3,10 +3,13 @@
     "package": "mchorse.bbs_mod.mixin.client",
     "compatibilityLevel": "JAVA_17",
     "client": [
+        "ClientWorldMixin",
+        "ClientPlayerInteractionManagerMixin",
         "CameraMixin",
         "GameRendererMixin",
         "MouseMixin",
         "EntityRendererDispatcherInvoker",
+        "EntityAccessor",
         "PlayerEntityRendererMixin",
         "RenderTickCounterMixin",
         "IntegratedServerMixin",
@@ -28,6 +31,8 @@
         "KeyboardInputMixin",
         "EntityRendererMixin",
         "ClientPlayerEntityAccessor",
+        "LivingEntityItemAccessor",
+        "FireworkRocketEntityAccessor",
         "iris.IrisRenderingPipelineAccessor",
         "iris.CustomUniformsBuilderMixin",
         "iris.CustomUniformsAccessor",
@@ -41,7 +46,9 @@
         "WorldMixin",
         "LivingEntityRendererInvoker",
         "EntityRenderDispatcherMixin",
-        "audio.SoundEngineMixin"
+        "audio.SoundEngineMixin",
+        "TitleScreenMixin",
+        "SelectWorldScreenMixin"
     ],
     "injectors": {
         "defaultRequire": 1

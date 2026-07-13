@@ -1,15 +1,27 @@
 package mchorse.bbs_mod.cubic.render.vao;
 
+import mchorse.bbs_mod.BBSModClient;
+import mchorse.bbs_mod.client.BBSRendering;
+import mchorse.bbs_mod.client.BBSShaders;
+import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
+import mchorse.bbs_mod.resources.Link;
+import mchorse.bbs_mod.utils.MatrixStackUtils;
+import mchorse.bbs_mod.utils.colors.Color;
+
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.GlUniform;
 import net.minecraft.client.gl.ShaderProgram;
+import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.texture.NativeImage;
 import net.minecraft.client.texture.NativeImageBackedTexture;
 import net.minecraft.client.util.math.MatrixStack;
 
 import org.joml.Matrix4f;
+import org.joml.Matrix4fStack;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.systems.VertexSorter;
 
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
@@ -17,6 +29,8 @@ import org.lwjgl.opengl.GL30;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.imageio.ImageIO;
 
@@ -34,11 +48,27 @@ public class ModelVAORenderer
     private static float paintB;
     private static float paintStrength;
 
-    /* When true, the model is being drawn as a shader-pack paint overlay pass: every group samples a flat
-     * white texture and uses the paint colour as its vertex colour, so the albedo becomes the paint colour
-     * (not the original skin texture) even when an external shader pack replaced the BBS model shader. */
+    private static float baseGlowR;
+    private static float baseGlowG;
+    private static float baseGlowB;
+    private static float baseGlowStrength;
+
+    private static float glowR;
+    private static float glowG;
+    private static float glowB;
+    private static float glowStrength;
+
+    private static boolean glowingUniformActive;
+
+    private static boolean textureBlendActive;
+    private static float textureBlendFactor;
+    private static Link textureBlendTo;
+
+    /* When true, the model is being drawn as a shader-pack paint overlay pass. Groups still sample their
+     * real skin texture so transparent UV regions are discarded; only textured pixels receive paint. */
     private static boolean paintPass;
     private static boolean paintOverlayPass;
+    private static boolean paintOverlaySynced;
 
     /* 1x1 white texture used as the albedo source during the paint overlay pass. */
     private static NativeImageBackedTexture whiteTexture;
@@ -47,6 +77,154 @@ public class ModelVAORenderer
     private static int savedDepthFunc;
     private static boolean savedDepthMask;
     private static boolean savedPolygonOffsetFill;
+    private static boolean savedCullEnabled;
+
+    private static final List<PaintOverlayEntry> paintOverlayQueue = new ArrayList<>();
+
+    private static final class PaintOverlayEntry
+    {
+        private final Matrix4f projection;
+        private final Matrix4f modelView;
+        private final boolean synced;
+        private final Runnable draw;
+
+        private PaintOverlayEntry(Matrix4f projection, Matrix4f modelView, boolean synced, Runnable draw)
+        {
+            this.projection = projection;
+            this.modelView = modelView;
+            this.synced = synced;
+            this.draw = draw;
+        }
+    }
+
+    /**
+     * Full root matrix for deferred Iris paint overlays (terrain/camera matrix already baked in).
+     */
+    public static Matrix4f capturePaintOverlayRootMatrix(Matrix4f rootStackMatrix)
+    {
+        return new Matrix4f(rootStackMatrix);
+    }
+
+    public static void clearPaintOverlayQueue()
+    {
+        paintOverlayQueue.clear();
+    }
+
+    public static void enqueuePaintOverlay(Matrix4f projection, Matrix4f modelView, Runnable draw)
+    {
+        enqueuePaintOverlay(projection, modelView, false, draw);
+    }
+
+    public static void enqueuePaintOverlay(Matrix4f projection, Matrix4f modelView, boolean synced, Runnable draw)
+    {
+        if (BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld())
+        {
+            paintOverlayQueue.add(new PaintOverlayEntry(
+                new Matrix4f(projection),
+                new Matrix4f(modelView),
+                synced,
+                draw
+            ));
+        }
+    }
+
+    /**
+     * Queues a paint/glow overlay for {@link #flushPaintOverlayQueue()} at the end of the
+     * world frame.
+     */
+    public static void submitPaintOverlay(boolean synced, Runnable draw)
+    {
+        ModelVAORenderer.enqueuePaintOverlay(
+            new Matrix4f(RenderSystem.getProjectionMatrix()),
+            new Matrix4f(RenderSystem.getModelViewMatrix()),
+            synced,
+            draw
+        );
+    }
+
+    /**
+     * Queues a paint/glow overlay for {@link #flushPaintOverlayQueue()} at the end of the
+     * world frame.
+     */
+    public static void submitPaintOverlay(Matrix4f projection, Matrix4f modelView, boolean synced, Runnable draw)
+    {
+        enqueuePaintOverlay(projection, modelView, synced, draw);
+    }
+
+    public static void submitPaintOverlay(Matrix4f projection, Matrix4f modelView, Runnable draw)
+    {
+        enqueuePaintOverlay(projection, modelView, draw);
+    }
+
+    /**
+     * Runs deferred paint overlay draws after Iris has finished compositing the world frame.
+     * The BBS model shader cannot render correctly during Iris' entity/gbuffer pass, but it
+     * works on the final framebuffer at the end of {@code renderWorld}.
+     */
+    public static void flushPaintOverlayQueue()
+    {
+        if (paintOverlayQueue.isEmpty())
+        {
+            return;
+        }
+
+        BBSRendering.ensurePaintOverlayTargetFramebuffer();
+
+        GameRenderer gameRenderer = MinecraftClient.getInstance().gameRenderer;
+
+        gameRenderer.getLightmapTextureManager().enable();
+        gameRenderer.getOverlayTexture().setupOverlayColor();
+
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
+        RenderSystem.setShader(BBSShaders::getModel);
+
+        Matrix4f savedProjection = new Matrix4f(RenderSystem.getProjectionMatrix());
+        Matrix4f savedModelView = new Matrix4f(RenderSystem.getModelViewMatrix());
+
+        try
+        {
+            for (PaintOverlayEntry entry : paintOverlayQueue)
+            {
+                paintOverlaySynced = entry.synced;
+
+                RenderSystem.setProjectionMatrix(entry.projection, VertexSorter.BY_Z);
+
+                MatrixStackUtils.pushIdentityModelView();
+
+                beginPaintOverlayPass(entry.synced);
+
+                try
+                {
+                    entry.draw.run();
+                }
+                finally
+                {
+                    endPaintOverlayPass();
+                    MatrixStackUtils.popModelView();
+                }
+            }
+        }
+        finally
+        {
+            paintOverlayQueue.clear();
+
+            RenderSystem.setProjectionMatrix(savedProjection, VertexSorter.BY_Z);
+
+            MatrixStack modelViewStack = RenderSystem.getModelViewStack();
+
+            modelViewStack.push();
+            modelViewStack.peek().getPositionMatrix().set(savedModelView);
+            RenderSystem.applyModelViewMatrix();
+            modelViewStack.pop();
+            RenderSystem.applyModelViewMatrix();
+
+            gameRenderer.getLightmapTextureManager().disable();
+            gameRenderer.getOverlayTexture().teardownOverlayColor();
+            RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
+        }
+    }
 
     public static void beginPaintPass()
     {
@@ -59,31 +237,37 @@ public class ModelVAORenderer
     }
 
     /**
-     * Second-pass paint overlay for external shader packs. Draws the same geometry again with a flat white
-     * texture and paint as vertex colour, alpha-blended on top of the first pass. Uses LEQUAL depth with a
-     * slight polygon offset (avoids z-fighting streaks) and no depth writes (avoids silhouette halos).
-     * All GL state is saved and fully restored so later world/UI rendering is not corrupted.
+     * Second-pass paint overlay for external shader packs. Re-draws the same geometry with the BBS
+     * model shader so paint can be alpha-blended over the shader-pack first pass using the same
+     * mix semantics as the no-shader path: mix(litTextureRgb, paintRgb, paintStrength).
      */
-    public static void beginPaintOverlayPass()
+    public static void beginPaintOverlayPass(boolean synced)
     {
         beginPaintPass();
         paintOverlayPass = true;
+        paintOverlaySynced = synced;
 
         savedDepthFunc = GL11.glGetInteger(GL11.GL_DEPTH_FUNC);
         savedDepthMask = GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK);
         savedPolygonOffsetFill = GL11.glGetBoolean(GL11.GL_POLYGON_OFFSET_FILL);
+        savedCullEnabled = GL11.glIsEnabled(GL11.GL_CULL_FACE);
 
         RenderSystem.enableBlend();
         RenderSystem.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+
         RenderSystem.enableDepthTest();
-        RenderSystem.depthFunc(GL11.GL_ALWAYS);
+        RenderSystem.depthFunc(GL11.GL_LEQUAL);
         RenderSystem.depthMask(false);
         GL11.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
-        GL11.glPolygonOffset(1F, 1F);
+        GL11.glPolygonOffset(-1F, -1F);
     }
 
     public static void endPaintOverlayPass()
     {
+        endPaintPass();
+        paintOverlayPass = false;
+        paintOverlaySynced = false;
+
         if (savedPolygonOffsetFill)
         {
             GL11.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
@@ -93,17 +277,28 @@ public class ModelVAORenderer
             GL11.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
         }
 
-        endPaintPass();
-        paintOverlayPass = false;
-
         RenderSystem.depthMask(savedDepthMask);
         RenderSystem.depthFunc(savedDepthFunc);
         RenderSystem.defaultBlendFunc();
+
+        if (savedCullEnabled)
+        {
+            RenderSystem.enableCull();
+        }
+        else
+        {
+            RenderSystem.disableCull();
+        }
     }
 
     public static boolean isPaintOverlayPass()
     {
         return paintOverlayPass;
+    }
+
+    public static boolean isPaintOverlaySynced()
+    {
+        return paintOverlaySynced;
     }
 
     public static boolean isPaintPass()
@@ -191,6 +386,79 @@ public class ModelVAORenderer
         }
     }
 
+    public static void setGlow(GlowSettings settings, float colorR, float colorG, float colorB)
+    {
+        setGlow(settings, colorR, colorG, colorB, null);
+    }
+
+    public static void setGlow(GlowSettings settings, float colorR, float colorG, float colorB, Color legacyColor)
+    {
+        float strength = settings.resolveIntensity(legacyColor);
+
+        baseGlowR = colorR;
+        baseGlowG = colorG;
+        baseGlowB = colorB;
+        baseGlowStrength = strength;
+
+        glowR = colorR;
+        glowG = colorG;
+        glowB = colorB;
+        glowStrength = strength;
+    }
+
+    public static void setGlowing(float r, float g, float b, float strength, float radius)
+    {
+        GlowSettings settings = new GlowSettings(strength, radius);
+
+        setGlow(settings, r, g, b);
+    }
+
+    public static void setGroupGlowing(float r, float g, float b, float strength)
+    {
+        glowR = r;
+        glowG = g;
+        glowB = b;
+        glowStrength = strength;
+    }
+
+    public static void clearGlowing()
+    {
+        baseGlowR = 0F;
+        baseGlowG = 0F;
+        baseGlowB = 0F;
+        baseGlowStrength = 0F;
+
+        glowR = 0F;
+        glowG = 0F;
+        glowB = 0F;
+        glowStrength = 0F;
+    }
+
+    public static boolean isGlowingUniformActive()
+    {
+        return glowingUniformActive;
+    }
+
+    public static float getBaseGlowingStrength()
+    {
+        return baseGlowStrength;
+    }
+
+    public static float getBaseGlowingR()
+    {
+        return baseGlowR;
+    }
+
+    public static float getBaseGlowingG()
+    {
+        return baseGlowG;
+    }
+
+    public static float getBaseGlowingB()
+    {
+        return baseGlowB;
+    }
+
     public static void clearPaint()
     {
         baseR = 0F;
@@ -204,13 +472,33 @@ public class ModelVAORenderer
         paintStrength = 0F;
     }
 
+    public static void setTextureBlend(Link toTexture, float blend)
+    {
+        ModelVAORenderer.textureBlendActive = toTexture != null && blend > 0F && blend < 1F;
+        ModelVAORenderer.textureBlendFactor = blend;
+        ModelVAORenderer.textureBlendTo = toTexture;
+    }
+
+    public static void clearTextureBlend()
+    {
+        ModelVAORenderer.textureBlendActive = false;
+        ModelVAORenderer.textureBlendFactor = 0F;
+        ModelVAORenderer.textureBlendTo = null;
+    }
+
     public static void render(ShaderProgram shader, IModelVAO modelVAO, MatrixStack stack, float r, float g, float b, float a, int light, int overlay)
     {
         int currentVAO = GL30.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
         int currentElementArrayBuffer = GL30.glGetInteger(GL30.GL_ELEMENT_ARRAY_BUFFER_BINDING);
 
+        if (ModelVAORenderer.textureBlendActive && ModelVAORenderer.textureBlendTo != null)
+        {
+            BBSModClient.getTextures().bindTexture(ModelVAORenderer.textureBlendTo, 3);
+        }
+
         setupUniforms(stack, shader);
 
+        RenderSystem.setShader(() -> shader);
         shader.bind();
         modelVAO.render(shader.getFormat(), r, g, b, a, light, overlay);
         shader.unbind();
@@ -233,7 +521,7 @@ public class ModelVAORenderer
 
         if (shader.modelViewMat != null)
         {
-            shader.modelViewMat.set(new Matrix4f(RenderSystem.getModelViewMatrix()).mul(stack.peek().getPositionMatrix()));
+            ModelVAORenderer.setModelViewUniform(stack, shader);
         }
 
         /* NormalMat is present by default in Iris' shaders, but when there is no Iris,
@@ -259,11 +547,34 @@ public class ModelVAORenderer
             paintUniform.set(paintR, paintG, paintB, paintStrength);
         }
 
+        GlUniform glowingUniform = shader.getUniform("GlowingColor");
+
+        glowingUniformActive = glowingUniform != null;
+
+        if (glowingUniform != null)
+        {
+            glowingUniform.set(glowR, glowG, glowB, glowStrength);
+        }
+
         GlUniform paintOverlayUniform = shader.getUniform("PaintOverlay");
 
         if (paintOverlayUniform != null)
         {
             paintOverlayUniform.set(paintOverlayPass ? 1F : 0F);
+        }
+
+        GlUniform textureBlendFactorUniform = shader.getUniform("TextureBlendFactor");
+
+        if (textureBlendFactorUniform != null)
+        {
+            textureBlendFactorUniform.set(ModelVAORenderer.textureBlendActive ? ModelVAORenderer.textureBlendFactor : 0F);
+        }
+
+        GlUniform textureBlendActiveUniform = shader.getUniform("TextureBlendActive");
+
+        if (textureBlendActiveUniform != null)
+        {
+            textureBlendActiveUniform.set(ModelVAORenderer.textureBlendActive ? 1F : 0F);
         }
 
         if (shader.fogStart != null)
@@ -302,5 +613,23 @@ public class ModelVAORenderer
         }
 
         RenderSystem.setupShaderLights(shader);
+    }
+
+    private static void setModelViewUniform(MatrixStack stack, ShaderProgram shader)
+    {
+        Matrix4f modelView;
+
+        if (paintOverlayPass)
+        {
+            /* Overlay stack already carries the full terrain + entity transform captured at enqueue;
+             * RenderSystem model-view is identity during overlay draws. */
+            modelView = new Matrix4f(stack.peek().getPositionMatrix());
+        }
+        else
+        {
+            modelView = new Matrix4f(RenderSystem.getModelViewMatrix()).mul(stack.peek().getPositionMatrix());
+        }
+
+        shader.modelViewMat.set(modelView);
     }
 }

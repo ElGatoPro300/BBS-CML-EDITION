@@ -10,20 +10,20 @@ import mchorse.bbs_mod.math.Operation;
 import mchorse.bbs_mod.settings.values.IValueListener;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
+import mchorse.bbs_mod.ui.film.toolbar.KeyframeDuplicateInteractionState;
+import mchorse.bbs_mod.ui.film.toolbar.KeyframeInsertInteractionState;
+import mchorse.bbs_mod.ui.film.toolbar.KeyframePasteInteractionState;
+import mchorse.bbs_mod.ui.film.toolbar.KeyframeSelectNeighborInteractionState;
+import mchorse.bbs_mod.ui.film.toolbar.KeyframeSelectSameInteractionState;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineInteractionHints;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineInteractionState;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarPointerBlock;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarSettings;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineTrackEligibility;
 import mchorse.bbs_mod.ui.film.toolbar.UIInteractionModeOverlay;
-import mchorse.bbs_mod.ui.film.toolbar.UIKeyframeInsertInteraction;
-import mchorse.bbs_mod.ui.film.toolbar.KeyframeInsertInteractionState;
-import mchorse.bbs_mod.ui.film.toolbar.KeyframeDuplicateInteractionState;
 import mchorse.bbs_mod.ui.film.toolbar.UIKeyframeDuplicateInteraction;
-import mchorse.bbs_mod.ui.film.toolbar.KeyframePasteInteractionState;
+import mchorse.bbs_mod.ui.film.toolbar.UIKeyframeInsertInteraction;
 import mchorse.bbs_mod.ui.film.toolbar.UIKeyframePasteInteraction;
-import mchorse.bbs_mod.ui.film.toolbar.KeyframeSelectNeighborInteractionState;
-import mchorse.bbs_mod.ui.film.toolbar.KeyframeSelectSameInteractionState;
 import mchorse.bbs_mod.ui.film.toolbar.UIKeyframeSelectNeighborInteraction;
 import mchorse.bbs_mod.ui.film.toolbar.UIKeyframeSelectSameInteraction;
 import mchorse.bbs_mod.ui.film.utils.keyframes.UIFilmKeyframes;
@@ -2099,15 +2099,6 @@ public class UIKeyframes extends UIElement
 
         if (keyframe != null)
         {
-            /* When zoomed out, the pixel grab radius may cover many ticks; only remove
-             * the hit keyframe if it sits on the tick a new keyframe would be placed at */
-            if (!Window.isShiftPressed() && keyframe.a.getTick() != Math.round(this.fromGraphX(context.mouseX)))
-            {
-                this.currentGraph.addKeyframe(context.mouseX, context.mouseY);
-
-                return;
-            }
-
             this.currentGraph.removeKeyframe(keyframe.a);
         }
         else

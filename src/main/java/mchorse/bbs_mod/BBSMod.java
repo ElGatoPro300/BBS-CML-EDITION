@@ -4,6 +4,7 @@ import mchorse.bbs_mod.actions.ActionHandler;
 import mchorse.bbs_mod.actions.ActionManager;
 import mchorse.bbs_mod.actions.types.AttackActionClip;
 import mchorse.bbs_mod.actions.types.DamageActionClip;
+import mchorse.bbs_mod.actions.types.MobDeathActionClip;
 import mchorse.bbs_mod.actions.types.SwipeActionClip;
 import mchorse.bbs_mod.actions.types.blocks.BreakBlockActionClip;
 import mchorse.bbs_mod.actions.types.blocks.CloseContainerActionClip;
@@ -31,6 +32,7 @@ import mchorse.bbs_mod.camera.clips.converters.PathToKeyframeConverter;
 import mchorse.bbs_mod.camera.clips.misc.AudioClip;
 import mchorse.bbs_mod.camera.clips.misc.CurveClip;
 import mchorse.bbs_mod.camera.clips.misc.HotbarClip;
+import mchorse.bbs_mod.camera.clips.misc.ImageClip;
 import mchorse.bbs_mod.camera.clips.misc.SubtitleClip;
 import mchorse.bbs_mod.camera.clips.misc.VideoClip;
 import mchorse.bbs_mod.camera.clips.modifiers.AngleClip;
@@ -87,6 +89,7 @@ import mchorse.bbs_mod.forms.forms.StructureForm;
 import mchorse.bbs_mod.forms.forms.TrailForm;
 import mchorse.bbs_mod.forms.forms.VanillaParticleForm;
 import mchorse.bbs_mod.items.GunItem;
+import mchorse.bbs_mod.items.MobKillerItem;
 import mchorse.bbs_mod.math.molang.MolangParser;
 import mchorse.bbs_mod.morphing.Morph;
 import mchorse.bbs_mod.network.ServerNetwork;
@@ -230,6 +233,7 @@ public class BBSMod implements ModInitializer
     public static final BlockItem MODEL_BLOCK_ITEM = new BlockItem(MODEL_BLOCK, new Item.Settings());
     public static final BlockItem TRIGGER_BLOCK_ITEM = new BlockItem(TRIGGER_BLOCK, new Item.Settings());
     public static final GunItem GUN_ITEM = new GunItem(new Item.Settings().maxCount(1));
+    public static final MobKillerItem MOB_KILLER_ITEM = new MobKillerItem(new Item.Settings().maxCount(1));
     public static final BlockItem CHROMA_RED_BLOCK_ITEM = new BlockItem(CHROMA_RED_BLOCK, new Item.Settings());
     public static final BlockItem CHROMA_GREEN_BLOCK_ITEM = new BlockItem(CHROMA_GREEN_BLOCK, new Item.Settings());
     public static final BlockItem CHROMA_BLUE_BLOCK_ITEM = new BlockItem(CHROMA_BLUE_BLOCK, new Item.Settings());
@@ -269,6 +273,7 @@ public class BBSMod implements ModInitializer
             entries.add(CHROMA_BLACK_BLOCK_ITEM);
             entries.add(CHROMA_WHITE_BLOCK_ITEM);
             entries.add(new ItemStack(GUN_ITEM));
+            entries.add(new ItemStack(MOB_KILLER_ITEM));
         })
         .build();
 
@@ -509,7 +514,7 @@ public class BBSMod implements ModInitializer
             .register(Link.bbs("keyframe"), KeyframeClip.class, new ClipFactoryData(Icons.CURVES, 0xde2e9f)
                 .withConverter(Link.bbs("idle"), IdleConverter.CONVERTER))
             .register(Link.bbs("translate"), TranslateClip.class, new ClipFactoryData(Icons.UPLOAD, 0x4ba03e))
-            .register(Link.bbs("angle"), AngleClip.class, new ClipFactoryData(Icons.ARC, 0xd77a0a))
+            .register(Link.bbs("angle"), AngleClip.class, new ClipFactoryData(Icons.ORBIT, 0xd77a0a))
             .register(Link.bbs("drag"), DragClip.class, new ClipFactoryData(Icons.FADING, 0x4baff7))
             .register(Link.bbs("shake"), ShakeClip.class, new ClipFactoryData(Icons.EXCHANGE, 0x159e64))
             .register(Link.bbs("math"), MathClip.class, new ClipFactoryData(Icons.GRAPH, 0x6820ad))
@@ -519,15 +524,16 @@ public class BBSMod implements ModInitializer
             .register(Link.bbs("audio"), AudioClip.class, new ClipFactoryData(Icons.SOUND, 0xffc825))
             .register(Link.bbs("video"), VideoClip.class, new ClipFactoryData(Icons.IMAGE, 0x9933cc))
             .register(Link.bbs("subtitle"), SubtitleClip.class, new ClipFactoryData(Icons.FONT, 0x888899))
+            .register(Link.bbs("image"), ImageClip.class, new ClipFactoryData(Icons.GALLERY, 0x44aa88))
             .register(Link.bbs("hotbar"), HotbarClip.class, new ClipFactoryData(Icons.BLOCK, 0x55aaff))
-            .register(Link.bbs("curve"), CurveClip.class, new ClipFactoryData(Icons.ARC, 0xff1493))
+            .register(Link.bbs("curve"), CurveClip.class, new ClipFactoryData(Icons.ARC, 0xff775f))
             .register(Link.bbs("tracker"), TrackerClip.class, new ClipFactoryData(Icons.USER, 0xffffff))
             .register(Link.bbs("dolly_zoom"), DollyZoomClip.class, new ClipFactoryData(Icons.FILTER, 0x7d56c9))
             .register(Link.bbs("color"), ColorClip.class, new ClipFactoryData(Icons.FILTER, 0xff6633))
             .register(Link.bbs("cinematic"), CinematicClip.class, new ClipFactoryData(Icons.VIDEO_CAMERA, 0xffaa00))
             .register(Link.bbs("vignette"), VignetteClip.class, new ClipFactoryData(Icons.CIRCLE, 0x222244))
             .register(Link.bbs("letterbox"), LetterboxClip.class, new ClipFactoryData(Icons.FULLSCREEN, 0x111111))
-            .register(Link.bbs("grain"), GrainClip.class, new ClipFactoryData(Icons.SIX_STAR, 0x887766))
+            .register(Link.bbs("grain"), GrainClip.class, new ClipFactoryData(Icons.FIVE_STAR, 0x887766))
             .register(Link.bbs("screen_node"), ScreenNodeClip.class, new ClipFactoryData(Icons.GRAPH, 0x3355cc));
 
         events.post(new RegisterCameraClipsEvent(factoryCameraClips));
@@ -544,6 +550,7 @@ public class BBSMod implements ModInitializer
             .register(Link.bbs("drop_item"), ItemDropActionClip.class, new ClipFactoryData(Icons.ARROW_DOWN, Colors.DEEP_PINK))
             .register(Link.bbs("attack"), AttackActionClip.class, new ClipFactoryData(Icons.DROP, Colors.RED))
             .register(Link.bbs("damage"), DamageActionClip.class, new ClipFactoryData(Icons.SKULL, Colors.CURSOR))
+            .register(Link.bbs("mob_death"), MobDeathActionClip.class, new ClipFactoryData(Icons.SKULL, Colors.RED))
             .register(Link.bbs("swipe"), SwipeActionClip.class, new ClipFactoryData(Icons.LIMB, Colors.ORANGE));
 
         events.post(new RegisterActionClipsEvent(factoryActionClips));
@@ -553,7 +560,7 @@ public class BBSMod implements ModInitializer
             .register(Link.bbs("cinematic"), CinematicClip.class, new ClipFactoryData(Icons.VIDEO_CAMERA, 0xffaa00))
             .register(Link.bbs("vignette"), VignetteClip.class, new ClipFactoryData(Icons.CIRCLE, 0x222244))
             .register(Link.bbs("letterbox"), LetterboxClip.class, new ClipFactoryData(Icons.FULLSCREEN, 0x111111))
-            .register(Link.bbs("grain"), GrainClip.class, new ClipFactoryData(Icons.SIX_STAR, 0x887766))
+            .register(Link.bbs("grain"), GrainClip.class, new ClipFactoryData(Icons.FIVE_STAR, 0x887766))
             .register(Link.bbs("screen_node"), ScreenNodeClip.class, new ClipFactoryData(Icons.GRAPH, 0x3355cc));
 
         setupConfig(Icons.PROCESSOR, "bbs", new File(settingsFolder, "bbs.json"), BBSSettings::register);
@@ -587,6 +594,7 @@ public class BBSMod implements ModInitializer
         Registry.register(Registries.ITEM, new Identifier(MOD_ID, "model"), MODEL_BLOCK_ITEM);
         Registry.register(Registries.ITEM, new Identifier(MOD_ID, "trigger"), TRIGGER_BLOCK_ITEM);
         Registry.register(Registries.ITEM, new Identifier(MOD_ID, "gun"), GUN_ITEM);
+        Registry.register(Registries.ITEM, new Identifier(MOD_ID, "mob_killer"), MOB_KILLER_ITEM);
         Registry.register(Registries.ITEM, new Identifier(MOD_ID, "chroma_red"), CHROMA_RED_BLOCK_ITEM);
         Registry.register(Registries.ITEM, new Identifier(MOD_ID, "chroma_green"), CHROMA_GREEN_BLOCK_ITEM);
         Registry.register(Registries.ITEM, new Identifier(MOD_ID, "chroma_blue"), CHROMA_BLUE_BLOCK_ITEM);

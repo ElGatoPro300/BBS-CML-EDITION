@@ -23,6 +23,7 @@ import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel;
 import mchorse.bbs_mod.ui.forms.UIFormPalette;
 import mchorse.bbs_mod.ui.forms.UINestedEdit;
 import mchorse.bbs_mod.ui.forms.UIToggleEditorEvent;
+import mchorse.bbs_mod.ui.forms.editors.UIFormEditor;
 import mchorse.bbs_mod.ui.forms.editors.panels.widgets.UIItemStack;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.UIContext;
@@ -1534,6 +1535,29 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
     }
 
     @Override
+    public Area getFlightViewportArea()
+    {
+        List<UIFormPalette> palettes = this.getChildren(UIFormPalette.class);
+
+        if (!palettes.isEmpty())
+        {
+            UIFormEditor editor = palettes.get(0).editor;
+
+            if (editor != null && editor.modelSettingsEditor != null && editor.modelSettingsEditor.isVisible())
+            {
+                return editor.modelSettingsEditor.renderer.area;
+            }
+
+            if (editor != null)
+            {
+                return editor.renderer.area;
+            }
+        }
+
+        return null;
+    }
+
+    @Override
     public void appear() {
         super.appear();
 
@@ -1591,7 +1615,7 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
 
     private void addCameraController(UIFormPalette palette) {
         if (this.cameraController == null) {
-            this.cameraController = new ImmersiveModelBlockCameraController(palette.editor.renderer, this.modelBlock);
+            this.cameraController = new ImmersiveModelBlockCameraController(palette.editor, this.modelBlock);
 
             BBSModClient.getCameraController().add(this.cameraController);
 

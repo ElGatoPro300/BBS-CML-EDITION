@@ -47,6 +47,8 @@ public class WorldRendererMixin
     @Inject(method = "renderLayer", at = @At("HEAD"), cancellable = true)
     public void onRenderLayer(RenderLayer renderLayer, MatrixStack matrices, double cameraX, double cameraY, double cameraZ, Matrix4f positionMatrix, CallbackInfo info)
     {
+        BBSRendering.positionMatrix = positionMatrix;
+
         if (BBSRendering.shouldHideChromaTerrain())
         {
             BBSRendering.onRenderChunkLayer(matrices);
@@ -58,6 +60,8 @@ public class WorldRendererMixin
     @Inject(method = "renderLayer", at = @At("TAIL"))
     public void onRenderChunkLayer(RenderLayer layer, MatrixStack stack, double x, double y, double z, Matrix4f positionMatrix, CallbackInfo info)
     {
+        BBSRendering.positionMatrix = positionMatrix;
+
         if (layer == RenderLayer.getSolid())
         {
             BBSRendering.onRenderChunkLayer(stack);

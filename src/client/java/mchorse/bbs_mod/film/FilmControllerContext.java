@@ -2,6 +2,8 @@ package mchorse.bbs_mod.film;
 
 import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.forms.entities.IEntity;
+import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
+import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.utils.colors.Colors;
 
@@ -38,6 +40,9 @@ public class FilmControllerContext
     public float propertyTick = Float.NaN;
     public boolean isShadowPass;
 
+    /* Film timeline tick used to restore other replays' form properties after temporary sampling */
+    public int filmTick = -1;
+
     public String bone;
     public boolean local;
 
@@ -47,6 +52,10 @@ public class FilmControllerContext
     public String nameTag = "";
     public boolean relative;
     public Matrix4f localGroupTransform;
+    public Matrix4f viewMatrix;
+    public PaintSettings groupPaint;
+    public GlowSettings groupGlow;
+    public FormRenderDepth.Frame renderDepthFrame;
 
     private FilmControllerContext()
     {}
@@ -56,6 +65,7 @@ public class FilmControllerContext
         this.film = null;
         this.propertyTick = Float.NaN;
         this.isShadowPass = false;
+        this.filmTick = -1;
         this.map = null;
         this.shadowRadius = 0F;
         this.shadowOpacity = 1F;
@@ -65,6 +75,10 @@ public class FilmControllerContext
         this.nameTag = "";
         this.relative = false;
         this.localGroupTransform = null;
+        this.viewMatrix = null;
+        this.groupPaint = null;
+        this.groupGlow = null;
+        this.renderDepthFrame = null;
     }
 
     public FilmControllerContext setup(IntObjectMap<IEntity> entities, IEntity entity, Replay replay, WorldRenderContext context)
@@ -111,9 +125,9 @@ public class FilmControllerContext
         return this;
     }
 
-    public FilmControllerContext isShadowPass(boolean isShadowPass)
+    public FilmControllerContext filmTick(int filmTick)
     {
-        this.isShadowPass = isShadowPass;
+        this.filmTick = filmTick;
 
         return this;
     }
@@ -189,6 +203,26 @@ public class FilmControllerContext
     public FilmControllerContext relative(boolean relative)
     {
         this.relative = relative;
+
+        return this;
+    }
+    public FilmControllerContext renderDepthFrame(FormRenderDepth.Frame renderDepthFrame)
+    {
+        this.renderDepthFrame = renderDepthFrame;
+
+        return this;
+    }
+
+    public FilmControllerContext isShadowPass(boolean isShadowPass)
+    {
+        this.isShadowPass = isShadowPass;
+
+        return this;
+    }
+
+    public FilmControllerContext viewMatrix(Matrix4f viewMatrix)
+    {
+        this.viewMatrix = viewMatrix;
 
         return this;
     }
