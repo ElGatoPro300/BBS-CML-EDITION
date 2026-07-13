@@ -9,6 +9,7 @@ import mchorse.bbs_mod.settings.values.numeric.ValueFloat;
 import mchorse.bbs_mod.settings.values.numeric.ValueInt;
 import mchorse.bbs_mod.settings.values.ui.ValueColors;
 import mchorse.bbs_mod.settings.values.ui.ValueEditorLayout;
+import mchorse.bbs_mod.settings.values.ui.ValueUILayoutPreferences;
 import mchorse.bbs_mod.settings.values.ui.ValueLanguage;
 import mchorse.bbs_mod.settings.values.ui.ValueOnionSkin;
 import mchorse.bbs_mod.settings.values.ui.ValueStringKeys;
@@ -129,6 +130,7 @@ public class BBSSettings
     public static ValueBoolean editorOrbitNoAnimation;
     public static ValueFloat editorOrbitTransitionDuration;
     public static ValueEditorLayout editorLayoutSettings;
+    public static ValueUILayoutPreferences uiLayoutPreferences;
     public static ValueTimelineToolbarDocks timelineToolbarDocks;
     public static ValueOnionSkin editorOnionSkin;
     public static ValueBoolean editorSnapToMarkers;
@@ -591,6 +593,8 @@ public class BBSSettings
         editorPeriodicSave = builder.getInt("periodic_save", 60, 0, 3600);
         editorHorizontalFlight = builder.getBoolean("horizontal_flight", false);
         builder.register(editorLayoutSettings = new ValueEditorLayout("layout"));
+        builder.register(uiLayoutPreferences = new ValueUILayoutPreferences("ui_layout"));
+        uiLayoutPreferences.invisible();
         builder.register(timelineToolbarDocks = new ValueTimelineToolbarDocks("timeline_toolbar_docks"));
         builder.register(editorOnionSkin = new ValueOnionSkin("onion_skin"));
         editorSnapToMarkers = builder.getBoolean("snap_to_markers", false);

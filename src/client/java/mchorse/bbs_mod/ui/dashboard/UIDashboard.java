@@ -257,6 +257,7 @@ public class UIDashboard extends UIBaseMenu
         BBSModClient.getCameraController().add(this.camera);
 
         this.showAnnoyingPopups();
+        UIHomePanel.onDashboardOpened(this);
         UINewsPanel.onDashboardOpened(this);
     }
 

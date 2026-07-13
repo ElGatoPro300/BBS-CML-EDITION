@@ -302,6 +302,11 @@ public class BBSModClient implements ClientModInitializer
         return dashboard;
     }
 
+    public static UIDashboard peekDashboard()
+    {
+        return dashboard;
+    }
+
     public static int getGUIScale()
     {
         float scale = BBSSettings.getUIScaleFactor();

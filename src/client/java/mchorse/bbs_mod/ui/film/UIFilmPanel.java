@@ -43,6 +43,7 @@ import mchorse.bbs_mod.settings.values.IValueListener;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.settings.values.ui.EditorLayoutNode;
 import mchorse.bbs_mod.settings.values.ui.ValueEditorLayout;
+import mchorse.bbs_mod.settings.values.ui.ValueUILayoutPreferences;
 import mchorse.bbs_mod.ui.ContentType;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
@@ -969,6 +970,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         };
 
         this.fill(null);
+        this.restoreFilmUILayoutSession();
         this.setAnchoredReplaysPanelEnabled(this.isAnchoredReplaysPanelEnabled());
         this.setupEditorFlex(false);
         this.updateFilmDocumentView();
@@ -2194,6 +2196,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         }
 
         this.setupEditorFlex(true);
+        this.persistFilmUILayoutSession();
     }
 
     private void startPanelDrag(String panelId)
@@ -2805,6 +2808,118 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         }
 
         this.setupEditorFlex(true);
+        this.persistFilmUILayoutSession();
+    }
+
+    private void restoreFilmUILayoutSession()
+    {
+        if (BBSSettings.uiLayoutPreferences == null)
+        {
+            return;
+        }
+
+        this.hiddenPanels.clear();
+        this.hiddenPanels.addAll(BBSSettings.uiLayoutPreferences.getFilmHiddenPanels());
+
+        this.collapsedDockedPanels.clear();
+        this.collapsedDockedPanels.addAll(BBSSettings.uiLayoutPreferences.getFilmCollapsedDocked());
+
+        this.collapsedFloatingPanels.clear();
+        this.collapsedFloatingPanels.addAll(BBSSettings.uiLayoutPreferences.getFilmCollapsedFloating());
+
+        this.floatingPanels.clear();
+        this.floatingPanelPositions.clear();
+        this.floatingPanelSizes.clear();
+
+        Map<String, ValueUILayoutPreferences.FilmFloatingPanelState> floatingPanels = BBSSettings.uiLayoutPreferences.getFilmFloatingPanels();
+
+        for (Map.Entry<String, ValueUILayoutPreferences.FilmFloatingPanelState> entry : floatingPanels.entrySet())
+        {
+            String panelId = entry.getKey();
+            ValueUILayoutPreferences.FilmFloatingPanelState state = entry.getValue();
+
+            if (!this.panelById.containsKey(panelId) || state == null)
+            {
+                continue;
+            }
+
+            this.floatingPanels.add(panelId);
+            this.floatingPanelPositions.put(panelId, new Vector2i(state.x, state.y));
+            this.floatingPanelSizes.put(panelId, new Vector2i(Math.max(MIN_FLOATING_PANEL_WIDTH, state.w), Math.max(MIN_FLOATING_PANEL_HEIGHT, state.h)));
+
+            if (state.collapsed)
+            {
+                this.collapsedFloatingPanels.add(panelId);
+            }
+        }
+
+        if (!this.floatingPanels.isEmpty())
+        {
+            ValueEditorLayout layout = BBSSettings.editorLayoutSettings;
+            EditorLayoutNode root = layout.getFilmLayoutRoot();
+            boolean changed = false;
+
+            for (String panelId : new ArrayList<>(this.floatingPanels))
+            {
+                if (root != null && this.hasPanelInLayout(root, panelId))
+                {
+                    root = EditorLayoutNode.copyWithRemovedLeaf(root, panelId);
+                    changed = true;
+                }
+            }
+
+            if (changed)
+            {
+                layout.setFilmLayoutRoot(root);
+            }
+        }
+    }
+
+    private void persistFilmUILayoutSession()
+    {
+        if (BBSSettings.uiLayoutPreferences == null)
+        {
+            return;
+        }
+
+        Map<String, ValueUILayoutPreferences.FilmFloatingPanelState> floatingPanels = new LinkedHashMap<>();
+
+        for (String panelId : this.floatingPanels)
+        {
+            Vector2i position = this.floatingPanelPositions.get(panelId);
+            Vector2i size = this.floatingPanelSizes.get(panelId);
+
+            if (position == null || size == null)
+            {
+                continue;
+            }
+
+            ValueUILayoutPreferences.FilmFloatingPanelState state = new ValueUILayoutPreferences.FilmFloatingPanelState();
+
+            state.x = position.x;
+            state.y = position.y;
+            state.w = size.x;
+            state.h = size.y;
+            state.collapsed = this.collapsedFloatingPanels.contains(panelId);
+            floatingPanels.put(panelId, state);
+        }
+
+        List<String> hiddenPanels = new ArrayList<>();
+
+        for (String panelId : this.getWindowPanelIds())
+        {
+            if (this.hiddenPanels.contains(panelId))
+            {
+                hiddenPanels.add(panelId);
+            }
+        }
+
+        BBSSettings.uiLayoutPreferences.setFilmSession(
+            hiddenPanels,
+            floatingPanels,
+            new ArrayList<>(this.collapsedDockedPanels),
+            new ArrayList<>(this.collapsedFloatingPanels)
+        );
     }
 
     private void dockPanelNearVisibleTarget(String panelId)
@@ -3052,6 +3167,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         layout.setLayout(layoutId);
         this.applyLegacyLayoutSelection();
         this.setupEditorFlex(true);
+        this.persistFilmUILayoutSession();
     }
 
     public boolean isLayoutPresetSelected(int layoutId)
@@ -3082,6 +3198,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         BBSSettings.timelineToolbarDocks.resetToDefaults();
         TimelineToolbarDockSync.refreshFilmPanel(this);
         this.setupEditorFlex(true);
+        this.persistFilmUILayoutSession();
     }
 
     private void renderPanelWindowSurfaces(UIContext context)
@@ -4340,6 +4457,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.applyHiddenPanelsPreset(data);
         TimelineToolbarDockSync.refreshFilmPanel(this);
         this.setupEditorFlex(true);
+        this.persistFilmUILayoutSession();
     }
 
     private boolean hasAnchoredReplaysPanelPresetState(MapType data)
@@ -7634,6 +7752,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         if (this.activeResizingFloatingPanelId != null)
         {
             this.activeResizingFloatingPanelId = null;
+            this.persistFilmUILayoutSession();
             return this;
         }
         return super.childrenMouseReleased(context);
@@ -7666,6 +7785,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         this.clearPanelDragState();
         this.setupEditorFlex(true);
+        this.persistFilmUILayoutSession();
     }
 
     public void applyFloatingPanelDockResult(String panelId, String targetId, int zone)
@@ -7689,6 +7809,8 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         {
             layout.setFilmLayoutRoot(newRoot);
         }
+
+        this.persistFilmUILayoutSession();
     }
 
     public void safeBringToFront(String panelId)
@@ -7736,6 +7858,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         this.bringPanelToFront(panelId);
         this.setupEditorFlex(true);
+        this.persistFilmUILayoutSession();
     }
 
     private void fitFloatingPanelSize(String panelId)
@@ -7789,6 +7912,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             this.collapsedFloatingPanels.add(panelId);
         }
         this.setupEditorFlex(true);
+        this.persistFilmUILayoutSession();
     }
 
     private FloatingClickResult handleFloatingPanelClicks(UIContext context)
