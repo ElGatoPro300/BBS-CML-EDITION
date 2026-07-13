@@ -2,6 +2,7 @@ package mchorse.bbs_mod.particles.emitter;
 
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.camera.Camera;
+import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.math.IExpression;
 import mchorse.bbs_mod.math.Variable;
@@ -13,6 +14,7 @@ import mchorse.bbs_mod.particles.components.IComponentParticleRender;
 import mchorse.bbs_mod.particles.components.IComponentParticleUpdate;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.utils.MathUtils;
+import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.interps.Lerps;
 
 import net.minecraft.client.gl.ShaderProgram;
@@ -523,7 +525,22 @@ public class ParticleEmitter
             RenderSystem.defaultBlendFunc();
             RenderSystem.disableCull();
 
+            boolean irisWorld = BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld();
+
+            if (irisWorld)
+            {
+                /* Vertex positions already include the camera-relative transform from
+                 * ParticleFormRenderer; Iris leaves a stale terrain model-view here
+                 * (same fix as MorphFireRenderer / Gizmo). */
+                MatrixStackUtils.pushIdentityModelView();
+            }
+
             BufferRenderer.drawWithGlobalProgram(builder.end());
+
+            if (irisWorld)
+            {
+                MatrixStackUtils.popModelView();
+            }
 
             RenderSystem.enableCull();
             RenderSystem.disableBlend();

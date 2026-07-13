@@ -2,9 +2,13 @@ package mchorse.bbs_mod.forms.renderers;
 
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.client.BBSShaders;
+import mchorse.bbs_mod.client.ItemUseRenderState;
 import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
 import mchorse.bbs_mod.forms.FormUtilsClient;
+import mchorse.bbs_mod.forms.entities.StubEntity;
 import mchorse.bbs_mod.forms.forms.ItemForm;
+import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
+import mchorse.bbs_mod.forms.renderers.utils.FormColorBlend;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.colors.Color;
@@ -16,6 +20,9 @@ import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.render.model.json.ModelTransformationMode;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.entity.EquipmentSlot;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.item.ItemStack;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.RotationAxis;
 
@@ -55,6 +62,7 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
 
         Color set = Color.white();
         set.mul(this.form.color.get());
+        FormColorBlend.blendFormGlowBrighten(set, this.form.glowSettings.get(), this.form.glowingColor.get());
 
         Vector3f light0 = new Vector3f(0.85F, 0.85F, -1F).normalize();
         Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1F).normalize();
@@ -105,9 +113,33 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
 
         BlockFormRenderer.color.set(context.color);
         BlockFormRenderer.color.mul(this.form.color.get());
+        FormColorBlend.blendFormGlowBrighten(BlockFormRenderer.color, this.form.glowSettings.get(), this.form.glowingColor.get());
 
-        consumers.setSubstitute(BBSRendering.getColorConsumer(BlockFormRenderer.color, this.form.paintColor.get()));
-        MinecraftClient.getInstance().getItemRenderer().renderItem(this.form.stack.get(), mode, light, context.overlay, context.stack, consumers, context.entity.getWorld(), 0);
+        PaintSettings paintSettings = this.form.paintSettings.get();
+        Color legacyPaint = this.form.paintColor.get();
+        Color resolvedPaint = new Color();
+
+        paintSettings.resolveColor(legacyPaint, resolvedPaint);
+        resolvedPaint.a = paintSettings.resolveIntensity(legacyPaint);
+
+        consumers.setSubstitute(BBSRendering.getColorConsumer(BlockFormRenderer.color, resolvedPaint));
+
+        ItemStack itemStack = this.form.stack.get();
+        double usingItemValue = this.form.usingItem.get();
+        double itemUseTimeValue = this.form.itemUseTime.get();
+        LivingEntity itemEntity = null;
+
+        if (usingItemValue > 0D || itemUseTimeValue > 0D)
+        {
+            StubEntity stub = new StubEntity(context.entity.getWorld());
+
+            stub.setUsingItem(usingItemValue > 0D);
+            stub.setItemUseTimeLeft((int) itemUseTimeValue);
+            stub.setEquipmentStack(EquipmentSlot.MAINHAND, itemStack);
+            itemEntity = ItemUseRenderState.prepareProxy(context.entity.getWorld(), stub, EquipmentSlot.MAINHAND, itemStack);
+        }
+
+        MinecraftClient.getInstance().getItemRenderer().renderItem(itemEntity, itemStack, mode, mode == ModelTransformationMode.THIRD_PERSON_LEFT_HAND, context.stack, consumers, context.entity.getWorld(), light, context.overlay, 0);
         consumers.draw();
         consumers.setSubstitute(null);
 

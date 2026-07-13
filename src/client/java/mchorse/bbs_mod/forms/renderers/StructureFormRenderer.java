@@ -294,12 +294,16 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
                 {
                     try
                     {
-                        CustomVertexConsumerProvider beConsumers = FormUtilsClient.getProvider();
+                        VertexConsumerProvider beConsumers = MinecraftClient.getInstance().getBufferBuilders().getEntityVertexConsumers();
                         FormRenderingContext beContext = new FormRenderingContext()
                             .set(FormRenderType.PREVIEW, null, matrices, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, OverlayTexture.DEFAULT_UV, 0F);
 
                         this.renderBlockEntitiesOnly(beContext, matrices, beConsumers, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, OverlayTexture.DEFAULT_UV);
-                        beConsumers.draw();
+
+                        if (beConsumers instanceof VertexConsumerProvider.Immediate immediate)
+                        {
+                            immediate.draw();
+                        }
                     }
                     catch (Throwable ignored)
                     {}
@@ -309,12 +313,17 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
                 {
                     try
                     {
-                        CustomVertexConsumerProvider consumersTint = FormUtilsClient.getProvider();
+                        boolean shadersEnabled = BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld();
+                        VertexConsumerProvider consumersTint = MinecraftClient.getInstance().getBufferBuilders().getEntityVertexConsumers();
                         FormRenderingContext tintContext = new FormRenderingContext()
                             .set(FormRenderType.PREVIEW, null, matrices, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, OverlayTexture.DEFAULT_UV, 0F);
 
                         this.renderBiomeTintedBlocksVanilla(tintContext, matrices, consumersTint, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, OverlayTexture.DEFAULT_UV);
-                        consumersTint.draw();
+
+                        if (consumersTint instanceof VertexConsumerProvider.Immediate immediate)
+                        {
+                            immediate.draw();
+                        }
                     }
                     catch (Throwable ignored)
                     {}
@@ -324,12 +333,17 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
                 {
                     try
                     {
-                        CustomVertexConsumerProvider consumersAnim = FormUtilsClient.getProvider();
+                        boolean shadersEnabled = BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld();
+                        VertexConsumerProvider consumersAnim = MinecraftClient.getInstance().getBufferBuilders().getEntityVertexConsumers();
                         FormRenderingContext animContext = new FormRenderingContext()
                             .set(FormRenderType.PREVIEW, null, matrices, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, OverlayTexture.DEFAULT_UV, 0F);
 
                         this.renderAnimatedBlocksVanilla(animContext, matrices, consumersAnim, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, OverlayTexture.DEFAULT_UV);
-                        consumersAnim.draw();
+
+                        if (consumersAnim instanceof VertexConsumerProvider.Immediate immediate)
+                        {
+                            immediate.draw();
+                        }
                     }
                     catch (Throwable ignored)
                     {}
@@ -420,7 +434,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
                 /* BufferBuilder mode: use vanilla/culling pipeline with better lighting */
                 int light = context.light;
                 boolean shaders = this.isShadersActive();
-                CustomVertexConsumerProvider consumers = FormUtilsClient.getProvider();
+                VertexConsumerProvider consumers = MinecraftClient.getInstance().getBufferBuilders().getEntityVertexConsumers();
                 GameRenderer gameRenderer = MinecraftClient.getInstance().gameRenderer;
 
                 /* Align state handling with VAO path to avoid state leaks affecting the first model rendered after. */
@@ -432,7 +446,11 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
                 try
                 {
                     this.renderStructureCulledWorld(context, context.stack, consumers, light, context.overlay, shaders);
-                    consumers.draw();
+
+                    if (consumers instanceof VertexConsumerProvider.Immediate immediate)
+                    {
+                        immediate.draw();
+                    }
                 }
                 catch (Throwable ignored)
                 {}
@@ -490,10 +508,14 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
                 {
                     try
                     {
-                        CustomVertexConsumerProvider beConsumers = FormUtilsClient.getProvider();
+                        VertexConsumerProvider beConsumers = MinecraftClient.getInstance().getBufferBuilders().getEntityVertexConsumers();
 
                         this.renderBlockEntitiesOnly(context, context.stack, beConsumers, light, context.overlay);
-                        beConsumers.draw();
+
+                        if (beConsumers instanceof VertexConsumerProvider.Immediate immediate)
+                        {
+                            immediate.draw();
+                        }
                     }
                     catch (Throwable ignored)
                     {}
@@ -503,7 +525,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
                 {
                     try
                     {
-                        CustomVertexConsumerProvider tintConsumers = FormUtilsClient.getProvider();
+                        VertexConsumerProvider.Immediate tintConsumers = MinecraftClient.getInstance().getBufferBuilders().getEntityVertexConsumers();
 
                         this.renderBiomeTintedBlocksVanilla(context, context.stack, tintConsumers, light, context.overlay);
                         tintConsumers.draw();
@@ -516,7 +538,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
                 {
                     try
                     {
-                        CustomVertexConsumerProvider animConsumers = FormUtilsClient.getProvider();
+                        VertexConsumerProvider.Immediate animConsumers = MinecraftClient.getInstance().getBufferBuilders().getEntityVertexConsumers();
 
                         this.renderAnimatedBlocksVanilla(context, context.stack, animConsumers, light, context.overlay);
                         animConsumers.draw();
@@ -689,9 +711,6 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
             Block block;
 
             stack.push();
-
-            try
-            {
             stack.translate(entry.pos.getX() - info.pivotX, entry.pos.getY() - info.pivotY, entry.pos.getZ() - info.pivotZ);
 
             /* During normal VAO capture, skip blocks with animated textures */
@@ -699,6 +718,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
             /* In picking capture (capturingIncludeSpecialBlocks=true), include them. */
             if (this.capturingVAO && !this.capturingIncludeSpecialBlocks && (this.isAnimatedTexture(entry.state) || this.isBiomeTinted(entry.state)))
             {
+                stack.pop();
                 continue;
             }
 
@@ -814,11 +834,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
                 }
             }
 
-            }
-            finally
-            {
-                stack.pop();
-            }
+            stack.pop();
         }
 
         /* Important: if Sodium/Iris is active, the recolor wrapper uses */
@@ -854,9 +870,6 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
             }
 
             stack.push();
-
-            try
-            {
             stack.translate(entry.pos.getX() - info.pivotX, entry.pos.getY() - info.pivotY, entry.pos.getZ() - info.pivotZ);
 
             /* Layer selection: in shaders use entity variant so the pack processes the animation */
@@ -903,11 +916,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
             {
                 MinecraftClient.getInstance().getBlockRenderManager().renderBlock(entry.state, entry.pos, info.view, stack, vc, true, Random.create());
             }
-            }
-            finally
-            {
-                stack.pop();
-            }
+            stack.pop();
         }
 
         /* Reset global color state (Sodium/Iris) after animated pass */
@@ -940,9 +949,6 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
             }
 
             stack.push();
-
-            try
-            {
             stack.translate(entry.pos.getX() - info.pivotX, entry.pos.getY() - info.pivotY, entry.pos.getZ() - info.pivotZ);
 
             /* Layer according to state; in shaders use entity variant for packs */
@@ -970,11 +976,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
             }
 
             MinecraftClient.getInstance().getBlockRenderManager().renderBlock(entry.state, entry.pos, info.view, stack, vc, true, Random.create());
-            }
-            finally
-            {
-                stack.pop();
-            }
+            stack.pop();
         }
 
         /* Restore state */
@@ -1707,15 +1709,15 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
         private final Matrix4f positionMatrix;
         private final Matrix3f normalMatrix;
         private final BlockPos offset;
-        private final boolean fixOverlay;
+        private final boolean injectOverlay;
 
-        public TransformingVertexConsumer(VertexConsumer parent, MatrixStack.Entry entry, BlockPos offset, boolean fixOverlay)
+        public TransformingVertexConsumer(VertexConsumer parent, MatrixStack.Entry entry, BlockPos offset, boolean injectOverlay)
         {
             this.parent = parent;
             this.positionMatrix = new Matrix4f(entry.getPositionMatrix());
             this.normalMatrix = new Matrix3f(entry.getNormalMatrix());
             this.offset = offset;
-            this.fixOverlay = fixOverlay;
+            this.injectOverlay = injectOverlay;
         }
 
         @Override
@@ -1750,13 +1752,17 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
         @Override
         public VertexConsumer overlay(int u, int v)
         {
-            this.parent.overlay(this.fixOverlay ? 0 : u, this.fixOverlay ? 10 : v);
+            this.parent.overlay(u, v);
             return this;
         }
 
         @Override
         public VertexConsumer light(int u, int v)
         {
+            if (this.injectOverlay)
+            {
+                this.parent.overlay(0, 10);
+            }
             this.parent.light(u, v);
             return this;
         }
@@ -1767,14 +1773,6 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
             float tx = this.normalMatrix.m00() * x + this.normalMatrix.m10() * y + this.normalMatrix.m20() * z;
             float ty = this.normalMatrix.m01() * x + this.normalMatrix.m11() * y + this.normalMatrix.m21() * z;
             float tz = this.normalMatrix.m02() * x + this.normalMatrix.m12() * y + this.normalMatrix.m22() * z;
-
-            /* Entity layers (used with shaders) require overlay to be set.
-               The fluid renderer never calls overlay(), so inject it here
-               before normal() finalizes the vertex. */
-            if (this.fixOverlay)
-            {
-                this.parent.overlay(0, 10);
-            }
 
             this.parent.normal(tx, ty, tz);
             return this;

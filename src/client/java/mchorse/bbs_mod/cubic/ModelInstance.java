@@ -2,6 +2,7 @@ package mchorse.bbs_mod.cubic;
 
 import mchorse.bbs_mod.bobj.BOBJBone;
 import mchorse.bbs_mod.cubic.animation.ActionsConfig;
+import mchorse.bbs_mod.cubic.animation.ProceduralDefaults;
 import mchorse.bbs_mod.cubic.data.animation.Animations;
 import mchorse.bbs_mod.cubic.data.model.Model;
 import mchorse.bbs_mod.cubic.data.model.ModelGroup;
@@ -75,6 +76,7 @@ public class ModelInstance implements IModelInstance
     public Vector3f scale = new Vector3f(1F);
     public float uiScale = 1F;
     public Pose sneakingPose = new Pose();
+    public Pose ridingPose = new Pose();
     public Pose parts = new Pose();
 
     public List<ArmorSlot> itemsMain = new ArrayList<>();
@@ -113,6 +115,12 @@ public class ModelInstance implements IModelInstance
     public Pose getSneakingPose()
     {
         return this.sneakingPose;
+    }
+
+    @Override
+    public Pose getRidingPose()
+    {
+        return this.ridingPose;
     }
 
     @Override
@@ -225,6 +233,11 @@ public class ModelInstance implements IModelInstance
             this.sneakingPose = new Pose();
             this.sneakingPose.fromData(config.getMap("sneaking_pose"));
         }
+        if (config.has("riding_pose", BaseType.TYPE_MAP))
+        {
+            this.ridingPose = new Pose();
+            this.ridingPose.fromData(config.getMap("riding_pose"));
+        }
         if (config.has("parts", BaseType.TYPE_MAP))
         {
             this.parts = new Pose();
@@ -324,6 +337,12 @@ public class ModelInstance implements IModelInstance
                 this.ikChains.add(chain);
             }
         }
+
+        if (this.procedural && this.model != null)
+        {
+            ProceduralDefaults.ensureRidingPose(this);
+            ProceduralDefaults.ensureSneakingPose(this);
+        }
     }
 
     public MapType toConfig()
@@ -388,6 +407,11 @@ public class ModelInstance implements IModelInstance
         if (this.sneakingPose != null && !this.sneakingPose.transforms.isEmpty())
         {
             config.put("sneaking_pose", this.sneakingPose.toData());
+        }
+
+        if (this.ridingPose != null && !this.ridingPose.transforms.isEmpty())
+        {
+            config.put("riding_pose", this.ridingPose.toData());
         }
 
         if (this.parts != null && !this.parts.transforms.isEmpty())
@@ -488,6 +512,7 @@ public class ModelInstance implements IModelInstance
         copy.scale.set(this.scale);
         copy.uiScale = this.uiScale;
         copy.sneakingPose = this.sneakingPose.copy();
+        copy.ridingPose = this.ridingPose.copy();
         copy.parts = this.parts.copy();
         copy.color = this.color;
 
@@ -639,6 +664,11 @@ public class ModelInstance implements IModelInstance
             if (isVao)
             {
                 CubicRenderer.processRenderModel(renderProcessor, null, stack, model);
+
+                if (stencilMap != null)
+                {
+                    CubicRenderer.renderStencilPickPriority(renderProcessor, null, stack, model, CubicRenderer.STENCIL_PICK_PRIORITY_BONES);
+                }
             }
             else
             {
@@ -647,6 +677,11 @@ public class ModelInstance implements IModelInstance
                 BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL);
 
                 CubicRenderer.processRenderModel(renderProcessor, builder, stack, model);
+
+                if (stencilMap != null)
+                {
+                    CubicRenderer.renderStencilPickPriority(renderProcessor, builder, stack, model, CubicRenderer.STENCIL_PICK_PRIORITY_BONES);
+                }
 
                 try
                 {

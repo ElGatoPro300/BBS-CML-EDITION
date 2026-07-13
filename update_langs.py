@@ -11,7 +11,8 @@ strings_dir = r"C:\Users\PC\Documents\GitHub\bbs-mod\src\client\resources\assets
 
 # New keys and English values
 new_keys_en = {
-    "bbs.example": "Paste the translation keys here, in this case for English.",
+    "bbs.ui.forms.editors.general.look_at": "Look",
+    "bbs.ui.forms.editors.general.illusion": "Illusion"
 }
 
 # -----------------------------------------------------------------------------
@@ -109,6 +110,12 @@ new_keys_ur = {
     "bbs.example": "ترجمہ کی چابیاں یہاں پیسٹ کریں، اس صورت میں اردو کے لیے۔"
 }
 
+# Farsi (fa_ir)
+new_keys_fa = {
+    "bbs.ui.forms.editors.general.look_at": "نگاه",
+    "bbs.ui.forms.editors.general.illusion": "توهم"
+}
+
 # -----------------------------------------------------------------------------
 # Logic to select dictionary
 # -----------------------------------------------------------------------------
@@ -161,6 +168,8 @@ def update_file(filepath):
             updates = new_keys_ar
         elif filename == "ur_pk.json":
             updates = new_keys_ur
+        elif filename == "fa_ir.json":
+            updates = new_keys_fa
         else:
             # Fallback to English for any other unmapped files (e.g. he_il.json)
             updates = new_keys_en

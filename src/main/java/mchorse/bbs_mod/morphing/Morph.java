@@ -38,33 +38,45 @@ public class Morph
         {
             Entity target = ((EntityHitResult) hitResult).getEntity();
 
-            for (IEntityCaptureHandler handler : HANDLERS)
+            return captureFormFromEntity(player, target);
+        }
+
+        return null;
+    }
+
+    public static Form captureFormFromEntity(PlayerEntity player, Entity target)
+    {
+        if (target == null || target == player)
+        {
+            return null;
+        }
+
+        for (IEntityCaptureHandler handler : HANDLERS)
+        {
+            Form form = handler.capture(player, target);
+
+            if (form != null)
             {
-                Form form = handler.capture(player, target);
-
-                if (form != null)
-                {
-                    return form;
-                }
-            }
-
-            Optional<RegistryKey<EntityType<?>>> key = Registries.ENTITY_TYPE.getKey(target.getType());
-
-            if (key.isPresent())
-            {
-                MobForm form = new MobForm();
-                NbtCompound compound = target.writeNbt(new NbtCompound());
-
-                for (String s : Arrays.asList("Pos", "Motion", "Rotation", "FallDistance", "Fire", "Air", "OnGround", "Invulnerable", "PortalCooldown", "UUID"))
-                {
-                    compound.remove(s);
-                }
-
-                form.mobID.set(key.get().getValue().toString());
-                form.mobNBT.set(compound.toString());
-
                 return form;
             }
+        }
+
+        Optional<RegistryKey<EntityType<?>>> key = Registries.ENTITY_TYPE.getKey(target.getType());
+
+        if (key.isPresent())
+        {
+            MobForm form = new MobForm();
+            NbtCompound compound = target.writeNbt(new NbtCompound());
+
+            for (String s : Arrays.asList("Pos", "Motion", "Rotation", "FallDistance", "Fire", "Air", "OnGround", "Invulnerable", "PortalCooldown", "UUID"))
+            {
+                compound.remove(s);
+            }
+
+            form.mobID.set(key.get().getValue().toString());
+            form.mobNBT.set(compound.toString());
+
+            return form;
         }
 
         return null;

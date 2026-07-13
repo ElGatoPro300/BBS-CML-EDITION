@@ -9,14 +9,17 @@ import mchorse.bbs_mod.camera.clips.overwrite.PathClip;
 import mchorse.bbs_mod.camera.data.Position;
 import mchorse.bbs_mod.camera.utils.TimeUtils;
 import mchorse.bbs_mod.client.BBSRendering;
+import mchorse.bbs_mod.film.MobCemPoseCapture;
 import mchorse.bbs_mod.film.replays.FormProperties;
 import mchorse.bbs_mod.film.replays.Inventory;
+import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.film.replays.ReplayKeyframes;
 import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.graphics.Draw;
 import mchorse.bbs_mod.morphing.Morph;
 import mchorse.bbs_mod.network.ClientNetwork;
+import mchorse.bbs_mod.utils.CollectionUtils;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.PlayerUtils;
 import mchorse.bbs_mod.utils.clips.Clip;
@@ -60,6 +63,19 @@ public class Recorder extends WorldFilmController
 
     public int countdown;
     public final int initialTick;
+
+    private final RecorderMobCapture mobCapture = new RecorderMobCapture();
+    private final RecorderProjectileCapture projectileCapture = new RecorderProjectileCapture();
+
+    public RecorderMobCapture getMobCapture()
+    {
+        return this.mobCapture;
+    }
+
+    public RecorderProjectileCapture getProjectileCapture()
+    {
+        return this.projectileCapture;
+    }
 
     public static void renderCameraPreview(Position position, Camera camera, MatrixStack stack)
     {
@@ -481,7 +497,23 @@ public class Recorder extends WorldFilmController
         {
             Morph morph = Morph.getMorph(player);
 
+            this.mobCapture.ensurePlayerVehicleCaptured(this);
             this.keyframes.record(this.tick, morph.entity, null);
+            Replay playerReplay = CollectionUtils.getSafe(this.film.replays.getList(), this.exception);
+
+            if (playerReplay != null)
+            {
+                MobCemPoseCapture.syncReplay(playerReplay);
+
+                if (MobCemPoseCapture.isActive(playerReplay))
+                {
+                    MobCemPoseCapture.recordPoseKeyframe(playerReplay, playerReplay.form.get(), morph.entity, this.tick, 0F);
+                }
+            }
+
+            RecorderMobCapture.recordMountKeyframes(this.film.replays.getList(), 0, this.keyframes, morph.entity, this.tick);
+            this.mobCapture.recordTick(this);
+            this.projectileCapture.recordTick(this, this.mobCapture);
         }
 
         super.update();

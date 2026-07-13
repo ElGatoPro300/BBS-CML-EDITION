@@ -5,6 +5,7 @@ import mchorse.bbs_mod.data.IMapSerializable;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
+import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.pose.Transform;
@@ -28,7 +29,12 @@ public class ModelGroup implements IMapSerializable
     public float lighting = 0F;
     public Color color = new Color().set(1F, 1F, 1F);
     public Color paintColor = new Color().set(1F, 1F, 1F, 0F);
+    public Color glowingColor = new Color().set(1F, 1F, 1F, 1F);
+    public float glowIntensity;
+    public float glowRadius;
+    public float shaderShadow = PaintSettings.SHADER_SHADOW_DEFAULT;
     public Link textureOverride;
+    public float textureBlend = 1F;
     public Transform initial = new Transform();
     public Transform current = new Transform();
 
@@ -42,7 +48,12 @@ public class ModelGroup implements IMapSerializable
         this.lighting = 0F;
         this.color.set(1F, 1F, 1F);
         this.paintColor.set(1F, 1F, 1F, 0F);
+        this.glowingColor.set(1F, 1F, 1F, 1F);
+        this.glowIntensity = 0F;
+        this.glowRadius = 0F;
+        this.shaderShadow = PaintSettings.SHADER_SHADOW_DEFAULT;
         this.textureOverride = null;
+        this.textureBlend = 1F;
         this.current.copy(this.initial);
     }
 
@@ -59,7 +70,12 @@ public class ModelGroup implements IMapSerializable
         group.lighting = this.lighting;
         group.color.copy(this.color);
         group.paintColor.copy(this.paintColor);
+        group.glowingColor.copy(this.glowingColor);
+        group.glowIntensity = this.glowIntensity;
+        group.glowRadius = this.glowRadius;
+        group.shaderShadow = this.shaderShadow;
         if (this.textureOverride != null) group.textureOverride = LinkUtils.copy(this.textureOverride);
+        group.textureBlend = this.textureBlend;
         
         group.initial.copy(this.initial);
         group.current.copy(this.current);

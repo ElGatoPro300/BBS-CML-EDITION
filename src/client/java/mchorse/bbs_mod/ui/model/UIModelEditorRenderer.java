@@ -4,7 +4,6 @@ import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.bobj.BOBJBone;
 import mchorse.bbs_mod.client.BBSRendering;
-import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.cubic.animation.ActionsConfig;
 import mchorse.bbs_mod.cubic.animation.IAnimator;
@@ -49,8 +48,6 @@ import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.colors.Colors;
 
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gl.GlUniform;
-import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.BufferRenderer;
@@ -932,24 +929,8 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
         int w = texture.width;
         int h = texture.height;
 
-        ShaderProgram previewProgram = BBSShaders.getPickerPreviewProgram();
-        GlUniform target = previewProgram.getUniform("Target");
-
-        if (target != null)
-        {
-            target.set(index);
-        }
-
-        GlUniform boneHighlight = previewProgram.getUniform("BoneHighlight");
-
-        if (boneHighlight != null)
-        {
-            Colors.COLOR.set(BBSSettings.modelEditorHoverHighlight());
-            boneHighlight.set(Colors.COLOR.r, Colors.COLOR.g, Colors.COLOR.b, Colors.COLOR.a);
-        }
-
         RenderSystem.enableBlend();
-        context.batcher.texturedBox(BBSShaders::getPickerPreviewProgram, texture.id, Colors.WHITE, this.area.x, this.area.y, this.area.w, this.area.h, 0, h, w, 0, w, h);
+        context.batcher.drawPickerPreview(texture.id, index, BBSSettings.modelEditorHoverHighlight(), this.area.x, this.area.y, this.area.w, this.area.h, w, h);
 
         Pair<Form, String> pair = this.stencil.getPicked();
 

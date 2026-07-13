@@ -8,8 +8,12 @@ import mchorse.bbs_mod.camera.clips.screen.LetterboxClip;
 import mchorse.bbs_mod.camera.clips.screen.LetterboxEffect;
 import mchorse.bbs_mod.camera.clips.screen.ScreenNodeEffect;
 import mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D;
+import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.clips.ClipContext;
 import mchorse.bbs_mod.utils.colors.Colors;
+
+import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.util.math.RotationAxis;
 
 import java.util.List;
 
@@ -114,8 +118,35 @@ public class ScreenEffectRenderer
             return;
         }
 
+        float zoom = effect.zoom <= 0F ? 1F : effect.zoom;
+        boolean transformed = effect.rotation != 0F || zoom != 1F || effect.offsetX != 0F || effect.offsetY != 0F;
+
+        if (transformed)
+        {
+            MatrixStack stack = batcher.getContext().getMatrices();
+
+            stack.push();
+            stack.translate(effect.offsetX * screenW, effect.offsetY * screenH, 0F);
+            stack.translate(screenW / 2F, screenH / 2F, 0F);
+            stack.multiply(RotationAxis.POSITIVE_Z.rotation(MathUtils.toRad(effect.rotation)));
+            stack.scale(zoom, zoom, 1F);
+            stack.translate(-screenW / 2F, -screenH / 2F, 0F);
+            renderLetterboxBars(batcher, effect, screenW, screenH, barH);
+            stack.pop();
+        }
+        else
+        {
+            renderLetterboxBars(batcher, effect, screenW, screenH, barH);
+        }
+    }
+
+    private static void renderLetterboxBars(Batcher2D batcher, LetterboxEffect effect, int screenW, int screenH, int barH)
+    {
         int color = effect.color;
         int smoothH = (int)(screenH * effect.smoothness);
+        float barWidthFactor = effect.width <= 0F ? 1F : effect.width;
+        int barW = Math.max(1, Math.round(screenW * barWidthFactor));
+        int barX = (screenW - barW) / 2;
 
         if (smoothH > 0 && smoothH < barH)
         {
@@ -123,18 +154,18 @@ public class ScreenEffectRenderer
             int transparent = Colors.setA(color, 0F);
 
             /* Top bar: solid part + inner gradient */
-            batcher.box(0, 0, screenW, solidH, color);
-            batcher.gradientVBox(0, solidH, screenW, barH, color, transparent);
+            batcher.box(barX, 0, barX + barW, solidH, color);
+            batcher.gradientVBox(barX, solidH, barX + barW, barH, color, transparent);
 
             /* Bottom bar: inner gradient + solid part */
-            batcher.gradientVBox(0, screenH - barH, screenW, screenH - solidH, transparent, color);
-            batcher.box(0, screenH - solidH, screenW, screenH, color);
+            batcher.gradientVBox(barX, screenH - barH, barX + barW, screenH - solidH, transparent, color);
+            batcher.box(barX, screenH - solidH, barX + barW, screenH, color);
         }
         else
         {
             /* Hard-edge bars */
-            batcher.box(0, 0, screenW, barH, color);
-            batcher.box(0, screenH - barH, screenW, screenH, color);
+            batcher.box(barX, 0, barX + barW, barH, color);
+            batcher.box(barX, screenH - barH, barX + barW, screenH, color);
         }
     }
 }
