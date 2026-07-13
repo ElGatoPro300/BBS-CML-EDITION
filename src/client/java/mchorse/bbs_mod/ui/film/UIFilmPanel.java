@@ -1131,10 +1131,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             return;
         }
 
-        Map<String, float[]> bounds = this.computePanelBounds(root);
+        EditorLayoutNode visibleRoot = this.createVisibleDockedLayoutRoot(root);
+        Map<String, float[]> bounds = this.computePanelBounds(visibleRoot);
         
         List<EditorLayoutNode.TabbedNode> tabbedNodes = new ArrayList<>();
-        EditorLayoutNode.collectTabbedNodes(root, tabbedNodes);
+        EditorLayoutNode.collectTabbedNodes(visibleRoot, tabbedNodes);
         Set<String> multiTabPanels = new HashSet<>();
         for (EditorLayoutNode.TabbedNode tabbed : tabbedNodes)
         {
@@ -1170,12 +1171,12 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             }
 
             this.splitterHandleInfos.clear();
-            EditorLayoutNode.computeSplitterHandles(root, 0F, 0F, 1F, 1F, this.splitterHandleInfos);
+            EditorLayoutNode.computeSplitterHandles(visibleRoot, 0F, 0F, 1F, 1F, this.splitterHandleInfos);
             this.syncSplitterHandleBounds();
             this.applyDragHandleBoundsFromMap(bounds);
         }
         
-        this.setupTabBars(root, bounds, recreateTabs);
+        this.setupTabBars(visibleRoot, bounds, recreateTabs);
         this.syncReplaysPropertiesLayoutMode();
 
         if (resize)
@@ -1321,8 +1322,43 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private Map<String, float[]> computePanelBounds(EditorLayoutNode root)
     {
         Map<String, float[]> bounds = new HashMap<>();
-        root.computeBounds(0F, 0F, 1F, 1F, bounds);
+
+        /* Hidden panels should not reserve docked layout space. We keep the user's saved
+           layout tree intact (so re-enabling restores panels in-place), but compute the
+           current bounds from a temporary tree with hidden docked leaves removed. */
+        EditorLayoutNode boundsRoot = this.createVisibleDockedLayoutRoot(root);
+
+        if (boundsRoot != null)
+        {
+            boundsRoot.computeBounds(0F, 0F, 1F, 1F, bounds);
+        }
+
         return bounds;
+    }
+
+    private EditorLayoutNode createVisibleDockedLayoutRoot(EditorLayoutNode root)
+    {
+        EditorLayoutNode boundsRoot = root;
+
+        for (String panelId : this.hiddenPanels)
+        {
+            if (panelId == null || panelId.isEmpty())
+            {
+                continue;
+            }
+
+            if (this.floatingPanels.contains(panelId))
+            {
+                continue;
+            }
+
+            if (boundsRoot != null && this.hasPanelInLayout(boundsRoot, panelId))
+            {
+                boundsRoot = EditorLayoutNode.copyWithRemovedLeaf(boundsRoot, panelId);
+            }
+        }
+
+        return boundsRoot;
     }
 
     private void setPanelDragHandlesVisible(boolean visible)
@@ -1341,11 +1377,13 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         }
         this.splitterHandles.clear();
 
-        layout.syncFilmSplittersFromRoot(root);
+        EditorLayoutNode visibleRoot = this.createVisibleDockedLayoutRoot(root);
+
+        layout.syncFilmSplittersFromRoot(visibleRoot);
         splitters = layout.getFilmSplitters();
 
         this.splitterHandleInfos.clear();
-        EditorLayoutNode.computeSplitterHandles(root, 0F, 0F, 1F, 1F, this.splitterHandleInfos);
+        EditorLayoutNode.computeSplitterHandles(visibleRoot, 0F, 0F, 1F, 1F, this.splitterHandleInfos);
 
         int handleCount = Math.min(splitters.size(), this.splitterHandleInfos.size());
 
@@ -3737,6 +3775,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private boolean isReplaysPropertiesPanelActive()
     {
         EditorLayoutNode root = BBSSettings.editorLayoutSettings.getFilmLayoutRoot();
+
+        if (this.hiddenPanels.contains(ANCHORED_REPLAYS_PROPERTIES_PANEL_ID))
+        {
+            return false;
+        }
 
         return this.floatingPanels.contains(ANCHORED_REPLAYS_PROPERTIES_PANEL_ID) || this.hasPanelInLayout(root, ANCHORED_REPLAYS_PROPERTIES_PANEL_ID);
     }
