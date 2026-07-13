@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.ui.film.toolbar;
 
 import mchorse.bbs_mod.ui.framework.UIContext;
+import mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D;
 import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
 
 /**
@@ -10,7 +11,7 @@ import mchorse.bbs_mod.ui.framework.elements.utils.FontRenderer;
 public final class TimelineToolbarTooltips
 {
     /**
-     * Default {@link mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D#textCard}
+     * Default {@link Batcher2D#textCard}
      * background/text padding.
      */
     private static final int TEXT_CARD_PADDING = 3;

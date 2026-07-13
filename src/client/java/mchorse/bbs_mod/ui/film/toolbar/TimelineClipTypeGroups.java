@@ -1,11 +1,11 @@
 package mchorse.bbs_mod.ui.film.toolbar;
 
+import mchorse.bbs_mod.camera.clips.ClipFactoryData;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.UIKeys;
-import mchorse.bbs_mod.utils.factory.IFactory;
-import mchorse.bbs_mod.camera.clips.ClipFactoryData;
 import mchorse.bbs_mod.utils.clips.Clip;
+import mchorse.bbs_mod.utils.factory.IFactory;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;

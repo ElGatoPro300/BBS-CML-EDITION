@@ -3,6 +3,8 @@ package mchorse.bbs_mod.ui.film.toolbar;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.ui.UIKeys;
+import mchorse.bbs_mod.ui.film.replays.UIReplaysEditor;
+import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.utils.EventPropagation;
@@ -163,7 +165,7 @@ public class TimelineToolbar extends UIElement
 
     /**
      * Keeps the drag preview overlay above timeline content. Required because
-     * hosts such as {@link mchorse.bbs_mod.ui.film.replays.UIReplaysEditor}
+     * hosts such as {@link UIReplaysEditor}
      * add their keyframe editor after the overlay is first registered.
      */
     public void ensureDockOverlayOnTop()
@@ -190,7 +192,7 @@ public class TimelineToolbar extends UIElement
 
     /**
      * Cancels an in-progress dock drag when Escape is pressed. Used from
-     * {@link mchorse.bbs_mod.ui.framework.UIBaseMenu} so the editor is not
+     * {@link UIBaseMenu} so the editor is not
      * closed while repositioning a toolbar.
      *
      * @return {@code true} when a dock drag was active and was cancelled

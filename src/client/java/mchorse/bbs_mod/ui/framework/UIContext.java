@@ -3,6 +3,7 @@ package mchorse.bbs_mod.ui.framework;
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineInteractionHints;
+import mchorse.bbs_mod.ui.film.toolbar.ToolbarMenu;
 import mchorse.bbs_mod.ui.framework.elements.IFocusedUIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIScrollView;
@@ -60,7 +61,7 @@ public class UIContext implements IViewportStack
     private TimelineInteractionHints.HintCard foregroundInteractionHint;
 
     /**
-     * Screen-space rectangles of open {@link mchorse.bbs_mod.ui.film.toolbar.ToolbarMenu}
+     * Screen-space rectangles of open {@link ToolbarMenu}
      * popups, populated each frame before the main UI tree renders.
      */
     private final List<Area> timelineToolbarMenuAreas = new ArrayList<>();
