@@ -4,19 +4,19 @@ import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.client.render.picker.BBSPickerRenderer;
+import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
+import mchorse.bbs_mod.resources.Link;
+import mchorse.bbs_mod.utils.colors.Color;
 
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gl.GlUniform;
-import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.BuiltBuffer;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexFormats;
-import net.minecraft.client.texture.NativeImage;
-import net.minecraft.client.texture.NativeImageBackedTexture;
 import net.minecraft.client.util.math.MatrixStack;
 
-import com.mojang.blaze3d.systems.RenderSystem;
+import org.joml.Matrix4f;
+
 import com.mojang.blaze3d.vertex.VertexFormat;
 
 public class ModelVAORenderer
@@ -36,6 +36,16 @@ public class ModelVAORenderer
     private static boolean paintPass;
     private static boolean paintOverlayPass;
     private static boolean paintOverlaySynced;
+
+    private static float baseGlowR;
+    private static float baseGlowG;
+    private static float baseGlowB;
+    private static float baseGlowStrength;
+    private static float glowR;
+    private static float glowG;
+    private static float glowB;
+    private static float glowStrength;
+    private static boolean glowingUniformActive;
 
 
     public static void beginPaintPass()
@@ -228,7 +238,7 @@ public class ModelVAORenderer
 
         if (built != null)
         {
-            BBSPickerRenderer.draw(BBSShaders.getPickerModelsProgram(), built, RenderSystem.getModelViewMatrix());
+            BBSPickerRenderer.draw(BBSShaders.getPickerModelsProgram(), built, new Matrix4f(stack.peek().getPositionMatrix()));
         }
     }
 
@@ -240,21 +250,13 @@ public class ModelVAORenderer
 
         return builder.endNullable();
     }
-    private static void setModelViewUniform(MatrixStack stack, ShaderProgram shader)
-    {
-        Matrix4f modelView;
 
-        if (paintOverlayPass)
-        {
-            /* Overlay stack already carries the full terrain + entity transform captured at enqueue;
-             * RenderSystem model-view is identity during overlay draws. */
-            modelView = new Matrix4f(stack.peek().getPositionMatrix());
-        }
-        else
-        {
-            modelView = new Matrix4f(RenderSystem.getModelViewMatrix()).mul(stack.peek().getPositionMatrix());
-        }
-
-        shader.modelViewMat.set(modelView);
-    }
+    /* Paint system stubs (removed in 1.21.11) */
+    public static void clearPaintOverlayQueue() {}
+    public static void flushPaintOverlayQueue() {}
+    public static void clearTextureBlend() {}
+    public static void setTextureBlend(Link texture, float blend) {}
+    public static void beginPaintOverlayPass() {}
+    public static void endPaintOverlayPass() {}
+    public static int getWhiteTextureId() { return -1; }
 }

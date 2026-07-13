@@ -609,9 +609,6 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.homeFilmsSearch.list.background();
 
         this.homeFilmsMosaic = new UIFilmMosaicGrid(
-            this.homeFilmsList,
-            this::getThumbnail,
-            (path) -> path.getLast().equals("..") ? "../" : path.getLast(),
             (id) -> {
             DataPath path = this.homeFilmsMosaic.findPath(id);
             this.handleHomeFilmsSelection(Collections.singletonList(path != null ? path : new DataPath(id)));
@@ -5192,12 +5189,12 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
             if (player != null)
             {
-                Vec3d pos = player.getPos();
-                Vector3d cameraPos = this.camera.position;
-                double distance = cameraPos.distance(pos.x, pos.y, pos.z);
-                int value = MinecraftClient.getInstance().options.getViewDistance().getValue();
+                Vec3d playerPos = player.getEntityPos();
+                Vector3d cameraPosNew = this.camera.position;
+                double dist = cameraPosNew.distance(playerPos.x, playerPos.y, playerPos.z);
+                int viewDist = MinecraftClient.getInstance().options.getViewDistance().getValue();
 
-                if (distance > value * 12)
+                if (dist > viewDist * 12)
                 {
                     this.getContext().notifyError(UIKeys.FILM_TELEPORT_DESCRIPTION);
                 }

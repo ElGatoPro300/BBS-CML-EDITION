@@ -6,6 +6,9 @@ import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.client.render.picker.BBSPickerRenderer;
 import mchorse.bbs_mod.forms.forms.BillboardForm;
+import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
+import mchorse.bbs_mod.forms.renderers.utils.FormColorBlend;
+import mchorse.bbs_mod.forms.renderers.utils.FormTextureBlendRenderer;
 import mchorse.bbs_mod.graphics.texture.AdoptedTexture;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.resources.Link;
@@ -132,11 +135,11 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
                 return;
             }
 
-            this.renderModelPass(format, texture, shader, matrices, overlay, light, overlayColor, transition, camera, invertY, modelRenderer, alphaFactor);
+            this.renderModelPass(format, picking, texture, matrices, overlay, light, overlayColor, transition, camera, invertY, modelRenderer, alphaFactor);
         });
     }
 
-    private void renderModelPass(VertexFormat format, Texture texture, Supplier<ShaderProgram> shader, MatrixStack matrices, int overlay, int light, int overlayColor, float transition, Camera camera, boolean invertY, boolean modelRenderer, float alphaFactor)
+    private void renderModelPass(VertexFormat format, boolean picking, Texture texture, MatrixStack matrices, int overlay, int light, int overlayColor, float transition, Camera camera, boolean invertY, boolean modelRenderer, float alphaFactor)
     {
         float w = texture.width;
         float h = texture.height;
@@ -200,10 +203,10 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
             uvQuad.transform(matrix);
         }
 
-        this.renderQuad(format, texture, picking, matrices, overlay, light, overlayColor, transition, camera, invertY, modelRenderer);
+        this.renderQuad(format, texture, picking, matrices, overlay, light, overlayColor, transition, camera, invertY, modelRenderer, alphaFactor);
     }
 
-    private void renderQuad(VertexFormat format, Texture texture, boolean picking, MatrixStack matrices, int overlay, int light, int overlayColor, float transition, Camera camera, boolean invertY, boolean modelRenderer)
+    private void renderQuad(VertexFormat format, Texture texture, boolean picking, MatrixStack matrices, int overlay, int light, int overlayColor, float transition, Camera camera, boolean invertY, boolean modelRenderer, float alphaFactor)
     {
         BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, format);
         Color color = new Color().set(overlayColor, true);

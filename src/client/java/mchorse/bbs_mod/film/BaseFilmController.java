@@ -1920,8 +1920,9 @@ public abstract class BaseFilmController
          * than the frontmost transparent occluder's depth; equal or higher depths stay
          * fully visible through that layer. */
         List<Map.Entry<Integer, IEntity>> sorted = new ArrayList<>(this.entities.entrySet());
-        Camera camera = context.camera();
-        float transition = context.tickCounter().getTickDelta(false);
+        MinecraftClient mc = MinecraftClient.getInstance();
+        net.minecraft.client.render.Camera camera = mc.gameRenderer.getCamera();
+        float transition = mc.getRenderTickCounter().getTickProgress(false);
 
         sorted.sort(Comparator
             .comparingDouble(this::getEntityRenderDepth)
@@ -2052,9 +2053,10 @@ public abstract class BaseFilmController
         double x = Lerps.lerp(entity.getPrevX(), entity.getX(), transition);
         double y = Lerps.lerp(entity.getPrevY(), entity.getY(), transition);
         double z = Lerps.lerp(entity.getPrevZ(), entity.getZ(), transition);
-        double dx = x - camera.getPos().x;
-        double dy = y - camera.getPos().y;
-        double dz = z - camera.getPos().z;
+        Vec3d cameraPos = camera.getCameraPos();
+        double dx = x - cameraPos.x;
+        double dy = y - cameraPos.y;
+        double dz = z - cameraPos.z;
 
         return dx * dx + dy * dy + dz * dz;
     }
@@ -2090,20 +2092,8 @@ public abstract class BaseFilmController
             FilmControllerContext filmContext = getFilmControllerContext(context, replay, entity);
             FormRenderDepth.Frame renderDepthFrame = new FormRenderDepth.Frame(this.currentRenderDepthOccluders, replay.form.get());
 
-<<<<<<< HEAD
             filmContext.transition = getTransition(entity, MinecraftClient.getInstance().getRenderTickCounter().getTickProgress(false));
-
-            if (renderDepthFade < 1F)
-            {
-                int color = filmContext.color;
-                int alpha = Math.round(((color >>> 24) & 0xFF) * renderDepthFade);
-
-                filmContext.color((alpha << 24) | (color & Colors.RGB));
-            }
-=======
-            filmContext.transition = getTransition(entity, context.tickCounter().getTickDelta(false));
             filmContext.renderDepthFrame(renderDepthFrame);
->>>>>>> 1.21.4
 
             filmContext.stack.push();
 
@@ -2119,11 +2109,8 @@ public abstract class BaseFilmController
             finally
             {
                 filmContext.stack.pop();
-<<<<<<< HEAD
-=======
 
                 return;
->>>>>>> 1.21.4
             }
         }
     }

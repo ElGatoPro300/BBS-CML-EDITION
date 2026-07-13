@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 
-import sun.misc.Unsafe;
+import sun.misc.Unsafe; // NOSONAR - required for FFmpeg pipe access;
 
 public class VideoRecorder
 {

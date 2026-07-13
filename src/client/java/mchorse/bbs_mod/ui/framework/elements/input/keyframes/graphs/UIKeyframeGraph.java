@@ -28,6 +28,8 @@ import mchorse.bbs_mod.utils.keyframes.KeyframeShape;
 import mchorse.bbs_mod.utils.keyframes.factories.IKeyframeFactory;
 
 import net.minecraft.client.render.BufferBuilder;
+import net.minecraft.client.render.BuiltBuffer;
+import net.minecraft.client.render.RenderLayers;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
@@ -587,10 +589,14 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
         Matrix3x2fc matrix = context.batcher.getContext().getMatrices();
         BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
 
-        RenderSystem.enableBlend();
-        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
         UIKeyframeDopeSheet.renderShape(preview, context, builder, matrix, x, y, 3, c);
-        Draw.flush(builder, Draw.getPositionColorLayer());
+
+        BuiltBuffer built = builder.endNullable();
+
+        if (built != null)
+        {
+            RenderLayers.debugFilledBox().draw(built);
+        }
     }
 
     /**

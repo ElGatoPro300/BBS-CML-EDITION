@@ -58,7 +58,7 @@ public class FormRenderDepth
 
     public static List<Occluder> collectOccluders(IntObjectMap<IEntity> entities, net.minecraft.client.render.Camera camera, float transition, Function<Integer, Form> sourceFormProvider)
     {
-        Vec3d pos = camera.getPos();
+        Vec3d pos = camera.getCameraPos();
 
         return collectOccluders(entities, pos.x, pos.y, pos.z, transition, sourceFormProvider);
     }
@@ -195,7 +195,7 @@ public class FormRenderDepth
 
     public static double getEntityDistanceSq(IEntity entity, net.minecraft.client.render.Camera camera, float transition)
     {
-        Vec3d pos = camera.getPos();
+        Vec3d pos = camera.getCameraPos();
 
         return getEntityDistanceSq(entity, pos.x, pos.y, pos.z, transition);
     }

@@ -4,7 +4,7 @@ import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.bobj.BOBJBone;
 import mchorse.bbs_mod.client.BBSRendering;
-
+import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.cubic.animation.ActionsConfig;
 import mchorse.bbs_mod.cubic.animation.Animator;
@@ -14,8 +14,9 @@ import mchorse.bbs_mod.cubic.data.model.Model;
 import mchorse.bbs_mod.cubic.data.model.ModelGroup;
 import mchorse.bbs_mod.cubic.model.ArmorSlot;
 import mchorse.bbs_mod.cubic.model.ArmorType;
+import mchorse.bbs_mod.cubic.model.bobj.BOBJModel;
 import mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer;
-
+import mchorse.bbs_mod.film.FormRenderDepth;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.ITickable;
 import mchorse.bbs_mod.forms.entities.IEntity;
@@ -60,6 +61,7 @@ import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 
 import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.pipeline.RenderPipeline;
 
 import org.lwjgl.opengl.GL11;
 
@@ -69,6 +71,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Supplier;
 
 public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITickable
 {
@@ -433,17 +436,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         Link link = this.form.texture.get();
         Link defaultTexture = link == null ? model.texture : link;
 
-        if (renderContext != null && renderContext.textureOverride != null)
-        {
-            defaultTexture = renderContext.textureOverride;
-        }
-
         TextureBlend textureBlend = this.form.textureBlend;
-
-        if (renderContext != null && renderContext.textureBlendOverride != null)
-        {
-            textureBlend = renderContext.textureBlendOverride;
-        }
 
         this.applyPBRTextureIntensity();
 
@@ -453,7 +446,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             {
                 ModelVAORenderer.clearPaint();
                 ModelVAORenderer.clearGlowing();
-                this.renderModelGeometry(newStack, program, model, light, overlay, stencilMap, color, defaultTexture, textureBlend);
+                this.renderModelGeometry(newStack, model, light, overlay, stencilMap, color, defaultTexture, textureBlend);
             }
             finally
             {
@@ -462,14 +455,12 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                 ModelVAORenderer.clearGlowing();
             }
 
-            gameRenderer.getLightmapTextureManager().disable();
-            gameRenderer.getOverlayTexture().teardownOverlayColor();
-            RenderSystem.disableBlend();
-            RenderSystem.defaultBlendFunc();
+            GlStateManager._disableBlend();
+            GlStateManager._blendFuncSeparate(770, 771, 1, 0);
 
             if (!model.culling)
             {
-                RenderSystem.enableCull();
+                GlStateManager._enableCull();
             }
 
             this.captureMatrices(model);
@@ -578,60 +569,19 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         model.model.applyPose(poseSnapshot);
     }
 
-    private void renderModelGeometryWithEmission(MatrixStack stack, Supplier<ShaderProgram> program, ModelInstance model, int light, int overlay, StencilMap stencilMap, Color color, Link defaultTexture, TextureBlend textureBlend, GlowSettings glow, Color glowColor, Color legacyGlow, Color paint)
+    private void renderModelGeometryWithEmission(MatrixStack stack, ModelInstance model, int light, int overlay, StencilMap stencilMap, Color color, Link defaultTexture, TextureBlend textureBlend, GlowSettings glow, Color glowColor, Color legacyGlow, Color paint)
     {
-        if (!this.usesSplitEmission(program, model, glow, legacyGlow))
-        {
-            this.renderModelGeometry(stack, program, model, light, overlay, stencilMap, color, defaultTexture, textureBlend);
-
-            return;
-        }
-
-        GlowSettings glowOff = glow.copy();
-
-        glowOff.intensity = 0F;
-        ModelVAORenderer.setGlow(glowOff, glowColor.r, glowColor.g, glowColor.b, legacyGlow);
-        this.renderModelGeometry(stack, program, model, light, overlay, stencilMap, color, defaultTexture, textureBlend);
-
-        ModelVAORenderer.setPaint(0F, 0F, 0F, 0F);
-        ModelVAORenderer.setGlow(glow, glowColor.r, glowColor.g, glowColor.b, legacyGlow);
-
-        Color emission = color.copy();
-
-        emission.r = 0F;
-        emission.g = 0F;
-        emission.b = 0F;
-
-        RenderSystem.enableBlend();
-        RenderSystem.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
-
-        try
-        {
-            this.renderModelGeometry(stack, program, model, LightmapTextureManager.MAX_LIGHT_COORDINATE, overlay, stencilMap, emission, defaultTexture, textureBlend);
-        }
-        finally
-        {
-            RenderSystem.defaultBlendFunc();
-            ModelVAORenderer.setPaint(paint.r, paint.g, paint.b, paint.a);
-            ModelVAORenderer.setGlow(glow, glowColor.r, glowColor.g, glowColor.b, legacyGlow);
-        }
+        this.renderModelGeometry(stack, model, light, overlay, stencilMap, color, defaultTexture, textureBlend);
     }
 
-    private boolean usesSplitEmission(Supplier<ShaderProgram> program, ModelInstance model, GlowSettings glow, Color legacyGlow)
-    {
-        /* BBS model shader applies emission in a single pass via the GlowingColor uniform (model.fsh).
-         * Splitting into base + additive passes causes a visible pop when intensity crosses zero. */
-        return false;
-    }
-
-    private void renderModelGeometry(MatrixStack stack, Supplier<ShaderProgram> program, ModelInstance model, int light, int overlay, StencilMap stencilMap, Color color, Link defaultTexture, TextureBlend textureBlend)
+    private void renderModelGeometry(MatrixStack stack, ModelInstance model, int light, int overlay, StencilMap stencilMap, Color color, Link defaultTexture, TextureBlend textureBlend)
     {
         ShapeKeys shapeKeys = this.form.shapeKeys.get();
 
         if (textureBlend == null)
         {
             ModelVAORenderer.clearTextureBlend();
-            model.render(stack, program, color, light, overlay, stencilMap, shapeKeys, defaultTexture);
+            model.render(stack, color, light, overlay, stencilMap, shapeKeys, defaultTexture);
 
             return;
         }
@@ -643,66 +593,51 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         if (blend <= 0F)
         {
             ModelVAORenderer.clearTextureBlend();
-            model.render(stack, program, color, light, overlay, stencilMap, shapeKeys, fromTexture);
+            model.render(stack, color, light, overlay, stencilMap, shapeKeys, fromTexture);
         }
         else if (blend >= 1F)
         {
             ModelVAORenderer.clearTextureBlend();
-            model.render(stack, program, color, light, overlay, stencilMap, shapeKeys, toTexture);
-        }
-        else if (model.isVAORendered() && (program.get() == BBSShaders.getModel() || ModelVAORenderer.isPaintOverlayPass()))
-        {
-            /* Single-pass shader blend: per-pixel alpha crossfade avoids two-pass holes when both skins are opaque.
-             * Iris world pass uses vanilla two-pass below; BBS blend is allowed during paint overlay redraws. */
-            Supplier<ShaderProgram> blendProgram = BBSShaders::getModel;
-
-            ModelVAORenderer.setTextureBlend(toTexture, blend);
-
-            try
-            {
-                RenderSystem.setShader(blendProgram.get());
-                model.render(stack, blendProgram, color, light, overlay, stencilMap, shapeKeys, fromTexture);
-            }
-            finally
-            {
-                ModelVAORenderer.clearTextureBlend();
-            }
+            model.render(stack, color, light, overlay, stencilMap, shapeKeys, toTexture);
         }
         else
         {
-            /* Iris VAO + cube mesh: vanilla shader has no texture-blend uniforms. */
             ModelVAORenderer.clearTextureBlend();
 
             Color colorFrom = color.copy();
 
             colorFrom.a *= 1F - blend;
-            model.render(stack, program, colorFrom, light, overlay, stencilMap, shapeKeys, fromTexture);
+            model.render(stack, colorFrom, light, overlay, stencilMap, shapeKeys, fromTexture);
 
             Color colorTo = color.copy();
 
             colorTo.a *= blend;
-            model.render(stack, program, colorTo, light, overlay, stencilMap, shapeKeys, toTexture);
+            model.render(stack, colorTo, light, overlay, stencilMap, shapeKeys, toTexture);
         }
     }
 
-    private Supplier<ShaderProgram> getModelShader(ModelInstance model)
+    private Supplier<RenderPipeline> getModelShader(ModelInstance model)
     {
-        if (!model.isVAORendered())
-        {
-            return () -> MinecraftClient.getInstance().getShaderLoader().getOrCreateProgram(ShaderProgramKeys.RENDERTYPE_ENTITY_TRANSLUCENT);
-        }
-
         if (this.hasAnyBoneTextureBlend(model))
         {
-            return BBSShaders::getModel;
+            return new Supplier<RenderPipeline>()
+            {
+                @Override
+                public RenderPipeline get()
+                {
+                    return BBSShaders.getModel();
+                }
+            };
         }
 
-        if (BBSRendering.isIrisWorldModelPass())
+        return new Supplier<RenderPipeline>()
         {
-            return () -> MinecraftClient.getInstance().getShaderLoader().getOrCreateProgram(ShaderProgramKeys.RENDERTYPE_ENTITY_TRANSLUCENT);
-        }
-
-        return BBSShaders::getModel;
+            @Override
+            public RenderPipeline get()
+            {
+                return BBSShaders.getModel();
+            }
+        };
     }
 
     private boolean hasAnyBoneTextureBlend(ModelInstance model)
@@ -984,10 +919,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             this.clearPBRTextureIntensity();
         }
 
-        Supplier<ShaderProgram> mainShader = this.getModelShader(model);
-        Supplier<ShaderProgram> shader = this.getShader(context, mainShader, BBSShaders::getPickerModelsProgram);
-
-        this.renderModel(context.entity, shader, context.stack, model, context.light, context.overlay, color, false, context.stencilMap, context.getTransition(), context.renderEquipment, context.world, context);
+        this.renderModel(context.entity, context.stack, model, context.light, context.overlay, color, false, context.stencilMap, context.getTransition(), context.renderEquipment);
     }
 
     @Override
@@ -1014,41 +946,6 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
     {
         List<BodyPart> parts = this.getSortedBodyParts(context);
 
-<<<<<<< HEAD
-        try
-        {
-            for (BodyPart part : this.form.parts.getAllTyped())
-            {
-                Matrix4f matrix = this.bones.get(part.bone.get()).matrix();
-
-                context.stack.push();
-
-                try
-                {
-                    if (matrix != null)
-                    {
-                        MatrixStackUtils.multiply(context.stack, matrix);
-                    }
-                    else
-                    {
-                        context.stack.multiply(RotationAxis.POSITIVE_Y.rotation(MathUtils.PI));
-                    }
-
-                    this.renderBodyPart(part, context);
-                }
-                finally
-                {
-                    context.stack.pop();
-                }
-            }
-
-            this.bones.clear();
-        }
-        finally
-        {
-            context.stack.pop();
-        }
-=======
         if (parts.isEmpty())
         {
             return;
@@ -1162,7 +1059,6 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             this.depth = depth;
             this.part = part;
         }
->>>>>>> 1.21.4
     }
 
     @Override

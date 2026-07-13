@@ -18,6 +18,7 @@ import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.BuiltBuffer;
+import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.RenderLayer;
 import net.minecraft.client.render.RenderSetup;
 import net.minecraft.client.render.Tessellator;
@@ -29,8 +30,6 @@ import org.joml.Vector3f;
 
 import com.mojang.blaze3d.opengl.GlStateManager;
 import com.mojang.blaze3d.vertex.VertexFormat;
-
-import org.lwjgl.opengl.GL11;
 
 import org.lwjgl.opengl.GL11;
 
@@ -256,8 +255,8 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
     {
         if (this.hasGlow(glow, legacyGlow))
         {
-            RenderSystem.enableBlend();
-            RenderSystem.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
+            GlStateManager._enableBlend();
+            GlStateManager._blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ONE, GL11.GL_ZERO);
         }
     }
 
@@ -265,7 +264,7 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
     {
         if (this.hasGlow(glow, legacyGlow))
         {
-            RenderSystem.defaultBlendFunc();
+            GlStateManager._blendFuncSeparate(770, 771, 1, 0);
         }
     }
 

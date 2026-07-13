@@ -2,7 +2,7 @@ package mchorse.bbs_mod.forms.renderers;
 
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSModClient;
-
+import mchorse.bbs_mod.client.ItemUseRenderState;
 import mchorse.bbs_mod.client.MobTextureOverride;
 import mchorse.bbs_mod.client.renderer.MorphMobParticles;
 import mchorse.bbs_mod.film.MobItemStats;
@@ -679,11 +679,11 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
                         mountedLimb.setPrevSpeed(0F);
                         mountedLimb.setSpeed(0F);
                     }
-                    else if (livingEntity.limbAnimator instanceof LimbAnimatorAccessor a && entity.getLimbAnimator() instanceof LimbAnimatorAccessor b)
+                    else if (livingEntity.limbAnimator instanceof LimbAnimatorAccessor limbA && entity.getLimbAnimator() instanceof LimbAnimatorAccessor limbB)
                     {
-                        a.setPrevSpeed(b.getPrevSpeed());
-                        a.setSpeed(b.getSpeed());
-                        a.setPos(b.getPos());
+                        limbA.setPrevSpeed(limbB.getPrevSpeed());
+                        limbA.setSpeed(limbB.getSpeed());
+                        limbA.setPos(limbB.getPos());
                     }
 
                     /* Arm swing */
@@ -702,9 +702,9 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
                     this.prevHandSwing = handSwingProgress;
                 }
 
-                this.entity.prevX = entity.getPrevX();
-                this.entity.prevY = entity.getPrevY();
-                this.entity.prevZ = entity.getPrevZ();
+                this.entity.lastX = entity.getPrevX();
+                this.entity.lastY = entity.getPrevY();
+                this.entity.lastZ = entity.getPrevZ();
                 this.entity.setPos(entity.getX(), entity.getY(), entity.getZ());
                 this.entity.setOnGround(entity.isOnGround());
                 this.entity.setSneaking(entity.isSneaking());
@@ -771,6 +771,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
                 this.prevYawHead = entity.getPrevHeadYaw() - entity.getPrevBodyYaw();
                 this.prevPitch = entity.getPrevPitch();
             }
+            }
             finally
             {
                 MorphMobParticles.endTick();
@@ -787,10 +788,10 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
         livingMorph.setBodyYaw(0F);
         livingMorph.setHeadYaw(relativeHeadYaw);
         livingMorph.setPitch(source.getPitch());
-        livingMorph.prevYaw = 0F;
-        livingMorph.prevBodyYaw = 0F;
-        livingMorph.prevHeadYaw = relativePrevHeadYaw;
-        livingMorph.prevPitch = source.getPrevPitch();
+        livingMorph.lastYaw = 0F;
+        livingMorph.lastBodyYaw = 0F;
+        livingMorph.lastHeadYaw = relativePrevHeadYaw;
+        livingMorph.lastPitch = source.getPrevPitch();
     }
 
     /**
@@ -827,10 +828,13 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 
         try
         {
-            NbtCompound compound = (new StringNbtReader(new StringReader(nbt))).parseCompound();
+            NbtCompound compound = StringNbtReader.readCompound(nbt);
 
             compound.putString("id", this.form.mobID.get());
-            this.entity.readNbt(compound);
+            RegistryWrapper.WrapperLookup registries = MinecraftClient.getInstance().world != null
+                ? MinecraftClient.getInstance().world.getRegistryManager()
+                : BBSMod.getRegistryManager();
+            this.entity.readData(NbtReadView.create(ErrorReporter.EMPTY, registries, compound));
             this.appliedMobNbt = nbt;
             this.entity.noClip = true;
         }

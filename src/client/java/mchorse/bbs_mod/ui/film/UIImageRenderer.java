@@ -11,21 +11,17 @@ import mchorse.bbs_mod.utils.Quad;
 import mchorse.bbs_mod.utils.colors.Color;
 
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.util.math.MatrixStack;
 
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
 
-import com.mojang.blaze3d.platform.GlStateManager;
-import com.mojang.blaze3d.systems.ProjectionType;
-import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.opengl.GlStateManager;
 
 import org.lwjgl.opengl.GL11;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.function.Supplier;
 
 public class UIImageRenderer
 {
@@ -39,20 +35,16 @@ public class UIImageRenderer
             return;
         }
 
-        ShaderProgram program = BBSShaders.getSubtitlesProgram();
-
         net.minecraft.client.gl.Framebuffer fb = MinecraftClient.getInstance().getFramebuffer();
         int width = fb.textureWidth / 2;
         int height = fb.textureHeight / 2;
-        Matrix4f cache = new Matrix4f(RenderSystem.getProjectionMatrix());
-        ProjectionType savedProjType = RenderSystem.getProjectionType();
+        Matrix4f cache = new Matrix4f();
         Matrix4f ortho = new Matrix4f().ortho(0, width, height, 0, -100, 100);
 
-        RenderSystem.setProjectionMatrix(ortho, ProjectionType.ORTHOGRAPHIC);
-        RenderSystem.depthFunc(GL11.GL_ALWAYS);
-        RenderSystem.disableCull();
-        RenderSystem.enableBlend();
-        RenderSystem.blendFuncSeparate(GlStateManager.SrcFactor.SRC_ALPHA, GlStateManager.DstFactor.ONE_MINUS_SRC_ALPHA, GlStateManager.SrcFactor.ONE, GlStateManager.DstFactor.ONE_MINUS_SRC_ALPHA);
+        GlStateManager._depthFunc(GL11.GL_ALWAYS);
+        GlStateManager._disableCull();
+        GlStateManager._enableBlend();
+        GlStateManager._blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
 
         for (ImageOverlay overlay : images)
         {
@@ -96,15 +88,14 @@ public class UIImageRenderer
                 stack.translate(x, y, 0);
 
                 texture.setFilterMipmap(overlay.linear, overlay.mipmap);
-                batcher.texturedBox(program, texture.id, color, drawX, drawY, fw, fh, uv[0], uv[1], uv[2], uv[3], texture.width, texture.height);
+                batcher.texturedBox(texture.id, color, drawX, drawY, fw, fh, uv[0], uv[1], uv[2], uv[3], texture.width, texture.height);
                 texture.setFilterMipmap(false, false);
 
                 stack.pop();
             });
         }
 
-        RenderSystem.setProjectionMatrix(cache, savedProjType);
-        RenderSystem.enableCull();
+        GlStateManager._enableCull();
     }
 
     public static void renderImage(MatrixStack stack, Batcher2D batcher, ImageOverlay overlay)

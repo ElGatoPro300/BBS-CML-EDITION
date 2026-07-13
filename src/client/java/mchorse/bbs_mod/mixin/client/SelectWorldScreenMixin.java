@@ -73,7 +73,7 @@ public abstract class SelectWorldScreenMixin
 
         if (this.bbs$logoButton == null)
         {
-            this.bbs$logoButton = new BBSLogoButtonWidget(x, y, size, size, (button) ->
+            this.bbs$logoButton = new BBSLogoButtonWidget(x, y, size, size, () ->
             {
                 UIDashboard dashboard = BBSModClient.getDashboard();
 

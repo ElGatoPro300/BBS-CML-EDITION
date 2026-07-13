@@ -219,7 +219,6 @@ public class BBSRendering
     {
         if (toggleFramebuffer && framebuffer != null)
         {
-            framebuffer.beginWrite(true);
             reassignFramebuffer(framebuffer);
         }
     }

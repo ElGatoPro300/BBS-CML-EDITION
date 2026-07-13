@@ -149,20 +149,9 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
 
             paintColor.a = paintStrength;
 
-            boolean irisWorldPaintDeferral = BBSRendering.isIrisWorldPaintDeferral();
-            boolean paintActive = paintStrength != 0F;
-            boolean deferPaintToOverlay = irisWorldPaintDeferral && paintActive;
-            Supplier<ShaderProgram> renderShader = shader;
-            boolean bbsModelShader = !BBSRendering.isIrisWorldModelPass();
-            boolean syncedGlow = hasGlow && glow.resolveSync();
-            boolean shaderOverlay = irisWorldPaintDeferral && syncedGlow && !paintActive;
-            boolean deferGlowWithPaint = deferPaintToOverlay && syncedGlow;
-            boolean deferGlowToOverlay = shaderOverlay;
+            FormColorBlend.blendFormGlowBrighten(color, glow, legacyGlow);
 
-            if (!bbsModelShader && !shaderOverlay && !deferPaintToOverlay)
-            {
-                FormColorBlend.blendFormGlowBrighten(color, glow, legacyGlow);
-            }
+            boolean paintActive = paintStrength != 0F;
 
             if (paintActive)
             {

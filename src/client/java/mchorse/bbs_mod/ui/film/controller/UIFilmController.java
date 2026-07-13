@@ -73,7 +73,6 @@ import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.Mouse;
-
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.option.GameOptions;
 import net.minecraft.client.render.BufferBuilder;
@@ -1325,7 +1324,7 @@ public class UIFilmController extends UIElement
 
                 if (this.hoveredEntity != null)
                 {
-                    String label = replay.getName();
+                    String label = "Replay #" + stencilIndex;
 
                     context.batcher.textCard(label, context.mouseX + 12, context.mouseY + 8);
                 }

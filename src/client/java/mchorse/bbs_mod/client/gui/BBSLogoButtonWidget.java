@@ -1,29 +1,44 @@
 package mchorse.bbs_mod.client.gui;
 
+import net.minecraft.client.gl.RenderPipelines;
 import net.minecraft.client.gui.DrawContext;
-import net.minecraft.client.gui.widget.ButtonWidget;
-import net.minecraft.client.render.RenderLayer;
+import net.minecraft.client.gui.screen.narration.NarrationMessageBuilder;
+import net.minecraft.client.gui.widget.PressableWidget;
+import net.minecraft.client.input.AbstractInput;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 
-public class BBSLogoButtonWidget extends ButtonWidget
+public class BBSLogoButtonWidget extends PressableWidget
 {
     private static final Identifier LOGO = Identifier.of("bbs", "textures/gui/bbs_logo.png");
 
-    public BBSLogoButtonWidget(int x, int y, int width, int height, PressAction onPress)
+    private final Runnable action;
+
+    public BBSLogoButtonWidget(int x, int y, int width, int height, Runnable action)
     {
-        super(x, y, width, height, Text.empty(), onPress, DEFAULT_NARRATION_SUPPLIER);
+        super(x, y, width, height, Text.literal(" "));
+
+        this.action = action;
     }
 
     @Override
-    protected void renderWidget(DrawContext context, int mouseX, int mouseY, float delta)
+    public void onPress(AbstractInput input)
     {
-        super.renderWidget(context, mouseX, mouseY, delta);
+        this.action.run();
+    }
 
+    @Override
+    public void appendClickableNarrations(NarrationMessageBuilder builder)
+    {
+    }
+
+    @Override
+    protected void drawIcon(DrawContext context, int x, int y, float alpha)
+    {
         int logoSize = Math.min(this.width, this.height) - 6;
-        int logoX = this.getX() + (this.width - logoSize) / 2;
-        int logoY = this.getY() + (this.height - logoSize) / 2;
+        int logoX = x + (this.width - logoSize) / 2;
+        int logoY = y + (this.height - logoSize) / 2;
 
-        context.drawTexture(id -> RenderLayer.getGui(), LOGO, logoX, logoY, 0f, 0f, logoSize, logoSize, logoSize, logoSize);
+        context.drawTexture(RenderPipelines.GUI_TEXTURED, LOGO, logoX, logoY, 0f, 0f, logoSize, logoSize, logoSize, logoSize);
     }
 }

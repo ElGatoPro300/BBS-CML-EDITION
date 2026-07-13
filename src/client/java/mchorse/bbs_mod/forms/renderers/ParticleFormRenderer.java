@@ -157,7 +157,7 @@ public class ParticleFormRenderer extends FormRenderer<ParticleForm> implements 
                      * game camera Iris uses for the terrain position matrix. */
                     net.minecraft.client.render.Camera gameCamera = MinecraftClient.getInstance().gameRenderer.getCamera();
 
-                    translation.add(gameCamera.getPos().x, gameCamera.getPos().y, gameCamera.getPos().z);
+                    translation.add(gameCamera.getCameraPos().x, gameCamera.getCameraPos().y, gameCamera.getCameraPos().z);
                 }
                 else
                 {

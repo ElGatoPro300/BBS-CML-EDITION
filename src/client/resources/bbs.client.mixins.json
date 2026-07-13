@@ -33,6 +33,7 @@
         "LivingEntityRendererInvoker",
         "ClientPlayerEntityAccessor",
         "LivingEntityItemAccessor",
+        "LivingEntityAccessor",
         "FireworkRocketEntityAccessor",
         "iris.IrisRenderingPipelineAccessor",
         "iris.CustomUniformsBuilderMixin",

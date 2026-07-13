@@ -6,7 +6,7 @@ import mchorse.bbs_mod.cubic.data.model.ModelGroup;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.util.math.MatrixStack;
 
-import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.opengl.GlStateManager;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -43,7 +43,7 @@ public class CubicRenderer
      */
     public static void renderStencilPickPriority(ICubicRenderer renderProcessor, BufferBuilder builder, MatrixStack stack, Model model, Collection<String> boneIds)
     {
-        RenderSystem.disableDepthTest();
+        GlStateManager._disableDepthTest();
 
         try
         {
@@ -59,7 +59,7 @@ public class CubicRenderer
         }
         finally
         {
-            RenderSystem.enableDepthTest();
+            GlStateManager._enableDepthTest();
         }
     }
 

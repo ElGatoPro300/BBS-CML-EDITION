@@ -110,9 +110,9 @@ public class VanillaParticleFormRenderer extends FormRenderer<VanillaParticleFor
                 net.minecraft.client.render.Camera gameCamera = MinecraftClient.getInstance().gameRenderer.getCamera();
 
                 this.pos.set(
-                    translation.x + gameCamera.getPos().x,
-                    translation.y + gameCamera.getPos().y,
-                    translation.z + gameCamera.getPos().z
+                    translation.x + gameCamera.getCameraPos().x,
+                    translation.y + gameCamera.getCameraPos().y,
+                    translation.z + gameCamera.getCameraPos().z
                 );
             }
             else
