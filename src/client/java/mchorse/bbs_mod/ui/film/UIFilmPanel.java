@@ -145,15 +145,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -176,6 +168,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     public UIFilmPreview preview;
     private final List<UIDraggable> splitterHandles = new ArrayList<>();
     private final List<EditorLayoutNode.SplitterHandleInfo> splitterHandleInfos = new ArrayList<>();
+    private final List<EditorLayoutNode.SplitterNode> splitterHandleTargets = new ArrayList<>();
 
     public UIIcon duplicateFilm;
 
@@ -1122,7 +1115,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.resetDynamicLayoutElements(recreateTabs);
         List<EditorLayoutNode.SplitterNode> splitters = layout.getFilmSplitters();
 
-        if (fast && !layout.isLayoutLocked() && resize && splitters.size() == this.splitterHandles.size() && splitters.size() == this.splitterHandleInfos.size())
+        if (fast && !layout.isLayoutLocked() && resize && this.splitterHandles.size() == this.splitterHandleInfos.size() && !this.splitterHandleInfos.isEmpty())
         {
             this.updateEditorFlexBoundsOnly(layout, root);
             this.syncReplaysPropertiesLayoutMode();
@@ -1132,10 +1125,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             return;
         }
 
-        Map<String, float[]> bounds = this.computePanelBounds(root);
+        EditorLayoutNode visibleRoot = this.createVisibleDockedLayoutRoot(root);
+        Map<String, float[]> bounds = this.computePanelBounds(visibleRoot);
         
         List<EditorLayoutNode.TabbedNode> tabbedNodes = new ArrayList<>();
-        EditorLayoutNode.collectTabbedNodes(root, tabbedNodes);
+        EditorLayoutNode.collectTabbedNodes(visibleRoot, tabbedNodes);
         Set<String> multiTabPanels = new HashSet<>();
         for (EditorLayoutNode.TabbedNode tabbed : tabbedNodes)
         {
@@ -1171,12 +1165,13 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             }
 
             this.splitterHandleInfos.clear();
-            EditorLayoutNode.computeSplitterHandles(root, 0F, 0F, 1F, 1F, this.splitterHandleInfos);
+            EditorLayoutNode.computeSplitterHandles(visibleRoot, 0F, 0F, 1F, 1F, this.splitterHandleInfos);
+            this.refreshSplitterHandleTargets(root, visibleRoot);
             this.syncSplitterHandleBounds();
             this.applyDragHandleBoundsFromMap(bounds);
         }
         
-        this.setupTabBars(root, bounds, recreateTabs);
+        this.setupTabBars(root, visibleRoot, bounds, recreateTabs);
         this.syncReplaysPropertiesLayoutMode();
 
         if (resize)
@@ -1322,8 +1317,43 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private Map<String, float[]> computePanelBounds(EditorLayoutNode root)
     {
         Map<String, float[]> bounds = new HashMap<>();
-        root.computeBounds(0F, 0F, 1F, 1F, bounds);
+
+        /* Hidden panels should not reserve docked layout space. We keep the user's saved
+           layout tree intact (so re-enabling restores panels in-place), but compute the
+           current bounds from a temporary tree with hidden docked leaves removed. */
+        EditorLayoutNode boundsRoot = this.createVisibleDockedLayoutRoot(root);
+
+        if (boundsRoot != null)
+        {
+            boundsRoot.computeBounds(0F, 0F, 1F, 1F, bounds);
+        }
+
         return bounds;
+    }
+
+    private EditorLayoutNode createVisibleDockedLayoutRoot(EditorLayoutNode root)
+    {
+        EditorLayoutNode boundsRoot = root;
+
+        for (String panelId : this.hiddenPanels)
+        {
+            if (panelId == null || panelId.isEmpty())
+            {
+                continue;
+            }
+
+            if (this.floatingPanels.contains(panelId))
+            {
+                continue;
+            }
+
+            if (boundsRoot != null && this.hasPanelInLayout(boundsRoot, panelId))
+            {
+                boundsRoot = EditorLayoutNode.copyWithRemovedLeaf(boundsRoot, panelId);
+            }
+        }
+
+        return boundsRoot;
     }
 
     private void setPanelDragHandlesVisible(boolean visible)
@@ -1342,20 +1372,24 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         }
         this.splitterHandles.clear();
 
+        EditorLayoutNode visibleRoot = this.createVisibleDockedLayoutRoot(root);
+
+        /* Keep filmSplitters aligned with the saved layout tree, not the temporary
+           visible tree used for bounds/handle placement. */
         layout.syncFilmSplittersFromRoot(root);
-        splitters = layout.getFilmSplitters();
 
         this.splitterHandleInfos.clear();
-        EditorLayoutNode.computeSplitterHandles(root, 0F, 0F, 1F, 1F, this.splitterHandleInfos);
+        EditorLayoutNode.computeSplitterHandles(visibleRoot, 0F, 0F, 1F, 1F, this.splitterHandleInfos);
+        this.refreshSplitterHandleTargets(root, visibleRoot);
 
-        int handleCount = Math.min(splitters.size(), this.splitterHandleInfos.size());
+        int handleCount = this.splitterHandleInfos.size();
 
         for (int i = 0; i < handleCount; i++)
         {
             final int index = i;
             UIDraggable handle = new UIDraggable((context) ->
             {
-                if (index >= layout.getFilmSplitters().size() || index >= this.splitterHandleInfos.size())
+                if (index >= this.splitterHandleInfos.size())
                 {
                     return;
                 }
@@ -1364,7 +1398,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
                 if (ratio >= 0F)
                 {
-                    layout.setFilmSplitterRatio(index, ratio);
+                    this.setSplitterRatioForHandle(index, ratio);
                     this.setupEditorFlex(true, true, false);
                 }
             });
@@ -1376,6 +1410,134 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
             this.editor.add(handle);
             handle.resize();
+        }
+    }
+
+    private Set<String> getDockedHiddenPanelIds()
+    {
+        Set<String> excluded = new HashSet<>();
+
+        for (String panelId : this.hiddenPanels)
+        {
+            if (!this.floatingPanels.contains(panelId))
+            {
+                excluded.add(panelId);
+            }
+        }
+
+        return excluded;
+    }
+
+    private void refreshSplitterHandleTargets(EditorLayoutNode layoutRoot, EditorLayoutNode visibleRoot)
+    {
+        this.splitterHandleTargets.clear();
+
+        if (layoutRoot == null || visibleRoot == null)
+        {
+            return;
+        }
+
+        Set<String> excludedPanelIds = this.getDockedHiddenPanelIds();
+        List<EditorLayoutNode.SplitterNode> visibleSplitters = new ArrayList<>();
+        EditorLayoutNode.collectSplitters(visibleRoot, visibleSplitters);
+
+        for (EditorLayoutNode.SplitterNode visibleSplitter : visibleSplitters)
+        {
+            this.splitterHandleTargets.add(this.resolveLayoutSplitter(layoutRoot, visibleSplitter, excludedPanelIds));
+        }
+    }
+
+    private EditorLayoutNode.SplitterNode resolveLayoutSplitter(EditorLayoutNode layoutRoot, EditorLayoutNode.SplitterNode visibleSplitter, Set<String> excludedPanelIds)
+    {
+        if (layoutRoot == null || visibleSplitter == null)
+        {
+            return null;
+        }
+
+        String visibleSignature = this.getSplitterSignature(visibleSplitter, Collections.emptySet());
+        List<EditorLayoutNode.SplitterNode> layoutSplitters = new ArrayList<>();
+        EditorLayoutNode.collectSplitters(layoutRoot, layoutSplitters);
+
+        for (EditorLayoutNode.SplitterNode candidate : layoutSplitters)
+        {
+            if (this.getSplitterSignature(candidate, excludedPanelIds).equals(visibleSignature))
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    private String getSplitterSignature(EditorLayoutNode.SplitterNode splitter, Set<String> excludedPanelIds)
+    {
+        TreeSet<String> first = new TreeSet<>();
+        TreeSet<String> second = new TreeSet<>();
+
+        this.collectPanelIdsInSubtree(splitter.getFirst(), first, excludedPanelIds);
+        this.collectPanelIdsInSubtree(splitter.getSecond(), second, excludedPanelIds);
+
+        return splitter.isHorizontal() + "|" + String.join(",", first) + "|" + String.join(",", second);
+    }
+
+    private void collectPanelIdsInSubtree(EditorLayoutNode node, Set<String> out, Set<String> excludedPanelIds)
+    {
+        if (node instanceof EditorLayoutNode.PanelNode)
+        {
+            String panelId = ((EditorLayoutNode.PanelNode) node).getPanelId();
+
+            if (!excludedPanelIds.contains(panelId))
+            {
+                out.add(panelId);
+            }
+        }
+        else if (node instanceof EditorLayoutNode.SplitterNode)
+        {
+            EditorLayoutNode.SplitterNode splitter = (EditorLayoutNode.SplitterNode) node;
+
+            this.collectPanelIdsInSubtree(splitter.getFirst(), out, excludedPanelIds);
+            this.collectPanelIdsInSubtree(splitter.getSecond(), out, excludedPanelIds);
+        }
+        else if (node instanceof EditorLayoutNode.TabbedNode)
+        {
+            EditorLayoutNode.TabbedNode tabbed = (EditorLayoutNode.TabbedNode) node;
+
+            for (EditorLayoutNode tab : tabbed.tabs)
+            {
+                this.collectPanelIdsInSubtree(tab, out, excludedPanelIds);
+            }
+        }
+    }
+
+    private void setSplitterRatioForHandle(int handleIndex, float ratio)
+    {
+        if (handleIndex < 0 || handleIndex >= this.splitterHandleTargets.size())
+        {
+            return;
+        }
+
+        EditorLayoutNode.SplitterNode target = this.splitterHandleTargets.get(handleIndex);
+
+        if (target == null)
+        {
+            return;
+        }
+
+        ValueEditorLayout layout = BBSSettings.editorLayoutSettings;
+        EditorLayoutNode root = layout.getFilmLayoutRoot();
+
+        layout.syncFilmSplittersFromRoot(root);
+
+        List<EditorLayoutNode.SplitterNode> splitters = layout.getFilmSplitters();
+        int layoutIndex = splitters.indexOf(target);
+
+        if (layoutIndex >= 0)
+        {
+            layout.setFilmSplitterRatio(layoutIndex, ratio);
+        }
+        else
+        {
+            BaseValue.edit(layout, (v) -> target.setRatio(ratio));
         }
     }
 
@@ -1556,10 +1718,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     private void updateEditorFlexBoundsOnly(ValueEditorLayout layout, EditorLayoutNode root)
     {
+        EditorLayoutNode visibleRoot = this.createVisibleDockedLayoutRoot(root);
         Map<String, float[]> bounds = this.computePanelBounds(root);
 
         List<EditorLayoutNode.TabbedNode> tabbedNodes = new ArrayList<>();
-        EditorLayoutNode.collectTabbedNodes(root, tabbedNodes);
+        EditorLayoutNode.collectTabbedNodes(visibleRoot, tabbedNodes);
         Set<String> multiTabPanels = new HashSet<>();
         for (EditorLayoutNode.TabbedNode tabbed : tabbedNodes)
         {
@@ -1577,11 +1740,12 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         this.applyPanelBoundsFromMap(bounds, multiTabPanels);
         this.splitterHandleInfos.clear();
-        EditorLayoutNode.computeSplitterHandles(root, 0F, 0F, 1F, 1F, this.splitterHandleInfos);
+        EditorLayoutNode.computeSplitterHandles(visibleRoot, 0F, 0F, 1F, 1F, this.splitterHandleInfos);
+        this.refreshSplitterHandleTargets(root, visibleRoot);
         this.syncSplitterHandleBounds();
         this.applyDragHandleBoundsFromMap(bounds);
         
-        this.setupTabBars(root, bounds, false);
+        this.setupTabBars(root, visibleRoot, bounds, false);
 
         /* Re-stack the editor from back to front. Child order is both the draw order and the
            (reversed) hit order, so this is what guarantees floating windows always sit on top of
@@ -2582,6 +2746,14 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         {
             return false;
         }
+
+        /* Hidden panels are still present in the layout tree (or may remain floating),
+           but must be treated as not visible for the Window menu state. */
+        if (this.hiddenPanels.contains(panelId))
+        {
+            return false;
+        }
+
         return this.floatingPanels.contains(panelId) || this.hasPanelInLayout(BBSSettings.editorLayoutSettings.getFilmLayoutRoot(), panelId);
     }
 
@@ -2605,17 +2777,15 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         {
             ValueEditorLayout layout = BBSSettings.editorLayoutSettings;
             EditorLayoutNode root = layout.getFilmLayoutRoot();
-            boolean docked = !this.floatingPanels.contains(panelId) && this.hasPanelInLayout(root, panelId);
-            boolean canRemoveFromDock = docked && this.getDockedVisiblePanelCount() > 1;
+            /* Don't remove the panel from the layout tree when hiding through Window menu.
+               Removing leaves can collapse splitters/tab groups and unintentionally reshuffle
+               unrelated panels. Keep the docked layout stable and only toggle visibility via
+               hiddenPanels; re-enabling restores it in-place. */
 
             this.hiddenPanels.add(panelId);
             this.collapsedDockedPanels.remove(panelId);
             this.collapsedFloatingPanels.remove(panelId);
 
-            if (canRemoveFromDock)
-            {
-                layout.setFilmLayoutRoot(EditorLayoutNode.copyWithRemovedLeaf(root, panelId));
-            }
         }
 
         this.setupEditorFlex(true);
@@ -3732,6 +3902,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private boolean isReplaysPropertiesPanelActive()
     {
         EditorLayoutNode root = BBSSettings.editorLayoutSettings.getFilmLayoutRoot();
+
+        if (this.hiddenPanels.contains(ANCHORED_REPLAYS_PROPERTIES_PANEL_ID))
+        {
+            return false;
+        }
 
         return this.floatingPanels.contains(ANCHORED_REPLAYS_PROPERTIES_PANEL_ID) || this.hasPanelInLayout(root, ANCHORED_REPLAYS_PROPERTIES_PANEL_ID);
     }
@@ -6563,43 +6738,143 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
     private final List<UITabBar> tabBars = new ArrayList<>();
 
-    private void setupTabBars(EditorLayoutNode root, Map<String, float[]> bounds, boolean recreate)
+    private EditorLayoutNode.TabbedNode resolveLayoutTabbedNode(EditorLayoutNode layoutRoot, EditorLayoutNode.TabbedNode visibleTabbed)
+    {
+        if (layoutRoot == null || visibleTabbed == null)
+        {
+            return null;
+        }
+
+        for (EditorLayoutNode tab : visibleTabbed.tabs)
+        {
+            if (tab instanceof EditorLayoutNode.PanelNode)
+            {
+                String panelId = ((EditorLayoutNode.PanelNode) tab).getPanelId();
+                EditorLayoutNode.TabbedNode real = this.findTabbedNodeContaining(layoutRoot, panelId);
+
+                if (real != null)
+                {
+                    return real;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private void promoteActiveTabIfHidden(EditorLayoutNode.TabbedNode tabbed)
+    {
+        if (tabbed == null || tabbed.tabs.isEmpty())
+        {
+            return;
+        }
+
+        int safeActiveTab = Math.max(0, Math.min(tabbed.tabs.size() - 1, tabbed.activeTab));
+        EditorLayoutNode activeNode = tabbed.tabs.get(safeActiveTab);
+
+        /* If the active tab was hidden (via Window menu), promote the first non-hidden
+           tab to active so the tab group doesn't render empty (and so we still have
+           stable bounds to place the tab strip). */
+        if (activeNode instanceof EditorLayoutNode.PanelNode)
+        {
+            String activeId = ((EditorLayoutNode.PanelNode) activeNode).getPanelId();
+
+            if (this.hiddenPanels.contains(activeId))
+            {
+                for (int t = 0; t < tabbed.tabs.size(); t++)
+                {
+                    EditorLayoutNode candidate = tabbed.tabs.get(t);
+
+                    if (candidate instanceof EditorLayoutNode.PanelNode)
+                    {
+                        String id = ((EditorLayoutNode.PanelNode) candidate).getPanelId();
+
+                        if (!this.hiddenPanels.contains(id))
+                        {
+                            tabbed.activeTab = t;
+
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private UITabBar findTabBarForGroup(String anchorPanelId)
+    {
+        if (anchorPanelId == null)
+        {
+            return null;
+        }
+
+        for (UITabBar bar : this.tabBars)
+        {
+            if (bar.containsPanel(anchorPanelId))
+            {
+                return bar;
+            }
+        }
+
+        return null;
+    }
+
+    private void setupTabBars(EditorLayoutNode layoutRoot, EditorLayoutNode visibleRoot, Map<String, float[]> bounds, boolean recreate)
     {
         List<EditorLayoutNode.TabbedNode> tabbedNodes = new ArrayList<>();
-        EditorLayoutNode.collectTabbedNodes(root, tabbedNodes);
-        
-        int tabBarIndex = 0;
+        EditorLayoutNode.collectTabbedNodes(visibleRoot, tabbedNodes);
+
+        Set<UITabBar> usedTabBars = new HashSet<>();
+
         for (int i = 0; i < tabbedNodes.size(); i++)
         {
-            EditorLayoutNode.TabbedNode tabbed = tabbedNodes.get(i);
-            if (tabbed.tabs.size() < 2) continue;
-            
+            EditorLayoutNode.TabbedNode visibleTabbed = tabbedNodes.get(i);
+
+            if (visibleTabbed.tabs.size() < 2)
+            {
+                continue;
+            }
+
+            EditorLayoutNode.TabbedNode tabbed = this.resolveLayoutTabbedNode(layoutRoot, visibleTabbed);
+
+            if (tabbed == null)
+            {
+                continue;
+            }
+
+            this.promoteActiveTabIfHidden(tabbed);
+
             int safeActiveTab = Math.max(0, Math.min(tabbed.tabs.size() - 1, tabbed.activeTab));
             EditorLayoutNode activeNode = tabbed.tabs.get(safeActiveTab);
-            
+
             if (activeNode instanceof EditorLayoutNode.PanelNode)
             {
                 String activeId = ((EditorLayoutNode.PanelNode) activeNode).getPanelId();
                 float[] b = bounds.get(activeId);
+
                 if (b != null)
                 {
                     UITabBar tabBar;
+
                     if (recreate)
                     {
                         tabBar = new UITabBar(this, tabbed);
                         this.tabBars.add(tabBar);
                         this.editor.add(tabBar);
                     }
-                    else if (tabBarIndex < this.tabBars.size())
-                    {
-                        tabBar = this.tabBars.get(tabBarIndex);
-                    }
                     else
                     {
-                        continue;
+                        tabBar = this.findTabBarForGroup(activeId);
+
+                        if (tabBar == null)
+                        {
+                            continue;
+                        }
+
+                        tabBar.rebindTabbedNode(tabbed);
                     }
-                    
-                    tabBarIndex++;
+
+                    usedTabBars.add(tabBar);
 
                     boolean locked = BBSSettings.editorLayoutSettings.isLayoutLocked();
                     /* Tab strips stay visible when the layout is locked so docked panels can still
@@ -6615,17 +6890,23 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                         {
                             String panelId = ((EditorLayoutNode.PanelNode) tab).getPanelId();
                             UIElement el = this.panelById.get(panelId);
+
                             if (el != null)
                             {
                                 el.relative(this.editor).x(b[0], 3).y(b[1], headerInset + 3).w(b[2], -6).h(b[3], -headerInset - 6);
                                 boolean isActive = tab == activeNode && !this.hiddenPanels.contains(panelId);
                                 el.setVisible(isActive);
-                                
+
                                 UIDraggable handle = this.dragHandlesById.get(panelId);
-                                if (handle != null) handle.setVisible(isActive && !BBSSettings.editorLayoutSettings.isLayoutLocked() && !this.usesPanelInternalDragHandle(panelId));
+
+                                if (handle != null)
+                                {
+                                    handle.setVisible(isActive && !BBSSettings.editorLayoutSettings.isLayoutLocked() && !this.usesPanelInternalDragHandle(panelId));
+                                }
                             }
-                            
+
                             UIDraggable handle = this.dragHandlesById.get(panelId);
+
                             if (handle != null)
                             {
                                 if (locked)
@@ -6636,6 +6917,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                                 {
                                     boolean visibleHandle = tab == activeNode && !this.hiddenPanels.contains(panelId) && !this.usesPanelInternalDragHandle(panelId);
                                     handle.setVisible(visibleHandle);
+
                                     if (visibleHandle)
                                     {
                                         handle.relative(this.editor).x(b[0], 3).y(b[1], 3).w(b[2], -6).h(0F, PANEL_HEADER_HEIGHT);
@@ -6645,6 +6927,14 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                         }
                     }
                 }
+            }
+        }
+
+        for (UITabBar bar : this.tabBars)
+        {
+            if (!usedTabBars.contains(bar))
+            {
+                bar.setVisible(false);
             }
         }
     }
@@ -6796,6 +7086,18 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                 if (child instanceof UITab)
                 {
                     UITab tab = (UITab) child;
+
+                    /* Hidden panels should not appear as tabs. Otherwise users can still click
+                       them back into view while the Window menu says they're hidden, and their
+                       presence affects scroll/width calculations. */
+                    boolean hidden = this.panel.hiddenPanels.contains(tab.panelId);
+                    tab.setVisible(!hidden);
+
+                    if (hidden)
+                    {
+                        continue;
+                    }
+
                     tab.area.x = x;
                     tab.area.y = this.area.y;
                     tab.area.h = this.area.h;
@@ -6849,6 +7151,31 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         public EditorLayoutNode.TabbedNode getTabbedNode()
         {
             return this.tabbedNode;
+        }
+
+        public void rebindTabbedNode(EditorLayoutNode.TabbedNode tabbedNode)
+        {
+            this.tabbedNode = tabbedNode;
+
+            for (IUIElement child : this.getChildren())
+            {
+                if (child instanceof UITab)
+                {
+                    UITab tab = (UITab) child;
+
+                    for (int i = 0; i < tabbedNode.tabs.size(); i++)
+                    {
+                        EditorLayoutNode layoutTab = tabbedNode.tabs.get(i);
+
+                        if (layoutTab instanceof EditorLayoutNode.PanelNode && ((EditorLayoutNode.PanelNode) layoutTab).getPanelId().equals(tab.panelId))
+                        {
+                            tab.rebind(tabbedNode, i);
+
+                            break;
+                        }
+                    }
+                }
+            }
         }
 
         public UIElement getActivePanel()
@@ -6927,6 +7254,12 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         public String getPanelId()
         {
             return this.panelId;
+        }
+
+        public void rebind(EditorLayoutNode.TabbedNode tabbedNode, int index)
+        {
+            this.tabbedNode = tabbedNode;
+            this.index = index;
         }
 
         private UITabBar getTabBar()
