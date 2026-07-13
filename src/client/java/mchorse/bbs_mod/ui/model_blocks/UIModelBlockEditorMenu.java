@@ -415,12 +415,6 @@ public class UIModelBlockEditorMenu extends UIBaseMenu
     }
 
     @Override
-    public boolean needsWorldRender()
-    {
-        return true;
-    }
-
-    @Override
     public void onClose(UIBaseMenu nextMenu)
     {
         super.onClose(nextMenu);

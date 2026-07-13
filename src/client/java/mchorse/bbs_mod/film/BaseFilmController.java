@@ -23,7 +23,6 @@ import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
 import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.forms.forms.utils.TextureBlend;
 import mchorse.bbs_mod.forms.values.ValueIllusion;
-import mchorse.bbs_mod.settings.values.core.ValueTransform;
 import mchorse.bbs_mod.forms.renderers.FormRenderType;
 import mchorse.bbs_mod.forms.renderers.FormRenderingContext;
 import mchorse.bbs_mod.forms.renderers.ModelFormRenderer;
@@ -34,6 +33,7 @@ import mchorse.bbs_mod.mixin.client.ClientPlayerEntityAccessor;
 import mchorse.bbs_mod.morphing.Morph;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
+import mchorse.bbs_mod.settings.values.core.ValueTransform;
 import mchorse.bbs_mod.settings.values.core.ValueColor;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
@@ -84,7 +84,6 @@ import org.joml.Matrix4f;
 import org.joml.Vector2f;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
-import org.joml.Vector4f;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 
@@ -108,9 +107,6 @@ public abstract class BaseFilmController
 
     protected IntObjectMap<IEntity> entities = new IntObjectHashMap<>();
     protected Map<String, Replay> replayMap = new HashMap<>();
-
-    /** Tracks {@link FormUtils#getEntitySyncToken} per entity index for incremental rebuilds. */
-    private final IntObjectMap<Long> entitySyncTokens = new IntObjectHashMap<>();
 
     public boolean paused;
     public int exception = -1;
@@ -828,18 +824,57 @@ public abstract class BaseFilmController
      */
     private static void applyLookAt(FilmControllerContext context, Form form, Vector3d position, Matrix4f target)
     {
-        Vector3d offset = computeLookAtTranslateOffset(context, context.entity, form, context.transition);
+        LookAt lookAt = form.lookAt.get();
 
-        if (offset == null)
+        if (lookAt == null || !lookAt.translate || context.film == null)
         {
             return;
         }
 
-        position.add(offset.x, offset.y, offset.z);
+        LookAtBone strongest = null;
+
+        for (LookAtBone bone : lookAt.bones.values())
+        {
+            if (bone.isActive() && (strongest == null || bone.blend > strongest.blend))
+            {
+                strongest = bone;
+            }
+        }
+
+        if (strongest == null)
+        {
+            return;
+        }
+
+        IEntity targetEntity = context.entities.get(strongest.replay);
+
+        if (targetEntity == null || targetEntity == context.entity)
+        {
+            return;
+        }
+
+        Replay targetReplay = CollectionUtils.getSafe(context.film.replays.getList(), strongest.replay);
+
+        if (targetReplay == null)
+        {
+            return;
+        }
+
+        float transition = context.transition;
+        float blend = MathUtils.clamp(strongest.blend, 0F, 1F);
+        float restorePropertyTick = getLookAtRestorePropertyTick(context, targetReplay, transition);
+
+        Vector3d pointNow = getLookAtTargetPoint(targetEntity, strongest.attachment, transition);
+        Vector3d pointBase = getLookAtTargetPointAtPropertyTick(targetReplay, targetEntity, strongest.attachment, 0F, transition, restorePropertyTick);
+        double dx = (pointNow.x - pointBase.x) * blend;
+        double dy = (pointNow.y - pointBase.y) * blend;
+        double dz = (pointNow.z - pointBase.z) * blend;
+
+        position.add(dx, dy, dz);
 
         Vector3f translation = target.getTranslation(new Vector3f());
 
-        target.setTranslation(translation.x + (float) offset.x, translation.y + (float) offset.y, translation.z + (float) offset.z);
+        target.setTranslation(translation.x + (float) dx, translation.y + (float) dy, translation.z + (float) dz);
     }
 
     /**
@@ -847,11 +882,6 @@ public abstract class BaseFilmController
      * entity fully face the look at target, or null when the direction is degenerate.
      */
     private static Vector2f getLookAtRotation(IEntity entity, IEntity targetEntity, String attachment, Vector3d position, float transition)
-    {
-        return getLookAtRotation(entity, targetEntity, attachment, position, transition, Float.NaN);
-    }
-
-    private static Vector2f getLookAtRotation(IEntity entity, IEntity targetEntity, String attachment, Vector3d position, float transition, float currentYawOverride)
     {
         Vector3d targetPoint = getLookAtTargetPoint(targetEntity, attachment, transition);
         double dirX = targetPoint.x - position.x;
@@ -867,9 +897,7 @@ public abstract class BaseFilmController
         /* Entities face (-sin(yaw), 0, cos(yaw)), and the matrix contains rotateY(-bodyYaw),
          * so the desired matrix rotation that faces the target is atan2(dirX, dirZ) */
         float desiredYaw = (float) Math.atan2(dirX, dirZ);
-        float currentYaw = Float.isNaN(currentYawOverride)
-            ? MathUtils.toRad(-Lerps.lerp(entity.getPrevBodyYaw(), entity.getBodyYaw(), transition))
-            : currentYawOverride;
+        float currentYaw = MathUtils.toRad(-Lerps.lerp(entity.getPrevBodyYaw(), entity.getBodyYaw(), transition));
         float deltaYaw = desiredYaw - currentYaw;
 
         /* Wrap into -PI..PI so the blended rotation takes the shortest path */
@@ -1034,376 +1062,6 @@ public abstract class BaseFilmController
     }
 
     /**
-     * Computes the look at translate follow offset for the given form. When the
-     * translate option is enabled, returns the displacement of the strongest locked
-     * bone's target scaled by that bone's lock strength, or null when not applicable.
-     */
-    public static Vector3d computeLookAtTranslateOffset(FilmControllerContext context, IEntity sourceEntity, Form form, float transition)
-    {
-        LookAt lookAt = form.lookAt.get();
-
-        if (lookAt == null || !lookAt.translate || context.film == null || context.entities == null)
-        {
-            return null;
-        }
-
-        LookAtBone strongest = null;
-
-        for (LookAtBone bone : lookAt.bones.values())
-        {
-            if (bone.isActive() && (strongest == null || bone.blend > strongest.blend))
-            {
-                strongest = bone;
-            }
-        }
-
-        if (strongest == null)
-        {
-            return null;
-        }
-
-        IEntity targetEntity = context.entities.get(strongest.replay);
-
-        if (targetEntity == null || targetEntity == sourceEntity)
-        {
-            return null;
-        }
-
-        Replay targetReplay = CollectionUtils.getSafe(context.film.replays.getList(), strongest.replay);
-
-        if (targetReplay == null)
-        {
-            return null;
-        }
-
-        float blend = MathUtils.clamp(strongest.blend, 0F, 1F);
-        float restorePropertyTick = getLookAtRestorePropertyTick(context, targetReplay, transition);
-
-        Vector3d pointNow = getLookAtTargetPoint(targetEntity, strongest.attachment, transition);
-        Vector3d pointBase = getLookAtTargetPointAtPropertyTick(targetReplay, targetEntity, strongest.attachment, 0F, transition, restorePropertyTick);
-        double dx = (pointNow.x - pointBase.x) * blend;
-        double dy = (pointNow.y - pointBase.y) * blend;
-        double dz = (pointNow.z - pointBase.z) * blend;
-
-        return new Vector3d(dx, dy, dz);
-    }
-
-    /**
-     * Builds the world-space matrix for a form attachment point: entity transform,
-     * optional anchor chain, and an optional bone from collectMatrices.
-     */
-    private static Matrix4f computeLookAtBaseMatrix(FilmControllerContext context, IEntity entity, Form form, String boneAttachment, float transition)
-    {
-        Matrix4f defaultMatrix = getMatrixForRenderWithRotation(entity, 0D, 0D, 0D, transition);
-        Matrix4f matrix = new Matrix4f(defaultMatrix);
-
-        if (context != null && context.entities != null && form != null)
-        {
-            Anchor anchor = form.anchor.get();
-
-            if (anchor != null)
-            {
-                Pair<Matrix4f, Float> pair = getTotalMatrix(context.entities, anchor, defaultMatrix, 0D, 0D, 0D, transition, 0);
-
-                if (pair.a != null)
-                {
-                    matrix.set(pair.a);
-                }
-            }
-        }
-
-        if (form != null && boneAttachment != null && !boneAttachment.isEmpty())
-        {
-            if (FormUtilsClient.getRenderer(form) instanceof ModelFormRenderer modelRenderer)
-            {
-                MatrixCache map = modelRenderer.collectMatrices(entity, transition);
-                MatrixCacheEntry entry = map.get(boneAttachment.replace("#origin", ""));
-
-                if (entry != null)
-                {
-                    Matrix4f visual = entry.origin() != null ? entry.origin() : entry.matrix();
-
-                    matrix.mul(visual);
-                }
-            }
-        }
-
-        return matrix;
-    }
-
-    /**
-     * World position for a look at source point on the given form. Uses the same
-     * coordinate space as {@link #getLookAtTargetPoint}, including anchor, bone,
-     * and any extra local transform such as a body part offset.
-     */
-    public static Vector3d computeLookAtWorldPoint(FilmControllerContext context, IEntity entity, Form form, String boneAttachment, Transform extraTransform, Vector3d translateOffset, float transition)
-    {
-        Matrix4f matrix = computeLookAtBaseMatrix(context, entity, form, boneAttachment, transition);
-
-        if (extraTransform != null && !extraTransform.isDefault())
-        {
-            matrix.mul(extraTransform.createMatrix());
-        }
-
-        if (translateOffset != null)
-        {
-            matrix.translate((float) translateOffset.x, (float) translateOffset.y, (float) translateOffset.z);
-        }
-
-        Vector3f translation = matrix.getTranslation(new Vector3f());
-
-        return new Vector3d(translation);
-    }
-
-    /**
-     * World-space yaw of the given attachment frame, used as the current facing
-     * direction for body part look at instead of the root entity body yaw.
-     */
-    public static float getLookAtAttachmentYaw(FilmControllerContext context, IEntity entity, Form form, String boneAttachment, Transform extraTransform, float transition)
-    {
-        Matrix4f matrix = computeLookAtBaseMatrix(context, entity, form, boneAttachment, transition);
-
-        if (extraTransform != null && !extraTransform.isDefault())
-        {
-            matrix.mul(extraTransform.createMatrix());
-        }
-
-        Vector4f forward = new Vector4f(0F, 0F, 1F, 0F);
-
-        matrix.transform(forward);
-
-        float horizontal = (float) Math.sqrt(forward.x * forward.x + forward.z * forward.z);
-
-        if (horizontal < 0.0001F)
-        {
-            return Float.NaN;
-        }
-
-        return (float) Math.atan2(forward.x, forward.z);
-    }
-
-    /**
-     * Builds look at bone rotations for a body part child. Each locked bone uses its
-     * own world-space position on the child model and the same yaw/pitch math as
-     * root look at, with current facing taken from the bone frame (-Z model forward).
-     */
-    public static Pose computeBodyPartLookAtPose(FilmControllerContext context, IntObjectMap<IEntity> entities, IEntity sourceEntity, Form parentForm, String attachmentBone, Transform partTransform, Form childForm, Vector3d translateOffset, float transition)
-    {
-        LookAt lookAt = childForm.lookAt.get();
-
-        if (lookAt == null || !lookAt.isActive() || entities == null || sourceEntity == null)
-        {
-            return null;
-        }
-
-        Pose pose = new Pose();
-
-        for (Map.Entry<String, LookAtBone> entry : lookAt.bones.entrySet())
-        {
-            LookAtBone bone = entry.getValue();
-
-            if (!bone.isActive())
-            {
-                continue;
-            }
-
-            IEntity targetEntity = entities.get(bone.replay);
-
-            if (targetEntity == null || targetEntity == sourceEntity)
-            {
-                continue;
-            }
-
-            Matrix4f boneMatrix = computeBodyPartBoneMatrix(context, sourceEntity, parentForm, attachmentBone, partTransform, childForm, entry.getKey(), transition);
-            Vector3d position = new Vector3d(boneMatrix.getTranslation(new Vector3f()));
-
-            if (translateOffset != null)
-            {
-                position.add(translateOffset.x, translateOffset.y, translateOffset.z);
-            }
-
-            float currentYaw = getLookAtModelYaw(boneMatrix);
-
-            if (Float.isNaN(currentYaw))
-            {
-                continue;
-            }
-
-            Vector2f rotation = getLookAtRotation(sourceEntity, targetEntity, bone.attachment, position, transition, currentYaw);
-
-            if (rotation == null)
-            {
-                continue;
-            }
-
-            float blend = MathUtils.clamp(bone.blend, 0F, 1F);
-            PoseTransform poseTransform = pose.get(entry.getKey());
-
-            poseTransform.rotate.y = rotation.x * blend;
-            poseTransform.rotate.x = rotation.y * blend;
-        }
-
-        if (pose.isEmpty())
-        {
-            return null;
-        }
-
-        return pose;
-    }
-
-    /**
-     * World-space matrix for a body part look at bone: parent attachment chain,
-     * body part offset, child form transform, and the child look at bone itself.
-     */
-    private static Matrix4f computeBodyPartBoneMatrix(FilmControllerContext context, IEntity entity, Form parentForm, String attachmentBone, Transform partTransform, Form childForm, String childBone, float transition)
-    {
-        Matrix4f matrix = computeLookAtBaseMatrix(context, entity, parentForm, attachmentBone, transition);
-
-        if (partTransform != null && !partTransform.isDefault())
-        {
-            matrix.mul(partTransform.createMatrix());
-        }
-
-        Transform childTransform = composeFormTransform(childForm);
-
-        if (childTransform != null && !childTransform.isDefault())
-        {
-            matrix.mul(childTransform.createMatrix());
-        }
-
-        if (childBone != null && !childBone.isEmpty() && FormUtilsClient.getRenderer(childForm) instanceof ModelFormRenderer childRenderer)
-        {
-            MatrixCache map = childRenderer.collectMatrices(entity, transition);
-            MatrixCacheEntry entry = map.get(childBone.replace("#origin", ""));
-
-            if (entry != null)
-            {
-                Matrix4f visual = entry.origin() != null ? entry.origin() : entry.matrix();
-
-                matrix.mul(visual);
-            }
-        }
-
-        return matrix;
-    }
-
-    /**
-     * Horizontal world yaw of a model frame using -Z as bind-pose forward (BOBJ convention).
-     */
-    private static float getLookAtModelYaw(Matrix4f matrix)
-    {
-        Vector4f forward = new Vector4f(0F, 0F, -1F, 0F);
-
-        matrix.transform(forward);
-
-        float horizontal = (float) Math.sqrt(forward.x * forward.x + forward.z * forward.z);
-
-        if (horizontal < 0.0001F)
-        {
-            return Float.NaN;
-        }
-
-        return (float) Math.atan2(forward.x, forward.z);
-    }
-
-    private static Transform composeFormTransform(Form form)
-    {
-        if (form == null)
-        {
-            return null;
-        }
-
-        Transform transform = new Transform();
-
-        transform.copy(form.transform.get());
-        applyFormTransformOverlay(transform, form.transformOverlay.get());
-
-        for (ValueTransform valueTransform : form.additionalTransforms)
-        {
-            applyFormTransformOverlay(transform, valueTransform.get());
-        }
-
-        return transform;
-    }
-
-    private static void applyFormTransformOverlay(Transform transform, Transform overlay)
-    {
-        if (overlay == null)
-        {
-            return;
-        }
-
-        transform.translate.add(overlay.translate);
-        transform.scale.add(overlay.scale).sub(1, 1, 1);
-        transform.rotate.add(overlay.rotate);
-        transform.rotate2.add(overlay.rotate2);
-        transform.pivot.add(overlay.pivot);
-    }
-
-    /**
-     * Builds a transient look at pose for the given form. Every locked bone gets
-     * rotated toward its own target (replay and optionally attachment), scaled by
-     * its own lock strength.
-     */
-    public static Pose computeLookAtPose(io.netty.util.collection.IntObjectMap<IEntity> entities, IEntity sourceEntity, Form form, Vector3d position, float transition)
-    {
-        return computeLookAtPose(entities, sourceEntity, form, position, transition, Float.NaN);
-    }
-
-    /**
-     * Same as {@link #computeLookAtPose(IntObjectMap, IEntity, Form, Vector3d, float)}
-     * but allows overriding the current facing yaw (for body parts attached to bones).
-     */
-    public static Pose computeLookAtPose(io.netty.util.collection.IntObjectMap<IEntity> entities, IEntity sourceEntity, Form form, Vector3d position, float transition, float currentYawOverride)
-    {
-        LookAt lookAt = form.lookAt.get();
-
-        if (lookAt == null || !lookAt.isActive() || entities == null || sourceEntity == null)
-        {
-            return null;
-        }
-
-        Pose pose = new Pose();
-
-        for (Map.Entry<String, LookAtBone> entry : lookAt.bones.entrySet())
-        {
-            LookAtBone bone = entry.getValue();
-
-            if (!bone.isActive())
-            {
-                continue;
-            }
-
-            IEntity targetEntity = entities.get(bone.replay);
-
-            if (targetEntity == null || targetEntity == sourceEntity)
-            {
-                continue;
-            }
-
-            Vector2f rotation = getLookAtRotation(sourceEntity, targetEntity, bone.attachment, position, transition, currentYawOverride);
-
-            if (rotation == null)
-            {
-                continue;
-            }
-
-            float blend = MathUtils.clamp(bone.blend, 0F, 1F);
-            PoseTransform poseTransform = pose.get(entry.getKey());
-
-            poseTransform.rotate.y = rotation.x * blend;
-            poseTransform.rotate.x = rotation.y * blend;
-        }
-
-        if (pose.isEmpty())
-        {
-            return null;
-        }
-
-        return pose;
-    }
-
-    /**
      * Sets a temporary look at pose on the form's renderer. Every locked bone gets
      * rotated toward its own target (replay and optionally attachment), scaled by
      * its own lock strength. The returned renderer must be cleared with
@@ -1411,14 +1069,51 @@ public abstract class BaseFilmController
      */
     private static ModelFormRenderer applyLookAtPose(FilmControllerContext context, Form form, Vector3d position)
     {
+        LookAt lookAt = form.lookAt.get();
+
+        if (lookAt == null || !lookAt.isActive())
+        {
+            return null;
+        }
+
         if (!(FormUtilsClient.getRenderer(form) instanceof ModelFormRenderer renderer))
         {
             return null;
         }
 
-        Pose pose = computeLookAtPose(context.entities, context.entity, form, position, context.transition);
+        Pose pose = new Pose();
 
-        if (pose == null)
+        for (Map.Entry<String, LookAtBone> entry : lookAt.bones.entrySet())
+        {
+            LookAtBone bone = entry.getValue();
+
+            if (!bone.isActive())
+            {
+                continue;
+            }
+
+            IEntity targetEntity = context.entities.get(bone.replay);
+
+            if (targetEntity == null || targetEntity == context.entity)
+            {
+                continue;
+            }
+
+            Vector2f rotation = getLookAtRotation(context.entity, targetEntity, bone.attachment, position, context.transition);
+
+            if (rotation == null)
+            {
+                continue;
+            }
+
+            float blend = MathUtils.clamp(bone.blend, 0F, 1F);
+            PoseTransform poseTransform = pose.get(entry.getKey());
+
+            poseTransform.rotate.y = rotation.x * blend;
+            poseTransform.rotate.x = rotation.y * blend;
+        }
+
+        if (pose.isEmpty())
         {
             return null;
         }
@@ -1708,22 +1403,17 @@ public abstract class BaseFilmController
 
     public void createEntities()
     {
+        this.entities.clear();
         this.replayMap.clear();
 
         if (this.film == null)
         {
-            this.entities.clear();
-            this.entitySyncTokens.clear();
-
             return;
         }
 
-        IntObjectHashMap<IEntity> nextEntities = new IntObjectHashMap<>();
-        IntObjectHashMap<Long> nextTokens = new IntObjectHashMap<>();
-        List<Replay> replays = this.film.replays.getList();
         int i = 0;
 
-        for (Replay replay : replays)
+        for (Replay replay : this.film.replays.getList())
         {
             MobCemPoseCapture.syncReplay(replay);
             this.replayMap.put(replay.uuid.get(), replay);
@@ -1731,42 +1421,25 @@ public abstract class BaseFilmController
 
             if (this.isReplayEnabled(replay))
             {
-                long syncToken = FormUtils.getEntitySyncToken(replay);
-                IEntity entity = this.entities.get(i);
-                Long lastToken = this.entitySyncTokens.get(i);
+                World world = MinecraftClient.getInstance().world;
+                IEntity entity = new StubEntity(world);
 
-                if (entity != null && syncToken == (lastToken == null ? Long.MIN_VALUE : lastToken.longValue()))
-                {
-                    nextEntities.put((int) i, entity);
-                    nextTokens.put(Integer.valueOf(i), Long.valueOf(syncToken));
-                }
-                else
-                {
-                    World world = MinecraftClient.getInstance().world;
-                    entity = new StubEntity(world);
+                entity.setForm(FormUtils.copy(replay.form.get()));
+                replay.keyframes.apply(0, entity);
+                entity.setPrevX(entity.getX());
+                entity.setPrevY(entity.getY());
+                entity.setPrevZ(entity.getZ());
 
-                    entity.setForm(FormUtils.copy(replay.form.get()));
-                    replay.keyframes.apply(0, entity);
-                    entity.setPrevX(entity.getX());
-                    entity.setPrevY(entity.getY());
-                    entity.setPrevZ(entity.getZ());
+                entity.setPrevYaw(entity.getYaw());
+                entity.setPrevHeadYaw(entity.getHeadYaw());
+                entity.setPrevPitch(entity.getPitch());
+                entity.setPrevBodyYaw(entity.getBodyYaw());
 
-                    entity.setPrevYaw(entity.getYaw());
-                    entity.setPrevHeadYaw(entity.getHeadYaw());
-                    entity.setPrevPitch(entity.getPitch());
-                    entity.setPrevBodyYaw(entity.getBodyYaw());
-
-                    nextEntities.put((int) i, entity);
-                    nextTokens.put(Integer.valueOf(i), Long.valueOf(syncToken));
-                }
+                this.entities.put(i, entity);
             }
 
             i += 1;
         }
-
-        this.entities = nextEntities;
-        this.entitySyncTokens.clear();
-        this.entitySyncTokens.putAll(nextTokens);
     }
 
     public abstract Map<String, Integer> getActors();
@@ -1824,11 +1497,6 @@ public abstract class BaseFilmController
             if (replay != null)
             {
                 int replayTick = replay.getTick(ticks);
-
-                if (!this.isReplayVisible(replay, replayTick))
-                {
-                    continue;
-                }
 
                 this.updateEntityAndForm(entity, replayTick);
 
@@ -1913,11 +1581,6 @@ public abstract class BaseFilmController
             if (replay != null)
             {
                 int replayTick = replay.getTick(ticks);
-
-                if (!this.isReplayVisible(replay, replayTick))
-                {
-                    continue;
-                }
 
                 Map<String, Integer> actors = this.getActors();
 
@@ -2004,7 +1667,7 @@ public abstract class BaseFilmController
             return;
         }
 
-        if (!this.isReplayShown(replay, ticks))
+        if (!this.isReplayVisible(replay, ticks))
         {
             return;
         }
@@ -2057,7 +1720,7 @@ public abstract class BaseFilmController
             return;
         }
 
-        if (!this.isReplayShown(replay, ticks))
+        if (!this.isReplayVisible(replay, ticks))
         {
             return;
         }
@@ -2145,51 +1808,6 @@ public abstract class BaseFilmController
         return true;
     }
 
-    public boolean isReplayDisplayed(Replay replay, int ticks)
-    {
-        if (!this.isReplayEnabled(replay))
-        {
-            return false;
-        }
-
-        if (!this.isReplayDisplayedAt(replay, ticks))
-        {
-            return false;
-        }
-
-        if (!replay.group.get().isEmpty())
-        {
-            String[] groups = replay.group.get().split("/");
-
-            for (String uuid : groups)
-            {
-                Replay groupReplay = this.replayMap.get(uuid);
-
-                if (groupReplay != null)
-                {
-                    if (!this.isReplayEnabled(groupReplay))
-                    {
-                        return false;
-                    }
-
-                    int groupTick = groupReplay.getTick(this.getTick());
-
-                    if (!this.isReplayDisplayedAt(groupReplay, groupTick))
-                    {
-                        return false;
-                    }
-                }
-            }
-        }
-
-        return true;
-    }
-
-    public boolean isReplayShown(Replay replay, int ticks)
-    {
-        return this.isReplayVisible(replay, ticks) && this.isReplayDisplayed(replay, ticks);
-    }
-
     private boolean isReplayEnabled(Replay replay)
     {
         if (replay == null || !replay.enabled.get())
@@ -2215,35 +1833,6 @@ public abstract class BaseFilmController
         return true;
     }
 
-    protected boolean isReplayDisplayedAt(Replay replay, float tick)
-    {
-        BaseValue visibleValue = replay.properties.get("visible");
-
-        if (visibleValue instanceof KeyframeChannel)
-        {
-            @SuppressWarnings("unchecked")
-            KeyframeChannel<Boolean> visible = (KeyframeChannel<Boolean>) visibleValue;
-
-            if (visible.isEmpty())
-            {
-                return true;
-            }
-
-            Keyframe<Boolean> first = visible.get(0);
-
-            if (first != null && tick < first.getTick())
-            {
-                return true;
-            }
-
-            Boolean value = visible.interpolate(tick, true);
-
-            return value == null || value;
-        }
-
-        return true;
-    }
-
     protected boolean isReplayVisibleAt(Replay replay, float tick)
     {
         BaseValue renderValue = replay.properties.get("render");
@@ -2259,17 +1848,8 @@ public abstract class BaseFilmController
             }
 
             Keyframe<Boolean> first = render.get(0);
-            List<Keyframe<Boolean>> keyframes = render.getKeyframes();
-            Keyframe<Boolean> last = keyframes.get(keyframes.size() - 1);
 
             if (first != null && tick < first.getTick())
-            {
-                Boolean value = first.getValue();
-
-                return value == null || value;
-            }
-
-            if (keyframes.size() == 1 && tick > last.getTick())
             {
                 return true;
             }
@@ -2298,24 +1878,15 @@ public abstract class BaseFilmController
 
             float delta = this.getTransition(entity, transition);
             int tick = replay.getTick(this.getTick());
-            float propertyTick = tick + delta;
 
             /* Apply property */
             Form form1 = entity.getForm();
             replay.properties.resetProperties(form1);
+            replay.properties.applyProperties(form1, tick + delta);
 
-            if (!this.isReplayVisible(replay, tick))
+            if (MobCemPoseCapture.isActive(replay))
             {
-                replay.properties.applyRenderProperty(form1, propertyTick);
-            }
-            else
-            {
-                replay.properties.applyProperties(form1, propertyTick);
-            }
-
-            if (MobCemPoseCapture.isActive(replay) && this.isReplayVisible(replay, tick))
-            {
-                MobCemPoseCapture.applyPlaybackPose(replay, form1, entity, propertyTick);
+                MobCemPoseCapture.applyPlaybackPose(replay, form1, entity, tick + delta);
             }
 
             Map<String, Integer> actors = this.getActors();
@@ -2332,15 +1903,7 @@ public abstract class BaseFilmController
                     {
                         Form form = actor.getForm();
                         replay.properties.resetProperties(form);
-
-                        if (!this.isReplayVisible(replay, tick))
-                        {
-                            replay.properties.applyRenderProperty(form, propertyTick);
-                        }
-                        else
-                        {
-                            replay.properties.applyProperties(form, propertyTick);
-                        }
+                        replay.properties.applyProperties(form, tick + delta);
                     }
                     else if (anEntity instanceof PlayerEntity player)
                     {
@@ -2350,20 +1913,12 @@ public abstract class BaseFilmController
                         {
                             Form form = morph.getForm();
                             replay.properties.resetProperties(form);
-
-                            if (!this.isReplayVisible(replay, tick))
-                            {
-                                replay.properties.applyRenderProperty(form, propertyTick);
-                            }
-                            else
-                            {
-                                replay.properties.applyProperties(form, propertyTick);
-                            }
+                            replay.properties.applyProperties(form, tick + delta);
                         }
 
-                        float yawHead = replay.keyframes.headYaw.interpolate(propertyTick).floatValue();
-                        float yawBody = replay.keyframes.bodyYaw.interpolate(propertyTick).floatValue();
-                        float pitch = replay.keyframes.pitch.interpolate(propertyTick).floatValue();
+                        float yawHead = replay.keyframes.headYaw.interpolate(tick + delta).floatValue();
+                        float yawBody = replay.keyframes.bodyYaw.interpolate(tick + delta).floatValue();
+                        float pitch = replay.keyframes.pitch.interpolate(tick + delta).floatValue();
 
                         player.setYaw(yawHead);
                         player.setHeadYaw(yawHead);
@@ -2422,12 +1977,7 @@ public abstract class BaseFilmController
         {
             Replay replay = CollectionUtils.getSafe(this.film.replays.getList(), index);
 
-            if (replay == null || !this.isReplayShown(replay, replay.getTick(this.getTick())))
-            {
-                return null;
-            }
-
-            return replay.form.get();
+            return replay == null ? null : replay.form.get();
         });
 
         this.currentRenderDepthOccluders = renderDepthOccluders;
@@ -2571,7 +2121,7 @@ public abstract class BaseFilmController
         {
             int replayTick = replay.getTick(this.getTick());
 
-            if (!this.isReplayShown(replay, replayTick))
+            if (!this.isReplayVisible(replay, replayTick))
             {
                 return;
             }
@@ -2638,11 +2188,6 @@ public abstract class BaseFilmController
                 double tick = groupReplay.getTick(this.getTick()) + context.transition;
 
                 if (!this.isReplayVisibleAt(groupReplay, (float) tick))
-                {
-                    return false;
-                }
-
-                if (!this.isReplayDisplayedAt(groupReplay, (float) tick))
                 {
                     return false;
                 }

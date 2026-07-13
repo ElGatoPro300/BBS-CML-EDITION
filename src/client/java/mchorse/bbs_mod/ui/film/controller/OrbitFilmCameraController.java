@@ -207,7 +207,6 @@ public class OrbitFilmCameraController implements ICameraController
 
         int x = context.mouseX;
         int y = context.mouseY;
-
         float angleSpeed = this.controller.panel.dashboard.orbit.getAngleSpeed();
 
         if (this.dragging == 0 || this.dragging == 2)

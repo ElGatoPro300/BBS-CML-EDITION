@@ -42,7 +42,6 @@ public class KeyframeClip extends CameraClip
 
         for (KeyframeChannel<Double> channel : this.channels)
         {
-            channel.setCamera(true);
             this.add(channel);
         }
 

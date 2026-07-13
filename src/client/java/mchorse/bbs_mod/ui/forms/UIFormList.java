@@ -97,8 +97,6 @@ public class UIFormList extends UIElement
     private static final int MAX_CATEGORY_NAME_LENGTH = 20;
     private static final int MAX_TAB_TITLE_LENGTH = 10;
     private static final long SEARCH_DEBOUNCE_MS = 150L;
-    private static final Vector3f UI_LIGHT_A = new Vector3f(0.85F, 0.85F, -1F).normalize();
-    private static final Vector3f UI_LIGHT_B = new Vector3f(-0.85F, 0.85F, 1F).normalize();
     private static final int CATEGORY_VIRTUALIZATION_BUFFER_ROWS = 1;
     private static final int CATEGORY_PREVIEW_TOGGLE_SIZE = 14;
     private static final int CATEGORY_HIDDEN_ICON_SIZE = 50;
@@ -2421,7 +2419,10 @@ public class UIFormList extends UIElement
             this.setSelected(selected);
         }
 
-        RenderSystem.setupLevelDiffuseLighting(UIFormList.UI_LIGHT_A, UIFormList.UI_LIGHT_B);
+        Vector3f a = new Vector3f(0.85F, 0.85F, -1F).normalize();
+        Vector3f b = new Vector3f(-0.85F, 0.85F, 1F).normalize();
+
+        RenderSystem.setupLevelDiffuseLighting(a, b);
 
         super.render(context);
 

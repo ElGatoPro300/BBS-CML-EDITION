@@ -14,8 +14,6 @@ import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.interps.Lerps;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.Camera;
 import net.minecraft.client.render.VertexConsumerProvider;
@@ -92,12 +90,16 @@ public final class MorphFireRenderer
 
         if (irisWorld && !relative)
         {
-            /* Iris bakes the terrain matrix into the stack; strip it and keep the entity
-             * transform only. Do not prepend view rotation — that pins fire to the camera. */
-            Matrix4f entityMatrix = BBSRendering.stripTerrainPositionMatrix(new Matrix4f(matrices.peek().getPositionMatrix()));
+            /* Iris bakes the terrain matrix into the stack; strip it and rebuild the
+             * camera-relative entity transform the same way as ParticleFormRenderer. */
+            Matrix4f composed = BBSRendering.stripTerrainPositionMatrix(new Matrix4f(matrices.peek().getPositionMatrix()));
+            Matrix4f oriented = new Matrix4f(MatrixStackUtils.getInverseViewRotationMatrix());
+
+            oriented.mul(composed);
 
             matrices.loadIdentity();
-            MatrixStackUtils.multiply(matrices, entityMatrix);
+            matrices.multiplyPositionMatrix(MatrixStackUtils.getViewRotationMatrix());
+            MatrixStackUtils.multiply(matrices, oriented);
         }
         else if (relative)
         {
@@ -106,16 +108,7 @@ public final class MorphFireRenderer
 
         matrices.multiply(RotationAxis.POSITIVE_Y.rotation(MathUtils.toRad(bodyYaw)));
 
-        RenderSystem.disableCull();
-
-        try
-        {
-            ((EntityRendererDispatcherInvoker) dispatcher).bbs$renderFire(matrices, consumers, entity, dispatcher.getRotation());
-        }
-        finally
-        {
-            RenderSystem.enableCull();
-        }
+        ((EntityRendererDispatcherInvoker) dispatcher).bbs$renderFire(matrices, consumers, entity, dispatcher.getRotation());
 
         matrices.pop();
 

@@ -22,7 +22,6 @@ import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.entity.Entity;
 
@@ -62,29 +61,11 @@ public class UIMobCaptureRecordOverlayPanel extends UIOverlayPanel
         }
 
         UIMobCaptureRecordOverlayPanel panel = new UIMobCaptureRecordOverlayPanel(callback);
-        MinecraftClient client = MinecraftClient.getInstance();
-        Screen returnScreen = client.currentScreen;
 
-        panel.onClose((event) ->
-        {
-            if (returnScreen != null)
-            {
-                client.setScreen(returnScreen);
-            }
-            else
-            {
-                client.setScreen(null);
-            }
-        });
+        panel.onClose((event) -> MinecraftClient.getInstance().setScreen(null));
 
         UIScreen.open(new UIBaseMenu()
         {
-            @Override
-            public boolean needsWorldRender()
-            {
-                return true;
-            }
-
             @Override
             public boolean canHideHUD()
             {
@@ -114,7 +95,7 @@ public class UIMobCaptureRecordOverlayPanel extends UIOverlayPanel
             return;
         }
 
-        UIOverlay.addOverlay(context, new UIMobCaptureRecordOverlayPanel(callback), 480, 440).noBackground();
+        UIOverlay.addOverlay(context, new UIMobCaptureRecordOverlayPanel(callback), 480, 440);
     }
 
     public static boolean isOpened()

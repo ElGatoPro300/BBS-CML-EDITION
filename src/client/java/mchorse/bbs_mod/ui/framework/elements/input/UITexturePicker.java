@@ -1279,27 +1279,6 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
     }
 
     @Override
-    public boolean subMouseClicked(UIContext context)
-    {
-        if (this.activeTab == TAB_FILES && (context.mouseButton == GLFW.GLFW_MOUSE_BUTTON_4 || context.mouseButton == GLFW.GLFW_MOUSE_BUTTON_5))
-        {
-            if (context.mouseButton == GLFW.GLFW_MOUSE_BUTTON_4)
-            {
-                if (this.picker.navigateBack())
-                {
-                    return true;
-                }
-            }
-            else if (this.picker.navigateForward())
-            {
-                return true;
-            }
-        }
-
-        return super.subMouseClicked(context);
-    }
-
-    @Override
     public boolean subKeyPressed(UIContext context)
     {
         if (context.isPressed(GLFW.GLFW_KEY_ENTER))

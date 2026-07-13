@@ -13,6 +13,7 @@ import mchorse.bbs_mod.settings.values.numeric.ValueFloat;
 import mchorse.bbs_mod.settings.values.numeric.ValueInt;
 import mchorse.bbs_mod.settings.values.ui.ValueLanguage;
 import mchorse.bbs_mod.settings.values.ui.ValueVideoSettings;
+import mchorse.bbs_mod.text.RtlFontManager;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
@@ -30,7 +31,6 @@ import mchorse.bbs_mod.ui.framework.elements.input.text.UITextbox;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIFontPickerOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UILabelOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
-import mchorse.bbs_mod.text.RtlFontManager;
 import mchorse.bbs_mod.ui.framework.elements.utils.CustomFontManager;
 import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIText;
@@ -214,17 +214,11 @@ public class UIValueMap
                     value.set(3);
                     UIUtils.playClick();
                 });
-                UIIcon top = new UIIcon(Icons.SPHERE, (b) ->
-                {
-                    value.set(4);
-                    UIUtils.playClick();
-                });
 
                 translate.tooltip(UIKeys.FILM_GIZMO_MOVE);
                 scale.tooltip(UIKeys.FILM_GIZMO_SCALE);
                 rotate.tooltip(UIKeys.FILM_GIZMO_ROTATE);
                 combined.tooltip(UIKeys.FILM_GIZMO_COMBINED);
-                top.tooltip(UIKeys.FILM_GIZMO_TOP);
 
                 int activeBg = Colors.A50 | Colors.BLUE;
 
@@ -232,23 +226,21 @@ public class UIValueMap
                 scale.activeBackground(activeBg);
                 rotate.activeBackground(activeBg);
                 combined.activeBackground(activeBg);
-                top.activeBackground(activeBg);
 
                 Runnable syncActive = () ->
                 {
-                    int mode = MathUtils.clamp(value.get(), 0, 4);
+                    int mode = MathUtils.clamp(value.get(), 0, 3);
 
                     translate.active(mode == 0);
                     scale.active(mode == 1);
                     rotate.active(mode == 2);
                     combined.active(mode == 3);
-                    top.active(mode == 4);
                 };
 
                 value.postCallback((changed, flag) -> syncActive.run());
                 syncActive.run();
 
-                UIElement row = UI.row(2, translate, scale, rotate, combined, top);
+                UIElement row = UI.row(2, translate, scale, rotate, combined);
 
                 row.w(90);
 
@@ -504,14 +496,6 @@ public class UIValueMap
             audioEnvironment.tooltip(UIKeys.VIDEO_SETTINGS_AUDIO_ENVIRONMENT_TOOLTIP);
             audioEnvironment.w(1F).h(20);
             list.add(audioEnvironment);
-
-            UIToggle audioSeparateFile = new UIToggle(UIKeys.VIDEO_SETTINGS_AUDIO_SEPARATE_FILE, value.audioSeparateFile.get(), (b) ->
-            {
-                value.audioSeparateFile.set(b.getValue());
-            });
-            audioSeparateFile.tooltip(UIKeys.VIDEO_SETTINGS_AUDIO_SEPARATE_FILE_TOOLTIP);
-            audioSeparateFile.w(1F).h(20);
-            list.add(audioSeparateFile);
 
             UITrackpad width = UIValueFactory.intUI(value.width, null);
             value.width.postCallback((changed, flag) -> width.setValue(value.width.get()));

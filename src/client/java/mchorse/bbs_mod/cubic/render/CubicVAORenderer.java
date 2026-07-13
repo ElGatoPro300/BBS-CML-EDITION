@@ -17,6 +17,7 @@ import mchorse.bbs_mod.utils.interps.Lerps;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.LightmapTextureManager;
+import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
 
 public class CubicVAORenderer extends CubicCubeRenderer
@@ -46,6 +47,10 @@ public class CubicVAORenderer extends CubicCubeRenderer
 
         if (modelVAO != null && group.visible)
         {
+            float r;
+            float g;
+            float b;
+            float a;
             float effectiveGlowStrength = this.resolveEffectiveGlowStrength(group);
             float effectiveGlowR = this.resolveEffectiveGlowR(group);
             float effectiveGlowG = this.resolveEffectiveGlowG(group);
@@ -78,21 +83,30 @@ public class CubicVAORenderer extends CubicCubeRenderer
                     effectiveGlowG,
                     effectiveGlowB,
                     effectiveGlowStrength);
+
+                this.bindGroupTexture(group);
+
+                r = this.r * group.color.r;
+                g = this.g * group.color.g;
+                b = this.b * group.color.b;
+                a = this.a * group.color.a;
             }
             else
             {
+                this.bindGroupTexture(group);
+
+                r = this.r * group.color.r;
+                g = this.g * group.color.g;
+                b = this.b * group.color.b;
+                a = this.a * group.color.a;
+
                 ModelVAORenderer.setGroupPaint(effectivePaintR, effectivePaintG, effectivePaintB, effectivePaintStrength);
                 ModelVAORenderer.setGroupGlowing(effectiveGlowR, effectiveGlowG, effectiveGlowB, effectiveGlowStrength);
             }
 
-            float r = this.r * group.color.r;
-            float g = this.g * group.color.g;
-            float b = this.b * group.color.b;
-            float a = this.a * group.color.a;
-
             if (!ModelVAORenderer.isGlowingUniformActive())
             {
-                if (effectiveGlowStrength != 0F && !ModelVAORenderer.isGlowDeferredToOverlay())
+                if (effectiveGlowStrength != 0F)
                 {
                     Color groupColor = new Color().set(r, g, b, a);
                     Color glowColor = new Color().set(effectiveGlowR, effectiveGlowG, effectiveGlowB, 1F);
@@ -108,7 +122,7 @@ public class CubicVAORenderer extends CubicCubeRenderer
 
             int groupLight = this.light;
 
-            if (effectiveGlowStrength != 0F && !ModelVAORenderer.isGlowingUniformActive() && !ModelVAORenderer.isPaintOverlayPass() && !ModelVAORenderer.isGlowDeferredToOverlay())
+            if (effectiveGlowStrength != 0F && !ModelVAORenderer.isGlowingUniformActive() && !ModelVAORenderer.isPaintOverlayPass())
             {
                 float glowLightT = MathUtils.clamp(Math.abs(effectiveGlowStrength), 0F, 1F);
                 int baseU = groupLight & '\uffff';
@@ -130,40 +144,122 @@ public class CubicVAORenderer extends CubicCubeRenderer
                 groupLight = u | v << 16;
             }
 
-            CubicGroupTextureBlend textureBlend = CubicGroupTextureBlend.resolve(group, this.defaultTexture);
-            final int drawLight = groupLight;
-
-            if (textureBlend != null && textureBlend.isPartial() && !CubicGroupTextureBlend.supportsShader(this.program))
-            {
-                float fromA = this.a * (1F - textureBlend.blend);
-                float toA = this.a * textureBlend.blend;
-
-                CubicGroupTextureBlend.drawTwoPass(
-                    () -> this.renderGroupVAO(modelVAO, stack, this.r, this.g, this.b, fromA, drawLight, textureBlend.from),
-                    () -> this.renderGroupVAO(modelVAO, stack, this.r, this.g, this.b, toA, drawLight, textureBlend.to),
-                    textureBlend.blend
-                );
-            }
-            else
-            {
-                CubicGroupTextureBlend.bindForDraw(this.program, textureBlend, this.defaultTexture);
-                this.renderGroupVAO(modelVAO, stack, this.r, this.g, this.b, this.a, drawLight, null);
-                ModelVAORenderer.clearTextureBlend();
-            }
+            ModelVAORenderer.render(this.program, modelVAO, stack, r, g, b, a, groupLight, this.overlay);
+            ModelVAORenderer.clearTextureBlend();
         }
 
         return false;
     }
 
-    private void renderGroupVAO(ModelVAO modelVAO, MatrixStack stack, float r, float g, float b, float a, int groupLight, Link texture)
+    private void bindGroupTexture(ModelGroup group)
     {
-        if (texture != null)
+        Link defaultLink = this.defaultTexture != null ? this.defaultTexture : this.model.texture;
+
+        if (group.textureOverride == null)
         {
             ModelVAORenderer.clearTextureBlend();
-            BBSModClient.getTextures().bindTexture(texture);
+            BBSModClient.getTextures().bindTexture(defaultLink);
+
+            return;
         }
 
-        ModelVAORenderer.render(this.program, modelVAO, stack, r, g, b, a, groupLight, this.overlay);
+        float blend = group.textureBlend;
+
+        if (blend >= 1F)
+        {
+            ModelVAORenderer.clearTextureBlend();
+            BBSModClient.getTextures().bindTexture(group.textureOverride);
+        }
+        else if (blend <= 0F)
+        {
+            ModelVAORenderer.clearTextureBlend();
+            BBSModClient.getTextures().bindTexture(defaultLink);
+        }
+        else
+        {
+            BBSModClient.getTextures().bindTexture(defaultLink);
+            ModelVAORenderer.setTextureBlend(group.textureOverride, blend);
+        }
+    }
+
+    private float resolveEffectiveGlowStrength(ModelGroup group)
+    {
+        if (group.glowIntensity != 0F)
+        {
+            return group.glowIntensity;
+        }
+
+        return ModelVAORenderer.getBaseGlowingStrength();
+    }
+
+    private float resolveEffectiveGlowR(ModelGroup group)
+    {
+        if (group.glowIntensity != 0F)
+        {
+            return group.glowingColor.r;
+        }
+
+        return ModelVAORenderer.getBaseGlowingR();
+    }
+
+    private float resolveEffectiveGlowG(ModelGroup group)
+    {
+        if (group.glowIntensity != 0F)
+        {
+            return group.glowingColor.g;
+        }
+
+        return ModelVAORenderer.getBaseGlowingG();
+    }
+
+    private float resolveEffectiveGlowB(ModelGroup group)
+    {
+        if (group.glowIntensity != 0F)
+        {
+            return group.glowingColor.b;
+        }
+
+        return ModelVAORenderer.getBaseGlowingB();
+    }
+
+    private float resolveEffectivePaintStrength(ModelGroup group)
+    {
+        if (group.paintColor.a != 0F)
+        {
+            return group.paintColor.a;
+        }
+
+        return ModelVAORenderer.getBasePaintStrength();
+    }
+
+    private float resolveEffectivePaintR(ModelGroup group)
+    {
+        if (group.paintColor.a != 0F)
+        {
+            return group.paintColor.r;
+        }
+
+        return ModelVAORenderer.getBasePaintR();
+    }
+
+    private float resolveEffectivePaintG(ModelGroup group)
+    {
+        if (group.paintColor.a != 0F)
+        {
+            return group.paintColor.g;
+        }
+
+        return ModelVAORenderer.getBasePaintG();
+    }
+
+    private float resolveEffectivePaintB(ModelGroup group)
+    {
+        if (group.paintColor.a != 0F)
+        {
+            return group.paintColor.b;
+        }
+
+        return ModelVAORenderer.getBasePaintB();
     }
 
     /**
@@ -172,7 +268,7 @@ public class CubicVAORenderer extends CubicCubeRenderer
      */
     private boolean groupHasPaintableTexture(ModelGroup group)
     {
-        if (group.textureOverride != null || group.textureBlendTo != null)
+        if (group.textureOverride != null)
         {
             return true;
         }

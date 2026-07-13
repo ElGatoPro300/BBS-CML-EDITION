@@ -103,19 +103,17 @@ public class Keys
     public static final KeyCombo TRANSFORMATIONS_SCALE = new KeyCombo("scale", UIKeys.TRANSFORMS_SCALE, GLFW.GLFW_KEY_S).categoryKey("transformations");
     public static final KeyCombo TRANSFORMATIONS_ROTATE = new KeyCombo("rotate", UIKeys.TRANSFORMS_ROTATE, GLFW.GLFW_KEY_R).categoryKey("transformations");
     public static final KeyCombo TRANSFORMATIONS_COMBINED = new KeyCombo("combined", UIKeys.FILM_GIZMO_COMBINED, GLFW.GLFW_KEY_C).categoryKey("transformations");
-    public static final KeyCombo TRANSFORMATIONS_TOP = new KeyCombo("gizmo_top", UIKeys.FILM_GIZMO_TOP, GLFW.GLFW_KEY_B).categoryKey("transformations");
     public static final KeyCombo TRANSFORMATIONS_X = new KeyCombo("x", UIKeys.GENERAL_X, GLFW.GLFW_KEY_X).categoryKey("transformations");
     public static final KeyCombo TRANSFORMATIONS_Y = new KeyCombo("y", UIKeys.GENERAL_Y, GLFW.GLFW_KEY_Y).categoryKey("transformations");
     public static final KeyCombo TRANSFORMATIONS_Z = new KeyCombo("z", UIKeys.GENERAL_Z, GLFW.GLFW_KEY_Z).categoryKey("transformations");
     public static final KeyCombo TRANSFORMATIONS_TOGGLE_AXES = new KeyCombo("toggle_axes", UIKeys.TRANSFORMS_KEYS_TOGGLE_AXES, GLFW.GLFW_KEY_F8).categoryKey("transformations");
     public static final KeyCombo TRANSFORMATIONS_TOGGLE_LOCAL = new KeyCombo("toggle_local", UIKeys.TRANSFORMS_CONTEXT_SWITCH_LOCAL, GLFW.GLFW_KEY_Q).categoryKey("transformations");
 
-    public static final KeyCombo POSE_LIMB_KEYFRAME = new KeyCombo("pose_limb_keyframe", UIKeys.POSE_LIMB_KEYFRAME, GLFW.GLFW_KEY_P).categoryKey("pose_limbs");
-    public static final KeyCombo POSE_LIMB_KEYFRAME_DEFAULT = new KeyCombo("pose_limb_keyframe_default", UIKeys.POSE_LIMB_KEYFRAME_DEFAULT, GLFW.GLFW_KEY_R).categoryKey("pose_limbs");
-
     /* Film controller */
     public static final KeyCombo FILM_CONTROLLER_START_RECORDING = new KeyCombo("start_recording", UIKeys.FILM_CONTROLLER_KEYS_START_RECORDING, GLFW.GLFW_KEY_R, GLFW.GLFW_KEY_LEFT_CONTROL).categoryKey("film_controller");
     public static final KeyCombo FILM_CONTROLLER_INSERT_FRAME = new KeyCombo("insert_frame", UIKeys.FILM_CONTROLLER_KEYS_INSERT_FRAME, GLFW.GLFW_KEY_I).categoryKey("film_controller");
+    public static final KeyCombo KEYFRAMES_INSERT_INDIVIDUAL = new KeyCombo("insert_individual", UIKeys.KEYFRAMES_INSERT_SINGLE_AT_CURSOR, GLFW.GLFW_MOUSE_BUTTON_LEFT, GLFW.GLFW_KEY_LEFT_CONTROL).categoryKey("keyframes");
+    public static final KeyCombo KEYFRAMES_DUPLICATE = new KeyCombo("duplicate_keyframes", UIKeys.KEYFRAMES_DUPLICATE_AT_CURSOR, GLFW.GLFW_MOUSE_BUTTON_LEFT, GLFW.GLFW_KEY_LEFT_ALT).categoryKey("keyframes");
     public static final KeyCombo FILM_CONTROLLER_TOGGLE_CONTROL = new KeyCombo("toggle_control", UIKeys.FILM_CONTROLLER_KEYS_TOGGLE_CONTROL, GLFW.GLFW_KEY_H).categoryKey("film_controller");
     public static final KeyCombo FILM_CONTROLLER_TOGGLE_ORBIT_MODE = new KeyCombo("toggle_orbit_mode", UIKeys.FILM_CONTROLLER_KEYS_CHANGE_CAMERA_MODE, GLFW.GLFW_KEY_F3).categoryKey("film_controller");
     public static final KeyCombo FILM_CONTROLLER_MOVE_REPLAY_TO_CURSOR = new KeyCombo("move_replay_to_cursor", UIKeys.FILM_CONTROLLER_KEYS_MOVE_REPLAY_TO_CURSOR, GLFW.GLFW_KEY_G, GLFW.GLFW_KEY_LEFT_CONTROL).categoryKey("film_controller");

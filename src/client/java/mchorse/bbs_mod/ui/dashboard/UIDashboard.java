@@ -53,7 +53,6 @@ import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.fabricmc.loader.api.FabricLoader;
 
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.option.Perspective;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.math.Vec3d;
@@ -78,8 +77,6 @@ public class UIDashboard extends UIBaseMenu
     private Perspective lastPerspective = Perspective.FIRST_PERSON;
 
     private UIChalkboard chalkboard;
-
-    private Screen returnScreen;
 
     public UIMainMenuBar menuBar;
     public UIDocumentTabsBar documentTabsBar;
@@ -225,16 +222,6 @@ public class UIDashboard extends UIBaseMenu
         return this.panels;
     }
 
-    public void setReturnScreen(Screen returnScreen)
-    {
-        this.returnScreen = returnScreen;
-    }
-
-    public void clearReturnScreen()
-    {
-        this.returnScreen = null;
-    }
-
     @Override
     public boolean canPause()
     {
@@ -256,11 +243,6 @@ public class UIDashboard extends UIBaseMenu
     public void onOpen(UIBaseMenu oldMenu)
     {
         super.onOpen(oldMenu);
-
-        if (MinecraftClient.getInstance().world != null)
-        {
-            this.returnScreen = null;
-        }
 
         this.lastPerspective = MinecraftClient.getInstance().options.getPerspective();
 
@@ -297,13 +279,6 @@ public class UIDashboard extends UIBaseMenu
     @Override
     protected void closeMenu()
     {
-        if (this.returnScreen != null && MinecraftClient.getInstance().world == null)
-        {
-            MinecraftClient.getInstance().setScreen(this.returnScreen);
-
-            return;
-        }
-
         super.closeMenu();
 
         if (!this.main.isVisible())
@@ -373,12 +348,6 @@ public class UIDashboard extends UIBaseMenu
         return this.panels.panel == null || this.panels.panel.canHideHUD();
     }
 
-    @Override
-    public boolean needsWorldRender()
-    {
-        return this.panels.panel != null && this.panels.panel.needsWorldRender();
-    }
-
     public <T> T getPanel(Class<T> clazz)
     {
         return this.panels.getPanel(clazz);
@@ -427,7 +396,7 @@ public class UIDashboard extends UIBaseMenu
             return;
         }
 
-        if (this.panels.panel != null && (this.panels.panel.needsBackground() || !this.panels.panel.needsWorldRender()))
+        if (this.panels.panel != null && this.panels.panel.needsBackground())
         {
             this.background(context);
         }

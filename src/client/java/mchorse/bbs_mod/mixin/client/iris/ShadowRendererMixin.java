@@ -118,7 +118,7 @@ public class ShadowRendererMixin
 
                             int replayTick = replay.getTick(editorController.getTick());
 
-                            if (!editorController.isReplayShown(replay, replayTick))
+                            if (!editorController.isReplayVisible(replay, replayTick))
                             {
                                 continue;
                             }
@@ -207,7 +207,7 @@ public class ShadowRendererMixin
 
                     int replayTick = replay.getTick(controller.getTick());
 
-                    if (!controller.isReplayShown(replay, replayTick))
+                    if (!controller.isReplayVisible(replay, replayTick))
                     {
                         continue;
                     }
@@ -255,7 +255,7 @@ public class ShadowRendererMixin
 
                     int replayTick = replay.getTick(recorder.getTick());
 
-                    if (!recorder.isReplayShown(replay, replayTick))
+                    if (!recorder.isReplayVisible(replay, replayTick))
                     {
                         continue;
                     }

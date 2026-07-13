@@ -5,13 +5,11 @@ import mchorse.bbs_mod.bobj.BOBJArmature;
 import mchorse.bbs_mod.bobj.BOBJBone;
 import mchorse.bbs_mod.bobj.BOBJLoader;
 import mchorse.bbs_mod.client.BBSRendering;
-import mchorse.bbs_mod.cubic.render.CubicGroupTextureBlend;
 import mchorse.bbs_mod.cubic.render.CubicRenderer;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.utils.joml.Matrices;
 
-import net.minecraft.client.gl.GlUniform;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.util.math.MatrixStack;
@@ -33,14 +31,6 @@ import java.util.function.IntPredicate;
 
 public class BOBJModelVAO
 {
-    /*
-     * CPU memory notes (BOBJLoader.CompiledData + tmp* arrays):
-     * - posData / normData: bind-pose source for CPU skinning in updateMesh(); must be retained.
-     * - weightData / boneIndexData: per-vertex skin weights; required each skinning update.
-     * - texData: used for tangent rebuild in updateMesh(); retained after VBO upload.
-     * - tmpVertices / tmpNormals / tmpTangents: scratch buffers sized to mesh; cannot be shared across VAOs.
-     * GPU copies live in vertex/normal/texCoord/tangent buffers; CPU arrays above are not redundant today.
-     */
     public BOBJLoader.CompiledData data;
     public BOBJArmature armature;
 
@@ -60,7 +50,6 @@ public class BOBJModelVAO
     private int[] tmpLight;
     private float[] tmpTangents;
     private int[] dominantBonePerTriangle;
-    private long cachedMeshRevision = Long.MIN_VALUE;
 
     public BOBJModelVAO(BOBJLoader.CompiledData data, BOBJArmature armature)
     {
@@ -146,22 +135,6 @@ public class BOBJModelVAO
      */
     public void updateMesh(StencilMap stencilMap)
     {
-        if (stencilMap == null)
-        {
-            long revision = this.computeArmatureRevision();
-
-            if (revision == this.cachedMeshRevision)
-            {
-                return;
-            }
-
-            this.cachedMeshRevision = revision;
-        }
-        else
-        {
-            this.cachedMeshRevision = Long.MIN_VALUE;
-        }
-
         Vector4f sum = new Vector4f();
         Vector4f result = new Vector4f(0F, 0F, 0F, 0F);
         Vector3f sumNormal = new Vector3f();
@@ -244,55 +217,26 @@ public class BOBJModelVAO
         this.processData(newVertices, newNormals);
 
         GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, this.vertexBuffer);
-        GL15.glBufferSubData(GL15.GL_ARRAY_BUFFER, 0, newVertices);
+        GL15.glBufferData(GL15.GL_ARRAY_BUFFER, newVertices, GL15.GL_DYNAMIC_DRAW);
 
         GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, this.normalBuffer);
-        GL15.glBufferSubData(GL15.GL_ARRAY_BUFFER, 0, newNormals);
+        GL15.glBufferData(GL15.GL_ARRAY_BUFFER, newNormals, GL15.GL_DYNAMIC_DRAW);
 
         if (BBSRendering.isIrisShadersEnabled())
         {
             BBSRendering.calculateTangents(this.tmpTangents, newVertices, newNormals, this.data.texData);
 
             GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, this.tangentBuffer);
-            GL15.glBufferSubData(GL15.GL_ARRAY_BUFFER, 0, this.tmpTangents);
+            GL15.glBufferData(GL15.GL_ARRAY_BUFFER, this.tmpTangents, GL15.GL_DYNAMIC_DRAW);
         }
 
         if (stencilMap != null)
         {
             GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, this.lightBuffer);
-            GL15.glBufferSubData(GL15.GL_ARRAY_BUFFER, 0, this.tmpLight);
+            GL15.glBufferData(GL15.GL_ARRAY_BUFFER, this.tmpLight, GL15.GL_DYNAMIC_DRAW);
         }
 
         GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
-    }
-
-    private long computeArmatureRevision()
-    {
-        long hash = 1L;
-
-        for (BOBJBone bone : this.armature.orderedBones)
-        {
-            Matrix4f matrix = bone.mat;
-
-            hash = 31L * hash + Float.floatToIntBits(matrix.m00());
-            hash = 31L * hash + Float.floatToIntBits(matrix.m01());
-            hash = 31L * hash + Float.floatToIntBits(matrix.m02());
-            hash = 31L * hash + Float.floatToIntBits(matrix.m03());
-            hash = 31L * hash + Float.floatToIntBits(matrix.m10());
-            hash = 31L * hash + Float.floatToIntBits(matrix.m11());
-            hash = 31L * hash + Float.floatToIntBits(matrix.m12());
-            hash = 31L * hash + Float.floatToIntBits(matrix.m13());
-            hash = 31L * hash + Float.floatToIntBits(matrix.m20());
-            hash = 31L * hash + Float.floatToIntBits(matrix.m21());
-            hash = 31L * hash + Float.floatToIntBits(matrix.m22());
-            hash = 31L * hash + Float.floatToIntBits(matrix.m23());
-            hash = 31L * hash + Float.floatToIntBits(matrix.m30());
-            hash = 31L * hash + Float.floatToIntBits(matrix.m31());
-            hash = 31L * hash + Float.floatToIntBits(matrix.m32());
-            hash = 31L * hash + Float.floatToIntBits(matrix.m33());
-        }
-
-        return hash;
     }
 
     protected void processData(float[] newVertices, float[] newNormals)
@@ -458,28 +402,22 @@ public class BOBJModelVAO
         if (stencilMap == null)
         {
             Map<Integer, Link> fullOverrides = new HashMap<>();
-            Map<Integer, BoneTextureBlend> partialOverrides = new HashMap<>();
+            Map<Integer, Float> partialOverrides = new HashMap<>();
 
             for (BOBJBone bone : this.armature.orderedBones)
             {
-                BoneTextureBlend state = this.resolveBoneTextureBlend(bone, defaultTexture);
+                if (bone.texture != null)
+                {
+                    float blend = bone.textureBlend;
 
-                if (state == null)
-                {
-                    continue;
-                }
-
-                if (state.blend >= 1F)
-                {
-                    fullOverrides.put(bone.index, state.to);
-                }
-                else if (state.blend > 0F)
-                {
-                    partialOverrides.put(bone.index, state);
-                }
-                else if (state.from != null)
-                {
-                    fullOverrides.put(bone.index, state.from);
+                    if (blend >= 1F)
+                    {
+                        fullOverrides.put(bone.index, bone.texture);
+                    }
+                    else if (blend > 0F)
+                    {
+                        partialOverrides.put(bone.index, blend);
+                    }
                 }
             }
 
@@ -508,43 +446,24 @@ public class BOBJModelVAO
 
                 for (BOBJBone bone : this.armature.orderedBones)
                 {
-                    BoneTextureBlend state = partialOverrides.get(bone.index);
+                    Float blend = partialOverrides.get(bone.index);
 
-                    if (state != null)
+                    if (blend != null)
                     {
-                        if (this.supportsShaderTextureBlend(shader))
+                        if (defaultTexture != null)
                         {
-                            this.bindDrawTexture(state.from);
-                            ModelVAORenderer.setTextureBlend(state.to, state.blend);
-
-                            try
-                            {
-                                this.drawTriangles((boneIndex) -> boneIndex == bone.index);
-                            }
-                            finally
-                            {
-                                ModelVAORenderer.clearTextureBlend();
-                            }
+                            this.bindDrawTexture(defaultTexture);
                         }
-                        else
-                        {
-                            CubicGroupTextureBlend.drawTwoPass(
-                                () ->
-                                {
-                                    this.bindDrawTexture(state.from);
-                                    GL30.glVertexAttrib4f(Attributes.COLOR, r, g, b, a * (1F - state.blend));
-                                    this.drawTriangles((boneIndex) -> boneIndex == bone.index);
-                                },
-                                () ->
-                                {
-                                    this.bindDrawTexture(state.to);
-                                    GL30.glVertexAttrib4f(Attributes.COLOR, r, g, b, a * state.blend);
-                                    this.drawTriangles((boneIndex) -> boneIndex == bone.index);
-                                },
-                                state.blend
-                            );
 
-                            GL30.glVertexAttrib4f(Attributes.COLOR, r, g, b, a);
+                        ModelVAORenderer.setTextureBlend(bone.texture, blend);
+
+                        try
+                        {
+                            this.drawTriangles((boneIndex) -> boneIndex == bone.index);
+                        }
+                        finally
+                        {
+                            ModelVAORenderer.clearTextureBlend();
                         }
                     }
                 }
@@ -574,46 +493,5 @@ public class BOBJModelVAO
 
         GL30.glBindVertexArray(currentVAO);
         GL30.glBindBuffer(GL30.GL_ELEMENT_ARRAY_BUFFER, currentElementArrayBuffer);
-    }
-
-    private boolean supportsShaderTextureBlend(ShaderProgram shader)
-    {
-        GlUniform uniform = shader.getUniform("TextureBlendActive");
-
-        return uniform != null;
-    }
-
-    private BoneTextureBlend resolveBoneTextureBlend(BOBJBone bone, Link defaultTexture)
-    {
-        if (bone.textureBlendTo != null)
-        {
-            BoneTextureBlend state = new BoneTextureBlend();
-
-            state.from = bone.texture != null ? bone.texture : defaultTexture;
-            state.to = bone.textureBlendTo;
-            state.blend = bone.textureBlend;
-
-            return state;
-        }
-
-        if (bone.texture != null)
-        {
-            BoneTextureBlend state = new BoneTextureBlend();
-
-            state.from = defaultTexture;
-            state.to = bone.texture;
-            state.blend = bone.textureBlend;
-
-            return state;
-        }
-
-        return null;
-    }
-
-    private static class BoneTextureBlend
-    {
-        public Link from;
-        public Link to;
-        public float blend;
     }
 }

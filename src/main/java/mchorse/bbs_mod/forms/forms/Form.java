@@ -18,7 +18,6 @@ import mchorse.bbs_mod.forms.values.ValueIllusion;
 import mchorse.bbs_mod.forms.values.ValueLookAt;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.settings.values.core.ValueColor;
-import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.settings.values.core.ValueGroup;
 import mchorse.bbs_mod.settings.values.core.ValueString;
 import mchorse.bbs_mod.settings.values.core.ValueTransform;
@@ -103,9 +102,6 @@ public abstract class Form extends ValueGroup
 
     protected Object renderer;
     protected String cachedID;
-
-    /** Bumped when any nested value changes; used for incremental entity sync and UI preview cache. */
-    private transient int editRevision = 0;
 
     /** Runtime texture crossfade state driven by the film texture track bend keyframes. */
     public transient TextureBlend textureBlend;
@@ -422,19 +418,6 @@ public abstract class Form extends ValueGroup
                 it.remove();
             }
         }
-    }
-
-    public int getEditRevision()
-    {
-        return this.editRevision;
-    }
-
-    @Override
-    public void postNotify(BaseValue value, int flag)
-    {
-        this.editRevision += 1;
-
-        super.postNotify(value, flag);
     }
 
     /* Data comparison and (de)serialization */

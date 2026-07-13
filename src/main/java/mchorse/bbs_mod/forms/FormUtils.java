@@ -53,36 +53,14 @@ public class FormUtils
 
     public static Form copy(Form form)
     {
-        if (form == null)
+        if (form != null)
         {
-            return null;
+            FormArchitect forms = BBSMod.getForms();
+
+            return forms.fromData(forms.toData(form));
         }
 
-        FormArchitect forms = BBSMod.getForms();
-        Form duplicate = forms.create(forms.getType(form));
-
-        duplicate.copy(form);
-
-        return duplicate;
-    }
-
-    /**
-     * Token used to detect when a replay entity's isolated form copy must be rebuilt.
-     * Combines replay identity, form replacement, in-place edits, and enabled state.
-     */
-    public static long getEntitySyncToken(mchorse.bbs_mod.film.replays.Replay replay)
-    {
-        if (replay == null)
-        {
-            return 0L;
-        }
-
-        Form form = replay.form.get();
-
-        return (((long) replay.uuid.get().hashCode()) << 32)
-            ^ (((long) replay.form.getRevision()) << 1)
-            ^ (form == null ? 0L : ((long) form.getEditRevision()))
-            ^ (replay.enabled.get() ? 1L : 0L);
+        return null;
     }
 
     public static Form getRoot(Form form)

@@ -50,7 +50,7 @@ public class FilmEditorController extends BaseFilmController
     @Override
     public int getTick()
     {
-        return this.controller.panel.getRunner().ticks;
+        return this.controller.panel.getCursor();
     }
 
     @Override

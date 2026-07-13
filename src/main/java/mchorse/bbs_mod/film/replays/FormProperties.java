@@ -31,7 +31,6 @@ import mchorse.bbs_mod.resources.Link;
 
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
 
@@ -221,6 +220,12 @@ public class FormProperties extends ValueGroup
                             poseTransform.glowRadius = Lerps.lerp(poseTransform.glowRadius, sourcePose.glowRadius, blend);
                             poseTransform.lighting = Lerps.lerp(poseTransform.lighting, sourcePose.lighting, blend);
                             poseTransform.shaderShadow = PaintSettings.resolveAutoShaderShadowForPoseAlpha(poseTransform.paintColor.a);
+                            poseTransform.textureBlend = Lerps.lerp(poseTransform.textureBlend, sourcePose.textureBlend, blend);
+
+                            if (sourcePose.texture != null && blend >= 0.5F)
+                            {
+                                poseTransform.texture = LinkUtils.copy(sourcePose.texture);
+                            }
                         }
                         else
                         {
@@ -233,10 +238,10 @@ public class FormProperties extends ValueGroup
                             poseTransform.glowRadius = sourcePose.glowRadius;
                             poseTransform.lighting = sourcePose.lighting;
                             poseTransform.shaderShadow = PaintSettings.resolveAutoShaderShadowForPoseAlpha(poseTransform.paintColor.a);
+                            poseTransform.texture = LinkUtils.copy(sourcePose.texture);
+                            poseTransform.textureBlend = sourcePose.textureBlend;
                         }
                     }
-
-                    this.applyPoseBoneTexture(poseTransform, segment, transform);
                 }
 
                 return;
@@ -256,16 +261,6 @@ public class FormProperties extends ValueGroup
             KeyframeChannel<Boolean> render = (KeyframeChannel<Boolean>) value;
 
             this.applyRenderProperty(tick, property, render);
-
-            return;
-        }
-
-        if ("visible".equals(id) && value.getFactory() == KeyframeFactories.BOOLEAN)
-        {
-            @SuppressWarnings("unchecked")
-            KeyframeChannel<Boolean> visible = (KeyframeChannel<Boolean>) value;
-
-            this.applyVisibleProperty(tick, property, visible);
 
             return;
         }
@@ -314,69 +309,7 @@ public class FormProperties extends ValueGroup
         }
     }
 
-    public void applyRenderProperty(Form form, float tick)
-    {
-        if (form == null)
-        {
-            return;
-        }
-
-        BaseValue renderValue = this.properties.get("render");
-
-        if (!(renderValue instanceof KeyframeChannel))
-        {
-            return;
-        }
-
-        @SuppressWarnings("unchecked")
-        KeyframeChannel<Boolean> render = (KeyframeChannel<Boolean>) renderValue;
-
-        if (render.getFactory() != KeyframeFactories.BOOLEAN)
-        {
-            return;
-        }
-
-        BaseValueBasic property = FormUtils.getProperty(form, "render");
-
-        if (property == null)
-        {
-            return;
-        }
-
-        this.applyRenderProperty(tick, property, render);
-    }
-
     private void applyRenderProperty(float tick, BaseValueBasic property, KeyframeChannel<Boolean> channel)
-    {
-        if (channel.isEmpty())
-        {
-            property.setRuntimeValue(null);
-
-            return;
-        }
-
-        Keyframe<Boolean> first = channel.get(0);
-        List<Keyframe<Boolean>> keyframes = channel.getKeyframes();
-        Keyframe<Boolean> last = keyframes.get(keyframes.size() - 1);
-
-        if (first != null && tick < first.getTick())
-        {
-            property.setRuntimeValue(first.getValue());
-
-            return;
-        }
-
-        if (keyframes.size() == 1 && tick > last.getTick())
-        {
-            property.setRuntimeValue(null);
-
-            return;
-        }
-
-        property.setRuntimeValue(channel.interpolate(tick, true));
-    }
-
-    private void applyVisibleProperty(float tick, BaseValueBasic property, KeyframeChannel<Boolean> channel)
     {
         if (channel.isEmpty())
         {
@@ -417,45 +350,6 @@ public class FormProperties extends ValueGroup
         else
         {
             form.textureBlend = null;
-        }
-    }
-
-    /**
-     * Applies bone texture crossfade for pose overlay limb tracks, matching the
-     * form-level texture timeline blend (from fades out, to fades in).
-     */
-    private void applyPoseBoneTexture(PoseTransform target, KeyframeSegment segment, Transform transform)
-    {
-        if (segment.a.isBend() && !segment.isSame()
-            && segment.a.getValue() instanceof PoseTransform aPose
-            && segment.b.getValue() instanceof PoseTransform bPose
-            && aPose.texture != null && bPose.texture != null
-            && !aPose.texture.equals(bPose.texture))
-        {
-            target.texture = LinkUtils.copy(aPose.texture);
-            target.textureBlendTo = LinkUtils.copy(bPose.texture);
-            target.textureBlend = getSegmentBlendFactor(segment);
-
-            return;
-        }
-
-        if (transform instanceof PoseTransform pose)
-        {
-            PoseTransform pick = pose;
-
-            if (segment.a.getValue() instanceof PoseTransform aPose)
-            {
-                pick = aPose;
-
-                if (segment.x >= 1F && segment.b.getValue() instanceof PoseTransform bPose)
-                {
-                    pick = bPose;
-                }
-            }
-
-            target.texture = pick.texture != null ? LinkUtils.copy(pick.texture) : null;
-            target.textureBlendTo = pose.textureBlendTo != null ? LinkUtils.copy(pose.textureBlendTo) : null;
-            target.textureBlend = pose.textureBlend;
         }
     }
 

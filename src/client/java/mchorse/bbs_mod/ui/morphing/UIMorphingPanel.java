@@ -94,12 +94,6 @@ public class UIMorphingPanel extends UIDashboardPanel
     @Override
     public boolean needsBackground()
     {
-        return this.palette.editor.isEditing();
-    }
-
-    @Override
-    public boolean needsWorldRender()
-    {
         return !this.palette.editor.isEditing();
     }
 

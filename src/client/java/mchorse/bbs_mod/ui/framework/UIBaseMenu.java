@@ -1,6 +1,8 @@
 package mchorse.bbs_mod.ui.framework;
 
 import mchorse.bbs_mod.ui.Keys;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbar;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarPointerBlock;
 import mchorse.bbs_mod.ui.framework.elements.IUIElement;
 import mchorse.bbs_mod.ui.framework.elements.IViewport;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
@@ -72,15 +74,6 @@ public abstract class UIBaseMenu
         return true;
     }
 
-    /**
-     * Whether the vanilla world should render while this menu is open. Most BBS editors draw an
-     * opaque UI and do not need the world pass behind them.
-     */
-    public boolean needsWorldRender()
-    {
-        return false;
-    }
-
     public boolean canPause()
     {
         return true;
@@ -127,6 +120,7 @@ public abstract class UIBaseMenu
         if (this.root.isEnabled())
         {
             this.context.pushViewport(this.viewport);
+            TimelineToolbarPointerBlock.prepare(this.context);
 
             IUIElement element = this.root.mouseClicked(this.context);
 
@@ -167,6 +161,7 @@ public abstract class UIBaseMenu
         if (this.root.isEnabled())
         {
             this.context.pushViewport(this.viewport);
+            TimelineToolbarPointerBlock.prepare(this.context);
 
             IUIElement element = this.root.mouseReleased(this.context);
 
@@ -198,6 +193,11 @@ public abstract class UIBaseMenu
 
         if (this.context.isPressed(GLFW.GLFW_KEY_ESCAPE))
         {
+            if (TimelineToolbar.cancelDockDragIfEscape(this.context))
+            {
+                return true;
+            }
+
             this.closeMenu();
 
             return true;
@@ -247,6 +247,7 @@ public abstract class UIBaseMenu
         if (this.root.isVisible())
         {
             this.context.reset();
+            TimelineToolbarPointerBlock.prepare(this.context);
             this.context.pushViewport(this.viewport);
 
             this.root.render(this.context);

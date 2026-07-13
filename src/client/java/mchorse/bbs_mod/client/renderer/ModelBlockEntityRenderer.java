@@ -308,20 +308,6 @@ public class ModelBlockEntityRenderer implements BlockEntityRenderer<ModelBlockE
             return false;
         }
 
-        BlockPos pos = entity.getPos();
-        Transform transform = entity.getProperties().getTransform();
-        Camera camera = MinecraftClient.getInstance().gameRenderer.getCamera();
-        double maxDistance = BBSSettings.modelBlockAnimationStateDistance.get();
-        double maxDistanceSq = maxDistance * maxDistance;
-        double dx = camera.getPos().x - (pos.getX() + 0.5D + transform.translate.x);
-        double dy = camera.getPos().y - (pos.getY() + transform.translate.y);
-        double dz = camera.getPos().z - (pos.getZ() + 0.5D + transform.translate.z);
-
-        if (dx * dx + dy * dy + dz * dz > maxDistanceSq)
-        {
-            return false;
-        }
-
         if (UIScreen.getCurrentMenu() instanceof UIDashboard dashboard)
         {
             if (dashboard.getPanels().panel instanceof UIModelBlockPanel modelBlockPanel)

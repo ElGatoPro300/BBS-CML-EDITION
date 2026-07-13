@@ -1,7 +1,6 @@
 package mchorse.bbs_mod.ui.film;
 
 import mchorse.bbs_mod.BBS;
-import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.client.CrossWorldFilmLoader;
 import mchorse.bbs_mod.client.CrossWorldFilmScanner;
 import mchorse.bbs_mod.client.FilmLaunchHelper;
@@ -49,11 +48,8 @@ public class UIWorldFilmsBrowserPanel extends UIDashboardPanel
     private final UIButton joinWorld;
     private final Map<String, CrossWorldFilmEntry> crossWorldFilmEntries = new HashMap<>();
     private final Map<String, String> crossWorldWorldLabels = new HashMap<>();
-    private final Map<String, Long> worldLastPlayed = new HashMap<>();
     private final Map<String, Texture> thumbnails = new HashMap<>();
-    private final Map<String, Texture> worldIconTextures = new HashMap<>();
     private final Set<String> missingThumbnailIds = new HashSet<>();
-    private final Set<String> missingWorldIconIds = new HashSet<>();
 
     private CrossWorldFilmEntry pendingJoin;
     private boolean scanning;
@@ -80,60 +76,7 @@ public class UIWorldFilmsBrowserPanel extends UIDashboardPanel
             {
                 this.handleSelection(list.get(0).toString());
             }
-        })
-        {
-            @Override
-            protected boolean sortElements()
-            {
-                if (this.getPath().strings.isEmpty())
-                {
-                    this.list.sort((a, b) ->
-                    {
-                        if (a.toString().endsWith("/.."))
-                        {
-                            return -1;
-                        }
-
-                        if (b.toString().endsWith("/.."))
-                        {
-                            return 1;
-                        }
-
-                        if (a.folder && b.folder)
-                        {
-                            Long aTime = UIWorldFilmsBrowserPanel.this.worldLastPlayed.get(a.getLast());
-                            Long bTime = UIWorldFilmsBrowserPanel.this.worldLastPlayed.get(b.getLast());
-
-                            if (aTime != null && bTime != null)
-                            {
-                                int cmp = Long.compare(bTime, aTime);
-
-                                if (cmp != 0)
-                                {
-                                    return cmp;
-                                }
-                            }
-                        }
-
-                        if (a.folder && !b.folder)
-                        {
-                            return -1;
-                        }
-
-                        if (b.folder && !a.folder)
-                        {
-                            return 1;
-                        }
-
-                        return mchorse.bbs_mod.utils.NaturalOrderComparator.compare(true, a.toString(), b.toString());
-                    });
-
-                    return true;
-                }
-
-                return super.sortElements();
-            }
-        };
+        });
         this.filmsList.setFileIcon(Icons.FILM);
         this.filmsList.background();
         this.filmsList.setVisible(false);
@@ -145,7 +88,6 @@ public class UIWorldFilmsBrowserPanel extends UIDashboardPanel
             (id) -> this.handleSelection(id),
             (id) -> this.openFilm(id)
         );
-        this.filmsMosaic.setFolderThumbnailProvider(this::getWorldFolderThumbnail);
 
         this.filmsSearch = new UISearchList<>(this.filmsList).label(UIKeys.GENERAL_SEARCH);
         this.filmsSearch.search.w(1F);
@@ -217,11 +159,8 @@ public class UIWorldFilmsBrowserPanel extends UIDashboardPanel
                 this.scanning = false;
                 this.crossWorldFilmEntries.clear();
                 this.crossWorldWorldLabels.clear();
-                this.worldLastPlayed.clear();
                 this.thumbnails.clear();
-                this.worldIconTextures.clear();
                 this.missingThumbnailIds.clear();
-                this.missingWorldIconIds.clear();
 
                 if (error != null || entries == null)
                 {
@@ -236,32 +175,14 @@ public class UIWorldFilmsBrowserPanel extends UIDashboardPanel
                 }
 
                 List<String> paths = new ArrayList<>();
-                MinecraftClient client = MinecraftClient.getInstance();
-                String currentWorldFolder = null;
-
-                if (client.world != null && client.player != null)
-                {
-                    File worldFolder = BBSMod.getWorldFolder();
-
-                    if (worldFolder != null)
-                    {
-                        currentWorldFolder = worldFolder.getName();
-                    }
-                }
 
                 for (CrossWorldFilmEntry entry : entries)
                 {
-                    if (currentWorldFolder != null && currentWorldFolder.equals(entry.worldFolder))
-                    {
-                        continue;
-                    }
-
                     String path = entry.worldFolder + "/" + entry.filmId;
 
                     paths.add(path);
                     this.crossWorldFilmEntries.put(path, entry);
                     this.crossWorldWorldLabels.put(entry.worldFolder, entry.worldLabel);
-                    this.worldLastPlayed.put(entry.worldFolder, entry.lastPlayed);
                 }
 
                 this.fillNames(paths);
@@ -381,60 +302,6 @@ public class UIWorldFilmsBrowserPanel extends UIDashboardPanel
         return null;
     }
 
-    private Texture getWorldFolderThumbnail(DataPath path)
-    {
-        if (path == null || !path.folder || path.size() != 1 || path.getLast().equals(".."))
-        {
-            return null;
-        }
-
-        String worldFolder = path.getLast();
-
-        if (this.missingWorldIconIds.contains(worldFolder))
-        {
-            return null;
-        }
-
-        Texture cached = this.worldIconTextures.get(worldFolder);
-
-        if (cached != null)
-        {
-            return cached;
-        }
-
-        File iconFile = CrossWorldFilmLoader.getWorldIconFile(worldFolder);
-
-        if (iconFile == null || !iconFile.exists())
-        {
-            this.missingWorldIconIds.add(worldFolder);
-
-            return null;
-        }
-
-        try (FileInputStream stream = new FileInputStream(iconFile))
-        {
-            Pixels pixels = Pixels.fromPNGStream(stream);
-
-            if (pixels != null)
-            {
-                Texture texture = Texture.textureFromPixels(pixels, GL11.GL_LINEAR);
-
-                this.worldIconTextures.put(worldFolder, texture);
-                this.missingWorldIconIds.remove(worldFolder);
-
-                return texture;
-            }
-        }
-        catch (Exception e)
-        {
-            e.printStackTrace();
-        }
-
-        this.missingWorldIconIds.add(worldFolder);
-
-        return null;
-    }
-
     private void handleSelection(String selected)
     {
         if (selected == null)
@@ -467,7 +334,7 @@ public class UIWorldFilmsBrowserPanel extends UIDashboardPanel
 
         CrossWorldFilmEntry entry = this.crossWorldFilmEntries.get(selected);
 
-        if (entry != null && !entry.filmId.isEmpty() && !entry.filmId.endsWith("/"))
+        if (entry != null && !entry.filmId.endsWith("/"))
         {
             this.pendingJoin = entry;
         }
@@ -477,6 +344,7 @@ public class UIWorldFilmsBrowserPanel extends UIDashboardPanel
         }
 
         this.updateJoinButton();
+        this.openFilm(selected);
     }
 
     private void updateJoinButton()
@@ -486,7 +354,7 @@ public class UIWorldFilmsBrowserPanel extends UIDashboardPanel
 
     private boolean canShowJoinWorld()
     {
-        if (this.pendingJoin == null || this.pendingJoin.filmId.isEmpty() || this.pendingJoin.filmId.endsWith("/"))
+        if (this.pendingJoin == null || this.pendingJoin.filmId.endsWith("/"))
         {
             return false;
         }
@@ -515,7 +383,7 @@ public class UIWorldFilmsBrowserPanel extends UIDashboardPanel
     {
         CrossWorldFilmEntry entry = this.crossWorldFilmEntries.get(selected);
 
-        if (entry == null || entry.filmId.isEmpty() || entry.filmId.endsWith("/"))
+        if (entry == null || entry.filmId.endsWith("/"))
         {
             return;
         }

@@ -15,6 +15,7 @@ import net.minecraft.client.gui.screen.world.SelectWorldScreen;
 
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -31,6 +32,9 @@ public abstract class SelectWorldScreenMixin
     @Shadow
     protected abstract <T extends Element & Drawable & Selectable> T addDrawableChild(T drawableElement);
 
+    @Unique
+    private BBSLogoButtonWidget bbs$logoButton;
+
     @Inject(method = "init", at = @At("TAIL"))
     private void bbs$addSelectWorldBbsButton(CallbackInfo ci)
     {
@@ -39,6 +43,7 @@ public abstract class SelectWorldScreenMixin
             return;
         }
 
+        this.bbs$logoButton = null;
         this.bbs$ensureBbsButton();
     }
 
@@ -53,21 +58,7 @@ public abstract class SelectWorldScreenMixin
         this.bbs$ensureBbsButton();
     }
 
-    private BBSLogoButtonWidget bbs$findBbsButton()
-    {
-        Screen screen = (Screen) (Object) this;
-
-        for (Element element : screen.children())
-        {
-            if (element instanceof BBSLogoButtonWidget widget)
-            {
-                return widget;
-            }
-        }
-
-        return null;
-    }
-
+    @Unique
     private void bbs$ensureBbsButton()
     {
         if (MinecraftClient.getInstance().world != null)
@@ -79,28 +70,25 @@ public abstract class SelectWorldScreenMixin
         int vanillaLeft = this.width / 2 - 154;
         int x = Math.max(4, vanillaLeft - size - 4);
         int y = this.height - 52;
-        BBSLogoButtonWidget button = this.bbs$findBbsButton();
 
-        if (button == null)
+        if (this.bbs$logoButton == null)
         {
-            button = new BBSLogoButtonWidget(x, y, size, size, (widget) ->
+            this.bbs$logoButton = new BBSLogoButtonWidget(x, y, size, size, (button) ->
             {
-                SelectWorldScreen selectWorld = (SelectWorldScreen) (Object) this;
                 UIDashboard dashboard = BBSModClient.getDashboard();
 
-                dashboard.setReturnScreen(selectWorld);
                 dashboard.setPanel(dashboard.getPanel(UIWorldFilmsBrowserPanel.class));
                 UIScreen.open(dashboard);
             });
 
-            this.addDrawableChild(button);
+            this.addDrawableChild(this.bbs$logoButton);
         }
         else
         {
-            button.setX(x);
-            button.setY(y);
-            button.setWidth(size);
-            button.setHeight(size);
+            this.bbs$logoButton.setX(x);
+            this.bbs$logoButton.setY(y);
+            this.bbs$logoButton.setWidth(size);
+            this.bbs$logoButton.setHeight(size);
         }
     }
 }

@@ -58,12 +58,6 @@ public class ModelVAORenderer
 
     private static boolean glowingUniformActive;
 
-    /* Iris base pass keeps vanilla shader while glow is queued for the deferred BBS overlay. */
-    private static boolean glowDeferredToOverlay;
-
-    /* Shape-key additive emission pass uses EmissionOnly in model.fsh. */
-    private static boolean emissionOnlyPass;
-
     private static boolean textureBlendActive;
     private static float textureBlendFactor;
     private static mchorse.bbs_mod.resources.Link textureBlendTo;
@@ -443,37 +437,6 @@ public class ModelVAORenderer
         return glowingUniformActive;
     }
 
-    public static void setGlowDeferredToOverlay(boolean deferred)
-    {
-        glowDeferredToOverlay = deferred;
-    }
-
-    public static boolean isGlowDeferredToOverlay()
-    {
-        return glowDeferredToOverlay;
-    }
-
-    public static void setEmissionOnly(boolean emissionOnly)
-    {
-        emissionOnlyPass = emissionOnly;
-    }
-
-    public static boolean isEmissionOnlyPass()
-    {
-        return emissionOnlyPass;
-    }
-
-    /**
-     * CPU mesh builders emit vertices before draw-time uniform upload. Probe the active shader early so
-     * shape-key geometry can skip vanilla brighten/light boosts when the BBS GlowingColor uniform applies.
-     */
-    public static void beginCpuGeometry(ShaderProgram shader)
-    {
-        GlUniform glowingUniform = shader.getUniform("GlowingColor");
-
-        glowingUniformActive = glowingUniform != null;
-    }
-
     public static float getBaseGlowingStrength()
     {
         return baseGlowStrength;
@@ -590,7 +553,7 @@ public class ModelVAORenderer
 
         if (paintOverlayUniform != null)
         {
-            paintOverlayUniform.set(paintOverlayPass && Math.abs(paintStrength) >= 0.001F ? 1F : 0F);
+            paintOverlayUniform.set(paintOverlayPass ? 1F : 0F);
         }
 
         GlUniform textureBlendFactorUniform = shader.getUniform("TextureBlendFactor");
@@ -605,13 +568,6 @@ public class ModelVAORenderer
         if (textureBlendActiveUniform != null)
         {
             textureBlendActiveUniform.set(ModelVAORenderer.textureBlendActive ? 1F : 0F);
-        }
-
-        GlUniform emissionOnlyUniform = shader.getUniform("EmissionOnly");
-
-        if (emissionOnlyUniform != null)
-        {
-            emissionOnlyUniform.set(emissionOnlyPass ? 1F : 0F);
         }
 
         if (shader.fogStart != null)

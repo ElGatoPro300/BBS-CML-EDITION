@@ -27,11 +27,6 @@ public class UIIconTabButton extends UIButton
         this.icon = icon;
     }
 
-    protected int getRemoveGutter()
-    {
-        return REMOVE_GUTTER;
-    }
-
     public UIIconTabButton removable(Consumer<UIIconTabButton> callback)
     {
         this.removeCallback = callback;
@@ -100,7 +95,7 @@ public class UIIconTabButton extends UIButton
         }
 
         FontRenderer font = context.batcher.getFont();
-        int removeGutter = this.isRemovable() ? this.getRemoveGutter() : 0;
+        int removeGutter = this.isRemovable() ? REMOVE_GUTTER : 0;
         String rawLabel = this.label.get();
         boolean iconOnly = this.icon != null && (rawLabel == null || rawLabel.isEmpty());
         String label = iconOnly ? "" : font.limitToWidth(rawLabel, this.area.w - 26 - removeGutter - CONTENT_PADDING_LEFT);
@@ -128,7 +123,7 @@ public class UIIconTabButton extends UIButton
         if (this.isRemovable())
         {
             boolean removeHover = this.isRemoveInside(context);
-            int cx = this.area.ex() - this.getRemoveGutter() / 2;
+            int cx = this.area.ex() - REMOVE_GUTTER / 2;
             int cy = this.area.my();
 
             if (removeHover)
@@ -157,6 +152,6 @@ public class UIIconTabButton extends UIButton
 
     private boolean isRemoveInside(UIContext context)
     {
-        return this.area.isInside(context) && context.mouseX >= this.area.ex() - this.getRemoveGutter();
+        return this.area.isInside(context) && context.mouseX >= this.area.ex() - REMOVE_GUTTER;
     }
 }

@@ -25,7 +25,6 @@ public class UIFilmMosaicGrid extends UIScrollView
 
     private final UIDataPathList pathList;
     private final Function<String, Texture> thumbnailProvider;
-    private Function<DataPath, Texture> folderThumbnailProvider;
     private final Function<DataPath, String> labelProvider;
     private final Consumer<String> selectCallback;
     private final Consumer<String> doubleClickCallback;
@@ -53,11 +52,6 @@ public class UIFilmMosaicGrid extends UIScrollView
         this.selectCallback = selectCallback;
         this.doubleClickCallback = doubleClickCallback;
         this.scroll.scrollSpeed = 20;
-    }
-
-    public void setFolderThumbnailProvider(Function<DataPath, Texture> provider)
-    {
-        this.folderThumbnailProvider = provider;
     }
 
     public void fill(Collection<String> names, String selectedId)
@@ -147,17 +141,7 @@ public class UIFilmMosaicGrid extends UIScrollView
                     super.render(context);
 
                     boolean isFolder = path.folder;
-                    Texture thumbnail = null;
-
-                    if (isFolder && UIFilmMosaicGrid.this.folderThumbnailProvider != null)
-                    {
-                        thumbnail = UIFilmMosaicGrid.this.folderThumbnailProvider.apply(path);
-                    }
-
-                    if (thumbnail == null && !isFolder)
-                    {
-                        thumbnail = UIFilmMosaicGrid.this.thumbnailProvider.apply(id);
-                    }
+                    Texture thumbnail = isFolder ? null : UIFilmMosaicGrid.this.thumbnailProvider.apply(id);
 
                     if (thumbnail != null)
                     {

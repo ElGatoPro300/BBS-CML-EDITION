@@ -31,11 +31,6 @@ public class AudioRenderer
 
         for (AudioClip clip : clips)
         {
-            if (clip.audio.get() == null)
-            {
-                continue;
-            }
-
             SoundBuffer audio = BBSModClient.getSounds().get(clip.audio.get(), true);
 
             if (audio != null && audio.getWaveform() != null && clip.isInside((int) tick))

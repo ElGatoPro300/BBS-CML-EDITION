@@ -26,7 +26,6 @@ public class PoseTransform extends Transform
     public float lighting;
     public float shaderShadow = PaintSettings.SHADER_SHADOW_DEFAULT;
     public Link texture;
-    public Link textureBlendTo;
     public float textureBlend = 1F;
 
     @Override
@@ -43,7 +42,6 @@ public class PoseTransform extends Transform
         this.lighting = 0F;
         this.shaderShadow = PaintSettings.SHADER_SHADOW_DEFAULT;
         this.texture = null;
-        this.textureBlendTo = null;
         this.textureBlend = 1F;
     }
 
@@ -207,7 +205,6 @@ public class PoseTransform extends Transform
             result = result && this.shaderShadow == poseTransform.shaderShadow;
             result = result && this.textureBlend == poseTransform.textureBlend;
             result = result && ((this.texture == null && poseTransform.texture == null) || (this.texture != null && this.texture.equals(poseTransform.texture)));
-            result = result && ((this.textureBlendTo == null && poseTransform.textureBlendTo == null) || (this.textureBlendTo != null && this.textureBlendTo.equals(poseTransform.textureBlendTo)));
         }
 
         return result;
@@ -238,7 +235,6 @@ public class PoseTransform extends Transform
             this.lighting = poseTransform.lighting;
             this.shaderShadow = poseTransform.shaderShadow;
             this.texture = LinkUtils.copy(poseTransform.texture);
-            this.textureBlendTo = LinkUtils.copy(poseTransform.textureBlendTo);
             this.textureBlend = poseTransform.textureBlend;
         }
 
@@ -264,10 +260,6 @@ public class PoseTransform extends Transform
         if (this.texture != null)
         {
             data.put("texture", LinkUtils.toData(this.texture));
-        }
-        if (this.textureBlendTo != null)
-        {
-            data.put("texture_blend_to", LinkUtils.toData(this.textureBlendTo));
         }
         if (this.textureBlend != 1F)
         {
@@ -313,10 +305,6 @@ public class PoseTransform extends Transform
         if (data.has("texture"))
         {
             this.texture = LinkUtils.create(data.get("texture"));
-        }
-        if (data.has("texture_blend_to"))
-        {
-            this.textureBlendTo = LinkUtils.create(data.get("texture_blend_to"));
         }
         if (data.has("texture_blend"))
         {

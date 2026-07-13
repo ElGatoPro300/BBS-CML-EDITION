@@ -26,7 +26,6 @@ import mchorse.bbs_mod.ui.home.UIHomePanel;
 import mchorse.bbs_mod.ui.model.UIModelPreviewRenderer;
 import mchorse.bbs_mod.ui.utility.audio.UIAudioEditorPanel;
 import mchorse.bbs_mod.ui.utils.UIDataUtils;
-import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.Direction;
@@ -52,7 +51,6 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
     private static final int CARD_LABEL_H = 20;
     private static final int CARD_H = CARD_THUMB_H + CARD_LABEL_H;
     private static final int CARD_GAP = 6;
-    private static final int TOOLBAR_RIGHT_W = 68;
 
     private final UIDashboard dashboard;
 
@@ -65,7 +63,6 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
     private final UIElement breadcrumb;
     private final UITextbox searchBox;
     private final UIIcon backButton;
-    private final UIIcon addAssetButton;
     private final UIIcon dragModeToggle;
     private final UIIcon viewToggle;
 
@@ -134,11 +131,7 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
             this.refreshContent();
         });
         this.searchBox.placeholder(UIKeys.GENERAL_SEARCH);
-        this.searchBox.relative(this.toolbar).x(158).y(4).w(1F, -158 - 4 - TOOLBAR_RIGHT_W).h(20);
-
-        this.addAssetButton = new UIIcon(Icons.ADD, (b) -> this.openAddAssetMenu());
-        this.addAssetButton.tooltip(UIKeys.GENERAL_ADD, Direction.LEFT);
-        this.addAssetButton.relative(this.toolbar).x(1F, -TOOLBAR_RIGHT_W).y(4).w(20).h(20);
+        this.searchBox.relative(this.toolbar).x(158).y(4).w(1F, -158 - 4 - 44).h(20);
 
         this.dragModeToggle = new UIIcon(Icons.MOVE_TO, (b) -> this.toggleDragMode());
         this.dragModeToggle.tooltip(UIKeys.PANELS_OPEN_DRAG_MODE, Direction.LEFT);
@@ -149,7 +142,7 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
         this.viewToggle.tooltip(UIKeys.RAW_TOGGLE_VIEW, Direction.LEFT);
         this.viewToggle.relative(this.toolbar).x(1F, -20).y(4).w(20).h(20);
 
-        this.toolbar.add(this.backButton, this.breadcrumb, this.searchBox, this.addAssetButton, this.dragModeToggle, this.viewToggle);
+        this.toolbar.add(this.backButton, this.breadcrumb, this.searchBox, this.dragModeToggle, this.viewToggle);
 
         /* ---- Content area ---- */
         this.contentArea = new UIElement();
@@ -212,29 +205,7 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
         this.currentFolder = "";
         this.searchQuery = "";
         this.searchBox.setText("");
-        this.updateAddAssetButton();
         this.loadNames(type);
-    }
-
-    private void updateAddAssetButton()
-    {
-        this.addAssetButton.setEnabled(this.currentType != null);
-    }
-
-    private void openAddAssetMenu()
-    {
-        if (this.currentType == null)
-        {
-            return;
-        }
-
-        this.getContext().replaceContextMenu(this::populateAddAssetMenu);
-    }
-
-    void populateAddAssetMenu(ContextMenuManager menu)
-    {
-        menu.action(Icons.ADD, UIKeys.GENERAL_ADD, this::addAssetPrompt);
-        menu.action(Icons.FOLDER, UIKeys.PANELS_MODALS_ADD_FOLDER_TITLE, this::addFolderPrompt);
     }
 
     private void loadNames(ContentType type)
@@ -244,15 +215,7 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
             UIDataUtils.requestNames(type, (names) ->
             {
                 this.allNames.clear();
-
-                for (String name : names)
-                {
-                    if (RecentAssetsTracker.shouldShowInOpenAsset(type, name))
-                    {
-                        this.allNames.add(name);
-                    }
-                }
-
+                this.allNames.addAll(names);
                 this.refreshContent();
             });
         }
@@ -1042,7 +1005,10 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
             {
                 if (this.owner.currentType != null)
                 {
-                    this.owner.populateAddAssetMenu(menu);
+                    menu.action(Icons.ADD, UIKeys.GENERAL_ADD,
+                        () -> this.owner.addAssetPrompt());
+                    menu.action(Icons.FOLDER, UIKeys.PANELS_MODALS_ADD_FOLDER_TITLE,
+                        () -> this.owner.addFolderPrompt());
                 }
             });
         }
@@ -1504,7 +1470,10 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
             {
                 if (this.owner.currentType != null)
                 {
-                    this.owner.populateAddAssetMenu(menu);
+                    menu.action(Icons.ADD, UIKeys.GENERAL_ADD,
+                        () -> this.owner.addAssetPrompt());
+                    menu.action(Icons.FOLDER, UIKeys.PANELS_MODALS_ADD_FOLDER_TITLE,
+                        () -> this.owner.addFolderPrompt());
                 }
             });
         }

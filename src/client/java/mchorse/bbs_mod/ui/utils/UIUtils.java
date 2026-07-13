@@ -43,11 +43,6 @@ public class UIUtils
 
             if (OS.CURRENT == OS.WINDOWS)
             {
-                if (focusExistingExplorerWindow(path))
-                {
-                    return true;
-                }
-
                 return runSysCommand("explorer", path);
             }
             else if (OS.CURRENT == OS.MACOS)
@@ -58,48 +53,6 @@ public class UIUtils
             return runSysCommand("kde-open", path)
                 || runSysCommand("gnome-open", path)
                 || runSysCommand("xdg-open", path);
-        }
-        catch (Exception e)
-        {
-            e.printStackTrace();
-        }
-
-        return false;
-    }
-
-    private static boolean focusExistingExplorerWindow(String path)
-    {
-        try
-        {
-            File canonical = new File(path).getCanonicalFile();
-            String normalized = canonical.getAbsolutePath().replace("'", "''").replace("\\", "\\\\");
-            String script = "$target=[System.IO.Path]::GetFullPath('" + normalized + "').TrimEnd('\\');"
-                + "$shell=New-Object -ComObject Shell.Application;"
-                + "foreach($window in @($shell.Windows())){"
-                + "try{"
-                + "$openPath=$null;"
-                + "if($null -ne $window.Document -and $null -ne $window.Document.Folder -and $null -ne $window.Document.Folder.Self){"
-                + "$openPath=[System.IO.Path]::GetFullPath($window.Document.Folder.Self.Path).TrimEnd('\\');"
-                + "}"
-                + "elseif($window.LocationURL){"
-                + "$url=$window.LocationURL -replace '^file:///','' -replace '/','\\';"
-                + "$url=[System.Uri]::UnescapeDataString($url);"
-                + "$openPath=[System.IO.Path]::GetFullPath($url).TrimEnd('\\');"
-                + "}"
-                + "if($null -ne $openPath -and [string]::Equals($openPath,$target,[System.StringComparison]::OrdinalIgnoreCase)){"
-                + "if($window.Visible -eq $false){$window.Visible=$true};"
-                + "$window.Activate();"
-                + "exit 0"
-                + "}"
-                + "}catch{}"
-                + "};"
-                + "exit 1";
-            Process process = Runtime.getRuntime().exec(new String[] {"powershell.exe", "-NoProfile", "-Command", script});
-
-            if (process.waitFor() == 0)
-            {
-                return true;
-            }
         }
         catch (Exception e)
         {

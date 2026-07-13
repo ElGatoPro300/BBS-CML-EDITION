@@ -13,13 +13,9 @@ import mchorse.bbs_mod.utils.NaturalOrderComparator;
 import mchorse.bbs_mod.utils.StringUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-
-import org.lwjgl.glfw.GLFW;
 
 public class UIFileLinkList extends UIList<UIFileLinkList.FileLink>
 {
@@ -36,9 +32,6 @@ public class UIFileLinkList extends UIList<UIFileLinkList.FileLink>
     private static final int GRID_TITLE_HEIGHT = 12;
 
     private int itemSize = MIN_ITEM_SIZE;
-
-    private final List<Link> pathBack = new ArrayList<>();
-    private final List<Link> pathForward = new ArrayList<>();
 
     public Consumer<Link> fileCallback;
     public Link path = new Link("", "");
@@ -61,7 +54,7 @@ public class UIFileLinkList extends UIList<UIFileLinkList.FileLink>
             }
             else
             {
-                this.navigateTo(fileLink.link);
+                this.setPath(fileLink.link, !fileLink.up);
             }
         };
         this.fileCallback = fileCallback;
@@ -118,7 +111,6 @@ public class UIFileLinkList extends UIList<UIFileLinkList.FileLink>
     {
         return this.itemSize < MAX_ITEM_SIZE;
     }
-
 
     @Override
     public boolean subMouseScrolled(UIContext context)
@@ -203,21 +195,6 @@ public class UIFileLinkList extends UIList<UIFileLinkList.FileLink>
     @Override
     public boolean subMouseClicked(UIContext context)
     {
-        if (this.area.isInside(context) && (context.mouseButton == GLFW.GLFW_MOUSE_BUTTON_4 || context.mouseButton == GLFW.GLFW_MOUSE_BUTTON_5))
-        {
-            if (context.mouseButton == GLFW.GLFW_MOUSE_BUTTON_4)
-            {
-                if (this.navigateBack())
-                {
-                    return true;
-                }
-            }
-            else if (this.navigateForward())
-            {
-                return true;
-            }
-        }
-
         if (!this.isLargeViewEnabled())
         {
             return super.subMouseClicked(context);
@@ -337,83 +314,6 @@ public class UIFileLinkList extends UIList<UIFileLinkList.FileLink>
     public void setPath(Link link)
     {
         this.setPath(link, true);
-    }
-
-    public void navigateTo(Link link)
-    {
-        Link next = link == null ? new Link("", "") : link;
-        Link current = this.copyPath(this.path);
-
-        if (!this.pathsEqual(current, next))
-        {
-            this.pathBack.add(current);
-            this.pathForward.clear();
-        }
-
-        this.setPath(link, false);
-    }
-
-    public boolean navigateBack()
-    {
-        if (!this.pathBack.isEmpty())
-        {
-            this.pathForward.add(this.copyPath(this.path));
-            Link previous = this.pathBack.remove(this.pathBack.size() - 1);
-
-            this.setPath(previous, false);
-
-            return true;
-        }
-
-        if (this.path.source.isEmpty() && this.path.path.isEmpty())
-        {
-            return false;
-        }
-
-        Link parent = this.path.path.isEmpty()
-            ? new Link("", "")
-            : new Link(this.path.source, StringUtils.parentPath(this.path.path));
-
-        this.pathForward.add(this.copyPath(this.path));
-        this.setPath(parent, false);
-
-        return true;
-    }
-
-    public boolean navigateForward()
-    {
-        if (this.pathForward.isEmpty())
-        {
-            return false;
-        }
-
-        this.pathBack.add(this.copyPath(this.path));
-        Link next = this.pathForward.remove(this.pathForward.size() - 1);
-
-        this.setPath(next, false);
-
-        return true;
-    }
-
-    public void resetNavigationHistory()
-    {
-        this.pathBack.clear();
-        this.pathForward.clear();
-    }
-
-    private Link copyPath(Link link)
-    {
-        if (link == null || link.source.isEmpty())
-        {
-            return new Link("", "");
-        }
-
-        return new Link(link.source, link.path);
-    }
-
-    private boolean pathsEqual(Link a, Link b)
-    {
-        return a.source.equals(b.source) && a.path.equals(b.path);
     }
 
     /**

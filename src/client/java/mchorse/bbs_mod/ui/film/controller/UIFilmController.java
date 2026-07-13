@@ -156,8 +156,6 @@ public class UIFilmController extends UIElement
     private WorldRenderContext worldRenderContext;
     private final Matrix4f gizmoInterfaceMatrix = new Matrix4f();
 
-    private boolean createEntitiesCoalesced = false;
-
     public UIFilmController(UIFilmPanel panel)
     {
         this.panel = panel;
@@ -374,17 +372,6 @@ public class UIFilmController extends UIElement
 
     public void createEntities()
     {
-        if (this.createEntitiesCoalesced)
-        {
-            return;
-        }
-
-        this.createEntitiesCoalesced = true;
-        this.createEntitiesNow();
-    }
-
-    public void createEntitiesNow()
-    {
         this.stopRecording();
 
         if (this.controlled != null)
@@ -398,21 +385,13 @@ public class UIFilmController extends UIElement
             return;
         }
 
-        Film film = this.panel.getData();
-
-        if (this.editorController == null || this.editorController.film != film)
-        {
-            this.editorController = new FilmEditorController(film, this);
-        }
-
+        this.editorController = new FilmEditorController(this.panel.getData(), this);
         this.editorController.createEntities();
 
         IntObjectMap<IEntity> entities = this.panel.getRunner().getContext().entities;
 
         entities.clear();
         entities.putAll(this.editorController.getEntities());
-
-        this.createEntitiesCoalesced = true;
     }
 
     public IntObjectMap<IEntity> getEntities()
@@ -1037,7 +1016,7 @@ public class UIFilmController extends UIElement
     {
         Film film = this.panel.getData();
 
-        if (film == null || !this.panel.needsViewportRender())
+        if (film == null)
         {
             return;
         }
@@ -1272,25 +1251,7 @@ public class UIFilmController extends UIElement
             return;
         }
 
-        Film film = this.panel.getData();
-
-        if (film == null || film.replays.getList().isEmpty())
-        {
-            this.hoveredEntity = null;
-            this.stencil.clearPicking();
-
-            return;
-        }
-
         boolean altPressed = Window.isAltPressed();
-        IEntity entity = this.getCurrentEntity();
-
-        if ((entity == null || (this.pov == CAMERA_MODE_FIRST_PERSON && entity == this.getCurrentEntity())) && !altPressed)
-        {
-            this.hoveredEntity = null;
-
-            return;
-        }
 
         RenderSystem.depthFunc(GL11.GL_LESS);
 
@@ -1371,7 +1332,7 @@ public class UIFilmController extends UIElement
             int stencilIndex = this.stencil.getIndex() - Gizmo.STENCIL_HANDLE_MAX - 1;
             Replay replay = CollectionUtils.getSafe(this.panel.getData().replays.getList(), stencilIndex);
 
-            if (replay != null && this.editorController != null && this.editorController.isReplayShown(replay, replay.getTick(this.getTick())))
+            if (replay != null && this.editorController != null && this.editorController.isReplayVisible(replay, replay.getTick(this.getTick())))
             {
                 this.hoveredEntity = this.getEntities().get(stencilIndex);
 
@@ -1398,24 +1359,15 @@ public class UIFilmController extends UIElement
 
     public void startRenderFrame(float tickDelta)
     {
-        this.createEntitiesCoalesced = false;
-
-        if (this.editorController == null || !this.panel.needsViewportRender())
+        if (this.editorController != null)
         {
-            return;
+            this.editorController.startRenderFrame(tickDelta);
         }
-
-        this.editorController.startRenderFrame(tickDelta);
     }
 
     public void renderFrame(WorldRenderContext context)
     {
         this.worldRenderContext = context;
-
-        if (!this.panel.needsViewportRender())
-        {
-            return;
-        }
 
         RenderSystem.enableDepthTest();
 
@@ -1652,7 +1604,7 @@ public class UIFilmController extends UIElement
             {
                 Replay replay = CollectionUtils.getSafe(this.panel.getData().replays.getList(), entry.getKey());
 
-                if (replay == null || this.editorController == null || !this.editorController.isReplayShown(replay, replay.getTick(cursorTick)))
+                if (replay == null || this.editorController == null || !this.editorController.isReplayVisible(replay, replay.getTick(cursorTick)))
                 {
                     continue;
                 }
@@ -1673,7 +1625,7 @@ public class UIFilmController extends UIElement
             Replay replay = CollectionUtils.getSafe(this.panel.getData().replays.getList(), this.panel.replayEditor.replays.replays.getIndex());
             Pair<String, Boolean> bone = this.getBone();
 
-            if (replay != null && this.editorController != null && !this.editorController.isReplayShown(replay, replay.getTick(cursorTick)))
+            if (replay != null && this.editorController != null && !this.editorController.isReplayVisible(replay, replay.getTick(cursorTick)))
             {
                 replay = null;
             }

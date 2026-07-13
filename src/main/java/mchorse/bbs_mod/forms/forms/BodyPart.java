@@ -5,7 +5,6 @@ import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.entities.StubEntity;
-import mchorse.bbs_mod.settings.values.base.BaseValueGroup;
 import mchorse.bbs_mod.settings.values.core.ValueGroup;
 import mchorse.bbs_mod.settings.values.core.ValueString;
 import mchorse.bbs_mod.settings.values.core.ValueTransform;
@@ -83,36 +82,9 @@ public class BodyPart extends ValueGroup
     {
         BodyPart part = new BodyPart(this.id);
 
-        part.transform.copy(this.transform);
-        part.bone.copy(this.bone);
-        part.useTarget.copy(this.useTarget);
-
-        Form nested = this.getForm();
-
-        part.setInternalForm(nested == null ? null : FormUtils.copy(nested));
+        part.fromData(this.toData());
 
         return part;
-    }
-
-    @Override
-    public void copy(BaseValueGroup group)
-    {
-        if (group instanceof BodyPart source)
-        {
-            this.preNotify();
-            this.transform.copy(source.transform);
-            this.bone.copy(source.bone);
-            this.useTarget.copy(source.useTarget);
-
-            Form nested = source.getForm();
-
-            this.setInternalForm(nested == null ? null : FormUtils.copy(nested));
-            this.postNotify();
-
-            return;
-        }
-
-        super.copy(group);
     }
 
     @Override
