@@ -2581,6 +2581,14 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         {
             return false;
         }
+
+        /* Hidden panels are still present in the layout tree (or may remain floating),
+           but must be treated as not visible for the Window menu state. */
+        if (this.hiddenPanels.contains(panelId))
+        {
+            return false;
+        }
+
         return this.floatingPanels.contains(panelId) || this.hasPanelInLayout(BBSSettings.editorLayoutSettings.getFilmLayoutRoot(), panelId);
     }
 
