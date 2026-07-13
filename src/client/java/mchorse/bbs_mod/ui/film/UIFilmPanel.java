@@ -144,15 +144,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -175,6 +167,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     public UIFilmPreview preview;
     private final List<UIDraggable> splitterHandles = new ArrayList<>();
     private final List<EditorLayoutNode.SplitterHandleInfo> splitterHandleInfos = new ArrayList<>();
+    private final List<EditorLayoutNode.SplitterNode> splitterHandleTargets = new ArrayList<>();
 
     public UIIcon duplicateFilm;
 
@@ -1121,7 +1114,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.resetDynamicLayoutElements(recreateTabs);
         List<EditorLayoutNode.SplitterNode> splitters = layout.getFilmSplitters();
 
-        if (fast && !layout.isLayoutLocked() && resize && splitters.size() == this.splitterHandles.size() && splitters.size() == this.splitterHandleInfos.size())
+        if (fast && !layout.isLayoutLocked() && resize && this.splitterHandles.size() == this.splitterHandleInfos.size() && !this.splitterHandleInfos.isEmpty())
         {
             this.updateEditorFlexBoundsOnly(layout, root);
             this.syncReplaysPropertiesLayoutMode();
@@ -1172,6 +1165,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
             this.splitterHandleInfos.clear();
             EditorLayoutNode.computeSplitterHandles(visibleRoot, 0F, 0F, 1F, 1F, this.splitterHandleInfos);
+            this.refreshSplitterHandleTargets(root, visibleRoot);
             this.syncSplitterHandleBounds();
             this.applyDragHandleBoundsFromMap(bounds);
         }
@@ -1379,20 +1373,22 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         EditorLayoutNode visibleRoot = this.createVisibleDockedLayoutRoot(root);
 
-        layout.syncFilmSplittersFromRoot(visibleRoot);
-        splitters = layout.getFilmSplitters();
+        /* Keep filmSplitters aligned with the saved layout tree, not the temporary
+           visible tree used for bounds/handle placement. */
+        layout.syncFilmSplittersFromRoot(root);
 
         this.splitterHandleInfos.clear();
         EditorLayoutNode.computeSplitterHandles(visibleRoot, 0F, 0F, 1F, 1F, this.splitterHandleInfos);
+        this.refreshSplitterHandleTargets(root, visibleRoot);
 
-        int handleCount = Math.min(splitters.size(), this.splitterHandleInfos.size());
+        int handleCount = this.splitterHandleInfos.size();
 
         for (int i = 0; i < handleCount; i++)
         {
             final int index = i;
             UIDraggable handle = new UIDraggable((context) ->
             {
-                if (index >= layout.getFilmSplitters().size() || index >= this.splitterHandleInfos.size())
+                if (index >= this.splitterHandleInfos.size())
                 {
                     return;
                 }
@@ -1401,7 +1397,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
                 if (ratio >= 0F)
                 {
-                    layout.setFilmSplitterRatio(index, ratio);
+                    this.setSplitterRatioForHandle(index, ratio);
                     this.setupEditorFlex(true, true, false);
                 }
             });
@@ -1413,6 +1409,134 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
             this.editor.add(handle);
             handle.resize();
+        }
+    }
+
+    private Set<String> getDockedHiddenPanelIds()
+    {
+        Set<String> excluded = new HashSet<>();
+
+        for (String panelId : this.hiddenPanels)
+        {
+            if (!this.floatingPanels.contains(panelId))
+            {
+                excluded.add(panelId);
+            }
+        }
+
+        return excluded;
+    }
+
+    private void refreshSplitterHandleTargets(EditorLayoutNode layoutRoot, EditorLayoutNode visibleRoot)
+    {
+        this.splitterHandleTargets.clear();
+
+        if (layoutRoot == null || visibleRoot == null)
+        {
+            return;
+        }
+
+        Set<String> excludedPanelIds = this.getDockedHiddenPanelIds();
+        List<EditorLayoutNode.SplitterNode> visibleSplitters = new ArrayList<>();
+        EditorLayoutNode.collectSplitters(visibleRoot, visibleSplitters);
+
+        for (EditorLayoutNode.SplitterNode visibleSplitter : visibleSplitters)
+        {
+            this.splitterHandleTargets.add(this.resolveLayoutSplitter(layoutRoot, visibleSplitter, excludedPanelIds));
+        }
+    }
+
+    private EditorLayoutNode.SplitterNode resolveLayoutSplitter(EditorLayoutNode layoutRoot, EditorLayoutNode.SplitterNode visibleSplitter, Set<String> excludedPanelIds)
+    {
+        if (layoutRoot == null || visibleSplitter == null)
+        {
+            return null;
+        }
+
+        String visibleSignature = this.getSplitterSignature(visibleSplitter, Collections.emptySet());
+        List<EditorLayoutNode.SplitterNode> layoutSplitters = new ArrayList<>();
+        EditorLayoutNode.collectSplitters(layoutRoot, layoutSplitters);
+
+        for (EditorLayoutNode.SplitterNode candidate : layoutSplitters)
+        {
+            if (this.getSplitterSignature(candidate, excludedPanelIds).equals(visibleSignature))
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    private String getSplitterSignature(EditorLayoutNode.SplitterNode splitter, Set<String> excludedPanelIds)
+    {
+        TreeSet<String> first = new TreeSet<>();
+        TreeSet<String> second = new TreeSet<>();
+
+        this.collectPanelIdsInSubtree(splitter.getFirst(), first, excludedPanelIds);
+        this.collectPanelIdsInSubtree(splitter.getSecond(), second, excludedPanelIds);
+
+        return splitter.isHorizontal() + "|" + String.join(",", first) + "|" + String.join(",", second);
+    }
+
+    private void collectPanelIdsInSubtree(EditorLayoutNode node, Set<String> out, Set<String> excludedPanelIds)
+    {
+        if (node instanceof EditorLayoutNode.PanelNode)
+        {
+            String panelId = ((EditorLayoutNode.PanelNode) node).getPanelId();
+
+            if (!excludedPanelIds.contains(panelId))
+            {
+                out.add(panelId);
+            }
+        }
+        else if (node instanceof EditorLayoutNode.SplitterNode)
+        {
+            EditorLayoutNode.SplitterNode splitter = (EditorLayoutNode.SplitterNode) node;
+
+            this.collectPanelIdsInSubtree(splitter.getFirst(), out, excludedPanelIds);
+            this.collectPanelIdsInSubtree(splitter.getSecond(), out, excludedPanelIds);
+        }
+        else if (node instanceof EditorLayoutNode.TabbedNode)
+        {
+            EditorLayoutNode.TabbedNode tabbed = (EditorLayoutNode.TabbedNode) node;
+
+            for (EditorLayoutNode tab : tabbed.tabs)
+            {
+                this.collectPanelIdsInSubtree(tab, out, excludedPanelIds);
+            }
+        }
+    }
+
+    private void setSplitterRatioForHandle(int handleIndex, float ratio)
+    {
+        if (handleIndex < 0 || handleIndex >= this.splitterHandleTargets.size())
+        {
+            return;
+        }
+
+        EditorLayoutNode.SplitterNode target = this.splitterHandleTargets.get(handleIndex);
+
+        if (target == null)
+        {
+            return;
+        }
+
+        ValueEditorLayout layout = BBSSettings.editorLayoutSettings;
+        EditorLayoutNode root = layout.getFilmLayoutRoot();
+
+        layout.syncFilmSplittersFromRoot(root);
+
+        List<EditorLayoutNode.SplitterNode> splitters = layout.getFilmSplitters();
+        int layoutIndex = splitters.indexOf(target);
+
+        if (layoutIndex >= 0)
+        {
+            layout.setFilmSplitterRatio(layoutIndex, ratio);
+        }
+        else
+        {
+            BaseValue.edit(layout, (v) -> target.setRatio(ratio));
         }
     }
 
@@ -1616,6 +1740,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.applyPanelBoundsFromMap(bounds, multiTabPanels);
         this.splitterHandleInfos.clear();
         EditorLayoutNode.computeSplitterHandles(visibleRoot, 0F, 0F, 1F, 1F, this.splitterHandleInfos);
+        this.refreshSplitterHandleTargets(root, visibleRoot);
         this.syncSplitterHandleBounds();
         this.applyDragHandleBoundsFromMap(bounds);
         
