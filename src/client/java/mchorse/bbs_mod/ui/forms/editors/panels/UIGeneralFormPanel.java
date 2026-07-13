@@ -9,10 +9,8 @@ import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.forms.editors.forms.UIForm;
-import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
-import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.input.UIKeybind;
 import mchorse.bbs_mod.ui.framework.elements.input.UILookAtEditor;
 import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
@@ -20,7 +18,6 @@ import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UIIllusionKeyframeFactory;
 import mchorse.bbs_mod.ui.framework.elements.input.text.UITextbox;
 import mchorse.bbs_mod.ui.utils.UI;
-import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.keys.KeyCombo;
 
 import com.mojang.logging.LogUtils;
@@ -55,22 +52,20 @@ public class UIGeneralFormPanel extends UIFormPanel
     public UITrackpad illusionSpacing;
     public UITrackpad illusionOffset;
     public UITrackpad illusionOpacity;
-    public UIToggle illusionOpacityUniform;
     public UIToggle illusionInvert;
     public UIButton illusionTextures;
     public UIButton illusionTexturesClear;
     public UIToggle illusionRandomTextures;
     public UIToggle illusionReal;
+    public UIToggle illusionConnected;
+    public UIToggle illusionGradual;
+    public UIToggle illusionDelayEnabled;
     public UITrackpad illusionDelay;
     public UITrackpad illusionDistort;
-    public UIToggle illusionDistortUniform;
-    public UIToggle illusionDistortInvert;
+    public UIToggle illusionGlowEnabled;
     public UITrackpad illusionGlow;
     public UIToggle illusionGlowUniform;
     public UIToggle illusionGlowInvert;
-    public UIPropTransform illusionTransformEditor;
-    public UIToggle illusionGradual;
-    public UIToggle illusionGradualInvert;
     public UITrackpad uiScale;
     public UITextbox name;
     public UIPropTransform transform;
@@ -84,12 +79,6 @@ public class UIGeneralFormPanel extends UIFormPanel
     public UITrackpad hp;
     public UITrackpad speed;
     public UITrackpad stepHeight;
-
-    public UIButton lookAtButton;
-    public UIButton illusionButton;
-
-    private UIElement lookContent;
-    private UIElement illusionContent;
 
     public UIGeneralFormPanel(UIForm editor)
     {
@@ -133,8 +122,6 @@ public class UIGeneralFormPanel extends UIFormPanel
         this.illusionOffset.tooltip(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_OFFSET_TOOLTIP);
         this.illusionOpacity = new UITrackpad((v) -> this.editIllusion((illusion) -> illusion.opacity = v.floatValue() / 100F));
         this.illusionOpacity.limit(0D).tooltip(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_OPACITY_TOOLTIP);
-        this.illusionOpacityUniform = new UIToggle(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_OPACITY_UNIFORM, (b) -> this.editIllusion((illusion) -> illusion.opacityUniform = b.getValue()));
-        this.illusionOpacityUniform.tooltip(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_OPACITY_UNIFORM_TOOLTIP);
         this.illusionInvert = new UIToggle(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_INVERT, (b) -> this.editIllusion((illusion) -> illusion.invert = b.getValue()));
         this.illusionTextures = new UIButton(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_TEXTURES, (b) ->
         {
@@ -150,32 +137,24 @@ public class UIGeneralFormPanel extends UIFormPanel
         this.illusionRandomTextures.tooltip(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_TEXTURES_RANDOM_TOOLTIP);
         this.illusionReal = new UIToggle(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_REAL, (b) -> this.editIllusion((illusion) -> illusion.real = b.getValue()));
         this.illusionReal.tooltip(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_REAL_TOOLTIP);
+        this.illusionConnected = new UIToggle(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_CONNECTED, (b) -> this.editIllusion((illusion) -> illusion.connected = b.getValue()));
+        this.illusionConnected.tooltip(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_CONNECTED_TOOLTIP);
+        this.illusionGradual = new UIToggle(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_GRADUAL, (b) -> this.editIllusion((illusion) -> illusion.gradual = b.getValue()));
+        this.illusionGradual.tooltip(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_GRADUAL_TOOLTIP);
+        this.illusionDelayEnabled = new UIToggle(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_DELAY, (b) -> this.editIllusion((illusion) -> illusion.delayEnabled = b.getValue()));
+        this.illusionDelayEnabled.tooltip(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_DELAY_TOOLTIP);
         this.illusionDelay = new UITrackpad((v) -> this.editIllusion((illusion) -> illusion.delay = v.floatValue()));
         this.illusionDelay.limit(0D).tooltip(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_DELAY_TOOLTIP);
         this.illusionDistort = new UITrackpad((v) -> this.editIllusion((illusion) -> illusion.distort = v.floatValue()));
         this.illusionDistort.limit(0D).tooltip(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_DISTORT_TOOLTIP);
-        this.illusionDistortUniform = new UIToggle(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_DISTORT_UNIFORM, (b) -> this.editIllusion((illusion) -> illusion.distortUniform = b.getValue()));
-        this.illusionDistortUniform.tooltip(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_DISTORT_UNIFORM_TOOLTIP);
-        this.illusionDistortInvert = new UIToggle(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_DISTORT_INVERT, (b) -> this.editIllusion((illusion) -> illusion.distortInvert = b.getValue()));
-        this.illusionDistortInvert.tooltip(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_DISTORT_INVERT_TOOLTIP);
+        this.illusionGlowEnabled = new UIToggle(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_GLOW, (b) -> this.editIllusion((illusion) -> illusion.glowEnabled = b.getValue()));
+        this.illusionGlowEnabled.tooltip(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_GLOW_TOOLTIP);
         this.illusionGlow = new UITrackpad((v) -> this.editIllusion((illusion) -> illusion.glow = v.floatValue()));
         this.illusionGlow.tooltip(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_GLOW_TOOLTIP);
         this.illusionGlowUniform = new UIToggle(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_GLOW_UNIFORM, (b) -> this.editIllusion((illusion) -> illusion.glowUniform = b.getValue()));
         this.illusionGlowUniform.tooltip(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_GLOW_UNIFORM_TOOLTIP);
         this.illusionGlowInvert = new UIToggle(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_GLOW_INVERT, (b) -> this.editIllusion((illusion) -> illusion.glowInvert = b.getValue()));
         this.illusionGlowInvert.tooltip(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_GLOW_INVERT_TOOLTIP);
-        this.illusionTransformEditor = new UIPropTransform().callbacks(
-            () -> this.form.illusion.preNotify(),
-            () ->
-            {
-                this.form.illusion.postNotify();
-                this.editor.startEdit(this.form);
-            }
-        );
-        this.illusionGradual = new UIToggle(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_GRADUAL, (b) -> this.editIllusion((illusion) -> illusion.gradual = b.getValue()));
-        this.illusionGradual.tooltip(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_GRADUAL_TOOLTIP);
-        this.illusionGradualInvert = new UIToggle(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_GRADUAL_INVERT, (b) -> this.editIllusion((illusion) -> illusion.gradualInvert = b.getValue()));
-        this.illusionGradualInvert.tooltip(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_GRADUAL_INVERT_TOOLTIP);
         this.uiScale = new UITrackpad((v) -> this.form.uiScale.set(v.floatValue()));
         this.uiScale.limit(0.01D, 100D);
         this.name = new UITextbox(120, (t) ->
@@ -204,45 +183,29 @@ public class UIGeneralFormPanel extends UIFormPanel
         this.stepHeight = new UITrackpad((v) -> this.form.stepHeight.set(v.floatValue()));
         this.stepHeight.limit(0F);
 
-        this.lookContent = UI.column(5, 0, this.lookAt);
-
-        this.lookAtButton = new UIButton(UIKeys.FORMS_EDITORS_GENERAL_LOOK_AT, (b) -> this.openLookAtOverlay());
-        this.lookAtButton.w(1F);
-
-        this.illusionContent = UI.column(5, 0,
-            UI.row(UI.label(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_COUNT), this.illusionCount),
-            UI.row(UI.label(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_SPREAD), this.illusionSpread),
-            UI.row(this.illusionFront, this.illusionBack),
-            UI.row(this.illusionLeft, this.illusionRight),
-            UI.row(this.illusionUp, this.illusionDown),
-            this.illusionUniform,
-            this.illusionSpacing,
-            UI.row(UI.label(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_OFFSET), this.illusionOffset),
-            UI.row(UI.label(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_OPACITY), this.illusionOpacity),
-            UI.row(this.illusionOpacityUniform, this.illusionInvert),
-            UI.label(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_TRANSFORM),
-            this.illusionTransformEditor,
-            UI.row(this.illusionGradual, this.illusionGradualInvert),
-            UI.row(UI.label(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_DISTORT), this.illusionDistort),
-            UI.row(this.illusionDistortUniform, this.illusionDistortInvert),
-            UI.row(UI.label(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_DELAY), this.illusionDelay),
-            UI.row(UI.label(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_GLOW), this.illusionGlow),
-            UI.row(this.illusionGlowUniform, this.illusionGlowInvert),
-            UI.row(this.illusionTextures, this.illusionTexturesClear, this.illusionRandomTextures),
-            this.illusionReal
-        );
-        this.illusionContent.context((menu) -> menu.action(Icons.CLOSE, UIKeys.TRANSFORMS_CONTEXT_RESET, this::resetIllusion));
-
-        this.illusionButton = new UIButton(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION, (b) -> this.openIllusionOverlay());
-        this.illusionButton.w(1F);
-
         this.options.add(UI.label(UIKeys.FORMS_EDITORS_GENERAL_DISPLAY), this.name);
         this.options.add(this.hotkey, this.visible, this.animatable, this.trackName, this.lighting, this.shaderShadow);
         this.options.add(this.renderDepthEnabled, this.renderDepth);
+        this.options.add(UI.label(UIKeys.FORMS_EDITORS_GENERAL_LOOK_AT).marginTop(8), this.lookAt);
+        this.options.add(UI.label(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION).marginTop(8));
+        this.options.add(UI.label(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_COUNT), this.illusionCount);
+        this.options.add(UI.label(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_SPREAD), this.illusionSpread);
+        this.options.add(UI.row(this.illusionFront, this.illusionBack));
+        this.options.add(UI.row(this.illusionLeft, this.illusionRight));
+        this.options.add(UI.row(this.illusionUp, this.illusionDown));
+        this.options.add(this.illusionUniform, UI.label(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_SPACING), this.illusionSpacing);
+        this.options.add(this.illusionConnected);
+        this.options.add(UI.label(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_OFFSET), this.illusionOffset);
+        this.options.add(UI.label(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_OPACITY), this.illusionOpacity, this.illusionInvert);
+        this.options.add(UI.label(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_DISTORT), this.illusionDistort);
+        this.options.add(this.illusionGradual);
+        this.options.add(this.illusionDelayEnabled, this.illusionDelay);
+        this.options.add(this.illusionGlowEnabled, this.illusionGlow);
+        this.options.add(UI.row(this.illusionGlowUniform, this.illusionGlowInvert));
+        this.options.add(this.illusionTextures, this.illusionTexturesClear, this.illusionRandomTextures);
+        this.options.add(this.illusionReal);
         this.options.add(UI.label(UIKeys.FORMS_EDITORS_GENERAL_UI_SCALE), this.uiScale);
         this.options.add(this.transform.marginTop(8));
-        this.options.add(this.lookAtButton);
-        this.options.add(this.illusionButton);
         this.options.add(this.hitbox.marginTop(12), UI.row(this.hitboxWidth, this.hitboxHeight));
         this.options.add(UI.label(UIKeys.FORMS_EDITORS_GENERAL_HITBOX_SNEAK_MULTIPLIER), this.hitboxSneakMultiplier);
         this.options.add(UI.label(UIKeys.FORMS_EDITORS_GENERAL_HITBOX_EYE_HEIGHT), this.hitboxEyeHeight);
@@ -251,44 +214,12 @@ public class UIGeneralFormPanel extends UIFormPanel
         this.options.add(UI.label(UIKeys.FORMS_EDITORS_GENERAL_STEP_HEIGHT), this.stepHeight);
     }
 
-    private void openLookAtOverlay()
-    {
-        this.lookAt.fillBones(FormUtilsClient.getRenderer(FormUtils.getRoot(this.form)).collectMatrices(this.editor.editor.renderer.getTargetEntity(), 0F).keySet());
-        this.lookAt.refresh();
-        this.lookAt.resize();
-
-        UIGeneralSectionOverlayPanel panel = new UIGeneralSectionOverlayPanel(UIKeys.FORMS_EDITORS_GENERAL_LOOK_AT, this.lookContent).resizable();
-
-        UIOverlay.addOverlay(this.getContext(), panel, 340, 400);
-    }
-
-    private void openIllusionOverlay()
-    {
-        this.illusionTransformEditor.resize();
-
-        UIGeneralSectionOverlayPanel panel = new UIGeneralSectionOverlayPanel(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION, this.illusionContent).resizable();
-
-        UIOverlay.addOverlay(this.getContext(), panel, 320, 520);
-    }
-
     private void editIllusion(Consumer<Illusion> consumer)
     {
         Illusion illusion = this.form.illusion.get().copy();
 
         consumer.accept(illusion);
         this.form.illusion.set(illusion);
-    }
-
-    private void resetIllusion()
-    {
-        if (this.form == null)
-        {
-            return;
-        }
-
-        this.form.illusion.set(new Illusion());
-        this.startEdit(this.form);
-        this.editor.startEdit(this.form);
     }
 
     private void toggleIllusionDirection(int bit, boolean enabled)
@@ -336,20 +267,18 @@ public class UIGeneralFormPanel extends UIFormPanel
         this.illusionSpacing.setValue(illusion.spacing);
         this.illusionOffset.setValue(illusion.offset);
         this.illusionOpacity.setValue(illusion.opacity * 100F);
-        this.illusionOpacityUniform.setValue(illusion.opacityUniform);
         this.illusionInvert.setValue(illusion.invert);
         this.illusionRandomTextures.setValue(illusion.randomTextures);
         this.illusionReal.setValue(illusion.real);
+        this.illusionConnected.setValue(illusion.connected);
+        this.illusionGradual.setValue(illusion.gradual);
+        this.illusionDelayEnabled.setValue(illusion.delayEnabled);
         this.illusionDelay.setValue(illusion.delay);
         this.illusionDistort.setValue(illusion.distort);
-        this.illusionDistortUniform.setValue(illusion.distortUniform);
-        this.illusionDistortInvert.setValue(illusion.distortInvert);
+        this.illusionGlowEnabled.setValue(illusion.glowEnabled);
         this.illusionGlow.setValue(illusion.glow);
         this.illusionGlowUniform.setValue(illusion.glowUniform);
         this.illusionGlowInvert.setValue(illusion.glowInvert);
-        this.illusionGradual.setValue(illusion.gradual);
-        this.illusionGradualInvert.setValue(illusion.gradualInvert);
-        this.illusionTransformEditor.setTransform(illusion.transform);
         this.uiScale.setValue(form.uiScale.get());
         this.name.setText(form.name.get());
         this.transform.setTransform(form.transform.get());

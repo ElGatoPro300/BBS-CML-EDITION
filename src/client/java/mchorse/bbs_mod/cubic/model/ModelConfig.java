@@ -31,7 +31,6 @@ public class ModelConfig extends ValueGroup
     public final ValueVector3f scale = new ValueVector3f("scale", new Vector3f(1, 1, 1));
 
     public final ValuePose sneakingPose = new ValuePose("sneaking_pose", new Pose());
-    public final ValuePose ridingPose = new ValuePose("riding_pose", new Pose());
     public final ValuePose parts = new ValuePose("parts", new Pose());
     public final ValueInt color = new ValueInt("color", Colors.WHITE);
     public final ValueLink texture = new ValueLink("texture", null);
@@ -92,7 +91,6 @@ public class ModelConfig extends ValueGroup
         this.add(this.uiScale);
         this.add(this.scale);
         this.add(this.sneakingPose);
-        this.add(this.ridingPose);
         this.add(this.parts);
         this.add(this.color);
         this.add(this.texture);

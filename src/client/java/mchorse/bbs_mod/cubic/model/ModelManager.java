@@ -2,7 +2,6 @@ package mchorse.bbs_mod.cubic.model;
 
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.cubic.ModelInstance;
-import mchorse.bbs_mod.cubic.animation.ProceduralDefaults;
 import mchorse.bbs_mod.cubic.MolangHelper;
 import mchorse.bbs_mod.cubic.model.loaders.BOBJModelLoader;
 import mchorse.bbs_mod.cubic.model.loaders.CubicModelLoader;
@@ -179,7 +178,6 @@ public class ModelManager implements IWatchDogListener
         {
             System.out.println("Model \"" + id + "\" was loaded!");
 
-            ProceduralDefaults.ensureForModelInstance(model, this.provider, this.parser);
             model.setup();
         }
 

@@ -444,6 +444,17 @@ public class UISettingsOverlayPanel extends UIOverlayPanel
             {
                 label.h(20);
 
+                UIIcon flip = new UIIcon(Icons.REFRESH, (b) ->
+                {
+                    ValueVideoSettings videoSettings = BBSSettings.videoSettings;
+                    int w = videoSettings.width.get();
+                    int h = videoSettings.height.get();
+                    videoSettings.width.set(h);
+                    videoSettings.height.set(w);
+                });
+                flip.tooltip(IKey.raw("Intercambiar resolución"), Direction.LEFT);
+                flip.relative(label).x(1F, -40).y(0).w(20).h(20);
+
                 UIIcon presets = new UIIcon(Icons.FILM, (b) ->
                 {
                     this.getContext().replaceContextMenu((menu) ->
@@ -479,7 +490,7 @@ public class UISettingsOverlayPanel extends UIOverlayPanel
                 presets.tooltip(UIKeys.GENERAL_PRESETS, Direction.LEFT);
                 presets.relative(label).x(1F, -20).y(0).w(20).h(20);
 
-                label.add(presets);
+                label.add(flip, presets);
             }
 
             List<UIElement> options = new ArrayList<>();

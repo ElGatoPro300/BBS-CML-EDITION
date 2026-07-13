@@ -158,10 +158,8 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig> implements I
             }
         });
 
-        /* Background must render before the 3D viewport; renderer stays earlier in the child list
-           so editor side panels keep mouse priority (childrenMouseClicked walks last-to-first). */
-        this.prepend(this.renderer);
         this.prepend(viewportBackground);
+        this.prepend(this.renderer);
 
         this.homePage = new UIElement()
         {

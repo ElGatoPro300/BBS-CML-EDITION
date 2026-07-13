@@ -63,7 +63,6 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
     private final UIElement breadcrumb;
     private final UITextbox searchBox;
     private final UIIcon backButton;
-    private final UIIcon dragModeToggle;
     private final UIIcon viewToggle;
 
     /* Content */
@@ -77,7 +76,6 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
     String currentFolder = "";
     private String searchQuery = "";
     private boolean gridMode = BBSSettings.lastViewMosaic.get();
-    private boolean dragMode = false;
     private long lastClickTime = 0;
     private String lastClickedId = null;
 
@@ -131,18 +129,13 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
             this.refreshContent();
         });
         this.searchBox.placeholder(UIKeys.GENERAL_SEARCH);
-        this.searchBox.relative(this.toolbar).x(158).y(4).w(1F, -158 - 4 - 44).h(20);
-
-        this.dragModeToggle = new UIIcon(Icons.MOVE_TO, (b) -> this.toggleDragMode());
-        this.dragModeToggle.tooltip(UIKeys.PANELS_OPEN_DRAG_MODE, Direction.LEFT);
-        this.dragModeToggle.activeBackground(Colors.setA(BBSSettings.primaryColor.get(), 0.45F));
-        this.dragModeToggle.relative(this.toolbar).x(1F, -44).y(4).w(20).h(20);
+        this.searchBox.relative(this.toolbar).x(158).y(4).w(1F, -158 - 4 - 20).h(20);
 
         this.viewToggle = new UIIcon(this.gridMode ? Icons.LIST : Icons.GALLERY, (b) -> this.toggleView());
         this.viewToggle.tooltip(UIKeys.RAW_TOGGLE_VIEW, Direction.LEFT);
         this.viewToggle.relative(this.toolbar).x(1F, -20).y(4).w(20).h(20);
 
-        this.toolbar.add(this.backButton, this.breadcrumb, this.searchBox, this.dragModeToggle, this.viewToggle);
+        this.toolbar.add(this.backButton, this.breadcrumb, this.searchBox, this.viewToggle);
 
         /* ---- Content area ---- */
         this.contentArea = new UIElement();
@@ -342,27 +335,6 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
 
     void handleCardClick(String id, boolean isFolder, int mouseX, int mouseY)
     {
-        if (!this.dragMode)
-        {
-            if (isFolder)
-            {
-                if (id.equals(".."))
-                {
-                    this.navigateUp();
-                }
-                else
-                {
-                    this.navigateInto(id);
-                }
-            }
-            else
-            {
-                this.openAsset(id);
-            }
-
-            return;
-        }
-
         long now = System.currentTimeMillis();
 
         if (id.equals(this.lastClickedId) && now - this.lastClickTime < 400)
@@ -731,7 +703,7 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
         {
             boolean wasDragging = this.isDragging;
 
-            if (this.dragMode && this.isDragging && this.dragId != null)
+            if (this.isDragging && this.dragId != null)
             {
                 this.processDrop(context.mouseX, context.mouseY);
             }
@@ -868,13 +840,6 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
         }
 
         this.close();
-    }
-
-    private void toggleDragMode()
-    {
-        this.dragMode = !this.dragMode;
-        this.dragModeToggle.active(this.dragMode);
-        this.cancelDrag();
     }
 
     private void toggleView()
@@ -1123,7 +1088,7 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
         public void render(UIContext context)
         {
             /* Check drag threshold */
-            if (this.owner.dragMode && this.owner.dragId != null && !this.owner.isDragging)
+            if (this.owner.dragId != null && !this.owner.isDragging)
             {
                 int dx = context.mouseX - this.owner.dragStartX;
                 int dy = context.mouseY - this.owner.dragStartY;
@@ -1135,7 +1100,7 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
             }
 
             /* Update highlight target */
-            if (this.owner.dragMode && this.owner.isDragging)
+            if (this.owner.isDragging)
             {
                 this.owner.dragHighlightFolder = this.findFolderAt(context.mouseX, context.mouseY);
             }
@@ -1143,7 +1108,7 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
             super.render(context);
 
             /* Draw drag ghost outside clip bounds */
-            if (this.owner.dragMode && this.owner.isDragging && this.owner.dragId != null)
+            if (this.owner.isDragging && this.owner.dragId != null)
             {
                 this.renderDragGhost(context);
             }
@@ -1153,7 +1118,7 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
         protected void postRender(UIContext context)
         {
             /* Draw folder highlight inside clip */
-            if (this.owner.dragMode && this.owner.isDragging && this.owner.dragHighlightFolder != null)
+            if (this.owner.isDragging && this.owner.dragHighlightFolder != null)
             {
                 for (IUIElement child : this.getChildren())
                 {
@@ -1557,7 +1522,7 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
         public void render(UIContext context)
         {
             /* Check drag threshold */
-            if (this.owner.dragMode && this.owner.dragId != null && !this.owner.isDragging)
+            if (this.owner.dragId != null && !this.owner.isDragging)
             {
                 int dx = context.mouseX - this.owner.dragStartX;
                 int dy = context.mouseY - this.owner.dragStartY;
@@ -1569,7 +1534,7 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
             }
 
             /* Update highlight target */
-            if (this.owner.dragMode && this.owner.isDragging)
+            if (this.owner.isDragging)
             {
                 this.owner.dragHighlightFolder = this.findFolderAt(context.mouseX, context.mouseY);
             }
@@ -1577,7 +1542,7 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
             super.render(context);
 
             /* Draw drag ghost outside clip */
-            if (this.owner.dragMode && this.owner.isDragging && this.owner.dragId != null)
+            if (this.owner.isDragging && this.owner.dragId != null)
             {
                 this.renderDragGhost(context);
             }
@@ -1587,7 +1552,7 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
         protected void postRender(UIContext context)
         {
             /* Draw folder highlight inside clip */
-            if (this.owner.dragMode && this.owner.isDragging && this.owner.dragHighlightFolder != null)
+            if (this.owner.isDragging && this.owner.dragHighlightFolder != null)
             {
                 for (IUIElement child : this.getChildren())
                 {
@@ -1717,7 +1682,6 @@ public class UIOpenAssetOverlayPanel extends UIOverlayPanel
         protected void renderSkin(UIContext context)
         {
             boolean isDragTarget = this.isFolder
-                && this.list.owner.dragMode
                 && this.list.owner.isDragging
                 && this.id.equals(this.list.owner.dragHighlightFolder);
 

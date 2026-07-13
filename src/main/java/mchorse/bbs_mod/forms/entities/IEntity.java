@@ -7,7 +7,6 @@ import net.minecraft.entity.EntityPose;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.LimbAnimator;
 import net.minecraft.item.ItemStack;
-import net.minecraft.util.Hand;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 
@@ -58,30 +57,6 @@ public interface IEntity
     public int getHurtTimer();
 
     public void setHurtTimer(int hurtTimer);
-
-    public int getDeathTime();
-
-    public void setDeathTime(int deathTime);
-
-    public boolean isUsingItem();
-
-    public void setUsingItem(boolean usingItem);
-
-    public int getItemUseTimeLeft();
-
-    public void setItemUseTimeLeft(int itemUseTimeLeft);
-
-    public int getFireTicks();
-
-    public void setFireTicks(int fireTicks);
-
-    public boolean isParticlesEnabled();
-
-    public void setParticlesEnabled(boolean particlesEnabled);
-
-    public Hand getActiveHand();
-
-    public void setActiveHand(Hand hand);
 
     public double getX();
 
@@ -162,12 +137,6 @@ public interface IEntity
         this.setOnGround(entity.isOnGround());
         this.setFallDistance(entity.getFallDistance());
         this.setHurtTimer(entity.getHurtTimer());
-        this.setDeathTime(entity.getDeathTime());
-        this.setUsingItem(entity.isUsingItem());
-        this.setItemUseTimeLeft(entity.getItemUseTimeLeft());
-        this.setFireTicks(entity.getFireTicks());
-        this.setParticlesEnabled(entity.isParticlesEnabled());
-        this.setActiveHand(entity.getActiveHand());
 
         this.setPrevX(entity.getPrevX());
         this.setPrevY(entity.getPrevY());
@@ -220,21 +189,4 @@ public interface IEntity
     public Vec3d lerpVelocity(float transition);
 
     public boolean isUsingRiptide();
-    
-    public IEntity getMountTarget();
-
-    public void setMountTarget(IEntity mountTarget);
-
-    public IEntity getRiderTarget();
-
-    public void setRiderTarget(IEntity riderTarget);
-
-    public boolean isSitting();
-
-    public void setSitting(boolean sitting);
-
-    public default boolean isRiding()
-    {
-        return this.getMountTarget() != null;
-    }
 }

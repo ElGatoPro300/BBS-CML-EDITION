@@ -1,6 +1,5 @@
 package mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories;
 
-import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
 import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
@@ -30,9 +29,6 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
     public UITrackpad fix;
     public UIColor color;
     public UIColor paintColor;
-    public UITrackpad paintIntensity;
-    public UIColor glowingColor;
-    public UITrackpad glowIntensity;
     public UIToggle lighting;
 
     public UITransformKeyframeFactory(Keyframe<Transform> keyframe, UIKeyframes editor)
@@ -66,29 +62,10 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
 
             this.paintColor = new UIColor((c) ->
             {
-                UIPoseTransforms.applyPoseTransform(this.editor, this.keyframe, (poseT) -> this.setPaintColor(poseT, c));
+                UIPoseTransforms.applyPoseTransform(this.editor, this.keyframe, (poseT) -> poseT.paintColor.set(c));
             });
+            this.paintColor.withAlpha();
             this.paintColor.tooltip(UIKeys.FORMS_EDITORS_PAINT_COLOR);
-
-            this.paintIntensity = new UITrackpad((value) ->
-            {
-                UIPoseTransforms.applyPoseTransform(this.editor, this.keyframe, (poseT) -> this.setPaintIntensity(poseT, value.floatValue()));
-            });
-            this.paintIntensity.increment(0.05D).values(0.1D, 0.05D, 0.2D);
-            this.paintIntensity.tooltip(UIKeys.FORMS_EDITORS_PAINT_INTENSITY);
-
-            this.glowingColor = new UIColor((c) ->
-            {
-                UIPoseTransforms.applyPoseTransform(this.editor, this.keyframe, (poseT) -> this.setGlowingColor(poseT, c));
-            });
-            this.glowingColor.tooltip(UIKeys.FORMS_EDITORS_GLOWING_COLOR);
-
-            this.glowIntensity = new UITrackpad((value) ->
-            {
-                UIPoseTransforms.applyPoseTransform(this.editor, this.keyframe, (poseT) -> poseT.glowIntensity = value.floatValue());
-            });
-            this.glowIntensity.increment(0.05D).values(0.1D, 0.05D, 0.2D);
-            this.glowIntensity.tooltip(UIKeys.FORMS_EDITORS_GLOW_INTENSITY);
 
             this.lighting = new UIToggle(UIKeys.FORMS_EDITORS_GENERAL_LIGHTING, (b) ->
             {
@@ -100,18 +77,13 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
 
             this.fix.setValue(poseTransform.fix);
             this.color.setColor(poseTransform.color.getARGBColor());
-            this.paintColor.setColor(poseTransform.paintColor.getRGBColor());
-            this.paintIntensity.setValue(poseTransform.paintColor.a);
-            this.glowingColor.setColor(poseTransform.glowingColor.getRGBColor());
-            this.glowIntensity.setValue(poseTransform.glowIntensity);
+            this.paintColor.setColor(poseTransform.paintColor.getARGBColor());
             this.lighting.setValue(poseTransform.lighting <= 0F);
 
             this.scroll.add(UI.label(UIKeys.POSE_CONTEXT_FIX));
             this.scroll.add(this.fix);
             this.scroll.add(this.transform);
-            this.scroll.add(UI.row(this.color, this.paintColor, this.glowingColor));
-            this.scroll.add(this.paintIntensity);
-            this.scroll.add(this.glowIntensity);
+            this.scroll.add(UI.row(this.color, this.paintColor));
             this.scroll.add(this.lighting);
         }
         else
@@ -140,27 +112,6 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
         keyframe.setValue(poseTransform, false);
 
         return poseTransform;
-    }
-
-    private void setPaintColor(PoseTransform poseTransform, int value)
-    {
-        float intensity = poseTransform.paintColor.a;
-
-        poseTransform.paintColor.set(value);
-        poseTransform.paintColor.a = intensity;
-        poseTransform.shaderShadow = PaintSettings.resolveAutoShaderShadowForPoseAlpha(poseTransform.paintColor.a);
-    }
-
-    private void setPaintIntensity(PoseTransform poseTransform, float value)
-    {
-        poseTransform.paintColor.a = value;
-        poseTransform.shaderShadow = PaintSettings.resolveAutoShaderShadowForPoseAlpha(poseTransform.paintColor.a);
-    }
-
-    private void setGlowingColor(PoseTransform poseTransform, int value)
-    {
-        poseTransform.glowingColor.set(value);
-        poseTransform.glowingColor.a = 1F;
     }
 
     public static boolean isPoseLimbTrack(UIKeyframeSheet sheet)

@@ -76,14 +76,13 @@ public class UIFormModelEditor extends UIElement implements IUIModelPanelHost
     private UIDashboardPanel embeddedPanel;
     private UIDashboardPanel dashboardPanelBeforeTransform;
     private boolean formTransformGizmoMode;
-    private boolean pickingBone;
 
     public UIFormModelEditor(UIFormEditor parent)
     {
         this.parent = parent;
 
         this.renderer = new UIModelEditorRenderer();
-        this.renderer.relative(this).x(UIModelUIStyles.STRIP_WIDTH + 200).w(1F, -(UIModelUIStyles.STRIP_WIDTH + 400)).h(1F);
+        this.renderer.full(this);
         this.renderer.setCallback(this::pickBone);
 
         this.mainView = new UIElement();
@@ -171,9 +170,7 @@ public class UIFormModelEditor extends UIElement implements IUIModelPanelHost
 
         UIRenderable iconHighlight = new UIRenderable(this::renderPanelIcons);
 
-        this.add(backgroundStrip, viewportBackground, panelBackgrounds, iconHighlight, this.mainView, this.iconBar);
-        /* Center viewport only — side panels stay clickable; last child = first for picks (see UIModelPanel). */
-        this.add(this.renderer);
+        this.add(backgroundStrip, viewportBackground, panelBackgrounds, iconHighlight, this.renderer, this.mainView, this.iconBar);
     }
 
     private void renderPanelIcons(UIContext context)
@@ -396,33 +393,7 @@ public class UIFormModelEditor extends UIElement implements IUIModelPanelHost
 
     private void pickBone(String bone)
     {
-        /* UIModelPartsSection.selectBone() -> UIPoseEditor.selectBone() -> pickCallback ->
-           setSelectedBone() would otherwise re-enter this path with the same bone. */
-        if (this.pickingBone)
-        {
-            return;
-        }
-
-        this.pickingBone = true;
-
-        try
-        {
-            if (this.formTransformGizmoMode)
-            {
-                this.exitFormTransformGizmoMode();
-
-                if (this.parent != null)
-                {
-                    this.parent.disableFormTransformGizmo();
-                }
-            }
-
-            this.setSelectedBone(bone);
-        }
-        finally
-        {
-            this.pickingBone = false;
-        }
+        this.setSelectedBone(bone);
     }
 
     private void saveIfDirty()

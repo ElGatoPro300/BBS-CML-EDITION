@@ -15,7 +15,6 @@ import mchorse.bbs_mod.settings.values.ui.ValueOnionSkin;
 import mchorse.bbs_mod.settings.values.ui.ValueStringKeys;
 import mchorse.bbs_mod.settings.values.ui.ValueVideoSettings;
 import mchorse.bbs_mod.utils.MathUtils;
-import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.keyframes.KeyframeShape;
 
@@ -25,17 +24,6 @@ import java.util.List;
 
 public class BBSSettings
 {
-    private static final int[] DEFAULT_ALT_HOVER_PALETTE = {
-        Colors.GREEN,
-        Colors.YELLOW,
-        Colors.BLUE,
-        Colors.RED,
-        Colors.MAGENTA,
-        Colors.CYAN,
-        Colors.ORANGE,
-        Colors.DEEP_PINK
-    };
-
     public static ValueColors favoriteColors;
     public static ValueStringKeys favoriteModelForms;
     public static ValueString favoriteFormCategoriesData;
@@ -44,10 +32,9 @@ public class BBSSettings
     public static ValueInt primaryColor;
     public static ValueInt modelEditorHoverColor;
     public static ValueFloat modelEditorHoverOpacity;
-    public static ValueInt modelEditorAltHoverColor;
-    public static ValueFloat modelEditorAltHoverOpacity;
-    public static ValueBoolean modelEditorAltHoverMultipleColors;
 
+    private static int appliedModelEditorHoverColor = Colors.ACTIVE;
+    private static float appliedModelEditorHoverOpacity = 0.5F;
     public static ValueBoolean enableTrackpadIncrements;
     public static ValueBoolean enableTrackpadScrolling;
     public static ValueBoolean welcomePanelAcceptedBeta1;
@@ -80,8 +67,6 @@ public class BBSSettings
     public static ValueInt defaultPathInterpolation;
     public static ValueInt defaultCameraKeyframeInterpolation;
     public static ValueInt defaultKeyframeShape;
-    public static ValueInt keyframePreviewColor;
-    public static ValueFloat keyframePreviewOpacity;
 
     public static ValueBoolean enableCursorRendering;
     public static ValueBoolean enableMouseButtonRendering;
@@ -121,13 +106,9 @@ public class BBSSettings
     public static ValueBoolean editorSafeMargins;
     public static ValueBoolean editorCenterLines;
     public static ValueBoolean editorCrosshair;
-    public static ValueBoolean editorFilmOverlayVisible;
     public static ValueInt editorPeriodicSave;
     public static ValueBoolean editorHorizontalFlight;
     public static ValueBoolean editorFlightFreeLook;
-    public static ValueBoolean editorOrbitWithoutFlight;
-    public static ValueBoolean editorOrbitNoAnimation;
-    public static ValueFloat editorOrbitTransitionDuration;
     public static ValueEditorLayout editorLayoutSettings;
     public static ValueTimelineToolbarDocks timelineToolbarDocks;
     public static ValueOnionSkin editorOnionSkin;
@@ -145,7 +126,6 @@ public class BBSSettings
     public static ValueInt editorImportMode;
     public static ValueInt editorReplayEditorTitleLimit;
     public static ValueBoolean editorAnchoredReplaysPanel;
-    public static ValueBoolean editorSeparateReplayPropertiesPanel;
     public static ValueInt editorAnchoredReplaysPanelHeight;
     public static ValueBoolean editorReplayHud;
     public static ValueInt editorReplayHudPosition;
@@ -162,8 +142,6 @@ public class BBSSettings
 
     public static ValueFloat recordingCountdown;
     public static ValueBoolean recordingSwipeDamage;
-    public static ValueBoolean recordingAutoCaptureMobs;
-    public static ValueBoolean recordingAutoCaptureProjectiles;
     public static ValueBoolean recordingOverlays;
     public static ValueInt recordingPoseTransformOverlays;
     public static ValueBoolean recordingCameraPreview;
@@ -216,8 +194,6 @@ public class BBSSettings
     public static ValueBoolean morphingAutoMorph;
 
     public static ValueBoolean usingInMemoryClipboard;
-    public static ValueBoolean discordPresence;
-    public static ValueString discordApplicationId;
 
     public static int primaryColor()
     {
@@ -231,58 +207,22 @@ public class BBSSettings
 
     public static int modelEditorHoverColor(float alpha)
     {
-        int color = modelEditorHoverColor == null ? Colors.ACTIVE : (modelEditorHoverColor.get() & Colors.RGB);
-
-        return Colors.setA(color, alpha);
+        return Colors.setA(modelEditorHoverColor.get(), alpha);
     }
 
     public static void syncAppliedAppearance()
-    {}
+    {
+        if (modelEditorHoverColor != null)
+        {
+            appliedModelEditorHoverColor = modelEditorHoverColor.get();
+        }
+
+        appliedModelEditorHoverOpacity = modelEditorHoverOpacity == null ? 0.5F : modelEditorHoverOpacity.get();
+    }
 
     public static int modelEditorHoverHighlight()
     {
-        return buildHoverHighlight(modelEditorHoverColor, modelEditorHoverOpacity, Colors.ACTIVE, 0.5F);
-    }
-
-    /**
-     * Alt+click replay hover in the film viewport. When {@link #modelEditorAltHoverMultipleColors}
-     * is enabled, each replay index picks a different color from the favorite-colors palette
-     * (or {@link #DEFAULT_ALT_HOVER_PALETTE} when no favorites are saved).
-     */
-    public static int modelEditorAltHoverHighlight(int paletteIndex)
-    {
-        if (modelEditorAltHoverMultipleColors != null && modelEditorAltHoverMultipleColors.get())
-        {
-            float opacity = modelEditorAltHoverOpacity == null ? 0.5F : modelEditorAltHoverOpacity.get();
-            List<Color> palette = favoriteColors == null ? null : favoriteColors.getCurrentColors();
-            int color;
-
-            if (palette != null && !palette.isEmpty())
-            {
-                color = palette.get(Math.floorMod(paletteIndex, palette.size())).getRGBColor();
-            }
-            else
-            {
-                color = DEFAULT_ALT_HOVER_PALETTE[Math.floorMod(paletteIndex, DEFAULT_ALT_HOVER_PALETTE.length)];
-            }
-
-            return Colors.setA(color, opacity);
-        }
-
-        return buildHoverHighlight(modelEditorAltHoverColor, modelEditorAltHoverOpacity, Colors.YELLOW, 0.5F);
-    }
-
-    private static int buildHoverHighlight(ValueInt colorValue, ValueFloat opacityValue, int defaultColor, float defaultOpacity)
-    {
-        int color = colorValue == null ? defaultColor : (colorValue.get() & Colors.RGB);
-        float opacity = opacityValue == null ? defaultOpacity : opacityValue.get();
-
-        return Colors.setA(color, opacity);
-    }
-
-    public static int keyframePreviewHighlight(float pulseAlpha)
-    {
-        return Colors.setA(keyframePreviewColor.get(), pulseAlpha);
+        return Colors.setA(appliedModelEditorHoverColor, appliedModelEditorHoverOpacity);
     }
 
     /** The raw setting value is used directly as the UI scale multiplier (2 = 100%, i.e. the
@@ -485,9 +425,6 @@ public class BBSSettings
         primaryColor = builder.getInt("primary_color", Colors.ACTIVE).color();
         modelEditorHoverColor = builder.getInt("model_editor_hover_color", Colors.ACTIVE).color();
         modelEditorHoverOpacity = builder.getFloat("model_editor_hover_opacity", 0.5F, 0F, 1F);
-        modelEditorAltHoverColor = builder.getInt("model_editor_alt_hover_color", Colors.YELLOW).color();
-        modelEditorAltHoverOpacity = builder.getFloat("model_editor_alt_hover_opacity", 0.5F, 0F, 1F);
-        modelEditorAltHoverMultipleColors = builder.getBoolean("model_editor_alt_hover_multiple_colors", false);
         enableTrackpadIncrements = builder.getBoolean("trackpad_increments", true);
         enableTrackpadScrolling = builder.getBoolean("trackpad_scrolling", true);
         hideSettingDescriptions = builder.getBoolean("hide_setting_descriptions", false);
@@ -520,8 +457,6 @@ public class BBSSettings
         builder.register(disabledSheets);
         textureDefaultPath = builder.getRL("texture_default_path", null);
         texturePickerItemSize = builder.getInt("texture_picker_item_size", 16, 16, 220);
-        discordPresence = builder.getBoolean("discord_presence", true);
-        discordApplicationId = builder.getString("discord_application_id", "");
 
         builder.category("axes");
         gizmos = builder.getBoolean("gizmos", true);
@@ -587,7 +522,6 @@ public class BBSSettings
         editorRuleOfThirds = builder.getBoolean("rule_of_thirds", false);
         editorCenterLines = builder.getBoolean("center_lines", false);
         editorCrosshair = builder.getBoolean("crosshair", false);
-        editorFilmOverlayVisible = builder.getBoolean("film_overlay_visible", true);
 
         editorPeriodicSave = builder.getInt("periodic_save", 60, 0, 3600);
         editorHorizontalFlight = builder.getBoolean("horizontal_flight", false);
@@ -606,14 +540,9 @@ public class BBSSettings
         defaultPathInterpolation = builder.getInt("default_path_interpolation", 34);
         defaultCameraKeyframeInterpolation = builder.getInt("default_camera_keyframe_interpolation", 0);
         defaultKeyframeShape = builder.getInt("default_keyframe_shape", 0, 0, KeyframeShape.values().length - 1);
-        keyframePreviewColor = builder.getInt("keyframe_preview_color", Colors.WHITE).color();
-        keyframePreviewOpacity = builder.getFloat("keyframe_preview_opacity", 0.75F, 0F, 1F);
         editorSafeMarginsColor = builder.getInt("safe_margins_color", 0xcccc0000).colorAlpha();
         editorSafeMargins = builder.getBoolean("safe_margins", false);
         editorFlightFreeLook = builder.getBoolean("flight_free_look", false);
-        editorOrbitWithoutFlight = builder.getBoolean("orbit_without_flight", false);
-        editorOrbitNoAnimation = builder.getBoolean("orbit_no_animation", false);
-        editorOrbitTransitionDuration = builder.getFloat("orbit_transition_duration", 1.25F, 0.1F, 10F);
         editorClipTypeLabels = builder.getBoolean("clip_type_labels", false);
         editorCameraPreviewPlayerSync = builder.getBoolean("camera_preview_player_sync", false);
         editorMuteRenderAudioClips = builder.getBoolean("mute_render_audio_clips", false);
@@ -635,7 +564,6 @@ public class BBSSettings
         replayFpBobbingIntensity = builder.getFloat("replay_fp_bobbing_intensity", 0.25F, 0F, 2F);
         replayFpBobbingFrequency = builder.getFloat("replay_fp_bobbing_frequency", 0.25F, 0F, 3F);
         editorAnchoredReplaysPanel = builder.getBoolean("anchored_replays_panel", true);
-        editorSeparateReplayPropertiesPanel = builder.getBoolean("separate_replay_properties_panel", true);
         editorAnchoredReplaysPanelHeight = builder.getInt("anchored_replays_panel_height", 170, 70, 2000);
         editorAnchoredReplaysPanelHeight.invisible();
         editorReplayHud = builder.getBoolean("replay_hud", false);
@@ -652,8 +580,6 @@ public class BBSSettings
         builder.category("recording");
         recordingCountdown = builder.getFloat("countdown", 1.5F, 0F, 30F);
         recordingSwipeDamage = builder.getBoolean("swipe_damage", false);
-        recordingAutoCaptureMobs = builder.getBoolean("auto_capture_mobs", true);
-        recordingAutoCaptureProjectiles = builder.getBoolean("auto_capture_projectiles", true);
         recordingOverlays = builder.getBoolean("overlays", true);
         recordingPoseTransformOverlays = builder.getInt("pose_transform_overlays", 0, 0, 42);
         recordingCameraPreview = builder.getBoolean("camera_preview", true);

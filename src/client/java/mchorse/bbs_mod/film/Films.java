@@ -38,8 +38,6 @@ public class Films
 {
     private List<BaseFilmController> controllers = new ArrayList<BaseFilmController>();
     private Recorder recorder;
-    private final RecorderMobCapture editorMobCapture = new RecorderMobCapture();
-    private final RecorderProjectileCapture editorProjectileCapture = new RecorderProjectileCapture();
 
     public Map<String, Map<String, Integer>> actors = new HashMap<>();
 
@@ -149,16 +147,6 @@ public class Films
         return this.recorder;
     }
 
-    public RecorderMobCapture getEditorMobCapture()
-    {
-        return this.editorMobCapture;
-    }
-
-    public RecorderProjectileCapture getEditorProjectileCapture()
-    {
-        return this.editorProjectileCapture;
-    }
-
     public FirstPersonBobbingSample getFirstPersonBobbingSample(float tickDelta)
     {
         ClientPlayerEntity player = MinecraftClient.getInstance().player;
@@ -214,20 +202,6 @@ public class Films
 
         this.recorder = new Recorder(film, morph == null ? null : morph.getForm(), replayId, tick);
 
-        MobCaptureRecordingSetup setup = MobCaptureRecordingSetup.pending;
-
-        if (setup != null)
-        {
-            this.recorder.getMobCapture().applyRecordingSetup(setup);
-
-            if (setup.shouldCapture())
-            {
-                this.recorder.getMobCapture().bulkCapture(film, tick, setup, null);
-            }
-
-            MobCaptureRecordingSetup.pending = null;
-        }
-
         if (ClientNetwork.isIsBBSModOnServer())
         {
             ClientNetwork.sendActionRecording(film.getId(), replayId, this.recorder.getTick(), this.recorder.countdown, true);
@@ -237,7 +211,6 @@ public class Films
 
         if (replay != null)
         {
-            MobCemPoseCapture.syncReplay(replay);
             ClientNetwork.sendPlayerForm(replay.form.get());
         }
     }
@@ -255,17 +228,12 @@ public class Films
                 channel.simplify();
             }
 
-            recorder.getMobCapture().simplify(recorder.film);
-            recorder.getProjectileCapture().simplify(recorder.film);
-
             if (ClientNetwork.isIsBBSModOnServer())
             {
                 ClientNetwork.sendActionRecording(recorder.film.getId(), recorder.exception, recorder.initialTick, 0, false);
             }
 
             recorder.shutdown();
-            recorder.getMobCapture().clear();
-            recorder.getProjectileCapture().clear();
         }
 
         return recorder;

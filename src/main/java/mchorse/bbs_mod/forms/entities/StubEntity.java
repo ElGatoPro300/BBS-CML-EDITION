@@ -7,7 +7,6 @@ import net.minecraft.entity.EntityPose;
 import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.entity.LimbAnimator;
 import net.minecraft.item.ItemStack;
-import net.minecraft.util.Hand;
 import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
@@ -26,12 +25,6 @@ public class StubEntity implements IEntity
     private boolean onGround = true;
     private float fallDistance;
     private int hurtTimer;
-    private int deathTime;
-    private boolean usingItem;
-    private int itemUseTimeLeft;
-    private int fireTicks;
-    private boolean particlesEnabled = true;
-    private Hand activeHand = Hand.MAIN_HAND;
 
     private double prevX;
     private double prevY;
@@ -62,18 +55,10 @@ public class StubEntity implements IEntity
 
     private LimbAnimator limbAnimator = new LimbAnimator();
     private final Map<EquipmentSlot, ItemStack> items = new HashMap<>();
-    private IEntity mountTarget;
-    private IEntity riderTarget;
-    private boolean sitting;
 
     public StubEntity(World world)
     {
         this.world = world;
-
-        for (EquipmentSlot value : EquipmentSlot.values())
-        {
-            this.items.put(value, ItemStack.EMPTY);
-        }
     }
 
     public StubEntity()
@@ -213,78 +198,6 @@ public class StubEntity implements IEntity
     public void setHurtTimer(int hurtTimer)
     {
         this.hurtTimer = hurtTimer;
-    }
-
-    @Override
-    public int getDeathTime()
-    {
-        return this.deathTime;
-    }
-
-    @Override
-    public void setDeathTime(int deathTime)
-    {
-        this.deathTime = deathTime;
-    }
-
-    @Override
-    public boolean isUsingItem()
-    {
-        return this.usingItem;
-    }
-
-    @Override
-    public void setUsingItem(boolean usingItem)
-    {
-        this.usingItem = usingItem;
-    }
-
-    @Override
-    public int getItemUseTimeLeft()
-    {
-        return this.itemUseTimeLeft;
-    }
-
-    @Override
-    public void setItemUseTimeLeft(int itemUseTimeLeft)
-    {
-        this.itemUseTimeLeft = itemUseTimeLeft;
-    }
-
-    @Override
-    public int getFireTicks()
-    {
-        return this.fireTicks;
-    }
-
-    @Override
-    public void setFireTicks(int fireTicks)
-    {
-        this.fireTicks = fireTicks;
-    }
-
-    @Override
-    public boolean isParticlesEnabled()
-    {
-        return this.particlesEnabled;
-    }
-
-    @Override
-    public void setParticlesEnabled(boolean particlesEnabled)
-    {
-        this.particlesEnabled = particlesEnabled;
-    }
-
-    @Override
-    public Hand getActiveHand()
-    {
-        return this.activeHand;
-    }
-
-    @Override
-    public void setActiveHand(Hand hand)
-    {
-        this.activeHand = hand == null ? Hand.MAIN_HAND : hand;
     }
 
     @Override
@@ -532,7 +445,7 @@ public class StubEntity implements IEntity
             this.prevZ = this.z;
         }
 
-        if (!this.externalPrevRotation && this.mountTarget == null)
+        if (!this.externalPrevRotation)
         {
             this.prevPrevBodyYaw = this.prevBodyYaw;
             this.prevYaw = this.yaw;
@@ -583,53 +496,7 @@ public class StubEntity implements IEntity
     @Override
     public EntityPose getEntityPose()
     {
-        if (this.mountTarget != null || this.sitting)
-        {
-            return EntityPose.SITTING;
-        }
-
-        if (this.sneaking)
-        {
-            return EntityPose.CROUCHING;
-        }
-
         return EntityPose.STANDING;
-    }
-
-    @Override
-    public IEntity getMountTarget()
-    {
-        return this.mountTarget;
-    }
-
-    @Override
-    public void setMountTarget(IEntity mountTarget)
-    {
-        this.mountTarget = mountTarget;
-    }
-
-    @Override
-    public IEntity getRiderTarget()
-    {
-        return this.riderTarget;
-    }
-
-    @Override
-    public void setRiderTarget(IEntity riderTarget)
-    {
-        this.riderTarget = riderTarget;
-    }
-
-    @Override
-    public boolean isSitting()
-    {
-        return this.sitting;
-    }
-
-    @Override
-    public void setSitting(boolean sitting)
-    {
-        this.sitting = sitting;
     }
 
     @Override

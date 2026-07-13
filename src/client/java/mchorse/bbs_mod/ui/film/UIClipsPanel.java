@@ -104,12 +104,7 @@ public class UIClipsPanel extends UIElement implements IUIClipsDelegate
         TimelineToolbarDock dock = BBSSettings.timelineToolbarDocks.getDock(panelId);
 
         this.toolbar.configureDockHost(this, panelId, this::applyToolbarDockLayout);
-        TimelineToolbarDockLayout.apply(this, this.toolbar, dock, this.getClipPropertySidebarWidth(), this.clips);
-    }
-
-    private int getClipPropertySidebarWidth()
-    {
-        return this.target == null && this.panel != null ? 160 : 0;
+        TimelineToolbarDockLayout.apply(this, this.toolbar, dock, this.clips);
     }
 
     /**
@@ -288,8 +283,9 @@ public class UIClipsPanel extends UIElement implements IUIClipsDelegate
         {
             this.panel = null;
 
+            this.clips.w(1F, 0);
             this.clips.clearSelection();
-            this.applyToolbarDockLayout();
+            this.resize();
 
             return;
         }
@@ -327,7 +323,8 @@ public class UIClipsPanel extends UIElement implements IUIClipsDelegate
             e.printStackTrace();
         }
 
-        this.applyToolbarDockLayout();
+        this.clips.w(1F, this.target == null ? -160 : 0);
+        this.resize();
 
         this.filmPanel.pickClip(clip, this);
     }

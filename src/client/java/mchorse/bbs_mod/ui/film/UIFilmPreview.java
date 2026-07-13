@@ -21,7 +21,6 @@ import mchorse.bbs_mod.settings.ui.UIVideoSettingsOverlayPanel;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanels;
-import mchorse.bbs_mod.ui.film.controller.UIFilmController;
 import mchorse.bbs_mod.ui.film.controller.UIGizmoSizeContextMenu;
 import mchorse.bbs_mod.ui.film.controller.UIGizmoTranslateSpeedContextMenu;
 import mchorse.bbs_mod.ui.film.controller.UIOnionSkinContextMenu;
@@ -29,7 +28,6 @@ import mchorse.bbs_mod.ui.film.utils.UICameraUtils;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarSettings;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
-import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIMessageFolderOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIMessageOverlayPanel;
@@ -76,7 +74,6 @@ public class UIFilmPreview extends UIElement
 
     private List<AudioClip> clips = new ArrayList<>();
     private File pendingThumbnail;
-    private Runnable pendingThumbnailCallback;
     private UIFilmPanel panel;
 
     public UIElement icons;
@@ -89,8 +86,6 @@ public class UIFilmPreview extends UIElement
     public UIIcon gizmoSize;
     public UIIcon gizmoTranslateSpeed;
     public UIIcon onionSkin;
-    public UIIcon hideOverlays;
-    public UIIcon toggleShaders;
     public UIIcon plause;
     public UIIcon teleport;
     public UIIcon flight;
@@ -99,7 +94,6 @@ public class UIFilmPreview extends UIElement
     public UIIcon recordReplay;
     public UIIcon recordVideo;
     public UIIcon renderQueue;
-    public UIButton joinWorld;
 
     public UIFilmPreview(UIFilmPanel filmPanel)
     {
@@ -140,20 +134,6 @@ public class UIFilmPreview extends UIElement
         /* Preview buttons */
         this.onionSkin = new UIIcon(Icons.ONION_SKIN, (b) -> this.openOnionSkin());
         this.onionSkin.tooltip(UIKeys.FILM_CONTROLLER_ONION_SKIN_TITLE, Keys.FILM_CONTROLLER_TOGGLE_ONION_SKIN);
-        this.hideOverlays = new UIIcon(() -> BBSSettings.editorFilmOverlayVisible.get() ? Icons.VISIBLE : Icons.INVISIBLE, (b) ->
-        {
-            BBSSettings.editorFilmOverlayVisible.set(!BBSSettings.editorFilmOverlayVisible.get());
-            UIUtils.playClick();
-        });
-        this.hideOverlays.tooltip(UIKeys.FILM_PREVIEW_TOGGLE_OVERLAYS);
-        this.toggleShaders = new UIIcon(Icons.GLOBE, (b) ->
-        {
-            BBSRendering.toggleShaders();
-            UIUtils.playClick();
-        });
-        this.toggleShaders.tooltip(UIKeys.FILM_PREVIEW_TOGGLE_SHADERS);
-        this.toggleShaders.activeBackground(Colors.A50 | Colors.BLUE);
-        this.toggleShaders.setVisible(BBSRendering.isIrisLoaded());
         this.plause = new UIIcon(() -> this.panel.isRunning() ? Icons.PAUSE : Icons.PLAY, (b) -> this.panel.togglePlayback());
         this.plause.tooltip(UIKeys.CAMERA_EDITOR_KEYS_EDITOR_PLAUSE, Keys.PLAUSE);
         this.plause.context((menu) ->
@@ -295,13 +275,8 @@ public class UIFilmPreview extends UIElement
         this.renderQueue = new UIIcon(Icons.FILM, (b) -> this.panel.openRenderQueueOverlay());
         this.renderQueue.tooltip(UIKeys.FILM_OPEN_RENDER_QUEUE);
 
-        this.icons.add(this.onionSkin, this.hideOverlays, this.toggleShaders, this.plause, this.teleport, this.flight, this.control, this.perspective, this.recordReplay, this.recordVideo, this.renderQueue);
+        this.icons.add(this.onionSkin, this.plause, this.teleport, this.flight, this.control, this.perspective, this.recordReplay, this.recordVideo, this.renderQueue);
         this.add(this.icons);
-
-        this.joinWorld = new UIButton(UIKeys.FILM_JOIN_WORLD, (b) -> this.panel.joinPendingWorld());
-        this.joinWorld.relative(this).x(1F, -12).y(1F, -28).anchor(1F, 1F).w(120).h(20);
-        this.joinWorld.setVisible(false);
-        this.add(this.joinWorld);
 
         for (Consumer<UIFilmPreview> consumer : extensions)
         {
@@ -413,38 +388,17 @@ public class UIFilmPreview extends UIElement
             {
                 if (!BBSSettings.editorFlightFreeLook.get())
                 {
-                    if (this.panel.getController().getPovMode() == UIFilmController.CAMERA_MODE_ORBIT)
+                    int button = this.panel.dashboard.orbitUI.orbit.canStart(context);
+
+                    if (button >= 0)
                     {
-                        if (!this.panel.getController().orbit.isAnimating() && this.panel.getController().orbit.canStart(context) >= 0)
-                        {
-                            this.panel.getController().orbit.start(context);
+                        this.panel.dashboard.orbitUI.orbit.start(button, context.mouseX, context.mouseY);
 
-                            return true;
-                        }
-                    }
-                    else
-                    {
-                        int button = this.panel.dashboard.orbitUI.orbit.canStart(context);
-
-                        if (button >= 0)
-                        {
-                            this.panel.dashboard.orbitUI.orbit.start(button, context.mouseX, context.mouseY);
-
-                            return true;
-                        }
+                        return true;
                     }
                 }
 
                 return false;
-            }
-            else if (this.panel.getController().getPovMode() == UIFilmController.CAMERA_MODE_ORBIT
-                && BBSSettings.editorOrbitWithoutFlight.get()
-                && !this.panel.getController().orbit.isAnimating()
-                && this.panel.getController().orbit.canStart(context) >= 0)
-            {
-                this.panel.getController().orbit.start(context);
-
-                return true;
             }
 
             if (this.panel.replayEditor.handleViewportInteractionMouse(context, area))
@@ -461,11 +415,7 @@ public class UIFilmPreview extends UIElement
     @Override
     protected boolean subMouseReleased(UIContext context)
     {
-        if (this.panel.getController().getPovMode() == UIFilmController.CAMERA_MODE_ORBIT && this.panel.getController().orbit.enabled)
-        {
-            this.panel.getController().orbit.stop();
-        }
-        else if (!this.panel.isFlying())
+        if (!this.panel.isFlying())
         {
             this.panel.replayEditor.stopGizmoDrag();
         }
@@ -487,11 +437,6 @@ public class UIFilmPreview extends UIElement
     @Override
     public void render(UIContext context)
     {
-        if (this.joinWorld != null)
-        {
-            this.joinWorld.setVisible(this.panel.canShowJoinWorld());
-        }
-
         /* Keep the gizmo buttons highlighted to match the active transform mode. */
         Gizmo.Mode mode = Gizmo.INSTANCE.getMode();
 
@@ -499,10 +444,6 @@ public class UIFilmPreview extends UIElement
         this.gizmoScale.active(mode == Gizmo.Mode.SCALE);
         this.gizmoRotate.active(mode == Gizmo.Mode.ROTATE);
         this.gizmoCombined.active(mode == Gizmo.Mode.COMBINED);
-        if (BBSRendering.isIrisLoaded())
-        {
-            this.toggleShaders.active(BBSRendering.isIrisShadersEnabled());
-        }
 
         Texture texture = BBSRendering.getTexture();
         Area area = this.getViewport();
@@ -513,7 +454,7 @@ public class UIFilmPreview extends UIElement
         camera.projection.set(this.panel.lastProjection);
         context.batcher.flush();
 
-        if (texture != null && area.w > 0 && area.h > 0)
+        if (texture != null)
         {
             context.batcher.texturedBox(texture.id, Colors.WHITE, area.x, area.y, area.w, area.h, 0, texture.height, texture.width, 0, texture.width, texture.height);
         }
@@ -529,9 +470,8 @@ public class UIFilmPreview extends UIElement
             BBSSettings.editorReplayHudDisplayName.set(false);
 
             context.batcher.flush();
-            this.captureThumbnailInternal(this.pendingThumbnail, this.pendingThumbnailCallback);
+            this.captureThumbnailInternal(this.pendingThumbnail);
             this.pendingThumbnail = null;
-            this.pendingThumbnailCallback = null;
 
             BBSSettings.editorReplayHudDisplayName.set(oldNames);
         }
@@ -622,7 +562,7 @@ public class UIFilmPreview extends UIElement
 
         this.panel.getController().renderHUD(context, area);
 
-        if (BBSSettings.editorFilmOverlayVisible.get() && this.panel.replayEditor.isVisible() && this.panel.getData() != null)
+        if (this.panel.replayEditor.isVisible() && this.panel.getData() != null)
         {
             RunnerCameraController runner = this.panel.getRunner();
             int w = (int) (area.w * BBSSettings.audioWaveformWidth.get());
@@ -652,7 +592,6 @@ public class UIFilmPreview extends UIElement
         if (this.panel.getController().isRecording()) UIDashboardPanels.renderHighlight(context.batcher, this.recordReplay.area, Direction.BOTTOM);
         if (this.panel.recorder.isRecording()) UIDashboardPanels.renderHighlight(context.batcher, this.recordVideo.area, Direction.BOTTOM);
         if (this.panel.getController().getOnionSkin().enabled.get()) UIDashboardPanels.renderHighlight(context.batcher, this.onionSkin.area, Direction.BOTTOM);
-        if (!BBSSettings.editorFilmOverlayVisible.get()) UIDashboardPanels.renderHighlight(context.batcher, this.hideOverlays.area, Direction.BOTTOM);
         if (this.panel.getController().isControlling())
         {
             String s = UIKeys.FILM_CONTROLLER_CONTROL_MODE_TOOLTIP.format(KeyCodes.getName(Keys.FILM_CONTROLLER_TOGGLE_CONTROL.getMainKey())).get();
@@ -695,48 +634,23 @@ public class UIFilmPreview extends UIElement
     public void cancelCapture()
     {
         this.pendingThumbnail = null;
-        this.pendingThumbnailCallback = null;
     }
 
     public void captureThumbnail(File output)
     {
-        this.captureThumbnail(output, null);
-    }
-
-    public void captureThumbnail(File output, Runnable onComplete)
-    {
         this.pendingThumbnail = output;
-        this.pendingThumbnailCallback = onComplete;
     }
 
-    public void captureThumbnailNow(File output, Runnable onComplete)
-    {
-        this.pendingThumbnail = null;
-        this.pendingThumbnailCallback = null;
-        this.captureThumbnailInternal(output, onComplete);
-    }
-
-    private void captureThumbnailInternal(File output, Runnable onComplete)
+    private void captureThumbnailInternal(File output)
     {
         Area area = this.getViewport();
         UIContext context = this.getContext();
-
-        if (area == null || context == null || area.w <= 0 || area.h <= 0)
-        {
-            return;
-        }
-
         double scale = MinecraftClient.getInstance().getWindow().getScaleFactor();
         
         int width = (int) (area.w * scale);
         int height = (int) (area.h * scale);
         int x = (int) (context.globalX(area.x) * scale);
         int y = (int) (MinecraftClient.getInstance().getWindow().getFramebufferHeight() - context.globalY(area.y) * scale - height);
-
-        if (width <= 0 || height <= 0)
-        {
-            return;
-        }
 
         FloatBuffer pixelData = BufferUtils.createFloatBuffer(width * height * 4);
 
@@ -759,14 +673,6 @@ public class UIFilmPreview extends UIElement
             }
         }
 
-        new Thread(() ->
-        {
-            new ScreenshotRecorder.ScreenshotRunner(width, height, pixels, output).run();
-
-            if (onComplete != null)
-            {
-                MinecraftClient.getInstance().execute(onComplete);
-            }
-        }).start();
+        new Thread(new ScreenshotRecorder.ScreenshotRunner(width, height, pixels, output)).start();
     }
 }

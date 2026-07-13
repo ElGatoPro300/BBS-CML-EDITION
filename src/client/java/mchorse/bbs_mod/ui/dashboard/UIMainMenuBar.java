@@ -18,7 +18,6 @@ import mchorse.bbs_mod.ui.dashboard.panels.overlay.UIOpenAssetOverlayPanel;
 import mchorse.bbs_mod.ui.dashboard.utils.UIGraphPanel;
 import mchorse.bbs_mod.ui.film.UIFilmLogOverlayPanel;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
-import mchorse.bbs_mod.ui.film.UIWorldFilmsBrowserPanel;
 import mchorse.bbs_mod.ui.film.utils.FilmProjectHandler;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
@@ -47,8 +46,6 @@ public class UIMainMenuBar extends UIElement
 {
     private UIDashboard dashboard;
     UIMenuButton activeButton = null;
-    private UIMenuButton toolsMenu;
-    private UIMenuActionButton worldButton;
 
     public UIMainMenuBar(UIDashboard dashboard)
     {
@@ -73,32 +70,14 @@ public class UIMainMenuBar extends UIElement
         this.add(brand);
         this.add(new UIMenuButton(UIKeys.RAW_FILE, this, this::buildFileMenu));
         this.add(new UIMenuButton(UIKeys.RAW_EDIT, this, this::buildEditMenu));
-        this.toolsMenu = new UIMenuButton(UIKeys.RAW_TOOLS, this, this::buildToolsMenu);
-        this.add(this.toolsMenu);
+        this.add(new UIMenuButton(UIKeys.RAW_TOOLS, this, this::buildToolsMenu));
         /* Window menu is always visible; its content adapts to the active panel
            (currently only the Model Editor populates it). */
         this.add(new UIMenuButton(UIKeys.RAW_WINDOW, this, this::buildWindowMenu));
 
         this.add(new UIMenuButton(UIKeys.RAW_HELP, this, this::buildHelpMenu));
-        this.worldButton = new UIMenuActionButton(UIKeys.RAW_WORLD, this::openWorldProperties);
-        this.add(this.worldButton);
 
         this.row(2).preferred(999);
-    }
-
-    public void updateForPanel(UIDashboardPanel panel)
-    {
-        boolean stripped = UIWorldFilmsBrowserPanel.isBrowserPanel(panel);
-
-        if (this.toolsMenu != null)
-        {
-            this.toolsMenu.setVisible(!stripped);
-        }
-
-        if (this.worldButton != null)
-        {
-            this.worldButton.setVisible(!stripped);
-        }
     }
 
     @Override
@@ -184,6 +163,8 @@ public class UIMainMenuBar extends UIElement
     {
         menu.action(Icons.PROPERTIES, UIKeys.SELECTORS_TITLE, () ->
             UIOverlay.addOverlayRight(this.getContext(), new UISelectorsOverlayPanel(), 240));
+        menu.action(Icons.BLOCK, UIKeys.WORLD_PROPERTIES, () ->
+            UIOverlay.addOverlay(this.getContext(), new UIWorldPropertiesOverlayPanel(), 240, 200));
         menu.action(Icons.GRAPH, UIKeys.GRAPH_TOOLTIP, () -> {
             if (this.dashboard.documentTabsBar != null)
             {
@@ -204,15 +185,6 @@ public class UIMainMenuBar extends UIElement
     private void buildHelpMenu(ContextMenuManager menu)
     {
         menu.action(Icons.HELP, UIKeys.RAW_ABOUT, () -> UIOverlay.addOverlay(this.getContext(), new UIAboutOverlayPanel(UIKeys.RAW_ABOUT, this.dashboard), 560, 440));
-    }
-
-    private void openWorldProperties()
-    {
-        UIContext context = this.getContext();
-
-        context.closeContextMenu();
-        this.activeButton = null;
-        UIOverlay.addOverlay(context, new UIWorldPropertiesOverlayPanel(), 240, 200);
     }
 
     private void buildWindowMenu(ContextMenuManager menu)
@@ -302,11 +274,6 @@ public class UIMainMenuBar extends UIElement
 
             for (RecentAssetsTracker.Entry entry : RecentAssetsTracker.RECENT)
             {
-                if (RecentAssetsTracker.shouldExcludeFromRecent(entry.type, entry.id))
-                {
-                    continue;
-                }
-
                 menu.action(this.iconFor(entry.type), IKey.raw(entry.id), () ->
                 {
                     UIDataDashboardPanel panel = entry.type != null ? entry.type.get(this.dashboard) : null;
@@ -382,54 +349,6 @@ public class UIMainMenuBar extends UIElement
     /* ------------------------------------------------------------------ */
     /* Menu button                                                           */
     /* ------------------------------------------------------------------ */
-
-    public static class UIMenuActionButton extends UIButton
-    {
-        public UIMenuActionButton(IKey label, Runnable action)
-        {
-            super(label, (b) -> action.run());
-
-            this.setSizeFromLabel(label);
-        }
-
-        private void setSizeFromLabel(IKey label)
-        {
-            try
-            {
-                int textWidth = RtlAwtTextRenderer.isReady() && RtlTextEngine.isActive()
-                    ? RtlAwtTextRenderer.getWidth(label.get())
-                    : MinecraftClient.getInstance().textRenderer.getWidth(label.get());
-                this.w(textWidth + 10);
-            }
-            catch (Exception e)
-            {
-                this.w(28);
-            }
-        }
-
-        @Override
-        public void resize()
-        {
-            this.setSizeFromLabel(this.label);
-            super.resize();
-        }
-
-        @Override
-        protected void renderSkin(UIContext context)
-        {
-            boolean hovered = this.area.isInside(context);
-
-            if (hovered)
-            {
-                context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), Colors.A25);
-            }
-
-            int x = this.area.mx(context.batcher.getFont().getWidth(this.label.get()));
-            int y = this.area.my(context.batcher.getFont().getHeight());
-
-            context.batcher.textShadow(this.label.get(), x, y, Colors.WHITE);
-        }
-    }
 
     public static class UIMenuButton extends UIButton
     {

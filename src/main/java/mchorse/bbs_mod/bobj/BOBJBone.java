@@ -20,7 +20,6 @@ public class BOBJBone
     public float lighting;
     public final Color color = new Color(1, 1, 1, 1);
     public Link texture;
-    public float textureBlend = 1F;
 
     /**
      * Computed bone matrix which is used for transformations. This 
@@ -110,7 +109,6 @@ public class BOBJBone
         bone.lighting = this.lighting;
         bone.color.copy(this.color);
         bone.texture = this.texture;
-        bone.textureBlend = this.textureBlend;
         bone.mat.set(this.mat);
         bone.originMat.set(this.originMat);
         bone.invBoneMat.set(this.invBoneMat);

@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.ui.forms.editors.utils;
 
 import mchorse.bbs_mod.BBSSettings;
+import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.ITickable;
 import mchorse.bbs_mod.forms.entities.IEntity;
@@ -26,6 +27,8 @@ import mchorse.bbs_mod.utils.Pair;
 import mchorse.bbs_mod.utils.colors.Colors;
 
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gl.GlUniform;
+import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.util.math.MatrixStack;
@@ -339,8 +342,24 @@ public class UIPickableFormRenderer extends UIFormRenderer implements GizmoSurfa
         int w = texture.width;
         int h = texture.height;
 
+        ShaderProgram previewProgram = BBSShaders.getPickerPreviewProgram();
+        GlUniform target = previewProgram.getUniform("Target");
+
+        if (target != null)
+        {
+            target.set(index);
+        }
+
+        GlUniform boneHighlight = previewProgram.getUniform("BoneHighlight");
+
+        if (boneHighlight != null)
+        {
+            Colors.COLOR.set(BBSSettings.modelEditorHoverHighlight());
+            boneHighlight.set(Colors.COLOR.r, Colors.COLOR.g, Colors.COLOR.b, Colors.COLOR.a);
+        }
+
         RenderSystem.enableBlend();
-        context.batcher.drawPickerPreview(texture.id, index, BBSSettings.modelEditorHoverHighlight(), this.area.x, this.area.y, this.area.w, this.area.h, w, h);
+        context.batcher.texturedBox(BBSShaders::getPickerPreviewProgram, texture.id, Colors.WHITE, this.area.x, this.area.y, this.area.w, this.area.h, 0, h, w, 0, w, h);
 
         if (pair != null && pair.a != null)
         {
