@@ -7,7 +7,7 @@ import net.minecraft.util.Identifier;
 
 public class BBSLogoButtonWidget extends ButtonWidget
 {
-    private static final Identifier LOGO = Identifier.of("bbs", "textures/gui/bbs_logo.png");
+    private static final Identifier LOGO = new Identifier("bbs", "textures/gui/bbs_logo.png");
 
     public BBSLogoButtonWidget(int x, int y, int width, int height, PressAction onPress)
     {
@@ -15,9 +15,9 @@ public class BBSLogoButtonWidget extends ButtonWidget
     }
 
     @Override
-    protected void renderWidget(DrawContext context, int mouseX, int mouseY, float delta)
+    protected void renderButton(DrawContext context, int mouseX, int mouseY, float delta)
     {
-        super.renderWidget(context, mouseX, mouseY, delta);
+        super.renderButton(context, mouseX, mouseY, delta);
 
         int logoSize = Math.min(this.width, this.height) - 6;
         int logoX = this.getX() + (this.width - logoSize) / 2;

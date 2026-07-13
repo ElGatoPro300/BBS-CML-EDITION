@@ -88,7 +88,7 @@ public abstract class SelectWorldScreenMixin
             this.bbs$logoButton.setX(x);
             this.bbs$logoButton.setY(y);
             this.bbs$logoButton.setWidth(size);
-            this.bbs$logoButton.setHeight(size);
+            this.bbs$logoButton.height = size;
         }
     }
 }
