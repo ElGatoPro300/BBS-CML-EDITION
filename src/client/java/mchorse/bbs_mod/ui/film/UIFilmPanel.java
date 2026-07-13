@@ -2788,6 +2788,20 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             this.collapsedDockedPanels.remove(panelId);
             this.collapsedFloatingPanels.remove(panelId);
 
+            if (root != null)
+            {
+                EditorLayoutNode.TabbedNode tabbed = this.findTabbedNodeContaining(root, panelId);
+
+                if (tabbed != null)
+                {
+                    /* If the hidden panel was the active tab, promote another tab immediately so
+                       bounds/tab rendering don't target a leaf that was removed from the visible
+                       layout tree (which would leave an empty gap in the tab group). */
+                    this.promoteActiveTabIfHidden(tabbed);
+                    layout.setFilmLayoutRoot(root);
+                }
+            }
+
         }
 
         this.setupEditorFlex(true);
@@ -6874,6 +6888,50 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         return null;
     }
 
+    private float[] getTabGroupBounds(EditorLayoutNode.TabbedNode tabbed, Map<String, float[]> bounds)
+    {
+        if (tabbed == null || bounds == null)
+        {
+            return null;
+        }
+
+        int safeActiveTab = Math.max(0, Math.min(tabbed.tabs.size() - 1, tabbed.activeTab));
+        EditorLayoutNode activeNode = tabbed.tabs.get(safeActiveTab);
+
+        if (activeNode instanceof EditorLayoutNode.PanelNode)
+        {
+            String activeId = ((EditorLayoutNode.PanelNode) activeNode).getPanelId();
+            float[] activeBounds = bounds.get(activeId);
+
+            if (activeBounds != null)
+            {
+                return activeBounds;
+            }
+        }
+
+        /* Bounds are computed from the visible layout tree, which may use a different active tab
+           than the saved layout after hidden panels are removed. Fall back to any visible tab. */
+        for (EditorLayoutNode tab : tabbed.tabs)
+        {
+            if (tab instanceof EditorLayoutNode.PanelNode)
+            {
+                String panelId = ((EditorLayoutNode.PanelNode) tab).getPanelId();
+
+                if (!this.hiddenPanels.contains(panelId))
+                {
+                    float[] tabBounds = bounds.get(panelId);
+
+                    if (tabBounds != null)
+                    {
+                        return tabBounds;
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
     private void setupTabBars(EditorLayoutNode layoutRoot, EditorLayoutNode visibleRoot, Map<String, float[]> bounds, boolean recreate)
     {
         List<EditorLayoutNode.TabbedNode> tabbedNodes = new ArrayList<>();
@@ -6905,7 +6963,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
             if (activeNode instanceof EditorLayoutNode.PanelNode)
             {
                 String activeId = ((EditorLayoutNode.PanelNode) activeNode).getPanelId();
-                float[] b = bounds.get(activeId);
+                float[] b = this.getTabGroupBounds(tabbed, bounds);
 
                 if (b != null)
                 {
