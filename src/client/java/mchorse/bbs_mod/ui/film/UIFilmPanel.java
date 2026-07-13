@@ -2612,17 +2612,15 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         {
             ValueEditorLayout layout = BBSSettings.editorLayoutSettings;
             EditorLayoutNode root = layout.getFilmLayoutRoot();
-            boolean docked = !this.floatingPanels.contains(panelId) && this.hasPanelInLayout(root, panelId);
-            boolean canRemoveFromDock = docked && this.getDockedVisiblePanelCount() > 1;
+            /* Don't remove the panel from the layout tree when hiding through Window menu.
+               Removing leaves can collapse splitters/tab groups and unintentionally reshuffle
+               unrelated panels. Keep the docked layout stable and only toggle visibility via
+               hiddenPanels; re-enabling restores it in-place. */
 
             this.hiddenPanels.add(panelId);
             this.collapsedDockedPanels.remove(panelId);
             this.collapsedFloatingPanels.remove(panelId);
 
-            if (canRemoveFromDock)
-            {
-                layout.setFilmLayoutRoot(EditorLayoutNode.copyWithRemovedLeaf(root, panelId));
-            }
         }
 
         this.setupEditorFlex(true);
@@ -6580,9 +6578,39 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         {
             EditorLayoutNode.TabbedNode tabbed = tabbedNodes.get(i);
             if (tabbed.tabs.size() < 2) continue;
-            
+
             int safeActiveTab = Math.max(0, Math.min(tabbed.tabs.size() - 1, tabbed.activeTab));
             EditorLayoutNode activeNode = tabbed.tabs.get(safeActiveTab);
+
+            /* If the active tab was hidden (via Window menu), promote the first non-hidden
+               tab to active so the tab group doesn't render empty (and so we still have
+               stable bounds to place the tab strip). */
+            if (activeNode instanceof EditorLayoutNode.PanelNode)
+            {
+                String activeId = ((EditorLayoutNode.PanelNode) activeNode).getPanelId();
+
+                if (this.hiddenPanels.contains(activeId))
+                {
+                    for (int t = 0; t < tabbed.tabs.size(); t++)
+                    {
+                        EditorLayoutNode candidate = tabbed.tabs.get(t);
+
+                        if (candidate instanceof EditorLayoutNode.PanelNode)
+                        {
+                            String id = ((EditorLayoutNode.PanelNode) candidate).getPanelId();
+
+                            if (!this.hiddenPanels.contains(id))
+                            {
+                                tabbed.activeTab = t;
+                                safeActiveTab = t;
+                                activeNode = candidate;
+
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
             
             if (activeNode instanceof EditorLayoutNode.PanelNode)
             {
@@ -6803,6 +6831,18 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
                 if (child instanceof UITab)
                 {
                     UITab tab = (UITab) child;
+
+                    /* Hidden panels should not appear as tabs. Otherwise users can still click
+                       them back into view while the Window menu says they're hidden, and their
+                       presence affects scroll/width calculations. */
+                    boolean hidden = this.panel.hiddenPanels.contains(tab.panelId);
+                    tab.setVisible(!hidden);
+
+                    if (hidden)
+                    {
+                        continue;
+                    }
+
                     tab.area.x = x;
                     tab.area.y = this.area.y;
                     tab.area.h = this.area.h;
