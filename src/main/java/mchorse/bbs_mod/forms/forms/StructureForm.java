@@ -62,10 +62,6 @@ public class StructureForm extends Form
         this.pivotY.invisible();
         this.pivotZ.invisible();
 
-        /* Ocultar del timeline */
-        this.renderFluid.invisible();
-        this.add(this.renderFluid);
-
         this.add(this.pivotX);
         this.add(this.pivotY);
         this.add(this.pivotZ);
@@ -76,6 +72,8 @@ public class StructureForm extends Form
         this.add(this.scaleX);
         this.add(this.scaleY);
         this.add(this.scaleZ);
+        /* Ocultar del timeline */
+        this.renderFluid.invisible();
         this.add(this.renderFluid);
 
         /* Nueva pista unificada de keyframes y ocultar pista booleana suelta */

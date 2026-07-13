@@ -5,10 +5,10 @@ import mchorse.bbs_mod.camera.utils.TimeUtils;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.ui.UIKeys;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarPointerBlock;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineTrackEligibility;
 import mchorse.bbs_mod.ui.film.toolbar.UIInteractionModeOverlay;
 import mchorse.bbs_mod.ui.film.toolbar.UIKeyframeSelectNeighborInteraction;
-import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarPointerBlock;
 import mchorse.bbs_mod.ui.forms.editors.utils.UIStructureOverlayPanel;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeSheet;
@@ -119,21 +119,40 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
         this.dopeSheet.clamp();
     }
 
-    private String getDisplayTitle(String title)
+    private String getSidebarTitle(String title, FontRenderer font, int availableWidth)
     {
-        int limit = BBSSettings.editorReplayEditorTitleLimit.get();
-
-        if (limit <= 0)
+        if (font.getWidth(title) <= availableWidth)
         {
             return title;
         }
 
-        return title.length() > limit ? title.substring(0, limit) + "..." : title;
+        /* Horizontal sidebar scroll shows the full label. */
+        if (this.sidebarScrollMax > 0)
+        {
+            return title;
+        }
+
+        return font.limitToWidth(title, availableWidth);
     }
 
-    private String getSidebarTitle(String title)
+    private int getSidebarIconWidth(UIKeyframeSheet sheet)
     {
-        return this.sidebarScrollMax > 0 ? title : this.getDisplayTitle(title);
+        int iconWidth = 2 + sheet.level * LEVEL_INDENT;
+
+        if (sheet.groupHeader)
+        {
+            Icon arrow = this.getGroupArrow(sheet);
+            int base = this.isWorldOrModelGroup(sheet) || this.isFormGroup(sheet) ? 2 : 6;
+
+            return base + sheet.level * LEVEL_INDENT + arrow.w + 4;
+        }
+
+        Icon arrow = sheet.toggleExpanded != null ? (sheet.expanded ? Icons.UNCOLLAPSED : Icons.COLLAPSED) : null;
+        Icon icon = sheet.getIcon();
+
+        iconWidth = 4 + sheet.level * LEVEL_INDENT + (arrow != null ? arrow.w + 4 : 0) + (icon != null ? icon.w + 4 : 0);
+
+        return iconWidth;
     }
 
     private String getEffectiveSidebarTitle(UIKeyframeSheet sheet)
@@ -217,17 +236,27 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
         return this.getDopeSheetY(this.sheets.indexOf(sheet));
     }
 
+    public static final double DEFAULT_HIT_RADIUS_SQ = 25D;
+
+    /* Matches the enlarged ctrl-delete diamond (offset 4 -> 6px radius). */
+    public static final double REMOVE_HIT_RADIUS_SQ = 36D;
+
     /**
      * Whether given mouse coordinates are near the given point?
      */
     public static boolean isNear(double x, double y, int mouseX, int mouseY, boolean checkOnlyX)
     {
+        return isNear(x, y, mouseX, mouseY, checkOnlyX, DEFAULT_HIT_RADIUS_SQ);
+    }
+
+    public static boolean isNear(double x, double y, int mouseX, int mouseY, boolean checkOnlyX, double radiusSq)
+    {
         if (checkOnlyX)
         {
-            return Math.pow(mouseX - x, 2) < 25D;
+            return Math.pow(mouseX - x, 2) < radiusSq;
         }
 
-        return Math.pow(mouseX - x, 2) + Math.pow(mouseY - y, 2) < 25D;
+        return Math.pow(mouseX - x, 2) + Math.pow(mouseY - y, 2) < radiusSq;
     }
 
     /* Sheet management */
@@ -363,6 +392,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
 
         List keyframes = sheet.channel.getKeyframes();
         int i = this.sheets.indexOf(sheet);
+        double radiusSq = Window.isCtrlPressed() ? REMOVE_HIT_RADIUS_SQ : DEFAULT_HIT_RADIUS_SQ;
 
         for (int j = 0; j < keyframes.size(); j++)
         {
@@ -370,7 +400,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
             int x = this.keyframes.toGraphX(keyframe.getTick());
             int y = this.getDopeSheetY(i) + (int) this.trackHeight / 2;
 
-            if (this.isNear(x, y, mouseX, mouseY, false))
+            if (this.isNear(x, y, mouseX, mouseY, false, radiusSq))
             {
                 return new Pair<>(keyframe, KeyframeType.REGULAR);
             }
@@ -446,7 +476,8 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
 
         FontRenderer font = context.batcher.getFont();
         String title = this.getEffectiveSidebarTitle(sheet);
-        String displayTitle = this.getSidebarTitle(title);
+        int availableWidth = Math.max(1, this.sidebarWidth - this.getSidebarIconWidth(sheet) - 6);
+        String displayTitle = this.getSidebarTitle(title, font, availableWidth);
         Icon arrow = sheet.groupHeader
             ? this.getGroupArrow(sheet)
             : (sheet.toggleExpanded != null ? (sheet.expanded ? Icons.UNCOLLAPSED : Icons.COLLAPSED) : null);
@@ -626,6 +657,7 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
         this.keyframes.renderKeyframePastePreviews(context);
         this.keyframes.renderKeyframeSelectSamePreview(context);
         this.keyframes.renderInteractionTickPulse(context);
+        this.renderPreviewKeyframes(context);
         context.batcher.unclip(context);
     }
 
@@ -669,6 +701,11 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
                 context.batcher.textShadow(label, x + 4, area.y + 2, Colors.WHITE);
             }
         }
+    }
+
+    private void renderPreviewKeyframes(UIContext context)
+    {
+        Area area = this.keyframes.area;
 
         /* Render where the keyframe will be duplicated or added */
         if (!area.isInside(context) || TimelineToolbarPointerBlock.blocksPointer(context))
@@ -983,8 +1020,30 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
     {
         int x = this.keyframes.toGraphX(tick);
         int y = this.getDopeSheetY(sheet) + (int) this.trackHeight / 2;
-        float a = (float) Math.sin(context.getTickTransition() / 2D) * 0.1F + 0.5F;
-        int c = Colors.setA(color, a);
+        Area area = this.keyframes.area;
+        int minX = area.x + this.sidebarWidth;
+
+        if (x < minX || x > area.ex() || y < area.y || y > area.ey())
+        {
+            return;
+        }
+
+        int c;
+
+        if (color == Colors.WHITE)
+        {
+            float baseOpacity = BBSSettings.keyframePreviewOpacity == null ? 0.75F : BBSSettings.keyframePreviewOpacity.get();
+            float a = (float) Math.sin(context.getTickTransition() / 2D) * 0.1F + baseOpacity;
+
+            c = BBSSettings.keyframePreviewHighlight(a);
+        }
+        else
+        {
+            float a = (float) Math.sin(context.getTickTransition() / 2D) * 0.15F + 0.85F;
+
+            c = Colors.setA(color, a);
+        }
+
         KeyframeShape shape = KeyframeShape.SQUARE;
 
         if (BBSSettings.defaultKeyframeShape != null)
@@ -1006,6 +1065,8 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
         BufferBuilder builder = Tessellator.getInstance().getBuffer();
         builder.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
 
+        RenderSystem.enableBlend();
+        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
         renderShape(preview, context, builder, matrix, x, y, 3, c);
         BufferRenderer.drawWithGlobalProgram(builder.end());
     }
@@ -1060,7 +1121,8 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
             {
                 FontRenderer font = context.batcher.getFont();
                 String title = this.getEffectiveSidebarTitle(sheet);
-                String displayTitle = this.getSidebarTitle(title);
+                int availableWidth = Math.max(1, this.sidebarWidth - this.getSidebarIconWidth(sheet) - 6);
+                String displayTitle = this.getSidebarTitle(title, font, availableWidth);
 
                 Icon arrow = this.getGroupArrow(sheet);
                 int iconX = sidebarX + 6 + sheet.level * LEVEL_INDENT;
@@ -1194,7 +1256,14 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
                     continue;
                 }
 
-                boolean isPointHover = this.isNear(this.keyframes.toGraphX(frame.getTick()), my, context.mouseX, context.mouseY, Window.isAltPressed() && Window.isShiftPressed());
+                boolean isPointHover = this.isNear(
+                    this.keyframes.toGraphX(frame.getTick()),
+                    my,
+                    context.mouseX,
+                    context.mouseY,
+                    Window.isAltPressed() && Window.isShiftPressed(),
+                    Window.isCtrlPressed() ? REMOVE_HIT_RADIUS_SQ : DEFAULT_HIT_RADIUS_SQ
+                );
                 boolean toRemove = Window.isCtrlPressed() && isPointHover;
 
                 if (this.keyframes.isSelecting())
@@ -1244,7 +1313,9 @@ public class UIKeyframeDopeSheet implements IUIKeyframeGraph
             BufferRenderer.drawWithGlobalProgram(builder.end());
 
             FontRenderer font = context.batcher.getFont();
-            String displayTitle = this.getSidebarTitle(this.getEffectiveSidebarTitle(sheet));
+            String title = this.getEffectiveSidebarTitle(sheet);
+            int availableWidth = Math.max(1, this.sidebarWidth - this.getSidebarIconWidth(sheet) - 6);
+            String displayTitle = this.getSidebarTitle(title, font, availableWidth);
 
             Icon icon = sheet.getIcon();
             Icon arrow = sheet.toggleExpanded != null ? (sheet.expanded ? Icons.UNCOLLAPSED : Icons.COLLAPSED) : null;

@@ -1,7 +1,7 @@
 package mchorse.bbs_mod.ui.film.toolbar;
 
-import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.BBSModClient;
+import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.ui.dashboard.UIDashboard;
 import mchorse.bbs_mod.ui.film.UIClipsPanel;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;

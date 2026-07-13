@@ -14,6 +14,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.texture.AbstractTexture;
 
 import joptsimple.internal.Strings;
 import net.irisshaders.iris.Iris;
@@ -233,6 +235,18 @@ public class IrisUtils
     public static boolean isShaderPackEnabled()
     {
         return IrisApi.getInstance().isShaderPackInUse();
+    }
+
+    public static void toggleShaders()
+    {
+        try
+        {
+            Iris.toggleShaders(MinecraftClient.getInstance(), !IrisUtils.isShaderPackEnabled());
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
     }
 
     public static boolean isShadowPass()

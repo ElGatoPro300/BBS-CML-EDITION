@@ -12,6 +12,8 @@ public interface IModelInstance
 
     public Pose getSneakingPose();
 
+    public Pose getRidingPose();
+
     public Animations getAnimations();
 
     public String getHeadBone();

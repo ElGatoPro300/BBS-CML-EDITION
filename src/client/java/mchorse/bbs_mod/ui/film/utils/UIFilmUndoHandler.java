@@ -1,10 +1,10 @@
 package mchorse.bbs_mod.ui.film.utils;
 
 import mchorse.bbs_mod.BBSMod;
+import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.network.ClientNetwork;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.settings.values.core.ValueGroup;
-import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.film.utils.undo.UIViewUndo;
 import mchorse.bbs_mod.ui.film.utils.undo.ValueChangeUndo;

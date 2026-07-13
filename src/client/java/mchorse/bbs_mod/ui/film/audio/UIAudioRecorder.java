@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.ui.film.audio;
 
 import mchorse.bbs_mod.BBSMod;
+import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.audio.wav.WaveWriter;
 import mchorse.bbs_mod.camera.clips.misc.AudioClientClip;
 import mchorse.bbs_mod.resources.Link;
@@ -58,7 +59,7 @@ public class UIAudioRecorder extends UIElement
                 String newT = t.isEmpty() ? timestampFilename : t;
 
                 clips.enterClipPlacement(UIKeys.TIMELINE_INTERACTION_PLACE_MICROPHONE,
-                    mchorse.bbs_mod.BBSSettings.getDefaultDuration(), -1, -1,
+                    BBSSettings.getDefaultDuration(), -1, -1,
                     (tick, layer, duration) -> startRecordingAt(filmPanel, clips, newT, tick, layer, value, timestampFilename));
             }
         );

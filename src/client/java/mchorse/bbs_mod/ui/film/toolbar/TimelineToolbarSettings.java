@@ -1,6 +1,8 @@
 package mchorse.bbs_mod.ui.film.toolbar;
 
 import mchorse.bbs_mod.BBSSettings;
+import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
+import mchorse.bbs_mod.ui.framework.tooltips.styles.DarkTooltipStyle;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.colors.Colors;
 
@@ -35,7 +37,7 @@ public class TimelineToolbarSettings
     public static final int TOOLBAR_SECTION_SPACING = 0;
 
     /**
-     * Icon size for root section buttons. Matches {@link mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon}.
+     * Icon size for root section buttons. Matches {@link UIIcon}.
      */
     public static final int SECTION_ICON_SIZE = 20;
 
@@ -337,7 +339,7 @@ public class TimelineToolbarSettings
 
     /**
      * Background color of a popup menu. Same opaque black as context menus and
-     * {@link mchorse.bbs_mod.ui.framework.tooltips.styles.DarkTooltipStyle}
+     * {@link DarkTooltipStyle}
      * ({@link Colors#A100}), before optional primary tint.
      */
     public static final int MENU_BACKGROUND_BASE = Colors.A100; /* old value:0xff1e1e22 */
@@ -356,7 +358,7 @@ public class TimelineToolbarSettings
 
     /**
      * Pixel spread of the primary-color glow around popup menus. Matches
-     * {@link mchorse.bbs_mod.ui.framework.tooltips.styles.DarkTooltipStyle}.
+     * {@link DarkTooltipStyle}.
      */
     public static final int MENU_SHADOW_OFFSET = 6;
 

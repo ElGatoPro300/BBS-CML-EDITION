@@ -102,6 +102,11 @@ public class UIMorphingPanel extends UIDashboardPanel
     {
         super.appear();
 
+        if (MinecraftClient.getInstance().player == null)
+        {
+            return;
+        }
+
         Morph morph = ((IMorphProvider) MinecraftClient.getInstance().player).getMorph();
 
         this.palette.list.setupForms(BBSModClient.getFormCategories());

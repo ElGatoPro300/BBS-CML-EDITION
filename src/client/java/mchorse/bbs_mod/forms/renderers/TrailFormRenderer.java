@@ -7,8 +7,10 @@ import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.forms.ITickable;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.forms.TrailForm;
+import mchorse.bbs_mod.forms.renderers.utils.FormTextureBlendRenderer;
 import mchorse.bbs_mod.graphics.Draw;
 import mchorse.bbs_mod.graphics.texture.Texture;
+import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.framework.UIContext;
 
 import net.minecraft.client.render.BufferBuilder;
@@ -164,23 +166,35 @@ public class TrailFormRenderer extends FormRenderer<TrailForm> implements ITicka
             return;
         }
 
-        BBSModClient.getTextures().bindTexture(this.form.texture.get());
+        Link defaultTexture = this.form.texture.get();
 
+        FormTextureBlendRenderer.draw(this.form.textureBlend, defaultTexture, (link, alphaFactor) ->
+        {
+            this.renderTrailPass(stack, trails, loop, length, current, baseX, baseY, baseZ, link, alphaFactor, camInverse);
+        });
+    }
+
+    private void renderTrailPass(MatrixStack stack, ArrayDeque<Trail> trails, boolean loop, float length, float current, double baseX, double baseY, double baseZ, Link textureLink, float alphaFactor, Matrix4f camInverse)
+    {
+        if (textureLink == null)
+        {
+            return;
+        }
+
+        BBSModClient.getTextures().bindTexture(textureLink);
         stack.push();
 
-        Trail last = null;
-        Trail trail;
-        BufferBuilder builder = Tessellator.getInstance().getBuffer();
-        Matrix4f m = stack.peek().getPositionMatrix();
-
+        Matrix4f m = new Matrix4f();
         m.set(camInverse);
         m.invert();
 
+        BufferBuilder builder = Tessellator.getInstance().getBuffer();
         builder.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_TEXTURE);
+        Trail last = null;
 
-        for (it = trails.iterator(); it.hasNext(); last = trail)
+        for (Iterator<Trail> trailIt = trails.iterator(); trailIt.hasNext(); )
         {
-            trail = it.next();
+            Trail trail = trailIt.next();
 
             if (last != null && !last.stop && !trail.stop)
             {
@@ -239,7 +253,9 @@ public class TrailFormRenderer extends FormRenderer<TrailForm> implements ITicka
         RenderSystem.setShader(GameRenderer::getPositionTexProgram);
         RenderSystem.defaultBlendFunc();
         RenderSystem.enableBlend();
+        RenderSystem.setShaderColor(1F, 1F, 1F, alphaFactor);
         BufferRenderer.drawWithGlobalProgram(builder.end());
+        RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
         RenderSystem.enableDepthTest();
 
         stack.pop();

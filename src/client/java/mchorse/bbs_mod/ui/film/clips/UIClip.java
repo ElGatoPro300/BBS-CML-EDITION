@@ -15,6 +15,7 @@ import mchorse.bbs_mod.actions.types.item.UseItemActionClip;
 import mchorse.bbs_mod.camera.clips.misc.AudioClientClip;
 import mchorse.bbs_mod.camera.clips.misc.CurveClientClip;
 import mchorse.bbs_mod.camera.clips.misc.HotbarClip;
+import mchorse.bbs_mod.camera.clips.misc.ImageClip;
 import mchorse.bbs_mod.camera.clips.misc.SubtitleClip;
 import mchorse.bbs_mod.camera.clips.misc.TrackerClientClip;
 import mchorse.bbs_mod.camera.clips.misc.VideoClip;
@@ -44,6 +45,7 @@ import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.settings.values.core.ValueGroup;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.IUIClipsDelegate;
+import mchorse.bbs_mod.ui.film.UIClipsPanel;
 import mchorse.bbs_mod.ui.film.clips.actions.UIAttackActionClip;
 import mchorse.bbs_mod.ui.film.clips.actions.UIBreakBlockActionClip;
 import mchorse.bbs_mod.ui.film.clips.actions.UIChatActionClip;
@@ -60,8 +62,8 @@ import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIScrollView;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
-import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeEditor;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
+import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeEditor;
 import mchorse.bbs_mod.ui.framework.elements.input.text.UITextbox;
 import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
 import mchorse.bbs_mod.ui.utils.ScrollDirection;
@@ -110,6 +112,7 @@ public abstract class UIClip <T extends Clip> extends UIElement
         register(AudioClientClip.class, UIAudioClip::new);
         register(VideoClip.class, UIVideoClip::new);
         register(SubtitleClip.class, UISubtitleClip::new);
+        register(ImageClip.class, UIImageClip::new);
         register(HotbarClip.class, UIHotbarClip::new);
         register(CurveClientClip.class, UICurveClip::new);
         register(DollyZoomClip.class, UIDollyZoomClip::new);
@@ -262,7 +265,7 @@ public abstract class UIClip <T extends Clip> extends UIElement
 
     /**
      * Resolves an embeddable view owned by this clip panel (keyframe editor, node graph, etc.).
-     * Used by {@link mchorse.bbs_mod.ui.film.UIClipsPanel} for symmetric undo/redo.
+     * Used by {@link UIClipsPanel} for symmetric undo/redo.
      */
     public UIElement resolveEmbeddableView(String undoId)
     {

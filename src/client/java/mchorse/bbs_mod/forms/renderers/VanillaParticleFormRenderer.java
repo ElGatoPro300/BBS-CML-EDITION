@@ -1,5 +1,6 @@
 package mchorse.bbs_mod.forms.renderers;
 
+import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.forms.ITickable;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.forms.VanillaParticleForm;
@@ -64,23 +65,58 @@ public class VanillaParticleFormRenderer extends FormRenderer<VanillaParticleFor
     {
         super.render3D(context);
 
-        Camera camera = MinecraftClient.getInstance().gameRenderer.getCamera();
-        Matrix4f matrix = new Matrix4f(RenderSystem.getInverseViewRotationMatrix());
+        Matrix4f positionMatrix;
 
-        matrix.mul(context.stack.peek().getPositionMatrix());
+        if (context.type == FormRenderType.PREVIEW)
+        {
+            net.minecraft.client.render.Camera realCamera = MinecraftClient.getInstance().gameRenderer.getCamera();
 
-        Vector3d translation = new Vector3d(matrix.getTranslation(Vectors.TEMP_3F));
+            positionMatrix = new Matrix4f().rotation(realCamera.getRotation());
+            positionMatrix.mul(context.stack.peek().getPositionMatrix());
 
-        translation.add(camera.getPos().x, camera.getPos().y, camera.getPos().z);
-        context.stack.push();
-        context.stack.loadIdentity();
-        context.stack.multiplyPositionMatrix(new Matrix4f(RenderSystem.getInverseViewRotationMatrix()).invert());
+            Vector3f translation = positionMatrix.getTranslation(new Vector3f());
 
-        this.pos.set(translation);
+            this.pos.set(
+                translation.x + (float) realCamera.getPos().x,
+                translation.y + (float) realCamera.getPos().y,
+                translation.z + (float) realCamera.getPos().z
+            );
+        }
+        else
+        {
+            positionMatrix = new Matrix4f(context.stack.peek().getPositionMatrix());
+
+            if (BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld())
+            {
+                positionMatrix = BBSRendering.stripTerrainPositionMatrix(positionMatrix);
+            }
+
+            Vector3f translation = positionMatrix.getTranslation(new Vector3f());
+
+            if (BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld())
+            {
+                net.minecraft.client.render.Camera gameCamera = MinecraftClient.getInstance().gameRenderer.getCamera();
+
+                this.pos.set(
+                    translation.x + gameCamera.getPos().x,
+                    translation.y + gameCamera.getPos().y,
+                    translation.z + gameCamera.getPos().z
+                );
+            }
+            else
+            {
+                this.pos.set(
+                    translation.x + context.camera.position.x,
+                    translation.y + context.camera.position.y,
+                    translation.z + context.camera.position.z
+                );
+            }
+        }
+
+        positionMatrix.get3x3(this.rot);
+
         this.vel.set(0F, 0F, 1F);
-        this.rot.set(matrix).transform(this.vel);
-
-        context.stack.pop();
+        this.rot.transform(this.vel);
     }
 
     @Override
