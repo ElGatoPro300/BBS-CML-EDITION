@@ -11,8 +11,7 @@ strings_dir = r"C:\Users\PC\Documents\GitHub\bbs-mod\src\client\resources\assets
 
 # New keys and English values
 new_keys_en = {
-    "bbs.ui.forms.editors.general.look_at": "Look",
-    "bbs.ui.forms.editors.general.illusion": "Illusion"
+    "bbs.example": "Paste the translation keys here, in this case for English.",
 }
 
 # -----------------------------------------------------------------------------
