@@ -4,13 +4,14 @@ import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.SwordItem;
-import net.minecraft.item.ToolMaterials;
+import net.minecraft.item.ToolMaterial;
+import net.minecraft.server.world.ServerWorld;
 
 public class MobKillerItem extends SwordItem
 {
     public MobKillerItem(Settings settings)
     {
-        super(ToolMaterials.WOOD, settings);
+        super(ToolMaterial.WOOD, 3, -2.4F, settings);
     }
 
     @Override
@@ -24,7 +25,7 @@ public class MobKillerItem extends SwordItem
     {
         if (!target.getWorld().isClient && !(target instanceof PlayerEntity))
         {
-            target.kill();
+            target.kill((ServerWorld) target.getWorld());
         }
 
         return super.postHit(stack, target, attacker);

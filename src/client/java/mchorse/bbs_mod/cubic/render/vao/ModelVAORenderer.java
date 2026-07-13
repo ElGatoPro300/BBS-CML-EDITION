@@ -12,6 +12,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.GlUniform;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.render.Fog;
+import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.texture.NativeImage;
 import net.minecraft.client.texture.NativeImageBackedTexture;
@@ -22,8 +23,8 @@ import org.joml.Matrix4f;
 import org.joml.Matrix4fStack;
 
 import com.mojang.blaze3d.platform.GlStateManager;
+import com.mojang.blaze3d.systems.ProjectionType;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.systems.VertexSorter;
 
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
@@ -180,9 +181,10 @@ public class ModelVAORenderer
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
         RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
-        RenderSystem.setShader(BBSShaders::getModel);
+        RenderSystem.setShader(BBSShaders.getModel());
 
         Matrix4f savedProjection = new Matrix4f(RenderSystem.getProjectionMatrix());
+        ProjectionType savedProjType = RenderSystem.getProjectionType();
         Matrix4f savedModelView = new Matrix4f(RenderSystem.getModelViewMatrix());
 
         try
@@ -191,7 +193,7 @@ public class ModelVAORenderer
             {
                 paintOverlaySynced = entry.synced;
 
-                RenderSystem.setProjectionMatrix(entry.projection, VertexSorter.BY_Z);
+                RenderSystem.setProjectionMatrix(entry.projection, ProjectionType.PERSPECTIVE);
 
                 MatrixStackUtils.pushIdentityModelView();
 
@@ -212,15 +214,15 @@ public class ModelVAORenderer
         {
             paintOverlayQueue.clear();
 
-            RenderSystem.setProjectionMatrix(savedProjection, VertexSorter.BY_Z);
+            RenderSystem.setProjectionMatrix(savedProjection, savedProjType);
 
             Matrix4fStack modelViewStack = RenderSystem.getModelViewStack();
 
             modelViewStack.pushMatrix();
             modelViewStack.set(savedModelView);
-            RenderSystem.applyModelViewMatrix();
+            MatrixStackUtils.applyModelViewMatrix();
             modelViewStack.popMatrix();
-            RenderSystem.applyModelViewMatrix();
+            MatrixStackUtils.applyModelViewMatrix();
 
             gameRenderer.getLightmapTextureManager().disable();
             gameRenderer.getOverlayTexture().teardownOverlayColor();
@@ -500,7 +502,7 @@ public class ModelVAORenderer
 
         setupUniforms(stack, shader);
 
-        RenderSystem.setShader(() -> shader);
+        RenderSystem.setShader(shader);
         shader.bind();
 
         int textureID = RenderSystem.getShaderTexture(0);

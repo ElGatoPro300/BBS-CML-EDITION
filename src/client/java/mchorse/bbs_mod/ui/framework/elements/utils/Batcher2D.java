@@ -515,7 +515,7 @@ public class Batcher2D
         }
 
         RenderSystem.setShaderTexture(0, texture);
-        RenderSystem.setShader(() -> program);
+        RenderSystem.setShader(program);
 
         GlUniform targetUniform = program.getUniform("Target");
 

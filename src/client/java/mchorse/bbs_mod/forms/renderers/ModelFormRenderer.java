@@ -796,7 +796,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
             try
             {
-                RenderSystem.setShader(blendProgram);
+                RenderSystem.setShader(blendProgram.get());
                 model.render(stack, blendProgram, color, light, overlay, stencilMap, shapeKeys, fromTexture);
             }
             finally
@@ -825,7 +825,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
     {
         if (!model.isVAORendered())
         {
-            return GameRenderer::getRenderTypeEntityTranslucentCullProgram;
+            return () -> MinecraftClient.getInstance().getShaderLoader().getOrCreateProgram(ShaderProgramKeys.RENDERTYPE_ENTITY_TRANSLUCENT);
         }
 
         if (this.hasAnyBoneTextureBlend(model))
@@ -835,7 +835,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
         if (BBSRendering.isIrisWorldModelPass())
         {
-            return GameRenderer::getRenderTypeEntityTranslucentCullProgram;
+            return () -> MinecraftClient.getInstance().getShaderLoader().getOrCreateProgram(ShaderProgramKeys.RENDERTYPE_ENTITY_TRANSLUCENT);
         }
 
         return BBSShaders::getModel;

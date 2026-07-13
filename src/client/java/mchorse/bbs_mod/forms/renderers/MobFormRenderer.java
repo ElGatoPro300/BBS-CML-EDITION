@@ -30,6 +30,8 @@ import net.minecraft.client.render.DiffuseLighting;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.entity.LivingEntityRenderer;
 import net.minecraft.client.render.entity.model.EntityModel;
+import net.minecraft.client.render.entity.state.EntityRenderState;
+import net.minecraft.client.render.entity.state.LivingEntityRenderState;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.client.world.ClientWorld;
 import net.minecraft.entity.Entity;
@@ -275,7 +277,7 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
         catch (Exception e)
         {}
 
-        this.entity = Registries.ENTITY_TYPE.get(Identifier.of(id)).create(MinecraftClient.getInstance().world, SpawnReason.COMMAND);
+        this.entity = Registries.ENTITY_TYPE.get(Identifier.of(id)).create(MinecraftClient.getInstance().world, SpawnReason.MOB_SUMMONED);
 
         if (this.entity == null && this.form.isPlayer())
         {
@@ -340,9 +342,11 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
     }
 
     @SuppressWarnings("unchecked")
-    public static void setLivingAngles(EntityModel<?> model, LivingEntity living, float animPos, float animSpeed, float transition, float headYaw, float pitch)
+    public static void setLivingAngles(LivingEntityRenderer<?, ?, ?> livingRenderer, EntityModel<?> model, LivingEntity living, float transition)
     {
-        ((EntityModel<LivingEntity>) model).setAngles(living, animPos, animSpeed, transition, headYaw, pitch);
+        LivingEntityRenderState state = (LivingEntityRenderState) livingRenderer.createRenderState();
+        ((LivingEntityRenderer<LivingEntity, LivingEntityRenderState, ?>) livingRenderer).updateRenderState(living, state, transition);
+        ((EntityModel<LivingEntityRenderState>) model).setAngles(state);
     }
 
     /**
@@ -388,18 +392,14 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
             }
         }
 
-        if (!(MinecraftClient.getInstance().getEntityRenderDispatcher().getRenderer(this.entity) instanceof LivingEntityRenderer<?, ?> livingRenderer))
+        if (!(MinecraftClient.getInstance().getEntityRenderDispatcher().getRenderer(this.entity) instanceof LivingEntityRenderer<?, ?, ?> livingRenderer))
         {
             return Collections.emptyMap();
         }
 
         EntityModel<?> model = livingRenderer.getModel();
-        float animPos = living.limbAnimator.getPos(transition);
-        float animSpeed = living.limbAnimator.getSpeed(transition);
-        float headYaw = living.headYaw;
-        float pitch = living.getPitch();
 
-        MobFormRenderer.setLivingAngles(model, living, animPos, animSpeed, transition, headYaw, pitch);
+        MobFormRenderer.setLivingAngles(livingRenderer, model, living, transition);
 
         return MobFormRenderer.resolveModelParts(model, this.entity.getClass());
     }

@@ -98,21 +98,19 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
         }
 
         VertexFormat format = shading ? VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL : VertexFormats.POSITION_TEXTURE_COLOR;
-        Supplier<ShaderProgram> shader = this.getShader(
-            context,
-            shading
-                ? () ->
-                {
-                    RenderSystem.setShader(ShaderProgramKeys.RENDERTYPE_ENTITY_TRANSLUCENT);
-                    return RenderSystem.getShader();
-                }
-                : () ->
-                {
-                    RenderSystem.setShader(ShaderProgramKeys.POSITION_TEX_COLOR);
-                    return RenderSystem.getShader();
-                },
-            shading ? BBSShaders::getPickerBillboardProgram : BBSShaders::getPickerBillboardNoShadingProgram
-        );
+        Supplier<ShaderProgram> normalShader = shading
+            ? () -> {
+                RenderSystem.setShader(ShaderProgramKeys.RENDERTYPE_ENTITY_TRANSLUCENT);
+                return RenderSystem.getShader();
+            }
+            : () -> {
+                RenderSystem.setShader(ShaderProgramKeys.POSITION_TEX_COLOR);
+                return RenderSystem.getShader();
+            };
+        Supplier<ShaderProgram> pickingShader = shading
+            ? BBSShaders::getPickerBillboardProgram
+            : BBSShaders::getPickerBillboardNoShadingProgram;
+        Supplier<ShaderProgram> shader = this.getShader(context, normalShader, pickingShader);
 
         this.renderModel(shader, context.stack, context.overlay, context.light, context.color, context.getTransition(), context.camera, false, context.modelRenderer || context.isPicking(), context.world);
     }

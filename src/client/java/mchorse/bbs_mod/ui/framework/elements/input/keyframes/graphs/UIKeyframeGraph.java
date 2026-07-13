@@ -590,7 +590,7 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
         BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
 
         RenderSystem.enableBlend();
-        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
+        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
         UIKeyframeDopeSheet.renderShape(preview, context, builder, matrix, x, y, 3, c);
         BufferRenderer.drawWithGlobalProgram(builder.end());
     }

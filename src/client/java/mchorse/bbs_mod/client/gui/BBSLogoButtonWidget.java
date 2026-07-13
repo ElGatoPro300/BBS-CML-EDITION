@@ -2,6 +2,7 @@ package mchorse.bbs_mod.client.gui;
 
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.widget.ButtonWidget;
+import net.minecraft.client.render.RenderLayer;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 
@@ -23,6 +24,6 @@ public class BBSLogoButtonWidget extends ButtonWidget
         int logoX = this.getX() + (this.width - logoSize) / 2;
         int logoY = this.getY() + (this.height - logoSize) / 2;
 
-        context.drawTexture(LOGO, logoX, logoY, 0, 0, logoSize, logoSize, logoSize, logoSize);
+        context.drawTexture(id -> RenderLayer.getGui(), LOGO, logoX, logoY, 0f, 0f, logoSize, logoSize, logoSize, logoSize);
     }
 }
