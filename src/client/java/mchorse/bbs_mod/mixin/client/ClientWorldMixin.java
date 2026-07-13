@@ -13,7 +13,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(ClientWorld.class)
 public class ClientWorldMixin
 {
-    @Inject(method = "addParticle(Lnet/minecraft/particle/ParticleEffect;DDDDDD)V", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "addParticleClient(Lnet/minecraft/particle/ParticleEffect;DDDDDD)V", at = @At("HEAD"), cancellable = true, require = 0)
     private void onAddParticle(ParticleEffect parameters, double x, double y, double z, double velocityX, double velocityY, double velocityZ, CallbackInfo info)
     {
         if (MorphMobParticles.shouldSuppress())
@@ -22,8 +22,8 @@ public class ClientWorldMixin
         }
     }
 
-    @Inject(method = "addParticle(Lnet/minecraft/particle/ParticleEffect;ZDDDDDD)V", at = @At("HEAD"), cancellable = true)
-    private void onAddParticleAlways(ParticleEffect parameters, boolean alwaysSpawn, double x, double y, double z, double velocityX, double velocityY, double velocityZ, CallbackInfo info)
+    @Inject(method = "addParticleClient(Lnet/minecraft/particle/ParticleEffect;ZZDDDDDD)V", at = @At("HEAD"), cancellable = true, require = 0)
+    private void onAddParticleAlways(ParticleEffect parameters, boolean alwaysSpawn, boolean unused, double x, double y, double z, double velocityX, double velocityY, double velocityZ, CallbackInfo info)
     {
         if (MorphMobParticles.shouldSuppress())
         {
@@ -31,7 +31,16 @@ public class ClientWorldMixin
         }
     }
 
-    @Inject(method = "addImportantParticle(Lnet/minecraft/particle/ParticleEffect;DDDDDD)V", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "addImportantParticleClient(Lnet/minecraft/particle/ParticleEffect;ZDDDDDD)V", at = @At("HEAD"), cancellable = true, require = 0)
+    private void onAddImportantParticleBoolean(ParticleEffect parameters, boolean alwaysSpawn, double x, double y, double z, double velocityX, double velocityY, double velocityZ, CallbackInfo info)
+    {
+        if (MorphMobParticles.shouldSuppress())
+        {
+            info.cancel();
+        }
+    }
+
+    @Inject(method = "addImportantParticleClient(Lnet/minecraft/particle/ParticleEffect;DDDDDD)V", at = @At("HEAD"), cancellable = true, require = 0)
     private void onAddImportantParticle(ParticleEffect parameters, double x, double y, double z, double velocityX, double velocityY, double velocityZ, CallbackInfo info)
     {
         if (MorphMobParticles.shouldSuppress())

@@ -117,8 +117,8 @@ public final class ItemUseRenderState
         if (source == null || stack == null || stack.isEmpty())
         {
             living.clearActiveItem();
-            ((LivingEntityAccessor) living).setLivingFlag(USING_ITEM_FLAG, false);
-            ((LivingEntityAccessor) living).setLivingFlag(OFF_HAND_ACTIVE_FLAG, false);
+            ((LivingEntityAccessor) living).invokeSetLivingFlag(USING_ITEM_FLAG, false);
+            ((LivingEntityAccessor) living).invokeSetLivingFlag(OFF_HAND_ACTIVE_FLAG, false);
 
             return;
         }
@@ -129,8 +129,8 @@ public final class ItemUseRenderState
         if (!usingItem)
         {
             living.clearActiveItem();
-            ((LivingEntityAccessor) living).setLivingFlag(USING_ITEM_FLAG, false);
-            ((LivingEntityAccessor) living).setLivingFlag(OFF_HAND_ACTIVE_FLAG, false);
+            ((LivingEntityAccessor) living).invokeSetLivingFlag(USING_ITEM_FLAG, false);
+            ((LivingEntityAccessor) living).invokeSetLivingFlag(OFF_HAND_ACTIVE_FLAG, false);
 
             return;
         }
@@ -142,7 +142,7 @@ public final class ItemUseRenderState
         living.setStackInHand(hand, stack);
         ((LivingEntityItemAccessor) living).setActiveItemStack(stack);
         ((LivingEntityItemAccessor) living).setItemUseTimeLeft(itemUseTimeLeft);
-        ((LivingEntityAccessor) living).setLivingFlag(USING_ITEM_FLAG, true);
-        ((LivingEntityAccessor) living).setLivingFlag(OFF_HAND_ACTIVE_FLAG, hand == Hand.OFF_HAND);
+        ((LivingEntityAccessor) living).invokeSetLivingFlag(USING_ITEM_FLAG, true);
+        ((LivingEntityAccessor) living).invokeSetLivingFlag(OFF_HAND_ACTIVE_FLAG, hand == Hand.OFF_HAND);
     }
 }

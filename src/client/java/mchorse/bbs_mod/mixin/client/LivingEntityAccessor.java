@@ -9,5 +9,5 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 public interface LivingEntityAccessor
 {
     @Invoker("setLivingFlag")
-    void setLivingFlag(int mask, boolean value);
+    void invokeSetLivingFlag(int mask, boolean value);
 }
