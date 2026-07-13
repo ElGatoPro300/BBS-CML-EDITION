@@ -20,7 +20,9 @@ import mchorse.bbs_mod.client.renderer.MorphRenderer;
 import mchorse.bbs_mod.client.video.VideoRenderer;
 import mchorse.bbs_mod.data.DataToString;
 import mchorse.bbs_mod.data.types.BaseType;
+import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
+import mchorse.bbs_mod.data.types.StringType;
 import mchorse.bbs_mod.events.register.RegisterFilmEditorFactoriesEvent;
 import mchorse.bbs_mod.film.CrossWorldFilmEntry;
 import mchorse.bbs_mod.film.Film;
@@ -257,6 +259,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private static final String PRESET_REPLAYS_PANEL_WIDTH = "replays_panel_width";
     private static final String PRESET_REPLAYS_PANEL_HEIGHT = "replays_panel_height";
     private static final String PRESET_REPLAYS_PANEL_DOCKED_LAYOUT = "replays_panel_docked_layout";
+    private static final String PRESET_HIDDEN_PANELS = "hidden_panels";
     private static final String[] LEGACY_LAYOUT_PRESETS = {
         "Horizontal (Bottom)",
         "Horizontal (Top)",
@@ -4212,8 +4215,60 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         }
 
         BBSSettings.timelineToolbarDocks.writePreset(data);
+        this.writeHiddenPanelsPreset(data);
 
         return data;
+    }
+
+    private void writeHiddenPanelsPreset(MapType data)
+    {
+        if (this.hiddenPanels.isEmpty())
+        {
+            return;
+        }
+
+        ListType list = new ListType();
+
+        for (String panelId : this.getWindowPanelIds())
+        {
+            if (this.hiddenPanels.contains(panelId))
+            {
+                list.add(new StringType(panelId));
+            }
+        }
+
+        if (!list.isEmpty())
+        {
+            data.put(PRESET_HIDDEN_PANELS, list);
+        }
+    }
+
+    private void applyHiddenPanelsPreset(MapType data)
+    {
+        if (!data.has(PRESET_HIDDEN_PANELS))
+        {
+            return;
+        }
+
+        BaseType hiddenData = data.get(PRESET_HIDDEN_PANELS);
+
+        if (hiddenData == null || !hiddenData.isList())
+        {
+            return;
+        }
+
+        for (BaseType item : hiddenData.asList())
+        {
+            if (item != null && item.isString())
+            {
+                String panelId = item.asString();
+
+                if (panelId != null && !panelId.isEmpty() && this.panelById.containsKey(panelId))
+                {
+                    this.hiddenPanels.add(panelId);
+                }
+            }
+        }
     }
 
     private void applyFilmLayoutFromPreset(MapType data, int mouseX, int mouseY)
@@ -4268,6 +4323,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         }
 
         BBSSettings.timelineToolbarDocks.applyPreset(data);
+        this.applyHiddenPanelsPreset(data);
         TimelineToolbarDockSync.refreshFilmPanel(this);
         this.setupEditorFlex(true);
     }
