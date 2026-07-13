@@ -503,7 +503,8 @@ public class Batcher2D
         }
 
         Matrix4f matrix = this.context.getMatrices().peek().getPositionMatrix();
-        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_TEXTURE_COLOR);
+        BufferBuilder builder = Tessellator.getInstance().getBuffer();
+        builder.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_TEXTURE_COLOR);
 
         this.fillTexturedBox(builder, matrix, Colors.WHITE, x, y, w, h, 0, textureH, textureW, 0, textureW, textureH);
 

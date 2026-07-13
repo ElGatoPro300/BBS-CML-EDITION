@@ -52,6 +52,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import mchorse.bbs_mod.film.MobItemStats;
+
 public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
 {
     private static final Map<Class, Map<String, ModelPart>> parts = new HashMap<>();
@@ -399,6 +401,100 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
             this.prevYawHead = entity.getHeadYaw() - entity.getBodyYaw();
             this.prevPitch = entity.getPitch();
         }
+    }
+
+    public Entity getRenderEntity()
+    {
+        return this.entity;
+    }
+
+    public void ensureRenderEntity()
+    {
+        this.ensureEntity();
+    }
+
+    public MobItemStats sampleItemStats(IEntity entity, float transition)
+    {
+        MobItemStats stats = new MobItemStats();
+
+        stats.usingItem = entity.isUsingItem();
+        stats.activeHand = entity.getActiveHand();
+        stats.mainHand = entity.getEquipmentStack(EquipmentSlot.MAINHAND).copy();
+        stats.offHand = entity.getEquipmentStack(EquipmentSlot.OFFHAND).copy();
+
+        if (this.entity instanceof LivingEntity living)
+        {
+            stats.itemUseElapsed = living.getItemUseTime();
+        }
+
+        return stats;
+    }
+
+    public Map<String, ModelPart> sampleVanillaParts(IEntity entity, float transition)
+    {
+        this.ensureEntity();
+
+        if (this.entity != null)
+        {
+            Map<String, ModelPart> entityParts = parts.get(this.entity.getClass());
+
+            if (entityParts == null)
+            {
+                this.getBones();
+                entityParts = parts.get(this.entity.getClass());
+            }
+
+            return entityParts;
+        }
+
+        return null;
+    }
+
+    public static Map<String, ModelPart> resolveModelParts(EntityModel<?> model, Class<?> entityClass)
+    {
+        Map<String, ModelPart> result = parts.get(entityClass);
+
+        if (result != null)
+        {
+            return result;
+        }
+
+        result = new HashMap<>();
+        Set<Field> fields = new HashSet<>();
+        Class<?> aClass = model.getClass();
+
+        while (aClass != Object.class)
+        {
+            for (Field field : aClass.getDeclaredFields())
+            {
+                fields.add(field);
+            }
+
+            aClass = aClass.getSuperclass();
+        }
+
+        for (Field declaredField : fields)
+        {
+            if (declaredField.getType().equals(ModelPart.class))
+            {
+                try
+                {
+                    declaredField.setAccessible(true);
+
+                    ModelPart part = (ModelPart) declaredField.get(model);
+
+                    result.put(declaredField.getName(), part);
+                }
+                catch (Exception e)
+                {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        parts.put(entityClass, result);
+
+        return result;
     }
 
     private static class BooleanHolder

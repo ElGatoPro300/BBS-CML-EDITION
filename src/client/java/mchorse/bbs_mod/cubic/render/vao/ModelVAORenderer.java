@@ -11,6 +11,7 @@ import mchorse.bbs_mod.utils.colors.Color;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.GlUniform;
 import net.minecraft.client.gl.ShaderProgram;
+import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.texture.NativeImage;
 import net.minecraft.client.texture.NativeImageBackedTexture;
@@ -211,12 +212,12 @@ public class ModelVAORenderer
 
             RenderSystem.setProjectionMatrix(savedProjection, VertexSorter.BY_Z);
 
-            Matrix4fStack modelViewStack = RenderSystem.getModelViewStack();
+            MatrixStack modelViewStack = RenderSystem.getModelViewStack();
 
-            modelViewStack.pushMatrix();
-            modelViewStack.set(savedModelView);
+            modelViewStack.push();
+            modelViewStack.peek().getPositionMatrix().set(savedModelView);
             RenderSystem.applyModelViewMatrix();
-            modelViewStack.popMatrix();
+            modelViewStack.pop();
             RenderSystem.applyModelViewMatrix();
 
             gameRenderer.getLightmapTextureManager().disable();
