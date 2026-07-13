@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.ui.film.toolbar;
 
 import mchorse.bbs_mod.l10n.keys.IKey;
+import mchorse.bbs_mod.ui.utils.context.ColorfulContextAction;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.keys.KeyCombo;
 
@@ -79,7 +80,7 @@ public class ToolbarItem
 
     /**
      * When non-zero, draws a vertical color bar on the left of the row (same
-     * visual as {@link mchorse.bbs_mod.ui.utils.context.ColorfulContextAction}).
+     * visual as {@link ColorfulContextAction}).
      */
     public int accentColor;
 

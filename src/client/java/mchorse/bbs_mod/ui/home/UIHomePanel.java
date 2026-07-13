@@ -320,7 +320,16 @@ public class UIHomePanel extends UIDashboardPanel
 
     public void refreshRecentList()
     {
-        List<RecentAssetsTracker.Entry> recent = RecentAssetsTracker.RECENT;
+        List<RecentAssetsTracker.Entry> recent = new ArrayList<>();
+
+        for (RecentAssetsTracker.Entry entry : RecentAssetsTracker.RECENT)
+        {
+            if (!RecentAssetsTracker.shouldExcludeFromRecent(entry.type, entry.id))
+            {
+                recent.add(entry);
+            }
+        }
+
         List<String> keys = new ArrayList<>();
 
         for (RecentAssetsTracker.Entry entry : recent)
@@ -798,10 +807,15 @@ public class UIHomePanel extends UIDashboardPanel
 
         BufferRenderer.drawWithGlobalProgram(builder.end());
 
-        this.renderCardAndBanners(context, this.homePage, dividerX, UIKeys.FILM_HOME_LIST.get());
+        this.renderCardAndBanners(context, this.homePage, dividerX, UIKeys.FILM_HOME_LIST.get(), true);
     }
 
     public void renderCardAndBanners(UIContext context, UIElement customHomePage, int dividerX, String listTitle)
+    {
+        this.renderCardAndBanners(context, customHomePage, dividerX, listTitle, true);
+    }
+
+    public void renderCardAndBanners(UIContext context, UIElement customHomePage, int dividerX, String listTitle, boolean showActionsColumn)
     {
         int pageX = customHomePage.area.x;
         int pageY = customHomePage.area.y;
@@ -889,12 +903,17 @@ public class UIHomePanel extends UIDashboardPanel
         context.batcher.box(pageX, splitY, pageX + pageW, splitY + 20, 0xFF1A1A22);
         context.batcher.outline(pageX, splitY, pageX + pageW, splitY + 20, 0xFF2A2A35, 1);
 
-        // Left sidebar
-        context.batcher.box(pageX, splitY + 20, dividerX, pageY + pageH, 0xFF111115);
-        context.batcher.box(dividerX - 1, splitY + 20, dividerX, pageY + pageH, 0xFF22222A);
-
-        context.batcher.textShadow(UIKeys.FILM_HOME_ACTIONS.get(), pageX + 4, splitY + 6);
-        context.batcher.textShadow(listTitle, dividerX + 4, splitY + 6);
+        if (showActionsColumn)
+        {
+            context.batcher.box(pageX, splitY + 20, dividerX, pageY + pageH, 0xFF111115);
+            context.batcher.box(dividerX - 1, splitY + 20, dividerX, pageY + pageH, 0xFF22222A);
+            context.batcher.textShadow(UIKeys.FILM_HOME_ACTIONS.get(), pageX + 4, splitY + 6);
+            context.batcher.textShadow(listTitle, dividerX + 4, splitY + 6);
+        }
+        else
+        {
+            context.batcher.textShadow(listTitle, pageX + 4, splitY + 6);
+        }
     }
 
     private void drawBanner(UIContext context, BannerEntry entry, int x, int y, int w, int h, float alpha, float textAlpha, boolean drawStripe)

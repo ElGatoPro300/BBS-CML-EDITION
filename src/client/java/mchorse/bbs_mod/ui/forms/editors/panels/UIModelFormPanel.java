@@ -4,19 +4,23 @@ import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.forms.forms.ModelForm;
+import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
+import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.forms.renderers.ModelFormRenderer;
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.forms.editors.forms.UIForm;
 import mchorse.bbs_mod.ui.forms.editors.panels.widgets.UIModelPoseEditor;
+import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
-import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
 import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
 import mchorse.bbs_mod.ui.framework.elements.input.UITexturePicker;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIListOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
+import mchorse.bbs_mod.ui.utils.UI;
+import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.shapes.UIShapeKeys;
 import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.colors.Color;
@@ -27,6 +31,10 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
 {
     public UIColor color;
     public UIColor paintColor;
+    public UITrackpad paintIntensity;
+    public UIColor glowingColor;
+    public UITrackpad glowIntensity;
+
     public UIModelPoseEditor poseEditor;
     public UIShapeKeys shapeKeys;
     public UITrackpad pbrNormalIntensity;
@@ -34,6 +42,9 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
 
     public UIButton pickModel;
     public UIButton pick;
+    public UIButton colorsAndGlowButton;
+
+    private UIElement colorsAndGlowContent;
 
     public UIModelFormPanel(UIForm editor)
     {
@@ -66,9 +77,66 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
         });
         this.color = new UIColor((c) -> this.form.color.set(new Color().set(c))).withAlpha();
         this.color.direction(Direction.LEFT);
-        this.paintColor = new UIColor((c) -> this.form.paintColor.set(new Color().set(c))).withAlpha();
+        this.color.context((menu) -> menu.action(Icons.COLOR, UIKeys.KEYFRAMES_RESET_COLOR, this::resetMainColor));
+        this.paintColor = new UIColor((c) ->
+        {
+            Color color = new Color().set(c);
+
+            color.a = 1F;
+            this.form.paintColor.set(color);
+
+            PaintSettings settings = this.form.paintSettings.get().copy();
+
+            settings.r = color.r;
+            settings.g = color.g;
+            settings.b = color.b;
+            settings.applyAutoShaderShadow();
+            this.form.paintSettings.set(settings);
+        });
         this.paintColor.direction(Direction.LEFT);
         this.paintColor.tooltip(UIKeys.FORMS_EDITORS_PAINT_COLOR);
+        this.paintColor.context((menu) -> menu.action(Icons.COLOR, UIKeys.KEYFRAMES_RESET_COLOR, this::resetPaintColor));
+        this.paintIntensity = new UITrackpad((value) ->
+        {
+            PaintSettings settings = this.form.paintSettings.get().copy();
+
+            settings.intensity = value.floatValue();
+            settings.applyAutoShaderShadow();
+            this.form.paintSettings.set(settings);
+
+            Color legacy = this.form.paintColor.get().copy();
+
+            legacy.a = value.floatValue();
+            this.form.paintColor.set(legacy);
+        });
+        this.paintIntensity.increment(0.05D).values(0.1D, 0.05D, 0.2D);
+        this.paintIntensity.tooltip(UIKeys.FORMS_EDITORS_PAINT_INTENSITY);
+        this.glowingColor = new UIColor((c) ->
+        {
+            Color color = new Color().set(c);
+
+            color.a = 1F;
+            this.form.glowingColor.set(color);
+
+            GlowSettings settings = this.form.glowSettings.get().copy();
+
+            settings.r = color.r;
+            settings.g = color.g;
+            settings.b = color.b;
+            this.form.glowSettings.set(settings);
+        });
+        this.glowingColor.direction(Direction.LEFT);
+        this.glowingColor.tooltip(UIKeys.FORMS_EDITORS_GLOW);
+        this.glowingColor.context((menu) -> menu.action(Icons.COLOR, UIKeys.KEYFRAMES_RESET_COLOR, this::resetGlowColor));
+        this.glowIntensity = new UITrackpad((value) ->
+        {
+            GlowSettings settings = this.form.glowSettings.get().copy();
+
+            settings.intensity = value.floatValue();
+            this.form.glowSettings.set(settings);
+        });
+        this.glowIntensity.increment(0.05D).values(0.1D, 0.05D, 0.2D);
+        this.glowIntensity.tooltip(UIKeys.FORMS_EDITORS_GLOW_INTENSITY);
         this.poseEditor = new UIModelPoseEditor();
         this.poseEditor.setDefaultTextureSupplier(() ->
         {
@@ -105,6 +173,17 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
         this.pbrSpecularIntensity = new UITrackpad((value) -> this.form.pbrSpecularIntensity.set(value.floatValue()));
         this.pbrSpecularIntensity.tooltip(UIKeys.FORMS_EDITOR_MODEL_PBR_SPECULAR_INTENSITY);
 
+        this.colorsAndGlowContent = UI.column(5, 0,
+            this.color,
+            this.paintColor,
+            this.paintIntensity,
+            this.glowingColor,
+            this.glowIntensity
+        );
+
+        this.colorsAndGlowButton = new UIButton(UIKeys.FORMS_EDITORS_COLORS_AND_GLOW, (b) -> this.openColorsAndGlowOverlay());
+        this.colorsAndGlowButton.w(1F);
+
         this.options.add(this.pickModel);
         if (BBSSettings.pickLimbTexture.get())
         {
@@ -115,7 +194,62 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
             this.options.add(this.pbrNormalIntensity, this.pbrSpecularIntensity);
         }
 
-        this.options.add(this.color, this.paintColor, this.poseEditor);
+        this.options.add(this.colorsAndGlowButton, this.poseEditor);
+    }
+
+    private void openColorsAndGlowOverlay()
+    {
+        UIGeneralSectionOverlayPanel panel = new UIGeneralSectionOverlayPanel(UIKeys.FORMS_EDITORS_COLORS_AND_GLOW, this.colorsAndGlowContent).resizable();
+
+        UIOverlay.addOverlay(this.getContext(), panel, 280, 320);
+    }
+
+    private void resetMainColor()
+    {
+        if (this.form == null)
+        {
+            return;
+        }
+
+        Color white = Color.white();
+
+        this.form.color.set(white.copy());
+        this.color.setColor(white.getARGBColor());
+        this.editor.startEdit(this.form);
+    }
+
+    private void resetPaintColor()
+    {
+        if (this.form == null)
+        {
+            return;
+        }
+
+        Color legacy = new Color().set(1F, 1F, 1F, 0F);
+        PaintSettings settings = new PaintSettings();
+
+        this.form.paintColor.set(legacy.copy());
+        this.form.paintSettings.set(settings);
+        this.paintColor.setColor(legacy.getRGBColor());
+        this.paintIntensity.setValue(settings.intensity);
+        this.editor.startEdit(this.form);
+    }
+
+    private void resetGlowColor()
+    {
+        if (this.form == null)
+        {
+            return;
+        }
+
+        Color legacy = new Color().set(1F, 1F, 1F, 1F);
+        GlowSettings settings = new GlowSettings();
+
+        this.form.glowingColor.set(legacy.copy());
+        this.form.glowSettings.set(settings);
+        this.glowingColor.setColor(legacy.getRGBColor());
+        this.glowIntensity.setValue(settings.intensity);
+        this.editor.startEdit(this.form);
     }
 
     private void pickGroup(String group)
@@ -141,7 +275,19 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
         this.pbrNormalIntensity.setValue(form.pbrNormalIntensity.get());
         this.pbrSpecularIntensity.setValue(form.pbrSpecularIntensity.get());
         this.color.setColor(form.color.get().getARGBColor());
-        this.paintColor.setColor(form.paintColor.get().getARGBColor());
+        PaintSettings paint = form.paintSettings.get();
+        Color paintDisplay = new Color();
+
+        paint.resolveColor(form.paintColor.get(), paintDisplay);
+        this.paintColor.setColor(paintDisplay.getRGBColor());
+        this.paintIntensity.setValue(paint.intensity);
+        GlowSettings glow = form.glowSettings.get();
+        Color glowDisplay = new Color();
+
+        glow.resolveColor(form.glowingColor.get(), glowDisplay);
+        this.glowingColor.setColor(glowDisplay.getRGBColor());
+
+        this.glowIntensity.setValue(glow.intensity);
 
         this.shapeKeys.removeFromParent();
 

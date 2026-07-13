@@ -7,6 +7,7 @@ import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.utils.colors.Colors;
 
 import org.joml.Vector3d;
+
 import org.lwjgl.glfw.GLFW;
 
 import java.util.function.Supplier;

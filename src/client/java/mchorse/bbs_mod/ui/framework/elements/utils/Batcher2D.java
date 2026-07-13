@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.ui.framework.elements.utils;
 
 import mchorse.bbs_mod.BBSModClient;
+import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.text.RtlAwtTextRenderer;
 import mchorse.bbs_mod.text.RtlFontManager;
@@ -12,6 +13,7 @@ import mchorse.bbs_mod.utils.colors.Colors;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
+import net.minecraft.client.gl.GlUniform;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.gl.ShaderProgramKey;
 import net.minecraft.client.gl.ShaderProgramKeys;
@@ -497,6 +499,45 @@ public class Batcher2D
 
         RenderSystem.setShader(ShaderProgramKeys.POSITION_TEX_COLOR);
         RenderSystem.setShaderTexture(0, lastTexture);
+    }
+
+    /**
+     * Draws a stencil-pick FBO with {@code picker_preview}, binding the shader before uploading
+     * {@code Target}/{@code BoneHighlight} so the highlight halo is filtered correctly.
+     */
+    public void drawPickerPreview(int texture, int target, int highlightColor, float x, float y, float w, float h, int textureW, int textureH)
+    {
+        ShaderProgram program = BBSShaders.getPickerPreviewProgram();
+
+        if (program == null)
+        {
+            return;
+        }
+
+        RenderSystem.setShaderTexture(0, texture);
+        RenderSystem.setShader(() -> program);
+
+        GlUniform targetUniform = program.getUniform("Target");
+
+        if (targetUniform != null)
+        {
+            targetUniform.set(target);
+        }
+
+        GlUniform boneHighlight = program.getUniform("BoneHighlight");
+
+        if (boneHighlight != null)
+        {
+            Colors.COLOR.set(highlightColor);
+            boneHighlight.set(Colors.COLOR.r, Colors.COLOR.g, Colors.COLOR.b, Colors.COLOR.a);
+        }
+
+        Matrix4f matrix = this.context.getMatrices().peek().getPositionMatrix();
+        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_TEXTURE_COLOR);
+
+        this.fillTexturedBox(builder, matrix, Colors.WHITE, x, y, w, h, 0, textureH, textureW, 0, textureW, textureH);
+
+        BufferRenderer.drawWithGlobalProgram(builder.end());
     }
 
     private void fillTexturedBox(BufferBuilder builder, Matrix4f matrix, int color, float x, float y, float w, float h, float u1, float v1, float u2, float v2, int textureW, int textureH)

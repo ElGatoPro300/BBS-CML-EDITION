@@ -7,8 +7,10 @@ import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.forms.ITickable;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.forms.TrailForm;
+import mchorse.bbs_mod.forms.renderers.utils.FormTextureBlendRenderer;
 import mchorse.bbs_mod.graphics.Draw;
 import mchorse.bbs_mod.graphics.texture.Texture;
+import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.framework.UIContext;
 
 import net.minecraft.client.gl.ShaderProgramKeys;
@@ -160,21 +162,34 @@ public class TrailFormRenderer extends FormRenderer<TrailForm> implements ITicka
         }
 
 
-        BBSModClient.getTextures().bindTexture(this.form.texture.get());
-        stack.push();
+        Link defaultTexture = this.form.texture.get();
 
+        FormTextureBlendRenderer.draw(this.form.textureBlend, defaultTexture, (link, alphaFactor) ->
+        {
+            this.renderTrailPass(stack, trails, loop, length, current, baseX, baseY, baseZ, link, alphaFactor);
+        });
+    }
+
+    private void renderTrailPass(MatrixStack stack, ArrayDeque<Trail> trails, boolean loop, float length, float current, double baseX, double baseY, double baseZ, Link textureLink, float alphaFactor)
+    {
+        if (textureLink == null)
+        {
+            return;
+        }
+
+        BBSModClient.getTextures().bindTexture(textureLink);
+        stack.push();
 
         Tessellator tessellator = Tessellator.getInstance();
         BufferBuilder builder = tessellator.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_TEXTURE);
         Matrix4f identityMatrix = new Matrix4f();
         Trail lastTrail = null;
 
-
-        for (it = trails.iterator(); it.hasNext(); ) 
+        for (Iterator<Trail> trailIt = trails.iterator(); trailIt.hasNext(); )
         {
-            Trail trail = it.next();
+            Trail trail = trailIt.next();
 
-            if (lastTrail != null && !lastTrail.stop && !trail.stop) 
+            if (lastTrail != null && !lastTrail.stop && !trail.stop)
             {
                 float x1 = (float) (trail.top.x - baseX);
                 float x2 = (float) (trail.bottom.x - baseX);
@@ -210,19 +225,19 @@ public class TrailFormRenderer extends FormRenderer<TrailForm> implements ITicka
             lastTrail = trail;
         }
 
-
         RenderSystem.setShader(ShaderProgramKeys.POSITION_TEX);
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
+        RenderSystem.setShaderColor(1F, 1F, 1F, alphaFactor);
         BufferRenderer.drawWithGlobalProgram(builder.end());
+        RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
         RenderSystem.enableDepthTest();
-
 
         stack.pop();
     }
 
     @Override
-    public void tick(IEntity entity) 
+    public void tick(IEntity entity)
     {
         this.tick += 1;
     }

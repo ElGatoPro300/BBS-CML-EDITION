@@ -6,10 +6,12 @@ import mchorse.bbs_mod.cubic.data.model.Model;
 import mchorse.bbs_mod.cubic.data.model.ModelGroup;
 import mchorse.bbs_mod.cubic.render.vao.ModelVAO;
 import mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer;
+import mchorse.bbs_mod.forms.renderers.utils.FormColorBlend;
 import mchorse.bbs_mod.obj.shapes.ShapeKeys;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.utils.MathUtils;
+import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.interps.Lerps;
 
 import net.minecraft.client.gl.ShaderProgram;
@@ -18,8 +20,6 @@ import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
-
-import com.mojang.blaze3d.systems.RenderSystem;
 
 public class CubicVAORenderer extends CubicCubeRenderer
 {
@@ -52,94 +52,235 @@ public class CubicVAORenderer extends CubicCubeRenderer
             float g;
             float b;
             float a;
+            float effectiveGlowStrength = this.resolveEffectiveGlowStrength(group);
+            float effectiveGlowR = this.resolveEffectiveGlowR(group);
+            float effectiveGlowG = this.resolveEffectiveGlowG(group);
+            float effectiveGlowB = this.resolveEffectiveGlowB(group);
+            float effectivePaintStrength = this.resolveEffectivePaintStrength(group);
+            float effectivePaintR = this.resolveEffectivePaintR(group);
+            float effectivePaintG = this.resolveEffectivePaintG(group);
+            float effectivePaintB = this.resolveEffectivePaintB(group);
 
-            if (ModelVAORenderer.isPaintPass())
+            if (effectivePaintStrength > 0F && !this.groupHasPaintableTexture(group))
             {
-                float pr;
-                float pg;
-                float pb;
-                float pa;
-
-                if (group.paintColor.a > 0F)
-                {
-                    pr = group.paintColor.r;
-                    pg = group.paintColor.g;
-                    pb = group.paintColor.b;
-                    pa = group.paintColor.a;
-                }
-                else
-                {
-                    pr = ModelVAORenderer.getBasePaintR();
-                    pg = ModelVAORenderer.getBasePaintG();
-                    pb = ModelVAORenderer.getBasePaintB();
-                    pa = ModelVAORenderer.getBasePaintStrength();
-                }
-
-                if (pa <= 0F)
+                if (ModelVAORenderer.isPaintPass() && effectiveGlowStrength == 0F)
                 {
                     return false;
                 }
 
-                ModelVAORenderer.setGroupPaint(group.paintColor.r, group.paintColor.g, group.paintColor.b, group.paintColor.a);
+                effectivePaintStrength = 0F;
+            }
 
-                if (group.textureOverride != null)
+            if (ModelVAORenderer.isPaintPass())
+            {
+                if (effectivePaintStrength <= 0F && effectiveGlowStrength == 0F)
                 {
-                    BBSModClient.getTextures().bindTexture(group.textureOverride);
-                }
-                else if (this.defaultTexture != null)
-                {
-                    BBSModClient.getTextures().bindTexture(this.defaultTexture);
-                }
-                else
-                {
-                    BBSModClient.getTextures().bindTexture(this.model.texture);
+                    return false;
                 }
 
-                r = pr;
-                g = pg;
-                b = pb;
-                a = ModelVAORenderer.isPaintOverlayPass() ? this.a : this.a * pa;
+                ModelVAORenderer.setGroupPaint(effectivePaintR, effectivePaintG, effectivePaintB, effectivePaintStrength);
+                ModelVAORenderer.setGroupGlowing(
+                    effectiveGlowR,
+                    effectiveGlowG,
+                    effectiveGlowB,
+                    effectiveGlowStrength);
+
+                this.bindGroupTexture(group);
+
+                r = this.r * group.color.r;
+                g = this.g * group.color.g;
+                b = this.b * group.color.b;
+                a = this.a * group.color.a;
             }
             else
             {
-                if (group.textureOverride != null)
-                {
-                    BBSModClient.getTextures().bindTexture(group.textureOverride);
-                }
-                else if (this.defaultTexture != null)
-                {
-                    BBSModClient.getTextures().bindTexture(this.defaultTexture);
-                }
-                else
-                {
-                    BBSModClient.getTextures().bindTexture(this.model.texture);
-                }
+                this.bindGroupTexture(group);
 
                 r = this.r * group.color.r;
                 g = this.g * group.color.g;
                 b = this.b * group.color.b;
                 a = this.a * group.color.a;
 
-                ModelVAORenderer.setGroupPaint(group.paintColor.r, group.paintColor.g, group.paintColor.b, group.paintColor.a);
+                ModelVAORenderer.setGroupPaint(effectivePaintR, effectivePaintG, effectivePaintB, effectivePaintStrength);
+                ModelVAORenderer.setGroupGlowing(effectiveGlowR, effectiveGlowG, effectiveGlowB, effectiveGlowStrength);
             }
 
-            int light = this.light;
+            if (!ModelVAORenderer.isGlowingUniformActive())
+            {
+                if (effectiveGlowStrength != 0F)
+                {
+                    Color groupColor = new Color().set(r, g, b, a);
+                    Color glowColor = new Color().set(effectiveGlowR, effectiveGlowG, effectiveGlowB, 1F);
+
+                    FormColorBlend.blendBrighten(groupColor, glowColor, effectiveGlowStrength);
+
+                    r = groupColor.r;
+                    g = groupColor.g;
+                    b = groupColor.b;
+                    a = groupColor.a;
+                }
+            }
+
+            int groupLight = this.light;
+
+            if (effectiveGlowStrength != 0F && !ModelVAORenderer.isGlowingUniformActive() && !ModelVAORenderer.isPaintOverlayPass())
+            {
+                float glowLightT = MathUtils.clamp(Math.abs(effectiveGlowStrength), 0F, 1F);
+                int baseU = groupLight & '\uffff';
+                int u = (int) Lerps.lerp(baseU, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, glowLightT);
+                int v = groupLight >> 16 & '\uffff';
+
+                groupLight = u | v << 16;
+            }
 
             if (this.stencilMap != null)
             {
-                light = this.stencilMap.increment ? group.index : 0;
+                groupLight = this.stencilMap.increment ? group.index : 0;
             }
             else
             {
-                int u = (int) Lerps.lerp(light & '\uffff', LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, MathUtils.clamp(group.lighting, 0F, 1F));
-                int v = light >> 16 & '\uffff';
+                int u = (int) Lerps.lerp(groupLight & '\uffff', LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, MathUtils.clamp(group.lighting, 0F, 1F));
+                int v = groupLight >> 16 & '\uffff';
 
-                light = u | v << 16;
+                groupLight = u | v << 16;
             }
 
-            ModelVAORenderer.render(this.program, modelVAO, stack, r, g, b, a, light, this.overlay);
+            ModelVAORenderer.render(this.program, modelVAO, stack, r, g, b, a, groupLight, this.overlay);
+            ModelVAORenderer.clearTextureBlend();
         }
 
         return false;
+    }
+
+    private void bindGroupTexture(ModelGroup group)
+    {
+        Link defaultLink = this.defaultTexture != null ? this.defaultTexture : this.model.texture;
+
+        if (group.textureOverride == null)
+        {
+            ModelVAORenderer.clearTextureBlend();
+            BBSModClient.getTextures().bindTexture(defaultLink);
+
+            return;
+        }
+
+        float blend = group.textureBlend;
+
+        if (blend >= 1F)
+        {
+            ModelVAORenderer.clearTextureBlend();
+            BBSModClient.getTextures().bindTexture(group.textureOverride);
+        }
+        else if (blend <= 0F)
+        {
+            ModelVAORenderer.clearTextureBlend();
+            BBSModClient.getTextures().bindTexture(defaultLink);
+        }
+        else
+        {
+            BBSModClient.getTextures().bindTexture(defaultLink);
+            ModelVAORenderer.setTextureBlend(group.textureOverride, blend);
+        }
+    }
+
+    private float resolveEffectiveGlowStrength(ModelGroup group)
+    {
+        if (group.glowIntensity != 0F)
+        {
+            return group.glowIntensity;
+        }
+
+        return ModelVAORenderer.getBaseGlowingStrength();
+    }
+
+    private float resolveEffectiveGlowR(ModelGroup group)
+    {
+        if (group.glowIntensity != 0F)
+        {
+            return group.glowingColor.r;
+        }
+
+        return ModelVAORenderer.getBaseGlowingR();
+    }
+
+    private float resolveEffectiveGlowG(ModelGroup group)
+    {
+        if (group.glowIntensity != 0F)
+        {
+            return group.glowingColor.g;
+        }
+
+        return ModelVAORenderer.getBaseGlowingG();
+    }
+
+    private float resolveEffectiveGlowB(ModelGroup group)
+    {
+        if (group.glowIntensity != 0F)
+        {
+            return group.glowingColor.b;
+        }
+
+        return ModelVAORenderer.getBaseGlowingB();
+    }
+
+    private float resolveEffectivePaintStrength(ModelGroup group)
+    {
+        if (group.paintColor.a != 0F)
+        {
+            return group.paintColor.a;
+        }
+
+        return ModelVAORenderer.getBasePaintStrength();
+    }
+
+    private float resolveEffectivePaintR(ModelGroup group)
+    {
+        if (group.paintColor.a != 0F)
+        {
+            return group.paintColor.r;
+        }
+
+        return ModelVAORenderer.getBasePaintR();
+    }
+
+    private float resolveEffectivePaintG(ModelGroup group)
+    {
+        if (group.paintColor.a != 0F)
+        {
+            return group.paintColor.g;
+        }
+
+        return ModelVAORenderer.getBasePaintG();
+    }
+
+    private float resolveEffectivePaintB(ModelGroup group)
+    {
+        if (group.paintColor.a != 0F)
+        {
+            return group.paintColor.b;
+        }
+
+        return ModelVAORenderer.getBasePaintB();
+    }
+
+    /**
+     * Paint overlay should only touch groups that can sample a real texture.
+     * Armor shell groups without a picked bone texture must not receive paint.
+     */
+    private boolean groupHasPaintableTexture(ModelGroup group)
+    {
+        if (group.textureOverride != null)
+        {
+            return true;
+        }
+
+        if (group.id.startsWith("armor_"))
+        {
+            return false;
+        }
+
+        Link defaultLink = this.defaultTexture != null ? this.defaultTexture : this.model.texture;
+
+        return defaultLink != null;
     }
 }

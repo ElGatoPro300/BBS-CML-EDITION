@@ -1,13 +1,15 @@
 package mchorse.bbs_mod.ui.film.toolbar;
 
+import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.UIClips;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.utils.colors.Colors;
 
-import org.lwjgl.glfw.GLFW;
 import org.joml.Vector3i;
+
+import org.lwjgl.glfw.GLFW;
 
 /**
  * Cursor-following clip placement preview with pulsing outline, hint text and
@@ -101,7 +103,7 @@ public class UIClipPlacementInteraction
         }
         else
         {
-            clips.getContext().notifyError(mchorse.bbs_mod.ui.UIKeys.CAMERA_TIMELINE_CANT_FIT_NOTIFICATION);
+            clips.getContext().notifyError(UIKeys.CAMERA_TIMELINE_CANT_FIT_NOTIFICATION);
         }
 
         return true;

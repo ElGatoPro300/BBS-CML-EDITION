@@ -4,6 +4,7 @@ import mchorse.bbs_mod.forms.values.ValueModelTransformationMode;
 import mchorse.bbs_mod.settings.values.core.ValueColor;
 import mchorse.bbs_mod.settings.values.mc.ValueItemStack;
 import mchorse.bbs_mod.settings.values.numeric.ValueBoolean;
+import mchorse.bbs_mod.settings.values.numeric.ValueDouble;
 import mchorse.bbs_mod.utils.colors.Color;
 
 import net.minecraft.item.ModelTransformationMode;
@@ -15,6 +16,8 @@ public class ItemForm extends Form
     public final ValueModelTransformationMode modelTransform = new ValueModelTransformationMode("modelTransform", ModelTransformationMode.NONE);
     public final ValueBoolean sameAnimationWhenDropped = new ValueBoolean("same_animation_when_dropped", false);
     public final ValueColor color = new ValueColor("color", Color.white());
+    public final ValueDouble usingItem = new ValueDouble("using_item", 0D, 0D, 1D);
+    public final ValueDouble itemUseTime = new ValueDouble("item_use_time", 0D, 0D, Double.POSITIVE_INFINITY);
 
     public ItemForm()
     {
@@ -22,6 +25,8 @@ public class ItemForm extends Form
         this.add(this.modelTransform);
         this.add(this.sameAnimationWhenDropped);
         this.add(this.color);
+        this.add(this.usingItem);
+        this.add(this.itemUseTime);
     }
 
     @Override

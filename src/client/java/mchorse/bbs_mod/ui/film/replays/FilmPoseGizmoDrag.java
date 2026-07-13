@@ -1,7 +1,6 @@
 package mchorse.bbs_mod.ui.film.replays;
 
 import mchorse.bbs_mod.camera.Camera;
-import mchorse.bbs_mod.camera.CameraUtils;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.framework.UIContext;
@@ -12,8 +11,6 @@ import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UIAnchorK
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UIPoseKeyframeFactory;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UITransformKeyframeFactory;
 import mchorse.bbs_mod.ui.utils.Area;
-import mchorse.bbs_mod.ui.utils.Gizmo;
-import mchorse.bbs_mod.ui.utils.gizmo.GizmoRayFrame;
 
 import org.joml.Matrix4f;
 import org.joml.Vector3d;
@@ -21,9 +18,8 @@ import org.joml.Vector3f;
 import org.joml.Vector4f;
 
 /**
- * Film pose gizmo drag frame. Axis rings / translate / scale handles use view-space rays plus
- * the captured pass matrix. The trackball sphere uses the same world-space mouse ray as the
- * model editor ({@link GizmoRayFrame}) for screen-basis rotation.
+ * Film pose gizmo drag frame. Axis rings / translate / scale handles and the trackball sphere
+ * all use view-space rays plus the captured pass matrix so drag math matches the drawn gizmo.
  */
 public final class FilmPoseGizmoDrag
 {
@@ -47,39 +43,61 @@ public final class FilmPoseGizmoDrag
         UIKeyframeEditor keyframeEditor = panel.replayEditor.keyframeEditor;
         boolean poseGizmo = keyframeEditor != null && keyframeEditor.editor instanceof UIPoseKeyframeFactory;
         boolean poseLimbGizmo = false;
-        boolean filmTransformGizmo = false;
+        boolean replayTransformGizmo = false;
+        boolean anchorTrackGizmo = false;
 
         if (keyframeEditor != null && keyframeEditor.editor instanceof UITransformKeyframeFactory transformFactory)
         {
             UIKeyframeSheet sheet = keyframeEditor.getSheet(transformFactory.getKeyframe());
 
             poseLimbGizmo = UITransformKeyframeFactory.isPoseLimbTrack(sheet);
-            filmTransformGizmo = !poseLimbGizmo;
+            replayTransformGizmo = !poseLimbGizmo;
         }
-        /* Anchor track uses the exact same handle-ray/ring rotation behavior as the plain
-         * (non pose-limb) film Transform track: same ray provider, same non-inverted rings,
-         * same trackball vertical direction. */
         else if (keyframeEditor != null && keyframeEditor.editor instanceof UIAnchorKeyframeFactory)
         {
-            filmTransformGizmo = true;
+            anchorTrackGizmo = true;
         }
+
+        boolean filmTransformGizmo = replayTransformGizmo || anchorTrackGizmo;
 
         if (poseGizmo)
         {
-            transform.setInvertGizmoViewRing(false);
-            transform.setInvertGizmoTrackball(true);
-            transform.setInvertFilmPoseGizmoAxes(true);
+            /* Pose bodies mirror X/Z relative to euler storage (see shouldInvertRotationRing).
+             * View-space rays fix translate / Y ring feel; X/Z rings still need poseModelGizmoTuning
+             * on the transform editor (same as UIModelPoseEditor). Trackball arcball clears euler
+             * flips each drag via clearTrackballEulerInverts(). */
+            transform.setInvertGizmoViewRing(true);
+            transform.setInvertGizmoTrackball(false);
+            transform.setInvertFilmPoseGizmoAxes(false);
+            transform.clearTrackballEulerInverts();
+            transform.invertFilmArcballDragY();
+            transform.setFilmArcballTrackball(true);
+            transform.setFilmMatchPoseTrackball(false);
         }
         else if (poseLimbGizmo)
         {
-            /* Pose-to-limb: axis rings use poseLimbGizmoTuning(); trackball matches main pose. */
             transform.setInvertGizmoViewRing(false);
             transform.setInvertGizmoTrackball(false);
             transform.setInvertFilmPoseGizmoAxes(false);
+            transform.setFilmArcballTrackball(false);
+            transform.clearTrackballEulerInverts();
+            transform.invertModelPoseTrackballXZ();
+            transform.invertModelPoseTrackballDragY();
+        }
+        else if (replayTransformGizmo)
+        {
+            transform.setInvertGizmoViewRing(false);
+            transform.setInvertGizmoTrackball(false);
+            transform.setInvertFilmPoseGizmoAxes(false);
+            transform.setFilmArcballTrackball(false);
+            transform.clearTrackballEulerInverts();
+            transform.invertModelPoseTrackballXYZ();
         }
         else
         {
             transform.setInvertFilmPoseGizmoAxes(false);
+            transform.setFilmArcballTrackball(false);
+            transform.clearTrackballEulerInverts();
         }
 
         transform.setFilmMatchPoseTrackball(filmTransformGizmo);
@@ -99,11 +117,6 @@ public final class FilmPoseGizmoDrag
                 int vx = context.globalX(area.x);
                 int vy = context.globalY(area.y);
 
-                if (FilmPoseGizmoDrag.isTrackballDrag())
-                {
-                    return FilmPoseGizmoDrag.fillTrackballMouseRay(camera, vx, vy, area.w, area.h, mouseX, mouseY, rayOrigin, rayDirection);
-                }
-
                 return FilmPoseGizmoDrag.fillHandleMouseRay(camera, vx, vy, area.w, area.h, mouseX, mouseY, rayOrigin, rayDirection);
             }
 
@@ -113,35 +126,6 @@ public final class FilmPoseGizmoDrag
                 return FilmPoseGizmoDrag.fillHandleGizmoMatrix(panel, matrix);
             }
         });
-    }
-
-    private static boolean isTrackballDrag()
-    {
-        return Gizmo.INSTANCE.isDragging() && Gizmo.INSTANCE.getActiveHandle() == Gizmo.STENCIL_TRACKBALL;
-    }
-
-    private static boolean fillTrackballMouseRay(Camera camera, int vx, int vy, int vw, int vh, int mouseX, int mouseY, Vector3d rayOrigin, Vector3f rayDirection)
-    {
-        Vector3f direction = CameraUtils.getMouseDirection(
-            camera.projection,
-            camera.view,
-            mouseX,
-            mouseY,
-            vx,
-            vy,
-            vw,
-            vh
-        );
-
-        if (direction.lengthSquared() <= 1.0E-12F)
-        {
-            return false;
-        }
-
-        rayDirection.set(direction).normalize();
-        rayOrigin.set(camera.position.x, camera.position.y, camera.position.z);
-
-        return true;
     }
 
     private static boolean fillHandleMouseRay(Camera camera, int vx, int vy, int vw, int vh, int mouseX, int mouseY, Vector3d rayOrigin, Vector3f rayDirection)
