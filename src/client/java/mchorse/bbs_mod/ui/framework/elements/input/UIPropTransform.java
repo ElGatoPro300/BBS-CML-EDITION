@@ -576,17 +576,26 @@ public class UIPropTransform extends UITransform
         return this;
     }
 
+    /* Default {@link BBSSettings#gizmoTranslateSpeed}; at this value ray translate drag matches
+     * the tuned 1:1 baseline (speed / neutral == 1). */
+    private static final float GIZMO_TRANSLATE_SPEED_NEUTRAL = 5F;
+
     private float getBaseTranslationScale()
     {
-        /* Ray drag: world-space delta is scaled only by per-context unit conversion
-         * (pose model pixels = 16 per block, replay transform = 1 per block, etc.).
-         * BBSSettings.gizmoTranslateSpeed is kept in the UI but not applied here yet. */
+        /* Per-context unit conversion only (pose model pixels = 16 per block, etc.). */
         return this.translationScale;
+    }
+
+    private float getGizmoTranslateSpeedMultiplier()
+    {
+        float speed = BBSSettings.gizmoTranslateSpeed == null ? GIZMO_TRANSLATE_SPEED_NEUTRAL : BBSSettings.gizmoTranslateSpeed.get();
+
+        return speed / GIZMO_TRANSLATE_SPEED_NEUTRAL;
     }
 
     private float getEffectiveTranslationScale()
     {
-        float scale = this.getBaseTranslationScale();
+        float scale = this.getBaseTranslationScale() * this.getGizmoTranslateSpeedMultiplier();
 
         if (Window.isAltPressed())
         {
