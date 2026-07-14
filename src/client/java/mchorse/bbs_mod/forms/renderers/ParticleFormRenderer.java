@@ -1,7 +1,6 @@
 package mchorse.bbs_mod.forms.renderers;
 
 import mchorse.bbs_mod.BBSModClient;
-import mchorse.bbs_mod.camera.Camera;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.forms.ITickable;
@@ -10,7 +9,6 @@ import mchorse.bbs_mod.forms.forms.ParticleForm;
 import mchorse.bbs_mod.particles.ParticleScheme;
 import mchorse.bbs_mod.particles.emitter.ParticleEmitter;
 import mchorse.bbs_mod.ui.framework.UIContext;
-import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.joml.Vectors;
 
@@ -128,36 +126,47 @@ public class ParticleFormRenderer extends FormRenderer<ParticleForm> implements 
             );
 
             this.updateTexture(context.getTransition());
-            boolean irisWorld = BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld();
-            Matrix4f stackMatrix = new Matrix4f(context.stack.peek().getPositionMatrix());
 
-            if (irisWorld && !context.relative && !context.modelRenderer)
+            boolean useGameCamera = !context.modelRenderer && context.type != FormRenderType.PREVIEW;
+            
+            if (useGameCamera)
             {
-                /* Iris bakes the terrain matrix into the stack; strip it before
-                 * rebuilding the camera-relative transform (same as MorphFireRenderer). */
-                stackMatrix = BBSRendering.stripTerrainPositionMatrix(stackMatrix);
+                /* For game rendering, use the main camera for emitter properties to ensure
+                 * correct yaw/pitch for billboards (avoiding 180 degree flip in Camera wrapper) */
+                emitter.setupCameraProperties(MinecraftClient.getInstance().gameRenderer.getCamera());
             }
-
-            Matrix4f matrix = new Matrix4f(MatrixStackUtils.getInverseViewRotationMatrix());
-
-            matrix.mul(stackMatrix);
-
-            Vector3d translation = new Vector3d(matrix.getTranslation(Vectors.TEMP_3F));
-
-            if (!context.modelRenderer)
+            else
             {
-                if (irisWorld)
+                if (context.modelRenderer)
                 {
-                    /* Keep emitter origin and billboard camera subtraction on the same
-                     * game camera Iris uses for the terrain position matrix. */
-                    net.minecraft.client.render.Camera gameCamera = MinecraftClient.getInstance().gameRenderer.getCamera();
+                    float originalPitch = context.camera.rotation.x;
+                    float originalYaw = context.camera.rotation.y;
+                    double originalX = context.camera.position.x;
+                    double originalY = context.camera.position.y;
+                    double originalZ = context.camera.position.z;
 
-                    translation.add(gameCamera.getPos().x, gameCamera.getPos().y, gameCamera.getPos().z);
+                    context.camera.rotation.set(0, 0, 0);
+                    context.camera.position.set(0, 0, 0);
+
+                    emitter.setupCameraProperties(context.camera);
+
+                    context.camera.rotation.x = originalPitch;
+                    context.camera.rotation.y = originalYaw;
+                    context.camera.position.set(originalX, originalY, originalZ);
                 }
                 else
                 {
-                    translation.add(context.camera.position.x, context.camera.position.y, context.camera.position.z);
+                    emitter.setupCameraProperties(context.camera);
                 }
+            }
+
+            Matrix4f modelMatrix = new Matrix4f(context.stack.peek().getPositionMatrix());
+
+            Vector3d translation = new Vector3d(modelMatrix.getTranslation(Vectors.TEMP_3F));
+            
+            if (!context.modelRenderer)
+            {
+                translation.add(context.camera.position.x, context.camera.position.y, context.camera.position.z);
             }
 
             GameRenderer gameRenderer = MinecraftClient.getInstance().gameRenderer;
@@ -167,35 +176,20 @@ public class ParticleFormRenderer extends FormRenderer<ParticleForm> implements 
 
             context.stack.push();
             context.stack.loadIdentity();
-            context.stack.multiplyPositionMatrix(new Matrix4f(RenderSystem.getInverseViewRotationMatrix()).invert());
 
             emitter.lastGlobal.set(translation);
-            emitter.rotation.set(matrix);
+            emitter.rotation.set(modelMatrix);
             emitter.modelRenderer = context.modelRenderer;
-            emitter.worldVertices = false;
-
+            
             if (!BBSRendering.isIrisShadowPass())
             {
                 boolean shadersEnabled = BBSRendering.isIrisShadersEnabled();
+                boolean billboard = shadersEnabled;
 
-                VertexFormat format = shadersEnabled ? VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL : VertexFormats.POSITION_TEXTURE_COLOR_LIGHT;
-                Supplier<ShaderProgram> shader = shadersEnabled
+                VertexFormat format = billboard ? VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL : VertexFormats.POSITION_TEXTURE_COLOR_LIGHT;
+                Supplier<ShaderProgram> shader = billboard
                     ? this.getShader(context, GameRenderer::getRenderTypeEntityTranslucentProgram, BBSShaders::getPickerBillboardProgram)
                     : this.getShader(context, GameRenderer::getParticleProgram, BBSShaders::getPickerParticlesProgram);
-
-                if (irisWorld && !context.modelRenderer)
-                {
-                    net.minecraft.client.render.Camera gameCamera = MinecraftClient.getInstance().gameRenderer.getCamera();
-                    Camera billboardCamera = new Camera();
-
-                    billboardCamera.position.set(gameCamera.getPos().x, gameCamera.getPos().y, gameCamera.getPos().z);
-                    billboardCamera.rotation.set(MathUtils.toRad(-gameCamera.getPitch()), MathUtils.toRad(gameCamera.getYaw()), 0F);
-                    emitter.setupCameraProperties(billboardCamera);
-                }
-                else
-                {
-                    emitter.setupCameraProperties(context.camera);
-                }
 
                 emitter.render(format, shader, context.stack, context.overlay, context.getTransition());
             }

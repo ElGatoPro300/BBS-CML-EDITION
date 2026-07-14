@@ -201,6 +201,11 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
     {
         this.palette = palette;
 
+        if (BBSSettings.uiLayoutPreferences != null)
+        {
+            treeWidth = BBSSettings.uiLayoutPreferences.getFormTreeWidth();
+        }
+
         this.undoHandler = new UIFormUndoHandler(this);
         this.copyPasteController = new UICopyPasteController(PresetManager.BODY_PARTS, "_FormEditorBodyPart")
             .supplier(this::copyBodyPart)
@@ -339,6 +344,12 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
             treeWidth = MathUtils.clamp(f, 0F, 0.5F);
 
             this.forms.w(treeWidth).resize();
+        }).dragEnd(() ->
+        {
+            if (BBSSettings.uiLayoutPreferences != null)
+            {
+                BBSSettings.uiLayoutPreferences.setFormTreeWidth(treeWidth);
+            }
         });
 
         draggable.relative(this.forms).x(1F).y(0.5F).w(6).h(40).anchor(0.5F, 0.5F);

@@ -17,10 +17,6 @@ import mchorse.bbs_mod.cubic.data.animation.Animation;
 import mchorse.bbs_mod.cubic.data.animation.Animations;
 import mchorse.bbs_mod.cubic.data.model.Model;
 import mchorse.bbs_mod.cubic.data.model.ModelGroup;
-import mchorse.bbs_mod.cubic.ik.IKChain;
-import mchorse.bbs_mod.cubic.model.IKChainConfig;
-import mchorse.bbs_mod.cubic.physics.PhysBoneRuntime;
-import mchorse.bbs_mod.cubic.physics.PhysBoneState;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.entities.StubEntity;
 import mchorse.bbs_mod.utils.MathUtils;
@@ -35,7 +31,6 @@ import net.minecraft.util.math.Vec3d;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -47,7 +42,6 @@ public class ProceduralAnimator implements IAnimator
     public ActionPlayback ridingIdle;
 
     private IModelInstance model;
-    private final Map<String, PhysBoneState> physStates = new HashMap<>();
     private GeckoAnimationsConfig geckoAnimations = new GeckoAnimationsConfig();
     private final GeckoAnimationController geckoController = new GeckoAnimationController(
         new GeckoAnimationService(
@@ -59,9 +53,6 @@ public class ProceduralAnimator implements IAnimator
         )
     );
 
-    /** Runtime IK chains, rebuilt when setup() is called with new configs */
-    private List<IKChain> ikChains = new ArrayList<>();
-
     @Override
     public List<String> getActions()
     {
@@ -72,7 +63,6 @@ public class ProceduralAnimator implements IAnimator
     public void setup(IModelInstance model, ActionsConfig actions, boolean fade)
     {
         this.model = model;
-        this.physStates.clear();
         ActionsConfig safeActions = actions == null ? new ActionsConfig() : actions;
         this.geckoAnimations = safeActions.geckoAnimations;
 
@@ -138,8 +128,6 @@ public class ProceduralAnimator implements IAnimator
         {
             this.basePost.update();
         }
-
-        this.updatePhysBones(entity);
     }
 
     @Override
@@ -562,59 +550,9 @@ public class ProceduralAnimator implements IAnimator
 
         this.geckoController.apply(target, model, this.model == null ? null : this.model.getAnimations(), this.geckoAnimations, geckoContext);
 
-        this.applyPhysBones(model);
-
-        /* --- IK pass: runs after FK + Gecko, before post animation --- */
-        this.applyIKChains(armature.getModel());
-
         if (this.basePost != null)
         {
             this.basePost.postApply(target, armature.getModel(), transition);
-        }
-    }
-
-    private void updatePhysBones(IEntity entity)
-    {
-        PhysBoneRuntime.update(entity, this.model, this.physStates);
-    }
-
-    private void applyPhysBones(IModel model)
-    {
-        PhysBoneRuntime.apply(model, this.physStates);
-    }
-
-    /**
-     * Sets the IK chains that this animator will solve each frame.
-     * Called from UIModelIKPanel whenever the chain list changes.
-     */
-    public void setIKChains(List<IKChainConfig> configs)
-    {
-        this.ikChains = new ArrayList<>();
-
-        if (configs == null)
-        {
-            return;
-        }
-
-        for (IKChainConfig config : configs)
-        {
-            this.ikChains.add(new IKChain(config));
-        }
-    }
-
-    /**
-     * Solves all registered IK chains and writes rotations into the model.
-     */
-    private void applyIKChains(IModel model)
-    {
-        if (this.ikChains.isEmpty())
-        {
-            return;
-        }
-
-        for (IKChain chain : this.ikChains)
-        {
-            chain.solve(model);
         }
     }
 

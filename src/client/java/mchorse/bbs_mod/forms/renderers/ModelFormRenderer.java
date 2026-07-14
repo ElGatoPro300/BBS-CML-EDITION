@@ -12,11 +12,14 @@ import mchorse.bbs_mod.cubic.animation.ActionsConfig;
 import mchorse.bbs_mod.cubic.animation.Animator;
 import mchorse.bbs_mod.cubic.animation.IAnimator;
 import mchorse.bbs_mod.cubic.animation.ProceduralAnimator;
+import mchorse.bbs_mod.cubic.constraints.JointLimitEnforcer;
 import mchorse.bbs_mod.cubic.data.model.Model;
 import mchorse.bbs_mod.cubic.data.model.ModelGroup;
+import mchorse.bbs_mod.cubic.ik.LimbConstraintProcessor;
 import mchorse.bbs_mod.cubic.model.ArmorSlot;
 import mchorse.bbs_mod.cubic.model.ArmorType;
 import mchorse.bbs_mod.cubic.model.bobj.BOBJModel;
+import mchorse.bbs_mod.cubic.physics.DynamicBoneOrchestrator;
 import mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer;
 import mchorse.bbs_mod.film.FormRenderDepth;
 import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
@@ -75,6 +78,7 @@ import org.lwjgl.opengl.GL11;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -89,6 +93,9 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
     private ActionsConfig lastConfigs;
     private IAnimator animator;
     private ModelInstance lastModel;
+    private boolean ikAppliedThisRender;
+    private boolean physicsAppliedThisRender;
+    private boolean constraintsAppliedThisRender;
 
     private int lastAge = -1;
 
@@ -418,6 +425,10 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
     private void renderModel(IEntity target, Supplier<ShaderProgram> program, MatrixStack stack, ModelInstance model, int light, int overlay, Color color, boolean ui, StencilMap stencilMap, float transition, boolean renderEquipment, MatrixStack world, FormRenderingContext renderContext)
     {
+        this.ikAppliedThisRender = false;
+        this.physicsAppliedThisRender = false;
+        this.constraintsAppliedThisRender = false;
+
         if (!model.culling)
         {
             RenderSystem.disableCull();
@@ -441,6 +452,15 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             newStack.peek().getNormalMatrix().getScale(Vectors.EMPTY_3F);
             newStack.peek().getNormalMatrix().scale(1F / Vectors.EMPTY_3F.x, -1F / Vectors.EMPTY_3F.y, 1F / Vectors.EMPTY_3F.z);
         }
+
+        Matrix4f baseTransform = ui ? null : new Matrix4f((world != null ? world : stack).peek().getPositionMatrix());
+
+        this.ikAppliedThisRender = false;
+        this.physicsAppliedThisRender = false;
+        this.constraintsAppliedThisRender = false;
+        this.applyIKOnce(model, baseTransform);
+        this.applyPhysicsOnce(target, model, transition, baseTransform);
+        this.applyConstraintsOnce(model);
 
         /* Pass form-level texture so VAO renderer can respect it */
         Link link = this.form.texture.get();
@@ -686,6 +706,85 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
             this.resetPostEquipmentRenderState();
         }
+    }
+
+    private void applyIKOnce(ModelInstance model, Matrix4f baseTransform)
+    {
+        if (this.ikAppliedThisRender)
+        {
+            return;
+        }
+
+        this.ikAppliedThisRender = true;
+        model.form = this.form;
+
+        boolean hasOverrides = baseTransform != null && this.form != null
+            && (!this.form.ikTargetOverrides.isEmpty() || !this.form.poleTargetOverrides.isEmpty());
+
+        if (!hasOverrides)
+        {
+            LimbConstraintProcessor.process(model, null, null);
+            return;
+        }
+
+        Matrix4f inv = new Matrix4f(baseTransform).invert();
+        Map<String, Vector3f> local = toModelSpace(this.form.ikTargetOverrides, inv);
+        Map<String, Vector3f> poleLocal = toModelSpace(this.form.poleTargetOverrides, inv);
+
+        if (local.isEmpty() && poleLocal.isEmpty())
+        {
+            LimbConstraintProcessor.process(model, null, null);
+            return;
+        }
+
+        LimbConstraintProcessor.process(model, local.isEmpty() ? null : local, poleLocal.isEmpty() ? null : poleLocal);
+    }
+
+    /** World-space target overrides into the model's local space (the space the solver and pivot frames use). */
+    private static Map<String, Vector3f> toModelSpace(Map<String, Vector3f> world, Matrix4f inv)
+    {
+        Map<String, Vector3f> local = new HashMap<>(world.size() * 2);
+
+        for (Map.Entry<String, Vector3f> entry : world.entrySet())
+        {
+            String key = entry.getKey();
+            Vector3f worldPos = entry.getValue();
+
+            if (key == null || key.isEmpty() || worldPos == null)
+            {
+                continue;
+            }
+
+            Vector3f pos = new Vector3f(worldPos);
+            inv.transformPosition(pos);
+            local.put(key, pos);
+        }
+
+        return local;
+    }
+
+    private void applyPhysicsOnce(IEntity target, ModelInstance model, float transition, Matrix4f baseTransform)
+    {
+        if (this.physicsAppliedThisRender)
+        {
+            return;
+        }
+
+        this.physicsAppliedThisRender = true;
+        model.lastBaseTransform = baseTransform;
+        model.form = this.form;
+        DynamicBoneOrchestrator.apply(target, model, transition, baseTransform);
+    }
+
+    private void applyConstraintsOnce(ModelInstance model)
+    {
+        if (this.constraintsAppliedThisRender)
+        {
+            return;
+        }
+
+        this.constraintsAppliedThisRender = true;
+        JointLimitEnforcer.enforce(model);
     }
 
     /**

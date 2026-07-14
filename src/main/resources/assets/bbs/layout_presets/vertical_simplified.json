@@ -60,6 +60,11 @@
     "video_motion_blur": 0,
     "video_frame_height": 1920,
     "replays_panel_enabled": true,
+    "hidden_panels": [
+        "actionEditArea",
+        "unifiedEditArea",
+        "replaysPropertiesPanel"
+    ],
     "film_layout": {
         "type": "splitter",
         "dir": "v",

@@ -2,22 +2,19 @@ package mchorse.bbs_mod.ui.model;
 
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
-import mchorse.bbs_mod.bobj.BOBJBone;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.cubic.animation.ActionsConfig;
-import mchorse.bbs_mod.cubic.animation.IAnimator;
-import mchorse.bbs_mod.cubic.animation.ProceduralAnimator;
 import mchorse.bbs_mod.cubic.data.model.Model;
 import mchorse.bbs_mod.cubic.data.model.ModelCube;
 import mchorse.bbs_mod.cubic.data.model.ModelGroup;
 import mchorse.bbs_mod.cubic.data.model.ModelQuad;
 import mchorse.bbs_mod.cubic.data.model.ModelVertex;
 import mchorse.bbs_mod.cubic.model.ArmorSlot;
-import mchorse.bbs_mod.cubic.model.IKChainConfig;
 import mchorse.bbs_mod.cubic.model.ModelConfig;
 import mchorse.bbs_mod.cubic.render.CubicCubeRenderer;
 import mchorse.bbs_mod.cubic.render.ICubicRenderer;
+import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
 import mchorse.bbs_mod.forms.FormUtilsClient;
@@ -99,10 +96,6 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
 
     private Function<Float, Matrix4f> formTransformGizmoOrigin;
 
-    /* ---- IK gizmo state ---- */
-    /** The currently active IK chain config — set by UIModelIKPanel. null = no IK gizmo. */
-    private IKChainConfig activeIKChain;
-
     private StencilFormFramebuffer stencil = new StencilFormFramebuffer();
     private StencilMap stencilMap = new StencilMap();
 
@@ -138,20 +131,38 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
         this.form.model.set(modelId);
     }
 
-    /**
-     * Sets the IK chain whose target gizmo should be drawn in the 3D viewport.
-     * Pass null to hide the IK gizmo.
-     */
-    public void setActiveIKChain(IKChainConfig chain)
-    {
-        this.activeIKChain = chain;
-    }
-    
-
-
     public void setConfig(ModelConfig config)
     {
         this.config = config;
+        this.syncSolverConfig(config);
+    }
+
+    /**
+     * Pushes limb IK / spring / joint-limit blobs from {@link ModelConfig}
+     * onto the live preview {@link ModelForm} so solvers stay in sync while editing.
+     */
+    public void syncSolverConfig(ModelConfig config)
+    {
+        if (config == null)
+        {
+            return;
+        }
+
+        BaseType ik = config.ik.get();
+        this.form.ik.set(ik == null ? null : ik.copy());
+
+        BaseType springs = config.springs.get();
+        this.form.springs.set(springs == null ? null : springs.copy());
+
+        BaseType constraints = config.constraints.get();
+        this.form.constraints.set(constraints == null ? null : constraints.copy());
+
+        /* Use previewModel directly to avoid getModel() re-entry while the preview is being built. */
+        if (this.previewModel != null)
+        {
+            this.previewModel.applyConfig((MapType) config.toData());
+            this.previewModel.form = this.form;
+        }
     }
 
     public void setCallback(Consumer<String> callback)
@@ -464,8 +475,6 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
             this.renderFpHandItem(context, matrixCache, stack);
         }
 
-        this.renderIKGizmo(context, matrixCache);
-
         Matrix4f gizmoMatrix = this.resolveGizmoMatrix(context, matrixCache);
         this.hasGizmoMatrix = gizmoMatrix != null;
 
@@ -736,34 +745,6 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
         return new Matrix4f(cubeStack.peek().getPositionMatrix());
     }
 
-    private Vector3f getBonePoint(MatrixCache cache, String bone)
-    {
-        MatrixCacheEntry entry = cache.get(bone);
-
-        if (entry == null)
-        {
-            return null;
-        }
-
-        Matrix4f matrix = entry.origin() == null ? entry.matrix() : entry.origin();
-
-        if (matrix == null)
-        {
-            return null;
-        }
-
-        return this.translation(matrix);
-    }
-
-    private Vector3f translation(Matrix4f matrix)
-    {
-        Vector3f vector = new Vector3f();
-
-        matrix.getTranslation(vector);
-
-        return vector;
-    }
-
     private void line(BufferBuilder builder, Matrix4f matrix, Vector3f a, Vector3f b, float r, float g, float bl, float alpha)
     {
         builder.vertex(matrix, a.x, a.y, a.z).color(r, g, bl, alpha).next();
@@ -954,6 +935,7 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
 
         this.syncAnimations();
         this.form.color.get().set(this.config.color.get());
+        this.syncSolverConfig(this.config);
 
         if (!this.dirty)
         {
@@ -973,14 +955,12 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
                 model.applyConfig((MapType) this.config.toData());
                 model.texture = this.config.texture.get();
                 model.color = this.config.color.get();
+                this.syncSolverConfig(this.config);
 
                 if (wasProcedural != model.procedural)
                 {
                     this.renderer.resetAnimator();
                 }
-
-                /* Live IK preview: push chain configs into the preview animator */
-                this.applyIKChainsToPreview(model);
             }
         }
         catch (Exception e)
@@ -1018,6 +998,7 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
                         this.previewModel.applyConfig((MapType) this.config.toData());
                         this.previewModel.texture = this.config.texture.get();
                         this.previewModel.color = this.config.color.get();
+                        this.syncSolverConfig(this.config);
                     }
                     catch (Exception e)
                     {
@@ -1059,28 +1040,6 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
                 target.geckoAnimations.enabled,
                 target.geckoAnimations.limbs.size()
             );
-        }
-    }
-
-    /**
-     * Pushes the IK chain configurations from the active ModelConfig into the
-     * preview model's ProceduralAnimator so the FABRIK solver runs every frame
-     * in the editor preview viewport.
-     */
-    private void applyIKChainsToPreview(ModelInstance model)
-    {
-        if (this.config == null || this.config.ikChains.getList().isEmpty())
-        {
-            return;
-        }
-
-        /* ModelFormRenderer.getAnimator() returns the live IAnimator.
-           If the model is procedural, it will be a ProceduralAnimator. */
-        IAnimator animator = this.renderer.getAnimator();
-
-        if (animator instanceof ProceduralAnimator pa)
-        {
-            pa.setIKChains(new ArrayList<>(this.config.ikChains.getList()));
         }
     }
 

@@ -1196,6 +1196,7 @@ public class UIKeys
     public static final IKey MODELS_HOME_VIEW_MOSAIC = L10n.lang("bbs.ui.models.home.view_mosaic");
     public static final IKey MODELS_SETTINGS = L10n.lang("bbs.ui.models.settings");
     public static final IKey MODELS_IK_EDITOR = L10n.lang("bbs.ui.models.ik_editor");
+    public static final IKey MODELS_CONSTRAINTS_EDITOR = L10n.lang("bbs.ui.models.constraints_editor");
     public static final IKey MODELS_IK_SHOW_SKELETON = L10n.lang("bbs.ui.models.ik.show_skeleton");
     public static final IKey MODELS_IK_SHOW_SKELETON_TOOLTIP = L10n.lang("bbs.ui.models.ik.show_skeleton-tooltip");
     public static final IKey MODELS_IK_CHAIN_ADD = L10n.lang("bbs.ui.models.ik.chain_add");
