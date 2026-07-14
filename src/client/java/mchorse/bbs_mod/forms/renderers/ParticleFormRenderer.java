@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.forms.renderers;
 
 import mchorse.bbs_mod.BBSModClient;
+import mchorse.bbs_mod.camera.Camera;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.forms.ITickable;
@@ -9,6 +10,7 @@ import mchorse.bbs_mod.forms.forms.ParticleForm;
 import mchorse.bbs_mod.particles.ParticleScheme;
 import mchorse.bbs_mod.particles.emitter.ParticleEmitter;
 import mchorse.bbs_mod.ui.framework.UIContext;
+import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.joml.Vectors;
 
@@ -133,7 +135,11 @@ public class ParticleFormRenderer extends FormRenderer<ParticleForm> implements 
             {
                 /* For game rendering, use the main camera for emitter properties to ensure
                  * correct yaw/pitch for billboards (avoiding 180 degree flip in Camera wrapper) */
-                emitter.setupCameraProperties(MinecraftClient.getInstance().gameRenderer.getCamera());
+                Camera bbsCam = new Camera();
+                net.minecraft.client.render.Camera mcCam = MinecraftClient.getInstance().gameRenderer.getCamera();
+                bbsCam.position.set(mcCam.getPos().x, mcCam.getPos().y, mcCam.getPos().z);
+                bbsCam.rotation.set(MathUtils.toRad(-mcCam.getPitch()), MathUtils.toRad(mcCam.getYaw()), 0F);
+                emitter.setupCameraProperties(bbsCam);
             }
             else
             {

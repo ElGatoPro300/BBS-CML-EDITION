@@ -52,7 +52,6 @@ import net.minecraft.client.render.VertexFormats;
 import org.joml.Matrix4f;
 
 import com.mojang.blaze3d.systems.RenderSystem;
-
 import com.mojang.logging.LogUtils;
 
 import com.google.gson.Gson;
