@@ -600,10 +600,7 @@ public class BBSModClient implements ClientModInitializer
 
         WorldRenderEvents.AFTER_ENTITIES.register((context) ->
         {
-            if (!BBSRendering.isIrisShadersEnabled())
-            {
-                BBSRendering.renderCoolStuff(context);
-            }
+            BBSRendering.renderCoolStuff(context);
 
             if (BBSRendering.isChromaSkyEnabled())
             {
