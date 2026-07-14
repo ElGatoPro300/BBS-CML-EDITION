@@ -1,10 +1,12 @@
 package mchorse.bbs_mod.ui.forms.editors.panels;
 
+import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.ui.forms.editors.forms.UIForm;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIScrollView;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIDraggable;
+import mchorse.bbs_mod.ui.framework.elements.utils.UIRenderable;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.utils.MathUtils;
 
@@ -27,7 +29,7 @@ public abstract class UIFormPanel <T extends Form> extends UIElement
 
         this.options = UI.scrollView(5, 10);
         this.options.scroll.cancelScrolling();
-        this.options.relative(this).x(1F).w(widths.getOrDefault(this.getClass(), 0F)).minW(140).h(1F).anchorX(1F);
+        this.options.relative(this).x(1F).w(this.getSavedOptionsWidth()).minW(140).h(1F).anchorX(1F);
 
         this.draggable = new UIDraggable((context) ->
         {
@@ -37,10 +39,27 @@ public abstract class UIFormPanel <T extends Form> extends UIElement
             this.options.w(w).resize();
             widths.put(this.getClass(), w);
             this.draggable.resize();
-        });
+
+            if (BBSSettings.uiLayoutPreferences != null)
+            {
+                BBSSettings.uiLayoutPreferences.setFormPanelWidth(this.getClass().getName(), w);
+            }
+        }).dragEnd(this::persistOptionsWidth);
 
         this.draggable.relative(this.options).x(0F).y(0.5F).w(6).h(40).anchor(0.5F, 0.5F);
 
+        UIRenderable background = new UIRenderable((context) ->
+        {
+            int x = this.options.area.x;
+            int y = this.options.area.y;
+            int ex = this.options.area.ex();
+            int ey = this.options.area.ey();
+
+            context.batcher.box(x, y, ex, ey, 0xFF111115);
+            context.batcher.outline(x - 1, y - 1, ex + 1, ey + 1, 0xFF5A5A5A);
+        });
+
+        this.prepend(background);
         this.add(this.options, this.draggable);
     }
 
@@ -54,4 +73,29 @@ public abstract class UIFormPanel <T extends Form> extends UIElement
 
     public void pickBone(String bone)
     {}
+
+    private float getSavedOptionsWidth()
+    {
+        if (BBSSettings.uiLayoutPreferences != null)
+        {
+            return BBSSettings.uiLayoutPreferences.getFormPanelWidth(this.getClass().getName(), widths.getOrDefault(this.getClass(), 0F));
+        }
+
+        return widths.getOrDefault(this.getClass(), 0F);
+    }
+
+    private void persistOptionsWidth()
+    {
+        if (BBSSettings.uiLayoutPreferences == null)
+        {
+            return;
+        }
+
+        Float w = widths.get(this.getClass());
+
+        if (w != null)
+        {
+            BBSSettings.uiLayoutPreferences.setFormPanelWidth(this.getClass().getName(), w);
+        }
+    }
 }

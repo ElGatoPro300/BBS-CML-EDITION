@@ -23,11 +23,14 @@ import mchorse.bbs_mod.forms.forms.shape.nodes.ShapeNode;
 import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.ui.UIKeys;
+import mchorse.bbs_mod.ui.film.toolbar.ToolbarItem;
 import mchorse.bbs_mod.ui.forms.editors.panels.shape.UIShapeNodeEditor;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.utils.context.ContextMenuManager;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Colors;
+
+import java.util.List;
 
 /**
  * Node editor for ScreenNodeGraph. Extends UIShapeNodeEditor to reuse all shared
@@ -188,5 +191,77 @@ public class UIScreenNodeEditor extends UIShapeNodeEditor
         outputSub.action(Icons.GLOBE,    UIKeys.RAW_SCREEN_UV,     Colors.NEGATIVE, () -> this.addNode("screen_uv"));
         outputSub.action(Icons.COPY,     UIKeys.RAW_LAYER,         Colors.INACTIVE, () -> this.addNode("screen_layer"));
         menu.action(Icons.UPLOAD, UIKeys.RAW_OUTPUT, Colors.NEGATIVE, () -> context.replaceContextMenu(outputSub.create()));
+    }
+
+    /**
+     * Fills the screen-node graph toolbar "Add" section with the same node
+     * categories as the editor context menu.
+     */
+    public void populateToolbarAddItems(List<ToolbarItem> items)
+    {
+        items.add(ToolbarItem.submenu(UIKeys.RAW_INPUT,
+            ToolbarItem.action(UIKeys.RAW_VALUE).icon(Icons.MAXIMIZE).accentColor(Colors.POSITIVE).run(() -> this.addNode("value")),
+            ToolbarItem.action(UIKeys.RAW_COLOR).icon(Icons.MATERIAL).accentColor(Colors.POSITIVE).run(() -> this.addNode("color")),
+            ToolbarItem.action(UIKeys.RAW_TIME).icon(Icons.TIME).accentColor(Colors.POSITIVE).run(() -> this.addNode("time")),
+            ToolbarItem.action(UIKeys.RAW_COORDINATE).icon(Icons.ALL_DIRECTIONS).accentColor(Colors.POSITIVE).run(() -> this.addNode("coordinate")),
+            ToolbarItem.action(UIKeys.RAW_TEXTURE).icon(Icons.IMAGE).accentColor(Colors.POSITIVE).run(() -> this.addNode("texture"))
+        ).icon(Icons.DOWNLOAD).accentColor(Colors.POSITIVE));
+
+        items.add(ToolbarItem.submenu(UIKeys.RAW_MATH,
+            ToolbarItem.action(UIKeys.RAW_MATH).icon(Icons.GEAR).accentColor(Colors.ACTIVE).run(() -> this.addNode("math")),
+            ToolbarItem.action(UIKeys.RAW_VECTOR_MATH).icon(Icons.ALL_DIRECTIONS).accentColor(Colors.ACTIVE).run(() -> this.addNode("vector_math")),
+            ToolbarItem.action(UIKeys.RAW_REMAP).icon(Icons.GEAR).accentColor(Colors.ACTIVE).run(() -> this.addNode("remap")),
+            ToolbarItem.action(UIKeys.RAW_CLAMP).icon(Icons.GEAR).accentColor(Colors.ACTIVE).run(() -> this.addNode("clamp")),
+            ToolbarItem.action(UIKeys.RAW_SMOOTHSTEP).icon(Icons.GEAR).accentColor(Colors.ACTIVE).run(() -> this.addNode("smoothstep")),
+            ToolbarItem.action(UIKeys.RAW_INVERT).icon(Icons.REFRESH).accentColor(Colors.ACTIVE).run(() -> this.addNode("invert")),
+            ToolbarItem.action(UIKeys.RAW_POSTERIZE).icon(Icons.GEAR).accentColor(Colors.ACTIVE).run(() -> this.addNode("posterize"))
+        ).icon(Icons.GEAR).accentColor(Colors.ACTIVE));
+
+        items.add(ToolbarItem.submenu(UIKeys.RAW_COLOR,
+            ToolbarItem.action(UIKeys.RAW_MIX_COLOR).icon(Icons.REFRESH).accentColor(Colors.ORANGE).run(() -> this.addNode("mix_color")),
+            ToolbarItem.action(UIKeys.RAW_SPLIT_COLOR).icon(Icons.FILTER).accentColor(Colors.ORANGE).run(() -> this.addNode("split_color")),
+            ToolbarItem.action(UIKeys.RAW_COMBINE_COLOR).icon(Icons.FILTER).accentColor(Colors.ORANGE).run(() -> this.addNode("combine_color")),
+            ToolbarItem.action(UIKeys.RAW_SCREEN_BLEND).icon(Icons.FILTER).accentColor(Colors.ORANGE).run(() -> this.addNode("screen_blend")),
+            ToolbarItem.action(UIKeys.RAW_OVERLAY_BLEND).icon(Icons.FILTER).accentColor(Colors.ORANGE).run(() -> this.addNode("overlay_blend"))
+        ).icon(Icons.MATERIAL).accentColor(Colors.ORANGE));
+
+        items.add(ToolbarItem.submenu(UIKeys.RAW_NOISE,
+            ToolbarItem.action(UIKeys.RAW_PERLIN_NOISE).icon(Icons.SOUND).accentColor(Colors.INACTIVE).run(() -> this.addNode("noise")),
+            ToolbarItem.action(UIKeys.RAW_VORONOI).icon(Icons.SOUND).accentColor(Colors.INACTIVE).run(() -> this.addNode("voronoi")),
+            ToolbarItem.action(UIKeys.RAW_FLOW_NOISE).icon(Icons.SOUND).accentColor(Colors.INACTIVE).run(() -> this.addNode("flow_noise"))
+        ).icon(Icons.SOUND).accentColor(Colors.INACTIVE));
+
+        items.add(ToolbarItem.submenu(UIKeys.RAW_WAVE,
+            ToolbarItem.action(UIKeys.RAW_SINE_WAVE).icon(Icons.ARC).accentColor(Colors.BLUE).run(() -> this.addNode("sine_wave")),
+            ToolbarItem.action(UIKeys.RAW_SQUARE_WAVE).icon(Icons.ARC).accentColor(Colors.BLUE).run(() -> this.addNode("square_wave"))
+        ).icon(Icons.ARC).accentColor(Colors.BLUE));
+
+        items.add(ToolbarItem.submenu(UIKeys.RAW_ADJUST,
+            ToolbarItem.action(UIKeys.RAW_GAMMA_CORRECTION).icon(Icons.FILTER).accentColor(Colors.YELLOW).run(() -> this.addNode("gamma_correction")),
+            ToolbarItem.action(UIKeys.RAW_HUE_SATURATION).icon(Icons.FILTER).accentColor(Colors.YELLOW).run(() -> this.addNode("hue_saturation")),
+            ToolbarItem.action(UIKeys.RAW_BRIGHTNESS_CONTRAST).icon(Icons.FILTER).accentColor(Colors.YELLOW).run(() -> this.addNode("brightness_contrast")),
+            ToolbarItem.action(UIKeys.RAW_LEVELS).icon(Icons.FILTER).accentColor(Colors.YELLOW).run(() -> this.addNode("levels")),
+            ToolbarItem.action(UIKeys.RAW_GLITCH).icon(Icons.EXCHANGE).accentColor(Colors.MAGENTA).run(() -> this.addNode("glitch"))
+        ).icon(Icons.FILTER).accentColor(Colors.YELLOW));
+
+        items.add(ToolbarItem.submenu(UIKeys.RAW_UTILITY,
+            ToolbarItem.action(UIKeys.RAW_TRIGGER).icon(Icons.GEAR).run(() -> this.addNode("trigger")),
+            ToolbarItem.action(UIKeys.RAW_COMMENT).icon(Icons.EDIT).run(() -> this.addNode("comment"))
+        ).icon(Icons.MORE));
+
+        items.add(ToolbarItem.submenu(UIKeys.RAW_EFFECTS,
+            ToolbarItem.action(UIKeys.RAW_VIGNETTE).icon(Icons.FILM).accentColor(0xFF226644).run(() -> this.addNode("screen_vignette")),
+            ToolbarItem.action(UIKeys.RAW_GRAIN).icon(Icons.FILM).accentColor(0xFF226644).run(() -> this.addNode("screen_grain")),
+            ToolbarItem.action(UIKeys.RAW_LETTERBOX).icon(Icons.FILM).accentColor(0xFF226644).run(() -> this.addNode("screen_letterbox")),
+            ToolbarItem.action(UIKeys.RAW_OVERLAY).icon(Icons.FILM).accentColor(0xFF226644).run(() -> this.addNode("screen_overlay")),
+            ToolbarItem.action(UIKeys.RAW_DISTORTION).icon(Icons.EXCHANGE).accentColor(0xFF226644).run(() -> this.addNode("screen_distortion")),
+            ToolbarItem.action(UIKeys.RAW_COLOR_GRADE).icon(Icons.FILTER).accentColor(0xFF226644).run(() -> this.addNode("screen_color_grade"))
+        ).icon(Icons.FILM).accentColor(0xFF226644));
+
+        items.add(ToolbarItem.submenu(UIKeys.RAW_OUTPUT,
+            ToolbarItem.action(UIKeys.RAW_SCREEN_OUTPUT).icon(Icons.DOWNLOAD).accentColor(Colors.NEGATIVE).run(() -> this.addNode("screen_output")),
+            ToolbarItem.action(UIKeys.RAW_SCREEN_UV).icon(Icons.GLOBE).accentColor(Colors.NEGATIVE).run(() -> this.addNode("screen_uv")),
+            ToolbarItem.action(UIKeys.RAW_LAYER).icon(Icons.COPY).accentColor(Colors.INACTIVE).run(() -> this.addNode("screen_layer"))
+        ).icon(Icons.UPLOAD).accentColor(Colors.NEGATIVE));
     }
 }
