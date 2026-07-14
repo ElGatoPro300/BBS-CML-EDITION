@@ -563,42 +563,17 @@ public class BBSRendering
         worldRenderContext.prepare(
             mc.worldRenderer, stack, mc.getTickDelta(), mc.getRenderTime(), false,
             mc.gameRenderer.getCamera(), mc.gameRenderer, mc.gameRenderer.getLightmapTextureManager(),
-            RenderSystem.getProjectionMatrix(), mc.getBufferBuilders().getEntityVertexConsumers(), null, false, mc.world
+            RenderSystem.getProjectionMatrix(), RenderSystem.getModelViewMatrix(), mc.getBufferBuilders().getEntityVertexConsumers(), mc.getProfiler(), false, mc.world
         );
 
-        if (isIrisShadersEnabled())
+        if (!isIrisShadersEnabled())
         {
-            /* renderLayer is also invoked during the Iris shadow pass, where UI gizmos
-             * must not render (and would crash below on the missing matrix stack). */
-            if (isIrisShadowPass())
-            {
-                return;
-            }
-
-            /* Build a matrix stack from the terrain position matrix so renderInWorld
-             * can use the correct Iris coordinate space. */
-            MatrixStack irisStack = new MatrixStack();
-
-            MatrixStackUtils.multiply(irisStack, BBSRendering.positionMatrix);
-
-            WorldRenderContextImpl irisContext = new WorldRenderContextImpl();
-            irisContext.prepare(
-                mc.worldRenderer, irisStack, mc.getTickDelta(), mc.getRenderTime(), false,
-                mc.gameRenderer.getCamera(), mc.gameRenderer, mc.gameRenderer.getLightmapTextureManager(),
-                RenderSystem.getProjectionMatrix(), mc.getBufferBuilders().getEntityVertexConsumers(), null, false, mc.world
-            );
-
-            irisChunkLayerPass = true;
-
-            try
-            {
-                renderCoolStuff(irisContext);
-            }
-            finally
-            {
-                irisChunkLayerPass = false;
-            }
+            renderCoolStuff(worldRenderContext);
         }
+    }
+
+    public static void onRenderChunkLayer(Matrix4f positionMatrix, Matrix4f projectionMatrix)
+    {
     }
 
     public static void renderHud(DrawContext drawContext, float tickDelta)
