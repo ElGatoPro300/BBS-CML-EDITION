@@ -142,7 +142,14 @@ public class UIPropTransform extends UITransform
     private final Vector3f rayDragAxisPlaneNormal = new Vector3f();
     private final Vector2f rayDragScreenAxisOrigin = new Vector2f();
     private final Vector2f rayDragScreenAxisDir = new Vector2f();
-    private boolean rayDragUsesScreenAxis;
+    private boolean rayDragScreenAxisReady;
+    /** Locked at drag start: screen-line projection instead of the frozen drag plane. */
+    private boolean rayDragUseScreenAxis;
+    private boolean rayDragSingleAxisMethodLocked;
+    private double rayDragStartScreenT;
+
+    /** Clicks on gizmo handles start within this distance of the axis line on screen. */
+    private static final float SCREEN_AXIS_NEAR_LINE_PX = 64F;
     private final Vector3f rayLastSpherePoint = new Vector3f();
     private boolean raySphereDragInitialized;
     private double rayLastAxisValue;
@@ -765,6 +772,33 @@ public class UIPropTransform extends UITransform
         return (relX * dirX + relY * dirY) / denom;
     }
 
+    private float distanceMouseToScreenAxisPx(int mouseX, int mouseY)
+    {
+        if (!this.rayDragScreenAxisReady)
+        {
+            return 0F;
+        }
+
+        float relX = mouseX - this.rayDragScreenAxisOrigin.x;
+        float relY = mouseY - this.rayDragScreenAxisOrigin.y;
+        float dirX = this.rayDragScreenAxisDir.x;
+        float dirY = this.rayDragScreenAxisDir.y;
+        float dirLenSq = dirX * dirX + dirY * dirY;
+
+        if (dirLenSq <= 1.0E-12F)
+        {
+            return Float.MAX_VALUE;
+        }
+
+        float t = (relX * dirX + relY * dirY) / dirLenSq;
+        float closestX = this.rayDragScreenAxisOrigin.x + t * dirX;
+        float closestY = this.rayDragScreenAxisOrigin.y + t * dirY;
+        float offX = mouseX - closestX;
+        float offY = mouseY - closestY;
+
+        return (float) Math.sqrt((double) offX * offX + (double) offY * offY);
+    }
+
     /** Frozen at drag start: plane contains the axis and faces the initial view direction. */
     private void setupFrozenDragPlane()
     {
@@ -836,14 +870,93 @@ public class UIPropTransform extends UITransform
         return this.axisParameterFromPoint(this.rayCurrentPoint);
     }
 
-    private double getCurrentAxisDragValue(UIContext context)
+    /**
+     * Picks the single-axis translate projection once per drag. Mid-drag switching between the
+     * frozen drag plane and screen-line projection causes stuck movement and unit mismatches.
+     */
+    private void setupSingleAxisDragProjection(UIContext context, boolean reanchor)
     {
-        if (this.rayDragUsesScreenAxis)
+        int mouseX = this.resolveDragMouseX(context);
+        int mouseY = this.resolveDragMouseY(context);
+
+        this.setupFrozenDragPlane();
+        this.rayDragScreenAxisReady = this.trySetupScreenAxisDrag(context);
+
+        if (this.rayDragScreenAxisReady)
         {
-            return this.projectMouseOntoScreenAxis(this.resolveDragMouseX(context), this.resolveDragMouseY(context));
+            this.rayDragStartScreenT = this.projectMouseOntoScreenAxis(mouseX, mouseY);
         }
 
-        return this.computeAxisValueOnDragPlane();
+        if (reanchor && this.rayDragSingleAxisMethodLocked)
+        {
+            return;
+        }
+
+        double planeValue = this.computeAxisValueOnDragPlane();
+        boolean planeOk = Double.isFinite(planeValue);
+        boolean nearLine = !this.rayDragScreenAxisReady
+            || this.distanceMouseToScreenAxisPx(mouseX, mouseY) <= SCREEN_AXIS_NEAR_LINE_PX;
+
+        if (planeOk && nearLine)
+        {
+            this.rayDragUseScreenAxis = false;
+        }
+        else if (this.rayDragScreenAxisReady)
+        {
+            this.rayDragUseScreenAxis = true;
+
+            if (planeOk)
+            {
+                this.rayDragStartAxisValue = planeValue;
+            }
+        }
+        else
+        {
+            this.rayDragUseScreenAxis = false;
+        }
+
+        this.rayDragSingleAxisMethodLocked = true;
+    }
+
+    private double getCurrentAxisDragValue(UIContext context)
+    {
+        if (this.rayDragUseScreenAxis)
+        {
+            int mouseX = this.resolveDragMouseX(context);
+            int mouseY = this.resolveDragMouseY(context);
+
+            return this.rayDragStartAxisValue + (this.projectMouseOntoScreenAxis(mouseX, mouseY) - this.rayDragStartScreenT);
+        }
+
+        double planeValue = this.computeAxisValueOnDragPlane();
+
+        if (Double.isFinite(planeValue))
+        {
+            return planeValue;
+        }
+
+        if (this.rayDragScreenAxisReady)
+        {
+            int mouseX = this.resolveDragMouseX(context);
+            int mouseY = this.resolveDragMouseY(context);
+
+            return this.rayDragStartAxisValue + (this.projectMouseOntoScreenAxis(mouseX, mouseY) - this.rayDragStartScreenT);
+        }
+
+        return Double.NaN;
+    }
+
+    private void syncDragPointerAfterWarp(UIContext context)
+    {
+        this.syncDragMouseFromContext(context);
+
+        int dragMouseX = this.resolveDragMouseX(context);
+        int dragMouseY = this.resolveDragMouseY(context);
+
+        this.dragAnchorX = dragMouseX;
+        this.dragAnchorY = dragMouseY;
+        this.lastX = dragMouseX;
+        this.lastY = dragMouseY;
     }
 
     public void enableMode(int mode)
@@ -860,6 +973,7 @@ public class UIPropTransform extends UITransform
         this.lastY = this.dragAnchorY;
         this.screenDragProgressEnd.zero();
         this.scaleProgressLength = 0F;
+        this.rayDragSingleAxisMethodLocked = false;
     }
 
     private void syncDragMouseFromContext(UIContext context)
@@ -1355,7 +1469,9 @@ public class UIPropTransform extends UITransform
         this.invertFilmArcballDragY = false;
         this.invertFilmPoseGizmoAxes = false;
         this.rayDragInitialized = false;
-        this.rayDragUsesScreenAxis = false;
+        this.rayDragScreenAxisReady = false;
+        this.rayDragUseScreenAxis = false;
+        this.rayDragSingleAxisMethodLocked = false;
         this.raySphereDragInitialized = false;
 
         Gizmo.INSTANCE.clearRotationArc();
@@ -1532,32 +1648,29 @@ public class UIPropTransform extends UITransform
         if (rawX <= border)
         {
             cursorX = w - borderPadding;
-            this.lastX = context.menu.width - (int) (borderPadding / fx);
             wrapped = true;
         }
         else if (rawX >= w - border)
         {
             cursorX = borderPadding;
-            this.lastX = (int) (borderPadding / fx);
             wrapped = true;
         }
 
         if (rawY <= border)
         {
             cursorY = h - borderPadding;
-            this.lastY = context.menu.height - (int) (borderPadding / fy);
             wrapped = true;
         }
         else if (rawY >= h - border)
         {
             cursorY = borderPadding;
-            this.lastY = (int) (borderPadding / fy);
             wrapped = true;
         }
 
         if (wrapped)
         {
             Window.moveCursor(cursorX, cursorY);
+            this.syncDragPointerAfterWarp(context);
             this.checker.mark();
             this.requestRayDragReanchor();
 
@@ -1575,8 +1688,7 @@ public class UIPropTransform extends UITransform
 
             if (this.shouldReanchorMouseDrag(context, mouseDx, mouseDy))
             {
-                this.lastX = dragMouseX;
-                this.lastY = dragMouseY;
+                this.syncDragPointerAfterWarp(context);
                 this.requestRayDragReanchor();
                 this.checker.mark();
 
@@ -1877,17 +1989,8 @@ public class UIPropTransform extends UITransform
         }
         else if (this.mode == 0 && this.secondaryAxis == null)
         {
-            this.rayDragUsesScreenAxis = this.trySetupScreenAxisDrag(context);
-
-            if (this.rayDragUsesScreenAxis)
-            {
-                this.rayLastAxisValue = this.projectMouseOntoScreenAxis(this.resolveDragMouseX(context), this.resolveDragMouseY(context));
-            }
-            else
-            {
-                this.setupFrozenDragPlane();
-                this.rayLastAxisValue = this.computeAxisValueOnDragPlane();
-            }
+            this.setupSingleAxisDragProjection(context, this.rayDragReanchor);
+            this.rayLastAxisValue = this.getCurrentAxisDragValue(context);
 
             if (!Double.isFinite(this.rayLastAxisValue))
             {
@@ -2242,48 +2345,36 @@ public class UIPropTransform extends UITransform
 
                 if (Math.abs(rawDelta) > MAX_RAY_AXIS_JUMP)
                 {
-                    this.rayLastAxisValue = axisValue;
+                    this.syncDragPointerAfterWarp(context);
                     this.requestRayDragReanchor();
                     return true;
                 }
 
                 this.rayLastAxisValue = axisValue;
 
-                if (this.usesModelPixelTranslation())
+                float primaryDelta = rawDelta * (this.usesModelPixelTranslation()
+                    ? this.getRayAxisSensitivity(this.rayPrimaryAxisWorldScale)
+                    : this.getEffectiveTranslationScale());
+
+                if (Math.abs(primaryDelta) <= 1.0E-8F)
                 {
-                    float axisDelta = (float) (axisValue - this.rayDragStartAxisValue) * this.getRayAxisSensitivity(this.rayPrimaryAxisWorldScale);
+                    return true;
+                }
 
-                    if (Math.abs(axisDelta) <= 1.0E-8F)
-                    {
-                        return true;
-                    }
+                Vector3f value = this.getValue();
 
-                    this.applyAbsoluteRayTranslate(this.axis, axisDelta);
+                if (this.local && !this.usesModelPixelTranslation())
+                {
+                    Vector3f result = this.calculateLocalVector(this.applyTranslateDelta(this.axis, primaryDelta), this.axis);
+
+                    this.setT(null, value.x + result.x, value.y + result.y, value.z + result.z);
                 }
                 else
                 {
-                    float primaryDelta = rawDelta * this.getEffectiveTranslationScale();
+                    Vector3f result = new Vector3f(value);
 
-                    if (Math.abs(primaryDelta) <= 1.0E-8F)
-                    {
-                        return true;
-                    }
-
-                    Vector3f value = this.getValue();
-
-                    if (this.local)
-                    {
-                        Vector3f result = this.calculateLocalVector(this.applyTranslateDelta(this.axis, primaryDelta), this.axis);
-
-                        this.setT(null, value.x + result.x, value.y + result.y, value.z + result.z);
-                    }
-                    else
-                    {
-                        Vector3f result = new Vector3f(value);
-
-                        this.addAxisDelta(result, this.axis, this.applyTranslateDelta(this.axis, primaryDelta));
-                        this.setT(null, result.x, result.y, result.z);
-                    }
+                    this.addAxisDelta(result, this.axis, this.applyTranslateDelta(this.axis, primaryDelta));
+                    this.setT(null, result.x, result.y, result.z);
                 }
             }
             else
@@ -2370,7 +2461,7 @@ public class UIPropTransform extends UITransform
 
             if (Math.abs(rawDelta) > MAX_RAY_AXIS_JUMP)
             {
-                this.rayLastAxisValue = axisValue;
+                this.syncDragPointerAfterWarp(context);
                 this.requestRayDragReanchor();
                 return true;
             }
