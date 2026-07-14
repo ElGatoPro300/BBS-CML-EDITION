@@ -1790,6 +1790,7 @@ public class UIPropTransform extends UITransform
         int cursorY = (int) mc.mouse.getY();
         int prevLastX = this.lastX;
         int prevLastY = this.lastY;
+        boolean rayDragAppliedBeforeWarp = false;
 
         if (rawX <= border)
         {
@@ -1819,6 +1820,11 @@ public class UIPropTransform extends UITransform
 
         if (wrapped)
         {
+            if (this.gizmoRayProvider != null && Gizmo.INSTANCE.isDragging() && !this.trackball && (this.mode == 0 || (this.mode == 1 && !this.uniformScale)))
+            {
+                rayDragAppliedBeforeWarp = this.applyRayDrag(context);
+            }
+
             Window.moveCursor(cursorX, cursorY);
 
             if (this.gizmoRayProvider != null)
@@ -1879,7 +1885,11 @@ public class UIPropTransform extends UITransform
 
         boolean handledByRayDrag;
 
-        if (this.trackball)
+        if (rayDragAppliedBeforeWarp)
+        {
+            handledByRayDrag = true;
+        }
+        else if (this.trackball)
         {
             handledByRayDrag = this.applyTrackballDragDelta(context, warpDx, warpDy);
         }
