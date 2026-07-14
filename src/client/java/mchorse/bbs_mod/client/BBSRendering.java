@@ -67,6 +67,8 @@ import net.minecraft.client.render.VertexConsumer;
 import net.minecraft.client.util.Window;
 import net.minecraft.client.util.math.MatrixStack;
 
+import net.irisshaders.iris.uniforms.custom.cached.CachedUniform;
+
 import org.joml.Matrix4f;
 
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -82,8 +84,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Function;
-
-import net.irisshaders.iris.uniforms.custom.cached.CachedUniform;
 
 public class BBSRendering
 {
@@ -136,7 +136,6 @@ public class BBSRendering
     private static Texture texture;
     private static CloudRenderMode cachedCloudRenderMode;
     private static boolean cloudsForced;
-    public static Matrix4f positionMatrix;
 
     public static int getMotionBlur()
     {
@@ -411,13 +410,13 @@ public class BBSRendering
     public static void onWorldRenderBegin()
     {
         MinecraftClient mc = MinecraftClient.getInstance();
-        BBSModClient.getFilms().startRenderFrame(mc.getTickDelta());
+        BBSModClient.getFilms().startRenderFrame(mc.getRenderTickCounter().getTickDelta(false));
 
         UIBaseMenu menu = UIScreen.getCurrentMenu();
 
         if (menu != null)
         {
-            menu.startRenderFrame(mc.getTickDelta());
+            menu.startRenderFrame(mc.getRenderTickCounter().getTickDelta(false));
         }
 
         RenderSystem.depthFunc(GL11.GL_LEQUAL);
@@ -561,9 +560,26 @@ public class BBSRendering
         MinecraftClient mc = MinecraftClient.getInstance();
 
         worldRenderContext.prepare(
-            mc.worldRenderer, stack, mc.getTickDelta(), mc.getRenderTime(), false,
+            mc.worldRenderer, mc.getRenderTickCounter(), false,
             mc.gameRenderer.getCamera(), mc.gameRenderer, mc.gameRenderer.getLightmapTextureManager(),
-            RenderSystem.getProjectionMatrix(), mc.getBufferBuilders().getEntityVertexConsumers(), null, false, mc.world
+            RenderSystem.getProjectionMatrix(), RenderSystem.getModelViewMatrix(), mc.getBufferBuilders().getEntityVertexConsumers(), mc.getProfiler(), false, mc.world
+        );
+
+        if (!isIrisShadersEnabled())
+        {
+            renderCoolStuff(worldRenderContext);
+        }
+    }
+
+    public static void onRenderChunkLayer(Matrix4f positionMatrix, Matrix4f projectionMatrix)
+    {
+        WorldRenderContextImpl worldRenderContext = new WorldRenderContextImpl();
+        MinecraftClient mc = MinecraftClient.getInstance();
+
+        worldRenderContext.prepare(
+            mc.worldRenderer, mc.getRenderTickCounter(), false,
+            mc.gameRenderer.getCamera(), mc.gameRenderer, mc.gameRenderer.getLightmapTextureManager(),
+            positionMatrix, projectionMatrix, mc.getBufferBuilders().getEntityVertexConsumers(), mc.getProfiler(), false, mc.world
         );
 
         if (isIrisShadersEnabled())
@@ -575,24 +591,18 @@ public class BBSRendering
                 return;
             }
 
-            /* Build a matrix stack from the terrain position matrix so renderInWorld
-             * can use the correct Iris coordinate space. */
-            MatrixStack irisStack = new MatrixStack();
+            /* WorldRenderContextImpl.prepare() leaves the matrix stack null; supply one
+             * built from the terrain position matrix so renderInWorld can use it. */
+            MatrixStack matrices = new MatrixStack();
 
-            MatrixStackUtils.multiply(irisStack, BBSRendering.positionMatrix);
-
-            WorldRenderContextImpl irisContext = new WorldRenderContextImpl();
-            irisContext.prepare(
-                mc.worldRenderer, irisStack, mc.getTickDelta(), mc.getRenderTime(), false,
-                mc.gameRenderer.getCamera(), mc.gameRenderer, mc.gameRenderer.getLightmapTextureManager(),
-                RenderSystem.getProjectionMatrix(), mc.getBufferBuilders().getEntityVertexConsumers(), null, false, mc.world
-            );
+            MatrixStackUtils.multiply(matrices, positionMatrix);
+            worldRenderContext.setMatrixStack(matrices);
 
             irisChunkLayerPass = true;
 
             try
             {
-                renderCoolStuff(irisContext);
+                renderCoolStuff(worldRenderContext);
             }
             finally
             {

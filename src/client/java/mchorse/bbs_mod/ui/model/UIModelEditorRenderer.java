@@ -662,11 +662,10 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
             return;
         }
 
-        BufferBuilder builder = Tessellator.getInstance().getBuffer();
-
+        Tessellator tessellator = Tessellator.getInstance();
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
         RenderSystem.enableBlend();
-        builder.begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
+        BufferBuilder builder = tessellator.begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
 
         for (ModelQuad quad : this.selectedCube.quads)
         {
@@ -747,27 +746,8 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
 
     private void line(BufferBuilder builder, Matrix4f matrix, Vector3f a, Vector3f b, float r, float g, float bl, float alpha)
     {
-        builder.vertex(matrix, a.x, a.y, a.z).color(r, g, bl, alpha).next();
-        builder.vertex(matrix, b.x, b.y, b.z).color(r, g, bl, alpha).next();
-    }
-
-    private void cross(BufferBuilder builder, Matrix4f matrix, Vector3f p, float size, float r, float g, float b, float a)
-    {
-        this.line(builder, matrix, new Vector3f(p).add(-size, 0, 0), new Vector3f(p).add(size, 0, 0), r, g, b, a);
-        this.line(builder, matrix, new Vector3f(p).add(0, -size, 0), new Vector3f(p).add(0, size, 0), r, g, b, a);
-        this.line(builder, matrix, new Vector3f(p).add(0, 0, -size), new Vector3f(p).add(0, 0, size), r, g, b, a);
-    }
-
-    /**
-     * Renders the IK gizmo:
-     *  - A magenta 3D crosshair at the IK target position.
-     *  - Cyan lines connecting the bones of the active chain (tip→root).
-     *
-     * Positions are in model-local space (1 unit = 1/16 block for Cubic models).
-     * The renderer uses the same MatrixCache used for the bone gizmo / cube outline.
-     */
-    private void renderIKGizmo(UIContext context, MatrixCache matrixCache)
-    {
+        builder.vertex(matrix, a.x, a.y, a.z).color(r, g, bl, alpha);
+        builder.vertex(matrix, b.x, b.y, b.z).color(r, g, bl, alpha);
     }
 
     private int getBoneStencilId(String bone)
