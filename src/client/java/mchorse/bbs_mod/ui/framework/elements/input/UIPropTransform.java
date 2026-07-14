@@ -135,6 +135,8 @@ public class UIPropTransform extends UITransform
     private float rayDragPlaneAngleOffset;
     /** Same for the camera-facing view ring (radians). */
     private float rayDragViewRingAngleOffsetRad;
+    /** Set during a screen-edge warp so ray apply is not blocked by the click anchor gate. */
+    private boolean rayDragScreenWarpFrame;
     private final Vector3d planeOrigin = new Vector3d();
     private final Vector3d planeNormal = new Vector3d();
     private final Vector3d rayDirectionD = new Vector3d();
@@ -785,6 +787,7 @@ public class UIPropTransform extends UITransform
         this.scaleProgressLength = 0F;
         this.rayDragPlaneAngleOffset = 0F;
         this.rayDragViewRingAngleOffsetRad = 0F;
+        this.rayDragScreenWarpFrame = false;
     }
 
     private void syncDragMouseFromContext(UIContext context)
@@ -803,11 +806,8 @@ public class UIPropTransform extends UITransform
         this.updateRayDragMouse(fx, fy);
     }
 
-    /**
-     * After a cursor warp (screen edge wrap or large jump), re-read GLFW cursor position and
-     * align every drag reference to the same UI-space coordinates so no spurious delta is applied.
-     */
-    private void syncDragPointerAfterWarp(UIContext context)
+    /** Re-read cursor position into ray/UI mouse fields without touching drag anchors. */
+    private void refreshDragMousePosition(UIContext context)
     {
         if (context == null)
         {
@@ -824,6 +824,39 @@ public class UIPropTransform extends UITransform
         {
             this.updateRayDragMouse(fx, fy);
         }
+    }
+
+    /** Align frame-to-frame pointer deltas after a warp without disturbing the click anchor. */
+    private void syncDragPointerLastAfterRayWarp(UIContext context)
+    {
+        this.refreshDragMousePosition(context);
+
+        if (context == null)
+        {
+            return;
+        }
+
+        this.lastX = this.resolveDragMouseX(context);
+        this.lastY = this.resolveDragMouseY(context);
+    }
+
+    /**
+     * After a cursor warp, align legacy 2D drag references so no spurious screen delta is applied.
+     * Ray-driven drags use {@link #refreshDragMousePosition(UIContext)} so the click anchor and
+     * compensated ray baselines are not disturbed (see {@link #compensateRayDragForScreenWarp}).
+     */
+    private void syncDragPointerAfterWarp(UIContext context)
+    {
+        this.refreshDragMousePosition(context);
+
+        if (context == null)
+        {
+            return;
+        }
+
+        MinecraftClient mc = MinecraftClient.getInstance();
+        double fx = Math.ceil(mc.getWindow().getWidth() / (double) context.menu.width);
+        double fy = Math.ceil(mc.getWindow().getHeight() / (double) context.menu.height);
 
         int dragMouseX;
         int dragMouseY;
@@ -843,6 +876,16 @@ public class UIPropTransform extends UITransform
         this.dragAnchorY = dragMouseY;
         this.lastX = dragMouseX;
         this.lastY = dragMouseY;
+    }
+
+    private int adjustPointerDeltaForScreenWrap(int delta, int screenSpan, boolean crossedEdge)
+    {
+        if (!crossedEdge)
+        {
+            return delta;
+        }
+
+        return delta > 0 ? delta - screenSpan : delta + screenSpan;
     }
 
     /**
@@ -1440,6 +1483,7 @@ public class UIPropTransform extends UITransform
         this.raySphereDragInitialized = false;
         this.rayDragPlaneAngleOffset = 0F;
         this.rayDragViewRingAngleOffsetRad = 0F;
+        this.rayDragScreenWarpFrame = false;
 
         Gizmo.INSTANCE.clearRotationArc();
         Gizmo.INSTANCE.clearDragProgress();
@@ -1609,35 +1653,53 @@ public class UIPropTransform extends UITransform
         int border = 5;
         int borderPadding = border + 1;
         boolean wrapped = false;
+        boolean wrappedLeft = false;
+        boolean wrappedRight = false;
+        boolean wrappedTop = false;
+        boolean wrappedBottom = false;
         int cursorX = (int) mc.mouse.getX();
         int cursorY = (int) mc.mouse.getY();
+        int prevLastX = this.lastX;
+        int prevLastY = this.lastY;
 
         if (rawX <= border)
         {
             cursorX = w - borderPadding;
             wrapped = true;
+            wrappedLeft = true;
         }
         else if (rawX >= w - border)
         {
             cursorX = borderPadding;
             wrapped = true;
+            wrappedRight = true;
         }
 
         if (rawY <= border)
         {
             cursorY = h - borderPadding;
             wrapped = true;
+            wrappedTop = true;
         }
         else if (rawY >= h - border)
         {
             cursorY = borderPadding;
             wrapped = true;
+            wrappedBottom = true;
         }
 
         if (wrapped)
         {
             Window.moveCursor(cursorX, cursorY);
-            this.syncDragPointerAfterWarp(context);
+
+            if (this.gizmoRayProvider != null)
+            {
+                this.syncDragPointerLastAfterRayWarp(context);
+            }
+            else
+            {
+                this.syncDragPointerAfterWarp(context);
+            }
 
             if (this.filmArcballTrackball && this.trackball)
             {
@@ -1647,13 +1709,23 @@ public class UIPropTransform extends UITransform
 
         int dragMouseX = this.resolveDragMouseX(context);
         int dragMouseY = this.resolveDragMouseY(context);
-        int mouseDx = dragMouseX - this.lastX;
-        int mouseDy = dragMouseY - this.lastY;
+        int mouseDx = dragMouseX - prevLastX;
+        int mouseDy = dragMouseY - prevLastY;
         boolean pointerWarped = wrapped;
 
         if (!wrapped && this.shouldReanchorMouseDrag(context, mouseDx, mouseDy))
         {
-            this.syncDragPointerAfterWarp(context);
+            if (this.gizmoRayProvider != null)
+            {
+                this.syncDragPointerLastAfterRayWarp(context);
+            }
+            else
+            {
+                this.syncDragPointerAfterWarp(context);
+            }
+
+            dragMouseX = this.resolveDragMouseX(context);
+            dragMouseY = this.resolveDragMouseY(context);
             pointerWarped = true;
 
             if (this.filmArcballTrackball && this.trackball)
@@ -1662,14 +1734,33 @@ public class UIPropTransform extends UITransform
             }
         }
 
+        int warpDx = dragMouseX - prevLastX;
+        int warpDy = dragMouseY - prevLastY;
+
+        if (wrapped)
+        {
+            warpDx = this.adjustPointerDeltaForScreenWrap(warpDx, context.menu.width, wrappedLeft || wrappedRight);
+            warpDy = this.adjustPointerDeltaForScreenWrap(warpDy, context.menu.height, wrappedTop || wrappedBottom);
+        }
+
         if (pointerWarped)
         {
             this.compensateRayDragForScreenWarp(context);
+            this.rayDragScreenWarpFrame = this.gizmoRayProvider != null;
             dragMouseX = this.resolveDragMouseX(context);
             dragMouseY = this.resolveDragMouseY(context);
         }
 
-        boolean handledByRayDrag = this.trackball ? this.applyTrackballDrag(context) : this.applyRayDrag(context);
+        boolean handledByRayDrag;
+
+        if (this.trackball)
+        {
+            handledByRayDrag = this.applyTrackballDragDelta(context, warpDx, warpDy);
+        }
+        else
+        {
+            handledByRayDrag = this.applyRayDrag(context);
+        }
 
         /* Interactions that are ray-driven must never fall back to the legacy 2D
          * screen-delta path below: when the ray is briefly unavailable (e.g. the very
@@ -1685,8 +1776,8 @@ public class UIPropTransform extends UITransform
 
         if (!handledByRayDrag && !rayDriven && !(this.trackball && this.filmArcballTrackball))
         {
-            int dx = dragMouseX - this.lastX;
-            int dy = dragMouseY - this.lastY;
+            int dx = warpDx;
+            int dy = warpDy;
                     Vector3f vector = this.getValue();
                     boolean all = this.uniformScale || (this.mode == 1 && Window.isCtrlPressed());
                     UITrackpad reference = this.mode == 0 ? this.tx : (this.mode == 1 ? this.sx : this.rx);
@@ -1848,6 +1939,8 @@ public class UIPropTransform extends UITransform
         {
             this.advanceDragPointer(context);
         }
+
+        this.rayDragScreenWarpFrame = false;
     }
 
     private void advanceDragPointer(UIContext context)
@@ -2215,6 +2308,13 @@ public class UIPropTransform extends UITransform
             return this.applyViewRingDrag();
         }
 
+        /* Translate/scale baselines were already adjusted by compensateRayDragForScreenWarp; applying
+         * the warped ray pick again would double-count the screen-span jump and spike drag speed. */
+        if (this.rayDragScreenWarpFrame && (this.mode == 0 || (this.mode == 1 && !this.uniformScale)))
+        {
+            return true;
+        }
+
         if (this.mode == 0 && !this.hasDragPointerMoved(context))
         {
             return true;
@@ -2469,6 +2569,11 @@ public class UIPropTransform extends UITransform
         int dx = this.resolveDragMouseX(context) - this.lastX;
         int dy = this.resolveDragMouseY(context) - this.lastY;
 
+        return this.applyTrackballDragDelta(context, dx, dy);
+    }
+
+    private boolean applyTrackballDragDelta(UIContext context, int dx, int dy)
+    {
         if (dx != 0 || dy != 0)
         {
             Vector3f right = new Vector3f(1F, 0F, 0F);
