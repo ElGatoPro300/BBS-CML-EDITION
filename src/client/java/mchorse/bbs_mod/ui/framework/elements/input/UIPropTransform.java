@@ -732,6 +732,48 @@ public class UIPropTransform extends UITransform
         this.updateRayDragMouse(fx, fy);
     }
 
+    /**
+     * After a cursor warp (screen edge wrap or large jump), re-read GLFW cursor position and
+     * align every drag reference to the same UI-space coordinates so no spurious delta is applied.
+     */
+    private void syncDragPointerAfterWarp(UIContext context)
+    {
+        if (context == null)
+        {
+            return;
+        }
+
+        GLFW.glfwGetCursorPos(Window.getWindow(), CURSOR_X, CURSOR_Y);
+
+        MinecraftClient mc = MinecraftClient.getInstance();
+        double fx = Math.ceil(mc.getWindow().getWidth() / (double) context.menu.width);
+        double fy = Math.ceil(mc.getWindow().getHeight() / (double) context.menu.height);
+
+        if (this.gizmoRayProvider != null)
+        {
+            this.updateRayDragMouse(fx, fy);
+        }
+
+        int dragMouseX;
+        int dragMouseY;
+
+        if (this.gizmoRayProvider != null)
+        {
+            dragMouseX = this.resolveDragMouseX(context);
+            dragMouseY = this.resolveDragMouseY(context);
+        }
+        else
+        {
+            dragMouseX = (int) Math.round(CURSOR_X[0] / fx);
+            dragMouseY = (int) Math.round(CURSOR_Y[0] / fy);
+        }
+
+        this.dragAnchorX = dragMouseX;
+        this.dragAnchorY = dragMouseY;
+        this.lastX = dragMouseX;
+        this.lastY = dragMouseY;
+    }
+
     private boolean hasDragPointerMoved(UIContext context)
     {
         return this.resolveDragMouseX(context) != this.dragAnchorX
@@ -1385,32 +1427,29 @@ public class UIPropTransform extends UITransform
         if (rawX <= border)
         {
             cursorX = w - borderPadding;
-            this.lastX = context.menu.width - (int) (borderPadding / fx);
             wrapped = true;
         }
         else if (rawX >= w - border)
         {
             cursorX = borderPadding;
-            this.lastX = (int) (borderPadding / fx);
             wrapped = true;
         }
 
         if (rawY <= border)
         {
             cursorY = h - borderPadding;
-            this.lastY = context.menu.height - (int) (borderPadding / fy);
             wrapped = true;
         }
         else if (rawY >= h - border)
         {
             cursorY = borderPadding;
-            this.lastY = (int) (borderPadding / fy);
             wrapped = true;
         }
 
         if (wrapped)
         {
             Window.moveCursor(cursorX, cursorY);
+            this.syncDragPointerAfterWarp(context);
             this.checker.mark();
             this.requestRayDragReanchor();
 
@@ -1428,8 +1467,7 @@ public class UIPropTransform extends UITransform
 
             if (this.shouldReanchorMouseDrag(context, mouseDx, mouseDy))
             {
-                this.lastX = dragMouseX;
-                this.lastY = dragMouseY;
+                this.syncDragPointerAfterWarp(context);
                 this.requestRayDragReanchor();
                 this.checker.mark();
 
@@ -2075,7 +2113,7 @@ public class UIPropTransform extends UITransform
 
                 if (Math.abs(rawDelta) > MAX_RAY_AXIS_JUMP)
                 {
-                    this.rayLastAxisValue = axisValue;
+                    this.syncDragPointerAfterWarp(context);
                     this.requestRayDragReanchor();
                     return true;
                 }
@@ -2203,7 +2241,7 @@ public class UIPropTransform extends UITransform
 
             if (Math.abs(rawDelta) > MAX_RAY_AXIS_JUMP)
             {
-                this.rayLastAxisValue = axisValue;
+                this.syncDragPointerAfterWarp(context);
                 this.requestRayDragReanchor();
                 return true;
             }
