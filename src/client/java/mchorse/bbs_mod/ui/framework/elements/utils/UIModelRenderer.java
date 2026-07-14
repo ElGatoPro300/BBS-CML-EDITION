@@ -7,7 +7,6 @@ import mchorse.bbs_mod.forms.entities.StubEntity;
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
-import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.utils.Factor;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
@@ -42,8 +41,6 @@ import org.lwjgl.opengl.GL11;
  */
 public abstract class UIModelRenderer extends UIElement
 {
-    private static final double DEFAULT_VIEWPORT_DISTANCE = 2.25D;
-
     private static Vector3d vec = new Vector3d();
     private static Matrix3d mat = new Matrix3d();
 
@@ -131,17 +128,6 @@ public abstract class UIModelRenderer extends UIElement
         this.setDistance(15);
         this.setPosition(0, 1, 0);
         this.setRotation(0, 0);
-    }
-
-    /**
-     * Scales the viewport gizmo with orbit zoom ({@link #distance}): 1 at the default zoom,
-     * down to 0.5 when zoomed all the way in, growing proportionally when zooming out.
-     */
-    protected float getViewportGizmoZoomScale()
-    {
-        double current = this.distance.getValue();
-
-        return (float) Math.max(0.5D, current / DEFAULT_VIEWPORT_DISTANCE);
     }
 
     public boolean isDragging()
@@ -275,16 +261,7 @@ public abstract class UIModelRenderer extends UIElement
             this.renderGrid(context);
         }
 
-        Gizmo.INSTANCE.setViewportZoomScale(this.getViewportGizmoZoomScale());
-
-        try
-        {
-            this.renderUserModel(context);
-        }
-        finally
-        {
-            Gizmo.INSTANCE.setViewportZoomScale(1F);
-        }
+        this.renderUserModel(context);
 
         DiffuseLighting.disableGuiDepthLighting();
 

@@ -7,7 +7,6 @@ import mchorse.bbs_mod.graphics.Draw;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
-import mchorse.bbs_mod.ui.framework.elements.utils.UIModelRenderer;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.gizmo.GizmoController;
 import mchorse.bbs_mod.utils.Axis;
@@ -154,9 +153,6 @@ public class Gizmo
     private float lastSy = 1F;
     private float lastSz = 1F;
 
-    /** Orbit-camera zoom multiplier from {@link UIModelRenderer}; 1 outside model viewports. */
-    private float viewportZoomScale = 1F;
-
     /* Direction from the gizmo origin toward the camera in gizmo-local space, refreshed
      * every frame by computeScale(). Used to billboard the view/arcball ring. */
     private final Vector3f lastCamDir = new Vector3f(0F, 1F, 0F);
@@ -210,11 +206,6 @@ public class Gizmo
     public Mode getMode()
     {
         return this.mode;
-    }
-
-    public void setViewportZoomScale(float viewportZoomScale)
-    {
-        this.viewportZoomScale = viewportZoomScale;
     }
 
     public boolean setMode(Mode mode)
@@ -732,7 +723,7 @@ public class Gizmo
             this.lastCamDir.set((float) (camPos.x / dist), (float) (camPos.y / dist), (float) (camPos.z / dist));
         }
 
-        return (float) (1.4F * Math.max(0.5D, dist * 0.12D) * axesScale * this.viewportZoomScale);
+        return (float) (1.4F * Math.max(0.5D, dist * 0.12D) * axesScale);
     }
 
     private void updateFlipSigns(float camX, float camY, float camZ)
