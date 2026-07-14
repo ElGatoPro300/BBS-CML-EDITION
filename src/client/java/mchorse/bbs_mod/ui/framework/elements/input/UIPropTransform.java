@@ -135,6 +135,8 @@ public class UIPropTransform extends UITransform
     private float rayDragPlaneAngleOffset;
     /** Same for the camera-facing view ring (radians). */
     private float rayDragViewRingAngleOffsetRad;
+    /** Ensures translate/scale ray picks apply on the same frame as a cursor warp. */
+    private boolean rayDragForceApplyFrame;
     private final Vector3d planeOrigin = new Vector3d();
     private final Vector3d planeNormal = new Vector3d();
     private final Vector3d rayDirectionD = new Vector3d();
@@ -785,6 +787,7 @@ public class UIPropTransform extends UITransform
         this.scaleProgressLength = 0F;
         this.rayDragPlaneAngleOffset = 0F;
         this.rayDragViewRingAngleOffsetRad = 0F;
+        this.rayDragForceApplyFrame = false;
     }
 
     private void syncDragMouseFromContext(UIContext context)
@@ -803,11 +806,8 @@ public class UIPropTransform extends UITransform
         this.updateRayDragMouse(fx, fy);
     }
 
-    /**
-     * After a cursor warp (screen edge wrap or large jump), re-read GLFW cursor position and
-     * align every drag reference to the same UI-space coordinates so no spurious delta is applied.
-     */
-    private void syncDragPointerAfterWarp(UIContext context)
+    /** Re-read cursor position into ray/UI mouse fields without touching drag anchors. */
+    private void refreshDragMousePosition(UIContext context)
     {
         if (context == null)
         {
@@ -824,6 +824,25 @@ public class UIPropTransform extends UITransform
         {
             this.updateRayDragMouse(fx, fy);
         }
+    }
+
+    /**
+     * After a cursor warp, align legacy 2D drag references so no spurious screen delta is applied.
+     * Ray-driven drags use {@link #refreshDragMousePosition(UIContext)} instead so the click
+     * anchor and absolute ray baselines stay intact.
+     */
+    private void syncDragPointerAfterWarp(UIContext context)
+    {
+        this.refreshDragMousePosition(context);
+
+        if (context == null)
+        {
+            return;
+        }
+
+        MinecraftClient mc = MinecraftClient.getInstance();
+        double fx = Math.ceil(mc.getWindow().getWidth() / (double) context.menu.width);
+        double fy = Math.ceil(mc.getWindow().getHeight() / (double) context.menu.height);
 
         int dragMouseX;
         int dragMouseY;
@@ -845,19 +864,28 @@ public class UIPropTransform extends UITransform
         this.lastY = dragMouseY;
     }
 
+    private int adjustPointerDeltaForScreenWrap(int delta, int screenSpan, boolean crossedEdge)
+    {
+        if (!crossedEdge)
+        {
+            return delta;
+        }
+
+        return delta > 0 ? delta - screenSpan : delta + screenSpan;
+    }
+
     /**
-     * When the OS cursor warps across a screen edge, the 3D pick parameter jumps discontinuously.
-     * Shift the frozen drag baselines so the active transform stays identical and dragging can
-     * continue on the same frame without a full re-anchor.
+     * Rotation rings use a frozen grab vector on the ring plane; only they need baseline
+     * adjustment when the OS cursor teleports. Translate/scale use absolute picks from drag start.
      */
-    private void compensateRayDragForScreenWarp(UIContext context)
+    private void compensateRotationDragForScreenWarp(UIContext context)
     {
         if (!this.rayDragInitialized || this.gizmoRayProvider == null || context == null || !Gizmo.INSTANCE.isDragging())
         {
             return;
         }
 
-        if (this.trackball || this.uniformScale || (this.mode == 2 && this.freeRotation))
+        if (!this.viewRing && !(this.mode == 2 && !this.freeRotation))
         {
             return;
         }
@@ -873,91 +901,52 @@ public class UIPropTransform extends UITransform
         }
 
         this.rayGizmoMatrix.getTranslation(this.rayGizmoOrigin);
-        this.extractAxisWorld(this.axis, this.rayPrimaryAxis);
 
-        if (this.mode == 0 && !this.freeTranslation && this.secondaryAxis == null)
+        if (!this.intersectCurrentRay(this.rayCurrentPoint))
         {
-            double newAxisValue = this.computeAxisValue(this.rayOrigin, this.rayDirection, this.rayPrimaryAxis);
-
-            if (!Double.isFinite(newAxisValue))
-            {
-                return;
-            }
-
-            this.rayDragStartAxisValue += newAxisValue - this.rayLastAxisValue;
-            this.rayLastAxisValue = newAxisValue;
-
             return;
         }
 
-        if (this.mode == 0 && (this.freeTranslation || this.secondaryAxis != null))
+        if (this.viewRing)
         {
-            if (this.secondaryAxis != null)
+            float segment = this.computePlaneSweepAngleRadians(this.rayDragStartPoint, this.rayLastPoint);
+
+            if (this.invertGizmoViewRing || this.invertGizmoViewRingTuning)
             {
-                this.extractAxisWorld(this.secondaryAxis, this.raySecondaryAxis);
+                segment = -segment;
             }
 
-            if (!this.intersectCurrentRay(this.rayCurrentPoint))
+            this.rayDragViewRingAngleOffsetRad += segment;
+        }
+        else
+        {
+            float segment = this.computePlaneSweepAngleDegrees(this.rayDragStartPoint, this.rayLastPoint);
+
+            if (this.shouldInvertRotationRing(this.axis))
             {
-                return;
+                segment = -segment;
             }
 
-            Vector3d preservedOffset = new Vector3d(this.rayLastPoint).sub(this.rayDragStartPoint);
-
-            this.rayDragStartPoint.set(this.rayCurrentPoint).sub(preservedOffset);
-            this.rayLastPoint.set(this.rayCurrentPoint);
-
-            return;
+            this.rayDragPlaneAngleOffset += segment;
         }
 
-        if (this.mode == 1 && !this.uniformScale)
+        this.rayDragStartPoint.set(this.rayCurrentPoint);
+        this.rayLastPoint.set(this.rayCurrentPoint);
+    }
+
+    private boolean shouldForceRayDragApplyOnWarp()
+    {
+        if (this.trackball || this.uniformScale || !this.rayDragInitialized || this.gizmoRayProvider == null)
         {
-            double newAxisValue = this.computeAxisValue(this.rayOrigin, this.rayDirection, this.rayPrimaryAxis);
-
-            if (!Double.isFinite(newAxisValue))
-            {
-                return;
-            }
-
-            this.rayDragStartAxisValue += newAxisValue - this.rayLastAxisValue;
-            this.rayLastAxisValue = newAxisValue;
-
-            return;
+            return false;
         }
 
-        if (this.viewRing || (this.mode == 2 && !this.freeRotation))
+        if (this.mode == 0)
         {
-            if (!this.intersectCurrentRay(this.rayCurrentPoint))
-            {
-                return;
-            }
-
-            if (this.viewRing)
-            {
-                float segment = this.computePlaneSweepAngleRadians(this.rayDragStartPoint, this.rayLastPoint);
-
-                if (this.invertGizmoViewRing || this.invertGizmoViewRingTuning)
-                {
-                    segment = -segment;
-                }
-
-                this.rayDragViewRingAngleOffsetRad += segment;
-            }
-            else
-            {
-                float segment = this.computePlaneSweepAngleDegrees(this.rayDragStartPoint, this.rayLastPoint);
-
-                if (this.shouldInvertRotationRing(this.axis))
-                {
-                    segment = -segment;
-                }
-
-                this.rayDragPlaneAngleOffset += segment;
-            }
-
-            this.rayDragStartPoint.set(this.rayCurrentPoint);
-            this.rayLastPoint.set(this.rayCurrentPoint);
+            return true;
         }
+
+        return this.mode == 1;
     }
 
     private boolean hasDragPointerMoved(UIContext context)
@@ -1440,6 +1429,7 @@ public class UIPropTransform extends UITransform
         this.raySphereDragInitialized = false;
         this.rayDragPlaneAngleOffset = 0F;
         this.rayDragViewRingAngleOffsetRad = 0F;
+        this.rayDragForceApplyFrame = false;
 
         Gizmo.INSTANCE.clearRotationArc();
         Gizmo.INSTANCE.clearDragProgress();
@@ -1609,35 +1599,53 @@ public class UIPropTransform extends UITransform
         int border = 5;
         int borderPadding = border + 1;
         boolean wrapped = false;
+        boolean wrappedLeft = false;
+        boolean wrappedRight = false;
+        boolean wrappedTop = false;
+        boolean wrappedBottom = false;
         int cursorX = (int) mc.mouse.getX();
         int cursorY = (int) mc.mouse.getY();
+        int prevLastX = this.lastX;
+        int prevLastY = this.lastY;
 
         if (rawX <= border)
         {
             cursorX = w - borderPadding;
             wrapped = true;
+            wrappedLeft = true;
         }
         else if (rawX >= w - border)
         {
             cursorX = borderPadding;
             wrapped = true;
+            wrappedRight = true;
         }
 
         if (rawY <= border)
         {
             cursorY = h - borderPadding;
             wrapped = true;
+            wrappedTop = true;
         }
         else if (rawY >= h - border)
         {
             cursorY = borderPadding;
             wrapped = true;
+            wrappedBottom = true;
         }
 
         if (wrapped)
         {
             Window.moveCursor(cursorX, cursorY);
-            this.syncDragPointerAfterWarp(context);
+
+            if (this.gizmoRayProvider != null)
+            {
+                this.refreshDragMousePosition(context);
+            }
+            else
+            {
+                this.syncDragPointerAfterWarp(context);
+            }
 
             if (this.filmArcballTrackball && this.trackball)
             {
@@ -1647,13 +1655,23 @@ public class UIPropTransform extends UITransform
 
         int dragMouseX = this.resolveDragMouseX(context);
         int dragMouseY = this.resolveDragMouseY(context);
-        int mouseDx = dragMouseX - this.lastX;
-        int mouseDy = dragMouseY - this.lastY;
+        int mouseDx = dragMouseX - prevLastX;
+        int mouseDy = dragMouseY - prevLastY;
         boolean pointerWarped = wrapped;
 
         if (!wrapped && this.shouldReanchorMouseDrag(context, mouseDx, mouseDy))
         {
-            this.syncDragPointerAfterWarp(context);
+            if (this.gizmoRayProvider != null)
+            {
+                this.refreshDragMousePosition(context);
+            }
+            else
+            {
+                this.syncDragPointerAfterWarp(context);
+            }
+
+            dragMouseX = this.resolveDragMouseX(context);
+            dragMouseY = this.resolveDragMouseY(context);
             pointerWarped = true;
 
             if (this.filmArcballTrackball && this.trackball)
@@ -1662,14 +1680,35 @@ public class UIPropTransform extends UITransform
             }
         }
 
-        if (pointerWarped)
+        int warpDx = dragMouseX - prevLastX;
+        int warpDy = dragMouseY - prevLastY;
+
+        if (wrapped)
         {
-            this.compensateRayDragForScreenWarp(context);
-            dragMouseX = this.resolveDragMouseX(context);
-            dragMouseY = this.resolveDragMouseY(context);
+            warpDx = this.adjustPointerDeltaForScreenWrap(warpDx, context.menu.width, wrappedLeft || wrappedRight);
+            warpDy = this.adjustPointerDeltaForScreenWrap(warpDy, context.menu.height, wrappedTop || wrappedBottom);
         }
 
-        boolean handledByRayDrag = this.trackball ? this.applyTrackballDrag(context) : this.applyRayDrag(context);
+        if (pointerWarped)
+        {
+            this.compensateRotationDragForScreenWarp(context);
+
+            if (this.shouldForceRayDragApplyOnWarp())
+            {
+                this.rayDragForceApplyFrame = true;
+            }
+        }
+
+        boolean handledByRayDrag;
+
+        if (this.trackball)
+        {
+            handledByRayDrag = this.applyTrackballDragDelta(context, warpDx, warpDy);
+        }
+        else
+        {
+            handledByRayDrag = this.applyRayDrag(context);
+        }
 
         /* Interactions that are ray-driven must never fall back to the legacy 2D
          * screen-delta path below: when the ray is briefly unavailable (e.g. the very
@@ -1685,8 +1724,8 @@ public class UIPropTransform extends UITransform
 
         if (!handledByRayDrag && !rayDriven && !(this.trackball && this.filmArcballTrackball))
         {
-            int dx = dragMouseX - this.lastX;
-            int dy = dragMouseY - this.lastY;
+            int dx = warpDx;
+            int dy = warpDy;
                     Vector3f vector = this.getValue();
                     boolean all = this.uniformScale || (this.mode == 1 && Window.isCtrlPressed());
                     UITrackpad reference = this.mode == 0 ? this.tx : (this.mode == 1 ? this.sx : this.rx);
@@ -1848,6 +1887,8 @@ public class UIPropTransform extends UITransform
         {
             this.advanceDragPointer(context);
         }
+
+        this.rayDragForceApplyFrame = false;
     }
 
     private void advanceDragPointer(UIContext context)
@@ -2215,7 +2256,7 @@ public class UIPropTransform extends UITransform
             return this.applyViewRingDrag();
         }
 
-        if (this.mode == 0 && !this.hasDragPointerMoved(context))
+        if (this.mode == 0 && !this.rayDragForceApplyFrame && !this.hasDragPointerMoved(context))
         {
             return true;
         }
@@ -2231,7 +2272,7 @@ public class UIPropTransform extends UITransform
 
                 Vector3d offset = new Vector3d(this.rayCurrentPoint).sub(this.rayDragStartPoint);
 
-                if (offset.lengthSquared() <= 1.0E-12D)
+                if (offset.lengthSquared() <= 1.0E-12D && !this.rayDragForceApplyFrame)
                 {
                     return true;
                 }
@@ -2274,7 +2315,7 @@ public class UIPropTransform extends UITransform
                     : this.getEffectiveTranslationScale();
                 float axisDelta = (float) (axisValue - this.rayDragStartAxisValue) * sensitivity;
 
-                if (Math.abs(axisDelta) <= 1.0E-8F)
+                if (Math.abs(axisDelta) <= 1.0E-8F && !this.rayDragForceApplyFrame)
                 {
                     return true;
                 }
@@ -2290,7 +2331,7 @@ public class UIPropTransform extends UITransform
 
                 Vector3d offset = new Vector3d(this.rayCurrentPoint).sub(this.rayDragStartPoint);
 
-                if (offset.lengthSquared() <= 1.0E-12D)
+                if (offset.lengthSquared() <= 1.0E-12D && !this.rayDragForceApplyFrame)
                 {
                     return true;
                 }
@@ -2339,7 +2380,7 @@ public class UIPropTransform extends UITransform
             this.scaleProgressLength = axisProjection;
             this.rayLastAxisValue = axisValue;
 
-            if (Math.abs(primaryDelta) <= 1.0E-8F)
+            if (Math.abs(primaryDelta) <= 1.0E-8F && !this.rayDragForceApplyFrame)
             {
                 return true;
             }
@@ -2469,6 +2510,11 @@ public class UIPropTransform extends UITransform
         int dx = this.resolveDragMouseX(context) - this.lastX;
         int dy = this.resolveDragMouseY(context) - this.lastY;
 
+        return this.applyTrackballDragDelta(context, dx, dy);
+    }
+
+    private boolean applyTrackballDragDelta(UIContext context, int dx, int dy)
+    {
         if (dx != 0 || dy != 0)
         {
             Vector3f right = new Vector3f(1F, 0F, 0F);
