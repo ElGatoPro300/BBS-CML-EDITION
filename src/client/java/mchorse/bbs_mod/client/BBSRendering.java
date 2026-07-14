@@ -573,42 +573,6 @@ public class BBSRendering
 
     public static void onRenderChunkLayer(Matrix4f positionMatrix, Matrix4f projectionMatrix)
     {
-        WorldRenderContextImpl worldRenderContext = new WorldRenderContextImpl();
-        MinecraftClient mc = MinecraftClient.getInstance();
-
-        worldRenderContext.prepare(
-            mc.worldRenderer, mc.getRenderTickCounter(), false,
-            mc.gameRenderer.getCamera(), mc.gameRenderer, mc.gameRenderer.getLightmapTextureManager(),
-            positionMatrix, projectionMatrix, mc.getBufferBuilders().getEntityVertexConsumers(), mc.getProfiler(), false, mc.world
-        );
-
-        if (isIrisShadersEnabled())
-        {
-            /* renderLayer is also invoked during the Iris shadow pass, where UI gizmos
-             * must not render (and would crash below on the missing matrix stack). */
-            if (isIrisShadowPass())
-            {
-                return;
-            }
-
-            /* WorldRenderContextImpl.prepare() leaves the matrix stack null; supply one
-             * built from the terrain position matrix so renderInWorld can use it. */
-            MatrixStack matrices = new MatrixStack();
-
-            MatrixStackUtils.multiply(matrices, positionMatrix);
-            worldRenderContext.setMatrixStack(matrices);
-
-            irisChunkLayerPass = true;
-
-            try
-            {
-                renderCoolStuff(worldRenderContext);
-            }
-            finally
-            {
-                irisChunkLayerPass = false;
-            }
-        }
     }
 
     public static void renderHud(DrawContext drawContext, float tickDelta)
