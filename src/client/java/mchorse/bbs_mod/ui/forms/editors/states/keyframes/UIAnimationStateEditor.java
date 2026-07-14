@@ -28,20 +28,16 @@ import mchorse.bbs_mod.ui.film.replays.UIReplaysEditorUtils;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIAnimationToPoseOverlayPanel;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIKeyframeSheetFilterOverlayPanel;
 import mchorse.bbs_mod.ui.forms.editors.UIFormEditor;
-import mchorse.bbs_mod.ui.forms.editors.utils.UIPickableFormRenderer;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
-import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeEditor;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeSheet;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframes;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.graphs.UIKeyframeDopeSheet;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlay;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIDraggable;
+import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.ui.utils.StencilFormFramebuffer;
-import mchorse.bbs_mod.ui.utils.gizmo.GizmoController;
-import mchorse.bbs_mod.ui.utils.gizmo.GizmoRayFrame;
-import mchorse.bbs_mod.ui.utils.gizmo.GizmoSurface;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.Pair;
 import mchorse.bbs_mod.utils.StringUtils;
@@ -68,12 +64,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-public class UIAnimationStateEditor extends UIElement implements GizmoSurface
+public class UIAnimationStateEditor extends UIElement
 {
     public UIKeyframeEditor keyframeEditor;
-
-    private final GizmoController gizmoController = new GizmoController(this);
-    private StencilFormFramebuffer gizmoStencil;
 
     public UIFormEditor editor;
     public UIElement editArea;
@@ -338,22 +331,21 @@ public class UIAnimationStateEditor extends UIElement implements GizmoSurface
 
     public boolean clickViewport(UIContext context, StencilFormFramebuffer stencil)
     {
-        this.gizmoStencil = stencil;
-
         if (stencil.hasPicked() && this.state != null)
         {
             Pair<Form, String> pair = stencil.getPicked();
 
             if (pair != null && context.mouseButton < 2)
             {
-                if (this.gizmoController.tryStartHandleDrag(context, UIReplaysEditorUtils.getEditableTransform(this.keyframeEditor)))
+                if (Gizmo.INSTANCE.start(stencil.getIndex(), context.mouseX, context.mouseY, UIReplaysEditorUtils.getEditableTransform(this.keyframeEditor)))
                 {
                     return true;
                 }
 
                 if (context.mouseButton == 0)
                 {
-                    if (Window.isShiftPressed()) UIReplaysEditorUtils.offerHierarchy(this.getContext(), pair.a, pair.b, (bone) -> this.pickForm(pair.a, bone));
+                    if (Window.isCtrlPressed()) UIReplaysEditorUtils.offerAdjacent(this.getContext(), pair.a, pair.b, (bone) -> this.pickForm(pair.a, bone));
+                    else if (Window.isShiftPressed()) UIReplaysEditorUtils.offerHierarchy(this.getContext(), pair.a, pair.b, (bone) -> this.pickForm(pair.a, bone));
                     else this.pickForm(pair.a, pair.b);
 
                     return true;
@@ -368,47 +360,6 @@ public class UIAnimationStateEditor extends UIElement implements GizmoSurface
         }
 
         return false;
-    }
-
-    @Override
-    public StencilFormFramebuffer getGizmoStencil()
-    {
-        return this.gizmoStencil;
-    }
-
-    @Override
-    public void prepareGizmoDrag(UIPropTransform transform)
-    {
-        if (transform == null || this.editor == null || this.editor.renderer == null)
-        {
-            return;
-        }
-
-        UIPickableFormRenderer renderer = this.editor.renderer;
-        UIAnimationStateEditor self = this;
-
-        transform.setGizmoRayProvider(GizmoRayFrame.fromCamera(
-            renderer.camera,
-            renderer.area,
-            () ->
-            {
-                UIContext context = self.getContext();
-
-                if (context == null)
-                {
-                    return null;
-                }
-
-                Matrix4f origin = self.getOrigin(context.getTransition());
-
-                if (origin == null || origin == Matrices.EMPTY_4F)
-                {
-                    return null;
-                }
-
-                return origin;
-            }
-        ));
     }
 
     public void pickForm(Form form, String bone)

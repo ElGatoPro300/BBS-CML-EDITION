@@ -273,19 +273,7 @@ public class ClientNetwork
 
             client.execute(() ->
             {
-                UIDashboard dashboard = BBSModClient.peekDashboard();
-
-                if (dashboard == null)
-                {
-                    return;
-                }
-
-                UIFilmPanel panel = dashboard.getPanel(UIFilmPanel.class);
-
-                if (panel != null)
-                {
-                    panel.receiveActions(filmId, replayId, tick, data);
-                }
+                BBSModClient.getDashboard().getPanels().getPanel(UIFilmPanel.class).receiveActions(filmId, replayId, tick, data);
             });
         });
     }
@@ -397,20 +385,10 @@ public class ClientNetwork
 
         client.execute(() ->
         {
-            UIDashboard dashboard = BBSModClient.peekDashboard();
-
-            if (dashboard == null)
-            {
-                return;
-            }
-
+            UIDashboard dashboard = BBSModClient.getDashboard();
             UIFilmPanel panel = dashboard.getPanel(UIFilmPanel.class);
 
-            if (panel != null)
-            {
-                panel.updateActors(filmId, actors);
-            }
-
+            panel.updateActors(filmId, actors);
             BBSModClient.getFilms().updateActors(filmId, actors);
         });
     }

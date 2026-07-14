@@ -17,9 +17,6 @@ import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeEditor;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeSheet;
-import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframes;
-import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UIAnchorKeyframeFactory;
-import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UILookAtKeyframeFactory;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UIPoseKeyframeFactory;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UITransformKeyframeFactory;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.graphs.IUIKeyframeGraph;
@@ -54,41 +51,11 @@ public class UIReplaysEditorUtils
         {
             return keyframeFactory.poseEditor.transform;
         }
-        else if (editor.editor instanceof UIAnchorKeyframeFactory anchorFactory)
-        {
-            return anchorFactory.transform;
-        }
 
         return null;
     }
 
-    public static <T> void forEachSelectedKeyframe(UIKeyframes editor, Keyframe<?> keyframe, Consumer<Keyframe<T>> consumer)
-    {
-        if (editor == null || keyframe == null)
-        {
-            return;
-        }
-
-        for (UIKeyframeSheet sheet : editor.getGraph().getSheets())
-        {
-            if (sheet.channel.getFactory() != keyframe.getFactory())
-            {
-                continue;
-            }
-
-            for (Keyframe selected : sheet.selection.getSelected())
-            {
-                consumer.accept((Keyframe<T>) selected);
-            }
-        }
-    }
-
     /* Picking form and form properties */
-
-    private static boolean isBonePickProperty(String propertyId)
-    {
-        return propertyId.equals("pose") || propertyId.startsWith("pose_overlay") || propertyId.equals("look_at");
-    }
 
     public static void pickFormProperty(UIContext context, UIKeyframeEditor editor, ICursor cursor, Form form, String bone)
     {
@@ -136,7 +103,7 @@ public class UIReplaysEditorUtils
             {
                 String propertyId = StringUtils.fileName(pathWithProperty);
 
-                if (isBonePickProperty(propertyId))
+                if (propertyId.equals("pose") || propertyId.startsWith("pose_overlay"))
                 {
                     type = propertyId;
                 }
@@ -156,15 +123,11 @@ public class UIReplaysEditorUtils
                 {
                     String propertyId = StringUtils.fileName(pathWithProperty);
 
-                    if (isBonePickProperty(propertyId))
+                    if (propertyId.equals("pose") || propertyId.startsWith("pose_overlay"))
                     {
                         type = propertyId;
                     }
                 }
-            }
-            else if (keyframeEditor.editor instanceof UILookAtKeyframeFactory)
-            {
-                type = "look_at";
             }
         }
 
@@ -265,25 +228,10 @@ public class UIReplaysEditorUtils
 
             if (keyframeEditor.editor instanceof UIPoseKeyframeFactory poseFactory)
             {
-                if (Window.isCtrlPressed())
-                {
-                    poseFactory.poseEditor.addBoneToSelection(bone);
-                }
-                else
-                {
-                    poseFactory.poseEditor.selectBone(bone);
-                }
-            }
-            else if (keyframeEditor.editor instanceof UILookAtKeyframeFactory lookAtFactory)
-            {
-                lookAtFactory.lookAtEditor.selectBone(bone);
+                poseFactory.poseEditor.selectBone(bone);
             }
 
             filmPanel.setCursor((int) closest.getTick());
-        }
-        else if (keyframeEditor.editor instanceof UILookAtKeyframeFactory lookAtFactory)
-        {
-            lookAtFactory.lookAtEditor.selectBone(bone);
         }
     }
 

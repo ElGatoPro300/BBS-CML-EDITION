@@ -1,19 +1,13 @@
 package mchorse.bbs_mod.ui.framework.elements.utils;
 
 import mchorse.bbs_mod.BBSModClient;
-import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.graphics.texture.Texture;
-import mchorse.bbs_mod.text.RtlAwtTextRenderer;
-import mchorse.bbs_mod.text.RtlFontManager;
-import mchorse.bbs_mod.text.RtlTextEngine;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.utils.colors.Colors;
 
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.gl.GlUniform;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.render.BufferBuilder;
@@ -23,7 +17,6 @@ import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.BufferAllocator;
-import net.minecraft.client.util.math.MatrixStack;
 
 import org.joml.Matrix4f;
 
@@ -37,40 +30,21 @@ import java.util.function.Supplier;
 public class Batcher2D
 {
     private static FontRenderer fontRenderer = new FontRenderer();
-    private static FontRenderer vanillaFontRenderer = new FontRenderer();
 
     private DrawContext context;
     private FontRenderer font;
 
     public static FontRenderer getDefaultTextRenderer()
     {
-        /* Lazily (re)load the user-selected .ttf font when configured, then draw the whole UI with it.
-           Falls back to Minecraft's default font when no custom font is set or it failed to load. */
-        CustomFontManager.ensureLoaded();
-        RtlFontManager.ensureLoaded();
-
-        TextRenderer custom = CustomFontManager.getCustomRenderer();
-
-        fontRenderer.setRenderer(custom != null ? custom : MinecraftClient.getInstance().textRenderer);
+        fontRenderer.setRenderer(MinecraftClient.getInstance().textRenderer);
 
         return fontRenderer;
-    }
-
-    /**
-     * Minecraft's default font — used for subtitles and other in-world HUD that must not follow the
-     * custom BBS UI font setting.
-     */
-    public static FontRenderer getVanillaTextRenderer()
-    {
-        vanillaFontRenderer.setRenderer(MinecraftClient.getInstance().textRenderer);
-
-        return vanillaFontRenderer;
     }
 
     public Batcher2D(DrawContext context)
     {
         this.context = context;
-        this.font = Batcher2D.getDefaultTextRenderer();
+        this.font = getDefaultTextRenderer();
     }
 
     public DrawContext getContext()
@@ -144,7 +118,6 @@ public class Batcher2D
 
         RenderSystem.enableBlend();
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
-        this.flushDraw();
         BufferRenderer.drawWithGlobalProgram(builder.end());
     }
 
@@ -474,45 +447,6 @@ public class Batcher2D
         BufferRenderer.drawWithGlobalProgram(builder.end());
     }
 
-    /**
-     * Draws a stencil-pick FBO with {@code picker_preview}, binding the shader before uploading
-     * {@code Target}/{@code BoneHighlight} so the highlight halo is filtered correctly.
-     */
-    public void drawPickerPreview(int texture, int target, int highlightColor, float x, float y, float w, float h, int textureW, int textureH)
-    {
-        ShaderProgram program = BBSShaders.getPickerPreviewProgram();
-
-        if (program == null)
-        {
-            return;
-        }
-
-        RenderSystem.setShaderTexture(0, texture);
-        RenderSystem.setShader(() -> program);
-
-        GlUniform targetUniform = program.getUniform("Target");
-
-        if (targetUniform != null)
-        {
-            targetUniform.set(target);
-        }
-
-        GlUniform boneHighlight = program.getUniform("BoneHighlight");
-
-        if (boneHighlight != null)
-        {
-            Colors.COLOR.set(highlightColor);
-            boneHighlight.set(Colors.COLOR.r, Colors.COLOR.g, Colors.COLOR.b, Colors.COLOR.a);
-        }
-
-        Matrix4f matrix = this.context.getMatrices().peek().getPositionMatrix();
-        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_TEXTURE_COLOR);
-
-        this.fillTexturedBox(builder, matrix, Colors.WHITE, x, y, w, h, 0, textureH, textureW, 0, textureW, textureH);
-
-        BufferRenderer.drawWithGlobalProgram(builder.end());
-    }
-
     private void fillTexturedBox(BufferBuilder builder, Matrix4f matrix, int color, float x, float y, float w, float h, float u1, float v1, float u2, float v2, int textureW, int textureH)
     {
         builder.vertex(matrix, x, y + h, 0F).texture(u1 / (float) textureW, v2 / (float) textureH).color(color);
@@ -576,11 +510,6 @@ public class Batcher2D
         this.text(label, x, y, color, false);
     }
 
-    public void flushDraw()
-    {
-        this.context.draw();
-    }
-
     public void text(String label, float x, float y)
     {
         this.text(label, x, y, Colors.WHITE, false);
@@ -598,55 +527,7 @@ public class Batcher2D
 
     public void text(String label, float x, float y, int color, boolean shadow)
     {
-        if (RtlTextEngine.isActive())
-        {
-            RtlFontManager.ensureLoaded();
-
-            if (RtlAwtTextRenderer.draw(this, label, x, y, color, shadow))
-            {
-                return;
-            }
-        }
-
-        String prepared = this.font.prepare(label);
-        float scale = CustomFontManager.hasCustomFont() ? 1F : CustomFontManager.getFontScale();
-
-        if (scale != 1F)
-        {
-            MatrixStack matrices = this.context.getMatrices();
-
-            matrices.push();
-            matrices.translate(x, y, 0F);
-            matrices.scale(scale, scale, 1F);
-            this.context.drawText(this.font.getRenderer(), prepared, 0, 0, color, shadow);
-            matrices.pop();
-        }
-        else
-        {
-            this.context.drawText(this.font.getRenderer(), prepared, (int) x, (int) y, color, shadow);
-        }
-
-        this.context.draw();
-
-        RenderSystem.depthFunc(GL11.GL_ALWAYS);
-    }
-
-    /**
-     * Draw text with an explicit renderer (e.g. vanilla Minecraft font for subtitles).
-     */
-    public void text(FontRenderer font, String label, float x, float y, int color, boolean shadow)
-    {
-        if (RtlTextEngine.isActive())
-        {
-            RtlFontManager.ensureLoaded();
-
-            if (RtlAwtTextRenderer.draw(this, label, x, y, color, shadow))
-            {
-                return;
-            }
-        }
-
-        this.context.drawText(font.getRenderer(), font.prepare(label), (int) x, (int) y, color, shadow);
+        this.context.drawText(this.font.getRenderer(), label, (int) x, (int) y, color, shadow);
         this.context.draw();
 
         RenderSystem.depthFunc(GL11.GL_ALWAYS);
@@ -706,19 +587,14 @@ public class Batcher2D
 
     public void textCard(String text, float x, float y, int color, int background, float offset, boolean shadow)
     {
-        this.textCard(this.font, text, x, y, color, background, offset, shadow);
-    }
-
-    public void textCard(FontRenderer font, String text, float x, float y, int color, int background, float offset, boolean shadow)
-    {
         int a = background >> 24 & 0xff;
 
         if (a != 0)
         {
-            this.box(x - offset, y - offset, x + font.getWidth(text) + offset - 1, y + font.getHeight() + offset, background);
+            this.box(x - offset, y - offset, x + this.font.getWidth(text) + offset - 1, y + this.font.getHeight() + offset, background);
         }
 
-        this.text(font, text, x, y, color, shadow);
+        this.text(text, x, y, color, shadow);
     }
 
     public void flush()

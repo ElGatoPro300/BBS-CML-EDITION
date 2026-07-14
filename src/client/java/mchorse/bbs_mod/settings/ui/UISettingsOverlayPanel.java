@@ -3,11 +3,9 @@ package mchorse.bbs_mod.settings.ui;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
-import mchorse.bbs_mod.data.DataToString;
 import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.settings.Settings;
-import mchorse.bbs_mod.settings.values.IValueListener;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.settings.values.core.ValueGroup;
 import mchorse.bbs_mod.settings.values.numeric.ValueInt;
@@ -19,33 +17,26 @@ import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.IUIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIScrollView;
-import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIClickable;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.input.text.UITextbox;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
-import mchorse.bbs_mod.ui.framework.elements.utils.UIText;
 import mchorse.bbs_mod.ui.utils.ScrollDirection;
 import mchorse.bbs_mod.ui.utils.UI;
-import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.interps.Interpolations;
-import mchorse.bbs_mod.utils.interps.Lerps;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Consumer;
 
 public class UISettingsOverlayPanel extends UIOverlayPanel
 {
     private static final int SIDEBAR_WIDTH = 180;
-    private static UISettingsOverlayPanel activeSession;
 
     public UIElement sidebarContainer;
     public UIScrollView sidebar;
@@ -57,21 +48,6 @@ public class UISettingsOverlayPanel extends UIOverlayPanel
     private String selectedCategoryId;
     private boolean isKeybindsSelected;
     private UISettingsTab currentTab;
-
-    private final Map<String, String> sessionSnapshots = new HashMap<>();
-    private final IValueListener sessionChangeListener = (v, f) ->
-    {
-        if (this.trackingSession && !this.applyingSession)
-        {
-            this.hasPendingChanges = true;
-        }
-    };
-    private UIButton applyButton;
-    private UIButton cancelButton;
-    private boolean trackingSession;
-    private boolean applyingSession;
-    private boolean hasPendingChanges;
-    private float actionBarProgress;
 
     public UISettingsOverlayPanel()
     {
@@ -103,153 +79,8 @@ public class UISettingsOverlayPanel extends UIOverlayPanel
         this.sidebarContainer.add(this.search, this.sidebar);
         this.content.add(this.sidebarContainer, this.panel);
 
-        for (Settings module : BBSMod.getSettings().modules.values())
-        {
-            module.postCallback(this.sessionChangeListener);
-        }
-
-        this.applyButton = new UIButton(UIKeys.CONFIG_APPLY, (b) -> this.applySettings());
-        this.cancelButton = new UIButton(UIKeys.CONFIG_CANCEL, (b) -> this.cancelSessionChanges());
-        this.applyButton.setVisible(false);
-        this.cancelButton.setVisible(false);
-        this.applyButton.relative(this).x(1F, -12).y(1F, -36).w(84).h(20).anchor(1F, 1F);
-        this.cancelButton.relative(this.applyButton).x(0F, -6).w(84).h(20).anchor(0F, 1F);
-        this.add(this.applyButton, this.cancelButton);
-
         this.rebuildTabs();
         this.markContainer();
-    }
-
-    public static boolean isDeferringLiveSettings()
-    {
-        return activeSession != null && activeSession.trackingSession && activeSession.hasPendingChanges;
-    }
-
-    private void beginSession()
-    {
-        activeSession = this;
-        this.captureSessionSnapshot();
-        this.trackingSession = true;
-        this.hasPendingChanges = false;
-        this.actionBarProgress = 0F;
-    }
-
-    private void captureSessionSnapshot()
-    {
-        this.sessionSnapshots.clear();
-
-        for (Map.Entry<String, Settings> entry : BBSMod.getSettings().modules.entrySet())
-        {
-            this.sessionSnapshots.put(entry.getKey(), entry.getValue().toJson());
-        }
-    }
-
-    private void cancelSessionChanges()
-    {
-        this.applyingSession = true;
-
-        try
-        {
-            for (Map.Entry<String, String> entry : this.sessionSnapshots.entrySet())
-            {
-                Settings module = BBSMod.getSettings().modules.get(entry.getKey());
-
-                if (module != null)
-                {
-                    module.fromData(DataToString.fromString(entry.getValue()));
-                }
-            }
-
-            this.hasPendingChanges = false;
-            this.actionBarProgress = 0F;
-            this.refresh();
-            UIUtils.playClick();
-        }
-        finally
-        {
-            this.applyingSession = false;
-        }
-    }
-
-    @Override
-    public void removeFromParent()
-    {
-        if (activeSession == this)
-        {
-            activeSession = null;
-        }
-
-        this.trackingSession = false;
-        super.removeFromParent();
-    }
-
-    private void applySettings()
-    {
-        this.applyingSession = true;
-
-        try
-        {
-            BBSSettings.syncAppliedAppearance();
-            BBSModClient.reloadFromSettings();
-            this.captureSessionSnapshot();
-            this.hasPendingChanges = false;
-            this.actionBarProgress = 0F;
-            this.refresh();
-
-            if (this.getContext() != null)
-            {
-                this.getContext().notifyInfo(UIKeys.CONFIG_APPLIED);
-            }
-
-            UIUtils.playClick();
-        }
-        finally
-        {
-            this.applyingSession = false;
-        }
-    }
-
-    @Override
-    public void render(UIContext context)
-    {
-        if (this.getParent() != null && !this.trackingSession)
-        {
-            this.beginSession();
-        }
-
-        if (this.getParent() == null)
-        {
-            this.trackingSession = false;
-
-            if (activeSession == this)
-            {
-                activeSession = null;
-            }
-        }
-
-        float target = this.hasPendingChanges ? 1F : 0F;
-        this.actionBarProgress = Lerps.lerp(this.actionBarProgress, target, 0.22F);
-
-        boolean showActions = this.actionBarProgress > 0.02F;
-        this.applyButton.setVisible(showActions);
-        this.cancelButton.setVisible(showActions);
-
-        if (showActions)
-        {
-            int slide = (int) ((1F - this.actionBarProgress) * 30F);
-            this.applyButton.area.setPoints(this.area.ex() - 96, this.area.ey() - 36 - slide, this.area.ex() - 12, this.area.ey() - 16 - slide);
-            this.cancelButton.area.setPoints(this.area.ex() - 96, this.area.ey() - 62 - slide, this.area.ex() - 12, this.area.ey() - 42 - slide);
-        }
-
-        super.render(context);
-
-        if (showActions)
-        {
-            int slide = (int) ((1F - this.actionBarProgress) * 30F);
-            int x2 = this.area.ex() - 8;
-            int y2 = this.area.ey() - 8 - slide;
-            context.batcher.box(x2 - 92, y2 - 58, x2, y2, Colors.A90);
-        }
     }
 
     private void rebuildTabs()
@@ -322,7 +153,6 @@ public class UISettingsOverlayPanel extends UIOverlayPanel
             case "multiskin": return Icons.PLAYER;
             case "video": return Icons.VIDEO_CAMERA;
             case "editor": return Icons.CAMERA;
-            case "timeline_toolbar": return Icons.LAYOUT;
             case "replays": return Icons.POSE;
             case "recording": return Icons.PROPERTIES;
             case "model_blocks": return Icons.BLOCK;
@@ -444,6 +274,17 @@ public class UISettingsOverlayPanel extends UIOverlayPanel
             {
                 label.h(20);
 
+                UIIcon flip = new UIIcon(Icons.REFRESH, (b) ->
+                {
+                    ValueVideoSettings videoSettings = BBSSettings.videoSettings;
+                    int w = videoSettings.width.get();
+                    int h = videoSettings.height.get();
+                    videoSettings.width.set(h);
+                    videoSettings.height.set(w);
+                });
+                flip.tooltip(IKey.raw("Intercambiar resolución"), Direction.LEFT);
+                flip.relative(label).x(1F, -40).y(0).w(20).h(20);
+
                 UIIcon presets = new UIIcon(Icons.FILM, (b) ->
                 {
                     this.getContext().replaceContextMenu((menu) ->
@@ -479,19 +320,10 @@ public class UISettingsOverlayPanel extends UIOverlayPanel
                 presets.tooltip(UIKeys.GENERAL_PRESETS, Direction.LEFT);
                 presets.relative(label).x(1F, -20).y(0).w(20).h(20);
 
-                label.add(presets);
+                label.add(flip, presets);
             }
 
             List<UIElement> options = new ArrayList<>();
-
-            if (category.getId().equals("timeline_toolbar"))
-            {
-                UIText warning = new UIText(L10n.lang("bbs.config.timeline_toolbar.warning"))
-                    .color(0xFFAA8844, true);
-                warning.w(1F);
-
-                options.add(warning.marginBottom(6));
-            }
 
             for (BaseValue value : category.getAll())
             {
@@ -511,7 +343,7 @@ public class UISettingsOverlayPanel extends UIOverlayPanel
                 }
 
                 /* Populate interpolation labels for default interpolation settings on client side */
-                if (value == BBSSettings.defaultInterpolation || value == BBSSettings.defaultModelInterpolation || value == BBSSettings.defaultPathInterpolation || value == BBSSettings.defaultCameraKeyframeInterpolation)
+                if (value == BBSSettings.defaultInterpolation || value == BBSSettings.defaultPathInterpolation)
                 {
                     try
                     {
@@ -619,11 +451,6 @@ public class UISettingsOverlayPanel extends UIOverlayPanel
         // Left sidebar
         context.batcher.box(this.sidebarContainer.area.x, this.sidebarContainer.area.y, this.sidebarContainer.area.ex(), this.sidebarContainer.area.ey(), 0xFF111115);
         context.batcher.outline(this.sidebarContainer.area.x, this.sidebarContainer.area.y, this.sidebarContainer.area.ex(), this.sidebarContainer.area.ey(), 0xFF22222A, 1);
-
-        if (this.close.area.isInside(context))
-        {
-            this.close.area.render(context.batcher, Colors.RED | Colors.A100);
-        }
 
         // Resize handles
         int resizeColor = Colors.GRAY;

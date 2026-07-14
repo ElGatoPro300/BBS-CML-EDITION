@@ -9,7 +9,6 @@ import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.forms.ModelForm;
 import mchorse.bbs_mod.forms.renderers.ModelFormRenderer;
 import mchorse.bbs_mod.ui.UIKeys;
-import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
@@ -39,17 +38,9 @@ public class UIActionsConfigEditor extends UIElement
         this.preCallback = preCallback;
         this.postCallback = postCallback;
 
-        this.actions = new UIStringList((l) -> this.pickAction(l.get(0), false))
-        {
-            @Override
-            public void render(UIContext context)
-            {
-                super.render(context);
-                context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xFF3C3C3C);
-            }
-        };
+        this.actions = new UIStringList((l) -> this.pickAction(l.get(0), false));
         this.actions.scroll.cancelScrolling();
-        this.actions.background(0xFF141418);
+        this.actions.background();
         this.actionsSearch = new UISearchList<>(this.actions);
         this.actionsSearch.label(UIKeys.GENERAL_SEARCH);
         this.actionsSearch.h(112 + 20);
@@ -59,17 +50,9 @@ public class UIActionsConfigEditor extends UIElement
             this.callback(this.preCallback);
             this.config.name = this.animations.list.getIndex() == 0 ? "" : l.get(0);
             this.callback(this.postCallback);
-        })
-        {
-            @Override
-            public void render(UIContext context)
-            {
-                super.render(context);
-                context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xFF3C3C3C);
-            }
-        });
+        }));
         this.animations.list.cancelScrollEdge();
-        this.animations.label(UIKeys.GENERAL_SEARCH).list.background(0xFF141418);
+        this.animations.label(UIKeys.GENERAL_SEARCH).list.background();
         this.animations.h(112 + 20);
         this.loop = new UIToggle(UIKeys.FORMS_EDITORS_ACTIONS_LOOPS, (b) ->
         {

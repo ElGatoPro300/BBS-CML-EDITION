@@ -35,7 +35,6 @@ import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.DataPath;
 import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.RecentAssetsTracker;
-import mchorse.bbs_mod.utils.RemoteHttp;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.interps.Interpolations;
 import mchorse.bbs_mod.utils.repos.IRepository;
@@ -53,14 +52,16 @@ import org.joml.Matrix4f;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 
-import com.mojang.logging.LogUtils;
-
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
 import org.lwjgl.opengl.GL11;
 
 import java.io.InputStream;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -69,19 +70,14 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
-import org.slf4j.Logger;
-
 public class UIHomePanel extends UIDashboardPanel
 {
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     private static final String BANNERS_URL = "https://raw.githubusercontent.com/BBSCommunity/CML-NEWS/main/Banners_Panel/banners.json";
     public static final int HOME_BANNER_HEIGHT = 108;
     private static final int BANNER_DURATION = 200;
     private static final int BANNER_TRANSITION = 60;
 
     private static final Set<Link> prefetchingBanners = Collections.synchronizedSet(new HashSet<>());
-    private static boolean sessionBannerFetchStarted;
     /* View mode is persisted globally — see BBSSettings.lastViewMosaic. */
 
     private final List<BannerEntry> homeBanners = new ArrayList<>();
@@ -324,16 +320,7 @@ public class UIHomePanel extends UIDashboardPanel
 
     public void refreshRecentList()
     {
-        List<RecentAssetsTracker.Entry> recent = new ArrayList<>();
-
-        for (RecentAssetsTracker.Entry entry : RecentAssetsTracker.RECENT)
-        {
-            if (!RecentAssetsTracker.shouldExcludeFromRecent(entry.type, entry.id))
-            {
-                recent.add(entry);
-            }
-        }
-
+        List<RecentAssetsTracker.Entry> recent = RecentAssetsTracker.RECENT;
         List<String> keys = new ArrayList<>();
 
         for (RecentAssetsTracker.Entry entry : recent)
@@ -355,14 +342,6 @@ public class UIHomePanel extends UIDashboardPanel
         this.homeMosaic.setSelected(entry.id, entry.type);
         this.homeRecentList.setCurrentScroll(this.encodeRecentKey(entry));
         this.updateHomeButtonsState();
-
-        if (this.dashboard.documentTabsBar != null)
-        {
-            /* The tabs bar identifies audio by null type; translate SOUNDS accordingly */
-            ContentType tabsType = (entry.type == ContentType.SOUNDS) ? null : entry.type;
-
-            this.dashboard.documentTabsBar.activateIfOpen(tabsType, entry.id);
-        }
     }
 
     private void openRecent(RecentAssetsTracker.Entry entry)
@@ -602,24 +581,8 @@ public class UIHomePanel extends UIDashboardPanel
         home.author = "ElGatoPro300";
         home.link = Link.assets("textures/banners/films/Home.png");
         this.homeBanners.add(home);
-    }
 
-    public static void onDashboardOpened(UIDashboard dashboard)
-    {
-        if (sessionBannerFetchStarted || dashboard == null)
-        {
-            return;
-        }
-
-        UIHomePanel panel = dashboard.getPanel(UIHomePanel.class);
-
-        if (panel == null)
-        {
-            return;
-        }
-
-        sessionBannerFetchStarted = true;
-        panel.fetchRemoteBanners();
+        this.fetchRemoteBanners();
     }
 
     private void fetchRemoteBanners()
@@ -628,29 +591,29 @@ public class UIHomePanel extends UIDashboardPanel
         {
             try
             {
-                String body = RemoteHttp.fetchString(BANNERS_URL);
+                HttpClient client = HttpClient.newBuilder().build();
+                HttpRequest req = HttpRequest.newBuilder(URI.create(BANNERS_URL)).GET().build();
+                HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
 
-                if (body == null || body.isEmpty())
+                if (resp.statusCode() == 200)
                 {
-                    return;
-                }
+                    List<BannerEntry> remote = new Gson().fromJson(resp.body(), new TypeToken<List<BannerEntry>>(){}.getType());
 
-                List<BannerEntry> remote = new Gson().fromJson(body, new TypeToken<List<BannerEntry>>(){}.getType());
-
-                if (remote != null)
-                {
-                    for (BannerEntry entry : remote)
+                    if (remote != null)
                     {
-                        entry.link = Link.create(entry.url);
-                        this.prefetchBannerImage(entry.link);
-                    }
+                        for (BannerEntry entry : remote)
+                        {
+                            entry.link = Link.create(entry.url);
+                            this.prefetchBannerImage(entry.link);
+                        }
 
-                    MinecraftClient.getInstance().execute(() -> this.homeBanners.addAll(remote));
+                        MinecraftClient.getInstance().execute(() -> this.homeBanners.addAll(remote));
+                    }
                 }
             }
             catch (Exception e)
             {
-                LOGGER.debug("Failed to fetch home banners", e);
+                e.printStackTrace();
             }
         });
     }
@@ -682,7 +645,7 @@ public class UIHomePanel extends UIDashboardPanel
             }
             catch (Exception e)
             {
-                LOGGER.debug("Failed to prefetch banner image for {}", link, e);
+                e.printStackTrace();
             }
             finally
             {
@@ -827,15 +790,10 @@ public class UIHomePanel extends UIDashboardPanel
 
         BufferRenderer.drawWithGlobalProgram(builder.end());
 
-        this.renderCardAndBanners(context, this.homePage, dividerX, UIKeys.FILM_HOME_LIST.get(), true);
+        this.renderCardAndBanners(context, this.homePage, dividerX, UIKeys.FILM_HOME_LIST.get());
     }
 
     public void renderCardAndBanners(UIContext context, UIElement customHomePage, int dividerX, String listTitle)
-    {
-        this.renderCardAndBanners(context, customHomePage, dividerX, listTitle, true);
-    }
-
-    public void renderCardAndBanners(UIContext context, UIElement customHomePage, int dividerX, String listTitle, boolean showActionsColumn)
     {
         int pageX = customHomePage.area.x;
         int pageY = customHomePage.area.y;
@@ -923,17 +881,12 @@ public class UIHomePanel extends UIDashboardPanel
         context.batcher.box(pageX, splitY, pageX + pageW, splitY + 20, 0xFF1A1A22);
         context.batcher.outline(pageX, splitY, pageX + pageW, splitY + 20, 0xFF2A2A35, 1);
 
-        if (showActionsColumn)
-        {
-            context.batcher.box(pageX, splitY + 20, dividerX, pageY + pageH, 0xFF111115);
-            context.batcher.box(dividerX - 1, splitY + 20, dividerX, pageY + pageH, 0xFF22222A);
-            context.batcher.textShadow(UIKeys.FILM_HOME_ACTIONS.get(), pageX + 4, splitY + 6);
-            context.batcher.textShadow(listTitle, dividerX + 4, splitY + 6);
-        }
-        else
-        {
-            context.batcher.textShadow(listTitle, pageX + 4, splitY + 6);
-        }
+        // Left sidebar
+        context.batcher.box(pageX, splitY + 20, dividerX, pageY + pageH, 0xFF111115);
+        context.batcher.box(dividerX - 1, splitY + 20, dividerX, pageY + pageH, 0xFF22222A);
+
+        context.batcher.textShadow(UIKeys.FILM_HOME_ACTIONS.get(), pageX + 4, splitY + 6);
+        context.batcher.textShadow(listTitle, dividerX + 4, splitY + 6);
     }
 
     private void drawBanner(UIContext context, BannerEntry entry, int x, int y, int w, int h, float alpha, float textAlpha, boolean drawStripe)

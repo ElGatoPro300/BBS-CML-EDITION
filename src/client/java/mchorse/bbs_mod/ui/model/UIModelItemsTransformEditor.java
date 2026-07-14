@@ -39,7 +39,7 @@ public class UIModelItemsTransformEditor extends UIDashboardPanel
 {
     private static final ItemStack SWORD = new ItemStack(Items.DIAMOND_SWORD);
 
-    public IUIModelPanelHost host;
+    public UIModelPanel parent;
     public ModelConfig config;
 
     public UIPropTransform transform;
@@ -56,11 +56,11 @@ public class UIModelItemsTransformEditor extends UIDashboardPanel
     private boolean changed;
     private ModelInstance cachedModel;
 
-    public UIModelItemsTransformEditor(IUIModelPanelHost host, ModelConfig config)
+    public UIModelItemsTransformEditor(UIModelPanel parent, ModelConfig config)
     {
-        super(host.getDashboard());
+        super(parent.dashboard);
 
-        this.host = host;
+        this.parent = parent;
         this.config = config;
 
         ClientPlayerEntity player = MinecraftClient.getInstance().player;
@@ -98,14 +98,14 @@ public class UIModelItemsTransformEditor extends UIDashboardPanel
         this.transform.callbacks(null, () ->
         {
             this.syncModel();
-            this.host.dirty();
+            this.parent.dirty();
         });
         this.transform.relative(this).x(1F, -200).y(0.5F, 10).w(190).h(70);
 
         this.back = new UIIcon(Icons.CLOSE, (b) ->
         {
-            this.host.getModelRenderer().dirty();
-            this.host.returnFromSubEditor();
+            this.parent.renderer.dirty();
+            this.dashboard.setPanel(this.parent);
         });
         this.back.relative(this).x(1F, -26).y(6);
 
@@ -168,7 +168,7 @@ public class UIModelItemsTransformEditor extends UIDashboardPanel
     @Override
     public UIDashboardPanel getMainPanel()
     {
-        return this.host.getModelPanel() != null ? this.host.getModelPanel() : this;
+        return this.parent;
     }
 
     @Override
@@ -187,8 +187,8 @@ public class UIModelItemsTransformEditor extends UIDashboardPanel
     {
         if (context.getKeyCode() == GLFW.GLFW_KEY_ESCAPE)
         {
-            this.host.getModelRenderer().dirty();
-            this.host.returnFromSubEditor();
+            this.parent.renderer.dirty();
+            this.dashboard.setPanel(this.parent);
             return true;
         }
 
@@ -246,7 +246,7 @@ public class UIModelItemsTransformEditor extends UIDashboardPanel
             morph.entity.setEquipmentStack(EquipmentSlot.OFFHAND, ItemStack.EMPTY);
         }
 
-        this.host.forceSave();
+        this.parent.forceSave();
         this.restore();
 
         MinecraftClient.getInstance().options.hudHidden = true;

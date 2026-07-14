@@ -1,6 +1,5 @@
 package mchorse.bbs_mod.client.renderer.entity;
 
-import mchorse.bbs_mod.client.renderer.MorphFireRenderer;
 import mchorse.bbs_mod.cubic.render.vanilla.ArmorRenderer;
 import mchorse.bbs_mod.entity.ActorEntity;
 import mchorse.bbs_mod.forms.FormUtilsClient;
@@ -60,20 +59,6 @@ public class ActorEntityRenderer extends EntityRenderer<ActorEntity>
         FormUtilsClient.render(livingEntity.getForm(), new FormRenderingContext()
             .set(FormRenderType.ENTITY, livingEntity.getEntity(), matrices, light, overlay, tickDelta)
             .camera(MinecraftClient.getInstance().gameRenderer.getCamera()));
-
-        if (livingEntity.getEntity().getFireTicks() > 0)
-        {
-            MorphFireRenderer.render(
-                matrices,
-                vertexConsumers,
-                livingEntity.getEntity(),
-                livingEntity.getForm(),
-                tickDelta,
-                MinecraftClient.getInstance().gameRenderer.getCamera(),
-                false
-            );
-        }
-
         RenderSystem.disableDepthTest();
         RenderSystem.disableBlend();
 

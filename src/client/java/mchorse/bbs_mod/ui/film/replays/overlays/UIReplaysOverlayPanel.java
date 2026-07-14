@@ -2,11 +2,7 @@ package mchorse.bbs_mod.ui.film.replays.overlays;
 
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSSettings;
-import mchorse.bbs_mod.film.Film;
-import mchorse.bbs_mod.film.MobCemPoseCapture;
 import mchorse.bbs_mod.film.replays.Replay;
-import mchorse.bbs_mod.forms.forms.Form;
-import mchorse.bbs_mod.forms.forms.MobForm;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.settings.Settings;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
@@ -59,7 +55,6 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
     public UIElement groupProperties;
     public UINestedEdit pickEdit;
     public UIToggle enabled;
-    public UIToggle groupEnabled;
     public UITextbox label;
     public UITextbox groupLabel;
     public UITextbox nameTag;
@@ -69,7 +64,6 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
     public UITrackpad looping;
     public UIToggle actor;
     public UIToggle fp;
-    public UIToggle vanillaMobPlayback;
     public UIToggle relative;
     public UIElement relativeRow;
     public UITrackpad relativeOffsetX;
@@ -79,7 +73,6 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
     public UIButton pickAxesPreviewBone;
     public UIToggle dropItemsOnDeath;
     public UIButton replaceReplayInventory;
-    public UIIcon reloadReplay;
     public UIIcon addReplay;
     public UIIcon dupeReplay;
     public UIIcon removeReplay;
@@ -99,8 +92,6 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
     public UIElement itemDropsContent;
     public UIDraggable dockedResizer;
 
-    private UIElement propertiesHost;
-    private boolean propertiesExternal;
     private Consumer<Replay> callback;
     private final UIFilmPanel filmPanel;
     private boolean docked;
@@ -126,52 +117,16 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
 
         this.pickEdit = new UINestedEdit((editing) ->
         {
-            if (this.replays.getCurrent().isEmpty())
-            {
-                return;
-            }
-
-            this.replays.openFormEditor(this.replays.getCurrent().get(0).form, editing, (form) ->
-            {
-                this.pickEdit.setForm(form);
-                Replay replay = this.replays.getCurrentFirst();
-
-                if (replay != null)
-                {
-                    MobCemPoseCapture.syncReplay(replay);
-                    boolean isMobForm = form instanceof MobForm;
-
-                    this.vanillaMobPlayback.setVisible(isMobForm);
-
-                    if (isMobForm)
-                    {
-                        this.vanillaMobPlayback.setValue(replay.vanillaMobPlayback.get());
-                    }
-
-                    this.filmPanel.getController().createEntities();
-                }
-            });
+            this.replays.openFormEditor(this.replays.getCurrent().get(0).form, editing, this.pickEdit::setForm);
         });
-        this.keys().register(Keys.FORMS_PICK, () -> this.pickEdit.pick.clickItself()).inside().active(() -> !this.replays.getCurrent().isEmpty());
-        this.keys().register(Keys.FORMS_EDIT, () -> this.pickEdit.edit.clickItself()).inside().active(() -> !this.replays.getCurrent().isEmpty());
+        this.keys().register(Keys.FORMS_PICK, () -> this.pickEdit.pick.clickItself()).inside();
+        this.keys().register(Keys.FORMS_EDIT, () -> this.pickEdit.edit.clickItself()).inside();
         this.pickEdit.pick.tooltip(UIKeys.SCENE_REPLAYS_CONTEXT_PICK_FORM);
         this.pickEdit.edit.tooltip(UIKeys.SCENE_REPLAYS_CONTEXT_EDIT_FORM);
         this.enabled = new UIToggle(UIKeys.CAMERA_PANELS_ENABLED, (b) ->
         {
             this.edit((replay) -> replay.enabled.set(b.getValue()));
             filmPanel.getController().createEntities();
-        });
-        this.groupEnabled = new UIToggle(UIKeys.CAMERA_PANELS_ENABLED, (b) ->
-        {
-            List<Replay> current = this.replays.getCurrent();
-
-            for (Replay replay : current)
-            {
-                if (replay.isGroup.get())
-                {
-                    this.cascadeGroupEnabled(replay, b.getValue());
-                }
-            }
         });
         this.label = new UITextbox(1000, (s) -> this.edit((replay) ->
         {
@@ -216,19 +171,6 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
 
             this.replays.getCurrentFirst().fp.set(b.getValue());
         });
-        this.vanillaMobPlayback = new UIToggle(UIKeys.FILM_REPLAY_VANILLA_MOB_PLAYBACK, (b) ->
-        {
-            Replay current = this.replays.getCurrentFirst();
-
-            if (current != null)
-            {
-                current.vanillaMobPlayback.set(b.getValue());
-                current.vanillaMobPlaybackSerialized = true;
-            }
-
-            filmPanel.getController().createEntities();
-        });
-        this.vanillaMobPlayback.tooltip(UIKeys.FILM_REPLAY_VANILLA_MOB_PLAYBACK_TOOLTIP);
         this.relative = new UIToggle(UIKeys.CAMERA_PANELS_RELATIVE, (b) -> this.edit((replay) -> replay.relative.set(b.getValue())));
         this.relative.tooltip(UIKeys.FILM_REPLAY_RELATIVE_TOOLTIP);
         this.relativeOffsetX = new UITrackpad((v) -> this.edit((replay) -> BaseValue.edit(replay.relativeOffset, (value) -> value.get().x = v)));
@@ -264,9 +206,6 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
         });
         this.replaceReplayInventory.tooltip(UIKeys.FILM_REPLACE_INVENTORY_TOOLTIP);
 
-        this.reloadReplay = new UIIcon(Icons.REFRESH, (b) -> this.replays.reloadReplays());
-        this.reloadReplay.tooltip(UIKeys.SCENE_REPLAYS_CONTEXT_RELOAD);
-
         this.addReplay = new UIIcon(Icons.ADD, (b) -> this.replays.addReplay());
         this.addReplay.tooltip(UIKeys.SCENE_REPLAYS_CONTEXT_ADD);
 
@@ -279,7 +218,7 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
         this.dupeReplay.setEnabled(false);
         this.removeReplay.setEnabled(false);
 
-        this.icons.add(this.reloadReplay, this.addReplay, this.dupeReplay, this.removeReplay);
+        this.icons.add(this.addReplay, this.dupeReplay, this.removeReplay);
 
         this.keys().register(Keys.REPLAYS_REMOVE, () -> this.replays.removeReplay()).inside()
             .active(() -> !this.replays.getCurrent().isEmpty());
@@ -314,7 +253,7 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
             this.shadow, this.shadowSize, this.shadowOpacity
         ));
         this.addPropertySection(UIKeys.FILM_REPLAY_SECTION_PLAYBACK, UI.column(4,
-            this.looping, this.actor, this.fp, this.vanillaMobPlayback
+            this.looping, this.actor, this.fp
         ));
         this.addPropertySection(UIKeys.FILM_REPLAY_SECTION_POSITIONING, UI.column(4,
             this.relative, this.relativeRow, this.axesPreview, this.pickAxesPreviewBone
@@ -328,7 +267,7 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
 
         this.addPropertySection(UIKeys.FILM_REPLAY_SECTION_ITEM_DROPS, this.itemDropsContent);
 
-        this.groupProperties = UI.scrollView(5, 6, UI.column(4, this.groupEnabled, this.groupLabel));
+        this.groupProperties = UI.scrollView(5, 6, this.groupLabel);
         this.dockedResizer = new UIDraggable((context) ->
         {
             int bottomHeight = this.content.area.ey() - context.mouseY;
@@ -346,8 +285,6 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
         }).dragEnd(this::flushDockedReplaysHeight);
 
         this.content.add(this.replays, this.replayProperties, this.groupProperties, this.dockedResizer);
-        this.replayProperties.relative(this.content).x(0).y(0).w(1F).h(1F);
-        this.groupProperties.relative(this.content).x(0).y(0).w(1F).h(1F);
         this.updateDockedLayout();
 
         for (Consumer<UIReplaysOverlayPanel> consumer : extensions)
@@ -382,52 +319,6 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
         section.add(header, content);
 
         this.replayProperties.add(section);
-    }
-
-    public void attachPropertiesHost(UIElement host)
-    {
-        this.propertiesHost = host;
-        this.setPropertiesExternal(true);
-    }
-
-    public void setPropertiesExternal(boolean external)
-    {
-        if (this.propertiesExternal == external)
-        {
-            return;
-        }
-
-        this.propertiesExternal = external;
-        UIElement target = external ? this.propertiesHost : this.content;
-
-        if (target == null)
-        {
-            return;
-        }
-
-        /* The UI framework doesn't guarantee that adding an element to another parent
-           automatically detaches it from its previous one. Ensure these property panels
-           exist in exactly one place to avoid rendering/hit-testing even when the
-           external host window is hidden or collapsed. */
-        this.replayProperties.removeFromParent();
-        this.groupProperties.removeFromParent();
-
-        target.add(this.replayProperties, this.groupProperties);
-        this.replayProperties.relative(target).x(0).y(0).w(1F).h(1F);
-        this.groupProperties.relative(target).x(0).y(0).w(1F).h(1F);
-        this.updateDockedLayout();
-
-        if (this.propertiesHost != null)
-        {
-            this.propertiesHost.resize();
-        }
-
-        this.resize();
-    }
-
-    public boolean isPropertiesExternal()
-    {
-        return this.propertiesExternal;
     }
 
     public void setDocked(boolean docked)
@@ -468,14 +359,6 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
     {
         if (this.docked)
         {
-            if (this.propertiesExternal)
-            {
-                this.replays.relative(this.content).x(0).y(0).w(1F).h(1F);
-                this.dockedResizer.setVisible(false);
-
-                return;
-            }
-
             int maxHeight = Math.min(DOCKED_REPLAYS_HEIGHT_MAX, Math.max(DOCKED_BOTTOM_SECTION_MIN, this.content.area.h - DOCKED_TOP_SECTION_MIN - DOCKED_RESIZER_HEIGHT));
             this.dockedReplaysHeight = MathUtils.clamp(this.dockedReplaysHeight, DOCKED_BOTTOM_SECTION_MIN, DOCKED_REPLAYS_HEIGHT_MAX);
 
@@ -550,45 +433,6 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
         }
     }
 
-    private void cascadeGroupEnabled(Replay group, boolean enabled)
-    {
-        group.enabled.set(enabled);
-
-        Film film = this.filmPanel.getData();
-
-        if (film == null)
-        {
-            return;
-        }
-
-        String groupPath = this.getGroupFullPath(group);
-
-        for (Replay replay : film.replays.getAllTyped())
-        {
-            if (replay == group)
-            {
-                continue;
-            }
-
-            String path = replay.group.get();
-
-            if (path.equals(groupPath) || path.startsWith(groupPath + "/"))
-            {
-                replay.enabled.set(enabled);
-            }
-        }
-
-        this.filmPanel.getController().createEntities();
-        this.replays.update();
-    }
-
-    private String getGroupFullPath(Replay group)
-    {
-        String path = group.group.get();
-
-        return path.isEmpty() ? group.uuid.get() : path + "/" + group.uuid.get();
-    }
-
     public void syncReplaySelection(Replay replay, boolean scroll)
     {
         this.setReplay(replay);
@@ -631,7 +475,6 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
             if (isGroup)
             {
                 this.groupLabel.setText(replay.label.get());
-                this.groupEnabled.setValue(replay.enabled.get());
             }
             else
             {
@@ -646,16 +489,6 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
                 this.looping.setValue(replay.looping.get());
                 this.actor.setValue(replay.actor.get());
                 this.fp.setValue(replay.fp.get());
-                MobCemPoseCapture.syncReplay(replay);
-                boolean isMobForm = replay.form.get() instanceof MobForm;
-
-                this.vanillaMobPlayback.setVisible(isMobForm);
-
-                if (isMobForm)
-                {
-                    this.vanillaMobPlayback.setValue(replay.vanillaMobPlayback.get());
-                }
-
                 this.relative.setValue(replay.relative.get());
                 this.relativeOffsetX.setValue(replay.relativeOffset.get().x);
                 this.relativeOffsetY.setValue(replay.relativeOffset.get().y);

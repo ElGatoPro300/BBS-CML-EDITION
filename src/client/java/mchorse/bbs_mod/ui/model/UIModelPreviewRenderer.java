@@ -138,10 +138,8 @@ public class UIModelPreviewRenderer extends UIModelRenderer
 
         MinecraftClient mc = MinecraftClient.getInstance();
 
-        /* Exact physical-to-logical ratio (the UI scale factor). Rounding this snapped fractional scales
-           like 1.5 up to 2, which offset the viewport and drew the morph preview off to the side. */
-        float rx = (float) (mc.getWindow().getWidth() / (double) context.menu.width);
-        float ry = (float) (mc.getWindow().getHeight() / (double) context.menu.height);
+        float rx = (float) Math.round(mc.getWindow().getWidth() / (double) context.menu.width);
+        float ry = (float) Math.round(mc.getWindow().getHeight() / (double) context.menu.height);
         float size = BBSModClient.getOriginalFramebufferScale();
 
         /* Account for scroll/shift to fix disappearing models using global UI coordinates */

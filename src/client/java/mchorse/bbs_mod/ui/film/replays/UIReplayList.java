@@ -13,7 +13,6 @@ import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.film.Film;
-import mchorse.bbs_mod.film.MobCemPoseCapture;
 import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.FormUtilsClient;
@@ -149,9 +148,6 @@ public class UIReplayList extends UIList<Replay> {
 
         this.multi().sorting();
         this.context((menu) -> {
-            menu.action(Icons.REFRESH, UIKeys.SCENE_REPLAYS_CONTEXT_RELOAD, this::reloadReplays);
-            this.addContextSeparator(menu);
-
             boolean selectedGroup = this.isSelected() && this.getCurrentFirst().isGroup.get();
 
             if (!selectedGroup) {
@@ -1731,38 +1727,6 @@ public class UIReplayList extends UIList<Replay> {
             palette.list.setActiveFavoriteCategoryWithFallback(LAST_PICK_FAVORITE_CATEGORY_ID);
         }
         palette.updatable();
-    }
-
-    public void reloadReplays()
-    {
-        Film film = this.panel.getData();
-
-        if (film == null)
-        {
-            return;
-        }
-
-        for (Replay replay : film.replays.getList())
-        {
-            MobCemPoseCapture.syncReplay(replay);
-        }
-
-        Replay current = this.getCurrentFirst();
-
-        this.buildVisualList();
-
-        if (current != null)
-        {
-            this.setCurrentDirect(current);
-        }
-
-        this.updateFilmEditor();
-        this.update();
-
-        if (this.overlay != null)
-        {
-            this.overlay.setReplay(current);
-        }
     }
 
     public void addReplay() {

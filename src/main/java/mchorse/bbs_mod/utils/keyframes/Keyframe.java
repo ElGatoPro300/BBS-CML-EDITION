@@ -31,14 +31,7 @@ public class Keyframe <T> extends BaseValueGroup
      * between two keyframes, if not 0
      */
     private float duration;
-    private boolean bend;
     private final Interpolation interp = new Interpolation("interp", Interpolations.MAP);
-
-    /**
-     * When true, color/glow keyframes interpolate through the full hue spectrum
-     * (long path on the color picker bar) instead of direct RGB blending.
-     */
-    private boolean spectrum;
 
     private final IKeyframeFactory<T> factory;
 
@@ -94,18 +87,6 @@ public class Keyframe <T> extends BaseValueGroup
         this.postNotify();
     }
 
-    public boolean isBend()
-    {
-        return this.bend;
-    }
-
-    public void setBend(boolean bend)
-    {
-        this.preNotify();
-        this.bend = bend;
-        this.postNotify();
-    }
-
     public T getValue()
     {
         return this.value;
@@ -133,18 +114,6 @@ public class Keyframe <T> extends BaseValueGroup
     public Interpolation getInterpolation()
     {
         return this.interp;
-    }
-
-    public boolean isSpectrum()
-    {
-        return this.spectrum;
-    }
-
-    public void setSpectrum(boolean spectrum)
-    {
-        this.preNotify();
-        this.spectrum = spectrum;
-        this.postNotify();
     }
 
     @Override
@@ -209,8 +178,6 @@ public class Keyframe <T> extends BaseValueGroup
         this.ry = keyframe.ry;
         this.shape = keyframe.shape;
         this.color = keyframe.color;
-        this.bend = keyframe.bend;
-        this.spectrum = keyframe.spectrum;
     }
 
     @Override
@@ -230,7 +197,6 @@ public class Keyframe <T> extends BaseValueGroup
                 && this.rx == kf.rx
                 && this.ry == kf.ry
                 && this.duration == kf.duration
-                && this.bend == kf.bend
                 && Objects.equals(this.interp, kf.interp);
         }
 
@@ -253,8 +219,6 @@ public class Keyframe <T> extends BaseValueGroup
         if (this.ry != 0F) data.putFloat("ry", this.ry);
         if (this.color != null) data.putInt("color", this.color.getRGBColor());
         if (this.shape != KeyframeShape.SQUARE) data.putString("shape", this.shape.toString().toUpperCase());
-        if (this.bend) data.putBool("bend", true);
-        if (this.spectrum) data.putBool("spectrum", true);
 
         return data;
     }
@@ -271,8 +235,6 @@ public class Keyframe <T> extends BaseValueGroup
 
         this.shape = KeyframeShape.SQUARE;
         this.color = null;
-        this.bend = false;
-        this.spectrum = false;
 
         if (map.has("tick")) this.tick = map.getFloat("tick");
         if (map.has("duration")) this.duration = map.getFloat("duration");
@@ -284,8 +246,6 @@ public class Keyframe <T> extends BaseValueGroup
         if (map.has("ry")) this.ry = map.getFloat("ry");
         if (map.has("shape")) this.shape = KeyframeShape.fromString(map.getString("shape"));
         if (map.has("color")) this.color = Color.rgb(map.getInt("color"));
-        if (map.has("bend")) this.bend = map.getBool("bend");
-        if (map.has("spectrum")) this.spectrum = map.getBool("spectrum");
     }
 
     public void copyOverExtra(Keyframe<T> a)
@@ -293,7 +253,5 @@ public class Keyframe <T> extends BaseValueGroup
         this.getInterpolation().copy(a.getInterpolation());
         this.setShape(a.getShape());
         this.setColor(a.getColor());
-        this.setBend(a.isBend());
-        this.spectrum = a.spectrum;
     }
 }

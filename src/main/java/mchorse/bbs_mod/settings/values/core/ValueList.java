@@ -163,7 +163,7 @@ public abstract class ValueList <T extends BaseValue> extends BaseValueGroup
     {
         this.list.clear();
 
-        if (data == null || !data.isList())
+        if (!data.isList())
         {
             return;
         }

@@ -5,9 +5,6 @@ import mchorse.bbs_mod.camera.Camera;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.forms.forms.BillboardForm;
-import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
-import mchorse.bbs_mod.forms.renderers.utils.FormColorBlend;
-import mchorse.bbs_mod.forms.renderers.utils.FormTextureBlendRenderer;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.framework.UIContext;
@@ -110,28 +107,15 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
 
     private void renderModel(VertexFormat format, Supplier<ShaderProgram> shader, MatrixStack matrices, int overlay, int light, int overlayColor, float transition, Camera camera, boolean invertY, boolean modelRenderer)
     {
-        Link defaultLink = this.form.texture.get();
+        Link t = this.form.texture.get();
 
-        if (defaultLink == null)
+        if (t == null)
         {
             return;
         }
 
-        FormTextureBlendRenderer.draw(this.form.textureBlend, defaultLink, (link, alphaFactor) ->
-        {
-            Texture texture = BBSModClient.getTextures().getTexture(link);
+        Texture texture = BBSModClient.getTextures().getTexture(t);
 
-            if (texture == null)
-            {
-                return;
-            }
-
-            this.renderModelPass(format, texture, shader, matrices, overlay, light, overlayColor, transition, camera, invertY, modelRenderer, alphaFactor);
-        });
-    }
-
-    private void renderModelPass(VertexFormat format, Texture texture, Supplier<ShaderProgram> shader, MatrixStack matrices, int overlay, int light, int overlayColor, float transition, Camera camera, boolean invertY, boolean modelRenderer, float alphaFactor)
-    {
         float w = texture.width;
         float h = texture.height;
         float ow = w;
@@ -194,53 +178,17 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
             uvQuad.transform(matrix);
         }
 
-        this.renderQuad(format, texture, shader, matrices, overlay, light, overlayColor, transition, camera, invertY, modelRenderer, alphaFactor);
+        this.renderQuad(format, texture, shader, matrices, overlay, light, overlayColor, transition, camera, invertY, modelRenderer);
     }
 
-    private void renderQuad(VertexFormat format, Texture texture, Supplier<ShaderProgram> shader, MatrixStack matrices, int overlay, int light, int overlayColor, float transition, Camera camera, boolean invertY, boolean modelRenderer, float alphaFactor)
+    private void renderQuad(VertexFormat format, Texture texture, Supplier<ShaderProgram> shader, MatrixStack matrices, int overlay, int light, int overlayColor, float transition, Camera camera, boolean invertY, boolean modelRenderer)
     {
         BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, format);
-        Color color = new Color().set(overlayColor, true);
+        Color color = this.form.color.get().copy();
         Matrix4f matrix = matrices.peek().getPositionMatrix();
         MatrixStack.Entry entry = matrices.peek();
 
-        color.mul(this.form.color.get());
-        color.a *= alphaFactor;
-
-        /* Paint overlay stage: blend RGB toward the paint color by its strength, keeping the form opacity */
-        PaintSettings paintSettings = this.form.paintSettings.get();
-        Color legacyPaint = this.form.paintColor.get();
-        Color paint = new Color();
-
-        paintSettings.resolveColor(legacyPaint, paint);
-
-        float paintStrength = paintSettings.resolveIntensity(legacyPaint);
-
-        if (paintStrength != 0F)
-        {
-            if (paintStrength >= 1F)
-            {
-                color.r = paint.r;
-                color.g = paint.g;
-                color.b = paint.b;
-            }
-            else if (paintStrength > 0F)
-            {
-                color.r = color.r + (paint.r - color.r) * paintStrength;
-                color.g = color.g + (paint.g - color.g) * paintStrength;
-                color.b = color.b + (paint.b - color.b) * paintStrength;
-            }
-            else
-            {
-                float factor = Math.max(0F, 1F + paintStrength);
-
-                color.r *= factor;
-                color.g *= factor;
-                color.b *= factor;
-            }
-        }
-
-        FormColorBlend.blendFormGlowBrighten(color, this.form.glowSettings.get(), this.form.glowingColor.get());
+        color.mul(overlayColor);
 
         if (this.form.billboard.get())
         {
@@ -300,9 +248,8 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
         this.fill(format, builder, matrix, quad.p4.x, quad.p4.y, color, uvQuad.p4.x, uvQuad.p4.y, overlay, light, entry, -1F);
         this.fill(format, builder, matrix, quad.p3.x, quad.p3.y, color, uvQuad.p3.x, uvQuad.p3.y, overlay, light, entry, -1F);
 
-        RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
-
+        RenderSystem.enableBlend();
         BufferRenderer.drawWithGlobalProgram(builder.end());
 
         texture.setFilterMipmap(false, false);

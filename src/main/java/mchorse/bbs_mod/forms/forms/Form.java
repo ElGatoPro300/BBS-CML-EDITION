@@ -8,29 +8,18 @@ import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.ITickable;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.forms.utils.Anchor;
-import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
-import mchorse.bbs_mod.forms.forms.utils.Illusion;
-import mchorse.bbs_mod.forms.forms.utils.LookAt;
-import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
-import mchorse.bbs_mod.forms.forms.utils.TextureBlend;
 import mchorse.bbs_mod.forms.states.AnimationState;
 import mchorse.bbs_mod.forms.states.AnimationStates;
 import mchorse.bbs_mod.forms.states.StatePlayer;
 import mchorse.bbs_mod.forms.values.ValueAnchor;
-import mchorse.bbs_mod.forms.values.ValueIllusion;
-import mchorse.bbs_mod.forms.values.ValueLookAt;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
-import mchorse.bbs_mod.settings.values.core.ValueColor;
 import mchorse.bbs_mod.settings.values.core.ValueGroup;
 import mchorse.bbs_mod.settings.values.core.ValueString;
 import mchorse.bbs_mod.settings.values.core.ValueTransform;
-import mchorse.bbs_mod.settings.values.misc.ValueGlowSettings;
-import mchorse.bbs_mod.settings.values.misc.ValuePaintSettings;
 import mchorse.bbs_mod.settings.values.numeric.ValueBoolean;
 import mchorse.bbs_mod.settings.values.numeric.ValueFloat;
 import mchorse.bbs_mod.settings.values.numeric.ValueInt;
 import mchorse.bbs_mod.utils.StringUtils;
-import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.pose.Transform;
 
 import net.minecraft.entity.LivingEntity;
@@ -43,45 +32,17 @@ import java.util.List;
 public abstract class Form extends ValueGroup
 {
     public final ValueBoolean visible = new ValueBoolean("visible", true);
-    public final ValueBoolean render = new ValueBoolean("render", true);
     public final ValueBoolean animatable = new ValueBoolean("animatable", true);
     public final ValueString trackName = new ValueString("track_name", "");
     public final ValueFloat lighting = new ValueFloat("lighting", 1F);
-
-    /* Mine-imator style render depth: forms with a lower value are drawn earlier, so a
-     * semi-transparent form with lower render depth occludes forms behind it that have a
-     * higher render depth (they fail the depth test instead of blending through). */
-    public final ValueFloat renderDepth = new ValueFloat("render_depth", 0F);
-    public final ValueBoolean renderDepthEnabled = new ValueBoolean("render_depth_enabled", true);
     public final ValueString name = new ValueString("name", "");
     public final ValueTransform transform = new ValueTransform("transform", new Transform());
     public final ValueTransform transformOverlay = new ValueTransform("transform_overlay", new Transform());
     public final ValueFloat uiScale = new ValueFloat("uiScale", 1F);
     public final ValueAnchor anchor = new ValueAnchor("anchor", new Anchor());
-    public final ValueLookAt lookAt = new ValueLookAt("look_at", new LookAt());
     public final ValueBoolean shaderShadow = new ValueBoolean("shaderShadow", true);
 
-    /* FS-style paint overlay: paintSettings controls color and intensity; paintColor is kept for backward compatibility */
-    public final ValueColor paintColor = new ValueColor("paint_color", new Color().set(1F, 1F, 1F, 0F));
-    public final ValuePaintSettings paintSettings = new ValuePaintSettings("paint", new PaintSettings());
-
-    /* FS-style additive glow: glowingColor is RGB only; glowSettings controls brightness and spread */
-    public final ValueColor glowingColor = new ValueColor("glowing_color", new Color().set(1F, 1F, 1F, 1F));
-    public final ValueGlowSettings glowSettings = new ValueGlowSettings("glow", new GlowSettings());
-
-    /* Illusions: purely visual duplicates of this form that spread away from it in
-     * the picked directions (no extra entities, so they're cheap to render) */
-    public final ValueIllusion illusion = new ValueIllusion("illusion", new Illusion());
-    public final ValueIllusion illusionOverlay = new ValueIllusion("illusion_overlay", new Illusion());
-
-    /* Extra transform that gets applied only to the illusions (optionally gradually
-     * from the first illusion to the last one, see Illusion.gradual) */
-    public final ValueTransform illusionTransform = new ValueTransform("illusion_transform", new Transform());
-    public final ValueTransform illusionTransformOverlay = new ValueTransform("illusion_transform_overlay", new Transform());
-
     public final List<ValueTransform> additionalTransforms = new ArrayList<>();
-    public final List<ValueIllusion> additionalIllusions = new ArrayList<>();
-    public final List<ValueTransform> additionalIllusionTransforms = new ArrayList<>();
 
     /* Hitbox properties */
     public final ValueBoolean hitbox = new ValueBoolean("hitbox", false);
@@ -103,12 +64,6 @@ public abstract class Form extends ValueGroup
     protected Object renderer;
     protected String cachedID;
 
-    /** Runtime texture crossfade state driven by the film texture track bend keyframes. */
-    public transient TextureBlend textureBlend;
-
-    /** Runtime texture crossfade between illusion keyframes with bend enabled. */
-    public transient TextureBlend illusionTextureBlend;
-
     private final List<StatePlayer> statePlayers = new ArrayList<>();
 
     public Form()
@@ -120,17 +75,11 @@ public abstract class Form extends ValueGroup
         this.name.invisible();
         this.uiScale.invisible();
         this.shaderShadow.invisible();
-        this.render.invisible();
+
         this.add(this.visible);
-        this.add(this.render);
         this.add(this.animatable);
         this.add(this.trackName);
         this.add(this.lighting);
-        this.add(this.renderDepth);
-
-        /* The toggle isn't keyframable, so it shouldn't show up as a timeline track. */
-        this.renderDepthEnabled.invisible();
-        this.add(this.renderDepthEnabled);
         this.add(this.name);
         this.add(this.transform);
         this.add(this.transformOverlay);
@@ -145,38 +94,7 @@ public abstract class Form extends ValueGroup
 
         this.add(this.uiScale);
         this.add(this.anchor);
-        this.add(this.lookAt);
         this.add(this.shaderShadow);
-        this.add(this.paintColor);
-        this.add(this.paintSettings);
-        this.add(this.glowingColor);
-        this.add(this.glowSettings);
-
-        this.add(this.illusion);
-        this.add(this.illusionOverlay);
-
-        for (int i = 0; i < BBSSettings.recordingPoseTransformOverlays.get(); i++)
-        {
-            ValueIllusion valueIllusion = new ValueIllusion("illusion_overlay" + i, new Illusion());
-
-            this.additionalIllusions.add(valueIllusion);
-            this.add(valueIllusion);
-        }
-
-        this.add(this.illusionTransform);
-        this.add(this.illusionTransformOverlay);
-
-        this.illusionTransform.invisible();
-        this.illusionTransformOverlay.invisible();
-
-        for (int i = 0; i < BBSSettings.recordingPoseTransformOverlays.get(); i++)
-        {
-            ValueTransform valueTransform = new ValueTransform("illusion_transform_overlay" + i, new Transform());
-
-            valueTransform.invisible();
-            this.additionalIllusionTransforms.add(valueTransform);
-            this.add(valueTransform);
-        }
 
         this.hitbox.invisible();
         this.hitboxWidth.invisible();
@@ -438,62 +356,12 @@ public abstract class Form extends ValueGroup
                     map.put("parts", bodyParts.getList("parts"));
                 }
             }
-
-            if (map.has("glow_settings") && !map.has("glow"))
-            {
-                map.put("glow", map.get("glow_settings"));
-                map.remove("glow_settings");
-            }
         }
 
         super.fromData(data);
 
         if (data instanceof MapType map)
         {
-            if (map.has("glow"))
-            {
-                MapType glowMap = map.getMap("glow");
-
-                if (!glowMap.has("r") && map.has("glowing_color"))
-                {
-                    GlowSettings settings = this.glowSettings.get().copy();
-                    Color glowing = this.glowingColor.get();
-
-                    settings.r = glowing.r;
-                    settings.g = glowing.g;
-                    settings.b = glowing.b;
-                    this.glowSettings.set(settings);
-                }
-            }
-
-            if (map.has("paint"))
-            {
-                MapType paintMap = map.getMap("paint");
-
-                if (!paintMap.has("r") && map.has("paint_color"))
-                {
-                    PaintSettings settings = this.paintSettings.get().copy();
-                    Color legacy = this.paintColor.get();
-
-                    settings.r = legacy.r;
-                    settings.g = legacy.g;
-                    settings.b = legacy.b;
-                    settings.intensity = legacy.a;
-                    this.paintSettings.set(settings);
-                }
-            }
-            else if (map.has("paint_color"))
-            {
-                PaintSettings settings = this.paintSettings.get().copy();
-                Color legacy = this.paintColor.get();
-
-                settings.r = legacy.r;
-                settings.g = legacy.g;
-                settings.b = legacy.b;
-                settings.intensity = legacy.a;
-                this.paintSettings.set(settings);
-            }
-
             /* Compatibility with state triggers */
             FormUtils.readOldStateTriggers(this, map);
         }

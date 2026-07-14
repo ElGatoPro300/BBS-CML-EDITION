@@ -2,9 +2,6 @@ package mchorse.bbs_mod.ui.dashboard.panels;
 
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.l10n.keys.IKey;
-import mchorse.bbs_mod.ui.UIKeys;
-import mchorse.bbs_mod.ui.dashboard.UIDashboard;
-import mchorse.bbs_mod.ui.film.UIWorldFilmsBrowserPanel;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIScrollView;
@@ -12,12 +9,9 @@ import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.events.UIEvent;
 import mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIRenderable;
-import mchorse.bbs_mod.ui.model_blocks.UIModelBlockPanel;
-import mchorse.bbs_mod.ui.triggers.UITriggerBlockPanel;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.ScrollDirection;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
-import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.colors.Colors;
 
@@ -36,7 +30,6 @@ public class UIDashboardPanels extends UIElement
     public UIElement taskBar;
     public UIElement pinned;
     public UIScrollView panelButtons;
-    public UIIcon worldFilmsButton;
 
     /**
      * Render a selection highlight on one edge of the area: a solid color bar on the {@code direction}
@@ -95,18 +88,6 @@ public class UIDashboardPanels extends UIElement
         this.add(this.taskBar);
     }
 
-    public void registerWorldFilmsButton(UIDashboard dashboard)
-    {
-        this.worldFilmsButton = new UIIcon(Icons.GLOBE, (b) ->
-        {
-            dashboard.setPanel(dashboard.getPanel(UIWorldFilmsBrowserPanel.class));
-        });
-        this.worldFilmsButton.tooltip(UIKeys.FILM_HOME_WORLDS, Direction.TOP);
-        this.worldFilmsButton.relative(this.taskBar).x(1F, -4).y(0).anchor(1F, 0).wh(20, 20);
-        this.taskBar.add(this.worldFilmsButton);
-        this.panelButtons.getFlex().w.offset = -28;
-    }
-
     public <T> T getPanel(Class<T> clazz)
     {
         for (UIDashboardPanel panel : this.panels)
@@ -138,23 +119,6 @@ public class UIDashboardPanels extends UIElement
         for (UIDashboardPanel panel : this.panels)
         {
             panel.close();
-        }
-    }
-
-    public void updateTaskBarForPanel(UIDashboardPanel panel)
-    {
-        boolean stripped = UIWorldFilmsBrowserPanel.isBrowserPanel(panel);
-        UIIcon modelBlockButton = this.panelButtonsMap.get(this.getPanel(UIModelBlockPanel.class));
-        UIIcon triggerBlockButton = this.panelButtonsMap.get(this.getPanel(UITriggerBlockPanel.class));
-
-        if (modelBlockButton != null)
-        {
-            modelBlockButton.setVisible(!stripped);
-        }
-
-        if (triggerBlockButton != null)
-        {
-            triggerBlockButton.setVisible(!stripped);
         }
     }
 
@@ -253,10 +217,6 @@ public class UIDashboardPanels extends UIElement
         if (button != null)
         {
             renderHighlight(context.batcher, button.area);
-        }
-        else if (this.worldFilmsButton != null && this.panel instanceof UIWorldFilmsBrowserPanel)
-        {
-            renderHighlight(context.batcher, this.worldFilmsButton.area);
         }
     }
 

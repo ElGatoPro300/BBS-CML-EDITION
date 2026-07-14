@@ -51,7 +51,7 @@ public class RunnerCameraController extends CameraWorkCameraController
     {
         this.manual = manual;
 
-        if (manual != null && !this.panel.getController().isFreeCameraMode())
+        if (manual != null && this.panel.getController().getPovMode() != UIFilmController.CAMERA_MODE_FREE)
         {
             manual.copy(this.position);
         }

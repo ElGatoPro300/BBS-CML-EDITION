@@ -77,7 +77,7 @@ public class UIVideoSettingsOverlayPanel extends UIOverlayPanel
             }
         });
         this.audioEnvironment.tooltip(UIKeys.VIDEO_SETTINGS_AUDIO_ENVIRONMENT_TOOLTIP);
-        this.flip = new UIIcon(Icons.EXCHANGE, (b) ->
+        this.flip = new UIIcon(Icons.REFRESH, (b) ->
         {
             int w = this.value.width.get();
             int h = this.value.height.get();
@@ -87,7 +87,6 @@ public class UIVideoSettingsOverlayPanel extends UIOverlayPanel
 
             this.fill();
         });
-        this.flip.tooltip(UIKeys.VIDEO_SETTINGS_SWAP_RESOLUTION);
         this.width = new UITrackpad((v) -> this.value.width.set(v.intValue()));
         this.width.limit(2, 8096, true);
         this.width.tooltip(UIKeys.VIDEO_SETTINGS_WIDTH);

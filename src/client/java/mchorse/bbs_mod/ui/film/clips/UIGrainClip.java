@@ -61,8 +61,25 @@ public class UIGrainClip extends UIClip<GrainClip>
     }
 
     @Override
-    protected UIKeyframeEditor resolveClipEmbeddableView(String undoId)
+    public void applyUndoData(MapType data)
     {
-        return undoId.equals(this.keyframes.getUndoId()) ? this.keyframes : null;
+        super.applyUndoData(data);
+
+        if (data.getString("embed").equals("grain_keyframes"))
+        {
+            this.editor.embedView(this.keyframes);
+            this.keyframes.view.resetView();
+        }
+    }
+
+    @Override
+    public void collectUndoData(MapType data)
+    {
+        super.collectUndoData(data);
+
+        if (this.keyframes.hasParent())
+        {
+            data.putString("embed", "grain_keyframes");
+        }
     }
 }

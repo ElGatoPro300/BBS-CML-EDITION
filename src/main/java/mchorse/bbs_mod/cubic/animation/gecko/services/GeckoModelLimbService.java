@@ -18,11 +18,6 @@ public class GeckoModelLimbService
 
     public void apply(ModelGroup group, GeckoLimbRole role, GeckoLimbAnimationConfig config, GeckoAnimationContext context, Map<GeckoAnimationState, Float> weights)
     {
-        if (context.riding && role != GeckoLimbRole.HEAD)
-        {
-            return;
-        }
-
         float direction = config.invert ? -1F : 1F;
         float idleWeight = this.weight(weights, GeckoAnimationState.IDLE);
         float walkWeight = this.weight(weights, GeckoAnimationState.WALK);

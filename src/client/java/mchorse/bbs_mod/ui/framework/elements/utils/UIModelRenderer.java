@@ -7,7 +7,6 @@ import mchorse.bbs_mod.forms.entities.StubEntity;
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
-import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.utils.Factor;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
@@ -42,8 +41,6 @@ import org.lwjgl.opengl.GL11;
  */
 public abstract class UIModelRenderer extends UIElement
 {
-    private static final double DEFAULT_VIEWPORT_DISTANCE = 2.25D;
-
     private static Vector3d vec = new Vector3d();
     private static Matrix3d mat = new Matrix3d();
 
@@ -68,31 +65,11 @@ public abstract class UIModelRenderer extends UIElement
     private long tick;
     private Matrix4f transform = new Matrix4f();
 
-    private boolean stencilViewport;
-    private int stencilViewportW;
-    private int stencilViewportH;
-
     public UIModelRenderer()
     {
         super();
 
         this.reset();
-    }
-
-    /**
-     * When rendering the stencil pick pass into an FBO, the GL viewport must be {@code 0,0,fboW,fboH}
-     * instead of window-relative coordinates so pick pixels align with the on-screen gizmo.
-     */
-    protected void beginStencilViewport(int fboW, int fboH)
-    {
-        this.stencilViewport = true;
-        this.stencilViewportW = fboW;
-        this.stencilViewportH = fboH;
-    }
-
-    protected void endStencilViewport()
-    {
-        this.stencilViewport = false;
     }
 
     public void setTransform(Matrix4f transform)
@@ -131,17 +108,6 @@ public abstract class UIModelRenderer extends UIElement
         this.setDistance(15);
         this.setPosition(0, 1, 0);
         this.setRotation(0, 0);
-    }
-
-    /**
-     * Scales the viewport gizmo with orbit zoom ({@link #distance}): 1 at the default zoom,
-     * down to 0.5 when zoomed all the way in, growing proportionally when zooming out.
-     */
-    protected float getViewportGizmoZoomScale()
-    {
-        double current = this.distance.getValue();
-
-        return (float) Math.max(0.5D, current / DEFAULT_VIEWPORT_DISTANCE);
     }
 
     public boolean isDragging()
@@ -275,16 +241,7 @@ public abstract class UIModelRenderer extends UIElement
             this.renderGrid(context);
         }
 
-        Gizmo.INSTANCE.setViewportZoomScale(this.getViewportGizmoZoomScale());
-
-        try
-        {
-            this.renderUserModel(context);
-        }
-        finally
-        {
-            Gizmo.INSTANCE.setViewportZoomScale(1F);
-        }
+        this.renderUserModel(context);
 
         DiffuseLighting.disableGuiDepthLighting();
 
@@ -297,9 +254,9 @@ public abstract class UIModelRenderer extends UIElement
         MatrixStackUtils.restoreMatrices();
         context.resetMatrix();
 
-        RenderSystem.depthFunc(GL11.GL_LEQUAL);
-        RenderSystem.enableDepthTest();
-        RenderSystem.depthMask(true);
+        RenderSystem.depthFunc(GL11.GL_ALWAYS);
+        RenderSystem.disableDepthTest();
+        RenderSystem.disableCull();
 
         this.processInputs(context);
     }
@@ -352,7 +309,7 @@ public abstract class UIModelRenderer extends UIElement
     {
         Vector3d vector = new Vector3d();
         Vector3d origin = new Vector3d(this.cachedCamera.position).sub(this.cachedPos);
-        Vector3d destination = new Vector3d(this.cachedCamera.getMouseDirection(context.mouseX, context.mouseY, context.globalX(this.area.x), context.globalY(this.area.y), this.area.w, this.area.h)).mul(this.distance.getValue() * 2).add(origin);
+        Vector3d destination = new Vector3d(this.cachedCamera.getMouseDirection(context.mouseX, context.mouseY, this.area.x, this.area.y, this.area.w, this.area.h)).mul(this.distance.getValue() * 2).add(origin);
         Intersectiond.intersectLineSegmentPlane(origin.x, origin.y, origin.z, destination.x, destination.y, destination.z, this.plane.x, this.plane.y, this.plane.z, 0, vector);
 
         return vector;
@@ -372,23 +329,12 @@ public abstract class UIModelRenderer extends UIElement
 
         MinecraftClient mc = MinecraftClient.getInstance();
 
-        if (this.stencilViewport)
-        {
-            RenderSystem.viewport(0, 0, this.stencilViewportW, this.stencilViewportH);
-            this.camera.updatePerspectiveProjection(this.stencilViewportW, this.stencilViewportH);
-            this.camera.updateView();
-
-            return;
-        }
-
-        /* Exact physical-to-logical ratio (the UI scale factor). Rounding this snapped fractional scales
-           like 1.5 up to 2, which offset the viewport and misaligned model/morph previews. */
-        float rx = (float) (mc.getWindow().getWidth() / (double) context.menu.width);
-        float ry = (float) (mc.getWindow().getHeight() / (double) context.menu.height);
+        float rx = (float) Math.round(mc.getWindow().getWidth() / (double) context.menu.width);
+        float ry = (float) Math.round(mc.getWindow().getHeight() / (double) context.menu.height);
         float size = BBSModClient.getOriginalFramebufferScale();
 
-        int vx = (int) (context.globalX(this.area.x) * rx);
-        int vy = (int) (mc.getWindow().getHeight() - (context.globalY(this.area.y) + this.area.h) * ry);
+        int vx = (int) (this.area.x * rx);
+        int vy = (int) (mc.getWindow().getHeight() - (this.area.y + this.area.h) * ry);
         int vw = (int) (this.area.w * rx);
         int vh = (int) (this.area.h * ry);
 

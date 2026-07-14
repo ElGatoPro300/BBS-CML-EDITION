@@ -26,10 +26,8 @@ import net.minecraft.client.MinecraftClient;
 import org.joml.Intersectiond;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
-import org.joml.Quaternionf;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
-import org.joml.Vector4f;
 
 import org.lwjgl.glfw.GLFW;
 
@@ -65,42 +63,10 @@ public class UIPropTransform extends UITransform
     private Timer checker = new Timer(30);
 
     private boolean model;
-    private boolean invertGizmoTranslateZ;
-    private boolean invertGizmoRotationX;
-    private boolean invertGizmoRotationZ;
-    private boolean invertGizmoRotationY;
-    private boolean invertTrackballRotationX;
-    private boolean invertTrackballRotationY;
-    private boolean invertTrackballRotationZ;
-    private boolean invertTrackballDragY;
-    private boolean invertGizmoTrackballTuning;
-    private boolean invertGizmoViewRing;
-    private boolean invertGizmoViewRingTuning;
-    private boolean invertGizmoTrackball;
-    private boolean filmMatchPoseTrackball;
-    /* Film pose keyframe trackball: arcball on a gizmo-local unit sphere via view-space rays
-     * (same space as the axis rings). Screen-delta trackball does not work there. */
-    private boolean filmArcballTrackball;
-    private boolean invertFilmArcballDragY;
-    private boolean invertFilmPoseGizmoAxes;
     private boolean local;
     private boolean freeRotation;
     private boolean freeTranslation;
-    private boolean uniformScale;
     private boolean rayDragInitialized;
-    private boolean rayDragReanchor;
-
-    /* Trackball (free-rotate sphere) drag state. Kept separate from the legacy
-     * {@link #freeRotation} 2D-delta mode: the trackball accumulates rotation as a
-     * quaternion so dragging never runs into gimbal lock, regardless of orientation. */
-    private boolean trackball;
-    private final Quaternionf trackballStart = new Quaternionf();
-    private final Quaternionf trackballAccum = new Quaternionf();
-
-    /* View (arcball) ring drag state: rotates around the camera-to-gizmo axis, reusing the
-     * trackball quaternion pipeline but driven by ray/plane angle tracking so the rotation
-     * follows the mouse around the ring exactly. */
-    private boolean viewRing;
 
     private IGizmoRayProvider gizmoRayProvider;
     private final Vector3d rayOrigin = new Vector3d();
@@ -111,19 +77,7 @@ public class UIPropTransform extends UITransform
     private final Vector3f rayPlaneNormal = new Vector3f();
     private final Vector3d rayLastPoint = new Vector3d();
     private final Vector3d rayCurrentPoint = new Vector3d();
-    private final Vector3d rayDragStartPoint = new Vector3d();
-    private final Vector3f rayDragProgressStart = new Vector3f();
-    private final Vector3f rayDragProgressEnd = new Vector3f();
-    private final Vector3f screenDragProgressEnd = new Vector3f();
-    private double rayDragStartAxisValue;
-    private float scaleProgressLength;
-    private int dragAnchorX;
-    private int dragAnchorY;
-    private int rayDragMouseX;
-    private int rayDragMouseY;
     private final Vector3f rayGizmoOrigin = new Vector3f();
-    private final Vector3f rayLastSpherePoint = new Vector3f();
-    private boolean raySphereDragInitialized;
     private double rayLastAxisValue;
     private final Vector3d planeOrigin = new Vector3d();
     private final Vector3d planeNormal = new Vector3d();
@@ -207,235 +161,9 @@ public class UIPropTransform extends UITransform
         this.model = true;
     }
 
-    /**
-     * Pose model editor gizmo: invert Z translation and X/Z rotation rings without enabling
-     * the full legacy {@link #model} drag path. Trackball euler X/Y/Z are sign-flipped separately.
-     */
-    public UIPropTransform poseModelGizmoTuning()
-    {
-        this.invertGizmoTranslateZ = true;
-        this.invertGizmoRotationX = true;
-        this.invertGizmoRotationZ = true;
-        this.invertModelPoseTrackballXYZ();
-
-        return this;
-    }
-
-    /**
-     * Trackball sphere only: negate decomposed X, Y, and Z euler angles after drag so the
-     * numeric fields match mouse drag direction in pose / model-editor contexts.
-     */
-    public UIPropTransform invertModelPoseTrackballXYZ()
-    {
-        this.invertTrackballRotationX = true;
-        this.invertTrackballRotationY = true;
-        this.invertTrackballRotationZ = true;
-
-        return this;
-    }
-
-    /**
-     * Model-editor pose trackball: flip decomposed X and Z euler only so drag matches the
-     * General transform feel while keeping Y sign unchanged.
-     */
-    public UIPropTransform invertModelPoseTrackballXZ()
-    {
-        this.invertTrackballRotationX = true;
-        this.invertTrackballRotationY = false;
-        this.invertTrackballRotationZ = true;
-
-        return this;
-    }
-
-    /** Model-editor pose trackball: flip vertical mouse contribution only. */
-    public UIPropTransform invertModelPoseTrackballDragY()
-    {
-        this.invertTrackballDragY = true;
-
-        return this;
-    }
-
-    /** Film pose arcball: flip decomposed Y euler only so vertical drag matches the viewport. */
-    public UIPropTransform invertModelPoseTrackballY()
-    {
-        this.invertTrackballRotationY = true;
-
-        return this;
-    }
-
-    /** Film pose arcball: flip decomposed Z euler so horizontal drag matches the viewport. */
-    public UIPropTransform invertModelPoseTrackballZ()
-    {
-        this.invertTrackballRotationZ = true;
-
-        return this;
-    }
-
-    /** Model-editor General transform trackball: flip drag rotation direction to match mouse. */
-    public UIPropTransform invertModelEditorTrackball()
-    {
-        this.invertGizmoTrackball = true;
-
-        return this;
-    }
-
-    /** Film pose arcball sphere: mirror gizmo-local Y on the unit sphere so vertical drag is inverted. */
-    public UIPropTransform invertFilmArcballDragY()
-    {
-        this.invertFilmArcballDragY = true;
-
-        return this;
-    }
-
-    /** Film replay transform trackball / view-ring path: no pose euler sign flips. */
-    public UIPropTransform clearTrackballEulerInverts()
-    {
-        this.invertTrackballRotationX = false;
-        this.invertTrackballRotationY = false;
-        this.invertTrackballRotationZ = false;
-
-        return this;
-    }
-
-    /**
-     * Film anchor gizmo: the anchor transform is applied in the attachment bone's space, which
-     * mirrors the X and Z axes relative to this class' own Euler storage (same pattern as the
-     * bone-pose bodies), so those two rotation rings need their drag sign flipped.
-     */
-    public UIPropTransform anchorGizmoTuning()
-    {
-        this.invertGizmoRotationX = true;
-        this.invertGizmoRotationZ = true;
-
-        return this;
-    }
-
-    /**
-     * Film replay pose-to-limb gizmo: invert Z translation and X/Z rotation rings. Trackball
-     * euler X/Z only (sphere numbers + drag) — same path as main pose keyframe (rotate, not rotate2).
-     */
-    public UIPropTransform poseLimbGizmoTuning()
-    {
-        this.invertGizmoTranslateZ = true;
-        this.invertGizmoRotationX = true;
-        this.invertGizmoRotationY = true;
-        this.invertGizmoRotationZ = true;
-        this.invertModelPoseTrackballXZ();
-        this.invertTrackballDragY = true;
-
-        return this;
-    }
-
-    public void setInvertGizmoTrackball(boolean invertGizmoTrackball)
-    {
-        this.invertGizmoTrackball = invertGizmoTrackball;
-    }
-
-    public void setInvertGizmoViewRing(boolean invertGizmoViewRing)
-    {
-        this.invertGizmoViewRing = invertGizmoViewRing;
-    }
-
-    public void setFilmMatchPoseTrackball(boolean filmMatchPoseTrackball)
-    {
-        this.filmMatchPoseTrackball = filmMatchPoseTrackball;
-    }
-
-    public void setFilmArcballTrackball(boolean filmArcballTrackball)
-    {
-        this.filmArcballTrackball = filmArcballTrackball;
-    }
-
-    /** Film replay pose gizmo: flip translate on X/Y and the Y rotation ring only (not Z / X/Z rings). */
-    public void setInvertFilmPoseGizmoAxes(boolean invertFilmPoseGizmoAxes)
-    {
-        this.invertFilmPoseGizmoAxes = invertFilmPoseGizmoAxes;
-    }
-
-    private boolean shouldInvertTranslateZ()
-    {
-        return this.model || this.invertGizmoTranslateZ;
-    }
-
-    private boolean shouldInvertTranslateZ(Axis axis)
-    {
-        return axis == Axis.Z && this.shouldInvertTranslateZ();
-    }
-
-    private boolean shouldInvertTranslate(Axis axis)
-    {
-        if (this.invertFilmPoseGizmoAxes && (axis == Axis.X || axis == Axis.Y))
-        {
-            return true;
-        }
-
-        return this.shouldInvertTranslateZ(axis);
-    }
-
-    private boolean shouldInvertRotationRing(Axis axis)
-    {
-        if (this.invertFilmPoseGizmoAxes && axis == Axis.Y)
-        {
-            return true;
-        }
-
-        if (this.model && (axis == Axis.X || axis == Axis.Z))
-        {
-            return true;
-        }
-
-        if (axis == Axis.X && this.invertGizmoRotationX)
-        {
-            return true;
-        }
-
-        if (axis == Axis.Y && this.invertGizmoRotationY)
-        {
-            return true;
-        }
-
-        if (axis == Axis.Z && this.invertGizmoRotationZ)
-        {
-            return true;
-        }
-
-        return false;
-    }
-
-    private float applyTranslateDelta(Axis axis, float delta)
-    {
-        return this.shouldInvertTranslate(axis) ? -delta : delta;
-    }
-
-    private float applyScaleDelta(Axis axis, float delta)
-    {
-        return delta * Gizmo.INSTANCE.getFlipSign(axis);
-    }
-
-    /** Progress bar direction along the visible scale handle; Z needs an extra sign flip. */
-    private float getScaleProgressVisualSign(Axis axis)
-    {
-        float sign = Gizmo.INSTANCE.getFlipSign(axis);
-
-        if (axis == Axis.Z)
-        {
-            sign = -sign;
-        }
-
-        return sign;
-    }
-
     public boolean isLocal()
     {
         return this.local;
-    }
-
-    public void setLocalMode(boolean local)
-    {
-        if (this.local != local)
-        {
-            this.toggleLocal();
-        }
     }
 
     private void toggleLocal()
@@ -461,7 +189,7 @@ public class UIPropTransform extends UITransform
         Vector3f vector3f = new Vector3f(
             (float) (axis == Axis.X ? factor : 0D),
             (float) (axis == Axis.Y ? factor : 0D),
-            (float) (axis == Axis.Z ? (this.shouldInvertTranslateZ() ? -factor : factor) : 0D)
+            (float) (axis == Axis.Z ? (this.model ? -factor : factor) : 0D)
         );
         /* I have no fucking idea why I have to rotate it 180 degrees by X axis... but it works! */
         Matrix3f matrix = new Matrix3f()
@@ -481,7 +209,6 @@ public class UIPropTransform extends UITransform
         this.keys().register(Keys.TRANSFORMATIONS_TRANSLATE, () -> this.enableMode(0)).category(category);
         this.keys().register(Keys.TRANSFORMATIONS_SCALE, () -> this.enableMode(1)).category(category);
         this.keys().register(Keys.TRANSFORMATIONS_ROTATE, () -> this.enableMode(2)).category(category);
-        this.keys().register(Keys.TRANSFORMATIONS_COMBINED, () -> Gizmo.INSTANCE.setMode(Gizmo.Mode.COMBINED)).category(category);
         this.keys().register(Keys.TRANSFORMATIONS_X, () -> this.axis = Axis.X).active(active).category(category);
         this.keys().register(Keys.TRANSFORMATIONS_Y, () -> this.axis = Axis.Y).active(active).category(category);
         this.keys().register(Keys.TRANSFORMATIONS_Z, () -> this.axis = Axis.Z).active(active).category(category);
@@ -570,61 +297,9 @@ public class UIPropTransform extends UITransform
         return this;
     }
 
-    private float getBaseTranslationScale()
-    {
-        float speed = BBSSettings.gizmoTranslateSpeed == null ? 1F : BBSSettings.gizmoTranslateSpeed.get();
-
-        return this.translationScale * speed;
-    }
-
-    private float getEffectiveTranslationScale()
-    {
-        float scale = this.getBaseTranslationScale();
-
-        if (Window.isAltPressed())
-        {
-            scale /= 5F;
-        }
-
-        return scale;
-    }
-
     public void enableMode(int mode)
     {
         this.enableMode(mode, null);
-    }
-
-    private void beginDragAnchor(UIContext context)
-    {
-        this.syncDragMouseFromContext(context);
-        this.dragAnchorX = this.resolveDragMouseX(context);
-        this.dragAnchorY = this.resolveDragMouseY(context);
-        this.lastX = this.dragAnchorX;
-        this.lastY = this.dragAnchorY;
-        this.screenDragProgressEnd.zero();
-        this.scaleProgressLength = 0F;
-    }
-
-    private void syncDragMouseFromContext(UIContext context)
-    {
-        if (this.gizmoRayProvider == null || context == null)
-        {
-            return;
-        }
-
-        GLFW.glfwGetCursorPos(Window.getWindow(), CURSOR_X, CURSOR_Y);
-
-        MinecraftClient mc = MinecraftClient.getInstance();
-        double fx = Math.ceil(mc.getWindow().getWidth() / (double) context.menu.width);
-        double fy = Math.ceil(mc.getWindow().getHeight() / (double) context.menu.height);
-
-        this.updateRayDragMouse(fx, fy);
-    }
-
-    private boolean hasDragPointerMoved(UIContext context)
-    {
-        return this.resolveDragMouseX(context) != this.dragAnchorX
-            || this.resolveDragMouseY(context) != this.dragAnchorY;
     }
 
     public void enableMode(int mode, Axis axis)
@@ -656,7 +331,8 @@ public class UIPropTransform extends UITransform
             this.axis = axis == null ? Axis.X : axis;
             this.secondaryAxis = null;
             this.freeRotation = false;
-            this.beginDragAnchor(context);
+            this.lastX = context.mouseX;
+            this.lastY = context.mouseY;
         }
 
         this.editing = true;
@@ -670,7 +346,6 @@ public class UIPropTransform extends UITransform
             context.menu.overlay.add(this.handler);
         }
 
-        this.syncDragMouseFromContext(context);
         this.initializeRayDrag(context);
     }
 
@@ -691,7 +366,8 @@ public class UIPropTransform extends UITransform
         this.axis = primary == null ? Axis.X : primary;
         this.secondaryAxis = secondary;
         this.freeRotation = false;
-        this.beginDragAnchor(context);
+        this.lastX = context.mouseX;
+        this.lastY = context.mouseY;
 
         this.editing = true;
         this.mode = mode;
@@ -704,7 +380,6 @@ public class UIPropTransform extends UITransform
             context.menu.overlay.add(this.handler);
         }
 
-        this.syncDragMouseFromContext(context);
         this.initializeRayDrag(context);
     }
 
@@ -733,8 +408,9 @@ public class UIPropTransform extends UITransform
         {
             this.axis = Axis.X;
             this.secondaryAxis = null;
+            this.lastX = context.mouseX;
+            this.lastY = context.mouseY;
             this.freeRotation = true;
-            this.beginDragAnchor(context);
         }
 
         this.editing = true;
@@ -748,7 +424,6 @@ public class UIPropTransform extends UITransform
             context.menu.overlay.add(this.handler);
         }
 
-        this.syncDragMouseFromContext(context);
         this.initializeRayDrag(context);
     }
 
@@ -765,7 +440,8 @@ public class UIPropTransform extends UITransform
         this.secondaryAxis = null;
         this.freeRotation = false;
         this.freeTranslation = true;
-        this.beginDragAnchor(context);
+        this.lastX = context.mouseX;
+        this.lastY = context.mouseY;
 
         this.editing = true;
         this.mode = mode;
@@ -778,284 +454,7 @@ public class UIPropTransform extends UITransform
             context.menu.overlay.add(this.handler);
         }
 
-        this.syncDragMouseFromContext(context);
         this.initializeRayDrag(context);
-    }
-
-    /** Starts a uniform-scale drag from the gizmo's center handle (the small white cube):
-     *  a single mouse-drag axis scales X, Y and Z together, exactly like holding Ctrl while
-     *  dragging a single scale axis (see the {@code all} branch in {@link #render(UIContext)}). */
-    public void enableUniformScale(int mode)
-    {
-        UIContext context = this.getContext();
-
-        if (context == null)
-        {
-            return;
-        }
-
-        this.axis = Axis.X;
-        this.secondaryAxis = null;
-        this.freeRotation = false;
-        this.trackball = false;
-        this.uniformScale = true;
-        this.beginDragAnchor(context);
-
-        this.editing = true;
-        this.mode = mode;
-        this.rayDragInitialized = false;
-
-        this.cache.copy(this.transform);
-
-        if (!this.handler.hasParent())
-        {
-            context.menu.overlay.add(this.handler);
-        }
-    }
-
-    /**
-     * Same drag-start logic as {@link #enableMode(int, Axis)}, but never touches the global
-     * {@link Gizmo} mode. Used by Gizmo's Combined mode so grabbing e.g. a scale cube while
-     * the gizmo is displayed as Combined doesn't flip it back to solo Scale mode.
-     */
-    public void enableModeKeepGizmoMode(int mode, Axis axis)
-    {
-        UIContext context = this.getContext();
-
-        if (context == null)
-        {
-            return;
-        }
-
-        if (this.editing)
-        {
-            Axis[] values = Axis.values();
-
-            this.axis = values[MathUtils.cycler(this.axis.ordinal() + 1, 0, values.length - 1)];
-            this.secondaryAxis = null;
-            this.freeRotation = false;
-            this.trackball = false;
-
-            this.restore(true);
-        }
-        else
-        {
-            this.axis = axis == null ? Axis.X : axis;
-            this.secondaryAxis = null;
-            this.freeRotation = false;
-            this.trackball = false;
-            this.beginDragAnchor(context);
-        }
-
-        this.editing = true;
-        this.mode = mode;
-        this.rayDragInitialized = false;
-
-        this.cache.copy(this.transform);
-
-        if (!this.handler.hasParent())
-        {
-            context.menu.overlay.add(this.handler);
-        }
-
-        this.syncDragMouseFromContext(context);
-        this.initializeRayDrag(context);
-    }
-
-    /**
-     * Combined-mode counterpart of {@link #enablePlaneMode(int, Axis, Axis)} that skips the
-     * {@link Gizmo#setMode(Gizmo.Mode)} call, for the same reason as {@link #enableModeKeepGizmoMode(int, Axis)}.
-     */
-    public void enablePlaneModeKeepGizmoMode(int mode, Axis primary, Axis secondary)
-    {
-        UIContext context = this.getContext();
-
-        if (context == null)
-        {
-            return;
-        }
-
-        this.axis = primary == null ? Axis.X : primary;
-        this.secondaryAxis = secondary;
-        this.freeRotation = false;
-        this.trackball = false;
-        this.beginDragAnchor(context);
-
-        this.editing = true;
-        this.mode = mode;
-        this.rayDragInitialized = false;
-
-        this.cache.copy(this.transform);
-
-        if (!this.handler.hasParent())
-        {
-            context.menu.overlay.add(this.handler);
-        }
-
-        this.syncDragMouseFromContext(context);
-        this.initializeRayDrag(context);
-    }
-
-    /**
-     * Starts a trackball (free-rotate sphere) drag: rotation is accumulated as a quaternion
-     * from per-frame screen-space mouse deltas, so unlike {@link #enableFreeRotation(int, Axis)}
-     * it never runs into gimbal lock regardless of the object's current orientation.
-     *
-     * Extension seam: a future "view" rotate ring or numeric input could plug in here by
-     * adding another boolean sibling to {@link #trackball} following the same pattern.
-     */
-    public void enableTrackballRotate(int mode)
-    {
-        UIContext context = this.getContext();
-
-        if (context == null)
-        {
-            return;
-        }
-
-        if (this.editing)
-        {
-            this.trackball = true;
-            this.viewRing = false;
-            this.freeRotation = false;
-            this.secondaryAxis = null;
-
-            this.restore(true);
-            this.beginDragAnchor(context);
-        }
-        else
-        {
-            this.axis = Axis.X;
-            this.secondaryAxis = null;
-            this.freeRotation = false;
-            this.trackball = true;
-            this.beginDragAnchor(context);
-        }
-
-        this.editing = true;
-        this.mode = mode;
-        this.rayDragInitialized = false;
-        this.raySphereDragInitialized = false;
-
-        this.cache.copy(this.transform);
-
-        if (!this.handler.hasParent())
-        {
-            context.menu.overlay.add(this.handler);
-        }
-
-        this.initializeTrackball();
-    }
-
-    /**
-     * Starts a view/arcball ring drag: rotation happens around the camera-to-gizmo axis, and
-     * the angle is tracked with the same ray/plane intersection method as the axis rings, so
-     * the rotation follows the mouse around the ring exactly. The result is accumulated as a
-     * quaternion (like the trackball) since the view axis rarely lines up with a euler axis.
-     */
-    public void enableViewRotate(int mode)
-    {
-        UIContext context = this.getContext();
-
-        if (context == null)
-        {
-            return;
-        }
-
-        this.axis = Axis.X;
-        this.secondaryAxis = null;
-        this.freeRotation = false;
-        this.trackball = false;
-        this.uniformScale = false;
-        this.viewRing = true;
-        this.beginDragAnchor(context);
-
-        this.editing = true;
-        this.mode = mode;
-        this.rayDragInitialized = false;
-
-        this.cache.copy(this.transform);
-
-        if (!this.handler.hasParent())
-        {
-            context.menu.overlay.add(this.handler);
-        }
-
-        this.initializeTrackball();
-        this.syncDragMouseFromContext(context);
-        this.initializeRayDrag(context);
-    }
-
-    private void initializeTrackball()
-    {
-        Vector3f rotation = this.getTrackballRotationValue();
-
-        /* Mirrors Transform#createRotationMatrix's Rz * Ry * Rx composition order, so the
-         * trackball starts exactly from the object's current orientation. */
-        Quaternionf qx = new Quaternionf().fromAxisAngleRad(1F, 0F, 0F, rotation.x);
-        Quaternionf qy = new Quaternionf().fromAxisAngleRad(0F, 1F, 0F, rotation.y);
-        Quaternionf qz = new Quaternionf().fromAxisAngleRad(0F, 0F, 1F, rotation.z);
-
-        this.trackballStart.set(qz).mul(qy).mul(qx);
-        this.trackballAccum.identity();
-    }
-
-    private Vector3f getTrackballRotationValue()
-    {
-        /* Film pose arcball writes to rotate (same channel as the axis rings). */
-        if (this.filmArcballTrackball)
-        {
-            return this.transform.rotate;
-        }
-
-        if (this.usesTrackballRotate2())
-        {
-            return this.transform.rotate2;
-        }
-
-        return this.transform.rotate;
-    }
-
-    private boolean usesTrackballRotate2()
-    {
-        return BBSSettings.gizmos.get() && (this.local || this.filmMatchPoseTrackball);
-    }
-
-    private void applyTrackballRotation(float ex, float ey, float ez)
-    {
-        if (this.filmArcballTrackball)
-        {
-            this.setR(null, ex, ey, ez);
-        }
-        else if (this.usesTrackballRotate2())
-        {
-            this.setR2(null, ex, ey, ez);
-        }
-        else
-        {
-            this.setR(null, ex, ey, ez);
-        }
-    }
-
-    /** Applies decomposed trackball / view-ring euler to the transform, optionally flipping X/Y/Z for pose contexts. */
-    private void finishTrackballEulerRotation(float ex, float ey, float ez)
-    {
-        if (this.invertTrackballRotationX)
-        {
-            ex = -ex;
-        }
-
-        if (this.invertTrackballRotationY)
-        {
-            ey = -ey;
-        }
-
-        if (this.invertTrackballRotationZ)
-        {
-            ez = -ez;
-        }
-
-        this.applyTrackballRotation(ex, ey, ez);
     }
 
     private Vector3f getValue()
@@ -1088,20 +487,7 @@ public class UIPropTransform extends UITransform
         this.editing = false;
         this.freeRotation = false;
         this.freeTranslation = false;
-        this.trackball = false;
-        this.uniformScale = false;
-        this.viewRing = false;
-        this.invertGizmoTrackball = false;
-        this.invertGizmoViewRing = false;
-        this.filmMatchPoseTrackball = false;
-        this.filmArcballTrackball = false;
-        this.invertFilmArcballDragY = false;
-        this.invertFilmPoseGizmoAxes = false;
         this.rayDragInitialized = false;
-        this.raySphereDragInitialized = false;
-
-        Gizmo.INSTANCE.clearRotationArc();
-        Gizmo.INSTANCE.clearDragProgress();
 
         if (this.handler.hasParent())
         {
@@ -1215,140 +601,63 @@ public class UIPropTransform extends UITransform
     {
         if (this.editing && this.checker.isTime())
         {
-            this.processDragFrame(context);
-        }
+            /* UIContext.mouseX can't be used because when cursor is outside of window
+             * its position stops being updated. That's why it has to be queried manually
+             * through GLFW...
+             *
+             * It gets updated outside the window only when one of mouse buttons is
+             * being held! */
+            GLFW.glfwGetCursorPos(Window.getWindow(), CURSOR_X, CURSOR_Y);
 
-        super.render(context);
+            MinecraftClient mc = MinecraftClient.getInstance();
+            int w = mc.getWindow().getWidth();
+            int h = mc.getWindow().getHeight();
 
-        if (this.editing)
-        {
-            String label = UIKeys.TRANSFORMS_EDITING.get();
-            FontRenderer font = context.batcher.getFont();
-            int x = this.area.mx(font.getWidth(label));
-            int y = this.area.my(font.getHeight());
+            double rawX = CURSOR_X[0];
+            double rawY = CURSOR_Y[0];
+            double fx = Math.ceil(w / (double) context.menu.width);
+            double fy = Math.ceil(h / (double) context.menu.height);
+            int border = 5;
+            int borderPadding = border + 1;
 
-            context.batcher.textCard(label, x, y, Colors.WHITE, BBSSettings.primaryColor(Colors.A50));
-
-            /* Live degree readout next to the mouse while a rotation ring is being dragged. */
-            if (this.mode == 2 && Gizmo.INSTANCE.hasRotationArc())
+            if (rawX <= border)
             {
-                String degrees = String.format("%.1f\u00B0", Gizmo.INSTANCE.getRotationSweep());
+                Window.moveCursor(w - borderPadding, (int) mc.mouse.getY());
 
-                context.batcher.textCard(degrees, context.mouseX + 12, context.mouseY + 12, Colors.WHITE, BBSSettings.primaryColor(Colors.A50));
-            }
-
-            if (Gizmo.INSTANCE.isDragging() && this.mode == 1)
-            {
-                this.updateDragProgressVisual(context);
-            }
-        }
-    }
-
-    private void processDragFrame(UIContext context)
-    {
-        /* UIContext.mouseX can't be used because when cursor is outside of window
-         * its position stops being updated. That's why it has to be queried manually
-         * through GLFW...
-         *
-         * It gets updated outside the window only when one of mouse buttons is
-         * being held! */
-        GLFW.glfwGetCursorPos(Window.getWindow(), CURSOR_X, CURSOR_Y);
-
-        MinecraftClient mc = MinecraftClient.getInstance();
-        int w = mc.getWindow().getWidth();
-        int h = mc.getWindow().getHeight();
-
-        double rawX = CURSOR_X[0];
-        double rawY = CURSOR_Y[0];
-        double fx = Math.ceil(w / (double) context.menu.width);
-        double fy = Math.ceil(h / (double) context.menu.height);
-
-        this.updateRayDragMouse(fx, fy);
-
-        int border = 5;
-        int borderPadding = border + 1;
-        boolean wrapped = false;
-        int cursorX = (int) mc.mouse.getX();
-        int cursorY = (int) mc.mouse.getY();
-
-        if (rawX <= border)
-        {
-            cursorX = w - borderPadding;
-            this.lastX = context.menu.width - (int) (borderPadding / fx);
-            wrapped = true;
-        }
-        else if (rawX >= w - border)
-        {
-            cursorX = borderPadding;
-            this.lastX = (int) (borderPadding / fx);
-            wrapped = true;
-        }
-
-        if (rawY <= border)
-        {
-            cursorY = h - borderPadding;
-            this.lastY = context.menu.height - (int) (borderPadding / fy);
-            wrapped = true;
-        }
-        else if (rawY >= h - border)
-        {
-            cursorY = borderPadding;
-            this.lastY = (int) (borderPadding / fy);
-            wrapped = true;
-        }
-
-        if (wrapped)
-        {
-            Window.moveCursor(cursorX, cursorY);
-            this.checker.mark();
-            this.requestRayDragReanchor();
-
-            if (this.filmArcballTrackball && this.trackball)
-            {
-                this.raySphereDragInitialized = false;
-            }
-        }
-        else
-        {
-            int dragMouseX = this.resolveDragMouseX(context);
-            int dragMouseY = this.resolveDragMouseY(context);
-            int mouseDx = dragMouseX - this.lastX;
-            int mouseDy = dragMouseY - this.lastY;
-
-            if (this.shouldReanchorMouseDrag(context, mouseDx, mouseDy))
-            {
-                this.lastX = dragMouseX;
-                this.lastY = dragMouseY;
-                this.requestRayDragReanchor();
+                this.lastX = context.menu.width - (int) (borderPadding / fx);
                 this.checker.mark();
+            }
+            else if (rawX >= w - border)
+            {
+                Window.moveCursor(borderPadding, (int) mc.mouse.getY());
 
-                if (this.filmArcballTrackball && this.trackball)
-                {
-                    this.raySphereDragInitialized = false;
-                }
+                this.lastX = (int) (borderPadding / fx);
+                this.checker.mark();
+            }
+            else if (rawY <= border)
+            {
+                Window.moveCursor((int) mc.mouse.getX(), h - borderPadding);
+
+                this.lastY = context.menu.height - (int) (borderPadding / fy);
+                this.checker.mark();
+            }
+            else if (rawY >= h - border)
+            {
+                Window.moveCursor((int) mc.mouse.getX(), borderPadding);
+
+                this.lastY = (int) (borderPadding / fy);
+                this.checker.mark();
             }
             else
             {
-                boolean handledByRayDrag = this.trackball ? this.applyTrackballDrag(context) : this.applyRayDrag(context);
+                boolean handledByRayDrag = this.applyRayDrag(context);
 
-                /* Interactions that are ray-driven must never fall back to the legacy 2D
-                 * screen-delta path below: when the ray is briefly unavailable (e.g. the very
-                 * first frame of a drag, before the baseline is anchored), that fallback
-                 * compares against a stale lastX/lastY and applies one huge arbitrary delta -
-                 * the "value suddenly jumps to 13/65/90 on click" bug. Skipping the frame is
-                 * always safe; the ray drag re-anchors and takes over on the next frame. */
-                boolean rayDriven = !this.trackball
-                    && this.gizmoRayProvider != null
-                    && Gizmo.INSTANCE.isDragging()
-                    && !this.uniformScale
-                    && !(this.mode == 2 && this.freeRotation);
-
-                if (!handledByRayDrag && !rayDriven && !(this.trackball && this.filmArcballTrackball))
+                if (!handledByRayDrag)
                 {
-                    int dx = dragMouseX - this.lastX;
-                    int dy = dragMouseY - this.lastY;
+                    int dx = context.mouseX - this.lastX;
+                    int dy = context.mouseY - this.lastY;
                     Vector3f vector = this.getValue();
-                    boolean all = this.uniformScale || (this.mode == 1 && Window.isCtrlPressed());
+                    boolean all = this.mode == 1 && Window.isCtrlPressed();
                     UITrackpad reference = this.mode == 0 ? this.tx : (this.mode == 1 ? this.sx : this.rx);
                     float factor = (float) reference.getValueModifier();
 
@@ -1400,8 +709,8 @@ public class UIPropTransform extends UITransform
 
                         if (this.mode == 2 && this.freeRotation)
                         {
-                            vector3f.x += factor * dy;
-                            vector3f.y -= factor * dx;
+                            vector3f.x -= factor * dy;
+                            vector3f.y += factor * dx;
                         }
                         else if (this.mode == 0 && this.secondaryAxis != null)
                         {
@@ -1459,33 +768,9 @@ public class UIPropTransform extends UITransform
                             }
                             else
                             {
-                                /* Screen-delta fallback (used when no ray provider is
-                                 * available, and always for uniform scale): mouse right/up is
-                                 * positive, left/down is negative. Screen Y grows downward,
-                                 * so "up" needs a negated dy contribution. */
-                                float delta = this.mode == 2 ? factor * (dx - dy) : factor * dx;
-
-                                if (this.mode == 1 && !all)
-                                {
-                                    float signedDelta = this.applyScaleDelta(this.axis, delta);
-
-                                    if (this.axis == Axis.X) vector3f.x += signedDelta;
-                                    else if (this.axis == Axis.Y) vector3f.y += signedDelta;
-                                    else if (this.axis == Axis.Z) vector3f.z += signedDelta;
-
-                                    this.scaleProgressLength += signedDelta;
-                                }
-                                else
-                                {
-                                    if (this.axis == Axis.X || all) vector3f.x += delta;
-                                    if (this.axis == Axis.Y || all) vector3f.y += delta;
-                                    if (this.axis == Axis.Z || all) vector3f.z += delta;
-
-                                    if (this.mode == 1 && all)
-                                    {
-                                        this.scaleProgressLength += delta;
-                                    }
-                                }
+                                if (this.axis == Axis.X || all) vector3f.x += factor * dx;
+                                if (this.axis == Axis.Y || all) vector3f.y += factor * dx;
+                                if (this.axis == Axis.Z || all) vector3f.z += factor * dx;
                             }
                         }
 
@@ -1501,36 +786,22 @@ public class UIPropTransform extends UITransform
 
                 this.setTransform(this.transform);
 
-                this.lastX = dragMouseX;
-                this.lastY = dragMouseY;
+                this.lastX = context.mouseX;
+                this.lastY = context.mouseY;
             }
         }
-    }
 
-    private void updateRayDragMouse(double fx, double fy)
-    {
-        this.rayDragMouseX = (int) Math.round(CURSOR_X[0] / fx);
-        this.rayDragMouseY = (int) Math.round(CURSOR_Y[0] / fy);
-    }
+        super.render(context);
 
-    private int resolveDragMouseX(UIContext context)
-    {
-        if (this.gizmoRayProvider != null)
+        if (this.editing)
         {
-            return this.rayDragMouseX;
+            String label = UIKeys.TRANSFORMS_EDITING.get();
+            FontRenderer font = context.batcher.getFont();
+            int x = this.area.mx(font.getWidth(label));
+            int y = this.area.my(font.getHeight());
+
+            context.batcher.textCard(label, x, y, Colors.WHITE, BBSSettings.primaryColor(Colors.A50));
         }
-
-        return context.mouseX;
-    }
-
-    private int resolveDragMouseY(UIContext context)
-    {
-        if (this.gizmoRayProvider != null)
-        {
-            return this.rayDragMouseY;
-        }
-
-        return context.mouseY;
     }
 
     private boolean initializeRayDrag(UIContext context)
@@ -1547,10 +818,7 @@ public class UIPropTransform extends UITransform
             return false;
         }
 
-        /* Interactions that use the plain screen-delta fallback in render() instead of rays:
-         * uniform scale (center cube, not tied to any world axis) and the legacy 2D free
-         * rotation. Trackball never reaches this method (it goes through applyTrackballDrag). */
-        if (this.uniformScale || (this.mode == 2 && this.freeRotation))
+        if (this.mode == 1 || (this.mode == 2 && this.freeRotation))
         {
             this.rayDragInitialized = false;
             return false;
@@ -1562,7 +830,7 @@ public class UIPropTransform extends UITransform
             return false;
         }
 
-        if (!this.gizmoRayProvider.getMouseRay(context, this.resolveDragMouseX(context), this.resolveDragMouseY(context), this.rayOrigin, this.rayDirection))
+        if (!this.gizmoRayProvider.getMouseRay(context, context.mouseX, context.mouseY, this.rayOrigin, this.rayDirection))
         {
             this.rayDragInitialized = false;
             return false;
@@ -1571,28 +839,7 @@ public class UIPropTransform extends UITransform
         this.rayGizmoMatrix.getTranslation(this.rayGizmoOrigin);
         this.extractAxisWorld(this.axis, this.rayPrimaryAxis);
 
-        boolean needsPlanePoint = false;
-
-        if (this.viewRing)
-        {
-            /* Rotation plane faces the camera; the plane normal (= rotation axis) points from
-             * the gizmo toward the camera so the rotation follows the mouse's movement around
-             * the ring (mouse moving right on the right side of the ring rotates rightward). */
-            this.rayPlaneNormal.set(
-                (float) (this.rayOrigin.x - this.rayGizmoOrigin.x),
-                (float) (this.rayOrigin.y - this.rayGizmoOrigin.y),
-                (float) (this.rayOrigin.z - this.rayGizmoOrigin.z)
-            );
-
-            if (!this.normalizeSafe(this.rayPlaneNormal))
-            {
-                this.rayDragInitialized = false;
-                return false;
-            }
-
-            needsPlanePoint = true;
-        }
-        else if (this.mode == 0 && this.freeTranslation)
+        if (this.mode == 0 && this.freeTranslation)
         {
             this.rayPlaneNormal.set(this.rayDirection);
 
@@ -1601,8 +848,6 @@ public class UIPropTransform extends UITransform
                 this.rayDragInitialized = false;
                 return false;
             }
-
-            needsPlanePoint = true;
         }
         else if (this.mode == 0 && this.secondaryAxis != null)
         {
@@ -1614,14 +859,9 @@ public class UIPropTransform extends UITransform
                 this.rayDragInitialized = false;
                 return false;
             }
-
-            needsPlanePoint = true;
         }
-        else if (this.mode == 0 || this.mode == 1)
+        else if (this.mode == 0)
         {
-            /* Single-axis translate and single-axis scale both reduce to "where along this
-             * world axis line does the mouse ray currently point", so they can share the
-             * exact same grab-point-independent projection. */
             double axisValue = this.computeAxisValue(this.rayOrigin, this.rayDirection, this.rayPrimaryAxis);
 
             if (!Double.isFinite(axisValue))
@@ -1634,10 +874,6 @@ public class UIPropTransform extends UITransform
         }
         else if (this.mode == 2)
         {
-            /* Axis ring: the drag plane is the ring's own plane. The normal is intentionally
-             * NOT flipped toward the camera: the per-frame angle between grab vectors then
-             * rotates the value exactly as much (and in the same direction) as the mouse moved
-             * around the ring, which is what makes the ring "follow the mouse". */
             this.rayPlaneNormal.set(this.rayPrimaryAxis);
 
             if (!this.normalizeSafe(this.rayPlaneNormal))
@@ -1645,8 +881,6 @@ public class UIPropTransform extends UITransform
                 this.rayDragInitialized = false;
                 return false;
             }
-
-            needsPlanePoint = true;
         }
         else
         {
@@ -1654,167 +888,15 @@ public class UIPropTransform extends UITransform
             return false;
         }
 
-        if (needsPlanePoint && !this.intersectCurrentRay(this.rayLastPoint))
+        if ((this.mode != 0 || this.secondaryAxis != null || this.freeTranslation) && !this.intersectCurrentRay(this.rayLastPoint))
         {
             this.rayDragInitialized = false;
             return false;
         }
 
-        if (needsPlanePoint && (this.mode == 2 || this.viewRing))
-        {
-            Vector3f local = new Vector3f();
-
-            this.toGizmoLocal(this.rayLastPoint, local);
-
-            if (this.rayDragReanchor && Gizmo.INSTANCE.hasRotationArc())
-            {
-                Gizmo.INSTANCE.reanchorRotationArc(local);
-            }
-            else
-            {
-                if (this.useFrozenRotationArc())
-                {
-                    Gizmo.INSTANCE.setRotationArcFrozen(this.rayGizmoMatrix, this.viewRing);
-                }
-
-                Gizmo.INSTANCE.startRotationArc(local);
-            }
-        }
-
-        this.rayDragReanchor = false;
         this.rayDragInitialized = true;
 
-        if (this.mode == 1)
-        {
-            if (needsPlanePoint)
-            {
-                if (!this.rayDragReanchor)
-                {
-                    this.rayDragStartPoint.set(this.rayLastPoint);
-                }
-            }
-            else if (!this.uniformScale && !this.rayDragReanchor)
-            {
-                this.rayDragStartAxisValue = this.rayLastAxisValue;
-                this.scaleProgressLength = 0F;
-            }
-
-            this.updateDragProgressVisual(context);
-        }
-
         return true;
-    }
-
-    private void updateDragProgressVisual(UIContext context)
-    {
-        if (!Gizmo.INSTANCE.isDragging() || this.mode != 1)
-        {
-            Gizmo.INSTANCE.clearDragProgress();
-
-            return;
-        }
-
-        boolean rayDriven = !this.trackball
-            && this.gizmoRayProvider != null
-            && !this.uniformScale
-            && !(this.mode == 2 && this.freeRotation);
-
-        if (!rayDriven || !this.rayDragInitialized)
-        {
-            this.updateScreenDragProgressVisual(context);
-
-            return;
-        }
-
-        if (context == null || !this.gizmoRayProvider.getMouseRay(context, this.resolveDragMouseX(context), this.resolveDragMouseY(context), this.rayOrigin, this.rayDirection))
-        {
-            return;
-        }
-
-        if (this.secondaryAxis == null && !this.freeTranslation)
-        {
-            this.rayDragProgressStart.zero();
-            this.setLocalAxisPoint(this.rayDragProgressEnd, this.axis, this.scaleProgressLength * this.getScaleProgressVisualSign(this.axis));
-            Gizmo.INSTANCE.setDragProgress(this.rayDragProgressStart, this.rayDragProgressEnd);
-        }
-    }
-
-    private void accumulateScaleProgress(float axisProjectionDelta)
-    {
-        this.scaleProgressLength += this.applyScaleDelta(this.axis, axisProjectionDelta);
-    }
-
-    private void updateScreenDragProgressVisual(UIContext context)
-    {
-        if (context == null)
-        {
-            Gizmo.INSTANCE.clearDragProgress();
-
-            return;
-        }
-
-        this.rayDragProgressStart.zero();
-        this.screenDragProgressEnd.zero();
-
-        if (this.uniformScale || Window.isCtrlPressed())
-        {
-            this.screenDragProgressEnd.set(this.scaleProgressLength * Gizmo.INSTANCE.getFlipSign(Axis.X), 0F, 0F);
-        }
-        else
-        {
-            this.setLocalAxisPoint(this.screenDragProgressEnd, this.axis, this.scaleProgressLength * this.getScaleProgressVisualSign(this.axis));
-        }
-
-        Gizmo.INSTANCE.setDragProgress(this.rayDragProgressStart, this.screenDragProgressEnd);
-    }
-
-    private void setLocalAxisPoint(Vector3f dest, Axis axis, float value)
-    {
-        dest.zero();
-
-        if (axis == Axis.X)
-        {
-            dest.x = value;
-        }
-        else if (axis == Axis.Y)
-        {
-            dest.y = value;
-        }
-        else
-        {
-            dest.z = value;
-        }
-    }
-
-    /** Transforms a world-space point into the gizmo's local space (the space its handles are
-     *  drawn in), used for the visual rotation sweep arc. */
-    private void toGizmoLocal(Vector3d world, Vector3f dest)
-    {
-        Matrix4f inv = new Matrix4f(this.rayGizmoMatrix).invert();
-        Vector4f point = new Vector4f((float) world.x, (float) world.y, (float) world.z, 1F).mul(inv);
-
-        dest.set(point.x, point.y, point.z);
-    }
-
-    /** Local-mode gizmo drags rotate the live matrix, which makes geometric arc tracking drift. */
-    private boolean useFrozenRotationArc()
-    {
-        return this.local && BBSSettings.gizmos.get();
-    }
-
-    private void updateRotationArcProgress(float deltaDegrees, Vector3d worldPoint)
-    {
-        if (this.useFrozenRotationArc())
-        {
-            Gizmo.INSTANCE.addRotationSweep(deltaDegrees);
-        }
-        else
-        {
-            Vector3f localPoint = new Vector3f();
-
-            this.toGizmoLocal(worldPoint, localPoint);
-            Gizmo.INSTANCE.updateRotationArc(localPoint);
-        }
     }
 
     private boolean applyRayDrag(UIContext context)
@@ -1829,32 +911,14 @@ public class UIPropTransform extends UITransform
             return false;
         }
 
-        if (!this.rayDragInitialized)
-        {
-            if (!this.initializeRayDrag(context))
-            {
-                return false;
-            }
-
-            /* The initialization frame only anchors the reference grab point/axis value.
-             * No delta is applied until the mouse actually moves on a later frame, so
-             * clicking a handle can never change the value by itself. */
-            return true;
-        }
-
-        if (!this.gizmoRayProvider.getMouseRay(context, this.resolveDragMouseX(context), this.resolveDragMouseY(context), this.rayOrigin, this.rayDirection))
+        if (!this.rayDragInitialized && !this.initializeRayDrag(context))
         {
             return false;
         }
 
-        if (this.viewRing)
+        if (!this.gizmoRayProvider.getMouseRay(context, context.mouseX, context.mouseY, this.rayOrigin, this.rayDirection))
         {
-            return this.applyViewRingDrag();
-        }
-
-        if (this.mode == 0 && !this.hasDragPointerMoved(context))
-        {
-            return true;
+            return false;
         }
 
         if (this.mode == 0)
@@ -1864,12 +928,6 @@ public class UIPropTransform extends UITransform
                 if (!this.intersectCurrentRay(this.rayCurrentPoint))
                 {
                     return false;
-                }
-
-                if (this.isRayPointJumpTooLarge())
-                {
-                    this.requestRayDragReanchor();
-                    return true;
                 }
 
                 Vector3d delta = new Vector3d(this.rayCurrentPoint).sub(this.rayLastPoint);
@@ -1888,17 +946,17 @@ public class UIPropTransform extends UITransform
                 this.extractAxisWorld(Axis.Y, worldY);
                 this.extractAxisWorld(Axis.Z, worldZ);
 
-                float dx_world = (float) delta.dot(worldX.x, worldX.y, worldX.z) * this.getEffectiveTranslationScale();
-                float dy_world = (float) delta.dot(worldY.x, worldY.y, worldY.z) * this.getEffectiveTranslationScale();
-                float dz_world = (float) delta.dot(worldZ.x, worldZ.y, worldZ.z) * this.getEffectiveTranslationScale();
+                float dx_world = (float) delta.dot(worldX.x, worldX.y, worldX.z) * this.translationScale;
+                float dy_world = (float) delta.dot(worldY.x, worldY.y, worldY.z) * this.translationScale;
+                float dz_world = (float) delta.dot(worldZ.x, worldZ.y, worldZ.z) * this.translationScale;
 
                 if (this.local)
                 {
                     Vector3f result = new Vector3f();
 
-                    result.add(this.calculateLocalVector(this.applyTranslateDelta(Axis.X, dx_world), Axis.X));
-                    result.add(this.calculateLocalVector(this.applyTranslateDelta(Axis.Y, dy_world), Axis.Y));
-                    result.add(this.calculateLocalVector(this.applyTranslateDelta(Axis.Z, dz_world), Axis.Z));
+                    result.add(this.calculateLocalVector(dx_world, Axis.X));
+                    result.add(this.calculateLocalVector(dy_world, Axis.Y));
+                    result.add(this.calculateLocalVector(dz_world, Axis.Z));
 
                     this.setT(null, value.x + result.x, value.y + result.y, value.z + result.z);
                 }
@@ -1906,9 +964,9 @@ public class UIPropTransform extends UITransform
                 {
                     Vector3f result = new Vector3f(value);
 
-                    this.addAxisDelta(result, Axis.X, this.applyTranslateDelta(Axis.X, dx_world));
-                    this.addAxisDelta(result, Axis.Y, this.applyTranslateDelta(Axis.Y, dy_world));
-                    this.addAxisDelta(result, Axis.Z, this.applyTranslateDelta(Axis.Z, dz_world));
+                    this.addAxisDelta(result, Axis.X, dx_world);
+                    this.addAxisDelta(result, Axis.Y, dy_world);
+                    this.addAxisDelta(result, Axis.Z, this.model ? -dz_world : dz_world);
 
                     this.setT(null, result.x, result.y, result.z);
                 }
@@ -1924,18 +982,7 @@ public class UIPropTransform extends UITransform
                     return false;
                 }
 
-                float rawDelta = (float) (axisValue - this.rayLastAxisValue);
-
-                if (Math.abs(rawDelta) > MAX_RAY_AXIS_JUMP)
-                {
-                    this.rayLastAxisValue = axisValue;
-                    this.requestRayDragReanchor();
-                    return true;
-                }
-
-                float primaryDelta = rawDelta * this.getEffectiveTranslationScale();
-
-                this.rayLastAxisValue = axisValue;
+                float primaryDelta = (float) (axisValue - this.rayLastAxisValue) * this.translationScale;
 
                 if (Math.abs(primaryDelta) <= 1.0E-8F)
                 {
@@ -1946,7 +993,7 @@ public class UIPropTransform extends UITransform
 
                 if (this.local)
                 {
-                    Vector3f result = this.calculateLocalVector(this.applyTranslateDelta(this.axis, primaryDelta), this.axis);
+                    Vector3f result = this.calculateLocalVector(primaryDelta, this.axis);
 
                     this.setT(null, value.x + result.x, value.y + result.y, value.z + result.z);
                 }
@@ -1954,21 +1001,17 @@ public class UIPropTransform extends UITransform
                 {
                     Vector3f result = new Vector3f(value);
 
-                    this.addAxisDelta(result, this.axis, this.applyTranslateDelta(this.axis, primaryDelta));
+                    this.addAxisDelta(result, this.axis, this.model && this.axis == Axis.Z ? -primaryDelta : primaryDelta);
                     this.setT(null, result.x, result.y, result.z);
                 }
+
+                this.rayLastAxisValue = axisValue;
             }
             else
             {
                 if (!this.intersectCurrentRay(this.rayCurrentPoint))
                 {
                     return false;
-                }
-
-                if (this.isRayPointJumpTooLarge())
-                {
-                    this.requestRayDragReanchor();
-                    return true;
                 }
 
                 Vector3d delta = new Vector3d(this.rayCurrentPoint).sub(this.rayLastPoint);
@@ -1978,20 +1021,20 @@ public class UIPropTransform extends UITransform
                     return true;
                 }
 
-                float primaryDelta = (float) delta.dot(this.rayPrimaryAxis.x, this.rayPrimaryAxis.y, this.rayPrimaryAxis.z) * this.getEffectiveTranslationScale();
+                float primaryDelta = (float) delta.dot(this.rayPrimaryAxis.x, this.rayPrimaryAxis.y, this.rayPrimaryAxis.z) * this.translationScale;
                 Vector3f value = this.getValue();
 
                 if (this.local)
                 {
                     Vector3f result = new Vector3f();
 
-                    result.add(this.calculateLocalVector(this.applyTranslateDelta(this.axis, primaryDelta), this.axis));
+                    result.add(this.calculateLocalVector(primaryDelta, this.axis));
 
                     if (this.secondaryAxis != null)
                     {
-                        float secondaryDelta = (float) delta.dot(this.raySecondaryAxis.x, this.raySecondaryAxis.y, this.raySecondaryAxis.z) * this.getEffectiveTranslationScale();
+                        float secondaryDelta = (float) delta.dot(this.raySecondaryAxis.x, this.raySecondaryAxis.y, this.raySecondaryAxis.z) * this.translationScale;
 
-                        result.add(this.calculateLocalVector(this.applyTranslateDelta(this.secondaryAxis, secondaryDelta), this.secondaryAxis));
+                        result.add(this.calculateLocalVector(secondaryDelta, this.secondaryAxis));
                     }
 
                     this.setT(null, value.x + result.x, value.y + result.y, value.z + result.z);
@@ -2000,10 +1043,10 @@ public class UIPropTransform extends UITransform
                 {
                     Vector3f result = new Vector3f(value);
 
-                    this.addAxisDelta(result, this.axis, this.applyTranslateDelta(this.axis, primaryDelta));
+                    this.addAxisDelta(result, this.axis, this.model && this.axis == Axis.Z ? -primaryDelta : primaryDelta);
 
-                    float secondaryDelta = (float) delta.dot(this.raySecondaryAxis.x, this.raySecondaryAxis.y, this.raySecondaryAxis.z) * this.getEffectiveTranslationScale();
-                    this.addAxisDelta(result, this.secondaryAxis, this.applyTranslateDelta(this.secondaryAxis, secondaryDelta));
+                    float secondaryDelta = (float) delta.dot(this.raySecondaryAxis.x, this.raySecondaryAxis.y, this.raySecondaryAxis.z) * this.translationScale;
+                    this.addAxisDelta(result, this.secondaryAxis, this.model && this.secondaryAxis == Axis.Z ? -secondaryDelta : secondaryDelta);
 
                     this.setT(null, result.x, result.y, result.z);
                 }
@@ -2011,58 +1054,11 @@ public class UIPropTransform extends UITransform
                 this.rayLastPoint.set(this.rayCurrentPoint);
             }
         }
-        else if (this.mode == 1 && !this.uniformScale)
-        {
-            /* Same grab-point-independent projection as single-axis translate above (see
-             * mode == 0's secondaryAxis == null branch), just written to the scale value.
-             * The delta is multiplied by the handle's camera-facing flip sign so the rule is
-             * always radial: dragging away from the gizmo center grows the axis, dragging
-             * toward the center shrinks it, regardless of which side the handle is drawn on. */
-            double axisValue = this.computeAxisValue(this.rayOrigin, this.rayDirection, this.rayPrimaryAxis);
-
-            if (!Double.isFinite(axisValue))
-            {
-                return false;
-            }
-
-            float rawDelta = (float) (axisValue - this.rayLastAxisValue);
-
-            if (Math.abs(rawDelta) > MAX_RAY_AXIS_JUMP)
-            {
-                this.rayLastAxisValue = axisValue;
-                this.requestRayDragReanchor();
-                return true;
-            }
-
-            float primaryDelta = this.applyScaleDelta(this.axis, rawDelta * this.getBaseTranslationScale());
-
-            this.accumulateScaleProgress(rawDelta);
-            this.rayLastAxisValue = axisValue;
-
-            if (Math.abs(primaryDelta) <= 1.0E-8F)
-            {
-                return true;
-            }
-
-            Vector3f result = new Vector3f(this.getValue());
-
-            this.addAxisDelta(result, this.axis, primaryDelta);
-            this.setS(null, result.x, result.y, result.z);
-        }
         else if (this.mode == 2 && !this.freeRotation)
         {
-            /* Axis ring: measure the actual angle the grab point moved around the ring's
-             * plane and apply exactly that, so the ring follows the mouse in whatever
-             * direction it moves (up, down, diagonally along the circle). */
             if (!this.intersectCurrentRay(this.rayCurrentPoint))
             {
                 return false;
-            }
-
-            if (this.isRayPointJumpTooLarge())
-            {
-                this.requestRayDragReanchor();
-                return true;
             }
 
             Vector3f from = new Vector3f(
@@ -2086,25 +1082,7 @@ public class UIPropTransform extends UITransform
             float cos = from.dot(to);
             float angle = (float) Math.toDegrees(Math.atan2(sin, cos));
 
-            if (Math.abs(angle) > MAX_RING_ANGLE_JUMP)
-            {
-                this.requestRayDragReanchor();
-                return true;
-            }
-
-            /* Model/bone-pose bodies are rendered through a matrix that (same as the "no
-             * idea why but it works" 180-degree-about-X flip in calculateLocalVector() above)
-             * mirrors the X and Z axes relative to how this class' own Euler storage rotates,
-             * so the X and Z rings need their angle sign flipped to spin the same way the mouse
-             * moves, exactly like the (already-correct) general Transform gizmo. Y is on the
-             * flip's own axis and needs no correction. */
-            if (this.shouldInvertRotationRing(this.axis))
-            {
-                angle = -angle;
-            }
-
             Vector3f value = new Vector3f(this.getValue()).mul(180F / MathUtils.PI);
-
             this.addAxisDelta(value, this.axis, angle);
 
             if (this.local && BBSSettings.gizmos.get())
@@ -2116,8 +1094,6 @@ public class UIPropTransform extends UITransform
                 this.setR(null, value.x, value.y, value.z);
             }
 
-            this.updateRotationArcProgress(angle, this.rayCurrentPoint);
-
             this.rayLastPoint.set(this.rayCurrentPoint);
         }
         else
@@ -2126,389 +1102,6 @@ public class UIPropTransform extends UITransform
         }
 
         return true;
-    }
-
-    /**
-     * Applies one frame of view/arcball ring rotation: the angle the mouse moved around the
-     * camera-facing plane is applied as a quaternion around the camera-to-gizmo axis, then
-     * decomposed back to euler angles like the trackball.
-     */
-    private boolean applyViewRingDrag()
-    {
-        if (!this.intersectCurrentRay(this.rayCurrentPoint))
-        {
-            return false;
-        }
-
-        if (this.isRayPointJumpTooLarge())
-        {
-            this.requestRayDragReanchor();
-            return true;
-        }
-
-        Vector3f from = new Vector3f(
-            (float) (this.rayLastPoint.x - this.rayGizmoOrigin.x),
-            (float) (this.rayLastPoint.y - this.rayGizmoOrigin.y),
-            (float) (this.rayLastPoint.z - this.rayGizmoOrigin.z)
-        );
-        Vector3f to = new Vector3f(
-            (float) (this.rayCurrentPoint.x - this.rayGizmoOrigin.x),
-            (float) (this.rayCurrentPoint.y - this.rayGizmoOrigin.y),
-            (float) (this.rayCurrentPoint.z - this.rayGizmoOrigin.z)
-        );
-
-        if (!this.normalizeSafe(from) || !this.normalizeSafe(to))
-        {
-            return false;
-        }
-
-        Vector3f cross = new Vector3f(from).cross(to);
-        float sin = this.rayPlaneNormal.dot(cross);
-        float cos = from.dot(to);
-        float angleRad = (float) Math.atan2(sin, cos);
-
-        if (this.invertGizmoViewRing || this.invertGizmoViewRingTuning)
-        {
-            angleRad = -angleRad;
-        }
-
-        if (Math.abs(angleRad) > MAX_RING_ANGLE_JUMP_RAD)
-        {
-            this.requestRayDragReanchor();
-            return true;
-        }
-
-        if (Math.abs(angleRad) > 1.0E-7F)
-        {
-            Quaternionf delta = new Quaternionf().fromAxisAngleRad(this.rayPlaneNormal.x, this.rayPlaneNormal.y, this.rayPlaneNormal.z, angleRad);
-
-            this.trackballAccum.premul(delta);
-
-            Quaternionf finalRotation = new Quaternionf(this.trackballStart).premul(this.trackballAccum);
-            Vector3f euler = new Vector3f();
-
-            this.eulerZYXFromQuaternion(finalRotation, euler);
-
-            float ex = MathUtils.toDeg(euler.x);
-            float ey = MathUtils.toDeg(euler.y);
-            float ez = MathUtils.toDeg(euler.z);
-
-            this.finishTrackballEulerRotation(ex, ey, ez);
-        }
-
-        this.updateRotationArcProgress((float) Math.toDegrees(angleRad), this.rayCurrentPoint);
-
-        this.rayLastPoint.set(this.rayCurrentPoint);
-
-        return true;
-    }
-
-    /**
-     * Applies one frame of trackball rotation from the accumulated screen-space mouse delta.
-     * Unlike {@link #applyRayDrag(UIContext)}, this never needs the {@link #gizmoRayProvider}
-     * to succeed (it falls back to world axes for its screen basis), so it always reports the
-     * drag as handled and the caller's 2D-delta fallback branch is never reached for trackball.
-     */
-    private boolean applyTrackballDrag(UIContext context)
-    {
-        if (this.filmArcballTrackball)
-        {
-            return this.applyFilmArcballTrackballDrag(context);
-        }
-
-        int dx = this.resolveDragMouseX(context) - this.lastX;
-        int dy = this.resolveDragMouseY(context) - this.lastY;
-
-        if (dx != 0 || dy != 0)
-        {
-            Vector3f right = new Vector3f(1F, 0F, 0F);
-            Vector3f up = new Vector3f(0F, 1F, 0F);
-
-            if (this.gizmoRayProvider == null || !this.computeScreenBasis(context, right, up))
-            {
-                right.set(1F, 0F, 0F);
-                up.set(0F, 1F, 0F);
-            }
-
-            float sensitivity = 0.012F;
-            float angle = (float) Math.sqrt((double) dx * dx + (double) dy * dy) * sensitivity;
-
-            if (this.invertGizmoTrackball || this.invertGizmoTrackballTuning)
-            {
-                angle = -angle;
-            }
-
-            if (angle > 1.0E-6F)
-            {
-                /* Screen Y grows downward; negate the vertical contribution so dragging up
-                 * consistently reads as the positive direction (matching the already-correct
-                 * horizontal drag, which needed no change). Film transform trackball needs the
-                 * opposite vertical sign to match pose keyframe feel on Y only. */
-                float verticalDelta = this.filmMatchPoseTrackball ? dy : -dy;
-
-                if (this.invertTrackballDragY)
-                {
-                    verticalDelta = -verticalDelta;
-                }
-
-                Vector3f axis = new Vector3f(right).mul(verticalDelta).add(new Vector3f(up).mul(-dx));
-
-                if (this.normalizeSafe(axis))
-                {
-                    Quaternionf delta = new Quaternionf().fromAxisAngleRad(axis.x, axis.y, axis.z, angle);
-
-                    this.trackballAccum.premul(delta);
-                }
-            }
-
-            Quaternionf finalRotation = new Quaternionf(this.trackballStart).premul(this.trackballAccum);
-            Vector3f euler = new Vector3f();
-
-            this.eulerZYXFromQuaternion(finalRotation, euler);
-
-            float ex = MathUtils.toDeg(euler.x);
-            float ey = MathUtils.toDeg(euler.y);
-            float ez = MathUtils.toDeg(euler.z);
-
-            this.finishTrackballEulerRotation(ex, ey, ez);
-        }
-
-        return true;
-    }
-
-    /**
-     * Film pose trackball: arcball drag on a unit sphere in gizmo-local space, driven by the
-     * same view-space rays and captured pass matrix as the axis / view rings.
-     */
-    private boolean applyFilmArcballTrackballDrag(UIContext context)
-    {
-        if (this.gizmoRayProvider == null || context == null || !Gizmo.INSTANCE.isDragging())
-        {
-            return false;
-        }
-
-        if (!this.gizmoRayProvider.getGizmoMatrix(this.rayGizmoMatrix))
-        {
-            return true;
-        }
-
-        if (!this.gizmoRayProvider.getMouseRay(context, this.resolveDragMouseX(context), this.resolveDragMouseY(context), this.rayOrigin, this.rayDirection))
-        {
-            return true;
-        }
-
-        Vector3f current = new Vector3f();
-
-        if (!this.intersectRayUnitSphereGizmoLocal(current))
-        {
-            return true;
-        }
-
-        if (this.invertFilmArcballDragY)
-        {
-            current.y = -current.y;
-        }
-
-        if (!this.raySphereDragInitialized)
-        {
-            this.rayLastSpherePoint.set(current);
-            this.raySphereDragInitialized = true;
-
-            return true;
-        }
-
-        Vector3f from = new Vector3f(this.rayLastSpherePoint);
-        Vector3f to = new Vector3f(current);
-        Vector3f axis = new Vector3f(from).cross(to);
-        float sin = axis.length();
-        float cos = from.dot(to);
-
-        if (sin <= 1.0E-7F && cos >= 0.999999F)
-        {
-            this.rayLastSpherePoint.set(current);
-
-            return true;
-        }
-
-        if (!this.normalizeSafe(axis))
-        {
-            return true;
-        }
-
-        float angleRad = (float) Math.atan2(sin, cos);
-
-        if (this.invertGizmoTrackball)
-        {
-            angleRad = -angleRad;
-        }
-
-        if (Math.abs(angleRad) > MAX_RING_ANGLE_JUMP_RAD)
-        {
-            this.raySphereDragInitialized = false;
-
-            return true;
-        }
-
-        Quaternionf delta = new Quaternionf().fromAxisAngleRad(axis.x, axis.y, axis.z, angleRad);
-
-        this.trackballAccum.premul(delta);
-
-        Quaternionf finalRotation = new Quaternionf(this.trackballStart).premul(this.trackballAccum);
-        Vector3f euler = new Vector3f();
-
-        this.eulerZYXFromQuaternion(finalRotation, euler);
-
-        float ex = MathUtils.toDeg(euler.x);
-        float ey = MathUtils.toDeg(euler.y);
-        float ez = MathUtils.toDeg(euler.z);
-
-        this.finishTrackballEulerRotation(ex, ey, ez);
-
-        this.rayLastSpherePoint.set(current);
-
-        return true;
-    }
-
-    private boolean intersectRayUnitSphereGizmoLocal(Vector3f out)
-    {
-        Matrix4f inverse = new Matrix4f(this.rayGizmoMatrix).invert();
-        Vector4f localOrigin4 = new Vector4f((float) this.rayOrigin.x, (float) this.rayOrigin.y, (float) this.rayOrigin.z, 1F).mul(inverse);
-        Vector4f localDir4 = new Vector4f(this.rayDirection.x, this.rayDirection.y, this.rayDirection.z, 0F).mul(inverse);
-
-        float ox = localOrigin4.x;
-        float oy = localOrigin4.y;
-        float oz = localOrigin4.z;
-        float dx = localDir4.x;
-        float dy = localDir4.y;
-        float dz = localDir4.z;
-        float dirLenSq = dx * dx + dy * dy + dz * dz;
-
-        if (dirLenSq <= 1.0E-12F)
-        {
-            return false;
-        }
-
-        float invLen = (float) (1D / Math.sqrt(dirLenSq));
-
-        dx *= invLen;
-        dy *= invLen;
-        dz *= invLen;
-
-        float radius = 1F;
-        float b = 2F * (ox * dx + oy * dy + oz * dz);
-        float c = ox * ox + oy * oy + oz * oz - radius * radius;
-        float disc = b * b - 4F * c;
-
-        if (disc < 0F)
-        {
-            return this.projectArcballMissOntoUnitSphere(ox, oy, oz, dx, dy, dz, out);
-        }
-
-        float sqrtDisc = (float) Math.sqrt(disc);
-        float t = (-b - sqrtDisc) * 0.5F;
-
-        if (t <= 1.0E-6F)
-        {
-            t = (-b + sqrtDisc) * 0.5F;
-        }
-
-        if (t <= 1.0E-6F)
-        {
-            return false;
-        }
-
-        out.set(ox + dx * t, oy + dy * t, oz + dz * t);
-        this.normalizeSafe(out);
-
-        return true;
-    }
-
-    /**
-     * GLU-style arcball projection when the view ray misses the unit sphere (for example the
-     * cursor left the viewport but drag should keep rotating).
-     */
-    private boolean projectArcballMissOntoUnitSphere(float ox, float oy, float oz, float dx, float dy, float dz, Vector3f out)
-    {
-        float t = -(ox * dx + oy * dy + oz * dz);
-        float px = ox + dx * t;
-        float py = oy + dy * t;
-        float d = (float) Math.sqrt(px * px + py * py);
-        float z;
-
-        if (d < 1F / 1.4142135F)
-        {
-            z = (float) Math.sqrt(Math.max(0F, 1F - d * d));
-        }
-        else
-        {
-            z = 0.5F / Math.max(d, 1.0E-6F);
-        }
-
-        if (d <= 1.0E-6F)
-        {
-            out.set(0F, 0F, 1F);
-        }
-        else
-        {
-            float scale = (float) Math.sqrt(Math.max(0F, 1F - z * z)) / d;
-
-            out.set(px * scale, py * scale, z);
-        }
-
-        this.normalizeSafe(out);
-
-        return true;
-    }
-
-    /**
-     * Decomposes a unit quaternion into Euler angles (radians) matching the Rz * Ry * Rx
-     * composition order used by {@link Transform#createRotationMatrix()} (and by
-     * {@link #initializeTrackball()} above), using the standard closed-form quaternion-to-matrix
-     * formula so it doesn't depend on any particular JOML matrix decomposition helper.
-     */
-    private void eulerZYXFromQuaternion(Quaternionf q, Vector3f dest)
-    {
-        float qx = q.x, qy = q.y, qz = q.z, qw = q.w;
-
-        float m20 = 2F * (qx * qz - qy * qw);
-        float m00 = 1F - 2F * (qy * qy + qz * qz);
-        float m10 = 2F * (qx * qy + qz * qw);
-        float m21 = 2F * (qy * qz + qx * qw);
-        float m22 = 1F - 2F * (qx * qx + qy * qy);
-
-        float y = (float) Math.asin(MathUtils.clamp(-m20, -1F, 1F));
-        float z = (float) Math.atan2(m10, m00);
-        float x = (float) Math.atan2(m21, m22);
-
-        dest.set(x, y, z);
-    }
-
-    /**
-     * Approximates the on-screen "right" and "up" directions in world/gizmo space at the
-     * current mouse position by sampling the mouse ray at two neighbouring pixels. Works for
-     * any {@link IGizmoRayProvider} implementation without needing camera basis vectors added
-     * to that interface.
-     */
-    private boolean computeScreenBasis(UIContext context, Vector3f right, Vector3f up)
-    {
-        Vector3d originA = new Vector3d();
-        Vector3f dirA = new Vector3f();
-        Vector3d originB = new Vector3d();
-        Vector3f dirB = new Vector3f();
-        Vector3d originC = new Vector3d();
-        Vector3f dirC = new Vector3f();
-
-        int dragMouseX = this.resolveDragMouseX(context);
-        int dragMouseY = this.resolveDragMouseY(context);
-
-        if (!this.gizmoRayProvider.getMouseRay(context, dragMouseX, dragMouseY, originA, dirA)) return false;
-        if (!this.gizmoRayProvider.getMouseRay(context, dragMouseX + 1, dragMouseY, originB, dirB)) return false;
-        if (!this.gizmoRayProvider.getMouseRay(context, dragMouseX, dragMouseY + 1, originC, dirC)) return false;
-
-        right.set(dirB).sub(dirA);
-        up.set(dirC).sub(dirA);
-
-        return this.normalizeSafe(right) && this.normalizeSafe(up);
     }
 
     private boolean intersectCurrentRay(Vector3d out)
@@ -2551,42 +1144,6 @@ public class UIPropTransform extends UITransform
 
         this.rayGizmoMatrix.transformDirection(out);
         this.normalizeSafe(out);
-    }
-
-    /** Max world-space units a single-axis translate/scale ray value is allowed to change
-     * in one frame; guards against grazing-angle ray/plane instability causing a sudden spike. */
-    private static final float MAX_RAY_AXIS_JUMP = 8F;
-
-    /** Max degrees a rotation ring is allowed to spin in a single frame, for the same reason. */
-    private static final float MAX_RING_ANGLE_JUMP = 45F;
-
-    private static final float MAX_RING_ANGLE_JUMP_RAD = (float) Math.toRadians(MAX_RING_ANGLE_JUMP);
-
-    private static final double MAX_RAY_POINT_JUMP = 8D;
-
-    private static final double MAX_RAY_POINT_JUMP_SQ = MAX_RAY_POINT_JUMP * MAX_RAY_POINT_JUMP;
-
-    private void requestRayDragReanchor()
-    {
-        this.rayDragReanchor = true;
-        this.rayDragInitialized = false;
-        this.raySphereDragInitialized = false;
-    }
-
-    private boolean shouldReanchorMouseDrag(UIContext context, int dx, int dy)
-    {
-        int limit = Math.max(120, Math.min(context.menu.width, context.menu.height) / 3);
-
-        return Math.abs(dx) > limit || Math.abs(dy) > limit;
-    }
-
-    private boolean isRayPointJumpTooLarge()
-    {
-        double dx = this.rayCurrentPoint.x - this.rayLastPoint.x;
-        double dy = this.rayCurrentPoint.y - this.rayLastPoint.y;
-        double dz = this.rayCurrentPoint.z - this.rayLastPoint.z;
-
-        return dx * dx + dy * dy + dz * dz > MAX_RAY_POINT_JUMP_SQ;
     }
 
     private boolean normalizeSafe(Vector3f vector)

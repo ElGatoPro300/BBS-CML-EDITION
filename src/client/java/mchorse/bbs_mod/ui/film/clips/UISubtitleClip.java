@@ -1,32 +1,18 @@
 package mchorse.bbs_mod.ui.film.clips;
 
 import mchorse.bbs_mod.camera.clips.misc.SubtitleClip;
-import mchorse.bbs_mod.data.types.MapType;
-import mchorse.bbs_mod.l10n.keys.IKey;
-import mchorse.bbs_mod.ui.Keys;
+import mchorse.bbs_mod.settings.values.IValueNotifier;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.IUIClipsDelegate;
-import mchorse.bbs_mod.ui.film.replays.UIReplaysEditor;
-import mchorse.bbs_mod.ui.film.utils.keyframes.UIFilmKeyframes;
-import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
 import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
+import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
-import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeEditor;
-import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeSheet;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.utils.Direction;
-import mchorse.bbs_mod.utils.clips.Clips;
-import mchorse.bbs_mod.utils.colors.Color;
-import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
-
-import net.minecraft.util.math.MathHelper;
 
 public class UISubtitleClip extends UIClip<SubtitleClip>
 {
-    private static final Color DEFAULT_COLOR = Color.white();
-    private static final Color DEFAULT_BACKGROUND = new Color().set(0);
-
     public UITrackpad x;
     public UITrackpad y;
     public UITrackpad size;
@@ -40,10 +26,9 @@ public class UISubtitleClip extends UIClip<SubtitleClip>
     public UITrackpad backgroundOffset;
     public UITrackpad shadow;
     public UIToggle shadowOpaque;
+    public UIPropTransform transform;
     public UITrackpad lineHeight;
     public UITrackpad maxWidth;
-    public UIButton edit;
-    public UIKeyframeEditor keyframes;
 
     public UISubtitleClip(SubtitleClip clip, IUIClipsDelegate editor)
     {
@@ -55,164 +40,78 @@ public class UISubtitleClip extends UIClip<SubtitleClip>
     {
         super.registerUI();
 
-        this.title.callback = (t) ->
+        this.x = new UITrackpad((v) -> this.clip.x.set(v.intValue()));
+        this.x.integer();
+        this.y = new UITrackpad((v) -> this.clip.y.set(v.intValue()));
+        this.y.integer();
+
+        this.size = new UITrackpad((v) -> this.editor.editMultiple(this.clip.size, (value) ->
         {
-            int tick = this.getClipTick();
-
-            this.clip.text.insert(tick, t);
-            this.clip.title.set(t);
-            this.fillData();
-        };
-
-        this.x = this.createChannelTrackpad(this.clip.x, UIKeys.CAMERA_PANELS_SUBTITLE_OFFSET_X, true, null, null);
-        this.y = this.createChannelTrackpad(this.clip.y, UIKeys.CAMERA_PANELS_SUBTITLE_OFFSET_Y, true, null, null);
-
-        this.size = this.createChannelTrackpad(this.clip.size, UIKeys.CAMERA_PANELS_SUBTITLE_SIZE, false, null, null);
-
-        this.anchorX = this.createChannelTrackpad(this.clip.anchorX, UIKeys.CAMERA_PANELS_SUBTITLE_ANCHOR_X, false, 0F, 1F);
-        this.anchorY = this.createChannelTrackpad(this.clip.anchorY, UIKeys.CAMERA_PANELS_SUBTITLE_ANCHOR_Y, false, 0F, 1F);
-
-        this.color = this.createColorChannel(this.clip.color);
+            value.set(v.floatValue());
+        }));
+        this.anchorX = new UITrackpad((v) -> this.editor.editMultiple(this.clip.anchorX, (value) ->
+        {
+            value.set(v.floatValue());
+        }));
+        this.anchorY = new UITrackpad((v) -> this.editor.editMultiple(this.clip.anchorY, (value) ->
+        {
+            value.set(v.floatValue());
+        }));
+        this.color = new UIColor((c) -> this.editor.editMultiple(this.clip.color, (value) ->
+        {
+            value.set(c);
+        }));
         this.color.withAlpha();
-
-        this.textShadow = this.createBooleanChannel(this.clip.textShadow, UIKeys.CAMERA_PANELS_SUBTITLE_TEXT_SHADOW);
-
-        this.windowX = this.createChannelTrackpad(this.clip.windowX, UIKeys.CAMERA_PANELS_SUBTITLE_WINDOW_X, false, 0F, 1F);
-        this.windowY = this.createChannelTrackpad(this.clip.windowY, UIKeys.CAMERA_PANELS_SUBTITLE_WINDOW_Y, false, 0F, 1F);
-
-        this.background = this.createColorChannel(this.clip.background);
-        this.background.withAlpha();
-
-        this.backgroundOffset = this.createChannelTrackpad(this.clip.backgroundOffset, UIKeys.CAMERA_PANELS_SUBTITLE_BACKGROUND_OFFSET, false, null, null);
-        this.shadow = this.createChannelTrackpad(this.clip.shadow, UIKeys.CAMERA_PANELS_SUBTITLE_SHADOW, false, 0F, null);
-        this.shadowOpaque = this.createBooleanChannel(this.clip.shadowOpaque, UIKeys.CAMERA_PANELS_SUBTITLE_OPAQUE);
-
-        this.lineHeight = this.createIntegerChannelTrackpad(this.clip.lineHeight, UIKeys.CAMERA_PANELS_SUBTITLE_LINE_HEIGHT, true, 0F, null);
-        this.lineHeight.tooltip(UIKeys.CAMERA_PANELS_SUBTITLE_LINE_HEIGHT, Direction.BOTTOM);
-
-        this.maxWidth = this.createIntegerChannelTrackpad(this.clip.maxWidth, UIKeys.CAMERA_PANELS_SUBTITLE_MAX_WIDTH, true, 0F, null);
-        this.maxWidth.tooltip(UIKeys.CAMERA_PANELS_SUBTITLE_MAX_WIDTH, Direction.BOTTOM);
-
-        this.keyframes = this.createKeyframeEditor("subtitle_keyframes");
-
-        this.edit = new UIButton(UIKeys.GENERAL_EDIT, (b) ->
+        this.textShadow = new UIToggle(UIKeys.CAMERA_PANELS_SUBTITLE_TEXT_SHADOW, (b) -> this.editor.editMultiple(this.clip.textShadow, (value) ->
         {
-            this.editor.embedView(this.keyframes);
-            this.keyframes.view.resetView();
-            this.keyframes.view.getGraph().clearSelection();
-        });
-        this.edit.keys().register(Keys.FORMS_EDIT, () -> this.edit.clickItself());
-    }
+            value.set(b.getValue());
+        }));
 
-    private UITrackpad createChannelTrackpad(KeyframeChannel<Double> channel, IKey tooltip, boolean integer, Float min, Float max)
-    {
-        UITrackpad trackpad = new UITrackpad((v) ->
+        this.windowX = new UITrackpad((v) -> this.editor.editMultiple(this.clip.windowX, (value) ->
         {
-            int tick = this.getClipTick();
-
-            channel.insert(tick, v.doubleValue());
-            this.fillData();
-        });
-
-        if (integer)
+            value.set(v.floatValue());
+        }));
+        this.windowY = new UITrackpad((v) -> this.editor.editMultiple(this.clip.windowY, (value) ->
         {
-            trackpad.integer();
-        }
+            value.set(v.floatValue());
+        }));
 
-        if (min != null)
+        this.background = new UIColor((c) -> this.editor.editMultiple(this.clip.background, (value) ->
         {
-            if (max != null)
+            value.set(c);
+        })).withAlpha();
+        this.backgroundOffset = new UITrackpad((v) -> this.editor.editMultiple(this.clip.backgroundOffset, (value) ->
+        {
+            value.set(v.floatValue());
+        }));
+        this.shadow = new UITrackpad((v) -> this.editor.editMultiple(this.clip.shadow, (value) ->
+        {
+            value.set(v.floatValue());
+        })).limit(0);
+        this.shadowOpaque = new UIToggle(UIKeys.CAMERA_PANELS_SUBTITLE_OPAQUE, (b) -> this.editor.editMultiple(this.clip.shadowOpaque, (value) ->
+        {
+            value.set(b.getValue());
+        }));
+
+        this.transform = new UIPropTransform().callbacks(
+            () -> this.editor.editMultiple(this.clip.transform, IValueNotifier::preNotify),
+            () -> this.editor.editMultiple(this.clip.transform, (t) ->
             {
-                trackpad.limit(min, max);
-            }
-            else
-            {
-                trackpad.limit(min);
-            }
-        }
+                t.set(this.transform.getTransform().copy());
+                t.postNotify();
+            })
+        );
 
-        if (tooltip != null)
+        this.lineHeight = new UITrackpad((v) -> this.editor.editMultiple(this.clip.lineHeight, (value) ->
         {
-            trackpad.tooltip(tooltip);
-        }
-
-        return trackpad;
-    }
-
-    private UITrackpad createIntegerChannelTrackpad(KeyframeChannel<Integer> channel, IKey tooltip, boolean integer, Float min, Float max)
-    {
-        UITrackpad trackpad = new UITrackpad((v) ->
+            value.set(v.intValue());
+        }));
+        this.lineHeight.limit(0).integer().tooltip(UIKeys.CAMERA_PANELS_SUBTITLE_LINE_HEIGHT, Direction.BOTTOM);
+        this.maxWidth = new UITrackpad((v) -> this.editor.editMultiple(this.clip.maxWidth, (value) ->
         {
-            int tick = this.getClipTick();
-
-            channel.insert(tick, v.intValue());
-            this.fillData();
-        });
-
-        if (integer)
-        {
-            trackpad.integer();
-        }
-
-        if (min != null)
-        {
-            if (max != null)
-            {
-                trackpad.limit(min, max);
-            }
-            else
-            {
-                trackpad.limit(min);
-            }
-        }
-
-        if (tooltip != null)
-        {
-            trackpad.tooltip(tooltip);
-        }
-
-        return trackpad;
-    }
-
-    private UIColor createColorChannel(KeyframeChannel<Color> channel)
-    {
-        return new UIColor((c) ->
-        {
-            int tick = this.getClipTick();
-
-            channel.insert(tick, Color.rgba(c));
-            this.fillData();
-        });
-    }
-
-    private UIToggle createBooleanChannel(KeyframeChannel<Boolean> channel, IKey label)
-    {
-        return new UIToggle(label, (b) ->
-        {
-            int tick = this.getClipTick();
-
-            channel.insert(tick, b.getValue());
-            this.fillData();
-        });
-    }
-
-    private UIKeyframeEditor createKeyframeEditor(String undoId)
-    {
-        UIKeyframeEditor editor = new UIKeyframeEditor((consumer) -> new UIFilmKeyframes(this.editor, consumer));
-
-        editor.view.backgroundRenderer((context) ->
-        {
-            UIReplaysEditor.renderBackground(context, editor.view, (Clips) this.clip.getParent(), this.clip.tick.get(), this.clip);
-        });
-        editor.view.duration(() -> this.clip.duration.get());
-        editor.setUndoId(undoId);
-
-        return editor;
-    }
-
-    private int getClipTick()
-    {
-        return MathHelper.clamp(this.editor.getCursor() - this.clip.tick.get(), 0, this.clip.duration.get());
+            value.set(v.intValue());
+        }));
+        this.maxWidth.limit(0).integer().tooltip(UIKeys.CAMERA_PANELS_SUBTITLE_MAX_WIDTH, Direction.BOTTOM);
     }
 
     @Override
@@ -226,8 +125,8 @@ public class UISubtitleClip extends UIClip<SubtitleClip>
         this.panels.add(UI.column(UIClip.label(UIKeys.CAMERA_PANELS_SUBTITLE_WINDOW), UI.row(this.windowX, this.windowY)).marginTop(6));
         this.panels.add(UI.column(UIClip.label(UIKeys.CAMERA_PANELS_SUBTITLE_BACKGROUND), this.background, this.backgroundOffset).marginTop(6));
         this.panels.add(UI.column(UIClip.label(UIKeys.CAMERA_PANELS_SUBTITLE_SHADOW), this.shadow, this.shadowOpaque).marginTop(6));
+        this.panels.add(UI.column(UIClip.label(UIKeys.CAMERA_PANELS_SUBTITLE_TRANSFORM), this.transform).marginTop(6));
         this.panels.add(UI.column(UIClip.label(UIKeys.CAMERA_PANELS_SUBTITLE_CONSTRAINT), UI.row(this.lineHeight, this.maxWidth)).marginTop(6));
-        this.panels.add(UI.column(UIClip.label(UIKeys.SCREEN_PANELS_KEYFRAMES), this.edit).marginTop(6));
     }
 
     @Override
@@ -235,139 +134,21 @@ public class UISubtitleClip extends UIClip<SubtitleClip>
     {
         super.fillData();
 
-        this.title.setText(this.getStringValue(this.clip.text, this.clip.title.get()));
-        this.x.setValue(this.getDoubleValue(this.clip.x, 0D));
-        this.y.setValue(this.getDoubleValue(this.clip.y, 0D));
-        this.size.setValue(this.getDoubleValue(this.clip.size, 10D));
-        this.anchorX.setValue(this.getDoubleValue(this.clip.anchorX, 0.5D));
-        this.anchorY.setValue(this.getDoubleValue(this.clip.anchorY, 0.5D));
-        this.color.setColor(this.getColorValue(this.clip.color, DEFAULT_COLOR).getARGBColor());
-        this.textShadow.setValue(this.getBooleanValue(this.clip.textShadow, true));
-        this.windowX.setValue(this.getDoubleValue(this.clip.windowX, 0.5D));
-        this.windowY.setValue(this.getDoubleValue(this.clip.windowY, 0.5D));
-        this.background.setColor(this.getColorValue(this.clip.background, DEFAULT_BACKGROUND).getARGBColor());
-        this.backgroundOffset.setValue(this.getDoubleValue(this.clip.backgroundOffset, 2D));
-        this.shadow.setValue(this.getDoubleValue(this.clip.shadow, 0D));
-        this.shadowOpaque.setValue(this.getBooleanValue(this.clip.shadowOpaque, false));
-        this.lineHeight.setValue(this.getIntegerValue(this.clip.lineHeight, 12));
-        this.maxWidth.setValue(this.getIntegerValue(this.clip.maxWidth, 0));
-
-        this.keyframes.setChannels(this.clip.channels);
-        this.updateTrackTitles();
-    }
-
-    private String getStringValue(KeyframeChannel<String> channel, String fallback)
-    {
-        int tick = this.getClipTick();
-
-        if (channel.isEmpty())
-        {
-            return fallback;
-        }
-
-        return channel.interpolate(tick, fallback);
-    }
-
-    private double getDoubleValue(KeyframeChannel<Double> channel, double fallback)
-    {
-        int tick = this.getClipTick();
-
-        if (channel.isEmpty())
-        {
-            return fallback;
-        }
-
-        return channel.interpolate(tick);
-    }
-
-    private int getIntegerValue(KeyframeChannel<Integer> channel, int fallback)
-    {
-        int tick = this.getClipTick();
-
-        if (channel.isEmpty())
-        {
-            return fallback;
-        }
-
-        return channel.interpolate(tick, fallback);
-    }
-
-    private boolean getBooleanValue(KeyframeChannel<Boolean> channel, boolean fallback)
-    {
-        int tick = this.getClipTick();
-
-        if (channel.isEmpty())
-        {
-            return fallback;
-        }
-
-        return channel.interpolate(tick, fallback);
-    }
-
-    private Color getColorValue(KeyframeChannel<Color> channel, Color fallback)
-    {
-        int tick = this.getClipTick();
-
-        if (channel.isEmpty())
-        {
-            return fallback;
-        }
-
-        return channel.interpolate(tick, fallback);
-    }
-
-    private void updateTrackTitles()
-    {
-        for (UIKeyframeSheet sheet : this.keyframes.view.getGraph().getSheets())
-        {
-            sheet.title = this.getTrackTitle(sheet.id);
-        }
-    }
-
-    private IKey getTrackTitle(String id)
-    {
-        return switch (id)
-        {
-            case "text" -> UIKeys.CAMERA_PANELS_TITLE;
-            case "x" -> UIKeys.CAMERA_PANELS_SUBTITLE_OFFSET_X;
-            case "y" -> UIKeys.CAMERA_PANELS_SUBTITLE_OFFSET_Y;
-            case "size" -> UIKeys.CAMERA_PANELS_SUBTITLE_SIZE;
-            case "anchorX" -> UIKeys.CAMERA_PANELS_SUBTITLE_ANCHOR_X;
-            case "anchorY" -> UIKeys.CAMERA_PANELS_SUBTITLE_ANCHOR_Y;
-            case "color" -> UIKeys.CAMERA_PANELS_SUBTITLE_COLOR;
-            case "textShadow" -> UIKeys.CAMERA_PANELS_SUBTITLE_TEXT_SHADOW;
-            case "windowX" -> UIKeys.CAMERA_PANELS_SUBTITLE_WINDOW_X;
-            case "windowY" -> UIKeys.CAMERA_PANELS_SUBTITLE_WINDOW_Y;
-            case "background" -> UIKeys.CAMERA_PANELS_SUBTITLE_BACKGROUND;
-            case "backgroundOffset" -> UIKeys.CAMERA_PANELS_SUBTITLE_BACKGROUND_OFFSET;
-            case "shadow" -> UIKeys.CAMERA_PANELS_SUBTITLE_SHADOW;
-            case "shadowOpaque" -> UIKeys.CAMERA_PANELS_SUBTITLE_OPAQUE;
-            case "lineHeight" -> UIKeys.CAMERA_PANELS_SUBTITLE_LINE_HEIGHT;
-            case "maxWidth" -> UIKeys.CAMERA_PANELS_SUBTITLE_MAX_WIDTH;
-            default -> IKey.constant(id);
-        };
-    }
-
-    @Override
-    public void applyUndoData(MapType data)
-    {
-        super.applyUndoData(data);
-
-        if (data.getString("embed").equals("subtitle_keyframes"))
-        {
-            this.editor.embedView(this.keyframes);
-            this.keyframes.view.resetView();
-        }
-    }
-
-    @Override
-    public void collectUndoData(MapType data)
-    {
-        super.collectUndoData(data);
-
-        if (this.keyframes.hasParent())
-        {
-            data.putString("embed", "subtitle_keyframes");
-        }
+        this.x.setValue(this.clip.x.get());
+        this.y.setValue(this.clip.y.get());
+        this.size.setValue(this.clip.size.get());
+        this.anchorX.setValue(this.clip.anchorX.get());
+        this.anchorY.setValue(this.clip.anchorY.get());
+        this.color.setColor(this.clip.color.get());
+        this.textShadow.setValue(this.clip.textShadow.get());
+        this.windowX.setValue(this.clip.windowX.get());
+        this.windowY.setValue(this.clip.windowY.get());
+        this.background.setColor(this.clip.background.get());
+        this.backgroundOffset.setValue(this.clip.backgroundOffset.get());
+        this.shadow.setValue(this.clip.shadow.get());
+        this.shadowOpaque.setValue(this.clip.shadowOpaque.get());
+        this.transform.setTransform(this.clip.transform.get());
+        this.lineHeight.setValue(this.clip.lineHeight.get());
+        this.maxWidth.setValue(this.clip.maxWidth.get());
     }
 }

@@ -7,7 +7,6 @@ import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.forms.MobForm;
 import mchorse.bbs_mod.forms.forms.ModelForm;
-import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.forms.renderers.ModelFormRenderer;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.UIKeys;
@@ -101,37 +100,17 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
         this.poseEditor.removeAll();
 
         boolean categoriesEnabled = BBSSettings.modelBlockCategoriesPanelEnabled != null && BBSSettings.modelBlockCategoriesPanelEnabled.get();
-        boolean pickLimbTexture = BBSSettings.pickLimbTexture != null && BBSSettings.pickLimbTexture.get();
-        UIElement textureRow;
-
-        this.poseEditor.textureBend.minW(UIPoseEditor.TEXTURE_BEND_MIN_WIDTH);
-
-        if (pickLimbTexture)
-        {
-            textureRow = UI.row(this.poseEditor.pickTexture, this.poseEditor.textureBend);
-        }
-        else
-        {
-            textureRow = this.poseEditor.pickTexture;
-        }
 
         if (this.getFlex().getW() > 240)
         {
-            UIElement left = UI.column(
-                UI.label(UIKeys.POSE_CONTEXT_FIX),
-                this.poseEditor.fix,
-                this.poseEditor.transform,
-                UI.row(this.poseEditor.color, this.poseEditor.paintColor, this.poseEditor.glowingColor),
-                this.poseEditor.paintIntensity,
-                this.poseEditor.glowIntensity,
-                this.poseEditor.lighting
-            );
+            UIElement left = UI.column(UI.label(UIKeys.POSE_CONTEXT_FIX), this.poseEditor.fix, UI.row(this.poseEditor.color, this.poseEditor.lighting), this.poseEditor.transform);
 
+            this.poseEditor.pickTexture.w(1F);
             UIElement groupsRow = categoriesEnabled ? UI.row(this.poseEditor.groups, this.poseEditor.categories) : UI.row(this.poseEditor.groups);
             UIElement right = UI.column(
                 UI.label(UIKeys.FORMS_EDITOR_BONE),
                 groupsRow,
-                textureRow
+                this.poseEditor.pickTexture
             );
 
             this.poseEditor.add(UI.row(left, right));
@@ -142,14 +121,11 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
             this.poseEditor.add(
                 UI.label(UIKeys.FORMS_EDITOR_BONE),
                 groupsRow,
-                textureRow,
+                this.poseEditor.pickTexture,
                 UI.label(UIKeys.POSE_CONTEXT_FIX),
                 this.poseEditor.fix,
-                this.poseEditor.transform,
-                UI.row(this.poseEditor.color, this.poseEditor.paintColor, this.poseEditor.glowingColor),
-                this.poseEditor.paintIntensity,
-                this.poseEditor.glowIntensity,
-                this.poseEditor.lighting
+                UI.row(this.poseEditor.color, this.poseEditor.lighting),
+                this.poseEditor.transform
             );
         }
 
@@ -212,19 +188,6 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
             ((UIPoseTransforms) this.transform).setKeyframe(this);
         }
 
-        @Override
-        protected boolean useModelGizmoDrag()
-        {
-            /* Film pose uses FilmPoseGizmoDrag axis sign correction instead of setModel(). */
-            return false;
-        }
-
-        @Override
-        protected float getGizmoTranslationScale()
-        {
-            return 2.5F;
-        }
-
         private String getGroup(PoseTransform transform)
         {
             return CollectionUtils.getKey(this.getPose().transforms, transform);
@@ -254,14 +217,7 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
         @Override
         protected UIPropTransform createTransformEditor()
         {
-            /* Same ring / translate sign tuning as UIModelPoseEditor; film drag prepare clears
-             * trackball euler flips when using the arcball sphere. */
-            return new UIPoseTransforms()
-                .enableHotkeys()
-                .translationScale(2.5F)
-                .poseModelGizmoTuning()
-                .invertModelPoseTrackballXZ()
-                .invertModelPoseTrackballDragY();
+            return new UIPoseTransforms().enableHotkeys().translationScale(16F);
         }
 
         @Override
@@ -305,60 +261,9 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
         }
 
         @Override
-        protected void setPaintColor(PoseTransform transform, int value)
-        {
-            apply(this.editor, this.keyframe, this.getGroup(transform), (poseT) ->
-            {
-                float intensity = poseT.paintColor.a;
-
-                poseT.paintColor.set(value);
-                poseT.paintColor.a = intensity;
-                poseT.shaderShadow = PaintSettings.resolveAutoShaderShadowForPoseAlpha(poseT.paintColor.a);
-            });
-        }
-
-        @Override
-        protected void setPaintIntensity(PoseTransform transform, float value)
-        {
-            apply(this.editor, this.keyframe, this.getGroup(transform), (poseT) ->
-            {
-                poseT.paintColor.a = value;
-                poseT.shaderShadow = PaintSettings.resolveAutoShaderShadowForPoseAlpha(poseT.paintColor.a);
-            });
-        }
-
-        @Override
-        protected void setGlowingColor(PoseTransform transform, int value)
-        {
-            apply(this.editor, this.keyframe, this.getGroup(transform), (poseT) ->
-            {
-                poseT.glowingColor.set(value);
-                poseT.glowingColor.a = 1F;
-            });
-        }
-
-        @Override
-        protected void setGlowIntensity(PoseTransform transform, float value)
-        {
-            apply(this.editor, this.keyframe, this.getGroup(transform), (poseT) -> poseT.glowIntensity = value);
-        }
-
-        @Override
-        protected void setGlowRadius(PoseTransform transform, float value)
-        {
-            apply(this.editor, this.keyframe, this.getGroup(transform), (poseT) -> poseT.glowRadius = value);
-        }
-
-        @Override
         protected void setLighting(PoseTransform poseTransform, boolean value)
         {
             apply(this.editor, this.keyframe, this.getGroup(poseTransform), (poseT) -> poseT.lighting = value ? 0F : 1F);
-        }
-
-        @Override
-        protected void setTextureBlend(PoseTransform transform, float value)
-        {
-            apply(this.editor, this.keyframe, this.getGroup(transform), (poseT) -> poseT.textureBlend = value);
         }
     }
 

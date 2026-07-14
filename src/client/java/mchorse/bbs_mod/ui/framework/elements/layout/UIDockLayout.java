@@ -469,9 +469,7 @@ public class UIDockLayout extends UIElement
         this.splitterHandleInfos.clear();
         EditorLayoutNode.computeSplitterHandles(root, 0F, 0F, 1F, 1F, this.splitterHandleInfos);
 
-        int handleCount = Math.min(splitters.size(), this.splitterHandleInfos.size());
-
-        for (int i = 0; i < handleCount; i++)
+        for (int i = 0; i < splitters.size(); i++)
         {
             UIDraggable handle = this.createSplitterHandle(i);
             this.splitterHandles.add(handle);

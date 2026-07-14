@@ -3,7 +3,6 @@ package mchorse.bbs_mod.cubic.model;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.cubic.MolangHelper;
-import mchorse.bbs_mod.cubic.animation.ProceduralDefaults;
 import mchorse.bbs_mod.cubic.model.loaders.BOBJModelLoader;
 import mchorse.bbs_mod.cubic.model.loaders.CubicModelLoader;
 import mchorse.bbs_mod.cubic.model.loaders.GLTFModelLoader;
@@ -13,6 +12,7 @@ import mchorse.bbs_mod.cubic.model.loaders.MiModelLoader;
 import mchorse.bbs_mod.cubic.model.loaders.VoxModelLoader;
 import mchorse.bbs_mod.data.DataToString;
 import mchorse.bbs_mod.data.types.BaseType;
+import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.math.molang.MolangParser;
 import mchorse.bbs_mod.resources.AssetProvider;
@@ -178,7 +178,6 @@ public class ModelManager implements IWatchDogListener
         {
             System.out.println("Model \"" + id + "\" was loaded!");
 
-            ProceduralDefaults.ensureForModelInstance(model, this.provider, this.parser);
             model.setup();
         }
 
@@ -276,8 +275,26 @@ public class ModelManager implements IWatchDogListener
 
         Link modelLink = Link.assets(MODELS_PREFIX + id);
         MapType baseConfig = config.copy().asMap();
+        MapType dynamicConfig = this.loadConfigFile(modelLink, DYNAMIC_CONFIG_FILE);
+
+        if (dynamicConfig == null)
+        {
+            dynamicConfig = new MapType();
+        }
+
+        if (baseConfig.has(DYNAMIC_PHYS_BONES_KEY, BaseType.TYPE_LIST))
+        {
+            dynamicConfig.put(DYNAMIC_PHYS_BONES_KEY, baseConfig.get(DYNAMIC_PHYS_BONES_KEY).copy());
+        }
+        else if (!dynamicConfig.has(DYNAMIC_PHYS_BONES_KEY, BaseType.TYPE_LIST))
+        {
+            dynamicConfig.put(DYNAMIC_PHYS_BONES_KEY, new ListType());
+        }
+
+        baseConfig.remove(DYNAMIC_PHYS_BONES_KEY);
 
         this.writeConfigIfChanged(modelLink, CONFIG_FILE, baseConfig);
+        this.writeConfigIfChanged(modelLink, DYNAMIC_CONFIG_FILE, dynamicConfig);
     }
 
     private void writeConfigIfChanged(Link modelLink, String fileName, MapType config)

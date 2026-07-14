@@ -7,7 +7,6 @@ import mchorse.bbs_mod.camera.Camera;
 import mchorse.bbs_mod.camera.OrbitCamera;
 import mchorse.bbs_mod.camera.controller.OrbitCameraController;
 import mchorse.bbs_mod.client.BBSRendering;
-import mchorse.bbs_mod.discord.DiscordPresenceManager;
 import mchorse.bbs_mod.events.register.RegisterDashboardPanelsEvent;
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.l10n.L10n;
@@ -25,7 +24,6 @@ import mchorse.bbs_mod.ui.dashboard.utils.UIGraphPanel;
 import mchorse.bbs_mod.ui.dashboard.utils.UIOrbitCamera;
 import mchorse.bbs_mod.ui.dashboard.utils.UIOrbitCameraKeys;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
-import mchorse.bbs_mod.ui.film.UIWorldFilmsBrowserPanel;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.UIRenderingContext;
 import mchorse.bbs_mod.ui.framework.elements.IUIElement;
@@ -102,22 +100,13 @@ public class UIDashboard extends UIBaseMenu
             if (this.panels.panel instanceof IFlightSupported panel)
             {
                 this.orbit.setFovRoll(panel.supportsRollFOVControl());
-                this.orbitUI.setViewportArea(panel::getFlightViewportArea);
-            }
-            else
-            {
-                this.orbitUI.setViewportArea(null);
             }
 
             this.copyCurrentEntityCamera();
             this.updateTabsBarVisibility(e.panel);
-            this.menuBar.updateForPanel(e.panel);
-            this.panels.updateTaskBarForPanel(e.panel);
-            DiscordPresenceManager.INSTANCE.updateFromMenu(this);
         });
         this.panels.relative(this.main).y(20 + UIDocumentTabsBar.HEIGHT).w(1F).h(1F, -(20 + UIDocumentTabsBar.HEIGHT));
         this.registerPanels();
-        this.panels.registerWorldFilmsButton(this);
 
         BBSMod.events.post(new RegisterDashboardPanelsEvent(this));
 
@@ -225,11 +214,6 @@ public class UIDashboard extends UIBaseMenu
     @Override
     public boolean canPause()
     {
-        if (UIWorldPropertiesOverlayPanel.isOpen())
-        {
-            return false;
-        }
-
         return this.panels.panel != null && this.panels.panel.canPause();
     }
 
@@ -257,7 +241,6 @@ public class UIDashboard extends UIBaseMenu
         BBSModClient.getCameraController().add(this.camera);
 
         this.showAnnoyingPopups();
-        UIHomePanel.onDashboardOpened(this);
         UINewsPanel.onDashboardOpened(this);
     }
 
@@ -328,7 +311,6 @@ public class UIDashboard extends UIBaseMenu
         UINewsPanel.attachIcon(newsButton);
 
         /* Editor panels — reachable only through the unified document tab bar, not via dashboard buttons */
-        this.panels.registerHiddenPanel(new UIWorldFilmsBrowserPanel(this));
         this.panels.registerHiddenPanel(new UIFilmPanel(this));
         this.panels.registerHiddenPanel(new UIModelPanel(this));
         this.panels.registerHiddenPanel(new UIParticleSchemePanel(this));

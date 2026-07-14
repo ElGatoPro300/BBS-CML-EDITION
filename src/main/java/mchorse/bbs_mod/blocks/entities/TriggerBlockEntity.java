@@ -276,22 +276,19 @@ public class TriggerBlockEntity extends BlockEntity
     public void writeNbt(NbtCompound nbt, RegistryWrapper.WrapperLookup registryLookup)
     {
         super.writeNbt(nbt, registryLookup);
-
-        /* Route every value through the null-safe helper: ValueList.toData() returns
-         * null when the list is empty (the default state of a freshly placed block),
-         * and NbtCompound.put with a null element corrupts the chunk save. */
-        DataStorageUtils.writeToNbtCompound(nbt, "Left", this.left.toData());
-        DataStorageUtils.writeToNbtCompound(nbt, "Right", this.right.toData());
-        DataStorageUtils.writeToNbtCompound(nbt, "Enter", this.enter.toData());
-        DataStorageUtils.writeToNbtCompound(nbt, "Exit", this.exit.toData());
-        DataStorageUtils.writeToNbtCompound(nbt, "WhileIn", this.whileIn.toData());
+        
+        nbt.put("Left", DataStorageUtils.toNbt(this.left.toData()));
+        nbt.put("Right", DataStorageUtils.toNbt(this.right.toData()));
+        nbt.put("Enter", DataStorageUtils.toNbt(this.enter.toData()));
+        nbt.put("Exit", DataStorageUtils.toNbt(this.exit.toData()));
+        nbt.put("WhileIn", DataStorageUtils.toNbt(this.whileIn.toData()));
         nbt.putInt("RegionDelay", this.regionDelay.get());
         nbt.putBoolean("Collidable", this.collidable.get());
         nbt.putBoolean("Region", this.region.get());
-        DataStorageUtils.writeToNbtCompound(nbt, "Pos1", this.pos1.toData());
-        DataStorageUtils.writeToNbtCompound(nbt, "Pos2", this.pos2.toData());
-        DataStorageUtils.writeToNbtCompound(nbt, "RegionOffset", this.regionOffset.toData());
-        DataStorageUtils.writeToNbtCompound(nbt, "RegionSize", this.regionSize.toData());
+        nbt.put("Pos1", DataStorageUtils.toNbt(this.pos1.toData()));
+        nbt.put("Pos2", DataStorageUtils.toNbt(this.pos2.toData()));
+        nbt.put("RegionOffset", DataStorageUtils.toNbt(this.regionOffset.toData()));
+        nbt.put("RegionSize", DataStorageUtils.toNbt(this.regionSize.toData()));
     }
 
     @Nullable
@@ -304,6 +301,6 @@ public class TriggerBlockEntity extends BlockEntity
     @Override
     public NbtCompound toInitialChunkDataNbt(RegistryWrapper.WrapperLookup registryLookup)
     {
-        return this.createNbtWithId(registryLookup);
+        return this.createNbt(registryLookup);
     }
 }

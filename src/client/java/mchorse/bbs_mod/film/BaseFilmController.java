@@ -1,9 +1,7 @@
 package mchorse.bbs_mod.film;
 
 import mchorse.bbs_mod.BBSSettings;
-import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.client.renderer.ModelBlockEntityRenderer;
-import mchorse.bbs_mod.client.renderer.MorphFireRenderer;
 import mchorse.bbs_mod.entity.ActorEntity;
 import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
@@ -13,32 +11,18 @@ import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.entities.MCEntity;
 import mchorse.bbs_mod.forms.entities.StubEntity;
 import mchorse.bbs_mod.forms.forms.Form;
-import mchorse.bbs_mod.forms.forms.MobForm;
-import mchorse.bbs_mod.forms.forms.ModelForm;
 import mchorse.bbs_mod.forms.forms.utils.Anchor;
-import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
-import mchorse.bbs_mod.forms.forms.utils.Illusion;
-import mchorse.bbs_mod.forms.forms.utils.LookAt;
-import mchorse.bbs_mod.forms.forms.utils.LookAtBone;
-import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
-import mchorse.bbs_mod.forms.forms.utils.TextureBlend;
 import mchorse.bbs_mod.forms.renderers.FormRenderType;
 import mchorse.bbs_mod.forms.renderers.FormRenderingContext;
-import mchorse.bbs_mod.forms.renderers.ModelFormRenderer;
 import mchorse.bbs_mod.forms.renderers.utils.MatrixCache;
 import mchorse.bbs_mod.forms.renderers.utils.MatrixCacheEntry;
-import mchorse.bbs_mod.forms.values.ValueIllusion;
 import mchorse.bbs_mod.graphics.Draw;
 import mchorse.bbs_mod.mixin.client.ClientPlayerEntityAccessor;
 import mchorse.bbs_mod.morphing.Morph;
-import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
-import mchorse.bbs_mod.settings.values.core.ValueColor;
-import mchorse.bbs_mod.settings.values.core.ValueTransform;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.ui.utils.Gizmo;
-import mchorse.bbs_mod.utils.AABB;
 import mchorse.bbs_mod.utils.CollectionUtils;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
@@ -49,10 +33,7 @@ import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.interps.Lerps;
 import mchorse.bbs_mod.utils.joml.Matrices;
 import mchorse.bbs_mod.utils.joml.Vectors;
-import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
-import mchorse.bbs_mod.utils.pose.Pose;
-import mchorse.bbs_mod.utils.pose.PoseTransform;
 import mchorse.bbs_mod.utils.pose.Transform;
 
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
@@ -73,36 +54,27 @@ import net.minecraft.particle.ParticleTypes;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.Direction;
 import net.minecraft.util.math.Vec3d;
-import net.minecraft.util.shape.VoxelShape;
 import net.minecraft.world.LightType;
 import net.minecraft.world.World;
 
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
-import org.joml.Vector2f;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Random;
 
 import io.netty.util.collection.IntObjectHashMap;
 import io.netty.util.collection.IntObjectMap;
 
 public abstract class BaseFilmController
 {
-    /* Temporal smoothing state for "real" illusions' ground following (entity identity + illusion index -> lift) */
-    private static final Map<Long, IllusionLift> ILLUSION_LIFTS = new HashMap<>();
-
     public final Film film;
 
     protected IntObjectMap<IEntity> entities = new IntObjectHashMap<>();
@@ -110,8 +82,6 @@ public abstract class BaseFilmController
 
     public boolean paused;
     public int exception = -1;
-
-    private List<FormRenderDepth.Occluder> currentRenderDepthOccluders = List.of();
 
     /* Rendering helpers */
 
@@ -125,12 +95,10 @@ public abstract class BaseFilmController
 
         Form form = entity.getForm();
 
-        if (form == null || !form.render.get())
+        if (form == null)
         {
             return;
         }
-
-        applyGroupPaintGlow(form, context.groupPaint, context.groupGlow);
 
         Vector3d position = Vectors.TEMP_3D.set(
             Lerps.lerp(entity.getPrevX(), entity.getX(), transition),
@@ -193,31 +161,14 @@ public abstract class BaseFilmController
             target = defaultMatrix;
         }
 
-        if (!relative)
-        {
-            applyLookAt(context, form, position, target);
-        }
-
         if (context.localGroupTransform != null)
         {
             target.mul(context.localGroupTransform);
         }
 
         BlockPos pos = BlockPos.ofFloored(position.x, position.y + 0.5D, position.z);
-        World world = entity.getWorld();
-
-        if (world == null)
-        {
-            world = MinecraftClient.getInstance().world;
-        }
-
-        if (world == null)
-        {
-            return;
-        }
-
-        int sky = world.getLightLevel(LightType.SKY, pos);
-        int torch = world.getLightLevel(LightType.BLOCK, pos);
+        int sky = entity.getWorld().getLightLevel(LightType.SKY, pos);
+        int torch = entity.getWorld().getLightLevel(LightType.BLOCK, pos);
         int light = LightmapTextureManager.pack(torch, sky);
         int overlay = OverlayTexture.packUv(OverlayTexture.getU(0F), OverlayTexture.getV(entity.getHurtTimer() > 0));
 
@@ -225,8 +176,7 @@ public abstract class BaseFilmController
             .set(FormRenderType.ENTITY, entity, stack, light, overlay, transition)
             .camera(camera)
             .stencilMap(context.map)
-            .color(context.color)
-            .renderDepthFrame(context.renderDepthFrame);
+            .color(context.color);
 
         formContext.relative = relative;
         formContext.isShadowPass = context.isShadowPass;
@@ -249,38 +199,7 @@ public abstract class BaseFilmController
         }
 
         MatrixStackUtils.multiply(stack, target);
-
-        ModelFormRenderer lookAtRenderer = relative ? null : applyLookAtPose(context, form, position);
-
-        if (context.isShadowPass)
-        {
-            PaintSettings paint = form.paintSettings.get();
-            Color legacyPaint = form.paintColor.get();
-
-            if (paint.resolveIntensity(legacyPaint) != 0F)
-            {
-                float shadowAlpha = Colors.getA(formContext.color) * paint.effectiveShaderShadow(legacyPaint);
-
-                formContext.color(Colors.setA(formContext.color, shadowAlpha));
-            }
-        }
-
         FormUtilsClient.render(form, formContext);
-
-        if (!context.isShadowPass && context.map == null && entity.getFireTicks() > 0)
-        {
-            MorphFireRenderer.render(stack, context.consumers, entity, form, transition, camera, relative);
-        }
-
-        if (context.map == null)
-        {
-            renderIllusions(context, form, formContext, stack);
-        }
-
-        if (lookAtRenderer != null)
-        {
-            lookAtRenderer.setLookAtPose(null);
-        }
 
         if (UIBaseMenu.renderAxes)
         {
@@ -304,11 +223,11 @@ public abstract class BaseFilmController
 
                     if (context.map == null)
                     {
-                        BaseFilmController.renderGizmo(stack, null);
+                        Gizmo.INSTANCE.render(stack);
                     }
                     else
                     {
-                        BaseFilmController.renderGizmo(stack, context.map);
+                        Gizmo.INSTANCE.renderStencil(stack, context.map);
                     }
 
                     RenderSystem.enableDepthTest();
@@ -321,7 +240,7 @@ public abstract class BaseFilmController
 
         stack.pop();
 
-        if (!relative && context.map == null && opacity > 0F && context.shadowRadius > 0F && form.render.get())
+        if (!relative && context.map == null && opacity > 0F && context.shadowRadius > 0F && form.visible.get())
         {
             float shadowOpacity = MathUtils.clamp(opacity * context.shadowOpacity, 0F, 1F);
 
@@ -347,793 +266,6 @@ public abstract class BaseFilmController
         }
 
         RenderSystem.enableDepthTest();
-    }
-
-    /**
-     * Renders purely visual duplicates of the form that spread away from it in the
-     * picked directions. They reuse the same form renderer (no extra entities), the
-     * gaps between them shrink with each rank, and their opacity fades with distance
-     * (optionally inverted).
-     */
-    private static void renderIllusions(FilmControllerContext context, Form form, FormRenderingContext formContext, MatrixStack stack)
-    {
-        if (context.isShadowPass)
-        {
-            return;
-        }
-
-        List<Illusion> layers = collectIllusionLayers(form);
-        boolean hasIllusions = false;
-
-        for (Illusion layer : layers)
-        {
-            if (layer != null && layer.count > 0)
-            {
-                hasIllusions = true;
-
-                break;
-            }
-        }
-
-        if (!hasIllusions)
-        {
-            return;
-        }
-
-        int baseColor = formContext.color;
-        int baseLight = formContext.light;
-        AABB hitbox = context.entity.getPickingHitbox();
-        float height = (float) hitbox.h;
-
-        for (int layer = 0; layer < layers.size(); layer++)
-        {
-            Illusion layerIllusion = layers.get(layer);
-
-            if (layerIllusion == null || layerIllusion.count <= 0)
-            {
-                continue;
-            }
-
-            Transform layerTransform = createIllusionTransform(form, layerIllusion);
-
-            renderIllusionLayer(context, form, formContext, stack, layerIllusion, layerTransform, hitbox, height, layer, baseColor, baseLight);
-        }
-
-        formContext.textureOverride = null;
-        formContext.textureBlendOverride = null;
-        formContext.color(baseColor);
-        formContext.light = baseLight;
-        form.glowSettings.setRuntimeValue(null);
-    }
-
-    private static List<Illusion> collectIllusionLayers(Form form)
-    {
-        List<Illusion> layers = new ArrayList<>();
-
-        layers.add(form.illusion.get());
-        layers.add(form.illusionOverlay.get());
-
-        for (ValueIllusion overlay : form.additionalIllusions)
-        {
-            layers.add(overlay.get());
-        }
-
-        return layers;
-    }
-
-    private static Transform createIllusionTransform(Form form, Illusion illusion)
-    {
-        Transform transform = new Transform();
-
-        transform.copy(illusion.transform);
-
-        /* Legacy form-level illusion transform tracks (deprecated, kept for old projects) */
-        applyIllusionTransformOverlay(transform, form.illusionTransform.get());
-        applyIllusionTransformOverlay(transform, form.illusionTransformOverlay.get());
-
-        for (ValueTransform overlay : form.additionalIllusionTransforms)
-        {
-            applyIllusionTransformOverlay(transform, overlay.get());
-        }
-
-        return transform;
-    }
-
-    private static void applyIllusionTransformOverlay(Transform transform, Transform overlay)
-    {
-        transform.translate.add(overlay.translate);
-        transform.scale.add(overlay.scale).sub(1F, 1F, 1F);
-        transform.rotate.add(overlay.rotate);
-        transform.rotate2.add(overlay.rotate2);
-        transform.pivot.add(overlay.pivot);
-    }
-
-    private static void renderIllusionLayer(FilmControllerContext context, Form form, FormRenderingContext formContext, MatrixStack stack, Illusion illusion, Transform illusionTransform, AABB hitbox, float height, int layerIndex, int baseColor, int baseLight)
-    {
-        List<Vector3f> directions = getIllusionDirections(illusion.directions);
-        float strength = Math.max(illusion.opacity, 0F);
-        int count = illusion.count;
-        int dirCount = directions.size();
-        int maxRank = (count + dirCount - 1) / dirCount;
-        int textureCount = illusion.textures.size();
-        boolean delayed = illusion.delay > 0F && context.replay != null && !Float.isNaN(context.propertyTick);
-        int liftKeyBase = layerIndex * 10000;
-
-        for (int i = 0; i < count; i++)
-        {
-            Vector3f dir = directions.get(i % dirCount);
-            int rank = i / dirCount + 1;
-            float distance = getIllusionDistance(illusion, hitbox, dir, rank, maxRank);
-            float fadeT = maxRank <= 0 ? 1F : (rank - 0.5F) / maxRank;
-            float alpha;
-
-            fadeT = MathUtils.clamp(fadeT, 0F, 1F);
-
-            if (illusion.opacityUniform)
-            {
-                alpha = 1F - strength;
-            }
-            else
-            {
-                alpha = illusion.invert ? 1F - strength * (1F - fadeT) : 1F - strength * fadeT;
-            }
-
-            alpha = MathUtils.clamp(alpha, 0F, 1F);
-
-            if (alpha <= 0F)
-            {
-                continue;
-            }
-
-            if (delayed)
-            {
-                float delayedTick = Math.max(context.propertyTick - illusion.delay * (i + 1), 0F);
-
-                context.replay.properties.resetProperties(form);
-                context.replay.properties.applyProperties(form, delayedTick);
-            }
-
-            float lift = 0F;
-
-            if (illusion.real && !formContext.relative)
-            {
-                lift = getIllusionLift(context.entity, dir, distance, liftKeyBase + i, formContext.transition);
-            }
-
-            Link savedTextureOverride = formContext.textureOverride;
-            TextureBlend savedTextureBlendOverride = formContext.textureBlendOverride;
-
-            if (form.illusionTextureBlend != null)
-            {
-                formContext.textureBlendOverride = form.illusionTextureBlend;
-                formContext.textureOverride = null;
-            }
-            else if (textureCount > 0)
-            {
-                int index = illusion.randomTextures
-                    ? (int) Math.floorMod((i + 1L) * 2654435761L + layerIndex, textureCount)
-                    : i % textureCount;
-
-                formContext.textureOverride = illusion.textures.get(index);
-                formContext.textureBlendOverride = null;
-            }
-
-            Transform partial = null;
-
-            if (!illusionTransform.isDefault())
-            {
-                float factor = getIllusionTransformFactor(i, count, illusion.gradual, illusion.gradualInvert);
-
-                if (factor > 0F)
-                {
-                    partial = new Transform();
-                    partial.lerp(illusionTransform, factor);
-                }
-            }
-
-            applyIllusionGlow(form, illusion, i, count);
-            float distortFactor = getIllusionDistortFactor(illusion, i, count);
-            float x = dir.x * distance;
-            float y = dir.y * distance + lift;
-            float z = dir.z * distance;
-            float mainAlpha = alpha * (1F - distortFactor);
-
-            if (mainAlpha > 0F)
-            {
-                int a = Math.round(((baseColor >>> 24) & 0xFF) * mainAlpha);
-
-                stack.push();
-                stack.translate(x, y, z);
-
-                if (partial != null)
-                {
-                    MatrixStackUtils.multiply(stack, partial.createMatrix());
-                }
-
-                formContext.color((a << 24) | (baseColor & Colors.RGB));
-                FormUtilsClient.render(form, formContext);
-                stack.pop();
-            }
-
-            if (distortFactor > 0F)
-            {
-                float streakAlpha = alpha * (1F - distortFactor);
-                int a = Math.round(((baseColor >>> 24) & 0xFF) * Math.min(streakAlpha + 0.2F * (1F - distortFactor), 1F));
-
-                renderIllusionStreaks(form, formContext, stack, x, y, z, partial, (a << 24) | (baseColor & Colors.RGB), distortFactor, liftKeyBase + i, height);
-            }
-
-            formContext.textureOverride = savedTextureOverride;
-            formContext.textureBlendOverride = savedTextureBlendOverride;
-            formContext.light = baseLight;
-            form.glowSettings.setRuntimeValue(null);
-        }
-
-        if (delayed)
-        {
-            context.replay.properties.resetProperties(form);
-            context.replay.properties.applyProperties(form, context.propertyTick);
-        }
-    }
-
-    private static float getIllusionDistance(Illusion illusion, AABB hitbox, Vector3f dir, int rank, int maxRank)
-    {
-        if (illusion.uniform)
-        {
-            /* Equal gaps between the illusions */
-            return illusion.spacing * rank + illusion.offset;
-        }
-
-        /* Gaps shrink linearly with rank: the first gap equals spread, the last one spread / maxRank */
-        return illusion.spread * (rank * maxRank - rank * (rank - 1) / 2F) / maxRank + illusion.offset;
-    }
-
-    /**
-     * Transform gradient across illusion copies. The main model stays at 0; the first
-     * illusion gets 1 / count of the transform and the last one gets the full value.
-     */
-    private static float getIllusionTransformFactor(int index, int count, boolean gradual, boolean invert)
-    {
-        if (!gradual || count <= 1)
-        {
-            return 1F;
-        }
-
-        float factor = (index + 1F) / count;
-
-        if (invert)
-        {
-            factor = (count - index) / (float) count;
-        }
-
-        return factor;
-    }
-
-    private static float getIllusionGradientWeight(int index, int count, boolean uniform, boolean invert)
-    {
-        if (uniform || count <= 1)
-        {
-            return 1F;
-        }
-
-        /* Keep both ends in range so the first and last copies always receive some effect. */
-        float weight = (count - index) / (float) count;
-
-        if (invert)
-        {
-            weight = (index + 1F) / count;
-        }
-
-        return weight;
-    }
-
-    /**
-     * Glow gradient across illusion copies. The main model stays at 0; the first
-     * illusion starts low (~1 / (count + 1)) and the last one reaches full strength.
-     */
-    private static float getIllusionGlowWeight(int index, int count, boolean uniform, boolean invert)
-    {
-        if (uniform || count <= 1)
-        {
-            return 1F;
-        }
-
-        float minWeight = 1F / count;
-        float weight = (index + 1F) / count;
-
-        if (invert)
-        {
-            weight = (count - index) / (float) count;
-        }
-
-        return minWeight + (1F - minWeight) * weight;
-    }
-
-    private static float getIllusionDistortFactor(Illusion illusion, int index, int count)
-    {
-        if (illusion.distort <= 0F)
-        {
-            return 0F;
-        }
-
-        float weight = getIllusionGradientWeight(index, count, illusion.distortUniform, illusion.distortInvert);
-
-        return MathUtils.clamp(illusion.distort * weight, 0F, 1F);
-    }
-
-    /**
-     * Applies the illusion glow through the standard glow shader path (same as the
-     * main model). Intensity ramps from the first illusion to the last by default.
-     */
-    private static void applyIllusionGlow(Form form, Illusion illusion, int index, int count)
-    {
-        if (illusion.glow == 0F)
-        {
-            return;
-        }
-
-        GlowSettings base = form.glowSettings.get();
-        GlowSettings override = base.copy();
-        float weight = getIllusionGlowWeight(index, count, illusion.glowUniform, illusion.glowInvert);
-
-        override.intensity = illusion.glow * weight;
-        form.glowSettings.setRuntimeValue(override);
-    }
-
-    /**
-     * Renders the disintegration streaks of an illusion: squashed, stretched and
-     * jittered copies of the model that look like the horizontal slices it falls
-     * apart into. The randomness is stable per illusion and re-rolls a few times a
-     * second for a glitchy feel.
-     */
-    private static void renderIllusionStreaks(Form form, FormRenderingContext formContext, MatrixStack stack, float x, float y, float z, Transform partial, int argb, float distortFactor, int index, float height)
-    {
-        if (((argb >>> 24) & 0xFF) <= 0)
-        {
-            return;
-        }
-
-        Random random = new Random(index * 49297L);
-        int streaks = 2 + Math.round(distortFactor * 5F);
-
-        formContext.color(argb);
-
-        for (int s = 0; s < streaks; s++)
-        {
-            float yPos = (0.1F + 0.8F * random.nextFloat()) * Math.max(height, 0.5F);
-            float jx = (random.nextFloat() - 0.5F) * (0.3F + distortFactor);
-            float jz = (random.nextFloat() - 0.5F) * (0.3F + distortFactor);
-            float squash = 0.03F + random.nextFloat() * 0.09F;
-            float stretch = 1F + random.nextFloat() * (0.5F + distortFactor);
-
-            stack.push();
-            stack.translate(x + jx, y + yPos * (1F - squash), z + jz);
-
-            if (partial != null)
-            {
-                MatrixStackUtils.multiply(stack, partial.createMatrix());
-            }
-
-            stack.scale(stretch, squash, stretch);
-            FormUtilsClient.render(form, formContext);
-            stack.pop();
-        }
-    }
-
-    private static List<Vector3f> getIllusionDirections(int mask)
-    {
-        List<Vector3f> directions = new ArrayList<>();
-
-        if (mask == 0)
-        {
-            mask = Illusion.FRONT | Illusion.LEFT | Illusion.RIGHT | Illusion.BACK;
-        }
-
-        if ((mask & Illusion.FRONT) != 0) directions.add(new Vector3f(0F, 0F, 1F));
-        if ((mask & Illusion.LEFT) != 0) directions.add(new Vector3f(1F, 0F, 0F));
-        if ((mask & Illusion.RIGHT) != 0) directions.add(new Vector3f(-1F, 0F, 0F));
-        if ((mask & Illusion.BACK) != 0) directions.add(new Vector3f(0F, 0F, -1F));
-        if ((mask & Illusion.UP) != 0) directions.add(new Vector3f(0F, 1F, 0F));
-        if ((mask & Illusion.DOWN) != 0) directions.add(new Vector3f(0F, -1F, 0F));
-
-        return directions;
-    }
-
-    /**
-     * How much a "real" illusion has to be moved vertically so it stands on top of
-     * the terrain at its spot (the illusion's local offset is rotated by the
-     * entity's body yaw to find its world position first). It can both climb onto
-     * blocks in its way (up to 3 blocks) and drop down when the ground is lower,
-     * and the movement is smoothed over time so it looks like a natural little hop
-     * instead of an instant snap.
-     */
-    private static float getIllusionLift(IEntity entity, Vector3f dir, float distance, int index, float transition)
-    {
-        World world = entity.getWorld();
-
-        if (world == null)
-        {
-            return 0F;
-        }
-
-        double yaw = MathUtils.toRad(Lerps.lerp(entity.getPrevBodyYaw(), entity.getBodyYaw(), transition));
-        double lx = dir.x * distance;
-        double lz = dir.z * distance;
-        double x = Lerps.lerp(entity.getPrevX(), entity.getX(), transition) + lx * Math.cos(yaw) - lz * Math.sin(yaw);
-        double y = Lerps.lerp(entity.getPrevY(), entity.getY(), transition) + dir.y * distance;
-        double z = Lerps.lerp(entity.getPrevZ(), entity.getZ(), transition) + lx * Math.sin(yaw) + lz * Math.cos(yaw);
-        float target = getIllusionGroundDelta(world, x, y, z);
-
-        long key = ((long) System.identityHashCode(entity) << 20) | (index & 0xFFFFF);
-        long now = System.currentTimeMillis();
-        IllusionLift lift = ILLUSION_LIFTS.get(key);
-
-        if (lift == null)
-        {
-            if (ILLUSION_LIFTS.size() > 16384)
-            {
-                ILLUSION_LIFTS.clear();
-            }
-
-            lift = new IllusionLift();
-            lift.value = target;
-            lift.time = now;
-            ILLUSION_LIFTS.put(key, lift);
-
-            return target;
-        }
-
-        float dt = MathUtils.clamp((now - lift.time) / 1000F, 0F, 0.25F);
-
-        lift.value = Lerps.lerp(lift.value, target, 1F - (float) Math.exp(-12F * dt));
-        lift.time = now;
-
-        return lift.value;
-    }
-
-    /**
-     * The vertical offset between the given world position and the terrain surface
-     * at that spot: positive when there are blocks in the way (climb on top of
-     * them), negative when the ground is lower (drop down onto it), 0 when there's
-     * no ground within range.
-     */
-    private static float getIllusionGroundDelta(World world, double x, double y, double z)
-    {
-        for (int i = 0; i <= 6; i++)
-        {
-            BlockPos blockPos = BlockPos.ofFloored(x, y + 3D - i, z);
-            VoxelShape shape = world.getBlockState(blockPos).getCollisionShape(world, blockPos);
-
-            if (shape.isEmpty())
-            {
-                continue;
-            }
-
-            double top = blockPos.getY() + shape.getMax(Direction.Axis.Y);
-
-            return MathUtils.clamp((float) (top - y), -3F, 3F);
-        }
-
-        return 0F;
-    }
-
-    /**
-     * Applies the translation part of the "Look at" constraint: when the translate
-     * option is enabled, the form follows the displacement of the strongest locked
-     * bone's target, scaled by that bone's lock strength.
-     */
-    private static void applyLookAt(FilmControllerContext context, Form form, Vector3d position, Matrix4f target)
-    {
-        LookAt lookAt = form.lookAt.get();
-
-        if (lookAt == null || !lookAt.translate || context.film == null)
-        {
-            return;
-        }
-
-        LookAtBone strongest = null;
-
-        for (LookAtBone bone : lookAt.bones.values())
-        {
-            if (bone.isActive() && (strongest == null || bone.blend > strongest.blend))
-            {
-                strongest = bone;
-            }
-        }
-
-        if (strongest == null)
-        {
-            return;
-        }
-
-        IEntity targetEntity = context.entities.get(strongest.replay);
-
-        if (targetEntity == null || targetEntity == context.entity)
-        {
-            return;
-        }
-
-        Replay targetReplay = CollectionUtils.getSafe(context.film.replays.getList(), strongest.replay);
-
-        if (targetReplay == null)
-        {
-            return;
-        }
-
-        float transition = context.transition;
-        float blend = MathUtils.clamp(strongest.blend, 0F, 1F);
-        float restorePropertyTick = getLookAtRestorePropertyTick(context, targetReplay, transition);
-
-        Vector3d pointNow = getLookAtTargetPoint(targetEntity, strongest.attachment, transition);
-        Vector3d pointBase = getLookAtTargetPointAtPropertyTick(targetReplay, targetEntity, strongest.attachment, 0F, transition, restorePropertyTick);
-        double dx = (pointNow.x - pointBase.x) * blend;
-        double dy = (pointNow.y - pointBase.y) * blend;
-        double dz = (pointNow.z - pointBase.z) * blend;
-
-        position.add(dx, dy, dz);
-
-        Vector3f translation = target.getTranslation(new Vector3f());
-
-        target.setTranslation(translation.x + (float) dx, translation.y + (float) dy, translation.z + (float) dz);
-    }
-
-    /**
-     * Computes the extra yaw/pitch (in the model's local space) that would make the
-     * entity fully face the look at target, or null when the direction is degenerate.
-     */
-    private static Vector2f getLookAtRotation(IEntity entity, IEntity targetEntity, String attachment, Vector3d position, float transition)
-    {
-        Vector3d targetPoint = getLookAtTargetPoint(targetEntity, attachment, transition);
-        double dirX = targetPoint.x - position.x;
-        double dirY = targetPoint.y - position.y;
-        double dirZ = targetPoint.z - position.z;
-        double horizontal = Math.sqrt(dirX * dirX + dirZ * dirZ);
-
-        if (horizontal * horizontal + dirY * dirY < 0.0001D)
-        {
-            return null;
-        }
-
-        /* Entities face (-sin(yaw), 0, cos(yaw)), and the matrix contains rotateY(-bodyYaw),
-         * so the desired matrix rotation that faces the target is atan2(dirX, dirZ) */
-        float desiredYaw = (float) Math.atan2(dirX, dirZ);
-        float currentYaw = MathUtils.toRad(-Lerps.lerp(entity.getPrevBodyYaw(), entity.getBodyYaw(), transition));
-        float deltaYaw = desiredYaw - currentYaw;
-
-        /* Wrap into -PI..PI so the blended rotation takes the shortest path */
-        deltaYaw = (float) Math.atan2(Math.sin(deltaYaw), Math.cos(deltaYaw));
-
-        float pitch = (float) Math.atan2(dirY, horizontal);
-
-        return new Vector2f(deltaYaw, pitch);
-    }
-
-    /**
-     * Property tick at which the target replay's form properties should be restored
-     * after temporarily sampling another tick for look at translate follow.
-     */
-    private static float getLookAtRestorePropertyTick(FilmControllerContext context, Replay targetReplay, float transition)
-    {
-        if (context.filmTick >= 0)
-        {
-            return targetReplay.getTick(context.filmTick) + transition;
-        }
-
-        if (targetReplay == context.replay && !Float.isNaN(context.propertyTick))
-        {
-            return context.propertyTick;
-        }
-
-        return Float.NaN;
-    }
-
-    /**
-     * Visual offset matrix for a look at target: a picked attachment bone, the form
-     * root (including transform overlays), or the anchor attachment as fallback.
-     */
-    private static Matrix4f getLookAtVisualMatrix(MatrixCache map, Form targetForm, String attachment)
-    {
-        Matrix4f visualMatrix = null;
-
-        if (attachment != null && !attachment.isEmpty())
-        {
-            MatrixCacheEntry entry = map.get(attachment.replace("#origin", ""));
-
-            if (entry != null)
-            {
-                visualMatrix = entry.origin() != null ? entry.origin() : entry.matrix();
-            }
-        }
-        else
-        {
-            MatrixCacheEntry entry = map.get("");
-
-            if (entry != null)
-            {
-                visualMatrix = entry.origin() != null ? entry.origin() : entry.matrix();
-            }
-
-            if (visualMatrix == null)
-            {
-                Anchor anchor = targetForm.anchor.get();
-
-                if (anchor != null && !anchor.attachment.isEmpty())
-                {
-                    entry = map.get(anchor.attachment.replace("#origin", ""));
-
-                    if (entry != null)
-                    {
-                        visualMatrix = entry.origin() != null ? entry.origin() : entry.matrix();
-                    }
-                }
-            }
-        }
-
-        return visualMatrix;
-    }
-
-    /**
-     * Entity matrix from replay position keyframes at the given property tick, without
-     * using the entity's live coordinates.
-     */
-    private static Matrix4f getMatrixForReplayKeyframes(Replay replay, float propertyTick, float transition)
-    {
-        double x = replay.keyframes.x.interpolate(propertyTick);
-        double y = replay.keyframes.y.interpolate(propertyTick);
-        double z = replay.keyframes.z.interpolate(propertyTick);
-        double prevX = replay.keyframes.x.interpolate(propertyTick - 1F);
-        double prevY = replay.keyframes.y.interpolate(propertyTick - 1F);
-        double prevZ = replay.keyframes.z.interpolate(propertyTick - 1F);
-        float bodyYaw = replay.keyframes.bodyYaw.interpolate(propertyTick).floatValue();
-        float prevBodyYaw = replay.keyframes.bodyYaw.interpolate(propertyTick - 1F).floatValue();
-        Matrix4f matrix = new Matrix4f();
-
-        matrix.translate(
-            (float) Lerps.lerp(prevX, x, transition),
-            (float) Lerps.lerp(prevY, y, transition),
-            (float) Lerps.lerp(prevZ, z, transition)
-        );
-        float yaw = (float) Lerps.lerpYaw(prevBodyYaw, bodyYaw, transition);
-
-        matrix.rotateY(MathUtils.toRad(-yaw));
-
-        return matrix;
-    }
-
-    /**
-     * World position of the look at target. When an attachment bone is picked, the
-     * bone's matrix is used (which reacts to the target's pose animation), otherwise
-     * the target form's full visual transform is taken into account.
-     */
-    private static Vector3d getLookAtTargetPoint(IEntity targetEntity, String attachment, float transition)
-    {
-        Matrix4f matrix = getMatrixForRenderWithRotation(targetEntity, 0D, 0D, 0D, transition);
-        Form targetForm = targetEntity.getForm();
-
-        if (targetForm != null)
-        {
-            MatrixCache map = FormUtilsClient.getRenderer(targetForm).collectMatrices(targetEntity, transition);
-            Matrix4f visualMatrix = getLookAtVisualMatrix(map, targetForm, attachment);
-
-            if (visualMatrix != null)
-            {
-                matrix.mul(visualMatrix);
-            }
-        }
-
-        Vector3f translation = matrix.getTranslation(new Vector3f());
-
-        return new Vector3d(translation);
-    }
-
-    /**
-     * Same as {@link #getLookAtTargetPoint} but samples the target replay at a specific
-     * property tick (for example tick 0 as the translate follow baseline). Restores the
-     * target form's properties afterward when {@code restorePropertyTick} is not NaN.
-     */
-    private static Vector3d getLookAtTargetPointAtPropertyTick(Replay replay, IEntity targetEntity, String attachment, float propertyTick, float transition, float restorePropertyTick)
-    {
-        Form form = targetEntity.getForm();
-        Matrix4f matrix = getMatrixForReplayKeyframes(replay, propertyTick, transition);
-
-        if (form != null)
-        {
-            replay.properties.resetProperties(form);
-            replay.properties.applyProperties(form, propertyTick);
-
-            MatrixCache map = FormUtilsClient.getRenderer(form).collectMatrices(targetEntity, transition);
-            Matrix4f visualMatrix = getLookAtVisualMatrix(map, form, attachment);
-
-            if (visualMatrix != null)
-            {
-                matrix.mul(visualMatrix);
-            }
-
-            if (!Float.isNaN(restorePropertyTick))
-            {
-                replay.properties.resetProperties(form);
-                replay.properties.applyProperties(form, restorePropertyTick);
-            }
-        }
-
-        Vector3f translation = matrix.getTranslation(new Vector3f());
-
-        return new Vector3d(translation);
-    }
-
-    /**
-     * Sets a temporary look at pose on the form's renderer. Every locked bone gets
-     * rotated toward its own target (replay and optionally attachment), scaled by
-     * its own lock strength. The returned renderer must be cleared with
-     * setLookAtPose(null) after rendering.
-     */
-    private static ModelFormRenderer applyLookAtPose(FilmControllerContext context, Form form, Vector3d position)
-    {
-        LookAt lookAt = form.lookAt.get();
-
-        if (lookAt == null || !lookAt.isActive())
-        {
-            return null;
-        }
-
-        if (!(FormUtilsClient.getRenderer(form) instanceof ModelFormRenderer renderer))
-        {
-            return null;
-        }
-
-        Pose pose = new Pose();
-
-        for (Map.Entry<String, LookAtBone> entry : lookAt.bones.entrySet())
-        {
-            LookAtBone bone = entry.getValue();
-
-            if (!bone.isActive())
-            {
-                continue;
-            }
-
-            IEntity targetEntity = context.entities.get(bone.replay);
-
-            if (targetEntity == null || targetEntity == context.entity)
-            {
-                continue;
-            }
-
-            Vector2f rotation = getLookAtRotation(context.entity, targetEntity, bone.attachment, position, context.transition);
-
-            if (rotation == null)
-            {
-                continue;
-            }
-
-            float blend = MathUtils.clamp(bone.blend, 0F, 1F);
-            PoseTransform poseTransform = pose.get(entry.getKey());
-
-            poseTransform.rotate.y = rotation.x * blend;
-            poseTransform.rotate.x = rotation.y * blend;
-        }
-
-        if (pose.isEmpty())
-        {
-            return null;
-        }
-
-        renderer.setLookAtPose(pose);
-
-        return renderer;
-    }
-
-    private static void renderGizmo(MatrixStack stack, StencilMap stencilMap)
-    {
-        if (stencilMap == null)
-        {
-            /* Visual is drawn later in the panel UI pass (Gizmo#renderInterface). */
-            Gizmo.INSTANCE.captureVisual(stack);
-        }
-        else
-        {
-            Gizmo.INSTANCE.renderStencil(stack, stencilMap);
-        }
     }
 
     private static void renderAxes(String bone, boolean local, StencilMap stencilMap, Form form, IEntity entity, float transition, MatrixStack stack)
@@ -1176,11 +308,11 @@ public abstract class BaseFilmController
 
             if (stencilMap == null)
             {
-                BaseFilmController.renderGizmo(stack, null);
+                Gizmo.INSTANCE.render(stack);
             }
             else
             {
-                BaseFilmController.renderGizmo(stack, stencilMap);
+                Gizmo.INSTANCE.renderStencil(stack, stencilMap);
             }
 
             RenderSystem.enableDepthTest();
@@ -1204,8 +336,6 @@ public abstract class BaseFilmController
         {
             Matrix4f matrix = getEntityMatrix(entities, cx, cy, cz, same ? value : value.previous, defaultMatrix, transition, i);
 
-            matrix = applyAnchorTransform(matrix, same ? value : value.previous);
-
             if (matrix != defaultMatrix)
             {
                 result.a = matrix;
@@ -1217,9 +347,6 @@ public abstract class BaseFilmController
             Matrix4f matrix = getEntityMatrix(entities, cx, cy, cz, value, defaultMatrix, transition, i);
             Matrix4f lastMatrix = getEntityMatrix(entities, cx, cy, cz, value.previous, defaultMatrix, transition, i);
 
-            matrix = applyAnchorTransform(matrix, value);
-            lastMatrix = applyAnchorTransform(lastMatrix, value.previous);
-
             result.a = value.x >= 1F ? matrix : Matrices.lerp(lastMatrix, matrix, value.x);
 
             if (value.isFadeOut()) result.b = value.x;
@@ -1228,16 +355,6 @@ public abstract class BaseFilmController
         }
 
         return result;
-    }
-
-    private static Matrix4f applyAnchorTransform(Matrix4f matrix, Anchor anchor)
-    {
-        if (matrix == null || anchor == null || anchor.transform.isDefault())
-        {
-            return matrix;
-        }
-
-        return matrix.mul(anchor.transform.createMatrix());
     }
 
     public static Matrix4f getEntityMatrix(IntObjectMap<IEntity> entities, double cameraX, double cameraY, double cameraZ, Anchor anchor, Matrix4f defaultMatrix, float transition, int i)
@@ -1331,7 +448,7 @@ public abstract class BaseFilmController
 
         Matrix4f matrix = new Matrix4f();
 
-        float bodyYaw = (float) Lerps.lerpYaw(entity.getPrevBodyYaw(), entity.getBodyYaw(), tickDelta);
+        float bodyYaw = Lerps.lerp(entity.getPrevBodyYaw(), entity.getBodyYaw(), tickDelta);
 
         matrix.translate((float) x, (float) y, (float) z);
         matrix.rotateY(MathUtils.toRad(-bodyYaw));
@@ -1415,11 +532,10 @@ public abstract class BaseFilmController
 
         for (Replay replay : this.film.replays.getList())
         {
-            MobCemPoseCapture.syncReplay(replay);
             this.replayMap.put(replay.uuid.get(), replay);
             this.replayMap.put(replay.getId(), replay);
 
-            if (this.isReplayEnabled(replay))
+            if (replay.enabled.get())
             {
                 World world = MinecraftClient.getInstance().world;
                 IEntity entity = new StubEntity(world);
@@ -1458,35 +574,11 @@ public abstract class BaseFilmController
 
     protected void updateEntities(int ticks)
     {
-        List<Replay> replays = this.film.replays.getList();
-
-        MorphMountSync.assignMountTargets(this.entities, replays, ticks);
-
         for (Map.Entry<Integer, IEntity> entry : this.entities.entrySet())
         {
             int i = entry.getKey();
             IEntity entity = entry.getValue();
-            Replay replay = CollectionUtils.getSafe(replays, i);
-
-            if (!this.canUpdate(i, replay, entity, UpdateMode.UPDATE))
-            {
-                continue;
-            }
-
-            if (replay != null)
-            {
-                int replayTick = replay.getTick(ticks);
-
-                this.applyReplay(replay, replayTick, entity);
-            }
-        }
-
-        MorphMountSync.syncMountedState(this.entities, replays, ticks);
-
-        for (Map.Entry<Integer, IEntity> entry : this.entities.entrySet())
-        {
-            int i = entry.getKey();
-            IEntity entity = entry.getValue();
+            List<Replay> replays = this.film.replays.getList();
             Replay replay = CollectionUtils.getSafe(replays, i);
 
             if (!this.canUpdate(i, replay, entity, UpdateMode.UPDATE))
@@ -1499,9 +591,9 @@ public abstract class BaseFilmController
                 int replayTick = replay.getTick(ticks);
 
                 this.updateEntityAndForm(entity, replayTick);
+                this.applyReplay(replay, replayTick, entity);
 
                 boolean spawned = false;
-                boolean mounted = entity.getMountTarget() != null;
 
                 Map<String, Integer> actors = this.getActors();
 
@@ -1515,41 +607,33 @@ public abstract class BaseFilmController
 
                         if (anEntity instanceof ActorEntity actor)
                         {
-                            /* IEntity already has mount rotation applied by MorphMountSync */
-                            actor.setYaw(entity.getYaw());
-                            actor.setHeadYaw(entity.getHeadYaw());
-                            actor.setBodyYaw(entity.getBodyYaw());
-                            actor.setPitch(entity.getPitch());
+                            /* Force synchronize entity angles */
+                            actor.setYaw(replay.keyframes.yaw.interpolate(replayTick).floatValue());
+                            actor.setHeadYaw(replay.keyframes.headYaw.interpolate(replayTick).floatValue());
+                            actor.setBodyYaw(replay.keyframes.bodyYaw.interpolate(replayTick).floatValue());
+                            actor.setPitch(replay.keyframes.pitch.interpolate(replayTick).floatValue());
                             replay.applyClientActions(replayTick, new MCEntity(anEntity), this.film);
 
                             spawned = true;
                         }
                         else if (anEntity instanceof PlayerEntity player)
                         {
-                            if (!mounted)
-                            {
-                                double x = replay.keyframes.x.interpolate(replayTick);
-                                double y = replay.keyframes.y.interpolate(replayTick);
-                                double z = replay.keyframes.z.interpolate(replayTick);
-                                double prevX = replay.keyframes.x.interpolate(replayTick - 1);
-                                double prevY = replay.keyframes.y.interpolate(replayTick - 1);
-                                double prevZ = replay.keyframes.z.interpolate(replayTick - 1);
+                            double x = replay.keyframes.x.interpolate(replayTick);
+                            double y = replay.keyframes.y.interpolate(replayTick);
+                            double z = replay.keyframes.z.interpolate(replayTick);
+                            double prevX = replay.keyframes.x.interpolate(replayTick - 1);
+                            double prevY = replay.keyframes.y.interpolate(replayTick - 1);
+                            double prevZ = replay.keyframes.z.interpolate(replayTick - 1);
 
-                                player.setVelocity(x - prevX, y - prevY, z - prevZ);
+                            player.setVelocity(x - prevX, y - prevY, z - prevZ);
 
-                                this.spawnSprintParticles(replay, replayTick, player);
-                            }
-                            else
-                            {
-                                player.setVelocity(0D, 0D, 0D);
-                            }
-
+                            this.spawnSprintParticles(replay, replayTick, player);
                             spawned = true;
                         }
                     }
                 }
 
-                if (!spawned && !mounted)
+                if (!spawned)
                 {
                     World world = MinecraftClient.getInstance().world;
                     Form form = replay.form.get();
@@ -1768,13 +852,8 @@ public abstract class BaseFilmController
         );
     }
 
-    public boolean isReplayVisible(Replay replay, int ticks)
+    private boolean isReplayVisible(Replay replay, int ticks)
     {
-        if (!this.isReplayEnabled(replay))
-        {
-            return false;
-        }
-
         if (!this.isReplayVisibleAt(replay, ticks))
         {
             return false;
@@ -1790,11 +869,6 @@ public abstract class BaseFilmController
 
                 if (groupReplay != null)
                 {
-                    if (!this.isReplayEnabled(groupReplay))
-                    {
-                        return false;
-                    }
-
                     int groupTick = groupReplay.getTick(this.getTick());
 
                     if (!this.isReplayVisibleAt(groupReplay, groupTick))
@@ -1808,55 +882,16 @@ public abstract class BaseFilmController
         return true;
     }
 
-    private boolean isReplayEnabled(Replay replay)
+    private boolean isReplayVisibleAt(Replay replay, float tick)
     {
-        if (replay == null || !replay.enabled.get())
-        {
-            return false;
-        }
+        BaseValue visibleValue = replay.properties.get("visible");
 
-        if (!replay.group.get().isEmpty())
-        {
-            String[] groups = replay.group.get().split("/");
-
-            for (String uuid : groups)
-            {
-                Replay groupReplay = this.replayMap.get(uuid);
-
-                if (groupReplay != null && !groupReplay.enabled.get())
-                {
-                    return false;
-                }
-            }
-        }
-
-        return true;
-    }
-
-    protected boolean isReplayVisibleAt(Replay replay, float tick)
-    {
-        BaseValue renderValue = replay.properties.get("render");
-
-        if (renderValue instanceof KeyframeChannel)
+        if (visibleValue instanceof KeyframeChannel)
         {
             @SuppressWarnings("unchecked")
-            KeyframeChannel<Boolean> render = (KeyframeChannel<Boolean>) renderValue;
+            KeyframeChannel<Boolean> visible = (KeyframeChannel<Boolean>) visibleValue;
 
-            if (render.isEmpty())
-            {
-                return true;
-            }
-
-            Keyframe<Boolean> first = render.get(0);
-
-            if (first != null && tick < first.getTick())
-            {
-                return true;
-            }
-
-            Boolean value = render.interpolate(tick, true);
-
-            return value == null || value;
+            return visible.isEmpty() || visible.interpolate(tick);
         }
 
         return true;
@@ -1883,11 +918,6 @@ public abstract class BaseFilmController
             Form form1 = entity.getForm();
             replay.properties.resetProperties(form1);
             replay.properties.applyProperties(form1, tick + delta);
-
-            if (MobCemPoseCapture.isActive(replay))
-            {
-                MobCemPoseCapture.applyPlaybackPose(replay, form1, entity, tick + delta);
-            }
 
             Map<String, Integer> actors = this.getActors();
 
@@ -1953,36 +983,7 @@ public abstract class BaseFilmController
     {
         RenderSystem.enableDepthTest();
 
-        /* Render depth layers: lower depth draws first; within the same depth, farther
-         * entities draw first so transparency composites correctly. Semi-transparent
-         * forms in front fade out entities behind them whose render depth is lower
-         * than the frontmost transparent occluder's depth; equal or higher depths stay
-         * fully visible through that layer. */
-        List<Map.Entry<Integer, IEntity>> sorted = new ArrayList<>(this.entities.entrySet());
-        Camera camera = context.camera();
-        float transition = context.tickCounter().getTickDelta(false);
-
-        sorted.sort(Comparator
-            .comparingDouble(this::getEntityRenderDepth)
-            .thenComparing((Map.Entry<Integer, IEntity> a, Map.Entry<Integer, IEntity> b) ->
-                Double.compare(
-                    this.getEntityCameraDistanceSq(b.getValue(), camera, transition),
-                    this.getEntityCameraDistanceSq(a.getValue(), camera, transition)
-                )
-            )
-            .thenComparing(Map.Entry::getKey)
-        );
-
-        List<FormRenderDepth.Occluder> renderDepthOccluders = FormRenderDepth.collectOccluders(this.entities, camera, transition, (index) ->
-        {
-            Replay replay = CollectionUtils.getSafe(this.film.replays.getList(), index);
-
-            return replay == null ? null : replay.form.get();
-        });
-
-        this.currentRenderDepthOccluders = renderDepthOccluders;
-
-        for (Map.Entry<Integer, IEntity> entry : sorted)
+        for (Map.Entry<Integer, IEntity> entry : this.entities.entrySet())
         {
             int i = entry.getKey();
             IEntity entity = entry.getValue();
@@ -1993,151 +994,23 @@ public abstract class BaseFilmController
                 continue;
             }
 
-            this.renderEntity(context, replay, entity, i);
+            this.renderEntity(context, replay, entity);
         }
-
-        this.currentRenderDepthOccluders = List.of();
     }
 
-    /**
-     * Effective render depth used for draw-order sorting. The animated value comes from the
-     * entity's form (keyframes are applied to it in {@link #startRenderFrame(float)}), while
-     * the on/off toggle is read from the replay's source form so flipping it in the editor
-     * takes effect immediately without recreating entities.
-     */
-    private double getEntityRenderDepth(Map.Entry<Integer, IEntity> entry)
-    {
-        Double depth = this.getEnabledRenderDepth(entry.getKey(), entry.getValue());
-
-        return depth == null ? 0D : depth;
-    }
-
-    /** Render depth of an entity, or null when its form is missing or the feature is toggled off. */
-    private Double getEnabledRenderDepth(int index, IEntity entity)
-    {
-        Form form = entity.getForm();
-
-        if (form == null)
-        {
-            return null;
-        }
-
-        Replay replay = CollectionUtils.getSafe(this.film.replays.getList(), index);
-        Form sourceForm = replay == null ? null : replay.form.get();
-        boolean enabled = sourceForm != null ? sourceForm.renderDepthEnabled.get() : form.renderDepthEnabled.get();
-
-        return enabled ? (double) form.renderDepth.get() : null;
-    }
-
-    /**
-     * Fade factor (0..1) for render-depth layering. When a semi-transparent form with
-     * render depth D is in front of this entity, entities with depth &lt; D fade out
-     * completely; entities with depth &gt;= D stay fully visible through that layer.
-     */
-    protected float getRenderDepthFade(int index, IEntity entity, Camera camera, float transition)
-    {
-        Double depth = this.getEnabledRenderDepth(index, entity);
-
-        if (depth == null)
-        {
-            return 1F;
-        }
-
-        double entityDistanceSq = this.getEntityCameraDistanceSq(entity, camera, transition);
-        Double maxFrontTransparentDepth = null;
-
-        for (Map.Entry<Integer, IEntity> entry : this.entities.entrySet())
-        {
-            if (entry.getKey() == index)
-            {
-                continue;
-            }
-
-            IEntity other = entry.getValue();
-
-            if (other == null || other.getForm() == null || !this.isSemiTransparent(other.getForm()))
-            {
-                continue;
-            }
-
-            if (this.getEntityCameraDistanceSq(other, camera, transition) >= entityDistanceSq - 0.0001D)
-            {
-                continue;
-            }
-
-            Double otherDepth = this.getEnabledRenderDepth(entry.getKey(), other);
-
-            if (otherDepth == null)
-            {
-                continue;
-            }
-
-            if (maxFrontTransparentDepth == null || otherDepth > maxFrontTransparentDepth)
-            {
-                maxFrontTransparentDepth = otherDepth;
-            }
-        }
-
-        if (maxFrontTransparentDepth == null || depth >= maxFrontTransparentDepth)
-        {
-            return 1F;
-        }
-
-        return 0F;
-    }
-
-    private double getEntityCameraDistanceSq(IEntity entity, Camera camera, float transition)
-    {
-        double x = Lerps.lerp(entity.getPrevX(), entity.getX(), transition);
-        double y = Lerps.lerp(entity.getPrevY(), entity.getY(), transition);
-        double z = Lerps.lerp(entity.getPrevZ(), entity.getZ(), transition);
-        double dx = x - camera.getPos().x;
-        double dy = y - camera.getPos().y;
-        double dz = z - camera.getPos().z;
-
-        return dx * dx + dy * dy + dz * dz;
-    }
-
-    private boolean isSemiTransparent(Form form)
-    {
-        if (form == null)
-        {
-            return false;
-        }
-
-        BaseValue colorValue = form.get("color");
-
-        if (colorValue instanceof ValueColor valueColor)
-        {
-            return valueColor.get().a < 0.999F;
-        }
-
-        return false;
-    }
-
-    protected void renderEntity(WorldRenderContext context, Replay replay, IEntity entity, int index)
+    protected void renderEntity(WorldRenderContext context, Replay replay, IEntity entity)
     {
         if (!replay.actor.get())
         {
-            int replayTick = replay.getTick(this.getTick());
-
-            if (!this.isReplayVisible(replay, replayTick))
-            {
-                return;
-            }
-
             FilmControllerContext filmContext = getFilmControllerContext(context, replay, entity);
-            FormRenderDepth.Frame renderDepthFrame = new FormRenderDepth.Frame(this.currentRenderDepthOccluders, replay.form.get());
 
             filmContext.transition = getTransition(entity, context.tickCounter().getTickDelta(false));
-            filmContext.renderDepthFrame(renderDepthFrame);
 
             filmContext.stack.push();
 
             if (!this.applyGroupProperties(replay, filmContext))
             {
                 filmContext.stack.pop();
-
                 return;
             }
 
@@ -2171,8 +1044,6 @@ public abstract class BaseFilmController
         int finalColor = Colors.WHITE;
         Matrix4f globalTranslate = new Matrix4f().identity();
         Matrix4f localTransform = new Matrix4f().identity();
-        PaintSettings groupPaint = null;
-        GlowSettings groupGlow = null;
 
         for (String uuid : groups)
         {
@@ -2180,16 +1051,18 @@ public abstract class BaseFilmController
 
             if (groupReplay != null)
             {
-                if (!groupReplay.enabled.get())
-                {
-                    return false;
-                }
-
                 double tick = groupReplay.getTick(this.getTick()) + context.transition;
 
-                if (!this.isReplayVisibleAt(groupReplay, (float) tick))
+                BaseValue visibleValue = groupReplay.properties.get("visible");
+
+                if (visibleValue instanceof KeyframeChannel)
                 {
-                    return false;
+                    KeyframeChannel<Boolean> visible = (KeyframeChannel<Boolean>) visibleValue;
+
+                    if (!visible.isEmpty() && !visible.interpolate((float) tick))
+                    {
+                        return false;
+                    }
                 }
 
                 BaseValue colorValue = groupReplay.properties.get("color");
@@ -2205,47 +1078,40 @@ public abstract class BaseFilmController
                     }
                 }
 
-                Transform groupTransform = this.getGroupTransform(groupReplay, (float) tick);
+                BaseValue transformValue = groupReplay.properties.get("transform");
 
-                if (!groupTransform.isDefault())
+                if (transformValue instanceof KeyframeChannel)
                 {
-                    globalTranslate.translate(groupTransform.translate.x, groupTransform.translate.y, groupTransform.translate.z);
+                    KeyframeChannel<Transform> transform = (KeyframeChannel<Transform>) transformValue;
 
-                    Matrix4f local = new Matrix4f();
-
-                    if (groupTransform.pivot.x != 0F || groupTransform.pivot.y != 0F || groupTransform.pivot.z != 0F)
+                    if (!transform.isEmpty())
                     {
-                        local.translate(groupTransform.pivot);
+                        Transform t = transform.interpolate((float) tick);
+                        
+                        globalTranslate.translate(t.translate.x, t.translate.y, t.translate.z);
+                        
+                        Matrix4f local = new Matrix4f();
+                        
+                        if (t.pivot.x != 0F || t.pivot.y != 0F || t.pivot.z != 0F)
+                        {
+                            local.translate(t.pivot);
+                        }
+                        
+                        local.rotateZ(t.rotate.z);
+                        local.rotateY(t.rotate.y);
+                        local.rotateX(t.rotate.x);
+                        local.rotateZ(t.rotate2.z);
+                        local.rotateY(t.rotate2.y);
+                        local.rotateX(t.rotate2.x);
+                        local.scale(t.scale);
+                        
+                        if (t.pivot.x != 0F || t.pivot.y != 0F || t.pivot.z != 0F)
+                        {
+                            local.translate(-t.pivot.x, -t.pivot.y, -t.pivot.z);
+                        }
+                        
+                        localTransform.mul(local);
                     }
-
-                    local.rotateZ(groupTransform.rotate.z);
-                    local.rotateY(groupTransform.rotate.y);
-                    local.rotateX(groupTransform.rotate.x);
-                    local.rotateZ(groupTransform.rotate2.z);
-                    local.rotateY(groupTransform.rotate2.y);
-                    local.rotateX(groupTransform.rotate2.x);
-                    local.scale(groupTransform.scale);
-
-                    if (groupTransform.pivot.x != 0F || groupTransform.pivot.y != 0F || groupTransform.pivot.z != 0F)
-                    {
-                        local.translate(-groupTransform.pivot.x, -groupTransform.pivot.y, -groupTransform.pivot.z);
-                    }
-
-                    localTransform.mul(local);
-                }
-
-                PaintSettings paint = this.getGroupPaintSettings(groupReplay, (float) tick);
-
-                if (paint != null)
-                {
-                    groupPaint = groupPaint == null ? paint : this.mergePaintSettings(groupPaint, paint);
-                }
-
-                GlowSettings glow = this.getGroupGlowSettings(groupReplay, (float) tick);
-
-                if (glow != null)
-                {
-                    groupGlow = groupGlow == null ? glow : this.mergeGlowSettings(groupGlow, glow);
                 }
             }
         }
@@ -2259,163 +1125,13 @@ public abstract class BaseFilmController
         {
             context.stack.peek().getPositionMatrix().mul(globalTranslate);
         }
-
+        
         if (!localTransform.equals(new Matrix4f().identity()))
         {
             context.localGroupTransform = localTransform;
         }
 
-        context.groupPaint = groupPaint;
-        context.groupGlow = groupGlow;
-
         return true;
-    }
-
-    private Transform getGroupTransform(Replay groupReplay, float tick)
-    {
-        Transform transform = new Transform();
-
-        BaseValue transformValue = groupReplay.properties.get("transform");
-
-        if (transformValue instanceof KeyframeChannel)
-        {
-            KeyframeChannel<Transform> channel = (KeyframeChannel<Transform>) transformValue;
-
-            if (!channel.isEmpty())
-            {
-                transform.copy(channel.interpolate(tick));
-            }
-        }
-
-        this.applyGroupTransformOverlay(transform, groupReplay, "transform_overlay", tick);
-
-        for (int i = 0; i < BBSSettings.recordingPoseTransformOverlays.get(); i++)
-        {
-            this.applyGroupTransformOverlay(transform, groupReplay, "transform_overlay" + i, tick);
-        }
-
-        return transform;
-    }
-
-    private void applyGroupTransformOverlay(Transform transform, Replay groupReplay, String key, float tick)
-    {
-        BaseValue overlayValue = groupReplay.properties.get(key);
-
-        if (overlayValue instanceof KeyframeChannel)
-        {
-            KeyframeChannel<Transform> channel = (KeyframeChannel<Transform>) overlayValue;
-
-            if (!channel.isEmpty())
-            {
-                Transform overlay = channel.interpolate(tick);
-
-                transform.translate.add(overlay.translate);
-                transform.scale.add(overlay.scale).sub(1F, 1F, 1F);
-                transform.rotate.add(overlay.rotate);
-                transform.rotate2.add(overlay.rotate2);
-                transform.pivot.add(overlay.pivot);
-            }
-        }
-    }
-
-    private PaintSettings getGroupPaintSettings(Replay groupReplay, float tick)
-    {
-        BaseValue paintValue = groupReplay.properties.get("paint");
-
-        if (paintValue instanceof KeyframeChannel)
-        {
-            KeyframeChannel<PaintSettings> channel = (KeyframeChannel<PaintSettings>) paintValue;
-
-            if (!channel.isEmpty())
-            {
-                PaintSettings settings = channel.interpolate(tick);
-
-                return settings == null ? null : settings.copy();
-            }
-        }
-
-        return null;
-    }
-
-    private GlowSettings getGroupGlowSettings(Replay groupReplay, float tick)
-    {
-        BaseValue glowValue = groupReplay.properties.get("glow");
-
-        if (glowValue instanceof KeyframeChannel)
-        {
-            KeyframeChannel<GlowSettings> channel = (KeyframeChannel<GlowSettings>) glowValue;
-
-            if (!channel.isEmpty())
-            {
-                GlowSettings settings = channel.interpolate(tick);
-
-                return settings == null ? null : settings.copy();
-            }
-        }
-
-        return null;
-    }
-
-    private PaintSettings mergePaintSettings(PaintSettings base, PaintSettings overlay)
-    {
-        PaintSettings merged = base.copy();
-
-        merged.r *= overlay.r;
-        merged.g *= overlay.g;
-        merged.b *= overlay.b;
-        merged.intensity += overlay.intensity;
-        merged.sync = merged.sync || overlay.sync;
-        merged.shaderShadow = PaintSettings.resolveAutoShaderShadow(merged.intensity);
-
-        return merged;
-    }
-
-    private GlowSettings mergeGlowSettings(GlowSettings base, GlowSettings overlay)
-    {
-        GlowSettings merged = base.copy();
-
-        merged.r *= overlay.r;
-        merged.g *= overlay.g;
-        merged.b *= overlay.b;
-        merged.intensity += overlay.intensity;
-        merged.sync = merged.sync || overlay.sync;
-        merged.radius = Math.max(merged.radius, overlay.radius);
-        merged.width = Math.max(merged.width, overlay.width);
-        merged.height = Math.max(merged.height, overlay.height);
-
-        return merged;
-    }
-
-    private static void applyGroupPaintGlow(Form form, PaintSettings groupPaint, GlowSettings groupGlow)
-    {
-        if (groupPaint != null)
-        {
-            PaintSettings current = form.paintSettings.get().copy();
-
-            current.r *= groupPaint.r;
-            current.g *= groupPaint.g;
-            current.b *= groupPaint.b;
-            current.intensity += groupPaint.intensity;
-            current.sync = current.sync || groupPaint.sync;
-            current.shaderShadow = PaintSettings.resolveAutoShaderShadow(current.intensity);
-            form.paintSettings.setRuntimeValue(current);
-            form.shaderShadow.setRuntimeValue(current.intensity != 0F);
-        }
-
-        if (groupGlow != null)
-        {
-            GlowSettings current = form.glowSettings.get().copy();
-
-            current.r *= groupGlow.r;
-            current.g *= groupGlow.g;
-            current.b *= groupGlow.b;
-            current.intensity += groupGlow.intensity;
-            current.sync = current.sync || groupGlow.sync;
-            current.radius = Math.max(current.radius, groupGlow.radius);
-            current.width = Math.max(current.width, groupGlow.width);
-            current.height = Math.max(current.height, groupGlow.height);
-            form.glowSettings.setRuntimeValue(current);
-        }
     }
 
     private int mulColors(int c1, int c2)
@@ -2460,9 +1176,6 @@ public abstract class BaseFilmController
 
         return FilmControllerContext.instance
             .setup(this.entities, entity, replay, context)
-            .film(this.film)
-            .propertyTick(tick)
-            .filmTick(this.getTick())
             .shadow(replay.shadow.get(), shadowSize, shadowOpacity)
             .nameTag(replay.nameTag.get())
             .relative(replay.relative.get());
@@ -2474,11 +1187,5 @@ public abstract class BaseFilmController
     public static enum UpdateMode
     {
         UPDATE, RENDER, PROPERTIES;
-    }
-
-    private static class IllusionLift
-    {
-        public float value;
-        public long time;
     }
 }

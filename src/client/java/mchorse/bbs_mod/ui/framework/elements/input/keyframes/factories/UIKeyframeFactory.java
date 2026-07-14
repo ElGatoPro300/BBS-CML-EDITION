@@ -47,9 +47,6 @@ public abstract class UIKeyframeFactory <T> extends UIElement
     static
     {
         register(KeyframeFactories.ANCHOR, UIAnchorKeyframeFactory::new);
-        register(KeyframeFactories.MOUNT_LINK, UIMountLinkKeyframeFactory::new);
-        register(KeyframeFactories.LOOK_AT, UILookAtKeyframeFactory::new);
-        register(KeyframeFactories.ILLUSION, UIIllusionKeyframeFactory::new);
         register(KeyframeFactories.BOOLEAN, UIBooleanKeyframeFactory::new);
         register(KeyframeFactories.COLOR, UIColorKeyframeFactory::new);
         register(KeyframeFactories.FLOAT, UIFloatKeyframeFactory::new);
@@ -66,8 +63,6 @@ public abstract class UIKeyframeFactory <T> extends UIElement
         register(KeyframeFactories.SHAPE_KEYS, UIShapeKeysKeyframeFactory::new);
         register(KeyframeFactories.PARTICLE_SETTINGS, UIParticleSettingsKeyframeFactory::new);
         register(KeyframeFactories.STRUCTURE_LIGHT_SETTINGS, UIStructureLightSettingsKeyframeFactory::new);
-        register(KeyframeFactories.GLOW_SETTINGS, UIGlowSettingsKeyframeFactory::new);
-        register(KeyframeFactories.PAINT_SETTINGS, UIPaintSettingsKeyframeFactory::new);
         register(KeyframeFactories.CHROMA_SKY_SETTINGS, UIChromaSkyCurveSettingsKeyframeFactory::new);
     }
 
@@ -86,48 +81,6 @@ public abstract class UIKeyframeFactory <T> extends UIElement
 
     public static <T> UIKeyframeFactory createPanel(Keyframe<T> keyframe, UIKeyframes editor)
     {
-        if (keyframe.getFactory() == KeyframeFactories.BOOLEAN && editor != null)
-        {
-            UIKeyframeSheet sheet = editor.getGraph().getSheet(keyframe);
-
-            if (sheet != null && "visible".equals(sheet.id))
-            {
-                @SuppressWarnings("unchecked")
-                Keyframe<Boolean> booleanKeyframe = (Keyframe<Boolean>) keyframe;
-
-                return new UIVisibleKeyframeFactory(booleanKeyframe, editor);
-            }
-
-            if (sheet != null && "render".equals(sheet.id))
-            {
-                @SuppressWarnings("unchecked")
-                Keyframe<Boolean> booleanKeyframe = (Keyframe<Boolean>) keyframe;
-
-                return new UIRenderKeyframeFactory(booleanKeyframe, editor);
-            }
-        }
-
-        if (keyframe.getFactory() == KeyframeFactories.DOUBLE && editor != null)
-        {
-            UIKeyframeSheet sheet = editor.getGraph().getSheet(keyframe);
-
-            if (sheet != null && "particles".equals(sheet.id))
-            {
-                @SuppressWarnings("unchecked")
-                Keyframe<Double> doubleKeyframe = (Keyframe<Double>) keyframe;
-
-                return new UIParticlesKeyframeFactory(doubleKeyframe, editor);
-            }
-
-            if (sheet != null && ("using_item".equals(sheet.id) || sheet.id.endsWith("/using_item")))
-            {
-                @SuppressWarnings("unchecked")
-                Keyframe<Double> doubleKeyframe = (Keyframe<Double>) keyframe;
-
-                return new UIUsingItemKeyframeFactory(doubleKeyframe, editor);
-            }
-        }
-
         IUIKeyframeFactoryFactory<T> factory = FACTORIES.get(keyframe.getFactory());
         UIKeyframeFactory uiEditor = factory == null ? null : factory.create(keyframe, editor);
 
@@ -168,8 +121,7 @@ public abstract class UIKeyframeFactory <T> extends UIElement
         {
             for (UIKeyframeSheet sheet : this.editor.getGraph().getSheets())
             {
-                /* RGB picker has no alpha channel; force opaque so the keyframe stops provisional blinking. */
-                for (Keyframe kf : sheet.selection.getSelected()) kf.setColor(new Color().set(c, false));
+                for (Keyframe kf : sheet.selection.getSelected()) kf.setColor(new Color().set(c));
             }
         });
         this.color.setColor(keyframe.getColor() == null ? 0 : keyframe.getColor().getRGBColor());

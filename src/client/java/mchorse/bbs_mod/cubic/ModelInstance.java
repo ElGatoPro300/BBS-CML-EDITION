@@ -2,14 +2,15 @@ package mchorse.bbs_mod.cubic;
 
 import mchorse.bbs_mod.bobj.BOBJBone;
 import mchorse.bbs_mod.cubic.animation.ActionsConfig;
-import mchorse.bbs_mod.cubic.animation.ProceduralDefaults;
 import mchorse.bbs_mod.cubic.data.animation.Animations;
 import mchorse.bbs_mod.cubic.data.model.Model;
 import mchorse.bbs_mod.cubic.data.model.ModelGroup;
 import mchorse.bbs_mod.cubic.model.ArmorSlot;
 import mchorse.bbs_mod.cubic.model.ArmorType;
+import mchorse.bbs_mod.cubic.model.IKChainConfig;
 import mchorse.bbs_mod.cubic.model.View;
 import mchorse.bbs_mod.cubic.model.bobj.BOBJModel;
+import mchorse.bbs_mod.cubic.physics.PhysBoneDefinition;
 import mchorse.bbs_mod.cubic.render.CubicCubeRenderer;
 import mchorse.bbs_mod.cubic.render.CubicMatrixRenderer;
 import mchorse.bbs_mod.cubic.render.CubicRenderer;
@@ -21,7 +22,6 @@ import mchorse.bbs_mod.data.DataStorageUtils;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
-import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.forms.ModelForm;
 import mchorse.bbs_mod.forms.renderers.utils.MatrixCache;
 import mchorse.bbs_mod.obj.shapes.ShapeKeys;
@@ -75,14 +75,12 @@ public class ModelInstance implements IModelInstance
     public Vector3f scale = new Vector3f(1F);
     public float uiScale = 1F;
     public Pose sneakingPose = new Pose();
-    public Pose ridingPose = new Pose();
     public Pose parts = new Pose();
 
     public List<ArmorSlot> itemsMain = new ArrayList<>();
     public List<ArmorSlot> itemsOff = new ArrayList<>();
-    public MapType limbConstraints;
-    public MapType springChains;
-    public MapType jointLimits;
+    public List<PhysBoneDefinition> physBones = new ArrayList<>();
+    public List<IKChainConfig> ikChains = new ArrayList<>();
     public Map<String, String> flippedParts = new HashMap<>();
     public Map<ArmorType, ArmorSlot> armorSlots = new HashMap<>();
 
@@ -92,12 +90,6 @@ public class ModelInstance implements IModelInstance
     public ArmorSlot itemsMainTransform = new ArmorSlot("items_main_transform");
     public ArmorSlot itemsOffTransform = new ArmorSlot("items_off_transform");
     public ActionsConfig actions = new ActionsConfig();
-
-    /** Owning form at render time; set by the form renderer each frame. */
-    public transient Form form;
-
-    /** World/model base transform from the last non-UI render pass (used by physics). */
-    public transient Matrix4f lastBaseTransform;
 
     private Map<ModelGroup, ModelVAO> vaos = new HashMap<>();
 
@@ -124,12 +116,6 @@ public class ModelInstance implements IModelInstance
     }
 
     @Override
-    public Pose getRidingPose()
-    {
-        return this.ridingPose;
-    }
-
-    @Override
     public Animations getAnimations()
     {
         return this.animations;
@@ -139,6 +125,12 @@ public class ModelInstance implements IModelInstance
     public String getHeadBone()
     {
         return this.view == null ? "head" : this.view.headBone;
+    }
+
+    @Override
+    public List<PhysBoneDefinition> getPhysBones()
+    {
+        return this.physBones;
     }
 
     public Map<ModelGroup, ModelVAO> getVaos()
@@ -193,6 +185,25 @@ public class ModelInstance implements IModelInstance
                 this.itemsMain.add(slot);
             }
         }
+        if (config.has("phys_bones", BaseType.TYPE_LIST))
+        {
+            this.physBones.clear();
+
+            ListType list = config.get("phys_bones").asList();
+
+            for (BaseType type : list)
+            {
+                if (!type.isMap())
+                {
+                    continue;
+                }
+
+                PhysBoneDefinition definition = new PhysBoneDefinition();
+
+                definition.fromData(type.asMap());
+                this.physBones.add(definition);
+            }
+        }
         if (config.has("items_off"))
         {
             this.itemsOff.clear();
@@ -213,11 +224,6 @@ public class ModelInstance implements IModelInstance
         {
             this.sneakingPose = new Pose();
             this.sneakingPose.fromData(config.getMap("sneaking_pose"));
-        }
-        if (config.has("riding_pose", BaseType.TYPE_MAP))
-        {
-            this.ridingPose = new Pose();
-            this.ridingPose.fromData(config.getMap("riding_pose"));
         }
         if (config.has("parts", BaseType.TYPE_MAP))
         {
@@ -296,37 +302,27 @@ public class ModelInstance implements IModelInstance
             this.view.fromData(config.getMap("look_at"));
         }
 
-        if (config.has("ik", BaseType.TYPE_MAP))
+        /* IK chains */
+        if (config.has("ik_chains", BaseType.TYPE_LIST))
         {
-            this.limbConstraints = (MapType) config.getMap("ik").copy();
-        }
-        else
-        {
-            this.limbConstraints = null;
-        }
+            this.ikChains.clear();
 
-        if (config.has("springs", BaseType.TYPE_MAP))
-        {
-            this.springChains = (MapType) config.getMap("springs").copy();
-        }
-        else
-        {
-            this.springChains = null;
-        }
+            ListType list = config.get("ik_chains").asList();
 
-        if (config.has("constraints", BaseType.TYPE_MAP))
-        {
-            this.jointLimits = (MapType) config.getMap("constraints").copy();
-        }
-        else
-        {
-            this.jointLimits = null;
-        }
+            for (int i = 0; i < list.size(); i++)
+            {
+                BaseType type = list.get(i);
 
-        if (this.procedural && this.model != null)
-        {
-            ProceduralDefaults.ensureRidingPose(this);
-            ProceduralDefaults.ensureSneakingPose(this);
+                if (!type.isMap())
+                {
+                    continue;
+                }
+
+                IKChainConfig chain = new IKChainConfig(String.valueOf(i));
+
+                chain.fromData(type);
+                this.ikChains.add(chain);
+            }
         }
     }
 
@@ -394,11 +390,6 @@ public class ModelInstance implements IModelInstance
             config.put("sneaking_pose", this.sneakingPose.toData());
         }
 
-        if (this.ridingPose != null && !this.ridingPose.transforms.isEmpty())
-        {
-            config.put("riding_pose", this.ridingPose.toData());
-        }
-
         if (this.parts != null && !this.parts.transforms.isEmpty())
         {
             config.put("parts", this.parts.toData());
@@ -441,24 +432,37 @@ public class ModelInstance implements IModelInstance
             config.put("look_at", lookAt);
         }
 
+        if (!this.physBones.isEmpty())
+        {
+            ListType list = new ListType();
+
+            for (PhysBoneDefinition definition : this.physBones)
+            {
+                MapType map = new MapType();
+
+                definition.toData(map);
+                list.add(map);
+            }
+
+            config.put("phys_bones", list);
+        }
+
         if (this.actions != null && !this.actions.geckoAnimations.isDefault())
         {
             config.put("animations", this.actions.toData());
         }
 
-        if (this.limbConstraints != null)
+        /* IK chains */
+        if (!this.ikChains.isEmpty())
         {
-            config.put("ik", this.limbConstraints.copy());
-        }
+            ListType ikList = new ListType();
 
-        if (this.springChains != null)
-        {
-            config.put("springs", this.springChains.copy());
-        }
+            for (IKChainConfig chain : this.ikChains)
+            {
+                ikList.add(chain.toData());
+            }
 
-        if (this.jointLimits != null)
-        {
-            config.put("constraints", this.jointLimits.copy());
+            config.put("ik_chains", ikList);
         }
 
         return config;
@@ -484,15 +488,12 @@ public class ModelInstance implements IModelInstance
         copy.scale.set(this.scale);
         copy.uiScale = this.uiScale;
         copy.sneakingPose = this.sneakingPose.copy();
-        copy.ridingPose = this.ridingPose.copy();
         copy.parts = this.parts.copy();
         copy.color = this.color;
 
         for (ArmorSlot slot : this.itemsMain) copy.itemsMain.add(slot.copy());
         for (ArmorSlot slot : this.itemsOff) copy.itemsOff.add(slot.copy());
-        if (this.limbConstraints != null) copy.limbConstraints = (MapType) this.limbConstraints.copy();
-        if (this.springChains != null) copy.springChains = (MapType) this.springChains.copy();
-        if (this.jointLimits != null) copy.jointLimits = (MapType) this.jointLimits.copy();
+        for (PhysBoneDefinition definition : this.physBones) copy.physBones.add(definition.copy());
         copy.flippedParts.putAll(this.flippedParts);
 
         if (this.fpMain != null) copy.fpMain = this.fpMain.copy();
@@ -638,11 +639,6 @@ public class ModelInstance implements IModelInstance
             if (isVao)
             {
                 CubicRenderer.processRenderModel(renderProcessor, null, stack, model);
-
-                if (stencilMap != null)
-                {
-                    CubicRenderer.renderStencilPickPriority(renderProcessor, null, stack, model, CubicRenderer.STENCIL_PICK_PRIORITY_BONES);
-                }
             }
             else
             {
@@ -651,11 +647,6 @@ public class ModelInstance implements IModelInstance
                 BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL);
 
                 CubicRenderer.processRenderModel(renderProcessor, builder, stack, model);
-
-                if (stencilMap != null)
-                {
-                    CubicRenderer.renderStencilPickPriority(renderProcessor, builder, stack, model, CubicRenderer.STENCIL_PICK_PRIORITY_BONES);
-                }
 
                 try
                 {
