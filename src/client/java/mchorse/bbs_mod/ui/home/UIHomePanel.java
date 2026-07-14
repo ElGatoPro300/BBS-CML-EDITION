@@ -35,6 +35,7 @@ import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.DataPath;
 import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.RecentAssetsTracker;
+import mchorse.bbs_mod.utils.RemoteHttp;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.interps.Interpolations;
 import mchorse.bbs_mod.utils.repos.IRepository;
@@ -51,6 +52,7 @@ import net.minecraft.client.render.VertexFormats;
 import org.joml.Matrix4f;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.logging.LogUtils;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -58,10 +60,6 @@ import com.google.gson.reflect.TypeToken;
 import org.lwjgl.opengl.GL11;
 
 import java.io.InputStream;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -70,14 +68,19 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 
+import org.slf4j.Logger;
+
 public class UIHomePanel extends UIDashboardPanel
 {
+    private static final Logger LOGGER = LogUtils.getLogger();
+
     private static final String BANNERS_URL = "https://raw.githubusercontent.com/BBSCommunity/CML-NEWS/main/Banners_Panel/banners.json";
     public static final int HOME_BANNER_HEIGHT = 108;
     private static final int BANNER_DURATION = 200;
     private static final int BANNER_TRANSITION = 60;
 
     private static final Set<Link> prefetchingBanners = Collections.synchronizedSet(new HashSet<>());
+    private static boolean sessionBannerFetchStarted;
     /* View mode is persisted globally — see BBSSettings.lastViewMosaic. */
 
     private final List<BannerEntry> homeBanners = new ArrayList<>();
@@ -598,8 +601,24 @@ public class UIHomePanel extends UIDashboardPanel
         home.author = "ElGatoPro300";
         home.link = Link.assets("textures/banners/films/Home.png");
         this.homeBanners.add(home);
+    }
 
-        this.fetchRemoteBanners();
+    public static void onDashboardOpened(UIDashboard dashboard)
+    {
+        if (sessionBannerFetchStarted || dashboard == null)
+        {
+            return;
+        }
+
+        UIHomePanel panel = dashboard.getPanel(UIHomePanel.class);
+
+        if (panel == null)
+        {
+            return;
+        }
+
+        sessionBannerFetchStarted = true;
+        panel.fetchRemoteBanners();
     }
 
     private void fetchRemoteBanners()
@@ -608,29 +627,29 @@ public class UIHomePanel extends UIDashboardPanel
         {
             try
             {
-                HttpClient client = HttpClient.newBuilder().build();
-                HttpRequest req = HttpRequest.newBuilder(URI.create(BANNERS_URL)).GET().build();
-                HttpResponse<String> resp = client.send(req, HttpResponse.BodyHandlers.ofString());
+                String body = RemoteHttp.fetchString(BANNERS_URL);
 
-                if (resp.statusCode() == 200)
+                if (body == null || body.isEmpty())
                 {
-                    List<BannerEntry> remote = new Gson().fromJson(resp.body(), new TypeToken<List<BannerEntry>>(){}.getType());
+                    return;
+                }
 
-                    if (remote != null)
+                List<BannerEntry> remote = new Gson().fromJson(body, new TypeToken<List<BannerEntry>>(){}.getType());
+
+                if (remote != null)
+                {
+                    for (BannerEntry entry : remote)
                     {
-                        for (BannerEntry entry : remote)
-                        {
-                            entry.link = Link.create(entry.url);
-                            this.prefetchBannerImage(entry.link);
-                        }
-
-                        MinecraftClient.getInstance().execute(() -> this.homeBanners.addAll(remote));
+                        entry.link = Link.create(entry.url);
+                        this.prefetchBannerImage(entry.link);
                     }
+
+                    MinecraftClient.getInstance().execute(() -> this.homeBanners.addAll(remote));
                 }
             }
             catch (Exception e)
             {
-                e.printStackTrace();
+                LOGGER.debug("Failed to fetch home banners", e);
             }
         });
     }
@@ -662,7 +681,7 @@ public class UIHomePanel extends UIDashboardPanel
             }
             catch (Exception e)
             {
-                e.printStackTrace();
+                LOGGER.debug("Failed to prefetch banner image for {}", link, e);
             }
             finally
             {

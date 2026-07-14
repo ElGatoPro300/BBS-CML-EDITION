@@ -48,7 +48,8 @@
         "EntityRenderDispatcherMixin",
         "audio.SoundEngineMixin",
         "TitleScreenMixin",
-        "SelectWorldScreenMixin"
+        "SelectWorldScreenMixin",
+        "YggdrasilServicesKeyInfoMixin"
     ],
     "injectors": {
         "defaultRequire": 1

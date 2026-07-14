@@ -405,6 +405,13 @@ public class UIReplaysOverlayPanel extends UIOverlayPanel
             return;
         }
 
+        /* The UI framework doesn't guarantee that adding an element to another parent
+           automatically detaches it from its previous one. Ensure these property panels
+           exist in exactly one place to avoid rendering/hit-testing even when the
+           external host window is hidden or collapsed. */
+        this.replayProperties.removeFromParent();
+        this.groupProperties.removeFromParent();
+
         target.add(this.replayProperties, this.groupProperties);
         this.replayProperties.relative(target).x(0).y(0).w(1F).h(1F);
         this.groupProperties.relative(target).x(0).y(0).w(1F).h(1F);

@@ -299,6 +299,11 @@ public class BBSModClient implements ClientModInitializer
         return dashboard;
     }
 
+    public static UIDashboard peekDashboard()
+    {
+        return dashboard;
+    }
+
     public static int getGUIScale()
     {
         float scale = BBSSettings.getUIScaleFactor();
@@ -578,10 +583,7 @@ public class BBSModClient implements ClientModInitializer
 
         WorldRenderEvents.AFTER_ENTITIES.register((context) ->
         {
-            if (!BBSRendering.isIrisShadersEnabled())
-            {
-                BBSRendering.renderCoolStuff(context);
-            }
+            BBSRendering.renderCoolStuff(context);
 
             if (BBSRendering.isChromaSkyEnabled())
             {

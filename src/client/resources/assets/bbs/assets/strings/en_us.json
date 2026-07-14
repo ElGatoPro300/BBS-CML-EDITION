@@ -1671,6 +1671,7 @@
     "bbs.ui.models.ik_clear_target_bone": "Clear target bone",
     "bbs.ui.models.ik_constraints": "Axis Constraints",
     "bbs.ui.models.ik_editor": "IK Editor",
+    "bbs.ui.models.constraints_editor": "Constraints Editor",
     "bbs.ui.models.items": "Items",
     "bbs.ui.models.items.add": "Add Item Group",
     "bbs.ui.models.items.add_desc": "Add a new item group to the list.",

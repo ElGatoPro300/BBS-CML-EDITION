@@ -300,6 +300,7 @@ public class UIKeyframes extends UIElement
                     UIKeyframes.this.dopeSheet.setSidebarWidth(IUIKeyframeGraph.SIDEBAR_WIDTH);
                     UIKeyframes.this.updateSidebarResizerState();
                     UIKeyframes.this.resize();
+                    UIKeyframes.this.persistSidebarWidth();
 
                     return true;
                 }
@@ -312,8 +313,14 @@ public class UIKeyframes extends UIElement
             int color = Colors.setA(BBSSettings.primaryColor.get(), alpha);
 
             context.batcher.box(this.sidebarResizer.area.x, this.sidebarResizer.area.y, this.sidebarResizer.area.ex(), this.sidebarResizer.area.ey(), color);
-        });
+        }).dragEnd(this::persistSidebarWidth);
         this.add(this.sidebarResizer);
+
+        if (BBSSettings.uiLayoutPreferences != null)
+        {
+            this.dopeSheet.setSidebarWidth(BBSSettings.uiLayoutPreferences.getKeyframeSidebarWidth(IUIKeyframeGraph.SIDEBAR_WIDTH));
+        }
+
         this.updateSidebarResizerState();
     }
 
@@ -2433,6 +2440,16 @@ public class UIKeyframes extends UIElement
 
         this.sidebarResizer.relative(this).x(x - this.area.x).y(y - this.area.y).w(6).h(40);
         this.sidebarResizer.resize();
+    }
+
+    private void persistSidebarWidth()
+    {
+        if (BBSSettings.uiLayoutPreferences == null)
+        {
+            return;
+        }
+
+        BBSSettings.uiLayoutPreferences.setKeyframeSidebarWidth(this.dopeSheet.getSidebarWidth());
     }
 
     /* Caching state */
