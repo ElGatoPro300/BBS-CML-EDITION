@@ -27,6 +27,7 @@ import org.joml.Intersectiond;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
+import org.joml.Vector2f;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
@@ -43,7 +44,17 @@ public class UIPropTransform extends UITransform
     public interface IGizmoRayProvider
     {
         public boolean getMouseRay(UIContext context, int mouseX, int mouseY, Vector3d rayOrigin, Vector3f rayDirection);
+
         public boolean getGizmoMatrix(Matrix4f matrix);
+
+        /**
+         * Projects a point in the same space as {@link #getGizmoMatrix()} / mouse rays into
+         * global UI coordinates (same space as {@code mouseX}/{@code mouseY}).
+         */
+        public default boolean projectDragPoint(UIContext context, double x, double y, double z, Vector2f screenOut)
+        {
+            return false;
+        }
     }
 
     public static final List<BiConsumer<UIPropTransform, ContextMenuManager>> contextMenuExtensions = new ArrayList<>();
@@ -128,6 +139,10 @@ public class UIPropTransform extends UITransform
     private int rayDragMouseX;
     private int rayDragMouseY;
     private final Vector3f rayGizmoOrigin = new Vector3f();
+    private final Vector3f rayDragAxisPlaneNormal = new Vector3f();
+    private final Vector2f rayDragScreenAxisOrigin = new Vector2f();
+    private final Vector2f rayDragScreenAxisDir = new Vector2f();
+    private boolean rayDragUsesScreenAxis;
     private final Vector3f rayLastSpherePoint = new Vector3f();
     private boolean raySphereDragInitialized;
     private double rayLastAxisValue;
@@ -700,6 +715,137 @@ public class UIPropTransform extends UITransform
         this.setT(null, result.x, result.y, result.z);
     }
 
+    /**
+     * Blender-style single-axis translate: project the mouse onto the axis line as it appears on
+     * screen (frozen at drag start), so moving off the 3D axis line does not flip direction.
+     */
+    private boolean trySetupScreenAxisDrag(UIContext context)
+    {
+        if (this.gizmoRayProvider == null || context == null)
+        {
+            return false;
+        }
+
+        Vector2f projected = new Vector2f();
+
+        if (!this.gizmoRayProvider.projectDragPoint(context, this.rayGizmoOrigin.x, this.rayGizmoOrigin.y, this.rayGizmoOrigin.z, projected))
+        {
+            return false;
+        }
+
+        this.rayDragScreenAxisOrigin.set(projected);
+
+        double axisEndX = this.rayGizmoOrigin.x + this.rayPrimaryAxis.x;
+        double axisEndY = this.rayGizmoOrigin.y + this.rayPrimaryAxis.y;
+        double axisEndZ = this.rayGizmoOrigin.z + this.rayPrimaryAxis.z;
+
+        if (!this.gizmoRayProvider.projectDragPoint(context, axisEndX, axisEndY, axisEndZ, projected))
+        {
+            return false;
+        }
+
+        this.rayDragScreenAxisDir.set(projected).sub(this.rayDragScreenAxisOrigin);
+
+        return this.rayDragScreenAxisDir.lengthSquared() > 1.0E-6F;
+    }
+
+    private double projectMouseOntoScreenAxis(int mouseX, int mouseY)
+    {
+        float relX = mouseX - this.rayDragScreenAxisOrigin.x;
+        float relY = mouseY - this.rayDragScreenAxisOrigin.y;
+        float dirX = this.rayDragScreenAxisDir.x;
+        float dirY = this.rayDragScreenAxisDir.y;
+        float denom = dirX * dirX + dirY * dirY;
+
+        if (denom <= 1.0E-12F)
+        {
+            return 0D;
+        }
+
+        return (relX * dirX + relY * dirY) / denom;
+    }
+
+    /** Frozen at drag start: plane contains the axis and faces the initial view direction. */
+    private void setupFrozenDragPlane()
+    {
+        Vector3f viewDir = new Vector3f(
+            (float) (this.rayOrigin.x - this.rayGizmoOrigin.x),
+            (float) (this.rayOrigin.y - this.rayGizmoOrigin.y),
+            (float) (this.rayOrigin.z - this.rayGizmoOrigin.z)
+        );
+
+        if (!this.normalizeSafe(viewDir))
+        {
+            viewDir.set(this.rayDirection);
+            this.normalizeSafe(viewDir);
+        }
+
+        this.rayDragAxisPlaneNormal.set(this.rayPrimaryAxis).cross(viewDir);
+
+        if (!this.normalizeSafe(this.rayDragAxisPlaneNormal))
+        {
+            this.rayDragAxisPlaneNormal.set(this.rayPrimaryAxis).cross(new Vector3f(0F, 1F, 0F));
+
+            if (!this.normalizeSafe(this.rayDragAxisPlaneNormal))
+            {
+                this.rayDragAxisPlaneNormal.set(this.rayPrimaryAxis).cross(new Vector3f(1F, 0F, 0F));
+                this.normalizeSafe(this.rayDragAxisPlaneNormal);
+            }
+        }
+    }
+
+    private boolean intersectFrozenDragPlane(Vector3d out)
+    {
+        this.planeOrigin.set(this.rayGizmoOrigin.x, this.rayGizmoOrigin.y, this.rayGizmoOrigin.z);
+        this.planeNormal.set(this.rayDragAxisPlaneNormal.x, this.rayDragAxisPlaneNormal.y, this.rayDragAxisPlaneNormal.z);
+        this.rayDirectionD.set(this.rayDirection.x, this.rayDirection.y, this.rayDirection.z);
+
+        if (this.planeNormal.dot(this.rayDirectionD) > 0)
+        {
+            this.planeNormal.negate();
+        }
+
+        double distance = Intersectiond.intersectRayPlane(this.rayOrigin, this.rayDirectionD, this.planeOrigin, this.planeNormal, 1.0E-6D);
+
+        if (!Double.isFinite(distance) || distance < 0D)
+        {
+            return false;
+        }
+
+        out.set(this.rayOrigin).fma(distance, this.rayDirectionD);
+
+        return true;
+    }
+
+    private double axisParameterFromPoint(Vector3d point)
+    {
+        double dx = point.x - this.rayGizmoOrigin.x;
+        double dy = point.y - this.rayGizmoOrigin.y;
+        double dz = point.z - this.rayGizmoOrigin.z;
+
+        return dx * this.rayPrimaryAxis.x + dy * this.rayPrimaryAxis.y + dz * this.rayPrimaryAxis.z;
+    }
+
+    private double computeAxisValueOnDragPlane()
+    {
+        if (!this.intersectFrozenDragPlane(this.rayCurrentPoint))
+        {
+            return Double.NaN;
+        }
+
+        return this.axisParameterFromPoint(this.rayCurrentPoint);
+    }
+
+    private double getCurrentAxisDragValue(UIContext context)
+    {
+        if (this.rayDragUsesScreenAxis)
+        {
+            return this.projectMouseOntoScreenAxis(this.resolveDragMouseX(context), this.resolveDragMouseY(context));
+        }
+
+        return this.computeAxisValueOnDragPlane();
+    }
+
     public void enableMode(int mode)
     {
         this.enableMode(mode, null);
@@ -1209,6 +1355,7 @@ public class UIPropTransform extends UITransform
         this.invertFilmArcballDragY = false;
         this.invertFilmPoseGizmoAxes = false;
         this.rayDragInitialized = false;
+        this.rayDragUsesScreenAxis = false;
         this.raySphereDragInitialized = false;
 
         Gizmo.INSTANCE.clearRotationArc();
@@ -1728,6 +1875,26 @@ public class UIPropTransform extends UITransform
 
             needsPlanePoint = true;
         }
+        else if (this.mode == 0 && this.secondaryAxis == null)
+        {
+            this.rayDragUsesScreenAxis = this.trySetupScreenAxisDrag(context);
+
+            if (this.rayDragUsesScreenAxis)
+            {
+                this.rayLastAxisValue = this.projectMouseOntoScreenAxis(this.resolveDragMouseX(context), this.resolveDragMouseY(context));
+            }
+            else
+            {
+                this.setupFrozenDragPlane();
+                this.rayLastAxisValue = this.computeAxisValueOnDragPlane();
+            }
+
+            if (!Double.isFinite(this.rayLastAxisValue))
+            {
+                this.rayDragInitialized = false;
+                return false;
+            }
+        }
         else if (this.mode == 0 || this.mode == 1)
         {
             /* Single-axis translate and single-axis scale both reduce to "where along this
@@ -2064,7 +2231,7 @@ public class UIPropTransform extends UITransform
             }
             else if (this.secondaryAxis == null)
             {
-                double axisValue = this.computeAxisValue(this.rayOrigin, this.rayDirection, this.rayPrimaryAxis);
+                double axisValue = this.getCurrentAxisDragValue(context);
 
                 if (!Double.isFinite(axisValue))
                 {

@@ -9,6 +9,7 @@ import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.utils.MathUtils;
 
 import org.joml.Matrix4f;
+import org.joml.Vector2f;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
@@ -78,6 +79,20 @@ public final class GizmoRayFrame
                 matrix.set(source);
 
                 return true;
+            }
+
+            @Override
+            public boolean projectDragPoint(UIContext context, double x, double y, double z, Vector2f screenOut)
+            {
+                if (area.w <= 0 || area.h <= 0)
+                {
+                    return false;
+                }
+
+                int vx = context.globalX(area.x);
+                int vy = context.globalY(area.y);
+
+                return GizmoRayFrame.projectWorldPoint(camera.projection, camera.view, vx, vy, area.w, area.h, x, y, z, screenOut);
             }
         };
     }
@@ -173,7 +188,62 @@ public final class GizmoRayFrame
 
                 return true;
             }
+
+            @Override
+            public boolean projectDragPoint(UIContext context, double x, double y, double z, Vector2f screenOut)
+            {
+                if (area.w <= 0 || area.h <= 0)
+                {
+                    return false;
+                }
+
+                int vx = context.globalX(area.x);
+                int vy = context.globalY(area.y);
+
+                return GizmoRayFrame.projectViewPoint(camera.projection, vx, vy, area.w, area.h, x, y, z, screenOut);
+            }
         };
+    }
+
+    public static boolean projectViewPoint(Matrix4f projection, int vx, int vy, int vw, int vh, double x, double y, double z, Vector2f out)
+    {
+        Vector4f clip = new Vector4f((float) x, (float) y, (float) z, 1F).mul(projection);
+
+        if (Math.abs(clip.w) <= 1.0E-6F)
+        {
+            return false;
+        }
+
+        float invW = 1F / clip.w;
+        float ndcX = clip.x * invW;
+        float ndcY = clip.y * invW;
+        float localX = (ndcX + 1F) * 0.5F * vw;
+        float localY = (-ndcY + 1F) * 0.5F * vh;
+
+        out.set(vx + localX, vy + localY);
+
+        return true;
+    }
+
+    public static boolean projectWorldPoint(Matrix4f projection, Matrix4f view, int vx, int vy, int vw, int vh, double x, double y, double z, Vector2f out)
+    {
+        Matrix4f clipMatrix = new Matrix4f(projection).mul(view);
+        Vector4f clip = clipMatrix.transform(new Vector4f((float) x, (float) y, (float) z, 1F));
+
+        if (Math.abs(clip.w) <= 1.0E-6F)
+        {
+            return false;
+        }
+
+        float invW = 1F / clip.w;
+        float ndcX = clip.x * invW;
+        float ndcY = clip.y * invW;
+        float localX = (ndcX + 1F) * 0.5F * vw;
+        float localY = (-ndcY + 1F) * 0.5F * vh;
+
+        out.set(vx + localX, vy + localY);
+
+        return true;
     }
 
     private static boolean fillViewSpaceMouseRay(Matrix4f projection, int mouseX, int mouseY, int vx, int vy, int vw, int vh, Vector3d rayOrigin, Vector3f rayDirection)
@@ -183,11 +253,11 @@ public final class GizmoRayFrame
 
         float w2 = vw / 2F;
         float h2 = vh / 2F;
-        float x = (mouseX - w2) / w2;
-        float y = (-mouseY + h2) / h2;
+        float ndcX = (mouseX - w2) / w2;
+        float ndcY = (-mouseY + h2) / h2;
 
         Matrix4f inverseProjection = new Matrix4f(projection).invert();
-        Vector4f forward = new Vector4f(x, y, 0F, 1F).mul(inverseProjection);
+        Vector4f forward = new Vector4f(ndcX, ndcY, 0F, 1F).mul(inverseProjection);
 
         if (Math.abs(forward.w) > 1.0E-6F)
         {

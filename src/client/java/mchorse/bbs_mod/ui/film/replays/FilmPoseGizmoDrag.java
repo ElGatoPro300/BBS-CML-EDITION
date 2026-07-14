@@ -11,8 +11,10 @@ import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UIAnchorK
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UIPoseKeyframeFactory;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UITransformKeyframeFactory;
 import mchorse.bbs_mod.ui.utils.Area;
+import mchorse.bbs_mod.ui.utils.gizmo.GizmoRayFrame;
 
 import org.joml.Matrix4f;
+import org.joml.Vector2f;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
@@ -124,6 +126,22 @@ public final class FilmPoseGizmoDrag
             public boolean getGizmoMatrix(Matrix4f matrix)
             {
                 return FilmPoseGizmoDrag.fillHandleGizmoMatrix(panel, matrix);
+            }
+
+            @Override
+            public boolean projectDragPoint(UIContext context, double x, double y, double z, Vector2f screenOut)
+            {
+                if (area.w <= 0 || area.h <= 0)
+                {
+                    return false;
+                }
+
+                FilmPoseGizmoDrag.syncDragCamera(panel, camera);
+
+                int vx = context.globalX(area.x);
+                int vy = context.globalY(area.y);
+
+                return GizmoRayFrame.projectViewPoint(camera.projection, vx, vy, area.w, area.h, x, y, z, screenOut);
             }
         });
     }
