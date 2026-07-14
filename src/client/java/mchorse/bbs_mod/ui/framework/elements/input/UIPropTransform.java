@@ -572,9 +572,10 @@ public class UIPropTransform extends UITransform
 
     private float getBaseTranslationScale()
     {
-        float speed = BBSSettings.gizmoTranslateSpeed == null ? 1F : BBSSettings.gizmoTranslateSpeed.get();
-
-        return this.translationScale * speed;
+        /* Ray drag: world-space delta is scaled only by per-context unit conversion
+         * (pose model pixels = 16 per block, replay transform = 1 per block, etc.).
+         * BBSSettings.gizmoTranslateSpeed is kept in the UI but not applied here yet. */
+        return this.translationScale;
     }
 
     private float getEffectiveTranslationScale()

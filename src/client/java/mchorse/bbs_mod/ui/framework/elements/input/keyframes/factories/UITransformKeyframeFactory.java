@@ -47,7 +47,7 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
 
         if (isPoseLimbTrack(sheet))
         {
-            this.transform.translationScale(2.5F);
+            this.transform.translationScale(16F);
             this.transform.poseLimbGizmoTuning();
             this.fix = new UITrackpad((v) ->
             {
@@ -116,7 +116,7 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
         }
         else
         {
-            this.transform.translationScale(1F / 3F);
+            this.transform.translationScale(1F);
             this.scroll.add(this.transform);
         }
     }

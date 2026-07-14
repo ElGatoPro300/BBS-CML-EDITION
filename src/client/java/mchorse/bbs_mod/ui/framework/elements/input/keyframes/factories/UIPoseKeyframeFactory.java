@@ -222,7 +222,7 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
         @Override
         protected float getGizmoTranslationScale()
         {
-            return 2.5F;
+            return 16F;
         }
 
         private String getGroup(PoseTransform transform)
@@ -258,7 +258,7 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
              * trackball euler flips when using the arcball sphere. */
             return new UIPoseTransforms()
                 .enableHotkeys()
-                .translationScale(2.5F)
+                .translationScale(this.getGizmoTranslationScale())
                 .poseModelGizmoTuning()
                 .invertModelPoseTrackballXZ()
                 .invertModelPoseTrackballDragY();
