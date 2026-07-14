@@ -8,10 +8,8 @@ import mchorse.bbs_mod.cubic.data.model.Model;
 import mchorse.bbs_mod.cubic.data.model.ModelGroup;
 import mchorse.bbs_mod.cubic.model.ArmorSlot;
 import mchorse.bbs_mod.cubic.model.ArmorType;
-import mchorse.bbs_mod.cubic.model.IKChainConfig;
 import mchorse.bbs_mod.cubic.model.View;
 import mchorse.bbs_mod.cubic.model.bobj.BOBJModel;
-import mchorse.bbs_mod.cubic.physics.PhysBoneDefinition;
 import mchorse.bbs_mod.cubic.render.CubicCubeRenderer;
 import mchorse.bbs_mod.cubic.render.CubicMatrixRenderer;
 import mchorse.bbs_mod.cubic.render.CubicRenderer;
@@ -23,6 +21,7 @@ import mchorse.bbs_mod.data.DataStorageUtils;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
+import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.forms.ModelForm;
 import mchorse.bbs_mod.forms.renderers.utils.MatrixCache;
 import mchorse.bbs_mod.obj.shapes.ShapeKeys;
@@ -81,8 +80,9 @@ public class ModelInstance implements IModelInstance
 
     public List<ArmorSlot> itemsMain = new ArrayList<>();
     public List<ArmorSlot> itemsOff = new ArrayList<>();
-    public List<PhysBoneDefinition> physBones = new ArrayList<>();
-    public List<IKChainConfig> ikChains = new ArrayList<>();
+    public MapType limbConstraints;
+    public MapType springChains;
+    public MapType jointLimits;
     public Map<String, String> flippedParts = new HashMap<>();
     public Map<ArmorType, ArmorSlot> armorSlots = new HashMap<>();
 
@@ -92,6 +92,12 @@ public class ModelInstance implements IModelInstance
     public ArmorSlot itemsMainTransform = new ArmorSlot("items_main_transform");
     public ArmorSlot itemsOffTransform = new ArmorSlot("items_off_transform");
     public ActionsConfig actions = new ActionsConfig();
+
+    /** Owning form at render time; set by the form renderer each frame. */
+    public transient Form form;
+
+    /** World/model base transform from the last non-UI render pass (used by physics). */
+    public transient Matrix4f lastBaseTransform;
 
     private Map<ModelGroup, ModelVAO> vaos = new HashMap<>();
 
@@ -133,12 +139,6 @@ public class ModelInstance implements IModelInstance
     public String getHeadBone()
     {
         return this.view == null ? "head" : this.view.headBone;
-    }
-
-    @Override
-    public List<PhysBoneDefinition> getPhysBones()
-    {
-        return this.physBones;
     }
 
     public Map<ModelGroup, ModelVAO> getVaos()
@@ -191,25 +191,6 @@ public class ModelInstance implements IModelInstance
 
                 slot.fromData(type);
                 this.itemsMain.add(slot);
-            }
-        }
-        if (config.has("phys_bones", BaseType.TYPE_LIST))
-        {
-            this.physBones.clear();
-
-            ListType list = config.get("phys_bones").asList();
-
-            for (BaseType type : list)
-            {
-                if (!type.isMap())
-                {
-                    continue;
-                }
-
-                PhysBoneDefinition definition = new PhysBoneDefinition();
-
-                definition.fromData(type.asMap());
-                this.physBones.add(definition);
             }
         }
         if (config.has("items_off"))
@@ -315,27 +296,31 @@ public class ModelInstance implements IModelInstance
             this.view.fromData(config.getMap("look_at"));
         }
 
-        /* IK chains */
-        if (config.has("ik_chains", BaseType.TYPE_LIST))
+        if (config.has("ik", BaseType.TYPE_MAP))
         {
-            this.ikChains.clear();
+            this.limbConstraints = (MapType) config.getMap("ik").copy();
+        }
+        else
+        {
+            this.limbConstraints = null;
+        }
 
-            ListType list = config.get("ik_chains").asList();
+        if (config.has("springs", BaseType.TYPE_MAP))
+        {
+            this.springChains = (MapType) config.getMap("springs").copy();
+        }
+        else
+        {
+            this.springChains = null;
+        }
 
-            for (int i = 0; i < list.size(); i++)
-            {
-                BaseType type = list.get(i);
-
-                if (!type.isMap())
-                {
-                    continue;
-                }
-
-                IKChainConfig chain = new IKChainConfig(String.valueOf(i));
-
-                chain.fromData(type);
-                this.ikChains.add(chain);
-            }
+        if (config.has("constraints", BaseType.TYPE_MAP))
+        {
+            this.jointLimits = (MapType) config.getMap("constraints").copy();
+        }
+        else
+        {
+            this.jointLimits = null;
         }
 
         if (this.procedural && this.model != null)
@@ -456,37 +441,24 @@ public class ModelInstance implements IModelInstance
             config.put("look_at", lookAt);
         }
 
-        if (!this.physBones.isEmpty())
-        {
-            ListType list = new ListType();
-
-            for (PhysBoneDefinition definition : this.physBones)
-            {
-                MapType map = new MapType();
-
-                definition.toData(map);
-                list.add(map);
-            }
-
-            config.put("phys_bones", list);
-        }
-
         if (this.actions != null && !this.actions.geckoAnimations.isDefault())
         {
             config.put("animations", this.actions.toData());
         }
 
-        /* IK chains */
-        if (!this.ikChains.isEmpty())
+        if (this.limbConstraints != null)
         {
-            ListType ikList = new ListType();
+            config.put("ik", this.limbConstraints.copy());
+        }
 
-            for (IKChainConfig chain : this.ikChains)
-            {
-                ikList.add(chain.toData());
-            }
+        if (this.springChains != null)
+        {
+            config.put("springs", this.springChains.copy());
+        }
 
-            config.put("ik_chains", ikList);
+        if (this.jointLimits != null)
+        {
+            config.put("constraints", this.jointLimits.copy());
         }
 
         return config;
@@ -518,7 +490,9 @@ public class ModelInstance implements IModelInstance
 
         for (ArmorSlot slot : this.itemsMain) copy.itemsMain.add(slot.copy());
         for (ArmorSlot slot : this.itemsOff) copy.itemsOff.add(slot.copy());
-        for (PhysBoneDefinition definition : this.physBones) copy.physBones.add(definition.copy());
+        if (this.limbConstraints != null) copy.limbConstraints = (MapType) this.limbConstraints.copy();
+        if (this.springChains != null) copy.springChains = (MapType) this.springChains.copy();
+        if (this.jointLimits != null) copy.jointLimits = (MapType) this.jointLimits.copy();
         copy.flippedParts.putAll(this.flippedParts);
 
         if (this.fpMain != null) copy.fpMain = this.fpMain.copy();

@@ -2,22 +2,19 @@ package mchorse.bbs_mod.ui.model;
 
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
-import mchorse.bbs_mod.bobj.BOBJBone;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.cubic.animation.ActionsConfig;
-import mchorse.bbs_mod.cubic.animation.IAnimator;
-import mchorse.bbs_mod.cubic.animation.ProceduralAnimator;
 import mchorse.bbs_mod.cubic.data.model.Model;
 import mchorse.bbs_mod.cubic.data.model.ModelCube;
 import mchorse.bbs_mod.cubic.data.model.ModelGroup;
 import mchorse.bbs_mod.cubic.data.model.ModelQuad;
 import mchorse.bbs_mod.cubic.data.model.ModelVertex;
 import mchorse.bbs_mod.cubic.model.ArmorSlot;
-import mchorse.bbs_mod.cubic.model.IKChainConfig;
 import mchorse.bbs_mod.cubic.model.ModelConfig;
 import mchorse.bbs_mod.cubic.render.CubicCubeRenderer;
 import mchorse.bbs_mod.cubic.render.ICubicRenderer;
+import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
 import mchorse.bbs_mod.forms.FormUtilsClient;
@@ -99,10 +96,6 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
 
     private Function<Float, Matrix4f> formTransformGizmoOrigin;
 
-    /* ---- IK gizmo state ---- */
-    /** The currently active IK chain config — set by UIModelIKPanel. null = no IK gizmo. */
-    private IKChainConfig activeIKChain;
-
     private StencilFormFramebuffer stencil = new StencilFormFramebuffer();
     private StencilMap stencilMap = new StencilMap();
 
@@ -138,20 +131,38 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
         this.form.model.set(modelId);
     }
 
-    /**
-     * Sets the IK chain whose target gizmo should be drawn in the 3D viewport.
-     * Pass null to hide the IK gizmo.
-     */
-    public void setActiveIKChain(IKChainConfig chain)
-    {
-        this.activeIKChain = chain;
-    }
-    
-
-
     public void setConfig(ModelConfig config)
     {
         this.config = config;
+        this.syncSolverConfig(config);
+    }
+
+    /**
+     * Pushes limb IK / spring / joint-limit blobs from {@link ModelConfig}
+     * onto the live preview {@link ModelForm} so solvers stay in sync while editing.
+     */
+    public void syncSolverConfig(ModelConfig config)
+    {
+        if (config == null)
+        {
+            return;
+        }
+
+        BaseType ik = config.ik.get();
+        this.form.ik.set(ik == null ? null : ik.copy());
+
+        BaseType springs = config.springs.get();
+        this.form.springs.set(springs == null ? null : springs.copy());
+
+        BaseType constraints = config.constraints.get();
+        this.form.constraints.set(constraints == null ? null : constraints.copy());
+
+        /* Use previewModel directly to avoid getModel() re-entry while the preview is being built. */
+        if (this.previewModel != null)
+        {
+            this.previewModel.applyConfig((MapType) config.toData());
+            this.previewModel.form = this.form;
+        }
     }
 
     public void setCallback(Consumer<String> callback)
@@ -464,8 +475,6 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
             this.renderFpHandItem(context, matrixCache, stack);
         }
 
-        this.renderIKGizmo(context, matrixCache);
-
         Matrix4f gizmoMatrix = this.resolveGizmoMatrix(context, matrixCache);
         this.hasGizmoMatrix = gizmoMatrix != null;
 
@@ -735,172 +744,11 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
         return new Matrix4f(cubeStack.peek().getPositionMatrix());
     }
 
-    private Vector3f getBonePoint(MatrixCache cache, String bone)
-    {
-        MatrixCacheEntry entry = cache.get(bone);
-
-        if (entry == null)
-        {
-            return null;
-        }
-
-        Matrix4f matrix = entry.origin() == null ? entry.matrix() : entry.origin();
-
-        if (matrix == null)
-        {
-            return null;
-        }
-
-        return this.translation(matrix);
-    }
-
-    private Vector3f translation(Matrix4f matrix)
-    {
-        Vector3f vector = new Vector3f();
-
-        matrix.getTranslation(vector);
-
-        return vector;
-    }
-
     private void line(BufferBuilder builder, Matrix4f matrix, Vector3f a, Vector3f b, float r, float g, float bl, float alpha)
     {
         builder.vertex(matrix, a.x, a.y, a.z).color(r, g, bl, alpha);
         builder.vertex(matrix, b.x, b.y, b.z).color(r, g, bl, alpha);
     }
-
-    private void cross(BufferBuilder builder, Matrix4f matrix, Vector3f p, float size, float r, float g, float b, float a)
-    {
-        this.line(builder, matrix, new Vector3f(p).add(-size, 0, 0), new Vector3f(p).add(size, 0, 0), r, g, b, a);
-        this.line(builder, matrix, new Vector3f(p).add(0, -size, 0), new Vector3f(p).add(0, size, 0), r, g, b, a);
-        this.line(builder, matrix, new Vector3f(p).add(0, 0, -size), new Vector3f(p).add(0, 0, size), r, g, b, a);
-    }
-
-    /**
-     * Renders the IK gizmo:
-     *  - A magenta 3D crosshair at the IK target position.
-     *  - Cyan lines connecting the bones of the active chain (tip→root).
-     *
-     * Positions are in model-local space (1 unit = 1/16 block for Cubic models).
-     * The renderer uses the same MatrixCache used for the bone gizmo / cube outline.
-     */
-    private void renderIKGizmo(UIContext context, MatrixCache matrixCache)
-    {
-        if (this.activeIKChain == null || !this.activeIKChain.enabled.get())
-        {
-            return;
-        }
-
-        Matrix4f uiMatrix = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
-
-        /* ---- target crosshair ---- */
-        Vector3f targetWorld = new Vector3f(this.activeIKChain.target.get());
-
-        /* Convert from IK metres to render units:
-           In Cubic models, pivots are in 1/16 blocks; FABRIK works in metres
-           (we divided by 16 in IKChain). For the gizmo we use the same metres.
-           Multiply by 16 to match the model-local render coordinate system. */
-        targetWorld.mul(16F);
-
-        /* Apply model root matrix (same transform the bones live under) */
-        MatrixCacheEntry rootEntry = matrixCache.get("");
-        Matrix4f rootMat = rootEntry != null ? rootEntry.matrix() : null;
-        Matrix4f gizmoMat = new Matrix4f(uiMatrix);
-
-        if (rootMat != null)
-        {
-            /* Combine: UI projection × root bone matrix */
-            gizmoMat.mul(rootMat);
-        }
-
-        /* Flip Z to match the renderer's Y-rotation PI applied in getCubePivotMatrix */
-        gizmoMat.rotateY(MathUtils.PI);
-
-        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
-        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
-        RenderSystem.enableBlend();
-        RenderSystem.disableDepthTest();
-
-        /* --- magenta crosshair at target --- */
-        float cs = 0.12F * 16F;   /* crosshair arm length in render units */
-        float tr = 1.0F, tg = 0.2F, tb = 1.0F, ta = 0.9F;
-
-        this.cross(builder, gizmoMat, targetWorld, cs, tr, tg, tb, ta);
-
-        /* --- diamond outline around target (XZ plane) --- */
-        float ds = cs * 0.7F;
-        Vector3f px = new Vector3f(targetWorld).add(ds, 0, 0);
-        Vector3f nx = new Vector3f(targetWorld).add(-ds, 0, 0);
-        Vector3f pz = new Vector3f(targetWorld).add(0, 0, ds);
-        Vector3f nz = new Vector3f(targetWorld).add(0, 0, -ds);
-        Vector3f py = new Vector3f(targetWorld).add(0, ds, 0);
-        Vector3f ny = new Vector3f(targetWorld).add(0, -ds, 0);
-
-        /* XZ diamond */
-        this.line(builder, gizmoMat, px, pz, tr, tg, tb, ta);
-        this.line(builder, gizmoMat, pz, nx, tr, tg, tb, ta);
-        this.line(builder, gizmoMat, nx, nz, tr, tg, tb, ta);
-        this.line(builder, gizmoMat, nz, px, tr, tg, tb, ta);
-
-        /* Vertical diamond */
-        this.line(builder, gizmoMat, px, py, tr, tg, tb, ta);
-        this.line(builder, gizmoMat, py, nx, tr, tg, tb, ta);
-        this.line(builder, gizmoMat, nx, ny, tr, tg, tb, ta);
-        this.line(builder, gizmoMat, ny, px, tr, tg, tb, ta);
-
-        /* --- cyan lines connecting IK chain bones (tip → root) --- */
-        String tipName  = this.activeIKChain.tipBone.get();
-        String rootName = this.activeIKChain.rootBone.get();
-
-        if (!tipName.isEmpty() && !rootName.isEmpty())
-        {
-            ModelInstance inst = this.getPreviewModelInstance();
-
-            if (inst != null && inst.model instanceof Model model)
-            {
-                /* Walk from tip to root collecting bone points */
-                List<Vector3f> bonePoints = new ArrayList<>();
-                ModelGroup cursor = model.getGroup(tipName);
-
-                while (cursor != null)
-                {
-                    Vector3f pt = this.getBonePoint(matrixCache, cursor.id);
-
-                    if (pt != null)
-                    {
-                        bonePoints.add(pt);
-                    }
-
-                    if (cursor.id.equals(rootName))
-                    {
-                        break;
-                    }
-
-                    cursor = cursor.parent;
-                }
-
-                /* Draw lines between consecutive bone points */
-                for (int i = 0; i < bonePoints.size() - 1; i++)
-                {
-                    this.line(builder, uiMatrix,
-                              bonePoints.get(i), bonePoints.get(i + 1),
-                              0.2F, 0.9F, 1.0F, 0.85F);
-                }
-
-                /* Small crosshair at each joint */
-                for (Vector3f pt : bonePoints)
-                {
-                    this.cross(builder, uiMatrix, pt, 0.025F, 0.2F, 0.9F, 1.0F, 0.8F);
-                }
-            }
-        }
-
-        BufferRenderer.drawWithGlobalProgram(builder.end());
-
-        RenderSystem.enableDepthTest();
-        RenderSystem.disableBlend();
-    }
-
 
     private int getBoneStencilId(String bone)
     {
@@ -951,6 +799,7 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
 
         this.syncAnimations();
         this.form.color.get().set(this.config.color.get());
+        this.syncSolverConfig(this.config);
 
         if (!this.dirty)
         {
@@ -970,14 +819,12 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
                 model.applyConfig((MapType) this.config.toData());
                 model.texture = this.config.texture.get();
                 model.color = this.config.color.get();
+                this.syncSolverConfig(this.config);
 
                 if (wasProcedural != model.procedural)
                 {
                     this.renderer.resetAnimator();
                 }
-
-                /* Live IK preview: push chain configs into the preview animator */
-                this.applyIKChainsToPreview(model);
             }
         }
         catch (Exception e)
@@ -1015,6 +862,7 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
                         this.previewModel.applyConfig((MapType) this.config.toData());
                         this.previewModel.texture = this.config.texture.get();
                         this.previewModel.color = this.config.color.get();
+                        this.syncSolverConfig(this.config);
                     }
                     catch (Exception e)
                     {
@@ -1056,28 +904,6 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
                 target.geckoAnimations.enabled,
                 target.geckoAnimations.limbs.size()
             );
-        }
-    }
-
-    /**
-     * Pushes the IK chain configurations from the active ModelConfig into the
-     * preview model's ProceduralAnimator so the FABRIK solver runs every frame
-     * in the editor preview viewport.
-     */
-    private void applyIKChainsToPreview(ModelInstance model)
-    {
-        if (this.config == null || this.config.ikChains.getList().isEmpty())
-        {
-            return;
-        }
-
-        /* ModelFormRenderer.getAnimator() returns the live IAnimator.
-           If the model is procedural, it will be a ProceduralAnimator. */
-        IAnimator animator = this.renderer.getAnimator();
-
-        if (animator instanceof ProceduralAnimator pa)
-        {
-            pa.setIKChains(new ArrayList<>(this.config.ikChains.getList()));
         }
     }
 

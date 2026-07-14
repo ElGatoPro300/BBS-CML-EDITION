@@ -1,10 +1,8 @@
 package mchorse.bbs_mod.cubic.model;
 
 import mchorse.bbs_mod.cubic.animation.ActionsConfig;
-import mchorse.bbs_mod.cubic.model.ArmorConfig;
-import mchorse.bbs_mod.cubic.model.IKChainConfig;
-import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.forms.values.ValueActionsConfig;
+import mchorse.bbs_mod.settings.values.core.ValueData;
 import mchorse.bbs_mod.settings.values.core.ValueGroup;
 import mchorse.bbs_mod.settings.values.core.ValueLink;
 import mchorse.bbs_mod.settings.values.core.ValueList;
@@ -61,23 +59,10 @@ public class ModelConfig extends ValueGroup
         }
     };
 
-    public final ValueList<PhysBoneSlot> physBones = new ValueList<PhysBoneSlot>("phys_bones")
-    {
-        @Override
-        protected PhysBoneSlot create(String id)
-        {
-            return new PhysBoneSlot(id);
-        }
-    };
-
-    public final ValueList<IKChainConfig> ikChains = new ValueList<IKChainConfig>("ik_chains")
-    {
-        @Override
-        protected IKChainConfig create(String id)
-        {
-            return new IKChainConfig(id);
-        }
-    };
+    /* Limb IK / spring chains / joint limits — MapType blobs consumed by the new solvers */
+    public final ValueData ik = new ValueData("ik");
+    public final ValueData springs = new ValueData("springs");
+    public final ValueData constraints = new ValueData("constraints");
 
     public ModelConfig(String id)
     {
@@ -104,7 +89,12 @@ public class ModelConfig extends ValueGroup
         this.add(this.itemsOffTransform);
         this.add(this.itemsMain);
         this.add(this.itemsOff);
-        this.add(this.physBones);
-        this.add(this.ikChains);
+
+        this.ik.invisible();
+        this.springs.invisible();
+        this.constraints.invisible();
+        this.add(this.ik);
+        this.add(this.springs);
+        this.add(this.constraints);
     }
 }
