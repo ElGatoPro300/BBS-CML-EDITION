@@ -24,6 +24,8 @@ import org.joml.Matrix4f;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 
+import com.mojang.blaze3d.systems.RenderSystem;
+
 import java.util.function.Supplier;
 
 public class ParticleFormRenderer extends FormRenderer<ParticleForm> implements ITickable
@@ -125,16 +127,9 @@ public class ParticleFormRenderer extends FormRenderer<ParticleForm> implements 
 
             this.updateTexture(context.getTransition());
 
-            Matrix4f stackMatrix = new Matrix4f(context.stack.peek().getPositionMatrix());
+            Matrix4f matrix = new Matrix4f(RenderSystem.getInverseViewRotationMatrix());
 
-            if (BBSRendering.isIrisShadersEnabled() && !context.modelRenderer && context.entity != null)
-            {
-                stackMatrix = BBSRendering.stripTerrainPositionMatrix(stackMatrix);
-            }
-
-            Matrix4f matrix = new Matrix4f(MatrixStackUtils.getInverseViewRotationMatrix());
-
-            matrix.mul(stackMatrix);
+            matrix.mul(context.stack.peek().getPositionMatrix());
 
             Vector3d translation = new Vector3d(matrix.getTranslation(Vectors.TEMP_3F));
             translation.add(context.camera.position.x, context.camera.position.y, context.camera.position.z);
@@ -146,11 +141,10 @@ public class ParticleFormRenderer extends FormRenderer<ParticleForm> implements 
 
             context.stack.push();
             context.stack.loadIdentity();
-            context.stack.multiplyPositionMatrix(MatrixStackUtils.getViewRotationMatrix());
+            context.stack.multiplyPositionMatrix(new Matrix4f(RenderSystem.getInverseViewRotationMatrix()).invert());
 
             emitter.lastGlobal.set(translation);
             emitter.rotation.set(matrix);
-            emitter.modelRenderer = context.modelRenderer;
 
             if (!BBSRendering.isIrisShadowPass())
             {

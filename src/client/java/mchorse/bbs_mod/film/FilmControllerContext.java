@@ -3,7 +3,6 @@ package mchorse.bbs_mod.film;
 import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
-import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
 
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
@@ -13,8 +12,6 @@ import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.util.math.MatrixStack;
 
 import org.joml.Matrix4f;
-
-import com.mojang.blaze3d.systems.RenderSystem;
 
 import io.netty.util.collection.IntObjectMap;
 
@@ -39,6 +36,7 @@ public class FilmControllerContext
     /* Tick (with sub-tick transition) at which the replay's form properties were applied
      * this frame; NaN when the render path doesn't know it (illusion delay needs it) */
     public float propertyTick = Float.NaN;
+    public boolean isShadowPass;
 
     public String bone;
     public boolean local;
@@ -48,9 +46,7 @@ public class FilmControllerContext
 
     public String nameTag = "";
     public boolean relative;
-    public boolean isShadowPass;
     public Matrix4f localGroupTransform;
-    public Matrix4f viewMatrix;
 
     private FilmControllerContext()
     {}
@@ -59,6 +55,7 @@ public class FilmControllerContext
     {
         this.film = null;
         this.propertyTick = Float.NaN;
+        this.isShadowPass = false;
         this.map = null;
         this.shadowRadius = 0F;
         this.shadowOpacity = 1F;
@@ -67,9 +64,7 @@ public class FilmControllerContext
         this.local = false;
         this.nameTag = "";
         this.relative = false;
-        this.isShadowPass = false;
         this.localGroupTransform = null;
-        this.viewMatrix = null;
     }
 
     public FilmControllerContext setup(IntObjectMap<IEntity> entities, IEntity entity, Replay replay, WorldRenderContext context)
@@ -81,13 +76,8 @@ public class FilmControllerContext
         this.replay = replay;
         this.camera = context.camera();
         this.stack = context.matrixStack();
-        if (this.stack == null)
-        {
-            this.stack = new MatrixStack();
-            MatrixStackUtils.multiply(this.stack, RenderSystem.getModelViewMatrix());
-        }
         this.consumers = context.consumers();
-        this.transition = context.tickCounter().getTickDelta(false);
+        this.transition = context.tickDelta();
 
         return this;
     }
@@ -121,6 +111,13 @@ public class FilmControllerContext
         return this;
     }
 
+    public FilmControllerContext isShadowPass(boolean isShadowPass)
+    {
+        this.isShadowPass = isShadowPass;
+
+        return this;
+    }
+
     public FilmControllerContext transition(float transition)
     {
         this.transition = transition;
@@ -131,13 +128,6 @@ public class FilmControllerContext
     public FilmControllerContext stencil(StencilMap map)
     {
         this.map = map;
-
-        return this;
-    }
-
-    public FilmControllerContext viewMatrix(Matrix4f viewMatrix)
-    {
-        this.viewMatrix = viewMatrix;
 
         return this;
     }
@@ -199,13 +189,6 @@ public class FilmControllerContext
     public FilmControllerContext relative(boolean relative)
     {
         this.relative = relative;
-
-        return this;
-    }
-
-    public FilmControllerContext isShadowPass(boolean isShadowPass)
-    {
-        this.isShadowPass = isShadowPass;
 
         return this;
     }

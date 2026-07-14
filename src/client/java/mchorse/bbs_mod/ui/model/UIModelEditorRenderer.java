@@ -656,10 +656,11 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
             return;
         }
 
-        Tessellator tessellator = Tessellator.getInstance();
+        BufferBuilder builder = Tessellator.getInstance().getBuffer();
+
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
         RenderSystem.enableBlend();
-        BufferBuilder builder = tessellator.begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
+        builder.begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
 
         for (ModelQuad quad : this.selectedCube.quads)
         {
@@ -768,8 +769,8 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
 
     private void line(BufferBuilder builder, Matrix4f matrix, Vector3f a, Vector3f b, float r, float g, float bl, float alpha)
     {
-        builder.vertex(matrix, a.x, a.y, a.z).color(r, g, bl, alpha);
-        builder.vertex(matrix, b.x, b.y, b.z).color(r, g, bl, alpha);
+        builder.vertex(matrix, a.x, a.y, a.z).color(r, g, bl, alpha).next();
+        builder.vertex(matrix, b.x, b.y, b.z).color(r, g, bl, alpha).next();
     }
 
     private void cross(BufferBuilder builder, Matrix4f matrix, Vector3f p, float size, float r, float g, float b, float a)
@@ -819,10 +820,12 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
         /* Flip Z to match the renderer's Y-rotation PI applied in getCubePivotMatrix */
         gizmoMat.rotateY(MathUtils.PI);
 
-        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
+        BufferBuilder builder = Tessellator.getInstance().getBuffer();
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
         RenderSystem.enableBlend();
         RenderSystem.disableDepthTest();
+
+        builder.begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
 
         /* --- magenta crosshair at target --- */
         float cs = 0.12F * 16F;   /* crosshair arm length in render units */
