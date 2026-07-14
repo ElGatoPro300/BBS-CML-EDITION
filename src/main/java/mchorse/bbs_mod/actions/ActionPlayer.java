@@ -304,19 +304,7 @@ public class ActionPlayer
     {
         BaseValue current = this.film;
 
-        int start = 0;
-
-        if (this.film != null && path.size() > 0)
-        {
-            String filmId = this.film.getId();
-
-            if (filmId != null && !filmId.isEmpty() && filmId.equals(path.strings.get(0)))
-            {
-                start = 1;
-            }
-        }
-
-        for (int i = start; i < path.size(); i++)
+        for (int i = 0; i < path.size(); i++)
         {
             String part = path.strings.get(i);
 
@@ -383,15 +371,6 @@ public class ActionPlayer
 
     public void stop()
     {
-        SuperFakePlayer fakePlayer = SuperFakePlayer.get(this.world);
-
-        for (Replay replay : this.film.replays.getList())
-        {
-            fakePlayer.closeReplayChest(replay.getId());
-        }
-
-        fakePlayer.closeHandledScreen();
-
         for (LivingEntity value : this.actors.values())
         {
             if (!value.isPlayer())

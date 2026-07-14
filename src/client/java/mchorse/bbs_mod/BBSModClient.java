@@ -10,7 +10,6 @@ import mchorse.bbs_mod.camera.clips.misc.CurveClientClip;
 import mchorse.bbs_mod.camera.clips.misc.TrackerClientClip;
 import mchorse.bbs_mod.camera.controller.CameraController;
 import mchorse.bbs_mod.client.BBSRendering;
-import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.client.renderer.ModelBlockEntityRenderer;
 import mchorse.bbs_mod.client.renderer.TriggerBlockEntityRenderer;
 import mchorse.bbs_mod.client.renderer.entity.ActorEntityRenderer;
@@ -80,11 +79,11 @@ import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UIKeyfram
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.shapes.KeyframeShapeRenderers;
 import mchorse.bbs_mod.ui.model_blocks.UIModelBlockEditorMenu;
 import mchorse.bbs_mod.ui.morphing.UIMorphingPanel;
+import mchorse.bbs_mod.ui.utils.cml.CMLSettings;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.keys.KeyCombo;
 import mchorse.bbs_mod.ui.utils.keys.KeybindSettings;
 import mchorse.bbs_mod.utils.MathUtils;
-import mchorse.bbs_mod.utils.RecentAssetsTracker;
 import mchorse.bbs_mod.utils.ScreenshotRecorder;
 import mchorse.bbs_mod.utils.VideoRecorder;
 import mchorse.bbs_mod.utils.colors.Color;
@@ -118,7 +117,6 @@ import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
-import net.minecraft.client.util.BufferAllocator;
 import net.minecraft.client.util.InputUtil;
 import net.minecraft.client.util.Window;
 import net.minecraft.client.util.math.MatrixStack;
@@ -126,8 +124,6 @@ import net.minecraft.entity.EquipmentSlot;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
-
-import org.joml.Matrix4fStack;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 
@@ -291,28 +287,14 @@ public class BBSModClient implements ClientModInitializer
 
     public static int getGUIScale()
     {
-        float scale = BBSSettings.userIntefaceScale.get();
+        int scale = BBSSettings.userIntefaceScale.get();
 
-        if (scale <= 0F)
+        if (scale == 0)
         {
             return MinecraftClient.getInstance().options.getGuiScale().getValue();
         }
 
-        /* Minecraft's GUI scale option is integer-only, so round to the nearest whole step. The
-           exact (possibly fractional) value is applied via the window scale-factor override
-           (see WindowMixin / getUIScaleFactor). */
-        return Math.max(1, Math.round(scale));
-    }
-
-    /**
-     * The exact (possibly fractional) BBS UI scale, e.g. 1.6. Returns 0 when set to "auto" so the
-     * window keeps Minecraft's computed integer scale.
-     */
-    public static double getUIScaleFactor()
-    {
-        float scale = BBSSettings.userIntefaceScale.get();
-
-        return scale <= 0F ? 0D : scale;
+        return scale;
     }
 
     public static float getOriginalFramebufferScale()
@@ -473,8 +455,6 @@ public class BBSModClient implements ClientModInitializer
         selectors.read();
         films = new Films();
 
-        RecentAssetsTracker.load();
-
         BBSResources.init();
 
         URLRepository repository = new URLRepository(new File(parentFile, "url_cache"));
@@ -485,6 +465,7 @@ public class BBSModClient implements ClientModInitializer
         KeybindSettings.registerClasses();
 
         BBSMod.setupConfig(Icons.KEY_CAP, "keybinds", new File(BBSMod.getSettingsFolder(), "keybinds.json"), KeybindSettings::register);
+        BBSMod.setupConfig(Icons.SETTINGS, "cml", new File(BBSMod.getSettingsFolder(), "cml.json"), CMLSettings::register);
 
         BBSMod.events.post(new RegisterClientSettingsEvent());
 
@@ -501,18 +482,6 @@ public class BBSModClient implements ClientModInitializer
         BBSSettings.tooltipStyle.modes(
             UIKeys.ENGINE_TOOLTIP_STYLE_LIGHT,
             UIKeys.ENGINE_TOOLTIP_STYLE_DARK
-        );
-
-        BBSSettings.replayContextOptions.modes(
-            UIKeys.CONFIG_GENERAL_COMPACTED_OPTIONS_DEFAULT,
-            UIKeys.CONFIG_GENERAL_COMPACTED_OPTIONS_SEPARATED,
-            UIKeys.CONFIG_GENERAL_COMPACTED_OPTIONS_COMPACTED
-        );
-
-        BBSSettings.editorTimeMode.modes(
-            UIKeys.CONFIG_EDITOR_TICKS_MODE,
-            UIKeys.CONFIG_EDITOR_SECONDS_MODE,
-            UIKeys.CONFIG_EDITOR_FRAMES_MODE
         );
 
         BBSSettings.keystrokeMode.modes(
@@ -549,16 +518,19 @@ public class BBSModClient implements ClientModInitializer
 
         WorldRenderEvents.AFTER_ENTITIES.register((context) ->
         {
-            BBSRendering.renderCoolStuff(context);
-
-            if (BBSRendering.isChromaSkyEnabled())
+            if (!BBSRendering.isIrisShadersEnabled())
             {
-                float d = BBSRendering.getChromaSkyBillboard();
+                BBSRendering.renderCoolStuff(context);
+            }
+
+            if (BBSSettings.chromaSkyEnabled.get())
+            {
+                float d = BBSSettings.chromaSkyBillboard.get();
 
                 if (d > 0)
                 {
                     MatrixStack stack = context.matrixStack();
-                    Color color = Colors.COLOR.set(BBSRendering.getChromaSkyColor());
+                    Color color = Colors.COLOR.set(BBSSettings.chromaSkyColor.get());
 
                     stack.push();
 
@@ -569,7 +541,9 @@ public class BBSModClient implements ClientModInitializer
                     stack.translate(0F, 0F, -d);
 
                     RenderSystem.enableDepthTest();
-                    BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
+                    BufferBuilder builder = Tessellator.getInstance().getBuffer();
+
+                    builder.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR);
 
                     float fov = MinecraftClient.getInstance().options.getFov().getValue();
                     float dd = d * (float) Math.pow(fov / 40F, 2F);
@@ -584,16 +558,7 @@ public class BBSModClient implements ClientModInitializer
 
                     RenderSystem.setShader(GameRenderer::getPositionColorProgram);
 
-                    Matrix4fStack mvStack = RenderSystem.getModelViewStack();
-                    mvStack.pushMatrix();
-                    mvStack.identity();
-                    RenderSystem.applyModelViewMatrix();
-
                     BufferRenderer.drawWithGlobalProgram(builder.end());
-
-                    mvStack.popMatrix();
-                    RenderSystem.applyModelViewMatrix();
-
                     RenderSystem.disableDepthTest();
 
                     stack.pop();
@@ -609,11 +574,6 @@ public class BBSModClient implements ClientModInitializer
             }
         });
 
-        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) ->
-        {
-            RecentAssetsTracker.load();
-        });
-
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) ->
         {
             dashboard = null;
@@ -623,7 +583,6 @@ public class BBSModClient implements ClientModInitializer
             ClientNetwork.resetHandshake();
             films.reset();
             cameraController.reset();
-            BBSMod.setRegistryManager(null);
         });
 
         ClientTickEvents.START_CLIENT_TICK.register((client) ->
@@ -714,13 +673,13 @@ public class BBSModClient implements ClientModInitializer
             }
         });
 
-        HudRenderCallback.EVENT.register((drawContext, tickCounter) ->
+        HudRenderCallback.EVENT.register((drawContext, tickDelta) ->
         {
-            BBSRendering.renderHud(drawContext, tickCounter.getTickDelta(false));
+            BBSRendering.renderHud(drawContext, tickDelta);
 
             if (gunZoom != null)
             {
-                gunZoom.update(keyZoom.isPressed(), tickCounter.getLastFrameDuration());
+                gunZoom.update(keyZoom.isPressed(), MinecraftClient.getInstance().getLastFrameDuration());
 
                 if (gunZoom.canBeRemoved())
                 {
@@ -913,7 +872,18 @@ public class BBSModClient implements ClientModInitializer
 
     private void keyOpenReplays()
     {
-        UIScreen.open(getDashboard());
+        UIDashboard dashboard = getDashboard();
+
+        UIScreen.open(dashboard);
+
+        if (dashboard.getPanels().panel instanceof UIFilmPanel panel && panel.getData() != null)
+        {
+            panel.preview.openReplays();
+        }
+        else
+        {
+            dashboard.setPanel(dashboard.getPanel(UIFilmPanel.class));
+        }
     }
 
     private void keyOpenQuickReplays()

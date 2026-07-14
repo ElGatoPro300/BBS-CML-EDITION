@@ -179,9 +179,9 @@ public class UILabelFormPanel extends UIFormPanel<LabelForm>
         this.gradientEndColor = new UIColor((c) -> this.form.gradientEndColor.set(Color.rgba(c))).withAlpha();
         this.gradientOffset = new UITrackpad((v) -> this.form.gradientOffset.set(v.floatValue()));
         this.gradientOffset.limit(0F, 1F).values(0.01F);
-        this.gradientOffset.tooltip(UIKeys.RAW_GRADIENT_OFFSET);
+        this.gradientOffset.tooltip(IKey.raw("Gradient Offset"));
 
-        this.resetGradient = new UIButton(UIKeys.RAW_RESET_GRADIENT, (b) ->
+        this.resetGradient = new UIButton(IKey.raw("Reset Gradient"), (b) ->
         {
             this.form.gradient.set(false);
             this.form.gradientEndColor.set(Color.white());

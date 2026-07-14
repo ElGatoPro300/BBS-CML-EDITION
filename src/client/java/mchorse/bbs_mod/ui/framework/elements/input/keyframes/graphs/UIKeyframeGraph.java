@@ -13,7 +13,6 @@ import mchorse.bbs_mod.ui.framework.elements.input.keyframes.shapes.IKeyframeSha
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.Scale;
 import mchorse.bbs_mod.ui.utils.ScrollDirection;
-import mchorse.bbs_mod.ui.utils.TimelineRuler;
 import mchorse.bbs_mod.utils.Pair;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.interps.IInterp;
@@ -30,7 +29,6 @@ import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
-import net.minecraft.client.util.BufferAllocator;
 
 import org.joml.Matrix4f;
 
@@ -41,8 +39,6 @@ import java.util.List;
 
 public class UIKeyframeGraph implements IUIKeyframeGraph
 {
-    private static final int RULER_HEIGHT = 16;
-
     protected UIKeyframes keyframes;
 
     protected UIKeyframeSheet sheet;
@@ -389,9 +385,7 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
     public void render(UIContext context)
     {
         this.renderGrid(context);
-        context.batcher.clip(this.keyframes.area.x, this.keyframes.area.y + RULER_HEIGHT, this.keyframes.area.w, this.keyframes.area.h - RULER_HEIGHT, context);
         this.renderGraph(context);
-        context.batcher.unclip(context);
     }
 
     /**
@@ -401,9 +395,7 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
     {
         /* Draw horizontal grid */
         Area area = this.keyframes.area;
-        TimelineRuler.Step step = TimelineRuler.steps(this.keyframes.getXAxis());
-        int mult = step.minor;
-        int major = step.major;
+        int mult = this.keyframes.getXAxis().getMult();
         int hx = this.keyframes.getDuration() / mult;
         int ht = (int) this.keyframes.fromGraphX(area.x);
 
@@ -417,17 +409,9 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
             }
 
             String label = TimeUtils.formatTime(j * mult);
-            boolean majorTick = (j * mult) % major == 0;
-            int tickBottom = area.y + RULER_HEIGHT;
-            int tickHeight = majorTick ? 8 : 4;
 
-            context.batcher.box(x, area.y, x + 1, area.ey(), majorTick ? 0x44ffffff : 0x18ffffff);
-            context.batcher.box(x, tickBottom - tickHeight, x + 1, tickBottom, majorTick ? 0xddffffff : 0x77ffffff);
-
-            if (majorTick)
-            {
-                context.batcher.textShadow(label, x + 4, area.y + 4, Colors.WHITE);
-            }
+            context.batcher.box(x, area.y, x + 1, area.ey(), Colors.setA(Colors.WHITE, 0.25F));
+            context.batcher.text(label, x + 4, area.y + 4);
         }
 
         /* Draw vertical grid */
@@ -450,7 +434,7 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
                 continue;
             }
 
-            context.batcher.box(area.x, y, area.ex(), y + 1, 0x24ffffff);
+            context.batcher.box(area.x, y, area.ex(), y + 1, Colors.setA(Colors.WHITE, 0.25F));
             context.batcher.text(String.valueOf(min + j * mult), area.x + 4, y + 4);
         }
 
@@ -540,6 +524,7 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
     @SuppressWarnings({"rawtypes", "IntegerDivisionInFloatingPointContext"})
     protected void renderGraph(UIContext context)
     {
+        BufferBuilder builder = Tessellator.getInstance().getBuffer();
         Matrix4f matrix = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
 
         UIKeyframeSheet sheet = this.sheet;
@@ -632,7 +617,7 @@ public class UIKeyframeGraph implements IUIKeyframeGraph
         lineBuilder.render(context.batcher, SolidColorLineRenderer.get(Colors.COLOR.set(Colors.setA(sheet.color, 1F))));
 
         /* Render track bars (horizontal lines) */
-        BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
+        builder.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR);
 
         /* Draw keyframe handles (outer) */
         int forcedIndex = 0;

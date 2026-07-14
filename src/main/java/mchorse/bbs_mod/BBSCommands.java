@@ -149,7 +149,7 @@ public class BBSCommands
                         {
                             for (ServerPlayerEntity player : ctx.getSource().getWorld().getPlayers())
                             {
-                                if (player.getBlockPos().getSquaredDistance(pos) <= (Math.pow(BBSSettings.modelBlockAnimationStateDistance.get(), 2)))
+                                if (player.getBlockPos().getSquaredDistance(pos) <= 64F)
                                 {
                                     ServerNetwork.sendModelBlockState(player, pos, animationState);
                                 }
@@ -525,7 +525,7 @@ public class BBSCommands
 
         try
         {
-            structureTemplate = structureTemplateManager.getTemplateOrBlank(Identifier.of(name));
+            structureTemplate = structureTemplateManager.getTemplateOrBlank(new Identifier(name));
         }
         catch (InvalidIdentifierException e)
         {
@@ -540,7 +540,7 @@ public class BBSCommands
 
         try
         {
-            if (structureTemplateManager.saveTemplate(Identifier.of(name)))
+            if (structureTemplateManager.saveTemplate(new Identifier(name)))
             {
                 return 1;
             }

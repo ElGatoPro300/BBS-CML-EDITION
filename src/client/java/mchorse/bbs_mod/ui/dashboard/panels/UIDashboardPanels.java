@@ -16,62 +16,31 @@ import mchorse.bbs_mod.utils.Direction;
 import mchorse.bbs_mod.utils.colors.Colors;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class UIDashboardPanels extends UIElement
 {
     public List<UIDashboardPanel> panels = new ArrayList<>();
     public UIDashboardPanel panel;
 
-    private final Map<UIDashboardPanel, UIIcon> panelButtonsMap = new HashMap<>();
-
     public UIElement taskBar;
     public UIElement pinned;
     public UIScrollView panelButtons;
 
-    /**
-     * Render a selection highlight on one edge of the area: a solid color bar on the {@code direction}
-     * side, fading into a gradient towards the opposite edge.
-     */
-    public static void renderHighlight(Batcher2D batcher, Area area, Direction direction)
+    public static void renderHighlight(Batcher2D batcher, Area area)
     {
         int color = BBSSettings.primaryColor.get();
-        int bar = Colors.A100 | color;
-        int near = Colors.A75 | color;
-        int far = color;
-        int t = 2;
 
-        switch (direction)
-        {
-            case TOP:
-                batcher.box(area.x, area.y, area.ex(), area.y + t, bar);
-                batcher.gradientVBox(area.x, area.y + t, area.ex(), area.ey(), near, far);
-                break;
-            case BOTTOM:
-                batcher.box(area.x, area.ey() - t, area.ex(), area.ey(), bar);
-                batcher.gradientVBox(area.x, area.y, area.ex(), area.ey() - t, far, near);
-                break;
-            case LEFT:
-                batcher.box(area.x, area.y, area.x + t, area.ey(), bar);
-                batcher.gradientHBox(area.x + t, area.y, area.ex(), area.ey(), near, far);
-                break;
-            case RIGHT:
-                batcher.box(area.ex() - t, area.y, area.ex(), area.ey(), bar);
-                batcher.gradientHBox(area.x, area.y, area.ex() - t, area.ey(), far, near);
-                break;
-        }
+        batcher.box(area.x, area.ey() - 2, area.ex(), area.ey(), Colors.A100 | color);
+        batcher.gradientVBox(area.x, area.y, area.ex(), area.ey() - 2, color, Colors.A75 | color);
     }
 
     public static void renderHighlightHorizontal(Batcher2D batcher, Area area)
     {
-        renderHighlight(batcher, area, Direction.BOTTOM);
-    }
+        int color = BBSSettings.primaryColor.get();
 
-    public static void renderHighlight(Batcher2D batcher, Area area)
-    {
-        renderHighlight(batcher, area, Direction.BOTTOM);
+        batcher.box(area.ex() - 2, area.y, area.ex(), area.ey(), Colors.A100 | color);
+        batcher.gradientHBox(area.x, area.y, area.ex() - 2, area.ey(), color, Colors.A75 | color);
     }
 
     public UIDashboardPanels()
@@ -84,7 +53,18 @@ public class UIDashboardPanels extends UIElement
         this.panelButtons.relative(this.pinned).x(1F, 5).h(20).wTo(this.taskBar.area, 1F).column(0).scroll();
         this.panelButtons.scroll.cancelScrolling().noScrollbar();
         this.panelButtons.scroll.scrollSpeed = 5;
-        this.taskBar.add(new UIRenderable(this::renderBackground), new UIRenderable(this::renderActiveHighlight), this.pinned, this.panelButtons);
+        this.panelButtons.preRender((context) ->
+        {
+            for (int i = 0, c = this.panels.size(); i < c; i++)
+            {
+                if (this.panel != null && this.panel.getMainPanel() == this.panels.get(i))
+                {
+                    renderHighlight(context.batcher, ((UIIcon) this.panelButtons.getChildren().get(i)).area);
+                }
+            }
+        });
+
+        this.taskBar.add(new UIRenderable(this::renderBackground), this.pinned, this.panelButtons);
         this.add(this.taskBar);
     }
 
@@ -158,66 +138,9 @@ public class UIDashboardPanels extends UIElement
         button.tooltip(tooltip, Direction.TOP);
 
         this.panels.add(panel);
-        this.panelButtonsMap.put(panel, button);
         this.panelButtons.add(button);
 
         return button;
-    }
-
-    public UIIcon registerPinnedPanel(UIDashboardPanel panel, IKey tooltip, Icon icon)
-    {
-        UIIcon button = new UIIcon(icon, (b) -> this.setPanel(panel));
-
-        button.tooltip(tooltip, Direction.TOP);
-
-        this.panels.add(panel);
-        this.panelButtonsMap.put(panel, button);
-        this.pinned.add(button);
-
-        return button;
-    }
-
-    public void registerHiddenPanel(UIDashboardPanel panel)
-    {
-        this.panels.add(panel);
-    }
-
-    public List<UIDashboardPanel> getVisiblePanels()
-    {
-        List<UIDashboardPanel> visible = new ArrayList<>();
-
-        for (UIDashboardPanel p : this.panels)
-        {
-            if (this.panelButtonsMap.containsKey(p))
-            {
-                visible.add(p);
-            }
-        }
-
-        return visible;
-    }
-
-    private void renderActiveHighlight(UIContext context)
-    {
-        if (this.panel == null) return;
-
-        UIDashboardPanel current = this.panel.getMainPanel();
-        UIIcon button = this.panelButtonsMap.get(current);
-
-        while (button == null && current != null)
-        {
-            UIDashboardPanel next = current.getMainPanel();
-
-            if (next == current) break;
-
-            current = next;
-            button = this.panelButtonsMap.get(current);
-        }
-
-        if (button != null)
-        {
-            renderHighlight(context.batcher, button.area);
-        }
     }
 
     protected void renderBackground(UIContext context)
@@ -225,9 +148,8 @@ public class UIDashboardPanels extends UIElement
         Area area = this.taskBar.area;
         Area a = this.pinned.area;
 
-        context.batcher.box(area.x, area.y, area.ex(), area.ey(), 0xFF141418);
-        context.batcher.box(area.x, area.y, area.ex(), area.y + 1, 0xFF2A2A35);
-        context.batcher.box(a.ex() + 2, a.y + 3, a.ex() + 3, a.ey() - 3, 0x22ffffff);
+        context.batcher.box(area.x, area.y, area.ex(), area.ey(), Colors.CONTROL_BAR);
+        context.batcher.box(a.ex() + 2, a.y + 3, a.ex() + 3, a.ey() - 3, 0x44ffffff);
     }
 
     public static class PanelEvent extends UIEvent<UIDashboardPanels>

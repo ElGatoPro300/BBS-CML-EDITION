@@ -1094,7 +1094,7 @@ public class UIElement implements IUIElement, IUndoElement
 
     public void clickItself(UIContext context, int mouseButton)
     {
-        if (context == null || !this.isEnabled())
+        if (!this.isEnabled())
         {
             return;
         }

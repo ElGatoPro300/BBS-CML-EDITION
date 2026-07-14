@@ -175,7 +175,8 @@ public class GLTFModelLoader implements IModelLoader
         }
         catch (Exception e)
         {
-            System.err.println("Failed to load GLTF model '" + gltfLink + "': " + e.getMessage());
+            System.err.println("Failed to load GLTF model: " + gltfLink);
+            e.printStackTrace();
         }
         
         return null;

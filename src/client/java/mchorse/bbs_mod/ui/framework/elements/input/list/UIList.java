@@ -59,10 +59,10 @@ public abstract class UIList <T> extends UIElement
     public int background;
 
     private String filter = "";
-    protected List<Pair<T, Integer>> filtered = new ArrayList<>();
+    private List<Pair<T, Integer>> filtered = new ArrayList<>();
 
-    protected int dragging = -1;
-    protected long dragTime;
+    private int dragging = -1;
+    private long dragTime;
 
     public UIList(Consumer<List<T>> callback)
     {
@@ -167,11 +167,6 @@ public abstract class UIList <T> extends UIElement
         }
 
         return this.exists(this.filtered, visibleIndex) ? this.filtered.get(visibleIndex).a : null;
-    }
-
-    public T getVisibleElement(int visibleIndex)
-    {
-        return this.getElementAt(visibleIndex);
     }
 
     /* Index and current value(s) methods */

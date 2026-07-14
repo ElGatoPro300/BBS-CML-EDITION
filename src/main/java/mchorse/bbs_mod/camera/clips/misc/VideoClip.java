@@ -63,12 +63,6 @@ public class VideoClip extends CameraClip
     }
 
     @Override
-    public boolean isPositionClip()
-    {
-        return false;
-    }
-
-    @Override
     protected void applyClip(ClipContext context, Position position)
     {}
 

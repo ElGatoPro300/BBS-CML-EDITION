@@ -2,7 +2,7 @@ package mchorse.bbs_mod.blocks;
 
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.blocks.entities.ModelBlockEntity;
-import mchorse.bbs_mod.forms.forms.Form;
+import mchorse.bbs_mod.blocks.entities.ModelProperties;
 import mchorse.bbs_mod.network.ServerNetwork;
 
 import net.minecraft.block.Block;
@@ -14,9 +14,6 @@ import net.minecraft.block.Waterloggable;
 import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.block.entity.BlockEntityTicker;
 import net.minecraft.block.entity.BlockEntityType;
-import net.minecraft.component.DataComponentTypes;
-import net.minecraft.component.type.BlockStateComponent;
-import net.minecraft.component.type.NbtComponent;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.fluid.FluidState;
 import net.minecraft.fluid.Fluids;
@@ -28,6 +25,7 @@ import net.minecraft.state.StateManager;
 import net.minecraft.state.property.IntProperty;
 import net.minecraft.state.property.Properties;
 import net.minecraft.util.ActionResult;
+import net.minecraft.util.Hand;
 import net.minecraft.util.ItemScatterer;
 import net.minecraft.util.collection.DefaultedList;
 import net.minecraft.util.hit.BlockHitResult;
@@ -39,8 +37,6 @@ import net.minecraft.world.World;
 import net.minecraft.world.WorldView;
 
 import org.joml.Vector3f;
-
-import java.util.Map;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -84,9 +80,13 @@ public class ModelBlock extends Block implements BlockEntityProvider, Waterlogga
         if (entity instanceof ModelBlockEntity modelBlock)
         {
             ItemStack stack = new ItemStack(this);
-            stack.set(DataComponentTypes.BLOCK_ENTITY_DATA, NbtComponent.of(modelBlock.createNbtWithId(world.getRegistryManager())));
-            
-            stack.set(DataComponentTypes.BLOCK_STATE, new BlockStateComponent(Map.of("light_level", String.valueOf(modelBlock.getProperties().getLightLevel()))));
+            NbtCompound compound = new NbtCompound();
+
+            compound.put("BlockEntityTag", modelBlock.createNbtWithId());
+            NbtCompound stateTag = new NbtCompound();
+            stateTag.putInt("light_level", modelBlock.getProperties().getLightLevel());
+            compound.put("BlockStateTag", stateTag);
+            stack.setNbt(compound);
 
             return stack;
         }
@@ -104,6 +104,12 @@ public class ModelBlock extends Block implements BlockEntityProvider, Waterlogga
     public boolean isTransparent(BlockState state, BlockView world, BlockPos pos)
     {
         return true;
+    }
+
+    @Override
+    public float getAmbientOcclusionLightLevel(BlockState state, BlockView world, BlockPos pos)
+    {
+        return 1.0F;
     }
 
     @Nullable
@@ -125,46 +131,19 @@ public class ModelBlock extends Block implements BlockEntityProvider, Waterlogga
     {
         try
         {
-            if (world instanceof World w)
+            BlockEntity be = world.getBlockEntity(pos);
+
+            if (be instanceof ModelBlockEntity model)
             {
-                BlockEntity be = w.getBlockEntity(pos);
+                ModelProperties properties = model.getProperties();
 
-                if (be instanceof ModelBlockEntity model && model.getProperties().isHitbox())
+                if (!properties.isHitbox())
                 {
-                    Form form = model.getProperties().getForm();
-
-                    if (form != null && form.hitbox.get())
-                    {
-                        float width = form.hitboxWidth.get();
-                        float height = form.hitboxHeight.get();
-
-                        if (width > 0F && height > 0F)
-                        {
-                            float halfWidth = width / 2F;
-
-                            double minX = 0.5D - halfWidth;
-                            double maxX = 0.5D + halfWidth;
-                            double minZ = 0.5D - halfWidth;
-                            double maxZ = 0.5D + halfWidth;
-                            double minY = 0D;
-                            double maxY = height;
-
-                            minX = Math.max(0D, minX);
-                            minZ = Math.max(0D, minZ);
-                            maxX = Math.min(1D, maxX);
-                            maxZ = Math.min(1D, maxZ);
-                            maxY = Math.min(1D, maxY);
-
-                            if (minX < maxX && minZ < maxZ && maxY > minY)
-                            {
-                                return VoxelShapes.cuboid(minX, minY, minZ, maxX, maxY, maxZ);
-                            }
-                        }
-                    }
-
-                    return VoxelShapes.fullCube();
+                    return VoxelShapes.empty();
                 }
             }
+
+            return this.getShape(world, pos);
         }
         catch (Exception e)
         {
@@ -175,14 +154,112 @@ public class ModelBlock extends Block implements BlockEntityProvider, Waterlogga
     }
 
     @Override
-    public ActionResult onUse(BlockState state, World world, BlockPos pos, PlayerEntity player, BlockHitResult hit)
+    public VoxelShape getOutlineShape(BlockState state, BlockView world, BlockPos pos, ShapeContext context)
     {
-        if (player instanceof ServerPlayerEntity serverPlayer)
+        try
         {
-            ServerNetwork.sendClickedModelBlock(serverPlayer, pos);
+            return this.getShape(world, pos);
+        }
+        catch (Exception e)
+        {
+
         }
 
-        return ActionResult.SUCCESS;
+        return VoxelShapes.empty();
+    }
+
+    @Override
+    public VoxelShape getRaycastShape(BlockState state, BlockView world, BlockPos pos)
+    {
+        try
+        {
+            return this.getShape(world, pos);
+        }
+        catch (Exception e)
+        {
+
+        }
+
+        return VoxelShapes.empty();
+    }
+
+    @Override
+    public float calcBlockBreakingDelta(BlockState state, PlayerEntity player, BlockView world, BlockPos pos)
+    {
+        BlockEntity be = world.getBlockEntity(pos);
+
+        if (be instanceof ModelBlockEntity model)
+        {
+            float hardness = model.getProperties().getHardness();
+
+            if (hardness <= 0F)
+            {
+                return 1F;
+            }
+
+            float speed = player.getBlockBreakingSpeed(state);
+
+            if (speed <= 0F)
+            {
+                return 0F;
+            }
+
+            int divisor = player.canHarvest(state) ? 30 : 100;
+
+            return speed / hardness / (float) divisor;
+        }
+
+        return super.calcBlockBreakingDelta(state, player, world, pos);
+    }
+
+    private VoxelShape getShape(BlockView world, BlockPos pos)
+    {
+        BlockEntity be = world.getBlockEntity(pos);
+
+        if (be instanceof ModelBlockEntity model)
+        {
+            ModelProperties properties = model.getProperties();
+
+            Vector3f pos1 = properties.getHitboxPos1();
+            Vector3f pos2 = properties.getHitboxPos2();
+
+            double minX = Math.min(pos1.x, pos2.x);
+            double minY = Math.min(pos1.y, pos2.y);
+            double minZ = Math.min(pos1.z, pos2.z);
+            double maxX = Math.max(pos1.x, pos2.x);
+            double maxY = Math.max(pos1.y, pos2.y);
+            double maxZ = Math.max(pos1.z, pos2.z);
+
+            minX = Math.max(0D, minX);
+            minY = Math.max(0D, minY);
+            minZ = Math.max(0D, minZ);
+            maxX = Math.min(1D, maxX);
+            maxY = Math.min(1D, maxY);
+            maxZ = Math.min(1D, maxZ);
+
+            if (minX < maxX && minY < maxY && minZ < maxZ)
+            {
+                return VoxelShapes.cuboid(minX, minY, minZ, maxX, maxY, maxZ);
+            }
+        }
+
+        return VoxelShapes.fullCube();
+    }
+
+    @Override
+    public ActionResult onUse(BlockState state, World world, BlockPos pos, PlayerEntity player, Hand hand, BlockHitResult hit)
+    {
+        if (hand == Hand.MAIN_HAND)
+        {
+            if (player instanceof ServerPlayerEntity serverPlayer)
+            {
+                ServerNetwork.sendClickedModelBlock(serverPlayer, pos);
+            }
+
+            return ActionResult.SUCCESS;
+        }
+
+        return super.onUse(state, world, pos, player, hand, hit);
     }
 
     /* Waterloggable implementation */
@@ -201,9 +278,13 @@ public class ModelBlock extends Block implements BlockEntityProvider, Waterlogga
             if (be instanceof ModelBlockEntity model)
             {
                 ItemStack stack = new ItemStack(this);
-                stack.set(DataComponentTypes.BLOCK_ENTITY_DATA, NbtComponent.of(model.createNbtWithId(world.getRegistryManager())));
-                
-                stack.set(DataComponentTypes.BLOCK_STATE, new BlockStateComponent(Map.of("light_level", String.valueOf(model.getProperties().getLightLevel()))));
+                NbtCompound wrapper = new NbtCompound();
+
+                wrapper.put("BlockEntityTag", model.createNbtWithId());
+                NbtCompound stateTag = new NbtCompound();
+                stateTag.putInt("light_level", model.getProperties().getLightLevel());
+                wrapper.put("BlockStateTag", stateTag);
+                stack.setNbt(wrapper);
 
                 ItemScatterer.spawn(world, pos, DefaultedList.ofSize(1, stack));
             }

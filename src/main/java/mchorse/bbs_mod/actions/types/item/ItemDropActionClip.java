@@ -20,7 +20,6 @@ public class ItemDropActionClip extends ItemActionClip
     public final ValueFloat velocityY = new ValueFloat("vy", 0F);
     public final ValueFloat velocityZ = new ValueFloat("vz", 0F);
     public final ValueBoolean relative = new ValueBoolean("relative", false);
-    public final ValueBoolean trajectoryPreview = new ValueBoolean("trajectory_preview", false);
 
     public ItemDropActionClip()
     {
@@ -33,7 +32,6 @@ public class ItemDropActionClip extends ItemActionClip
         this.add(this.velocityY);
         this.add(this.velocityZ);
         this.add(this.relative);
-        this.add(this.trajectoryPreview);
     }
 
     public void shift(double dx, double dy, double dz)

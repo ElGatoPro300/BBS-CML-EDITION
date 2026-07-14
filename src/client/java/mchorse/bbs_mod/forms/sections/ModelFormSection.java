@@ -222,7 +222,7 @@ public class ModelFormSection extends SubFormSection
 
     private boolean isHierarchyEnabled()
     {
-        return true;
+        return BBSSettings.modelFormsHierarchy != null && BBSSettings.modelFormsHierarchy.get();
     }
 
     private String getFolderPath(String key)

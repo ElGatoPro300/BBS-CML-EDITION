@@ -7,6 +7,7 @@ import mchorse.bbs_mod.blocks.entities.ModelBlockEntity;
 import mchorse.bbs_mod.blocks.entities.ModelProperties;
 import mchorse.bbs_mod.camera.Camera;
 import mchorse.bbs_mod.camera.clips.CameraClipContext;
+import mchorse.bbs_mod.camera.clips.modifiers.EntityClip;
 import mchorse.bbs_mod.camera.data.Position;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.data.types.BaseType;
@@ -14,6 +15,7 @@ import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.film.Film;
 import mchorse.bbs_mod.film.replays.Replay;
+import mchorse.bbs_mod.film.replays.Replays;
 import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.forms.AnchorForm;
@@ -21,8 +23,8 @@ import mchorse.bbs_mod.forms.forms.BodyPart;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.forms.MobForm;
 import mchorse.bbs_mod.forms.forms.ModelForm;
+import mchorse.bbs_mod.forms.forms.utils.Anchor;
 import mchorse.bbs_mod.graphics.window.Window;
-import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.math.IExpression;
 import mchorse.bbs_mod.math.MathBuilder;
@@ -72,8 +74,6 @@ import mchorse.bbs_mod.utils.pose.Transform;
 import mchorse.bbs_mod.utils.resources.Pixels;
 
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.render.DiffuseLighting;
-import net.minecraft.item.ItemStack;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.hit.HitResult;
 import net.minecraft.util.math.BlockPos;
@@ -81,12 +81,10 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 
 import org.joml.Vector3d;
-import org.joml.Vector3f;
-
-import com.mojang.blaze3d.systems.RenderSystem;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -108,7 +106,6 @@ public class UIReplayList extends UIList<Replay> {
     public static final List<BiConsumer<UIReplayList, ContextMenuManager>> extensions = new ArrayList<>();
 
     private static String LAST_PROCESS = "v";
-    private static String LAST_PICK_FAVORITE_CATEGORY_ID = null;
     private static String LAST_OFFSET = "0";
     private static List<String> LAST_PROCESS_PROPERTIES = Arrays.asList("x");
     private static int LAST_PROCESS_SECTION = 0;
@@ -282,10 +279,10 @@ public class UIReplayList extends UIList<Replay> {
     private void openCopyKeyframesMenu() {
         this.getContext().replaceContextMenu((sub) -> {
             sub.autoKeys();
-            sub.action(Icons.POSE, UIKeys.FILM_REPLAY_COPY_POSES, () -> this.copyKeyframesFiltered(KeyframeFactories.POSE));
-            sub.action(Icons.ALL_DIRECTIONS, UIKeys.FILM_REPLAY_COPY_TRANSFORMS, () -> this.copyKeyframesFiltered(KeyframeFactories.TRANSFORM));
-            sub.action(Icons.IMAGE, UIKeys.FILM_REPLAY_COPY_TEXTURE, () -> this.copyKeyframesByPropertySuffixes("texture"));
-            sub.action(Icons.STRUCTURE, UIKeys.FILM_REPLAY_COPY_MODEL, () -> this.copyKeyframesByPropertySuffixes("model"));
+            sub.action(Icons.POSE, IKey.constant("Copy Poses"), () -> this.copyKeyframesFiltered(KeyframeFactories.POSE));
+            sub.action(Icons.ALL_DIRECTIONS, IKey.constant("Copy Transforms"), () -> this.copyKeyframesFiltered(KeyframeFactories.TRANSFORM));
+            sub.action(Icons.IMAGE, IKey.constant("Copy texture"), () -> this.copyKeyframesByPropertySuffixes("texture"));
+            sub.action(Icons.STRUCTURE, IKey.constant("Copy model"), () -> this.copyKeyframesByPropertySuffixes("model"));
         });
     }
 
@@ -311,7 +308,7 @@ public class UIReplayList extends UIList<Replay> {
             // Fallback to export from replay directly
             MapType fallback = exportAllKeyframesFromReplay(this.getCurrentFirst(), factories);
             if (fallback != null && !fallback.isEmpty()) {
-                Window.setInMemoryClipboard(fallback, "_CopyKeyframes");
+                Window.setClipboard(fallback, "_CopyKeyframes");
             }
             return;
         }
@@ -323,7 +320,7 @@ public class UIReplayList extends UIList<Replay> {
         }
 
         if (data != null && !data.isEmpty()) {
-            Window.setInMemoryClipboard(data, "_CopyKeyframes");
+            Window.setClipboard(data, "_CopyKeyframes");
         }
     }
 
@@ -333,7 +330,7 @@ public class UIReplayList extends UIList<Replay> {
         if (replayEditor == null || replayEditor.keyframeEditor == null || replayEditor.keyframeEditor.view == null) {
             MapType fallback = exportKeyframesFromReplayByPropertySuffixes(this.getCurrentFirst(), suffixes);
             if (fallback != null && !fallback.isEmpty()) {
-                Window.setInMemoryClipboard(fallback, "_CopyKeyframes");
+                Window.setClipboard(fallback, "_CopyKeyframes");
             }
             return;
         }
@@ -345,7 +342,7 @@ public class UIReplayList extends UIList<Replay> {
         }
 
         if (data != null && !data.isEmpty()) {
-            Window.setInMemoryClipboard(data, "_CopyKeyframes");
+            Window.setClipboard(data, "_CopyKeyframes");
         }
     }
 
@@ -1410,7 +1407,7 @@ public class UIReplayList extends UIList<Replay> {
             replayList.add(replay.toData());
         }
 
-        Window.setInMemoryClipboard(replays, "_CopyReplay");
+        Window.setClipboard(replays, "_CopyReplay");
     }
 
     private void copyGroup() {
@@ -1423,7 +1420,7 @@ public class UIReplayList extends UIList<Replay> {
         MapType data = this.createGroupClipboardData(group);
 
         if (data != null) {
-            Window.setInMemoryClipboard(data, GROUP_CLIPBOARD_KEY);
+            Window.setClipboard(data, GROUP_CLIPBOARD_KEY);
         }
     }
 
@@ -1715,17 +1712,6 @@ public class UIReplayList extends UIList<Replay> {
             }
         });
 
-        if (!editing) {
-            palette.favorites();
-
-            if (!palette.list.hasFavoriteCategory(LAST_PICK_FAVORITE_CATEGORY_ID))
-            {
-                LAST_PICK_FAVORITE_CATEGORY_ID = null;
-            }
-
-            palette.list.setFavoriteCategoryChangedListener((categoryId) -> LAST_PICK_FAVORITE_CATEGORY_ID = categoryId);
-            palette.list.setActiveFavoriteCategoryWithFallback(LAST_PICK_FAVORITE_CATEGORY_ID);
-        }
         palette.updatable();
     }
 
@@ -1849,12 +1835,6 @@ public class UIReplayList extends UIList<Replay> {
         replay.keyframes.x.insert(0, x);
         replay.keyframes.y.insert(0, y);
         replay.keyframes.z.insert(0, z);
-        replay.keyframes.mainHand.insert(0, this.copyItem(properties.getItemMainHand()));
-        replay.keyframes.offHand.insert(0, this.copyItem(properties.getItemOffHand()));
-        replay.keyframes.armorHead.insert(0, this.copyItem(properties.getArmorHead()));
-        replay.keyframes.armorChest.insert(0, this.copyItem(properties.getArmorChest()));
-        replay.keyframes.armorLegs.insert(0, this.copyItem(properties.getArmorLegs()));
-        replay.keyframes.armorFeet.insert(0, this.copyItem(properties.getArmorFeet()));
 
         if (!transform.isDefault()) {
             if (transform.rotate.x == 0 && transform.rotate.z == 0 &&
@@ -1881,10 +1861,6 @@ public class UIReplayList extends UIList<Replay> {
         this.setCurrentDirect(replay);
         this.panel.replayEditor.setReplay(replay);
         this.updateFilmEditor();
-    }
-
-    private ItemStack copyItem(ItemStack stack) {
-        return stack == null ? ItemStack.EMPTY : stack.copy();
     }
 
     public void addReplay(Vector3d position, float pitch, float yaw) {
@@ -1979,7 +1955,7 @@ public class UIReplayList extends UIList<Replay> {
                     }
                 });
 
-        UILabel folderCount = UI.label(UIKeys.FILM_REPLAY_SELECTED.format(0)).background();
+        UILabel folderCount = UI.label(IKey.constant("Selected: 0")).background();
         UIStringList folderList = new UIStringList((l) -> {
         });
         folderList.background().h(60);
@@ -2072,7 +2048,7 @@ public class UIReplayList extends UIList<Replay> {
             if (skinsFolder == null || !skinsFolder.exists() || !skinsFolder.isDirectory()) {
                 UIOverlay.addOverlay(this.getContext(),
                         new UIMessageOverlayPanel(UIKeys.GENERAL_ERROR,
-                                UIKeys.FILM_REPLAY_ERROR_NOT_DIRECTORY));
+                                IKey.constant("One of the selected folders does not exist or is not a directory.")));
                 return;
             }
 
@@ -2090,7 +2066,7 @@ public class UIReplayList extends UIList<Replay> {
         if (skinFiles.isEmpty()) {
             UIOverlay.addOverlay(this.getContext(),
                     new UIMessageOverlayPanel(UIKeys.GENERAL_ERROR,
-                            UIKeys.FILM_REPLAY_ERROR_NO_PNG));
+                            IKey.constant("No PNG files found in the selected folders.")));
             return;
         }
 
@@ -2156,7 +2132,8 @@ public class UIReplayList extends UIList<Replay> {
         if (successCount == 0) {
             UIOverlay.addOverlay(this.getContext(),
                     new UIMessageOverlayPanel(UIKeys.GENERAL_ERROR,
-                            UIKeys.FILM_REPLAY_ERROR_SKINS_FOLDER_ASSETS));
+                            IKey.constant(
+                                    "The skins folder must be inside the BBS assets folder. For example: config/bbs/assets/models/!Skins/")));
         }
     }
 
@@ -2173,13 +2150,13 @@ public class UIReplayList extends UIList<Replay> {
         folderList.clear();
 
         if (folders == null || folders.isEmpty()) {
-            folderCount.label = UIKeys.FILM_REPLAY_SELECTED.format(0);
+            folderCount.label = IKey.constant("Selected: 0");
             folderList.add("<none>");
             removeButton.setEnabled(false);
             return;
         }
 
-        folderCount.label = UIKeys.FILM_REPLAY_SELECTED.format(folders.size());
+        folderCount.label = IKey.constant("Selected: " + folders.size());
         removeButton.setEnabled(true);
 
         for (File folder : folders) {
@@ -2568,11 +2545,7 @@ public class UIReplayList extends UIList<Replay> {
 
             y -= 10;
 
-            Vector3f a = new Vector3f(0.85F, 0.85F, -1F).normalize();
-            Vector3f b = new Vector3f(-0.85F, 0.85F, 1F).normalize();
-            RenderSystem.setupLevelDiffuseLighting(a, b);
             FormUtilsClient.renderUI(form, context, x, y, x + 40, y + 40);
-            DiffuseLighting.disableGuiDepthLighting();
 
             context.batcher.unclip(context);
 
