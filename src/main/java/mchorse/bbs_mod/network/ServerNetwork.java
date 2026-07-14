@@ -192,7 +192,9 @@ public class ServerNetwork
                 });
             }
             catch (Exception e)
-            {}
+            {
+                e.printStackTrace();
+            }
         });
     }
 

@@ -2,6 +2,7 @@ package mchorse.bbs_mod.ui.framework;
 
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.client.BBSRendering;
+import mchorse.bbs_mod.discord.DiscordPresenceManager;
 import mchorse.bbs_mod.importers.IImportPathProvider;
 import mchorse.bbs_mod.importers.ImporterContext;
 import mchorse.bbs_mod.importers.Importers;
@@ -103,11 +104,9 @@ public class UIScreen extends Screen implements IFileDropListener
         super.removed();
 
         this.menu.onClose(null);
+        DiscordPresenceManager.INSTANCE.onBbsUiClosed();
 
-        if (this.menu.canHideHUD())
-        {
-            MinecraftClient.getInstance().options.hudHidden = false;
-        }
+        MinecraftClient.getInstance().options.hudHidden = false;
     }
 
     @Override
@@ -121,11 +120,9 @@ public class UIScreen extends Screen implements IFileDropListener
         super.onDisplayed();
 
         this.menu.onOpen(null);
+        DiscordPresenceManager.INSTANCE.onBbsUiOpened(this.menu);
 
-        if (this.menu.canHideHUD())
-        {
-            MinecraftClient.getInstance().options.hudHidden = true;
-        }
+        MinecraftClient.getInstance().options.hudHidden = this.menu.canHideHUD();
     }
 
     @Override
@@ -200,6 +197,7 @@ public class UIScreen extends Screen implements IFileDropListener
         this.menu.context.setTransition(this.client.getTickDelta());
         this.menu.renderMenu(this.context, mouseX, mouseY);
         this.menu.context.render.executeRunnables();
+        this.client.options.hudHidden = this.menu.canHideHUD();
     }
 
     @Override

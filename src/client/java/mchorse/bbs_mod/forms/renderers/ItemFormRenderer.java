@@ -2,9 +2,13 @@ package mchorse.bbs_mod.forms.renderers;
 
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.client.BBSShaders;
+import mchorse.bbs_mod.client.ItemUseRenderState;
 import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
 import mchorse.bbs_mod.forms.FormUtilsClient;
+import mchorse.bbs_mod.forms.entities.StubEntity;
 import mchorse.bbs_mod.forms.forms.ItemForm;
+import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
+import mchorse.bbs_mod.forms.renderers.utils.FormColorBlend;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.colors.Color;
@@ -13,14 +17,25 @@ import mchorse.bbs_mod.utils.joml.Vectors;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
+import net.minecraft.client.render.model.json.ModelTransformationMode;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.entity.EquipmentSlot;
+import net.minecraft.entity.LivingEntity;
+import net.minecraft.item.ItemStack;
+import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.math.RotationAxis;
 
 import org.joml.Matrix4f;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.logging.LogUtils;
+
+import org.slf4j.Logger;
 
 public class ItemFormRenderer extends FormRenderer<ItemForm>
 {
+    private static final Logger LOGGER = LogUtils.getLogger();
+
     public ItemFormRenderer(ItemForm form)
     {
         super(form);
@@ -43,7 +58,9 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
         matrices.peek().getNormalMatrix().getScale(Vectors.EMPTY_3F);
         matrices.peek().getNormalMatrix().scale(1F / Vectors.EMPTY_3F.x, -1F / Vectors.EMPTY_3F.y, 1F / Vectors.EMPTY_3F.z);
 
-        Color set = this.form.color.get();
+        Color set = Color.white();
+        set.mul(this.form.color.get());
+        FormColorBlend.blendFormGlowBrighten(set, this.form.glowSettings.get(), this.form.glowingColor.get());
 
         consumers.setSubstitute(BBSRendering.getColorConsumer(set));
         consumers.setUI(true);
@@ -60,8 +77,12 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
     {
         CustomVertexConsumerProvider consumers = FormUtilsClient.getProvider();
         int light = context.light;
+        boolean isDropped = context.type == FormRenderType.ITEM;
+        boolean useDroppedMode = this.shouldUseDroppedMode(isDropped);
+        ModelTransformationMode mode = this.getRenderMode(useDroppedMode);
 
         context.stack.push();
+        this.applyDroppedAnimation(context, useDroppedMode);
 
         if (context.isPicking())
         {
@@ -75,23 +96,97 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
         }
         else
         {
-            CustomVertexConsumerProvider.hijackVertexFormat((l) -> RenderSystem.enableBlend());
+            CustomVertexConsumerProvider.hijackVertexFormat((l) ->
+            {
+                RenderSystem.enableBlend();
+                RenderSystem.defaultBlendFunc();
+            });
         }
 
-        Color set = this.form.color.get();
-
         BlockFormRenderer.color.set(context.color);
-        BlockFormRenderer.color.mul(set);
+        BlockFormRenderer.color.mul(this.form.color.get());
+        FormColorBlend.blendFormGlowBrighten(BlockFormRenderer.color, this.form.glowSettings.get(), this.form.glowingColor.get());
 
-        consumers.setSubstitute(BBSRendering.getColorConsumer(BlockFormRenderer.color));
-        MinecraftClient.getInstance().getItemRenderer().renderItem(this.form.stack.get(), this.form.modelTransform.get(), light, context.overlay, context.stack, consumers, context.entity.getWorld(), 0);
+        PaintSettings paintSettings = this.form.paintSettings.get();
+        Color legacyPaint = this.form.paintColor.get();
+        Color resolvedPaint = new Color();
+
+        paintSettings.resolveColor(legacyPaint, resolvedPaint);
+        resolvedPaint.a = paintSettings.resolveIntensity(legacyPaint);
+
+        consumers.setSubstitute(BBSRendering.getColorConsumer(BlockFormRenderer.color, resolvedPaint));
+
+        ItemStack itemStack = this.form.stack.get();
+        double usingItemValue = this.form.usingItem.get();
+        double itemUseTimeValue = this.form.itemUseTime.get();
+        LivingEntity itemEntity = null;
+
+        if (usingItemValue > 0D || itemUseTimeValue > 0D)
+        {
+            StubEntity stub = new StubEntity(context.entity.getWorld());
+
+            stub.setUsingItem(usingItemValue > 0D);
+            stub.setItemUseTimeLeft((int) itemUseTimeValue);
+            stub.setEquipmentStack(EquipmentSlot.MAINHAND, itemStack);
+            itemEntity = ItemUseRenderState.prepareProxy(context.entity.getWorld(), stub, EquipmentSlot.MAINHAND, itemStack);
+        }
+
+        MinecraftClient.getInstance().getItemRenderer().renderItem(itemEntity, itemStack, mode, mode == ModelTransformationMode.THIRD_PERSON_LEFT_HAND, context.stack, consumers, context.entity.getWorld(), light, context.overlay, 0);
         consumers.draw();
         consumers.setSubstitute(null);
 
         CustomVertexConsumerProvider.clearRunnables();
+        RenderSystem.defaultBlendFunc();
 
         context.stack.pop();
 
         RenderSystem.enableDepthTest();
+    }
+
+    private boolean shouldUseDroppedMode(boolean isDropped)
+    {
+        return isDropped || this.form.sameAnimationWhenDropped.get();
+    }
+
+    private ModelTransformationMode getRenderMode(boolean useDroppedMode)
+    {
+        if (useDroppedMode)
+        {
+            if (this.form.sameAnimationWhenDropped.get())
+            {
+                LOGGER.debug("Forced dropped animation for form {} using GROUND transform", this.form.getFormId());
+            }
+            else
+            {
+                LOGGER.debug("Dropped context for form {} using GROUND transform", this.form.getFormId());
+            }
+
+            return ModelTransformationMode.GROUND;
+        }
+
+        return this.form.modelTransform.get();
+    }
+
+    private void applyDroppedAnimation(FormRenderingContext context, boolean useDroppedMode)
+    {
+        if (!useDroppedMode || context.entity == null || context.entity.getWorld() == null)
+        {
+            return;
+        }
+
+        float age = context.entity.getAge() + context.getTransition();
+        float uniqueOffset = this.getDroppedUniqueOffset();
+        float bob = MathHelper.sin(age / 10F + uniqueOffset) * 0.1F + 0.1F;
+        float angle = (age / 20F + uniqueOffset) * 57.295776F;
+
+        context.stack.translate(0F, bob + 0.25F, 0F);
+        context.stack.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(angle));
+    }
+
+    private float getDroppedUniqueOffset()
+    {
+        int hash = this.form.stack.get().hashCode();
+
+        return (hash & 65535) / 65535F * 6.2831855F;
     }
 }

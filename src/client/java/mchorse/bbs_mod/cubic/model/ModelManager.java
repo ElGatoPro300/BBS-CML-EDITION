@@ -3,6 +3,7 @@ package mchorse.bbs_mod.cubic.model;
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.cubic.MolangHelper;
+import mchorse.bbs_mod.cubic.animation.ProceduralDefaults;
 import mchorse.bbs_mod.cubic.model.loaders.BOBJModelLoader;
 import mchorse.bbs_mod.cubic.model.loaders.CubicModelLoader;
 import mchorse.bbs_mod.cubic.model.loaders.GLTFModelLoader;
@@ -11,6 +12,7 @@ import mchorse.bbs_mod.cubic.model.loaders.IModelLoader;
 import mchorse.bbs_mod.cubic.model.loaders.MiModelLoader;
 import mchorse.bbs_mod.cubic.model.loaders.VoxModelLoader;
 import mchorse.bbs_mod.data.DataToString;
+import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.math.molang.MolangParser;
 import mchorse.bbs_mod.resources.AssetProvider;
@@ -36,6 +38,9 @@ import java.util.Set;
 public class ModelManager implements IWatchDogListener
 {
     public static final String MODELS_PREFIX = "models/";
+    public static final String CONFIG_FILE = "config.json";
+    public static final String DYNAMIC_CONFIG_FILE = "dynamic_config.json";
+    public static final String DYNAMIC_PHYS_BONES_KEY = "phys_bones";
 
     public final Map<String, ModelInstance> models = new HashMap<>();
     public final List<IModelLoader> loaders = new ArrayList<>();
@@ -75,7 +80,8 @@ public class ModelManager implements IWatchDogListener
         this.registerRelodableSuffix(".mimodel");
         this.registerRelodableSuffix(".animation.json");
         this.registerRelodableSuffix(".vox");
-        this.registerRelodableSuffix("/config.json");
+        this.registerRelodableSuffix("/" + CONFIG_FILE);
+        this.registerRelodableSuffix("/" + DYNAMIC_CONFIG_FILE);
     }
 
     public void registerLoader(IModelLoader loader)
@@ -142,6 +148,11 @@ public class ModelManager implements IWatchDogListener
         return null;
     }
 
+    public boolean isLoading(String id)
+    {
+        return this.loader.isLoading(id);
+    }
+
     public ModelInstance loadModel(String id)
     {
         ModelInstance model = null;
@@ -167,6 +178,7 @@ public class ModelManager implements IWatchDogListener
         {
             System.out.println("Model \"" + id + "\" was loaded!");
 
+            ProceduralDefaults.ensureForModelInstance(model, this.provider, this.parser);
             model.setup();
         }
 
@@ -177,11 +189,38 @@ public class ModelManager implements IWatchDogListener
 
     private MapType loadConfig(Link modelLink)
     {
-        try (InputStream asset = this.provider.getAsset(modelLink.combine("config.json")))
+        MapType config = this.loadConfigFile(modelLink, CONFIG_FILE);
+        MapType dynamicConfig = this.loadConfigFile(modelLink, DYNAMIC_CONFIG_FILE);
+
+        if (config == null && dynamicConfig == null)
+        {
+            return null;
+        }
+
+        if (config == null)
+        {
+            config = new MapType();
+        }
+
+        if (dynamicConfig != null && dynamicConfig.has(DYNAMIC_PHYS_BONES_KEY, BaseType.TYPE_LIST))
+        {
+            config.put(DYNAMIC_PHYS_BONES_KEY, dynamicConfig.get(DYNAMIC_PHYS_BONES_KEY).copy());
+        }
+
+        return config;
+    }
+
+    private MapType loadConfigFile(Link modelLink, String fileName)
+    {
+        try (InputStream asset = this.provider.getAsset(modelLink.combine(fileName)))
         {
             String string = IOUtils.readText(asset);
+            BaseType base = DataToString.fromString(string);
 
-            return (MapType) DataToString.fromString(string);
+            if (BaseType.isMap(base))
+            {
+                return base.asMap();
+            }
         }
         catch (Exception e)
         {}
@@ -230,13 +269,35 @@ public class ModelManager implements IWatchDogListener
 
     public void saveConfig(String id, MapType config)
     {
-        Link modelLink = Link.assets(MODELS_PREFIX + id + "/config.json");
-        File file = BBSMod.getProvider().getFile(modelLink);
+        if (config == null)
+        {
+            return;
+        }
+
+        Link modelLink = Link.assets(MODELS_PREFIX + id);
+        MapType baseConfig = config.copy().asMap();
+
+        this.writeConfigIfChanged(modelLink, CONFIG_FILE, baseConfig);
+    }
+
+    private void writeConfigIfChanged(Link modelLink, String fileName, MapType config)
+    {
+        File file = BBSMod.getProvider().getFile(modelLink.combine(fileName));
 
         if (file != null)
         {
             try
             {
+                if (file.exists())
+                {
+                    BaseType existing = DataToString.fromString(IOUtils.readText(file));
+
+                    if (BaseType.isMap(existing) && existing.asMap().equals(config))
+                    {
+                        return;
+                    }
+                }
+
                 IOUtils.writeText(file, DataToString.toString(config, true));
             }
             catch (Exception e)

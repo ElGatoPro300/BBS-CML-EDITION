@@ -1,7 +1,8 @@
 package mchorse.bbs_mod.cubic;
 
-import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.bobj.BOBJBone;
+import mchorse.bbs_mod.cubic.animation.ActionsConfig;
+import mchorse.bbs_mod.cubic.animation.ProceduralDefaults;
 import mchorse.bbs_mod.cubic.data.animation.Animations;
 import mchorse.bbs_mod.cubic.data.model.Model;
 import mchorse.bbs_mod.cubic.data.model.ModelGroup;
@@ -20,6 +21,7 @@ import mchorse.bbs_mod.data.DataStorageUtils;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
+import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.forms.ModelForm;
 import mchorse.bbs_mod.forms.renderers.utils.MatrixCache;
 import mchorse.bbs_mod.obj.shapes.ShapeKeys;
@@ -72,15 +74,29 @@ public class ModelInstance implements IModelInstance
     public Vector3f scale = new Vector3f(1F);
     public float uiScale = 1F;
     public Pose sneakingPose = new Pose();
+    public Pose ridingPose = new Pose();
     public Pose parts = new Pose();
 
     public List<ArmorSlot> itemsMain = new ArrayList<>();
     public List<ArmorSlot> itemsOff = new ArrayList<>();
+    public MapType limbConstraints;
+    public MapType springChains;
+    public MapType jointLimits;
     public Map<String, String> flippedParts = new HashMap<>();
     public Map<ArmorType, ArmorSlot> armorSlots = new HashMap<>();
 
     public ArmorSlot fpMain;
     public ArmorSlot fpOffhand;
+
+    public ArmorSlot itemsMainTransform = new ArmorSlot("items_main_transform");
+    public ArmorSlot itemsOffTransform = new ArmorSlot("items_off_transform");
+    public ActionsConfig actions = new ActionsConfig();
+
+    /** Owning form at render time; set by the form renderer each frame. */
+    public transient Form form;
+
+    /** World/model base transform from the last non-UI render pass (used by physics). */
+    public transient Matrix4f lastBaseTransform;
 
     private Map<ModelGroup, ModelVAO> vaos = new HashMap<>();
 
@@ -107,9 +123,21 @@ public class ModelInstance implements IModelInstance
     }
 
     @Override
+    public Pose getRidingPose()
+    {
+        return this.ridingPose;
+    }
+
+    @Override
     public Animations getAnimations()
     {
         return this.animations;
+    }
+
+    @Override
+    public String getHeadBone()
+    {
+        return this.view == null ? "head" : this.view.headBone;
     }
 
     public Map<ModelGroup, ModelVAO> getVaos()
@@ -152,6 +180,8 @@ public class ModelInstance implements IModelInstance
         if (config.has("color")) this.color = config.getInt("color");
         if (config.has("items_main"))
         {
+            this.itemsMain.clear();
+
             ListType list = config.get("items_main").asList();
 
             for (BaseType type : list)
@@ -164,6 +194,8 @@ public class ModelInstance implements IModelInstance
         }
         if (config.has("items_off"))
         {
+            this.itemsOff.clear();
+
             ListType list = config.get("items_off").asList();
 
             for (BaseType type : list)
@@ -180,6 +212,11 @@ public class ModelInstance implements IModelInstance
         {
             this.sneakingPose = new Pose();
             this.sneakingPose.fromData(config.getMap("sneaking_pose"));
+        }
+        if (config.has("riding_pose", BaseType.TYPE_MAP))
+        {
+            this.ridingPose = new Pose();
+            this.ridingPose.fromData(config.getMap("riding_pose"));
         }
         if (config.has("parts", BaseType.TYPE_MAP))
         {
@@ -229,6 +266,26 @@ public class ModelInstance implements IModelInstance
             this.fpOffhand = new ArmorSlot("fp_offhand");
             this.fpOffhand.fromData(config.get("fp_offhand"));
         }
+        if (config.has("items_main_transform"))
+        {
+            this.itemsMainTransform = new ArmorSlot("items_main_transform");
+            this.itemsMainTransform.fromData(config.get("items_main_transform"));
+        }
+        if (config.has("items_off_transform"))
+        {
+            this.itemsOffTransform = new ArmorSlot("items_off_transform");
+            this.itemsOffTransform.fromData(config.get("items_off_transform"));
+        }
+
+        if (config.has("animations", BaseType.TYPE_MAP))
+        {
+            this.actions = new ActionsConfig();
+            this.actions.fromData(config.getMap("animations"));
+        }
+        else
+        {
+            this.actions = new ActionsConfig();
+        }
 
         /* Optional look-at configuration */
         if (config.has("look_at", BaseType.TYPE_MAP))
@@ -236,6 +293,39 @@ public class ModelInstance implements IModelInstance
             this.view = new View();
 
             this.view.fromData(config.getMap("look_at"));
+        }
+
+        if (config.has("ik", BaseType.TYPE_MAP))
+        {
+            this.limbConstraints = (MapType) config.getMap("ik").copy();
+        }
+        else
+        {
+            this.limbConstraints = null;
+        }
+
+        if (config.has("springs", BaseType.TYPE_MAP))
+        {
+            this.springChains = (MapType) config.getMap("springs").copy();
+        }
+        else
+        {
+            this.springChains = null;
+        }
+
+        if (config.has("constraints", BaseType.TYPE_MAP))
+        {
+            this.jointLimits = (MapType) config.getMap("constraints").copy();
+        }
+        else
+        {
+            this.jointLimits = null;
+        }
+
+        if (this.procedural && this.model != null)
+        {
+            ProceduralDefaults.ensureRidingPose(this);
+            ProceduralDefaults.ensureSneakingPose(this);
         }
     }
 
@@ -258,10 +348,18 @@ public class ModelInstance implements IModelInstance
 
             for (ArmorSlot slot : this.itemsMain)
             {
-                list.add(slot.toData());
+                BaseType data = slot.toData();
+
+                if (data != null)
+                {
+                    list.add(data);
+                }
             }
 
-            config.put("items_main", list);
+            if (!list.isEmpty())
+            {
+                config.put("items_main", list);
+            }
         }
 
         if (!this.itemsOff.isEmpty())
@@ -270,10 +368,18 @@ public class ModelInstance implements IModelInstance
 
             for (ArmorSlot slot : this.itemsOff)
             {
-                list.add(slot.toData());
+                BaseType data = slot.toData();
+
+                if (data != null)
+                {
+                    list.add(data);
+                }
             }
 
-            config.put("items_off", list);
+            if (!list.isEmpty())
+            {
+                config.put("items_off", list);
+            }
         }
 
         if (this.uiScale != 1F) config.putFloat("ui_scale", this.uiScale);
@@ -285,6 +391,11 @@ public class ModelInstance implements IModelInstance
         if (this.sneakingPose != null && !this.sneakingPose.transforms.isEmpty())
         {
             config.put("sneaking_pose", this.sneakingPose.toData());
+        }
+
+        if (this.ridingPose != null && !this.ridingPose.transforms.isEmpty())
+        {
+            config.put("riding_pose", this.ridingPose.toData());
         }
 
         if (this.parts != null && !this.parts.transforms.isEmpty())
@@ -318,6 +429,36 @@ public class ModelInstance implements IModelInstance
 
         if (this.fpMain != null) config.put("fp_main", this.fpMain.toData());
         if (this.fpOffhand != null) config.put("fp_offhand", this.fpOffhand.toData());
+        if (this.itemsMainTransform != null) config.put("items_main_transform", this.itemsMainTransform.toData());
+        if (this.itemsOffTransform != null) config.put("items_off_transform", this.itemsOffTransform.toData());
+
+        if (this.view != null)
+        {
+            MapType lookAt = new MapType();
+
+            this.view.toData(lookAt);
+            config.put("look_at", lookAt);
+        }
+
+        if (this.actions != null && !this.actions.geckoAnimations.isDefault())
+        {
+            config.put("animations", this.actions.toData());
+        }
+
+        if (this.limbConstraints != null)
+        {
+            config.put("ik", this.limbConstraints.copy());
+        }
+
+        if (this.springChains != null)
+        {
+            config.put("springs", this.springChains.copy());
+        }
+
+        if (this.jointLimits != null)
+        {
+            config.put("constraints", this.jointLimits.copy());
+        }
 
         return config;
     }
@@ -330,25 +471,40 @@ public class ModelInstance implements IModelInstance
         copy.culling = this.culling;
         copy.onCpu = this.onCpu;
         copy.anchorGroup = this.anchorGroup;
-        copy.view = this.view;
+        if (this.view != null)
+        {
+            MapType lookAt = new MapType();
+
+            this.view.toData(lookAt);
+            copy.view = new View();
+            copy.view.fromData(lookAt);
+        }
 
         copy.scale.set(this.scale);
         copy.uiScale = this.uiScale;
         copy.sneakingPose = this.sneakingPose.copy();
+        copy.ridingPose = this.ridingPose.copy();
         copy.parts = this.parts.copy();
         copy.color = this.color;
 
         for (ArmorSlot slot : this.itemsMain) copy.itemsMain.add(slot.copy());
         for (ArmorSlot slot : this.itemsOff) copy.itemsOff.add(slot.copy());
+        if (this.limbConstraints != null) copy.limbConstraints = (MapType) this.limbConstraints.copy();
+        if (this.springChains != null) copy.springChains = (MapType) this.springChains.copy();
+        if (this.jointLimits != null) copy.jointLimits = (MapType) this.jointLimits.copy();
         copy.flippedParts.putAll(this.flippedParts);
 
         if (this.fpMain != null) copy.fpMain = this.fpMain.copy();
         if (this.fpOffhand != null) copy.fpOffhand = this.fpOffhand.copy();
+        if (this.itemsMainTransform != null) copy.itemsMainTransform = this.itemsMainTransform.copy();
+        if (this.itemsOffTransform != null) copy.itemsOffTransform = this.itemsOffTransform.copy();
 
         for (Map.Entry<ArmorType, ArmorSlot> entry : this.armorSlots.entrySet())
         {
             copy.armorSlots.put(entry.getKey(), entry.getValue().copy());
         }
+
+        copy.actions.copy(this.actions);
 
         return copy;
     }
@@ -403,9 +559,18 @@ public class ModelInstance implements IModelInstance
         }
         else if (this.model instanceof BOBJModel model)
         {
+            if (!stencilMap.increment)
+            {
+                stencilMap.addPicking(form);
+
+                return;
+            }
+
+            int baseIndex = stencilMap.objectIndex;
+
             for (BOBJBone orderedBone : model.getArmature().orderedBones)
             {
-                stencilMap.addPicking(form, orderedBone.name);
+                stencilMap.addPicking(baseIndex + orderedBone.index, form, orderedBone.name);
             }
         }
     }
@@ -472,6 +637,11 @@ public class ModelInstance implements IModelInstance
             if (isVao)
             {
                 CubicRenderer.processRenderModel(renderProcessor, null, stack, model);
+
+                if (stencilMap != null)
+                {
+                    CubicRenderer.renderStencilPickPriority(renderProcessor, null, stack, model, CubicRenderer.STENCIL_PICK_PRIORITY_BONES);
+                }
             }
             else
             {
@@ -481,6 +651,11 @@ public class ModelInstance implements IModelInstance
 
                 builder.begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL);
                 CubicRenderer.processRenderModel(renderProcessor, builder, stack, model);
+
+                if (stencilMap != null)
+                {
+                    CubicRenderer.renderStencilPickPriority(renderProcessor, builder, stack, model, CubicRenderer.STENCIL_PICK_PRIORITY_BONES);
+                }
 
                 try
                 {

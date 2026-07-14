@@ -10,6 +10,7 @@ import mchorse.bbs_mod.cubic.model.ArmorType;
 import mchorse.bbs_mod.cubic.model.ModelConfig;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.forms.Form;
+import mchorse.bbs_mod.forms.forms.ItemForm;
 import mchorse.bbs_mod.forms.forms.ModelForm;
 import mchorse.bbs_mod.forms.renderers.FormRenderer;
 import mchorse.bbs_mod.forms.renderers.ModelFormRenderer;
@@ -31,12 +32,21 @@ import mchorse.bbs_mod.utils.colors.Colors;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.option.Perspective;
+import net.minecraft.entity.EquipmentSlot;
+import net.minecraft.item.ItemStack;
+import net.minecraft.item.Items;
+import net.minecraft.registry.Registries;
 
 import org.lwjgl.glfw.GLFW;
 
 public class UIModelArmorTransformEditor extends UIDashboardPanel
 {
-    public UIModelPanel parent;
+    private static final ItemStack HELMET = new ItemStack(Items.DIAMOND_HELMET);
+    private static final ItemStack CHESTPLATE = new ItemStack(Items.DIAMOND_CHESTPLATE);
+    private static final ItemStack LEGGINGS = new ItemStack(Items.DIAMOND_LEGGINGS);
+    private static final ItemStack BOOTS = new ItemStack(Items.DIAMOND_BOOTS);
+
+    public IUIModelPanelHost host;
     public ModelConfig config;
 
     public UIPropTransform transform;
@@ -54,11 +64,11 @@ public class UIModelArmorTransformEditor extends UIDashboardPanel
     private boolean changed;
     private ModelInstance cachedModel;
 
-    public UIModelArmorTransformEditor(UIModelPanel parent, ModelConfig config)
+    public UIModelArmorTransformEditor(IUIModelPanelHost host, ModelConfig config)
     {
-        super(parent.dashboard);
+        super(host.getDashboard());
 
-        this.parent = parent;
+        this.host = host;
         this.config = config;
 
         ClientPlayerEntity player = MinecraftClient.getInstance().player;
@@ -110,12 +120,11 @@ public class UIModelArmorTransformEditor extends UIDashboardPanel
         });
         this.transform.relative(this).x(1F, -200).y(0.5F, 10).w(190).h(70);
 
-        this.back = new UIIcon(Icons.CLOSE, (b) ->
+        this.back = UIModelTransformEditorSupport.createBackButton(this.host, this, () ->
         {
-            this.parent.renderer.dirty();
-            this.dashboard.setPanel(this.parent);
+            this.host.getModelRenderer().dirty();
+            this.host.returnFromSubEditor();
         });
-        this.back.relative(this).x(1F, -26).y(6);
 
         this.armorSearch.relative(this.transform).x(0.5F).y(0F, -5).w(1F).h(80).anchor(0.5F, 1F);
         this.armorLabel.relative(this.armorSearch).y(-12).w(1F).h(12);
@@ -178,7 +187,7 @@ public class UIModelArmorTransformEditor extends UIDashboardPanel
     @Override
     public UIDashboardPanel getMainPanel()
     {
-        return this.parent;
+        return this.host.getModelPanel() != null ? this.host.getModelPanel() : this;
     }
 
     @Override
@@ -197,8 +206,8 @@ public class UIModelArmorTransformEditor extends UIDashboardPanel
     {
         if (context.getKeyCode() == GLFW.GLFW_KEY_ESCAPE)
         {
-            this.parent.renderer.dirty();
-            this.dashboard.setPanel(this.parent);
+            this.host.getModelRenderer().dirty();
+            this.host.returnFromSubEditor();
             return true;
         }
 
@@ -235,6 +244,11 @@ public class UIModelArmorTransformEditor extends UIDashboardPanel
 
             form.model.set(this.config.getId());
             morph.setForm(form);
+
+            morph.entity.setEquipmentStack(EquipmentSlot.HEAD, HELMET);
+            morph.entity.setEquipmentStack(EquipmentSlot.CHEST, CHESTPLATE);
+            morph.entity.setEquipmentStack(EquipmentSlot.LEGS, LEGGINGS);
+            morph.entity.setEquipmentStack(EquipmentSlot.FEET, BOOTS);
         }
 
         this.acquireModel();
@@ -245,7 +259,17 @@ public class UIModelArmorTransformEditor extends UIDashboardPanel
     {
         super.disappear();
 
-        this.parent.forceSave();
+        Morph morph = Morph.getMorph(MinecraftClient.getInstance().player);
+
+        if (morph != null)
+        {
+            morph.entity.setEquipmentStack(EquipmentSlot.HEAD, ItemStack.EMPTY);
+            morph.entity.setEquipmentStack(EquipmentSlot.CHEST, ItemStack.EMPTY);
+            morph.entity.setEquipmentStack(EquipmentSlot.LEGS, ItemStack.EMPTY);
+            morph.entity.setEquipmentStack(EquipmentSlot.FEET, ItemStack.EMPTY);
+        }
+
+        this.host.forceSave();
         this.restore();
 
         MinecraftClient.getInstance().options.hudHidden = true;

@@ -17,7 +17,8 @@
     "samplers": [
         { "name": "Sampler0" },
         { "name": "Sampler1" },
-        { "name": "Sampler2" }
+        { "name": "Sampler2" },
+        { "name": "Sampler3" }
     ],
     "uniforms": [
         { "name": "ModelViewMat", "type": "matrix4x4", "count": 16, "values": [ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 ] },
@@ -30,6 +31,11 @@
         { "name": "FogEnd", "type": "float", "count": 1, "values": [ 1.0 ] },
         { "name": "FogColor", "type": "float", "count": 4, "values": [ 0.0, 0.0, 0.0, 0.0 ] },
         { "name": "FogShape", "type": "int", "count": 1, "values": [ 0 ] },
-        { "name": "NormalMat", "type": "matrix3x3", "count": 9, "values": [ 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0 ] }
+        { "name": "NormalMat", "type": "matrix3x3", "count": 9, "values": [ 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0 ] },
+        { "name": "PaintColor", "type": "float", "count": 4, "values": [ 0.0, 0.0, 0.0, 0.0 ] },
+        { "name": "GlowingColor", "type": "float", "count": 4, "values": [ 0.0, 0.0, 0.0, 0.0 ] },
+        { "name": "PaintOverlay", "type": "float", "count": 1, "values": [ 0.0 ] },
+        { "name": "TextureBlendFactor", "type": "float", "count": 1, "values": [ 0.0 ] },
+        { "name": "TextureBlendActive", "type": "float", "count": 1, "values": [ 0.0 ] }
     ]
 }

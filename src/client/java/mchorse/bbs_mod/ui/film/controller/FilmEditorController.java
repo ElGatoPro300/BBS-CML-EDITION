@@ -1,8 +1,11 @@
 package mchorse.bbs_mod.ui.film.controller;
 
+import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.film.BaseFilmController;
 import mchorse.bbs_mod.film.Film;
 import mchorse.bbs_mod.film.FilmControllerContext;
+import mchorse.bbs_mod.film.MobCemPoseCapture;
+import mchorse.bbs_mod.film.RecorderMobCapture;
 import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.ITickable;
@@ -87,7 +90,23 @@ public class FilmEditorController extends BaseFilmController
 
         if (entity == this.controller.getControlled() && this.controller.isRecording() && this.controller.panel.getRunner().isRunning())
         {
-            replay.keyframes.record(this.controller.panel.getCursor(), entity, groups);
+            List<Replay> replays = this.film.replays.getList();
+            int index = replays.indexOf(replay);
+            int cursor = this.controller.panel.getCursor();
+
+            MobCemPoseCapture.syncReplay(replay);
+            replay.keyframes.record(cursor, entity, groups);
+            RecorderMobCapture.recordMountKeyframes(replays, index, replay.keyframes, entity, cursor);
+
+            if (MobCemPoseCapture.isActive(replay))
+            {
+                MobCemPoseCapture.recordPoseKeyframe(replay, replay.form.get(), entity, cursor, 0F);
+            }
+
+            if (this.controller.getRecordingCountdown() <= 0 && index >= 0)
+            {
+                BBSModClient.getFilms().getEditorProjectileCapture().recordEditorTick(this.film, index, cursor, BBSModClient.getFilms().getEditorMobCapture(), this.controller.getActors());
+            }
         }
 
         ticks = this.getTick() + (this.controller.panel.getRunner().isRunning() ? 1 : 0);
@@ -138,13 +157,13 @@ public class FilmEditorController extends BaseFilmController
     }
 
     @Override
-    protected void renderEntity(WorldRenderContext context, Replay replay, IEntity entity)
+    protected void renderEntity(WorldRenderContext context, Replay replay, IEntity entity, int index)
     {
         boolean current = this.isCurrent(entity);
 
         if (!(this.controller.getPovMode() == UIFilmController.CAMERA_MODE_FIRST_PERSON && current))
         {
-            super.renderEntity(context, replay, entity);
+            super.renderEntity(context, replay, entity, index);
         }
 
         boolean isPlaying = this.controller.isPlaying();
@@ -218,6 +237,9 @@ public class FilmEditorController extends BaseFilmController
 
             BaseFilmController.renderEntity(FilmControllerContext.instance
                 .setup(this.getEntities(), entity, replay, context)
+                .film(this.film)
+                .propertyTick(tick)
+                .filmTick(this.getTick())
                 .color(Colors.setA(color, alpha))
                 .transition(0F));
 

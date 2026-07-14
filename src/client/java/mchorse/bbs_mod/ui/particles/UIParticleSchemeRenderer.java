@@ -43,6 +43,20 @@ public class UIParticleSchemeRenderer extends UIModelRenderer
     }
 
     @Override
+    public void render(UIContext context)
+    {
+        super.render(context);
+
+        /* Debug readout (particle count and emitter age) in the preview's bottom-right corner. */
+        if (this.emitter != null && this.emitter.scheme != null)
+        {
+            String label = this.emitter.particles.size() + "P - " + this.emitter.age + "A";
+
+            context.batcher.textShadow(label, this.area.ex() - 4 - context.batcher.getFont().getWidth(label), this.area.ey() - 12);
+        }
+    }
+
+    @Override
     protected void update()
     {
         super.update();
@@ -70,8 +84,7 @@ public class UIParticleSchemeRenderer extends UIModelRenderer
         MatrixStack stack = context.batcher.getContext().getMatrices();
 
         stack.push();
-        stack.loadIdentity();
-        stack.multiplyPositionMatrix(new Matrix4f(RenderSystem.getInverseViewRotationMatrix()).invert());
+
 
         RenderSystem.enableBlend();
         RenderSystem.enableDepthTest();
@@ -151,4 +164,6 @@ public class UIParticleSchemeRenderer extends UIModelRenderer
             Draw.coolerAxes(context.batcher.getContext().getMatrices(), 1F, 0.01F, 1.01F, 0.02F);
         }
     }
+
+
 }

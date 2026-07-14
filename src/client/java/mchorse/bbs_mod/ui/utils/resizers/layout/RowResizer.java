@@ -52,7 +52,7 @@ public class RowResizer extends AutomaticResizer
 
     public RowResizer preferred(int index)
     {
-        this.preferred = i;
+        this.preferred = index;
 
         return this;
     }

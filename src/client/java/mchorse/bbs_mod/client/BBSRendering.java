@@ -4,13 +4,22 @@ import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.blocks.entities.ModelBlockEntity;
+import mchorse.bbs_mod.camera.clips.misc.ChromaSkyCurveSettings;
 import mchorse.bbs_mod.camera.clips.misc.CurveClip;
+import mchorse.bbs_mod.camera.clips.misc.HotbarClip;
+import mchorse.bbs_mod.camera.clips.misc.HotbarState;
+import mchorse.bbs_mod.camera.clips.misc.ImageClip;
+import mchorse.bbs_mod.camera.clips.misc.ImageOverlay;
+import mchorse.bbs_mod.camera.clips.misc.Subtitle;
 import mchorse.bbs_mod.camera.clips.misc.SubtitleClip;
 import mchorse.bbs_mod.camera.controller.CameraWorkCameraController;
 import mchorse.bbs_mod.camera.controller.PlayCameraController;
+import mchorse.bbs_mod.camera.data.Position;
 import mchorse.bbs_mod.client.renderer.ModelBlockEntityRenderer;
 import mchorse.bbs_mod.client.renderer.TriggerBlockEntityRenderer;
+import mchorse.bbs_mod.client.screen.ScreenEffectRenderer;
 import mchorse.bbs_mod.client.video.VideoRenderer;
+import mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer;
 import mchorse.bbs_mod.events.ModelBlockEntityUpdateCallback;
 import mchorse.bbs_mod.events.TriggerBlockEntityUpdateCallback;
 import mchorse.bbs_mod.film.replays.Replay;
@@ -22,15 +31,23 @@ import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.graphics.texture.TextureFormat;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.UIDashboard;
+import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
+import mchorse.bbs_mod.ui.film.UIHotbarRenderer;
+import mchorse.bbs_mod.ui.film.UIImageRenderer;
 import mchorse.bbs_mod.ui.film.UISubtitleRenderer;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.UIRenderingContext;
 import mchorse.bbs_mod.ui.framework.UIScreen;
 import mchorse.bbs_mod.ui.framework.elements.utils.Batcher2D;
 import mchorse.bbs_mod.ui.utils.Area;
+import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
+import mchorse.bbs_mod.utils.MathUtils;
+import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.VideoRecorder;
+import mchorse.bbs_mod.utils.clips.Clip;
+import mchorse.bbs_mod.utils.clips.ClipContext;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.iris.IrisUtils;
@@ -56,6 +73,7 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.systems.VertexSorter;
 
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL30;
 
 import java.io.File;
 import java.util.Collections;
@@ -77,7 +95,30 @@ public class BBSRendering
     public static boolean canRender;
 
     public static boolean renderingWorld;
+    private static boolean irisChunkLayerPass;
     public static int lastAction;
+
+    public static final Matrix4f camera = new Matrix4f();
+
+    /**
+     * Iris world rendering multiplies the terrain {@code positionMatrix} into the
+     * {@link MatrixStack} before entity transforms.
+     * {@link Matrix4f#getTranslation()} on that product no longer equals the
+     * camera-relative entity offset, so callers that rebuild world space from
+     * translation + camera position must strip the terrain matrix first.
+     */
+    public static Matrix4f stripTerrainPositionMatrix(Matrix4f composed)
+    {
+        Matrix4f inverse = new Matrix4f(camera);
+
+        inverse.invert();
+
+        Matrix4f entity = new Matrix4f();
+
+        inverse.mul(composed, entity);
+
+        return entity;
+    }
 
     private static boolean customSize;
     private static boolean iris;
@@ -95,6 +136,7 @@ public class BBSRendering
     private static Texture texture;
     private static CloudRenderMode cachedCloudRenderMode;
     private static boolean cloudsForced;
+    public static Matrix4f positionMatrix;
 
     public static int getMotionBlur()
     {
@@ -162,6 +204,18 @@ public class BBSRendering
         return customSize && renderingWorld;
     }
 
+    /**
+     * Ensures paint overlays draw into the same framebuffer as the film viewport world pass.
+     */
+    public static void ensurePaintOverlayTargetFramebuffer()
+    {
+        if (toggleFramebuffer && framebuffer != null)
+        {
+            framebuffer.beginWrite(true);
+            reassignFramebuffer(framebuffer);
+        }
+    }
+
     public static boolean isCustomSize()
     {
         return customSize;
@@ -181,8 +235,24 @@ public class BBSRendering
 
         if (!customSize)
         {
+            ensureMainFramebuffer();
             resizeExtraFramebuffers();
         }
+    }
+
+    /**
+     * Model/trigger block panels render directly to the main framebuffer. If a film
+     * session left {@link #toggleFramebuffer} enabled, the world keeps drawing offscreen
+     * and only the cleared sky color is visible behind the UI.
+     */
+    public static void ensureMainFramebuffer()
+    {
+        if (!toggleFramebuffer)
+        {
+            return;
+        }
+
+        toggleFramebuffer(false);
     }
 
     public static Texture getTexture()
@@ -316,13 +386,17 @@ public class BBSRendering
         }
         else
         {
-            reassignFramebuffer(clientFramebuffer);
+            Framebuffer target = clientFramebuffer != null ? clientFramebuffer : mc.getFramebuffer();
 
-            mc.getFramebuffer().beginWrite(true);
+            reassignFramebuffer(target);
+            target.beginWrite(true);
 
-            if (width != 0)
+            int fbW = window.getFramebufferWidth();
+            int fbH = window.getFramebufferHeight();
+
+            if (width != 0 || customSize)
             {
-                framebuffer.draw(window.getFramebufferWidth(), window.getFramebufferHeight());
+                framebuffer.draw(fbW, fbH);
             }
         }
     }
@@ -346,11 +420,19 @@ public class BBSRendering
             menu.startRenderFrame(mc.getTickDelta());
         }
 
+        RenderSystem.depthFunc(GL11.GL_LEQUAL);
+        RenderSystem.enableDepthTest();
+        RenderSystem.depthMask(true);
+        GL11.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
+
         renderingWorld = true;
         updateCloudRenderMode(mc);
+        ModelVAORenderer.clearPaintOverlayQueue();
 
         if (!customSize)
         {
+            ensureMainFramebuffer();
+
             return;
         }
 
@@ -359,23 +441,36 @@ public class BBSRendering
 
     public static void onWorldRenderEnd()
     {
+        ModelVAORenderer.flushPaintOverlayQueue();
+
         MinecraftClient mc = MinecraftClient.getInstance();
+        UIBaseMenu currentMenu = UIScreen.getCurrentMenu();
 
         if (BBSModClient.getCameraController().getCurrent() instanceof PlayCameraController controller)
         {
             DrawContext drawContext = new DrawContext(mc, mc.getBufferBuilders().getEntityVertexConsumers());
             Batcher2D batcher = new Batcher2D(drawContext);
-
-            UISubtitleRenderer.renderSubtitles(batcher.getContext().getMatrices(), batcher, SubtitleClip.getSubtitles(controller.getContext()));
-
             Window window = mc.getWindow();
             Area area = new Area(0, 0, window.getScaledWidth(), window.getScaledHeight());
             Matrix4f cache = new Matrix4f(RenderSystem.getProjectionMatrix());
             Matrix4f ortho = new Matrix4f().ortho(0, area.w, area.h, 0, -1000, 3000);
 
             RenderSystem.setProjectionMatrix(ortho, VertexSorter.BY_Z);
+            renderHudOverlays(batcher, controller.getContext(), area.w, area.h);
             VideoRenderer.renderClips(batcher.getContext().getMatrices(), batcher, controller.getContext().clips.getClips(controller.getContext().relativeTick), controller.getContext().relativeTick, true, area, area, null, area.w, area.h, false);
+
+            ScreenEffectRenderer.render(batcher, controller.getContext(), area.w, area.h);
+
             RenderSystem.setProjectionMatrix(cache, VertexSorter.BY_Z);
+        }
+
+        if (BBSModClient.getVideoRecorder().isRecording() && BBSModClient.getCameraController().getCurrent() instanceof CameraWorkCameraController controller)
+        {
+            DrawContext drawContext = new DrawContext(mc, mc.getBufferBuilders().getEntityVertexConsumers());
+            Batcher2D batcher = new Batcher2D(drawContext);
+            Window window = mc.getWindow();
+
+            renderHudOverlays(batcher, controller.getContext(), window.getScaledWidth(), window.getScaledHeight());
         }
 
         if (!customSize)
@@ -385,13 +480,12 @@ public class BBSRendering
             return;
         }
 
-        UIBaseMenu currentMenu = UIScreen.getCurrentMenu();
-
         if (currentMenu instanceof UIDashboard dashboard)
         {
             if (dashboard.getPanels().panel instanceof UIFilmPanel panel && panel.getData() != null)
             {
-                UISubtitleRenderer.renderSubtitles(currentMenu.context.batcher.getContext().getMatrices(), currentMenu.context.batcher, SubtitleClip.getSubtitles(panel.getRunner().getContext()));
+                DrawContext drawContext = new DrawContext(mc, mc.getBufferBuilders().getEntityVertexConsumers());
+                Batcher2D offscreenBatcher = new Batcher2D(drawContext);
 
                 Window window = mc.getWindow();
                 Matrix4f cache = new Matrix4f(RenderSystem.getProjectionMatrix());
@@ -399,7 +493,11 @@ public class BBSRendering
 
                 RenderSystem.setProjectionMatrix(ortho, VertexSorter.BY_Z);
                 Area fullScreen = new Area(0, 0, window.getScaledWidth(), window.getScaledHeight());
-                VideoRenderer.renderClips(new MatrixStack(), currentMenu.context.batcher, panel.getData().camera.getClips(panel.getCursor()), panel.getCursor(), panel.getRunner().isRunning(), fullScreen, fullScreen, null, window.getScaledWidth(), window.getScaledHeight(), false);
+                renderHudOverlays(offscreenBatcher, panel.getRunner().getContext(), fullScreen.w, fullScreen.h);
+                VideoRenderer.renderClips(new MatrixStack(), offscreenBatcher, panel.getData().camera.getClips(panel.getCursor()), panel.getCursor(), panel.getRunner().isRunning(), fullScreen, fullScreen, null, window.getScaledWidth(), window.getScaledHeight(), false);
+
+                ScreenEffectRenderer.render(offscreenBatcher, panel.getRunner().getContext(), window.getScaledWidth(), window.getScaledHeight());
+
                 RenderSystem.setProjectionMatrix(cache, VertexSorter.BY_Z);
             }
         }
@@ -409,7 +507,7 @@ public class BBSRendering
 
     private static void updateCloudRenderMode(MinecraftClient mc)
     {
-        boolean shouldHideClouds = BBSSettings.chromaSkyEnabled.get() && !BBSSettings.chromaSkyClouds.get();
+        boolean shouldHideClouds = isChromaSkyEnabled() && !isChromaSkyClouds();
 
         if (shouldHideClouds)
         {
@@ -437,12 +535,22 @@ public class BBSRendering
 
     public static void onRenderBeforeScreen()
     {
+        if (!toggleFramebuffer)
+        {
+            return;
+        }
+
         Texture texture = getTexture();
+        int prevRead = GL30.glGetInteger(GL30.GL_READ_FRAMEBUFFER_BINDING);
+
+        framebuffer.beginRead();
 
         texture.bind();
         texture.setSize(framebuffer.textureWidth, framebuffer.textureHeight);
         GL11.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0, framebuffer.textureWidth, framebuffer.textureHeight);
         texture.unbind();
+
+        GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, prevRead);
 
         toggleFramebuffer(false);
     }
@@ -460,7 +568,36 @@ public class BBSRendering
 
         if (isIrisShadersEnabled())
         {
-            renderCoolStuff(worldRenderContext);
+            /* renderLayer is also invoked during the Iris shadow pass, where UI gizmos
+             * must not render (and would crash below on the missing matrix stack). */
+            if (isIrisShadowPass())
+            {
+                return;
+            }
+
+            /* Build a matrix stack from the terrain position matrix so renderInWorld
+             * can use the correct Iris coordinate space. */
+            MatrixStack irisStack = new MatrixStack();
+
+            MatrixStackUtils.multiply(irisStack, BBSRendering.positionMatrix);
+
+            WorldRenderContextImpl irisContext = new WorldRenderContextImpl();
+            irisContext.prepare(
+                mc.worldRenderer, irisStack, mc.getTickDelta(), mc.getRenderTime(), false,
+                mc.gameRenderer.getCamera(), mc.gameRenderer, mc.gameRenderer.getLightmapTextureManager(),
+                RenderSystem.getProjectionMatrix(), mc.getBufferBuilders().getEntityVertexConsumers(), null, false, mc.world
+            );
+
+            irisChunkLayerPass = true;
+
+            try
+            {
+                renderCoolStuff(irisContext);
+            }
+            finally
+            {
+                irisChunkLayerPass = false;
+            }
         }
     }
 
@@ -631,6 +768,45 @@ public class BBSRendering
         return renderingWorld;
     }
 
+    public static boolean isIrisChunkLayerPass()
+    {
+        return irisChunkLayerPass;
+    }
+
+    /**
+     * Any Iris world draw (chunk-layer film/editor pass or entity/gbuffer pass). VAO models
+     * must use the vanilla translucent program for the base pass so Iris can composite them;
+     * the custom BBS model shader is only used for deferred paint/glow overlays.
+     */
+    public static boolean isIrisWorldModelPass()
+    {
+        return isIrisShadersEnabled() && isRenderingWorld();
+    }
+
+    /**
+     * Iris entity/gbuffer pass (not the chunk-layer film/editor hook). Used to decide whether
+     * paint overlays run immediately or are queued for {@code WorldRenderEvents.LAST}.
+     */
+    public static boolean isIrisDeferredModelPass()
+    {
+        return isIrisWorldModelPass() && !isIrisChunkLayerPass();
+    }
+
+    /**
+     * When true, VAO model paint must not be applied in the base pass; use the BBS model
+     * shader overlay ({@link ModelVAORenderer#submitPaintOverlay})
+     * so paint matches the no-shader path under an active Iris shader pack.
+     */
+    public static boolean isIrisWorldPaintDeferral()
+    {
+        return isIrisWorldModelPass();
+    }
+
+    public static boolean isIrisLoaded()
+    {
+        return iris;
+    }
+
     public static boolean isIrisShadersEnabled()
     {
         if (!iris)
@@ -639,6 +815,16 @@ public class BBSRendering
         }
 
         return IrisUtils.isShaderPackEnabled();
+    }
+
+    public static void toggleShaders()
+    {
+        if (!iris)
+        {
+            return;
+        }
+
+        IrisUtils.toggleShaders();
     }
 
     public static boolean isIrisShadowPass()
@@ -733,7 +919,7 @@ public class BBSRendering
 
     /* Curves */
 
-    public static Long getTimeOfDay()
+    private static Double getCurveValue(String key)
     {
         if (!MinecraftClient.getInstance().isOnThread())
         {
@@ -743,57 +929,106 @@ public class BBSRendering
         if (BBSModClient.getCameraController().getCurrent() instanceof CameraWorkCameraController controller)
         {
             Map<String, Double> values = CurveClip.getValues(controller.getContext());
-            Double v = values != null ? values.get(ShaderCurves.SUN_ROTATION) : null;
 
-            if (v != null)
-            {
-                return (long) (v * 1000L);
-            }
+            return values != null ? values.get(key) : null;
         }
 
         return null;
+    }
+
+    public static boolean isImmersiveWorldPanel()
+    {
+        UIBaseMenu menu = UIScreen.getCurrentMenu();
+
+        if (!(menu instanceof UIDashboard dashboard))
+        {
+            return false;
+        }
+
+        UIDashboardPanel panel = dashboard.getPanels().panel;
+
+        return panel != null && !panel.needsBackground();
+    }
+
+    /**
+     * Chroma sky can hide terrain for film export, but model/trigger block editors must
+     * always show the live world behind their UI cards.
+     */
+    public static boolean shouldHideChromaTerrain()
+    {
+        if (!isChromaSkyEnabled() || isChromaSkyTerrain())
+        {
+            return false;
+        }
+
+        return !isImmersiveWorldPanel();
+    }
+
+    public static boolean isChromaSkyEnabled()
+    {
+        ChromaSkyCurveSettings settings = getChromaSkySettings();
+
+        return settings != null ? settings.enabled : BBSSettings.chromaSkyEnabled.get();
+    }
+
+    public static boolean isChromaSkyTerrain()
+    {
+        ChromaSkyCurveSettings settings = getChromaSkySettings();
+
+        return settings != null ? settings.terrain : BBSSettings.chromaSkyTerrain.get();
+    }
+
+    public static boolean isChromaSkyClouds()
+    {
+        ChromaSkyCurveSettings settings = getChromaSkySettings();
+
+        return settings != null ? settings.clouds : BBSSettings.chromaSkyClouds.get();
+    }
+
+    public static float getChromaSkyBillboard()
+    {
+        ChromaSkyCurveSettings settings = getChromaSkySettings();
+
+        return settings == null ? BBSSettings.chromaSkyBillboard.get() : settings.billboard;
+    }
+
+    public static int getChromaSkyColor()
+    {
+        ChromaSkyCurveSettings settings = getChromaSkySettings();
+
+        return settings == null ? BBSSettings.chromaSkyColor.get() : settings.color.getARGBColor();
+    }
+
+    private static ChromaSkyCurveSettings getChromaSkySettings()
+    {
+        if (getCurveValue(CurveClip.CHROMA_SKY_MARKER) == null)
+        {
+            return null;
+        }
+
+        if (BBSModClient.getCameraController().getCurrent() instanceof CameraWorkCameraController controller)
+        {
+            return CurveClip.getChromaSkySettings(controller.getContext());
+        }
+
+        return null;
+    }
+
+    public static Long getTimeOfDay()
+    {
+        Double v = getCurveValue(ShaderCurves.SUN_ROTATION);
+
+        return v == null ? null : (long) (v * 1000L);
     }
 
     public static Double getBrightness()
     {
-        if (!MinecraftClient.getInstance().isOnThread())
-        {
-            return null;
-        }
-
-        if (BBSModClient.getCameraController().getCurrent() instanceof CameraWorkCameraController controller)
-        {
-            Map<String, Double> values = CurveClip.getValues(controller.getContext());
-            Double v = values != null ? values.get(ShaderCurves.BRIGHTNESS) : null;
-
-            if (v != null)
-            {
-                return v;
-            }
-        }
-
-        return null;
+        return getCurveValue(ShaderCurves.BRIGHTNESS);
     }
 
     public static Double getWeather()
     {
-        if (!MinecraftClient.getInstance().isOnThread())
-        {
-            return null;
-        }
-
-        if (BBSModClient.getCameraController().getCurrent() instanceof CameraWorkCameraController controller)
-        {
-            Map<String, Double> values = CurveClip.getValues(controller.getContext());
-            Double v = values != null ? values.get(ShaderCurves.WEATHER) : null;
-
-            if (v != null)
-            {
-                return v;
-            }
-        }
-
-        return null;
+        return getCurveValue(ShaderCurves.WEATHER);
     }
 
     public static Function<VertexConsumer, VertexConsumer> getColorConsumer(Color color)
@@ -804,5 +1039,65 @@ public class BBSRendering
         }
 
         return (b) -> new RecolorVertexConsumer(b, color);
+    }
+
+    public static Function<VertexConsumer, VertexConsumer> getColorConsumer(Color color, Color paintColor)
+    {
+        if (paintColor == null || paintColor.a == 0F)
+        {
+            return getColorConsumer(color);
+        }
+
+        if (sodium)
+        {
+            /* The Sodium consumer path only multiplies the vertex color; paint blending is applied on the vanilla consumer */
+            return (b) -> SodiumUtils.createVertexBuffer(b, color);
+        }
+
+        return (b) -> new RecolorVertexConsumer(b, color, paintColor);
+    }
+
+    private static void renderHudOverlays(Batcher2D batcher, ClipContext context, int width, int height)
+    {
+        List<Subtitle> subtitles = SubtitleClip.getSubtitles(context);
+        List<HotbarState> hotbars = HotbarClip.getHotbars(context);
+        List<ImageOverlay> images = ImageClip.getImages(context);
+
+        if (subtitles.isEmpty() && hotbars.isEmpty() && images.isEmpty())
+        {
+            return;
+        }
+
+        RenderSystem.disableDepthTest();
+
+        MatrixStack matrices = batcher.getContext().getMatrices();
+        int subtitleIndex = 0;
+        int hotbarIndex = 0;
+        int imageIndex = 0;
+
+        while (subtitleIndex < subtitles.size() || hotbarIndex < hotbars.size() || imageIndex < images.size())
+        {
+            int subtitleOrder = subtitleIndex < subtitles.size() ? subtitles.get(subtitleIndex).renderOrder : Integer.MAX_VALUE;
+            int hotbarOrder = hotbarIndex < hotbars.size() ? hotbars.get(hotbarIndex).renderOrder : Integer.MAX_VALUE;
+            int imageOrder = imageIndex < images.size() ? images.get(imageIndex).renderOrder : Integer.MAX_VALUE;
+
+            if (subtitleOrder <= hotbarOrder && subtitleOrder <= imageOrder)
+            {
+                UISubtitleRenderer.renderSubtitle(matrices, batcher, subtitles.get(subtitleIndex));
+                subtitleIndex += 1;
+            }
+            else if (hotbarOrder <= imageOrder)
+            {
+                UIHotbarRenderer.renderHotbar(matrices, batcher, hotbars.get(hotbarIndex), 0, 0, width, height);
+                hotbarIndex += 1;
+            }
+            else
+            {
+                UIImageRenderer.renderImage(matrices, batcher, images.get(imageIndex));
+                imageIndex += 1;
+            }
+        }
+
+        RenderSystem.enableDepthTest();
     }
 }

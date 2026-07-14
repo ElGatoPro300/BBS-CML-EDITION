@@ -10,6 +10,8 @@ import mchorse.bbs_mod.camera.clips.misc.CurveClientClip;
 import mchorse.bbs_mod.camera.clips.misc.TrackerClientClip;
 import mchorse.bbs_mod.camera.controller.CameraController;
 import mchorse.bbs_mod.client.BBSRendering;
+import mchorse.bbs_mod.client.BBSShaders;
+import mchorse.bbs_mod.client.PendingFilmLaunch;
 import mchorse.bbs_mod.client.renderer.ModelBlockEntityRenderer;
 import mchorse.bbs_mod.client.renderer.TriggerBlockEntityRenderer;
 import mchorse.bbs_mod.client.renderer.entity.ActorEntityRenderer;
@@ -17,6 +19,8 @@ import mchorse.bbs_mod.client.renderer.entity.GunProjectileEntityRenderer;
 import mchorse.bbs_mod.client.renderer.item.GunItemRenderer;
 import mchorse.bbs_mod.client.renderer.item.ModelBlockItemRenderer;
 import mchorse.bbs_mod.cubic.model.ModelManager;
+import mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer;
+import mchorse.bbs_mod.discord.DiscordPresenceManager;
 import mchorse.bbs_mod.events.BBSAddonMod;
 import mchorse.bbs_mod.events.register.RegisterClientSettingsEvent;
 import mchorse.bbs_mod.events.register.RegisterDashboardPanelsEvent;
@@ -67,23 +71,33 @@ import mchorse.bbs_mod.resources.packs.URLRepository;
 import mchorse.bbs_mod.resources.packs.URLSourcePack;
 import mchorse.bbs_mod.resources.packs.URLTextureErrorCallback;
 import mchorse.bbs_mod.selectors.EntitySelectors;
+import mchorse.bbs_mod.settings.Settings;
+import mchorse.bbs_mod.settings.ui.UISettingsOverlayPanel;
 import mchorse.bbs_mod.settings.ui.UIValueMap;
+import mchorse.bbs_mod.settings.values.IValueListener;
+import mchorse.bbs_mod.text.RtlFontManager;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.UIDashboard;
+import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
+import mchorse.bbs_mod.ui.film.replays.UIMobCaptureRecordOverlayPanel;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIQuickReplayOverlayPanel;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarDockSync;
 import mchorse.bbs_mod.ui.forms.editors.UIFormEditor;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.UIScreen;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UIKeyframeFactory;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.shapes.KeyframeShapeRenderers;
+import mchorse.bbs_mod.ui.framework.elements.utils.CustomFontManager;
+import mchorse.bbs_mod.ui.model.UIModelPanel;
 import mchorse.bbs_mod.ui.model_blocks.UIModelBlockEditorMenu;
 import mchorse.bbs_mod.ui.morphing.UIMorphingPanel;
-import mchorse.bbs_mod.ui.utils.cml.CMLSettings;
+import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.ui.utils.keys.KeyCombo;
 import mchorse.bbs_mod.ui.utils.keys.KeybindSettings;
 import mchorse.bbs_mod.utils.MathUtils;
+import mchorse.bbs_mod.utils.RecentAssetsTracker;
 import mchorse.bbs_mod.utils.ScreenshotRecorder;
 import mchorse.bbs_mod.utils.VideoRecorder;
 import mchorse.bbs_mod.utils.colors.Color;
@@ -285,16 +299,30 @@ public class BBSModClient implements ClientModInitializer
         return dashboard;
     }
 
+    public static UIDashboard peekDashboard()
+    {
+        return dashboard;
+    }
+
     public static int getGUIScale()
     {
-        int scale = BBSSettings.userIntefaceScale.get();
+        float scale = BBSSettings.getUIScaleFactor();
 
-        if (scale == 0)
+        if (scale <= 0F)
         {
             return MinecraftClient.getInstance().options.getGuiScale().getValue();
         }
 
-        return scale;
+        return Math.max(1, Math.round(scale));
+    }
+
+    /**
+     * The exact (possibly fractional) BBS UI scale, e.g. 1.6. Returns 0 when set to "auto" so the
+     * window keeps Minecraft's computed integer scale.
+     */
+    public static double getUIScaleFactor()
+    {
+        return BBSSettings.getUIScaleFactor();
     }
 
     public static float getOriginalFramebufferScale()
@@ -455,6 +483,8 @@ public class BBSModClient implements ClientModInitializer
         selectors.read();
         films = new Films();
 
+        RecentAssetsTracker.load();
+
         BBSResources.init();
 
         URLRepository repository = new URLRepository(new File(parentFile, "url_cache"));
@@ -465,11 +495,15 @@ public class BBSModClient implements ClientModInitializer
         KeybindSettings.registerClasses();
 
         BBSMod.setupConfig(Icons.KEY_CAP, "keybinds", new File(BBSMod.getSettingsFolder(), "keybinds.json"), KeybindSettings::register);
-        BBSMod.setupConfig(Icons.SETTINGS, "cml", new File(BBSMod.getSettingsFolder(), "cml.json"), CMLSettings::register);
 
         BBSMod.events.post(new RegisterClientSettingsEvent());
 
-        BBSSettings.language.postCallback((v, f) -> reloadLanguage(getLanguageKey()));
+        BBSSettings.language.postCallback((v, f) ->
+        {
+            RtlFontManager.invalidate();
+            reloadLanguage(getLanguageKey());
+            RtlFontManager.ensureLoaded();
+        });
 
         BBSSettings.editorTimeMode.postCallback((v, f) ->
         {
@@ -478,10 +512,41 @@ public class BBSModClient implements ClientModInitializer
                 panel.fillData();
             }
         });
+        BBSSettings.discordPresence.postCallback((v, f) -> DiscordPresenceManager.INSTANCE.onSettingsChanged());
+        BBSSettings.discordApplicationId.postCallback((v, f) -> DiscordPresenceManager.INSTANCE.onSettingsChanged());
+
+        IValueListener refreshModelHover = (v, f) ->
+        {
+            if (!UISettingsOverlayPanel.isDeferringLiveSettings())
+            {
+                BBSSettings.syncAppliedAppearance();
+                refreshModelEditorHover();
+            }
+        };
+        BBSSettings.modelEditorHoverColor.postCallback(refreshModelHover);
+        BBSSettings.modelEditorHoverOpacity.postCallback(refreshModelHover);
+        BBSSettings.modelEditorAltHoverColor.postCallback(refreshModelHover);
+        BBSSettings.modelEditorAltHoverOpacity.postCallback(refreshModelHover);
+        BBSSettings.modelEditorAltHoverMultipleColors.postCallback(refreshModelHover);
+        BBSSettings.favoriteColors.postCallback(refreshModelHover);
+
+        BBSSettings.editorTimelineToolbar.postCallback((v, f) -> TimelineToolbarDockSync.applySettingsChange());
 
         BBSSettings.tooltipStyle.modes(
             UIKeys.ENGINE_TOOLTIP_STYLE_LIGHT,
             UIKeys.ENGINE_TOOLTIP_STYLE_DARK
+        );
+
+        BBSSettings.replayContextOptions.modes(
+            UIKeys.CONFIG_GENERAL_COMPACTED_OPTIONS_DEFAULT,
+            UIKeys.CONFIG_GENERAL_COMPACTED_OPTIONS_SEPARATED,
+            UIKeys.CONFIG_GENERAL_COMPACTED_OPTIONS_COMPACTED
+        );
+
+        BBSSettings.editorTimeMode.modes(
+            UIKeys.CONFIG_EDITOR_TICKS_MODE,
+            UIKeys.CONFIG_EDITOR_SECONDS_MODE,
+            UIKeys.CONFIG_EDITOR_FRAMES_MODE
         );
 
         BBSSettings.keystrokeMode.modes(
@@ -499,7 +564,7 @@ public class BBSModClient implements ClientModInitializer
         BBSMod.getFactoryCameraClips()
             .register(Link.bbs("audio"), AudioClientClip.class, new ClipFactoryData(Icons.SOUND, 0xffc825))
             .register(Link.bbs("tracker"), TrackerClientClip.class, new ClipFactoryData(Icons.USER, 0x4cedfc))
-            .register(Link.bbs("curve"), CurveClientClip.class, new ClipFactoryData(Icons.ARC, 0xff1493));
+            .register(Link.bbs("curve"), CurveClientClip.class, new ClipFactoryData(Icons.ARC, 0xff775f));
 
         /* Keybinds */
         keyDashboard = this.createKey("dashboard", GLFW.GLFW_KEY_0);
@@ -523,14 +588,14 @@ public class BBSModClient implements ClientModInitializer
                 BBSRendering.renderCoolStuff(context);
             }
 
-            if (BBSSettings.chromaSkyEnabled.get())
+            if (BBSRendering.isChromaSkyEnabled())
             {
-                float d = BBSSettings.chromaSkyBillboard.get();
+                float d = BBSRendering.getChromaSkyBillboard();
 
                 if (d > 0)
                 {
                     MatrixStack stack = context.matrixStack();
-                    Color color = Colors.COLOR.set(BBSSettings.chromaSkyColor.get());
+                    Color color = Colors.COLOR.set(BBSRendering.getChromaSkyColor());
 
                     stack.push();
 
@@ -568,10 +633,24 @@ public class BBSModClient implements ClientModInitializer
 
         WorldRenderEvents.LAST.register((context) ->
         {
+            if (Gizmo.INSTANCE.hasDeferred())
+            {
+                RenderSystem.enableDepthTest();
+                RenderSystem.depthMask(false);
+                Gizmo.INSTANCE.renderDeferred(context.matrixStack());
+                RenderSystem.depthMask(true);
+            }
+
             if (videoRecorder.isRecording() && BBSRendering.canRender)
             {
                 videoRecorder.recordFrame();
             }
+        });
+
+        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) ->
+        {
+            RecentAssetsTracker.load();
+            PendingFilmLaunch.onJoin();
         });
 
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) ->
@@ -611,6 +690,10 @@ public class BBSModClient implements ClientModInitializer
             {
                 screen.update();
             }
+
+            DiscordPresenceManager.INSTANCE.tick();
+
+            PendingFilmLaunch.tick(mc);
 
             cameraController.update();
 
@@ -689,11 +772,18 @@ public class BBSModClient implements ClientModInitializer
             }
         });
 
-        ClientLifecycleEvents.CLIENT_STOPPING.register((e) -> BBSResources.stopWatchdog());
+        ClientLifecycleEvents.CLIENT_STOPPING.register((e) ->
+        {
+            DiscordPresenceManager.INSTANCE.shutdown();
+            BBSResources.stopWatchdog();
+        });
         ClientLifecycleEvents.CLIENT_STARTED.register((e) ->
         {
+            DiscordPresenceManager.INSTANCE.init();
+            DiscordPresenceManager.INSTANCE.onClientStarted();
             BBSRendering.setupFramebuffer();
             provider.register(new MinecraftSourcePack());
+            RtlFontManager.ensureLoaded();
 
             Window window = MinecraftClient.getInstance().getWindow();
 
@@ -856,34 +946,47 @@ public class BBSModClient implements ClientModInitializer
                 }
 
                 panel.applyRecordedKeyframes(recorder, panel.getData());
+                panel.replayEditor.replays.replays.buildVisualList();
+                panel.replayEditor.updateChannelsList();
+                panel.save();
             }
             else
             {
-                Replay replay = panel.replayEditor.getReplay();
-                int index = panel.getData().replays.getList().indexOf(replay);
-
-                if (index >= 0)
+                if (UIMobCaptureRecordOverlayPanel.isOpened())
                 {
-                    getFilms().startRecording(panel.getData(), index, 0);
+                    return;
                 }
+
+                UIMobCaptureRecordOverlayPanel.openInGame((setup) ->
+                {
+                    UIFilmPanel filmPanel = dashboard.getPanel(UIFilmPanel.class);
+
+                    if (filmPanel == null || filmPanel.getData() == null)
+                    {
+                        return;
+                    }
+
+                    Replay replay = filmPanel.replayEditor.getReplay();
+
+                    if (replay == null)
+                    {
+                        replay = getSelectedReplay();
+                    }
+
+                    int index = filmPanel.getData().replays.getList().indexOf(replay);
+
+                    if (index >= 0)
+                    {
+                        getFilms().startRecording(filmPanel.getData(), index, 0);
+                    }
+                });
             }
         }
     }
 
     private void keyOpenReplays()
     {
-        UIDashboard dashboard = getDashboard();
-
-        UIScreen.open(dashboard);
-
-        if (dashboard.getPanels().panel instanceof UIFilmPanel panel && panel.getData() != null)
-        {
-            panel.preview.openReplays();
-        }
-        else
-        {
-            dashboard.setPanel(dashboard.getPanel(UIFilmPanel.class));
-        }
+        UIScreen.open(getDashboard());
     }
 
     private void keyOpenQuickReplays()
@@ -969,6 +1072,86 @@ public class BBSModClient implements ClientModInitializer
         }
     }
 
+    public static void reloadFromSettings()
+    {
+        BBSSettings.syncAppliedAppearance();
+        refreshModelEditorHover();
+        CustomFontManager.invalidate();
+        RtlFontManager.invalidate();
+
+        for (Settings settings : BBSMod.getSettings().modules.values())
+        {
+            settings.save();
+        }
+
+        reloadLanguage(getLanguageKey());
+
+        UIDashboard dashboard = getDashboard();
+
+        if (dashboard != null)
+        {
+            UIFilmPanel filmPanel = dashboard.getPanel(UIFilmPanel.class);
+
+            if (filmPanel != null)
+            {
+                filmPanel.fillData();
+            }
+        }
+
+        MinecraftClient mc = MinecraftClient.getInstance();
+        UIBaseMenu menu = UIScreen.getCurrentMenu();
+
+        if (menu != null && mc != null)
+        {
+            int desiredScale = getGUIScale();
+            mc.options.getGuiScale().setValue(desiredScale);
+            mc.onResolutionChanged();
+            menu.resize(mc.getWindow().getScaledWidth(), mc.getWindow().getScaledHeight());
+        }
+    }
+
+    /** Reapplies the BBS UI scale to the currently open menu immediately (e.g. while a settings
+     *  slider is being dragged), without the heavier work {@link #reloadFromSettings()} does
+     *  (saving settings to disk, reloading language, etc). */
+    public static void applyUIScaleLive()
+    {
+        MinecraftClient mc = MinecraftClient.getInstance();
+        UIBaseMenu menu = UIScreen.getCurrentMenu();
+
+        if (menu != null && mc != null)
+        {
+            mc.options.getGuiScale().setValue(getGUIScale());
+            mc.onResolutionChanged();
+            menu.resize(mc.getWindow().getScaledWidth(), mc.getWindow().getScaledHeight());
+        }
+    }
+
+    /** Applies the model editor hover color/opacity immediately (settings live-preview),
+     *  refreshing both the applied snapshot the renderers read and the model editor's
+     *  cached geometry highlight. */
+    public static void applyModelEditorHoverLive()
+    {
+        BBSSettings.syncAppliedAppearance();
+        refreshModelEditorHover();
+    }
+
+    private static void refreshModelEditorHover()
+    {
+        UIDashboard dashboard = getDashboard();
+
+        if (dashboard == null)
+        {
+            return;
+        }
+
+        UIDashboardPanel panel = dashboard.getPanels().panel;
+
+        if (panel instanceof UIModelPanel modelPanel)
+        {
+            modelPanel.renderer.dirty();
+        }
+    }
+
     public static String getLanguageKey()
     {
         return getLanguageKey(BBSSettings.language.get());
@@ -976,9 +1159,18 @@ public class BBSModClient implements ClientModInitializer
 
     public static String getLanguageKey(String key)
     {
-        if (key.isEmpty())
+        if (key == null || key.isEmpty())
         {
-            key = MinecraftClient.getInstance().options.language;
+            MinecraftClient client = MinecraftClient.getInstance();
+
+            if (client != null && client.options != null && client.options.language != null && !client.options.language.isEmpty())
+            {
+                key = client.options.language;
+            }
+            else
+            {
+                key = L10n.DEFAULT_LANGUAGE;
+            }
         }
 
         return key;
@@ -987,5 +1179,6 @@ public class BBSModClient implements ClientModInitializer
     public static void reloadLanguage(String language)
     {
         l10n.reload(language, BBSMod.getProvider());
+        RtlFontManager.ensureLoaded();
     }
 }
