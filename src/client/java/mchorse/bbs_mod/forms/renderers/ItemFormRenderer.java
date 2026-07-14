@@ -51,8 +51,7 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
         matrices.peek().getNormalMatrix().getScale(Vectors.EMPTY_3F);
         matrices.peek().getNormalMatrix().scale(1F / Vectors.EMPTY_3F.x, -1F / Vectors.EMPTY_3F.y, 1F / Vectors.EMPTY_3F.z);
 
-        Color set = Color.white();
-        set.mul(this.form.color.get());
+        Color set = this.form.color.get();
 
         consumers.setSubstitute(BBSRendering.getColorConsumer(set));
         consumers.setUI(true);
@@ -88,23 +87,20 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
         }
         else
         {
-            CustomVertexConsumerProvider.hijackVertexFormat((l) ->
-            {
-                RenderSystem.enableBlend();
-                RenderSystem.defaultBlendFunc();
-            });
+            CustomVertexConsumerProvider.hijackVertexFormat((l) -> RenderSystem.enableBlend());
         }
 
-        BlockFormRenderer.color.set(context.color);
-        BlockFormRenderer.color.mul(this.form.color.get());
+        Color set = this.form.color.get();
 
-        consumers.setSubstitute(BBSRendering.getColorConsumer(BlockFormRenderer.color, this.form.paintColor.get()));
+        BlockFormRenderer.color.set(context.color);
+        BlockFormRenderer.color.mul(set);
+
+        consumers.setSubstitute(BBSRendering.getColorConsumer(BlockFormRenderer.color));
         MinecraftClient.getInstance().getItemRenderer().renderItem(this.form.stack.get(), mode, light, context.overlay, context.stack, consumers, context.entity.getWorld(), 0);
         consumers.draw();
         consumers.setSubstitute(null);
 
         CustomVertexConsumerProvider.clearRunnables();
-        RenderSystem.defaultBlendFunc();
 
         context.stack.pop();
 

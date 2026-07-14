@@ -14,7 +14,6 @@ import mchorse.bbs_mod.cubic.data.model.ModelGroup;
 import mchorse.bbs_mod.cubic.model.ArmorSlot;
 import mchorse.bbs_mod.cubic.model.ArmorType;
 import mchorse.bbs_mod.cubic.model.bobj.BOBJModel;
-import mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer;
 import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.ITickable;
@@ -55,7 +54,6 @@ import net.minecraft.util.Hand;
 import net.minecraft.util.math.RotationAxis;
 
 import org.joml.Matrix4f;
-import org.joml.Vector3f;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 
@@ -81,9 +79,6 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
     private int lastAge = -1;
 
     private IEntity entity = new StubEntity();
-
-    /* Transient additive pose applied by the film "Look at" constraint */
-    private Pose lookAtPose;
 
     @Override
     protected void applyTransforms(MatrixStack stack, boolean origin, float transition)
@@ -176,22 +171,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             this.applyPose(pose, newPose.get());
         }
 
-        if (this.lookAtPose != null)
-        {
-            this.applyPose(pose, this.lookAtPose);
-        }
-
         return pose;
-    }
-
-    /**
-     * Sets a transient additive pose used by the film controller's "Look at"
-     * constraint (per bone lock weights). It's set right before rendering an
-     * entity and cleared right after, so it never gets serialized.
-     */
-    public void setLookAtPose(Pose pose)
-    {
-        this.lookAtPose = pose;
     }
 
     private void applyPose(Pose targetPose, Pose pose)
@@ -222,13 +202,11 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             if (value.fix != 0)
             {
                 poseTransform.color.lerp(value.color, value.fix);
-                poseTransform.paintColor.lerp(value.paintColor, value.fix);
                 poseTransform.lighting = Lerps.lerp(poseTransform.lighting, value.lighting, value.fix);
             }
             else
             {
                 poseTransform.color.mul(value.color);
-                poseTransform.paintColor.lerp(value.paintColor, value.paintColor.a);
                 poseTransform.lighting += value.lighting;
             }
 
@@ -260,15 +238,10 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         ModelInstance model = this.getModel();
         ActionsConfig actionsConfig = this.resolveActionsConfig(model);
 
-        if (model == null)
-        {
-            return;
-        }
-
-        if (this.lastModel == model && this.animator != null)
+        if (model == null || this.lastModel == model)
         {
             /* Update the config */
-            if (!Objects.equals(actionsConfig, this.lastConfigs))
+            if (this.animator != null && !Objects.equals(actionsConfig, this.lastConfigs))
             {
                 this.animator.setup(model, actionsConfig, true);
 
@@ -344,9 +317,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
             Link link = this.form.texture.get();
             Link texture = link == null ? model.texture : link;
-            Color color = Color.white();
-
-            color.mul(this.form.color.get());
+            Color color = this.form.color.get();
             float scale = this.form.uiScale.get() * model.uiScale;
 
             model.model.resetPose();
@@ -362,11 +333,9 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             this.clearPBRTextureIntensity();
             RenderSystem.depthFunc(GL11.GL_LEQUAL);
 
-            Vector3f light0 = new Vector3f(0.85F, 0.85F, -1F).normalize();
-            Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1F).normalize();
-            RenderSystem.setupLevelDiffuseLighting(light0, light1, stack.peek().getPositionMatrix());
-
-            Supplier<ShaderProgram> mainShader = this.getModelShader(model);
+            Supplier<ShaderProgram> mainShader = (BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld()) || !model.isVAORendered()
+                ? GameRenderer::getRenderTypeEntityTranslucentCullProgram
+                : BBSShaders::getModel;
 
             this.renderModel(this.entity, mainShader, stack, model, LightmapTextureManager.pack(15, 15), OverlayTexture.DEFAULT_UV, color, true, null, context.getTransition(), true);
 
@@ -405,7 +374,6 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
-
         GameRenderer gameRenderer = MinecraftClient.getInstance().gameRenderer;
 
         gameRenderer.getLightmapTextureManager().enable();
@@ -427,43 +395,18 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         Link defaultTexture = link == null ? model.texture : link;
         this.applyPBRTextureIntensity();
 
-        Color paint = this.form.paintColor.get();
-        ModelVAORenderer.setPaint(paint.r, paint.g, paint.b, paint.a);
-
-        boolean irisWorld = BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld();
-        boolean paintOverlay = stencilMap == null
-            && model.isVAORendered()
-            && irisWorld
-            && this.hasAnyPaint(model);
-
         try
         {
             model.render(newStack, program, color, light, overlay, stencilMap, this.form.shapeKeys.get(), defaultTexture);
-
-            if (paintOverlay)
-            {
-                ModelVAORenderer.beginPaintOverlayPass();
-
-                try
-                {
-                    model.render(newStack, BBSShaders::getModel, new Color().set(1F, 1F, 1F, 1F), light, overlay, stencilMap, this.form.shapeKeys.get(), defaultTexture);
-                }
-                finally
-                {
-                    ModelVAORenderer.endPaintOverlayPass();
-                }
-            }
         }
         finally
         {
             this.clearPBRTextureIntensity();
-            ModelVAORenderer.clearPaint();
         }
 
         gameRenderer.getLightmapTextureManager().disable();
         gameRenderer.getOverlayTexture().teardownOverlayColor();
         RenderSystem.disableBlend();
-        RenderSystem.defaultBlendFunc();
 
         if (!model.culling)
         {
@@ -485,48 +428,6 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
             this.resetPostEquipmentRenderState();
         }
-    }
-
-    private Supplier<ShaderProgram> getModelShader(ModelInstance model)
-    {
-        if (!model.isVAORendered())
-        {
-            return GameRenderer::getRenderTypeEntityTranslucentCullProgram;
-        }
-
-        boolean irisWorld = BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld();
-
-        if (irisWorld)
-        {
-            return GameRenderer::getRenderTypeEntityTranslucentCullProgram;
-        }
-
-        return BBSShaders::getModel;
-    }
-
-    /**
-     * Whether the whole-form paint or any bone (model group) paint is currently active, which decides if
-     * the shader-pack paint overlay pass is worth running.
-     */
-    private boolean hasAnyPaint(ModelInstance model)
-    {
-        if (this.form.paintColor.get().a > 0F)
-        {
-            return true;
-        }
-
-        if (model != null && model.getModel() != null)
-        {
-            for (ModelGroup group : model.getModel().getAllGroups())
-            {
-                if (group.paintColor != null && group.paintColor.a > 0F)
-                {
-                    return true;
-                }
-            }
-        }
-
-        return false;
     }
 
     private void resetPostEquipmentRenderState()
@@ -644,9 +545,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
             Link link = this.form.texture.get();
             Link texture = link == null ? model.texture : link;
-            Color color = Color.white();
-
-            color.mul(this.form.color.get());
+            Color color = this.form.color.get().copy();
 
             for (ModelGroup group : model.getModel().getAllGroups())
             {
@@ -678,7 +577,9 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             BBSModClient.getTextures().bindTexture(texture);
             this.clearPBRTextureIntensity();
 
-            Supplier<ShaderProgram> mainShader = this.getModelShader(model);
+            Supplier<ShaderProgram> mainShader = (BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld()) || !model.isVAORendered()
+                ? GameRenderer::getRenderTypeEntityTranslucentCullProgram
+                : BBSShaders::getModel;
 
             RenderSystem.enableDepthTest();
             RenderSystem.enableBlend();
@@ -709,9 +610,9 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         {
             Link link = this.form.texture.get();
             Link texture = link == null ? model.texture : link;
-            Color color = new Color().set(context.color, true);
+            Color color = this.form.color.get().copy();
 
-            color.mul(this.form.color.get());
+            color.mul(context.color);
             model.model.resetPose();
 
             this.animator.applyActions(context.entity, model, context.getTransition());
@@ -726,7 +627,9 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                 this.clearPBRTextureIntensity();
             }
 
-            Supplier<ShaderProgram> mainShader = this.getModelShader(model);
+            Supplier<ShaderProgram> mainShader = (BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld()) || !model.isVAORendered()
+                ? GameRenderer::getRenderTypeEntityTranslucentCullProgram
+                : BBSShaders::getModel;
             Supplier<ShaderProgram> shader = this.getShader(context, mainShader, BBSShaders::getPickerModelsProgram);
 
             this.renderModel(context.entity, shader, context.stack, model, context.light, context.overlay, color, false, context.stencilMap, context.getTransition(), context.renderEquipment);
@@ -869,17 +772,18 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
     @Override
     public void tick(IEntity entity)
     {
-        int age = entity.getAge();
-
-        if (this.lastAge != -1 && age != this.lastAge + 1)
-        {
-            this.resetAnimator();
-        }
-
         this.ensureAnimator(0F);
+
+        int age = entity.getAge();
 
         if (this.animator != null)
         {
+            if (this.lastAge != -1 && age != this.lastAge + 1)
+            {
+                this.resetAnimator();
+                this.ensureAnimator(0F);
+            }
+
             this.animator.update(entity);
         }
 

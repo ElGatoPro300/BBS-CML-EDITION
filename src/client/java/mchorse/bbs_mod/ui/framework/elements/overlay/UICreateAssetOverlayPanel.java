@@ -26,29 +26,26 @@ public class UICreateAssetOverlayPanel extends UIOverlayPanel
     private final Consumer<String> callback;
     private String selectedFolder = "";
 
-    public static IKey getTypeName(ContentType type)
+    public static String getTypeName(ContentType type)
     {
         if (type == ContentType.FILMS)
         {
-            return UIKeys.CREATE_ASSET_TYPE_FILM;
+            return "Film";
         }
         if (type == ContentType.MODELS)
         {
-            return UIKeys.CREATE_ASSET_TYPE_MODEL;
+            return "Model";
         }
         if (type == ContentType.PARTICLES)
         {
-            return UIKeys.CREATE_ASSET_TYPE_PARTICLE_SCHEME;
+            return "Particle Scheme";
         }
-
         String id = type.getId();
-
         if (id.isEmpty())
         {
-            return IKey.constant("");
+            return id;
         }
-
-        return IKey.constant(Character.toUpperCase(id.charAt(0)) + id.substring(1));
+        return Character.toUpperCase(id.charAt(0)) + id.substring(1);
     }
 
     public UICreateAssetOverlayPanel(ContentType type, Consumer<String> callback)
@@ -58,7 +55,7 @@ public class UICreateAssetOverlayPanel extends UIOverlayPanel
 
     public UICreateAssetOverlayPanel(ContentType type, String defaultFolder, Consumer<String> callback)
     {
-        super(UIKeys.CREATE_ASSET_TITLE);
+        super(IKey.constant("Create"));
 
         this.type = type;
         this.callback = callback;
@@ -72,14 +69,14 @@ public class UICreateAssetOverlayPanel extends UIOverlayPanel
         int pitch = 26;
 
         /* Row 1: Type */
-        this.typeLabel = new UILabel(UIKeys.CREATE_ASSET_TYPE);
+        this.typeLabel = new UILabel(IKey.constant("Type:"));
         this.typeLabel.relative(this.content).x(margin).y(margin).w(labelW).h(rowH);
 
-        this.typeValue = new UILabel(getTypeName(type));
+        this.typeValue = new UILabel(IKey.constant(getTypeName(type)));
         this.typeValue.relative(this.content).x(fieldX).y(margin).w(1F, -fieldX - margin).h(rowH);
 
         /* Row 2: File Name */
-        this.nameLabel = new UILabel(UIKeys.CREATE_ASSET_FILE_NAME);
+        this.nameLabel = new UILabel(IKey.constant("File Name:"));
         this.nameLabel.relative(this.content).x(margin).y(margin + pitch).w(labelW).h(rowH);
 
         this.nameField = new UITextbox(120, (str) -> {});
@@ -87,11 +84,11 @@ public class UICreateAssetOverlayPanel extends UIOverlayPanel
         this.nameField.relative(this.content).x(fieldX).y(margin + pitch).w(1F, -fieldX - margin).h(rowH);
 
         /* Row 3: Save Folder */
-        this.folderLabel = new UILabel(UIKeys.CREATE_ASSET_SAVE_FOLDER);
+        this.folderLabel = new UILabel(IKey.constant("Save Folder:"));
         this.folderLabel.relative(this.content).x(margin).y(margin + pitch * 2).w(labelW).h(rowH);
 
-        IKey btnLabel = this.selectedFolder.isEmpty() ? UIKeys.CREATE_ASSET_ROOT : IKey.constant(this.selectedFolder);
-        UIButton folderButton = new UIButton(btnLabel, (b) ->
+        String btnLabel = this.selectedFolder.isEmpty() ? "(root)" : this.selectedFolder;
+        UIButton folderButton = new UIButton(IKey.constant(btnLabel), (b) ->
         {
             UIRepositoryFolderPickerOverlayPanel picker = new UIRepositoryFolderPickerOverlayPanel(
                 type,
@@ -99,7 +96,7 @@ public class UICreateAssetOverlayPanel extends UIOverlayPanel
                 (folder) ->
                 {
                     this.selectedFolder = folder;
-                    b.label = folder.isEmpty() ? UIKeys.CREATE_ASSET_ROOT : IKey.constant(folder);
+                    b.label = IKey.constant(folder.isEmpty() ? "(root)" : folder);
                 }
             );
             UIOverlay.addOverlay(this.getContext(), picker, 520, 320);

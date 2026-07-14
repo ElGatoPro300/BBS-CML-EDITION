@@ -1,9 +1,7 @@
 package mchorse.bbs_mod.ui.model;
 
 import mchorse.bbs_mod.BBSModClient;
-import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.bobj.BOBJBone;
-import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.cubic.animation.ActionsConfig;
@@ -14,13 +12,11 @@ import mchorse.bbs_mod.cubic.data.model.ModelCube;
 import mchorse.bbs_mod.cubic.data.model.ModelGroup;
 import mchorse.bbs_mod.cubic.data.model.ModelQuad;
 import mchorse.bbs_mod.cubic.data.model.ModelVertex;
-import mchorse.bbs_mod.cubic.model.ArmorSlot;
 import mchorse.bbs_mod.cubic.model.IKChainConfig;
 import mchorse.bbs_mod.cubic.model.ModelConfig;
 import mchorse.bbs_mod.cubic.render.CubicCubeRenderer;
 import mchorse.bbs_mod.cubic.render.ICubicRenderer;
 import mchorse.bbs_mod.data.types.MapType;
-import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.forms.ModelForm;
@@ -38,20 +34,14 @@ import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIModelRenderer;
 import mchorse.bbs_mod.ui.utils.Gizmo;
 import mchorse.bbs_mod.ui.utils.StencilFormFramebuffer;
-import mchorse.bbs_mod.ui.utils.gizmo.GizmoController;
-import mchorse.bbs_mod.ui.utils.gizmo.GizmoMatrixUtils;
-import mchorse.bbs_mod.ui.utils.gizmo.GizmoRayFrame;
-import mchorse.bbs_mod.ui.utils.gizmo.GizmoSurface;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.Pair;
-import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.colors.Colors;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.GlUniform;
 import net.minecraft.client.gl.ShaderProgram;
-import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
@@ -60,13 +50,11 @@ import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
-import net.minecraft.client.render.model.json.ModelTransformationMode;
 import net.minecraft.client.util.math.MatrixStack;
-import net.minecraft.entity.EquipmentSlot;
-import net.minecraft.item.ItemStack;
 import net.minecraft.util.math.RotationAxis;
 
 import org.joml.Matrix4f;
+import org.joml.Vector3d;
 import org.joml.Vector3f;
 
 import com.mojang.blaze3d.platform.GlStateManager;
@@ -74,33 +62,26 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.logging.LogUtils;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Consumer;
-import java.util.function.Function;
 
 import org.slf4j.Logger;
 
-public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurface
+public class UIModelEditorRenderer extends UIModelRenderer
 {
     private static final Logger LOGGER = LogUtils.getLogger();
 
     public UIPropTransform transform;
 
-    private final GizmoController gizmoController = new GizmoController(this);
-
     private ModelForm form = new ModelForm();
     private ModelFormRenderer renderer;
     private ModelConfig config;
     private Consumer<String> callback;
-    private boolean pickingEnabled = true;
     private String selectedBone;
     private ModelCube selectedCube;
     private boolean dirty = true;
-
-    private Function<Float, Matrix4f> formTransformGizmoOrigin;
 
     /* ---- IK gizmo state ---- */
     /** The currently active IK chain config — set by UIModelIKPanel. null = no IK gizmo. */
@@ -113,14 +94,6 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
     private String lastModelId;
     private final Matrix4f lastGizmoMatrix = new Matrix4f();
     private boolean hasGizmoMatrix;
-
-    /** When true, trackball drag matches the film replay transform keyframe path. */
-    private boolean formTransformGizmoDrag;
-
-    private ArmorSlot fpHandPreviewSlot;
-    private boolean fpHandPreviewMainHand;
-    private final Map<ModelGroup, Boolean> savedGroupVisibility = new HashMap<>();
-    private int savedPreviewDistance = -1;
 
 
     public UIModelEditorRenderer()
@@ -161,16 +134,6 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
     {
         this.callback = callback;
     }
-
-    public void setPickingEnabled(boolean pickingEnabled)
-    {
-        this.pickingEnabled = pickingEnabled;
-
-        if (!pickingEnabled)
-        {
-            this.stencil.clearPicking();
-        }
-    }
     
     public void dirty()
     {
@@ -210,156 +173,6 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
         this.dirty();
     }
 
-    public void beginFpHandPreview(ArmorSlot slot, boolean mainHand)
-    {
-        this.fpHandPreviewSlot = slot;
-        this.fpHandPreviewMainHand = mainHand;
-
-        if (this.savedPreviewDistance < 0)
-        {
-            this.savedPreviewDistance = (int) this.distance.getX();
-        }
-
-        this.distance.setX(10);
-
-        ClientPlayerEntity player = MinecraftClient.getInstance().player;
-
-        if (player != null)
-        {
-            this.entity.setEquipmentStack(EquipmentSlot.MAINHAND, player.getMainHandStack());
-            this.entity.setEquipmentStack(EquipmentSlot.OFFHAND, player.getOffHandStack());
-        }
-
-        this.dirty();
-    }
-
-    public void endFpHandPreview()
-    {
-        this.fpHandPreviewSlot = null;
-        this.restoreGroupVisibility();
-
-        if (this.savedPreviewDistance >= 0)
-        {
-            this.distance.setX(this.savedPreviewDistance);
-            this.savedPreviewDistance = -1;
-        }
-
-        this.dirty();
-    }
-
-    private void applyFpHandGroupVisibility(ModelInstance model, String groupId)
-    {
-        this.savedGroupVisibility.clear();
-
-        for (ModelGroup group : model.getModel().getAllGroups())
-        {
-            this.savedGroupVisibility.put(group, group.visible);
-            group.visible = this.isGroupOrDescendant(group, groupId);
-        }
-    }
-
-    private void restoreGroupVisibility()
-    {
-        for (Map.Entry<ModelGroup, Boolean> entry : this.savedGroupVisibility.entrySet())
-        {
-            entry.getKey().visible = entry.getValue();
-        }
-
-        this.savedGroupVisibility.clear();
-    }
-
-    private boolean isGroupOrDescendant(ModelGroup group, String groupId)
-    {
-        ModelGroup current = group;
-
-        while (current != null)
-        {
-            if (current.id.equals(groupId))
-            {
-                return true;
-            }
-
-            current = current.parent;
-        }
-
-        return false;
-    }
-
-    private void renderFpHandItem(UIContext context, MatrixCache matrixCache, MatrixStack stack)
-    {
-        String groupId = this.fpHandPreviewSlot.group.get();
-
-        if (groupId.isEmpty())
-        {
-            return;
-        }
-
-        MatrixCacheEntry entry = matrixCache.get(groupId);
-
-        if (entry == null)
-        {
-            return;
-        }
-
-        Matrix4f matrix = entry.matrix();
-
-        if (matrix == null)
-        {
-            matrix = entry.origin();
-        }
-
-        if (matrix == null)
-        {
-            return;
-        }
-
-        ClientPlayerEntity player = MinecraftClient.getInstance().player;
-
-        if (player == null)
-        {
-            return;
-        }
-
-        ItemStack itemStack = this.fpHandPreviewMainHand ? player.getMainHandStack() : player.getOffHandStack();
-
-        if (itemStack == null || itemStack.isEmpty())
-        {
-            return;
-        }
-
-        ModelTransformationMode mode = this.fpHandPreviewMainHand
-            ? ModelTransformationMode.FIRST_PERSON_RIGHT_HAND
-            : ModelTransformationMode.FIRST_PERSON_LEFT_HAND;
-        int light = LightmapTextureManager.pack(15, 15);
-        CustomVertexConsumerProvider consumers = FormUtilsClient.getProvider();
-
-        stack.push();
-        MatrixStackUtils.multiply(stack, matrix);
-        stack.multiply(RotationAxis.POSITIVE_X.rotationDegrees(90F));
-        stack.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(180F));
-        MatrixStackUtils.applyTransform(stack, this.fpHandPreviewSlot.transform);
-
-        consumers.setSubstitute(BBSRendering.getColorConsumer(new Color().set(Colors.WHITE)));
-        MinecraftClient.getInstance().getItemRenderer().renderItem(
-            null,
-            itemStack,
-            mode,
-            mode == ModelTransformationMode.FIRST_PERSON_LEFT_HAND,
-            stack,
-            consumers,
-            this.entity.getWorld(),
-            light,
-            OverlayTexture.DEFAULT_UV,
-            0
-        );
-        consumers.draw();
-        consumers.setSubstitute(null);
-        CustomVertexConsumerProvider.clearRunnables();
-        stack.pop();
-
-        RenderSystem.enableDepthTest();
-    }
-
     private void ensureFramebuffer()
     {
         this.stencil.setup(Link.bbs("stencil_form"));
@@ -377,24 +190,28 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
     @Override
     public boolean subMouseClicked(UIContext context)
     {
-        if (!this.pickingEnabled)
-        {
-            return super.subMouseClicked(context);
-        }
-
-        if (this.gizmoController.tryStartHandleDrag(context, this.transform))
-        {
-            return true;
-        }
-
         if (this.stencil.hasPicked())
         {
             Pair<Form, String> picked = this.stencil.getPicked();
 
-            if (picked != null && picked.a != null && this.callback != null)
+            if (picked != null)
             {
-                this.callback.accept(picked.b);
-                return true;
+                if (picked.a == null)
+                {
+                    int index = this.stencil.getIndex();
+                    
+                    if (index >= Gizmo.STENCIL_X && index <= Gizmo.STENCIL_FREE)
+                    {
+                        this.prepareGizmoDrag(this.transform);
+                        Gizmo.INSTANCE.start(index, context.mouseX, context.mouseY, this.transform);
+                        return true;
+                    }
+                }
+                else if (this.callback != null)
+                {
+                    this.callback.accept(picked.b);
+                    return true;
+                }
             }
         }
 
@@ -404,20 +221,9 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
     @Override
     public boolean subMouseReleased(UIContext context)
     {
-        this.gizmoController.stop();
-
+        Gizmo.INSTANCE.stop();
+        
         return super.subMouseReleased(context);
-    }
-
-    @Override
-    public StencilFormFramebuffer getGizmoStencil()
-    {
-        return this.stencil;
-    }
-
-    public void setFormTransformGizmoOrigin(Function<Float, Matrix4f> origin)
-    {
-        this.formTransformGizmoOrigin = origin;
     }
 
     public void setSelectedBone(String bone)
@@ -439,22 +245,9 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
     protected void renderUserModel(UIContext context)
     {
         this.updateModel();
-
-        ModelInstance model = this.getModel();
-        boolean fpHandPreview = this.fpHandPreviewSlot != null && model != null;
-        String fpGroupId = fpHandPreview ? this.fpHandPreviewSlot.group.get() : null;
-        MatrixStack stack = context.batcher.getContext().getMatrices();
-
-        if (fpHandPreview && fpGroupId != null && !fpGroupId.isEmpty())
-        {
-            this.applyFpHandGroupVisibility(model, fpGroupId);
-            stack.push();
-            stack.multiply(RotationAxis.POSITIVE_Y.rotation(MathUtils.PI));
-            MatrixStackUtils.applyTransform(stack, this.fpHandPreviewSlot.transform);
-        }
-
+        
         FormRenderingContext formContext = new FormRenderingContext()
-            .set(FormRenderType.PREVIEW, this.entity, stack, LightmapTextureManager.pack(15, 15), OverlayTexture.DEFAULT_UV, context.getTransition())
+            .set(FormRenderType.PREVIEW, this.entity, context.batcher.getContext().getMatrices(), LightmapTextureManager.pack(15, 15), OverlayTexture.DEFAULT_UV, context.getTransition())
             .camera(this.camera)
             .modelRenderer();
 
@@ -462,57 +255,72 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
         MatrixCache matrixCache = this.renderer.collectMatrices(this.entity, context.getTransition());
         this.renderSelectedCubeVisualizer(context, matrixCache);
 
-        if (fpHandPreview && fpGroupId != null && !fpGroupId.isEmpty())
-        {
-            this.renderFpHandItem(context, matrixCache, stack);
-        }
 
         this.renderIKGizmo(context, matrixCache);
 
-        Matrix4f gizmoMatrix = this.resolveGizmoMatrix(context, matrixCache);
-        this.hasGizmoMatrix = gizmoMatrix != null;
+        /* Render Axes */
+        Matrix4f gizmoMatrix = null;
+        this.hasGizmoMatrix = false;
 
-        if (gizmoMatrix != null)
+        if (UIBaseMenu.renderAxes && this.selectedBone != null && !this.selectedBone.isEmpty())
         {
-            this.lastGizmoMatrix.set(gizmoMatrix);
+            if (this.selectedCube != null)
+            {
+                gizmoMatrix = this.getCubePivotMatrix(matrixCache);
+            }
+            else
+            {
+                MatrixCacheEntry entry = matrixCache.get(this.selectedBone);
 
-            stack.push();
-            MatrixStackUtils.multiply(stack, gizmoMatrix);
+                if (entry != null)
+                {
+                    Matrix4f matrix = entry.matrix();
 
-            RenderSystem.disableDepthTest();
-            Gizmo.INSTANCE.render(stack);
-            RenderSystem.enableDepthTest();
+                    if (matrix == null)
+                    {
+                        matrix = entry.origin();
+                    }
 
-            stack.pop();
+                    gizmoMatrix = matrix;
+                }
+            }
+
+            if (gizmoMatrix != null)
+            {
+                this.lastGizmoMatrix.set(gizmoMatrix);
+                this.hasGizmoMatrix = true;
+                MatrixStack stack = context.batcher.getContext().getMatrices();
+
+                stack.push();
+                MatrixStackUtils.multiply(stack, gizmoMatrix);
+
+                RenderSystem.disableDepthTest();
+                Gizmo.INSTANCE.render(stack);
+                RenderSystem.enableDepthTest();
+
+                stack.pop();
+            }
         }
 
-        if (this.area.isInside(context) && this.pickingEnabled)
+        if (this.area.isInside(context))
         {
             if (this.stencil.getFramebuffer() == null)
             {
                 this.ensureFramebuffer();
             }
-            else
-            {
-                this.stencil.resizeGUI(this.area.w, this.area.h);
-            }
-
-            Texture fboTexture = this.stencil.getFramebuffer().getMainTexture();
-            int fboW = fboTexture.width;
-            int fboH = fboTexture.height;
 
             GlStateManager._disableScissorTest();
 
             this.stencilMap.setup();
             this.stencil.apply();
 
-            this.beginStencilViewport(fboW, fboH);
-            this.setupViewport(context);
-
             this.renderer.render(formContext.stencilMap(this.stencilMap));
+            
 
             if (gizmoMatrix != null)
             {
+                MatrixStack stack = context.batcher.getContext().getMatrices();
+
                 stack.push();
                 MatrixStackUtils.multiply(stack, gizmoMatrix);
 
@@ -525,9 +333,6 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
 
             this.stencil.pickGUI(context, this.area);
             this.stencil.unbind(this.stencilMap);
-            this.gizmoController.updateHover();
-
-            this.endStencilViewport();
 
             MinecraftClient.getInstance().getFramebuffer().beginWrite(true);
 
@@ -536,96 +341,63 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
         else
         {
             this.stencil.clearPicking();
-            this.gizmoController.updateHover();
         }
-
-        if (fpHandPreview && fpGroupId != null && !fpGroupId.isEmpty())
-        {
-            stack.pop();
-            this.restoreGroupVisibility();
-        }
-
-        this.setupViewport(context);
     }
 
-    private Matrix4f resolveGizmoMatrix(UIContext context, MatrixCache matrixCache)
-    {
-        Matrix4f gizmoMatrix = null;
-
-        if (this.formTransformGizmoOrigin != null)
-        {
-            gizmoMatrix = this.formTransformGizmoOrigin.apply(context.getTransition());
-        }
-        else if (UIBaseMenu.renderAxes && this.selectedBone != null && !this.selectedBone.isEmpty())
-        {
-            if (this.selectedCube != null)
-            {
-                gizmoMatrix = this.getCubePivotMatrix(matrixCache);
-            }
-            else
-            {
-                MatrixCacheEntry entry = matrixCache.get(this.selectedBone);
-
-                if (entry != null)
-                {
-                    boolean local = this.transform != null && this.transform.isLocal();
-
-                    gizmoMatrix = GizmoMatrixUtils.resolveFilmPoseBoneMatrix(entry, local);
-                }
-            }
-        }
-
-        if (gizmoMatrix == null)
-        {
-            return null;
-        }
-
-        return new Matrix4f(gizmoMatrix);
-    }
-
-    public void setFormTransformGizmoDrag(boolean formTransformGizmoDrag)
-    {
-        this.formTransformGizmoDrag = formTransformGizmoDrag;
-    }
-
-    @Override
-    public void prepareGizmoDrag(UIPropTransform transform)
+    private void prepareGizmoDrag(UIPropTransform transform)
     {
         if (transform == null)
         {
             return;
         }
 
-        if (this.formTransformGizmoDrag)
+        transform.setGizmoRayProvider(new UIPropTransform.IGizmoRayProvider()
         {
-            /* General transform: same trackball / view-ring tuning as model-editor pose. */
-            transform.setInvertGizmoViewRing(false);
-            transform.setInvertGizmoTrackball(false);
-            transform.clearTrackballEulerInverts();
-            transform.invertModelPoseTrackballXZ();
-        }
-        else
-        {
-            /* Pose trackball: same ray path as General transform; no X/Z euler sign flips. */
-            transform.setInvertGizmoViewRing(false);
-            transform.setInvertGizmoTrackball(false);
-            transform.clearTrackballEulerInverts();
-            transform.setFilmMatchPoseTrackball(true);
-            transform.setGizmoRayProvider(GizmoRayFrame.fromFilmStyle(
-                this.camera,
-                this.area,
-                () -> this.hasGizmoMatrix ? this.lastGizmoMatrix : null
-            ));
+            @Override
+            public boolean getMouseRay(UIContext context, int mouseX, int mouseY, Vector3d rayOrigin, Vector3f rayDirection)
+            {
+                if (UIModelEditorRenderer.this.area.w <= 0 || UIModelEditorRenderer.this.area.h <= 0)
+                {
+                    return false;
+                }
 
-            return;
-        }
+                Vector3f direction = UIModelEditorRenderer.this.camera.getMouseDirection(
+                    mouseX,
+                    mouseY,
+                    UIModelEditorRenderer.this.area.x,
+                    UIModelEditorRenderer.this.area.y,
+                    UIModelEditorRenderer.this.area.w,
+                    UIModelEditorRenderer.this.area.h
+                );
 
-        transform.setFilmMatchPoseTrackball(true);
-        transform.setGizmoRayProvider(GizmoRayFrame.fromFilmStyle(
-            this.camera,
-            this.area,
-            () -> this.hasGizmoMatrix ? this.lastGizmoMatrix : null
-        ));
+                if (direction.lengthSquared() <= 1.0E-12F)
+                {
+                    return false;
+                }
+
+                rayDirection.set(direction).normalize();
+                rayOrigin.set(
+                    UIModelEditorRenderer.this.camera.position.x - UIModelEditorRenderer.this.pos.x,
+                    UIModelEditorRenderer.this.camera.position.y - UIModelEditorRenderer.this.pos.y,
+                    UIModelEditorRenderer.this.camera.position.z - UIModelEditorRenderer.this.pos.z
+                );
+
+                return true;
+            }
+
+            @Override
+            public boolean getGizmoMatrix(Matrix4f matrix)
+            {
+                if (!UIModelEditorRenderer.this.hasGizmoMatrix)
+                {
+                    return false;
+                }
+
+                matrix.set(UIModelEditorRenderer.this.lastGizmoMatrix);
+
+                return true;
+            }
+        });
     }
 
     private void renderSelectedCubeVisualizer(UIContext context, MatrixCache cache)
@@ -925,7 +697,7 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
     {
         super.render(context);
 
-        if (!this.pickingEnabled || !this.stencil.hasPicked())
+        if (!this.stencil.hasPicked())
         {
             return;
         }
@@ -941,14 +713,6 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
         if (target != null)
         {
             target.set(index);
-        }
-
-        GlUniform boneHighlight = previewProgram.getUniform("BoneHighlight");
-
-        if (boneHighlight != null)
-        {
-            Colors.COLOR.set(BBSSettings.modelEditorHoverHighlight());
-            boneHighlight.set(Colors.COLOR.r, Colors.COLOR.g, Colors.COLOR.b, Colors.COLOR.a);
         }
 
         RenderSystem.enableBlend();

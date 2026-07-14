@@ -79,16 +79,16 @@ public class UIModelPhysBonePanel extends UIElement
     private final UITrackpad   solverStepsPad;
 
     /* State */
-    private final IUIModelPanelHost editor;
+    private final UIModelPanel editor;
     private ModelConfig        config;
     private PhysBoneSlot       selected;
     private List<String>       boneNames = new ArrayList<>();
 
-    public UIModelPhysBonePanel(IUIModelPanelHost editor)
+    public UIModelPhysBonePanel(UIModelPanel editor)
     {
         this.editor = editor;
 
-        this.relative(editor.getMainView()).w(1F).h(1F);
+        this.relative(editor.mainView).w(1F).h(1F);
 
         /* ----------------------------------------------------------------
          * LEFT SIDE: Bone definitions list

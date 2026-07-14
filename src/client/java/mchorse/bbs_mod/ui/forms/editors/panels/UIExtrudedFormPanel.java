@@ -7,14 +7,12 @@ import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
 import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
 import mchorse.bbs_mod.ui.framework.elements.input.UITexturePicker;
-import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
 import mchorse.bbs_mod.utils.colors.Color;
 
 public class UIExtrudedFormPanel extends UIFormPanel<ExtrudedForm>
 {
     public UIButton pick;
     public UIColor color;
-    public UIColor paintColor;
     public UIToggle billboard;
     public UIToggle shading;
 
@@ -28,13 +26,10 @@ public class UIExtrudedFormPanel extends UIFormPanel<ExtrudedForm>
         });
         this.color = new UIColor((c) -> this.form.color.set(Color.rgba(c)));
         this.color.withAlpha();
-        this.paintColor = new UIColor((c) -> this.form.paintColor.set(Color.rgba(c)));
-        this.paintColor.withAlpha();
-        this.paintColor.tooltip(UIKeys.FORMS_EDITORS_PAINT_COLOR);
         this.billboard = new UIToggle(UIKeys.FORMS_EDITORS_BILLBOARD_TITLE, false, (b) -> this.form.billboard.set(b.getValue()));
         this.shading = new UIToggle(UIKeys.FORMS_EDITORS_BILLBOARD_SHADING, false, (b) -> this.form.shading.set(b.getValue()));
 
-        this.options.add(this.pick, this.color, this.paintColor, this.billboard, this.shading);
+        this.options.add(this.pick, this.color, this.billboard, this.shading);
     }
 
     @Override
@@ -43,7 +38,6 @@ public class UIExtrudedFormPanel extends UIFormPanel<ExtrudedForm>
         super.startEdit(form);
 
         this.color.setColor(form.color.get().getARGBColor());
-        this.paintColor.setColor(form.paintColor.get().getARGBColor());
         this.billboard.setValue(form.billboard.get());
         this.shading.setValue(form.shading.get());
     }

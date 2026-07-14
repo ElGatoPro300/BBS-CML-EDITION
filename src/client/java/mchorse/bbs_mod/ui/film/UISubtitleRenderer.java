@@ -14,7 +14,6 @@ import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.pose.Transform;
 
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gl.GlUniform;
 import net.minecraft.client.gl.ShaderProgram;
 import net.minecraft.client.util.math.MatrixStack;
@@ -76,8 +75,7 @@ public class UISubtitleRenderer
         Framebuffer framebuffer = getTextFramebuffer();
         Texture texture = framebuffer.getMainTexture();
         Matrix4f ortho = new Matrix4f().ortho(0, width, height, 0, -100, 100);
-        FontRenderer font = Batcher2D.getVanillaTextRenderer();
-        TextRenderer vanilla = MinecraftClient.getInstance().textRenderer;
+        FontRenderer font = Batcher2D.getDefaultTextRenderer();
 
         RenderSystem.depthFunc(GL11.GL_ALWAYS);
         RenderSystem.disableCull();
@@ -99,14 +97,14 @@ public class UISubtitleRenderer
             float scale = subtitle.size;
             int subColor = subtitle.color;
 
-            List<String> strings = subtitle.maxWidth <= 10 ? Arrays.asList(label) : FontRenderer.wrap(vanilla, label, subtitle.maxWidth);
+            List<String> strings = subtitle.maxWidth <= 10 ? Arrays.asList(label) : font.wrap(label, subtitle.maxWidth);
 
             for (String string : strings)
             {
-                w = Math.max(w, vanilla.getWidth(string.trim()));
+                w = Math.max(w, font.getWidth(string.trim()));
             }
 
-            h = (strings.size() - 1) * subtitle.lineHeight + vanilla.fontHeight - 2;
+            h = (strings.size() - 1) * subtitle.lineHeight + font.getHeight();
 
             int fw = (int) ((w + 10) * scale);
             int fh = (int) ((h + 10) * scale);
@@ -122,20 +120,15 @@ public class UISubtitleRenderer
             {
                 string = string.trim();
 
-                int xx = 5 + (w - vanilla.getWidth(string)) / 2;
+                int xx = 5 + (w - font.getWidth(string)) / 2;
 
                 if (Colors.getA(subtitle.backgroundColor) > 0)
                 {
-                    float offset = subtitle.backgroundOffset;
-                    int tw = vanilla.getWidth(string);
-                    int th = vanilla.fontHeight - 2;
-
-                    batcher.box(xx - offset, yy - offset, xx + tw + offset - 1, yy + th + offset, Colors.mulA(subtitle.backgroundColor, alpha));
-                    batcher.text(font, string, xx, yy, Colors.setA(subColor, 1F), subtitle.textShadow);
+                    batcher.textCard(string, xx, yy, Colors.setA(subColor, 1F), Colors.mulA(subtitle.backgroundColor, alpha), subtitle.backgroundOffset, subtitle.textShadow);
                 }
                 else
                 {
-                    batcher.text(font, string, xx, yy, Colors.setA(subColor, 1F), subtitle.textShadow);
+                    batcher.text(string, xx, yy, Colors.setA(subColor, 1F), subtitle.textShadow);
                 }
 
                 yy += subtitle.lineHeight;

@@ -44,7 +44,6 @@ import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIRenderable;
 import mchorse.bbs_mod.ui.home.UIHomePanel;
 import mchorse.bbs_mod.ui.model.UIModelIKPanel;
-import mchorse.bbs_mod.ui.model.UIModelUIStyles;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.UIUtils;
@@ -86,7 +85,7 @@ import java.util.function.Consumer;
 
 import org.slf4j.Logger;
 
-public class UIModelPanel extends UIDataDashboardPanel<ModelConfig> implements IUIModelPanelHost
+public class UIModelPanel extends UIDataDashboardPanel<ModelConfig>
 {
     private static final Logger LOGGER = LogUtils.getLogger();
     private static final GeckoAnimationValidator GECKO_VALIDATOR = new GeckoAnimationValidator();
@@ -114,7 +113,6 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig> implements I
     private final List<ModelDocumentTab> modelDocumentTabs = new ArrayList<>();
     private int activeModelDocumentTab = -1;
     private boolean showingHomePage = true;
-    private boolean pickingBone;
 
     public UIElement modelSettingsPanel;
     public UIModelPhysBonePanel physBonesPanel;
@@ -147,18 +145,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig> implements I
         this.renderer = new UIModelEditorRenderer();
         this.renderer.relative(this).wTo(this.iconBar.getFlex()).h(1F);
         this.renderer.setCallback(this::pickBone);
-
-        this.editor.resetFlex().relative(this).w(1F).h(1F);
-
-        UIRenderable viewportBackground = new UIRenderable((context) ->
-        {
-            if (this.renderer.area.w > 0 && this.renderer.area.h > 0)
-            {
-                context.batcher.box(this.renderer.area.x, this.renderer.area.y, this.renderer.area.ex(), this.renderer.area.ey(), UIModelUIStyles.FORM_VIEWPORT_BACKGROUND);
-            }
-        });
-
-        this.prepend(viewportBackground);
+        
         this.prepend(this.renderer);
 
         this.homePage = new UIElement()
@@ -406,15 +393,6 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig> implements I
         this.mainView.relative(this.editor).y(0).w(1F).h(1F);
 
         this.editor.add(this.mainView, this.homePage);
-        this.iconBar.prepend(new UIRenderable((context) ->
-        {
-            if (!this.iconBar.isVisible())
-            {
-                return;
-            }
-
-            context.batcher.box(this.iconBar.area.x, this.iconBar.area.y, this.iconBar.area.ex(), this.iconBar.area.ey(), UIModelUIStyles.STRIP_BACKGROUND);
-        }));
         this.iconBar.prepend(new UIRenderable(this::renderIcons));
 
         /* Model Settings Panel */
@@ -426,26 +404,10 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig> implements I
         this.sectionsView.relative(this.modelSettingsPanel).y(0).w(200).h(1F);
         
         this.rightView = UI.scrollView(20, 10);
-        this.rightView.scroll.cancelScrolling().scrollSpeed *= 3;
+        this.rightView.scroll.cancelScrolling().opposite().scrollSpeed *= 3;
         this.rightView.relative(this.modelSettingsPanel).x(1F, -200).y(0).w(200).h(1F);
         
         this.modelSettingsPanel.add(this.sectionsView, this.rightView);
-
-        this.editor.prepend(new UIRenderable((context) ->
-        {
-            if (UIModelPanel.this.showingHomePage)
-            {
-                return;
-            }
-
-            if (UIModelPanel.this.modelSettingsPanel.isVisible() && UIModelPanel.this.modelSettingsPanel.getParent() == UIModelPanel.this.mainView)
-            {
-                context.batcher.box(UIModelPanel.this.sectionsView.area.x, UIModelPanel.this.sectionsView.area.y, UIModelPanel.this.sectionsView.area.ex(), UIModelPanel.this.sectionsView.area.ey(), 0xFF111115);
-                context.batcher.outline(UIModelPanel.this.sectionsView.area.x - 1, UIModelPanel.this.sectionsView.area.y - 1, UIModelPanel.this.sectionsView.area.ex() + 1, UIModelPanel.this.sectionsView.area.ey() + 1, 0xFF5A5A5A);
-                context.batcher.box(UIModelPanel.this.rightView.area.x, UIModelPanel.this.rightView.area.y, UIModelPanel.this.rightView.area.ex(), UIModelPanel.this.rightView.area.ey(), 0xFF111115);
-                context.batcher.outline(UIModelPanel.this.rightView.area.x - 1, UIModelPanel.this.rightView.area.y - 1, UIModelPanel.this.rightView.area.ex() + 1, UIModelPanel.this.rightView.area.ey() + 1, 0xFF5A5A5A);
-            }
-        }));
 
         this.physBonesPanel = new UIModelPhysBonePanel(this);
 
@@ -499,7 +461,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig> implements I
 
                     if (child instanceof UIIcon)
                     {
-                        UIDashboardPanels.renderHighlight(context.batcher, ((UIIcon) child).area);
+                        UIDashboardPanels.renderHighlightHorizontal(context.batcher, ((UIIcon) child).area);
                     }
                 }
             }
@@ -1622,40 +1584,21 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig> implements I
 
     private void pickBone(String bone)
     {
-        /* UIModelPartsSection.selectBone() -> UIPoseEditor.selectBone() -> pickCallback ->
-           setSelectedBone() re-enters this method with the same bone, which would otherwise
-           recurse forever and overflow the stack. */
-        if (this.pickingBone)
+        for (UIModelSection section : this.sections)
         {
-            return;
-        }
+            section.deselect();
+            section.onBoneSelected(bone);
 
-        this.pickingBone = true;
-
-        try
-        {
-            this.renderer.setSelectedBone(bone);
-
-            for (UIModelSection section : this.sections)
+            if (section instanceof UIModelPartsSection)
             {
-                section.deselect();
-                section.onBoneSelected(bone);
-
-                if (section instanceof UIModelPartsSection)
-                {
-                    ((UIModelPartsSection) section).selectBone(bone);
-                    this.setRight(((UIModelPartsSection) section).poseEditor);
-                }
-            }
-
-            if (this.ikPanel.hasParent())
-            {
-                this.ikPanel.onBoneSelected(bone);
+                ((UIModelPartsSection) section).selectBone(bone);
+                this.setRight(((UIModelPartsSection) section).poseEditor);
             }
         }
-        finally
+
+        if (this.ikPanel.hasParent())
         {
-            this.pickingBone = false;
+            this.ikPanel.onBoneSelected(bone);
         }
     }
     
@@ -1743,6 +1686,10 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig> implements I
     @Override
     public void render(UIContext context)
     {
+        int color = BBSSettings.primaryColor.get();
+
+        this.area.render(context.batcher, Colors.mulRGB(color | Colors.A100, 0.2F));
+
         super.render(context);
     }
 
@@ -1750,6 +1697,7 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig> implements I
     public void resize()
     {
         super.resize();
+
         this.renderer.resize();
     }
 
@@ -1757,70 +1705,5 @@ public class UIModelPanel extends UIDataDashboardPanel<ModelConfig> implements I
     public void close()
     {}
 
-    @Override
-    public UIElement getMainView()
-    {
-        return this.mainView;
-    }
 
-    @Override
-    public UIModelEditorRenderer getModelRenderer()
-    {
-        return this.renderer;
-    }
-
-    @Override
-    public void setWorkspacePanel(UIElement panel)
-    {
-        this.setPanel(panel);
-    }
-
-    @Override
-    public ModelConfig getModelConfig()
-    {
-        return this.data;
-    }
-
-    @Override
-    public void openTransformEditor(UIDashboardPanel panel)
-    {
-        this.dashboard.getPanels().setPanel(panel);
-    }
-
-    @Override
-    public void returnFromSubEditor()
-    {
-        this.renderer.dirty();
-        this.dashboard.getPanels().setPanel(this);
-    }
-
-    @Override
-    public List<UIModelSection> getSections()
-    {
-        return this.sections;
-    }
-
-    @Override
-    public UIDashboard getDashboard()
-    {
-        return this.dashboard;
-    }
-
-    @Override
-    public UIModelPanel getModelPanel()
-    {
-        return this;
-    }
-
-    @Override
-    public String getSelectedBone()
-    {
-        return this.renderer.getSelectedBone();
-    }
-
-    @Override
-    public void setSelectedBone(String bone)
-    {
-        this.pickBone(bone);
-    }
 }

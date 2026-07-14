@@ -218,8 +218,6 @@ public class FilmEditorController extends BaseFilmController
 
             BaseFilmController.renderEntity(FilmControllerContext.instance
                 .setup(this.getEntities(), entity, replay, context)
-                .film(this.film)
-                .propertyTick(tick)
                 .color(Colors.setA(color, alpha))
                 .transition(0F));
 

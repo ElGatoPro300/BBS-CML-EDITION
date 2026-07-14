@@ -83,9 +83,9 @@ public class Scroll
 
         batcher.dropShadow(x1, y1, x2, y2, 5, color, Colors.setA(color, 0F));
 
-        batcher.box(x1, y1, x2, y2, 0xFF2A2A2A);
-        batcher.box(x1 + 1, y1 + 1, x2, y2, 0xFF1A1A1A);
-        batcher.box(x1 + 1, y1 + 1, x2 - 1, y2 - 1, 0xFF333333);
+        batcher.box(x1, y1, x2, y2, 0xffeeeeee);
+        batcher.box(x1 + 1, y1 + 1, x2, y2, 0xff666666);
+        batcher.box(x1 + 1, y1 + 1, x2 - 1, y2 - 1, 0xffaaaaaa);
 
         int dx = x2 - x1;
         int dy = y2 - y1;

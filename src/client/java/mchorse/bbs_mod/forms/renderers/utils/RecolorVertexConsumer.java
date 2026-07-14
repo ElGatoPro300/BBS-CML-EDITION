@@ -10,18 +10,11 @@ public class RecolorVertexConsumer implements VertexConsumer
 
     protected VertexConsumer consumer;
     protected Color color;
-    protected Color paintColor;
 
     public RecolorVertexConsumer(VertexConsumer consumer, Color color)
     {
-        this(consumer, color, null);
-    }
-
-    public RecolorVertexConsumer(VertexConsumer consumer, Color color, Color paintColor)
-    {
         this.consumer = consumer;
         this.color = color;
-        this.paintColor = paintColor;
     }
 
     @Override
@@ -37,16 +30,6 @@ public class RecolorVertexConsumer implements VertexConsumer
         green = (int) (this.color.g * green);
         blue = (int) (this.color.b * blue);
         alpha = (int) (this.color.a * alpha);
-
-        /* Paint overlay stage: blend the recolored vertex color toward the paint color by its alpha (paint opacity) */
-        if (this.paintColor != null && this.paintColor.a > 0F)
-        {
-            float pa = this.paintColor.a;
-
-            red = (int) (red + (this.paintColor.r * 255F - red) * pa);
-            green = (int) (green + (this.paintColor.g * 255F - green) * pa);
-            blue = (int) (blue + (this.paintColor.b * 255F - blue) * pa);
-        }
 
         return this.consumer.color(red, green, blue, alpha);
     }

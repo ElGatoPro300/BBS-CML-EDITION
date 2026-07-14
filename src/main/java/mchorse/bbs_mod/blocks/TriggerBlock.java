@@ -138,63 +138,44 @@ public class TriggerBlock extends Block implements BlockEntityProvider
     @Override
     public VoxelShape getCollisionShape(BlockState state, BlockView world, BlockPos pos, ShapeContext context)
     {
-        try
-        {
-            BlockEntity be = world.getBlockEntity(pos);
+        BlockEntity be = world.getBlockEntity(pos);
 
-            if (be instanceof TriggerBlockEntity trigger)
+        if (be instanceof TriggerBlockEntity)
+        {
+            TriggerBlockEntity trigger = (TriggerBlockEntity) be;
+
+            if (!trigger.collidable.get())
             {
-                if (!trigger.collidable.get())
-                {
-                    return VoxelShapes.empty();
-                }
-
-                return this.getShape(world, pos);
+                return VoxelShapes.empty();
             }
-        }
-        catch (Exception e)
-        {
+            
+            return this.getShape(world, pos);
         }
 
-        /* Never fall back to a solid full cube for a non-solid block: an exception or
-         * a missing block entity here must not eject the player through the world. */
-        return VoxelShapes.empty();
+        return super.getCollisionShape(state, world, pos, context);
     }
 
     private VoxelShape getShape(BlockView world, BlockPos pos)
     {
-        try
+        BlockEntity be = world.getBlockEntity(pos);
+
+        if (be instanceof TriggerBlockEntity)
         {
-            BlockEntity be = world.getBlockEntity(pos);
+            TriggerBlockEntity trigger = (TriggerBlockEntity) be;
+            Vector3f min = trigger.pos1.get();
+            Vector3f max = trigger.pos2.get();
 
-            if (be instanceof TriggerBlockEntity trigger)
-            {
-                Vector3f min = trigger.pos1.get();
-                Vector3f max = trigger.pos2.get();
+            double minX = Math.min(min.x, max.x);
+            double minY = Math.min(min.y, max.y);
+            double minZ = Math.min(min.z, max.z);
+            double maxX = Math.max(min.x, max.x);
+            double maxY = Math.max(min.y, max.y);
+            double maxZ = Math.max(min.z, max.z);
 
-                if (min == null || max == null)
-                {
-                    return VoxelShapes.empty();
-                }
-
-                double minX = Math.max(0D, Math.min(min.x, max.x));
-                double minY = Math.max(0D, Math.min(min.y, max.y));
-                double minZ = Math.max(0D, Math.min(min.z, max.z));
-                double maxX = Math.min(1D, Math.max(min.x, max.x));
-                double maxY = Math.min(1D, Math.max(min.y, max.y));
-                double maxZ = Math.min(1D, Math.max(min.z, max.z));
-
-                if (minX < maxX && minY < maxY && minZ < maxZ)
-                {
-                    return VoxelShapes.cuboid(minX, minY, minZ, maxX, maxY, maxZ);
-                }
-            }
-        }
-        catch (Exception e)
-        {
+            return VoxelShapes.cuboid(minX, minY, minZ, maxX, maxY, maxZ);
         }
 
-        return VoxelShapes.empty();
+        return VoxelShapes.fullCube();
     }
 
     @Nullable
