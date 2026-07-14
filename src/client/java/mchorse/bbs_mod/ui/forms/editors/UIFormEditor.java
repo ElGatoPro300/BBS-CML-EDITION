@@ -27,6 +27,7 @@ import mchorse.bbs_mod.forms.forms.VanillaParticleForm;
 import mchorse.bbs_mod.forms.states.AnimationState;
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.l10n.keys.IKey;
+import mchorse.bbs_mod.settings.values.ui.ValueFormEditorGizmoToolbar;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.ICursor;
@@ -144,8 +145,11 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
     public UIIcon gizmoScale;
     public UIIcon gizmoRotate;
     public UIIcon gizmoCombined;
+    public UIIcon gizmoTop;
     public UIIcon gizmoVisualSize;
     public UIIcon gizmoTranslateSpeed;
+
+    private final Map<String, UIIcon> gizmoButtonMap = new HashMap<>();
 
     private boolean gizmoTargetsBodyPart;
     private boolean gizmoTargetsTransform;
@@ -394,6 +398,7 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
         this.gizmoScale = this.createGizmoModeButton(Icons.SCALE, Gizmo.Mode.SCALE, UIKeys.FILM_GIZMO_SCALE);
         this.gizmoRotate = this.createGizmoModeButton(Icons.ARC, Gizmo.Mode.ROTATE, UIKeys.FILM_GIZMO_ROTATE);
         this.gizmoCombined = this.createGizmoModeButton(Icons.SHAPES, Gizmo.Mode.COMBINED, UIKeys.FILM_GIZMO_COMBINED);
+        this.gizmoTop = this.createGizmoModeButton(Icons.SPHERE, Gizmo.Mode.TOP, UIKeys.FILM_GIZMO_TOP);
 
         this.gizmoVisualSize = new UIIcon(Icons.MAXIMIZE, (b) ->
         {
@@ -413,6 +418,16 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
         });
         this.gizmoTranslateSpeed.tooltip(UIKeys.FILM_GIZMO_TRANSLATE_SPEED);
 
+        this.gizmoButtonMap.put(ValueFormEditorGizmoToolbar.BODY_PART, this.gizmoBodyPart);
+        this.gizmoButtonMap.put(ValueFormEditorGizmoToolbar.TRANSFORM, this.gizmoTransform);
+        this.gizmoButtonMap.put(ValueFormEditorGizmoToolbar.MOVE, this.gizmoMove);
+        this.gizmoButtonMap.put(ValueFormEditorGizmoToolbar.SCALE, this.gizmoScale);
+        this.gizmoButtonMap.put(ValueFormEditorGizmoToolbar.ROTATE, this.gizmoRotate);
+        this.gizmoButtonMap.put(ValueFormEditorGizmoToolbar.COMBINED, this.gizmoCombined);
+        this.gizmoButtonMap.put(ValueFormEditorGizmoToolbar.TOP, this.gizmoTop);
+        this.gizmoButtonMap.put(ValueFormEditorGizmoToolbar.SIZE, this.gizmoVisualSize);
+        this.gizmoButtonMap.put(ValueFormEditorGizmoToolbar.TRANSLATE_SPEED, this.gizmoTranslateSpeed);
+
         UIRenderable toolbarBackground = new UIRenderable((context) ->
         {
             this.gizmoToolbar.area.render(context.batcher, Colors.A75);
@@ -425,10 +440,29 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
             this.gizmoScale.active(gizmoMode == Gizmo.Mode.SCALE);
             this.gizmoRotate.active(gizmoMode == Gizmo.Mode.ROTATE);
             this.gizmoCombined.active(gizmoMode == Gizmo.Mode.COMBINED);
+            this.gizmoTop.active(gizmoMode == Gizmo.Mode.TOP);
         });
 
-        this.gizmoToolbar = UI.row(0, this.gizmoBodyPart, this.gizmoTransform, this.gizmoMove, this.gizmoScale, this.gizmoRotate, this.gizmoCombined, this.gizmoVisualSize, this.gizmoTranslateSpeed);
+        this.gizmoToolbar = new UIElement()
+        {
+            @Override
+            protected boolean subMouseClicked(UIContext context)
+            {
+                if (context.mouseButton == 1 && this.area.isInside(context))
+                {
+                    UIFormEditor.this.openGizmoToolbarCustomizer();
+                    UIUtils.playClick();
+
+                    return true;
+                }
+
+                return super.subMouseClicked(context);
+            }
+        };
+        this.gizmoToolbar.row(0);
         this.gizmoToolbar.relative(this).x(0.5F).y(4).wh(160, 20).anchorX(0.5F);
+        this.rebuildGizmoToolbar();
+        BBSSettings.editorFormGizmoToolbar.postCallback((v, f) -> this.rebuildGizmoToolbar());
 
         this.forms.add(background, this.formsList, this.bodyPartEditor, draggable);
         this.formEditor.add(this.forms);
@@ -662,6 +696,39 @@ public class UIFormEditor extends UIElement implements IUIFormList, ICursor
 
     /* Build a single gizmo transform-mode button that selects its mode and highlights while
        that mode is active (same behavior as the film viewport's buttons). */
+    public void rebuildGizmoToolbar()
+    {
+        this.gizmoToolbar.removeAll();
+
+        for (String id : BBSSettings.editorFormGizmoToolbar.getVisibleOrder())
+        {
+            UIIcon button = this.gizmoButtonMap.get(id);
+
+            if (button == null)
+            {
+                continue;
+            }
+
+            button.setVisible(true);
+            this.gizmoToolbar.add(button);
+        }
+
+        int count = this.gizmoToolbar.getChildren().size();
+
+        this.gizmoToolbar.w(Math.max(20, count * 20));
+        this.gizmoToolbar.resize();
+    }
+
+    private void openGizmoToolbarCustomizer()
+    {
+        if (this.getContext() == null)
+        {
+            return;
+        }
+
+        UIOverlay.addOverlay(this.getContext(), new UIFormEditorGizmoToolbarOverlayPanel(this::rebuildGizmoToolbar), 320, 180);
+    }
+
     private UIIcon createGizmoModeButton(Icon icon, Gizmo.Mode mode, IKey tooltip)
     {
         UIIcon button = new UIIcon(icon, (b) ->

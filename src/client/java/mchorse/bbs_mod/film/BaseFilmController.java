@@ -81,6 +81,7 @@ import net.minecraft.world.World;
 
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
+import org.joml.Quaternionf;
 import org.joml.Vector2f;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
@@ -196,6 +197,7 @@ public abstract class BaseFilmController
         if (!relative)
         {
             applyLookAt(context, form, position, target);
+            InverseKinematicsApplier.apply(context, form);
         }
 
         if (context.localGroupTransform != null)
@@ -822,6 +824,47 @@ public abstract class BaseFilmController
      * option is enabled, the form follows the displacement of the strongest locked
      * bone's target, scaled by that bone's lock strength.
      */
+    /**
+     * World-space point of a replay's attachment, used by look-at and inverse kinematics.
+     */
+    public static Vector3d resolveReplayAttachmentPoint(FilmControllerContext context, int replayIndex, String attachment)
+    {
+        if (context == null || replayIndex < 0)
+        {
+            return null;
+        }
+
+        IEntity targetEntity = context.entities.get(replayIndex);
+
+        if (targetEntity == null)
+        {
+            return null;
+        }
+
+        return getLookAtTargetPoint(targetEntity, attachment, context.transition);
+    }
+
+    /**
+     * World-space orientation of a replay's attachment, used by inverse kinematics
+     * angle targets.
+     */
+    public static Quaternionf resolveReplayAttachmentRotation(FilmControllerContext context, int replayIndex, String attachment)
+    {
+        if (context == null || replayIndex < 0)
+        {
+            return null;
+        }
+
+        IEntity targetEntity = context.entities.get(replayIndex);
+
+        if (targetEntity == null)
+        {
+            return null;
+        }
+
+        return getLookAtTargetRotation(targetEntity, attachment, context.transition);
+    }
+
     private static void applyLookAt(FilmControllerContext context, Form form, Vector3d position, Matrix4f target)
     {
         LookAt lookAt = form.lookAt.get();
@@ -1024,6 +1067,25 @@ public abstract class BaseFilmController
         Vector3f translation = matrix.getTranslation(new Vector3f());
 
         return new Vector3d(translation);
+    }
+
+    private static Quaternionf getLookAtTargetRotation(IEntity targetEntity, String attachment, float transition)
+    {
+        Matrix4f matrix = getMatrixForRenderWithRotation(targetEntity, 0D, 0D, 0D, transition);
+        Form targetForm = targetEntity.getForm();
+
+        if (targetForm != null)
+        {
+            MatrixCache map = FormUtilsClient.getRenderer(targetForm).collectMatrices(targetEntity, transition);
+            Matrix4f visualMatrix = getLookAtVisualMatrix(map, targetForm, attachment);
+
+            if (visualMatrix != null)
+            {
+                matrix.mul(visualMatrix);
+            }
+        }
+
+        return matrix.getNormalizedRotation(new Quaternionf());
     }
 
     /**

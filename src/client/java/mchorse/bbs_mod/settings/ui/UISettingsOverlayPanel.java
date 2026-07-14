@@ -25,7 +25,6 @@ import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
 import mchorse.bbs_mod.ui.framework.elements.input.text.UITextbox;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlayPanel;
 import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
-import mchorse.bbs_mod.ui.framework.elements.utils.UIText;
 import mchorse.bbs_mod.ui.utils.ScrollDirection;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.UIUtils;
@@ -322,7 +321,6 @@ public class UISettingsOverlayPanel extends UIOverlayPanel
             case "multiskin": return Icons.PLAYER;
             case "video": return Icons.VIDEO_CAMERA;
             case "editor": return Icons.CAMERA;
-            case "timeline_toolbar": return Icons.LAYOUT;
             case "replays": return Icons.POSE;
             case "recording": return Icons.PROPERTIES;
             case "model_blocks": return Icons.BLOCK;
@@ -483,15 +481,6 @@ public class UISettingsOverlayPanel extends UIOverlayPanel
             }
 
             List<UIElement> options = new ArrayList<>();
-
-            if (category.getId().equals("timeline_toolbar"))
-            {
-                UIText warning = new UIText(L10n.lang("bbs.config.timeline_toolbar.warning"))
-                    .color(0xFFAA8844, true);
-                warning.w(1F);
-
-                options.add(warning.marginBottom(6));
-            }
 
             for (BaseValue value : category.getAll())
             {

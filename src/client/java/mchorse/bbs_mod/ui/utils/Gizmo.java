@@ -20,6 +20,7 @@ import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.util.math.RotationAxis;
 
 import org.joml.Matrix4f;
 import org.joml.Matrix4fStack;
@@ -107,6 +108,8 @@ public class Gizmo
     private static final float[] COLOR_Y_HOVER = { 0.40F, 1.00F, 0.45F };
     private static final float[] COLOR_Z_IDLE = { 0.28F, 0.50F, 0.95F };
     private static final float[] COLOR_Z_HOVER = { 0.35F, 0.62F, 1.00F };
+    /* Trackball-only mode: ~1.75× the rotate/combined inner trackball sphere. */
+    private static final float TOP_TRACKBALL_SIZE_FACTOR = 1.085F;
     /* Plane handle colors are a vivid blend of their two constituent axis colors
      * (X = red, Y = green, Z = blue), so e.g. the XY plane reads as a saturated
      * yellow (red + green) rather than an arbitrary unrelated hue. */
@@ -757,6 +760,7 @@ public class Gizmo
         if (this.mode == Mode.ROTATE) this.drawRotate(builder, stack, scale, thickness, false, null);
         else if (this.mode == Mode.SCALE) this.drawScale(builder, stack, scale, thickness, false, null);
         else if (this.mode == Mode.COMBINED) this.drawCombined(builder, stack, scale, thickness, false, null);
+        else if (this.mode == Mode.TOP) this.drawTop(builder, stack, scale, thickness, false, null);
         else this.drawTranslate(builder, stack, scale, thickness, false, null);
 
         this.drawActiveGuide(builder, stack, scale, thickness);
@@ -818,6 +822,7 @@ public class Gizmo
         if (this.mode == Mode.ROTATE) this.drawRotate(builder, stack, scale, thickness, true, map);
         else if (this.mode == Mode.SCALE) this.drawScale(builder, stack, scale, thickness, true, map);
         else if (this.mode == Mode.COMBINED) this.drawCombined(builder, stack, scale, thickness, true, map);
+        else if (this.mode == Mode.TOP) this.drawTop(builder, stack, scale, thickness, true, map);
         else this.drawTranslate(builder, stack, scale, thickness, true, map);
 
         RenderSystem.setShader(GameRenderer::getPositionColorProgram);
@@ -996,6 +1001,52 @@ public class Gizmo
     }
 
     /* ---- rotate handles (rings + trackball) ---- */
+
+    private void drawTop(BufferBuilder builder, MatrixStack stack, float scale, float thickness, boolean stencil, StencilMap map)
+    {
+        float radius = 0.22F * scale;
+        float topRadius = this.trackballRadius(radius, TOP_TRACKBALL_SIZE_FACTOR);
+        float lineThickness = 0.0035F * scale * thickness;
+
+        if (stencil)
+        {
+            float[] color = this.stencilColor(STENCIL_TRACKBALL);
+
+            Draw.sphere(builder, stack, topRadius, 12, 20, color[0], color[1], color[2], 1F);
+
+            return;
+        }
+
+        boolean active = this.index == STENCIL_TRACKBALL;
+        float sr = active ? COLOR_ACTIVE[0] : 0.60F;
+        float sg = active ? COLOR_ACTIVE[1] : 0.60F;
+        float sb = active ? COLOR_ACTIVE[2] : 0.60F;
+        float sa = active ? 0.35F : 0.14F;
+
+        Draw.sphere(builder, stack, topRadius, 14, 24, sr, sg, sb, sa);
+        this.drawTopTrackballWireframe(builder, stack, topRadius, lineThickness, sr, sg, sb);
+    }
+
+    private void drawTopTrackballWireframe(BufferBuilder builder, MatrixStack stack, float radius, float lineThickness, float r, float g, float b)
+    {
+        /* Screen-facing ring plus a center pivot dot (trackball preview). */
+        stack.push();
+
+        if (this.lastCamDir.lengthSquared() > 1.0E-6F)
+        {
+            stack.multiply(new Quaternionf().rotationTo(0F, 1F, 0F, this.lastCamDir.x, this.lastCamDir.y, this.lastCamDir.z));
+        }
+
+        float ringThickness = lineThickness * 5F;
+
+        Draw.arc3D(builder, stack, Axis.Y, radius, ringThickness, r, g, b);
+
+        float dotRadius = Math.max(ringThickness * 2.5F, radius * 0.12F);
+
+        Draw.sphere(builder, stack, dotRadius, 8, 10, r, g, b, 0.9F);
+
+        stack.pop();
+    }
 
     private void drawRotate(BufferBuilder builder, MatrixStack stack, float scale, float thickness, boolean stencil, StencilMap map)
     {
@@ -1292,6 +1343,6 @@ public class Gizmo
 
     public static enum Mode
     {
-        TRANSLATE, SCALE, ROTATE, COMBINED;
+        TRANSLATE, SCALE, ROTATE, COMBINED, TOP;
     }
 }

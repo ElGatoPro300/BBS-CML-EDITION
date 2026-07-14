@@ -458,6 +458,20 @@ public class IrisUtils
         }
     }
 
+    public static void openShaderPackScreen()
+    {
+        try
+        {
+            MinecraftClient client = MinecraftClient.getInstance();
+
+            client.execute(() -> client.setScreen(new net.irisshaders.iris.gui.screen.ShaderPackScreen(client.currentScreen)));
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+    }
+
     public static boolean isShadowPass()
     {
         return IrisApi.getInstance().isRenderingShadowPass();

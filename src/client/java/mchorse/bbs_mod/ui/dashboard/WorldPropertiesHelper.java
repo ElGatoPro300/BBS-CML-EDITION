@@ -1,5 +1,7 @@
 package mchorse.bbs_mod.ui.dashboard;
 
+import mchorse.bbs_mod.BBSSettings;
+
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.world.ClientWorld;
@@ -55,6 +57,11 @@ public class WorldPropertiesHelper
     public static void setGammaPercent(double percent)
     {
         gammaOverride = Math.max(0D, percent) / 100D;
+
+        if (BBSSettings.worldGammaPercent != null)
+        {
+            BBSSettings.worldGammaPercent.set(percent);
+        }
     }
 
     public static Double getGammaOverride()

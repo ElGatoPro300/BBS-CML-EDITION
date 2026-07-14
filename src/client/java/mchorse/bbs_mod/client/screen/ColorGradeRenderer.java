@@ -72,6 +72,9 @@ public class ColorGradeRenderer
             uniform float u_rain;
             uniform float u_dust;
             uniform float u_lightLeak;
+            uniform float u_heatStrength;
+            uniform float u_heatSpeed;
+            uniform float u_heatScale;
             uniform float u_time;
 
             /* --- HSL helpers --- */
@@ -112,6 +115,36 @@ public class ColorGradeRenderer
             float hash(vec2 p)
             {
                 return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+            }
+
+            float heatNoise(vec2 p)
+            {
+                vec2 i = floor(p);
+                vec2 f = fract(p);
+                f = f * f * (3.0 - 2.0 * f);
+
+                float a = hash(i);
+                float b = hash(i + vec2(1.0, 0.0));
+                float c = hash(i + vec2(0.0, 1.0));
+                float d = hash(i + vec2(1.0, 1.0));
+
+                return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+            }
+
+            float heatFbm(vec2 p)
+            {
+                float value = 0.0;
+                float amplitude = 0.5;
+                float frequency = 1.0;
+
+                for (int i = 0; i < 4; i++)
+                {
+                    value += amplitude * heatNoise(p * frequency);
+                    frequency *= 2.0;
+                    amplitude *= 0.5;
+                }
+
+                return value;
             }
 
             void main()
@@ -172,6 +205,17 @@ public class ColorGradeRenderer
                             distortedUV += dirtCell * (size - d) * 0.4 * u_rain;
                         }
                     }
+                }
+
+                /* Heat distortion waves (Mine-imator style) */
+                if (u_heatStrength > 0.001)
+                {
+                    float heatTime = u_time * u_heatSpeed;
+                    vec2 distortCoord = distortedUV * u_heatScale + vec2(0.0, heatTime * 0.1);
+                    float noiseX = heatFbm(distortCoord + vec2(heatTime * 0.3, 0.0));
+                    float noiseY = heatFbm(distortCoord + vec2(0.0, heatTime * 0.2));
+                    vec2 heatOffset = (vec2(noiseX, noiseY) * 2.0 - 1.0) * u_heatStrength;
+                    distortedUV = clamp(distortedUV + heatOffset, 0.0, 1.0);
                 }
 
                 /* Chromatic Aberration splitting */
@@ -383,6 +427,9 @@ public class ColorGradeRenderer
     private static int uRain;
     private static int uDust;
     private static int uLightLeak;
+    private static int uHeatStrength;
+    private static int uHeatSpeed;
+    private static int uHeatScale;
     private static int uTime;
 
     public static void apply(List<ColorEffect> effects, List<GrainEffect> grainEffects)
@@ -522,6 +569,9 @@ public class ColorGradeRenderer
         float rain = 0F;
         float dust = 0F;
         float lightLeak = 0F;
+        float heatStrength = 0F;
+        float heatSpeed = 0F;
+        float heatScale = 0F;
         float time = 0F;
 
         for (ColorEffect e : effects)
@@ -536,6 +586,9 @@ public class ColorGradeRenderer
                 rain = Math.max(rain, e.rain);
                 dust = Math.max(dust, e.dust);
                 lightLeak = Math.max(lightLeak, e.lightLeak);
+                heatStrength = Math.max(heatStrength, e.heatStrength);
+                heatSpeed = Math.max(heatSpeed, e.heatSpeed);
+                heatScale = Math.max(heatScale, e.heatScale);
                 time = e.time;
             }
         }
@@ -576,6 +629,9 @@ public class ColorGradeRenderer
         GL20.glUniform1f(uRain, rain);
         GL20.glUniform1f(uDust, dust);
         GL20.glUniform1f(uLightLeak, lightLeak);
+        GL20.glUniform1f(uHeatStrength, heatStrength * 0.006F);
+        GL20.glUniform1f(uHeatSpeed, 0.5F + heatSpeed * 2.0F);
+        GL20.glUniform1f(uHeatScale, 2.0F + heatScale * 35.0F);
         GL20.glUniform1f(uTime, time);
 
         GL30.glBindVertexArray(vao);
@@ -660,6 +716,9 @@ public class ColorGradeRenderer
         uRain = GL20.glGetUniformLocation(program, "u_rain");
         uDust = GL20.glGetUniformLocation(program, "u_dust");
         uLightLeak = GL20.glGetUniformLocation(program, "u_lightLeak");
+        uHeatStrength = GL20.glGetUniformLocation(program, "u_heatStrength");
+        uHeatSpeed = GL20.glGetUniformLocation(program, "u_heatSpeed");
+        uHeatScale = GL20.glGetUniformLocation(program, "u_heatScale");
         uTime = GL20.glGetUniformLocation(program, "u_time");
 
         /* Fullscreen quad VAO/VBO (NDC coords + UV) */

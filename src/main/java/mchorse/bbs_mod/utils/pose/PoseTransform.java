@@ -28,6 +28,18 @@ public class PoseTransform extends Transform
     public Link texture;
     public float textureBlend = 1F;
 
+    /**
+     * Copies the texture from the previous or next pose keyframe without
+     * crossfading. The outgoing keyframe is held until {@code x} reaches 1.
+     */
+    public void applyStepTexture(PoseTransform fromA, PoseTransform fromB, float x)
+    {
+        PoseTransform source = x >= 1F ? fromB : fromA;
+
+        this.texture = LinkUtils.copy(source.texture);
+        this.textureBlend = 1F;
+    }
+
     @Override
     public void identity()
     {

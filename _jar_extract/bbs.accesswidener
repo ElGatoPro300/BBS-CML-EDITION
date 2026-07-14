@@ -1,0 +1,9 @@
+accessWidener	v2	intermediary
+accessible	field	com/mojang/blaze3d/systems/RenderSystem	shaderLightDirections	[Lorg/joml/Vector3f;
+accessible	field	com/mojang/blaze3d/platform/GlStateManager	TEXTURES	[Lcom/mojang/blaze3d/platform/GlStateManager$class_1039;
+accessible	field	com/mojang/blaze3d/platform/GlStateManager	activeTexture	I
+accessible	class	com/mojang/blaze3d/platform/GlStateManager$class_1039
+accessible	field	net/minecraft/class_310	field_1689	Lnet/minecraft/class_276;
+mutable	field	net/minecraft/class_310	field_1689	Lnet/minecraft/class_276;
+accessible	method	net/minecraft/class_2586	method_11014	(Lnet/minecraft/class_2487;Lnet/minecraft/class_7225$class_7874;)V
+accessible	method	net/minecraft/class_1309	method_6085	(IZ)V

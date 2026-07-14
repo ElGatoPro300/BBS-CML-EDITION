@@ -12,6 +12,7 @@ import mchorse.bbs_mod.graphics.Draw;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.forms.editors.UIFormEditor;
+import mchorse.bbs_mod.ui.forms.editors.UIForms;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
@@ -164,7 +165,7 @@ public class UIPickableFormRenderer extends UIFormRenderer implements GizmoSurfa
 
         FormUtilsClient.render(this.form, formContext);
 
-        if (this.form.hitbox.get())
+        if (this.form.hitbox.get() && this.form.visible.get())
         {
             this.renderFormHitbox(context);
         }
@@ -328,7 +329,14 @@ public class UIPickableFormRenderer extends UIFormRenderer implements GizmoSurfa
     {
         super.render(context);
 
-        if (!this.isPreviewVisible() || !this.stencil.hasPicked())
+        if (!this.isPreviewVisible() || this.stencil.getFramebuffer() == null)
+        {
+            return;
+        }
+
+        RenderSystem.enableBlend();
+
+        if (!this.stencil.hasPicked())
         {
             return;
         }
@@ -339,7 +347,6 @@ public class UIPickableFormRenderer extends UIFormRenderer implements GizmoSurfa
         int w = texture.width;
         int h = texture.height;
 
-        RenderSystem.enableBlend();
         context.batcher.drawPickerPreview(texture.id, index, BBSSettings.modelEditorHoverHighlight(), this.area.x, this.area.y, this.area.w, this.area.h, w, h);
 
         if (pair != null && pair.a != null)

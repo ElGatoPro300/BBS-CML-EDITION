@@ -10,6 +10,7 @@ import mchorse.bbs_mod.cubic.model.ArmorSlot;
 import mchorse.bbs_mod.cubic.model.ArmorType;
 import mchorse.bbs_mod.cubic.model.View;
 import mchorse.bbs_mod.cubic.model.bobj.BOBJModel;
+import mchorse.bbs_mod.cubic.physics.PhysBoneDefinition;
 import mchorse.bbs_mod.cubic.render.CubicCubeRenderer;
 import mchorse.bbs_mod.cubic.render.CubicMatrixRenderer;
 import mchorse.bbs_mod.cubic.render.CubicRenderer;
@@ -77,6 +78,7 @@ public class ModelInstance implements IModelInstance
     public Pose sneakingPose = new Pose();
     public Pose ridingPose = new Pose();
     public Pose parts = new Pose();
+    public List<PhysBoneDefinition> physBones = new ArrayList<>();
 
     public List<ArmorSlot> itemsMain = new ArrayList<>();
     public List<ArmorSlot> itemsOff = new ArrayList<>();
@@ -141,6 +143,12 @@ public class ModelInstance implements IModelInstance
         return this.view == null ? "head" : this.view.headBone;
     }
 
+    @Override
+    public List<PhysBoneDefinition> getPhysBones()
+    {
+        return this.physBones;
+    }
+
     public Map<ModelGroup, ModelVAO> getVaos()
     {
         return this.vaos;
@@ -191,6 +199,25 @@ public class ModelInstance implements IModelInstance
 
                 slot.fromData(type);
                 this.itemsMain.add(slot);
+            }
+        }
+        if (config.has("phys_bones", BaseType.TYPE_LIST))
+        {
+            this.physBones.clear();
+
+            ListType list = config.get("phys_bones").asList();
+
+            for (BaseType type : list)
+            {
+                if (!type.isMap())
+                {
+                    continue;
+                }
+
+                PhysBoneDefinition definition = new PhysBoneDefinition();
+
+                definition.fromData(type.asMap());
+                this.physBones.add(definition);
             }
         }
         if (config.has("items_off"))
@@ -441,6 +468,21 @@ public class ModelInstance implements IModelInstance
             config.put("look_at", lookAt);
         }
 
+        if (!this.physBones.isEmpty())
+        {
+            ListType list = new ListType();
+
+            for (PhysBoneDefinition definition : this.physBones)
+            {
+                MapType map = new MapType();
+
+                definition.toData(map);
+                list.add(map);
+            }
+
+            config.put("phys_bones", list);
+        }
+
         if (this.actions != null && !this.actions.geckoAnimations.isDefault())
         {
             config.put("animations", this.actions.toData());
@@ -490,6 +532,7 @@ public class ModelInstance implements IModelInstance
 
         for (ArmorSlot slot : this.itemsMain) copy.itemsMain.add(slot.copy());
         for (ArmorSlot slot : this.itemsOff) copy.itemsOff.add(slot.copy());
+        for (PhysBoneDefinition definition : this.physBones) copy.physBones.add(definition.copy());
         if (this.limbConstraints != null) copy.limbConstraints = (MapType) this.limbConstraints.copy();
         if (this.springChains != null) copy.springChains = (MapType) this.springChains.copy();
         if (this.jointLimits != null) copy.jointLimits = (MapType) this.jointLimits.copy();

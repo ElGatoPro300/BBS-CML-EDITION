@@ -49,6 +49,7 @@
         "audio.SoundEngineMixin",
         "TitleScreenMixin",
         "SelectWorldScreenMixin",
+        "ModelPartMixin",
         "YggdrasilServicesKeyInfoMixin"
     ],
     "injectors": {

@@ -13,6 +13,7 @@ import mchorse.bbs_mod.actions.types.item.ItemDropActionClip;
 import mchorse.bbs_mod.actions.types.item.UseBlockItemActionClip;
 import mchorse.bbs_mod.actions.types.item.UseItemActionClip;
 import mchorse.bbs_mod.camera.clips.misc.AudioClientClip;
+import mchorse.bbs_mod.camera.clips.misc.BossBarClip;
 import mchorse.bbs_mod.camera.clips.misc.CurveClientClip;
 import mchorse.bbs_mod.camera.clips.misc.HotbarClip;
 import mchorse.bbs_mod.camera.clips.misc.ImageClip;
@@ -34,6 +35,7 @@ import mchorse.bbs_mod.camera.clips.overwrite.KeyframeClip;
 import mchorse.bbs_mod.camera.clips.overwrite.PathClip;
 import mchorse.bbs_mod.camera.clips.screen.CinematicClip;
 import mchorse.bbs_mod.camera.clips.screen.ColorClip;
+import mchorse.bbs_mod.camera.clips.screen.EyeClip;
 import mchorse.bbs_mod.camera.clips.screen.GrainClip;
 import mchorse.bbs_mod.camera.clips.screen.LetterboxClip;
 import mchorse.bbs_mod.camera.clips.screen.ScreenNodeClip;
@@ -45,7 +47,6 @@ import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.settings.values.core.ValueGroup;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.IUIClipsDelegate;
-import mchorse.bbs_mod.ui.film.UIClipsPanel;
 import mchorse.bbs_mod.ui.film.clips.actions.UIAttackActionClip;
 import mchorse.bbs_mod.ui.film.clips.actions.UIBreakBlockActionClip;
 import mchorse.bbs_mod.ui.film.clips.actions.UIChatActionClip;
@@ -63,7 +64,6 @@ import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIScrollView;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
-import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeEditor;
 import mchorse.bbs_mod.ui.framework.elements.input.text.UITextbox;
 import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
 import mchorse.bbs_mod.ui.utils.ScrollDirection;
@@ -122,6 +122,8 @@ public abstract class UIClip <T extends Clip> extends UIElement
         register(LetterboxClip.class, UILetterboxClip::new);
         register(GrainClip.class, UIGrainClip::new);
         register(ScreenNodeClip.class, UIScreenNodeClip::new);
+        register(BossBarClip.class, UIBossBarClip::new);
+        register(EyeClip.class, UIEyeClip::new);
 
         register(ChatActionClip.class, UIChatActionClip::new);
         register(CommandActionClip.class, UICommandActionClip::new);
@@ -263,21 +265,36 @@ public abstract class UIClip <T extends Clip> extends UIElement
         super.render(context);
     }
 
-    /**
-     * Resolves an embeddable view owned by this clip panel (keyframe editor, node graph, etc.).
-     * Used by {@link UIClipsPanel} for symmetric undo/redo.
-     */
-    public UIElement resolveEmbeddableView(String undoId)
+    @Override
+    public void applyUndoData(MapType data)
     {
-        if (this.envelope != null && undoId.equals(this.envelope.channel.getUndoId()))
-        {
-            return this.envelope.channel;
-        }
+        super.applyUndoData(data);
 
-        return this.resolveClipEmbeddableView(undoId);
+        if (data.getString("embed").equals("envelope"))
+        {
+            this.editor.embedView(this.envelope.channel);
+            this.envelope.channel.view.editSheet(this.envelope.channel.view.getGraph().getSheets().get(0));
+            this.envelope.channel.view.resetView();
+        }
     }
 
-    protected UIElement resolveClipEmbeddableView(String undoId)
+    @Override
+    public void collectUndoData(MapType data)
+    {
+        super.collectUndoData(data);
+
+        if (this.envelope.channel.hasParent())
+        {
+            data.putString("embed", "envelope");
+        }
+    }
+
+    public UIElement resolveEmbeddableView(String embeddedId)
+    {
+        return this.resolveClipEmbeddableView(embeddedId);
+    }
+
+    protected UIElement resolveClipEmbeddableView(String embeddedId)
     {
         return null;
     }

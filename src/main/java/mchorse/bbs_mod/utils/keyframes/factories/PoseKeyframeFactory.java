@@ -90,6 +90,13 @@ public class PoseKeyframeFactory implements IKeyframeFactory<Pose>
             Transform postBTransform = pB.get(key);
 
             transform.lerp(preATransform, aTransform, bTransform, postBTransform, interpolation, x, w0, w1, w2, w3);
+
+            if (transform instanceof PoseTransform poseTransform
+                && aTransform instanceof PoseTransform aPose
+                && bTransform instanceof PoseTransform bPose)
+            {
+                poseTransform.applyStepTexture(aPose, bPose, x);
+            }
         }
 
         return this.i;
@@ -126,6 +133,13 @@ public class PoseKeyframeFactory implements IKeyframeFactory<Pose>
             Transform postBTransform = postB.get(key);
 
             transform.lerp(preATransform, aTransform, bTransform, postBTransform, interpolation, x);
+
+            if (transform instanceof PoseTransform poseTransform
+                && aTransform instanceof PoseTransform aPose
+                && bTransform instanceof PoseTransform bPose)
+            {
+                poseTransform.applyStepTexture(aPose, bPose, x);
+            }
         }
 
         return this.i;

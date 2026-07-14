@@ -17,9 +17,9 @@ import mchorse.bbs_mod.camera.controller.PlayCameraController;
 import mchorse.bbs_mod.camera.data.Position;
 import mchorse.bbs_mod.client.renderer.ModelBlockEntityRenderer;
 import mchorse.bbs_mod.client.renderer.TriggerBlockEntityRenderer;
+import mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer;
 import mchorse.bbs_mod.client.screen.ScreenEffectRenderer;
 import mchorse.bbs_mod.client.video.VideoRenderer;
-import mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer;
 import mchorse.bbs_mod.events.ModelBlockEntityUpdateCallback;
 import mchorse.bbs_mod.events.TriggerBlockEntityUpdateCallback;
 import mchorse.bbs_mod.film.replays.Replay;
@@ -201,6 +201,18 @@ public class BBSRendering
     public static boolean canReplaceFramebuffer()
     {
         return customSize && renderingWorld;
+    }
+
+    /**
+     * Skip the vanilla world pass when the open BBS menu does not need it (opaque editors, film
+     * home page, model editor, etc.). Panels that show the live world override
+     * {@link UIBaseMenu#needsWorldRender()}.
+     */
+    public static boolean shouldSkipWorldRender()
+    {
+        UIBaseMenu menu = UIScreen.getCurrentMenu();
+
+        return menu != null && !menu.needsWorldRender();
     }
 
     /**
@@ -409,6 +421,11 @@ public class BBSRendering
 
     public static void onWorldRenderBegin()
     {
+        if (BBSRendering.shouldSkipWorldRender())
+        {
+            return;
+        }
+
         MinecraftClient mc = MinecraftClient.getInstance();
         BBSModClient.getFilms().startRenderFrame(mc.getRenderTickCounter().getTickDelta(false));
 
@@ -440,6 +457,11 @@ public class BBSRendering
 
     public static void onWorldRenderEnd()
     {
+        if (BBSRendering.shouldSkipWorldRender())
+        {
+            return;
+        }
+
         ModelVAORenderer.flushPaintOverlayQueue();
 
         MinecraftClient mc = MinecraftClient.getInstance();
@@ -481,7 +503,7 @@ public class BBSRendering
 
         if (currentMenu instanceof UIDashboard dashboard)
         {
-            if (dashboard.getPanels().panel instanceof UIFilmPanel panel && panel.getData() != null)
+            if (dashboard.getPanels().panel instanceof UIFilmPanel panel && panel.needsViewportRender())
             {
                 DrawContext drawContext = new DrawContext(mc, mc.getBufferBuilders().getEntityVertexConsumers());
                 Batcher2D offscreenBatcher = new Batcher2D(drawContext);
@@ -573,6 +595,42 @@ public class BBSRendering
 
     public static void onRenderChunkLayer(Matrix4f positionMatrix, Matrix4f projectionMatrix)
     {
+        WorldRenderContextImpl worldRenderContext = new WorldRenderContextImpl();
+        MinecraftClient mc = MinecraftClient.getInstance();
+
+        worldRenderContext.prepare(
+            mc.worldRenderer, mc.getRenderTickCounter(), false,
+            mc.gameRenderer.getCamera(), mc.gameRenderer, mc.gameRenderer.getLightmapTextureManager(),
+            positionMatrix, projectionMatrix, mc.getBufferBuilders().getEntityVertexConsumers(), mc.getProfiler(), false, mc.world
+        );
+
+        if (isIrisShadersEnabled())
+        {
+            /* renderLayer is also invoked during the Iris shadow pass, where UI gizmos
+             * must not render (and would crash below on the missing matrix stack). */
+            if (isIrisShadowPass())
+            {
+                return;
+            }
+
+            /* WorldRenderContextImpl.prepare() leaves the matrix stack null; supply one
+             * built from the terrain position matrix so renderInWorld can use it. */
+            MatrixStack matrices = new MatrixStack();
+
+            MatrixStackUtils.multiply(matrices, positionMatrix);
+            worldRenderContext.setMatrixStack(matrices);
+
+            irisChunkLayerPass = true;
+
+            try
+            {
+                renderCoolStuff(worldRenderContext);
+            }
+            finally
+            {
+                irisChunkLayerPass = false;
+            }
+        }
     }
 
     public static void renderHud(DrawContext drawContext, float tickDelta)
@@ -768,7 +826,7 @@ public class BBSRendering
 
     /**
      * When true, VAO model paint must not be applied in the base pass; use the BBS model
-     * shader overlay ({@link ModelVAORenderer#submitPaintOverlay})
+     * shader overlay ({@link mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer#submitPaintOverlay})
      * so paint matches the no-shader path under an active Iris shader pack.
      */
     public static boolean isIrisWorldPaintDeferral()
@@ -799,6 +857,16 @@ public class BBSRendering
         }
 
         IrisUtils.toggleShaders();
+    }
+
+    public static void openShaderPackScreen()
+    {
+        if (!iris)
+        {
+            return;
+        }
+
+        IrisUtils.openShaderPackScreen();
     }
 
     public static boolean isIrisShadowPass()
@@ -993,6 +1061,13 @@ public class BBSRendering
         Double v = getCurveValue(ShaderCurves.SUN_ROTATION);
 
         return v == null ? null : (long) (v * 1000L);
+    }
+
+    public static Float getSunPathRotationDegrees()
+    {
+        Double v = getCurveValue(ShaderCurves.SUN_PATH_ROTATION);
+
+        return v == null ? null : v.floatValue();
     }
 
     public static Double getBrightness()

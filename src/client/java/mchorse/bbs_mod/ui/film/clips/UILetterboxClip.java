@@ -143,6 +143,14 @@ public class UILetterboxClip extends UIClip<LetterboxClip>
 
         this.keyframes.setChannels(this.clip.channels);
 
+        for (UIKeyframeSheet sheet : this.keyframes.view.getGraph().getSheets())
+        {
+            if ("width".equals(sheet.id) || "height".equals(sheet.id))
+            {
+                sheet.defaultInsertValue = 1D;
+            }
+        }
+
         this.updateTrackTitles(this.keyframes);
     }
 

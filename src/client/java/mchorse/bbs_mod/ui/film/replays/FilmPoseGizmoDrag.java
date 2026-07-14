@@ -200,7 +200,7 @@ public final class FilmPoseGizmoDrag
         return direction;
     }
 
-    static void syncDragCamera(UIFilmPanel panel, Camera camera)
+    public static void syncDragCamera(UIFilmPanel panel, Camera camera)
     {
         camera.copy(panel.getWorldCamera());
         camera.view.set(panel.lastView);

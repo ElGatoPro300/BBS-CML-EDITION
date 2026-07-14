@@ -767,17 +767,24 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
     {
         super.render(context);
 
-        if (!this.pickingEnabled || !this.stencil.hasPicked())
+        if (!this.pickingEnabled || this.stencil.getFramebuffer() == null)
         {
             return;
         }
 
         Texture texture = this.stencil.getFramebuffer().getMainTexture();
-        int index = this.stencil.getIndex();
         int w = texture.width;
         int h = texture.height;
 
         RenderSystem.enableBlend();
+
+        if (!this.stencil.hasPicked())
+        {
+            return;
+        }
+
+        int index = this.stencil.getIndex();
+
         context.batcher.drawPickerPreview(texture.id, index, BBSSettings.modelEditorHoverHighlight(), this.area.x, this.area.y, this.area.w, this.area.h, w, h);
 
         Pair<Form, String> pair = this.stencil.getPicked();

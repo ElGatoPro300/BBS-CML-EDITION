@@ -28,6 +28,8 @@ import mchorse.bbs_mod.ui.film.replays.UIReplaysEditorUtils;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIAnimationToPoseOverlayPanel;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIKeyframeSheetFilterOverlayPanel;
 import mchorse.bbs_mod.ui.forms.editors.UIFormEditor;
+import mchorse.bbs_mod.ui.forms.editors.utils.UIBlockRepeatKeyframeUtils;
+import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UIVisibleRenderKeyframeUtils;
 import mchorse.bbs_mod.ui.forms.editors.utils.UIPickableFormRenderer;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
@@ -154,12 +156,18 @@ public class UIAnimationStateEditor extends UIElement implements GizmoSurface
         List<UIKeyframeSheet> sheets = new ArrayList<>();
         Set<String> propertyPaths = new LinkedHashSet<>(FormUtils.collectPropertyPaths(this.editor.form));
         this.collectLimbTracks(this.editor.form, propertyPaths);
+        FormUtils.addPairedRenderPropertyPaths(propertyPaths, propertyPaths);
 
         List<UIKeyframeSheet> rawSheets = new ArrayList<>();
 
         /* Form properties */
         for (String key : propertyPaths)
         {
+            if (UIVisibleRenderKeyframeUtils.isRenderTimelineHidden(key))
+            {
+                continue;
+            }
+
             KeyframeChannel property = this.state.properties.getOrCreate(this.editor.form, key);
 
             if (property != null)
@@ -207,6 +215,8 @@ public class UIAnimationStateEditor extends UIElement implements GizmoSurface
             }
         }
         sheets = grouped;
+
+        UIBlockRepeatKeyframeUtils.groupRepeatSheets(sheets, this.collapsedModelTracks, () -> this.setState(this.state));
 
         this.keys.clear();
 
@@ -349,6 +359,11 @@ public class UIAnimationStateEditor extends UIElement implements GizmoSurface
                 if (this.gizmoController.tryStartHandleDrag(context, UIReplaysEditorUtils.getEditableTransform(this.keyframeEditor)))
                 {
                     return true;
+                }
+
+                if (pair.a == null)
+                {
+                    return false;
                 }
 
                 if (context.mouseButton == 0)

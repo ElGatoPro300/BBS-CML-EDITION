@@ -10,15 +10,19 @@ import mchorse.bbs_mod.ui.dashboard.UIDashboard;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel;
 import mchorse.bbs_mod.ui.dashboard.utils.UIGraphPanel;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
+import mchorse.bbs_mod.ui.film.UIFilmStatusIcons;
 import mchorse.bbs_mod.ui.film.UIWorldFilmsBrowserPanel;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.IUIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.navigation.UIControlBar;
 import mchorse.bbs_mod.ui.framework.elements.navigation.UIIconTabButton;
+import mchorse.bbs_mod.ui.framework.elements.UIScrollView;
 import mchorse.bbs_mod.ui.model.UIModelPanel;
 import mchorse.bbs_mod.ui.particles.UIParticleSchemePanel;
 import mchorse.bbs_mod.ui.utility.audio.UIAudioEditorPanel;
+import mchorse.bbs_mod.ui.utils.UIUtils;
+import mchorse.bbs_mod.ui.utils.ScrollDirection;
 import mchorse.bbs_mod.ui.utils.icons.Icon;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.DataPath;
@@ -42,10 +46,14 @@ public class UIDocumentTabsBar extends UIControlBar
     public static final int HEIGHT = 20;
 
     private static final int HOME_TAB_WIDTH = 88;
-    private static final int DOC_TAB_WIDTH = 122;
+    private static final int DOC_TAB_WIDTH = 136;
     private static final int ADD_TAB_WIDTH = 24;
+    private static final int RIGHT_PADDING = 4;
+    private static final int TABS_RIGHT_MARGIN = 8;
 
     private final UIDashboard dashboard;
+    private UIFilmStatusIcons filmStatusIcons;
+    private final UIScrollView tabsScroll;
     private final UIElement tabs;
     private final List<DocumentTab> documentTabs = new ArrayList<>();
     private int activeTab = 0;
@@ -62,17 +70,109 @@ public class UIDocumentTabsBar extends UIControlBar
     public UIDocumentTabsBar(UIDashboard dashboard)
     {
         this.dashboard = dashboard;
+        this.tabsScroll = new UIScrollView(ScrollDirection.HORIZONTAL);
+        this.tabsScroll.relative(this).x(8).y(0).w(1F, -16).h(HEIGHT);
+        this.tabsScroll.scroll.cancelScrolling();
+        this.tabsScroll.scroll.scrollSpeed = 15;
         this.tabs = new UIElement();
-        this.tabs.relative(this).x(8).y(0).w(1F, -16).h(HEIGHT).row(0).resize();
-        this.add(this.tabs);
+        this.tabs.relative(this.tabsScroll).x(0).y(0).h(HEIGHT).row(0);
+        this.tabsScroll.add(this.tabs);
+        this.add(this.tabsScroll);
 
         this.documentTabs.add(DocumentTab.home());
         this.rebuild();
     }
 
+    public void attachFilmStatusIcons(UIFilmStatusIcons icons)
+    {
+        if (this.filmStatusIcons != null && this.filmStatusIcons != icons)
+        {
+            this.filmStatusIcons.removeFromParent();
+        }
+
+        this.filmStatusIcons = icons;
+
+        if (icons != null && icons.getParent() != this)
+        {
+            icons.removeFromParent();
+            this.add(icons);
+        }
+
+        this.layoutFilmStatusIcons();
+    }
+
+    public void layoutFilmStatusIcons()
+    {
+        boolean show = false;
+
+        if (this.filmStatusIcons != null && this.dashboard.panels.panel instanceof UIFilmPanel film)
+        {
+            show = film.getData() != null && !film.isShowingHomePage();
+        }
+
+        int reserve = 0;
+
+        if (this.filmStatusIcons != null)
+        {
+            this.filmStatusIcons.setVisible(show);
+            reserve = show ? UIFilmStatusIcons.WIDTH : 0;
+
+            int x = this.area.ex() - reserve - RIGHT_PADDING;
+
+            this.filmStatusIcons.layoutInTabBar(x, this.area.y, this.area.h);
+        }
+
+        this.tabsScroll.getFlex().w.offset = -(reserve + TABS_RIGHT_MARGIN);
+
+        if (this.hasParent())
+        {
+            this.tabsScroll.resize();
+        }
+    }
+
+    @Override
+    public void resize()
+    {
+        super.resize();
+
+        this.layoutFilmStatusIcons();
+    }
+
+    @Override
+    protected IUIElement childrenMouseClicked(UIContext context)
+    {
+        if (context.mouseButton == GLFW.GLFW_MOUSE_BUTTON_MIDDLE)
+        {
+            int index = this.findTabIndexAt(context);
+
+            if (index >= 0)
+            {
+                DocumentTab tab = this.documentTabs.get(index);
+
+                if (!tab.isHome || this.documentTabs.size() > 1)
+                {
+                    UIUtils.playClick();
+                    this.remove(index);
+
+                    return this;
+                }
+            }
+        }
+
+        return super.childrenMouseClicked(context);
+    }
+
     @Override
     public void render(UIContext context)
     {
+        this.layoutFilmStatusIcons();
+
+        if (this.filmStatusIcons != null && this.filmStatusIcons.getParent() == this)
+        {
+            this.remove(this.filmStatusIcons);
+            this.add(this.filmStatusIcons);
+        }
+
         this.updateTabDragPoll(context);
 
         context.batcher.box(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xFF141418);
@@ -368,6 +468,31 @@ public class UIDocumentTabsBar extends UIControlBar
     /* Internals                                                             */
     /* ------------------------------------------------------------------ */
 
+    private int findTabIndexAt(UIContext context)
+    {
+        if (!this.isMouseOverTabBar(context.mouseX, context.mouseY))
+        {
+            return -1;
+        }
+
+        int mx = context.mouseX + (int) this.tabsScroll.scroll.getScroll();
+        int my = context.mouseY;
+        List<IUIElement> children = this.tabs.getChildren();
+        int count = this.documentTabs.size();
+
+        for (int i = 0; i < count && i < children.size(); i++)
+        {
+            IUIElement child = children.get(i);
+
+            if (child instanceof UIElement element && element.isVisible() && element.area.isInside(mx, my))
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
     private int find(ContentType type, String id)
     {
         for (int i = 0; i < this.documentTabs.size(); i++)
@@ -397,7 +522,7 @@ public class UIDocumentTabsBar extends UIControlBar
 
             if (!tab.isHome || this.documentTabs.size() > 1)
             {
-                button.removable((b) -> this.remove(index));
+                button.removable((b) -> this.remove(((DocumentTabButton) b).tabIndex));
             }
 
             this.tabs.add(button);
@@ -408,7 +533,35 @@ public class UIDocumentTabsBar extends UIControlBar
         add.background(false);
         add.w(ADD_TAB_WIDTH).h(HEIGHT);
         this.tabs.add(add);
+
+        int totalWidth = ADD_TAB_WIDTH;
+
+        for (DocumentTab tab : this.documentTabs)
+        {
+            totalWidth += tab.isHome ? HOME_TAB_WIDTH : DOC_TAB_WIDTH;
+        }
+
+        this.tabs.w(totalWidth);
         this.tabs.resize();
+        this.tabsScroll.resize();
+        this.tabsScroll.scroll.scrollSize = totalWidth;
+        this.tabsScroll.scroll.clamp();
+        this.scrollActiveTabIntoView();
+    }
+
+    private void scrollActiveTabIntoView()
+    {
+        if (this.activeTab < 0 || this.activeTab >= this.tabs.getChildren().size())
+        {
+            return;
+        }
+
+        IUIElement child = this.tabs.getChildren().get(this.activeTab);
+
+        if (child instanceof UIElement element)
+        {
+            this.tabsScroll.scroll.scrollIntoView(element.area.x, element.area.ex());
+        }
     }
 
     private void moveTab(int from, int to)

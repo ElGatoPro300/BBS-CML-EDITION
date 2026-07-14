@@ -92,7 +92,7 @@ public class FormProperties extends ValueGroup
         if (property instanceof BaseKeyframeFactoryValue<?> keyframeFactoryValue)
         {
             String key = FormUtils.getPropertyPath(property);
-            boolean allowed = property.isVisible() || "render".equals(key);
+            boolean allowed = property.isVisible() || FormUtils.isRenderPropertyPath(key);
 
             if (allowed)
             {
@@ -220,12 +220,6 @@ public class FormProperties extends ValueGroup
                             poseTransform.glowRadius = Lerps.lerp(poseTransform.glowRadius, sourcePose.glowRadius, blend);
                             poseTransform.lighting = Lerps.lerp(poseTransform.lighting, sourcePose.lighting, blend);
                             poseTransform.shaderShadow = PaintSettings.resolveAutoShaderShadowForPoseAlpha(poseTransform.paintColor.a);
-                            poseTransform.textureBlend = Lerps.lerp(poseTransform.textureBlend, sourcePose.textureBlend, blend);
-
-                            if (sourcePose.texture != null && blend >= 0.5F)
-                            {
-                                poseTransform.texture = LinkUtils.copy(sourcePose.texture);
-                            }
                         }
                         else
                         {
@@ -238,9 +232,9 @@ public class FormProperties extends ValueGroup
                             poseTransform.glowRadius = sourcePose.glowRadius;
                             poseTransform.lighting = sourcePose.lighting;
                             poseTransform.shaderShadow = PaintSettings.resolveAutoShaderShadowForPoseAlpha(poseTransform.paintColor.a);
-                            poseTransform.texture = LinkUtils.copy(sourcePose.texture);
-                            poseTransform.textureBlend = sourcePose.textureBlend;
                         }
+
+                        this.applyStepBoneTexture(poseTransform, segment, boneName);
                     }
                 }
 
@@ -255,7 +249,7 @@ public class FormProperties extends ValueGroup
             return;
         }
 
-        if ("render".equals(id) && value.getFactory() == KeyframeFactories.BOOLEAN)
+        if (FormUtils.isRenderPropertyPath(id) && value.getFactory() == KeyframeFactories.BOOLEAN)
         {
             @SuppressWarnings("unchecked")
             KeyframeChannel<Boolean> render = (KeyframeChannel<Boolean>) value;
@@ -395,6 +389,51 @@ public class FormProperties extends ValueGroup
     private static float getSegmentBlendFactor(KeyframeSegment segment)
     {
         return (float) segment.a.getInterpolation().interpolate(0D, 1D, segment.x);
+    }
+
+    private static PoseTransform getKeyframeBoneTransform(Keyframe<?> keyframe, String boneName)
+    {
+        if (keyframe == null)
+        {
+            return null;
+        }
+
+        Object value = keyframe.getValue();
+
+        if (value instanceof PoseTransform poseTransform)
+        {
+            return poseTransform;
+        }
+
+        if (value instanceof Pose pose)
+        {
+            return pose.get(boneName);
+        }
+
+        return null;
+    }
+
+    private void applyStepBoneTexture(PoseTransform target, KeyframeSegment segment, String boneName)
+    {
+        PoseTransform fromA = getKeyframeBoneTransform(segment.a, boneName);
+        PoseTransform fromB = getKeyframeBoneTransform(segment.b, boneName);
+
+        if (fromA == null && fromB == null)
+        {
+            return;
+        }
+
+        if (fromA == null)
+        {
+            fromA = fromB;
+        }
+
+        if (fromB == null)
+        {
+            fromB = fromA;
+        }
+
+        target.applyStepTexture(fromA, fromB, segment.isSame() ? 1F : segment.x);
     }
 
     public void resetProperties(Form form)

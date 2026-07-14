@@ -1,8 +1,10 @@
 package mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories;
 
 import mchorse.bbs_mod.camera.utils.TimeUtils;
+import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
+import mchorse.bbs_mod.ui.film.clips.UIBossBarColorKeyframeFactory;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.UIScrollView;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
@@ -49,6 +51,7 @@ public abstract class UIKeyframeFactory <T> extends UIElement
         register(KeyframeFactories.ANCHOR, UIAnchorKeyframeFactory::new);
         register(KeyframeFactories.MOUNT_LINK, UIMountLinkKeyframeFactory::new);
         register(KeyframeFactories.LOOK_AT, UILookAtKeyframeFactory::new);
+        register(KeyframeFactories.INVERSE_KINEMATICS, UIInverseKinematicsKeyframeFactory::new);
         register(KeyframeFactories.ILLUSION, UIIllusionKeyframeFactory::new);
         register(KeyframeFactories.BOOLEAN, UIBooleanKeyframeFactory::new);
         register(KeyframeFactories.COLOR, UIColorKeyframeFactory::new);
@@ -90,26 +93,26 @@ public abstract class UIKeyframeFactory <T> extends UIElement
         {
             UIKeyframeSheet sheet = editor.getGraph().getSheet(keyframe);
 
-            if (sheet != null && "visible".equals(sheet.id))
+            if (sheet != null && FormUtils.isVisiblePropertyPath(sheet.id))
             {
                 @SuppressWarnings("unchecked")
                 Keyframe<Boolean> booleanKeyframe = (Keyframe<Boolean>) keyframe;
 
                 return new UIVisibleKeyframeFactory(booleanKeyframe, editor);
             }
-
-            if (sheet != null && "render".equals(sheet.id))
-            {
-                @SuppressWarnings("unchecked")
-                Keyframe<Boolean> booleanKeyframe = (Keyframe<Boolean>) keyframe;
-
-                return new UIRenderKeyframeFactory(booleanKeyframe, editor);
-            }
         }
 
         if (keyframe.getFactory() == KeyframeFactories.DOUBLE && editor != null)
         {
             UIKeyframeSheet sheet = editor.getGraph().getSheet(keyframe);
+
+            if (sheet != null && "height".equals(sheet.id) && editor.getGraph().getSheet("color") != null)
+            {
+                @SuppressWarnings("unchecked")
+                Keyframe<Double> doubleKeyframe = (Keyframe<Double>) keyframe;
+
+                return new UIEyeBlinkKeyframeFactory(doubleKeyframe, editor);
+            }
 
             if (sheet != null && "particles".equals(sheet.id))
             {
@@ -125,6 +128,19 @@ public abstract class UIKeyframeFactory <T> extends UIElement
                 Keyframe<Double> doubleKeyframe = (Keyframe<Double>) keyframe;
 
                 return new UIUsingItemKeyframeFactory(doubleKeyframe, editor);
+            }
+        }
+
+        if (keyframe.getFactory() == KeyframeFactories.COLOR && editor != null)
+        {
+            UIKeyframeSheet sheet = editor.getGraph().getSheet(keyframe);
+
+            if (sheet != null && "color".equals(sheet.id) && "bar".equals(sheet.groupKey))
+            {
+                @SuppressWarnings("unchecked")
+                Keyframe<Color> colorKeyframe = (Keyframe<Color>) keyframe;
+
+                return new UIBossBarColorKeyframeFactory(colorKeyframe, editor);
             }
         }
 

@@ -117,6 +117,13 @@ public abstract class FormRenderer <T extends Form>
 
         this.form.applyStates(context.transition);
 
+        if (!this.form.visible.get())
+        {
+            this.form.unapplyStates();
+
+            return;
+        }
+
         int light = context.light;
         int savedColor = context.color;
         boolean isPicking = context.stencilMap != null;
@@ -140,11 +147,6 @@ public abstract class FormRenderer <T extends Form>
 
                 context.color = (alpha << 24) | (savedColor & Colors.RGB);
             }
-        }
-
-        if (!this.form.visible.get() && !isPicking)
-        {
-            context.color = Colors.setA(context.color, 0F);
         }
 
         context.stack.push();

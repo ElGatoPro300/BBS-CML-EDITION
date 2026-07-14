@@ -32,6 +32,9 @@ public class ColorEffect
     public float rain;
     public float dust;
     public float lightLeak;
+    public float heatStrength;
+    public float heatSpeed;
+    public float heatScale;
     public float time;
 
     public void reset()
@@ -50,6 +53,9 @@ public class ColorEffect
         this.rain = 0F;
         this.dust = 0F;
         this.lightLeak = 0F;
+        this.heatStrength = 0F;
+        this.heatSpeed = 0F;
+        this.heatScale = 0F;
         this.time = 0F;
     }
 }
