@@ -547,17 +547,19 @@ public class UINewsPanel extends UISidebarDashboardPanel
                         return;
                     }
 
-                    /* TODO 1.21.11: RenderSystem.recordRenderCall removed */
-                    try
+                    RenderSystem.recordRenderCall(() ->
                     {
-                        Texture texture = Texture.textureFromPixels(pixels, GL11.GL_NEAREST);
+                        try
+                        {
+                            Texture texture = Texture.textureFromPixels(pixels, GL11.GL_NEAREST);
 
-                        BBSModClient.getTextures().textures.put(link, texture);
-                    }
-                    catch (Exception exception)
-                    {
-                        exception.printStackTrace();
-                    }
+                            BBSModClient.getTextures().textures.put(link, texture);
+                        }
+                        catch (Exception exception)
+                        {
+                            exception.printStackTrace();
+                        }
+                    });
                 }
             }
             catch (Exception exception)

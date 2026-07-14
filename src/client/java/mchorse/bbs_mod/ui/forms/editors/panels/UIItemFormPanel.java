@@ -12,7 +12,7 @@ import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Color;
 
-import net.minecraft.item.ItemDisplayContext;
+import net.minecraft.item.ModelTransformationMode;
 
 public class UIItemFormPanel extends UIFormPanel<ItemForm>
 {
@@ -33,7 +33,7 @@ public class UIItemFormPanel extends UIFormPanel<ItemForm>
         {
             this.getContext().replaceContextMenu((menu) ->
             {
-                for (ItemDisplayContext value : ItemDisplayContext.values())
+                for (ModelTransformationMode value : ModelTransformationMode.values())
                 {
                     if (this.form.modelTransform.get() == value)
                     {
@@ -54,7 +54,7 @@ public class UIItemFormPanel extends UIFormPanel<ItemForm>
         this.options.add(this.color, this.paintColor, UI.label(UIKeys.FORMS_EDITORS_ITEM_TRANSFORMS), this.modelTransform, this.sameAnimationWhenDropped, this.itemStackEditor);
     }
 
-    private void setModelTransform(ItemDisplayContext value)
+    private void setModelTransform(ModelTransformationMode value)
     {
         this.form.modelTransform.set(value);
 

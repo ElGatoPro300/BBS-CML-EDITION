@@ -2,6 +2,8 @@ package mchorse.bbs_mod.forms.renderers;
 
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.camera.Camera;
+import mchorse.bbs_mod.client.BBSRendering;
+import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.cubic.render.vao.ModelVAO;
 import mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer;
 import mchorse.bbs_mod.forms.forms.ExtrudedForm;
@@ -13,17 +15,24 @@ import mchorse.bbs_mod.utils.colors.Colors;
 import mchorse.bbs_mod.utils.joml.Vectors;
 
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gl.ShaderProgram;
+import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.render.DiffuseLighting;
+import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
+import net.minecraft.client.render.VertexFormat;
+import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.util.math.MatrixStack;
 
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
-import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.systems.RenderSystem;
 
 import org.lwjgl.opengl.GL11;
+
+import java.util.function.Supplier;
 
 public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
 {
@@ -35,7 +44,7 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
     @Override
     public void renderInUI(UIContext context, int x1, int y1, int x2, int y2)
     {
-        MatrixStack stack = new MatrixStack();
+        MatrixStack stack = context.batcher.getContext().getMatrices();
 
         stack.push();
 
@@ -51,20 +60,23 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
         stack.peek().getNormalMatrix().getScale(Vectors.EMPTY_3F);
         stack.peek().getNormalMatrix().scale(1F / Vectors.EMPTY_3F.x, -1F / Vectors.EMPTY_3F.y, 1F / Vectors.EMPTY_3F.z);
 
-        MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.ENTITY_IN_UI);
+        Vector3f light0 = new Vector3f(0.85F, 0.85F, -1F).normalize();
+        Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1F).normalize();
+        RenderSystem.setupLevelDiffuseLighting(light0, light1);
 
-        GlStateManager._depthFunc(GL11.GL_LEQUAL);
-        this.renderModel(false,
+        RenderSystem.depthFunc(GL11.GL_LEQUAL);
+        this.renderModel(BBSShaders::getModel,
             stack,
             OverlayTexture.DEFAULT_UV, LightmapTextureManager.MAX_LIGHT_COORDINATE, Colors.WHITE,
             context.getTransition(),
             null,
             true,
+            false,
             false
         );
-        GlStateManager._depthFunc(GL11.GL_ALWAYS);
+        RenderSystem.depthFunc(GL11.GL_ALWAYS);
 
-        MinecraftClient.getInstance().gameRenderer.getDiffuseLighting().setShaderLights(DiffuseLighting.Type.LEVEL);
+        DiffuseLighting.disableGuiDepthLighting();
 
         stack.pop();
     }
@@ -72,22 +84,34 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
     @Override
     protected void render3D(FormRenderingContext context)
     {
-        /* The "shading" toggle used to pick between a lit (POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL) and a
-         * flat (POSITION_TEXTURE_COLOR) vertex format/shader. ModelVAORenderer.render/renderPicking now always
-         * bake the lit model format internally (see .port_1.21.11_notes.md #7), so that distinction is no
-         * longer expressible here; the form keeps the property, but this renderer always draws through the
-         * shaded model pipeline. */
-        boolean picking = context.isPicking();
+        boolean shading = this.form.shading.get();
 
-        if (picking)
+        if (BBSRendering.isIrisShadersEnabled())
         {
-            this.setupTarget(context, null);
+            shading = true;
         }
 
-        this.renderModel(picking, context.stack, context.overlay, context.light, context.color, context.getTransition(), context.camera, false, context.modelRenderer || context.isPicking());
+        VertexFormat format = shading ? VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL : VertexFormats.POSITION_TEXTURE_COLOR;
+        Supplier<ShaderProgram> shader = this.getShader(
+            context,
+            shading
+                ? () ->
+                {
+                    RenderSystem.setShader(ShaderProgramKeys.RENDERTYPE_ENTITY_TRANSLUCENT);
+                    return RenderSystem.getShader();
+                }
+                : () ->
+                {
+                    RenderSystem.setShader(ShaderProgramKeys.POSITION_TEX_COLOR);
+                    return RenderSystem.getShader();
+                },
+            shading ? BBSShaders::getPickerBillboardProgram : BBSShaders::getPickerBillboardNoShadingProgram
+        );
+
+        this.renderModel(shader, context.stack, context.overlay, context.light, context.color, context.getTransition(), context.camera, false, context.modelRenderer || context.isPicking(), !context.isPicking());
     }
 
-    private void renderModel(boolean picking, MatrixStack matrices, int overlay, int light, int overlayColor, float transition, Camera camera, boolean invertY, boolean modelRenderer)
+    private void renderModel(Supplier<ShaderProgram> shader, MatrixStack matrices, int overlay, int light, int overlayColor, float transition, Camera camera, boolean invertY, boolean modelRenderer, boolean allowPaintPass)
     {
         Link texture = this.form.texture.get();
         ModelVAO data = BBSModClient.getTextures().getExtruder().get(texture);
@@ -122,29 +146,53 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
             }
 
             Color color = Colors.COLOR.set(overlayColor, true);
+            GameRenderer gameRenderer = MinecraftClient.getInstance().gameRenderer;
             Color formColor = this.form.color.get();
 
             color.mul(formColor);
 
             BBSModClient.getTextures().bindTexture(texture);
 
-            GlStateManager._enableBlend();
+            RenderSystem.enableBlend();
+            RenderSystem.defaultBlendFunc();
 
-            float r = color.r * formColor.r;
-            float g = color.g * formColor.g;
-            float b = color.b * formColor.b;
-            float a = color.a * formColor.a;
+            gameRenderer.getLightmapTextureManager().enable();
+            gameRenderer.getOverlayTexture().setupOverlayColor();
 
-            if (picking)
+            Color paint = this.form.paintColor.get();
+            ModelVAORenderer.setPaint(paint.r, paint.g, paint.b, paint.a);
+
+            try
             {
-                ModelVAORenderer.renderPicking(data, matrices, r, g, b, a, light, overlay);
+                ModelVAORenderer.render(shader.get(), data, matrices, color.r, color.g, color.b, color.a, light, overlay);
+
+                if (allowPaintPass
+                    && paint.a > 0F
+                    && BBSRendering.isIrisShadersEnabled()
+                    && BBSRendering.isRenderingWorld())
+                {
+                    ModelVAORenderer.beginPaintOverlayPass();
+
+                    try
+                    {
+                        ModelVAORenderer.render(BBSShaders.getModel(), data, matrices, 1F, 1F, 1F, 1F, light, overlay);
+                    }
+                    finally
+                    {
+                        ModelVAORenderer.endPaintOverlayPass();
+                    }
+                }
             }
-            else
+            finally
             {
-                ModelVAORenderer.render(data, matrices, r, g, b, a, light, overlay);
+                ModelVAORenderer.clearPaint();
             }
 
-            GlStateManager._disableBlend();
+            RenderSystem.defaultBlendFunc();
+            RenderSystem.disableBlend();
+
+            gameRenderer.getLightmapTextureManager().disable();
+            gameRenderer.getOverlayTexture().teardownOverlayColor();
         }
     }
 }

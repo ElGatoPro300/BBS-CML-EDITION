@@ -345,8 +345,7 @@ public class UIFilmPreview extends UIElement
         Camera camera = new Camera();
 
         camera.copy(this.panel.getWorldCamera());
-        camera.updatePerspectiveProjection(BBSRendering.getVideoWidth(), BBSRendering.getVideoHeight());
-        camera.updateView();
+        camera.updatePerspectiveProjection(width, height);
 
         Vector2i size = Vectors.resize(width / (float) height, w, h);
         Area area = new Area();
@@ -444,7 +443,7 @@ public class UIFilmPreview extends UIElement
         {
             /* Render global video clips (overlays) */
             VideoRenderer.renderClips(
-                new MatrixStack(),
+                context.batcher.getContext().getMatrices(),
                 context.batcher,
                 this.panel.getData().camera.getClips(this.panel.getCursor()),
                 this.panel.getCursor(),
@@ -572,7 +571,21 @@ public class UIFilmPreview extends UIElement
 
     private void renderCursor(UIContext context)
     {
-        
+        net.minecraft.client.render.Camera mcCamera = MinecraftClient.getInstance().gameRenderer.getCamera();
+        Matrix4fStack stack = RenderSystem.getModelViewStack();
+
+        stack.pushMatrix();
+
+        stack.mul(context.batcher.getContext().getMatrices().peek().getPositionMatrix());
+        stack.translate(area.x + 16, area.ey() - 12, 0F);
+        stack.rotate(RotationAxis.NEGATIVE_X.rotationDegrees(mcCamera.getPitch()));
+        stack.rotate(RotationAxis.POSITIVE_Y.rotationDegrees(mcCamera.getYaw()));
+        stack.scale(-1F, -1F, -1F);
+        MatrixStackUtils.applyModelViewMatrix();
+        RenderSystem.renderCrosshair(10);
+
+        stack.popMatrix();
+        MatrixStackUtils.applyModelViewMatrix();
     }
 
     public void cancelCapture()

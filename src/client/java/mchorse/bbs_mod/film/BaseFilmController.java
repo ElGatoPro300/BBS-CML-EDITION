@@ -48,7 +48,7 @@ import mchorse.bbs_mod.utils.pose.Pose;
 import mchorse.bbs_mod.utils.pose.PoseTransform;
 import mchorse.bbs_mod.utils.pose.Transform;
 
-import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
@@ -127,9 +127,9 @@ public abstract class BaseFilmController
             Lerps.lerp(entity.getPrevZ(), entity.getZ(), transition)
         );
 
-        double cx = camera.getCameraPos().x;
-        double cy = camera.getCameraPos().y;
-        double cz = camera.getCameraPos().z;
+        double cx = camera.getPos().x;
+        double cy = camera.getPos().y;
+        double cz = camera.getPos().z;
 
         boolean relative = context.replay != null && context.relative;
 
@@ -150,9 +150,9 @@ public abstract class BaseFilmController
 
             if (context.isShadowPass)
             {
-                cx += camera.getCameraPos().x;
-                cy += camera.getCameraPos().y;
-                cz += camera.getCameraPos().z;
+                cx += camera.getPos().x;
+                cy += camera.getPos().y;
+                cz += camera.getPos().z;
             }
         }
 
@@ -210,71 +210,74 @@ public abstract class BaseFilmController
 
         stack.push();
 
-        try
+        if (relative)
         {
-            if (relative)
+            if (!context.isShadowPass)
             {
-                if (!context.isShadowPass)
-                {
-                    stack.peek().getPositionMatrix().identity();
-                    stack.peek().getNormalMatrix().identity();
-                }
-
-                if (context.map == null)
-                {
-                    stack.multiply(camera.getRotation());
-                }
+                stack.peek().getPositionMatrix().identity();
+                stack.peek().getNormalMatrix().identity();
             }
 
-            MatrixStackUtils.multiply(stack, target);
-            FormUtilsClient.render(form, formContext);
-
-            if (UIBaseMenu.renderAxes)
+            if (context.map == null)
             {
-                if (context.bone != null && !context.local)
-                {
-                    Form root = FormUtils.getRoot(form);
-                    MatrixCache map = FormUtilsClient.getRenderer(root).collectMatrices(entity, transition);
-                    MatrixCacheEntry entry = map.get(context.bone);
-
-                    Matrix4f matrix = entry.origin();
-
-                    if (matrix == null)
-                    {
-                        matrix = entry.matrix();
-                    }
-
-                    if (matrix != null)
-                    {
-                        stack.push();
-
-                        try
-                        {
-                            MatrixStackUtils.multiply(stack, matrix);
-
-                            if (context.map == null)
-                            {
-                                Gizmo.INSTANCE.render(stack);
-                            }
-                            else
-                            {
-                                Gizmo.INSTANCE.renderStencil(stack, context.map);
-                            }
-                        }
-                        finally
-                        {
-                            stack.pop();
-                        }
-                    }
-                }
-                if (context.bone != null) renderAxes(context.bone, context.local, context.map, form, entity, transition, stack);
-                if (context.bone2 != null && context.map == null) renderAxes(context.bone2, context.local2, context.map, form, entity, transition, stack);
+                stack.multiply(camera.getRotation());
             }
         }
-        finally
+
+        MatrixStackUtils.multiply(stack, target);
+
+        ModelFormRenderer lookAtRenderer = relative ? null : applyLookAtPose(context, form, position);
+
+        FormUtilsClient.render(form, formContext);
+
+        if (context.map == null)
         {
-            stack.pop();
+            renderIllusions(context, form, formContext, stack);
         }
+
+        if (lookAtRenderer != null)
+        {
+            lookAtRenderer.setLookAtPose(null);
+        }
+
+        if (UIBaseMenu.renderAxes)
+        {
+            if (context.bone != null && !context.local)
+            {
+                Form root = FormUtils.getRoot(form);
+                MatrixCache map = FormUtilsClient.getRenderer(root).collectMatrices(entity, transition);
+                MatrixCacheEntry entry = map.get(context.bone);
+
+                Matrix4f matrix = entry.origin();
+
+                if (matrix == null)
+                {
+                    matrix = entry.matrix();
+                }
+
+                if (matrix != null)
+                {
+                    stack.push();
+                    MatrixStackUtils.multiply(stack, matrix);
+
+                    if (context.map == null)
+                    {
+                        BaseFilmController.renderGizmo(stack, null);
+                    }
+                    else
+                    {
+                        BaseFilmController.renderGizmo(stack, context.map);
+                    }
+
+                    RenderSystem.enableDepthTest();
+                    stack.pop();
+                }
+            }
+            if (context.bone != null) renderAxes(context.bone, context.local, context.map, form, entity, transition, stack);
+            if (context.bone2 != null && context.map == null) renderAxes(context.bone2, context.local2, context.map, form, entity, transition, stack);
+        }
+
+        stack.pop();
 
         if (!relative && context.map == null && opacity > 0F && context.shadowRadius > 0F && form.visible.get())
         {
@@ -301,6 +304,7 @@ public abstract class BaseFilmController
             stack.pop();
         }
 
+        RenderSystem.enableDepthTest();
     }
 
     /**
@@ -970,6 +974,7 @@ public abstract class BaseFilmController
                 BaseFilmController.renderGizmo(stack, stencilMap);
             }
 
+            RenderSystem.enableDepthTest();
             stack.pop();
         }
     }
@@ -1128,29 +1133,44 @@ public abstract class BaseFilmController
     private static void renderNameTag(IEntity entity, Text text, MatrixStack matrices, VertexConsumerProvider vertexConsumers, int light)
     {
         boolean sneaking = !entity.isSneaking();
-        float hitboxH = (float) entity.getPickingHitbox().h + 0.5F;
+        float hitboxH = (float) entity.getPickingHitbox().h + (entity.isSneaking() ? 0.25F : 0.5F);
+
 
         matrices.push();
         matrices.translate(0F, hitboxH, 0F);
-        matrices.multiply(MinecraftClient.getInstance().gameRenderer.getCamera().getRotation());
+        matrices.multiply(MinecraftClient.getInstance().getEntityRenderDispatcher().getRotation());
         matrices.scale(0.025F, -0.025F, 0.025F);
 
         Matrix4f matrix4f = matrices.peek().getPositionMatrix();
         TextRenderer textRenderer = MinecraftClient.getInstance().textRenderer;
-        CustomVertexConsumerProvider consumers = FormUtilsClient.getProvider();
 
         float opacity = MinecraftClient.getInstance().options.getTextBackgroundOpacity(0.25F);
         int background = (int) (opacity * 255F) << 24;
         float h = (float) (-textRenderer.getWidth(text) / 2);
 
-        textRenderer.draw(text, h, 0, 0x20ffffff, false, matrix4f, consumers, sneaking ? TextRenderer.TextLayerType.SEE_THROUGH : TextRenderer.TextLayerType.NORMAL, background, light);
+        int maxLight = LightmapTextureManager.MAX_LIGHT_COORDINATE;
 
-        if (sneaking)
-        {
-            textRenderer.draw(text, h, 0, -1, false, matrix4f, consumers, TextRenderer.TextLayerType.NORMAL, 0, light);
-        }
+            RenderSystem.enableBlend();
+            RenderSystem.disableCull();
 
-        consumers.draw();
+            CustomVertexConsumerProvider consumers = FormUtilsClient.getProvider();
+
+            CustomVertexConsumerProvider.hijackVertexFormat((layer) ->
+            {
+                RenderSystem.disableDepthTest();
+            });
+
+            textRenderer.draw(text, h, 0, 0x00FFFFFF, false, matrix4f, consumers, TextRenderer.TextLayerType.NORMAL, background, maxLight);
+            consumers.draw();
+
+            textRenderer.draw(text, h, 0, -1, false, matrix4f, consumers, TextRenderer.TextLayerType.NORMAL, 0, maxLight);
+            consumers.draw();
+
+            CustomVertexConsumerProvider.clearRunnables();
+            RenderSystem.enableDepthTest();
+
+            RenderSystem.enableCull();
+            RenderSystem.disableBlend();
 
         matrices.pop();
     }
@@ -1339,7 +1359,7 @@ public abstract class BaseFilmController
                             boolean sprinting = replay.keyframes.sprinting.interpolate(replayTick) > 0;
                             boolean grounded = replay.keyframes.grounded.interpolate(replayTick) > 0;
 
-                            Vec3d pos = player.getEntityPos();
+                            Vec3d pos = player.getPos();
 
                             if (BBSSettings.editorReplayStepSound == null || BBSSettings.editorReplayStepSound.get())
                             {
@@ -1395,7 +1415,7 @@ public abstract class BaseFilmController
             return;
         }
 
-        this.spawnSprintParticles(replay, ticks, entity.getEntityWorld(), entity.getWidth());
+        this.spawnSprintParticles(replay, ticks, entity.getWorld(), entity.getWidth());
     }
 
     private void spawnSprintParticles(Replay replay, int ticks, World world, double width)
@@ -1443,7 +1463,7 @@ public abstract class BaseFilmController
         double y = yPos + 0.1D;
         double z = zPos + (world.random.nextDouble() - 0.5D) * width;
 
-        world.addParticleClient(new BlockStateParticleEffect(ParticleTypes.BLOCK, world.getBlockState(pos)), false, false, x, y, z, 0D, 0.1D, 0D);
+        world.addParticle(new BlockStateParticleEffect(ParticleTypes.BLOCK, world.getBlockState(pos)), x, y, z, 0D, 0.1D, 0D);
     }
 
     private void spawnReplayStepSound(Replay replay, int ticks, World world)
@@ -1495,14 +1515,14 @@ public abstract class BaseFilmController
         var soundGroup = world.getBlockState(pos).getSoundGroup();
 
         world.playSound(
-            null,
             xPos,
             yPos,
             zPos,
             soundGroup.getStepSound(),
             SoundCategory.PLAYERS,
             soundGroup.getVolume() * 0.15F,
-            soundGroup.getPitch()
+            soundGroup.getPitch(),
+            false
         );
     }
 
@@ -1608,10 +1628,10 @@ public abstract class BaseFilmController
                         player.setHeadYaw(yawHead);
                         player.setPitch(pitch);
                         player.setBodyYaw(yawBody);
-                        player.lastYaw = yawHead;
-                        player.lastHeadYaw = yawHead;
-                        player.lastPitch = pitch;
-                        player.lastBodyYaw = yawBody;
+                        player.prevYaw = yawHead;
+                        player.prevHeadYaw = yawHead;
+                        player.prevPitch = pitch;
+                        player.prevBodyYaw = yawBody;
                     }
                 }
             }
@@ -1635,6 +1655,7 @@ public abstract class BaseFilmController
 
     public void render(WorldRenderContext context)
     {
+        RenderSystem.enableDepthTest();
 
         /* Mine-imator style render depth: entities are drawn in ascending render depth
          * order. A semi-transparent form drawn earlier (lower render depth) fills the
@@ -1748,7 +1769,7 @@ public abstract class BaseFilmController
 
             FilmControllerContext filmContext = getFilmControllerContext(context, replay, entity);
 
-            filmContext.transition = getTransition(entity, MinecraftClient.getInstance().getRenderTickCounter().getTickProgress(false));
+            filmContext.transition = getTransition(entity, context.tickCounter().getTickDelta(false));
 
             if (renderDepthFade < 1F)
             {
@@ -1760,19 +1781,15 @@ public abstract class BaseFilmController
 
             filmContext.stack.push();
 
-            try
-            {
-                if (!this.applyGroupProperties(replay, filmContext))
-                {
-                    return;
-                }
-
-                renderEntity(filmContext);
-            }
-            finally
+            if (!this.applyGroupProperties(replay, filmContext))
             {
                 filmContext.stack.pop();
+                return;
             }
+
+            renderEntity(filmContext);
+
+            filmContext.stack.pop();
         }
     }
 
@@ -1912,7 +1929,7 @@ public abstract class BaseFilmController
 
     protected FilmControllerContext getFilmControllerContext(WorldRenderContext context, Replay replay, IEntity entity)
     {
-        float tick = replay.getTick(this.getTick()) + this.getTransition(entity, MinecraftClient.getInstance().getRenderTickCounter().getTickProgress(false));
+        float tick = replay.getTick(this.getTick()) + this.getTransition(entity, context.tickCounter().getTickDelta(false));
 
         float shadowSize = replay.shadowSize.get();
         float shadowOpacity = replay.shadowOpacity.get();

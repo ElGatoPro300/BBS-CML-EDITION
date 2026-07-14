@@ -1391,8 +1391,7 @@ public class UIPoseEditor extends UIElement
             context.batcher.textShadow(line2, x2, y, color);
             int iconX = x2 + line2TextWidth + iconSpacing;
             int iconY = y + (context.batcher.getFont().getHeight() - iconSize) / 2;
-            /* 1.21.11: RenderSystem.enableBlend() removed */
-            // RenderSystem.enableBlend();
+            RenderSystem.enableBlend();
             context.batcher.icon(Icons.VISIBLE, color, iconX, iconY);
             context.batcher.unclip(context);
         }
@@ -1405,8 +1404,7 @@ public class UIPoseEditor extends UIElement
             boolean marked = UIPoseEditor.this.markedBones.contains(element);
             int iconColor = marked ? Colors.WHITE : Colors.setA(Colors.WHITE, 0.35F);
 
-            /* 1.21.11: RenderSystem.enableBlend() removed */
-            // RenderSystem.enableBlend();
+            RenderSystem.enableBlend();
             context.batcher.icon(Icons.CHECKMARK, iconColor, iconX, iconY);
 
             int textX = x + 22;

@@ -5,7 +5,6 @@ import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.bobj.BOBJBone;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.client.BBSShaders;
-import mchorse.bbs_mod.client.render.picker.BBSPickerRenderer;
 import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.cubic.animation.ActionsConfig;
 import mchorse.bbs_mod.cubic.animation.IAnimator;
@@ -30,7 +29,6 @@ import mchorse.bbs_mod.forms.renderers.FormRenderingContext;
 import mchorse.bbs_mod.forms.renderers.ModelFormRenderer;
 import mchorse.bbs_mod.forms.renderers.utils.MatrixCache;
 import mchorse.bbs_mod.forms.renderers.utils.MatrixCacheEntry;
-import mchorse.bbs_mod.graphics.Draw;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
@@ -51,33 +49,30 @@ import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.colors.Colors;
 
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.item.ItemModelManager;
+import net.minecraft.client.gl.GlUniform;
+import net.minecraft.client.gl.ShaderProgram;
+import net.minecraft.client.gl.ShaderProgramKeys;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.client.render.BufferBuilder;
+import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.GameRenderer;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.render.Tessellator;
+import net.minecraft.client.render.VertexFormat;
 import net.minecraft.client.render.VertexFormats;
-import net.minecraft.client.render.command.BatchingRenderCommandQueue;
-import net.minecraft.client.render.command.OrderedRenderCommandQueueImpl;
-import net.minecraft.client.render.item.ItemRenderState;
-import net.minecraft.client.render.item.ItemRenderer;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.EquipmentSlot;
-import net.minecraft.item.ItemDisplayContext;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.ModelTransformationMode;
 import net.minecraft.util.math.RotationAxis;
 
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
-import com.mojang.blaze3d.opengl.GlStateManager;
+import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.VertexFormat;
 import com.mojang.logging.LogUtils;
-
-import org.lwjgl.opengl.GL11;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -333,9 +328,9 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
             return;
         }
 
-        ItemDisplayContext mode = this.fpHandPreviewMainHand
-            ? ItemDisplayContext.FIRST_PERSON_RIGHT_HAND
-            : ItemDisplayContext.FIRST_PERSON_LEFT_HAND;
+        ModelTransformationMode mode = this.fpHandPreviewMainHand
+            ? ModelTransformationMode.FIRST_PERSON_RIGHT_HAND
+            : ModelTransformationMode.FIRST_PERSON_LEFT_HAND;
         int light = LightmapTextureManager.pack(15, 15);
         CustomVertexConsumerProvider consumers = FormUtilsClient.getProvider();
 
@@ -346,43 +341,24 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
         MatrixStackUtils.applyTransform(stack, this.fpHandPreviewSlot.transform);
 
         consumers.setSubstitute(BBSRendering.getColorConsumer(new Color().set(Colors.WHITE)));
-
-        ItemModelManager modelManager = MinecraftClient.getInstance().getItemModelManager();
-        ItemRenderState renderState = new ItemRenderState();
-
-        modelManager.clearAndUpdate(renderState, itemStack, mode, this.entity.getWorld(), null, 0);
-
-        OrderedRenderCommandQueueImpl queue = new OrderedRenderCommandQueueImpl();
-
-        renderState.render(stack, queue, light, OverlayTexture.DEFAULT_UV, 0);
-
-        for (BatchingRenderCommandQueue batch : queue.getBatchingQueues().values())
-        {
-            for (OrderedRenderCommandQueueImpl.ItemCommand command : batch.getItemCommands())
-            {
-                stack.push();
-                stack.peek().copy(command.positionMatrix());
-                ItemRenderer.renderItem(
-                    command.displayContext(),
-                    stack,
-                    consumers,
-                    command.lightCoords(),
-                    command.overlayCoords(),
-                    command.tintLayers(),
-                    command.quads(),
-                    command.renderLayer(),
-                    command.glintType()
-                );
-                stack.pop();
-            }
-        }
-
+        MinecraftClient.getInstance().getItemRenderer().renderItem(
+            null,
+            itemStack,
+            mode,
+            mode == ModelTransformationMode.FIRST_PERSON_LEFT_HAND,
+            stack,
+            consumers,
+            this.entity.getWorld(),
+            light,
+            OverlayTexture.DEFAULT_UV,
+            0
+        );
         consumers.draw();
         consumers.setSubstitute(null);
         CustomVertexConsumerProvider.clearRunnables();
         stack.pop();
 
-        GlStateManager._enableDepthTest();
+        RenderSystem.enableDepthTest();
     }
 
     private void ensureFramebuffer()
@@ -468,7 +444,7 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
         ModelInstance model = this.getModel();
         boolean fpHandPreview = this.fpHandPreviewSlot != null && model != null;
         String fpGroupId = fpHandPreview ? this.fpHandPreviewSlot.group.get() : null;
-        MatrixStack stack = new MatrixStack();
+        MatrixStack stack = context.batcher.getContext().getMatrices();
 
         if (fpHandPreview && fpGroupId != null && !fpGroupId.isEmpty())
         {
@@ -479,7 +455,7 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
         }
 
         FormRenderingContext formContext = new FormRenderingContext()
-            .set(FormRenderType.PREVIEW, this.entity, new MatrixStack(), LightmapTextureManager.pack(15, 15), OverlayTexture.DEFAULT_UV, context.getTransition())
+            .set(FormRenderType.PREVIEW, this.entity, stack, LightmapTextureManager.pack(15, 15), OverlayTexture.DEFAULT_UV, context.getTransition())
             .camera(this.camera)
             .modelRenderer();
 
@@ -504,7 +480,9 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
             stack.push();
             MatrixStackUtils.multiply(stack, gizmoMatrix);
 
+            RenderSystem.disableDepthTest();
             Gizmo.INSTANCE.render(stack);
+            RenderSystem.enableDepthTest();
 
             stack.pop();
         }
@@ -536,24 +514,23 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
 
             if (gizmoMatrix != null)
             {
-                MatrixStack gizmoStack = new MatrixStack();
+                stack.push();
+                MatrixStackUtils.multiply(stack, gizmoMatrix);
 
-                gizmoStack.push();
-                MatrixStackUtils.multiply(gizmoStack, gizmoMatrix);
+                RenderSystem.disableDepthTest();
+                Gizmo.INSTANCE.renderStencil(stack, this.stencilMap);
+                RenderSystem.enableDepthTest();
 
-                /* TODO 1.21.11: RenderSystem.disableDepthTest removed */
-                Gizmo.INSTANCE.renderStencil(gizmoStack, this.stencilMap);
-                /* TODO 1.21.11: RenderSystem.enableDepthTest removed */
-
-                gizmoStack.pop();
+                stack.pop();
             }
 
             this.stencil.pickGUI(context, this.area);
             this.stencil.unbind(this.stencilMap);
             this.gizmoController.updateHover();
 
-            /* TODO 1.21.11: Framebuffer.beginWrite removed */
-            /* MinecraftClient.getInstance().getFramebuffer().beginWrite(); */
+            this.endStencilViewport();
+
+            MinecraftClient.getInstance().getFramebuffer().beginWrite(true);
 
             GlStateManager._enableScissorTest();
         }
@@ -660,7 +637,7 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
         }
 
         Matrix4f cubeMatrix = this.getCubePivotMatrix(cache);
-        Matrix4f uiMatrix = new Matrix4f();
+        Matrix4f uiMatrix = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
 
         if (cubeMatrix == null)
         {
@@ -681,6 +658,8 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
         }
 
         Tessellator tessellator = Tessellator.getInstance();
+        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
+        RenderSystem.enableBlend();
         BufferBuilder builder = tessellator.begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
 
         for (ModelQuad quad : this.selectedCube.quads)
@@ -704,7 +683,7 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
             }
         }
 
-        Draw.flush(builder, Draw.getPositionColorLinesLayer());
+        BufferRenderer.drawWithGlobalProgram(builder.end());
     }
 
     private Matrix4f getCubePivotMatrix(MatrixCache cache)
@@ -816,7 +795,7 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
             return;
         }
 
-        Matrix4f uiMatrix = new Matrix4f();
+        Matrix4f uiMatrix = context.batcher.getContext().getMatrices().peek().getPositionMatrix();
 
         /* ---- target crosshair ---- */
         Vector3f targetWorld = new Vector3f(this.activeIKChain.target.get());
@@ -842,6 +821,9 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
         gizmoMat.rotateY(MathUtils.PI);
 
         BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.DEBUG_LINES, VertexFormats.POSITION_COLOR);
+        RenderSystem.setShader(ShaderProgramKeys.POSITION_COLOR);
+        RenderSystem.enableBlend();
+        RenderSystem.disableDepthTest();
 
         /* --- magenta crosshair at target --- */
         float cs = 0.12F * 16F;   /* crosshair arm length in render units */
@@ -917,7 +899,10 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
             }
         }
 
-        Draw.flush(builder, Draw.getPositionColorNoDepthLayer());
+        BufferRenderer.drawWithGlobalProgram(builder.end());
+
+        RenderSystem.enableDepthTest();
+        RenderSystem.disableBlend();
     }
 
 
@@ -948,13 +933,24 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
         int w = texture.width;
         int h = texture.height;
 
-        /* The picker_preview pipeline reads its picking index from the BBSPicker std140 UBO,
-         * uploaded per draw by BBSPickerRenderer. This replaces the removed
-         * previewProgram.getUniform("Target").set(index) call. */
-        BBSPickerRenderer.setTarget(index);
+        ShaderProgram previewProgram = BBSShaders.getPickerPreviewProgram();
+        GlUniform target = previewProgram.getUniform("Target");
 
-        GlStateManager._enableBlend();
-        context.batcher.texturedBox(BBSShaders::getPickerPreviewProgram, texture.id, Colors.WHITE, this.area.x, this.area.y, this.area.w, this.area.h, 0, h, w, 0, w, h);
+        if (target != null)
+        {
+            target.set(index);
+        }
+
+        GlUniform boneHighlight = previewProgram.getUniform("BoneHighlight");
+
+        if (boneHighlight != null)
+        {
+            Colors.COLOR.set(BBSSettings.modelEditorHoverHighlight());
+            boneHighlight.set(Colors.COLOR.r, Colors.COLOR.g, Colors.COLOR.b, Colors.COLOR.a);
+        }
+
+        RenderSystem.enableBlend();
+        context.batcher.texturedBox(BBSShaders.getPickerPreviewProgram(), texture.id, Colors.WHITE, this.area.x, this.area.y, this.area.w, this.area.h, 0, h, w, 0, w, h);
 
         Pair<Form, String> pair = this.stencil.getPicked();
 
