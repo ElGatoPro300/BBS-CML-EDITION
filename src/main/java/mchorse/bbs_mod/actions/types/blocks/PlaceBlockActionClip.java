@@ -53,24 +53,14 @@ public class PlaceBlockActionClip extends BlockActionClip
                     nbt.putInt("x", pos.getX());
                     nbt.putInt("y", pos.getY());
                     nbt.putInt("z", pos.getZ());
-                    BlockEntity blockEntity = player.getWorld().getBlockEntity(pos);
+                    BlockEntity created = BlockEntity.createFromNbt(pos, this.state.get(), nbt, player.getWorld().getRegistryManager());
 
-                    if (blockEntity != null)
+                    if (created != null)
                     {
-                        blockEntity.readNbt(nbt);
-                        blockEntity.markDirty();
+                        player.getWorld().removeBlockEntity(pos);
+                        player.getWorld().addBlockEntity(created);
+                        created.markDirty();
                         player.getWorld().updateListeners(pos, this.state.get(), this.state.get(), 3);
-                    }
-                    else
-                    {
-                        BlockEntity created = BlockEntity.createFromNbt(pos, this.state.get(), nbt);
-
-                        if (created != null)
-                        {
-                            player.getWorld().addBlockEntity(created);
-                            created.markDirty();
-                            player.getWorld().updateListeners(pos, this.state.get(), this.state.get(), 3);
-                        }
                     }
                 }
                 catch (Exception ignored)
