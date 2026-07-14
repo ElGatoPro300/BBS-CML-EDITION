@@ -13,7 +13,7 @@ public class UIModelSneakingSection extends UIModelSection
 {
     public UIButton menu;
 
-    public UIModelSneakingSection(UIModelPanel editor)
+    public UIModelSneakingSection(IUIModelPanelHost editor)
     {
         super(editor);
 

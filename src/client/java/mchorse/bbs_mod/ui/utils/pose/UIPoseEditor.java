@@ -8,6 +8,7 @@ import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.ListType;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.forms.forms.Form;
+import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.graphics.window.Window;
 import mchorse.bbs_mod.l10n.L10n;
 import mchorse.bbs_mod.l10n.keys.IKey;
@@ -58,6 +59,8 @@ import java.util.function.Supplier;
 
 public class UIPoseEditor extends UIElement
 {
+    public static final int TEXTURE_BEND_MIN_WIDTH = 72;
+
     private static final Map<String, String> LAST_LIMB_CACHE = new HashMap<>();
     private static final Map<String, Set<String>> MARKED_BONES_CACHE = new HashMap<>();
     private static final String MARKED_BONES_FILE = "marked_bones.json";
@@ -69,7 +72,12 @@ public class UIPoseEditor extends UIElement
     public UIStringList categories;
     public UITrackpad fix;
     public UIButton pickTexture;
+    public UITrackpad textureBend;
     public UIColor color;
+    public UIColor paintColor;
+    public UITrackpad paintIntensity;
+    public UIColor glowingColor;
+    public UITrackpad glowIntensity;
     public UIToggle lighting;
     public UIPropTransform transform;
     public Runnable onChange;
@@ -99,13 +107,16 @@ public class UIPoseEditor extends UIElement
 
         this.groupsList = new MarkableBoneList((l) ->
         {
-            this.pickBone(l.get(0));
+            if (l != null && !l.isEmpty())
+            {
+                this.pickBone(l.get(0));
+            }
         });
         this.groupsList.multi();
         this.groups = new UISearchList<>(this.groupsList);
         this.groups.label(UIKeys.GENERAL_SEARCH);
         this.groups.h(UIStringList.DEFAULT_HEIGHT * 8 + 12); // 20px search box + list height
-        this.groups.list.background();
+        this.groups.list.background(0xFF141418);
         this.groups.list.scroll.cancelScrolling();
         this.groups.search.w(1F, -40);
         this.invertLiveMirrorZ = false;
@@ -146,8 +157,16 @@ public class UIPoseEditor extends UIElement
             return menu;
         });
         /* Lista de categorías a la derecha */
-        this.categories = new UIStringList((l) -> {});
-        this.categories.background().h(UIStringList.DEFAULT_HEIGHT * 8 - 8);
+        this.categories = new UIStringList((l) -> {})
+        {
+            @Override
+            public void render(UIContext context)
+            {
+                super.render(context);
+                context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xFF3C3C3C);
+            }
+        };
+        this.categories.background(0xFF141418).h(UIStringList.DEFAULT_HEIGHT * 8 - 8);
         this.categories.scroll.cancelScrolling();
         this.categories.context((menu) ->
         {
@@ -368,6 +387,44 @@ public class UIPoseEditor extends UIElement
                 }
             });
         });
+        this.textureBend = new UITrackpad((v) ->
+        {
+            float value = v.floatValue();
+            String selectedCategory = this.categories != null ? this.categories.getCurrentFirst() : null;
+
+            if (selectedCategory != null && !selectedCategory.isEmpty())
+            {
+                this.applyCategory((p) -> this.setTextureBlend(p, value));
+            }
+            else if (this.applyLiveMirror((p) -> this.setTextureBlend(p, value)))
+            {}
+            else if (this.transform.getTransform() instanceof PoseTransform poseTransform)
+            {
+                this.setTextureBlend(poseTransform, value);
+            }
+
+            if (this.onChange != null) this.onChange.run();
+        });
+        this.textureBend.limit(0F, 1F);
+        this.textureBend.tooltip(UIKeys.TEXTURE_BONE_TEXTURE_BLEND);
+        this.textureBend.minW(TEXTURE_BEND_MIN_WIDTH);
+        this.textureBend.context((menu) ->
+        {
+            menu.action(Icons.DOWNLOAD, UIKeys.POSE_CONTEXT_APPLY, () ->
+            {
+                float value = (float) this.textureBend.getValue();
+
+                this.applyChildren((p) -> this.setTextureBlend(p, value));
+                if (this.onChange != null) this.onChange.run();
+            });
+            menu.action(Icons.DOWNLOAD, UIKeys.POSE_CATEGORIES_CONTEXT_APPLY_CATEGORY, () ->
+            {
+                float value = (float) this.textureBend.getValue();
+
+                this.applyCategory((p) -> this.setTextureBlend(p, value));
+                if (this.onChange != null) this.onChange.run();
+            });
+        });
         this.color = new UIColor((c) ->
         {
             String selectedCategory = this.categories != null ? this.categories.getCurrentFirst() : null;
@@ -385,6 +442,7 @@ public class UIPoseEditor extends UIElement
             if (this.onChange != null) this.onChange.run();
         });
         this.color.withAlpha();
+        this.color.tooltip(UIKeys.RAW_COLOR);
         this.color.context((menu) ->
         {
             menu.action(Icons.DOWNLOAD, UIKeys.POSE_CONTEXT_APPLY, () ->
@@ -395,6 +453,128 @@ public class UIPoseEditor extends UIElement
             menu.action(Icons.DOWNLOAD, UIKeys.POSE_CATEGORIES_CONTEXT_APPLY_CATEGORY, () ->
             {
                 this.applyCategory((p) -> this.setColor(p, this.color.picker.color.getARGBColor()));
+                if (this.onChange != null) this.onChange.run();
+            });
+        });
+        this.paintColor = new UIColor((c) ->
+        {
+            String selectedCategory = this.categories != null ? this.categories.getCurrentFirst() : null;
+            if (selectedCategory != null && !selectedCategory.isEmpty())
+            {
+                this.applyCategory((p) -> this.setPaintColor(p, c));
+            }
+            else if (this.applyLiveMirror((p) -> this.setPaintColor(p, c)))
+            {}
+            else if (this.transform.getTransform() instanceof PoseTransform poseTransform)
+            {
+                this.setPaintColor(poseTransform, c);
+            }
+
+            if (this.onChange != null) this.onChange.run();
+        });
+        this.paintColor.tooltip(UIKeys.FORMS_EDITORS_PAINT_COLOR);
+        this.paintColor.context((menu) ->
+        {
+            menu.action(Icons.DOWNLOAD, UIKeys.POSE_CONTEXT_APPLY, () ->
+            {
+                this.applyChildren((p) -> this.setPaintColor(p, this.paintColor.picker.color.getRGBColor()));
+                if (this.onChange != null) this.onChange.run();
+            });
+            menu.action(Icons.DOWNLOAD, UIKeys.POSE_CATEGORIES_CONTEXT_APPLY_CATEGORY, () ->
+            {
+                this.applyCategory((p) -> this.setPaintColor(p, this.paintColor.picker.color.getRGBColor()));
+                if (this.onChange != null) this.onChange.run();
+            });
+        });
+        this.paintIntensity = new UITrackpad((value) ->
+        {
+            String selectedCategory = this.categories != null ? this.categories.getCurrentFirst() : null;
+            if (selectedCategory != null && !selectedCategory.isEmpty())
+            {
+                this.applyCategory((p) -> this.setPaintIntensity(p, value.floatValue()));
+            }
+            else if (this.applyLiveMirror((p) -> this.setPaintIntensity(p, value.floatValue())))
+            {}
+            else if (this.transform.getTransform() instanceof PoseTransform poseTransform)
+            {
+                this.setPaintIntensity(poseTransform, value.floatValue());
+            }
+
+            if (this.onChange != null) this.onChange.run();
+        });
+        this.paintIntensity.increment(0.05D).values(0.1D, 0.05D, 0.2D);
+        this.paintIntensity.tooltip(UIKeys.FORMS_EDITORS_PAINT_INTENSITY);
+        this.paintIntensity.context((menu) ->
+        {
+            menu.action(Icons.DOWNLOAD, UIKeys.POSE_CONTEXT_APPLY, () ->
+            {
+                this.applyChildren((p) -> this.setPaintIntensity(p, (float) this.paintIntensity.getValue()));
+                if (this.onChange != null) this.onChange.run();
+            });
+            menu.action(Icons.DOWNLOAD, UIKeys.POSE_CATEGORIES_CONTEXT_APPLY_CATEGORY, () ->
+            {
+                this.applyCategory((p) -> this.setPaintIntensity(p, (float) this.paintIntensity.getValue()));
+                if (this.onChange != null) this.onChange.run();
+            });
+        });
+        this.glowingColor = new UIColor((c) ->
+        {
+            String selectedCategory = this.categories != null ? this.categories.getCurrentFirst() : null;
+            if (selectedCategory != null && !selectedCategory.isEmpty())
+            {
+                this.applyCategory((p) -> this.setGlowingColor(p, c));
+            }
+            else if (this.applyLiveMirror((p) -> this.setGlowingColor(p, c)))
+            {}
+            else if (this.transform.getTransform() instanceof PoseTransform poseTransform)
+            {
+                this.setGlowingColor(poseTransform, c);
+            }
+
+            if (this.onChange != null) this.onChange.run();
+        });
+        this.glowingColor.tooltip(UIKeys.FORMS_EDITORS_GLOWING_COLOR);
+        this.glowingColor.context((menu) ->
+        {
+            menu.action(Icons.DOWNLOAD, UIKeys.POSE_CONTEXT_APPLY, () ->
+            {
+                this.applyChildren((p) -> this.setGlowingColor(p, this.glowingColor.picker.color.getRGBColor()));
+                if (this.onChange != null) this.onChange.run();
+            });
+            menu.action(Icons.DOWNLOAD, UIKeys.POSE_CATEGORIES_CONTEXT_APPLY_CATEGORY, () ->
+            {
+                this.applyCategory((p) -> this.setGlowingColor(p, this.glowingColor.picker.color.getRGBColor()));
+                if (this.onChange != null) this.onChange.run();
+            });
+        });
+        this.glowIntensity = new UITrackpad((value) ->
+        {
+            String selectedCategory = this.categories != null ? this.categories.getCurrentFirst() : null;
+            if (selectedCategory != null && !selectedCategory.isEmpty())
+            {
+                this.applyCategory((p) -> this.setGlowIntensity(p, value.floatValue()));
+            }
+            else if (this.applyLiveMirror((p) -> this.setGlowIntensity(p, value.floatValue())))
+            {}
+            else if (this.transform.getTransform() instanceof PoseTransform poseTransform)
+            {
+                this.setGlowIntensity(poseTransform, value.floatValue());
+            }
+
+            if (this.onChange != null) this.onChange.run();
+        });
+        this.glowIntensity.increment(0.05D).values(0.1D, 0.05D, 0.2D);
+        this.glowIntensity.tooltip(UIKeys.FORMS_EDITORS_GLOW_INTENSITY);
+        this.glowIntensity.context((menu) ->
+        {
+            menu.action(Icons.DOWNLOAD, UIKeys.POSE_CONTEXT_APPLY, () ->
+            {
+                this.applyChildren((p) -> this.setGlowIntensity(p, (float) this.glowIntensity.getValue()));
+                if (this.onChange != null) this.onChange.run();
+            });
+            menu.action(Icons.DOWNLOAD, UIKeys.POSE_CATEGORIES_CONTEXT_APPLY_CATEGORY, () ->
+            {
+                this.applyCategory((p) -> this.setGlowIntensity(p, (float) this.glowIntensity.getValue()));
                 if (this.onChange != null) this.onChange.run();
             });
         });
@@ -429,7 +609,13 @@ public class UIPoseEditor extends UIElement
             });
         });
         this.transform = this.createTransformEditor();
-        this.transform.setModel();
+
+        if (this.useModelGizmoDrag())
+        {
+            this.transform.setModel();
+            this.transform.invertModelPoseTrackballXYZ();
+        }
+
         this.transform.callbacks(null, () ->
         {
             if (this.onChange != null)
@@ -455,10 +641,10 @@ public class UIPoseEditor extends UIElement
 
         if (pickLimbTexture)
         {
-            this.add(this.pickTexture);
+            this.add(UI.row(this.pickTexture, this.textureBend));
         }
 
-        this.add(UI.row(this.color, this.lighting), this.transform);
+        this.add(this.transform, this.color, this.paintColor, this.paintIntensity, this.glowingColor, this.glowIntensity, UI.row(this.lighting));
     }
 
     /**
@@ -582,6 +768,11 @@ public class UIPoseEditor extends UIElement
         }
         this.fix.setVisible(!groups.isEmpty());
         this.color.setVisible(!groups.isEmpty());
+        this.paintColor.setVisible(!groups.isEmpty());
+        this.paintIntensity.setVisible(!groups.isEmpty());
+        this.glowingColor.setVisible(!groups.isEmpty());
+        this.glowIntensity.setVisible(!groups.isEmpty());
+        this.textureBend.setVisible(!groups.isEmpty() && BBSSettings.pickLimbTexture != null && BBSSettings.pickLimbTexture.get());
         this.transform.setVisible(!groups.isEmpty());
 
         boolean persistedFilter = BBSSettings.poseBonesFilterMarked != null && BBSSettings.poseBonesFilterMarked.get();
@@ -620,6 +811,36 @@ public class UIPoseEditor extends UIElement
         this.selectCategoryForBone(bone);
     }
 
+    public void addBoneToSelection(String bone)
+    {
+        if (bone == null || bone.isEmpty())
+        {
+            return;
+        }
+
+        int index = this.groups.list.getList().indexOf(bone);
+
+        if (index < 0)
+        {
+            return;
+        }
+
+        this.groups.list.toggleIndex(index);
+
+        List<String> current = this.groups.list.getCurrent();
+
+        if (current.isEmpty())
+        {
+            this.currentBone = null;
+
+            return;
+        }
+
+        this.pickBone(current.get(current.size() - 1));
+        this.cacheLastSelectedBone(current.get(current.size() - 1));
+        this.selectCategoryForBone(bone);
+    }
+
     private void selectCategoryForBone(String bone)
     {
         if (this.categories != null && this.model != null)
@@ -639,9 +860,20 @@ public class UIPoseEditor extends UIElement
 
     /* Subclass overridable methods */
 
+  /** Film/replay pose editors keep the legacy model-space drag inversions; form model pose matches model block. */
+    protected boolean useModelGizmoDrag()
+    {
+        return true;
+    }
+
+    protected float getGizmoTranslationScale()
+    {
+        return 16F;
+    }
+
     protected UIPropTransform createTransformEditor()
     {
-        return new CategoryPropTransform(this).enableHotkeys().translationScale(16F);
+        return new CategoryPropTransform(this).enableHotkeys().translationScale(this.getGizmoTranslationScale());
     }
 
     /* Transformaciones aplicables por categoría */
@@ -836,13 +1068,23 @@ public class UIPoseEditor extends UIElement
 
         this.fix.setVisible(true);
         this.color.setVisible(true);
+        this.paintColor.setVisible(true);
+        this.paintIntensity.setVisible(true);
+        this.glowingColor.setVisible(true);
+        this.glowIntensity.setVisible(true);
         this.lighting.setVisible(true);
         this.pickTexture.setVisible(BBSSettings.pickLimbTexture != null && BBSSettings.pickLimbTexture.get());
+        this.textureBend.setVisible(BBSSettings.pickLimbTexture != null && BBSSettings.pickLimbTexture.get());
 
         this.fix.setEnabled(isPoseTransform);
         this.color.setEnabled(isPoseTransform);
+        this.paintColor.setEnabled(isPoseTransform);
+        this.paintIntensity.setEnabled(isPoseTransform);
+        this.glowingColor.setEnabled(isPoseTransform);
+        this.glowIntensity.setEnabled(isPoseTransform);
         this.lighting.setEnabled(isPoseTransform);
         this.pickTexture.setEnabled(isPoseTransform);
+        this.textureBend.setEnabled(isPoseTransform);
 
         if (!isPoseTransform || this.pose == null || CollectionUtils.getKey(this.pose.transforms, (PoseTransform) transform) == null)
         {
@@ -864,13 +1106,23 @@ public class UIPoseEditor extends UIElement
 
         this.fix.setVisible(true);
         this.color.setVisible(true);
+        this.paintColor.setVisible(true);
+        this.paintIntensity.setVisible(true);
+        this.glowingColor.setVisible(true);
+        this.glowIntensity.setVisible(true);
         this.lighting.setVisible(true);
         this.pickTexture.setVisible(BBSSettings.pickLimbTexture != null && BBSSettings.pickLimbTexture.get());
+        this.textureBend.setVisible(BBSSettings.pickLimbTexture != null && BBSSettings.pickLimbTexture.get());
 
         this.fix.setEnabled(true);
         this.color.setEnabled(true);
+        this.paintColor.setEnabled(true);
+        this.paintIntensity.setEnabled(true);
+        this.glowingColor.setEnabled(true);
+        this.glowIntensity.setEnabled(true);
         this.lighting.setEnabled(true);
         this.pickTexture.setEnabled(true);
+        this.textureBend.setEnabled(true);
 
         PoseTransform poseTransform = this.pose != null ? this.pose.get(bone) : null;
 
@@ -878,6 +1130,11 @@ public class UIPoseEditor extends UIElement
         {
             this.fix.setValue(poseTransform.fix);
             this.color.setColor(poseTransform.color.getARGBColor());
+            this.paintColor.setColor(poseTransform.paintColor.getRGBColor());
+            this.paintIntensity.setValue(poseTransform.paintColor.a);
+            this.glowingColor.setColor(poseTransform.glowingColor.getRGBColor());
+            this.glowIntensity.setValue(poseTransform.glowIntensity);
+            this.textureBend.setValue(poseTransform.textureBlend);
             this.lighting.setValue(poseTransform.lighting == 0F);
             this.transform.setTransform(poseTransform);
         }
@@ -885,6 +1142,11 @@ public class UIPoseEditor extends UIElement
         {
             this.fix.setValue(0F);
             this.color.setColor(Colors.WHITE);
+            this.paintColor.setColor(0xFFFFFF);
+            this.paintIntensity.setValue(0F);
+            this.glowingColor.setColor(0xFFFFFF);
+            this.glowIntensity.setValue(0F);
+            this.textureBend.setValue(1F);
             this.lighting.setValue(false);
             this.transform.setTransform(null);
         }
@@ -900,6 +1162,37 @@ public class UIPoseEditor extends UIElement
         transform.color.set(value);
     }
 
+    protected void setPaintColor(PoseTransform transform, int value)
+    {
+        float intensity = transform.paintColor.a;
+
+        transform.paintColor.set(value);
+        transform.paintColor.a = intensity;
+        transform.shaderShadow = PaintSettings.resolveAutoShaderShadowForPoseAlpha(transform.paintColor.a);
+    }
+
+    protected void setPaintIntensity(PoseTransform transform, float value)
+    {
+        transform.paintColor.a = value;
+        transform.shaderShadow = PaintSettings.resolveAutoShaderShadowForPoseAlpha(transform.paintColor.a);
+    }
+
+    protected void setGlowingColor(PoseTransform transform, int value)
+    {
+        transform.glowingColor.set(value);
+        transform.glowingColor.a = 1F;
+    }
+
+    protected void setGlowIntensity(PoseTransform transform, float value)
+    {
+        transform.glowIntensity = value;
+    }
+
+    protected void setGlowRadius(PoseTransform transform, float value)
+    {
+        transform.glowRadius = value;
+    }
+
     protected void setLighting(PoseTransform poseTransform, boolean value)
     {
         poseTransform.lighting = value ? 0F : 1F;
@@ -908,6 +1201,11 @@ public class UIPoseEditor extends UIElement
     protected void setTexture(PoseTransform transform, Link value)
     {
         transform.texture = LinkUtils.copy(value);
+    }
+
+    protected void setTextureBlend(PoseTransform transform, float value)
+    {
+        transform.textureBlend = value;
     }
 
     /* Categorías */
@@ -1294,6 +1592,7 @@ public class UIPoseEditor extends UIElement
         public void render(UIContext context)
         {
             super.render(context);
+            context.batcher.outline(this.area.x, this.area.y, this.area.ex(), this.area.ey(), 0xFF3C3C3C);
 
             if (!UIPoseEditor.this.showOnlyMarked || !UIPoseEditor.this.markedBones.isEmpty())
             {
@@ -1384,14 +1683,27 @@ public class UIPoseEditor extends UIElement
 
                 if (this.exists(index))
                 {
-                    this.toggleIndex(index);
-
-                    if (this.current.isEmpty())
+                    if (this.multi && this.isSelected())
                     {
-                        this.addIndex(index);
+                        int first = this.current.get(0);
+                        int increment = first > index ? -1 : 1;
+
+                        for (int i = first + increment; i != index + increment; i += increment)
+                        {
+                            this.addIndex(i);
+                        }
+                    }
+                    else
+                    {
+                        this.setIndex(index);
                     }
 
-                    UIPoseEditor.this.pickBone(element);
+                    List<String> current = this.getCurrent();
+
+                    if (this.callback != null && !current.isEmpty())
+                    {
+                        this.callback.accept(current);
+                    }
 
                     return true;
                 }

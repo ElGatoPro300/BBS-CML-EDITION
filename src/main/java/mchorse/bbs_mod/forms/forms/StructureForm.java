@@ -33,10 +33,16 @@ public class StructureForm extends Form
     public final ValueStructureLightSettings structureLight = new ValueStructureLightSettings("structure_light", new StructureLightSettings(false, 15));
     /** Aplica el tinte global también a Block Entities (cofres, carteles, etc.) */
     public final ValueBoolean tintBlockEntities = new ValueBoolean("tint_block_entities", false);
+    /** Alterna el renderizado de fluidos (agua/lava) en la estructura */
+    public final ValueBoolean renderFluid = new ValueBoolean("render_fluid", false);
     /** Pivote manual en coordenadas de bloque (permite decimales) */
     public final ValueFloat pivotX = new ValueFloat("pivot_x", 0f);
     public final ValueFloat pivotY = new ValueFloat("pivot_y", 0f);
     public final ValueFloat pivotZ = new ValueFloat("pivot_z", 0f);
+    /** Structure size/scale multipliers (1 = original size) */
+    public final ValueFloat scaleX = new ValueFloat("scale_x", 1f);
+    public final ValueFloat scaleY = new ValueFloat("scale_y", 1f);
+    public final ValueFloat scaleZ = new ValueFloat("scale_z", 1f);
 
     public StructureForm()
     {
@@ -59,6 +65,16 @@ public class StructureForm extends Form
         this.add(this.pivotX);
         this.add(this.pivotY);
         this.add(this.pivotZ);
+
+        this.scaleX.invisible();
+        this.scaleY.invisible();
+        this.scaleZ.invisible();
+        this.add(this.scaleX);
+        this.add(this.scaleY);
+        this.add(this.scaleZ);
+        /* Ocultar del timeline */
+        this.renderFluid.invisible();
+        this.add(this.renderFluid);
 
         /* Nueva pista unificada de keyframes y ocultar pista booleana suelta */
         this.emitLight.invisible();

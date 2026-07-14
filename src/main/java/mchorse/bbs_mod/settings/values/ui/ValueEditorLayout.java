@@ -66,6 +66,24 @@ public class ValueEditorLayout extends BaseValue
         return this.filmSplitters;
     }
 
+    public void syncFilmSplittersFromRoot(EditorLayoutNode root)
+    {
+        this.filmSplitters.clear();
+
+        if (root != null)
+        {
+            EditorLayoutNode.collectSplitters(root, this.filmSplitters);
+
+            List<EditorLayoutNode.SplitterHandleInfo> handles = new ArrayList<>();
+            EditorLayoutNode.computeSplitterHandles(root, 0F, 0F, 1F, 1F, handles);
+
+            if (this.filmSplitters.size() > handles.size())
+            {
+                this.filmSplitters.subList(handles.size(), this.filmSplitters.size()).clear();
+            }
+        }
+    }
+
     public void setFilmSplitterRatio(int index, float ratio)
     {
         if (index < 0 || index >= this.filmSplitters.size())

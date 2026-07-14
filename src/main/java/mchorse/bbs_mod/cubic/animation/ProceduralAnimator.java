@@ -7,6 +7,7 @@ import mchorse.bbs_mod.cubic.animation.gecko.config.GeckoAnimationsConfig;
 import mchorse.bbs_mod.cubic.animation.gecko.controllers.GeckoAnimationController;
 import mchorse.bbs_mod.cubic.animation.gecko.model.GeckoAnimationContext;
 import mchorse.bbs_mod.cubic.animation.gecko.routes.GeckoAnimationRouteRegistry;
+import mchorse.bbs_mod.cubic.animation.gecko.routes.GeckoLimbRole;
 import mchorse.bbs_mod.cubic.animation.gecko.services.GeckoAnimationBlendService;
 import mchorse.bbs_mod.cubic.animation.gecko.services.GeckoAnimationEventBus;
 import mchorse.bbs_mod.cubic.animation.gecko.services.GeckoAnimationService;
@@ -16,14 +17,11 @@ import mchorse.bbs_mod.cubic.data.animation.Animation;
 import mchorse.bbs_mod.cubic.data.animation.Animations;
 import mchorse.bbs_mod.cubic.data.model.Model;
 import mchorse.bbs_mod.cubic.data.model.ModelGroup;
-import mchorse.bbs_mod.cubic.ik.IKChain;
-import mchorse.bbs_mod.cubic.model.IKChainConfig;
-import mchorse.bbs_mod.cubic.physics.PhysBoneRuntime;
-import mchorse.bbs_mod.cubic.physics.PhysBoneState;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.entities.StubEntity;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.interps.Lerps;
+import mchorse.bbs_mod.utils.pose.Pose;
 
 import net.minecraft.entity.EntityPose;
 import net.minecraft.entity.EquipmentSlot;
@@ -33,7 +31,6 @@ import net.minecraft.util.math.Vec3d;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -41,9 +38,10 @@ public class ProceduralAnimator implements IAnimator
 {
     public ActionPlayback basePre;
     public ActionPlayback basePost;
+    public ActionPlayback riding;
+    public ActionPlayback ridingIdle;
 
     private IModelInstance model;
-    private final Map<String, PhysBoneState> physStates = new HashMap<>();
     private GeckoAnimationsConfig geckoAnimations = new GeckoAnimationsConfig();
     private final GeckoAnimationController geckoController = new GeckoAnimationController(
         new GeckoAnimationService(
@@ -55,9 +53,6 @@ public class ProceduralAnimator implements IAnimator
         )
     );
 
-    /** Runtime IK chains, rebuilt when setup() is called with new configs */
-    private List<IKChain> ikChains = new ArrayList<>();
-
     @Override
     public List<String> getActions()
     {
@@ -68,12 +63,13 @@ public class ProceduralAnimator implements IAnimator
     public void setup(IModelInstance model, ActionsConfig actions, boolean fade)
     {
         this.model = model;
-        this.physStates.clear();
         ActionsConfig safeActions = actions == null ? new ActionsConfig() : actions;
         this.geckoAnimations = safeActions.geckoAnimations;
 
         this.basePre = this.createAction(this.basePre, safeActions.getConfig("base_pre"), true);
         this.basePost = this.createAction(this.basePost, safeActions.getConfig("base_post"), true);
+        this.riding = this.createAction(this.riding, safeActions.getConfig("riding"), true);
+        this.ridingIdle = this.createAction(this.ridingIdle, safeActions.getConfig("riding_idle"), true);
     }
 
     /**
@@ -132,8 +128,6 @@ public class ProceduralAnimator implements IAnimator
         {
             this.basePost.update();
         }
-
-        this.updatePhysBones(entity);
     }
 
     @Override
@@ -159,10 +153,10 @@ public class ProceduralAnimator implements IAnimator
         /* Common variables */
         float handSwingProgress = target.getHandSwingProgress(transition);
         float age = target.getAge() + transition;
-        float bodyYaw = Lerps.lerp(target.getPrevBodyYaw(), target.getBodyYaw(), transition);
-        float headYaw = Lerps.lerp(target.getPrevHeadYaw(), target.getHeadYaw(), transition);
+        float bodyYaw = (float) Lerps.lerpYaw(target.getPrevBodyYaw(), target.getBodyYaw(), transition);
+        float headYaw = (float) Lerps.lerpYaw(target.getPrevHeadYaw(), target.getHeadYaw(), transition);
         float yaw = headYaw - bodyYaw;
-        float pitch = Lerps.lerp(target.getPrevPitch(), target.getPitch(), transition);
+        float pitch = (float) Lerps.lerp(target.getPrevPitch(), target.getPitch(), transition);
         float limbSpeed = target.getLimbSpeed(transition);
         float limbPhase = target.getLimbPos(transition);
         Vec3d entityVelocity = target.getVelocity();
@@ -177,6 +171,34 @@ public class ProceduralAnimator implements IAnimator
         float velocityForwardSpeed = ((float) entityVelocity.x * forwardX + (float) entityVelocity.z * forwardZ) * 20F;
         float displacementForwardSpeed = ((float) dx * forwardX + (float) dz * forwardZ) * 20F;
         float forwardSpeed = Math.abs(velocityForwardSpeed) >= Math.abs(displacementForwardSpeed) ? velocityForwardSpeed : displacementForwardSpeed;
+
+        if (!target.isRiding() && !target.isSitting())
+        {
+            if (limbSpeed < 0.01F && horizontalSpeed > 0.08F)
+            {
+                limbSpeed = MathHelper.clamp(horizontalSpeed / 4F, 0F, 1F);
+            }
+
+            if (limbPhase == 0F && horizontalSpeed > 0.08F)
+            {
+                limbPhase = age * 0.6662F;
+            }
+        }
+        else
+        {
+            limbSpeed = 0F;
+            horizontalSpeed = 0F;
+            forwardSpeed = 0F;
+        }
+
+        boolean riding = target.isRiding() || target.isSitting();
+        Map<GeckoLimbRole, String> roleBones = ProceduralPoseDefaults.buildRoleBoneMap(model);
+        String rightArmBone = this.roleBone(roleBones, GeckoLimbRole.RIGHT_ARM, "right_arm");
+        String leftArmBone = this.roleBone(roleBones, GeckoLimbRole.LEFT_ARM, "left_arm");
+        String rightLegBone = this.roleBone(roleBones, GeckoLimbRole.RIGHT_LEG, "right_leg");
+        String leftLegBone = this.roleBone(roleBones, GeckoLimbRole.LEFT_LEG, "left_leg");
+        String torsoBone = this.roleBone(roleBones, GeckoLimbRole.TORSO, "torso");
+
         float leaningPitch = target.getLeaningPitch(transition);
         String headBone = armature.getHeadBone();
 
@@ -190,7 +212,11 @@ public class ProceduralAnimator implements IAnimator
 
         model.resetPose();
 
-        if (target.isSneaking())
+        if (riding)
+        {
+            this.applyRidingPoseOrAnimation(target, armature, model, transition);
+        }
+        else if (target.isSneaking())
         {
             model.applyPose(armature.getSneakingPose());
         }
@@ -265,47 +291,59 @@ public class ProceduralAnimator implements IAnimator
                         group.current.rotate.x = -pitch;
                     }
                 }
-                else if (group.id.equals("right_arm"))
+                else if (group.id.equals(rightArmBone))
                 {
-                    group.current.rotate.x += MathUtils.toDeg(MathHelper.cos(limbPhase * 0.6662F) * 2.0F * limbSpeed * 0.5F / coefficient);
-                    group.current.rotate.z += MathUtils.toDeg(1F * (MathHelper.cos(-age * 0.09F) * 0.05F + 0.05F));
-                    group.current.rotate.x += MathUtils.toDeg(1F * MathHelper.sin(-age * 0.067F) * 0.05F);
-
-                    if (!main.isEmpty())
+                    if (!riding)
                     {
-                        group.current.rotate.x = group.current.rotate.x * 0.5F + 18F;
+                        group.current.rotate.x += MathUtils.toDeg(MathHelper.cos(limbPhase * 0.6662F) * 2.0F * limbSpeed * 0.5F / coefficient);
+                        group.current.rotate.z += MathUtils.toDeg(1F * (MathHelper.cos(-age * 0.09F) * 0.05F + 0.05F));
+                        group.current.rotate.x += MathUtils.toDeg(1F * MathHelper.sin(-age * 0.067F) * 0.05F);
+
+                        if (!main.isEmpty())
+                        {
+                            group.current.rotate.x = group.current.rotate.x * 0.5F + 18F;
+                        }
                     }
 
                     rightArm = group;
                 }
-                else if (group.id.equals("left_arm"))
+                else if (group.id.equals(leftArmBone))
                 {
-                    group.current.rotate.x += MathUtils.toDeg(MathHelper.cos(limbPhase * 0.6662F + 3.1415927F) * 2.0F * limbSpeed * 0.5F / coefficient);
-                    group.current.rotate.z += MathUtils.toDeg(-1F * (MathHelper.cos(-age * 0.09F) * 0.05F + 0.05F));
-                    group.current.rotate.x += MathUtils.toDeg(-1F * MathHelper.sin(-age * 0.067F) * 0.05F);
-
-                    if (!offhand.isEmpty())
+                    if (!riding)
                     {
-                        group.current.rotate.x = group.current.rotate.x * 0.5F + 18F;
+                        group.current.rotate.x += MathUtils.toDeg(MathHelper.cos(limbPhase * 0.6662F + 3.1415927F) * 2.0F * limbSpeed * 0.5F / coefficient);
+                        group.current.rotate.z += MathUtils.toDeg(-1F * (MathHelper.cos(-age * 0.09F) * 0.05F + 0.05F));
+                        group.current.rotate.x += MathUtils.toDeg(-1F * MathHelper.sin(-age * 0.067F) * 0.05F);
+
+                        if (!offhand.isEmpty())
+                        {
+                            group.current.rotate.x = group.current.rotate.x * 0.5F + 18F;
+                        }
                     }
 
                     leftArm = group;
                 }
-                else if (group.id.equals("torso"))
+                else if (group.id.equals(torsoBone))
                 {
                     torso = group;
                 }
-                else if (group.id.equals("right_leg"))
+                else if (group.id.equals(rightLegBone))
                 {
-                    group.current.rotate.x = MathUtils.toDeg(MathHelper.cos(limbPhase * 0.6662F + 3.1415927F) * 1.4F * limbSpeed / coefficient);
+                    if (!riding)
+                    {
+                        group.current.rotate.x = MathUtils.toDeg(MathHelper.cos(limbPhase * 0.6662F + 3.1415927F) * 1.4F * limbSpeed / coefficient);
+                    }
                 }
-                else if (group.id.equals("left_leg"))
+                else if (group.id.equals(leftLegBone))
                 {
-                    group.current.rotate.x = MathUtils.toDeg(MathHelper.cos(limbPhase * 0.6662F) * 1.4F * limbSpeed / coefficient);
+                    if (!riding)
+                    {
+                        group.current.rotate.x = MathUtils.toDeg(MathHelper.cos(limbPhase * 0.6662F) * 1.4F * limbSpeed / coefficient);
+                    }
                 }
             }
 
-            if (handSwingProgress > 0F && torso != null && leftArm != null && rightArm != null)
+            if (!riding && handSwingProgress > 0F && torso != null && leftArm != null && rightArm != null)
             {
                 ModelGroup group;
                 float swingFactor = handSwingProgress;
@@ -406,43 +444,55 @@ public class ProceduralAnimator implements IAnimator
                         bone.transform.rotate.x = -MathUtils.toRad(-pitch);
                     }
                 }
-                else if (bone.name.equals("right_arm"))
+                else if (bone.name.equals(rightArmBone))
                 {
-                    bone.transform.rotate.x += MathHelper.cos(limbPhase * 0.6662F) * 2.0F * limbSpeed * 0.5F / coefficient;
-                    bone.transform.rotate.z -= 1F * (MathHelper.cos(-age * 0.09F) * 0.05F + 0.05F);
-                    bone.transform.rotate.x += 1F * MathHelper.sin(-age * 0.067F) * 0.05F;
-
-                    if (!main.isEmpty())
+                    if (!riding)
                     {
-                        bone.transform.rotate.x = bone.transform.rotate.x * 0.5F + MathUtils.toRad(18F);
+                        bone.transform.rotate.x += MathHelper.cos(limbPhase * 0.6662F) * 2.0F * limbSpeed * 0.5F / coefficient;
+                        bone.transform.rotate.z -= 1F * (MathHelper.cos(-age * 0.09F) * 0.05F + 0.05F);
+                        bone.transform.rotate.x += 1F * MathHelper.sin(-age * 0.067F) * 0.05F;
+
+                        if (!main.isEmpty())
+                        {
+                            bone.transform.rotate.x = bone.transform.rotate.x * 0.5F + MathUtils.toRad(18F);
+                        }
                     }
 
                     bobjRightArm = bone;
                 }
-                else if (bone.name.equals("left_arm"))
+                else if (bone.name.equals(leftArmBone))
                 {
-                    bone.transform.rotate.x += MathHelper.cos(limbPhase * 0.6662F + 3.1415927F) * 2.0F * limbSpeed * 0.5F / coefficient;
-                    bone.transform.rotate.z -= -1F * (MathHelper.cos(-age * 0.09F) * 0.05F + 0.05F);
-                    bone.transform.rotate.x += -1F * MathHelper.sin(-age * 0.067F) * 0.05F;
-
-                    if (!offhand.isEmpty())
+                    if (!riding)
                     {
-                        bone.transform.rotate.x = bone.transform.rotate.x * 0.5F + MathUtils.toRad(18F);
+                        bone.transform.rotate.x += MathHelper.cos(limbPhase * 0.6662F + 3.1415927F) * 2.0F * limbSpeed * 0.5F / coefficient;
+                        bone.transform.rotate.z -= -1F * (MathHelper.cos(-age * 0.09F) * 0.05F + 0.05F);
+                        bone.transform.rotate.x += -1F * MathHelper.sin(-age * 0.067F) * 0.05F;
+
+                        if (!offhand.isEmpty())
+                        {
+                            bone.transform.rotate.x = bone.transform.rotate.x * 0.5F + MathUtils.toRad(18F);
+                        }
                     }
 
                     bobjLeftArm = bone;
                 }
-                else if (bone.name.equals("right_leg"))
+                else if (bone.name.equals(rightLegBone))
                 {
-                    bone.transform.rotate.x = MathHelper.cos(limbPhase * 0.6662F + 3.1415927F) * 1.4F * limbSpeed / coefficient;
+                    if (!riding)
+                    {
+                        bone.transform.rotate.x = MathHelper.cos(limbPhase * 0.6662F + 3.1415927F) * 1.4F * limbSpeed / coefficient;
+                    }
                 }
-                else if (bone.name.equals("left_leg"))
+                else if (bone.name.equals(leftLegBone))
                 {
-                    bone.transform.rotate.x = MathHelper.cos(limbPhase * 0.6662F) * 1.4F * limbSpeed / coefficient;
+                    if (!riding)
+                    {
+                        bone.transform.rotate.x = MathHelper.cos(limbPhase * 0.6662F) * 1.4F * limbSpeed / coefficient;
+                    }
                 }
             }
 
-            if (handSwingProgress > 0F && bobjLeftArm != null && bobjRightArm != null)
+            if (!riding && handSwingProgress > 0F && bobjLeftArm != null && bobjRightArm != null)
             {
                 BOBJBone group;
                 float swingFactor = handSwingProgress;
@@ -488,6 +538,7 @@ public class ProceduralAnimator implements IAnimator
         geckoContext.verticalSpeed = (float) entityVelocity.y * 20F;
         geckoContext.onGround = target.isOnGround();
         geckoContext.sneaking = target.isSneaking();
+        geckoContext.riding = target.isRiding() || target.isSitting();
         geckoContext.sprinting = target.isSprinting();
         geckoContext.swimming = target.getEntityPose() == EntityPose.SWIMMING;
         geckoContext.fallFlying = target.isFallFlying();
@@ -499,65 +550,75 @@ public class ProceduralAnimator implements IAnimator
 
         this.geckoController.apply(target, model, this.model == null ? null : this.model.getAnimations(), this.geckoAnimations, geckoContext);
 
-        this.applyPhysBones(model);
-
-        /* --- IK pass: runs after FK + Gecko, before post animation --- */
-        this.applyIKChains(armature.getModel());
-
         if (this.basePost != null)
         {
             this.basePost.postApply(target, armature.getModel(), transition);
         }
     }
 
-    private void updatePhysBones(IEntity entity)
-    {
-        PhysBoneRuntime.update(entity, this.model, this.physStates);
-    }
-
-    private void applyPhysBones(IModel model)
-    {
-        PhysBoneRuntime.apply(model, this.physStates);
-    }
-
-    /**
-     * Sets the IK chains that this animator will solve each frame.
-     * Called from UIModelIKPanel whenever the chain list changes.
-     */
-    public void setIKChains(List<IKChainConfig> configs)
-    {
-        this.ikChains = new ArrayList<>();
-
-        if (configs == null)
-        {
-            return;
-        }
-
-        for (IKChainConfig config : configs)
-        {
-            this.ikChains.add(new IKChain(config));
-        }
-    }
-
-    /**
-     * Solves all registered IK chains and writes rotations into the model.
-     */
-    private void applyIKChains(IModel model)
-    {
-        if (this.ikChains.isEmpty())
-        {
-            return;
-        }
-
-        for (IKChain chain : this.ikChains)
-        {
-            chain.solve(model);
-        }
-    }
-
     @Override
     public void playAnimation(String name)
     {}
+
+    private ActionPlayback getRidingAction(IEntity target)
+    {
+        IEntity mount = target.getMountTarget();
+        boolean mountMoves = false;
+
+        if (mount != null)
+        {
+            double mdx = mount.getX() - mount.getPrevX();
+            double mdz = mount.getZ() - mount.getPrevZ();
+
+            mountMoves = Math.abs(mdx) > 0.003D || Math.abs(mdz) > 0.003D;
+        }
+
+        if (!mountMoves && this.ridingIdle != null)
+        {
+            return this.ridingIdle;
+        }
+
+        return this.riding;
+    }
+
+    private void applyRidingPoseOrAnimation(IEntity target, IModelInstance armature, IModel model, float transition)
+    {
+        Pose ridingPose = armature.getRidingPose();
+
+        if (ridingPose != null && !ridingPose.isEmpty())
+        {
+            /* Anchor offset is for pose-editor preview; world position is handled by mount sync */
+            Pose applied = ridingPose.copy();
+            String anchorBone = model.getAnchor();
+
+            if (anchorBone == null || anchorBone.isEmpty())
+            {
+                anchorBone = "anchor";
+            }
+
+            applied.transforms.remove(anchorBone);
+            model.applyPose(applied);
+
+            return;
+        }
+
+        ActionPlayback ridingAction = this.getRidingAction(target);
+
+        if (ridingAction == null)
+        {
+            return;
+        }
+
+        ridingAction.update();
+        ridingAction.apply(target, model, transition, 1F, false);
+    }
+
+    private String roleBone(Map<GeckoLimbRole, String> roleBones, GeckoLimbRole role, String fallback)
+    {
+        String bone = roleBones.get(role);
+
+        return bone != null ? bone : fallback;
+    }
 
     protected float lerpAngle(float a, float b, float magnitude)
     {

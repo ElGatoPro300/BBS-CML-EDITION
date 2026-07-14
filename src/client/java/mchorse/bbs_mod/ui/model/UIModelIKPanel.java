@@ -1,13 +1,13 @@
 package mchorse.bbs_mod.ui.model;
 
-import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.cubic.ModelInstance;
-import mchorse.bbs_mod.cubic.data.model.Model;
-import mchorse.bbs_mod.cubic.data.model.ModelGroup;
-import mchorse.bbs_mod.cubic.model.IKChainConfig;
+import mchorse.bbs_mod.cubic.ik.LimbConstraintCompiler;
+import mchorse.bbs_mod.cubic.ik.LimbConstraintDef;
+import mchorse.bbs_mod.cubic.ik.LimbConstraintSerializer;
 import mchorse.bbs_mod.cubic.model.ModelConfig;
+import mchorse.bbs_mod.data.types.BaseType;
+import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.l10n.keys.IKey;
-import mchorse.bbs_mod.settings.values.core.ValueList;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
@@ -20,308 +20,305 @@ import mchorse.bbs_mod.ui.framework.elements.input.list.UISearchList;
 import mchorse.bbs_mod.ui.framework.elements.input.list.UIStringList;
 import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
 import mchorse.bbs_mod.ui.utils.UI;
-import mchorse.bbs_mod.utils.colors.Colors;
-
-import org.joml.Vector3f;
 
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 /**
- * IK Editor panel — mirrors the Geometry Editor layout:
+ * Limb IK editor for the model panel.
  *
- *   LEFT side panel  │   free 3D viewport (renderer)   │  RIGHT side panel
- *   ─────────────────┤                                  ├─────────────────────
- *   IK Chain list    │   (model visible here)           │  Tip Bone picker
- *   [+ Add]          │                                  │  Root Bone picker
- *   [- Remove]       │                                  │  Enabled / Weight
- *                    │                                  │  Iterations / Tolerance
- *                    │                                  │  Chain Length
- *                    │                                  │  Target X / Y / Z
- *
- * Both side panels are anchored to `this` (which covers mainView at w=1 h=1).
- * The centre area is never covered, so the 3D model is always fully visible.
+ * LEFT: skeleton bone hierarchy. Selecting a bone and enabling IK creates a tip entry.
+ * RIGHT: limb properties for the selected tip bone. Centre stays free for the 3D viewport.
  */
 public class UIModelIKPanel extends UIElement
 {
-    /* ---- geometry constants (matches UIModelGeometryPanel) ---- */
-    private static final int SIDE_MARGIN  = 10;
-    private static final int LEFT_WIDTH   = 220;
-    private static final int RIGHT_WIDTH  = 260;
+    private static final int SIDE_MARGIN = 10;
+    private static final int LEFT_WIDTH = 220;
+    private static final int RIGHT_WIDTH = 260;
 
-    /* ---- LEFT side (chain list) ---- */
-    private final UIStringList chainList;
-    private final UIButton     addChain;
-    private final UIButton     removeChain;
-
-    /* ---- RIGHT side (detail editor) ---- */
+    private final UIStringList boneList;
     private final UIScrollView detailScroll;
-    private final UILabel      noSelectionLabel;
-    private final UIButton     tipBoneButton;
-    private final UIButton     rootBoneButton;
-    private final UIButton     targetBoneButton;
-    private final UIToggle     enabledToggle;
-    private final UITrackpad   weightPad;
-    private final UITrackpad   iterationsPad;
-    private final UITrackpad   tolerancePad;
-    private final UITrackpad   chainLengthPad;
-    private final UITrackpad   targetX;
-    private final UITrackpad   targetY;
-    private final UITrackpad   targetZ;
-    private final UILabel      chainNameLabel;
+    private final UILabel noSelectionLabel;
+    private final UILabel boneNameLabel;
 
-    /* ---- state ---- */
-    private final UIModelPanel editor;
-    private ModelConfig        config;
-    private IKChainConfig      selected;
-    private List<String>       boneNames = new ArrayList<>();
+    private final UIToggle activeToggle;
+    private final UIButton controllerButton;
+    private final UITrackpad depthPad;
+    private final UIToggle poleEnabledToggle;
+    private final UIButton poleBoneButton;
+    private final UITrackpad bendOffsetPad;
+    private final UITrackpad flexibilityPad;
+    private final UITrackpad influencePad;
+    private final UIToggle orientTipToggle;
+    private final UIToggle extensibleToggle;
 
-    /* ======================================================================
-     * Constructor
-     * ==================================================================== */
+    private final IUIModelPanelHost editor;
+    private ModelConfig config;
+    private final Map<String, LimbData> limbs = new HashMap<>();
+    private final List<String> boneNames = new ArrayList<>();
+    private String selectedBone;
+    private boolean suppressCommit;
 
-    public UIModelIKPanel(UIModelPanel editor)
+    public UIModelIKPanel(IUIModelPanelHost editor)
     {
         this.editor = editor;
+        this.relative(editor.getMainView()).w(1F).h(1F);
 
-        /* This element fills mainView entirely (same as UIModelGeometryPanel) */
-        this.relative(editor.mainView).w(1F).h(1F);
-
-        /* ----------------------------------------------------------------
-         * LEFT side: chain list
-         * -------------------------------------------------------------- */
         UILabel listTitle = UI.label(UIKeys.MODELS_IK_EDITOR).background();
         listTitle.relative(this).x(SIDE_MARGIN).y(10).w(LEFT_WIDTH).h(12);
 
-        this.chainList = new UIStringList((items) ->
+        this.boneList = new UIStringList((items) ->
         {
             if (items != null && !items.isEmpty())
             {
-                this.selectChain(items.get(0));
+                this.selectBone(this.boneFromDisplay(items.get(0)));
             }
         });
-        this.chainList.relative(this)
-                      .x(SIDE_MARGIN).y(26)
-                      .w(LEFT_WIDTH).h(1F, -44);
-        this.chainList.background();
-        this.chainList.scroll.scrollItemSize = 18;
+        this.boneList.relative(this)
+            .x(SIDE_MARGIN).y(26)
+            .w(LEFT_WIDTH).h(1F, -36);
+        this.boneList.background();
+        this.boneList.scroll.scrollItemSize = 18;
 
-        this.addChain = new UIButton(UIKeys.MODELS_IK_CHAIN_ADD, (b) -> this.onAddChain());
-        this.addChain.relative(this)
-                     .x(SIDE_MARGIN).y(1F, -40)
-                     .w(LEFT_WIDTH).h(18);
-        this.addChain.tooltip(UIKeys.MODELS_IK_CHAIN_ADD_TOOLTIP);
-
-        this.removeChain = new UIButton(UIKeys.MODELS_IK_CHAIN_REMOVE, (b) -> this.onRemoveChain());
-        this.removeChain.relative(this)
-                        .x(SIDE_MARGIN).y(1F, -20)
-                        .w(LEFT_WIDTH).h(18);
-        this.removeChain.tooltip(UIKeys.MODELS_IK_CHAIN_REMOVE_TOOLTIP);
-
-        /* ----------------------------------------------------------------
-         * RIGHT side: detail editor
-         * Anchored from the right edge — same pattern as Geometry Editor
-         * -------------------------------------------------------------- */
-
-        /* Title label (bone name of selected chain) */
         UILabel editorTitle = UI.label(UIKeys.MODELS_IK_EDITOR).background();
         editorTitle.relative(this)
-                   .x(1F, -RIGHT_WIDTH - SIDE_MARGIN).y(10)
-                   .w(RIGHT_WIDTH).h(12);
+            .x(1F, -RIGHT_WIDTH - SIDE_MARGIN).y(10)
+            .w(RIGHT_WIDTH).h(12);
 
-        this.chainNameLabel = UI.label(IKey.raw("-"));
-        this.chainNameLabel.relative(editorTitle).y(1F, 4).w(1F).h(12);
+        this.boneNameLabel = UI.label(IKey.raw("-"));
+        this.boneNameLabel.relative(editorTitle).y(1F, 4).w(1F).h(12);
 
-        /* "No selection" hint shown when nothing is selected */
         this.noSelectionLabel = UI.label(UIKeys.MODELS_IK_NO_SELECTION);
         this.noSelectionLabel.relative(this)
-                             .x(1F, -RIGHT_WIDTH - SIDE_MARGIN)
-                             .y(38)
-                             .w(RIGHT_WIDTH).h(20);
+            .x(1F, -RIGHT_WIDTH - SIDE_MARGIN)
+            .y(38)
+            .w(RIGHT_WIDTH).h(20);
 
-        /* Detail scroll view (right column) */
         this.detailScroll = UI.scrollView(20, 8);
         this.detailScroll.scroll.cancelScrolling().opposite().scrollSpeed *= 3;
         this.detailScroll.relative(this)
-                         .x(1F, -RIGHT_WIDTH - SIDE_MARGIN).y(38)
-                         .w(RIGHT_WIDTH).h(1F, -48);
+            .x(1F, -RIGHT_WIDTH - SIDE_MARGIN).y(38)
+            .w(RIGHT_WIDTH).h(1F, -48);
 
-        /* Build the form rows inside the scroll view */
         UIElement fields = new UIElement();
         fields.relative(this.detailScroll).w(1F);
         fields.column().stretch().vertical().height(20).padding(4);
 
-        this.tipBoneButton = new UIButton(UIKeys.MODELS_IK_TIP_BONE, (b) ->
+        this.activeToggle = new UIToggle(UIKeys.MODELS_IK_ENABLED, (b) -> this.onActiveChanged(b.getValue()));
+        this.activeToggle.tooltip(UIKeys.MODELS_IK_ENABLED_TOOLTIP);
+
+        this.controllerButton = new UIButton(UIKeys.MODELS_IK_TARGET_BONE, (b) ->
             this.openBonePicker((bone) ->
             {
-                if (this.selected != null)
+                LimbData data = this.getOrCreateSelected();
+
+                if (data != null)
                 {
-                    this.selected.tipBone.set(bone);
-                    this.updateTipLabel();
-                    this.editor.dirty();
+                    data.controller = bone;
+                    this.updateControllerLabel();
+                    this.commitChanges();
                 }
             })
         );
-        this.tipBoneButton.tooltip(UIKeys.MODELS_IK_TIP_BONE_TOOLTIP);
+        this.controllerButton.tooltip(UIKeys.MODELS_IK_TARGET_BONE_TOOLTIP);
 
-        this.rootBoneButton = new UIButton(UIKeys.MODELS_IK_ROOT_BONE, (b) ->
-            this.openBonePicker((bone) ->
-            {
-                if (this.selected != null)
-                {
-                    this.selected.rootBone.set(bone);
-                    this.updateRootLabel();
-                    this.editor.dirty();
-                }
-            })
-        );
-        this.rootBoneButton.tooltip(UIKeys.MODELS_IK_ROOT_BONE_TOOLTIP);
-
-        this.targetBoneButton = new UIButton(UIKeys.MODELS_IK_TARGET_BONE, (b) ->
-            this.openBonePicker((bone) ->
-            {
-                if (this.selected != null)
-                {
-                    this.selected.targetBone.set(bone);
-                    this.updateTargetBoneLabel();
-                    this.editor.dirty();
-                }
-            })
-        );
-        this.targetBoneButton.tooltip(UIKeys.MODELS_IK_TARGET_BONE_TOOLTIP);
-
-        this.enabledToggle = new UIToggle(UIKeys.MODELS_IK_ENABLED, (b) ->
+        this.depthPad = this.buildPad((v) ->
         {
-            if (this.selected != null)
+            LimbData data = this.getSelectedData();
+
+            if (data != null)
             {
-                this.selected.enabled.set(b.getValue());
-                this.editor.dirty();
-                this.editor.renderer.setActiveIKChain(b.getValue() ? this.selected : null);
+                data.depth = v.intValue();
+                this.commitChanges();
+            }
+        }, 0D, 32D, 1D, 1D, 5D);
+        this.depthPad.integer();
+        this.depthPad.tooltip(UIKeys.MODELS_IK_CHAIN_LENGTH_TOOLTIP);
+
+        this.poleEnabledToggle = new UIToggle(IKey.raw("Pole Enabled"), (b) ->
+        {
+            LimbData data = this.getOrCreateSelected();
+
+            if (data != null)
+            {
+                data.poleEnabled = b.getValue();
+                this.commitChanges();
             }
         });
-        this.enabledToggle.tooltip(UIKeys.MODELS_IK_ENABLED_TOOLTIP);
 
-        this.weightPad = this.buildPad((v) ->
-        {
-            if (this.selected != null)
+        this.poleBoneButton = new UIButton(IKey.raw("Pole Bone"), (b) ->
+            this.openBonePicker((bone) ->
             {
-                this.selected.weight.set(v.floatValue());
-                this.editor.dirty();
-            }
-        }, 0D, 1D, 0.05, 0.01, 0.1);
-        this.weightPad.tooltip(UIKeys.MODELS_IK_WEIGHT_TOOLTIP);
+                LimbData data = this.getOrCreateSelected();
 
-        this.iterationsPad = this.buildPad((v) ->
+                if (data != null)
+                {
+                    data.poleBone = bone;
+                    this.updatePoleBoneLabel();
+                    this.commitChanges();
+                }
+            })
+        );
+
+        this.bendOffsetPad = this.buildPad((v) ->
         {
-            if (this.selected != null)
-            {
-                this.selected.iterations.set(v.intValue());
-                this.editor.dirty();
-            }
-        }, 1D, 100D, 1, 1, 5);
-        this.iterationsPad.integer();
-        this.iterationsPad.tooltip(UIKeys.MODELS_IK_ITERATIONS_TOOLTIP);
+            LimbData data = this.getSelectedData();
 
-        this.tolerancePad = this.buildPad((v) ->
+            if (data != null)
+            {
+                data.bendOffset = v.floatValue();
+                this.commitChanges();
+            }
+        }, -180D, 180D, 1D, 0.1D, 5D);
+
+        this.flexibilityPad = this.buildPad((v) ->
         {
-            if (this.selected != null)
-            {
-                this.selected.tolerance.set(v.floatValue());
-                this.editor.dirty();
-            }
-        }, 0.001D, 1D, 0.005, 0.001, 0.01);
-        this.tolerancePad.tooltip(UIKeys.MODELS_IK_TOLERANCE_TOOLTIP);
+            LimbData data = this.getSelectedData();
 
-        this.chainLengthPad = this.buildPad((v) ->
+            if (data != null)
+            {
+                data.flexibility = v.floatValue();
+                this.commitChanges();
+            }
+        }, 0D, 1D, 0.01D, 0.001D, 0.05D);
+
+        this.influencePad = this.buildPad((v) ->
         {
-            if (this.selected != null)
+            LimbData data = this.getSelectedData();
+
+            if (data != null)
             {
-                this.selected.chainLength.set(v.intValue());
-                this.editor.dirty();
+                data.influence = v.floatValue();
+                this.commitChanges();
             }
-        }, 0D, 32D, 1, 1, 5);
-        this.chainLengthPad.integer();
-        this.chainLengthPad.tooltip(UIKeys.MODELS_IK_CHAIN_LENGTH_TOOLTIP);
+        }, 0D, 1D, 0.05D, 0.01D, 0.1D);
+        this.influencePad.tooltip(UIKeys.MODELS_IK_WEIGHT_TOOLTIP);
 
-        this.targetX = this.buildTargetAxisPad(0);
-        this.targetY = this.buildTargetAxisPad(1);
-        this.targetZ = this.buildTargetAxisPad(2);
+        this.orientTipToggle = new UIToggle(IKey.raw("Orient Tip"), (b) ->
+        {
+            LimbData data = this.getOrCreateSelected();
 
-        /* Assemble rows */
+            if (data != null)
+            {
+                data.orientTip = b.getValue();
+                this.commitChanges();
+            }
+        });
+
+        this.extensibleToggle = new UIToggle(IKey.raw("Extensible"), (b) ->
+        {
+            LimbData data = this.getOrCreateSelected();
+
+            if (data != null)
+            {
+                data.extensible = b.getValue();
+                this.commitChanges();
+            }
+        });
+
         fields.add(
-            UI.label(UIKeys.MODELS_IK_TIP_BONE),    this.tipBoneButton,
-            UI.label(UIKeys.MODELS_IK_ROOT_BONE),   this.rootBoneButton,
-            this.enabledToggle,
-            UI.label(UIKeys.MODELS_IK_WEIGHT),       this.weightPad,
-            UI.label(UIKeys.MODELS_IK_ITERATIONS),   this.iterationsPad,
-            UI.label(UIKeys.MODELS_IK_TOLERANCE),    this.tolerancePad,
-            UI.label(UIKeys.MODELS_IK_CHAIN_LENGTH), this.chainLengthPad,
-            UI.label(UIKeys.MODELS_IK_TARGET_BONE),  this.targetBoneButton,
-            UI.label(UIKeys.MODELS_IK_TARGET),
-            UI.label(IKey.raw("X")),  this.targetX,
-            UI.label(IKey.raw("Y")),  this.targetY,
-            UI.label(IKey.raw("Z")),  this.targetZ
+            this.activeToggle,
+            UI.label(UIKeys.MODELS_IK_TARGET_BONE), this.controllerButton,
+            UI.label(UIKeys.MODELS_IK_CHAIN_LENGTH), this.depthPad,
+            this.poleEnabledToggle,
+            UI.label(IKey.raw("Pole Bone")), this.poleBoneButton,
+            UI.label(IKey.raw("Bend Offset")), this.bendOffsetPad,
+            UI.label(IKey.raw("Flexibility")), this.flexibilityPad,
+            UI.label(UIKeys.MODELS_IK_WEIGHT), this.influencePad,
+            this.orientTipToggle,
+            this.extensibleToggle
         );
         this.detailScroll.add(fields);
 
-        /* ---- assemble whole panel ---- */
-        this.add(listTitle, this.chainList, this.addChain, this.removeChain);
-        this.add(editorTitle, this.chainNameLabel, this.noSelectionLabel, this.detailScroll);
+        this.add(listTitle, this.boneList);
+        this.add(editorTitle, this.boneNameLabel, this.noSelectionLabel, this.detailScroll);
 
         this.setDetailVisible(false);
     }
 
-    /* ======================================================================
-     * Small builder helpers (keep constructor tidy)
-     * ==================================================================== */
-
-    private UITrackpad buildPad(Consumer<Double> callback,
-                                double min, double max,
-                                double step, double smallStep, double bigStep)
+    private UITrackpad buildPad(Consumer<Double> callback, double min, double max, double step, double smallStep, double bigStep)
     {
-        UITrackpad pad = new UITrackpad((v) -> callback.accept(v.doubleValue()));
+        UITrackpad pad = new UITrackpad((v) ->
+        {
+            if (!this.suppressCommit)
+            {
+                callback.accept(v.doubleValue());
+            }
+        });
         pad.limit(min, max).values(step, smallStep, bigStep);
+
         return pad;
     }
 
-    private UITrackpad buildTargetAxisPad(int axis)
-    {
-        return new UITrackpad((v) ->
-        {
-            if (this.selected != null)
-            {
-                Vector3f t = new Vector3f(this.selected.target.get());
-
-                if (axis == 0) t.x = v.floatValue();
-                else if (axis == 1) t.y = v.floatValue();
-                else                t.z = v.floatValue();
-
-                this.selected.target.set(t);
-                this.editor.dirty();
-            }
-        }).values(0.05, 0.01, 0.25);
-    }
-
-    /* ======================================================================
-     * Visibility helpers
-     * ==================================================================== */
-
     public void onBoneSelected(String bone)
     {
-        if (this.config == null) return;
-
-        for (IKChainConfig chain : this.config.ikChains.getList())
+        if (bone == null || bone.isEmpty() || this.config == null)
         {
-            if (chain.isInChain(bone))
-            {
-                this.chainList.setCurrent(chain.getId());
-                this.selectChain(chain.getId());
-
-                return;
-            }
+            return;
         }
+
+        this.boneList.setCurrent(this.displayName(bone));
+        this.selectBone(bone);
+    }
+
+    private void onActiveChanged(boolean active)
+    {
+        if (this.suppressCommit || this.selectedBone == null || this.selectedBone.isEmpty())
+        {
+            return;
+        }
+
+        if (active)
+        {
+            this.limbs.putIfAbsent(this.selectedBone, LimbData.createDefault());
+        }
+        else
+        {
+            this.limbs.remove(this.selectedBone);
+        }
+
+        this.refreshBoneList();
+        this.refreshDetailFields();
+        this.commitChanges();
+    }
+
+    private LimbData getSelectedData()
+    {
+        if (this.selectedBone == null)
+        {
+            return null;
+        }
+
+        return this.limbs.get(this.selectedBone);
+    }
+
+    private LimbData getOrCreateSelected()
+    {
+        if (this.selectedBone == null || this.selectedBone.isEmpty())
+        {
+            return null;
+        }
+
+        LimbData data = this.limbs.get(this.selectedBone);
+
+        if (data == null)
+        {
+            data = LimbData.createDefault();
+            this.limbs.put(this.selectedBone, data);
+            this.refreshBoneList();
+            this.activeToggle.setValue(true);
+        }
+
+        return data;
+    }
+
+    private void selectBone(String bone)
+    {
+        this.selectedBone = bone;
+        this.refreshDetailFields();
     }
 
     private void setDetailVisible(boolean visible)
@@ -329,130 +326,140 @@ public class UIModelIKPanel extends UIElement
         this.detailScroll.setEnabled(visible);
         this.detailScroll.setVisible(visible);
         this.noSelectionLabel.setVisible(!visible);
-        this.chainNameLabel.setVisible(visible);
-
-        /* Show/hide gizmo in renderer */
-        this.editor.renderer.setActiveIKChain(visible ? this.selected : null);
+        this.boneNameLabel.setVisible(visible);
     }
 
-    private void updateTipLabel()
+    private void updateControllerLabel()
     {
-        if (this.selected == null) { this.tipBoneButton.label = UIKeys.MODELS_IK_TIP_BONE; return; }
-        String tip = this.selected.tipBone.get();
-        this.tipBoneButton.label = tip.isEmpty() ? UIKeys.MODELS_IK_TIP_BONE : IKey.constant(tip);
+        LimbData data = this.getSelectedData();
+
+        if (data == null || data.controller.isEmpty())
+        {
+            this.controllerButton.label = UIKeys.MODELS_IK_TARGET_BONE;
+            return;
+        }
+
+        this.controllerButton.label = IKey.constant(data.controller);
     }
 
-    private void updateRootLabel()
+    private void updatePoleBoneLabel()
     {
-        if (this.selected == null) { this.rootBoneButton.label = UIKeys.MODELS_IK_ROOT_BONE; return; }
-        String root = this.selected.rootBone.get();
-        this.rootBoneButton.label = root.isEmpty() ? UIKeys.MODELS_IK_ROOT_BONE : IKey.constant(root);
-    }
+        LimbData data = this.getSelectedData();
 
-    private void updateTargetBoneLabel()
-    {
-        if (this.selected == null) { this.targetBoneButton.label = UIKeys.MODELS_IK_TARGET_BONE; return; }
-        String tb = this.selected.targetBone.get();
-        this.targetBoneButton.label = tb.isEmpty() ? UIKeys.MODELS_IK_TARGET_BONE : IKey.constant(tb);
+        if (data == null || data.poleBone.isEmpty())
+        {
+            this.poleBoneButton.label = IKey.raw("Pole Bone");
+            return;
+        }
+
+        this.poleBoneButton.label = IKey.constant(data.poleBone);
     }
 
     private void refreshDetailFields()
     {
-        if (this.selected == null)
+        if (this.selectedBone == null || this.selectedBone.isEmpty())
         {
             this.setDetailVisible(false);
             return;
         }
 
         this.setDetailVisible(true);
+        this.boneNameLabel.label = IKey.raw(this.selectedBone);
 
-        this.chainNameLabel.label = IKey.raw(this.selected.getId());
-        this.updateTipLabel();
-        this.updateRootLabel();
-        this.updateTargetBoneLabel();
-        this.enabledToggle.setValue(this.selected.enabled.get());
-        this.weightPad.setValue(this.selected.weight.get());
-        this.iterationsPad.setValue(this.selected.iterations.get());
-        this.tolerancePad.setValue(this.selected.tolerance.get());
-        this.chainLengthPad.setValue(this.selected.chainLength.get());
+        LimbData data = this.getSelectedData();
+        boolean active = data != null;
 
-        Vector3f t = this.selected.target.get();
-        this.targetX.setValue(t.x);
-        this.targetY.setValue(t.y);
-        this.targetZ.setValue(t.z);
-    }
+        this.suppressCommit = true;
 
-    /* ======================================================================
-     * Chain list management
-     * ==================================================================== */
-
-    private void onAddChain()
-    {
-        if (this.config == null) { return; }
-
-        ValueList<IKChainConfig> list = this.config.ikChains;
-        String newId = String.valueOf(list.getList().size());
-        IKChainConfig chain = new IKChainConfig(newId);
-        list.add(chain);
-
-        this.refreshChainList();
-        this.chainList.setCurrent(newId);
-        this.selectChain(newId);
-        this.editor.dirty();
-    }
-
-    private void onRemoveChain()
-    {
-        if (this.config == null || this.selected == null) { return; }
-
-        this.config.ikChains.remove(this.selected);
-        this.selected = null;
-        this.refreshChainList();
-        this.setDetailVisible(false);
-        this.editor.dirty();
-    }
-
-    private void selectChain(String id)
-    {
-        if (this.config == null) { return; }
-
-        this.selected = null;
-
-        for (IKChainConfig chain : this.config.ikChains.getList())
+        try
         {
-            if (chain.getId().equals(id))
+            this.activeToggle.setValue(active);
+            this.updateControllerLabel();
+            this.updatePoleBoneLabel();
+
+            if (data != null)
             {
-                this.selected = chain;
-                break;
+                this.depthPad.setValue(data.depth);
+                this.poleEnabledToggle.setValue(data.poleEnabled);
+                this.bendOffsetPad.setValue(data.bendOffset);
+                this.flexibilityPad.setValue(data.flexibility);
+                this.influencePad.setValue(data.influence);
+                this.orientTipToggle.setValue(data.orientTip);
+                this.extensibleToggle.setValue(data.extensible);
+            }
+            else
+            {
+                this.depthPad.setValue(LimbConstraintDef.DEFAULT_DEPTH);
+                this.poleEnabledToggle.setValue(true);
+                this.bendOffsetPad.setValue(LimbConstraintDef.DEFAULT_BEND_OFFSET);
+                this.flexibilityPad.setValue(LimbConstraintDef.DEFAULT_FLEXIBILITY);
+                this.influencePad.setValue(LimbConstraintDef.DEFAULT_INFLUENCE);
+                this.orientTipToggle.setValue(LimbConstraintDef.DEFAULT_ORIENT_TIP);
+                this.extensibleToggle.setValue(LimbConstraintDef.DEFAULT_EXTENSIBLE);
             }
         }
-
-        this.refreshDetailFields();
-    }
-
-    private void refreshChainList()
-    {
-        List<String> ids = new ArrayList<>();
-
-        if (this.config != null)
+        finally
         {
-            for (IKChainConfig chain : this.config.ikChains.getList())
-            {
-                ids.add(chain.getId());
-            }
+            this.suppressCommit = false;
         }
 
-        this.chainList.setList(ids);
-        this.chainList.update();
+        this.setFieldEnabled(active);
     }
 
-    /* ======================================================================
-     * Bone picker
-     * ==================================================================== */
+    private void setFieldEnabled(boolean enabled)
+    {
+        this.controllerButton.setEnabled(enabled);
+        this.depthPad.setEnabled(enabled);
+        this.poleEnabledToggle.setEnabled(enabled);
+        this.poleBoneButton.setEnabled(enabled);
+        this.bendOffsetPad.setEnabled(enabled);
+        this.flexibilityPad.setEnabled(enabled);
+        this.influencePad.setEnabled(enabled);
+        this.orientTipToggle.setEnabled(enabled);
+        this.extensibleToggle.setEnabled(enabled);
+    }
+
+    private void refreshBoneList()
+    {
+        List<String> display = new ArrayList<>();
+
+        for (String bone : this.boneNames)
+        {
+            display.add(this.displayName(bone));
+        }
+
+        String current = this.selectedBone == null ? null : this.displayName(this.selectedBone);
+
+        this.boneList.setList(display);
+        this.boneList.update();
+
+        if (current != null)
+        {
+            this.boneList.setCurrent(current);
+        }
+    }
+
+    private String displayName(String bone)
+    {
+        return this.limbs.containsKey(bone) ? "* " + bone : bone;
+    }
+
+    private String boneFromDisplay(String display)
+    {
+        if (display != null && display.startsWith("* "))
+        {
+            return display.substring(2);
+        }
+
+        return display;
+    }
 
     private void openBonePicker(Consumer<String> callback)
     {
-        if (this.boneNames.isEmpty()) { return; }
+        if (this.boneNames.isEmpty())
+        {
+            return;
+        }
 
         UIBonePickerContextMenu menu = new UIBonePickerContextMenu(this.boneNames, callback);
         this.getContext().replaceContextMenu(menu);
@@ -460,58 +467,114 @@ public class UIModelIKPanel extends UIElement
             .w(180).h(220).bounds(this.getContext().menu.overlay, 5);
     }
 
-    /* ======================================================================
-     * Public API
-     * ==================================================================== */
+    private void commitChanges()
+    {
+        if (this.suppressCommit || this.config == null)
+        {
+            return;
+        }
+
+        List<LimbConstraintDef.Limb> list = new ArrayList<>();
+
+        for (Map.Entry<String, LimbData> entry : this.limbs.entrySet())
+        {
+            LimbData data = entry.getValue();
+
+            list.add(new LimbConstraintDef.Limb(
+                entry.getKey(),
+                data.controller,
+                data.depth,
+                data.poleEnabled,
+                data.poleBone,
+                data.bendOffset,
+                data.flexibility,
+                data.influence,
+                data.active,
+                data.orientTip,
+                data.extensible
+            ));
+        }
+
+        LimbConstraintDef def = list.isEmpty() ? null : new LimbConstraintDef(list);
+        MapType map = LimbConstraintSerializer.toData(def);
+
+        this.config.ik.set(map == null || map.isEmpty() ? null : map);
+        this.editor.dirty();
+        this.editor.getModelRenderer().syncSolverConfig(this.config);
+        LimbConstraintCompiler.clear();
+        this.editor.getModelRenderer().dirty();
+    }
+
+    private void ensureBoneNames()
+    {
+        if (this.config == null || !this.boneNames.isEmpty())
+        {
+            return;
+        }
+
+        ModelInstance instance = this.editor.resolveEditingModel(this.config);
+
+        if (instance != null && instance.getModel() != null)
+        {
+            this.boneNames.addAll(instance.getModel().getGroupKeysInHierarchyOrder());
+            this.refreshBoneList();
+        }
+    }
 
     public void setConfig(ModelConfig config)
     {
-        this.config   = config;
-        this.selected = null;
+        this.config = config;
+        this.selectedBone = null;
+        this.limbs.clear();
         this.boneNames.clear();
-
-        /* Clear gizmo when switching config */
-        this.editor.renderer.setActiveIKChain(null);
 
         if (config != null)
         {
-            var instance = BBSModClient.getModels().getModel(config.getId());
+            BaseType raw = config.ik.get();
+
+            if (raw instanceof MapType)
+            {
+                LimbConstraintDef def = LimbConstraintSerializer.fromData((MapType) raw);
+
+                if (def != null && def.limbs() != null)
+                {
+                    for (LimbConstraintDef.Limb limb : def.limbs())
+                    {
+                        this.limbs.put(limb.tipBone(), LimbData.fromLimb(limb));
+                    }
+                }
+            }
+
+            ModelInstance instance = this.editor.resolveEditingModel(config);
 
             if (instance != null && instance.getModel() != null)
             {
-                /* Cubic bone keys */
-                this.boneNames.addAll(instance.getModel().getAllGroupKeys());
-
-                /* BOBJ bones (if present) */
-                instance.getModel().getAllBOBJBones().forEach(b -> this.boneNames.add(b.name));
-
-                Collections.sort(this.boneNames);
+                this.boneNames.addAll(instance.getModel().getGroupKeysInHierarchyOrder());
             }
         }
 
-        this.refreshChainList();
+        this.refreshBoneList();
         this.setDetailVisible(false);
     }
-
-    /* ======================================================================
-     * Rendering — draw semi-transparent side-panel backgrounds
-     * ==================================================================== */
 
     @Override
     public void render(UIContext context)
     {
-        int x  = this.area.x;
-        int y  = this.area.y;
+        if (this.config != null && this.boneNames.isEmpty())
+        {
+            this.ensureBoneNames();
+        }
+
+        int x = this.area.x;
+        int y = this.area.y;
         int ey = this.area.ey();
 
-        /* Left panel background */
         context.batcher.box(
             x + SIDE_MARGIN - 2, y + 6,
             x + SIDE_MARGIN + LEFT_WIDTH + 2, ey - 6,
             0xaa000000
         );
 
-        /* Right panel background */
         int rx = x + this.area.w - SIDE_MARGIN - RIGHT_WIDTH;
         context.batcher.box(
             rx - 2, y + 6,
@@ -522,9 +585,41 @@ public class UIModelIKPanel extends UIElement
         super.render(context);
     }
 
-    /* ======================================================================
-     * Inner class: bone picker context menu
-     * ==================================================================== */
+    private static class LimbData
+    {
+        String controller = "";
+        int depth = LimbConstraintDef.DEFAULT_DEPTH;
+        boolean poleEnabled = true;
+        String poleBone = "";
+        float bendOffset = LimbConstraintDef.DEFAULT_BEND_OFFSET;
+        float flexibility = LimbConstraintDef.DEFAULT_FLEXIBILITY;
+        float influence = LimbConstraintDef.DEFAULT_INFLUENCE;
+        boolean active = true;
+        boolean orientTip = LimbConstraintDef.DEFAULT_ORIENT_TIP;
+        boolean extensible = LimbConstraintDef.DEFAULT_EXTENSIBLE;
+
+        static LimbData createDefault()
+        {
+            return new LimbData();
+        }
+
+        static LimbData fromLimb(LimbConstraintDef.Limb limb)
+        {
+            LimbData data = new LimbData();
+            data.controller = limb.controllerBone();
+            data.depth = limb.depth();
+            data.poleEnabled = limb.poleEnabled();
+            data.poleBone = limb.poleBone();
+            data.bendOffset = limb.bendOffset();
+            data.flexibility = limb.flexibility();
+            data.influence = limb.influence();
+            data.active = limb.active();
+            data.orientTip = limb.orientTip();
+            data.extensible = limb.extensible();
+
+            return data;
+        }
+    }
 
     public static class UIBonePickerContextMenu extends UIContextMenu
     {

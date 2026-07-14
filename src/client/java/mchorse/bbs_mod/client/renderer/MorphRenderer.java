@@ -82,6 +82,19 @@ public class MorphRenderer
                     .set(FormRenderType.ENTITY, morph.entity, matrixStack, i, overlay, g)
                     .camera(MinecraftClient.getInstance().gameRenderer.getCamera()));
 
+                if (morph.entity.getFireTicks() > 0)
+                {
+                    MorphFireRenderer.render(
+                        matrixStack,
+                        vertexConsumerProvider,
+                        morph.entity,
+                        morph.getForm(),
+                        g,
+                        MinecraftClient.getInstance().gameRenderer.getCamera(),
+                        false
+                    );
+                }
+
                 matrixStack.pop();
 
                 RenderSystem.disableDepthTest();
@@ -146,6 +159,19 @@ public class MorphRenderer
             FormUtilsClient.render(form, new FormRenderingContext()
                 .set(FormRenderType.ENTITY, owner.entity, matrixStack, i, o, g)
                 .camera(MinecraftClient.getInstance().gameRenderer.getCamera()));
+
+            if (owner.entity.getFireTicks() > 0)
+            {
+                MorphFireRenderer.render(
+                    matrixStack,
+                    vertexConsumerProvider,
+                    owner.entity,
+                    form,
+                    g,
+                    MinecraftClient.getInstance().gameRenderer.getCamera(),
+                    false
+                );
+            }
 
             matrixStack.pop();
 

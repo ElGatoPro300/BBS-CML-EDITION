@@ -1,21 +1,16 @@
 package mchorse.bbs_mod.cubic.animation;
 
-import mchorse.bbs_mod.cubic.IModel;
 import mchorse.bbs_mod.cubic.IModelInstance;
 import mchorse.bbs_mod.cubic.data.animation.Animation;
 import mchorse.bbs_mod.cubic.data.animation.Animations;
-import mchorse.bbs_mod.cubic.physics.PhysBoneRuntime;
-import mchorse.bbs_mod.cubic.physics.PhysBoneState;
 import mchorse.bbs_mod.forms.entities.IEntity;
 
 import net.minecraft.util.math.Vec3d;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Animator class
@@ -31,6 +26,8 @@ public class Animator implements IAnimator
     public ActionPlayback sprinting;
     public ActionPlayback crouching;
     public ActionPlayback crouchingIdle;
+    public ActionPlayback riding;
+    public ActionPlayback ridingIdle;
     public ActionPlayback dying;
     public ActionPlayback falling;
 
@@ -60,13 +57,12 @@ public class Animator implements IAnimator
     public int jumpingCounter;
 
     private IModelInstance model;
-    private final Map<String, PhysBoneState> physStates = new HashMap<>();
 
     @Override
     public List<String> getActions()
     {
         return Arrays.asList(
-            "idle", "running", "sprinting", "crouching", "crouching_idle", "dying", "falling",
+            "idle", "running", "sprinting", "crouching", "crouching_idle", "riding", "riding_idle", "dying", "falling",
             "swipe", "jump", "hurt", "land", "shoot", "consume", "base_pre", "base_post"
         );
     }
@@ -75,13 +71,14 @@ public class Animator implements IAnimator
     public void setup(IModelInstance model, ActionsConfig actions, boolean fade)
     {
         this.model = model;
-        this.physStates.clear();
 
         this.idle = this.createAction(this.idle, actions.getConfig("idle"), true);
         this.running = this.createAction(this.running, actions.getConfig("running"), true);
         this.sprinting = this.createAction(this.sprinting, actions.getConfig("sprinting"), true);
         this.crouching = this.createAction(this.crouching, actions.getConfig("crouching"), true);
         this.crouchingIdle = this.createAction(this.crouchingIdle, actions.getConfig("crouching_idle"), true);
+        this.riding = this.createAction(this.riding, actions.getConfig("riding"), true);
+        this.ridingIdle = this.createAction(this.ridingIdle, actions.getConfig("riding_idle"), true);
         this.dying = this.createAction(this.dying, actions.getConfig("dying"), false);
         this.falling = this.createAction(this.falling, actions.getConfig("falling"), true);
 
@@ -202,8 +199,6 @@ public class Animator implements IAnimator
                 it.remove();
             }
         }
-
-        this.updatePhysBones(target);
     }
 
     /**
@@ -250,7 +245,39 @@ public class Animator implements IAnimator
         }
         else
         {
-            if (target.isSneaking())
+            if (target.isRiding() || target.isSitting())
+            {
+                IEntity mount = target.getMountTarget();
+                boolean mountMoves = false;
+
+                if (mount != null)
+                {
+                    double mdx = mount.getX() - mount.getPrevX();
+                    double mdz = mount.getZ() - mount.getPrevZ();
+
+                    mountMoves = Math.abs(mdx) > threshold || Math.abs(mdz) > threshold;
+                }
+
+                ActionPlayback ridingAction = !mountMoves && this.ridingIdle != null ? this.ridingIdle : this.riding;
+
+                if (ridingAction != null)
+                {
+                    this.setActiveAction(ridingAction);
+                }
+                else if (!mountMoves && this.crouchingIdle != null)
+                {
+                    this.setActiveAction(this.crouchingIdle);
+                }
+                else if (this.crouching != null)
+                {
+                    this.setActiveAction(this.crouching);
+                }
+                else
+                {
+                    this.setActiveAction(this.idle);
+                }
+            }
+            else if (target.isSneaking())
             {
                 this.setActiveAction(!moves ? this.crouchingIdle : this.crouching);
             }
@@ -402,8 +429,6 @@ public class Animator implements IAnimator
                 action.apply(target, armature.getModel(), transition, 1F, true);
             }
         }
-
-        this.applyPhysBones(armature.getModel());
     }
 
     @Override
@@ -412,15 +437,5 @@ public class Animator implements IAnimator
         Animation animation = this.model.getAnimations().get(name);
 
         this.addAction(new ActionPlayback(animation, new ActionConfig(), false, -1));
-    }
-
-    private void updatePhysBones(IEntity entity)
-    {
-        PhysBoneRuntime.update(entity, this.model, this.physStates);
-    }
-
-    private void applyPhysBones(IModel model)
-    {
-        PhysBoneRuntime.apply(model, this.physStates);
     }
 }

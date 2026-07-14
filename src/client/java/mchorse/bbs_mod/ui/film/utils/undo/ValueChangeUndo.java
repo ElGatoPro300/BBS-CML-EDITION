@@ -35,12 +35,12 @@ public class ValueChangeUndo extends FilmEditorUndo
 
     public void cacheBefore(MapType uiData)
     {
-        this.uiBefore = uiData;
+        this.uiBefore = uiData == null ? new MapType() : (MapType) uiData.copy();
     }
 
     public void cacheAfter(UIElement editor)
     {
-        this.uiAfter = editor.getRoot() == null ? new MapType() : editor.getRoot().collectAllUndoData();
+        this.uiAfter = editor.getRoot() == null ? new MapType() : (MapType) editor.getRoot().collectAllUndoData().copy();
     }
 
     public DataPath getName()

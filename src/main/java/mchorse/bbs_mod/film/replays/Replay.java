@@ -12,6 +12,7 @@ import mchorse.bbs_mod.data.types.StringType;
 import mchorse.bbs_mod.film.Film;
 import mchorse.bbs_mod.forms.entities.IEntity;
 import mchorse.bbs_mod.forms.forms.Form;
+import mchorse.bbs_mod.forms.forms.MobForm;
 import mchorse.bbs_mod.settings.values.base.BaseValueGroup;
 import mchorse.bbs_mod.settings.values.core.ValueForm;
 import mchorse.bbs_mod.settings.values.core.ValueGroup;
@@ -48,8 +49,11 @@ public class Replay extends ValueGroup
 
     public final ValueBoolean actor = new ValueBoolean("actor", false);
     public final ValueBoolean fp = new ValueBoolean("fp", false);
+    public final ValueBoolean vanillaMobPlayback = new ValueBoolean("vanilla_mob_playback", false);
     public final ValueBoolean relative = new ValueBoolean("relative", false);
     public final ValuePoint relativeOffset = new ValuePoint("relativeOffset", new Point(0, 0, 0));
+
+    public transient boolean vanillaMobPlaybackSerialized = false;
 
     private final Map<String, String> customSheetTitles = new HashMap<>();
     private final Map<String, Integer> sheetColors = new HashMap<>();
@@ -88,6 +92,7 @@ public class Replay extends ValueGroup
 
         this.add(this.actor);
         this.add(this.fp);
+        this.add(this.vanillaMobPlayback);
         this.add(this.relative);
         this.add(this.relativeOffset);
 
@@ -212,6 +217,7 @@ public class Replay extends ValueGroup
             this.customSheetTitles.putAll(other.customSheetTitles);
             this.sheetColors.clear();
             this.sheetColors.putAll(other.sheetColors);
+            this.vanillaMobPlaybackSerialized = other.vanillaMobPlaybackSerialized;
         }
     }
 
@@ -254,6 +260,8 @@ public class Replay extends ValueGroup
 
         if (data instanceof MapType map)
         {
+            this.vanillaMobPlaybackSerialized = map.has("vanilla_mob_playback");
+
             BaseType titlesType = map.get("custom_sheet_titles");
 
             if (titlesType instanceof MapType titles)
@@ -286,7 +294,11 @@ public class Replay extends ValueGroup
         }
 
         this.ensureShadowKeyframes();
+        this.applyVanillaPlaybackDefaults();
     }
+
+    private void applyVanillaPlaybackDefaults()
+    {}
 
     private void ensureShadowKeyframes()
     {

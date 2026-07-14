@@ -2,6 +2,8 @@ package mchorse.bbs_mod.film;
 
 import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.forms.entities.IEntity;
+import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
+import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
@@ -25,6 +27,7 @@ public class FilmControllerContext
     public IntObjectMap<IEntity> entities;
     public IEntity entity;
     public Replay replay;
+    public Film film;
     public Camera camera;
     public MatrixStack stack;
     public VertexConsumerProvider consumers;
@@ -34,6 +37,13 @@ public class FilmControllerContext
     public int color;
     public float shadowRadius;
     public float shadowOpacity;
+
+    /* Tick (with sub-tick transition) at which the replay's form properties were applied
+     * this frame; NaN when the render path doesn't know it (illusion delay needs it) */
+    public float propertyTick = Float.NaN;
+
+    /* Film timeline tick used to restore other replays' form properties after temporary sampling */
+    public int filmTick = -1;
 
     public String bone;
     public boolean local;
@@ -46,12 +56,18 @@ public class FilmControllerContext
     public boolean isShadowPass;
     public Matrix4f localGroupTransform;
     public Matrix4f viewMatrix;
+    public PaintSettings groupPaint;
+    public GlowSettings groupGlow;
+    public FormRenderDepth.Frame renderDepthFrame;
 
     private FilmControllerContext()
     {}
 
     private void reset()
     {
+        this.film = null;
+        this.propertyTick = Float.NaN;
+        this.filmTick = -1;
         this.map = null;
         this.shadowRadius = 0F;
         this.shadowOpacity = 1F;
@@ -63,6 +79,9 @@ public class FilmControllerContext
         this.isShadowPass = false;
         this.localGroupTransform = null;
         this.viewMatrix = null;
+        this.groupPaint = null;
+        this.groupGlow = null;
+        this.renderDepthFrame = null;
     }
 
     public FilmControllerContext setup(IntObjectMap<IEntity> entities, IEntity entity, Replay replay, WorldRenderContext context)
@@ -96,6 +115,27 @@ public class FilmControllerContext
         this.stack = stack;
         this.consumers = consumers;
         this.transition = transition;
+
+        return this;
+    }
+
+    public FilmControllerContext film(Film film)
+    {
+        this.film = film;
+
+        return this;
+    }
+
+    public FilmControllerContext propertyTick(float propertyTick)
+    {
+        this.propertyTick = propertyTick;
+
+        return this;
+    }
+
+    public FilmControllerContext filmTick(int filmTick)
+    {
+        this.filmTick = filmTick;
 
         return this;
     }
@@ -178,6 +218,13 @@ public class FilmControllerContext
     public FilmControllerContext relative(boolean relative)
     {
         this.relative = relative;
+
+        return this;
+    }
+
+    public FilmControllerContext renderDepthFrame(FormRenderDepth.Frame renderDepthFrame)
+    {
+        this.renderDepthFrame = renderDepthFrame;
 
         return this;
     }
