@@ -102,7 +102,7 @@ public class ModelVAORenderer
      */
     public static Matrix4f capturePaintOverlayRootMatrix(Matrix4f rootStackMatrix)
     {
-        return new Matrix4f(rootStackMatrix);
+        return new Matrix4f(RenderSystem.getModelViewMatrix()).mul(rootStackMatrix);
     }
 
     public static void clearPaintOverlayQueue()
