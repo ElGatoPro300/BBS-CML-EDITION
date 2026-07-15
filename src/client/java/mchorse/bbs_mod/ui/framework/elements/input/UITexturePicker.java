@@ -1017,6 +1017,7 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
 
     public void fill(Link link)
     {
+        this.picker.clearNavigationHistory();
         this.setMulti(link, false, true);
     }
 
@@ -1276,6 +1277,30 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
 
         Form source = this.formPreviewSupplier.get();
         this.formPreview.form = source == null ? null : FormUtils.copy(source);
+    }
+
+    @Override
+    protected boolean subMouseClicked(UIContext context)
+    {
+        if (this.activeTab == TAB_FILES)
+        {
+            if (context.mouseButton == GLFW.GLFW_MOUSE_BUTTON_4)
+            {
+                if (this.picker.navigateBack())
+                {
+                    return true;
+                }
+            }
+            else if (context.mouseButton == GLFW.GLFW_MOUSE_BUTTON_5)
+            {
+                if (this.picker.navigateForward())
+                {
+                    return true;
+                }
+            }
+        }
+
+        return super.subMouseClicked(context);
     }
 
     @Override
