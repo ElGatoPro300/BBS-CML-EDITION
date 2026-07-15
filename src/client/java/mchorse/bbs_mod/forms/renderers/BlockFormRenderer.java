@@ -14,7 +14,6 @@ import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.interps.Lerps;
 import mchorse.bbs_mod.utils.joml.Vectors;
 import mchorse.bbs_mod.utils.pose.Transform;
-import org.joml.Vector3f;
 
 import net.minecraft.block.BlockEntityProvider;
 import net.minecraft.block.entity.BlockEntity;
@@ -33,6 +32,7 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 
 import org.joml.Matrix4f;
+import org.joml.Vector3f;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 

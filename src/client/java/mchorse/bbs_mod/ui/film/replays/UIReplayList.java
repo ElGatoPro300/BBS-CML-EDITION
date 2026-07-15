@@ -28,7 +28,6 @@ import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.math.IExpression;
 import mchorse.bbs_mod.math.MathBuilder;
 import mchorse.bbs_mod.resources.Link;
-import org.joml.Vector3f;
 import mchorse.bbs_mod.settings.values.IValueListener;
 import mchorse.bbs_mod.settings.values.base.BaseValue;
 import mchorse.bbs_mod.settings.values.core.ValueForm;
@@ -84,6 +83,7 @@ import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 
 import org.joml.Vector3d;
+import org.joml.Vector3f;
 
 import java.io.File;
 import java.io.FileInputStream;
