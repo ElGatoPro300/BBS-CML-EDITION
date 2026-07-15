@@ -103,6 +103,8 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
     }
 
     private static final Map<String, VaoHolder> VAO_CACHE = new HashMap<>();
+    private static final int LIGHTING_REVISION = 1;
+    private static int cachedLightingRevision = -1;
 
     private final List<BlockEntry> blocks = new ArrayList<>();
     private final List<BlockEntry> animatedBlocks = new ArrayList<>();
@@ -150,6 +152,15 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
         }
 
         VAO_CACHE.clear();
+    }
+
+    private static void ensureLightingRevision()
+    {
+        if (cachedLightingRevision != LIGHTING_REVISION)
+        {
+            StructureFormRenderer.clearAllCachedVaos();
+            cachedLightingRevision = LIGHTING_REVISION;
+        }
     }
 
     public StructureFormRenderer(StructureForm form)
@@ -366,6 +377,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
     @Override
     protected void render3D(FormRenderingContext context)
     {
+        StructureFormRenderer.ensureLightingRevision();
         this.ensureLoaded();
 
         context.stack.push();

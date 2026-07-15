@@ -974,6 +974,37 @@ public class UIKeys
     public static final IKey BLOCK_PICKER_MODE_MODEL_BLOCK = L10n.lang("bbs.ui.items.block_picker.mode.model_block");
     public static final IKey BLOCK_PICKER_MODE_TITLE = L10n.lang("bbs.ui.items.block_picker.mode.title");
     public static final IKey BLOCK_PICKER_NO_OPEN_FILM = L10n.lang("bbs.ui.items.block_picker.no_open_film");
+    public static final IKey STRUCTURE_PICKER_INTERACTING = L10n.lang("bbs.ui.items.structure_picker.interacting");
+    public static final IKey STRUCTURE_PICKER_MODE_BLOCK = L10n.lang("bbs.ui.items.structure_picker.mode.block");
+    public static final IKey STRUCTURE_PICKER_MODE_RECTANGLE = L10n.lang("bbs.ui.items.structure_picker.mode.rectangle");
+    public static final IKey STRUCTURE_PICKER_MODE_CUBE = L10n.lang("bbs.ui.items.structure_picker.mode.cube");
+    public static final IKey STRUCTURE_PICKER_MODE_CIRCLE = L10n.lang("bbs.ui.items.structure_picker.mode.circle");
+    public static final IKey STRUCTURE_PICKER_MODE_SPHERE = L10n.lang("bbs.ui.items.structure_picker.mode.sphere");
+    public static final IKey STRUCTURE_PICKER_MODE_TRIANGLE = L10n.lang("bbs.ui.items.structure_picker.mode.triangle");
+    public static final IKey STRUCTURE_PICKER_MODE_CONE = L10n.lang("bbs.ui.items.structure_picker.mode.cone");
+    public static final IKey STRUCTURE_PICKER_MODE_CYLINDER = L10n.lang("bbs.ui.items.structure_picker.mode.cylinder");
+    public static final IKey STRUCTURE_PICKER_CONFIRM_TITLE = L10n.lang("bbs.ui.items.structure_picker.confirm.title");
+    public static final IKey STRUCTURE_PICKER_MAKE_MODEL_BLOCK = L10n.lang("bbs.ui.items.structure_picker.confirm.model_block");
+    public static final IKey STRUCTURE_PICKER_IMPORT_FILM = L10n.lang("bbs.ui.items.structure_picker.confirm.import_film");
+    public static final IKey STRUCTURE_PICKER_APPLY = L10n.lang("bbs.ui.items.structure_picker.confirm.apply");
+    public static final IKey STRUCTURE_PICKER_REMOVE_SELECTION = L10n.lang("bbs.ui.items.structure_picker.remove_selection");
+    public static final IKey STRUCTURE_PICKER_SUBTRACT_SELECTION = L10n.lang("bbs.ui.items.structure_picker.subtract_selection");
+    public static final IKey STRUCTURE_PICKER_SUBTRACTING = L10n.lang("bbs.ui.items.structure_picker.subtracting");
+    public static final IKey STRUCTURE_PICKER_BREAK_SELECTION = L10n.lang("bbs.ui.items.structure_picker.break_selection");
+    public static final IKey STRUCTURE_PICKER_REMOVE_CONFIRM = L10n.lang("bbs.ui.items.structure_picker.remove_confirm");
+    public static final IKey STRUCTURE_PICKER_BREAK_CONFIRM = L10n.lang("bbs.ui.items.structure_picker.break_confirm");
+    public static final IKey STRUCTURE_PICKER_CLICK_ON_AIR = L10n.lang("bbs.ui.items.structure_picker.click_on_air");
+    public static final IKey[] STRUCTURE_PICKER_MODE_LABELS = new IKey[]
+    {
+        STRUCTURE_PICKER_MODE_BLOCK,
+        STRUCTURE_PICKER_MODE_RECTANGLE,
+        STRUCTURE_PICKER_MODE_CUBE,
+        STRUCTURE_PICKER_MODE_CIRCLE,
+        STRUCTURE_PICKER_MODE_SPHERE,
+        STRUCTURE_PICKER_MODE_TRIANGLE,
+        STRUCTURE_PICKER_MODE_CONE,
+        STRUCTURE_PICKER_MODE_CYLINDER
+    };
     public static final IKey GENERAL_EXPORT = L10n.lang("bbs.ui.export");
     public static final IKey GENERAL_FFMPEG_ERROR_DESCRIPTION = L10n.lang("bbs.ui.ffmpeg.error-description");
     public static final IKey GENERAL_FFMPEG_ERROR_GUIDE = L10n.lang("bbs.ui.ffmpeg.error-guide");

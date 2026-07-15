@@ -603,6 +603,7 @@ public class BBSRendering
         VideoRecorder videoRecorder = BBSModClient.getVideoRecorder();
 
         BBSModClient.getFilms().renderHud(batcher2D, tickDelta);
+        StructurePickerClient.renderHud(batcher2D);
 
         boolean showRecordingOverlay = videoRecorder.isRecording() && BBSSettings.recordingOverlays.get() && UIScreen.getCurrentMenu() == null;
 
@@ -752,6 +753,7 @@ public class BBSRendering
         }
 
         BBSModClient.getFilms().render(worldRenderContext);
+        StructurePickerRenderer.render(worldRenderContext);
     }
 
     public static boolean isOptifinePresent()

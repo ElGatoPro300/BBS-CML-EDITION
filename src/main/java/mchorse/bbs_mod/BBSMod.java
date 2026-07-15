@@ -672,6 +672,11 @@ public class BBSMod implements ModInitializer
                 return ActionResult.SUCCESS;
             }
 
+            if (player.getStackInHand(hand).getItem() == STRUCTURE_PICKER_ITEM)
+            {
+                return ActionResult.SUCCESS;
+            }
+
             return ActionResult.PASS;
         });
 
