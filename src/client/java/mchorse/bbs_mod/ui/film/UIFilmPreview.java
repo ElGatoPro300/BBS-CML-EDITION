@@ -595,7 +595,13 @@ public class UIFilmPreview extends UIElement
 
                 return false;
             }
-            else if (this.panel.getController().getPovMode() == UIFilmController.CAMERA_MODE_ORBIT
+
+            if (context.mouseButton == 1 && this.panel.replayEditor.clickViewport(context, area))
+            {
+                return true;
+            }
+
+            if (this.panel.getController().getPovMode() == UIFilmController.CAMERA_MODE_ORBIT
                 && BBSSettings.editorOrbitWithoutFlight.get()
                 && !this.panel.getController().orbit.isAnimating()
                 && this.panel.getController().orbit.canStart(context) >= 0)

@@ -6,7 +6,6 @@ import mchorse.bbs_mod.audio.SoundBuffer;
 import mchorse.bbs_mod.audio.Waveform;
 import mchorse.bbs_mod.bobj.BOBJBone;
 import mchorse.bbs_mod.camera.Camera;
-import mchorse.bbs_mod.camera.CameraUtils;
 import mchorse.bbs_mod.camera.clips.ClipFactoryData;
 import mchorse.bbs_mod.camera.clips.misc.AudioClip;
 import mchorse.bbs_mod.camera.utils.TimeUtils;
@@ -40,6 +39,7 @@ import mchorse.bbs_mod.settings.values.base.BaseValueBasic;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.UIClipsPanel;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
+import mchorse.bbs_mod.ui.film.UIFilmPreview;
 import mchorse.bbs_mod.ui.film.clips.renderer.IUIClipRenderer;
 import mchorse.bbs_mod.ui.film.controller.UIFilmController;
 import mchorse.bbs_mod.ui.film.replays.overlays.UIAnimationToPoseOverlayPanel;
@@ -950,21 +950,41 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
     private Vector3d rayTraceViewportBlock(UIContext context, Area area)
     {
         World world = MinecraftClient.getInstance().world;
-        Camera camera = this.filmPanel.getCamera();
+        UIFilmPreview preview = this.filmPanel.preview;
 
-        if (world == null || camera == null || area == null || area.w <= 0 || area.h <= 0)
+        if (world == null || preview == null || area == null || area.w <= 0 || area.h <= 0)
         {
             return null;
         }
 
-        /* Mouse and area are both in the caller's local coordinate space, so no
-         * viewport-stack conversion is needed (converting only one of them offset
-         * the ray and broke distant clicks). */
-        Vector3f direction = CameraUtils.getMouseDirection(
-            camera.projection, camera.view,
-            context.mouseX, context.mouseY,
-            area.x, area.y, area.w, area.h
-        );
+        /* Use the world camera (the camera the viewport is actually rendered with) and
+         * compute the ray analytically from its rotation + fov. The captured render
+         * matrices can't be used here: without shaders the captured view matrix does
+         * not include the camera rotation (see renderPickingPreview). */
+        Camera camera = this.filmPanel.getWorldCamera();
+
+        Area viewport = preview.getAbsoluteViewport();
+
+        if (!viewport.isInside(context.mouseX(), context.mouseY()))
+        {
+            return null;
+        }
+
+        int renderW = BBSRendering.getVideoWidth();
+        int renderH = BBSRendering.getVideoHeight();
+
+        if (renderW <= 0 || renderH <= 0)
+        {
+            return null;
+        }
+
+        int px = (int) ((context.mouseX() - viewport.x) / (float) viewport.w * renderW);
+        int py = (int) ((context.mouseY() - viewport.y) / (float) viewport.h * renderH);
+
+        px = MathUtils.clamp(px, 0, renderW - 1);
+        py = MathUtils.clamp(py, 0, renderH - 1);
+
+        Vector3f direction = camera.getMouseDirectionFov(px, py, 0, 0, renderW, renderH);
 
         if (direction.lengthSquared() <= 1.0E-12F)
         {
@@ -978,16 +998,28 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
             256F
         );
 
+        Vector3d vec;
+
         if (blockHitResult.getType() == HitResult.Type.MISS)
         {
-            return null;
-        }
+            /* No block under the cursor (looking at the sky or terrain out of range):
+             * fall back to a point along the ray so the context menu still works. */
+            double fallbackDistance = 32D;
 
-        Vector3d vec = new Vector3d(
-            blockHitResult.getPos().x,
-            blockHitResult.getPos().y,
-            blockHitResult.getPos().z
-        );
+            vec = new Vector3d(
+                camera.position.x + direction.x * fallbackDistance,
+                camera.position.y + direction.y * fallbackDistance,
+                camera.position.z + direction.z * fallbackDistance
+            );
+        }
+        else
+        {
+            vec = new Vector3d(
+                blockHitResult.getPos().x,
+                blockHitResult.getPos().y,
+                blockHitResult.getPos().z
+            );
+        }
 
         if (Window.isShiftPressed())
         {
@@ -999,6 +1031,38 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
         }
 
         return vec;
+    }
+
+    public Vector3d rayTraceViewportFromContext(UIContext context, Area area)
+    {
+        return this.rayTraceViewportBlock(context, area);
+    }
+
+    private void openViewportReplayContextMenu(UIContext context, Vector3d position)
+    {
+        Camera camera = this.filmPanel.getCamera();
+
+        if (camera == null)
+        {
+            return;
+        }
+
+        final Vector3d finalVec = position;
+        float pitch = 0F;
+        float yaw = MathUtils.toDeg(camera.rotation.y);
+        boolean canMove = this.getReplay() != null;
+
+        context.replaceContextMenu((menu) ->
+        {
+            menu.action(Icons.ADD, UIKeys.FILM_REPLAY_CONTEXT_ADD,
+                () -> this.replays.replays.addReplay(finalVec, pitch, yaw));
+
+            if (canMove)
+            {
+                menu.action(Icons.POINTER, UIKeys.FILM_REPLAY_CONTEXT_MOVE_HERE,
+                    () -> this.moveReplay(finalVec.x, finalVec.y, finalVec.z));
+            }
+        });
     }
 
     public UIFilmPanel getFilmPanel()
@@ -3765,26 +3829,13 @@ public class UIReplaysEditor extends UIElement implements GizmoSurface
                 }
             }
         }
-        else if (context.mouseButton == 1 && this.isVisible() && !this.viewportInteraction.isActive())
+        else if (context.mouseButton == 1 && this.filmPanel.getData() != null && !this.viewportInteraction.isActive())
         {
-            Camera camera = this.filmPanel.getCamera();
-
             Vector3d vec = this.rayTraceViewportBlock(context, area);
 
             if (vec != null)
             {
-                final Vector3d finalVec = vec;
-
-                context.replaceContextMenu((menu) ->
-                {
-                    float pitch = 0F;
-                    float yaw = MathUtils.toDeg(camera.rotation.y);
-
-                    menu.action(Icons.ADD, UIKeys.FILM_REPLAY_CONTEXT_ADD,
-                        () -> this.replays.replays.addReplay(finalVec, pitch, yaw));
-                    menu.action(Icons.POINTER, UIKeys.FILM_REPLAY_CONTEXT_MOVE_HERE,
-                        () -> this.moveReplay(finalVec.x, finalVec.y, finalVec.z));
-                });
+                this.openViewportReplayContextMenu(context, vec);
 
                 return true;
             }
