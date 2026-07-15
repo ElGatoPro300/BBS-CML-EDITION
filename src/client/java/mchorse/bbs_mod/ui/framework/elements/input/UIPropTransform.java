@@ -2292,6 +2292,12 @@ public class UIPropTransform extends UITransform
 
             this.updateDragProgressVisual(context);
         }
+        else if (this.mode == 2 && !this.freeRotation && needsPlanePoint)
+        {
+            /* Axis and view rings: anchor the grab point on the ring plane so the first
+             * drag frame measures from the click position, not a stale/zero vector. */
+            this.rayDragStartPoint.set(this.rayLastPoint);
+        }
 
         return true;
     }
@@ -2435,6 +2441,11 @@ public class UIPropTransform extends UITransform
 
         if (this.viewRing)
         {
+            if (!this.hasDragPointerMoved(context))
+            {
+                return true;
+            }
+
             if (!this.gizmoRayProvider.getGizmoMatrix(this.rayGizmoMatrix))
             {
                 return false;
@@ -2451,6 +2462,11 @@ public class UIPropTransform extends UITransform
         }
 
         if (this.mode == 0 && !this.freeTranslation && !this.hasDragPointerMoved(context))
+        {
+            return true;
+        }
+
+        if (this.mode == 2 && !this.freeRotation && !this.trackball && !this.hasDragPointerMoved(context))
         {
             return true;
         }

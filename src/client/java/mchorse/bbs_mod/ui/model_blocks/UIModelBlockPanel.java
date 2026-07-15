@@ -2323,18 +2323,10 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
 
     private void applyGizmoCaptureToSingleton()
     {
-        if (BBSRendering.isIrisShadersEnabled())
-        {
-            Gizmo.INSTANCE.lastGizmoMatrix.set(this.gizmoInterfaceMatrix);
-        }
-        else
-        {
-            /* Without shaders the world pass does not bake BBSRendering.camera into the
-             * captured matrix; premultiply it here so the UI draw matches the shader path. */
-            Gizmo.INSTANCE.lastGizmoMatrix.set(BBSRendering.camera);
-            Gizmo.INSTANCE.lastGizmoMatrix.mul(this.gizmoInterfaceMatrix);
-        }
-
+        /* Whether the captured matrix already bakes BBSRendering.camera depends on the
+         * render path (Iris pack vs. vanilla); pick the composition that lands inside
+         * the frustum so the visual always matches the on-screen hitbox. */
+        Gizmo.composeVisualMatrix(this.gizmoInterfaceMatrix, BBSRendering.camera, this.gizmoProjection, Gizmo.INSTANCE.lastGizmoMatrix);
         Gizmo.INSTANCE.hasGizmoMatrix = true;
     }
 

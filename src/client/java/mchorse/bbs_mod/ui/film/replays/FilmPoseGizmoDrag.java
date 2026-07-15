@@ -11,6 +11,7 @@ import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UIAnchorK
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UIPoseKeyframeFactory;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories.UITransformKeyframeFactory;
 import mchorse.bbs_mod.ui.utils.Area;
+import mchorse.bbs_mod.ui.utils.Gizmo;
 
 import org.joml.Matrix4f;
 import org.joml.Vector3d;
@@ -158,15 +159,9 @@ public final class FilmPoseGizmoDrag
             return false;
         }
 
-        if (BBSRendering.isIrisShadersEnabled())
-        {
-            matrix.set(panel.lastGizmoMatrix);
-        }
-        else
-        {
-            matrix.set(BBSRendering.camera);
-            matrix.mul(panel.lastGizmoMatrix);
-        }
+        /* Same frustum-based composition as the visual pass, so drags grab the
+         * handle exactly where it is drawn regardless of the shader path. */
+        Gizmo.composeVisualMatrix(panel.lastGizmoMatrix, BBSRendering.camera, panel.lastProjection, matrix);
 
         return true;
     }

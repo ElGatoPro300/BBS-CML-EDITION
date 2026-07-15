@@ -534,6 +534,47 @@ public class Gizmo
     }
 
     /**
+     * Compose the world-pass captured gizmo matrix with the camera rotation when needed.
+     *
+     * Depending on the render path (Iris shader pack, chunk-layer hook, vanilla), the
+     * captured matrix may or may not already contain the camera rotation. Instead of
+     * hardcoding an assumption per path, test both candidates against the projection:
+     * the correct one places the gizmo origin in front of the camera within the frustum
+     * (the gizmo hitbox is drawn on screen, so the visual must land there too).
+     */
+    public static Matrix4f composeVisualMatrix(Matrix4f captured, Matrix4f cameraMatrix, Matrix4f projection, Matrix4f dest)
+    {
+        Matrix4f baked = new Matrix4f(captured);
+        Matrix4f composed = new Matrix4f(cameraMatrix).mul(captured);
+        boolean preferBaked = BBSRendering.isIrisShadersEnabled();
+        Matrix4f first = preferBaked ? baked : composed;
+        Matrix4f second = preferBaked ? composed : baked;
+
+        if (!isOriginVisible(first, projection) && isOriginVisible(second, projection))
+        {
+            dest.set(second);
+        }
+        else
+        {
+            dest.set(first);
+        }
+
+        return dest;
+    }
+
+    private static boolean isOriginVisible(Matrix4f view, Matrix4f projection)
+    {
+        Vector4f clip = new Vector4f(0F, 0F, 0F, 1F).mul(view).mul(projection);
+
+        if (clip.w <= 1.0E-6F)
+        {
+            return false;
+        }
+
+        return Math.abs(clip.x / clip.w) <= 1.1F && Math.abs(clip.y / clip.w) <= 1.1F;
+    }
+
+    /**
      * Draw the captured gizmo visual in the UI pass with the same projection and
      * viewport rect as the film/model preview that rendered the world this frame.
      */

@@ -1209,23 +1209,13 @@ public class UIFilmController extends UIElement
         {
             if (this.panel.hasLastGizmoMatrix)
             {
-                if (BBSRendering.isIrisShadersEnabled())
-                {
-                    Gizmo.INSTANCE.lastGizmoMatrix.set(this.panel.lastGizmoMatrix);
-                    Gizmo.INSTANCE.hasGizmoMatrix = true;
-                    Gizmo.INSTANCE.renderInterface(context, this.panel.lastProjection, this.panel.preview.getViewport());
-                }
-                else
-                {
-                    /* Without shaders the world pass does not bake BBSRendering.camera into
-                     * the captured matrix; premultiply it here so the UI draw matches the
-                     * shader path (same adjustment as renderPickingPreview). */
-                    this.gizmoInterfaceMatrix.set(BBSRendering.camera);
-                    this.gizmoInterfaceMatrix.mul(this.panel.lastGizmoMatrix);
-                    Gizmo.INSTANCE.lastGizmoMatrix.set(this.gizmoInterfaceMatrix);
-                    Gizmo.INSTANCE.hasGizmoMatrix = true;
-                    Gizmo.INSTANCE.renderInterface(context, this.panel.lastProjection, this.panel.preview.getViewport());
-                }
+                /* Whether the world pass bakes BBSRendering.camera into the captured
+                 * matrix depends on the render path (Iris pack vs. vanilla), so let
+                 * the gizmo pick the composition that lands inside the frustum. */
+                Gizmo.composeVisualMatrix(this.panel.lastGizmoMatrix, BBSRendering.camera, this.panel.lastProjection, this.gizmoInterfaceMatrix);
+                Gizmo.INSTANCE.lastGizmoMatrix.set(this.gizmoInterfaceMatrix);
+                Gizmo.INSTANCE.hasGizmoMatrix = true;
+                Gizmo.INSTANCE.renderInterface(context, this.panel.lastProjection, this.panel.preview.getViewport());
             }
         }
         else if (!Gizmo.INSTANCE.isDragging())
