@@ -1,6 +1,10 @@
 package mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories;
 
+import mchorse.bbs_mod.forms.FormUtils;
+import mchorse.bbs_mod.forms.forms.Form;
+import mchorse.bbs_mod.forms.forms.ModelForm;
 import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
+import mchorse.bbs_mod.forms.renderers.ModelFormRenderer;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
 import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
@@ -53,7 +57,18 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
         if (isPoseLimbTrack(sheet))
         {
             this.transform.translationScale(16F);
-            this.transform.poseLimbGizmoTuning();
+
+            Form limbForm = FormUtils.getForm(sheet.property);
+            boolean bobj = limbForm instanceof ModelForm modelForm && ModelFormRenderer.isBobjModel(modelForm);
+
+            if (bobj)
+            {
+                this.transform.bobjPoseLimbGizmoTuning();
+            }
+            else
+            {
+                this.transform.poseLimbGizmoTuning();
+            }
             this.fix = new UITrackpad((v) ->
             {
                 UIPoseTransforms.applyPoseTransform(this.editor, this.keyframe, (poseT) -> poseT.fix = MathUtils.clamp(v.floatValue(), 0F, 1F));

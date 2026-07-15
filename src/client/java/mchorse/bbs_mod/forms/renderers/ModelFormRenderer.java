@@ -7,6 +7,7 @@ import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.client.ItemUseRenderState;
 import mchorse.bbs_mod.client.renderer.entity.ActorEntityRenderer;
+import mchorse.bbs_mod.cubic.IModel;
 import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.cubic.animation.ActionsConfig;
 import mchorse.bbs_mod.cubic.animation.Animator;
@@ -156,6 +157,18 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
     public static ModelInstance getModel(ModelForm form)
     {
         return BBSModClient.getModels().getModel(form.model.get());
+    }
+
+    public static boolean isBobjModel(ModelForm form)
+    {
+        ModelInstance instance = getModel(form);
+
+        return instance != null && instance.model instanceof BOBJModel;
+    }
+
+    public static boolean isBobjModel(IModel model)
+    {
+        return model instanceof BOBJModel;
     }
 
     public ModelFormRenderer(ModelForm form)

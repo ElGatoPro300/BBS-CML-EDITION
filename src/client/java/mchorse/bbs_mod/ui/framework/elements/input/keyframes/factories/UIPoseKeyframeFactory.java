@@ -256,12 +256,23 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
         {
             /* Same ring / translate sign tuning as UIModelPoseEditor; film drag prepare clears
              * trackball euler flips when using the arcball sphere. */
-            return new UIPoseTransforms()
-                .enableHotkeys()
-                .translationScale(this.getGizmoTranslationScale())
-                .poseModelGizmoTuning()
-                .invertModelPoseTrackballXZ()
-                .invertModelPoseTrackballDragY();
+            UIPoseTransforms editor = new UIPoseTransforms();
+
+            editor.enableHotkeys();
+            editor.translationScale(this.getGizmoTranslationScale());
+
+            if (ModelFormRenderer.isBobjModel(this.model))
+            {
+                editor.bobjPoseGizmoTuning();
+            }
+            else
+            {
+                editor.poseModelGizmoTuning();
+                editor.invertModelPoseTrackballXZ();
+                editor.invertModelPoseTrackballDragY();
+            }
+
+            return editor;
         }
 
         @Override

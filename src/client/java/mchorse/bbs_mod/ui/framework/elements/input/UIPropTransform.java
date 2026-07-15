@@ -223,10 +223,75 @@ public class UIPropTransform extends UITransform
      */
     public UIPropTransform poseModelGizmoTuning()
     {
-        this.invertGizmoTranslateZ = true;
-        this.invertGizmoRotationX = true;
-        this.invertGizmoRotationZ = true;
+        this.configurePoseRingTuning(false);
         this.invertModelPoseTrackballXYZ();
+
+        return this;
+    }
+
+    /**
+     * BOBJ armatures: the renderer PRE-multiplies the whole model by Ry(180°) instead of
+     * post-multiplying each bone like cubic models do (see ModelInstance.captureMatrices),
+     * so the displayed gizmo axes equal the actual euler rotation axes — no ring flips and
+     * no translate flip. The trackball keeps only the context's vertical drag flip (the X/Z
+     * euler flips compensate the cubic bone-local mirror, which BOBJ does not have).
+     */
+    public UIPropTransform bobjPoseGizmoTuning()
+    {
+        this.configurePoseRingTuning(true);
+        this.invertModelPoseTrackballDragY();
+
+        return this;
+    }
+
+    /**
+     * Ring / translate sign correction for pose bone gizmos. Cubic (.bbs.json) models bake a
+     * bone-local Ry(180°) into their captured matrices, flipping the displayed X/Z axes
+     * relative to the euler rotation axes, so their X/Z rings and Z translate need a sign
+     * flip. BOBJ pre-multiplies that Ry(180°) globally instead, so its displayed axes match
+     * the euler axes exactly — no inversion at all (same as bbs-fs' sampled rotate axes).
+     */
+    public UIPropTransform configurePoseRingTuning(boolean bobj)
+    {
+        if (bobj)
+        {
+            this.invertGizmoTranslateZ = false;
+            this.invertGizmoRotationX = false;
+            this.invertGizmoRotationY = false;
+            this.invertGizmoRotationZ = false;
+        }
+        else
+        {
+            this.invertGizmoTranslateZ = true;
+            this.invertGizmoRotationX = true;
+            this.invertGizmoRotationY = false;
+            this.invertGizmoRotationZ = true;
+        }
+
+        return this;
+    }
+
+    /**
+     * Pose limb overlay gizmo ring signs. The limb context flips the Y ring on top of the
+     * model's own convention: cubic (bone-local Ry(180°) → X/Z flipped) ends up inverting
+     * all three rings; BOBJ (no bone-local flip) keeps only the context's Y inversion.
+     */
+    public UIPropTransform configurePoseLimbRingTuning(boolean bobj)
+    {
+        if (bobj)
+        {
+            this.invertGizmoTranslateZ = false;
+            this.invertGizmoRotationX = false;
+            this.invertGizmoRotationY = true;
+            this.invertGizmoRotationZ = false;
+        }
+        else
+        {
+            this.invertGizmoTranslateZ = true;
+            this.invertGizmoRotationX = true;
+            this.invertGizmoRotationY = true;
+            this.invertGizmoRotationZ = true;
+        }
 
         return this;
     }
@@ -326,11 +391,20 @@ public class UIPropTransform extends UITransform
      */
     public UIPropTransform poseLimbGizmoTuning()
     {
-        this.invertGizmoTranslateZ = true;
-        this.invertGizmoRotationX = true;
-        this.invertGizmoRotationY = true;
-        this.invertGizmoRotationZ = true;
+        this.configurePoseLimbRingTuning(false);
         this.invertModelPoseTrackballXZ();
+        this.invertTrackballDragY = true;
+
+        return this;
+    }
+
+    /**
+     * BOBJ variant of {@link #poseLimbGizmoTuning()}: keeps the limb context's vertical drag
+     * flip but drops the cubic-only X/Z euler flips (no bone-local mirror in BOBJ frames).
+     */
+    public UIPropTransform bobjPoseLimbGizmoTuning()
+    {
+        this.configurePoseLimbRingTuning(true);
         this.invertTrackballDragY = true;
 
         return this;

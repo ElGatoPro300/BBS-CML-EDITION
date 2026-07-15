@@ -2,6 +2,11 @@ package mchorse.bbs_mod.ui.film.replays;
 
 import mchorse.bbs_mod.camera.Camera;
 import mchorse.bbs_mod.client.BBSRendering;
+import mchorse.bbs_mod.forms.FormUtils;
+import mchorse.bbs_mod.forms.forms.Form;
+import mchorse.bbs_mod.forms.forms.ModelForm;
+import mchorse.bbs_mod.forms.renderers.ModelFormRenderer;
+import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
@@ -60,14 +65,17 @@ public final class FilmPoseGizmoDrag
         }
 
         boolean filmTransformGizmo = replayTransformGizmo || anchorTrackGizmo;
+        boolean bobjModel = FilmPoseGizmoDrag.isBobjReplay(panel);
 
         if (poseGizmo)
         {
-            /* Pose bodies mirror X/Z relative to euler storage (see shouldInvertRotationRing).
-             * View-space rays fix translate / Y ring feel; X/Z rings still need poseModelGizmoTuning
-             * on the transform editor (same as UIModelPoseEditor). Trackball arcball clears euler
-             * flips each drag via clearTrackballEulerInverts(). */
-            transform.setInvertGizmoViewRing(true);
+            transform.configurePoseRingTuning(bobjModel);
+
+            /* Cubic pose bodies mirror X/Z relative to euler storage (post-multiplied bone-local
+             * Ry(180°), see shouldInvertRotationRing) — the view ring inherits that sign. BOBJ
+             * bones pre-multiply the flip globally, so their view ring keeps the natural sense.
+             * Trackball arcball clears euler flips each drag via clearTrackballEulerInverts(). */
+            transform.setInvertGizmoViewRing(!bobjModel);
             transform.setInvertGizmoTrackball(false);
             transform.setInvertFilmPoseGizmoAxes(false);
             transform.clearTrackballEulerInverts();
@@ -77,13 +85,22 @@ public final class FilmPoseGizmoDrag
         }
         else if (poseLimbGizmo)
         {
+            transform.configurePoseLimbRingTuning(bobjModel);
+
             transform.setInvertGizmoViewRing(false);
             transform.setInvertGizmoTrackball(false);
             transform.setInvertFilmPoseGizmoAxes(false);
             transform.setFilmArcballTrackball(false);
             transform.clearTrackballEulerInverts();
-            transform.invertModelPoseTrackballXZ();
+
+            /* The vertical drag flip belongs to the limb context (both formats); the X/Z
+             * euler flips compensate the cubic bone-local Ry(180°) that BOBJ doesn't have. */
             transform.invertModelPoseTrackballDragY();
+
+            if (!bobjModel)
+            {
+                transform.invertModelPoseTrackballXZ();
+            }
         }
         else if (replayTransformGizmo)
         {
@@ -200,5 +217,24 @@ public final class FilmPoseGizmoDrag
         camera.copy(panel.getWorldCamera());
         camera.view.set(panel.lastView);
         camera.projection.set(panel.lastProjection);
+    }
+
+    private static boolean isBobjReplay(UIFilmPanel panel)
+    {
+        if (panel == null || panel.replayEditor == null)
+        {
+            return false;
+        }
+
+        Replay replay = panel.replayEditor.getReplay();
+
+        if (replay == null)
+        {
+            return false;
+        }
+
+        Form form = FormUtils.getRoot(replay.form.get());
+
+        return form instanceof ModelForm modelForm && ModelFormRenderer.isBobjModel(modelForm);
     }
 }

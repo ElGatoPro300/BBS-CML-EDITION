@@ -2,6 +2,8 @@ package mchorse.bbs_mod.ui.forms.editors.panels.widgets;
 
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.settings.values.IValueListener;
+import mchorse.bbs_mod.cubic.IModel;
+import mchorse.bbs_mod.forms.renderers.ModelFormRenderer;
 import mchorse.bbs_mod.settings.values.core.ValuePose;
 import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.ui.utils.pose.UIPoseEditor;
@@ -32,12 +34,39 @@ public class UIModelPoseEditor extends UIPoseEditor
     @Override
     protected UIPropTransform createTransformEditor()
     {
-        /* Pose gizmo: flip X/Z rings and Z translate; trackball euler matches General panel. */
-        return super.createTransformEditor()
-            .callbacks(() -> this.valuePose)
-            .poseModelGizmoTuning()
-            .invertModelPoseTrackballXZ()
-            .invertModelPoseTrackballDragY();
+        UIPropTransform editor = super.createTransformEditor()
+            .callbacks(() -> this.valuePose);
+
+        if (ModelFormRenderer.isBobjModel(this.model))
+        {
+            editor.bobjPoseGizmoTuning();
+        }
+        else
+        {
+            editor.poseModelGizmoTuning()
+                .invertModelPoseTrackballXZ()
+                .invertModelPoseTrackballDragY();
+        }
+
+        return editor;
+    }
+
+    @Override
+    public void fillGroups(IModel model, java.util.Map<String, String> flippedParts, boolean reset)
+    {
+        super.fillGroups(model, flippedParts, reset);
+
+        if (this.transform != null)
+        {
+            if (ModelFormRenderer.isBobjModel(model))
+            {
+                this.transform.configurePoseRingTuning(true);
+            }
+            else
+            {
+                this.transform.configurePoseRingTuning(false);
+            }
+        }
     }
 
     @Override
