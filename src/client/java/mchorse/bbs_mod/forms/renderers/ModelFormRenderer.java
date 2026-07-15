@@ -609,6 +609,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             {
                 Matrix4f positionMatrix = ModelVAORenderer.capturePaintOverlayRootMatrix(new Matrix4f(newStack.peek().getPositionMatrix()));
                 Matrix3f normalMatrix = new Matrix3f(newStack.peek().getNormalMatrix());
+                Matrix4f baseTransformSnapshot = baseTransform == null ? null : new Matrix4f(baseTransform);
                 Color colorSnapshot = color.copy();
                 Color paintSnapshot = paintColor.copy();
                 Pose poseSnapshot = this.getPose().copy();
@@ -619,7 +620,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
                 ModelVAORenderer.submitPaintOverlay(false, () ->
                 {
-                    this.applyAnimatedPoseForOverlay(target, model, transitionSnapshot, poseSnapshot);
+                    this.applyOverlayPosePipeline(target, model, transitionSnapshot, poseSnapshot, baseTransformSnapshot);
 
                     ModelVAORenderer.setPaint(paintSnapshot.r, paintSnapshot.g, paintSnapshot.b, paintSnapshot.a);
 
@@ -655,6 +656,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             {
                 Matrix4f positionMatrix = ModelVAORenderer.capturePaintOverlayRootMatrix(new Matrix4f(newStack.peek().getPositionMatrix()));
                 Matrix3f normalMatrix = new Matrix3f(newStack.peek().getNormalMatrix());
+                Matrix4f baseTransformSnapshot = baseTransform == null ? null : new Matrix4f(baseTransform);
                 Color colorSnapshot = color.copy();
                 Pose poseSnapshot = this.getPose().copy();
                 float transitionSnapshot = transition;
@@ -667,7 +669,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                 {
                     if (applyPoseSnapshot)
                     {
-                        this.applyAnimatedPoseForOverlay(target, model, transitionSnapshot, poseSnapshot);
+                        this.applyOverlayPosePipeline(target, model, transitionSnapshot, poseSnapshot, baseTransformSnapshot);
                     }
 
                     ModelVAORenderer.setPaint(0F, 0F, 0F, 0F);
@@ -848,6 +850,18 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         model.model.resetPose();
         this.animator.applyActions(target, model, transition);
         model.model.applyPose(poseSnapshot);
+    }
+
+    private void applyOverlayPosePipeline(IEntity target, ModelInstance model, float transition, Pose poseSnapshot, Matrix4f baseTransform)
+    {
+        this.applyAnimatedPoseForOverlay(target, model, transition, poseSnapshot);
+
+        this.ikAppliedThisRender = false;
+        this.physicsAppliedThisRender = false;
+        this.constraintsAppliedThisRender = false;
+        this.applyIKOnce(model, baseTransform);
+        this.applyPhysicsOnce(target, model, transition, baseTransform);
+        this.applyConstraintsOnce(model);
     }
 
     private void renderModelGeometryWithEmission(MatrixStack stack, Supplier<ShaderProgram> program, ModelInstance model, int light, int overlay, StencilMap stencilMap, Color color, Link defaultTexture, TextureBlend textureBlend, GlowSettings glow, Color glowColor, Color legacyGlow, Color paint)
