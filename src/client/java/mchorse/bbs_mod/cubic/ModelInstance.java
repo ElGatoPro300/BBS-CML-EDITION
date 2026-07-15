@@ -11,6 +11,7 @@ import mchorse.bbs_mod.cubic.model.ArmorType;
 import mchorse.bbs_mod.cubic.model.View;
 import mchorse.bbs_mod.cubic.model.bobj.BOBJModel;
 import mchorse.bbs_mod.cubic.physics.PhysBoneDefinition;
+import mchorse.bbs_mod.cubic.render.CubicCpuGroupDrawRenderer;
 import mchorse.bbs_mod.cubic.render.CubicCubeRenderer;
 import mchorse.bbs_mod.cubic.render.CubicMatrixRenderer;
 import mchorse.bbs_mod.cubic.render.CubicRenderer;
@@ -18,6 +19,8 @@ import mchorse.bbs_mod.cubic.render.CubicVAOBuilderRenderer;
 import mchorse.bbs_mod.cubic.render.CubicVAORenderer;
 import mchorse.bbs_mod.cubic.render.vao.BOBJModelVAO;
 import mchorse.bbs_mod.cubic.render.vao.ModelVAO;
+import mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer;
+import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.data.DataStorageUtils;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.ListType;
@@ -580,6 +583,11 @@ public class ModelInstance implements IModelInstance
         return !this.vaos.isEmpty() || this.model instanceof BOBJModel;
     }
 
+    public boolean hasShapeKeys()
+    {
+        return this.model != null && !this.model.getShapeKeys().isEmpty();
+    }
+
     public void delete()
     {
         for (ModelVAO value : this.vaos.values())
@@ -670,16 +678,17 @@ public class ModelInstance implements IModelInstance
         if (this.model instanceof Model model)
         {
             boolean isVao = this.isVAORendered();
-            CubicCubeRenderer renderProcessor = isVao
-                ? new CubicVAORenderer(program.get(), this, light, overlay, stencilMap, keys, defaultTexture)
-                : new CubicCubeRenderer(light, overlay, stencilMap, keys);
-
             Color c = new Color().set(this.color);
-
-            renderProcessor.setColor(color.r * c.r, color.g * c.g, color.b * c.b, color.a * c.a);
+            float cr = color.r * c.r;
+            float cg = color.g * c.g;
+            float cb = color.b * c.b;
+            float ca = color.a * c.a;
 
             if (isVao)
             {
+                CubicCubeRenderer renderProcessor = new CubicVAORenderer(program.get(), this, light, overlay, stencilMap, keys, defaultTexture);
+
+                renderProcessor.setColor(cr, cg, cb, ca);
                 CubicRenderer.processRenderModel(renderProcessor, null, stack, model);
 
                 if (stencilMap != null)
@@ -689,24 +698,42 @@ public class ModelInstance implements IModelInstance
             }
             else
             {
+                ShaderProgram shader = program.get();
+                Link texture = defaultTexture != null ? defaultTexture : this.texture;
+                boolean disableCull = this.hasShapeKeys();
+
                 RenderSystem.setShader(program);
 
-                BufferBuilder builder = Tessellator.getInstance().begin(VertexFormat.DrawMode.TRIANGLES, VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL);
-
-                CubicRenderer.processRenderModel(renderProcessor, builder, stack, model);
-
-                if (stencilMap != null)
+                if (texture != null)
                 {
-                    CubicRenderer.renderStencilPickPriority(renderProcessor, builder, stack, model, CubicRenderer.STENCIL_PICK_PRIORITY_BONES);
+                    BBSModClient.getTextures().bindTexture(texture);
                 }
+
+                if (disableCull)
+                {
+                    RenderSystem.disableCull();
+                }
+
+                CubicCpuGroupDrawRenderer renderProcessor = new CubicCpuGroupDrawRenderer(light, overlay, stencilMap, keys, shader, texture);
+
+                renderProcessor.setColor(cr, cg, cb, ca);
+                ModelVAORenderer.beginCpuGeometry(shader);
 
                 try
                 {
-                    BufferRenderer.drawWithGlobalProgram(builder.end());
+                    CubicRenderer.processRenderModel(renderProcessor, null, stack, model);
+
+                    if (stencilMap != null)
+                    {
+                        CubicRenderer.renderStencilPickPriority(renderProcessor, null, stack, model, CubicRenderer.STENCIL_PICK_PRIORITY_BONES);
+                    }
                 }
-                catch (IllegalStateException e)
+                finally
                 {
-                    
+                    if (disableCull && this.culling)
+                    {
+                        RenderSystem.enableCull();
+                    }
                 }
             }
         }
@@ -721,7 +748,8 @@ public class ModelInstance implements IModelInstance
 
                 vao.armature.setupMatrices();
                 vao.updateMesh(stencilMap);
-                vao.render(program.get(), stack, color.r, color.g, color.b, color.a, stencilMap, light, overlay, this.texture);
+                Link texture = defaultTexture != null ? defaultTexture : this.texture;
+                vao.render(program.get(), stack, color.r, color.g, color.b, color.a, stencilMap, light, overlay, texture);
 
                 stack.pop();
             }

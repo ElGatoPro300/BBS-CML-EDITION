@@ -234,7 +234,7 @@ public class FormProperties extends ValueGroup
                             poseTransform.shaderShadow = PaintSettings.resolveAutoShaderShadowForPoseAlpha(poseTransform.paintColor.a);
                         }
 
-                        this.applyStepBoneTexture(poseTransform, segment, boneName);
+                        this.applyPoseBoneTexture(poseTransform, segment, transform);
                     }
                 }
 
@@ -413,27 +413,43 @@ public class FormProperties extends ValueGroup
         return null;
     }
 
-    private void applyStepBoneTexture(PoseTransform target, KeyframeSegment segment, String boneName)
+    /**
+     * Applies bone texture crossfade for pose overlay limb tracks, matching the
+     * form-level texture timeline blend (from fades out, to fades in).
+     */
+    private void applyPoseBoneTexture(PoseTransform target, KeyframeSegment segment, Transform transform)
     {
-        PoseTransform fromA = getKeyframeBoneTransform(segment.a, boneName);
-        PoseTransform fromB = getKeyframeBoneTransform(segment.b, boneName);
-
-        if (fromA == null && fromB == null)
+        if (segment.a.isBend() && !segment.isSame()
+            && segment.a.getValue() instanceof PoseTransform aPose
+            && segment.b.getValue() instanceof PoseTransform bPose
+            && aPose.texture != null && bPose.texture != null
+            && !aPose.texture.equals(bPose.texture))
         {
+            target.texture = LinkUtils.copy(aPose.texture);
+            target.textureBlendTo = LinkUtils.copy(bPose.texture);
+            target.textureBlend = getSegmentBlendFactor(segment);
+
             return;
         }
 
-        if (fromA == null)
+        if (transform instanceof PoseTransform pose)
         {
-            fromA = fromB;
-        }
+            PoseTransform pick = pose;
 
-        if (fromB == null)
-        {
-            fromB = fromA;
-        }
+            if (segment.a.getValue() instanceof PoseTransform aPose)
+            {
+                pick = aPose;
 
-        target.applyStepTexture(fromA, fromB, segment.isSame() ? 1F : segment.x);
+                if (segment.x >= 1F && segment.b.getValue() instanceof PoseTransform bPose)
+                {
+                    pick = bPose;
+                }
+            }
+
+            target.texture = pick.texture != null ? LinkUtils.copy(pick.texture) : null;
+            target.textureBlendTo = pose.textureBlendTo != null ? LinkUtils.copy(pose.textureBlendTo) : null;
+            target.textureBlend = pose.textureBlend;
+        }
     }
 
     public void resetProperties(Form form)
