@@ -500,4 +500,8 @@ public class MobFormRenderer extends FormRenderer<MobForm> implements ITickable
     {
         public boolean bool;
     }
+    public static int getStencilPickOffset(ModelPart part, int light)
+    {
+        return light;
+    }
 }

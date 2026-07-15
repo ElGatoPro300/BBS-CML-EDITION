@@ -8,13 +8,18 @@ import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframeSheet;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframes;
+import mchorse.bbs_mod.ui.framework.elements.input.keyframes.graphs.IUIKeyframeGraph;
 import mchorse.bbs_mod.ui.utils.UI;
+import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.utils.Axis;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.StringUtils;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.joml.Vectors;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
+import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
+import mchorse.bbs_mod.utils.keyframes.KeyframeSegment;
+import mchorse.bbs_mod.utils.keyframes.factories.IKeyframeFactory;
 import mchorse.bbs_mod.utils.pose.PoseTransform;
 import mchorse.bbs_mod.utils.pose.Transform;
 
@@ -47,7 +52,7 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
 
         if (isPoseLimbTrack(sheet))
         {
-            this.transform.translationScale(2.5F);
+            this.transform.translationScale(16F);
             this.transform.poseLimbGizmoTuning();
             this.fix = new UITrackpad((v) ->
             {
@@ -116,7 +121,7 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
         }
         else
         {
-            this.transform.translationScale(1F / 3F);
+            this.transform.translationScale(1F);
             this.scroll.add(this.transform);
         }
     }
@@ -181,6 +186,57 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
         String propertyId = StringUtils.fileName(propertyPath);
 
         return propertyId.equals("pose") || propertyId.startsWith("pose_overlay");
+    }
+
+    public static void keyframeOpenPoseLimbs(UIKeyframes editor, float tick, boolean defaults)
+    {
+        IUIKeyframeGraph graph = editor.getGraph();
+        boolean inserted = false;
+
+        for (UIKeyframeSheet sheet : graph.getSheets())
+        {
+            if (sheet.groupHeader || !isPoseLimbTrack(sheet))
+            {
+                continue;
+            }
+
+            Object value;
+
+            if (defaults)
+            {
+                value = new PoseTransform();
+            }
+            else
+            {
+                KeyframeSegment<?> segment = sheet.channel.find(tick);
+                Object interpolated = segment == null ? null : segment.createInterpolated();
+
+                if (interpolated != null)
+                {
+                    value = interpolated;
+                }
+                else if (sheet.property != null)
+                {
+                    IKeyframeFactory factory = sheet.channel.getFactory();
+
+                    value = factory.copy(sheet.property.get());
+                }
+                else
+                {
+                    value = new PoseTransform();
+                }
+            }
+
+            sheet.channel.preNotify();
+            sheet.channel.insert(tick, value);
+            sheet.channel.postNotify();
+            inserted = true;
+        }
+
+        if (inserted)
+        {
+            UIUtils.playClick();
+        }
     }
 
     public UIPropTransform getTransform()

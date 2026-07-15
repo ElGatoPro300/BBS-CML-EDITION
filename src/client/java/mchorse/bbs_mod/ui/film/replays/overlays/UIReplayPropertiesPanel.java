@@ -8,7 +8,7 @@ public class UIReplayPropertiesPanel extends UIElement
 {
     public UIReplayPropertiesPanel(UIReplaysOverlayPanel overlay)
     {
-        overlay.attachPropertiesHost(this);
+        overlay.setupWindowedGeneralHost(this);
         this.mouseEventPropagataion(EventPropagation.BLOCK_INSIDE);
     }
 

@@ -69,6 +69,7 @@ import net.minecraft.util.math.RotationAxis;
 
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
+import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -719,7 +720,10 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         model.form = this.form;
 
         boolean hasOverrides = baseTransform != null && this.form != null
-            && (!this.form.ikTargetOverrides.isEmpty() || !this.form.poleTargetOverrides.isEmpty());
+            && (!this.form.ikTargetOverrides.isEmpty()
+                || !this.form.poleTargetOverrides.isEmpty()
+                || !this.form.ikTipRotationOverrides.isEmpty()
+                || !this.form.limbParamOverrides.isEmpty());
 
         if (!hasOverrides)
         {
@@ -730,14 +734,42 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         Matrix4f inv = new Matrix4f(baseTransform).invert();
         Map<String, Vector3f> local = toModelSpace(this.form.ikTargetOverrides, inv);
         Map<String, Vector3f> poleLocal = toModelSpace(this.form.poleTargetOverrides, inv);
+        Map<String, Quaternionf> tipLocal = toModelSpaceRotation(this.form.ikTipRotationOverrides, inv);
 
-        if (local.isEmpty() && poleLocal.isEmpty())
+        if (local.isEmpty() && poleLocal.isEmpty() && tipLocal.isEmpty() && this.form.limbParamOverrides.isEmpty())
         {
             LimbConstraintProcessor.process(model, null, null);
             return;
         }
 
-        LimbConstraintProcessor.process(model, local.isEmpty() ? null : local, poleLocal.isEmpty() ? null : poleLocal);
+        LimbConstraintProcessor.process(
+            model,
+            local.isEmpty() ? null : local,
+            poleLocal.isEmpty() ? null : poleLocal,
+            tipLocal.isEmpty() ? null : tipLocal,
+            null
+        );
+    }
+
+    private static Map<String, Quaternionf> toModelSpaceRotation(Map<String, Quaternionf> world, Matrix4f inv)
+    {
+        Map<String, Quaternionf> local = new HashMap<>(world.size() * 2);
+        Quaternionf invRot = inv.getNormalizedRotation(new Quaternionf());
+
+        for (Map.Entry<String, Quaternionf> entry : world.entrySet())
+        {
+            String key = entry.getKey();
+            Quaternionf worldRot = entry.getValue();
+
+            if (key == null || key.isEmpty() || worldRot == null)
+            {
+                continue;
+            }
+
+            local.put(key, invRot.mul(worldRot, new Quaternionf()));
+        }
+
+        return local;
     }
 
     /** World-space target overrides into the model's local space (the space the solver and pivot frames use). */

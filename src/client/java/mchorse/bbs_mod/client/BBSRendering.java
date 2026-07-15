@@ -205,6 +205,18 @@ public class BBSRendering
     }
 
     /**
+     * Skip the vanilla world pass when the open BBS menu does not need it (opaque editors, film
+     * home page, model editor, etc.). Panels that show the live world override
+     * {@link UIBaseMenu#needsWorldRender()}.
+     */
+    public static boolean shouldSkipWorldRender()
+    {
+        UIBaseMenu menu = UIScreen.getCurrentMenu();
+
+        return menu != null && !menu.needsWorldRender();
+    }
+
+    /**
      * Ensures paint overlays draw into the same framebuffer as the film viewport world pass.
      */
     public static void ensurePaintOverlayTargetFramebuffer()
@@ -410,6 +422,11 @@ public class BBSRendering
 
     public static void onWorldRenderBegin()
     {
+        if (BBSRendering.shouldSkipWorldRender())
+        {
+            return;
+        }
+
         MinecraftClient mc = MinecraftClient.getInstance();
         BBSModClient.getFilms().startRenderFrame(mc.getTickDelta());
 
@@ -441,6 +458,11 @@ public class BBSRendering
 
     public static void onWorldRenderEnd()
     {
+        if (BBSRendering.shouldSkipWorldRender())
+        {
+            return;
+        }
+
         ModelVAORenderer.flushPaintOverlayQueue();
 
         MinecraftClient mc = MinecraftClient.getInstance();
@@ -482,7 +504,7 @@ public class BBSRendering
 
         if (currentMenu instanceof UIDashboard dashboard)
         {
-            if (dashboard.getPanels().panel instanceof UIFilmPanel panel && panel.getData() != null)
+            if (dashboard.getPanels().panel instanceof UIFilmPanel panel && panel.needsViewportRender())
             {
                 DrawContext drawContext = new DrawContext(mc, mc.getBufferBuilders().getEntityVertexConsumers());
                 Batcher2D offscreenBatcher = new Batcher2D(drawContext);
@@ -789,6 +811,16 @@ public class BBSRendering
         IrisUtils.toggleShaders();
     }
 
+    public static void openShaderPackScreen()
+    {
+        if (!iris)
+        {
+            return;
+        }
+
+        IrisUtils.openShaderPackScreen();
+    }
+
     public static boolean isIrisShadowPass()
     {
         if (!iris)
@@ -981,6 +1013,13 @@ public class BBSRendering
         Double v = getCurveValue(ShaderCurves.SUN_ROTATION);
 
         return v == null ? null : (long) (v * 1000L);
+    }
+
+    public static Float getSunPathRotationDegrees()
+    {
+        Double v = getCurveValue(ShaderCurves.SUN_PATH_ROTATION);
+
+        return v == null ? null : v.floatValue();
     }
 
     public static Double getBrightness()

@@ -5,16 +5,20 @@ import mchorse.bbs_mod.settings.SettingsBuilder;
 import mchorse.bbs_mod.settings.values.core.ValueLink;
 import mchorse.bbs_mod.settings.values.core.ValueString;
 import mchorse.bbs_mod.settings.values.numeric.ValueBoolean;
+import mchorse.bbs_mod.settings.values.numeric.ValueDouble;
 import mchorse.bbs_mod.settings.values.numeric.ValueFloat;
 import mchorse.bbs_mod.settings.values.numeric.ValueInt;
 import mchorse.bbs_mod.settings.values.ui.ValueColors;
 import mchorse.bbs_mod.settings.values.ui.ValueEditorLayout;
+import mchorse.bbs_mod.settings.values.ui.ValueFormEditorGizmoToolbar;
+import mchorse.bbs_mod.settings.values.ui.ValueGizmoToolbar;
 import mchorse.bbs_mod.settings.values.ui.ValueLanguage;
 import mchorse.bbs_mod.settings.values.ui.ValueOnionSkin;
 import mchorse.bbs_mod.settings.values.ui.ValueStringKeys;
 import mchorse.bbs_mod.settings.values.ui.ValueTimelineToolbarDocks;
 import mchorse.bbs_mod.settings.values.ui.ValueUILayoutPreferences;
 import mchorse.bbs_mod.settings.values.ui.ValueVideoSettings;
+import mchorse.bbs_mod.settings.values.ui.ValueViewportToolbar;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.colors.Colors;
@@ -61,6 +65,7 @@ public class BBSSettings
     public static ValueBoolean hsvColorPicker;
     public static ValueBoolean forceQwerty;
     public static ValueBoolean freezeModels;
+    public static ValueGizmoToolbar editorGizmoToolbar;
     public static ValueFloat axesScale;
     public static ValueFloat axesThickness;
     public static ValueFloat gizmoHitbox;
@@ -132,6 +137,8 @@ public class BBSSettings
     public static ValueEditorLayout editorLayoutSettings;
     public static ValueUILayoutPreferences uiLayoutPreferences;
     public static ValueTimelineToolbarDocks timelineToolbarDocks;
+    public static ValueViewportToolbar editorViewportToolbar;
+    public static ValueFormEditorGizmoToolbar editorFormGizmoToolbar;
     public static ValueOnionSkin editorOnionSkin;
     public static ValueBoolean editorSnapToMarkers;
     public static ValueBoolean editorClipPreview;
@@ -147,6 +154,8 @@ public class BBSSettings
     public static ValueInt editorImportMode;
     public static ValueInt editorReplayEditorTitleLimit;
     public static ValueBoolean editorAnchoredReplaysPanel;
+    public static ValueBoolean editorSeparateReplayPropertiesPanel;
+    public static ValueInt blockPickerDefaultMode;
     public static ValueInt editorAnchoredReplaysPanelHeight;
     public static ValueBoolean editorReplayHud;
     public static ValueInt editorReplayHudPosition;
@@ -165,6 +174,7 @@ public class BBSSettings
     public static ValueBoolean recordingSwipeDamage;
     public static ValueBoolean recordingAutoCaptureMobs;
     public static ValueBoolean recordingAutoCaptureProjectiles;
+    public static ValueBoolean recordingMobCaptureOnAlt;
     public static ValueBoolean recordingOverlays;
     public static ValueInt recordingPoseTransformOverlays;
     public static ValueBoolean recordingCameraPreview;
@@ -183,6 +193,7 @@ public class BBSSettings
     public static ValueBoolean lastViewMosaic;
     public static ValueBoolean coloredBackground;
     public static ValueFloat backgroundBrightness;
+    public static ValueDouble worldGammaPercent;
     public static ValueBoolean interfaceShadows;
 
     public static ValueString entitySelectorsPropertyWhitelist;
@@ -500,6 +511,7 @@ public class BBSSettings
         tooltipStyle = builder.getInt("tooltip_style", 1);
         coloredBackground = builder.getBoolean("colored_background", true);
         backgroundBrightness = builder.getFloat("background_brightness", 1F, 0.5F, 1.5F);
+        worldGammaPercent = builder.getDouble("world_gamma_percent", 100D, 0D, 1500D);
         interfaceShadows = builder.getBoolean("interface_shadows", true);
         fov = builder.getFloat("fov", 40, 0, 180);
         hsvColorPicker = builder.getBoolean("hsv_color_picker", true);
@@ -535,14 +547,16 @@ public class BBSSettings
         gizmoYAxisHorizontal = builder.getBoolean("gizmo_y_axis_horizontal", true);
         gizmoTrackball = builder.getBoolean("gizmo_trackball", true);
         gizmoTrackballScale = builder.getInt("gizmo_trackball_scale", 1, 1, 5);
-        /* 0 = Translate, 1 = Scale, 2 = Rotate, 3 = Combined; see Gizmo.Mode (ordinal order matches). */
-        gizmoDefaultMode = builder.getInt("gizmo_default_mode", 0, 0, 3);
+        /* 0 = Translate, 1 = Scale, 2 = Rotate, 3 = Combined, 4 = Trackball only; see Gizmo.Mode (ordinal order matches). */
+        gizmoDefaultMode = builder.getInt("gizmo_default_mode", 0, 0, 4);
         /* Faint guide line(s) shown along the dragged axis/plane: length (multiplier),
          * thickness (multiplier) and opacity (0..1). */
         gizmoGuideLength = builder.getFloat("gizmo_guide_length", 2F, 0.1F, 10F);
         gizmoGuideThickness = builder.getFloat("gizmo_guide_thickness", 1F, 0.1F, 10F);
         gizmoGuideOpacity = builder.getFloat("gizmo_guide_opacity", 0.35F, 0.05F, 1F);
         gizmoTranslateSpeed = builder.getInt("gizmo_translate_speed", 5, 1, 20);
+        builder.register(editorGizmoToolbar = new ValueGizmoToolbar("gizmo_toolbar"));
+        builder.register(editorFormGizmoToolbar = new ValueFormEditorGizmoToolbar("form_gizmo_toolbar"));
 
         builder.category("tutorials");
         enableCursorRendering = builder.getBoolean("cursor", false);
@@ -589,7 +603,6 @@ public class BBSSettings
         editorCenterLines = builder.getBoolean("center_lines", false);
         editorCrosshair = builder.getBoolean("crosshair", false);
         editorFilmOverlayVisible = builder.getBoolean("film_overlay_visible", true);
-
         editorPeriodicSave = builder.getInt("periodic_save", 60, 0, 3600);
         editorHorizontalFlight = builder.getBoolean("horizontal_flight", false);
         builder.register(editorLayoutSettings = new ValueEditorLayout("layout"));
@@ -625,6 +638,7 @@ public class BBSSettings
         realtimeKeyframes = builder.getBoolean("realtime_keyframes", false);
         autoKeyframes = builder.getBoolean("auto_keyframes", true);
         usingInMemoryClipboard = builder.getBoolean("using_in_memory_clipboard", false);
+        builder.register(editorViewportToolbar = new ValueViewportToolbar("viewport_toolbar"));
 
         builder.category("timeline_toolbar");
         editorTimelineToolbar = builder.getBoolean("enabled", true);
@@ -638,6 +652,8 @@ public class BBSSettings
         replayFpBobbingIntensity = builder.getFloat("replay_fp_bobbing_intensity", 0.25F, 0F, 2F);
         replayFpBobbingFrequency = builder.getFloat("replay_fp_bobbing_frequency", 0.25F, 0F, 3F);
         editorAnchoredReplaysPanel = builder.getBoolean("anchored_replays_panel", true);
+        editorSeparateReplayPropertiesPanel = builder.getBoolean("separate_replay_properties_panel", false);
+        blockPickerDefaultMode = builder.getInt("block_picker_default_mode", 0, 0, 2);
         editorAnchoredReplaysPanelHeight = builder.getInt("anchored_replays_panel_height", 170, 70, 2000);
         editorAnchoredReplaysPanelHeight.invisible();
         editorReplayHud = builder.getBoolean("replay_hud", false);
@@ -656,6 +672,7 @@ public class BBSSettings
         recordingSwipeDamage = builder.getBoolean("swipe_damage", false);
         recordingAutoCaptureMobs = builder.getBoolean("auto_capture_mobs", true);
         recordingAutoCaptureProjectiles = builder.getBoolean("auto_capture_projectiles", true);
+        recordingMobCaptureOnAlt = builder.getBoolean("mob_capture_on_alt", false);
         recordingOverlays = builder.getBoolean("overlays", true);
         recordingPoseTransformOverlays = builder.getInt("pose_transform_overlays", 0, 0, 42);
         recordingCameraPreview = builder.getBoolean("camera_preview", true);

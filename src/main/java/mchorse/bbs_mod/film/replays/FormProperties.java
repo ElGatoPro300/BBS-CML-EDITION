@@ -92,7 +92,7 @@ public class FormProperties extends ValueGroup
         if (property instanceof BaseKeyframeFactoryValue<?> keyframeFactoryValue)
         {
             String key = FormUtils.getPropertyPath(property);
-            boolean allowed = property.isVisible() || "render".equals(key);
+            boolean allowed = property.isVisible() || FormUtils.isRenderPropertyPath(key);
 
             if (allowed)
             {
@@ -220,12 +220,6 @@ public class FormProperties extends ValueGroup
                             poseTransform.glowRadius = Lerps.lerp(poseTransform.glowRadius, sourcePose.glowRadius, blend);
                             poseTransform.lighting = Lerps.lerp(poseTransform.lighting, sourcePose.lighting, blend);
                             poseTransform.shaderShadow = PaintSettings.resolveAutoShaderShadowForPoseAlpha(poseTransform.paintColor.a);
-                            poseTransform.textureBlend = Lerps.lerp(poseTransform.textureBlend, sourcePose.textureBlend, blend);
-
-                            if (sourcePose.texture != null && blend >= 0.5F)
-                            {
-                                poseTransform.texture = LinkUtils.copy(sourcePose.texture);
-                            }
                         }
                         else
                         {
@@ -238,9 +232,9 @@ public class FormProperties extends ValueGroup
                             poseTransform.glowRadius = sourcePose.glowRadius;
                             poseTransform.lighting = sourcePose.lighting;
                             poseTransform.shaderShadow = PaintSettings.resolveAutoShaderShadowForPoseAlpha(poseTransform.paintColor.a);
-                            poseTransform.texture = LinkUtils.copy(sourcePose.texture);
-                            poseTransform.textureBlend = sourcePose.textureBlend;
                         }
+
+                        this.applyPoseBoneTexture(poseTransform, segment, transform);
                     }
                 }
 
@@ -255,7 +249,7 @@ public class FormProperties extends ValueGroup
             return;
         }
 
-        if ("render".equals(id) && value.getFactory() == KeyframeFactories.BOOLEAN)
+        if (FormUtils.isRenderPropertyPath(id) && value.getFactory() == KeyframeFactories.BOOLEAN)
         {
             @SuppressWarnings("unchecked")
             KeyframeChannel<Boolean> render = (KeyframeChannel<Boolean>) value;
@@ -395,6 +389,67 @@ public class FormProperties extends ValueGroup
     private static float getSegmentBlendFactor(KeyframeSegment segment)
     {
         return (float) segment.a.getInterpolation().interpolate(0D, 1D, segment.x);
+    }
+
+    private static PoseTransform getKeyframeBoneTransform(Keyframe<?> keyframe, String boneName)
+    {
+        if (keyframe == null)
+        {
+            return null;
+        }
+
+        Object value = keyframe.getValue();
+
+        if (value instanceof PoseTransform poseTransform)
+        {
+            return poseTransform;
+        }
+
+        if (value instanceof Pose pose)
+        {
+            return pose.get(boneName);
+        }
+
+        return null;
+    }
+
+    /**
+     * Applies bone texture crossfade for pose overlay limb tracks, matching the
+     * form-level texture timeline blend (from fades out, to fades in).
+     */
+    private void applyPoseBoneTexture(PoseTransform target, KeyframeSegment segment, Transform transform)
+    {
+        if (segment.a.isBend() && !segment.isSame()
+            && segment.a.getValue() instanceof PoseTransform aPose
+            && segment.b.getValue() instanceof PoseTransform bPose
+            && aPose.texture != null && bPose.texture != null
+            && !aPose.texture.equals(bPose.texture))
+        {
+            target.texture = LinkUtils.copy(aPose.texture);
+            target.textureBlendTo = LinkUtils.copy(bPose.texture);
+            target.textureBlend = getSegmentBlendFactor(segment);
+
+            return;
+        }
+
+        if (transform instanceof PoseTransform pose)
+        {
+            PoseTransform pick = pose;
+
+            if (segment.a.getValue() instanceof PoseTransform aPose)
+            {
+                pick = aPose;
+
+                if (segment.x >= 1F && segment.b.getValue() instanceof PoseTransform bPose)
+                {
+                    pick = bPose;
+                }
+            }
+
+            target.texture = pick.texture != null ? LinkUtils.copy(pick.texture) : null;
+            target.textureBlendTo = pose.textureBlendTo != null ? LinkUtils.copy(pose.textureBlendTo) : null;
+            target.textureBlend = pose.textureBlend;
+        }
     }
 
     public void resetProperties(Form form)

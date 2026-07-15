@@ -23,6 +23,12 @@ public class UIBlockFormPanel extends UIFormPanel<BlockForm>
     public UITrackpad glowIntensity;
     public UIBlockStateEditor stateEditor;
     public UITrackpad breaking;
+    public UITrackpad repeatX;
+    public UITrackpad repeatY;
+    public UITrackpad repeatZ;
+    public UIToggle repeatCenterX;
+    public UIToggle repeatCenterY;
+    public UIToggle repeatCenterZ;
 
     public UIBlockFormPanel(UIForm editor)
     {
@@ -85,8 +91,22 @@ public class UIBlockFormPanel extends UIFormPanel<BlockForm>
         this.stateEditor = new UIBlockStateEditor((blockState) -> this.form.blockState.set(blockState));
         this.breaking = new UITrackpad((v) -> this.form.breaking.set(v.intValue())).integer().limit(0, 10);
         this.breaking.tooltip(UIKeys.FORMS_EDITORS_BLOCK_BREAKING);
+        this.repeatX = new UITrackpad((v) -> this.form.repeatX.set(v.intValue())).integer().limit(1, 64);
+        this.repeatX.tooltip(UIKeys.FORMS_EDITORS_BLOCK_REPEAT_X);
+        this.repeatY = new UITrackpad((v) -> this.form.repeatY.set(v.intValue())).integer().limit(1, 64);
+        this.repeatY.tooltip(UIKeys.FORMS_EDITORS_BLOCK_REPEAT_Y);
+        this.repeatZ = new UITrackpad((v) -> this.form.repeatZ.set(v.intValue())).integer().limit(1, 64);
+        this.repeatZ.tooltip(UIKeys.FORMS_EDITORS_BLOCK_REPEAT_Z);
+        this.repeatCenterX = new UIToggle(UIKeys.FORMS_EDITORS_BLOCK_REPEAT_CENTER_X, (b) -> this.form.repeatCenterX.set(b.getValue()));
+        this.repeatCenterX.tooltip(UIKeys.FORMS_EDITORS_BLOCK_REPEAT_CENTER_X_TOOLTIP);
+        this.repeatCenterY = new UIToggle(UIKeys.FORMS_EDITORS_BLOCK_REPEAT_CENTER_Y, (b) -> this.form.repeatCenterY.set(b.getValue()));
+        this.repeatCenterY.tooltip(UIKeys.FORMS_EDITORS_BLOCK_REPEAT_CENTER_Y_TOOLTIP);
+        this.repeatCenterZ = new UIToggle(UIKeys.FORMS_EDITORS_BLOCK_REPEAT_CENTER_Z, (b) -> this.form.repeatCenterZ.set(b.getValue()));
+        this.repeatCenterZ.tooltip(UIKeys.FORMS_EDITORS_BLOCK_REPEAT_CENTER_Z_TOOLTIP);
 
         this.options.add(this.color, this.paintColor, this.paintIntensity, this.glowingColor, this.glowIntensity, this.stateEditor);
+        this.options.add(UI.label(UIKeys.FORMS_EDITORS_BLOCK_REPEAT).marginTop(6), UI.row(this.repeatX, this.repeatY, this.repeatZ));
+        this.options.add(UI.label(UIKeys.FORMS_EDITORS_BLOCK_REPEAT_CENTER).marginTop(6), UI.row(this.repeatCenterX, this.repeatCenterY, this.repeatCenterZ));
         this.options.add(UI.label(UIKeys.FORMS_EDITORS_BLOCK_BREAKING).marginTop(6), this.breaking);
     }
 
@@ -113,5 +133,11 @@ public class UIBlockFormPanel extends UIFormPanel<BlockForm>
         this.glowIntensity.setValue(glow.intensity);
         this.stateEditor.setBlockState(blockState);
         this.breaking.setValue(form.breaking.get());
+        this.repeatX.setValue(form.repeatX.get());
+        this.repeatY.setValue(form.repeatY.get());
+        this.repeatZ.setValue(form.repeatZ.get());
+        this.repeatCenterX.setValue(form.repeatCenterX.get());
+        this.repeatCenterY.setValue(form.repeatCenterY.get());
+        this.repeatCenterZ.setValue(form.repeatCenterZ.get());
     }
 }

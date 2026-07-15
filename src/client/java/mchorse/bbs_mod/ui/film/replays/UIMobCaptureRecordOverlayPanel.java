@@ -20,6 +20,7 @@ import mchorse.bbs_mod.ui.framework.elements.utils.UILabel;
 import mchorse.bbs_mod.ui.framework.elements.utils.UIText;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
+import mchorse.bbs_mod.utils.colors.Colors;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
@@ -236,6 +237,9 @@ public class UIMobCaptureRecordOverlayPanel extends UIOverlayPanel
             return;
         }
 
+        this.addColumnHeaderRow();
+        this.addSelectAllRow();
+
         ClientPlayerEntity player = MinecraftClient.getInstance().player;
 
         for (MobCaptureAreaScanner.TypeBucket bucket : this.lastBuckets.values())
@@ -332,6 +336,148 @@ public class UIMobCaptureRecordOverlayPanel extends UIOverlayPanel
 
         this.typeList.resize();
         this.scroll.resize();
+    }
+
+    private void addColumnHeaderRow()
+    {
+        UIElement spacer = new UIElement();
+
+        spacer.w(ICON_COLUMN_WIDTH).h(14);
+
+        UIElement nameSpacer = new UIElement();
+
+        nameSpacer.w(1F).h(14);
+
+        UILabel addHeader = UI.label(UIKeys.FILM_MOB_CAPTURE_COLUMN_ADD);
+
+        addHeader.labelAnchor(0.5F, 0.5F).color(Colors.LIGHTER_GRAY);
+        addHeader.w(TOGGLE_WIDTH).h(14);
+
+        UILabel vanillaHeader = UI.label(UIKeys.FILM_MOB_CAPTURE_COLUMN_VA);
+
+        vanillaHeader.labelAnchor(0.5F, 0.5F).color(Colors.LIGHTER_GRAY);
+        vanillaHeader.tooltip(UIKeys.FILM_REPLAY_VANILLA_MOB_PLAYBACK_TOOLTIP);
+        vanillaHeader.w(TOGGLE_WIDTH).h(14);
+
+        UIElement headerRow = UI.row(4, 0, 20, spacer, nameSpacer, addHeader, vanillaHeader);
+
+        headerRow.relative(this.typeList).w(1F).h(14);
+        this.typeList.add(headerRow);
+    }
+
+    private void addSelectAllRow()
+    {
+        UIElement spacer = new UIElement();
+
+        spacer.w(ICON_COLUMN_WIDTH).h(20);
+
+        UILabel selectAllLabel = UI.label(UIKeys.FILM_MOB_CAPTURE_SELECT_ALL);
+
+        selectAllLabel.w(1F).h(20);
+
+        UIToggle selectAllAdd = new UIToggle(IKey.EMPTY, this.isAllSelected(), (b) ->
+        {
+            this.setAllSelected(b.getValue());
+            this.refreshTypes();
+        });
+        UIToggle selectAllVanilla = new UIToggle(IKey.EMPTY, this.isAllVanilla(), (b) ->
+        {
+            this.setAllVanilla(b.getValue());
+            this.refreshTypes();
+        });
+
+        selectAllAdd.w(TOGGLE_WIDTH);
+        selectAllVanilla.w(TOGGLE_WIDTH);
+        selectAllVanilla.tooltip(UIKeys.FILM_REPLAY_VANILLA_MOB_PLAYBACK_TOOLTIP);
+
+        UIElement selectAllRow = UI.row(4, 0, 20, spacer, selectAllLabel, selectAllAdd, selectAllVanilla);
+
+        selectAllRow.relative(this.typeList).w(1F).h(20);
+        this.typeList.add(selectAllRow);
+    }
+
+    private boolean isAllSelected()
+    {
+        if (this.lastBuckets.isEmpty())
+        {
+            return false;
+        }
+
+        for (MobCaptureAreaScanner.TypeBucket bucket : this.lastBuckets.values())
+        {
+            for (Entity entity : bucket.entities)
+            {
+                if (!this.setup.selectedEntityIds.contains(entity.getId()))
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    private boolean isAllVanilla()
+    {
+        if (this.lastBuckets.isEmpty())
+        {
+            return false;
+        }
+
+        for (MobCaptureAreaScanner.TypeBucket bucket : this.lastBuckets.values())
+        {
+            for (Entity entity : bucket.entities)
+            {
+                if (!this.setup.vanillaPlaybackEntityIds.contains(entity.getId()))
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
+    private void setAllSelected(boolean selected)
+    {
+        this.setup.selectedEntityIds.clear();
+        this.setup.selectedTypeIds.clear();
+
+        if (!selected)
+        {
+            return;
+        }
+
+        for (MobCaptureAreaScanner.TypeBucket bucket : this.lastBuckets.values())
+        {
+            this.setup.selectedTypeIds.add(bucket.typeId);
+
+            for (Entity entity : bucket.entities)
+            {
+                this.setup.selectedEntityIds.add(entity.getId());
+            }
+        }
+    }
+
+    private void setAllVanilla(boolean enabled)
+    {
+        this.setup.vanillaPlaybackEntityIds.clear();
+        this.setup.vanillaPlaybackTypeIds.clear();
+
+        if (!enabled)
+        {
+            return;
+        }
+
+        for (MobCaptureAreaScanner.TypeBucket bucket : this.lastBuckets.values())
+        {
+            this.setup.vanillaPlaybackTypeIds.add(bucket.typeId);
+
+            for (Entity entity : bucket.entities)
+            {
+                this.setup.vanillaPlaybackEntityIds.add(entity.getId());
+            }
+        }
     }
 
     private boolean isTypeFullySelected(MobCaptureAreaScanner.TypeBucket bucket)

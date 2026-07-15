@@ -74,6 +74,15 @@ public abstract class UIBaseMenu
         return true;
     }
 
+    /**
+     * Whether the vanilla world should render while this menu is open. Most BBS editors draw an
+     * opaque UI and do not need the world pass behind them.
+     */
+    public boolean needsWorldRender()
+    {
+        return false;
+    }
+
     public boolean canPause()
     {
         return true;

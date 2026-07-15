@@ -78,6 +78,7 @@ import mchorse.bbs_mod.settings.values.IValueListener;
 import mchorse.bbs_mod.text.RtlFontManager;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.dashboard.UIDashboard;
+import mchorse.bbs_mod.ui.dashboard.WorldPropertiesHelper;
 import mchorse.bbs_mod.ui.dashboard.panels.UIDashboardPanel;
 import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.film.replays.UIMobCaptureRecordOverlayPanel;
@@ -515,6 +516,11 @@ public class BBSModClient implements ClientModInitializer
         BBSSettings.discordPresence.postCallback((v, f) -> DiscordPresenceManager.INSTANCE.onSettingsChanged());
         BBSSettings.discordApplicationId.postCallback((v, f) -> DiscordPresenceManager.INSTANCE.onSettingsChanged());
 
+        if (BBSSettings.worldGammaPercent != null)
+        {
+            WorldPropertiesHelper.setGammaPercent(BBSSettings.worldGammaPercent.get());
+        }
+
         IValueListener refreshModelHover = (v, f) ->
         {
             if (!UISettingsOverlayPanel.isDeferringLiveSettings())
@@ -532,6 +538,13 @@ public class BBSModClient implements ClientModInitializer
 
         BBSSettings.editorTimelineToolbar.postCallback((v, f) -> TimelineToolbarDockSync.applySettingsChange());
 
+        BBSSettings.editorSeparateReplayPropertiesPanel.postCallback((v, f) ->
+        {
+            if (dashboard != null && dashboard.getPanels().panel instanceof UIFilmPanel panel)
+            {
+                panel.applySeparateReplayPropertiesPanelSetting();
+            }
+        });
         BBSSettings.tooltipStyle.modes(
             UIKeys.ENGINE_TOOLTIP_STYLE_LIGHT,
             UIKeys.ENGINE_TOOLTIP_STYLE_DARK
@@ -954,15 +967,39 @@ public class BBSModClient implements ClientModInitializer
                     return;
                 }
 
-                UIMobCaptureRecordOverlayPanel.openInGame((setup) ->
+                UIFilmPanel filmPanel = dashboard.getPanel(UIFilmPanel.class);
+
+                if (filmPanel == null || filmPanel.getData() == null)
                 {
-                    UIFilmPanel filmPanel = dashboard.getPanel(UIFilmPanel.class);
+                    return;
+                }
 
-                    if (filmPanel == null || filmPanel.getData() == null)
+                if (BBSSettings.recordingMobCaptureOnAlt.get())
+                {
+                    UIMobCaptureRecordOverlayPanel.openInGame((setup) ->
                     {
-                        return;
-                    }
+                        if (filmPanel.getData() == null)
+                        {
+                            return;
+                        }
 
+                        Replay replay = filmPanel.replayEditor.getReplay();
+
+                        if (replay == null)
+                        {
+                            replay = getSelectedReplay();
+                        }
+
+                        int index = filmPanel.getData().replays.getList().indexOf(replay);
+
+                        if (index >= 0)
+                        {
+                            getFilms().startRecording(filmPanel.getData(), index, 0);
+                        }
+                    });
+                }
+                else
+                {
                     Replay replay = filmPanel.replayEditor.getReplay();
 
                     if (replay == null)
@@ -976,7 +1013,7 @@ public class BBSModClient implements ClientModInitializer
                     {
                         getFilms().startRecording(filmPanel.getData(), index, 0);
                     }
-                });
+                }
             }
         }
     }
@@ -1160,14 +1197,12 @@ public class BBSModClient implements ClientModInitializer
         {
             MinecraftClient client = MinecraftClient.getInstance();
 
-            if (client != null && client.options != null && client.options.language != null && !client.options.language.isEmpty())
+            if (client == null || client.options == null)
             {
-                key = client.options.language;
+                return "";
             }
-            else
-            {
-                key = L10n.DEFAULT_LANGUAGE;
-            }
+
+            key = client.options.language;
         }
 
         return key;

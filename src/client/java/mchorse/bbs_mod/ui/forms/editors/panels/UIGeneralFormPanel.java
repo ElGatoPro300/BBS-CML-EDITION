@@ -4,6 +4,7 @@ import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.forms.utils.Illusion;
+import mchorse.bbs_mod.forms.forms.utils.InverseKinematics;
 import mchorse.bbs_mod.forms.forms.utils.LookAt;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.ui.UIKeys;
@@ -12,6 +13,7 @@ import mchorse.bbs_mod.ui.forms.editors.forms.UIForm;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
+import mchorse.bbs_mod.ui.framework.elements.input.UIInverseKinematicsEditor;
 import mchorse.bbs_mod.ui.framework.elements.input.UIKeybind;
 import mchorse.bbs_mod.ui.framework.elements.input.UILookAtEditor;
 import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
@@ -43,6 +45,7 @@ public class UIGeneralFormPanel extends UIFormPanel
     public UITrackpad renderDepth;
     public UIToggle renderDepthEnabled;
     public UILookAtEditor lookAt;
+    public UIInverseKinematicsEditor inverseKinematics;
     public UITrackpad illusionCount;
     public UITrackpad illusionSpread;
     public UIToggle illusionFront;
@@ -86,9 +89,11 @@ public class UIGeneralFormPanel extends UIFormPanel
     public UITrackpad stepHeight;
 
     public UIButton lookAtButton;
+    public UIButton inverseKinematicsButton;
     public UIButton illusionButton;
 
     private UIElement lookContent;
+    private UIElement inverseKinematicsContent;
     private UIElement illusionContent;
 
     public UIGeneralFormPanel(UIForm editor)
@@ -115,6 +120,8 @@ public class UIGeneralFormPanel extends UIFormPanel
         this.renderDepthEnabled.tooltip(UIKeys.FORMS_EDITORS_GENERAL_RENDER_DEPTH_TOOLTIP);
         this.lookAt = new UILookAtEditor();
         this.lookAt.callbacks(() -> this.form.lookAt.get(), this::editLookAt);
+        this.inverseKinematics = new UIInverseKinematicsEditor();
+        this.inverseKinematics.callbacks(() -> this.form.inverseKinematics.get(), this::editInverseKinematics);
         this.illusionCount = new UITrackpad((v) -> this.editIllusion((illusion) -> illusion.count = v.intValue()));
         this.illusionCount.limit(0D).integer();
         this.illusionSpread = new UITrackpad((v) -> this.editIllusion((illusion) -> illusion.spread = v.floatValue()));
@@ -205,9 +212,13 @@ public class UIGeneralFormPanel extends UIFormPanel
         this.stepHeight.limit(0F);
 
         this.lookContent = UI.column(5, 0, this.lookAt);
+        this.inverseKinematicsContent = UI.column(5, 0, this.inverseKinematics);
 
         this.lookAtButton = new UIButton(UIKeys.FORMS_EDITORS_GENERAL_LOOK_AT, (b) -> this.openLookAtOverlay());
         this.lookAtButton.w(1F);
+
+        this.inverseKinematicsButton = new UIButton(UIKeys.FORMS_EDITORS_GENERAL_INVERSE_KINEMATICS, (b) -> this.openInverseKinematicsOverlay());
+        this.inverseKinematicsButton.w(1F);
 
         this.illusionContent = UI.column(5, 0,
             UI.row(UI.label(UIKeys.FORMS_EDITORS_GENERAL_ILLUSION_COUNT), this.illusionCount),
@@ -242,6 +253,7 @@ public class UIGeneralFormPanel extends UIFormPanel
         this.options.add(UI.label(UIKeys.FORMS_EDITORS_GENERAL_UI_SCALE), this.uiScale);
         this.options.add(this.transform.marginTop(8));
         this.options.add(this.lookAtButton);
+        this.options.add(this.inverseKinematicsButton);
         this.options.add(this.illusionButton);
         this.options.add(this.hitbox.marginTop(12), UI.row(this.hitboxWidth, this.hitboxHeight));
         this.options.add(UI.label(UIKeys.FORMS_EDITORS_GENERAL_HITBOX_SNEAK_MULTIPLIER), this.hitboxSneakMultiplier);
@@ -260,6 +272,17 @@ public class UIGeneralFormPanel extends UIFormPanel
         UIGeneralSectionOverlayPanel panel = new UIGeneralSectionOverlayPanel(UIKeys.FORMS_EDITORS_GENERAL_LOOK_AT, this.lookContent).resizable();
 
         UIOverlay.addOverlay(this.getContext(), panel, 340, 400);
+    }
+
+    private void openInverseKinematicsOverlay()
+    {
+        this.inverseKinematics.fillBones(FormUtilsClient.getRenderer(FormUtils.getRoot(this.form)).collectMatrices(this.editor.editor.renderer.getTargetEntity(), 0F).keySet());
+        this.inverseKinematics.refresh();
+        this.inverseKinematics.resize();
+
+        UIGeneralSectionOverlayPanel panel = new UIGeneralSectionOverlayPanel(UIKeys.FORMS_EDITORS_GENERAL_INVERSE_KINEMATICS, this.inverseKinematicsContent).resizable();
+
+        UIOverlay.addOverlay(this.getContext(), panel, 380, 420);
     }
 
     private void openIllusionOverlay()
@@ -304,6 +327,14 @@ public class UIGeneralFormPanel extends UIFormPanel
         this.form.lookAt.set(lookAt);
     }
 
+    private void editInverseKinematics(Consumer<InverseKinematics> consumer)
+    {
+        InverseKinematics ik = this.form.inverseKinematics.get().copy();
+
+        consumer.accept(ik);
+        this.form.inverseKinematics.set(ik);
+    }
+
     @Override
     public void startEdit(Form form)
     {
@@ -320,6 +351,8 @@ public class UIGeneralFormPanel extends UIFormPanel
         this.renderDepthEnabled.setValue(form.renderDepthEnabled.get());
         this.lookAt.fillBones(FormUtilsClient.getRenderer(FormUtils.getRoot(form)).collectMatrices(this.editor.editor.renderer.getTargetEntity(), 0F).keySet());
         this.lookAt.refresh();
+        this.inverseKinematics.fillBones(FormUtilsClient.getRenderer(FormUtils.getRoot(form)).collectMatrices(this.editor.editor.renderer.getTargetEntity(), 0F).keySet());
+        this.inverseKinematics.refresh();
         this.options.resize();
 
         Illusion illusion = form.illusion.get();

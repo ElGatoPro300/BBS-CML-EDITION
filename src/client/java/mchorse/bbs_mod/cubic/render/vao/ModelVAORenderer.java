@@ -439,6 +439,17 @@ public class ModelVAORenderer
         return glowingUniformActive;
     }
 
+    /**
+     * CPU mesh builders emit vertices before draw-time uniform upload. Probe the active shader early so
+     * shape-key geometry can skip vanilla brighten/light boosts when the BBS GlowingColor uniform applies.
+     */
+    public static void beginCpuGeometry(ShaderProgram shader)
+    {
+        GlUniform glowingUniform = shader.getUniform("GlowingColor");
+
+        glowingUniformActive = glowingUniform != null;
+    }
+
     public static float getBaseGlowingStrength()
     {
         return baseGlowStrength;

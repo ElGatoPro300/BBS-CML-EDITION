@@ -2450,7 +2450,9 @@ public class UIClips extends UIElement
                 Link.bbs("vignette"),
                 Link.bbs("letterbox"),
                 Link.bbs("grain"),
-                Link.bbs("screen_node")
+                Link.bbs("screen_node"),
+                Link.bbs("boss_bar"),
+                Link.bbs("eye")
             );
             List<Link> anchorGroup = List.of(Link.bbs("look"), Link.bbs("orbit"), Link.bbs("tracker"));
 

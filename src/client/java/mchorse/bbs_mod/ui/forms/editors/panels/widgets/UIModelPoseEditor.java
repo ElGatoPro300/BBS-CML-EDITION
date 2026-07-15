@@ -21,7 +21,7 @@ public class UIModelPoseEditor extends UIPoseEditor
     @Override
     protected float getGizmoTranslationScale()
     {
-        return 2.5F;
+        return 16F;
     }
 
     public void setValuePose(ValuePose valuePose)

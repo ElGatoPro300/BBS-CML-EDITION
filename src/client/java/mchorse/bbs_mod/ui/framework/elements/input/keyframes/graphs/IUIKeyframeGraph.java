@@ -141,6 +141,10 @@ public interface IUIKeyframeGraph
                 value = segment.createInterpolated();
                 extra = segment.a;
             }
+            else if (sheet.defaultInsertValue != null)
+            {
+                value = sheet.channel.getFactory().copy(sheet.defaultInsertValue);
+            }
             else if (property != null)
             {
                 value = sheet.channel.getFactory().copy(property.get());
