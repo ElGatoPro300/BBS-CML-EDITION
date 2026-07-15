@@ -959,8 +959,9 @@ public class BBSRendering
     }
 
     /**
-     * Chroma sky can hide terrain for film export, but model/trigger block editors must
-     * always show the live world behind their UI cards.
+     * Chroma sky can hide terrain for film export and film editor preview, but
+     * model/trigger block (and other world-editing) panels must always show the
+     * live world behind their UI cards.
      */
     public static boolean shouldHideChromaTerrain()
     {
@@ -969,7 +970,21 @@ public class BBSRendering
             return false;
         }
 
-        return !isImmersiveWorldPanel();
+        /* Film preview must match export: hide terrain when the toggle says so.
+         * Other immersive panels (model/trigger editors, etc.) keep the world visible. */
+        return !isImmersiveWorldPanel() || isFilmPanelOpen();
+    }
+
+    private static boolean isFilmPanelOpen()
+    {
+        UIBaseMenu menu = UIScreen.getCurrentMenu();
+
+        if (!(menu instanceof UIDashboard dashboard))
+        {
+            return false;
+        }
+
+        return dashboard.getPanels().panel instanceof UIFilmPanel;
     }
 
     public static boolean isChromaSkyEnabled()
