@@ -2529,6 +2529,8 @@
     "bbs.ui.video_settings.audio_args": "آرگومان‌های انکودر (صدا)",
     "bbs.ui.video_settings.audio_environment": "خروجی گرفتن صدای محیط بازی",
     "bbs.ui.video_settings.audio_environment-tooltip": "صداهای دنیای ماینکرفت را در حین خروجی گرفتن ضبط کرده و در ویدیوی نهایی میکس می‌کند",
+    "bbs.ui.video_settings.audio_separate_file": "خروجی گرفتن فایل صوتی جداگانه",
+    "bbs.ui.video_settings.audio_separate_file-tooltip": "وقتی خاموش باشد، صدا همچنان داخل ویدیوی خروجی قرار می‌گیرد، اما فایل .wav جداگانه در پوشه خروجی ذخیره نمی‌شود",
     "bbs.ui.video_settings.edit": "ویرایش تنظیمات...",
     "bbs.ui.video_settings.frame_rate": "نرخ فریم",
     "bbs.ui.video_settings.height": "ارتفاع",
