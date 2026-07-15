@@ -202,7 +202,6 @@ public class UIFilmPreview extends UIElement
             }
         };
         this.toggleShaders.tooltip(UIKeys.FILM_PREVIEW_TOGGLE_SHADERS);
-        this.toggleShaders.activeBackground(Colors.A50 | Colors.BLUE);
         this.toggleShaders.setVisible(BBSRendering.isIrisLoaded());
         this.plause = new UIIcon(() -> this.panel.isRunning() ? Icons.PAUSE : Icons.PLAY, (b) -> this.panel.togglePlayback());
         this.plause.tooltip(UIKeys.CAMERA_EDITOR_KEYS_EDITOR_PLAUSE);
@@ -648,10 +647,6 @@ public class UIFilmPreview extends UIElement
         this.gizmoRotate.active(mode == Gizmo.Mode.ROTATE);
         this.gizmoCombined.active(mode == Gizmo.Mode.COMBINED);
         this.gizmoTop.active(mode == Gizmo.Mode.TOP);
-        if (BBSRendering.isIrisLoaded())
-        {
-            this.toggleShaders.active(BBSRendering.isIrisShadersEnabled());
-        }
 
         Texture texture = BBSRendering.getTexture();
         Area area = this.getViewport();
@@ -814,6 +809,7 @@ public class UIFilmPreview extends UIElement
 
         if (!BBSSettings.editorFilmOverlayVisible.get()) UIDashboardPanels.renderHighlight(context.batcher, this.hideOverlays.area, Direction.BOTTOM);
         if (this.viewportButtonsHidden) UIDashboardPanels.renderHighlight(context.batcher, this.hideOverlays.area, Direction.BOTTOM);
+        if (BBSRendering.isIrisShadersEnabled() && this.toggleShaders.isVisible()) UIDashboardPanels.renderHighlight(context.batcher, this.toggleShaders.area, Direction.BOTTOM);
 
         if (!this.viewportButtonsHidden && this.panel.getController().isControlling())
         {
