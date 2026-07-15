@@ -4,9 +4,9 @@ import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
 import mchorse.bbs_mod.utils.colors.Color;
 
-import org.lwjgl.opengl.GL11;
-
 import com.mojang.blaze3d.systems.RenderSystem;
+
+import org.lwjgl.opengl.GL11;
 
 /**
  * Shape-key models cannot use the VAO + single-pass BBS shader path. Emission is applied as a

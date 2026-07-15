@@ -8,6 +8,7 @@ import mchorse.bbs_mod.forms.forms.BlockForm;
 
 import net.minecraft.block.BlockState;
 import net.minecraft.block.entity.BlockEntity;
+import net.minecraft.fluid.Fluids;
 import net.minecraft.item.HoeItem;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.ItemUsageContext;
@@ -57,7 +58,7 @@ public class BlockPickerItem extends HoeItem
         BlockForm form = createBlockForm(world, pos, sourceState);
 
         BlockState modelState = BBSMod.MODEL_BLOCK.getDefaultState()
-            .with(Properties.WATERLOGGED, world.getFluidState(pos).isOf(net.minecraft.fluid.Fluids.WATER))
+            .with(Properties.WATERLOGGED, world.getFluidState(pos).isOf(Fluids.WATER))
             .with(ModelBlock.LIGHT_LEVEL, 0);
 
         if (!world.setBlockState(pos, modelState, 3))

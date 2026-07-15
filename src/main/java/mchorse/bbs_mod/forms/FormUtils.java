@@ -14,6 +14,7 @@ import mchorse.bbs_mod.utils.StringUtils;
 import mchorse.bbs_mod.utils.keyframes.KeyframeChannel;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -233,7 +234,7 @@ public class FormUtils
         return visiblePath.substring(0, slash + 1) + "render";
     }
 
-    public static void addPairedRenderPropertyPaths(Iterable<String> propertyPaths, java.util.Collection<String> target)
+    public static void addPairedRenderPropertyPaths(Iterable<String> propertyPaths, Collection<String> target)
     {
         List<String> paired = new ArrayList<>();
 

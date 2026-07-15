@@ -13,6 +13,7 @@ import net.minecraft.client.texture.AbstractTexture;
 import net.irisshaders.iris.Iris;
 import net.irisshaders.iris.api.v0.IrisApi;
 import net.irisshaders.iris.gl.uniform.UniformUpdateFrequency;
+import net.irisshaders.iris.gui.screen.ShaderPackScreen;
 import net.irisshaders.iris.shaderpack.LanguageMap;
 import net.irisshaders.iris.shaderpack.ShaderPack;
 import net.irisshaders.iris.shaderpack.option.menu.OptionMenuContainer;
@@ -464,7 +465,7 @@ public class IrisUtils
         {
             MinecraftClient client = MinecraftClient.getInstance();
 
-            client.execute(() -> client.setScreen(new net.irisshaders.iris.gui.screen.ShaderPackScreen(client.currentScreen)));
+            client.execute(() -> client.setScreen(new ShaderPackScreen(client.currentScreen)));
         }
         catch (Exception e)
         {

@@ -3,17 +3,18 @@ package mchorse.bbs_mod.cubic.render;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.cubic.data.model.ModelGroup;
 import mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer;
+import mchorse.bbs_mod.forms.forms.utils.TextureBlend;
 import mchorse.bbs_mod.resources.Link;
 
 import net.minecraft.client.gl.GlUniform;
 import net.minecraft.client.gl.ShaderProgram;
 
-import org.lwjgl.opengl.GL11;
-
 import com.mojang.blaze3d.systems.RenderSystem;
 
+import org.lwjgl.opengl.GL11;
+
 /**
- * Per-bone texture crossfade matching the form-level {@link mchorse.bbs_mod.forms.forms.utils.TextureBlend}
+ * Per-bone texture crossfade matching the form-level {@link TextureBlend}
  * timeline: skin A fades out while skin B fades in (opacity crossfade at 0.5).
  */
 public final class CubicGroupTextureBlend

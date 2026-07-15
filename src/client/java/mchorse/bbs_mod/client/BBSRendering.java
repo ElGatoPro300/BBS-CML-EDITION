@@ -17,9 +17,9 @@ import mchorse.bbs_mod.camera.controller.PlayCameraController;
 import mchorse.bbs_mod.camera.data.Position;
 import mchorse.bbs_mod.client.renderer.ModelBlockEntityRenderer;
 import mchorse.bbs_mod.client.renderer.TriggerBlockEntityRenderer;
-import mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer;
 import mchorse.bbs_mod.client.screen.ScreenEffectRenderer;
 import mchorse.bbs_mod.client.video.VideoRenderer;
+import mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer;
 import mchorse.bbs_mod.events.ModelBlockEntityUpdateCallback;
 import mchorse.bbs_mod.events.TriggerBlockEntityUpdateCallback;
 import mchorse.bbs_mod.film.replays.Replay;
@@ -790,7 +790,7 @@ public class BBSRendering
 
     /**
      * When true, VAO model paint must not be applied in the base pass; use the BBS model
-     * shader overlay ({@link mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer#submitPaintOverlay})
+     * shader overlay ({@link ModelVAORenderer#submitPaintOverlay})
      * so paint matches the no-shader path under an active Iris shader pack.
      */
     public static boolean isIrisWorldPaintDeferral()

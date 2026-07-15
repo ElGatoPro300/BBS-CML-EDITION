@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.forms;
 
 import mchorse.bbs_mod.BBSModClient;
+import mchorse.bbs_mod.BBSSettings;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.graphics.Framebuffer;
 import mchorse.bbs_mod.graphics.Renderbuffer;
@@ -180,7 +181,7 @@ public final class FormUIPreviewCache
     {
         float angle = MathUtils.toRad(context.mouseX - (x1 + x2) / 2) + MathUtils.PI;
 
-        if (mchorse.bbs_mod.BBSSettings.freezeModels.get())
+        if (BBSSettings.freezeModels.get())
         {
             angle = -MathUtils.PI + MathUtils.PI / 8F;
         }

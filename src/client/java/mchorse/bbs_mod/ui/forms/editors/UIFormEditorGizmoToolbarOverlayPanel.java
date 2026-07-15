@@ -1,8 +1,8 @@
 package mchorse.bbs_mod.ui.forms.editors;
 
 import mchorse.bbs_mod.BBSSettings;
-import mchorse.bbs_mod.settings.ui.UIIconToolbarOrderEditor;
 import mchorse.bbs_mod.l10n.L10n;
+import mchorse.bbs_mod.settings.ui.UIIconToolbarOrderEditor;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.overlay.UIOverlayPanel;

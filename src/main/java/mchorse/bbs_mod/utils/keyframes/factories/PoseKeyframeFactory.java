@@ -1,13 +1,13 @@
 package mchorse.bbs_mod.utils.keyframes.factories;
 
 import mchorse.bbs_mod.data.types.BaseType;
+import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.utils.interps.IInterp;
 import mchorse.bbs_mod.utils.interps.Interpolations;
 import mchorse.bbs_mod.utils.interps.easings.EasingArgs;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
 import mchorse.bbs_mod.utils.pose.Pose;
 import mchorse.bbs_mod.utils.pose.PoseTransform;
-import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.utils.pose.Transform;
 import mchorse.bbs_mod.utils.resources.LinkUtils;
 
