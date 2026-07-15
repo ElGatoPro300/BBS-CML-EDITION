@@ -63,19 +63,19 @@ public class UIFilmStatusIcons extends UIElement
 
 
 
-        this.warningIcon = new UIIcon(Icons.WARNING, (b) -> this.panel.teleportToCamera());
+        this.warningIcon = new UIIcon(Icons.FILM_STATUS_WARNING, (b) -> this.panel.teleportToCamera());
 
         this.warningIcon.tooltip(UIKeys.FILM_TELEPORT_DESCRIPTION);
 
 
 
-        this.loopIcon = new UIIcon(Icons.REVERSE, (b) -> this.toggleLoop());
+        this.loopIcon = new UIIcon(Icons.FILM_STATUS_LOOP, (b) -> this.toggleLoop());
 
         this.loopIcon.tooltip(UIKeys.CAMERA_EDITOR_KEYS_MODES_LOOPING);
 
 
 
-        this.saveIcon = new UIIcon(Icons.SAVE, (b) -> this.saveFromIcon());
+        this.saveIcon = new UIIcon(Icons.FILM_STATUS_SAVE, (b) -> this.saveFromIcon());
 
         this.saveIcon.tooltip(UIKeys.GENERAL_SAVE);
 
@@ -224,22 +224,6 @@ public class UIFilmStatusIcons extends UIElement
         this.loopIcon.active(BBSSettings.editorLoop.get());
 
         this.loopIcon.activeBackground(BBSSettings.editorLoop.get() ? Colors.setA(BBSSettings.primaryColor.get(), 0.55F) : 0);
-
-
-
-        if (far)
-
-        {
-
-            float blink = (float) (Math.sin(context.getTickTransition() / 3D) * 0.5D + 0.5D);
-
-            int red = Colors.setA(0xFFCC2222, 0.35F + blink * 0.45F);
-
-
-
-            context.batcher.box(this.warningIcon.area.x, this.warningIcon.area.y, this.warningIcon.area.ex(), this.warningIcon.area.ey(), red);
-
-        }
 
 
 
