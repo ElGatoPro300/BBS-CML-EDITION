@@ -69,6 +69,8 @@ public class BBSSettings
     public static ValueFloat axesScale;
     public static ValueFloat axesThickness;
     public static ValueFloat gizmoHitbox;
+    public static ValueBoolean gizmoConstantSize;
+    public static ValueFloat gizmoConstantSizeMin;
     public static ValueInt gizmoDefaultMode;
     public static ValueFloat gizmoGuideLength;
     public static ValueFloat gizmoGuideThickness;
@@ -544,6 +546,10 @@ public class BBSSettings
         /* Multiplier applied only to the invisible picking pass, so the clickable area can be
          * fatter than the visible handles (or thinner) independently of axes_thickness. */
         gizmoHitbox = builder.getFloat("gizmo_hitbox", 1.5F, 0.25F, 5F);
+        /* When enabled, gizmo size scales with camera distance to stay roughly constant on screen. */
+        gizmoConstantSize = builder.getBoolean("gizmo_constant_size", true);
+        /* Floor in Math.max(floor, dist * 0.12). 0 disables the floor so it can keep shrinking when close. */
+        gizmoConstantSizeMin = builder.getFloat("gizmo_constant_size_min", 0.5F, 0F, 10F);
         disablePivotTransform = builder.getBoolean("disable_pivot_transform", false);
         gizmoYAxisHorizontal = builder.getBoolean("gizmo_y_axis_horizontal", true);
         gizmoTrackball = builder.getBoolean("gizmo_trackball", true);

@@ -767,7 +767,23 @@ public class Gizmo
             this.lastCamDir.set((float) (camPos.x / dist), (float) (camPos.y / dist), (float) (camPos.z / dist));
         }
 
-        return (float) (1.4F * Math.max(0.5D, dist * 0.12D) * axesScale);
+        boolean constantSize = BBSSettings.gizmoConstantSize == null || BBSSettings.gizmoConstantSize.get();
+
+        if (!constantSize)
+        {
+            /* Fixed world size: appears smaller on screen when the camera moves away. */
+            return 1.4F * 0.5F * axesScale;
+        }
+
+        float minFloor = BBSSettings.gizmoConstantSizeMin == null ? 0.5F : BBSSettings.gizmoConstantSizeMin.get();
+        double distanceFactor = dist * 0.12D;
+
+        if (minFloor <= 0F)
+        {
+            return (float) (1.4F * distanceFactor * axesScale);
+        }
+
+        return (float) (1.4F * Math.max(minFloor, distanceFactor) * axesScale);
     }
 
     private void updateFlipSigns(float camX, float camY, float camZ)
