@@ -58,6 +58,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
 import net.fabricmc.fabric.impl.client.rendering.WorldRenderContextImpl;
 import net.fabricmc.loader.api.FabricLoader;
 
+import net.minecraft.block.entity.BlockEntity;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.Framebuffer;
 import net.minecraft.client.gl.WindowFramebuffer;
@@ -973,6 +974,38 @@ public class BBSRendering
         /* Film preview must match export: hide terrain when the toggle says so.
          * Other immersive panels (model/trigger editors, etc.) keep the world visible. */
         return !isImmersiveWorldPanel() || isFilmPanelOpen();
+    }
+
+    /**
+     * Whether a specific block entity must be skipped while chroma sky is hiding terrain.
+     * Model blocks can opt in (global setting overrides per-block).
+     */
+    public static boolean shouldHideChromaBlockEntity(BlockEntity blockEntity)
+    {
+        if (!shouldHideChromaTerrain())
+        {
+            return false;
+        }
+
+        if (blockEntity instanceof ModelBlockEntity modelBlock)
+        {
+            return !shouldRenderModelBlockOnChroma(modelBlock);
+        }
+
+        return true;
+    }
+
+    /**
+     * Global chroma-sky model-block setting takes precedence over the per-block toggle.
+     */
+    public static boolean shouldRenderModelBlockOnChroma(ModelBlockEntity modelBlock)
+    {
+        if (BBSSettings.chromaSkyModelBlocks.get())
+        {
+            return true;
+        }
+
+        return modelBlock.getProperties().isChromaSky();
     }
 
     private static boolean isFilmPanelOpen()

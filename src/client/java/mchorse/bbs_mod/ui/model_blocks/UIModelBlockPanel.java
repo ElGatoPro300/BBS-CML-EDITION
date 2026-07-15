@@ -190,6 +190,7 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
     public UIToggle hitbox;
     public UIToggle global;
     public UIToggle lookAt;
+    public UIToggle chromaSky;
     public UITrackpad lightLevel;
     public UITrackpad hardness;
     public UIPropTransform transform;
@@ -356,6 +357,14 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
             this.modelBlock.getProperties().setLookAt(b.getValue());
             this.endUndoCapture();
         });
+        this.chromaSky = new UIToggle(UIKeys.MODEL_BLOCKS_CHROMA_SKY, (b) -> {
+            if (this.modelBlock == null)
+                return;
+            this.beginUndoCapture();
+            this.modelBlock.getProperties().setChromaSky(b.getValue());
+            this.endUndoCapture();
+        });
+        this.chromaSky.tooltip(UIKeys.MODEL_BLOCKS_CHROMA_SKY_TOOLTIP);
 
         this.lightLevel = new UITrackpad((v) -> {
             if (this.modelBlock == null)
@@ -495,7 +504,7 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
                 this.sectionHeader(UIKeys.MODEL_BLOCKS_DISPLAY),
                 UI.row(4, this.enabled, this.shadow),
                 UI.row(4, this.global, this.lookAt),
-                this.hitbox,
+                UI.row(4, this.hitbox, this.chromaSky),
                 this.sectionHeader(UIKeys.MODEL_BLOCKS_BLOCK),
                 UI.row(4, lightGroup, hardnessGroup),
                 this.sectionHeader(UIKeys.MODEL_BLOCKS_EQUIPMENT),
@@ -1886,6 +1895,7 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
         this.hitbox.setValue(properties.isHitbox());
         this.global.setValue(properties.isGlobal());
         this.lookAt.setValue(properties.isLookAt());
+        this.chromaSky.setValue(properties.isChromaSky());
         this.lightLevel.setValue(properties.getLightLevel());
         this.hardness.setValue(properties.getHardness());
 
