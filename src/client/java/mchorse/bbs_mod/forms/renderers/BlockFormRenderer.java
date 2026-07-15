@@ -37,6 +37,8 @@ import org.joml.Vector3f;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 
+import java.util.function.Function;
+
 public class BlockFormRenderer extends FormRenderer<BlockForm>
 {
     public static final Color color = new Color();
@@ -261,8 +263,18 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
             RenderLayer crackingLayer = ModelLoader.BLOCK_DESTRUCTION_RENDER_LAYERS.get(breakingLevel - 1);
             VertexConsumer delegateConsumer = consumers.getBuffer(crackingLayer);
             VertexConsumer crackingConsumer = new OverlayVertexConsumer(delegateConsumer, stack.peek(), 1.0F);
+            Function<VertexConsumer, VertexConsumer> previousSubstitute = consumers.getSubstitute();
+
             consumers.setSubstitute((vertexConsumer) -> crackingConsumer);
-            MinecraftClient.getInstance().getBlockRenderManager().renderBlockAsEntity(this.form.blockState.get(), stack, consumers, light, overlay);
+
+            try
+            {
+                MinecraftClient.getInstance().getBlockRenderManager().renderBlockAsEntity(this.form.blockState.get(), stack, consumers, light, overlay);
+            }
+            finally
+            {
+                consumers.setSubstitute(previousSubstitute);
+            }
         }
 
         stack.pop();

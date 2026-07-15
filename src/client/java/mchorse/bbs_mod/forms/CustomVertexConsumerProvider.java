@@ -47,6 +47,11 @@ public class CustomVertexConsumerProvider implements VertexConsumerProvider
         this.delegate = delegate;
     }
 
+    public Function<VertexConsumer, VertexConsumer> getSubstitute()
+    {
+        return this.substitute;
+    }
+
     public void setSubstitute(Function<VertexConsumer, VertexConsumer> substitute)
     {
         this.substitute = substitute;
