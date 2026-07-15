@@ -213,11 +213,6 @@ public class Icons
     public static final Icon CROSSED_OUT_EYE = register(new Icon(ATLAS, "crossed_out_eye", 112, 176));
     public static final Icon WARNING = register(new Icon(ATLAS, "warning", 128, 176));
 
-    public static final Link FILM_STATUS_ATLAS = Link.assets("textures/film_status_icons_atlas.png");
-    public static final Icon FILM_STATUS_WARNING = register(new Icon(FILM_STATUS_ATLAS, "film_status_warning", 0, 0, 16, 16, 48, 16));
-    public static final Icon FILM_STATUS_LOOP = register(new Icon(FILM_STATUS_ATLAS, "film_status_loop", 16, 0, 16, 16, 48, 16));
-    public static final Icon FILM_STATUS_SAVE = register(new Icon(FILM_STATUS_ATLAS, "film_status_save", 32, 0, 16, 16, 48, 16));
-
     public static final Icon INTERP_LINEAR = register(new Icon(ATLAS, "interp_linear", 0, 192));
     public static final Icon INTERP_CONST = register(new Icon(ATLAS, "interp_const", 16, 192));
     public static final Icon INTERP_STEP = register(new Icon(ATLAS, "interp_step", 32, 192));

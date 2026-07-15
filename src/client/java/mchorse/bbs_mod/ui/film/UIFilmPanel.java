@@ -4975,6 +4975,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
         this.save();
         UIUtils.playClick();
+
+        if (this.statusIcons != null)
+        {
+            this.statusIcons.flashAutosave();
+        }
     }
 
     @Override

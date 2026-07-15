@@ -6,6 +6,7 @@ import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIIcon;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineInteractionHints;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 import mchorse.bbs_mod.utils.colors.Colors;
 
@@ -37,6 +38,8 @@ public class UIFilmStatusIcons extends UIElement
 
     private static final int SAVE_FLASH_COLOR = 0xCC1A5C1A;
 
+    private static final int WARNING_PULSE_COLOR = 0xCC8C1A1A;
+
 
 
     private final UIFilmPanel panel;
@@ -63,19 +66,21 @@ public class UIFilmStatusIcons extends UIElement
 
 
 
-        this.warningIcon = new UIIcon(Icons.FILM_STATUS_WARNING, (b) -> this.panel.teleportToCamera());
+        this.warningIcon = new UIIcon(Icons.WARNING, (b) -> this.panel.teleportToCamera());
 
         this.warningIcon.tooltip(UIKeys.FILM_TELEPORT_DESCRIPTION);
 
+        this.warningIcon.iconColor(Colors.WHITE);
 
 
-        this.loopIcon = new UIIcon(Icons.FILM_STATUS_LOOP, (b) -> this.toggleLoop());
+
+        this.loopIcon = new UIIcon(Icons.REVERSE, (b) -> this.toggleLoop());
 
         this.loopIcon.tooltip(UIKeys.CAMERA_EDITOR_KEYS_MODES_LOOPING);
 
 
 
-        this.saveIcon = new UIIcon(Icons.FILM_STATUS_SAVE, (b) -> this.saveFromIcon());
+        this.saveIcon = new UIIcon(Icons.SAVED, (b) -> this.saveFromIcon());
 
         this.saveIcon.tooltip(UIKeys.GENERAL_SAVE);
 
@@ -135,7 +140,7 @@ public class UIFilmStatusIcons extends UIElement
 
 
 
-        this.panel.save();
+        this.panel.manualSave();
 
     }
 
@@ -225,7 +230,13 @@ public class UIFilmStatusIcons extends UIElement
 
         this.loopIcon.activeBackground(BBSSettings.editorLoop.get() ? Colors.setA(BBSSettings.primaryColor.get(), 0.55F) : 0);
 
+        if (far)
+        {
+            float pulse = TimelineInteractionHints.getPulseAlpha(0.4F, 0.95F);
+            int red = Colors.setA(WARNING_PULSE_COLOR, pulse);
 
+            context.batcher.box(this.warningIcon.area.x, this.warningIcon.area.y, this.warningIcon.area.ex(), this.warningIcon.area.ey(), red);
+        }
 
         if (this.saveFlashStart >= 0L)
 
