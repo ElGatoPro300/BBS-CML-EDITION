@@ -28,6 +28,7 @@ import mchorse.bbs_mod.ui.film.controller.UIGizmoSizeContextMenu;
 import mchorse.bbs_mod.ui.film.controller.UIGizmoTranslateSpeedContextMenu;
 import mchorse.bbs_mod.ui.film.controller.UIOnionSkinContextMenu;
 import mchorse.bbs_mod.ui.film.controller.UIViewportHideContextMenu;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarSettings;
 import mchorse.bbs_mod.ui.film.utils.UICameraUtils;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
@@ -554,6 +555,22 @@ public class UIFilmPreview extends UIElement
         return absolute;
     }
 
+    /**
+     * Extra bottom offset so viewport hints sit above the preview icon row when it
+     * overlaps the letterboxed viewport.
+     */
+    private int getViewportHintBottomReserve(Area viewport)
+    {
+        Area icons = this.icons.area;
+
+        if (icons.ey() <= viewport.y || icons.y >= viewport.ey())
+        {
+            return 0;
+        }
+
+        return icons.h + TimelineToolbarSettings.INTERACTION_HINT_MARGIN;
+    }
+
     @Override
     protected boolean subMouseClicked(UIContext context)
     {
@@ -561,6 +578,11 @@ public class UIFilmPreview extends UIElement
 
         if (area.isInside(context))
         {
+            if (this.panel.replayEditor.handleViewportInteractionMouse(context, area))
+            {
+                return true;
+            }
+
             /* In flight mode, viewport clicks drive the camera directly (left = look around,
              * right = roll, middle = FOV). This has to be started here rather than left to the
              * dashboard's orbit element, because this panel uses BLOCK_INSIDE mouse propagation
@@ -617,6 +639,17 @@ public class UIFilmPreview extends UIElement
     }
 
     @Override
+    protected boolean subKeyPressed(UIContext context)
+    {
+        if (this.panel.replayEditor.handleViewportInteractionKey(context))
+        {
+            return true;
+        }
+
+        return super.subKeyPressed(context);
+    }
+
+    @Override
     protected boolean subMouseReleased(UIContext context)
     {
         if (this.panel.getController().getPovMode() == UIFilmController.CAMERA_MODE_ORBIT && this.panel.getController().orbit.enabled)
@@ -660,6 +693,11 @@ public class UIFilmPreview extends UIElement
         if (texture != null && area.w > 0 && area.h > 0)
         {
             context.batcher.texturedBox(texture.id, Colors.WHITE, area.x, area.y, area.w, area.h, 0, texture.height, texture.width, 0, texture.width, texture.height);
+        }
+
+        if (this.panel.replayEditor.isViewportInteractionActive())
+        {
+            this.panel.replayEditor.renderViewportInteraction(context, area);
         }
 
         if (this.pendingThumbnail != null)
@@ -823,6 +861,12 @@ public class UIFilmPreview extends UIElement
         context.batcher.clip(this.area, context);
         super.render(context);
         context.batcher.unclip(context);
+
+        if (this.panel.replayEditor.isViewportInteractionActive())
+        {
+            this.panel.replayEditor.renderViewportInteractionHint(context, area,
+                this.getViewportHintBottomReserve(area));
+        }
     }
 
     private void renderCursor(UIContext context)

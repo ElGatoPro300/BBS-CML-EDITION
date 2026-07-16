@@ -461,7 +461,6 @@ public class UIKeys
     public static final IKey FILM_REPLAY_RELATIVE_TOOLTIP = L10n.lang("bbs.ui.film.replay.relative-tooltip");
     public static final IKey FILM_REPLAY_REPLAY = L10n.lang("bbs.ui.film.replay.replay");
     public static final IKey FILM_REPLAY_SECTION_GENERAL = L10n.lang("bbs.ui.film.replay.section_general");
-    public static final IKey FILM_REPLAY_WINDOWED_GENERAL = L10n.lang("bbs.ui.film.replay.windowed_general");
     public static final IKey FILM_REPLAY_SECTION_PLAYBACK = L10n.lang("bbs.ui.film.replay.section_playback");
     public static final IKey FILM_REPLAY_SECTION_POSITIONING = L10n.lang("bbs.ui.film.replay.section_positioning");
     public static final IKey FILM_REPLAY_SECTION_ITEM_DROPS = L10n.lang("bbs.ui.film.replay.section_item_drops");

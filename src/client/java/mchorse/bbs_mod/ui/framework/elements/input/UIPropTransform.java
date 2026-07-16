@@ -87,6 +87,12 @@ public class UIPropTransform extends UITransform
     private boolean freeRotation;
     private boolean freeTranslation;
     private boolean uniformScale;
+    /**
+     * Project translate/scale ray drags onto the gizmo axes and compensate parent scale
+     * via {@code / axisWorldScale}. Used for cubic model-pixel pose (scale 16) and for
+     * BOBJ block-unit pose (scale 1) so nested parent scales stay correct.
+     */
+    private boolean axisProjectedTranslation;
     private boolean rayDragInitialized;
     private boolean rayDragReanchor;
 
@@ -240,6 +246,9 @@ public class UIPropTransform extends UITransform
     {
         this.configurePoseRingTuning(true);
         this.invertModelPoseTrackballDragY();
+        /* BOBJ pose translate is in blocks; keep axis-projected sensitivity so parent
+         * bone scale still divides out correctly (same path as cubic's pixel mode). */
+        this.axisProjectedTranslation = true;
 
         return this;
     }
@@ -406,6 +415,7 @@ public class UIPropTransform extends UITransform
     {
         this.configurePoseLimbRingTuning(true);
         this.invertTrackballDragY = true;
+        this.axisProjectedTranslation = true;
 
         return this;
     }
@@ -654,6 +664,18 @@ public class UIPropTransform extends UITransform
         return this;
     }
 
+    /**
+     * When true, ray translate sensitivity divides by the gizmo axis world length
+     * ({@code scale / axisWorldScale}). Required for BOBJ block-space translate when
+     * {@link #translationScale} is 1 (otherwise only scale ≥ 15.5 enables that path).
+     */
+    public UIPropTransform setAxisProjectedTranslation(boolean axisProjectedTranslation)
+    {
+        this.axisProjectedTranslation = axisProjectedTranslation;
+
+        return this;
+    }
+
     /* Default {@link BBSSettings#gizmoTranslateSpeed}; at this value ray translate drag matches
      * the tuned 1:1 baseline (speed / neutral == 1). */
     private static final float GIZMO_TRANSLATE_SPEED_NEUTRAL = 5F;
@@ -683,10 +705,13 @@ public class UIPropTransform extends UITransform
         return scale;
     }
 
-    /** Pose / geometry drags store translate in model pixels (16 units per block). */
+    /**
+     * Pose / geometry drags that project onto gizmo axes (cubic model pixels at scale 16,
+     * or BOBJ block units with {@link #axisProjectedTranslation}).
+     */
     private boolean usesModelPixelTranslation()
     {
-        return this.translationScale >= 15.5F;
+        return this.axisProjectedTranslation || this.translationScale >= 15.5F;
     }
 
     /**

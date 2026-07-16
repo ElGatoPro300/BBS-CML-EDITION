@@ -660,7 +660,7 @@ public class BBSSettings
         replayFpBobbingIntensity = builder.getFloat("replay_fp_bobbing_intensity", 0.25F, 0F, 2F);
         replayFpBobbingFrequency = builder.getFloat("replay_fp_bobbing_frequency", 0.25F, 0F, 3F);
         editorAnchoredReplaysPanel = builder.getBoolean("anchored_replays_panel", true);
-        editorSeparateReplayPropertiesPanel = builder.getBoolean("separate_replay_properties_panel", false);
+        editorSeparateReplayPropertiesPanel = builder.getBoolean("separate_replay_properties_panel", true);
         blockPickerDefaultMode = builder.getInt("block_picker_default_mode", 0, 0, 2);
         editorAnchoredReplaysPanelHeight = builder.getInt("anchored_replays_panel_height", 170, 70, 2000);
         editorAnchoredReplaysPanelHeight.invisible();

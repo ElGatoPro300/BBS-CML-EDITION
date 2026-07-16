@@ -1,11 +1,13 @@
 package mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories;
 
+import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.forms.FormUtils;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.forms.ModelForm;
 import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.forms.renderers.ModelFormRenderer;
 import mchorse.bbs_mod.ui.UIKeys;
+import mchorse.bbs_mod.ui.film.UIFilmPanel;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
 import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
 import mchorse.bbs_mod.ui.framework.elements.input.UIPropTransform;
@@ -56,10 +58,11 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
 
         if (isPoseLimbTrack(sheet))
         {
-            this.transform.translationScale(16F);
+            boolean bobj = isBobjPoseLimbContext(editor, sheet);
 
-            Form limbForm = FormUtils.getForm(sheet.property);
-            boolean bobj = limbForm instanceof ModelForm modelForm && ModelFormRenderer.isBobjModel(modelForm);
+            /* Cubic groups store translate in model pixels (/16 on the render stack).
+             * BOBJ bones apply PoseTransform.translate directly in blocks. */
+            this.transform.translationScale(bobj ? 1F : 16F);
 
             if (bobj)
             {
@@ -201,6 +204,33 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
         String propertyId = StringUtils.fileName(propertyPath);
 
         return propertyId.equals("pose") || propertyId.startsWith("pose_overlay");
+    }
+
+    /**
+     * Limb sheets keep {@code sheet.property == null} (path is {@code pose:bone}, not a
+     * Transform value on the form). Resolve BOBJ from the sheet's form when present, else
+     * from the film replay root.
+     */
+    public static boolean isBobjPoseLimbContext(UIKeyframes editor, UIKeyframeSheet sheet)
+    {
+        Form form = sheet != null && sheet.property != null ? FormUtils.getForm(sheet.property) : null;
+
+        if (!(form instanceof ModelForm) && editor != null)
+        {
+            UIFilmPanel panel = editor.getParent(UIFilmPanel.class);
+
+            if (panel != null && panel.replayEditor != null)
+            {
+                Replay replay = panel.replayEditor.getReplay();
+
+                if (replay != null)
+                {
+                    form = FormUtils.getRoot(replay.form.get());
+                }
+            }
+        }
+
+        return form instanceof ModelForm modelForm && ModelFormRenderer.isBobjModel(modelForm);
     }
 
     public static void keyframeOpenPoseLimbs(UIKeyframes editor, float tick, boolean defaults)

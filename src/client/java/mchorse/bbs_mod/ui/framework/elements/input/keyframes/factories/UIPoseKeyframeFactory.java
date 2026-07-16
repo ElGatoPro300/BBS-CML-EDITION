@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories;
 
 import mchorse.bbs_mod.BBSSettings;
+import mchorse.bbs_mod.cubic.IModel;
 import mchorse.bbs_mod.cubic.ModelInstance;
 import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.forms.FormUtils;
@@ -222,7 +223,8 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
         @Override
         protected float getGizmoTranslationScale()
         {
-            return 16F;
+            /* BOBJ bones translate in blocks; cubic groups use model pixels (/16). */
+            return ModelFormRenderer.isBobjModel(this.model) ? 1F : 16F;
         }
 
         private String getGroup(PoseTransform transform)
@@ -273,6 +275,29 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
             }
 
             return editor;
+        }
+
+        @Override
+        public void fillGroups(IModel model, java.util.Map<String, String> flippedParts, boolean reset)
+        {
+            super.fillGroups(model, flippedParts, reset);
+
+            if (this.transform != null)
+            {
+                boolean bobj = ModelFormRenderer.isBobjModel(model);
+
+                this.transform.translationScale(bobj ? 1F : 16F);
+                this.transform.setAxisProjectedTranslation(bobj);
+
+                if (bobj)
+                {
+                    this.transform.configurePoseRingTuning(true);
+                }
+                else
+                {
+                    this.transform.configurePoseRingTuning(false);
+                }
+            }
         }
 
         @Override

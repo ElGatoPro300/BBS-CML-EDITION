@@ -576,7 +576,8 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
                 {
                     boolean local = this.transform != null && this.transform.isLocal();
 
-                    gizmoMatrix = GizmoMatrixUtils.resolveFilmPoseBoneMatrix(entry, local);
+                    gizmoMatrix = GizmoMatrixUtils.resolveFilmPoseBoneMatrix(entry, local,
+                        ModelFormRenderer.isBobjModel(this.form));
                 }
             }
         }

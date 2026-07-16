@@ -38,6 +38,7 @@ import mchorse.bbs_mod.settings.values.core.ValueTransform;
 import mchorse.bbs_mod.ui.framework.UIBaseMenu;
 import mchorse.bbs_mod.ui.framework.elements.utils.StencilMap;
 import mchorse.bbs_mod.ui.utils.Gizmo;
+import mchorse.bbs_mod.ui.utils.gizmo.GizmoMatrixUtils;
 import mchorse.bbs_mod.utils.AABB;
 import mchorse.bbs_mod.utils.CollectionUtils;
 import mchorse.bbs_mod.utils.MathUtils;
@@ -1210,26 +1211,10 @@ public abstract class BaseFilmController
         }
 
         Matrix4f matrix;
+        Form rootForm = FormUtils.getRoot(form);
+        boolean bobj = rootForm instanceof ModelForm modelForm && ModelFormRenderer.isBobjModel(modelForm);
 
-        if (local)
-        {
-            Matrix4f localMatrix = entry.matrix();
-            Matrix4f originMatrix = entry.origin();
-
-            if (localMatrix != null && originMatrix != null)
-            {
-                matrix = new Matrix4f(localMatrix);
-                matrix.setTranslation(originMatrix.getTranslation(new Vector3f()));
-            }
-            else
-            {
-                matrix = localMatrix != null ? localMatrix : originMatrix;
-            }
-        }
-        else
-        {
-            matrix = entry.origin() != null ? entry.origin() : entry.matrix();
-        }
+        matrix = GizmoMatrixUtils.resolveFilmPoseBoneMatrix(entry, local, bobj);
 
         if (matrix != null)
         {
