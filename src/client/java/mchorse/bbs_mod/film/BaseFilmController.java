@@ -1211,7 +1211,8 @@ public abstract class BaseFilmController
         }
 
         Matrix4f matrix;
-        boolean bobj = form instanceof ModelForm modelForm && ModelFormRenderer.isBobjModel(modelForm);
+        Form rootForm = FormUtils.getRoot(form);
+        boolean bobj = rootForm instanceof ModelForm modelForm && ModelFormRenderer.isBobjModel(modelForm);
 
         matrix = GizmoMatrixUtils.resolveFilmPoseBoneMatrix(entry, local, bobj);
 
