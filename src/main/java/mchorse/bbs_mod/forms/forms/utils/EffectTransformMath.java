@@ -10,7 +10,15 @@ import org.joml.Vector3f;
  */
 public class EffectTransformMath
 {
-    public static final float BILLBOARD_MASK_HALF = 0.45F;
+    public static final float EPSILON = 0.001F;
+    public static final float BILLBOARD_MASK_HALF = 0.5F;
+    /** Centered mask half for item forms in form-root space. */
+    public static final float ITEM_MASK_HALF_BASE = 0.5F;
+    /**
+     * Item display geometry sits above the mask origin; subtract this from scale Y so UI 0
+     * matches the calibrated neutral mask (previously required ~-0.2 in the editor).
+     */
+    public static final float ITEM_MASK_SCALE_Y_BIAS = -0.2F;
     /** Half-height at scale 1.0; full vertical span is 2x this value (feet to head for humanoids). */
     public static final float MODEL_MASK_HALF_BASE = 1F;
     public static final float MODEL_MASK_Y_BIAS = 1F;
@@ -39,6 +47,32 @@ public class EffectTransformMath
     public static void resolveBlockMaskHalfExtents(EffectTransform transform, Vector3f dest)
     {
         resolveMaskHalfExtents(transform, dest, 0.5F, 1F);
+    }
+
+    public static void resolveItemMaskHalfExtents(EffectTransform transform, Vector3f dest)
+    {
+        if (transform == null)
+        {
+            dest.set(ITEM_MASK_HALF_BASE, ITEM_MASK_HALF_BASE * resolveItemScaleY(1F), ITEM_MASK_HALF_BASE);
+
+            return;
+        }
+
+        float scaleX = transform.scaleX == 0F ? 0.001F : transform.scaleX;
+        float scaleY = resolveItemScaleY(transform.scaleY);
+        float scaleZ = transform.scaleZ == 0F ? 0.001F : transform.scaleZ;
+
+        dest.set(ITEM_MASK_HALF_BASE * scaleX, ITEM_MASK_HALF_BASE * scaleY, ITEM_MASK_HALF_BASE * scaleZ);
+    }
+
+    private static float resolveItemScaleY(float scaleY)
+    {
+        if (Math.abs(scaleY) < EPSILON)
+        {
+            scaleY = 0F;
+        }
+
+        return scaleY + ITEM_MASK_SCALE_Y_BIAS;
     }
 
     private static void resolveMaskHalfExtents(EffectTransform transform, Vector3f dest, float baseHalf, float yBias)
@@ -97,6 +131,24 @@ public class EffectTransformMath
             return 1F;
         }
 
+        return evaluateSoftMask(x, y, z, transform, halfExtents, bottomAnchoredY);
+    }
+
+    /**
+     * Billboard paint mask always evaluates the soft box so identity transform does not
+     * jump between full paint and a clipped box when the first value is nudged.
+     */
+    public static float maskBillboard(float x, float y, float z, EffectTransform transform)
+    {
+        Vector3f half = new Vector3f();
+
+        resolveBillboardMaskHalfExtents(transform, half);
+
+        return evaluateSoftMask(x, y, z, transform, half, false);
+    }
+
+    private static float evaluateSoftMask(float x, float y, float z, EffectTransform transform, Vector3f halfExtents, boolean bottomAnchoredY)
+    {
         buildInverseMatrix(transform, MATRIX);
         LOCAL.set(x, y, z);
         MATRIX.transformPosition(LOCAL);
@@ -131,15 +183,6 @@ public class EffectTransformMath
         }
 
         return 1F - dist / falloff;
-    }
-
-    public static float maskBillboard(float x, float y, float z, EffectTransform transform)
-    {
-        Vector3f half = new Vector3f();
-
-        resolveBillboardMaskHalfExtents(transform, half);
-
-        return mask3DModel(x, y, z, transform, half, false);
     }
 
     public static float maskBlock(float x, float y, float z, EffectTransform transform)

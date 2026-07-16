@@ -32,6 +32,8 @@ import mchorse.bbs_mod.forms.renderers.utils.BlockPaintVertexConsumer;
 import mchorse.bbs_mod.forms.renderers.utils.BlockPaintVertexSodiumConsumer;
 import mchorse.bbs_mod.forms.renderers.utils.GlowEmissionVertexConsumer;
 import mchorse.bbs_mod.forms.renderers.utils.GlowEmissionVertexSodiumConsumer;
+import mchorse.bbs_mod.forms.renderers.utils.TextGlowEmissionVertexConsumer;
+import mchorse.bbs_mod.forms.renderers.utils.TextGlowEmissionVertexSodiumConsumer;
 import mchorse.bbs_mod.forms.renderers.utils.RecolorVertexConsumer;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.graphics.texture.TextureFormat;
@@ -798,9 +800,18 @@ public class BBSRendering
     }
 
     /**
+     * When true, paint overlays must be queued for {@link ModelVAORenderer#flushPaintOverlayQueue()}
+     * at the end of the world frame (Iris shader-pack path). Without Iris they run immediately
+     * after each form so depth ordering against other entities stays correct.
+     */
+    public static boolean shouldDeferPaintOverlayToFrameEnd()
+    {
+        return isIrisWorldModelPass();
+    }
+
+    /**
      * When true, VAO model paint must not be applied in the base pass; use the BBS model
-     * shader overlay ({@link ModelVAORenderer#submitPaintOverlay})
-     * so paint matches the no-shader path under an active Iris shader pack.
+     * shader overlay ({@link ModelVAORenderer#submitPaintOverlay}) so paint matches under Iris.
      */
     public static boolean isIrisWorldPaintDeferral()
     {
@@ -1148,6 +1159,16 @@ public class BBSRendering
         }
 
         return (b) -> new GlowEmissionVertexConsumer(b, glowColor);
+    }
+
+    public static Function<VertexConsumer, VertexConsumer> getTextGlowOverlayConsumer(Color glowColor)
+    {
+        if (sodium)
+        {
+            return (b) -> new TextGlowEmissionVertexSodiumConsumer(b, glowColor);
+        }
+
+        return (b) -> new TextGlowEmissionVertexConsumer(b, glowColor);
     }
 
     public static Function<VertexConsumer, VertexConsumer> getBlockPaintOverlayConsumer(Color paintColor)

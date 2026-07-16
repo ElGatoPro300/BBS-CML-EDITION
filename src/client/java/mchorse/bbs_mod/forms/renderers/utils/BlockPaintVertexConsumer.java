@@ -31,4 +31,19 @@ public class BlockPaintVertexConsumer extends RecolorVertexConsumer
 
         return this.consumer.color(red, green, blue, alpha);
     }
+
+    @Override
+    public VertexConsumer color(float red, float green, float blue, float alpha)
+    {
+        Color vertex = new Color(red, green, blue, alpha);
+
+        vertex.mul(this.color);
+
+        if (this.paintColor != null)
+        {
+            FormColorBlend.applyPaintBlend(vertex, this.paintColor, this.paintColor.a);
+        }
+
+        return this.consumer.color(vertex.r, vertex.g, vertex.b, vertex.a);
+    }
 }

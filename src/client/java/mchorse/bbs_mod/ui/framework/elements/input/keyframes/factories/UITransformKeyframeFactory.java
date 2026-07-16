@@ -94,7 +94,7 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
             {
                 UIPoseTransforms.applyPoseTransform(this.editor, this.keyframe, (poseT) -> this.setPaintIntensity(poseT, value.floatValue()));
             });
-            this.paintIntensity.increment(0.05D).values(0.1D, 0.05D, 0.2D);
+            this.paintIntensity.increment(0.05D).values(0.1D, 0.05D, 0.2D).limit(PaintSettings.MIN_INTENSITY, PaintSettings.MAX_INTENSITY);
             this.paintIntensity.tooltip(UIKeys.FORMS_EDITORS_PAINT_INTENSITY);
 
             this.glowingColor = new UIColor((c) ->
@@ -173,7 +173,7 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
 
     private void setPaintIntensity(PoseTransform poseTransform, float value)
     {
-        poseTransform.paintColor.a = value;
+        poseTransform.paintColor.a = PaintSettings.clampIntensity(value);
         poseTransform.shaderShadow = PaintSettings.resolveAutoShaderShadowForPoseAlpha(poseTransform.paintColor.a);
     }
 

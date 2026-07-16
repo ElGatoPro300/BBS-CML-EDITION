@@ -82,6 +82,11 @@ public class CubicCpuGroupDrawRenderer extends CubicCubeRenderer
         float effectivePaintStrength = this.resolveEffectivePaintStrength(group);
         float effectiveGlowStrength = this.resolveEffectiveGlowStrength(group);
 
+        if (ModelVAORenderer.isSuppressShapeKeyMainPassGlow() && effectiveGlowStrength > 0F)
+        {
+            effectiveGlowStrength = 0F;
+        }
+
         ModelVAORenderer.setGroupPaint(
             this.resolveEffectivePaintR(group),
             this.resolveEffectivePaintG(group),

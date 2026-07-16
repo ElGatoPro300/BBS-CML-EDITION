@@ -333,7 +333,7 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
         {
             apply(this.editor, this.keyframe, this.getGroup(transform), (poseT) ->
             {
-                poseT.paintColor.a = value;
+                poseT.paintColor.a = PaintSettings.clampIntensity(value);
                 poseT.shaderShadow = PaintSettings.resolveAutoShaderShadowForPoseAlpha(poseT.paintColor.a);
             });
         }

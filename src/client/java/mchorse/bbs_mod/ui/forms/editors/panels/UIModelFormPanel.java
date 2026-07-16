@@ -12,6 +12,7 @@ import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.forms.editors.forms.UIForm;
 import mchorse.bbs_mod.ui.forms.editors.panels.widgets.UIModelPoseEditor;
+import mchorse.bbs_mod.ui.forms.editors.panels.widgets.UIFormPaintTransform;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIButton;
 import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
@@ -32,6 +33,7 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
     public UIColor color;
     public UIColor paintColor;
     public UITrackpad paintIntensity;
+    public UIFormPaintTransform paintTransform;
     public UIColor glowingColor;
     public UITrackpad glowIntensity;
 
@@ -99,18 +101,20 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
         this.paintIntensity = new UITrackpad((value) ->
         {
             PaintSettings settings = this.form.paintSettings.get().copy();
+            float intensity = PaintSettings.clampIntensity(value.floatValue());
 
-            settings.intensity = value.floatValue();
+            settings.intensity = intensity;
             settings.applyAutoShaderShadow();
             this.form.paintSettings.set(settings);
 
             Color legacy = this.form.paintColor.get().copy();
 
-            legacy.a = value.floatValue();
+            legacy.a = intensity;
             this.form.paintColor.set(legacy);
         });
-        this.paintIntensity.increment(0.05D).values(0.1D, 0.05D, 0.2D);
+        this.paintIntensity.increment(0.05D).values(0.1D, 0.05D, 0.2D).limit(PaintSettings.MIN_INTENSITY, PaintSettings.MAX_INTENSITY);
         this.paintIntensity.tooltip(UIKeys.FORMS_EDITORS_PAINT_INTENSITY);
+        this.paintTransform = new UIFormPaintTransform(() -> this.form.paintSettings.get(), (settings) -> this.form.paintSettings.set(settings));
         this.glowingColor = new UIColor((c) ->
         {
             Color color = new Color().set(c);
@@ -177,6 +181,7 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
             this.color,
             this.paintColor,
             this.paintIntensity,
+            this.paintTransform,
             this.glowingColor,
             this.glowIntensity
         );
@@ -281,6 +286,7 @@ public class UIModelFormPanel extends UIFormPanel<ModelForm>
         paint.resolveColor(form.paintColor.get(), paintDisplay);
         this.paintColor.setColor(paintDisplay.getRGBColor());
         this.paintIntensity.setValue(paint.intensity);
+        this.paintTransform.syncFromForm();
         GlowSettings glow = form.glowSettings.get();
         Color glowDisplay = new Color();
 

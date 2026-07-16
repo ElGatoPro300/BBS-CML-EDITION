@@ -213,14 +213,7 @@ public class TrailFormRenderer extends FormRenderer<TrailForm> implements ITicka
 
         if (positivePaint)
         {
-            if (BBSRendering.isIrisWorldPaintDeferral())
-            {
-                this.submitDeferredTrailPaintOverlay(trails, loop, length, current, baseX, baseY, baseZ, textureLink, resolvedPaint, color.a);
-            }
-            else
-            {
-                this.renderPaintOverlay(trails, loop, length, current, baseX, baseY, baseZ, resolvedPaint, color.a);
-            }
+            this.submitDeferredTrailPaintOverlay(trails, loop, length, current, baseX, baseY, baseZ, textureLink, resolvedPaint, color.a);
         }
 
         if (glowIntensity > 0F)

@@ -7,11 +7,13 @@ import mchorse.bbs_mod.utils.colors.Color;
 import java.util.Objects;
 
 /**
- * Paint color and intensity settings. Intensity is unbounded and may be negative
- * (negative values darken the surface). Legacy paint_color used alpha as opacity.
+ * Paint color and intensity settings. Intensity is clamped to [-1, 1]; negative values
+ * darken the surface. Legacy paint_color used alpha as opacity.
  */
 public class PaintSettings
 {
+    public static final float MIN_INTENSITY = -1F;
+    public static final float MAX_INTENSITY = 1F;
     public static final float SHADER_SHADOW_DEFAULT = 1F;
     public static final float SHADER_SHADOW_FIX_BUG = 0.005F;
     public static final float SHADER_SHADOW_FIX_BUG_THRESHOLD = 0.01F;
@@ -50,6 +52,11 @@ public class PaintSettings
     public static float fixBugShaderShadow(boolean enabled)
     {
         return enabled ? SHADER_SHADOW_FIX_BUG : SHADER_SHADOW_DEFAULT;
+    }
+
+    public static float clampIntensity(float value)
+    {
+        return Math.max(MIN_INTENSITY, Math.min(MAX_INTENSITY, value));
     }
 
     public static float resolveAutoShaderShadow(float intensity)
@@ -97,12 +104,12 @@ public class PaintSettings
     {
         if (this.intensity != 0F)
         {
-            return this.intensity;
+            return clampIntensity(this.intensity);
         }
 
         if (legacy != null && legacy.a != 0F)
         {
-            return legacy.a;
+            return clampIntensity(legacy.a);
         }
 
         if (legacy != null && (legacy.r != 1F || legacy.g != 1F || legacy.b != 1F))
@@ -125,7 +132,7 @@ public class PaintSettings
             this.r = map.has("r") ? map.getFloat("r") : 1F;
             this.g = map.has("g") ? map.getFloat("g") : 1F;
             this.b = map.has("b") ? map.getFloat("b") : 1F;
-            this.intensity = map.getFloat("intensity");
+            this.intensity = clampIntensity(map.getFloat("intensity"));
             this.sync = map.getBool("sync", false);
             if (map.has("shaderShadow"))
             {

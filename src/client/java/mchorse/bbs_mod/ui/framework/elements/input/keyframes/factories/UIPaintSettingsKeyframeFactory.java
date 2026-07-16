@@ -35,7 +35,7 @@ public class UIPaintSettingsKeyframeFactory extends UIKeyframeFactory<PaintSetti
         this.paintColor.tooltip(UIKeys.FORMS_EDITORS_PAINT_COLOR);
 
         this.intensity = new UITrackpad((value) -> this.applyPaintEdit((settings) -> this.setPaintIntensity(settings, value.floatValue())));
-        this.intensity.increment(0.05D).values(0.1D, 0.05D, 0.2D);
+        this.intensity.increment(0.05D).values(0.1D, 0.05D, 0.2D).limit(PaintSettings.MIN_INTENSITY, PaintSettings.MAX_INTENSITY);
         this.intensity.tooltip(UIKeys.FORMS_EDITORS_PAINT_INTENSITY);
         this.wireUndo(this.intensity);
 
@@ -123,7 +123,7 @@ public class UIPaintSettingsKeyframeFactory extends UIKeyframeFactory<PaintSetti
 
     private void setPaintIntensity(PaintSettings settings, float value)
     {
-        settings.intensity = value;
+        settings.intensity = PaintSettings.clampIntensity(value);
     }
 
     private void setSpectrum(boolean value)

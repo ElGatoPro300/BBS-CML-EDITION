@@ -60,6 +60,7 @@ public class ModelVAORenderer
     private static float glowG;
     private static float glowB;
     private static float glowStrength;
+    private static boolean glowPaintOnly;
 
     private static boolean glowingUniformActive;
 
@@ -78,6 +79,8 @@ public class ModelVAORenderer
     private static final Vector3f paintMaskHalf = new Vector3f(EffectTransformMath.MODEL_MASK_HALF_BASE);
     private static final Matrix4f overlayFormRootInverse = new Matrix4f();
     private static boolean paintEffectActive;
+    private static boolean paintMaskBottomAnchored = true;
+    private static boolean suppressShapeKeyMainPassGlow;
 
     /* 1x1 white texture used as the albedo source during the paint overlay pass. */
     private static NativeImageBackedTexture whiteTexture;
@@ -126,14 +129,78 @@ public class ModelVAORenderer
 
     public static void enqueuePaintOverlay(Matrix4f projection, Matrix4f modelView, boolean synced, Runnable draw)
     {
-        if (BBSRendering.isIrisShadersEnabled() && BBSRendering.isRenderingWorld())
+        PaintOverlayEntry entry = new PaintOverlayEntry(
+            new Matrix4f(projection),
+            new Matrix4f(modelView),
+            synced,
+            draw
+        );
+
+        if (BBSRendering.shouldDeferPaintOverlayToFrameEnd())
         {
-            paintOverlayQueue.add(new PaintOverlayEntry(
-                new Matrix4f(projection),
-                new Matrix4f(modelView),
-                synced,
-                draw
-            ));
+            paintOverlayQueue.add(entry);
+        }
+        else
+        {
+            ModelVAORenderer.runPaintOverlayEntry(entry, false);
+        }
+    }
+
+    private static void runPaintOverlayEntry(PaintOverlayEntry entry, boolean restoreFramebuffer)
+    {
+        if (restoreFramebuffer)
+        {
+            BBSRendering.ensurePaintOverlayTargetFramebuffer();
+        }
+
+        GameRenderer gameRenderer = MinecraftClient.getInstance().gameRenderer;
+
+        gameRenderer.getLightmapTextureManager().enable();
+        gameRenderer.getOverlayTexture().setupOverlayColor();
+
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
+        RenderSystem.setShader(BBSShaders::getModel);
+
+        Matrix4f savedProjection = new Matrix4f(RenderSystem.getProjectionMatrix());
+        Matrix4f savedModelView = new Matrix4f(RenderSystem.getModelViewMatrix());
+
+        try
+        {
+            paintOverlaySynced = entry.synced;
+
+            RenderSystem.setProjectionMatrix(entry.projection, VertexSorter.BY_Z);
+
+            MatrixStackUtils.pushIdentityModelView();
+
+            beginPaintOverlayPass(entry.synced);
+
+            try
+            {
+                entry.draw.run();
+            }
+            finally
+            {
+                endPaintOverlayPass();
+                MatrixStackUtils.popModelView();
+            }
+        }
+        finally
+        {
+            RenderSystem.setProjectionMatrix(savedProjection, VertexSorter.BY_Z);
+
+            Matrix4fStack modelViewStack = RenderSystem.getModelViewStack();
+
+            modelViewStack.pushMatrix();
+            modelViewStack.set(savedModelView);
+            RenderSystem.applyModelViewMatrix();
+            modelViewStack.popMatrix();
+            RenderSystem.applyModelViewMatrix();
+
+            gameRenderer.getLightmapTextureManager().disable();
+            gameRenderer.getOverlayTexture().teardownOverlayColor();
+            RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
         }
     }
 
@@ -177,61 +244,16 @@ public class ModelVAORenderer
             return;
         }
 
-        BBSRendering.ensurePaintOverlayTargetFramebuffer();
-
-        GameRenderer gameRenderer = MinecraftClient.getInstance().gameRenderer;
-
-        gameRenderer.getLightmapTextureManager().enable();
-        gameRenderer.getOverlayTexture().setupOverlayColor();
-
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
-        RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
-        RenderSystem.setShader(BBSShaders::getModel);
-
-        Matrix4f savedProjection = new Matrix4f(RenderSystem.getProjectionMatrix());
-        Matrix4f savedModelView = new Matrix4f(RenderSystem.getModelViewMatrix());
-
         try
         {
             for (PaintOverlayEntry entry : paintOverlayQueue)
             {
-                paintOverlaySynced = entry.synced;
-
-                RenderSystem.setProjectionMatrix(entry.projection, VertexSorter.BY_Z);
-
-                MatrixStackUtils.pushIdentityModelView();
-
-                beginPaintOverlayPass(entry.synced);
-
-                try
-                {
-                    entry.draw.run();
-                }
-                finally
-                {
-                    endPaintOverlayPass();
-                    MatrixStackUtils.popModelView();
-                }
+                ModelVAORenderer.runPaintOverlayEntry(entry, true);
             }
         }
         finally
         {
             paintOverlayQueue.clear();
-
-            RenderSystem.setProjectionMatrix(savedProjection, VertexSorter.BY_Z);
-
-            Matrix4fStack modelViewStack = RenderSystem.getModelViewStack();
-
-            modelViewStack.pushMatrix();
-            modelViewStack.set(savedModelView);
-            RenderSystem.applyModelViewMatrix();
-            modelViewStack.popMatrix();
-            RenderSystem.applyModelViewMatrix();
-
-            gameRenderer.getLightmapTextureManager().disable();
-            gameRenderer.getOverlayTexture().teardownOverlayColor();
-            RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
         }
     }
 
@@ -267,6 +289,7 @@ public class ModelVAORenderer
         RenderSystem.enableDepthTest();
         RenderSystem.depthFunc(GL11.GL_LEQUAL);
         RenderSystem.depthMask(false);
+
         GL11.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
         GL11.glPolygonOffset(-1F, -1F);
     }
@@ -276,6 +299,8 @@ public class ModelVAORenderer
         endPaintPass();
         paintOverlayPass = false;
         paintOverlaySynced = false;
+
+        GL11.glPolygonOffset(0F, 0F);
 
         if (savedPolygonOffsetFill)
         {
@@ -303,6 +328,25 @@ public class ModelVAORenderer
     public static boolean isPaintOverlayPass()
     {
         return paintOverlayPass;
+    }
+
+    /**
+     * Temporarily toggles the paint-overlay shader branch while a deferred Iris overlay draw is running.
+     */
+    public static void runWithPaintOverlayPass(boolean paintOverlay, Runnable draw)
+    {
+        boolean previous = paintOverlayPass;
+
+        paintOverlayPass = paintOverlay;
+
+        try
+        {
+            draw.run();
+        }
+        finally
+        {
+            paintOverlayPass = previous;
+        }
     }
 
     public static boolean isPaintOverlaySynced()
@@ -413,6 +457,7 @@ public class ModelVAORenderer
         glowG = colorG;
         glowB = colorB;
         glowStrength = strength;
+        glowPaintOnly = settings != null && settings.resolvePaintOnly();
     }
 
     public static void setGlowing(float r, float g, float b, float strength, float radius)
@@ -441,6 +486,12 @@ public class ModelVAORenderer
         glowG = 0F;
         glowB = 0F;
         glowStrength = 0F;
+        glowPaintOnly = false;
+    }
+
+    public static boolean isGlowPaintOnly()
+    {
+        return glowPaintOnly;
     }
 
     public static boolean isGlowingUniformActive()
@@ -452,6 +503,16 @@ public class ModelVAORenderer
      * CPU mesh builders emit vertices before draw-time uniform upload. Probe the active shader early so
      * shape-key geometry can skip vanilla brighten/light boosts when the BBS GlowingColor uniform applies.
      */
+    public static boolean isSuppressShapeKeyMainPassGlow()
+    {
+        return suppressShapeKeyMainPassGlow;
+    }
+
+    public static void setSuppressShapeKeyMainPassGlow(boolean suppress)
+    {
+        suppressShapeKeyMainPassGlow = suppress;
+    }
+
     public static void beginCpuGeometry(ShaderProgram shader)
     {
         GlUniform glowingUniform = shader.getUniform("GlowingColor");
@@ -508,6 +569,11 @@ public class ModelVAORenderer
 
     public static void setPaintEffectTransform(Matrix4f formRootInverseMatrix, EffectTransform transform, Vector3f maskHalf)
     {
+        setPaintEffectTransform(formRootInverseMatrix, transform, maskHalf, true);
+    }
+
+    public static void setPaintEffectTransform(Matrix4f formRootInverseMatrix, EffectTransform transform, Vector3f maskHalf, boolean bottomAnchoredY)
+    {
         if (formRootInverseMatrix != null)
         {
             formRootInverse.set(formRootInverseMatrix);
@@ -528,6 +594,8 @@ public class ModelVAORenderer
         {
             EffectTransformMath.resolveModelMaskHalfExtents(transform, paintMaskHalf);
         }
+
+        paintMaskBottomAnchored = bottomAnchoredY;
     }
 
     public static void clearPaintEffectTransform()
@@ -535,6 +603,7 @@ public class ModelVAORenderer
         formRootInverse.identity();
         paintEffectInverse.identity();
         paintEffectActive = false;
+        paintMaskBottomAnchored = true;
         paintMaskHalf.set(EffectTransformMath.MODEL_MASK_HALF_BASE, EffectTransformMath.MODEL_MASK_HALF_BASE * EffectTransformMath.MODEL_MASK_Y_BIAS, EffectTransformMath.MODEL_MASK_HALF_BASE);
     }
 
@@ -613,6 +682,13 @@ public class ModelVAORenderer
             glowingUniform.set(glowR, glowG, glowB, glowStrength);
         }
 
+        GlUniform glowPaintOnlyUniform = shader.getUniform("GlowPaintOnly");
+
+        if (glowPaintOnlyUniform != null)
+        {
+            glowPaintOnlyUniform.set(glowPaintOnly ? 1F : 0F);
+        }
+
         GlUniform paintOverlayUniform = shader.getUniform("PaintOverlay");
 
         if (paintOverlayUniform != null)
@@ -660,6 +736,13 @@ public class ModelVAORenderer
         if (paintMaskHalfUniform != null)
         {
             paintMaskHalfUniform.set(paintMaskHalf.x, paintMaskHalf.y, paintMaskHalf.z);
+        }
+
+        GlUniform paintMaskBottomAnchoredUniform = shader.getUniform("PaintMaskBottomAnchored");
+
+        if (paintMaskBottomAnchoredUniform != null)
+        {
+            paintMaskBottomAnchoredUniform.set(paintMaskBottomAnchored ? 1F : 0F);
         }
 
         if (shader.fogStart != null)

@@ -2441,6 +2441,7 @@ public abstract class BaseFilmController
         merged.b *= overlay.b;
         merged.intensity += overlay.intensity;
         merged.sync = merged.sync || overlay.sync;
+        merged.paintOnly = merged.paintOnly || overlay.paintOnly;
         merged.radius = Math.max(merged.radius, overlay.radius);
         merged.width = Math.max(merged.width, overlay.width);
         merged.height = Math.max(merged.height, overlay.height);
@@ -2473,6 +2474,7 @@ public abstract class BaseFilmController
             current.b *= groupGlow.b;
             current.intensity += groupGlow.intensity;
             current.sync = current.sync || groupGlow.sync;
+            current.paintOnly = current.paintOnly || groupGlow.paintOnly;
             current.radius = Math.max(current.radius, groupGlow.radius);
             current.width = Math.max(current.width, groupGlow.width);
             current.height = Math.max(current.height, groupGlow.height);

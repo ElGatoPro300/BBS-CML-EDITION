@@ -12,9 +12,12 @@ import mchorse.bbs_mod.cubic.render.vao.StructureVAOCollector;
 import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.forms.StructureForm;
+import mchorse.bbs_mod.forms.forms.utils.EffectTransform;
+import mchorse.bbs_mod.forms.forms.utils.EffectTransformMath;
 import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
 import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.forms.forms.utils.StructureLightSettings;
+import mchorse.bbs_mod.forms.renderers.utils.BlockEffectOverlayUniforms;
 import mchorse.bbs_mod.forms.renderers.utils.FormColorBlend;
 import mchorse.bbs_mod.forms.renderers.utils.RecolorVertexConsumer;
 import mchorse.bbs_mod.forms.renderers.utils.StructureVirtualBlockRenderView;
@@ -285,7 +288,9 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
 
                 if (positivePaint)
                 {
-                    this.renderStructurePaintOverlay(uiContext, matrices, resolvedPaint, tint.a, OverlayTexture.DEFAULT_UV, false, shaders);
+                    EffectTransform paintTransform = this.form.paintSettings.get().transform;
+
+                    this.renderStructurePaintOverlay(uiContext, matrices, resolvedPaint, tint.a, OverlayTexture.DEFAULT_UV, false, shaders, paintTransform, glowSettings, legacyGlow, glowIntensity);
                 }
 
                 if (positiveGlow)
@@ -412,8 +417,9 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
                 {
                     FormRenderingContext uiContext = new FormRenderingContext()
                         .set(FormRenderType.PREVIEW, null, matrices, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, OverlayTexture.DEFAULT_UV, 0F);
+                    EffectTransform paintTransform = this.form.paintSettings.get().transform;
 
-                    this.renderStructurePaintOverlay(uiContext, matrices, resolvedPaint, tint.a, OverlayTexture.DEFAULT_UV, true, this.isShadersActive());
+                    this.renderStructurePaintOverlay(uiContext, matrices, resolvedPaint, tint.a, OverlayTexture.DEFAULT_UV, true, this.isShadersActive(), paintTransform, glowSettings, legacyGlow, glowIntensity);
                 }
 
                 if (positiveGlow)
@@ -543,7 +549,9 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
 
                     if (positivePaint)
                     {
-                        this.renderStructurePaintOverlay(context, context.stack, resolvedPaint, tint3D.a, context.overlay, false, shaders);
+                        EffectTransform paintTransform = paintSettings.transform;
+
+                        this.renderStructurePaintOverlay(context, context.stack, resolvedPaint, tint3D.a, context.overlay, false, shaders, paintTransform, glowSettings, legacyGlow, glowIntensity);
                     }
 
                     if (positiveGlow)
@@ -658,14 +666,9 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
 
                 if (positivePaint)
                 {
-                    if (BBSRendering.isIrisWorldPaintDeferral())
-                    {
-                        this.submitDeferredStructurePaintOverlay(context, resolvedPaint, tint3D.a, context.overlay, true, shaders);
-                    }
-                    else
-                    {
-                        this.renderStructurePaintOverlay(context, context.stack, resolvedPaint, tint3D.a, context.overlay, true, shaders);
-                    }
+                    EffectTransform paintTransform = paintSettings.transform;
+
+                    this.submitDeferredStructurePaintOverlay(context, resolvedPaint, tint3D.a, context.overlay, true, shaders, paintTransform, glowSettings, legacyGlow, glowIntensity);
                 }
 
                 if (positiveGlow)
@@ -1261,16 +1264,16 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
         }
     }
 
-    private void renderStructurePaintOverlay(FormRenderingContext context, MatrixStack stack, Color resolvedPaint, float alpha, int overlay, boolean optimize, boolean useEntityLayers)
+    private void renderStructurePaintOverlay(FormRenderingContext context, MatrixStack stack, Color resolvedPaint, float alpha, int overlay, boolean optimize, boolean useEntityLayers, EffectTransform transform, GlowSettings glowSettings, Color legacyGlow, float glowIntensity)
     {
         Color paintOverlay = new Color(resolvedPaint.r, resolvedPaint.g, resolvedPaint.b, resolvedPaint.a);
 
         paintOverlay.a *= alpha;
 
-        this.renderStructurePaintOverlayPass(context, stack, paintOverlay, overlay, optimize, useEntityLayers);
+        this.renderStructurePaintOverlayPass(context, stack, paintOverlay, overlay, optimize, useEntityLayers, transform, glowSettings, legacyGlow, glowIntensity, alpha);
     }
 
-    private void submitDeferredStructurePaintOverlay(FormRenderingContext context, Color resolvedPaint, float alpha, int overlay, boolean optimize, boolean useEntityLayers)
+    private void submitDeferredStructurePaintOverlay(FormRenderingContext context, Color resolvedPaint, float alpha, int overlay, boolean optimize, boolean useEntityLayers, EffectTransform transform, GlowSettings glowSettings, Color legacyGlow, float glowIntensity)
     {
         Matrix4f positionMatrix = ModelVAORenderer.capturePaintOverlayRootMatrix(new Matrix4f(context.stack.peek().getPositionMatrix()));
         Matrix3f normalMatrix = new Matrix3f(context.stack.peek().getNormalMatrix());
@@ -1285,11 +1288,11 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
             overlayStack.peek().getPositionMatrix().set(positionMatrix);
             overlayStack.peek().getNormalMatrix().set(normalMatrix);
 
-            this.renderStructurePaintOverlayPass(context, overlayStack, paintOverlay, overlay, optimize, useEntityLayers);
+            this.renderStructurePaintOverlayPass(context, overlayStack, paintOverlay, overlay, optimize, useEntityLayers, transform, glowSettings, legacyGlow, glowIntensity, alpha);
         });
     }
 
-    private void renderStructurePaintOverlayPass(FormRenderingContext context, MatrixStack stack, Color paintOverlay, int overlay, boolean optimize, boolean useEntityLayers)
+    private void renderStructurePaintOverlayPass(FormRenderingContext context, MatrixStack stack, Color paintOverlay, int overlay, boolean optimize, boolean useEntityLayers, EffectTransform transform, GlowSettings glowSettings, Color legacyGlow, float glowIntensity, float alpha)
     {
         Color tint = this.form.color.get();
         int light = LightmapTextureManager.MAX_LIGHT_COORDINATE;
@@ -1300,28 +1303,32 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
 
             if (vao != null)
             {
-                this.renderStructureVaoPaintOverlay(vao, stack, tint, paintOverlay, light, overlay);
+                this.renderStructureVaoPaintOverlay(vao, stack, tint, paintOverlay, light, overlay, transform);
             }
 
             if (this.hasBiomeTintedLayer)
             {
-                this.renderStructureLayerPaintOverlay(context, stack, paintOverlay, overlay, useEntityLayers, StructurePaintLayer.BIOME);
+                this.renderStructureLayerPaintOverlay(context, stack, paintOverlay, overlay, useEntityLayers, StructurePaintLayer.BIOME, transform, glowSettings, legacyGlow, glowIntensity, alpha);
             }
 
             if (this.hasAnimatedLayer)
             {
-                this.renderStructureLayerPaintOverlay(context, stack, paintOverlay, overlay, useEntityLayers, StructurePaintLayer.ANIMATED);
+                this.renderStructureLayerPaintOverlay(context, stack, paintOverlay, overlay, useEntityLayers, StructurePaintLayer.ANIMATED, transform, glowSettings, legacyGlow, glowIntensity, alpha);
             }
         }
         else
         {
-            this.renderStructureCulledBlocksPaintOverlay(context, stack, paintOverlay, overlay, useEntityLayers);
+            this.renderStructureCulledBlocksPaintOverlay(context, stack, paintOverlay, overlay, useEntityLayers, transform, glowSettings, legacyGlow, glowIntensity, alpha);
         }
     }
 
-    private void renderStructureVaoPaintOverlay(IModelVAO vao, MatrixStack stack, Color tint, Color paintOverlay, int light, int overlay)
+    private void renderStructureVaoPaintOverlay(IModelVAO vao, MatrixStack stack, Color tint, Color paintOverlay, int light, int overlay, EffectTransform transform)
     {
         GameRenderer gameRenderer = MinecraftClient.getInstance().gameRenderer;
+        Matrix4f formRootInverse = new Matrix4f(stack.peek().getPositionMatrix()).invert();
+        Vector3f paintMaskHalf = new Vector3f();
+
+        EffectTransformMath.resolveModelMaskHalfExtents(transform, paintMaskHalf);
 
         gameRenderer.getLightmapTextureManager().enable();
         gameRenderer.getOverlayTexture().setupOverlayColor();
@@ -1330,6 +1337,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
         {
             ModelVAORenderer.beginPaintOverlayPass(false);
             ModelVAORenderer.setPaint(paintOverlay.r, paintOverlay.g, paintOverlay.b, paintOverlay.a);
+            ModelVAORenderer.setPaintEffectTransform(formRootInverse, transform, paintMaskHalf);
             RenderSystem.setShader(BBSShaders::getModel);
             RenderSystem.setShaderTexture(0, PlayerScreenHandler.BLOCK_ATLAS_TEXTURE);
             RenderSystem.enableBlend();
@@ -1340,6 +1348,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
         finally
         {
             RenderSystem.depthMask(true);
+            ModelVAORenderer.clearPaintEffectTransform();
             ModelVAORenderer.endPaintOverlayPass();
             this.clearVaoPaint();
             gameRenderer.getLightmapTextureManager().disable();
@@ -1347,9 +1356,9 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
         }
     }
 
-    private void renderStructureLayerPaintOverlay(FormRenderingContext context, MatrixStack stack, Color paintOverlay, int overlay, boolean useEntityLayers, StructurePaintLayer layer)
+    private void renderStructureLayerPaintOverlay(FormRenderingContext context, MatrixStack stack, Color paintOverlay, int overlay, boolean useEntityLayers, StructurePaintLayer layer, EffectTransform transform, GlowSettings glowSettings, Color legacyGlow, float glowIntensity, float alpha)
     {
-        this.runStructureBlocksPaintOverlay(paintOverlay, () ->
+        this.runStructureBlocksPaintOverlay(paintOverlay, stack, transform, glowSettings, legacyGlow, glowIntensity, alpha, () ->
         {
             CustomVertexConsumerProvider consumers = FormUtilsClient.getProvider();
 
@@ -1364,9 +1373,9 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
         });
     }
 
-    private void renderStructureCulledBlocksPaintOverlay(FormRenderingContext context, MatrixStack stack, Color paintOverlay, int overlay, boolean useEntityLayers)
+    private void renderStructureCulledBlocksPaintOverlay(FormRenderingContext context, MatrixStack stack, Color paintOverlay, int overlay, boolean useEntityLayers, EffectTransform transform, GlowSettings glowSettings, Color legacyGlow, float glowIntensity, float alpha)
     {
-        this.runStructureBlocksPaintOverlay(paintOverlay, () ->
+        this.runStructureBlocksPaintOverlay(paintOverlay, stack, transform, glowSettings, legacyGlow, glowIntensity, alpha, () ->
         {
             CustomVertexConsumerProvider consumers = FormUtilsClient.getProvider();
 
@@ -1374,19 +1383,13 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
         });
     }
 
-    private void runStructureBlocksPaintOverlay(Color paintOverlay, Runnable draw)
+    private void runStructureBlocksPaintOverlay(Color paintOverlay, MatrixStack stack, EffectTransform transform, GlowSettings glowSettings, Color legacyGlow, float glowIntensity, float alpha, Runnable draw)
     {
         CustomVertexConsumerProvider consumers = FormUtilsClient.getProvider();
+        Matrix4f formRootInverse = new Matrix4f(stack.peek().getPositionMatrix()).invert();
 
         CustomVertexConsumerProvider.clearRunnables();
-        CustomVertexConsumerProvider.hijackVertexFormat((l) ->
-        {
-            RenderSystem.enableBlend();
-            RenderSystem.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-            RenderSystem.setShader(BBSShaders::getBlockPaintOverlayProgram);
-            RenderSystem.setShaderTexture(0, PlayerScreenHandler.BLOCK_ATLAS_TEXTURE);
-            RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
-        });
+        CustomVertexConsumerProvider.hijackVertexFormat((l) -> BlockEffectOverlayUniforms.configurePaintOverlayRenderState(formRootInverse, transform, true, glowSettings, legacyGlow, glowIntensity, alpha));
 
         RenderSystem.enableBlend();
         RenderSystem.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);

@@ -98,10 +98,10 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
 
         if (positivePaint)
         {
-            this.renderPaintOverlay(null, matrices, consumers, resolvedPaint, set.a, OverlayTexture.DEFAULT_UV, true, this.form.paintSettings.get().transform);
+            this.submitDeferredBlockPaintOverlay(null, matrices, resolvedPaint, set.a, OverlayTexture.DEFAULT_UV, this.form.paintSettings.get().transform, glowSettings, legacyGlow, glowIntensity, true);
         }
 
-        if (glowIntensity > 0F)
+        if (glowIntensity > 0F && !glowSettings.resolvePaintOnly())
         {
             this.renderGlowOverlay(null, matrices, consumers, glowSettings, legacyGlow, glowIntensity, set.a, OverlayTexture.DEFAULT_UV, true);
         }
@@ -167,17 +167,10 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
 
         if (positivePaint)
         {
-            if (BBSRendering.isIrisWorldPaintDeferral())
-            {
-                this.submitDeferredBlockPaintOverlay(context, resolvedPaint, color.a, context.overlay, paintSettings.transform);
-            }
-            else
-            {
-                this.renderPaintOverlay(context, context.stack, consumers, resolvedPaint, color.a, context.overlay, false, paintSettings.transform);
-            }
+            this.submitDeferredBlockPaintOverlay(context, context.stack, resolvedPaint, color.a, context.overlay, paintSettings.transform, glowSettings, legacyGlow, glowIntensity, false);
         }
 
-        if (positiveGlow)
+        if (positiveGlow && !glowSettings.resolvePaintOnly())
         {
             this.renderGlowOverlay(context, context.stack, consumers, glowSettings, legacyGlow, glowIntensity, color.a, context.overlay, false);
         }
@@ -381,9 +374,8 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
         raw.render(blockEntity, 0F, stack, consumers, light, overlay);
     }
 
-    private void submitDeferredBlockPaintOverlay(FormRenderingContext context, Color resolvedPaint, float alpha, int overlay, EffectTransform transform)
+    private void submitDeferredBlockPaintOverlay(FormRenderingContext context, MatrixStack stack, Color resolvedPaint, float alpha, int overlay, EffectTransform transform, GlowSettings glowSettings, Color legacyGlow, float glowIntensity, boolean ui)
     {
-        MatrixStack stack = context.stack;
         Matrix4f positionMatrix = ModelVAORenderer.capturePaintOverlayRootMatrix(new Matrix4f(stack.peek().getPositionMatrix()));
         Matrix3f normalMatrix = new Matrix3f(stack.peek().getNormalMatrix());
         Color paintOverlay = new Color(resolvedPaint.r, resolvedPaint.g, resolvedPaint.b, resolvedPaint.a);
@@ -398,23 +390,35 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
             overlayStack.peek().getPositionMatrix().set(positionMatrix);
             overlayStack.peek().getNormalMatrix().set(normalMatrix);
 
-            this.renderPaintOverlayPass(null, overlayStack, overlayConsumers, paintOverlay, overlay, false, transform);
+            this.renderPaintOverlayPass(null, overlayStack, overlayConsumers, paintOverlay, overlay, ui, transform, glowSettings, legacyGlow, glowIntensity, alpha);
         });
     }
 
     private void renderPaintOverlay(FormRenderingContext context, MatrixStack stack, CustomVertexConsumerProvider consumers, Color resolvedPaint, float alpha, int overlay, boolean ui, EffectTransform transform)
     {
+        this.renderPaintOverlay(context, stack, consumers, resolvedPaint, alpha, overlay, ui, transform, null, null, 0F);
+    }
+
+    private void renderPaintOverlay(FormRenderingContext context, MatrixStack stack, CustomVertexConsumerProvider consumers, Color resolvedPaint, float alpha, int overlay, boolean ui, EffectTransform transform, GlowSettings glowSettings, Color legacyGlow, float glowIntensity)
+    {
         Color paintOverlay = new Color(resolvedPaint.r, resolvedPaint.g, resolvedPaint.b, resolvedPaint.a);
 
         paintOverlay.a *= alpha;
 
-        this.renderPaintOverlayPass(context, stack, consumers, paintOverlay, overlay, ui, transform);
+        this.renderPaintOverlayPass(context, stack, consumers, paintOverlay, overlay, ui, transform, glowSettings, legacyGlow, glowIntensity, alpha);
     }
 
     private void renderPaintOverlayPass(FormRenderingContext context, MatrixStack stack, CustomVertexConsumerProvider consumers, Color paintOverlay, int overlay, boolean ui, EffectTransform transform)
     {
+        this.renderPaintOverlayPass(context, stack, consumers, paintOverlay, overlay, ui, transform, null, null, 0F, 1F);
+    }
+
+    private void renderPaintOverlayPass(FormRenderingContext context, MatrixStack stack, CustomVertexConsumerProvider consumers, Color paintOverlay, int overlay, boolean ui, EffectTransform transform, GlowSettings glowSettings, Color legacyGlow, float glowIntensity, float alpha)
+    {
+        Matrix4f formRootInverse = new Matrix4f(stack.peek().getPositionMatrix()).invert();
+
         CustomVertexConsumerProvider.clearRunnables();
-        CustomVertexConsumerProvider.hijackVertexFormat((l) -> BlockEffectOverlayUniforms.configurePaintOverlayRenderState(transform));
+        CustomVertexConsumerProvider.hijackVertexFormat((l) -> BlockEffectOverlayUniforms.configurePaintOverlayRenderState(formRootInverse, transform, true, glowSettings, legacyGlow, glowIntensity, alpha));
 
         RenderSystem.enableBlend();
         RenderSystem.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);

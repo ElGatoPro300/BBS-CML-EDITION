@@ -12,6 +12,7 @@ import mchorse.bbs_mod.cubic.model.ArmorType;
 import mchorse.bbs_mod.cubic.model.View;
 import mchorse.bbs_mod.cubic.model.bobj.BOBJModel;
 import mchorse.bbs_mod.cubic.physics.PhysBoneDefinition;
+import mchorse.bbs_mod.cubic.render.CubicCpuGlowOverlayRenderer;
 import mchorse.bbs_mod.cubic.render.CubicCpuGroupDrawRenderer;
 import mchorse.bbs_mod.cubic.render.CubicCubeRenderer;
 import mchorse.bbs_mod.cubic.render.CubicMatrixRenderer;
@@ -39,7 +40,8 @@ import mchorse.bbs_mod.utils.resources.LinkUtils;
 
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.ShaderProgram;
-import net.minecraft.client.render.BufferBuilder;
+import net.minecraft.client.render.GameRenderer;
+import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.BufferRenderer;
 import net.minecraft.client.render.Tessellator;
 import net.minecraft.client.render.VertexFormat;
@@ -588,6 +590,15 @@ public class ModelInstance implements IModelInstance
         return this.model != null && !this.model.getShapeKeys().isEmpty();
     }
 
+    /**
+     * VAO-backed cubic models and shape-key OBJ models use the BBS model shader for paint,
+     * glow, and per-bone texture blend. Shape keys skip VAO baking but still draw on the CPU path.
+     */
+    public boolean supportsBbsModelShaderEffects()
+    {
+        return this.isVAORendered() || this.hasShapeKeys();
+    }
+
     public void delete()
     {
         for (ModelVAO value : this.vaos.values())
@@ -752,6 +763,66 @@ public class ModelInstance implements IModelInstance
                 vao.render(program.get(), stack, color.r, color.g, color.b, color.a, stencilMap, light, overlay, texture);
 
                 stack.pop();
+            }
+        }
+    }
+
+    public void renderShapeKeyGlowOverlay(MatrixStack stack, Color glowLayerColor, int overlay, StencilMap stencilMap, ShapeKeys keys, Link defaultTexture, boolean boneGlowOnly, float overlayIntensity, String targetGroupId, boolean skipBoneGlowGroups)
+    {
+        if (!(this.model instanceof Model model) || !this.hasShapeKeys())
+        {
+            return;
+        }
+
+        if (!boneGlowOnly && (glowLayerColor == null || glowLayerColor.a <= 0F))
+        {
+            return;
+        }
+
+        if (boneGlowOnly && glowLayerColor == null)
+        {
+            return;
+        }
+
+        ShaderProgram shader = GameRenderer.getRenderTypeEntityTranslucentCullProgram();
+        Link texture = defaultTexture != null ? defaultTexture : this.texture;
+        boolean disableCull = true;
+
+        RenderSystem.setShader(() -> shader);
+
+        if (texture != null)
+        {
+            BBSModClient.getTextures().bindTexture(texture);
+        }
+
+        if (disableCull)
+        {
+            RenderSystem.disableCull();
+        }
+
+        CubicCpuGlowOverlayRenderer renderProcessor = new CubicCpuGlowOverlayRenderer(
+            LightmapTextureManager.MAX_LIGHT_COORDINATE,
+            overlay,
+            stencilMap,
+            keys,
+            shader,
+            texture,
+            glowLayerColor,
+            boneGlowOnly,
+            overlayIntensity,
+            targetGroupId,
+            skipBoneGlowGroups
+        );
+
+        try
+        {
+            CubicRenderer.processRenderModel(renderProcessor, null, stack, model);
+        }
+        finally
+        {
+            if (disableCull && this.culling)
+            {
+                RenderSystem.enableCull();
             }
         }
     }

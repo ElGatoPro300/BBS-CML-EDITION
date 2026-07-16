@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.ui.framework.elements.input;
 
 import mchorse.bbs_mod.forms.forms.utils.EffectTransform;
+import mchorse.bbs_mod.forms.forms.utils.EffectTransformMath;
 import mchorse.bbs_mod.ui.framework.elements.events.UITrackpadDragEndEvent;
 import mchorse.bbs_mod.ui.framework.elements.events.UITrackpadDragStartEvent;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframes;
@@ -85,12 +86,22 @@ public class UIEffectKeyframeTransform extends UIPropTransform
             effect.offsetX = display.translate.x;
             effect.offsetY = display.translate.y;
             effect.offsetZ = display.translate.z;
-            effect.scaleX = display.scale.x;
-            effect.scaleY = display.scale.y;
-            effect.scaleZ = display.scale.z;
+            effect.scaleX = this.sanitizeScale(display.scale.x);
+            effect.scaleY = this.sanitizeScale(display.scale.y);
+            effect.scaleZ = this.sanitizeScale(display.scale.z);
             effect.rotateX = MathUtils.toDeg(display.rotate.x);
             effect.rotateY = MathUtils.toDeg(display.rotate.y);
             effect.rotateZ = MathUtils.toDeg(display.rotate.z);
         });
+    }
+
+    private float sanitizeScale(float value)
+    {
+        if (Math.abs(value) < EffectTransformMath.EPSILON)
+        {
+            return 0F;
+        }
+
+        return value;
     }
 }

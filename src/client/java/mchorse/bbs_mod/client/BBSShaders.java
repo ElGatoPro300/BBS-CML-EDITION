@@ -29,6 +29,7 @@ public class BBSShaders
     private static ShaderProgram pickerParticles;
     private static ShaderProgram pickerModels;
     private static ShaderProgram blockPaintOverlay;
+    private static ShaderProgram flatPaintOverlay;
 
     static
     {
@@ -47,6 +48,7 @@ public class BBSShaders
         if (pickerParticles != null) pickerParticles.close();
         if (pickerModels != null) pickerModels.close();
         if (blockPaintOverlay != null) blockPaintOverlay.close();
+        if (flatPaintOverlay != null) flatPaintOverlay.close();
 
         try
         {
@@ -62,6 +64,7 @@ public class BBSShaders
             pickerParticles = new ShaderProgram(factory, "picker_particles", VertexFormats.POSITION_COLOR_TEXTURE_LIGHT);
             pickerModels = new ShaderProgram(factory, "picker_models", VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL);
             blockPaintOverlay = new ShaderProgram(factory, "block_paint_overlay", VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL);
+            flatPaintOverlay = new ShaderProgram(factory, "flat_paint_overlay", VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL);
         
             for (Runnable runnable : LOADERS)
             {
@@ -117,6 +120,11 @@ public class BBSShaders
     public static ShaderProgram getBlockPaintOverlayProgram()
     {
         return blockPaintOverlay;
+    }
+
+    public static ShaderProgram getFlatPaintOverlayProgram()
+    {
+        return flatPaintOverlay;
     }
 
     private static class ProxyResourceFactory implements ResourceFactory

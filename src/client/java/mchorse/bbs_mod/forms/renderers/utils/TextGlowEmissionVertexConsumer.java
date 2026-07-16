@@ -8,19 +8,19 @@ import net.minecraft.client.render.VertexConsumer;
 
 import org.joml.Matrix4f;
 
-public class BlockPaintOverlayVertexConsumer implements VertexConsumer
+/**
+ * Glow overlay for text geometry. Multiplies glow emission with per-vertex text tint
+ * so label glow matches the text color (custom fonts use {@code color(float)}).
+ */
+public class TextGlowEmissionVertexConsumer implements VertexConsumer
 {
-    public static Color paintOverlayColor;
-
     protected VertexConsumer consumer;
-    protected Color paintColor;
-    protected float strength;
+    protected Color color;
 
-    public BlockPaintOverlayVertexConsumer(VertexConsumer consumer, Color paintColor)
+    public TextGlowEmissionVertexConsumer(VertexConsumer consumer, Color color)
     {
         this.consumer = consumer;
-        this.paintColor = paintColor;
-        this.strength = paintColor.a;
+        this.color = color;
     }
 
     @Override
@@ -38,10 +38,10 @@ public class BlockPaintOverlayVertexConsumer implements VertexConsumer
     @Override
     public VertexConsumer color(int red, int green, int blue, int alpha)
     {
-        int r = MathUtils.clamp((int) (this.paintColor.r * 255F), 0, 255);
-        int g = MathUtils.clamp((int) (this.paintColor.g * 255F), 0, 255);
-        int b = MathUtils.clamp((int) (this.paintColor.b * 255F), 0, 255);
-        int a = MathUtils.clamp((int) (this.strength * alpha), 0, 255);
+        int r = MathUtils.clamp((int) (this.color.r * red), 0, 255);
+        int g = MathUtils.clamp((int) (this.color.g * green), 0, 255);
+        int b = MathUtils.clamp((int) (this.color.b * blue), 0, 255);
+        int a = MathUtils.clamp((int) (this.color.a * alpha), 0, 255);
 
         return this.consumer.color(r, g, b, a);
     }
@@ -49,10 +49,10 @@ public class BlockPaintOverlayVertexConsumer implements VertexConsumer
     @Override
     public VertexConsumer color(float red, float green, float blue, float alpha)
     {
-        float r = MathUtils.clamp(this.paintColor.r * red, 0F, 1F);
-        float g = MathUtils.clamp(this.paintColor.g * green, 0F, 1F);
-        float b = MathUtils.clamp(this.paintColor.b * blue, 0F, 1F);
-        float a = MathUtils.clamp(this.strength * alpha, 0F, 1F);
+        float r = MathUtils.clamp(this.color.r * red, 0F, 1F);
+        float g = MathUtils.clamp(this.color.g * green, 0F, 1F);
+        float b = MathUtils.clamp(this.color.b * blue, 0F, 1F);
+        float a = MathUtils.clamp(this.color.a * alpha, 0F, 1F);
 
         return this.consumer.color(r, g, b, a);
     }

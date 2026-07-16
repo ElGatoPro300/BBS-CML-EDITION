@@ -22,29 +22,29 @@ public class ColorAttributeMixin
     {
         if (GlowEmissionVertexConsumer.emissionColor != null)
         {
-            Colors.COLOR.set(color);
+            Colors.COLOR.set(Colors.fromAbgr(color));
             float vertexAlpha = Colors.COLOR.a;
 
             Colors.COLOR.copy(GlowEmissionVertexConsumer.emissionColor);
             Colors.COLOR.a *= vertexAlpha;
 
-            return Colors.COLOR.getARGBColor();
+            return Colors.toAbgr(Colors.COLOR.getARGBColor());
         }
 
         if (BlockPaintOverlayVertexConsumer.paintOverlayColor != null)
         {
-            Colors.COLOR.set(color);
+            Colors.COLOR.set(Colors.fromAbgr(color));
             float vertexAlpha = Colors.COLOR.a;
 
             Colors.COLOR.copy(BlockPaintOverlayVertexConsumer.paintOverlayColor);
             Colors.COLOR.a *= vertexAlpha;
 
-            return Colors.COLOR.getARGBColor();
+            return Colors.toAbgr(Colors.COLOR.getARGBColor());
         }
 
         if (RecolorVertexConsumer.newColor != null)
         {
-            Colors.COLOR.set(color);
+            Colors.COLOR.set(Colors.fromAbgr(color));
             Colors.COLOR.mul(RecolorVertexConsumer.newColor);
 
             if (RecolorVertexConsumer.newPaintColor != null && RecolorVertexConsumer.newPaintColor.a != 0F)
@@ -52,7 +52,7 @@ public class ColorAttributeMixin
                 FormColorBlend.applyPaintBlend(Colors.COLOR, RecolorVertexConsumer.newPaintColor, RecolorVertexConsumer.newPaintColor.a);
             }
 
-            return Colors.COLOR.getARGBColor();
+            return Colors.toAbgr(Colors.COLOR.getARGBColor());
         }
 
         return color;
