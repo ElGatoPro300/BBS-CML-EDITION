@@ -59,6 +59,30 @@ public class PaintSettings
         return Math.max(MIN_INTENSITY, Math.min(MAX_INTENSITY, value));
     }
 
+    /**
+     * Maps a legacy paint_color into an intensity value. Non-white RGB with alpha 0
+     * used to mean full-strength paint before intensity lived in {@link PaintSettings}.
+     */
+    public static float resolveLegacyPaintIntensity(Color legacy)
+    {
+        if (legacy == null)
+        {
+            return 0F;
+        }
+
+        if (legacy.a != 0F)
+        {
+            return clampIntensity(legacy.a);
+        }
+
+        if (legacy.r != 1F || legacy.g != 1F || legacy.b != 1F)
+        {
+            return 1F;
+        }
+
+        return 0F;
+    }
+
     public static float resolveAutoShaderShadow(float intensity)
     {
         return intensity != 0F ? SHADER_SHADOW_FIX_BUG : SHADER_SHADOW_DEFAULT;
@@ -99,10 +123,12 @@ public class PaintSettings
 
     /**
      * Returns paint intensity, or a default when only a legacy paint_color tint is set.
+     * When paint settings already carry a custom color, {@link #intensity} (including 0)
+     * is authoritative so editing paint color alone cannot force full-strength paint.
      */
     public float resolveIntensity(Color legacy)
     {
-        if (this.intensity != 0F)
+        if (this.intensity != 0F || this.r != 1F || this.g != 1F || this.b != 1F)
         {
             return clampIntensity(this.intensity);
         }

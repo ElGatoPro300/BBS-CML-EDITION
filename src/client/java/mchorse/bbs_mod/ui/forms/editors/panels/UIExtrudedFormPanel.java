@@ -38,11 +38,10 @@ public class UIExtrudedFormPanel extends UIFormPanel<ExtrudedForm>
         this.paintColor = new UIColor((c) ->
         {
             Color color = Color.rgba(c);
-
-            color.a = 1F;
-            this.form.paintColor.set(color);
-
             PaintSettings settings = this.form.paintSettings.get().copy();
+
+            color.a = settings.intensity;
+            this.form.paintColor.set(color);
 
             settings.r = color.r;
             settings.g = color.g;

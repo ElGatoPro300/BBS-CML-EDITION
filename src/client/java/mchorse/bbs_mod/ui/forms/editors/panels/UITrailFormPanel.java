@@ -36,11 +36,10 @@ public class UITrailFormPanel extends UIFormPanel<TrailForm>
         this.paintColor = new UIColor((value) ->
         {
             Color color = Color.rgba(value);
-
-            color.a = 1F;
-            this.form.paintColor.set(color);
-
             PaintSettings settings = this.form.paintSettings.get().copy();
+
+            color.a = settings.intensity;
+            this.form.paintColor.set(color);
 
             settings.r = color.r;
             settings.g = color.g;
