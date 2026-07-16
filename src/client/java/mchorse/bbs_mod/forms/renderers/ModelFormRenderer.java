@@ -31,6 +31,8 @@ import mchorse.bbs_mod.forms.entities.StubEntity;
 import mchorse.bbs_mod.forms.forms.BodyPart;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.forms.ModelForm;
+import mchorse.bbs_mod.forms.forms.utils.EffectTransform;
+import mchorse.bbs_mod.forms.forms.utils.EffectTransformMath;
 import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
 import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.forms.forms.utils.TextureBlend;
@@ -576,6 +578,20 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             this.form.shaderShadow.setRuntimeValue(effectiveShaderShadow > 0.001F);
         }
 
+        Matrix4f formRootInverse = new Matrix4f(newStack.peek().getPositionMatrix()).invert();
+        Vector3f paintMaskHalf = new Vector3f();
+
+        EffectTransformMath.resolveModelMaskHalfExtents(paint.transform, paintMaskHalf);
+
+        EffectTransform paintTransformSnapshot = paint.transform.copy();
+        Matrix4f formRootInverseSnapshot = new Matrix4f(formRootInverse);
+        Vector3f paintMaskHalfSnapshot = new Vector3f(paintMaskHalf);
+
+        if (paintActive && bbsModelShader)
+        {
+            ModelVAORenderer.setPaintEffectTransform(formRootInverse, paint.transform, paintMaskHalf);
+        }
+
         try
         {
             TextureBlend textureBlendSnapshot = textureBlend == null ? null : new TextureBlend(textureBlend.from, textureBlend.to, textureBlend.blend);
@@ -638,6 +654,8 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
                     try
                     {
+                        ModelVAORenderer.setPaintEffectTransform(new Matrix4f().identity(), paintTransformSnapshot, paintMaskHalfSnapshot);
+
                         MatrixStack overlayStack = new MatrixStack();
 
                         overlayStack.peek().getPositionMatrix().set(positionMatrix);
@@ -647,6 +665,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
                     }
                     finally
                     {
+                        ModelVAORenderer.clearPaintEffectTransform();
                         ModelVAORenderer.clearPaint();
                         ModelVAORenderer.clearGlowing();
                     }
@@ -695,6 +714,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
         finally
         {
             this.clearPBRTextureIntensity();
+            ModelVAORenderer.clearPaintEffectTransform();
             ModelVAORenderer.clearPaint();
             ModelVAORenderer.clearGlowing();
         }

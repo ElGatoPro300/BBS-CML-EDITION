@@ -3,6 +3,8 @@ package mchorse.bbs_mod.cubic.render.vao;
 import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.client.BBSShaders;
+import mchorse.bbs_mod.forms.forms.utils.EffectTransform;
+import mchorse.bbs_mod.forms.forms.utils.EffectTransformMath;
 import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
@@ -19,6 +21,7 @@ import net.minecraft.client.util.math.MatrixStack;
 
 import org.joml.Matrix4f;
 import org.joml.Matrix4fStack;
+import org.joml.Vector3f;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.systems.VertexSorter;
@@ -69,6 +72,12 @@ public class ModelVAORenderer
     private static boolean paintPass;
     private static boolean paintOverlayPass;
     private static boolean paintOverlaySynced;
+
+    private static final Matrix4f formRootInverse = new Matrix4f();
+    private static final Matrix4f paintEffectInverse = new Matrix4f();
+    private static final Vector3f paintMaskHalf = new Vector3f(EffectTransformMath.MODEL_MASK_HALF_BASE);
+    private static final Matrix4f overlayFormRootInverse = new Matrix4f();
+    private static boolean paintEffectActive;
 
     /* 1x1 white texture used as the albedo source during the paint overlay pass. */
     private static NativeImageBackedTexture whiteTexture;
@@ -497,6 +506,48 @@ public class ModelVAORenderer
         ModelVAORenderer.textureBlendTo = null;
     }
 
+    public static void setPaintEffectTransform(Matrix4f formRootInverseMatrix, EffectTransform transform, Vector3f maskHalf)
+    {
+        if (formRootInverseMatrix != null)
+        {
+            formRootInverse.set(formRootInverseMatrix);
+        }
+        else
+        {
+            formRootInverse.identity();
+        }
+
+        EffectTransformMath.buildInverseMatrix(transform, paintEffectInverse);
+        paintEffectActive = EffectTransformMath.isTransformActive(transform);
+
+        if (maskHalf != null)
+        {
+            paintMaskHalf.set(maskHalf);
+        }
+        else
+        {
+            EffectTransformMath.resolveModelMaskHalfExtents(transform, paintMaskHalf);
+        }
+    }
+
+    public static void clearPaintEffectTransform()
+    {
+        formRootInverse.identity();
+        paintEffectInverse.identity();
+        paintEffectActive = false;
+        paintMaskHalf.set(EffectTransformMath.MODEL_MASK_HALF_BASE, EffectTransformMath.MODEL_MASK_HALF_BASE * EffectTransformMath.MODEL_MASK_Y_BIAS, EffectTransformMath.MODEL_MASK_HALF_BASE);
+    }
+
+    private static Matrix4f overlayFormRootInverse()
+    {
+        if (paintOverlayPass)
+        {
+            return overlayFormRootInverse.identity();
+        }
+
+        return formRootInverse;
+    }
+
     public static void render(ShaderProgram shader, IModelVAO modelVAO, MatrixStack stack, float r, float g, float b, float a, int light, int overlay)
     {
         int currentVAO = GL30.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
@@ -581,6 +632,34 @@ public class ModelVAORenderer
         if (textureBlendActiveUniform != null)
         {
             textureBlendActiveUniform.set(ModelVAORenderer.textureBlendActive ? 1F : 0F);
+        }
+
+        GlUniform formRootInverseUniform = shader.getUniform("FormRootInverse");
+
+        if (formRootInverseUniform != null)
+        {
+            formRootInverseUniform.set(overlayFormRootInverse());
+        }
+
+        GlUniform paintEffectInverseUniform = shader.getUniform("PaintEffectInverse");
+
+        if (paintEffectInverseUniform != null)
+        {
+            paintEffectInverseUniform.set(paintEffectInverse);
+        }
+
+        GlUniform paintEffectActiveUniform = shader.getUniform("PaintEffectActive");
+
+        if (paintEffectActiveUniform != null)
+        {
+            paintEffectActiveUniform.set(paintEffectActive ? 1F : 0F);
+        }
+
+        GlUniform paintMaskHalfUniform = shader.getUniform("PaintMaskHalf");
+
+        if (paintMaskHalfUniform != null)
+        {
+            paintMaskHalfUniform.set(paintMaskHalf.x, paintMaskHalf.y, paintMaskHalf.z);
         }
 
         if (shader.fogStart != null)

@@ -16,6 +16,10 @@ uniform vec4 PaintColor;
 uniform vec4 GlowingColor;
 uniform float PaintOverlay;
 
+uniform mat4 PaintEffectInverse;
+uniform float PaintEffectActive;
+uniform vec3 PaintMaskHalf;
+
 in float vertexDistance;
 in vec4 vertexColor;
 in vec4 rawVertexColor;
@@ -23,8 +27,26 @@ in vec4 lightMapColor;
 in vec4 overlayColor;
 in vec2 texCoord0;
 in vec4 normal;
+in vec3 formRootPos;
 
 out vec4 fragColor;
+
+float bbsPaintEffectMask(vec3 rootPos, mat4 effectInverse, float active, vec3 halfExtents)
+{
+    if (active < 0.5)
+    {
+        return 1.0;
+    }
+
+    vec3 local = (effectInverse * vec4(rootPos, 1.0)).xyz;
+    local.y -= halfExtents.y;
+    vec3 d = abs(local) - halfExtents;
+    float dist = length(max(d, 0.0)) + min(max(max(d.x, d.y), d.z), 0.0);
+    float maxHalf = max(halfExtents.x, max(halfExtents.y, halfExtents.z));
+    float falloff = max(maxHalf * 0.15, 0.1);
+
+    return 1.0 - smoothstep(0.0, falloff, dist);
+}
 
 void main()
 {
@@ -57,6 +79,7 @@ void main()
         }
 
         float paintStrength = clamp(abs(PaintColor.a), 0.0, 1.0);
+        paintStrength *= bbsPaintEffectMask(formRootPos, PaintEffectInverse, PaintEffectActive, PaintMaskHalf);
         float outAlpha = paintStrength * texSample.a * rawVertexColor.a * ColorModulator.a;
 
         if (outAlpha < 0.001)
@@ -84,6 +107,7 @@ void main()
     color.rgb = mix(overlayColor.rgb, color.rgb, overlayColor.a);
 
     float paintStrength = clamp(abs(PaintColor.a), 0.0, 1.0);
+    paintStrength *= bbsPaintEffectMask(formRootPos, PaintEffectInverse, PaintEffectActive, PaintMaskHalf);
 
     color.rgb *= lightMapColor.rgb;
 
@@ -96,6 +120,7 @@ void main()
     {
         /* Negative darken like glow */
         float factor = max(0.0, 1.0 + PaintColor.a);
+        factor *= bbsPaintEffectMask(formRootPos, PaintEffectInverse, PaintEffectActive, PaintMaskHalf);
 
         color.rgb *= factor;
     }

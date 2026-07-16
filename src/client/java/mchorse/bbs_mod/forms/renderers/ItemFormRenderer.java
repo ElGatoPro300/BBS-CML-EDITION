@@ -8,8 +8,10 @@ import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.entities.StubEntity;
 import mchorse.bbs_mod.forms.forms.ItemForm;
+import mchorse.bbs_mod.forms.forms.utils.EffectTransform;
 import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
 import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
+import mchorse.bbs_mod.forms.renderers.utils.BlockEffectOverlayUniforms;
 import mchorse.bbs_mod.forms.renderers.utils.FormColorBlend;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
@@ -97,7 +99,7 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
 
         if (positivePaint)
         {
-            this.renderPaintOverlay(null, matrices, consumers, resolvedPaint, set.a, OverlayTexture.DEFAULT_UV, true, mode, false, null);
+            this.renderPaintOverlay(null, matrices, consumers, resolvedPaint, set.a, OverlayTexture.DEFAULT_UV, true, mode, false, null, this.form.paintSettings.get().transform);
         }
 
         if (glowIntensity > 0F)
@@ -189,11 +191,11 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
         {
             if (BBSRendering.isIrisWorldPaintDeferral())
             {
-                this.submitDeferredItemPaintOverlay(context, resolvedPaint, BlockFormRenderer.color.a, context.overlay, mode, leftHand, itemEntity);
+                this.submitDeferredItemPaintOverlay(context, resolvedPaint, BlockFormRenderer.color.a, context.overlay, mode, leftHand, itemEntity, paintSettings.transform);
             }
             else
             {
-                this.renderPaintOverlay(context, context.stack, consumers, resolvedPaint, BlockFormRenderer.color.a, context.overlay, false, mode, leftHand, itemEntity);
+                this.renderPaintOverlay(context, context.stack, consumers, resolvedPaint, BlockFormRenderer.color.a, context.overlay, false, mode, leftHand, itemEntity, paintSettings.transform);
             }
         }
 
@@ -270,7 +272,7 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
         return BBSRendering.getColorConsumer(color);
     }
 
-    private void submitDeferredItemPaintOverlay(FormRenderingContext context, Color resolvedPaint, float alpha, int overlay, ModelTransformationMode mode, boolean leftHand, LivingEntity itemEntity)
+    private void submitDeferredItemPaintOverlay(FormRenderingContext context, Color resolvedPaint, float alpha, int overlay, ModelTransformationMode mode, boolean leftHand, LivingEntity itemEntity, EffectTransform transform)
     {
         MatrixStack stack = context.stack;
         Matrix4f positionMatrix = ModelVAORenderer.capturePaintOverlayRootMatrix(new Matrix4f(stack.peek().getPositionMatrix()));
@@ -287,30 +289,23 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
             overlayStack.peek().getPositionMatrix().set(positionMatrix);
             overlayStack.peek().getNormalMatrix().set(normalMatrix);
 
-            this.renderPaintOverlayPass(context, overlayStack, overlayConsumers, paintOverlay, overlay, false, mode, leftHand, itemEntity);
+            this.renderPaintOverlayPass(context, overlayStack, overlayConsumers, paintOverlay, overlay, false, mode, leftHand, itemEntity, transform);
         });
     }
 
-    private void renderPaintOverlay(FormRenderingContext context, MatrixStack stack, CustomVertexConsumerProvider consumers, Color resolvedPaint, float alpha, int overlay, boolean ui, ModelTransformationMode mode, boolean leftHand, LivingEntity itemEntity)
+    private void renderPaintOverlay(FormRenderingContext context, MatrixStack stack, CustomVertexConsumerProvider consumers, Color resolvedPaint, float alpha, int overlay, boolean ui, ModelTransformationMode mode, boolean leftHand, LivingEntity itemEntity, EffectTransform transform)
     {
         Color paintOverlay = new Color(resolvedPaint.r, resolvedPaint.g, resolvedPaint.b, resolvedPaint.a);
 
         paintOverlay.a *= alpha;
 
-        this.renderPaintOverlayPass(context, stack, consumers, paintOverlay, overlay, ui, mode, leftHand, itemEntity);
+        this.renderPaintOverlayPass(context, stack, consumers, paintOverlay, overlay, ui, mode, leftHand, itemEntity, transform);
     }
 
-    private void renderPaintOverlayPass(FormRenderingContext context, MatrixStack stack, CustomVertexConsumerProvider consumers, Color paintOverlay, int overlay, boolean ui, ModelTransformationMode mode, boolean leftHand, LivingEntity itemEntity)
+    private void renderPaintOverlayPass(FormRenderingContext context, MatrixStack stack, CustomVertexConsumerProvider consumers, Color paintOverlay, int overlay, boolean ui, ModelTransformationMode mode, boolean leftHand, LivingEntity itemEntity, EffectTransform transform)
     {
         CustomVertexConsumerProvider.clearRunnables();
-        CustomVertexConsumerProvider.hijackVertexFormat((l) ->
-        {
-            RenderSystem.enableBlend();
-            RenderSystem.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-            RenderSystem.setShader(BBSShaders::getBlockPaintOverlayProgram);
-            RenderSystem.setShaderTexture(0, PlayerScreenHandler.BLOCK_ATLAS_TEXTURE);
-            RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
-        });
+        CustomVertexConsumerProvider.hijackVertexFormat((l) -> BlockEffectOverlayUniforms.configurePaintOverlayRenderState(transform));
 
         RenderSystem.enableBlend();
         RenderSystem.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);

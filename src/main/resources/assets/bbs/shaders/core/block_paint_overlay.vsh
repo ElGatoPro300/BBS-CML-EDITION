@@ -13,6 +13,7 @@ uniform mat3 IViewRotMat;
 
 out vec4 vertexColor;
 out vec2 texCoord0;
+out vec3 localPos;
 
 void main()
 {
@@ -20,4 +21,5 @@ void main()
 
     vertexColor = Color;
     texCoord0 = UV0;
+    localPos = Position;
 }

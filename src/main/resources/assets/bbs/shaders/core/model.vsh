@@ -16,6 +16,7 @@ uniform sampler2D Sampler2;
 uniform mat4 ModelViewMat;
 uniform mat3 NormalMat;
 uniform mat4 ProjMat;
+uniform mat4 FormRootInverse;
 uniform int FogShape;
 
 uniform vec3 Light0_Direction;
@@ -28,6 +29,7 @@ out vec4 lightMapColor;
 out vec4 overlayColor;
 out vec2 texCoord0;
 out vec4 normal;
+out vec3 formRootPos;
 
 void main()
 {
@@ -40,4 +42,5 @@ void main()
     overlayColor = texelFetch(Sampler1, UV1, 0);
     texCoord0 = UV0;
     normal = ProjMat * ModelViewMat * vec4(Normal, 0.0);
+    formRootPos = (FormRootInverse * vec4(Position, 1.0)).xyz;
 }

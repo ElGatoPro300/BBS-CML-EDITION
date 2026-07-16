@@ -1,12 +1,16 @@
 package mchorse.bbs_mod.ui.framework.elements.input.keyframes.factories;
 
+import mchorse.bbs_mod.forms.forms.utils.EffectTransform;
 import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.replays.UIReplaysEditorUtils;
 import mchorse.bbs_mod.ui.framework.elements.buttons.UIToggle;
 import mchorse.bbs_mod.ui.framework.elements.input.UIColor;
+import mchorse.bbs_mod.ui.framework.elements.input.UIEffectKeyframeTransform;
 import mchorse.bbs_mod.ui.framework.elements.input.UITrackpad;
 import mchorse.bbs_mod.ui.framework.elements.input.keyframes.UIKeyframes;
+import mchorse.bbs_mod.ui.framework.elements.events.UITrackpadDragEndEvent;
+import mchorse.bbs_mod.ui.framework.elements.events.UITrackpadDragStartEvent;
 import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.keyframes.Keyframe;
@@ -15,6 +19,7 @@ import java.util.function.Consumer;
 
 public class UIPaintSettingsKeyframeFactory extends UIKeyframeFactory<PaintSettings>
 {
+    private UIEffectKeyframeTransform transform;
     private UIColor paintColor;
     private UITrackpad intensity;
     private UIToggle spectrum;
@@ -23,22 +28,33 @@ public class UIPaintSettingsKeyframeFactory extends UIKeyframeFactory<PaintSetti
     {
         super(keyframe, editor);
 
-        this.paintColor = new UIColor((c) -> this.setColor(c));
+        this.transform = new UIEffectKeyframeTransform((apply) -> this.applyPaintEdit((settings) -> apply.accept(settings.transform)));
+        this.transform.registerUndo(editor);
+
+        this.paintColor = new UIColor((c) -> this.applyPaintEdit((settings) -> this.setPaintColor(settings, c)));
         this.paintColor.tooltip(UIKeys.FORMS_EDITORS_PAINT_COLOR);
 
-        this.intensity = new UITrackpad((value) -> this.setIntensity(value.floatValue()));
+        this.intensity = new UITrackpad((value) -> this.applyPaintEdit((settings) -> this.setPaintIntensity(settings, value.floatValue())));
         this.intensity.increment(0.05D).values(0.1D, 0.05D, 0.2D);
         this.intensity.tooltip(UIKeys.FORMS_EDITORS_PAINT_INTENSITY);
+        this.wireUndo(this.intensity);
 
         this.spectrum = new UIToggle(UIKeys.GENERIC_KEYFRAMES_COLOR_SPECTRUM, (b) -> this.setSpectrum(b.getValue()));
         this.spectrum.tooltip(UIKeys.GENERIC_KEYFRAMES_COLOR_SPECTRUM_TOOLTIP);
         this.spectrum.setValue(keyframe.isSpectrum());
 
-        this.scroll.add(UI.row(UI.label(UIKeys.FORMS_EDITORS_PAINT_COLOR), this.paintColor));
+        this.scroll.add(this.transform);
+        this.scroll.add(UI.row(UI.label(UIKeys.FORMS_EDITORS_PAINT_COLOR), this.paintColor).marginTop(8));
         this.scroll.add(UI.label(UIKeys.FORMS_EDITORS_PAINT_INTENSITY), this.intensity);
-        this.scroll.add(this.spectrum);
+        this.scroll.add(this.spectrum.marginTop(8));
 
         this.update();
+    }
+
+    private void wireUndo(UITrackpad trackpad)
+    {
+        trackpad.getEvents().register(UITrackpadDragStartEvent.class, (e) -> this.editor.cacheKeyframes());
+        trackpad.getEvents().register(UITrackpadDragEndEvent.class, (e) -> this.editor.submitKeyframes());
     }
 
     @Override
@@ -48,6 +64,7 @@ public class UIPaintSettingsKeyframeFactory extends UIKeyframeFactory<PaintSetti
 
         PaintSettings value = this.getOrCreateSettings(this.keyframe.getValue());
 
+        this.transform.setEffectTransform(value.transform);
         this.paintColor.setColor(new Color().set(value.r, value.g, value.b, 1F).getRGBColor());
         this.intensity.setValue(value.intensity);
         this.spectrum.setValue(this.keyframe.isSpectrum());
@@ -60,10 +77,15 @@ public class UIPaintSettingsKeyframeFactory extends UIKeyframeFactory<PaintSetti
             return new PaintSettings();
         }
 
+        if (settings.transform == null)
+        {
+            settings.transform = new EffectTransform();
+        }
+
         return settings;
     }
 
-    private void applyToSelected(Consumer<PaintSettings> consumer)
+    private void applyPaintEdit(Consumer<PaintSettings> editor)
     {
         boolean[] applied = {false};
 
@@ -71,41 +93,37 @@ public class UIPaintSettingsKeyframeFactory extends UIKeyframeFactory<PaintSetti
         {
             applied[0] = true;
 
-            PaintSettings settings = this.getOrCreateSettings((PaintSettings) selected.getValue()).copy();
+            PaintSettings settings = this.getOrCreateSettings((PaintSettings) selected.getValue());
 
-            consumer.accept(settings);
-            selected.setValue(settings, true);
+            selected.preNotify();
+            editor.accept(settings);
+            settings.applyAutoShaderShadow();
+            selected.postNotify();
         });
 
         if (!applied[0])
         {
-            PaintSettings settings = this.getOrCreateSettings(this.keyframe.getValue()).copy();
+            PaintSettings settings = this.getOrCreateSettings(this.keyframe.getValue());
 
-            consumer.accept(settings);
-            this.keyframe.setValue(settings, true);
+            this.keyframe.preNotify();
+            editor.accept(settings);
+            settings.applyAutoShaderShadow();
+            this.keyframe.postNotify();
         }
     }
 
-    private void setColor(int c)
+    private void setPaintColor(PaintSettings settings, int c)
     {
         Color color = new Color().set(c);
 
-        this.applyToSelected((settings) ->
-        {
-            settings.r = color.r;
-            settings.g = color.g;
-            settings.b = color.b;
-            settings.applyAutoShaderShadow();
-        });
+        settings.r = color.r;
+        settings.g = color.g;
+        settings.b = color.b;
     }
 
-    private void setIntensity(float value)
+    private void setPaintIntensity(PaintSettings settings, float value)
     {
-        this.applyToSelected((settings) ->
-        {
-            settings.intensity = value;
-            settings.applyAutoShaderShadow();
-        });
+        settings.intensity = value;
     }
 
     private void setSpectrum(boolean value)

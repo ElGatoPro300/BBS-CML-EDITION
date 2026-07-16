@@ -1,6 +1,7 @@
 package mchorse.bbs_mod.forms.renderers.utils;
 
 import mchorse.bbs_mod.client.BBSShaders;
+import mchorse.bbs_mod.forms.forms.utils.EffectTransform;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 
@@ -12,7 +13,7 @@ public class FlatPaintOverlayPass
     {
     }
 
-    public static void render(Runnable draw)
+    public static void render(EffectTransform transform, Runnable draw)
     {
         if (draw == null)
         {
@@ -27,7 +28,7 @@ public class FlatPaintOverlayPass
         RenderSystem.depthMask(false);
         GL11.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
         GL11.glPolygonOffset(-1F, -1F);
-        RenderSystem.setShader(BBSShaders::getBlockPaintOverlayProgram);
+        BlockEffectOverlayUniforms.configurePaintOverlayRenderState(transform);
         RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
 
         try
@@ -47,5 +48,10 @@ public class FlatPaintOverlayPass
             RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
             RenderSystem.defaultBlendFunc();
         }
+    }
+
+    public static void render(Runnable draw)
+    {
+        render(null, draw);
     }
 }

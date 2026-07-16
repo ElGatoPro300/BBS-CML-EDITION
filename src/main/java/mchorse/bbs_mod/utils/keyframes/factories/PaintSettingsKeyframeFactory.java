@@ -69,6 +69,7 @@ public class PaintSettingsKeyframeFactory implements IKeyframeFactory<PaintSetti
         this.i.intensity = (float) interpolation.interpolate(IInterp.context.set(preAValue.intensity, aValue.intensity, bValue.intensity, postBValue.intensity, x));
         this.i.sync = x >= 0.5F ? bValue.sync : aValue.sync;
         this.i.shaderShadow = PaintSettings.resolveAutoShaderShadow(this.i.intensity);
+        EffectTransformInterpolation.interpolate(this.i.transform, preAValue.transform, aValue.transform, bValue.transform, postBValue.transform, interpolation, x);
 
         return this.i;
     }
@@ -86,6 +87,7 @@ public class PaintSettingsKeyframeFactory implements IKeyframeFactory<PaintSetti
         this.i.intensity = (float) interpolation.interpolate(IInterp.context.set(preAValue.intensity, aValue.intensity, bValue.intensity, postBValue.intensity, x));
         this.i.sync = x >= 0.5F ? bValue.sync : aValue.sync;
         this.i.shaderShadow = PaintSettings.resolveAutoShaderShadow(this.i.intensity);
+        EffectTransformInterpolation.interpolate(this.i.transform, preAValue.transform, aValue.transform, bValue.transform, postBValue.transform, interpolation, x);
 
         return this.i;
     }

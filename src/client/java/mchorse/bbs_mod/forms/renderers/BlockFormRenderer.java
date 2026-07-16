@@ -6,8 +6,10 @@ import mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer;
 import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.forms.BlockForm;
+import mchorse.bbs_mod.forms.forms.utils.EffectTransform;
 import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
 import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
+import mchorse.bbs_mod.forms.renderers.utils.BlockEffectOverlayUniforms;
 import mchorse.bbs_mod.forms.renderers.utils.FormColorBlend;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.utils.MathUtils;
@@ -96,7 +98,7 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
 
         if (positivePaint)
         {
-            this.renderPaintOverlay(null, matrices, consumers, resolvedPaint, set.a, OverlayTexture.DEFAULT_UV, true);
+            this.renderPaintOverlay(null, matrices, consumers, resolvedPaint, set.a, OverlayTexture.DEFAULT_UV, true, this.form.paintSettings.get().transform);
         }
 
         if (glowIntensity > 0F)
@@ -167,11 +169,11 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
         {
             if (BBSRendering.isIrisWorldPaintDeferral())
             {
-                this.submitDeferredBlockPaintOverlay(context, resolvedPaint, color.a, context.overlay);
+                this.submitDeferredBlockPaintOverlay(context, resolvedPaint, color.a, context.overlay, paintSettings.transform);
             }
             else
             {
-                this.renderPaintOverlay(context, context.stack, consumers, resolvedPaint, color.a, context.overlay, false);
+                this.renderPaintOverlay(context, context.stack, consumers, resolvedPaint, color.a, context.overlay, false, paintSettings.transform);
             }
         }
 
@@ -379,7 +381,7 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
         raw.render(blockEntity, 0F, stack, consumers, light, overlay);
     }
 
-    private void submitDeferredBlockPaintOverlay(FormRenderingContext context, Color resolvedPaint, float alpha, int overlay)
+    private void submitDeferredBlockPaintOverlay(FormRenderingContext context, Color resolvedPaint, float alpha, int overlay, EffectTransform transform)
     {
         MatrixStack stack = context.stack;
         Matrix4f positionMatrix = ModelVAORenderer.capturePaintOverlayRootMatrix(new Matrix4f(stack.peek().getPositionMatrix()));
@@ -396,30 +398,23 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
             overlayStack.peek().getPositionMatrix().set(positionMatrix);
             overlayStack.peek().getNormalMatrix().set(normalMatrix);
 
-            this.renderPaintOverlayPass(null, overlayStack, overlayConsumers, paintOverlay, overlay, false);
+            this.renderPaintOverlayPass(null, overlayStack, overlayConsumers, paintOverlay, overlay, false, transform);
         });
     }
 
-    private void renderPaintOverlay(FormRenderingContext context, MatrixStack stack, CustomVertexConsumerProvider consumers, Color resolvedPaint, float alpha, int overlay, boolean ui)
+    private void renderPaintOverlay(FormRenderingContext context, MatrixStack stack, CustomVertexConsumerProvider consumers, Color resolvedPaint, float alpha, int overlay, boolean ui, EffectTransform transform)
     {
         Color paintOverlay = new Color(resolvedPaint.r, resolvedPaint.g, resolvedPaint.b, resolvedPaint.a);
 
         paintOverlay.a *= alpha;
 
-        this.renderPaintOverlayPass(context, stack, consumers, paintOverlay, overlay, ui);
+        this.renderPaintOverlayPass(context, stack, consumers, paintOverlay, overlay, ui, transform);
     }
 
-    private void renderPaintOverlayPass(FormRenderingContext context, MatrixStack stack, CustomVertexConsumerProvider consumers, Color paintOverlay, int overlay, boolean ui)
+    private void renderPaintOverlayPass(FormRenderingContext context, MatrixStack stack, CustomVertexConsumerProvider consumers, Color paintOverlay, int overlay, boolean ui, EffectTransform transform)
     {
         CustomVertexConsumerProvider.clearRunnables();
-        CustomVertexConsumerProvider.hijackVertexFormat((l) ->
-        {
-            RenderSystem.enableBlend();
-            RenderSystem.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-            RenderSystem.setShader(BBSShaders::getBlockPaintOverlayProgram);
-            RenderSystem.setShaderTexture(0, PlayerScreenHandler.BLOCK_ATLAS_TEXTURE);
-            RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
-        });
+        CustomVertexConsumerProvider.hijackVertexFormat((l) -> BlockEffectOverlayUniforms.configurePaintOverlayRenderState(transform));
 
         RenderSystem.enableBlend();
         RenderSystem.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);

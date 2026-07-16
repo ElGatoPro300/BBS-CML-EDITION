@@ -22,6 +22,7 @@ public class PaintSettings
     public float intensity;
     public boolean sync = false;
     public float shaderShadow = SHADER_SHADOW_DEFAULT;
+    public EffectTransform transform = new EffectTransform();
 
     public PaintSettings()
     {}
@@ -36,6 +37,7 @@ public class PaintSettings
         copy.intensity = this.intensity;
         copy.sync = this.sync;
         copy.shaderShadow = this.shaderShadow;
+        copy.transform = this.transform.copy();
 
         return copy;
     }
@@ -140,6 +142,11 @@ public class PaintSettings
             {
                 this.shaderShadow = SHADER_SHADOW_DEFAULT;
             }
+
+            if (map.has("transform"))
+            {
+                this.transform.fromData(map.get("transform"));
+            }
         }
     }
 
@@ -153,6 +160,7 @@ public class PaintSettings
         map.putFloat("intensity", this.intensity);
         map.putBool("sync", this.sync);
         map.putFloat("shaderShadow", this.shaderShadow);
+        map.put("transform", this.transform.toData());
 
         return map;
     }
@@ -175,12 +183,13 @@ public class PaintSettings
             && Float.compare(this.b, that.b) == 0
             && Float.compare(this.intensity, that.intensity) == 0
             && this.sync == that.sync
-            && Float.compare(this.shaderShadow, that.shaderShadow) == 0;
+            && Float.compare(this.shaderShadow, that.shaderShadow) == 0
+            && Objects.equals(this.transform, that.transform);
     }
 
     @Override
     public int hashCode()
     {
-        return Objects.hash(this.r, this.g, this.b, this.intensity, this.sync, this.shaderShadow);
+        return Objects.hash(this.r, this.g, this.b, this.intensity, this.sync, this.shaderShadow, this.transform);
     }
 }
