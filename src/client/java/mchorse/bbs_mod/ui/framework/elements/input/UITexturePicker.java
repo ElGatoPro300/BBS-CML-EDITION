@@ -1279,28 +1279,38 @@ public class UITexturePicker extends UIElement implements IImportPathProvider
         this.formPreview.form = source == null ? null : FormUtils.copy(source);
     }
 
-    @Override
-    protected boolean subMouseClicked(UIContext context)
+    public boolean tryMouseBack(UIContext context)
     {
-        if (this.activeTab == TAB_FILES)
+        if (!this.isEnabled() || !this.canBeSeen() || !this.area.isInside(context))
         {
-            if (context.mouseButton == GLFW.GLFW_MOUSE_BUTTON_4)
-            {
-                if (this.picker.navigateBack())
-                {
-                    return true;
-                }
-            }
-            else if (context.mouseButton == GLFW.GLFW_MOUSE_BUTTON_5)
-            {
-                if (this.picker.navigateForward())
-                {
-                    return true;
-                }
-            }
+            return false;
         }
 
-        return super.subMouseClicked(context);
+        if (this.activeTab == TAB_FILES)
+        {
+            this.picker.navigateBack();
+
+            return true;
+        }
+
+        return false;
+    }
+
+    public boolean tryMouseForward(UIContext context)
+    {
+        if (!this.isEnabled() || !this.canBeSeen() || !this.area.isInside(context))
+        {
+            return false;
+        }
+
+        if (this.activeTab == TAB_FILES)
+        {
+            this.picker.navigateForward();
+
+            return true;
+        }
+
+        return false;
     }
 
     @Override

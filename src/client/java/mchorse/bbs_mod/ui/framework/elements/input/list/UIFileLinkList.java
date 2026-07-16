@@ -13,8 +13,6 @@ import mchorse.bbs_mod.utils.NaturalOrderComparator;
 import mchorse.bbs_mod.utils.StringUtils;
 import mchorse.bbs_mod.utils.colors.Colors;
 
-import org.lwjgl.glfw.GLFW;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -206,19 +204,6 @@ public class UIFileLinkList extends UIList<UIFileLinkList.FileLink>
     @Override
     public boolean subMouseClicked(UIContext context)
     {
-        if (this.area.isInside(context))
-        {
-            if (context.mouseButton == GLFW.GLFW_MOUSE_BUTTON_4)
-            {
-                return this.navigateBack();
-            }
-
-            if (context.mouseButton == GLFW.GLFW_MOUSE_BUTTON_5)
-            {
-                return this.navigateForward();
-            }
-        }
-
         if (!this.isLargeViewEnabled())
         {
             return super.subMouseClicked(context);

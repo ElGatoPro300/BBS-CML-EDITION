@@ -14,8 +14,6 @@ import mchorse.bbs_mod.ui.utils.UI;
 import mchorse.bbs_mod.ui.utils.UIUtils;
 import mchorse.bbs_mod.ui.utils.icons.Icons;
 
-import org.lwjgl.glfw.GLFW;
-
 import java.io.File;
 import java.util.function.Consumer;
 
@@ -91,27 +89,6 @@ public class UIFolderPickerOverlayPanel extends UIOverlayPanel
         this.updateOpenFolderButton();
     }
 
-    @Override
-    public boolean subMouseClicked(UIContext context)
-    {
-        if (context.mouseButton == GLFW.GLFW_MOUSE_BUTTON_4)
-        {
-            if (this.picker.navigateBack())
-            {
-                return true;
-            }
-        }
-        else if (context.mouseButton == GLFW.GLFW_MOUSE_BUTTON_5)
-        {
-            if (this.picker.navigateForward())
-            {
-                return true;
-            }
-        }
-
-        return super.subMouseClicked(context);
-    }
-    
     private void confirmSelection()
     {
         File folder = BBSMod.getProvider().getFile(this.picker.path);

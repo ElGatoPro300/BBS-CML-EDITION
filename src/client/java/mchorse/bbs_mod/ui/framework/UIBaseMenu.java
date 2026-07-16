@@ -6,6 +6,7 @@ import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarPointerBlock;
 import mchorse.bbs_mod.ui.framework.elements.IUIElement;
 import mchorse.bbs_mod.ui.framework.elements.IViewport;
 import mchorse.bbs_mod.ui.framework.elements.UIElement;
+import mchorse.bbs_mod.ui.framework.elements.input.UITexturePicker;
 import mchorse.bbs_mod.ui.framework.elements.utils.IViewportStack;
 import mchorse.bbs_mod.ui.utils.Area;
 import mchorse.bbs_mod.ui.utils.Gizmo;
@@ -122,9 +123,24 @@ public abstract class UIBaseMenu
 
     public boolean mouseClicked(int mouseX, int mouseY, int mouseButton)
     {
-        boolean result = false;
-
         this.context.setMouse(mouseX, mouseY, mouseButton);
+
+        if (mouseButton == GLFW.GLFW_MOUSE_BUTTON_4)
+        {
+            if (this.tryTexturePickerMouseBack())
+            {
+                return true;
+            }
+
+            return this.handleKey(GLFW.GLFW_KEY_ESCAPE, 0, GLFW.GLFW_PRESS, 0);
+        }
+
+        if (mouseButton == GLFW.GLFW_MOUSE_BUTTON_5 && this.tryTexturePickerMouseForward())
+        {
+            return true;
+        }
+
+        boolean result = false;
 
         if (this.root.isEnabled())
         {
@@ -139,6 +155,57 @@ public abstract class UIBaseMenu
         }
 
         return result;
+    }
+
+    /**
+     * Texture picker Files tab uses the back mouse button for folder navigation instead of Escape.
+     */
+    private boolean tryTexturePickerMouseBack()
+    {
+        if (!this.root.isEnabled())
+        {
+            return false;
+        }
+
+        this.context.pushViewport(this.viewport);
+
+        for (UITexturePicker picker : this.root.getChildren(UITexturePicker.class))
+        {
+            if (picker.tryMouseBack(this.context))
+            {
+                this.context.popViewport();
+
+                return true;
+            }
+        }
+
+        this.context.popViewport();
+
+        return false;
+    }
+
+    private boolean tryTexturePickerMouseForward()
+    {
+        if (!this.root.isEnabled())
+        {
+            return false;
+        }
+
+        this.context.pushViewport(this.viewport);
+
+        for (UITexturePicker picker : this.root.getChildren(UITexturePicker.class))
+        {
+            if (picker.tryMouseForward(this.context))
+            {
+                this.context.popViewport();
+
+                return true;
+            }
+        }
+
+        this.context.popViewport();
+
+        return false;
     }
 
     public boolean mouseScrolled(int x, int y, double h, double v)
