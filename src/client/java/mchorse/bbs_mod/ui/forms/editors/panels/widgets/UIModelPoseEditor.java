@@ -23,7 +23,7 @@ public class UIModelPoseEditor extends UIPoseEditor
     @Override
     protected float getGizmoTranslationScale()
     {
-        return 16F;
+        return ModelFormRenderer.isBobjModel(this.model) ? 1F : 16F;
     }
 
     public void setValuePose(ValuePose valuePose)

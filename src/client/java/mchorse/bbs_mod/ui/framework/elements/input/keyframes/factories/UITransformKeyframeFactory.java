@@ -56,10 +56,12 @@ public class UITransformKeyframeFactory extends UIKeyframeFactory<Transform>
 
         if (isPoseLimbTrack(sheet))
         {
-            this.transform.translationScale(16F);
-
             Form limbForm = FormUtils.getForm(sheet.property);
             boolean bobj = limbForm instanceof ModelForm modelForm && ModelFormRenderer.isBobjModel(modelForm);
+
+            /* Cubic groups store translate in model pixels (/16 on the render stack).
+             * BOBJ bones apply PoseTransform.translate directly in blocks. */
+            this.transform.translationScale(bobj ? 1F : 16F);
 
             if (bobj)
             {

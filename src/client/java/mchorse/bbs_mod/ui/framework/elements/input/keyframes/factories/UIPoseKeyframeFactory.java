@@ -222,7 +222,8 @@ public class UIPoseKeyframeFactory extends UIKeyframeFactory<Pose>
         @Override
         protected float getGizmoTranslationScale()
         {
-            return 16F;
+            /* BOBJ bones translate in blocks; cubic groups use model pixels (/16). */
+            return ModelFormRenderer.isBobjModel(this.model) ? 1F : 16F;
         }
 
         private String getGroup(PoseTransform transform)
