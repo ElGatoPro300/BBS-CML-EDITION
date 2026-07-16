@@ -2,9 +2,11 @@ package mchorse.bbs_mod.forms.renderers;
 
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.client.BBSShaders;
+import mchorse.bbs_mod.cubic.render.vao.ModelVAORenderer;
 import mchorse.bbs_mod.forms.CustomVertexConsumerProvider;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.forms.BlockForm;
+import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
 import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.forms.renderers.utils.FormColorBlend;
 import mchorse.bbs_mod.ui.framework.UIContext;
@@ -29,13 +31,17 @@ import net.minecraft.client.render.block.entity.BlockEntityRenderDispatcher;
 import net.minecraft.client.render.block.entity.BlockEntityRenderer;
 import net.minecraft.client.render.model.ModelLoader;
 import net.minecraft.client.util.math.MatrixStack;
+import net.minecraft.screen.PlayerScreenHandler;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.world.World;
 
+import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+
+import org.lwjgl.opengl.GL11;
 
 import java.util.function.Function;
 
@@ -65,17 +71,39 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
         Color set = Color.white();
 
         set.mul(this.form.color.get());
-        FormColorBlend.blendFormGlowBrighten(set, this.form.glowSettings.get(), this.form.glowingColor.get());
+
+        GlowSettings glowSettings = this.form.glowSettings.get();
+        Color legacyGlow = this.form.glowingColor.get();
+        float glowIntensity = glowSettings.resolveIntensity(legacyGlow);
+
+        if (glowIntensity < 0F)
+        {
+            FormColorBlend.blendFormGlowBrighten(set, glowSettings, legacyGlow);
+        }
+
+        Color resolvedPaint = FormColorBlend.resolvePaintColor(this.form.paintSettings.get(), this.form.paintColor.get());
+        boolean positivePaint = FormColorBlend.hasPositivePaint(this.form.paintSettings.get(), this.form.paintColor.get());
 
         Vector3f light0 = new Vector3f(0.85F, 0.85F, -1F).normalize();
         Vector3f light1 = new Vector3f(-0.85F, 0.85F, 1F).normalize();
         RenderSystem.setupLevelDiffuseLighting(light0, light1);
 
-        consumers.setSubstitute(BBSRendering.getColorConsumer(set));
+        consumers.setSubstitute(this.getBlockMainConsumer(set, resolvedPaint));
         consumers.setUI(true);
-        this.renderRepeatedBlocks(null, matrices, consumers, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, OverlayTexture.DEFAULT_UV, false, true);
+        this.renderRepeatedBlocks(null, matrices, consumers, LightmapTextureManager.MAX_BLOCK_LIGHT_COORDINATE, OverlayTexture.DEFAULT_UV, false, true, false, false);
 
         consumers.draw();
+
+        if (positivePaint)
+        {
+            this.renderPaintOverlay(null, matrices, consumers, resolvedPaint, set.a, OverlayTexture.DEFAULT_UV, true);
+        }
+
+        if (glowIntensity > 0F)
+        {
+            this.renderGlowOverlay(null, matrices, consumers, glowSettings, legacyGlow, glowIntensity, set.a, OverlayTexture.DEFAULT_UV, true);
+        }
+
         consumers.setUI(false);
         consumers.setSubstitute(null);
 
@@ -113,22 +141,49 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
 
         color.set(context.color);
         color.mul(this.form.color.get());
-        FormColorBlend.blendFormGlowBrighten(color, this.form.glowSettings.get(), this.form.glowingColor.get());
+
+        GlowSettings glowSettings = this.form.glowSettings.get();
+        Color legacyGlow = this.form.glowingColor.get();
+        float glowIntensity = glowSettings.resolveIntensity(legacyGlow);
+        boolean positiveGlow = !context.isPicking() && glowIntensity > 0F;
+
+        if (glowIntensity < 0F)
+        {
+            FormColorBlend.blendFormGlowBrighten(color, glowSettings, legacyGlow);
+        }
 
         PaintSettings paintSettings = this.form.paintSettings.get();
         Color legacyPaint = this.form.paintColor.get();
-        Color resolvedPaint = new Color();
+        Color resolvedPaint = FormColorBlend.resolvePaintColor(paintSettings, legacyPaint);
+        boolean positivePaint = !context.isPicking() && FormColorBlend.hasPositivePaint(paintSettings, legacyPaint);
 
-        paintSettings.resolveColor(legacyPaint, resolvedPaint);
-        resolvedPaint.a = paintSettings.resolveIntensity(legacyPaint);
-
-        consumers.setSubstitute(BBSRendering.getColorConsumer(color, resolvedPaint));
-        this.renderRepeatedBlocks(context, context.stack, consumers, light, context.overlay, context.isPicking(), false);
+        consumers.setSubstitute(this.getBlockMainConsumer(color, resolvedPaint));
+        this.renderRepeatedBlocks(context, context.stack, consumers, light, context.overlay, context.isPicking(), false, false, false);
 
         consumers.draw();
         consumers.setSubstitute(null);
 
-        CustomVertexConsumerProvider.clearRunnables();
+        if (positivePaint)
+        {
+            if (BBSRendering.isIrisWorldPaintDeferral())
+            {
+                this.submitDeferredBlockPaintOverlay(context, resolvedPaint, color.a, context.overlay);
+            }
+            else
+            {
+                this.renderPaintOverlay(context, context.stack, consumers, resolvedPaint, color.a, context.overlay, false);
+            }
+        }
+
+        if (positiveGlow)
+        {
+            this.renderGlowOverlay(context, context.stack, consumers, glowSettings, legacyGlow, glowIntensity, color.a, context.overlay, false);
+        }
+        else
+        {
+            CustomVertexConsumerProvider.clearRunnables();
+        }
+
         RenderSystem.defaultBlendFunc();
 
         context.stack.pop();
@@ -136,7 +191,17 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
         RenderSystem.enableDepthTest();
     }
 
-    private void renderRepeatedBlocks(FormRenderingContext context, MatrixStack stack, CustomVertexConsumerProvider consumers, int light, int overlay, boolean picking, boolean ui)
+    private Function<VertexConsumer, VertexConsumer> getBlockMainConsumer(Color color, Color resolvedPaint)
+    {
+        if (resolvedPaint != null && resolvedPaint.a < 0F)
+        {
+            return BBSRendering.getBlockPaintConsumer(color, resolvedPaint);
+        }
+
+        return BBSRendering.getColorConsumer(color);
+    }
+
+    private void renderRepeatedBlocks(FormRenderingContext context, MatrixStack stack, CustomVertexConsumerProvider consumers, int light, int overlay, boolean picking, boolean ui, boolean glowOverlay, boolean paintOverlay)
     {
         int repeatX = this.form.repeatX.get();
         int repeatY = this.form.repeatY.get();
@@ -156,7 +221,7 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
 
                     int blockLight = context == null ? light : this.resolveBlockLight(context, startX + x, startY + y, startZ + z, light);
 
-                    this.renderSingleBlock(stack, consumers, blockLight, overlay, picking, ui);
+                    this.renderSingleBlock(stack, consumers, blockLight, overlay, picking, ui, glowOverlay, paintOverlay);
                     stack.pop();
                 }
             }
@@ -237,7 +302,7 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
         return BlockPos.ofFloored(x, y, z);
     }
 
-    private void renderSingleBlock(MatrixStack stack, CustomVertexConsumerProvider consumers, int light, int overlay, boolean picking, boolean ui)
+    private void renderSingleBlock(MatrixStack stack, CustomVertexConsumerProvider consumers, int light, int overlay, boolean picking, boolean ui, boolean glowOverlay, boolean paintOverlay)
     {
         stack.push();
         stack.translate(-0.5F, 0F, -0.5F);
@@ -251,14 +316,14 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
 
         MinecraftClient.getInstance().getBlockRenderManager().renderBlockAsEntity(this.form.blockState.get(), stack, consumers, light, overlay);
 
-        if (!picking)
+        if (!picking && !glowOverlay && !paintOverlay)
         {
             this.renderBlockEntity(stack, consumers, light, overlay);
         }
 
         int breakingLevel = this.form.breaking.get();
 
-        if (!picking && breakingLevel > 0 && breakingLevel <= 10)
+        if (!picking && !glowOverlay && !paintOverlay && breakingLevel > 0 && breakingLevel <= 10)
         {
             RenderLayer crackingLayer = ModelLoader.BLOCK_DESTRUCTION_RENDER_LAYERS.get(breakingLevel - 1);
             VertexConsumer delegateConsumer = consumers.getBuffer(crackingLayer);
@@ -312,5 +377,101 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
         BlockEntityRenderer raw = (BlockEntityRenderer) renderer;
 
         raw.render(blockEntity, 0F, stack, consumers, light, overlay);
+    }
+
+    private void submitDeferredBlockPaintOverlay(FormRenderingContext context, Color resolvedPaint, float alpha, int overlay)
+    {
+        MatrixStack stack = context.stack;
+        Matrix4f positionMatrix = ModelVAORenderer.capturePaintOverlayRootMatrix(new Matrix4f(stack.peek().getPositionMatrix()));
+        Matrix3f normalMatrix = new Matrix3f(stack.peek().getNormalMatrix());
+        Color paintOverlay = new Color(resolvedPaint.r, resolvedPaint.g, resolvedPaint.b, resolvedPaint.a);
+
+        paintOverlay.a *= alpha;
+
+        ModelVAORenderer.submitPaintOverlay(false, () ->
+        {
+            CustomVertexConsumerProvider overlayConsumers = FormUtilsClient.getProvider();
+            MatrixStack overlayStack = new MatrixStack();
+
+            overlayStack.peek().getPositionMatrix().set(positionMatrix);
+            overlayStack.peek().getNormalMatrix().set(normalMatrix);
+
+            this.renderPaintOverlayPass(null, overlayStack, overlayConsumers, paintOverlay, overlay, false);
+        });
+    }
+
+    private void renderPaintOverlay(FormRenderingContext context, MatrixStack stack, CustomVertexConsumerProvider consumers, Color resolvedPaint, float alpha, int overlay, boolean ui)
+    {
+        Color paintOverlay = new Color(resolvedPaint.r, resolvedPaint.g, resolvedPaint.b, resolvedPaint.a);
+
+        paintOverlay.a *= alpha;
+
+        this.renderPaintOverlayPass(context, stack, consumers, paintOverlay, overlay, ui);
+    }
+
+    private void renderPaintOverlayPass(FormRenderingContext context, MatrixStack stack, CustomVertexConsumerProvider consumers, Color paintOverlay, int overlay, boolean ui)
+    {
+        CustomVertexConsumerProvider.clearRunnables();
+        CustomVertexConsumerProvider.hijackVertexFormat((l) ->
+        {
+            RenderSystem.enableBlend();
+            RenderSystem.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+            RenderSystem.setShader(BBSShaders::getBlockPaintOverlayProgram);
+            RenderSystem.setShaderTexture(0, PlayerScreenHandler.BLOCK_ATLAS_TEXTURE);
+            RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
+        });
+
+        RenderSystem.enableBlend();
+        RenderSystem.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        RenderSystem.depthMask(false);
+
+        consumers.setSubstitute(BBSRendering.getBlockPaintOverlayConsumer(paintOverlay));
+
+        try
+        {
+            this.renderRepeatedBlocks(context, stack, consumers, LightmapTextureManager.MAX_LIGHT_COORDINATE, overlay, false, ui, false, true);
+            consumers.draw();
+        }
+        finally
+        {
+            consumers.setSubstitute(null);
+            RenderSystem.depthMask(true);
+            RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
+            CustomVertexConsumerProvider.clearRunnables();
+        }
+    }
+
+    private void renderGlowOverlay(FormRenderingContext context, MatrixStack stack, CustomVertexConsumerProvider consumers, GlowSettings glowSettings, Color legacyGlow, float glowIntensity, float alpha, int overlay, boolean ui)
+    {
+        CustomVertexConsumerProvider.clearRunnables();
+        CustomVertexConsumerProvider.hijackVertexFormat((l) ->
+        {
+            RenderSystem.enableBlend();
+            RenderSystem.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
+        });
+
+        int layers = FormColorBlend.resolveGlowOverlayLayers(glowIntensity);
+        Color glowColor = FormColorBlend.resolveGlowOverlayColor(glowSettings, legacyGlow, alpha, glowIntensity, layers);
+
+        RenderSystem.enableBlend();
+        RenderSystem.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
+        RenderSystem.depthMask(false);
+
+        consumers.setSubstitute(BBSRendering.getGlowOverlayConsumer(glowColor));
+
+        try
+        {
+            for (int layer = 0; layer < layers; layer++)
+            {
+                this.renderRepeatedBlocks(context, stack, consumers, LightmapTextureManager.MAX_LIGHT_COORDINATE, overlay, false, ui, true, false);
+                consumers.draw();
+            }
+        }
+        finally
+        {
+            consumers.setSubstitute(null);
+            RenderSystem.depthMask(true);
+            CustomVertexConsumerProvider.clearRunnables();
+        }
     }
 }

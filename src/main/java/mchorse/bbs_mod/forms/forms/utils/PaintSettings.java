@@ -74,6 +74,11 @@ public class PaintSettings
     {
         out.set(this.r, this.g, this.b, 1F);
 
+        if (this.intensity != 0F)
+        {
+            return;
+        }
+
         if (this.r == 1F && this.g == 1F && this.b == 1F && fallback != null)
         {
             if (fallback.r != 1F || fallback.g != 1F || fallback.b != 1F)

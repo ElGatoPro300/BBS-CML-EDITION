@@ -1,5 +1,7 @@
 package mchorse.bbs_mod.forms;
 
+import mchorse.bbs_mod.forms.renderers.utils.BlockPaintOverlayVertexConsumer;
+import mchorse.bbs_mod.forms.renderers.utils.GlowEmissionVertexConsumer;
 import mchorse.bbs_mod.forms.renderers.utils.RecolorVertexConsumer;
 
 import net.minecraft.client.render.BufferBuilder;
@@ -59,6 +61,9 @@ public class CustomVertexConsumerProvider implements VertexConsumerProvider
         if (this.substitute == null)
         {
             RecolorVertexConsumer.newColor = null;
+            RecolorVertexConsumer.newPaintColor = null;
+            GlowEmissionVertexConsumer.emissionColor = null;
+            BlockPaintOverlayVertexConsumer.paintOverlayColor = null;
         }
     }
 

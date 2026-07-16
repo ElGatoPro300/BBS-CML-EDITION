@@ -4,6 +4,9 @@ import mchorse.bbs_mod.BBSModClient;
 import mchorse.bbs_mod.client.BBSRendering;
 import mchorse.bbs_mod.client.BBSShaders;
 import mchorse.bbs_mod.forms.forms.ShapeForm;
+import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
+import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
+import mchorse.bbs_mod.forms.renderers.utils.FormColorBlend;
 import mchorse.bbs_mod.forms.forms.shape.ShapeGraphEvaluator;
 import mchorse.bbs_mod.forms.forms.shape.nodes.IrisAttributeNode;
 import mchorse.bbs_mod.forms.forms.shape.nodes.IrisShaderNode;
@@ -12,6 +15,7 @@ import mchorse.bbs_mod.particles.ParticleScheme;
 import mchorse.bbs_mod.resources.Link;
 import mchorse.bbs_mod.ui.framework.UIContext;
 import mchorse.bbs_mod.utils.MatrixStackUtils;
+import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.colors.Color;
 import mchorse.bbs_mod.utils.iris.ShaderCurves;
 import mchorse.bbs_mod.utils.math.Noise;
@@ -46,6 +50,7 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
     private ShapeGraphEvaluator evaluator;
     private float time;
     private Noise randomNoise = new Noise(0);
+    private boolean unshadedVertices;
 
     public ShapeFormRenderer(ShapeForm form)
     {
@@ -116,7 +121,12 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
         RenderSystem.setShader(shader);
         RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
         RenderSystem.enableBlend();
-        
+
+        GlowSettings glowSettings = this.form.glowSettings.get();
+        Color legacyGlow = this.form.glowingColor.get();
+        float glowIntensity = glowSettings.resolveIntensity(legacyGlow);
+        boolean positiveGlow = glowIntensity > 0F;
+
         if (this.form.lighting.get())
         {
             RenderSystem.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
@@ -152,7 +162,7 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
             BBSModClient.getTextures().bindTexture(ParticleScheme.DEFAULT_TEXTURE);
         }
 
-        Color finalColor = new Color(this.form.color.get().r, this.form.color.get().g, this.form.color.get().b, this.form.color.get().a);
+        Color finalColor = this.resolveAppearanceColor(new Color(this.form.color.get().r, this.form.color.get().g, this.form.color.get().b, this.form.color.get().a));
 
         if (!this.evaluator.irisAttributeNodes.isEmpty())
         {
@@ -199,7 +209,48 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
         BufferBuilder builder = tessellator.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_COLOR_TEXTURE_OVERLAY_LIGHT_NORMAL);
         
         ShapeForm.ShapeType type = this.form.type.get();
+
+        this.buildShapeGeometry(builder, stack, type, c, overlay, light);
         
+        BufferRenderer.drawWithGlobalProgram(builder.end());
+
+        if (positiveGlow)
+        {
+            int layers = FormColorBlend.resolveGlowOverlayLayers(glowIntensity);
+            Color glowColor = FormColorBlend.resolveGlowOverlayColor(glowSettings, legacyGlow, c.a, glowIntensity, layers);
+            Supplier<ShaderProgram> unshadedShader = GameRenderer::getPositionTexColorProgram;
+
+            RenderSystem.setShader(unshadedShader);
+            RenderSystem.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
+            RenderSystem.depthMask(false);
+
+            this.unshadedVertices = true;
+
+            for (int layer = 0; layer < layers; layer++)
+            {
+                BufferBuilder glowBuilder = tessellator.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_TEXTURE_COLOR);
+
+                this.buildShapeGeometry(glowBuilder, stack, type, glowColor, overlay, LightmapTextureManager.MAX_LIGHT_COORDINATE);
+
+                BufferRenderer.drawWithGlobalProgram(glowBuilder.end());
+            }
+
+            this.unshadedVertices = false;
+            RenderSystem.setShader(shader);
+            RenderSystem.depthMask(true);
+        }
+        
+        stack.pop();
+        
+        gameRenderer.getLightmapTextureManager().disable();
+        gameRenderer.getOverlayTexture().teardownOverlayColor();
+        
+        RenderSystem.disableBlend();
+        RenderSystem.defaultBlendFunc();
+    }
+
+    private void buildShapeGeometry(BufferBuilder builder, MatrixStack stack, ShapeForm.ShapeType type, Color c, int overlay, int light)
+    {
         if (this.form.particles.get())
         {
             this.renderVolumeParticles(builder, stack, type, c, overlay, light);
@@ -220,16 +271,6 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
         {
             this.renderCylinder(builder, stack, true, c, overlay, light);
         }
-        
-        BufferRenderer.drawWithGlobalProgram(builder.end());
-        
-        stack.pop();
-        
-        gameRenderer.getLightmapTextureManager().disable();
-        gameRenderer.getOverlayTexture().teardownOverlayColor();
-        
-        RenderSystem.disableBlend();
-        RenderSystem.defaultBlendFunc();
     }
 
     private void renderVolumeParticles(BufferBuilder builder, MatrixStack stack, ShapeForm.ShapeType type, Color c, int overlay, int light)
@@ -782,11 +823,37 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
         
         normal.mul(normalMatrix);
 
-        builder.vertex(matrix, x, y, z)
-               .color(c.r, c.g, c.b, c.a)
-               .texture(u, v)
-               .overlay(overlay)
-               .light(light)
-               .normal(normal.x, normal.y, normal.z);
+        if (this.unshadedVertices)
+        {
+            builder.vertex(matrix, x, y, z)
+                   .texture(u, v)
+                   .color(c.r, c.g, c.b, c.a);
+        }
+        else
+        {
+            builder.vertex(matrix, x, y, z)
+                   .color(c.r, c.g, c.b, c.a)
+                   .texture(u, v)
+                   .overlay(overlay)
+                   .light(light)
+                   .normal(normal.x, normal.y, normal.z);
+        }
+    }
+
+    private Color resolveAppearanceColor(Color base)
+    {
+        Color color = base.copy();
+
+        FormColorBlend.applyPaintBlend(color, this.form.paintSettings.get(), this.form.paintColor.get());
+
+        GlowSettings glow = this.form.glowSettings.get();
+        Color legacyGlow = this.form.glowingColor.get();
+
+        if (glow.resolveIntensity(legacyGlow) < 0F)
+        {
+            FormColorBlend.blendFormGlowBrighten(color, glow, legacyGlow);
+        }
+
+        return color;
     }
 }

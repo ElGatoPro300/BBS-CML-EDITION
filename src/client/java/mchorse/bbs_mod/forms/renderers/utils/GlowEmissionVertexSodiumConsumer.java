@@ -9,19 +9,13 @@ import net.caffeinemc.mods.sodium.api.vertex.buffer.VertexBufferWriter;
 
 import org.lwjgl.system.MemoryStack;
 
-public class RecolorVertexSodiumConsumer extends RecolorVertexConsumer implements VertexBufferWriter
+public class GlowEmissionVertexSodiumConsumer extends GlowEmissionVertexConsumer implements VertexBufferWriter
 {
-    public RecolorVertexSodiumConsumer(VertexConsumer consumer, Color color)
+    public GlowEmissionVertexSodiumConsumer(VertexConsumer consumer, Color color)
     {
-        this(consumer, color, null);
-    }
+        super(consumer, color);
 
-    public RecolorVertexSodiumConsumer(VertexConsumer consumer, Color color, Color paintColor)
-    {
-        super(consumer, color, paintColor);
-
-        newColor = color;
-        newPaintColor = paintColor != null && paintColor.a != 0F ? paintColor : null;
+        emissionColor = color;
     }
 
     @Override

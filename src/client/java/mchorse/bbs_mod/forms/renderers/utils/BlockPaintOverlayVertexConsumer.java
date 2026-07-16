@@ -1,30 +1,26 @@
 package mchorse.bbs_mod.forms.renderers.utils;
 
+import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.colors.Color;
 
+import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.VertexConsumer;
 
 import org.joml.Matrix4f;
 
-public class RecolorVertexConsumer implements VertexConsumer
+public class BlockPaintOverlayVertexConsumer implements VertexConsumer
 {
-    public static Color newColor;
-    public static Color newPaintColor;
+    public static Color paintOverlayColor;
 
     protected VertexConsumer consumer;
-    protected Color color;
     protected Color paintColor;
+    protected float strength;
 
-    public RecolorVertexConsumer(VertexConsumer consumer, Color color)
-    {
-        this(consumer, color, null);
-    }
-
-    public RecolorVertexConsumer(VertexConsumer consumer, Color color, Color paintColor)
+    public BlockPaintOverlayVertexConsumer(VertexConsumer consumer, Color paintColor)
     {
         this.consumer = consumer;
-        this.color = color;
         this.paintColor = paintColor;
+        this.strength = paintColor.a;
     }
 
     @Override
@@ -42,19 +38,12 @@ public class RecolorVertexConsumer implements VertexConsumer
     @Override
     public VertexConsumer color(int red, int green, int blue, int alpha)
     {
-        red = (int) (this.color.r * red);
-        green = (int) (this.color.g * green);
-        blue = (int) (this.color.b * blue);
-        alpha = (int) (this.color.a * alpha);
+        int r = MathUtils.clamp((int) (this.paintColor.r * 255F), 0, 255);
+        int g = MathUtils.clamp((int) (this.paintColor.g * 255F), 0, 255);
+        int b = MathUtils.clamp((int) (this.paintColor.b * 255F), 0, 255);
+        int a = MathUtils.clamp((int) (this.strength * alpha), 0, 255);
 
-        int[] rgb = { red, green, blue };
-
-        FormColorBlend.applyPaintBlendToBytes(rgb, this.paintColor);
-        red = rgb[0];
-        green = rgb[1];
-        blue = rgb[2];
-
-        return this.consumer.color(red, green, blue, alpha);
+        return this.consumer.color(r, g, b, a);
     }
 
     @Override
@@ -72,7 +61,7 @@ public class RecolorVertexConsumer implements VertexConsumer
     @Override
     public VertexConsumer light(int u, int v)
     {
-        return this.consumer.light(u, v);
+        return this.consumer.light(LightmapTextureManager.MAX_LIGHT_COORDINATE);
     }
 
     @Override
@@ -80,5 +69,4 @@ public class RecolorVertexConsumer implements VertexConsumer
     {
         return this.consumer.normal(x, y, z);
     }
-
 }

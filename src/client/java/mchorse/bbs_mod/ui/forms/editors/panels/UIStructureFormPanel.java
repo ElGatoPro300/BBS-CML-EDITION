@@ -2,6 +2,8 @@ package mchorse.bbs_mod.ui.forms.editors.panels;
 
 import mchorse.bbs_mod.BBSMod;
 import mchorse.bbs_mod.forms.forms.StructureForm;
+import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
+import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.forms.forms.utils.StructureLightSettings;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.resources.Link;
@@ -41,6 +43,10 @@ public class UIStructureFormPanel extends UIFormPanel<StructureForm>
     public UIButton pickBiome;
     public UITextbox structureFile;
     public UIColor color;
+    public UIColor paintColor;
+    public UITrackpad paintIntensity;
+    public UIColor glowingColor;
+    public UITrackpad glowIntensity;
     public UIToggle toggleLight;
     public UITrackpad lightIntensity;
     public UITrackpad scaleX;
@@ -56,6 +62,59 @@ public class UIStructureFormPanel extends UIFormPanel<StructureForm>
         this.pickStructure = new UIButton(UIKeys.FORMS_EDITORS_STRUCTURE_PICK_STRUCTURE, (b) -> this.pickStructure());
         this.structureFile = new UITextbox(100, (s) -> this.form.structureFile.set(s)).path().border();
         this.color = new UIColor((c) -> this.form.color.set(Color.rgba(c))).withAlpha();
+        this.paintColor = new UIColor((c) ->
+        {
+            Color color = Color.rgba(c);
+
+            color.a = 1F;
+            this.form.paintColor.set(color);
+
+            PaintSettings settings = this.form.paintSettings.get().copy();
+
+            settings.r = color.r;
+            settings.g = color.g;
+            settings.b = color.b;
+            this.form.paintSettings.set(settings);
+        });
+        this.paintColor.tooltip(UIKeys.FORMS_EDITORS_PAINT_COLOR);
+        this.paintIntensity = new UITrackpad((value) ->
+        {
+            PaintSettings settings = this.form.paintSettings.get().copy();
+
+            settings.intensity = value.floatValue();
+            this.form.paintSettings.set(settings);
+
+            Color legacy = this.form.paintColor.get().copy();
+
+            legacy.a = value.floatValue();
+            this.form.paintColor.set(legacy);
+        });
+        this.paintIntensity.increment(0.05D).values(0.1D, 0.05D, 0.2D);
+        this.paintIntensity.tooltip(UIKeys.FORMS_EDITORS_PAINT_INTENSITY);
+        this.glowingColor = new UIColor((c) ->
+        {
+            Color color = Color.rgba(c);
+
+            color.a = 1F;
+            this.form.glowingColor.set(color);
+
+            GlowSettings settings = this.form.glowSettings.get().copy();
+
+            settings.r = color.r;
+            settings.g = color.g;
+            settings.b = color.b;
+            this.form.glowSettings.set(settings);
+        });
+        this.glowingColor.tooltip(UIKeys.FORMS_EDITORS_GLOW);
+        this.glowIntensity = new UITrackpad((value) ->
+        {
+            GlowSettings settings = this.form.glowSettings.get().copy();
+
+            settings.intensity = value.floatValue();
+            this.form.glowSettings.set(settings);
+        });
+        this.glowIntensity.increment(0.05D).values(0.1D, 0.05D, 0.2D);
+        this.glowIntensity.tooltip(UIKeys.FORMS_EDITORS_GLOW_INTENSITY);
         this.pickBiome = new UIButton(UIKeys.FORMS_EDITORS_STRUCTURE_PICK_BIOME, (b) -> this.pickBiome());
         // Inicializar con valor por defecto; se sincroniza en startEdit
         this.toggleLight = new UIToggle(UIKeys.FORMS_EDITORS_STRUCTURE_LIGHT, false, (t) -> this.toggleLight(t));
@@ -74,7 +133,7 @@ public class UIStructureFormPanel extends UIFormPanel<StructureForm>
         // Pivot UI removed; calculate center moved to Transform panel
 
         /* Quitar etiquetas; mostrar solo los controles */
-        this.options.add(this.color);
+        this.options.add(this.color, this.paintColor, this.paintIntensity, this.glowingColor, this.glowIntensity);
         this.options.add(this.pickStructure);
         this.options.add(this.pickBiome);
         this.options.add(this.toggleLight);
@@ -181,6 +240,18 @@ public class UIStructureFormPanel extends UIFormPanel<StructureForm>
 
         this.structureFile.setText(form.structureFile.get());
         this.color.setColor(form.color.get().getARGBColor());
+        PaintSettings paint = form.paintSettings.get();
+        Color paintDisplay = new Color();
+
+        paint.resolveColor(form.paintColor.get(), paintDisplay);
+        this.paintColor.setColor(paintDisplay.getRGBColor());
+        this.paintIntensity.setValue(paint.intensity);
+        GlowSettings glow = form.glowSettings.get();
+        Color glowDisplay = new Color();
+
+        glow.resolveColor(form.glowingColor.get(), glowDisplay);
+        this.glowingColor.setColor(glowDisplay.getRGBColor());
+        this.glowIntensity.setValue(glow.intensity);
         StructureLightSettings s = form.structureLight.get();
         boolean enabled = (s != null) ? s.enabled : form.emitLight.get();
         int intensity = (s != null) ? s.intensity : form.lightIntensity.get();

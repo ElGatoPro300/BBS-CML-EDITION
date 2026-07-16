@@ -26,6 +26,12 @@ import mchorse.bbs_mod.film.replays.Replay;
 import mchorse.bbs_mod.forms.FormUtilsClient;
 import mchorse.bbs_mod.forms.forms.Form;
 import mchorse.bbs_mod.forms.renderers.FormRenderer;
+import mchorse.bbs_mod.forms.renderers.utils.BlockPaintOverlayVertexConsumer;
+import mchorse.bbs_mod.forms.renderers.utils.BlockPaintOverlayVertexSodiumConsumer;
+import mchorse.bbs_mod.forms.renderers.utils.BlockPaintVertexConsumer;
+import mchorse.bbs_mod.forms.renderers.utils.BlockPaintVertexSodiumConsumer;
+import mchorse.bbs_mod.forms.renderers.utils.GlowEmissionVertexConsumer;
+import mchorse.bbs_mod.forms.renderers.utils.GlowEmissionVertexSodiumConsumer;
 import mchorse.bbs_mod.forms.renderers.utils.RecolorVertexConsumer;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.graphics.texture.TextureFormat;
@@ -1065,11 +1071,45 @@ public class BBSRendering
 
         if (sodium)
         {
-            /* The Sodium consumer path only multiplies the vertex color; paint blending is applied on the vanilla consumer */
-            return (b) -> SodiumUtils.createVertexBuffer(b, color);
+            return (b) -> SodiumUtils.createVertexBuffer(b, color, paintColor);
         }
 
         return (b) -> new RecolorVertexConsumer(b, color, paintColor);
+    }
+
+    public static Function<VertexConsumer, VertexConsumer> getBlockPaintConsumer(Color color, Color paintColor)
+    {
+        if (paintColor == null || paintColor.a == 0F)
+        {
+            return getColorConsumer(color);
+        }
+
+        if (sodium)
+        {
+            return (b) -> new BlockPaintVertexSodiumConsumer(b, color, paintColor);
+        }
+
+        return (b) -> new BlockPaintVertexConsumer(b, color, paintColor);
+    }
+
+    public static Function<VertexConsumer, VertexConsumer> getGlowOverlayConsumer(Color glowColor)
+    {
+        if (sodium)
+        {
+            return (b) -> new GlowEmissionVertexSodiumConsumer(b, glowColor);
+        }
+
+        return (b) -> new GlowEmissionVertexConsumer(b, glowColor);
+    }
+
+    public static Function<VertexConsumer, VertexConsumer> getBlockPaintOverlayConsumer(Color paintColor)
+    {
+        if (sodium)
+        {
+            return (b) -> new BlockPaintOverlayVertexSodiumConsumer(b, paintColor);
+        }
+
+        return (b) -> new BlockPaintOverlayVertexConsumer(b, paintColor);
     }
 
     private static void renderHudOverlays(Batcher2D batcher, ClipContext context, int width, int height)

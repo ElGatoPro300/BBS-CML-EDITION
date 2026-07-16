@@ -1,12 +1,14 @@
 package mchorse.bbs_mod.forms.renderers.utils;
 
 import mchorse.bbs_mod.forms.forms.utils.GlowSettings;
+import mchorse.bbs_mod.forms.forms.utils.PaintSettings;
 import mchorse.bbs_mod.utils.MathUtils;
 import mchorse.bbs_mod.utils.colors.Color;
 
 public class FormColorBlend
 {
     public static final float EMISSION_STRENGTH = 8F;
+    public static final float OVERLAY_GLOW_BOOST = EMISSION_STRENGTH;
 
     public enum BlendMode
     {
@@ -70,6 +72,105 @@ public class FormColorBlend
             base.g *= factor;
             base.b *= factor;
         }
+    }
+
+    public static boolean hasPositiveGlow(GlowSettings glow, Color legacyGlow)
+    {
+        return glow.resolveIntensity(legacyGlow) > 0F;
+    }
+
+    public static boolean hasPositivePaint(PaintSettings paintSettings, Color legacyPaint)
+    {
+        return paintSettings.resolveIntensity(legacyPaint) > 0F;
+    }
+
+    public static Color resolvePaintColor(PaintSettings paintSettings, Color legacyPaint)
+    {
+        Color resolvedPaint = new Color();
+
+        paintSettings.resolveColor(legacyPaint, resolvedPaint);
+        resolvedPaint.a = paintSettings.resolveIntensity(legacyPaint);
+
+        return resolvedPaint;
+    }
+
+    public static void applyPaintBlend(Color base, Color paintRgb, float paintStrength)
+    {
+        if (base == null || paintRgb == null || paintStrength == 0F)
+        {
+            return;
+        }
+
+        if (paintStrength >= 1F)
+        {
+            base.r = paintRgb.r;
+            base.g = paintRgb.g;
+            base.b = paintRgb.b;
+        }
+        else if (paintStrength > 0F)
+        {
+            base.r = base.r + (paintRgb.r - base.r) * paintStrength;
+            base.g = base.g + (paintRgb.g - base.g) * paintStrength;
+            base.b = base.b + (paintRgb.b - base.b) * paintStrength;
+        }
+        else
+        {
+            float factor = Math.max(0F, 1F + paintStrength);
+
+            base.r *= factor;
+            base.g *= factor;
+            base.b *= factor;
+        }
+    }
+
+    public static void applyPaintBlend(Color base, PaintSettings paintSettings, Color legacyPaint)
+    {
+        Color paint = new Color();
+
+        paintSettings.resolveColor(legacyPaint, paint);
+        applyPaintBlend(base, paint, paintSettings.resolveIntensity(legacyPaint));
+    }
+
+    public static void applyPaintBlendToBytes(int[] rgb, Color paintColor)
+    {
+        if (paintColor == null || rgb == null || rgb.length < 3 || Math.abs(paintColor.a) == 0F)
+        {
+            return;
+        }
+
+        Color vertex = new Color(rgb[0] / 255F, rgb[1] / 255F, rgb[2] / 255F, 1F);
+
+        applyPaintBlend(vertex, paintColor, paintColor.a);
+        rgb[0] = MathUtils.clamp((int) (vertex.r * 255F), 0, 255);
+        rgb[1] = MathUtils.clamp((int) (vertex.g * 255F), 0, 255);
+        rgb[2] = MathUtils.clamp((int) (vertex.b * 255F), 0, 255);
+    }
+
+    public static int resolveGlowOverlayLayers(float intensity)
+    {
+        if (intensity <= 0F)
+        {
+            return 0;
+        }
+
+        float total = intensity * OVERLAY_GLOW_BOOST;
+
+        return Math.max(1, (int) Math.ceil(total));
+    }
+
+    public static Color resolveGlowOverlayColor(GlowSettings glow, Color legacyGlow, float alpha, float intensity, int layers)
+    {
+        Color resolved = new Color();
+        Color color = new Color();
+        float layerStrength = MathUtils.clamp(intensity * OVERLAY_GLOW_BOOST / layers, 0F, 1F);
+
+        glow.resolveColor(legacyGlow, resolved);
+        color.r = MathUtils.clamp(resolved.r * layerStrength, 0F, 1F);
+        color.g = MathUtils.clamp(resolved.g * layerStrength, 0F, 1F);
+        color.b = MathUtils.clamp(resolved.b * layerStrength, 0F, 1F);
+        color.a = alpha;
+
+        return color;
     }
 
     public static void blend(Color base, Color overlay, BlendMode mode)
