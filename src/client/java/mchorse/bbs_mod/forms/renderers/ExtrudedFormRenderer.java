@@ -143,6 +143,12 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
                 modelMatrix.scale(scale);
 
                 matrices.peek().getNormalMatrix().identity();
+
+                if (camera != null && !modelRenderer)
+                {
+                    matrices.peek().getNormalMatrix().set(camera.view);
+                }
+
                 matrices.peek().getNormalMatrix().scale(1F / scale.x, 1F / scale.y, 1F / scale.z);
             }
 
