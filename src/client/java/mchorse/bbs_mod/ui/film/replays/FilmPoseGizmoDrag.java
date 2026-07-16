@@ -82,6 +82,10 @@ public final class FilmPoseGizmoDrag
             transform.invertFilmArcballDragY();
             transform.setFilmArcballTrackball(true);
             transform.setFilmMatchPoseTrackball(false);
+
+            /* Pose editor may be built before the model is known (scale defaults to 16). */
+            transform.translationScale(bobjModel ? 1F : 16F);
+            transform.setAxisProjectedTranslation(bobjModel);
         }
         else if (poseLimbGizmo)
         {
@@ -101,6 +105,11 @@ public final class FilmPoseGizmoDrag
             {
                 transform.invertModelPoseTrackballXZ();
             }
+
+            /* Limb sheets have null formProperty, so the factory often kept cubic's /16 scale
+             * on BOBJ — force block units + axis-projected rays so drag tracks the cursor. */
+            transform.translationScale(bobjModel ? 1F : 16F);
+            transform.setAxisProjectedTranslation(bobjModel);
         }
         else if (replayTransformGizmo)
         {

@@ -664,6 +664,18 @@ public class UIPropTransform extends UITransform
         return this;
     }
 
+    /**
+     * When true, ray translate sensitivity divides by the gizmo axis world length
+     * ({@code scale / axisWorldScale}). Required for BOBJ block-space translate when
+     * {@link #translationScale} is 1 (otherwise only scale ≥ 15.5 enables that path).
+     */
+    public UIPropTransform setAxisProjectedTranslation(boolean axisProjectedTranslation)
+    {
+        this.axisProjectedTranslation = axisProjectedTranslation;
+
+        return this;
+    }
+
     /* Default {@link BBSSettings#gizmoTranslateSpeed}; at this value ray translate drag matches
      * the tuned 1:1 baseline (speed / neutral == 1). */
     private static final float GIZMO_TRANSLATE_SPEED_NEUTRAL = 5F;
