@@ -1225,6 +1225,8 @@ public class UIKeys
     public static final IKey LANGUAGE_PICK = L10n.lang("bbs.ui.language.pick");
     public static final IKey LANGUAGE_PICK_TITLE = L10n.lang("bbs.ui.language.pick.title");
     public static final IKey MODEL_BLOCKS_GLOBAL = L10n.lang("bbs.ui.model_blocks.global");
+    public static final IKey MODEL_BLOCKS_CHROMA_SKY = L10n.lang("bbs.ui.model_blocks.chroma_sky");
+    public static final IKey MODEL_BLOCKS_CHROMA_SKY_TOOLTIP = L10n.lang("bbs.ui.model_blocks.chroma_sky-tooltip");
     public static final IKey MODEL_BLOCKS_KEYS_MOVE_TO = L10n.lang("bbs.ui.model_blocks.keys.move_to");
     public static final IKey MODEL_BLOCKS_KEYS_TELEPORT = L10n.lang("bbs.ui.model_blocks.keys.teleport");
     public static final IKey MODEL_BLOCKS_KEYS_TOGGLE_RENDERING = L10n.lang("bbs.ui.model_blocks.keys.toggle_rendering");
@@ -1945,6 +1947,7 @@ public class UIKeys
     public static final IKey CONFIG_CHROMA_SKY_CLOUDS = L10n.lang("bbs.config.chroma_sky.clouds");
     public static final IKey CONFIG_CHROMA_SKY_COLOR = L10n.lang("bbs.config.chroma_sky.color");
     public static final IKey CONFIG_CHROMA_SKY_ENABLED = L10n.lang("bbs.config.chroma_sky.enabled");
+    public static final IKey CONFIG_CHROMA_SKY_MODEL_BLOCKS = L10n.lang("bbs.config.chroma_sky.model_blocks");
     public static final IKey CONFIG_CHROMA_SKY_TERRAIN = L10n.lang("bbs.config.chroma_sky.terrain");
     public static final IKey CONFIG_CHROMA_SKY_TITLE = L10n.lang("bbs.config.chroma_sky.title");
     public static final IKey AUDIO_CRUD_OPEN_FOLDER = L10n.lang("bbs.ui.audio.crud.open_folder");
