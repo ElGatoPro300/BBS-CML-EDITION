@@ -7927,6 +7927,11 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
 
             if (viewport.isInside(context.mouseX(), context.mouseY()))
             {
+                if (this.replayEditor.handleViewportInteractionMouse(context, this.preview.getViewport()))
+                {
+                    return this;
+                }
+
                 if (this.controller.tryPickHoveredReplay(context))
                 {
                     return this;
