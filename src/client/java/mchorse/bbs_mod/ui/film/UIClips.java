@@ -22,6 +22,7 @@ import mchorse.bbs_mod.ui.film.clips.renderer.IUIClipRenderer;
 import mchorse.bbs_mod.ui.film.clips.renderer.UIClipRenderers;
 import mchorse.bbs_mod.ui.film.toolbar.ClipPlacementInteractionState;
 import mchorse.bbs_mod.ui.film.toolbar.LoopMarkerInteractionState;
+import mchorse.bbs_mod.ui.film.toolbar.TimelineClipTypeGroups;
 import mchorse.bbs_mod.ui.film.toolbar.TimelineToolbarPointerBlock;
 import mchorse.bbs_mod.ui.film.toolbar.UIClipPlacementInteraction;
 import mchorse.bbs_mod.ui.film.toolbar.UILoopMarkerInteraction;
@@ -2439,51 +2440,22 @@ public class UIClips extends UIElement
         {
             super();
 
-            List<Link> cameraGroup = List.of(Link.bbs("idle"), Link.bbs("path"), Link.bbs("keyframe"), Link.bbs("dolly"));
-            List<Link> resourceGroup = List.of(Link.bbs("curve"), Link.bbs("audio"), Link.bbs("video"), Link.bbs("shake"), Link.bbs("translate"), Link.bbs("angle"));
-            List<Link> screenGroup = List.of(
-                Link.bbs("subtitle"),
-                Link.bbs("hotbar"),
-                Link.bbs("image"),
-                Link.bbs("color"),
-                Link.bbs("cinematic"),
-                Link.bbs("vignette"),
-                Link.bbs("letterbox"),
-                Link.bbs("grain"),
-                Link.bbs("screen_node"),
-                Link.bbs("boss_bar"),
-                Link.bbs("eye")
-            );
-            List<Link> anchorGroup = List.of(Link.bbs("look"), Link.bbs("orbit"), Link.bbs("tracker"));
-
-            List<Link> allKeys = new ArrayList<>(uiClips.factory.getKeys());
-
-            for (Link type : allKeys)
+            for (TimelineClipTypeGroups.ClipGroup group : TimelineClipTypeGroups.forCamera(uiClips.factory))
             {
-                IKey typeKey = UIKeys.CAMERA_TIMELINE_CONTEXT_ADD_CLIP_TYPE.format(UIKeys.C_CLIP.get(type));
-                ClipFactoryData data = uiClips.factory.getData(type);
-                Runnable runnable = () -> uiClips.addClip(type, preview.x, preview.y, preview.z);
-                ContextAction action = new ColorfulContextAction(data.icon, typeKey, runnable, data.color);
+                List<ContextAction> target = this.actionsForGroup(group.label);
 
-                if (cameraGroup.contains(type))
+                if (target == null)
                 {
-                    cameraActions.add(action);
+                    continue;
                 }
-                else if (resourceGroup.contains(type))
+
+                for (Link type : group.types)
                 {
-                    resourceActions.add(action);
-                }
-                else if (screenGroup.contains(type))
-                {
-                    screenActions.add(action);
-                }
-                else if (anchorGroup.contains(type))
-                {
-                    anchorActions.add(action);
-                }
-                else
-                {
-                    extrasActions.add(action);
+                    IKey typeKey = UIKeys.CAMERA_TIMELINE_CONTEXT_ADD_CLIP_TYPE.format(UIKeys.C_CLIP.get(type));
+                    ClipFactoryData data = uiClips.factory.getData(type);
+                    Runnable runnable = () -> uiClips.addClip(type, preview.x, preview.y, preview.z);
+
+                    target.add(new ColorfulContextAction(data.icon, typeKey, runnable, data.color));
                 }
             }
 
@@ -2521,6 +2493,36 @@ public class UIClips extends UIElement
             else if (!this.screenActions.isEmpty()) this.setTab(ClipTab.SCREEN);
             else if (!this.anchorActions.isEmpty()) this.setTab(ClipTab.ANCHOR);
             else this.setTab(ClipTab.EXTRAS);
+        }
+
+        private List<ContextAction> actionsForGroup(IKey label)
+        {
+            if (label == UIKeys.CAMERA_TIMELINE_CLIPS_TABS_CAMERA)
+            {
+                return this.cameraActions;
+            }
+
+            if (label == UIKeys.CAMERA_TIMELINE_CLIPS_TABS_RESOURCE)
+            {
+                return this.resourceActions;
+            }
+
+            if (label == UIKeys.CAMERA_TIMELINE_CLIPS_TABS_SCREEN)
+            {
+                return this.screenActions;
+            }
+
+            if (label == UIKeys.CAMERA_TIMELINE_CLIPS_TABS_ANCHOR)
+            {
+                return this.anchorActions;
+            }
+
+            if (label == UIKeys.CAMERA_TIMELINE_CLIPS_TABS_EXTRAS)
+            {
+                return this.extrasActions;
+            }
+
+            return this.extrasActions;
         }
 
         private void setTab(ClipTab tab)
