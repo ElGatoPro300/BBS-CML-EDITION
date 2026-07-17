@@ -277,7 +277,19 @@ public abstract class FormRenderer <T extends Form>
 
     public void renderBodyParts(FormRenderingContext context)
     {
-        for (BodyPart part : this.getSortedBodyParts(context))
+        if (this.form.parts.getAllTyped().isEmpty())
+        {
+            return;
+        }
+
+        List<BodyPart> parts = this.getSortedBodyParts(context);
+
+        if (ItemBodyPartBatch.renderBodyParts(this, parts, context))
+        {
+            return;
+        }
+
+        for (BodyPart part : parts)
         {
             this.renderBodyPart(part, context);
         }

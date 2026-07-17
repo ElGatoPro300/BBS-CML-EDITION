@@ -1556,7 +1556,7 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
 
     private void captureMatrices(ModelInstance model)
     {
-        /* this.bones.clear()? */
+        this.bones.clear();
         model.captureMatrices(this.bones);
     }
 

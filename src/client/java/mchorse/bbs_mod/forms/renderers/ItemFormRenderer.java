@@ -23,6 +23,7 @@ import net.minecraft.client.render.DiffuseLighting;
 import net.minecraft.client.render.LightmapTextureManager;
 import net.minecraft.client.render.OverlayTexture;
 import net.minecraft.client.render.VertexConsumer;
+import net.minecraft.client.render.model.BakedModel;
 import net.minecraft.client.render.model.json.ModelTransformationMode;
 import net.minecraft.client.util.math.MatrixStack;
 import net.minecraft.entity.EquipmentSlot;
@@ -127,7 +128,30 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
         context.stack.push();
         this.applyDroppedAnimation(context, useDroppedMode);
 
-        if (context.isPicking())
+        boolean deferFlush = ItemBodyPartBatch.isDeferringFlush();
+
+        if (!deferFlush)
+        {
+            if (context.isPicking())
+            {
+                CustomVertexConsumerProvider.hijackVertexFormat((layer) ->
+                {
+                    this.setupTarget(context, BBSShaders.getPickerModelsProgram());
+                    RenderSystem.setShader(BBSShaders::getPickerModelsProgram);
+                });
+
+                light = 0;
+            }
+            else
+            {
+                CustomVertexConsumerProvider.hijackVertexFormat((l) ->
+                {
+                    RenderSystem.enableBlend();
+                    RenderSystem.defaultBlendFunc();
+                });
+            }
+        }
+        else if (context.isPicking())
         {
             CustomVertexConsumerProvider.hijackVertexFormat((layer) ->
             {
@@ -136,14 +160,6 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
             });
 
             light = 0;
-        }
-        else
-        {
-            CustomVertexConsumerProvider.hijackVertexFormat((l) ->
-            {
-                RenderSystem.enableBlend();
-                RenderSystem.defaultBlendFunc();
-            });
         }
 
         BlockFormRenderer.color.set(context.color);
@@ -184,7 +200,12 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
         boolean leftHand = mode == ModelTransformationMode.THIRD_PERSON_LEFT_HAND;
 
         this.renderItem(context, context.stack, consumers, light, context.overlay, mode, leftHand, itemEntity);
-        consumers.draw();
+
+        if (!deferFlush)
+        {
+            consumers.draw();
+        }
+
         consumers.setSubstitute(null);
 
         if (positivePaint)
@@ -196,7 +217,7 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
         {
             this.renderGlowOverlay(context, context.stack, consumers, glowSettings, legacyGlow, glowIntensity, BlockFormRenderer.color.a, context.overlay, false, mode, itemEntity, leftHand);
         }
-        else
+        else if (!deferFlush)
         {
             CustomVertexConsumerProvider.clearRunnables();
         }
@@ -208,12 +229,12 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
         RenderSystem.enableDepthTest();
     }
 
-    private boolean shouldUseDroppedMode(boolean isDropped)
+    boolean shouldUseDroppedMode(boolean isDropped)
     {
         return isDropped || this.form.sameAnimationWhenDropped.get();
     }
 
-    private ModelTransformationMode getRenderMode(boolean useDroppedMode)
+    ModelTransformationMode getRenderMode(boolean useDroppedMode)
     {
         if (useDroppedMode)
         {
@@ -232,7 +253,7 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
         return this.form.modelTransform.get();
     }
 
-    private void applyDroppedAnimation(FormRenderingContext context, boolean useDroppedMode)
+    void applyDroppedAnimation(FormRenderingContext context, boolean useDroppedMode)
     {
         if (!useDroppedMode || context.entity == null || context.entity.getWorld() == null)
         {
@@ -255,7 +276,7 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
         return (hash & 65535) / 65535F * 6.2831855F;
     }
 
-    private Function<VertexConsumer, VertexConsumer> getMainConsumer(Color color, Color resolvedPaint)
+    Function<VertexConsumer, VertexConsumer> getMainConsumer(Color color, Color resolvedPaint)
     {
         if (resolvedPaint != null && resolvedPaint.a < 0F)
         {
@@ -337,6 +358,14 @@ public class ItemFormRenderer extends FormRenderer<ItemForm>
     {
         ItemStack itemStack = this.form.stack.get();
         MinecraftClient client = MinecraftClient.getInstance();
+        BakedModel cachedModel = ItemBodyPartBatch.getCachedModel();
+
+        if (cachedModel != null)
+        {
+            client.getItemRenderer().renderItem(itemStack, mode, leftHand, stack, consumers, light, overlay, cachedModel);
+
+            return;
+        }
 
         if (context == null || context.entity == null)
         {

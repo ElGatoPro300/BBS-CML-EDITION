@@ -107,6 +107,7 @@ public class ModelInstance implements IModelInstance
     public transient Matrix4f lastBaseTransform;
 
     private Map<ModelGroup, ModelVAO> vaos = new HashMap<>();
+    private boolean ownsVaos = true;
 
     public ModelInstance(String id, IModel model, Animations animations, Link texture)
     {
@@ -601,12 +602,41 @@ public class ModelInstance implements IModelInstance
 
     public void delete()
     {
-        for (ModelVAO value : this.vaos.values())
+        if (this.ownsVaos)
         {
-            value.delete();
+            for (ModelVAO value : this.vaos.values())
+            {
+                value.delete();
+            }
         }
 
         this.vaos.clear();
+        this.ownsVaos = true;
+    }
+
+    /**
+     * Reuse GPU buffers already baked on another instance that shares this {@link IModel}.
+     * The source instance keeps ownership; this instance must not delete borrowed VAOs.
+     */
+    public void borrowVaosFrom(ModelInstance source)
+    {
+        if (source == null || source.model != this.model || source.vaos.isEmpty())
+        {
+            return;
+        }
+
+        if (this.ownsVaos)
+        {
+            for (ModelVAO value : this.vaos.values())
+            {
+                value.delete();
+            }
+
+            this.vaos.clear();
+        }
+
+        this.vaos = source.vaos;
+        this.ownsVaos = false;
     }
 
     /* Rendering */

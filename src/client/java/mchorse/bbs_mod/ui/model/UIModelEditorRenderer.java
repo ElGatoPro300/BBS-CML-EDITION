@@ -12,6 +12,7 @@ import mchorse.bbs_mod.cubic.data.model.ModelQuad;
 import mchorse.bbs_mod.cubic.data.model.ModelVertex;
 import mchorse.bbs_mod.cubic.model.ArmorSlot;
 import mchorse.bbs_mod.cubic.model.ModelConfig;
+import mchorse.bbs_mod.cubic.model.bobj.BOBJModel;
 import mchorse.bbs_mod.cubic.render.CubicCubeRenderer;
 import mchorse.bbs_mod.cubic.render.ICubicRenderer;
 import mchorse.bbs_mod.data.types.BaseType;
@@ -860,7 +861,19 @@ public class UIModelEditorRenderer extends UIModelRenderer implements GizmoSurfa
                 this.deletePreview();
 
                 this.previewModel = new ModelInstance(globalModel.id, globalModel.model, globalModel.animations, globalModel.texture);
-                this.previewModel.setup();
+
+                if (globalModel.model instanceof BOBJModel bobjModel && bobjModel.getVao() != null)
+                {
+                    /* BOBJ VAO lives on the shared model; global setup already created it. */
+                }
+                else if (globalModel.isVAORendered())
+                {
+                    this.previewModel.borrowVaosFrom(globalModel);
+                }
+                else
+                {
+                    this.previewModel.setup();
+                }
 
                 if (this.config != null)
                 {
