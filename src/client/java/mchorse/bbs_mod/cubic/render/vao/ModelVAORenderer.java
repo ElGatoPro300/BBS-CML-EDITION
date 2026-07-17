@@ -423,7 +423,7 @@ public class ModelVAORenderer
 
     public static void setGroupPaint(float r, float g, float b, float strength)
     {
-        if (strength > 0F)
+        if (strength != 0F)
         {
             paintR = r;
             paintG = g;

@@ -72,7 +72,7 @@ public class CubicVAORenderer extends CubicCubeRenderer
 
             if (ModelVAORenderer.isPaintPass())
             {
-                if (effectivePaintStrength <= 0F && effectiveGlowStrength == 0F)
+                if (effectivePaintStrength == 0F && effectiveGlowStrength == 0F)
                 {
                     return false;
                 }

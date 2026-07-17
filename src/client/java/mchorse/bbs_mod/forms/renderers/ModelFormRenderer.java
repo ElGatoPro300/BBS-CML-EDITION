@@ -583,13 +583,14 @@ public class ModelFormRenderer extends FormRenderer<ModelForm> implements ITicka
             this.form.shaderShadow.setRuntimeValue(effectiveShaderShadow > 0.001F);
         }
 
-        Matrix4f formRootInverse = new Matrix4f(newStack.peek().getPositionMatrix()).invert();
+        /* Position attributes are already in form/model space; camera/UI matrices must not
+         * be baked into FormRootInverse or paint masks break in the orbit editor. */
+        Matrix4f formRootInverse = new Matrix4f();
         Vector3f paintMaskHalf = new Vector3f();
 
         EffectTransformMath.resolveModelMaskHalfExtents(paint.transform, paintMaskHalf);
 
         EffectTransform paintTransformSnapshot = paint.transform.copy();
-        Matrix4f formRootInverseSnapshot = new Matrix4f(formRootInverse);
         Vector3f paintMaskHalfSnapshot = new Vector3f(paintMaskHalf);
 
         if (paintActive && bbsModelShader)

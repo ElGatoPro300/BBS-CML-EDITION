@@ -198,7 +198,7 @@ public class ExtrudedFormRenderer extends FormRenderer<ExtrudedForm>
                 this.form.shaderShadow.setRuntimeValue(paint.effectiveShaderShadow(legacyPaint) > 0.001F);
             }
 
-            Matrix4f formRootInverse = new Matrix4f(matrices.peek().getPositionMatrix()).invert();
+            Matrix4f formRootInverse = new Matrix4f();
             Vector3f paintMaskHalf = new Vector3f();
 
             EffectTransformMath.resolveBillboardMaskHalfExtents(paint.transform, paintMaskHalf);

@@ -165,11 +165,11 @@ void main()
     }
     else if (PaintColor.a < -0.001)
     {
-        /* Negative darken like glow */
+        /* Negative darken like glow; mask 0 must leave the surface unchanged (same as positive). */
         float factor = max(0.0, 1.0 + PaintColor.a);
-        factor *= bbsPaintEffectMask(formRootPos, PaintEffectInverse, PaintEffectActive, PaintMaskHalf, PaintMaskBottomAnchored);
+        float mask = bbsPaintEffectMask(formRootPos, PaintEffectInverse, PaintEffectActive, PaintMaskHalf, PaintMaskBottomAnchored);
 
-        color.rgb *= factor;
+        color.rgb = mix(color.rgb, color.rgb * factor, mask);
     }
 
     color.a = modelAlpha;

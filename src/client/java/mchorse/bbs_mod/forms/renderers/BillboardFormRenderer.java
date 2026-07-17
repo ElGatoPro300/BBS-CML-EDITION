@@ -308,12 +308,20 @@ public class BillboardFormRenderer extends FormRenderer<BillboardForm>
 
         BufferRenderer.drawWithGlobalProgram(builder.end());
 
-        if (positivePaint && !modelRenderer)
+        if (positivePaint)
         {
-            this.submitDeferredBillboardPaintOverlay(texture, textureLink, shader, matrices, resolvedPaint, color.a, glowSettings, legacyGlow, glowIntensity);
+            if (modelRenderer)
+            {
+                /* Form editor preview: draw paint immediately (no Iris world deferral). */
+                this.renderPaintOverlay(texture, shader, matrices, OverlayTexture.DEFAULT_UV, resolvedPaint, color.a, this.form.paintSettings.get().transform, glowSettings, legacyGlow, glowIntensity);
+            }
+            else
+            {
+                this.submitDeferredBillboardPaintOverlay(texture, textureLink, shader, matrices, resolvedPaint, color.a, glowSettings, legacyGlow, glowIntensity);
+            }
         }
 
-        if (glowIntensity > 0F && !modelRenderer && !glowSettings.resolvePaintOnly())
+        if (glowIntensity > 0F && !glowSettings.resolvePaintOnly())
         {
             this.renderGlowOverlay(texture, shader, matrices, glowSettings, legacyGlow, color.a, glowIntensity);
         }
