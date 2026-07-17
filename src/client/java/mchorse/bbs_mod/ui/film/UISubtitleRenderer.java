@@ -165,6 +165,12 @@ public class UISubtitleRenderer
             stack.pop();
         }
 
+        /* Clear Blur so later HUD draws that reuse this program stay unaffected. */
+        if (blur != null)
+        {
+            blur.set(0F, 0F);
+        }
+
         RenderSystem.setProjectionMatrix(cache, VertexSorter.BY_Z);
         RenderSystem.enableCull();
     }
