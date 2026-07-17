@@ -41,7 +41,8 @@ public class FlatPaintOverlayPass
         RenderSystem.depthMask(false);
 
         GL11.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
-        GL11.glPolygonOffset(-1F, -1F);
+        /* Stronger units bias keeps coplanar paint overlays stable when the camera is very close. */
+        GL11.glPolygonOffset(-1F, -2F);
 
         ShaderProgram program = BBSShaders.getFlatPaintOverlayProgram();
 
