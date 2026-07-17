@@ -122,6 +122,8 @@
     "bbs.config.axes.gizmo_y_axis_horizontal-comment": "Si está activado, al arrastrar el gizmo del eje Y se usará el movimiento horizontal del ratón en lugar del vertical",
     "bbs.config.axes.gizmos": "Ejes/Gizmos",
     "bbs.config.axes.gizmos-comment": "Si están habilitados los elementos de ejes agarrables para la traslación, escala y rotación",
+    "bbs.config.axes.gizmos_world_rendering": "Gizmos con renderizado del mundo",
+    "bbs.config.axes.gizmos_world_rendering-comment": "Si está activado, los gizmos del editor de formas y la selección de huesos siguen disponibles mientras el renderizado del mundo (F7) está activado en el editor de bloques de modelo",
     "bbs.config.axes.title": "Ejes/Gizmos",
     "bbs.config.axes.tooltip": "Opciones relacionadas con los ejes y el comportamiento del gizmo",
     "bbs.config.background.color": "Color",

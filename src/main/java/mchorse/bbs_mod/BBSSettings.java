@@ -80,6 +80,7 @@ public class BBSSettings
     public static ValueBoolean clickSound;
     public static ValueBoolean disablePivotTransform;
     public static ValueBoolean gizmos;
+    public static ValueBoolean gizmosWorldRendering;
     public static ValueBoolean gizmoYAxisHorizontal;
     public static ValueBoolean gizmoTrackball;
     public static ValueInt gizmoTrackballScale;
@@ -541,6 +542,8 @@ public class BBSSettings
 
         builder.category("axes");
         gizmos = builder.getBoolean("gizmos", true);
+        /* Keep form-editor gizmos / bone picking while model-block F7 world rendering is on. */
+        gizmosWorldRendering = builder.getBoolean("gizmos_world_rendering", true);
         axesScale = builder.getFloat("axes_scale", 1.5F, 0F, 100F);
         axesThickness = builder.getFloat("axes_thickness", 0.7F, 0.25F, 3F);
         /* Multiplier applied only to the invisible picking pass, so the clickable area can be

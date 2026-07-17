@@ -280,7 +280,11 @@ public class UIModelBlockPanel extends UIDashboardPanel implements IFlightSuppor
                     () -> toggleRendering = !toggleRendering);
             palette.editor.renderer.full(dashboard.getRoot());
             palette.editor.renderer.setTarget(this.modelBlock.getEntity());
-            palette.editor.renderer.setRenderForm(() -> !toggleRendering);
+            /* Interaction (gizmos / bone pick) can stay on with F7 when the setting allows it;
+             * the mesh itself is still suppressed so the world copy is not doubled. */
+            palette.editor.renderer.setRenderForm(() ->
+                !toggleRendering || BBSSettings.gizmosWorldRendering.get());
+            palette.editor.renderer.setRenderFormMesh(() -> !toggleRendering);
             palette.getEvents().register(UIToggleEditorEvent.class, (e) ->
             {
                 if (e.editing)

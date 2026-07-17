@@ -165,6 +165,8 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
         {
             CustomVertexConsumerProvider.hijackVertexFormat((layer) ->
             {
+                /* startDrawing may re-enable culling; keep both sides of the label visible. */
+                RenderSystem.disableCull();
                 this.setupTarget(context, BBSShaders.getPickerModelsProgram());
                 RenderSystem.setShader(BBSShaders::getPickerModelsProgram);
             });
@@ -175,6 +177,7 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
         {
             CustomVertexConsumerProvider.hijackVertexFormat((layer) ->
             {
+                RenderSystem.disableCull();
                 RenderSystem.enableBlend();
                 RenderSystem.defaultBlendFunc();
             });
@@ -189,6 +192,11 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
             this.renderLimitedString(context, consumers, renderer, light);
         }
 
+        /* Glow overlay clears the hijack; re-apply disableCull for any leftover shared-buffer
+         * flush so the last label keeps both faces when WorldRenderer draws later. */
+        CustomVertexConsumerProvider.hijackVertexFormat((layer) -> RenderSystem.disableCull());
+        this.flushLabelConsumers(consumers);
+
         CustomVertexConsumerProvider.clearRunnables();
         RenderSystem.defaultBlendFunc();
 
@@ -196,6 +204,17 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
         RenderSystem.enableCull();
 
         context.stack.pop();
+    }
+
+    /**
+     * Text {@link net.minecraft.client.render.RenderLayer}s restore GL culling in
+     * {@code startDrawing}. Labels use a negative Y scale (flipped winding), so both faces
+     * must stay unculled at flush time or the back of the last drawn label disappears.
+     */
+    private void flushLabelConsumers(CustomVertexConsumerProvider consumers)
+    {
+        RenderSystem.disableCull();
+        consumers.draw();
     }
 
     private String applyStyles(String content)
@@ -279,6 +298,7 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
         CustomVertexConsumerProvider.clearRunnables();
         CustomVertexConsumerProvider.hijackVertexFormat((layer) ->
         {
+            RenderSystem.disableCull();
             RenderSystem.enableBlend();
             RenderSystem.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
         });
@@ -320,7 +340,7 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
                 );
             }
 
-            consumers.draw();
+            this.flushLabelConsumers(consumers);
         }
         finally
         {
@@ -448,7 +468,7 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
 
         RenderSystem.enableDepthTest();
 
-        consumers.draw();
+        this.flushLabelConsumers(consumers);
 
         this.renderTextGlowOverlay(context, consumers, renderer, customFont, content, x, y, letterSpacing, glowSettings, legacyGlow, color.a, glowIntensity, color.getARGBColor());
 
@@ -619,7 +639,7 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
 
         RenderSystem.enableDepthTest();
 
-        consumers.draw();
+        this.flushLabelConsumers(consumers);
 
         y = shadowY;
 
