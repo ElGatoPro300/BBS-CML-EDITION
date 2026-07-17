@@ -235,7 +235,12 @@ public class UISubtitleClip extends UIClip<SubtitleClip>
     {
         super.fillData();
 
-        this.title.setText(this.getStringValue(this.clip.text, this.clip.title.get()));
+        /* setText() moves the caret to the start — skip while the user is typing. */
+        if (!this.title.isFocused())
+        {
+            this.title.setText(this.getStringValue(this.clip.text, this.clip.title.get()));
+        }
+
         this.x.setValue(this.getDoubleValue(this.clip.x, 0D));
         this.y.setValue(this.getDoubleValue(this.clip.y, 0D));
         this.size.setValue(this.getDoubleValue(this.clip.size, 10D));

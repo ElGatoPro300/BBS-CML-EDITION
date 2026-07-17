@@ -249,7 +249,13 @@ public abstract class UIClip <T extends Clip> extends UIElement
         TimeUtilsClient.configure(this.duration, 1);
 
         this.enabled.setValue(this.clip.enabled.get());
-        this.title.setText(this.clip.title.get());
+
+        /* setText() moves the caret to the start — skip while the user is typing. */
+        if (!this.title.isFocused())
+        {
+            this.title.setText(this.clip.title.get());
+        }
+
         this.layer.setValue(this.clip.layer.get());
         this.tick.setValue(TimeUtils.toTime(this.clip.tick.get()));
         this.duration.setValue(TimeUtils.toTime(this.clip.duration.get()));

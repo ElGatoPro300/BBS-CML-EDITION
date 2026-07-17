@@ -65,7 +65,7 @@ public class UIBossBarClip extends UIClip<BossBarClip>
 
             this.clip.text.insert(tick, t);
             this.clip.title.set(t);
-            this.refreshFields(false);
+            this.fillData();
         };
 
         this.x = this.createChannelTrackpad(this.clip.x, UIKeys.CAMERA_PANELS_BOSS_BAR_X, true, null, null);
@@ -204,14 +204,10 @@ public class UIBossBarClip extends UIClip<BossBarClip>
     @Override
     public void fillData()
     {
-        this.refreshFields(true);
-    }
-
-    private void refreshFields(boolean refreshTitle)
-    {
         super.fillData();
 
-        if (refreshTitle || !this.title.isFocused())
+        /* setText() moves the caret to the start — skip while the user is typing. */
+        if (!this.title.isFocused())
         {
             this.title.setText(this.getStringValue(this.clip.text, this.clip.title.get()));
         }
