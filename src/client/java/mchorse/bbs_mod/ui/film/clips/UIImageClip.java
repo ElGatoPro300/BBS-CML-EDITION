@@ -7,6 +7,7 @@ import mchorse.bbs_mod.data.types.MapType;
 import mchorse.bbs_mod.graphics.texture.Texture;
 import mchorse.bbs_mod.l10n.keys.IKey;
 import mchorse.bbs_mod.resources.Link;
+import mchorse.bbs_mod.settings.values.numeric.ValueDouble;
 import mchorse.bbs_mod.ui.Keys;
 import mchorse.bbs_mod.ui.UIKeys;
 import mchorse.bbs_mod.ui.film.IUIClipsDelegate;
@@ -58,6 +59,7 @@ public class UIImageClip extends UIClip<ImageClip>
     public UITrackpad windowX;
     public UITrackpad windowY;
     public UITrackpad opacity;
+    public UIToggle useKeyframes;
     public UIButton edit;
     public UIKeyframeEditor keyframes;
 
@@ -107,9 +109,9 @@ public class UIImageClip extends UIClip<ImageClip>
             value.set(Color.rgba(c));
         })).withAlpha();
 
-        this.offsetX = this.createChannelTrackpad(this.clip.offsetX, UIKeys.CAMERA_PANELS_IMAGE_UV_OFFSET_X, false, null, null);
-        this.offsetY = this.createChannelTrackpad(this.clip.offsetY, UIKeys.CAMERA_PANELS_IMAGE_UV_OFFSET_Y, false, null, null);
-        this.rotation = this.createChannelTrackpad(this.clip.rotation, UIKeys.FORMS_EDITORS_BILLBOARD_ROTATION, false, null, null);
+        this.offsetX = this.createDoubleTrackpad(this.clip.offsetX, this.clip.uniform.offsetX, UIKeys.CAMERA_PANELS_IMAGE_UV_OFFSET_X, false, null, null);
+        this.offsetY = this.createDoubleTrackpad(this.clip.offsetY, this.clip.uniform.offsetY, UIKeys.CAMERA_PANELS_IMAGE_UV_OFFSET_Y, false, null, null);
+        this.rotation = this.createDoubleTrackpad(this.clip.rotation, this.clip.uniform.rotation, UIKeys.FORMS_EDITORS_BILLBOARD_ROTATION, false, null, null);
 
         this.pickBlendFrom = new UIButton(UIKeys.CAMERA_PANELS_IMAGE_BLEND_FROM, (b) ->
         {
@@ -125,11 +127,11 @@ public class UIImageClip extends UIClip<ImageClip>
                 value.set(l);
             }));
         });
-        this.blend = this.createChannelTrackpad(this.clip.blend, UIKeys.CAMERA_PANELS_IMAGE_BLEND, false, 0F, 1F);
+        this.blend = this.createDoubleTrackpad(this.clip.blend, this.clip.uniform.blend, UIKeys.CAMERA_PANELS_IMAGE_BLEND, false, 0F, 1F);
         this.blend.tooltip(UIKeys.CAMERA_PANELS_IMAGE_BLEND, Direction.BOTTOM);
 
-        this.x = this.createChannelTrackpad(this.clip.x, UIKeys.CAMERA_PANELS_IMAGE_POSITION_X, true, null, null);
-        this.y = this.createChannelTrackpad(this.clip.y, UIKeys.CAMERA_PANELS_IMAGE_POSITION_Y, true, null, null);
+        this.x = this.createDoubleTrackpad(this.clip.x, this.clip.uniform.x, UIKeys.CAMERA_PANELS_IMAGE_POSITION_X, true, null, null);
+        this.y = this.createDoubleTrackpad(this.clip.y, this.clip.uniform.y, UIKeys.CAMERA_PANELS_IMAGE_POSITION_Y, true, null, null);
 
         this.width = new UITrackpad((v) -> this.setWidth(v.intValue()));
         this.width.integer();
@@ -146,26 +148,56 @@ public class UIImageClip extends UIClip<ImageClip>
 
         this.resetNativeSize = new UIButton(UIKeys.CAMERA_PANELS_IMAGE_RESET_NATIVE_SIZE, (b) -> this.applyNativeSize());
 
-        this.anchorX = this.createChannelTrackpad(this.clip.anchorX, UIKeys.CAMERA_PANELS_IMAGE_ANCHOR_X, false, null, null);
-        this.anchorY = this.createChannelTrackpad(this.clip.anchorY, UIKeys.CAMERA_PANELS_IMAGE_ANCHOR_Y, false, null, null);
+        this.anchorX = this.createDoubleTrackpad(this.clip.anchorX, this.clip.uniform.anchorX, UIKeys.CAMERA_PANELS_IMAGE_ANCHOR_X, false, null, null);
+        this.anchorY = this.createDoubleTrackpad(this.clip.anchorY, this.clip.uniform.anchorY, UIKeys.CAMERA_PANELS_IMAGE_ANCHOR_Y, false, null, null);
 
-        this.windowX = this.createChannelTrackpad(this.clip.windowX, UIKeys.CAMERA_PANELS_IMAGE_WINDOW_X, false, null, null);
-        this.windowY = this.createChannelTrackpad(this.clip.windowY, UIKeys.CAMERA_PANELS_IMAGE_WINDOW_Y, false, null, null);
+        this.windowX = this.createDoubleTrackpad(this.clip.windowX, this.clip.uniform.windowX, UIKeys.CAMERA_PANELS_IMAGE_WINDOW_X, false, null, null);
+        this.windowY = this.createDoubleTrackpad(this.clip.windowY, this.clip.uniform.windowY, UIKeys.CAMERA_PANELS_IMAGE_WINDOW_Y, false, null, null);
 
         this.opacity = new UITrackpad((v) ->
         {
-            int tick = this.getClipTick();
-
-            this.clip.opacity.insert(tick, v.doubleValue() / 100D);
+            this.writeDouble(this.clip.opacity, this.clip.uniform.opacity, v.doubleValue() / 100D);
             this.fillData();
         });
         this.opacity.integer();
         this.opacity.limit(0, 100);
 
+        this.useKeyframes = new UIToggle(UIKeys.SCREEN_PANELS_USE_KEYFRAMES, (b) ->
+        {
+            boolean enabled = b.getValue();
+            float tick = this.getClipTick();
+
+            this.clip.useKeyframes.set(enabled);
+
+            if (enabled)
+            {
+                this.clip.ensureChannelsSeeded(tick);
+                this.keyframes.setChannels(this.clip.channels);
+            }
+            else
+            {
+                this.clip.ensureUniformSeeded(tick);
+
+                if (this.keyframes.hasParent())
+                {
+                    this.editor.embedView(null);
+                }
+            }
+
+            this.updateKeyframesControls();
+            this.fillData();
+        });
+        this.useKeyframes.tooltip(UIKeys.SCREEN_PANELS_USE_KEYFRAMES_TOOLTIP);
+
         this.keyframes = this.createKeyframeEditor("image_keyframes");
 
         this.edit = new UIButton(UIKeys.GENERAL_EDIT, (b) ->
         {
+            if (!this.clip.useKeyframes.get())
+            {
+                return;
+            }
+
             this.editor.embedView(this.keyframes);
             this.keyframes.view.resetView();
             this.keyframes.view.getGraph().clearSelection();
@@ -173,13 +205,11 @@ public class UIImageClip extends UIClip<ImageClip>
         this.edit.keys().register(Keys.FORMS_EDIT, () -> this.edit.clickItself());
     }
 
-    private UITrackpad createChannelTrackpad(KeyframeChannel<Double> channel, IKey tooltip, boolean integer, Float min, Float max)
+    private UITrackpad createDoubleTrackpad(KeyframeChannel<Double> channel, ValueDouble uniform, IKey tooltip, boolean integer, Float min, Float max)
     {
         UITrackpad trackpad = new UITrackpad((v) ->
         {
-            int tick = this.getClipTick();
-
-            channel.insert(tick, v.doubleValue());
+            this.writeDouble(channel, uniform, v.doubleValue());
             this.fillData();
         });
 
@@ -199,6 +229,24 @@ public class UIImageClip extends UIClip<ImageClip>
         }
 
         return trackpad;
+    }
+
+    private void writeDouble(KeyframeChannel<Double> channel, ValueDouble uniform, double value)
+    {
+        if (this.clip.useKeyframes.get())
+        {
+            channel.insert(this.getClipTick(), value);
+        }
+        else
+        {
+            this.clip.uniformSeeded.set(true);
+            uniform.set(value);
+        }
+    }
+
+    private void updateKeyframesControls()
+    {
+        this.edit.setEnabled(this.clip.useKeyframes.get());
     }
 
     private UIKeyframeEditor createKeyframeEditor(String undoId)
@@ -231,11 +279,10 @@ public class UIImageClip extends UIClip<ImageClip>
 
         if (enabling)
         {
-            int tick = this.getClipTick();
-            double width = this.getChannelValue(this.clip.width, 100D);
+            double width = this.getChannelValue(this.clip.width, this.clip.uniform.width, 100D);
 
-            this.clip.width.insert(tick, width);
-            this.clip.height.insert(tick, this.computeHeightForWidth(width));
+            this.writeDouble(this.clip.width, this.clip.uniform.width, width);
+            this.writeDouble(this.clip.height, this.clip.uniform.height, this.computeHeightForWidth(width));
         }
 
         this.fillData();
@@ -243,13 +290,11 @@ public class UIImageClip extends UIClip<ImageClip>
 
     private void setWidth(int width)
     {
-        int tick = this.getClipTick();
-
-        this.clip.width.insert(tick, (double) width);
+        this.writeDouble(this.clip.width, this.clip.uniform.width, (double) width);
 
         if (this.clip.uniformSize.get())
         {
-            this.clip.height.insert(tick, this.computeHeightForWidth(width));
+            this.writeDouble(this.clip.height, this.clip.uniform.height, this.computeHeightForWidth(width));
         }
 
         this.fillData();
@@ -257,13 +302,11 @@ public class UIImageClip extends UIClip<ImageClip>
 
     private void setHeight(int height)
     {
-        int tick = this.getClipTick();
-
-        this.clip.height.insert(tick, (double) height);
+        this.writeDouble(this.clip.height, this.clip.uniform.height, (double) height);
 
         if (this.clip.uniformSize.get())
         {
-            this.clip.width.insert(tick, this.computeWidthForHeight(height));
+            this.writeDouble(this.clip.width, this.clip.uniform.width, this.computeWidthForHeight(height));
         }
 
         this.fillData();
@@ -271,12 +314,11 @@ public class UIImageClip extends UIClip<ImageClip>
 
     private void applyNativeSize()
     {
-        int tick = this.getClipTick();
         double width = 100D;
         double height = this.computeHeightForWidth(width);
 
-        this.clip.width.insert(tick, width);
-        this.clip.height.insert(tick, height);
+        this.writeDouble(this.clip.width, this.clip.uniform.width, width);
+        this.writeDouble(this.clip.height, this.clip.uniform.height, height);
         this.fillData();
     }
 
@@ -345,7 +387,7 @@ public class UIImageClip extends UIClip<ImageClip>
         this.panels.add(UI.column(UIClip.label(UIKeys.CAMERA_PANELS_IMAGE_ANCHOR), UI.row(this.anchorX, this.anchorY)).marginTop(6));
         this.panels.add(UI.column(UIClip.label(UIKeys.CAMERA_PANELS_IMAGE_WINDOW), UI.row(this.windowX, this.windowY)).marginTop(6));
         this.panels.add(UI.column(UIClip.label(UIKeys.CAMERA_PANELS_IMAGE_OPACITY), this.opacity).marginTop(6));
-        this.panels.add(UI.column(UIClip.label(UIKeys.SCREEN_PANELS_KEYFRAMES), this.edit).marginTop(6));
+        this.panels.add(UI.column(UIClip.label(UIKeys.SCREEN_PANELS_KEYFRAMES), this.useKeyframes, this.edit).marginTop(6));
     }
 
     @Override
@@ -357,20 +399,22 @@ public class UIImageClip extends UIClip<ImageClip>
         this.mipmap.setValue(this.clip.mipmap.get());
         this.resizeCrop.setValue(this.clip.resizeCrop.get());
         this.color.setColor(this.clip.color.get().getARGBColor());
-        this.offsetX.setValue(this.getChannelValue(this.clip.offsetX, 0D));
-        this.offsetY.setValue(this.getChannelValue(this.clip.offsetY, 0D));
-        this.rotation.setValue(this.getChannelValue(this.clip.rotation, 0D));
-        this.blend.setValue(this.getChannelValue(this.clip.blend, 0D));
-        this.x.setValue(this.getChannelValue(this.clip.x, 0D));
-        this.y.setValue(this.getChannelValue(this.clip.y, 0D));
-        this.width.setValue(this.getChannelValue(this.clip.width, 100D));
-        this.height.setValue(this.getChannelValue(this.clip.height, 100D));
-        this.anchorX.setValue(this.getChannelValue(this.clip.anchorX, 0.5D));
-        this.anchorY.setValue(this.getChannelValue(this.clip.anchorY, 0.5D));
-        this.windowX.setValue(this.getChannelValue(this.clip.windowX, 0.5D));
-        this.windowY.setValue(this.getChannelValue(this.clip.windowY, 0.5D));
-        this.opacity.setValue(this.getChannelValue(this.clip.opacity, 1D) * 100F);
+        this.offsetX.setValue(this.getChannelValue(this.clip.offsetX, this.clip.uniform.offsetX, 0D));
+        this.offsetY.setValue(this.getChannelValue(this.clip.offsetY, this.clip.uniform.offsetY, 0D));
+        this.rotation.setValue(this.getChannelValue(this.clip.rotation, this.clip.uniform.rotation, 0D));
+        this.blend.setValue(this.getChannelValue(this.clip.blend, this.clip.uniform.blend, 0D));
+        this.x.setValue(this.getChannelValue(this.clip.x, this.clip.uniform.x, 0D));
+        this.y.setValue(this.getChannelValue(this.clip.y, this.clip.uniform.y, 0D));
+        this.width.setValue(this.getChannelValue(this.clip.width, this.clip.uniform.width, 100D));
+        this.height.setValue(this.getChannelValue(this.clip.height, this.clip.uniform.height, 100D));
+        this.anchorX.setValue(this.getChannelValue(this.clip.anchorX, this.clip.uniform.anchorX, 0.5D));
+        this.anchorY.setValue(this.getChannelValue(this.clip.anchorY, this.clip.uniform.anchorY, 0.5D));
+        this.windowX.setValue(this.getChannelValue(this.clip.windowX, this.clip.uniform.windowX, 0.5D));
+        this.windowY.setValue(this.getChannelValue(this.clip.windowY, this.clip.uniform.windowY, 0.5D));
+        this.opacity.setValue(this.getChannelValue(this.clip.opacity, this.clip.uniform.opacity, 1D) * 100F);
         this.uniformSize.active(this.clip.uniformSize.get());
+        this.useKeyframes.setValue(this.clip.useKeyframes.get());
+        this.updateKeyframesControls();
 
         /* Avoid rebuilding keyframe sheets on every cursor scrub — only when empty. */
         if (this.keyframes.view.getGraph().getSheets().isEmpty())
@@ -381,16 +425,19 @@ public class UIImageClip extends UIClip<ImageClip>
         this.updateTrackTitles();
     }
 
-    private double getChannelValue(KeyframeChannel<Double> channel, double fallback)
+    private double getChannelValue(KeyframeChannel<Double> channel, ValueDouble uniform, double fallback)
     {
-        int tick = this.getClipTick();
+        if (!this.clip.useKeyframes.get())
+        {
+            return uniform.get();
+        }
 
         if (channel.isEmpty())
         {
-            return fallback;
+            return this.clip.uniformSeeded.get() ? uniform.get() : fallback;
         }
 
-        return channel.interpolate(tick);
+        return channel.interpolate(this.getClipTick());
     }
 
     private void updateTrackTitles()
@@ -427,7 +474,7 @@ public class UIImageClip extends UIClip<ImageClip>
     {
         super.applyUndoData(data);
 
-        if (data.getString("embed").equals("image_keyframes"))
+        if (data.getString("embed").equals("image_keyframes") && this.clip.useKeyframes.get())
         {
             this.editor.embedView(this.keyframes);
             this.keyframes.view.resetView();

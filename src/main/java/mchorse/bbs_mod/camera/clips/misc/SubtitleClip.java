@@ -4,6 +4,11 @@ import mchorse.bbs_mod.camera.clips.CameraClip;
 import mchorse.bbs_mod.camera.data.Position;
 import mchorse.bbs_mod.data.types.BaseType;
 import mchorse.bbs_mod.data.types.MapType;
+import mchorse.bbs_mod.settings.values.core.ValueColor;
+import mchorse.bbs_mod.settings.values.core.ValueString;
+import mchorse.bbs_mod.settings.values.numeric.ValueBoolean;
+import mchorse.bbs_mod.settings.values.numeric.ValueDouble;
+import mchorse.bbs_mod.settings.values.numeric.ValueInt;
 import mchorse.bbs_mod.utils.clips.Clip;
 import mchorse.bbs_mod.utils.clips.ClipContext;
 import mchorse.bbs_mod.utils.colors.Color;
@@ -34,6 +39,9 @@ public class SubtitleClip extends CameraClip
     public final KeyframeChannel<Boolean> shadowOpaque = new KeyframeChannel<>("shadowOpaque", KeyframeFactories.BOOLEAN);
     public final KeyframeChannel<Integer> lineHeight = new KeyframeChannel<>("lineHeight", KeyframeFactories.INTEGER);
     public final KeyframeChannel<Integer> maxWidth = new KeyframeChannel<>("maxWidth", KeyframeFactories.INTEGER);
+    public final ValueBoolean useKeyframes = new ValueBoolean("use_keyframes", false);
+    public final ValueBoolean uniformSeeded = new ValueBoolean("uniform_seeded", false);
+    public final SubtitleUniform uniform = new SubtitleUniform("uniform");
 
     public final KeyframeChannel[] channels;
 
@@ -73,12 +81,17 @@ public class SubtitleClip extends CameraClip
         {
             this.add(channel);
         }
+
+        this.add(this.useKeyframes);
+        this.add(this.uniformSeeded);
+        this.add(this.uniform);
     }
 
     @Override
     public void fromData(BaseType data)
     {
         Map<String, BaseType> legacy = null;
+        boolean hasUseKeyframes = data != null && data.isMap() && data.asMap().has("use_keyframes");
 
         if (data != null && data.isMap())
         {
@@ -86,6 +99,12 @@ public class SubtitleClip extends CameraClip
         }
 
         super.fromData(data);
+
+        /* Older films did not store this flag — keep keyframe mode enabled for compatibility. */
+        if (!hasUseKeyframes)
+        {
+            this.useKeyframes.set(true);
+        }
 
         if (legacy != null)
         {
@@ -144,13 +163,11 @@ public class SubtitleClip extends CameraClip
 
         BaseType data = legacy.get(key);
 
+        /* Only convert legacy scalar properties — never invent a single keyframe
+         * for empty modern channels (that breaks uniform mode and scrubbing). */
         if (data != null && data.isString())
         {
             channel.insert(0, data.asString());
-        }
-        else if (!fallback.isEmpty())
-        {
-            channel.insert(0, fallback);
         }
     }
 
@@ -167,10 +184,6 @@ public class SubtitleClip extends CameraClip
         {
             channel.insert(0, data.asNumeric().doubleValue());
         }
-        else
-        {
-            channel.insert(0, fallback);
-        }
     }
 
     private void migrateInteger(Map<String, BaseType> legacy, String key, KeyframeChannel<Integer> channel, int fallback)
@@ -185,10 +198,6 @@ public class SubtitleClip extends CameraClip
         if (data != null && data.isNumeric())
         {
             channel.insert(0, data.asNumeric().intValue());
-        }
-        else
-        {
-            channel.insert(0, fallback);
         }
     }
 
@@ -205,10 +214,6 @@ public class SubtitleClip extends CameraClip
         {
             channel.insert(0, data.asNumeric().boolValue());
         }
-        else
-        {
-            channel.insert(0, fallback);
-        }
     }
 
     private void migrateColor(Map<String, BaseType> legacy, String key, KeyframeChannel<Color> channel, Color fallback)
@@ -224,10 +229,6 @@ public class SubtitleClip extends CameraClip
         {
             channel.insert(0, Color.rgba(data.asNumeric().intValue()));
         }
-        else
-        {
-            channel.insert(0, fallback.copy());
-        }
     }
 
     @Override
@@ -236,35 +237,242 @@ public class SubtitleClip extends CameraClip
         List<Subtitle> subtitles = getSubtitles(context);
         float t = context.relativeTick + context.transition;
         float factor = this.envelope.factorEnabled(this.duration.get(), t);
-        Color tinted = this.interpColor(this.color, t, DEFAULT_COLOR).copy();
+        Color tinted = this.valueColor(this.color, this.uniform.color, t, DEFAULT_COLOR).copy();
         int color = Colors.setA(tinted.getARGBColor(), factor * tinted.a);
 
         this.subtitle.update(
-            this.interpString(this.text, t, this.title.get()),
-            (int) Math.round(this.interpDouble(this.x, t, 0D)),
-            (int) Math.round(this.interpDouble(this.y, t, 0D)),
-            (float) this.interpDouble(this.size, t, 10D),
-            (float) this.interpDouble(this.anchorX, t, 0.5D),
-            (float) this.interpDouble(this.anchorY, t, 0.5D),
+            this.valueString(this.text, this.uniform.text, t, this.title.get()),
+            (int) Math.round(this.valueDouble(this.x, this.uniform.x, t, 0D)),
+            (int) Math.round(this.valueDouble(this.y, this.uniform.y, t, 0D)),
+            (float) this.valueDouble(this.size, this.uniform.size, t, 10D),
+            (float) this.valueDouble(this.anchorX, this.uniform.anchorX, t, 0.5D),
+            (float) this.valueDouble(this.anchorY, this.uniform.anchorY, t, 0.5D),
             color,
-            this.interpBoolean(this.textShadow, t, true)
+            this.valueBoolean(this.textShadow, this.uniform.textShadow, t, true)
         );
         this.subtitle.updateWindow(
-            (float) this.interpDouble(this.windowX, t, 0.5D),
-            (float) this.interpDouble(this.windowY, t, 0.5D)
+            (float) this.valueDouble(this.windowX, this.uniform.windowX, t, 0.5D),
+            (float) this.valueDouble(this.windowY, this.uniform.windowY, t, 0.5D)
         );
         this.subtitle.updateBackground(
-            this.interpColor(this.background, t, DEFAULT_BACKGROUND).getARGBColor(),
-            (float) this.interpDouble(this.backgroundOffset, t, 2D),
-            (float) this.interpDouble(this.shadow, t, 0D),
-            this.interpBoolean(this.shadowOpaque, t, false)
+            this.valueColor(this.background, this.uniform.background, t, DEFAULT_BACKGROUND).getARGBColor(),
+            (float) this.valueDouble(this.backgroundOffset, this.uniform.backgroundOffset, t, 2D),
+            (float) this.valueDouble(this.shadow, this.uniform.shadow, t, 0D),
+            this.valueBoolean(this.shadowOpaque, this.uniform.shadowOpaque, t, false)
         );
         this.subtitle.updateConstraints(
-            this.interpInteger(this.lineHeight, t, 12),
-            this.interpInteger(this.maxWidth, t, 0)
+            this.valueInteger(this.lineHeight, this.uniform.lineHeight, t, 12),
+            this.valueInteger(this.maxWidth, this.uniform.maxWidth, t, 0)
         );
         this.subtitle.renderOrder = context.applied;
         subtitles.add(this.subtitle);
+    }
+
+    /**
+     * Copy the current keyframed values into uniform storage the first time
+     * keyframe mode is disabled, without modifying the keyframe channels.
+     */
+    public void ensureUniformSeeded(float tick)
+    {
+        if (this.uniformSeeded.get())
+        {
+            return;
+        }
+
+        this.uniform.text.set(this.interpString(this.text, tick, this.title.get()));
+        this.uniform.x.set(this.interpDouble(this.x, tick, 0D));
+        this.uniform.y.set(this.interpDouble(this.y, tick, 0D));
+        this.uniform.size.set(this.interpDouble(this.size, tick, 10D));
+        this.uniform.anchorX.set(this.interpDouble(this.anchorX, tick, 0.5D));
+        this.uniform.anchorY.set(this.interpDouble(this.anchorY, tick, 0.5D));
+        this.uniform.color.set(this.interpColor(this.color, tick, DEFAULT_COLOR).copy());
+        this.uniform.textShadow.set(this.interpBoolean(this.textShadow, tick, true));
+        this.uniform.windowX.set(this.interpDouble(this.windowX, tick, 0.5D));
+        this.uniform.windowY.set(this.interpDouble(this.windowY, tick, 0.5D));
+        this.uniform.background.set(this.interpColor(this.background, tick, DEFAULT_BACKGROUND).copy());
+        this.uniform.backgroundOffset.set(this.interpDouble(this.backgroundOffset, tick, 2D));
+        this.uniform.shadow.set(this.interpDouble(this.shadow, tick, 0D));
+        this.uniform.shadowOpaque.set(this.interpBoolean(this.shadowOpaque, tick, false));
+        this.uniform.lineHeight.set(this.interpInteger(this.lineHeight, tick, 12));
+        this.uniform.maxWidth.set(this.interpInteger(this.maxWidth, tick, 0));
+        this.uniformSeeded.set(true);
+    }
+
+    /**
+     * When enabling keyframe mode, fill any empty channels from uniform values
+     * so playback and side-panel scrubbing have real keyframes to interpolate.
+     */
+    public void ensureChannelsSeeded(float tick)
+    {
+        this.ensureUniformSeeded(tick);
+
+        this.seedString(this.text, this.uniform.text.get(), this.title.get());
+        this.seedDouble(this.x, this.uniform.x.get());
+        this.seedDouble(this.y, this.uniform.y.get());
+        this.seedDouble(this.size, this.uniform.size.get());
+        this.seedDouble(this.anchorX, this.uniform.anchorX.get());
+        this.seedDouble(this.anchorY, this.uniform.anchorY.get());
+        this.seedColor(this.color, this.uniform.color.get());
+        this.seedBoolean(this.textShadow, this.uniform.textShadow.get());
+        this.seedDouble(this.windowX, this.uniform.windowX.get());
+        this.seedDouble(this.windowY, this.uniform.windowY.get());
+        this.seedColor(this.background, this.uniform.background.get());
+        this.seedDouble(this.backgroundOffset, this.uniform.backgroundOffset.get());
+        this.seedDouble(this.shadow, this.uniform.shadow.get());
+        this.seedBoolean(this.shadowOpaque, this.uniform.shadowOpaque.get());
+        this.seedInteger(this.lineHeight, this.uniform.lineHeight.get());
+        this.seedInteger(this.maxWidth, this.uniform.maxWidth.get());
+    }
+
+    private void seedString(KeyframeChannel<String> channel, String value, String fallback)
+    {
+        String seed = value == null || value.isEmpty() ? fallback : value;
+
+        if (seed == null)
+        {
+            seed = "";
+        }
+
+        if (channel.isEmpty())
+        {
+            channel.insert(0, seed);
+        }
+        else if (this.uniformSeeded.get() && channel.getKeyframes().size() == 1)
+        {
+            /* Replace a solitary keyframe (often a migrate default) with the
+             * uniform value used while keyframe mode was off. Multi-keyframe
+             * animation is left untouched. */
+            channel.insert(channel.getKeyframes().get(0).getTick(), seed);
+        }
+    }
+
+    private void seedDouble(KeyframeChannel<Double> channel, double value)
+    {
+        if (channel.isEmpty())
+        {
+            channel.insert(0, value);
+        }
+        else if (this.uniformSeeded.get() && channel.getKeyframes().size() == 1)
+        {
+            channel.insert(channel.getKeyframes().get(0).getTick(), value);
+        }
+    }
+
+    private void seedInteger(KeyframeChannel<Integer> channel, int value)
+    {
+        if (channel.isEmpty())
+        {
+            channel.insert(0, value);
+        }
+        else if (this.uniformSeeded.get() && channel.getKeyframes().size() == 1)
+        {
+            channel.insert(channel.getKeyframes().get(0).getTick(), value);
+        }
+    }
+
+    private void seedBoolean(KeyframeChannel<Boolean> channel, boolean value)
+    {
+        if (channel.isEmpty())
+        {
+            channel.insert(0, value);
+        }
+        else if (this.uniformSeeded.get() && channel.getKeyframes().size() == 1)
+        {
+            channel.insert(channel.getKeyframes().get(0).getTick(), value);
+        }
+    }
+
+    private void seedColor(KeyframeChannel<Color> channel, Color value)
+    {
+        Color seed = value == null ? DEFAULT_COLOR.copy() : value.copy();
+
+        if (channel.isEmpty())
+        {
+            channel.insert(0, seed);
+        }
+        else if (this.uniformSeeded.get() && channel.getKeyframes().size() == 1)
+        {
+            channel.insert(channel.getKeyframes().get(0).getTick(), seed);
+        }
+    }
+
+    private String valueString(KeyframeChannel<String> channel, ValueString uniform, float t, String fallback)
+    {
+        if (!this.useKeyframes.get())
+        {
+            String value = uniform.get();
+
+            return value == null || value.isEmpty() ? fallback : value;
+        }
+
+        if (channel.isEmpty())
+        {
+            String value = uniform.get();
+
+            return value == null || value.isEmpty() ? fallback : value;
+        }
+
+        return this.interpString(channel, t, fallback);
+    }
+
+    private double valueDouble(KeyframeChannel<Double> channel, ValueDouble uniform, float t, double fallback)
+    {
+        if (!this.useKeyframes.get())
+        {
+            return uniform.get();
+        }
+
+        if (channel.isEmpty())
+        {
+            return this.uniformSeeded.get() ? uniform.get() : fallback;
+        }
+
+        return this.interpDouble(channel, t, fallback);
+    }
+
+    private int valueInteger(KeyframeChannel<Integer> channel, ValueInt uniform, float t, int fallback)
+    {
+        if (!this.useKeyframes.get())
+        {
+            return uniform.get();
+        }
+
+        if (channel.isEmpty())
+        {
+            return this.uniformSeeded.get() ? uniform.get() : fallback;
+        }
+
+        return this.interpInteger(channel, t, fallback);
+    }
+
+    private boolean valueBoolean(KeyframeChannel<Boolean> channel, ValueBoolean uniform, float t, boolean fallback)
+    {
+        if (!this.useKeyframes.get())
+        {
+            return uniform.get();
+        }
+
+        if (channel.isEmpty())
+        {
+            return this.uniformSeeded.get() ? uniform.get() : fallback;
+        }
+
+        return this.interpBoolean(channel, t, fallback);
+    }
+
+    private Color valueColor(KeyframeChannel<Color> channel, ValueColor uniform, float t, Color fallback)
+    {
+        if (!this.useKeyframes.get())
+        {
+            return uniform.get();
+        }
+
+        if (channel.isEmpty())
+        {
+            return this.uniformSeeded.get() ? uniform.get() : fallback;
+        }
+
+        return this.interpColor(channel, t, fallback);
     }
 
     private String interpString(KeyframeChannel<String> channel, float t, String fallback)

@@ -2195,6 +2195,8 @@
     "bbs.ui.screen_node.square_wave": "Square Wave",
     "bbs.ui.screen_node.vignette": "Vignette",
     "bbs.ui.screen_panels.keyframes": "Keyframes",
+    "bbs.ui.screen_panels.use_keyframes": "Use keyframes",
+    "bbs.ui.screen_panels.use_keyframes-tooltip": "On: property changes insert keyframes. Off: one value applies for the whole clip duration.",
     "bbs.ui.screen_panels.letterbox_color": "Letterbox Color",
     "bbs.ui.screen_panels.letterbox_tilt": "Tilt",
     "bbs.ui.screen_panels.letterbox_rotation": "Rotation (degrees)",

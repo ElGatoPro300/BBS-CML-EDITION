@@ -394,6 +394,8 @@ public class UIKeys
     public static final IKey SCREEN_PANELS_LETTERBOX_OFFSET_X = L10n.lang("bbs.ui.screen_panels.letterbox_offset_x");
     public static final IKey SCREEN_PANELS_LETTERBOX_OFFSET_Y = L10n.lang("bbs.ui.screen_panels.letterbox_offset_y");
     public static final IKey SCREEN_PANELS_KEYFRAMES = L10n.lang("bbs.ui.screen_panels.keyframes");
+    public static final IKey SCREEN_PANELS_USE_KEYFRAMES = L10n.lang("bbs.ui.screen_panels.use_keyframes");
+    public static final IKey SCREEN_PANELS_USE_KEYFRAMES_TOOLTIP = L10n.lang("bbs.ui.screen_panels.use_keyframes-tooltip");
     public static final IKey SCREEN_PANELS_EYE_COLOR = L10n.lang("bbs.ui.screen_panels.eye_color");
     public static final IKey SCREEN_PANELS_EYE_COLOR_OPACITY = L10n.lang("bbs.ui.screen_panels.eye_color_opacity");
     public static final IKey SCREEN_PANELS_EYE_HEIGHT = L10n.lang("bbs.ui.screen_panels.eye_height");
