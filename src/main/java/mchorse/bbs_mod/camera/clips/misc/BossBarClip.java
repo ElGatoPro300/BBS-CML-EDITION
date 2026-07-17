@@ -217,7 +217,7 @@ public class BossBarClip extends CameraClip
         state.textColor = Colors.setA(this.interpColor(this.textColor, t, DEFAULT_TEXT_COLOR).getARGBColor(), alpha);
         state.textSize = Math.max(0.05F, this.interpDouble(this.textSize, t, DEFAULT_TEXT_SIZE).floatValue());
         state.alpha = alpha;
-        state.renderOrder = context.count;
+        state.renderOrder = context.applied;
 
         getBossBars(context).add(state);
     }

@@ -263,7 +263,7 @@ public class SubtitleClip extends CameraClip
             this.interpInteger(this.lineHeight, t, 12),
             this.interpInteger(this.maxWidth, t, 0)
         );
-        this.subtitle.renderOrder = context.count;
+        this.subtitle.renderOrder = context.applied;
         subtitles.add(this.subtitle);
     }
 

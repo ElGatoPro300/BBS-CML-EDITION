@@ -139,7 +139,7 @@ public class ImageClip extends CameraClip
             (float) this.interp(this.windowY, t, 0.5D),
             alpha
         );
-        this.overlay.renderOrder = context.count;
+        this.overlay.renderOrder = context.applied;
         images.add(this.overlay);
     }
 
