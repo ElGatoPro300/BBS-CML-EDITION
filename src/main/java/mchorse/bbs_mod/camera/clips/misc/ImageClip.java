@@ -193,8 +193,8 @@ public class ImageClip extends CameraClip
     }
 
     /**
-     * When enabling keyframe mode, fill any empty (or solitary migrate-default)
-     * channels from uniform values so scrubbing/playback can interpolate.
+     * When enabling keyframe mode, fill any empty channels from uniform values
+     * so scrubbing/playback can interpolate. Existing keyframes are preserved.
      */
     public void ensureChannelsSeeded(float tick)
     {
@@ -220,10 +220,6 @@ public class ImageClip extends CameraClip
         if (channel.isEmpty())
         {
             channel.insert(0, value);
-        }
-        else if (this.uniformSeeded.get() && channel.getKeyframes().size() == 1)
-        {
-            channel.insert(channel.getKeyframes().get(0).getTick(), value);
         }
     }
 

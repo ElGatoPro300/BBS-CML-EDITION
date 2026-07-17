@@ -300,7 +300,7 @@ public class SubtitleClip extends CameraClip
 
     /**
      * When enabling keyframe mode, fill any empty channels from uniform values
-     * so playback and side-panel scrubbing have real keyframes to interpolate.
+     * so scrubbing/playback can interpolate. Existing keyframes are preserved.
      */
     public void ensureChannelsSeeded(float tick)
     {
@@ -326,24 +326,14 @@ public class SubtitleClip extends CameraClip
 
     private void seedString(KeyframeChannel<String> channel, String value, String fallback)
     {
+        if (!channel.isEmpty())
+        {
+            return;
+        }
+
         String seed = value == null || value.isEmpty() ? fallback : value;
 
-        if (seed == null)
-        {
-            seed = "";
-        }
-
-        if (channel.isEmpty())
-        {
-            channel.insert(0, seed);
-        }
-        else if (this.uniformSeeded.get() && channel.getKeyframes().size() == 1)
-        {
-            /* Replace a solitary keyframe (often a migrate default) with the
-             * uniform value used while keyframe mode was off. Multi-keyframe
-             * animation is left untouched. */
-            channel.insert(channel.getKeyframes().get(0).getTick(), seed);
-        }
+        channel.insert(0, seed == null ? "" : seed);
     }
 
     private void seedDouble(KeyframeChannel<Double> channel, double value)
@@ -351,10 +341,6 @@ public class SubtitleClip extends CameraClip
         if (channel.isEmpty())
         {
             channel.insert(0, value);
-        }
-        else if (this.uniformSeeded.get() && channel.getKeyframes().size() == 1)
-        {
-            channel.insert(channel.getKeyframes().get(0).getTick(), value);
         }
     }
 
@@ -364,10 +350,6 @@ public class SubtitleClip extends CameraClip
         {
             channel.insert(0, value);
         }
-        else if (this.uniformSeeded.get() && channel.getKeyframes().size() == 1)
-        {
-            channel.insert(channel.getKeyframes().get(0).getTick(), value);
-        }
     }
 
     private void seedBoolean(KeyframeChannel<Boolean> channel, boolean value)
@@ -376,23 +358,13 @@ public class SubtitleClip extends CameraClip
         {
             channel.insert(0, value);
         }
-        else if (this.uniformSeeded.get() && channel.getKeyframes().size() == 1)
-        {
-            channel.insert(channel.getKeyframes().get(0).getTick(), value);
-        }
     }
 
     private void seedColor(KeyframeChannel<Color> channel, Color value)
     {
-        Color seed = value == null ? DEFAULT_COLOR.copy() : value.copy();
-
         if (channel.isEmpty())
         {
-            channel.insert(0, seed);
-        }
-        else if (this.uniformSeeded.get() && channel.getKeyframes().size() == 1)
-        {
-            channel.insert(channel.getKeyframes().get(0).getTick(), seed);
+            channel.insert(0, value == null ? DEFAULT_COLOR.copy() : value.copy());
         }
     }
 

@@ -82,6 +82,14 @@ public class UIImageClip extends UIClip<ImageClip>
                     value.set(l);
                 });
 
+                if (this.clip.uniformSize.get())
+                {
+                    double width = this.getChannelValue(this.clip.width, this.clip.uniform.width, 100D);
+
+                    this.writeDouble(this.clip.width, this.clip.uniform.width, width);
+                    this.writeDouble(this.clip.height, this.clip.uniform.height, this.computeHeightForWidth(width, l));
+                }
+
                 this.fillData();
             });
         });
@@ -324,7 +332,12 @@ public class UIImageClip extends UIClip<ImageClip>
 
     private double computeHeightForWidth(double widthPercent)
     {
-        int[] dimensions = this.getTextureDimensions();
+        return this.computeHeightForWidth(widthPercent, this.clip.texture.get());
+    }
+
+    private double computeHeightForWidth(double widthPercent, Link link)
+    {
+        int[] dimensions = this.getTextureDimensions(link);
         int screenW = BBSRendering.getVideoWidth();
         int screenH = BBSRendering.getVideoHeight();
 
@@ -338,7 +351,12 @@ public class UIImageClip extends UIClip<ImageClip>
 
     private double computeWidthForHeight(double heightPercent)
     {
-        int[] dimensions = this.getTextureDimensions();
+        return this.computeWidthForHeight(heightPercent, this.clip.texture.get());
+    }
+
+    private double computeWidthForHeight(double heightPercent, Link link)
+    {
+        int[] dimensions = this.getTextureDimensions(link);
         int screenW = BBSRendering.getVideoWidth();
         int screenH = BBSRendering.getVideoHeight();
 
@@ -352,8 +370,11 @@ public class UIImageClip extends UIClip<ImageClip>
 
     private int[] getTextureDimensions()
     {
-        Link link = this.clip.texture.get();
+        return this.getTextureDimensions(this.clip.texture.get());
+    }
 
+    private int[] getTextureDimensions(Link link)
+    {
         if (link == null)
         {
             return null;
