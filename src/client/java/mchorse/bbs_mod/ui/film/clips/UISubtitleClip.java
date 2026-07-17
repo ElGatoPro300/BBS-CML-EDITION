@@ -69,16 +69,16 @@ public class UISubtitleClip extends UIClip<SubtitleClip>
 
         this.size = this.createChannelTrackpad(this.clip.size, UIKeys.CAMERA_PANELS_SUBTITLE_SIZE, false, null, null);
 
-        this.anchorX = this.createChannelTrackpad(this.clip.anchorX, UIKeys.CAMERA_PANELS_SUBTITLE_ANCHOR_X, false, 0F, 1F);
-        this.anchorY = this.createChannelTrackpad(this.clip.anchorY, UIKeys.CAMERA_PANELS_SUBTITLE_ANCHOR_Y, false, 0F, 1F);
+        this.anchorX = this.createChannelTrackpad(this.clip.anchorX, UIKeys.CAMERA_PANELS_SUBTITLE_ANCHOR_X, false, null, null);
+        this.anchorY = this.createChannelTrackpad(this.clip.anchorY, UIKeys.CAMERA_PANELS_SUBTITLE_ANCHOR_Y, false, null, null);
 
         this.color = this.createColorChannel(this.clip.color);
         this.color.withAlpha();
 
         this.textShadow = this.createBooleanChannel(this.clip.textShadow, UIKeys.CAMERA_PANELS_SUBTITLE_TEXT_SHADOW);
 
-        this.windowX = this.createChannelTrackpad(this.clip.windowX, UIKeys.CAMERA_PANELS_SUBTITLE_WINDOW_X, false, 0F, 1F);
-        this.windowY = this.createChannelTrackpad(this.clip.windowY, UIKeys.CAMERA_PANELS_SUBTITLE_WINDOW_Y, false, 0F, 1F);
+        this.windowX = this.createChannelTrackpad(this.clip.windowX, UIKeys.CAMERA_PANELS_SUBTITLE_WINDOW_X, false, null, null);
+        this.windowY = this.createChannelTrackpad(this.clip.windowY, UIKeys.CAMERA_PANELS_SUBTITLE_WINDOW_Y, false, null, null);
 
         this.background = this.createColorChannel(this.clip.background);
         this.background.withAlpha();

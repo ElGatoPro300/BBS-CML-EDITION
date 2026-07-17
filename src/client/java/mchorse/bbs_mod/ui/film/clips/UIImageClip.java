@@ -146,11 +146,11 @@ public class UIImageClip extends UIClip<ImageClip>
 
         this.resetNativeSize = new UIButton(UIKeys.CAMERA_PANELS_IMAGE_RESET_NATIVE_SIZE, (b) -> this.applyNativeSize());
 
-        this.anchorX = this.createChannelTrackpad(this.clip.anchorX, UIKeys.CAMERA_PANELS_IMAGE_ANCHOR_X, false, 0F, 1F);
-        this.anchorY = this.createChannelTrackpad(this.clip.anchorY, UIKeys.CAMERA_PANELS_IMAGE_ANCHOR_Y, false, 0F, 1F);
+        this.anchorX = this.createChannelTrackpad(this.clip.anchorX, UIKeys.CAMERA_PANELS_IMAGE_ANCHOR_X, false, null, null);
+        this.anchorY = this.createChannelTrackpad(this.clip.anchorY, UIKeys.CAMERA_PANELS_IMAGE_ANCHOR_Y, false, null, null);
 
-        this.windowX = this.createChannelTrackpad(this.clip.windowX, UIKeys.CAMERA_PANELS_IMAGE_WINDOW_X, false, 0F, 1F);
-        this.windowY = this.createChannelTrackpad(this.clip.windowY, UIKeys.CAMERA_PANELS_IMAGE_WINDOW_Y, false, 0F, 1F);
+        this.windowX = this.createChannelTrackpad(this.clip.windowX, UIKeys.CAMERA_PANELS_IMAGE_WINDOW_X, false, null, null);
+        this.windowY = this.createChannelTrackpad(this.clip.windowY, UIKeys.CAMERA_PANELS_IMAGE_WINDOW_Y, false, null, null);
 
         this.opacity = new UITrackpad((v) ->
         {
