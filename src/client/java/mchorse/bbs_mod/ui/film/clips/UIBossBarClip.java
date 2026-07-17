@@ -222,7 +222,15 @@ public class UIBossBarClip extends UIClip<BossBarClip>
         this.textColor.setColor(this.getColorValue(this.clip.textColor, DEFAULT_TEXT_COLOR).getARGBColor());
         this.textSize.setValue(this.getDoubleValue(this.clip.textSize, BossBarClip.DEFAULT_TEXT_SIZE));
 
-        this.rebuildChannels();
+        /* Avoid rebuilding keyframe sheets on every cursor scrub — only when empty. */
+        if (this.keyframes.view.getGraph().getSheets().isEmpty())
+        {
+            this.rebuildChannels();
+        }
+        else
+        {
+            this.updateTrackTitles();
+        }
     }
 
     private void rebuildChannels()

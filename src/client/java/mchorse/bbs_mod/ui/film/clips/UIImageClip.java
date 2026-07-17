@@ -372,7 +372,12 @@ public class UIImageClip extends UIClip<ImageClip>
         this.opacity.setValue(this.getChannelValue(this.clip.opacity, 1D) * 100F);
         this.uniformSize.active(this.clip.uniformSize.get());
 
-        this.keyframes.setChannels(this.clip.channels);
+        /* Avoid rebuilding keyframe sheets on every cursor scrub — only when empty. */
+        if (this.keyframes.view.getGraph().getSheets().isEmpty())
+        {
+            this.keyframes.setChannels(this.clip.channels);
+        }
+
         this.updateTrackTitles();
     }
 

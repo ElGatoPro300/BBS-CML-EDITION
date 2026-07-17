@@ -257,7 +257,12 @@ public class UISubtitleClip extends UIClip<SubtitleClip>
         this.lineHeight.setValue(this.getIntegerValue(this.clip.lineHeight, 12));
         this.maxWidth.setValue(this.getIntegerValue(this.clip.maxWidth, 0));
 
-        this.keyframes.setChannels(this.clip.channels);
+        /* Avoid rebuilding keyframe sheets on every cursor scrub — only when empty. */
+        if (this.keyframes.view.getGraph().getSheets().isEmpty())
+        {
+            this.keyframes.setChannels(this.clip.channels);
+        }
+
         this.updateTrackTitles();
     }
 

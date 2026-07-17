@@ -157,6 +157,7 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     private RunnerCameraController runner;
     private boolean lastRunning;
     private boolean clearingSelections;
+    private int lastFilledCursor = -1;
     private final Position position = new Position(0, 0, 0, 0, 0);
     private final Position lastPosition = new Position(0, 0, 0, 0, 0);
 
@@ -5784,6 +5785,12 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
     {
         Clip clip = this.cameraEditor.getClip();
 
+        /* Keep keyframe-linked clip fields in sync while playing (runner advances ticks without setCursor). */
+        if (this.getCursor() != this.lastFilledCursor)
+        {
+            this.refreshCursorFields();
+        }
+
         /* Loop fixture */
         if (BBSSettings.editorLoop.get() && this.isRunning())
         {
@@ -6102,9 +6109,25 @@ public class UIFilmPanel extends UIDataDashboardPanel<Film> implements IFlightSu
         this.flightEditTime.mark();
         this.lastPosition.set(Position.ZERO);
 
+        int previous = this.runner.ticks;
+
         this.runner.ticks = Math.max(0, value);
 
         this.notifyServer(ActionState.SEEK);
+
+        if (previous != this.runner.ticks)
+        {
+            this.refreshCursorFields();
+        }
+    }
+
+    /**
+     * Refresh open clip side panels so keyframe-linked fields match the timeline cursor.
+     */
+    private void refreshCursorFields()
+    {
+        this.lastFilledCursor = this.runner.ticks;
+        this.fillData();
     }
 
     public boolean isRunning()
