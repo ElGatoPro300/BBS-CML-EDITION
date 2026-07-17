@@ -816,7 +816,19 @@ public class ModelInstance implements IModelInstance
 
         try
         {
-            CubicRenderer.processRenderModel(renderProcessor, null, stack, model);
+            if (targetGroupId != null)
+            {
+                ModelGroup target = model.getGroup(targetGroupId);
+
+                if (target != null)
+                {
+                    CubicRenderer.renderGroupBranch(renderProcessor, null, stack, model, target);
+                }
+            }
+            else
+            {
+                CubicRenderer.processRenderModel(renderProcessor, null, stack, model);
+            }
         }
         finally
         {

@@ -1218,13 +1218,8 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
         int savedDepthFunc = GL11.glGetInteger(GL11.GL_DEPTH_FUNC);
         boolean savedDepthMask = GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK);
         boolean savedPolygonOffsetFill = GL11.glGetBoolean(GL11.GL_POLYGON_OFFSET_FILL);
-
-        CustomVertexConsumerProvider.clearRunnables();
-        CustomVertexConsumerProvider.hijackVertexFormat((l) ->
-        {
-            RenderSystem.enableBlend();
-            RenderSystem.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
-        });
+        Color glowColor = FormColorBlend.resolveGlowOverlayEmissionColor(glowSettings, legacyGlow, alpha, glowIntensity);
+        float shaderScale = FormColorBlend.resolveGlowOverlayShaderScale(glowIntensity);
 
         RenderSystem.enableBlend();
         RenderSystem.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
@@ -1233,21 +1228,18 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
         RenderSystem.depthMask(false);
         GL11.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
         GL11.glPolygonOffset(-1F, -1F);
+        RenderSystem.setShaderColor(shaderScale, shaderScale, shaderScale, 1F);
 
         try
         {
-            for (int layer = 0; layer < layers; layer++)
-            {
-                Color glowColor = FormColorBlend.resolveGlowOverlayColor(glowSettings, legacyGlow, alpha, glowIntensity, layers);
-
-                consumers.setSubstitute(BBSRendering.getGlowOverlayConsumer(glowColor));
-                draw.run();
-                consumers.draw();
-            }
+            consumers.setSubstitute(BBSRendering.getGlowOverlayConsumer(glowColor));
+            draw.run();
+            consumers.draw();
         }
         finally
         {
             consumers.setSubstitute(null);
+            RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
             RenderSystem.depthMask(savedDepthMask);
             RenderSystem.depthFunc(savedDepthFunc);
 
@@ -1260,7 +1252,7 @@ public class StructureFormRenderer extends FormRenderer<StructureForm>
                 GL11.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
             }
 
-            CustomVertexConsumerProvider.clearRunnables();
+            RenderSystem.defaultBlendFunc();
         }
     }
 

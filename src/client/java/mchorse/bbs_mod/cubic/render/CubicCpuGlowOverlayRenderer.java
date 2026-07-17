@@ -143,23 +143,17 @@ public class CubicCpuGlowOverlayRenderer extends CubicCubeRenderer
 
         if (!this.boneGlowOnly && group.glowIntensity <= 0F)
         {
-            gr = MathUtils.clamp(this.glowLayerColor.r * group.color.r, 0F, 1F);
-            gg = MathUtils.clamp(this.glowLayerColor.g * group.color.g, 0F, 1F);
-            gb = MathUtils.clamp(this.glowLayerColor.b * group.color.b, 0F, 1F);
+            gr = this.glowLayerColor.r * group.color.r;
+            gg = this.glowLayerColor.g * group.color.g;
+            gb = this.glowLayerColor.b * group.color.b;
             ga = MathUtils.clamp(this.glowLayerColor.a * group.color.a * this.a, 0F, 1F);
         }
         else
         {
-            float strength = this.layerStrength();
-
-            gr = group.glowingColor.r;
-            gg = group.glowingColor.g;
-            gb = group.glowingColor.b;
-
-            gr = MathUtils.clamp(gr * strength * group.color.r, 0F, 1F);
-            gg = MathUtils.clamp(gg * strength * group.color.g, 0F, 1F);
-            gb = MathUtils.clamp(gb * strength * group.color.b, 0F, 1F);
-            ga = MathUtils.clamp(strength * group.color.a * this.a, 0F, 1F);
+            gr = group.glowingColor.r * group.color.r;
+            gg = group.glowingColor.g * group.color.g;
+            gb = group.glowingColor.b * group.color.b;
+            ga = MathUtils.clamp(group.color.a * this.a, 0F, 1F);
         }
 
         this.vertex.set(vertex.vertex.x, vertex.vertex.y, vertex.vertex.z, 1);
@@ -180,15 +174,5 @@ public class CubicCpuGlowOverlayRenderer extends CubicCubeRenderer
         }
 
         builder.normal(normal.x, normal.y, normal.z);
-    }
-
-    private float layerStrength()
-    {
-        if (this.glowLayerColor == null)
-        {
-            return 1F;
-        }
-
-        return Math.max(this.glowLayerColor.r, Math.max(this.glowLayerColor.g, this.glowLayerColor.b));
     }
 }

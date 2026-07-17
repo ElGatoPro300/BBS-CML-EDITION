@@ -214,7 +214,12 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
                     stack.push();
                     stack.translate(startX + x, startY + y, startZ + z);
 
-                    int blockLight = context == null ? light : this.resolveBlockLight(context, startX + x, startY + y, startZ + z, light);
+                    int blockLight = light;
+
+                    if (!glowOverlay && context != null)
+                    {
+                        blockLight = this.resolveBlockLight(context, startX + x, startY + y, startZ + z, light);
+                    }
 
                     this.renderSingleBlock(stack, consumers, blockLight, overlay, picking, ui, glowOverlay, paintOverlay);
                     stack.pop();
@@ -442,35 +447,27 @@ public class BlockFormRenderer extends FormRenderer<BlockForm>
 
     private void renderGlowOverlay(FormRenderingContext context, MatrixStack stack, CustomVertexConsumerProvider consumers, GlowSettings glowSettings, Color legacyGlow, float glowIntensity, float alpha, int overlay, boolean ui)
     {
-        CustomVertexConsumerProvider.clearRunnables();
-        CustomVertexConsumerProvider.hijackVertexFormat((l) ->
-        {
-            RenderSystem.enableBlend();
-            RenderSystem.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
-        });
-
-        int layers = FormColorBlend.resolveGlowOverlayLayers(glowIntensity);
-        Color glowColor = FormColorBlend.resolveGlowOverlayColor(glowSettings, legacyGlow, alpha, glowIntensity, layers);
+        Color glowColor = FormColorBlend.resolveGlowOverlayEmissionColor(glowSettings, legacyGlow, alpha, glowIntensity);
+        float shaderScale = FormColorBlend.resolveGlowOverlayShaderScale(glowIntensity);
 
         RenderSystem.enableBlend();
         RenderSystem.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
         RenderSystem.depthMask(false);
+        RenderSystem.setShaderColor(shaderScale, shaderScale, shaderScale, 1F);
 
         consumers.setSubstitute(BBSRendering.getGlowOverlayConsumer(glowColor));
 
         try
         {
-            for (int layer = 0; layer < layers; layer++)
-            {
-                this.renderRepeatedBlocks(context, stack, consumers, LightmapTextureManager.MAX_LIGHT_COORDINATE, overlay, false, ui, true, false);
-                consumers.draw();
-            }
+            this.renderRepeatedBlocks(context, stack, consumers, LightmapTextureManager.MAX_LIGHT_COORDINATE, overlay, false, ui, true, false);
+            consumers.draw();
         }
         finally
         {
             consumers.setSubstitute(null);
+            RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
             RenderSystem.depthMask(true);
-            CustomVertexConsumerProvider.clearRunnables();
+            RenderSystem.defaultBlendFunc();
         }
     }
 }

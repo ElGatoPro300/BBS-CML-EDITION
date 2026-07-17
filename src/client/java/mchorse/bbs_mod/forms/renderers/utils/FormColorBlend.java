@@ -173,6 +173,31 @@ public class FormColorBlend
         return color;
     }
 
+    /**
+     * Full-strength glow tint for a single additive overlay pass. Pair with
+     * {@link #resolveGlowOverlayShaderScale(float)} so total emission matches the legacy multi-layer path.
+     */
+    public static Color resolveGlowOverlayEmissionColor(GlowSettings glow, Color legacyGlow, float alpha, float intensity)
+    {
+        Color resolved = new Color();
+        Color color = new Color();
+
+        glow.resolveColor(legacyGlow, resolved);
+        color.set(resolved.r, resolved.g, resolved.b, alpha);
+
+        return color;
+    }
+
+    public static float resolveGlowOverlayShaderScale(float intensity)
+    {
+        if (intensity <= 0F)
+        {
+            return 0F;
+        }
+
+        return intensity * OVERLAY_GLOW_BOOST;
+    }
+
     public static void blend(Color base, Color overlay, BlendMode mode)
     {
         if (base == null || overlay == null)

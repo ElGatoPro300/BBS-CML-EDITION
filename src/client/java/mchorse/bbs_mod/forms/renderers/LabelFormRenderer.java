@@ -90,26 +90,29 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
 
         if (glowIntensity > 0F)
         {
-            int layers = FormColorBlend.resolveGlowOverlayLayers(glowIntensity);
+            Color glowColor = FormColorBlend.resolveGlowOverlayEmissionColor(glowSettings, legacyGlow, 1F, glowIntensity);
+            float shaderScale = FormColorBlend.resolveGlowOverlayShaderScale(glowIntensity);
 
-            for (int layer = 0; layer < layers; layer++)
+            glowColor.r *= color.r;
+            glowColor.g *= color.g;
+            glowColor.b *= color.b;
+
+            int glowArgb = glowColor.getARGBColor();
+            int glowY = (y2 + y1) / 2 - h / 2;
+
+            RenderSystem.enableBlend();
+            RenderSystem.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
+            RenderSystem.setShaderColor(shaderScale, shaderScale, shaderScale, 1F);
+
+            for (String s : wrap)
             {
-                Color glowColor = FormColorBlend.resolveGlowOverlayColor(glowSettings, legacyGlow, 1F, glowIntensity, layers);
+                context.batcher.text(s, x1 + 2, glowY, glowArgb);
 
-                glowColor.r *= color.r;
-                glowColor.g *= color.g;
-                glowColor.b *= color.b;
-
-                int glowArgb = glowColor.getARGBColor();
-                int glowY = (y2 + y1) / 2 - h / 2;
-
-                for (String s : wrap)
-                {
-                    context.batcher.text(s, x1 + 2, glowY, glowArgb);
-
-                    glowY += lineHeight;
-                }
+                glowY += lineHeight;
             }
+
+            RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
+            RenderSystem.defaultBlendFunc();
         }
     }
 
@@ -280,8 +283,8 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
             RenderSystem.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
         });
 
-        int layers = FormColorBlend.resolveGlowOverlayLayers(glowIntensity);
-        Color glowColor = FormColorBlend.resolveGlowOverlayColor(glowSettings, legacyGlow, alpha, glowIntensity, layers);
+        Color glowColor = FormColorBlend.resolveGlowOverlayEmissionColor(glowSettings, legacyGlow, alpha, glowIntensity);
+        float shaderScale = FormColorBlend.resolveGlowOverlayShaderScale(glowIntensity);
         int maxLight = LightmapTextureManager.MAX_LIGHT_COORDINATE;
         boolean savedDepthMask = GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK);
         boolean savedPolygonOffsetFill = GL11.glGetBoolean(GL11.GL_POLYGON_OFFSET_FILL);
@@ -291,39 +294,38 @@ public class LabelFormRenderer extends FormRenderer<LabelForm>
         RenderSystem.depthMask(false);
         GL11.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
         GL11.glPolygonOffset(-1F, -1F);
+        RenderSystem.setShaderColor(shaderScale, shaderScale, shaderScale, 1F);
 
         try
         {
             consumers.setSubstitute(BBSRendering.getTextGlowOverlayConsumer(glowColor));
 
-            for (int layer = 0; layer < layers; layer++)
+            if (customFont != null)
             {
-                if (customFont != null)
-                {
-                    customFont.draw(content, x, y, textColor, textColor, letterSpacing, 0F, context.stack.peek().getPositionMatrix(), consumers, maxLight);
-                }
-                else
-                {
-                    renderer.draw(
-                        content,
-                        x,
-                        y,
-                        textColor,
-                        false,
-                        context.stack.peek().getPositionMatrix(),
-                        consumers,
-                        TextRenderer.TextLayerType.NORMAL,
-                        0,
-                        maxLight
-                    );
-                }
-
-                consumers.draw();
+                customFont.draw(content, x, y, textColor, textColor, letterSpacing, 0F, context.stack.peek().getPositionMatrix(), consumers, maxLight);
             }
+            else
+            {
+                renderer.draw(
+                    content,
+                    x,
+                    y,
+                    textColor,
+                    false,
+                    context.stack.peek().getPositionMatrix(),
+                    consumers,
+                    TextRenderer.TextLayerType.NORMAL,
+                    0,
+                    maxLight
+                );
+            }
+
+            consumers.draw();
         }
         finally
         {
             consumers.setSubstitute(null);
+            RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
             GL11.glPolygonOffset(0F, 0F);
 
             if (!savedPolygonOffsetFill)

@@ -216,26 +216,25 @@ public class ShapeFormRenderer extends FormRenderer<ShapeForm>
 
         if (positiveGlow)
         {
-            int layers = FormColorBlend.resolveGlowOverlayLayers(glowIntensity);
-            Color glowColor = FormColorBlend.resolveGlowOverlayColor(glowSettings, legacyGlow, c.a, glowIntensity, layers);
+            Color glowColor = FormColorBlend.resolveGlowOverlayEmissionColor(glowSettings, legacyGlow, c.a, glowIntensity);
+            float shaderScale = FormColorBlend.resolveGlowOverlayShaderScale(glowIntensity);
             Supplier<ShaderProgram> unshadedShader = GameRenderer::getPositionTexColorProgram;
 
             RenderSystem.setShader(unshadedShader);
             RenderSystem.blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE);
             RenderSystem.depthMask(false);
+            RenderSystem.setShaderColor(shaderScale, shaderScale, shaderScale, 1F);
 
             this.unshadedVertices = true;
 
-            for (int layer = 0; layer < layers; layer++)
-            {
-                BufferBuilder glowBuilder = tessellator.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_TEXTURE_COLOR);
+            BufferBuilder glowBuilder = tessellator.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_TEXTURE_COLOR);
 
-                this.buildShapeGeometry(glowBuilder, stack, type, glowColor, overlay, LightmapTextureManager.MAX_LIGHT_COORDINATE);
+            this.buildShapeGeometry(glowBuilder, stack, type, glowColor, overlay, LightmapTextureManager.MAX_LIGHT_COORDINATE);
 
-                BufferRenderer.drawWithGlobalProgram(glowBuilder.end());
-            }
+            BufferRenderer.drawWithGlobalProgram(glowBuilder.end());
 
             this.unshadedVertices = false;
+            RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
             RenderSystem.setShader(shader);
             RenderSystem.depthMask(true);
         }

@@ -26,7 +26,8 @@ public class FlatGlowOverlayPass
             return;
         }
 
-        int layers = FormColorBlend.resolveGlowOverlayLayers(glowIntensity);
+        Color glowColor = FormColorBlend.resolveGlowOverlayEmissionColor(glowSettings, legacyGlow, alpha, glowIntensity);
+        float shaderScale = FormColorBlend.resolveGlowOverlayShaderScale(glowIntensity);
         boolean savedDepthMask = GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK);
         boolean savedPolygonOffsetFill = GL11.glGetBoolean(GL11.GL_POLYGON_OFFSET_FILL);
 
@@ -35,18 +36,15 @@ public class FlatGlowOverlayPass
         RenderSystem.depthMask(false);
         GL11.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
         GL11.glPolygonOffset(-1F, -1F);
+        RenderSystem.setShaderColor(shaderScale, shaderScale, shaderScale, 1F);
 
         try
         {
-            for (int layer = 0; layer < layers; layer++)
-            {
-                Color glowColor = FormColorBlend.resolveGlowOverlayColor(glowSettings, legacyGlow, alpha, glowIntensity, layers);
-
-                drawLayer.accept(glowColor);
-            }
+            drawLayer.accept(glowColor);
         }
         finally
         {
+            RenderSystem.setShaderColor(1F, 1F, 1F, 1F);
             GL11.glPolygonOffset(0F, 0F);
 
             if (!savedPolygonOffsetFill)
